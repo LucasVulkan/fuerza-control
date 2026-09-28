@@ -367,7 +367,7 @@
     "blockDelta": {
       "name": "Block comparison",
       "what": "Tells you whether you improved on the last time you did that same conditioning block.",
-      "formula": "AMRAP: rounds and reps · EMOM: intervals completed · For time: time",
+      "formula": "AMRAP: rounds and reps · EMOM: rounds completed · For time: time",
       "rules": "In for-time blocks less time is better, so the sign is inverted compared to the other two formats. It compares against the previous run of the same session, not your best ever result.",
       "caveat": "Blocks don't record the weight used, so two identical results with different loads are compared as if they were equivalent."
     },
@@ -793,18 +793,19 @@
     "newBlock": "New block",
     "fromPreset": "From preset",
     "capLabel": "Time cap",
-    "intervalLabel": "Interval",
+    "roundDuration": "Duration",
+    "roundLabel": "Round",
     "roundsLabel": "Rounds",
     "noCap": "No cap",
     "emomTypeLabel": "EMOM type",
     "emomModes": { "all": "Repeat block", "rotate": "Rotate exercises" },
     "emomModeDesc": {
-      "all": "Every interval you do all the movements and rest for whatever is left.",
-      "rotate": "One exercise per interval. They rotate automatically."
+      "all": "Every round you do all the movements and rest for whatever is left.",
+      "rotate": "One movement per round; they rotate in order."
     },
     "formatDesc": {
       "amrap": "As many rounds as possible within a set time.",
-      "emom": "A fixed interval that repeats; each interval has its own work.",
+      "emom": "Fixed-length rounds; each round has its own work.",
       "for_time": "Complete every round as fast as you can."
     },
     "intervalCustom": "Custom",
@@ -835,8 +836,7 @@
     "roundDone": "Round completed",
     "removeRound": "Subtract round",
     "partialHint": "When time is up you can adjust the partial round",
-    "intervalsLabel": "Intervals",
-    "failHint": "Tap an interval to mark it as failed",
+    "failHint": "Tap a round to mark it as failed",
     "intervalOf": "Interval {{k}} / {{n}}",
     "remaining": "remaining",
     "toClose": "to close the interval",
@@ -844,12 +844,28 @@
     "timeUpEmom": "Time! Mark any misses and finish",
     "addMovementsHint": "Add movements to the block",
     "cappedTag": "(cap)",
+    "lapsTip_one": "That's {{count}} full lap of the {{moves}} movements",
+    "lapsTip_other": "That's {{count}} full laps of the {{moves}} movements",
+    "lapsRest_one": " and {{count}} extra round",
+    "lapsRest_other": " and {{count}} extra rounds",
+    "lapsTipNone": "Not quite one full lap of the {{moves}} movements",
     "recapSection": "Blocks",
     "deleteConfirm": "Delete \"{{name}}\"?",
+    "lastLabel": "Last time",
+    "scoreLine": {
+      "amrap_one": "{{count}} round",
+      "amrap_other": "{{count}} rounds",
+      "amrapReps_one": "{{count}} round + {{reps}} reps",
+      "amrapReps_other": "{{count}} rounds + {{reps}} reps",
+      "emom_one": "{{done}}/{{count}} round",
+      "emom_other": "{{done}}/{{count}} rounds",
+      "forTime_one": "{{count}} round",
+      "forTime_other": "{{count}} rounds"
+    },
     "delta": {
       "roundsShort": "round",
       "repsShort": "rep",
-      "completedShort": "int"
+      "completedShort": "round"
     },
     "meta": {
       "amrap_one": "{{min}} min · {{count}} movement",
@@ -865,10 +881,10 @@
       "amrapMainCount_other": "{{min}} min · {{count}} exercises",
       "amrapSub_one": "Go through the movement as many times as you can",
       "amrapSub_other": "Go through the {{count}} movements as many times as you can",
-      "emomMain": "{{rounds}} rounds · {{interval}} per interval · {{total}} total",
-      "emomSubOne": "Each interval: the movement",
-      "emomSubRotate": "Each interval: 1 movement, rotating through {{count}}",
-      "emomSubAll": "Each interval: all {{count}} movements",
+      "emomMain": "{{rounds}} rounds · {{interval}} each · {{total}} total",
+      "emomSubOne": "Each round: the movement",
+      "emomSubRotate": "Each round: 1 movement, rotating through {{count}}",
+      "emomSubAll": "Each round: all {{count}} movements",
       "forTimeMainCap": "{{rounds}} rounds · {{cap}} min cap",
       "forTimeMainNoCap": "{{rounds}} rounds · no cap",
       "forTimeSub_one": "Each round: the movement",

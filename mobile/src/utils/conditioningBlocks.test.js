@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   amrapRemaining, amrapFinished, emomPosition, emomTotalIntervals, forTimeElapsed, currentMovement,
-  buildBlockResult, formatBlockScore, compareBlockResults, blockEstimatedSec,
+  buildBlockResult, formatBlockScore, describeBlockScore, blockScoreWords, emomGridLayout, emomLaps, compareBlockResults, blockEstimatedSec,
   blocksLogFrom, defaultBlock,
 } from './conditioningBlocks';
 
@@ -62,15 +62,14 @@ describe('emomPosition', () => {
     expect(pos.interval).toBe(9);
   });
 
-  it('a "round" is a full cycle: rotate mode spans movements.length intervals', () => {
-    // 5 rounds × 3 movements = 15 intervals; every movement done 5 times.
-    const rot = { format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'rotate', movements: [{}, {}, {}] };
-    expect(emomTotalIntervals(rot)).toBe(15);
-    // interval 14 is the last, still live at 14×60s
-    expect(emomPosition(rot, T0, T0 + 14 * 60_000).interval).toBe(14);
-    expect(emomPosition(rot, T0, T0 + 14 * 60_000).finished).toBe(false);
-    // finished only after all 15 intervals
-    expect(emomPosition(rot, T0, T0 + 15 * 60_000).finished).toBe(true);
+  it('una ronda es un intervalo también en rotar: 8 rondas con 4 movimientos = 2 veces cada uno', () => {
+    const rot = { format: 'emom', intervalSec: 60, rounds: 8, emomMode: 'rotate', movements: [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }] };
+    expect(emomTotalIntervals(rot)).toBe(8);
+    expect(emomPosition(rot, T0, T0 + 7 * 60_000).interval).toBe(7);
+    expect(emomPosition(rot, T0, T0 + 7 * 60_000).finished).toBe(false);
+    expect(emomPosition(rot, T0, T0 + 8 * 60_000).finished).toBe(true);
+    expect([0, 4].map((i) => currentMovement(rot, i).id)).toEqual(['a', 'a']);
+    expect(currentMovement(rot, 7).id).toBe('d');
   });
 
   it("'all' mode: a round is a single interval (every movement each minute)", () => {
@@ -87,10 +86,10 @@ describe('emomPosition', () => {
   it('rounds: 0 de un fichero importado no produce un intervalo -1', () => {
     // La app no genera esto (los steppers llevan min={1}), un `.fitdata` sí.
     const cero = { format: 'emom', intervalSec: 60, rounds: 0, emomMode: 'rotate', movements: [{ exerciseId: 'e1' }, { exerciseId: 'e2' }] };
-    expect(emomTotalIntervals(cero)).toBe(2);
+    expect(emomTotalIntervals(cero)).toBe(1);
     const pos = emomPosition(cero, T0, T0 + 10_000_000);
-    expect(pos.interval).toBe(1);
-    expect(currentMovement(cero, pos.interval)).toEqual({ exerciseId: 'e2' });
+    expect(pos.interval).toBe(0);
+    expect(currentMovement(cero, pos.interval)).toEqual({ exerciseId: 'e1' });
   });
 });
 
@@ -144,9 +143,8 @@ describe('buildBlockResult', () => {
     expect(buildBlockResult(block, state, T0 + 600_000)).toEqual({ completed: 8, total: 10, failed: [3, 7] });
   });
 
-  it('emom rotate: score total is the full interval count, not the round count', () => {
-    // 5 rounds × 3 movements = 15 intervals; finished, one failed → 14/15.
-    const block = { format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'rotate', movements: [{}, {}, {}] };
+  it('emom rotate: el total son las rondas, ni más ni menos', () => {
+    const block = { format: 'emom', intervalSec: 60, rounds: 15, emomMode: 'rotate', movements: [{}, {}, {}] };
     const state = { startedAt: T0, failed: [2], timeSec: null };
     expect(buildBlockResult(block, state, T0 + 15 * 60_000)).toEqual({ completed: 14, total: 15, failed: [2] });
   });
@@ -217,8 +215,8 @@ describe('blockEstimatedSec', () => {
   it('emom uses intervalSec × rounds', () => {
     expect(blockEstimatedSec({ format: 'emom', intervalSec: 60, rounds: 10 })).toBe(600);
   });
-  it('emom rotate: intervalSec × (rounds × movements)', () => {
-    expect(blockEstimatedSec({ format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'rotate', movements: [{}, {}, {}] })).toBe(900);
+  it('emom rotate: intervalSec × rondas', () => {
+    expect(blockEstimatedSec({ format: 'emom', intervalSec: 60, rounds: 5, emomMode: 'rotate', movements: [{}, {}, {}] })).toBe(300);
   });
   it('for_time falls back to 600 with no cap', () => {
     expect(blockEstimatedSec({ format: 'for_time', capSec: null })).toBe(600);
@@ -242,5 +240,52 @@ describe('blocksLogFrom', () => {
   it('handles a session with no blocks at all (free session)', () => {
     expect(blocksLogFrom(undefined, {}, T0)).toEqual([]);
     expect(blocksLogFrom([defaultBlock()], {}, T0)).toEqual([]);
+  });
+});
+
+describe('describeBlockScore', () => {
+  // t falso: clave + params, para ver qué se pide sin cargar i18n.
+  const t = (k, p) => (p ? `${k.split('.').pop()}(${Object.values(p).join(',')})` : k.split('.').pop());
+  it('amrap: rondas con palabra y la duración', () => {
+    expect(describeBlockScore({ format: 'amrap', capSec: 720, result: { rounds: 7, extraReps: 0 } }, t))
+      .toBe('amrap(7) · 12 min');
+    expect(describeBlockScore({ format: 'amrap', capSec: 750, result: { rounds: 7, extraReps: 12 } }, t))
+      .toBe('amrapReps(7,12) · 12:30');
+  });
+  it('emom: intervalos hechos de total y tiempo total', () => {
+    expect(describeBlockScore({ format: 'emom', intervalSec: 60, result: { completed: 9, total: 10 } }, t))
+      .toBe('emom(9,10) · 10 min');
+  });
+  it('for_time: tiempo, (cap) y rondas', () => {
+    expect(describeBlockScore({ format: 'for_time', rounds: 5, result: { timeSec: 522, capped: true } }, t))
+      .toBe('8:42 cappedTag · forTime(5)');
+  });
+});
+
+describe('blockScoreWords', () => {
+  const t = (k, p) => (p ? `${k.split('.').pop()}(${Object.values(p).join(',')})` : k.split('.').pop());
+  it('solo el score, sin duración', () => {
+    expect(blockScoreWords('amrap', { rounds: 3, extraReps: 0 }, t)).toBe('amrap(3)');
+    expect(blockScoreWords('for_time', { timeSec: 522, capped: false }, t)).toBe('8:42');
+  });
+});
+
+describe('emomGridLayout', () => {
+  it('llena el ancho: más columnas cuanto más ancho', () => {
+    expect(emomGridLayout(324)).toEqual({ cols: 6, cellW: 49 });
+    expect(emomGridLayout(280).cols).toBe(5);
+    const { cols, cellW } = emomGridLayout(400);
+    expect(cols * cellW + (cols - 1) * 6).toBeCloseTo(400);
+  });
+  it('nunca menos de una columna', () => {
+    expect(emomGridLayout(20).cols).toBe(1);
+  });
+});
+
+describe('emomLaps', () => {
+  it('vueltas completas y rondas sueltas', () => {
+    expect(emomLaps(12, 3)).toEqual({ laps: 4, rest: 0 });
+    expect(emomLaps(10, 3)).toEqual({ laps: 3, rest: 1 });
+    expect(emomLaps(2, 3)).toEqual({ laps: 0, rest: 2 });
   });
 });

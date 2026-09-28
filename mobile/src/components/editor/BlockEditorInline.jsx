@@ -28,7 +28,7 @@ import { Text, TextInput } from '../ui/Text';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
-import { emomTotalIntervals } from '../../utils/conditioningBlocks';
+import { emomTotalIntervals, emomLaps } from '../../utils/conditioningBlocks';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -379,6 +379,13 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   // así que el número de MOVIMIENTOS depende del formato.
   const movementsStep = format === 'emom' ? 3 : 2;
 
+  // EMOM rotativo: cuántas vueltas a todos los movimientos salen de las rondas.
+  const { laps, rest } = emomLaps(rounds, Math.max(1, moveCount));
+  const lapsTip = laps === 0
+    ? t('blocks.lapsTipNone', { moves: moveCount })
+    : t('blocks.lapsTip', { count: laps, moves: moveCount })
+      + (rest > 0 ? t('blocks.lapsRest', { count: rest }) : '');
+
   return (
     <View style={styles.container}>
 
@@ -444,10 +451,10 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
         )}
       </View>
 
-      {/* ══ 2. INTERVALO (solo EMOM) ═════════════════════════════════════════ */}
+      {/* ══ 2. RONDAS (solo EMOM): duración de cada una y cuántas ═════════════ */}
       {format === 'emom' && (
         <View style={styles.block}>
-          <Text style={styles.secLabel}>{`2. ${t('blocks.intervalLabel').toUpperCase()}`}</Text>
+          <Text style={styles.secLabel}>{`2. ${t('blocks.roundsLabel').toUpperCase()}`}</Text>
           <SegmentedControl
             options={INTERVAL_OPTIONS}
             value={intervalCustom ? 'custom' : String(intervalSec)}
@@ -466,7 +473,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
           {intervalCustom && (
             <StepField
               horizontal unit="s"
-              label={t('blocks.intervalLabel')}
+              label={t('blocks.roundDuration')}
               value={intervalSec}
               onChange={setIntervalSec}
               min={10}
@@ -482,6 +489,9 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
             min={1}
             max={40}
           />
+          {emomMode === 'rotate' && moveCount > 1 ? (
+            <Text style={styles.hint}>{lapsTip}</Text>
+          ) : null}
         </View>
       )}
 

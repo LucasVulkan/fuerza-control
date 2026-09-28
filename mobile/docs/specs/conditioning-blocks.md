@@ -5,7 +5,7 @@
 > Fase T01 · hecho · Datos y utils: `conditioningBlocks.js`, acciones de editor, presets · §3
 > Fase T02 · hecho · Editor: sección BLOQUES en SessionEditorScreen y picker de movimientos · §6
 > Fase T03 · hecho · Runtime: `ConditioningBlockCard`, cronómetro y kill-recovery · §4
-> Fase T04 · pendiente · Historial: falta la línea de bloques en el detalle (recap sí está) · §7
+> Fase T04 · hecho · Persistencia, recap e historial: `entry.blocks`, sección Bloques del recap y línea por bloque en `SessionCard` · §7
 >
 > Estado: **spec cerrada, lista para implementar**. Mockups aprobados por el usuario
 > (workout view AMRAP+EMOM, pantalla de setup). Decisiones de producto ya tomadas —
@@ -62,12 +62,17 @@ ConditioningBlock = {
                            // for_time: tope opcional (null = sin límite)
                            // emom: null (no aplica)
   intervalSec: number,     // emom: default 60. amrap/for_time: null
-  rounds: number | null,   // emom: nº de intervalos (obligatorio, default 10)
+  rounds: number | null,   // emom: nº de rondas = nº de intervalos, en los DOS modos
+                           //   (obligatorio, default 10). La implementación se desvió y en
+                           //   'rotate' contaba vueltas (rondas × movimientos); corregido en
+                           //   sep-2026 SIN migración (decisión del usuario, pre-publicación):
+                           //   un EMOM rotativo antiguo de 4 rondas pasa a durar 4 intervalos.
                            // for_time: rondas del circuito (obligatorio, default 3)
                            // amrap: null (las rondas son el score)
   emomMode: 'rotate' | 'all', // solo emom con 2+ movimientos:
-                           // 'rotate' (default): un movimiento por intervalo, rotando
-                           // 'all': todos los movimientos en cada intervalo
+                           // 'rotate' (default): un movimiento por ronda, rotando
+                           //   (8 rondas con 4 movimientos = cada uno 2 veces)
+                           // 'all': todos los movimientos en cada ronda
   movements: [{
     exerciseId: string,    // referencia a la biblioteca (exerciseLibrary/customExercises)
     amount: number,        // cantidad prescrita (default 10)
@@ -322,9 +327,39 @@ Los bloques NO tocan los tiles hero (volumen/series) ni los PRs.
 
 ### 7.3 Historial
 
-Donde HistoryScreen renderiza el detalle de una sesión (lista de ejercicios),
-añadir tras los ejercicios una línea por bloque: `[badge formato] nombre — score`.
-Reutilizar `formatBlockScore`. Nada más en v1.
+En el detalle de una sesión del historial (`SessionCard`, lista de ejercicios),
+añadir tras los ejercicios cada bloque con la forma de un ejercicio: `[badge formato] nombre`
+arriba (fuente del nombre de ejercicio) y el score debajo en texto normal.
+Usa `describeBlockScore` (score con palabras, igual que el recap). Nada más en v1.
+
+**Probar T04**
+
+- [x] Empezar un AMRAP, meter unas rondas y guardar la sesión sin finalizarlo:
+  el recap enseña el bloque en «Bloques» con el resultado parcial.
+- [x] Guardar una sesión con un bloque que no se ha llegado a empezar: ni el
+  recap ni el historial enseñan ese bloque.
+- [x] Primera vez que se hace un bloque: el recap enseña el score sin chip. La
+  segunda vez, con el mismo bloque, aparece el chip (en for time, menos tiempo = verde).
+- [x] Historial → abrir esa sesión: tras los ejercicios sale cada bloque con la
+  forma de un ejercicio: badge + nombre en negrita arriba, resultado en texto
+  normal debajo (`(cap)` si topó el tiempo límite).
+- [x] El score del recap y del historial se explica solo: AMRAP «7 rondas + 12 reps
+  · 12 min», EMOM «9/10 rondas · 10 min», For time «8:42 · 5 rondas».
+- [x] Workout, bloque con un movimiento en reps y otro en seg/cal/m: todos los
+  nombres empiezan a la misma altura; la cantidad con unidad no empuja el suyo.
+- [x] Workout, bloque que ya se hizo antes: a la derecha de la cabecera sale
+  «ÚLTIMA VEZ» con el score («3 rondas», «9/10 rondas», «8:42»). Bloque
+  nuevo: no sale nada. Al terminar el bloque lo sustituye la pill del score.
+- [x] EMOM en marcha: la rejilla de intervalos ocupa todo el ancho de la tarjeta
+  (7–8 columnas en un móvil normal, más en uno ancho), sin hueco a la derecha.
+- [x] Movimientos en reps: sale «10 reps», igual que «10 seg» o «15 cal».
+- [x] EMOM: en ningún sitio pone «intervalo». Editor: sección «2. RONDAS» y la
+  duración a medida se llama «Duración». Workout: «RONDA 5 / 12», rejilla
+  «RONDAS», «Toca una ronda para marcarla como fallada».
+- [x] EMOM rotar, 4 movimientos, 8 rondas: dura 8 × intervalo y cada movimiento
+  sale 2 veces. Bajo el campo Rondas: «Son 2 vueltas completas a los 4
+  movimientos»; con 10 rondas «… y 2 rondas sueltas»; con 3 «No llega a una vuelta
+  completa…». En «Repetir bloque» o con 1 movimiento no sale la pista.
 
 ---
 
