@@ -35,7 +35,7 @@ import es from '../locales/es.json';
 import en from '../locales/en.json';
 
 /** Las sesiones que se le pueden apuntar: las de su etapa y sus libres. */
-function sessionsOf(client, programs, sessionTemplates) {
+function sessionsOf(client, programs, sessionTemplates, unnamed) {
   const program = programs[client?.activeProgramId];
   const days = program
     ? stageDaysAt(program, stageStatus(program, athleteProgress(program, client)).stageIdx)
@@ -46,7 +46,7 @@ function sessionsOf(client, programs, sessionTemplates) {
     .map((tpl) => ({ templateId: tpl.id, label: tpl.label ?? '', name: tpl.name ?? '' }));
   const free = Object.values(sessionTemplates)
     .filter((tpl) => !tpl.programId && tpl.owner === client?.id)
-    .map((tpl) => ({ templateId: tpl.id, label: '', name: tpl.name ?? '' }));
+    .map((tpl) => ({ templateId: tpl.id, label: '', name: tpl.name || unnamed, free: true }));
   return [...fromProgram, ...free];
 }
 
@@ -115,7 +115,7 @@ export default function PasteWorkoutScreen({ navigation, route }) {
   const client   = clients[clientId] ?? null;
 
   // ── Qué sesión ── La que diga la cabecera; si no, la que le toca.
-  const sessions = useMemo(() => sessionsOf(client, programs, sessionTemplates), [client, programs, sessionTemplates]);
+  const sessions = useMemo(() => sessionsOf(client, programs, sessionTemplates, t('freeSession.templateUnnamed')), [client, programs, sessionTemplates, t]);
   const log = clientLogs[clientId] ?? [];
   const headerTpl = sessions.find((s) => s.label && labelKeys(s.label).some((k) => headerKeys.has(k)))
     ?? sessions.find((s) => s.name && headerKeys.has(normName(s.name)));
@@ -231,7 +231,17 @@ export default function PasteWorkoutScreen({ navigation, route }) {
           ) : (
             <>
               <Text style={styles.label}>{t('clients.logPast.which').toUpperCase()}</Text>
-              <SessionChips wrap sessions={sessions} selected={tplId} onSelect={setPickedTpl} />
+              {/* Las del programa con su letra, como en «Apuntar sesión pasada»;
+                  las libres aparte, por su nombre. */}
+              {sessions.some((x) => !x.free) && (
+                <SessionChips sessions={sessions.filter((x) => !x.free)} selected={tplId} onSelect={setPickedTpl} />
+              )}
+              {sessions.some((x) => x.free) && (
+                <>
+                  <Text style={styles.subLabel}>{t('freeSession.sectionTitle').toUpperCase()}</Text>
+                  <SessionChips wrap sessions={sessions.filter((x) => x.free)} selected={tplId} onSelect={setPickedTpl} />
+                </>
+              )}
               <Text style={styles.label}>{t('clients.logPast.when').toUpperCase()}</Text>
               <DayChips days={days} selected={dayIdx} onSelect={setDayIdx} />
             </>
@@ -325,6 +335,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Los rótulos de la hoja «Apuntar sesión pasada», que es la misma pregunta.
   label:  { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.lg, marginBottom: spacing.sm },
   hint:   { ...textStyles.body, color: th.colors.mutedLight, marginBottom: spacing.sm },
+  subLabel: { ...textStyles.caps, color: th.colors.muted, marginTop: spacing.md, marginBottom: spacing.sm },
   gapTop: { marginTop: spacing.lg },
 
   rows: { gap: spacing.xs2 },

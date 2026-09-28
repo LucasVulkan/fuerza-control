@@ -114,8 +114,15 @@ export function SessionChips({ sessions, selected, onSelect, wrap = false }) {
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
           >
-            {!!s.label && <Text style={[styles.chipNum, on && styles.chipTextOn]}>{s.label}</Text>}
-            <Text style={[styles.chipSub, on && styles.chipSubOn]} numberOfLines={1}>{s.name}</Text>
+            {s.label ? (
+              <>
+                <Text style={[styles.chipNum, on && styles.chipTextOn]}>{s.label}</Text>
+                <Text style={[styles.chipSub, on && styles.chipSubOn]} numberOfLines={1}>{s.name}</Text>
+              </>
+            ) : (
+              // Sin letra (una sesión libre, un cliente) el nombre es lo que se lee.
+              <Text style={[styles.chipName, on && styles.chipTextOn]} numberOfLines={2}>{s.name}</Text>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -491,6 +498,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   chipTall:   { paddingVertical: spacing.sm2, paddingHorizontal: spacing.xs2 },
   chipsWrap:  { flexWrap: 'wrap' },
+  chipName:   { ...textStyles.labelStrong, color: th.colors.mutedLight, textAlign: 'center' },
   chipWrap:   { flex: 0, flexBasis: '22%', flexGrow: 1 },
   chipOn:     { backgroundColor: th.colors.accent },
   chipTop:    { ...textStyles.label, color: th.colors.mutedLight },

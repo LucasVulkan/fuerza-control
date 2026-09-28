@@ -81,10 +81,12 @@ function blockLine(block, allExercises, t, language, fmtWeight) {
 export function sessionToText(template, allExercises, t, {
   language, fmtWeight = (kg) => `${kg}kg`, lastExercise, clientName,
 } = {}) {
+  const label = template.label ? t('workout.sessionLabel', { label: template.label }) : null;
   const title = [
     clientName?.trim() || null,
-    template.label ? t('workout.sessionLabel', { label: template.label }) : null,
-    template.name || null,
+    label,
+    // Una sesión sin nombre propio se llama «Sesión A»: no se repite.
+    template.name && normName(template.name) !== normName(label) ? template.name : null,
   ].filter(Boolean).join(SEP);
 
   const lines = sessionSlots(template).flatMap((slot) => {
@@ -129,10 +131,11 @@ export function parseRx(seg) {
   const a = normName(seg);
   let m = a.match(/^(\d+)\s*x\s*(\d+)(?:-(\d+))?\s*(s|')?/);
   if (m) {
-    const [, sets, lo, hi, unit] = m;
-    const one = hi == null || hi === lo;
-    if (unit) return { sets: +sets, time: one ? +lo * (unit === "'" ? 60 : 1) : null };
-    return { sets: +sets, reps: one ? +lo : null };
+    // Con un rango vale el de abajo: «ok» en un 3x12-15 es 12, lo seguro. Lo
+    // de arriba es lo que hace subir de peso, y eso lo tiene que decir el cliente.
+    const [, sets, lo, , unit] = m;
+    if (unit) return { sets: +sets, time: +lo * (unit === "'" ? 60 : 1) };
+    return { sets: +sets, reps: +lo };
   }
   m = a.match(/^(\d+) (series|serie|sets|set)$/);
   return m ? { sets: +m[1] } : null;
@@ -154,8 +157,10 @@ export function readAnswer(answer, rx = null, hint = null) {
     .replace(/(\d),(\d)/g, '$1.$2')          // 102,5 — la coma con espacio separa
     .replace(/\s*[x×*]\s*(?=\d)/g, 'x')       // 100 x 6 → 100x6
     .replace(/@\s+/g, '@')
-    .replace(/@(\d+(?:\.\d+)?)\s*(kgs?|lbs?)\b/g, ' $1')   // «@100kg» es un peso, no un RPE
-    .replace(/(\d)\s*(kgs?|lbs?)\b/g, '$1')
+    // La unidad pegada a un número se cae, también en «16kgx11» (sin límite de
+    // palabra entre «kg» y «x»: por eso no vale `\b`).
+    .replace(/@(\d+(?:\.\d+)?)\s*(?:kgs?|lbs?)(?=x\d|[^a-z]|$)/g, ' $1')   // «@100kg» es un peso, no un RPE
+    .replace(/(\d)\s*(?:kgs?|lbs?)(?=x\d|[^a-z]|$)/g, '$1')
     .replace(/\b(kgs?|lbs?)\b/g, ' ')
     .trim();
   if (!a) return null;

@@ -605,7 +605,9 @@ texto que vuelve es **el nuestro con números detrás de los dos puntos**, y ese
 formato lo pone la app. Los textos a mano («sentadilla 100 100 95, la última
 me costó») se leen con las formas de §6.2 y los alias de §6.3. **Cada texto
 real que no se entienda entra en `sessionText.test.js` como caso** y se ajusta
-el lector: la tabla crece con el uso, no antes.
+el lector: la tabla crece con el uso, no antes. El primero (QA 28-sep) sacó
+tres fallos: `16kgx11` perdía la serie, un tiempo con rango se leía como
+pesos y `ok` con rango dejaba las reps en blanco.
 
 ### 6.2 Formato
 
@@ -624,17 +626,17 @@ Lo de detrás (`readAnswer`):
 | Escrito | Se entiende como |
 |---|---|
 | (vacío) | No lo hizo |
-| `ok` · `✓` · `sí` · `hecho` · `👍` | La receta tal cual, con el peso del texto. Con un rango (`3x8-12`) las reps quedan en blanco en el Workout |
+| `ok` · `✓` · `sí` · `hecho` · `👍` | La receta tal cual, con el peso del texto. **Con un rango vale el de abajo**: `ok` en un `3x12-15` son 12 (QA 28-sep). Lo de arriba es lo que hace subir de peso, y eso lo tiene que escribir el cliente. Igual en tiempo |
 | `105` · `105kg` | Ese peso en todas las series de la receta, con sus reps |
-| `100 100 95` | Una serie por número: peso, con las reps de la receta |
+| `100 100 95` | Una serie por número: peso, con las reps de la receta (con rango, las de abajo) |
 | `100x6 100x6 95x5` · `100 x 6, 100 x 6` | Una serie por elemento: peso × reps |
 | `4x6 100` · `4x6x100` · `4x6 @100kg` | 4 series de 6 a 100 |
 | `3x10` sin peso | 3 series de 10 |
 | `100x6` suelto, con receta | Más de 10 delante ya es un peso: 100 × 6 en todas las series |
-| `40 35 30` con receta de tiempo · `40s` · `1'` | Segundos por serie |
+| `40 35 30` con receta de tiempo (también con rango, `3x3-15s`) · `40s` · `1'` | Segundos por serie |
 | `100x6@8` · `100x6 @8 95x5` | RPE 8 en **esa** serie (el set guarda `rpe` por serie) |
 | `4x6 100 @8` · `100 100 @8` (al final) | RPE 8 en todas |
-| `kg` / `lb` | Se ignoran; se asume la unidad del usuario |
+| `kg` / `lb` | Se ignoran, también pegados a la serie (`16kgx11`); se asume la unidad del usuario |
 | `102,5` · `102.5` | Decimal. **La coma solo separa si lleva espacio detrás** (`100, 95`) |
 | Palabras sueltas («la última me costó») | Se ignoran; los números de la línea valen |
 
@@ -685,7 +687,8 @@ De arriba abajo:
    trae el nombre de uno **tal cual** (sin tildes ni mayúsculas), sale
    marcado; si es de un cliente con app, lo dice («usa la app: sus entrenos
    los apunta él») y no se marca.
-3. **Qué sesión**: las de su etapa y sus sesiones libres. Marcada la que diga
+3. **Qué sesión**: las de su etapa, con su letra; debajo, bajo «Sesiones
+   libres», las suyas por su nombre («Sesión libre» si no tiene). Marcada la que diga
    la cabecera («Sesión C» en cualquiera de los dos idiomas, o el nombre de la
    sesión); si no, la que le toca. **Cuándo**: los 7 días de «Apuntar sesión
    pasada», hoy marcado.

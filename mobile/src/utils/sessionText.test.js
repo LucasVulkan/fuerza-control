@@ -62,6 +62,9 @@ describe('sessionToText', () => {
   it('una sesión libre sin letra titula solo con el nombre', () => {
     const text = sessionToText({ name: 'Brazos', exercises: [] }, LIB, t, { language: 'es' });
     expect(text.split('\n')[0]).toBe('Brazos');
+    // Una sin nombre propio se llama «Sesión A»: no sale dos veces.
+    expect(sessionToText({ label: 'A', name: 'Sesión A', exercises: [] }, LIB, t, { language: 'es' })
+      .split('\n')[0]).toBe('Sesión A');
   });
 
   // Lo que hace fiable la C22: el nombre de cada línea, cortado en el primer
@@ -92,7 +95,8 @@ describe('readAnswer (§6.2)', () => {
     expect(readAnswer('', rx, 100)).toBeNull();
     expect(readAnswer('  ', rx, 100)).toBeNull();
     expect(w(readAnswer('ok', rx, 102.5))).toEqual(Array(4).fill([102.5, 6, '', '']));
-    expect(w(readAnswer('OK', { sets: 2, reps: null }, 60))).toEqual(Array(2).fill([60, '', '', '']));
+    // Con un rango, «ok» es el de abajo: lo seguro (QA 28-sep, «¿12 o 15?»).
+    expect(w(readAnswer('OK', parseRx('3x12-15'), 4))).toEqual(Array(3).fill([4, 12, '', '']));
     // «ok» sin receta (texto a mano) no dice nada.
     expect(readAnswer('ok', null)).toBeNull();
   });
@@ -140,12 +144,38 @@ describe('readAnswer (§6.2)', () => {
 describe('parseRx', () => {
   it('lee las recetas que escribe sessionToText', () => {
     expect(parseRx('4x6')).toEqual({ sets: 4, reps: 6 });
-    expect(parseRx('3x8-12')).toEqual({ sets: 3, reps: null });
+    expect(parseRx('3x8-12')).toEqual({ sets: 3, reps: 8 });
     expect(parseRx('3x10 c/p')).toEqual({ sets: 3, reps: 10 });
     expect(parseRx('3x40s')).toEqual({ sets: 3, time: 40 });
-    expect(parseRx('3x20-40s')).toEqual({ sets: 3, time: null });
+    expect(parseRx('3x20-40s')).toEqual({ sets: 3, time: 20 });
     expect(parseRx('3 series')).toEqual({ sets: 3 });
     expect(parseRx('102.5kg')).toBeNull();
+  });
+});
+
+// Textos reales (§6.1): cada uno que salió mal entra aquí tal cual.
+describe('textos reales', () => {
+  it('QA 28-sep: «16kgx11», segundos con rango, vacío y «ok» con rango', () => {
+    const { header, lines } = parseSessionText([
+      'Sesión A · Sesión A',
+      'Aperturas con mancuernas · 3x12-15 · 7kg:15x12 16kgx11 16x11',
+      'Back lever · 3x3-15s: 12 13',
+      'Burpee · 3 series · 4.5kg:',
+      'Abducción en máquina · 3x12-15 · 4kg: ok',
+      '',
+      es.sessionText.howTo,
+    ].join('\n'));
+    expect(header).toEqual(['Sesión A', 'Sesión A']);
+    const read = lines.filter((l) => !l.ignored).map((l) => readAnswer(l.answer, l.rx, l.hint)
+      ?.map((s) => [s.weight, s.reps, s.time]) ?? null);
+    expect(read).toEqual([
+      // «16kgx11» era una serie perdida: `\b` no separa «kg» de «x».
+      [[15, 12, ''], [16, 11, ''], [16, 11, '']],
+      // Un ejercicio de segundos con rango: son segundos, no pesos.
+      [['', '', 12], ['', '', 13]],
+      null,
+      Array(3).fill([4, 12, '']),
+    ]);
   });
 });
 
