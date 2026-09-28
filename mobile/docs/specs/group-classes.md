@@ -245,8 +245,10 @@ Solo clientes individuales conectados: los grupos no tienen móvil al otro lado.
   los entrenos que ya hizo con la anterior siguen en su historial.
 - [ ] (dos móviles) El entrenador la borra y reenvía: desaparece del móvil del
   cliente, y el historial del cliente la conserva.
-- [ ] Asignar una plantilla de sesión a un cliente con app **sin programa**: la
-  hoja de asignar avisa de que no le llegará hasta que tenga uno (§4.6).
+- [ ] Cliente con app **sin programa**: al asignarle una plantilla de sesión
+  (Plantillas › Sesiones) su fila dice «Necesita tener un programa asignado
+  para recibir sesiones libres», y la hoja de «＋ Sesión libre» de su ficha lo
+  dice arriba. Un cliente sin app o con programa no lo ve (§4.6).
 
 Aparcada con los grupos: crear una sesión libre para un grupo, que aparezca en
 su ficha con PIZARRA y **no** en tu Inicio.
@@ -305,8 +307,11 @@ acción duplica con `owner: 'me'`):
   normal es mandarla tal cual.
 - Si el cliente está conectado, queda **pendiente de reenviar** (§4.2, firma).
 - **Límite conocido**: las sesiones libres viajan dentro del programa, así que a
-  un cliente con app **sin programa** no le llegan hasta que tenga uno. La hoja
-  de asignar lo avisa en su fila.
+  un cliente con app **sin programa** no le llegan hasta que tenga uno. Lo
+  avisan, con el mismo texto («Necesita tener un programa asignado para recibir
+  sesiones libres»), la hoja de asignar en su fila y la hoja de «＋ Sesión
+  libre» de su ficha, arriba. «Con app» es `clientLink !== 'none'`: también un
+  invitado que aún no ha canjeado el código.
 
 **Desde la ficha** (§4.1): «＋ Sesión libre» abre una hoja con **En blanco** y,
 debajo, tus plantillas de sesión (misma forma que `NewProgramSheet`). Es la misma

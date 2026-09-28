@@ -43,6 +43,7 @@ import { sessionStats } from '../utils/sessionStats';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { templatesOf } from '../utils/programOwnership';
+import { clientLink } from '../utils/clientLink';
 import { programTotals } from '../utils/stageProgress';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -292,6 +293,7 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
     () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [clients]
   );
+  const trainerSync = useStore((s) => s.trainerSync);
   const [picked, setPicked] = useState(() => new Set());
   const toggle = (id) => setPicked((prev) => {
     const next = new Set(prev);
@@ -315,7 +317,7 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
               {[{ id: 'me', name: t('templates.assignSession.me'), sub: t('templates.assignSession.meSub') }, ...clientList].map((c) => {
                 const active = picked.has(c.id);
                 // Con app, la sesión viaja con su programa: sin programa no le llega.
-                const noRoute = c.syncLinked && !c.activeProgramId;
+                const noRoute = c.id !== 'me' && clientLink(c, trainerSync) !== 'none' && !c.activeProgramId;
                 return (
                   <TouchableOpacity
                     key={c.id}

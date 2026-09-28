@@ -391,6 +391,10 @@ export function ClientFreeSessions({ client, canStart, log }) {
 
       {sheet && (
         <DragSheet visible onClose={() => setSheet(false)} title={t('clients.freeSheet.title', { name: client.name })}>
+          {/* Con app, la sesión viaja con su programa: sin programa no le llega. */}
+          {!canStart && !client.activeProgramId && (
+            <Text style={[styles.sheetHint, styles.sheetHintTop]}>{t('templates.assignSession.noProgram')}</Text>
+          )}
           <View style={styles.sheetGroup}>
             <MenuRow
               isFirst
@@ -466,6 +470,7 @@ const makeStyles = (th) => StyleSheet.create({
   sheetBody:  { gap: spacing.sm, paddingBottom: spacing.sm },
   sheetLabel: { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.sm, marginBottom: spacing.xs2 },
   sheetHint:  { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.sm },
+  sheetHintTop: { marginTop: 0, marginBottom: spacing.sm },
   // Chips de `NumberChips`: mismo ancho, `surface`, activo en acento.
   chips: { flexDirection: 'row', gap: spacing.sm },
   chip: {

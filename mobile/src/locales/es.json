@@ -2197,7 +2197,7 @@
     "statMinutes": "min",
     "assignSession": {
       "desc": "Se le crea una copia: lo que cambies después en la plantilla no le llega.",
-      "noProgram": "Tiene app y no tiene programa: le llegará cuando le envíes uno.",
+      "noProgram": "Necesita tener un programa asignado para recibir sesiones libres.",
       "me": "Tú",
       "meSub": "Se añade una copia a tus sesiones libres.",
       "meToast": "ti",
