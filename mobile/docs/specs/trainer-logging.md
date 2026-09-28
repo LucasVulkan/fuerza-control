@@ -325,6 +325,10 @@ slot (el código).
 | Hueco derecho de la tarjeta | fecha | **«Esperando código»** en `mutedLight`, como «Pausado» | fecha / sin revisar |
 | Pulsación larga | Empezar sesión B | Próxima sesión | Próxima sesión |
 
+- **Con app, un icono junto al nombre** en la tarjeta de la lista (un móvil de
+  trazo, 12 px, `mutedLight`). Solo en ese estado: sin app es lo normal para un
+  presencial, y el invitado ya lo dice «Esperando código». Gris y no azul: en
+  la lista el azul es «cambios sin enviar» (decisión del usuario, 28-sep).
 - **Subida silenciosa del invitado**: `markProgramDirtyForClients`, para un
   invitado, llama a `uploadProgramToClient` en segundo plano en vez de marcar
   el aviso. Si falla, queda `programDirty` (sin aviso) y se reintenta en el
@@ -390,6 +394,8 @@ ya está cerrada.
 - [ ] Un cliente sin app → Pasar a la app → GENERAR
   CÓDIGO: desaparece EMPEZAR y sale la tarjeta del código. Cancelar invitación:
   vuelve EMPEZAR y el código viejo ya no sirve.
+- [ ] En la lista, solo los clientes con app llevan el icono del móvil junto al
+  nombre, pegado a él; con un nombre largo, el nombre se corta y el icono se ve.
 
 ### Fase C20 — Traspaso al pasar a la app (§4.1-4.4)
 

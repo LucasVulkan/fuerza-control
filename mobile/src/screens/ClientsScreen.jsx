@@ -1628,7 +1628,7 @@ function ClientListCard({
   client, activeProgram, log, lastActivityTs, isConnected,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
-  inProgress = false, onContinue, invited = false,
+  inProgress = false, onContinue, invited = false, linked = false,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -1725,7 +1725,21 @@ function ClientListCard({
     >
       {/* ── Línea 1: nombre · Semana NN ── */}
       <View style={styles.cTop}>
-        <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
+        {/* Con app, un móvil pegado al nombre. Solo ellos: sin app es el caso
+            normal del presencial y marcarlo sería ruido, y el invitado ya lo
+            dice su «Esperando código». Gris y no azul: en la lista el azul es
+            «cambios sin enviar». */}
+        <View style={styles.cNameWrap}>
+          <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
+          {linked && (
+            <View accessible accessibilityLabel={t('clients.info.link_linked')}>
+              <Svg viewBox="0 0 24 24" width={12} height={12} fill="none"
+                stroke={th.colors.mutedLight} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5zM11 18h2" />
+              </Svg>
+            </View>
+          )}
+        </View>
         {activeProgram && (
           <Text style={styles.cWeek}>
             {t('clients.weekLabel')}{' '}
@@ -3453,6 +3467,7 @@ export default function ClientsScreen() {
                   lastActivityTs={lastActivityTs}
                   isConnected={isConnected}
                   invited={link === 'invited'}
+                  linked={link === 'linked'}
                   adherence={adherenceByClient[client.id]}
                   newSessionsCount={getNewSessionsCount(client.id)}
                   onPress={() => handleSelectClient(client.id)}
@@ -4220,11 +4235,19 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'baseline',
     gap:           spacing.sm,
   },
+  // El nombre encoge y el icono de «con app» va pegado a él, no al fondo.
+  cNameWrap: {
+    flex:          1,
+    minWidth:      0,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           spacing.sm,
+  },
   cName: {
     ...textStyles.itemTitleQuiet,
-    color:    th.colors.text,
-    flex:     1,
-    minWidth: 0,
+    color:      th.colors.text,
+    flexShrink: 1,
+    minWidth:   0,
   },
   cWeek: {
     ...textStyles.label,
