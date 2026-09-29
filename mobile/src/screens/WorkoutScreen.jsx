@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import { useStore, ownerLogOf } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
@@ -17,6 +17,7 @@ import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
+import NavScrim from '../components/ui/NavScrim';
 import SheetRow from '../components/ui/SheetRow';
 import { Section } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
@@ -31,12 +32,6 @@ import { sessionSlots } from '../utils/sessionSlots';
 import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
 import { backToMain } from '../navigation/navigationRef';
 
-// Velo bajo los botones de Android. Curva de entrada suave (t²) en vez de
-// rampa lineal: con un color casi negro, un tramo empinado en pocos píxeles se
-// ve a franjas. La altura extra por encima de la barra es lo que le da pixeles
-// al fundido.
-const SCRIM_FADE  = 28;
-const SCRIM_STOPS = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => [t, Math.round(t * t * 100) / 100]);
 
 // ── Global "active set" pointer ───────────────────────────────────────────────
 // Only one set in the whole workout screen is "active" (highlight) at a time,
@@ -807,23 +802,7 @@ export default function WorkoutScreen() {
       {/* La lista pasa por debajo de los botones de Android (sin zona segura
           abajo, a propósito): un velo del color del fondo los despega del
           contenido. No captura toques. */}
-      {insets.bottom > 0 && (
-        <Svg
-          pointerEvents="none"
-          style={[styles.navScrim, { height: insets.bottom + SCRIM_FADE }]}
-          width="100%"
-          height={insets.bottom + SCRIM_FADE}
-        >
-          <Defs>
-            <LinearGradient id="navScrim" x1="0" y1="0" x2="0" y2="1">
-              {SCRIM_STOPS.map(([offset, opacity]) => (
-                <Stop key={offset} offset={offset} stopColor={th.colors.bg} stopOpacity={opacity} />
-              ))}
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#navScrim)" />
-        </Svg>
-      )}
+      {insets.bottom > 0 && <NavScrim inset={insets.bottom} />}
 
       {/* Floating rest timer — sits above everything, swipe right to dismiss */}
       <RestTimerFloat
@@ -841,12 +820,6 @@ const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
     backgroundColor: th.colors.bg,
-  },
-  navScrim: {
-    position: 'absolute',
-    left:     0,
-    right:    0,
-    bottom:   0,
   },
   errorText: {
     ...textStyles.body,

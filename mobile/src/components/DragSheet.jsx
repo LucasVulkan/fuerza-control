@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { spacing, borders, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { SheetContext } from './ui/sheetContext';
+import NavScrim from './ui/NavScrim';
 
 /**
  * La tarjeta de la hoja. Va aparte para leer los márgenes del `SafeAreaProvider`
@@ -29,12 +30,27 @@ import { SheetContext } from './ui/sheetContext';
  * no son los de la raíz de la app. Con los de la raíz, la hoja acababa unas
  * veces subida un alto de barra de navegación de más y otras veces debajo de
  * los botones (pulido-ui.md §3).
+ *
+ * El contenido desplazable llega hasta el borde de abajo, por debajo de los
+ * botones, con `NavScrim` encima: en una hoja larga (el menú ≡) las filas se
+ * funden al llegar abajo en vez de cortarse en seco contra una franja. El
+ * margen va DENTRO del scroll, así que una hoja corta acaba donde acababa y el
+ * velo solo cubre aire.
  */
-function SheetCard({ style, children }) {
+function SheetCard({ style, header, children }) {
   const insets = useSafeAreaInsets();
   return (
-    <Animated.View style={[style, { paddingBottom: insets.bottom + spacing.xl }]}>
-      {children}
+    <Animated.View style={style}>
+      {header}
+      <ScrollView
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+      >
+        {children}
+      </ScrollView>
+      <NavScrim inset={insets.bottom} fade={spacing.xl} />
     </Animated.View>
   );
 }
@@ -137,23 +153,27 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
             contenido da un salto cada vez que se despliega algo dentro —y en la
             de etapas se despliega constantemente—, así que el contenido pasa a
             scrollear dentro de una caja que no se mueve. */}
-        <SheetCard style={[styles.card, tall && styles.cardTall, { transform: [{ translateY }] }]}>
-          <View {...panResponder.panHandlers} style={styles.handleWrap}>
-            <View style={styles.handle} />
-          </View>
-          {/* Sin `title` la hoja va solo con el asa: el menú principal pone su
-              propio bloque de identidad ahí arriba y se cierra arrastrando. */}
-          {title != null && (
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
-              <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
-                <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
-              </TouchableOpacity>
-            </View>
+        <SheetCard
+          style={[styles.card, tall && styles.cardTall, { transform: [{ translateY }] }]}
+          header={(
+            <>
+              <View {...panResponder.panHandlers} style={styles.handleWrap}>
+                <View style={styles.handle} />
+              </View>
+              {/* Sin `title` la hoja va solo con el asa: el menú principal pone su
+                  propio bloque de identidad ahí arriba y se cierra arrastrando. */}
+              {title != null && (
+                <View style={styles.header}>
+                  <Text style={styles.title}>{title}</Text>
+                  <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
+                    <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
-          <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
+        >
+          {children}
         </SheetCard>
       </KeyboardAvoidingView>
       </SafeAreaProvider>
