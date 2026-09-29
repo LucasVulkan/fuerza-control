@@ -6,13 +6,11 @@ import { targetLabel } from './prescription';
 const t = (key, fallback) => fallback ?? key;
 
 describe('targetLabel', () => {
-  it('manda la progresión de la sesión, no la de la librería', () => {
-    const def = { progressionModel: 'submax', minReps: null, maxReps: null };
-    expect(targetLabel(def, { sets: 3 }, t)).toBe('3 × submáx');
-    expect(targetLabel(def, { sets: 3, progressionModel: 'double_progression', minReps: 8, maxReps: 12 }, t))
-      .toBe('3 × 8–12 reps');
+  it('Fija, y lo guardado como submáx, se lee con su rango (effort-progression.md §3)', () => {
+    const burpee = { progressionModel: 'fixed', minReps: null, maxReps: null };
+    expect(targetLabel(burpee, { sets: 3 }, t)).toBe('3 × 8–12 reps');
     expect(targetLabel({ progressionModel: 'double_progression', minReps: 5, maxReps: 8 },
-      { sets: 3, progressionModel: 'submax' }, t)).toBe('3 × submáx');
+      { sets: 3, progressionModel: 'submax' }, t)).toBe('3 × 5–8 reps');
   });
 
   it('sin objetivo en sesión ni librería, el mismo por defecto que el editor', () => {
@@ -21,7 +19,7 @@ describe('targetLabel', () => {
     expect(targetLabel(farmer, { sets: 3 }, t)).toBe('3 × 8–12 reps');
     expect(targetLabel({}, { sets: 2, inputType: 'time' }, t)).toBe('2 × 20–40 s');
     // Pasado a doble en la sesión sin tocar el rango: tampoco pinta null.
-    const pushUp = { progressionModel: 'submax', minReps: null, maxReps: null };
+    const pushUp = { progressionModel: 'fixed', minReps: null, maxReps: null };
     expect(targetLabel(pushUp, { sets: 3, progressionModel: 'double_progression' }, t)).toBe('3 × 8–12 reps');
   });
 
@@ -45,12 +43,6 @@ describe('targetLabel', () => {
     const s = { sets: 3, inputType: 'time', minTime: 20, maxTime: 40 };
     expect(targetLabel({}, s, t)).toBe('3 × 20–40 s');
     expect(targetLabel({}, s, t, { compact: true })).toBe('3×20–40 s');
-  });
-
-  it('submáximo manda sobre el resto', () => {
-    const s = { sets: 3, minReps: 8, maxReps: 12 };
-    expect(targetLabel({ progressionModel: 'submax' }, s, t)).toBe('3 × submáx');
-    expect(targetLabel({ progressionModel: 'submax' }, s, t, { compact: true })).toBe('3×submáx');
   });
 
   it('unilateral se dice entero y se calla en compacto', () => {

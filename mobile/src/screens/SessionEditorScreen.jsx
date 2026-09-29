@@ -40,6 +40,7 @@ import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
 import { variantLabel, displayVariant } from '../utils/variants';
 import { useWeightUnit } from '../hooks/useWeightUnit';
+import { DEFAULT_TARGET } from '../utils/progression';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -64,9 +65,7 @@ function rowMeta(exConfig, t) {
   const timed = exConfig.inputType === 'time' || exConfig.inputType === 'weight_time';
   const range = timed
     ? `${exConfig.minTime ?? 20}–${exConfig.maxTime ?? 40} s`
-    : exConfig.minReps && exConfig.maxReps
-      ? `${exConfig.minReps}–${exConfig.maxReps}`
-      : t('workout.submax', 'submáx');
+    : `${exConfig.minReps ?? DEFAULT_TARGET.minReps}–${exConfig.maxReps ?? DEFAULT_TARGET.maxReps}`;
   const parts = [`${exConfig.sets} × ${range}`, `${exConfig.restSec}s`];
   if (exConfig.isKey) parts.unshift(t('common.keyExercise'));
   return parts.join(' · ');

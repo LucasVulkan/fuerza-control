@@ -92,7 +92,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const [tempoSheetOpen, setTempoSheetOpen] = useState(false);
 
   const isTime        = metric === 'time';
-  const showRepsRange = !isTime && progMode !== 'submax';
   const showTimeRange = isTime;
   const showRepsIncr   = progType === 'reps';
   const showTimeIncr   = progType === 'time';
@@ -104,9 +103,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
   // ── Resumen / textos en lenguaje natural (mismo cálculo que el editor real) ──
   const rangeTxt = isTime
     ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
-    : progMode === 'submax'
-      ? t('workout.submax', 'submáx')
-      : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
+    : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
 
   const incTxt = showRepsIncr
     ? String(incrFixedValue)
@@ -134,9 +131,11 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
     const id = generateCustomId();
     const isTimeMode = metric === 'time';
+    // Fija se guarda como 'fixed': con 'double_progression' el ejercicio
+    // nacía en Automática al añadirlo a una sesión.
     const progressionModel = progMode === 'auto'
       ? (LEGACY_TYPE_MAP[progType] ?? 'double_progression')
-      : progMode === 'submax' ? 'submax' : 'double_progression';
+      : 'fixed';
 
     const def = {
       id,
@@ -242,13 +241,11 @@ export default function CustomExerciseScreen({ navigation, route }) {
                   <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
                   <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
                 </View>
-              ) : showRepsRange ? (
+              ) : (
                 <View style={styles.gridRow}>
                   <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
                   <StepField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
                 </View>
-              ) : (
-                <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
               )}
             </View>
           </View>
@@ -395,7 +392,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
               <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepMode')}
             </Text>
             <SegmentedControl
-              options={['auto', 'fixed', 'submax'].map((id) => ({ id, label: t(`exerciseEditor.progModes.${id}`) }))}
+              options={['auto', 'fixed'].map((id) => ({ id, label: t(`exerciseEditor.progModes.${id}`) }))}
               value={progMode}
               onChange={setProgMode}
             />

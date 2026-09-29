@@ -40,9 +40,6 @@ export function todayWeight(exConfig, def, lastExercise, t) {
 }
 
 function prescription(def, ex, t) {
-  if ((ex.progressionModel ?? def?.progressionModel) === 'submax') {
-    return t('sessionText.sets', { count: ex.sets ?? 0 });
-  }
   const rx = targetLabel(def, ex, t, { compact: true })
     .replace(/×/g, 'x').replace(/–/g, '-').replace(/ s$/, 's')
     // El tiempo no junta un rango cerrado como las reps: «40-40s» es «40s».

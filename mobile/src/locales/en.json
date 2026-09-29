@@ -158,8 +158,7 @@
       { "id": "progression", "title": "Progression", "points": [
         "The rule that sets the weight for your next session.",
         "Automatic: goes up when you hit the target.",
-        "Fixed: always the same increment.",
-        "Submaximal: a percentage of your max."
+        "Fixed: always the same increment."
       ] },
       { "id": "rpe", "title": "RPE", "points": [
         "Perceived effort from 1 to 10.",
@@ -724,7 +723,6 @@
     "notesSavedWith": "Saved with the session when you press SAVE SESSION.",
     "addedLabel": "Added · This session",
     "addSet": "＋ set",
-    "submax": "submax",
     "perSide": "ea.",
     "clientNotePlaceholder": "Note for your trainer (discomfort, how it felt…)",
     "exerciseLabel": "EX",
@@ -1537,8 +1535,7 @@
     "toastSessionDuplicated": "Session duplicated",
     "badges": {
       "auto": "AUTO",
-      "fixed": "FIXED",
-      "submax": "SUBMAX"
+      "fixed": "FIXED"
     }
   },
   "recap": {
@@ -1691,7 +1688,6 @@
     "fieldMaxTime": "Max time",
     "fieldMinReps": "Min reps",
     "fieldMaxReps": "Max reps",
-    "submaxHint": "No automatic progression — athlete decides when to advance.",
     "substituteBtn": "Replace",
     "unilateralLabel": "Unilateral",
     "isKeyLabel": "Key exercise",
@@ -1752,8 +1748,7 @@
     "incrMinHint": "Smallest plate available (e.g. 2.5 kg)",
     "progModes": {
       "auto": "Automatic",
-      "fixed": "Fixed",
-      "submax": "Submax"
+      "fixed": "Fixed"
     },
     "dropsetLabel": "Dropset on the last set",
     "dropsetHint": "After the last set you'll be able to add sub-sets at decreasing weight, no rest.",
@@ -1767,8 +1762,7 @@
     "linkGroupN": "Group {{n}}",
     "progModeDesc": {
       "auto": "The app suggests increases based on your performance",
-      "fixed": "Fixed target — the app won't suggest changes",
-      "submax": "No rep target — the athlete decides, log only"
+      "fixed": "Fixed target — the app won't suggest changes"
     },
     "configDone": "Done",
     "stepMode": "Progression mode",
@@ -1782,8 +1776,7 @@
       "weight": "Adds {{inc}} once you complete {{eval}}",
       "reps": "Adds {{inc}} reps once you complete {{eval}}",
       "time": "Raises the time target once you complete {{eval}}",
-      "fixed": "Fixed target, no automatic progression",
-      "submax": "Submaximal sets, log only"
+      "fixed": "Fixed target, no automatic progression"
     },
     "summaryEval": {
       "all_complete": "all sets",
@@ -1792,8 +1785,7 @@
     },
     "progressionModels": {
       "double_progression": { "label": "Double progression", "desc": "Weight + reps" },
-      "time_progression":   { "label": "Time",               "desc": "Seconds"       },
-      "submax":             { "label": "Submax",             "desc": "RIR / RPE"     }
+      "time_progression":   { "label": "Time",               "desc": "Seconds"       }
     },
     "warmup": {
       "title": "Warm-up",
@@ -2322,8 +2314,6 @@
   "sessionText": {
     "share": "Share the session",
     "menu": "Share as text",
-    "sets_one": "{{count}} set",
-    "sets_other": "{{count}} sets",
     "rounds_one": "{{count}} round",
     "rounds_other": "{{count}} rounds",
     "howTo": "Write what you did after each \":\": \"ok\" if it went as written, or the weight x reps of each set (100x6 100x6 95x5). Leave blank what you didn't do."
@@ -2367,7 +2357,6 @@
     "tableSetsReps": "Sets × Reps",
     "tableRest": "Rest",
     "sessionLabel": "Session {{label}} · {{name}}",
-    "submax": "submax",
     "perSide": "ea."
   },
   "restTimer": {
@@ -2381,8 +2370,6 @@
     "time_keep": "Keep working in the {{min}}–{{max}}s range. Take your time.",
     "reps_advance": "All sets complete. Increase target to {{next}} reps next time.",
     "reps_hold": "Hit your rep target on all sets before increasing.",
-    "submax_weight": "Last session: {{total}} reps in {{sets}} sets · {{weight}}kg. Beat that today.",
-    "submax_noweight": "Last session: {{total}} reps in {{sets}} sets. Beat that today.",
     "decrease_lastAssist": "Excellent! All sets maxed with {{assist}}kg assistance. Next time try without assistance.",
     "decrease_allHit": "All sets maxed. Reduce assistance to {{next}}kg next time.",
     "decrease_free": "All sets unassisted! Time to move to the weighted version.",

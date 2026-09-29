@@ -42,7 +42,6 @@ export function getExerciseLogsFrom(exerciseId, sourceLog) {
 export function seriesMetric(logs, def) {
   const model = def?.progressionModel;
   if (model === 'time_progression') return 'time';
-  if (model === 'submax')           return 'reps';
   const hasWeight = (logs ?? []).some(({ exercise }) =>
     exercise?.sets?.some((s) => parseFloat(s.weight) > 0));
   return hasWeight ? 'kg' : 'reps';

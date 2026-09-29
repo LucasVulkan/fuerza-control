@@ -158,8 +158,7 @@
       { "id": "progression", "title": "Progresión", "points": [
         "La regla que decide el peso de tu próxima sesión.",
         "Automática: sube si cumples el objetivo.",
-        "Fija: siempre el mismo incremento.",
-        "Submáxima: un porcentaje de tu máximo."
+        "Fija: siempre el mismo incremento."
       ] },
       { "id": "rpe", "title": "RPE", "points": [
         "Esfuerzo percibido de 1 a 10.",
@@ -724,7 +723,6 @@
     "notesSavedWith": "Se guarda con la sesión al pulsar GUARDAR SESIÓN.",
     "addedLabel": "Añadido · Esta sesión",
     "addSet": "＋ serie",
-    "submax": "submáx",
     "perSide": "c/p",
     "clientNotePlaceholder": "Nota para tu entrenador (molestias, sensaciones…)",
     "exerciseLabel": "EJ",
@@ -1537,8 +1535,7 @@
     "toastSessionDuplicated": "Sesión duplicada",
     "badges": {
       "auto": "AUTO",
-      "fixed": "FIJA",
-      "submax": "SUBMÁX"
+      "fixed": "FIJA"
     }
   },
   "recap": {
@@ -1691,7 +1688,6 @@
     "fieldMaxTime": "Tiempo máx",
     "fieldMinReps": "Reps mín",
     "fieldMaxReps": "Reps máx",
-    "submaxHint": "Sin progresión automática — el atleta decide cuándo avanzar.",
     "substituteBtn": "Sustituir",
     "unilateralLabel": "Unilateral",
     "isKeyLabel": "Ejercicio principal",
@@ -1752,8 +1748,7 @@
     "incrMinHint": "Placa más pequeña disponible (ej. 2.5 kg)",
     "progModes": {
       "auto": "Automática",
-      "fixed": "Fija",
-      "submax": "Submáx"
+      "fixed": "Fija"
     },
     "dropsetLabel": "Dropset en la última serie",
     "dropsetHint": "Al terminar la última serie podrás añadir sub-series a peso decreciente, sin descanso.",
@@ -1767,8 +1762,7 @@
     "linkGroupN": "Grupo {{n}}",
     "progModeDesc": {
       "auto": "La app sugiere subidas según tu rendimiento",
-      "fixed": "Objetivo fijo — la app no sugiere cambios",
-      "submax": "Sin objetivo de reps — el atleta decide, solo registro"
+      "fixed": "Objetivo fijo — la app no sugiere cambios"
     },
     "configDone": "Hecho",
     "stepMode": "Modo de progresión",
@@ -1782,8 +1776,7 @@
       "weight": "Sube {{inc}} al completar {{eval}}",
       "reps": "Añade {{inc}} reps al completar {{eval}}",
       "time": "Sube el objetivo de tiempo al completar {{eval}}",
-      "fixed": "Objetivo fijo, sin progresión automática",
-      "submax": "Series submáximas, solo registro"
+      "fixed": "Objetivo fijo, sin progresión automática"
     },
     "summaryEval": {
       "all_complete": "todas las series",
@@ -1792,8 +1785,7 @@
     },
     "progressionModels": {
       "double_progression": { "label": "Doble progresión", "desc": "Peso + reps" },
-      "time_progression":   { "label": "Tiempo",           "desc": "Segundos"    },
-      "submax":             { "label": "Submáximo",         "desc": "RIR / RPE"   }
+      "time_progression":   { "label": "Tiempo",           "desc": "Segundos"    }
     },
     "warmup": {
       "title": "Calentamiento",
@@ -2322,8 +2314,6 @@
   "sessionText": {
     "share": "Compartir la sesión",
     "menu": "Compartir como texto",
-    "sets_one": "{{count}} serie",
-    "sets_other": "{{count}} series",
     "rounds_one": "{{count}} ronda",
     "rounds_other": "{{count}} rondas",
     "howTo": "Escribe detrás de cada «:» lo que hiciste: «ok» si salió como está, o el peso x reps de cada serie (100x6 100x6 95x5). Deja vacío lo que no hiciste."
@@ -2367,7 +2357,6 @@
     "tableSetsReps": "Series × Reps",
     "tableRest": "Descanso",
     "sessionLabel": "Sesión {{label}} · {{name}}",
-    "submax": "submáx",
     "perSide": "c/p"
   },
   "restTimer": {
@@ -2381,8 +2370,6 @@
     "time_keep": "Sigue trabajando en el rango {{min}}–{{max}}s. Sin prisa.",
     "reps_advance": "Todas las series completadas. Sube el objetivo a {{next}} reps.",
     "reps_hold": "Alcanza el objetivo de reps en todas las series antes de subir.",
-    "submax_weight": "Sesión anterior: {{total}} reps en {{sets}} series · {{weight}}kg. Supera esa marca hoy.",
-    "submax_noweight": "Sesión anterior: {{total}} reps en {{sets}} series. Supera esa marca hoy.",
     "decrease_lastAssist": "¡Excelente! Todas las series al máximo con {{assist}}kg de asistencia. La próxima vez intenta sin asistencia.",
     "decrease_allHit": "Todas las series al máximo. Reduce la asistencia a {{next}}kg la próxima vez.",
     "decrease_free": "¡Todas las series sin asistencia! Es hora de pasar a la versión lastrada.",

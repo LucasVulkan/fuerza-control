@@ -230,7 +230,7 @@ export function applyRx(exercises, rx, allExercises = {}) {
       next.sets = Math.max(MIN_SETS, next.sets + r.setsDelta);
     }
 
-    // Los ejercicios de tiempo (`time_progression` / `submax`) no llevan
+    // Los ejercicios de tiempo (`time_progression`) no llevan
     // minReps/maxReps — `buildExConfig` los deja fuera a propósito — así que
     // el desplazamiento de repeticiones no les aplica. El resto de la regla sí.
     if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) {

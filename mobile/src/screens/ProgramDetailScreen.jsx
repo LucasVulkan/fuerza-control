@@ -57,7 +57,6 @@ function prescription(exConfig, def, t) {
 
   let range;
   if (timed)                       range = `${minTime}–${maxTime} s`;
-  else if (model === 'submax')     range = t('workout.submax');
   else if (minReps === maxReps)    range = `${minReps}`;
   else                             range = `${minReps}–${maxReps}`;
   if (def?.isUnilateral)           range += ` ${t('workout.perSide')}`;

@@ -73,12 +73,15 @@ export const LEGACY_TYPE_MAP = {
   weight: 'double_progression',
   reps:   'double_progression',
   time:   'time_progression',
-  none:   'submax',
+  none:   'fixed',
 };
 
+// `fixed` es el valor de librería para «Fija» (effort-progression.md §3.1).
+// `submax` ya no se escribe: queda para leer como Fija lo guardado antes.
 const LEGACY_REVERSE_MAP = {
   double_progression: 'double',
   time_progression:   'time',
+  fixed:              'none',
   submax:             'none',
 };
 

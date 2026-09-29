@@ -89,7 +89,6 @@ function filterLog(log, scope, period, programTemplateIds) {
 function getMetrics(def, allLogs, weightLabel = 'kg', t) {
   const model = def?.progressionModel;
   if (model === 'time_progression') return [{ id: 'time', label: t('stats.metricSeconds') }];
-  if (model === 'submax')           return [{ id: 'reps', label: t('stats.metricReps') }];
   const hasWeight = seriesMetric(allLogs, def) === 'kg';
   const m = [{ id: 'reps', label: t('stats.metricReps') }];
   if (hasWeight) {

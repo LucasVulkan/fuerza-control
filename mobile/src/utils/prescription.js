@@ -5,7 +5,7 @@
  * único sitio que la pintaba. La Home la necesita ahora para la lista de
  * ejercicios de la sesión desplegada (docs/specs/home-sesiones-plegables.md
  * §4.3), así que sale aquí entera — con todas sus ramas, que no son pocas:
- * submáximo, reps, tiempo, rango min–max y unilateral, más el fallback a los
+ * reps, tiempo, rango min–max y unilateral, más el fallback a los
  * valores del ejercicio de la librería cuando la sesión no los fija.
  *
  * `compact` es lo único nuevo: la misma frase sin las palabras que en una lista
@@ -20,10 +20,6 @@ import { DEFAULT_TARGET } from './progression';
 export function targetLabel(def, exConfig, t, { compact = false } = {}) {
   if (!def) return '';
   const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
-  // La sesión manda sobre la librería: un ejercicio que en la librería es
-  // submáx (flexiones, burpees…) y en la sesión se pasó a doble progresión se
-  // tiene que leer como doble. Leer solo `def` lo dejaba en «submáx» siempre.
-  const model      = exConfig.progressionModel ?? def.progressionModel;
   const sets       = exConfig.sets ?? 0;
   // Lo que falta sale del mismo sitio que en el editor y el motor: si no, el
   // editor enseña «8–12» y aquí no hay nada que pintar.
@@ -37,8 +33,6 @@ export function targetLabel(def, exConfig, t, { compact = false } = {}) {
     ? ` ${t('workout.perSide', 'por lado')}`
     : '';
   const x = compact ? '×' : ' × ';
-
-  if (model === 'submax') return `${sets}${x}${t('workout.submax', 'submáx')}`;
 
   if (inputType === 'time' || inputType === 'weight_time') {
     return `${sets}${x}${minTime}–${maxTime} s${unilateral}`;

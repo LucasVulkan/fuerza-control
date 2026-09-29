@@ -2,11 +2,12 @@
 
 > Tema: programas
 > En corto: Un tercer modo de progresión para avanzados: el entrenador pide reps y un RPE, y la app calcula el peso de cada sesión a partir del 1RM estimado con el RPE que apuntó el cliente. Sustituye a «submáx», que desaparece: sus ejercicios pasan a Fija.
-> Fase P46 · pendiente · Fuera «submáx»: sus ejercicios pasan a Fija · §3
+> Fase P46 · hecho · Fuera «submáx»: sus ejercicios pasan a Fija · §3
 > Fase P47 · pendiente · Motor y editor del modo Por esfuerzo · §4
 > Fase P48 · pendiente · El objetivo por esfuerzo en el Workout y las listas · §5
 >
-> Estado: **spec cerrada, SIN implementar** (29-sep-2026). Sale de una
+> Estado: **P46 hecha** (29-sep-2026, rama `feat/exercise-variants`),
+> pendiente de probar; P47 y P48 sin implementar. Sale de una
 > conversación de diseño con el usuario (opción «B»: RPE objetivo + peso
 > sugerido por e1RM). Orden: P46 → P47 → P48. P46 va primero porque libera el
 > tercer hueco del selector de modo y quita las ramas `'submax'` que P48
@@ -187,13 +188,24 @@ línea de Por esfuerzo).
 Tests: `prescription.test.js`, `sessionText.test.js` y `useStore.test.js:1676`
 usan `'submax'`: se reescriben al comportamiento nuevo (se lee como Fija).
 
+### 3.3 Lo que salió al implementarla
+
+- **Fallo arreglado de paso**: el alta de ejercicio propio guardaba Fija como
+  `progressionModel: 'double_progression'`, así que el ejercicio nacía en
+  Automática al añadirlo a una sesión. Ahora guarda `'fixed'`.
+- `sessionText.sets_one/_other` solo servían a submáx: fuera también.
+- `SessionEditorScreen` (`rowMeta`) sin reps cae a `DEFAULT_TARGET`. Sigue
+  pintando «5–5» cuando min = max; P48 toca esa función igualmente.
+
 **Probar P46**
 
 - [ ] Editor de un ejercicio: el selector de progresión enseña Automática y
   Fija, sin Submáx.
 - [ ] Añadir Burpee a una sesión: sale como Fija con 8–12 reps, en el editor, en
   la lista del editor de sesión, en Inicio y en el Workout.
-- [ ] Alta de ejercicio propio: la progresión ofrece Automática y Fija.
+- [ ] Alta de ejercicio propio: la progresión ofrece Automática y Fija. Creado
+  en Fija y añadido a una sesión, en el editor sale como Fija (antes salía
+  Automática).
 - [ ] Un programa que ya tenía un ejercicio en Submáx lo enseña como Fija sin
   romper nada.
 
@@ -350,7 +362,7 @@ y la sesión siguiente ya se calcula.
 
 | Fase | Qué | Coste | Depende de | Hecho |
 |---|---|---|---|---|
-| P46 | Fuera «submáx» (§3) | 🟢 | — | |
+| P46 | Fuera «submáx» (§3) | 🟢 | — | ✅ — ver §3.3 |
 | P47 | Motor + editor (§4) | 🟡 | P46 | |
 | P48 | Workout y listas (§5) | 🟢 | P47 | |
 

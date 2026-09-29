@@ -1673,7 +1673,7 @@ describe('sesiones libres en el recap — free-sessions.md T22', () => {
 
   it('los ejercicios añadidos en el entreno pasan a la sesión libre, sin tocar los que ya tenía', () => {
     const id = useStore.getState().createFreeTemplate({ exercises: [{ exerciseId: 'squat', sets: 3 }] });
-    useStore.getState().updateExerciseParams(id, 'squat', { progressionModel: 'submax' });
+    useStore.getState().updateExerciseParams(id, 'squat', { progressionModel: 'fixed' });
     useStore.setState({ workoutLog: [{
       id: 'log_t', sessionTemplateId: id, free: true, timestamp: 1,
       exercises: [
@@ -1685,7 +1685,7 @@ describe('sesiones libres en el recap — free-sessions.md T22', () => {
     expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(1);
     const exs = useStore.getState().sessionTemplates[id].exercises;
     expect(exs.map((e) => e.exerciseId)).toEqual(['squat', 'bench_press_barbell']);
-    expect(exs[0]).toMatchObject({ sets: 3, progressionModel: 'submax' });
+    expect(exs[0]).toMatchObject({ sets: 3, progressionModel: 'fixed' });
     expect(exs[1]).toMatchObject({ sets: 2, minReps: 6, maxReps: 8 });
     // Repetirlo no los duplica.
     expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(0);

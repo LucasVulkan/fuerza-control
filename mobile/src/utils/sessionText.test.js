@@ -25,7 +25,7 @@ describe('sessionToText', () => {
       { exerciseId: 'squat_barbell', sets: 4, minReps: 6, maxReps: 6 },
       { exerciseId: 'bulgarian_split_squat', sets: 3, minReps: 10, maxReps: 10 },
       { exerciseId: 'plank', sets: 3, inputType: 'time', minTime: 40, maxTime: 40, progressionModel: 'time_progression' },
-      { exerciseId: 'burpee', sets: 3, progressionModel: 'submax' },
+      { exerciseId: 'burpee', sets: 3 },
     ],
     blocks: [{
       id: 'b1', format: 'amrap', capSec: 720, name: null,
@@ -39,7 +39,7 @@ describe('sessionToText', () => {
     expect(lines[1]).toBe('Sentadilla con barra · 4x6:');
     expect(lines[2]).toBe('Sentadilla búlgara · 3x10 c/p:');
     expect(lines[3]).toBe(`${LIB.plank.name} · 3x40s:`);
-    expect(lines[4]).toBe(`${LIB.burpee.name} · 3 series:`);
+    expect(lines[4]).toBe(`${LIB.burpee.name} · 3x8-12:`);
     expect(lines[5]).toBe(`AMRAP 12' · 10 ${LIB.burpee.name}, 200 m ${LIB.burpee.name}:`);
     expect(lines[6]).toBe('');
     expect(lines[7]).toBe(es.sessionText.howTo);

@@ -135,13 +135,10 @@ function computeInitial(exConfig, def) {
   );
   const initMetric = initInputType === 'time' || initInputType === 'weight_time' ? 'time' : 'reps';
 
-  // Progression mode: 'auto' (engine suggests), 'fixed' (target, no suggestions),
-  // 'submax' (no target, log only). Stored 'none' type splits into fixed/submax
-  // by the persisted progressionModel ('submax' marks true submax).
-  const storedModel = exConfig.progressionModel ?? def?.progressionModel;
-  const initMode = initProg.type === 'none'
-    ? (storedModel === 'submax' ? 'submax' : 'fixed')
-    : 'auto';
+  // Progression mode: 'auto' (engine suggests) or 'fixed' (target, no
+  // suggestions). Lo guardado como 'submax' se lee como Fija
+  // (effort-progression.md §3).
+  const initMode = initProg.type === 'none' ? 'fixed' : 'auto';
   const initType = initProg.type === 'none' ? 'double' : initProg.type;
 
   const w = exConfig.warmup ?? null;
@@ -268,10 +265,10 @@ export default function ExerciseEditorInline({
       supersetWithNext: s.supersetWithNext || null,
       warmup,
       // 'fixed' keeps double_progression so the target range still renders in
-      // the workout; 'submax' is the marker that distinguishes the two modes.
+      // the workout; progression.type 'none' is what makes it fixed.
       progressionModel: s.progMode === 'auto'
         ? (LEGACY_TYPE_MAP[s.progType] ?? 'double_progression')
-        : s.progMode === 'submax' ? 'submax' : 'double_progression',
+        : 'double_progression',
       progression: {
         type:      effType,
         direction: 'increase',
@@ -296,7 +293,7 @@ export default function ExerciseEditorInline({
     if (isTimeMode) {
       updates.minTime = s.minTime; updates.maxTime = s.maxTime;
       updates.minReps = null;      updates.maxReps = null;
-    } else if (s.progMode !== 'submax') {
+    } else {
       updates.minReps = s.minReps; updates.maxReps = s.maxReps;
     }
 
@@ -376,12 +373,11 @@ export default function ExerciseEditorInline({
     .join(' · ');
 
   const isTime        = metric === 'time';
-  const showRepsRange = !isTime && progMode !== 'submax';
   const showTimeRange = isTime;
   const showRepsIncr  = progType === 'reps';
   const showTimeIncr  = progType === 'time';
 
-  const PROG_MODES = ['auto', 'fixed', 'submax'].map((id) => ({
+  const PROG_MODES = ['auto', 'fixed'].map((id) => ({
     id, label: t(`exerciseEditor.progModes.${id}`),
   }));
   const PROG_TYPES = ['double', 'weight', 'reps', 'time'].map((id) => ({
@@ -402,9 +398,7 @@ export default function ExerciseEditorInline({
   const effEvalMode = evalMode === 'rpe' && !trackRpe ? 'all_complete' : evalMode;
   const rangeTxt = isTime
     ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
-    : progMode === 'submax'
-      ? t('workout.submax', 'submáx')
-      : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
+    : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
   // El calentamiento abre la prescripción, así que va delante: "C×2 · 3 × 8–12…".
   const warmupCount = warmupMode === 'auto'
     ? warmupSets
@@ -528,13 +522,11 @@ export default function ExerciseEditorInline({
               <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
               <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
             </View>
-          ) : showRepsRange ? (
+          ) : (
             <View style={styles.gridRow}>
               <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
               <StepField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
             </View>
-          ) : (
-            <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
           )}
         </View>
       </View>
