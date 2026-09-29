@@ -5,13 +5,13 @@
 > Fase P41 · hecho · Librería: fusión de repetidos, migración de ids y buscador por palabras · §3
 > Fase P42 · hecho · La variante en el editor y en las listas · §4
 > Fase P43 · hecho · La variante de hoy en el Workout, compartir y pegar · §5
-> Fase P44 · pendiente · Cambiar el ejercicio: unilateral y ejercicio aparte · §6
+> Fase P44 · hecho · Cambiar el ejercicio: unilateral y ejercicio aparte · §6
 > Fase P45 · pendiente · Progreso filtrado por variante · §7
 >
-> Estado: **P41 y P42 probadas, P43 implementada** (29-sep-2026, rama
-> `feat/exercise-variants`); P43 pendiente de probar en dispositivo; P44-P45 sin
-> implementar. Lo que salió
-> distinto de lo escrito, en §3.5.
+> Estado: **P41 y P42 probadas, P43 y P44 implementadas** (29-sep-2026, rama
+> `feat/exercise-variants`); en P43 falta probar compartir y pegar; P44
+> pendiente de probar en dispositivo; P45 sin implementar. Lo que salió
+> distinto de lo escrito, en §3.5, §4.7, §5.3 y §6.7.
 >
 > Spec cerrada el 29-sep-2026. Maqueta aprobada:
 > [`docs/mockups/exercise-variants.html`](../mockups/exercise-variants.html)
@@ -563,7 +563,7 @@ variante— se partiría. Se arregla el pegado, no el nombre:
 - [x] Workout de una sesión con «Jalón al pecho · Neutro · Estrecho»: tocar la
   variante abre la hoja; elegir Prono → la tarjeta dice «Prono» en lima; el
   editor de sesión sigue diciendo Neutro.
-- [ ] Hoja del Workout (QA 29-sep): los chips sin «programa» debajo; tocar la
+- [x] Hoja del Workout (QA 29-sep): los chips sin «programa» debajo; tocar la
   opción marcada no la desmarca; en la fila cambiada sale a la derecha el icono
   ↺, y tocarlo devuelve Neutro y quita el lima.
 - [x] Guardar con Prono: el historial y el recap dicen Prono; la siguiente vez
@@ -667,6 +667,29 @@ original con su variante apuntada (el filtro de P45 los sigue enseñando). No se
 copian ni se mueven entradas de historial. Opcional, si sobra tiempo: si un
 aparte no tiene historial, la sugerencia de peso del Workout sale de los
 entrenos del original con esa variante.
+
+### 6.7 Lo que salió distinto (P44)
+
+- Store: `identityCheck(templateId, exerciseId, target)` → `{ id, def, name,
+  blocked, linked, tids }` (la hoja la usa para apagar el interruptor ANTES de
+  tocarlo) y `changeExerciseIdentity` la reutiliza. No pasa por
+  `replaceExercise`: al encender aparte la variante fija tiene que quedarse en
+  el exConfig, y `replaceExercise` la limpiaría (el aparte declara `variants: {}`).
+- **Hacía falta y no estaba**: `displayVariant(variant, def)` en `variants.js`.
+  Un aparte guarda su variante fija en la sesión (para poder deshacerlo) pero ya
+  la lleva en el nombre; sin esto las listas pintaban «Jalón al pecho · Prono ·
+  Ancho · Prono · Ancho». Lo usan la tarjeta del Workout, el editor de sesión,
+  Inicio, el visualizador, el historial, el resumen y el texto de compartir.
+- El autoguardado del editor escribe `def.derived.variant` en vez de la variante
+  del estado local cuando el ejercicio es aparte, por lo mismo.
+- `ToggleRow` gana `alwaysHint` (la pista explica antes de tocar), `disabled` y
+  `warn` (la pista en `orange`); `OptionRow`, `warn` y `dimmed`.
+- La migración de `exConfig.isUnilateral` vive en `migrateExerciseRefs` (corre en
+  las mismas puertas de entrada que la de ids). Si la versión unilateral ya
+  está en la sesión, solo se borra la clave.
+- En «Nuevo ejercicio», «A una mano» va la primera de la sección VARIANTE y al
+  encenderla apaga y deshabilita Anchura.
+- Sin la sugerencia de peso opcional de §6.6.
 
 **Probar P44**
 

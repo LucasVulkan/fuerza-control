@@ -104,7 +104,11 @@ function migrateUnilateralFlag(tpl, ctx) {
       if (!tpl.exercises.some((e) => e.exerciseId === uni.id)) {
         if (uni.def) { ctx.lib[uni.id] = uni.def; ctx.newDefs[uni.id] = uni.def; }
         ex.exerciseId = uni.id;
-        if (ex.variant?.width) { const { width: _w, ...rest } = ex.variant; ex.variant = rest; }
+        // Una mano no tiene anchura.
+        if (ex.variant?.width) {
+          ex.variant = { ...ex.variant };
+          delete ex.variant.width;
+        }
       }
     }
     delete ex.isUnilateral;

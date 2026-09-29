@@ -2278,3 +2278,78 @@ describe('la variante de hoy — exercise-variants.md P43', () => {
     expect('variant' in entry.exercises[0]).toBe(false);
   });
 });
+
+describe('unilateral y ejercicio aparte — exercise-variants.md P44', () => {
+  beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY, customExercises: {} }); });
+
+  /** Un programa de dos sesiones; `ejercicios[i]` son los de la sesión i. */
+  function programa(...ejercicios) {
+    const pid = useStore.getState().createEmptyProgram(ejercicios.length, 'Id');
+    const tids = Object.keys(useStore.getState().sessionTemplates).filter(
+      (id) => useStore.getState().sessionTemplates[id].programId === pid,
+    );
+    useStore.setState((s) => ({
+      sessionTemplates: {
+        ...s.sessionTemplates,
+        ...Object.fromEntries(tids.map((tid, i) => [tid, { ...s.sessionTemplates[tid], exercises: ejercicios[i] }])),
+      },
+    }));
+    return tids;
+  }
+  const exs = (tid) => useStore.getState().sessionTemplates[tid].exercises;
+
+  it('unilateral con gemelo: pasa al de la librería y conserva la configuración', () => {
+    const [t] = programa([{ exerciseId: 'cable_row', sets: 4, restSec: 75, variant: { grip: 'neutral', width: 'wide' } }]);
+    const res = useStore.getState().changeExerciseIdentity(t, 'cable_row', { root: 'cable_row', uni: true, variant: null });
+    expect(res).toEqual({ id: 'single_arm_cable_row' });
+    // Una mano no tiene anchura; el agarre se queda.
+    expect(exs(t)[0]).toMatchObject({ exerciseId: 'single_arm_cable_row', sets: 4, restSec: 75, variant: { grip: 'neutral' } });
+    expect(useStore.getState().customExercises).toEqual({});
+  });
+
+  it('unilateral sin gemelo: se crea el derivado como ejercicio propio', () => {
+    const [t] = programa([{ exerciseId: 'pulldown', sets: 3 }]);
+    useStore.getState().changeExerciseIdentity(t, 'pulldown', { root: 'pulldown', uni: true, variant: null });
+    expect(exs(t)[0].exerciseId).toBe('pulldown__uni');
+    expect(useStore.getState().customExercises.pulldown__uni).toMatchObject({ name: 'Jalón al pecho unilateral', isCustom: false });
+  });
+
+  it('aparte: la variante queda fija en la sesión y apagarlo la devuelve como variante normal', () => {
+    const v = { grip: 'pronated', width: 'wide' };
+    const [t] = programa([{ exerciseId: 'pulldown', sets: 3, variant: v }]);
+    useStore.getState().changeExerciseIdentity(t, 'pulldown', { root: 'pulldown', uni: false, variant: v });
+    expect(exs(t)[0]).toMatchObject({ exerciseId: 'pulldown__pronated_wide', variant: v });
+    useStore.getState().changeExerciseIdentity(t, 'pulldown__pronated_wide', { root: 'pulldown', uni: false, variant: null });
+    expect(exs(t)[0]).toMatchObject({ exerciseId: 'pulldown', variant: v });
+  });
+
+  it('bloqueo: no deja el mismo ejercicio dos veces en la sesión', () => {
+    const v = { grip: 'pronated' };
+    const [t] = programa([
+      { exerciseId: 'pulldown__pronated', sets: 3, variant: v },
+      { exerciseId: 'pulldown', sets: 3 },
+    ]);
+    useStore.setState({
+      customExercises: { pulldown__pronated: { ...EXERCISE_LIBRARY.pulldown, id: 'pulldown__pronated', variants: {}, derived: { root: 'pulldown', unilateral: false, variant: v } } },
+    });
+    const target = { root: 'pulldown', uni: false, variant: null };
+    expect(useStore.getState().identityCheck(t, 'pulldown__pronated', target)).toMatchObject({ blocked: true, linked: false, name: 'Jalón al pecho' });
+    expect(useStore.getState().changeExerciseIdentity(t, 'pulldown__pronated', target)).toMatchObject({ blocked: true });
+    expect(exs(t).map((e) => e.exerciseId)).toEqual(['pulldown__pronated', 'pulldown']);
+  });
+
+  it('vinculado: cambia en todo el grupo, y se bloquea si choca en otra sesión del grupo', () => {
+    const [a, b] = programa(
+      [{ exerciseId: 'pulldown', sets: 3, linkGroup: 'g1' }],
+      [{ exerciseId: 'pulldown', sets: 3, linkGroup: 'g1' }, { exerciseId: 'pulldown__uni', sets: 2 }],
+    );
+    useStore.setState({ customExercises: { pulldown__uni: { ...EXERCISE_LIBRARY.pulldown, id: 'pulldown__uni', isUnilateral: true, derived: { root: 'pulldown', unilateral: true, variant: null } } } });
+    const uni = { root: 'pulldown', uni: true, variant: null };
+    expect(useStore.getState().identityCheck(a, 'pulldown', uni)).toMatchObject({ blocked: true, linked: true });
+
+    useStore.setState((s) => ({ sessionTemplates: { ...s.sessionTemplates, [b]: { ...s.sessionTemplates[b], exercises: exs(b).slice(0, 1) } } }));
+    expect(useStore.getState().changeExerciseIdentity(a, 'pulldown', uni)).toEqual({ id: 'pulldown__uni' });
+    expect(exs(a)[0].exerciseId).toBe('pulldown__uni');
+    expect(exs(b)[0].exerciseId).toBe('pulldown__uni');
+  });
+});

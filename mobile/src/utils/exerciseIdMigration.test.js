@@ -95,3 +95,31 @@ describe('migrateExerciseRefs', () => {
     expect(JSON.stringify(data)).toBe(snapshot);
   });
 });
+
+describe('isUnilateral de la sesión — exercise-variants.md §6.4', () => {
+  it('encendido sobre uno de dos manos pasa a su versión unilateral y la clave se va', () => {
+    const data = {
+      sessionTemplates: { t: { id: 't', exercises: [
+        ex('cable_row', { isUnilateral: true, variant: { grip: 'neutral', width: 'wide' } }),
+        ex('pulldown', { isUnilateral: true }),
+        ex('squat_barbell', { isUnilateral: false }),
+      ] } },
+    };
+    expect(migrateExerciseRefs(data, EXERCISE_LIBRARY)).toBe(true);
+    const [row, pull, squat] = data.sessionTemplates.t.exercises;
+    expect(row).toEqual(ex('single_arm_cable_row', { variant: { grip: 'neutral' } }));
+    expect(pull.exerciseId).toBe('pulldown__uni');
+    expect(data.customExercises.pulldown__uni.isUnilateral).toBe(true);
+    expect(squat).toEqual(ex('squat_barbell'));
+    expect(migrateExerciseRefs(data, EXERCISE_LIBRARY)).toBe(false);
+  });
+
+  it('si la versión unilateral ya está en la sesión, solo se borra la clave', () => {
+    const data = { sessionTemplates: { t: { id: 't', exercises: [
+      ex('cable_row', { isUnilateral: true }), ex('single_arm_cable_row'),
+    ] } } };
+    migrateExerciseRefs(data, EXERCISE_LIBRARY);
+    expect(data.sessionTemplates.t.exercises.map((e) => e.exerciseId)).toEqual(['cable_row', 'single_arm_cable_row']);
+    expect('isUnilateral' in data.sessionTemplates.t.exercises[0]).toBe(false);
+  });
+});
