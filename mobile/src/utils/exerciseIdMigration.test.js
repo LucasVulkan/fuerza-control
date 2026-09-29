@@ -56,6 +56,18 @@ describe('migrateExerciseRefs', () => {
     expect(data.sessionTemplates.t.exercises.map((e) => e.exerciseId)).toEqual(['pull_up__neutral', 'pull_up']);
   });
 
+  it('lastradas y sin lastre en la misma sesión: sin variante con la que separarse, la segunda conserva su id', () => {
+    const data = {
+      sessionTemplates: { t: { id: 't', exercises: [ex('pull_up_weighted'), ex('pull_up_weighted_barbell')] } },
+      workoutLog: [{ id: 'l', sessionTemplateId: 't', exercises: [ex('pull_up_weighted_barbell', { sets: [] })] }],
+    };
+    migrateExerciseRefs(data, EXERCISE_LIBRARY);
+    expect(data.sessionTemplates.t.exercises.map((e) => e.exerciseId)).toEqual(['pull_up', 'pull_up_weighted_barbell']);
+    expect(data.customExercises.pull_up_weighted_barbell).toMatchObject({ name: 'Dominadas sin lastre', isCustom: false });
+    expect(data.workoutLog[0].exercises[0].exerciseId).toBe('pull_up_weighted_barbell');
+    expect(migrateExerciseRefs(data, EXERCISE_LIBRARY)).toBe(false);
+  });
+
   it('bloques, prescripciones y sesión en curso', () => {
     const data = {
       sessionTemplates: { t: { id: 't', exercises: [ex('pulldown_supinated')], blocks: [{ movements: [{ exerciseId: 'pull_up_neutral' }] }] } },

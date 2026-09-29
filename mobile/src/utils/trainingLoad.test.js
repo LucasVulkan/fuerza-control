@@ -125,7 +125,6 @@ describe('isBodyweight — contra la librería real', () => {
   it('clasifica bien los casos que importan', () => {
     expect(isBodyweight(EXERCISE_LIBRARY.push_up)).toBe(true);          // equipment []
     expect(isBodyweight(EXERCISE_LIBRARY.pull_up)).toBe(true);  // ['pullup_bar']
-    expect(isBodyweight(EXERCISE_LIBRARY.pull_up_weighted)).toBe(true); // + weight_belt
     expect(isBodyweight(EXERCISE_LIBRARY.pull_up_assisted)).toBe(true); // + goma
     expect(isBodyweight(EXERCISE_LIBRARY.squat_barbell)).toBe(false);
     expect(isBodyweight(EXERCISE_LIBRARY.bench_press_barbell)).toBe(false);
@@ -144,7 +143,7 @@ describe('effectiveWeight', () => {
 
   it('peso corporal: el cuerpo, más el lastre si lo hay', () => {
     expect(effectiveWeight({ reps: '10' }, EXERCISE_LIBRARY.push_up, 80)).toBe(80);
-    expect(effectiveWeight(set(10, 5), EXERCISE_LIBRARY.pull_up_weighted, 80)).toBe(90);
+    expect(effectiveWeight(set(10, 5), EXERCISE_LIBRARY.pull_up, 80)).toBe(90);
   });
 
   it('asistido: el peso registrado es AYUDA, se resta', () => {
@@ -626,7 +625,7 @@ describe('setsByMuscleGroup', () => {
 describe('plannedSetsByGroup', () => {
   it('suma las series prescritas de todas las sesiones de la etapa, por grupo', () => {
     const templates = [
-      { exercises: [{ exerciseId: 'squat_barbell', sets: 4 }, { exerciseId: 'pull_up_weighted', sets: 3 }] },
+      { exercises: [{ exerciseId: 'squat_barbell', sets: 4 }, { exerciseId: 'pull_up', sets: 3 }] },
       { exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] },
     ];
     expect(plannedSetsByGroup(templates, EXERCISE_LIBRARY)).toEqual([

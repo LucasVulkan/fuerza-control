@@ -23,40 +23,12 @@
 export const EXERCISE_LIBRARY = {
 
   // ─── TRACCIÓN VERTICAL ───────────────────────────────────────────
-  pull_up_weighted: {
-    id: 'pull_up_weighted',
-    name: 'Dominadas lastradas',
-    nameEn: 'Weighted Pull-ups',
-    pattern: 'vertical_pull',
-    primaryGroup: 'back',
-    muscles: ['latissimus_dorsi', 'biceps', 'rear_deltoid'],
-    equipment: ['pullup_bar', 'weight_belt'],
-    level: 'advanced',
-    isCompound: true,
-    isKeyCandidate: true,
-    priority: { hypertrophy: 'high', strength: 'high', max_strength: 'high', endurance: 'medium', functional: 'high' },
-    progressionModel: 'double_progression',
-    progressionDirection: 'increase',
-    minReps: 4, maxReps: 6, weightStep: 2.5, restSec: 150,
-    assistedVariantId: 'pull_up_assisted',
-    relatedVariants: ['pull_up_assisted'], // solo excluir la asistida
-    tips: [
-      'Escápulas retraídas y deprimidas antes de tirar — no empieces con los hombros encogidos.',
-      'Baja en 3 segundos, sube controlado. No uses impulso.',
-      'El lastre cuelga del cinturón, no lo sujetes con las manos.',
-    ],
-    tipsEn: [
-      'Retract and depress your scapulae before pulling — don\'t start with shrugged shoulders.',
-      'Lower in 3 seconds, controlled pull-up. No momentum.',
-      'The weight hangs from the belt — don\'t grip it with your hands.',
-    ],
-    warmup: ['10 retracciones escapulares en barra', '10 rotaciones de hombro con banda', '2 series de dominadas con banda al 50%'],
-  },
-
   pull_up: {
     id: 'pull_up',
     name: 'Dominadas',
     nameEn: 'Pull-ups',
+    // También las lastradas: el peso apuntado es el lastre, y la carga ya suma
+    // el peso corporal (trainingLoad.effectiveWeight).
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps', 'rear_deltoid'],
@@ -64,10 +36,10 @@ export const EXERCISE_LIBRARY = {
     level: 'intermediate',
     isCompound: true,
     isKeyCandidate: true,
-    priority: { hypertrophy: 'high', strength: 'high', max_strength: 'medium', endurance: 'high', functional: 'high' },
+    priority: { hypertrophy: 'high', strength: 'high', max_strength: 'high', endurance: 'high', functional: 'high' },
     progressionModel: 'double_progression',
     progressionDirection: 'increase',
-    minReps: 5, maxReps: 8, weightStep: 0, restSec: 120,
+    minReps: 5, maxReps: 8, weightStep: 2.5, restSec: 120,
     assistedVariantId: 'pull_up_assisted',
     relatedVariants: ['pull_up_assisted'], // solo excluir la asistida
     // La supina (chin-up) es otro ejercicio: en inglés tiene nombre propio.
@@ -76,13 +48,15 @@ export const EXERCISE_LIBRARY = {
       'Escápulas retraídas y deprimidas antes de tirar.',
       'El agarre neutro (palmas enfrentadas) es más amigable para el codo y el hombro.',
       'Baja en 3 segundos, sube controlado.',
-      'Cuando domines 8 reps limpias, pasa a la versión lastrada.',
+      'Cuando hagas 8 limpias, añade lastre: el peso que apuntes es el del lastre.',
+      'El lastre cuelga del cinturón, no lo sujetes con las manos.',
     ],
     tipsEn: [
       'Scapulae retracted and depressed before pulling.',
       'Neutral grip (palms facing each other) is easier on the elbow and shoulder.',
       'Lower in 3 seconds, controlled ascent.',
-      'When you master 8 clean reps, move to the weighted version.',
+      'Once you hit 8 clean reps, add weight: log the added weight only.',
+      'The weight hangs from the belt — do not grip it with your hands.',
     ],
     warmup: ['10 retracciones escapulares en barra', 'Dead hang activo 20s'],
   },
@@ -103,7 +77,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'decrease',
     minReps: 5, maxReps: 8, weightStep: 2.5, restSec: 120,
     assistedVariantId: null,
-    relatedVariants: ['pull_up_weighted', 'pull_up'], // si uso asistida, excluyo todas las otras
+    relatedVariants: ['pull_up'], // si uso asistida, excluyo todas las otras
     tips: [
       'La banda reduce el peso — el número registrado es la resistencia de la banda.',
       'Cuando completes todas las series al máximo, baja a una banda con menos resistencia.',
@@ -3232,7 +3206,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: null, maxReps: null, weightStep: 0, restSec: 120,
     assistedVariantId: null,
-    relatedVariants: ['pull_up_weighted', 'dead_hang'],
+    relatedVariants: ['pull_up', 'dead_hang'],
     tips: [
       'Usa las piernas para asistirte en las primeras subidas (legless = nivel superior).',
       'El agarre alterno de manos es lo que propulsa el ascenso.',
@@ -3262,7 +3236,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 1, maxReps: 6, weightStep: 0, restSec: 180,
     assistedVariantId: 'muscle_up_assisted',
-    relatedVariants: ['muscle_up_assisted', 'pull_up_weighted'],
+    relatedVariants: ['muscle_up_assisted', 'pull_up'],
     tips: [
       'La transición (pasar por encima de la barra) es la parte técnica clave.',
       'Usa la inercia de la dominada para superar la barra — no es solo fuerza bruta.',
@@ -3424,7 +3398,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minTime: 3, maxTime: 15, timeStep: 2, weightStep: 0, restSec: 180,
     assistedVariantId: null,
-    relatedVariants: ['pull_up_weighted', 'dead_hang', 'l_sit'],
+    relatedVariants: ['pull_up', 'dead_hang', 'l_sit'],
     tips: [
       'Progresión: tuck → one leg → straddle → front lever completo.',
       'Empuja la barra hacia los pies activamente — no es solo aguantar.',
@@ -4853,7 +4827,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 3, maxReps: 6, weightStep: 0, restSec: 120,
     assistedVariantId: null,
-    relatedVariants: ['pull_up_weighted', 'archer_push_up'],
+    relatedVariants: ['pull_up', 'archer_push_up'],
     tips: [
       'Sube con ambas manos y desplázate lateralmente de un lado al otro en la posición alta.',
       'Progresión hacia la dominada a una mano.',

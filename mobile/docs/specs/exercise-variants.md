@@ -248,7 +248,7 @@ nombre, en negrita; el normal lleva la variante detrás, en gris.
 |---|---|---|
 | `pulldown` | Jalón al pecho / Lat Pulldown | `pulldown_pronated` (prono) · `pulldown_supinated` (supino) · `pulldown_neutral` (neutro) |
 | `cable_row` (se queda) | Remo en polea / Seated Cable Row | `seated_row_neutral` (neutro) |
-| `pull_up` | Dominadas / Pull-ups | `pull_up_weighted_barbell` (—, era «Dominadas sin lastre») · `pull_up_neutral` (neutro) |
+| `pull_up` | Dominadas / Pull-ups | `pull_up_weighted_barbell` (—, era «Dominadas sin lastre») · `pull_up_weighted` (—, «Dominadas lastradas») · `pull_up_neutral` (neutro) |
 
 - La entrada nueva hereda los metadatos de la más usada (`pulldown_pronated`,
   `pull_up_weighted_barbell`); nivel, grupo, músculos y `priority` se revisan a
@@ -257,8 +257,13 @@ nombre, en negrita; el normal lleva la variante detrás, en gris.
   con el mapa (varias apuntan a los ids viejos; ver `grep`).
 - **`pull_up_supine` no se fusiona** (decisión del usuario: en inglés es otro
   ejercicio, «chin-up»). Solo se renombra: «Dominadas supinas» / «Chin-ups».
-- `pull_up_weighted` (lastradas) **no** se fusiona: cambia el modelo de
-  progresión. Es tema de la revisión de medición pendiente.
+- `pull_up_weighted` (lastradas) **también se fusiona** (decisión del usuario,
+  QA 29-sep): el peso apuntado en «Dominadas» es el lastre y la carga ya suma
+  el peso corporal (`trainingLoad.effectiveWeight`); separarlas partía la línea
+  de progreso justo al progresar. `pull_up` pasa a salto de 2,5 kg (antes 0,
+  que nunca proponía lastre) y a `max_strength: 'high'`.
+- `high_cable_row` («Remo polea alta») **no** es un jalón: es tirar hacia la cara
+  con los codos abiertos, 15-20 reps, primo del face pull. Se queda.
 
 ### 3.2 Arquetipos y tests
 
@@ -282,7 +287,8 @@ export const LEGACY_IDS = {
   pulldown_supinated:       { id: 'pulldown',  variant: { grip: 'supinated' } },
   pulldown_neutral:         { id: 'pulldown',  variant: { grip: 'neutral' } },
   seated_row_neutral:       { id: 'cable_row', variant: { grip: 'neutral' } },
-  pull_up_weighted_barbell: { id: 'pull_up' },
+  pull_up_weighted_barbell: { id: 'pull_up', name: 'Dominadas sin lastre', nameEn: 'Pull-ups (bodyweight)' },
+  pull_up_weighted:         { id: 'pull_up', name: 'Dominadas lastradas',  nameEn: 'Weighted Pull-ups' },
   pull_up_neutral:          { id: 'pull_up',   variant: { grip: 'neutral' } },
 };
 ```
@@ -351,6 +357,12 @@ Tests en `searchText.test.js`: «remo polea», «chin up», «chin-up», «chinu
 - El buscador lleva una pasada intermedia: la búsqueda **sin espacios** dentro
   del texto sin espacios («chinup»), antes de la subsecuencia.
 - `seed-load-data.mjs` usaba `pull_up_neutral`: pasa a `pull_up`.
+- Choque **sin** variante con la que separarse (lastradas y sin lastre en la misma
+  sesión): el segundo conserva su id viejo como copia de `pull_up` con su nombre
+  de siempre (`name`/`nameEn` en `LEGACY_IDS`), guardada en `customExercises`. Un
+  id viejo que ya existe como ejercicio no se vuelve a migrar.
+- QA 29-sep: el botón «Añadir» del buscador enseña cuántos se van a añadir
+  («Añadir 3», `exerciseSelector.addActionN`).
 
 ### 3.6 Aceptación
 
@@ -361,17 +373,21 @@ nuevo con su variante.
 
 **Probar P41**
 
-- [ ] Con un historial que tenía «Jalón al pecho agarre prono»: tras actualizar,
+- [x] Con un historial que tenía «Jalón al pecho agarre prono»: tras actualizar,
   Progreso enseña «Jalón al pecho» con todas las sesiones de antes; la sesión
   que lo tenía sigue abriendo y el Workout rellena los pesos de la última vez.
-- [ ] Buscar «remo polea» encuentra «Remo en polea» y «Remo polea alta»; buscar
+- [x] Buscar «remo polea» encuentra «Remo en polea» y «Remo polea alta»; buscar
   «jalon» (sin tilde) encuentra «Jalón al pecho» una sola vez.
-- [ ] Buscar «chin up», «chinup» o «dominada supina» encuentra «Dominadas
+- [x] Buscar «chin up», «chinup» o «dominada supina» encuentra «Dominadas
   supinas», y no sale ningún press ni curl.
-- [ ] Generar un programa en el onboarding: ningún día repite ejercicio y los
+- [x] Generar un programa en el onboarding: ningún día repite ejercicio y los
   jalones salen con su agarre.
-- [ ] Entrenador con la versión nueva y cliente con la vieja: al descargar el
+- [x] Entrenador con la versión nueva y cliente con la vieja: al descargar el
   historial del cliente, sus jalones caen en «Jalón al pecho».
+- [ ] Una sesión con «Dominadas lastradas»: tras actualizar sale «Dominadas» con
+  el historial de antes; al llegar a 8 reps en todas las series, el Workout
+  propone 2,5 kg más de lastre.
+- [ ] Buscador al añadir: con 3 ejercicios marcados, el botón dice «Añadir 3».
 
 ---
 

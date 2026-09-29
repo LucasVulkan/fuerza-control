@@ -230,7 +230,9 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
             activeOpacity={0.85}
           >
             <Text style={[styles.addBtnText, !selectedIds.length && styles.addBtnTextOff]}>
-              {t('exerciseSelector.addAction')}
+              {selectedIds.length
+                ? t('exerciseSelector.addActionN', { count: selectedIds.length })
+                : t('exerciseSelector.addAction')}
             </Text>
           </TouchableOpacity>
         ) : undefined}

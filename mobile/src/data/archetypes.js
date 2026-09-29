@@ -133,7 +133,7 @@ export const ARCHETYPES = [
         color: 'var(--day1)',
         emphasis: 'pull',
         exercises: [
-          { exerciseId: 'pull_up_weighted',      role: 'key',      sets: 4, minReps: 5,  maxReps: 8,  restSec: 150, pattern: 'vertical_pull',   primaryGroup: 'back' },
+          { exerciseId: 'pull_up',      role: 'key',      sets: 4, minReps: 5,  maxReps: 8,  restSec: 150, pattern: 'vertical_pull',   primaryGroup: 'back' },
           { exerciseId: 'bench_press_barbell',   role: 'key',      sets: 4, minReps: 6,  maxReps: 8,  restSec: 120, pattern: 'horizontal_push',  primaryGroup: 'chest' },
           { exerciseId: 'romanian_deadlift',     role: 'key',      sets: 4, minReps: 6,  maxReps: 8,  restSec: 120, pattern: 'hip_hinge',        primaryGroup: 'glutes_hamstrings' },
           { exerciseId: 'db_row_unilateral',     role: 'accessory',sets: 3, minReps: 10, maxReps: 12, restSec: 90,  pattern: 'horizontal_pull',  primaryGroup: 'back' },
