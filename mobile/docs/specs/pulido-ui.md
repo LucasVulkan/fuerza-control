@@ -156,6 +156,8 @@ La hoja de progresión de `editor/ExerciseEditorInline.jsx` y la de
 `CustomExerciseScreen.jsx` son copias y ya no coinciden: al alta de ejercicio
 le falta el paso «Cuándo se cumple» (`stepEval`) y numera 3 el incremento.
 Sacar una sola pieza, y decidir si el alta debe tener el paso de evaluación.
+Al usuario (29-sep-2026) no le cuadra que se quitara en el alta; lo más
+probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 
 ## Otros detalles vistos (sin fase)
 
