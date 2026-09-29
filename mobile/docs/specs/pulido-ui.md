@@ -198,7 +198,10 @@ borde con el velo en degradado del Workout (`ui/NavScrim`, que sale de
 **opaca** (`opaqueInset`) y el fundido empieza justo encima: con el velo del
 Workout tal cual se veían las filas por debajo de los botones, y en una hoja
 eso distrae. El margen va dentro del scroll, así que las hojas cortas acaban
-donde acababan.
+donde acababan. Arriba, bajo la cabecera, el mismo fundido, pero solo al
+desplazar (con la hoja quieta taparía la primera fila). El velo va de borde a
+borde: con el `width="100%"` en el SVG se medía sin el padding de la hoja y
+no llegaba a los lados.
 
 Segundo fallo de la misma ronda: tocar una opción que abre OTRA hoja desmonta
 la primera, pero su animación de cierre seguía y al acabar llamaba a su
@@ -245,7 +248,11 @@ es un Modal) y la hoja «Añadir» del Workout (el editor de bloque también).
   debajo ni se mete bajo los botones; la última fila queda justo encima.
 - [ ] Menú ≡ en Android: al desplazar, las filas se desvanecen justo encima de
   los botones (sin franja gris que las corte) y bajo los botones no se ve
-  ninguna fila. Bajando hasta el final, la última fila queda entera encima.
+  ninguna fila. Bajando hasta el final, la última fila queda entera encima. El
+  fundido ocupa todo el ancho de la hoja.
+- [ ] Menú ≡ (y cualquier hoja que desplace): arriba, con la hoja quieta, la
+  primera fila se ve entera; al empezar a bajar, las filas se desvanecen bajo
+  la cabecera en vez de cortarse.
 - [ ] Workout: el velo de abajo sobre los botones de Android se ve igual que antes. En el menú ≡, bajando hasta el final
   se ve entera la última fila (nada gris la tapa).
 - [ ] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y

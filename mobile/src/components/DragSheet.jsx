@@ -14,7 +14,7 @@
  * zona y el arrastre saltaría al cruzar de una a otra.
  */
 import { useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Animated, PanResponder, KeyboardAvoidingView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, Animated, PanResponder, KeyboardAvoidingView } from 'react-native';
 import { Text } from './ui/Text';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
@@ -23,6 +23,9 @@ import { spacing, borders, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { SheetContext } from './ui/sheetContext';
 import NavScrim from './ui/NavScrim';
+import Reanimated, {
+  useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, interpolate, Extrapolation,
+} from 'react-native-reanimated';
 
 /**
  * La tarjeta de la hoja. Va aparte para leer los márgenes del `SafeAreaProvider`
@@ -39,18 +42,34 @@ import NavScrim from './ui/NavScrim';
  * velo solo cubre aire.
  */
 function SheetCard({ style, header, children }) {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  // Arriba, el mismo fundido bajo la cabecera, pero solo al desplazar: con la
+  // hoja quieta taparía la primera fila. Aparece en los primeros `xl` px.
+  // Reanimated y no el `Animated` del resto del fichero: es lo nuevo de la casa.
+  const scrollY  = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
+  const topFade  = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, spacing.xl], [0, 1], Extrapolation.CLAMP),
+  }));
   return (
     <Animated.View style={style}>
       {header}
-      <ScrollView
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
-      >
-        {children}
-      </ScrollView>
+      <View style={styles.body}>
+        <Reanimated.ScrollView
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
+          {children}
+        </Reanimated.ScrollView>
+        <Reanimated.View pointerEvents="none" style={[styles.topFade, topFade]}>
+          <NavScrim edge="top" fade={spacing.xl} />
+        </Reanimated.View>
+      </View>
       <NavScrim inset={insets.bottom} fade={spacing.xl} opaqueInset />
     </Animated.View>
   );
@@ -207,6 +226,12 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:           spacing.sm,
   },
   cardTall: { height: '85%' },
+  // La caja del scroll: crece y encoge como lo hacía el ScrollView suelto (en
+  // `tall` llena la hoja; si no, respeta el tope de alto), y es la referencia
+  // del fundido de arriba.
+  body:    { flexGrow: 1, flexShrink: 1 },
+  // A sangre: sale del padding lateral de la hoja para tapar de borde a borde.
+  topFade: { position: 'absolute', top: 0, left: -spacing.lg, right: -spacing.lg, height: spacing.xl },
   handleWrap: {
     alignItems:      'center',
     paddingVertical: spacing.sm,
