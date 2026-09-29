@@ -6,8 +6,8 @@
 > Fase P47 · hecho · Motor y editor del modo Por esfuerzo · §4
 > Fase P48 · pendiente · El objetivo por esfuerzo en el Workout y las listas · §5
 >
-> Estado: **P46 probada, P47 hecha** (29-sep-2026, rama
-> `feat/exercise-variants`), P47 pendiente de probar; P48 sin implementar. Sale de una
+> Estado: **P46 y P47 probadas** (29-sep-2026, rama
+> `feat/exercise-variants`); P48 sin implementar. Sale de una
 > conversación de diseño con el usuario (opción «B»: RPE objetivo + peso
 > sugerido por e1RM). Orden: P46 → P47 → P48. P46 va primero porque libera el
 > tercer hueco del selector de modo y quita las ramas `'submax'` que P48
@@ -298,21 +298,24 @@ esfuerzo: pides un RPE y la app calcula el peso con tu 1RM estimado».
 - Si un ejercicio ya está en Por esfuerzo y deja de cumplir §2.4 (p. ej. se
   cambió el equipo de un ejercicio propio), la opción se sigue enseñando para
   no dejar el selector sin valor; el motor, sin peso, mantiene.
+- QA: en la caja sola de «Reps objetivo» a todo el ancho, los ± se iban a las
+  esquinas. `StepField` gana `tight` (solo Caja): ± pegados al número
+  (`bb50b41`). El grid 2×2 no cambia.
 
 **Probar P47**
 
-- [ ] Sentadilla con barra → Progresión → Por esfuerzo: sale «RPE objetivo» con
+- [x] Sentadilla con barra → Progresión → Por esfuerzo: sale «RPE objetivo» con
   «Dejar 2 en recámara», y en VOLUMEN un solo campo «Reps objetivo».
-- [ ] Al elegir Por esfuerzo, «Registrar RPE» se enciende solo, no se puede
+- [x] Al elegir Por esfuerzo, «Registrar RPE» se enciende solo, no se puede
   apagar y dice por qué. Al volver a Automática se puede apagar.
-- [ ] Reps objetivo 10 con RPE 8: aviso naranja bajo las reps y bajo el RPE en
+- [x] Reps objetivo 10 con RPE 8: aviso naranja bajo las reps y bajo el RPE en
   la hoja. 10 con RPE 9: sin aviso. 9 con RPE 7: aviso.
-- [ ] En Flexiones y en Dominadas asistidas no sale Por esfuerzo. En sentadilla,
+- [x] En Flexiones y en Dominadas asistidas no sale Por esfuerzo. En sentadilla,
   pasar la métrica a Tiempo lo devuelve a Automática.
-- [ ] El resumen del editor dice «3 × 5 reps · RPE 8 · …» y «Peso calculado con
+- [x] El resumen del editor dice «3 × 5 reps · RPE 8 · …» y «Peso calculado con
   el 1RM estimado para RPE 8»; la fila de Progresión, «RPE 8 · Dejar 2 en
   recámara».
-- [ ] Alta de ejercicio propio: no ofrece Por esfuerzo.
+- [x] Alta de ejercicio propio: no ofrece Por esfuerzo.
 
 ---
 
