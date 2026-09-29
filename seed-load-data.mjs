@@ -35,7 +35,7 @@ const ROTATION = [
     ['push_up', null, 12, 20],            // peso corporal: ejercita esa rama
   ] },
   { name: 'Tirón', exercises: [
-    ['pull_up_neutral', null, 6, 10],     // peso corporal
+    ['pull_up', null, 6, 10],             // peso corporal
     ['barbell_row', 70, 6, 10],
     ['face_pull', 25, 12, 15],
   ] },
@@ -47,7 +47,7 @@ const ROTATION = [
   { name: 'Completo', exercises: [
     ['deadlift_conventional', 140, 3, 5],
     ['bench_press_barbell', 95, 6, 8],
-    ['pull_up_neutral', null, 6, 10],
+    ['pull_up', null, 6, 10],
   ] },
 ];
 

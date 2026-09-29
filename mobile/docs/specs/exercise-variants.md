@@ -2,13 +2,17 @@
 
 > Tema: programas
 > En corto: Agarre y anchura dejan de ser ejercicios distintos: son la «variante» de uno solo, que informa, se apunta en cada entreno y se puede filtrar en Progreso. Lo que cambia la carga (a una mano, o separar una variante para tener dos jalones el mismo día) sí es otro ejercicio, con id fijo y progresión propia.
-> Fase P41 · pendiente · Librería: fusión de repetidos, migración de ids y buscador por palabras · §3
+> Fase P41 · hecho · Librería: fusión de repetidos, migración de ids y buscador por palabras · §3
 > Fase P42 · pendiente · La variante en el editor y en las listas · §4
 > Fase P43 · pendiente · La variante de hoy en el Workout, compartir y pegar · §5
 > Fase P44 · pendiente · Cambiar el ejercicio: unilateral y ejercicio aparte · §6
 > Fase P45 · pendiente · Progreso filtrado por variante · §7
 >
-> Estado: **spec cerrada, SIN implementar** (29-sep-2026). Maqueta aprobada:
+> Estado: **P41 implementada** (29-sep-2026, rama `feat/exercise-variants`),
+> pendiente de probar en dispositivo; P42-P45 sin implementar. Lo que salió
+> distinto de lo escrito, en §3.5.
+>
+> Spec cerrada el 29-sep-2026. Maqueta aprobada:
 > [`docs/mockups/exercise-variants.html`](../mockups/exercise-variants.html)
 > (§0-§7; las referencias «maqueta §N» de abajo son a ella). Sale de una sesión
 > de diseño con el usuario que pasó por pills, familias de ejercicios y chips en
@@ -225,7 +229,7 @@ Se generan una vez, al crear el derivado, en **los dos idiomas**, importando
 idioma actual):
 
 - Unilateral: `variants.nameUnilateral` → es «{{name}} unilateral», en
-  «{{name}} (unilateral)».
+  «Unilateral {{name}}» (sin paréntesis, como en español).
 - Aparte: `variants.nameApart` → «{{name}} · {{variant}}», con `variantLabel`:
   «Jalón al pecho · Prono · Ancho». Sin paréntesis (decisión del usuario). El
   texto de compartir sesión tiene que entender nombres con « · » (§5.2).
@@ -329,7 +333,26 @@ curls). Reglas nuevas, en este orden:
 Tests en `searchText.test.js`: «remo polea», «chin up», «chin-up», «chinup» y
 «dominada supina» encuentran lo suyo y nada de press ni curls.
 
-### 3.5 Aceptación
+### 3.5 Lo que salió distinto (P41)
+
+- Ya entran en P41, porque la migración y `exerciseIdentity` los usan: el campo
+  `variants` de los tres ejercicios fusionados (`pull_up` solo con prono y
+  neutro, porque la chin-up quedó aparte), `unilateralOf` en los cuatro gemelos,
+  y las claves `variants.options.*`, `variants.nameUnilateral` y
+  `variants.nameApart` en los dos idiomas. El resto de la tabla de §2.2 es P42.
+- `migrateExerciseRefs` recibe un objeto con cualquiera de las claves que
+  guardan ids (`sessionTemplates`, `userPrograms`, `freeSessions`, `workoutLog`,
+  `clientLogs`, `exerciseAliases`, `clientSync`, `activeSession`) y deja los
+  apartes nuevos en `customExercises`. En un choque se queda el id el ejercicio
+  **sin** variante (si lo hay), no el primero: así el que pasa a aparte siempre
+  tiene una variante con la que separarse.
+- También se llama en `importForClient` (la otra puerta de programas ajenos) y
+  sobre las prescripciones que baja `checkAndPullProgramUpdates`.
+- El buscador lleva una pasada intermedia: la búsqueda **sin espacios** dentro
+  del texto sin espacios («chinup»), antes de la subsecuencia.
+- `seed-load-data.mjs` usaba `pull_up_neutral`: pasa a `pull_up`.
+
+### 3.6 Aceptación
 
 `npx vitest run` desde la raíz en verde; `npx expo export --platform android`
 sin errores de import; en un historial sembrado con los ids viejos
@@ -681,7 +704,7 @@ Maqueta §6.
 
 | Fase | Qué | Coste | Depende de | Registro |
 |---|---|---|---|---|
-| P41 | Fusión, `exerciseIdentity.js`, migración de ids, buscador por palabras | 🟡 | — | |
+| P41 | Fusión, `exerciseIdentity.js`, migración de ids, buscador por palabras | 🟡 | — | ✅ ver commit de la rama — 1451 tests |
 | P42 | Catálogo, `exConfig.variant`, hoja (grupo informativo), listas, guardado, ejercicio propio | 🟡 | P41 | |
 | P43 | Variante de hoy en el Workout, compartir y pegar | 🟢 | P42 | |
 | P44 | Unilateral y ejercicio aparte, bloqueo, vinculación, fuera `exConfig.isUnilateral` | 🟡 | P41, P42 | |

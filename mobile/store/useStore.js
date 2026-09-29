@@ -59,6 +59,7 @@ import {
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../src/data/archetypes';
+import { migrateExerciseRefs } from '../src/utils/exerciseIdMigration';
 import { adaptArchetype } from '../src/utils/archetypeAdapter';
 
 // Mobile i18n instance
@@ -844,6 +845,9 @@ export const useStore = create(
       // Mobile: receives parsedData (already parsed JSON) + mode string
       importForClient: (clientId, parsedData, mode) => {
         let data = parsedData;
+        // Un fichero de una versión anterior trae los ids de antes de juntar
+        // los ejercicios repetidos (exercise-variants.md §3.3).
+        migrateExerciseRefs(data, get().getEffectiveLibrary());
         const client = get().clients[clientId];
         if (!client) return;
 
@@ -2935,6 +2939,9 @@ export const useStore = create(
       // ── Import ────────────────────────────────────────────────────────────────
 
       importData: (data, sections, { silent = false } = {}) => {
+        // Ids de antes de juntar los ejercicios repetidos (exercise-variants.md
+        // §3.3): un backup viejo, o el programa de un entrenador sin actualizar.
+        migrateExerciseRefs(data, get().getEffectiveLibrary());
         // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
         // de OTRO dueño, esto es una copia, no una actualización. Sin esto,
         // importar como propio el programa de un cliente se lo quita — su ficha
@@ -3613,8 +3620,14 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const { history, customExercises: clientCustom, progress, updatedAt } =
-            await downloadHistory(client.syncSlotId);
+          const downloaded = await downloadHistory(client.syncSlotId);
+          // Un cliente con la versión vieja sube los ids de antes de juntar los
+          // ejercicios repetidos (exercise-variants.md §3.3).
+          const incoming = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
+          migrateExerciseRefs(incoming, get().getEffectiveLibrary());
+          const { progress, updatedAt } = downloaded;
+          const history      = downloaded.history ? incoming.workoutLog : downloaded.history;
+          const clientCustom = incoming.customExercises;
           // Mirror the client's counters verbatim — never recompute them here
           // (spec §3.1). Kept even when there is no new history to merge.
           // The session count comes fresh with them: it is the same number the
@@ -3866,8 +3879,12 @@ export const useStore = create(
        */
       _restoreFromSlot: async (slotId, programId, mergeHistory) => {
         try {
-          const { history: remoteEntries, customExercises: remoteCustom, progress } =
-            await downloadHistory(slotId);
+          const downloaded = await downloadHistory(slotId);
+          const incoming   = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
+          migrateExerciseRefs(incoming, get().getEffectiveLibrary());   // exercise-variants.md §3.3
+          const { progress } = downloaded;
+          const remoteEntries = incoming.workoutLog;
+          const remoteCustom  = incoming.customExercises;
 
           // Same merge rule as a live program update: the blob wins UNLESS the
           // imported program carries an activation stamp newer than the one the
@@ -3981,6 +3998,11 @@ export const useStore = create(
 
         try {
           const { programJson, updatedAt, trainerName, overrides } = await downloadProgram(clientSync.slotId);
+          // Un entrenador con la versión vieja manda los ids de antes de juntar
+          // los ejercicios repetidos (exercise-variants.md §3.3). Antes del
+          // diff, o el aviso contaría como cambio lo que solo es un id nuevo.
+          migrateExerciseRefs(programJson, get().getEffectiveLibrary());
+          migrateExerciseRefs({ clientSync: { pendingOverrides: overrides } }, get().getEffectiveLibrary());
 
           // Always sync trainer name if it changed (independent of program updates)
           if (trainerName !== undefined && trainerName !== clientSync.trainerName) {
@@ -4652,6 +4674,11 @@ export const useStore = create(
             delete state.freeSessionPresets;
           }
 
+          // Los ejercicios repetidos por agarre se juntaron en uno con su
+          // variante (exercise-variants.md §3.3): plantillas, historial, alias
+          // y prescripciones pasan al id nuevo. Idempotente.
+          migrateExerciseRefs(state, EXERCISE_LIBRARY);
+
         } catch (e) {
           console.warn('[rehydrate] migration failed, booting with what loaded:', e);
         } finally {
@@ -4662,7 +4689,14 @@ export const useStore = create(
           // pase lo que pase— se mantiene porque va en el `.finally()` de la
           // cadena, que corre también si la lectura revienta.
           AsyncStorage.getItem(SESSION_STORAGE_KEY)
-            .then((raw) => { if (raw) useStore.setState({ activeSession: JSON.parse(raw) }); })
+            .then((raw) => {
+              if (!raw) return;
+              const activeSession = JSON.parse(raw);
+              // La sesión en curso guarda series por id: si se abrió con la
+              // versión anterior, sus claves siguen al ejercicio juntado.
+              migrateExerciseRefs({ activeSession }, EXERCISE_LIBRARY);
+              useStore.setState({ activeSession });
+            })
             .catch((e) => console.warn('[rehydrate] sesión en curso ilegible:', e))
             .finally(() => {
               // Caducidad de 12 h, para que la app no abra siempre en Workout

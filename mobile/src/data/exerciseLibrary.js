@@ -53,10 +53,10 @@ export const EXERCISE_LIBRARY = {
     warmup: ['10 retracciones escapulares en barra', '10 rotaciones de hombro con banda', '2 series de dominadas con banda al 50%'],
   },
 
-  pull_up_weighted_barbell: {
-    id: 'pull_up_weighted_barbell',
-    name: 'Dominadas sin lastre',
-    nameEn: 'Pull-ups (bodyweight)',
+  pull_up: {
+    id: 'pull_up',
+    name: 'Dominadas',
+    nameEn: 'Pull-ups',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps', 'rear_deltoid'],
@@ -70,13 +70,17 @@ export const EXERCISE_LIBRARY = {
     minReps: 5, maxReps: 8, weightStep: 0, restSec: 120,
     assistedVariantId: 'pull_up_assisted',
     relatedVariants: ['pull_up_assisted'], // solo excluir la asistida
+    // La supina (chin-up) es otro ejercicio: en inglés tiene nombre propio.
+    variants: { grip: ['pronated', 'neutral'], width: ['wide', 'medium', 'narrow'] },
     tips: [
       'Escápulas retraídas y deprimidas antes de tirar.',
+      'El agarre neutro (palmas enfrentadas) es más amigable para el codo y el hombro.',
       'Baja en 3 segundos, sube controlado.',
       'Cuando domines 8 reps limpias, pasa a la versión lastrada.',
     ],
     tipsEn: [
       'Scapulae retracted and depressed before pulling.',
+      'Neutral grip (palms facing each other) is easier on the elbow and shoulder.',
       'Lower in 3 seconds, controlled ascent.',
       'When you master 8 clean reps, move to the weighted version.',
     ],
@@ -99,7 +103,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'decrease',
     minReps: 5, maxReps: 8, weightStep: 2.5, restSec: 120,
     assistedVariantId: null,
-    relatedVariants: ['pull_up_weighted', 'pull_up_weighted_barbell', 'pull_up_neutral'], // si uso asistida, excluyo todas las otras
+    relatedVariants: ['pull_up_weighted', 'pull_up'], // si uso asistida, excluyo todas las otras
     tips: [
       'La banda reduce el peso — el número registrado es la resistencia de la banda.',
       'Cuando completes todas las series al máximo, baja a una banda con menos resistencia.',
@@ -111,61 +115,11 @@ export const EXERCISE_LIBRARY = {
     warmup: ['10 retracciones escapulares en barra', 'Dead hang pasivo 20s'],
   },
 
-  pull_up_neutral: {
-    id: 'pull_up_neutral',
-    name: 'Dominadas agarre neutro',
-    nameEn: 'Neutral-grip Pull-ups',
-    pattern: 'vertical_pull',
-    primaryGroup: 'back',
-    muscles: ['latissimus_dorsi', 'biceps', 'brachialis'],
-    equipment: ['pullup_bar'],
-    level: 'intermediate',
-    isCompound: true,
-    isKeyCandidate: false,
-    priority: { hypertrophy: 'high', strength: 'medium', max_strength: 'low', endurance: 'high', functional: 'high' },
-    progressionModel: 'double_progression',
-    progressionDirection: 'increase',
-    minReps: 6, maxReps: 8, weightStep: 2.5, restSec: 120,
-    assistedVariantId: null,
-    relatedVariants: ['pull_up_weighted', 'pull_up_weighted_barbell', 'pull_up_assisted'],
-    tips: [
-      'Agarre neutro (palmas enfrentadas) — más amigable para el codo y el hombro.',
-      'Misma técnica que las dominadas normales: escápulas abajo, bajada controlada.',
-    ],
-    tipsEn: [
-      'Neutral grip (palms facing each other) — easier on the elbow and shoulder.',
-      'Same technique as regular pull-ups: scapulae down, controlled descent.',
-    ],
-    warmup: [],
-  },
-
-  pulldown_neutral: {
-    id: 'pulldown_neutral',
-    name: 'Pull-down agarre neutro',
-    nameEn: 'Neutral-grip Pulldown',
-    pattern: 'vertical_pull',
-    primaryGroup: 'back',
-    muscles: ['latissimus_dorsi', 'biceps'],
-    equipment: ['cables'],
-    level: 'beginner',
-    isCompound: true,
-    isKeyCandidate: true,
-    priority: { hypertrophy: 'high', strength: 'medium', max_strength: 'low', endurance: 'high', functional: 'medium' },
-    progressionModel: 'double_progression',
-    progressionDirection: 'increase',
-    minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
-    assistedVariantId: null,
-    relatedVariants: [],
-    tips: ['Tira hacia el pecho, no detrás de la cabeza.', 'Escápulas abajo y atrás al final del recorrido.'],
-    tipsEn: ['Pull toward your chest, not behind your head.', 'Scapulae down and back at the end of the movement.'],
-    warmup: [],
-  },
-
   // ─── TRACCIÓN HORIZONTAL ─────────────────────────────────────────
   cable_row: {
     id: 'cable_row',
-    name: 'Remo en polea baja',
-    nameEn: 'Cable Row (low pulley)',
+    name: 'Remo en polea',
+    nameEn: 'Seated Cable Row',
     pattern: 'horizontal_pull',
     primaryGroup: 'back',
     muscles: ['rhomboids', 'mid_trapezius', 'biceps'],
@@ -178,7 +132,8 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 8, maxReps: 10, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
-    relatedVariants: ['seated_row_neutral'],
+    relatedVariants: [],
+    variants: { grip: ['pronated', 'supinated', 'neutral'], width: ['wide', 'medium', 'narrow'] },
     tips: [
       'Tira con los codos, no con las manos — los bíceps son secundarios.',
       'Al final del movimiento, aprieta las escápulas.',
@@ -189,26 +144,6 @@ export const EXERCISE_LIBRARY = {
       'Squeeze your scapulae together at the end of the movement.',
       'Torso stays upright throughout — no swinging.',
     ],
-    warmup: [],
-  },
-
-  seated_row_neutral: {
-    id: 'seated_row_neutral',
-    name: 'Remo polea sentada agarre neutro',
-    nameEn: 'Seated Cable Row (neutral grip)',
-    pattern: 'horizontal_pull',
-    primaryGroup: 'back',
-    muscles: ['rhomboids', 'mid_trapezius', 'biceps'],
-    equipment: ['cables'],
-    level: 'beginner',
-    isCompound: true,
-    isKeyCandidate: false,
-    priority: { hypertrophy: 'high', strength: 'medium', max_strength: 'low', endurance: 'high', functional: 'medium' },
-    progressionModel: 'double_progression',
-    progressionDirection: 'increase',
-    minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
-    assistedVariantId: null,
-    relatedVariants: ['cable_row'],
     warmup: [],
   },
 
@@ -1280,8 +1215,8 @@ export const EXERCISE_LIBRARY = {
   // ─── TRACCIÓN VERTICAL — NUEVOS ──────────────────────────────────
   pull_up_supine: {
     id: 'pull_up_supine',
-    name: 'Dominadas agarre supino (chin-up)',
-    nameEn: 'Supine-grip Pull-up (Chin-up)',
+    name: 'Dominadas supinas',
+    nameEn: 'Chin-ups',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps'],
@@ -1792,10 +1727,10 @@ export const EXERCISE_LIBRARY = {
     warmup: [],
   },
 
-  pulldown_pronated: {
-    id: 'pulldown_pronated',
-    name: 'Jalón al pecho agarre prono',
-    nameEn: 'Pronated-grip Pulldown',
+  pulldown: {
+    id: 'pulldown',
+    name: 'Jalón al pecho',
+    nameEn: 'Lat Pulldown',
     pattern: 'vertical_pull',
     primaryGroup: 'back',
     muscles: ['latissimus_dorsi', 'biceps', 'rear_deltoid'],
@@ -1808,46 +1743,17 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
-    relatedVariants: ['pulldown_neutral', 'pull_up_weighted_barbell'],
+    relatedVariants: ['pull_up'],
+    variants: { grip: ['pronated', 'supinated', 'neutral'], width: ['wide', 'medium', 'narrow'] },
     tips: [
-      'Agarre prono (palmas hacia fuera) ligeramente más ancho que los hombros.',
+      'Con agarre prono, algo más ancho que los hombros; con supino o neutro, a su anchura.',
       'Tira hacia el pecho — no detrás de la cabeza.',
       'Escápulas abajo y atrás al final del recorrido.',
     ],
     tipsEn: [
-      'Pronated grip (palms away) slightly wider than shoulder-width.',
+      'Pronated grip slightly wider than shoulder-width; supinated or neutral, at shoulder-width.',
       'Pull toward your chest — not behind your head.',
       'Scapulae down and back at the end.',
-    ],
-    warmup: [],
-  },
-
-  pulldown_supinated: {
-    id: 'pulldown_supinated',
-    name: 'Jalón al pecho agarre supino',
-    nameEn: 'Supinated-grip Pulldown',
-    pattern: 'vertical_pull',
-    primaryGroup: 'back',
-    muscles: ['latissimus_dorsi', 'biceps'],
-    equipment: ['cables'],
-    level: 'beginner',
-    isCompound: true,
-    isKeyCandidate: true,
-    priority: { hypertrophy: 'high', strength: 'medium', max_strength: 'low', endurance: 'high', functional: 'medium' },
-    progressionModel: 'double_progression',
-    progressionDirection: 'increase',
-    minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
-    assistedVariantId: null,
-    relatedVariants: ['pulldown_neutral', 'pulldown_pronated'],
-    tips: [
-      'Agarre supino (palmas hacia ti) a la anchura de los hombros.',
-      'Mayor activación de bíceps que el agarre prono.',
-      'Tira hacia el pecho, escápulas abajo.',
-    ],
-    tipsEn: [
-      'Supinated grip (palms toward you) at shoulder-width.',
-      'More bicep activation than pronated grip.',
-      'Pull toward your chest, scapulae down.',
     ],
     warmup: [],
   },
@@ -2211,6 +2117,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 10, maxReps: 12, weightStep: 5, restSec: 90,
     isUnilateral: true,
+    unilateralOf: 'leg_press_standard',
     assistedVariantId: null,
     relatedVariants: ['leg_press_standard'],
     tips: [
@@ -2302,6 +2209,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 8, maxReps: 10, weightStep: 2.5, restSec: 90,
     isUnilateral: true,
+    unilateralOf: 'romanian_deadlift_db',
     assistedVariantId: null,
     relatedVariants: ['romanian_deadlift_db', 'romanian_deadlift'],
     tips: [
@@ -2389,6 +2297,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 10, maxReps: 12, weightStep: 0, restSec: 60,
     isUnilateral: true,
+    unilateralOf: 'hip_thrust',
     assistedVariantId: null,
     relatedVariants: ['hip_thrust', 'glute_bridge_unilateral'],
     warmup: [],
@@ -3238,7 +3147,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 12, maxReps: 15, weightStep: 2.5, restSec: 60,
     assistedVariantId: null,
-    relatedVariants: ['pulldown_pronated', 'pullover_db'],
+    relatedVariants: ['pulldown', 'pullover_db'],
     tips: [
       'Brazos extendidos (sin doblar el codo) — el movimiento viene del latísimo.',
       'Baja la barra/cuerda hasta los muslos manteniendo el core activo.',
@@ -3266,7 +3175,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 10, maxReps: 15, weightStep: 2.5, restSec: 60,
     assistedVariantId: null,
-    relatedVariants: ['straight_arm_pulldown', 'pulldown_pronated'],
+    relatedVariants: ['straight_arm_pulldown', 'pulldown'],
     tips: [
       'Tumbado transversal en el banco, caderas abajo para mayor rango.',
       'El codo se dobla ligeramente — pero el movimiento es de rotación de hombro.',
@@ -4599,6 +4508,7 @@ export const EXERCISE_LIBRARY = {
     progressionDirection: 'increase',
     minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 60,
     isUnilateral: true,
+    unilateralOf: 'cable_row',
     assistedVariantId: null,
     relatedVariants: ['cable_row', 'db_row_unilateral'],
     tips: [

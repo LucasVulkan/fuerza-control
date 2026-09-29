@@ -1811,6 +1811,14 @@
       "rowCustomSub": "{{n}} pasos · {{rest}}"
     }
   },
+  "variants": {
+    "options": {
+      "grip": { "pronated": "Prono", "supinated": "Supino", "neutral": "Neutro" },
+      "width": { "wide": "Ancho", "medium": "Medio", "narrow": "Estrecho" }
+    },
+    "nameUnilateral": "{{name}} unilateral",
+    "nameApart": "{{name}} · {{variant}}"
+  },
   "customExercise": {
     "title": "Nuevo ejercicio",
     "nameLabel": "NOMBRE",

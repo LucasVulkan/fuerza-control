@@ -22,6 +22,7 @@ import { compressSession } from './sessionCompression';
 import { resolveSlot, fitsEquipment, fitsLevel } from './slotResolver';
 import { withStages } from './stageProgress';
 import { normalizeWeeklyVolume } from './weeklyVolume';
+import { cleanVariant } from './variants';
 
 // Series/reps/descanso por objetivo. Vivían en `programGenerator.js`, que era
 // quien las escribía primero; al retirarse el procedural (rediseno.md §4) se
@@ -83,8 +84,12 @@ function buildExConfig(archetypeEx, resolvedExId, isLimited, limitations, applyG
   const baseMinReps = useGoalParams ? goalParams.minReps : archetypeEx.minReps;
   const baseMaxReps = useGoalParams ? goalParams.maxReps : archetypeEx.maxReps;
 
+  // Si el resolvedor cayó en otro ejercicio, la variante que no aplica se cae.
+  const variant = cleanVariant(archetypeEx.variant, EXERCISE_LIBRARY[resolvedExId]);
+
   return {
     exerciseId: resolvedExId,
+    ...(variant ? { variant } : {}),
     isKey,
     // Interno del adaptador (spec §3.3): la escalera de compresión necesita
     // distinguir el complementario del aislamiento, pero al sessionTemplate no

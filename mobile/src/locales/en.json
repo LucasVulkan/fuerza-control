@@ -1811,6 +1811,14 @@
       "rowCustomSub": "{{n}} steps · {{rest}}"
     }
   },
+  "variants": {
+    "options": {
+      "grip": { "pronated": "Pronated", "supinated": "Supinated", "neutral": "Neutral" },
+      "width": { "wide": "Wide", "medium": "Medium", "narrow": "Narrow" }
+    },
+    "nameUnilateral": "Unilateral {{name}}",
+    "nameApart": "{{name}} · {{variant}}"
+  },
   "customExercise": {
     "title": "New exercise",
     "nameLabel": "NAME",

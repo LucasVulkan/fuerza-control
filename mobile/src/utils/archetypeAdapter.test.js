@@ -30,3 +30,25 @@ describe('adaptArchetype — levelCuts', () => {
     expect(levelCuts).toEqual([]);
   });
 });
+
+// exercise-variants.md §3.2: los jalones se juntaron en uno con su agarre.
+describe('arquetipos y variantes', () => {
+  it('ningún día repite ejercicio (una sesión no admite el mismo dos veces)', () => {
+    for (const a of ARCHETYPES) {
+      for (const day of a.days) {
+        const ids = day.exercises.map((e) => e.exerciseId);
+        expect(new Set(ids).size, `${a.id} · ${day.label}`).toBe(ids.length);
+      }
+    }
+  });
+
+  it('la variante del arquetipo llega a la sesión generada', () => {
+    const arch = ARCHETYPES.find((a) => a.days.some((d) => d.exercises.some((e) => e.exerciseId === 'pulldown' && e.variant)));
+    const { sessionTemplates } = adaptArchetype(arch, {
+      ...BEGINNER_ANSWERS, level: arch.level, equipment: [...BEGINNER_ANSWERS.equipment, 'cables'],
+    });
+    const pulldowns = Object.values(sessionTemplates).flatMap((t) => t.exercises).filter((e) => e.exerciseId === 'pulldown');
+    expect(pulldowns.length).toBeGreaterThan(0);
+    expect(pulldowns.every((e) => e.variant?.grip)).toBe(true);
+  });
+});

@@ -30,6 +30,25 @@ describe('filterBySearch', () => {
     expect(find('press')).toEqual(['Press de banca']);
   });
 
+  it('busca por palabras sueltas, en cualquier orden', () => {
+    const lib = [
+      { name: 'Remo en polea', nameEn: 'Seated Cable Row' },
+      { name: 'Remo polea alta', nameEn: 'High Cable Row' },
+      { name: 'Dominadas supinas', nameEn: 'Chin-ups' },
+      { name: 'Press de hombro en máquina', nameEn: 'Machine Shoulder Press' },
+      { name: 'Curl bíceps supinación', nameEn: 'Supinated Biceps Curl' },
+    ];
+    const f = (q) => filterBySearch(lib, q, (e) => `${e.name} ${e.nameEn}`).map((e) => e.name);
+    expect(f('remo polea')).toEqual(['Remo en polea', 'Remo polea alta']);
+    expect(f('polea remo')).toEqual(['Remo en polea', 'Remo polea alta']);
+    expect(f('dominada supina')).toEqual(['Dominadas supinas']);
+    // Guiones como espacio, y la búsqueda pegada: sin caer en la subsecuencia
+    // (que antes devolvía press en máquina y curls).
+    expect(f('chin up')).toEqual(['Dominadas supinas']);
+    expect(f('chin-up')).toEqual(['Dominadas supinas']);
+    expect(f('chinup')).toEqual(['Dominadas supinas']);
+  });
+
   it('devuelve vacío cuando no se parece a nada', () => {
     expect(find('dominadas')).toEqual([]);
   });

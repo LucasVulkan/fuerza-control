@@ -124,7 +124,7 @@ describe('internalLoad', () => {
 describe('isBodyweight — contra la librería real', () => {
   it('clasifica bien los casos que importan', () => {
     expect(isBodyweight(EXERCISE_LIBRARY.push_up)).toBe(true);          // equipment []
-    expect(isBodyweight(EXERCISE_LIBRARY.pull_up_neutral)).toBe(true);  // ['pullup_bar']
+    expect(isBodyweight(EXERCISE_LIBRARY.pull_up)).toBe(true);  // ['pullup_bar']
     expect(isBodyweight(EXERCISE_LIBRARY.pull_up_weighted)).toBe(true); // + weight_belt
     expect(isBodyweight(EXERCISE_LIBRARY.pull_up_assisted)).toBe(true); // + goma
     expect(isBodyweight(EXERCISE_LIBRARY.squat_barbell)).toBe(false);

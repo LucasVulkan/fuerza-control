@@ -272,7 +272,7 @@ describe('sesiones cortas — borrar antes que bajar series', () => {
   // Cinco grupos distintos y sin pares antagonistas contiguos: ni redundancia
   // que quitar ni superserie que montar, así que sólo se ve el efecto del orden.
   const MIXED = [
-    ex('pulldown_pronated',      1, 5, 120),
+    ex('pulldown',      1, 5, 120),
     ex('bicep_curl_supination',  3, 5, 90),
     ex('leg_curl_lying',         3, 5, 90),
     ex('calf_raise_standing',    3, 5, 90),

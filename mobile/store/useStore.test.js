@@ -2155,3 +2155,34 @@ describe('plantillas de sesión aparte de mis sesiones — group-classes.md §4.
     expect(tpl(dup)).toMatchObject({ kind: 'template', onHome: false, name: 'Copia' });
   });
 });
+
+describe('ejercicios juntados al rehidratar — exercise-variants.md P41', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(AsyncStorage, 'getItem').mockResolvedValue(null);
+  });
+
+  it('plantillas e historial pasan al id nuevo con su variante', async () => {
+    const state = {
+      sessionTemplates: { t1: { id: 't1', exercises: [{ exerciseId: 'pulldown_supinated', sets: 3 }] } },
+      workoutLog: [{ id: 'l1', sessionTemplateId: 't1', timestamp: 1, exercises: [{ exerciseId: 'pulldown_supinated', sets: [] }] }],
+      clientLogs: {},
+    };
+    rehydrateCallback()(state, undefined);
+    expect(state.sessionTemplates.t1.exercises[0]).toMatchObject({ exerciseId: 'pulldown', variant: { grip: 'supinated' } });
+    expect(state.workoutLog[0].exercises[0]).toMatchObject({ exerciseId: 'pulldown', variant: { grip: 'supinated' } });
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
+  });
+
+  it('la sesión en curso sigue al ejercicio juntado', async () => {
+    const abierta = {
+      templateId: 't1', startedAt: Date.now(), setsState: { seated_row_neutral: [{ weight: '40', reps: '', time: '', done: false }] },
+      exerciseNotes: {}, adHocExercises: [],
+    };
+    AsyncStorage.getItem.mockResolvedValue(JSON.stringify(abierta));
+    rehydrateCallback()({}, undefined);
+    await vi.waitFor(() => expect(useStore.getState().activeSession.templateId).toBe('t1'));
+    expect(useStore.getState().activeSession.setsState).toEqual({ cable_row: [{ weight: '40', reps: '', time: '', done: false }] });
+  });
+});
