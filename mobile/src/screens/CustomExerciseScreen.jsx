@@ -35,6 +35,7 @@ import StepField from '../components/ui/StepField';
 import { NavRow, OptionRow, ToggleRow, NoteRow, CHEVRON_GREY } from '../components/ui/EditorRows';
 import { ArrowIcon, ProgressionIcon, VariantIcon } from '../components/ui/EditorIcons';
 import VariantPicker from '../components/ui/VariantPicker';
+import AnimatedHeight from '../components/ui/AnimatedHeight';
 import DragSheet from '../components/DragSheet';
 import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
 import { VARIANT_DIMS, variantLabel, isEmptyVariant } from '../utils/variants';
@@ -329,34 +330,36 @@ export default function CustomExerciseScreen({ navigation, route }) {
         onClose={() => setVariantSheetOpen(false)}
         title={t('variants.title')}
       >
-        <View style={styles.sheetBody}>
-          <View>
-            <VariantPicker
-              def={{ variants: isUnilateral ? { grip: VARIANT_DIMS.grip } : VARIANT_DIMS }}
-              value={variant}
-              onChange={setVariant}
-            />
-            <Text style={[styles.hint, { marginTop: spacing.md }]}>
-              {isUnilateral ? `${t('variants.howHint')} ${t('variants.widthNA')}` : t('variants.howHint')}
-            </Text>
-          </View>
-          <View style={{ gap: spacing.sm }}>
-            <Text style={styles.sheetCaption}>{t('variants.identityTitle').toUpperCase()}</Text>
-            <View style={styles.optGroup}>
-              <ToggleRow
-                label={t('variants.unilateral')}
-                hint={t('variants.unilateralNewHint')}
-                value={isUnilateral}
-                alwaysHint
-                onChange={(v) => {
-                  setIsUnilateral(v);
-                  // Una mano no tiene anchura.
-                  if (v && variant.width) { const next = { ...variant }; delete next.width; setVariant(next); }
-                }}
+        <AnimatedHeight>
+          <View style={styles.sheetBody}>
+            <View>
+              <VariantPicker
+                def={{ variants: isUnilateral ? { grip: VARIANT_DIMS.grip } : VARIANT_DIMS }}
+                value={variant}
+                onChange={setVariant}
               />
+              <Text style={[styles.hint, { marginTop: spacing.md }]}>
+                {isUnilateral ? `${t('variants.howHint')} ${t('variants.widthNA')}` : t('variants.howHint')}
+              </Text>
+            </View>
+            <View style={{ gap: spacing.sm }}>
+              <Text style={styles.sheetCaption}>{t('variants.identityTitle').toUpperCase()}</Text>
+              <View style={styles.optGroup}>
+                <ToggleRow
+                  label={t('variants.unilateral')}
+                  hint={t('variants.unilateralNewHint')}
+                  value={isUnilateral}
+                  alwaysHint
+                  onChange={(v) => {
+                    setIsUnilateral(v);
+                    // Una mano no tiene anchura.
+                    if (v && variant.width) { const next = { ...variant }; delete next.width; setVariant(next); }
+                  }}
+                />
+              </View>
             </View>
           </View>
-        </View>
+        </AnimatedHeight>
       </DragSheet>
 
       <DragSheet

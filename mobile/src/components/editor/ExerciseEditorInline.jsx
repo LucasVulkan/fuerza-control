@@ -34,6 +34,7 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import { ArrowIcon, ProgressionIcon, VariantIcon, LockIcon } from '../ui/EditorIcons';
 import VariantPicker from '../ui/VariantPicker';
+import AnimatedHeight from '../ui/AnimatedHeight';
 import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
 import { decompose, compose, canBeUnilateral } from '../../utils/exerciseIdentity';
 import StepField, { STEP_BTN } from '../ui/StepField';
@@ -686,72 +687,74 @@ export default function ExerciseEditorInline({
         onClose={() => setVariantSheetOpen(false)}
         title={t('variants.title')}
       >
-        <View style={styles.sheetBody}>
-          {/* Arriba lo que solo informa; con «Ejercicio aparte» es fija. */}
-          {apartOn ? (
-            <View style={{ gap: spacing.sm }}>
-              <Text style={styles.groupCaption}>{t('variants.fixedTitle').toUpperCase()}</Text>
-              <View style={styles.optGroup}>
-                <OptionRow
-                  label={variantLabel(ident.variant, t)}
-                  hint={t('variants.fixedHint')}
-                  right={<LockIcon size={14} color={th.colors.mutedLight} />}
-                />
+        <AnimatedHeight>
+          <View style={styles.sheetBody}>
+            {/* Arriba lo que solo informa; con «Ejercicio aparte» es fija. */}
+            {apartOn ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text style={styles.groupCaption}>{t('variants.fixedTitle').toUpperCase()}</Text>
+                <View style={styles.optGroup}>
+                  <OptionRow
+                    label={variantLabel(ident.variant, t)}
+                    hint={t('variants.fixedHint')}
+                    right={<LockIcon size={14} color={th.colors.mutedLight} />}
+                  />
+                </View>
               </View>
-            </View>
-          ) : dims.length > 0 ? (
-            <View>
-              {/* Pasos con SegmentedControl, como la hoja de Progresión (QA P44). */}
-              <VariantPicker def={def} value={variant} onChange={setVariant} />
-              <Text style={[styles.hint, styles.variantHint]}>
-                {ident.uni && rootDef?.variants?.width && !def?.variants?.width
-                  ? `${t('variants.howHint')} ${t('variants.widthNA')}`
-                  : t('variants.howHint')}
-              </Text>
-            </View>
-          ) : null}
+            ) : dims.length > 0 ? (
+              <View>
+                {/* Pasos con SegmentedControl, como la hoja de Progresión (QA P44). */}
+                <VariantPicker def={def} value={variant} onChange={setVariant} />
+                <Text style={[styles.hint, styles.variantHint]}>
+                  {ident.uni && rootDef?.variants?.width && !def?.variants?.width
+                    ? `${t('variants.howHint')} ${t('variants.widthNA')}`
+                    : t('variants.howHint')}
+                </Text>
+              </View>
+            ) : null}
 
-          {/* Abajo lo que cambia el ejercicio: otro historial, otra progresión. */}
-          {showUni || ident.natural || showApart ? (
-            <View style={{ gap: spacing.sm }}>
-              <Text style={styles.groupCaption}>{t('variants.identityTitle').toUpperCase()}</Text>
-              <View style={styles.optGroup}>
-                {ident.natural ? (
-                  <OptionRow label={t('variants.oneHand')} hint={t('variants.alreadyUnilateral')} />
-                ) : showUni ? (
-                  <ToggleRow
-                    label={t('variants.unilateral')}
-                    hint={uniCheck?.blocked ? blockedHint(uniCheck) : t('variants.unilateralHint')}
-                    value={ident.uni}
-                    alwaysHint
-                    warn={!!uniCheck?.blocked}
-                    disabled={!!uniCheck?.blocked}
-                    onChange={() => applyIdentity(uniTarget)}
-                  />
-                ) : null}
-                {showApart ? (
-                  <ToggleRow
-                    label={t('variants.apart')}
-                    hint={
-                      apartCheck?.blocked ? blockedHint(apartCheck)
-                        : apartOn ? t('variants.apartHintOn', { base: baseOf(ident.uni) })
-                          : chosen ? t('variants.apartHintOff', { name: apartCheck.name, base: baseOf(ident.uni) })
-                            : t('variants.apartNeedsVariant')
-                    }
-                    value={apartOn}
-                    alwaysHint
-                    warn={!!apartCheck?.blocked}
-                    disabled={!!apartCheck?.blocked || (!apartOn && !chosen)}
-                    onChange={() => applyIdentity(
-                      apartTarget,
-                      apartOn ? null : t('variants.toastApart', { name: apartCheck.name }),
-                    )}
-                  />
-                ) : null}
+            {/* Abajo lo que cambia el ejercicio: otro historial, otra progresión. */}
+            {showUni || ident.natural || showApart ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text style={styles.groupCaption}>{t('variants.identityTitle').toUpperCase()}</Text>
+                <View style={styles.optGroup}>
+                  {ident.natural ? (
+                    <OptionRow label={t('variants.oneHand')} hint={t('variants.alreadyUnilateral')} />
+                  ) : showUni ? (
+                    <ToggleRow
+                      label={t('variants.unilateral')}
+                      hint={uniCheck?.blocked ? blockedHint(uniCheck) : t('variants.unilateralHint')}
+                      value={ident.uni}
+                      alwaysHint
+                      warn={!!uniCheck?.blocked}
+                      disabled={!!uniCheck?.blocked}
+                      onChange={() => applyIdentity(uniTarget)}
+                    />
+                  ) : null}
+                  {showApart ? (
+                    <ToggleRow
+                      label={t('variants.apart')}
+                      hint={
+                        apartCheck?.blocked ? blockedHint(apartCheck)
+                          : apartOn ? t('variants.apartHintOn', { base: baseOf(ident.uni) })
+                            : chosen ? t('variants.apartHintOff', { name: apartCheck.name, base: baseOf(ident.uni) })
+                              : t('variants.apartNeedsVariant')
+                      }
+                      value={apartOn}
+                      alwaysHint
+                      warn={!!apartCheck?.blocked}
+                      disabled={!!apartCheck?.blocked || (!apartOn && !chosen)}
+                      onChange={() => applyIdentity(
+                        apartTarget,
+                        apartOn ? null : t('variants.toastApart', { name: apartCheck.name }),
+                      )}
+                    />
+                  ) : null}
+                </View>
               </View>
-            </View>
-          ) : null}
-        </View>
+            ) : null}
+          </View>
+        </AnimatedHeight>
       </DragSheet>
 
       {/* ══ HOJA: calentamiento ══════════════════════════════════════════════ */}

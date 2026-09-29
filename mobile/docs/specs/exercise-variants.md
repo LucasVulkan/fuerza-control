@@ -706,6 +706,12 @@ entrenos del original con esa variante.
   ejercicio: `updateExerciseParams` en una sesión, `setSessionVariant` en un
   entreno en marcha. Unilateral define el ejercicio (`isUnilateral`) y quita la
   anchura.
+- QA 29-sep, animación: `SegmentedControl` distingue aparecer (crece desde el
+  centro de la opción, sin viajar desde donde se apagó), desaparecer (se encoge)
+  y cambiar de opción (desliza). Nuevo `ui/AnimatedHeight.jsx`: anima la altura
+  de su contenido (mide con `onLayout`, primera medida de golpe); envuelve el
+  cuerpo de las tres hojas de variante para que no salten al cambiar de largo la
+  pista de «Ejercicio único».
 
 **Probar P44**
 
@@ -738,6 +744,13 @@ entrenos del original con esa variante.
   mano».
 - [ ] Encender Unilateral o Ejercicio único: el título del editor cambia y la
   hoja se queda abierta, sin salto.
+- [ ] Control segmentado (vale para toda la app): con una opción elegida,
+  quitarla y elegir otra → el resalte no cruza el control, aparece creciendo
+  desde el centro de la nueva; al quitarla se encoge; de una opción a otra sigue
+  deslizando.
+- [ ] Hoja Variante: al cambiar agarre o anchura, el texto de «Ejercicio único»
+  cambia de largo y la hoja crece o encoge animada, sin saltos (también en la
+  del Workout y en «Nuevo ejercicio»).
 
 ---
 

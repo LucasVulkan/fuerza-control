@@ -42,6 +42,7 @@ import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/se
 import { targetLabel as buildTarget } from '../../utils/prescription';
 import { DIM_ORDER, variantDims, isEmptyVariant, sameVariant, displayVariant } from '../../utils/variants';
 import VariantPicker from '../ui/VariantPicker';
+import AnimatedHeight from '../ui/AnimatedHeight';
 import DragSheet from '../DragSheet';
 import { isExerciseDone } from '../../utils/exerciseStatus';
 import { spacing, textStyles, withOpacity, lh, LINE } from '../../theme';
@@ -964,25 +965,27 @@ export default function ExerciseCard({
           onClose={() => setVariantSheetOpen(false)}
           title={t('variants.title')}
         >
-          <View style={styles.variantSheet}>
-            <View style={{ gap: spacing.sm }}>
-              <Text style={styles.variantCaption}>{t('variants.todayTitle').toUpperCase()}</Text>
-              {/* Sin desmarcar (hoy se cambia, no se deja en blanco) y con el
-                  icono de volver en cada fila cambiada (QA P43). Igual que el
-                  programa → sin cambio de hoy. */}
-              <VariantPicker
-                def={def}
-                value={variant}
-                resetTo={programVariant}
-                allowDeselect={false}
-                onChange={(next) => setSessionVariant(
-                  exConfig.exerciseId,
-                  sameVariant(next, programVariant) ? undefined : next,
-                )}
-              />
+          <AnimatedHeight>
+            <View style={styles.variantSheet}>
+              <View style={{ gap: spacing.sm }}>
+                <Text style={styles.variantCaption}>{t('variants.todayTitle').toUpperCase()}</Text>
+                {/* Sin desmarcar (hoy se cambia, no se deja en blanco) y con el
+                    icono de volver en cada fila cambiada (QA P43). Igual que el
+                    programa → sin cambio de hoy. */}
+                <VariantPicker
+                  def={def}
+                  value={variant}
+                  resetTo={programVariant}
+                  allowDeselect={false}
+                  onChange={(next) => setSessionVariant(
+                    exConfig.exerciseId,
+                    sameVariant(next, programVariant) ? undefined : next,
+                  )}
+                />
+              </View>
+              <Text style={styles.variantHint}>{t('variants.todayHint')}</Text>
             </View>
-            <Text style={styles.variantHint}>{t('variants.todayHint')}</Text>
-          </View>
+          </AnimatedHeight>
         </DragSheet>
       )}
 
