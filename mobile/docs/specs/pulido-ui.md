@@ -220,49 +220,49 @@ es un Modal) y la hoja «Añadir» del Workout (el editor de bloque también).
 
 **Probar U30**
 
-- [ ] Plantillas → `···` de un programa: seis filas con icono (ver, editar,
+- [x] Plantillas → `···` de un programa: seis filas con icono (ver, editar,
   duplicar, compartir, exportar y borrar en rojo), agrupadas con esquinas
   redondeadas arriba y abajo. Tocar una cierra la hoja deslizando y hace lo suyo.
-- [ ] Plantillas → pestaña Sesiones → `···`: editar, duplicar y borrar con icono.
-- [ ] Clientes → ficha → Programa → `⋯`: filas con icono; «Programas
+- [x] Plantillas → pestaña Sesiones → `···`: editar, duplicar y borrar con icono.
+- [x] Clientes → ficha → Programa → `⋯`: filas con icono; «Programas
   archivados» lleva el número a la derecha; borrar en rojo.
-- [ ] Clientes → pulsación larga en una tarjeta: sale la hoja de siempre de la
+- [x] Clientes → pulsación larga en una tarjeta: sale la hoja de siempre de la
   app (se arrastra para cerrar), con el nombre del cliente de título. Un
   cliente sin app lleva primero EMPEZAR en lima; uno con app, «Preparar
   próxima sesión» en azul. Progreso lleva el badge de sesiones nuevas si hay.
   Editar programa abre el editor sin quedarse colgado (iPhone incluido).
-- [ ] Editor de sesión → «+ Añadir»: ejercicio, bloque y (si hay) desde preset,
+- [x] Editor de sesión → «+ Añadir»: ejercicio, bloque y (si hay) desde preset,
   con icono. Desde preset: cada preset con su resumen debajo; el ✕ lo borra
   (con su aviso) y tocar la fila lo añade.
-- [ ] Editor de sesión → `···`: renombrar, compartir como texto, duplicar y
+- [x] Editor de sesión → `···`: renombrar, compartir como texto, duplicar y
   borrar (rojo) con icono.
-- [ ] Historial → gestionar: las dos opciones de borrar en rojo con icono y el
+- [x] Historial → gestionar: las dos opciones de borrar en rojo con icono y el
   texto de ayuda debajo.
-- [ ] Workout de una sesión libre → «+ Añadir»: ejercicio y bloque con icono;
+- [x] Workout de una sesión libre → «+ Añadir»: ejercicio y bloque con icono;
   «bloque» abre el editor de bloque sin quedarse colgado (iPhone incluido).
-- [ ] Inicio → «+ Sesión libre»: empezar ya, crear y desde plantillas con icono;
+- [x] Inicio → «+ Sesión libre»: empezar ya, crear y desde plantillas con icono;
   la lista de plantillas también. «Desde tus plantillas» lleva el número de
   plantillas a la derecha (sin paréntesis) y de subtítulo «Crea una copia de la
   plantilla».
-- [ ] Android con botones de navegación: ninguna hoja deja un hueco vacío
+- [x] Android con botones de navegación: ninguna hoja deja un hueco vacío
   debajo ni se mete bajo los botones; la última fila queda justo encima.
-- [ ] Menú ≡ en Android: al desplazar, las filas se desvanecen justo encima de
+- [x] Menú ≡ en Android: al desplazar, las filas se desvanecen justo encima de
   los botones (sin franja gris que las corte) y bajo los botones no se ve
   ninguna fila. Bajando hasta el final, la última fila queda entera encima. El
   fundido ocupa todo el ancho de la hoja.
-- [ ] Menú ≡ (y cualquier hoja que desplace): arriba, con la hoja quieta, la
+- [x] Menú ≡ (y cualquier hoja que desplace): arriba, con la hoja quieta, la
   primera fila se ve entera; al empezar a bajar, las filas se desvanecen bajo
   la cabecera en vez de cortarse.
-- [ ] Workout: el velo de abajo sobre los botones de Android se ve igual que antes. En el menú ≡, bajando hasta el final
+- [x] Workout: el velo de abajo sobre los botones de Android se ve igual que antes. En el menú ≡, bajando hasta el final
   se ve entera la última fila (nada gris la tapa).
-- [ ] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y
+- [x] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y
   «borrar historial» (rojo), las dos con icono.
-- [ ] Ficha de cliente → + Sesión libre: igual que en Inicio. «En blanco» y,
+- [x] Ficha de cliente → + Sesión libre: igual que en Inicio. «En blanco» y,
   si hay plantillas, «Desde tus plantillas» con el número a la derecha y
   «Crea una copia de la plantilla» debajo. Al tocarla se abre otra hoja con la
   lista; tocar una se la asigna al cliente con su aviso (iPhone incluido: el
   cambio de hoja no se queda colgado).
-- [ ] El menú ≡ se ve y funciona igual que antes (sus iconos ahora vienen del
+- [x] El menú ≡ se ve y funciona igual que antes (sus iconos ahora vienen del
   módulo común).
 
 ## 4. U31 — Sesiones libres: icono delante o sin hueco
@@ -362,7 +362,7 @@ probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 |---|---|---|---|
 | U28 | Pager sincronizado con el segmentado de Progresión; segmentado a Reanimated | pendiente | 🟡 |
 | U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
-| U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — pendiente de probar en dispositivo | 🟡 |
+| U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
 | U32 | Botones del programa de cliente fuera de la tarjeta | pendiente | 🟢 |
 | U33 | `ui/ConfirmSheet` y fuera los `Alert.alert` | pendiente | 🟡 |
