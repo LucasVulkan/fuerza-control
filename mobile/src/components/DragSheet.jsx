@@ -16,12 +16,28 @@
 import { useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Animated, PanResponder, KeyboardAvoidingView } from 'react-native';
 import { Text } from './ui/Text';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { spacing, borders, textStyles } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { SheetContext } from './ui/sheetContext';
+
+/**
+ * La tarjeta de la hoja. Va aparte para leer los márgenes del `SafeAreaProvider`
+ * que hay DENTRO del Modal: el Modal es otra ventana, y en Android sus márgenes
+ * no son los de la raíz de la app. Con los de la raíz, la hoja acababa unas
+ * veces subida un alto de barra de navegación de más y otras veces debajo de
+ * los botones (pulido-ui.md §3).
+ */
+function SheetCard({ style, children }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Animated.View style={[style, { paddingBottom: insets.bottom + spacing.xl }]}>
+      {children}
+    </Animated.View>
+  );
+}
 
 /**
  * `action` sustituye el botón "Aceptar" de la derecha por otra acción
@@ -30,7 +46,6 @@ import { SheetContext } from './ui/sheetContext';
  */
 export default function DragSheet({ visible, onClose, title, action, tall, children }) {
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
   const { t }  = useTranslation();
 
   const translateY      = useRef(new Animated.Value(900)).current;
@@ -42,10 +57,22 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; });
 
+  // Una hoja que ya no está montada no avisa de que se ha cerrado. Una opción
+  // que cambia a OTRA hoja desmonta esta al instante, pero su animación de
+  // cierre sigue y al acabar llamaba a `onClose`: si las dos hojas comparten
+  // estado (+ Sesión libre de un cliente), cerraba la hoja nueva recién abierta.
+  const mounted = useRef(true);
+  // Se reactiva al montar: en desarrollo React monta, desmonta y vuelve a
+  // montar los efectos, y sin esto la hoja no volvía a cerrarse nunca.
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
   const close = () => {
     Animated.timing(translateY, {
       toValue: 900, duration: 240, useNativeDriver: true,
-    }).start(() => onCloseRef.current());
+    }).start(() => { if (mounted.current) onCloseRef.current(); });
   };
   const closeRef = useRef(close);
   closeRef.current = close;
@@ -88,12 +115,12 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
 
   return (
     <SheetContext.Provider value={sheet}>
-    {/* Borde a borde (SDK 54): sin estas dos, en Android el Modal acaba encima
-        de la barra de navegación pero `insets.bottom` la cuenta igual, así que
-        la hoja subía ese alto y dejaba un hueco vacío debajo — y en el menú ≡,
-        que llega al tope, la barra gris tapaba las últimas filas. Es la regla de
-        UI-MIGRATION §8; `NotesModal` y el detalle de Progreso ya la cumplían. */}
+    {/* Borde a borde (SDK 54): el Modal cubre también las barras del sistema
+        (regla de UI-MIGRATION §8), y el `SafeAreaProvider` de dentro mide los
+        márgenes de ESTA ventana para que la hoja acabe justo encima de los
+        botones de Android — ver `SheetCard`. */}
     <Modal visible={visible} transparent animationType="none" onRequestClose={close} statusBarTranslucent navigationBarTranslucent>
+      <SafeAreaProvider>
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
         <View style={StyleSheet.absoluteFillObject} {...panResponder.panHandlers}>
           <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={close} />
@@ -110,13 +137,7 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
             contenido da un salto cada vez que se despliega algo dentro —y en la
             de etapas se despliega constantemente—, así que el contenido pasa a
             scrollear dentro de una caja que no se mueve. */}
-        <Animated.View
-          style={[
-            styles.card,
-            tall && styles.cardTall,
-            { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
-          ]}
-        >
+        <SheetCard style={[styles.card, tall && styles.cardTall, { transform: [{ translateY }] }]}>
           <View {...panResponder.panHandlers} style={styles.handleWrap}>
             <View style={styles.handle} />
           </View>
@@ -133,8 +154,9 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
           <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {children}
           </ScrollView>
-        </Animated.View>
+        </SheetCard>
       </KeyboardAvoidingView>
+      </SafeAreaProvider>
     </Modal>
     </SheetContext.Provider>
   );

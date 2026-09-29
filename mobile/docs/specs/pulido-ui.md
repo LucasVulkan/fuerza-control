@@ -188,7 +188,16 @@ plantilla». Y un fallo de `DragSheet` que venía de antes: su `Modal` no llevab
 UI-MIGRATION §8), así que en Android la hoja acababa encima de la barra de
 navegación pero sumaba `insets.bottom` igual: todas las hojas subían ese alto
 con un hueco vacío debajo, y en el menú ≡, que llega al tope, la barra gris
-tapaba las últimas filas.
+tapaba las últimas filas. Poner las dos props no bastó —las hojas pasaron a
+quedar debajo de los botones—: los márgenes se leían de la raíz de la app, y el
+Modal es otra ventana. Ahora `DragSheet` lleva un `SafeAreaProvider` dentro y la
+tarjeta mide los de su ventana.
+
+Segundo fallo de la misma ronda: tocar una opción que abre OTRA hoja desmonta
+la primera, pero su animación de cierre seguía y al acabar llamaba a su
+`onClose`. En la ficha de cliente las dos hojas de «+ Sesión libre» comparten
+estado, así que ese `onClose` tardío cerraba la de plantillas nada más abrirse.
+`DragSheet` ya no avisa de cierres cuando está desmontada.
 
 Probada la alternativa de tarjetas sueltas (radio completo y aire entre
 opciones) y descartada: las hojas de opciones siguen agrupadas, como el menú ≡
@@ -225,8 +234,8 @@ es un Modal) y la hoja «Añadir» del Workout (el editor de bloque también).
   la lista de plantillas también. «Desde tus plantillas» lleva el número de
   plantillas a la derecha (sin paréntesis) y de subtítulo «Crea una copia de la
   plantilla».
-- [ ] Android: ninguna hoja deja un hueco vacío debajo; la última fila queda
-  justo encima de la barra de navegación. En el menú ≡, bajando hasta el final
+- [ ] Android con botones de navegación: ninguna hoja deja un hueco vacío
+  debajo ni se mete bajo los botones; la última fila queda justo encima. En el menú ≡, bajando hasta el final
   se ve entera la última fila (nada gris la tapa).
 - [ ] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y
   «borrar historial» (rojo), las dos con icono.
