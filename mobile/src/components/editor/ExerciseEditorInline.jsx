@@ -460,19 +460,6 @@ export default function ExerciseEditorInline({
         <Text style={styles.summarySub}>{progLine}</Text>
       </View>
 
-      {/* ══ VARIANTE (no está en Figma — maqueta exercise-variants §1A) ═════ */}
-      {dims.length > 0 && (
-        <View style={styles.block}>
-          <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
-          <NavRow
-            icon={<VariantIcon size={15} color={th.colors.accent} />}
-            title={variantLabel(variant, t) || t('variants.none')}
-            subtitle={dimsSub}
-            onPress={() => setVariantSheetOpen(true)}
-          />
-        </View>
-      )}
-
       {/* ══ VOLUMEN ══════════════════════════════════════════════════════════ */}
       <View style={styles.block}>
         <Text style={styles.secLabel}>{t('exerciseEditor.sectionVolume').toUpperCase()}</Text>
@@ -506,6 +493,19 @@ export default function ExerciseEditorInline({
           )}
         </View>
       </View>
+
+      {/* ══ VARIANTE (no está en Figma — maqueta exercise-variants §1A) ═════ */}
+      {dims.length > 0 && (
+        <View style={styles.block}>
+          <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
+          <NavRow
+            icon={<VariantIcon size={15} color={th.colors.accent} />}
+            title={variantLabel(variant, t) || t('variants.none')}
+            subtitle={dimsSub}
+            onPress={() => setVariantSheetOpen(true)}
+          />
+        </View>
+      )}
 
       {/* ══ CALENTAMIENTO (no está en Figma — fila + hoja) ═══════════════════ */}
       <View style={styles.block}>

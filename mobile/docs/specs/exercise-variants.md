@@ -398,8 +398,9 @@ Maqueta §1A-§1B (grupo de arriba de la hoja) y §5.
 
 ### 4.1 Editor de ejercicio — fila VARIANTE
 
-`src/components/editor/ExerciseEditorInline.jsx`. Bloque nuevo **debajo del
-Resumen** (QA 29-sep: encima se perdía):
+`src/components/editor/ExerciseEditorInline.jsx`. Bloque nuevo **entre Volumen y
+Calentamiento** (QA 29-sep: encima del Resumen se perdía, y debajo del Resumen
+tampoco convencía):
 
 - Etiqueta de sección `variants.section` («VARIANTE»), `secLabel`.
 - `NavRow` (`src/components/ui/EditorRows.jsx`) con el icono de ajustes
@@ -459,7 +460,7 @@ tiene sentido en un press).
 ### 4.6 Ejercicio propio
 
 `CustomExerciseScreen.jsx`: sección nueva `customExercise.variantSection`
-(«VARIANTE») debajo del Resumen, como en el editor, con dos `ToggleRow`: «Agarre» (pista
+(«VARIANTE») entre Volumen y Progresión (el alta no tiene Calentamiento), con dos `ToggleRow`: «Agarre» (pista
 «Prono · Supino · Neutro») y «Anchura» («Ancho · Medio · Estrecho»). Encendido =
 todas las opciones de esa dimensión en `def.variants`. (P44 añade «A una mano»
 aquí.) Maqueta §7.
@@ -479,9 +480,10 @@ aquí.) Maqueta §7.
 
 **Probar P42**
 
-- [ ] Editor de «Jalón al pecho» y «Nuevo ejercicio»: la sección VARIANTE va
-  debajo del Resumen; en la hoja, sin iconos, elegir Neutro y Estrecho → la
-  fila dice «Neutro · Estrecho»; tocar Neutro otra vez lo desmarca.
+- [x] Editor de «Jalón al pecho»: en la hoja, sin iconos, elegir Neutro y
+  Estrecho → la fila dice «Neutro · Estrecho»; tocar Neutro otra vez lo desmarca.
+- [ ] La sección VARIANTE va entre Volumen y Calentamiento en el editor, y entre
+  Volumen y Progresión en «Nuevo ejercicio».
 - [x] Editor de sesión: «Jalón al pecho · Neutro · Estrecho» con la variante en
   gris en la línea del nombre; con un nombre largo se corta la variante, no el
   nombre.

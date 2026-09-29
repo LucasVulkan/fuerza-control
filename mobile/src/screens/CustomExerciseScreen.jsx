@@ -207,22 +207,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
             <Text style={styles.summarySub}>{progLine}</Text>
           </View>
 
-          {/* ══ VARIANTE (maqueta exercise-variants §7) ═══════════════════════ */}
-          <View style={styles.block}>
-            <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
-            <View style={styles.optGroup}>
-              {[['grip', hasGrip, setHasGrip], ['width', hasWidth, setHasWidth]].map(([dim, on, set]) => (
-                <ToggleRow
-                  key={dim}
-                  label={t(`variants.dim.${dim}`)}
-                  hint={VARIANT_DIMS[dim].map((o) => t(`variants.options.${dim}.${o}`)).join(' · ')}
-                  value={on}
-                  onChange={set}
-                />
-              ))}
-            </View>
-          </View>
-
           {/* ══ VOLUMEN ═══════════════════════════════════════════════════════ */}
           <View style={styles.block}>
             <Text style={styles.secLabel}>{t('exerciseEditor.sectionVolume').toUpperCase()}</Text>
@@ -252,6 +236,22 @@ export default function CustomExerciseScreen({ navigation, route }) {
               ) : (
                 <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
               )}
+            </View>
+          </View>
+
+          {/* ══ VARIANTE (maqueta exercise-variants §7) ═══════════════════════ */}
+          <View style={styles.block}>
+            <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
+            <View style={styles.optGroup}>
+              {[['grip', hasGrip, setHasGrip], ['width', hasWidth, setHasWidth]].map(([dim, on, set]) => (
+                <ToggleRow
+                  key={dim}
+                  label={t(`variants.dim.${dim}`)}
+                  hint={VARIANT_DIMS[dim].map((o) => t(`variants.options.${dim}.${o}`)).join(' · ')}
+                  value={on}
+                  onChange={set}
+                />
+              ))}
             </View>
           </View>
 
