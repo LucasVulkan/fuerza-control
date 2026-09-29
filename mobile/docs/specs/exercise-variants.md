@@ -714,43 +714,43 @@ entrenos del original con esa variante.
   pista de «Ejercicio único».
 
 **Probar P44**
-
-- [ ] Remo en polea → hoja → Unilateral: el editor pasa a «Remo unilateral en
+- [x] Remo en polea → hoja → Unilateral: el editor pasa a «Remo unilateral en
   polea» (el de la librería), la anchura desaparece y el Resumen dice «c/p».
   Apagarlo vuelve a «Remo en polea».
-- [ ] Jalón al pecho → Unilateral: se crea «Jalón al pecho unilateral»; en el
+- [x] Jalón al pecho → Unilateral: se crea «Jalón al pecho unilateral»; en el
   buscador de otra sesión sale como ejercicio normal, sin CUSTOM.
-- [ ] Remo con mancuerna: no hay interruptor, sale «Este ejercicio ya es
+- [x] Remo con mancuerna: no hay interruptor, sale «Este ejercicio ya es
   unilateral».
-- [ ] Jalón al pecho con Prono · Ancho → Ejercicio único: el texto dice
+- [x] Jalón al pecho con Prono · Ancho → Ejercicio único: el texto dice
   «Jalón al pecho · Prono · Ancho» y «otro Jalón al pecho»; al encenderlo el
   título cambia, la variante queda fija y sale el toast.
-- [ ] Con el único en la sesión, el buscador vuelve a ofrecer «Jalón al pecho»;
+- [x] Con el único en la sesión, el buscador vuelve a ofrecer «Jalón al pecho»;
   añadirlo deja dos jalones en la sesión, cada uno con su historial.
-- [ ] Con los dos jalones: apagar «Ejercicio único» no se mueve y dice «ya hay
+- [x] Con los dos jalones: apagar «Ejercicio único» no se mueve y dice «ya hay
   un «Jalón al pecho» en esta sesión».
-- [ ] Un jalón vinculado entre la A y la C → Unilateral: cambia en las dos
+- [x] Un jalón vinculado entre la A y la C → Unilateral: cambia en las dos
   sesiones.
 - [ ] En el móvil del cliente conectado, el programa con «Jalón al pecho
   unilateral» abre y se entrena (la definición llega con el programa).
-- [ ] «Nuevo ejercicio» (QA 29-sep): la sección VARIANTE es la misma fila y hoja
+- [x] «Nuevo ejercicio» (QA 29-sep): la sección VARIANTE es la misma fila y hoja
   que el editor, todo sin elegir. Elegir Neutro → el ejercicio creado tiene
   agarre y sale con «Neutro» en la sesión (o en el Workout, si se crea durante
   un entreno); encender Unilateral quita la anchura; sin tocar nada, el
   ejercicio no tiene variante.
-- [ ] Hoja Variante (QA 29-sep): agarre y anchura son pasos «1 · AGARRE»,
+- [x] Hoja Variante (QA 29-sep): agarre y anchura son pasos «1 · AGARRE»,
   «2 · ANCHURA» con control segmentado, como la hoja de Progresión; en el editor,
   tocar la elegida la quita. En la hoja pone siempre «Unilateral», nunca «A una
   mano».
-- [ ] Encender Unilateral o Ejercicio único: el título del editor cambia y la
+- [x] Encender Unilateral o Ejercicio único: el título del editor cambia y la
   hoja se queda abierta, sin salto.
-- [ ] Control segmentado (vale para toda la app): con una opción elegida,
+- [x] Control segmentado (vale para toda la app): con una opción elegida,
   quitarla y elegir otra → el resalte no cruza el control, aparece creciendo
   desde el centro de la nueva; al quitarla se encoge; de una opción a otra sigue
   deslizando.
 - [ ] Hoja Variante: al cambiar agarre o anchura, el texto de «Ejercicio único»
   cambia de largo y la hoja crece o encoge animada, sin saltos (también en la
-  del Workout y en «Nuevo ejercicio»).
+  del Workout y en «Nuevo ejercicio»). — 29-sep: a veces va a trompicones;
+  pendiente de ver si es cosa de Expo Go (probar en un build).
 
 ---
 
