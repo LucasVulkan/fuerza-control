@@ -26,7 +26,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Text, TextInput, MAX_FONT_SCALE } from '../components/ui/Text';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, interpolateColor, FadeIn, FadeInDown, LinearTransition,
+  useSharedValue, useAnimatedStyle, withTiming, interpolateColor, FadeIn, FadeInRight, LinearTransition,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +54,9 @@ const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 // ejercicios en los primeros meses puede dar 6-9 y se comían la pantalla.
 const PRS_VISIBLE = 3;
 
-// Entrada: la pantalla se construye sección a sección, de arriba abajo. Corta a
+// Entrada: la pantalla se construye sección a sección, de arriba abajo, y cada
+// una entra de derecha a izquierda (en horizontal puro: bajando se leía en
+// diagonal con el escalonado). Corta a
 // propósito — es la pantalla de después de entrenar y no puede hacer esperar.
 // Solo al montar: `entering` no se repite al contestar el RPE ni al plegar.
 const ENTER_MS      = 320;
@@ -358,7 +360,7 @@ export default function SessionRecapScreen({ navigation, route }) {
   // Cada sección que se pinta coge el siguiente turno; las que no salen no
   // dejan hueco en la cadencia.
   let enterStep = 0;
-  const enter = () => FadeInDown.duration(ENTER_MS).delay(enterStep++ * ENTER_STAGGER);
+  const enter = () => FadeInRight.duration(ENTER_MS).delay(enterStep++ * ENTER_STAGGER);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
