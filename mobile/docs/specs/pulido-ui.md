@@ -73,8 +73,10 @@ Orden nuevo en `SessionRecapScreen.jsx`:
 7. **Pie fijo** con HECHO; si falta el sRPE, «Falta: cómo de dura fue» encima,
    que baja hasta la pregunta. No bloquea.
 
-**Entrada**: la pantalla se construye sección a sección, cada una de derecha a izquierda (`FadeInRight`, 320 ms,
-70 ms entre una y otra; el pie se funde el último). Solo al montar.
+**Entrada**: la pantalla se construye sección a sección, cada una de derecha
+a izquierda desde 90 px fuera (entrada propia, `enterFromRight`; `FadeInRight`
+solo recorre 25), 380 ms y 110 ms entre una y otra; el pie se funde el último.
+Solo al montar.
 
 De paso: el nombre de la etapa se leía de `program.currentStageIndex`, que en
 el móvil del entrenador es su copia y no se mueve; ahora pasa por
@@ -117,9 +119,10 @@ el móvil del entrenador es su copia y no se mueve; ahora pasa por
   COMPLETADA» en azul, la letra va en azul, y HECHO vuelve a la ficha del
   cliente.
 - [ ] En inglés, ningún texto del recap sale en español.
-- [ ] Al entrar, las secciones aparecen una tras otra de arriba abajo, cada una entrando de derecha
-  a izquierda en horizontal, y el pie con HECHO llega el último, todo en menos de un
-  segundo. Contestar el RPE o abrir «Ver N récords más» no repite la entrada.
+- [ ] Al entrar, las secciones aparecen una tras otra de arriba abajo, cada una
+  deslizándose en horizontal desde fuera del borde derecho, con un desfase que
+  se nota, y el pie con HECHO llega el último. Contestar el RPE o abrir «Ver N
+  récords más» no repite la entrada.
 
 ## 3. U30 — Hojas de opciones con icono y estandarizadas
 

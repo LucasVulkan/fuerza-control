@@ -26,7 +26,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Text, TextInput, MAX_FONT_SCALE } from '../components/ui/Text';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, interpolateColor, FadeIn, FadeInRight, LinearTransition,
+  useSharedValue, useAnimatedStyle, withTiming, withDelay, interpolateColor, Easing, FadeIn, LinearTransition,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -55,12 +55,28 @@ const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 const PRS_VISIBLE = 3;
 
 // Entrada: la pantalla se construye sección a sección, de arriba abajo, y cada
-// una entra de derecha a izquierda (en horizontal puro: bajando se leía en
-// diagonal con el escalonado). Corta a
+// una entra de derecha a izquierda en horizontal puro (bajando se leía en
+// diagonal con el escalonado). Es propia y no `FadeInRight` porque esa recorre
+// 25 px fijos, y el usuario la quería llegando desde más fuera. Corta a
 // propósito — es la pantalla de después de entrenar y no puede hacer esperar.
 // Solo al montar: `entering` no se repite al contestar el RPE ni al plegar.
-const ENTER_MS      = 320;
-const ENTER_STAGGER = 70;
+const ENTER_MS      = 380;
+const ENTER_STAGGER = 110;
+const ENTER_DX      = 90;   // px desde la derecha; el botón de calibrado del recorrido
+
+function enterFromRight(delay) {
+  return () => {
+    'worklet';
+    const timing = { duration: ENTER_MS, easing: Easing.out(Easing.cubic) };
+    return {
+      initialValues: { opacity: 0, transform: [{ translateX: ENTER_DX }] },
+      animations: {
+        opacity:   withDelay(delay, withTiming(1, timing)),
+        transform: [{ translateX: withDelay(delay, withTiming(0, timing)) }],
+      },
+    };
+  };
+}
 
 function TrophyIcon({ size = 17, color }) {
   return (
@@ -360,7 +376,7 @@ export default function SessionRecapScreen({ navigation, route }) {
   // Cada sección que se pinta coge el siguiente turno; las que no salen no
   // dejan hueco en la cadencia.
   let enterStep = 0;
-  const enter = () => FadeInRight.duration(ENTER_MS).delay(enterStep++ * ENTER_STAGGER);
+  const enter = () => enterFromRight(enterStep++ * ENTER_STAGGER);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
