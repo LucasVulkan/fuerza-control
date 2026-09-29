@@ -56,7 +56,7 @@
  * exConfig.progressionModel / def.progressionModel values automatically.
  */
 
-import { epley1RM, weightForReps } from './oneRm';
+import { e1rmAtLeast, weightForReps } from './oneRm';
 
 // ── Public constants ──────────────────────────────────────────────────────────
 
@@ -394,18 +394,14 @@ function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) 
 function chipEffort(prog, doneSets, def, targetReps, t) {
   const maxW = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0));
   const keep = (why) => ({
-    type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why),
+    effort: true, type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why),
     suggestedWeight: maxW || null, suggestedTime: null,
   });
 
-  // Un RPE por debajo de 5 cuenta como 5: `epley1RM` lo ignora y tomaría la
-  // serie como hecha al fallo, así que una serie facilísima BAJABA el peso
-  // (QA P48). 5 es cota baja: al menos 5 en recámara.
+  // Cota baja por serie (`e1rmAtLeast`): una serie fácil sube el peso, nunca
+  // lo baja ni se descarta (QA P48).
   const e1rms = doneSets
-    .map((s) => {
-      const rpe = parseFloat(s.rpe);
-      return rpe > 0 ? epley1RM(s.weight, s.reps, Math.max(5, rpe)) : null;
-    })
+    .map((s) => e1rmAtLeast(s.weight, s.reps, s.rpe))
     .filter((v) => v !== null);
   if (!e1rms.length) return keep('progression.why_effortNoRpe');
 

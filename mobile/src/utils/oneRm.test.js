@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { epley1RM, bestSetE1RM, recentE1RM, weightForReps } from './oneRm';
+import { epley1RM, bestSetE1RM, recentE1RM, weightForReps, e1rmAtLeast } from './oneRm';
 
 describe('epley1RM', () => {
   test('1 rep = the weight itself', () => {
@@ -91,5 +91,22 @@ describe('weightForReps (inversa de epley1RM)', () => {
   test('sin 1RM → null', () => {
     expect(weightForReps(0, 5, 8)).toBeNull();
     expect(weightForReps(null, 5, 8)).toBeNull();
+  });
+});
+
+describe('e1rmAtLeast (cota baja para Por esfuerzo)', () => {
+  test('en rango, igual que epley1RM', () => {
+    expect(e1rmAtLeast('80', '5', '8')).toBeCloseTo(epley1RM(80, 5, 8), 6);
+  });
+  test('RPE por debajo de 5 cuenta como 5', () => {
+    expect(e1rmAtLeast(70, 5, 3)).toBeCloseTo(e1rmAtLeast(70, 5, 5), 6);
+  });
+  test('más de 12 reps equivalentes cuentan como 12', () => {
+    expect(e1rmAtLeast(50, 10, 5)).toBeCloseTo(50 * 1.4, 6);
+  });
+  test('sin peso, reps o RPE → null', () => {
+    expect(e1rmAtLeast('', 5, 8)).toBeNull();
+    expect(e1rmAtLeast(50, '', 8)).toBeNull();
+    expect(e1rmAtLeast(50, 5, '')).toBeNull();
   });
 });

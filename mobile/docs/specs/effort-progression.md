@@ -377,6 +377,21 @@ y la sesión siguiente ya se calcula.
   bajaba a 66. `chipEffort` sube el RPE a 5 como mínimo (al menos 5 en
   recámara: cota baja, así que la subida es prudente). `epley1RM` no cambia:
   las estadísticas usan el mejor e1RM y ahí infravalorar no hace daño.
+- **Fallo de QA: las series fáciles se descartaban.** Con reps + recámara > 12
+  `epley1RM` da null y la serie no contaba: con algunas fáciles solo pesaba la
+  más dura (47 kg pidiendo 47,5 sesión tras sesión con reps de sobra), y con
+  todas fáciles no quedaba ninguna y salía «Mantener» con el motivo de «apunta
+  el RPE». Ahora `chipEffort` usa `e1rmAtLeast` (`oneRm.js`): RPE < 5 cuenta
+  como 5 y más de 12 reps equivalentes como 12. Las dos son cotas bajas, así
+  que una serie fácil siempre empuja hacia arriba, sin pasarse. §2.3 queda
+  solo para las reps OBJETIVO (el aviso del editor y `weightForReps`).
+- **Textos de «mantener»**, que parecían una orden para ahora («Apunta el RPE
+  de cada serie para ajustar el peso»): el motivo dice la causa en pasado
+  («sin RPE en la última sesión, el peso se queda igual») y el chip de
+  mantener también lleva «Peso objetivo». Sin peso que sugerir: «Elige un peso
+  con el que llegues al RPE objetivo».
+- La columna RPE del Workout se arrastra de 1 en 1 (antes 0,5); los medios se
+  pueden escribir.
 
 **Probar P48**
 
@@ -391,6 +406,9 @@ y la sesión siguiente ya se calcula.
 - [ ] Sesión hecha sin apuntar RPE: mantiene el peso y pide apuntar el RPE.
 - [ ] Más peso del pedido y RPE muy bajo (p. ej. 4): la sesión siguiente SUBE el
   peso, nunca lo baja.
+- [ ] Más reps de las pedidas y RPE bajo en todas las series: la sesión
+  siguiente sube el peso; nunca sale «Mantener» con el RPE apuntado.
+- [ ] Arrastrar en horizontal sobre la celda RPE cambia de 1 en 1.
 - [ ] Sentadilla (paso 5 en la librería): el peso objetivo se mueve de 2,5 en
   2,5.
 - [ ] En una etapa de descarga, el ejercicio Por esfuerzo dice Descarga y

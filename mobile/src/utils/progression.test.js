@@ -176,6 +176,17 @@ describe('progression.type = "effort" (effort-progression.md §4.2)', () => {
     }
   });
 
+  it('reps + recámara de más cuentan como 12, no se descartan (QA P48)', () => {
+    // Objetivo 8 @8. El cliente hace 47 kg con más reps y RPE bajo. Antes solo
+    // contaba la serie de 8 @7 (47.5), y con todas fáciles salía «apunta el RPE».
+    const c = cfg({ minReps: 8, maxReps: 8 });
+    const mixed = [['10', '6'], ['9', '6'], ['8', '7']].map(([reps, rpe]) => ({ weight: '47', reps, rpe, done: true }));
+    // 65.8, 65.8, 64.2 → 65.27 / (1 + 10/30) = 48.95 → 50
+    expect(getProgression(c, lib, mixed, tk)).toMatchObject({ type: 'up', suggestedWeight: 50 });
+    const easy = [1, 2, 3].map(() => ({ weight: '47', reps: '10', rpe: '5', done: true }));
+    expect(getProgression(c, lib, easy, tk)).toMatchObject({ type: 'up', suggestedWeight: 50 });
+  });
+
   it('series con pesos distintos: media de los e1RM', () => {
     const sets = [
       { weight: '85', reps: '5', rpe: '9', done: true },  // 85 × (1 + 6/30) = 102

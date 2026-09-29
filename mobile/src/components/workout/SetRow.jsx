@@ -406,7 +406,6 @@ export default function SetRow({
           prevSource={prevRpeSource}
           onChangeText={onRpeChange}
           keyboardType="decimal-pad"
-          scrollStep={0.5}
           isDone={set.done}
         />
       )}
