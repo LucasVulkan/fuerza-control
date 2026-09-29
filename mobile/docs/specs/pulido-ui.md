@@ -181,6 +181,15 @@ selección); las hojas que son formularios (nuevo programa, cobro, bloque,
 progresión, variante…). El Alert de borrar un cobro (pulsación larga en la
 fila del cobro) es de U33.
 
+**Ronda de QA (29-sep-2026).** «Desde tus plantillas» pierde el `(N)`: el
+número va a la derecha (`value`) y el subtítulo pasa a «Crea una copia de la
+plantilla». Y un fallo de `DragSheet` que venía de antes: su `Modal` no llevaba
+`statusBarTranslucent`/`navigationBarTranslucent` (la regla de borde a borde de
+UI-MIGRATION §8), así que en Android la hoja acababa encima de la barra de
+navegación pero sumaba `insets.bottom` igual: todas las hojas subían ese alto
+con un hueco vacío debajo, y en el menú ≡, que llega al tope, la barra gris
+tapaba las últimas filas.
+
 **Trampa de iOS.** Si la acción abre OTRO Modal, la hoja se cierra al instante
 (`setX(false)`) y no con la animación: iOS no presenta un Modal mientras otro se
 está yendo. Así quedan el menú de la tarjeta de cliente (el editor de programa
@@ -209,7 +218,12 @@ es un Modal) y la hoja «Añadir» del Workout (el editor de bloque también).
 - [ ] Workout de una sesión libre → «+ Añadir»: ejercicio y bloque con icono;
   «bloque» abre el editor de bloque sin quedarse colgado (iPhone incluido).
 - [ ] Inicio → «+ Sesión libre»: empezar ya, crear y desde plantillas con icono;
-  la lista de plantillas también.
+  la lista de plantillas también. «Desde tus plantillas» lleva el número de
+  plantillas a la derecha (sin paréntesis) y de subtítulo «Crea una copia de la
+  plantilla».
+- [ ] Android: ninguna hoja deja un hueco vacío debajo; la última fila queda
+  justo encima de la barra de navegación. En el menú ≡, bajando hasta el final
+  se ve entera la última fila (nada gris la tapa).
 - [ ] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y
   «borrar historial» (rojo), las dos con icono.
 - [ ] Ficha de cliente → sesión libre: en blanco y la lista de plantillas con icono.

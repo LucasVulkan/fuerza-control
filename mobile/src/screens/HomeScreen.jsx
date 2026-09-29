@@ -522,7 +522,8 @@ export default function HomeScreen() {
               <SheetRow
                 isLast
                 icon={ROW_ICON.preset}
-                label={t('freeSession.fromTemplates', { count: templates.length })}
+                label={t('freeSession.fromTemplates')}
+                value={String(templates.length)}
                 sub={t('freeSession.fromTemplatesDesc')}
                 subLines={0}
                 minHeight={62}

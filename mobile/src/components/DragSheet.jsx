@@ -88,7 +88,12 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
 
   return (
     <SheetContext.Provider value={sheet}>
-    <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
+    {/* Borde a borde (SDK 54): sin estas dos, en Android el Modal acaba encima
+        de la barra de navegación pero `insets.bottom` la cuenta igual, así que
+        la hoja subía ese alto y dejaba un hueco vacío debajo — y en el menú ≡,
+        que llega al tope, la barra gris tapaba las últimas filas. Es la regla de
+        UI-MIGRATION §8; `NotesModal` y el detalle de Progreso ya la cumplían. */}
+    <Modal visible={visible} transparent animationType="none" onRequestClose={close} statusBarTranslucent navigationBarTranslucent>
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} pointerEvents="box-none">
         <View style={StyleSheet.absoluteFillObject} {...panResponder.panHandlers}>
           <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={close} />
