@@ -338,7 +338,8 @@ export function ClientFreeSessions({ client, canStart, log }) {
   const styles     = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const [openId, setOpenId] = useState(null);
-  const [sheet,  setSheet]  = useState(false);
+  // null · 'menu' · 'templates': las dos hojas de «+ Sesión libre», como en Inicio.
+  const [sheet,  setSheet]  = useState(null);
 
   const sessionTemplates   = useStore((s) => s.sessionTemplates);
   const createFreeTemplate = useStore((s) => s.createFreeTemplate);
@@ -401,12 +402,12 @@ export function ClientFreeSessions({ client, canStart, log }) {
         </>
       )}
 
-      <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet(true)} activeOpacity={0.75} accessibilityRole="button">
+      <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet('menu')} activeOpacity={0.75} accessibilityRole="button">
         <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
       </TouchableOpacity>
 
-      {sheet && (
-        <DragSheet visible onClose={() => setSheet(false)} title={t('clients.freeSheet.title', { name: client.name })}>
+      {sheet === 'menu' && (
+        <DragSheet visible onClose={() => setSheet(null)} title={t('clients.freeSheet.title', { name: client.name })}>
           {/* Con app, la sesión viaja con su programa: sin programa no le llega. */}
           {!canStart && !client.activeProgramId && (
             <Text style={[styles.sheetHint, styles.sheetHintTop]}>{t('templates.assignSession.noProgram')}</Text>
@@ -414,38 +415,54 @@ export function ClientFreeSessions({ client, canStart, log }) {
           <View style={styles.sheetGroup}>
             <SheetRow
               isFirst
-              isLast
+              isLast={library.length === 0}
               icon={ROW_ICON.new}
               label={t('clients.freeSheet.blank')}
               sub={t('clients.freeSheet.blankDesc')}
               subLines={0}
               minHeight={62}
-              onPress={() => { setSheet(false); edit(createFreeTemplate(null, client.id)); }}
+              onPress={() => { setSheet(null); edit(createFreeTemplate(null, client.id)); }}
             />
+            {/* Como en Inicio: las plantillas detrás de una fila con su número,
+                y no todas de golpe en esta hoja — con veinte no se encontraba
+                nada. El cambio de hoja es inmediato (iOS no presenta un Modal
+                mientras otro se va). */}
+            {library.length > 0 && (
+              <SheetRow
+                isLast
+                icon={ROW_ICON.preset}
+                label={t('freeSession.fromTemplates')}
+                value={String(library.length)}
+                sub={t('freeSession.fromTemplatesDesc')}
+                subLines={0}
+                minHeight={62}
+                onPress={() => setSheet('templates')}
+              />
+            )}
           </View>
-          {library.length > 0 && (
-            <>
-              <Text style={styles.sheetLabel}>{t('clients.freeSheet.fromTemplate').toUpperCase()}</Text>
-              <View style={styles.sheetGroup}>
-                {library.map((tpl, i) => (
-                  <SheetRow
-                    key={tpl.id}
-                    icon={ROW_ICON.preset}
-                    isFirst={i === 0}
-                    isLast={i === library.length - 1}
-                    label={nameOf(tpl)}
-                    sub={metaOf(tpl)}
-                    minHeight={62}
-                    onPress={() => {
-                      setSheet(false);
-                      copyFreeTemplate(tpl.id, { owner: client.id });
-                      showToast(t('clients.freeSheet.assigned', { name: client.name }), 2200, 'success');
-                    }}
-                  />
-                ))}
-              </View>
-            </>
-          )}
+        </DragSheet>
+      )}
+
+      {sheet === 'templates' && (
+        <DragSheet visible onClose={() => setSheet(null)} title={t('freeSession.templatesTitle')}>
+          <View style={styles.sheetGroup}>
+            {library.map((tpl, i) => (
+              <SheetRow
+                key={tpl.id}
+                icon={ROW_ICON.preset}
+                isFirst={i === 0}
+                isLast={i === library.length - 1}
+                label={nameOf(tpl)}
+                sub={metaOf(tpl)}
+                minHeight={62}
+                onPress={() => {
+                  setSheet(null);
+                  copyFreeTemplate(tpl.id, { owner: client.id });
+                  showToast(t('clients.freeSheet.assigned', { name: client.name }), 2200, 'success');
+                }}
+              />
+            ))}
+          </View>
         </DragSheet>
       )}
     </View>

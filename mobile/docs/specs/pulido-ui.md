@@ -173,7 +173,7 @@ Hojas tocadas:
 | Workout · Añadir (2) | filas a mano | `SheetRow` con icono |
 | Inicio · sesión libre (3) y plantillas (N) | `MenuRow` sin icono | con icono |
 | Mi programa · `⋯` (1) y archivar (2) | `MenuRow` sin icono | con icono; borrar historial con `danger` |
-| Ficha de cliente · sesión libre (1 + N) | `MenuRow` sin icono | con icono |
+| Ficha de cliente · sesión libre (1 + N) | `MenuRow` sin icono, y todas las plantillas en la misma hoja | con icono, y en dos hojas como en Inicio: «En blanco» + «Desde tus plantillas» (con su número) → la lista |
 
 Se quedan fuera, con motivo: los filtros del historial, el modo de historial del
 código de cliente y las hojas de «+ cliente» y filtros de Clientes (son de
@@ -189,6 +189,10 @@ UI-MIGRATION §8), así que en Android la hoja acababa encima de la barra de
 navegación pero sumaba `insets.bottom` igual: todas las hojas subían ese alto
 con un hueco vacío debajo, y en el menú ≡, que llega al tope, la barra gris
 tapaba las últimas filas.
+
+Probada la alternativa de tarjetas sueltas (radio completo y aire entre
+opciones) y descartada: las hojas de opciones siguen agrupadas, como el menú ≡
+y el resto de listas de opciones de la app.
 
 **Trampa de iOS.** Si la acción abre OTRO Modal, la hoja se cierra al instante
 (`setX(false)`) y no con la animación: iOS no presenta un Modal mientras otro se
@@ -226,7 +230,11 @@ es un Modal) y la hoja «Añadir» del Workout (el editor de bloque también).
   se ve entera la última fila (nada gris la tapa).
 - [ ] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y
   «borrar historial» (rojo), las dos con icono.
-- [ ] Ficha de cliente → sesión libre: en blanco y la lista de plantillas con icono.
+- [ ] Ficha de cliente → + Sesión libre: igual que en Inicio. «En blanco» y,
+  si hay plantillas, «Desde tus plantillas» con el número a la derecha y
+  «Crea una copia de la plantilla» debajo. Al tocarla se abre otra hoja con la
+  lista; tocar una se la asigna al cliente con su aviso (iPhone incluido: el
+  cambio de hoja no se queda colgado).
 - [ ] El menú ≡ se ve y funciona igual que antes (sus iconos ahora vienen del
   módulo común).
 

@@ -2000,7 +2000,6 @@
       "title": "Session for {{name}}",
       "blank": "Blank",
       "blankDesc": "Opens the editor to build it for this client",
-      "fromTemplate": "From your templates",
       "assigned": "Session assigned to {{name}}"
     },
     "btnContinue": "Continue",

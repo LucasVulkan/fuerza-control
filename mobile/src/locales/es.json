@@ -2000,7 +2000,6 @@
       "title": "Sesión libre para {{name}}",
       "blank": "En blanco",
       "blankDesc": "Se abre el editor y la preparas para este cliente",
-      "fromTemplate": "Desde tus plantillas",
       "assigned": "Sesión asignada a {{name}}"
     },
     "btnContinue": "Continuar",
