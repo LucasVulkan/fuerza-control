@@ -8,7 +8,8 @@
  *   - **Resultado** (se lee): el marcador de arriba, tarjeta `surface`.
  *   - **Logro** (se celebra): los récords, relleno `tint/accent10`.
  *   - **Tu parte** (se escribe): todo lo que va bajo el lápiz y nada más —
- *     sRPE, peso corporal y nota. Los valores en celda `bg` con ± (`StepField`).
+ *     sRPE, peso corporal (`StepField`) y la nota, plegada en el desplegable de
+ *     Info de la ficha de cliente (`InfoSection`) para que ocupe una fila.
  *
  * El resultado va primero porque el recap es la recompensa; las preguntas justo
  * después, antes de la comparación por ejercicio (lo que menos se mira). El pie
@@ -19,8 +20,8 @@
  *
  * Estilo: FormaFit, sin nodo en Figma — hereda tokens y anatomías de otras
  * pantallas: la letra y el nombre en Barlow son los de la sesión de hoy en
- * Inicio, las filas son la lista agrupada con `getCardRadii` y las de sesión
- * libre son `MenuRow`.
+ * Inicio, las tres cifras son las Progress cards, las filas son la lista
+ * agrupada con `getCardRadii` y las de sesión libre son `MenuRow`.
  */
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
@@ -47,6 +48,7 @@ import StepField from '../components/ui/StepField';
 import { MenuRow, RowIcon } from '../components/ui/MenuList';
 import { CheckIcon, PencilIcon, ChevronDown } from '../components/ui/EditorIcons';
 import { FOLD_MS } from '../components/ui/collapseOut';
+import InfoSection from '../components/ui/InfoSection';
 
 const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 
@@ -180,7 +182,7 @@ export default function SessionRecapScreen({ navigation, route }) {
   // La nota se escribe en el entreno y se corrige aquí: el borrador solo llega
   // al store al soltar el campo.
   const [noteDraft, setNoteDraft] = useState(() => entry?.notes ?? '');
-  const [noteFromWorkout]         = useState(() => !!entry?.notes?.trim());
+  const [noteOpen, setNoteOpen]   = useState(false);
 
   // «Falta: cómo de dura fue» baja hasta la tarjeta del sRPE.
   const scrollRef = useRef(null);
@@ -274,12 +276,6 @@ export default function SessionRecapScreen({ navigation, route }) {
     weekday: 'short', day: 'numeric', month: 'short',
   });
   const metaLine = [stageName, dateLabel].filter(Boolean).join(' · ');
-
-  // El último peso apuntado ANTES de esta sesión, con su distancia en días.
-  const prevWeigh = workoutLog
-    .filter((e) => e.id !== entry.id && e.bodyWeight != null && e.timestamp < entry.timestamp)
-    .sort((a, b) => b.timestamp - a.timestamp)[0];
-  const prevWeighDays = prevWeigh ? Math.round((entry.timestamp - prevWeigh.timestamp) / 86400000) : null;
 
   const shownWeight = entry.bodyWeight ?? profileBodyWeight;
 
@@ -388,54 +384,52 @@ export default function SessionRecapScreen({ navigation, route }) {
         automaticallyAdjustKeyboardInsets
       >
 
-        {/* 1 · Marcador — se lee */}
-        <Reanimated.View entering={enter()} style={styles.hero}>
-          <View style={styles.heroTop}>
-            <View style={styles.ceja}>
-              <CheckIcon size={14} color={tone} />
-              <Text style={[styles.cejaText, { color: tone }]} numberOfLines={1}>
-                {clientId ? `${(client?.name ?? '').toUpperCase()} · ${t('recap.completed')}` : t('recap.completed')}
-              </Text>
-            </View>
-            <View style={styles.ident}>
-              {!!template?.label && (
-                <View style={[styles.glyphBox, clientId && styles.glyphBoxClient]}>
-                  <Text style={[styles.glyph, { color: tone }]}>{template.label}</Text>
-                </View>
-              )}
-              <View style={styles.identText}>
-                <Text style={styles.sessionName} numberOfLines={2}>
-                  {entry.sessionName ?? template?.name ?? ''}
-                </Text>
-                <Text style={styles.metaLine} numberOfLines={1}>{metaLine}</Text>
-              </View>
-            </View>
+        {/* 1 · Marcador — se lee. Cabecera centrada sobre el fondo, como antes;
+            la letra y el nombre en Barlow son los de la sesión de hoy en Inicio. */}
+        <Reanimated.View entering={enter()} style={styles.headerBlock}>
+          <View style={styles.ceja}>
+            <CheckIcon size={14} color={tone} />
+            <Text style={[styles.cejaText, { color: tone }]} numberOfLines={1}>
+              {clientId ? `${(client?.name ?? '').toUpperCase()} · ${t('recap.completed')}` : t('recap.completed')}
+            </Text>
           </View>
-          <View style={styles.stats}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {fmtDuration(entry.duration)}
-              </Text>
-              <Text style={styles.statLabel}>{t('recap.duration')}</Text>
+          {!!template?.label && (
+            <View style={[styles.glyphBox, clientId && styles.glyphBoxClient]}>
+              <Text style={[styles.glyph, { color: tone }]}>{template.label}</Text>
             </View>
-            <View style={[styles.stat, styles.statDivider]}>
-              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {stats.volume > 0 ? toDisplay(stats.volume) : '—'}
-                {stats.volume > 0 ? <Text style={styles.statUnit}> {weightLabel}</Text> : null}
+          )}
+          <Text style={styles.sessionName} numberOfLines={2}>
+            {entry.sessionName ?? template?.name ?? ''}
+          </Text>
+          {!!metaLine && <Text style={styles.metaLine} numberOfLines={1}>{metaLine}</Text>}
+        </Reanimated.View>
+
+        {/* Las tres cifras en tarjetas sueltas: la anatomía de las Progress
+            cards, que es la de la app. */}
+        <Reanimated.View entering={enter()} style={styles.statsRow}>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {fmtDuration(entry.duration)}
+            </Text>
+            <Text style={styles.statLabel}>{t('recap.duration')}</Text>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {stats.volume > 0 ? toDisplay(stats.volume) : '—'}
+              {stats.volume > 0 ? <Text style={styles.statUnit}> {weightLabel}</Text> : null}
+            </Text>
+            <Text style={styles.statLabel}>{t('recap.volume')}</Text>
+            {volumePct != null && (
+              <Text style={[styles.delta, styles[`delta_${volumePct > 0 ? 'up' : volumePct < 0 ? 'dn' : 'eq'}`]]}>
+                {volumePct === 0 ? '=' : `${volumePct > 0 ? '+' : '−'}${Math.abs(volumePct)} %`}
               </Text>
-              <Text style={styles.statLabel}>{t('recap.volume')}</Text>
-              {volumePct != null && (
-                <Text style={[styles.delta, styles[`delta_${volumePct > 0 ? 'up' : volumePct < 0 ? 'dn' : 'eq'}`]]}>
-                  {volumePct === 0 ? '=' : `${volumePct > 0 ? '+' : '−'}${Math.abs(volumePct)} %`}
-                </Text>
-              )}
-            </View>
-            <View style={[styles.stat, styles.statDivider]}>
-              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {stats.setsDone}<Text style={styles.statUnit}>/{stats.setsPlanned}</Text>
-              </Text>
-              <Text style={styles.statLabel}>{t('recap.sets')}</Text>
-            </View>
+            )}
+          </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {stats.setsDone}<Text style={styles.statUnit}>/{stats.setsPlanned}</Text>
+            </Text>
+            <Text style={styles.statLabel}>{t('recap.sets')}</Text>
           </View>
         </Reanimated.View>
 
@@ -530,22 +524,18 @@ export default function SessionRecapScreen({ navigation, route }) {
               step={0.1}
               unit={weightLabel}
             />
-            {prevWeigh && (
-              <Text style={styles.weightHint}>
-                {prevWeighDays === 0
-                  ? t('recap.lastWeightToday', { value: fmt(prevWeigh.bodyWeight) })
-                  : t('recap.lastWeight', { value: fmt(prevWeigh.bodyWeight), count: prevWeighDays })}
-              </Text>
-            )}
           </View>
 
-          <View style={styles.card}>
-            <View style={styles.qRow}>
-              <Text style={styles.qText}>{t('recap.note')}</Text>
-              <Text style={styles.qAside}>{noteFromWorkout ? t('recap.noteFromWorkout') : t('recap.optional')}</Text>
-            </View>
+          {/* Nota: el desplegable de Info de la ficha de cliente. Cerrada ocupa
+              una fila y dice a la derecha si hay algo escrito; la que se
+              escribió en el entreno se corrige aquí. */}
+          <InfoSection
+            title={t('recap.note')}
+            summary={noteDraft.trim() ? noteDraft.trim().split('\n')[0] : t('recap.noteEmpty')}
+            open={noteOpen}
+            onToggle={() => setNoteOpen((o) => !o)}
+          >
             <View style={styles.noteWell}>
-              <View style={styles.notePencil}><PencilIcon size={14} color={th.colors.muted} /></View>
               <TextInput
                 style={styles.noteInput}
                 value={noteDraft}
@@ -557,7 +547,7 @@ export default function SessionRecapScreen({ navigation, route }) {
                 multiline
               />
             </View>
-          </View>
+          </InfoSection>
         </Reanimated.View>
 
         {/* 4 · Vs. última sesión — solo el cambio; lo que hiciste ya lo sabes */}
@@ -752,17 +742,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── 1 · Marcador ──
-  hero: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
-    overflow:        'hidden',
-  },
-  heroTop:  { padding: spacing.lg, gap: spacing.md },
-  ceja:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  cejaText: { ...textStyles.caps, flexShrink: 1 },
-  ident:    { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  // La letra y el nombre en Barlow: los de la sesión de hoy en Inicio. Es la
-  // misma sesión, antes y después.
+  headerBlock: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.md, paddingBottom: spacing.xs2 },
+  ceja:        { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  cejaText:    { ...textStyles.caps, flexShrink: 1 },
   glyphBox: {
     width:           54,
     height:          54,
@@ -770,34 +752,31 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.accent10,
     alignItems:      'center',
     justifyContent:  'center',
-    flexShrink:      0,
+    marginTop:       spacing.xs2,
   },
   glyphBoxClient: { backgroundColor: th.tint.blue30 },
   glyph:          { ...textStyles.heroGlyph },
-  identText:      { flex: 1, minWidth: 0, gap: spacing.xs2 },
-  sessionName:    { ...textStyles.heroName, color: th.colors.text },
-  metaLine:       { ...textStyles.label, color: th.colors.mutedLight },
+  sessionName:    { ...textStyles.heroName, color: th.colors.text, textAlign: 'center' },
+  metaLine:       { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center' },
 
-  // Las cifras informan, no son el premio: `title`, como antes. Separadas por
-  // líneas `bg` y no en tarjetas sueltas, que las hacían pesar como tres cosas.
-  stats: {
-    flexDirection:  'row',
-    borderTopWidth: 2,
-    borderTopColor: th.colors.bg,
-  },
-  stat: {
+  // Hero stats — anatomía de las Progress cards (surface, radius/lg, title).
+  statsRow: { flexDirection: 'row', gap: spacing.md },
+  statTile: {
     flex:              1,
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.lg,
+    borderRadius:      th.radius.lg,
     alignItems:        'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.md,
-    gap:               spacing.xs2,
+    justifyContent:    'center',
+    gap:               spacing.xs,
+    overflow:          'hidden',
   },
-  statDivider: { borderLeftWidth: 2, borderLeftColor: th.colors.bg },
-  statValue:   { ...textStyles.title, color: th.colors.text, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  statUnit:    { ...textStyles.label, color: th.colors.mutedLight },
+  statValue: { ...textStyles.title, color: th.colors.text, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  statUnit:  { ...textStyles.label, color: th.colors.mutedLight },
   statLabel: {
     ...textStyles.caps,
-    color:         th.colors.mutedLight,
+    color:         th.colors.text,
     textTransform: 'uppercase',
     textAlign:     'center',
   },
@@ -855,7 +834,6 @@ const makeStyles = (th) => StyleSheet.create({
   qLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2, flexShrink: 1 },
   qDot:  { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.mutedLight },
   qText: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
-  qAside: { ...textStyles.label, color: th.colors.mutedLight },
 
   rpeScale: { flexDirection: 'row', gap: spacing.xs2 },
   rpeBtn: {
@@ -893,25 +871,19 @@ const makeStyles = (th) => StyleSheet.create({
   loadValue:     { ...textStyles.itemTitle, color: th.colors.text, fontVariant: ['tabular-nums'] },
   loadPct:       { ...textStyles.label, color: th.colors.mutedLight },
 
-  weightCard: { paddingVertical: spacing.md, gap: spacing.xs2 },
-  weightHint: { ...textStyles.label, color: th.colors.mutedLight },
+  weightCard: { paddingVertical: spacing.sm },
 
   // La nota va en celda `bg`, la misma que dice «esto se escribe» en `StepField`.
   noteWell: {
-    flexDirection:     'row',
-    alignItems:        'flex-start',
-    gap:               spacing.sm2,
     backgroundColor:   th.colors.bg,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.md,
     minHeight:         64,
   },
-  notePencil: { paddingTop: 3 },
   noteInput: {
     ...textStyles.body,
     lineHeight:        21,
-    flex:              1,
     color:             th.colors.text,
     padding:           0,
     textAlignVertical: 'top',

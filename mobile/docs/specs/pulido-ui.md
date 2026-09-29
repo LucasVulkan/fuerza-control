@@ -45,14 +45,17 @@ del usuario (29-sep-2026).
 `surface`), logro (se celebra, `tint/accent10`) y **tu parte** (se escribe:
 todo bajo el lápiz y nada más).
 
-Orden nuevo en `SessionRecapScreen.jsx`:
+Orden nuevo en `SessionRecapScreen.jsx` (la maqueta es la de la primera ronda;
+lo que cambió después está contado aquí, que es lo que manda):
 
-1. **Marcador**: ceja «✓ SESIÓN COMPLETADA», letra y nombre de la sesión en
-   Barlow (los de la sesión de hoy en Inicio), etapa y fecha, y debajo en la
-   misma tarjeta duración · volumen · series en `title`, **no** en Barlow («no
-   es un dato tan relevante como para enseñarlo como un premio»). El volumen
-   lleva su % contra la misma sesión la vez anterior (`volumeDeltas`, el del
-   historial). Sin tira de la semana: descartada por el usuario.
+1. **Marcador**: cabecera centrada sobre el fondo, como la de antes: ceja
+   «✓ SESIÓN COMPLETADA», la letra en su caja lima y el nombre en Barlow (los
+   de la sesión de hoy en Inicio), y etapa · fecha. Debajo, duración · volumen
+   · series en **tres tarjetas sueltas** (las Progress cards, «va con la
+   app»), en `title` y no en Barlow. El volumen lleva su % contra la misma
+   sesión la vez anterior (`volumeDeltas`, el del historial). Sin tira de la
+   semana: descartada por el usuario. Una primera versión metía cabecera y
+   cifras en una sola tarjeta; el usuario la rechazó en la segunda ronda.
 2. **Récords**: como mucho 3, ordenados por % de mejora; el resto detrás de
    «Ver N más». `detectPRs` da uno por ejercicio que supera su mejor marca de
    siempre, así que en los primeros meses salen 6-9.
@@ -60,10 +63,14 @@ Orden nuevo en `SessionRecapScreen.jsx`:
    - sRPE con sus botones `surface2` de siempre (el usuario prefirió el fondo
      de antes). Al contestarlo, la carga sale en la misma tarjeta **solo como %
      vs media 7d**, en blanco: el número de carga suelto no dice nada.
-   - Peso corporal con `StepField` (± y celda `bg`), relleno con el último, y
-     «El último: X kg, hace N días».
-   - Nota de la sesión: la que se escribió en el entreno sale ya escrita para
-     corregirla. `setSessionFeedback` acepta ahora `notes`.
+   - Peso corporal con `StepField` (± y celda `bg`), relleno con el último.
+     Sin subtítulo: «El último: X kg, hace N días» ocupaba demasiado para lo
+     poco que decía.
+   - Nota de la sesión en el **desplegable de Info de la ficha de cliente**
+     (`InfoSection`, que sale a `components/ui/`): cerrada ocupa una fila y
+     dice a la derecha la primera línea de la nota o «Sin nota». La que se
+     escribió en el entreno se corrige ahí. `setSessionFeedback` acepta ahora
+     `notes`.
 4. **Vs. última sesión**: una fila por ejercicio con el nombre y **solo el
    delta** (sin series: «no necesito un resumen de lo que ya he hecho»), y el
    trofeo en los que hicieron récord. Sin sesión anterior, no sale.
@@ -84,9 +91,10 @@ el móvil del entrenador es su copia y no se mueve; ahora pasa por
 
 **Probar U29**
 
-- [ ] Acabar una sesión de programa: arriba sale la tarjeta con ✓ SESIÓN
-  COMPLETADA, la letra (A/B/C) en su caja lima, el nombre en Barlow, la etapa
-  y la fecha, y debajo duración · volumen · series en letra normal.
+- [ ] Acabar una sesión de programa: arriba, centrado y sobre el fondo, sale
+  ✓ SESIÓN COMPLETADA, la letra (A/B/C) en su caja lima, el nombre en Barlow y
+  etapa · fecha. Debajo, duración · volumen · series en tres tarjetas sueltas,
+  como antes.
 - [ ] Repetir una sesión que ya se había hecho: bajo el volumen sale su % contra
   la vez anterior (lima si sube, rojo apagado si baja).
 - [ ] Con récords: salen en lima bajo «N RÉCORDS», con el valor nuevo a la
@@ -98,14 +106,18 @@ el móvil del entrenador es su copia y no se mueve; ahora pasa por
 - [ ] Contestar el RPE: el punto pasa a ✓, el chip a «Todo contestado» (lima),
   desaparece el «Falta» del pie y, si hay una semana de historial, sale
   «CARGA DE LA SESIÓN +N % vs media 7d» en blanco, sin el número de carga.
-- [ ] Peso corporal: sale relleno con el último, los ± lo mueven de 0,1 en 0,1
-  y se puede escribir tocando el número. Debajo, «El último: X kg, hace N días».
-  Un peso de tres cifras con decimal (p. ej. 102,4) no se corta.
-- [ ] Nota escrita durante el entreno: sale en la celda con «del entreno» a la
-  derecha. Corregirla, salir con HECHO y abrir la sesión en el historial: sale
-  la nota corregida.
-- [ ] Sin nota: la celda sale vacía con «Cómo te has sentido, molestias…» y
-  «opcional» a la derecha. Escribir en ella no queda tapado por el teclado.
+- [ ] Peso corporal: una sola fila, sin subtítulo, rellena con el último; los ±
+  lo mueven de 0,1 en 0,1 y se puede escribir tocando el número. Un peso de
+  tres cifras con decimal (p. ej. 102,4) no se corta.
+- [ ] Nota escrita durante el entreno: sale plegada en una fila NOTA DE LA
+  SESIÓN con su primera línea a la derecha. Al tocarla se despliega (igual que
+  en Info de un cliente); corregirla, salir con HECHO y abrir la sesión en el
+  historial: sale la nota corregida.
+- [ ] Sin nota: la fila dice «Sin nota»; desplegada, la celda sale vacía con
+  «Cómo te has sentido, molestias…». Escribir en ella no queda tapado por el
+  teclado.
+- [ ] Info de un cliente sigue plegando y desplegando igual que antes (su
+  desplegable ahora es la pieza compartida).
 - [ ] VS. ÚLTIMA SESIÓN: una fila por ejercicio, sin series, con el cambio a
   la derecha; los que hicieron récord llevan el trofeo; un ejercicio nuevo dice
   «nuevo». La primera vez que se hace una sesión, la sección no sale.
