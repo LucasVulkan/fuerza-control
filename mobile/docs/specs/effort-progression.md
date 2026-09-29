@@ -299,8 +299,8 @@ esfuerzo: pides un RPE y la app calcula el peso con tu 1RM estimado».
   cambió el equipo de un ejercicio propio), la opción se sigue enseñando para
   no dejar el selector sin valor; el motor, sin peso, mantiene.
 - QA: en la caja sola de «Reps objetivo» a todo el ancho, los ± se iban a las
-  esquinas. `StepField` gana `tight` (solo Caja): ± pegados al número
-  (`bb50b41`). El grid 2×2 no cambia.
+  esquinas. Se probó pegarlos al número (`bb50b41`) y el usuario prefirió la
+  caja a media fila, del mismo tamaño que el resto del grid.
 
 **Probar P47**
 
