@@ -1821,7 +1821,6 @@
     "none": "Not specified",
     "howTitle": "How it's done · info only",
     "dim": { "grip": "Grip", "width": "Width" },
-    "programMark": "program",
     "options": {
       "grip": { "pronated": "Pronated", "supinated": "Supinated", "neutral": "Neutral" },
       "width": { "wide": "Wide", "medium": "Medium", "narrow": "Narrow" }

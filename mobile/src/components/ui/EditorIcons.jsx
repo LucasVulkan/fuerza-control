@@ -157,3 +157,12 @@ export function VariantIcon({ size = 15, color }) {
   );
 }
 
+// Volver a la del programa (hoja «solo hoy» del Workout): flecha en círculo.
+export function ResetIcon({ size = 18, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 12a8 8 0 1 0 2.35-5.65" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+      <Path d="M4 3.5v5h5" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}

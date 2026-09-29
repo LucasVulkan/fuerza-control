@@ -447,19 +447,16 @@ export default function ExerciseCard({
         <Text style={styles.name} numberOfLines={2}>
           {name}
           {/* Pulsable solo desplegada: plegada, tocar la cabecera la despliega.
-              Lo cambiado hoy va en acento. Si hoy se quitó todo, «Sin
-              especificar» para poder volver. */}
-          {variantParts.length || hasToday ? (
+              Lo cambiado hoy va en acento. */}
+          {variantParts.length ? (
             <Text
               style={styles.nameVariant}
               onPress={canChangeVariant && !isCollapsed ? () => setVariantSheetOpen(true) : undefined}
               suppressHighlighting
             >
-              {variantParts.length
-                ? variantParts.map((p) => (
-                    <Text key={p.dim} style={p.changed ? styles.nameVariantChanged : null}>{` · ${p.label}`}</Text>
-                  ))
-                : <Text style={styles.nameVariantChanged}>{` · ${t('variants.none')}`}</Text>}
+              {variantParts.map((p) => (
+                <Text key={p.dim} style={p.changed ? styles.nameVariantChanged : null}>{` · ${p.label}`}</Text>
+              ))}
             </Text>
           ) : null}
         </Text>
@@ -968,19 +965,21 @@ export default function ExerciseCard({
           <View style={styles.variantSheet}>
             <View style={{ gap: spacing.sm }}>
               <Text style={styles.variantCaption}>{t('variants.todayTitle').toUpperCase()}</Text>
+              {/* Sin desmarcar (hoy se cambia, no se deja en blanco) y con el
+                  icono de volver en cada fila cambiada (QA P43). Igual que el
+                  programa → sin cambio de hoy. */}
               <VariantPicker
                 def={def}
                 value={variant}
-                programValue={programVariant}
-                onChange={(next) => setSessionVariant(exConfig.exerciseId, next)}
+                resetTo={programVariant}
+                allowDeselect={false}
+                onChange={(next) => setSessionVariant(
+                  exConfig.exerciseId,
+                  sameVariant(next, programVariant) ? undefined : next,
+                )}
               />
             </View>
             <Text style={styles.variantHint}>{t('variants.todayHint')}</Text>
-            {hasToday && !sameVariant(variant, programVariant) ? (
-              <TouchableOpacity onPress={() => setSessionVariant(exConfig.exerciseId, undefined)} hitSlop={8}>
-                <Text style={styles.variantReset}>{`↺ ${t('variants.backToProgram')}`}</Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         </DragSheet>
       )}
@@ -1076,7 +1075,6 @@ const makeStyles = (th) => StyleSheet.create({
   variantSheet:   { gap: spacing.lg, paddingBottom: spacing.sm },
   variantCaption: { ...textStyles.caps, color: th.colors.accent },
   variantHint:    { ...textStyles.body, color: th.colors.mutedLight },
-  variantReset:   { ...textStyles.button, color: th.colors.mutedLight },
   keyInline: {
     color:      th.colors.accent,
     fontFamily: 'Inter_700Bold',
