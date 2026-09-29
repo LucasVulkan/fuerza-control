@@ -59,10 +59,10 @@ export default function SegmentedControl({ options, value, onChange }) {
   //
   // Tres transiciones, y cada una con su gesto:
   //   · con selección → otra opción: el resalte DESLIZA (lo de siempre);
-  //   · sin selección → una opción: APARECE en su sitio creciendo desde el
-  //     centro. Antes se quedaba apagado donde estaba y, al volver, viajaba
+  //   · sin selección → una opción: APARECE en su sitio creciendo a lo ancho
+  //     desde el centro, con el alto entero. Antes se quedaba apagado donde estaba y, al volver, viajaba
   //     desde allí: quitar la primera y elegir la última lo cruzaba entero;
-  //   · con selección → ninguna: se ENCOGE hacia su centro y se queda ahí.
+  //   · con selección → ninguna: se ESTRECHA hacia su centro y se queda ahí.
   useLayoutEffect(() => {
     const had = hadSelection.current;
     hadSelection.current = hasSelection;
@@ -93,11 +93,12 @@ export default function SegmentedControl({ options, value, onChange }) {
   const highlightStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     // Primero se sitúa y luego se escala: la escala es sobre su propio centro,
-    // así que crece desde el centro de la opción, no desde el borde.
+    // así que crece desde el centro de la opción. Solo a lo ancho: el alto va
+    // entero desde el primer frame (QA P44).
     transform: [
       { translateX: `${idx.value * 100}%` },
       { translateX: idx.value * GAP },
-      { scale: scale.value },
+      { scaleX: scale.value },
     ],
   }));
 
