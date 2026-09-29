@@ -2375,6 +2375,20 @@ describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => 
     expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '100', reps: '8', rpe: '8', done: true })));
   });
 
+  it('solo el RPE escrito, peso y reps en gris, sin ✓: la serie se da por buena', () => {
+    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'rpe', '8'); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '90', reps: '8', rpe: '8', done: true })));
+  });
+
+  it('una serie sin tocar no se guarda, aunque tenga gris', () => {
+    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { if (i === 0) f(i, 'reps', '9'); }, 1_700_100_000_000);
+    expect(sets).toEqual([expect.objectContaining({ weight: '90', reps: '9', done: true })]);
+  });
+
   it('✓ sin peso ni reps propios: los de referencia, sin perder el RPE', () => {
     const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
     train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);

@@ -6,8 +6,9 @@
 > Fase P47 · hecho · Motor y editor del modo Por esfuerzo · §4
 > Fase P48 · hecho · El objetivo por esfuerzo en el Workout y las listas · §5
 >
-> Estado: **P46 y P47 probadas, P48 hecha** (29-sep-2026, rama
-> `feat/exercise-variants`), P48 pendiente de probar. Sale de una
+> Estado: **P46, P47 y P48 probadas** (29-sep-2026, rama
+> `feat/exercise-variants`); queda una casilla de P48, la del RPE solo al
+> guardar. Sale de una
 > conversación de diseño con el usuario (opción «B»: RPE objetivo + peso
 > sugerido por e1RM). Orden: P46 → P47 → P48. P46 va primero porque libera el
 > tercer hueco del selector de modo y quita las ramas `'submax'` que P48
@@ -400,6 +401,10 @@ y la sesión siguiente ya se calcula.
   entrenador o última sesión), y ✓ sin datos propios ya no pierde el RPE.
   Afecta a todos los ejercicios, no solo a Por esfuerzo: es lo que la tarjeta
   ya daba a entender.
+- **Regla final de guardar** (usuario): ✓ da por bueno todo lo gris de la
+  serie; guardar la sesión, lo gris de las series donde se escribió algo a
+  mano, **el RPE incluido**. Antes solo contaban peso, reps y tiempo, y una
+  serie con solo el RPE escrito no se guardaba.
 - **Motivos sin «de lo previsto»**: se leía como «de lo que te pedí» y la
   comparación es con lo que hiciste (pedía 90, haces 100: la flecha compara
   con 100). Ahora «la última sesión rendiste por encima / por debajo del
@@ -407,29 +412,32 @@ y la sesión siguiente ya se calcula.
 
 **Probar P48**
 
-- [ ] Primera sesión de un ejercicio Por esfuerzo 3 × 5 @8: la tarjeta dice
+- [x] Primera sesión de un ejercicio Por esfuerzo 3 × 5 @8: la tarjeta dice
   «3 × 5 reps · RPE 8 (2 en recámara)», sin peso objetivo, y la columna RPE
   está visible.
-- [ ] Hacer 80 kg × 5 apuntando RPE 7 en las tres series. La sesión siguiente
+- [x] Hacer 80 kg × 5 apuntando RPE 7 en las tres series. La sesión siguiente
   dice «↑ Peso objetivo 82,5 kg (+2,5)» y «la última sesión rendiste por
   encima del objetivo».
-- [ ] Con RPE 9 en todas: «↓ Peso objetivo 77,5 kg». Con RPE 8: «→ Peso
+- [x] Con RPE 9 en todas: «↓ Peso objetivo 77,5 kg». Con RPE 8: «→ Peso
   objetivo 80 kg», sin delta.
-- [ ] Sesión hecha sin apuntar RPE: mantiene el peso y dice «sin RPE en la
+- [x] Sesión hecha sin apuntar RPE: mantiene el peso y dice «sin RPE en la
   última sesión, el peso se queda igual».
-- [ ] Más peso del pedido y RPE muy bajo (p. ej. 4): la sesión siguiente SUBE el
+- [x] Más peso del pedido y RPE muy bajo (p. ej. 4): la sesión siguiente SUBE el
   peso, nunca lo baja.
-- [ ] Más reps de las pedidas y RPE bajo en todas las series: la sesión
+- [x] Más reps de las pedidas y RPE bajo en todas las series: la sesión
   siguiente sube el peso; nunca sale «Mantener» con el RPE apuntado.
-- [ ] Arrastrar en horizontal sobre la celda RPE cambia de 1 en 1.
-- [ ] Escribir peso y RPE dejando las reps en gris, sin pulsar ✓, y terminar:
+- [x] Arrastrar en horizontal sobre la celda RPE cambia de 1 en 1.
+- [x] Escribir peso y RPE dejando las reps en gris, sin pulsar ✓, y terminar:
   en el historial la serie tiene las reps que se veían en gris, y la sesión
   siguiente calcula el peso (no dice «sin RPE»).
-- [ ] Sentadilla (paso 5 en la librería): el peso objetivo se mueve de 2,5 en
+- [ ] Escribir SOLO el RPE en una serie (peso y reps en gris) y guardar sin ✓:
+  la serie se guarda con los valores en gris, sin «Sin datos registrados».
+  Una serie sin tocar no se guarda.
+- [x] Sentadilla (paso 5 en la librería): el peso objetivo se mueve de 2,5 en
   2,5.
-- [ ] En una etapa de descarga, el ejercicio Por esfuerzo dice Descarga y
+- [x] En una etapa de descarga, el ejercicio Por esfuerzo dice Descarga y
   mantiene el peso.
-- [ ] Inicio enseña «3×5 @RPE8»; el editor de sesión, «3 × 5 @RPE 8»; compartir
+- [x] Inicio enseña «3×5 @RPE8»; el editor de sesión, «3 × 5 @RPE 8»; compartir
   la sesión como texto, «3x5 @RPE8» con el peso calculado.
 
 ---

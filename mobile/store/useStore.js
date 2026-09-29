@@ -2489,13 +2489,14 @@ export const useStore = create(
         function resolveSet(s, lastSet, ov) {
           const ref  = (k) => (ov?.[k] != null && ov[k] !== '' ? ov[k] : lastSet?.[k]) ?? '';
           const fill = (k) => (s[k] !== '' && s[k] != null ? s[k] : String(ref(k)));
-          const own  = s.weight !== '' || s.reps !== '' || s.time !== '';
-          // Cualquier dato → registrado como hecho (sin necesidad de pulsar ✓);
-          // ✓ sin datos propios → los de referencia, si los hay.
-          if (own || (s.done && (lastSet || ov))) {
-            return { ...s, weight: fill('weight'), reps: fill('reps'), time: fill('time'), done: true };
-          }
-          return s;
+          // Algo escrito a mano en la serie (el RPE también) o ✓ → la serie está
+          // hecha y lo que quede en gris se da por bueno. Una serie sin tocar no.
+          const typed = ['weight', 'reps', 'time', 'rpe'].some((k) => s[k] !== '' && s[k] != null);
+          if (!typed && !s.done) return s;
+          const r = { ...s, weight: fill('weight'), reps: fill('reps'), time: fill('time') };
+          // Solo el RPE y nada en gris que completar: no hay serie que guardar.
+          if (r.weight === '' && r.reps === '' && r.time === '') return s;
+          return { ...r, done: true };
         }
 
         const sessionExNotes = activeSession.exerciseNotes ?? {};
