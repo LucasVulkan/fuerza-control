@@ -476,7 +476,12 @@ export default function ExerciseEditorInline({
     if (dirtyRef.current) { clearTimeout(timerRef.current); commitValues(stateRef.current); dirtyRef.current = false; }
     const res = changeExerciseIdentity(templateId, exConfig.exerciseId, target);
     if (!res.id || res.id === exConfig.exerciseId) return;
-    setVariantSheetOpen(false);
+    // La hoja sigue abierta (QA P44): el editor cambia de ejercicio sin
+    // remontarse, así que el estado local tiene que coger la variante que quedó
+    // (a una mano pierde la anchura; el aparte la fija).
+    const now = useStore.getState().sessionTemplates[templateId]?.exercises
+      ?.find((e) => e.exerciseId === res.id);
+    setVariant(now?.variant ?? null);
     if (toast) showToast(toast, 2200, 'success');
     onIdentityChange?.(res.id);
   }
@@ -695,12 +700,14 @@ export default function ExerciseEditorInline({
               </View>
             </View>
           ) : dims.length > 0 ? (
-            <View style={{ gap: spacing.sm }}>
-              <Text style={styles.groupCaption}>{t('variants.howTitle').toUpperCase()}</Text>
+            <View>
+              {/* Pasos con SegmentedControl, como la hoja de Progresión (QA P44). */}
               <VariantPicker def={def} value={variant} onChange={setVariant} />
-              {ident.uni && rootDef?.variants?.width && !def?.variants?.width ? (
-                <Text style={styles.hint}>{t('variants.widthNA')}</Text>
-              ) : null}
+              <Text style={[styles.hint, styles.variantHint]}>
+                {ident.uni && rootDef?.variants?.width && !def?.variants?.width
+                  ? `${t('variants.howHint')} ${t('variants.widthNA')}`
+                  : t('variants.howHint')}
+              </Text>
             </View>
           ) : null}
 
@@ -1004,6 +1011,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Título de grupo dentro de una hoja: el mismo tratamiento que `secLabel`, sin
   // su aire de arriba (en la hoja ya lo da el gap).
   groupCaption: { ...textStyles.caps, color: th.colors.mutedLight },
+  variantHint:  { marginTop: spacing.md },
 
   // ── Etiquetas de sección (123:1635) ───────────────────────────────────────
   secLabel: {

@@ -690,6 +690,14 @@ entrenos del original con esa variante.
 - En «Nuevo ejercicio», «A una mano» va la primera de la sección VARIANTE y al
   encenderla apaga y deshabilita Anchura.
 - Sin la sugerencia de peso opcional de §6.6.
+- QA 29-sep: en pantalla se llama **«Ejercicio único»** (en el código sigue
+  siendo «aparte»: `derived.variant`, `variants.apart*`); «A una mano» pasa a
+  **«Unilateral»** en todas partes; agarre y anchura van en pasos con
+  `SegmentedControl` como la hoja de Progresión (sin nada elegido no resalta
+  nada; en el editor, tocar la elegida la quita; en el Workout el icono ↺ va a la
+  derecha del título del paso); y al cambiar de ejercicio la hoja sigue abierta:
+  la pantalla cambia el ejercicio sin remontar el editor (`setExerciseId`, no
+  `selectExercise`) y el editor recoge la variante que quedó.
 
 **Probar P44**
 
@@ -700,18 +708,24 @@ entrenos del original con esa variante.
   buscador de otra sesión sale como ejercicio normal, sin CUSTOM.
 - [ ] Remo con mancuerna: no hay interruptor, sale «Este ejercicio ya es
   unilateral».
-- [ ] Jalón al pecho con Prono · Ancho → Ejercicio aparte: el texto dice
+- [ ] Jalón al pecho con Prono · Ancho → Ejercicio único: el texto dice
   «Jalón al pecho · Prono · Ancho» y «otro Jalón al pecho»; al encenderlo el
   título cambia, la variante queda fija y sale el toast.
-- [ ] Con el aparte en la sesión, el buscador vuelve a ofrecer «Jalón al pecho»;
+- [ ] Con el único en la sesión, el buscador vuelve a ofrecer «Jalón al pecho»;
   añadirlo deja dos jalones en la sesión, cada uno con su historial.
-- [ ] Con los dos jalones: apagar «Ejercicio aparte» no se mueve y dice «ya hay
+- [ ] Con los dos jalones: apagar «Ejercicio único» no se mueve y dice «ya hay
   un «Jalón al pecho» en esta sesión».
 - [ ] Un jalón vinculado entre la A y la C → Unilateral: cambia en las dos
   sesiones.
 - [ ] En el móvil del cliente conectado, el programa con «Jalón al pecho
   unilateral» abre y se entrena (la definición llega con el programa).
-- [ ] Crear un ejercicio propio «A una mano»: su Anchura queda apagada.
+- [ ] Crear un ejercicio propio «Unilateral»: su Anchura queda apagada.
+- [ ] Hoja Variante (QA 29-sep): agarre y anchura son pasos «1 · AGARRE»,
+  «2 · ANCHURA» con control segmentado, como la hoja de Progresión; en el editor,
+  tocar la elegida la quita. En la hoja pone siempre «Unilateral», nunca «A una
+  mano».
+- [ ] Encender Unilateral o Ejercicio único: el título del editor cambia y la
+  hoja se queda abierta, sin salto.
 
 ---
 

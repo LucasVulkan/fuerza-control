@@ -109,9 +109,10 @@ export default function ExerciseEditorScreen({ navigation, route }) {
               onSubstitute={() => navigation.replace('ExerciseSelector', {
                 templateId, currentExerciseId: exerciseId, existingPatterns: [],
               })}
-              // Unilateral / ejercicio aparte lo cambian por otro: el editor salta a
-              // él como con el desplegable (exercise-variants.md §6.2).
-              onIdentityChange={selectExercise}
+              // Unilateral / ejercicio único lo cambian por otro. Sin remontar el
+              // editor (sin `selectExercise`): la hoja Variante sigue abierta y no
+              // hay salto (QA P44).
+              onIdentityChange={setExerciseId}
               onDelete={() => {
                 navigation.goBack();
                 removeExercise(templateId, exerciseId);
