@@ -562,7 +562,7 @@ export default function ExerciseEditorInline({
           ) : isEffort ? (
             <>
               <View style={styles.gridRow}>
-                <StepField label={t('exerciseEditor.fieldTargetReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
+                <StepField tight label={t('exerciseEditor.fieldTargetReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
               </View>
               {effortWarn}
             </>

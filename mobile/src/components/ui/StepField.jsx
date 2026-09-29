@@ -63,7 +63,10 @@ const MEASURE_SLACK = 6;
 // leerse como la del entreno, no como una caja más de la hoja.
 const VALUE_R   = 8;
 
-export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
+// `tight` (solo Caja): los ± pegados al valor en vez de a los bordes. Para una
+// caja sola a todo el ancho (Reps objetivo, effort-progression.md), donde
+// `space-between` los dejaba sueltos en las esquinas.
+export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat, tight }) {
   const sf = useThemedStyles(makeSf);
   const [draft, setDraft] = useState(String(value));
   // Ancho real del número, medido con un clon invisible: el TextInput no crece
@@ -98,7 +101,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
   }
 
   const controls = (
-    <View style={horizontal ? sf.controlsHorizontal : sf.controls}>
+    <View style={horizontal ? sf.controlsHorizontal : [sf.controls, tight && sf.controlsTight]}>
       <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
         <View style={sf.glyphBar} />
       </TouchableOpacity>
@@ -179,6 +182,7 @@ const makeSf = (th) => StyleSheet.create({
 
   controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },
+  controlsTight:      { justifyContent: 'center', gap: STEP_GAP },
 
   // Sin fondo (regla 1) pero conservando los 34×34 de área táctil.
   stepBtn: {
