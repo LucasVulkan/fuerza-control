@@ -36,6 +36,7 @@ import { NavRow, OptionRow, ToggleRow, NoteRow, CHEVRON_GREY } from '../componen
 import { ArrowIcon, ProgressionIcon } from '../components/ui/EditorIcons';
 import DragSheet from '../components/DragSheet';
 import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
+import { VARIANT_DIMS } from '../utils/variants';
 
 function generateCustomId() {
   return 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
@@ -75,6 +76,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const [isCompound,   setIsCompound]   = useState(true);
   const [level,        setLevel]        = useState('intermediate');
   const [isUnilateral, setIsUnilateral] = useState(false);
+  const [hasGrip,      setHasGrip]      = useState(false);
+  const [hasWidth,     setHasWidth]     = useState(false);
   const [tempo,        setTempo]        = useState('');
   const [notes,        setNotes]        = useState('');
 
@@ -140,6 +143,13 @@ export default function CustomExerciseScreen({ navigation, route }) {
       isCompound,
       isKeyCandidate:       true,
       isUnilateral,
+      // Dimensiones de variante (exercise-variants.md §4.6): todas las opciones.
+      ...(hasGrip || hasWidth ? {
+        variants: {
+          ...(hasGrip  ? { grip:  [...VARIANT_DIMS.grip] }  : {}),
+          ...(hasWidth ? { width: [...VARIANT_DIMS.width] } : {}),
+        },
+      } : {}),
       progressionModel,
       progressionDirection: 'increase',
       sets,
@@ -188,6 +198,22 @@ export default function CustomExerciseScreen({ navigation, route }) {
               onChangeText={(v) => { setName(v); if (nameError) setNameError(false); }}
             />
             {nameError && <Text style={styles.errorText}>{t('customExercise.nameError')}</Text>}
+          </View>
+
+          {/* ══ VARIANTE (maqueta exercise-variants §7) ═══════════════════════ */}
+          <View style={styles.block}>
+            <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
+            <View style={styles.optGroup}>
+              {[['grip', hasGrip, setHasGrip], ['width', hasWidth, setHasWidth]].map(([dim, on, set]) => (
+                <ToggleRow
+                  key={dim}
+                  label={t(`variants.dim.${dim}`)}
+                  hint={VARIANT_DIMS[dim].map((o) => t(`variants.options.${dim}.${o}`)).join(' · ')}
+                  value={on}
+                  onChange={set}
+                />
+              ))}
+            </View>
           </View>
 
           {/* ══ RESUMEN ═══════════════════════════════════════════════════════ */}

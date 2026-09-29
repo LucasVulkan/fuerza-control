@@ -142,3 +142,38 @@ export function InfoIcon({ size = 12, color }) {
     </Svg>
   );
 }
+
+// Variantes de ejercicio (docs/specs/exercise-variants.md). No salen de Figma:
+// trazo fino, caja de 14/15 como el resto de iconos de fila.
+
+// Fila VARIANTE del editor: dos deslizadores.
+export function VariantIcon({ size = 15, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <Path d="M2 4h10M2 10h10" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+      <Circle cx={5} cy={4} r={1.8} fill={color} />
+      <Circle cx={9} cy={10} r={1.8} fill={color} />
+    </Svg>
+  );
+}
+
+// Agarre: tres dedos cruzando una barra.
+export function GripIcon({ size = 14, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <Path d="M1 8.5h12M4 4.5v6.5M7 3.5v7.5M10 4.5v6.5" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// Anchura: dos topes y una flecha doble.
+export function WidthIcon({ size = 14, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <Path
+        d="M1.5 3v8M12.5 3v8M4 7h6M5.6 5.4L4 7l1.6 1.6M8.4 5.4L10 7 8.4 8.6"
+        stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}

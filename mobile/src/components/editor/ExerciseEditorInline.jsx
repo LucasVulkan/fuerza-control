@@ -32,7 +32,9 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
-import { ArrowIcon, ProgressionIcon } from '../ui/EditorIcons';
+import { ArrowIcon, ProgressionIcon, VariantIcon } from '../ui/EditorIcons';
+import VariantPicker from '../ui/VariantPicker';
+import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
 import StepField, { STEP_BTN } from '../ui/StepField';
 import { OptionRow, ToggleRow, NavRow, NoteRow, CHEVRON_GREY } from '../ui/EditorRows';
 import { GRID } from '../workout/grid';
@@ -152,6 +154,7 @@ function computeInitial(exConfig, def) {
     metric:         initMetric,
     isKey:          exConfig.isKey        ?? false,
     isUnilateral:   exConfig.isUnilateral ?? def?.isUnilateral ?? false,
+    variant:        exConfig.variant      ?? null,
     tempo:          exConfig.tempo        ?? '',
     trainerNote:    exConfig.trainerNote  ?? '',
     trackRpe:       exConfig.trackRpe     ?? false,
@@ -198,6 +201,7 @@ export default function ExerciseEditorInline({
   const [metric,         setMetric]         = useState(i.metric);
   const [isKey,          setIsKey]          = useState(i.isKey);
   const [isUnilateral,   setIsUnilateral]   = useState(i.isUnilateral);
+  const [variant,        setVariant]        = useState(i.variant);
   const [tempo,          setTempo]          = useState(i.tempo);
   const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
   const [trackRpe,       setTrackRpe]       = useState(i.trackRpe);
@@ -219,6 +223,7 @@ export default function ExerciseEditorInline({
   const [sheetOpen,       setSheetOpen]       = useState(false);
   const [warmupSheetOpen, setWarmupSheetOpen] = useState(false);
   const [tempoSheetOpen,  setTempoSheetOpen]  = useState(false);
+  const [variantSheetOpen, setVariantSheetOpen] = useState(false);
 
   const stateRef  = useRef(null);
   const dirtyRef  = useRef(false);
@@ -227,7 +232,7 @@ export default function ExerciseEditorInline({
   useEffect(() => { updateRef.current = updateExerciseParams; }, [updateExerciseParams]);
 
   stateRef.current = {
-    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, tempo, trainerNote,
+    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, variant, tempo, trainerNote,
     trackRpe, evalMaxRpe,
     progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
     dropset, supersetWithNext,
@@ -248,6 +253,8 @@ export default function ExerciseEditorInline({
       sets: s.sets, restSec: s.restSec, inputType,
       isKey:        s.isKey,
       isUnilateral: s.isUnilateral,
+      // Solo informa (exercise-variants.md §2.3); vacía se guarda null.
+      variant:      cleanVariant(s.variant, def) ?? null,
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
       trackRpe:     s.trackRpe,
@@ -288,7 +295,7 @@ export default function ExerciseEditorInline({
     }
 
     updateRef.current(templateId, exConfig.exerciseId, updates);
-  }, [templateId, exConfig.exerciseId]);
+  }, [templateId, exConfig.exerciseId, def]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -298,7 +305,7 @@ export default function ExerciseEditorInline({
     timerRef.current = setTimeout(() => { commitValues(stateRef.current); }, 400);
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, tempo, trainerNote,
+  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, variant, tempo, trainerNote,
       trackRpe, evalMaxRpe,
       progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin, dropset,
       supersetWithNext, warmupMode, warmupSets, warmupCustomSteps, warmupRestSec]);
@@ -322,6 +329,7 @@ export default function ExerciseEditorInline({
     setMinReps(v.minReps);     setMaxReps(v.maxReps);
     setMinTime(v.minTime);     setMaxTime(v.maxTime);
     setMetric(v.metric);       setIsUnilateral(v.isUnilateral); setTempo(v.tempo);
+    setVariant(v.variant);
     setIsKey(v.isKey);
     setTrainerNote(v.trainerNote);
     setTrackRpe(v.trackRpe);   setEvalMaxRpe(v.evalMaxRpe);
@@ -434,8 +442,29 @@ export default function ExerciseEditorInline({
       ? t('exerciseEditor.warmup.rowAutoSub',   { sets: warmupSets, rest: warmupRestTxt })
       : t('exerciseEditor.warmup.rowCustomSub', { n: warmupCustomSteps.length, rest: warmupRestTxt });
 
+  // Fila VARIANTE (exercise-variants.md §4.1): solo si el ejercicio declara
+  // alguna dimensión. El subtítulo dice qué hay dentro de la hoja.
+  const dims = variantDims(def);
+  const dimsSub = dims.map((d, n) => {
+    const w = t(`variants.dim.${d}`);
+    return n === 0 ? w : w.toLowerCase();
+  }).join(' · ');
+
   return (
     <View style={styles.container}>
+
+      {/* ══ VARIANTE (no está en Figma — maqueta exercise-variants §1A) ═════ */}
+      {dims.length > 0 && (
+        <View style={styles.block}>
+          <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
+          <NavRow
+            icon={<VariantIcon size={15} color={th.colors.accent} />}
+            title={variantLabel(variant, t) || t('variants.none')}
+            subtitle={dimsSub}
+            onPress={() => setVariantSheetOpen(true)}
+          />
+        </View>
+      )}
 
       {/* ══ RESUMEN (Exercice editor elements / Resumen, 166:1245) ═══════════ */}
       <View style={styles.summaryCard}>
@@ -611,6 +640,20 @@ export default function ExerciseEditorInline({
           <Text style={styles.deleteBtnText}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ══ HOJA: variante ══════════════════════════════════════════════════ */}
+      <DragSheet
+        visible={variantSheetOpen}
+        onClose={() => setVariantSheetOpen(false)}
+        title={t('variants.title')}
+      >
+        <View style={styles.sheetBody}>
+          <View style={{ gap: spacing.sm }}>
+            <Text style={styles.groupCaption}>{t('variants.howTitle').toUpperCase()}</Text>
+            <VariantPicker def={def} value={variant} onChange={setVariant} />
+          </View>
+        </View>
+      </DragSheet>
 
       {/* ══ HOJA: calentamiento ══════════════════════════════════════════════ */}
       <DragSheet
@@ -865,6 +908,10 @@ const makeStyles = (th) => StyleSheet.create({
   summaryTag:  { ...textStyles.caps, color: th.colors.accent },
   summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
   summarySub:  { ...textStyles.label,       color: th.tint.accent50 },
+
+  // Título de grupo dentro de una hoja: el mismo tratamiento que `secLabel`, sin
+  // su aire de arriba (en la hoja ya lo da el gap).
+  groupCaption: { ...textStyles.caps, color: th.colors.mutedLight },
 
   // ── Etiquetas de sección (123:1635) ───────────────────────────────────────
   secLabel: {

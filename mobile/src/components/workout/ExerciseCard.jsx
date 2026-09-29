@@ -40,6 +40,7 @@ import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../util
 import { resolveExerciseReference, resolveRef } from '../../utils/sessionOverride';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import { targetLabel as buildTarget } from '../../utils/prescription';
+import { variantLabel } from '../../utils/variants';
 import { isExerciseDone } from '../../utils/exerciseStatus';
 import { spacing, textStyles, withOpacity, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -174,6 +175,7 @@ export default function ExerciseCard({
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
     : exConfig.exerciseId;
+  const variantText = variantLabel(exConfig.variant, t);
 
   // Dropset: checking the last work set is NOT the end of the exercise — the
   // drops come next. Hold the auto-collapse until at least one drop exists and
@@ -422,7 +424,12 @@ export default function ExerciseCard({
   const nameBlock = (
     <>
       <View style={styles.nameRow}>
-        <Text style={styles.name} numberOfLines={2}>{name}</Text>
+        {/* La variante detrás del nombre, en gris y sin subrayado
+            (exercise-variants.md §4.3): mismo estilo, solo cambia el color. */}
+        <Text style={styles.name} numberOfLines={2}>
+          {name}
+          {variantText ? <Text style={styles.nameVariant}>{` · ${variantText}`}</Text> : null}
+        </Text>
       </View>
       {/* "Principal" es metadato, no badge: como pastilla junto al nombre se
           llevaba una fila entera en cuanto el nombre era largo. Va delante del
@@ -1004,6 +1011,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.text,
     flexShrink: 1,
   },
+  nameVariant: { color: th.colors.mutedLight },
   keyInline: {
     color:      th.colors.accent,
     fontFamily: 'Inter_700Bold',

@@ -17,7 +17,7 @@ export const LINKED_CONFIG_KEYS = [
   'isKey',
   'sets', 'restSec', 'inputType',
   'minReps', 'maxReps', 'minTime', 'maxTime',
-  'isUnilateral', 'tempo', 'trainerNote', 'trackRpe',
+  'isUnilateral', 'tempo', 'trainerNote', 'trackRpe', 'variant',
   'progressionModel', 'progression',
 ];
 

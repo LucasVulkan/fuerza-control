@@ -78,6 +78,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 5, maxReps: 8, weightStep: 2.5, restSec: 120,
     assistedVariantId: null,
     relatedVariants: ['pull_up'], // si uso asistida, excluyo todas las otras
+    variants: { grip: ['pronated', 'neutral'], width: ['wide', 'medium', 'narrow'] },
     tips: [
       'La banda reduce el peso — el número registrado es la resistencia de la banda.',
       'Cuando completes todas las series al máximo, baja a una banda con menos resistencia.',
@@ -199,6 +200,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 8, maxReps: 10, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
     relatedVariants: ['shoulder_press_machine'],
+    variants: { grip: ['pronated', 'neutral'] },
     tips: [
       'Core apretado durante todo el movimiento, no arquees la lumbar.',
       'Codos a 45° del torso al bajar.',
@@ -229,6 +231,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
     relatedVariants: ['shoulder_press_db'],
+    variants: { grip: ['pronated', 'neutral'] },
     tips: [
       'Ajusta el asiento para que los codos queden a 90° al inicio.',
       'No bloquees los codos arriba — mantén tensión constante.',
@@ -288,6 +291,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
     relatedVariants: [],
+    variants: { grip: ['pronated', 'neutral'] },
     warmup: [],
   },
 
@@ -902,6 +906,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 8, maxReps: 10, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
     relatedVariants: ['bench_press_barbell'],
+    variants: { grip: ['pronated', 'neutral'] },
     tips: [
       'Escápulas retraídas y apoyadas en el banco durante todo el movimiento.',
       'Baja las mancuernas hasta que los codos queden a 90°.',
@@ -932,6 +937,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 4, maxReps: 8, weightStep: 5, restSec: 120,
     assistedVariantId: null,
     relatedVariants: ['bench_press_db'],
+    variants: { width: ['wide', 'medium'] },
     tips: [
       'Agarre ligeramente más ancho que los hombros.',
       'Escápulas retraídas y pies apoyados en el suelo.',
@@ -1083,6 +1089,7 @@ export const EXERCISE_LIBRARY = {
     isUnilateral: true,
     assistedVariantId: null,
     relatedVariants: [],
+    variants: { grip: ['pronated', 'neutral'] },
     tips: [
       'Apoya la rodilla y la mano del mismo lado en el banco.',
       'Tira del codo hacia arriba y atrás — no hacia el lado.',
@@ -1113,6 +1120,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 6, maxReps: 8, weightStep: 5, restSec: 120,
     assistedVariantId: null,
     relatedVariants: [],
+    variants: { grip: ['pronated', 'supinated'], width: ['wide', 'medium'] },
     tips: [
       'Torso inclinado a 45° — no completamente horizontal.',
       'Tira la barra hacia el abdomen bajo, no hacia el pecho.',
@@ -1596,6 +1604,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
     relatedVariants: ['bench_press_db', 'bench_press_barbell'],
+    variants: { grip: ['pronated', 'neutral'] },
     tips: [
       'Banco inclinado a 30–45°.',
       'Escápulas retraídas durante todo el movimiento.',
@@ -2500,6 +2509,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 5, maxReps: 8, weightStep: 5, restSec: 120,
     assistedVariantId: null,
     relatedVariants: ['incline_press_db', 'bench_press_barbell'],
+    variants: { width: ['wide', 'medium'] },
     tips: [
       'Banco a 30–45° — por encima de 45° el trabajo pasa al hombro.',
       'Escápulas retraídas y pies en el suelo.',
@@ -3046,6 +3056,7 @@ export const EXERCISE_LIBRARY = {
     minReps: 10, maxReps: 12, weightStep: 2.5, restSec: 90,
     assistedVariantId: null,
     relatedVariants: ['cable_row', 'barbell_row'],
+    variants: { grip: ['pronated', 'supinated', 'neutral'], width: ['wide', 'medium', 'narrow'] },
     warmup: [],
   },
 
@@ -4485,6 +4496,7 @@ export const EXERCISE_LIBRARY = {
     unilateralOf: 'cable_row',
     assistedVariantId: null,
     relatedVariants: ['cable_row', 'db_row_unilateral'],
+    variants: { grip: ['pronated', 'neutral'] },
     tips: [
       'Permite mayor rango de rotación del torso que el remo bilateral.',
     ],

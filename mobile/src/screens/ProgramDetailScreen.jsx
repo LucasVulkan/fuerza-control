@@ -31,6 +31,7 @@ import StageSelector from '../components/ui/StageSelector';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
 import { warmupSteps } from '../utils/warmup';
+import { variantLabel } from '../utils/variants';
 import { stageDiff, isEmptyDiff } from '../utils/programDiff';
 import {
   plannedSets, plannedSetsByGroup, SETS_TARGET_MIN, SETS_TARGET_MAX,
@@ -165,7 +166,12 @@ function ExerciseRow({ num, exConfig, def, name, inGroup }) {
     <View style={styles.exRow}>
       <Text style={styles.exNum}>{num}</Text>
       <View style={styles.exInfo}>
-        <Text style={styles.exName}>{name}</Text>
+        <Text style={styles.exName}>
+          {name}
+          {exConfig.variant
+            ? <Text style={styles.exVariant}>{` · ${variantLabel(exConfig.variant, t)}`}</Text>
+            : null}
+        </Text>
         <View style={styles.exRxLine}>
           <Text style={styles.exRxMain}>{main}</Text>
           {exConfig.isKey && <Text style={styles.keyBadge}>{t('common.keyExercise')}</Text>}
@@ -620,6 +626,7 @@ const makeStyles = (th) => StyleSheet.create({
   exInfo:     { flex: 1, gap: spacing.xs, minWidth: 0 },
   exRxLine:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   exName:     { ...textStyles.body, color: th.colors.text },
+  exVariant:  { color: th.colors.mutedLight },
   keyBadge: {
     ...textStyles.caps,
     color:             th.colors.accent,

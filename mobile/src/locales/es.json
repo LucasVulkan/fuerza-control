@@ -1813,6 +1813,12 @@
     }
   },
   "variants": {
+    "section": "Variante",
+    "title": "Variante",
+    "none": "Sin especificar",
+    "howTitle": "Cómo se hace · solo informa",
+    "dim": { "grip": "Agarre", "width": "Anchura" },
+    "programMark": "programa",
     "options": {
       "grip": { "pronated": "Prono", "supinated": "Supino", "neutral": "Neutro" },
       "width": { "wide": "Ancho", "medium": "Medio", "narrow": "Estrecho" }

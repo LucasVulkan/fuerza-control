@@ -60,6 +60,7 @@ import {
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../src/data/archetypes';
 import { migrateExerciseRefs } from '../src/utils/exerciseIdMigration';
+import { cleanVariant, isEmptyVariant } from '../src/utils/variants';
 import { adaptArchetype } from '../src/utils/archetypeAdapter';
 
 // Mobile i18n instance
@@ -1066,9 +1067,15 @@ export const useStore = create(
         // la sesión también creaba el duplicado (fallo 15). El barrido original
         // no lo contaba.
         if (template.exercises.some((ex) => ex.exerciseId === newExerciseId)) return;
-        const updatedExercises = template.exercises.map((ex) =>
-          ex.exerciseId !== oldExerciseId ? ex : { ...ex, exerciseId: newExerciseId, progressionOverride: null }
-        );
+        const newDef = get().getEffectiveLibrary()[newExerciseId];
+        const updatedExercises = template.exercises.map((ex) => {
+          if (ex.exerciseId !== oldExerciseId) return ex;
+          const next = { ...ex, exerciseId: newExerciseId, progressionOverride: null };
+          // Un agarre de jalón no tiene sentido en un press (exercise-variants.md §4.5).
+          const variant = cleanVariant(ex.variant, newDef);
+          if (variant) next.variant = variant; else delete next.variant;
+          return next;
+        });
         set((s) => ({
           sessionTemplates: {
             ...s.sessionTemplates,
@@ -2406,7 +2413,7 @@ export const useStore = create(
 
         const ownerProgramForLinks = template?.programId ? programs[template.programId] : null;
         const exercises = template.exercises
-          .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec, linkGroup }) => {
+          .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec, linkGroup, variant }) => {
             const setsData = activeSession.setsState[exerciseId] ?? [];
             // Linked exercises autofill from the group's latest performance
             // (any session of the group), not just this template's.
@@ -2421,7 +2428,11 @@ export const useStore = create(
             const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);
             if (validSets.length === 0) return null;
-            return { exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId) };
+            return {
+              exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId),
+              // Cómo se hizo: solo informa y se filtra (exercise-variants.md §2.4).
+              ...(isEmptyVariant(variant) ? {} : { variant }),
+            };
           })
           .filter(Boolean);
 

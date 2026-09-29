@@ -17,6 +17,7 @@ import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { collapseOut, FOLD_MS } from './ui/collapseOut';
 import { targetLabel, exerciseName } from '../utils/prescription';
+import { variantLabel } from '../utils/variants';
 
 // Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
 // token propio (mismo caso que el #81a71e del banner, ver theme.js).
@@ -55,10 +56,13 @@ export function ExerciseLines({ template, allExercises }) {
   const exercises = template.exercises ?? [];
   const blocks    = template.blocks ?? [];
 
-  const line = (key, idx, name, right) => (
+  const line = (key, idx, name, right, variant = '') => (
     <View key={key} style={styles.exRow}>
       <Text style={styles.exIdx}>{idx}</Text>
-      <Text style={styles.exName} numberOfLines={1}>{name}</Text>
+      <Text style={styles.exName} numberOfLines={1}>
+        {name}
+        {variant ? <Text style={styles.exVariant}>{` · ${variant}`}</Text> : null}
+      </Text>
       <Text style={styles.exTarget}>{right}</Text>
     </View>
   );
@@ -72,6 +76,7 @@ export function ExerciseLines({ template, allExercises }) {
           i + 1,
           exerciseName(def, i18n.language, ex.exerciseId),
           targetLabel(def, ex, t, { compact: true }),
+          variantLabel(ex.variant, t),
         );
       })}
       {blocks.map((block, i) => line(
@@ -486,5 +491,6 @@ const makeStyles = (th) => StyleSheet.create({
   exRow:  { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md, paddingVertical: spacing.xs2 },
   exIdx:    { ...textStyles.label, width: 13, color: th.colors.muted },
   exName:   { ...textStyles.body, flex: 1, color: th.colors.text },
+  exVariant: { color: th.colors.mutedLight },
   exTarget: { ...textStyles.label, color: th.colors.mutedLight },
 });

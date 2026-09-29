@@ -3,13 +3,14 @@
 > Tema: programas
 > En corto: Agarre y anchura dejan de ser ejercicios distintos: son la «variante» de uno solo, que informa, se apunta en cada entreno y se puede filtrar en Progreso. Lo que cambia la carga (a una mano, o separar una variante para tener dos jalones el mismo día) sí es otro ejercicio, con id fijo y progresión propia.
 > Fase P41 · hecho · Librería: fusión de repetidos, migración de ids y buscador por palabras · §3
-> Fase P42 · pendiente · La variante en el editor y en las listas · §4
+> Fase P42 · hecho · La variante en el editor y en las listas · §4
 > Fase P43 · pendiente · La variante de hoy en el Workout, compartir y pegar · §5
 > Fase P44 · pendiente · Cambiar el ejercicio: unilateral y ejercicio aparte · §6
 > Fase P45 · pendiente · Progreso filtrado por variante · §7
 >
-> Estado: **P41 implementada** (29-sep-2026, rama `feat/exercise-variants`),
-> pendiente de probar en dispositivo; P42-P45 sin implementar. Lo que salió
+> Estado: **P41 probada y P42 implementada** (29-sep-2026, rama
+> `feat/exercise-variants`); P42 pendiente de probar en dispositivo; P43-P45 sin
+> implementar. Lo que salió
 > distinto de lo escrito, en §3.5.
 >
 > Spec cerrada el 29-sep-2026. Maqueta aprobada:
@@ -384,10 +385,10 @@ nuevo con su variante.
   jalones salen con su agarre.
 - [x] Entrenador con la versión nueva y cliente con la vieja: al descargar el
   historial del cliente, sus jalones caen en «Jalón al pecho».
-- [ ] Una sesión con «Dominadas lastradas»: tras actualizar sale «Dominadas» con
+- [x] Una sesión con «Dominadas lastradas»: tras actualizar sale «Dominadas» con
   el historial de antes; al llegar a 8 reps en todas las series, el Workout
   propone 2,5 kg más de lastre.
-- [ ] Buscador al añadir: con 3 ejercicios marcados, el botón dice «Añadir 3».
+- [x] Buscador al añadir: con 3 ejercicios marcados, el botón dice «Añadir 3».
 
 ---
 
@@ -463,6 +464,19 @@ tiene sentido en un press).
 «Prono · Supino · Neutro») y «Anchura» («Ancho · Medio · Estrecho»). Encendido =
 todas las opciones de esa dimensión en `def.variants`. (P44 añade «A una mano»
 aquí.) Maqueta §7.
+
+### 4.7 Lo que salió distinto (P42)
+
+- El grupo de chips es un componente propio, `src/components/ui/VariantPicker.jsx`,
+  porque la hoja del Workout (P43) es el mismo grupo: ya acepta `programValue`
+  para la marca «programa». `variantDims(def)` vive en `utils/variants.js`.
+- Tabla de §2.2 aplicada tal cual (15 ejercicios con `variants`).
+- `saveSession` escribe `variant` solo si no está vacía; `replaceExercise` la
+  limpia con `cleanVariant` contra el ejercicio nuevo; `'variant'` está en
+  `LINKED_CONFIG_KEYS`.
+- Lint: `ExerciseEditorInline` sube de 31 a 32 avisos, todos de la familia
+  `react-hooks/refs` que ya tenía (cada `useState(i.x)` del editor lo da; el de
+  `variant` es uno más del mismo patrón).
 
 **Probar P42**
 

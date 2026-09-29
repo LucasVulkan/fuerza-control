@@ -5,6 +5,7 @@
  * React Native / Expo surface to `test/native-stub.js`.
  */
 
+import { EXERCISE_LIBRARY } from '../src/data/exerciseLibrary';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
@@ -2184,5 +2185,53 @@ describe('ejercicios juntados al rehidratar — exercise-variants.md P41', () =>
     rehydrateCallback()({}, undefined);
     await vi.waitFor(() => expect(useStore.getState().activeSession.templateId).toBe('t1'));
     expect(useStore.getState().activeSession.setsState).toEqual({ cable_row: [{ weight: '40', reps: '', time: '', done: false }] });
+  });
+});
+
+describe('la variante en la sesión — exercise-variants.md P42', () => {
+  beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY }); });
+
+  function sesionConJalon(variant) {
+    const pid = useStore.getState().createEmptyProgram(1, 'Var');
+    const tid = Object.keys(useStore.getState().sessionTemplates).find(
+      (id) => useStore.getState().sessionTemplates[id].programId === pid,
+    );
+    useStore.setState((s) => ({
+      sessionTemplates: {
+        ...s.sessionTemplates,
+        [tid]: { ...s.sessionTemplates[tid], exercises: [{ exerciseId: 'pulldown', sets: 1, ...(variant ? { variant } : {}) }] },
+      },
+    }));
+    return tid;
+  }
+
+  it('guardar apunta la variante del programa en el registro', () => {
+    const tid = sesionConJalon({ grip: 'neutral', width: 'narrow' });
+    useStore.getState().startSession(tid);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { pulldown: [{ weight: '50', reps: '10', time: '', done: true }] } },
+    }));
+    const { entryId } = useStore.getState().saveSession();
+    const entry = useStore.getState().workoutLog.find((e) => e.id === entryId);
+    expect(entry.exercises[0].variant).toEqual({ grip: 'neutral', width: 'narrow' });
+  });
+
+  it('sin variante no se escribe la clave', () => {
+    const tid = sesionConJalon(null);
+    useStore.getState().startSession(tid);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { pulldown: [{ weight: '50', reps: '10', time: '', done: true }] } },
+    }));
+    const { entryId } = useStore.getState().saveSession();
+    const entry = useStore.getState().workoutLog.find((e) => e.id === entryId);
+    expect('variant' in entry.exercises[0]).toBe(false);
+  });
+
+  it('sustituir conserva solo lo que el ejercicio nuevo declara', () => {
+    const tid = sesionConJalon({ grip: 'supinated', width: 'wide' });
+    useStore.getState().replaceExercise(tid, 'pulldown', 'barbell_row');   // prono/supino · ancho/medio
+    expect(useStore.getState().sessionTemplates[tid].exercises[0].variant).toEqual({ grip: 'supinated', width: 'wide' });
+    useStore.getState().replaceExercise(tid, 'barbell_row', 'squat_barbell');  // sin variante
+    expect('variant' in useStore.getState().sessionTemplates[tid].exercises[0]).toBe(false);
   });
 });

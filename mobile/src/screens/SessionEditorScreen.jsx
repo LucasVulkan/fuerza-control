@@ -38,6 +38,7 @@ import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
+import { variantLabel } from '../utils/variants';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ function volumeLine(patternSets, blockCount, t) {
 // ahí, así que no compite con este swipe horizontal ni con el ScrollView.
 
 function EditorRow({
-  number, name, meta, pill, radii, onPress,
+  number, name, variant, meta, pill, radii, onPress,
   isOpen, onOpenChange, onSwipeDelete, onSubstitute,
 }) {
   const { t }  = useTranslation();
@@ -192,7 +193,13 @@ function EditorRow({
           activeOpacity={0.7}
         >
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.rowName} numberOfLines={1}>{name}</Text>
+            {/* Nombre y variante en UN texto de una línea: al cortarse por el
+                final se pierde antes la variante que el nombre
+                (exercise-variants.md §4.2). */}
+            <Text style={styles.rowName} numberOfLines={1}>
+              {name}
+              {variant ? <Text style={styles.rowVariant}>{` · ${variant}`}</Text> : null}
+            </Text>
             <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
           </View>
           {pill ? (
@@ -670,6 +677,7 @@ function Slot({
         // igual que la numeración de WorkoutScreen.
         number: slot.members.length > 1 ? `${pad}${String.fromCharCode(65 + i)}` : pad,
         name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
+        variant: variantLabel(ex.variant, t),
         meta:   metaFor(ex),
         // "Principal" va en el subtítulo (`rowMeta`), no como pill: la única
         // pill que queda es la de formato de bloque, y "Principal" no cabe.
@@ -688,6 +696,7 @@ function Slot({
           key={row.key}
           number={row.number}
           name={row.name}
+          variant={row.variant}
           meta={row.meta}
           pill={row.pill}
           radii={isGroup ? groupRadii(i, rows.length) : null}
@@ -762,6 +771,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
+  rowVariant: { ...textStyles.body, color: th.colors.mutedLight },
   // Sin `marginTop`: el hueco nombre→meta lo pone el interlineado y nada más,
   // igual que en las tarjetas de sesión del editor de programa (`sesMeta`).
   rowMeta:   { ...textStyles.label, color: th.colors.mutedLight },

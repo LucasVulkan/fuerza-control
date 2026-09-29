@@ -32,6 +32,7 @@ import { describeBlockScore, compareBlockResults } from '../utils/conditioningBl
 import { sessionLoads, dailySeries, rollingMean } from '../utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
+import { variantLabel } from '../utils/variants';
 import { spacing, textStyles, borders, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { backToMain } from '../navigation/navigationRef';
@@ -177,6 +178,9 @@ export default function SessionRecapScreen({ navigation, route }) {
     if (!def) return id;
     return i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name;
   };
+
+  // La variante con la que se hizo hoy (exercise-variants.md §4.4).
+  const entryVariant = (id) => variantLabel(entry.exercises?.find((e) => e.exerciseId === id)?.variant, t);
 
   const isFree = isFreeEntry(entry);
   // Sobre la marcha: la única que se puede guardar como sesión libre. Tras
@@ -536,7 +540,12 @@ export default function SessionRecapScreen({ navigation, route }) {
                   style={[styles.listItem, getCardRadii(th, i === 0, i === rows.length - 1)]}
                 >
                   <View style={styles.itemHead}>
-                    <Text style={styles.exName} numberOfLines={1}>{exName(row.exerciseId)}</Text>
+                    <Text style={styles.exName} numberOfLines={1}>
+                      {exName(row.exerciseId)}
+                      {entryVariant(row.exerciseId)
+                        ? <Text style={styles.exVariant}>{` · ${entryVariant(row.exerciseId)}`}</Text>
+                        : null}
+                    </Text>
                     {deltaText(row.delta)}
                   </View>
                   {row.sets.length > 0
@@ -776,6 +785,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowBody:  { flex: 1, minWidth: 0, gap: spacing.xs },
 
   exName: { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
+  exVariant: { ...textStyles.label, color: th.colors.mutedLight },
   exSub:  { ...textStyles.label, color: th.colors.mutedLight },
   exNote: { ...textStyles.label, color: th.colors.mutedLight, fontStyle: 'italic' },
 

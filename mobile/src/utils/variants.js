@@ -21,6 +21,11 @@ function entries(variant) {
   return DIM_ORDER.filter((d) => variant?.[d]).map((d) => [d, variant[d]]);
 }
 
+/** Las dimensiones que el ejercicio declara (`def.variants`), en orden. */
+export function variantDims(def) {
+  return DIM_ORDER.filter((d) => def?.variants?.[d]?.length);
+}
+
 export function isEmptyVariant(variant) {
   return entries(variant).length === 0;
 }

@@ -27,6 +27,7 @@ import { describeBlockScore } from '../utils/conditioningBlocks';
 import { recapStats } from '../utils/sessionRecap';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { isFreeEntry } from '../utils/freeSessions';
+import { variantLabel } from '../utils/variants';
 
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
 const BLOCK_BADGE_STYLE = {
@@ -150,7 +151,11 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
 
         return (
           <View key={ex.exerciseId} style={styles.exSection}>
-            <Text style={styles.exName}>{exName}</Text>
+            <Text style={styles.exName}>
+              {exName}
+              {/* Lo que se hizo, no lo que decía el programa (exercise-variants.md §4.4). */}
+              {ex.variant ? <Text style={styles.exVariant}>{` · ${variantLabel(ex.variant, t)}`}</Text> : null}
+            </Text>
             <View style={styles.setPills}>
               {/* Logged sets — grouped by consecutive weight runs: one
                   weightless weight-pill followed by its reps/RPE pills */}
@@ -403,6 +408,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.xs,
   },
   exName: { ...textStyles.bodyStrong, color: th.colors.text },
+  exVariant: { ...textStyles.body, color: th.colors.mutedLight },
   exNote: {
     ...textStyles.body,
     color:      th.colors.accent,
