@@ -2480,16 +2480,20 @@ export const useStore = create(
         const template = getEffectiveTemplate(activeSession.templateId);
         if (!template) return { ok: false, error: 'Template no encontrado' };
 
-        function resolveSet(s, lastSet) {
-          // Cualquier dato → registrado como hecho (sin necesidad de pulsar ✓)
-          if (s.weight !== '' || s.reps !== '' || s.time !== '') {
-            return { ...s, done: true };
-          }
-          // Sin datos propios, pero ✓ marcado y hay sesión anterior → rellenar con valores anteriores
-          if (s.done && lastSet) {
-            return {
-              weight: lastSet.weight ?? '', reps: lastSet.reps ?? '', time: lastSet.time ?? '', done: true,
-            };
+        // Lo que la tarjeta pinta en gris (el objetivo del entrenador o la última
+        // sesión) es lo que se da por hecho en un campo vacío: el mismo relleno
+        // que hace ✓ en `ExerciseCard`. Sin él, una serie con peso y RPE escritos
+        // y las reps en gris se guardaba SIN reps, y la progresión por esfuerzo
+        // no podía calcular nada (QA P48). El RPE y el resto se conservan.
+        const sessionOverride = get().clientSync.pendingOverrides?.[activeSession.templateId] ?? null;
+        function resolveSet(s, lastSet, ov) {
+          const ref  = (k) => (ov?.[k] != null && ov[k] !== '' ? ov[k] : lastSet?.[k]) ?? '';
+          const fill = (k) => (s[k] !== '' && s[k] != null ? s[k] : String(ref(k)));
+          const own  = s.weight !== '' || s.reps !== '' || s.time !== '';
+          // Cualquier dato → registrado como hecho (sin necesidad de pulsar ✓);
+          // ✓ sin datos propios → los de referencia, si los hay.
+          if (own || (s.done && (lastSet || ov))) {
+            return { ...s, weight: fill('weight'), reps: fill('reps'), time: fill('time'), done: true };
           }
           return s;
         }
@@ -2512,7 +2516,7 @@ export const useStore = create(
               getTemplate: get().getEffectiveTemplate,
             });
             const lastSets = lastExData?.sets ?? [];
-            const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
+            const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i], sessionOverride?.exercises?.[exerciseId]));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);
             if (validSets.length === 0) return null;
             return {

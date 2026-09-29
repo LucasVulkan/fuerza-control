@@ -2353,3 +2353,32 @@ describe('unilateral y ejercicio aparte — exercise-variants.md P44', () => {
     expect(exs(b)[0].exerciseId).toBe('pulldown__uni');
   });
 });
+
+describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  const S = () => useStore.getState();
+  const f = (i, k, v) => S().updateSetField('squat_barbell', i, k, v);
+  const train = (id, fill, at) => {
+    vi.setSystemTime(at);
+    S().startSession(id);
+    [0, 1].forEach(fill);
+    const { entryId } = S().saveSession();
+    return S().workoutLog.find((e) => e.id === entryId).exercises[0].sets;
+  };
+
+  it('peso y RPE escritos con las reps en gris: guarda las reps de referencia', () => {
+    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'weight', '100'); f(i, 'rpe', '8'); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '100', reps: '8', rpe: '8', done: true })));
+  });
+
+  it('✓ sin peso ni reps propios: los de referencia, sin perder el RPE', () => {
+    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'rpe', '7'); f(i, 'done', true); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '90', reps: '8', rpe: '7', done: true })));
+  });
+});

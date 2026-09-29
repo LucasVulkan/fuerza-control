@@ -233,9 +233,9 @@ if (prog.type === 'effort') return chipEffort(prog, doneSets, def, minReps, t);
 |---|---|---|---|
 | Ninguna serie con peso, reps y RPE válidos | `hold` | peso máx. de la última o `null` | `why_effortNoRpe` — «apunta el RPE de cada serie para ajustar el peso» |
 | reps + recámara > 12 | `hold` | peso máx. de la última | `why_effortUnreliable` — «demasiadas reps para calcular el peso» |
-| peso calculado > peso máx. de la última | `up` | calculado | `why_effortEasier` — «la última sesión salió más fácil de lo previsto» |
-| < | `down` | calculado | `why_effortHarder` — «la última sesión salió más dura de lo previsto» |
-| = | `hold` | calculado | `why_effortOnTarget` — «la última sesión salió según lo previsto» |
+| peso calculado > peso máx. de la última | `up` | calculado | `why_effortEasier` — «la última sesión rendiste por encima del objetivo» |
+| < | `down` | calculado | `why_effortHarder` — «la última sesión rendiste por debajo del objetivo» |
+| = | `hold` | calculado | `why_effortOnTarget` — «la última sesión cuadró con el objetivo» |
 
 `msg` (solo se ve si no hay número): `progression.effort_noWeight` — «Apunta el
 RPE de cada serie para calcular el peso». Los `why` no llevan números: así no
@@ -349,7 +349,7 @@ Queda así:
 ```
 3 × 5 reps · RPE 8 (2 en recámara)
 ↑ Peso objetivo  82,5 kg  (+2,5)
-la última sesión salió más fácil de lo previsto
+la última sesión rendiste por encima del objetivo
 ```
 
 **Sin historial** (primera sesión): no hay chip, igual que en los otros modos.
@@ -392,6 +392,18 @@ y la sesión siguiente ya se calcula.
   con el que llegues al RPE objetivo».
 - La columna RPE del Workout se arrastra de 1 en 1 (antes 0,5); los medios se
   pueden escribir.
+- **Fallo de QA: las reps en gris no se guardaban.** Una serie con peso y RPE
+  escritos y las reps en gris (sin pulsar ✓) se guardaba SIN reps: no contaba
+  para el e1RM y, si pasaba en todas, salía «sin RPE en la última sesión».
+  Solo ✓ copiaba los grises (`ExerciseCard`). Ahora `saveSession` hace el
+  mismo relleno en cualquier campo vacío de una serie hecha (objetivo del
+  entrenador o última sesión), y ✓ sin datos propios ya no pierde el RPE.
+  Afecta a todos los ejercicios, no solo a Por esfuerzo: es lo que la tarjeta
+  ya daba a entender.
+- **Motivos sin «de lo previsto»**: se leía como «de lo que te pedí» y la
+  comparación es con lo que hiciste (pedía 90, haces 100: la flecha compara
+  con 100). Ahora «la última sesión rendiste por encima / por debajo del
+  objetivo» y «la última sesión cuadró con el objetivo».
 
 **Probar P48**
 
@@ -399,16 +411,20 @@ y la sesión siguiente ya se calcula.
   «3 × 5 reps · RPE 8 (2 en recámara)», sin peso objetivo, y la columna RPE
   está visible.
 - [ ] Hacer 80 kg × 5 apuntando RPE 7 en las tres series. La sesión siguiente
-  dice «↑ Peso objetivo 82,5 kg (+2,5)» y «la última sesión salió más fácil de
-  lo previsto».
+  dice «↑ Peso objetivo 82,5 kg (+2,5)» y «la última sesión rendiste por
+  encima del objetivo».
 - [ ] Con RPE 9 en todas: «↓ Peso objetivo 77,5 kg». Con RPE 8: «→ Peso
   objetivo 80 kg», sin delta.
-- [ ] Sesión hecha sin apuntar RPE: mantiene el peso y pide apuntar el RPE.
+- [ ] Sesión hecha sin apuntar RPE: mantiene el peso y dice «sin RPE en la
+  última sesión, el peso se queda igual».
 - [ ] Más peso del pedido y RPE muy bajo (p. ej. 4): la sesión siguiente SUBE el
   peso, nunca lo baja.
 - [ ] Más reps de las pedidas y RPE bajo en todas las series: la sesión
   siguiente sube el peso; nunca sale «Mantener» con el RPE apuntado.
 - [ ] Arrastrar en horizontal sobre la celda RPE cambia de 1 en 1.
+- [ ] Escribir peso y RPE dejando las reps en gris, sin pulsar ✓, y terminar:
+  en el historial la serie tiene las reps que se veían en gris, y la sesión
+  siguiente calcula el peso (no dice «sin RPE»).
 - [ ] Sentadilla (paso 5 en la librería): el peso objetivo se mueve de 2,5 en
   2,5.
 - [ ] En una etapa de descarga, el ejercicio Por esfuerzo dice Descarga y
