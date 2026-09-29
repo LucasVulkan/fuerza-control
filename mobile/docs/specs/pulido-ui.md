@@ -3,7 +3,7 @@
 > Tema: ui
 > En corto: Mejoras visuales y de estandarización apuntadas el 29-sep-2026 para más adelante: pantallas que se deslizan con el segmentado, un recap legible, hojas de opciones y confirmaciones todas iguales, textos sin traducir, un solo lima, cabeceras, pantallas vacías y una hoja de progresión duplicada.
 > Fase U28 · pendiente · Progresión: las pantallas se deslizan con el segmentado · §1
-> Fase U29 · pendiente · Recap: distribución y legibilidad · §2
+> Fase U29 · hecho · Recap: distribución y legibilidad · §2
 > Fase U30 · pendiente · Hojas de opciones con icono y estandarizadas · §3
 > Fase U31 · pendiente · Sesiones libres: icono delante o sin hueco · §4
 > Fase U32 · pendiente · Programa de cliente: botones fuera de la tarjeta · §5
@@ -36,23 +36,84 @@ alterar su comportamiento cuando no hay pager.
 
 ## 2. U29 — Recap: distribución y legibilidad
 
-El recap tiene muchas cosas y hoy se lee mal. Necesita mejor jerarquía y
-reparto del espacio.
+El recap tenía 12 bloques apilados con el mismo peso, y lo que se pide (RPE y
+peso corporal) iba **antes** que el premio (cifras y PRs). Maqueta aprobada en
+[`docs/mockups/recap.html`](../mockups/recap.html) tras una ronda de ajustes
+del usuario (29-sep-2026).
 
-Orden actual en `SessionRecapScreen.jsx`, 12 bloques apilados: cabecera · RPE
-de la sesión · carga · peso corporal · cifras · PRs · bloques de
-acondicionamiento · comparación con la sesión anterior · nota · «cuenta para
-el programa» · añadir a la sesión libre · guardar como sesión libre · Hecho.
+**Tres lenguajes, siempre el mismo por bloque:** resultado (se lee, tarjeta
+`surface`), logro (se celebra, `tint/accent10`) y **tu parte** (se escribe:
+todo bajo el lápiz y nada más).
 
-El problema principal: lo que se pide (RPE y peso corporal) va **antes** que
-el premio (cifras y PRs). Propuesta para discutir:
+Orden nuevo en `SessionRecapScreen.jsx`:
 
-1. Resultados: cifras y PRs.
-2. Comparación con la sesión anterior y bloques.
-3. Una sola tarjeta «cómo ha ido»: RPE (y la carga que sale de él), peso
-   corporal y nota.
-4. Las decisiones de sesión libre, juntas en un grupo.
-5. «Hecho» fijo abajo.
+1. **Marcador**: ceja «✓ SESIÓN COMPLETADA», letra y nombre de la sesión en
+   Barlow (los de la sesión de hoy en Inicio), etapa y fecha, y debajo en la
+   misma tarjeta duración · volumen · series en `title`, **no** en Barlow («no
+   es un dato tan relevante como para enseñarlo como un premio»). El volumen
+   lleva su % contra la misma sesión la vez anterior (`volumeDeltas`, el del
+   historial). Sin tira de la semana: descartada por el usuario.
+2. **Récords**: como mucho 3, ordenados por % de mejora; el resto detrás de
+   «Ver N más». `detectPRs` da uno por ejercicio que supera su mejor marca de
+   siempre, así que en los primeros meses salen 6-9.
+3. **Tu parte**, con «Sin contestar» / «Todo contestado» (solo mira el sRPE):
+   - sRPE con sus botones `surface2` de siempre (el usuario prefirió el fondo
+     de antes). Al contestarlo, la carga sale en la misma tarjeta **solo como %
+     vs media 7d**, en blanco: el número de carga suelto no dice nada.
+   - Peso corporal con `StepField` (± y celda `bg`), relleno con el último, y
+     «El último: X kg, hace N días».
+   - Nota de la sesión: la que se escribió en el entreno sale ya escrita para
+     corregirla. `setSessionFeedback` acepta ahora `notes`.
+4. **Vs. última sesión**: una fila por ejercicio con el nombre y **solo el
+   delta** (sin series: «no necesito un resumen de lo que ya he hecho»), y el
+   trofeo en los que hicieron récord. Sin sesión anterior, no sale.
+5. Bloques, igual que antes.
+6. **Esta sesión libre**: «cuenta para el programa» y las dos acciones como
+   filas `MenuRow` con icono.
+7. **Pie fijo** con HECHO; si falta el sRPE, «Falta: cómo de dura fue» encima,
+   que baja hasta la pregunta. No bloquea.
+
+De paso: el nombre de la etapa se leía de `program.currentStageIndex`, que en
+el móvil del entrenador es su copia y no se mueve; ahora pasa por
+`athleteProgress` (la única puerta, weeks-model §3.7).
+
+**Probar U29**
+
+- [ ] Acabar una sesión de programa: arriba sale la tarjeta con ✓ SESIÓN
+  COMPLETADA, la letra (A/B/C) en su caja lima, el nombre en Barlow, la etapa
+  y la fecha, y debajo duración · volumen · series en letra normal.
+- [ ] Repetir una sesión que ya se había hecho: bajo el volumen sale su % contra
+  la vez anterior (lima si sube, rojo apagado si baja).
+- [ ] Con récords: salen en lima bajo «N RÉCORDS», con el valor nuevo a la
+  derecha y «anterior …» debajo del nombre. Con más de 3 sale «Ver N récords
+  más» y al pulsarlo aparecen los demás.
+- [ ] Sin contestar el RPE: la sección TU PARTE dice «Sin contestar», la
+  pregunta lleva un punto gris y el pie dice «Falta: cómo de dura fue».
+  Pulsarlo baja hasta la pregunta.
+- [ ] Contestar el RPE: el punto pasa a ✓, el chip a «Todo contestado» (lima),
+  desaparece el «Falta» del pie y, si hay una semana de historial, sale
+  «CARGA DE LA SESIÓN +N % vs media 7d» en blanco, sin el número de carga.
+- [ ] Peso corporal: sale relleno con el último, los ± lo mueven de 0,1 en 0,1
+  y se puede escribir tocando el número. Debajo, «El último: X kg, hace N días».
+  Un peso de tres cifras con decimal (p. ej. 102,4) no se corta.
+- [ ] Nota escrita durante el entreno: sale en la celda con «del entreno» a la
+  derecha. Corregirla, salir con HECHO y abrir la sesión en el historial: sale
+  la nota corregida.
+- [ ] Sin nota: la celda sale vacía con «Cómo te has sentido, molestias…» y
+  «opcional» a la derecha. Escribir en ella no queda tapado por el teclado.
+- [ ] VS. ÚLTIMA SESIÓN: una fila por ejercicio, sin series, con el cambio a
+  la derecha; los que hicieron récord llevan el trofeo; un ejercicio nuevo dice
+  «nuevo». La primera vez que se hace una sesión, la sección no sale.
+- [ ] Sesión libre sobre la marcha: al final, ESTA SESIÓN LIBRE con «Guardar
+  como sesión libre» (icono de disquete). Pulsarla: pasa a «Guardada…» con ✓
+  y sale el aviso.
+- [ ] Sesión libre guardada con ejercicios añadidos, y con programa activo:
+  salen «Cuenta para el programa» con su segmentado y «Añadir N ejercicios a la
+  sesión» (icono +).
+- [ ] Entrenador apuntando por un cliente: la ceja dice «NOMBRE · SESIÓN
+  COMPLETADA» en azul, la letra va en azul, y HECHO vuelve a la ficha del
+  cliente.
+- [ ] En inglés, ningún texto del recap sale en español.
 
 ## 3. U30 — Hojas de opciones con icono y estandarizadas
 
@@ -172,7 +233,7 @@ probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
 | U28 | Pager sincronizado con el segmentado de Progresión; segmentado a Reanimated | pendiente | 🟡 |
-| U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | pendiente | 🟡 |
+| U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — pendiente de probar en dispositivo | 🟡 |
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | pendiente | 🟡 |
 | U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
 | U32 | Botones del programa de cliente fuera de la tarjeta | pendiente | 🟢 |

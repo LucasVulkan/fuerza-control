@@ -287,10 +287,6 @@
               <div class="meta t-label">Etapa 2 · Fuerza · mar 29 sep</div>
             </div>
           </div>
-          <div class="week">
-            <div class="dots"><span class="dot on"></span><span class="dot now"></span><span class="dot"></span></div>
-            <span class="t-label ml"><b style="color:var(--text);font-weight:800">2 de 3</b> esta semana · semana 3 de 6</span>
-          </div>
           <div class="stats">
             <div class="stat">
               <span class="v"><span class="t-title num">58:12</span></span>
@@ -514,10 +510,6 @@
           <div class="glyph t-heroGlyph" style="background:var(--blue30);color:var(--blue)">A</div>
           <div><div class="t-heroName">Pierna</div><div class="meta t-label">Etapa 1 · Base · lun 28 sep</div></div>
         </div>
-        <div class="week">
-          <div class="dots"><span class="dot now" style="background:var(--blue);box-shadow:0 0 0 3px var(--blue30)"></span><span class="dot"></span></div>
-          <span class="t-label ml"><b style="color:var(--text);font-weight:800">1 de 2</b> esta semana · semana 2 de 4</span>
-        </div>
         <div class="stats">
           <div class="stat"><span class="t-title num">46:30</span><span class="t-caps ml">Duración</span></div>
           <div class="stat"><span class="v"><span class="t-title num">6.150</span><span class="u t-label">kg</span></span><span class="t-caps ml">Volumen</span><span class="delta d-eq">=</span></div>
@@ -535,8 +527,6 @@
     <li><b>Ningún token nuevo.</b> Barlow solo en la identidad de la sesión: letra (<code>heroGlyph</code>) y nombre
       (<code>heroName</code>), como la tarjeta de hoy en Inicio. Las cifras siguen en <code>title</code>, como hoy: informan,
       no son el premio.</li>
-    <li><b>Dato nuevo en pantalla: la tira de la semana</b> (2 de 3 · semana 3 de 6). Sale del modelo de semanas
-      (<code>weeks-model.md</code>), que ya lo calcula para Inicio. Si no hay programa (sesión libre que no cuenta), no se pinta.</li>
     <li><b>Dato nuevo: el delta de volumen</b> contra la misma sesión la última vez. Ya existe: <code>volumeDeltas</code>
       (<code>utils/sessionRecap.js</code>), el que usa el historial. Si la sesión no tiene anterior, o es libre, no sale.</li>
     <li><b>Pie fijo</b> fuera del <code>ScrollView</code>. «Falta…» hace <code>scrollTo</code> a la tarjeta del RPE.</li>

@@ -1,46 +1,58 @@
 /**
  * SessionRecapScreen — post-session summary, shown right after saving.
  *
- * Duration · volume · sets, PRs (only when they exist), and the per-exercise
- * comparison against the previous run of the same session. All numbers come
- * from the just-saved log entry + pure utils.
+ * Orden y lenguaje: docs/specs/pulido-ui.md §2 (U29), maqueta en
+ * `docs/mockups/recap.html`. Cada bloque habla uno de tres lenguajes y siempre
+ * el mismo, para que se vea de un vistazo qué se lee y qué se toca:
  *
- * The only thing it WRITES is the post-session feedback (session RPE + body
- * weight) — see `setSessionFeedback` in the store and
- * `docs/specs/training-load.md` §2.
+ *   - **Resultado** (se lee): el marcador de arriba, tarjeta `surface`.
+ *   - **Logro** (se celebra): los récords, relleno `tint/accent10`.
+ *   - **Tu parte** (se escribe): todo lo que va bajo el lápiz y nada más —
+ *     sRPE, peso corporal y nota. Los valores en celda `bg` con ± (`StepField`).
  *
- * Estilo: FormaFit. Esta pantalla NO tiene nodo en Figma (no aparece en la
- * extracción), así que hereda tokens y anatomías ya cerradas en otras
- * pantallas en vez de inventar: las 3 cards de cabecera son las Progress cards
- * de `ProgressTab`, las series usan las pills compartidas de `setDisplay.js`
- * (mismas que History y el detalle de ejercicio) y la lista de ejercicios usa
- * la lista agrupada con `getCardRadii`. Sin bordes: en este tema solo aparecen
- * como highlight en 3 casos y ninguno es este (docs/UI-MIGRATION.md §4.6).
+ * El resultado va primero porque el recap es la recompensa; las preguntas justo
+ * después, antes de la comparación por ejercicio (lo que menos se mira). El pie
+ * con HECHO es fijo y avisa de que falta el sRPE sin obligar a contestarlo.
+ *
+ * Lo único que ESCRIBE es el feedback (sRPE, peso, nota — `setSessionFeedback`,
+ * docs/specs/training-load.md §2) y las decisiones de sesión libre.
+ *
+ * Estilo: FormaFit, sin nodo en Figma — hereda tokens y anatomías de otras
+ * pantallas: la letra y el nombre en Barlow son los de la sesión de hoy en
+ * Inicio, las filas son la lista agrupada con `getCardRadii` y las de sesión
+ * libre son `MenuRow`.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Text, TextInput, MAX_FONT_SCALE } from '../components/ui/Text';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, interpolateColor,
+  useSharedValue, useAnimatedStyle, withTiming, interpolateColor, FadeIn, LinearTransition,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { useStore, ownerLogOf } from '../../store/useStore';
-import { recapStats, detectPRs, compareToLast, doneSets, doneDrops, prevBlockResult } from '../utils/sessionRecap';
+import { recapStats, detectPRs, compareToLast, prevBlockResult, volumeDeltas } from '../utils/sessionRecap';
 import { describeBlockScore, compareBlockResults } from '../utils/conditioningBlocks';
 import { sessionLoads, dailySeries, rollingMean } from '../utils/trainingLoad';
-import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { variantLabel, displayVariant } from '../utils/variants';
-import { spacing, textStyles, borders, getCardRadii } from '../theme';
+import { spacing, textStyles, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { backToMain } from '../navigation/navigationRef';
 import { isFreeEntry } from '../utils/freeSessions';
 import { athleteProgress } from '../utils/stageProgress';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import StepField from '../components/ui/StepField';
+import { MenuRow, RowIcon } from '../components/ui/MenuList';
+import { CheckIcon, PencilIcon, ChevronDown } from '../components/ui/EditorIcons';
+import { FOLD_MS } from '../components/ui/collapseOut';
 
 const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
+
+// Récords a la vista; el resto detrás de «Ver N más». Una sesión de 9
+// ejercicios en los primeros meses puede dar 6-9 y se comían la pantalla.
+const PRS_VISIBLE = 3;
 
 function TrophyIcon({ size = 17, color }) {
   return (
@@ -116,7 +128,7 @@ export default function SessionRecapScreen({ navigation, route }) {
   const round1 = (v) => Math.round(v * 10) / 10;
 
   const workoutLog       = useStore((s) => ownerLogOf(s, clientId));
-  const clientName       = useStore((s) => (clientId ? s.clients[clientId]?.name ?? '' : null));
+  const client           = useStore((s) => (clientId ? s.clients[clientId] ?? null : null));
   const programs         = useStore((s) => s.programs);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
@@ -133,19 +145,22 @@ export default function SessionRecapScreen({ navigation, route }) {
   const setEntryCountsAs  = useStore((s) => s.setEntryCountsAs);
   const activeProgramId   = useStore((s) => s.profile.activeProgramId);
   const showToast          = useStore((s) => s.showToast);
-  // Una por sesión: guardada, el botón se queda diciéndolo. Guardarla dos
+  // Una por sesión: guardada, la fila se queda diciéndolo. Guardarla dos
   // veces daría dos sesiones idénticas y ninguna forma de saberlo.
   const [templateSaved, setTemplateSaved] = useState(false);
   const [exercisesAdded, setExercisesAdded] = useState(false);
+  const [prsOpen, setPrsOpen] = useState(false);
 
   const entry = workoutLog.find((e) => e.id === entryId);
 
-  // Draft for the body-weight field: the last known weight prefills it, and it
-  // only reaches the store once it parses (so "78." mid-typing isn't saved).
-  const [weightDraft, setWeightDraft] = useState(() => {
-    const kg = entry?.bodyWeight ?? profileBodyWeight;
-    return kg != null ? String(toDisplay(kg)) : '';
-  });
+  // La nota se escribe en el entreno y se corrige aquí: el borrador solo llega
+  // al store al soltar el campo.
+  const [noteDraft, setNoteDraft] = useState(() => entry?.notes ?? '');
+  const [noteFromWorkout]         = useState(() => !!entry?.notes?.trim());
+
+  // «Falta: cómo de dura fue» baja hasta la tarjeta del sRPE.
+  const scrollRef = useRef(null);
+  const yourPartY = useRef(0);
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
@@ -153,23 +168,26 @@ export default function SessionRecapScreen({ navigation, route }) {
   );
 
   /**
-   * Carga de esta sesión y su comparación con la norma reciente.
+   * Carga de esta sesión contra la norma reciente, en %. El número de carga no
+   * se enseña: sin unidad no dice nada, solo vale comparado consigo mismo.
    * La media de 7 días se toma hasta AYER (no incluye la sesión que se acaba
    * de guardar), que es lo que hace la comparación informativa en vez de
    * circular. Sin sRPE no hay carga interna, así que no se muestra nada.
    */
-  const loadInfo = useMemo(() => {
+  const loadPct = useMemo(() => {
     if (!entry || entry.sessionRpe == null) return null;
     const loads = sessionLoads(workoutLog, allExercises, { fallbackBodyWeight: profileBodyWeight });
     const mine  = loads.find((l) => l.id === entry.id);
     if (mine?.internal == null) return null;
     const means = rollingMean(dailySeries(loads).map((d) => d.internal), 7);
     const base  = means.length >= 2 ? means[means.length - 2] : null;
-    return {
-      value: Math.round(mine.internal),
-      pct:   base > 0 ? Math.round(((mine.internal - base) / base) * 100) : null,
-    };
+    return base > 0 ? Math.round(((mine.internal - base) / base) * 100) : null;
   }, [entry, workoutLog, allExercises, profileBodyWeight]);
+
+  const volumePct = useMemo(
+    () => (entry ? volumeDeltas(workoutLog).get(entry.id) ?? null : null),
+    [entry, workoutLog],
+  );
 
   if (!entry) return null;
 
@@ -186,7 +204,7 @@ export default function SessionRecapScreen({ navigation, route }) {
 
   const isFree = isFreeEntry(entry);
   // Sobre la marcha: la única que se puede guardar como sesión libre. Tras
-  // guardarla la entrada se reapunta a la sesión nueva, así que el botón se
+  // guardarla la entrada se reapunta a la sesión nueva, así que la fila se
   // sostiene con `templateSaved` para seguir diciendo «Guardada».
   const onTheFly = !clientId && (entry.sessionTemplateId === '__free__' || templateSaved);
   const template = !isFree ? sessionTemplates[entry.sessionTemplateId] : null;
@@ -208,114 +226,53 @@ export default function SessionRecapScreen({ navigation, route }) {
     ? (stageDays.find((d) => d.sessionTemplateId === entry.countsAs)?.label
       ?? sessionTemplates[entry.countsAs]?.label ?? '')
     : null;
-  const program  = template?.programId ? programs[template.programId] : null;
+  // La etapa sale del progreso del ATLETA (la única puerta, weeks-model §3.7):
+  // en el móvil del entrenador los campos del programa son de su copia.
+  const program   = template?.programId ? programs[template.programId] : null;
   const stageName = program?.stages?.length
-    ? program.stages[program.currentStageIndex ?? 0]?.name
+    ? program.stages[athleteProgress(program, client).currentStageIndex]?.name
     : null;
 
   const stats  = recapStats(entry);
-  const prs    = detectPRs(entry, workoutLog);
+  // Los mayores primero, por cuánto mejoran en proporción: +2 reps sobre 10
+  // pesa más que +2,5 kg sobre 90.
+  const prs = detectPRs(entry, workoutLog)
+    .sort((a, b) => (b.value - b.prev) / (b.prev || 1) - (a.value - a.prev) / (a.prev || 1));
+  const prIds  = new Set(prs.map((p) => p.exerciseId));
+  // Solo con una vez anterior: sin ella no hay nada que decir (las series ya
+  // las sabes — pulido-ui.md §2).
   const deltas = compareToLast(entry, workoutLog);
 
-  // Rows: comparison rows when available; otherwise the plain exercise list
-  // (free sessions / first run of a template).
-  const rows = deltas ?? (entry.exercises ?? []).map((ex) => ({
-    exerciseId: ex.exerciseId, sets: doneSets(ex), note: ex.note ?? null, delta: null,
-  }));
+  const rpeMissing = entry.sessionRpe == null;
+  const tone = clientId ? th.colors.blue : th.colors.accent;
 
-  // The logged entry carries each exercise's own minReps/maxReps — that's what
-  // getPillVariant needs to colour a set as in/out of the target range.
-  const exCfgById = Object.fromEntries((entry.exercises ?? []).map((ex) => [ex.exerciseId, ex]));
+  const dateLabel = new Date(entry.timestamp).toLocaleDateString(i18n.language, {
+    weekday: 'short', day: 'numeric', month: 'short',
+  });
+  const metaLine = [stageName, dateLabel].filter(Boolean).join(' · ');
 
-  function saveBodyWeight() {
-    const n = parseFloat(weightDraft.replace(',', '.'));
-    if (!isNaN(n) && n > 0) {
-      setSessionFeedback(entry.id, { bodyWeight: Math.round(toKg(n) * 10) / 10 }, clientId);
-    }
+  // El último peso apuntado ANTES de esta sesión, con su distancia en días.
+  const prevWeigh = workoutLog
+    .filter((e) => e.id !== entry.id && e.bodyWeight != null && e.timestamp < entry.timestamp)
+    .sort((a, b) => b.timestamp - a.timestamp)[0];
+  const prevWeighDays = prevWeigh ? Math.round((entry.timestamp - prevWeigh.timestamp) / 86400000) : null;
+
+  const shownWeight = entry.bodyWeight ?? profileBodyWeight;
+
+  function saveBodyWeight(n) {
+    if (n > 0) setSessionFeedback(entry.id, { bodyWeight: Math.round(toKg(n) * 10) / 10 }, clientId);
   }
 
-  // Weight-runs: a weightless weight pill + its reps/RPE pills (History
-  // anatomy). Función, no componente: declarado dentro del render, un
-  // componente tendría identidad nueva en cada pasada y remontaría las pills.
-  function setPillsFor(sets, exCfg) {
-    // Dropset — the last work set may carry sub-series at decreasing weight,
-    // chained with "→" so they read as a continuation of that set.
-    const drops = doneDrops(sets[sets.length - 1] ?? {});
-    return (
-      <View style={styles.setPills}>
-        {groupSetsByWeight(sets).map((group, gi) => (
-          <View key={`grp-${gi}`} style={styles.setGroup}>
-            {group.weight ? (
-              <View style={styles.weightPill}>
-                <Text style={styles.weightPillText}>
-                  <Text style={styles.weightPillNum}>{toDisplay(group.weight)}</Text>
-                  <Text style={styles.weightPillUnit}>{weightLabel}</Text>
-                  <Text style={styles.weightPillX}>{' x'}</Text>
-                </Text>
-              </View>
-            ) : null}
-            {group.sets.map((s, i) => {
-              const variant = getPillVariant(s, exCfg);
-              const { main, rpeNum } = buildSetLabel(s, i, fmt, true);
-              return (
-                <View
-                  key={`set-${gi}-${i}`}
-                  style={[
-                    styles.setPill,
-                    variant === 'done'    && styles.setPillDone,
-                    variant === 'partial' && styles.setPillPartial,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.setPillText,
-                      variant === 'done'    && styles.setPillTextDone,
-                      variant === 'partial' && styles.setPillTextPartial,
-                    ]}
-                  >
-                    {main}
-                    {rpeNum ? (
-                      <>
-                        <Text
-                          style={[
-                            styles.setPillRpeAt,
-                            variant === 'done'    && styles.setPillRpeAtDone,
-                            variant === 'partial' && styles.setPillRpeAtPartial,
-                          ]}
-                        >
-                          @
-                        </Text>
-                        {rpeNum}
-                      </>
-                    ) : null}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        ))}
-        {drops.map((d, i) => {
-          const w = parseFloat(d.weight);
-          return (
-            <View key={`drop-${i}`} style={styles.setGroup}>
-              <Text style={styles.dropArrow}>→</Text>
-              <View style={styles.setPill}>
-                <Text style={styles.setPillText}>
-                  {w > 0 && d.reps ? `${toDisplay(w)}${weightLabel}×${d.reps}` : (d.reps || '·')}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    );
+  function saveNote() {
+    const next = noteDraft.trim();
+    if (next !== (entry.notes ?? '').trim()) setSessionFeedback(entry.id, { notes: next }, clientId);
   }
 
   // Desviación vs la sesión anterior: texto suelto alineado a la derecha, SIN
   // pill — mismo tratamiento que `sesDelta` en el detalle de ejercicio de
-  // Progreso. Las pills se reservan para los datos de serie y para el badge PR.
+  // Progreso. Las pills se reservan para el badge PR.
   function deltaText(delta) {
-    if (!delta) return null;
+    if (!delta) return <Text style={[styles.delta, styles.delta_eq]}>{t('recap.newExercise')}</Text>;
     const sign = (n) => (n > 0 ? '+' : '−');
     let txt, tone;
     if (delta.kind === 'equal') { txt = '='; tone = 'eq'; }
@@ -361,144 +318,253 @@ export default function SessionRecapScreen({ navigation, route }) {
     return <Text style={[styles.delta, styles[`delta_${tone}`]]}>{txt}</Text>;
   }
 
-  const sessionNote = entry.notes?.trim();
+  function prRow(pr, i, list) {
+    const isReps = pr.kind === 'reps';
+    const what   = pr.kind === 'e1rm' ? 'e1RM'
+      : pr.kind === 'weight' ? t('recap.topWeight') : t('recap.bestSet');
+    const prev   = isReps ? pr.prev : fmt(round1(pr.prev));
+    return (
+      <Reanimated.View
+        key={pr.exerciseId}
+        entering={i >= PRS_VISIBLE ? FadeIn.duration(FOLD_MS) : undefined}
+        style={[styles.prRow, getCardRadii(th, i === 0, i === list.length - 1)]}
+      >
+        <TrophyIcon size={20} color={th.colors.accent} />
+        <View style={styles.rowBody}>
+          <Text style={styles.exName} numberOfLines={1}>{exName(pr.exerciseId)}</Text>
+          <Text style={styles.exSub} numberOfLines={1}>{`${what} · ${t('recap.previous')} ${prev}`}</Text>
+        </View>
+        <View style={styles.prVal}>
+          <Text style={styles.prValue}>
+            {isReps ? t('recap.repsValue', { count: pr.value }) : fmt(round1(pr.value))}
+          </Text>
+          <Text style={[styles.delta, styles.delta_up]}>
+            {isReps ? `+${pr.value - pr.prev}` : `+${toDisplay(round1(pr.value - pr.prev))}`}
+          </Text>
+        </View>
+      </Reanimated.View>
+    );
+  }
+
+  const shownPrs = prsOpen ? prs : prs.slice(0, PRS_VISIBLE);
+  const showFree = (isFree && stageDays.length > 0) || newExIds.length > 0 || exercisesAdded || onTheFly;
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]}
+        ref={scrollRef}
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
 
-        {/* Header */}
-        <View style={styles.headerBlock}>
-          <Text style={[styles.completedTag, clientName != null && { color: th.colors.blue }]}>
-            {clientName != null ? `${clientName.toUpperCase()} · ${t('recap.completed')}` : t('recap.completed')}
-          </Text>
-          <Text style={styles.sessionName}>
-            {entry.sessionName ?? template?.name ?? ''}
-          </Text>
-          {stageName ? <Text style={styles.contextLine}>{stageName}</Text> : null}
-        </View>
-
-        {/* Session RPE — how hard the whole session felt (CR-10). Saved on tap;
-            the per-set RPE rates one set, this rates the session. */}
-        <View style={styles.card}>
-          <Text style={styles.feedbackTitle}>{t('recap.rpeQuestion')}</Text>
-          <View style={styles.rpeScale}>
-            {RPE_VALUES.map((v) => (
-              <RpeButton
-                key={v}
-                value={v}
-                active={entry.sessionRpe === v}
-                onPress={() => setSessionFeedback(entry.id, { sessionRpe: v }, clientId)}
-              />
-            ))}
-          </View>
-          <View style={styles.rpeLabels}>
-            <Text style={styles.rpeLabel}>{t('recap.rpeLow')}</Text>
-            <Text style={styles.rpeLabel}>{t('recap.rpeMid')}</Text>
-            <Text style={styles.rpeLabel}>{t('recap.rpeHigh')}</Text>
-          </View>
-
-          {/* Carga de la sesión — aparece al contestar el sRPE. Sin unidad:
-              "AU" es jerga y el número solo vale comparado consigo mismo, que
-              es justo lo que aporta el porcentaje de al lado. */}
-          {loadInfo && (
-            <View style={styles.loadRow}>
-              <Text style={styles.loadLabel}>{t('recap.sessionLoad')}</Text>
-              <View style={styles.loadValueWrap}>
-                <Text style={styles.loadValue}>{loadInfo.value}</Text>
-                {loadInfo.pct != null && (
-                  <Text style={styles.loadPct}>
-                    {`${loadInfo.pct > 0 ? '+' : ''}${loadInfo.pct}% ${t('recap.vsMean7d')}`}
-                  </Text>
-                )}
+        {/* 1 · Marcador — se lee */}
+        <View style={styles.hero}>
+          <View style={styles.heroTop}>
+            <View style={styles.ceja}>
+              <CheckIcon size={14} color={tone} />
+              <Text style={[styles.cejaText, { color: tone }]} numberOfLines={1}>
+                {clientId ? `${(client?.name ?? '').toUpperCase()} · ${t('recap.completed')}` : t('recap.completed')}
+              </Text>
+            </View>
+            <View style={styles.ident}>
+              {!!template?.label && (
+                <View style={[styles.glyphBox, clientId && styles.glyphBoxClient]}>
+                  <Text style={[styles.glyph, { color: tone }]}>{template.label}</Text>
+                </View>
+              )}
+              <View style={styles.identText}>
+                <Text style={styles.sessionName} numberOfLines={2}>
+                  {entry.sessionName ?? template?.name ?? ''}
+                </Text>
+                <Text style={styles.metaLine} numberOfLines={1}>{metaLine}</Text>
               </View>
             </View>
-          )}
-        </View>
-
-        {/* Body weight — always editable, prefilled with the last known value. */}
-        <View style={[styles.card, styles.weightRow]}>
-          <Text style={styles.feedbackTitle}>{t('recap.bodyWeight')}</Text>
-          <View style={styles.weightInputWrap}>
-            <TextInput
-              style={styles.weightInput}
-              value={weightDraft}
-              onChangeText={setWeightDraft}
-              onEndEditing={saveBodyWeight}
-              onBlur={saveBodyWeight}
-              keyboardType="decimal-pad"
-              placeholder="—"
-              placeholderTextColor={th.colors.muted}
-              selectTextOnFocus
-              maxLength={6}
-            />
-            <Text style={styles.weightUnit}>{weightLabel}</Text>
+          </View>
+          <View style={styles.stats}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {fmtDuration(entry.duration)}
+              </Text>
+              <Text style={styles.statLabel}>{t('recap.duration')}</Text>
+            </View>
+            <View style={[styles.stat, styles.statDivider]}>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {stats.volume > 0 ? toDisplay(stats.volume) : '—'}
+                {stats.volume > 0 ? <Text style={styles.statUnit}> {weightLabel}</Text> : null}
+              </Text>
+              <Text style={styles.statLabel}>{t('recap.volume')}</Text>
+              {volumePct != null && (
+                <Text style={[styles.delta, styles[`delta_${volumePct > 0 ? 'up' : volumePct < 0 ? 'dn' : 'eq'}`]]}>
+                  {volumePct === 0 ? '=' : `${volumePct > 0 ? '+' : '−'}${Math.abs(volumePct)} %`}
+                </Text>
+              )}
+            </View>
+            <View style={[styles.stat, styles.statDivider]}>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {stats.setsDone}<Text style={styles.statUnit}>/{stats.setsPlanned}</Text>
+              </Text>
+              <Text style={styles.statLabel}>{t('recap.sets')}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Hero stats — Progress card anatomy (surface, radius/lg, text/hero) */}
-        <View style={styles.statsRow}>
-          <View style={styles.statTile}>
-            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {fmtDuration(entry.duration)}
-            </Text>
-            <Text style={styles.statLabel}>{t('recap.duration')}</Text>
-          </View>
-          <View style={styles.statTile}>
-            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {stats.volume > 0 ? toDisplay(stats.volume) : '—'}
-              {stats.volume > 0 ? <Text style={styles.statUnit}> {weightLabel}</Text> : null}
-            </Text>
-            <Text style={styles.statLabel}>{t('recap.volume')}</Text>
-          </View>
-          <View style={styles.statTile}>
-            <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {stats.setsDone}<Text style={styles.statUnit}>/{stats.setsPlanned}</Text>
-            </Text>
-            <Text style={styles.statLabel}>{t('recap.sets')}</Text>
-          </View>
-        </View>
-
-        {/* PRs — only when there are any. Accent tint fill, no border: same
-            treatment as the "Resumen" cards of the editors. */}
+        {/* 2 · Récords — se celebran */}
         {prs.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.secTitle, { color: th.colors.accent }]}>{t('recap.prs')}</Text>
-            <View style={styles.prCard}>
-              {prs.map((pr) => (
-                <View key={pr.exerciseId} style={styles.prRow}>
-                  <TrophyIcon color={th.colors.accent} />
-                  <View style={styles.rowBody}>
-                    <Text style={styles.exName}>{exName(pr.exerciseId)}</Text>
-                    <Text style={styles.exSub}>
-                      {pr.kind === 'e1rm'
-                        ? `e1RM ${fmt(round1(pr.value))} · ${t('recap.previous')} ${fmt(round1(pr.prev))}`
-                        : pr.kind === 'weight'
-                        ? `${t('recap.topWeight')} ${fmt(round1(pr.value))} · ${t('recap.previous')} ${fmt(round1(pr.prev))}`
-                        : `${t('recap.bestSet')} · ${pr.value} reps`}
-                    </Text>
-                  </View>
-                  <View style={styles.chip}>
-                    <Text style={styles.chipText}>
-                      {pr.kind === 'reps'
-                        ? `+${pr.value - pr.prev} ${t('recap.repsShort')}`
-                        : `+${fmt(round1(pr.value - pr.prev))}`}
-                    </Text>
+          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+            <View style={styles.secHead}>
+              <TrophyIcon size={14} color={th.colors.accent} />
+              <Text style={[styles.secTitle, { color: th.colors.accent }]}>{t('recap.prsCount', { count: prs.length })}</Text>
+            </View>
+            <View style={styles.groupedList}>
+              {shownPrs.map((pr, i) => prRow(pr, i, shownPrs))}
+            </View>
+            {!prsOpen && prs.length > PRS_VISIBLE && (
+              <TouchableOpacity style={styles.moreBtn} onPress={() => setPrsOpen(true)} activeOpacity={0.75}>
+                <Text style={styles.moreBtnText}>{t('recap.morePrs', { count: prs.length - PRS_VISIBLE })}</Text>
+              </TouchableOpacity>
+            )}
+          </Reanimated.View>
+        )}
+
+        {/* 3 · Tu parte — se escribe */}
+        <Reanimated.View
+          layout={LinearTransition.duration(FOLD_MS)}
+          style={styles.section}
+          onLayout={(e) => { yourPartY.current = e.nativeEvent.layout.y; }}
+        >
+          <View style={[styles.secHead, styles.secHeadSplit]}>
+            <View style={styles.secHeadLeft}>
+              <PencilIcon size={14} color={th.colors.mutedLight} />
+              <Text style={styles.secTitle}>{t('recap.yourPart')}</Text>
+            </View>
+            <View style={[styles.pendChip, !rpeMissing && styles.pendChipOk]}>
+              <Text style={[styles.pendText, !rpeMissing && styles.pendTextOk]}>
+                {rpeMissing ? t('recap.unanswered') : t('recap.allAnswered')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Session RPE — how hard the whole session felt (CR-10). Saved on tap;
+              the per-set RPE rates one set, this rates the session. */}
+          <View style={styles.card}>
+            <View style={styles.qRow}>
+              <View style={styles.qLeft}>
+                {rpeMissing && <View style={styles.qDot} />}
+                <Text style={styles.qText}>{t('recap.rpeQuestion')}</Text>
+              </View>
+              {!rpeMissing && <CheckIcon size={16} color={th.colors.accent} />}
+            </View>
+            <View style={styles.rpeScale}>
+              {RPE_VALUES.map((v) => (
+                <RpeButton
+                  key={v}
+                  value={v}
+                  active={entry.sessionRpe === v}
+                  onPress={() => setSessionFeedback(entry.id, { sessionRpe: v }, clientId)}
+                />
+              ))}
+            </View>
+            <View style={styles.rpeLabels}>
+              <Text style={styles.rpeLabel}>{t('recap.rpeLow')}</Text>
+              <Text style={styles.rpeLabel}>{t('recap.rpeMid')}</Text>
+              <Text style={styles.rpeLabel}>{t('recap.rpeHigh')}</Text>
+            </View>
+
+            {/* Su resultado, no otra pregunta: debajo de una línea `bg`. En
+                blanco y no en lima — más carga no es mejor ni peor. */}
+            {loadPct != null && (
+              <View style={styles.loadRow}>
+                <Text style={styles.loadLabel}>{t('recap.sessionLoad')}</Text>
+                <View style={styles.loadValueWrap}>
+                  <Text style={styles.loadValue}>{`${loadPct > 0 ? '+' : loadPct < 0 ? '−' : ''}${Math.abs(loadPct)} %`}</Text>
+                  <Text style={styles.loadPct}>{t('recap.vsMean7d')}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Body weight — prefilled with the last known value; only saved when
+              touched. ponytail: sin peso conocido el campo nace vacío y los ±
+              arrancan del mínimo; basta con escribirlo. */}
+          <View style={[styles.card, styles.weightCard]}>
+            <StepField
+              horizontal
+              flat
+              label={t('recap.bodyWeight')}
+              value={shownWeight != null ? toDisplay(shownWeight) : ''}
+              onChange={saveBodyWeight}
+              min={20}
+              max={500}
+              step={0.1}
+              unit={weightLabel}
+            />
+            {prevWeigh && (
+              <Text style={styles.weightHint}>
+                {prevWeighDays === 0
+                  ? t('recap.lastWeightToday', { value: fmt(prevWeigh.bodyWeight) })
+                  : t('recap.lastWeight', { value: fmt(prevWeigh.bodyWeight), count: prevWeighDays })}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.qRow}>
+              <Text style={styles.qText}>{t('recap.note')}</Text>
+              <Text style={styles.qAside}>{noteFromWorkout ? t('recap.noteFromWorkout') : t('recap.optional')}</Text>
+            </View>
+            <View style={styles.noteWell}>
+              <View style={styles.notePencil}><PencilIcon size={14} color={th.colors.muted} /></View>
+              <TextInput
+                style={styles.noteInput}
+                value={noteDraft}
+                onChangeText={setNoteDraft}
+                onBlur={saveNote}
+                onEndEditing={saveNote}
+                placeholder={t('recap.notePlaceholder')}
+                placeholderTextColor={th.colors.muted}
+                multiline
+              />
+            </View>
+          </View>
+        </Reanimated.View>
+
+        {/* 4 · Vs. última sesión — solo el cambio; lo que hiciste ya lo sabes */}
+        {deltas?.length > 0 && (
+          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+            <View style={[styles.secHead, styles.secHeadSplit]}>
+              <Text style={styles.secTitle}>{t('recap.vsLast')}</Text>
+              <Text style={styles.secAside}>{t('recap.exercisesCount', { count: deltas.length })}</Text>
+            </View>
+            <View style={styles.groupedList}>
+              {deltas.map((row, i) => (
+                <View
+                  key={row.exerciseId}
+                  style={[styles.listItem, styles.listItemRow, getCardRadii(th, i === 0, i === deltas.length - 1)]}
+                >
+                  <Text style={styles.exName} numberOfLines={1}>
+                    {exName(row.exerciseId)}
+                    {entryVariant(row.exerciseId)
+                      ? <Text style={styles.exVariant}>{` · ${entryVariant(row.exerciseId)}`}</Text>
+                      : null}
+                  </Text>
+                  <View style={styles.deltaRight}>
+                    {prIds.has(row.exerciseId) && <TrophyIcon size={14} color={th.colors.accent} />}
+                    {deltaText(row.delta)}
                   </View>
                 </View>
               ))}
             </View>
-          </View>
+          </Reanimated.View>
         )}
 
         {/* Conditioning blocks — only blocks that were actually started */}
         {entry.blocks?.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.secTitle}>{t('blocks.recapSection')}</Text>
+          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+            <View style={styles.secHead}>
+              <Text style={styles.secTitle}>{t('blocks.recapSection')}</Text>
+            </View>
             <View style={styles.groupedList}>
               {entry.blocks.map((block, i) => {
                 const prev  = prevBlockResult(entry, workoutLog, block.blockId);
@@ -526,120 +592,108 @@ export default function SessionRecapScreen({ navigation, route }) {
                 );
               })}
             </View>
-          </View>
+          </Reanimated.View>
         )}
 
-        {/* Vs. last session / exercise list */}
-        {rows.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.secTitle}>
-              {deltas ? t('recap.vsLast') : t('recap.exercises')}
-            </Text>
-            <View style={styles.groupedList}>
-              {rows.map((row, i) => (
-                <View
-                  key={row.exerciseId}
-                  style={[styles.listItem, getCardRadii(th, i === 0, i === rows.length - 1)]}
-                >
-                  <View style={styles.itemHead}>
-                    <Text style={styles.exName} numberOfLines={1}>
-                      {exName(row.exerciseId)}
-                      {entryVariant(row.exerciseId)
-                        ? <Text style={styles.exVariant}>{` · ${entryVariant(row.exerciseId)}`}</Text>
-                        : null}
-                    </Text>
-                    {deltaText(row.delta)}
-                  </View>
-                  {row.sets.length > 0
-                    ? setPillsFor(row.sets, exCfgById[row.exerciseId])
-                    : <Text style={styles.exSub}>—</Text>}
-                  {row.note ? (
-                    <Text style={styles.exNote} numberOfLines={1}>“{row.note}”</Text>
-                  ) : null}
-                </View>
-              ))}
+        {/* 5 · Esta sesión libre — sus tres decisiones, juntas y al final */}
+        {showFree && (
+          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+            <View style={styles.secHead}>
+              <Text style={styles.secTitle}>{t('recap.freeTitle')}</Text>
             </View>
-          </View>
-        )}
 
-        {/* Session note */}
-        {sessionNote ? (
-          <View style={styles.card}>
-            <Text style={styles.noteText}>“{sessionNote}”</Text>
-          </View>
-        ) : null}
-
-        {/* Cuenta para el programa (free-sessions.md §7.3): la sesión libre
-            sustituye a una de la etapa. Cambia en los dos sentidos mientras se
-            está aquí; el contador de la etapa lo sigue. */}
-        {isFree && stageDays.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.secTitle}>{t('recap.countsAsTitle')}</Text>
-            <SegmentedControl
-              options={[
-                { id: 'none', label: t('recap.countsAsNone') },
-                ...stageDays.map((d) => ({
-                  id:    d.sessionTemplateId,
-                  label: d.label ?? sessionTemplates[d.sessionTemplateId]?.label ?? '·',
-                })),
-              ]}
-              value={entry.countsAs ?? 'none'}
-              onChange={(id) => setEntryCountsAs(entry.id, id === 'none' ? null : id)}
-            />
-            {countsAsLabel != null && (
-              <Text style={styles.countsHint}>{t('recap.countsAsHint', { label: countsAsLabel })}</Text>
+            {/* Cuenta para el programa (free-sessions.md §7.3): la sesión libre
+                sustituye a una de la etapa. Cambia en los dos sentidos mientras se
+                está aquí; el contador de la etapa lo sigue. */}
+            {isFree && stageDays.length > 0 && (
+              <View style={styles.card}>
+                <Text style={styles.qText}>{t('recap.countsAsTitle')}</Text>
+                <SegmentedControl
+                  options={[
+                    { id: 'none', label: t('recap.countsAsNone') },
+                    ...stageDays.map((d) => ({
+                      id:    d.sessionTemplateId,
+                      label: d.label ?? sessionTemplates[d.sessionTemplateId]?.label ?? '·',
+                    })),
+                  ]}
+                  value={entry.countsAs ?? 'none'}
+                  onChange={(id) => setEntryCountsAs(entry.id, id === 'none' ? null : id)}
+                />
+                {countsAsLabel != null && (
+                  <Text style={styles.countsHint}>{t('recap.countsAsHint', { label: countsAsLabel })}</Text>
+                )}
+              </View>
             )}
-          </View>
+
+            {(newExIds.length > 0 || exercisesAdded || onTheFly) && (
+              <View style={styles.groupedList}>
+                {/* Añadir a la sesión libre lo que se añadió en el entreno (§7.2).
+                    Solo añade: la sesión tiene configuración que la entrada no lleva. */}
+                {(newExIds.length > 0 || exercisesAdded) && (
+                  <MenuRow
+                    isFirst
+                    isLast={!onTheFly}
+                    icon={<RowIcon><Path d="M12 5v14M5 12h14" /></RowIcon>}
+                    label={exercisesAdded
+                      ? t('freeSession.exercisesAdded')
+                      : t('freeSession.addExercises', { count: newExIds.length })}
+                    sub={exercisesAdded ? null : t('recap.addExercisesSub')}
+                    control={exercisesAdded ? <CheckIcon size={16} color={th.colors.accent} /> : null}
+                    onPress={exercisesAdded ? undefined : () => {
+                      addEntryExercisesToTemplate(entry.id);
+                      setExercisesAdded(true);
+                      showToast(t('freeSession.exercisesAdded'), 2200, 'success');
+                    }}
+                  />
+                )}
+                {/* Guardar como sesión libre — solo la sobre la marcha, y solo
+                    aquí: al empezarla no sabes si merece guardarse, al acabarla sí
+                    (free-sessions.md §7.1). */}
+                {onTheFly && (
+                  <MenuRow
+                    isFirst={!(newExIds.length > 0 || exercisesAdded)}
+                    isLast
+                    icon={(
+                      <RowIcon>
+                        <Path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <Path d="M17 21v-8H7v8M7 3v5h8" />
+                      </RowIcon>
+                    )}
+                    label={templateSaved ? t('freeSession.saved') : t('freeSession.saveAsFree')}
+                    sub={templateSaved ? null : t('recap.saveAsFreeSub')}
+                    control={templateSaved ? <CheckIcon size={16} color={th.colors.accent} /> : null}
+                    onPress={templateSaved ? undefined : () => {
+                      saveEntryAsFreeTemplate(entry.id);
+                      setTemplateSaved(true);
+                      showToast(t('freeSession.saved'), 2200, 'success');
+                    }}
+                  />
+                )}
+              </View>
+            )}
+          </Reanimated.View>
         )}
 
-        {/* Añadir a la sesión libre lo que se añadió en el entreno (§7.2). Solo
-            añade: la sesión tiene configuración que la entrada no lleva. */}
-        {(newExIds.length > 0 || exercisesAdded) && (
-          <View style={styles.tplRow}>
-            <TouchableOpacity
-              style={[styles.tplBtn, { flex: 1 }, exercisesAdded && styles.tplBtnDone]}
-              onPress={() => {
-                addEntryExercisesToTemplate(entry.id);
-                setExercisesAdded(true);
-                showToast(t('freeSession.exercisesAdded'), 2200, 'success');
-              }}
-              disabled={exercisesAdded}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-            >
-              <Text style={styles.tplBtnText} numberOfLines={1}>
-                {exercisesAdded
-                  ? t('freeSession.exercisesAdded')
-                  : t('freeSession.addExercises', { count: newExIds.length })}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+      </ScrollView>
 
-        {/* Guardar como sesión libre — solo la sobre la marcha, y solo aquí: al
-            empezarla no sabes si merece guardarse, al acabarla sí. Secundario,
-            que el primario es salir (free-sessions.md §7.1). */}
-        {onTheFly && (
-          <View style={styles.tplRow}>
-            <TouchableOpacity
-              style={[styles.tplBtn, { flex: 1 }, templateSaved && styles.tplBtnDone]}
-              onPress={() => {
-                saveEntryAsFreeTemplate(entry.id);
-                setTemplateSaved(true);
-                showToast(t('freeSession.saved'), 2200, 'success');
-              }}
-              disabled={templateSaved}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-            >
-              <Text style={styles.tplBtnText} numberOfLines={1}>
-                {templateSaved ? t('freeSession.saved') : t('freeSession.saveAsFree')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+      {/* Pie fijo. Avisa del sRPE sin bloquear HECHO: sin él la sesión se
+          guarda igual, solo que sin carga. */}
+      <View style={[styles.foot, { paddingBottom: insets.bottom + spacing.md }]}>
+        {rpeMissing && (
+          <TouchableOpacity
+            style={styles.hint}
+            onPress={() => scrollRef.current?.scrollTo({ y: Math.max(0, yourPartY.current - spacing.md), animated: true })}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
+            <View style={styles.qDot} />
+            <Text style={styles.hintText}>
+              {`${t('recap.missing')} `}
+              <Text style={styles.hintStrong}>{t('recap.missingRpe')}</Text>
+            </Text>
+            <ChevronDown size={10} color={th.colors.mutedLight} />
+          </TouchableOpacity>
         )}
-
-        {/* Done */}
         <TouchableOpacity
           style={styles.doneBtn}
           // Al acabar el de un cliente se vuelve a su ficha, que sigue abierta
@@ -649,8 +703,7 @@ export default function SessionRecapScreen({ navigation, route }) {
         >
           <Text style={styles.doneBtnText}>{t('recap.done')}</Text>
         </TouchableOpacity>
-
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -661,30 +714,116 @@ const makeStyles = (th) => StyleSheet.create({
   scroll: {
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
+    paddingBottom:     spacing.xl,
     gap:               spacing.md,
   },
 
-  headerBlock: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.md },
-  completedTag: { ...textStyles.caps, color: th.colors.accent },
-  sessionName:  { ...textStyles.title, color: th.colors.text, textAlign: 'center' },
-  contextLine:  { ...textStyles.body, color: th.colors.mutedLight },
+  // ── 1 · Marcador ──
+  hero: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
+    overflow:        'hidden',
+  },
+  heroTop:  { padding: spacing.lg, gap: spacing.md },
+  ceja:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  cejaText: { ...textStyles.caps, flexShrink: 1 },
+  ident:    { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  // La letra y el nombre en Barlow: los de la sesión de hoy en Inicio. Es la
+  // misma sesión, antes y después.
+  glyphBox: {
+    width:           54,
+    height:          54,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.tint.accent10,
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
+  },
+  glyphBoxClient: { backgroundColor: th.tint.blue30 },
+  glyph:          { ...textStyles.heroGlyph },
+  identText:      { flex: 1, minWidth: 0, gap: spacing.xs2 },
+  sessionName:    { ...textStyles.heroName, color: th.colors.text },
+  metaLine:       { ...textStyles.label, color: th.colors.mutedLight },
 
-  section: { gap: spacing.sm },
+  // Las cifras informan, no son el premio: `title`, como antes. Separadas por
+  // líneas `bg` y no en tarjetas sueltas, que las hacían pesar como tres cosas.
+  stats: {
+    flexDirection:  'row',
+    borderTopWidth: 2,
+    borderTopColor: th.colors.bg,
+  },
+  stat: {
+    flex:              1,
+    alignItems:        'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical:   spacing.md,
+    gap:               spacing.xs2,
+  },
+  statDivider: { borderLeftWidth: 2, borderLeftColor: th.colors.bg },
+  statValue:   { ...textStyles.title, color: th.colors.text, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  statUnit:    { ...textStyles.label, color: th.colors.mutedLight },
+  statLabel: {
+    ...textStyles.caps,
+    color:         th.colors.mutedLight,
+    textTransform: 'uppercase',
+    textAlign:     'center',
+  },
+
+  // ── Secciones ──
+  section: { gap: spacing.sm2, marginTop: spacing.sm },
+  secHead: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.sm,
+    paddingHorizontal: spacing.xs2,
+  },
+  secHeadSplit: { justifyContent: 'space-between' },
+  secHeadLeft:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   secTitle: {
     ...textStyles.caps,
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
+  secAside: { ...textStyles.label, color: th.colors.mutedLight },
 
   card: {
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.lg,
     padding:         spacing.lg,
     gap:             spacing.md,
+    overflow:        'hidden',
   },
 
-  // ── Post-session feedback (sRPE + body weight) ──
-  feedbackTitle: { ...textStyles.labelStrong, color: th.colors.text },
+  // ── 2 · Récords ──
+  prRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    backgroundColor:   th.tint.accent10,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.md,
+  },
+  prVal:   { alignItems: 'flex-end', gap: spacing.xs, flexShrink: 0 },
+  prValue: { ...textStyles.itemTitle, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  moreBtn: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+  },
+  moreBtnText: { ...textStyles.button, color: th.colors.accent },
+
+  // ── 3 · Tu parte ──
+  pendChip:    { backgroundColor: th.colors.surface2, borderRadius: th.radius.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs2 },
+  pendChipOk:  { backgroundColor: th.tint.accent10 },
+  pendText:    { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  pendTextOk:  { color: th.colors.accent },
+  qRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  qLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2, flexShrink: 1 },
+  qDot:  { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.mutedLight },
+  qText: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
+  qAside: { ...textStyles.label, color: th.colors.mutedLight },
+
   rpeScale: { flexDirection: 'row', gap: spacing.xs2 },
   rpeBtn: {
     flex:            1,
@@ -705,116 +844,61 @@ const makeStyles = (th) => StyleSheet.create({
     textTransform: 'uppercase',
   },
   loadRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    gap:            spacing.sm,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    gap:               spacing.sm,
+    marginHorizontal:  -spacing.lg,
+    marginBottom:      -spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.md,
+    borderTopWidth:    2,
+    borderTopColor:    th.colors.bg,
   },
   loadLabel:     { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
   loadValueWrap: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  loadValue:     { ...textStyles.itemTitle, color: th.colors.accent, fontVariant: ['tabular-nums'] },
-  // Neutro a propósito: más carga no es "mejor" ni "peor", así que no lleva el
-  // verde/rojo de los deltas de rendimiento.
+  loadValue:     { ...textStyles.itemTitle, color: th.colors.text, fontVariant: ['tabular-nums'] },
   loadPct:       { ...textStyles.label, color: th.colors.mutedLight },
 
-  weightRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-  },
-  weightInputWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  weightInput: {
-    minWidth:          70,
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
+  weightCard: { paddingVertical: spacing.md, gap: spacing.xs2 },
+  weightHint: { ...textStyles.label, color: th.colors.mutedLight },
+
+  // La nota va en celda `bg`, la misma que dice «esto se escribe» en `StepField`.
+  noteWell: {
+    flexDirection:     'row',
+    alignItems:        'flex-start',
+    gap:               spacing.sm2,
+    backgroundColor:   th.colors.bg,
     borderRadius:      th.radius.sm,
-    backgroundColor:   th.colors.surface2,
-    textAlign:         'right',
-    ...textStyles.itemTitle,
-    color:             th.colors.accent,
-    fontVariant:       ['tabular-nums'],
-  },
-  weightUnit: { ...textStyles.label, color: th.colors.mutedLight },
-
-  // ── Hero stats (anatomía de las Progress cards) ──
-  statsRow: { flexDirection: 'row', gap: spacing.md },
-  statTile: {
-    flex:              1,
-    backgroundColor:   th.colors.surface,
     paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.lg,
-    borderRadius:      th.radius.lg,
-    alignItems:        'center',
-    justifyContent:    'center',
-    gap:               spacing.xs,
-    overflow:          'hidden',
+    paddingVertical:   spacing.md,
+    minHeight:         64,
   },
-  statValue: { ...textStyles.title, color: th.colors.text, textAlign: 'center' },
-  statUnit:  { ...textStyles.label,  color: th.colors.mutedLight },
-  statLabel: {
-    ...textStyles.caps,
-    color:         th.colors.text,
-    textTransform: 'uppercase',
-    textAlign:     'center',
+  notePencil: { paddingTop: 3 },
+  noteInput: {
+    ...textStyles.body,
+    lineHeight:        21,
+    flex:              1,
+    color:             th.colors.text,
+    padding:           0,
+    textAlignVertical: 'top',
   },
 
-  // ── PRs ──
-  prCard: {
-    backgroundColor: th.tint.accent10,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.md,
-    gap:             spacing.md,
-  },
-  prRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
-
-  // ── Lista agrupada (bloques y ejercicios) ──
+  // ── 4 · Lista agrupada (vs. última y bloques) ──
   groupedList: { gap: spacing.xs },
   listItem: {
-    backgroundColor: th.colors.surface,
+    backgroundColor:   th.colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.md,
     gap:               spacing.sm,
   },
-  listItemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
-  itemHead: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    gap:            spacing.sm,
-    minWidth:       0,
-  },
-  rowBody:  { flex: 1, minWidth: 0, gap: spacing.xs },
+  listItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm2 },
+  deltaRight:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 0 },
+  rowBody:     { flex: 1, minWidth: 0, gap: spacing.xs },
 
-  exName: { ...textStyles.labelStrong, color: th.colors.text, flexShrink: 1 },
+  exName:    { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   exVariant: { ...textStyles.label, color: th.colors.mutedLight },
-  exSub:  { ...textStyles.label, color: th.colors.mutedLight },
-  exNote: { ...textStyles.label, color: th.colors.mutedLight, fontStyle: 'italic' },
-
-  // ── Pills de series (misma anatomía exacta que History) ──
-  setPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  setGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  weightPill:     { paddingLeft: spacing.sm, paddingVertical: spacing.sm },
-  weightPillText: { ...textStyles.label },
-  weightPillNum:  { color: th.colors.accent },
-  weightPillUnit: { color: th.colors.text },
-  weightPillX:    { color: th.colors.mutedLight },
-  setPill: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.xs,
-    padding:         spacing.sm,
-  },
-  setPillDone:    { backgroundColor: th.tint.accent10 },
-  setPillPartial: { backgroundColor: th.tint.orange30 },
-  setPillText:        { ...textStyles.label, color: th.colors.mutedLight },
-  setPillTextDone:    { color: th.colors.accent },
-  setPillTextPartial: { color: th.colors.orange },
-  setPillRpeAt:        { color: th.colors.mutedLight },
-  setPillRpeAtDone:    { color: th.tint.accent50 },
-  setPillRpeAtPartial: { color: th.tint.orange50 },
-  // Dropset: la flecha va DELANTE de la pill porque la sub-serie es una
-  // continuación de la anterior (al revés que las pills de calentamiento).
-  dropArrow: { ...textStyles.body, color: th.colors.mutedLight },
+  exSub:     { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Bloques ──
   blockNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -840,44 +924,29 @@ const makeStyles = (th) => StyleSheet.create({
   delta_eq: { color: th.colors.mutedLight },
   delta_dn: { color: th.tint.red50 },
 
-  // El badge de PR sí es pill (igual que `prPill` en el detalle de ejercicio).
-  chip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs2,
-    borderRadius:      th.radius.xs,
-    flexShrink:        0,
-    backgroundColor:   th.tint.accent10,
-  },
-  chipText: { ...textStyles.label, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  // ── 5 · Sesión libre ──
+  countsHint: { ...textStyles.label, color: th.colors.mutedLight },
 
-  noteText: { ...textStyles.body, color: th.colors.mutedLight, fontStyle: 'italic' },
-
-  // Secundario del par: mismo alto y radio que LISTO, en outline — el relleno
-  // accent es del botón que cierra la pantalla.
-  tplRow: {
-    flexDirection: 'row',
-    gap:           spacing.sm2,
+  // ── Pie fijo ──
+  foot: {
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    gap:               spacing.sm2,
+    backgroundColor:   th.colors.bg,
   },
-  tplBtn: {
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.tint.accent50,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.sm,
-    alignItems:        'center',
-    justifyContent:    'center',
-    marginTop:         spacing.md,
+  hint: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            spacing.sm,
   },
-  tplBtnDone:  { borderColor: th.colors.border },
-  countsHint:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm },
-  tplBtnText:  { ...textStyles.button, color: th.colors.accent },
-
+  hintText:   { ...textStyles.label, color: th.colors.mutedLight },
+  hintStrong: { ...textStyles.labelStrong, color: th.colors.text },
   doneBtn: {
     backgroundColor: th.colors.accent,
     borderRadius:    th.radius.sm,
     paddingVertical: spacing.md,
     alignItems:      'center',
-    marginTop:       spacing.sm,
   },
   doneBtnText: { ...textStyles.button, color: th.colors.onAccent },
 });

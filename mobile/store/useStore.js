@@ -2647,13 +2647,15 @@ export const useStore = create(
        * Both are optional and patched independently — passing only one leaves
        * the other untouched.
        */
-      setSessionFeedback: (logId, { sessionRpe, bodyWeight } = {}, clientId = null) =>
+      setSessionFeedback: (logId, { sessionRpe, bodyWeight, notes } = {}, clientId = null) =>
         set((state) => {
           const patch = (e) => (
             e.id !== logId ? e : {
               ...e,
               ...(sessionRpe  !== undefined ? { sessionRpe }  : {}),
               ...(bodyWeight  !== undefined ? { bodyWeight }  : {}),
+              // La nota del entreno se corrige en el recap (pulido-ui.md §2).
+              ...(notes       !== undefined ? { notes }       : {}),
             }
           );
           // El recap del entreno de un cliente escribe en SU entrada, y su peso

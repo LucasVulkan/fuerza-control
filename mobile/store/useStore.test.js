@@ -1912,6 +1912,15 @@ describe('el entrenador apunta por el cliente — trainer-logging.md C19', () =>
     expect(useStore.getState().profile.bodyWeight).toBe(80);
   });
 
+  it('la nota corregida en el recap va a la entrada del cliente', () => {
+    const pid = programaDeCliente();
+    const res = entrenar(prog(pid).stages[0].days[0].sessionTemplateId, { forClient: 'cli_1' });
+
+    useStore.getState().setSessionFeedback(res.entryId, { notes: 'Hombro cargado' }, 'cli_1');
+
+    expect(useStore.getState().clientLogs.cli_1[0].notes).toBe('Hombro cargado');
+  });
+
   it('un entreno mío sigue igual: mi historial, con reloj y descansos', () => {
     const pid = useStore.getState().createEmptyProgram(1, 'Mío', 'program', 4);
     useStore.setState((s) => ({
