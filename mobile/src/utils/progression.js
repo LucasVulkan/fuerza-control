@@ -398,8 +398,14 @@ function chipEffort(prog, doneSets, def, targetReps, t) {
     suggestedWeight: maxW || null, suggestedTime: null,
   });
 
+  // Un RPE por debajo de 5 cuenta como 5: `epley1RM` lo ignora y tomaría la
+  // serie como hecha al fallo, así que una serie facilísima BAJABA el peso
+  // (QA P48). 5 es cota baja: al menos 5 en recámara.
   const e1rms = doneSets
-    .map((s) => (parseFloat(s.rpe) > 0 ? epley1RM(s.weight, s.reps, s.rpe) : null))
+    .map((s) => {
+      const rpe = parseFloat(s.rpe);
+      return rpe > 0 ? epley1RM(s.weight, s.reps, Math.max(5, rpe)) : null;
+    })
     .filter((v) => v !== null);
   if (!e1rms.length) return keep('progression.why_effortNoRpe');
 
@@ -407,7 +413,9 @@ function chipEffort(prog, doneSets, def, targetReps, t) {
   const raw  = weightForReps(e1rm, targetReps, prog.targetRpe);
   if (raw === null) return keep('progression.why_effortUnreliable');
 
-  const step = def?.weightStep > 0 ? def.weightStep : 2.5;
+  // Resolución de la carga, no el salto de la automática: a 5 kg un punto de
+  // RPE no movía el peso por debajo de ~95 kg (effort-progression.md §5.3).
+  const step = def?.weightStep > 0 ? Math.min(def.weightStep, 2.5) : 2.5;
   const next = Math.round(raw / step) * step;
   const type = next > maxW ? 'up' : next < maxW ? 'down' : 'hold';
   const why  = { up: 'why_effortEasier', down: 'why_effortHarder', hold: 'why_effortOnTarget' }[type];

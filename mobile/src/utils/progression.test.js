@@ -162,12 +162,20 @@ describe('progression.type = "effort" (effort-progression.md §4.2)', () => {
     const chip = getProgression(cfg({ progression: { type: 'effort', targetRpe: 8, hold: 'deload' } }), lib, at('6'), tk);
     expect(chip).toMatchObject({ type: 'hold', reason: 'deload', suggestedWeight: 80 });
   });
-  it('redondea al weightStep; 0 o sin él → 2.5', () => {
-    // RPE 7 → 82.16: con paso 1 → 82; con paso 0 → 82.5.
+  it('redondea al weightStep, como mucho a 2.5; 0 o sin él → 2.5', () => {
+    // RPE 7 → 82.16: con paso 1 → 82; con paso 5 o 0 → 82.5.
     expect(getProgression(cfg(), { weightStep: 1 }, at('7'), tk).suggestedWeight).toBe(82);
+    expect(getProgression(cfg(), { weightStep: 5 }, at('7'), tk).suggestedWeight).toBe(82.5);
     expect(getProgression(cfg(), { weightStep: 0 }, at('7'), tk).suggestedWeight).toBe(82.5);
     expect(getProgression(cfg(), null, at('7'), tk).suggestedWeight).toBe(82.5);
   });
+  it('RPE por debajo de 5 cuenta como 5: una serie fácil sube el peso, nunca lo baja (QA P48)', () => {
+    // 70 × 5 @4 → como @5: e1RM 93.3 → 75.7 → 75. Antes, 66.2 → bajaba.
+    for (const rpe of ['4', '2']) {
+      expect(getProgression(cfg(), lib, at(rpe, '70'), tk)).toMatchObject({ type: 'up', suggestedWeight: 75 });
+    }
+  });
+
   it('series con pesos distintos: media de los e1RM', () => {
     const sets = [
       { weight: '85', reps: '5', rpe: '9', done: true },  // 85 × (1 + 6/30) = 102

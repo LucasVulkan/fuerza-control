@@ -561,11 +561,8 @@ export default function ExerciseEditorInline({
             </View>
           ) : isEffort ? (
             <>
-              <View style={styles.gridRow}>
-                <StepField label={t('exerciseEditor.fieldTargetReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
-                {/* Media fila, como el resto del grid (QA P47). */}
-                <View style={{ flex: 1 }} />
-              </View>
+              {/* Un solo campo: la variante de una línea (QA P47). */}
+              <StepField horizontal label={t('exerciseEditor.fieldTargetReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
               {effortWarn}
             </>
           ) : (

@@ -7,8 +7,7 @@
 > Fase P48 · hecho · El objetivo por esfuerzo en el Workout y las listas · §5
 >
 > Estado: **P46 y P47 probadas, P48 hecha** (29-sep-2026, rama
-> `feat/exercise-variants`), P48 pendiente de probar. Abierto: el redondeo
-> con `weightStep` 5 (§5.3). Sale de una
+> `feat/exercise-variants`), P48 pendiente de probar. Sale de una
 > conversación de diseño con el usuario (opción «B»: RPE objetivo + peso
 > sugerido por e1RM). Orden: P46 → P47 → P48. P46 va primero porque libera el
 > tercer hueco del selector de modo y quita las ramas `'submax'` que P48
@@ -300,8 +299,9 @@ esfuerzo: pides un RPE y la app calcula el peso con tu 1RM estimado».
   cambió el equipo de un ejercicio propio), la opción se sigue enseñando para
   no dejar el selector sin valor; el motor, sin peso, mantiene.
 - QA: en la caja sola de «Reps objetivo» a todo el ancho, los ± se iban a las
-  esquinas. Se probó pegarlos al número (`bb50b41`) y el usuario prefirió la
-  caja a media fila, del mismo tamaño que el resto del grid.
+  esquinas. Se probó pegarlos al número (`bb50b41`), luego la caja a media
+  fila, y se quedó la variante de una línea (`StepField horizontal`), la de
+  los campos que ocupan una fila entera.
 
 **Probar P47**
 
@@ -365,15 +365,18 @@ y la sesión siguiente ya se calcula.
 - El chip de Por esfuerzo lleva `effort: true`: es lo que hace que la tarjeta
   rotule «Peso objetivo». En descarga el chip es el de descarga y se queda
   «Descarga a».
-- **Abierto — redondeo.** 37 ejercicios de la librería tienen `weightStep: 5`
-  (sentadilla, press de banca con barra…). Con 80 kg, un RPE 7 da 82,2 kg y
-  redondeado a 5 se queda en 80: un punto de RPE no mueve el peso hasta cargas
-  de ~95 kg. `weightStep` es el salto habitual de la progresión automática, no
-  la resolución de la carga. Opción: redondear siempre a 2,5 (o a 1,25 si el
-  ejercicio lo usa) en Por esfuerzo. Pendiente de decidir.
-
-Para probarla, un ejercicio de paso 2,5 (p. ej. Press francés; con la
-sentadilla, de paso 5, el peso no se mueve: §5.3).
+- **Redondeo: como mucho a 2,5** (decisión del usuario). 38 ejercicios de la
+  librería tienen `weightStep` 4, 5 o 10 (sentadilla, press de banca con
+  barra…): con 80 kg, un RPE 7 daba 82,2 kg y redondeado a 5 se quedaba en 80,
+  así que un punto de RPE no movía el peso hasta ~95 kg. `weightStep` es el
+  salto de la progresión automática, no la resolución de la carga. Ahora
+  `min(weightStep, 2.5)`; los de 1,25 siguen en 1,25.
+- **Fallo de QA: un RPE por debajo de 5 bajaba el peso.** `epley1RM` solo
+  suma la recámara con RPE 5-10; fuera de ahí la serie cuenta como hecha al
+  fallo. Con 70 × 5 @4 el e1RM salía 81,7 en vez de ≥ 93,3 y el peso objetivo
+  bajaba a 66. `chipEffort` sube el RPE a 5 como mínimo (al menos 5 en
+  recámara: cota baja, así que la subida es prudente). `epley1RM` no cambia:
+  las estadísticas usan el mejor e1RM y ahí infravalorar no hace daño.
 
 **Probar P48**
 
@@ -386,6 +389,10 @@ sentadilla, de paso 5, el peso no se mueve: §5.3).
 - [ ] Con RPE 9 en todas: «↓ Peso objetivo 77,5 kg». Con RPE 8: «→ Peso
   objetivo 80 kg», sin delta.
 - [ ] Sesión hecha sin apuntar RPE: mantiene el peso y pide apuntar el RPE.
+- [ ] Más peso del pedido y RPE muy bajo (p. ej. 4): la sesión siguiente SUBE el
+  peso, nunca lo baja.
+- [ ] Sentadilla (paso 5 en la librería): el peso objetivo se mueve de 2,5 en
+  2,5.
 - [ ] En una etapa de descarga, el ejercicio Por esfuerzo dice Descarga y
   mantiene el peso.
 - [ ] Inicio enseña «3×5 @RPE8»; el editor de sesión, «3 × 5 @RPE 8»; compartir
