@@ -26,6 +26,8 @@ import { Text, TextInput } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { resolveProgressionConfig, LEGACY_TYPE_MAP, DEFAULT_TARGET } from '../../utils/progression';
+import { MAX_RELIABLE_REPS } from '../../utils/oneRm';
+import { isBodyweight } from '../../utils/trainingLoad';
 import { exerciseLinkGroups, exerciseInstanceCount } from '../../utils/exerciseLinks';
 import { warmupSteps } from '../../utils/warmup';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
@@ -135,11 +137,11 @@ function computeInitial(exConfig, def) {
   );
   const initMetric = initInputType === 'time' || initInputType === 'weight_time' ? 'time' : 'reps';
 
-  // Progression mode: 'auto' (engine suggests) or 'fixed' (target, no
-  // suggestions). Lo guardado como 'submax' se lee como Fija
-  // (effort-progression.md §3).
-  const initMode = initProg.type === 'none' ? 'fixed' : 'auto';
-  const initType = initProg.type === 'none' ? 'double' : initProg.type;
+  // Progression mode: 'auto' (engine suggests), 'fixed' (target, no
+  // suggestions) or 'effort' (reps @ RPE, weight from e1RM —
+  // effort-progression.md). Lo guardado como 'submax' se lee como Fija.
+  const initMode = initProg.type === 'none' ? 'fixed' : initProg.type === 'effort' ? 'effort' : 'auto';
+  const initType = initProg.type === 'none' || initProg.type === 'effort' ? 'double' : initProg.type;
 
   const w = exConfig.warmup ?? null;
 
@@ -157,6 +159,7 @@ function computeInitial(exConfig, def) {
     trainerNote:    exConfig.trainerNote  ?? '',
     trackRpe:       exConfig.trackRpe     ?? false,
     evalMaxRpe:     initProg.evaluation.maxRpe ?? 8,
+    targetRpe:      initProg.targetRpe,
     progMode:       initMode,
     progType:       initType,
     evalMode:       initProg.evaluation.mode,
@@ -209,6 +212,7 @@ export default function ExerciseEditorInline({
   const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
   const [trackRpe,       setTrackRpe]       = useState(i.trackRpe);
   const [evalMaxRpe,     setEvalMaxRpe]     = useState(i.evalMaxRpe);
+  const [targetRpe,      setTargetRpe]      = useState(i.targetRpe);
   const [progMode,       setProgMode]       = useState(i.progMode);
   const [progType,       setProgType]       = useState(i.progType);
   const [evalMode,       setEvalMode]       = useState(i.evalMode);
@@ -236,7 +240,7 @@ export default function ExerciseEditorInline({
 
   stateRef.current = {
     sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, variant, tempo, trainerNote,
-    trackRpe, evalMaxRpe,
+    trackRpe, evalMaxRpe, targetRpe,
     progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
     dropset, supersetWithNext,
     warmupMode, warmupSets, warmupCustomSteps, warmupRestSec,
@@ -245,7 +249,7 @@ export default function ExerciseEditorInline({
   const commitValues = useCallback((s) => {
     const isTimeMode = s.metric === 'time';
     const inputType  = s.metric === 'time' ? 'weight_time' : 'weight_reps';
-    const effType    = s.progMode === 'auto' ? s.progType : 'none';
+    const effType    = s.progMode === 'auto' ? s.progType : s.progMode === 'effort' ? 'effort' : 'none';
     const warmup = s.warmupMode === 'auto'
       ? { mode: 'auto', sets: s.warmupSets, restSec: s.warmupRestSec }
       : s.warmupMode === 'custom'
@@ -260,7 +264,8 @@ export default function ExerciseEditorInline({
       variant:      def?.derived?.variant ?? cleanVariant(s.variant, def) ?? null,
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
-      trackRpe:     s.trackRpe,
+      // Por esfuerzo no funciona sin RPE: se guarda encendido (§4.3).
+      trackRpe:     s.progMode === 'effort' ? true : s.trackRpe,
       dropset:      s.dropset || null,
       supersetWithNext: s.supersetWithNext || null,
       warmup,
@@ -272,6 +277,7 @@ export default function ExerciseEditorInline({
       progression: {
         type:      effType,
         direction: 'increase',
+        ...(s.progMode === 'effort' ? { targetRpe: s.targetRpe } : {}),
         evaluation: {
           // RPE mode only makes sense when RPE is being recorded
           mode:         s.evalMode === 'rpe' && !s.trackRpe ? 'all_complete' : s.evalMode,
@@ -293,6 +299,9 @@ export default function ExerciseEditorInline({
     if (isTimeMode) {
       updates.minTime = s.minTime; updates.maxTime = s.maxTime;
       updates.minReps = null;      updates.maxReps = null;
+    } else if (s.progMode === 'effort') {
+      // Reps objetivo, no rango: se guarda min = max (§1.2.4).
+      updates.minReps = s.minReps; updates.maxReps = s.minReps;
     } else {
       updates.minReps = s.minReps; updates.maxReps = s.maxReps;
     }
@@ -309,7 +318,7 @@ export default function ExerciseEditorInline({
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, variant, tempo, trainerNote,
-      trackRpe, evalMaxRpe,
+      trackRpe, evalMaxRpe, targetRpe,
       progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin, dropset,
       supersetWithNext, warmupMode, warmupSets, warmupCustomSteps, warmupRestSec]);
 
@@ -336,6 +345,7 @@ export default function ExerciseEditorInline({
     setIsKey(v.isKey);
     setTrainerNote(v.trainerNote);
     setTrackRpe(v.trackRpe);   setEvalMaxRpe(v.evalMaxRpe);
+    setTargetRpe(v.targetRpe);
     setProgMode(v.progMode);   setProgType(v.progType);
     setEvalMode(v.evalMode);   setEvalPct(v.evalPct);
     setIncrType(v.incrType);   setIncrFixedValue(v.incrFixedValue);
@@ -377,7 +387,30 @@ export default function ExerciseEditorInline({
   const showRepsIncr  = progType === 'reps';
   const showTimeIncr  = progType === 'time';
 
-  const PROG_MODES = ['auto', 'fixed'].map((id) => ({
+  // Por esfuerzo: solo con carga externa, en reps y sin asistencia (§2.4).
+  const canEffort = !isTime && !isBodyweight(def)
+    && (def?.progressionDirection ?? 'increase') !== 'decrease';
+  const isEffort  = progMode === 'effort';
+  const effortRir = 10 - targetRpe;
+  const effortRirTxt = effortRir === 0
+    ? t('exerciseEditor.effortFailure')
+    : t('exerciseEditor.effortRir', { count: effortRir });
+  // Misma regla que el motor: pasado MAX_RELIABLE_REPS no calcula (§2.3).
+  const effortUnreliable = isEffort && minReps + effortRir >= MAX_RELIABLE_REPS;
+  const effortWarn = effortUnreliable ? (
+    <Text style={styles.warnHint}>{t('exerciseEditor.effortUnreliable', { max: MAX_RELIABLE_REPS })}</Text>
+  ) : null;
+
+  function selectProgMode(mode) {
+    if (mode === 'effort') { setMaxReps(minReps); setTrackRpe(true); }
+    setProgMode(mode);
+  }
+  function selectMetric(m) {
+    if (m === 'time' && progMode === 'effort') setProgMode('auto');
+    setMetric(m);
+  }
+
+  const PROG_MODES = ['auto', 'fixed', ...(canEffort || isEffort ? ['effort'] : [])].map((id) => ({
     id, label: t(`exerciseEditor.progModes.${id}`),
   }));
   const PROG_TYPES = ['double', 'weight', 'reps', 'time'].map((id) => ({
@@ -398,7 +431,9 @@ export default function ExerciseEditorInline({
   const effEvalMode = evalMode === 'rpe' && !trackRpe ? 'all_complete' : evalMode;
   const rangeTxt = isTime
     ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
-    : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
+    : isEffort
+      ? t('exerciseEditor.effortVolume', { reps: minReps, rpe: targetRpe })
+      : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
   // El calentamiento abre la prescripción, así que va delante: "C×2 · 3 × 8–12…".
   const warmupCount = warmupMode === 'auto'
     ? warmupSets
@@ -421,7 +456,7 @@ export default function ExerciseEditorInline({
         eval: t(`exerciseEditor.summaryEval.${effEvalMode}`, { pct: evalPct, rpe: evalMaxRpe }),
         max:  isTime ? maxTime : maxReps,
       })
-    : t(`exerciseEditor.summaryProg.${progMode}`);
+    : t(`exerciseEditor.summaryProg.${progMode}`, { rpe: targetRpe });
 
   // Subtítulo de la fila de progresión — el mismo formato que dibuja Figma
   // ("Doble · todas las series · +2.5 kg").
@@ -431,7 +466,9 @@ export default function ExerciseEditorInline({
         t(`exerciseEditor.summaryEval.${effEvalMode}`, { pct: evalPct, rpe: evalMaxRpe }),
         `+${incTxt}`,
       ].join(' · ')
-    : t(`exerciseEditor.progModeDesc.${progMode}`);
+    : isEffort
+      ? `RPE ${targetRpe} · ${effortRirTxt}`
+      : t(`exerciseEditor.progModeDesc.${progMode}`);
 
   const warmupRestTxt = warmupRestSec > 0
     ? t('exerciseEditor.warmup.restShort', { s: warmupRestSec })
@@ -508,7 +545,7 @@ export default function ExerciseEditorInline({
             { id: 'time', label: t('exerciseEditor.metricTime').toUpperCase() },
           ]}
           value={metric}
-          onChange={setMetric}
+          onChange={selectMetric}
         />
 
         <View style={styles.grid}>
@@ -522,6 +559,13 @@ export default function ExerciseEditorInline({
               <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
               <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
             </View>
+          ) : isEffort ? (
+            <>
+              <View style={styles.gridRow}>
+                <StepField label={t('exerciseEditor.fieldTargetReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
+              </View>
+              {effortWarn}
+            </>
           ) : (
             <View style={styles.gridRow}>
               <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
@@ -580,7 +624,10 @@ export default function ExerciseEditorInline({
         />
         <ToggleRow
           label={t('exerciseEditor.trackRpeLabel')}
-          value={trackRpe}
+          value={trackRpe || isEffort}
+          disabled={isEffort}
+          alwaysHint={isEffort}
+          hint={isEffort ? t('exerciseEditor.trackRpeLocked') : undefined}
           onChange={(v) => {
             setTrackRpe(v);
             if (!v && evalMode === 'rpe') setEvalMode('all_complete');
@@ -853,9 +900,27 @@ export default function ExerciseEditorInline({
             <Text style={styles.stepTitle}>
               <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepMode')}
             </Text>
-            <SegmentedControl options={PROG_MODES} value={progMode} onChange={setProgMode} />
+            <SegmentedControl options={PROG_MODES} value={progMode} onChange={selectProgMode} />
             <Text style={styles.hint}>{t(`exerciseEditor.progModeDesc.${progMode}`)}</Text>
           </View>
+
+          {isEffort && (
+            <View>
+              <Text style={styles.stepTitle}>
+                <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepEffort')}
+              </Text>
+              <StepField
+                horizontal
+                label={t('exerciseEditor.maxRpeLabel')}
+                value={targetRpe}
+                onChange={setTargetRpe}
+                min={6}
+                max={10}
+              />
+              <Text style={styles.hint}>{effortRirTxt}</Text>
+              {effortWarn}
+            </View>
+          )}
 
           {progMode === 'auto' && (
             <>
@@ -1020,6 +1085,8 @@ const makeStyles = (th) => StyleSheet.create({
   gridRow: { flexDirection: 'row', gap: spacing.md },
 
   hint: { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
+  // Aviso de fiabilidad de Por esfuerzo: el naranja de `optRowWarn` (EditorRows).
+  warnHint: { ...textStyles.body, color: th.colors.orange, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
 
   // NavRow/OptionRow/ToggleRow/NoteRow viven en `ui/EditorRows.jsx` (compartidos
   // con el alta de ejercicio). `optRowLabel`/`optRowHint` se quedan aquí: se

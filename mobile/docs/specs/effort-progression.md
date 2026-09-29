@@ -3,11 +3,11 @@
 > Tema: programas
 > En corto: Un tercer modo de progresión para avanzados: el entrenador pide reps y un RPE, y la app calcula el peso de cada sesión a partir del 1RM estimado con el RPE que apuntó el cliente. Sustituye a «submáx», que desaparece: sus ejercicios pasan a Fija.
 > Fase P46 · hecho · Fuera «submáx»: sus ejercicios pasan a Fija · §3
-> Fase P47 · pendiente · Motor y editor del modo Por esfuerzo · §4
+> Fase P47 · hecho · Motor y editor del modo Por esfuerzo · §4
 > Fase P48 · pendiente · El objetivo por esfuerzo en el Workout y las listas · §5
 >
-> Estado: **P46 hecha** (29-sep-2026, rama `feat/exercise-variants`),
-> pendiente de probar; P47 y P48 sin implementar. Sale de una
+> Estado: **P46 probada, P47 hecha** (29-sep-2026, rama
+> `feat/exercise-variants`), P47 pendiente de probar; P48 sin implementar. Sale de una
 > conversación de diseño con el usuario (opción «B»: RPE objetivo + peso
 > sugerido por e1RM). Orden: P46 → P47 → P48. P46 va primero porque libera el
 > tercer hueco del selector de modo y quita las ramas `'submax'` que P48
@@ -199,14 +199,14 @@ usan `'submax'`: se reescriben al comportamiento nuevo (se lee como Fija).
 
 **Probar P46**
 
-- [ ] Editor de un ejercicio: el selector de progresión enseña Automática y
+- [x] Editor de un ejercicio: el selector de progresión enseña Automática y
   Fija, sin Submáx.
-- [ ] Añadir Burpee a una sesión: sale como Fija con 8–12 reps, en el editor, en
+- [x] Añadir Burpee a una sesión: sale como Fija con 8–12 reps, en el editor, en
   la lista del editor de sesión, en Inicio y en el Workout.
-- [ ] Alta de ejercicio propio: la progresión ofrece Automática y Fija. Creado
+- [x] Alta de ejercicio propio: la progresión ofrece Automática y Fija. Creado
   en Fija y añadido a una sesión, en el editor sale como Fija (antes salía
   Automática).
-- [ ] Un programa que ya tenía un ejercicio en Submáx lo enseña como Fija sin
+- [x] Un programa que ya tenía un ejercicio en Submáx lo enseña como Fija sin
   romper nada.
 
 ---
@@ -288,6 +288,17 @@ esfuerzo: pides un RPE y la app calcula el peso con tu 1RM estimado».
 
 `CustomExerciseScreen` **no** ofrece Por esfuerzo (§1.2.2).
 
+### 4.4 Lo que salió al implementarla
+
+- El paso 2 de la hoja se titula «Esfuerzo objetivo»; dentro, el `StepField`
+  «RPE objetivo» y la pista «Dejar N en recámara» / «Hasta el fallo».
+- `summaryProg.effort` quedó en «Peso calculado con el 1RM estimado para RPE
+  {{rpe}}»: la recámara ya sale en la fila de Progresión («RPE 8 · Dejar 2 en
+  recámara») y repetida en el resumen alargaba la línea.
+- Si un ejercicio ya está en Por esfuerzo y deja de cumplir §2.4 (p. ej. se
+  cambió el equipo de un ejercicio propio), la opción se sigue enseñando para
+  no dejar el selector sin valor; el motor, sin peso, mantiene.
+
 **Probar P47**
 
 - [ ] Sentadilla con barra → Progresión → Por esfuerzo: sale «RPE objetivo» con
@@ -298,8 +309,9 @@ esfuerzo: pides un RPE y la app calcula el peso con tu 1RM estimado».
   la hoja. 10 con RPE 9: sin aviso. 9 con RPE 7: aviso.
 - [ ] En Flexiones y en Dominadas asistidas no sale Por esfuerzo. En sentadilla,
   pasar la métrica a Tiempo lo devuelve a Automática.
-- [ ] El resumen del editor dice «3 × 5 reps · RPE 8 · …» y «Peso calculado
-  para RPE 8, dejando 2 en recámara».
+- [ ] El resumen del editor dice «3 × 5 reps · RPE 8 · …» y «Peso calculado con
+  el 1RM estimado para RPE 8»; la fila de Progresión, «RPE 8 · Dejar 2 en
+  recámara».
 - [ ] Alta de ejercicio propio: no ofrece Por esfuerzo.
 
 ---
@@ -363,7 +375,7 @@ y la sesión siguiente ya se calcula.
 | Fase | Qué | Coste | Depende de | Hecho |
 |---|---|---|---|---|
 | P46 | Fuera «submáx» (§3) | 🟢 | — | ✅ — ver §3.3 |
-| P47 | Motor + editor (§4) | 🟡 | P46 | |
+| P47 | Motor + editor (§4) | 🟡 | P46 | ✅ — ver §4.4 |
 | P48 | Workout y listas (§5) | 🟢 | P47 | |
 
 ## 7. Fuera de alcance (ideas apuntadas)

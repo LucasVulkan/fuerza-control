@@ -158,7 +158,8 @@
       { "id": "progression", "title": "Progression", "points": [
         "The rule that sets the weight for your next session.",
         "Automatic: goes up when you hit the target.",
-        "Fixed: always the same increment."
+        "Fixed: always the same increment.",
+        "By effort: set an RPE and the app works out the weight from your estimated 1RM."
       ] },
       { "id": "rpe", "title": "RPE", "points": [
         "Perceived effort from 1 to 10.",
@@ -1734,6 +1735,14 @@
     "evalPctLabel": "Threshold",
     "maxRpeLabel": "Target RPE",
     "trackRpeLabel": "Track RPE",
+    "trackRpeLocked": "Required for effort-based progression",
+    "stepEffort": "Target effort",
+    "fieldTargetReps": "Target reps",
+    "effortVolume": "{{reps}} reps · RPE {{rpe}}",
+    "effortRir_one": "Leave {{count}} rep in reserve",
+    "effortRir_other": "Leave {{count}} reps in reserve",
+    "effortFailure": "To failure",
+    "effortUnreliable": "From {{max}} reps, counting reps in reserve, the weight calculation is no longer reliable",
     "incrTypes": {
       "fixed": "Fixed",
       "pct": "Percentage"
@@ -1748,7 +1757,8 @@
     "incrMinHint": "Smallest plate available (e.g. 2.5 kg)",
     "progModes": {
       "auto": "Automatic",
-      "fixed": "Fixed"
+      "fixed": "Fixed",
+      "effort": "By effort"
     },
     "dropsetLabel": "Dropset on the last set",
     "dropsetHint": "After the last set you'll be able to add sub-sets at decreasing weight, no rest.",
@@ -1762,7 +1772,8 @@
     "linkGroupN": "Group {{n}}",
     "progModeDesc": {
       "auto": "The app suggests increases based on your performance",
-      "fixed": "Fixed target — the app won't suggest changes"
+      "fixed": "Fixed target — the app won't suggest changes",
+      "effort": "You set reps and an RPE; the app works out each session's weight from the estimated 1RM"
     },
     "configDone": "Done",
     "stepMode": "Progression mode",
@@ -1776,7 +1787,8 @@
       "weight": "Adds {{inc}} once you complete {{eval}}",
       "reps": "Adds {{inc}} reps once you complete {{eval}}",
       "time": "Raises the time target once you complete {{eval}}",
-      "fixed": "Fixed target, no automatic progression"
+      "fixed": "Fixed target, no automatic progression",
+      "effort": "Weight worked out from the estimated 1RM for RPE {{rpe}}"
     },
     "summaryEval": {
       "all_complete": "all sets",
@@ -2370,6 +2382,12 @@
     "time_keep": "Keep working in the {{min}}–{{max}}s range. Take your time.",
     "reps_advance": "All sets complete. Increase target to {{next}} reps next time.",
     "reps_hold": "Hit your rep target on all sets before increasing.",
+    "effort_noWeight": "Log each set's RPE to work out the weight",
+    "why_effortNoRpe": "log each set's RPE to adjust the weight",
+    "why_effortUnreliable": "too many reps to work out the weight",
+    "why_effortEasier": "last session was easier than planned",
+    "why_effortHarder": "last session was harder than planned",
+    "why_effortOnTarget": "last session went as planned",
     "decrease_lastAssist": "Excellent! All sets maxed with {{assist}}kg assistance. Next time try without assistance.",
     "decrease_allHit": "All sets maxed. Reduce assistance to {{next}}kg next time.",
     "decrease_free": "All sets unassisted! Time to move to the weighted version.",

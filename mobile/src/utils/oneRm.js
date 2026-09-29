@@ -30,6 +30,18 @@ export function epley1RM(weight, reps, rpe = null) {
   return w * (1 + r / 30);
 }
 
+/**
+ * La inversa de `epley1RM`: el peso para hacer `reps` a `rpe` con un 1RM
+ * `e1rm`. null si las reps equivalentes (reps + recámara) pasan de
+ * MAX_RELIABLE_REPS. La usa la progresión por esfuerzo
+ * (docs/specs/effort-progression.md §2.2).
+ */
+export function weightForReps(e1rm, reps, rpe) {
+  const r = reps + (10 - rpe);
+  if (!(e1rm > 0) || r < 1 || r > MAX_RELIABLE_REPS) return null;
+  return r === 1 ? e1rm : e1rm / (1 + r / 30);
+}
+
 /** Best e1RM across the sets of one logged exercise, or null. */
 export function bestSetE1RM(sets) {
   let best = null;

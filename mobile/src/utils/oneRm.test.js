@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { epley1RM, bestSetE1RM, recentE1RM } from './oneRm';
+import { epley1RM, bestSetE1RM, recentE1RM, weightForReps } from './oneRm';
 
 describe('epley1RM', () => {
   test('1 rep = the weight itself', () => {
@@ -73,5 +73,23 @@ describe('recentE1RM', () => {
 
   test('null when no sessions in window', () => {
     expect(recentE1RM([])).toBeNull();
+  });
+});
+
+describe('weightForReps (inversa de epley1RM)', () => {
+  test('ida y vuelta: 80 × 5 @8 → e1RM → 5 @8 da 80', () => {
+    const e = epley1RM(80, 5, 8);
+    expect(weightForReps(e, 5, 8)).toBeCloseTo(80, 6);
+  });
+  test('una rep al fallo es el propio 1RM', () => {
+    expect(weightForReps(100, 1, 10)).toBe(100);
+  });
+  test('reps equivalentes > 12 → null; 12 todavía vale', () => {
+    expect(weightForReps(100, 10, 7)).toBeNull();
+    expect(weightForReps(100, 10, 8)).toBeCloseTo(100 / 1.4, 6);
+  });
+  test('sin 1RM → null', () => {
+    expect(weightForReps(0, 5, 8)).toBeNull();
+    expect(weightForReps(null, 5, 8)).toBeNull();
   });
 });

@@ -5,12 +5,16 @@
  * Lives in exConfig.progression (template-level, per-exercise config):
  *
  * {
- *   type:      'double' | 'weight' | 'reps' | 'time' | 'none'
+ *   type:      'double' | 'weight' | 'reps' | 'time' | 'effort' | 'none'
  *     double  → classic double progression: stay in rep range, hit max → add weight
  *     weight  → fixed reps, session complete → add weight
  *     reps    → fixed weight, session complete → add reps to target
  *     time    → fixed weight, hit max time → increase time target
+ *     effort  → target reps @ targetRpe; weight comes from the e1RM of the
+ *               last session with its logged RPE (effort-progression.md)
  *     none    → no automatic chip (user decides)
+ *
+ *   targetRpe: 8             // type 'effort' only: integer 6-10
  *
  *   direction: 'increase' | 'decrease'
  *     increase → normal (more weight = progress)
@@ -52,9 +56,11 @@
  * exConfig.progressionModel / def.progressionModel values automatically.
  */
 
+import { epley1RM, weightForReps } from './oneRm';
+
 // ── Public constants ──────────────────────────────────────────────────────────
 
-export const PROGRESSION_TYPES  = ['double', 'weight', 'reps', 'time', 'none'];
+export const PROGRESSION_TYPES  = ['double', 'weight', 'reps', 'time', 'effort', 'none'];
 export const EVALUATION_MODES   = ['all_complete', 'pct', 'rpe', 'custom'];
 export const INCREMENT_TYPES    = ['fixed', 'pct', 'stepped'];
 
@@ -73,6 +79,7 @@ export const LEGACY_TYPE_MAP = {
   weight: 'double_progression',
   reps:   'double_progression',
   time:   'time_progression',
+  effort: 'double_progression',
   none:   'fixed',
 };
 
@@ -126,6 +133,7 @@ export function resolveProgressionConfig(exConfig, def) {
         time:   p.seed?.time   ?? null,
       },
       hold: p.hold ?? null,
+      targetRpe: p.targetRpe ?? 8,
     };
   }
 
@@ -149,6 +157,7 @@ export function resolveProgressionConfig(exConfig, def) {
     },
     seed: { weight: null, reps: null, time: null },
     hold: null,
+    targetRpe: 8,
   };
 }
 
@@ -377,6 +386,38 @@ function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) 
   return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: t('progression.why_holdReps'), suggestedWeight: maxW || null, suggestedTime: null };
 }
 
+/**
+ * Por esfuerzo (effort-progression.md §4.2): el e1RM es la media del de cada
+ * serie con peso, reps y RPE; el peso siguiente, el que da `targetRpe` a las
+ * reps objetivo, redondeado al `weightStep` más cercano.
+ */
+function chipEffort(prog, doneSets, def, targetReps, t) {
+  const maxW = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0));
+  const keep = (why) => ({
+    type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why),
+    suggestedWeight: maxW || null, suggestedTime: null,
+  });
+
+  const e1rms = doneSets
+    .map((s) => (parseFloat(s.rpe) > 0 ? epley1RM(s.weight, s.reps, s.rpe) : null))
+    .filter((v) => v !== null);
+  if (!e1rms.length) return keep('progression.why_effortNoRpe');
+
+  const e1rm = e1rms.reduce((a, b) => a + b, 0) / e1rms.length;
+  const raw  = weightForReps(e1rm, targetReps, prog.targetRpe);
+  if (raw === null) return keep('progression.why_effortUnreliable');
+
+  const step = def?.weightStep > 0 ? def.weightStep : 2.5;
+  const next = Math.round(raw / step) * step;
+  const type = next > maxW ? 'up' : next < maxW ? 'down' : 'hold';
+  const why  = { up: 'why_effortEasier', down: 'why_effortHarder', hold: 'why_effortOnTarget' }[type];
+  return {
+    type, icon: { up: '⬆', down: '⬇', hold: '→' }[type],
+    msg: t('progression.effort_noWeight'), why: t(`progression.${why}`),
+    suggestedWeight: next, suggestedTime: null,
+  };
+}
+
 function chipDoubleDecrease(prog, doneSets, totalSets, assistance, reps, minReps, maxReps, t) {
   const qualCount  = countQualifyingSets(doneSets, { minReps });
   const qualRate   = qualCount / Math.max(1, totalSets);
@@ -446,6 +487,10 @@ export function getProgression(exConfig, def, lastSets, t) {
       msg: t('progression.deload_hold', { weightStr }), why: t('progression.why_deload'),
       suggestedWeight: maxW || null, suggestedTime: null,
     };
+  }
+
+  if (prog.type === 'effort') {
+    return chipEffort(prog, doneSets, def, minReps, t);
   }
 
   if (prog.type === 'time') {

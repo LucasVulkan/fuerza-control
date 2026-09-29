@@ -123,3 +123,61 @@ describe('progression.hold = "deload"', () => {
     expect(resolveProgressionConfig({ progression: { type: 'double', hold: 'deload' } }, null).hold).toBe('deload');
   });
 });
+
+describe('progression.type = "effort" (effort-progression.md §4.2)', () => {
+  const tk = (k) => k;
+  const cfg = (extra = {}) => ({
+    sets: 3, minReps: 5, maxReps: 5,
+    progression: { type: 'effort', targetRpe: 8 },
+    ...extra,
+  });
+  const lib = { weightStep: 2.5 };
+  const at = (rpe, weight = '80', reps = '5') => [1, 2, 3].map(() => ({ weight, reps, rpe, done: true }));
+
+  it('RPE según lo previsto → mantener el mismo peso', () => {
+    const chip = getProgression(cfg(), lib, at('8'), tk);
+    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 80, why: 'progression.why_effortOnTarget' });
+  });
+  it('más fácil (RPE 7) → sube a 82.5', () => {
+    const chip = getProgression(cfg(), lib, at('7'), tk);
+    expect(chip).toMatchObject({ type: 'up', suggestedWeight: 82.5, why: 'progression.why_effortEasier' });
+  });
+  it('más duro (RPE 9) → baja a 77.5', () => {
+    const chip = getProgression(cfg(), lib, at('9'), tk);
+    expect(chip).toMatchObject({ type: 'down', suggestedWeight: 77.5, why: 'progression.why_effortHarder' });
+  });
+  it('sin RPE apuntado → mantiene el peso y pide el RPE', () => {
+    const chip = getProgression(cfg(), lib, at(''), tk);
+    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 80, why: 'progression.why_effortNoRpe' });
+  });
+  it('reps + recámara > 12 → mantiene el peso', () => {
+    const chip = getProgression(cfg({ minReps: 10, maxReps: 10, progression: { type: 'effort', targetRpe: 7 } }), lib, at('8', '60', '10'), tk);
+    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 60, why: 'progression.why_effortUnreliable' });
+  });
+  it('sin peso (peso corporal) → sin número', () => {
+    const chip = getProgression(cfg(), lib, at('8', ''), tk);
+    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: null });
+  });
+  it('descarga manda: mantener', () => {
+    const chip = getProgression(cfg({ progression: { type: 'effort', targetRpe: 8, hold: 'deload' } }), lib, at('6'), tk);
+    expect(chip).toMatchObject({ type: 'hold', reason: 'deload', suggestedWeight: 80 });
+  });
+  it('redondea al weightStep; 0 o sin él → 2.5', () => {
+    // RPE 7 → 82.16: con paso 1 → 82; con paso 0 → 82.5.
+    expect(getProgression(cfg(), { weightStep: 1 }, at('7'), tk).suggestedWeight).toBe(82);
+    expect(getProgression(cfg(), { weightStep: 0 }, at('7'), tk).suggestedWeight).toBe(82.5);
+    expect(getProgression(cfg(), null, at('7'), tk).suggestedWeight).toBe(82.5);
+  });
+  it('series con pesos distintos: media de los e1RM', () => {
+    const sets = [
+      { weight: '85', reps: '5', rpe: '9', done: true },  // 85 × (1 + 6/30) = 102
+      { weight: '75', reps: '5', rpe: '7', done: true },  // 75 × (1 + 8/30) = 95
+    ];
+    // media 98.5 → 98.5 / (1 + 7/30) = 79.86 → 80; el máximo apuntado era 85 → baja
+    expect(getProgression(cfg(), lib, sets, tk)).toMatchObject({ type: 'down', suggestedWeight: 80 });
+  });
+  it('resolveProgressionConfig trae targetRpe (8 por defecto)', () => {
+    expect(resolveProgressionConfig({ progression: { type: 'effort' } }, null).targetRpe).toBe(8);
+    expect(resolveProgressionConfig({ progression: { type: 'effort', targetRpe: 9 } }, null).targetRpe).toBe(9);
+  });
+});
