@@ -4,12 +4,12 @@
 > En corto: Agarre y anchura dejan de ser ejercicios distintos: son la «variante» de uno solo, que informa, se apunta en cada entreno y se puede filtrar en Progreso. Lo que cambia la carga (a una mano, o separar una variante para tener dos jalones el mismo día) sí es otro ejercicio, con id fijo y progresión propia.
 > Fase P41 · hecho · Librería: fusión de repetidos, migración de ids y buscador por palabras · §3
 > Fase P42 · hecho · La variante en el editor y en las listas · §4
-> Fase P43 · pendiente · La variante de hoy en el Workout, compartir y pegar · §5
+> Fase P43 · hecho · La variante de hoy en el Workout, compartir y pegar · §5
 > Fase P44 · pendiente · Cambiar el ejercicio: unilateral y ejercicio aparte · §6
 > Fase P45 · pendiente · Progreso filtrado por variante · §7
 >
-> Estado: **P41 probada y P42 implementada** (29-sep-2026, rama
-> `feat/exercise-variants`); P42 pendiente de probar en dispositivo; P43-P45 sin
+> Estado: **P41 y P42 probadas, P43 implementada** (29-sep-2026, rama
+> `feat/exercise-variants`); P43 pendiente de probar en dispositivo; P44-P45 sin
 > implementar. Lo que salió
 > distinto de lo escrito, en §3.5.
 >
@@ -482,7 +482,7 @@ aquí.) Maqueta §7.
 
 - [x] Editor de «Jalón al pecho»: en la hoja, sin iconos, elegir Neutro y
   Estrecho → la fila dice «Neutro · Estrecho»; tocar Neutro otra vez lo desmarca.
-- [ ] La sección VARIANTE va entre Volumen y Calentamiento en el editor, y entre
+- [x] La sección VARIANTE va entre Volumen y Calentamiento en el editor, y entre
   Volumen y Progresión en «Nuevo ejercicio».
 - [x] Editor de sesión: «Jalón al pecho · Neutro · Estrecho» con la variante en
   gris en la línea del nombre; con un nombre largo se corta la variante, no el
@@ -545,6 +545,17 @@ variante— se partiría. Se arregla el pegado, no el nombre:
 - Tests en `sessionText.test.js`: ida y vuelta de una sesión con un jalón con
   variante, un aparte y un ejercicio sin variante; y un nombre de la librería
   sin « · » sigue resolviendo igual que hoy.
+
+### 5.3 Lo que salió distinto (P43)
+
+- Si hoy se quitan todas las opciones de un ejercicio que en el programa tenía
+  variante, la tarjeta enseña «· Sin especificar» en acento: si no, no quedaría
+  nada que tocar para volver.
+- Un texto pegado con variante la manda al Workout como «la de hoy»:
+  `startSession(…, { prefill: { variants } })`.
+- `parseSessionText` separa el nombre de la receta por el primer trozo que es
+  receta o peso; un trozo que no es ninguna de las dos cosas y no es variante
+  se ignora al resolver, como antes.
 
 **Probar P43**
 

@@ -2235,3 +2235,46 @@ describe('la variante en la sesión — exercise-variants.md P42', () => {
     expect('variant' in useStore.getState().sessionTemplates[tid].exercises[0]).toBe(false);
   });
 });
+
+describe('la variante de hoy — exercise-variants.md P43', () => {
+  beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY }); });
+
+  function entrenarJalon(setToday) {
+    const pid = useStore.getState().createEmptyProgram(1, 'Hoy');
+    const tid = Object.keys(useStore.getState().sessionTemplates).find(
+      (id) => useStore.getState().sessionTemplates[id].programId === pid,
+    );
+    useStore.setState((s) => ({
+      sessionTemplates: {
+        ...s.sessionTemplates,
+        [tid]: { ...s.sessionTemplates[tid], exercises: [{ exerciseId: 'pulldown', sets: 1, variant: { grip: 'neutral' } }] },
+      },
+    }));
+    useStore.getState().startSession(tid);
+    setToday?.();
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { pulldown: [{ weight: '50', reps: '10', time: '', done: true }] } },
+    }));
+    const { entryId } = useStore.getState().saveSession();
+    return { tid, entry: useStore.getState().workoutLog.find((e) => e.id === entryId) };
+  }
+
+  it('lo cambiado hoy va al registro y el programa no cambia', () => {
+    const { tid, entry } = entrenarJalon(() => useStore.getState().setSessionVariant('pulldown', { grip: 'pronated' }));
+    expect(entry.exercises[0].variant).toEqual({ grip: 'pronated' });
+    expect(useStore.getState().sessionTemplates[tid].exercises[0].variant).toEqual({ grip: 'neutral' });
+  });
+
+  it('volver a la del programa borra el cambio de hoy', () => {
+    const { entry } = entrenarJalon(() => {
+      useStore.getState().setSessionVariant('pulldown', { grip: 'pronated' });
+      useStore.getState().setSessionVariant('pulldown', undefined);
+    });
+    expect(entry.exercises[0].variant).toEqual({ grip: 'neutral' });
+  });
+
+  it('hoy sin especificar no escribe variante', () => {
+    const { entry } = entrenarJalon(() => useStore.getState().setSessionVariant('pulldown', {}));
+    expect('variant' in entry.exercises[0]).toBe(false);
+  });
+});

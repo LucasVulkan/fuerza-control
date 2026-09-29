@@ -1813,6 +1813,9 @@
     }
   },
   "variants": {
+    "todayTitle": "Hoy · solo esta sesión",
+    "todayHint": "El programa no cambia. Queda apuntado en el registro de hoy.",
+    "backToProgram": "Volver a la del programa",
     "section": "Variante",
     "title": "Variante",
     "none": "Sin especificar",

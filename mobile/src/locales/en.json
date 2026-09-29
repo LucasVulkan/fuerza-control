@@ -1813,6 +1813,9 @@
     }
   },
   "variants": {
+    "todayTitle": "Today · this session only",
+    "todayHint": "The program doesn't change. It is saved in today's log.",
+    "backToProgram": "Back to the program's",
     "section": "Variant",
     "title": "Variant",
     "none": "Not specified",

@@ -40,7 +40,9 @@ import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../util
 import { resolveExerciseReference, resolveRef } from '../../utils/sessionOverride';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import { targetLabel as buildTarget } from '../../utils/prescription';
-import { variantLabel } from '../../utils/variants';
+import { DIM_ORDER, variantDims, isEmptyVariant, sameVariant } from '../../utils/variants';
+import VariantPicker from '../ui/VariantPicker';
+import DragSheet from '../DragSheet';
 import { isExerciseDone } from '../../utils/exerciseStatus';
 import { spacing, textStyles, withOpacity, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -175,7 +177,23 @@ export default function ExerciseCard({
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
     : exConfig.exerciseId;
-  const variantText = variantLabel(exConfig.variant, t);
+
+  // ── Variante de hoy (exercise-variants.md §5.1) ─────────────────────────────
+  // La del programa, salvo que hoy se haya cambiado en la hoja. Solo informa: se
+  // apunta en el registro y el programa no cambia.
+  const programVariant = exConfig.variant ?? null;
+  const todayVariants  = useStore((s) => s.activeSession.variants);
+  const setSessionVariant = useStore((s) => s.setSessionVariant);
+  const hasToday = !!todayVariants && Object.prototype.hasOwnProperty.call(todayVariants, exConfig.exerciseId);
+  const variant  = hasToday ? todayVariants[exConfig.exerciseId] : programVariant;
+  const [variantSheetOpen, setVariantSheetOpen] = useState(false);
+  // Sin variante en el programa no hay nada que cambiar hoy (decisión del usuario).
+  const canChangeVariant = variantDims(def).length > 0 && (!isEmptyVariant(programVariant) || hasToday);
+  const variantParts = DIM_ORDER.filter((d) => variant?.[d]).map((d) => ({
+    dim:     d,
+    label:   t(`variants.options.${d}.${variant[d]}`),
+    changed: variant[d] !== programVariant?.[d],
+  }));
 
   // Dropset: checking the last work set is NOT the end of the exercise — the
   // drops come next. Hold the auto-collapse until at least one drop exists and
@@ -428,7 +446,22 @@ export default function ExerciseCard({
             (exercise-variants.md §4.3): mismo estilo, solo cambia el color. */}
         <Text style={styles.name} numberOfLines={2}>
           {name}
-          {variantText ? <Text style={styles.nameVariant}>{` · ${variantText}`}</Text> : null}
+          {/* Pulsable solo desplegada: plegada, tocar la cabecera la despliega.
+              Lo cambiado hoy va en acento. Si hoy se quitó todo, «Sin
+              especificar» para poder volver. */}
+          {variantParts.length || hasToday ? (
+            <Text
+              style={styles.nameVariant}
+              onPress={canChangeVariant && !isCollapsed ? () => setVariantSheetOpen(true) : undefined}
+              suppressHighlighting
+            >
+              {variantParts.length
+                ? variantParts.map((p) => (
+                    <Text key={p.dim} style={p.changed ? styles.nameVariantChanged : null}>{` · ${p.label}`}</Text>
+                  ))
+                : <Text style={styles.nameVariantChanged}>{` · ${t('variants.none')}`}</Text>}
+            </Text>
+          ) : null}
         </Text>
       </View>
       {/* "Principal" es metadato, no badge: como pastilla junto al nombre se
@@ -925,6 +958,33 @@ export default function ExerciseCard({
 
       </Animated.View>
 
+      {/* Variante solo por hoy (exercise-variants.md §5.1, maqueta §4A) */}
+      {canChangeVariant && (
+        <DragSheet
+          visible={variantSheetOpen}
+          onClose={() => setVariantSheetOpen(false)}
+          title={t('variants.title')}
+        >
+          <View style={styles.variantSheet}>
+            <View style={{ gap: spacing.sm }}>
+              <Text style={styles.variantCaption}>{t('variants.todayTitle').toUpperCase()}</Text>
+              <VariantPicker
+                def={def}
+                value={variant}
+                programValue={programVariant}
+                onChange={(next) => setSessionVariant(exConfig.exerciseId, next)}
+              />
+            </View>
+            <Text style={styles.variantHint}>{t('variants.todayHint')}</Text>
+            {hasToday && !sameVariant(variant, programVariant) ? (
+              <TouchableOpacity onPress={() => setSessionVariant(exConfig.exerciseId, undefined)} hitSlop={8}>
+                <Text style={styles.variantReset}>{`↺ ${t('variants.backToProgram')}`}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </DragSheet>
+      )}
+
       {/* Nota del ejercicio — mismo modal que las notas de sesión, título = nombre del ejercicio */}
       {onClientNoteChange && (
         <NotesModal
@@ -1012,6 +1072,11 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink: 1,
   },
   nameVariant: { color: th.colors.mutedLight },
+  nameVariantChanged: { color: th.colors.accent },
+  variantSheet:   { gap: spacing.lg, paddingBottom: spacing.sm },
+  variantCaption: { ...textStyles.caps, color: th.colors.accent },
+  variantHint:    { ...textStyles.body, color: th.colors.mutedLight },
+  variantReset:   { ...textStyles.button, color: th.colors.mutedLight },
   keyInline: {
     color:      th.colors.accent,
     fontFamily: 'Inter_700Bold',

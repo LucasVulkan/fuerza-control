@@ -243,6 +243,9 @@ const INITIAL_ACTIVE_SESSION = {
   startedAt: null,
   notes: '',
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
+  // La variante de HOY, si difiere de la del programa (exercise-variants.md §5.1).
+  // Sin clave = la del programa; `{}` = hoy sin especificar.
+  variants:      {},   // { [exerciseId]: { grip?, width? } }
   adHocExercises: [],
   freeSessionName: '',
   freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
@@ -1955,6 +1958,7 @@ export const useStore = create(
         set({
           activeSession: {
             ...INITIAL_ACTIVE_SESSION, templateId, setsState, adHocExercises,
+            variants: prefill?.variants ?? {},
             startedAt: Date.now(), forClient, loggedAt, logOnly,
           },
           ui: { ...get().ui, view: 'workout' },
@@ -1976,6 +1980,14 @@ export const useStore = create(
         set((s) => ({ activeSession: { ...s.activeSession, freeSessionName: name } })),
 
       /** Sets the client's per-exercise feedback note for the active session. */
+      // `undefined` borra la clave: vuelve a la del programa.
+      setSessionVariant: (exerciseId, variant) =>
+        set((s) => {
+          const variants = { ...(s.activeSession.variants ?? {}) };
+          if (variant === undefined) delete variants[exerciseId]; else variants[exerciseId] = variant;
+          return { activeSession: { ...s.activeSession, variants } };
+        }),
+
       setExerciseNote: (exerciseId, text) =>
         set((s) => ({
           activeSession: {
@@ -2350,6 +2362,14 @@ export const useStore = create(
           return { ok: true, entryId };
         };
 
+        // Lo que se hizo de verdad: la variante de hoy si se cambió en el Workout,
+        // si no la del programa. Vacía no se escribe (exercise-variants.md §5.1).
+        const todayVariant = (exerciseId, programVariant) => {
+          const today = activeSession.variants ?? {};
+          const v = Object.prototype.hasOwnProperty.call(today, exerciseId) ? today[exerciseId] : programVariant;
+          return isEmptyVariant(v) ? {} : { variant: v };
+        };
+
         // ── Free session — no template, only ad-hoc exercises ─────────────────
         if (activeSession.templateId === '__free__') {
           const adHoc = activeSession.adHocExercises ?? [];
@@ -2378,6 +2398,7 @@ export const useStore = create(
             exercises:         adHoc.map((a) => ({
               exerciseId: a.exerciseId, isAdHoc: true, sets: a.setsState,
               ...(a.config ?? {}),
+              ...todayVariant(a.exerciseId, a.config?.variant),
               ...(freeNotes[a.exerciseId]?.trim() ? { note: freeNotes[a.exerciseId].trim() } : {}),
             })),
           };
@@ -2431,7 +2452,7 @@ export const useStore = create(
             return {
               exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId),
               // Cómo se hizo: solo informa y se filtra (exercise-variants.md §2.4).
-              ...(isEmptyVariant(variant) ? {} : { variant }),
+              ...todayVariant(exerciseId, variant),
             };
           })
           .filter(Boolean);
@@ -2476,6 +2497,7 @@ export const useStore = create(
             ...(activeSession.adHocExercises ?? []).map((adHoc) => ({
               exerciseId: adHoc.exerciseId, isAdHoc: true, sets: adHoc.setsState,
               ...(adHoc.config ?? {}),
+              ...todayVariant(adHoc.exerciseId, adHoc.config?.variant),
               ...exNote(adHoc.exerciseId),
             })),
           ],

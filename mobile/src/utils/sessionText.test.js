@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { sessionToText, SEP, parseSessionText, readAnswer, parseRx, exerciseIndex } from './sessionText';
+import { sessionToText, SEP, parseSessionText, readAnswer, parseRx, exerciseIndex, resolveName } from './sessionText';
+import { compose } from './exerciseIdentity';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 import es from '../locales/es.json';
 import en from '../locales/en.json';
@@ -270,5 +271,45 @@ describe('ida y vuelta completa', () => {
     expect(find('Banca')).toBe('squat_barbell');
     expect(find('fantasma')).toBeNull();
     expect(find('SENTADILLA CON BARRA')).toBe('squat_barbell');
+  });
+});
+
+// exercise-variants.md §5.2: la variante viaja con « · » y el lector la separa.
+describe('variantes en el texto', () => {
+  const template = {
+    label: 'B', name: 'Tirón',
+    exercises: [
+      { exerciseId: 'pulldown', sets: 3, minReps: 8, maxReps: 10, variant: { grip: 'pronated', width: 'wide' } },
+      { exerciseId: 'cable_row', sets: 3, minReps: 10, maxReps: 12 },
+    ],
+  };
+
+  it('la variante va detrás del nombre, antes de la receta', () => {
+    const text = sessionToText(template, LIB, t, { language: 'es' });
+    expect(text).toContain(`Jalón al pecho${SEP}Prono${SEP}Ancho${SEP}3x8-10:`);
+    expect(text).toContain(`Remo en polea${SEP}3x10-12:`);
+  });
+
+  it('ida y vuelta: el nombre y su variante se reconocen', () => {
+    const text = sessionToText(template, LIB, t, { language: 'es' }).replace('3x8-10:', '3x8-10: 60x10 60x9 55x10');
+    const { lines } = parseSessionText(text);
+    const find = exerciseIndex(LIB);
+    const jalon = lines.find((l) => l.name.startsWith('Jalón'));
+    expect(jalon.rx).toEqual({ sets: 3, reps: 8 });
+    expect(resolveName(jalon.nameSegs, find)).toEqual({ exerciseId: 'pulldown', variant: { grip: 'pronated', width: 'wide' } });
+    const remo = lines.find((l) => l.name.startsWith('Remo'));
+    expect(resolveName(remo.nameSegs, find)).toEqual({ exerciseId: 'cable_row', variant: null });
+  });
+
+  it('un ejercicio aparte que existe gana al nombre con variante', () => {
+    const { id, def } = compose({ root: 'pulldown', variant: { grip: 'pronated', width: 'wide' } }, LIB);
+    const find = exerciseIndex({ ...LIB, [id]: def });
+    expect(resolveName(['Jalón al pecho', 'Prono', 'Ancho'], find)).toEqual({ exerciseId: id, variant: null });
+  });
+
+  it('lo que sobra y no es variante se ignora; en inglés también se lee', () => {
+    const find = exerciseIndex(LIB);
+    expect(resolveName(['Jalón al pecho', 'agarre raro'], find)).toEqual({ exerciseId: 'pulldown', variant: null });
+    expect(resolveName(['Lat Pulldown', 'Neutral'], find)).toEqual({ exerciseId: 'pulldown', variant: { grip: 'neutral' } });
   });
 });
