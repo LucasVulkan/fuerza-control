@@ -89,6 +89,29 @@ function applyTo(list, map, ctx) {
   }
 }
 
+/**
+ * `exConfig.isUnilateral` desaparece (exercise-variants.md §6.4): a una mano es
+ * otro ejercicio. Encendido sobre uno de dos manos pasa a su versión unilateral
+ * (el gemelo de la librería o el derivado `<id>__uni`), si no choca con otro de
+ * la sesión. La clave se borra siempre.
+ */
+function migrateUnilateralFlag(tpl, ctx) {
+  for (const ex of tpl.exercises ?? []) {
+    if (!ex || !('isUnilateral' in ex)) continue;
+    const def = ctx.lib[ex.exerciseId];
+    if (ex.isUnilateral && def && !def.isUnilateral) {
+      const uni = compose({ root: ex.exerciseId, uni: true }, ctx.lib);
+      if (!tpl.exercises.some((e) => e.exerciseId === uni.id)) {
+        if (uni.def) { ctx.lib[uni.id] = uni.def; ctx.newDefs[uni.id] = uni.def; }
+        ex.exerciseId = uni.id;
+        if (ex.variant?.width) { const { width: _w, ...rest } = ex.variant; ex.variant = rest; }
+      }
+    }
+    delete ex.isUnilateral;
+    ctx.changed = true;
+  }
+}
+
 function migrateTemplates(map, ctx) {
   for (const tpl of Object.values(map ?? {})) {
     if (!tpl) continue;
@@ -98,6 +121,7 @@ function migrateTemplates(map, ctx) {
       if (tpl.id) ctx.plans[tpl.id] = plan;
       applyTo(tpl.exercises, plan, ctx);
     }
+    migrateUnilateralFlag(tpl, ctx);
     migrateBlocks(tpl.blocks, ctx);
   }
 }

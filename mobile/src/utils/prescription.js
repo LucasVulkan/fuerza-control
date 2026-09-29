@@ -33,7 +33,7 @@ export function targetLabel(def, exConfig, t, { compact = false } = {}) {
   const maxTime    = exConfig.maxTime ?? def.maxTime ?? DEFAULT_TARGET.maxTime;
   // En compacto el «por lado» se cae: la fila no da para el matiz, y el nombre
   // del ejercicio ya suele decirlo.
-  const unilateral = (!compact && (exConfig.isUnilateral ?? def.isUnilateral))
+  const unilateral = (!compact && def.isUnilateral)
     ? ` ${t('workout.perSide', 'por lado')}`
     : '';
   const x = compact ? '×' : ' × ';

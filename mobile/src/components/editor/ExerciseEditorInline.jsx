@@ -20,7 +20,7 @@
  * Toda la lógica (autosave con debounce, vinculación, progresión, calentamiento)
  * se conserva tal cual; esto es un restyle + reorganización de la UI.
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
@@ -32,9 +32,10 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
-import { ArrowIcon, ProgressionIcon, VariantIcon } from '../ui/EditorIcons';
+import { ArrowIcon, ProgressionIcon, VariantIcon, LockIcon } from '../ui/EditorIcons';
 import VariantPicker from '../ui/VariantPicker';
 import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
+import { decompose, compose, canBeUnilateral } from '../../utils/exerciseIdentity';
 import StepField, { STEP_BTN } from '../ui/StepField';
 import { OptionRow, ToggleRow, NavRow, NoteRow, CHEVRON_GREY } from '../ui/EditorRows';
 import { GRID } from '../workout/grid';
@@ -153,7 +154,6 @@ function computeInitial(exConfig, def) {
     maxTime:        exConfig.maxTime      ?? def?.maxTime ?? DEFAULT_TARGET.maxTime,
     metric:         initMetric,
     isKey:          exConfig.isKey        ?? false,
-    isUnilateral:   exConfig.isUnilateral ?? def?.isUnilateral ?? false,
     variant:        exConfig.variant      ?? null,
     tempo:          exConfig.tempo        ?? '',
     trainerNote:    exConfig.trainerNote  ?? '',
@@ -177,7 +177,7 @@ function computeInitial(exConfig, def) {
 }
 
 export default function ExerciseEditorInline({
-  templateId, exConfig, def, hasNextExercise, onSubstitute, onDelete,
+  templateId, exConfig, def, hasNextExercise, onSubstitute, onDelete, onIdentityChange,
 }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -187,6 +187,12 @@ export default function ExerciseEditorInline({
   const setExerciseLinkGroup   = useStore((s) => s.setExerciseLinkGroup);
   const programs               = useStore((s) => s.programs);
   const sessionTemplatesAll    = useStore((s) => s.sessionTemplates);
+  const exerciseLibrary        = useStore((s) => s.exerciseLibrary);
+  const customExercises        = useStore((s) => s.customExercises);
+  const identityCheck          = useStore((s) => s.identityCheck);
+  const changeExerciseIdentity = useStore((s) => s.changeExerciseIdentity);
+  const showToast              = useStore((s) => s.showToast);
+  const lib = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
 
   const initialRef = useRef(computeInitial(exConfig, def));
 
@@ -200,7 +206,6 @@ export default function ExerciseEditorInline({
   const [maxTime,        setMaxTime]        = useState(i.maxTime);
   const [metric,         setMetric]         = useState(i.metric);
   const [isKey,          setIsKey]          = useState(i.isKey);
-  const [isUnilateral,   setIsUnilateral]   = useState(i.isUnilateral);
   const [variant,        setVariant]        = useState(i.variant);
   const [tempo,          setTempo]          = useState(i.tempo);
   const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
@@ -232,7 +237,7 @@ export default function ExerciseEditorInline({
   useEffect(() => { updateRef.current = updateExerciseParams; }, [updateExerciseParams]);
 
   stateRef.current = {
-    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, variant, tempo, trainerNote,
+    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, variant, tempo, trainerNote,
     trackRpe, evalMaxRpe,
     progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
     dropset, supersetWithNext,
@@ -252,9 +257,9 @@ export default function ExerciseEditorInline({
     const updates = {
       sets: s.sets, restSec: s.restSec, inputType,
       isKey:        s.isKey,
-      isUnilateral: s.isUnilateral,
-      // Solo informa (exercise-variants.md §2.3); vacía se guarda null.
-      variant:      cleanVariant(s.variant, def) ?? null,
+      // Solo informa (exercise-variants.md §2.3); vacía se guarda null. Un
+      // ejercicio aparte conserva su variante fija: es lo que permite deshacerlo.
+      variant:      def?.derived?.variant ?? cleanVariant(s.variant, def) ?? null,
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
       trackRpe:     s.trackRpe,
@@ -305,7 +310,7 @@ export default function ExerciseEditorInline({
     timerRef.current = setTimeout(() => { commitValues(stateRef.current); }, 400);
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, isUnilateral, variant, tempo, trainerNote,
+  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, variant, tempo, trainerNote,
       trackRpe, evalMaxRpe,
       progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin, dropset,
       supersetWithNext, warmupMode, warmupSets, warmupCustomSteps, warmupRestSec]);
@@ -328,7 +333,7 @@ export default function ExerciseEditorInline({
     setSets(v.sets);           setRestSec(v.restSec);
     setMinReps(v.minReps);     setMaxReps(v.maxReps);
     setMinTime(v.minTime);     setMaxTime(v.maxTime);
-    setMetric(v.metric);       setIsUnilateral(v.isUnilateral); setTempo(v.tempo);
+    setMetric(v.metric);       setTempo(v.tempo);
     setVariant(v.variant);
     setIsKey(v.isKey);
     setTrainerNote(v.trainerNote);
@@ -442,13 +447,47 @@ export default function ExerciseEditorInline({
       ? t('exerciseEditor.warmup.rowAutoSub',   { sets: warmupSets, rest: warmupRestTxt })
       : t('exerciseEditor.warmup.rowCustomSub', { n: warmupCustomSteps.length, rest: warmupRestTxt });
 
-  // Fila VARIANTE (exercise-variants.md §4.1): solo si el ejercicio declara
-  // alguna dimensión. El subtítulo dice qué hay dentro de la hoja.
-  const dims = variantDims(def);
-  const dimsSub = dims.map((d, n) => {
+  // ── Qué ejercicio es: unilateral y ejercicio aparte (exercise-variants.md §6) ─
+  // Los dos interruptores cambian el ejercicio (otro historial); la variante de
+  // arriba solo informa.
+  const dims    = variantDims(def);
+  const ident   = decompose(exConfig.exerciseId, lib);
+  const rootDef = lib[ident.root];
+  const apartOn = !!ident.variant;
+  const showUni = !ident.natural && (ident.uni || canBeUnilateral(rootDef, lib));
+  const chosen  = cleanVariant(variant, def);
+  const baseOf  = (uni) => {
+    const c = compose({ root: ident.root, uni, variant: null }, lib);
+    return (c.def ?? lib[c.id])?.name ?? c.id;
+  };
+  // Encender unilateral con aparte puesto: la variante fija pierde la anchura.
+  const uniVariant = ident.variant && !ident.uni
+    ? (ident.variant.grip ? { grip: ident.variant.grip } : null)
+    : ident.variant;
+  const uniTarget   = { root: ident.root, uni: !ident.uni, variant: uniVariant };
+  const apartTarget = { root: ident.root, uni: ident.uni, variant: apartOn ? null : chosen };
+  const uniCheck    = showUni ? identityCheck(templateId, exConfig.exerciseId, uniTarget) : null;
+  const apartCheck  = apartOn || chosen ? identityCheck(templateId, exConfig.exerciseId, apartTarget) : null;
+  const showApart   = dims.length > 0 || apartOn;
+  const blockedHint = (check) => t(check.linked ? 'variants.blockedLinked' : 'variants.blocked', { name: check.name });
+
+  function applyIdentity(target, toast) {
+    // Lo pendiente del autoguardado va al ejercicio de ahora, antes de cambiarlo.
+    if (dirtyRef.current) { clearTimeout(timerRef.current); commitValues(stateRef.current); dirtyRef.current = false; }
+    const res = changeExerciseIdentity(templateId, exConfig.exerciseId, target);
+    if (!res.id || res.id === exConfig.exerciseId) return;
+    setVariantSheetOpen(false);
+    if (toast) showToast(toast, 2200, 'success');
+    onIdentityChange?.(res.id);
+  }
+
+  // Fila VARIANTE: sale si hay algo dentro de la hoja. El subtítulo lo nombra.
+  const showVariantRow = dims.length > 0 || showUni || apartOn;
+  const dimsSub = [...(showUni ? ['unilateral'] : []), ...dims].map((d, n) => {
     const w = t(`variants.dim.${d}`);
     return n === 0 ? w : w.toLowerCase();
   }).join(' · ');
+  const rowTitle = variantLabel(apartOn ? ident.variant : variant, t) || t('variants.none');
 
   return (
     <View style={styles.container}>
@@ -495,12 +534,12 @@ export default function ExerciseEditorInline({
       </View>
 
       {/* ══ VARIANTE (no está en Figma — maqueta exercise-variants §1A) ═════ */}
-      {dims.length > 0 && (
+      {showVariantRow && (
         <View style={styles.block}>
           <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
           <NavRow
             icon={<VariantIcon size={15} color={th.colors.accent} />}
-            title={variantLabel(variant, t) || t('variants.none')}
+            title={rowTitle}
             subtitle={dimsSub}
             onPress={() => setVariantSheetOpen(true)}
           />
@@ -540,11 +579,6 @@ export default function ExerciseEditorInline({
           hint={t('exerciseEditor.isKeyHint')}
           value={isKey}
           onChange={setIsKey}
-        />
-        <ToggleRow
-          label={t('exerciseEditor.unilateralLabel')}
-          value={isUnilateral}
-          onChange={setIsUnilateral}
         />
         <ToggleRow
           label={t('exerciseEditor.trackRpeLabel')}
@@ -648,10 +682,68 @@ export default function ExerciseEditorInline({
         title={t('variants.title')}
       >
         <View style={styles.sheetBody}>
-          <View style={{ gap: spacing.sm }}>
-            <Text style={styles.groupCaption}>{t('variants.howTitle').toUpperCase()}</Text>
-            <VariantPicker def={def} value={variant} onChange={setVariant} />
-          </View>
+          {/* Arriba lo que solo informa; con «Ejercicio aparte» es fija. */}
+          {apartOn ? (
+            <View style={{ gap: spacing.sm }}>
+              <Text style={styles.groupCaption}>{t('variants.fixedTitle').toUpperCase()}</Text>
+              <View style={styles.optGroup}>
+                <OptionRow
+                  label={variantLabel(ident.variant, t)}
+                  hint={t('variants.fixedHint')}
+                  right={<LockIcon size={14} color={th.colors.mutedLight} />}
+                />
+              </View>
+            </View>
+          ) : dims.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              <Text style={styles.groupCaption}>{t('variants.howTitle').toUpperCase()}</Text>
+              <VariantPicker def={def} value={variant} onChange={setVariant} />
+              {ident.uni && rootDef?.variants?.width && !def?.variants?.width ? (
+                <Text style={styles.hint}>{t('variants.widthNA')}</Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* Abajo lo que cambia el ejercicio: otro historial, otra progresión. */}
+          {showUni || ident.natural || showApart ? (
+            <View style={{ gap: spacing.sm }}>
+              <Text style={styles.groupCaption}>{t('variants.identityTitle').toUpperCase()}</Text>
+              <View style={styles.optGroup}>
+                {ident.natural ? (
+                  <OptionRow label={t('variants.oneHand')} hint={t('variants.alreadyUnilateral')} />
+                ) : showUni ? (
+                  <ToggleRow
+                    label={t('variants.unilateral')}
+                    hint={uniCheck?.blocked ? blockedHint(uniCheck) : t('variants.unilateralHint')}
+                    value={ident.uni}
+                    alwaysHint
+                    warn={!!uniCheck?.blocked}
+                    disabled={!!uniCheck?.blocked}
+                    onChange={() => applyIdentity(uniTarget)}
+                  />
+                ) : null}
+                {showApart ? (
+                  <ToggleRow
+                    label={t('variants.apart')}
+                    hint={
+                      apartCheck?.blocked ? blockedHint(apartCheck)
+                        : apartOn ? t('variants.apartHintOn', { base: baseOf(ident.uni) })
+                          : chosen ? t('variants.apartHintOff', { name: apartCheck.name, base: baseOf(ident.uni) })
+                            : t('variants.apartNeedsVariant')
+                    }
+                    value={apartOn}
+                    alwaysHint
+                    warn={!!apartCheck?.blocked}
+                    disabled={!!apartCheck?.blocked || (!apartOn && !chosen)}
+                    onChange={() => applyIdentity(
+                      apartTarget,
+                      apartOn ? null : t('variants.toastApart', { name: apartCheck.name }),
+                    )}
+                  />
+                ) : null}
+              </View>
+            </View>
+          ) : null}
         </View>
       </DragSheet>
 

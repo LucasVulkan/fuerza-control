@@ -40,7 +40,7 @@ import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../util
 import { resolveExerciseReference, resolveRef } from '../../utils/sessionOverride';
 import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
 import { targetLabel as buildTarget } from '../../utils/prescription';
-import { DIM_ORDER, variantDims, isEmptyVariant, sameVariant } from '../../utils/variants';
+import { DIM_ORDER, variantDims, isEmptyVariant, sameVariant, displayVariant } from '../../utils/variants';
 import VariantPicker from '../ui/VariantPicker';
 import DragSheet from '../DragSheet';
 import { isExerciseDone } from '../../utils/exerciseStatus';
@@ -189,7 +189,9 @@ export default function ExerciseCard({
   const [variantSheetOpen, setVariantSheetOpen] = useState(false);
   // Sin variante en el programa no hay nada que cambiar hoy (decisión del usuario).
   const canChangeVariant = variantDims(def).length > 0 && (!isEmptyVariant(programVariant) || hasToday);
-  const variantParts = DIM_ORDER.filter((d) => variant?.[d]).map((d) => ({
+  // Un ejercicio aparte ya lleva la variante en el nombre: no se repite.
+  const shown = displayVariant(variant, def);
+  const variantParts = DIM_ORDER.filter((d) => shown?.[d]).map((d) => ({
     dim:     d,
     label:   t(`variants.options.${d}.${variant[d]}`),
     changed: variant[d] !== programVariant?.[d],

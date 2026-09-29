@@ -61,3 +61,12 @@ export function cleanVariant(variant, def) {
   }
   return isEmptyVariant(out) ? undefined : out;
 }
+
+/**
+ * La variante que se PINTA detrás del nombre. Un «ejercicio aparte» la lleva
+ * ya en el nombre («Jalón al pecho · Prono · Ancho»): la guarda en la sesión,
+ * para poder deshacerlo, pero no se repite.
+ */
+export function displayVariant(variant, def) {
+  return def?.derived?.variant ? null : variant;
+}

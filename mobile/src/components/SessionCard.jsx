@@ -27,7 +27,7 @@ import { describeBlockScore } from '../utils/conditioningBlocks';
 import { recapStats } from '../utils/sessionRecap';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { isFreeEntry } from '../utils/freeSessions';
-import { variantLabel } from '../utils/variants';
+import { variantLabel, displayVariant } from '../utils/variants';
 
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
 const BLOCK_BADGE_STYLE = {
@@ -154,7 +154,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
             <Text style={styles.exName}>
               {exName}
               {/* Lo que se hizo, no lo que decía el programa (exercise-variants.md §4.4). */}
-              {ex.variant ? <Text style={styles.exVariant}>{` · ${variantLabel(ex.variant, t)}`}</Text> : null}
+              {displayVariant(ex.variant, def) ? <Text style={styles.exVariant}>{` · ${variantLabel(ex.variant, t)}`}</Text> : null}
             </Text>
             <View style={styles.setPills}>
               {/* Logged sets — grouped by consecutive weight runs: one

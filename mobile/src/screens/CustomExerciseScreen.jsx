@@ -243,12 +243,22 @@ export default function CustomExerciseScreen({ navigation, route }) {
           <View style={styles.block}>
             <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
             <View style={styles.optGroup}>
+              {/* A una mano (antes en OPCIONES): es el ejercicio, y una mano no
+                  tiene anchura (exercise-variants.md §6.4). */}
+              <ToggleRow
+                label={t('variants.oneHand')}
+                hint={t('variants.widthNA')}
+                value={isUnilateral}
+                onChange={(v) => { setIsUnilateral(v); if (v) setHasWidth(false); }}
+              />
               {[['grip', hasGrip, setHasGrip], ['width', hasWidth, setHasWidth]].map(([dim, on, set]) => (
                 <ToggleRow
                   key={dim}
                   label={t(`variants.dim.${dim}`)}
                   hint={VARIANT_DIMS[dim].map((o) => t(`variants.options.${dim}.${o}`)).join(' · ')}
                   value={on}
+                  alwaysHint
+                  disabled={dim === 'width' && isUnilateral}
                   onChange={set}
                 />
               ))}
@@ -269,11 +279,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
           {/* ══ OPCIONES ══════════════════════════════════════════════════════ */}
           <Text style={styles.secLabel}>{t('exerciseEditor.sectionOptions').toUpperCase()}</Text>
           <View style={styles.optGroup}>
-            <ToggleRow
-              label={t('exerciseEditor.unilateralLabel')}
-              value={isUnilateral}
-              onChange={setIsUnilateral}
-            />
             <OptionRow
               label={t('exerciseEditor.tempoLabel')}
               onPress={() => setTempoSheetOpen(true)}

@@ -17,7 +17,7 @@ import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { collapseOut, FOLD_MS } from './ui/collapseOut';
 import { targetLabel, exerciseName } from '../utils/prescription';
-import { variantLabel } from '../utils/variants';
+import { variantLabel, displayVariant } from '../utils/variants';
 
 // Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
 // token propio (mismo caso que el #81a71e del banner, ver theme.js).
@@ -76,7 +76,7 @@ export function ExerciseLines({ template, allExercises }) {
           i + 1,
           exerciseName(def, i18n.language, ex.exerciseId),
           targetLabel(def, ex, t, { compact: true }),
-          variantLabel(ex.variant, t),
+          variantLabel(displayVariant(ex.variant, def), t),
         );
       })}
       {blocks.map((block, i) => line(

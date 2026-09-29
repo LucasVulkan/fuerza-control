@@ -61,6 +61,7 @@ import {
 import { rankArchetypes } from '../src/data/archetypes';
 import { migrateExerciseRefs } from '../src/utils/exerciseIdMigration';
 import { cleanVariant, isEmptyVariant } from '../src/utils/variants';
+import { compose } from '../src/utils/exerciseIdentity';
 import { adaptArchetype } from '../src/utils/archetypeAdapter';
 
 // Mobile i18n instance
@@ -1061,6 +1062,71 @@ export const useStore = create(
         }
         get().updateExerciseParams(templateId, exerciseId, updates);
         return gid;
+      },
+
+      /**
+       * ¿A qué ejercicio lleva un cambio de identidad (unilateral / ejercicio
+       * aparte) y se puede hacer? No se puede si el resultado ya está en la
+       * sesión o en otra de su grupo vinculado: una sesión no admite el mismo
+       * ejercicio dos veces (exercise-variants.md §6.5).
+       * `target` = `{ root, uni, variant }` (exerciseIdentity).
+       */
+      identityCheck: (templateId, exerciseId, target) => {
+        const lib = get().getEffectiveLibrary();
+        const { id, def } = compose(target, lib);
+        const tpl = get().getEffectiveTemplate(templateId);
+        const ex  = tpl?.exercises?.find((e) => e.exerciseId === exerciseId);
+        const linked = ex?.linkGroup
+          ? linkGroupTemplateIds(get().programs[tpl.programId], exerciseId, ex.linkGroup, get().getEffectiveTemplate)
+          : [];
+        const tids = [...new Set([templateId, ...linked])];
+        const where = id === exerciseId ? null : tids.find((tid) =>
+          get().getEffectiveTemplate(tid)?.exercises?.some((e) => e.exerciseId === id));
+        return {
+          id, def, tids,
+          name:    (def ?? lib[id])?.name ?? id,
+          blocked: !!where,
+          linked:  !!where && where !== templateId,
+        };
+      },
+
+      /**
+       * Cambia el ejercicio por su versión unilateral o «aparte» en la sesión y
+       * en todo su grupo vinculado, conservando la configuración. Un derivado
+       * que no existía se guarda en `customExercises`. Devuelve `{ id }`, o
+       * `{ blocked: true }` sin tocar nada.
+       */
+      changeExerciseIdentity: (templateId, exerciseId, target) => {
+        const check = get().identityCheck(templateId, exerciseId, target);
+        if (check.blocked) return { blocked: true, name: check.name };
+        if (check.id === exerciseId) return { id: exerciseId };
+        const newDef = check.def ?? get().getEffectiveLibrary()[check.id];
+        const fixed  = isEmptyVariant(target.variant) ? null : target.variant;
+        set((s) => {
+          const sessionTemplates = { ...s.sessionTemplates };
+          for (const tid of check.tids) {
+            const tpl = get().getEffectiveTemplate(tid);
+            if (!tpl) continue;
+            sessionTemplates[tid] = {
+              ...tpl,
+              exercises: tpl.exercises.map((ex) => {
+                if (ex.exerciseId !== exerciseId) return ex;
+                const next = { ...ex, exerciseId: check.id, progressionOverride: null };
+                // Aparte: la variante es la fija. Si no, la que había, limpia
+                // contra el ejercicio nuevo (una mano no tiene anchura).
+                const variant = fixed ?? cleanVariant(ex.variant, newDef);
+                if (variant) next.variant = { ...variant }; else delete next.variant;
+                delete next.isUnilateral;
+                return next;
+              }),
+            };
+          }
+          return {
+            sessionTemplates,
+            ...(check.def ? { customExercises: { ...s.customExercises, [check.id]: check.def } } : {}),
+          };
+        });
+        return { id: check.id };
       },
 
       replaceExercise: (templateId, oldExerciseId, newExerciseId) => {

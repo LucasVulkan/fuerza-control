@@ -32,7 +32,7 @@ import { describeBlockScore, compareBlockResults } from '../utils/conditioningBl
 import { sessionLoads, dailySeries, rollingMean } from '../utils/trainingLoad';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { variantLabel } from '../utils/variants';
+import { variantLabel, displayVariant } from '../utils/variants';
 import { spacing, textStyles, borders, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { backToMain } from '../navigation/navigationRef';
@@ -180,7 +180,9 @@ export default function SessionRecapScreen({ navigation, route }) {
   };
 
   // La variante con la que se hizo hoy (exercise-variants.md §4.4).
-  const entryVariant = (id) => variantLabel(entry.exercises?.find((e) => e.exerciseId === id)?.variant, t);
+  const entryVariant = (id) => variantLabel(
+    displayVariant(entry.exercises?.find((e) => e.exerciseId === id)?.variant, allExercises[id]), t,
+  );
 
   const isFree = isFreeEntry(entry);
   // Sobre la marcha: la única que se puede guardar como sesión libre. Tras

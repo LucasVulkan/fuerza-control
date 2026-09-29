@@ -54,9 +54,11 @@ describe('targetLabel', () => {
   });
 
   it('unilateral se dice entero y se calla en compacto', () => {
-    const s = { sets: 3, minReps: 10, maxReps: 10, isUnilateral: true };
-    expect(targetLabel({}, s, t)).toBe('3 × 10 reps por lado');
-    expect(targetLabel({}, s, t, { compact: true })).toBe('3×10');
+    // A una mano lo dice el ejercicio, no la sesión (exercise-variants.md §6.4).
+    const s = { sets: 3, minReps: 10, maxReps: 10 };
+    expect(targetLabel({ isUnilateral: true }, s, t)).toBe('3 × 10 reps por lado');
+    expect(targetLabel({ isUnilateral: true }, s, t, { compact: true })).toBe('3×10');
+    expect(targetLabel({}, { ...s, isUnilateral: true }, t)).toBe('3 × 10 reps');
   });
 
   it('la sesión no fija reps: caen las del ejercicio de la librería', () => {

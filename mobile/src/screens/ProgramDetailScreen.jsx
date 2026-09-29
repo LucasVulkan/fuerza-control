@@ -31,7 +31,7 @@ import StageSelector from '../components/ui/StageSelector';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
 import { warmupSteps } from '../utils/warmup';
-import { variantLabel } from '../utils/variants';
+import { variantLabel, displayVariant } from '../utils/variants';
 import { stageDiff, isEmptyDiff } from '../utils/programDiff';
 import {
   plannedSets, plannedSetsByGroup, SETS_TARGET_MIN, SETS_TARGET_MAX,
@@ -168,7 +168,7 @@ function ExerciseRow({ num, exConfig, def, name, inGroup }) {
       <View style={styles.exInfo}>
         <Text style={styles.exName}>
           {name}
-          {exConfig.variant
+          {displayVariant(exConfig.variant, def)
             ? <Text style={styles.exVariant}>{` · ${variantLabel(exConfig.variant, t)}`}</Text>
             : null}
         </Text>

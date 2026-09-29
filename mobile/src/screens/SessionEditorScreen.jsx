@@ -38,7 +38,7 @@ import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
-import { variantLabel } from '../utils/variants';
+import { variantLabel, displayVariant } from '../utils/variants';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -677,7 +677,7 @@ function Slot({
         // igual que la numeración de WorkoutScreen.
         number: slot.members.length > 1 ? `${pad}${String.fromCharCode(65 + i)}` : pad,
         name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
-        variant: variantLabel(ex.variant, t),
+        variant: variantLabel(displayVariant(ex.variant, allExercises[ex.exerciseId]), t),
         meta:   metaFor(ex),
         // "Principal" va en el subtítulo (`rowMeta`), no como pill: la única
         // pill que queda es la de formato de bloque, y "Principal" no cabe.

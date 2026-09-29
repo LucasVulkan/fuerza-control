@@ -1813,6 +1813,21 @@
     }
   },
   "variants": {
+    "fixedTitle": "Cómo se hace · fija",
+    "fixedHint": "Es parte del ejercicio. Para cambiarla, apaga «Ejercicio aparte».",
+    "widthNA": "Anchura: no aplica a una mano.",
+    "identityTitle": "Cambia el ejercicio",
+    "unilateral": "Unilateral",
+    "unilateralHint": "Cuenta como otro ejercicio, con su propio historial y progresión.",
+    "oneHand": "A una mano",
+    "alreadyUnilateral": "Este ejercicio ya es unilateral.",
+    "apart": "Ejercicio aparte",
+    "apartHintOff": "«{{name}}» pasa a tener su propia progresión y podrás añadir otro «{{base}}» a la sesión. La variante queda fija.",
+    "apartHintOn": "Tiene su propia progresión. Ya puedes añadir otro «{{base}}» a esta sesión.",
+    "apartNeedsVariant": "Elige antes un agarre o una anchura.",
+    "blocked": "No se puede: ya hay un «{{name}}» en esta sesión. Quítalo o sustitúyelo antes.",
+    "blockedLinked": "No se puede: ya hay un «{{name}}» en una sesión vinculada. Quítalo o sustitúyelo antes.",
+    "toastApart": "«{{name}}» es ahora un ejercicio aparte",
     "todayTitle": "Hoy · solo esta sesión",
     "todayHint": "El programa no cambia. Queda apuntado en el registro de hoy.",
     "backToProgram": "Volver a la del programa",
@@ -1820,7 +1835,7 @@
     "title": "Variante",
     "none": "Sin especificar",
     "howTitle": "Cómo se hace · solo informa",
-    "dim": { "grip": "Agarre", "width": "Anchura" },
+    "dim": { "grip": "Agarre", "width": "Anchura", "unilateral": "Una mano" },
     "options": {
       "grip": { "pronated": "Prono", "supinated": "Supino", "neutral": "Neutro" },
       "width": { "wide": "Ancho", "medium": "Medio", "narrow": "Estrecho" }

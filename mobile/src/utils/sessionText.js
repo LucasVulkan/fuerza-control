@@ -22,7 +22,7 @@
 import { targetLabel, exerciseName } from './prescription';
 import { getProgression } from './progression';
 import { sessionSlots } from './sessionSlots';
-import { variantParts, VARIANT_DIMS } from './variants';
+import { variantParts, VARIANT_DIMS, displayVariant } from './variants';
 import es from '../locales/es.json';
 import en from '../locales/en.json';
 
@@ -48,7 +48,7 @@ function prescription(def, ex, t) {
     // El tiempo no junta un rango cerrado como las reps: «40-40s» es «40s».
     .replace(/(?<!\d)(\d+)-\1(?!\d)/, '$1');
   // En compacto `targetLabel` se come el «por lado»; a quien entrena solo le hace falta.
-  return (ex.isUnilateral ?? def?.isUnilateral) ? `${rx} ${t('workout.perSide')}` : rx;
+  return def?.isUnilateral ? `${rx} ${t('workout.perSide')}` : rx;
 }
 
 function blockLine(block, allExercises, t, language, fmtWeight) {
@@ -99,7 +99,7 @@ export function sessionToText(template, allExercises, t, {
         exerciseName(def, language, ex.exerciseId),
         // La variante con el mismo « · » que en pantalla: el lector sabe
         // separarla del nombre (exercise-variants.md §5.2).
-        ...variantParts(ex.variant, t),
+        ...variantParts(displayVariant(ex.variant, def), t),
         prescription(def, ex, t),
         kg != null ? fmtWeight(kg) : null,
       ].filter(Boolean).join(SEP);
