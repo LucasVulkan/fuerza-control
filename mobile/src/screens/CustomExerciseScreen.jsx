@@ -33,10 +33,11 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { NavRow, OptionRow, ToggleRow, NoteRow, CHEVRON_GREY } from '../components/ui/EditorRows';
-import { ArrowIcon, ProgressionIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, ProgressionIcon, VariantIcon } from '../components/ui/EditorIcons';
+import VariantPicker from '../components/ui/VariantPicker';
 import DragSheet from '../components/DragSheet';
 import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
-import { VARIANT_DIMS } from '../utils/variants';
+import { VARIANT_DIMS, variantLabel, isEmptyVariant } from '../utils/variants';
 
 function generateCustomId() {
   return 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
@@ -53,6 +54,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const addExercise       = useStore((s) => s.addExercise);
   const replaceExercise   = useStore((s) => s.replaceExercise);
   const addAdHocExercise  = useStore((s) => s.addAdHocExercise);
+  const updateExerciseParams = useStore((s) => s.updateExerciseParams);
+  const setSessionVariant    = useStore((s) => s.setSessionVariant);
   const showToast         = useStore((s) => s.showToast);
 
   const [name,      setName]      = useState('');
@@ -76,8 +79,10 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const [isCompound,   setIsCompound]   = useState(true);
   const [level,        setLevel]        = useState('intermediate');
   const [isUnilateral, setIsUnilateral] = useState(false);
-  const [hasGrip,      setHasGrip]      = useState(false);
-  const [hasWidth,     setHasWidth]     = useState(false);
+  // La misma hoja Variante que el editor (QA P44): elegir una opción ES decir
+  // que el ejercicio tiene esa dimensión, y queda elegida para esta sesión.
+  const [variant,          setVariant]          = useState({});
+  const [variantSheetOpen, setVariantSheetOpen] = useState(false);
   const [tempo,        setTempo]        = useState('');
   const [notes,        setNotes]        = useState('');
 
@@ -144,12 +149,14 @@ export default function CustomExerciseScreen({ navigation, route }) {
       isKeyCandidate:       true,
       isUnilateral,
       // Dimensiones de variante (exercise-variants.md §4.6): todas las opciones.
-      ...(hasGrip || hasWidth ? {
+      // Dimensiones de variante (exercise-variants.md §4.6): las que se
+      // eligieron en la hoja, con todas sus opciones.
+      ...(isEmptyVariant(variant) ? {} : {
         variants: {
-          ...(hasGrip  ? { grip:  [...VARIANT_DIMS.grip] }  : {}),
-          ...(hasWidth ? { width: [...VARIANT_DIMS.width] } : {}),
+          ...(variant.grip  ? { grip:  [...VARIANT_DIMS.grip] }  : {}),
+          ...(variant.width ? { width: [...VARIANT_DIMS.width] } : {}),
         },
-      } : {}),
+      }),
       progressionModel,
       progressionDirection: 'increase',
       sets,
@@ -164,12 +171,18 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
     addCustomExercise(def);
 
+    // Lo elegido en la hoja es la variante de este ejercicio donde se añade:
+    // en la sesión (plantilla) o, en un entreno en marcha, la de hoy.
+    const chosen = isEmptyVariant(variant) ? null : variant;
     if (sessionMode) {
       addAdHocExercise(id);
+      if (chosen) setSessionVariant(id, chosen);
     } else if (templateId && currentExerciseId) {
       replaceExercise(templateId, currentExerciseId, id);
+      if (chosen) updateExerciseParams(templateId, id, { variant: chosen });
     } else if (templateId) {
       addExercise(templateId, id);
+      if (chosen) updateExerciseParams(templateId, id, { variant: chosen });
     }
     showToast(t('customExercise.toastCreated'), 2200, 'success');
     navigation.pop(2);
@@ -239,30 +252,18 @@ export default function CustomExerciseScreen({ navigation, route }) {
             </View>
           </View>
 
-          {/* ══ VARIANTE (maqueta exercise-variants §7) ═══════════════════════ */}
+          {/* ══ VARIANTE — la misma fila + hoja que el editor (QA P44) ═══════ */}
           <View style={styles.block}>
             <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
-            <View style={styles.optGroup}>
-              {/* A una mano (antes en OPCIONES): es el ejercicio, y una mano no
-                  tiene anchura (exercise-variants.md §6.4). */}
-              <ToggleRow
-                label={t('variants.oneHand')}
-                hint={t('variants.widthNA')}
-                value={isUnilateral}
-                onChange={(v) => { setIsUnilateral(v); if (v) setHasWidth(false); }}
-              />
-              {[['grip', hasGrip, setHasGrip], ['width', hasWidth, setHasWidth]].map(([dim, on, set]) => (
-                <ToggleRow
-                  key={dim}
-                  label={t(`variants.dim.${dim}`)}
-                  hint={VARIANT_DIMS[dim].map((o) => t(`variants.options.${dim}.${o}`)).join(' · ')}
-                  value={on}
-                  alwaysHint
-                  disabled={dim === 'width' && isUnilateral}
-                  onChange={set}
-                />
-              ))}
-            </View>
+            <NavRow
+              icon={<VariantIcon size={15} color={th.colors.accent} />}
+              title={[
+                ...(isUnilateral ? [t('variants.unilateral')] : []),
+                ...(variantLabel(variant, t) ? [variantLabel(variant, t)] : []),
+              ].join(' · ') || t('variants.none')}
+              subtitle={`${t('variants.dim.unilateral')} · ${t('variants.dim.grip').toLowerCase()} · ${t('variants.dim.width').toLowerCase()}`}
+              onPress={() => setVariantSheetOpen(true)}
+            />
           </View>
 
           {/* ══ PROGRESIÓN — mismo sistema que el editor real ═══════════════════ */}
@@ -321,6 +322,43 @@ export default function CustomExerciseScreen({ navigation, route }) {
       </KeyboardAvoidingView>
 
       {/* ══ HOJA: tempo — idéntica a la del editor real ══════════════════════ */}
+      {/* ══ HOJA: variante — la del editor, sin «Ejercicio único» (un ejercicio
+          nuevo aún no tiene nada de lo que separarse) ══════════════════════ */}
+      <DragSheet
+        visible={variantSheetOpen}
+        onClose={() => setVariantSheetOpen(false)}
+        title={t('variants.title')}
+      >
+        <View style={styles.sheetBody}>
+          <View>
+            <VariantPicker
+              def={{ variants: isUnilateral ? { grip: VARIANT_DIMS.grip } : VARIANT_DIMS }}
+              value={variant}
+              onChange={setVariant}
+            />
+            <Text style={[styles.hint, { marginTop: spacing.md }]}>
+              {isUnilateral ? `${t('variants.howHint')} ${t('variants.widthNA')}` : t('variants.howHint')}
+            </Text>
+          </View>
+          <View style={{ gap: spacing.sm }}>
+            <Text style={styles.sheetCaption}>{t('variants.identityTitle').toUpperCase()}</Text>
+            <View style={styles.optGroup}>
+              <ToggleRow
+                label={t('variants.unilateral')}
+                hint={t('variants.unilateralNewHint')}
+                value={isUnilateral}
+                alwaysHint
+                onChange={(v) => {
+                  setIsUnilateral(v);
+                  // Una mano no tiene anchura.
+                  if (v && variant.width) { const next = { ...variant }; delete next.width; setVariant(next); }
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </DragSheet>
+
       <DragSheet
         visible={tempoSheetOpen}
         onClose={() => setTempoSheetOpen(false)}
@@ -573,6 +611,7 @@ const makeStyles = (th) => StyleSheet.create({
   createBtnText: { ...textStyles.button, color: th.colors.onAccent },
 
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
+  sheetCaption: { ...textStyles.caps, color: th.colors.mutedLight },
   stepTitle: {
     ...textStyles.caps, color: th.colors.mutedLight,
     textTransform: 'uppercase', marginBottom: spacing.sm,

@@ -698,6 +698,14 @@ entrenos del original con esa variante.
   derecha del título del paso); y al cambiar de ejercicio la hoja sigue abierta:
   la pantalla cambia el ejercicio sin remontar el editor (`setExerciseId`, no
   `selectExercise`) y el editor recoge la variante que quedó.
+- QA 29-sep, «Nuevo ejercicio»: los interruptores sueltos (Unilateral, Agarre,
+  Anchura) activaban la dimensión sin elegir opción, y la pantalla también se
+  abre en mitad de un entreno. Pasa a la **misma fila + hoja que el editor**
+  (sin «Ejercicio único»): todo sin elegir, y elegir una opción ES declarar esa
+  dimensión (con todas sus opciones) y dejarla elegida donde se añade el
+  ejercicio: `updateExerciseParams` en una sesión, `setSessionVariant` en un
+  entreno en marcha. Unilateral define el ejercicio (`isUnilateral`) y quita la
+  anchura.
 
 **Probar P44**
 
@@ -719,7 +727,11 @@ entrenos del original con esa variante.
   sesiones.
 - [ ] En el móvil del cliente conectado, el programa con «Jalón al pecho
   unilateral» abre y se entrena (la definición llega con el programa).
-- [ ] Crear un ejercicio propio «Unilateral»: su Anchura queda apagada.
+- [ ] «Nuevo ejercicio» (QA 29-sep): la sección VARIANTE es la misma fila y hoja
+  que el editor, todo sin elegir. Elegir Neutro → el ejercicio creado tiene
+  agarre y sale con «Neutro» en la sesión (o en el Workout, si se crea durante
+  un entreno); encender Unilateral quita la anchura; sin tocar nada, el
+  ejercicio no tiene variante.
 - [ ] Hoja Variante (QA 29-sep): agarre y anchura son pasos «1 · AGARRE»,
   «2 · ANCHURA» con control segmentado, como la hoja de Progresión; en el editor,
   tocar la elegida la quita. En la hoja pone siempre «Unilateral», nunca «A una

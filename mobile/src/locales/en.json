@@ -1813,6 +1813,7 @@
     }
   },
   "variants": {
+    "unilateralNewHint": "Always done one-arm: it has no width.",
     "howHint": "Info only: it does not change the history or the progression.",
     "fixedTitle": "How it's done · fixed",
     "fixedHint": "It is part of the exercise. To change it, turn off «Unique exercise».",

@@ -1813,6 +1813,7 @@
     }
   },
   "variants": {
+    "unilateralNewHint": "Se hace a una mano, siempre: no tiene anchura.",
     "howHint": "Solo informa: no cambia el historial ni la progresión.",
     "fixedTitle": "Cómo se hace · fija",
     "fixedHint": "Es parte del ejercicio. Para cambiarla, apaga «Ejercicio único».",
