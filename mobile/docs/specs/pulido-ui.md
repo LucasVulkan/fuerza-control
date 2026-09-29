@@ -193,9 +193,12 @@ quedar debajo de los botones—: los márgenes se leían de la raíz de la app, 
 Modal es otra ventana. Ahora `DragSheet` lleva un `SafeAreaProvider` dentro y la
 tarjeta mide los de su ventana. Y en el menú ≡, que desplaza, las filas se
 cortaban en seco contra la franja de abajo: el contenido pasa a llegar hasta el
-borde, por debajo de los botones, con el velo en degradado del Workout
-(`ui/NavScrim`, que sale de `WorkoutScreen` para compartirse). El margen va
-dentro del scroll, así que las hojas cortas acaban donde acababan.
+borde con el velo en degradado del Workout (`ui/NavScrim`, que sale de
+`WorkoutScreen` para compartirse). En las hojas la zona de los botones va
+**opaca** (`opaqueInset`) y el fundido empieza justo encima: con el velo del
+Workout tal cual se veían las filas por debajo de los botones, y en una hoja
+eso distrae. El margen va dentro del scroll, así que las hojas cortas acaban
+donde acababan.
 
 Segundo fallo de la misma ronda: tocar una opción que abre OTRA hoja desmonta
 la primera, pero su animación de cierre seguía y al acabar llamaba a su
@@ -240,9 +243,9 @@ es un Modal) y la hoja «Añadir» del Workout (el editor de bloque también).
   plantilla».
 - [ ] Android con botones de navegación: ninguna hoja deja un hueco vacío
   debajo ni se mete bajo los botones; la última fila queda justo encima.
-- [ ] Menú ≡ en Android: al desplazar, las filas se desvanecen al llegar abajo
-  (sin franja gris que las corte) y, bajando hasta el final, la última fila
-  queda entera encima de los botones.
+- [ ] Menú ≡ en Android: al desplazar, las filas se desvanecen justo encima de
+  los botones (sin franja gris que las corte) y bajo los botones no se ve
+  ninguna fila. Bajando hasta el final, la última fila queda entera encima.
 - [ ] Workout: el velo de abajo sobre los botones de Android se ve igual que antes. En el menú ≡, bajando hasta el final
   se ve entera la última fila (nada gris la tapa).
 - [ ] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y

@@ -31,9 +31,10 @@ import NavScrim from './ui/NavScrim';
  * veces subida un alto de barra de navegación de más y otras veces debajo de
  * los botones (pulido-ui.md §3).
  *
- * El contenido desplazable llega hasta el borde de abajo, por debajo de los
- * botones, con `NavScrim` encima: en una hoja larga (el menú ≡) las filas se
- * funden al llegar abajo en vez de cortarse en seco contra una franja. El
+ * El contenido desplazable llega hasta el borde de abajo, con `NavScrim`
+ * encima: la zona de los botones va tapada del todo y justo por encima las
+ * filas de una hoja larga (el menú ≡) se funden en vez de cortarse en seco
+ * contra una franja. El
  * margen va DENTRO del scroll, así que una hoja corta acaba donde acababa y el
  * velo solo cubre aire.
  */
@@ -50,7 +51,7 @@ function SheetCard({ style, header, children }) {
       >
         {children}
       </ScrollView>
-      <NavScrim inset={insets.bottom} fade={spacing.xl} />
+      <NavScrim inset={insets.bottom} fade={spacing.xl} opaqueInset />
     </Animated.View>
   );
 }

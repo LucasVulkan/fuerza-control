@@ -8,8 +8,10 @@
  * Se coloca `absolute` al pie de su contenedor y no captura toques.
  *
  * Mide `inset` (el margen de abajo, la barra del sistema) + `fade` px por
- * encima, y el fundido recorre todo ese alto: donde están los botones el velo
- * ya es casi opaco, y la altura extra es lo que le da píxeles al fundido.
+ * encima. Por defecto el fundido recorre todo ese alto, y bajo los botones el
+ * contenido aún se intuye (el Workout, donde no molesta). Con `opaqueInset` la
+ * barra va tapada del todo y el fundido empieza justo encima de los botones:
+ * es lo que quieren las hojas, donde ver filas bajo los botones distraía.
  */
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '../../useTheme';
@@ -18,7 +20,7 @@ import { useTheme } from '../../useTheme';
 // un tramo empinado en pocos píxeles se ve a franjas.
 const STOPS = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => [t, Math.round(t * t * 100) / 100]);
 
-export default function NavScrim({ inset, fade = 28 }) {
+export default function NavScrim({ inset, fade = 28, opaqueInset = false }) {
   const th     = useTheme();
   const height = inset + fade;
   return (
@@ -30,8 +32,15 @@ export default function NavScrim({ inset, fade = 28 }) {
     >
       <Defs>
         <LinearGradient id="navScrim" x1="0" y1="0" x2="0" y2="1">
+          {/* Con `opaqueInset`, la curva se comprime en los `fade` px de arriba y
+              el último tope (opaco) llega al pie: bajo los botones, color liso. */}
           {STOPS.map(([offset, opacity]) => (
-            <Stop key={offset} offset={offset} stopColor={th.colors.bg} stopOpacity={opacity} />
+            <Stop
+              key={offset}
+              offset={opaqueInset ? (offset * fade) / height : offset}
+              stopColor={th.colors.bg}
+              stopOpacity={opacity}
+            />
           ))}
         </LinearGradient>
       </Defs>
