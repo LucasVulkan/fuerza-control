@@ -6,11 +6,12 @@
 > Fase P42 · hecho · La variante en el editor y en las listas · §4
 > Fase P43 · hecho · La variante de hoy en el Workout, compartir y pegar · §5
 > Fase P44 · hecho · Cambiar el ejercicio: unilateral y ejercicio aparte · §6
-> Fase P45 · pendiente · Progreso filtrado por variante · §7
+> Fase P45 · aparcado · Progreso filtrado por variante · §7
 >
 > Estado: **P41 y P42 probadas, P43 y P44 implementadas** (29-sep-2026, rama
 > `feat/exercise-variants`); en P43 falta probar compartir y pegar; P44
-> pendiente de probar en dispositivo; P45 sin implementar. Lo que salió
+> probada salvo el cliente conectado y la altura animada de la hoja; P45
+> aparcada (29-sep, decisión del usuario: «por ahora es suficiente»). Lo que salió
 > distinto de lo escrito, en §3.5, §4.7, §5.3 y §6.7.
 >
 > Spec cerrada el 29-sep-2026. Maqueta aprobada:
