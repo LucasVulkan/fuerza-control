@@ -7,7 +7,7 @@
  *
  *   - **Resultado** (se lee): el marcador de arriba, tarjeta `surface`.
  *   - **Logro** (se celebra): los récords, relleno `tint/accent10`.
- *   - **Tu parte** (se escribe): todo lo que va bajo el lápiz y nada más —
+ *   - **Formulario** (se escribe): todo lo que va bajo el lápiz y nada más —
  *     sRPE, peso corporal (`StepField`) y la nota, plegada en el desplegable de
  *     Info de la ficha de cliente (`InfoSection`) para que ocupe una fila.
  *
@@ -393,15 +393,21 @@ export default function SessionRecapScreen({ navigation, route }) {
               {clientId ? `${(client?.name ?? '').toUpperCase()} · ${t('recap.completed')}` : t('recap.completed')}
             </Text>
           </View>
-          {!!template?.label && (
-            <View style={[styles.glyphBox, clientId && styles.glyphBoxClient]}>
-              <Text style={[styles.glyph, { color: tone }]}>{template.label}</Text>
+          {/* La letra a la izquierda del nombre y no encima: la misma
+              información en la mitad de alto. */}
+          <View style={styles.ident}>
+            {!!template?.label && (
+              <View style={[styles.glyphBox, clientId && styles.glyphBoxClient]}>
+                <Text style={[styles.glyph, { color: tone }]}>{template.label}</Text>
+              </View>
+            )}
+            <View style={styles.identText}>
+              <Text style={styles.sessionName} numberOfLines={2}>
+                {entry.sessionName ?? template?.name ?? ''}
+              </Text>
+              {!!metaLine && <Text style={styles.metaLine} numberOfLines={1}>{metaLine}</Text>}
             </View>
-          )}
-          <Text style={styles.sessionName} numberOfLines={2}>
-            {entry.sessionName ?? template?.name ?? ''}
-          </Text>
-          {!!metaLine && <Text style={styles.metaLine} numberOfLines={1}>{metaLine}</Text>}
+          </View>
         </Reanimated.View>
 
         {/* Las tres cifras en tarjetas sueltas: la anatomía de las Progress
@@ -451,23 +457,18 @@ export default function SessionRecapScreen({ navigation, route }) {
           </Reanimated.View>
         )}
 
-        {/* 3 · Tu parte — se escribe */}
+        {/* 3 · Formulario — se escribe */}
         <Reanimated.View
           entering={enter()}
           layout={LinearTransition.duration(FOLD_MS)}
           style={styles.section}
           onLayout={(e) => { yourPartY.current = e.nativeEvent.layout.y; }}
         >
-          <View style={[styles.secHead, styles.secHeadSplit]}>
-            <View style={styles.secHeadLeft}>
-              <PencilIcon size={14} color={th.colors.mutedLight} />
-              <Text style={styles.secTitle}>{t('recap.yourPart')}</Text>
-            </View>
-            <View style={[styles.pendChip, !rpeMissing && styles.pendChipOk]}>
-              <Text style={[styles.pendText, !rpeMissing && styles.pendTextOk]}>
-                {rpeMissing ? t('recap.unanswered') : t('recap.allAnswered')}
-              </Text>
-            </View>
+          {/* Sin contador de «sin contestar»: rompía el peso de la cabecera. Lo
+              que falta ya lo dicen el punto de la pregunta y el pie. */}
+          <View style={styles.secHead}>
+            <PencilIcon size={14} color={th.colors.mutedLight} />
+            <Text style={styles.secTitle}>{t('recap.form')}</Text>
           </View>
 
           {/* Session RPE — how hard the whole session felt (CR-10). Saved on tap;
@@ -742,7 +743,8 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── 1 · Marcador ──
-  headerBlock: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.md, paddingBottom: spacing.xs2 },
+  // `gap` md entre la ceja y letra + nombre: juntos se leían como una sola línea.
+  headerBlock: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xs2 },
   ceja:        { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   cejaText:    { ...textStyles.caps, flexShrink: 1 },
   glyphBox: {
@@ -752,12 +754,16 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.tint.accent10,
     alignItems:      'center',
     justifyContent:  'center',
-    marginTop:       spacing.xs2,
+    flexShrink:      0,
   },
   glyphBoxClient: { backgroundColor: th.tint.blue30 },
   glyph:          { ...textStyles.heroGlyph },
-  sessionName:    { ...textStyles.heroName, color: th.colors.text, textAlign: 'center' },
-  metaLine:       { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center' },
+  // La pareja va centrada en la pantalla; dentro, el texto a la izquierda de
+  // la letra, como en la tarjeta de hoy de Inicio.
+  ident:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, maxWidth: '100%' },
+  identText:      { flexShrink: 1, gap: spacing.xs2 },
+  sessionName:    { ...textStyles.heroName, color: th.colors.text },
+  metaLine:       { ...textStyles.label, color: th.colors.mutedLight },
 
   // Hero stats — anatomía de las Progress cards (surface, radius/lg, title).
   statsRow: { flexDirection: 'row', gap: spacing.md },
@@ -790,7 +796,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.xs2,
   },
   secHeadSplit: { justifyContent: 'space-between' },
-  secHeadLeft:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   secTitle: {
     ...textStyles.caps,
     color:         th.colors.mutedLight,
@@ -825,11 +830,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   moreBtnText: { ...textStyles.button, color: th.colors.accent },
 
-  // ── 3 · Tu parte ──
-  pendChip:    { backgroundColor: th.colors.surface2, borderRadius: th.radius.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs2 },
-  pendChipOk:  { backgroundColor: th.tint.accent10 },
-  pendText:    { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  pendTextOk:  { color: th.colors.accent },
+  // ── 3 · Formulario ──
   qRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   qLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2, flexShrink: 1 },
   qDot:  { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.mutedLight },

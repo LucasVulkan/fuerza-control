@@ -42,15 +42,16 @@ peso corporal) iba **antes** que el premio (cifras y PRs). Maqueta aprobada en
 del usuario (29-sep-2026).
 
 **Tres lenguajes, siempre el mismo por bloque:** resultado (se lee, tarjeta
-`surface`), logro (se celebra, `tint/accent10`) y **tu parte** (se escribe:
+`surface`), logro (se celebra, `tint/accent10`) y **formulario** (se escribe:
 todo bajo el lápiz y nada más).
 
 Orden nuevo en `SessionRecapScreen.jsx` (la maqueta es la de la primera ronda;
 lo que cambió después está contado aquí, que es lo que manda):
 
 1. **Marcador**: cabecera centrada sobre el fondo, como la de antes: ceja
-   «✓ SESIÓN COMPLETADA», la letra en su caja lima y el nombre en Barlow (los
-   de la sesión de hoy en Inicio), y etapa · fecha. Debajo, duración · volumen
+   «✓ SESIÓN COMPLETADA» y, con aire debajo, la letra en su caja lima **a la
+   izquierda** del nombre en Barlow (los de la sesión de hoy en Inicio; al
+   lado y no encima para no gastar alto), con etapa · fecha bajo el nombre. Debajo, duración · volumen
    · series en **tres tarjetas sueltas** (las Progress cards, «va con la
    app»), en `title` y no en Barlow. El volumen lleva su % contra la misma
    sesión la vez anterior (`volumeDeltas`, el del historial). Sin tira de la
@@ -59,7 +60,8 @@ lo que cambió después está contado aquí, que es lo que manda):
 2. **Récords**: como mucho 3, ordenados por % de mejora; el resto detrás de
    «Ver N más». `detectPRs` da uno por ejercicio que supera su mejor marca de
    siempre, así que en los primeros meses salen 6-9.
-3. **Tu parte**, con «Sin contestar» / «Todo contestado» (solo mira el sRPE):
+3. **Formulario** (así, y no «Tu parte»). Sin contador de «Sin contestar»: rompía el
+   peso de la cabecera; lo que falta lo dicen el punto de la pregunta y el pie.
    - sRPE con sus botones `surface2` de siempre (el usuario prefirió el fondo
      de antes). Al contestarlo, la carga sale en la misma tarjeta **solo como %
      vs media 7d**, en blanco: el número de carga suelto no dice nada.
@@ -92,18 +94,18 @@ el móvil del entrenador es su copia y no se mueve; ahora pasa por
 **Probar U29**
 
 - [ ] Acabar una sesión de programa: arriba, centrado y sobre el fondo, sale
-  ✓ SESIÓN COMPLETADA, la letra (A/B/C) en su caja lima, el nombre en Barlow y
-  etapa · fecha. Debajo, duración · volumen · series en tres tarjetas sueltas,
+  ✓ SESIÓN COMPLETADA y, con algo de aire debajo, la letra (A/B/C) en su caja
+  lima a la izquierda del nombre en Barlow, con etapa · fecha bajo el nombre. Debajo, duración · volumen · series en tres tarjetas sueltas,
   como antes.
 - [ ] Repetir una sesión que ya se había hecho: bajo el volumen sale su % contra
   la vez anterior (lima si sube, rojo apagado si baja).
 - [ ] Con récords: salen en lima bajo «N RÉCORDS», con el valor nuevo a la
   derecha y «anterior …» debajo del nombre. Con más de 3 sale «Ver N récords
   más» y al pulsarlo aparecen los demás.
-- [ ] Sin contestar el RPE: la sección TU PARTE dice «Sin contestar», la
-  pregunta lleva un punto gris y el pie dice «Falta: cómo de dura fue».
+- [ ] Sin contestar el RPE: la sección se llama FORMULARIO (sin ningún chip al
+  lado), la pregunta lleva un punto gris y el pie dice «Falta: cómo de dura fue».
   Pulsarlo baja hasta la pregunta.
-- [ ] Contestar el RPE: el punto pasa a ✓, el chip a «Todo contestado» (lima),
+- [ ] Contestar el RPE: el punto pasa a ✓,
   desaparece el «Falta» del pie y, si hay una semana de historial, sale
   «CARGA DE LA SESIÓN +N % vs media 7d» en blanco, sin el número de carga.
 - [ ] Peso corporal: una sola fila, sin subtítulo, rellena con el último; los ±
