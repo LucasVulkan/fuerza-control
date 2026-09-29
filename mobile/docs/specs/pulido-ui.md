@@ -93,47 +93,47 @@ el móvil del entrenador es su copia y no se mueve; ahora pasa por
 
 **Probar U29**
 
-- [ ] Acabar una sesión de programa: arriba, centrado y sobre el fondo, sale
+- [x] Acabar una sesión de programa: arriba, centrado y sobre el fondo, sale
   ✓ SESIÓN COMPLETADA y, con algo de aire debajo, la letra (A/B/C) en su caja
   lima a la izquierda del nombre en Barlow, con etapa · fecha bajo el nombre. Debajo, duración · volumen · series en tres tarjetas sueltas,
   como antes.
-- [ ] Repetir una sesión que ya se había hecho: bajo el volumen sale su % contra
+- [x] Repetir una sesión que ya se había hecho: bajo el volumen sale su % contra
   la vez anterior (lima si sube, rojo apagado si baja).
-- [ ] Con récords: salen en lima bajo «N RÉCORDS», con el valor nuevo a la
+- [x] Con récords: salen en lima bajo «N RÉCORDS», con el valor nuevo a la
   derecha y «anterior …» debajo del nombre. Con más de 3 sale «Ver N récords
   más» y al pulsarlo aparecen los demás.
-- [ ] Sin contestar el RPE: la sección se llama FORMULARIO (sin ningún chip al
+- [x] Sin contestar el RPE: la sección se llama FORMULARIO (sin ningún chip al
   lado), la pregunta lleva un punto gris y el pie dice «Falta: cómo de dura fue».
   Pulsarlo baja hasta la pregunta.
-- [ ] Contestar el RPE: el punto pasa a ✓,
+- [x] Contestar el RPE: el punto pasa a ✓,
   desaparece el «Falta» del pie y, si hay una semana de historial, sale
   «CARGA DE LA SESIÓN +N % vs media 7d» en blanco, sin el número de carga.
-- [ ] Peso corporal: una sola fila, sin subtítulo, rellena con el último; los ±
+- [x] Peso corporal: una sola fila, sin subtítulo, rellena con el último; los ±
   lo mueven de 0,1 en 0,1 y se puede escribir tocando el número. Un peso de
   tres cifras con decimal (p. ej. 102,4) no se corta.
-- [ ] Nota escrita durante el entreno: sale plegada en una fila NOTA DE LA
+- [x] Nota escrita durante el entreno: sale plegada en una fila NOTA DE LA
   SESIÓN con su primera línea a la derecha. Al tocarla se despliega (igual que
   en Info de un cliente); corregirla, salir con HECHO y abrir la sesión en el
   historial: sale la nota corregida.
-- [ ] Sin nota: la fila dice «Sin nota»; desplegada, la celda sale vacía con
+- [x] Sin nota: la fila dice «Sin nota»; desplegada, la celda sale vacía con
   «Cómo te has sentido, molestias…». Escribir en ella no queda tapado por el
   teclado.
-- [ ] Info de un cliente sigue plegando y desplegando igual que antes (su
+- [x] Info de un cliente sigue plegando y desplegando igual que antes (su
   desplegable ahora es la pieza compartida).
-- [ ] VS. ÚLTIMA SESIÓN: una fila por ejercicio, sin series, con el cambio a
+- [x] VS. ÚLTIMA SESIÓN: una fila por ejercicio, sin series, con el cambio a
   la derecha; los que hicieron récord llevan el trofeo; un ejercicio nuevo dice
   «nuevo». La primera vez que se hace una sesión, la sección no sale.
-- [ ] Sesión libre sobre la marcha: al final, ESTA SESIÓN LIBRE con «Guardar
+- [x] Sesión libre sobre la marcha: al final, ESTA SESIÓN LIBRE con «Guardar
   como sesión libre» (icono de disquete). Pulsarla: pasa a «Guardada…» con ✓
   y sale el aviso.
-- [ ] Sesión libre guardada con ejercicios añadidos, y con programa activo:
+- [x] Sesión libre guardada con ejercicios añadidos, y con programa activo:
   salen «Cuenta para el programa» con su segmentado y «Añadir N ejercicios a la
   sesión» (icono +).
-- [ ] Entrenador apuntando por un cliente: la ceja dice «NOMBRE · SESIÓN
+- [x] Entrenador apuntando por un cliente: la ceja dice «NOMBRE · SESIÓN
   COMPLETADA» en azul, la letra va en azul, y HECHO vuelve a la ficha del
   cliente.
-- [ ] En inglés, ningún texto del recap sale en español.
-- [ ] Al entrar, las secciones aparecen una tras otra de arriba abajo, cada una
+- [x] En inglés, ningún texto del recap sale en español.
+- [x] Al entrar, las secciones aparecen una tras otra de arriba abajo, cada una
   deslizándose en horizontal desde fuera del borde derecho, con un desfase que
   se nota, y el pie con HECHO llega el último. Contestar el RPE o abrir «Ver N
   récords más» no repite la entrada.
@@ -256,7 +256,7 @@ probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
 | U28 | Pager sincronizado con el segmentado de Progresión; segmentado a Reanimated | pendiente | 🟡 |
-| U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — pendiente de probar en dispositivo | 🟡 |
+| U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | pendiente | 🟡 |
 | U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
 | U32 | Botones del programa de cliente fuera de la tarjeta | pendiente | 🟢 |
