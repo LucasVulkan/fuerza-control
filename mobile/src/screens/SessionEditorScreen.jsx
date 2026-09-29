@@ -63,9 +63,13 @@ const SS_GAP   = 2;
 // formato de bloque.
 function rowMeta(exConfig, t) {
   const timed = exConfig.inputType === 'time' || exConfig.inputType === 'weight_time';
+  const minReps = exConfig.minReps ?? DEFAULT_TARGET.minReps;
+  const maxReps = exConfig.maxReps ?? DEFAULT_TARGET.maxReps;
   const range = timed
     ? `${exConfig.minTime ?? 20}–${exConfig.maxTime ?? 40} s`
-    : `${exConfig.minReps ?? DEFAULT_TARGET.minReps}–${exConfig.maxReps ?? DEFAULT_TARGET.maxReps}`;
+    : exConfig.progression?.type === 'effort'
+      ? `${minReps} @RPE ${exConfig.progression.targetRpe ?? 8}`
+      : minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
   const parts = [`${exConfig.sets} × ${range}`, `${exConfig.restSec}s`];
   if (exConfig.isKey) parts.unshift(t('common.keyExercise'));
   return parts.join(' · ');

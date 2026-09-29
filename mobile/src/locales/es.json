@@ -725,6 +725,9 @@
     "addedLabel": "Añadido · Esta sesión",
     "addSet": "＋ serie",
     "perSide": "c/p",
+    "effortTarget_one": "RPE {{rpe}} ({{count}} en recámara)",
+    "effortTarget_other": "RPE {{rpe}} ({{count}} en recámara)",
+    "effortFailure": "RPE 10 (al fallo)",
     "clientNotePlaceholder": "Nota para tu entrenador (molestias, sensaciones…)",
     "exerciseLabel": "EJ",
     "previous": "Anterior",
@@ -744,7 +747,7 @@
     "coachTarget": "Objetivo de tu entrenador",
     "thisSession": "esta sesión",
     "setsSectionLabel": "Series",
-    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar", "deload": "Descarga", "upTo": "Subir a", "downTo": "Bajar a", "deloadTo": "Descarga a" },
+    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar", "deload": "Descarga", "upTo": "Subir a", "downTo": "Bajar a", "deloadTo": "Descarga a", "effortTo": "Peso objetivo" },
     "warmup": {
       "blockLabel": "Calentamiento",
       "metaSuffix": " · C×{{count}}",

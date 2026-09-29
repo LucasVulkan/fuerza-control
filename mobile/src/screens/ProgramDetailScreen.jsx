@@ -36,7 +36,7 @@ import { stageDiff, isEmptyDiff } from '../utils/programDiff';
 import {
   plannedSets, plannedSetsByGroup, SETS_TARGET_MIN, SETS_TARGET_MAX,
 } from '../utils/trainingLoad';
-import { DEFAULT_TARGET } from '../utils/progression';
+import { DEFAULT_TARGET, resolveProgressionConfig } from '../utils/progression';
 
 // Misma escala mínima que las barras de `LoadTab`: sin suelo, un programa de
 // 6 series por grupo pinta barras llenas y parece que va sobrado.
@@ -55,8 +55,11 @@ function prescription(exConfig, def, t) {
   const minTime = exConfig.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;
   const maxTime = exConfig.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime;
 
+  const prog = resolveProgressionConfig(exConfig, def);
+
   let range;
   if (timed)                       range = `${minTime}–${maxTime} s`;
+  else if (prog.type === 'effort') range = `${minReps} @RPE ${prog.targetRpe}`;
   else if (minReps === maxReps)    range = `${minReps}`;
   else                             range = `${minReps}–${maxReps}`;
   if (def?.isUnilateral)           range += ` ${t('workout.perSide')}`;

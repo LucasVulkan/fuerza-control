@@ -15,7 +15,17 @@
  *   targetLabel(def, ex, t)                    → "4 × 5 reps"
  *   targetLabel(def, ex, t, { compact: true }) → "4×5"
  */
-import { DEFAULT_TARGET } from './progression';
+import { DEFAULT_TARGET, resolveProgressionConfig } from './progression';
+
+/**
+ * «RPE 8 (2 en recámara)»: el RPE es lo que el cliente apunta en su columna y
+ * la recámara lo que se entiende; juntos le enseñan la equivalencia
+ * (effort-progression.md §5.1).
+ */
+export function effortLabel(rpe, t) {
+  const rir = 10 - rpe;
+  return rir === 0 ? t('workout.effortFailure') : t('workout.effortTarget', { rpe, count: rir });
+}
 
 export function targetLabel(def, exConfig, t, { compact = false } = {}) {
   if (!def) return '';
@@ -36,6 +46,14 @@ export function targetLabel(def, exConfig, t, { compact = false } = {}) {
 
   if (inputType === 'time' || inputType === 'weight_time') {
     return `${sets}${x}${minTime}–${maxTime} s${unilateral}`;
+  }
+
+  // Por esfuerzo: reps objetivo (min = max) y el RPE.
+  const prog = resolveProgressionConfig(exConfig, def);
+  if (prog.type === 'effort') {
+    return compact
+      ? `${sets}${x}${minReps} @RPE${prog.targetRpe}`
+      : `${sets}${x}${minReps} reps${unilateral} · ${effortLabel(prog.targetRpe, t)}`;
   }
 
   // reps y weight_reps (por defecto)

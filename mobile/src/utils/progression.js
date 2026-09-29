@@ -412,6 +412,8 @@ function chipEffort(prog, doneSets, def, targetReps, t) {
   const type = next > maxW ? 'up' : next < maxW ? 'down' : 'hold';
   const why  = { up: 'why_effortEasier', down: 'why_effortHarder', hold: 'why_effortOnTarget' }[type];
   return {
+    // `effort`: la tarjeta lo rotula «Peso objetivo» sea cual sea la dirección.
+    effort: true,
     type, icon: { up: '⬆', down: '⬇', hold: '→' }[type],
     msg: t('progression.effort_noWeight'), why: t(`progression.${why}`),
     suggestedWeight: next, suggestedTime: null,

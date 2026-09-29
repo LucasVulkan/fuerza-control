@@ -417,6 +417,9 @@ export default function ExerciseCard({
     if (!progression) return null;
     const base = progression.reason === 'deload' ? 'deload' : progression.type;
     const numeric = progression.suggestedWeight != null || progression.suggestedTime != null;
+    // Por esfuerzo el número es SIEMPRE el peso de hoy, suba o no: «Peso
+    // objetivo» (effort-progression.md §5.2). La flecha y el delta dicen si sube.
+    if (progression.effort && numeric) return 'effortTo';
     return numeric && base !== 'hold' ? `${base}To` : base;
   })();
 

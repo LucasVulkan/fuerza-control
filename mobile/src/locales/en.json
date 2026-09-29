@@ -725,6 +725,9 @@
     "addedLabel": "Added · This session",
     "addSet": "＋ set",
     "perSide": "ea.",
+    "effortTarget_one": "RPE {{rpe}} ({{count}} in reserve)",
+    "effortTarget_other": "RPE {{rpe}} ({{count}} in reserve)",
+    "effortFailure": "RPE 10 (to failure)",
     "clientNotePlaceholder": "Note for your trainer (discomfort, how it felt…)",
     "exerciseLabel": "EX",
     "previous": "Previous",
@@ -744,7 +747,7 @@
     "coachTarget": "Your trainer's target",
     "thisSession": "this session",
     "setsSectionLabel": "Sets",
-    "progression": { "up": "Increase", "hold": "Hold", "down": "Reduce", "deload": "Deload", "upTo": "Increase to", "downTo": "Reduce to", "deloadTo": "Deload to" },
+    "progression": { "up": "Increase", "hold": "Hold", "down": "Reduce", "deload": "Deload", "upTo": "Increase to", "downTo": "Reduce to", "deloadTo": "Deload to", "effortTo": "Target weight" },
     "warmup": {
       "blockLabel": "Warmup",
       "metaSuffix": " · C×{{count}}",

@@ -60,6 +60,18 @@ describe('sessionToText', () => {
     expect(plank).toBe(`${LIB.plank.name} · 3x40s:`);
   });
 
+  it('Por esfuerzo: «3x5 @RPE8» y el peso que calcula el motor, que el pegado sigue leyendo', () => {
+    const tpl = { label: 'A', name: 'Fuerza', exercises: [
+      { exerciseId: 'skull_crusher', sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } },
+    ] };
+    // 80 × 5 a RPE 7: más fácil de lo previsto → 82.5 con paso 2.5 (effort-progression.md §2.2).
+    const last = { sets: [1, 2, 3].map(() => ({ weight: '80', reps: '5', rpe: '7', done: true })) };
+    const line = sessionToText(tpl, LIB, t, { language: 'es', fmtWeight: (kg) => `${kg}kg`, lastExercise: () => last })
+      .split('\n')[1];
+    expect(line).toBe(`${LIB.skull_crusher.name} · 3x5 @RPE8 · 82.5kg:`);
+    expect(parseRx('3x5 @RPE8')).toEqual({ sets: 3, reps: 5 });
+  });
+
   it('una sesión libre sin letra titula solo con el nombre', () => {
     const text = sessionToText({ name: 'Brazos', exercises: [] }, LIB, t, { language: 'es' });
     expect(text.split('\n')[0]).toBe('Brazos');

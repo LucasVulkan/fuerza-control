@@ -4,10 +4,11 @@
 > En corto: Un tercer modo de progresión para avanzados: el entrenador pide reps y un RPE, y la app calcula el peso de cada sesión a partir del 1RM estimado con el RPE que apuntó el cliente. Sustituye a «submáx», que desaparece: sus ejercicios pasan a Fija.
 > Fase P46 · hecho · Fuera «submáx»: sus ejercicios pasan a Fija · §3
 > Fase P47 · hecho · Motor y editor del modo Por esfuerzo · §4
-> Fase P48 · pendiente · El objetivo por esfuerzo en el Workout y las listas · §5
+> Fase P48 · hecho · El objetivo por esfuerzo en el Workout y las listas · §5
 >
-> Estado: **P46 y P47 probadas** (29-sep-2026, rama
-> `feat/exercise-variants`); P48 sin implementar. Sale de una
+> Estado: **P46 y P47 probadas, P48 hecha** (29-sep-2026, rama
+> `feat/exercise-variants`), P48 pendiente de probar. Abierto: el redondeo
+> con `weightStep` 5 (§5.3). Sale de una
 > conversación de diseño con el usuario (opción «B»: RPE objetivo + peso
 > sugerido por e1RM). Orden: P46 → P47 → P48. P46 va primero porque libera el
 > tercer hueco del selector de modo y quita las ramas `'submax'` que P48
@@ -355,6 +356,25 @@ la última sesión salió más fácil de lo previsto
 La línea de objetivo ya dice cuánto dejar en recámara; el cliente elige el peso
 y la sesión siguiente ya se calcula.
 
+### 5.3 Lo que salió al implementarla
+
+- **El compacto es «3×5 @RPE8»**, no «3×5 @8»: un «@8» suelto no lo lee un
+  cliente. Es el mismo en Inicio y al compartir («3x5 @RPE8»), y el pegado
+  (`parseRx`) lo sigue leyendo como 3×5.
+- `rowMeta` del editor de sesión ya no pinta «5–5» cuando min = max.
+- El chip de Por esfuerzo lleva `effort: true`: es lo que hace que la tarjeta
+  rotule «Peso objetivo». En descarga el chip es el de descarga y se queda
+  «Descarga a».
+- **Abierto — redondeo.** 37 ejercicios de la librería tienen `weightStep: 5`
+  (sentadilla, press de banca con barra…). Con 80 kg, un RPE 7 da 82,2 kg y
+  redondeado a 5 se queda en 80: un punto de RPE no mueve el peso hasta cargas
+  de ~95 kg. `weightStep` es el salto habitual de la progresión automática, no
+  la resolución de la carga. Opción: redondear siempre a 2,5 (o a 1,25 si el
+  ejercicio lo usa) en Por esfuerzo. Pendiente de decidir.
+
+Para probarla, un ejercicio de paso 2,5 (p. ej. Press francés; con la
+sentadilla, de paso 5, el peso no se mueve: §5.3).
+
 **Probar P48**
 
 - [ ] Primera sesión de un ejercicio Por esfuerzo 3 × 5 @8: la tarjeta dice
@@ -368,8 +388,8 @@ y la sesión siguiente ya se calcula.
 - [ ] Sesión hecha sin apuntar RPE: mantiene el peso y pide apuntar el RPE.
 - [ ] En una etapa de descarga, el ejercicio Por esfuerzo dice Descarga y
   mantiene el peso.
-- [ ] Inicio enseña «3×5 @8»; el editor de sesión, «3 × 5 @RPE 8»; compartir la
-  sesión como texto, «3x5 @RPE8» con el peso calculado.
+- [ ] Inicio enseña «3×5 @RPE8»; el editor de sesión, «3 × 5 @RPE 8»; compartir
+  la sesión como texto, «3x5 @RPE8» con el peso calculado.
 
 ---
 
@@ -379,7 +399,7 @@ y la sesión siguiente ya se calcula.
 |---|---|---|---|---|
 | P46 | Fuera «submáx» (§3) | 🟢 | — | ✅ — ver §3.3 |
 | P47 | Motor + editor (§4) | 🟡 | P46 | ✅ — ver §4.4 |
-| P48 | Workout y listas (§5) | 🟢 | P47 | |
+| P48 | Workout y listas (§5) | 🟢 | P47 | ✅ — ver §5.3 |
 
 ## 7. Fuera de alcance (ideas apuntadas)
 

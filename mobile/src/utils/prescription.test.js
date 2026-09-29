@@ -62,3 +62,19 @@ describe('targetLabel', () => {
     expect(targetLabel(def, { sets: 3 }, t)).toBe('3 × 30–45 s');
   });
 });
+
+describe('targetLabel — Por esfuerzo (effort-progression.md §5.1)', () => {
+  const tt = (key, o) => (typeof o === 'object' ? `${key}:${o.rpe ?? ''}/${o.count ?? ''}` : (o ?? key));
+  const ex = (rpe) => ({ sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: rpe } });
+
+  it('normal: reps, RPE y recámara', () => {
+    expect(targetLabel({}, ex(8), tt)).toBe('3 × 5 reps · workout.effortTarget:8/2');
+    expect(targetLabel({ isUnilateral: true }, ex(8), tt)).toBe('3 × 5 reps por lado · workout.effortTarget:8/2');
+  });
+  it('RPE 10 es al fallo', () => {
+    expect(targetLabel({}, ex(10), tt)).toBe('3 × 5 reps · workout.effortFailure');
+  });
+  it('compacto: 3×5 @RPE8', () => {
+    expect(targetLabel({}, ex(8), tt, { compact: true })).toBe('3×5 @RPE8');
+  });
+});
