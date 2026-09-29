@@ -510,12 +510,13 @@ Maqueta §4.
   Colapsada la tarjeta, tocar la cabecera la despliega como ahora; la variante
   solo responde desplegada.
 - Abre un `DragSheet` con **solo** el grupo de agarre y anchura, título de grupo
-  `variants.todayTitle` («HOY · SOLO ESTA SESIÓN») en `accent`. Debajo de la
-  opción del programa, `variants.programMark` («programa», `label`, `mutedLight`)
-  dentro del chip. Pie: `variants.todayHint` («El programa no cambia. Queda
-  apuntado en el registro de hoy.», `body`, `mutedLight`) y el enlace
-  `variants.backToProgram` («↺ Volver a la del programa», `button`, `mutedLight`),
-  que solo sale si hoy difiere.
+  `variants.todayTitle` («HOY · SOLO ESTA SESIÓN») en `accent`. **Sin desmarcar**
+  (hoy se cambia de opción, no se deja en blanco) y, a la derecha de cada fila
+  que difiere del programa, un botón solo con icono ↺ (`ResetIcon`, caja
+  `surface2` de 32) que la devuelve a la del programa. Pie: `variants.todayHint`
+  («El programa no cambia. Queda apuntado en el registro de hoy.», `body`,
+  `mutedLight`). (QA 29-sep: primero llevaba «programa» bajo el chip, que lo
+  hacía muy grande, y un enlace de texto para volver.)
 - Estado: `activeSession.variants = { [exerciseId]: variant }` (añadir
   `variants: {}` a `INITIAL_ACTIVE_SESSION`). Acción nueva
   `setSessionVariant(exerciseId, variant | undefined)`; `undefined` borra la
@@ -548,9 +549,9 @@ variante— se partiría. Se arregla el pegado, no el nombre:
 
 ### 5.3 Lo que salió distinto (P43)
 
-- Si hoy se quitan todas las opciones de un ejercicio que en el programa tenía
-  variante, la tarjeta enseña «· Sin especificar» en acento: si no, no quedaría
-  nada que tocar para volver.
+- `VariantPicker` gana `resetTo` (icono de volver por fila) y `allowDeselect`
+  (el Workout lo apaga). Si lo elegido hoy acaba igual que el programa, se borra
+  la clave de hoy.
 - Un texto pegado con variante la manda al Workout como «la de hoy»:
   `startSession(…, { prefill: { variants } })`.
 - `parseSessionText` separa el nombre de la receta por el primer trozo que es
@@ -559,13 +560,15 @@ variante— se partiría. Se arregla el pegado, no el nombre:
 
 **Probar P43**
 
-- [ ] Workout de una sesión con «Jalón al pecho · Neutro · Estrecho»: tocar la
-  variante abre la hoja con «programa» bajo Neutro y Estrecho; elegir Prono →
-  la tarjeta dice «Prono» en lima; el editor de sesión sigue diciendo Neutro.
-- [ ] «Volver a la del programa» devuelve Neutro y el lima desaparece.
-- [ ] Guardar con Prono: el historial y el recap dicen Prono; la siguiente vez
+- [x] Workout de una sesión con «Jalón al pecho · Neutro · Estrecho»: tocar la
+  variante abre la hoja; elegir Prono → la tarjeta dice «Prono» en lima; el
+  editor de sesión sigue diciendo Neutro.
+- [ ] Hoja del Workout (QA 29-sep): los chips sin «programa» debajo; tocar la
+  opción marcada no la desmarca; en la fila cambiada sale a la derecha el icono
+  ↺, y tocarlo devuelve Neutro y quita el lima.
+- [x] Guardar con Prono: el historial y el recap dicen Prono; la siguiente vez
   el Workout vuelve a proponer Neutro.
-- [ ] Un ejercicio sin variante en el programa no es pulsable.
+- [x] Un ejercicio sin variante en el programa no es pulsable.
 - [ ] Compartir la sesión por texto y pegar la respuesta del cliente: el jalón
   se reconoce y el entreno pegado trae su variante.
 
