@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recap de sesión — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=Barlow+Condensed:ital,wght@1,800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --orange: #fb923c; --blue: #4c85ff;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --orange30: rgba(251,146,60,.3); --red50: rgba(255,94,88,.5); --blue30: rgba(0,62,195,.3);
+    --r-xxs: 2px; --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+    /* spacing: xs 2 · xs2 4 · sm 6 · sm2 8 · md 10 · lg 15 · xl 20 · xxl 28 */
+  }
+  /* Los catorce papeles de textStyles — ni un tamaño fuera de aquí */
+  .t-heroGlyph { font: italic 800 34px 'Barlow Condensed'; text-transform: uppercase; line-height: 1; }
+  .t-heroName  { font: italic 800 28px 'Barlow Condensed'; line-height: 1.05; }
+  .t-title     { font: 900 22px Inter; letter-spacing: -.5px; }
+  .t-heading   { font: 800 18px Inter; letter-spacing: -.2px; }
+  .t-itemTitle { font: 900 16px Inter; letter-spacing: -.2px; }
+  .t-body      { font: 500 14px/21px Inter; }
+  .t-bodyS     { font: 700 14px Inter; }
+  .t-button    { font: 900 14px Inter; }
+  .t-label     { font: 500 12px Inter; }
+  .t-labelS    { font: 800 12px Inter; }
+  .t-caps      { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+  .t-micro     { font: 500 11px Inter; }
+  .num { font-variant-numeric: tabular-nums; }
+  .ml { color: var(--mutedLight); } .ac { color: var(--accent); } .mu { color: var(--muted); }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 980px; margin-bottom: 14px; }
+  .lead b, .note b, .cap strong, .box b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent);
+       margin: 54px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col { width: 375px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; min-height: 48px; }
+  .cap > b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .note { font: 500 11.5px/1.6 Inter; color: #7a7a7a; margin-top: 12px; }
+  .note li { margin: 0 0 4px 16px; }
+  .box { max-width: 980px; border: 1px solid #262626; border-radius: 12px; padding: 14px 18px; font: 500 12.5px/1.65 Inter; color: #9a9a9a; }
+  .box li { margin: 0 0 3px 16px; }
+  code { font: 500 11px ui-monospace, monospace; color: #bdbdbd; }
+
+  /* Leyenda de los tres lenguajes */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 18px; max-width: 980px; }
+  .lg-item { flex: 1 1 280px; border: 1px solid #262626; border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; }
+  .lg-item .sw { width: 64px; height: 44px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .lg-item p { font: 500 12px/1.55 Inter; color: #8f8f8f; }
+  .lg-item p b { display: block; color: var(--text); font: 800 12px Inter; margin-bottom: 2px; }
+
+  /* ══════ PANTALLA ══════ */
+  .phone { width: 375px; height: 812px; background: var(--bg); border-radius: 22px; border: 1px solid #222;
+           overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .phone.auto { height: auto; }
+  .status { height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 22px;
+            font: 700 13px Inter; color: var(--text); }
+  .scroll { flex: 1; overflow-y: auto; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .pad { padding: 10px 15px 24px; display: flex; flex-direction: column; gap: 10px; }
+  svg.ic { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor;
+           stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .sec { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .secHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
+  .secHead .t-caps { color: var(--mutedLight); display: flex; align-items: center; gap: 6px; }
+
+  /* ── 1 · Hero ── */
+  .hero { background: var(--surface); border-radius: var(--r-lg); padding: 15px 15px 0; overflow: hidden; }
+  .hero .ceja { display: flex; align-items: center; gap: 6px; color: var(--accent); }
+  .hero .ident { display: flex; align-items: center; gap: 12px; margin: 12px 0 4px; }
+  .hero .glyph { width: 54px; height: 54px; border-radius: var(--r-md); background: var(--accent10); color: var(--accent);
+                 display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .hero .meta { color: var(--mutedLight); margin-top: 4px; }
+  .week { display: flex; align-items: center; gap: 8px; margin: 14px 0 15px; }
+  .week .dots { display: flex; gap: 6px; }
+  .week .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--muted); }
+  .week .dot.on { background: var(--accent); }
+  .week .dot.now { background: var(--accent); box-shadow: 0 0 0 3px var(--accent10); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; margin: 0 -15px; border-top: 2px solid var(--bg); }
+  .stat { padding: 12px 8px 14px; text-align: center; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .stat + .stat { border-left: 2px solid var(--bg); }
+  .stat .v { display: flex; align-items: baseline; gap: 3px; }
+  .stat .u { color: var(--mutedLight); }
+
+  .delta { font: 800 12px Inter; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .d-up { color: var(--accent); } .d-eq { color: var(--mutedLight); } .d-dn { color: var(--red50); }
+
+  /* ── 2 · Récords ── */
+  .prs { display: flex; flex-direction: column; gap: 2px; }
+  .pr { background: var(--accent10); padding: 12px 12px; display: flex; align-items: center; gap: 10px; }
+  .pr:first-child { border-radius: var(--r-md) var(--r-md) var(--r-xs) var(--r-xs); }
+  .pr:last-child  { border-radius: var(--r-xs) var(--r-xs) var(--r-md) var(--r-md); }
+  .pr:only-child  { border-radius: var(--r-md); }
+  .pr .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .pr .val { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .pr svg.ic { width: 20px; height: 20px; color: var(--accent); }
+
+  /* ── 3 · Tu parte (lo que se escribe) ── */
+  .pend { font: 800 12px Inter; padding: 3px 7px; border-radius: var(--r-xs); background: var(--surface2); color: var(--mutedLight); }
+  .pend.ok { background: var(--accent10); color: var(--accent); }
+  .ask { background: var(--surface); border-radius: var(--r-lg); padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; }
+  .ask .q { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .ask .q .t-bodyS { display: flex; align-items: center; gap: 8px; }
+  .qdot { width: 7px; height: 7px; border-radius: 99px; background: var(--mutedLight); flex-shrink: 0; }
+  .ask.done .qdot { display: none; }
+  .ask .okc { display: none; color: var(--accent); }
+  .ask.done .okc { display: inline-flex; }
+  .rpe { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .rpe button { all: unset; cursor: pointer; text-align: center; padding: 9px 0; border-radius: var(--r-sm); background: var(--surface2);
+                font: 900 14px Inter; color: var(--mutedLight); font-variant-numeric: tabular-nums; transition: background .16s, color .16s; }
+  .rpe button.sel { background: var(--accent); color: var(--onAccent); }
+  .rpeL { display: flex; justify-content: space-between; margin-top: -4px; }
+  .rpeL span { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; color: var(--mutedLight); }
+  .loadOut { display: none; border-top: 2px solid var(--bg); margin: 2px -15px -14px; padding: 12px 15px;
+             align-items: center; justify-content: space-between; }
+  .ask.done .loadOut { display: flex; }
+  .loadOut .r { display: flex; align-items: baseline; gap: 6px; }
+
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper .pm { all: unset; cursor: pointer; width: 30px; height: 34px; display: flex; align-items: center; justify-content: center;
+                 color: var(--accent); font: 900 18px Inter; }
+  .well { background: var(--bg); border-radius: var(--r-sm); min-width: 78px; padding: 7px 10px; text-align: center;
+          display: flex; align-items: baseline; justify-content: center; gap: 4px; }
+  .well .t-itemTitle { color: var(--accent); }
+  .noteWell { background: var(--bg); border-radius: var(--r-sm); padding: 10px 12px; min-height: 64px;
+              display: flex; gap: 8px; align-items: flex-start; }
+  .noteWell .ph { color: var(--muted); }
+  .noteWell svg.ic { color: var(--muted); margin-top: 3px; }
+
+  /* ── 4 · Detalle por ejercicio (anatomía existente: History / recap) ── */
+  .glist { display: flex; flex-direction: column; gap: 2px; }
+  .gi { background: var(--surface); padding: 10px; display: flex; flex-direction: column; gap: 6px; border-radius: var(--r-xxs); }
+  .gi:first-child { border-radius: var(--r-md) var(--r-md) var(--r-xs) var(--r-xs); }
+  .gi:last-child  { border-radius: var(--r-xs) var(--r-xs) var(--r-md) var(--r-md); }
+  .gi .h { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .gi .h .t-bodyS { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .wp { font: 500 12px Inter; padding: 6px 0 6px 6px; }
+  .wp .n { color: var(--accent); } .wp .x { color: var(--mutedLight); }
+  .sp { font: 500 12px Inter; padding: 6px; border-radius: var(--r-xs); background: var(--surface2); color: var(--mutedLight); }
+  .sp.done { background: var(--accent10); color: var(--accent); }
+  .sp.part { background: var(--orange30); color: var(--orange); }
+  .sp i { font-style: normal; color: var(--accent50); }
+  .badge { font: 800 12px Inter; letter-spacing: 1.2px; padding: 1px 6px; border-radius: var(--r-xs); background: var(--accent10); color: var(--accent); }
+  .gi .dr { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .more { all: unset; cursor: pointer; background: var(--surface); border-radius: var(--r-md); padding: 11px; text-align: center;
+          font: 900 14px Inter; color: var(--accent); }
+
+  /* ── 5 · Sesión libre: filas con icono (MenuRow) ── */
+  .mrow { background: var(--surface); padding: 12px 12px; display: flex; align-items: center; gap: 15px; border-radius: var(--r-xxs); }
+  .mrow:first-child { border-radius: var(--r-md) var(--r-md) var(--r-xs) var(--r-xs); }
+  .mrow:last-child  { border-radius: var(--r-xs) var(--r-xs) var(--r-md) var(--r-md); }
+  .mrow:only-child  { border-radius: var(--r-md); }
+  .mrow svg.ic { width: 18px; height: 18px; color: var(--mutedLight); stroke-width: 2.2; }
+  .mrow .m { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .mrow .m .t-bodyS { font-weight: 800; }
+  .mrow .chev { width: 7px; height: 11px; color: var(--muted); }
+  .seg { display: flex; background: var(--surface2); border-radius: var(--r-sm); padding: 3px; gap: 2px; }
+  .seg span { flex: 1; text-align: center; padding: 7px 0; border-radius: var(--r-xs); font: 800 12px Inter; color: var(--mutedLight); }
+  .seg span.on { background: var(--bg); color: var(--text); }
+
+  /* ── Pie fijo ── */
+  .foot { flex-shrink: 0; padding: 10px 15px 26px; background: var(--bg); border-top: 1px solid #1c1c1c; display: flex; flex-direction: column; gap: 8px; }
+  .foot .hint { all: unset; cursor: pointer; font: 500 12px Inter; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--mutedLight); }
+  .foot .hint b { color: var(--text); font-weight: 800; }
+  .done-btn { background: var(--accent); color: var(--onAccent); border-radius: var(--r-sm); padding: 12px; text-align: center; font: 900 14px Inter; }
+
+  /* ── Frame "hoy" (aproximación de la pantalla actual) ── */
+  .old .card { background: var(--surface); border-radius: var(--r-lg); padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+  .old .tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .old .tile { background: var(--surface); border-radius: var(--r-lg); padding: 15px 10px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+  .old .wbox { background: var(--surface2); border-radius: var(--r-sm); padding: 6px 10px; min-width: 70px; text-align: right; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4zM7 6H4a1 1 0 0 0-1 1v1a3 3 0 0 0 3 3M17 6h3a1 1 0 0 1 1 1v1a3 3 0 0 1-3 3"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 7 11"><path d="M1 1l4.5 4.5L1 10" stroke-width="1.8"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+</svg>
+
+<h1>Recap de sesión</h1>
+<p class="lead">
+  Propuesta para <b>U29</b> de <code>docs/specs/pulido-ui.md</code>. Solo tokens y papeles de texto de la app
+  (<code>themes.js</code> · <code>theme.js</code>): ni un color ni un tamaño nuevo. Lo que cambia es el <b>orden</b>
+  y que cada bloque habla uno de <b>tres lenguajes</b>, siempre el mismo. Las pantallas de abajo se desplazan por dentro
+  y la escala de RPE se puede pulsar.
+</p>
+
+<div class="legend">
+  <div class="lg-item">
+    <div class="sw" style="background:var(--surface)"><span class="t-title num">58</span></div>
+    <p><b>Resultado — se lee</b>Tarjeta <code>surface</code> y cifras grandes. No se toca nada: es el marcador de la sesión.</p>
+  </div>
+  <div class="lg-item">
+    <div class="sw" style="background:var(--accent10)"><svg class="ic" style="width:22px;height:22px;color:var(--accent)"><use href="#i-trophy"/></svg></div>
+    <p><b>Logro — se celebra</b>Relleno <code>tint/accent10</code>, como ya llevan los PRs. Solo lo que es mejor que antes.</p>
+  </div>
+  <div class="lg-item">
+    <div class="sw" style="background:var(--surface)"><div class="well" style="min-width:44px;padding:6px 8px"><span class="t-itemTitle num">78,4</span></div></div>
+    <p><b>Tu parte — se escribe</b>Todo lo que va bajo el lápiz de «Tu parte», y nada más. Los valores van en celda <code>bg</code>
+      con ± (<code>StepField</code>); la escala de RPE, en sus botones <code>surface2</code> de hoy.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ §1 ═══════════════════════════════ -->
+<h2>1 · Hoy frente a la propuesta</h2>
+<div class="rack">
+
+  <!-- HOY -->
+  <div class="col">
+    <p class="cap"><b>HOY</b>Aproximación del orden actual. Lo primero son dos preguntas, y luego tres tarjetas y
+      una lista con el mismo peso: nada dice «esto es lo importante». Y el peso corporal (se escribe) y las cifras (se leen)
+      son el mismo número lima o blanco sobre gris: no se distingue qué se toca.</p>
+    <div class="phone old">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="scroll"><div class="pad">
+        <div style="text-align:center;padding:10px 0;display:flex;flex-direction:column;gap:2px">
+          <span class="t-caps ac">SESIÓN COMPLETADA</span>
+          <span class="t-title">Torso pesado</span>
+          <span class="t-body ml">Etapa 2 · Fuerza</span>
+        </div>
+        <div class="card">
+          <span class="t-labelS">¿Cómo de dura fue la sesión?</span>
+          <div class="rpe"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>10</button></div>
+          <div class="rpeL"><span>Suave</span><span>Dura</span><span>Máxima</span></div>
+        </div>
+        <div class="card" style="flex-direction:row;align-items:center;justify-content:space-between;padding:10px 15px">
+          <span class="t-labelS">Peso corporal</span>
+          <span style="display:flex;gap:6px;align-items:center"><span class="wbox t-itemTitle ac num">78,4</span><span class="t-label ml">kg</span></span>
+        </div>
+        <div class="tiles">
+          <div class="tile"><span class="t-title num">58:12</span><span class="t-caps">Duración</span></div>
+          <div class="tile"><span class="t-title num">8.420<span class="t-label ml"> kg</span></span><span class="t-caps">Volumen</span></div>
+          <div class="tile"><span class="t-title num">18<span class="t-label ml">/20</span></span><span class="t-caps">Series</span></div>
+        </div>
+        <span class="t-caps ac" style="margin-top:4px">Récords personales</span>
+        <div style="background:var(--accent10);border-radius:var(--r-lg);padding:10px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:8px;align-items:center"><svg class="ic" style="width:17px;height:17px;color:var(--accent)"><use href="#i-trophy"/></svg><div style="flex:1"><div class="t-labelS">Press banca</div><div class="t-label ml">e1RM 92,5 · anterior 90</div></div><span class="sp done">+2,5</span></div>
+          <div style="display:flex;gap:8px;align-items:center"><svg class="ic" style="width:17px;height:17px;color:var(--accent)"><use href="#i-trophy"/></svg><div style="flex:1"><div class="t-labelS">Dominadas</div><div class="t-label ml">Mejor serie · 12 reps</div></div><span class="sp done">+2 rep</span></div>
+        </div>
+        <span class="t-caps ml" style="margin-top:4px">Vs. última sesión</span>
+        <div class="glist">
+          <div class="gi"><div class="h"><span class="t-labelS">Press banca</span><span class="delta d-up">+2,5 kg</span></div></div>
+          <div class="gi"><div class="h"><span class="t-labelS">Remo con barra</span><span class="delta d-eq">=</span></div></div>
+          <div class="gi"><div class="h"><span class="t-labelS">Press militar</span><span class="delta d-dn">−1 rep</span></div></div>
+        </div>
+        <div class="done-btn" style="margin-top:6px">HECHO</div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- PROPUESTA -->
+  <div class="col">
+    <p class="cap"><b>PROPUESTA · SESIÓN DE PROGRAMA</b>Arriba el marcador y los récords, que son el recap. Después
+      <strong>tu parte</strong>, con cuántas quedan por contestar. Al final, una línea por ejercicio con el cambio respecto a la última vez.
+      «HECHO» queda fijo abajo y avisa de lo que falta sin obligar.</p>
+    <div class="phone" id="p1">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="scroll" id="p1s"><div class="pad">
+
+        <!-- 1 · Hero -->
+        <div class="hero">
+          <div class="ceja t-caps"><svg class="ic" style="stroke-width:2.6"><use href="#i-check"/></svg>Sesión completada</div>
+          <div class="ident">
+            <div class="glyph t-heroGlyph">B</div>
+            <div style="min-width:0">
+              <div class="t-heroName">Torso pesado</div>
+              <div class="meta t-label">Etapa 2 · Fuerza · mar 29 sep</div>
+            </div>
+          </div>
+          <div class="week">
+            <div class="dots"><span class="dot on"></span><span class="dot now"></span><span class="dot"></span></div>
+            <span class="t-label ml"><b style="color:var(--text);font-weight:800">2 de 3</b> esta semana · semana 3 de 6</span>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <span class="v"><span class="t-title num">58:12</span></span>
+              <span class="t-caps ml">Duración</span>
+            </div>
+            <div class="stat">
+              <span class="v"><span class="t-title num">8.420</span><span class="u t-label">kg</span></span>
+              <span class="t-caps ml">Volumen</span>
+              <span class="delta d-up">+6 %</span>
+            </div>
+            <div class="stat">
+              <span class="v"><span class="t-title num">18</span><span class="u t-label">/20</span></span>
+              <span class="t-caps ml">Series</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 · Récords -->
+        <div class="sec">
+          <div class="secHead"><span class="t-caps" style="color:var(--accent)"><svg class="ic"><use href="#i-trophy"/></svg>2 récords</span></div>
+          <div class="prs">
+            <div class="pr">
+              <svg class="ic"><use href="#i-trophy"/></svg>
+              <div class="body"><span class="t-bodyS">Press banca</span><span class="t-label ml">e1RM · antes 90 kg</span></div>
+              <div class="val"><span class="t-itemTitle ac num">92,5 kg</span><span class="delta d-up">+2,5</span></div>
+            </div>
+            <div class="pr">
+              <svg class="ic"><use href="#i-trophy"/></svg>
+              <div class="body"><span class="t-bodyS">Dominadas</span><span class="t-label ml">Mejor serie · antes 10</span></div>
+              <div class="val"><span class="t-itemTitle ac num">12 reps</span><span class="delta d-up">+2</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 · Tu parte -->
+        <div class="sec" id="p1-tu">
+          <div class="secHead">
+            <span class="t-caps"><svg class="ic"><use href="#i-pencil"/></svg>Tu parte</span>
+            <span class="pend" data-count>1 sin contestar</span>
+          </div>
+
+          <div class="ask" data-ask="rpe">
+            <div class="q">
+              <span class="t-bodyS"><span class="qdot"></span>¿Cómo de dura fue la sesión?</span>
+              <svg class="ic okc" style="width:16px;height:16px;stroke-width:2.6"><use href="#i-check"/></svg>
+            </div>
+            <div class="rpe" data-rpe>
+              <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>10</button>
+            </div>
+            <div class="rpeL"><span>Suave</span><span>Dura</span><span>Máxima</span></div>
+            <div class="loadOut">
+              <span class="t-caps ml">Carga de la sesión</span>
+              <span class="r"><span class="t-itemTitle num" data-loadpct>+12 %</span><span class="t-label ml">vs media 7d</span></span>
+            </div>
+          </div>
+
+          <div class="ask done">
+            <div class="q">
+              <span class="t-bodyS"><span class="qdot"></span>Peso corporal</span>
+              <div class="stepper">
+                <button class="pm">−</button>
+                <div class="well"><span class="t-itemTitle num">78,4</span><span class="t-label ml">kg</span></div>
+                <button class="pm">+</button>
+              </div>
+            </div>
+            <span class="t-label ml" style="margin-top:-4px">El último: 78,6 kg, hace 5 días</span>
+          </div>
+
+          <div class="ask">
+            <div class="q"><span class="t-bodyS">Nota de la sesión</span><span class="t-label ml">del entreno</span></div>
+            <div class="noteWell"><svg class="ic"><use href="#i-pencil"/></svg><span class="t-body">Hombro izquierdo algo cargado en el militar</span></div>
+          </div>
+        </div>
+
+        <!-- 4 · Detalle -->
+        <div class="sec">
+          <div class="secHead"><span class="t-caps">Vs. última sesión</span><span class="t-label ml">6 ejercicios</span></div>
+          <div class="glist">
+            <div class="gi"><div class="h"><span class="t-bodyS">Press banca</span><span class="dr"><svg class="ic ac"><use href="#i-trophy"/></svg><span class="delta d-up">+2,5 kg</span></span></div></div>
+            <div class="gi"><div class="h"><span class="t-bodyS">Dominadas</span><span class="dr"><svg class="ic ac"><use href="#i-trophy"/></svg><span class="delta d-up">+2 reps</span></span></div></div>
+            <div class="gi"><div class="h"><span class="t-bodyS">Jalón al pecho <span class="t-label ml">· agarre prono</span></span><span class="dr"><span class="delta d-up">+1 rep</span></span></div></div>
+            <div class="gi"><div class="h"><span class="t-bodyS">Remo con barra</span><span class="dr"><span class="delta d-eq">=</span></span></div></div>
+            <div class="gi"><div class="h"><span class="t-bodyS">Face pull</span><span class="dr"><span class="delta d-eq">=</span></span></div></div>
+            <div class="gi"><div class="h"><span class="t-bodyS">Press militar</span><span class="dr"><span class="delta d-dn">−1 rep</span></span></div></div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="secHead"><span class="t-caps">Bloques</span></div>
+          <div class="glist">
+            <div class="gi" style="flex-direction:row;align-items:center;gap:8px">
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;gap:6px;align-items:center"><span class="badge">AMRAP</span><span class="t-bodyS">Finisher 10'</span></div>
+                <span class="t-itemTitle num">5 rondas + 8</span>
+              </div>
+              <span class="delta d-up">+1 ronda</span>
+            </div>
+          </div>
+        </div>
+
+      </div></div>
+      <div class="foot">
+        <button class="hint t-label" data-hint><span class="qdot"></span>Falta: <b>cómo de dura fue</b><svg class="ic"><use href="#i-down"/></svg></button>
+        <div class="done-btn">HECHO</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ §2 ═══════════════════════════════ -->
+<h2>2 · Tu parte, contestada</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>CONTESTADA</b>Al elegir el RPE, la carga sale en la misma tarjeta, debajo de una línea
+      <code>bg</code>: es su resultado, no otra pregunta. Solo el porcentaje, en blanco y no en lima: más carga no es
+      mejor ni peor, y el número suelto no dice nada. Cada tarjeta contestada cambia el punto por un ✓ y el contador
+      de la sección pasa a lima.</p>
+    <div class="phone auto"><div class="pad">
+      <div class="sec" style="margin-top:0">
+        <div class="secHead">
+          <span class="t-caps"><svg class="ic"><use href="#i-pencil"/></svg>Tu parte</span>
+          <span class="pend ok">Todo contestado</span>
+        </div>
+        <div class="ask done">
+          <div class="q"><span class="t-bodyS"><span class="qdot"></span>¿Cómo de dura fue la sesión?</span><svg class="ic okc" style="width:16px;height:16px;stroke-width:2.6"><use href="#i-check"/></svg></div>
+          <div class="rpe"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button class="sel">8</button><button>9</button><button>10</button></div>
+          <div class="rpeL"><span>Suave</span><span>Dura</span><span>Máxima</span></div>
+          <div class="loadOut"><span class="t-caps ml">Carga de la sesión</span><span class="r"><span class="t-itemTitle num">+12 %</span><span class="t-label ml">vs media 7d</span></span></div>
+        </div>
+        <div class="ask done">
+          <div class="q"><span class="t-bodyS">Peso corporal</span>
+            <div class="stepper"><button class="pm">−</button><div class="well"><span class="t-itemTitle num">78,2</span><span class="t-label ml">kg</span></div><button class="pm">+</button></div>
+          </div>
+          <span class="t-label ml" style="margin-top:-4px">El último: 78,6 kg, hace 5 días</span>
+        </div>
+        <div class="ask done">
+          <div class="q"><span class="t-bodyS">Nota de la sesión</span><svg class="ic okc" style="width:16px;height:16px;stroke-width:2.6"><use href="#i-check"/></svg></div>
+          <div class="noteWell"><span class="t-body">Hombro izquierdo algo cargado en el militar. Bajar 2,5 la próxima.</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><div class="done-btn">HECHO</div></div>
+    </div>
+    <ul class="note">
+      <li>El <b>peso corporal</b> nace relleno con el último: nunca cuenta como «sin contestar».</li>
+      <li>La <b>nota</b> es opcional: tampoco cuenta. El contador solo mira el RPE, que es lo que alimenta la carga.</li>
+      <li>Si la nota se escribió durante el entreno, sale ya escrita («del entreno») para corregirla aquí. Si no hay,
+        la celda vacía con «Cómo te has sentido, molestias, algo para la próxima…».</li>
+    </ul>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>MUCHOS RÉCORDS</b>Sí: <code>detectPRs</code> da uno por ejercicio que supera su mejor marca de siempre.
+      Es raro en alguien veterano, pero en los primeros meses (o volviendo de un parón) una sesión de 9 ejercicios da
+      6-9 récords y la sección se come la pantalla. Propuesta: los 3 mayores (por % de mejora) y
+      el resto detrás de «Ver N más». En «Vs. última sesión» todos llevan su trofeo, así que no se pierde ninguno.</p>
+    <div class="phone auto"><div class="pad">
+      <div class="sec" style="margin-top:0">
+        <div class="secHead"><span class="t-caps" style="color:var(--accent)"><svg class="ic"><use href="#i-trophy"/></svg>7 récords</span></div>
+        <div class="prs">
+          <div class="pr"><svg class="ic"><use href="#i-trophy"/></svg><div class="body"><span class="t-bodyS">Dominadas</span><span class="t-label ml">Mejor serie · antes 10</span></div><div class="val"><span class="t-itemTitle ac num">12 reps</span><span class="delta d-up">+2</span></div></div>
+          <div class="pr"><svg class="ic"><use href="#i-trophy"/></svg><div class="body"><span class="t-bodyS">Curl martillo</span><span class="t-label ml">Peso máx · antes 14 kg</span></div><div class="val"><span class="t-itemTitle ac num">16 kg</span><span class="delta d-up">+2</span></div></div>
+          <div class="pr"><svg class="ic"><use href="#i-trophy"/></svg><div class="body"><span class="t-bodyS">Press banca</span><span class="t-label ml">e1RM · antes 90 kg</span></div><div class="val"><span class="t-itemTitle ac num">92,5 kg</span><span class="delta d-up">+2,5</span></div></div>
+        </div>
+        <button class="more">Ver 4 récords más</button>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>POR QUÉ ESTE ORDEN</b>Y no las preguntas arriba, como hoy.</p>
+    <div class="box" style="max-width:375px">
+      <ul>
+        <li><b>El recap es la recompensa.</b> Si lo primero que ves son dos preguntas, parece un formulario de salida.</li>
+        <li><b>Las preguntas quedan en la segunda pantalla</b>, no al fondo: por encima de la comparación por ejercicio, que es
+          lo que menos se mira.</li>
+        <li><b>El pie fijo recoge lo que se escapa.</b> «Falta: cómo de dura fue» baja hasta la tarjeta al pulsarlo.
+          No bloquea «HECHO»: sin sRPE la sesión se guarda igual que hoy, solo sin carga.</li>
+        <li><b>«Vs. última sesión» es solo el delta</b>: una fila por ejercicio, sin las series. Lo que hiciste ya lo
+          sabes; lo que no sabes es si fue más o menos que la vez anterior.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ §3 ═══════════════════════════════ -->
+<h2>3 · Sesión libre y sesión de un cliente</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>SESIÓN LIBRE</b>Las tres decisiones de sesión libre van juntas, al final y con el lenguaje de
+      opciones de la app: filas <code>MenuRow</code> con icono (lo que pide U30). Hoy son dos botones con borde lima sueltos y un
+      segmentado.</p>
+    <div class="phone auto"><div class="pad">
+      <div class="sec" style="margin-top:0">
+        <div class="secHead"><span class="t-caps">Esta sesión libre</span></div>
+        <div class="ask" style="gap:8px">
+          <span class="t-bodyS">¿Cuenta para el programa?</span>
+          <div class="seg"><span>No</span><span>A</span><span class="on">B</span><span>C</span></div>
+          <span class="t-label ml">Cuenta como la Sesión B: avanza la semana y la etapa.</span>
+        </div>
+        <div class="glist" style="margin-top:2px">
+          <div class="mrow"><svg class="ic"><use href="#i-plus"/></svg><div class="m"><span class="t-bodyS">Añadir 2 ejercicios a la sesión</span><span class="t-label ml">Los que añadiste durante el entreno</span></div><svg class="chev"><use href="#i-chev"/></svg></div>
+          <div class="mrow"><svg class="ic"><use href="#i-save"/></svg><div class="m"><span class="t-bodyS">Guardar como sesión libre</span><span class="t-label ml">Para repetirla desde Inicio</span></div><svg class="chev"><use href="#i-chev"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><div class="done-btn">HECHO</div></div>
+    </div>
+    <ul class="note">
+      <li>Tras pulsar, la fila se queda con ✓ en lima y el texto «Guardada» (hoy lo hace el borde del botón).</li>
+    </ul>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>ENTRENADOR APUNTANDO POR UN CLIENTE</b>La ceja y el glifo pasan a azul, como hoy. El resto
+      no cambia: «tu parte» la contesta el entrenador en nombre del cliente.</p>
+    <div class="phone auto"><div class="pad">
+      <div class="hero">
+        <div class="ceja t-caps" style="color:var(--blue)"><svg class="ic" style="stroke-width:2.6"><use href="#i-check"/></svg>Laura · Sesión completada</div>
+        <div class="ident">
+          <div class="glyph t-heroGlyph" style="background:var(--blue30);color:var(--blue)">A</div>
+          <div><div class="t-heroName">Pierna</div><div class="meta t-label">Etapa 1 · Base · lun 28 sep</div></div>
+        </div>
+        <div class="week">
+          <div class="dots"><span class="dot now" style="background:var(--blue);box-shadow:0 0 0 3px var(--blue30)"></span><span class="dot"></span></div>
+          <span class="t-label ml"><b style="color:var(--text);font-weight:800">1 de 2</b> esta semana · semana 2 de 4</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="t-title num">46:30</span><span class="t-caps ml">Duración</span></div>
+          <div class="stat"><span class="v"><span class="t-title num">6.150</span><span class="u t-label">kg</span></span><span class="t-caps ml">Volumen</span><span class="delta d-eq">=</span></div>
+          <div class="stat"><span class="v"><span class="t-title num">15</span><span class="u t-label">/15</span></span><span class="t-caps ml">Series</span></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ §4 ═══════════════════════════════ -->
+<h2>4 · Qué pide a la implementación</h2>
+<div class="box">
+  <ul>
+    <li><b>Ningún token nuevo.</b> Barlow solo en la identidad de la sesión: letra (<code>heroGlyph</code>) y nombre
+      (<code>heroName</code>), como la tarjeta de hoy en Inicio. Las cifras siguen en <code>title</code>, como hoy: informan,
+      no son el premio.</li>
+    <li><b>Dato nuevo en pantalla: la tira de la semana</b> (2 de 3 · semana 3 de 6). Sale del modelo de semanas
+      (<code>weeks-model.md</code>), que ya lo calcula para Inicio. Si no hay programa (sesión libre que no cuenta), no se pinta.</li>
+    <li><b>Dato nuevo: el delta de volumen</b> contra la misma sesión la última vez. Ya existe: <code>volumeDeltas</code>
+      (<code>utils/sessionRecap.js</code>), el que usa el historial. Si la sesión no tiene anterior, o es libre, no sale.</li>
+    <li><b>Pie fijo</b> fuera del <code>ScrollView</code>. «Falta…» hace <code>scrollTo</code> a la tarjeta del RPE.</li>
+    <li><b>Récords: máximo 3</b>, ordenados por % de mejora, y «Ver N más» con el plegado de <code>collapseOut</code>
+      (UI-MIGRATION §9, tarjeta plegable).</li>
+    <li><b>«Vs. última sesión» sin series</b>: sale <code>setPillsFor</code> del recap. Trofeo junto al delta en los ejercicios con récord.</li>
+    <li><b>Carga sin el número</b>: solo <code>loadInfo.pct</code>. Si aún no hay media de 7 días, la fila no sale.</li>
+    <li><b>Nota</b>: la celda edita <code>entry.notes</code> directamente, ya rellena con lo apuntado en el entreno.</li>
+  </ul>
+</div>
+
+<script>
+  // Escala de RPE pulsable en la propuesta (solo maqueta)
+  const p1 = document.getElementById('p1');
+  const ask = p1.querySelector('[data-ask="rpe"]');
+  const count = p1.querySelector('[data-count]');
+  const hint = p1.querySelector('[data-hint]');
+  const loads = { 1: 58, 2: 116, 3: 175, 4: 233, 5: 291, 6: 349, 7: 407, 8: 464, 9: 524, 10: 582 };
+  p1.querySelectorAll('[data-rpe] button').forEach((b) => b.addEventListener('click', () => {
+    p1.querySelectorAll('[data-rpe] button').forEach((x) => x.classList.toggle('sel', x === b));
+    const v = +b.textContent;
+    ask.classList.add('done');
+    const pct = Math.round((loads[v] / 414 - 1) * 100);
+    p1.querySelector('[data-loadpct]').textContent = `${pct > 0 ? '+' : ''}${pct} %`;
+    count.textContent = 'Todo contestado'; count.classList.add('ok');
+    hint.style.display = 'none';
+  }));
+  hint.addEventListener('click', () => {
+    const s = document.getElementById('p1s');
+    s.scrollTo({ top: document.getElementById('p1-tu').offsetTop - 60, behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>
