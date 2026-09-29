@@ -453,6 +453,13 @@ export default function ExerciseEditorInline({
   return (
     <View style={styles.container}>
 
+      {/* ══ RESUMEN (Exercice editor elements / Resumen, 166:1245) ═══════════ */}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+        <Text style={styles.summaryMain}>{volumeLine}</Text>
+        <Text style={styles.summarySub}>{progLine}</Text>
+      </View>
+
       {/* ══ VARIANTE (no está en Figma — maqueta exercise-variants §1A) ═════ */}
       {dims.length > 0 && (
         <View style={styles.block}>
@@ -465,13 +472,6 @@ export default function ExerciseEditorInline({
           />
         </View>
       )}
-
-      {/* ══ RESUMEN (Exercice editor elements / Resumen, 166:1245) ═══════════ */}
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
-        <Text style={styles.summaryMain}>{volumeLine}</Text>
-        <Text style={styles.summarySub}>{progLine}</Text>
-      </View>
 
       {/* ══ VOLUMEN ══════════════════════════════════════════════════════════ */}
       <View style={styles.block}>

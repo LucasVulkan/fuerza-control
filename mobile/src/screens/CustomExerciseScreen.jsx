@@ -200,6 +200,13 @@ export default function CustomExerciseScreen({ navigation, route }) {
             {nameError && <Text style={styles.errorText}>{t('customExercise.nameError')}</Text>}
           </View>
 
+          {/* ══ RESUMEN ═══════════════════════════════════════════════════════ */}
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
+            <Text style={styles.summaryMain}>{volumeLine}</Text>
+            <Text style={styles.summarySub}>{progLine}</Text>
+          </View>
+
           {/* ══ VARIANTE (maqueta exercise-variants §7) ═══════════════════════ */}
           <View style={styles.block}>
             <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
@@ -214,13 +221,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
                 />
               ))}
             </View>
-          </View>
-
-          {/* ══ RESUMEN ═══════════════════════════════════════════════════════ */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
-            <Text style={styles.summaryMain}>{volumeLine}</Text>
-            <Text style={styles.summarySub}>{progLine}</Text>
           </View>
 
           {/* ══ VOLUMEN ═══════════════════════════════════════════════════════ */}

@@ -398,8 +398,8 @@ Maqueta §1A-§1B (grupo de arriba de la hoja) y §5.
 
 ### 4.1 Editor de ejercicio — fila VARIANTE
 
-`src/components/editor/ExerciseEditorInline.jsx`. Bloque nuevo **el primero**,
-encima del Resumen:
+`src/components/editor/ExerciseEditorInline.jsx`. Bloque nuevo **debajo del
+Resumen** (QA 29-sep: encima se perdía):
 
 - Etiqueta de sección `variants.section` («VARIANTE»), `secLabel`.
 - `NavRow` (`src/components/ui/EditorRows.jsx`) con el icono de ajustes
@@ -414,9 +414,8 @@ encima del Resumen:
 Contenido de la hoja (P42): grupo `variants.howTitle` («CÓMO SE HACE · SOLO
 INFORMA»), `textStyles.caps` en `mutedLight`, y debajo un grupo de filas como
 `optGroup` (radio `md`, huecos de 2 px) con una fila por dimensión declarada:
-cabecera con icono (agarre: tres dedos sobre una barra; anchura: `|↔|`, trazo
-`mutedLight`, 14 px) + nombre en `bodyStrong`, y debajo los chips de sus
-opciones.
+su nombre en `bodyStrong` **sin icono** (QA 29-sep: se quitaron) y debajo los
+chips de sus opciones.
 
 Chips: anatomía de `linkPill` del propio editor (`surface2`, radio `xs`,
 padding 9/6, `textStyles.button`; activo `accent` con texto `onAccent`). Selección
@@ -460,7 +459,7 @@ tiene sentido en un press).
 ### 4.6 Ejercicio propio
 
 `CustomExerciseScreen.jsx`: sección nueva `customExercise.variantSection`
-(«VARIANTE») justo debajo de NOMBRE, con dos `ToggleRow`: «Agarre» (pista
+(«VARIANTE») debajo del Resumen, como en el editor, con dos `ToggleRow`: «Agarre» (pista
 «Prono · Supino · Neutro») y «Anchura» («Ancho · Medio · Estrecho»). Encendido =
 todas las opciones de esa dimensión en `def.variants`. (P44 añade «A una mano»
 aquí.) Maqueta §7.
@@ -480,19 +479,19 @@ aquí.) Maqueta §7.
 
 **Probar P42**
 
-- [ ] Editor de «Jalón al pecho»: la fila VARIANTE es la primera; en la hoja,
-  elegir Neutro y Estrecho → la fila dice «Neutro · Estrecho»; tocar Neutro otra
-  vez lo desmarca.
-- [ ] Editor de sesión: «Jalón al pecho · Neutro · Estrecho» con la variante en
+- [ ] Editor de «Jalón al pecho» y «Nuevo ejercicio»: la sección VARIANTE va
+  debajo del Resumen; en la hoja, sin iconos, elegir Neutro y Estrecho → la
+  fila dice «Neutro · Estrecho»; tocar Neutro otra vez lo desmarca.
+- [x] Editor de sesión: «Jalón al pecho · Neutro · Estrecho» con la variante en
   gris en la línea del nombre; con un nombre largo se corta la variante, no el
   nombre.
-- [ ] Workout: la variante sale detrás del nombre, en gris; un ejercicio sin
+- [x] Workout: la variante sale detrás del nombre, en gris; un ejercicio sin
   variante no enseña nada.
-- [ ] Guardar: el recap y el historial dicen la variante; en el móvil del
+- [x] Guardar: el recap y el historial dicen la variante; en el móvil del
   cliente conectado la variante del programa llega con el programa.
-- [ ] Sustituir un jalón con variante por un press de banca con barra: el press
+- [x] Sustituir un jalón con variante por un press de banca con barra: el press
   no hereda el agarre.
-- [ ] Crear un ejercicio propio con Agarre: su editor enseña la fila VARIANTE
+- [x] Crear un ejercicio propio con Agarre: su editor enseña la fila VARIANTE
   con las tres opciones.
 
 ---

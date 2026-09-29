@@ -2,8 +2,8 @@
  * VariantPicker — el grupo «cómo se hace» de la hoja Variante
  * (docs/specs/exercise-variants.md §4.1, maqueta §1B).
  *
- * Una fila por dimensión que el ejercicio declara (`def.variants`): cabecera con
- * su icono y los chips de sus opciones. Selección simple por dimensión; tocar la
+ * Una fila por dimensión que el ejercicio declara (`def.variants`): su nombre y
+ * los chips de sus opciones (sin icono, decisión del usuario en QA). Selección simple por dimensión; tocar la
  * marcada la desmarca (nada es obligatorio). Lo usan el editor de ejercicio y,
  * con `programValue`, la hoja «solo hoy» del Workout, que marca debajo de cada
  * chip cuál es la del programa.
@@ -19,13 +19,11 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { Text, MAX_FONT_SCALE } from './Text';
-import { GripIcon, WidthIcon } from './EditorIcons';
 import { variantDims } from '../../utils/variants';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
-const DIM_ICON = { grip: GripIcon, width: WidthIcon };
 
 function Chip({ label, mark, active, onPress }) {
   const th     = useTheme();
@@ -53,7 +51,6 @@ function Chip({ label, mark, active, onPress }) {
 }
 
 export default function VariantPicker({ def, value, onChange, programValue = null }) {
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
 
@@ -66,13 +63,9 @@ export default function VariantPicker({ def, value, onChange, programValue = nul
   return (
     <View style={styles.group}>
       {variantDims(def).map((dim) => {
-        const Icon = DIM_ICON[dim];
         return (
           <View key={dim} style={styles.row}>
-            <View style={styles.head}>
-              <Icon size={14} color={th.colors.mutedLight} />
-              <Text style={styles.headText}>{t(`variants.dim.${dim}`)}</Text>
-            </View>
+            <Text style={styles.headText}>{t(`variants.dim.${dim}`)}</Text>
             <View style={styles.chips}>
               {def.variants[dim].map((opt) => (
                 <Chip
@@ -101,7 +94,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
     gap:               spacing.sm2,
   },
-  head:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headText: { ...textStyles.bodyStrong, color: th.colors.text },
   chips:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
