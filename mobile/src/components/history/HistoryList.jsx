@@ -25,6 +25,7 @@ import { programTemplateOf } from '../../utils/freeSessions';
 import DragSheet from '../DragSheet';
 import SheetRow from '../ui/SheetRow';
 import { Section, MenuRow } from '../ui/MenuList';
+import { ROW_ICON } from '../ui/rowIcons';
 import SessionCard from '../SessionCard';
 import { spacing, textStyles, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -260,8 +261,10 @@ export default function HistoryList() {
       {/* Gestión del historial — patrón unificado de modales (DragSheet) */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('history.manageTitle')}>
         <View style={styles.sheetBody}>
-          <SheetRow label={t('history.clear.off_program.action')} onPress={() => confirmClear('off_program')} danger />
-          <SheetRow label={t('history.clear.all.action')}         onPress={() => confirmClear('all')}         danger />
+          <Section style={styles.sheetSection}>
+            <SheetRow icon={ROW_ICON.history} label={t('history.clear.off_program.action')} onPress={() => confirmClear('off_program')} danger />
+            <SheetRow icon={ROW_ICON.trash}   label={t('history.clear.all.action')}         onPress={() => confirmClear('all')}         danger />
+          </Section>
           <Text style={styles.sheetHint}>{t('history.clearHint')}</Text>
         </View>
       </DragSheet>
@@ -312,6 +315,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hoja de gestión ──
   sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
+  sheetSection: { marginBottom: 0 },
   sheetHint: {
     ...textStyles.label, color: th.colors.mutedLight,
     lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,

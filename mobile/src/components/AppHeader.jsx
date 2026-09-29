@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { View, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView } from 'react-native';
 import { Text, TextInput } from './ui/Text';
-import Svg, { Path, G, Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -26,6 +26,7 @@ import SegmentedControl from './ui/SegmentedControl';
 import { Switch }       from './ui/EditorRows';
 import { PencilIcon }   from './ui/EditorIcons';
 import { Section, MenuRow, Status, RowIcon } from './ui/MenuList';
+import { ROW_ICON } from './ui/rowIcons';
 import FitLogo from './ui/FitLogo';
 import { formatWhen } from '../utils/formatWhen';
 import { spacing, textStyles, borders, lh } from '../theme';
@@ -72,18 +73,8 @@ function MenuIcon({ size = 24 }) {
 // ── Iconos de fila ────────────────────────────────────────────────────────────
 // Van en GRIS, no en lima: son decoración funcional, y con 12 iconos lima el
 // menú parecía un árbol de Navidad. El lima queda para lo que informa (estado,
-// badge PRO, tema activo).
-
-const ICON_NEW      = <Path d="M12 5v14M5 12h14" />;
-const ICON_ARCHIVED = <Path d="M4 7h16M4 12h16M4 17h10" />;
-const ICON_TRAINER  = <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>;
-const ICON_CLOUD    = <Path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z" />;
-const ICON_SYNC     = <G><Path d="M20.5 12a8.5 8.5 0 0 1-14 6.4" /><Path d="M3.5 12a8.5 8.5 0 0 1 14-6.4" /><Path d="M17 2.5v3.2h-3.2M7 21.5v-3.2h3.2" /></G>;
-const ICON_EXPORT   = <Path d="M12 19V5M6 11l6-6 6 6" />;
-const ICON_IMPORT   = <Path d="M12 5v14M6 13l6 6 6-6" />;
-const ICON_PLAN     = <Path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z" />;
-const ICON_DOCS     = <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>;
-const ICON_TRASH    = <G><Path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></G>;
+// badge PRO, tema activo). Los trazos viven en `ui/rowIcons`, compartidos con
+// las hojas de opciones.
 
 // ── Bloque de identidad (solo PRO) ────────────────────────────────────────────
 // Quién eres va arriba, con el badge PRO al lado, no perdido en una sección
@@ -270,7 +261,7 @@ function ExportSheet({ visible, onClose }) {
       <View style={styles.group}>
         <MenuRow
           isFirst
-          icon={<RowIcon>{ICON_EXPORT}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.export}</RowIcon>}
           label={exporting === 'full' ? t('header.exporting') : t('header.exportBackup')}
           sub={t('header.exportBackupSub')}
           minHeight={62}
@@ -279,7 +270,7 @@ function ExportSheet({ visible, onClose }) {
         />
         <MenuRow
           isLast
-          icon={<RowIcon>{ICON_ARCHIVED}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.archived}</RowIcon>}
           label={exporting === 'log' ? t('header.exporting') : t('header.exportProgramHistory')}
           sub={t('header.exportProgramHistorySub')}
           minHeight={62}
@@ -347,7 +338,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
       <Section title={t('header.sectionPrograms')}>
         <MenuRow
-          icon={<RowIcon>{ICON_NEW}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.new}</RowIcon>}
           label={t('header.newProgramItem')}
           onPress={() => {
             if (clientSync?.slotId) {
@@ -370,7 +361,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           }}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_ARCHIVED}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.archived}</RowIcon>}
           label={t('header.archivedProgramsItem')}
           value={archivedCount > 0 ? String(archivedCount) : null}
           onPress={() => { onClose(); onShowArchived(); }}
@@ -381,7 +372,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           quedan solo las acciones manuales. */}
       <Section title={t('header.sectionConnections')}>
         <MenuRow
-          icon={<RowIcon>{ICON_TRAINER}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.user}</RowIcon>}
           label={t('header.trainerRow')}
           sub={trainerSub}
           minHeight={62}
@@ -389,7 +380,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           onPress={() => go('TrainerConnection')}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_CLOUD}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.cloud}</RowIcon>}
           label={t('header.driveRow')}
           sub={driveSub}
           minHeight={62}
@@ -402,7 +393,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         />
         {isPro && (
           <MenuRow
-            icon={<RowIcon>{ICON_SYNC}</RowIcon>}
+            icon={<RowIcon>{ROW_ICON.sync}</RowIcon>}
             label={t('header.clientSyncRow')}
             sub={syncSub}
             minHeight={62}
@@ -414,13 +405,13 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
       <Section title={t('header.sectionData')}>
         <MenuRow
-          icon={<RowIcon>{ICON_EXPORT}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.export}</RowIcon>}
           label={t('header.exportRow')}
           value={t('header.exportRowValue')}
           onPress={() => { onClose(); onShowExport(); }}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_IMPORT}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.import}</RowIcon>}
           label={t('header.importFile')}
           onPress={() => { onClose(); onImport(); }}
         />
@@ -473,14 +464,14 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
       <Section title={t('header.sectionAccount')}>
         <MenuRow
-          icon={<RowIcon>{ICON_PLAN}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.plan}</RowIcon>}
           label={t('header.planRow')}
           badge={isPro ? 'PRO' : 'FREE'}
           badgeMuted={!isPro}
           onPress={isPro ? undefined : () => setShowPaywall(true)}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_DOCS}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.docs}</RowIcon>}
           label={t('header.docsRow')}
           onPress={() => go('Docs')}
         />
@@ -488,7 +479,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
             dentro. Va aquí, en CUENTA, y no dentro de Sincronización: esa
             fila es solo para Pro y se abre desde Clientes. */}
         <MenuRow
-          icon={<RowIcon color={th.tint.red50}>{ICON_TRASH}</RowIcon>}
+          icon={<RowIcon color={th.tint.red50}>{ROW_ICON.trash}</RowIcon>}
           label={t('header.deleteAccountRow')}
           labelColor={th.tint.red50}
           sub={t('header.deleteAccountSub')}

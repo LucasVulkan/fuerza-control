@@ -45,14 +45,16 @@ export function SectionLabel({ children, style }) {
 /**
  * Sección de la lista. Sin `title` pinta solo el grupo de filas (lo que
  * necesitan las hojas, que ya llevan su propio título).
+ * `style` sobrescribe el margen de abajo: en una hoja, la última sección no
+ * necesita el aire que separa secciones.
  * `Children.toArray` descarta los `false`/`null` de las filas condicionales,
  * así que la primera y la última se calculan solas.
  */
-export function Section({ title, children }) {
+export function Section({ title, children, style }) {
   const styles = useThemedStyles(makeStyles);
   const rows   = Children.toArray(children);
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, style]}>
       {title != null && <Text style={styles.sectionLabel}>{title}</Text>}
       <View style={styles.group}>
         {rows.map((row, i) =>

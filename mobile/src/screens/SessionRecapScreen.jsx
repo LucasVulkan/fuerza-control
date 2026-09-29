@@ -46,6 +46,7 @@ import { athleteProgress } from '../utils/stageProgress';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { MenuRow, RowIcon } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import { CheckIcon, PencilIcon, ChevronDown } from '../components/ui/EditorIcons';
 import { FOLD_MS } from '../components/ui/collapseOut';
 import InfoSection from '../components/ui/InfoSection';
@@ -654,7 +655,7 @@ export default function SessionRecapScreen({ navigation, route }) {
                   <MenuRow
                     isFirst
                     isLast={!onTheFly}
-                    icon={<RowIcon><Path d="M12 5v14M5 12h14" /></RowIcon>}
+                    icon={<RowIcon>{ROW_ICON.new}</RowIcon>}
                     label={exercisesAdded
                       ? t('freeSession.exercisesAdded')
                       : t('freeSession.addExercises', { count: newExIds.length })}
@@ -674,12 +675,7 @@ export default function SessionRecapScreen({ navigation, route }) {
                   <MenuRow
                     isFirst={!(newExIds.length > 0 || exercisesAdded)}
                     isLast
-                    icon={(
-                      <RowIcon>
-                        <Path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <Path d="M17 21v-8H7v8M7 3v5h8" />
-                      </RowIcon>
-                    )}
+                    icon={<RowIcon>{ROW_ICON.save}</RowIcon>}
                     label={templateSaved ? t('freeSession.saved') : t('freeSession.saveAsFree')}
                     sub={templateSaved ? null : t('recap.saveAsFreeSub')}
                     control={templateSaved ? <CheckIcon size={16} color={th.colors.accent} /> : null}

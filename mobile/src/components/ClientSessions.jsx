@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import DragSheet from './DragSheet';
-import { MenuRow } from './ui/MenuList';
+import SheetRow from './ui/SheetRow';
+import { ROW_ICON } from './ui/rowIcons';
 import { ExerciseLines, SessionRow, TodayCard, SectionHeader } from './SessionList';
 import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
 import { sessionPlan } from '../utils/sessionPlan';
@@ -411,9 +412,10 @@ export function ClientFreeSessions({ client, canStart, log }) {
             <Text style={[styles.sheetHint, styles.sheetHintTop]}>{t('templates.assignSession.noProgram')}</Text>
           )}
           <View style={styles.sheetGroup}>
-            <MenuRow
+            <SheetRow
               isFirst
               isLast
+              icon={ROW_ICON.new}
               label={t('clients.freeSheet.blank')}
               sub={t('clients.freeSheet.blankDesc')}
               subLines={0}
@@ -426,8 +428,9 @@ export function ClientFreeSessions({ client, canStart, log }) {
               <Text style={styles.sheetLabel}>{t('clients.freeSheet.fromTemplate').toUpperCase()}</Text>
               <View style={styles.sheetGroup}>
                 {library.map((tpl, i) => (
-                  <MenuRow
+                  <SheetRow
                     key={tpl.id}
+                    icon={ROW_ICON.preset}
                     isFirst={i === 0}
                     isLast={i === library.length - 1}
                     label={nameOf(tpl)}

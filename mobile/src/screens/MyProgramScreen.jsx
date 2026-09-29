@@ -30,6 +30,8 @@ import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
 import { Text } from '../components/ui/Text';
 import { Section, MenuRow } from '../components/ui/MenuList';
+import SheetRow from '../components/ui/SheetRow';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import DragSheet from '../components/DragSheet';
 import ProgramCard from '../components/ui/ProgramCard';
 import NoProgram from '../components/ui/NoProgram';
@@ -357,9 +359,10 @@ export default function MyProgramScreen() {
       {menuOpen && (
         <DragSheet visible onClose={() => setMenuOpen(false)} title={t('home.moreOptions')}>
           <View style={styles.sheetGroup}>
-            <MenuRow
+            <SheetRow
               isFirst
               isLast
+              icon={ROW_ICON.archived}
               label={t('home.archive')}
               onPress={() => { setMenuOpen(false); setArchiveOpen(true); }}
             />
@@ -374,18 +377,20 @@ export default function MyProgramScreen() {
             {'\n'}{t('home.archiveModal.desc')}
           </Text>
           <View style={styles.sheetGroup}>
-            <MenuRow
+            <SheetRow
               isFirst
+              icon={ROW_ICON.archived}
               label={t('home.archiveModal.keepHistory')}
               sub={t('home.archiveModal.keepHistoryDesc')}
               subLines={0}
               minHeight={62}
               onPress={() => handleArchive(false)}
             />
-            <MenuRow
+            <SheetRow
               isLast
+              danger
+              icon={ROW_ICON.trash}
               label={t('home.archiveModal.clearHistory')}
-              labelColor={th.tint.red50}
               sub={t('home.archiveModal.clearHistoryDesc')}
               subLines={0}
               minHeight={62}

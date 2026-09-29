@@ -4,7 +4,7 @@
 > En corto: Mejoras visuales y de estandarización apuntadas el 29-sep-2026 para más adelante: pantallas que se deslizan con el segmentado, un recap legible, hojas de opciones y confirmaciones todas iguales, textos sin traducir, un solo lima, cabeceras, pantallas vacías y una hoja de progresión duplicada.
 > Fase U28 · pendiente · Progresión: las pantallas se deslizan con el segmentado · §1
 > Fase U29 · hecho · Recap: distribución y legibilidad · §2
-> Fase U30 · pendiente · Hojas de opciones con icono y estandarizadas · §3
+> Fase U30 · hecho · Hojas de opciones con icono y estandarizadas · §3
 > Fase U31 · pendiente · Sesiones libres: icono delante o sin hueco · §4
 > Fase U32 · pendiente · Programa de cliente: botones fuera de la tarjeta · §5
 > Fase U33 · pendiente · Confirmaciones y avisos sin Alert nativo · §6
@@ -140,25 +140,81 @@ el móvil del entrenador es su copia y no se mueve; ahora pasa por
 
 ## 3. U30 — Hojas de opciones con icono y estandarizadas
 
-Las hojas deslizables con listas de opciones tienen que llevar icono en cada
-fila y ser todas la misma pieza.
+Las hojas deslizables con listas de opciones llevan icono en cada fila y son
+todas la misma pieza.
 
-Hay dos tipos de fila de opción:
+**Modelo elegido por el usuario (29-sep-2026): la fila de Inicio y del menú ≡**
+(`MenuRow`): icono · texto · dato a la derecha si hace falta · galón, y
+subtítulo cuando lo necesita. Las **hojas de selección** (elegir y confirmar,
+como «+ cliente», los filtros o el modo de historial) son otro formato y se
+quedan como están.
 
-| Pieza | Icono | Dónde |
+Cómo quedó:
+
+- `ui/SheetRow` deja de ser su propia anatomía (fila suelta `surface2` sin
+  icono) y pasa a ser `MenuRow` + **cerrar la hoja con su animación**. Es una
+  capa y no una prop porque en el menú ≡ hay filas que NO cierran (los
+  interruptores, exportar mientras exporta). Van dentro de `Section` sin título.
+- `ui/rowIcons` junta los trazos de icono de fila (`ROW_ICON.edit`, `.trash`…):
+  los del menú ≡ salen de `AppHeader` y se añaden los de las hojas.
+- `danger` pasa a `tint/red50` (el rojo de «Borrar cuenta»), icono y texto. Un
+  recuento va en `value` («Archivados · 3» → «Archivados» con el 3 a la derecha).
+- `Section` acepta `style` para quitar el margen de abajo dentro de una hoja.
+
+Hojas tocadas:
+
+| Hoja | Antes | Ahora |
 |---|---|---|
-| `MenuRow` (`ui/MenuList.jsx`) | sí | menú ≡ (`AppHeader`), Inicio, Mi programa, `ClientSessions` |
-| `SheetRow` (`ui/SheetRow.jsx`) | no | Plantillas (`ProgramScreen`, 9 filas), Clientes (8), editor de sesión (8) |
+| Plantillas · `···` de programa (6) y de sesión (3) | `SheetRow` sin icono | con icono |
+| Clientes · `⋯` del programa (8) | `SheetRow` sin icono | con icono; archivados con el recuento a la derecha |
+| Clientes · pulsación larga en la tarjeta (5) | `Modal` propio con `›` de texto | `DragSheet` + `SheetRow`; empezar en lima, preparar en azul, badge de sesiones nuevas |
+| Editor de sesión · Añadir (3), `···` (5) y presets (N) | `SheetRow` sin icono / filas a mano con `✕` | con icono; el preset con su meta de subtítulo y el ✕ como icono |
+| Historial · gestionar (2) | `SheetRow` rojo sin icono | con icono |
+| Workout · Añadir (2) | filas a mano | `SheetRow` con icono |
+| Inicio · sesión libre (3) y plantillas (N) | `MenuRow` sin icono | con icono |
+| Mi programa · `⋯` (1) y archivar (2) | `MenuRow` sin icono | con icono; borrar historial con `danger` |
+| Ficha de cliente · sesión libre (1 + N) | `MenuRow` sin icono | con icono |
 
-- `history/HistoryList.jsx` mezcla las dos en el mismo fichero.
-- La hoja «Añadir» del Workout (`WorkoutScreen.jsx` ~725) tiene filas hechas a
-  mano y hace `setAddSheetOpen(false)`: se cierra de golpe, el fallo que
-  `SheetRow` ya arregló cerrando con la animación de `DragSheet`.
-- Decidir entre dar a `SheetRow` una prop de icono o pasar sus usos a
-  `MenuRow`. Lo segundo deja una sola pieza.
+Se quedan fuera, con motivo: los filtros del historial, el modo de historial del
+código de cliente y las hojas de «+ cliente» y filtros de Clientes (son de
+selección); las hojas que son formularios (nuevo programa, cobro, bloque,
+progresión, variante…). El Alert de borrar un cobro (pulsación larga en la
+fila del cobro) es de U33.
 
-El long press de cliente que recordaba el usuario es borrar un cobro
-(`ClientsScreen.jsx` ~2942), con `Alert` nativo: va en U33.
+**Trampa de iOS.** Si la acción abre OTRO Modal, la hoja se cierra al instante
+(`setX(false)`) y no con la animación: iOS no presenta un Modal mientras otro se
+está yendo. Así quedan el menú de la tarjeta de cliente (el editor de programa
+es un Modal) y la hoja «Añadir» del Workout (el editor de bloque también).
+
+**Probar U30**
+
+- [ ] Plantillas → `···` de un programa: seis filas con icono (ver, editar,
+  duplicar, compartir, exportar y borrar en rojo), agrupadas con esquinas
+  redondeadas arriba y abajo. Tocar una cierra la hoja deslizando y hace lo suyo.
+- [ ] Plantillas → pestaña Sesiones → `···`: editar, duplicar y borrar con icono.
+- [ ] Clientes → ficha → Programa → `⋯`: filas con icono; «Programas
+  archivados» lleva el número a la derecha; borrar en rojo.
+- [ ] Clientes → pulsación larga en una tarjeta: sale la hoja de siempre de la
+  app (se arrastra para cerrar), con el nombre del cliente de título. Un
+  cliente sin app lleva primero EMPEZAR en lima; uno con app, «Preparar
+  próxima sesión» en azul. Progreso lleva el badge de sesiones nuevas si hay.
+  Editar programa abre el editor sin quedarse colgado (iPhone incluido).
+- [ ] Editor de sesión → «+ Añadir»: ejercicio, bloque y (si hay) desde preset,
+  con icono. Desde preset: cada preset con su resumen debajo; el ✕ lo borra
+  (con su aviso) y tocar la fila lo añade.
+- [ ] Editor de sesión → `···`: renombrar, compartir como texto, duplicar y
+  borrar (rojo) con icono.
+- [ ] Historial → gestionar: las dos opciones de borrar en rojo con icono y el
+  texto de ayuda debajo.
+- [ ] Workout de una sesión libre → «+ Añadir»: ejercicio y bloque con icono;
+  «bloque» abre el editor de bloque sin quedarse colgado (iPhone incluido).
+- [ ] Inicio → «+ Sesión libre»: empezar ya, crear y desde plantillas con icono;
+  la lista de plantillas también.
+- [ ] Mi programa → `⋯` → Archivar: la hoja de archivar con «conservar» y
+  «borrar historial» (rojo), las dos con icono.
+- [ ] Ficha de cliente → sesión libre: en blanco y la lista de plantillas con icono.
+- [ ] El menú ≡ se ve y funciona igual que antes (sus iconos ahora vienen del
+  módulo común).
 
 ## 4. U31 — Sesiones libres: icono delante o sin hueco
 
@@ -257,7 +313,7 @@ probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 |---|---|---|---|
 | U28 | Pager sincronizado con el segmentado de Progresión; segmentado a Reanimated | pendiente | 🟡 |
 | U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
-| U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | pendiente | 🟡 |
+| U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — pendiente de probar en dispositivo | 🟡 |
 | U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
 | U32 | Botones del programa de cliente fuera de la tarjeta | pendiente | 🟢 |
 | U33 | `ui/ConfirmSheet` y fuera los `Alert.alert` | pendiente | 🟡 |

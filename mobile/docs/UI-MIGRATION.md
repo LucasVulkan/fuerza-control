@@ -1363,8 +1363,9 @@ listas ni controles nuevos.
   `{ options: [{id,label}], value, onChange }`. Solo existen 2 variantes reales en Figma;
   la de 2 líneas ("Etapas") es exclusiva de selección de etapa.
 - **Modales "···"**: Figma unifica TODOS los menús contextuales de la app en un mismo
-  patrón. Conforme se restylea cada pantalla, sus menús propios deben converger ahí.
-  La fila de opción vive en **`sheetRowBase(th)` (`src/theme.js`)**: `surface2`,
+  patrón (fila con icono gris, texto y galón). Desde U30 la fila de opción es
+  **`SheetRow`** (ver *Modales — SIEMPRE `DragSheet`*, abajo). `sheetRowBase(th)`
+  (`src/theme.js`) queda para las dos filas sueltas que no son de hoja: `surface2`,
   `radius/sm`, px `space/md`, py `space/sm2` y **`minHeight: 48`** (QA: "las filas
   son muy finas"). Antes estaba copiada en seis pantallas, así que subir el alto
   había que hacerlo seis veces; ahora se cambia en un sitio. `minHeight` y no más
@@ -1405,10 +1406,18 @@ estilar y desentona con todo lo demás.
   una y el arrastre saltaría al cruzar de una a otra. El backdrop reclama el gesto solo
   al moverse (`onMoveShouldSetPanResponder`), para que un toque suelto siga siendo
   "cerrar".
-- Patrón de fila ya usado en los dos editores: fondo `surface2`, `radius/sm`,
-  `padding: space/md`, texto `text/card-type` y la flecha `ArrowIcon` a la derecha
-  (`SheetRow` en `SessionEditorScreen.jsx`). Las acciones destructivas van en
-  `color/red`, texto y flecha.
+- **Hojas con lista de opciones: `SheetRow` (`ui/SheetRow`) dentro de `Section`**
+  (sin título, para que la primera y la última lleven sus radios). Desde
+  pulido-ui.md §3 (U30) `SheetRow` es `MenuRow` —icono · texto · subtítulo ·
+  dato a la derecha · galón, la fila del menú ≡ y de Inicio— que además **cierra
+  la hoja con su animación**. Todas llevan icono, de `ROW_ICON` (`ui/rowIcons`):
+  `icon={ROW_ICON.edit}`. Lo destructivo, `danger` (icono y texto en
+  `tint/red50`, el de «Borrar cuenta»). Un recuento va en `value`, no pegado a la
+  etiqueta. Si la acción abre OTRO Modal, cerrar la hoja a mano antes
+  (`setX(false)`): en iOS no se presenta un Modal mientras otro se va.
+- **Hojas de selección** (elegir y confirmar: + cliente, filtros, modo de
+  historial) son otra cosa y se quedan como están: `MenuRow` con check a la
+  derecha, sin cerrar al tocar.
 - El `SettingsSheet` de `AppHeader.jsx` es el mismo patrón anterior a extraer el
   componente; si lo tocas, hazlo converger en `DragSheet` en vez de duplicar.
 

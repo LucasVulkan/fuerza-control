@@ -17,7 +17,10 @@ import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
-import { spacing, textStyles, borders, withOpacity, sheetRowBase, lh } from '../theme';
+import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
+import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../utils/formatters';
 import { defaultBlock } from '../utils/conditioningBlocks';
@@ -723,22 +726,13 @@ export default function WorkoutScreen() {
 
       {/* Hoja de "añadir" de la sesión libre — mismas opciones que el editor */}
       <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
-        <View style={styles.sheetBody}>
-          <TouchableOpacity
-            style={styles.sheetRow}
-            onPress={() => { setAddSheetOpen(false); handleAddExercise(); }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sheetRowText}>{t('editor.addExerciseOption')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.sheetRow}
-            onPress={() => { setAddSheetOpen(false); handleAddBlock(); }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sheetRowText}>{t('editor.addBlockOption')}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Las mismas dos filas que la hoja «Añadir» del editor de sesión. */}
+        <Section style={styles.sheetSection}>
+          {/* Se cierra al instante y no con la animación: el bloque abre otro
+              Modal, y en iOS no se presenta uno mientras otro se va. */}
+          <SheetRow icon={ROW_ICON.exercise} label={t('editor.addExerciseOption')} onPress={() => { setAddSheetOpen(false); handleAddExercise(); }} />
+          <SheetRow icon={ROW_ICON.block}    label={t('editor.addBlockOption')}    onPress={() => { setAddSheetOpen(false); handleAddBlock(); }} />
+        </Section>
       </DragSheet>
 
       {/* Objetivo de un ejercicio añadido sobre la marcha. Se cierra solo si el
@@ -991,12 +985,7 @@ const makeStyles = (th) => StyleSheet.create({
   addBtnPlus: { color: th.colors.accent },
 
   // Hoja de "añadir" + editor de bloque de la sesión libre
-  sheetBody:    { paddingBottom: spacing.sm, gap: spacing.md },
-  sheetRow: sheetRowBase(th),
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
+  sheetSection: { marginBottom: spacing.sm },
   modalSafe:    { flex: 1, backgroundColor: th.colors.bg },
   blockHeader: {
     flexDirection:     'row',

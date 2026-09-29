@@ -29,11 +29,13 @@ import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import { ArrowIcon, MenuIcon, DragIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, MenuIcon, DragIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { defaultBlock } from '../utils/conditioningBlocks';
@@ -542,35 +544,40 @@ export default function SessionEditorScreen({ navigation, route }) {
 
       {/* ── Hoja de "añadir" — el Alert nativo de Android no se puede estilar ── */}
       <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
-        <View style={styles.sheetBody}>
+        <Section style={styles.sheetSection}>
           <SheetRow
+            icon={ROW_ICON.exercise}
             label={t('editor.addExerciseOption')}
             onPress={handleAddExercise}
           />
           <SheetRow
+            icon={ROW_ICON.block}
             label={t('editor.addBlockOption')}
             onPress={createNewBlock}
           />
           {blockPresets.length > 0 && (
             <SheetRow
+              icon={ROW_ICON.preset}
               label={t('editor.addPresetOption')}
               onPress={() => setPresetSheetOpen(true)}
             />
           )}
-        </View>
+        </Section>
       </DragSheet>
 
       {/* ── Menú "···" ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.sessionMenuTitle')}>
-        <View style={styles.sheetBody}>
+        <Section style={styles.sheetSection}>
           {/* Sin lápiz en la cabecera, esto es lo que recuerda que el nombre se
               puede cambiar; el toque sobre el propio nombre sigue valiendo. */}
           <SheetRow
+            icon={ROW_ICON.rename}
             label={t('editor.renameOption')}
             onPress={startEditName}
           />
           {/* Sin pesos: aquí no se sabe para quién es (trainer-logging.md §5). */}
           <SheetRow
+            icon={ROW_ICON.text}
             label={t('sessionText.menu')}
             onPress={() => {
               setMenuOpen(false);
@@ -581,12 +588,14 @@ export default function SessionEditorScreen({ navigation, route }) {
           />
           {isFree && (
             <SheetRow
+              icon={ROW_ICON.trash}
               label={t('freeSession.delete')}
               danger
               onPress={handleDeleteFree}
             />
           )}
           {!isFree && <SheetRow
+            icon={ROW_ICON.duplicate}
             label={t('editor.sessionDuplicateBtn')}
             onPress={() => {
               const newId = duplicateSessionInProgram(programId, templateId);
@@ -598,12 +607,13 @@ export default function SessionEditorScreen({ navigation, route }) {
           />}
           {canDelete && programId && (
             <SheetRow
+              icon={ROW_ICON.trash}
               label={t('editor.sessionDeleteBtn')}
               danger
               onPress={handleDeleteSession}
             />
           )}
-        </View>
+        </Section>
       </DragSheet>
 
       {/* ── Selector de preset ── */}
@@ -612,37 +622,34 @@ export default function SessionEditorScreen({ navigation, route }) {
         onClose={() => setPresetSheetOpen(false)}
         title={t('blocks.fromPreset')}
       >
-        <View style={styles.sheetBody}>
+        <Section style={styles.sheetSection}>
           {blockPresets.map((preset) => (
-            <View key={preset.presetId} style={styles.presetRow}>
-              <TouchableOpacity
-                style={{ flex: 1, minWidth: 0 }}
-                onPress={() => handlePickPreset(preset)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.presetName} numberOfLines={1}>
-                  {preset.name ?? t(`blocks.formats.${preset.format}`)}
-                </Text>
-                <Text style={styles.presetMeta}>{blockMeta(preset, t)}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                hitSlop={8}
-                onPress={() => {
-                  Alert.alert(
-                    t('blocks.deletePreset'),
-                    t('blocks.deleteConfirm', { name: preset.name ?? t(`blocks.formats.${preset.format}`) }),
-                    [
-                      { text: t('common.cancel'), style: 'cancel' },
-                      { text: t('blocks.deletePreset'), style: 'destructive', onPress: () => deleteBlockPreset(preset.presetId) },
-                    ]
-                  );
-                }}
-              >
-                <Text style={styles.presetRemove}>✕</Text>
-              </TouchableOpacity>
-            </View>
+            <SheetRow
+              key={preset.presetId}
+              icon={ROW_ICON.preset}
+              label={preset.name ?? t(`blocks.formats.${preset.format}`)}
+              sub={blockMeta(preset, t)}
+              onPress={() => handlePickPreset(preset)}
+              control={(
+                <TouchableOpacity
+                  hitSlop={8}
+                  onPress={() => {
+                    Alert.alert(
+                      t('blocks.deletePreset'),
+                      t('blocks.deleteConfirm', { name: preset.name ?? t(`blocks.formats.${preset.format}`) }),
+                      [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        { text: t('blocks.deletePreset'), style: 'destructive', onPress: () => deleteBlockPreset(preset.presetId) },
+                      ]
+                    );
+                  }}
+                >
+                  <CloseIcon size={14} color={th.colors.mutedLight} />
+                </TouchableOpacity>
+              )}
+            />
           ))}
-        </View>
+        </Section>
       </DragSheet>
 
     </SafeAreaView>
@@ -827,15 +834,5 @@ const makeStyles = (th) => StyleSheet.create({
   addBtnPlus:  { color: th.colors.accent },
 
   // ── Hojas ──
-  sheetBody: { paddingBottom: spacing.sm, gap: spacing.md },
-  presetRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: th.colors.surface2,
-    borderRadius: th.radius.sm,
-    padding: spacing.md,
-  },
-  presetName:   { ...textStyles.bodyStrong, color: th.colors.text },
-  // Mismo par nombre+meta que `rowMeta`: sin margen, lo separa el interlineado.
-  presetMeta:   { ...textStyles.label, color: th.colors.mutedLight },
-  presetRemove: { ...textStyles.body, color: th.colors.mutedLight, padding: spacing.xs },
+  sheetSection: { marginBottom: spacing.sm },
 });

@@ -35,6 +35,8 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import { ToggleRow } from '../components/ui/EditorRows';
@@ -605,33 +607,39 @@ export default function ProgramScreen() {
         onClose={() => setMenuTarget(null)}
         title={menuProgram?.name ?? ''}
       >
-        <View style={styles.sheetRows}>
+        <Section style={styles.sheetRows}>
           <SheetRow
+            icon={ROW_ICON.view}
             label={t('templates.actionView')}
             onPress={() => setPrintingProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.edit}
             label={t('templates.actionEdit')}
             onPress={() => setEditingProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.duplicate}
             label={t('templates.contextDuplicate')}
             onPress={() => handleDuplicate(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.share}
             label={t('templates.actionShare')}
             onPress={() => shareSpecificProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.export}
             label={t('templates.contextExport')}
             onPress={() => exportSpecificProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.trash}
             danger
             label={t('templates.contextDelete')}
             onPress={() => setDeleteTarget(menuTarget)}
           />
-        </View>
+        </Section>
       </DragSheet>
 
       {/* Montada solo mientras hay destino: así la selección de cliente y el
@@ -659,12 +667,14 @@ export default function ProgramScreen() {
         onClose={() => setSesMenu(null)}
         title={sesName(sessionTemplates[sesMenu])}
       >
-        <View style={styles.sheetRows}>
+        <Section style={styles.sheetRows}>
           <SheetRow
+            icon={ROW_ICON.edit}
             label={t('templates.actionEdit')}
             onPress={() => { const id = sesMenu; setSesMenu(null); navigation.navigate('SessionEditor', { templateId: id }); }}
           />
           <SheetRow
+            icon={ROW_ICON.duplicate}
             label={t('templates.contextDuplicate')}
             onPress={() => {
               copyFreeTemplate(sesMenu, { name: sesName(sessionTemplates[sesMenu]) + t('templates.copyNameSuffix'), asTemplate: true });
@@ -673,11 +683,12 @@ export default function ProgramScreen() {
             }}
           />
           <SheetRow
+            icon={ROW_ICON.trash}
             danger
             label={t('templates.contextDelete')}
             onPress={() => { setSesDelete(sesMenu); setSesMenu(null); }}
           />
-        </View>
+        </Section>
       </DragSheet>
 
       {sesAssign && sessionTemplates[sesAssign] && (
@@ -777,7 +788,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas ──
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
-  sheetRows: { gap: spacing.sm, paddingBottom: spacing.sm },
+  sheetRows: { marginBottom: spacing.sm },
   sheetLabel: {
     ...textStyles.caps,
     color:         th.colors.mutedLight,

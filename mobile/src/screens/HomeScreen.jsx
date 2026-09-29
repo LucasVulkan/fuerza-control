@@ -15,7 +15,8 @@ import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, ad
 import AppHeader from '../components/AppHeader';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
-import { MenuRow } from '../components/ui/MenuList';
+import SheetRow from '../components/ui/SheetRow';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import NoProgram from '../components/ui/NoProgram';
 import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useThemedStyles } from '../useTheme';
@@ -493,16 +494,18 @@ export default function HomeScreen() {
       {freeSheet && (
         <DragSheet visible onClose={() => setFreeSheet(false)} title={t('freeSession.startTitle')}>
           <View style={styles.sheetGroup}>
-            <MenuRow
+            <SheetRow
               isFirst
+              icon={ROW_ICON.start}
               label={t('freeSession.startNow')}
               sub={t('freeSession.startNowDesc')}
               subLines={0}
               minHeight={62}
               onPress={() => { setFreeSheet(false); startFree(); }}
             />
-            <MenuRow
+            <SheetRow
               isLast={templates.length === 0}
+              icon={ROW_ICON.new}
               label={t('freeSession.create')}
               sub={t('freeSession.createDesc')}
               subLines={0}
@@ -516,8 +519,9 @@ export default function HomeScreen() {
                 la adaptas sin tocar la plantilla. Sin plantillas (sin PRO, o sin
                 haber hecho ninguna) no sale. */}
             {templates.length > 0 && (
-              <MenuRow
+              <SheetRow
                 isLast
+                icon={ROW_ICON.preset}
                 label={t('freeSession.fromTemplates', { count: templates.length })}
                 sub={t('freeSession.fromTemplatesDesc')}
                 subLines={0}
@@ -534,8 +538,9 @@ export default function HomeScreen() {
         <DragSheet visible onClose={() => setTplList(false)} title={t('freeSession.templatesTitle')}>
           <View style={styles.sheetGroup}>
             {templates.map((tpl, i) => (
-              <MenuRow
+              <SheetRow
                 key={tpl.id}
+                icon={ROW_ICON.preset}
                 isFirst={i === 0}
                 isLast={i === templates.length - 1}
                 label={freeName(tpl)}

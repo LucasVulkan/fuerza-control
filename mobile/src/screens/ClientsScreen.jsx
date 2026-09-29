@@ -25,6 +25,8 @@ import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ClientSessions, { ClientFreeSessions } from '../components/ClientSessions';
@@ -434,21 +436,23 @@ function AssignedProgramCard({
 
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
-        <View style={styles.sheetBody}>
-          <SheetRow label={t('clients.menuNewProgram')} onPress={onNewProgram} />
-          {onUpload && <SheetRow label={t('clients.menuUpload')} onPress={onUpload} />}
-          <SheetRow label={t('clients.menuImport')} onPress={onImport} />
-          <SheetRow label={t('clients.menuShare')}  onPress={onShare} />
-          <SheetRow label={t('clients.menuExport')} onPress={onExport} />
+        <Section style={styles.sheetSection}>
+          <SheetRow icon={ROW_ICON.new}    label={t('clients.menuNewProgram')} onPress={onNewProgram} />
+          {onUpload && <SheetRow icon={ROW_ICON.send} label={t('clients.menuUpload')} onPress={onUpload} />}
+          <SheetRow icon={ROW_ICON.import} label={t('clients.menuImport')} onPress={onImport} />
+          <SheetRow icon={ROW_ICON.share}  label={t('clients.menuShare')}  onPress={onShare} />
+          <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={onExport} />
           {archivedCount > 0 && (
             <SheetRow
-              label={`${t('clients.menuArchived')} · ${archivedCount}`}
+              icon={ROW_ICON.archived}
+              label={t('clients.menuArchived')}
+              value={String(archivedCount)}
               onPress={onShowArchived}
             />
           )}
-          {onDeassign && <SheetRow label={t('clients.menuDeassign')} onPress={onDeassign} />}
-          <SheetRow label={t('clients.menuDelete')} onPress={onDelete} danger />
-        </View>
+          {onDeassign && <SheetRow icon={ROW_ICON.unassign} label={t('clients.menuDeassign')} onPress={onDeassign} />}
+          <SheetRow icon={ROW_ICON.trash} label={t('clients.menuDelete')} onPress={onDelete} danger />
+        </Section>
       </DragSheet>
     </>
   );
@@ -1270,38 +1274,14 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
   );
 }
 
-// ── Action sheet icons ──────────────────────────────────────────────────────────
+// ── Iconos de la tarjeta de cliente ──────────────────────────────────────────────────────────
 
-function ChartIcon({ size = 20, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M18 20V10M12 20V4M6 20v-6" stroke={color} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  );
-}
 function TargetIcon({ size = 20, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.8} />
       <Circle cx="12" cy="12" r="5" stroke={color} strokeWidth={1.8} />
       <Circle cx="12" cy="12" r="1.6" fill={color} />
-    </Svg>
-  );
-}
-function PencilIcon({ size = 20, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 20h9" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
-            stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-function PersonIcon({ size = 20, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx="12" cy="8" r="4" stroke={color} strokeWidth={1.8} />
     </Svg>
   );
 }
@@ -1315,61 +1295,51 @@ function CloudUpIcon({ size = 20, color }) {
 }
 
 // ── ClientActionsSheet ──────────────────────────────────────────────────────────
-// The "···" menu on a client card: keeps the frequent action one tap on the card
-// and tucks the rest (next session, edit program, info) behind this sheet.
+// The "···" menu on a client card (pulsación larga): keeps the frequent action
+// one tap on the card and tucks the rest (next session, edit program, info)
+// behind this sheet. Era un `Modal` propio con filas `›` de texto; desde
+// pulido-ui.md §3 es un `DragSheet` con las filas de opción de la app.
 
 function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
+  const th = useTheme();
   const { t } = useTranslation();
+  // Cierre al instante, como antes: varias acciones abren otro Modal (el
+  // editor de programa) y en iOS no se presenta uno mientras otro se va.
   const run = (fn) => () => { onClose(); fn(); };
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.infoSheet}>
-        <View style={styles.infoSheetHandle} />
-        <Text style={styles.infoSheetName}>{client.name}</Text>
-
+    <DragSheet visible onClose={onClose} title={client.name}>
+      <Section style={{ marginBottom: spacing.lg }}>
         {/* Sin app: entrenar con él es lo primero (trainer-logging.md §3.1). */}
         {onStart && (
-          <TouchableOpacity style={styles.actionRow} onPress={run(onStart)} activeOpacity={0.7}>
-            <Text style={[styles.actionLabel, { color: th.colors.accent }]}>{startLabel}</Text>
-            <Text style={[styles.actionChevron, { color: th.colors.accent }]}>›</Text>
-          </TouchableOpacity>
+          <SheetRow
+            icon={ROW_ICON.start}
+            iconColor={th.colors.accent}
+            labelColor={th.colors.accent}
+            label={startLabel}
+            onPress={run(onStart)}
+          />
         )}
-
-        <TouchableOpacity style={styles.actionRow} onPress={run(onProgress)} activeOpacity={0.7}>
-          <ChartIcon color={th.colors.muted} />
-          <Text style={styles.actionLabel}>{t('clients.actProgress')}</Text>
-          {newSessionsCount > 0 && (
-            <View style={styles.actionBadge}>
-              <Text style={styles.actionBadgeText}>{newSessionsCount > 99 ? '99+' : newSessionsCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Preparar manda ajustes a su móvil: sin app no hay a quién. */}
+        <SheetRow
+          icon={ROW_ICON.progress}
+          label={t('clients.actProgress')}
+          badge={newSessionsCount > 0 ? (newSessionsCount > 99 ? '99+' : String(newSessionsCount)) : null}
+          onPress={run(onProgress)}
+        />
+        {/* Preparar manda ajustes a su móvil: sin app no hay a quién. Azul:
+            es lo que el entrenador le prescribe. */}
         {onNextSession && (
-          <TouchableOpacity style={[styles.actionRow, styles.actionRowNext]} onPress={run(onNextSession)} activeOpacity={0.7}>
-            <TargetIcon color={th.colors.blue} />
-            <Text style={[styles.actionLabel, { color: th.colors.blue }]}>{t('clients.actNextSession')}</Text>
-            <Text style={styles.actionChevron}>›</Text>
-          </TouchableOpacity>
+          <SheetRow
+            icon={ROW_ICON.target}
+            iconColor={th.colors.blue}
+            labelColor={th.colors.blue}
+            label={t('clients.actNextSession')}
+            onPress={run(onNextSession)}
+          />
         )}
-
-        <TouchableOpacity style={styles.actionRow} onPress={run(onEditProgram)} activeOpacity={0.7}>
-          <PencilIcon color={th.colors.muted} />
-          <Text style={styles.actionLabel}>{t('clients.actEditProgram')}</Text>
-          <Text style={styles.actionChevron}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionRow} onPress={run(onInfo)} activeOpacity={0.7}>
-          <PersonIcon color={th.colors.muted} />
-          <Text style={styles.actionLabel}>{t('clients.actInfo')}</Text>
-          <Text style={styles.actionChevron}>›</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
+        <SheetRow icon={ROW_ICON.edit} label={t('clients.actEditProgram')} onPress={run(onEditProgram)} />
+        <SheetRow icon={ROW_ICON.user} label={t('clients.actInfo')}        onPress={run(onInfo)} />
+      </Section>
+    </DragSheet>
   );
 }
 
@@ -4065,30 +4035,6 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:      0,
   },
   pendingBtnText: { ...textStyles.button, color: th.colors.onAccent },
-  // Action sheet rows (··· menu)
-  actionRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius:    th.radius.sm,
-    gap:             spacing.sm,
-  },
-  actionRowNext: {
-    backgroundColor: withOpacity(th.colors.blue, 0.08),
-  },
-  actionLabel:   { ...textStyles.body, flex: 1, color: th.colors.text },
-  actionChevron: { ...textStyles.heading, color: th.colors.mutedLight },
-  actionBadge: {
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.full,
-    minWidth:          20,
-    height:            20,
-    alignItems:        'center',
-    justifyContent:    'center',
-    paddingHorizontal: 6,
-  },
-  actionBadgeText: { ...textStyles.labelStrong, color: th.colors.onAccent },
   // Cuerpo: columna de datos + CTA. Figma alinea el botón arriba dentro de un
   // bloque fijo de 40px; aquí el bloque crece (2 avisos = 1 línea más), así que
   // el botón va centrado contra el alto real.
@@ -4315,6 +4261,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
     paddingBottom: spacing.lg,
   },
+  sheetSection: { marginBottom: spacing.lg },
 
   // ── Código de conexión ──
   codeCard: {
