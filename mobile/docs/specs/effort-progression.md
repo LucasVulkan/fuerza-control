@@ -7,8 +7,7 @@
 > Fase P48 · hecho · El objetivo por esfuerzo en el Workout y las listas · §5
 >
 > Estado: **P46, P47 y P48 probadas** (29-sep-2026, rama
-> `feat/exercise-variants`); queda una casilla de P48, la del RPE solo al
-> guardar. Sale de una
+> `feat/exercise-variants`). Sale de una
 > conversación de diseño con el usuario (opción «B»: RPE objetivo + peso
 > sugerido por e1RM). Orden: P46 → P47 → P48. P46 va primero porque libera el
 > tercer hueco del selector de modo y quita las ramas `'submax'` que P48
@@ -430,7 +429,7 @@ y la sesión siguiente ya se calcula.
 - [x] Escribir peso y RPE dejando las reps en gris, sin pulsar ✓, y terminar:
   en el historial la serie tiene las reps que se veían en gris, y la sesión
   siguiente calcula el peso (no dice «sin RPE»).
-- [ ] Escribir SOLO el RPE en una serie (peso y reps en gris) y guardar sin ✓:
+- [x] Escribir SOLO el RPE en una serie (peso y reps en gris) y guardar sin ✓:
   la serie se guarda con los valores en gris, sin «Sin datos registrados».
   Una serie sin tocar no se guarda.
 - [x] Sentadilla (paso 5 en la librería): el peso objetivo se mueve de 2,5 en
