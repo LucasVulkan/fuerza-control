@@ -26,7 +26,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Text, TextInput, MAX_FONT_SCALE } from '../components/ui/Text';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, interpolateColor, FadeIn, LinearTransition,
+  useSharedValue, useAnimatedStyle, withTiming, interpolateColor, FadeIn, FadeInDown, LinearTransition,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -53,6 +53,12 @@ const AnimatedTouchable = Reanimated.createAnimatedComponent(TouchableOpacity);
 // Récords a la vista; el resto detrás de «Ver N más». Una sesión de 9
 // ejercicios en los primeros meses puede dar 6-9 y se comían la pantalla.
 const PRS_VISIBLE = 3;
+
+// Entrada: la pantalla se construye sección a sección, de arriba abajo. Corta a
+// propósito — es la pantalla de después de entrenar y no puede hacer esperar.
+// Solo al montar: `entering` no se repite al contestar el RPE ni al plegar.
+const ENTER_MS      = 320;
+const ENTER_STAGGER = 70;
 
 function TrophyIcon({ size = 17, color }) {
   return (
@@ -349,6 +355,11 @@ export default function SessionRecapScreen({ navigation, route }) {
   const shownPrs = prsOpen ? prs : prs.slice(0, PRS_VISIBLE);
   const showFree = (isFree && stageDays.length > 0) || newExIds.length > 0 || exercisesAdded || onTheFly;
 
+  // Cada sección que se pinta coge el siguiente turno; las que no salen no
+  // dejan hueco en la cadencia.
+  let enterStep = 0;
+  const enter = () => FadeInDown.duration(ENTER_MS).delay(enterStep++ * ENTER_STAGGER);
+
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView
@@ -360,7 +371,7 @@ export default function SessionRecapScreen({ navigation, route }) {
       >
 
         {/* 1 · Marcador — se lee */}
-        <View style={styles.hero}>
+        <Reanimated.View entering={enter()} style={styles.hero}>
           <View style={styles.heroTop}>
             <View style={styles.ceja}>
               <CheckIcon size={14} color={tone} />
@@ -408,11 +419,11 @@ export default function SessionRecapScreen({ navigation, route }) {
               <Text style={styles.statLabel}>{t('recap.sets')}</Text>
             </View>
           </View>
-        </View>
+        </Reanimated.View>
 
         {/* 2 · Récords — se celebran */}
         {prs.length > 0 && (
-          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+          <Reanimated.View entering={enter()} layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
             <View style={styles.secHead}>
               <TrophyIcon size={14} color={th.colors.accent} />
               <Text style={[styles.secTitle, { color: th.colors.accent }]}>{t('recap.prsCount', { count: prs.length })}</Text>
@@ -430,6 +441,7 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* 3 · Tu parte — se escribe */}
         <Reanimated.View
+          entering={enter()}
           layout={LinearTransition.duration(FOLD_MS)}
           style={styles.section}
           onLayout={(e) => { yourPartY.current = e.nativeEvent.layout.y; }}
@@ -532,7 +544,7 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* 4 · Vs. última sesión — solo el cambio; lo que hiciste ya lo sabes */}
         {deltas?.length > 0 && (
-          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+          <Reanimated.View entering={enter()} layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
             <View style={[styles.secHead, styles.secHeadSplit]}>
               <Text style={styles.secTitle}>{t('recap.vsLast')}</Text>
               <Text style={styles.secAside}>{t('recap.exercisesCount', { count: deltas.length })}</Text>
@@ -561,7 +573,7 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* Conditioning blocks — only blocks that were actually started */}
         {entry.blocks?.length > 0 && (
-          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+          <Reanimated.View entering={enter()} layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
             <View style={styles.secHead}>
               <Text style={styles.secTitle}>{t('blocks.recapSection')}</Text>
             </View>
@@ -597,7 +609,7 @@ export default function SessionRecapScreen({ navigation, route }) {
 
         {/* 5 · Esta sesión libre — sus tres decisiones, juntas y al final */}
         {showFree && (
-          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
+          <Reanimated.View entering={enter()} layout={LinearTransition.duration(FOLD_MS)} style={styles.section}>
             <View style={styles.secHead}>
               <Text style={styles.secTitle}>{t('recap.freeTitle')}</Text>
             </View>
@@ -678,7 +690,10 @@ export default function SessionRecapScreen({ navigation, route }) {
 
       {/* Pie fijo. Avisa del sRPE sin bloquear HECHO: sin él la sesión se
           guarda igual, solo que sin carga. */}
-      <View style={[styles.foot, { paddingBottom: insets.bottom + spacing.md }]}>
+      <Reanimated.View
+        entering={FadeIn.duration(ENTER_MS).delay(enterStep * ENTER_STAGGER)}
+        style={[styles.foot, { paddingBottom: insets.bottom + spacing.md }]}
+      >
         {rpeMissing && (
           <TouchableOpacity
             style={styles.hint}
@@ -703,7 +718,7 @@ export default function SessionRecapScreen({ navigation, route }) {
         >
           <Text style={styles.doneBtnText}>{t('recap.done')}</Text>
         </TouchableOpacity>
-      </View>
+      </Reanimated.View>
     </SafeAreaView>
   );
 }
