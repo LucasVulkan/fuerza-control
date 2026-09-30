@@ -23,7 +23,7 @@
  * La lógica (autosave con debounce, presets, picker de movimientos) se conserva.
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, Animated, PanResponder } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, PanResponder } from 'react-native';
 import { Text, TextInput } from '../ui/Text';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ import StepField from '../ui/StepField';
 import { DragIcon } from '../ui/EditorIcons';
 import { SORTABLE_PROPS } from '../ui/sortable';
 
+import { showDialog } from '../ui/dialog';
 const UNIT_CYCLE = ['reps', 'cal', 'm', 'sec'];
 
 // Hueco entre tarjetas de movimiento — el mismo que entre las del editor de
@@ -315,7 +316,7 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   }
 
   function handleDeleteBlock() {
-    Alert.alert(
+    showDialog(
       t('blocks.deleteBlock'),
       t('blocks.deleteConfirm', { name: name.trim() || t(`blocks.formats.${format}`) }),
       [

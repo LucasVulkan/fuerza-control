@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirmaciones — maqueta FormaFit (U33)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000;
+    --accent10: rgba(184,255,0,.1);
+    --red30: rgba(189,6,0,.3); --red50: rgba(255,94,88,.5); --redText: #ff5e58;
+    --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+    /* spacing: xs 2 · xs2 4 · sm 6 · sm2 8 · md 10 · lg 15 · xl 20 · xxl 28 */
+  }
+  .t-heading   { font: 800 18px Inter; letter-spacing: -.2px; }
+  .t-itemTitle { font: 900 16px Inter; letter-spacing: -.2px; }
+  .t-body      { font: 500 14px/21px Inter; }
+  .t-bodyS     { font: 700 14px Inter; }
+  .t-button    { font: 900 14px Inter; }
+  .t-label     { font: 500 12px Inter; }
+  .t-labelS    { font: 800 12px Inter; }
+  .t-caps      { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 980px; margin-bottom: 14px; }
+  .lead b, .cap strong, .box b, .note b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent);
+       margin: 54px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col { width: 375px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; min-height: 48px; }
+  .cap > b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .note { font: 500 11.5px/1.6 Inter; color: #7a7a7a; margin-top: 12px; }
+  .note li { margin: 0 0 4px 16px; }
+  .box { max-width: 980px; border: 1px solid #262626; border-radius: 12px; padding: 14px 18px; font: 500 12.5px/1.65 Inter; color: #9a9a9a; margin-top: 14px; }
+  .box li { margin: 0 0 3px 16px; }
+  code { font: 500 11px ui-monospace, monospace; color: #bdbdbd; }
+
+  /* ══════ PANTALLA DE FONDO (la ficha de un cliente, tab Programa) ══════ */
+  .phone { width: 375px; height: 700px; background: var(--bg); border-radius: 22px; border: 1px solid #222;
+           overflow: hidden; position: relative; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font: 700 13px Inter; }
+  .hdr { display: flex; align-items: center; gap: 10px; padding: 6px 15px 12px; }
+  .hdr .back { font: 500 26px Inter; color: var(--text); line-height: 1; }
+  .tabs { margin: 0 15px; background: var(--surface); border-radius: var(--r-md); padding: 3px; display: flex; gap: 3px; }
+  .tabs span { flex: 1; text-align: center; padding: 8px 0; border-radius: 8px; font: 800 12px Inter; color: var(--mutedLight); }
+  .tabs span.on { background: var(--accent); color: var(--onAccent); }
+  .body { padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+  .card { background: var(--surface); border-radius: var(--r-md); overflow: hidden; }
+  .card .top { padding: 14px 15px; display: flex; flex-direction: column; gap: 4px; }
+  .card .bar { height: 6px; margin: 0 15px 14px; border-radius: 3px; background: linear-gradient(90deg, var(--accent) 45%, var(--surface2) 45%); }
+  .stats { display: flex; border-top: 1px solid var(--border); }
+  .stats div { flex: 1; padding: 12px 15px; display: flex; flex-direction: column; gap: 2px; }
+  .acts { display: flex; gap: 8px; }
+  .acts span { flex: 1; background: var(--surface2); border-radius: var(--r-md); padding: 12px 0; text-align: center; font: 800 12px Inter; }
+  .acts span.dots { flex: 0 0 52px; color: var(--mutedLight); }
+  .row { background: var(--surface); border-radius: var(--r-md); padding: 14px; display: flex; align-items: center; gap: 12px; }
+  .row .g { font: 900 22px Inter; color: var(--accent); width: 24px; }
+  .row .g.m { color: var(--muted); }
+  .row .n { flex: 1; }
+  .secl { color: var(--mutedLight); margin: 12px 4px 2px; }
+
+  /* ══════ LO QUE SE PROPONE ══════ */
+  /* Fondo: velo = el mismo negro al 60 % del backdrop de DragSheet. */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .scrim.blur { background: rgba(0,0,0,.35); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+
+  /* Diálogo: `surface`, radius/lg, xl de aire, centrado con xxl a los lados. */
+  .dlg-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 28px; }
+  .dlg { width: 100%; background: var(--surface); border-radius: var(--r-lg); padding: 20px; display: flex; flex-direction: column; }
+  .dlg .ttl { color: var(--text); }
+  .dlg .sub { color: var(--mutedLight); margin-top: 6px; }
+  .dlg .sub b { color: var(--text); font-weight: 700; }
+  .dlg .btns { display: flex; gap: 8px; margin-top: 20px; }
+  .dlg .btns.stack { flex-direction: column; }
+  .btn { flex: 1; height: 44px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; }
+  .btn.cancel { background: var(--surface2); color: var(--text); }
+  .btn.danger { background: var(--red30); color: var(--redText); }
+  .btn.primary { background: var(--accent); color: var(--onAccent); }
+
+  /* Alternativa: hoja inferior (la ConfirmDeleteSheet de Plantillas). */
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 18px 18px 0 0; padding: 8px 15px 28px; }
+  .sheet .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 14px; }
+</style>
+</head>
+<body>
+
+<h1>Confirmaciones y avisos (U33)</h1>
+<p class="lead">
+  Hoy hay <b>65 <code>Alert.alert</code> en 24 ficheros</b>. En Android el Alert nativo no se puede estilar: sale blanco, con los botones en versales
+  y sin nada de la app. La propuesta es un <b>diálogo propio</b> con la misma estructura en todos: <b>título</b>, <b>una frase que explica lo que pasa</b> y <b>acciones con verbo</b>
+  («Eliminar», no «Aceptar»). Detrás, la pantalla <b>velada</b> o <b>difuminada</b>: están las dos al lado para elegir.
+</p>
+<p class="lead">
+  Todo es con los tokens del tema: diálogo en <code>surface</code> y <code>radius/lg</code>, título <code>heading</code>, frase <code>body</code> en
+  <code>mutedLight</code>, botones de 44 con la voz de <code>button</code> y <code>radius/md</code>, los mismos que los de la tarjeta de programa.
+  La destructiva usa el par de rojos que ya tiene la hoja de borrar de Plantillas (<code>tint/red-30</code> de fondo y texto en <code>redText</code>).
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>1 · Velo o blur</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · VELO</b>El mismo negro al 60 % que ya ponen las hojas (<code>DragSheet</code>). La pantalla se intuye, pero no compite con el diálogo.</p>
+    <div class="phone" data-bg>
+      <div class="scrim"></div>
+      <div class="dlg-wrap"><div class="dlg">
+        <div class="ttl t-heading">Eliminar programa</div>
+        <div class="sub t-body">Se borra <b>«Fuerza base 12 semanas»</b>. Sus sesiones hechas siguen en el historial.</div>
+        <div class="btns"><div class="btn cancel t-button">Cancelar</div><div class="btn danger t-button">Eliminar</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>B · BLUR</b>Difuminado más un velo suave (35 %). Se ve más «de sistema» y el diálogo flota más, pero en Android tiene letra pequeña (abajo).</p>
+    <div class="phone" data-bg>
+      <div class="scrim blur"></div>
+      <div class="dlg-wrap"><div class="dlg">
+        <div class="ttl t-heading">Eliminar programa</div>
+        <div class="sub t-body">Se borra <b>«Fuerza base 12 semanas»</b>. Sus sesiones hechas siguen en el historial.</div>
+        <div class="btns"><div class="btn cancel t-button">Cancelar</div><div class="btn danger t-button">Eliminar</div></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<div class="box">
+  <b>El blur en Android, lo que hay que saber antes de elegirlo:</b>
+  <ul>
+    <li>Hace falta <code>expo-blur</code> (viene en Expo Go, sería una dependencia nueva del proyecto). En iOS difumina de verdad sin más.</li>
+    <li>En Android, <code>expo-blur</code> por defecto <b>no difumina</b>: pinta un color translúcido. El blur real es un modo «experimental» que difumina solo lo que está <b>dentro de la misma ventana</b>. Un <code>Modal</code> de React Native abre una ventana aparte, así que el diálogo no podría ir en un <code>Modal</code>: tendría que pintarse encima de todo desde la raíz de la app, que es un montaje distinto al de las hojas.</li>
+    <li>Cuesta rendimiento en móviles modestos y el velo, en cambio, es gratis y ya es lo que hacen las hojas.</li>
+  </ul>
+  Mi recomendación: <b>velo</b>. Si el blur te gusta mucho, se puede hacer, pero es claramente más trabajo y solo en iOS sale igual de fácil.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>2 · Los tres tipos que hay en la app</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>DESTRUCTIVA</b>Borrar o descartar (≈ 20 de las 65). Cancelar a la izquierda, el verbo en rojo a la derecha.</p>
+    <div class="phone" data-bg>
+      <div class="scrim"></div>
+      <div class="dlg-wrap"><div class="dlg">
+        <div class="ttl t-heading">Descartar sesión</div>
+        <div class="sub t-body">Los pesos y repeticiones que has apuntado hoy se pierden.</div>
+        <div class="btns"><div class="btn cancel t-button">Seguir</div><div class="btn danger t-button">Descartar</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>CONFIRMAR UN CAMBIO</b>No borra, pero cambia algo que importa (reemplazar o reactivar un programa). El verbo va en lima: es la acción principal.</p>
+    <div class="phone" data-bg>
+      <div class="scrim"></div>
+      <div class="dlg-wrap"><div class="dlg">
+        <div class="ttl t-heading">Reemplazar programa activo</div>
+        <div class="sub t-body">Ana ya tiene un programa activo. El nuevo lo reemplaza y el actual pasa a Anteriores.</div>
+        <div class="btns"><div class="btn cancel t-button">Cancelar</div><div class="btn primary t-button">Reemplazar</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>AVISO</b>No hay nada que decidir, solo algo que saber. Un botón a todo lo ancho.</p>
+    <div class="phone" data-bg>
+      <div class="scrim"></div>
+      <div class="dlg-wrap"><div class="dlg">
+        <div class="ttl t-heading">No se puede borrar</div>
+        <div class="sub t-body">Es la sesión que estás haciendo: termínala o descártala antes de borrarla.</div>
+        <div class="btns"><div class="btn cancel t-button">Entendido</div></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<div class="box">
+  <b>Reglas que se quedan fijas en el componente</b> (un <code>ui/ConfirmDialog</code> y una función para llamarlo desde cualquier sitio, como hoy <code>Alert.alert</code>):
+  <ul>
+    <li><b>Título</b> = la acción, sin interrogación («Eliminar programa», no «¿Eliminar programa?»). <b>Frase</b> = qué pasa y, si aplica, qué NO se pierde.</li>
+    <li><b>Botones con verbo</b>, nunca «Aceptar» ni «Sí». Cancelar siempre a la izquierda y en gris; la acción a la derecha.</li>
+    <li>Tocar el velo o el botón atrás de Android = Cancelar. En los avisos, = Entendido.</li>
+    <li>Los errores sueltos («No se pudo subir el programa», «Archivo no válido») <b>no</b> llevan diálogo: pasan a <code>Toast</code>, que ya existe. No hay nada que decidir.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>3 · Para comparar: como hoja inferior</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>LA HOJA DE PLANTILLAS</b>Lo que proponía la spec: sacar la <code>ConfirmDeleteSheet</code> de <code>ProgramScreen</code> y usarla en todas. Mismo contenido, pero desde abajo.</p>
+    <div class="phone" data-bg>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="t-heading" style="text-align:center">Eliminar programa</div>
+        <div class="t-body" style="color:var(--mutedLight);margin:10px 0 20px">Se borra <b style="color:var(--text);font-weight:700">«Fuerza base 12 semanas»</b>. Sus sesiones hechas siguen en el historial.</div>
+        <div style="display:flex;gap:8px"><div class="btn cancel t-button">Cancelar</div><div class="btn danger t-button">Eliminar</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col" style="width:420px">
+    <p class="cap"><b>POR QUÉ EL DIÁLOGO CENTRADO</b></p>
+    <div class="box" style="margin-top:0">
+      <ul>
+        <li>Desde U30, <b>hoja inferior = elegir entre opciones</b> (el <code>⋯</code>, «Añadir»…). Una confirmación no es elegir: es parar y decidir. Centrada se distingue a la primera.</li>
+        <li>Muchas confirmaciones salen <b>desde una hoja</b> (borrar desde el <code>⋯</code>). Una hoja encima de otra hoja se confunde; un diálogo centrado encima de una hoja, no.</li>
+        <li>La hoja se cierra arrastrando, que en algo destructivo es un gesto que se hace sin querer.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- La pantalla de fondo es la misma en todos: se clona para no repetirla. -->
+<template id="bg">
+  <div class="screen">
+    <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+    <div class="hdr"><span class="back">‹</span><span class="t-itemTitle">Ana Martín</span><span class="t-label" style="color:var(--mutedLight);margin-left:auto">hace 2 días</span></div>
+    <div class="tabs"><span class="on">Programa</span><span>Historial</span><span>Progreso</span><span>Info</span></div>
+    <div class="body">
+      <div class="card">
+        <div class="top"><span class="t-caps" style="color:var(--mutedLight)">Semana 5</span><span class="t-itemTitle">Fuerza base 12 semanas</span></div>
+        <div class="bar"></div>
+        <div class="stats">
+          <div><span class="t-bodyS">86%</span><span class="t-caps" style="color:var(--muted)">Adherencia</span></div>
+          <div><span class="t-bodyS">3</span><span class="t-caps" style="color:var(--muted)">Ritmo</span></div>
+          <div><span class="t-bodyS">+8%</span><span class="t-caps" style="color:var(--muted)">Carga</span></div>
+        </div>
+      </div>
+      <div class="acts"><span>Editar</span><span>Ver</span><span class="dots">···</span></div>
+      <div class="secl t-caps">Próxima sesión</div>
+      <div class="row"><span class="g">A</span><span class="n t-itemTitle">Pierna y empuje</span><span class="t-label" style="color:var(--mutedLight)">55 min</span></div>
+      <div class="row"><span class="g m">B</span><span class="n t-itemTitle">Tirón y bisagra</span><span class="t-label" style="color:var(--mutedLight)">ayer</span></div>
+      <div class="row"><span class="g m">C</span><span class="n t-itemTitle">Cuerpo completo</span><span class="t-label" style="color:var(--mutedLight)">hace 4 días</span></div>
+    </div>
+  </div>
+</template>
+<script>
+  const tpl = document.getElementById('bg');
+  document.querySelectorAll('[data-bg]').forEach((p) => p.prepend(tpl.content.cloneNode(true)));
+</script>
+</body>
+</html>

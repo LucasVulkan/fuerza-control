@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, Modal, Alert, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, Modal, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -57,6 +57,7 @@ import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
 import InfoSection from '../components/ui/InfoSection';
 import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
 
+import { showDialog } from '../components/ui/dialog';
 // Sesiones por semana — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
@@ -486,7 +487,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
    * Ver `docs/specs/client-connection.md` §4.4.
    */
   function handleReissue() {
-    Alert.alert(
+    showDialog(
       t('clients.codeCard.reissueConfirmTitle'),
       t('clients.codeCard.reissueConfirmBody', { name: client.name }),
       [
@@ -500,7 +501,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
               await reissueClientCode(client.id);
               showToast(t('clients.codeCard.reissueDone'), 2200, 'success');
             } catch (err) {
-              Alert.alert(t('clients.codeCard.reissueError'), err?.message ?? '');
+              showDialog(t('clients.codeCard.reissueError'), err?.message ?? '');
             } finally {
               setReissuing(false);
             }
@@ -511,7 +512,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   }
 
   function handleCancel() {
-    Alert.alert(
+    showDialog(
       t('clients.codeCard.cancelConfirmTitle'),
       t('clients.codeCard.cancelConfirmBody', { name: client.name }),
       [
@@ -524,7 +525,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
               await cancelClientInvitation(client.id);
               showToast(t('clients.codeCard.cancelDone'), 2200, 'neutral');
             } catch (err) {
-              Alert.alert('Error', err?.message ?? '');
+              showDialog('Error', err?.message ?? '');
             }
           },
         },
@@ -655,7 +656,7 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
       showToast(t('clients.moveToApp.done'), 2200, 'success');
       onClose();
     } catch (err) {
-      Alert.alert('Error', err?.message ?? t('clients.keyTab.connectError'));
+      showDialog('Error', err?.message ?? t('clients.keyTab.connectError'));
     } finally {
       setBusy(false);
     }
@@ -1226,7 +1227,7 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
       showToast('Cliente conectado', 2200, 'success');
       onClose();
     } catch (err) {
-      Alert.alert('Error', err.message ?? 'No se pudo conectar.');
+      showDialog('Error', err.message ?? 'No se pudo conectar.');
     } finally {
       setLoading(false);
     }
@@ -1825,7 +1826,7 @@ export default function ClientsScreen() {
       onPress: () => {
         if (activeForClient === c.id && activeTemplateId === heroId) { navigation.navigate('Workout'); return; }
         if (!activeTemplateId) { go(); return; }
-        Alert.alert(t('workout.discardConfirm'), undefined, [
+        showDialog(t('workout.discardSession'), t('workout.discardConfirm'), [
           { text: t('common.cancel'), style: 'cancel' },
           { text: t('workout.discardSession'), style: 'destructive', onPress: go },
         ]);
@@ -2177,7 +2178,7 @@ export default function ClientsScreen() {
       // bloqueada, y dejarla abierta aquí borraría el aviso que recuerda que ese
       // cliente está parado.
       updateStage(programId, stageIdx, { locked: true });
-      Alert.alert('Error', err.message ?? t('clients.programUploadError'));
+      showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
     }
   }
 
@@ -2211,12 +2212,12 @@ export default function ClientsScreen() {
   }
 
   function handleDeleteClient(clientId) {
-    Alert.alert(
+    showDialog(
       t('clients.deleteClientTitle'),
       t('clients.deleteClientConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => {
           deleteClient(clientId);
           if (selectedClientId === clientId) { setSelectedClientId(null); setView('list'); }
         }},
@@ -2229,7 +2230,7 @@ export default function ClientsScreen() {
   function confirmReplaceActive(onConfirm) {
     const hasActive = selectedClient?.activeProgramId && programs[selectedClient.activeProgramId];
     if (!hasActive) { onConfirm(); return; }
-    Alert.alert(
+    showDialog(
       t('clients.replaceActiveTitle'),
       t('clients.replaceActiveConfirm'),
       [
@@ -2272,11 +2273,11 @@ export default function ClientsScreen() {
         encoding: FileSystem.EncodingType.UTF8,
       });
       const parsed = parseImportFile(raw);
-      if (!parsed.ok) { Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
+      if (!parsed.ok) { showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        Alert.alert('Error', err?.message ?? 'No se pudo leer el archivo');
+        showDialog('Error', err?.message ?? 'No se pudo leer el archivo');
       }
     }
   }
@@ -2431,14 +2432,14 @@ export default function ClientsScreen() {
               await uploadProgramToClient(selectedClientId, programId);
               showToast(t('clients.programSent'), 2200, 'success');
             } catch (err) {
-              Alert.alert('Error', err.message ?? t('clients.programUploadError'));
+              showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
             }
           };
           // Abrir la etapa y enviarla en un solo toque: un desbloqueo que se
           // queda sin enviar no desbloquea nada. Arrastra las ediciones que
           // hubiera pendientes en ese programa, igual que "Enviar programa".
           const unlockStage = (stageIdx) => unlockClientStage(selectedClientId, stageIdx);
-          const confirmDelete = (program) => Alert.alert(
+          const confirmDelete = (program) => showDialog(
             t('clients.deleteProgramTitle'),
             t('clients.deleteProgramConfirm', { name: program.name }),
             [
@@ -2448,7 +2449,7 @@ export default function ClientsScreen() {
           );
           // Reactivating an archived program replaces the active one (the model
           // keeps exactly one active) — confirm before the swap.
-          const reactivate = (program) => Alert.alert(
+          const reactivate = (program) => showDialog(
             t('clients.reactivateTitle'),
             t('clients.reactivateConfirm', { name: program.name }),
             [
@@ -2862,7 +2863,7 @@ export default function ClientsScreen() {
                             <TouchableOpacity
                               style={styles.billMain}
                               activeOpacity={1}
-                              onLongPress={() => Alert.alert(
+                              onLongPress={() => showDialog(
                                 t('clients.menuDelete'),
                                 t('clients.billDeleteConfirm'),
                                 [
@@ -3231,7 +3232,7 @@ export default function ClientsScreen() {
                       await uploadProgramToClient(client.id, client.activeProgramId);
                       showToast('Programa enviado', 2200, 'success');
                     } catch (err) {
-                      Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
+                      showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
                     }
                   }}
                   onOpenActions={() => setActionsClientId(client.id)}
@@ -3240,7 +3241,7 @@ export default function ClientsScreen() {
                       await sendOverrides(client.id);
                       showToast(t('clients.overrideSent'), 2200, 'success');
                     } catch (err) {
-                      Alert.alert('Error', err.message ?? t('clients.overrideSendFailed'));
+                      showToast(err.message ?? t('clients.overrideSendFailed'), 3000, 'error');
                     }
                   }}
                   onUnlockStage={(stageIdx) => unlockClientStage(client.id, stageIdx)}
@@ -3438,7 +3439,7 @@ export default function ClientsScreen() {
                           style={styles.tagActionBtn}
                           onPress={() => {
                             if (usedBy === 0) { deleteTag(id); return; }
-                            Alert.alert(
+                            showDialog(
                               t('clients.deleteTagTitle'),
                               t('clients.deleteTagConfirm', { name, count: usedBy }),
                               [

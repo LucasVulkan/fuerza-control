@@ -7,7 +7,7 @@
 > Fase U30 · hecho · Hojas de opciones con icono y estandarizadas · §3
 > Fase U31 · hecho · Sesiones libres: icono delante o sin hueco · §4
 > Fase U32 · hecho · Programa de cliente: botones fuera de la tarjeta · §5
-> Fase U33 · pendiente · Confirmaciones y avisos sin Alert nativo · §6
+> Fase U33 · hecho · Confirmaciones y avisos sin Alert nativo · §6
 > Fase U34 · pendiente · Textos fijos a i18n y modales viejos a DragSheet · §7
 > Fase U35 · pendiente · Un solo lima, como token del tema · §8
 > Fase U36 · pendiente · Cabecera de cerrar compartida y ✕ como icono · §9
@@ -348,6 +348,59 @@ puede estilar), pero hay **64 `Alert.alert` en 24 ficheros**. Los que más:
   todas.
 - El resto son avisos de error: valorar pasarlos a `Toast`.
 
+**Decidido (30-sep-2026), con la maqueta
+[`docs/mockups/confirm.html`](../mockups/confirm.html):** diálogo **centrado**,
+no hoja inferior, y detrás un **velo**, no blur.
+
+- Centrado porque desde U30 una hoja inferior es elegir entre opciones, y
+  muchas confirmaciones salen desde una hoja abierta: una hoja sobre otra se
+  confunde. Además una hoja se cierra arrastrando, que en algo destructivo se
+  hace sin querer.
+- Velo (el negro al 60 % de `DragSheet`) y no blur: en Android `expo-blur` no
+  difumina lo que hay debajo de un `Modal`, que es otra ventana.
+- Estructura fija: **título** (la acción), **una frase** (qué pasa y qué no se
+  pierde) y **botones con verbo**. Cancelar siempre a la izquierda en gris; la
+  acción a la derecha, en rojo si destruye (`tint/red-30` + `redText`) y en
+  lima si solo cambia algo. Un aviso lleva un solo botón, «Entendido».
+  Tocar el velo o el atrás de Android = Cancelar.
+
+**Hecho (30-sep-2026).** `ui/dialog.js` (`showDialog`) + `ui/DialogHost.jsx`,
+montado una vez en `RootNavigator` junto al Toast. `showDialog` tiene la misma
+firma que el `alert` nativo, así que los 65 `Alert.alert` se cambiaron por
+nombre sin tocar sus `onPress`. `dialog.test.js` falla si vuelve a aparecer
+uno en `src`. La hoja de confirmar borrado de Plantillas (`ConfirmDeleteSheet`)
+también pasa al diálogo: todas iguales.
+
+- **A `Toast`** (10): los errores de pantallas normales, que no piden decidir
+  nada: subir el programa y enviar ajustes (Clientes), enviar la próxima sesión
+  y los de Drive (conectar, guardar, restaurar, borrar).
+- **Siguen como aviso de un botón** los errores que saltan dentro de una hoja
+  o un modal (sincronización, Google, borrar cuenta, pago, «Pasar a la app»,
+  Info del cliente): el Toast va por debajo de los `Modal` y no se vería. Y
+  los que explican algo (archivo no válido, permiso de Drive caducado).
+- De paso: los cuatro «Descartar sesión» llevaban la pregunta de título y sin
+  frase; ahora título «Descartar sesión» y la pregunta de frase. Dos botones
+  con texto fijo («Cancelar», «Eliminar») pasan a i18n.
+- **Pendiente para U34:** títulos con interrogación y textos fijos en el
+  título o la frase («¿Eliminar etapa?», «Error», «Error en la compra»…).
+
+**Probar U33**
+
+- [x] Plantillas → borrar un programa, y Editar sesión → `⋯` → eliminar
+  sesión: sale el diálogo centrado sobre el velo, Cancelar a la izquierda y
+  Eliminar en rojo. Cancelar no hace nada; Eliminar borra.
+- [x] Tocar el velo o el atrás de Android cierra sin hacer nada.
+- [x] Ficha de cliente → Programa → `⋯` → eliminar o reactivar un programa: el
+  diálogo sale por encima aunque venga de la hoja (Android).
+- [ ] Lo mismo en **iPhone**, que es donde un `Modal` sobre otro puede fallar.
+- [x] Empezar otra sesión con una a medias: «Descartar sesión» de título y la
+  pregunta debajo.
+- [x] Reemplazar el programa activo de un cliente: la acción sale en lima.
+- [x] Editar una sesión libre que estás haciendo → borrarla: aviso con un solo
+  botón, «Entendido».
+- [x] Sin conexión, subir el programa de un cliente: sale un toast rojo, no un
+  diálogo.
+
 ## 7. U34 — Textos fijos a i18n y modales viejos a DragSheet
 
 Textos en español escritos en el código, que rompen la app en inglés:
@@ -445,7 +498,7 @@ scroll ni la fila abierta.
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U31 | Hueco delante de las sesiones libres: 01, 02… | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U32 | Botones del programa de cliente fuera de la tarjeta | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
-| U33 | `ui/ConfirmSheet` y fuera los `Alert.alert` | pendiente | 🟡 |
+| U33 | Diálogo propio (`showDialog`) y fuera los `Alert.alert` | ✅ rama `feat/recap` | 🟡 |
 | U34 | Textos fijos a i18n; `PaywallModal`, `ProgramUpdateModal`, `ImportModal` a `DragSheet` | pendiente | 🟡 |
 | U35 | `#b8ff00` como token del tema | pendiente | 🟢 |
 | U36 | Cabecera de cerrar compartida; ✕ como icono | pendiente | 🟢 |

@@ -16,7 +16,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Text, TextInput } from './ui/Text';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
@@ -39,6 +39,7 @@ import { SectionLabel, RowIcon } from './ui/MenuList';
 import { spacing, textStyles, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
 // Required so the in-app browser can redirect back after OAuth
 WebBrowser.maybeCompleteAuthSession();
 
@@ -284,7 +285,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
           accessToken: tokens.access_token,
         });
       } catch (err) {
-        Alert.alert(t('sync.errGoogleTitle'), err.message ?? t('sync.errGoogleBody'));
+        showDialog(t('sync.errGoogleTitle'), err.message ?? t('sync.errGoogleBody'));
       } finally {
         setLoading(false);
       }
@@ -316,7 +317,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
         idToken:  credential.idToken,
       });
     } catch (err) {
-      Alert.alert(t('sync.errAppleTitle'), err.message ?? t('sync.errGoogleBody'));
+      showDialog(t('sync.errAppleTitle'), err.message ?? t('sync.errGoogleBody'));
     } finally {
       setLoading(false);
     }
@@ -345,7 +346,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
 
       onClose();
     } catch (err) {
-      Alert.alert(t('sync.errReconnectTitle'), err.message ?? t('sync.errReconnectBody'));
+      showDialog(t('sync.errReconnectTitle'), err.message ?? t('sync.errReconnectBody'));
     } finally {
       setLoading(false);
     }
@@ -415,7 +416,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
         setNewCode(code);
         setScreen('code_reveal');
       } catch (err) {
-        Alert.alert(t('sync.errAccountTitle'), err.message ?? t('sync.errAccountBody'));
+        showDialog(t('sync.errAccountTitle'), err.message ?? t('sync.errAccountBody'));
       } finally {
         setLoading(false);
       }
@@ -427,7 +428,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     // Warn when switching away from an already-configured mode
     if (existingMode && existingMode !== 'offline' && existingMode !== selected) {
       const isUpgrade = existingMode === 'code' && SOCIAL_MODES.includes(selected);
-      Alert.alert(
+      showDialog(
         t(isUpgrade ? 'sync.switchUpgradeTitle' : 'sync.switchTitle'),
         t(isUpgrade ? 'sync.switchUpgradeBody'  : 'sync.switchBody'),
         [

@@ -48,6 +48,7 @@ import { templatesOf } from '../utils/programOwnership';
 import { clientLink } from '../utils/clientLink';
 import { programTotals } from '../utils/stageProgress';
 
+import { showDialog } from '../components/ui/dialog';
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /**
@@ -360,32 +361,6 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
   );
 }
 
-// ── Hoja de confirmación de borrado ────────────────────────────────────────────
-
-function ConfirmDeleteSheet({ visible, onClose, onConfirm }) {
-  const { t }  = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <DragSheet visible={visible} onClose={onClose} title={t('templates.deleteTitle')}>
-      <View style={styles.sheetBody}>
-        <Text style={styles.sheetHint}>{t('templates.deleteConfirm')}</Text>
-        <View style={styles.confirmRow}>
-          <TouchableOpacity style={styles.confirmCancel} onPress={onClose} activeOpacity={0.8}>
-            <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.confirmDelete}
-            onPress={() => { onClose(); onConfirm(); }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.confirmDeleteText}>{t('common.delete')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </DragSheet>
-  );
-}
-
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 export default function ProgramScreen() {
@@ -397,13 +372,17 @@ export default function ProgramScreen() {
   const [showCreate,   setShowCreate]   = useState(false);
   const [menuTarget,   setMenuTarget]   = useState(null); // programId del "···"
   const [assignTarget, setAssignTarget] = useState(null); // programId a asignar
-  const [deleteTarget, setDeleteTarget] = useState(null); // programId a borrar
   const [showPaywall,  setShowPaywall]  = useState(false);
   // Programas / Sesiones. Sin persistir: es un vistazo, no un ajuste.
   const [seg,          setSeg]          = useState('programs');
   const [sesMenu,      setSesMenu]      = useState(null); // templateId
+
+  // Borrar un programa o una plantilla: el diálogo común de la app (U33).
+  const confirmDelete = (onConfirm) => showDialog(t('templates.deleteTitle'), t('templates.deleteConfirm'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('common.delete'), style: 'destructive', onPress: onConfirm },
+  ]);
   const [sesAssign,    setSesAssign]    = useState(null); // templateId
-  const [sesDelete,    setSesDelete]    = useState(null); // templateId
 
   const profile    = useStore((s) => s.profile);
   const setProfile = useStore((s) => s.setProfile);
@@ -637,7 +616,7 @@ export default function ProgramScreen() {
             icon={ROW_ICON.trash}
             danger
             label={t('templates.contextDelete')}
-            onPress={() => setDeleteTarget(menuTarget)}
+            onPress={() => { const id = menuTarget; confirmDelete(() => handleDelete(id)); }}
           />
         </Section>
       </DragSheet>
@@ -654,12 +633,6 @@ export default function ProgramScreen() {
           onClose={() => setAssignTarget(null)}
         />
       )}
-
-      <ConfirmDeleteSheet
-        visible={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => handleDelete(deleteTarget)}
-      />
 
       {/* ── Plantillas de sesión (C27) ── */}
       <DragSheet
@@ -686,7 +659,14 @@ export default function ProgramScreen() {
             icon={ROW_ICON.trash}
             danger
             label={t('templates.contextDelete')}
-            onPress={() => { setSesDelete(sesMenu); setSesMenu(null); }}
+            onPress={() => {
+              const id = sesMenu;
+              setSesMenu(null);
+              confirmDelete(() => {
+                if (!deleteFreeTemplate(id)) showToast(t('freeSession.deleteActive'), 2600, 'error');
+                else showToast(t('templates.toastDeleted'), 2200, 'neutral');
+              });
+            }}
           />
         </Section>
       </DragSheet>
@@ -706,15 +686,6 @@ export default function ProgramScreen() {
           }}
         />
       )}
-
-      <ConfirmDeleteSheet
-        visible={!!sesDelete}
-        onClose={() => setSesDelete(null)}
-        onConfirm={() => {
-          if (!deleteFreeTemplate(sesDelete)) showToast(t('freeSession.deleteActive'), 2600, 'error');
-          else showToast(t('templates.toastDeleted'), 2200, 'neutral');
-        }}
-      />
     </View>
   );
 }
@@ -834,24 +805,6 @@ const makeStyles = (th) => StyleSheet.create({
   clientReplaces:  { ...textStyles.body, color: th.colors.orange },
   clientCheck:     { ...textStyles.labelStrong, color: th.colors.accent },
 
-  // Confirmación de borrado — mismo par que cierra el editor de ejercicio.
-  confirmRow:    { flexDirection: 'row', gap: spacing.sm },
-  confirmCancel: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-  },
-  confirmCancelText: { ...textStyles.labelStrong, color: th.colors.text },
-  confirmDelete: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.tint.red30,
-    alignItems:      'center',
-  },
-  confirmDeleteText: { ...textStyles.labelStrong, color: th.tint.red50 },
 
   // CTA de hoja / estado vacío (Buttons `388:2676`)
   cta: {

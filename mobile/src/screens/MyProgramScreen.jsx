@@ -18,7 +18,7 @@
  * esta app están decididos (docs/UI-MIGRATION.md §4).
  */
 import { useState, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +43,7 @@ import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STAT
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { countsForProgram } from '../utils/freeSessions';
 
+import { showDialog } from '../components/ui/dialog';
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /**
@@ -219,7 +220,7 @@ export default function MyProgramScreen() {
   const confirmStage = (idx) => {
     if (!activeProgram || idx === (activeProgram.currentStageIndex ?? 0)) return;
     const name = activeProgram.stages[idx]?.name ?? t('home.stageDefault', { n: idx + 1 });
-    Alert.alert(
+    showDialog(
       t('myProgram.stageConfirm.title', { name }),
       status?.started
         ? t('myProgram.stageConfirm.bodyStarted', { name })

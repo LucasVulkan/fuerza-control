@@ -7,7 +7,7 @@
  * que sirve igual para las sesiones del cliente; el borrado entra por prop.
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
 // Reanimated drives both the delete-card exit + sibling reflow (`exiting`/
 // `layout`) and the detail accordion (`FadeIn`/`FadeOut` + the card's own
@@ -29,6 +29,7 @@ import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDi
 import { isFreeEntry } from '../utils/freeSessions';
 import { variantLabel, displayVariant } from '../utils/variants';
 
+import { showDialog } from './ui/dialog';
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
 const BLOCK_BADGE_STYLE = {
   amrap:    'badgeBlockAmrap',
@@ -103,7 +104,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
   );
 
   function handleDelete() {
-    Alert.alert(
+    showDialog(
       t('history.deleteTitle'),
       t('history.deleteConfirm'),
       [

@@ -17,7 +17,7 @@
  */
 
 import { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -33,6 +33,7 @@ import { formatWhen } from '../utils/formatWhen';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from '../components/ui/dialog';
 const ICON_TRAINER = <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>;
 const ICON_PROGRAM = <Path d="M4 7h16M4 12h16M4 17h10" />;
 const ICON_UPLOAD  = <Path d="M12 19V5M6 11l6-6 6 6" />;
@@ -93,7 +94,7 @@ export default function TrainerConnectionScreen() {
   }
 
   function handleDisconnect() {
-    Alert.alert(
+    showDialog(
       t('trainer.disconnectTitle'),
       t('trainer.disconnectBody'),
       [

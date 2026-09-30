@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,6 +14,7 @@ import { useStore }                                     from '../../store/useSto
 import { spacing, borders, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
 // ── Feature list ──────────────────────────────────────────────────────────────
 
 const PRO_FEATURES = [
@@ -74,7 +75,7 @@ export default function PaywallModal({ onClose }) {
         }
         onClose();
       } else if (!result.cancelled) {
-        Alert.alert('Error en la compra', result.error ?? 'No se pudo completar la compra.');
+        showDialog('Error en la compra', result.error ?? 'No se pudo completar la compra.');
       }
     } finally {
       setPurchasing(false);

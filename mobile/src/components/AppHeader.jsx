@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
 import { Text, TextInput } from './ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -33,6 +33,7 @@ import { spacing, textStyles, borders, lh } from '../theme';
 import { THEME_LIST } from '../themes';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
 const WDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -342,7 +343,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           label={t('header.newProgramItem')}
           onPress={() => {
             if (clientSync?.slotId) {
-              Alert.alert(
+              showDialog(
                 t('header.newProgramWarnTitle'),
                 t('header.newProgramWarnBody'),
                 [
@@ -565,13 +566,13 @@ export default function AppHeader() {
       });
       const parsed = parseImportFile(raw);
       if (!parsed.ok) {
-        Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
+        showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
         return;
       }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        Alert.alert('Error', err?.message ?? t('errors.cannotReadFile'));
+        showDialog('Error', err?.message ?? t('errors.cannotReadFile'));
       }
     } finally {
       setPicking(false);

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/Text';
 // Reanimated lleva las dos mitades del plegado: el `layout` de la tarjeta
 // anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
@@ -32,6 +32,7 @@ import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
 import { isExerciseDone } from '../utils/exerciseStatus';
 
+import { showDialog } from '../components/ui/dialog';
 // Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
 // token propio (mismo caso que el #81a71e del banner, ver theme.js).
 const LIMA = '#b8ff00';
@@ -137,14 +138,10 @@ export default function HomeScreen() {
 
   // Empezar cualquier cosa con una sesión a medias la descartaba en silencio.
   const confirmDiscardActive = (onConfirm) => {
-    Alert.alert(
-      t('workout.discardConfirm'),
-      undefined,
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
-      ],
-    );
+    showDialog(t('workout.discardSession'), t('workout.discardConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
+    ]);
   };
 
   // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su

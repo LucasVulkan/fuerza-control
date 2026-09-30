@@ -16,7 +16,7 @@
  * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert, Share, useWindowDimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Share, useWindowDimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, {
@@ -46,6 +46,7 @@ import { variantLabel, displayVariant } from '../utils/variants';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { DEFAULT_TARGET } from '../utils/progression';
 
+import { showDialog } from '../components/ui/dialog';
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 // Los dos botones de acción, su separación y el aire que queda entre el último
@@ -412,7 +413,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   }
 
   function handleRemoveBlock(block) {
-    Alert.alert(
+    showDialog(
       t('blocks.deleteBlock'),
       t('blocks.deleteConfirm', { name: block.name ?? t(`blocks.formats.${block.format}`) }),
       [
@@ -426,7 +427,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   }
 
   function handleDeleteSession() {
-    Alert.alert(
+    showDialog(
       t('editor.sessionDeleteBtn'),
       `¿Eliminar "${template.name}"?`,
       [
@@ -445,10 +446,10 @@ export default function SessionEditorScreen({ navigation, route }) {
   function handleDeleteFree() {
     setMenuOpen(false);
     if (activeTemplateId === templateId) {
-      Alert.alert(t('freeSession.delete'), t('freeSession.deleteActive'));
+      showDialog(t('freeSession.delete'), t('freeSession.deleteActive'));
       return;
     }
-    Alert.alert(
+    showDialog(
       t('freeSession.delete'),
       t('freeSession.deleteConfirm', { name: template.name || t('freeSession.templateUnnamed') }),
       [
@@ -669,7 +670,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                 <TouchableOpacity
                   hitSlop={8}
                   onPress={() => {
-                    Alert.alert(
+                    showDialog(
                       t('blocks.deletePreset'),
                       t('blocks.deleteConfirm', { name: preset.name ?? t(`blocks.formats.${preset.format}`) }),
                       [

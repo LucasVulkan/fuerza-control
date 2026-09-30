@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
@@ -22,6 +22,7 @@ import { describeRx } from '../utils/stageRx';
 import { clientStageIndex, programTotals } from '../utils/stageProgress';
 import { useEditorExit } from '../hooks/useEditorExit';
 
+import { showDialog } from '../components/ui/dialog';
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
 const CARD_GAP = spacing.sm;
@@ -177,13 +178,13 @@ export default function ProgramEditorScreen({ navigation }) {
   }
 
   function handleDeleteStage() {
-    Alert.alert(
+    showDialog(
       '¿Eliminar etapa?',
       `¿Eliminar "${selectedStage?.name}"? Las sesiones de esta etapa se perderán.`,
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar', style: 'destructive',
+          text: t('common.delete'), style: 'destructive',
           onPress: () => {
             setStageSheetOpen(false);
             removeStageFromProgram(editingId, selectedStageIdx);

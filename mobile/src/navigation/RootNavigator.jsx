@@ -34,6 +34,7 @@ import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
+import DialogHost            from '../components/ui/DialogHost';
 import ExternalImportModal   from '../components/ExternalImportModal';
 import { clientLink } from '../utils/clientLink';
 
@@ -288,6 +289,8 @@ export default function RootNavigator() {
       {/* Global como el toast, y por lo mismo: solo puede haber una
           importación en curso. Ver el fallo 11 de la auditoría. */}
       <ExternalImportModal />
+      {/* Confirmaciones y avisos (`showDialog`), en vez del Alert nativo. */}
+      <DialogHost />
     </View>
   );
 }

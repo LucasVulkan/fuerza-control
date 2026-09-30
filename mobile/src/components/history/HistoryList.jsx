@@ -13,7 +13,7 @@
  * `internalLoad`, que es de allí. Ver `stats/LoadCalendar.jsx`.
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, { LinearTransition } from 'react-native-reanimated';
@@ -32,6 +32,7 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import { volumeDeltas } from '../../utils/sessionRecap';
 
 
+import { showDialog } from '../ui/dialog';
 function CheckIcon({ size = 16, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -133,7 +134,7 @@ export default function HistoryList() {
       showToast(t('history.clearNothing'), 2200, 'neutral');
       return;
     }
-    Alert.alert(
+    showDialog(
       t(`history.clear.${scopeId}.title`),
       t(`history.clear.${scopeId}.body`, { count: willDelete }),
       [

@@ -11,7 +11,7 @@
  * (docs/specs/group-classes.md §4.1 y §4.6).
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Share } from 'react-native';
 import { Text } from './ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, { LinearTransition } from 'react-native-reanimated';
@@ -35,6 +35,7 @@ import { useLastDays } from '../hooks/useLastDays';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
 function PencilGlyph({ color }) {
   return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -60,7 +61,7 @@ function useClientStart(client) {
 
   const guard = (fn) => {
     if (!activeSession.templateId) { fn(); return; }
-    Alert.alert(t('workout.discardConfirm'), undefined, [
+    showDialog(t('workout.discardSession'), t('workout.discardConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('workout.discardSession'), style: 'destructive', onPress: fn },
     ]);

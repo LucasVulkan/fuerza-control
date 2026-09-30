@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -36,6 +36,7 @@ import { formatWhen } from '../utils/formatWhen';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from '../components/ui/dialog';
 WebBrowser.maybeCompleteAuthSession();
 
 const DISCOVERY = {
@@ -130,8 +131,8 @@ export default function DriveBackupScreen() {
         const email = await getUserEmail(tokens.access_token);
         await connectDrive(email, tokens.access_token, tokens.refresh_token ?? null);
         showToast(t('drive.toastConnected'), 2200, 'success');
-      } catch (err) {
-        Alert.alert(t('drive.errConnectTitle'), err?.message ?? t('drive.errBackupBody'));
+      } catch {
+        showToast(t('drive.errConnectTitle'), 3000, 'error');
       } finally {
         setLoading(false);
         setMsg('');
@@ -188,12 +189,12 @@ export default function DriveBackupScreen() {
         showToast(t('drive.toastSaved'), 2200, 'success');
         if (activeTab === 'backups') loadFiles();
       } else if (result.error === 'Token expirado') {
-        Alert.alert(t('drive.errExpiredTitle'), t('drive.errExpiredBody'));
+        showDialog(t('drive.errExpiredTitle'), t('drive.errExpiredBody'));
       } else {
-        Alert.alert(t('drive.errBackupTitle'), result.error ?? t('drive.errBackupBody'));
+        showToast(t('drive.errBackupTitle'), 3000, 'error');
       }
-    } catch (err) {
-      Alert.alert(t('drive.errBackupTitle'), err?.message ?? t('drive.errBackupBody'));
+    } catch {
+      showToast(t('drive.errBackupTitle'), 3000, 'error');
     } finally {
       setLoading(false);
       setMsg('');
@@ -201,7 +202,7 @@ export default function DriveBackupScreen() {
   }
 
   function handleRestoreFile(file) {
-    Alert.alert(
+    showDialog(
       t('drive.restoreTitle'),
       t('drive.restoreBody', { when: when(file.createdTime) ?? file.name }),
       [
@@ -216,8 +217,8 @@ export default function DriveBackupScreen() {
               importData(data, { program: true, log: true, settings: true, customExercises: true, clients: true }, { silent: true });
               showToast(t('drive.toastRestored'), 2200, 'success');
               navigation.goBack();
-            } catch (err) {
-              Alert.alert(t('drive.errRestoreTitle'), err?.message ?? t('drive.errBackupBody'));
+            } catch {
+              showToast(t('drive.errRestoreTitle'), 3000, 'error');
             } finally {
               setLoading(false);
               setMsg('');
@@ -229,7 +230,7 @@ export default function DriveBackupScreen() {
   }
 
   function handleDeleteAll() {
-    Alert.alert(
+    showDialog(
       t('drive.deleteAllTitle'),
       t('drive.deleteAllBody'),
       [
@@ -244,7 +245,7 @@ export default function DriveBackupScreen() {
               setFiles([]);
               showToast(t('drive.toastDeleted'), 2200, 'neutral');
             } catch {
-              Alert.alert(t('drive.errDeleteTitle'), t('drive.errBackupBody'));
+              showToast(t('drive.errDeleteTitle'), 3000, 'error');
             } finally {
               setLoading(false);
               setMsg('');
@@ -256,7 +257,7 @@ export default function DriveBackupScreen() {
   }
 
   function handleDisconnect() {
-    Alert.alert(
+    showDialog(
       t('drive.disconnectTitle'),
       t('drive.disconnectBody'),
       [
