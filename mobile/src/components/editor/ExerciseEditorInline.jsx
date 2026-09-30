@@ -1048,6 +1048,8 @@ const makeStyles = (th) => StyleSheet.create({
   // superior lo pone la cabecera del modal, que vive en SessionEditorScreen.
   container: {
     paddingHorizontal: spacing.lg,
+    // El mismo aire bajo la cabecera que el editor de sesión (`scrollContent`).
+    paddingTop:        spacing.md,
     paddingBottom:     spacing.xxl + spacing.lg,
     gap:               spacing.md,
   },

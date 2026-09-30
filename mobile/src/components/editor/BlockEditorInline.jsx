@@ -584,6 +584,8 @@ const makeStyles = (th) => StyleSheet.create({
 
   container: {
     paddingHorizontal: spacing.lg,
+    // El mismo aire bajo la cabecera que el editor de sesión (`scrollContent`).
+    paddingTop:        spacing.md,
     paddingBottom:     spacing.xxl + spacing.lg,
     gap:               spacing.md,
   },
