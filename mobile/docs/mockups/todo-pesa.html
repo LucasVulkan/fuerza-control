@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todo pesa — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ══════ TOKENS formaFit (src/themes.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --muted2: #4d4d4d; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --blue: #4c85ff;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --ease: cubic-bezier(.35,0,.15,1);
+  }
+  body { background: #0c0c0c; color: var(--text); font-family: Inter, sans-serif; padding: 32px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.5 Inter; max-width: 720px; margin-bottom: 28px; }
+  section { margin-bottom: 44px; }
+  section > h2 { font: 800 16px Inter; margin-bottom: 4px; }
+  section > h2 b { color: var(--accent); font-weight: 900; }
+  section > p { color: var(--mutedLight); font: 500 13px/1.5 Inter; max-width: 720px; margin-bottom: 14px; }
+  .stage { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .phone { width: 360px; background: var(--bg); border-radius: 24px; padding: 12px; position: relative; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+  .caps { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; }
+  .card { background: var(--surface); border-radius: 16px; overflow: hidden; }
+  .chead { background: var(--surface2); padding: 14px 12px 14px 16px; display: flex; gap: 10px; }
+  .num { font: 900 17px Inter; color: var(--accent); min-width: 22px; }
+  .exname { font: 800 17px Inter; }
+  .target { font: 700 13px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .body { padding: 12px 16px 14px; }
+  .row { display: flex; align-items: center; gap: 10px; position: relative; }
+  .lbl { width: 26px; font: 800 12px Inter; color: var(--mutedLight); flex: none; }
+  .cell { flex: 1; height: 44px; border-radius: 11px; background: var(--bg); display: flex; align-items: center; justify-content: center; font: 700 16px Inter; color: var(--muted2); position: relative; overflow: hidden; }
+  .cell.cur { border: .5px solid var(--accent50); }
+  .cell.val { color: var(--text); font-weight: 800; }
+  .chk { width: 42px; height: 44px; border-radius: 11px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--mutedLight); flex: none; cursor: pointer; }
+  .sg { display: flex; background: var(--surface2); border-radius: 10px; padding: 3px; }
+  .sg b { flex: 1; text-align: center; font: 800 12px Inter; padding: 7px 0; border-radius: 8px; color: var(--mutedLight); cursor: pointer; }
+  .sg b.on { background: var(--border); color: var(--text); }
+  .sheet { background: var(--surface); border-radius: 22px 22px 0 0; padding: 10px 16px 18px; }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--muted); margin: 0 auto 12px; }
+  .hint { font: 700 12px Inter; color: var(--mutedLight); margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>Todo pesa</h1>
+<p class="lead">Maqueta de <code>docs/specs/todo-pesa.md</code> (U43–U51). Solo lo aprobado por el usuario el 30-sep-2026. Las decisiones abiertas D1 y D2 están como interruptores. Tokens reales de formaFit.</p>
+
+<!-- ═══════════════ U43 ═══════════════ -->
+<section id="u43">
+  <h2><b>U43</b> · Casillas que se despliegan en una regla</h2>
+  <p>Mantén y arrastra a los lados KG, REPS o RPE. La regla es fija y la marca sigue al dedo en relativo. Al soltar, la cifra rueda una vez. Peso: ±20 kg de 0,5 en 0,5, sin ampliar (D1). El espaciado se afina en el móvil.</p>
+  <div class="phone"><div class="card"><div class="chead"><span class="num">1</span><div><div class="exname">Press banca</div><div class="target">4 × 6-8 reps · RPE</div></div></div>
+    <div class="body" style="padding-top:44px">
+      <div class="row" style="margin-bottom:8px"><span class="lbl"></span><span class="caps" style="flex:1;text-align:center;color:var(--muted)">Kg</span><span class="caps" style="flex:1;text-align:center;color:var(--muted)">Reps</span><span class="caps" style="flex:1;text-align:center;color:var(--muted)">RPE</span><span style="width:42px"></span></div>
+      <div class="row" id="u43row"><span class="lbl" style="color:var(--accent)">S1</span>
+        <div class="cell cur val" data-f="w" data-v="80"></div><div class="cell cur val" data-f="r" data-v="8"></div><div class="cell cur val" data-f="p" data-v="8"></div><div class="chk" style="color:var(--accent50)">✓</div>
+        <div id="u43ov" style="position:absolute;top:0;height:44px;border-radius:11px;background:#0b0b0b;border:1px solid var(--accent);opacity:0;pointer-events:none;overflow:hidden;z-index:3;transition:left .18s var(--ease),width .18s var(--ease),opacity .1s"><svg width="100%" height="44"></svg></div>
+        <div id="u43bub" style="position:absolute;top:-40px;padding:4px 10px;border-radius:9px;background:var(--accent);color:#000;font:900 16px Inter;transform:translateX(-50%);opacity:0;transition:opacity .12s;z-index:4;pointer-events:none;white-space:nowrap"></div>
+      </div>
+    </div></div></div>
+</section>
+
+<!-- ═══════════════ U44 ═══════════════ -->
+<section id="u44">
+  <h2><b>U44</b> · Metrónomo de tempo</h2>
+  <p>El tempo de la tarjeta, en lima y con el metrónomo delante, abre la hoja. Texto fijo arriba (D2). Solo se mueve la pesa, que se apoya en una línea de suelo al final de la bajada. La tira de tramos es PROVISIONAL (D3): se aplasta con tempos como 31X0 y se replantea al implementar.</p>
+  <div class="ctl" id="d2"><button data-tp="3010" class="on">3010</button><button data-tp="31X0">31X0</button><button data-tp="2121">2121</button></div>
+  <div class="phone" style="padding:0;overflow:hidden">
+    <div style="padding:12px;opacity:.45"><div class="card"><div class="chead"><span class="num">2</span><div><div class="exname">Sentadilla con barra</div><div class="target">4 × 5 reps · <span id="u44trig" style="color:var(--accent);text-decoration:underline dotted var(--accent50)"><svg width="11" height="12" viewBox="0 0 11 12" style="vertical-align:-1px;margin-right:3px"><path d="M3 1h5l2.5 10H.5z" fill="none" stroke="#aae216" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.5 8.5 8.5 3" stroke="#aae216" stroke-width="1.4" stroke-linecap="round"/></svg><span id="u44tt"></span></span></div></div></div><div style="height:40px"></div></div></div>
+    <div class="sheet" style="margin-top:-30px;position:relative">
+      <div class="grab"></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="caps" style="color:var(--accent)" id="u44title"></span><span style="font:800 12px Inter;color:var(--mutedLight)" id="u44rep"></span></div>
+      <div id="u44stage" style="position:relative;height:260px;margin-top:10px">
+        <div id="u44txt" style="position:absolute;left:0;right:0;top:6px;text-align:center"><div id="u44ph" style="font:900 34px Inter;color:var(--accent)"></div><div id="u44sc" style="font:800 15px Inter;color:var(--mutedLight);margin-top:2px"></div></div>
+        <div style="position:absolute;left:0;right:0;top:224px;height:2px;border-radius:1px;background:var(--border)"></div>
+        <div id="u44bar" style="position:absolute;left:0;right:0;top:0;height:60px"><svg viewBox="0 0 300 60" width="100%" height="60"><g id="u44svg" transform="translate(0 30)"></g></svg><div id="u44txt2" style="text-align:center;margin-top:2px;display:none"><span id="u44ph2" style="font:900 20px Inter;color:var(--accent)"></span> <span id="u44sc2" style="font:800 13px Inter;color:var(--mutedLight)"></span></div></div>
+      </div>
+      <div class="caps" style="color:var(--muted);margin-bottom:6px">Progreso · provisional (D3)</div>
+      <div id="u44seg" style="display:flex;gap:4px;opacity:.6"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px"><button id="u44go" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:12px 18px;font:900 13px Inter;letter-spacing:.06em;cursor:pointer">EMPEZAR</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ U45 ═══════════════ -->
+<section id="u45">
+  <h2><b>U45</b> · Los últimos segundos del descanso</h2>
+  <p>En 3, 2 y 1: vibración suave, el aro late y la cifra se pone en lima. El 0 lo sigue marcando la vibración de éxito de siempre. (Descanso de 8 s en bucle; el rombo imita la vibración.)</p>
+  <div class="phone" style="padding:16px">
+    <div style="background:var(--surface);border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center">
+      <div id="u45ring" style="position:relative;width:64px;height:64px;flex:none;transition:transform .12s"><svg width="64" height="64" style="transform:rotate(-90deg)"><circle cx="32" cy="32" r="26" stroke="rgba(170,226,22,.18)" stroke-width="3.5" fill="none"/><circle id="u45arc" cx="32" cy="32" r="26" stroke="#aae216" stroke-width="3.5" fill="none" stroke-dasharray="163.4" stroke-linecap="round"/></svg><div id="u45n" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:900 15px Inter"></div></div>
+      <div style="flex:1"><div style="font:800 14px Inter">Sentadilla con barra</div><div style="font:700 12px Inter;color:var(--mutedLight);margin-top:2px">Descanso</div></div>
+      <span id="u45hap" style="font:900 14px Inter;color:var(--accent);opacity:0;transition:opacity .15s">◆</span>
+      <span style="font:700 12px Inter;color:var(--mutedLight)">Saltar</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ U46 ═══════════════ -->
+<section id="u46">
+  <h2><b>U46</b> · Rampa del calentamiento en el Workout (Relleno)</h2>
+  <p>Detrás de cada fila, un relleno con el % del peso de trabajo, directamente sobre la tarjeta, sin banda oscura debajo. La siguiente por hacer lleva el relleno más claro y la etiqueta en lima. Con todo marcado, la línea plegada lleva la mini escalera. Sin animación al montar.</p>
+  <div class="ctl"><button id="u46rs">Reiniciar</button></div>
+  <div class="phone"><div class="card"><div class="chead"><span class="num">2</span><div><div class="exname">Sentadilla con barra</div><div class="target"><span style="color:var(--accent);font-weight:700">Principal</span> · 4 × 5 reps</div></div></div>
+    <div class="body">
+      <div style="display:flex;gap:8px;align-items:baseline;padding-bottom:12px"><span class="caps" style="color:var(--accent)">↑ Sube peso</span><span style="font:700 13px Inter">100 kg</span><span style="font:700 12px Inter;color:var(--mutedLight);background:var(--surface2);border-radius:99px;padding:2px 8px">+2,5</span></div>
+      <div id="u46wu"></div>
+      <div class="caps" style="color:var(--muted);margin-bottom:8px">Series</div>
+      <div class="row" style="margin-bottom:8px"><span class="lbl"></span><span class="caps" style="flex:1;text-align:center;color:var(--muted)">Kg</span><span class="caps" style="flex:1;text-align:center;color:var(--muted)">Reps</span><span style="width:42px"></span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="row"><span class="lbl">S1</span><div class="cell">100</div><div class="cell">5</div><div class="chk">✓</div></div>
+        <div class="row"><span class="lbl">S2</span><div class="cell">100</div><div class="cell">5</div><div class="chk">✓</div></div>
+      </div>
+    </div></div></div>
+</section>
+
+<!-- ═══════════════ U47 ═══════════════ -->
+<section id="u47">
+  <h2><b>U47</b> · Escalera del calentamiento en el editor</h2>
+  <p>Hoja de calentamiento, modo Automático: series con control segmentado y la escalera en lugar de la pista en texto. Solo porcentajes.</p>
+  <div class="phone" style="padding:0;overflow:hidden"><div class="sheet" style="border-radius:24px">
+    <div class="grab"></div>
+    <div style="font:800 16px Inter;margin-bottom:12px">Calentamiento</div>
+    <div class="sg" style="margin-bottom:12px"><b>No</b><b class="on">Automático</b><b>A medida</b></div>
+    <div style="font:700 12px Inter;color:var(--mutedLight);margin-bottom:6px">Series</div>
+    <div class="sg" id="u47sg"><b data-n="1">1</b><b data-n="2">2</b><b data-n="3">3</b><b data-n="4">4</b></div>
+    <div id="u47st" style="display:flex;align-items:flex-end;gap:8px;height:150px;margin-top:30px;padding-bottom:36px;position:relative"></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════ U48 ═══════════════ -->
+<section id="u48">
+  <h2><b>U48</b> · De la tarjeta de hoy a la cabecera</h2>
+  <p>Caja → fondo de la cabecera; ceja → ceja con el reloj; nombre → título; raya → regla segmentada. Unos 460 ms, sin rebote. La vuelta no se anima.</p>
+  <div class="ctl"><button id="u48go">Empezar</button><button id="u48bk">Volver a Inicio</button><button id="u48sl">Cámara lenta: no</button></div>
+  <div class="phone" id="u48sc" style="height:600px;overflow:hidden;padding:0"></div>
+</section>
+
+<!-- ═══════════════ U49 + U50 ═══════════════ -->
+<section id="u49">
+  <h2><b>U49 + U50</b> · Ola de etapas</h2>
+  <p>Izquierda: el planificador, con la ola enlazada con la línea de etapas (toca una banda o una tarjeta). Derecha: la hoja de añadir etapas, con la vista previa que cambia al editar un peldaño. La intensidad aquí es provisional (reps objetivo de los principales); la spec propone %1RM estimado, a validar con la semilla (§8.2).</p>
+  <div class="stage">
+    <div class="phone" style="width:330px">
+      <div style="text-align:center;margin-bottom:12px"><div class="caps" style="color:var(--accent)">Fuerza base</div><div style="font:800 17px Inter;margin-top:2px">Etapas</div></div>
+      <div style="background:var(--surface);border-radius:12px;padding:10px 8px 6px"><svg id="w1" viewBox="0 0 300 150" width="100%"></svg></div>
+      <div class="caps" style="color:var(--mutedLight);margin:14px 0 8px">Línea de etapas</div>
+      <div id="tl" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="phone" style="width:330px">
+      <div class="grab"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font:800 16px Inter">Añadir etapas</span><span id="act" style="background:var(--accent);color:#000;font:900 12px Inter;border-radius:10px;padding:8px 12px"></span></div>
+      <div style="background:var(--surface);border-radius:12px;padding:10px 8px 6px"><svg id="w2" viewBox="0 0 300 150" width="100%"></svg></div>
+      <div style="font:800 12px Inter;margin:14px 0 8px"><span style="color:var(--accent)">2 · </span>Empieza con</div>
+      <div class="sg" id="lad"><b data-l="lin">Lineal</b><b data-l="int">Intens.</b><b data-l="vol">Volumen</b><b data-l="blank">En blanco</b></div>
+      <div style="font:800 12px Inter;margin:14px 0 8px"><span style="color:var(--accent)">3 · </span>Etapas que se añaden</div>
+      <div id="rl" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><div class="ab" id="aw">+ trabajo</div><div class="ab" id="ad">+ descarga</div></div>
+    </div>
+  </div>
+  <style>
+    #u49 .scard{background:var(--surface);border-radius:10px;padding:10px 12px;border:1px solid transparent;cursor:pointer}
+    #u49 .nm{font:800 14px Inter}#u49 .mt{font:700 12px Inter;color:var(--mutedLight);margin-top:2px}
+    #u49 .chip{width:22px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;font:900 11px Inter;flex:none}
+    #u49 .sf{display:flex;align-items:center;justify-content:space-between;margin-top:8px}#u49 .sf>span{font:700 12px Inter;color:var(--mutedLight)}
+    #u49 .st{display:flex;align-items:center;gap:6px}#u49 .st i{width:30px;height:30px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:900;cursor:pointer}
+    #u49 .st b{min-width:34px;text-align:center;font:800 14px Inter;background:var(--bg);border-radius:8px;padding:6px 0}
+    #u49 .ab{flex:1;text-align:center;border:1px dashed var(--muted);border-radius:10px;padding:10px 0;font:800 12px Inter;color:var(--mutedLight);cursor:pointer}
+    #u49 .sg b{font-size:11px}
+    #u49 path.m{transition:d .45s var(--ease)}
+  </style>
+</section>
+
+<!-- ═══════════════ U51 ═══════════════ -->
+<section id="u51">
+  <h2><b>U51</b> · Plan frente a real en Carga (sin prioridad)</h2>
+  <p>Barra discontinua = plan de la semana, llena = hecho, lima = semana en curso. Toca una semana para ver el detalle.</p>
+  <div class="phone" style="padding:14px 12px"><div style="background:var(--surface);border-radius:16px;padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 15px Inter">Plan frente a real</span><span id="u51meta" style="font:700 11px Inter;color:var(--mutedLight)"></span></div>
+    <div class="sg" id="u51mode" style="margin:12px 0 6px;background:var(--bg)"><b data-m="s" class="on">Series</b><b data-m="n">Sesiones</b></div>
+    <svg id="u51ch" viewBox="0 0 312 190" width="100%" style="display:block"></svg>
+    <div id="u51det" style="margin-top:12px;background:var(--bg);border-radius:10px;padding:10px 12px"></div>
+  </div></div>
+</section>
+
+<script>
+const f = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+const $ = (id) => document.getElementById(id);
+
+/* ═══ U43 ═══ */
+(() => {
+  const row = $('u43row'), ov = $('u43ov'), sv = ov.querySelector('svg'), bub = $('u43bub');
+  function roll(el, v, d, first) {
+    let box = el.querySelector('.rl');
+    if (!box) { box = document.createElement('div'); box.className = 'rl'; box.style.cssText = 'height:22px;width:60px;overflow:hidden;position:relative'; el.appendChild(box); }
+    const o = box.lastChild, n = document.createElement('div');
+    n.textContent = f(v);
+    n.style.cssText = `position:absolute;inset:0;text-align:center;line-height:22px;transform:translateY(${first ? 0 : d > 0 ? 100 : -100}%);transition:transform .22s var(--ease)`;
+    box.appendChild(n);
+    if (first) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => { n.style.transform = 'none'; if (o) { o.style.transform = `translateY(${d > 0 ? -100 : 100}%)`; setTimeout(() => o.remove(), 240); } }));
+  }
+  // Las constantes de rango son el mando para afinar el espaciado en el móvil (D1).
+  function win(field, start) {
+    if (field === 'r') { const lo = Math.max(0, start - 6); return { min: lo, max: lo + 12, step: 1, tick: 1, lab: 1, unit: ' reps' }; }
+    if (field === 'p') return { min: 1, max: 10, step: 1, tick: 1, lab: 1, unit: '', pre: 'RPE ' };
+    return { min: Math.max(0, start - 20), max: start + 20, step: 0.5, tick: 2.5, lab: 5, unit: ' kg' };
+  }
+  const W = 328, PAD = 16;
+  document.querySelectorAll('#u43row .cell').forEach((c) => {
+    const field = c.dataset.f; let v = +c.dataset.v; roll(c, v, 1, true);
+    let x0 = null, cur, w, anchorX;
+    const px = () => (W - 2 * PAD) / ((w.max - w.min) / w.step);
+    const xOf = (val) => PAD + ((val - w.min) / w.step) * px();
+    const mult = (k, m) => Math.abs(k / m - Math.round(k / m)) < 1e-6;
+    function draw() {
+      let h = '';
+      for (let k = Math.ceil(w.min / w.tick) * w.tick; k <= w.max + 1e-9; k += w.tick) {
+        const x = xOf(k), isLab = mult(k, w.lab);
+        h += `<rect x="${x - .5}" y="${isLab ? 28 : 33}" width="${isLab ? 1.5 : 1}" height="${isLab ? 12 : 6}" fill="${isLab ? '#949494' : '#585858'}"/>`;
+        if (isLab) h += `<text x="${x}" y="21" text-anchor="middle" font-family="Inter" font-size="11" font-weight="800" fill="${Math.abs(k - cur) < w.lab / 2 ? '#e6e6e6' : '#585858'}">${f(k)}</text>`;
+      }
+      const mx = xOf(cur); h += `<rect x="${mx - 1}" y="3" width="2" height="38" rx="1" fill="#aae216"/>`;
+      sv.innerHTML = h; bub.textContent = (w.pre || '') + f(cur) + w.unit; bub.style.left = Math.max(40, Math.min(W - 40, mx)) + 'px';
+    }
+    c.style.touchAction = 'none'; c.style.cursor = 'ew-resize';
+    c.onpointerdown = (e) => {
+      c.setPointerCapture(e.pointerId); x0 = e.clientX; cur = v; w = win(field, v); anchorX = xOf(v);
+      const r = c.getBoundingClientRect(), rr = row.getBoundingClientRect();
+      ov.style.transition = 'none'; ov.style.left = (r.left - rr.left) + 'px'; ov.style.width = r.width + 'px'; ov.style.opacity = 1; draw();
+      requestAnimationFrame(() => requestAnimationFrame(() => { ov.style.transition = ''; ov.style.left = '0px'; ov.style.width = W + 'px'; bub.style.opacity = 1; }));
+    };
+    c.onpointermove = (e) => {
+      if (x0 == null) return;
+      const x = Math.max(PAD, Math.min(W - PAD, anchorX + e.clientX - x0));
+      let val = w.min + Math.round((x - PAD) / px()) * w.step; val = Math.max(w.min, Math.min(w.max, Math.round(val * 100) / 100));
+      if (val !== cur) { cur = val; draw(); }
+    };
+    c.onpointerup = c.onpointercancel = () => {
+      if (x0 == null) return; x0 = null;
+      const r = c.getBoundingClientRect(), rr = row.getBoundingClientRect();
+      ov.style.left = (r.left - rr.left) + 'px'; ov.style.width = r.width + 'px'; bub.style.opacity = 0; setTimeout(() => ov.style.opacity = 0, 170);
+      if (cur !== v) { const d = cur > v ? 1 : -1; v = cur; setTimeout(() => roll(c, v, d), 150); }
+    };
+  });
+})();
+
+/* ═══ U44 ═══ */
+(() => {
+  const mode = 'fixed'; let tempo = '3010', phases, running = false, t0 = 0, prep = false;
+  const REPS = 8;
+  const KIND = { ecc: 'Baja', bottom: 'Pausa', con: 'Sube', top: 'Pausa' };
+  const parse = (s) => { if (!/^[0-9X]{4}$/.test(s)) return null; const ks = ['ecc', 'bottom', 'con', 'top']; const p = s.split('').map((c, i) => ({ kind: ks[i], sec: c === 'X' ? 0.5 : +c })).filter((q) => q.sec > 0); return p.length ? p : null; };
+  const PL = [[56, 8, '#e6e6e6'], [56, 8, '#e6e6e6'], [56, 8, '#e6e6e6'], [40, 7, '#949494']];
+  let h = `<line x1="22" x2="278" y1="0" y2="0" stroke="#949494" stroke-width="4" stroke-linecap="round"/>`, x = 0;
+  PL.forEach((p) => { h += `<rect x="${86 - x - p[1]}" y="${-p[0] / 2}" width="${p[1]}" height="${p[0]}" rx="2" fill="${p[2]}"/><rect x="${214 + x}" y="${-p[0] / 2}" width="${p[1]}" height="${p[0]}" rx="2" fill="${p[2]}"/>`; x += p[1] + 2; });
+  h += `<rect x="${86 - x - 5}" y="-8" width="5" height="16" rx="1.5" fill="#585858"/><rect x="${214 + x}" y="-8" width="5" height="16" rx="1.5" fill="#585858"/>`;
+  $('u44svg').innerHTML = h;
+  function setup() {
+    phases = parse(tempo); const tot = phases.reduce((a, p) => a + p.sec, 0);
+    $('u44tt').textContent = tempo.split('').join('-'); $('u44title').textContent = 'Tempo · ' + tempo.split('').join('-');
+    $('u44seg').innerHTML = phases.map((p, i) => `<div style="flex:${p.sec};height:24px;border-radius:6px;background:var(--surface2);position:relative;overflow:hidden"><div id="s${i}" style="position:absolute;inset:0;width:0;background:var(--accent)"></div><span id="l${i}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:900 11px Inter;color:var(--mutedLight);white-space:nowrap">${f(p.sec)} · ${KIND[p.kind].toLowerCase()}</span></div>`).join('');
+    phases.tot = tot; paint(0, 0, 0, null);
+  }
+  function pos(p, pr) { if (p.kind === 'ecc') return pr; if (p.kind === 'bottom') return 1; if (p.kind === 'con') { const e = pr < .5 ? 2 * pr * pr : 1 - Math.pow(-2 * pr + 2, 2) / 2; return 1 - e; } return 0; }
+  let lastIdx = -1, kick = 0;
+  function paint(rep, idx, pr, now) {
+    const p = phases[idx], y = now == null ? 0 : pos(p, pr), top = mode === 'fixed' ? 86 : 20, bot = 196;
+    const k = now ? Math.max(0, 1 - (now - kick) / 200) : 0;
+    $('u44bar').style.transform = `translateY(${top + (bot - top) * y - 30}px) scaleX(${1 + .04 * k})`;
+    $('u44txt').style.display = mode === 'fixed' ? '' : 'none'; $('u44txt2').style.display = mode === 'fixed' ? 'none' : '';
+    const name = prep ? 'Prepárate' : now == null ? 'Listo' : KIND[p.kind], secs = prep ? '' : now == null ? REPS + ' reps' : Math.ceil(p.sec - pr * p.sec - 1e-9) + ' s';
+    const col = (p && (p.kind === 'bottom' || p.kind === 'top')) || now == null || prep ? '#e6e6e6' : '#aae216';
+    $('u44ph').textContent = name; $('u44ph').style.color = col; $('u44sc').textContent = secs;
+    $('u44ph2').textContent = name; $('u44ph2').style.color = col; $('u44sc2').textContent = secs;
+    phases.forEach((q, j) => { const w = now == null ? 0 : j < idx ? 100 : j > idx ? 0 : pr * 100; $('s' + j).style.width = w + '%'; $('l' + j).style.color = w > 50 ? '#000' : '#949494'; });
+    $('u44rep').textContent = now == null ? '' : 'Rep ' + (rep + 1) + ' de ' + REPS;
+  }
+  function frame(now) {
+    if (!running) return;
+    const e = (now - t0) / 1000;
+    if (e < 0) { prep = true; $('u44sc').textContent = Math.ceil(-e) + ''; $('u44sc2').textContent = Math.ceil(-e) + ''; $('u44ph').textContent = 'Prepárate'; $('u44ph2').textContent = 'Prepárate'; requestAnimationFrame(frame); return; }
+    prep = false;
+    const rep = Math.floor(e / phases.tot); if (rep >= REPS) { stop(); return; }
+    let x = e % phases.tot, i = 0; while (x > phases[i].sec && i < phases.length - 1) x -= phases[i++].sec;
+    if (i !== lastIdx) { lastIdx = i; kick = now; }
+    paint(rep, i, Math.min(1, x / phases[i].sec), now); requestAnimationFrame(frame);
+  }
+  function stop() { running = false; prep = false; $('u44go').textContent = 'EMPEZAR'; paint(0, 0, 0, null); }
+  $('u44go').onclick = () => { if (running) { stop(); return; } running = true; t0 = performance.now() + 3000; $('u44go').textContent = 'PARAR'; requestAnimationFrame(frame); };
+  document.querySelectorAll('#d2 [data-tp]').forEach((b) => b.onclick = () => { tempo = b.dataset.tp; document.querySelectorAll('#d2 [data-tp]').forEach((q) => q.classList.toggle('on', q === b)); stop(); setup(); });
+  setup();
+})();
+
+/* ═══ U45 ═══ */
+(() => {
+  const T = 8; let t0 = performance.now(), last = -1;
+  function fr(now) {
+    const e = ((now - t0) / 1000) % (T + 1.5), rem = Math.max(0, Math.ceil(T - e));
+    $('u45n').textContent = '0:' + String(rem).padStart(2, '0');
+    $('u45arc').setAttribute('stroke-dashoffset', 163.4 * (1 - Math.max(0, T - e) / T));
+    const hot = rem <= 3 && rem > 0; $('u45n').style.color = hot ? '#aae216' : '#e6e6e6';
+    if (rem !== last) { last = rem; if (hot) { const r = $('u45ring'); r.style.transform = 'scale(1.08)'; setTimeout(() => r.style.transform = 'none', 130); $('u45hap').style.opacity = 1; setTimeout(() => $('u45hap').style.opacity = 0, 180); } }
+    requestAnimationFrame(fr);
+  }
+  requestAnimationFrame(fr);
+})();
+
+/* ═══ U46 ═══ */
+(() => {
+  const ST = [[40, 40, 10], [60, 60, 6], [80, 80, 3]]; let done = new Set(), open = false;
+  function render() {
+    const el = $('u46wu');
+    if (done.size === ST.length && !open) {
+      el.innerHTML = `<div id="u46cl" style="display:flex;align-items:center;gap:8px;padding:2px 0 14px;cursor:pointer"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="4" height="4" rx="1" fill="#aae216"/><rect x="7" y="5" width="4" height="7" rx="1" fill="#aae216"/><rect x="14" y="1" width="4" height="11" rx="1" fill="#aae216"/></svg><span style="font:700 13px Inter;color:var(--muted)">Calentamiento · 3 series hasta 100 kg</span><span style="margin-left:auto;color:var(--mutedLight)">⌄</span></div>`;
+      $('u46cl').onclick = () => { open = true; render(); }; return;
+    }
+    const act = ST.findIndex((_, i) => !done.has(i));
+    el.innerHTML = `<div style="display:flex;justify-content:space-between"><span class="caps" style="color:var(--muted)">Calentamiento</span><span style="font:700 11px Inter;color:var(--muted);margin-bottom:8px">60 s</span></div><div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">` +
+      ST.map((s, i) => { const d = done.has(i), a = i === act; return `<div class="row"><div style="flex:1;position:relative;height:34px;display:flex;align-items:center;padding-left:8px"><div style="position:absolute;left:0;top:0;bottom:0;width:${s[0]}%;border-radius:6px;background:${d ? 'var(--accent10)' : a ? 'var(--border)' : 'var(--surface2)'};transition:background .3s"></div><span class="lbl" style="position:relative;color:${a ? 'var(--accent)' : 'var(--muted)'}">C${i + 1}</span><span style="position:relative;font:500 14px Inter;color:${d ? 'var(--muted)' : 'var(--text)'}"><b style="font-weight:800">${f(s[1])} kg</b><span style="color:var(--muted)"> × </span><span style="font-weight:700;color:${d ? 'var(--muted)' : 'var(--mutedLight)'}">${s[2]}</span></span></div><div class="chk" data-i="${i}" style="height:34px;border-radius:9px;${d ? 'background:var(--accent);color:#000;font-weight:900' : ''}">✓</div></div>`; }).join('') + '</div>';
+    el.querySelectorAll('[data-i]').forEach((c) => c.onclick = () => { const i = +c.dataset.i; done.has(i) ? done.delete(i) : done.add(i); open = false; render(); });
+  }
+  $('u46rs').onclick = () => { done = new Set(); open = false; render(); }; render();
+})();
+
+/* ═══ U47 ═══ */
+(() => {
+  const R = { 1: [[60, 5]], 2: [[45, 8], [70, 4]], 3: [[40, 10], [60, 6], [80, 3]], 4: [[40, 10], [55, 8], [70, 5], [85, 2]] };
+  function draw(n) {
+    document.querySelectorAll('#u47sg b').forEach((b) => b.classList.toggle('on', +b.dataset.n === n));
+    const all = [...R[n], [100, null]];
+    $('u47st').innerHTML = all.map((s, i) => { const w = i === all.length - 1; return `<div style="flex:1;position:relative;height:${s[0]}%;border-radius:6px;${w ? 'border:1.5px dashed var(--accent)' : 'background:var(--surface2)'};transition:height .4s var(--ease)"><span style="position:absolute;top:-18px;left:0;right:0;text-align:center;font:800 12px Inter;color:${w ? 'var(--accent)' : 'var(--text)'}">${w ? '100%' : s[0] + '%'}</span><span style="position:absolute;bottom:-20px;left:0;right:0;text-align:center;font:800 11px Inter;color:var(--mutedLight)">${w ? 'Trabajo' : '× ' + s[1]}</span></div>`; }).join('');
+  }
+  document.querySelectorAll('#u47sg b').forEach((b) => b.onclick = () => draw(+b.dataset.n)); draw(3);
+})();
+
+/* ═══ U48 ═══ */
+(() => {
+  const sc = $('u48sc');
+  sc.innerHTML = `
+  <style>#u48sc .a{position:absolute;transition:all .46s var(--ease)}#u48sc .rw{position:absolute;left:12px;right:12px;height:56px;background:var(--surface);border-radius:10px;display:flex;align-items:center;padding:0 16px;gap:10px;transition:all .3s}#u48sc .wc{position:absolute;left:12px;right:12px;background:var(--surface2);border-radius:16px;padding:14px 16px;display:flex;gap:10px;opacity:0;transform:translateY(40px);transition:all .38s var(--ease)}#u48sc .seg{flex:1;height:100%;transition:all .46s var(--ease)}</style>
+  <div id="hh" class="a" style="top:18px;left:16px;font:900 20px Inter">Inicio</div>
+  <div id="sech" class="a caps" style="top:54px;left:18px;color:var(--muted)">Sesiones · 1 de 3 esta semana</div>
+  <div id="bg" class="a"></div><div id="flag" class="a caps"></div>
+  <div id="gl" class="a" style="font-family:'Barlow Condensed';font-style:italic;font-weight:800;color:#000">B</div>
+  <div id="nm" class="a" style="white-space:nowrap">Pierna</div>
+  <div id="rule" class="a" style="display:flex"></div>
+  <div id="meta" class="a caps" style="color:rgba(0,0,0,.55)">5 ejercicios · ~55 min</div>
+  <div id="btn" class="a" style="background:#000;border-radius:10px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:var(--accent);font:900 13px Inter;letter-spacing:.06em">EMPEZAR <span>›</span></div>
+  <div id="r1" class="rw" style="top:278px"><span style="font:italic 800 22px 'Barlow Condensed';color:var(--mutedLight)">C</span><span style="font-weight:800">Tirón</span></div>
+  <div id="r2" class="rw" style="top:340px"><span style="font:italic 800 22px 'Barlow Condensed';color:var(--muted)">A</span><span style="font-weight:800;color:var(--mutedLight)">Empuje</span><span style="margin-left:auto;font:700 12px Inter;color:var(--muted)">Hecha · lun</span></div>
+  <div id="back" class="a" style="top:12px;left:15px;width:32px;height:32px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:900;opacity:0">‹</div>
+  <div id="note" class="a" style="top:16px;right:16px;width:22px;height:22px;border:1.5px solid var(--mutedLight);border-radius:5px;opacity:0"></div>
+  <div class="wc" style="top:74px"><span class="num">1</span><div><div class="exname">Sentadilla con barra</div><div class="target">4 × 5 reps</div></div></div>
+  <div class="wc" style="top:150px"><span class="num">2</span><div><div class="exname">Peso muerto rumano</div><div class="target">3 × 8-10 reps</div></div></div>
+  <div class="wc" style="top:226px"><span class="num">3</span><div><div class="exname">Zancada búlgara</div><div class="target">3 × 10-12 reps</div></div></div>`;
+  const q = (id) => sc.querySelector('#' + id);
+  q('rule').innerHTML = Array.from({ length: 5 }, () => '<div class="seg"></div>').join('');
+  const cv = document.createElement('canvas').getContext('2d');
+  const wEnd = () => { cv.font = '800 17px Inter'; return cv.measureText('Pierna').width; };
+  const wFlag = () => { cv.font = '800 10px Inter'; return cv.measureText('SESIÓN B · 00:00').width * 1.14 + 10; };
+  const S = {
+    bg: { top: '82px', left: '12px', width: '336px', height: '184px', borderRadius: '10px', background: '#aae216' },
+    flag: { top: '96px', left: '28px', color: 'rgba(0,0,0,.55)' },
+    gl: { top: '106px', left: '28px', fontSize: '34px', opacity: 1 },
+    nm: { top: '112px', left: '58px', fontSize: '30px', fontFamily: "'Barlow Condensed'", fontWeight: 800, fontStyle: 'italic', color: '#000', textTransform: 'uppercase' },
+    rule: { top: '154px', left: '28px', width: '304px', height: '2px', gap: '0px' },
+    meta: { top: '166px', left: '28px', opacity: 1 },
+    btn: { top: '196px', left: '18px', width: '324px', height: '62px', opacity: 1, transform: 'none' },
+  };
+  const E = () => ({
+    bg: { top: '0px', left: '0px', width: '360px', height: '58px', borderRadius: '0px', background: '#151515' },
+    flag: { top: '13px', left: ((360 - wFlag()) / 2) + 'px', color: '#aae216' },
+    gl: { top: '22px', left: ((360 - wEnd()) / 2 - 16) + 'px', fontSize: '17px', opacity: 0 },
+    nm: { top: '28px', left: ((360 - wEnd()) / 2) + 'px', fontSize: '17px', fontFamily: 'Inter', fontWeight: 800, fontStyle: 'normal', color: '#e6e6e6', textTransform: 'none' },
+    rule: { top: '58px', left: '0px', width: '360px', height: '3px', gap: '3px' },
+    meta: { top: '150px', left: '28px', opacity: 0 },
+    btn: { top: '230px', left: '18px', width: '324px', height: '62px', opacity: 0, transform: 'scale(.96)' },
+  });
+  const ap = (st) => { for (const k in st) Object.assign(q(k).style, st[k]); };
+  let slow = false; const T = (ms) => slow ? ms * 4 : ms;
+  function home() {
+    ap(S); q('flag').textContent = 'Hoy · Semana 2';
+    sc.querySelectorAll('.seg').forEach((s) => { s.style.background = 'rgba(0,0,0,.85)'; s.style.borderRadius = '0'; });
+    ['hh', 'sech', 'r1', 'r2'].forEach((i) => { q(i).style.opacity = 1; q(i).style.transform = 'none'; });
+    ['back', 'note'].forEach((i) => q(i).style.opacity = 0);
+    sc.querySelectorAll('.wc').forEach((w) => { w.style.transitionDelay = '0s'; w.style.opacity = 0; w.style.transform = 'translateY(40px)'; });
+  }
+  function go() {
+    q('btn').style.transform = 'scale(.97)';
+    setTimeout(() => {
+      ap(E());
+      ['hh', 'sech'].forEach((i) => { q(i).style.opacity = 0; q(i).style.transform = 'translateY(-8px)'; });
+      ['r1', 'r2'].forEach((i) => { q(i).style.opacity = 0; q(i).style.transform = 'translateY(30px)'; });
+      sc.querySelectorAll('.seg').forEach((s, i) => { s.style.background = i === 0 ? '#aae216' : '#272727'; s.style.borderRadius = '2px'; });
+      setTimeout(() => { q('flag').textContent = 'Sesión B · 00:00'; }, T(200));
+      setTimeout(() => { ['back', 'note'].forEach((i) => q(i).style.opacity = 1); sc.querySelectorAll('.wc').forEach((w, i) => { w.style.transitionDelay = (slow ? i * .24 : i * .06) + 's'; w.style.opacity = 1; w.style.transform = 'none'; }); }, T(300));
+    }, T(90));
+  }
+  $('u48go').onclick = go; $('u48bk').onclick = home;
+  $('u48sl').onclick = () => { slow = !slow; $('u48sl').textContent = 'Cámara lenta: ' + (slow ? 'sí' : 'no'); sc.querySelectorAll('.a,.wc,.rw,.seg').forEach((e) => e.style.transitionDuration = slow ? '1.8s' : ''); };
+  home();
+})();
+
+/* ═══ U49 + U50 ═══ */
+(() => {
+  const EX = { keys: 2, acc: 4, sets: 3, rk: 8 };
+  const EXIST = [{ name: 'Base', weeks: 4, rx: {} }, { name: 'Acumulación', weeks: 4, rx: { setsDelta: 1, scope: 'all' } }]; const NOW = 6, NOWST = 1;
+  const LAD = {
+    lin: [['work', { setsDelta: 1, scope: 'all' }], ['work', { setsDelta: 2, scope: 'all' }], ['deload', { setsDelta: -1, scope: 'all' }]],
+    int: [['work', { repsShift: -3, scope: 'keys' }], ['work', { repsShift: -5, scope: 'keys' }], ['deload', { setsDelta: -1, scope: 'all' }]],
+    vol: [['work', { setsDelta: 1, scope: 'accessories' }], ['work', { setsDelta: 2, scope: 'accessories' }], ['work', { setsDelta: 3, scope: 'accessories' }]],
+    blank: [['work', {}]],
+  };
+  const inK = (s) => !s || s === 'all' || s === 'keys', inA = (s) => !s || s === 'all' || s === 'accessories';
+  const met = (st) => { const r = st.rx || {}, d = r.setsDelta || 0, sh = r.repsShift || 0; const sk = Math.max(1, EX.sets + (inK(r.scope) ? d : 0)), sa = Math.max(1, EX.sets + (inA(r.scope) ? d : 0)), rk = Math.max(1, EX.rk + (inK(r.scope) ? sh : 0)); return { vol: EX.keys * sk + EX.acc * sa, rk, dl: st.kind === 'deload' }; };
+  const curve = (p) => { let d = `M${p[0][0]} ${p[0][1]}`; for (let i = 1; i < p.length; i++) { const [a, b] = p[i - 1], [c, e] = p[i], m = (a + c) / 2; d += ` C${m} ${b} ${m} ${e} ${c} ${e}`; } return d; };
+  function wave(id, stages, o) {
+    const sv = $(id), L = 6, R = 294, T = 16, B = 104, wk = [];
+    stages.forEach((s, si) => { for (let i = 0; i < s.weeks; i++) wk.push({ si, ...met(s) }); });
+    const N = wk.length, cw = (R - L) / N, vy = (v) => B - (v / 36) * (B - T - 20), iy = (r) => T + 6 + (r - 2) / 10 * (B - T - 24);
+    const vp = [[L, vy(wk[0].vol)]], ip = [[L, iy(wk[0].rk)]];
+    wk.forEach((w, i) => { const x = L + cw * i + cw / 2; vp.push([x, vy(w.vol)]); ip.push([x, iy(w.rk)]); });
+    vp.push([R, vp[vp.length - 1][1]]); ip.push([R, ip[ip.length - 1][1]]);
+    let h = `<path class="m" d="${curve(vp)} L${R} ${B} L${L} ${B} Z" fill="#272727"/><path class="m" d="${curve(vp)}" fill="none" stroke="#949494" stroke-width="1.5"/><path class="m" d="${curve(ip)}" fill="none" stroke="#aae216" stroke-width="2.5" stroke-linecap="round"/>`;
+    if (o.dimTo != null) { const x = L + cw * stages.slice(0, o.dimTo).reduce((a, s) => a + s.weeks, 0); h += `<rect x="${L}" y="${T - 6}" width="${x - L}" height="${B - T + 6}" fill="#1f1f1f" opacity=".6"/><line x1="${x}" x2="${x}" y1="${T - 6}" y2="${B}" stroke="#585858" stroke-dasharray="2 3"/><text x="${x + 4}" y="${T}" font-family="Inter" font-size="9" font-weight="800" fill="#aae216">NUEVAS</text>`; }
+    let x = L;
+    stages.forEach((s, i) => { const w = s.weeks * cw, dl = s.kind === 'deload', sel = o.sel === i, nw = o.dimTo != null && i >= o.dimTo;
+      h += `<g data-si="${i}" style="cursor:pointer"><rect x="${x + 1}" y="${B + 8}" width="${w - 2}" height="24" rx="6" fill="${dl ? 'rgba(76,133,255,.18)' : sel ? '#3a3a3a' : '#151515'}" stroke="${sel || nw ? '#aae216' : 'none'}" stroke-width="1" stroke-dasharray="${nw && !sel ? '3 2' : ''}"/><text x="${x + w / 2}" y="${B + 24}" text-anchor="middle" font-family="Inter" font-size="10" font-weight="900" fill="${dl ? '#4c85ff' : sel ? '#e6e6e6' : '#949494'}">${i + 1}</text></g>`; x += w; });
+    if (o.now) { const nx = L + cw * (NOW - 1) + cw / 2; h += `<line x1="${nx}" x2="${nx}" y1="${T - 6}" y2="${B}" stroke="#aae216" stroke-dasharray="2 3" opacity=".7"/><circle cx="${nx}" cy="${ip[NOW][1]}" r="4.5" fill="#1f1f1f" stroke="#aae216" stroke-width="2.5"/><text x="${nx + 6}" y="${T}" font-family="Inter" font-size="9" font-weight="800" fill="#aae216">SEM ${NOW}</text>`; }
+    h += `<text x="${L}" y="${B + 46}" font-family="Inter" font-size="9" font-weight="800" fill="#aae216">— INTENSIDAD</text><text x="${L + 84}" y="${B + 46}" font-family="Inter" font-size="9" font-weight="800" fill="#949494">▆ VOLUMEN</text><text x="${R}" y="${B + 46}" text-anchor="end" font-family="Inter" font-size="9" font-weight="700" fill="#585858">${N} semanas</text>`;
+    sv.innerHTML = h; sv.querySelectorAll('[data-si]').forEach((g) => g.onclick = () => o.onSel && o.onSel(+g.dataset.si));
+  }
+  const desc = (st) => { const r = st.rx || {}, p = []; const sc = r.scope === 'keys' ? ' principales' : r.scope === 'accessories' ? ' accesorios' : ''; if (r.setsDelta) p.push((r.setsDelta > 0 ? '+' : '') + r.setsDelta + ' serie' + (Math.abs(r.setsDelta) > 1 ? 's' : '') + sc); if (r.repsShift) p.push((r.repsShift > 0 ? '+' : '') + r.repsShift + ' reps' + sc); if (st.kind === 'deload') p.push('sin progresión'); return p.length ? p.join(' · ') : 'Sin cambios'; };
+  let sel = NOWST;
+  function main() {
+    wave('w1', EXIST, { now: true, sel, onSel: (i) => { sel = i; main(); } });
+    $('tl').innerHTML = EXIST.map((s, i) => { const m = met(s); return `<div style="display:flex;gap:10px;align-items:center"><div class="chip" style="background:${i < NOWST ? '#272727' : i === NOWST ? '#aae216' : '#1f1f1f'};color:${i === NOWST ? '#000' : '#949494'}">${i < NOWST ? '✓' : i + 1}</div><div class="scard" data-i="${i}" style="flex:1;${sel === i ? 'border-color:#aae216' : ''}"><div class="nm">${s.name}</div><div class="mt">${i === NOWST ? '<span style="color:#aae216">Semana 2 de 4</span> · ' : s.weeks + ' semanas · '}${m.vol} series/sesión · ${m.rk} reps</div></div></div>`; }).join('') +
+      `<div style="display:flex;gap:10px;align-items:center"><div class="chip" style="border:1px dashed #585858;color:#585858">3</div><div class="ab" style="flex:1;text-align:left;padding-left:12px">+ Añadir etapas</div></div>`;
+    document.querySelectorAll('#tl .scard').forEach((c) => c.onclick = () => { sel = +c.dataset.i; main(); });
+  }
+  main();
+  let rungs = [], openR = 0, lad = 'lin';
+  function pick(l) { lad = l; rungs = LAD[l].map(([k, rx], i) => ({ kind: k, weeks: k === 'deload' ? 1 : 4, rx: { ...rx }, name: k === 'deload' ? 'Descarga' : (l === 'int' ? 'Intensificación ' : l === 'vol' ? 'Volumen ' : l === 'blank' ? 'Etapa ' : 'Acumulación ') + (i + 1) })); openR = 0; sheet(); }
+  function sheet() {
+    document.querySelectorAll('#lad b').forEach((b) => b.classList.toggle('on', b.dataset.l === lad));
+    wave('w2', [...EXIST, ...rungs], { dimTo: EXIST.length, sel: openR != null ? EXIST.length + openR : null, onSel: (i) => { if (i >= EXIST.length) { openR = i - EXIST.length; sheet(); } } });
+    $('act').textContent = 'Añadir ' + rungs.length;
+    $('rl').innerHTML = rungs.map((r, i) => { const o = openR === i, m = met(r); return `<div class="scard" data-r="${i}" style="${o ? 'border-color:#aae216' : ''}"><div style="display:flex;gap:10px;align-items:center"><span style="font:900 13px Inter;color:${r.kind === 'deload' ? '#4c85ff' : '#aae216'}">${EXIST.length + i + 1}</span><div style="flex:1"><div class="nm">${r.name}</div><div class="mt">${desc(r)} · ${m.vol} series/sesión</div></div><span style="color:${o ? '#aae216' : '#585858'}">${o ? '⌃' : '⌄'}</span></div>
+      ${o ? `<div onclick="event.stopPropagation()" style="border-top:.5px solid #3a3a3a;margin-top:10px;padding-top:4px">${[['weeks', 'Semanas', 1, 8], ['setsDelta', 'Series', -2, 2], ['repsShift', 'Reps', -4, 4]].map(([k, l, mi, ma]) => { const val = k === 'weeks' ? r.weeks : (r.rx[k] || 0); return `<div class="sf"><span>${l}</span><div class="st"><i data-k="${k}" data-d="-1" data-mi="${mi}" data-ma="${ma}">−</i><b>${k === 'weeks' ? val : (val > 0 ? '+' : '') + val}</b><i data-k="${k}" data-d="1" data-mi="${mi}" data-ma="${ma}">+</i></div></div>`; }).join('')}
+      <div class="sf" style="flex-direction:column;align-items:stretch;gap:6px"><span>Alcance</span><div class="sg">${[['all', 'Todo'], ['keys', 'Principales'], ['accessories', 'Accesorios']].map(([s, l]) => `<b data-s="${s}" class="${(r.rx.scope || 'all') === s ? 'on' : ''}">${l}</b>`).join('')}</div></div></div>` : ''}</div>`; }).join('');
+    document.querySelectorAll('#rl .scard').forEach((c) => c.onclick = () => { const i = +c.dataset.r; openR = openR === i ? null : i; sheet(); });
+    document.querySelectorAll('#rl i').forEach((b) => b.onclick = () => { const r = rungs[openR], k = b.dataset.k, d = +b.dataset.d; if (k === 'weeks') r.weeks = Math.max(+b.dataset.mi, Math.min(+b.dataset.ma, r.weeks + d)); else r.rx[k] = Math.max(+b.dataset.mi, Math.min(+b.dataset.ma, (r.rx[k] || 0) + d)); sheet(); });
+    document.querySelectorAll('#rl [data-s]').forEach((b) => b.onclick = () => { rungs[openR].rx.scope = b.dataset.s; sheet(); });
+  }
+  document.querySelectorAll('#lad b').forEach((b) => b.onclick = () => pick(b.dataset.l));
+  $('aw').onclick = () => { rungs.push({ kind: 'work', weeks: 4, rx: {}, name: 'Etapa ' + (rungs.length + 1) }); openR = rungs.length - 1; sheet(); };
+  $('ad').onclick = () => { rungs.push({ kind: 'deload', weeks: 1, rx: { setsDelta: -1, scope: 'all' }, name: 'Descarga' }); openR = rungs.length - 1; sheet(); };
+  pick('lin');
+})();
+
+/* ═══ U51 ═══ */
+(() => {
+  const ST = [['Base', 4, 18, 0], ['Acumulación', 4, 24, 0], ['Descarga', 1, 12, 1], ['Intensif.', 3, 18, 0]], SPW = 3, NOW = 10;
+  const REAL = [[54, 3], [50, 3], [54, 3], [36, 2], [72, 3], [48, 2], [72, 3], [66, 3], [36, 3], [36, 2]];
+  const wk = []; ST.forEach((s) => { for (let i = 0; i < s[1]; i++) wk.push({ ps: s[2] * SPW, pn: SPW, dl: s[3], name: s[0], wi: i + 1, wn: s[1] }); });
+  wk.forEach((w, i) => { if (REAL[i]) { w.rs = REAL[i][0]; w.rn = REAL[i][1]; } });
+  let mode = 's', sel = NOW - 1;
+  function draw() {
+    const sv = $('u51ch'), L = 4, R = 308, T = 14, B = 136, N = wk.length, cw = (R - L) / N, bw = cw - 6, mx = mode === 's' ? 80 : 3.6, y = (v) => B - (v / mx) * (B - T); let h = '';
+    [0.25, 0.5, 0.75, 1].forEach((g) => { h += `<line x1="${L}" x2="${R}" y1="${B - (B - T) * g}" y2="${B - (B - T) * g}" stroke="#272727"/>`; });
+    wk.forEach((w, i) => { const x = L + cw * i + 3, p = mode === 's' ? w.ps : w.pn, r = mode === 's' ? w.rs : w.rn, fut = i >= NOW, cur = i === NOW - 1, s = i === sel;
+      h += `<g data-i="${i}" style="cursor:pointer"><rect x="${x - 3}" y="${T - 6}" width="${cw}" height="${B - T + 30}" fill="${s ? '#272727' : 'transparent'}" rx="6"/><rect x="${x}" y="${y(p)}" width="${bw}" height="${B - y(p)}" rx="4" fill="none" stroke="${w.dl ? '#4c85ff' : fut ? '#3a3a3a' : '#949494'}" stroke-width="1.5" stroke-dasharray="3 2"/>${r != null ? `<rect x="${x + 3}" y="${y(r)}" width="${bw - 6}" height="${B - y(r)}" rx="3" fill="${cur ? '#aae216' : r >= p ? '#e6e6e6' : '#949494'}"/>` : ''}<text x="${x + bw / 2}" y="${B + 13}" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="${cur ? '#aae216' : '#585858'}">${i + 1}</text></g>`; });
+    let x = L; ST.forEach((s) => { const w = s[1] * cw; h += `<rect x="${x + 1}" y="${B + 22}" width="${w - 2}" height="20" rx="5" fill="${s[3] ? 'rgba(76,133,255,.18)' : '#151515'}"/><text x="${x + w / 2}" y="${B + 36}" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="${s[3] ? '#4c85ff' : '#949494'}">${w > 40 ? s[0] : s[0].slice(0, 3)}</text>`; x += w; });
+    sv.innerHTML = h; sv.querySelectorAll('[data-i]').forEach((g) => g.onclick = () => { sel = +g.dataset.i; draw(); });
+    const done = wk.slice(0, NOW - 1); $('u51meta').textContent = `${done.filter((w) => w.rs >= w.ps).length} de ${NOW - 1} semanas al plan`;
+    const w = wk[sel], fut = sel >= NOW, cur = sel === NOW - 1;
+    $('u51det').innerHTML = `<div class="caps" style="color:${cur ? '#aae216' : w.dl ? '#4c85ff' : '#949494'}">Semana ${sel + 1} · ${w.name} ${w.wi} de ${w.wn}${cur ? ' · en curso' : ''}</div><div style="font:800 14px Inter;margin-top:4px">${fut ? `Plan: ${w.pn} sesiones · ${w.ps} series` : `${w.rn} de ${w.pn} sesiones · ${w.rs} de ${w.ps} series`}</div><div style="font:700 12px Inter;color:#949494;margin-top:2px">${fut ? 'Aún no ha llegado' : cur ? `Queda ${w.pn - w.rn} sesión` : w.rs >= w.ps ? 'Semana cumplida' : (w.pn - w.rn > 0 ? `Faltó ${w.pn - w.rn} sesión` : 'Faltaron series dentro de las sesiones')}</div>`;
+  }
+  document.querySelectorAll('#u51mode b').forEach((b) => b.onclick = () => { mode = b.dataset.m; document.querySelectorAll('#u51mode b').forEach((q) => q.classList.toggle('on', q === b)); draw(); });
+  draw();
+})();
+</script>
+</body>
+</html>
