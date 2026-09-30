@@ -45,14 +45,14 @@ volver atrás de iOS en la ficha de cliente.
 
 **Probar U28**
 
-- [ ] Progresión → tocar Carga y luego Historial: el contenido se desliza de
+- [x] Progresión → tocar Carga y luego Historial: el contenido se desliza de
   lado a la vez que el resalte, sin corte, y vuelve igual hacia la izquierda.
-- [ ] Saltar de Ejercicios a Historial de un toque: cruza Carga deslizando,
+- [x] Saltar de Ejercicios a Historial de un toque: cruza Carga deslizando,
   sin parpadeos.
-- [ ] Al volver a una pestaña ya visitada, conserva el scroll y los filtros.
-- [ ] Clientes → ficha → Progreso (sin Historial, dos segmentos): igual.
-- [ ] Borrar una sesión en Historial: solo sale esa tarjeta por la derecha.
-- [ ] Tirar para refrescar en Ejercicios y en Carga sigue funcionando.
+- [x] Al volver a una pestaña ya visitada, conserva el scroll y los filtros.
+- [x] Clientes → ficha → Progreso (sin Historial, dos segmentos): igual.
+- [x] Borrar una sesión en Historial: solo sale esa tarjeta por la derecha.
+- [x] Tirar para refrescar en Ejercicios y en Carga sigue funcionando.
 
 ## 2. U29 — Recap: distribución y legibilidad
 
@@ -380,7 +380,7 @@ probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
-| U28 | Las pestañas de Progresión se deslizan con el segmentado (solo al tocar) | ✅ rama `feat/recap` | 🟢 |
+| U28 | Las pestañas de Progresión se deslizan con el segmentado (solo al tocar) | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
