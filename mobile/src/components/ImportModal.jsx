@@ -11,9 +11,13 @@
  *   parsedData  — already-parsed JSON object
  *   onImport(parsedData, sections) — called when user confirms
  *   onClose     — called to dismiss
+ *
+ * Es una `DragSheet` (U34): elegir qué importar es elegir entre opciones.
+ * Cancelar es cerrar la hoja (arrastrando, tocando fuera o «Listo»).
  */
 import { useState } from 'react';
-import { Modal, View, TouchableOpacity, Switch, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TouchableOpacity, Switch, StyleSheet } from 'react-native';
+import DragSheet from './DragSheet';
 import { useTranslation } from 'react-i18next';
 import { Text } from './ui/Text';
 import { spacing, borders, withOpacity, textStyles, lh } from '../theme';
@@ -297,15 +301,8 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   }
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={onClose} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={s.centeredOuter}
-      >
+    <DragSheet visible onClose={onClose} title={t('import.title')}>
         <View style={s.sheet}>
-          {/* ── Header ── */}
-          <Text style={s.title}>{t('import.title')}</Text>
           <View style={s.fileRow}>
             <Text style={s.fileName} numberOfLines={1}>{fileName}</Text>
             <View style={s.badge}>
@@ -313,12 +310,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
             </View>
           </View>
 
-          {/* ── Scrollable content ── */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={s.scroll}
-            contentContainerStyle={s.scrollContent}
-          >
+          <View style={s.scrollContent}>
             {isBackup
               ? (
                 <BackupSections
@@ -337,13 +329,9 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
                 />
               )
             }
-          </ScrollView>
+          </View>
 
-          {/* ── Actions — always visible, outside scroll ── */}
           <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-              <Text style={s.cancelText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
             <TouchableOpacity
               style={[s.importBtn, nothingSelected && s.importBtnDisabled]}
               onPress={nothingSelected ? undefined : handleConfirm}
@@ -355,33 +343,15 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+    </DragSheet>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const makeS = (th) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  centeredOuter: {
-    flex:              1,
-    justifyContent:    'center',
-    paddingHorizontal: spacing.xl,
-  },
-  sheet: {
-    backgroundColor: th.colors.bg,
-    borderRadius:    th.radius.lg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    padding:         spacing.xl,
-    gap:             spacing.md,
-    maxHeight:       '88%',
-  },
-  title: { ...textStyles.heading, color: th.colors.text },
+  // El contenido de la hoja: velo, tarjeta y título los pone DragSheet.
+  sheet: { gap: spacing.md, paddingBottom: spacing.sm },
   fileRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -399,7 +369,6 @@ const makeS = (th) => StyleSheet.create({
   badgeText: { ...textStyles.caps, color: th.colors.accent },
 
   // Scroll area
-  scroll: { flexShrink: 1 },
   scrollContent: { gap: spacing.sm },
 
   // Warning
@@ -531,17 +500,8 @@ const makeS = (th) => StyleSheet.create({
     gap:           spacing.sm,
     paddingTop:    spacing.xs,
   },
-  cancelBtn: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    alignItems:      'center',
-  },
-  cancelText: { ...textStyles.body, color: th.colors.mutedLight },
   importBtn: {
-    flex:            2,
+    flex:            1,
     paddingVertical: spacing.md,
     borderRadius:    th.radius.sm,
     backgroundColor: th.colors.accent,

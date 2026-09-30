@@ -8,12 +8,15 @@
  * `style` 'cancel' (gris), 'destructive' (rojo) o nada (la acción principal,
  * en lima). Sin botones es un aviso con «Entendido».
  *
+ * `options.items`: una lista de líneas bajo la frase, con scroll si es larga
+ * (lo que trae una actualización del programa, U34).
+ *
  * Lo pinta `DialogHost`, montado una vez en la raíz (RootNavigator).
  */
 let listener = null;
 
 export function setDialogListener(fn) { listener = fn; }
 
-export function showDialog(title, message, buttons) {
-  listener?.({ title, message, buttons });
+export function showDialog(title, message, buttons, options) {
+  listener?.({ title, message, buttons, items: options?.items });
 }

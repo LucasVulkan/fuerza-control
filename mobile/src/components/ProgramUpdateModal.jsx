@@ -9,15 +9,16 @@
  * There is no "start from scratch": progress is a counter owned by the client,
  * not something the trainer's copy can reset (see `docs/specs/stage-locks.md`
  * §6.2). Only the trainer activating a different stage moves them.
+ *
+ * Desde U34 no pinta nada propio: es una decisión, así que sale con el diálogo
+ * común (`showDialog`, U33) y la lista de cambios en su caja con scroll. Antes
+ * era una tarjeta con su propio velo.
  */
 
-import { View, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
-import { Text } from './ui/Text';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { spacing, borders, withOpacity, textStyles, lh, LINE } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { showDialog } from './ui/dialog';
 
 // Una línea del diff: `{ k, p }` desde U34 (se traduce al pintarla, en el
 // idioma de ahora); las actualizaciones que quedaron pendientes de antes
@@ -31,168 +32,18 @@ function diffLine(line, t) {
 }
 
 export default function ProgramUpdateModal() {
-  const { t }  = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  const pending                    = useStore((s) => s.clientSync?.pendingProgramUpdate);
-  const applyPendingProgramUpdate  = useStore((s) => s.applyPendingProgramUpdate);
+  const { t } = useTranslation();
+  const pending                     = useStore((s) => s.clientSync?.pendingProgramUpdate);
+  const applyPendingProgramUpdate   = useStore((s) => s.applyPendingProgramUpdate);
   const dismissPendingProgramUpdate = useStore((s) => s.dismissPendingProgramUpdate);
-  const insets                     = useSafeAreaInsets();
 
-  if (!pending) return null;
+  useEffect(() => {
+    if (!pending) return;
+    showDialog(t('programUpdate.title'), t('programUpdate.applySub'), [
+      { text: t('programUpdate.later'), style: 'cancel', onPress: dismissPendingProgramUpdate },
+      { text: t('programUpdate.apply'), onPress: applyPendingProgramUpdate },
+    ], { items: (pending.diff ?? []).map((line) => diffLine(line, t)) });
+  }, [pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const diff = pending.diff ?? [];
-
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={dismissPendingProgramUpdate}>
-      <View style={styles.backdrop} />
-      <View style={[styles.outer, { paddingBottom: insets.bottom + spacing.xl }]}>
-        <View style={styles.card}>
-
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.tag}>{t('programUpdate.tag')}</Text>
-            <Text style={styles.title}>{t('programUpdate.title')}</Text>
-          </View>
-
-          {/* Diff list */}
-          <ScrollView style={styles.diffScroll} showsVerticalScrollIndicator={false} bounces={false}>
-            <View style={styles.diffBox}>
-              {diff.map((line, i) => (
-                <View key={i} style={styles.diffRow}>
-                  <Text style={styles.diffDot}>·</Text>
-                  <Text style={styles.diffText}>{diffLine(line, t)}</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            <ActionBtn
-              label={t('programUpdate.apply')}
-              sub={t('programUpdate.applySub')}
-              accent
-              onPress={applyPendingProgramUpdate}
-            />
-            <TouchableOpacity style={styles.laterBtn} onPress={dismissPendingProgramUpdate} activeOpacity={0.7}>
-              <Text style={styles.laterTxt}>{t('programUpdate.later')}</Text>
-            </TouchableOpacity>
-          </View>
-
-        </View>
-      </View>
-    </Modal>
-  );
+  return null;
 }
-
-function ActionBtn({ label, sub, onPress, accent }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      style={[styles.actionBtn, accent && styles.actionBtnAccent]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <Text style={[styles.actionLabel, accent && styles.actionLabelAccent]}>{label}</Text>
-      <Text style={[styles.actionSub, accent && styles.actionSubAccent]}>{sub}</Text>
-    </TouchableOpacity>
-  );
-}
-
-const makeStyles = (th) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-  },
-  outer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent:    'flex-end',
-    paddingHorizontal: spacing.lg,
-  },
-  card: {
-    backgroundColor: th.colors.bg,
-    borderRadius:    th.radius.lg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    overflow:        'hidden',
-    maxHeight:       '80%',
-  },
-
-  // Header
-  header: {
-    padding:      spacing.xl,
-    paddingBottom: spacing.md,
-  },
-  tag: {
-    ...textStyles.caps,
-    color:        th.colors.accent,
-    marginBottom: spacing.xs,
-  },
-  title: {
-    ...textStyles.heading,
-    color:      th.colors.text,
-    lineHeight: lh(textStyles.heading.fontSize, LINE.tight),
-  },
-
-  // Diff
-  diffScroll: {
-    maxHeight: 180,
-  },
-  diffBox: {
-    marginHorizontal: spacing.xl,
-    marginBottom:     spacing.md,
-    backgroundColor:  withOpacity(th.colors.accent, 0.05),
-    borderWidth:      borders.thin,
-    borderColor:      withOpacity(th.colors.accent, 0.2),
-    borderRadius:     th.radius.sm,
-    padding:          spacing.md,
-    gap:              spacing.xs,
-  },
-  diffRow: {
-    flexDirection: 'row',
-    gap:           spacing.xs,
-    alignItems:    'flex-start',
-  },
-  diffDot: { ...textStyles.body, color: th.colors.accent },
-  diffText: {
-    ...textStyles.body,
-    flex:       1,
-    color:      th.colors.text,
-    lineHeight: lh(textStyles.body.fontSize),
-  },
-
-  // Action buttons
-  actions: {
-    padding: spacing.xl,
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
-  },
-  actionBtn: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.md,
-    gap:             2,
-  },
-  actionBtnAccent: {
-    backgroundColor: th.colors.accent,
-    borderColor:     th.colors.accent,
-  },
-  actionLabel: { ...textStyles.bodyStrong, color: th.colors.text },
-  actionLabelAccent: {
-    color: th.colors.bg,
-  },
-  actionSub: { ...textStyles.label, color: th.colors.muted },
-  actionSubAccent: {
-    color: withOpacity(th.colors.bg, 0.7),
-  },
-
-  // Later
-  laterBtn: {
-    alignItems:      'center',
-    paddingVertical: spacing.sm,
-  },
-  laterTxt: { ...textStyles.label, color: th.colors.mutedLight },
-});

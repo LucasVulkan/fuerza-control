@@ -3,12 +3,14 @@
  * Shown when a free user tries to access a PRO feature.
  * Fetches the current RevenueCat offering and displays available packages.
  * Falls back gracefully when native module isn't loaded (Expo Go).
+ *
+ * Es una `DragSheet` (U34): antes montaba su propio Modal con su velo y su
+ * asa. Se cierra arrastrando o tocando fuera, como todas las hojas.
  */
 
 import { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from './ui/Text';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }                                     from '../../store/useStore';
@@ -16,7 +18,7 @@ import { spacing, borders, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
-import { CloseIcon } from './ui/EditorIcons';
+import DragSheet from './DragSheet';
 // ── Feature list ──────────────────────────────────────────────────────────────
 
 const PRO_FEATURES = [
@@ -33,7 +35,6 @@ export default function PaywallModal({ onClose }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
   const getOffering      = useStore((s) => s.getOffering);
   const purchasePackage  = useStore((s) => s.purchasePackage);
   const restorePurchases = useStore((s) => s.restorePurchases);
@@ -96,22 +97,12 @@ export default function PaywallModal({ onClose }) {
   }
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: spacing.xxl + insets.bottom }]}>
-        <View style={styles.handle} />
-
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+    <DragSheet visible onClose={onClose}>
           {/* Header */}
           <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.badge}>PRO</Text>
-              <Text style={styles.title}>{t('paywall.title')}</Text>
-              <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-              <CloseIcon size={16} color={th.colors.mutedLight} />
-            </TouchableOpacity>
+            <Text style={styles.badge}>PRO</Text>
+            <Text style={styles.title}>{t('paywall.title')}</Text>
+            <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
           </View>
 
           {/* Feature list */}
@@ -189,43 +180,16 @@ export default function PaywallModal({ onClose }) {
           </TouchableOpacity>
 
           <Text style={styles.legal}>{t('paywall.legal')}</Text>
-        </ScrollView>
-      </View>
-    </Modal>
+    </DragSheet>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  sheet: {
-    backgroundColor:      th.colors.bg,
-    borderTopLeftRadius:  th.radius.lg,
-    borderTopRightRadius: th.radius.lg,
-    paddingHorizontal:    spacing.xl,
-    paddingTop:           spacing.sm,
-    maxHeight:            '90%',
-  },
-  handle: {
-    width:           40,
-    height:          4,
-    backgroundColor: th.colors.border,
-    borderRadius:    2,
-    alignSelf:       'center',
-    marginBottom:    spacing.md,
-  },
-
   // Header
   headerRow: {
-    flexDirection:  'row',
-    alignItems:     'flex-start',
-    justifyContent: 'space-between',
-    marginBottom:   spacing.xl,
-    gap:            spacing.md,
+    marginBottom: spacing.xl,
   },
   badge: {
     alignSelf:       'flex-start',
@@ -241,10 +205,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   title:    { ...textStyles.heading, color: th.colors.text },
   subtitle: { ...textStyles.label, color: th.colors.mutedLight, marginTop: 4, maxWidth: 260 },
-  closeBtn: {
-    padding: spacing.xs,
-  },
-
   // Features
   featureList: {
     gap:          spacing.sm,

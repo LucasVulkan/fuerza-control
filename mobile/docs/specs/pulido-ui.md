@@ -8,12 +8,15 @@
 > Fase U31 · hecho · Sesiones libres: icono delante o sin hueco · §4
 > Fase U32 · hecho · Programa de cliente: botones fuera de la tarjeta · §5
 > Fase U33 · hecho · Confirmaciones y avisos sin Alert nativo · §6
-> Fase U34 · pendiente · Textos fijos a i18n y modales viejos a DragSheet · §7
+> Fase U34 · hecho · Textos fijos a i18n y modales viejos a DragSheet · §7
 > Fase U35 · hecho · Un solo lima, como token del tema · §8
 > Fase U36 · hecho · Cabecera de cerrar compartida y ✕ como icono · §9
 > Fase U37 · pendiente · Pantalla vacía común, sin emojis · §10
 > Fase U38 · pendiente · Una sola hoja de progresión · §11
 > Fase U39 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12
+> Fase U40 · pendiente · Importar archivo: el contenido de la hoja al estándar · §13
+> Fase U41 · pendiente · Programas archivados: la lista al estándar · §14
+> Fase U42 · pendiente · Sesión libre: el bloque se edita en la pantalla de Editar bloque · §15
 >
 > Estado: **apuntes, no spec cerrada** (29-sep-2026). U28-U32 son notas del
 > usuario; U33-U38 salen de una revisión del código el mismo día (solo código,
@@ -438,14 +441,49 @@ unifica.
   respaldo), y los respaldos «No se pudo…» a sus claves.
 - Se quedan sin traducir a propósito: «Forma» y «PRO» (marca) y «RPE».
 
-**Probar U34 (parte 1)**
+**Probar U34**
 
-- [ ] Con la app en inglés: Clientes sin Pro, el modal de pago, importar un
+- [x] Con la app en inglés: Clientes sin Pro, el modal de pago, importar un
   archivo (backup y programa) y la ficha de un cliente → Info salen en inglés.
-- [ ] Con la app en inglés, cuando el entrenador cambia el programa: el aviso y
+- [x] Con la app en inglés, cuando el entrenador cambia el programa: el aviso y
   sus líneas («+1 new stage», «A: +2 exercises»…) salen en inglés.
-- [ ] En español, los mismos sitios dicen lo de antes; los diálogos de borrar
+- [x] En español, los mismos sitios dicen lo de antes; los diálogos de borrar
   etapa, restaurar copia, desconectar, etc. ya no llevan «¿?» en el título.
+
+**Parte 2 hecha (30-sep-2026): modales viejos.**
+
+- **A `DragSheet`** (elegir entre opciones): el de pago (se cierra arrastrando;
+  fuera su ✕ y su asa), importar archivo (título en la cabecera de la hoja,
+  IMPORTAR a todo lo ancho; Cancelar es cerrar la hoja), importar para un
+  cliente (las tres formas como `SheetRow` con icono y subtítulo) y, de paso,
+  otros dos `Modal` propios de Clientes con el mismo velo 0.7: la hoja de Info
+  del cliente y el `⋯` de un programa archivado (ahora filas de U30:
+  reactivar, exportar, eliminar en rojo). Fuera `GhostBtn` y sus estilos.
+- **Actualización del programa → diálogo** (es una decisión, no un menú): sale
+  con `showDialog`, que gana `options.items`, una lista con scroll en una caja
+  `surface2` bajo la frase. Título «Tu entrenador ha modificado el programa»,
+  frase «Sigues en tu etapa y tu semana», la lista de cambios y Ahora no /
+  Actualizar (lima). Fuera la ceja «ACTUALIZACIÓN».
+- **Quedan con `Modal` propio** (fuera del alcance de U34): archivados del menú
+  ≡ (→ U41), el editor de bloque de la sesión libre en el Workout (→ U42), el
+  detalle de ejercicio de Progresión (velo 0.82) y las notas del entreno
+  (`NotesModal`, 0.6). El contenido de Importar archivo sigue viejo (→ U40).
+
+**Probar U34**
+
+- [x] Clientes sin Pro → Ver planes PRO (y Plantillas, y el menú ≡): el pago
+  sale como hoja, se cierra arrastrando o tocando fuera.
+- [x] Menú ≡ → importar un backup y un programa: hoja con el título arriba, el
+  fichero y su tipo, las opciones y IMPORTAR abajo; «Listo» o arrastrar
+  cancela. Importar hace lo de antes.
+- [x] Ficha de cliente → `⋯` → importar programa: hoja con las tres formas,
+  cada una con icono y explicación; tocar una importa.
+- [x] Clientes → Info de un cliente: hoja estándar con el nombre de título y
+  el código (copiar sigue funcionando).
+- [x] Ficha → Programa → archivados → `⋯`: hoja con reactivar, exportar y
+  eliminar (en rojo, con su diálogo).
+- [x] Como cliente, cuando el entrenador cambia el programa: diálogo centrado
+  con la lista de cambios; Ahora no lo aparca, Actualizar lo aplica.
 
 ## 8. U35 — Un solo lima, como token del tema
 
@@ -565,6 +603,47 @@ scroll ni la fila abierta.
 - [x] Añadir o borrar un ejercicio sigue haciendo su fundido.
 - [x] Reordenar arrastrando funciona justo después de cambiar de sesión.
 
+## 13. U40 — Importar archivo: el contenido de la hoja al estándar
+
+Visto por el usuario al probar U34 (30-sep-2026): la carcasa ya es `DragSheet`,
+pero lo de dentro sigue siendo la interfaz vieja de `ImportModal.jsx`
+(`AppHeader`, `ExternalImportModal` y `OnboardingScreen` la usan):
+
+- Backup completo: tarjetas `surface2` con borde y un `Switch` nativo por
+  sección, y dentro de historial y plantillas unos botones Combinar /
+  Reemplazar propios con una pista en rojo.
+- Programa: botones de radio propios (círculo + punto) en tarjetas con borde
+  que se tiñen de lima al elegir.
+- Un aviso en caja roja arriba, y la pastilla del tipo de fichero con borde.
+
+Llevarlo a las piezas de la app: filas `MenuRow` agrupadas en `Section` (con
+interruptor donde hoy hay `Switch`), el `SegmentedControl` para Combinar /
+Reemplazar, y para elegir el modo las filas de hoja con marca de elegida.
+Necesita maqueta antes: son decisiones de diseño, no de código.
+
+## 14. U41 — Programas archivados: la lista al estándar
+
+Dos listas de programas archivados con interfaz vieja:
+
+- Ficha de cliente → Programa → archivados (`ClientsScreen`,
+  `ArchivedProgramRow` dentro de una `DragSheet`): cada fila lleva tres iconos
+  sueltos (ver, descargar, `⋯`). El `⋯` ya abre la hoja estándar (U34).
+- Los tuyos, desde el menú ≡ (`AppHeader`, `ArchivedProgramsModal`): sigue
+  siendo un `Modal` propio con su velo (0.7).
+
+Las dos, a la misma pieza: filas de la app y las acciones en el `⋯` (hoja de
+opciones de U30), y la del menú ≡ a `DragSheet`. Maqueta antes.
+
+## 15. U42 — Sesión libre: el bloque se edita en la pantalla de Editar bloque
+
+En una sesión libre en curso, añadir un bloque de acondicionamiento en el
+Workout (o tocar editar en uno) abre `BlockEditorInline` dentro de un `Modal`
+a pantalla completa propio de `WorkoutScreen` (barra con el nombre y
+«Aceptar»). Desde el editor de sesión el mismo editor es una pantalla,
+`BlockEditorScreen`, con la cabecera estándar (‹ y ✓). Que el Workout navegue
+a esa pantalla en vez de montar la suya; hay que ver cómo trabaja con el
+`templateId` `'__free__'` de la sesión libre.
+
 ## Otros detalles vistos (sin fase)
 
 - Pocos tamaños de letra fuera de la escala de `textStyles`, casi todos en los
@@ -583,9 +662,12 @@ scroll ni la fila abierta.
 | U31 | Hueco delante de las sesiones libres: 01, 02… | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U32 | Botones del programa de cliente fuera de la tarjeta | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U33 | Diálogo propio (`showDialog`) y fuera los `Alert.alert` | ✅ rama `feat/recap` | 🟡 |
-| U34 | Textos fijos a i18n; `PaywallModal`, `ProgramUpdateModal`, `ImportModal` a `DragSheet` | pendiente | 🟡 |
+| U34 | Textos fijos a i18n; pago, importar e Info/archivados de Clientes a `DragSheet`; actualización de programa a diálogo | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U35 | Un solo lima: `#b8ff00` pasa a `accent` | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U36 | Esas cuatro pantallas a `ScreenHeader`; ✕ como icono | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U37 | `EmptyState` común | pendiente | 🟢 |
 | U38 | Hoja de progresión única | pendiente | 🟢 |
 | U39 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
+| U40 | Importar archivo: el contenido de la hoja al estándar (maqueta antes) | pendiente | 🟡 |
+| U41 | Programas archivados (cliente y menú ≡) al estándar (maqueta antes) | pendiente | 🟡 |
+| U42 | Sesión libre: el bloque se edita en `BlockEditorScreen` | pendiente | 🟢 |

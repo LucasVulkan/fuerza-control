@@ -975,7 +975,6 @@
     "errTitle": "Couldn't complete the purchase"
   },
   "programUpdate": {
-    "tag": "UPDATE",
     "title": "Your trainer has updated the program",
     "apply": "Update",
     "applySub": "You stay on your stage and week",

@@ -975,7 +975,6 @@
     "errTitle": "No se pudo completar la compra"
   },
   "programUpdate": {
-    "tag": "ACTUALIZACIÓN",
     "title": "Tu entrenador ha modificado el programa",
     "apply": "Actualizar",
     "applySub": "Sigues en tu etapa y tu semana",

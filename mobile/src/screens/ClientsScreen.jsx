@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, Modal, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -110,16 +110,6 @@ function FilterChip({ label, active, onPress, count }) {
   );
 }
 
-function GhostBtn({ label, onPress, danger }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity style={styles.ghostBtn} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.ghostBtnText, danger && { color: th.colors.red }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 // ── Status dot ─────────────────────────────────────────────────────────────────
 
 /**
@@ -190,34 +180,28 @@ function ExerciseMiniCard({ exerciseId, logs }) {
 function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  // Hoja estándar (U34): elegir cómo importar es elegir entre opciones.
+  // Cancelar es cerrarla; el nombre del fichero va de primera línea.
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.importModalWrap}>
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>{t('clients.importModal.title')}</Text>
-          <Text style={styles.modalSub} numberOfLines={1}>{fileName}</Text>
-          <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-            {[
-              { mode: 'replace',     label: t('clients.importModal.replaceLabel'),     desc: t('clients.importModal.replaceDesc') },
-              { mode: 'replace_log', label: t('clients.importModal.replaceLogLabel'),  desc: t('clients.importModal.replaceLogDesc') },
-              { mode: 'merge_log',   label: t('clients.importModal.mergeLogLabel'),    desc: t('clients.importModal.mergeLogDesc') },
-            ].map(({ mode, label, desc }) => (
-              <TouchableOpacity
-                key={mode}
-                style={styles.importOption}
-                onPress={() => onImport(parsedData, mode)}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.importOptionLabel}>{label}</Text>
-                <Text style={styles.importOptionDesc}>{desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <GhostBtn label={t('common.cancel')} onPress={onClose} />
-        </View>
-      </View>
-    </Modal>
+    <DragSheet visible onClose={onClose} title={t('clients.importModal.title')}>
+      <Text style={styles.modalSub} numberOfLines={1}>{fileName}</Text>
+      <Section style={styles.importSheetRows}>
+        {[
+          { mode: 'replace',     icon: ROW_ICON.import,  label: t('clients.importModal.replaceLabel'),    desc: t('clients.importModal.replaceDesc') },
+          { mode: 'replace_log', icon: ROW_ICON.history, label: t('clients.importModal.replaceLogLabel'), desc: t('clients.importModal.replaceLogDesc') },
+          { mode: 'merge_log',   icon: ROW_ICON.new,     label: t('clients.importModal.mergeLogLabel'),   desc: t('clients.importModal.mergeLogDesc') },
+        ].map(({ mode, icon, label, desc }) => (
+          <SheetRow
+            key={mode}
+            icon={icon}
+            label={label}
+            sub={desc}
+            subLines={0}
+            onPress={() => onImport(parsedData, mode)}
+          />
+        ))}
+      </Section>
+    </DragSheet>
   );
 }
 
@@ -717,20 +701,16 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
         <MenuIcon horizontal color={th.colors.muted2} />
       </TouchableOpacity>
 
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)} />
-        <View style={styles.contextMenu}>
-          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onReactivate(); }}>
-            <Text style={[styles.contextMenuText, { color: th.colors.accent }]}>{t('clients.menuReactivate')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onExport(); }}>
-            <Text style={styles.contextMenuText}>{t('clients.menuExport')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDelete(); }}>
-            <Text style={[styles.contextMenuText, { color: th.colors.red }]}>{t('clients.menuDelete')}</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      {/* Hoja de opciones estándar (U30/U34): antes un Modal con filas de texto. */}
+      {menuOpen && (
+        <DragSheet visible onClose={() => setMenuOpen(false)} title={program.name}>
+          <Section style={styles.importSheetRows}>
+            <SheetRow icon={ROW_ICON.sync}   label={t('clients.menuReactivate')} onPress={onReactivate} />
+            <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')}     onPress={onExport} />
+            <SheetRow icon={ROW_ICON.trash}  label={t('clients.menuDelete')}     onPress={onDelete} danger />
+          </Section>
+        </DragSheet>
+      )}
     </View>
   );
 }
@@ -1233,12 +1213,10 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
     }
   }
 
+  // Hoja estándar (U34): antes era un Modal propio con su velo y su asa.
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.infoSheet}>
-        <View style={styles.infoSheetHandle} />
-        <Text style={styles.infoSheetName}>{client.name}</Text>
+    <DragSheet visible onClose={onClose} title={client.name}>
+      <View style={styles.infoSheetBody}>
 
         {client.syncSlotId ? (
           client.syncCode ? (
@@ -1270,7 +1248,7 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
           </TouchableOpacity>
         )}
       </View>
-    </Modal>
+    </DragSheet>
   );
 }
 
@@ -3886,30 +3864,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Client info sheet ──
-  infoSheet: {
-    position:             'absolute',
-    bottom:               0,
-    left:                 0,
-    right:                0,
-    backgroundColor:      th.colors.bg,
-    borderTopLeftRadius:  th.radius.xl,
-    borderTopRightRadius: th.radius.xl,
-    borderTopWidth:       borders.thin,
-    borderTopColor:       th.colors.borderCard,
-    paddingHorizontal:    spacing.xl,
-    paddingBottom:        spacing.xxl,
-    paddingTop:           spacing.sm,
-    gap:                  spacing.sm,
-  },
-  infoSheetHandle: {
-    width:           36,
-    height:          4,
-    backgroundColor: th.colors.border,
-    borderRadius:    2,
-    alignSelf:       'center',
-    marginBottom:    spacing.sm,
-  },
-  infoSheetName: { ...textStyles.itemTitle, color: th.colors.text, marginBottom: spacing.xs },
+  infoSheetBody: { gap: spacing.sm, paddingBottom: spacing.sm },
   infoCodeRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -4880,67 +4835,8 @@ const makeStyles = (th) => StyleSheet.create({
   calDayText:    { ...textStyles.labelStrong, color: th.colors.text },
   calDayTextSel: { color: th.colors.onAccent },
 
-  // ── Buttons ──
-  ghostBtn: {
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-  },
-  ghostBtnText: { ...textStyles.body, color: th.colors.mutedLight },
-
   // ── Modals ──
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  // Wrapper that centers modal card vertically (sits in normal flow above backdrop)
-  importModalWrap: {
-    position:       'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    pointerEvents:  'box-none',
-  },
-  modalCard: {
-    backgroundColor:   th.colors.bg,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
-    borderRadius:      th.radius.lg,
-    padding:           spacing.xl,
-    gap:               spacing.md,
-  },
-  modalTitle: { ...textStyles.heading, color: th.colors.text },
   modalSub:   { ...textStyles.label, color: th.colors.muted },
-  // ── Import options ──
-  importOption: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  importOptionLabel: { ...textStyles.body,  color: th.colors.text },
-  importOptionDesc:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: 2 },
-
-  // ── Context menu ──
-  contextMenu: {
-    position:        'absolute',
-    bottom:          spacing.xxl * 2,
-    left:            spacing.xl,
-    right:           spacing.xl,
-    backgroundColor: th.colors.bg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    overflow:        'hidden',
-  },
-  contextMenuItem: {
-    padding:           spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  contextMenuText: { ...textStyles.body, color: th.colors.text },
+  importSheetRows: { marginTop: spacing.md, marginBottom: spacing.sm },
 });
 

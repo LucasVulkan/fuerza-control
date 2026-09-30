@@ -15,7 +15,7 @@
  * Tocar el velo o el atrás de Android es pulsar Cancelar (o el único botón).
  */
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, Pressable, View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { Text } from './Text';
@@ -68,6 +68,16 @@ export default function DialogHost() {
         <Pressable style={styles.dialog} onPress={() => {}} accessibilityViewIsModal>
           <Text style={styles.title}>{dialog.title}</Text>
           {!!dialog.message && <Text style={styles.message}>{dialog.message}</Text>}
+          {!!dialog.items?.length && (
+            <ScrollView style={styles.items} bounces={false}>
+              {dialog.items.map((line, i) => (
+                <View key={i} style={styles.item}>
+                  <Text style={styles.itemDot}>·</Text>
+                  <Text style={styles.itemText}>{line}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
           <View style={styles.buttons}>
             {buttons.map((btn) => (
               <TouchableOpacity
@@ -102,6 +112,18 @@ const makeStyles = (th) => StyleSheet.create({
   },
   title:   { ...textStyles.heading, color: th.colors.text },
   message: { ...textStyles.body, lineHeight: 21, color: th.colors.mutedLight, marginTop: spacing.sm },
+  // La lista va en una caja `surface2` con tope de alto: una actualización
+  // grande no puede empujar los botones fuera de la pantalla.
+  items:    {
+    maxHeight:       220,
+    marginTop:       spacing.md,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.md,
+    padding:         spacing.md,
+  },
+  item:     { flexDirection: 'row', gap: spacing.sm },
+  itemDot:  { ...textStyles.body, lineHeight: 21, color: th.colors.mutedLight },
+  itemText: { ...textStyles.body, lineHeight: 21, color: th.colors.text, flex: 1 },
   buttons: { flexDirection: 'row', gap: spacing.sm2, marginTop: spacing.xl },
   btn: {
     flex:              1,
