@@ -303,11 +303,11 @@ alineados entre sí.
 
 **Probar U31**
 
-- [ ] Inicio → Sesiones libres: cada fila lleva 01, 02… en gris delante del
+- [x] Inicio → Sesiones libres: cada fila lleva 01, 02… en gris delante del
   nombre, y los nombres quedan alineados entre ellos.
-- [ ] Las filas de sesiones del programa siguen igual (letra y nombre en su
+- [x] Las filas de sesiones del programa siguen igual (letra y nombre en su
   sitio).
-- [ ] Clientes → ficha de un cliente sin app → sus sesiones libres: igual.
+- [x] Clientes → ficha de un cliente sin app → sus sesiones libres: igual.
 
 ## 5. U32 — Programa de cliente: botones fuera de la tarjeta
 
@@ -328,11 +328,11 @@ botones quedan a `space/sm2` de ella, la misma separación que entre ellos.
 
 **Probar U32**
 
-- [ ] Clientes → ficha → Programa: Editar, Ver y `⋯` van debajo de la
+- [x] Clientes → ficha → Programa: Editar, Ver y `⋯` van debajo de la
   tarjeta, sueltos, iguales que en el tab Programa. La tarjeta ya no lleva pie.
-- [ ] Cada botón hace lo de antes: Editar abre el editor, Ver el visualizador y
+- [x] Cada botón hace lo de antes: Editar abre el editor, Ver el visualizador y
   `⋯` la hoja de opciones del entrenador.
-- [ ] Tab Programa: sin cambios (Editar solo si se puede editar, `⋯` solo si
+- [x] Tab Programa: sin cambios (Editar solo si se puede editar, `⋯` solo si
   el programa es tuyo).
 
 ## 6. U33 — Confirmaciones y avisos sin Alert nativo
@@ -443,8 +443,8 @@ scroll ni la fila abierta.
 | U28 | Las pestañas de Progresión se deslizan con el segmentado (solo al tocar) | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
-| U31 | Hueco delante de las sesiones libres: 01, 02… | ✅ rama `feat/recap` | 🟢 |
-| U32 | Botones del programa de cliente fuera de la tarjeta | ✅ rama `feat/recap` | 🟢 |
+| U31 | Hueco delante de las sesiones libres: 01, 02… | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
+| U32 | Botones del programa de cliente fuera de la tarjeta | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U33 | `ui/ConfirmSheet` y fuera los `Alert.alert` | pendiente | 🟡 |
 | U34 | Textos fijos a i18n; `PaywallModal`, `ProgramUpdateModal`, `ImportModal` a `DragSheet` | pendiente | 🟡 |
 | U35 | `#b8ff00` como token del tema | pendiente | 🟢 |
