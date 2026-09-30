@@ -40,4 +40,5 @@ export const ROW_ICON = {
   target:    <G><Circle cx="12" cy="12" r="9" /><Circle cx="12" cy="12" r="5" /><Circle cx="12" cy="12" r="1" /></G>,
   save:      <G><Path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><Path d="M17 21v-8H7v8M7 3v5h8" /></G>,
   history:   <G><Path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><Path d="M3 3v5h5M12 7v5l3 2" /></G>,
+  skip:      <G><Circle cx="12" cy="12" r="9" /><Path d="M5.6 5.6l12.8 12.8" /></G>,
 };

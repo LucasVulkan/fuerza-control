@@ -14,7 +14,7 @@
 > Fase U37 · pendiente · Pantalla vacía común, sin emojis · §10
 > Fase U38 · pendiente · Una sola hoja de progresión · §11
 > Fase U39 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12
-> Fase U40 · pendiente · Importar archivo: el contenido de la hoja al estándar · §13
+> Fase U40 · hecho · Importar archivo: el contenido de la hoja al estándar · §13
 > Fase U41 · pendiente · Programas archivados: la lista al estándar · §14
 > Fase U42 · pendiente · Sesión libre: el bloque se edita en la pantalla de Editar bloque · §15
 >
@@ -621,6 +621,71 @@ interruptor donde hoy hay `Switch`), el `SegmentedControl` para Combinar /
 Reemplazar, y para elegir el modo las filas de hoja con marca de elegida.
 Necesita maqueta antes: son decisiones de diseño, no de código.
 
+**Decidido (30-sep-2026)** con [`docs/mockups/import.html`](../mockups/import.html)
+(variante **B**) y [`docs/mockups/choice.html`](../mockups/choice.html):
+
+- **Pieza nueva y estándar, `ChoiceRow`** (en `ui/MenuList.jsx`), para toda
+  elección excluyente de dos o más opciones: `MenuRow` con un radio a la
+  derecha, centrado en vertical. Apagado, aro `muted`; elegida, aro y punto
+  lima (el radio clásico, marcador 3 de la maqueta) **y un filo lima a la
+  izquierda** de la fila (el de las superseries, marcador 5). Toda la fila se
+  pulsa.
+- **Regla:** una elección nace SIN elegir solo si elegir mal cuesta algo
+  (borrar datos). Si hay una opción segura evidente, viene elegida. Con una
+  obligatoria sin elegir, el botón va apagado pero pulsable, y al pulsarlo la
+  sección que falta dice «Elige una» en rojo al lado de su título.
+- Backup: programa, ejercicios propios y clientes con interruptor (el de la
+  app, no el nativo); historial y plantillas como elección de tres (no
+  importar · añadir las que falten · sustituir, esta en rojo), sin elegir al
+  abrir. Programa: sus formas como `ChoiceRow` con explicación, la primera
+  elegida. Lo que el archivo no trae, apagado con «No hay en este archivo».
+  Fuera la caja roja de aviso y la pastilla del tipo (va detrás del nombre, en
+  versales lima). Botón «Importar» de la app. Nombres de las formas acortados
+  («Programa e historial», «Solo el historial», «Solo el programa»).
+
+**Hecho (30-sep-2026).** `ImportModal.jsx` reescrito con esas piezas; mismo
+contrato de `sections` con `importData`. `import.*` de los locales rehecho.
+
+**Ajustes tras probarlo (30-sep-2026, usuario):**
+
+- La cabecera de toda `DragSheet` dice **«Cerrar»** y no «Hecho»/«Listo»:
+  cierra sin hacer nada más, y «Hecho» parecía una acción. Norma general:
+  el texto de esa esquina es «Cerrar» salvo que la hoja pase una `action`
+  que haga algo.
+- `ChoiceRow`: radio de 20 (punto de 10), no de 22. **Las opciones llevan
+  icono**, como el resto de filas de hoja: no importar (círculo tachado,
+  `ROW_ICON.skip`, nuevo), añadir (`new`), sustituir (`sync`, en rojo), y las
+  formas de importar un programa (`import`, `history`, `text`). Las filas con
+  interruptor también (programa, ejercicios, clientes).
+- «Elige una» a la derecha del título, en su misma línea.
+- «Añadir las que falten» → «Añadir las nuevas».
+- Clientes solo suma (los del archivo se añaden o actualizan al mismo cliente,
+  los tuyos se quedan): lo dice su explicación, «3 clientes · se suman a los
+  tuyos».
+- De paso, la hoja de **exportar** del menú ≡ tenía sus dos filas pegadas (un
+  `View` sin separación): pasa a `Section`.
+Pendiente de otra fase: pasar a `ChoiceRow` las elecciones que hoy marcan con
+un check suelto (etapas de Mi programa, frecuencia de Drive, modo de historial
+del código de cliente…).
+
+**Probar U40**
+
+- [x] Menú ≡ → importar un backup completo: interruptores de programa,
+  ejercicios y clientes (lo que no trae el archivo, apagado); historial y
+  plantillas sin elegir e «Importar» en gris.
+- [x] Pulsar «Importar» sin elegir: no importa y sale «Elige una» en rojo junto
+  al título que falta; se va al elegir. Con todo elegido, «Importar» en lima.
+- [x] Elegir una opción: aro y punto lima y el filo a la izquierda; elegir otra
+  apaga la anterior. «Sustituir…» va en rojo.
+- [x] Importar con «Añadir las nuevas» y con «Sustituir…»: hace lo de antes
+  (combinar / reemplazar).
+- [x] Importar un programa: tres formas (dos si no trae historial), la primera
+  elegida, e importa según la elegida.
+- [x] Todas las filas de la hoja llevan icono; «Elige una» sale a la derecha.
+- [x] Cualquier hoja (exportar, `⋯`, filtros…): arriba a la derecha dice
+  «Cerrar».
+- [x] Menú ≡ → Exportar: las dos filas separadas, como el resto de listas.
+
 ## 14. U41 — Programas archivados: la lista al estándar
 
 Dos listas de programas archivados con interfaz vieja:
@@ -668,6 +733,6 @@ a esa pantalla en vez de montar la suya; hay que ver cómo trabaja con el
 | U37 | `EmptyState` común | pendiente | 🟢 |
 | U38 | Hoja de progresión única | pendiente | 🟢 |
 | U39 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
-| U40 | Importar archivo: el contenido de la hoja al estándar (maqueta antes) | pendiente | 🟡 |
+| U40 | Importar archivo al estándar; `ChoiceRow` como pieza de elección única | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U41 | Programas archivados (cliente y menú ≡) al estándar (maqueta antes) | pendiente | 🟡 |
 | U42 | Sesión libre: el bloque se edita en `BlockEditorScreen` | pendiente | 🟢 |

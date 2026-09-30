@@ -259,9 +259,8 @@ function ExportSheet({ visible, onClose }) {
 
   return (
     <DragSheet visible={visible} onClose={onClose} title={t('header.exportSheetTitle')}>
-      <View style={styles.group}>
+      <Section style={styles.exportRows}>
         <MenuRow
-          isFirst
           icon={<RowIcon>{ROW_ICON.export}</RowIcon>}
           label={exporting === 'full' ? t('header.exporting') : t('header.exportBackup')}
           sub={t('header.exportBackupSub')}
@@ -270,7 +269,6 @@ function ExportSheet({ visible, onClose }) {
           onPress={() => run('full')}
         />
         <MenuRow
-          isLast
           icon={<RowIcon>{ROW_ICON.archived}</RowIcon>}
           label={exporting === 'log' ? t('header.exporting') : t('header.exportProgramHistory')}
           sub={t('header.exportProgramHistorySub')}
@@ -278,7 +276,7 @@ function ExportSheet({ visible, onClose }) {
           disabled={!!exporting}
           onPress={() => run('log')}
         />
-      </View>
+      </Section>
     </DragSheet>
   );
 }
@@ -660,6 +658,8 @@ export default function AppHeader() {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
+  // La hoja de exportar: sus dos filas con la separación de `Section`.
+  exportRows: { marginBottom: spacing.sm },
   // Header row — sin línea divisoria (Figma: top y cuerpo sin separador)
   header: {
     flexDirection:     'row',

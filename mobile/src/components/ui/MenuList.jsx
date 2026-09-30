@@ -14,6 +14,7 @@ import { Children, cloneElement } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import Svg from 'react-native-svg';
+import Reanimated, { FadeIn } from 'react-native-reanimated';
 
 import { spacing, textStyles, getCardRadii, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -100,12 +101,12 @@ export function Status({ tone, label, color }) {
  */
 export function MenuRow({
   icon, label, labelColor, sub, subLines = 1, value, valueBelow, badge, badgeMuted, status, control,
-  onPress, disabled, minHeight, isFirst, isLast,
+  onPress, disabled, minHeight, isFirst, isLast, accessibilityRole, accessibilityState,
 }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const Wrap   = onPress ? TouchableOpacity : View;
-  const press  = onPress ? { onPress, activeOpacity: 0.7, disabled } : null;
+  const press  = onPress ? { onPress, activeOpacity: 0.7, disabled, accessibilityRole, accessibilityState } : null;
   return (
     <Wrap
       style={[
@@ -142,6 +143,40 @@ export function MenuRow({
         <ArrowIcon size={ROW_CHEVRON} color={th.colors.muted} />
       )}
     </Wrap>
+  );
+}
+
+/**
+ * ChoiceRow — una opción de una elección excluyente (dos o más, se elige una).
+ * Es `MenuRow` con un radio a la derecha, centrado en vertical: aro `muted`
+ * vacío, y la elegida con aro y punto lima más un filo lima a la izquierda (el
+ * de las superseries). Maqueta en docs/mockups/choice.html (U40).
+ *
+ * Toda la fila se pulsa. Quien la usa lleva el estado: `selected` en una sola.
+ * Una elección nace sin elegir SOLO si elegir mal cuesta algo (borrar datos);
+ * si hay una opción segura evidente, viene elegida.
+ */
+export function ChoiceRow({ selected, onPress, isFirst, isLast, ...rest }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View>
+      <MenuRow
+        {...rest}
+        isFirst={isFirst}
+        isLast={isLast}
+        onPress={onPress}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: !!selected }}
+        control={(
+          <View style={[styles.radio, selected && styles.radioOn]}>
+            {selected && <Reanimated.View entering={FadeIn.duration(150)} style={styles.radioDot} />}
+          </View>
+        )}
+      />
+      {selected && (
+        <Reanimated.View entering={FadeIn.duration(150)} style={styles.choiceEdge} pointerEvents="none" />
+      )}
+    </View>
   );
 }
 
@@ -225,6 +260,29 @@ const makeStyles = (th) => StyleSheet.create({
   groupedTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   groupedSub:   { ...textStyles.label, color: th.colors.mutedLight },
   rowIcon:     { width: 20, alignItems: 'center', flexShrink: 0 },
+  // `ChoiceRow`: radio de 20 (aro de 2) y el filo de la elegida.
+  radio: {
+    width:          20,
+    height:         20,
+    borderRadius:   10,
+    borderWidth:    2,
+    borderColor:    th.colors.muted,
+    alignItems:     'center',
+    justifyContent: 'center',
+    flexShrink:     0,
+  },
+  radioOn:  { borderColor: th.colors.accent },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: th.colors.accent },
+  choiceEdge: {
+    position:                'absolute',
+    left:                    0,
+    top:                     spacing.sm2,
+    bottom:                  spacing.sm2,
+    width:                   3,
+    borderTopRightRadius:    2,
+    borderBottomRightRadius: 2,
+    backgroundColor:         th.colors.accent,
+  },
   rowMeta:     { flex: 1, minWidth: 0 },
   rowLabel: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
   rowSub: {

@@ -186,7 +186,7 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
                 <View style={styles.header}>
                   <Text style={styles.title}>{title}</Text>
                   <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
-                    <Text style={styles.done}>{action ? action.label : t('exerciseEditor.configDone')}</Text>
+                    <Text style={styles.done}>{action ? action.label : t('common.close')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
