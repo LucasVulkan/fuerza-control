@@ -14,11 +14,24 @@
 import { View, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
 import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { spacing, borders, withOpacity, textStyles, lh, LINE } from '../theme';
 import { useThemedStyles } from '../useTheme';
 
+// Una línea del diff: `{ k, p }` desde U34 (se traduce al pintarla, en el
+// idioma de ahora); las actualizaciones que quedaron pendientes de antes
+// guardaban ya el texto.
+function diffLine(line, t) {
+  if (typeof line === 'string') return line;
+  const p = { ...line.p };
+  if (p.stageN)   p.stage   = t('programUpdate.diff.stageN',   { n: p.stageN });
+  if (p.sessionN) p.session = t('programUpdate.diff.sessionN', { n: p.sessionN });
+  return t(`programUpdate.diff.${line.k}`, p);
+}
+
 export default function ProgramUpdateModal() {
+  const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const pending                    = useStore((s) => s.clientSync?.pendingProgramUpdate);
   const applyPendingProgramUpdate  = useStore((s) => s.applyPendingProgramUpdate);
@@ -37,8 +50,8 @@ export default function ProgramUpdateModal() {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.tag}>ACTUALIZACIÓN</Text>
-            <Text style={styles.title}>Tu entrenador ha modificado el programa</Text>
+            <Text style={styles.tag}>{t('programUpdate.tag')}</Text>
+            <Text style={styles.title}>{t('programUpdate.title')}</Text>
           </View>
 
           {/* Diff list */}
@@ -47,7 +60,7 @@ export default function ProgramUpdateModal() {
               {diff.map((line, i) => (
                 <View key={i} style={styles.diffRow}>
                   <Text style={styles.diffDot}>·</Text>
-                  <Text style={styles.diffText}>{line}</Text>
+                  <Text style={styles.diffText}>{diffLine(line, t)}</Text>
                 </View>
               ))}
             </View>
@@ -56,13 +69,13 @@ export default function ProgramUpdateModal() {
           {/* Actions */}
           <View style={styles.actions}>
             <ActionBtn
-              label="Actualizar"
-              sub="Sigues en tu etapa y tu semana"
+              label={t('programUpdate.apply')}
+              sub={t('programUpdate.applySub')}
               accent
               onPress={applyPendingProgramUpdate}
             />
             <TouchableOpacity style={styles.laterBtn} onPress={dismissPendingProgramUpdate} activeOpacity={0.7}>
-              <Text style={styles.laterTxt}>Ahora no</Text>
+              <Text style={styles.laterTxt}>{t('programUpdate.later')}</Text>
             </TouchableOpacity>
           </View>
 

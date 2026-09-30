@@ -572,7 +572,7 @@ export default function AppHeader() {
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        showDialog('Error', err?.message ?? t('errors.cannotReadFile'));
+        showDialog(t('common.error'), err?.message ?? t('errors.cannotReadFile'));
       }
     } finally {
       setPicking(false);

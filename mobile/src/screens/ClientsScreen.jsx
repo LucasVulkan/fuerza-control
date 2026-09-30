@@ -195,7 +195,7 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
       <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.importModalWrap}>
         <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>IMPORTAR PROGRAMA</Text>
+          <Text style={styles.modalTitle}>{t('clients.importModal.title')}</Text>
           <Text style={styles.modalSub} numberOfLines={1}>{fileName}</Text>
           <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
             {[
@@ -214,7 +214,7 @@ function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
               </TouchableOpacity>
             ))}
           </View>
-          <GhostBtn label="Cancelar" onPress={onClose} />
+          <GhostBtn label={t('common.cancel')} onPress={onClose} />
         </View>
       </View>
     </Modal>
@@ -525,7 +525,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
               await cancelClientInvitation(client.id);
               showToast(t('clients.codeCard.cancelDone'), 2200, 'neutral');
             } catch (err) {
-              showDialog('Error', err?.message ?? '');
+              showDialog(t('common.error'), err?.message ?? '');
             }
           },
         },
@@ -656,7 +656,7 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
       showToast(t('clients.moveToApp.done'), 2200, 'success');
       onClose();
     } catch (err) {
-      showDialog('Error', err?.message ?? t('clients.keyTab.connectError'));
+      showDialog(t('common.error'), err?.message ?? t('clients.keyTab.connectError'));
     } finally {
       setBusy(false);
     }
@@ -1217,17 +1217,17 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
     await Clipboard.setStringAsync(client.syncCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-    showToast('Código copiado', 2200, 'neutral');
+    showToast(t('clients.keyTab.copied'), 2200, 'neutral');
   }
 
   async function handleConnect() {
     setLoading(true);
     try {
       await onConnectCloud();
-      showToast('Cliente conectado', 2200, 'success');
+      showToast(t('clients.clientConnected'), 2200, 'success');
       onClose();
     } catch (err) {
-      showDialog('Error', err.message ?? 'No se pudo conectar.');
+      showDialog(t('common.error'), err.message ?? t('clients.keyTab.connectError'));
     } finally {
       setLoading(false);
     }
@@ -1244,7 +1244,7 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
           client.syncCode ? (
             <View style={styles.infoCodeRow}>
               <View style={styles.infoCodeBox}>
-                <Text style={styles.infoCodeLabel}>CÓDIGO CLIENTE</Text>
+                <Text style={styles.infoCodeLabel}>{t('clients.infoCodeLabel')}</Text>
                 <Text style={styles.infoCodeText}>{client.syncCode}</Text>
               </View>
               <TouchableOpacity style={styles.infoCopyBtn} onPress={handleCopy} activeOpacity={0.7}>
@@ -1253,8 +1253,8 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
             </View>
           ) : (
             <View style={styles.infoCodeBox}>
-              <Text style={styles.infoCodeLabel}>SINCRONIZACIÓN EN LA NUBE</Text>
-              <Text style={styles.infoCodeSub}>Conectado · sin código local</Text>
+              <Text style={styles.infoCodeLabel}>{t('clients.infoCloudLabel')}</Text>
+              <Text style={styles.infoCodeSub}>{t('clients.infoCloudNoCode')}</Text>
             </View>
           )
         ) : (
@@ -2277,7 +2277,7 @@ export default function ClientsScreen() {
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        showDialog('Error', err?.message ?? 'No se pudo leer el archivo');
+        showDialog(t('common.error'), err?.message ?? t('errors.cannotReadFile'));
       }
     }
   }
@@ -2347,16 +2347,14 @@ export default function ClientsScreen() {
         <AppHeader />
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={styles.emptyTitle}>Gestión de clientes</Text>
-          <Text style={styles.emptyBody}>
-            Lleva el seguimiento de tus clientes, asígnales programas y controla su facturación.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('clients.proGateTitle')}</Text>
+          <Text style={styles.emptyBody}>{t('clients.proGateBody')}</Text>
           <TouchableOpacity
             style={styles.proBtn}
             onPress={() => setShowPaywall(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.proBtnText}>Ver planes PRO</Text>
+            <Text style={styles.proBtnText}>{t('clients.proGateCta')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.hideTabBtn}
@@ -2366,7 +2364,7 @@ export default function ClientsScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Text style={styles.hideTabBtnText}>Ocultar tab</Text>
+            <Text style={styles.hideTabBtnText}>{t('templates.hideTab')}</Text>
           </TouchableOpacity>
         </View>
         {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
@@ -3230,7 +3228,7 @@ export default function ClientsScreen() {
                     if (!client.activeProgramId) return;
                     try {
                       await uploadProgramToClient(client.id, client.activeProgramId);
-                      showToast('Programa enviado', 2200, 'success');
+                      showToast(t('clients.programSent'), 2200, 'success');
                     } catch (err) {
                       showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
                     }

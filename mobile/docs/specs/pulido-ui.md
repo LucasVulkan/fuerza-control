@@ -419,6 +419,34 @@ Esos tres modales, y el de importar de `ClientsScreen`, montan su propio
 opacidades distintas (0.6, 0.7, 0.75 y 0.82). Pasarlos a `DragSheet` lo
 unifica.
 
+**Parte 1 hecha (30-sep-2026): textos a i18n.**
+
+- Los tres modales enteros (`paywall.*`, `programUpdate.*`, `import.*` —este
+  último ya existía de la versión web, sin usar y con otros textos: se
+  reescribe con los que enseña el modal), los de Clientes (título de importar,
+  código, sincronización, la pantalla sin Pro y tres toasts) y los sueltos
+  («Sin sesión activa», «NOTA», «CUSTOM» → `exerciseSelector.customBadge`,
+  «PROPIO» en español).
+- Las líneas de «Tu entrenador ha modificado el programa» las montaba
+  `buildProgramDiff` en español dentro del store. Ahora devuelve `{ k, p }`
+  (clave de `programUpdate.diff` y parámetros) y las traduce el modal al
+  pintarlas; una actualización pendiente de antes, guardada como texto, se
+  pinta tal cual.
+- Títulos de diálogo sin interrogación (regla de U33), en los dos idiomas:
+  «Eliminar etapa», «Restaurar esta copia», «Cambiar a {{name}}»… (diez). Los
+  «Error» fijos pasan a `common.error`, que faltaba (Onboarding lo pedía con
+  respaldo), y los respaldos «No se pudo…» a sus claves.
+- Se quedan sin traducir a propósito: «Forma» y «PRO» (marca) y «RPE».
+
+**Probar U34 (parte 1)**
+
+- [ ] Con la app en inglés: Clientes sin Pro, el modal de pago, importar un
+  archivo (backup y programa) y la ficha de un cliente → Info salen en inglés.
+- [ ] Con la app en inglés, cuando el entrenador cambia el programa: el aviso y
+  sus líneas («+1 new stage», «A: +2 exercises»…) salen en inglés.
+- [ ] En español, los mismos sitios dicen lo de antes; los diálogos de borrar
+  etapa, restaurar copia, desconectar, etc. ya no llevan «¿?» en el título.
+
 ## 8. U35 — Un solo lima, como token del tema
 
 El `accent` de `formaFit` es `#aae216`, pero hay un `'#b8ff00'` escrito a mano

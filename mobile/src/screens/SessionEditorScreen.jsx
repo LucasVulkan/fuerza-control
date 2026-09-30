@@ -429,7 +429,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   function handleDeleteSession() {
     showDialog(
       t('editor.sessionDeleteBtn'),
-      `¿Eliminar "${template.name}"?`,
+      t('editor.sessionDeleteConfirm', { name: template.name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {

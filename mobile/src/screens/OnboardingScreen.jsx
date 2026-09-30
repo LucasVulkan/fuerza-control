@@ -657,7 +657,7 @@ export default function OnboardingScreen() {
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        showDialog(t('common.error', 'Error'), err?.message ?? 'No se pudo leer el archivo');
+        showDialog(t('common.error', 'Error'), err?.message ?? t('errors.cannotReadFile'));
       }
     }
   }

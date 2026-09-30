@@ -190,7 +190,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
               {getExName(ex)}
             </Text>
             {ex.isCustom && (
-              <View style={styles.customBadge}><Text style={styles.customBadgeText}>CUSTOM</Text></View>
+              <View style={styles.customBadge}><Text style={styles.customBadgeText}>{t('exerciseSelector.customBadge')}</Text></View>
             )}
           </View>
           <Text style={styles.exMeta} numberOfLines={1}>{meta}</Text>

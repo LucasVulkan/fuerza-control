@@ -305,13 +305,15 @@ const DAY_COLORS = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 
 // ─── Program diff helper ──────────────────────────────────────────────────────
 /**
  * Compares the current active program with an incoming programJson from the trainer.
- * Returns a string[] with human-readable change lines, e.g.:
- *   ["+1 etapa nueva", "Etapa 1: +2 sesiones", "Sesión A: +3 ejercicios"]
+ * Devuelve las líneas como `{ k, p }` —clave de `programUpdate.diff` y sus
+ * parámetros— y no como texto: el store no traduce, y así el modal las pinta
+ * en el idioma de la app cuando se abre (U34). `stageN`/`sessionN` son el
+ * número de etapa o sesión cuando no tienen nombre.
  */
 function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
   const { programs, profile, sessionTemplates } = storeState;
   const oldProg = programs[profile.activeProgramId];
-  if (!oldProg) return ['Programa nuevo del entrenador'];
+  if (!oldProg) return [{ k: 'newProgram' }];
 
   const newPrograms    = { ...(newProgramJson.programs ?? {}), ...(newProgramJson.program ? { [newProgramJson.program.id]: newProgramJson.program } : {}) };
   const newProg        = newPrograms[profile.activeProgramId] ?? Object.values(newPrograms)[0];
@@ -331,29 +333,29 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
   const activation = newProg?.stageActivatedAt ?? null;
   if (activation && activation !== lastActivation) {
     const moved = newStages[newProg?.currentStageIndex ?? 0];
-    if (moved) lines.push(`Tu entrenador te pasa a ${moved.name ?? 'otra etapa'}`);
+    if (moved) lines.push(moved.name ? { k: 'movedTo', p: { name: moved.name } } : { k: 'movedToUnnamed' });
   }
 
   const stageDiff = newStages.length - oldStages.length;
-  if (stageDiff > 0) lines.push(`+${stageDiff} etapa${stageDiff > 1 ? 's' : ''} nueva${stageDiff > 1 ? 's' : ''}`);
-  if (stageDiff < 0) lines.push(`${Math.abs(stageDiff)} etapa${Math.abs(stageDiff) > 1 ? 's' : ''} eliminada${Math.abs(stageDiff) > 1 ? 's' : ''}`);
+  if (stageDiff > 0) lines.push({ k: 'stagesAdded',   p: { count: stageDiff } });
+  if (stageDiff < 0) lines.push({ k: 'stagesRemoved', p: { count: -stageDiff } });
 
   for (let si = 0; si < Math.min(oldStages.length, newStages.length); si++) {
     const oldDays = oldStages[si].days ?? [];
     const newDays = newStages[si].days ?? [];
-    const stageLabel = oldStages.length > 1 ? `Etapa ${si + 1}` : null;
+    const multiStage = oldStages.length > 1;
     const sesDiff = newDays.length - oldDays.length;
 
     // Un cambio de candado suele venir solo, sin nada más: sin esta línea el
     // cliente vería "Cambios menores en el programa" para lo único que le importa.
     if (!!oldStages[si].locked !== !!newStages[si].locked) {
-      const stageName = newStages[si].name ?? stageLabel ?? `Etapa ${si + 1}`;
-      lines.push(`${stageName} ${newStages[si].locked ? 'bloqueada' : 'desbloqueada'}`);
+      const stage = newStages[si].name ? { stage: newStages[si].name } : { stageN: si + 1 };
+      lines.push({ k: newStages[si].locked ? 'stageLocked' : 'stageUnlocked', p: stage });
     }
 
     if (sesDiff !== 0) {
-      const prefix = stageLabel ? `${stageLabel}: ` : '';
-      lines.push(`${prefix}${sesDiff > 0 ? '+' : ''}${sesDiff} sesión${Math.abs(sesDiff) > 1 ? 'es' : ''}`);
+      const p = { count: Math.abs(sesDiff), delta: `${sesDiff > 0 ? '+' : ''}${sesDiff}`, n: si + 1 };
+      lines.push({ k: multiStage ? 'stageSessions' : 'sessions', p });
     }
 
     for (let di = 0; di < Math.min(oldDays.length, newDays.length); di++) {
@@ -361,13 +363,13 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
       const newEx = (newTemplates[newDays[di].sessionTemplateId]?.exercises ?? []).length;
       const exDiff = newEx - oldEx;
       if (exDiff !== 0) {
-        const sesLabel = newDays[di].label ?? `Sesión ${di + 1}`;
-        lines.push(`${sesLabel}: ${exDiff > 0 ? '+' : ''}${exDiff} ejercicio${Math.abs(exDiff) > 1 ? 's' : ''}`);
+        const session = newDays[di].label ? { session: newDays[di].label } : { sessionN: di + 1 };
+        lines.push({ k: 'exercises', p: { ...session, count: Math.abs(exDiff), delta: `${exDiff > 0 ? '+' : ''}${exDiff}` } });
       }
     }
   }
 
-  return lines.length > 0 ? lines : ['Cambios menores en el programa'];
+  return lines.length > 0 ? lines : [{ k: 'minor' }];
 }
 
 // ─── Persistencia ──────────────────────────────────────────────────────────────

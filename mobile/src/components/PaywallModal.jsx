@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { View, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { useStore }                                     from '../../store/useStore';
 import { spacing, borders, textStyles, lh } from '../theme';
@@ -19,16 +20,17 @@ import { CloseIcon } from './ui/EditorIcons';
 // ── Feature list ──────────────────────────────────────────────────────────────
 
 const PRO_FEATURES = [
-  { emoji: '👥', text: 'Gestión completa de clientes' },
-  { emoji: '📋', text: 'Asignar programas a clientes' },
-  { emoji: '📈', text: 'Ver el progreso de tus clientes en tiempo real' },
-  { emoji: '💶', text: 'Registro de facturación' },
-  { emoji: '📐', text: 'Crear plantillas de entrenamiento' },
+  { emoji: '👥', key: 'clients' },
+  { emoji: '📋', key: 'assign' },
+  { emoji: '📈', key: 'progress' },
+  { emoji: '💶', key: 'billing' },
+  { emoji: '📐', key: 'templates' },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PaywallModal({ onClose }) {
+  const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
@@ -67,7 +69,7 @@ export default function PaywallModal({ onClose }) {
       if (result.ok) {
         if (!result.isPro) {
           // Purchase went through but entitlement not yet reflected — poll RC
-          showToast('Compra procesada, sincronizando…', 2200, 'neutral');
+          showToast(t('paywall.processing'), 2200, 'neutral');
           const synced = await checkProStatus().catch(() => false);
           if (!synced) {
             // Last resort: try restore
@@ -76,7 +78,7 @@ export default function PaywallModal({ onClose }) {
         }
         onClose();
       } else if (!result.cancelled) {
-        showDialog('Error en la compra', result.error ?? 'No se pudo completar la compra.');
+        showDialog(t('paywall.errTitle'), result.error ?? t('drive.errBackupBody'));
       }
     } finally {
       setPurchasing(false);
@@ -104,8 +106,8 @@ export default function PaywallModal({ onClose }) {
           <View style={styles.headerRow}>
             <View>
               <Text style={styles.badge}>PRO</Text>
-              <Text style={styles.title}>Desbloquea Forma Pro</Text>
-              <Text style={styles.subtitle}>Todo lo que necesitas para entrenar y gestionar clientes</Text>
+              <Text style={styles.title}>{t('paywall.title')}</Text>
+              <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.closeBtn}>
               <CloseIcon size={16} color={th.colors.mutedLight} />
@@ -115,9 +117,9 @@ export default function PaywallModal({ onClose }) {
           {/* Feature list */}
           <View style={styles.featureList}>
             {PRO_FEATURES.map((f) => (
-              <View key={f.text} style={styles.featureRow}>
+              <View key={f.key} style={styles.featureRow}>
                 <Text style={styles.featureEmoji}>{f.emoji}</Text>
-                <Text style={styles.featureTxt}>{f.text}</Text>
+                <Text style={styles.featureTxt}>{t(`paywall.features.${f.key}`)}</Text>
               </View>
             ))}
           </View>
@@ -127,9 +129,7 @@ export default function PaywallModal({ onClose }) {
             <ActivityIndicator color={th.colors.accent} style={{ marginVertical: spacing.xl }} />
           ) : packages.length === 0 ? (
             <View style={styles.noProducts}>
-              <Text style={styles.noProductsTxt}>
-                Forma Pro próximamente
-              </Text>
+              <Text style={styles.noProductsTxt}>{t('paywall.comingSoon')}</Text>
             </View>
           ) : (
             <View style={styles.packageList}>
@@ -148,7 +148,7 @@ export default function PaywallModal({ onClose }) {
                         {pkg.product.title || 'Forma Pro'}
                       </Text>
                       <Text style={styles.pkgPrice}>
-                        {pkg.product.priceString} · Pago único
+                        {t('paywall.oneTime', { price: pkg.product.priceString })}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -169,8 +169,8 @@ export default function PaywallModal({ onClose }) {
                 ? <ActivityIndicator size="small" color={th.colors.bg} />
                 : <Text style={styles.ctaTxt}>
                     {selectedPkg
-                      ? `Comprar por ${selectedPkg.product.priceString}`
-                      : 'Comprar Forma Pro'}
+                      ? t('paywall.buyFor', { price: selectedPkg.product.priceString })
+                      : t('paywall.buy')}
                   </Text>
               }
             </TouchableOpacity>
@@ -184,13 +184,11 @@ export default function PaywallModal({ onClose }) {
           >
             {restoring
               ? <ActivityIndicator size="small" color={th.colors.muted} />
-              : <Text style={styles.restoreTxt}>Restaurar compra anterior</Text>
+              : <Text style={styles.restoreTxt}>{t('paywall.restore')}</Text>
             }
           </TouchableOpacity>
 
-          <Text style={styles.legal}>
-            Pago único. Sin suscripciones. El acceso a Forma Pro es permanente.
-          </Text>
+          <Text style={styles.legal}>{t('paywall.legal')}</Text>
         </ScrollView>
       </View>
     </Modal>

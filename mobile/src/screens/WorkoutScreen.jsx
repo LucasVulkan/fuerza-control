@@ -510,7 +510,7 @@ export default function WorkoutScreen() {
   if (!template && !isFree) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>Sin sesión activa</Text>
+        <Text style={styles.errorText}>{t('workout.noActiveSession')}</Text>
       </View>
     );
   }

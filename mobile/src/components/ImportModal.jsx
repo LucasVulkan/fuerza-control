@@ -14,16 +14,17 @@
  */
 import { useState } from 'react';
 import { Modal, View, TouchableOpacity, Switch, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Text } from './ui/Text';
 import { spacing, borders, withOpacity, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-function typeLabel(exportType, hasLog) {
-  if (exportType === 'full') return 'Backup completo';
-  if (hasLog)               return 'Programa + historial';
-  return 'Programa';
+function typeLabel(exportType, hasLog, t) {
+  if (exportType === 'full') return t('import.typeFullBackup');
+  if (hasLog)               return t('import.typeProgramWithLog');
+  return t('import.typeProgram');
 }
 
 // ── Radio option (program-mode picker) ────────────────────────────────────────
@@ -81,6 +82,7 @@ function SectionRow({ label, desc, enabled, disabled, onToggle }) {
  * deducirse de una palabra.
  */
 function ModeSectionRow({ label, desc, enabled, disabled, onToggle, mode, onSetMode, modeHint }) {
+  const { t } = useTranslation();
   const th = useTheme();
   const s  = useThemedStyles(makeS);
   const on = enabled && !disabled;
@@ -113,7 +115,7 @@ function ModeSectionRow({ label, desc, enabled, disabled, onToggle, mode, onSetM
                 onPress={() => onSetMode(m)}
               >
                 <Text style={[s.modeBtnText, mode === m && s.modeBtnTextActive]}>
-                  {m === 'merge' ? 'Combinar' : 'Reemplazar'}
+                  {m === 'merge' ? t('import.merge') : t('import.replace')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -132,7 +134,9 @@ function ModeSectionRow({ label, desc, enabled, disabled, onToggle, mode, onSetM
 // ── Backup sections (full-backup flow) ────────────────────────────────────────
 
 function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode, onSetLogMode }) {
+  const { t } = useTranslation();
   const s = useThemedStyles(makeS);
+  const na = t('import.notAvailable');
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
   const hasLog       = (parsedData?.workoutLog ?? []).length > 0;
   // Los presets de bloque entran por esta casilla (ver `importData`), así que
@@ -146,49 +150,47 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode, on
   return (
     <>
       <View style={s.warning}>
-        <Text style={s.warningText}>
-          Los datos importados sobreescribirán los existentes en cada sección seleccionada.
-        </Text>
+        <Text style={s.warningText}>{t('import.warning')}</Text>
       </View>
 
       <View style={s.sectionList}>
         <SectionRow
-          label="Programa activo"
-          desc={hasPrograms ? 'Activa el programa importado' : 'No disponible'}
+          label={t('import.sectionProgram')}
+          desc={hasPrograms ? t('import.sectionProgramDesc') : na}
           enabled={sections.program}
           disabled={!hasPrograms}
           onToggle={() => onToggle('program')}
         />
         <ModeSectionRow
-          label="Historial de sesiones"
-          desc={hasLog ? `${(parsedData.workoutLog ?? []).length} sesiones` : 'No disponible'}
+          label={t('import.sectionLog')}
+          desc={hasLog ? t('common.session', { count: (parsedData.workoutLog ?? []).length }) : na}
           enabled={sections.log}
           disabled={!hasLog}
           onToggle={() => onToggle('log')}
           mode={sections.logMode}
           onSetMode={onSetLogMode}
           modeHint={sections.logMode === 'replace'
-            ? 'Sustituye TODO tu historial actual'
-            : 'Añade las sesiones que falten'}
+            ? t('import.logReplaceHint')
+            : t('import.logMergeHint')}
         />
         <SectionRow
-          label="Ejercicios personalizados"
-          desc={hasCustEx ? `${Object.keys(parsedData.customExercises ?? {}).length} ejercicios` : 'No disponible'}
+          label={t('import.sectionCustomExercises')}
+          desc={hasCustEx ? t('common.exercises', { count: Object.keys(parsedData.customExercises ?? {}).length }) : na}
           enabled={sections.customExercises}
           disabled={!hasCustEx}
           onToggle={() => onToggle('customExercises')}
         />
         <SectionRow
-          label="Clientes"
-          desc={hasClients ? `${Object.keys(parsedData.clients ?? {}).length} clientes` : 'No disponible'}
+          label={t('import.sectionClients')}
+          desc={hasClients ? t('common.clients', { count: Object.keys(parsedData.clients ?? {}).length }) : na}
           enabled={sections.clients}
           disabled={!hasClients}
           onToggle={() => onToggle('clients')}
         />
 
         <ModeSectionRow
-          label="Plantillas de programa"
-          desc={hasTemplates ? 'Plantillas reutilizables' : 'No disponible'}
+          label={t('import.sectionTemplates')}
+          desc={hasTemplates ? t('import.sectionTemplatesDesc') : na}
           enabled={sections.templates}
           disabled={!hasTemplates}
           onToggle={() => onToggle('templates')}
@@ -205,25 +207,26 @@ function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode, on
 const PROGRAM_MODES = (hasLog) => [
   ...(hasLog ? [{
     id:       'full',
-    label:    'Reemplazar programa e historial',
-    desc:     'Activa el programa importado y añade su historial de sesiones',
+    label:    'import.modeFull',
+    desc:     'import.modeFullDesc',
     sections: { program: true, log: true },
   }] : []),
   ...(hasLog ? [{
     id:       'log_only',
-    label:    'Solo añadir historial',
-    desc:     'Mantiene el programa actual, añade las sesiones del archivo',
+    label:    'import.modeLogOnly',
+    desc:     'import.modeLogOnlyDesc',
     sections: { program: false, log: true },
   }] : []),
   {
     id:       'program_only',
-    label:    'Solo el programa',
-    desc:     'Activa el programa importado, sin tocar el historial',
+    label:    'import.modeProgramOnly',
+    desc:     'import.modeProgramOnlyDesc',
     sections: { program: true, log: false },
   },
 ];
 
 function ProgramModes({ hasLog, selectedMode, onSelect }) {
+  const { t } = useTranslation();
   const s = useThemedStyles(makeS);
   const modes = PROGRAM_MODES(hasLog);
   return (
@@ -231,8 +234,8 @@ function ProgramModes({ hasLog, selectedMode, onSelect }) {
       {modes.map((m) => (
         <RadioOption
           key={m.id}
-          label={m.label}
-          desc={m.desc}
+          label={t(m.label)}
+          desc={t(m.desc)}
           selected={selectedMode === m.id}
           onPress={() => onSelect(m.id)}
         />
@@ -244,11 +247,12 @@ function ProgramModes({ hasLog, selectedMode, onSelect }) {
 // ── Main modal ────────────────────────────────────────────────────────────────
 
 export default function ImportModal({ fileName, parsedData, onImport, onClose }) {
+  const { t } = useTranslation();
   const s = useThemedStyles(makeS);
   const exportType = parsedData?.exportType ?? 'program';
   const isBackup   = exportType === 'full';
   const hasLog     = (parsedData?.workoutLog ?? []).length > 0;
-  const badge      = typeLabel(exportType, hasLog);
+  const badge      = typeLabel(exportType, hasLog, t);
 
   // ── Backup state ──────────────────────────────────────────────────────────
   const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
@@ -301,7 +305,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
       >
         <View style={s.sheet}>
           {/* ── Header ── */}
-          <Text style={s.title}>Importar archivo</Text>
+          <Text style={s.title}>{t('import.title')}</Text>
           <View style={s.fileRow}>
             <Text style={s.fileName} numberOfLines={1}>{fileName}</Text>
             <View style={s.badge}>
@@ -338,7 +342,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
           {/* ── Actions — always visible, outside scroll ── */}
           <View style={s.actions}>
             <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-              <Text style={s.cancelText}>Cancelar</Text>
+              <Text style={s.cancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.importBtn, nothingSelected && s.importBtnDisabled]}
@@ -346,7 +350,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
               activeOpacity={nothingSelected ? 1 : 0.8}
             >
               <Text style={[s.importBtnText, nothingSelected && s.importBtnTextDisabled]}>
-                IMPORTAR
+                {t('import.importBtn')}
               </Text>
             </TouchableOpacity>
           </View>

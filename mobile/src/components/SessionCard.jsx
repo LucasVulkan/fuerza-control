@@ -132,7 +132,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
 
       {!!session.notes?.trim() && (
         <View style={styles.noteSection}>
-          <Text style={styles.noteSectionLabel}>NOTA</Text>
+          <Text style={styles.noteSectionLabel}>{t('history.noteLabel').toUpperCase()}</Text>
           <Text style={styles.noteSectionText}>{session.notes}</Text>
         </View>
       )}

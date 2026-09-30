@@ -179,8 +179,8 @@ export default function ProgramEditorScreen({ navigation }) {
 
   function handleDeleteStage() {
     showDialog(
-      '¿Eliminar etapa?',
-      `¿Eliminar "${selectedStage?.name}"? Las sesiones de esta etapa se perderán.`,
+      t('planner.deleteTitle'),
+      t('planner.deleteBody', { name: selectedStage?.name ?? '' }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
