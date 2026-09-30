@@ -33,10 +33,6 @@ import { sessionStats } from '../utils/sessionStats';
 import { isExerciseDone } from '../utils/exerciseStatus';
 
 import { showDialog } from '../components/ui/dialog';
-// Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
-// token propio (mismo caso que el #81a71e del banner, ver theme.js).
-const LIMA = '#b8ff00';
-
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 // ── Weekly selector (L M X J V S D + 7 dots) ────────────────────────────────────
@@ -585,14 +581,14 @@ const makeStyles = (th) => StyleSheet.create({
   },
   weekLetters: { flexDirection: 'row', justifyContent: 'space-between' },
   weekLetter:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  weekLetterToday: { color: LIMA },
+  weekLetterToday: { color: th.colors.accent },
   weekDots: { flexDirection: 'row', justifyContent: 'space-between' },
   weekDot: {
     width:        12,
     height:       12,
     borderRadius: 6,
   },
-  weekDotTrained: { backgroundColor: LIMA },
+  weekDotTrained: { backgroundColor: th.colors.accent },
   weekDotIdle:    { backgroundColor: th.colors.muted },
 
   // Entreno de un cliente a medias. Azul: es cosa de entrenador.

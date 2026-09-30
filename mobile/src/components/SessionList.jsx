@@ -19,10 +19,6 @@ import { collapseOut, FOLD_MS } from './ui/collapseOut';
 import { targetLabel, exerciseName } from '../utils/prescription';
 import { variantLabel, displayVariant } from '../utils/variants';
 
-// Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
-// token propio (mismo caso que el #81a71e del banner, ver theme.js).
-const LIMA = '#b8ff00';
-
 // ── Sesiones ──────────────────────────────────────────────────────────────
 //
 // Una sola lista en el orden del programa. Cada sesión es una fila plegable y la que
@@ -34,10 +30,11 @@ const LIMA = '#b8ff00';
 // elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
 // mirar una sesión sin empezarla.
 
-export function HeroChevron({ size = 13, color = LIMA }) {
+export function HeroChevron({ size = 13, color }) {
+  const th = useTheme();
   return (
     <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
-      <Path d="M4 2l4.5 4L4 10" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M4 2l4.5 4L4 10" stroke={color ?? th.colors.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -118,7 +115,7 @@ export function SessionRow({
         {/* «de Lucas»: una sesión que manda el entrenador. Azul = entrenador. */}
         {!!by && <Text style={styles.rowAdapted} numberOfLines={1}>{t('home.fromTrainer', { name: by })}</Text>}
         <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
-        {done && <CheckIcon size={14} color={LIMA} />}
+        {done && <CheckIcon size={14} color={th.colors.accent} />}
       </TouchableOpacity>
 
       {open && (
@@ -189,6 +186,7 @@ export function TodayCard({
   marker, flag, name, meta, open, cta, onToggle, onStart, onShare, onBodyLayout, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.today}>
@@ -251,7 +249,7 @@ export function TodayCard({
             accessibilityRole="button"
             accessibilityLabel={t('sessionText.share')}
           >
-            <ShareIcon color={LIMA} />
+            <ShareIcon color={th.colors.accent} />
           </TouchableOpacity>
         )}
       </Reanimated.View>
@@ -354,7 +352,7 @@ const makeStyles = (th) => StyleSheet.create({
     // los nombres queden alineados.
     minWidth:           24,
     fontVariant:        ['tabular-nums'],
-    color:              LIMA,
+    color:              th.colors.accent,
   },
   sesGlyphDone: { color: th.colors.muted },
   sesName:      { ...textStyles.itemTitle, flex: 1, color: th.colors.text },
@@ -486,7 +484,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.md,
     padding:         spacing.lg,
   },
-  todayBtnText: { ...textStyles.button, color: LIMA },
+  todayBtnText: { ...textStyles.button, color: th.colors.accent },
   // COMPARTIR junto a EMPEZAR: lo justo para el icono, con el relleno del botón.
   shareBtn: { flex: 0, justifyContent: 'center' },
 

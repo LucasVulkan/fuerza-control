@@ -606,7 +606,7 @@ const makeStyles = (th) => StyleSheet.create({
   createBtn: {
     flex: 2, alignItems: 'center', justifyContent: 'center',
     paddingVertical: spacing.md, borderRadius: th.radius.sm,
-    backgroundColor: '#b8ff00',
+    backgroundColor: th.colors.accent,
   },
   createBtnText: { ...textStyles.button, color: th.colors.onAccent },
 

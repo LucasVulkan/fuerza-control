@@ -507,7 +507,7 @@ const makeStyles = (th) => StyleSheet.create({
   // CTA lima h44 — lo usa la hoja de filtros para cerrarse (la pantalla ya no
   // tiene botón abajo: con el teclado desplegado casi nunca se veía).
   cta: {
-    height: 44, borderRadius: th.radius.md, backgroundColor: '#b8ff00',
+    height: 44, borderRadius: th.radius.md, backgroundColor: th.colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
   ctaText: { ...textStyles.button, color: th.colors.onAccent },

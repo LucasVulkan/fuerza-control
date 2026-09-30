@@ -9,7 +9,7 @@
 > Fase U32 · hecho · Programa de cliente: botones fuera de la tarjeta · §5
 > Fase U33 · hecho · Confirmaciones y avisos sin Alert nativo · §6
 > Fase U34 · pendiente · Textos fijos a i18n y modales viejos a DragSheet · §7
-> Fase U35 · pendiente · Un solo lima, como token del tema · §8
+> Fase U35 · hecho · Un solo lima, como token del tema · §8
 > Fase U36 · pendiente · Cabecera de cerrar compartida y ✕ como icono · §9
 > Fase U37 · pendiente · Pantalla vacía común, sin emojis · §10
 > Fase U38 · pendiente · Una sola hoja de progresión · §11
@@ -428,6 +428,23 @@ en 5 ficheros: `HomeScreen` y `SessionList` (constante `LIMA`),
 tema. Pasa a un color del tema con nombre propio (ya existe
 `accent10: rgba(184,255,0,0.1)` con esa base en `themes.js`).
 
+**Hecho (30-sep-2026): un solo lima, `accent`.** El usuario eligió unificar en
+vez de darle token propio a `#b8ff00`: todo pasa a `th.colors.accent`
+(`#aae216`). Cambia a la vista, un punto menos chillón, en Inicio (letra de hoy
+y puntos entrenados de la semana, letra de las sesiones, check, compartir,
+chevron y texto del botón de la tarjeta de hoy) y en tres botones de relleno
+(Crear ejercicio, el selector de ejercicios y el de Plantillas). Las tintas
+`tint/accent-10` y `tint/accent-50` siguen con base `#b8ff00`: ya son tokens
+del tema y vienen así de Figma.
+
+**Probar U35**
+
+- [x] Inicio: la letra de hoy de la semana, los puntos entrenados, las letras
+  de las sesiones y la tarjeta de hoy se ven en el mismo lima que el resto de la
+  app (pestañas, segmentados).
+- [x] Crear ejercicio, el botón del selector de ejercicios y Plantillas: el
+  relleno lima es el mismo.
+
 ## 9. U36 — Cabecera de cerrar compartida y ✕ como icono
 
 `DocsScreen`, `DriveBackupScreen`, `TrainerConnectionScreen` y
@@ -500,7 +517,7 @@ scroll ni la fila abierta.
 | U32 | Botones del programa de cliente fuera de la tarjeta | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U33 | Diálogo propio (`showDialog`) y fuera los `Alert.alert` | ✅ rama `feat/recap` | 🟡 |
 | U34 | Textos fijos a i18n; `PaywallModal`, `ProgramUpdateModal`, `ImportModal` a `DragSheet` | pendiente | 🟡 |
-| U35 | `#b8ff00` como token del tema | pendiente | 🟢 |
+| U35 | Un solo lima: `#b8ff00` pasa a `accent` | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U36 | Cabecera de cerrar compartida; ✕ como icono | pendiente | 🟢 |
 | U37 | `EmptyState` común | pendiente | 🟢 |
 | U38 | Hoja de progresión única | pendiente | 🟢 |

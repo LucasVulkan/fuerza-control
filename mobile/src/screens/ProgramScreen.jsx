@@ -810,7 +810,7 @@ const makeStyles = (th) => StyleSheet.create({
   cta: {
     height:          44,
     borderRadius:    th.radius.md,
-    backgroundColor: '#b8ff00', // literal de Figma, distinto de color/accent
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
     paddingHorizontal: spacing.xl,
