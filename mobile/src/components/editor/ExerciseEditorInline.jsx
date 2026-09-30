@@ -34,7 +34,7 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
-import { ArrowIcon, ProgressionIcon, VariantIcon, LockIcon } from '../ui/EditorIcons';
+import { ArrowIcon, ProgressionIcon, VariantIcon, LockIcon, CloseIcon } from '../ui/EditorIcons';
 import VariantPicker from '../ui/VariantPicker';
 import AnimatedHeight from '../ui/AnimatedHeight';
 import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
@@ -74,6 +74,7 @@ function IncrementInput({ value, onChange, unit }) {
 // ─── WarmupStepRow ────────────────────────────────────────────────────────────
 
 function WarmupStepRow({ index, step, onChange, onRemove }) {
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [pctDraft, setPctDraft] = useState(String(step.pct));
   const [repsDraft, setRepsDraft] = useState(String(step.reps));
@@ -119,7 +120,7 @@ function WarmupStepRow({ index, step, onChange, onRemove }) {
         />
       </View>
       <TouchableOpacity style={styles.warmupStepRemove} onPress={onRemove} hitSlop={8}>
-        <Text style={styles.warmupStepRemoveTxt}>✕</Text>
+        <CloseIcon size={16} color={th.tint.red50} />
       </TouchableOpacity>
     </View>
   );
@@ -1180,7 +1181,6 @@ const makeStyles = (th) => StyleSheet.create({
   warmupFieldUnit:     { ...textStyles.label, color: th.colors.mutedLight },
   warmupStepUnit:      { ...textStyles.label, color: th.colors.mutedLight },
   warmupStepRemove:    { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
-  warmupStepRemoveTxt: { ...textStyles.body, color: th.tint.red50 },
   // Mismo botón de añadir que el resto de la app: texto plano, sin caja.
   addStepBtn:         { alignItems: 'center', paddingVertical: spacing.md },
   addStepBtnDisabled: { opacity: 0.35 },

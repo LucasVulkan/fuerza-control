@@ -1869,6 +1869,7 @@
     "nameApart": "{{name}} · {{variant}}"
   },
   "customExercise": {
+    "eyebrow": "Your own exercise",
     "title": "New exercise",
     "nameLabel": "NAME",
     "namePlaceholder": "E.g. Pallof press",
@@ -1882,7 +1883,7 @@
     "patternSectionLabel": "MOVEMENT PATTERN",
     "levelSectionLabel": "TECHNICAL LEVEL",
     "levelAdvanced": "Advanced",
-    "createBtn": "Create exercise",
+    "createBtn": "Add",
     "toastCreated": "Exercise created"
   },
   "programCard": {

@@ -40,6 +40,7 @@ import DragSheet from '../components/DragSheet';
 import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
 import { VARIANT_DIMS, variantLabel, isEmptyVariant } from '../utils/variants';
 
+import ScreenHeader from '../components/ui/ScreenHeader';
 function generateCustomId() {
   return 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
 }
@@ -190,12 +191,28 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('customExercise.title')}</Text>
-        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.closeGlyph}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Se entra deslizando desde la derecha: se sale con ‹, como el resto
+          de pantallas a las que se navega (U36). */}
+      {/* Crear va arriba a la derecha, como «Añadir» en el selector de
+          ejercicios: es la acción de la pantalla. Sin Cancelar: lo hace ‹. */}
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={t('customExercise.eyebrow')}
+        title={t('customExercise.title')}
+        right={(
+          <TouchableOpacity
+            style={[styles.createBtn, !name.trim() && styles.createBtnOff]}
+            // Apagado sin nombre, pero pulsable: así marca el campo que falta.
+            onPress={handleCreate}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.createBtnText, !name.trim() && styles.createBtnTextOff]}>
+              {t('customExercise.createBtn')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
@@ -305,16 +322,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
             subtitle={t('customExercise.tagsRowHint')}
             onPress={() => setTagsSheetOpen(true)}
           />
-
-          {/* ══ ACCIONES — abajo del proceso, no flotantes ═══════════════════ */}
-          <View style={styles.btnRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createBtn} onPress={handleCreate} activeOpacity={0.85}>
-              <Text style={styles.createBtnText}>{t('customExercise.createBtn')}</Text>
-            </TouchableOpacity>
-          </View>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -541,20 +548,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
-  iconBox: {
-    width: 42, height: 42, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
-  form: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  form: { paddingTop: spacing.md, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   block: { gap: spacing.md },
 
   secLabel: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
@@ -595,20 +590,15 @@ const makeStyles = (th) => StyleSheet.create({
     includeFontPadding: false, paddingVertical: 0,
   },
 
-  // ── Acciones — abajo del proceso ────────────────────────────────────────
-  btnRow: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md },
-  cancelBtn: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: spacing.md, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-  },
-  cancelBtnText: { ...textStyles.button, color: th.colors.text },
+  // ── Crear, en la cabecera — el mismo botón que «Añadir» del selector ────
   createBtn: {
-    flex: 2, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: spacing.md, borderRadius: th.radius.sm,
+    height: 32, paddingHorizontal: spacing.md, borderRadius: th.radius.md,
     backgroundColor: th.colors.accent,
+    alignItems: 'center', justifyContent: 'center',
   },
-  createBtnText: { ...textStyles.button, color: th.colors.onAccent },
+  createBtnOff:     { backgroundColor: th.colors.surface2 },
+  createBtnText:    { ...textStyles.button, color: th.colors.onAccent },
+  createBtnTextOff: { color: th.colors.muted },
 
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
   sheetCaption: { ...textStyles.caps, color: th.colors.mutedLight },

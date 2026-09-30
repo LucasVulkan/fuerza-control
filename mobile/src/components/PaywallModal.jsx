@@ -15,6 +15,7 @@ import { spacing, borders, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
+import { CloseIcon } from './ui/EditorIcons';
 // ── Feature list ──────────────────────────────────────────────────────────────
 
 const PRO_FEATURES = [
@@ -107,7 +108,7 @@ export default function PaywallModal({ onClose }) {
               <Text style={styles.subtitle}>Todo lo que necesitas para entrenar y gestionar clientes</Text>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-              <Text style={styles.closeX}>✕</Text>
+              <CloseIcon size={16} color={th.colors.mutedLight} />
             </TouchableOpacity>
           </View>
 
@@ -245,7 +246,6 @@ const makeStyles = (th) => StyleSheet.create({
   closeBtn: {
     padding: spacing.xs,
   },
-  closeX: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Features
   featureList: {

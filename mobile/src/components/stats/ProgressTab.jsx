@@ -42,7 +42,7 @@ import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/se
 import { filterBySearch } from '../../utils/searchText';
 import SegmentedControl  from '../ui/SegmentedControl';
 import { MetricInfoSheet } from '../ui/MetricInfo';
-import { ChevronDown }   from '../ui/EditorIcons';
+import { ChevronDown, CloseIcon } from '../ui/EditorIcons';
 import { programTemplateOf, isFreeEntry } from '../../utils/freeSessions';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
@@ -695,7 +695,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 </Animated.View>
               </TouchableOpacity>
               <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.modalCloseBtn}>
-                <Text style={styles.modalCloseText}>✕</Text>
+                <CloseIcon size={14} color={th.colors.mutedLight} />
               </TouchableOpacity>
             </View>
           </View>
@@ -719,7 +719,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
                 />
                 {exPickerSearch.length > 0 && (
                   <TouchableOpacity onPress={() => setExPickerSearch('')} hitSlop={8} style={styles.exPickerSearchClear}>
-                    <Text style={styles.exPickerSearchClearText}>✕</Text>
+                    <CloseIcon size={16} color={th.colors.mutedLight} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -1235,7 +1235,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
         />
         {search.length > 0 && (
           <TouchableOpacity style={styles.searchClear} onPress={() => setSearch('')} hitSlop={8}>
-            <Text style={styles.searchClearText}>✕</Text>
+            <CloseIcon size={16} color={th.colors.mutedLight} />
           </TouchableOpacity>
         )}
       </View>
@@ -1449,7 +1449,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignSelf:         'stretch',
     justifyContent:    'center',
   },
-  searchClearText: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Cabecera accent colapsable ─────────────────────────────────────────────
   listToggle: {
@@ -1635,7 +1634,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:   th.colors.text,
   },
   exPickerSearchClear:     { paddingLeft: spacing.xs2 },
-  exPickerSearchClearText: { ...textStyles.body, color: th.colors.mutedLight },
   exPickerList:     { maxHeight: 380 },
   exPickerItem: {
     paddingHorizontal: spacing.lg,
@@ -1656,7 +1654,6 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
     flexShrink:      0,
   },
-  modalCloseText: { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Modal FormaFit: barra accent, período, cards, sesiones desglosadas ───────
   exBar: {

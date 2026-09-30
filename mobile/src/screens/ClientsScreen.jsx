@@ -51,7 +51,7 @@ import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
-import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
+import { LockIcon, CheckIcon, ChevronDown, MenuIcon, CloseIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
 import InfoSection from '../components/ui/InfoSection';
@@ -2792,7 +2792,7 @@ export default function ClientsScreen() {
                         <Text style={styles.rowDate}>{formatBillDate(entry.date, billLang, true)}</Text>
                         <Text style={styles.rowValue}>{entry.weight} kg</Text>
                         <TouchableOpacity onPress={() => removeClientBodyWeight(selectedClientId, entry.date)} hitSlop={8}>
-                          <Text style={styles.rowDelete}>✕</Text>
+                          <CloseIcon size={14} color={th.colors.muted} />
                         </TouchableOpacity>
                       </InfoRow>
                     ))}
@@ -3063,7 +3063,7 @@ export default function ClientsScreen() {
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')} hitSlop={8} style={styles.searchClearBtn}>
-                <Text style={styles.searchClearText}>✕</Text>
+                <CloseIcon size={16} color={th.colors.mutedLight} />
               </TouchableOpacity>
             )}
           </View>
@@ -3135,7 +3135,7 @@ export default function ClientsScreen() {
                 <View key={id} style={styles.tagRowPill}>
                   <Text style={styles.tagRowPillText}>{tagName}</Text>
                   <TouchableOpacity onPress={() => toggleTagFilter(id)} hitSlop={8} activeOpacity={0.7}>
-                    <Text style={styles.tagRowPillX}>×</Text>
+                    <CloseIcon size={12} color={th.colors.onAccent} />
                   </TouchableOpacity>
                 </View>
               );
@@ -3410,7 +3410,7 @@ export default function ClientsScreen() {
                             <Text style={[styles.tagActionText, { color: th.colors.accent }]}>✓</Text>
                           </TouchableOpacity>
                           <TouchableOpacity style={styles.tagActionBtn} onPress={() => setTagRenameId(null)} hitSlop={8}>
-                            <Text style={styles.tagActionText}>✕</Text>
+                            <CloseIcon size={16} color={th.colors.mutedLight} />
                           </TouchableOpacity>
                         </View>
                       );
@@ -3450,7 +3450,7 @@ export default function ClientsScreen() {
                           }}
                           hitSlop={8}
                         >
-                          <Text style={[styles.tagActionText, { color: th.colors.red }]}>✕</Text>
+                          <CloseIcon size={16} color={th.colors.red} />
                         </TouchableOpacity>
                       </View>
                     );
@@ -3759,10 +3759,6 @@ const makeStyles = (th) => StyleSheet.create({
   searchClearBtn: {
     paddingLeft: spacing.xs2,
   },
-  searchClearText: {
-    ...textStyles.body,
-    color: th.colors.mutedLight,
-  },
 
   // Row 3: Filter pills row. Sin marginTop negativo: el gap con el buscador
   // lo da el `gap` del listHeader (space/sm=6), igual que el que hay entre el
@@ -3818,11 +3814,6 @@ const makeStyles = (th) => StyleSheet.create({
   tagRowPillText: {
     ...textStyles.labelStrong,
     color: th.colors.onAccent,
-  },
-  tagRowPillX: {
-    ...textStyles.labelStrong,
-    color:      th.colors.onAccent,
-    lineHeight: 14,
   },
 
   // Legacy — keep chip styles for compatibility with other views
@@ -4542,7 +4533,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   rowDate:   { ...textStyles.label, color: th.colors.mutedLight, flex: 1 },
   rowValue:  { ...textStyles.labelStrong, color: th.colors.text },
-  rowDelete: { ...textStyles.labelStrong, color: th.colors.muted },
 
   // ── Fila de alta (peso, etiqueta nueva) ──
   addRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

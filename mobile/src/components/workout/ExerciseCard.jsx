@@ -48,6 +48,7 @@ import { isExerciseDone } from '../../utils/exerciseStatus';
 import { spacing, textStyles, withOpacity, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
+import { CloseIcon } from '../ui/EditorIcons';
 // ── Geometría del spec ────────────────────────────────────────────────────────
 // Radios: card 16 · celdas y botones grandes 11 · botones pequeños 9.
 const R_CARD  = 16;
@@ -935,7 +936,7 @@ export default function ExerciseCard({
                       />
                     </View>
                     <TouchableOpacity style={styles.dropRemoveBtn} onPress={() => onRemoveDrop(di)} hitSlop={8}>
-                      <Text style={styles.dropRemoveText}>✕</Text>
+                      <CloseIcon size={14} color={th.colors.mutedLight} />
                     </TouchableOpacity>
                   </View>
                 );
@@ -1302,7 +1303,6 @@ const makeStyles = (th) => StyleSheet.create({
   dropRemoveBtn: {
     padding: spacing.xs,
   },
-  dropRemoveText: { ...textStyles.label, color: th.colors.mutedLight },
   // §4.6 AddSetLink — texto centrado, sin caja. padding 6 0 2, "+" con 6px de
   // separación (gap, no un espacio en el texto). Compartido con "Añadir drop".
   addLink: {

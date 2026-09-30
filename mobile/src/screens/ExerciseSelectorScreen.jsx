@@ -31,7 +31,7 @@ import { spacing, textStyles, withOpacity, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import ScreenHeader from '../components/ui/ScreenHeader';
-import { ArrowIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
 import {
   PATTERN_GROUPS, GROUP_OF_PATTERN, muscleGroupIdsOf, equipmentOf,
 } from '../utils/exerciseTaxonomy';
@@ -256,7 +256,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} hitSlop={8} style={styles.searchClearBtn}>
-              <Text style={styles.searchClearText}>✕</Text>
+              <CloseIcon size={16} color={th.colors.mutedLight} />
             </TouchableOpacity>
           )}
         </View>
@@ -434,7 +434,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   searchInput: { flex: 1, padding: 0, ...textStyles.body, color: th.colors.text },
   searchClearBtn:  { paddingLeft: spacing.xs2 },
-  searchClearText: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Wrapper con padding vertical — evita el clipping de Android en ScrollView horizontal
   patternRowWrap: { paddingTop: spacing.md },

@@ -34,6 +34,7 @@ import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from '../components/ui/dialog';
+import ScreenHeader from '../components/ui/ScreenHeader';
 const ICON_TRAINER = <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>;
 const ICON_PROGRAM = <Path d="M4 7h16M4 12h16M4 17h10" />;
 const ICON_UPLOAD  = <Path d="M12 19V5M6 11l6-6 6 6" />;
@@ -112,12 +113,9 @@ export default function TrainerConnectionScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('trainer.title')}</Text>
-        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.closeGlyph}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Se entra deslizando desde la derecha: se sale con ‹, como el resto
+          de pantallas a las que se navega (U36). */}
+      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('header.sectionConnections')} title={t('trainer.title')} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
@@ -299,20 +297,8 @@ export default function TrainerConnectionScreen() {
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
-  iconBox: {
-    width: 42, height: 42, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  content: { paddingTop: spacing.md, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
   // Tarjeta de estado — mismo tratamiento que el "Resumen" de los editores:
   // relleno tint/accent-10 y SIN borde (§4.6). Sin conectar pierde el tinte

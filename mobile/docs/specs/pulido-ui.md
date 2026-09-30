@@ -10,7 +10,7 @@
 > Fase U33 · hecho · Confirmaciones y avisos sin Alert nativo · §6
 > Fase U34 · pendiente · Textos fijos a i18n y modales viejos a DragSheet · §7
 > Fase U35 · hecho · Un solo lima, como token del tema · §8
-> Fase U36 · pendiente · Cabecera de cerrar compartida y ✕ como icono · §9
+> Fase U36 · hecho · Cabecera de cerrar compartida y ✕ como icono · §9
 > Fase U37 · pendiente · Pantalla vacía común, sin emojis · §10
 > Fase U38 · pendiente · Una sola hoja de progresión · §11
 > Fase U39 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12
@@ -456,6 +456,45 @@ La ✕ de cerrar o borrar es un carácter de texto en unos 10 sitios
 (`PaywallModal`, `ProgressTab`, `ExerciseCard`, `ClientsScreen`,
 `ExerciseEditorInline`…), cuando el resto de iconos son SVG de línea.
 
+**Hecho (30-sep-2026).**
+
+- **Cabecera:** las cuatro pantallas entran deslizando desde la derecha, así
+  que la ✕ a la derecha (que dice «cierro algo que se abrió encima») no les
+  tocaba. Pasan a `ScreenHeader`, como el resto de pantallas a las que se
+  navega: ‹ a la izquierda, ceja en lima y el nombre debajo. Ceja = la sección
+  del menú de la que cuelgan (CUENTA para Documentación, CONEXIONES para Drive y
+  Entrenador) y «Ejercicio propio» (`customExercise.eyebrow`) para Nuevo
+  ejercicio. Lo primero bajo la cabecera lleva `paddingTop: spacing.md`, el
+  aire del editor de sesión. Fuera las cuatro copias de
+  `header`/`headerTitle`/`iconBox`/`closeGlyph`.
+- **Nuevo ejercicio:** «Crear» (ahora «Añadir») sube a la cabecera, a la derecha, con el mismo
+  botón que «Añadir» del selector de ejercicios (lima; en `surface2` mientras
+  no hay nombre, pero pulsable para marcar el campo). El botón Cancelar de
+  abajo desaparece: cancelar es ‹.
+- **✕ como icono:** los diez botones con una ✕ de texto pasan a `CloseIcon`
+  (`EditorIcons`), con el mismo color: cerrar el modal de pago y el de
+  Progresión, borrar la búsqueda (Progresión ×2, Clientes, selector de
+  ejercicios), quitar un paso de calentamiento, una serie descendente, una fila
+  de facturación, una etiqueta (×2) y la etiqueta de su píldora. Tamaño 16
+  donde el carácter era de 14 px y 14 donde era de 12 (la cruz ocupa la mitad
+  de su caja). No se tocan las «×» de multiplicar ni la ✕ de ronda fallida del
+  bloque de acondicionamiento, que es un estado en pareja con ✓.
+- **Pendiente:** junto a la ✕ de las etiquetas de Clientes quedan ✓ y ✎ de
+  texto.
+
+**Probar U36**
+
+- [x] Menú → Documentación, Copia en Drive y Entrenador: barra con ‹ a la
+  izquierda, ceja en lima y el nombre debajo; ‹ vuelve. El contenido no queda
+  pegado a la línea de la cabecera.
+- [x] Selector de ejercicios → Crear ejercicio: igual, con «Ejercicio propio»
+  de ceja. «Añadir» está arriba a la derecha, apagado hasta escribir un nombre;
+  pulsarlo sin nombre marca el campo. Abajo ya no hay botones; ‹ cancela.
+- [x] Las ✕ de borrar búsqueda (Clientes, selector, Progresión), cerrar el
+  modal de Progresión y el de pago, quitar un paso de calentamiento y una serie
+  descendente, y las de etiquetas y facturación en Clientes: son una cruz de
+  línea, del tamaño y color de antes, y siguen haciendo lo suyo.
+
 ## 10. U37 — Pantalla vacía común, sin emojis
 
 Cinco pantallas vacías con emoji a 32 o 40 px: 📭 `HistoryList`, 📈
@@ -518,7 +557,7 @@ scroll ni la fila abierta.
 | U33 | Diálogo propio (`showDialog`) y fuera los `Alert.alert` | ✅ rama `feat/recap` | 🟡 |
 | U34 | Textos fijos a i18n; `PaywallModal`, `ProgramUpdateModal`, `ImportModal` a `DragSheet` | pendiente | 🟡 |
 | U35 | Un solo lima: `#b8ff00` pasa a `accent` | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
-| U36 | Cabecera de cerrar compartida; ✕ como icono | pendiente | 🟢 |
+| U36 | Esas cuatro pantallas a `ScreenHeader`; ✕ como icono | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U37 | `EmptyState` común | pendiente | 🟢 |
 | U38 | Hoja de progresión única | pendiente | 🟢 |
 | U39 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |

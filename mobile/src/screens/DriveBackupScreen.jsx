@@ -37,6 +37,7 @@ import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from '../components/ui/dialog';
+import ScreenHeader from '../components/ui/ScreenHeader';
 WebBrowser.maybeCompleteAuthSession();
 
 const DISCOVERY = {
@@ -300,12 +301,9 @@ export default function DriveBackupScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('drive.title')}</Text>
-        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.closeGlyph}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Se entra deslizando desde la derecha: se sale con ‹, como el resto
+          de pantallas a las que se navega (U36). */}
+      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('header.sectionConnections')} title={t('drive.title')} />
 
       <View style={styles.tabs}>
         <SegmentedControl
@@ -573,20 +571,8 @@ export default function DriveBackupScreen() {
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
-  iconBox: {
-    width: 42, height: 42, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
-  tabs:    { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  tabs:    { paddingTop: spacing.md, paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
   // Tarjeta de estado — mismo tratamiento que el "Resumen" de los editores:

@@ -1869,6 +1869,7 @@
     "nameApart": "{{name}} · {{variant}}"
   },
   "customExercise": {
+    "eyebrow": "Ejercicio propio",
     "title": "Nuevo ejercicio",
     "nameLabel": "NOMBRE",
     "namePlaceholder": "Ej: Press Pallof con cable",
@@ -1882,7 +1883,7 @@
     "patternSectionLabel": "PATRÓN DE MOVIMIENTO",
     "levelSectionLabel": "NIVEL TÉCNICO",
     "levelAdvanced": "Avanzado",
-    "createBtn": "Crear ejercicio",
+    "createBtn": "Añadir",
     "toastCreated": "Ejercicio creado"
   },
   "programCard": {
