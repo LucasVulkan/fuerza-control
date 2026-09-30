@@ -16,10 +16,12 @@
  * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert, Share } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert, Share, useWindowDimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
+import Reanimated, {
+  useAnimatedRef, useSharedValue, withTiming, LayoutAnimationConfig,
+} from 'react-native-reanimated';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
@@ -56,6 +58,10 @@ const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2 + ACTION_GAP + ACTION_INSET;
 // Separación entre huecos de la lista (space/sm) y entre miembros de una misma
 // superserie (radius/xxs = 2, el valor que Figma usa también como gap).
 const CARD_GAP = spacing.sm;
+
+// Cambiar de sesión desliza la página con la curva del resalte del segmentado.
+// Fuera del componente: un worklet no puede capturar `SegmentedControl` entero.
+const SLIDE = SegmentedControl.TIMING;
 const SS_GAP   = 2;
 
 // ─── Texto de las filas ───────────────────────────────────────────────────────
@@ -233,6 +239,28 @@ export default function SessionEditorScreen({ navigation, route }) {
   // segmented pueda cambiar de sesión sin apilar pantallas.
   const [templateId, setTemplateId] = useState(initialTemplateId);
 
+  // Cambio de sesión: la página vieja sale por un lado y la nueva entra por el
+  // otro, como un pager. No es un pager de verdad: la página va con
+  // `key={templateId}` y se remonta entera, y así sus filas ya no hacen el
+  // fundido de fábrica de la lista al cambiar de ids. +1 = la nueva está a la
+  // derecha. 0 al abrir: la primera página no desliza.
+  const { width: screenW } = useWindowDimensions();
+  const slideDir = useSharedValue(0);
+  const pageEntering = () => {
+    'worklet';
+    return {
+      initialValues: { transform: [{ translateX: slideDir.value * screenW }] },
+      animations:    { transform: [{ translateX: withTiming(0, SLIDE) }] },
+    };
+  };
+  const pageExiting = () => {
+    'worklet';
+    return {
+      initialValues: { transform: [{ translateX: 0 }] },
+      animations:    { transform: [{ translateX: withTiming(-slideDir.value * screenW, SLIDE) }] },
+    };
+  };
+
   const programs         = useStore((s) => s.programs);
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
   const customExercises  = useStore((s) => s.customExercises);
@@ -290,6 +318,7 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   function switchSession(id) {
     if (id === templateId) return;
+    slideDir.value = sessionIds.indexOf(id) > sessionIds.indexOf(templateId) ? 1 : -1;
     setEditingName(false);
     setOpenRowId(null);
     setTemplateId(id);
@@ -488,58 +517,64 @@ export default function SessionEditorScreen({ navigation, route }) {
           />
         )}
 
-        {/* ── Resumen (208:1936) ── */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTag}>
-            {isFree ? t('freeSession.badge') : t('editor.summarySession', { label: template.label ?? '' })}
-          </Text>
-          <Text style={styles.summaryMain}>
-            {stats.minutes > 0
-              ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
-              : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
-          </Text>
-          {volume && <Text style={styles.summaryVolume}>{volume}</Text>}
-        </View>
+        <Reanimated.View key={templateId} style={styles.page} entering={pageEntering} exiting={pageExiting}>
+          {/* Lo de dentro no hace su propio fundido al montarse o desmontarse con
+              la página; lo que se añada o quite después, sí. */}
+          <LayoutAnimationConfig skipEntering skipExiting>
+            {/* ── Resumen (208:1936) ── */}
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTag}>
+                {isFree ? t('freeSession.badge') : t('editor.summarySession', { label: template.label ?? '' })}
+              </Text>
+              <Text style={styles.summaryMain}>
+                {stats.minutes > 0
+                  ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
+                  : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
+              </Text>
+              {volume && <Text style={styles.summaryVolume}>{volume}</Text>}
+            </View>
 
-        {/* ── Lista ── */}
-        <View style={styles.section}>
-          <Text style={styles.secTitle}>
-            {t('editor.sectionExercises', { n: slots.length }).toUpperCase()}
-          </Text>
-          <Sortable.Grid
-            {...SORTABLE_PROPS}
-            data={slots}
-            keyExtractor={(slot) => slot.id}
-            rowGap={CARD_GAP}
-            scrollableRef={scrollRef}
-            onDragEnd={handleReorder}
-            renderItem={({ item: slot, index }) => (
-              <Slot
-                slot={slot}
-                number={index + 1}
-                openRowId={openRowId}
-                setOpenRowId={setOpenRowId}
-                metaFor={metaFor}
-                allExercises={allExercises}
-                t={t}
-                onOpenExercise={openExercise}
-                onOpenBlock={openBlock}
-                onRemoveExercise={handleRemoveExercise}
-                onRemoveBlock={handleRemoveBlock}
-                onSubstitute={(exerciseId) => navigation.navigate('ExerciseSelector', {
-                  templateId, currentExerciseId: exerciseId, existingPatterns: [],
-                })}
+            {/* ── Lista ── */}
+            <View style={styles.section}>
+              <Text style={styles.secTitle}>
+                {t('editor.sectionExercises', { n: slots.length }).toUpperCase()}
+              </Text>
+              <Sortable.Grid
+                {...SORTABLE_PROPS}
+                data={slots}
+                keyExtractor={(slot) => slot.id}
+                rowGap={CARD_GAP}
+                scrollableRef={scrollRef}
+                onDragEnd={handleReorder}
+                renderItem={({ item: slot, index }) => (
+                  <Slot
+                    slot={slot}
+                    number={index + 1}
+                    openRowId={openRowId}
+                    setOpenRowId={setOpenRowId}
+                    metaFor={metaFor}
+                    allExercises={allExercises}
+                    t={t}
+                    onOpenExercise={openExercise}
+                    onOpenBlock={openBlock}
+                    onRemoveExercise={handleRemoveExercise}
+                    onRemoveBlock={handleRemoveBlock}
+                    onSubstitute={(exerciseId) => navigation.navigate('ExerciseSelector', {
+                      templateId, currentExerciseId: exerciseId, existingPatterns: [],
+                    })}
+                  />
+                )}
               />
-            )}
-          />
-        </View>
+            </View>
 
-        {/* ── Añadir (210:2784) ── */}
-        <TouchableOpacity style={styles.addBtn} onPress={() => setAddSheetOpen(true)} activeOpacity={0.7}>
-          <Text style={styles.addBtnText}>
-            <Text style={styles.addBtnPlus}>+</Text>{` ${t('editor.addLabel')}`}
-          </Text>
-        </TouchableOpacity>
+            {/* ── Añadir (210:2784) ── */}
+            <TouchableOpacity style={styles.addBtn} onPress={() => setAddSheetOpen(true)} activeOpacity={0.7}>
+              <Text style={styles.addBtnText}>
+                <Text style={styles.addBtnPlus}>+</Text>{` ${t('editor.addLabel')}`}
+              </Text>
+            </TouchableOpacity>
+          </LayoutAnimationConfig>
+        </Reanimated.View>
       </Reanimated.ScrollView>
 
       {/* ── Hoja de "añadir" — el Alert nativo de Android no se puede estilar ── */}
@@ -746,6 +781,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.md,
     gap:               spacing.md,
   },
+  // Lo que desliza al cambiar de sesión: repite el gap del scroll.
+  page: { gap: spacing.md },
 
   // Etiqueta de sección, igual que en el editor de programa.
   section:  { gap: spacing.xs2 },

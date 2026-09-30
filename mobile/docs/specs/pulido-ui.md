@@ -13,6 +13,7 @@
 > Fase U36 · pendiente · Cabecera de cerrar compartida y ✕ como icono · §9
 > Fase U37 · pendiente · Pantalla vacía común, sin emojis · §10
 > Fase U38 · pendiente · Una sola hoja de progresión · §11
+> Fase U39 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12
 >
 > Estado: **apuntes, no spec cerrada** (29-sep-2026). U28-U32 son notas del
 > usuario; U33-U38 salen de una revisión del código el mismo día (solo código,
@@ -368,6 +369,32 @@ Sacar una sola pieza, y decidir si el alta debe tener el paso de evaluación.
 Al usuario (29-sep-2026) no le cuadra que se quitara en el alta; lo más
 probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 
+## 12. U39 — Editar sesión: la página se desliza al cambiar de sesión
+
+Al cambiar de sesión con el segmentado de Editar sesión, la lista hacía el
+fundido de fábrica de `react-native-sortables` (cambian todos los ids). Ahora
+la página entera se desliza de lado como en Progresión (U28).
+
+**Hecho (30-sep-2026), sin pager.** Un pager de verdad obligaba a sacar el
+cuerpo de la sesión a un componente por sesión y a sacar el segmentado del
+scroll, que es un cambio de diseño. En su lugar, en `SessionEditorScreen.jsx`
+resumen, lista y «Añadir» van en un `Reanimated.View` con `key={templateId}` y
+`entering`/`exiting` propios, en worklet: leen la dirección de un
+`useSharedValue` que fija `switchSession` y trasladan un ancho de pantalla con
+`SegmentedControl.TIMING`. Un `LayoutAnimationConfig skipEntering
+skipExiting` quita el fundido de las filas al montar y desmontar la página;
+añadir o borrar un ejercicio lo sigue haciendo. Al abrir el editor, dirección
+0: no desliza. La página se remonta en cada cambio, como antes: no conserva el
+scroll ni la fila abierta.
+
+**Probar U39**
+
+- [x] Cambiar a una sesión posterior: la vieja sale por la izquierda y la
+  nueva entra por la derecha, a la vez que el resalte. A una anterior, al revés.
+- [x] Al abrir el editor, la página no desliza.
+- [x] Añadir o borrar un ejercicio sigue haciendo su fundido.
+- [x] Reordenar arrastrando funciona justo después de cambiar de sesión.
+
 ## Otros detalles vistos (sin fase)
 
 - Pocos tamaños de letra fuera de la escala de `textStyles`, casi todos en los
@@ -391,3 +418,4 @@ probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
 | U36 | Cabecera de cerrar compartida; ✕ como icono | pendiente | 🟢 |
 | U37 | `EmptyState` común | pendiente | 🟢 |
 | U38 | Hoja de progresión única | pendiente | 🟢 |
+| U39 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
