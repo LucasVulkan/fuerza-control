@@ -439,7 +439,7 @@ export default function HomeScreen() {
             <View style={styles.freeSection}>
               <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
               <View style={styles.group}>
-                {homeFree.map((tpl) => {
+                {homeFree.map((tpl, i) => {
                   const open   = openId === tpl.id;
                   const active = activeSession.templateId === tpl.id;
                   const rel    = relativeTime(getLastSession(tpl.id)?.timestamp, t);
@@ -447,9 +447,10 @@ export default function HomeScreen() {
                   return (
                     <SessionRow
                       key={tpl.id}
-                      // Sin letra: el hueco se queda para que los nombres se
-                      // alineen con los de las sesiones del programa.
-                      marker=""
+                      // Número donde las del programa llevan la letra (U31), en el
+                      // gris de las hechas y no en lima: numera, no dice qué toca.
+                      marker={String(i + 1).padStart(2, '0')}
+                      markerMuted
                       name={name}
                       meta={rel
                         ? rel.toLowerCase()

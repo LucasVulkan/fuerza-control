@@ -372,13 +372,15 @@ export function ClientFreeSessions({ client, canStart, log }) {
         <>
           <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
           <View style={styles.group}>
-            {his.map((tpl) => {
+            {his.map((tpl, i) => {
               const open = openId === tpl.id;
               const rel  = relativeTime(lastOfIn(log, tpl.id)?.timestamp, t);
               return (
                 <SessionRow
                   key={tpl.id}
-                  marker=""
+                  marker={String(i + 1).padStart(2, '0')}
+                  // Número en el gris de las hechas, como en Inicio (U31).
+                  markerMuted
                   name={nameOf(tpl)}
                   meta={rel
                     ? rel.toLowerCase()

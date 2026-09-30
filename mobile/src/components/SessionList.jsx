@@ -95,7 +95,7 @@ export function ExerciseLines({ template, allExercises }) {
  * «puedes, pero no es lo que toca» sin un diálogo de confirmación.
  */
 export function SessionRow({
-  marker, name, meta, done, adapted, by, open,
+  marker, markerMuted, name, meta, done, adapted, by, open,
   cta, onToggle, onStart, onEdit, onShare, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
@@ -112,7 +112,7 @@ export function SessionRow({
         accessibilityState={{ expanded: open }}
         accessibilityHint={t(open ? 'home.collapse' : 'home.expand')}
       >
-        <Text style={[styles.sesGlyph, done && styles.sesGlyphDone]}>{marker}</Text>
+        <Text style={[styles.sesGlyph, (done || markerMuted) && styles.sesGlyphDone]}>{marker}</Text>
         <Text style={[styles.sesName, done && styles.sesNameDone]} numberOfLines={1}>{name}</Text>
         {!!adapted && <Text style={styles.rowAdapted}>{t('home.adapted')}</Text>}
         {/* «de Lucas»: una sesión que manda el entrenador. Azul = entrenador. */}
@@ -347,7 +347,11 @@ const makeStyles = (th) => StyleSheet.create({
     // Ajustada a la tinta de la Inter Black a este cuerpo (24 px medidos sobre
     // el .ttf), sin los 2 px de holgura que traía. Lo que separa la letra del
     // nombre es el `gap` de la fila, no una caja con aire de sobra.
-    width:              24,
+    // Mínimo y no fijo: las sesiones libres llevan número (01, 02…) y dos
+    // cifras no caben en 24. Cifras tabulares para que todas midan lo mismo y
+    // los nombres queden alineados.
+    minWidth:           24,
+    fontVariant:        ['tabular-nums'],
     color:              LIMA,
   },
   sesGlyphDone: { color: th.colors.muted },

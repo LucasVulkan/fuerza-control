@@ -5,7 +5,7 @@
 > Fase U28 · hecho · Progresión: las pantallas se deslizan con el segmentado · §1
 > Fase U29 · hecho · Recap: distribución y legibilidad · §2
 > Fase U30 · hecho · Hojas de opciones con icono y estandarizadas · §3
-> Fase U31 · pendiente · Sesiones libres: icono delante o sin hueco · §4
+> Fase U31 · hecho · Sesiones libres: icono delante o sin hueco · §4
 > Fase U32 · hecho · Programa de cliente: botones fuera de la tarjeta · §5
 > Fase U33 · pendiente · Confirmaciones y avisos sin Alert nativo · §6
 > Fase U34 · pendiente · Textos fijos a i18n y modales viejos a DragSheet · §7
@@ -293,6 +293,22 @@ en ese hueco o se elimina el espacio. La lista está en `HomeScreen.jsx`
 (bloque «Sesiones libres», ~432); las filas de sesión de programa llevan la
 letra en ese hueco (`marker` en `SessionList.jsx`).
 
+**Hecho (30-sep-2026): número.** Las sesiones libres llevan 01, 02… en el
+hueco, con la misma fuente que las letras de las sesiones que no son la de hoy
+(`sesGlyph`) y en el gris de las sesiones hechas (`sesGlyphDone`, prop
+`markerMuted` de `SessionRow`), no en lima: numeran, no dicen qué toca. También en la ficha de cliente (`ClientSessions.jsx`), que tenía
+el mismo hueco. La columna de `sesGlyph` pasa de `width: 24` a `minWidth: 24`
+(dos cifras no cabían) y lleva cifras tabulares para que los nombres queden
+alineados entre sí.
+
+**Probar U31**
+
+- [ ] Inicio → Sesiones libres: cada fila lleva 01, 02… en gris delante del
+  nombre, y los nombres quedan alineados entre ellos.
+- [ ] Las filas de sesiones del programa siguen igual (letra y nombre en su
+  sitio).
+- [ ] Clientes → ficha de un cliente sin app → sus sesiones libres: igual.
+
 ## 5. U32 — Programa de cliente: botones fuera de la tarjeta
 
 En el programa de un cliente, los botones van pegados a la tarjeta. Tienen que
@@ -427,7 +443,7 @@ scroll ni la fila abierta.
 | U28 | Las pestañas de Progresión se deslizan con el segmentado (solo al tocar) | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
-| U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
+| U31 | Hueco delante de las sesiones libres: 01, 02… | ✅ rama `feat/recap` | 🟢 |
 | U32 | Botones del programa de cliente fuera de la tarjeta | ✅ rama `feat/recap` | 🟢 |
 | U33 | `ui/ConfirmSheet` y fuera los `Alert.alert` | pendiente | 🟡 |
 | U34 | Textos fijos a i18n; `PaywallModal`, `ProgramUpdateModal`, `ImportModal` a `DragSheet` | pendiente | 🟡 |
