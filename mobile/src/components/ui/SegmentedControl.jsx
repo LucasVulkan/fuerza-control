@@ -133,6 +133,11 @@ export default function SegmentedControl({ options, value, onChange }) {
   );
 }
 
+// Colgado del componente (un export suelto rompe el fast refresh): quien anime
+// algo al compás del resalte —el pager de `stats/ProgressPanel.jsx`— usa esta
+// misma curva y va clavado con él.
+SegmentedControl.TIMING = TIMING;
+
 const makeStyles = (th) => StyleSheet.create({
   container: {
     flexDirection:   'row',

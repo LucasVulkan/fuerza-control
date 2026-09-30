@@ -2,7 +2,7 @@
 
 > Tema: ui
 > En corto: Mejoras visuales y de estandarización apuntadas el 29-sep-2026 para más adelante: pantallas que se deslizan con el segmentado, un recap legible, hojas de opciones y confirmaciones todas iguales, textos sin traducir, un solo lima, cabeceras, pantallas vacías y una hoja de progresión duplicada.
-> Fase U28 · pendiente · Progresión: las pantallas se deslizan con el segmentado · §1
+> Fase U28 · hecho · Progresión: las pantallas se deslizan con el segmentado · §1
 > Fase U29 · hecho · Recap: distribución y legibilidad · §2
 > Fase U30 · hecho · Hojas de opciones con icono y estandarizadas · §3
 > Fase U31 · pendiente · Sesiones libres: icono delante o sin hueco · §4
@@ -27,12 +27,32 @@ Al cambiar en el control segmentado entre Ejercicios, Carga e Historial, el
 contenido cambia de golpe. Tiene que desplazarse de lado a la vez que el
 resalte del segmentado, como un pager.
 
-Lo que dice el código: `ui/SegmentedControl.jsx` anima el resalte con
-`Animated` de RN core. Para que el resalte siga al dedo mientras se desliza la
-pantalla (y no solo al soltar), el segmentado tiene que pasar a Reanimated y
-leer la posición del pager desde un `useSharedValue`. Esa es la parte grande
-de la fase. El segmentado se usa en muchas pantallas: el cambio no puede
-alterar su comportamiento cuando no hay pager.
+**Hecho (30-sep-2026), solo al tocar el segmentado.** El usuario eligió esto
+frente a un pager con gesto de dedo. El segmentado ya iba en Reanimated.
+`stats/ProgressPanel.jsx` pone las pestañas en una fila de N × 100 % y la
+traslada con `withTiming` y la misma curva que el resalte
+(`SegmentedControl.TIMING`). El translate va en %, así que no hay nada que
+medir. Cada pestaña se monta la primera vez que se visita y luego no se
+desmonta: la que sale y la que entra tienen que verse a la vez. Las de fuera
+de pantalla se ocultan al lector de pantalla. `SegmentedControl` no cambia de
+comportamiento: solo expone su curva.
+
+Si más adelante se quiere también deslizar con el dedo: `react-native-pager-view`
+(está en Expo Go) con `onPageScroll` pasado a un `useSharedValue`, y el
+segmentado leyendo esa posición en vez de la suya. Cuidado con el `ScrollView`
+horizontal de `ProgressTab` (gestos anidados en ViewPager2) y con el gesto de
+volver atrás de iOS en la ficha de cliente.
+
+**Probar U28**
+
+- [ ] Progresión → tocar Carga y luego Historial: el contenido se desliza de
+  lado a la vez que el resalte, sin corte, y vuelve igual hacia la izquierda.
+- [ ] Saltar de Ejercicios a Historial de un toque: cruza Carga deslizando,
+  sin parpadeos.
+- [ ] Al volver a una pestaña ya visitada, conserva el scroll y los filtros.
+- [ ] Clientes → ficha → Progreso (sin Historial, dos segmentos): igual.
+- [ ] Borrar una sesión en Historial: solo sale esa tarjeta por la derecha.
+- [ ] Tirar para refrescar en Ejercicios y en Carga sigue funcionando.
 
 ## 2. U29 — Recap: distribución y legibilidad
 
@@ -354,13 +374,13 @@ probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
   emojis de U37. El resto: `ProgramScreen` `statLabel` (10),
   `ClientsScreen` `infoCodeText` (16) e `infoCopyBtnText` (18),
   `AppHeader` (19), el badge de la tab bar (11).
-- `Animated` de RN core sigue en 16 ficheros. Solo importa donde se toque (U28).
+- `Animated` de RN core sigue en 16 ficheros. Se migra solo donde se toque.
 
 ## Fases
 
 | Fase | Qué | Estado | Coste |
 |---|---|---|---|
-| U28 | Pager sincronizado con el segmentado de Progresión; segmentado a Reanimated | pendiente | 🟡 |
+| U28 | Las pestañas de Progresión se deslizan con el segmentado (solo al tocar) | ✅ rama `feat/recap` | 🟢 |
 | U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
