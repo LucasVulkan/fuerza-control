@@ -6,7 +6,7 @@
 > Fase U29 · hecho · Recap: distribución y legibilidad · §2
 > Fase U30 · hecho · Hojas de opciones con icono y estandarizadas · §3
 > Fase U31 · pendiente · Sesiones libres: icono delante o sin hueco · §4
-> Fase U32 · pendiente · Programa de cliente: botones fuera de la tarjeta · §5
+> Fase U32 · hecho · Programa de cliente: botones fuera de la tarjeta · §5
 > Fase U33 · pendiente · Confirmaciones y avisos sin Alert nativo · §6
 > Fase U34 · pendiente · Textos fijos a i18n y modales viejos a DragSheet · §7
 > Fase U35 · pendiente · Un solo lima, como token del tema · §8
@@ -302,6 +302,23 @@ separarse como en el tab «Programa» (ver [tab-programa.md](tab-programa.md);
 La tarjeta del cliente es `AssignedProgramCard`, dentro de
 `ClientsScreen.jsx` (5.095 líneas). Al tocarla, sacarla a su propio fichero.
 
+**Hecho (30-sep-2026).** El pie de dentro de `ProgramCard` (Editar · Ver ·
+`⋯` con filetes) desaparece: ya solo lo usaba la ficha. Los botones sueltos del
+tab Programa pasan a `ProgramActions`, exportado desde `ui/ProgramCard.jsx`, y
+lo usan las dos pantallas. `AssignedProgramCard` se queda en `ClientsScreen`:
+el cambio allí son tres líneas y sacarla no hacía falta para esto. Además, a
+petición del usuario, la tarjeta pasa a `radius/md` (el de los botones) y los
+botones quedan a `space/sm2` de ella, la misma separación que entre ellos.
+
+**Probar U32**
+
+- [ ] Clientes → ficha → Programa: Editar, Ver y `⋯` van debajo de la
+  tarjeta, sueltos, iguales que en el tab Programa. La tarjeta ya no lleva pie.
+- [ ] Cada botón hace lo de antes: Editar abre el editor, Ver el visualizador y
+  `⋯` la hoja de opciones del entrenador.
+- [ ] Tab Programa: sin cambios (Editar solo si se puede editar, `⋯` solo si
+  el programa es tuyo).
+
 ## 6. U33 — Confirmaciones y avisos sin Alert nativo
 
 `DragSheet` y `UI-MIGRATION` §9 prohíben el `Alert` nativo (en Android no se
@@ -411,7 +428,7 @@ scroll ni la fila abierta.
 | U29 | Reordenar el recap: resultados primero, entrada de datos agrupada | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U30 | Una sola fila de opción con icono; hoja «Añadir» del Workout | ✅ rama `feat/recap` — probada en dispositivo 29-sep | 🟡 |
 | U31 | Hueco delante de las sesiones libres | pendiente | 🟢 |
-| U32 | Botones del programa de cliente fuera de la tarjeta | pendiente | 🟢 |
+| U32 | Botones del programa de cliente fuera de la tarjeta | ✅ rama `feat/recap` | 🟢 |
 | U33 | `ui/ConfirmSheet` y fuera los `Alert.alert` | pendiente | 🟡 |
 | U34 | Textos fijos a i18n; `PaywallModal`, `ProgramUpdateModal`, `ImportModal` a `DragSheet` | pendiente | 🟡 |
 | U35 | `#b8ff00` como token del tema | pendiente | 🟢 |

@@ -52,7 +52,7 @@ import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
 import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
-import ProgramCard from '../components/ui/ProgramCard';
+import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
 import InfoSection from '../components/ui/InfoSection';
 import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
 
@@ -370,8 +370,8 @@ function AssignedProgramCard({
       )}
 
       {/* ── Tarjeta de programa ── la misma que la Home: las dos pantallas
-          convergían sin saberlo (docs/specs/home-sessions.md §4). El pie de
-          acciones va DENTRO, que es el único cambio real de la convergencia. */}
+          convergían sin saberlo (docs/specs/home-sessions.md §4). Las acciones
+          van debajo y fuera, como en el tab Programa (U32). */}
       <ProgramCard
         variant="client"
         name={program.name}
@@ -401,10 +401,8 @@ function AssignedProgramCard({
         adherenceColor={attnColor}
         pace={paceHasData ? paceRaw : null}
         loadPct={loadPct}
-        onEdit={onEdit}
-        onView={onView}
-        onMore={() => setMenuOpen(true)}
       />
+      <ProgramActions onEdit={onEdit} onView={onView} onMore={() => setMenuOpen(true)} />
 
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
           hace de su app (trainer-logging.md §3.1). Preparar no aplica: manda

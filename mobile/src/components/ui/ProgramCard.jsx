@@ -23,9 +23,8 @@
  * son dos sitios. El chevron va pegado a la ceja y no al nombre: dice que la
  * tarjeta se pulsa sin competir con el título.
  *
- * El pie sigue existiendo para la ficha de cliente, donde la tarjeta NO es
- * navegable (es el contenido del tab) y el "⋯" guarda las diez acciones del
- * entrenador. Se pinta solo si llega alguna de sus tres funciones.
+ * Donde la tarjeta NO es navegable (tab Programa y ficha de cliente), editar,
+ * ver y `⋯` van DEBAJO, fuera de la tarjeta, en `ProgramActions` (U32).
  *
  * ── Progreso: barra de etapas + puntos de semana ───────────────────────────
  *
@@ -111,10 +110,8 @@ export default function ProgramCard({
   stage, stages, stageIdx = 0, stageNote,
   adherence, adherenceColor, pace, loadPct,
   onPress, onStagePress, onWeekInfo,
-  onEdit, onView, onMore,
 }) {
   const { t, i18n } = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEs   = i18n.language?.startsWith('es');
 
@@ -132,7 +129,6 @@ export default function ProgramCard({
   const showBar  = (stages?.length ?? 0) > 1;
   // Sin techo de semanas no hay puntos que contar (etapa abierta).
   const showPips = stage?.totalWeeks != null;
-  const hasFoot  = !!(onEdit || onView || onMore);
 
   return (
     <View style={styles.card}>
@@ -253,38 +249,43 @@ export default function ProgramCard({
           <Text style={styles.statKey} {...FIT}>{t('programCard.statLoad')}</Text>
         </View>
       </View>
+    </View>
+  );
+}
 
-      {/* Pie: solo donde la tarjeta no es navegable (ficha de cliente). Sin
-          `onEdit` VER ocupa el hueco. */}
-      {hasFoot && (
-        <View style={styles.foot}>
-          {!!onEdit && (
-            <TouchableOpacity style={styles.footCell} onPress={onEdit} activeOpacity={0.7} accessibilityRole="button">
-              <Text style={styles.footText} numberOfLines={1}>{t('programCard.edit')}</Text>
-            </TouchableOpacity>
-          )}
-          {!!onView && (
-            <TouchableOpacity
-              style={[styles.footCell, !!onEdit && styles.footDivider]}
-              onPress={onView}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-            >
-              <Text style={styles.footText} numberOfLines={1}>{t('programCard.view')}</Text>
-            </TouchableOpacity>
-          )}
-          {!!onMore && (
-            <TouchableOpacity
-              style={[styles.footCell, styles.footIcon, (!!onEdit || !!onView) && styles.footDivider]}
-              onPress={onMore}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={t('home.moreOptions')}
-            >
-              <MenuIcon horizontal color={th.colors.mutedLight} />
-            </TouchableOpacity>
-          )}
-        </View>
+/**
+ * Editar · Ver · `⋯`, sueltos bajo la tarjeta: botones `Secondary` (relleno
+ * `surface2`, sin borde, `radius/md`, texto `labelStrong`), la variante ya
+ * cerrada de la app — la misma que el «Sustituir» del editor de sesión. Los
+ * comparten el tab Programa y la ficha de cliente. Sin `onEdit`, Ver ocupa el
+ * hueco. El `⋯` no ejecuta nunca: abre una lista.
+ */
+export function ProgramActions({ onEdit, onView, onMore }) {
+  const { t }  = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.actions}>
+      {!!onEdit && (
+        <TouchableOpacity style={styles.actionBtn} onPress={onEdit} activeOpacity={0.75} accessibilityRole="button">
+          <Text style={styles.actionBtnText} numberOfLines={1}>{t('programCard.edit')}</Text>
+        </TouchableOpacity>
+      )}
+      {!!onView && (
+        <TouchableOpacity style={styles.actionBtn} onPress={onView} activeOpacity={0.75} accessibilityRole="button">
+          <Text style={styles.actionBtnText} numberOfLines={1}>{t('programCard.view')}</Text>
+        </TouchableOpacity>
+      )}
+      {!!onMore && (
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnIcon]}
+          onPress={onMore}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel={t('home.moreOptions')}
+        >
+          <MenuIcon horizontal color={th.colors.mutedLight} />
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -293,7 +294,9 @@ export default function ProgramCard({
 const makeStyles = (th) => StyleSheet.create({
   card: {
     backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
+    // `radius/md`, el de los botones de debajo: tarjeta y botones se leen
+    // como un solo bloque.
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
 
@@ -404,25 +407,21 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:     spacing.xs2,
   },
 
-  // ── Pie (solo ficha de cliente) ─────────────────────────────────────────────
-  foot: {
-    flexDirection:  'row',
-    borderTopWidth: borders.thin,
-    borderTopColor: th.colors.border,
+  // ── Acciones (ProgramActions) ───────────────────────────────────────────────
+  actions: {
+    flexDirection: 'row',
+    gap:           spacing.sm2,
+    // La misma separación con la tarjeta que entre botones.
+    marginTop:     spacing.sm2,
   },
-  footCell: {
-    flex:           1,
-    height:         46,
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'center',
-    gap:            spacing.sm2,
-    overflow:       'hidden',
+  actionBtn: {
+    flex:            1,
+    backgroundColor: th.colors.surface2,
+    borderRadius:    th.radius.md,
+    paddingVertical: spacing.md,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
-  footDivider: {
-    borderLeftWidth: borders.thin,
-    borderLeftColor: th.colors.border,
-  },
-  footText: { ...textStyles.labelStrong, color: th.colors.text },
-  footIcon: { flex: 0, width: 52 },
+  actionBtnIcon: { flex: 0, width: 52 },
+  actionBtnText: { ...textStyles.labelStrong, color: th.colors.text, textAlign: 'center' },
 });

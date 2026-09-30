@@ -18,7 +18,7 @@
  * esta app están decididos (docs/UI-MIGRATION.md §4).
  */
 import { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -33,10 +33,10 @@ import { Section, MenuRow } from '../components/ui/MenuList';
 import SheetRow from '../components/ui/SheetRow';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import DragSheet from '../components/DragSheet';
-import ProgramCard from '../components/ui/ProgramCard';
+import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
 import NoProgram from '../components/ui/NoProgram';
 import { DocSheet } from '../components/ui/DocPoints';
-import { LockIcon, MenuIcon } from '../components/ui/EditorIcons';
+import { LockIcon } from '../components/ui/EditorIcons';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STATUS } from '../utils/adherence';
@@ -298,49 +298,18 @@ export default function MyProgramScreen() {
           <NoProgram />
         )}
 
-        {/* ── Las tres acciones ── botones `Secondary` (relleno `surface2`,
-            sin borde, `radius/md`, texto `labelStrong`), que es la variante ya
-            cerrada de la app — la misma que el botón «Sustituir» del editor de
-            sesión. Van sobre las etapas: son lo que se viene a hacer aquí. */}
+        {/* ── Las tres acciones ── van sobre las etapas: son lo que se viene
+            a hacer aquí. Archivar no merece un tercio del ancho (se hace una
+            vez en la vida del programa): va en el `⋯`. */}
         {!!activeProgram && (
-          <View style={styles.actions}>
-            {canEdit && (
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() => navigate('programEditor')}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-              >
-                <Text style={styles.actionBtnText} numberOfLines={1}>{t('programCard.edit')}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.actionBtn}
-              // Se fija SIEMPRE el programa que se va a mirar:
-              // `_viewingProgramId` es global, y entrar sin fijarlo dejaba ver
-              // el último que se abrió (una plantilla, el de un cliente).
-              onPress={() => setPrintingProgram(activeProgram.id)}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-            >
-              <Text style={styles.actionBtnText} numberOfLines={1}>{t('programCard.view')}</Text>
-            </TouchableOpacity>
-            {/* Archivar no merece un tercio del ancho: se hace una vez en la
-                vida del programa. Va en un `⋯` del mismo ancho que el del pie
-                de `ProgramCard`, y como todo `⋯` abre una lista — nunca
-                ejecuta. Los otros dos se reparten lo que deja. */}
-            {isMine && (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnIcon]}
-                onPress={() => setMenuOpen(true)}
-                activeOpacity={0.75}
-                accessibilityRole="button"
-                accessibilityLabel={t('home.moreOptions')}
-              >
-                <MenuIcon horizontal color={th.colors.mutedLight} />
-              </TouchableOpacity>
-            )}
-          </View>
+          <ProgramActions
+            onEdit={canEdit ? () => navigate('programEditor') : null}
+            // Se fija SIEMPRE el programa que se va a mirar:
+            // `_viewingProgramId` es global, y entrar sin fijarlo dejaba ver
+            // el último que se abrió (una plantilla, el de un cliente).
+            onView={() => setPrintingProgram(activeProgram.id)}
+            onMore={isMine ? () => setMenuOpen(true) : null}
+          />
         )}
 
         {/* Con una sola etapa no hay nada que elegir. */}
@@ -414,26 +383,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.lg,
     paddingBottom:     spacing.xxl * 2,
   },
-  // Botones `Secondary`: relleno `surface2` sólido, sin borde, `radius/md` y
-  // texto `labelStrong` — el vocabulario que ya usan el pie de `ProgramCard` y
-  // el «Sustituir» del editor de sesión.
-  actions: {
-    flexDirection: 'row',
-    gap:           spacing.sm2,
-    marginTop:     spacing.lg,
-  },
-  actionBtn: {
-    flex:            1,
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.md,
-    paddingVertical: spacing.md,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  // El mismo ancho que el `⋯` del pie de `ProgramCard`.
-  actionBtnIcon: { flex: 0, width: 52 },
-  actionBtnText: { ...textStyles.labelStrong, color: th.colors.text, textAlign: 'center' },
-
   // `Section` ya trae su propio `marginBottom`; el aire de arriba lo pone el
   // bloque, que es lo que lo separa de los botones.
   stagesBlock: { marginTop: spacing.xl },
