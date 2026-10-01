@@ -53,11 +53,10 @@ describe('sessionPlan — toca la que más tiempo llevas sin hacer', () => {
     expect(plan.heroTemplateId).toBe('a');
   });
 
-  it('la sesión a medias manda sobre todo', () => {
+  it('la sesión a medias no mueve el hero (U52)', () => {
     const plan = sessionPlan({ days: DAYS, log: log(['a', at(2026, 9, 21)]), activeTemplateId: 'a', now: NOW, t });
-    expect(plan.heroTemplateId).toBe('a');
-    expect(plan.heroLabel).toBe('home.sessionActive');
-    expect(plan.rows.map((r) => r.isHero)).toEqual([true, false, false]);
+    expect(plan.heroTemplateId).not.toBe('a');
+    expect(plan.heroLabel).toBe('home.sessionNext');
   });
 
   it('el hero se queda en la lista, en su sitio', () => {

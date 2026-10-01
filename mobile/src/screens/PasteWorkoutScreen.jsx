@@ -34,7 +34,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import es from '../locales/es.json';
 import en from '../locales/en.json';
 
-import { showDialog } from '../components/ui/dialog';
+import { confirmDiscardActive } from '../components/ui/confirmDiscard';
 /** Las sesiones que se le pueden apuntar: las de su etapa y sus libres. */
 function sessionsOf(client, programs, sessionTemplates, unnamed) {
   const program = programs[client?.activeProgramId];
@@ -195,10 +195,7 @@ export default function PasteWorkoutScreen({ navigation, route }) {
       startSession(tplId, { forClient: clientId, loggedAt: days[dayIdx].ts, logOnly: true, prefill: { setsState, adHoc, variants } });
     };
     if (!activeSession.templateId) { go(); return; }
-    showDialog(t('workout.discardSession'), t('workout.discardConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('workout.discardSession'), style: 'destructive', onPress: go },
-    ]);
+    confirmDiscardActive(t, go);
   }
 
   const canGo = !!clientId && !!tplId && usable.length > 0;

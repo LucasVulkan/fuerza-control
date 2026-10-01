@@ -29,6 +29,7 @@ import { prevBlockResult } from '../utils/sessionRecap';
 import { lastExerciseRef } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
+import { useElapsedText } from '../components/ui/useElapsedText';
 import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
 import { backToMain } from '../navigation/navigationRef';
 
@@ -73,28 +74,6 @@ function computeActiveSet(slots, afterExerciseId = null, afterSetIndex = -1) {
     if (!slots[i].done) return { exerciseId: slots[i].exerciseId, setIndex: slots[i].setIndex };
   }
   return null;
-}
-
-// ── Elapsed session clock ─────────────────────────────────────────────────────
-// Derived from activeSession.startedAt (wall clock), so it survives app
-// minimize/kill without any background logic — the tick only repaints whichever
-// small text component uses the hook, not the whole screen.
-
-function useElapsedText(startedAt) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!startedAt) return;
-    const id = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [startedAt]);
-  if (!startedAt) return null;
-  const s  = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-  const hh = Math.floor(s / 3600);
-  const mm = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  return hh > 0
-    ? `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
-    : `${mm}:${String(ss).padStart(2, '0')}`;
 }
 
 // ── Ceja de la cabecera ───────────────────────────────────────────────────────

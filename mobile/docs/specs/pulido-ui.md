@@ -17,6 +17,8 @@
 > Fase U40 · hecho · Importar archivo: el contenido de la hoja al estándar · §13
 > Fase U41 · pendiente · Programas archivados: la lista al estándar · §14
 > Fase U42 · pendiente · Sesión libre: el bloque se edita en la pantalla de Editar bloque · §15
+> Fase U52 · hecho · Inicio: banner de sesión en curso · §16
+> Fase U53 · hecho · Descartar sesión dice cuál · §17
 >
 > Estado: **apuntes, no spec cerrada** (29-sep-2026). U28-U32 son notas del
 > usuario; U33-U38 salen de una revisión del código el mismo día (solo código,
@@ -709,6 +711,106 @@ a pantalla completa propio de `WorkoutScreen` (barra con el nombre y
 a esa pantalla en vez de montar la suya; hay que ver cómo trabaja con el
 `templateId` `'__free__'` de la sesión libre.
 
+## 16. U52 — Inicio: banner de sesión en curso
+
+Hoy, si empiezas una sesión que no es la que toca y vuelves a Inicio, esa
+sesión **pasa a ser el hero** (`sessionPlan` hacía mandar a la activa sobre
+todo). Confunde: sabes que no es la de hoy y la tarjeta grande dice que sí. Y
+una sesión libre empezada no tiene hero que heredar: se queda abajo del todo,
+como una fila más, y no se ve que está a medias. La sobre la marcha (`__free__`)
+ni siquiera tiene fila: solo cambiaba el texto del botón de abajo.
+
+**Decidido (1-oct-2026), sin maqueta:** un **banner arriba de todo** mientras
+haya una sesión a medias, **siempre**, sea cual sea (programa, libre, sobre la
+marcha o de un cliente). Se descartó resaltar la fila: abajo del todo no se ve
+sin hacer scroll, y la sobre la marcha no tiene fila.
+
+- **El hero vuelve a ser la que toca.** `sessionPlan` pierde `activeTemplateId`:
+  la activa ya no manda, ni en Inicio ni en la ficha de un cliente. El hero
+  enseña su meta normal aunque sea la que estás haciendo. Fuera las claves
+  `home.sessionActive` y `home.heroMetaActive`, que solo servían a eso.
+- La fila de la sesión activa sigue diciendo CONTINUAR (`startCta`), como ya
+  hacía.
+- **Sustituye** al aviso estrecho de «En curso: sesión C de Ana», que se
+  quedaba corto: una línea de texto `body` en 12 px de alto útil.
+
+**El banner.** `radius/md`, padding `space/lg`, encima de la semana, en el
+`ScrollView`. **A prueba (1-oct-2026): relleno lima**, con la tinta del hero
+(`onAccent`, también en la ceja y el reloj), compacto (padding vertical
+`space/md`, interlineado 1.2, QA 1-oct) y CONTINUAR como su botón (`onAccent` de
+fondo, texto lima). Si resulta demasiado llamativo junto al hero, se vuelve a
+`surface` con solo el botón en lima.
+Se probaron y descartaron (QA 1-oct): colgando del header (sin esquinas
+arriba) y asomando por la derecha (esquinas solo a la izquierda, más corta que
+la pantalla). Se queda como tarjeta normal.
+
+- Ceja en `caps`: punto + «EN CURSO · 12:34». El reloj es el del Workout
+  (hh:mm:ss en vivo, mismo hook); en modo registro no lleva reloj.
+- Nombre en `itemTitle`, una línea, con lo mismo delante que su fila en
+  Inicio: la letra las del programa («C · Empuje»), el número las libres
+  guardadas («02 · Piernas»), y la sobre la marcha, que no tiene fila, su
+  nombre o «Sesión libre».
+- Sin la cuenta de ejercicios: se probó y no hacía falta (QA 1-oct). La lleva
+  el diálogo de U53.
+- Botón CONTINUAR a la derecha. Todo el banner lleva al Workout.
+- **De un cliente, en azul** (el azul es del entrenador) y la ceja dice de
+  quién: «EN CURSO · ANA · 12:34». Lo mío, en lima.
+
+El nombre y la cuenta los saca `utils/activeSession.js`
+(`activeSessionSummary`), que comparte con el diálogo de U53.
+
+**Hecho (1-oct-2026).** `components/ActiveSessionBanner.jsx`, montado encima de
+la semana en `HomeScreen`. El reloj del Workout pasa a
+`ui/useElapsedText.js` y lo usan los dos. Fuera también `elapsedShort`, que
+solo servía a la meta «empezada hace…» del hero.
+
+**Probar U52**
+
+- [ ] Sin sesión a medias, Inicio no enseña banner.
+- [ ] Empezar la sesión que **no** toca y volver a Inicio: banner arriba con su
+  nombre y el reloj corriendo; el hero sigue siendo la que
+  toca, con su meta normal.
+- [ ] Empezar la que toca y volver: banner arriba y el hero con su meta normal
+  (sin «empezada hace…»).
+- [ ] Empezar una sesión libre guardada y volver: banner con su número y su
+  nombre («02 · Piernas»). Tocarlo (o CONTINUAR) abre el Workout.
+- [ ] Una del programa sale como «C · Empuje», sin «Sesión».
+- [ ] El banner en lima junto al hero: ¿se distinguen o es demasiado? (Si es
+  demasiado, vuelve a `surface` con el botón en lima.)
+- [ ] Sesión libre sobre la marcha: banner con «Sesión libre» (o el nombre que
+  le hayas puesto).
+- [ ] Entrenador: empezar la sesión de un cliente sin app y volver a Inicio:
+  banner en azul con el nombre del cliente en la ceja. En su ficha, el hero es
+  el que le toca, no el que está a medias.
+- [ ] Apuntar una sesión pasada de un cliente: el banner sale sin reloj.
+
+## 17. U53 — Descartar sesión dice cuál
+
+Al empezar otra sesión con una a medias salía «Descartar sesión» y «¿Descartar
+la sesión en curso? …», sin decir cuál. Y era una pregunta, que las reglas de
+U33 no permiten en el diálogo.
+
+**Decidido (1-oct-2026):** título «Descartar sesión»; debajo, en una línea
+propia, **la sesión y lo que llevas** («C · Empuje · 3 de 6 ejercicios»,
+con el mismo nombre que el banner); y debajo la frase, en afirmativo: «Los datos que has introducido
+se perderán.».
+
+- `showDialog` gana `options.subtitle`: una línea en `bodyStrong` y `text`
+  entre el título y la frase.
+- Los cuatro sitios que lo copiaban (Inicio, ficha de cliente, Clientes →
+  Preparar sesión, Pegar entreno) pasan a `confirmDiscardActive(t, onConfirm)`
+  (`components/ui/confirmDiscard.js`), que lo lee del store.
+
+**Hecho (1-oct-2026).**
+
+**Probar U53**
+
+- [ ] Con una sesión a medias, empezar otra desde Inicio: título «Descartar
+  sesión», debajo el nombre de la que está a medias con «N de M ejercicios», y
+  debajo «Los datos que has introducido se perderán.». Sin interrogación.
+- [ ] Lo mismo desde la ficha de un cliente y desde Pegar entreno.
+- [ ] Con la app en inglés, el diálogo sale en inglés.
+
 ## Otros detalles vistos (sin fase)
 
 - Pocos tamaños de letra fuera de la escala de `textStyles`, casi todos en los
@@ -736,3 +838,5 @@ a esa pantalla en vez de montar la suya; hay que ver cómo trabaja con el
 | U40 | Importar archivo al estándar; `ChoiceRow` como pieza de elección única | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U41 | Programas archivados (cliente y menú ≡) al estándar (maqueta antes) | pendiente | 🟡 |
 | U42 | Sesión libre: el bloque se edita en `BlockEditorScreen` | pendiente | 🟢 |
+| U52 | Banner de sesión en curso; el hero deja de seguir a la activa | ✅ rama `feat/recap` | 🟡 |
+| U53 | Descartar sesión dice cuál, sin pregunta | ✅ rama `feat/recap` | 🟢 |

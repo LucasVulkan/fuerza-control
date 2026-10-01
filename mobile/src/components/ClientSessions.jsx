@@ -24,10 +24,9 @@ import SheetRow from './ui/SheetRow';
 import { ROW_ICON } from './ui/rowIcons';
 import { ExerciseLines, SessionRow, TodayCard, SectionHeader } from './SessionList';
 import { FOLD_MS } from './ui/collapseOut';
-import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
+import { startCta, relativeTime } from '../utils/sessionRowText';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
-import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionToText } from '../utils/sessionText';
 import { lastExerciseRef } from '../utils/exerciseLinks';
 import { useWeightUnit } from '../hooks/useWeightUnit';
@@ -35,7 +34,7 @@ import { useLastDays } from '../hooks/useLastDays';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
-import { showDialog } from './ui/dialog';
+import { confirmDiscardActive } from './ui/confirmDiscard';
 function PencilGlyph({ color }) {
   return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -61,14 +60,10 @@ function useClientStart(client) {
 
   const guard = (fn) => {
     if (!activeSession.templateId) { fn(); return; }
-    showDialog(t('workout.discardSession'), t('workout.discardConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('workout.discardSession'), style: 'destructive', onPress: fn },
-    ]);
+    confirmDiscardActive(t, fn);
   };
   const mine = activeSession.forClient === client.id;
   return {
-    activeSession,
     activeId: mine ? activeSession.templateId : null,
     start: (templateId) => {
       if (mine && activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
@@ -208,7 +203,7 @@ export default function ClientSessions({ client, program, days, log, fold }) {
   const navigation = useNavigation();
   const [logPast, setLogPast] = useState(false);
 
-  const { activeSession, activeId, start, logAt } = useClientStart(client);
+  const { activeId, start, logAt } = useClientStart(client);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
@@ -227,16 +222,10 @@ export default function ClientSessions({ client, program, days, log, fold }) {
   const plan = sessionPlan({
     days: sessions.map((d) => ({ templateId: d.templateId, label: d.label })),
     log,
-    activeTemplateId: activeId,
     t,
   });
 
   const heroMeta = (d) => {
-    if (activeId === d.templateId) {
-      const exs  = d.template.exercises ?? [];
-      const done = exs.filter((ex) => isExerciseDone(ex, activeSession.setsState?.[ex.exerciseId] ?? [])).length;
-      return t('home.heroMetaActive', { done, total: exs.length, ago: elapsedShort(activeSession.startedAt) ?? '' });
-    }
     const stats = sessionStats(d.template, allExercises);
     const rel   = relativeTime(lastOfIn(log, d.templateId)?.timestamp, t);
     return [
@@ -265,7 +254,7 @@ export default function ClientSessions({ client, program, days, log, fold }) {
                 key={row.templateId}
                 marker={row.marker}
                 // «Le toca», no «Mi entreno de hoy»: el entreno es suyo.
-                flag={active ? t('home.sessionActive') : t('clients.sessionFlag')}
+                flag={t('clients.sessionFlag')}
                 name={d.name}
                 meta={heroMeta(d)}
                 {...fold.row(row.templateId)}

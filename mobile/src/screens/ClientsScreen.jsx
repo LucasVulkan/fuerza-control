@@ -58,6 +58,7 @@ import InfoSection from '../components/ui/InfoSection';
 import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
 
 import { showDialog } from '../components/ui/dialog';
+import { confirmDiscardActive } from '../components/ui/confirmDiscard';
 // Sesiones por semana — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
@@ -1804,10 +1805,7 @@ export default function ClientsScreen() {
       onPress: () => {
         if (activeForClient === c.id && activeTemplateId === heroId) { navigation.navigate('Workout'); return; }
         if (!activeTemplateId) { go(); return; }
-        showDialog(t('workout.discardSession'), t('workout.discardConfirm'), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('workout.discardSession'), style: 'destructive', onPress: go },
-        ]);
+        confirmDiscardActive(t, go);
       },
     };
   })();

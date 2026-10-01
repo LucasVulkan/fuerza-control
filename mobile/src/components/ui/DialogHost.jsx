@@ -67,6 +67,7 @@ export default function DialogHost() {
         {/* El diálogo se traga los toques: si no, tocar su fondo lo cerraría. */}
         <Pressable style={styles.dialog} onPress={() => {}} accessibilityViewIsModal>
           <Text style={styles.title}>{dialog.title}</Text>
+          {!!dialog.subtitle && <Text style={styles.subtitle}>{dialog.subtitle}</Text>}
           {!!dialog.message && <Text style={styles.message}>{dialog.message}</Text>}
           {!!dialog.items?.length && (
             <ScrollView style={styles.items} bounces={false}>
@@ -111,6 +112,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.xl,
   },
   title:   { ...textStyles.heading, color: th.colors.text },
+  subtitle: { ...textStyles.bodyStrong, lineHeight: 21, color: th.colors.text, marginTop: spacing.xs },
   message: { ...textStyles.body, lineHeight: 21, color: th.colors.mutedLight, marginTop: spacing.sm },
   // La lista va en una caja `surface2` con tope de alto: una actualización
   // grande no puede empujar los botones fuera de la pantalla.

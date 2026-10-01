@@ -13,12 +13,13 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, addDays } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
+import ActiveSessionBanner from '../components/ActiveSessionBanner';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import NoProgram from '../components/ui/NoProgram';
-import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
+import { spacing, textStyles, borders, lh } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { isStageLocked } from '../utils/stageLocks';
 import { FOLD_MS } from '../components/ui/collapseOut';
@@ -26,13 +27,12 @@ import { useSteadyFold } from '../components/ui/useSteadyFold';
 import {
   ExerciseLines, SessionRow, TodayCard, SectionHeader,
 } from '../components/SessionList';
-import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
+import { startCta, relativeTime } from '../utils/sessionRowText';
 import { getWeekStatuses } from '../utils/weekProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
-import { isExerciseDone } from '../utils/exerciseStatus';
 
-import { showDialog } from '../components/ui/dialog';
+import { confirmDiscardActive } from '../components/ui/confirmDiscard';
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 // ── Weekly selector (L M X J V S D + 7 dots) ────────────────────────────────────
@@ -120,11 +120,6 @@ export default function HomeScreen() {
   const snoozeStageBanner    = useStore((s) => s.snoozeStageBanner);
   const stageBannerSnooze    = useStore((s) => s.stageBannerSnooze);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
-  // Entreno de un cliente sin app a medias: sus filas no son las mías, así que
-  // sin este aviso se quedaría perdido (trainer-logging.md §3.7).
-  const runningClient        = useStore((s) => (
-    s.activeSession.forClient ? s.clients[s.activeSession.forClient] ?? null : null
-  ));
   const customExercises      = useStore((s) => s.customExercises);
 
   const allExercises = useMemo(
@@ -132,26 +127,18 @@ export default function HomeScreen() {
     [exerciseLibrary, customExercises],
   );
 
-  // Empezar cualquier cosa con una sesión a medias la descartaba en silencio.
-  const confirmDiscardActive = (onConfirm) => {
-    showDialog(t('workout.discardSession'), t('workout.discardConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
-    ]);
-  };
-
   // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su
   // tarjeta y pulsar un botón que además va en contorno, o sea dos toques
   // deliberados. El aviso solo añadía fricción (spec §5.6). Descartar una
   // sesión a medias, en cambio, se sigue confirmando: ahí sí se pierde algo.
   const requestStart = (templateId) => {
     if (activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
-    if (activeSession.templateId) { confirmDiscardActive(() => startSession(templateId)); return; }
+    if (activeSession.templateId) { confirmDiscardActive(t, () => startSession(templateId)); return; }
     startSession(templateId);
   };
 
   const startFree = () => {
-    if (activeSession.templateId) { confirmDiscardActive(() => startFreeSession()); return; }
+    if (activeSession.templateId) { confirmDiscardActive(t, () => startFreeSession()); return; }
     startFreeSession();
   };
 
@@ -194,25 +181,10 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <WeekSelector workoutLog={workoutLog} />
+        {/* La sesión a medias, sea cual sea, arriba de todo (U52). */}
+        <ActiveSessionBanner />
 
-        {runningClient && (
-          <TouchableOpacity
-            style={styles.running}
-            onPress={() => navigation.navigate('Workout')}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-          >
-            <View style={styles.runningDot} />
-            <Text style={styles.runningText} numberOfLines={1}>
-              {t('home.clientRunning', {
-                label: getEffectiveTemplate(activeSession.templateId)?.label ?? '',
-                name:  runningClient.name,
-              })}
-            </Text>
-            <Text style={styles.runningCta}>{t('home.btnContinue').toUpperCase()}</Text>
-          </TouchableOpacity>
-        )}
+        <WeekSelector workoutLog={workoutLog} />
 
         {activeProgram ? (() => {
           // Dónde va de la etapa: la misma cuenta que ve su entrenador
@@ -239,8 +211,7 @@ export default function HomeScreen() {
           // ¿Cuál toca y por qué? — rótulo, marcadores y contador, en un sitio.
           const plan = sessionPlan({
             days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
-            log:              workoutLog,
-            activeTemplateId: activeSession.templateId,
+            log: workoutLog,
             t,
           });
 
@@ -295,16 +266,8 @@ export default function HomeScreen() {
                   };
           // La meta de la tarjeta de hoy: los dos primeros datos salen de
           // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
-          // vez. Con la sesión a medias cambia entera — cuánto llevas y desde
-          // cuándo, que es lo único que importa para volver a ella.
+          // vez. Igual si está a medias: cuánto llevas lo dice el banner (U52).
           const todayMeta = (day) => {
-            if (activeSession.templateId === day.templateId) {
-              const exs  = day.template.exercises ?? [];
-              const done = exs.filter((ex) => isExerciseDone(ex, activeSession.setsState?.[ex.exerciseId] ?? [])).length;
-              return t('home.heroMetaActive', {
-                done, total: exs.length, ago: elapsedShort(activeSession.startedAt) ?? '',
-              });
-            }
             const stats = sessionStats(day.template, allExercises);
             const rel   = relativeTime(day.lastSession?.timestamp, t);
             return [
@@ -590,21 +553,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   weekDotTrained: { backgroundColor: th.colors.accent },
   weekDotIdle:    { backgroundColor: th.colors.muted },
-
-  // Entreno de un cliente a medias. Azul: es cosa de entrenador.
-  running: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.md,
-    marginTop:         spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    borderRadius:      th.radius.md,
-    backgroundColor:   withOpacity(th.colors.blue, 0.12),
-  },
-  runningDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: th.colors.blue },
-  runningText: { ...textStyles.body, flex: 1, color: th.colors.text },
-  runningCta:  { ...textStyles.labelStrong, color: th.colors.blue },
 
   // La lista de sesiones vive en `components/SessionList.jsx`; aquí solo el
   // contenedor de las sesiones libres, que es el mismo `group`.

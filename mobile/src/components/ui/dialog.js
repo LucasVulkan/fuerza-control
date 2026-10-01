@@ -10,6 +10,8 @@
  *
  * `options.items`: una lista de líneas bajo la frase, con scroll si es larga
  * (lo que trae una actualización del programa, U34).
+ * `options.subtitle`: una línea entre el título y la frase — de qué cosa se
+ * habla (la sesión que se descarta, U53).
  *
  * Lo pinta `DialogHost`, montado una vez en la raíz (RootNavigator).
  */
@@ -18,5 +20,5 @@ let listener = null;
 export function setDialogListener(fn) { listener = fn; }
 
 export function showDialog(title, message, buttons, options) {
-  listener?.({ title, message, buttons, items: options?.items });
+  listener?.({ title, message, buttons, items: options?.items, subtitle: options?.subtitle });
 }
