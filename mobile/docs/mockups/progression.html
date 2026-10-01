@@ -81,6 +81,13 @@
   .sw::after { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--mutedLight); top: 3px; left: 3px; }
   .sw.on { background: var(--accent); } .sw.on::after { left: 21px; background: #000; }
   .sw.lock { opacity: .45; }
+  /* Última vez sin color (decisión 1-oct): neutra, no compite con el plan */
+  .last .wpill b { color: var(--text); } .last .rp { color: var(--mutedLight); }
+  .srowwrap { display: flex; flex-direction: column; }
+  .prevrow { display: flex; gap: 10px; margin-top: 3px; }
+  .prevrow span { flex: 1; text-align: center; font: 700 12px Inter; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .prevrow .lw { flex: none; width: 26px; font: 800 10px Inter; letter-spacing: .6px; text-align: left; }
+  .prevrow .bw { flex: none; width: 42px; }
   .hint { font: 500 14px/1.4 Inter; color: var(--mutedLight); }
   .hint.small { font-size: 12px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -183,18 +190,19 @@
   quedarse en un apunte. El selector de abajo mueve a la vez el editor y la tarjeta del Workout.
 </p>
 <div class="box">
-  <b>Lo que cambia (v2, tras la revisión del 1-oct)</b>
+  <b>v3 (1-oct, segunda revisión)</b>
   <ul>
-    <li><b>Qué pides</b> se queda en el editor: medida, series, descanso y rango o reps fijas. <b>Todo lo que es
-      automatizar</b> (qué sube, cómo, cuándo sube, cuánto, cuándo baja) vive en la <b>hoja de Progresión</b>, con pasos
-      que aparecen según lo que elijas. Pulsa la fila PROGRESIÓN del editor y juega con la hoja: es interactiva.</li>
-    <li><b>El RPE no se pide en Qué pides</b>: es un criterio de la progresión. Sale en dos sitios: «Por esfuerzo» (el peso
-      se calcula) y «Cuándo sube: RPE máx.» (cualquier progresión por reglas). Si la progresión lo necesita,
-      <b>Registrar RPE se enciende solo y se bloquea</b> en Opciones.</li>
-    <li><b>Nada que no funcione</b>: cada paso solo ofrece lo que tiene sentido con lo anterior (tabla de abajo). Lo que nunca
-      aplica a este ejercicio no sale; lo que depende de algo que puedes cambiar sale apagado y dice por qué.</li>
-    <li><b>Mantener repite lo de la última vez</b>: si no se cumple, el gris es lo que hiciste. Sin subir reps por serie.</li>
-    <li><b>Cuándo baja</b> pasa a ser un paso propio. <b>Por esfuerzo</b> elige si sube al llegar al objetivo o solo al superarlo.</li>
+    <li><b>Qué pides</b> se queda en el editor; <b>todo lo que automatiza</b> vive en la hoja de Progresión, con pasos que
+      aparecen según lo elegido. Pulsa la fila PROGRESIÓN: la hoja es interactiva y no deja montar nada que no funcione.</li>
+    <li><b>Cuándo sube: Todas · Parcial · RPE máx.</b> «Parcial» dice cuántas series tienen que llegar («2 de 3»), en vez
+      de un porcentaje.</li>
+    <li><b>Cuándo baja: Nunca · Si fallan</b>, con cuántas series bajo el mínimo. La hoja no deja una regla de bajar que
+      choque con la de subir.</li>
+    <li><b>El escalón de peso se ve</b> donde se usa: al subir por porcentaje (redondea) y en Por esfuerzo (redondea el
+      cálculo y es lo que sube «Al llegar»). Sale del ejercicio de la librería y se puede cambiar.</li>
+    <li><b>Tiempo con carga</b>: con medida Tiempo, si el ejercicio lleva peso, Qué sube ofrece Tiempo · Peso · Nada (caso F2).</li>
+    <li><b>Workout</b>: al cambiar el peso, el gris pide el máximo del rango (o las reps fijas). Si no se cumplió, lo que
+      hiciste. La última vez, en línea (sin color), detrás de un botón o debajo de cada serie: lo elige cada usuario en Ajustes.</li>
   </ul>
 </div>
 
@@ -202,7 +210,7 @@
   <div class="ctl" id="cC"><span>Caso</span></div>
   <div class="ctl" id="cO"><span>Última sesión</span></div>
   <div class="ctl" id="cS"><span>Situación</span></div>
-  <div class="ctl" id="cH"><span>Última vez</span></div>
+  <div class="ctl" id="cH"><span>Última vez · Ajustes</span></div>
 </div>
 
 <div class="rack">
@@ -219,23 +227,24 @@
 <h2>La hoja de Progresión: qué aparece según lo elegido</h2>
 <table class="cases">
   <tr><th>Paso</th><th>Opciones</th><th>Cuándo sale / qué la limita</th></tr>
-  <tr><td>1</td><td>Qué sube: Peso · Reps · Tiempo · Nada</td><td>Medida Reps → Peso, Reps, Nada. Medida Tiempo → Tiempo, Nada. Peso corporal → sin Peso. Asistido → «Asistencia ↓» en vez de Peso.</td></tr>
-  <tr><td>2</td><td>Cómo: Por reglas · Por esfuerzo</td><td>Solo si sube Peso con carga externa. Por esfuerzo necesita <b>reps fijas</b>: con rango sale apagado y lo dice. Asistidos, nunca.</td></tr>
-  <tr><td>3</td><td>Cuándo sube: Todas · % de series · RPE máx.</td><td>Por reglas, Reps y Tiempo. «RPE máx.» enciende Registrar RPE. La meta la pone Qué pides: el máximo del rango o las reps fijas (Peso); el mínimo (Reps, Tiempo).</td></tr>
-  <tr><td>3</td><td>RPE objetivo · Cuándo sube: Al superarlo · Al llegar</td><td>Solo Por esfuerzo. Enciende Registrar RPE.</td></tr>
-  <tr><td>4</td><td>Cuánto: Fijo · Porcentaje (+ redondeo)</td><td>Peso: kg o %. Reps: +N reps, sin %. Tiempo: +N s, sin %. Por esfuerzo: no hay salto, lo da el cálculo.</td></tr>
-  <tr><td>5</td><td>Cuándo baja: Nunca · Al fallar · 2 fallos seguidos</td><td>Solo Peso por reglas. Reps y Tiempo no bajan: mantienen.</td></tr>
+  <tr><td>1</td><td>Qué sube: Peso · Reps · Tiempo · Nada</td><td>Reps → Peso, Reps, Nada. Tiempo → Tiempo, Peso, Nada. Sin carga (peso corporal) → nunca Peso. Asistido → «Asistencia ↓» en vez de Peso.</td></tr>
+  <tr><td>2</td><td>Cómo: Por reglas · Por esfuerzo</td><td>Solo Peso con medida Reps y carga externa. Por esfuerzo exige <b>reps fijas</b>: con rango sale apagado y lo dice.</td></tr>
+  <tr><td>3</td><td>Cuándo sube: Todas · Parcial · RPE máx.</td><td>Por reglas, Reps y Tiempo. Parcial: «N de M series», de 1 a M−1. RPE máx. enciende Registrar RPE. La meta sale de Qué pides.</td></tr>
+  <tr><td>3</td><td>RPE objetivo · Escalón · Cuándo sube: Al superarlo · Al llegar</td><td>Solo Por esfuerzo. Enciende Registrar RPE.</td></tr>
+  <tr><td>4</td><td>Cuánto: Fijo · Porcentaje</td><td>Peso: kg, o % redondeado al escalón. Reps y Tiempo: enteros, sin %.</td></tr>
+  <tr><td>5</td><td>Cuándo baja: Nunca · Si fallan N de M</td><td>Solo Peso por reglas. Con «Parcial N de M» para subir, bajar exige al menos M−N+1 fallos: si no, una sesión podría subir y bajar a la vez.</td></tr>
 </table>
 
 <h2>Los casos</h2>
 <table class="cases">
   <tr><th></th><th>Forma de entrenar</th><th>Qué pides</th><th>Progresión</th></tr>
-  <tr><td>A</td><td>Hipertrofia por rango</td><td>3 × 8–12</td><td>Peso · reglas · todas en 12 → +2,5 kg · baja al fallar</td></tr>
-  <tr><td>B</td><td>Fuerza lineal</td><td>5 × 5 fijas</td><td>Peso · reglas · todas en 5 → +2,5 kg · baja tras 2 fallos</td></tr>
+  <tr><td>A</td><td>Hipertrofia por rango</td><td>3 × 8–12</td><td>Peso · reglas · todas en 12 → +2,5 kg · baja si fallan 2 de 3</td></tr>
+  <tr><td>B</td><td>Fuerza lineal</td><td>5 × 5 fijas</td><td>Peso · reglas · todas en 5 → +2,5 kg · baja si fallan 3 de 5</td></tr>
   <tr><td>C</td><td>Fuerza autorregulada</td><td>3 × 5 fijas</td><td>Peso · por esfuerzo · RPE 8 · sube al superarlo</td></tr>
   <tr><td>D</td><td>Peso corporal</td><td>3 × 6–12</td><td>Reps · todas sobre 6 → +1 sobre la más floja</td></tr>
-  <tr><td>E</td><td>Asistida</td><td>3 × 6–10</td><td>Asistencia ↓ · todas en 10 → −2,5 kg · baja al fallar</td></tr>
+  <tr><td>E</td><td>Asistida</td><td>3 × 6–10</td><td>Asistencia ↓ · todas en 10 → −2,5 kg · más ayuda si fallan 2 de 3</td></tr>
   <tr><td>F</td><td>Tiempo</td><td>3 × 30–60 s</td><td>Tiempo · todas sobre 30 s → +5 s</td></tr>
+  <tr><td>F2</td><td>Tiempo con carga</td><td>3 × 30–45 s</td><td>Peso · todas en 45 s → +2,5 kg y vuelves a 30 s</td></tr>
   <tr><td>G</td><td>Accesorio sin progresión</td><td>3 × 15</td><td>Nada</td></tr>
 </table>
 <p class="note" style="margin-top:10px">La flexibilidad de hoy se mantiene: A con «Cuándo sube: RPE máx. 8» es una doble progresión que
@@ -244,20 +253,24 @@
 <h2>Cómo baja hoy (comprobado contra el motor)</h2>
 <p class="note">Baja cuando <b>menos del 60 % de las series llega al mínimo</b>. Un 5 × 5: con una o dos series en 4,
   mantiene; con tres o más, baja. Un 3 × 8–12: con una serie bajo 8, mantiene; con dos, baja. Es lo que la hoja llama
-  «Al fallar»; hoy no se puede elegir ni cambiar.</p>
+  lo mismo que «Si fallan» con su valor por defecto (2 de 3, 3 de 5, 2 de 4). Hoy no se puede cambiar.</p>
 
+<h2>Decidido el 1-oct</h2>
+<ol class="note">
+  <li><b>Última vez</b>: línea (sin color) y botón, a elegir en Ajustes; la maqueta añade «debajo de cada serie» como
+    tercera opción. La columna estilo Strong se descarta.</li>
+  <li><b>Al cambiar el peso, el gris pide el objetivo de progresión</b>: las reps fijas, o el máximo del rango.</li>
+  <li><b>Sin «2 fallos seguidos»</b>.</li>
+  <li><b>Por esfuerzo · Al llegar</b> sube el escalón del ejercicio, y el escalón se ve en la hoja.</li>
+</ol>
 <h2>Para decidir</h2>
 <ol class="note">
-  <li><b>Última vez: línea, botón o columna.</b> La línea no cuesta un toque pero ocupa una fila en cada tarjeta. El botón
-    deja la tarjeta limpia y enseña tres sesiones. La columna es la de Strong: serie a serie, pero aprieta las casillas
-    (caso C, con RPE).</li>
-  <li><b>Al subir de peso, ¿el gris pide el mínimo del rango?</b> La maqueta pone 8 (62.5 × 8). La alternativa es dejar
-    las reps vacías.</li>
-  <li><b>«2 fallos seguidos»</b> es lo único de la hoja que el motor no sabe hacer hoy: tiene que mirar las dos últimas
-    sesiones, no solo la última (el historial lo tiene). ¿Lo quieres o basta con Nunca / Al fallar?</li>
-  <li><b>Por esfuerzo · al llegar</b>: si la sesión cuadra con el objetivo, ¿sube el escalón mínimo del ejercicio (2,5 kg)?
-    Es lo que propone la maqueta.</li>
-  <li><b>Tiempo + Peso</b> (plancha lastrada: al llegar al máximo, más peso) sigue fuera. ¿Lo dejamos fuera?</li>
+  <li><b>Tiempo con carga</b> (caso F2): con medida Tiempo, si el ejercicio lleva peso, Qué sube ofrece Tiempo · Peso ·
+    Nada. Peso es una doble progresión en segundos: todas llegan al máximo → sube el peso y el tiempo vuelve al
+    mínimo. ¿Así?</li>
+  <li><b>Última vez, valor por defecto</b> en Ajustes: ¿línea o botón?</li>
+  <li><b>El escalón es del ejercicio</b> (librería: 1,25 · 2,5 · 4 · 5 · 10 kg) y se cambia por ejercicio en la hoja. ¿O
+    prefieres que sea del material del gimnasio (uno para barra, otro para mancuernas…) y se ponga en Ajustes?</li>
 </ol>
 
 <script>
@@ -268,26 +281,26 @@ const ICON_PROG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" s
 
 /* Casos: `ed` es la configuración del editor; el resto, lo que ve el Workout.
    cols: w=kg, r=reps, p=rpe, t=segundos. Una serie = array alineado con cols. */
-const BASE = { pct: 80, maxRpe: 8, incType: 'fixed', incPct: 5, targetRpe: 8, effWhen: 'beat', trackRpe: false, when: 'all', how: 'rules' };
+const BASE = { need: 2, fails: null, stepKg: 2.5, maxRpe: 8, incType: 'fixed', incPct: 5, targetRpe: 8, effWhen: 'beat', trackRpe: false, when: 'all', how: 'rules' };
 const CASES = {
   A: { name: 'Hipertrofia por rango', ex: 'Press banca', cols: ['w','r'], target: '3 × 8–12 reps',
        ed: { ...BASE, metric: 'reps', ask: 'range', sets: 3, rest: 90, min: 8, max: 12, reps: 8, load: 'ext', up: 'weight', inc: 2.5, down: 'fail' },
        first: { t: 'Busca tu peso', why: 'el que te deje hacer 8–12 en las 3 series' },
        hist: [{ d: 'lun 22 sep', s: [[57.5,12],[57.5,12],[57.5,12]] }, { d: 'jue 18 sep', s: [[57.5,12],[57.5,11],[57.5,10]] }],
        o: {
-         good: { last: [[60,12],[60,12],[60,12]], dir: 'up', k: 'Subir a', v: '62.5 kg', delta: '+2.5', why: 'completaste 3 × 12 con 60 kg', plan: Array(3).fill([62.5,8]) },
+         good: { last: [[60,12],[60,12],[60,12]], dir: 'up', k: 'Subir a', v: '62.5 kg', delta: '+2.5', why: 'completaste 3 × 12 con 60 kg', plan: Array(3).fill([62.5,12]) },
          mid:  { last: [[60,12],[60,10],[60,9]],  dir: 'hold', k: 'Mantener', v: '60 kg', why: 'dos series no llegaron a 12', plan: [[60,12],[60,10],[60,9]] },
-         bad:  { last: [[60,8],[60,7],[60,7]],    dir: 'down', k: 'Bajar a', v: '57.5 kg', delta: '−2.5', why: 'dos series no llegaron al mínimo de 8', plan: Array(3).fill([57.5,8]) },
+         bad:  { last: [[60,8],[60,7],[60,7]],    dir: 'down', k: 'Bajar a', v: '57.5 kg', delta: '−2.5', why: 'dos series no llegaron al mínimo de 8', plan: Array(3).fill([57.5,12]) },
        },
        deload: { v: '60 kg', plan: Array(3).fill([60,8]) }, coach: { v: '65 kg × 6', plan: Array(3).fill([65,6]) } },
   B: { name: 'Fuerza lineal', ex: 'Sentadilla con barra', cols: ['w','r'], target: '5 × 5 reps',
-       ed: { ...BASE, metric: 'reps', ask: 'fixed', sets: 5, rest: 180, min: 5, max: 5, reps: 5, load: 'ext', up: 'weight', inc: 2.5, down: 'twice' },
+       ed: { ...BASE, metric: 'reps', ask: 'fixed', sets: 5, rest: 180, min: 5, max: 5, reps: 5, load: 'ext', up: 'weight', inc: 2.5, down: 'fail', need: 4 },
        first: { t: 'Busca tu peso', why: 'el que te deje hacer 5 × 5 con alguna rep en recámara' },
        hist: [{ d: 'vie 26 sep', s: Array(5).fill([97.5,5]) }, { d: 'mié 24 sep', s: Array(5).fill([95,5]) }],
        o: {
          good: { last: Array(5).fill([100,5]), dir: 'up', k: 'Subir a', v: '102.5 kg', delta: '+2.5', why: 'completaste 5 × 5 con 100 kg', plan: Array(5).fill([102.5,5]) },
          mid:  { last: [[100,5],[100,5],[100,5],[100,4],[100,4]], dir: 'hold', k: 'Repetir', v: '100 kg', why: 'dos series se quedaron en 4', plan: [[100,5],[100,5],[100,5],[100,4],[100,4]] },
-         bad:  { last: [[100,5],[100,4],[100,3],[100,3],[100,3]], dir: 'down', k: 'Bajar a', v: '97.5 kg', delta: '−2.5', why: 'segunda sesión seguida sin llegar a 5 con 100 kg', plan: Array(5).fill([97.5,5]) },
+         bad:  { last: [[100,5],[100,4],[100,3],[100,3],[100,3]], dir: 'down', k: 'Bajar a', v: '97.5 kg', delta: '−2.5', why: 'tres series no llegaron a 5', plan: Array(5).fill([97.5,5]) },
        },
        deload: { v: '100 kg', plan: Array(5).fill([100,3]) }, coach: { v: '105 kg × 3', plan: Array(5).fill([105,3]) } },
   C: { name: 'Fuerza autorregulada', ex: 'Peso muerto', cols: ['w','r','p'], target: '3 × 5 reps · RPE 8 (2 en recámara)',
@@ -297,7 +310,7 @@ const CASES = {
        o: {
          good: { last: [[140,5,7],[140,5,7],[140,5,7.5]], dir: 'up', k: 'Peso objetivo', v: '145 kg', delta: '+5', why: 'la última sesión rendiste por encima del objetivo', plan: Array(3).fill([145,5,8]) },
          mid:  { last: [[140,5,8],[140,5,8],[140,5,8]],   dir: 'hold', k: 'Peso objetivo', v: '140 kg', why: 'la última sesión cuadró con el objetivo', plan: Array(3).fill([140,5,8]),
-                 reach: { dir: 'up', v: '142.5 kg', delta: '+2.5', why: 'cuadraste con el objetivo: sube el escalón mínimo', plan: Array(3).fill([142.5,5,8]) } },
+                 reach: { dir: 'up', v: '142.5 kg', delta: '+2.5', why: 'cuadraste con el objetivo: sube un escalón', plan: Array(3).fill([142.5,5,8]) } },
          bad:  { last: [[140,5,9],[140,5,9],[140,4,9.5]], dir: 'down', k: 'Peso objetivo', v: '135 kg', delta: '−5', why: 'la última sesión rendiste por debajo del objetivo', plan: Array(3).fill([135,5,8]) },
        },
        deload: { v: '140 kg', plan: Array(3).fill([140,3,6]) }, coach: { v: '150 kg × 3', plan: Array(3).fill([150,3,9]) } },
@@ -316,9 +329,9 @@ const CASES = {
        first: { t: 'Busca tu ayuda', why: 'la que te deje hacer 6–10 en las 3 series' },
        hist: [{ d: 'lun 22 sep', s: [[20,9],[20,9],[20,8]] }, { d: 'jue 18 sep', s: [[22.5,10],[22.5,10],[22.5,10]] }],
        o: {
-         good: { last: Array(3).fill([20,10]), dir: 'up', k: 'Menos ayuda', v: '17.5 kg', delta: '−2.5', why: 'completaste 3 × 10 con 20 kg de ayuda', plan: Array(3).fill([17.5,6]) },
+         good: { last: Array(3).fill([20,10]), dir: 'up', k: 'Menos ayuda', v: '17.5 kg', delta: '−2.5', why: 'completaste 3 × 10 con 20 kg de ayuda', plan: Array(3).fill([17.5,10]) },
          mid:  { last: [[20,10],[20,9],[20,8]], dir: 'hold', k: 'Mantener', v: '20 kg', why: 'dos series no llegaron a 10', plan: [[20,10],[20,9],[20,8]] },
-         bad:  { last: [[20,6],[20,5],[20,4]],  dir: 'down', k: 'Más ayuda', v: '22.5 kg', delta: '+2.5', why: 'dos series no llegaron al mínimo de 6', plan: Array(3).fill([22.5,6]) },
+         bad:  { last: [[20,6],[20,5],[20,4]],  dir: 'down', k: 'Más ayuda', v: '22.5 kg', delta: '+2.5', why: 'dos series no llegaron al mínimo de 6', plan: Array(3).fill([22.5,10]) },
        },
        deload: { v: '20 kg', plan: Array(3).fill([20,6]) }, coach: { v: '15 kg × 6', plan: Array(3).fill([15,6]) } },
   F: { name: 'Tiempo', ex: 'Plancha', cols: ['t'], target: '3 × 30–60 s',
@@ -331,6 +344,16 @@ const CASES = {
          bad:  { last: [[25],[20],[20]], dir: 'hold', k: 'Mantener', v: '', why: 'ninguna serie llegó a 30 s', plan: [[25],[20],[20]] },
        },
        deload: { v: '30 s', plan: Array(3).fill([30]) }, coach: { v: '50 s', plan: Array(3).fill([50]) } },
+  F2: { name: 'Tiempo con carga', ex: 'Paseo del granjero', cols: ['w','t'], target: '3 × 30–45 s',
+       ed: { ...BASE, metric: 'time', ask: 'range', sets: 3, rest: 90, min: 30, max: 45, reps: 30, load: 'ext', up: 'weight', inc: 2.5, down: 'fail' },
+       first: { t: 'Busca tu peso', why: 'el que te deje aguantar 30–45 s en las 3 series' },
+       hist: [{ d: 'lun 22 sep', s: [[24,45],[24,40],[24,40]] }, { d: 'jue 18 sep', s: [[24,35],[24,35],[24,30]] }],
+       o: {
+         good: { last: Array(3).fill([24,45]), dir: 'up', k: 'Subir a', v: '26.5 kg', delta: '+2.5', why: 'aguantaste 45 s en las 3 series', plan: Array(3).fill([26.5,45]) },
+         mid:  { last: [[24,45],[24,40],[24,35]], dir: 'hold', k: 'Mantener', v: '24 kg', why: 'dos series no llegaron a 45 s', plan: [[24,45],[24,40],[24,35]] },
+         bad:  { last: [[24,30],[24,25],[24,20]], dir: 'down', k: 'Bajar a', v: '21.5 kg', delta: '−2.5', why: 'dos series no llegaron a 30 s', plan: Array(3).fill([21.5,45]) },
+       },
+       deload: { v: '24 kg', plan: Array(3).fill([24,30]) }, coach: { v: '28 kg × 40 s', plan: Array(3).fill([28,40]) } },
   G: { name: 'Accesorio sin progresión', ex: 'Face pull', cols: ['w','r'], target: '3 × 15 reps',
        ed: { ...BASE, metric: 'reps', ask: 'fixed', sets: 3, rest: 60, min: 15, max: 15, reps: 15, load: 'ext', up: 'none', inc: 2.5, down: 'fail' },
        first: { t: 'Busca tu peso', why: 'el que te deje hacer 15 limpias' },
@@ -344,7 +367,12 @@ const CASES = {
 };
 
 const st = { c: 'A', o: 'good', s: 'normal', h: 'line', sheet: false, histOpen: false, done: 0 };
-let ed = { ...CASES.A.ed };
+const initEd = (c) => {
+  const e = { ...c.ed };
+  if (e.fails == null) e.fails = Math.floor(e.sets * 0.4) + 1; // lo que hace hoy: baja con menos del 60 % al mínimo
+  return e;
+};
+let ed = initEd(CASES.A);
 
 /* ── Reglas de la hoja: qué se ofrece según lo anterior ── */
 function upOptions(e) {
@@ -354,6 +382,7 @@ function upOptions(e) {
     o.push({ id: 'reps', l: 'Reps' });
   } else {
     o.push({ id: 'time', l: 'Tiempo' });
+    if (e.load === 'ext') o.push({ id: 'weight', l: 'Peso' });
   }
   o.push({ id: 'none', l: 'Nada' });
   return o;
@@ -368,7 +397,12 @@ function normalize(e) {
   if (!ups.includes(e.up)) e.up = ups[0];
   if (e.how === 'effort' && (!showHow(e) || effortReason(e))) e.how = 'rules';
   if (e.up !== 'weight') e.incType = 'fixed';
+  e.need = Math.min(Math.max(1, e.need), e.sets - 1);
+  e.fails = Math.min(Math.max(minFails(e), e.fails), e.sets);
 }
+// Bajar no puede chocar con subir: con «Parcial N de M», N series al objetivo
+// dejan como mucho M−N fuera; bajar tiene que exigir más fallos que eso.
+const minFails = (e) => (e.when === 'part' ? e.sets - e.need + 1 : 1);
 function setEd(k, v) {
   const prevUp = ed.up;
   ed[k] = v;
@@ -381,8 +415,9 @@ function setEd(k, v) {
 }
 
 /* ── Textos ── */
-const goal = (e) => (e.ask === 'fixed' && e.metric === 'reps' ? e.reps : e.max);
-const whenTxt = (e) => ({ all: 'todas las series', pct: `el ${e.pct} % de las series`, rpe: `todas las series con RPE ≤ ${e.maxRpe}` }[e.when]);
+const goal = (e) => (e.metric === 'time' ? `${e.max} s` : e.ask === 'fixed' ? e.reps : e.max);
+const floorTxt = (e) => (e.metric === 'time' ? `${e.min} s` : e.ask === 'fixed' ? e.reps : e.min);
+const whenTxt = (e) => ({ all: 'todas las series', part: `${e.need} de ${e.sets} series`, rpe: `todas las series con RPE ≤ ${e.maxRpe}` }[e.when]);
 function incTxt(e) {
   if (e.up === 'reps') return `${e.inc} rep${e.inc > 1 ? 's' : ''}`;
   if (e.up === 'time') return `${e.inc} s`;
@@ -392,6 +427,7 @@ function progTitle(e) {
   if (e.up === 'none') return 'Sin progresión';
   if (e.up === 'reps') return 'Automática · Reps';
   if (e.up === 'time') return 'Automática · Tiempo';
+  if (e.metric === 'time') return 'Automática · Peso';
   if (e.load === 'assist') return 'Automática · Asistencia';
   return isEffort(e) ? `Por esfuerzo · RPE ${e.targetRpe}` : 'Automática · Peso';
 }
@@ -402,7 +438,7 @@ function progRule(e) {
   if (e.up === 'time') return `+${incTxt(e)} sobre tu serie más floja cuando ${whenTxt(e)} pasen de ${e.min} s`;
   const verb = e.load === 'assist' ? 'Quita' : 'Sube';
   const dn = e.load === 'assist' ? 'más ayuda' : 'baja';
-  const down = { never: '', fail: ` · ${dn} si fallas`, twice: ` · ${dn} tras 2 fallos` }[e.down];
+  const down = e.down === 'fail' ? ` · ${dn} si fallan ${e.fails} de ${e.sets}` : '';
   return `${verb} ${incTxt(e)} cuando ${whenTxt(e)} lleguen a ${goal(e)}${down}`;
 }
 
@@ -426,14 +462,14 @@ function progSheet() {
   let n = 1;
   const upHint = {
     weight: e.load === 'assist' ? 'En un asistido progresar es <b>quitar ayuda</b>: lo sabe el ejercicio, no hay que configurarlo.'
+      : e.metric === 'time' ? `Sube el peso y el tiempo vuelve a ${e.min} s.`
       : e.ask === 'fixed' ? `Sube el peso; las reps se quedan en ${e.reps}.` : `Sube el peso y las reps vuelven a ${e.min}.`,
     reps: 'Suben las reps desde tu serie más floja; el peso no se toca.',
     time: 'Sube el tiempo desde tu serie más floja.',
     none: 'Sin progresión: el gris repite lo de la última vez y el peso lo cambias tú.',
   }[e.up];
   parts.push(stepBlk(n++, 'Qué sube', seg('up', upOptions(e), e.up) + `<div class="hint">${upHint}</div>`
-    + (e.metric === 'time' ? '<div class="hint small">Con medida Tiempo no se ofrece Peso: el motor aún no sabe «al llegar al máximo, más lastre».</div>' : '')
-    + (e.load === 'bw' && e.metric === 'reps' ? '<div class="hint small">Ejercicio sin carga: no hay peso que subir.</div>' : '')));
+    + (e.load === 'bw' ? '<div class="hint small">Ejercicio sin carga: no hay peso que subir.</div>' : '')));
   if (e.up === 'none') return parts;
 
   if (showHow(e)) {
@@ -447,17 +483,19 @@ function progSheet() {
     const rir = 10 - e.targetRpe;
     parts.push(stepBlk(n++, 'RPE objetivo', wide('RPE', e.targetRpe, '', 'targetRpe', 1, 6, 10)
       + `<div class="hint">${rir === 0 ? 'Al fallo' : `${rir} en recámara`}. <b>Registrar RPE</b> se enciende solo.</div>`));
+    parts.push(stepBlk(n++, 'Escalón de peso', wide('Escalón', e.stepKg, 'kg', 'stepKg', 0.25, 0.25, 10)
+      + '<div class="hint">El salto más pequeño que permite el material. Redondea el peso calculado. Viene del ejercicio.</div>'));
     parts.push(stepBlk(n++, 'Cuándo sube', seg('effWhen', [{ id: 'beat', l: 'Al superarlo' }, { id: 'reach', l: 'Al llegar' }], e.effWhen)
       + `<div class="hint">${e.effWhen === 'beat'
         ? 'Sube solo si la sesión salió más fácil de lo pedido (más reps o menos RPE). Si cuadró, mantiene el peso.'
-        : 'Si cuadró con el objetivo, sube el escalón mínimo del ejercicio (2.5 kg). Si salió más fácil, lo que diga el cálculo.'}</div>`
+        : `Si cuadró con el objetivo, sube un escalón (${e.stepKg} kg). Si salió más fácil, lo que diga el cálculo.`}</div>`
       + '<div class="hint small">Bajar es automático: si sale más duro de lo pedido, el cálculo da menos peso.</div>'));
     return parts;
   }
 
-  const meta = e.up === 'weight' ? `lleguen a <b>${goal(e)}</b>` : `pasen de <b>${e.min}${e.metric === 'time' ? ' s' : ''}</b>`;
-  let whenBody = seg('when', [{ id: 'all', l: 'Todas' }, { id: 'pct', l: '% de series' }, { id: 'rpe', l: 'RPE máx.' }], e.when);
-  if (e.when === 'pct') whenBody += `<div style="margin-top:8px">${wide('Series que bastan', e.pct, '%', 'pct', 10, 50, 100)}</div>`;
+  const meta = e.up === 'weight' ? `lleguen a <b>${goal(e)}</b>` : `pasen de <b>${floorTxt(e)}</b>`;
+  let whenBody = seg('when', [{ id: 'all', l: 'Todas' }, { id: 'part', l: 'Parcial' }, { id: 'rpe', l: 'RPE máx.' }], e.when);
+  if (e.when === 'part') whenBody += `<div style="margin-top:8px">${wide('Tienen que llegar', `${e.need} de ${e.sets}`, '', 'need', 1, 1, e.sets - 1)}</div>`;
   if (e.when === 'rpe') whenBody += `<div style="margin-top:8px">${wide('RPE máximo', e.maxRpe, '', 'maxRpe', 1, 6, 10)}</div>`;
   whenBody += `<div class="hint">Sube cuando ${whenTxt(e)} ${meta}. La meta sale de Qué pides.${e.when === 'rpe' ? ' <b>Registrar RPE</b> se enciende solo.' : ''}</div>`;
   parts.push(stepBlk(n++, 'Cuándo sube', whenBody));
@@ -467,7 +505,8 @@ function progSheet() {
   if (e.up === 'weight') {
     incBody = seg('incType', [{ id: 'fixed', l: 'Fijo' }, { id: 'pct', l: 'Porcentaje' }], e.incType)
       + `<div style="margin-top:8px">${e.incType === 'pct'
-        ? wide(wl, e.incPct, '%', 'incPct', 1, 1, 50) + '<div class="hint small" style="margin-top:8px">Redondeado al escalón del ejercicio (2.5 kg).</div>'
+        ? wide(wl, e.incPct, '%', 'incPct', 1, 1, 50) + `<div style="margin-top:6px">${wide('Redondea al escalón', e.stepKg, 'kg', 'stepKg', 0.25, 0.25, 10)}</div>`
+          + '<div class="hint small" style="margin-top:8px">El salto más pequeño que permite el material. Viene del ejercicio.</div>'
         : wide(wl, e.inc, 'kg', 'inc', 0.25, 0.25, 50)}</div>`;
   } else {
     incBody = (e.up === 'reps' ? wide('Reps que se suman', e.inc, '', 'inc', 1, 1, 10) : wide('Segundos que se suman', e.inc, 's', 'inc', 5, 5, 60))
@@ -476,14 +515,17 @@ function progSheet() {
   parts.push(stepBlk(n++, 'Cuánto sube', incBody));
 
   if (e.up === 'weight') {
-    const min = e.ask === 'fixed' ? e.reps : e.min;
-    const dh = {
-      never: 'Si no llegas, mantiene. Nunca propone bajar.',
-      fail: `Baja ${incTxt(e)} si menos del 60 % de las series llega al mínimo (${min}). Es lo que hace hoy.`,
-      twice: `Baja ${incTxt(e)} si fallas así <b>dos sesiones seguidas</b> con el mismo peso. Una mala sesión solo mantiene.`,
-    }[e.down];
-    parts.push(stepBlk(n++, 'Cuándo baja', seg('down', [{ id: 'never', l: 'Nunca' }, { id: 'fail', l: 'Al fallar' }, { id: 'twice', l: '2 fallos' }], e.down)
-      + `<div class="hint">${dh}</div>`));
+    const verb = e.load === 'assist' ? `Añade ${incTxt(e)} de ayuda` : `Baja ${incTxt(e)}`;
+    const def = Math.floor(e.sets * 0.4) + 1;
+    let downBody = seg('down', [{ id: 'never', l: 'Nunca' }, { id: 'fail', l: 'Si fallan' }], e.down);
+    if (e.down === 'fail') {
+      downBody += `<div style="margin-top:8px">${wide('Series bajo el mínimo', `${e.fails} de ${e.sets}`, '', 'fails', 1, minFails(e), e.sets)}</div>`
+        + `<div class="hint">${verb} si ${e.fails} o más series no llegan al mínimo (${floorTxt(e)}).${e.fails === def ? ' Es lo que hace hoy.' : ''}</div>`
+        + (e.when === 'part' ? `<div class="hint small">Con «Parcial ${e.need} de ${e.sets}» no puede ser menos de ${minFails(e)}: una misma sesión podría subir y bajar.</div>` : '');
+    } else {
+      downBody += '<div class="hint">Si no llegas, mantiene. Nunca propone bajar.</div>';
+    }
+    parts.push(stepBlk(n++, 'Cuándo baja', downBody));
   }
   return parts;
 }
@@ -491,7 +533,9 @@ function progSheet() {
 /* ── Editor ── */
 function outcome(c) {
   const o = c.o[st.o];
-  return st.c === 'C' && st.o === 'mid' && isEffort(ed) && ed.effWhen === 'reach' ? { ...o, ...o.reach } : o;
+  if (!(st.c === 'C' && st.o === 'mid' && isEffort(ed) && ed.effWhen === 'reach')) return o;
+  const w = 140 + ed.stepKg;
+  return { ...o, ...o.reach, v: `${w} kg`, delta: `+${ed.stepKg}`, plan: Array(3).fill([w, 5, 8]) };
 }
 const fmtSet = (c, s) => c.cols.map((k, i) => (k === 't' ? `${s[i]}s` : s[i])).join('×');
 function fmtSets(c, plan) {
@@ -581,13 +625,15 @@ function renderWorkout() {
   const hasBtn = st.h === 'button' && last;
   const lastLine = st.h === 'line' && last ? `<div class="last"><span class="k">ÚLTIMA · LUN 29 SEP</span>${pills(c, last)}</div>` : '';
   const colName = { w: c.wLabel ?? 'Kg', r: 'Reps', p: 'RPE', t: 'Seg' };
-  const showPrev = st.h === 'column';
-  const colh = `<div class="colh"><span class="lw"></span>${showPrev ? '<span class="pw">Ant.</span>' : ''}${c.cols.map((k) => `<span>${colName[k]}</span>`).join('')}<span class="bw"></span></div>`;
+  const below = st.h === 'below' && last;
+  const colh = `<div class="colh"><span class="lw"></span>${c.cols.map((k) => `<span>${colName[k]}</span>`).join('')}<span class="bw"></span></div>`;
   const rows = plan.map((s, i) => {
     const done = i < st.done, cur = i === st.done;
     const cells = c.cols.map((k, j) => `<div class="cell ${done ? 'done' : coach ? 'coach' : ''}">${s[j] === '' ? '' : s[j]}</div>`).join('');
-    const prev = showPrev ? `<div class="pw pcell">${last ? fmtSet(c, last[i]) : '—'}</div>` : '';
-    return `<div class="srow ${cur ? 'cur' : ''}"><span class="lw">S${i + 1}</span>${prev}${cells}<div class="ck ${done ? 'done' : ''}" onclick="st.done=${done ? i : i + 1};render()">✓</div></div>`;
+    const row = `<div class="srow ${cur ? 'cur' : ''}"><span class="lw">S${i + 1}</span>${cells}<div class="ck ${done ? 'done' : ''}" onclick="st.done=${done ? i : i + 1};render()">✓</div></div>`;
+    if (!below) return row;
+    const prev = `<div class="prevrow"><span class="lw">ANT.</span>${c.cols.map((k, j) => `<span>${k === 't' ? `${last[i][j]}s` : last[i][j]}</span>`).join('')}<span class="bw"></span></div>`;
+    return `<div class="srowwrap">${row}${prev}</div>`;
   }).join('');
   const histSheet = st.histOpen && hasBtn ? `
     <div class="hist">
@@ -618,7 +664,7 @@ function renderWorkout() {
     </div>
     ${histSheet}`;
 
-  const capByH = { line: 'Lo de la última vez en una fila, debajo del plan.', button: 'Lo de la última vez detrás del icono: abre las tres últimas sesiones.', column: 'Lo de la última vez en su columna, serie a serie.' };
+  const capByH = { line: 'Lo de la última vez en una fila sin color, debajo del plan.', button: 'Lo de la última vez detrás del icono: abre las tres últimas sesiones.', below: 'Lo de la última vez debajo de cada serie.' };
   document.getElementById('capW').textContent = first ? 'Sin historial: dice qué buscar en vez de callarse.'
     : `El gris es el plan y ✓ lo acepta (pulsa ✓). Si no se cumplió, el gris es lo que hiciste. ${capByH[st.h]} Sigue al caso, no a los cambios de la hoja.`;
 }
@@ -636,10 +682,10 @@ function controls() {
       el.appendChild(b);
     });
   };
-  mk('cC', Object.entries(CASES).map(([k, c]) => [k, `${k} · ${c.name}`]), 'c', () => { st.done = 0; st.histOpen = false; ed = { ...CASES[st.c].ed }; });
+  mk('cC', Object.entries(CASES).map(([k, c]) => [k, `${k} · ${c.name}`]), 'c', () => { st.done = 0; st.histOpen = false; ed = initEd(CASES[st.c]); });
   mk('cO', [['good','La clavó'],['mid','A medias'],['bad','No llegó']], 'o', () => { st.done = 0; });
   mk('cS', [['normal','Con historial'],['first','Primera vez'],['deload','Semana de descarga'],['coach','Objetivo del entrenador']], 's', () => { st.done = 0; st.histOpen = false; });
-  mk('cH', [['line','Línea'],['button','Botón de historial'],['column','Columna (Strong)']], 'h', () => { st.histOpen = false; });
+  mk('cH', [['line','Línea'],['button','Botón de historial'],['below','Debajo de cada serie']], 'h', () => { st.histOpen = false; });
 }
 
 function render() { controls(); renderEditor(); renderWorkout(); }

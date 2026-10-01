@@ -102,27 +102,49 @@ de Progresión es interactiva: cada paso ofrece solo lo que encaja con lo anteri
 6. **Por esfuerzo** elige cuándo sube: al superar el objetivo (lo de hoy) o al
    llegar a él.
 
+7. **«% mínimo» pasa a «Parcial: N de M series».** El porcentaje no se entendía.
+8. **Cuándo baja: Nunca · Si fallan N de M.** Sin «2 fallos seguidos». La hoja
+   impide que bajar choque con subir (§3.2).
+9. **El escalón de peso se ve** donde se usa (subir por %, Por esfuerzo y su
+   «Al llegar», que sube un escalón).
+10. **Al cambiar el peso, el gris pide el objetivo de progresión**: las reps
+    fijas, o el máximo del rango.
+11. **Última vez: línea (sin color) y botón, a elegir en Ajustes**; la maqueta
+    añade «debajo de cada serie». Fuera la columna estilo Strong.
+
 ### 3.2 La hoja, paso a paso
 
 | Paso | Opciones | Cuándo sale / qué la limita |
 |---|---|---|
-| Qué sube | Peso · Reps · Tiempo · Nada | Medida Reps → Peso, Reps, Nada. Tiempo → Tiempo, Nada. Sin carga → sin Peso. Asistido → «Asistencia ↓» |
-| Cómo | Por reglas · Por esfuerzo | Solo Peso con carga externa. Por esfuerzo exige reps fijas (con rango, apagado y con el motivo) |
-| Cuándo sube | Todas · % de series · RPE máx. | Por reglas, Reps y Tiempo. La meta sale de Qué pides: máximo o reps fijas (Peso), mínimo (Reps, Tiempo) |
-| RPE objetivo + Cuándo sube | Al superarlo · Al llegar | Solo Por esfuerzo |
-| Cuánto sube | Fijo · Porcentaje | Peso: kg o %. Reps y Tiempo: enteros, sin % |
-| Cuándo baja | Nunca · Al fallar · 2 fallos seguidos | Solo Peso por reglas |
+| Qué sube | Peso · Reps · Tiempo · Nada | Reps → Peso, Reps, Nada. Tiempo → Tiempo, Peso, Nada. Sin carga → nunca Peso. Asistido → «Asistencia ↓» |
+| Cómo | Por reglas · Por esfuerzo | Solo Peso con medida Reps y carga externa. Por esfuerzo exige reps fijas (con rango, apagado y con el motivo) |
+| Cuándo sube | Todas · Parcial (N de M) · RPE máx. | Por reglas, Reps y Tiempo. Parcial de 1 a M−1. La meta sale de Qué pides: máximo o reps fijas (Peso), mínimo (Reps, Tiempo) |
+| RPE objetivo · Escalón · Cuándo sube | Al superarlo · Al llegar | Solo Por esfuerzo |
+| Cuánto sube | Fijo · Porcentaje (redondea al escalón) | Peso: kg o %. Reps y Tiempo: enteros, sin % |
+| Cuándo baja | Nunca · Si fallan N de M | Solo Peso por reglas. Con «Parcial N de M», bajar exige al menos M−N+1 fallos |
 
-«Al fallar» es lo que hace hoy el motor, comprobado: baja si **menos del 60 % de
-las series llega al mínimo**. En un 5 × 5, con una o dos series en 4 mantiene y
-con tres baja.
+Por qué ese mínimo: con «Parcial N de M», una sesión que sube deja como mucho
+M−N series fuera; si bajar pidiera M−N o menos, la misma sesión cumpliría las
+dos reglas.
+
+Lo de hoy, comprobado: baja si **menos del 60 % de las series llega al mínimo**.
+Es «Si fallan» con su valor por defecto, ⌊M·0,4⌋+1: 2 de 3, 2 de 4, 3 de 5.
+
+**Tiempo con carga** (propuesta, pendiente de confirmar): con medida Tiempo y un
+ejercicio con carga, «Peso» es una doble progresión en segundos: todas llegan al
+máximo → sube el peso y el tiempo vuelve al mínimo. Arregla además la
+combinación que la P52 dejó fuera (Tiempo + Doble sugería kilos en una plancha).
 
 ### 3.3 Lo que pide al motor
 
-- `progression.down: 'never' | 'fail' | 'twice'`. 'twice' necesita las dos
-  últimas sesiones, no solo la última (el historial las tiene).
-- `progression.effortWhen: 'beat' | 'reach'`. 'reach': si la sesión cuadra,
-  sube el escalón mínimo del ejercicio.
+- `evaluation.mode: 'part'` con un número de series (sustituye a `'pct'` y
+  `pctThreshold`).
+- `progression.down: null | { fails: N }`: sustituye al 60 % fijo.
+- `progression.effortWhen: 'beat' | 'reach'`. 'reach': si la sesión cuadra, sube
+  un escalón.
+- Escalón por ejercicio: `exConfig.weightStep` por encima del de la librería.
+  Sustituye a `increment.minIncrement`.
+- Tiempo + Peso: la doble progresión de `chipDouble` sobre segundos.
 - La evaluación por RPE deja de depender de que Registrar RPE esté encendido:
   lo enciende la propia progresión.
 - Fuera `seed`, `custom`, `stepped` y `minRir`, que nadie usa.
@@ -133,7 +155,7 @@ La línea de progresión es la cabecera del plan y **el gris de cada serie es el
 plan**: el peso de la progresión y las reps del objetivo. Si no se cumplió, el
 gris es lo que hiciste. ✓ acepta lo que se ve: `saveSession.resolveSet` y la
 tarjeta tienen que salir de una sola función. Sin historial, «busca un peso con
-el que hagas 8–12». Lo de la última vez se sigue viendo (línea, botón o columna:
-decisión abierta).
+el que hagas 8–12». Lo de la última vez: línea sin color, botón de historial o
+debajo de cada serie, a elegir en Ajustes.
 
 Decisiones abiertas: las de la maqueta, §«Para decidir».
