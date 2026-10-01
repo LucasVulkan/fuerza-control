@@ -3,14 +3,19 @@
 > Tema: programas
 > En corto: El motor de progresión ya cubre casi todas las formas de entrenar, pero daba consejos equivocados en cuatro casos y ni el editor ni el Workout dejaban claro qué decide. Primero se arreglan los fallos; después se ordena en tres preguntas (qué pides, qué sube, cuándo y cuánto) y el plan del motor pasa a ser el gris de cada serie.
 > Fase P52 · hecho · Cuatro fallos del motor · §2
-> Fase P53 · pendiente · Qué pides en el editor, la progresión en su hoja, el plan en el Workout · §3
+> Fase P53 · terminado · Diseño y maqueta: Qué pides, la hoja de Progresión y el plan en el Workout · §3
+> Fase P54 · pendiente · Motor: el modelo nuevo y el plan de cada serie · §4
+> Fase P55 · pendiente · Editor: Qué pides y la hoja de Progresión · §5
+> Fase P56 · pendiente · Workout: el plan en el gris y la línea de recomendación · §6
+> Fase P57 · pendiente · La última vez: botón, línea o debajo de cada serie · §7
 >
 > Estado: **P52 hecha** (1-oct-2026, `f5311ef`, rama `feat/recap`), pendiente de
-> probar en dispositivo. **P53 en maqueta v2** (`docs/mockups/progression.html`, revisada
-> con el usuario el 1-oct; decisiones en §3.1). Quedan dos cosas sin decidir
-> (§3.1-bis): tiempo con carga y dónde enseñar «Próxima sesión». No se escribe la P53 en detalle
-> hasta que el usuario las cierre. La escalera (top set + back-off, pirámide
-> invertida) va **después** de la P53 y como extensión de «Qué pides»: sin motor nuevo.
+> probar en dispositivo. **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
+> `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
+> fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
+> subagente sin más contexto. Fuera a propósito, sin decidir (§3.1-bis): tiempo
+> con carga y dónde enseñar «Próxima sesión». La escalera (top set + back-off,
+> pirámide invertida) va **después**, como extensión de «Qué pides»: sin motor nuevo.
 
 ---
 
@@ -178,3 +183,385 @@ el que hagas 8–12». Lo de la última vez: línea sin color, botón de histori
 debajo de cada serie, a elegir en Ajustes.
 
 Decisiones abiertas: las de la maqueta, §«Para decidir».
+
+---
+
+## Implementación (P54–P57)
+
+Cuatro fases, en este orden: cada una depende de la anterior. Todo en la rama
+viva (`feat/recap`), un commit por fase como mínimo.
+
+**Verificación de cada fase** (además de sus tests): `npx vitest run` en
+`mobile/` sin fallos; `npx eslint <archivos tocados>` sin errores **nuevos**
+(hay errores previos: comparar el recuento contra HEAD); `npx expo export
+--platform android` para pillar imports rotos. Textos nuevos en `es.json` **y**
+`en.json`, añadidos línea a línea (nunca reescribir el JSON con un script que lo
+reformatee). Al cerrar la fase: cabecera a `hecho`, fila en §8 con el commit,
+`npm run estado`.
+
+**No se toca**: `CustomExerciseScreen` (su progresión es la de la librería),
+`prescription.targetLabel` y las listas (Por esfuerzo sigue siendo
+`type: 'effort'`), el tiempo con carga y «Próxima sesión» (§3.1-bis).
+
+## 4. P54 — Motor: el modelo nuevo de la progresión
+
+Solo `src/utils/` y sus tests. No cambia ninguna pantalla, pero sí lo que
+proponen tres casos (§4.6).
+
+### 4.1 El modelo
+
+`exConfig.progression` (se mantienen los nombres internos para no arrastrar
+cambios: `double` es «Peso · por reglas»):
+
+```js
+{
+  type: 'double' | 'reps' | 'time' | 'effort' | 'none',
+  evaluation: {
+    mode: 'all_complete' | 'part' | 'rpe',   // UI: Todas · Parcial · RPE máx.
+    need: 2,                                  // 'part': series que tienen que llegar
+    maxRpe: 8,                                // 'rpe'
+  },
+  increment: { type: 'fixed' | 'pct', value: 2.5, pct: 5 },
+  down: 'never' | { fails: 2 },               // solo 'double'; ausente → valor por defecto (§4.3)
+  targetRpe: 8,                               // 'effort'
+  effortWhen: 'beat' | 'reach',               // 'effort'; ausente → 'beat'
+  hold: null | 'deload',                      // lo escribe applyRx, sin cambios
+}
+```
+
+`exConfig.weightStep` (nuevo, **fuera** de `progression`): el escalón de peso
+del ejercicio. Ausente → `def.weightStep` si es > 0, si no 2,5.
+
+`resolveProgressionConfig(exConfig, def)` devuelve siempre la forma completa y
+añade `step` (el escalón resuelto) y `direction` (del `def`, P52). Lectura de lo
+antiguo, sin migrar datos:
+
+| Guardado | Se lee como |
+|---|---|
+| `type: 'weight'` | `'double'` (es lo mismo con mín = máx) |
+| `evaluation.mode: 'pct'` + `pctThreshold` | `'part'` con `need = ceil(pctThreshold · sets)` |
+| `increment.type: 'stepped'` | `'fixed'` con `value` del primer escalón |
+| `increment.minIncrement` | se ignora (lo sustituye `step`) |
+| `seed`, `minRir`, `custom` | se ignoran |
+
+Se borran de `progression.js` el código y la cabecera que describen `seed`,
+`custom`, `stepped`, `minIncrement` y `minRir`, y `applyMinIncrement`.
+
+`stageRx.scaleIncrement` redondea hoy a `minIncrement`: pasa a redondear al
+`step` resuelto (que `applyRx` ya puede sacar de `resolveProgressionConfig`).
+
+`exerciseLinks.LINKED_CONFIG_KEYS` añade `'weightStep'`: el escalón viaja con el
+grupo, como el resto de la configuración.
+
+### 4.2 Un solo chip para «Peso · por reglas»
+
+`chipWeight` y `chipDouble` se funden en uno (`chipDoubleDecrease` sigue siendo
+su espejo para asistidos, con la misma lógica). Con `G` = `maxReps` (la meta;
+con reps fijas `min = max`), `F` = `minReps` (el suelo) y `n` = series de la
+plantilla:
+
+```
+alMeta  = series con reps ≥ G (o marcadas sin reps)
+alSuelo = series con reps ≥ F (o marcadas sin reps)       ← countQualifyingSets
+sube    = all_complete: alMeta ≥ n
+          part:         alMeta ≥ need
+          rpe:          alMeta ≥ n  y (sin RPE apuntado  o  RPE medio ≤ maxRpe)
+baja    = down ≠ 'never'  y  (n − alSuelo) ≥ down.fails  y  peso > 0
+orden   = sube → baja → mantener
+```
+
+**Desaparece la bajada escondida por RPE > 9,5** que tenía `chipDouble`: bajar
+es solo la regla explícita. La «mayoría al mínimo» (`mostHitMin`, 0,8) también
+sobra: lo que no sube ni baja, mantiene.
+
+`why` del chip: `why_allHit` (sube con todas), `why_partHit` (nuevo: «{{need}}
+de {{n}} series llegaron a {{goal}}»), `why_rpeAbove` (nuevo: llegó a la meta
+pero con RPE medio > maxRpe), `why_belowMin` (baja), `why_holdReps` (mantener).
+
+### 4.3 Cuándo baja: el valor por defecto
+
+`down` ausente = `{ fails: floor(n · 0,4) + 1 }`. **Es exactamente lo de hoy**
+(«menos del 60 % de las series al mínimo»: 2 de 3, 2 de 4, 3 de 5),
+comprobado contra el motor. `fails` se limita a `[1, n]` al resolver, porque una
+regla de etapa puede cambiar `n`.
+
+Si una etapa sube las series y la regla de bajar queda por debajo de
+`n − need + 1`, no se corrige: el orden «sube → baja» decide y no hay error.
+
+### 4.4 Reps, Tiempo y Por esfuerzo
+
+- **Reps y Tiempo** (las reglas de P52) aceptan `part`: sube si `need` series
+  llegan al mínimo. El chip de Reps añade **`suggestedReps`** (el objetivo
+  nuevo), para que el Workout pueda pintar un número.
+- **Por esfuerzo**: redondea al `step` resuelto (antes,
+  `min(def.weightStep, 2,5)`). Esto **cambia** el redondeo de los ejercicios con
+  escalón de 4, 5 o 10 kg: ahora el usuario lo ve y lo puede bajar en la hoja.
+  Con `effortWhen: 'reach'`: si el cálculo deja el peso igual (`type: 'hold'`)
+  y todas las series llegaron a las reps objetivo, sube un `step`
+  (`type: 'up'`, `why_effortReached`, nuevo).
+- `increment.type: 'pct'` redondea al múltiplo de `step` más cercano, nunca por
+  debajo de `step`.
+
+### 4.5 El plan de cada serie: `src/utils/setPlan.js` (nuevo)
+
+Hoy el gris se decide en **dos** sitios que se copian a mano: la tarjeta
+(`ExerciseCard.jsx`, gris en ~808-835 y relleno de ✓ en ~876-899) y el guardado
+(`useStore.saveSession → resolveSet`, ~2491). Si divergen, lo que se ve en gris
+no es lo que se guarda. Una sola función pura para los dos:
+
+```js
+planSet({ exConfig, def, chip, lastSets, overrideEx, index })
+  → { weight: Ref, reps: Ref, time: Ref, rpe: Ref }   // Ref = { value: string, source }
+```
+
+Por campo, el primero que tenga valor:
+
+1. **Objetivo del entrenador** (`overrideEx[campo]`) → `source: 'coach'`.
+2. **El plan**, `source: 'plan'`:
+   - `chip.effort` → peso = `chip.suggestedWeight`; reps = `minReps`.
+   - `chip.suggestedWeight != null` y `chip.type !== 'hold'` → peso =
+     `suggestedWeight`; reps = la meta (reps fijas, o `maxReps` con rango).
+   - `chip.suggestedReps != null` → reps = `suggestedReps`.
+   - `chip.suggestedTime != null` y `chip.type === 'up'` → tiempo = `suggestedTime`.
+3. **La última vez** (`lastSets[index][campo]`) → `source: 'last'`.
+4. Nada → `{ value: '', source: 'none' }`.
+
+`'plan'` se pinta igual que `'last'` (gris); solo `'coach'` va en azul. El RPE
+solo tiene `coach`. `resolveRef` y `resolveExerciseReference`
+(`sessionOverride.js`) se quedan para lo que no son series, si queda algún uso;
+si no, se borran.
+
+### 4.6 Lo que cambia para el usuario
+
+1. Una serie mala con RPE > 9,5 ya no baja el peso sola: mantiene.
+2. En Doble, con al menos el 80 % de las series en el suelo, el texto era «Bien
+   ejecutado… busca más reps»; ahora es el de mantener (`normal_hold`). El peso
+   no cambia.
+3. Por esfuerzo redondea al escalón del ejercicio, no a 2,5 como máximo.
+
+### 4.7 Tests
+
+`progression.test.js`: la tabla de §4.2 caso a caso (all/part/rpe × sube/baja/
+mantiene, con 3 y 5 series), el valor por defecto de `down` contra los cinco
+casos de §3.2, `down: 'never'`, asistidos espejo, lectura de lo antiguo (§4.1),
+`effortWhen: 'reach'`, `step` en `pct` y en Por esfuerzo, `suggestedReps`.
+`setPlan.test.js` (nuevo): el orden de §4.5, un campo por fuente, la meta con
+rango y con reps fijas, Por esfuerzo, sin historial. `stageRx.test.js`:
+`incrementScale` redondea al `step`.
+
+**Probar P54**
+
+- [ ] Press banca 3 × 8–12 en Automática: 12/12/12 con 60 kg → «Subir a 62.5»;
+  12/10/9 → «Mantener 60»; 9/7/7 → «Bajar a 57.5».
+- [ ] La misma con una serie de 12 a RPE 10 y el resto bien: ya no baja.
+- [ ] Peso muerto Por esfuerzo con escalón de librería 5 kg: el peso propuesto
+  es múltiplo de 5.
+- [ ] Una etapa de descarga sigue diciendo «Descarga» y no sube ni baja.
+
+## 5. P55 — Editor: Qué pides y la hoja de Progresión
+
+`src/components/editor/ExerciseEditorInline.jsx` y textos. La maqueta
+(`docs/mockups/progression.html`, hoja interactiva) es la referencia de qué paso
+sale cuándo; aquí va lo que la maqueta no dice.
+
+### 5.1 Volumen (Qué pides)
+
+- Se queda el segmentado Reps · Tiempo y debajo, solo con Reps, uno nuevo:
+  **Rango · Reps fijas**. Se deduce de `minReps === maxReps`. Pasar a fijas
+  deja `maxReps = minReps` y un solo `StepField` horizontal «Reps» (el de Por
+  esfuerzo hoy). Pasar a rango pone `maxReps = minReps + 4`.
+- El campo «Reps objetivo» de Por esfuerzo desaparece de aquí: con Reps fijas ya
+  es ese campo.
+- La etiqueta de la sección sigue siendo VOLUMEN (Figma).
+
+### 5.2 La fila PROGRESIÓN
+
+Título según la configuración: «Sin progresión», «Automática · Peso»,
+«Automática · Asistencia», «Automática · Reps», «Automática · Tiempo»,
+«Por esfuerzo · RPE 8». Subtítulo y línea del Resumen: la **frase de la regla**,
+de una función nueva `progressionRule(exConfig, def, t)` en `progression.js`
+(o en un `progressionText.js` si crece), que también usará la ficha del Workout
+(P56). Frases (las de la maqueta):
+
+- Peso: «Sube 2.5 kg cuando todas las series lleguen a 12 · baja si fallan 2 de 3».
+  Asistido: «Quita … · más ayuda si fallan …». Con Parcial: «cuando 2 de 3
+  series…». Con RPE: «cuando todas las series con RPE ≤ 8…». Con `down: 'never'`
+  sin la cola.
+- Reps / Tiempo: «+1 rep sobre tu serie más floja cuando todas las series pasen de 6».
+- Por esfuerzo: «Peso calculado para 5 reps a RPE 8 · sube al superar el objetivo».
+- Nada: «El peso lo cambias tú».
+
+**«Próxima sesión» no se implementa** (§3.1-bis).
+
+### 5.3 La hoja
+
+Sustituye entera la hoja actual (modo → tipo → cuándo → cuánto, ~890-1050). Los
+pasos se numeran según los que salgan. Reglas de qué se ofrece:
+
+| Paso | Sale si | Opciones |
+|---|---|---|
+| **Qué sube** | siempre | Medida Reps: Peso (no si `isBodyweight(def)`; «Asistencia ↓» si `def.progressionDirection === 'decrease'`), Reps, Nada. Medida Tiempo: Tiempo, Nada |
+| **Cómo** | Peso, medida Reps, carga externa, no asistido | Por reglas · Por esfuerzo. Por esfuerzo **apagado** con rango, con la pista en naranja «Por esfuerzo necesita reps fijas: cámbialo en Volumen» |
+| **RPE objetivo** | Por esfuerzo | `StepField` 6–10 + «N en recámara» |
+| **Escalón de peso** | Por esfuerzo | `StepField` paso 0,25, mín. 0,25 |
+| **Cuándo sube** (esfuerzo) | Por esfuerzo | Al superarlo · Al llegar, con su pista |
+| **Cuándo sube** | Por reglas, Reps, Tiempo | Todas · Parcial · RPE máx. Parcial: `StepField` «Tienen que llegar» con valor «N de M», de 1 a M−1. RPE máx.: `StepField` 6–10 |
+| **Cuánto sube** | Por reglas, Reps, Tiempo | Peso: Fijo · Porcentaje + valor; con Porcentaje, además **Escalón** («Redondea al escalón»). Reps: entero 1–10. Tiempo: entero en pasos de 5 s |
+| **Cuándo baja** | Peso por reglas | Nunca · Si fallan. Si fallan: `StepField` «Series bajo el mínimo» con valor «N de M», mínimo `M − need + 1` con Parcial y 1 si no, con la pista de por qué |
+
+Coherencia, en una función `normalize` del estado del editor que se llama tras
+cada cambio (como en la maqueta): si lo elegido deja de valer, vuelve al primero
+válido (Qué sube) o a Por reglas (Cómo); `need` y `fails` se recortan a su
+rango cuando cambian las series. Al cambiar Qué sube, el salto vuelve a su valor
+por defecto (`defaultIncrement`, P52).
+
+El valor por defecto de `fails` en el editor es el de §4.3. Se guarda siempre
+`down` explícito (`'never'` o `{ fails }`) al guardar desde el editor.
+
+### 5.4 Registrar RPE
+
+Si la progresión necesita RPE (Por esfuerzo, o Cuándo sube = RPE máx.), el
+`ToggleRow` de Registrar RPE se muestra encendido, **bloqueado** y con la pista
+«Lo pide la progresión», y se guarda `trackRpe: true`. Hoy eso solo lo hacía Por
+esfuerzo; la opción RPE máx. ya no depende de haberlo encendido antes.
+
+### 5.5 Qué se guarda
+
+`commitValues` escribe la forma de §4.1: `type` (`double` para Peso por reglas,
+también con reps fijas), `evaluation`, `increment`, `down`, `targetRpe` +
+`effortWhen` en Por esfuerzo, y `exConfig.weightStep` **solo si difiere** del de
+la librería (así un cambio en la librería sigue llegando a los ejercicios que no
+lo tocaron). Desaparecen del estado del editor `progMode`, `evalPct` e
+`incrMin`.
+
+**Probar P55**
+
+- [ ] Abrir la hoja de un press banca: Qué sube · Cómo · Cuándo sube · Cuánto
+  sube · Cuándo baja, y la frase del Resumen dice lo mismo que la hoja.
+- [ ] Con Rango, Por esfuerzo sale apagado con la pista naranja; al pasar a Reps
+  fijas se puede elegir, y al volver a Rango vuelve solo a Por reglas.
+- [ ] Parcial 2 de 3 → Cuándo baja no deja bajar de 2; con Parcial 1 de 3, no
+  baja de 3.
+- [ ] Cuándo sube = RPE máx. → Registrar RPE se enciende y no se puede apagar.
+- [ ] Dominadas (sin carga): Qué sube no ofrece Peso. Dominadas asistidas:
+  «Asistencia ↓», sin Cómo.
+- [ ] Plancha (Tiempo): solo Tiempo y Nada; el salto en segundos enteros.
+- [ ] Por esfuerzo: cambiar el escalón a 1,25 y comprobar en el Workout que el
+  peso propuesto es múltiplo de 1,25.
+- [ ] Guardar, salir y volver a entrar: la hoja recupera todo lo elegido.
+
+## 6. P56 — Workout: el plan en el gris y la línea de recomendación
+
+`ExerciseCard.jsx`, `useStore.saveSession`, `warmup.js` y textos.
+
+### 6.1 El gris es el plan
+
+- La tarjeta calcula el gris y el relleno de ✓ con `planSet` (P54) en vez de
+  `resolveExerciseReference` + `lastSet`.
+- `saveSession.resolveSet` usa **la misma** `planSet`. Para ello calcula el chip
+  de cada ejercicio con `getProgression(exConfig, def, lastSets, () => '')`; el
+  `def` sale de `exerciseLibrary` + `customExercises` del store.
+- Test en `useStore.test.js`: una sesión con la serie solo marcada ✓ guarda el
+  peso del plan (62,5), no el de la última vez (60).
+
+### 6.2 El calentamiento sube con el plan
+
+`warmup.resolveWorkWeight` añade un escalón a su cascada, después del objetivo
+del entrenador y antes de la última sesión: el peso del plan
+(`chip.suggestedWeight`). Si no, el calentamiento rampa hacia el peso de la
+semana pasada.
+
+### 6.3 La línea de recomendación (variante A)
+
+En el bloque `progBlock` (~654-678):
+
+- **Fuera la línea `progWhy`** (la frase gris). Se queda la fila: flecha +
+  etiqueta + destino + pastilla del delta.
+- Toda la fila es un `Pressable` (sin icono) que abre una `DragSheet` con tres
+  bloques: **REGLA** (`progressionRule`), **LA ÚLTIMA VEZ** (las pastillas de
+  la última sesión, §6.4) y **HOY** (`chip.why`).
+- Reps con número: si el chip trae `suggestedReps`, el destino es «9 reps» y
+  el delta se cuenta contra la serie más floja de la última vez.
+- **Primera vez** (sin historial, progresión ≠ `none`, sin objetivo del
+  entrenador): una fila nueva con la misma anatomía, en `text`:
+  «◇ BUSCA TU PESO · 8–12 reps» (con carga), «◇ HAZ LAS QUE PUEDAS · 6–12»
+  (sin carga), «◇ AGUANTA LO QUE PUEDAS · 30–60 s» (tiempo), «◇ BUSCA TU PESO ·
+  5 @ RPE 8» (por esfuerzo). La ficha dice qué buscar.
+- Fija (`type: 'none'`): sin línea, como hoy.
+- Objetivo del entrenador y descarga: como hoy (azul).
+- **A2 · Banda** (la misma fila sobre `tint.accent10`, o azul en descarga) se
+  deja detrás de una constante en el archivo para probarla en el móvil; la
+  elección final se apunta aquí.
+
+### 6.4 Pastillas reutilizables
+
+Las pastillas de la tarjeta plegada (`pillsBlock`, ~533-587) salen a
+`components/workout/SetPills.jsx` (`sets`, `exConfig`, `neutral`). `neutral`
+quita el color de dentro y fuera de rango (para «la última vez»). Las usan la
+tarjeta plegada, la ficha (§6.3) y P57.
+
+**Probar P56**
+
+- [ ] Tras 12/12/12 con 60 kg: el gris de las tres series dice 62.5 × 12; ✓ sin
+  escribir nada guarda 62.5 × 12 (verlo en Historial).
+- [ ] Tras 12/10/9: el gris repite 60 × 12 · 10 · 9.
+- [ ] El calentamiento de ese día rampa hacia 62.5, no hacia 60.
+- [ ] Ya no hay frase gris bajo la recomendación; al tocar la línea sale la
+  ficha con la regla, la última vez y el motivo.
+- [ ] Ejercicio sin historial: «Busca tu peso · 8–12 reps»; dominadas sin
+  historial: «Haz las que puedas».
+- [ ] Dominadas en Reps tras 9/8/8: «Subir a 9 reps +1» y el gris pide 9.
+- [ ] Objetivo del entrenador: la línea azul y el gris azul, como antes.
+- [ ] Banda A2 activada a mano: valorar y apuntar aquí la elección.
+
+## 7. P57 — La última vez: botón, línea o debajo de cada serie
+
+### 7.1 La preferencia
+
+`profile.lastSessionView: 'button' | 'line' | 'below'`, **por defecto
+`'button'`**. Se guarda con `setProfile` (el `profile` ya persiste). Fila nueva
+en el menú, sección Preferencias de `AppHeader.jsx` (donde están unidades e
+idioma): «Última sesión» con `SegmentedControl` Botón · Línea · Serie.
+
+### 7.2 De dónde salen las sesiones
+
+`exerciseLinks.js`: `recentLinkedExercises(workoutLog, templateIds, exerciseId,
+n)` → `[{ timestamp, exercise }]`, las `n` últimas con series, más recientes
+primero. `lastLinkedExercise` pasa a ser `recentLinkedExercises(…, 1)[0]?.exercise`
+(mismo resultado; tiene tests). `WorkoutScreen` pasa a cada tarjeta las tres
+últimas con el mismo alcance que `lastExerciseRef` (vinculación o cadena de
+plantillas) y su fecha.
+
+### 7.3 Las tres vistas
+
+- **Botón** (por defecto): icono de historial en la cabecera de la tarjeta, a
+  la izquierda del de notas, solo si hay historial. Abre una `DragSheet` con las
+  tres últimas sesiones: fecha (`toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })`,
+  como `SessionRecapScreen`; **no** `formatters.formatDate`, que fija `es-ES`) y
+  `SetPills neutral`. No hay enlace a Progreso (no existe navegación al
+  detalle de un ejercicio desde el Workout; se añade si se pide).
+- **Línea**: bajo la recomendación, «ÚLTIMA · LUN 29 SEP» en `caps`/`muted` y
+  las pastillas neutras. Sin color (decisión 1-oct).
+- **Debajo de cada serie**: bajo cada `SetRow`, una fila de 12 px en `muted` con
+  lo de esa serie la última vez, alineada con las columnas (`GRID`), y «ANT.» en
+  la columna de la etiqueta. Solo en la tarjeta abierta.
+
+**Probar P57**
+
+- [ ] Instalación limpia: la tarjeta trae el icono de historial y abre las tres
+  últimas sesiones con su fecha.
+- [ ] Cambiar en el menú a Línea: la fila «Última · fecha» sin color bajo la
+  recomendación. A Serie: lo de la última vez debajo de cada serie, alineado.
+- [ ] Ejercicio vinculado entre sesiones A y C: el historial mezcla las dos.
+- [ ] Sin historial: ni icono, ni línea, ni filas.
+
+## 8. Registro
+
+| Fase | Commit | Nota |
+|---|---|---|
+| P52 | `f5311ef` | cuatro fallos del motor |
+| P53 | `e8c4f2e` … `8f52105` | diseño y maqueta (v1 → v3 + variantes de A) |
+| P54 | — | |
+| P55 | — | |
+| P56 | — | |
+| P57 | — | |
