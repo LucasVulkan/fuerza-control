@@ -108,6 +108,26 @@
   .lastp .to.up { background: var(--accent); color: #000; } .lastp .to.hold { background: var(--surface2); color: var(--text); }
   .lastp .to.down { background: var(--surface2); color: var(--text); } .lastp .to.blue { background: var(--blue); color: #fff; }
   .ficha { position: absolute; inset: 0; z-index: 4; }
+  /* SectionLabel de la tarjeta (ExerciseCard.sectionLabel/Row/Meta) */
+  .slr { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .slr .sl { font: 800 12px Inter; letter-spacing: 1.2px; color: var(--muted); }
+  .rec { display: flex; align-items: baseline; gap: 6px; cursor: pointer; }
+  .rec .ar { font: 900 14px Inter; } .rec .val { font: 800 12px Inter; color: var(--text); font-variant-numeric: tabular-nums; }
+  .rec .lab { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+  .rec.up .ar, .rec.up .lab { color: var(--accent); } .rec.hold .ar, .rec.hold .lab { color: var(--mutedLight); }
+  .rec.down .ar, .rec.down .lab { color: var(--text); } .rec.blue .ar, .rec.blue .lab { color: var(--blue); }
+  .rec.first .ar, .rec.first .lab { color: var(--text); }
+  .wuc { display: flex; align-items: center; gap: 8px; padding: 2px 0 14px; font: 700 12px Inter; color: var(--muted); }
+  .wuc b { color: var(--accent); font-weight: 900; } .wuc i { margin-left: auto; font-style: normal; color: var(--mutedLight); }
+  /* Banda */
+  .band { display: flex; align-items: center; gap: 8px; border-radius: var(--r-md); padding: 9px 12px; margin-bottom: 12px; cursor: pointer; }
+  .band.up { background: var(--accent10); } .band.hold, .band.down, .band.first { background: var(--surface2); } .band.blue { background: var(--blue10); }
+  .band .rec { flex: 1; }
+  /* Dato grande */
+  .stat { display: flex; align-items: flex-end; gap: 10px; padding-bottom: 12px; cursor: pointer; }
+  .stat .m { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .stat .big { font: 900 22px Inter; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+  .stat.up .big { color: var(--accent); } .stat.blue .big { color: var(--blue); }
   .ficha .sheet { gap: 12px; }
   .frow { display: flex; flex-direction: column; gap: 4px; }
   .frow .k { font: 800 10.5px Inter; letter-spacing: 1.2px; color: var(--muted); }
@@ -249,22 +269,26 @@
   </div>
 </div>
 
-<h2>La línea de recomendación: alternativas</h2>
-<p class="lead">La frase «completaste 3 × 12 con 60 kg» rompe la tarjeta: es prosa en medio de una rejilla de datos. Cuatro
-  formas de quitarla, todas con piezas que ya existen en la app. En las cuatro el motivo no desaparece: <b>se toca y se lee
-  en una ficha</b>, como los datos de Progreso (metric-transparency). Pulsa el ⓘ, la pastilla o la cabecera para verla.</p>
-<div class="ctls"><div class="ctl" id="aS"><span>Estado</span></div></div>
+<h2>La línea de recomendación: variantes de A</h2>
+<p class="lead">A (dato + delta, sin frase) es la que mejor comunica; falta que encaje en la jerarquía de la tarjeta. B no
+  cabe con nombres largos y C no sobrevive a tres columnas con RPE, así que se quedan fuera. Cuatro formas de colocar A.
+  En todas, el motivo está en una ficha que se abre al tocar (ⓘ o la propia recomendación). Usa «Nombre largo + RPE» y
+  «Con calentamiento» para probarlas en el peor caso.</p>
+<div class="ctls">
+  <div class="ctl" id="aS"><span>Estado</span></div>
+  <div class="ctl" id="aX"><span>Prueba</span></div>
+</div>
 <div class="rack alt" id="alts"></div>
 <ul class="note" style="margin-top:14px">
-  <li><b>0 · Hoy</b>: la referencia. Dos líneas, y la segunda es una frase.</li>
-  <li><b>A · Solo el dato</b>: la misma línea sin la frase; el motivo en la ficha (ⓘ). El cambio más pequeño.</li>
-  <li><b>B · En la cabecera</b>: una pastilla junto al nombre, donde ya está el objetivo «3 × 8–12». El cuerpo de la
-    tarjeta empieza directamente por las series. Se ve también con la tarjeta plegada.</li>
-  <li><b>C · En la columna</b>: el cambio va encima de la columna a la que afecta («KG ↑ 2.5»). No añade ni una fila; el
-    número de hoy ya está en el gris. El más integrado, pero el más fácil de no ver.</li>
-  <li><b>D · Con lo de la última vez</b>: las pastillas de la última sesión (las de la tarjeta plegada: lima si llegó,
-    rojo si no) y una flecha a lo de hoy. El motivo se ve en los datos en vez de leerse. Ocupa la fila que ocuparía
-    «Última vez» en línea, así que con D esa opción de Ajustes sobra.</li>
+  <li><b>A · Suelta</b>: la línea de antes sin la frase. Funciona, pero sigue flotando: no pertenece a nada de la tarjeta.</li>
+  <li><b>A1 · Cabecera de las series</b>: la tarjeta ya tiene secciones con etiqueta a la izquierda y un dato a la derecha
+    (CALENTAMIENTO · 60 s de descanso). La recomendación pasa a ser el dato de la sección <b>SERIES</b>: dice a qué afecta
+    y no añade ninguna fila nueva cuando hay calentamiento. Aguanta nombres largos y RPE porque no comparte línea con el
+    nombre ni con las columnas.</li>
+  <li><b>A2 · Banda</b>: la misma línea dentro de un bloque con fondo (lima tenue si sube, azul si es descarga), como el
+    Resumen del editor. Es la que más se ve; también la que más pesa.</li>
+  <li><b>A3 · Dato grande</b>: «Hoy» en pequeño y el peso en grande, como las tarjetas de dato de Progreso. Jerarquía muy
+    clara, pero se lleva mucho alto para un dato que ya está en el gris de las casillas.</li>
 </ul>
 
 <h2>La hoja de Progresión: qué aparece según lo elegido</h2>
@@ -314,7 +338,7 @@
   <li><b>Tiempo con carga</b> (caso F2): con medida Tiempo, si el ejercicio lleva peso, Qué sube ofrece Tiempo · Peso ·
     Nada. Peso es una doble progresión en segundos: todas llegan al máximo → sube el peso y el tiempo vuelve al
     mínimo. ¿Así?</li>
-  <li><b>La línea de recomendación</b>: 0, A, B, C o D (sección de arriba).</li>
+  <li><b>La línea de recomendación</b>: A, A1, A2 o A3 (sección de arriba).</li>
 </ol>
 
 <script>
@@ -735,76 +759,82 @@ function controls() {
 function render() { controls(); renderEditor(); renderWorkout(); }
 render();
 
-/* ═══ Alternativas de la línea de recomendación (Press banca 3 × 8–12) ═══ */
+/* ═══ Variantes de A: dónde va «↑ 62.5 kg +2.5» dentro de la tarjeta ═══ */
 const AST = {
-  up:     { last: [12,12,12], lw: 60, plan: [62.5,12], dir: 'up', k: 'Subir a', v: '62.5 kg', d: '+2.5', why: 'completaste 3 × 12 con 60 kg',
-            f: ['Sube 2.5 kg cuando todas las series lleguen a 12.', 'Las 3 llegaron a 12 con 60 kg.', '<b>Sube a 62.5 kg</b> y las reps vuelven a 12 como meta.'] },
-  hold:   { last: [12,10,9], lw: 60, plan: null, dir: 'hold', k: 'Mantener', v: '60 kg', why: 'dos series no llegaron a 12',
+  up:     { last: [12,12,12], lw: 60, plan: [62.5,12], dir: 'up', k: 'Subir a', v: '62.5 kg', d: '+2.5',
+            f: ['Sube 2.5 kg cuando todas las series lleguen a 12.', 'Las 3 llegaron a 12 con 60 kg.', '<b>Sube a 62.5 kg</b> y la meta vuelve a ser 12.'] },
+  hold:   { last: [12,10,9], lw: 60, plan: null, dir: 'hold', k: 'Mantener', v: '60 kg',
             f: ['Sube 2.5 kg cuando todas las series lleguen a 12.', 'Dos series se quedaron en 10 y 9.', '<b>Mantiene 60 kg</b>: el gris es lo que hiciste.'] },
-  down:   { last: [9,7,7], lw: 60, plan: [57.5,12], dir: 'down', k: 'Bajar a', v: '57.5 kg', d: '−2.5', why: 'dos series no llegaron al mínimo de 8',
+  down:   { last: [9,7,7], lw: 60, plan: [57.5,12], dir: 'down', k: 'Bajar a', v: '57.5 kg', d: '−2.5',
             f: ['Baja 2.5 kg si fallan 2 de 3 series (bajo 8).', 'Dos series se quedaron en 7.', '<b>Baja a 57.5 kg</b>.'] },
-  deload: { last: [12,12,12], lw: 60, plan: [60,8], dir: 'blue', k: 'Descarga', v: '60 kg', why: 'semana de descarga del bloque',
+  deload: { last: [12,12,12], lw: 60, plan: [60,8], dir: 'blue', k: 'Descarga', v: '60 kg',
             f: ['La etapa es de descarga.', 'Mismo peso y menos reps, sin buscar el fallo.', '<b>60 kg × 8</b>.'] },
-  first:  { last: null, plan: ['', ''], dir: 'first', k: 'Busca tu peso', v: '', why: 'el que te deje hacer 8–12 en las 3 series',
+  first:  { last: null, plan: ['', ''], dir: 'first', k: 'Busca tu peso', v: '8–12 reps',
             f: ['No hay ninguna sesión de este ejercicio.', 'Elige un peso con el que hagas 8–12 en las 3 series.', 'Desde la próxima, la progresión decide.'] },
 };
-const ast = { s: 'up', ficha: null };
+const ast = { s: 'up', ficha: null, long: false, warm: false };
 const ARW = { up: '↑', hold: '→', down: '↓', blue: '→', first: '◇' };
+const NAMES = { A: 'A · SUELTA', A1: 'A1 · CABECERA DE LAS SERIES', A2: 'A2 · BANDA', A3: 'A3 · DATO GRANDE' };
+
+function rec(a, variant, withInfo) {
+  const open = `onclick="ast.ficha='${variant}';renderAlts()"`;
+  return `<span class="rec ${a.dir}" ${open}><span class="ar">${ARW[a.dir]}</span><span class="lab">${a.k}</span>`
+    + `<span class="val">${a.v}</span>${a.d ? `<span class="pdelta">${a.d}</span>` : ''}${withInfo ? '<span class="info">i</span>' : ''}</span>`;
+}
 
 function altCard(variant) {
   const a = AST[ast.s];
-  const plan = a.plan ? Array(3).fill(a.plan) : a.last.map((r) => [a.lw, r]);
+  const rpe = ast.long;
+  const plan = (a.plan ? Array(3).fill(a.plan) : a.last.map((r) => [a.lw, r])).map((p) => (rpe ? [...p, 8] : p));
   const open = `onclick="ast.ficha='${variant}';renderAlts()"`;
-  const info = `<span class="info" ${open}>i</span>`;
-  let header = '', body = '', kgH = 'Kg', repsH = 'Reps', kgCls = '', repsCls = '';
-  if (variant === '0') {
-    body = `<div class="plan"><div class="pl"><span class="pdir ${a.dir === 'hold' ? 'hold' : a.dir === 'blue' ? 'blue' : a.dir === 'first' ? 'first' : ''}"><span class="ar">${ARW[a.dir]}</span> ${a.k}</span>${a.v ? `<span class="pdet">${a.v}</span>` : ''}${a.d ? `<span class="pdelta">${a.d}</span>` : ''}</div><div class="pwhy">${a.why}</div></div>`;
-  } else if (variant === 'A') {
-    body = `<div class="plan"><div class="pl"><span class="pdir ${a.dir === 'hold' ? 'hold' : a.dir === 'blue' ? 'blue' : a.dir === 'first' ? 'first' : ''}"><span class="ar">${ARW[a.dir]}</span> ${a.k}</span>${a.v ? `<span class="pdet">${a.v}</span>` : ''}${a.d ? `<span class="pdelta">${a.d}</span>` : ''}${info}</div></div>`;
-  } else if (variant === 'B') {
-    const txt = a.dir === 'first' ? 'Busca tu peso' : a.dir === 'blue' ? `Descarga · ${a.v}` : a.dir === 'hold' ? `= ${a.v}` : `${ARW[a.dir]} ${a.v}`;
-    header = `<span class="bdg ${a.dir}" style="cursor:pointer" ${open}>${txt}</span>`;
-  } else if (variant === 'C') {
-    if (a.dir === 'up' || a.dir === 'down') { kgH = `Kg ${ARW[a.dir]} ${a.d.replace(/[+−]/, '')}`; kgCls = a.dir === 'up' ? 'acc' : 'txt'; }
-    if (a.dir === 'blue') { kgH = 'Kg · Descarga'; kgCls = 'blu'; }
-    if (a.dir === 'first') { kgH = 'Kg · Busca'; kgCls = 'txt'; }
-  } else if (variant === 'D') {
-    if (a.last) {
-      const to = a.dir === 'hold' ? `= ${a.v}` : a.dir === 'blue' ? `Descarga ${a.v}` : `${a.v}`;
-      body = `<div class="lastp" style="cursor:pointer" ${open}><span class="wpill"><b>${a.lw}</b><u>kg</u><s> x</s></span>${a.last.map((r) => `<span class="rp ${r < 8 ? 'low' : 'ok'}">${r}</span>`).join('')}<span class="arrow">${ARW[a.dir]}</span><span class="to ${a.dir}">${to}</span></div>`;
-    } else {
-      body = `<div class="lastp" style="cursor:pointer" ${open}><span class="rp">Primera vez</span><span class="arrow">→</span><span class="to hold">Busca tu peso · 8–12</span></div>`;
-    }
+  let top = '', series = '';
+  const warm = ast.warm ? '<div class="wuc"><b>✓</b>Calentamiento · 3 series hechas<i>⌄</i></div>' : '';
+  if (variant === 'A') {
+    top = `<div class="plan"><div class="pl">${rec(a, variant, true)}</div></div>`;
+    series = ast.warm ? '<div class="slr"><span class="sl">SERIES</span></div>' : '';
+  } else if (variant === 'A1') {
+    series = `<div class="slr"><span class="sl">SERIES</span>${rec(a, variant, true)}</div>`;
+  } else if (variant === 'A2') {
+    top = `<div class="band ${a.dir}" ${open}>${rec(a, variant, true)}</div>`;
+    series = ast.warm ? '<div class="slr"><span class="sl">SERIES</span></div>' : '';
+  } else if (variant === 'A3') {
+    top = `<div class="stat ${a.dir}" ${open}><div class="m"><span class="rec ${a.dir}"><span class="ar">${ARW[a.dir]}</span><span class="lab">${a.k}</span></span><span class="big">${a.v}</span></div>${a.d ? `<span class="pdelta">${a.d}</span>` : ''}<span class="info">i</span></div>`;
+    series = ast.warm ? '<div class="slr"><span class="sl">SERIES</span></div>' : '';
   }
-  const cell = (v) => `<div class="cell">${v}</div>`;
-  const firstReps = a.dir === 'first' && variant === 'C' ? '8–12' : null;
-  const rows = plan.map((s2, i) => `<div class="srow ${i === 0 ? 'cur' : ''}"><span class="lw">S${i + 1}</span>${cell(s2[0])}${cell(firstReps ?? s2[1])}<div class="ck">✓</div></div>`).join('');
-  const colh = `<div class="colh"><span class="lw"></span><span class="${kgCls}" ${variant === 'C' ? `style="cursor:pointer" ${open}` : ''}>${kgH}</span><span class="${repsCls}">${repsH}</span><span class="bw"></span></div>`;
-  const ficha = ast.ficha === variant && variant !== '0' ? `
+  const cols = rpe ? ['Kg', 'Reps', 'RPE'] : ['Kg', 'Reps'];
+  const rows = plan.map((p, i) => `<div class="srow ${i === 0 ? 'cur' : ''}"><span class="lw">S${i + 1}</span>${p.map((v) => `<div class="cell">${v}</div>`).join('')}<div class="ck">✓</div></div>`).join('');
+  const colh = `<div class="colh"><span class="lw"></span>${cols.map((c) => `<span>${c}</span>`).join('')}<span class="bw"></span></div>`;
+  const name = ast.long ? 'Remo con mancuerna a una mano apoyado en banco' : 'Press banca';
+  const target = ast.long ? '3 × 8–12 reps · RPE 8 (2 en recámara)' : '3 × 8–12 reps';
+  const ficha = ast.ficha === variant ? `
     <div class="ficha"><div class="veil" onclick="ast.ficha=null;renderAlts()"></div>
       <div class="sheet"><div class="handle"></div>
-        <div class="shd"><span class="t">${a.k}${a.v ? ` · ${a.v}` : ''}</span><span class="x" onclick="ast.ficha=null;renderAlts()">Cerrar</span></div>
+        <div class="shd"><span class="t">${a.k} · ${a.v}</span><span class="x" onclick="ast.ficha=null;renderAlts()">Cerrar</span></div>
         <div class="frow"><span class="k">REGLA</span><span class="v">${a.f[0]}</span></div>
-        <div class="frow"><span class="k">LA ÚLTIMA VEZ</span><span class="v">${a.f[1]}</span>${a.last ? `<div class="pp" style="display:flex;gap:4px;margin-top:2px">${`<span class="wpill"><b>${a.lw}</b><u>kg</u><s> x</s></span>`}${a.last.map((r) => `<span class="rp">${r}</span>`).join('')}</div>` : ''}</div>
+        <div class="frow"><span class="k">LA ÚLTIMA VEZ</span><span class="v">${a.f[1]}</span>${a.last ? `<div style="display:flex;gap:4px;margin-top:2px"><span class="wpill"><b>${a.lw}</b><u>kg</u><s> x</s></span>${a.last.map((r) => `<span class="rp">${r}</span>`).join('')}</div>` : ''}</div>
         <div class="frow"><span class="k">HOY</span><span class="v">${a.f[2]}</span></div>
         <div class="hlink">Editar la progresión ›</div>
       </div></div>` : '';
-  return `<div class="col"><p class="cap"><b>${{ 0: '0 · HOY', A: 'A · SOLO EL DATO', B: 'B · EN LA CABECERA', C: 'C · EN LA COLUMNA', D: 'D · CON LO DE LA ÚLTIMA VEZ' }[variant]}</b></p>
-    <div class="screen" style="min-height:${ficha ? 420 : 0}px"><div class="wlist"><div class="xcard">
-      <div class="xh"><span class="n">1</span><div class="nmw"><div class="nml">Press banca</div><div class="tg">3 × 8–12 reps</div></div>${header}<span class="hbtn">${ICON_HIST}</span></div>
-      <div class="xb">${body}${colh}<div class="srows">${rows}</div></div>
+  return `<div class="col"><p class="cap"><b>${NAMES[variant]}</b></p>
+    <div class="screen" style="min-height:${ficha ? 430 : 0}px"><div class="wlist"><div class="xcard">
+      <div class="xh"><span class="n">1</span><div class="nmw"><div class="nml">${name}</div><div class="tg">${target}</div></div><span class="hbtn">${ICON_HIST}</span></div>
+      <div class="xb">${top}${warm}${series}${colh}<div class="srows">${rows}</div></div>
     </div></div>${ficha}</div></div>`;
 }
 function renderAlts() {
-  const el = document.getElementById('aS');
-  el.querySelectorAll('button').forEach((b) => b.remove());
-  [['up','Sube'],['hold','Mantiene'],['down','Baja'],['deload','Descarga'],['first','Primera vez']].forEach(([v, l]) => {
-    const b = document.createElement('button');
-    b.textContent = l; b.className = ast.s === v ? 'on' : '';
-    b.onclick = () => { ast.s = v; ast.ficha = null; renderAlts(); };
-    el.appendChild(b);
-  });
-  document.getElementById('alts').innerHTML = ['0', 'A', 'B', 'C', 'D'].map(altCard).join('');
+  const mk = (id, items, isOn, onPick) => {
+    const el = document.getElementById(id);
+    el.querySelectorAll('button').forEach((b) => b.remove());
+    items.forEach(([v, l]) => {
+      const b = document.createElement('button');
+      b.textContent = l; b.className = isOn(v) ? 'on' : '';
+      b.onclick = () => { onPick(v); ast.ficha = null; renderAlts(); };
+      el.appendChild(b);
+    });
+  };
+  mk('aS', [['up','Sube'],['hold','Mantiene'],['down','Baja'],['deload','Descarga'],['first','Primera vez']], (v) => ast.s === v, (v) => { ast.s = v; });
+  mk('aX', [['long','Nombre largo + RPE'],['warm','Con calentamiento']], (v) => ast[v], (v) => { ast[v] = !ast[v]; });
+  document.getElementById('alts').innerHTML = ['A', 'A1', 'A2', 'A3'].map(altCard).join('');
 }
 renderAlts();
 </script>
