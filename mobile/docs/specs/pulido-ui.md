@@ -766,23 +766,23 @@ solo servía a la meta «empezada hace…» del hero.
 
 **Probar U52**
 
-- [ ] Sin sesión a medias, Inicio no enseña banner.
-- [ ] Empezar la sesión que **no** toca y volver a Inicio: banner arriba con su
+- [x] Sin sesión a medias, Inicio no enseña banner.
+- [x] Empezar la sesión que **no** toca y volver a Inicio: banner arriba con su
   nombre y el reloj corriendo; el hero sigue siendo la que
   toca, con su meta normal.
-- [ ] Empezar la que toca y volver: banner arriba y el hero con su meta normal
+- [x] Empezar la que toca y volver: banner arriba y el hero con su meta normal
   (sin «empezada hace…»).
-- [ ] Empezar una sesión libre guardada y volver: banner con su número y su
+- [x] Empezar una sesión libre guardada y volver: banner con su número y su
   nombre («02 · Piernas»). Tocarlo (o CONTINUAR) abre el Workout.
-- [ ] Una del programa sale como «C · Empuje», sin «Sesión».
-- [ ] El banner en lima junto al hero: ¿se distinguen o es demasiado? (Si es
+- [x] Una del programa sale como «C · Empuje», sin «Sesión».
+- [x] El banner en lima junto al hero: ¿se distinguen o es demasiado? (Si es
   demasiado, vuelve a `surface` con el botón en lima.)
-- [ ] Sesión libre sobre la marcha: banner con «Sesión libre» (o el nombre que
+- [x] Sesión libre sobre la marcha: banner con «Sesión libre» (o el nombre que
   le hayas puesto).
-- [ ] Entrenador: empezar la sesión de un cliente sin app y volver a Inicio:
+- [x] Entrenador: empezar la sesión de un cliente sin app y volver a Inicio:
   banner en azul con el nombre del cliente en la ceja. En su ficha, el hero es
   el que le toca, no el que está a medias.
-- [ ] Apuntar una sesión pasada de un cliente: el banner sale sin reloj.
+- [x] Apuntar una sesión pasada de un cliente: el banner sale sin reloj.
 
 ## 17. U53 — Descartar sesión dice cuál
 
@@ -805,11 +805,11 @@ se perderán.».
 
 **Probar U53**
 
-- [ ] Con una sesión a medias, empezar otra desde Inicio: título «Descartar
+- [x] Con una sesión a medias, empezar otra desde Inicio: título «Descartar
   sesión», debajo el nombre de la que está a medias con «N de M ejercicios», y
   debajo «Los datos que has introducido se perderán.». Sin interrogación.
-- [ ] Lo mismo desde la ficha de un cliente y desde Pegar entreno.
-- [ ] Con la app en inglés, el diálogo sale en inglés.
+- [x] Lo mismo desde la ficha de un cliente y desde Pegar entreno.
+- [x] Con la app en inglés, el diálogo sale en inglés.
 
 ## Otros detalles vistos (sin fase)
 

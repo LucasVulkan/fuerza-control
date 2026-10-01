@@ -134,7 +134,8 @@ const spaceColors = {
 // del header, barras de búsqueda y controles segmentados = surface2.
 // `border`/`borderCard` NO acompañan el cambio: son líneas, no superficies.
 const formaFitColors = {
-  bg:         '#151515',
+  // Bajado de #151515 (QA 1-oct): un fondo más negro separa más las tarjetas.
+  bg:         '#0f0f0f',
   surface:    '#1f1f1f',
   surface2:   '#272727',
   text:       '#e6e6e6',
@@ -152,7 +153,7 @@ const formaFitColors = {
   muted2:     '#4d4d4d',
   accent:     '#aae216',
   onAccent:   '#000000',
-  headerBg:   '#151515',
+  headerBg:   '#0f0f0f',
   border:     '#3a3a3a',
   borderCard: '#3a3a3a',
   green:      '#66fa39',
