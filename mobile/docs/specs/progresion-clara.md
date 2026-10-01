@@ -109,8 +109,15 @@ de Progresión es interactiva: cada paso ofrece solo lo que encaja con lo anteri
    «Al llegar», que sube un escalón).
 10. **Al cambiar el peso, el gris pide el objetivo de progresión**: las reps
     fijas, o el máximo del rango.
-11. **Última vez: línea (sin color) y botón, a elegir en Ajustes**; la maqueta
-    añade «debajo de cada serie». Fuera la columna estilo Strong.
+11. **Última vez: línea (sin color), botón o debajo de cada serie, a elegir en
+    Ajustes. Por defecto, el botón.** Fuera la columna estilo Strong.
+12. **El escalón es por ejercicio**, partiendo del `weightStep` de la librería y
+    editable en la hoja. Por material sería más exacto, pero un gimnasio tiene
+    demasiadas máquinas distintas.
+13. **La frase del motivo bajo la recomendación sobra** («completaste 3 × 12 con
+    60 kg»): rompe la rejilla de la tarjeta. Alternativas en la maqueta
+    («La línea de recomendación»), pendiente de elegir. En todas el motivo pasa
+    a una ficha que se abre al tocar.
 
 ### 3.2 La hoja, paso a paso
 
