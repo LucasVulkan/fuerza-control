@@ -200,3 +200,68 @@ describe('progression.type = "effort" (effort-progression.md §4.2)', () => {
     expect(resolveProgressionConfig({ progression: { type: 'effort', targetRpe: 9 } }, null).targetRpe).toBe(9);
   });
 });
+
+describe('P52 — los cuatro fallos del motor', () => {
+  const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
+  const done = (rows) => rows.map(([weight, reps, time]) => ({ weight, reps, time, done: true }));
+
+  describe('Reps: sube desde lo hecho, de 1 en 1', () => {
+    const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'reps' } };
+    it('serie más floja 9 → apunta a 10', () => {
+      const c = getProgression(cfg, {}, done([['', '11'], ['', '10'], ['', '9']]), tk);
+      expect(c.type).toBe('up');
+      expect(c.msg).toContain('"next":10');
+    });
+    it('una serie bajo el mínimo → mantener, no subir', () => {
+      expect(getProgression(cfg, {}, done([['', '9'], ['', '8'], ['', '6']]), tk).type).toBe('hold');
+    });
+    it('no se atasca: 13 hechas → 14, no el máximo de la plantilla + salto', () => {
+      expect(getProgression(cfg, {}, done([['', '13'], ['', '13'], ['', '13']]), tk).msg).toContain('"next":14');
+    });
+    it('el salto por defecto es 1 rep, no el weightStep', () => {
+      expect(resolveProgressionConfig(cfg, { weightStep: 2.5 }).increment.value).toBe(1);
+    });
+  });
+
+  describe('Tiempo: sube desde lo hecho', () => {
+    const cfg = { sets: 3, minTime: 20, maxTime: 40, inputType: 'time', progression: { type: 'time' } };
+    it('45 s hechos con objetivo 20–40 → 50 s, nunca menos de lo hecho', () => {
+      const c = getProgression(cfg, {}, done([['', '', '45'], ['', '', '45'], ['', '', '45']]), tk);
+      expect(c.type).toBe('up');
+      expect(c.suggestedTime).toBe(50);
+    });
+    it('una serie bajo el mínimo → mantener', () => {
+      expect(getProgression(cfg, {}, done([['', '', '30'], ['', '', '15'], ['', '', '30']]), tk).type).toBe('hold');
+    });
+  });
+
+  describe('Asistidas: la dirección es del ejercicio', () => {
+    const assisted = { progressionDirection: 'decrease', weightStep: 2.5 };
+    const edited = { sets: 3, minReps: 6, maxReps: 10, progression: { type: 'double', direction: 'increase' } };
+    it('aunque la plantilla diga increase (editor antiguo), baja la asistencia', () => {
+      const c = getProgression(edited, assisted, done([['20', '10'], ['20', '10'], ['20', '10']]), tk);
+      expect(c.suggestedWeight).toBe(17.5);
+    });
+    it('sin def (ejercicio borrado) cuenta la de la plantilla', () => {
+      expect(resolveProgressionConfig({ progression: { type: 'double', direction: 'decrease' } }, null).direction).toBe('decrease');
+    });
+  });
+
+  describe('Doble con «% mínimo»', () => {
+    const cfg = (pct) => ({
+      sets: 3, minReps: 8, maxReps: 12,
+      progression: { type: 'double', evaluation: { mode: 'pct', pctThreshold: pct } },
+    });
+    const sets2of3 = done([['60', '12'], ['60', '12'], ['60', '9']]);
+    it('2 de 3 al máximo con umbral 60 % → sube', () => {
+      expect(getProgression(cfg(0.6), {}, sets2of3, tk).suggestedWeight).toBe(62.5);
+    });
+    it('2 de 3 al máximo con umbral 80 % → mantener', () => {
+      expect(getProgression(cfg(0.8), {}, sets2of3, tk).type).toBe('hold');
+    });
+    it('«Todas ✓» sigue pidiendo todas', () => {
+      const all = { ...cfg(0.6), progression: { type: 'double' } };
+      expect(getProgression(all, {}, sets2of3, tk).type).toBe('hold');
+    });
+  });
+});

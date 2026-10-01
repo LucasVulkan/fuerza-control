@@ -1791,8 +1791,8 @@
     "progTypeDesc": {
       "double": "Aumenta reps hasta el máximo, luego sube peso",
       "weight": "Completa la sesión → sube peso (reps fijas)",
-      "reps": "Completa la sesión → añade reps al objetivo",
-      "time": "Alcanza el tiempo máximo → aumenta el objetivo",
+      "reps": "Todas llegan al mínimo → tu serie más floja + el salto es el nuevo objetivo",
+      "time": "Todas llegan al mínimo → tu serie más floja + el salto es el nuevo objetivo",
       "none": "Sin chip automático — el atleta decide"
     },
     "evalModes": {
@@ -2456,11 +2456,10 @@
     "skip": "Saltar ›"
   },
   "progression": {
-    "time_allHitMax": "Objetivo superado. Progresa a {{next}}s por serie la próxima vez.",
-    "time_allOk": "Bien. Consolida el rango {{min}}–{{max}}s antes de subir.",
+    "time_allHitMax": "Todas las series por encima del mínimo. Apunta a {{next}} s en todas la próxima vez.",
     "time_keep": "Sigue trabajando en el rango {{min}}–{{max}}s. Sin prisa.",
-    "reps_advance": "Todas las series completadas. Sube el objetivo a {{next}} reps.",
-    "reps_hold": "Alcanza el objetivo de reps en todas las series antes de subir.",
+    "reps_advance": "Todas las series por encima del mínimo. Apunta a {{next}} reps en todas la próxima vez.",
+    "reps_hold": "Llega al mínimo de reps en todas las series antes de subir.",
     "effort_noWeight": "Elige un peso con el que llegues al RPE objetivo",
     "why_effortNoRpe": "sin RPE en la última sesión, el peso se queda igual",
     "why_effortUnreliable": "con tantas reps objetivo el peso no se puede calcular",
@@ -2483,8 +2482,7 @@
     "why_holdReps": "completa todas las repeticiones antes de subir",
     "why_rpeHigh": "las series salieron demasiado exigentes",
     "why_deload": "semana de descarga del bloque",
-    "why_timeAllHit": "aguantaste el tiempo máximo en todas las series",
-    "why_timeInRange": "aguanta el tiempo máximo antes de subir",
+    "why_timeAllHit": "tu serie más floja marca el siguiente objetivo",
     "withAssist": "{{kg}}kg de asistencia",
     "noAssist": "sin asistencia",
     "withWeight": "{{kg}}kg",

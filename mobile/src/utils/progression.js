@@ -92,6 +92,17 @@ const LEGACY_REVERSE_MAP = {
   submax:             'none',
 };
 
+/**
+ * El salto por defecto según lo que sube: 1 rep, 5 s o el `weightStep` del
+ * ejercicio. Antes era siempre el `weightStep`, así que «Reps» subía de 3 en 3
+ * (2,5 redondeado) y «Tiempo» de 2,5 s (P52).
+ */
+export function defaultIncrement(type, def) {
+  if (type === 'reps') return 1;
+  if (type === 'time') return 5;
+  return def?.weightStep ?? 2.5;
+}
+
 // ── resolveProgressionConfig ──────────────────────────────────────────────────
 
 /**
@@ -113,7 +124,10 @@ export function resolveProgressionConfig(exConfig, def) {
     const p = ec.progression;
     return {
       type:      p.type      ?? 'double',
-      direction: p.direction ?? d.progressionDirection ?? 'increase',
+      // La dirección es del ejercicio (asistido = baja), no un ajuste: el
+      // editor guardaba siempre 'increase' y una asistida editada pedía MÁS
+      // asistencia (P52). `p.direction` solo cuenta si el ejercicio ya no existe.
+      direction: d.progressionDirection ?? p.direction ?? 'increase',
       evaluation: {
         mode:         p.evaluation?.mode         ?? 'all_complete',
         pctThreshold: p.evaluation?.pctThreshold ?? 0.8,
@@ -122,7 +136,7 @@ export function resolveProgressionConfig(exConfig, def) {
       },
       increment: {
         type:         p.increment?.type         ?? 'fixed',
-        value:        p.increment?.value        ?? d.weightStep ?? 2.5,
+        value:        p.increment?.value        ?? defaultIncrement(p.type, d),
         pct:          p.increment?.pct          ?? 5,
         steps:        p.increment?.steps        ?? [],
         minIncrement: p.increment?.minIncrement ?? null,
@@ -139,8 +153,9 @@ export function resolveProgressionConfig(exConfig, def) {
 
   // ── Legacy format ──────────────────────────────────────────────────────────
   const legacyModel = ec.progressionModel ?? d.progressionModel ?? 'double_progression';
+  const legacyType  = LEGACY_REVERSE_MAP[legacyModel] ?? 'double';
   return {
-    type:      LEGACY_REVERSE_MAP[legacyModel] ?? 'double',
+    type:      legacyType,
     direction: d.progressionDirection ?? 'increase',
     evaluation: {
       mode:         'all_complete',
@@ -150,7 +165,7 @@ export function resolveProgressionConfig(exConfig, def) {
     },
     increment: {
       type:         'fixed',
-      value:        d.weightStep ?? 2.5,
+      value:        defaultIncrement(legacyType, d),
       pct:          5,
       steps:        [],
       minIncrement: null,
@@ -294,29 +309,33 @@ function _avgReps(sets) {
 
 // ── Chip builders (one per progression type) ──────────────────────────────────
 
+/*
+ * Tiempo y Reps suben desde LO HECHO, no desde el objetivo guardado (P52): el
+ * objetivo vive en la plantilla y nadie lo reescribe, así que «máximo +
+ * salto» proponía lo mismo cada semana (45 s hechos → «sube a 42,5»). El
+ * motor no tiene memoria; la última sesión sí. La serie más floja que llegó al
+ * mínimo es el punto de partida: subirla es subir el ejercicio entero.
+ */
 function chipTime(prog, doneSets, totalSets, minTime, maxTime, t) {
   const times = doneSets.map((s) => parseFloat(s.time) || 0).filter((v) => v > 0);
   if (!times.length) return null;
 
-  const allHitMax = doneSets.length >= totalSets && times.every((v) => v >= maxTime);
-  const allOk     = times.every((v) => v >= minTime);
-
-  if (allHitMax) {
-    const inc  = computeIncrement(maxTime, prog.increment);
-    const next = maxTime + inc;
+  const result = evaluateCompletion(doneSets, totalSets, prog.evaluation, { minTime });
+  const ok     = times.filter((v) => v >= minTime);
+  if (result === 'advance' && ok.length) {
+    const base = Math.min(...ok);
+    const next = Math.round(base + Math.max(1, computeIncrement(base, prog.increment)));
     return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAllHit'), suggestedWeight: null, suggestedTime: next };
-  }
-  if (allOk) {
-    return { type: 'hold', icon: '→', msg: t('progression.time_allOk', { min: minTime, max: maxTime }), why: t('progression.why_timeInRange'), suggestedWeight: null, suggestedTime: maxTime };
   }
   return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: minTime, max: maxTime }), suggestedWeight: null, suggestedTime: null };
 }
 
-function chipReps(prog, doneSets, totalSets, maxReps, t) {
-  const result = evaluateCompletion(doneSets, totalSets, prog.evaluation);
-  if (result === 'advance') {
-    const inc      = Math.max(1, Math.round(computeIncrement(maxReps, prog.increment)));
-    const nextReps = maxReps + inc;
+function chipReps(prog, doneSets, totalSets, minReps, t) {
+  const result = evaluateCompletion(doneSets, totalSets, prog.evaluation, { minReps });
+  const ok     = doneSets.map((s) => parseInt(s.reps) || 0).filter((r) => r > 0 && r >= minReps);
+  if (result === 'advance' && ok.length) {
+    const base     = Math.min(...ok);
+    const nextReps = base + Math.max(1, Math.round(computeIncrement(base, prog.increment)));
     return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next: nextReps }), suggestedWeight: null, suggestedTime: null };
   }
   return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), suggestedWeight: null, suggestedTime: null };
@@ -339,12 +358,25 @@ function chipWeight(prog, doneSets, totalSets, maxW, minReps, minTime, t) {
   return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: t('progression.why_holdReps'), suggestedWeight: maxW || null, suggestedTime: null };
 }
 
-function chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t) {
+/**
+ * ¿Llegaron al máximo del rango las series que hacen falta? Todas, o el % de
+ * «% mínimo» — que la hoja ofrecía en Doble y el motor no leía (P52). Una
+ * serie marcada sin reps cuenta, como en `countQualifyingSets`.
+ */
+function hitMaxEnough(prog, doneSets, totalSets, maxReps) {
+  const atMax = doneSets.filter((s) => {
+    const r = parseInt(s.reps) || 0;
+    return r > 0 ? r >= maxReps : !!s.done;
+  }).length;
+  const need = prog.evaluation?.mode === 'pct' ? prog.evaluation.pctThreshold : 1;
+  return atMax / Math.max(1, totalSets) >= need;
+}
+
+function chipDouble(prog, doneSets, totalSets, maxW, minReps, maxReps, t) {
   // qualRate: fraction of sets where reps >= minReps (or done without reps data)
   const qualCount  = countQualifyingSets(doneSets, { minReps });
   const qualRate   = qualCount / Math.max(1, totalSets);
-  // allHitMax: every set had reps >= maxReps (sets with 0 reps ignored — no data)
-  const allHitMax  = qualRate >= 1 && reps.filter((r) => r > 0).every((r) => r >= maxReps);
+  const allHitMax  = hitMaxEnough(prog, doneSets, totalSets, maxReps);
   const mostHitMin = qualRate >= 0.8;
   const struggling = qualRate < 0.6;
   const weightStr  = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
@@ -424,10 +456,10 @@ function chipEffort(prog, doneSets, def, targetReps, t) {
   };
 }
 
-function chipDoubleDecrease(prog, doneSets, totalSets, assistance, reps, minReps, maxReps, t) {
+function chipDoubleDecrease(prog, doneSets, totalSets, assistance, minReps, maxReps, t) {
   const qualCount  = countQualifyingSets(doneSets, { minReps });
   const qualRate   = qualCount / Math.max(1, totalSets);
-  const allHitMax  = qualRate >= 1 && reps.filter((r) => r > 0).every((r) => r >= maxReps);
+  const allHitMax  = hitMaxEnough(prog, doneSets, totalSets, maxReps);
   const mostHitMin = qualRate >= 0.8;
   const struggling = qualRate < 0.6;
   const assistStr  = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist');
@@ -504,22 +536,21 @@ export function getProgression(exConfig, def, lastSets, t) {
   }
 
   if (prog.type === 'reps') {
-    return chipReps(prog, doneSets, totalSets, maxReps, t);
+    return chipReps(prog, doneSets, totalSets, minReps, t);
   }
 
   // weight + double — both work with weighted sets
   const weights = doneSets.map((s) => parseFloat(s.weight) || 0);
-  const reps    = doneSets.map((s) => parseInt(s.reps) || 0);
   const maxW    = Math.max(0, ...weights);
 
   if (prog.direction === 'decrease') {
-    return chipDoubleDecrease(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t);
+    return chipDoubleDecrease(prog, doneSets, totalSets, maxW, minReps, maxReps, t);
   }
   if (prog.type === 'weight') {
     return chipWeight(prog, doneSets, totalSets, maxW, minReps, minTime, t);
   }
   // double (default)
-  return chipDouble(prog, doneSets, totalSets, maxW, reps, minReps, maxReps, t);
+  return chipDouble(prog, doneSets, totalSets, maxW, minReps, maxReps, t);
 }
 
 // ── summarizeSets ─────────────────────────────────────────────────────────────

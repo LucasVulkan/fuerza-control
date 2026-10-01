@@ -1791,8 +1791,8 @@
     "progTypeDesc": {
       "double": "Increase reps to max, then add weight",
       "weight": "Complete session → add weight (fixed reps)",
-      "reps": "Complete session → add reps to target",
-      "time": "Hit max time → increase time target",
+      "reps": "Every set reaches the minimum → your weakest set + the step is the new target",
+      "time": "Every set reaches the minimum → your weakest set + the step is the new target",
       "none": "No automatic chip — athlete decides"
     },
     "evalModes": {
@@ -2456,11 +2456,10 @@
     "skip": "Skip ›"
   },
   "progression": {
-    "time_allHitMax": "Goal crushed. Progress to {{next}}s per set next time.",
-    "time_allOk": "Good. Consolidate the {{min}}–{{max}}s range before increasing.",
+    "time_allHitMax": "Every set above the minimum. Aim for {{next}}s on all of them next time.",
     "time_keep": "Keep working in the {{min}}–{{max}}s range. Take your time.",
-    "reps_advance": "All sets complete. Increase target to {{next}} reps next time.",
-    "reps_hold": "Hit your rep target on all sets before increasing.",
+    "reps_advance": "Every set above the minimum. Aim for {{next}} reps on all of them next time.",
+    "reps_hold": "Reach the minimum reps on every set before increasing.",
     "effort_noWeight": "Pick a weight that gets you to the target RPE",
     "why_effortNoRpe": "no RPE logged last session, so the weight stays the same",
     "why_effortUnreliable": "too many target reps to work out the weight",
@@ -2483,8 +2482,7 @@
     "why_holdReps": "complete every rep before going up",
     "why_rpeHigh": "the sets came out too hard",
     "why_deload": "deload week in this block",
-    "why_timeAllHit": "you held the max time in every set",
-    "why_timeInRange": "hold the max time before going up",
+    "why_timeAllHit": "your weakest set sets the next target",
     "withAssist": "{{kg}}kg assistance",
     "noAssist": "no assistance",
     "withWeight": "{{kg}}kg",

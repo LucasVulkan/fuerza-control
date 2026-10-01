@@ -25,7 +25,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
-import { resolveProgressionConfig, LEGACY_TYPE_MAP, DEFAULT_TARGET } from '../../utils/progression';
+import { resolveProgressionConfig, LEGACY_TYPE_MAP, DEFAULT_TARGET, defaultIncrement } from '../../utils/progression';
 import { MAX_RELIABLE_REPS } from '../../utils/oneRm';
 import { isBodyweight } from '../../utils/trainingLoad';
 import { exerciseLinkGroups, exerciseInstanceCount } from '../../utils/exerciseLinks';
@@ -276,8 +276,9 @@ export default function ExerciseEditorInline({
         ? (LEGACY_TYPE_MAP[s.progType] ?? 'double_progression')
         : 'double_progression',
       progression: {
+        // Sin `direction`: es del ejercicio (asistido = baja) y la resuelve
+        // `resolveProgressionConfig` desde el def (P52).
         type:      effType,
-        direction: 'increase',
         ...(s.progMode === 'effort' ? { targetRpe: s.targetRpe } : {}),
         evaluation: {
           // RPE mode only makes sense when RPE is being recorded
@@ -405,6 +406,11 @@ export default function ExerciseEditorInline({
   function selectProgMode(mode) {
     if (mode === 'effort') { setMaxReps(minReps); setTrackRpe(true); }
     setProgMode(mode);
+  }
+  // Cada cosa que sube tiene su salto: 2,5 kg como reps eran 3 reps (P52).
+  function selectProgType(type) {
+    if (type !== progType) setIncrFixedValue(defaultIncrement(type, def));
+    setProgType(type);
   }
   function selectMetric(m) {
     if (m === 'time' && progMode === 'effort') setProgMode('auto');
@@ -929,7 +935,7 @@ export default function ExerciseEditorInline({
                 <Text style={styles.stepTitle}>
                   <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepType')}
                 </Text>
-                <SegmentedControl options={PROG_TYPES} value={progType} onChange={setProgType} />
+                <SegmentedControl options={PROG_TYPES} value={progType} onChange={selectProgType} />
                 <Text style={styles.hint}>{t(`exerciseEditor.progTypeDesc.${progType}`)}</Text>
               </View>
 
