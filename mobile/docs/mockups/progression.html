@@ -270,6 +270,8 @@
 </div>
 
 <h2>La línea de recomendación: variantes de A</h2>
+<p class="lead"><b>Elegida A · Suelta</b> (1-oct): sin frase y sin icono; toda la línea se pulsa y abre la ficha del motivo.
+  A2 · Banda se probará en el móvil al implementar.</p>
 <p class="lead">A (dato + delta, sin frase) es la que mejor comunica; falta que encaje en la jerarquía de la tarjeta. B no
   cabe con nombres largos y C no sobrevive a tres columnas con RPE, así que se quedan fuera. Cuatro formas de colocar A.
   En todas, el motivo está en una ficha que se abre al tocar (ⓘ o la propia recomendación). Usa «Nombre largo + RPE» y
@@ -333,12 +335,14 @@
   <li><b>Sin «2 fallos seguidos»</b>.</li>
   <li><b>Por esfuerzo · Al llegar</b> sube el escalón del ejercicio, y el escalón se ve en la hoja.</li>
 </ol>
-<h2>Para decidir</h2>
+  <li><b>Línea de recomendación: A · Suelta</b>, sin frase ni icono; pulsable, abre la ficha del motivo. A2 · Banda,
+    a probar en el móvil al implementar.</li>
+</ol>
+<h2>Sin decidir</h2>
 <ol class="note">
-  <li><b>Tiempo con carga</b> (caso F2): con medida Tiempo, si el ejercicio lleva peso, Qué sube ofrece Tiempo · Peso ·
-    Nada. Peso es una doble progresión en segundos: todas llegan al máximo → sube el peso y el tiempo vuelve al
-    mínimo. ¿Así?</li>
-  <li><b>La línea de recomendación</b>: A, A1, A2 o A3 (sección de arriba).</li>
+  <li><b>Tiempo con carga</b> (caso F2): propuesta en la maqueta, sin decidir.</li>
+  <li><b>«Próxima sesión» en el Resumen del editor</b>: no es definitivo. Añade mucha altura al bloque. Que entrenador y
+    cliente vean lo que toca la próxima vez sí tiene sentido; falta decidir dónde.</li>
 </ol>
 
 <script>
@@ -434,7 +438,7 @@ const CASES = {
        deload: { v: '15 kg', plan: Array(3).fill([15,10]) }, coach: { v: '17.5 kg × 12', plan: Array(3).fill([17.5,12]) } },
 };
 
-const st = { c: 'A', o: 'good', s: 'normal', h: 'button', sheet: false, histOpen: false, done: 0 };
+const st = { c: 'A', o: 'good', s: 'normal', h: 'button', sheet: false, histOpen: false, why: false, done: 0 };
 const initEd = (c) => {
   const e = { ...c.ed };
   if (e.fails == null) e.fails = Math.floor(e.sets * 0.4) + 1; // lo que hace hoy: baja con menos del 60 % al mínimo
@@ -681,15 +685,27 @@ function renderWorkout() {
   const plan = first ? Array(nSets).fill(c.cols.map((k) => (k === 'p' ? 8 : ''))) : deload ? c.deload.plan : coach ? c.coach.plan : o.plan;
   const last = first ? null : c.o[st.o].last;
 
-  let head;
-  if (first) head = `<div class="pl"><span class="pdir first"><span class="ar">◇</span> ${c.first.t}</span></div><div class="pwhy">${c.first.why}</div>`;
-  else if (deload) head = `<div class="pl"><span class="pdir blue"><span class="ar">→</span> Descarga</span><span class="pdet">${c.deload.v}</span></div><div class="pwhy">semana de descarga del bloque: mismo peso, menos reps</div>`;
-  else if (coach) head = `<div class="pl"><span class="pdir blue">◎ Objetivo del entrenador</span><span class="pdet">${c.coach.v}</span></div><div class="pwhy">solo esta sesión</div>`;
-  else if (o.dir === 'none') head = `<div class="pl"><span class="pdir hold">= ${o.k}</span></div><div class="pwhy">${o.why}</div>`;
+  // A suelta (decisión 1-oct): sin frase ni icono; la línea entera se pulsa y abre la ficha del motivo.
+  let head, why;
+  if (first) { head = `<span class="pdir first"><span class="ar">◇</span> ${c.first.t}</span>`; why = c.first.why; }
+  else if (deload) { head = `<span class="pdir blue"><span class="ar">→</span> Descarga</span><span class="pdet">${c.deload.v}</span>`; why = 'semana de descarga del bloque: mismo peso, menos reps'; }
+  else if (coach) { head = `<span class="pdir blue">◎ Objetivo del entrenador</span><span class="pdet">${c.coach.v}</span>`; why = 'solo esta sesión; luego vuelve el plan'; }
+  else if (o.dir === 'none') { head = `<span class="pdir hold">= ${o.k}</span>`; why = o.why; }
   else {
     const ar = { up: '↑', hold: '→', down: '↓' }[o.dir];
-    head = `<div class="pl"><span class="pdir ${o.dir === 'hold' ? 'hold' : ''}"><span class="ar">${ar}</span> ${o.k}</span>${o.v ? `<span class="pdet">${o.v}</span>` : ''}${o.delta ? `<span class="pdelta">${o.delta}</span>` : ''}</div><div class="pwhy">${o.why}</div>`;
+    head = `<span class="pdir ${o.dir === 'hold' ? 'hold' : ''}"><span class="ar">${ar}</span> ${o.k}</span>${o.v ? `<span class="pdet">${o.v}</span>` : ''}${o.delta ? `<span class="pdelta">${o.delta}</span>` : ''}`;
+    why = o.why;
   }
+  head = `<div class="pl" style="cursor:pointer" onclick="st.why=true;render()">${head}</div>`;
+  const whySheet = st.why ? `
+    <div class="ficha"><div class="veil" onclick="st.why=false;render()"></div>
+      <div class="sheet"><div class="handle"></div>
+        <div class="shd"><span class="t">${c.ex}</span><span class="x" onclick="st.why=false;render()">Cerrar</span></div>
+        <div class="frow"><span class="k">REGLA</span><span class="v">${progRule(initEd(c))}</span></div>
+        ${last ? `<div class="frow"><span class="k">LA ÚLTIMA VEZ</span><div style="display:flex;gap:4px;flex-wrap:wrap">${pills(c, last)}</div></div>` : ''}
+        <div class="frow"><span class="k">HOY</span><span class="v">${why}</span></div>
+        <div class="hlink">Editar la progresión ›</div>
+      </div></div>` : '';
   const hasBtn = st.h === 'button' && last;
   const lastLine = st.h === 'line' && last ? `<div class="last"><span class="k">ÚLTIMA · LUN 29 SEP</span>${pills(c, last)}</div>` : '';
   const colName = { w: c.wLabel ?? 'Kg', r: 'Reps', p: 'RPE', t: 'Seg' };
@@ -730,11 +746,11 @@ function renderWorkout() {
       </div>
       <div class="xcard mini"><div class="xh"><span class="n">2</span><div class="nmw"><div class="nml">Press inclinado con mancuernas</div><div class="tg">3 × 10–12 reps</div></div></div></div>
     </div>
-    ${histSheet}`;
+    ${histSheet}${whySheet}`;
 
   const capByH = { line: 'Lo de la última vez en una fila sin color, debajo del plan.', button: 'Lo de la última vez detrás del icono: abre las tres últimas sesiones.', below: 'Lo de la última vez debajo de cada serie.' };
   document.getElementById('capW').textContent = first ? 'Sin historial: dice qué buscar en vez de callarse.'
-    : `El gris es el plan y ✓ lo acepta (pulsa ✓). Si no se cumplió, el gris es lo que hiciste. ${capByH[st.h]} Sigue al caso, no a los cambios de la hoja.`;
+    : `Pulsa la recomendación para ver el motivo. El gris es el plan y ✓ lo acepta (pulsa ✓). Si no se cumplió, el gris es lo que hiciste. ${capByH[st.h]} Sigue al caso, no a los cambios de la hoja.`;
 }
 
 /* ── Controles de la maqueta ── */
@@ -774,7 +790,7 @@ const AST = {
 };
 const ast = { s: 'up', ficha: null, long: false, warm: false };
 const ARW = { up: '↑', hold: '→', down: '↓', blue: '→', first: '◇' };
-const NAMES = { A: 'A · SUELTA', A1: 'A1 · CABECERA DE LAS SERIES', A2: 'A2 · BANDA', A3: 'A3 · DATO GRANDE' };
+const NAMES = { A: 'A · SUELTA ✓ ELEGIDA', A1: 'A1 · CABECERA DE LAS SERIES', A2: 'A2 · BANDA', A3: 'A3 · DATO GRANDE' };
 
 function rec(a, variant, withInfo) {
   const open = `onclick="ast.ficha='${variant}';renderAlts()"`;
@@ -790,7 +806,7 @@ function altCard(variant) {
   let top = '', series = '';
   const warm = ast.warm ? '<div class="wuc"><b>✓</b>Calentamiento · 3 series hechas<i>⌄</i></div>' : '';
   if (variant === 'A') {
-    top = `<div class="plan"><div class="pl">${rec(a, variant, true)}</div></div>`;
+    top = `<div class="plan"><div class="pl">${rec(a, variant, false)}</div></div>`;
     series = ast.warm ? '<div class="slr"><span class="sl">SERIES</span></div>' : '';
   } else if (variant === 'A1') {
     series = `<div class="slr"><span class="sl">SERIES</span>${rec(a, variant, true)}</div>`;

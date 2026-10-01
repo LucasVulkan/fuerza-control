@@ -7,7 +7,8 @@
 >
 > Estado: **P52 hecha** (1-oct-2026, `f5311ef`, rama `feat/recap`), pendiente de
 > probar en dispositivo. **P53 en maqueta v2** (`docs/mockups/progression.html`, revisada
-> con el usuario el 1-oct; decisiones en §3.1), con cinco preguntas abiertas en su §«Para decidir». No se escribe la P53 en detalle
+> con el usuario el 1-oct; decisiones en §3.1). Quedan dos cosas sin decidir
+> (§3.1-bis): tiempo con carga y dónde enseñar «Próxima sesión». No se escribe la P53 en detalle
 > hasta que el usuario las cierre. La escalera (top set + back-off, pirámide
 > invertida) va **después** de la P53 y como extensión de «Qué pides»: sin motor nuevo.
 
@@ -115,9 +116,20 @@ de Progresión es interactiva: cada paso ofrece solo lo que encaja con lo anteri
     editable en la hoja. Por material sería más exacto, pero un gimnasio tiene
     demasiadas máquinas distintas.
 13. **La frase del motivo bajo la recomendación sobra** («completaste 3 × 12 con
-    60 kg»): rompe la rejilla de la tarjeta. Alternativas en la maqueta
-    («La línea de recomendación»), pendiente de elegir. En todas el motivo pasa
-    a una ficha que se abre al tocar.
+    60 kg»): rompe la rejilla de la tarjeta. **Se queda la variante A · Suelta**:
+    una línea con qué hacer, cuánto y el delta (`↑ SUBIR A 62.5 kg +2.5`), sin
+    frase y **sin icono**. La línea entera se pulsa y abre una ficha con la regla,
+    lo de la última vez y lo de hoy. **A2 · Banda** (la misma línea sobre un
+    fondo) se prueba en el móvil al implementar. B (en la cabecera) no cabe con
+    nombres largos y C (en la columna) no sobrevive a tres columnas con RPE.
+
+### 3.1-bis Sin decidir
+
+- **Tiempo con carga** (§3.2): la propuesta está en la maqueta (caso F2). No se
+  implementa hasta que se decida.
+- **«Próxima sesión» en el Resumen del editor: no es definitivo.** Añade mucha
+  altura al bloque. Que el entrenador y el cliente vean lo que toca la próxima
+  vez sí tiene sentido, pero falta decidir dónde.
 
 ### 3.2 La hoja, paso a paso
 
@@ -137,7 +149,7 @@ dos reglas.
 Lo de hoy, comprobado: baja si **menos del 60 % de las series llega al mínimo**.
 Es «Si fallan» con su valor por defecto, ⌊M·0,4⌋+1: 2 de 3, 2 de 4, 3 de 5.
 
-**Tiempo con carga** (propuesta, pendiente de confirmar): con medida Tiempo y un
+**Tiempo con carga** (propuesta, **sin decidir**, §3.1-bis): con medida Tiempo y un
 ejercicio con carga, «Peso» es una doble progresión en segundos: todas llegan al
 máximo → sube el peso y el tiempo vuelve al mínimo. Arregla además la
 combinación que la P52 dejó fuera (Tiempo + Doble sugería kilos en una plancha).
@@ -151,14 +163,14 @@ combinación que la P52 dejó fuera (Tiempo + Doble sugería kilos en una planch
   un escalón.
 - Escalón por ejercicio: `exConfig.weightStep` por encima del de la librería.
   Sustituye a `increment.minIncrement`.
-- Tiempo + Peso: la doble progresión de `chipDouble` sobre segundos.
+- Tiempo + Peso (si se decide): la doble progresión de `chipDouble` sobre segundos.
 - La evaluación por RPE deja de depender de que Registrar RPE esté encendido:
   lo enciende la propia progresión.
 - Fuera `seed`, `custom`, `stepped` y `minRir`, que nadie usa.
 
 ### 3.4 Workout
 
-La línea de progresión es la cabecera del plan y **el gris de cada serie es el
+La línea de progresión (variante A, §3.1.13) encabeza el plan y **el gris de cada serie es el
 plan**: el peso de la progresión y las reps del objetivo. Si no se cumplió, el
 gris es lo que hiciste. ✓ acepta lo que se ve: `saveSession.resolveSet` y la
 tarjeta tienen que salir de una sola función. Sin historial, «busca un peso con
