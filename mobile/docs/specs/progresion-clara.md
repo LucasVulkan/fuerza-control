@@ -8,11 +8,11 @@
 > Fase P55 · hecho · Editor: Qué pides y la hoja de Progresión · §5
 > Fase P56 · hecho · Workout: el plan en el gris y la línea de recomendación · §6
 > Fase P57 · pendiente · La última vez: botón, línea o debajo de cada serie · §7
-> Fase P61 · pendiente · Tiempo con carga (Tiempo + Peso, doble en segundos) · §8
+> Fase P61 · hecho · Tiempo con carga (Tiempo + Peso, doble en segundos) · §8
 > Fase P62 · hecho · Peso corporal: sellado en la sesión y fila en el menú · §9
 > Fase P63 · aparcado · Peso corporal en el motor (Por esfuerzo, 1RM y récords) · §10
 >
-> Estado: **P62 hecha y probada** (2-oct-2026, `6fd801d`). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **P61 hecha** (2-oct-2026, `d77ffd3`; falta probarla a mano). **P62 hecha y probada** (2-oct-2026, `6fd801d`). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
@@ -819,6 +819,23 @@ dejó fuera (Tiempo + Doble sugería kilos en una plancha).
 baja con la regla; `progressionRule`). `progressionForm.test.js`: Tiempo ofrece
 Peso. `setPlan.test.js`: Tiempo + Peso vuelve al mínimo.
 
+### 8.4 Lo que la spec no cubría (decidido al implementar)
+
+- **«Medida Tiempo»** es `isTimed(exConfig, def)` en `progression.js`: el
+  `inputType` y, sin él, el modelo de progresión (como el editor y la
+  prescripción). Un `double` guardado con medida Tiempo (plantillas generadas,
+  ejercicios de la librería) pasa a evaluar en segundos; antes el editor lo
+  forzaba a Tiempo al abrirlo y ahora se abre como Peso.
+- **Textos de tiempo**: `why_allHitTime`, `why_belowMinTime`, `why_holdTime` y
+  `normal_strugglingTime` (es y en), para no hablar de «repeticiones» en una
+  plancha. La meta en `why_partHit` y en la regla lleva su unidad («60 s»).
+- **El editor** no tiene «Rango · Fijo» para el tiempo: Tiempo + Peso usa los dos
+  campos de siempre y «tiempo fijo» es mínimo = máximo. Al pasar de Tiempo a Peso
+  se conserva el máximo que había (igual al mínimo); quien quiera rango lo sube.
+  La frase del Resumen recibe la medida de ahora, no la guardada.
+- **`type: 'weight'` antiguo** con medida Tiempo: la meta es el mínimo de tiempo,
+  como era el de reps.
+
 **Probar P61**
 
 - [ ] Plancha con medida Tiempo: Qué sube ofrece Peso. 30–60 s, 60/60/60 con
@@ -977,6 +994,6 @@ peso → `why_effortNoBodyweight`), `progressionForm.test.js`,
 | P55 | `400d1de`, `56327d5` | motor (`canAddWeight`, `exact`, `progressionRule`) y editor (`progressionForm.js`, hoja nueva) |
 | P56 | `66a5719`, `e04682f` | motor (1RM de tres sesiones, `progressionHistory`, calentamiento, `targetLabel` con `today`, `firstTimeRx`) y Workout (`planSet` en tarjeta y guardado, línea + ficha, `SetPills`) |
 | P57 | — | |
-| P61 | — | |
+| P61 | `d77ffd3` | motor (`isTimed`, `chipDouble`/`chipDoubleDecrease` en segundos, `progressionRule`), `planSet` al tiempo mínimo y hoja con Tiempo · Peso · Nada |
 | P62 | `6fd801d` | sellado del peso en `saveSession` (sesión libre incluida) y fila «Peso corporal» en el menú (`parseBodyWeight`) |
 | P63 | — | aparcada (2-oct): peso corporal en el motor |
