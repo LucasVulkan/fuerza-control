@@ -750,7 +750,19 @@
     "coachTarget": "Your trainer's target",
     "thisSession": "this session",
     "setsSectionLabel": "Sets",
-    "progression": { "up": "Increase", "hold": "Hold", "down": "Reduce", "deload": "Deload", "upTo": "Increase to", "downTo": "Reduce to", "deloadTo": "Deload to", "effortTo": "Target weight", "assistLessTo": "Less assistance", "assistMoreTo": "More assistance" },
+    "progression": { "up": "Increase", "hold": "Hold", "down": "Reduce", "deload": "Deload", "upTo": "Increase to", "downTo": "Reduce to", "deloadTo": "Deload to", "effortTo": "Target weight", "assistLessTo": "Less assistance", "assistMoreTo": "More assistance", "firstWeight": "Find your weight", "firstBodyweight": "Do as many as you can", "firstTime": "Hold as long as you can" },
+    "progSheet": {
+      "rule": "Rule",
+      "lastTime": "Last time",
+      "today": "Today",
+      "firstWeight": "There is no session of this exercise yet. Pick a weight you can do {{what}} with on every set; from the next one, the progression decides.",
+      "firstBodyweight": "There is no session of this exercise yet. Do as many reps as you can on each set ({{what}}); from the next one, the progression decides.",
+      "firstTime": "There is no session of this exercise yet. Hold as long as you can on each set ({{what}}); from the next one, the progression decides.",
+      "firstEffort": "There is no session of this exercise yet. Pick a weight you can do {{what}} with; from the next one, the progression works it out.",
+      "e1rmOne": "Estimated 1RM from your last session: {{kg}}",
+      "e1rmMany": "Estimated 1RM, average of your last {{count}} sessions: {{kg}}"
+    },
+    "e1rmShort": "1RM",
     "progressionReps_one": "{{count}} rep",
     "progressionReps_other": "{{count}} reps",
     "warmup": {

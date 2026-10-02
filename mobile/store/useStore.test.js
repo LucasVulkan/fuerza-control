@@ -2369,6 +2369,16 @@ describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => 
 
   const S = () => useStore.getState();
   const f = (i, k, v) => S().updateSetField('squat_barbell', i, k, v);
+  // Sin progresión: el gris es lo de la última vez (con ella es el plan, P56 §6.1,
+  // y el 90×8 de abajo subiría a 95×6).
+  const free = (extra = {}) => {
+    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    useStore.setState((st) => ({ sessionTemplates: { ...st.sessionTemplates, [id]: {
+      ...st.sessionTemplates[id],
+      exercises: st.sessionTemplates[id].exercises.map((e) => ({ ...e, progression: { type: 'none' }, ...extra })),
+    } } }));
+    return id;
+  };
   const train = (id, fill, at) => {
     vi.setSystemTime(at);
     S().startSession(id);
@@ -2378,30 +2388,85 @@ describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => 
   };
 
   it('peso y RPE escritos con las reps en gris: guarda las reps de referencia', () => {
-    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    const id = free();
     train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
     const sets = train(id, (i) => { f(i, 'weight', '100'); f(i, 'rpe', '8'); }, 1_700_100_000_000);
     expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '100', reps: '8', rpe: '8', done: true })));
   });
 
   it('solo el RPE escrito, peso y reps en gris, sin ✓: la serie se da por buena', () => {
-    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    const id = free();
     train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
     const sets = train(id, (i) => { f(i, 'rpe', '8'); }, 1_700_100_000_000);
     expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '90', reps: '8', rpe: '8', done: true })));
   });
 
   it('una serie sin tocar no se guarda, aunque tenga gris', () => {
-    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    const id = free();
     train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
     const sets = train(id, (i) => { if (i === 0) f(i, 'reps', '9'); }, 1_700_100_000_000);
     expect(sets).toEqual([expect.objectContaining({ weight: '90', reps: '9', done: true })]);
   });
 
   it('✓ sin peso ni reps propios: los de referencia, sin perder el RPE', () => {
-    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    const id = free();
     train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
     const sets = train(id, (i) => { f(i, 'rpe', '7'); f(i, 'done', true); }, 1_700_100_000_000);
     expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '90', reps: '8', rpe: '7', done: true })));
   });
+
+  // ── P56 §6.1: el gris es el plan ─────────────────────────────────────────────
+  const withProgression = (progression, extra = {}) => free({ progression, minReps: 8, maxReps: 12, weightStep: 2.5, ...extra });
+  const DOUBLE = { type: 'double', increment: { type: 'fixed', value: 2.5 } };
+
+  it('P56: ✓ sin escribir guarda el peso del plan (62.5), no el de la última vez (60)', () => {
+    const id = withProgression(DOUBLE);
+    train(id, (i) => { f(i, 'weight', '60'); f(i, 'reps', '12'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'done', true); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '62.5', reps: '12', done: true })));
+  });
+
+  it('P56: si no se cumplió, el gris es lo que hiciste (mantener)', () => {
+    const id = withProgression(DOUBLE);
+    vi.setSystemTime(1_700_000_000_000);
+    S().startSession(id);
+    f(0, 'weight', '60'); f(0, 'reps', '12'); f(1, 'weight', '60'); f(1, 'reps', '9');
+    S().saveSession();
+    vi.setSystemTime(1_700_100_000_000);
+    S().startSession(id);
+    [0, 1].forEach((i) => f(i, 'done', true));
+    const { entryId } = S().saveSession();
+    const sets = S().workoutLog.find((e) => e.id === entryId).exercises[0].sets;
+    expect(sets.map((x) => [x.weight, x.reps])).toEqual([['60', '12'], ['60', '9']]);
+  });
+
+  it('P56: lo escrito a mano gana al plan, y el objetivo del entrenador al plan', () => {
+    const id = withProgression(DOUBLE);
+    train(id, (i) => { f(i, 'weight', '60'); f(i, 'reps', '12'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'weight', '70'); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '70', reps: '12' })));
+  });
+
+  it('P56: Por esfuerzo guarda el peso del plan calculado con las tres últimas sesiones', () => {
+    // 5 reps @8 = 7RM: 57 / 60 / 63 kg → 1RM 70.3 / 74 / 77.7 (media 74). A 5 @8
+    // el peso del plan es 60 con la media y 63 solo con la última.
+    const id = withProgression({ type: 'effort', targetRpe: 8 }, { minReps: 5, maxReps: 5 });
+    const eff = (w) => (i) => { f(i, 'weight', w); f(i, 'reps', '5'); f(i, 'rpe', '8'); };
+    train(id, eff('57'), 1_700_000_000_000);
+    train(id, eff('60'), 1_700_100_000_000);
+    train(id, eff('63'), 1_700_200_000_000);
+    const sets = train(id, (i) => { f(i, 'done', true); }, 1_700_300_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '60', reps: '5' })));
+  });
+
+  it('P56 §6.5: el log de una etapa de descarga lleva deload: true; el de una normal, no', () => {
+    const normal = withProgression(DOUBLE);
+    const a = train(normal, (i) => { f(i, 'weight', '60'); f(i, 'reps', '12'); }, 1_700_000_000_000);
+    expect(a).toHaveLength(2);
+    expect(S().workoutLog.at(-1).exercises[0]).not.toHaveProperty('deload');
+    const dl = withProgression({ ...DOUBLE, hold: 'deload' });
+    train(dl, (i) => { f(i, 'weight', '60'); f(i, 'reps', '8'); }, 1_700_100_000_000);
+    expect(S().workoutLog.at(-1).exercises[0].deload).toBe(true);
+  });
 });
+

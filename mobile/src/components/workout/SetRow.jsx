@@ -94,7 +94,7 @@ function TimerButton({ onTime }) {
 function InputCell({
   value,
   prevValue  = '',
-  prevSource = 'last',   // 'last' (grey ghost) | 'coach' (blue, trainer target)
+  prevSource = 'last',   // 'last' / 'plan' (grey ghost) | 'coach' (blue, trainer target)
   onChangeText,
   keyboardType,
   scrollStep = 1,

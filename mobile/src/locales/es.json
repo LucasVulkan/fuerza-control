@@ -750,7 +750,19 @@
     "coachTarget": "Objetivo de tu entrenador",
     "thisSession": "esta sesión",
     "setsSectionLabel": "Series",
-    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar", "deload": "Descarga", "upTo": "Subir a", "downTo": "Bajar a", "deloadTo": "Descarga a", "effortTo": "Peso objetivo", "assistLessTo": "Menos ayuda", "assistMoreTo": "Más ayuda" },
+    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar", "deload": "Descarga", "upTo": "Subir a", "downTo": "Bajar a", "deloadTo": "Descarga a", "effortTo": "Peso objetivo", "assistLessTo": "Menos ayuda", "assistMoreTo": "Más ayuda", "firstWeight": "Busca tu peso", "firstBodyweight": "Haz las que puedas", "firstTime": "Aguanta lo que puedas" },
+    "progSheet": {
+      "rule": "Regla",
+      "lastTime": "La última vez",
+      "today": "Hoy",
+      "firstWeight": "Aún no hay ninguna sesión de este ejercicio. Elige un peso con el que hagas {{what}} en todas las series; desde la próxima, la progresión decide.",
+      "firstBodyweight": "Aún no hay ninguna sesión de este ejercicio. Haz las repeticiones que puedas en cada serie ({{what}}); desde la próxima, la progresión decide.",
+      "firstTime": "Aún no hay ninguna sesión de este ejercicio. Aguanta lo que puedas en cada serie ({{what}}); desde la próxima, la progresión decide.",
+      "firstEffort": "Aún no hay ninguna sesión de este ejercicio. Elige un peso con el que hagas {{what}}; desde la próxima, la progresión lo calcula.",
+      "e1rmOne": "1RM estimado de tu última sesión: {{kg}}",
+      "e1rmMany": "1RM estimado, media de tus {{count}} últimas sesiones: {{kg}}"
+    },
+    "e1rmShort": "1RM",
     "progressionReps_one": "{{count}} rep",
     "progressionReps_other": "{{count}} reps",
     "warmup": {

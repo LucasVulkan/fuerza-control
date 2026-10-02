@@ -36,7 +36,9 @@ import { EXERCISE_LIBRARY } from '../src/data/exerciseLibrary';
 import { generateId } from '../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload, programTemplateIds } from '../src/utils/clientLogs';
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
-import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
+import { linkGroupTemplateIds, recentExerciseRefs, pickLinkedConfig } from '../src/utils/exerciseLinks';
+import { getProgression, progressionHistory } from '../src/utils/progression';
+import { planSet } from '../src/utils/setPlan';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
@@ -2482,15 +2484,17 @@ export const useStore = create(
         const template = getEffectiveTemplate(activeSession.templateId);
         if (!template) return { ok: false, error: 'Template no encontrado' };
 
-        // Lo que la tarjeta pinta en gris (el objetivo del entrenador o la última
-        // sesión) es lo que se da por hecho en un campo vacío: el mismo relleno
-        // que hace ✓ en `ExerciseCard`. Sin él, una serie con peso y RPE escritos
-        // y las reps en gris se guardaba SIN reps, y la progresión por esfuerzo
-        // no podía calcular nada (QA P48). El RPE y el resto se conservan.
+        // Lo que la tarjeta pinta en gris (el objetivo del entrenador, el plan de la
+        // progresión o la última sesión) es lo que se da por hecho en un campo
+        // vacío: el mismo relleno que hace ✓ en `ExerciseCard`, y por eso sale de
+        // la misma `planSet` (progresion-clara §6.1). Sin él, una serie con peso y
+        // RPE escritos y las reps en gris se guardaba SIN reps, y la progresión
+        // por esfuerzo no podía calcular nada (QA P48). El RPE y el resto se
+        // conservan.
         const sessionOverride = get().clientSync.pendingOverrides?.[activeSession.templateId] ?? null;
-        function resolveSet(s, lastSet, ov) {
-          const ref  = (k) => (ov?.[k] != null && ov[k] !== '' ? ov[k] : lastSet?.[k]) ?? '';
-          const fill = (k) => (s[k] !== '' && s[k] != null ? s[k] : String(ref(k)));
+        const library = get().getEffectiveLibrary();
+        function resolveSet(s, plan) {
+          const fill = (k) => (s[k] !== '' && s[k] != null ? s[k] : plan[k].value);
           // Algo escrito a mano en la serie (el RPE también) o ✓ → la serie está
           // hecha y lo que quede en gris se da por bueno. Una serie sin tocar no.
           const typed = ['weight', 'reps', 'time', 'rpe'].some((k) => s[k] !== '' && s[k] != null);
@@ -2507,25 +2511,40 @@ export const useStore = create(
 
         const ownerProgramForLinks = template?.programId ? programs[template.programId] : null;
         const exercises = template.exercises
-          .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec, linkGroup, variant }) => {
+          .map((exConfig) => {
+            const { exerciseId, sets: totalSets, minReps, maxReps, restSec, variant } = exConfig;
             const setsData = activeSession.setsState[exerciseId] ?? [];
             // Linked exercises autofill from the group's latest performance
-            // (any session of the group), not just this template's.
-            const lastExData = lastExerciseRef({
+            // (any session of the group), not just this template's. Las tres
+            // últimas, como en la tarjeta: Por esfuerzo promedia el 1RM (§6.5).
+            const recent = recentExerciseRefs({
               workoutLog,
               program:     ownerProgramForLinks,
               templateId:  activeSession.templateId,
-              exConfig:    { exerciseId, linkGroup },
+              exConfig,
               getTemplate: get().getEffectiveTemplate,
+            }, 3).map((r) => r.exercise);
+            const lastSets = recent[0]?.sets ?? [];
+            // El mismo chip que enseña la tarjeta (el texto no importa aquí).
+            let chip = null;
+            if (lastSets.length) {
+              try { chip = getProgression(exConfig, library[exerciseId], lastSets, () => '', progressionHistory(recent)); }
+              catch { /* sin chip: el gris es la última vez */ }
+            }
+            const plan = (i) => planSet({
+              exConfig, def: library[exerciseId], chip, lastSets,
+              overrideEx: sessionOverride?.exercises?.[exerciseId], index: i,
             });
-            const lastSets = lastExData?.sets ?? [];
-            const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i], sessionOverride?.exercises?.[exerciseId]));
+            const resolved = setsData.map((s, i) => resolveSet(s, plan(i)));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);
             if (validSets.length === 0) return null;
             return {
               exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId),
               // Cómo se hizo: solo informa y se filtra (exercise-variants.md §2.4).
               ...todayVariant(exerciseId, variant),
+              // Una sesión de etapa de descarga no cuenta para la media del 1RM
+              // de Por esfuerzo (§6.5): el log la marca.
+              ...(exConfig.progression?.hold === 'deload' ? { deload: true } : {}),
             };
           })
           .filter(Boolean);

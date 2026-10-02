@@ -26,7 +26,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../utils/formatters';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { prevBlockResult } from '../utils/sessionRecap';
-import { lastExerciseRef } from '../utils/exerciseLinks';
+import { recentExerciseRefs } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
 import { useElapsedText } from '../components/ui/useElapsedText';
@@ -297,22 +297,28 @@ export default function WorkoutScreen() {
   const ownerProgram = useStore((s) => (template?.programId ? s.programs[template.programId] : null));
   const getEffectiveTemplate = (tid) => sessionTemplates[tid];
 
-  const exercises = (template?.exercises ?? []).map((exConfig) => ({
-    exConfig,
-    def:         allExercises[exConfig.exerciseId],
-    setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
+  const exercises = (template?.exercises ?? []).map((exConfig) => {
     // Vinculado → el histórico del grupo; si no, el de esta sesión Y el de las
     // etapas de las que desciende: entrar en una etapa nueva no puede dejar al
     // cliente sin chip ni sin pesos de referencia (spec stage-planner §4.1).
-    lastExercise: lastExerciseRef({
+    // Las tres últimas: la primera es la de hoy; Por esfuerzo promedia las tres
+    // (progresion-clara §6.5).
+    const recentSessions = recentExerciseRefs({
       workoutLog,
       program:    ownerProgram,
       templateId: activeSession.templateId,
       exConfig,
       getTemplate: getEffectiveTemplate,
-    }),
-    overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
-  }));
+    }, 3);
+    return {
+      exConfig,
+      def:         allExercises[exConfig.exerciseId],
+      setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
+      lastExercise: recentSessions[0]?.exercise ?? null,
+      recentSessions,
+      overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
+    };
+  });
 
   // Orden de pantalla: el MISMO que pinta el editor de sesión, bloques de
   // acondicionamiento mezclados incluidos (ver `utils/sessionSlots.js`). Antes
@@ -565,13 +571,14 @@ export default function WorkoutScreen() {
             if (slot.kind === 'block') return renderBlock(slot.block, orderNumber);
             const group = slot.items;
             const isSuperset = group.length > 1;
-            const cards = group.map(({ exConfig, def, setsState, lastExercise, overrideEx }, idx) => (
+            const cards = group.map(({ exConfig, def, setsState, lastExercise, recentSessions, overrideEx }, idx) => (
               <ExerciseCard
                 key={exConfig.exerciseId}
                 exConfig={exConfig}
                 def={def}
                 setsState={setsState}
                 lastExercise={lastExercise}
+                recentSessions={recentSessions}
                 overrideEx={overrideEx}
                 // Superserie: mismo número de ejercicio, cambia la letra (03A / 03B).
                 groupLetter={isSuperset ? String.fromCharCode(65 + idx) : undefined}
