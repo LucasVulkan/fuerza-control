@@ -239,9 +239,38 @@ editor ni toca el programa activo de nadie (con `owner: 'me'` y `kind:
 'template'` la función ya no lo hace). Toast «Guardado en Plantillas». Sin hoja:
 es reversible borrando la plantilla.
 
-### 5.3 i18n (es / en)
+### 5.3 El ··· de tu programa = el del cliente (QA 2-oct-2026)
 
-`clients.menuSaveTemplate`, `clients.toastSavedTemplate`.
+El ··· de la pestaña Programa (`MyProgramScreen`) solo tenía Archivar. Pasa a
+tener lo mismo que el ··· de `AssignedProgramCard`, con su equivalente, **en el
+mismo orden**:
+
+| Cliente | Tu programa | Programa de tu entrenador |
+|---|---|---|
+| Asignar programa | Nuevo programa (lo mismo que el ≡, aviso incluido) | — |
+| Compartir · Exportar | Compartir · Exportar (con historial) | — |
+| Importar historial | Importar historial (solo entrenos, `logMode: 'merge'`) | ✓ |
+| Guardar como plantilla | Guardar como plantilla (si se ve Plantillas) | — |
+| Programas anteriores (N) | Programas anteriores (N) (el modal del ≡) | — |
+| Archivar | Archivar (la hoja de hoy, con sus dos salidas) | — |
+| Eliminar programa | Eliminar programa (con confirmación) | ✓ |
+
+«Programa de tu entrenador» = `isTrainerProgram(...)`, la misma condición que ya
+esconde Editar: lo demás es copiar el programa del entrenador (guardarlo,
+exportarlo) o cambiarlo por otro. Solo quedan Importar historial y Eliminar
+(decidido por el usuario el 2-oct-2026, también sin Archivar).
+
+Las del ≡ (Nuevo programa, Programas archivados, Importar) se quedan donde están.
+
+**«Quitar asignación» del cliente pasa a «Archivar»**: hace lo mismo que Archivar
+en tu programa (pasa a Programas anteriores, se puede reactivar) y no se parecía
+a Eliminar más que por el nombre. Iconos, iguales en los dos menús: Archivar =
+`archived`, Programas anteriores = `history`.
+
+### 5.4 i18n (es / en)
+
+`clients.menuSaveTemplate`, `clients.toastSavedTemplate`; `clients.menuDeassign`
+→ «Archivar» / «Archive».
 
 **Probar C31**
 
@@ -253,6 +282,18 @@ es reversible borrando la plantilla.
   hoja, sale el toast y la plantilla está en Plantillas.
 - [ ] Pestaña Programa (tu programa) → ··· → «Guardar como plantilla» encima de
   Archivar → toast y la plantilla está en Plantillas; tu programa sigue activo.
+- [ ] Tu programa → ··· → salen, en este orden: Nuevo programa, Compartir,
+  Exportar, Importar historial, Guardar como plantilla, Programas anteriores (N),
+  Archivar y Eliminar programa — los mismos y en el mismo orden que en el ··· de
+  un cliente.
+- [ ] Desde ese ···: Nuevo programa abre el alta; Exportar y Compartir sacan el
+  archivo; Programas anteriores abre la lista de archivados; Importar historial
+  añade los entrenos de un archivo sin cambiar el programa; Eliminar pide
+  confirmación y deja la pestaña sin programa.
+- [ ] Con un programa que te ha mandado tu entrenador → ··· → solo Importar
+  historial y Eliminar programa.
+- [ ] Ficha de cliente → ··· → «Archivar» en lugar de «Quitar asignación»; el
+  programa pasa a Programas anteriores.
 - [ ] Asignar esa plantilla a otro cliente → empieza en la etapa 1 sin progreso,
   aunque el original fuera más avanzado.
 
