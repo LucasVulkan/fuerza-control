@@ -2150,6 +2150,8 @@
     "deleteProgramTitle": "Delete program",
     "deleteProgramConfirm": "Delete \"{{name}}\"?",
     "reactivateTitle": "Reactivate program",
+    "archiveTitle": "Archive program",
+    "archiveConfirm": "\"{{name}}\" will move to Previous programs and the client will have no active program. You can reactivate it any time.",
     "reactivateConfirm": "\"{{name}}\" will become the active program and the current one will be archived. Continue?",
     "refreshHistory": "↓ Update client history",
     "refreshingHistory": "Updating…",

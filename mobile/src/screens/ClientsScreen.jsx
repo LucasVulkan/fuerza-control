@@ -2536,7 +2536,15 @@ export default function ClientsScreen() {
                   onImportHistory={() => setTimeout(handleImportHistory, 250)}
                   onSaveTemplate={() => saveAsTemplate(activeProgram)}
                   onAssign={() => setTimeout(() => setShowAssign(true), 250)}
-                  onDeassign={() => setClientActiveProgram(selectedClientId, null)}
+                  // Archivar deja al cliente sin programa: se avisa antes, como al reactivar.
+                  onDeassign={() => showDialog(
+                    t('clients.archiveTitle'),
+                    t('clients.archiveConfirm', { name: activeProgram.name }),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('clients.menuDeassign'), onPress: () => setClientActiveProgram(selectedClientId, null) },
+                    ],
+                  )}
                   onDelete={() => confirmDelete(activeProgram)}
                   onUnlock={unlockStage}
                   onPlanStages={() => navigation.navigate('StagePlanner', { programId: activeProgram.id })}

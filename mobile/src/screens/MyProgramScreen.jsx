@@ -25,10 +25,10 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import { stageDays, athleteProgress, stageStatus, weeklySessions, stageDetail } from '../utils/stageProgress';
-import { ownerClient, programsOf } from '../utils/programOwnership';
+import { ownerClient } from '../utils/programOwnership';
 import { pickImportFile } from '../utils/pickImportFile';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
-import AppHeader, { ArchivedProgramsModal } from '../components/AppHeader';
+import AppHeader from '../components/AppHeader';
 import { startNewProgram } from '../utils/startNewProgram';
 import { Text } from '../components/ui/Text';
 import { Section, MenuRow } from '../components/ui/MenuList';
@@ -148,7 +148,6 @@ export default function MyProgramScreen() {
   const [weekDoc,    setWeekDoc]    = useState(false);
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [archivedOpen, setArchivedOpen] = useState(false);
 
   const activeProgram      = useStore(selectActiveProgram);
   const workoutLog         = useStore((s) => s.workoutLog);
@@ -167,7 +166,6 @@ export default function MyProgramScreen() {
   const clientSync         = useStore((s) => s.clientSync);
   const cloneProgramFromTemplate = useStore((s) => s.cloneProgramFromTemplate);
   const showToast          = useStore((s) => s.showToast);
-  const programs           = useStore((s) => s.programs);
   const importData         = useStore((s) => s.importData);
   const deleteProgram      = useStore((s) => s.deleteProgram);
   const shareSpecificProgram  = useStore((s) => s.shareSpecificProgram);
@@ -260,10 +258,6 @@ export default function MyProgramScreen() {
   // el estado vacío con su oferta de crear uno. No hay a dónde volver — el
   // visualizador hacía `goBack()` porque era una pantalla del stack.
   const isTrainers = isMine && isTrainerProgram(activeProgram, clientSync);
-  const archivedCount = useMemo(
-    () => programsOf(programs, 'me').filter((p) => p.status === 'archived').length,
-    [programs],
-  );
 
   // Solo entrenos, nada más: con `{ log: true }` `importData` no toca programas
   // ni plantillas. El selector de archivos espera a que se cierre la hoja (dos
@@ -385,14 +379,6 @@ export default function MyProgramScreen() {
                 }}
               />
             )}
-            {!isTrainers && archivedCount > 0 && (
-              <SheetRow
-                icon={ROW_ICON.history}
-                label={t('clients.menuArchived')}
-                value={String(archivedCount)}
-                onPress={() => setTimeout(() => setArchivedOpen(true), 250)}
-              />
-            )}
             {!isTrainers && (
               <SheetRow
                 icon={ROW_ICON.archived}
@@ -405,7 +391,6 @@ export default function MyProgramScreen() {
         </DragSheet>
       )}
 
-      {archivedOpen && <ArchivedProgramsModal onClose={() => setArchivedOpen(false)} />}
 
       {archiveOpen && (
         <DragSheet visible onClose={() => setArchiveOpen(false)} title={t('home.archiveModal.title')}>

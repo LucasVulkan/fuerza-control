@@ -181,7 +181,7 @@ function ThemeSwatches() {
 
 // ── Archived programs modal ───────────────────────────────────────────────────
 
-export function ArchivedProgramsModal({ onClose }) {
+function ArchivedProgramsModal({ onClose }) {
   const styles = useThemedStyles(makeStyles);
   const { t }          = useTranslation();
   const programs       = useStore((s) => s.programs);
