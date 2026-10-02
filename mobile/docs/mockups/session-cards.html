@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor de sesión en cartas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --redText: #ff5e58; --blue: #4c85ff;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5); --blue30: rgba(0,62,195,.3);
+    --r-xxs: 2px; --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+  .t-heroGlyph { font: italic 800 34px/36px 'Barlow Condensed'; text-transform: uppercase; }
+  .t-heroName  { font: italic 800 28px/30px 'Barlow Condensed'; }
+  .t-title   { font: 900 22px/24px Inter; letter-spacing: -.5px; }
+  .t-heading { font: 800 18px Inter; letter-spacing: -.2px; }
+  .t-item    { font: 900 16px/20px Inter; letter-spacing: -.2px; }
+  .t-body    { font: 500 14px Inter; }
+  .t-bodyS   { font: 700 14px/18px Inter; }
+  .t-button  { font: 900 14px Inter; }
+  .t-label   { font: 500 12px/16px Inter; }
+  .t-labelS  { font: 800 12px Inter; }
+  .t-caps    { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+  .t-micro   { font: 500 11px Inter; }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #080808; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 900px; margin-bottom: 14px; }
+  .lead b, .note b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent);
+       margin: 50px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 36px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col { width: 375px; max-width: 100%; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; min-height: 50px; }
+  .cap b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .note { font: 500 11.5px/1.6 Inter; color: #7a7a7a; margin-top: 12px; }
+  .note li { margin: 0 0 4px 16px; }
+
+  /* ══════ PANTALLA ══════ */
+  .phone { width: 375px; max-width: 100%; height: 812px; background: var(--bg); border-radius: 26px; overflow: hidden;
+           border: 1px solid #222; position: relative; display: flex; flex-direction: column; user-select: none; }
+  .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 15px 24px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  /* Cabecera (ScreenHeader) */
+  .hd { display: flex; align-items: center; gap: 12px; padding: 16px 15px 12px; flex-shrink: 0; }
+  .hd .back { color: var(--mutedLight); font: 900 22px/22px Inter; }
+  .hd .who { flex: 1; min-width: 0; }
+  .hd .who .t-caps { color: var(--mutedLight); }
+  .hd .ic { width: 22px; height: 22px; display: grid; place-items: center; color: var(--text); }
+  .hd .ic.ok { color: var(--accent); }
+  .seg { display: flex; background: var(--surface2); border-radius: 999px; padding: 4px; gap: 6px; margin: 0 15px 6px; flex-shrink: 0; }
+  .seg b { flex: 1; text-align: center; font: 700 14px Inter; padding: 8px 4px; border-radius: 999px; color: var(--text); }
+  .seg b.on { background: var(--accent); color: var(--onAccent); }
+  .sec { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 0 10px; }
+  .sec .t-caps { color: var(--mutedLight); }
+  .sec .t-label { color: var(--mutedLight); }
+
+  /* Botones −/+ (los del stepper de link-exercises) */
+  .pm { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--surface2); display: grid; place-items: center;
+        font: 900 16px/1 Inter; color: var(--text); cursor: pointer; flex-shrink: 0; transition: background .12s; }
+  .pm:active { background: var(--border); }
+  .pm.big { width: 36px; height: 36px; font-size: 18px; }
+  .val { font: 900 18px Inter; font-variant-numeric: tabular-nums; text-align: center; min-width: 30px; }
+  .bump { animation: bump .22s var(--ease); }
+  @keyframes bump { 40% { transform: scale(1.18); color: var(--accent); } }
+
+  /* ══════ A · GRID DE CARTAS QUE SE DAN LA VUELTA ══════ */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid .wide { grid-column: 1 / -1; }
+  .flip { perspective: 900px; height: 180px; cursor: pointer; }
+  .flip .in { position: relative; width: 100%; height: 100%; transition: transform .45s var(--ease); transform-style: preserve-3d; }
+  .flip.back .in { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+          background: var(--surface); border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; }
+  .face.rev { transform: rotateY(180deg); background: var(--surface2); cursor: default; }
+  .face .top { display: flex; align-items: center; justify-content: space-between; }
+  .face .n { color: var(--accent); }
+  .face .pat { color: var(--muted); }
+  .face .nm { margin-top: 10px; }
+  .face .vr { color: var(--mutedLight); margin-top: 1px; }
+  .face .dose { margin-top: auto; color: var(--text); }
+  .face .dose em { font-style: normal; color: var(--mutedLight); font-weight: 800; font-size: 16px; margin: 0 2px; }
+  .face .meta { color: var(--mutedLight); margin-top: 4px; }
+  .face .pencil { width: 24px; height: 24px; border-radius: var(--r-sm); display: grid; place-items: center; color: var(--mutedLight); }
+  .key { color: var(--accent); }
+  .rev .rw { display: flex; align-items: center; justify-content: space-between; }
+  .rev .rw + .rw { margin-top: 4px; }
+  .rev .rw .t-label { color: var(--mutedLight); }
+  .rev .rw .ctl { display: flex; align-items: center; gap: 2px; }
+  .rev .rw .val { font-size: 15px; min-width: 40px; }
+  .rev .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
+  .rev .foot .lnk { color: var(--accent50); cursor: pointer; }
+  .rev .foot .done { background: var(--accent); color: #000; border-radius: var(--r-sm); padding: 6px 12px; cursor: pointer; }
+
+  /* Superserie: el marco de la app (borde izquierdo acento) abraza las dos cartas */
+  .ss { grid-column: 1 / -1; border-left: 2px solid var(--accent); padding-left: 8px; }
+  .ss .lbl { color: var(--accent); margin: 2px 0 6px; display: flex; gap: 6px; align-items: center; }
+  .ss .lbl span { color: var(--mutedLight); letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .ss .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Bloque: carta ancha */
+  .blk { background: var(--surface); border-radius: var(--r-md); padding: 12px; display: flex; gap: 12px; align-items: center; }
+  .blk .n { color: var(--accent); }
+  .blk .mid { flex: 1; min-width: 0; }
+  .blk .mid .t-label { color: var(--mutedLight); margin-top: 2px; }
+  .pill { background: var(--accent10); color: var(--accent); border-radius: var(--r-xs); padding: 6px 8px; }
+  .moves { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+  .moves span { background: var(--surface2); border-radius: var(--r-xs); padding: 3px 6px; color: var(--mutedLight); }
+
+  .addc { border: 1.5px dashed var(--border); border-radius: var(--r-md); display: grid; place-items: center; height: 180px;
+          color: var(--accent50); cursor: pointer; text-align: center; }
+  .addc b { display: block; color: var(--accent); font: 900 28px/1 Inter; margin-bottom: 6px; }
+  .addc.row { height: 52px; }
+  .addc.row b { display: inline; font-size: 14px; margin: 0 4px 0 0; }
+
+  /* ══════ B · GRID CON MANDOS A LA VISTA ══════ */
+  .tile { background: var(--surface); border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; }
+  .tile .top { display: flex; justify-content: space-between; align-items: center; }
+  .tile .n { color: var(--accent); }
+  .tile .nm { margin-top: 8px; min-height: 36px; }
+  .tile .vr { color: var(--mutedLight); }
+  .tile .ctl { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .tile .ln { display: flex; align-items: center; background: var(--bg); border-radius: var(--r-sm); padding: 4px; }
+  .tile .ln .val { flex: 1; font-size: 15px; }
+  .tile .ln .val small { display: block; font: 800 9.5px Inter; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-top: 1px; }
+  .tile .meta { color: var(--mutedLight); margin-top: 8px; }
+
+  /* ══════ C · BARAJA APILADA ══════ */
+  .deckwrap { flex: 1; display: flex; flex-direction: column; padding: 4px 0 0; min-height: 0; }
+  .deck { position: relative; flex: 1; margin: 6px 22px 0; min-height: 0; }
+  .card { position: absolute; inset: 0 0 22px 0; background: var(--surface); border-radius: var(--r-lg); padding: 18px;
+          display: flex; flex-direction: column; transform-origin: 50% 110%; will-change: transform;
+          box-shadow: 0 -1px 0 #2c2c2c inset, 0 10px 30px rgba(0,0,0,.45); touch-action: pan-y; }
+  .card.anim { transition: transform .32s var(--ease), opacity .32s var(--ease); }
+  .card.under { pointer-events: none; }
+  .card.under > * { opacity: 0; }
+  .card .top { display: flex; align-items: center; justify-content: space-between; }
+  .card .top .t-caps { color: var(--mutedLight); }
+  .card .top .t-caps b { color: var(--accent); font-weight: 800; }
+  .card .nm { margin-top: 14px; color: var(--text); }
+  .card .vr { color: var(--mutedLight); margin-top: 4px; }
+  .card .dose { margin: 14px 0 4px; color: var(--accent); display: flex; align-items: baseline; gap: 8px; }
+  .card .dose small { font: 500 14px Inter; color: var(--mutedLight); }
+  .card .sstag { display: inline-flex; gap: 6px; align-self: flex-start; margin-top: 12px; }
+  .knobs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto; }
+  .knob { background: var(--surface2); border-radius: var(--r-md); padding: 10px; }
+  .knob .t-caps { font-size: 10px; letter-spacing: 1px; color: var(--mutedLight); }
+  .knob .r { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .knob .val { font: 900 22px Inter; letter-spacing: -.5px; }
+  .knob .val small { font: 500 12px Inter; color: var(--mutedLight); margin-left: 2px; letter-spacing: 0; }
+  .card .prog { display: flex; align-items: center; justify-content: space-between; background: var(--surface2);
+                border-radius: var(--r-md); padding: 12px; margin-top: 6px; cursor: pointer; }
+  .card .prog .t-label { color: var(--mutedLight); }
+  .card .prog .t-bodyS b { color: var(--accent); font-weight: 700; }
+  .card .open { text-align: center; color: var(--accent50); margin-top: 14px; cursor: pointer; }
+  .card.blkcard .moveslist { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+  .card.blkcard .moveslist div { background: var(--surface2); border-radius: var(--r-sm); padding: 10px 12px; display: flex; justify-content: space-between; }
+  .card.blkcard .moveslist .t-label { color: var(--mutedLight); }
+  .card.addcard { border: 1.5px dashed var(--border); background: var(--bg); box-shadow: none; align-items: center; justify-content: center; text-align: center; gap: 10px; }
+  .card.addcard .plus { font: 900 44px/1 Inter; color: var(--accent); }
+  .card.addcard .t-label { color: var(--mutedLight); max-width: 220px; }
+  .card.addcard .opts { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 10px; }
+  .card.addcard .opts div { background: var(--surface); border-radius: var(--r-md); padding: 14px; cursor: pointer; }
+  .hint { position: absolute; top: 50%; transform: translateY(-50%); font: 900 13px Inter; letter-spacing: 1.2px; text-transform: uppercase;
+          padding: 6px 10px; border-radius: var(--r-sm); opacity: 0; pointer-events: none; }
+
+  .strip { display: flex; gap: 6px; padding: 12px 15px 20px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+  .strip::-webkit-scrollbar { display: none; }
+  .chip { flex-shrink: 0; min-width: 40px; height: 40px; padding: 0 10px; border-radius: var(--r-md); background: var(--surface);
+          display: grid; place-items: center; color: var(--mutedLight); cursor: pointer; transition: background .15s, color .15s; }
+  .chip.on { background: var(--accent); color: #000; }
+  .chip.ssl { border-bottom: 2px solid var(--accent); }
+  .chip.add { color: var(--accent); background: transparent; border: 1.5px dashed var(--border); }
+
+  /* ══════ D · CARRUSEL CON VECINOS ══════ */
+  .car { flex: 1; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 37px 0;
+         scrollbar-width: none; min-height: 0; overscroll-behavior-x: contain; }
+  .car::-webkit-scrollbar { display: none; }
+  .car .card { position: relative; inset: auto; flex: 0 0 300px; scroll-snap-align: center; margin-bottom: 10px;
+               transform-origin: 50% 50%; transition: transform .25s var(--ease), opacity .25s; touch-action: auto; }
+  .car .card.side { transform: scale(.93); opacity: .55; }
+  .dots { display: flex; gap: 6px; justify-content: center; padding: 6px 0 22px; flex-shrink: 0; }
+  .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border); transition: width .2s var(--ease), background .2s; }
+  .dots i.on { width: 18px; background: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>Editor de sesión — ejercicios como cartas</h1>
+<p class="lead">
+  Exploración de formas más agradables de enseñar los ejercicios de una sesión. Misma cabecera y mismo segmentado
+  A/B/C que hoy; <b>sin el resumen</b>. Todo con los tokens de formaFit. <b>Las cuatro pantallas funcionan</b>:
+  los −/+ cambian los valores, las cartas de A se dan la vuelta, la baraja de C se pasa arrastrando y el carrusel de D
+  se desliza.
+</p>
+
+<h2>Grid · tarjetas</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · CARTAS QUE SE DAN LA VUELTA</b>Por delante se leen; tocar el lápiz la gira y detrás están los
+      mandos. Tocar la carta (no el lápiz) abre la ficha completa, como hoy.</p>
+    <div class="phone" id="A"></div>
+    <ul class="note">
+      <li><b>Lo bueno:</b> la cara se queda limpia y grande; editar es un gesto deliberado, no un dedo que roza un +.</li>
+      <li><b>Lo flojo:</b> solo cabe lo rápido (series, reps, descanso). Progresión y RPE siguen en la ficha.</li>
+      <li>Reordenar: pulsación larga y arrastrar. <code>Sortable.Grid</code> ya está en la pantalla, solo cambia <code>columns</code>.</li>
+    </ul>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>B · MANDOS A LA VISTA</b>Cada tarjeta lleva sus −/+ de series y reps siempre visibles.
+      El + de reps mueve el rango entero (8–10 → 9–11).</p>
+    <div class="phone" id="B"></div>
+    <ul class="note">
+      <li><b>Lo bueno:</b> cero pasos: ajustar 6 ejercicios son 6 toques.</li>
+      <li><b>Lo flojo:</b> la tarjeta es más alta y caben ~4 en pantalla; la sesión se ve menos de un vistazo.</li>
+      <li>Mover el rango entero es una decisión: para tocar mín y máx por separado, la ficha.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Baraja · de una en una</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>C · BARAJA APILADA</b>Arrastra la carta a la izquierda para pasar y a la derecha para volver.
+      Debajo, las fichas numeradas saltan directo a cualquier carta.</p>
+    <div class="phone" id="C"></div>
+    <ul class="note">
+      <li><b>Lo bueno:</b> la carta tiene sitio para todo: series, mín, máx, descanso y la progresión a un toque.</li>
+      <li><b>Lo flojo:</b> se pierde la vista de conjunto; la tira de abajo es lo que la devuelve.</li>
+      <li>La superserie se marca en la tira con el subrayado acento (3a·3b) y en la carta con la etiqueta.</li>
+    </ul>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>D · CARRUSEL CON VECINOS</b>Las cartas van en fila y asoman las de los lados: se ve que hay más
+      sin necesidad de la tira. Scroll nativo con imán.</p>
+    <div class="phone" id="D"></div>
+    <ul class="note">
+      <li><b>Lo bueno:</b> el swipe es el scroll de toda la vida (FlatList horizontal + <code>snapToInterval</code>), nada que inventar.</li>
+      <li><b>Lo flojo:</b> menos «carta» que C; es más un carrusel que una baraja.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ── Datos: Sesión A · Tirón ──
+const DATA = [
+  { id: '1',  name: 'Dominadas', variant: 'Lastre', pat: 'Tracción V', sets: 4, min: 6, max: 8, rest: 120, key: true, prog: 'Auto' },
+  { id: '2',  name: 'Remo con barra', variant: 'Pendlay', pat: 'Tracción H', sets: 4, min: 8, max: 10, rest: 90, prog: 'Auto' },
+  { id: '3a', name: 'Face pull', variant: 'Polea', pat: 'Hombro', sets: 3, min: 12, max: 15, rest: 0, ss: '3', prog: 'Fija' },
+  { id: '3b', name: 'Curl martillo', variant: 'Mancuernas', pat: 'Bíceps', sets: 3, min: 10, max: 12, rest: 60, ss: '3', prog: 'Auto' },
+  { id: '4',  name: 'Remo unilateral', variant: 'Mancuerna', pat: 'Tracción H', sets: 3, min: 10, max: 12, rest: 75, prog: 'Submáx' },
+  { id: '5',  name: 'Plancha', variant: 'Frontal', pat: 'Core', sets: 3, min: 30, max: 45, rest: 45, time: true, prog: 'Fija' },
+  { id: '6',  block: 'AMRAP', mins: 10, moves: ['Kettlebell swing · 15', 'Burpees · 10', 'Remo ergo · 12 cal'] },
+];
+const clone = () => DATA.map(d => ({ ...d }));
+const range = e => e.min === e.max ? `${e.min}` : `${e.min}–${e.max}`;
+const unit = e => e.time ? ' s' : '';
+const restTxt = s => s === 0 ? 'Sin descanso' : `${s} s`;
+const STEP = { sets: [1, 1, 10], min: [1, 1, 99], max: [1, 1, 99], rest: [15, 0, 300], mins: [1, 1, 60] };
+
+function shell(body) {
+  return `
+    <div class="hd">
+      <span class="back">‹</span>
+      <div class="who"><div class="t-caps">Sesión A</div><div class="t-heading">Tirón</div></div>
+      <span class="ic">⋯</span><span class="ic ok">✓</span>
+    </div>
+    <div class="seg"><b class="on">A</b><b>B</b><b>C</b></div>
+    ${body}`;
+}
+const pm = (k, d, big) => `<b class="pm${big ? ' big' : ''}" data-k="${k}" data-d="${d}">${d < 0 ? '−' : '+'}</b>`;
+
+// Un único manejador de −/+ por teléfono: localiza el ejercicio, cambia el valor y repinta.
+function wireSteppers(root, list, repaint) {
+  root.addEventListener('click', ev => {
+    const b = ev.target.closest('.pm'); if (!b) return;
+    ev.stopPropagation();
+    const e = list.find(x => x.id === b.closest('[data-id]').dataset.id);
+    const k = b.dataset.k, d = +b.dataset.d;
+    if (k === 'shift') {            // B: mueve el rango entero
+      if (e.min + d < 1) return;
+      e.min += d; e.max += d;
+    } else {
+      const [s, lo, hi] = STEP[k];
+      let v = Math.min(hi, Math.max(lo, e[k] + d * s));
+      if (k === 'min') v = Math.min(v, e.max);
+      if (k === 'max') v = Math.max(v, e.min);
+      e[k] = v;
+    }
+    repaint(e.id, k);
+  });
+}
+function flash(root, id, k) {
+  root.querySelectorAll(`[data-id="${id}"] [data-v="${k === 'shift' ? 'range' : k}"]`).forEach(el => {
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+  });
+}
+
+// ══════ A ══════
+(function () {
+  const root = document.getElementById('A'), list = clone(), flipped = new Set();
+  const front = e => `
+    <div class="face">
+      <div class="top"><span class="t-labelS n">${e.id}</span><span class="pencil" data-flip>✎</span></div>
+      <div class="t-bodyS nm">${e.name}</div>
+      <div class="t-label vr">${e.variant}</div>
+      <div class="t-title dose"><span data-v="sets">${e.sets}</span><em>×</em><span data-v="range">${range(e)}${unit(e)}</span></div>
+      <div class="t-label meta">${e.key ? '<span class="key">Principal</span> · ' : ''}<span data-v="rest">${restTxt(e.rest)}</span></div>
+    </div>`;
+  const row = (lbl, k, v) => `
+    <div class="rw"><span class="t-label">${lbl}</span>
+      <span class="ctl">${pm(k, -1)}<span class="val" data-v="${k}">${v}</span>${pm(k, 1)}</span></div>`;
+  const back = e => `
+    <div class="face rev">
+      ${row('Series', 'sets', e.sets)}
+      ${row('Mín', 'min', e.min)}
+      ${row('Máx', 'max', e.max)}
+      ${row('Desc.', 'rest', e.rest)}
+      <div class="foot"><span class="t-label lnk">Ficha ›</span><span class="t-button done" data-flip>Listo</span></div>
+    </div>`;
+  const card = e => `<div class="flip${flipped.has(e.id) ? ' back' : ''}" data-id="${e.id}"><div class="in">${front(e)}${back(e)}</div></div>`;
+  const block = e => `
+    <div class="blk wide" data-id="${e.id}">
+      <span class="t-labelS n">${e.id}</span>
+      <div class="mid"><div class="t-bodyS">Finisher metabólico</div>
+        <div class="t-label">${e.moves.length} movimientos · ${e.mins} min</div>
+        <div class="moves">${e.moves.map(m => `<span class="t-micro">${m.split(' · ')[0]}</span>`).join('')}</div></div>
+      <span class="t-label pill">${e.block}</span>
+    </div>`;
+  function paint() {
+    const ss = list.filter(e => e.ss);
+    let html = '', ssDone = false;
+    for (const e of list) {
+      if (e.block) html += block(e);
+      else if (e.ss) {
+        if (ssDone) continue; ssDone = true;
+        html += `<div class="ss"><div class="t-caps lbl">Superserie <span>· sin descanso entre ellos</span></div>
+                 <div class="pair">${ss.map(card).join('')}</div></div>`;
+      } else html += card(e);
+    }
+    root.innerHTML = shell(`<div class="scroll">
+      <div class="sec"><span class="t-caps">Ejercicios (${list.length})</span><span class="t-label">Mantén para mover</span></div>
+      <div class="grid">${html}<div class="addc wide row t-button"><span><b>+</b>Añadir</span></div></div></div>`);
+  }
+  root.addEventListener('click', ev => {
+    const f = ev.target.closest('[data-flip]'); if (!f) return;
+    const id = f.closest('[data-id]').dataset.id;
+    flipped.has(id) ? flipped.delete(id) : flipped.add(id);
+    f.closest('.flip').classList.toggle('back');
+  });
+  wireSteppers(root, list, (id, k) => {
+    const e = list.find(x => x.id === id);
+    root.querySelectorAll(`[data-id="${id}"] [data-v]`).forEach(el => {
+      const v = el.dataset.v;
+      el.textContent = v === 'range' ? range(e) + unit(e) : v === 'rest' && el.closest('.meta') ? restTxt(e.rest) : e[v];
+    });
+    flash(root, id, k);
+  });
+  paint();
+})();
+
+// ══════ B ══════
+(function () {
+  const root = document.getElementById('B'), list = clone();
+  const tile = e => `
+    <div class="tile" data-id="${e.id}">
+      <div class="top"><span class="t-labelS n">${e.id}</span>${e.key ? '<span class="t-label key">Principal</span>' : ''}</div>
+      <div class="nm"><div class="t-bodyS">${e.name}</div><div class="t-label vr">${e.variant}</div></div>
+      <div class="ctl">
+        <div class="ln">${pm('sets', -1)}<span class="val"><span data-v="sets">${e.sets}</span><small>series</small></span>${pm('sets', 1)}</div>
+        <div class="ln">${pm('shift', -1)}<span class="val"><span data-v="range">${range(e)}</span><small>${e.time ? 'segundos' : 'reps'}</small></span>${pm('shift', 1)}</div>
+      </div>
+      <div class="t-label meta">${restTxt(e.rest)} · ${e.prog}</div>
+    </div>`;
+  const block = e => `
+    <div class="blk wide" data-id="${e.id}">
+      <span class="t-labelS n">${e.id}</span>
+      <div class="mid"><div class="t-bodyS">Finisher metabólico</div><div class="t-label">${e.moves.length} movimientos</div></div>
+      <div class="tile" style="padding:0;background:none"><div class="ln">${pm('mins', -1)}<span class="val"><span data-v="mins">${e.mins}</span><small>min</small></span>${pm('mins', 1)}</div></div>
+      <span class="t-label pill">${e.block}</span>
+    </div>`;
+  let html = '', ssDone = false;
+  for (const e of list) {
+    if (e.block) html += block(e);
+    else if (e.ss) {
+      if (ssDone) continue; ssDone = true;
+      html += `<div class="ss"><div class="t-caps lbl">Superserie</div><div class="pair">${list.filter(x => x.ss).map(tile).join('')}</div></div>`;
+    } else html += tile(e);
+  }
+  root.innerHTML = shell(`<div class="scroll">
+    <div class="sec"><span class="t-caps">Ejercicios (${list.length})</span><span class="t-label">Mantén para mover</span></div>
+    <div class="grid">${html}<div class="addc wide row t-button"><span><b>+</b>Añadir</span></div></div></div>`);
+  wireSteppers(root, list, (id, k) => {
+    const e = list.find(x => x.id === id);
+    root.querySelectorAll(`[data-id="${id}"] [data-v]`).forEach(el => {
+      el.textContent = el.dataset.v === 'range' ? range(e) : e[el.dataset.v];
+    });
+    flash(root, id, k);
+  });
+})();
+
+// ── Carta grande (C y D) ──
+function bigCard(e, i, n) {
+  if (e === 'add') return `
+    <div class="card addcard" data-i="${i}">
+      <div class="plus">+</div><div class="t-heading">Añadir</div>
+      <div class="t-label">La última carta de la baraja siempre es esta.</div>
+      <div class="opts"><div class="t-button">Ejercicio</div><div class="t-button">Bloque (AMRAP, EMOM…)</div></div>
+    </div>`;
+  const top = `<div class="top"><span class="t-caps"><b>${e.id}</b> · ${i + 1} de ${n}</span>
+    <span class="t-caps">${e.block ? '' : e.pat}</span></div>`;
+  if (e.block) return `
+    <div class="card blkcard" data-i="${i}" data-id="${e.id}">
+      ${top}
+      <div class="t-heroName nm">Finisher metabólico</div>
+      <span class="t-label pill sstag">${e.block}</span>
+      <div class="moveslist">${e.moves.map(m => { const [a, b] = m.split(' · ');
+        return `<div><span class="t-bodyS">${a}</span><span class="t-label">${b}</span></div>`; }).join('')}</div>
+      <div class="knobs" style="grid-template-columns:1fr">
+        <div class="knob"><div class="t-caps">Duración</div>
+          <div class="r">${pm('mins', -1, 1)}<span class="val"><span data-v="mins">${e.mins}</span><small>min</small></span>${pm('mins', 1, 1)}</div></div>
+      </div>
+      <div class="t-button open">Editar bloque ›</div>
+    </div>`;
+  const knob = (lbl, k, v, u) => `
+    <div class="knob"><div class="t-caps">${lbl}</div>
+      <div class="r">${pm(k, -1)}<span class="val"><span data-v="${k}">${v}</span>${u ? `<small>${u}</small>` : ''}</span>${pm(k, 1)}</div></div>`;
+  return `
+    <div class="card" data-i="${i}" data-id="${e.id}">
+      ${top}
+      <div class="t-heroName nm">${e.name}</div>
+      <div class="t-body vr">${e.variant}${e.key ? ' · <span class="key">Principal</span>' : ''}</div>
+      ${e.ss ? `<span class="t-label pill sstag">Superserie · ${e.id === '3a' ? '1 de 2' : '2 de 2'}</span>` : ''}
+      <div class="t-heroGlyph dose"><span data-v="sets">${e.sets}</span>×<span data-v="range">${range(e)}</span><small>${e.time ? 'segundos' : 'reps'}</small></div>
+      <div class="knobs">
+        ${knob('Series', 'sets', e.sets)}
+        ${knob('Descanso', 'rest', e.rest, 's')}
+        ${knob(e.time ? 'Mín' : 'Reps mín', 'min', e.min, e.time ? 's' : '')}
+        ${knob(e.time ? 'Máx' : 'Reps máx', 'max', e.max, e.time ? 's' : '')}
+      </div>
+      <div class="prog"><div><div class="t-label">Progresión</div><div class="t-bodyS"><b>${e.prog}</b></div></div><span class="t-button" style="color:var(--mutedLight)">›</span></div>
+      <div class="t-button open">Abrir ficha completa</div>
+    </div>`;
+}
+function repaintBig(root, list) {
+  return (id, k) => {
+    const e = list.find(x => x.id === id);
+    root.querySelectorAll(`[data-id="${id}"] [data-v]`).forEach(el => {
+      el.textContent = el.dataset.v === 'range' ? range(e) : e[el.dataset.v];
+    });
+    flash(root, id, k);
+    if (k === 'min' || k === 'max') flash(root, id, 'shift');
+  };
+}
+
+// ══════ C · baraja ══════
+(function () {
+  const root = document.getElementById('C'), list = clone(), items = [...list, 'add'];
+  let cur = 0;
+  root.innerHTML = shell(`
+    <div class="deckwrap">
+      <div class="deck">${items.map((e, i) => bigCard(e, i, list.length)).join('')}
+        <span class="hint" style="left:6px;color:var(--accent);background:var(--accent10)">‹ Anterior</span>
+        <span class="hint" style="right:6px;color:var(--accent);background:var(--accent10)">Siguiente ›</span>
+      </div>
+      <div class="strip">${items.map((e, i) => e === 'add'
+        ? `<div class="chip add t-button" data-go="${i}">+</div>`
+        : `<div class="chip t-labelS${e.ss ? ' ssl' : ''}" data-go="${i}">${e.id}</div>`).join('')}</div>
+    </div>`);
+  const cards = [...root.querySelectorAll('.card')], chips = [...root.querySelectorAll('.chip')];
+  const [hintL, hintR] = root.querySelectorAll('.hint');
+
+  function layout(anim = true) {
+    cards.forEach((c, i) => {
+      const d = i - cur;
+      c.classList.toggle('anim', anim);
+      c.classList.toggle('under', d !== 0);
+      if (d < 0)      { c.style.transform = 'translateX(-130%) rotate(-14deg)'; c.style.opacity = 0; c.style.zIndex = 50 + i; }
+      else if (d > 2) { c.style.transform = 'translateY(24px) scale(.88)'; c.style.opacity = 0; c.style.zIndex = 40 - d; }
+      else            { c.style.transform = `translateY(${d * 11}px) scale(${1 - d * .05})`; c.style.opacity = 1; c.style.zIndex = 40 - d;
+                        c.style.background = d ? (d === 1 ? '#1a1a1a' : '#161616') : ''; }
+    });
+    chips.forEach((c, i) => c.classList.toggle('on', i === cur));
+    const strip = chips[cur].parentElement;   // no scrollIntoView: arrastraría la página entera
+    strip.scrollTo({ left: chips[cur].offsetLeft - strip.clientWidth / 2 + 20, behavior: anim ? 'smooth' : 'auto' });
+  }
+  const go = i => { cur = Math.max(0, Math.min(items.length - 1, i)); layout(); };
+
+  // Arrastre: solo la carta de arriba; si el gesto empieza en un −/+ no hay arrastre.
+  let x0 = null, dx = 0;
+  root.querySelector('.deck').addEventListener('pointerdown', ev => {
+    if (ev.target.closest('.pm, .opts div')) return;
+    const c = cards[cur]; if (!c.contains(ev.target)) return;
+    x0 = ev.clientX; dx = 0; c.classList.remove('anim'); c.setPointerCapture(ev.pointerId);
+  });
+  root.addEventListener('pointermove', ev => {
+    if (x0 === null) return;
+    dx = ev.clientX - x0;
+    if (dx > 0 && cur === 0) dx *= .25;                 // primera carta: resiste
+    if (dx < 0 && cur === items.length - 1) dx *= .25;  // la de añadir: resiste
+    cards[cur].style.transform = `translateX(${dx}px) rotate(${dx / 22}deg)`;
+    hintR.style.opacity = Math.min(1, -dx / 90); hintL.style.opacity = Math.min(1, dx / 90);
+    if (dx > 0 && cur > 0) {                              // la anterior vuelve por la izquierda
+      const p = cards[cur - 1]; p.classList.remove('anim'); p.classList.remove('under');
+      p.style.opacity = 1; p.style.transform = `translateX(${-130 + Math.min(100, dx / 2.6)}%) rotate(${-14 + dx / 22}deg)`;
+    }
+  });
+  const end = () => {
+    if (x0 === null) return;
+    x0 = null; hintL.style.opacity = hintR.style.opacity = 0;
+    if (dx < -80) go(cur + 1); else if (dx > 80) go(cur - 1); else layout();
+  };
+  root.addEventListener('pointerup', end); root.addEventListener('pointercancel', end);
+  root.addEventListener('click', ev => { const g = ev.target.closest('[data-go]'); if (g) go(+g.dataset.go); });
+  wireSteppers(root, list, repaintBig(root, list));
+  layout(false);
+})();
+
+// ══════ D · carrusel ══════
+(function () {
+  const root = document.getElementById('D'), list = clone(), items = [...list, 'add'];
+  root.innerHTML = shell(`
+    <div class="deckwrap">
+      <div class="car">${items.map((e, i) => bigCard(e, i, list.length)).join('')}</div>
+      <div class="dots">${items.map(() => '<i></i>').join('')}</div>
+    </div>`);
+  const car = root.querySelector('.car'), cards = [...car.children], dots = [...root.querySelectorAll('.dots i')];
+  const sync = () => {
+    const mid = car.scrollLeft + car.clientWidth / 2;
+    let best = 0, bd = 1e9;
+    cards.forEach((c, i) => { const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = i; } });
+    cards.forEach((c, i) => c.classList.toggle('side', i !== best));
+    dots.forEach((d, i) => d.classList.toggle('on', i === best));
+  };
+  car.addEventListener('scroll', sync, { passive: true });
+  // Ratón en escritorio: arrastrar también desliza.
+  let x0 = null, s0 = 0;
+  car.addEventListener('pointerdown', ev => { if (ev.pointerType !== 'mouse' || ev.target.closest('.pm')) return;
+    x0 = ev.clientX; s0 = car.scrollLeft; car.style.scrollSnapType = 'none'; });
+  window.addEventListener('pointermove', ev => { if (x0 !== null) car.scrollLeft = s0 - (ev.clientX - x0); });
+  window.addEventListener('pointerup', () => { if (x0 === null) return; x0 = null; car.style.scrollSnapType = '';
+    const w = cards[0].offsetWidth + 10; car.scrollTo({ left: Math.round(car.scrollLeft / w) * w, behavior: 'smooth' }); });
+  wireSteppers(root, list, repaintBig(root, list));
+  sync();
+})();
+</script>
+</body>
+</html>

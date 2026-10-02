@@ -87,14 +87,12 @@ Queda fuera a propósito (va en P53): medida Tiempo + tipo Doble sugiere «sube 
   propone 45 s. Al cambiar el tipo a Tiempo en el editor, el salto pasa a 5 s.
   (2-oct: probada. Faltaba el delta, que salía vacío al contarse desde la mejor
   serie; ahora dice «45 s +5», contado desde la serie de la que parte.)
-- [ ] Dominadas asistidas: cambiar las series en el editor y completar todas al
+- [x] Dominadas asistidas: cambiar las series en el editor y completar todas al
   máximo con 20 kg → la tarjeta dice «↑ MENOS AYUDA 17.5 kg −2.5».
-  — ❌ 2-oct: el número era bueno pero decía «Subir a 17.5». Arreglado
-  (`assist` en el chip → «Menos ayuda» / «Más ayuda»); volver a probar.
-- [ ] Press banca en Doble con «% mínimo» al 60 %: 2 de 3 series al máximo → sube,
+  (2-oct: decía «Subir a 17.5»; arreglado con `assist` en el chip y probado.)
+- [x] Press banca en Doble con «% mínimo» al 60 %: 2 de 3 series al máximo → sube,
   y el motivo dice «2 de 3 series llegaron a 12».
-  — ❌ 2-oct: subía, pero el motivo decía «completaste todas las repeticiones de
-  todas las series». Arreglado (`why_partHit`); volver a probar.
+  (2-oct: el motivo decía «todas las series»; arreglado con `why_partHit` y probado.)
 
 ## 3. P53 — Qué pides en el editor, la progresión en su hoja, el plan en el Workout
 
