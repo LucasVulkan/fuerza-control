@@ -710,22 +710,22 @@ tarjeta plegada, la ficha (§6.3) y P57.
 
 **Probar P56**
 
-- [ ] Tras 12/12/12 con 60 kg: el gris de las tres series dice 62.5 × 12; ✓ sin
+- [x] Tras 12/12/12 con 60 kg: el gris de las tres series dice 62.5 × 12; ✓ sin
   escribir nada guarda 62.5 × 12 (verlo en Historial).
-- [ ] Tras 12/10/9: el gris repite 60 × 12 · 10 · 9.
-- [ ] El calentamiento de ese día rampa hacia 62.5, no hacia 60.
-- [ ] Peso muerto Por esfuerzo con tres sesiones (1RM distintos): la línea
+- [x] Tras 12/10/9: el gris repite 60 × 12 · 10 · 9.
+- [x] El calentamiento de ese día rampa hacia 62.5, no hacia 60.
+- [x] Peso muerto Por esfuerzo con tres sesiones (1RM distintos): la línea
   enseña la media y la ficha dice «media de tus 3 últimas sesiones». Hacer una
   cuarta sin apuntar RPE → la línea dice «Apunta el RPE» donde iría el 1RM y
   el peso se queda el de la última vez.
-- [ ] Una sesión de etapa de descarga no entra en esa media.
-- [ ] Ya no hay frase gris bajo la recomendación; al tocar la línea sale la
+- [x] Una sesión de etapa de descarga no entra en esa media.
+- [x] Ya no hay frase gris bajo la recomendación; al tocar la línea sale la
   ficha con la regla, la última vez y el motivo.
-- [ ] Ejercicio sin historial: «Busca tu peso · 8–12 reps»; dominadas sin
+- [x] Ejercicio sin historial: «Busca tu peso · 8–12 reps»; dominadas sin
   historial: «Haz las que puedas».
-- [ ] Dominadas en Reps tras 9/8/8: «Subir a 9 reps +1» y el gris pide 9.
-- [ ] Objetivo del entrenador: la línea azul y el gris azul, como antes.
-- [ ] Peso muerto Por esfuerzo tras 3 × 4 @7 con 60 kg: la línea acaba en
+- [x] Dominadas en Reps tras 9/8/8: «Subir a 9 reps +1» y el gris pide 9.
+- [x] Objetivo del entrenador: la línea azul y el gris azul, como antes.
+- [x] Peso muerto Por esfuerzo tras 3 × 4 @7 con 60 kg: la línea acaba en
   «1RM 74» y la ficha dice que es de la última sesión. Sin RPE apuntado, sin 1RM.
 - [x] Banda A2 activada a mano: valorar y apuntar aquí la elección.
   (2-oct: descartada, se queda la línea suelta.)
