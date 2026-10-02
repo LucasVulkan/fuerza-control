@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import { parseImportFile } from '../utils/importFile';
+import { parseBodyWeight } from '../utils/bodyWeight';
+import { useWeightUnit } from '../hooks/useWeightUnit';
 import { programsOf } from '../utils/programOwnership';
 import ImportModal from './ImportModal';
 import DragSheet   from './DragSheet';
@@ -281,6 +283,50 @@ function ExportSheet({ visible, onClose }) {
   );
 }
 
+// ── Peso corporal ──────────────────────────────────────────────────────────────
+// Campo a mano en la fila de Preferencias (progresion-clara §9.3). Al salir del
+// campo guarda en kg si vale; si no, vuelve al peso de antes: no se puede borrar.
+
+function BodyWeightField() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  const bodyWeight = useStore((s) => s.profile.bodyWeight);
+  const setProfile = useStore((s) => s.setProfile);
+  const { unit, toDisplay, toKg } = useWeightUnit();
+
+  const shown = bodyWeight != null ? String(toDisplay(bodyWeight)) : '';
+  // null = no se está escribiendo: se enseña el peso guardado (así sigue a KG/LB
+  // y al recap sin sincronizar nada).
+  const [draft, setDraft] = useState(null);
+
+  function commit() {
+    const kg = draft == null || draft === shown ? null : parseBodyWeight(draft, toKg);
+    if (kg != null) setProfile({ bodyWeight: kg });
+    setDraft(null);
+  }
+
+  return (
+    <View style={styles.bwWrap}>
+      <TextInput
+        style={styles.bwInput}
+        value={draft ?? shown}
+        onChangeText={setDraft}
+        onBlur={commit}
+        onSubmitEditing={commit}
+        placeholder="—"
+        placeholderTextColor={th.colors.muted}
+        keyboardType="decimal-pad"
+        returnKeyType="done"
+        selectTextOnFocus
+        maxLength={6}
+        accessibilityLabel={t('header.bodyWeight')}
+      />
+      <Text style={styles.bwUnit}>{unit}</Text>
+    </View>
+  );
+}
+
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
 function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExport, onChangeSyncMode, onDeleteAccount }) {
@@ -449,6 +495,11 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           label={t('header.theme')}
           minHeight={86}
           control={<ThemeSwatches />}
+        />
+        <MenuRow
+          label={t('header.bodyWeight')}
+          minHeight={58}
+          control={<BodyWeightField />}
         />
         {!isPro && (
           <MenuRow
@@ -742,6 +793,21 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Segmentado pequeño dentro de la fila (unidades / idioma)
   segWrap: { width: 104, flexShrink: 0 },
+
+  // Peso corporal: caja de campo en surface2 (como el segmentado) + unidad.
+  bwWrap:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2, flexShrink: 0 },
+  bwInput: {
+    ...textStyles.bodyStrong,
+    color:             th.colors.text,
+    minWidth:          64,
+    textAlign:         'right',
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm2,
+    fontVariant:       ['tabular-nums'],
+  },
+  bwUnit:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
 
   // Muestras de tema
   themes:    { flexDirection: 'row', gap: spacing.md, flexShrink: 0 },

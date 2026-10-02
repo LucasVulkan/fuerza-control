@@ -41,6 +41,7 @@
     "language": "Idioma",
     "theme": "Tema",
     "units": "Unidades",
+    "bodyWeight": "Peso corporal",
     "proTabsLabel": "Pestañas PRO",
     "proTabsHint": "Muestra las pestañas de Clientes y Plantillas",
     "sectionPrograms": "PROGRAMAS",

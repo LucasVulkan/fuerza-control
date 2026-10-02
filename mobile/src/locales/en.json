@@ -41,6 +41,7 @@
     "language": "Language",
     "theme": "Theme",
     "units": "Units",
+    "bodyWeight": "Body weight",
     "proTabsLabel": "PRO tabs",
     "proTabsHint": "Shows the Clients and Templates tabs",
     "sectionPrograms": "PROGRAMS",

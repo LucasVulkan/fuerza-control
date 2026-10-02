@@ -1912,6 +1912,37 @@ describe('el entrenador apunta por el cliente — trainer-logging.md C19', () =>
     expect(useStore.getState().profile.bodyWeight).toBe(80);
   });
 
+  it('el peso se sella al guardar (P62): el del perfil, y cambiarlo después no la altera', () => {
+    const pid = programaDeCliente();
+    const tid = prog(pid).stages[0].days[0].sessionTemplateId;
+    useStore.setState((s) => ({ profile: { ...s.profile, bodyWeight: 62 } }));
+    const { entryId } = entrenar(tid);
+    useStore.setState((s) => ({ profile: { ...s.profile, bodyWeight: 70 } }));
+
+    expect(useStore.getState().workoutLog.find((e) => e.id === entryId).bodyWeight).toBe(62);
+  });
+
+  it('el entreno de un cliente sella el último peso de SU log, no el mío', () => {
+    const pid = programaDeCliente();
+    const [a, b] = prog(pid).stages[0].days.map((d) => d.sessionTemplateId);
+    const primera = entrenar(a, { forClient: 'cli_1' });
+    expect(useStore.getState().clientLogs.cli_1[0].bodyWeight).toBeNull();   // sin peso conocido
+
+    useStore.getState().setSessionFeedback(primera.entryId, { bodyWeight: 58.5 }, 'cli_1');
+    entrenar(b, { forClient: 'cli_1' });
+
+    expect(useStore.getState().clientLogs.cli_1[1].bodyWeight).toBe(58.5);
+    expect(useStore.getState().profile.bodyWeight).toBe(80);
+  });
+
+  it('sin peso en el perfil la sesión queda con null', () => {
+    const pid = programaDeCliente();
+    useStore.setState((s) => ({ profile: { ...s.profile, bodyWeight: null } }));
+    const { entryId } = entrenar(prog(pid).stages[0].days[0].sessionTemplateId);
+
+    expect(useStore.getState().workoutLog.find((e) => e.id === entryId).bodyWeight).toBeNull();
+  });
+
   it('la nota corregida en el recap va a la entrada del cliente', () => {
     const pid = programaDeCliente();
     const res = entrenar(prog(pid).stages[0].days[0].sessionTemplateId, { forClient: 'cli_1' });

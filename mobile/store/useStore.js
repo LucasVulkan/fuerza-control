@@ -2460,7 +2460,7 @@ export const useStore = create(
             timestamp:         Date.now(),
             duration:          activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
             notes:             activeSession.notes ?? '',
-            bodyWeight:        null,
+            bodyWeight:        get().profile.bodyWeight ?? null,
             ...(freeBlocksLog.length > 0 ? { blocks: freeBlocksLog } : {}),
             // La config va al log porque es lo que la plantilla congela (§7.4):
             // sin ella, repetir una sesión libre recuperaba los ejercicios pero
@@ -2578,7 +2578,11 @@ export const useStore = create(
             ? sessionStats(template, get().getEffectiveLibrary()).minutes * 60000
             : activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
           notes: activeSession.notes ?? '',
-          bodyWeight: null,
+          // Sellado (progresion-clara §9.2): el peso que el recap enseñaría. El
+          // mío, o el último que se apuntó al cliente; nunca el mío para él.
+          bodyWeight: forClient
+            ? ([...workoutLog].reverse().find((e) => e.bodyWeight != null)?.bodyWeight ?? null)
+            : (get().profile.bodyWeight ?? null),
           // Full planned volume of the template — skipped exercises drop out of
           // `exercises`, so the recap can't reconstruct the plan without this.
           plannedSets: template.exercises.reduce((a, ex) => a + (ex.sets ?? 0), 0),
