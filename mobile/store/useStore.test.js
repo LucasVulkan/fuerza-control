@@ -938,6 +938,23 @@ describe('weeks-model — acciones de etapa', () => {
     });
   });
 
+  it('guardar el programa de un cliente como plantilla no toca activos ni editor', () => {
+    const st = useStore.getState();
+    const pid = st.createProgramForClient('cli_1', 2, 'X');
+    st.setClientActiveProgram('cli_1', pid);
+    useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
+    const antes = { ...useStore.getState() };
+
+    const tpl = useStore.getState().cloneProgramFromTemplate(pid, { kind: 'template', name: 'X' });
+
+    const ahora = useStore.getState();
+    expect(ahora.programs[tpl]).toMatchObject({ kind: 'template', owner: 'me', name: 'X' });
+    expect(ahora.programs[tpl].stages[0].days).toHaveLength(2);
+    expect(ahora.clients.cli_1.activeProgramId).toBe(pid);
+    expect(ahora.profile.activeProgramId).toBe(antes.profile.activeProgramId);
+    expect(ahora.ui._editingProgramId).toBeNull();
+  });
+
   it('la copia de un programa de dos etapas encadena sus etapas, no las del original', () => {
     const pid = programa();
     useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });

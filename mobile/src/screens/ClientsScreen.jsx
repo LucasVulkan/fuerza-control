@@ -213,7 +213,7 @@ function UploadIcon({ size = 12, color }) {
 function AssignedProgramCard({
   program, getEffectiveTemplate, allExercises, adherence, adherence4w, loadPct,
   dirty, client, link, log, archivedCount,
-  onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImportHistory, onAssign,
+  onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImportHistory, onSaveTemplate, onAssign,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived, fold,
 }) {
   const { t }  = useTranslation();
@@ -398,6 +398,7 @@ function AssignedProgramCard({
           <SheetRow icon={ROW_ICON.share}  label={t('clients.menuShare')}  onPress={onShare} />
           <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={onExport} />
           <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={onImportHistory} />
+          <SheetRow icon={ROW_ICON.preset} label={t('clients.menuSaveTemplate')} onPress={onSaveTemplate} />
           {archivedCount > 0 && (
             <SheetRow
               icon={ROW_ICON.archived}
@@ -642,7 +643,7 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
 
 // ── Archived (previous) program row — compact ───────────────────────────────────
 
-function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExport, onReactivate, onDelete }) {
+function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExport, onSaveTemplate, onReactivate, onDelete }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t, i18n } = useTranslation();
@@ -679,6 +680,7 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
           <Section style={styles.importSheetRows}>
             <SheetRow icon={ROW_ICON.sync}   label={t('clients.menuReactivate')} onPress={onReactivate} />
             <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')}     onPress={onExport} />
+            <SheetRow icon={ROW_ICON.preset} label={t('clients.menuSaveTemplate')} onPress={onSaveTemplate} />
             <SheetRow icon={ROW_ICON.trash}  label={t('clients.menuDelete')}     onPress={onDelete} danger />
           </Section>
         </DragSheet>
@@ -2295,6 +2297,12 @@ export default function ClientsScreen() {
     if (newId) setClientActiveProgram(selectedClientId, newId);
   }
 
+  // Copia suelta como plantilla: con `kind: 'template'` no abre el editor ni toca ningún programa activo.
+  function saveAsTemplate(program) {
+    cloneProgramFromTemplate(program.id, { kind: 'template', name: program.name });
+    showToast(t('clients.toastSavedTemplate'));
+  }
+
   function handleAssignFile(data, withHistory) {
     if (!selectedClientId) return;
     setShowAssign(false);
@@ -2551,6 +2559,7 @@ export default function ClientsScreen() {
                   onExport={() => exportSpecificProgram(activeProgram.id, true)}
                   // Como `onShowArchived`: el segundo `Modal` espera a que se cierre el menú.
                   onImportHistory={() => setTimeout(handleImportHistory, 250)}
+                  onSaveTemplate={() => saveAsTemplate(activeProgram)}
                   onAssign={() => setTimeout(() => setShowAssign(true), 250)}
                   onDeassign={() => setClientActiveProgram(selectedClientId, null)}
                   onDelete={() => confirmDelete(activeProgram)}
@@ -2595,6 +2604,7 @@ export default function ClientsScreen() {
                       sessionCount={getSessionCount(program)}
                       onView={() => { setShowPrevious(false); setPrintingProgram(program.id); }}
                       onExport={() => exportSpecificProgram(program.id, true)}
+                      onSaveTemplate={() => { setShowPrevious(false); saveAsTemplate(program); }}
                       onReactivate={() => { setShowPrevious(false); reactivate(program); }}
                       onDelete={() => { setShowPrevious(false); confirmDelete(program); }}
                     />
