@@ -8,14 +8,17 @@
 > Fase P55 · hecho · Editor: Qué pides y la hoja de Progresión · §5
 > Fase P56 · hecho · Workout: el plan en el gris y la línea de recomendación · §6
 > Fase P57 · pendiente · La última vez: botón, línea o debajo de cada serie · §7
-> Fase P61 · pendiente · Peso corporal (cuenta o solo lastre) y tiempo con carga · §8
+> Fase P61 · pendiente · Tiempo con carga (Tiempo + Peso, doble en segundos) · §8
+> Fase P62 · hecho · Peso corporal: sellado en la sesión y fila en el menú · §9
+> Fase P63 · aparcado · Peso corporal en el motor (Por esfuerzo, 1RM y récords) · §10
 >
-> Estado: **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **P62 hecha** (2-oct-2026, `6fd801d`; falta probarla a mano). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
-> subagente sin más contexto, más P61 (§8, tras QA P55: peso corporal y tiempo
-> con carga, decidido el 2-oct). Sin decidir (§3.1-bis): dónde enseñar «Próxima sesión». La escalera (top set + back-off,
+> subagente sin más contexto, más P61 (§8, tras QA P55: tiempo con carga) y P62
+> (§9, peso corporal en el menú y sellado en la sesión), decididas el 2-oct. P63
+> (§10) es lo que se sacó de la primera P61 y se aparcó. Sin decidir (§3.1-bis): dónde enseñar «Próxima sesión». La escalera (top set + back-off,
 > pirámide invertida) va **después**, como extensión de «Qué pides»: sin motor nuevo.
 
 ---
@@ -768,82 +771,30 @@ P57 las pasa también, con su fecha, a la vista de la última vez.
 - [ ] Ejercicio vinculado entre sesiones A y C: el historial mezcla las dos.
 - [ ] Sin historial: ni icono, ni línea, ni filas.
 
-## 8. P61 — Peso corporal y tiempo con carga
+## 8. P61 — Tiempo con carga
 
 Sale de QA P55.5 (2-oct). P55 capaba «Peso» en los ejercicios de peso corporal
 que la librería no lastra; el usuario: **todo ejercicio de peso corporal se
 puede lastrar**, también una plancha. Lo típico de cada ejercicio es solo el
 valor por defecto, y los límites están en la hoja, que no deja montar
 combinaciones absurdas. Eso ya está arreglado (`bf919ee`). Queda lo que no
-cabía en un arreglo: si el peso corporal cuenta, y el tiempo con carga.
+cabía en un arreglo: el tiempo con carga.
 
-Va **después de P56** (usa su objeto de opciones de `getProgression`, la línea
-del 1RM y `planSet` conectado).
+La primera versión de P61 llevaba también «el peso corporal cuenta» (Por
+esfuerzo, 1RM y récords). Se sacó el mismo día: ver P63 (§10). P61 no necesita
+el peso corporal para nada.
 
-### 8.1 Decisiones del usuario (2-oct)
+Va **después de P56** (usa su objeto de opciones de `getProgression` y
+`planSet` conectado).
 
-1. Opción por ejercicio: **«Peso corporal: Solo lastre · Cuenta»**. Por
-   defecto, **Solo lastre** (como hoy: no pide el peso a quien no lo quiera).
-2. Lo que cambia la opción: **Por esfuerzo, el 1RM y los récords**. La **carga**
-   (`trainingLoad.js`) cuenta el peso corporal **siempre**, como hoy: unas
-   dominadas sin lastre mueven tu cuerpo, y con «solo lastre» valdrían 0.
-3. Por reglas no cambia: subir 2,5 kg de lastre es lo mismo cuentes o no.
-4. **Tiempo + Peso = doble en segundos**: rango de tiempo; cuando todas las
-   series llegan al máximo, sube el peso y el tiempo vuelve al mínimo. Con
-   tiempo fijo (45–45) es «aguanta 45 s → sube peso».
+### 8.1 Decisión del usuario (2-oct)
 
-### 8.2 El peso corporal: dónde está y cuál se usa
+**Tiempo + Peso = doble en segundos**: rango de tiempo; cuando todas las series
+llegan al máximo, sube el peso y el tiempo vuelve al mínimo. Con tiempo fijo
+(45–45) es «aguanta 45 s → sube peso». Arregla además la combinación que la P52
+dejó fuera (Tiempo + Doble sugería kilos en una plancha).
 
-Ya existe: el recap lo pregunta (`entry.bodyWeight`) y el último queda en
-`profile.bodyWeight` (`setSessionFeedback`). Falta un sitio para apuntarlo sin
-pasar por un recap.
-
-- **Menú, Preferencias** (`AppHeader.jsx`, junto a unidades e idioma): fila
-  «Peso corporal» con un `StepField` en la unidad del usuario (se guarda en kg,
-  `toKg`), paso 0,5. Escribe `profile.bodyWeight` con `setProfile`.
-- **Cuál se usa**: el de la sesión si se apuntó, si no el último
-  (`bodyWeightOf(entry, profile.bodyWeight)`, que ya existe en
-  `trainingLoad.js`: se exporta). En el Workout, `profile.bodyWeight`.
-- **Entrenador**: en el móvil del cliente conectado manda su perfil. Cuando el
-  entrenador apunta un entreno de un cliente sin conectar (C19, `forClient`),
-  el último de `clients[id].bodyWeight` (el historial de la ficha). En las
-  sesiones anteriores (`earlier` de §6.5) se usa el mismo peso de hoy
-  (`ponytail:` la diferencia de unas semanas es ruido frente al RPE).
-
-### 8.3 La opción en el editor
-
-- `exConfig.countBodyweight: true` (ausente = solo lastre). Solo se ofrece si
-  `isBodyweight(def)` (incluidos los asistidos). `LINKED_CONFIG_KEYS` la añade.
-- Sitio: en el editor de ejercicio, sección de opciones, junto a Registrar RPE:
-  `ToggleRow` «Cuenta tu peso corporal», pista «Por esfuerzo, 1RM y récords
-  con tu peso + el lastre». **No en la hoja de Progresión**: no es solo
-  progresión (como la vinculación).
-- Encendida y sin peso apuntado: debajo, el `StepField` del peso corporal
-  (el mismo de §8.2), para apuntarlo ahí mismo. En un programa de un cliente
-  (no `owner: 'me'`), en vez del campo la pista «Usa el peso que apunta el
-  cliente».
-- `saveSession` copia `countBodyweight: true` en el ejercicio del log (como
-  `variant`): así Progreso sabe, sesión a sesión, si contaba.
-
-### 8.4 Motor: Por esfuerzo con el cuerpo
-
-- `getProgression(exConfig, def, lastSets, t, { earlier, bodyWeight })`.
-- Con `countBodyweight` y un ejercicio de peso corporal, `chipEffort` trabaja
-  con el **total**: `effectiveWeight(set, def, bodyWeight)` de `trainingLoad.js`
-  (cuerpo + lastre; en asistidos, cuerpo − ayuda). El e1RM y `chip.e1rm` son del
-  total; el peso que propone vuelve a lo que se carga: lastre = total − cuerpo
-  (asistido: ayuda = cuerpo − total), redondeado al escalón o Exacto, y nunca
-  por debajo de 0 («sin lastre» / «sin ayuda»).
-- Sin `bodyWeight`: mantener con `why_effortNoBodyweight` («apunta tu peso
-  corporal para calcularlo») y sin `e1rm`.
-- **Cómo** (`progressionForm.showHow`): Por esfuerzo sale también en peso
-  corporal y asistidos **si `countBodyweight`**; sin ella, apagado con la pista
-  «Por esfuerzo en peso corporal necesita contar tu peso: actívalo en
-  Opciones». En asistidos, Qué sube «Asistencia ↓» + Cómo.
-- `progressionRule`: en asistido Por esfuerzo, «Ayuda calculada para 5 reps a
-  RPE 8…».
-
-### 8.5 Tiempo + Peso (doble en segundos)
+### 8.2 Tiempo + Peso (doble en segundos)
 
 - **Hoja**: con medida Tiempo, Qué sube ofrece **Tiempo · Peso · Nada** (en
   asistidos, «Asistencia ↓»). Con Peso: sin Cómo (solo por reglas); Cuándo sube
@@ -862,46 +813,161 @@ pasar por un recap.
   baja si fallan 2 de 3».
 - Prescripción (`prescription.targetLabel`) y listas: «3 × 30–60 s», como hoy.
 
-### 8.6 1RM y récords con el cuerpo
+### 8.3 Tests
 
-Hoy el 1RM de Progreso (`oneRm.recentE1RM`, `improvement.metricValue`) y los
-récords del recap (`sessionRecap.bestE1RM`) leen `set.weight` tal cual: en
-unas dominadas, solo el lastre. Con el ejercicio del log marcado
-`countBodyweight`:
-
-- el peso de cada serie es el total (`effectiveWeight` con el peso de esa
-  sesión, `bodyWeightOf(entry, profile.bodyWeight)`) en el 1RM, la métrica kg
-  de Progreso y los récords de peso y 1RM;
-- los récords de reps sin lastre (`bestReps`) no cambian;
-- sin peso corporal conocido, como hoy (solo el lastre).
-
-Sesiones sin la marca: como hoy. `trainingLoad.js` no cambia (§8.1.2).
-
-### 8.7 Tests
-
-`progression.test.js`: Por esfuerzo con cuerpo (dominadas, 60 kg + 10 kg × 5 @8
-→ e1RM del total; propone lastre; total < cuerpo → 0; asistido → ayuda; sin
-peso → `why_effortNoBodyweight`); Tiempo + Peso (todas al máximo → sube peso;
-fallos → baja con la regla; `progressionRule`). `progressionForm.test.js`:
-Tiempo ofrece Peso; Cómo con y sin `countBodyweight`. `setPlan.test.js`:
-Tiempo + Peso vuelve al mínimo. `sessionRecap.test.js` / `improvement.test.js`:
-1RM y récords con la marca. `useStore.test.js`: el log copia `countBodyweight`.
+`progression.test.js`: Tiempo + Peso (todas al máximo → sube peso; fallos →
+baja con la regla; `progressionRule`). `progressionForm.test.js`: Tiempo ofrece
+Peso. `setPlan.test.js`: Tiempo + Peso vuelve al mínimo.
 
 **Probar P61**
 
-- [ ] Menú → Preferencias: apuntar el peso corporal; el recap siguiente lo trae.
-- [ ] Dominadas: encender «Cuenta tu peso corporal» → la hoja deja elegir Por
-  esfuerzo. Con 60 kg de peso, tras 3 × 5 @8 con 10 kg de lastre, la línea
-  da un 1RM del total (≈ 86: 70 kg × 5 @8) y propone un lastre, no el total.
-- [ ] Con la opción apagada, Por esfuerzo sale apagado con su pista.
-- [ ] Sin peso apuntado y la opción encendida: el editor enseña el campo para
-  apuntarlo, y el Workout pide apuntarlo en vez de proponer un peso.
 - [ ] Plancha con medida Tiempo: Qué sube ofrece Peso. 30–60 s, 60/60/60 con
   5 kg → «Subir a 7.5» y el gris pide 30 s.
-- [ ] Progreso de dominadas con la opción encendida: el 1RM y la gráfica de kg
-  cuentan el cuerpo; la carga semanal no cambia.
+- [ ] Plancha 45–45 con 5 kg: 45/45/45 → sube; 45/40/45 → mantiene.
+- [ ] Fallos bajo el mínimo de tiempo con «Cuándo baja»: baja el peso.
+- [ ] Tiempo + Tiempo sigue como antes (sin sugerir kilos).
 
-## 9. Registro
+## 9. P62 — Peso corporal: sellado en la sesión y fila en el menú
+
+Decidido el 2-oct. El peso corporal **está unificado**: el del perfil
+(`profile.bodyWeight`) es el que cuenta, y el que se apunta en el recap lo
+actualiza (ya lo hace `setSessionFeedback`). Sin pantalla de Perfil por ahora:
+requiere diseño y contenido que meter dentro. El peso se queda en el menú.
+
+### 9.1 Qué es hoy
+
+- La carga (`trainingLoad.js`) cuenta el peso corporal **siempre**; no se
+  guarda: se recalcula sobre el log cada vez.
+- El peso de cada sesión es `entry.bodyWeight` si el recap lo guardó, y si no
+  el del perfil de hoy (`bodyWeightOf`). Esas sesiones **flotan**: cambiar el
+  peso reescribe su carga.
+- El recap enseña `entry.bodyWeight ?? profileBodyWeight` pero **solo guarda si
+  se edita**. `saveSession` crea la entrada con `bodyWeight: null`.
+
+### 9.2 Sellar el peso al guardar la sesión
+
+En `saveSession` (`store/useStore.js`, donde hoy `bodyWeight: null`), la entrada
+nace con el peso que el recap enseñaría:
+
+- **Mío**: `profile.bodyWeight ?? null`.
+- **Cliente sin app (`forClient`)**: el último `bodyWeight` del log de ese
+  cliente (`ownerLogOf`), la misma regla que `SessionRecapScreen`. Nunca mi
+  perfil.
+- **Sin peso conocido**: `null`, como hoy.
+
+El recap no cambia: enseña lo ya sellado, y corregirlo actualiza la sesión y el
+perfil como ahora. Las sesiones anteriores a P62 sin peso siguen flotando (no
+hay forma de saber qué pesabas); no se migran.
+
+Test en `useStore.test.js`: con el perfil a 62 kg, guardar deja `bodyWeight:
+62`; cambiar el perfil a 70 después no altera esa sesión; un entreno de cliente
+usa el último peso de su log y no el mío; sin peso, `null`.
+
+### 9.3 Fila en el menú
+
+`AppHeader.jsx`, sección Preferencias, bajo Unidades / Idioma / Tema: fila
+**«Peso corporal»**.
+
+- **Sin `StepField`.** Se pulsa y se escribe a mano: un campo numérico
+  (`keyboardType` decimal) en el `control` de la `MenuRow`, con el valor en la
+  unidad del usuario (`useWeightUnit`: `toDisplay` / `toKg`) y la unidad al
+  lado. Acepta decimales: 55.1 vale (y 55,1: la coma se trata como punto).
+- Al salir del campo o confirmar: si es un número entre 20 y 500 (en kg),
+  guarda `profile.bodyWeight` en kg con **un decimal** (`Math.round(n * 10) /
+  10`, como el recap) vía `setProfile`. Si no es válido o está vacío, **vuelve
+  al valor anterior** sin guardar; no hay forma de borrar el peso.
+- Sin peso apuntado: el campo vacío con un placeholder («— kg»).
+- Cambiar de KG a LB no pierde nada: se guarda en kg y se muestra convertido.
+- Cambiar el peso aquí **no toca sesiones ya hechas** (§9.2): solo las que se
+  guarden desde ahora.
+- Textos en `es.json` **y** `en.json`, línea a línea. Estilos con los roles de
+  `textStyles`; nada de `fontSize` propio.
+
+**Probar P62**
+
+- [ ] Menú → Preferencias: pulsar «Peso corporal», escribir 55.1 → queda 55.1
+  al cerrar y reabrir el menú.
+- [ ] Escribir «abc», 0 o 900: vuelve al valor de antes.
+- [ ] Con LB: se enseña en libras y, al volver a KG, sigue siendo el mismo peso.
+- [ ] Terminar un entreno: el recap trae ese peso sin tocarlo. Cambiar el peso
+  en el menú → la carga de esa sesión (Progreso → Carga) no cambia.
+- [ ] Corregir el peso en el recap → el menú lo enseña.
+- [ ] Entreno apuntado a un cliente sin app: el recap trae el último peso del
+  cliente, no el mío, y el menú no se mueve.
+
+## 10. P63 — Peso corporal en el motor (aparcada)
+
+**Aparcada el 2-oct (usuario).** Era el resto de la primera P61. Idea: un
+ejercicio de peso corporal puede **contar el peso corporal** en lugar de solo el
+lastre, y con eso Por esfuerzo, el 1RM y los récords trabajan con el total.
+
+**Por qué se aparcó.**
+
+- Es nicho: lo normal es progresar en reps y, con lastre, subir kilos **por
+  reglas**, que no cambia cuentes o no el cuerpo (subir 2,5 kg de lastre es
+  lo mismo).
+- El motor no es lo bastante fino para que el matiz se note: el cuerpo varía
+  1–2 kg y el escalón es de 1,25–2,5 kg, dentro del ruido del RPE.
+- El coste está en la semántica (qué peso vale en cada contexto, inversión en
+  asistidos, redondeo doble), no en las llamadas: `getProgression` solo lo
+  llaman `ExerciseCard`, `sessionText` y `planSet`.
+- Sin ella, el 1RM de unas dominadas es el 1RM **del lastre**: coherente, y es
+  lo que mide quien las lastra (+10 → +12,5).
+
+**Qué la reabriría**: que haya gente que haga Por esfuerzo con peso corporal, o
+que ver «1RM 10 kg» en dominadas moleste en Progreso. Entonces lo barato es
+empezar solo por el 1RM y los récords (§10.3), que no tocan el motor.
+P62 ya deja el peso sellado en cada sesión, que es lo que haría falta.
+
+### 10.1 Lo que decidió el usuario (2-oct)
+
+1. Opción por ejercicio: **«Peso corporal: Solo lastre · Cuenta»**. Por
+   defecto, **Solo lastre** (como hoy).
+2. Lo que cambia: **Por esfuerzo, el 1RM y los récords**. La **carga**
+   (`trainingLoad.js`) cuenta el peso corporal **siempre**, como hoy.
+3. Por reglas no cambia.
+
+### 10.2 Opción en el editor y Por esfuerzo con el cuerpo
+
+- `exConfig.countBodyweight: true` (ausente = solo lastre). Solo si
+  `isBodyweight(def)` (incluidos asistidos). `LINKED_CONFIG_KEYS` la añade.
+  `ToggleRow` «Cuenta tu peso corporal» en el editor de ejercicio, junto a
+  Registrar RPE (no en la hoja de Progresión: no es solo progresión).
+  `saveSession` copia `countBodyweight: true` en el ejercicio del log (como
+  `variant`), para que Progreso sepa, sesión a sesión, si contaba.
+- `getProgression(exConfig, def, lastSets, t, { earlier, bodyWeight })`. Con
+  `countBodyweight`, `chipEffort` trabaja con el **total**:
+  `effectiveWeight(set, def, bodyWeight)` (cuerpo + lastre; asistidos, cuerpo −
+  ayuda). El e1RM y `chip.e1rm` son del total; el peso que propone vuelve a lo
+  que se carga: lastre = total − cuerpo (asistido: ayuda = cuerpo − total),
+  redondeado al escalón o Exacto, nunca por debajo de 0 («sin lastre» / «sin
+  ayuda»).
+- Sin `bodyWeight`: mantener con `why_effortNoBodyweight` y sin `e1rm`.
+- `progressionForm.showHow`: Por esfuerzo sale también en peso corporal y
+  asistidos **si `countBodyweight`**; sin ella, apagado con la pista «Por
+  esfuerzo en peso corporal necesita contar tu peso: actívalo en Opciones».
+- `progressionRule` en asistido Por esfuerzo: «Ayuda calculada para 5 reps a
+  RPE 8…».
+- Peso en cada contexto: el de la sesión si se selló (P62); en sesiones
+  anteriores (`earlier`) se usa el mismo de hoy (`ponytail:` unas semanas de
+  diferencia son ruido frente al RPE).
+
+### 10.3 1RM y récords con el cuerpo
+
+`oneRm.recentE1RM`, `improvement.metricValue` y `sessionRecap.bestE1RM` leen
+`set.weight` tal cual. Con el ejercicio del log marcado `countBodyweight`: el
+peso de cada serie es el total (`effectiveWeight` con `entry.bodyWeight`) en el
+1RM, la métrica kg de Progreso y los récords de peso y 1RM; los récords de reps
+sin lastre (`bestReps`) no cambian; sin peso conocido, como hoy. Sesiones sin la
+marca: como hoy.
+
+Tests (cuando se haga): `progression.test.js` (dominadas, 60 kg + 10 kg × 5 @8
+→ e1RM del total, propone lastre, total < cuerpo → 0, asistido → ayuda, sin
+peso → `why_effortNoBodyweight`), `progressionForm.test.js`,
+`sessionRecap.test.js`, `improvement.test.js`, `useStore.test.js` (el log copia
+`countBodyweight`).
+
+## 11. Registro
 
 | Fase | Commit | Nota |
 |---|---|---|
@@ -912,3 +978,5 @@ Tiempo + Peso vuelve al mínimo. `sessionRecap.test.js` / `improvement.test.js`:
 | P56 | `66a5719`, `e04682f` | motor (1RM de tres sesiones, `progressionHistory`, calentamiento, `targetLabel` con `today`, `firstTimeRx`) y Workout (`planSet` en tarjeta y guardado, línea + ficha, `SetPills`) |
 | P57 | — | |
 | P61 | — | |
+| P62 | `6fd801d` | sellado del peso en `saveSession` (sesión libre incluida) y fila «Peso corporal» en el menú (`parseBodyWeight`) |
+| P63 | — | aparcada (2-oct): peso corporal en el motor |
