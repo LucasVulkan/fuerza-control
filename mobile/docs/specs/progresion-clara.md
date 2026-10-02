@@ -401,17 +401,17 @@ rango y con reps fijas, Por esfuerzo, sin historial. `stageRx.test.js`:
 
 - [x] Press banca 3 × 8–12 en Automática: 12/12/12 con 60 kg → «Subir a 62.5»;
   12/10/9 → «Mantener 60»; 9/7/7 → «Bajar a 57.5».
-- [ ] El mismo press banca con **Registrar RPE** encendido y **Cuándo sube =
+- [x] El mismo press banca con **Registrar RPE** encendido y **Cuándo sube =
   RPE** (máx. 8): hacer 12/10/9 con 60 kg, las tres a RPE 10 → «Mantener 60».
   Antes de P54 decía «Bajar a 57.5» (la media de RPE pasaba de 9,5); ahora solo
   baja la regla de fallos, y 12/10/9 no falla ninguna.
-- [ ] Peso muerto Por esfuerzo 3 × 4 @8, con 60 kg: hacer 3 × 4 @7 → «Subir a
+- [x] Peso muerto Por esfuerzo 3 × 4 @8, con 60 kg: hacer 3 × 4 @7 → «Subir a
   62.5»; hacer 3 × 5 @8 → también «Subir a 62.5» (las dos equivalen a 7 reps
   a fallo).
   (2-oct: con el escalón de librería, 5 kg, las dos decían «Mantener»: +2,8 %
   no llegaba a medio escalón. Arreglado: en Por esfuerzo, como mucho 2,5 salvo
   escalón propio.)
-- [ ] Una etapa de descarga sigue diciendo «Descarga» y no sube ni baja.
+- [x] Una etapa de descarga sigue diciendo «Descarga» y no sube ni baja.
 
 ## 5. P55 — Editor: Qué pides y la hoja de Progresión
 
