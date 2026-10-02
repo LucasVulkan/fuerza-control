@@ -22,6 +22,7 @@ para poder decir "vamos a por la M02" sin ambigüedad:
 | `C` | Entrenador ↔ cliente |
 | `U` | Estructura y UI |
 | `A` | Analítica |
+| `I` | Integridad y tests — corrección de datos y calidad de los tests (los fallos que encuentre van a `E`, no aquí) |
 
 El número lo asigna quien escribe la spec y **no se reutiliza nunca**, ni aunque
 se borre la fase: un código de hace tres meses tiene que seguir significando lo

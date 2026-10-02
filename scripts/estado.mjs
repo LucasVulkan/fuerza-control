@@ -67,6 +67,7 @@ const TEMAS = [
   ['conexión',      'Entrenador ↔ cliente', 'C'],
   ['ui',            'Estructura y UI',      'U'],
   ['analítica',     'Analítica',            'A'],
+  ['integridad',    'Integridad y tests',   'I'],
 ];
 const letraDe = (tema) => TEMAS.find(([t]) => t === tema)?.[2];
 
