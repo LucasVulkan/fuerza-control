@@ -458,23 +458,44 @@ pasos se numeran según los que salgan. Reglas de qué se ofrece:
 
 | Paso | Sale si | Opciones |
 |---|---|---|
-| **Qué sube** | siempre | Medida Reps: Peso (no si `isBodyweight(def)`; «Asistencia ↓» si `def.progressionDirection === 'decrease'`), Reps, Nada. Medida Tiempo: Tiempo, Nada |
+| **Qué sube** | siempre | Medida Reps: Peso (solo si `canAddWeight(def)`, §5.3-bis; «Asistencia ↓» si `def.progressionDirection === 'decrease'`), Reps, Nada. Medida Tiempo: Tiempo, Nada |
 | **Cómo** | Peso, medida Reps, carga externa, no asistido | Por reglas · Por esfuerzo. Por esfuerzo **apagado** con rango, con la pista en naranja «Por esfuerzo necesita reps fijas: cámbialo en Volumen» |
 | **RPE objetivo** | Por esfuerzo | `StepField` 6–10 + «N en recámara» |
 | **Escalón de peso** | Por esfuerzo | `StepField` paso 0,25, mín. 0,25, y la opción **Exacto** (§5.4-bis) |
 | **Cuándo sube** (esfuerzo) | Por esfuerzo | Al superarlo · Al llegar, con su pista |
 | **Cuándo sube** | Por reglas, Reps, Tiempo | Todas · Parcial · RPE máx. Parcial: `StepField` «Tienen que llegar» con valor «N de M», de 1 a M−1. RPE máx.: `StepField` 6–10 |
 | **Cuánto sube** | Por reglas, Reps, Tiempo | Peso: Fijo · Porcentaje + valor; con Porcentaje, además **Escalón** («Redondea al escalón»). Reps: entero 1–10. Tiempo: entero en pasos de 5 s |
-| **Cuándo baja** | Peso por reglas | Nunca · Si fallan. Si fallan: `StepField` «Series bajo el mínimo» con valor «N de M», mínimo `M − need + 1` con Parcial y 1 si no, con la pista de por qué |
+| **Cuándo baja** | Peso por reglas y Asistencia ↓ | Nunca · Si fallan. Si fallan: `StepField` «Series bajo el mínimo» con valor «N de M», mínimo `M − need + 1` con Parcial y 1 si no, con la pista de por qué |
 
-Coherencia, en una función `normalize` del estado del editor que se llama tras
-cada cambio (como en la maqueta): si lo elegido deja de valer, vuelve al primero
+Coherencia, en una función `normalize` del estado del editor que se llama al
+abrir (en `computeInitial`) y tras cada cambio (como en la maqueta, cuyo JS es
+la referencia: `normalize`, `showHow`, `effortReason`, `needsRpe`): si lo elegido deja de valer, vuelve al primero
 válido (Qué sube) o a Por reglas (Cómo); `need` y `fails` se recortan a su
 rango cuando cambian las series. Al cambiar Qué sube, el salto vuelve a su valor
 por defecto (`defaultIncrement`, P52).
 
 El valor por defecto de `fails` en el editor es el de §4.3. Se guarda siempre
 `down` explícito (`'never'` o `{ fails }`) al guardar desde el editor.
+
+### 5.3-bis Ejercicios sin carga: Peso solo si se pueden lastrar (revisión 2-oct)
+
+`isBodyweight(def)` solo no vale: las dominadas, los fondos y las flexiones
+lastradas son de peso corporal y se progresan con lastre (P41 juntó las
+lastradas en Dominadas). La librería ya lo dice con el escalón: de los 66
+ejercicios sin carga, solo esos tres tienen `weightStep > 0`.
+
+- `canAddWeight(def)` en `progression.js` (exportada): `!isBodyweight(def) ||
+  def.weightStep > 0`. `isBodyweight` viene de `trainingLoad.js` (no hay ciclo
+  de imports).
+- **Motor**: `resolveProgressionConfig` lee `type: 'double'` como `'reps'` si
+  `!canAddWeight(def)` y la dirección es `'increase'` (los asistidos no
+  cambian). Son ~40 ejercicios de la librería (hollow, rueda, dominadas supinas,
+  crunch…) que vienen en Doble con escalón 0 y proponían kilos. Con eso el
+  editor, que inicializa desde `resolveProgressionConfig`, y el motor dicen lo
+  mismo. Test: `pull_up_supine` (0) → `reps`; `pull_up` (2,5) → `double`;
+  `pull_up_assisted` → `double` con `decrease`.
+- **Cómo** (Por esfuerzo) sigue exigiendo carga externa (`!isBodyweight`): en
+  un lastrado el `weight` es solo el lastre y el e1RM saldría mal.
 
 ### 5.4 Registrar RPE
 
@@ -493,9 +514,13 @@ Decisión del usuario: quien elige Por esfuerzo es avanzado y quiere ver el
   a ser la media de las tres últimas, §6.5) y `raw` (el peso antes de
   redondear). Ambos `null` cuando no hay cálculo (sin RPE, poco fiable,
   descarga).
-- **Exacto**: `exConfig.weightStep: 'exact'`. Solo en Por esfuerzo; en Por
-  reglas se lee como ausente. `resolveStep` lo deja pasar tal cual y
-  `chipEffort` redondea `raw` a 0,1 kg en vez de al escalón. Con Exacto no sale
+- **Exacto**: se guarda `exConfig.weightStep: 'exact'`, pero
+  `resolveProgressionConfig` **nunca** devuelve un `step` que no sea número
+  (`stageRx.scaleIncrement` y `defaultIncrement` hacen cuentas con él: daría
+  `NaN`). Devuelve `step` como si no estuviera (el de la librería con tope 2,5)
+  y `exact: true`, solo con `type: 'effort'`; en Por reglas, `exact: false` y
+  se lee como ausente. `chipEffort` con `exact` redondea `raw` a 0,1 kg en vez
+  de al escalón. Con Exacto no sale
   el paso «Cuándo sube» de Por esfuerzo (el peso se mueve con cualquier
   cambio y «Al llegar» no se daría nunca): se guarda `effortWhen: 'beat'`.
 - **Hoja**: el paso Escalón es un segmentado **Escalón · Exacto**; con Escalón,
