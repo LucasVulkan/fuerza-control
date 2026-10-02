@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
 import { localDay, addDays } from '../src/utils/stageProgress';
+import { templateChainIds } from '../src/utils/exerciseLinks';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.
@@ -934,6 +935,39 @@ describe('weeks-model — acciones de etapa', () => {
 
     expect(prog(copia)).toMatchObject({
       currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
+    });
+  });
+
+  it('guardar el programa de un cliente como plantilla no toca activos ni editor', () => {
+    const st = useStore.getState();
+    const pid = st.createProgramForClient('cli_1', 2, 'X');
+    st.setClientActiveProgram('cli_1', pid);
+    useStore.setState((s) => ({ ui: { ...s.ui, _editingProgramId: null } }));
+    const antes = { ...useStore.getState() };
+
+    const tpl = useStore.getState().cloneProgramFromTemplate(pid, { kind: 'template', name: 'X' });
+
+    const ahora = useStore.getState();
+    expect(ahora.programs[tpl]).toMatchObject({ kind: 'template', owner: 'me', name: 'X' });
+    expect(ahora.programs[tpl].stages[0].days).toHaveLength(2);
+    expect(ahora.clients.cli_1.activeProgramId).toBe(pid);
+    expect(ahora.profile.activeProgramId).toBe(antes.profile.activeProgramId);
+    expect(ahora.ui._editingProgramId).toBeNull();
+  });
+
+  it('la copia de un programa de dos etapas encadena sus etapas, no las del original', () => {
+    const pid = programa();
+    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
+    const idsDe = (p) => prog(p).stages.flatMap((st) => st.days.map((d) => d.sessionTemplateId));
+    const originales = idsDe(pid);
+
+    const copia = useStore.getState().cloneProgramFromTemplate(pid, { owner: 'cli_1' });
+
+    const [e1, e2] = prog(copia).stages.map((st) => st.days[0].sessionTemplateId);
+    const cadena = templateChainIds(e2, (id) => useStore.getState().sessionTemplates[id]);
+    expect(cadena).toContain(e1);
+    idsDe(copia).forEach((id) => {
+      expect(originales).not.toContain(useStore.getState().sessionTemplates[id].derivedFrom);
     });
   });
 

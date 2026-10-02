@@ -36,6 +36,7 @@ import { THEME_LIST } from '../themes';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
+import { startNewProgram } from '../utils/startNewProgram';
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
 const WDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -385,25 +386,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         <MenuRow
           icon={<RowIcon>{ROW_ICON.new}</RowIcon>}
           label={t('header.newProgramItem')}
-          onPress={() => {
-            if (clientSync?.slotId) {
-              showDialog(
-                t('header.newProgramWarnTitle'),
-                t('header.newProgramWarnBody'),
-                [
-                  { text: t('common.cancel'), style: 'cancel' },
-                  {
-                    text: t('common.continue'),
-                    style: 'destructive',
-                    onPress: () => { onClose(); navigate('onboarding'); },
-                  },
-                ],
-              );
-            } else {
-              onClose();
-              navigate('onboarding');
-            }
-          }}
+          onPress={() => startNewProgram(t, clientSync, navigate, onClose)}
         />
         <MenuRow
           icon={<RowIcon>{ROW_ICON.archived}</RowIcon>}

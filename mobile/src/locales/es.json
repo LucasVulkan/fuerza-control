@@ -1493,6 +1493,7 @@
   "errors": {
     "cannotReadFile": "No se pudo leer el archivo",
     "invalidFile": "Archivo no válido",
+    "noHistoryInFile": "El archivo no contiene ningún entreno",
     "importNoVersion": "El archivo no tiene campo \"version\".",
     "importBadVersion": "Versión {{version}} no compatible.",
     "importBadJson": "El archivo no es un JSON válido."
@@ -2110,6 +2111,7 @@
     "blockDoneTag": "BLOQUE TERMINADO",
     "blockDoneText": "Ha terminado {{current}} y no hay etapa siguiente: repetirá esta hasta que le montes el próximo bloque.",
     "blockDoneBtn": "Planificar siguiente etapa",
+    "toastSavedTemplate": "Guardado en Plantillas",
     "toastStageUnlocked": "{{name}} desbloqueada y enviada",
     "prepare": "Preparar",
     "sessionFlag": "Le toca",
@@ -2133,12 +2135,12 @@
     "noSessionsYet": "Aún sin sesiones",
     "totalSessions": "{{count}} completadas",
     "programSessions": "{{count}} sesiones",
-    "previousPrograms": "ANTERIORES",
     "noProgramsHint": "Sin programas. Pulsa ＋ para asignar uno.",
     "noActiveProgram": "Sin programa activo",
     "noActiveProgramHint": "Reactiva uno de abajo o asigna uno nuevo con ＋",
     "menuUpload": "Subir a cliente",
-    "menuDeassign": "Quitar asignación",
+    "menuDeassign": "Archivar",
+    "menuSaveTemplate": "Guardar como plantilla",
     "menuExport": "Exportar",
     "menuDelete": "Eliminar programa",
     "menuReactivate": "Reactivar",
@@ -2147,10 +2149,9 @@
     "deleteProgramTitle": "Eliminar programa",
     "deleteProgramConfirm": "¿Eliminar \"{{name}}\"?",
     "reactivateTitle": "Reactivar programa",
+    "archiveTitle": "Archivar programa",
+    "archiveConfirm": "\"{{name}}\" pasará a Programas archivados y el cliente se quedará sin programa activo. Podrás reactivarlo cuando quieras.",
     "reactivateConfirm": "\"{{name}}\" pasará a ser el programa activo y el actual se archivará. ¿Continuar?",
-    "replaceActiveTitle": "Reemplazar programa activo",
-    "replaceActiveConfirm": "Este cliente ya tiene un programa activo. El nuevo lo reemplazará y el actual se archivará en Anteriores. ¿Continuar?",
-    "replaceActiveConfirmBtn": "Reemplazar",
     "refreshHistory": "↓ Actualizar historial del cliente",
     "refreshingHistory": "Actualizando…",
     "sortRecent": "Recientes",
@@ -2180,11 +2181,11 @@
     "nextSessionHintLinked": "Entrena con su app: lo que haga te llega solo. Preparar ajusta solo esta sesión; el programa no cambia.",
     "sessionMeta": "{{count}} ejercicios · {{minutes}} min aprox",
     "programMenuTitle": "Programa",
-    "menuNewProgram": "Nuevo programa",
-    "menuImport": "Importar programa",
+    "assignProgram": "Asignar programa",
+    "menuImportHistory": "Importar historial",
     "menuShare": "Compartir",
-    "menuArchived": "Programas anteriores",
-    "noArchivedPrograms": "Este cliente no tiene programas anteriores.",
+    "menuArchived": "Programas archivados",
+    "noArchivedPrograms": "Este cliente no tiene programas archivados.",
     "changesPendingTag": "CAMBIOS SIN ENVIAR",
     "changesPendingText": "Has editado el programa y el cliente todavía tiene la versión anterior.",
     "codeCard": {
@@ -2325,24 +2326,23 @@
       "createBtn": "CREAR CLIENTE"
     },
     "newProgramModal": {
-      "title": "Nuevo programa",
-      "tabBlank": "Vacío",
-      "tabTemplate": "Desde plantilla",
       "nameLabel": "Nombre",
       "namePlaceholder": "Nombre del programa",
-      "namePlaceholderOptional": "Nombre (opcional)",
-      "templateLabel": "Plantilla",
-      "createBtn": "CREAR Y EDITAR",
-      "assignBtn": "ASIGNAR PLANTILLA"
+      "createBtn": "CREAR Y EDITAR"
     },
-    "importModal": {
-      "title": "IMPORTAR PROGRAMA",
-      "replaceLabel": "Reemplazar programa",
-      "replaceDesc": "El programa entrante pasa a ser el activo. No toca el historial.",
-      "replaceLogLabel": "Reemplazar programa + historial",
-      "replaceLogDesc": "Activa el programa entrante y añade sus sesiones al historial.",
-      "mergeLogLabel": "Solo historial",
-      "mergeLogDesc": "Solo añade las sesiones del archivo. No cambia el programa."
+    "assign": {
+      "title": "Asignar programa",
+      "replaces": "Sustituye a {{name}}, que pasa a Programas archivados.",
+      "fromBlank": "En blanco",
+      "fromTemplate": "Plantilla",
+      "fromClient": "De otro cliente",
+      "fromFile": "Importar archivo",
+      "mine": "Tuyos",
+      "viewActive": "Activos",
+      "viewArchived": "Archivados",
+      "withHistory": "Importar historial ({{count}})",
+      "assignBtn": "ASIGNAR",
+      "noProgramInFile": "El archivo no contiene ningún programa"
     }
   },
   "templates": {

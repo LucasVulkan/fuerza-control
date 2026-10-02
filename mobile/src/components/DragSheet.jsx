@@ -13,14 +13,15 @@
  * tuviera el suyo, el `gestureState` (el dy acumulado) sería distinto en cada
  * zona y el arrastre saltaría al cruzar de una a otra.
  */
-import { useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, Animated, PanResponder, KeyboardAvoidingView } from 'react-native';
+import { useRef, useEffect, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Modal, Animated, PanResponder, KeyboardAvoidingView, Keyboard, Platform } from 'react-native';
 import { Text } from './ui/Text';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { spacing, borders, textStyles } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { ArrowIcon } from './ui/EditorIcons';
 import { SheetContext } from './ui/sheetContext';
 import NavScrim from './ui/NavScrim';
 import Reanimated, {
@@ -41,7 +42,7 @@ import Reanimated, {
  * margen va DENTRO del scroll, así que una hoja corta acaba donde acababa y el
  * velo solo cubre aire.
  */
-function SheetCard({ style, header, children }) {
+function SheetCard({ style, header, footer, children }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   // Arriba, el mismo fundido bajo la cabecera, pero solo al desplazar: con la
@@ -60,7 +61,7 @@ function SheetCard({ style, header, children }) {
           bounces={false}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+          contentContainerStyle={{ paddingBottom: footer ? spacing.xl : insets.bottom + spacing.xl }}
           onScroll={onScroll}
           scrollEventThrottle={16}
         >
@@ -69,8 +70,19 @@ function SheetCard({ style, header, children }) {
         <Reanimated.View pointerEvents="none" style={[styles.topFade, topFade]}>
           <NavScrim edge="top" fade={spacing.xl} />
         </Reanimated.View>
+        {/* Con `footer` el scroll acaba encima del pie: el fundido de abajo
+            cubre solo el final del contenido, nunca el botón. */}
+        {footer && (
+          <View pointerEvents="none" style={styles.bottomFade}>
+            <NavScrim fade={spacing.xl} />
+          </View>
+        )}
       </View>
-      <NavScrim inset={insets.bottom} fade={spacing.xl} opaqueInset />
+      {footer ? (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>{footer}</View>
+      ) : (
+        <NavScrim inset={insets.bottom} fade={spacing.xl} opaqueInset />
+      )}
     </Animated.View>
   );
 }
@@ -79,8 +91,16 @@ function SheetCard({ style, header, children }) {
  * `action` sustituye el botón "Aceptar" de la derecha por otra acción
  * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
  * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
+ *
+ * `onBack`: con él, un «‹» a la izquierda del título (la caja de volver de
+ * `ScreenHeader`) para las hojas de dos páginas: vuelve a la primera sin cerrar.
+ *
+ * `footer`: contenido FIJO al pie, fuera del scroll y encima de la barra de
+ * navegación (el CTA que no puede perderse al desplazar una lista larga). Va
+ * en el `bg` de la hoja; sin él la hoja se pinta como siempre.
  */
-export default function DragSheet({ visible, onClose, title, action, tall, children }) {
+export default function DragSheet({ visible, onClose, title, action, onBack, footer, tall, children }) {
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
 
@@ -138,6 +158,18 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
     })
   ).current;
 
+  // Android: el KAV, al cerrarse el teclado, recalcula su relleno con el
+  // `screenY` del evento, y como el Modal es borde a borde (su marco llega bajo
+  // la barra de navegación) se queda un relleno residual ≈ alto de esa barra y
+  // la hoja flota con un hueco. Solo se deja actuar al KAV con el teclado abierto.
+  const [keyboardShown, setKeyboardShown] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardShown(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardShown(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
   // Slide-in al abrir
   useEffect(() => {
     if (visible) {
@@ -168,13 +200,19 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
           `box-none` deja que los toques del hueco de arriba lleguen al backdrop,
           y el `translateY` del arrastre sigue siendo del sheet, independiente
           del empuje de layout. */}
-      <KeyboardAvoidingView style={styles.kavShell} behavior="padding" pointerEvents="box-none">
+      <KeyboardAvoidingView
+        style={styles.kavShell}
+        behavior="padding"
+        enabled={Platform.OS !== 'android' || keyboardShown}
+        pointerEvents="box-none"
+      >
         {/* `tall`: alto FIJO en vez de tope. Una hoja que crece con su
             contenido da un salto cada vez que se despliega algo dentro —y en la
             de etapas se despliega constantemente—, así que el contenido pasa a
             scrollear dentro de una caja que no se mueve. */}
         <SheetCard
           style={[styles.card, tall && styles.cardTall, { transform: [{ translateY }] }]}
+          footer={footer}
           header={(
             <>
               <View {...panResponder.panHandlers} style={styles.handleWrap}>
@@ -184,7 +222,14 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
                   propio bloque de identidad ahí arriba y se cierra arrastrando. */}
               {title != null && (
                 <View style={styles.header}>
-                  <Text style={styles.title}>{title}</Text>
+                  <View style={styles.titleRow}>
+                    {onBack && (
+                      <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={8} activeOpacity={0.7}>
+                        <ArrowIcon size={15} color={th.colors.accent} back />
+                      </TouchableOpacity>
+                    )}
+                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                  </View>
                   <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
                     <Text style={styles.done}>{action ? action.label : t('common.close')}</Text>
                   </TouchableOpacity>
@@ -232,6 +277,11 @@ const makeStyles = (th) => StyleSheet.create({
   body:    { flexGrow: 1, flexShrink: 1 },
   // A sangre: sale del padding lateral de la hoja para tapar de borde a borde.
   topFade: { position: 'absolute', top: 0, left: -spacing.lg, right: -spacing.lg, height: spacing.xl },
+  // Igual, abajo: pegado al borde inferior del scroll.
+  bottomFade: { position: 'absolute', bottom: 0, left: -spacing.lg, right: -spacing.lg, height: spacing.xl },
+  // El pie, en el `bg` de la hoja (el de la tarjeta). El resto del padding de
+  // abajo (barra de navegación) se suma en el componente.
+  footer: { paddingTop: spacing.md },
   handleWrap: {
     alignItems:      'center',
     paddingVertical: spacing.sm,
@@ -248,6 +298,16 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom:  spacing.md,
   },
-  title: { ...textStyles.bodyStrong, color: th.colors.text },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
+  // La misma caja que el «volver» de `ScreenHeader`.
+  backBtn: {
+    width:           32,
+    height:          32,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  title: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   done:  { ...textStyles.labelStrong, color: th.colors.accent },
 });

@@ -26,8 +26,10 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import { stageDays, athleteProgress, stageStatus, weeklySessions, stageDetail } from '../utils/stageProgress';
 import { ownerClient } from '../utils/programOwnership';
+import { pickImportFile } from '../utils/pickImportFile';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
+import { startNewProgram } from '../utils/startNewProgram';
 import { Text } from '../components/ui/Text';
 import { Section, MenuRow } from '../components/ui/MenuList';
 import SheetRow from '../components/ui/SheetRow';
@@ -162,6 +164,15 @@ export default function MyProgramScreen() {
   const navigate           = useStore((s) => s.navigate);
   const clients            = useStore((s) => s.clients);
   const clientSync         = useStore((s) => s.clientSync);
+  const cloneProgramFromTemplate = useStore((s) => s.cloneProgramFromTemplate);
+  const showToast          = useStore((s) => s.showToast);
+  const importData         = useStore((s) => s.importData);
+  const deleteProgram      = useStore((s) => s.deleteProgram);
+  const shareSpecificProgram  = useStore((s) => s.shareSpecificProgram);
+  const exportSpecificProgram = useStore((s) => s.exportSpecificProgram);
+  // La misma regla que enseña la pestaña Plantillas (`showProTabs`): sin ella,
+  // la plantilla iría a parar a donde no se ve.
+  const hasTemplates       = useStore((s) => (s.profile?.isPro ?? false) || !(s.profile?.proTabsHidden ?? false));
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
@@ -246,6 +257,31 @@ export default function MyProgramScreen() {
   // Archivar deja el tab sin programa que enseñar, y eso es correcto: se queda
   // el estado vacío con su oferta de crear uno. No hay a dónde volver — el
   // visualizador hacía `goBack()` porque era una pantalla del stack.
+  const isTrainers = isMine && isTrainerProgram(activeProgram, clientSync);
+
+  // Solo entrenos, nada más: con `{ log: true }` `importData` no toca programas
+  // ni plantillas. El selector de archivos espera a que se cierre la hoja (dos
+  // `Modal` a la vez se pisan), como en la ficha del cliente.
+  async function handleImportHistory() {
+    const picked = await pickImportFile(t);
+    if (!picked) return;
+    if (!picked.data.workoutLog?.length) {
+      showDialog(t('errors.invalidFile'), t('errors.noHistoryInFile'));
+      return;
+    }
+    importData(picked.data, { log: true, logMode: 'merge' }, { silent: true });
+    showToast(t('header.toastImported'), 2200, 'success');
+  }
+
+  const confirmDelete = () => showDialog(
+    t('clients.deleteProgramTitle'),
+    t('clients.deleteProgramConfirm', { name: activeProgram.name }),
+    [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('clients.menuDelete'), style: 'destructive', onPress: () => deleteProgram(activeProgram.id, false) },
+    ],
+  );
+
   const handleArchive = (clearHistory) => {
     archiveProgram(activeProgram.id, clearHistory);
     setArchiveOpen(false);
@@ -328,17 +364,33 @@ export default function MyProgramScreen() {
           de acciones y, dentro, la de archivar con sus dos salidas. */}
       {menuOpen && (
         <DragSheet visible onClose={() => setMenuOpen(false)} title={t('home.moreOptions')}>
-          <View style={styles.sheetGroup}>
-            <SheetRow
-              isFirst
-              isLast
-              icon={ROW_ICON.archived}
-              label={t('home.archive')}
-              onPress={() => { setMenuOpen(false); setArchiveOpen(true); }}
-            />
-          </View>
+          <Section style={styles.sheetSection}>
+            {!isTrainers && <SheetRow icon={ROW_ICON.new} label={t('header.newProgramItem')} onPress={() => startNewProgram(t, clientSync, navigate)} />}
+            {!isTrainers && <SheetRow icon={ROW_ICON.share} label={t('clients.menuShare')} onPress={() => shareSpecificProgram(activeProgram.id, true)} />}
+            {!isTrainers && <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={() => exportSpecificProgram(activeProgram.id, true)} />}
+            <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={() => setTimeout(handleImportHistory, 250)} />
+            {!isTrainers && hasTemplates && (
+              <SheetRow
+                icon={ROW_ICON.preset}
+                label={t('clients.menuSaveTemplate')}
+                onPress={() => {
+                  cloneProgramFromTemplate(activeProgram.id, { kind: 'template', name: activeProgram.name });
+                  showToast(t('clients.toastSavedTemplate'));
+                }}
+              />
+            )}
+            {!isTrainers && (
+              <SheetRow
+                icon={ROW_ICON.archived}
+                label={t('home.archive')}
+                onPress={() => { setMenuOpen(false); setArchiveOpen(true); }}
+              />
+            )}
+            <SheetRow icon={ROW_ICON.trash} label={t('clients.menuDelete')} onPress={confirmDelete} danger />
+          </Section>
         </DragSheet>
       )}
+
 
       {archiveOpen && (
         <DragSheet visible onClose={() => setArchiveOpen(false)} title={t('home.archiveModal.title')}>
@@ -403,6 +455,7 @@ const makeStyles = (th) => StyleSheet.create({
   //
   // El `gap` de la fila no se toca: es de `MenuRow` y lo comparte media app.
   // Las mismas hojas que tenía el visualizador.
+  sheetSection: { marginBottom: spacing.sm },
   sheetGroup: { gap: spacing.xs, paddingBottom: spacing.sm },
   sheetIntro: {
     ...textStyles.body,

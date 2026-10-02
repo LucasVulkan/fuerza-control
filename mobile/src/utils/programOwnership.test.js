@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { programsOf, templatesOf, assignActiveProgram, deassignProgram } from './programOwnership';
+import { programsOf, templatesOf, assignActiveProgram, deassignProgram, copySources } from './programOwnership';
 
 const programs = {
   p_ana_1: { id: 'p_ana_1', name: 'B', owner: 'cli_ana', kind: 'program',  createdAt: '2026-01-01' },
@@ -55,5 +55,39 @@ describe('assignActiveProgram / deassignProgram', () => {
     const c = deassignProgram({ id: 'cli_1', activeProgramId: 'p1', programDirty: true });
     expect(c.activeProgramId).toBeNull();
     expect(c.programDirty).toBe(false);
+  });
+});
+
+describe('copySources', () => {
+  const progs = {
+    ...programs,
+    p_ana_3: { id: 'p_ana_3', name: 'E', owner: 'cli_ana', kind: 'program', createdAt: '2026-02-01' },
+    p_mio_2: { id: 'p_mio_2', name: 'F', owner: 'me', kind: 'program', createdAt: '2026-05-01' },
+    p_fantasma: { id: 'p_fantasma', name: 'G', owner: 'cli_borrado', kind: 'program', createdAt: '2026-05-01' },
+  };
+  const clients = {
+    cli_luis: { name: 'Luis', activeProgramId: 'p_luis' },
+    cli_ana:  { name: 'Ana',  activeProgramId: 'p_ana_1' },
+    cli_vacio: { name: 'Zoe' },
+  };
+
+  test('tuyos primero, luego clientes por nombre; sin plantillas, sin dueños muertos ni grupos vacíos', () => {
+    const g = copySources(progs, clients, 'cli_vacio', 'p_mio');
+    expect(g.map((x) => x.owner)).toEqual(['me', 'cli_ana', 'cli_luis']);
+    expect(g[0].name).toBeNull();
+    expect(g[1].name).toBe('Ana');
+  });
+
+  test('en cada grupo el activo va primero y el resto, recientes primero', () => {
+    const g = copySources(progs, clients, 'cli_vacio', 'p_mio');
+    expect(g[0].items.map((i) => [i.program.id, i.isActive])).toEqual([['p_mio', true], ['p_mio_2', false]]);
+    // p_ana_1 es el más antiguo pero está activo.
+    expect(g[1].items.map((i) => i.program.id)).toEqual(['p_ana_1', 'p_ana_2', 'p_ana_3']);
+  });
+
+  test('se excluye el activo de este cliente, pero no sus archivados', () => {
+    const g = copySources(progs, clients, 'cli_ana', null);
+    const ana = g.find((x) => x.owner === 'cli_ana');
+    expect(ana.items.map((i) => i.program.id)).toEqual(['p_ana_2', 'p_ana_3']);
   });
 });
