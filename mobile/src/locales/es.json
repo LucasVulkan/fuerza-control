@@ -763,6 +763,7 @@
       "e1rmMany": "1RM estimado, media de tus {{count}} últimas sesiones: {{kg}}"
     },
     "e1rmShort": "1RM",
+    "e1rmNoRpe": "Apunta el RPE",
     "progressionReps_one": "{{count}} rep",
     "progressionReps_other": "{{count}} reps",
     "warmup": {

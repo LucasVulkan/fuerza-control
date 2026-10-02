@@ -151,11 +151,11 @@ describe('progression.type = "effort" (effort-progression.md §4.2)', () => {
   });
   it('sin RPE apuntado → mantiene el peso y pide el RPE', () => {
     const chip = getProgression(cfg(), lib, at(''), tk);
-    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 80, why: 'progression.why_effortNoRpe' });
+    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 80, why: 'progression.why_effortNoRpe', noRpe: true });
   });
   it('reps + recámara > 12 → mantiene el peso', () => {
     const chip = getProgression(cfg({ minReps: 10, maxReps: 10, progression: { type: 'effort', targetRpe: 7 } }), lib, at('8', '60', '10'), tk);
-    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 60, why: 'progression.why_effortUnreliable' });
+    expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 60, why: 'progression.why_effortUnreliable', noRpe: false });
   });
   it('sin peso (peso corporal) → sin número', () => {
     const chip = getProgression(cfg(), lib, at('8', ''), tk);

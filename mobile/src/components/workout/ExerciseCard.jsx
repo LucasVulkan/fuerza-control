@@ -678,6 +678,8 @@ export default function ExerciseCard({
                 {/* Por esfuerzo: el 1RM al final de la línea (§6.3). */}
                 {e1rmShown != null ? (
                   <Text style={styles.progE1rm}>{`${t('workout.e1rmShort')} ${e1rmShown}`}</Text>
+                ) : progression.effort && progression.noRpe ? (
+                  <Text style={styles.progE1rm}>{t('workout.e1rmNoRpe')}</Text>
                 ) : null}
               </Pressable>
             </View>

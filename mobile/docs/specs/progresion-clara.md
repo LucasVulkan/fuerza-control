@@ -716,7 +716,8 @@ tarjeta plegada, la ficha (§6.3) y P57.
 - [ ] El calentamiento de ese día rampa hacia 62.5, no hacia 60.
 - [ ] Peso muerto Por esfuerzo con tres sesiones (1RM distintos): la línea
   enseña la media y la ficha dice «media de tus 3 últimas sesiones». Hacer una
-  cuarta sin apuntar RPE → «apunta el RPE», no un peso.
+  cuarta sin apuntar RPE → la línea dice «Apunta el RPE» donde iría el 1RM y
+  el peso se queda el de la última vez.
 - [ ] Una sesión de etapa de descarga no entra en esa media.
 - [ ] Ya no hay frase gris bajo la recomendación; al tocar la línea sale la
   ficha con la regla, la última vez y el motivo.

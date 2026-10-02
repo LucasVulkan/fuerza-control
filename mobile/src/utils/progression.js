@@ -377,6 +377,8 @@ function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload
   const keep = (why) => ({
     effort: true, type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why),
     suggestedWeight: maxW || null, suggestedTime: null, e1rm: null, raw: null, e1rmSessions: null,
+    // Sin RPE no hay cálculo: la tarjeta lo dice en la línea, donde iría el 1RM.
+    noRpe: why === 'progression.why_effortNoRpe',
   });
 
   const lastE1rm = sessionE1rm(doneSets);
