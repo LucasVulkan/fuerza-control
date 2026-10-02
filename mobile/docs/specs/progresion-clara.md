@@ -630,9 +630,9 @@ En el bloque `progBlock` (~654-678):
   una, §6.5). No es el de Progreso (la mejor serie en 6 semanas): por eso lo
   dice.
 - Objetivo del entrenador y descarga: como hoy (azul).
-- **A2 · Banda** (la misma fila sobre `tint.accent10`, o azul en descarga) se
-  deja detrás de una constante en el archivo para probarla en el móvil; la
-  elección final se apunta aquí.
+- ~~**A2 · Banda**~~ (la misma fila sobre `tint.accent10`, o azul en
+  descarga): probada en el móvil el 2-oct y **descartada** por el usuario. Se
+  queda A · Suelta y la variante se borró del código.
 
 ### 6.5 Por esfuerzo: el 1RM de las tres últimas sesiones (decisión 2-oct)
 
@@ -727,7 +727,8 @@ tarjeta plegada, la ficha (§6.3) y P57.
 - [ ] Objetivo del entrenador: la línea azul y el gris azul, como antes.
 - [ ] Peso muerto Por esfuerzo tras 3 × 4 @7 con 60 kg: la línea acaba en
   «1RM 74» y la ficha dice que es de la última sesión. Sin RPE apuntado, sin 1RM.
-- [ ] Banda A2 activada a mano: valorar y apuntar aquí la elección.
+- [x] Banda A2 activada a mano: valorar y apuntar aquí la elección.
+  (2-oct: descartada, se queda la línea suelta.)
 
 ## 7. P57 — La última vez: botón, línea o debajo de cada serie
 

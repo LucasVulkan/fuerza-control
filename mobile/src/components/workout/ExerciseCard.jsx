@@ -58,11 +58,6 @@ const R_SMALL = 9;
 // (gap 2, SupersetBlock) y aplanan las esquinas que se tocan.
 const R_INNER = 4;
 
-// A2 · Banda (progresion-clara §6.3): la misma línea de recomendación sobre un
-// fondo (`tint.accent10`, o azul en descarga) en vez de suelta. Apagada por
-// defecto, a falta de probarla en el móvil; la elección final va en la spec.
-const PROG_BAND = false;
-
 // Textos de la fila «Primera vez» y de su ficha, según qué se busca.
 const FIRST_LABEL = {
   weight: 'workout.progression.firstWeight', effort: 'workout.progression.firstWeight',
@@ -470,10 +465,6 @@ export default function ExerciseCard({
   const [progSheetOpen, setProgSheetOpen] = useState(false);
   const firstTime = !lastExercise?.sets?.length && !hasCoachTarget && !onEditTarget
     ? firstTimeRx(def, exConfig) : null;
-  const bandStyle = PROG_BAND && progression
-    ? [styles.progBand, progression.reason === 'deload' ? styles.progBandBlue
-      : progression.type === 'up' ? styles.progBandUp : styles.progBandHold]
-    : null;
   const e1rmShown = progression?.effort && progression.e1rm != null
     ? Math.round(toDisplay(progression.e1rm)) : null;
 
@@ -655,7 +646,7 @@ export default function ExerciseCard({
           {!hasCoachTarget && progression ? (
             <View style={styles.progBlock}>
               <Pressable
-                style={({ pressed }) => [styles.progLine, bandStyle, pressed && styles.progLinePressed]}
+                style={({ pressed }) => [styles.progLine, pressed && styles.progLinePressed]}
                 onPress={() => setProgSheetOpen(true)}
               >
                 <Text style={[
@@ -689,7 +680,7 @@ export default function ExerciseCard({
           {!hasCoachTarget && !progression && firstTime ? (
             <View style={styles.progBlock}>
               <Pressable
-                style={({ pressed }) => [styles.progLine, PROG_BAND && [styles.progBand, styles.progBandHold], pressed && styles.progLinePressed]}
+                style={({ pressed }) => [styles.progLine, pressed && styles.progLinePressed]}
                 onPress={() => setProgSheetOpen(true)}
               >
                 <Text style={[styles.progDir, styles.progDirFirst]}>
@@ -1214,16 +1205,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
   },
-  // A2 · Banda (`PROG_BAND`): la misma línea sobre un fondo.
-  progBand: {
-    alignItems:        'center',
-    borderRadius:      th.radius.md,
-    paddingVertical:   9,
-    paddingHorizontal: 12,
-  },
-  progBandUp:   { backgroundColor: th.tint.accent10 },
-  progBandHold: { backgroundColor: th.colors.surface2 },
-  progBandBlue: { backgroundColor: withOpacity(th.colors.blue, 0.1) },
   // La ficha de la recomendación: tres bloques, título pequeño + contenido.
   progSheet:        { gap: spacing.lg, paddingBottom: spacing.sm },
   progSheetBlock:   { gap: spacing.xs },
