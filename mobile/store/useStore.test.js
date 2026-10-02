@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
 import { localDay, addDays } from '../src/utils/stageProgress';
+import { templateChainIds } from '../src/utils/exerciseLinks';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.
@@ -934,6 +935,22 @@ describe('weeks-model — acciones de etapa', () => {
 
     expect(prog(copia)).toMatchObject({
       currentStageIndex: 0, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
+    });
+  });
+
+  it('la copia de un programa de dos etapas encadena sus etapas, no las del original', () => {
+    const pid = programa();
+    useStore.getState().addStageToProgram(pid, { durationWeeks: 2 });
+    const idsDe = (p) => prog(p).stages.flatMap((st) => st.days.map((d) => d.sessionTemplateId));
+    const originales = idsDe(pid);
+
+    const copia = useStore.getState().cloneProgramFromTemplate(pid, { owner: 'cli_1' });
+
+    const [e1, e2] = prog(copia).stages.map((st) => st.days[0].sessionTemplateId);
+    const cadena = templateChainIds(e2, (id) => useStore.getState().sessionTemplates[id]);
+    expect(cadena).toContain(e1);
+    idsDe(copia).forEach((id) => {
+      expect(originales).not.toContain(useStore.getState().sessionTemplates[id].derivedFrom);
     });
   });
 

@@ -1940,11 +1940,13 @@ export const useStore = create(
 
         const newProgramId = generateId('prog');
         const newTemplates = {};
+        const idMap = {};   // id de sesión del origen → id de su copia
 
         function cloneDays(days) {
           return (days ?? []).map(({ sessionTemplateId, label }) => {
             const srcTemplate = sessionTemplates[sessionTemplateId];
             const newTemplateId = generateId('tpl');
+            idMap[sessionTemplateId] = newTemplateId;
             newTemplates[newTemplateId] = {
               ...(srcTemplate ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
               id: newTemplateId, programId: newProgramId,
@@ -1960,6 +1962,13 @@ export const useStore = create(
           ...stage,
           days: cloneDays(stage.days ?? []),
         }));
+
+        // `derivedFrom` copiado apunta a las sesiones del original: sin
+        // remapearlo, la etapa 2 de la copia no encadena con su etapa 1 y el
+        // cliente no ve pesos de referencia. Lo que queda fuera del programa, a null.
+        Object.values(newTemplates).forEach((tpl) => {
+          tpl.derivedFrom = idMap[tpl.derivedFrom] ?? null;
+        });
 
         const newIdx = stagedSrc.currentStageIndex ?? 0;
         // Programa nuevo, progreso nuevo: el del origen (lo que se entrenó con
