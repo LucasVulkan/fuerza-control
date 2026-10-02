@@ -103,7 +103,7 @@ Sustituye a `NewProgramSheet` (pestañas En blanco / De plantilla).
 ### 4.2 La hoja
 
 `DragSheet` «Asignar programa». Si el cliente ya tiene programa activo, una
-línea arriba: «Sustituye a **{{name}}**, que pasa a Programas anteriores».
+línea arriba: «Sustituye a **{{name}}**, que pasa a Programas archivados».
 Sustituye al diálogo de `confirmReplaceActive`: el aviso se lee antes de elegir,
 como ya hace `AssignSheet` en Plantillas.
 
@@ -208,8 +208,8 @@ ya trae su historial si se quiere.
 - [x] Archivo con entrenos → sale «Importar historial (N)», apagado. Apagado → el historial del cliente no cambia; encendido →
   los entrenos aparecen en su historial.
 - [x] Cliente con programa activo → arriba de la hoja, en naranja,
-  «Sustituye a X, que pasa a Programas anteriores»; al asignar no sale ningún
-  diálogo de confirmación, y el anterior está en Programas anteriores.
+  «Sustituye a X, que pasa a Programas archivados»; al asignar no sale ningún
+  diálogo de confirmación, y el anterior está en Programas archivados.
 - [x] ··· de la tarjeta → «Asignar programa» (ya no «Nuevo programa») abre
   la hoja; ya no está «Importar programa».
 - [x] ··· → «Importar historial» (debajo de Exportar) → elegir un archivo
@@ -222,7 +222,7 @@ ya trae su historial si se quiere.
 ### 5.1 Dónde
 
 - Menú ··· de `AssignedProgramCard` (programa activo).
-- Menú de `ArchivedProgramRow` (Programas anteriores), junto a Reactivar. Como
+- Menú de `ArchivedProgramRow` (Programas archivados), junto a Reactivar. Como
   las demás opciones de esa fila, cierra también la hoja de Programas
   anteriores: el toast se pinta debajo de las hojas abiertas.
 - Tu propio programa activo: el ··· de la pestaña Programa (`MyProgramScreen`),
@@ -251,7 +251,7 @@ mismo orden**:
 | Compartir · Exportar | Compartir · Exportar (con historial) | — |
 | Importar historial | Importar historial (solo entrenos, `logMode: 'merge'`) | ✓ |
 | Guardar como plantilla | Guardar como plantilla (si se ve Plantillas) | — |
-| Programas anteriores (N) | — (no es una acción sobre este programa; está en el ≡) | — |
+| Programas archivados (N) | — (no es una acción sobre este programa; está en el ≡) | — |
 | Archivar | Archivar (la hoja de hoy, con sus dos salidas) | — |
 | Eliminar programa | Eliminar programa (con confirmación) | ✓ |
 
@@ -263,10 +263,10 @@ exportarlo) o cambiarlo por otro. Solo quedan Importar historial y Eliminar
 Las del ≡ (Nuevo programa, Programas archivados, Importar) se quedan donde están.
 
 **«Quitar asignación» del cliente pasa a «Archivar»**: hace lo mismo que Archivar
-en tu programa (pasa a Programas anteriores, se puede reactivar) y no se parecía
+en tu programa (pasa a Programas archivados, se puede reactivar) y no se parecía
 a Eliminar más que por el nombre. Pide confirmación antes («pasará a Programas
 anteriores y el cliente se quedará sin programa activo»), como Reactivar. Iconos, iguales en los dos menús: Archivar =
-`archived`, Programas anteriores = `history`.
+`archived`, Programas archivados = `history`.
 
 ### 5.4 i18n (es / en)
 
@@ -279,13 +279,13 @@ anteriores y el cliente se quedará sin programa activo»), como Reactivar. Icon
   Plantillas»; seguimos en la ficha del cliente.
 - [x] La plantilla sale en Plantillas con el mismo nombre, sesiones y etapas;
   editarla no cambia el programa del cliente, y al revés.
-- [x] Programas anteriores → ··· de uno → «Guardar como plantilla» → se cierra la
+- [x] Programas archivados → ··· de uno → «Guardar como plantilla» → se cierra la
   hoja, sale el toast y la plantilla está en Plantillas.
 - [x] Pestaña Programa (tu programa) → ··· → «Guardar como plantilla» encima de
   Archivar → toast y la plantilla está en Plantillas; tu programa sigue activo.
 - [x] Tu programa → ··· → salen, en este orden: Nuevo programa, Compartir,
   Exportar, Importar historial, Guardar como plantilla, Archivar y Eliminar
-  programa (sin Programas anteriores: está en el ≡).
+  programa (sin Programas archivados: está en el ≡).
 - [x] Desde ese ···: Nuevo programa abre el alta; Exportar y Compartir sacan el
   archivo; Importar historial
   añade los entrenos de un archivo sin cambiar el programa; Eliminar pide
@@ -293,7 +293,7 @@ anteriores y el cliente se quedará sin programa activo»), como Reactivar. Icon
 - [x] Con un programa que te ha mandado tu entrenador → ··· → solo Importar
   historial y Eliminar programa.
 - [ ] Ficha de cliente → ··· → «Archivar» en lugar de «Quitar asignación» →
-  pide confirmación → el programa pasa a Programas anteriores y el cliente queda
+  pide confirmación → el programa pasa a Programas archivados y el cliente queda
   sin programa activo. Cancelar no cambia nada.
 - [x] Asignar esa plantilla a otro cliente → empieza en la etapa 1 sin progreso,
   aunque el original fuera más avanzado.
@@ -304,4 +304,4 @@ anteriores y el cliente se quedará sin programa activo»), como Reactivar. Icon
 |---|---|---|---|---|
 | C29 | `derivedFrom` reescrito en `cloneProgramFromTemplate` + test | — | 🟢 | ✅ eeb598f — derivedFrom remapeado dentro de la copia + test |
 | C30 | Hoja «Asignar programa» con cuatro orígenes; «Importar historial» aparte | C29 | 🟡 | ✅ 15351db — `AssignProgramSheet` de dos páginas, `DragSheet.onBack`, `copySources` + test |
-| C31 | «Guardar como plantilla» en los menús de programa del cliente | C29 | 🟢 | ✅ 20d938a — fila en el ··· del activo y de Programas anteriores + test del store |
+| C31 | «Guardar como plantilla» en los menús de programa del cliente | C29 | 🟢 | ✅ 20d938a — fila en el ··· del activo y de Programas archivados + test del store |

@@ -2569,7 +2569,7 @@ export default function ClientsScreen() {
                   necesita uno (group-classes.md §4.1, C24). */}
               <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} fold={fold} />
 
-              {/* Programas anteriores — fuera de la vista, en su propia hoja:
+              {/* Programas archivados — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}
               <DragSheet
                 visible={showPrevious}
