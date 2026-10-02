@@ -142,6 +142,11 @@ describe('applyRx — progresión', () => {
     expect(applyRx([never], { progressionHold: 'deload' }, LIB)[0].progression.down).toBe('never');
   });
 
+  it("keeps a saved 'weight' type: its goal is minReps, 'double' would move it to maxReps", () => {
+    const w = { ...squat, progression: { type: 'weight' } };
+    expect(applyRx([w], { progressionHold: 'deload' }, LIB)[0].progression.type).toBe('weight');
+  });
+
   it('marks a deload without losing the rest of the progression config', () => {
     const [s] = applyRx(SESSION, { progressionHold: 'deload' }, LIB);
     expect(s.progression.hold).toBe('deload');

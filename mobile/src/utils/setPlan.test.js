@@ -61,6 +61,10 @@ describe('planSet — la meta de las reps', () => {
     expect(planSet({ exConfig: {}, def: { minReps: 6, maxReps: 10 }, chip, index: 0 }).reps.value).toBe('10');
     expect(planSet({ exConfig: {}, chip, index: 0 }).reps.value).toBe('12');
   });
+  it("el 'weight' antiguo pide el mínimo, como su chip", () => {
+    const exConfig = { minReps: 8, maxReps: 12, progression: { type: 'weight' } };
+    expect(planSet({ exConfig, chip, index: 0 }).reps.value).toBe('8');
+  });
   it('al bajar, también el peso del plan', () => {
     const p = planSet({ exConfig: { minReps: 8, maxReps: 12 }, chip: { type: 'down', suggestedWeight: 57.5 }, index: 0 });
     expect(p.weight).toEqual({ value: '57.5', source: 'plan' });

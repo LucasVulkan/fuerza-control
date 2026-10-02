@@ -42,9 +42,10 @@ export function planSet({ exConfig, def, chip, lastSets, overrideEx, index }) {
     plan.weight = chip.suggestedWeight;
     plan.reps   = minReps;
   } else if (chip?.suggestedWeight != null && chip.type !== 'hold') {
-    // La meta de la progresión: las reps fijas, o el máximo del rango.
+    // La meta de la progresión: las reps fijas, o el máximo del rango. El
+    // `type: 'weight'` antiguo tenía por meta el mínimo, como en el chip.
     plan.weight = chip.suggestedWeight;
-    plan.reps   = maxReps;
+    plan.reps   = exConfig?.progression?.type === 'weight' ? minReps : maxReps;
   }
   // En mantener el gris es lo que hiciste (decisión 4), no el inicio: solo
   // sube con 'up'.

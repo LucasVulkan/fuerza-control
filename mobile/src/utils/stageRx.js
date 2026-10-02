@@ -249,6 +249,9 @@ export function applyRx(exercises, rx, allExercises = {}) {
       const weighted = prog.type !== 'reps' && prog.type !== 'time';
       next.progression = {
         ...prog,
+        // 'weight' se lee como 'double' pero con meta = minReps: reescribirlo
+        // cambiaría cuándo sube (progresion-clara.md §4.1).
+        ...(ex.progression?.type === 'weight' ? { type: 'weight' } : {}),
         ...(down != null ? { down } : {}),
         increment: scaleIncrement(prog.increment, r.incrementScale, weighted ? step : null),
         hold: r.progressionHold,

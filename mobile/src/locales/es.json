@@ -2479,7 +2479,7 @@
     "normal_hold": "Sigue con {{weightStr}} y foco en la técnica.",
     "deload_hold": "Semana de descarga: mantén {{weightStr}} y deja 3-4 reps en recámara.",
     "why_allHit": "completaste todas las repeticiones de todas las series",
-    "why_partHit": "al menos {{need}} de {{n}} series llegaron a {{goal}}",
+    "why_partHit": "{{hit}} de {{n}} series llegaron a {{goal}}",
     "why_belowMin": "no llegaste al mínimo de repeticiones",
     "why_holdReps": "completa todas las repeticiones antes de subir",
     "why_rpeAbove": "llegaste a la meta, pero con un RPE medio por encima de {{maxRpe}}",

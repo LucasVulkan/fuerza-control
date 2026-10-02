@@ -243,7 +243,7 @@ function verdict(prog, doneSets, n, floor, goal, key = 'minReps') {
 /** El motivo de subir dice lo que pasó de verdad: con Parcial no llegaron todas. */
 function whyUp(prog, v, goal, t) {
   return prog.evaluation.mode === 'part' && v.hitGoal < v.n
-    ? t('progression.why_partHit', { need: v.need, n: v.n, goal })
+    ? t('progression.why_partHit', { hit: v.hitGoal, n: v.n, goal })
     : t('progression.why_allHit');
 }
 

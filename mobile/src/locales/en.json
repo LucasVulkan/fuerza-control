@@ -2479,7 +2479,7 @@
     "normal_hold": "Keep going with {{weightStr}} and focus on technique.",
     "deload_hold": "Deload week: keep {{weightStr}} and leave 3-4 reps in the tank.",
     "why_allHit": "you completed every rep in every set",
-    "why_partHit": "at least {{need}} of {{n}} sets reached {{goal}}",
+    "why_partHit": "{{hit}} of {{n}} sets reached {{goal}}",
     "why_belowMin": "you didn't reach the minimum reps",
     "why_holdReps": "complete every rep before going up",
     "why_rpeAbove": "you reached the goal, but with an average RPE above {{maxRpe}}",

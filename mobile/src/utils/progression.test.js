@@ -277,7 +277,7 @@ describe('QA P52 — los textos dicen lo que pasó', () => {
   it('«% mínimo» que sube sin todas al máximo: el motivo cuenta las que llegaron', () => {
     const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', evaluation: { mode: 'pct', pctThreshold: 0.6 } } };
     const c = getProgression(cfg, {}, done([['60', '12'], ['60', '12'], ['60', '9']]), tk);
-    expect(c.why).toBe('progression.why_partHit{"need":2,"n":3,"goal":12}');
+    expect(c.why).toBe('progression.why_partHit{"hit":2,"n":3,"goal":12}');
   });
   it('todas al máximo: el motivo de siempre', () => {
     const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double' } };
@@ -338,7 +338,7 @@ describe('P54 — «Peso · por reglas» (§4.2)', () => {
   describe('Parcial', () => {
     it('3 series, 2 de 3: sube con 2 a la meta y el motivo cuenta', () => {
       expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9])).toMatchObject({
-        type: 'up', suggestedWeight: 62.5, why: 'progression.why_partHit{"need":2,"n":3,"goal":12}',
+        type: 'up', suggestedWeight: 62.5, why: 'progression.why_partHit{"hit":2,"n":3,"goal":12}',
       });
     });
     it('3 series, 2 de 3: con 1 a la meta mantiene', () => {
@@ -410,7 +410,7 @@ describe('P54 — «Peso · por reglas» (§4.2)', () => {
     const go = (c, reps, w = '20', rpe = '') => getProgression(c, assisted, reps.map((r) => ({ weight: w, reps: String(r), rpe, done: true })), tk);
     it('todas a la meta → menos ayuda', () => expect(go(cfg(3), [12, 12, 12])).toMatchObject({ type: 'up', suggestedWeight: 17.5, assist: true }));
     it('Parcial: 2 de 3 → menos ayuda, con el motivo', () => {
-      expect(go(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9])).toMatchObject({ type: 'up', suggestedWeight: 17.5, why: 'progression.why_partHit{"need":2,"n":3,"goal":12}' });
+      expect(go(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9])).toMatchObject({ type: 'up', suggestedWeight: 17.5, why: 'progression.why_partHit{"hit":2,"n":3,"goal":12}' });
     });
     it('RPE máx.: la puerta también aplica', () => {
       expect(go(cfg(3, { mode: 'rpe', maxRpe: 8 }), [12, 12, 12], '20', '9')).toMatchObject({ type: 'hold', why: 'progression.why_rpeAbove{"maxRpe":8}' });
