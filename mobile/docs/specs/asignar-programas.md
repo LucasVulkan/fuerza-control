@@ -116,7 +116,7 @@ pasar al paso 2.
 | **En blanco** | el formulario de hoy: nombre, sesiones, semanas o «sin límite» |
 | **Plantilla** (si hay alguna) | lista de `templatesOf(programs)` |
 | **De otro cliente** (si hay algún programa que copiar) | lista agrupada (§4.3) |
-| **Desde archivo** | selector de archivo → §4.4 |
+| **Importar archivo** | selector de archivo → §4.4 |
 
 Paso 2 dentro de la misma hoja, cambiando de página como en
 [`editor-vinculacion.md`](editor-vinculacion.md) §5.3: nada de dos `Modal` seguidos.
@@ -149,7 +149,7 @@ está vacía no hay segmentado y se enseña la otra.
 Entran también los archivados del propio cliente. Para volver a uno tal cual ya
 está «Reactivar»; esto lo copia de cero (progreso nuevo).
 
-### 4.4 «Desde archivo»
+### 4.4 «Importar archivo»
 
 `handleImportPick` de hoy: `DocumentPicker` → `parseImportFile`, con la hoja
 abierta.
@@ -172,7 +172,7 @@ selector → `importForClient(clientId, data, 'merge_log')`, con el toast de hoy
 `ClientImportModal` desaparece.
 
 Sin programa activo **no** hay «Importar historial» ni ··· nuevo (decidido el
-2-oct-2026): sin programa, lo que se importa es un programa, y «Desde archivo»
+2-oct-2026): sin programa, lo que se importa es un programa, y «Importar archivo»
 ya trae su historial si se quiere.
 
 ### 4.6 i18n (es / en)
@@ -185,7 +185,7 @@ ya trae su historial si se quiere.
 **Probar C30**
 
 - [x] Cliente sin programa → botón «Asignar programa» → salen los orígenes:
-  En blanco y Desde archivo siempre; Plantilla solo si hay plantillas; De otro
+  En blanco y Importar archivo siempre; Plantilla solo si hay plantillas; De otro
   cliente solo si hay algún programa que copiar.
 - [x] Tocar un origen → la página se desliza y aparece «‹» junto al título;
   «‹» vuelve a los orígenes sin cerrar la hoja. Cerrar la hoja desde la página 2
@@ -200,10 +200,10 @@ ya trae su historial si se quiere.
   anteriores sí.
 - [x] Asignar uno de otro cliente → se abre el editor con la copia; editarla
   no cambia el programa del otro cliente.
-- [x] Desde archivo → se abre el selector con la hoja abierta (probarlo
+- [x] Importar archivo → se abre el selector con la hoja abierta (probarlo
   también en iPhone) → página con el nombre del programa y del archivo →
   «ASIGNAR» → queda como activo, sin abrir el editor.
-- [x] Desde archivo con un archivo sin programa → diálogo «El archivo no
+- [x] Importar archivo con un archivo sin programa → diálogo «El archivo no
   contiene ningún programa» y la hoja sigue en los orígenes.
 - [x] Archivo con entrenos → sale «Importar historial (N)», apagado. Apagado → el historial del cliente no cambia; encendido →
   los entrenos aparecen en su historial.

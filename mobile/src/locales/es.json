@@ -2336,7 +2336,7 @@
       "fromBlank": "En blanco",
       "fromTemplate": "Plantilla",
       "fromClient": "De otro cliente",
-      "fromFile": "Desde archivo",
+      "fromFile": "Importar archivo",
       "mine": "Tuyos",
       "viewActive": "Activos",
       "viewArchived": "Archivados",
