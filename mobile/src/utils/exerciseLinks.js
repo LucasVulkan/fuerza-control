@@ -19,6 +19,8 @@ export const LINKED_CONFIG_KEYS = [
   'minReps', 'maxReps', 'minTime', 'maxTime',
   'tempo', 'trainerNote', 'trackRpe', 'variant',
   'progressionModel', 'progression',
+  // El escalón de peso viaja con el grupo, como el resto de la configuración.
+  'weightStep',
 ];
 
 export function pickLinkedConfig(exConfig) {

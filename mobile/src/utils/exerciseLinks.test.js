@@ -102,6 +102,11 @@ describe('pickLinkedConfig', () => {
     expect(pickLinkedConfig({ exerciseId: 'squat', isKey: true, sets: 4 })).toEqual({ isKey: true, sets: 4 });
     expect(LINKED_CONFIG_KEYS).toContain('isKey');
   });
+
+  it('carries weightStep — el escalón viaja con el grupo', () => {
+    expect(LINKED_CONFIG_KEYS).toContain('weightStep');
+    expect(pickLinkedConfig({ exerciseId: 'squat', weightStep: 5, sets: 4 })).toEqual({ weightStep: 5, sets: 4 });
+  });
 });
 
 // ── Cadena de etapas (docs/specs/stage-planner.md §4.1) ─────────────────────

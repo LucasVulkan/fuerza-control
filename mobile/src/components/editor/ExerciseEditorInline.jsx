@@ -163,8 +163,14 @@ function computeInitial(exConfig, def) {
     targetRpe:      initProg.targetRpe,
     progMode:       initMode,
     progType:       initType,
-    evalMode:       initProg.evaluation.mode,
-    evalPct:        Math.round((initProg.evaluation.pctThreshold ?? 0.8) * 100),
+    // Puente hasta P55: el editor aún no conoce 'part' (progresion-clara.md
+    // §4.1) y lo lee como 'pct'. `floor`, no `round`: el editor guarda
+    // `evalPct / 100` como pctThreshold y el motor lo vuelve a leer con el
+    // techo; con `round`, 2 de 3 (67 %) se re-guardaba como 3 de 3.
+    evalMode:       initProg.evaluation.mode === 'part' ? 'pct' : initProg.evaluation.mode,
+    evalPct:        initProg.evaluation.mode === 'part'
+      ? Math.floor(initProg.evaluation.need / (exConfig.sets ?? 3) * 100 + 1e-9)
+      : 80,
     incrType:       initProg.increment.type === 'stepped' ? 'fixed' : initProg.increment.type,
     incrFixedValue: initProg.increment.value        ?? 2.5,
     incrPctValue:   initProg.increment.pct          ?? 5,

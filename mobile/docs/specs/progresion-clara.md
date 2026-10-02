@@ -257,8 +257,9 @@ antiguo, sin migrar datos:
 
 | Guardado | Se lee como |
 |---|---|
-| `type: 'weight'` | `'double'` (es lo mismo con mín = máx) |
+| `type: 'weight'` | `'double'` con meta = `minReps` (el editor de hoy deja guardar `'weight'` con rango, y su meta era el mínimo: leerlo con `maxReps` cambiaría cuándo sube) |
 | `evaluation.mode: 'pct'` + `pctThreshold` | `'part'` con `need = ceil(pctThreshold · sets)` |
+| `'part'` sin `need` | `need = ceil((pctThreshold ?? 0,8) · sets)` (el editor sigue guardando `pctThreshold` hasta P55) |
 | `increment.type: 'stepped'` | `'fixed'` con `value` del primer escalón |
 | `increment.minIncrement` | se ignora (lo sustituye `step`) |
 | `seed`, `minRir`, `custom` | se ignoran |
@@ -268,6 +269,17 @@ Se borran de `progression.js` el código y la cabecera que describen `seed`,
 
 `stageRx.scaleIncrement` redondea hoy a `minIncrement`: pasa a redondear al
 `step` resuelto (que `applyRx` ya puede sacar de `resolveProgressionConfig`).
+`applyRx` materializa la config resuelta en `next.progression`: **no** escribe
+`step` ni `direction` (son del ejercicio, se resuelven siempre), y `down` se
+escribe solo si venía guardado. Por eso `resolveProgressionConfig` deja `down`
+como está (ausente → `null`) y el valor por defecto de §4.3 lo calcula el chip
+con las series de la sesión: si se resolviera con las de la etapa base, una
+etapa con más series heredaría un `fails` que no le toca.
+
+**Puente hasta P55** (única excepción a «solo `src/utils/`»): el editor lee
+`evaluation.mode` y no conoce `'part'`. En `computeInitial`
+(`ExerciseEditorInline.jsx`) se lee `'part'` como `'pct'` con
+`evalPct = round(need / sets · 100)`. Nada más; P55 sustituye ese estado.
 
 `exerciseLinks.LINKED_CONFIG_KEYS` añade `'weightStep'`: el escalón viaja con el
 grupo, como el resto de la configuración.
@@ -301,8 +313,9 @@ pero con RPE medio > maxRpe), `why_belowMin` (baja), `why_holdReps` (mantener).
 
 `down` ausente = `{ fails: floor(n · 0,4) + 1 }`. **Es exactamente lo de hoy**
 («menos del 60 % de las series al mínimo»: 2 de 3, 2 de 4, 3 de 5),
-comprobado contra el motor. `fails` se limita a `[1, n]` al resolver, porque una
-regla de etapa puede cambiar `n`.
+comprobado contra el motor. El valor por defecto y el recorte de `fails` a
+`[1, n]` se calculan en el chip, con la `n` de la sesión, porque una regla de
+etapa puede cambiar `n` (§4.1, `applyRx`).
 
 Si una etapa sube las series y la regla de bajar queda por debajo de
 `n − need + 1`, no se corrige: el orden «sube → baja» decide y no hay error.
@@ -327,7 +340,9 @@ Si una etapa sube las series y la regla de bajar queda por debajo de
   y todas las series llegaron a las reps objetivo, sube un `step`
   (`type: 'up'`, `why_effortReached`, nuevo).
 - `increment.type: 'pct'` redondea al múltiplo de `step` más cercano, nunca por
-  debajo de `step`.
+  debajo de `step`. **Solo en peso** (Doble, asistidos): en Reps y Tiempo el
+  escalón es de kilos y no aplica; siguen redondeando a entero, mínimo 1, como
+  hoy.
 
 ### 4.5 El plan de cada serie: `src/utils/setPlan.js` (nuevo)
 
@@ -348,7 +363,9 @@ Por campo, el primero que tenga valor:
    - `chip.effort` → peso = `chip.suggestedWeight`; reps = `minReps`.
    - `chip.suggestedWeight != null` y `chip.type !== 'hold'` → peso =
      `suggestedWeight`; reps = la meta (reps fijas, o `maxReps` con rango).
-   - `chip.suggestedReps != null` → reps = `suggestedReps`.
+   - `chip.suggestedReps != null` y `chip.type === 'up'` → reps =
+     `suggestedReps`. En mantener, el gris es lo que hiciste (decisión 4), no el
+     inicio.
    - `chip.suggestedTime != null` y `chip.type === 'up'` → tiempo = `suggestedTime`.
 3. **La última vez** (`lastSets[index][campo]`) → `source: 'last'`.
 4. Nada → `{ value: '', source: 'none' }`.
