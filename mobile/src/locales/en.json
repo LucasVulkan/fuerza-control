@@ -2148,9 +2148,6 @@
     "deleteProgramConfirm": "Delete \"{{name}}\"?",
     "reactivateTitle": "Reactivate program",
     "reactivateConfirm": "\"{{name}}\" will become the active program and the current one will be archived. Continue?",
-    "replaceActiveTitle": "Replace active program",
-    "replaceActiveConfirm": "This client already has an active program. The new one will replace it and the current one will be archived under Previous. Continue?",
-    "replaceActiveConfirmBtn": "Replace",
     "refreshHistory": "↓ Update client history",
     "refreshingHistory": "Updating…",
     "sortRecent": "Recent",
@@ -2180,8 +2177,8 @@
     "nextSessionHintLinked": "They train with their app: what they do reaches you on its own. Prepare tweaks just this session; the program stays as it is.",
     "sessionMeta": "{{count}} exercises · ~{{minutes}} min",
     "programMenuTitle": "Program",
-    "menuNewProgram": "New program",
-    "menuImport": "Import program",
+    "assignProgram": "Assign program",
+    "menuImportHistory": "Import history",
     "menuShare": "Share",
     "menuArchived": "Previous programs",
     "noArchivedPrograms": "This client has no previous programs.",
@@ -2325,24 +2322,23 @@
       "createBtn": "CREATE CLIENT"
     },
     "newProgramModal": {
-      "title": "New program",
-      "tabBlank": "Blank",
-      "tabTemplate": "From template",
       "nameLabel": "Name",
       "namePlaceholder": "Program name",
-      "namePlaceholderOptional": "Name (optional)",
-      "templateLabel": "Template",
-      "createBtn": "CREATE AND EDIT",
-      "assignBtn": "ASSIGN TEMPLATE"
+      "createBtn": "CREATE AND EDIT"
     },
-    "importModal": {
-      "title": "IMPORT PROGRAM",
-      "replaceLabel": "Replace program",
-      "replaceDesc": "The incoming program becomes the active one. Leaves history untouched.",
-      "replaceLogLabel": "Replace program + history",
-      "replaceLogDesc": "Activates the incoming program and adds its sessions to the history.",
-      "mergeLogLabel": "History only",
-      "mergeLogDesc": "Only adds the file's sessions. Doesn't change the program."
+    "assign": {
+      "title": "Assign program",
+      "replaces": "Replaces {{name}}, which moves to Previous programs.",
+      "fromBlank": "Blank",
+      "fromTemplate": "Template",
+      "fromClient": "From another client",
+      "fromFile": "From file",
+      "mine": "Yours",
+      "activeTag": "active",
+      "withHistory_one": "Also import its history ({{count}} session)",
+      "withHistory_other": "Also import its history ({{count}} sessions)",
+      "assignBtn": "ASSIGN",
+      "noProgramInFile": "The file contains no program"
     }
   },
   "templates": {

@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share, useWindowDimensions } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -17,7 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
-import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated';
+import Reanimated, { LinearTransition, FadeOutUp, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -25,7 +25,8 @@ import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
-import { Section } from '../components/ui/MenuList';
+import { Section, MenuRow, ChoiceRow, RowIcon } from '../components/ui/MenuList';
+import AnimatedHeight from '../components/ui/AnimatedHeight';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -49,7 +50,7 @@ import { sessionPlan } from '../utils/sessionPlan';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
-import { programsOf, templatesOf } from '../utils/programOwnership';
+import { programsOf, templatesOf, copySources } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
 import { LockIcon, CheckIcon, ChevronDown, MenuIcon, CloseIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
@@ -176,36 +177,6 @@ function ExerciseMiniCard({ exerciseId, logs }) {
   );
 }
 
-// ── Client import modal ────────────────────────────────────────────────────────
-
-function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
-  const styles = useThemedStyles(makeStyles);
-  const { t } = useTranslation();
-  // Hoja estándar (U34): elegir cómo importar es elegir entre opciones.
-  // Cancelar es cerrarla; el nombre del fichero va de primera línea.
-  return (
-    <DragSheet visible onClose={onClose} title={t('clients.importModal.title')}>
-      <Text style={styles.modalSub} numberOfLines={1}>{fileName}</Text>
-      <Section style={styles.importSheetRows}>
-        {[
-          { mode: 'replace',     icon: ROW_ICON.import,  label: t('clients.importModal.replaceLabel'),    desc: t('clients.importModal.replaceDesc') },
-          { mode: 'replace_log', icon: ROW_ICON.history, label: t('clients.importModal.replaceLogLabel'), desc: t('clients.importModal.replaceLogDesc') },
-          { mode: 'merge_log',   icon: ROW_ICON.new,     label: t('clients.importModal.mergeLogLabel'),   desc: t('clients.importModal.mergeLogDesc') },
-        ].map(({ mode, icon, label, desc }) => (
-          <SheetRow
-            key={mode}
-            icon={icon}
-            label={label}
-            sub={desc}
-            subLines={0}
-            onPress={() => onImport(parsedData, mode)}
-          />
-        ))}
-      </Section>
-    </DragSheet>
-  );
-}
-
 // ── Small icons for program rows ───────────────────────────────────────────────
 
 function EyeIcon({ size = 18, color }) {
@@ -242,7 +213,7 @@ function UploadIcon({ size = 12, color }) {
 function AssignedProgramCard({
   program, getEffectiveTemplate, allExercises, adherence, adherence4w, loadPct,
   dirty, client, link, log, archivedCount,
-  onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImport, onNewProgram,
+  onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImportHistory, onAssign,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived, fold,
 }) {
   const { t }  = useTranslation();
@@ -422,11 +393,11 @@ function AssignedProgramCard({
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
         <Section style={styles.sheetSection}>
-          <SheetRow icon={ROW_ICON.new}    label={t('clients.menuNewProgram')} onPress={onNewProgram} />
+          <SheetRow icon={ROW_ICON.new}    label={t('clients.assignProgram')} onPress={onAssign} />
           {onUpload && <SheetRow icon={ROW_ICON.send} label={t('clients.menuUpload')} onPress={onUpload} />}
-          <SheetRow icon={ROW_ICON.import} label={t('clients.menuImport')} onPress={onImport} />
           <SheetRow icon={ROW_ICON.share}  label={t('clients.menuShare')}  onPress={onShare} />
           <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={onExport} />
+          <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={onImportHistory} />
           {archivedCount > 0 && (
             <SheetRow
               icon={ROW_ICON.archived}
@@ -716,162 +687,244 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
   );
 }
 
-// ── New program modal ──────────────────────────────────────────────────────────
+// ── Asignar programa ───────────────────────────────────────────────────────────
+
+// Cambiar de página desliza el contenido con la curva del segmentado, como el
+// pager del editor de sesión. Fuera del componente: un worklet no captura
+// `SegmentedControl` entero.
+const SLIDE = SegmentedControl.TIMING;
+
+/** «N sesiones · N etapas», el subtítulo de las listas de origen. */
+function programMeta(p, t) {
+  return `${t('common.session', { count: allProgramDays(p).length })} · ${t('history.stagesCount', { count: p.stages?.length || 1 })}`;
+}
 
 /**
- * Hoja de "nuevo programa" del cliente. Era un `<Modal>` centrado con pestañas,
- * rejillas de números y botones propios; pasa a `DragSheet`, el único
- * bottom-sheet de la app (§9 de docs/UI-MIGRATION.md), y a los controles que ya
- * existen: `SegmentedControl` para elegir origen, `StepField` para los dos
- * contadores y la fila de "sin límite" del editor de programa.
+ * La única puerta para darle un programa a un cliente (asignar-programas.md §4).
+ * Una `DragSheet` con dos páginas —no dos hojas seguidas: en Android un `Modal`
+ * que se abre mientras otro se cierra no se presenta—: el origen (en blanco,
+ * plantilla, de otro cliente, desde archivo) y, tras elegirlo, la elección y el
+ * botón «Asignar». «‹» vuelve al origen.
  *
  * La etiqueta de las sesiones dice "Sesiones por semana": el número crea las
  * sesiones distintas de la etapa (A, B, C…), y esas SON los entrenos que se
  * esperan cada semana (weeks-model.md §0.4).
+ *
+ * `sources`: `copySources(...)`. `onPickFile` devuelve `{ fileName, data }` o
+ * null (y ya ha avisado del error). Cada `onAssign*` cierra la hoja.
  */
-function NewProgramSheet({ templatePrograms, onCreateBlank, onCreateFromTemplate, onClose }) {
-  const th     = useTheme();
+function AssignProgramSheet({
+  activeName, templatePrograms, sources, onPickFile,
+  onAssignBlank, onAssignCopy, onAssignFile, onClose,
+}) {
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
 
-  const hasTemplates = templatePrograms.length > 0;
-  const [tab,              setTab]              = useState('blank');
-  const [name,             setName]             = useState('');
-  const [numSessions,      setNumSessions]      = useState(3);
+  // 'origin' | 'blank' | 'template' | 'client' | 'file'
+  const [step,          setStep]          = useState('origin');
+  const [name,          setName]          = useState('');
+  const [numSessions,   setNumSessions]   = useState(3);
   // null = sin límite de semanas (la etapa dura hasta que se añada la siguiente)
-  const [durationWeeks,    setDurationWeeks]    = useState(4);
-  const [fromTemplateId,   setFromTemplateId]   = useState('');
-  const [fromTemplateName, setFromTemplateName] = useState('');
+  const [durationWeeks, setDurationWeeks] = useState(4);
+  const [pickedId,      setPickedId]      = useState('');
+  const [file,          setFile]          = useState(null); // { fileName, data }
+  const [withHistory,   setWithHistory]   = useState(false);
 
-  const canCreate = tab === 'blank' ? name.trim().length > 0 : Boolean(fromTemplateId);
+  // +1 = la página nueva entra por la derecha (avanzar), -1 por la izquierda.
+  const { width: screenW } = useWindowDimensions();
+  const slideDir = useSharedValue(0);
+  const pageEntering = () => {
+    'worklet';
+    return {
+      initialValues: { transform: [{ translateX: slideDir.value * screenW }] },
+      animations:    { transform: [{ translateX: withTiming(0, SLIDE) }] },
+    };
+  };
+  const pageExiting = () => {
+    'worklet';
+    return {
+      initialValues: { transform: [{ translateX: 0 }] },
+      animations:    { transform: [{ translateX: withTiming(-slideDir.value * screenW, SLIDE) }] },
+    };
+  };
 
-  function handleSubmit() {
-    if (!canCreate) return;
-    if (tab === 'blank') onCreateBlank(name, numSessions, durationWeeks);
-    else                 onCreateFromTemplate(fromTemplateId, fromTemplateName);
+  function go(next) {
+    slideDir.value = next === 'origin' ? -1 : 1;
+    if (next !== 'origin') { setName(''); setPickedId(''); }
+    setStep(next);
   }
+
+  async function pickFile() {
+    const picked = await onPickFile();
+    if (!picked) return;
+    setFile(picked);
+    setWithHistory(false);
+    go('file');
+  }
+
+  // Sin opción segura evidente, las listas nacen sin elegir (ver `ChoiceRow`).
+  function pick(p) { setPickedId(p.id); setName(p.name); }
+
+  const canAssign = step === 'blank' ? name.trim().length > 0 : step === 'file' || Boolean(pickedId);
+
+  function submit() {
+    if (!canAssign) return;
+    if (step === 'blank')     onAssignBlank(name, numSessions, durationWeeks);
+    else if (step === 'file') onAssignFile(file.data, withHistory);
+    else                      onAssignCopy(pickedId, name);
+  }
+
+  const originIcon   = (icon) => <RowIcon>{icon}</RowIcon>;
+  const historyCount = file?.data.workoutLog?.length ?? 0;
+
+  const nameField = (
+    <View>
+      <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
+      <NameField
+        style={styles.sheetInput}
+        placeholder={t('clients.newProgramModal.namePlaceholder')}
+        value={name}
+        onChangeText={setName}
+      />
+    </View>
+  );
 
   return (
     <DragSheet
       visible
       onClose={onClose}
-      title={t('clients.newProgramModal.title')}
-      action={{ label: t('common.cancel'), onPress: onClose }}
+      title={t('clients.assign.title')}
+      onBack={step === 'origin' ? undefined : () => go('origin')}
     >
-      <View style={styles.formSheetBody}>
+      {/* El aviso de reemplazo se lee ANTES de asignar, como en Plantillas. */}
+      {!!activeName && (
+        <Text style={styles.assignReplaces}>{t('clients.assign.replaces', { name: activeName })}</Text>
+      )}
+      <AnimatedHeight>
+        <Reanimated.View key={step} style={styles.formSheetBody} entering={pageEntering} exiting={pageExiting}>
 
-        {hasTemplates && (
-          <SegmentedControl
-            options={[
-              { id: 'blank',    label: t('clients.newProgramModal.tabBlank')    },
-              { id: 'template', label: t('clients.newProgramModal.tabTemplate') },
-            ]}
-            value={tab}
-            onChange={setTab}
-          />
-        )}
+          {step === 'origin' && (
+            <Section style={styles.assignSection}>
+              <MenuRow icon={originIcon(ROW_ICON.new)} label={t('clients.assign.fromBlank')} onPress={() => go('blank')} />
+              {templatePrograms.length > 0 && (
+                <MenuRow icon={originIcon(ROW_ICON.preset)} label={t('clients.assign.fromTemplate')} onPress={() => go('template')} />
+              )}
+              {sources.length > 0 && (
+                <MenuRow icon={originIcon(ROW_ICON.user)} label={t('clients.assign.fromClient')} onPress={() => go('client')} />
+              )}
+              <MenuRow icon={originIcon(ROW_ICON.import)} label={t('clients.assign.fromFile')} onPress={pickFile} />
+            </Section>
+          )}
 
-        {tab === 'blank' ? (
-          <>
-            <View>
-              <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
-              <NameField
-                style={styles.sheetInput}
-                placeholder={t('clients.newProgramModal.namePlaceholder')}
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
+          {step === 'blank' && (
+            <>
+              {nameField}
 
-            <View>
-              <Text style={styles.sheetLabel}>{t('onboarding.sessionsPerWeek')}</Text>
-              {/* Los mismos chips y el mismo rango que el alta manual del
-                  onboarding: el rango es corto, así que se ve entero y se
-                  acierta de un toque. */}
-              <NumberChips values={SESSION_CHOICES} value={numSessions} onChange={setNumSessions} />
-            </View>
+              <View>
+                <Text style={styles.sheetLabel}>{t('onboarding.sessionsPerWeek')}</Text>
+                {/* Los mismos chips y el mismo rango que el alta manual del
+                    onboarding: el rango es corto, así que se ve entero y se
+                    acierta de un toque. */}
+                <NumberChips values={SESSION_CHOICES} value={numSessions} onChange={setNumSessions} />
+              </View>
 
-            <View>
-              <Text style={styles.sheetLabel}>{t('editor.weeksQuestion')}</Text>
-              {/* "Sin límite" (`durationWeeks: null`) es un booleano, así que
-                  va en la fila de conmutador de la app (`ToggleRow`) y no en
-                  una fila pintada a mano. Va SIEMPRE arriba y el contador
-                  aparece debajo: si se intercambiaran, el conmutador saltaría
-                  de sitio al activarlo. */}
-              <View style={styles.weeksGroup}>
-                <ToggleRow
-                  label={t('editor.weeksOpen')}
-                  hint={t('editor.weeksNoLimit')}
-                  value={durationWeeks == null}
-                  onChange={(on) => setDurationWeeks(on ? null : 4)}
-                />
-                {durationWeeks != null && (
-                  <StepField
-                    horizontal
-                    label={t('editor.stageWeeksUnit')}
-                    value={durationWeeks}
-                    onChange={setDurationWeeks}
-                    min={1}
-                    max={52}
+              <View>
+                <Text style={styles.sheetLabel}>{t('editor.weeksQuestion')}</Text>
+                {/* "Sin límite" (`durationWeeks: null`) es un booleano, así que
+                    va en la fila de conmutador de la app (`ToggleRow`). Va
+                    SIEMPRE arriba y el contador aparece debajo: si se
+                    intercambiaran, el conmutador saltaría de sitio al activarlo. */}
+                <View style={styles.weeksGroup}>
+                  <ToggleRow
+                    label={t('editor.weeksOpen')}
+                    hint={t('editor.weeksNoLimit')}
+                    value={durationWeeks == null}
+                    onChange={(on) => setDurationWeeks(on ? null : 4)}
                   />
-                )}
+                  {durationWeeks != null && (
+                    <StepField
+                      horizontal
+                      label={t('editor.stageWeeksUnit')}
+                      value={durationWeeks}
+                      onChange={setDurationWeeks}
+                      min={1}
+                      max={52}
+                    />
+                  )}
+                </View>
               </View>
-            </View>
-          </>
-        ) : (
-          <>
-            <View>
-              <Text style={styles.sheetLabel}>{t('clients.newProgramModal.templateLabel')}</Text>
-              <View style={styles.templateList}>
-                {templatePrograms.map((p) => {
-                  const on = fromTemplateId === p.id;
-                  return (
-                    <TouchableOpacity
+            </>
+          )}
+
+          {step === 'template' && (
+            <>
+              <Section style={styles.assignSection}>
+                {templatePrograms.map((p) => (
+                  <ChoiceRow
+                    key={p.id}
+                    label={p.name}
+                    sub={programMeta(p, t)}
+                    selected={pickedId === p.id}
+                    onPress={() => pick(p)}
+                  />
+                ))}
+              </Section>
+              {nameField}
+            </>
+          )}
+
+          {step === 'client' && (
+            <>
+              {sources.map((g) => (
+                <Section key={g.owner} title={g.name ?? t('clients.assign.mine')} style={styles.assignSection}>
+                  {g.items.map(({ program: p, isActive }) => (
+                    <ChoiceRow
                       key={p.id}
-                      style={[styles.templateRow, on && styles.templateRowOn]}
-                      onPress={() => { setFromTemplateId(p.id); setFromTemplateName(p.name); }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
-                        <Text style={[styles.templateRowName, on && styles.templateRowNameOn]} numberOfLines={1}>
-                          {p.name}
-                        </Text>
-                        <Text style={styles.templateRowMeta}>
-                          {t('common.session', { count: allProgramDays(p).length })}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+                      label={p.name}
+                      sub={programMeta(p, t)}
+                      badge={isActive ? t('clients.assign.activeTag') : undefined}
+                      badgeMuted
+                      selected={pickedId === p.id}
+                      onPress={() => pick(p)}
+                    />
+                  ))}
+                </Section>
+              ))}
+              {nameField}
+            </>
+          )}
 
-            <View>
-              <Text style={styles.sheetLabel}>{t('clients.newProgramModal.nameLabel')}</Text>
-              <NameField
-                style={styles.sheetInput}
-                placeholder={fromTemplateName || t('clients.newProgramModal.namePlaceholderOptional')}
-                value={fromTemplateName}
-                onChangeText={setFromTemplateName}
-              />
-            </View>
-          </>
-        )}
+          {step === 'file' && file && (
+            <>
+              {/* Se importa con el nombre que trae: no hay campo de nombre. */}
+              <Section style={styles.assignSection}>
+                <MenuRow icon={originIcon(ROW_ICON.import)} label={file.data.program.name} sub={file.fileName} />
+              </Section>
+              {historyCount > 0 && (
+                <ToggleRow
+                  label={t('clients.assign.withHistory', { count: historyCount })}
+                  value={withHistory}
+                  onChange={setWithHistory}
+                />
+              )}
+            </>
+          )}
 
-        <TouchableOpacity
-          style={[styles.sheetCta, !canCreate && { opacity: 0.4 }]}
-          disabled={!canCreate}
-          onPress={handleSubmit}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.sheetCtaText}>
-            {tab === 'blank'
-              ? t('clients.newProgramModal.createBtn')
-              : t('clients.newProgramModal.assignBtn')}
-          </Text>
-        </TouchableOpacity>
+          {step !== 'origin' && (
+            <TouchableOpacity
+              style={[styles.sheetCta, !canAssign && { opacity: 0.4 }]}
+              disabled={!canAssign}
+              onPress={submit}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.sheetCtaText}>
+                {step === 'blank' ? t('clients.newProgramModal.createBtn') : t('clients.assign.assignBtn')}
+              </Text>
+            </TouchableOpacity>
+          )}
 
-      </View>
+        </Reanimated.View>
+      </AnimatedHeight>
     </DragSheet>
   );
 }
@@ -1724,7 +1777,7 @@ export default function ClientsScreen() {
   const [tagSearchText,    setTagSearchText]    = useState('');
 
   // Detail - programs tab
-  const [showNewProgram,   setShowNewProgram]   = useState(false);
+  const [showAssign,       setShowAssign]       = useState(false);
   const [showPrevious,     setShowPrevious]     = useState(false);
 
   // Detail - history / progress filters
@@ -1751,9 +1804,6 @@ export default function ClientsScreen() {
   const [addingBill,  setAddingBill]  = useState(false);
 
   // Detail - key tab
-
-  // Import
-  const [importState, setImportState] = useState(null); // { fileName, parsedData }
 
   // Sync mode modal — shown on first visit (mode === null) or from hamburger menu
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -2202,65 +2252,70 @@ export default function ClientsScreen() {
   }
 
   // The model keeps exactly one active program per client: assigning a new one
-  // replaces and archives the current. Warn before that happens.
-  function confirmReplaceActive(onConfirm) {
-    const hasActive = selectedClient?.activeProgramId && programs[selectedClient.activeProgramId];
-    if (!hasActive) { onConfirm(); return; }
-    showDialog(
-      t('clients.replaceActiveTitle'),
-      t('clients.replaceActiveConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('clients.replaceActiveConfirmBtn'), onPress: onConfirm },
-      ],
-    );
-  }
-
-  function handleCreateProgram(programName, numSessions, durationWeeks) {
+  // replaces and archives the current. The sheet says so before anything is
+  // chosen (`clients.assign.replaces`), so none of these asks again.
+  function handleAssignBlank(programName, numSessions, durationWeeks) {
     if (!selectedClientId) return;
-    setShowNewProgram(false);
-    confirmReplaceActive(() => {
-      const newId = createProgramForClient(selectedClientId, numSessions, programName, durationWeeks);
-      if (newId) setClientActiveProgram(selectedClientId, newId);
-    });
+    setShowAssign(false);
+    const newId = createProgramForClient(selectedClientId, numSessions, programName, durationWeeks);
+    if (newId) setClientActiveProgram(selectedClientId, newId);
   }
 
-  function handleCreateFromTemplate(templateId, customName) {
+  // Plantilla o programa de otro cliente: la misma copia.
+  function handleAssignCopy(sourceId, customName) {
     if (!selectedClientId) return;
-    setShowNewProgram(false);
-    const srcName = templatePrograms.find((p) => p.id === templateId)?.name ?? t('clients.programFallback');
-    confirmReplaceActive(() => {
-      const newId = cloneProgramFromTemplate(templateId, {
-        owner: selectedClientId,
-        name: customName.trim() || srcName,
-      });
-      if (newId) setClientActiveProgram(selectedClientId, newId);
+    setShowAssign(false);
+    const srcName = programs[sourceId]?.name ?? t('clients.programFallback');
+    const newId = cloneProgramFromTemplate(sourceId, {
+      owner: selectedClientId,
+      name: customName.trim() || srcName,
     });
+    if (newId) setClientActiveProgram(selectedClientId, newId);
   }
 
-  async function handleImportPick() {
+  function handleAssignFile(data, withHistory) {
+    if (!selectedClientId) return;
+    setShowAssign(false);
+    importForClient(selectedClientId, data, withHistory ? 'replace_log' : 'replace');
+  }
+
+  // Elegir y leer un archivo de la app. Devuelve `{ fileName, data }`, o null si
+  // se cancela o falla (el error ya está avisado).
+  async function pickImportFile() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/json', '*/*'],
         copyToCacheDirectory: true,
       });
-      if (result.canceled || !result.assets?.length) return;
+      if (result.canceled || !result.assets?.length) return null;
       const raw = await FileSystem.readAsStringAsync(result.assets[0].uri, {
         encoding: FileSystem.EncodingType.UTF8,
       });
       const parsed = parseImportFile(raw);
-      if (!parsed.ok) { showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
-      setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
+      if (!parsed.ok) { showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return null; }
+      return { fileName: result.assets[0].name, data: parsed.data };
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
         showDialog(t('common.error'), err?.message ?? t('errors.cannotReadFile'));
       }
+      return null;
     }
   }
 
-  function handleImport(parsedData, mode) {
-    importForClient(selectedClientId, parsedData, mode);
-    setImportState(null);
+  // «Desde archivo» de la hoja de asignar: sin programa dentro no hay nada que asignar.
+  async function pickAssignFile() {
+    const picked = await pickImportFile();
+    if (picked && !picked.data.program) {
+      showToast(t('clients.assign.noProgramInFile'), 2200, 'error');
+      return null;
+    }
+    return picked;
+  }
+
+  // ··· → «Importar historial»: solo añade entrenos, no toca el programa.
+  async function handleImportHistory() {
+    const picked = await pickImportFile();
+    if (picked) importForClient(selectedClientId, picked.data, 'merge_log');
   }
 
   async function handleRefreshHistory() {
@@ -2471,8 +2526,9 @@ export default function ClientsScreen() {
                   onPrescribe={() => navigation.navigate('NextSession', { clientId: selectedClientId })}
                   onShare={() => shareSpecificProgram(activeProgram.id, true)}
                   onExport={() => exportSpecificProgram(activeProgram.id, true)}
-                  onImport={handleImportPick}
-                  onNewProgram={() => setShowNewProgram(true)}
+                  // Como `onShowArchived`: el segundo `Modal` espera a que se cierre el menú.
+                  onImportHistory={() => setTimeout(handleImportHistory, 250)}
+                  onAssign={() => setTimeout(() => setShowAssign(true), 250)}
                   onDeassign={() => setClientActiveProgram(selectedClientId, null)}
                   onDelete={() => confirmDelete(activeProgram)}
                   onUnlock={unlockStage}
@@ -2488,8 +2544,8 @@ export default function ClientsScreen() {
                 // repetía lo mismo que el título y que el botón.
                 <View style={styles.noActiveBox}>
                   <Text style={styles.noActiveTitle}>{t('clients.noActiveProgram')}</Text>
-                  <TouchableOpacity style={styles.noActiveBtn} onPress={() => setShowNewProgram(true)} activeOpacity={0.85}>
-                    <Text style={styles.noActiveBtnText}>{t('clients.menuNewProgram')}</Text>
+                  <TouchableOpacity style={styles.noActiveBtn} onPress={() => setShowAssign(true)} activeOpacity={0.85}>
+                    <Text style={styles.noActiveBtnText}>{t('clients.assignProgram')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -2925,13 +2981,17 @@ export default function ClientsScreen() {
           </KeyboardAvoidingView>
         )}
 
-        {/* New program modal */}
-        {showNewProgram && (
-          <NewProgramSheet
+        {/* Asignar programa */}
+        {showAssign && (
+          <AssignProgramSheet
+            activeName={programs[selectedClient?.activeProgramId]?.name}
             templatePrograms={templatePrograms}
-            onCreateBlank={handleCreateProgram}
-            onCreateFromTemplate={handleCreateFromTemplate}
-            onClose={() => setShowNewProgram(false)}
+            sources={copySources(programs, clients, selectedClientId, profile.activeProgramId)}
+            onPickFile={pickAssignFile}
+            onAssignBlank={handleAssignBlank}
+            onAssignCopy={handleAssignCopy}
+            onAssignFile={handleAssignFile}
+            onClose={() => setShowAssign(false)}
           />
         )}
 
@@ -2954,15 +3014,6 @@ export default function ClientsScreen() {
           />
         )}
 
-        {/* Import modal */}
-        {importState && (
-          <ClientImportModal
-            fileName={importState.fileName}
-            parsedData={importState.parsedData}
-            onImport={handleImport}
-            onClose={() => setImportState(null)}
-          />
-        )}
       </View>
     );
   }
@@ -4685,6 +4736,11 @@ const makeStyles = (th) => StyleSheet.create({
   },
   sheetCtaText: { ...textStyles.button, color: th.colors.onAccent },
   weeksGroup: { gap: spacing.sm },
+  // Hoja «Asignar programa»: el aviso de reemplazo (el naranja de `clientReplaces`
+  // de Plantillas) y las listas sin el aire de entre secciones — ya lo pone el
+  // `gap` de `formSheetBody`.
+  assignReplaces: { ...textStyles.body, color: th.colors.orange, marginBottom: spacing.md },
+  assignSection:  { marginBottom: 0 },
   // Lista de plantillas: filas de hoja (`sheetRowBase`) con el tinte accent de
   // seleccionado que ya usan las tarjetas del onboarding y las filas activas
   // del planificador.
@@ -4695,7 +4751,6 @@ const makeStyles = (th) => StyleSheet.create({
     borderWidth:     borders.thin,
     borderColor:     th.tint.accent50,
   },
-  templateRowName:   { ...textStyles.labelStrong, color: th.colors.text },
   // Las dos opciones del alta (C28): la fila de plantilla con icono y una
   // línea que explica la opción.
   // Borde transparente siempre: la elegida lo tiene en acento y, si solo
@@ -4707,7 +4762,6 @@ const makeStyles = (th) => StyleSheet.create({
   modeHint:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm, marginLeft: spacing.xs2 },
   clientCheck: { ...textStyles.labelStrong, color: th.colors.accent },
   templateRowNameOn: { color: th.colors.accent },
-  templateRowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Hoja de alta de cobro ──
   billSecLabel: {
@@ -4833,8 +4887,6 @@ const makeStyles = (th) => StyleSheet.create({
   calDayText:    { ...textStyles.labelStrong, color: th.colors.text },
   calDayTextSel: { color: th.colors.onAccent },
 
-  // ── Modals ──
-  modalSub:   { ...textStyles.label, color: th.colors.muted },
   importSheetRows: { marginTop: spacing.md, marginBottom: spacing.sm },
 });
 

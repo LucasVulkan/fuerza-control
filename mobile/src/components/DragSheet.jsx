@@ -20,7 +20,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { spacing, borders, textStyles } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
+import { ArrowIcon } from './ui/EditorIcons';
 import { SheetContext } from './ui/sheetContext';
 import NavScrim from './ui/NavScrim';
 import Reanimated, {
@@ -79,8 +80,12 @@ function SheetCard({ style, header, children }) {
  * `action` sustituye el botón "Aceptar" de la derecha por otra acción
  * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
  * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
+ *
+ * `onBack`: con él, un «‹» a la izquierda del título (la caja de volver de
+ * `ScreenHeader`) para las hojas de dos páginas: vuelve a la primera sin cerrar.
  */
-export default function DragSheet({ visible, onClose, title, action, tall, children }) {
+export default function DragSheet({ visible, onClose, title, action, onBack, tall, children }) {
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
 
@@ -184,7 +189,14 @@ export default function DragSheet({ visible, onClose, title, action, tall, child
                   propio bloque de identidad ahí arriba y se cierra arrastrando. */}
               {title != null && (
                 <View style={styles.header}>
-                  <Text style={styles.title}>{title}</Text>
+                  <View style={styles.titleRow}>
+                    {onBack && (
+                      <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={8} activeOpacity={0.7}>
+                        <ArrowIcon size={15} color={th.colors.accent} back />
+                      </TouchableOpacity>
+                    )}
+                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                  </View>
                   <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
                     <Text style={styles.done}>{action ? action.label : t('common.close')}</Text>
                   </TouchableOpacity>
@@ -248,6 +260,16 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom:  spacing.md,
   },
-  title: { ...textStyles.bodyStrong, color: th.colors.text },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
+  // La misma caja que el «volver» de `ScreenHeader`.
+  backBtn: {
+    width:           32,
+    height:          32,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  title: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   done:  { ...textStyles.labelStrong, color: th.colors.accent },
 });

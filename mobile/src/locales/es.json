@@ -2148,9 +2148,6 @@
     "deleteProgramConfirm": "¿Eliminar \"{{name}}\"?",
     "reactivateTitle": "Reactivar programa",
     "reactivateConfirm": "\"{{name}}\" pasará a ser el programa activo y el actual se archivará. ¿Continuar?",
-    "replaceActiveTitle": "Reemplazar programa activo",
-    "replaceActiveConfirm": "Este cliente ya tiene un programa activo. El nuevo lo reemplazará y el actual se archivará en Anteriores. ¿Continuar?",
-    "replaceActiveConfirmBtn": "Reemplazar",
     "refreshHistory": "↓ Actualizar historial del cliente",
     "refreshingHistory": "Actualizando…",
     "sortRecent": "Recientes",
@@ -2180,8 +2177,8 @@
     "nextSessionHintLinked": "Entrena con su app: lo que haga te llega solo. Preparar ajusta solo esta sesión; el programa no cambia.",
     "sessionMeta": "{{count}} ejercicios · {{minutes}} min aprox",
     "programMenuTitle": "Programa",
-    "menuNewProgram": "Nuevo programa",
-    "menuImport": "Importar programa",
+    "assignProgram": "Asignar programa",
+    "menuImportHistory": "Importar historial",
     "menuShare": "Compartir",
     "menuArchived": "Programas anteriores",
     "noArchivedPrograms": "Este cliente no tiene programas anteriores.",
@@ -2325,24 +2322,23 @@
       "createBtn": "CREAR CLIENTE"
     },
     "newProgramModal": {
-      "title": "Nuevo programa",
-      "tabBlank": "Vacío",
-      "tabTemplate": "Desde plantilla",
       "nameLabel": "Nombre",
       "namePlaceholder": "Nombre del programa",
-      "namePlaceholderOptional": "Nombre (opcional)",
-      "templateLabel": "Plantilla",
-      "createBtn": "CREAR Y EDITAR",
-      "assignBtn": "ASIGNAR PLANTILLA"
+      "createBtn": "CREAR Y EDITAR"
     },
-    "importModal": {
-      "title": "IMPORTAR PROGRAMA",
-      "replaceLabel": "Reemplazar programa",
-      "replaceDesc": "El programa entrante pasa a ser el activo. No toca el historial.",
-      "replaceLogLabel": "Reemplazar programa + historial",
-      "replaceLogDesc": "Activa el programa entrante y añade sus sesiones al historial.",
-      "mergeLogLabel": "Solo historial",
-      "mergeLogDesc": "Solo añade las sesiones del archivo. No cambia el programa."
+    "assign": {
+      "title": "Asignar programa",
+      "replaces": "Sustituye a {{name}}, que pasa a Programas anteriores.",
+      "fromBlank": "En blanco",
+      "fromTemplate": "Plantilla",
+      "fromClient": "De otro cliente",
+      "fromFile": "Desde archivo",
+      "mine": "Tuyos",
+      "activeTag": "activo",
+      "withHistory_one": "Importar también su historial ({{count}} sesión)",
+      "withHistory_other": "Importar también su historial ({{count}} sesiones)",
+      "assignBtn": "ASIGNAR",
+      "noProgramInFile": "El archivo no contiene ningún programa"
     }
   },
   "templates": {

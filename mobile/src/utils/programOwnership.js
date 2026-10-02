@@ -52,3 +52,28 @@ export function ownerClient(clients, program) {
 export function deassignProgram(client) {
   return { ...client, activeProgramId: null, programDirty: false };
 }
+
+/**
+ * Lo que se puede copiar al cliente `clientId` desde «De otro cliente», agrupado
+ * por dueño: los tuyos primero y luego un grupo por cliente, por nombre. Fuera
+ * van las plantillas, el activo de este cliente y los dueños que ya no existen.
+ * Dentro de cada grupo, el activo primero y luego los más recientes (`programsOf`).
+ *
+ * @returns {{ owner: string, name: string|null, items: { program: object, isActive: boolean }[] }[]}
+ *   `name` es null en el grupo de `me`: lo pone quien pinta.
+ */
+export function copySources(programs, clients, clientId, myActiveId) {
+  const skipId = clients?.[clientId]?.activeProgramId;
+  const group = (owner, name, activeId) => {
+    const list = programsOf(programs, owner).filter((p) => p.id !== skipId);
+    const items = [
+      ...list.filter((p) => p.id === activeId),
+      ...list.filter((p) => p.id !== activeId),
+    ].map((program) => ({ program, isActive: program.id === activeId }));
+    return { owner, name, items };
+  };
+  const byClient = Object.entries(clients ?? {})
+    .map(([id, c]) => group(id, c.name ?? '', c.activeProgramId))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return [group('me', null, myActiveId), ...byClient].filter((g) => g.items.length > 0);
+}
