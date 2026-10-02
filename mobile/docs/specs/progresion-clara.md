@@ -9,8 +9,8 @@
 > Fase P56 · pendiente · Workout: el plan en el gris y la línea de recomendación · §6
 > Fase P57 · pendiente · La última vez: botón, línea o debajo de cada serie · §7
 >
-> Estado: **P52 hecha** (1-oct-2026, `f5311ef`, rama `feat/recap`), pendiente de
-> probar en dispositivo. **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
+> Estado: **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
 > subagente sin más contexto. Fuera a propósito, sin decidir (§3.1-bis): tiempo
@@ -78,13 +78,13 @@ Queda fuera a propósito (va en P53): medida Tiempo + tipo Doble sugiere «sube 
 
 **Probar P52**
 
-- [ ] Dominadas: en el editor, Progresión → Automática y en «Qué progresa»
+- [x] Dominadas: en el editor, Progresión → Automática y en «Qué progresa»
   elegir **Reps** (por defecto vienen en Doble). Rango 6–12, hacer 9/8/8 → la
   próxima vez la tarjeta dice «↑ SUBIR A 9 reps +1» y debajo «tu serie más floja
   fue de 8», con la misma letra que el peso. Hacer 7/6/5 → «→ MANTENER 6 reps»
   y «alguna serie no llegó a 6».
-  — 2-oct: en Reps funcionaba, pero la cifra era una frase larga con otra
-  letra y sin motivo. Arreglado; volver a probar.
+  (2-oct: la cifra era una frase larga con otra letra y sin motivo; arreglado y
+  probado.)
 - [x] Plancha en Automática · Tiempo, 30–60 s: hacer 45/45/40 → la próxima vez
   propone 45 s. Al cambiar el tipo a Tiempo en el editor, el salto pasa a 5 s.
   (2-oct: probada. Faltaba el delta, que salía vacío al contarse desde la mejor
