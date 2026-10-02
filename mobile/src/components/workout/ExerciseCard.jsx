@@ -401,7 +401,9 @@ export default function ExerciseCard({
       };
     }
     if (progression.suggestedTime != null) {
-      const cur  = Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
+      // El salto se cuenta desde la serie de la que parte (la más floja), no
+      // desde la mejor: 45/45/40 → «45 s +5», no «45 s» a secas.
+      const cur  = progression.from ?? Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
       const next = progression.suggestedTime;
       return {
         progTarget: `${next} s`,

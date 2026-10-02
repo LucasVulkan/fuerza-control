@@ -229,6 +229,7 @@ describe('P52 — los cuatro fallos del motor', () => {
       const c = getProgression(cfg, {}, done([['', '', '45'], ['', '', '45'], ['', '', '45']]), tk);
       expect(c.type).toBe('up');
       expect(c.suggestedTime).toBe(50);
+      expect(c.from).toBe(45);
     });
     it('una serie bajo el mínimo → mantener', () => {
       expect(getProgression(cfg, {}, done([['', '', '30'], ['', '', '15'], ['', '', '30']]), tk).type).toBe('hold');

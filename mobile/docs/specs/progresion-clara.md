@@ -83,9 +83,10 @@ Queda fuera a propósito (va en P53): medida Tiempo + tipo Doble sugiere «sube 
   próxima vez dice «apunta a 9 reps». Hacer 7/6/5 → «llega al mínimo».
   — 2-oct: probado en Doble («mantén y busca más reps», que es lo correcto en
   Doble); falta repetirlo con Reps.
-- [ ] Plancha en Automática · Tiempo, 30–60 s: hacer 45/45/40 → la próxima vez
+- [x] Plancha en Automática · Tiempo, 30–60 s: hacer 45/45/40 → la próxima vez
   propone 45 s. Al cambiar el tipo a Tiempo en el editor, el salto pasa a 5 s.
-  — 2-oct: propone 45 s; falta confirmar que fue con 45/45/40 y el salto de 5 s.
+  (2-oct: probada. Faltaba el delta, que salía vacío al contarse desde la mejor
+  serie; ahora dice «45 s +5», contado desde la serie de la que parte.)
 - [ ] Dominadas asistidas: cambiar las series en el editor y completar todas al
   máximo con 20 kg → la tarjeta dice «↑ MENOS AYUDA 17.5 kg −2.5».
   — ❌ 2-oct: el número era bueno pero decía «Subir a 17.5». Arreglado
@@ -136,6 +137,12 @@ de Progresión es interactiva: cada paso ofrece solo lo que encaja con lo anteri
     lo de la última vez y lo de hoy. **A2 · Banda** (la misma línea sobre un
     fondo) se prueba en el móvil al implementar. B (en la cabecera) no cabe con
     nombres largos y C (en la columna) no sobrevive a tres columnas con RPE.
+
+14. **Reps y Tiempo: la meta se mueve** (propuesta del usuario, 2-oct). Con
+    «Qué sube: Reps», un rango 6–12 no significa nada: se progresa a 20 y la
+    tarjeta sigue diciendo 6–12. En su lugar, Qué pides es **un valor de
+    partida** (reps o segundos) y **la meta es la última recomendación**: si
+    llegas, sube; si no, la meta se queda donde estaba. Detalle en §4.4.
 
 ### 3.1-bis Sin decidir
 
@@ -299,9 +306,29 @@ Si una etapa sube las series y la regla de bajar queda por debajo de
 
 ### 4.4 Reps, Tiempo y Por esfuerzo
 
-- **Reps y Tiempo** (las reglas de P52) aceptan `part`: sube si `need` series
-  llegan al mínimo. El chip de Reps añade **`suggestedReps`** (el objetivo
-  nuevo), para que el Workout pueda pintar un número.
+- **Reps y Tiempo: la meta se mueve** (§3.1.14). Hoy (P52) el motor solo mira
+  la última sesión y compara con el mínimo de la plantilla, que nunca cambia.
+  Pasa a ser así:
+  - Qué pides guarda **el punto de partida**: `minReps = maxReps = inicio` (o
+    `minTime = maxTime`). Con Reps o Tiempo no hay rango.
+  - **La meta actual se calcula repasando el historial** del ejercicio (mismo
+    alcance que `lastExerciseRef`), de la sesión más antigua a la más nueva:
+    `meta = inicio`; en cada sesión, si se cumple (`all`, `part` o `rpe`, con
+    las series ≥ `meta`), `meta = max(meta, serie más floja) + salto`; si no,
+    `meta` no cambia.
+  - El chip devuelve la meta de hoy (`suggestedReps` o `suggestedTime`) y `from`
+    (la meta anterior) para el delta. `type: 'up'` si la meta subió con la
+    última sesión, `'hold'` si no.
+  - `getProgression` necesita el historial, no solo la última sesión: nuevo
+    parámetro `{ history }` (lista de `exercise` del log, de antigua a nueva).
+    `WorkoutScreen`, `saveSession` y `sessionText.todayWeight` se lo pasan.
+    Repasar el historial es barato (decenas de sesiones por ejercicio).
+  - Consecuencia que se acepta: **borrar una sesión cambia la meta**, porque la
+    meta sale del historial. Es lo coherente aquí (la meta resume lo que
+    hiciste); el contador de etapas sí es un dato aparte por otra razón
+    (stage-locks).
+  - Sin historial, la meta es el inicio.
+  - `part` y `rpe` se aceptan igual que en Peso.
 - **Por esfuerzo**: redondea al `step` resuelto (antes,
   `min(def.weightStep, 2,5)`). Esto **cambia** el redondeo de los ejercicios con
   escalón de 4, 5 o 10 kg: ahora el usuario lo ve y lo puede bajar en la hoja.
@@ -375,6 +402,9 @@ sale cuándo; aquí va lo que la maqueta no dice.
 
 ### 5.1 Volumen (Qué pides)
 
+- Si Qué sube es **Reps o Tiempo**, Volumen enseña un solo campo, «Reps de
+  inicio» o «Tiempo de inicio» (§4.4), y no el segmentado de rango. Al pasar a
+  Reps desde un rango, el inicio es el mínimo del rango.
 - Se queda el segmentado Reps · Tiempo y debajo, solo con Reps, uno nuevo:
   **Rango · Reps fijas**. Se deduce de `minReps === maxReps`. Pasar a fijas
   deja `maxReps = minReps` y un solo `StepField` horizontal «Reps» (el de Por
@@ -489,8 +519,11 @@ En el bloque `progBlock` (~654-678):
 - Toda la fila es un `Pressable` (sin icono) que abre una `DragSheet` con tres
   bloques: **REGLA** (`progressionRule`), **LA ÚLTIMA VEZ** (las pastillas de
   la última sesión, §6.4) y **HOY** (`chip.why`).
-- Reps con número: si el chip trae `suggestedReps`, el destino es «9 reps» y
-  el delta se cuenta contra la serie más floja de la última vez.
+- Reps y Tiempo con número: el destino es la meta de hoy («9 reps», «45 s») y
+  el delta se cuenta desde `from`. La línea del objetivo de la cabecera
+  (`targetLabel`) dice también la meta de hoy: «3 × 9 reps», no el inicio. En
+  las listas sin historial a mano (Inicio, editor de sesión) se pinta el
+  inicio con un «+»: «3 × 8+ reps».
 - **Primera vez** (sin historial, progresión ≠ `none`, sin objetivo del
   entrenador): una fila nueva con la misma anatomía, en `text`:
   «◇ BUSCA TU PESO · 8–12 reps» (con carga), «◇ HAZ LAS QUE PUEDAS · 6–12»

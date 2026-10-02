@@ -325,7 +325,9 @@ function chipTime(prog, doneSets, totalSets, minTime, maxTime, t) {
   if (result === 'advance' && ok.length) {
     const base = Math.min(...ok);
     const next = Math.round(base + Math.max(1, computeIncrement(base, prog.increment)));
-    return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAllHit'), suggestedWeight: null, suggestedTime: next };
+    return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAllHit'), suggestedWeight: null, suggestedTime: next,
+      // `from`: la serie de la que parte el salto, para que el delta diga +5 y no nada (QA P52).
+      from: base };
   }
   return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: minTime, max: maxTime }), suggestedWeight: null, suggestedTime: null };
 }
