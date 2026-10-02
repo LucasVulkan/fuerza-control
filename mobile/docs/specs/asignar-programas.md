@@ -2,7 +2,7 @@
 
 > Tema: conexión
 > En corto: Darle un programa a un cliente se hace desde un solo botón, «Asignar programa», que deja elegir el origen: en blanco, una plantilla, el programa de otro cliente o un archivo. Desde cualquier programa se puede copiar a otro cliente o guardar como plantilla. Un programa siempre se copia, nunca se comparte.
-> Fase C29 · pendiente · Las copias de programas conservan la cadena entre etapas · §3
+> Fase C29 · terminado · Las copias de programas conservan la cadena entre etapas · §3
 > Fase C30 · pendiente · «Asignar programa»: una hoja con cuatro orígenes · §4
 > Fase C31 · pendiente · Copiar a otro cliente y guardar como plantilla · §5
 >
@@ -221,6 +221,6 @@ programa sin sufijo (el usuario lo renombra en Plantillas si quiere). Toast
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
-| C29 | `derivedFrom` reescrito en `cloneProgramFromTemplate` + test | — | 🟢 | pendiente |
+| C29 | `derivedFrom` reescrito en `cloneProgramFromTemplate` + test | — | 🟢 | ✅ eeb598f — derivedFrom remapeado dentro de la copia + test |
 | C30 | Hoja «Asignar programa» con cuatro orígenes; «Importar historial» aparte | C29 | 🟡 | pendiente |
 | C31 | «Copiar a otro cliente» y «Guardar como plantilla» en los menús de programa | C29 | 🟢 | pendiente |
