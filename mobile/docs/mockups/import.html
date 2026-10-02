@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Importar archivo — maqueta FormaFit (U40)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --redText: #ff5e58; --red50: rgba(255,94,88,.5);
+    --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+  }
+  .t-heading { font: 800 18px Inter; letter-spacing: -.2px; }
+  .t-body    { font: 500 14px/21px Inter; }
+  .t-bodyS   { font: 700 14px Inter; }
+  .t-rowLbl  { font: 800 14px Inter; }            /* rowLabel de MenuRow: bodyStrong en ExtraBold */
+  .t-button  { font: 900 14px Inter; }
+  .t-label   { font: 500 12px/17px Inter; }
+  .t-labelS  { font: 800 12px Inter; }
+  .t-caps    { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 980px; margin-bottom: 14px; }
+  .lead b, .box b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent);
+       margin: 54px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col { width: 375px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; min-height: 64px; }
+  .cap > b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .box { max-width: 980px; border: 1px solid #262626; border-radius: 12px; padding: 14px 18px; font: 500 12.5px/1.65 Inter; color: #9a9a9a; margin-top: 14px; }
+  .box li { margin: 0 0 3px 16px; }
+  code { font: 500 11px ui-monospace, monospace; color: #bdbdbd; }
+
+  /* ══════ TELÉFONO: la app velada y la hoja encima ══════ */
+  .phone { width: 375px; height: 780px; background: var(--bg); border-radius: 22px; border: 1px solid #222;
+           overflow: hidden; position: relative; }
+  .app { position: absolute; inset: 0; padding: 60px 15px; display: flex; flex-direction: column; gap: 8px; }
+  .app div { height: 58px; background: var(--surface); border-radius: var(--r-md); }
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+
+  /* DragSheet: bg, radius/lg arriba, asa, cabecera título + Listo */
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 92%; background: var(--bg);
+           border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 0 15px 28px; display: flex; flex-direction: column; }
+  .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 8px auto; }
+  .shead { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; }
+  .shead .done { color: var(--accent); }
+  .sbody { overflow: hidden; display: flex; flex-direction: column; gap: 15px; }
+
+  /* Lo propuesto */
+  .file { display: flex; gap: 6px; align-items: baseline; }
+  .file .n { color: var(--mutedLight); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .file .k { color: var(--accent); flex-shrink: 0; }
+  .note { color: var(--mutedLight); }
+
+  .sec { display: flex; flex-direction: column; }
+  .sec > .t-caps { color: var(--mutedLight); padding: 0 4px; margin-bottom: 8px; }
+  .group { display: flex; flex-direction: column; gap: 2px; }
+  .row { display: flex; align-items: center; gap: 15px; min-height: 52px; background: var(--surface);
+         padding: 10px 15px; border-radius: var(--r-xs); }
+  .row.tall { min-height: 62px; }
+  .group .row:first-child { border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
+  .group .row:last-child  { border-bottom-left-radius: var(--r-md); border-bottom-right-radius: var(--r-md); }
+  .row .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .row .sub { color: var(--mutedLight); }
+  .row.off { opacity: .45; }
+  .row .ic { width: 20px; display: flex; justify-content: center; color: var(--mutedLight); flex-shrink: 0; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Switch de la app: 44×24, pulgar 20; ON accent + negro, OFF surface2 + mutedLight */
+  .sw { width: 44px; height: 24px; border-radius: 12px; background: var(--surface2); position: relative; flex-shrink: 0; }
+  .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--mutedLight); }
+  .sw.on { background: var(--accent); }
+  .sw.on::after { left: 22px; background: var(--onAccent); }
+
+  .check { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+  .nocheck { width: 16px; flex-shrink: 0; }
+
+  /* SegmentedControl de la app */
+  .seg { display: flex; gap: 6px; padding: 4px; background: var(--surface2); border-radius: 999px; margin-top: 8px; }
+  .seg span { flex: 1; text-align: center; padding: 8px 0; border-radius: 999px; font: 700 14px Inter; color: var(--text); }
+  .seg span.on { background: var(--accent); color: var(--onAccent); }
+  .hint { color: var(--mutedLight); padding: 6px 4px 0; }
+  .hint.danger { color: var(--redText); }
+
+  .cta { height: 44px; border-radius: var(--r-md); background: var(--accent); color: var(--onAccent);
+         display: flex; align-items: center; justify-content: center; margin-top: 4px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<h1>Importar archivo (U40)</h1>
+<p class="lead">
+  La hoja ya es <code>DragSheet</code> (U34); lo de dentro pasa a las <b>piezas que ya tiene la app</b>, sin inventar ninguna:
+  filas <code>MenuRow</code> agrupadas en <code>Section</code> (las del menú ≡ y Drive), el <b>interruptor</b> de la app
+  (no el <code>Switch</code> nativo, que hoy sale con su propio color), el <b>check lima</b> para elegir una opción (como las etapas de
+  Mi programa o la frecuencia de Drive) y el <b>segmentado</b>. Fuera las tarjetas con borde, los círculos de radio, la caja roja y la
+  pastilla con borde del tipo de fichero.
+</p>
+<p class="lead">
+  Hay dos casos: un <b>backup completo</b> (se elige qué partes importar; historial y plantillas pueden además combinarse o reemplazar)
+  y un <b>programa</b> (se elige una de dos o tres formas). Para el backup hay dos variantes; el programa tiene una sola.
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>1 · Backup completo</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · INTERRUPTORES + SEGMENTADO</b>Una fila con interruptor por parte. Si historial o plantillas están encendidos, debajo sale su segmentado Combinar / Reemplazar con una línea que dice qué hace (en rojo si borra).</p>
+    <div class="phone">
+      <div class="app"><div></div><div></div><div></div><div></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shead"><span class="t-bodyS">Importar archivo</span><span class="t-labelS done">Listo</span></div>
+        <div class="sbody">
+          <div class="file t-label"><span class="n">fuerza_backup_2026-09-30.fitdata</span><span class="k t-caps">· Backup completo</span></div>
+          <p class="note t-body">Lo que actives sustituye lo que tienes en esa parte.</p>
+
+          <div class="sec">
+            <div class="group">
+              <div class="row"><div class="meta"><span class="t-rowLbl">Programa activo</span><span class="sub t-label">Activa el programa importado</span></div><div class="sw on"></div></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl">Historial de sesiones</span><span class="sub t-label">124 sesiones</span></div><div class="sw on"></div></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl">Ejercicios propios</span><span class="sub t-label">12 ejercicios</span></div><div class="sw on"></div></div>
+              <div class="row off"><div class="meta"><span class="t-rowLbl">Clientes</span><span class="sub t-label">No hay en este archivo</span></div><div class="sw"></div></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl">Plantillas de programa</span><span class="sub t-label">4 plantillas</span></div><div class="sw"></div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <span class="t-caps">Historial</span>
+            <div class="seg"><span>Combinar</span><span class="on">Reemplazar</span></div>
+            <p class="hint danger t-label">Sustituye TODO tu historial actual.</p>
+          </div>
+
+          <div class="cta t-button">Importar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>B · SECCIONES CON CHECK</b>Lo que solo se activa o no, con interruptor. Historial y plantillas, como elección de tres con check: no importar, añadir o sustituir todo. Más alto, pero sin controles escondidos.</p>
+    <div class="phone">
+      <div class="app"><div></div><div></div><div></div><div></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shead"><span class="t-bodyS">Importar archivo</span><span class="t-labelS done">Listo</span></div>
+        <div class="sbody">
+          <div class="file t-label"><span class="n">fuerza_backup_2026-09-30.fitdata</span><span class="k t-caps">· Backup completo</span></div>
+
+          <div class="sec">
+            <div class="group">
+              <div class="row"><div class="meta"><span class="t-rowLbl">Programa activo</span><span class="sub t-label">Activa el programa importado</span></div><div class="sw on"></div></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl">Ejercicios propios</span><span class="sub t-label">12 ejercicios</span></div><div class="sw on"></div></div>
+              <div class="row off"><div class="meta"><span class="t-rowLbl">Clientes</span><span class="sub t-label">No hay en este archivo</span></div><div class="sw"></div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <span class="t-caps">Historial · 124 sesiones</span>
+            <div class="group">
+              <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="nocheck"></span></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="nocheck"></span></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl" style="color:var(--redText)">Sustituir todo el historial</span></div><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <span class="t-caps">Plantillas · 4</span>
+            <div class="group">
+              <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="nocheck"></span></div>
+              <div class="row"><div class="meta"><span class="t-rowLbl">Sustituir todas</span></div><span class="nocheck"></span></div>
+            </div>
+          </div>
+
+          <div class="cta t-button">Importar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="box">
+  <b>Diferencias entre A y B</b>
+  <ul>
+    <li><b>A</b> es más corta y se parece a lo de hoy (interruptor + modo). El modo solo sale cuando la parte está encendida, así que no se ve de un vistazo qué va a pasar con el historial hasta encenderlo.</li>
+    <li><b>B</b> dice todo a la vista y no mezcla dos controles en la misma parte. Con un backup completo, la hoja pasa del alto de la pantalla y hay que desplazarla (la hoja ya lo hace).</li>
+    <li>En las dos, lo que no trae el archivo sale apagado con «No hay en este archivo», y el aviso rojo de hoy pasa a ser una frase (A) o desaparece porque la opción lo dice (B: «Sustituir todo…» en rojo).</li>
+  </ul>
+  Mi recomendación: <b>B</b>. «Reemplazar» borra datos y no debería quedar escondido detrás de un interruptor.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>2 · Un programa</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>ELEGIR CÓMO</b>Las formas de hoy (dos o tres según traiga historial) como filas con check, con su explicación debajo. La primera viene marcada.</p>
+    <div class="phone" style="height:620px">
+      <div class="app"><div></div><div></div><div></div><div></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shead"><span class="t-bodyS">Importar archivo</span><span class="t-labelS done">Listo</span></div>
+        <div class="sbody">
+          <div class="file t-label"><span class="n">Fuerza base 12 semanas.fitdata</span><span class="k t-caps">· Programa + historial</span></div>
+          <div class="sec">
+            <div class="group">
+              <div class="row tall"><div class="meta"><span class="t-rowLbl">Programa e historial</span><span class="sub t-label">Activa el programa y añade sus sesiones a tu historial</span></div><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+              <div class="row tall"><div class="meta"><span class="t-rowLbl">Solo el historial</span><span class="sub t-label">Mantiene tu programa y añade las sesiones del archivo</span></div><span class="nocheck"></span></div>
+              <div class="row tall"><div class="meta"><span class="t-rowLbl">Solo el programa</span><span class="sub t-label">Activa el programa sin tocar tu historial</span></div><span class="nocheck"></span></div>
+            </div>
+          </div>
+          <div class="cta t-button">Importar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col" style="width:420px">
+    <p class="cap"><b>DE PASO</b></p>
+    <div class="box" style="margin-top:0">
+      <ul>
+        <li>El tipo de fichero deja de ser una pastilla con borde: va detrás del nombre, en versales lima.</li>
+        <li>El botón es el de la app (lima, 44, <code>radius/md</code>, voz de botón), «Importar» y no «IMPORTAR».</li>
+        <li>Cancelar sigue siendo cerrar la hoja (arrastrar, tocar fuera o «Listo»).</li>
+        <li>Algunos textos se acortan («Reemplazar programa e historial» → «Programa e historial»): en una lista de tres, el verbo de cada fila sobraba.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

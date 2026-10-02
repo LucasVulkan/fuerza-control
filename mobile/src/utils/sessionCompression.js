@@ -102,7 +102,7 @@ export function estimateSessionSec(exercises, allExercises = EXERCISE_LIBRARY, {
   for (const ex of exercises) {
     const def = allExercises[ex.exerciseId];
     const n = ex.sets ?? 0;
-    const isTimed = def?.progressionModel === 'time_progression' || def?.progressionModel === 'submax';
+    const isTimed = def?.progressionModel === 'time_progression';
     const work = isTimed ? ((def?.minTime ?? 20) + (def?.maxTime ?? 40)) / 2 : 35;
     // Superserie: los eslabones no finales comparten el descanso del último, así
     // que no cuentan el suyo (misma regla que `sessionStats`). Nada genera

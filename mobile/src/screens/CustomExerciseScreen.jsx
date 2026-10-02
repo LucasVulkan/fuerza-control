@@ -33,10 +33,14 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import StepField from '../components/ui/StepField';
 import { NavRow, OptionRow, ToggleRow, NoteRow, CHEVRON_GREY } from '../components/ui/EditorRows';
-import { ArrowIcon, ProgressionIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, ProgressionIcon, VariantIcon } from '../components/ui/EditorIcons';
+import VariantPicker from '../components/ui/VariantPicker';
+import AnimatedHeight from '../components/ui/AnimatedHeight';
 import DragSheet from '../components/DragSheet';
 import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
+import { VARIANT_DIMS, variantLabel, isEmptyVariant } from '../utils/variants';
 
+import ScreenHeader from '../components/ui/ScreenHeader';
 function generateCustomId() {
   return 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
 }
@@ -52,6 +56,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const addExercise       = useStore((s) => s.addExercise);
   const replaceExercise   = useStore((s) => s.replaceExercise);
   const addAdHocExercise  = useStore((s) => s.addAdHocExercise);
+  const updateExerciseParams = useStore((s) => s.updateExerciseParams);
+  const setSessionVariant    = useStore((s) => s.setSessionVariant);
   const showToast         = useStore((s) => s.showToast);
 
   const [name,      setName]      = useState('');
@@ -75,6 +81,10 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const [isCompound,   setIsCompound]   = useState(true);
   const [level,        setLevel]        = useState('intermediate');
   const [isUnilateral, setIsUnilateral] = useState(false);
+  // La misma hoja Variante que el editor (QA P44): elegir una opción ES decir
+  // que el ejercicio tiene esa dimensión, y queda elegida para esta sesión.
+  const [variant,          setVariant]          = useState({});
+  const [variantSheetOpen, setVariantSheetOpen] = useState(false);
   const [tempo,        setTempo]        = useState('');
   const [notes,        setNotes]        = useState('');
 
@@ -83,7 +93,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const [tempoSheetOpen, setTempoSheetOpen] = useState(false);
 
   const isTime        = metric === 'time';
-  const showRepsRange = !isTime && progMode !== 'submax';
   const showTimeRange = isTime;
   const showRepsIncr   = progType === 'reps';
   const showTimeIncr   = progType === 'time';
@@ -95,9 +104,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
   // ── Resumen / textos en lenguaje natural (mismo cálculo que el editor real) ──
   const rangeTxt = isTime
     ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
-    : progMode === 'submax'
-      ? t('workout.submax', 'submáx')
-      : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
+    : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
 
   const incTxt = showRepsIncr
     ? String(incrFixedValue)
@@ -125,9 +132,11 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
     const id = generateCustomId();
     const isTimeMode = metric === 'time';
+    // Fija se guarda como 'fixed': con 'double_progression' el ejercicio
+    // nacía en Automática al añadirlo a una sesión.
     const progressionModel = progMode === 'auto'
       ? (LEGACY_TYPE_MAP[progType] ?? 'double_progression')
-      : progMode === 'submax' ? 'submax' : 'double_progression';
+      : 'fixed';
 
     const def = {
       id,
@@ -140,6 +149,15 @@ export default function CustomExerciseScreen({ navigation, route }) {
       isCompound,
       isKeyCandidate:       true,
       isUnilateral,
+      // Dimensiones de variante (exercise-variants.md §4.6): todas las opciones.
+      // Dimensiones de variante (exercise-variants.md §4.6): las que se
+      // eligieron en la hoja, con todas sus opciones.
+      ...(isEmptyVariant(variant) ? {} : {
+        variants: {
+          ...(variant.grip  ? { grip:  [...VARIANT_DIMS.grip] }  : {}),
+          ...(variant.width ? { width: [...VARIANT_DIMS.width] } : {}),
+        },
+      }),
       progressionModel,
       progressionDirection: 'increase',
       sets,
@@ -154,12 +172,18 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
     addCustomExercise(def);
 
+    // Lo elegido en la hoja es la variante de este ejercicio donde se añade:
+    // en la sesión (plantilla) o, en un entreno en marcha, la de hoy.
+    const chosen = isEmptyVariant(variant) ? null : variant;
     if (sessionMode) {
       addAdHocExercise(id);
+      if (chosen) setSessionVariant(id, chosen);
     } else if (templateId && currentExerciseId) {
       replaceExercise(templateId, currentExerciseId, id);
+      if (chosen) updateExerciseParams(templateId, id, { variant: chosen });
     } else if (templateId) {
       addExercise(templateId, id);
+      if (chosen) updateExerciseParams(templateId, id, { variant: chosen });
     }
     showToast(t('customExercise.toastCreated'), 2200, 'success');
     navigation.pop(2);
@@ -167,12 +191,28 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('customExercise.title')}</Text>
-        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.closeGlyph}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Se entra deslizando desde la derecha: se sale con ‹, como el resto
+          de pantallas a las que se navega (U36). */}
+      {/* Crear va arriba a la derecha, como «Añadir» en el selector de
+          ejercicios: es la acción de la pantalla. Sin Cancelar: lo hace ‹. */}
+      <ScreenHeader
+        onBack={() => navigation.goBack()}
+        eyebrow={t('customExercise.eyebrow')}
+        title={t('customExercise.title')}
+        right={(
+          <TouchableOpacity
+            style={[styles.createBtn, !name.trim() && styles.createBtnOff]}
+            // Apagado sin nombre, pero pulsable: así marca el campo que falta.
+            onPress={handleCreate}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.createBtnText, !name.trim() && styles.createBtnTextOff]}>
+              {t('customExercise.createBtn')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
@@ -218,15 +258,27 @@ export default function CustomExerciseScreen({ navigation, route }) {
                   <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
                   <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
                 </View>
-              ) : showRepsRange ? (
+              ) : (
                 <View style={styles.gridRow}>
                   <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
                   <StepField label={t('exerciseEditor.fieldMaxReps')} value={maxReps} onChange={setMaxReps} min={1} max={50} />
                 </View>
-              ) : (
-                <Text style={styles.hint}>{t('exerciseEditor.submaxHint')}</Text>
               )}
             </View>
+          </View>
+
+          {/* ══ VARIANTE — la misma fila + hoja que el editor (QA P44) ═══════ */}
+          <View style={styles.block}>
+            <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
+            <NavRow
+              icon={<VariantIcon size={15} color={th.colors.accent} />}
+              title={[
+                ...(isUnilateral ? [t('variants.unilateral')] : []),
+                ...(variantLabel(variant, t) ? [variantLabel(variant, t)] : []),
+              ].join(' · ') || t('variants.none')}
+              subtitle={`${t('variants.dim.unilateral')} · ${t('variants.dim.grip').toLowerCase()} · ${t('variants.dim.width').toLowerCase()}`}
+              onPress={() => setVariantSheetOpen(true)}
+            />
           </View>
 
           {/* ══ PROGRESIÓN — mismo sistema que el editor real ═══════════════════ */}
@@ -243,11 +295,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
           {/* ══ OPCIONES ══════════════════════════════════════════════════════ */}
           <Text style={styles.secLabel}>{t('exerciseEditor.sectionOptions').toUpperCase()}</Text>
           <View style={styles.optGroup}>
-            <ToggleRow
-              label={t('exerciseEditor.unilateralLabel')}
-              value={isUnilateral}
-              onChange={setIsUnilateral}
-            />
             <OptionRow
               label={t('exerciseEditor.tempoLabel')}
               onPress={() => setTempoSheetOpen(true)}
@@ -276,20 +323,49 @@ export default function CustomExerciseScreen({ navigation, route }) {
             onPress={() => setTagsSheetOpen(true)}
           />
 
-          {/* ══ ACCIONES — abajo del proceso, no flotantes ═══════════════════ */}
-          <View style={styles.btnRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.createBtn} onPress={handleCreate} activeOpacity={0.85}>
-              <Text style={styles.createBtnText}>{t('customExercise.createBtn')}</Text>
-            </TouchableOpacity>
-          </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* ══ HOJA: tempo — idéntica a la del editor real ══════════════════════ */}
+      {/* ══ HOJA: variante — la del editor, sin «Ejercicio único» (un ejercicio
+          nuevo aún no tiene nada de lo que separarse) ══════════════════════ */}
+      <DragSheet
+        visible={variantSheetOpen}
+        onClose={() => setVariantSheetOpen(false)}
+        title={t('variants.title')}
+      >
+        <AnimatedHeight>
+          <View style={styles.sheetBody}>
+            <View>
+              <VariantPicker
+                def={{ variants: isUnilateral ? { grip: VARIANT_DIMS.grip } : VARIANT_DIMS }}
+                value={variant}
+                onChange={setVariant}
+              />
+              <Text style={[styles.hint, { marginTop: spacing.md }]}>
+                {isUnilateral ? `${t('variants.howHint')} ${t('variants.widthNA')}` : t('variants.howHint')}
+              </Text>
+            </View>
+            <View style={{ gap: spacing.sm }}>
+              <Text style={styles.sheetCaption}>{t('variants.identityTitle').toUpperCase()}</Text>
+              <View style={styles.optGroup}>
+                <ToggleRow
+                  label={t('variants.unilateral')}
+                  hint={t('variants.unilateralNewHint')}
+                  value={isUnilateral}
+                  alwaysHint
+                  onChange={(v) => {
+                    setIsUnilateral(v);
+                    // Una mano no tiene anchura.
+                    if (v && variant.width) { const next = { ...variant }; delete next.width; setVariant(next); }
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+        </AnimatedHeight>
+      </DragSheet>
+
       <DragSheet
         visible={tempoSheetOpen}
         onClose={() => setTempoSheetOpen(false)}
@@ -323,7 +399,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
               <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepMode')}
             </Text>
             <SegmentedControl
-              options={['auto', 'fixed', 'submax'].map((id) => ({ id, label: t(`exerciseEditor.progModes.${id}`) }))}
+              options={['auto', 'fixed'].map((id) => ({ id, label: t(`exerciseEditor.progModes.${id}`) }))}
               value={progMode}
               onChange={setProgMode}
             />
@@ -472,20 +548,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
-  iconBox: {
-    width: 42, height: 42, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
-  form: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  form: { paddingTop: spacing.md, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   block: { gap: spacing.md },
 
   secLabel: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },
@@ -526,22 +590,18 @@ const makeStyles = (th) => StyleSheet.create({
     includeFontPadding: false, paddingVertical: 0,
   },
 
-  // ── Acciones — abajo del proceso ────────────────────────────────────────
-  btnRow: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md },
-  cancelBtn: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: spacing.md, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-  },
-  cancelBtnText: { ...textStyles.button, color: th.colors.text },
+  // ── Crear, en la cabecera — el mismo botón que «Añadir» del selector ────
   createBtn: {
-    flex: 2, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: spacing.md, borderRadius: th.radius.sm,
-    backgroundColor: '#b8ff00',
+    height: 32, paddingHorizontal: spacing.md, borderRadius: th.radius.md,
+    backgroundColor: th.colors.accent,
+    alignItems: 'center', justifyContent: 'center',
   },
-  createBtnText: { ...textStyles.button, color: th.colors.onAccent },
+  createBtnOff:     { backgroundColor: th.colors.surface2 },
+  createBtnText:    { ...textStyles.button, color: th.colors.onAccent },
+  createBtnTextOff: { color: th.colors.muted },
 
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
+  sheetCaption: { ...textStyles.caps, color: th.colors.mutedLight },
   stepTitle: {
     ...textStyles.caps, color: th.colors.mutedLight,
     textTransform: 'uppercase', marginBottom: spacing.sm,

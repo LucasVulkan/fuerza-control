@@ -80,7 +80,9 @@ const swStyles = StyleSheet.create({
 
 // ─── Filas de la lista agrupada (Option blocks / Opciones basicas) ────────────
 
-export function OptionRow({ label, hint, onPress, right }) {
+// `warn`: la pista es un aviso (naranja, el de «fuera de rango»). `dimmed`: la
+// fila no se puede tocar y el control de la derecha va apagado.
+export function OptionRow({ label, hint, onPress, right, warn = false, dimmed = false }) {
   const styles = useThemedStyles(makeStyles);
   const Wrap   = onPress ? TouchableOpacity : View;
   const press  = onPress ? { onPress, activeOpacity: 0.7 } : null;
@@ -88,20 +90,24 @@ export function OptionRow({ label, hint, onPress, right }) {
     <Wrap style={styles.optRow} {...press}>
       <View style={styles.optRowMeta}>
         <Text style={styles.optRowLabel}>{label}</Text>
-        {!!hint && <Text style={styles.optRowHint}>{hint}</Text>}
+        {!!hint && <Text style={[styles.optRowHint, warn && styles.optRowWarn]}>{hint}</Text>}
       </View>
-      {right}
+      {dimmed ? <View style={styles.dimmed}>{right}</View> : right}
     </Wrap>
   );
 }
 
-export function ToggleRow({ label, hint, value, onChange }) {
+// La pista sale solo encendida, salvo `alwaysHint` (los interruptores que
+// explican qué harán antes de tocarlos). `disabled` no deja moverlo.
+export function ToggleRow({ label, hint, value, onChange, alwaysHint = false, disabled = false, warn = false }) {
   return (
     <OptionRow
       label={label}
-      hint={value ? hint : undefined}
-      onPress={() => onChange(!value)}
+      hint={value || alwaysHint ? hint : undefined}
+      onPress={disabled ? undefined : () => onChange(!value)}
       right={<Switch value={value} />}
+      warn={warn}
+      dimmed={disabled}
     />
   );
 }
@@ -175,6 +181,8 @@ const makeStyles = (th) => StyleSheet.create({
   optRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
   optRowLabel: { ...textStyles.bodyStrong, color: th.colors.text },
   optRowHint:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
+  optRowWarn:  { color: th.colors.orange },
+  dimmed:      { opacity: 0.35 },
 
   // Última fila del grupo: la nota, con su textarea sobre `color/workout-card`.
   noteRow: {

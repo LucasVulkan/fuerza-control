@@ -20,7 +20,6 @@ import { programTemplateOf } from './freeSessions';
  * @param {object}   args
  * @param {Array}    args.days             `[{ templateId, label }]` de la etapa, en orden A→F.
  * @param {Array}    [args.log]            Historial: `[{ sessionTemplateId, timestamp }]`.
- * @param {string}   [args.activeTemplateId] Sesión a medias, si la hay.
  * @param {number}   [args.now]            Reloj inyectable.
  * @param {Function} args.t                i18n.
  * @returns {{
@@ -31,7 +30,7 @@ import { programTemplateOf } from './freeSessions';
  *   weekDone:       number,       // entrenos de la etapa desde el lunes, repeticiones incluidas
  * }}
  */
-export function sessionPlan({ days = [], log = [], activeTemplateId, now = Date.now(), t }) {
+export function sessionPlan({ days = [], log = [], now = Date.now(), t }) {
   const ids       = new Set(days.map((d) => d.templateId));
   const weekStart = startOfWeek(now);
   const lastDone  = {};
@@ -46,18 +45,17 @@ export function sessionPlan({ days = [], log = [], activeTemplateId, now = Date.
     if (ts >= weekStart) weekDone += 1;
   });
 
-  // La sesión a medias manda: es literalmente la que estás haciendo. Si no, la
-  // de última vez más antigua; las nunca hechas primero y, a igualdad, el orden
-  // del programa (el `<` estricto se queda con la primera).
-  const active = days.find((d) => d.templateId === activeTemplateId) ?? null;
-  const oldest = days.reduce((best, d) =>
+  // La de última vez más antigua; las nunca hechas primero y, a igualdad, el
+  // orden del programa (el `<` estricto se queda con la primera). La sesión a
+  // medias NO manda: tiene su banner en Inicio, y si fuera el hero diría que
+  // toca una que no toca (pulido-ui.md §16, U52).
+  const hero = days.reduce((best, d) =>
     (best == null || (lastDone[d.templateId] ?? -Infinity) < (lastDone[best.templateId] ?? -Infinity) ? d : best),
   null);
-  const hero = active ?? oldest;
 
   return {
     heroTemplateId: hero?.templateId ?? null,
-    heroLabel:      hero == null ? null : t(active ? 'home.sessionActive' : 'home.sessionNext'),
+    heroLabel:      hero == null ? null : t('home.sessionNext'),
     // El hero no sale de la lista: la pantalla las pinta todas en orden y a la
     // que toca le da otra escala en su hueco (home-sesiones-plegables.md §4.4).
     rows: days.map((d) => ({

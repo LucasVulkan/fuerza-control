@@ -35,6 +35,8 @@ import AppHeader from '../components/AppHeader';
 import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import { ToggleRow } from '../components/ui/EditorRows';
@@ -46,6 +48,7 @@ import { templatesOf } from '../utils/programOwnership';
 import { clientLink } from '../utils/clientLink';
 import { programTotals } from '../utils/stageProgress';
 
+import { showDialog } from '../components/ui/dialog';
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /**
@@ -358,32 +361,6 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
   );
 }
 
-// ── Hoja de confirmación de borrado ────────────────────────────────────────────
-
-function ConfirmDeleteSheet({ visible, onClose, onConfirm }) {
-  const { t }  = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <DragSheet visible={visible} onClose={onClose} title={t('templates.deleteTitle')}>
-      <View style={styles.sheetBody}>
-        <Text style={styles.sheetHint}>{t('templates.deleteConfirm')}</Text>
-        <View style={styles.confirmRow}>
-          <TouchableOpacity style={styles.confirmCancel} onPress={onClose} activeOpacity={0.8}>
-            <Text style={styles.confirmCancelText}>{t('common.cancel')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.confirmDelete}
-            onPress={() => { onClose(); onConfirm(); }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.confirmDeleteText}>{t('common.delete')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </DragSheet>
-  );
-}
-
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 export default function ProgramScreen() {
@@ -395,13 +372,17 @@ export default function ProgramScreen() {
   const [showCreate,   setShowCreate]   = useState(false);
   const [menuTarget,   setMenuTarget]   = useState(null); // programId del "···"
   const [assignTarget, setAssignTarget] = useState(null); // programId a asignar
-  const [deleteTarget, setDeleteTarget] = useState(null); // programId a borrar
   const [showPaywall,  setShowPaywall]  = useState(false);
   // Programas / Sesiones. Sin persistir: es un vistazo, no un ajuste.
   const [seg,          setSeg]          = useState('programs');
   const [sesMenu,      setSesMenu]      = useState(null); // templateId
+
+  // Borrar un programa o una plantilla: el diálogo común de la app (U33).
+  const confirmDelete = (onConfirm) => showDialog(t('templates.deleteTitle'), t('templates.deleteConfirm'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('common.delete'), style: 'destructive', onPress: onConfirm },
+  ]);
   const [sesAssign,    setSesAssign]    = useState(null); // templateId
-  const [sesDelete,    setSesDelete]    = useState(null); // templateId
 
   const profile    = useStore((s) => s.profile);
   const setProfile = useStore((s) => s.setProfile);
@@ -605,33 +586,39 @@ export default function ProgramScreen() {
         onClose={() => setMenuTarget(null)}
         title={menuProgram?.name ?? ''}
       >
-        <View style={styles.sheetRows}>
+        <Section style={styles.sheetRows}>
           <SheetRow
+            icon={ROW_ICON.view}
             label={t('templates.actionView')}
             onPress={() => setPrintingProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.edit}
             label={t('templates.actionEdit')}
             onPress={() => setEditingProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.duplicate}
             label={t('templates.contextDuplicate')}
             onPress={() => handleDuplicate(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.share}
             label={t('templates.actionShare')}
             onPress={() => shareSpecificProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.export}
             label={t('templates.contextExport')}
             onPress={() => exportSpecificProgram(menuTarget)}
           />
           <SheetRow
+            icon={ROW_ICON.trash}
             danger
             label={t('templates.contextDelete')}
-            onPress={() => setDeleteTarget(menuTarget)}
+            onPress={() => { const id = menuTarget; confirmDelete(() => handleDelete(id)); }}
           />
-        </View>
+        </Section>
       </DragSheet>
 
       {/* Montada solo mientras hay destino: así la selección de cliente y el
@@ -647,24 +634,20 @@ export default function ProgramScreen() {
         />
       )}
 
-      <ConfirmDeleteSheet
-        visible={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => handleDelete(deleteTarget)}
-      />
-
       {/* ── Plantillas de sesión (C27) ── */}
       <DragSheet
         visible={!!sesMenu}
         onClose={() => setSesMenu(null)}
         title={sesName(sessionTemplates[sesMenu])}
       >
-        <View style={styles.sheetRows}>
+        <Section style={styles.sheetRows}>
           <SheetRow
+            icon={ROW_ICON.edit}
             label={t('templates.actionEdit')}
             onPress={() => { const id = sesMenu; setSesMenu(null); navigation.navigate('SessionEditor', { templateId: id }); }}
           />
           <SheetRow
+            icon={ROW_ICON.duplicate}
             label={t('templates.contextDuplicate')}
             onPress={() => {
               copyFreeTemplate(sesMenu, { name: sesName(sessionTemplates[sesMenu]) + t('templates.copyNameSuffix'), asTemplate: true });
@@ -673,11 +656,19 @@ export default function ProgramScreen() {
             }}
           />
           <SheetRow
+            icon={ROW_ICON.trash}
             danger
             label={t('templates.contextDelete')}
-            onPress={() => { setSesDelete(sesMenu); setSesMenu(null); }}
+            onPress={() => {
+              const id = sesMenu;
+              setSesMenu(null);
+              confirmDelete(() => {
+                if (!deleteFreeTemplate(id)) showToast(t('freeSession.deleteActive'), 2600, 'error');
+                else showToast(t('templates.toastDeleted'), 2200, 'neutral');
+              });
+            }}
           />
-        </View>
+        </Section>
       </DragSheet>
 
       {sesAssign && sessionTemplates[sesAssign] && (
@@ -695,15 +686,6 @@ export default function ProgramScreen() {
           }}
         />
       )}
-
-      <ConfirmDeleteSheet
-        visible={!!sesDelete}
-        onClose={() => setSesDelete(null)}
-        onConfirm={() => {
-          if (!deleteFreeTemplate(sesDelete)) showToast(t('freeSession.deleteActive'), 2600, 'error');
-          else showToast(t('templates.toastDeleted'), 2200, 'neutral');
-        }}
-      />
     </View>
   );
 }
@@ -777,7 +759,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hojas ──
   sheetBody: { gap: spacing.lg, paddingBottom: spacing.sm },
-  sheetRows: { gap: spacing.sm, paddingBottom: spacing.sm },
+  sheetRows: { marginBottom: spacing.sm },
   sheetLabel: {
     ...textStyles.caps,
     color:         th.colors.mutedLight,
@@ -823,30 +805,12 @@ const makeStyles = (th) => StyleSheet.create({
   clientReplaces:  { ...textStyles.body, color: th.colors.orange },
   clientCheck:     { ...textStyles.labelStrong, color: th.colors.accent },
 
-  // Confirmación de borrado — mismo par que cierra el editor de ejercicio.
-  confirmRow:    { flexDirection: 'row', gap: spacing.sm },
-  confirmCancel: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-  },
-  confirmCancelText: { ...textStyles.labelStrong, color: th.colors.text },
-  confirmDelete: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.tint.red30,
-    alignItems:      'center',
-  },
-  confirmDeleteText: { ...textStyles.labelStrong, color: th.tint.red50 },
 
   // CTA de hoja / estado vacío (Buttons `388:2676`)
   cta: {
     height:          44,
     borderRadius:    th.radius.md,
-    backgroundColor: '#b8ff00', // literal de Figma, distinto de color/accent
+    backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
     paddingHorizontal: spacing.xl,

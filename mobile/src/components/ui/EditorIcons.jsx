@@ -142,3 +142,27 @@ export function InfoIcon({ size = 12, color }) {
     </Svg>
   );
 }
+
+// Variantes de ejercicio (docs/specs/exercise-variants.md). No salen de Figma:
+// trazo fino, caja de 14/15 como el resto de iconos de fila.
+
+// Fila VARIANTE del editor: dos deslizadores.
+export function VariantIcon({ size = 15, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <Path d="M2 4h10M2 10h10" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+      <Circle cx={5} cy={4} r={1.8} fill={color} />
+      <Circle cx={9} cy={10} r={1.8} fill={color} />
+    </Svg>
+  );
+}
+
+// Volver a la del programa (hoja «solo hoy» del Workout): flecha en círculo.
+export function ResetIcon({ size = 18, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 12a8 8 0 1 0 2.35-5.65" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+      <Path d="M4 3.5v5h5" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}

@@ -13,7 +13,7 @@
  * `internalLoad`, que es de allí. Ver `stats/LoadCalendar.jsx`.
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, { LinearTransition } from 'react-native-reanimated';
@@ -25,12 +25,14 @@ import { programTemplateOf } from '../../utils/freeSessions';
 import DragSheet from '../DragSheet';
 import SheetRow from '../ui/SheetRow';
 import { Section, MenuRow } from '../ui/MenuList';
+import { ROW_ICON } from '../ui/rowIcons';
 import SessionCard from '../SessionCard';
 import { spacing, textStyles, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { volumeDeltas } from '../../utils/sessionRecap';
 
 
+import { showDialog } from '../ui/dialog';
 function CheckIcon({ size = 16, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -132,7 +134,7 @@ export default function HistoryList() {
       showToast(t('history.clearNothing'), 2200, 'neutral');
       return;
     }
-    Alert.alert(
+    showDialog(
       t(`history.clear.${scopeId}.title`),
       t(`history.clear.${scopeId}.body`, { count: willDelete }),
       [
@@ -260,8 +262,10 @@ export default function HistoryList() {
       {/* Gestión del historial — patrón unificado de modales (DragSheet) */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('history.manageTitle')}>
         <View style={styles.sheetBody}>
-          <SheetRow label={t('history.clear.off_program.action')} onPress={() => confirmClear('off_program')} danger />
-          <SheetRow label={t('history.clear.all.action')}         onPress={() => confirmClear('all')}         danger />
+          <Section style={styles.sheetSection}>
+            <SheetRow icon={ROW_ICON.history} label={t('history.clear.off_program.action')} onPress={() => confirmClear('off_program')} danger />
+            <SheetRow icon={ROW_ICON.trash}   label={t('history.clear.all.action')}         onPress={() => confirmClear('all')}         danger />
+          </Section>
           <Text style={styles.sheetHint}>{t('history.clearHint')}</Text>
         </View>
       </DragSheet>
@@ -312,6 +316,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Hoja de gestión ──
   sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
+  sheetSection: { marginBottom: 0 },
   sheetHint: {
     ...textStyles.label, color: th.colors.mutedLight,
     lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,

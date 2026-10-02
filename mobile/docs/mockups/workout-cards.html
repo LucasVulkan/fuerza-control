@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workout en cartas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --muted2: #4d4d4d; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --r-xxs: 2px; --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+  .t-heroGlyph { font: italic 800 34px/36px 'Barlow Condensed'; text-transform: uppercase; }
+  .t-heroName  { font: italic 800 28px/30px 'Barlow Condensed'; }
+  .t-title   { font: 900 22px/24px Inter; letter-spacing: -.5px; }
+  .t-heading { font: 800 18px Inter; letter-spacing: -.2px; }
+  .t-body    { font: 500 14px Inter; }
+  .t-bodyS   { font: 700 14px/18px Inter; }
+  .t-button  { font: 900 14px Inter; }
+  .t-label   { font: 500 12px/16px Inter; }
+  .t-labelS  { font: 800 12px Inter; }
+  .t-caps    { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+  /* La única excepción de la escala que ya existe: el reloj de ConditioningBlockCard */
+  .clock     { font: 900 44px/46px Inter; letter-spacing: -.88px; font-variant-numeric: tabular-nums; }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #080808; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 900px; margin-bottom: 14px; }
+  .lead b, .note b { color: #c9c9c9; font-weight: 800; }
+  .rack { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .note { font: 500 12px/1.65 Inter; color: #8a8a8a; max-width: 440px; }
+  .note h3 { font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); text-transform: uppercase; margin: 18px 0 6px; }
+  .note h3:first-child { margin-top: 0; }
+  .note li { margin: 0 0 5px 16px; }
+  .demo { display: flex; gap: 8px; align-items: center; font: 700 12px Inter; color: #8f8f8f; margin-bottom: 12px; }
+  .demo button { font: 800 12px Inter; background: #1b1b1b; color: #c9c9c9; border: 1px solid #2a2a2a; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .demo button.on { color: #000; background: var(--accent); border-color: var(--accent); }
+
+  /* ══════ PANTALLA ══════ */
+  .phone { width: 375px; max-width: 100%; height: 812px; background: var(--bg); border-radius: 26px; overflow: hidden;
+           border: 1px solid #222; position: relative; display: flex; flex-direction: column; user-select: none; }
+
+  .hd { display: flex; align-items: center; gap: 12px; padding: 16px 15px 10px; flex-shrink: 0; }
+  .hd .back { color: var(--mutedLight); font: 900 22px/22px Inter; }
+  .hd .who { flex: 1; min-width: 0; }
+  .hd .who .t-caps { color: var(--mutedLight); }
+  .hd .el { color: var(--mutedLight); font-variant-numeric: tabular-nums; }
+  .rpill { display: none; align-items: center; gap: 6px; background: var(--accent); color: #000; border-radius: 999px;
+           padding: 6px 10px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .rpill.on { display: inline-flex; animation: pop .3s var(--ease); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+
+  /* Barra de progreso: un tramo por ejercicio, se llena por series. Pulsable. */
+  .prog { display: flex; gap: 4px; padding: 0 15px 10px; flex-shrink: 0; }
+  .prog i { flex: 1; height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; cursor: pointer; position: relative; }
+  .prog i b { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 2px; transition: width .35s var(--ease); }
+  .prog i.cur { outline: 1px solid var(--accent50); outline-offset: 2px; }
+  .prog i.ss { margin-left: -2px; }
+
+  /* Carrusel (el D del editor de sesión) */
+  .car { flex: 1; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 30px 22px;
+         scrollbar-width: none; min-height: 0; overscroll-behavior-x: contain; position: relative; }
+  .car::-webkit-scrollbar { display: none; }
+  .card { position: relative; flex: 0 0 315px; scroll-snap-align: center; background: var(--surface); border-radius: var(--r-lg);
+          padding: 16px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,.45);
+          transition: transform .25s var(--ease), opacity .25s; }
+  .card.side { transform: scale(.93); opacity: .5; }
+  .card .top { display: flex; align-items: center; justify-content: space-between; min-height: 24px; }
+  .card .top .t-caps { color: var(--mutedLight); }
+  .card .top .t-caps b { color: var(--accent); font-weight: 800; }
+  .stamp { background: var(--accent); color: #000; border-radius: var(--r-xs); padding: 4px 7px; animation: pop .35s var(--ease); }
+  .cnt { color: var(--mutedLight); }
+  .card .nm { margin-top: 8px; }
+  .card .vr { color: var(--mutedLight); margin-top: 2px; }
+  .key { color: var(--accent); }
+  .pill { background: var(--accent10); color: var(--accent); border-radius: var(--r-xs); padding: 5px 8px; align-self: flex-start; margin-top: 10px; }
+  .goal { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; }
+  .goal .t-title { color: var(--accent); }
+  .goal .t-label { color: var(--mutedLight); }
+  .lastl { color: var(--mutedLight); margin-top: 4px; }
+  .lastl b { color: var(--text); font-weight: 800; }
+
+  /* Series (SetRow: 26 | 1fr 1fr | 42, gap 10) */
+  .colh, .srow { display: flex; align-items: center; gap: 10px; }
+  .colh { margin: 18px 0 8px; }
+  .colh span { flex: 1; text-align: center; font: 800 12px Inter; letter-spacing: 1.2px; color: var(--muted); }
+  .colh .lw, .srow .lw { flex: none; width: 26px; }
+  .colh .bw { flex: none; width: 42px; }
+  .srows { display: flex; flex-direction: column; gap: 8px; }
+  .srow .lw { font: 800 12px Inter; color: var(--mutedLight); }
+  .srow.cur .lw { color: var(--accent); }
+  .cell { flex: 1; min-width: 0; height: 44px; border-radius: 11px; background: var(--bg); display: flex; align-items: center;
+          justify-content: center; gap: 8px; font: 700 16px Inter; color: var(--muted2); font-variant-numeric: tabular-nums;
+          touch-action: none; cursor: ew-resize; position: relative; }
+  .cell .ch { color: var(--accent50); font: 900 11px Inter; opacity: 0; }
+  .srow.cur .cell { box-shadow: inset 0 0 0 .5px var(--accent50); color: var(--mutedLight); }
+  .srow.cur .cell .ch { opacity: 1; }
+  .cell.val { color: var(--text); font-weight: 800; }
+  .srow.done .cell { background: var(--accent10); color: var(--accent); font-weight: 800; box-shadow: none; }
+  .cell.drag { box-shadow: inset 0 0 0 1.5px var(--accent) !important; color: var(--text); }
+  .ck { width: 42px; height: 44px; border-radius: 11px; background: var(--surface2); display: grid; place-items: center;
+        color: var(--mutedLight); cursor: pointer; font: 900 15px Inter; flex: none; transition: background .15s, color .15s; }
+  .srow.done .ck { background: var(--accent); color: #000; }
+  .ck.bump { animation: bump .3s var(--ease); }
+  @keyframes bump { 40% { transform: scale(1.18); } }
+  .prc { display: flex; justify-content: flex-end; margin: -2px 52px 0 0; }
+  .prc span { background: var(--accent); color: #000; border-radius: var(--r-xs); padding: 3px 6px; animation: pop .35s var(--ease); }
+
+  /* Descanso entre series del mismo ejercicio: dentro de la carta */
+  .ibar { position: relative; height: 36px; border-radius: var(--r-md); background: var(--surface2); overflow: hidden;
+          display: flex; align-items: center; justify-content: space-between; padding: 0 12px; margin-left: 36px; animation: pop .3s var(--ease); }
+  .ibar .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent10); transition: width .1s linear; }
+  .ibar span { position: relative; font-variant-numeric: tabular-nums; }
+  .ibar .skip { color: var(--accent); cursor: pointer; }
+  .addset { text-align: center; color: var(--accent50); margin-top: auto; padding-top: 14px; cursor: pointer; }
+
+  /* Superserie: borde izquierdo acento + grapa que cruza el hueco */
+  .card.ss { box-shadow: inset 2px 0 0 var(--accent), 0 10px 30px rgba(0,0,0,.45); }
+  .card.ssb { margin-left: -4px; }
+  .clip { position: absolute; right: -14px; top: 50%; width: 22px; height: 56px; margin-top: -28px; background: var(--accent);
+          border-radius: var(--r-xs); z-index: 2; }
+  .clip::before, .clip::after { content: ''; position: absolute; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 2px; background: #000; }
+  .clip::before { top: 12px; } .clip::after { bottom: 12px; }
+
+  /* ── Carta de descanso ── */
+  .card.rest { background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--accent50); align-items: stretch; }
+  .card.rest.in { animation: dealin .45s var(--ease); }
+  @keyframes dealin { from { transform: translateY(30px) scale(.92); opacity: 0; } }
+  .ring { position: relative; width: 196px; height: 196px; margin: 14px auto 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring .mid .t-label { color: var(--mutedLight); }
+  .ring circle.p { transition: stroke-dashoffset .1s linear; }
+  .rest.go .ring { animation: beat .5s var(--ease) infinite alternate; }
+  .rest.go .clock { color: var(--accent); }
+  @keyframes beat { to { transform: scale(1.04); } }
+  .adj { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
+  .adj b { background: var(--surface2); border-radius: var(--r-md); padding: 9px 14px; font: 900 14px Inter; cursor: pointer; }
+  .nextc { background: var(--surface); border-radius: var(--r-md); padding: 12px 14px; margin-top: auto; }
+  .nextc .t-caps { color: var(--mutedLight); }
+  .nextc .nl { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; }
+  .nextc .nl .num { color: var(--accent); }
+  .nextc .t-label { color: var(--mutedLight); margin-top: 2px; }
+  .nextc .t-label b { color: var(--text); font-weight: 800; }
+  .plates { display: flex; gap: 3px; align-items: center; margin-top: 8px; }
+  .plates i { display: block; width: 8px; border-radius: 2px; background: var(--mutedLight); }
+  .plates .t-label { margin: 0 0 0 6px; }
+  .skipbtn { background: var(--accent); color: #000; text-align: center; border-radius: var(--r-md); padding: 14px; margin-top: 8px; cursor: pointer; }
+
+  /* ── Carta final ── */
+  .card.fin { justify-content: flex-start; }
+  .fin .t-heroName { margin-top: 6px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 16px; }
+  .stats div { background: var(--surface2); border-radius: var(--r-md); padding: 10px 12px; }
+  .stats .t-caps { font-size: 10px; letter-spacing: 1px; color: var(--mutedLight); }
+  .stats .t-title { margin-top: 4px; }
+  .stats .t-title small { font: 500 12px Inter; color: var(--mutedLight); letter-spacing: 0; }
+  .exl { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+  .exl div { display: flex; justify-content: space-between; align-items: center; padding: 8px 2px; border-bottom: 1px solid #2a2a2a; }
+  .exl .ok { color: var(--accent); }
+  .exl .no { color: var(--mutedLight); }
+  .finbtn { background: var(--accent); color: #000; text-align: center; border-radius: var(--r-md); padding: 15px; margin-top: auto; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h1>Workout en cartas</h1>
+<p class="lead">
+  El Workout como el carrusel D del editor de sesión: <b>una carta por ejercicio</b>, se pasa deslizando. Al completar la
+  última serie, la baraja <b>reparte una carta de descanso</b> con el siguiente ejercicio y la opción de saltar; al acabar
+  el descanso pasa sola a la siguiente. Todo es interactivo: marca series con ✓ y <b>arrastra un número a los lados</b>
+  para cambiarlo (como el campo de la app).
+</p>
+
+<div class="rack">
+  <div>
+    <div class="demo">Andamio:
+      <button id="spd" class="on">Descansos ×10</button>
+      <button id="rst">Reiniciar</button>
+    </div>
+    <div class="phone" id="W"></div>
+  </div>
+
+  <div class="note">
+    <h3>El recorrido</h3>
+    <ul>
+      <li><b>Serie hecha, quedan más</b> → el descanso es una barra <b>dentro de la carta</b>, bajo esa serie. No tiene sentido
+        sacarte del ejercicio en el que estás.</li>
+      <li><b>Última serie hecha</b> → se reparte la <b>carta de descanso</b> (anillo, ±15 s, saltar) con el siguiente ejercicio:
+        objetivo de la primera serie y, si es barra, <b>los discos por lado</b>. Al llegar a cero, pasa sola.</li>
+      <li><b>Superserie</b> → tras una serie de la 3a la baraja pasa a la 3b <b>sin descanso</b>; el descanso va después de la
+        3b y te devuelve a la 3a con «Vuelta 2 de 3». La grapa del editor también está aquí.</li>
+      <li>Al final, la <b>carta de cierre</b>: duración, series, volumen, mejoras y «Terminar y guardar».</li>
+    </ul>
+    <h3>Lo que lo hace agradable</h3>
+    <ul>
+      <li><b>Barra de progreso arriba</b>, un tramo por ejercicio que se llena por series. Tocar un tramo salta a esa carta.</li>
+      <li><b>El descanso no te encierra</b>: puedes deslizar a otra carta y sigue corriendo; aparece una pastilla en la
+        cabecera para volver.</li>
+      <li><b>Plan en gris, hecho en lima</b>: las casillas enseñan lo que toca y se encienden al marcar.</li>
+      <li><b>«+1 vs última vez»</b> salta en la serie que mejora a la de la sesión anterior (la lógica ya existe en
+        <code>sessionRecap.js</code> → <code>detectPRs</code>).</li>
+      <li>Los últimos 3 s el anillo late y el reloj se pone en lima. En el móvil, vibración corta a los 3 s y larga al acabar.</li>
+      <li>La carta del ejercicio terminado se queda con el sello «Hecho» por si vuelves a mirarla.</li>
+    </ul>
+    <h3>Fuera de esta maqueta</h3>
+    <ul>
+      <li>Bloques (AMRAP/EMOM, <code>ConditioningBlockCard</code>), calentamiento, RPE, notas y variante de hoy: irían en la
+        misma carta, debajo de las series, igual que hoy en <code>ExerciseCard</code>.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ── Datos: Sesión A · Tirón ──
+const BASE = [
+  { id: 'dom',  lab: '1',  name: 'Dominadas', variant: 'Lastre', pat: 'Tracción V', kind: 'wr', n: 4, w: 20, min: 6, max: 8, rest: 120, last: [7, 7, 6, 6], lastW: 20, key: true, plus: true },
+  { id: 'remo', lab: '2',  name: 'Remo con barra', variant: 'Pendlay', pat: 'Tracción H', kind: 'wr', n: 4, w: 70, min: 8, max: 10, rest: 90, last: [10, 10, 9, 8], lastW: 70, bar: true },
+  { id: 'face', lab: '3a', name: 'Face pull', variant: 'Polea', pat: 'Hombro', kind: 'wr', n: 3, w: 25, min: 12, max: 15, rest: 60, last: [15, 14, 12], lastW: 25, ss: 'a' },
+  { id: 'curl', lab: '3b', name: 'Curl martillo', variant: 'Mancuernas', pat: 'Bíceps', kind: 'wr', n: 3, w: 14, min: 10, max: 12, rest: 60, last: [12, 11, 10], lastW: 14, ss: 'b' },
+  { id: 'plan', lab: '4',  name: 'Plancha', variant: 'Frontal', pat: 'Core', kind: 't', n: 3, min: 30, max: 45, rest: 45, last: [45, 40, 35] },
+];
+let EX, rest, speed = 10, elapsed = 12 * 60 + 4, best = 0;
+const root = document.getElementById('W');
+const fmt = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const kg = (e, w) => e.plus ? `+${w}` : `${w}`;
+const done = e => e.sets.filter(s => s.done).length;
+const allDone = e => done(e) === e.sets.length;
+
+function reset() {
+  EX = BASE.map(b => ({ ...b, sets: Array.from({ length: b.n }, () => ({ w: b.w, r: b.max, done: false, edited: false })) }));
+  rest = null; best = 0;
+  root.innerHTML = `
+    <div class="hd">
+      <span class="back">‹</span>
+      <div class="who"><div class="t-caps">Sesión A</div><div class="t-heading">Tirón</div></div>
+      <span class="rpill t-labelS">⏱ <span></span></span>
+      <span class="t-labelS el"></span>
+    </div>
+    <div class="prog">${EX.map((e, i) => `<i data-go="${i}" class="${e.ss === 'b' ? 'ss' : ''}"><b style="width:0"></b></i>`).join('')}</div>
+    <div class="car">${EX.map((e, i) => `<div class="card${e.ss ? ` ss ss${e.ss}` : ''}" data-ex="${i}"></div>`).join('')}<div class="card fin"></div></div>`;
+  EX.forEach((e, i) => paint(i));
+  paintFin();
+  car().scrollLeft = 0; sync();
+}
+const car = () => root.querySelector('.car');
+const cardOf = i => root.querySelector(`.card[data-ex="${i}"]`);
+
+// ── Carta de ejercicio ──
+function paint(i) {
+  const e = EX[i], el = cardOf(i), cur = e.sets.findIndex(s => !s.done);
+  const unit = e.kind === 't' ? 's' : 'reps';
+  const goal = e.kind === 't' ? `${e.max} s` : `${kg(e, e.w)} kg × ${e.max}`;
+  const rows = e.sets.map((s, k) => {
+    const cell = (f, v) => `<div class="cell${s.edited ? ' val' : ''}" data-f="${f}" data-s="${k}"><span class="ch">‹</span><span class="v">${v}</span><span class="ch">›</span></div>`;
+    const row = `<div class="srow${s.done ? ' done' : ''}${k === cur ? ' cur' : ''}"><span class="lw">S${k + 1}</span>
+      ${e.kind === 't' ? cell('r', s.r) : cell('w', kg(e, s.w)) + cell('r', s.r)}
+      <div class="ck" data-s="${k}">✓</div></div>`;
+    const pr = s.done && s.pr ? `<div class="prc"><span class="t-labelS">${s.pr}</span></div>` : '';
+    const bar = rest && rest.mode === 'inline' && rest.ex === i && rest.after === k
+      ? `<div class="ibar"><div class="fill"></div><span class="t-labelS">Descanso <span class="tt">${fmt(rest.left)}</span></span><span class="t-labelS skip" data-skip>Saltar</span></div>` : '';
+    return row + pr + bar;
+  }).join('');
+  el.innerHTML = `
+    <div class="top"><span class="t-caps"><b>${e.lab}</b> · ${e.pat}</span>
+      ${allDone(e) ? '<span class="t-labelS stamp">✓ Hecho</span>' : `<span class="t-labelS cnt">${done(e)} de ${e.sets.length}</span>`}</div>
+    <div class="t-heroName nm">${e.name}</div>
+    <div class="t-body vr">${e.variant}${e.key ? ' · <span class="key">Principal</span>' : ''}</div>
+    ${e.ss ? `<span class="t-label pill">Superserie · ${e.ss === 'a' ? 'sin descanso hasta la 3b' : 'descanso al acabar'}</span>` : ''}
+    <div class="goal"><span class="t-title">${goal}</span><span class="t-label">rango ${e.min}–${e.max}${e.kind === 't' ? ' s' : ''} · ${e.rest} s</span></div>
+    <div class="t-label lastl">Última vez (26 sep): <b>${e.last.join(' · ')}</b>${e.kind === 't' ? ' s' : ` con ${kg(e, e.lastW)} kg`}</div>
+    <div class="colh"><span class="lw"></span>${e.kind === 't' ? '<span>SEG</span>' : '<span>KG</span><span>REPS</span>'}<span class="bw"></span></div>
+    <div class="srows">${rows}</div>
+    <div class="t-button addset" data-add>+ Añadir serie</div>
+    ${e.ss === 'a' ? '<i class="clip"></i>' : ''}`;
+  const seg = root.querySelectorAll('.prog i b')[i];
+  seg.style.width = `${100 * done(e) / e.sets.length}%`;
+  paintFin();
+}
+
+// ── Carta final ──
+function paintFin() {
+  const el = root.querySelector('.card.fin'); if (!el) return;
+  const tot = EX.reduce((a, e) => a + e.sets.length, 0), hechas = EX.reduce((a, e) => a + done(e), 0);
+  const vol = EX.reduce((a, e) => a + (e.kind === 'wr' ? e.sets.filter(s => s.done).reduce((b, s) => b + s.w * s.r, 0) : 0), 0);
+  const prs = EX.reduce((a, e) => a + e.sets.filter(s => s.done && s.pr).length, 0);
+  el.innerHTML = `
+    <div class="top"><span class="t-caps">Fin de la sesión</span></div>
+    <div class="t-heroName">${hechas === tot ? '¡Sesión hecha!' : `Faltan ${tot - hechas} series`}</div>
+    <div class="stats">
+      <div><div class="t-caps">Duración</div><div class="t-title">${Math.round(elapsed / 60)}<small> min</small></div></div>
+      <div><div class="t-caps">Series</div><div class="t-title">${hechas}<small> de ${tot}</small></div></div>
+      <div><div class="t-caps">Volumen</div><div class="t-title">${vol.toLocaleString('es')}<small> kg</small></div></div>
+      <div><div class="t-caps">Mejoras</div><div class="t-title">${prs}<small> series</small></div></div>
+    </div>
+    <div class="exl">${EX.map(e => `<div><span class="t-bodyS">${e.lab} · ${e.name}</span>
+      <span class="t-labelS ${allDone(e) ? 'ok' : 'no'}">${allDone(e) ? '✓' : `${done(e)}/${e.sets.length}`}</span></div>`).join('')}</div>
+    <div class="t-button finbtn">Terminar y guardar</div>`;
+}
+
+// ── Carta de descanso ──
+const R = 88, C = 2 * Math.PI * R;
+function restCard(nextI, label) {
+  const n = nextI === 'fin' ? null : EX[nextI];
+  const s = n && n.sets.find(x => !x.done);
+  const goal = n ? (n.kind === 't' ? `${s.r} s` : `${kg(n, s.w)} kg × ${s.r}`) : '';
+  const side = n && n.bar ? (s.w - 20) / 2 : 0;   // ponytail: barra de 20 kg y discos de 25/20/15/10/5/2,5
+  const plates = []; let left = side;
+  for (const p of [25, 20, 15, 10, 5, 2.5]) while (left >= p) { plates.push(p); left -= p; }
+  return `
+    <div class="top"><span class="t-caps">Descanso</span><span class="t-caps">${label}</span></div>
+    <div class="ring">
+      <svg width="196" height="196"><circle cx="98" cy="98" r="${R}" fill="none" stroke="var(--surface2)" stroke-width="8"/>
+        <circle class="p" cx="98" cy="98" r="${R}" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round"
+          stroke-dasharray="${C}" stroke-dashoffset="0"/></svg>
+      <div class="mid"><div class="clock tt">${fmt(rest.left)}</div><div class="t-label">de <span class="tot">${fmt(rest.total)}</span></div></div>
+    </div>
+    <div class="adj"><b data-adj="-15">−15 s</b><b data-adj="15">+15 s</b></div>
+    <div class="nextc">
+      <div class="t-caps">${n ? 'Siguiente' : 'Y ya está'}</div>
+      ${n ? `<div class="nl"><span class="t-heroGlyph num">${n.lab}</span><span class="t-heroName">${n.name}</span></div>
+        <div class="t-label">Serie ${done(n) + 1} de ${n.sets.length} · objetivo <b>${goal}</b></div>
+        <div class="t-label">Última vez: <b>${n.last.join(' · ')}</b>${n.kind === 't' ? ' s' : ` con ${kg(n, n.lastW)} kg`}</div>
+        ${n.bar ? `<div class="plates">${plates.map(p => `<i style="height:${10 + p}px"></i>`).join('')}<span class="t-label">Por lado: <b>${plates.join(' + ')}</b></span></div>` : ''}`
+      : '<div class="t-heroName" style="margin-top:4px">Carta final</div><div class="t-label">Era la última serie de la sesión.</div>'}
+    </div>
+    <div class="t-button skipbtn" data-skip>Saltar descanso</div>`;
+}
+
+// ── Navegación ──
+const center = el => el.offsetLeft - (car().clientWidth - el.offsetWidth) / 2;
+function goEl(el, smooth = true) { car().scrollTo({ left: center(el), behavior: smooth ? 'smooth' : 'auto' }); }
+function sync() {
+  const c = car(), mid = c.scrollLeft + c.clientWidth / 2, cards = [...c.children];
+  let bd = 1e9;
+  cards.forEach((k, i) => { const d = Math.abs(k.offsetLeft + k.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = i; } });
+  const b = cards[best], bi = b.dataset.ex !== undefined ? +b.dataset.ex : -1;
+  const pair = bi >= 0 && EX[bi].ss ? (EX[bi].ss === 'a' ? bi + 1 : bi - 1) : -1;
+  cards.forEach((k, i) => k.classList.toggle('side', i !== best && !(pair >= 0 && +k.dataset.ex === pair)));
+  root.querySelectorAll('.prog i').forEach((s, i) => s.classList.toggle('cur', i === bi));
+  pillUI();
+}
+function nextUndone(after) {
+  for (let i = after + 1; i < EX.length; i++) if (!allDone(EX[i])) return i;
+  for (let i = 0; i <= after; i++) if (!allDone(EX[i])) return i;
+  return 'fin';
+}
+
+// ── Descanso ──
+function startRest(i, mode, nextI, label, after) {
+  if (rest) endRest(false);
+  const total = EX[i].rest;
+  rest = { ex: i, mode, nextI, left: total, total, after };
+  if (mode === 'inline') { paint(i); pillUI(); return; }
+  const el = document.createElement('div');
+  el.className = 'card rest in';
+  rest.el = el;
+  el.innerHTML = restCard(nextI, label);
+  cardOf(i).after(el);
+  requestAnimationFrame(() => setTimeout(() => goEl(el), 120));
+}
+function endRest(advance) {
+  const r = rest; if (!r) return;
+  rest = null;
+  if (r.mode === 'inline') { paint(r.ex); pillUI(); return; }
+  const c = car(), viewing = c.children[best] === r.el;
+  const target = r.nextI === 'fin' ? root.querySelector('.card.fin') : cardOf(r.nextI);
+  if (viewing && advance) {
+    goEl(target);
+    setTimeout(() => {
+      c.style.scrollSnapType = 'none'; r.el.remove(); c.scrollLeft = center(target); c.style.scrollSnapType = ''; sync(); }, 450);
+  } else {
+    const keepEl = c.children[best] === r.el ? target : c.children[best];
+    c.style.scrollSnapType = 'none'; r.el.remove(); c.scrollLeft = center(keepEl); c.style.scrollSnapType = ''; sync();
+  }
+  pillUI();
+}
+function tickRest(dt) {
+  if (!rest) return;
+  rest.left -= dt * speed;
+  if (rest.left <= 0) { navigator.vibrate?.(200); endRest(true); return; }
+  const host = rest.mode === 'inline' ? cardOf(rest.ex).querySelector('.ibar') : rest.el;
+  if (!host) return;
+  host.querySelector('.tt').textContent = fmt(rest.left);
+  if (rest.mode === 'inline') host.querySelector('.fill').style.width = `${100 * (1 - rest.left / rest.total)}%`;
+  else {
+    host.querySelector('circle.p').style.strokeDashoffset = C * (1 - rest.left / rest.total);
+    host.querySelector('.tot').textContent = fmt(rest.total);
+    host.classList.toggle('go', rest.left <= 3);
+  }
+  pillUI();
+}
+function pillUI() {
+  const p = root.querySelector('.rpill'); if (!p) return;
+  const viewingRest = rest && (rest.mode === 'inline' ? +car().children[best]?.dataset.ex === rest.ex : car().children[best] === rest.el);
+  p.classList.toggle('on', !!rest && !viewingRest);
+  if (rest) p.querySelector('span').textContent = fmt(rest.left);
+}
+
+// ── Marcar serie ──
+function check(i, k) {
+  const e = EX[i], s = e.sets[k];
+  if (s.done) { s.done = false; s.pr = null; if (rest && rest.ex === i) rest = null; paint(i); pillUI(); return; }
+  s.done = true;
+  const d = s.r - e.last[k];
+  s.pr = e.kind === 'wr' && s.w > e.lastW && s.r >= e.last[k] ? `+${s.w - e.lastW} kg vs última vez`
+       : d > 0 && (e.kind === 't' || s.w >= e.lastW) ? `+${d}${e.kind === 't' ? ' s' : ' rep' + (d > 1 ? 's' : '')} vs última vez` : null;
+  paint(i);
+  cardOf(i).querySelectorAll('.ck')[k].classList.add('bump');
+  navigator.vibrate?.(15);
+
+  if (e.ss) {
+    const a = e.ss === 'a' ? i : i - 1, b = a + 1;
+    if (i === a && !allDone(EX[b])) { setTimeout(() => goEl(cardOf(b)), 380); return; }  // 3a → 3b sin descanso
+    if (!allDone(EX[a]) || !allDone(EX[b])) {
+      const back = !allDone(EX[a]) ? a : b;
+      return startRest(i, 'card', back, `Vuelta ${done(EX[back]) + 1} de ${EX[back].sets.length}`);
+    }
+    return startRest(i, 'card', nextUndone(b), 'Superserie hecha');
+  }
+  if (!allDone(e)) return startRest(i, 'inline', i, '', k);
+  const nx = nextUndone(i);
+  if (nx === 'fin') return setTimeout(() => goEl(root.querySelector('.card.fin')), 380);
+  startRest(i, 'card', nx, `${e.name} hecho`);
+}
+
+// ── Eventos ──
+root.addEventListener('click', ev => {
+  const t = ev.target;
+  const ck = t.closest('.ck');
+  if (ck) return check(+ck.closest('[data-ex]').dataset.ex, +ck.dataset.s);
+  if (t.closest('[data-skip]')) return endRest(true);
+  const adj = t.closest('[data-adj]');
+  if (adj && rest) { rest.left = Math.max(1, rest.left + +adj.dataset.adj); rest.total = Math.max(rest.total, rest.left); tickRest(0); return; }
+  const go = t.closest('[data-go]');
+  if (go) return goEl(cardOf(+go.dataset.go));
+  if (t.closest('.rpill') && rest) return goEl(rest.mode === 'inline' ? cardOf(rest.ex) : rest.el);
+  const add = t.closest('[data-add]');
+  if (add) { const i = +add.closest('[data-ex]').dataset.ex, e = EX[i], l = e.sets[e.sets.length - 1];
+    e.sets.push({ w: l.w, r: l.r, done: false, edited: false }); paint(i); }
+});
+
+// Arrastrar un número a los lados lo cambia (como el campo de SetRow). 14 px por paso.
+let cd = null;
+root.addEventListener('pointerdown', ev => {
+  const cell = ev.target.closest('.cell'); if (!cell) return;
+  const i = +cell.closest('[data-ex]').dataset.ex, k = +cell.dataset.s, f = cell.dataset.f, e = EX[i];
+  cd = { cell, e, i, s: e.sets[k], f, x0: ev.clientX, v0: e.sets[k][f], step: f === 'w' ? 2.5 : e.kind === 't' ? 5 : 1 };
+  cell.classList.add('drag'); cell.setPointerCapture(ev.pointerId); car().style.overflowX = 'hidden';
+});
+root.addEventListener('pointermove', ev => {
+  if (!cd) return;
+  const v = Math.max(0, cd.v0 + Math.round((ev.clientX - cd.x0) / 14) * cd.step);
+  if (v !== cd.s[cd.f]) { cd.s[cd.f] = v; cd.s.edited = true; cd.cell.classList.add('val');
+    cd.cell.querySelector('.v').textContent = cd.f === 'w' ? kg(cd.e, v) : v; navigator.vibrate?.(5); }
+});
+root.addEventListener('pointerup', () => { if (!cd) return; cd.cell.classList.remove('drag'); car().style.overflowX = ''; const i = cd.i; cd = null; paint(i); });
+
+// Ratón en escritorio: arrastrar desliza el carrusel.
+let mx = null, s0 = 0;
+root.addEventListener('pointerdown', ev => {
+  if (ev.pointerType !== 'mouse' || !ev.target.closest('.car') || ev.target.closest('.cell, .ck, [data-skip], [data-adj], [data-add], .finbtn')) return;
+  mx = ev.clientX; s0 = car().scrollLeft; car().style.scrollSnapType = 'none';
+});
+window.addEventListener('pointermove', ev => { if (mx !== null) car().scrollLeft = s0 - (ev.clientX - mx); });
+window.addEventListener('pointerup', () => { if (mx === null) return; mx = null; sync(); car().style.scrollSnapType = ''; goEl(car().children[best]); });
+root.addEventListener('scroll', sync, { capture: true, passive: true });
+
+// Relojes
+let tPrev = performance.now(), acc = 0;
+setInterval(() => {
+  const now = performance.now(), dt = (now - tPrev) / 1000; tPrev = now;
+  tickRest(dt);
+  acc += dt; if (acc >= 1) { acc -= 1; elapsed++; root.querySelector('.el').textContent = fmt(elapsed); }
+}, 100);
+
+document.getElementById('spd').onclick = ev => { speed = speed === 10 ? 1 : 10; ev.target.classList.toggle('on', speed === 10); };
+document.getElementById('rst').onclick = reset;
+reset();
+root.querySelector('.el').textContent = fmt(elapsed);
+</script>
+</body>
+</html>

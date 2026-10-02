@@ -5,9 +5,9 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, Modal, Alert, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
 import { Text, TextInput } from './ui/Text';
-import Svg, { Path, G, Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import { parseImportFile } from '../utils/importFile';
+import { parseBodyWeight } from '../utils/bodyWeight';
+import { useWeightUnit } from '../hooks/useWeightUnit';
 import { programsOf } from '../utils/programOwnership';
 import ImportModal from './ImportModal';
 import DragSheet   from './DragSheet';
@@ -26,12 +28,14 @@ import SegmentedControl from './ui/SegmentedControl';
 import { Switch }       from './ui/EditorRows';
 import { PencilIcon }   from './ui/EditorIcons';
 import { Section, MenuRow, Status, RowIcon } from './ui/MenuList';
+import { ROW_ICON } from './ui/rowIcons';
 import FitLogo from './ui/FitLogo';
 import { formatWhen } from '../utils/formatWhen';
 import { spacing, textStyles, borders, lh } from '../theme';
 import { THEME_LIST } from '../themes';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
 const WDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -72,18 +76,8 @@ function MenuIcon({ size = 24 }) {
 // ── Iconos de fila ────────────────────────────────────────────────────────────
 // Van en GRIS, no en lima: son decoración funcional, y con 12 iconos lima el
 // menú parecía un árbol de Navidad. El lima queda para lo que informa (estado,
-// badge PRO, tema activo).
-
-const ICON_NEW      = <Path d="M12 5v14M5 12h14" />;
-const ICON_ARCHIVED = <Path d="M4 7h16M4 12h16M4 17h10" />;
-const ICON_TRAINER  = <G><Circle cx="12" cy="8" r="3.2" /><Path d="M5.5 19a6.5 6.5 0 0 1 13 0" /></G>;
-const ICON_CLOUD    = <Path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z" />;
-const ICON_SYNC     = <G><Path d="M20.5 12a8.5 8.5 0 0 1-14 6.4" /><Path d="M3.5 12a8.5 8.5 0 0 1 14-6.4" /><Path d="M17 2.5v3.2h-3.2M7 21.5v-3.2h3.2" /></G>;
-const ICON_EXPORT   = <Path d="M12 19V5M6 11l6-6 6 6" />;
-const ICON_IMPORT   = <Path d="M12 5v14M6 13l6 6 6-6" />;
-const ICON_PLAN     = <Path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z" />;
-const ICON_DOCS     = <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>;
-const ICON_TRASH    = <G><Path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></G>;
+// badge PRO, tema activo). Los trazos viven en `ui/rowIcons`, compartidos con
+// las hojas de opciones.
 
 // ── Bloque de identidad (solo PRO) ────────────────────────────────────────────
 // Quién eres va arriba, con el badge PRO al lado, no perdido en una sección
@@ -267,10 +261,9 @@ function ExportSheet({ visible, onClose }) {
 
   return (
     <DragSheet visible={visible} onClose={onClose} title={t('header.exportSheetTitle')}>
-      <View style={styles.group}>
+      <Section style={styles.exportRows}>
         <MenuRow
-          isFirst
-          icon={<RowIcon>{ICON_EXPORT}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.export}</RowIcon>}
           label={exporting === 'full' ? t('header.exporting') : t('header.exportBackup')}
           sub={t('header.exportBackupSub')}
           minHeight={62}
@@ -278,16 +271,59 @@ function ExportSheet({ visible, onClose }) {
           onPress={() => run('full')}
         />
         <MenuRow
-          isLast
-          icon={<RowIcon>{ICON_ARCHIVED}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.archived}</RowIcon>}
           label={exporting === 'log' ? t('header.exporting') : t('header.exportProgramHistory')}
           sub={t('header.exportProgramHistorySub')}
           minHeight={62}
           disabled={!!exporting}
           onPress={() => run('log')}
         />
-      </View>
+      </Section>
     </DragSheet>
+  );
+}
+
+// ── Peso corporal ──────────────────────────────────────────────────────────────
+// Campo a mano en la fila de Preferencias (progresion-clara §9.3). Al salir del
+// campo guarda en kg si vale; si no, vuelve al peso de antes: no se puede borrar.
+
+function BodyWeightField() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t }  = useTranslation();
+  const bodyWeight = useStore((s) => s.profile.bodyWeight);
+  const setProfile = useStore((s) => s.setProfile);
+  const { unit, toDisplay, toKg } = useWeightUnit();
+
+  const shown = bodyWeight != null ? String(toDisplay(bodyWeight)) : '';
+  // null = no se está escribiendo: se enseña el peso guardado (así sigue a KG/LB
+  // y al recap sin sincronizar nada).
+  const [draft, setDraft] = useState(null);
+
+  function commit() {
+    const kg = draft == null || draft === shown ? null : parseBodyWeight(draft, toKg);
+    if (kg != null) setProfile({ bodyWeight: kg });
+    setDraft(null);
+  }
+
+  return (
+    <View style={styles.bwWrap}>
+      <TextInput
+        style={styles.bwInput}
+        value={draft ?? shown}
+        onChangeText={setDraft}
+        onBlur={commit}
+        onSubmitEditing={commit}
+        placeholder="—"
+        placeholderTextColor={th.colors.muted}
+        keyboardType="decimal-pad"
+        returnKeyType="done"
+        selectTextOnFocus
+        maxLength={6}
+        accessibilityLabel={t('header.bodyWeight')}
+      />
+      <Text style={styles.bwUnit}>{unit}</Text>
+    </View>
   );
 }
 
@@ -347,11 +383,11 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
       <Section title={t('header.sectionPrograms')}>
         <MenuRow
-          icon={<RowIcon>{ICON_NEW}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.new}</RowIcon>}
           label={t('header.newProgramItem')}
           onPress={() => {
             if (clientSync?.slotId) {
-              Alert.alert(
+              showDialog(
                 t('header.newProgramWarnTitle'),
                 t('header.newProgramWarnBody'),
                 [
@@ -370,7 +406,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           }}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_ARCHIVED}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.archived}</RowIcon>}
           label={t('header.archivedProgramsItem')}
           value={archivedCount > 0 ? String(archivedCount) : null}
           onPress={() => { onClose(); onShowArchived(); }}
@@ -381,7 +417,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           quedan solo las acciones manuales. */}
       <Section title={t('header.sectionConnections')}>
         <MenuRow
-          icon={<RowIcon>{ICON_TRAINER}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.user}</RowIcon>}
           label={t('header.trainerRow')}
           sub={trainerSub}
           minHeight={62}
@@ -389,7 +425,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           onPress={() => go('TrainerConnection')}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_CLOUD}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.cloud}</RowIcon>}
           label={t('header.driveRow')}
           sub={driveSub}
           minHeight={62}
@@ -402,7 +438,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         />
         {isPro && (
           <MenuRow
-            icon={<RowIcon>{ICON_SYNC}</RowIcon>}
+            icon={<RowIcon>{ROW_ICON.sync}</RowIcon>}
             label={t('header.clientSyncRow')}
             sub={syncSub}
             minHeight={62}
@@ -414,13 +450,13 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
       <Section title={t('header.sectionData')}>
         <MenuRow
-          icon={<RowIcon>{ICON_EXPORT}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.export}</RowIcon>}
           label={t('header.exportRow')}
           value={t('header.exportRowValue')}
           onPress={() => { onClose(); onShowExport(); }}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_IMPORT}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.import}</RowIcon>}
           label={t('header.importFile')}
           onPress={() => { onClose(); onImport(); }}
         />
@@ -460,6 +496,11 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           minHeight={86}
           control={<ThemeSwatches />}
         />
+        <MenuRow
+          label={t('header.bodyWeight')}
+          minHeight={58}
+          control={<BodyWeightField />}
+        />
         {!isPro && (
           <MenuRow
             label={t('header.proTabsLabel')}
@@ -473,14 +514,14 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
       <Section title={t('header.sectionAccount')}>
         <MenuRow
-          icon={<RowIcon>{ICON_PLAN}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.plan}</RowIcon>}
           label={t('header.planRow')}
           badge={isPro ? 'PRO' : 'FREE'}
           badgeMuted={!isPro}
           onPress={isPro ? undefined : () => setShowPaywall(true)}
         />
         <MenuRow
-          icon={<RowIcon>{ICON_DOCS}</RowIcon>}
+          icon={<RowIcon>{ROW_ICON.docs}</RowIcon>}
           label={t('header.docsRow')}
           onPress={() => go('Docs')}
         />
@@ -488,7 +529,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
             dentro. Va aquí, en CUENTA, y no dentro de Sincronización: esa
             fila es solo para Pro y se abre desde Clientes. */}
         <MenuRow
-          icon={<RowIcon color={th.tint.red50}>{ICON_TRASH}</RowIcon>}
+          icon={<RowIcon color={th.tint.red50}>{ROW_ICON.trash}</RowIcon>}
           label={t('header.deleteAccountRow')}
           labelColor={th.tint.red50}
           sub={t('header.deleteAccountSub')}
@@ -574,13 +615,13 @@ export default function AppHeader() {
       });
       const parsed = parseImportFile(raw);
       if (!parsed.ok) {
-        Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
+        showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
         return;
       }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        Alert.alert('Error', err?.message ?? t('errors.cannotReadFile'));
+        showDialog(t('common.error'), err?.message ?? t('errors.cannotReadFile'));
       }
     } finally {
       setPicking(false);
@@ -668,6 +709,8 @@ export default function AppHeader() {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
+  // La hoja de exportar: sus dos filas con la separación de `Section`.
+  exportRows: { marginBottom: spacing.sm },
   // Header row — sin línea divisoria (Figma: top y cuerpo sin separador)
   header: {
     flexDirection:     'row',
@@ -750,6 +793,21 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Segmentado pequeño dentro de la fila (unidades / idioma)
   segWrap: { width: 104, flexShrink: 0 },
+
+  // Peso corporal: caja de campo en surface2 (como el segmentado) + unidad.
+  bwWrap:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2, flexShrink: 0 },
+  bwInput: {
+    ...textStyles.bodyStrong,
+    color:             th.colors.text,
+    minWidth:          64,
+    textAlign:         'right',
+    backgroundColor:   th.colors.surface2,
+    borderRadius:      th.radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.sm2,
+    fontVariant:       ['tabular-nums'],
+  },
+  bwUnit:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
 
   // Muestras de tema
   themes:    { flexDirection: 'row', gap: spacing.md, flexShrink: 0 },

@@ -7,7 +7,7 @@
  * que sirve igual para las sesiones del cliente; el borrado entra por prop.
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
 // Reanimated drives both the delete-card exit + sibling reflow (`exiting`/
 // `layout`) and the detail accordion (`FadeIn`/`FadeOut` + the card's own
@@ -27,7 +27,9 @@ import { describeBlockScore } from '../utils/conditioningBlocks';
 import { recapStats } from '../utils/sessionRecap';
 import { buildSetLabel, groupSetsByWeight, getPillVariant } from '../utils/setDisplay';
 import { isFreeEntry } from '../utils/freeSessions';
+import { variantLabel, displayVariant } from '../utils/variants';
 
+import { showDialog } from './ui/dialog';
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
 const BLOCK_BADGE_STYLE = {
   amrap:    'badgeBlockAmrap',
@@ -102,7 +104,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
   );
 
   function handleDelete() {
-    Alert.alert(
+    showDialog(
       t('history.deleteTitle'),
       t('history.deleteConfirm'),
       [
@@ -130,7 +132,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
 
       {!!session.notes?.trim() && (
         <View style={styles.noteSection}>
-          <Text style={styles.noteSectionLabel}>NOTA</Text>
+          <Text style={styles.noteSectionLabel}>{t('history.noteLabel').toUpperCase()}</Text>
           <Text style={styles.noteSectionText}>{session.notes}</Text>
         </View>
       )}
@@ -150,7 +152,11 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
 
         return (
           <View key={ex.exerciseId} style={styles.exSection}>
-            <Text style={styles.exName}>{exName}</Text>
+            <Text style={styles.exName}>
+              {exName}
+              {/* Lo que se hizo, no lo que decía el programa (exercise-variants.md §4.4). */}
+              {displayVariant(ex.variant, def) ? <Text style={styles.exVariant}>{` · ${variantLabel(ex.variant, t)}`}</Text> : null}
+            </Text>
             <View style={styles.setPills}>
               {/* Logged sets — grouped by consecutive weight runs: one
                   weightless weight-pill followed by its reps/RPE pills */}
@@ -403,6 +409,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.xs,
   },
   exName: { ...textStyles.bodyStrong, color: th.colors.text },
+  exVariant: { ...textStyles.body, color: th.colors.mutedLight },
   exNote: {
     ...textStyles.body,
     color:      th.colors.accent,

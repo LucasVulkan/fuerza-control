@@ -11,7 +11,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
@@ -28,6 +28,7 @@ import { SectionLabel } from './ui/MenuList';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_DISCOVERY = {
@@ -87,7 +88,7 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
           accessToken: tokens.access_token,
         });
       } catch (err) {
-        Alert.alert(t('trainer.linkErrTitle'), err.message ?? t('trainer.linkErrBody'));
+        showDialog(t('trainer.linkErrTitle'), err.message ?? t('trainer.linkErrBody'));
       } finally {
         setLoading(false);
       }
@@ -103,7 +104,7 @@ export default function ClientGoogleLinkModal({ visible, onClose }) {
       if (!credential.idToken) throw new Error(t('trainer.errNoIdToken'));
       await finishLink({ provider: 'apple', idToken: credential.idToken });
     } catch (err) {
-      Alert.alert(t('trainer.linkErrTitle'), err.message ?? t('trainer.linkErrBody'));
+      showDialog(t('trainer.linkErrTitle'), err.message ?? t('trainer.linkErrBody'));
     } finally {
       setLoading(false);
     }

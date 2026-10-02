@@ -320,9 +320,9 @@ describe('regresión — casos con nombre propio', () => {
       return tpl.exercises.filter((e) => e.isKey).map((e) => e.exerciseId);
     });
     const allKeyIds = keyIdsByDay.flat();
-    // pull (pulldown_pronated), push (bench_press_db) y pierna (hack_squat +
+    // pull (pulldown), push (bench_press_db) y pierna (hack_squat +
     // romanian_deadlift_db) aparecen como key al menos 2 veces en la semana.
-    expect(allKeyIds.filter((id) => id === 'pulldown_pronated').length).toBeGreaterThanOrEqual(2);
+    expect(allKeyIds.filter((id) => id === 'pulldown').length).toBeGreaterThanOrEqual(2);
     expect(allKeyIds.filter((id) => id === 'bench_press_db').length).toBeGreaterThanOrEqual(2);
     expect(allKeyIds.filter((id) => id === 'hack_squat').length).toBeGreaterThanOrEqual(2);
     expect(allKeyIds.filter((id) => id === 'romanian_deadlift_db').length).toBeGreaterThanOrEqual(2);

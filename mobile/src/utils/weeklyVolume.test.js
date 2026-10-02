@@ -12,7 +12,7 @@ const byId = (id) => ARCHETYPES.find((a) => a.id === id);
 
 /** Sesión de espalda: 1 principal + 3 accesorios, todos del mismo grupo. */
 const BACK_DAY = [
-  ex('pulldown_pronated', 1, 4),
+  ex('pulldown', 1, 4),
   ex('cable_row',         3, 3),
   ex('db_row_unilateral', 3, 3),
 ];
@@ -119,7 +119,7 @@ describe('normalizeWeeklyVolume', () => {
   });
 
   it('declara `overBudget` cuando ni bajando los principales a su suelo llega', () => {
-    const allKeys = [ex('pulldown_pronated', 1, 5), ex('cable_row', 1, 5), ex('barbell_row', 1, 5)];
+    const allKeys = [ex('pulldown', 1, 5), ex('cable_row', 1, 5), ex('barbell_row', 1, 5)];
     const r = normalizeWeeklyVolume([allKeys], { daysPerWeek: 2, level: 'beginner' });
     // 3 principales × 3 series × 2 ciclos = 18 semanales, techo 14: irreducible.
     expect(r.overBudget).toContain('back');
@@ -150,7 +150,7 @@ describe('normalizeWeeklyVolume', () => {
 
   it('termina con un ciclo imposible en vez de colgarse', () => {
     const huge = Array.from({ length: 4 }, () => [
-      ex('pulldown_pronated', 1, 6), ex('cable_row', 3, 6), ex('db_row_unilateral', 3, 6),
+      ex('pulldown', 1, 6), ex('cable_row', 3, 6), ex('db_row_unilateral', 3, 6),
     ]);
     const r = normalizeWeeklyVolume(huge, { daysPerWeek: 7, level: 'beginner' });
     expect(r.sessions).toHaveLength(4);
@@ -191,7 +191,7 @@ describe('tope de accesorios en el suelo — también al recortar volumen', () =
   it('recortar volumen no deja tres accesorios a 2 series', async () => {
     const { accessoriesAtFloor, MAX_ACCESSORIES_AT_FLOOR } = await import('./sessionCompression');
     const cargada = [
-      ex('pulldown_pronated', 1, 4),
+      ex('pulldown', 1, 4),
       ex('cable_row',         3, 3),
       ex('db_row_unilateral', 3, 3),
       ex('face_pull',         3, 3),

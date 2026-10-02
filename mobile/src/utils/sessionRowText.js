@@ -21,13 +21,6 @@ export function relativeTime(ts, t) {
   return formatDate(ts);
 }
 
-/** "42 min" / "2 h" — cuánto lleva abierta la sesión en curso. */
-export function elapsedShort(startedAt) {
-  if (!startedAt) return null;
-  const mins = Math.max(0, Math.floor((Date.now() - startedAt) / 60000));
-  return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h`;
-}
-
 /**
  * El texto del botón dice A DÓNDE LLEVA, con el nombre de la sesión dentro.
  * Sin letra (una plantilla sin `label`) cae a la forma corta: la interfaz no

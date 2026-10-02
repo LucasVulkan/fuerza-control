@@ -186,22 +186,18 @@ function inScope(exConfig, scope) {
  * Escala el incremento de la progresión.
  *
  * Se aplica sobre el valor de la etapa BASE (ver cabecera), y respeta la forma
- * de cada tipo de `increment`: 'fixed' escala `value`, 'pct' escala `pct`, y
- * 'stepped' escala cada escalón. Redondeo al múltiplo de `minIncrement` si lo
- * hay, y si no a 0,25 — el mismo criterio que `computeIncrement`.
+ * de cada tipo de `increment`: 'fixed' escala `value` y 'pct' escala `pct`. El
+ * valor se redondea al `step` resuelto del ejercicio (progresion-clara.md §4.1),
+ * sin bajar de él: un escalón de 5 kg no puede quedarse en 2,5. Reps y Tiempo
+ * no tienen escalón de kilos (`step` null): entero, mínimo 1 (§4.4).
  */
-function scaleIncrement(increment, factor) {
+function scaleIncrement(increment, factor, step) {
   if (factor === 1) return increment;
-  const min   = increment.minIncrement ?? null;
-  const round = (v) => {
-    if (min) return Math.max(min, Math.round(v / min) * min);
-    return Math.max(0.25, Math.round(v / 0.25) * 0.25);
-  };
+  const round = (v) => (step ? Math.max(step, Math.round(v / step) * step) : Math.max(1, Math.round(v)));
   return {
     ...increment,
-    value: round((increment.value ?? 2.5) * factor),
+    value: round((increment.value ?? step ?? 1) * factor),
     pct:   Math.max(0.5, (increment.pct ?? 5) * factor),
-    steps: (increment.steps ?? []).map((s) => ({ ...s, value: round((s.value ?? 0) * factor) })),
   };
 }
 
@@ -230,7 +226,7 @@ export function applyRx(exercises, rx, allExercises = {}) {
       next.sets = Math.max(MIN_SETS, next.sets + r.setsDelta);
     }
 
-    // Los ejercicios de tiempo (`time_progression` / `submax`) no llevan
+    // Los ejercicios de tiempo (`time_progression`) no llevan
     // minReps/maxReps — `buildExConfig` los deja fuera a propósito — así que
     // el desplazamiento de repeticiones no les aplica. El resto de la regla sí.
     if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) {
@@ -245,11 +241,20 @@ export function applyRx(exercises, rx, allExercises = {}) {
     if (r.incrementScale !== 1 || r.progressionHold !== null) {
       // Materializar la progresión resuelta: un ejercicio sin `progression`
       // explícita hereda la del `def`, y si escribiéramos solo `hold` encima
-      // perderíamos el resto al no existir el objeto.
-      const prog = resolveProgressionConfig(ex, allExercises[ex.exerciseId]);
+      // perderíamos el resto al no existir el objeto. `step`, `direction` y `exact` son
+      // del ejercicio y se resuelven siempre: no se escriben. `down` solo si
+      // venía guardado — su defecto depende de las series de la sesión (§4.1).
+      const { step, down, ...prog } = resolveProgressionConfig(ex, allExercises[ex.exerciseId]);
+      delete prog.direction;
+      delete prog.exact;
+      const weighted = prog.type !== 'reps' && prog.type !== 'time';
       next.progression = {
         ...prog,
-        increment: scaleIncrement(prog.increment, r.incrementScale),
+        // 'weight' se lee como 'double' pero con meta = minReps: reescribirlo
+        // cambiaría cuándo sube (progresion-clara.md §4.1).
+        ...(ex.progression?.type === 'weight' ? { type: 'weight' } : {}),
+        ...(down != null ? { down } : {}),
+        increment: scaleIncrement(prog.increment, r.incrementScale, weighted ? step : null),
         hold: r.progressionHold,
       };
     }

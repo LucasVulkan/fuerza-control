@@ -44,7 +44,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { View, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -66,6 +66,7 @@ import {
 import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
 import { sessionStats } from '../utils/sessionStats';
 
+import { showDialog } from '../components/ui/dialog';
 const CHIP = 21;   // marcador de la línea de tiempo
 // Alto de la cabecera de una tarjeta: el mismo 52 que la sección de Info de la
 // ficha de cliente. Es lo que hace que el marcador caiga centrado sin medir
@@ -506,7 +507,7 @@ export default function StagePlannerScreen({ navigation, route }) {
   }
 
   function handleDelete(idx) {
-    Alert.alert(
+    showDialog(
       t('planner.deleteTitle'),
       t('planner.deleteBody', { name: stages[idx].name ?? '' }),
       [

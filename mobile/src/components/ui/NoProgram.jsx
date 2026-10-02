@@ -11,7 +11,7 @@
  * entrenador. Antes iba con las cadenas en castellano a pelo en el JSX; al
  * mudarse pasa a las claves que ya existían para el otro sitio.
  */
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { Text } from './Text';
@@ -19,6 +19,7 @@ import { useStore } from '../../../store/useStore';
 import { spacing, textStyles, lh } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 
+import { showDialog } from './dialog';
 export default function NoProgram() {
   const { t }      = useTranslation();
   const styles     = useThemedStyles(makeStyles);
@@ -27,7 +28,7 @@ export default function NoProgram() {
 
   const start = () => {
     if (!clientSync?.slotId) { navigate('onboarding'); return; }
-    Alert.alert(
+    showDialog(
       t('header.newProgramWarnTitle'),
       t('header.newProgramWarnBody'),
       [

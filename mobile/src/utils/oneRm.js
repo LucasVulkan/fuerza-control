@@ -30,6 +30,35 @@ export function epley1RM(weight, reps, rpe = null) {
   return w * (1 + r / 30);
 }
 
+/**
+ * e1RM «como mínimo» de una serie con RPE, para la progresión por esfuerzo.
+ * Donde `epley1RM` se calla, esta da una cota baja: un RPE por debajo de 5
+ * cuenta como 5 (al menos 5 en recámara) y más de MAX_RELIABLE_REPS reps
+ * equivalentes cuentan como MAX_RELIABLE_REPS (al menos una 12RM). Descartar
+ * esas series dejaba solo las duras y el peso no subía por mucho que sobrara
+ * (QA P48). null sin peso, reps o RPE.
+ */
+export function e1rmAtLeast(weight, reps, rpe) {
+  const w = parseFloat(weight);
+  const r = parseInt(reps, 10);
+  const p = parseFloat(rpe);
+  if (!(w > 0) || !(r >= 1) || !(p > 0)) return null;
+  const eq = Math.min(MAX_RELIABLE_REPS, r + 10 - Math.min(10, Math.max(5, p)));
+  return eq === 1 ? w : w * (1 + eq / 30);
+}
+
+/**
+ * La inversa de `epley1RM`: el peso para hacer `reps` a `rpe` con un 1RM
+ * `e1rm`. null si las reps equivalentes (reps + recámara) pasan de
+ * MAX_RELIABLE_REPS. La usa la progresión por esfuerzo
+ * (docs/specs/effort-progression.md §2.2).
+ */
+export function weightForReps(e1rm, reps, rpe) {
+  const r = reps + (10 - rpe);
+  if (!(e1rm > 0) || r < 1 || r > MAX_RELIABLE_REPS) return null;
+  return r === 1 ? e1rm : e1rm / (1 + r / 30);
+}
+
 /** Best e1RM across the sets of one logged exercise, or null. */
 export function bestSetE1RM(sets) {
   let best = null;

@@ -3,33 +3,38 @@
  * Shown when a free user tries to access a PRO feature.
  * Fetches the current RevenueCat offering and displays available packages.
  * Falls back gracefully when native module isn't loaded (Expo Go).
+ *
+ * Es una `DragSheet` (U34): antes montaba su propio Modal con su velo y su
+ * asa. Se cierra arrastrando o tocando fuera, como todas las hojas.
  */
 
 import { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from './ui/Text';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { useStore }                                     from '../../store/useStore';
 import { spacing, borders, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
+import DragSheet from './DragSheet';
 // ── Feature list ──────────────────────────────────────────────────────────────
 
 const PRO_FEATURES = [
-  { emoji: '👥', text: 'Gestión completa de clientes' },
-  { emoji: '📋', text: 'Asignar programas a clientes' },
-  { emoji: '📈', text: 'Ver el progreso de tus clientes en tiempo real' },
-  { emoji: '💶', text: 'Registro de facturación' },
-  { emoji: '📐', text: 'Crear plantillas de entrenamiento' },
+  { emoji: '👥', key: 'clients' },
+  { emoji: '📋', key: 'assign' },
+  { emoji: '📈', key: 'progress' },
+  { emoji: '💶', key: 'billing' },
+  { emoji: '📐', key: 'templates' },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PaywallModal({ onClose }) {
+  const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
   const getOffering      = useStore((s) => s.getOffering);
   const purchasePackage  = useStore((s) => s.purchasePackage);
   const restorePurchases = useStore((s) => s.restorePurchases);
@@ -65,7 +70,7 @@ export default function PaywallModal({ onClose }) {
       if (result.ok) {
         if (!result.isPro) {
           // Purchase went through but entitlement not yet reflected — poll RC
-          showToast('Compra procesada, sincronizando…', 2200, 'neutral');
+          showToast(t('paywall.processing'), 2200, 'neutral');
           const synced = await checkProStatus().catch(() => false);
           if (!synced) {
             // Last resort: try restore
@@ -74,7 +79,7 @@ export default function PaywallModal({ onClose }) {
         }
         onClose();
       } else if (!result.cancelled) {
-        Alert.alert('Error en la compra', result.error ?? 'No se pudo completar la compra.');
+        showDialog(t('paywall.errTitle'), result.error ?? t('drive.errBackupBody'));
       }
     } finally {
       setPurchasing(false);
@@ -92,30 +97,20 @@ export default function PaywallModal({ onClose }) {
   }
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: spacing.xxl + insets.bottom }]}>
-        <View style={styles.handle} />
-
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+    <DragSheet visible onClose={onClose}>
           {/* Header */}
           <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.badge}>PRO</Text>
-              <Text style={styles.title}>Desbloquea Forma Pro</Text>
-              <Text style={styles.subtitle}>Todo lo que necesitas para entrenar y gestionar clientes</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-              <Text style={styles.closeX}>✕</Text>
-            </TouchableOpacity>
+            <Text style={styles.badge}>PRO</Text>
+            <Text style={styles.title}>{t('paywall.title')}</Text>
+            <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
           </View>
 
           {/* Feature list */}
           <View style={styles.featureList}>
             {PRO_FEATURES.map((f) => (
-              <View key={f.text} style={styles.featureRow}>
+              <View key={f.key} style={styles.featureRow}>
                 <Text style={styles.featureEmoji}>{f.emoji}</Text>
-                <Text style={styles.featureTxt}>{f.text}</Text>
+                <Text style={styles.featureTxt}>{t(`paywall.features.${f.key}`)}</Text>
               </View>
             ))}
           </View>
@@ -125,9 +120,7 @@ export default function PaywallModal({ onClose }) {
             <ActivityIndicator color={th.colors.accent} style={{ marginVertical: spacing.xl }} />
           ) : packages.length === 0 ? (
             <View style={styles.noProducts}>
-              <Text style={styles.noProductsTxt}>
-                Forma Pro próximamente
-              </Text>
+              <Text style={styles.noProductsTxt}>{t('paywall.comingSoon')}</Text>
             </View>
           ) : (
             <View style={styles.packageList}>
@@ -146,7 +139,7 @@ export default function PaywallModal({ onClose }) {
                         {pkg.product.title || 'Forma Pro'}
                       </Text>
                       <Text style={styles.pkgPrice}>
-                        {pkg.product.priceString} · Pago único
+                        {t('paywall.oneTime', { price: pkg.product.priceString })}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -167,8 +160,8 @@ export default function PaywallModal({ onClose }) {
                 ? <ActivityIndicator size="small" color={th.colors.bg} />
                 : <Text style={styles.ctaTxt}>
                     {selectedPkg
-                      ? `Comprar por ${selectedPkg.product.priceString}`
-                      : 'Comprar Forma Pro'}
+                      ? t('paywall.buyFor', { price: selectedPkg.product.priceString })
+                      : t('paywall.buy')}
                   </Text>
               }
             </TouchableOpacity>
@@ -182,50 +175,21 @@ export default function PaywallModal({ onClose }) {
           >
             {restoring
               ? <ActivityIndicator size="small" color={th.colors.muted} />
-              : <Text style={styles.restoreTxt}>Restaurar compra anterior</Text>
+              : <Text style={styles.restoreTxt}>{t('paywall.restore')}</Text>
             }
           </TouchableOpacity>
 
-          <Text style={styles.legal}>
-            Pago único. Sin suscripciones. El acceso a Forma Pro es permanente.
-          </Text>
-        </ScrollView>
-      </View>
-    </Modal>
+          <Text style={styles.legal}>{t('paywall.legal')}</Text>
+    </DragSheet>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  sheet: {
-    backgroundColor:      th.colors.bg,
-    borderTopLeftRadius:  th.radius.lg,
-    borderTopRightRadius: th.radius.lg,
-    paddingHorizontal:    spacing.xl,
-    paddingTop:           spacing.sm,
-    maxHeight:            '90%',
-  },
-  handle: {
-    width:           40,
-    height:          4,
-    backgroundColor: th.colors.border,
-    borderRadius:    2,
-    alignSelf:       'center',
-    marginBottom:    spacing.md,
-  },
-
   // Header
   headerRow: {
-    flexDirection:  'row',
-    alignItems:     'flex-start',
-    justifyContent: 'space-between',
-    marginBottom:   spacing.xl,
-    gap:            spacing.md,
+    marginBottom: spacing.xl,
   },
   badge: {
     alignSelf:       'flex-start',
@@ -241,11 +205,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   title:    { ...textStyles.heading, color: th.colors.text },
   subtitle: { ...textStyles.label, color: th.colors.mutedLight, marginTop: 4, maxWidth: 260 },
-  closeBtn: {
-    padding: spacing.xs,
-  },
-  closeX: { ...textStyles.body, color: th.colors.mutedLight },
-
   // Features
   featureList: {
     gap:          spacing.sm,

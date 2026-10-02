@@ -22,6 +22,7 @@
 import { targetLabel, exerciseName } from './prescription';
 import { getProgression } from './progression';
 import { sessionSlots } from './sessionSlots';
+import { variantParts, VARIANT_DIMS, displayVariant } from './variants';
 import es from '../locales/es.json';
 import en from '../locales/en.json';
 
@@ -39,15 +40,14 @@ export function todayWeight(exConfig, def, lastExercise, t) {
 }
 
 function prescription(def, ex, t) {
-  if ((ex.progressionModel ?? def?.progressionModel) === 'submax') {
-    return t('sessionText.sets', { count: ex.sets ?? 0 });
-  }
   const rx = targetLabel(def, ex, t, { compact: true })
     .replace(/×/g, 'x').replace(/–/g, '-').replace(/ s$/, 's')
+    // El «+» del inicio de Reps y Tiempo (P56) no lo lee el pegado: queda el inicio.
+    .replace(/(\d)\+/, '$1')
     // El tiempo no junta un rango cerrado como las reps: «40-40s» es «40s».
     .replace(/(?<!\d)(\d+)-\1(?!\d)/, '$1');
   // En compacto `targetLabel` se come el «por lado»; a quien entrena solo le hace falta.
-  return (ex.isUnilateral ?? def?.isUnilateral) ? `${rx} ${t('workout.perSide')}` : rx;
+  return def?.isUnilateral ? `${rx} ${t('workout.perSide')}` : rx;
 }
 
 function blockLine(block, allExercises, t, language, fmtWeight) {
@@ -96,6 +96,9 @@ export function sessionToText(template, allExercises, t, {
       const kg  = lastExercise ? todayWeight(ex, def, lastExercise(ex), t) : null;
       return [
         exerciseName(def, language, ex.exerciseId),
+        // La variante con el mismo « · » que en pantalla: el lector sabe
+        // separarla del nombre (exercise-variants.md §5.2).
+        ...variantParts(displayVariant(ex.variant, def), t),
         prescription(def, ex, t),
         kg != null ? fmtWeight(kg) : null,
       ].filter(Boolean).join(SEP);
@@ -254,11 +257,43 @@ export function parseSessionText(text) {
     }
     const segs  = left.split(SEP).map((x) => x.trim());
     const block = segs.some((x) => BLOCK_RE.test(x));
-    const rx    = block ? null : (segs.slice(1).map(parseRx).find(Boolean) ?? null);
-    const hint  = segs.slice(1).map(parseWeight).find((w) => w != null) ?? null;
-    lines.push({ raw, ignored: false, name: segs[0], rx, hint, block, answer: answer.trim() });
+    // El nombre son todos los trozos hasta la receta o el peso, no solo el
+    // primero: un ejercicio aparte o una variante también llevan « · »
+    // (exercise-variants.md §5.2). Qué parte es nombre y qué variante lo decide
+    // `resolveName`, que conoce los ejercicios.
+    const cut      = block ? 1 : segs.findIndex((x, i) => i > 0 && (parseRx(x) || parseWeight(x) != null));
+    const nameSegs = cut < 0 ? segs : segs.slice(0, cut);
+    const rest     = segs.slice(nameSegs.length);
+    const rx    = block ? null : (rest.map(parseRx).find(Boolean) ?? null);
+    const hint  = rest.map(parseWeight).find((w) => w != null) ?? null;
+    lines.push({ raw, ignored: false, name: nameSegs.join(SEP), nameSegs, rx, hint, block, answer: answer.trim() });
   });
   return { header, lines };
+}
+
+// Etiqueta de opción (es o en, normalizada) → [dimensión, opción].
+const VARIANT_WORDS = new Map();
+for (const dict of [es, en]) {
+  for (const [dim, opts] of Object.entries(VARIANT_DIMS)) {
+    for (const opt of opts) VARIANT_WORDS.set(normName(dict.variants.options[dim][opt]), [dim, opt]);
+  }
+}
+
+/**
+ * `nameSegs` de una línea → `{ exerciseId, variant }`. Gana el nombre conocido
+ * más largo: «Jalón al pecho · Prono · Ancho» es el ejercicio aparte si existe,
+ * y si no, «Jalón al pecho» con esa variante. Lo que sobra solo es variante si
+ * TODO son opciones del catálogo; si no, se ignora.
+ */
+export function resolveName(nameSegs, find) {
+  for (let k = nameSegs.length; k >= 1; k--) {
+    const exerciseId = find(nameSegs.slice(0, k).join(SEP));
+    if (!exerciseId) continue;
+    const words = nameSegs.slice(k).map((x) => VARIANT_WORDS.get(normName(x)));
+    const variant = words.length && words.every(Boolean) ? Object.fromEntries(words) : null;
+    return { exerciseId, variant };
+  }
+  return { exerciseId: null, variant: null };
 }
 
 /**

@@ -31,11 +31,12 @@ import StageSelector from '../components/ui/StageSelector';
 import { sessionSlots } from '../utils/sessionSlots';
 import { sessionStats } from '../utils/sessionStats';
 import { warmupSteps } from '../utils/warmup';
+import { variantLabel, displayVariant } from '../utils/variants';
 import { stageDiff, isEmptyDiff } from '../utils/programDiff';
 import {
   plannedSets, plannedSetsByGroup, SETS_TARGET_MIN, SETS_TARGET_MAX,
 } from '../utils/trainingLoad';
-import { DEFAULT_TARGET } from '../utils/progression';
+import { DEFAULT_TARGET, resolveProgressionConfig } from '../utils/progression';
 
 // Misma escala mínima que las barras de `LoadTab`: sin suelo, un programa de
 // 6 series por grupo pinta barras llenas y parece que va sobrado.
@@ -54,9 +55,11 @@ function prescription(exConfig, def, t) {
   const minTime = exConfig.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;
   const maxTime = exConfig.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime;
 
+  const prog = resolveProgressionConfig(exConfig, def);
+
   let range;
   if (timed)                       range = `${minTime}–${maxTime} s`;
-  else if (model === 'submax')     range = t('workout.submax');
+  else if (prog.type === 'effort') range = `${minReps} @RPE ${prog.targetRpe}`;
   else if (minReps === maxReps)    range = `${minReps}`;
   else                             range = `${minReps}–${maxReps}`;
   if (def?.isUnilateral)           range += ` ${t('workout.perSide')}`;
@@ -165,7 +168,12 @@ function ExerciseRow({ num, exConfig, def, name, inGroup }) {
     <View style={styles.exRow}>
       <Text style={styles.exNum}>{num}</Text>
       <View style={styles.exInfo}>
-        <Text style={styles.exName}>{name}</Text>
+        <Text style={styles.exName}>
+          {name}
+          {displayVariant(exConfig.variant, def)
+            ? <Text style={styles.exVariant}>{` · ${variantLabel(exConfig.variant, t)}`}</Text>
+            : null}
+        </Text>
         <View style={styles.exRxLine}>
           <Text style={styles.exRxMain}>{main}</Text>
           {exConfig.isKey && <Text style={styles.keyBadge}>{t('common.keyExercise')}</Text>}
@@ -620,6 +628,7 @@ const makeStyles = (th) => StyleSheet.create({
   exInfo:     { flex: 1, gap: spacing.xs, minWidth: 0 },
   exRxLine:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   exName:     { ...textStyles.body, color: th.colors.text },
+  exVariant:  { color: th.colors.mutedLight },
   keyBadge: {
     ...textStyles.caps,
     color:             th.colors.accent,

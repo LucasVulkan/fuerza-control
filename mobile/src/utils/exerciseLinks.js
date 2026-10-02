@@ -17,8 +17,10 @@ export const LINKED_CONFIG_KEYS = [
   'isKey',
   'sets', 'restSec', 'inputType',
   'minReps', 'maxReps', 'minTime', 'maxTime',
-  'isUnilateral', 'tempo', 'trainerNote', 'trackRpe',
+  'tempo', 'trainerNote', 'trackRpe', 'variant',
   'progressionModel', 'progression',
+  // El escalón de peso viaja con el grupo, como el resto de la configuración.
+  'weightStep',
 ];
 
 export function pickLinkedConfig(exConfig) {
@@ -83,19 +85,48 @@ export function templateChainIds(templateId, getTemplate) {
 }
 
 /**
- * Latest logged performance of `exerciseId` among the given templates.
- * Returns the log's exercise object ({ exerciseId, sets, ... }) or null.
+ * Las `n` últimas veces que se hizo `exerciseId` entre las plantillas dadas
+ * (con series), la más reciente primero: `[{ timestamp, exercise }]`, donde
+ * `exercise` es el objeto del log ({ exerciseId, sets, ... }).
  */
-export function lastLinkedExercise(workoutLog, templateIds, exerciseId) {
+export function recentLinkedExercises(workoutLog, templateIds, exerciseId, n = 1) {
   const ids = new Set(templateIds);
   const entries = (workoutLog ?? [])
     .filter((e) => ids.has(e.sessionTemplateId))
     .sort((a, b) => b.timestamp - a.timestamp);
+  const out = [];
   for (const e of entries) {
     const ex = (e.exercises ?? []).find((x) => x.exerciseId === exerciseId);
-    if (ex?.sets?.length) return ex;
+    if (!ex?.sets?.length) continue;
+    out.push({ timestamp: e.timestamp, exercise: ex });
+    if (out.length >= n) break;
   }
-  return null;
+  return out;
+}
+
+/**
+ * Latest logged performance of `exerciseId` among the given templates.
+ * Returns the log's exercise object ({ exerciseId, sets, ... }) or null.
+ */
+export function lastLinkedExercise(workoutLog, templateIds, exerciseId) {
+  return recentLinkedExercises(workoutLog, templateIds, exerciseId, 1)[0]?.exercise ?? null;
+}
+
+/**
+ * Las `n` últimas veces que se hizo el ejercicio, con el alcance de
+ * `lastExerciseRef`: `[{ timestamp, exercise }]`, la más reciente primero.
+ *
+ * A link group WINS over the derivation chain: it is an explicit decision by
+ * the trainer ("these instances share their history"), while the chain is
+ * automatic.
+ */
+export function recentExerciseRefs({ workoutLog, program, templateId, exConfig, getTemplate }, n = 1) {
+  const exerciseId = exConfig?.exerciseId;
+  if (!exerciseId) return [];
+  const ids = exConfig.linkGroup
+    ? linkGroupTemplateIds(program, exerciseId, exConfig.linkGroup, getTemplate)
+    : templateChainIds(templateId, getTemplate);
+  return recentLinkedExercises(workoutLog, ids, exerciseId, n);
 }
 
 /**
@@ -105,19 +136,10 @@ export function lastLinkedExercise(workoutLog, templateIds, exerciseId) {
  * One definition on purpose — these three used to resolve it separately and
  * only the linked case looked beyond the current template.
  *
- * A link group WINS over the derivation chain: it is an explicit decision by
- * the trainer ("these instances share their history"), while the chain is
- * automatic.
- *
  * @returns the log's exercise object ({ exerciseId, sets, … }) or null
  */
-export function lastExerciseRef({ workoutLog, program, templateId, exConfig, getTemplate }) {
-  const exerciseId = exConfig?.exerciseId;
-  if (!exerciseId) return null;
-  const ids = exConfig.linkGroup
-    ? linkGroupTemplateIds(program, exerciseId, exConfig.linkGroup, getTemplate)
-    : templateChainIds(templateId, getTemplate);
-  return lastLinkedExercise(workoutLog, ids, exerciseId);
+export function lastExerciseRef(args) {
+  return recentExerciseRefs(args, 1)[0]?.exercise ?? null;
 }
 
 /**

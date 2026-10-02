@@ -1,52 +1,36 @@
 /**
- * SheetRow — una opción dentro de un `DragSheet`: etiqueta a la izquierda,
- * chevron a la derecha, toda la fila pulsable.
+ * SheetRow — una opción dentro de un `DragSheet`.
  *
- * Estaba copiada cuatro veces (editor de sesión, clientes, historial y
- * plantillas) y ya había divergido: tres pintaban el chevron con `ArrowIcon` y
- * la de clientes con un glifo `›` de texto. Esta es la única copia.
+ * Es `MenuRow` (icono · texto · subtítulo · dato · galón, la fila del menú ≡ y
+ * de Inicio) con una sola diferencia: **cierra la hoja ella sola**, con la
+ * animación de `DragSheet` (contexto `SheetContext`). Por eso es una capa y no
+ * una prop de `MenuRow`: en el menú ≡ hay filas que NO deben cerrar (los
+ * interruptores, exportar mientras exporta), y en una hoja de opciones todas
+ * cierran. La acción corre a la vez que empieza el cierre, no después.
  *
- * **Cierra la hoja ella sola**, y con la animación de `DragSheet` (contexto
- * `SheetContext`). Antes cada llamante ponía el `visible` a false a mano, así
- * que la hoja desaparecía de golpe al elegir una opción y en cambio se
- * deslizaba al tocar el fondo. La acción corre a la vez que empieza el cierre,
- * no después: lo que hay debajo ya se está moviendo mientras la hoja se va, en
- * vez de esperar a que termine para empezar.
+ * Hasta pulido-ui.md §3 (U30) era otra anatomía —fila suelta `surface2` sin
+ * icono— y convivía con `MenuRow` en las mismas pantallas; ahora las hojas con
+ * lista hablan todas igual. Van agrupadas: envolverlas en `Section` (sin
+ * título) para que la primera y la última lleven sus radios.
+ *
+ * `icon` es el trazo, de `ROW_ICON` (`ui/rowIcons`). `danger` pinta icono y
+ * texto en `tint/red50`, el rojo de «Borrar cuenta» del menú ≡.
  */
 import { useContext } from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
-import { Text } from './Text';
-import { spacing, textStyles, sheetRowBase } from '../../theme';
-import { useTheme, useThemedStyles } from '../../useTheme';
-import { ArrowIcon } from './EditorIcons';
+import { MenuRow, RowIcon } from './MenuList';
+import { useTheme } from '../../useTheme';
 import { SheetContext } from './sheetContext';
 
-export default function SheetRow({ label, onPress, danger = false }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const sheet  = useContext(SheetContext);
-
+export default function SheetRow({ icon, danger = false, iconColor, onPress, ...rest }) {
+  const th    = useTheme();
+  const sheet = useContext(SheetContext);
+  const color = danger ? th.tint.red50 : iconColor;
   return (
-    <TouchableOpacity
-      style={styles.row}
-      activeOpacity={0.7}
-      onPress={() => { sheet?.dismiss(); onPress?.(); }}
-    >
-      <Text style={[styles.text, danger && { color: th.colors.red }]}>{label}</Text>
-      <ArrowIcon size={14} color={danger ? th.colors.red : th.colors.mutedLight} />
-    </TouchableOpacity>
+    <MenuRow
+      {...rest}
+      icon={icon != null ? <RowIcon color={color}>{icon}</RowIcon> : undefined}
+      labelColor={danger ? th.tint.red50 : rest.labelColor}
+      onPress={onPress ? () => { sheet?.dismiss(); onPress(); } : undefined}
+    />
   );
 }
-
-const makeStyles = (th) => StyleSheet.create({
-  row: { ...sheetRowBase(th), justifyContent: 'space-between', gap: spacing.xl },
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  text: {
-    ...textStyles.bodyStrong,
-    fontFamily: 'Inter_800ExtraBold',
-    flex:       1,
-    color:      th.colors.text,
-  },
-});

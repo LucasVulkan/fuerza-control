@@ -1,10 +1,22 @@
 /**
- * Import modal — mobile port of the web ImportModal.
- * Shows after a .fitdata file has been parsed successfully.
+ * Import modal — la hoja que sale tras leer un .fitdata.
  *
- * Two layouts depending on the export type:
- *   - 'full' (backup)   → section switches (multi-select) + IMPORTAR button
- *   - program / mixed   → radio-button mode picker + IMPORTAR button
+ * Maqueta aprobada: docs/mockups/import.html (variante B) y choice.html (U40).
+ * Es una `DragSheet` (U34); cancelar es cerrarla. Por dentro, las piezas de la
+ * app y ninguna propia:
+ *
+ *   - Backup completo: lo que solo se activa o no (programa, ejercicios
+ *     propios, clientes) va en filas con interruptor; historial y plantillas,
+ *     que además pueden borrar lo que tienes, son una elección de tres con
+ *     `ChoiceRow` (no importar · añadir · sustituir). Esas dos nacen SIN
+ *     elegir: elegir mal borra datos (regla de `ChoiceRow`). Mientras falte
+ *     alguna, «Importar» va apagado y, si se pulsa, su sección dice
+ *     «Elige una» en rojo.
+ *   - Programa: las formas de importarlo como `ChoiceRow` con su explicación.
+ *     Aquí hay una opción segura evidente, así que viene elegida.
+ *
+ * Lo que el archivo no trae sale apagado («No hay en este archivo»), y las
+ * elecciones de algo que no viene ni se enseñan.
  *
  * Props:
  *   fileName    — original file name
@@ -13,537 +25,237 @@
  *   onClose     — called to dismiss
  */
 import { useState } from 'react';
-import { Modal, View, TouchableOpacity, Switch, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Text } from './ui/Text';
-import { spacing, borders, withOpacity, textStyles, lh } from '../theme';
+import DragSheet from './DragSheet';
+import { Section, SectionLabel, MenuRow, ChoiceRow, RowIcon } from './ui/MenuList';
+import { ROW_ICON } from './ui/rowIcons';
+import { Switch } from './ui/EditorRows';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
-// ── helpers ────────────────────────────────────────────────────────────────────
-
-function typeLabel(exportType, hasLog) {
-  if (exportType === 'full') return 'Backup completo';
-  if (hasLog)               return 'Programa + historial';
-  return 'Programa';
-}
-
-// ── Radio option (program-mode picker) ────────────────────────────────────────
-
-function RadioOption({ label, desc, selected, onPress }) {
-  const s = useThemedStyles(makeS);
-  return (
-    <TouchableOpacity
-      style={[s.radioOption, selected && s.radioOptionSelected]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <View style={[s.radioCircle, selected && s.radioCircleSelected]}>
-        {selected && <View style={s.radioDot} />}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[s.radioLabel, selected && s.radioLabelSelected]}>{label}</Text>
-        {desc ? <Text style={s.radioDesc}>{desc}</Text> : null}
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// ── Section toggle row (backup) ───────────────────────────────────────────────
-
-function SectionRow({ label, desc, enabled, disabled, onToggle }) {
-  const th = useTheme();
-  const s = useThemedStyles(makeS);
-  return (
-    <TouchableOpacity
-      style={[s.sectionRow, enabled && !disabled && s.sectionRowActive]}
-      onPress={disabled ? undefined : onToggle}
-      activeOpacity={disabled ? 1 : 0.7}
-    >
-      <View style={s.sectionInfo}>
-        <Text style={[s.sectionLabel, disabled && { color: th.colors.muted2 }]}>{label}</Text>
-        {desc ? <Text style={s.sectionDesc}>{desc}</Text> : null}
-      </View>
-      <Switch
-        value={enabled}
-        onValueChange={disabled ? undefined : onToggle}
-        disabled={disabled}
-        trackColor={{ false: th.colors.border, true: th.colors.accent }}
-        thumbColor={enabled ? '#FFFFFF' : th.colors.muted}
-      />
-    </TouchableOpacity>
-  );
-}
-
-/**
- * Sección con selector Combinar/Reemplazar dentro de la misma tarjeta.
- * La usan historial y plantillas: son las dos secciones donde "importar" puede
- * significar dos cosas distintas y hay que elegir. `modeHint` deja escrito qué
- * hace la opción elegida, porque "Reemplazar" borra datos y eso no debería
- * deducirse de una palabra.
- */
-function ModeSectionRow({ label, desc, enabled, disabled, onToggle, mode, onSetMode, modeHint }) {
-  const th = useTheme();
-  const s  = useThemedStyles(makeS);
-  const on = enabled && !disabled;
-  return (
-    <View style={[s.templateCard, on && s.templateCardActive]}>
-      <TouchableOpacity
-        style={s.templateCardRow}
-        onPress={disabled ? undefined : onToggle}
-        activeOpacity={disabled ? 1 : 0.7}
-      >
-        <View style={s.sectionInfo}>
-          <Text style={[s.sectionLabel, disabled && { color: th.colors.muted2 }]}>{label}</Text>
-          {desc ? <Text style={s.sectionDesc}>{desc}</Text> : null}
-        </View>
-        <Switch
-          value={on}
-          onValueChange={disabled ? undefined : onToggle}
-          disabled={disabled}
-          trackColor={{ false: th.colors.border, true: th.colors.accent }}
-          thumbColor={on ? '#FFFFFF' : th.colors.muted}
-        />
-      </TouchableOpacity>
-      {on && (
-        <>
-          <View style={s.templateModeRow}>
-            {['merge', 'replace'].map((m) => (
-              <TouchableOpacity
-                key={m}
-                style={[s.modeBtn, mode === m && s.modeBtnActive]}
-                onPress={() => onSetMode(m)}
-              >
-                <Text style={[s.modeBtnText, mode === m && s.modeBtnTextActive]}>
-                  {m === 'merge' ? 'Combinar' : 'Reemplazar'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {modeHint ? (
-            <Text style={[s.sectionDesc, mode === 'replace' && { color: th.colors.red }]}>
-              {modeHint}
-            </Text>
-          ) : null}
-        </>
-      )}
-    </View>
-  );
-}
-
-// ── Backup sections (full-backup flow) ────────────────────────────────────────
-
-function BackupSections({ parsedData, sections, onToggle, onSetTemplatesMode, onSetLogMode }) {
-  const s = useThemedStyles(makeS);
-  const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
-  const hasLog       = (parsedData?.workoutLog ?? []).length > 0;
-  // Los presets de bloque entran por esta casilla (ver `importData`), así que
-  // también la habilitan: un backup con presets y sin ejercicios propios la
-  // dejaba apagada y no había forma de traerlos.
-  const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0
-                       || (parsedData?.blockPresets ?? []).length > 0;
-  const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
-  const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => (p.kind ?? p.mode) === 'template');
-
-  return (
-    <>
-      <View style={s.warning}>
-        <Text style={s.warningText}>
-          Los datos importados sobreescribirán los existentes en cada sección seleccionada.
-        </Text>
-      </View>
-
-      <View style={s.sectionList}>
-        <SectionRow
-          label="Programa activo"
-          desc={hasPrograms ? 'Activa el programa importado' : 'No disponible'}
-          enabled={sections.program}
-          disabled={!hasPrograms}
-          onToggle={() => onToggle('program')}
-        />
-        <ModeSectionRow
-          label="Historial de sesiones"
-          desc={hasLog ? `${(parsedData.workoutLog ?? []).length} sesiones` : 'No disponible'}
-          enabled={sections.log}
-          disabled={!hasLog}
-          onToggle={() => onToggle('log')}
-          mode={sections.logMode}
-          onSetMode={onSetLogMode}
-          modeHint={sections.logMode === 'replace'
-            ? 'Sustituye TODO tu historial actual'
-            : 'Añade las sesiones que falten'}
-        />
-        <SectionRow
-          label="Ejercicios personalizados"
-          desc={hasCustEx ? `${Object.keys(parsedData.customExercises ?? {}).length} ejercicios` : 'No disponible'}
-          enabled={sections.customExercises}
-          disabled={!hasCustEx}
-          onToggle={() => onToggle('customExercises')}
-        />
-        <SectionRow
-          label="Clientes"
-          desc={hasClients ? `${Object.keys(parsedData.clients ?? {}).length} clientes` : 'No disponible'}
-          enabled={sections.clients}
-          disabled={!hasClients}
-          onToggle={() => onToggle('clients')}
-        />
-
-        <ModeSectionRow
-          label="Plantillas de programa"
-          desc={hasTemplates ? 'Plantillas reutilizables' : 'No disponible'}
-          enabled={sections.templates}
-          disabled={!hasTemplates}
-          onToggle={() => onToggle('templates')}
-          mode={sections.templatesMode}
-          onSetMode={onSetTemplatesMode}
-        />
-      </View>
-    </>
-  );
-}
-
-// ── Program mode picker (non-backup flow) ─────────────────────────────────────
+// ── Formas de importar un programa ────────────────────────────────────────────
 
 const PROGRAM_MODES = (hasLog) => [
-  ...(hasLog ? [{
-    id:       'full',
-    label:    'Reemplazar programa e historial',
-    desc:     'Activa el programa importado y añade su historial de sesiones',
-    sections: { program: true, log: true },
-  }] : []),
-  ...(hasLog ? [{
-    id:       'log_only',
-    label:    'Solo añadir historial',
-    desc:     'Mantiene el programa actual, añade las sesiones del archivo',
-    sections: { program: false, log: true },
-  }] : []),
-  {
-    id:       'program_only',
-    label:    'Solo el programa',
-    desc:     'Activa el programa importado, sin tocar el historial',
-    sections: { program: true, log: false },
-  },
+  ...(hasLog ? [
+    { id: 'full',     key: 'modeFull',    icon: ROW_ICON.import,  sections: { program: true,  log: true } },
+    { id: 'log_only', key: 'modeLogOnly', icon: ROW_ICON.history, sections: { program: false, log: true } },
+  ] : []),
+  { id: 'program_only', key: 'modeProgramOnly', icon: ROW_ICON.text, sections: { program: true, log: false } },
 ];
 
-function ProgramModes({ hasLog, selectedMode, onSelect }) {
+// ── Una parte que se elige: no importar · añadir · sustituir ──────────────────
+
+function ChoiceSection({ title, value, onChange, missing, replaceKey }) {
+  const { t } = useTranslation();
+  const th = useTheme();
   const s = useThemedStyles(makeS);
-  const modes = PROGRAM_MODES(hasLog);
+  const options = [
+    { id: 'none',    icon: ROW_ICON.skip, label: t('import.choiceNone') },
+    { id: 'merge',   icon: ROW_ICON.new,  label: t('import.choiceMerge') },
+    { id: 'replace', icon: ROW_ICON.sync, label: t(replaceKey), danger: true },
+  ];
   return (
-    <View style={s.modeList}>
-      {modes.map((m) => (
-        <RadioOption
-          key={m.id}
-          label={m.label}
-          desc={m.desc}
-          selected={selectedMode === m.id}
-          onPress={() => onSelect(m.id)}
-        />
-      ))}
+    <View>
+      {/* El título a la izquierda y lo que falta a la derecha, en la misma
+          línea: donde está el problema, sin empujar el título. */}
+      <View style={s.choiceHead}>
+        <SectionLabel style={s.choiceTitle}>{title}</SectionLabel>
+        {missing && <Text style={s.missing}>{t('import.pickOne')}</Text>}
+      </View>
+      <Section style={s.section}>
+        {options.map((o) => (
+          <ChoiceRow
+            key={o.id}
+            icon={<RowIcon color={o.danger ? th.colors.redText : undefined}>{o.icon}</RowIcon>}
+            label={o.label}
+            labelColor={o.danger ? th.colors.redText : undefined}
+            selected={value === o.id}
+            onPress={() => onChange(o.id)}
+          />
+        ))}
+      </Section>
     </View>
   );
 }
 
-// ── Main modal ────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function ImportModal({ fileName, parsedData, onImport, onClose }) {
+  const { t } = useTranslation();
   const s = useThemedStyles(makeS);
-  const exportType = parsedData?.exportType ?? 'program';
-  const isBackup   = exportType === 'full';
-  const hasLog     = (parsedData?.workoutLog ?? []).length > 0;
-  const badge      = typeLabel(exportType, hasLog);
 
-  // ── Backup state ──────────────────────────────────────────────────────────
-  const hasPrograms  = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
-  const hasLogData   = (parsedData?.workoutLog ?? []).length > 0;
-  const hasCustEx    = Object.keys(parsedData?.customExercises ?? {}).length > 0
-                       || (parsedData?.blockPresets ?? []).length > 0;
-  const hasClients   = Object.keys(parsedData?.clients ?? {}).length > 0;
-  const hasTemplates = Object.values(parsedData?.programs ?? {}).some((p) => (p.kind ?? p.mode) === 'template');
+  const isBackup = (parsedData?.exportType ?? 'program') === 'full';
+  const logCount = (parsedData?.workoutLog ?? []).length;
+  const hasLog   = logCount > 0;
 
-  const [sections, setSections] = useState({
-    program:         hasPrograms,
-    log:             hasLogData,
-    customExercises: hasCustEx,
-    clients:         hasClients,
-    templates:       hasTemplates,
-    templatesMode:   'merge',
-    logMode:         'merge',
-  });
+  // ── Qué trae el archivo ──
+  const hasPrograms = Object.keys(parsedData?.programs ?? {}).length > 0 || !!parsedData?.program;
+  // Los presets de bloque entran por la casilla de ejercicios (ver `importData`),
+  // así que también la habilitan: un backup con presets y sin ejercicios propios
+  // la dejaba apagada y no había forma de traerlos.
+  const custExCount = Object.keys(parsedData?.customExercises ?? {}).length;
+  const hasCustEx   = custExCount > 0 || (parsedData?.blockPresets ?? []).length > 0;
+  const clientCount = Object.keys(parsedData?.clients ?? {}).length;
+  const tplCount    = Object.values(parsedData?.programs ?? {}).filter((p) => (p.kind ?? p.mode) === 'template').length;
 
-  // ── Program-mode state ────────────────────────────────────────────────────
-  const defaultMode = hasLog ? 'full' : 'program_only';
-  const [selectedMode, setSelectedMode] = useState(defaultMode);
+  // ── Backup: interruptores y las dos elecciones (null = sin elegir) ──
+  const [on, setOn] = useState({ program: hasPrograms, customExercises: hasCustEx, clients: clientCount > 0 });
+  const [logChoice, setLogChoice] = useState(null);
+  const [tplChoice, setTplChoice] = useState(null);
+  const [showMissing, setShowMissing] = useState(false);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  const nothingSelected = isBackup
-    ? !sections.program && !sections.log && !sections.customExercises
-      && !sections.clients && !sections.templates
-    : false; // radio always has a valid selection
+  // ── Programa: viene elegida la primera ──
+  const modes = PROGRAM_MODES(hasLog);
+  const [mode, setMode] = useState(modes[0].id);
 
-  function toggle(key) {
-    setSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
+  const logMissing = isBackup && hasLog && !logChoice;
+  const tplMissing = isBackup && tplCount > 0 && !tplChoice;
+  const missing    = logMissing || tplMissing;
+  const nothing    = isBackup
+    && !on.program && !on.customExercises && !on.clients
+    && (logChoice ?? 'none') === 'none' && (tplChoice ?? 'none') === 'none';
+  const ready = !missing && !nothing;
 
-  function handleConfirm() {
+  function handleImport() {
+    if (!ready) {
+      // Apagado pero pulsable: señala lo que falta y no hace nada más.
+      setShowMissing(true);
+      return;
+    }
     if (isBackup) {
-      onImport(parsedData, sections);
+      const log = (logChoice ?? 'none') !== 'none';
+      const tpl = (tplChoice ?? 'none') !== 'none';
+      onImport(parsedData, {
+        ...on,
+        log,
+        logMode:       log ? logChoice : 'merge',
+        templates:     tpl,
+        templatesMode: tpl ? tplChoice : 'merge',
+      });
     } else {
-      const modes = PROGRAM_MODES(hasLog);
-      const mode  = modes.find((m) => m.id === selectedMode) ?? modes[modes.length - 1];
-      onImport(parsedData, mode.sections);
+      onImport(parsedData, modes.find((m) => m.id === mode).sections);
     }
   }
 
+  const typeLabel = isBackup ? t('import.typeFullBackup')
+    : hasLog ? t('import.typeProgramWithLog') : t('import.typeProgram');
+  const notInFile = t('import.notInFile');
+  const toggle = (key) => setOn((prev) => ({ ...prev, [key]: !prev[key] }));
+
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={onClose} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={s.centeredOuter}
-      >
-        <View style={s.sheet}>
-          {/* ── Header ── */}
-          <Text style={s.title}>Importar archivo</Text>
-          <View style={s.fileRow}>
-            <Text style={s.fileName} numberOfLines={1}>{fileName}</Text>
-            <View style={s.badge}>
-              <Text style={s.badgeText}>{badge.toUpperCase()}</Text>
-            </View>
-          </View>
-
-          {/* ── Scrollable content ── */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={s.scroll}
-            contentContainerStyle={s.scrollContent}
-          >
-            {isBackup
-              ? (
-                <BackupSections
-                  parsedData={parsedData}
-                  sections={sections}
-                  onToggle={toggle}
-                  onSetTemplatesMode={(mode) => setSections((prev) => ({ ...prev, templatesMode: mode }))}
-                  onSetLogMode={(mode) => setSections((prev) => ({ ...prev, logMode: mode }))}
-                />
-              )
-              : (
-                <ProgramModes
-                  hasLog={hasLog}
-                  selectedMode={selectedMode}
-                  onSelect={setSelectedMode}
-                />
-              )
-            }
-          </ScrollView>
-
-          {/* ── Actions — always visible, outside scroll ── */}
-          <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-              <Text style={s.cancelText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.importBtn, nothingSelected && s.importBtnDisabled]}
-              onPress={nothingSelected ? undefined : handleConfirm}
-              activeOpacity={nothingSelected ? 1 : 0.8}
-            >
-              <Text style={[s.importBtnText, nothingSelected && s.importBtnTextDisabled]}>
-                IMPORTAR
-              </Text>
-            </TouchableOpacity>
-          </View>
+    <DragSheet visible onClose={onClose} title={t('import.title')}>
+      <View style={s.body}>
+        {/* El tipo va detrás del nombre, en versales lima: antes era una pastilla. */}
+        <View style={s.fileRow}>
+          <Text style={s.fileName} numberOfLines={1}>{fileName}</Text>
+          <Text style={s.fileType}>{`· ${typeLabel}`}</Text>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        {isBackup ? (
+          <>
+            <Section style={s.section}>
+              <MenuRow
+                icon={<RowIcon>{ROW_ICON.text}</RowIcon>}
+                label={t('import.sectionProgram')}
+                sub={hasPrograms ? t('import.sectionProgramDesc') : notInFile}
+                disabled={!hasPrograms}
+                onPress={() => toggle('program')}
+                control={<Switch value={on.program} />}
+              />
+              <MenuRow
+                icon={<RowIcon>{ROW_ICON.exercise}</RowIcon>}
+                label={t('import.sectionCustomExercises')}
+                sub={hasCustEx ? t('common.exercises', { count: custExCount }) : notInFile}
+                disabled={!hasCustEx}
+                onPress={() => toggle('customExercises')}
+                control={<Switch value={on.customExercises} />}
+              />
+              <MenuRow
+                icon={<RowIcon>{ROW_ICON.user}</RowIcon>}
+                label={t('import.sectionClients')}
+                // Solo suma: los del archivo se añaden (o actualizan el mismo
+                // cliente) y los tuyos que no vienen se quedan.
+                sub={clientCount > 0 ? t('import.clientsDesc', { count: clientCount }) : notInFile}
+                disabled={clientCount === 0}
+                onPress={() => toggle('clients')}
+                control={<Switch value={on.clients} />}
+              />
+            </Section>
+
+            {hasLog && (
+              <ChoiceSection
+                title={t('import.logTitle', { count: logCount })}
+                value={logChoice}
+                onChange={setLogChoice}
+                missing={showMissing && logMissing}
+                replaceKey="import.logReplace"
+              />
+            )}
+            {tplCount > 0 && (
+              <ChoiceSection
+                title={t('import.templatesTitle', { count: tplCount })}
+                value={tplChoice}
+                onChange={setTplChoice}
+                missing={showMissing && tplMissing}
+                replaceKey="import.templatesReplace"
+              />
+            )}
+          </>
+        ) : (
+          <Section style={s.section}>
+            {modes.map((m) => (
+              <ChoiceRow
+                key={m.id}
+                icon={<RowIcon>{m.icon}</RowIcon>}
+                label={t(`import.${m.key}`)}
+                sub={t(`import.${m.key}Desc`)}
+                subLines={0}
+                minHeight={62}
+                selected={mode === m.id}
+                onPress={() => setMode(m.id)}
+              />
+            ))}
+          </Section>
+        )}
+
+        <TouchableOpacity
+          style={[s.cta, !ready && s.ctaOff]}
+          onPress={handleImport}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+        >
+          <Text style={[s.ctaText, !ready && s.ctaTextOff]}>{t('import.importBtn')}</Text>
+        </TouchableOpacity>
+      </View>
+    </DragSheet>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const makeS = (th) => StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  centeredOuter: {
-    flex:              1,
-    justifyContent:    'center',
-    paddingHorizontal: spacing.xl,
-  },
-  sheet: {
-    backgroundColor: th.colors.bg,
-    borderRadius:    th.radius.lg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    padding:         spacing.xl,
-    gap:             spacing.md,
-    maxHeight:       '88%',
-  },
-  title: { ...textStyles.heading, color: th.colors.text },
-  fileRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-  },
-  fileName: { ...textStyles.label, flex: 1, color: th.colors.muted },
-  badge: {
-    backgroundColor:   withOpacity(th.colors.accent, 0.1),
-    borderWidth:       borders.thin,
-    borderColor:       withOpacity(th.colors.accent, 0.3),
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical:   2,
-  },
-  badgeText: { ...textStyles.caps, color: th.colors.accent },
-
-  // Scroll area
-  scroll: { flexShrink: 1 },
-  scrollContent: { gap: spacing.sm },
-
-  // Warning
-  warning: {
-    backgroundColor: withOpacity(th.colors.red, 0.08),
-    borderWidth:     borders.thin,
-    borderColor:     withOpacity(th.colors.red, 0.3),
-    borderRadius:    th.radius.sm,
-    padding:         spacing.sm,
-    marginBottom:    spacing.xs,
-  },
-  warningText: {
-    ...textStyles.label,
-    color:      th.colors.red,
-    lineHeight: lh(textStyles.label.fontSize),
-  },
-
-  // ── Radio options (program modes) ─────────────────────────────────────────
-  modeList: { gap: spacing.sm },
-
-  radioOption: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  radioOptionSelected: {
-    borderColor:     withOpacity(th.colors.accent, 0.5),
-    backgroundColor: withOpacity(th.colors.accent, 0.06),
-  },
-  radioCircle: {
-    width:          20,
-    height:         20,
-    borderRadius:   10,
-    borderWidth:    2,
-    borderColor:    th.colors.border,
-    alignItems:     'center',
-    justifyContent: 'center',
-    flexShrink:     0,
-  },
-  radioCircleSelected: {
-    borderColor: th.colors.accent,
-  },
-  radioDot: {
-    width:           10,
-    height:          10,
-    borderRadius:    5,
-    backgroundColor: th.colors.accent,
-  },
-  radioLabel: { ...textStyles.body, color: th.colors.text, marginBottom: 2 },
-  radioLabelSelected: {
-    color: th.colors.accent,
-  },
-  radioDesc: {
-    ...textStyles.label,
-    color:      th.colors.mutedLight,
-    lineHeight: lh(textStyles.label.fontSize),
-  },
-
-  // ── Backup sections ───────────────────────────────────────────────────────
-  sectionList: { gap: spacing.xs },
-  sectionRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.sm,
-    gap:             spacing.sm,
-  },
-  sectionRowActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.05),
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-  },
-  sectionInfo: { flex: 1 },
-  sectionLabel: { ...textStyles.body,  color: th.colors.text },
-  sectionDesc:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: 2 },
-
-  // Template card
-  templateCard: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.sm,
-    overflow:        'hidden',
-  },
-  templateCardActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.05),
-    borderColor:     withOpacity(th.colors.accent, 0.25),
-  },
-  templateCardRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    padding:       spacing.sm,
-    gap:           spacing.sm,
-  },
-  templateModeRow: {
-    flexDirection:  'row',
-    gap:            spacing.xs,
-    padding:        spacing.sm,
-    paddingTop:     spacing.xs,
-    borderTopWidth: borders.thin,
-    borderTopColor: th.colors.border,
-  },
-  modeBtn: {
-    flex:            1,
-    paddingVertical: spacing.xs + 2,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: th.colors.surface,
-    alignItems:      'center',
-  },
-  modeBtnActive: {
-    backgroundColor: withOpacity(th.colors.accent, 0.1),
-    borderColor:     withOpacity(th.colors.accent, 0.3),
-  },
-  modeBtnText: { ...textStyles.label, color: th.colors.mutedLight },
-  modeBtnTextActive: { color: th.colors.accent },
-
-  // ── Actions row (always visible) ─────────────────────────────────────────
-  actions: {
-    flexDirection: 'row',
-    gap:           spacing.sm,
-    paddingTop:    spacing.xs,
-  },
-  cancelBtn: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    alignItems:      'center',
-  },
-  cancelText: { ...textStyles.body, color: th.colors.mutedLight },
-  importBtn: {
-    flex:            2,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
+  body:     { gap: spacing.lg, paddingBottom: spacing.sm },
+  fileRow:  { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  fileName: { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 1 },
+  fileType: { ...textStyles.caps, color: th.colors.accent, textTransform: 'uppercase', flexShrink: 0 },
+  // `Section` trae su margen de separar secciones; aquí lo pone el `gap`.
+  section:  { marginBottom: 0 },
+  // Título de una elección con «Elige una» a la derecha, en rojo.
+  choiceHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.sm2 },
+  choiceTitle: { marginBottom: 0, flexShrink: 1 },
+  missing:     { ...textStyles.labelStrong, color: th.colors.redText, paddingHorizontal: spacing.xs2 },
+  // El botón de la app: lima, 44, `radius/md`. Apagado mientras falte algo,
+  // pero pulsable (como «Añadir» en Nuevo ejercicio).
+  cta: {
+    height:          44,
+    borderRadius:    th.radius.md,
     backgroundColor: th.colors.accent,
     alignItems:      'center',
+    justifyContent:  'center',
   },
-  importBtnDisabled: { backgroundColor: th.colors.surface2 },
-  importBtnText: { ...textStyles.button, color: th.colors.bg },
-  importBtnTextDisabled: { color: th.colors.muted },
+  ctaOff:     { backgroundColor: th.colors.surface2 },
+  ctaText:    { ...textStyles.button, color: th.colors.onAccent },
+  ctaTextOff: { color: th.colors.muted },
 });

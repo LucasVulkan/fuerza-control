@@ -21,7 +21,7 @@
  * fallo de un intervalo se marca tocando su casilla (fuera el botón "Fallo").
  */
 import { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, MAX_FONT_SCALE } from '../ui/Text';
 import Reanimated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,7 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { textStyles, lh } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 
+import { showDialog } from '../ui/dialog';
 // ── Geometría (referencia v12) ───────────────────────────────────────────────
 const R_CARD = 16;   // .exercise
 const R_BOX  = 12;   // .timer / .now
@@ -192,7 +193,7 @@ export default function ConditioningBlockCard({
   }
 
   function handleCancel() {
-    Alert.alert(t('blocks.cancel'), t('blocks.cancelConfirm'), [
+    showDialog(t('blocks.cancel'), t('blocks.cancelConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('blocks.cancel'), style: 'destructive', onPress: onReset },
     ]);

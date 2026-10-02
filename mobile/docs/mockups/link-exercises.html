@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vincular ejercicios — maqueta FormaFit (v4)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --orange: #fb923c; --redText: #ff5e58;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --r-xxs: 2px; --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+  }
+  .t-bodyS  { font: 700 14px Inter; }
+  .t-label  { font: 500 12px/17px Inter; }
+  .t-caps   { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 980px; margin-bottom: 14px; }
+  .lead b, .note b, .cap strong, .box b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent);
+       margin: 54px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col { width: 375px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; min-height: 64px; }
+  .cap > b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .cap > b.old { color: var(--orange); }
+  .note { font: 500 11.5px/1.6 Inter; color: #7a7a7a; margin-top: 12px; }
+  .note li { margin: 0 0 4px 16px; }
+  .box { max-width: 980px; border: 1px solid #262626; border-radius: 12px; padding: 14px 18px; font: 500 12.5px/1.65 Inter; color: #9a9a9a; margin-top: 16px; }
+  .box li { margin: 0 0 5px 16px; }
+  .box .q { color: var(--orange); font-weight: 800; }
+  code { font: 500 11px ui-monospace, monospace; color: #bdbdbd; }
+  .count-badge { display: inline-block; margin-bottom: 4px; font: 800 10px Inter; letter-spacing: 1px; color: #000; background: var(--orange);
+                 border-radius: 4px; padding: 2px 6px; margin-left: 6px; vertical-align: 1px; }
+  .count-badge.ok { background: var(--accent); }
+
+  /* ══════ PANTALLA ══════ */
+  .screen { background: var(--bg); border-radius: 22px; border: 1px solid #222; overflow: hidden; position: relative; }
+  .cut::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 60px;
+                background: linear-gradient(transparent, var(--bg)); }
+  .sh { display: flex; align-items: center; gap: 10px; padding: 10px 15px; }
+  .back { width: 36px; height: 36px; border-radius: var(--r-md); background: var(--surface2); display: grid; place-items: center;
+          color: var(--mutedLight); font: 900 20px/20px Inter; padding-bottom: 2px; flex-shrink: 0; }
+  .sh .mid { flex: 1; text-align: center; min-width: 0; }
+  .sh .mid .t-caps { color: var(--accent); }
+  .sh .mid .ttl { font: 800 16px Inter; letter-spacing: -.2px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sh .mid .eb { display: inline-flex; gap: 6px; align-items: center; }
+  .ok { width: 36px; text-align: center; color: var(--accent); font: 900 18px Inter; flex-shrink: 0; }
+  .addbtn { height: 32px; padding: 0 10px; border-radius: var(--r-md); background: var(--accent); color: #000;
+            font: 900 14px Inter; display: grid; place-items: center; flex-shrink: 0; }
+  .hair { height: 1px; background: #262626; }
+
+  /* ── Aviso de vinculado, bajo la cabecera ── */
+  .lband { display: flex; align-items: center; gap: 10px; background: var(--accent10); padding: 10px 15px; position: relative; }
+  .lband::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+  .lband .tx { flex: 1; min-width: 0; font: 700 13px/1.3 Inter; color: var(--accent); }
+  .lband .tx small { display: block; font: 500 12px Inter; color: var(--accent50); margin-top: 1px; }
+  .lband .go { font: 800 12px Inter; color: var(--accent); }
+
+  .ed { padding: 4px 15px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .sec { font: 800 12px Inter; letter-spacing: 1.2px; color: var(--mutedLight); padding-top: 10px; display: flex; justify-content: space-between; }
+  .sec span { color: var(--muted); }
+  .summary { background: var(--accent10); border-radius: var(--r-md); padding: 10px 15px; display: flex; flex-direction: column; gap: 6px; }
+  .summary .t-caps { color: var(--accent); } .summary .s2 { font: 500 12px Inter; color: var(--accent50); }
+  .hint { font: 500 13px/1.4 Inter; color: var(--mutedLight); }
+  .hint.sm { font-size: 12px; }
+  .hint b { color: var(--text); font-weight: 700; }
+
+  /* Volumen */
+  .seg { display: flex; background: var(--surface); border-radius: var(--r-md); padding: 3px; gap: 3px; }
+  .seg span { flex: 1; text-align: center; padding: 8px 0; border-radius: 7px; font: 900 12px Inter; letter-spacing: 1px; color: var(--mutedLight); }
+  .seg span.on { background: var(--accent); color: #000; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stp { background: var(--surface); border-radius: var(--r-md); padding: 8px 10px; }
+  .stp .l { font: 800 10px Inter; letter-spacing: 1px; color: var(--mutedLight); text-transform: uppercase; }
+  .stp .r { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+  .stp .r b { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--surface2); display: grid; place-items: center;
+              font: 900 14px Inter; color: var(--mutedLight); }
+  .stp .r span { font: 900 18px Inter; }
+
+  /* Fila navegable de hoy (NavRow), cada una con su título encima */
+  .nav { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: var(--r-sm); padding: 10px; }
+  .nav .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .nav .m .t-label { color: var(--mutedLight); }
+  .chev { color: var(--accent); font: 900 14px Inter; }
+  svg.ic { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: var(--accent);
+           stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Grupo de filas */
+  .og { display: flex; flex-direction: column; gap: 2px; border-radius: var(--r-md); overflow: hidden; }
+  /* B · fila de dos líneas: la etiqueta pasa DENTRO de la fila */
+  .nr { display: flex; align-items: center; gap: 12px; background: var(--surface); padding: 9px 15px 10px; border-radius: var(--r-xxs); min-height: 58px; }
+  .nr .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .nr .k { font: 800 10px Inter; letter-spacing: 1.2px; color: var(--mutedLight); text-transform: uppercase; }
+  .nr .v { font: 700 14px Inter; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 8px; align-items: center; }
+  .nr .v .u { font: 500 12px Inter; color: var(--mutedLight); }
+  .nr.hot { background: var(--accent10); }
+  .nr.hot .k { color: var(--accent50); }
+  /* C · fila de una línea: etiqueta | valor */
+  .n1 { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 0 15px; height: 48px; border-radius: var(--r-xxs); }
+  .n1 .k { font: 700 14px Inter; flex-shrink: 0; }
+  .n1 .v { flex: 1; min-width: 0; text-align: right; font: 500 13px Inter; color: var(--mutedLight);
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .n1 .v .sx { float: right; }
+  .n1.hot { background: var(--accent10); }
+
+  /* Opciones (ToggleRow) */
+  .orow { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 6px 15px; min-height: 46px; border-radius: var(--r-xxs); }
+  .orow .m { flex: 1; min-width: 0; }
+  .orow .hint { font-size: 12px; margin-top: 2px; }
+  .sw { width: 44px; height: 26px; border-radius: 13px; background: var(--surface2); position: relative; flex-shrink: 0; }
+  .sw::after { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--mutedLight); top: 3px; left: 3px; }
+  .sw.on { background: var(--accent); } .sw.on::after { left: 21px; background: #000; }
+
+  /* ── Fichas de sesión (superserie: piezas a 2px) ── */
+  .sx { display: inline-flex; gap: 2px; vertical-align: middle; flex-shrink: 0; }
+  .sx i { font-style: normal; width: 26px; height: 26px; display: grid; place-items: center; background: var(--surface2);
+          font: 900 12px Inter; color: var(--text); border-radius: var(--r-xxs); }
+  .sx i:first-child { border-top-left-radius: var(--r-sm); border-bottom-left-radius: var(--r-sm); }
+  .sx i:last-child  { border-top-right-radius: var(--r-sm); border-bottom-right-radius: var(--r-sm); }
+  .sx i.me { background: var(--accent); color: var(--onAccent); }
+  .sx i.nw { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--accent); }
+  .sx.sm i { width: 20px; height: 20px; font-size: 10px; }
+  .sx.sm i:first-child { border-top-left-radius: var(--r-xs); border-bottom-left-radius: var(--r-xs); }
+  .sx.sm i:last-child  { border-top-right-radius: var(--r-xs); border-bottom-right-radius: var(--r-xs); }
+  .tint .sx i { background: rgba(170,226,22,.18); color: var(--accent); }
+  .tint .sx i.me { background: var(--accent); color: #000; }
+
+  /* Fila de programación (hoja de vinculación) */
+  .pr { display: flex; align-items: center; gap: 12px; background: var(--surface); padding: 10px 15px 12px; border-radius: var(--r-xxs); position: relative; }
+  .pr .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+  .pr .m .t-label { color: var(--mutedLight); margin-top: -5px; }
+  .pr.me { background: var(--accent10); }
+  .pr .act { font: 800 12px Inter; color: var(--accent); flex-shrink: 0; padding: 7px 10px; border-radius: var(--r-sm); background: var(--surface2); }
+  .pr .act.mute { color: var(--mutedLight); background: transparent; }
+  .pr .exn { font: 700 14px Inter; }
+  .pr .chev2 { font: 900 14px Inter; color: #8a8a8a; }
+  .rd { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted); flex-shrink: 0; position: relative; }
+  .pr.on .rd { border-color: var(--accent); }
+  .pr.on .rd::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent); }
+  .pr.on::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; background: var(--accent); }
+  .pr.tap { box-shadow: inset 0 0 0 1px var(--accent50); }
+  .undo { display: flex; gap: 10px; align-items: center; background: var(--surface2); border-radius: var(--r-md); padding: 10px 12px;
+          font: 500 12px/1.4 Inter; color: var(--mutedLight); }
+  .undo b { color: var(--text); font-weight: 700; }
+  .undo s { color: var(--muted); }
+  .undo .u { margin-left: auto; font: 800 12px Inter; color: var(--accent); flex-shrink: 0; }
+
+  /* DragSheet */
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-top-left-radius: var(--r-lg);
+           border-top-right-radius: var(--r-lg); border: 1px solid var(--border); border-bottom: 0; padding: 6px 15px 22px;
+           display: flex; flex-direction: column; gap: 8px; }
+  .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 6px auto 6px; }
+  .shd { display: flex; justify-content: space-between; align-items: center; padding-bottom: 2px; }
+  .shd .t { font: 700 14px Inter; } .shd .d { font: 800 12px Inter; color: var(--accent); }
+  .cta { height: 44px; border-radius: var(--r-md); background: var(--accent); color: var(--onAccent); display: flex;
+         align-items: center; justify-content: center; font: 900 14px Inter; margin-top: 6px; }
+
+  /* Buscador */
+  .srow { display: flex; gap: 6px; padding: 15px 15px 0; }
+  .sinput { flex: 1; height: 42px; background: var(--surface2); border-radius: var(--r-sm); display: flex; align-items: center;
+            padding: 0 15px; font: 500 14px Inter; color: var(--mutedLight); }
+  .count { padding: 14px 15px 0; font: 800 12px Inter; letter-spacing: 1.2px; color: var(--mutedLight); }
+  .list { padding: 6px 15px 18px; display: flex; flex-direction: column; gap: 2px; }
+  .list > * { border-radius: var(--r-xxs); }
+  .list > :first-child { border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
+  .list > :last-child { border-bottom-left-radius: var(--r-md); border-bottom-right-radius: var(--r-md); }
+  .xr { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 10px 15px; }
+  .xr .m { flex: 1; min-width: 0; }
+  .xr .nm { font: 700 14px Inter; }
+  .xr .mt { font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .xr .mt .in { color: var(--accent50); }
+  .xr.sel { background: var(--accent10); } .xr.sel .nm { color: var(--accent); }
+  .chk { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--accent); display: grid; place-items: center; flex-shrink: 0;
+         font: 900 14px Inter; color: #000; }
+
+  /* Editor de sesión */
+  .pad { padding: 4px 15px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .lrow { display: flex; align-items: center; background: var(--surface); border-radius: var(--r-sm); padding: 10px 12px; min-height: 58px; gap: 12px; }
+  .lrow .rn { font: 800 12px Inter; color: var(--accent); width: 16px; }
+  .lrow .rm { flex: 1; min-width: 0; }
+  .lrow .rm > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lrow .rm .t-label { color: var(--mutedLight); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+  .lrow .grip { color: var(--muted); font: 900 14px Inter; letter-spacing: -2px; }
+  .lrow.new { box-shadow: inset 2px 0 0 var(--accent); }
+  .toast { position: absolute; left: 15px; right: 15px; bottom: 22px; background: var(--surface2); border-radius: var(--r-md);
+           padding: 12px 15px; font: 700 13px Inter; box-shadow: inset 3px 0 0 var(--accent); }
+
+  /* ── v4 ── */
+  /* Ficha del grupo: título blanco (como el NavRow de hoy) + meta gris con lo
+     importante en negrita. */
+  .nr .t { font: 700 14px Inter; color: var(--text); }
+  .nr .s { font: 500 12px/17px Inter; color: var(--mutedLight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nr .s b { font-weight: 800; color: var(--mutedLight); }
+  .nr.off .t, .nr.off .s, .nr.off .chev { color: var(--muted); }
+  .nr.off svg.ic { stroke: var(--muted); }
+  .nr.off .chev { visibility: hidden; }
+  /* Botón «Vincular» y estado «Vinculado» de la hoja de añadir */
+  .btn { font: 800 12px Inter; color: var(--accent); background: var(--surface2); border-radius: var(--r-sm); padding: 8px 12px; flex-shrink: 0; }
+  .done { font: 800 12px Inter; color: var(--accent); flex-shrink: 0; display: inline-flex; gap: 5px; align-items: center; padding: 8px 0 8px 4px; }
+  .done svg { width: 13px; height: 13px; fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .xrow { display: flex; align-items: center; gap: 12px; background: var(--surface); padding: 10px 15px; min-height: 58px; border-radius: var(--r-xxs); }
+  .xrow .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .xrow .s { font: 500 12px Inter; color: var(--mutedLight); }
+  .xrow .s b { font-weight: 800; }
+  .xrow.flash { box-shadow: inset 0 0 0 1px var(--accent50); }
+  .scap { font: 800 10px Inter; letter-spacing: 1.2px; color: var(--muted); padding-top: 4px; }
+  .pager { font: 700 10px Inter; color: #6d6d6d; text-align: center; margin-top: 8px; }
+  .shd .bk { font: 900 16px Inter; color: var(--mutedLight); width: 24px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-var" viewBox="0 0 14 14"><path d="M2 4h10M2 10h10"/><circle cx="5" cy="4" r="1.6"/><circle cx="9" cy="10" r="1.6"/></symbol>
+  <symbol id="i-warm" viewBox="0 0 14 14"><path d="M2 11h2.5V8.5H7V6h2.5V3.5H12"/></symbol>
+  <symbol id="i-prog" viewBox="0 0 14 14"><path d="M2 11l3.5-3.5 2.5 2.5L12 4"/><path d="M9 4h3v3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 14 14"><rect x="1.5" y="4.5" width="5" height="5" rx="1.2"/><rect x="7.5" y="4.5" width="5" height="5" rx="1.2"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+</svg>
+
+<h1>Vincular ejercicios · v4</h1>
+<p class="lead">
+  Con lo que decidiste sobre la v3: grupo de fichas de dos líneas <b>con la anatomía de hoy</b> (título blanco, meta gris);
+  la ficha de vinculación <b>sin tinte</b>, que dice con quién; la hoja con su título y su texto nuevos; Deshacer sin cifras.
+  Lo nuevo es la sección 3: <b>la hoja de añadir con «Vincular» → «Vinculado»</b>.
+</p>
+<p class="lead">
+  Ejemplo: sesión C. La sentadilla trasera está en A y B, vinculadas (4 × 5 · 150 s · clave), y suelta en D (3 × 8–10).
+  El press banca está en A.
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>1 · Editor de ejercicio</h2>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · VINCULADO</b>Franja fija arriba. Grupo de cuatro fichas bajo un solo título: el título de cada una en blanco
+      como hoy, el meta en gris con su parte importante en negrita. La de vinculación, como las demás.</p>
+    <div class="screen cut" style="height:860px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Sentadilla trasera</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="lband"><span class="sx sm tint"><i>A</i><i>B</i><i class="me">C</i></span><div class="tx">Editas A, B y C a la vez</div><span class="go">›</span></div>
+      <div class="ed">
+        <div class="summary"><div class="t-caps">Resumen del ejercicio</div><div class="t-bodyS">4 × 5 · 150s</div><div class="s2">Clave · Doble progresión · +2.5 kg</div></div>
+        <div class="sec">VOLUMEN</div>
+        <div class="seg"><span class="on">REPS</span><span>TIEMPO</span></div>
+        <div class="grid">
+          <div class="stp"><div class="l">Series</div><div class="r"><b>−</b><span>4</span><b>+</b></div></div>
+          <div class="stp"><div class="l">Descanso</div><div class="r"><b>−</b><span>150s</span><b>+</b></div></div>
+          <div class="stp"><div class="l">Reps mín</div><div class="r"><b>−</b><span>5</span><b>+</b></div></div>
+          <div class="stp"><div class="l">Reps máx</div><div class="r"><b>−</b><span>5</span><b>+</b></div></div>
+        </div>
+        <div class="sec">PROGRAMACIÓN</div>
+        <div class="og">
+          <div class="nr"><svg class="ic"><use href="#i-prog"/></svg><div class="m"><div class="t">Progresión</div><div class="s"><b>Auto</b> · Doble progresión · +2.5 kg</div></div><span class="chev">›</span></div>
+          <div class="nr"><svg class="ic"><use href="#i-warm"/></svg><div class="m"><div class="t">Calentamiento</div><div class="s"><b>Auto</b> · 3 series · 60s</div></div><span class="chev">›</span></div>
+          <div class="nr"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t">Variante</div><div class="s"><b>Barra alta</b></div></div><span class="chev">›</span></div>
+          <div class="nr"><svg class="ic"><use href="#i-link"/></svg><div class="m"><div class="t">Vinculación</div><div class="s">Vinculado con <b>A y B</b></div></div><span class="chev">›</span></div>
+        </div>
+        <div class="sec">OPCIONES</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio principal</div></div><span class="sw on"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Registrar RPE</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Dropset en la última serie</div></div><span class="sw"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>B · LA FICHA DE VINCULACIÓN EN SUS TRES ESTADOS</b>Mismo icono y título siempre. Lo que cambia es el meta.</p>
+    <div class="og" style="margin-top:4px">
+      <div class="nr"><svg class="ic"><use href="#i-link"/></svg><div class="m"><div class="t">Vinculación</div><div class="s">Vinculado con <b>A y B</b></div></div><span class="chev">›</span></div>
+    </div>
+    <p class="note" style="margin:6px 0 18px">Vinculado. Con muchas: «Vinculado con <b>A, B, D y F</b>»; si no cabe, «con <b>5 sesiones</b>».</p>
+    <div class="og">
+      <div class="nr"><svg class="ic"><use href="#i-link"/></svg><div class="m"><div class="t">Vinculación</div><div class="s">Sin vincular · también en <b>A, B y D</b></div></div><span class="chev">›</span></div>
+    </div>
+    <p class="note" style="margin:6px 0 18px">Suelto, pero el ejercicio está en otras sesiones de la etapa: dice dónde.</p>
+    <div class="og">
+      <div class="nr off"><svg class="ic"><use href="#i-link"/></svg><div class="m"><div class="t">Vinculación</div><div class="s">Sin vincular · no está en otras sesiones</div></div><span class="chev">›</span></div>
+    </div>
+    <p class="note" style="margin:6px 0 0">Apagado y sin flecha: no se puede abrir porque no hay con quién. Sigue ahí para que la ficha no
+      aparezca y desaparezca entre ejercicios.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>2 · Hoja «Vincular con otras sesiones»</h2>
+<p class="lead">
+  Texto propuesto, a partir del tuyo: <b>«Vincula «Sentadilla trasera» con otras sesiones para que funcionen como un solo ejercicio:
+  comparten historial y progresión, y lo que edites en una cambia en todas.»</b> La lista lleva una etiqueta pequeña
+  («PROGRAMACIONES EN ESTA ETAPA») que explica las filas sin otra frase.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · C SUELTA</b></p>
+    <div class="screen" style="height:560px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Sentadilla trasera</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Vincular con otras sesiones</span><span class="d">Hecho</span></div>
+        <div class="hint sm">Vincula <b>«Sentadilla trasera»</b> con otras sesiones para que funcionen como un solo ejercicio: comparten historial
+          y progresión, y lo que edites en una cambia en todas.</div>
+        <div class="scap">PROGRAMACIONES EN ESTA ETAPA</div>
+        <div class="og">
+          <div class="pr"><div class="m"><div class="t-bodyS">4 × 5 · 150s · Clave</div><span class="sx"><i>A</i><i>B</i></span></div><span class="act">Usar</span></div>
+          <div class="pr me"><div class="m"><div class="t-bodyS">3 × 10–12 · 90s</div><span class="sx"><i class="me">C</i></span></div></div>
+          <div class="pr"><div class="m"><div class="t-bodyS">3 × 8–10 · 90s</div><span class="sx"><i>D</i></span></div><span class="act">Usar</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>B · TRAS «USAR» EN A·B</b>Deshacer con la frase que pediste: con quién queda vinculada, sin cifras.</p>
+    <div class="screen" style="height:560px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Sentadilla trasera</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Vincular con otras sesiones</span><span class="d">Hecho</span></div>
+        <div class="hint sm">Vincula <b>«Sentadilla trasera»</b> con otras sesiones para que funcionen como un solo ejercicio: comparten historial
+          y progresión, y lo que edites en una cambia en todas.</div>
+        <div class="scap">PROGRAMACIONES EN ESTA ETAPA</div>
+        <div class="og">
+          <div class="pr me"><div class="m"><div class="t-bodyS">4 × 5 · 150s · Clave</div><span class="sx"><i>A</i><i>B</i><i class="me nw">C</i></span></div><span class="act mute">Separar</span></div>
+          <div class="pr"><div class="m"><div class="t-bodyS">3 × 8–10 · 90s</div><span class="sx"><i>D</i></span></div><span class="act">Usar</span></div>
+        </div>
+        <div class="undo"><span>C pasa a estar vinculada con <b>A y B</b></span><span class="u">Deshacer</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>C · TRAS «SEPARAR»</b>La misma línea, al revés.</p>
+    <div class="screen" style="height:560px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Sentadilla trasera</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Vincular con otras sesiones</span><span class="d">Hecho</span></div>
+        <div class="hint sm">Vincula <b>«Sentadilla trasera»</b> con otras sesiones para que funcionen como un solo ejercicio: comparten historial
+          y progresión, y lo que edites en una cambia en todas.</div>
+        <div class="scap">PROGRAMACIONES EN ESTA ETAPA</div>
+        <div class="og">
+          <div class="pr"><div class="m"><div class="t-bodyS">4 × 5 · 150s · Clave</div><span class="sx"><i>A</i><i>B</i></span></div><span class="act">Usar</span></div>
+          <div class="pr me"><div class="m"><div class="t-bodyS">4 × 5 · 150s · Clave</div><span class="sx"><i class="me nw">C</i></span></div></div>
+          <div class="pr"><div class="m"><div class="t-bodyS">3 × 8–10 · 90s</div><span class="sx"><i>D</i></span></div><span class="act">Usar</span></div>
+        </div>
+        <div class="undo"><span>C deja de estar vinculada con <b>A y B</b></span><span class="u">Deshacer</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>3 · Al añadir ejercicios · «Vincular» → «Vinculado»</h2>
+<p class="lead">
+  Una sola hoja que <b>cambia de página</b>, sin cerrarse y abrirse otra: la lista es la página 1; tocar un ejercicio desliza a la
+  página 2, que es la hoja del editor tal cual; «Hecho» vuelve deslizando. Así no se ve un parpadeo entre hojas
+  (en Android, encadenar dos <code>Modal</code> ya dio guerra; ver ClientsScreen). Nada se vincula solo: por defecto, todo suelto.
+</p>
+<div class="rack">
+
+  <div class="col">
+    <p class="cap"><b>A · BUSCADOR</b>Igual que en la v2: dónde más está cada uno.</p>
+    <div class="screen" style="height:520px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Añadir ejercicios</div></div><span class="addbtn">Añadir 3</span></div>
+      <div class="hair"></div>
+      <div class="srow"><div class="sinput">Buscar ejercicio</div></div>
+      <div class="count">ELEGIDOS · 3</div>
+      <div class="list">
+        <div class="xr sel"><div class="m"><div class="nm">Sentadilla trasera</div><div class="mt">Pierna · Barra <span class="in">· en A, B, D</span></div></div><span class="chk">✓</span></div>
+        <div class="xr sel"><div class="m"><div class="nm">Press banca</div><div class="mt">Empuje · Barra <span class="in">· en A</span></div></div><span class="chk">✓</span></div>
+        <div class="xr sel"><div class="m"><div class="nm">Face pull</div><div class="mt">Tirón · Polea</div></div><span class="chk">✓</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>B · PÁGINA 1 · «VINCULAR EJERCICIOS»</b>Solo los que se repiten (el face pull no sale). Cada fila: el nombre, dónde
+      más está y el botón. Toda la fila se puede tocar.</p>
+    <div class="screen" style="height:520px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Full body</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Vincular ejercicios</span><span class="d">Hecho</span></div>
+        <div class="hint sm">Estos ejercicios se repiten en otras sesiones. Puedes vincularlos para que funcionen como uno solo.</div>
+        <div class="og">
+          <div class="xrow"><div class="m"><div class="t-bodyS">Sentadilla trasera</div><div class="s">También en <b>A, B y D</b></div></div><span class="btn">Vincular</span></div>
+          <div class="xrow"><div class="m"><div class="t-bodyS">Press banca</div><div class="s">También en <b>A</b></div></div><span class="btn">Vincular</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>C · PÁGINA 2 · LA HOJA DEL EDITOR</b>Igual que la sección 2, con una flecha para volver. «Usar» en A·B y deja
+      la línea de Deshacer, como siempre.</p>
+    <div class="screen" style="height:520px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Full body</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="bk">‹</span><span class="t" style="flex:1">Vincular con otras sesiones</span><span class="d">Hecho</span></div>
+        <div class="hint sm">Vincula <b>«Sentadilla trasera»</b> con otras sesiones para que funcionen como un solo ejercicio: comparten historial
+          y progresión, y lo que edites en una cambia en todas.</div>
+        <div class="scap">PROGRAMACIONES EN ESTA ETAPA</div>
+        <div class="og">
+          <div class="pr me"><div class="m"><div class="t-bodyS">4 × 5 · 150s · Clave</div><span class="sx"><i>A</i><i>B</i><i class="me nw">C</i></span></div><span class="act mute">Separar</span></div>
+          <div class="pr"><div class="m"><div class="t-bodyS">3 × 8–10 · 90s</div><span class="sx"><i>D</i></span></div><span class="act">Usar</span></div>
+        </div>
+        <div class="undo"><span>C pasa a estar vinculada con <b>A y B</b></span><span class="u">Deshacer</span></div>
+      </div>
+    </div>
+    <p class="pager">‹ y Hecho hacen lo mismo aquí: volver a la página 1</p>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>D · VUELTA A LA PÁGINA 1</b>La sentadilla ya no tiene botón: <strong>✓ Vinculado</strong> en lima, sin fondo
+      (es un estado, no una acción), y el meta pasa a decir con quién. La fila se ilumina un momento al volver.</p>
+    <div class="screen" style="height:520px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Full body</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Vincular ejercicios</span><span class="d">Hecho</span></div>
+        <div class="hint sm">Estos ejercicios se repiten en otras sesiones. Puedes vincularlos para que funcionen como uno solo.</div>
+        <div class="og">
+          <div class="xrow flash"><div class="m"><div class="t-bodyS">Sentadilla trasera</div><div class="s">Vinculado con <b>A y B</b></div></div><span class="done"><svg><use href="#i-ok"/></svg>Vinculado</span></div>
+          <div class="xrow"><div class="m"><div class="t-bodyS">Press banca</div><div class="s">También en <b>A</b></div></div><span class="btn">Vincular</span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note">
+      <li>Tocar la sentadilla otra vez abre su página 2: desde ahí se separa o se cambia de fila.</li>
+      <li>Si en la página 2 sales sin vincular (o con Deshacer), vuelve a «Vincular».</li>
+    </ul>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>E · LOS DOS VINCULADOS · «HECHO» CIERRA</b>Nada que pulsar ya; «Hecho» arriba cierra la hoja. Si cierras con alguno
+      sin vincular, queda suelto y se puede vincular luego desde su ficha.</p>
+    <div class="screen" style="height:520px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Full body</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Vincular ejercicios</span><span class="d">Hecho</span></div>
+        <div class="hint sm">Estos ejercicios se repiten en otras sesiones. Puedes vincularlos para que funcionen como uno solo.</div>
+        <div class="og">
+          <div class="xrow"><div class="m"><div class="t-bodyS">Sentadilla trasera</div><div class="s">Vinculado con <b>A y B</b></div></div><span class="done"><svg><use href="#i-ok"/></svg>Vinculado</span></div>
+          <div class="xrow flash"><div class="m"><div class="t-bodyS">Press banca</div><div class="s">Vinculado con <b>A</b></div></div><span class="done"><svg><use href="#i-ok"/></svg>Vinculado</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="cap"><b>F · EL EDITOR DE SESIÓN DESPUÉS</b>La línea de cada ejercicio vinculado lleva las fichas pequeñas.</p>
+    <div class="screen" style="height:520px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión C</div><div class="ttl">Full body</div></div><div class="ok">✓</div></div>
+      <div class="hair"></div>
+      <div class="pad">
+        <div class="lrow new"><span class="rn">01</span><div class="rm"><div class="t-bodyS">Sentadilla trasera</div><div class="t-label">Clave · 4 × 5 · 150s <span class="sx sm"><i>A</i><i>B</i><i class="me">C</i></span></div></div><span class="grip">⋮⋮</span></div>
+        <div class="lrow new"><span class="rn">02</span><div class="rm"><div class="t-bodyS">Press banca</div><div class="t-label">4 × 6–8 · 120s <span class="sx sm"><i>A</i><i class="me">C</i></span></div></div><span class="grip">⋮⋮</span></div>
+        <div class="lrow"><span class="rn">03</span><div class="rm"><div class="t-bodyS">Face pull</div><div class="t-label">3 × 12–15 · 60s</div></div><span class="grip">⋮⋮</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>4 · Reglas</h2>
+<div class="box">
+  <ul>
+    <li><b>Hoja de vinculación:</b> una fila por programación del ejercicio en la etapa; las fichas unidas están vinculadas;
+      el mapa es igual desde cualquier sesión. «Usar» y «Separar» actúan al momento y dejan «C pasa a estar vinculada con A y B ·
+      Deshacer» hasta cerrar.</li>
+    <li><b>Editor:</b> franja fija arriba si está vinculado («Editas A, B y C a la vez»). Progresión, Calentamiento, Variante y
+      Vinculación en un grupo bajo un título; cada ficha con la anatomía de hoy (título blanco, meta gris, negrita en lo importante).</li>
+    <li><b>Ficha Vinculación:</b> «Vinculado con A y B» · «Sin vincular · también en A, B y D» · apagada «Sin vincular · no está en
+      otras sesiones».</li>
+    <li><b>Al añadir:</b> la hoja «Vincular ejercicios» sale solo si alguno de los añadidos está en otra sesión de la etapa, y lista solo
+      esos. Por defecto, nada vinculado. Fila → página 2 (la hoja del editor) → Hecho → página 1 con «✓ Vinculado».</li>
+    <li><b>Ámbito = la etapa.</b></li>
+    <li class="q">Abiertos: el título del grupo de fichas («Programación» provisional) y el orden de sus cuatro filas.</li>
+  </ul>
+</div>
+
+</body>
+</html>

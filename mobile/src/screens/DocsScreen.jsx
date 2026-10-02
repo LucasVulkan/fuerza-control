@@ -10,7 +10,7 @@
  * para resolver una duda concreta, y un bloque de texto obliga a leerlo entero
  * para encontrar la línea que importa.
  */
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +22,7 @@ import { METRIC_GROUPS } from '../utils/metricDocs';
 import MetricDoc from '../components/ui/MetricDoc';
 import DocPoints from '../components/ui/DocPoints';
 
+import ScreenHeader from '../components/ui/ScreenHeader';
 export default function DocsScreen() {
   const styles     = useThemedStyles(makeStyles);
   const { t }      = useTranslation();
@@ -30,12 +31,9 @@ export default function DocsScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('docs.title')}</Text>
-        <TouchableOpacity style={styles.iconBox} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.closeGlyph}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Se entra deslizando desde la derecha: se sale con ‹, como el resto
+          de pantallas a las que se navega (U36). */}
+      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('header.sectionAccount')} title={t('docs.title')} />
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Text style={styles.intro}>{t('docs.intro')}</Text>
@@ -65,20 +63,8 @@ export default function DocsScreen() {
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  headerTitle: { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
-  iconBox: {
-    width: 42, height: 42, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  closeGlyph: { ...textStyles.itemTitle, color: th.colors.text },
 
-  body:  { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.xl },
+  body:  { paddingTop: spacing.md, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.xl },
   intro: {
     ...textStyles.body,
     color:      th.colors.mutedLight,

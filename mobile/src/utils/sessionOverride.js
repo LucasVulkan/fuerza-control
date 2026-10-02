@@ -27,34 +27,6 @@ export function isEmptyOverride(override) {
 }
 
 /**
- * Resolves a single field's ghost value + source: a trainer target wins over the
- * last-session reference; both render dimmed and are overwritten by the client.
- */
-export function resolveRef(target, last) {
-  if (target != null && target !== '') return { value: String(target), source: 'coach' };
-  if (last   != null && last   !== '') return { value: String(last),   source: 'last' };
-  return { value: '', source: 'none' };
-}
-
-/**
- * Resolves the "ghost" value (and its source) a workout field should pre-fill.
- * The trainer's target wins over the last-session reference; both render dimmed
- * and are overwritten when the client enters their own value.
- *
- *   source 'coach' → trainer target (rendered in the trainer/blue colour)
- *   source 'last'  → last-session reference (rendered grey, as today)
- *   source 'none'  → nothing to suggest
- *
- * @returns {{ weight: Ref, reps: Ref }}  Ref = { value: string, source }
- */
-export function resolveExerciseReference(overrideEx, lastWeight, lastReps) {
-  return {
-    weight: resolveRef(overrideEx?.weight, lastWeight),
-    reps:   resolveRef(overrideEx?.reps,   lastReps),
-  };
-}
-
-/**
  * Override status, derived from the client's history the trainer already pulls
  * (no extra sync plumbing): consumed once a session of this template is logged
  * at or after the override was created.

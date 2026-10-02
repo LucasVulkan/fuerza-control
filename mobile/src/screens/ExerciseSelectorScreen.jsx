@@ -31,7 +31,7 @@ import { spacing, textStyles, withOpacity, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import ScreenHeader from '../components/ui/ScreenHeader';
-import { ArrowIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
 import {
   PATTERN_GROUPS, GROUP_OF_PATTERN, muscleGroupIdsOf, equipmentOf,
 } from '../utils/exerciseTaxonomy';
@@ -190,7 +190,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
               {getExName(ex)}
             </Text>
             {ex.isCustom && (
-              <View style={styles.customBadge}><Text style={styles.customBadgeText}>CUSTOM</Text></View>
+              <View style={styles.customBadge}><Text style={styles.customBadgeText}>{t('exerciseSelector.customBadge')}</Text></View>
             )}
           </View>
           <Text style={styles.exMeta} numberOfLines={1}>{meta}</Text>
@@ -230,7 +230,9 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
             activeOpacity={0.85}
           >
             <Text style={[styles.addBtnText, !selectedIds.length && styles.addBtnTextOff]}>
-              {t('exerciseSelector.addAction')}
+              {selectedIds.length
+                ? t('exerciseSelector.addActionN', { count: selectedIds.length })
+                : t('exerciseSelector.addAction')}
             </Text>
           </TouchableOpacity>
         ) : undefined}
@@ -254,7 +256,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} hitSlop={8} style={styles.searchClearBtn}>
-              <Text style={styles.searchClearText}>✕</Text>
+              <CloseIcon size={16} color={th.colors.mutedLight} />
             </TouchableOpacity>
           )}
         </View>
@@ -432,7 +434,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   searchInput: { flex: 1, padding: 0, ...textStyles.body, color: th.colors.text },
   searchClearBtn:  { paddingLeft: spacing.xs2 },
-  searchClearText: { ...textStyles.body, color: th.colors.mutedLight },
 
   // Wrapper con padding vertical — evita el clipping de Android en ScrollView horizontal
   patternRowWrap: { paddingTop: spacing.md },
@@ -505,7 +506,7 @@ const makeStyles = (th) => StyleSheet.create({
   // CTA lima h44 — lo usa la hoja de filtros para cerrarse (la pantalla ya no
   // tiene botón abajo: con el teclado desplegado casi nunca se veía).
   cta: {
-    height: 44, borderRadius: th.radius.md, backgroundColor: '#b8ff00',
+    height: 44, borderRadius: th.radius.md, backgroundColor: th.colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
   ctaText: { ...textStyles.button, color: th.colors.onAccent },

@@ -2,18 +2,23 @@
  * Buscador tolerante: el nombre escrito sin acentos, en minúsculas o con una
  * letra de menos tiene que encontrar el ejercicio igual.
  *
- * Dos pasadas: primero subcadena normalizada (sin acentos ni mayúsculas), que
- * es lo que acierta el 95% de las veces; sólo si eso no devuelve nada se
- * relaja a subsecuencia —las letras en orden, aunque falte alguna—, para que
- * "sentdilla" o "prss banca" sigan encontrando. La subsecuencia como primera
- * pasada metería basura ("press" encontraría "prensa de piernas"), de ahí que
- * sea sólo el plan B.
+ * Tres pasadas, de más estricta a más laxa, y cada una solo si la anterior no
+ * devuelve nada (exercise-variants.md §3.4):
+ *   1. todas las palabras de la búsqueda, en cualquier orden y como parte de
+ *      palabra ("remo polea" → "Remo en polea", "chin up" → "Chin-ups");
+ *   2. la búsqueda sin espacios dentro del texto sin espacios ("chinup");
+ *   3. subsecuencia —las letras en orden, aunque falte alguna—, para que
+ *      "sentdilla" o "prss banca" sigan encontrando.
+ * La subsecuencia como primera pasada metería basura ("press" encontraría
+ * "prensa de piernas"), de ahí que sea el último recurso. Sin acentos ni
+ * mayúsculas, y los guiones cuentan como espacio.
  */
 
 const norm = (s) => String(s ?? '')
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')   // marcas diacríticas combinantes
-  .toLowerCase();
+  .toLowerCase()
+  .replace(/-/g, ' ');
 
 /**
  * ¿Están todas las letras de `q` dentro de `text`, en orden? Con un salto
@@ -42,11 +47,15 @@ export function filterBySearch(items, query, getText) {
   const q = norm(query).trim();
   if (!q) return items;
 
-  const rows = items.map((item) => [item, norm(getText(item))]);
-  const hits = rows.filter(([, text]) => text.includes(q));
+  const rows  = items.map((item) => [item, norm(getText(item))]);
+  const words = q.split(/\s+/);
+  const hits  = rows.filter(([, text]) => words.every((w) => text.includes(w)));
   if (hits.length || q.length < 4) return hits.map(([item]) => item);
 
   const letters = q.replace(/\s+/g, '');
+  const glued   = rows.filter(([, text]) => text.replace(/\s+/g, '').includes(letters));
+  if (glued.length) return glued.map(([item]) => item);
+
   return rows
     .filter(([, text]) => subsequence(letters, text.replace(/\s+/g, '')))
     .map(([item]) => item);

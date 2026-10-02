@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import { useStore, ownerLogOf } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
@@ -17,23 +17,22 @@ import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
-import { spacing, textStyles, borders, withOpacity, sheetRowBase, lh } from '../theme';
+import NavScrim from '../components/ui/NavScrim';
+import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
+import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { formatSeconds } from '../utils/formatters';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { prevBlockResult } from '../utils/sessionRecap';
-import { lastExerciseRef } from '../utils/exerciseLinks';
+import { recentExerciseRefs } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
+import { useElapsedText } from '../components/ui/useElapsedText';
 import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
 import { backToMain } from '../navigation/navigationRef';
 
-// Velo bajo los botones de Android. Curva de entrada suave (t²) en vez de
-// rampa lineal: con un color casi negro, un tramo empinado en pocos píxeles se
-// ve a franjas. La altura extra por encima de la barra es lo que le da pixeles
-// al fundido.
-const SCRIM_FADE  = 28;
-const SCRIM_STOPS = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => [t, Math.round(t * t * 100) / 100]);
 
 // ── Global "active set" pointer ───────────────────────────────────────────────
 // Only one set in the whole workout screen is "active" (highlight) at a time,
@@ -75,28 +74,6 @@ function computeActiveSet(slots, afterExerciseId = null, afterSetIndex = -1) {
     if (!slots[i].done) return { exerciseId: slots[i].exerciseId, setIndex: slots[i].setIndex };
   }
   return null;
-}
-
-// ── Elapsed session clock ─────────────────────────────────────────────────────
-// Derived from activeSession.startedAt (wall clock), so it survives app
-// minimize/kill without any background logic — the tick only repaints whichever
-// small text component uses the hook, not the whole screen.
-
-function useElapsedText(startedAt) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!startedAt) return;
-    const id = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [startedAt]);
-  if (!startedAt) return null;
-  const s  = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-  const hh = Math.floor(s / 3600);
-  const mm = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  return hh > 0
-    ? `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
-    : `${mm}:${String(ss).padStart(2, '0')}`;
 }
 
 // ── Ceja de la cabecera ───────────────────────────────────────────────────────
@@ -320,22 +297,28 @@ export default function WorkoutScreen() {
   const ownerProgram = useStore((s) => (template?.programId ? s.programs[template.programId] : null));
   const getEffectiveTemplate = (tid) => sessionTemplates[tid];
 
-  const exercises = (template?.exercises ?? []).map((exConfig) => ({
-    exConfig,
-    def:         allExercises[exConfig.exerciseId],
-    setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
+  const exercises = (template?.exercises ?? []).map((exConfig) => {
     // Vinculado → el histórico del grupo; si no, el de esta sesión Y el de las
     // etapas de las que desciende: entrar en una etapa nueva no puede dejar al
     // cliente sin chip ni sin pesos de referencia (spec stage-planner §4.1).
-    lastExercise: lastExerciseRef({
+    // Las tres últimas: la primera es la de hoy; Por esfuerzo promedia las tres
+    // (progresion-clara §6.5).
+    const recentSessions = recentExerciseRefs({
       workoutLog,
       program:    ownerProgram,
       templateId: activeSession.templateId,
       exConfig,
       getTemplate: getEffectiveTemplate,
-    }),
-    overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
-  }));
+    }, 3);
+    return {
+      exConfig,
+      def:         allExercises[exConfig.exerciseId],
+      setsState:   activeSession.setsState[exConfig.exerciseId] ?? [],
+      lastExercise: recentSessions[0]?.exercise ?? null,
+      recentSessions,
+      overrideEx:  sessionOverride?.exercises?.[exConfig.exerciseId] ?? null,
+    };
+  });
 
   // Orden de pantalla: el MISMO que pinta el editor de sesión, bloques de
   // acondicionamiento mezclados incluidos (ver `utils/sessionSlots.js`). Antes
@@ -512,7 +495,7 @@ export default function WorkoutScreen() {
   if (!template && !isFree) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>Sin sesión activa</Text>
+        <Text style={styles.errorText}>{t('workout.noActiveSession')}</Text>
       </View>
     );
   }
@@ -588,13 +571,14 @@ export default function WorkoutScreen() {
             if (slot.kind === 'block') return renderBlock(slot.block, orderNumber);
             const group = slot.items;
             const isSuperset = group.length > 1;
-            const cards = group.map(({ exConfig, def, setsState, lastExercise, overrideEx }, idx) => (
+            const cards = group.map(({ exConfig, def, setsState, lastExercise, recentSessions, overrideEx }, idx) => (
               <ExerciseCard
                 key={exConfig.exerciseId}
                 exConfig={exConfig}
                 def={def}
                 setsState={setsState}
                 lastExercise={lastExercise}
+                recentSessions={recentSessions}
                 overrideEx={overrideEx}
                 // Superserie: mismo número de ejercicio, cambia la letra (03A / 03B).
                 groupLetter={isSuperset ? String.fromCharCode(65 + idx) : undefined}
@@ -723,22 +707,13 @@ export default function WorkoutScreen() {
 
       {/* Hoja de "añadir" de la sesión libre — mismas opciones que el editor */}
       <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
-        <View style={styles.sheetBody}>
-          <TouchableOpacity
-            style={styles.sheetRow}
-            onPress={() => { setAddSheetOpen(false); handleAddExercise(); }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sheetRowText}>{t('editor.addExerciseOption')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.sheetRow}
-            onPress={() => { setAddSheetOpen(false); handleAddBlock(); }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sheetRowText}>{t('editor.addBlockOption')}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Las mismas dos filas que la hoja «Añadir» del editor de sesión. */}
+        <Section style={styles.sheetSection}>
+          {/* Se cierra al instante y no con la animación: el bloque abre otro
+              Modal, y en iOS no se presenta uno mientras otro se va. */}
+          <SheetRow icon={ROW_ICON.exercise} label={t('editor.addExerciseOption')} onPress={() => { setAddSheetOpen(false); handleAddExercise(); }} />
+          <SheetRow icon={ROW_ICON.block}    label={t('editor.addBlockOption')}    onPress={() => { setAddSheetOpen(false); handleAddBlock(); }} />
+        </Section>
       </DragSheet>
 
       {/* Objetivo de un ejercicio añadido sobre la marcha. Se cierra solo si el
@@ -813,23 +788,7 @@ export default function WorkoutScreen() {
       {/* La lista pasa por debajo de los botones de Android (sin zona segura
           abajo, a propósito): un velo del color del fondo los despega del
           contenido. No captura toques. */}
-      {insets.bottom > 0 && (
-        <Svg
-          pointerEvents="none"
-          style={[styles.navScrim, { height: insets.bottom + SCRIM_FADE }]}
-          width="100%"
-          height={insets.bottom + SCRIM_FADE}
-        >
-          <Defs>
-            <LinearGradient id="navScrim" x1="0" y1="0" x2="0" y2="1">
-              {SCRIM_STOPS.map(([offset, opacity]) => (
-                <Stop key={offset} offset={offset} stopColor={th.colors.bg} stopOpacity={opacity} />
-              ))}
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#navScrim)" />
-        </Svg>
-      )}
+      {insets.bottom > 0 && <NavScrim inset={insets.bottom} />}
 
       {/* Floating rest timer — sits above everything, swipe right to dismiss */}
       <RestTimerFloat
@@ -847,12 +806,6 @@ const makeStyles = (th) => StyleSheet.create({
   container: {
     flex:            1,
     backgroundColor: th.colors.bg,
-  },
-  navScrim: {
-    position: 'absolute',
-    left:     0,
-    right:    0,
-    bottom:   0,
   },
   errorText: {
     ...textStyles.body,
@@ -991,12 +944,7 @@ const makeStyles = (th) => StyleSheet.create({
   addBtnPlus: { color: th.colors.accent },
 
   // Hoja de "añadir" + editor de bloque de la sesión libre
-  sheetBody:    { paddingBottom: spacing.sm, gap: spacing.md },
-  sheetRow: sheetRowBase(th),
-  // Misma voz que las filas de `MenuRow` (la hoja del "⋯" del visualizador):
-  // una opción de hoja es una opción de hoja, mida lo que mida la pantalla que
-  // la abre. A `labelStrong` (12) se leían por debajo del contenido.
-  sheetRowText: { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
+  sheetSection: { marginBottom: spacing.sm },
   modalSafe:    { flex: 1, backgroundColor: th.colors.bg },
   blockHeader: {
     flexDirection:     'row',

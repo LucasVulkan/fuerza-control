@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variantes de ejercicio — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --orange: #fb923c;
+    --accent10: rgba(184,255,0,.1); --accent25: rgba(170,226,22,.25); --accent50: rgba(184,255,0,.5);
+    --r-xxs: 2px; --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+  }
+  .t-title   { font: 900 22px Inter; letter-spacing: -.5px; }
+  .t-bodyS   { font: 700 14px Inter; }
+  .t-label   { font: 500 12px Inter; }
+  .t-caps    { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 940px; margin-bottom: 14px; }
+  .lead b, .note b, .cap strong, .box b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent);
+       margin: 54px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col { width: 375px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; min-height: 48px; }
+  .cap > b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .note { font: 500 11.5px/1.6 Inter; color: #7a7a7a; margin-top: 12px; }
+  .note li { margin: 0 0 4px 16px; }
+  .box { max-width: 940px; border: 1px solid #262626; border-radius: 12px; padding: 14px 18px; font: 500 12.5px/1.65 Inter; color: #9a9a9a; }
+  .box li { margin: 0 0 3px 16px; }
+  code { font: 500 11px ui-monospace, monospace; color: #bdbdbd; }
+
+  /* ══════ §0 · MODELO ══════ */
+  .model { margin-top: 22px; display: flex; flex-direction: column; align-items: center; max-width: 940px; }
+  .fambox { background: var(--surface2); border-radius: var(--r-md); padding: 10px 22px; text-align: center; }
+  .fambox .k, .mem .k, .varbar .k { font: 800 10px Inter; letter-spacing: 1.4px; color: var(--mutedLight); }
+  .fambox b { display: block; font: 900 20px Inter; letter-spacing: -.3px; margin: 2px 0; }
+  .fambox .s { font: 500 11.5px Inter; color: var(--mutedLight); }
+  .stem { width: 1px; height: 18px; background: #3a3a3a; }
+  .members { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; border-top: 1px solid #3a3a3a; padding-top: 16px; position: relative; }
+  .mem { width: 128px; background: var(--surface); border-radius: var(--r-md); padding: 10px 12px 12px; position: relative;
+         display: flex; flex-direction: column; gap: 6px; }
+  .mem::before { content: ''; position: absolute; top: -17px; left: 50%; width: 1px; height: 16px; background: #3a3a3a; }
+  .mem b { font: 700 13px/1.25 Inter; }
+  .mem .hist { font: 800 9.5px Inter; letter-spacing: .3px; white-space: nowrap; color: var(--accent); background: var(--accent10);
+               border-radius: var(--r-xs); padding: 4px 6px; align-self: flex-start; }
+  .mem .x { font: 500 11px Inter; color: var(--mutedLight); }
+  .members.flat .mem::before { display: none; }
+  .varbar { margin-top: 12px; width: 100%; background: transparent; border: 1px dashed #3a3a3a; border-radius: var(--r-md);
+            padding: 10px 14px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .varbar .d { font: 500 12px Inter; color: #9a9a9a; }
+  .minis { display: flex; gap: 30px; flex-wrap: wrap; margin-top: 18px; max-width: 940px; }
+  .mini { font: 500 12px/1.6 Inter; color: #8f8f8f; max-width: 440px; }
+  .mini .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+  .mini .mfam { font: 900 14px Inter; color: var(--text); margin-right: 4px; }
+  table.where { border-collapse: collapse; font: 500 12.5px/1.45 Inter; color: #b5b5b5; margin-top: 22px; }
+  table.where th { font: 800 10.5px Inter; letter-spacing: 1.2px; color: var(--accent); text-align: left; padding: 7px 22px 7px 0;
+                   border-bottom: 1px solid #2a2a2a; text-transform: uppercase; }
+  table.where td { padding: 8px 22px 8px 0; border-bottom: 1px solid #1c1c1c; vertical-align: top; }
+  table.where td:first-child { color: var(--text); font-weight: 800; }
+  table.where .no { color: #555; }
+  table.where .own { color: var(--accent); font-weight: 800; }
+
+  /* ══════ PANTALLA ══════ */
+  .screen { background: var(--bg); border-radius: 22px; border: 1px solid #222; overflow: hidden; position: relative; }
+  .pad { padding: 12px 15px 16px; display: flex; flex-direction: column; gap: 10px; }
+  svg.ic { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor;
+           stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ScreenHeader */
+  .sh { display: flex; align-items: center; gap: 10px; padding: 10px 15px; }
+  .back { width: 36px; height: 36px; border-radius: var(--r-md); background: var(--surface2); display: grid; place-items: center;
+          color: var(--mutedLight); font: 900 20px/20px Inter; padding-bottom: 2px; flex-shrink: 0; }
+  .sh .mid { flex: 1; text-align: center; min-width: 0; }
+  .sh .mid .t-caps { color: var(--accent); }
+  .sh .mid .ttl { font: 800 16px Inter; letter-spacing: -.2px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .addbtn { height: 32px; padding: 0 10px; border-radius: var(--r-md); background: var(--accent); color: #000;
+            font: 900 14px Inter; display: grid; place-items: center; flex-shrink: 0; }
+  .addbtn.off { background: var(--surface2); color: var(--muted); }
+  .sp36 { width: 36px; flex-shrink: 0; }
+  .hair { height: 1px; background: #262626; }
+
+  /* Buscador (ExerciseSelectorScreen) */
+  .srow { display: flex; gap: 6px; padding: 15px 15px 0; }
+  .sinput { flex: 1; height: 42px; background: var(--surface2); border-radius: var(--r-sm); display: flex; align-items: center;
+            gap: 6px; padding: 0 15px; font: 500 14px Inter; }
+  .sinput .ph { color: var(--mutedLight); flex: 1; }
+  .sinput .q { flex: 1; } .sinput .q::after { content: '|'; color: var(--accent); margin-left: 1px; font-weight: 400; }
+  .sinput .x { color: var(--mutedLight); }
+  .ibox { width: 42px; height: 42px; border-radius: var(--r-sm); background: var(--surface2); display: grid; place-items: center; flex-shrink: 0; }
+  .pats { display: flex; gap: 6px; padding: 10px 15px 0; overflow: hidden; }
+  .pat { height: 36px; padding: 0 15px; border-radius: 999px; background: var(--surface2); display: grid; place-items: center;
+         font: 900 14px Inter; color: var(--mutedLight); flex-shrink: 0; }
+  .pat.on { background: var(--accent); color: #000; }
+  .create { text-align: center; padding: 15px 0 10px; font: 900 14px Inter; color: var(--accent50); }
+  .count { padding: 0 15px; font: 800 12px Inter; letter-spacing: 1.2px; color: var(--mutedLight); }
+  .list { padding: 6px 15px 18px; display: flex; flex-direction: column; gap: 2px; }
+  .list > * { border-radius: var(--r-xxs); }
+  .list > :first-child { border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
+  .list > :last-child { border-bottom-left-radius: var(--r-md); border-bottom-right-radius: var(--r-md); }
+  .xr { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 10px 15px; }
+  .xr .m { flex: 1; min-width: 0; }
+  .xr .nm { font: 700 14px Inter; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .xr .mt { font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .xr.sel { background: var(--accent10); } .xr.sel .nm { color: var(--accent); }
+  .chk { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--surface2); display: grid; place-items: center; flex-shrink: 0; }
+  .chk svg { width: 16px; height: 16px; fill: none; stroke: var(--muted); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .chk.on { background: var(--accent); } .chk.on svg { stroke: #000; }
+  .hl { color: var(--accent); }
+  .fam { background: var(--surface); padding: 10px 15px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .fam .head { display: flex; align-items: baseline; gap: 8px; }
+  .fam .nm { font: 700 14px Inter; }
+  .fam .mt { font: 500 12px Inter; color: var(--mutedLight); }
+  .fam .n { margin-left: auto; font: 800 12px Inter; color: var(--accent); }
+  .fam.has .nm { color: var(--accent); }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  /* Chip del buscador: casilla de multiselección, por eso lleva ✓ */
+  .ch { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border-radius: var(--r-xs);
+        background: var(--surface2); font: 800 12px Inter; color: var(--text); white-space: nowrap; }
+  .ch svg { width: 12px; height: 12px; fill: none; stroke: #000; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .ch.on { background: var(--accent); color: #000; }
+  .ch.match { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent50); }
+  .ch.fade { color: var(--muted); }
+  .ch.taken { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px #333; }
+  .ch .u { font-weight: 500; color: var(--mutedLight); }
+  .ch.on .u { color: rgba(0,0,0,.6); } .ch.match .u { color: var(--accent50); } .ch.taken .u { color: var(--muted); }
+  .ch.new { box-shadow: inset 0 0 0 1px var(--accent50); }
+
+  /* Editor (ExerciseEditorInline) */
+  .ed { padding: 0 15px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .sec { font: 800 12px Inter; letter-spacing: 1.2px; color: var(--mutedLight); padding-top: 10px; }
+  .navrow { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: var(--r-sm); padding: 10px; }
+  .navrow .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .navrow .m .t-label { color: var(--mutedLight); }
+  .navrow .chev { color: #8a8a8a; font: 900 14px Inter; }
+  .navrow svg.ic { color: var(--accent); }
+  .summary { background: var(--accent10); border-radius: var(--r-md); padding: 10px 15px; display: flex; flex-direction: column; gap: 6px; }
+  .summary .t-caps { color: var(--accent); } .summary .s2 { font: 500 12px Inter; color: var(--accent50); }
+  .fade2 { opacity: .35; }
+  .callout { font: 700 11px/1.45 Inter; color: #c9c9c9; border-left: 2px solid var(--accent); padding: 2px 0 2px 8px; }
+
+  /* Grupo de filas (optGroup / ToggleRow / OptionRow) */
+  .og { display: flex; flex-direction: column; gap: 2px; border-radius: var(--r-md); overflow: hidden; }
+  .orow { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 6px 15px; min-height: 46px; border-radius: var(--r-xxs); }
+  .orow.col { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 15px 12px; }
+  .orow .m { flex: 1; min-width: 0; }
+  .orow .hint { font: 500 14px/1.2 Inter; color: var(--mutedLight); margin-top: 3px; }
+  .orow .val { font: 700 14px Inter; color: var(--mutedLight); display: flex; gap: 10px; align-items: center; }
+  .orow .val b { color: var(--text); }
+  .orow.off .t-bodyS, .orow.off .hint { color: var(--muted); }
+  .sw { width: 44px; height: 26px; border-radius: 13px; background: var(--surface2); position: relative; flex-shrink: 0; }
+  .sw::after { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--mutedLight); top: 3px; left: 3px; }
+  .sw.on { background: var(--accent); } .sw.on::after { left: 21px; background: #000; }
+  .exname { font: 700 16px/22px Inter; letter-spacing: -.2px; display: flex; align-items: center; gap: 8px; }
+  .tagnew { font: 800 10px Inter; letter-spacing: 1px; color: var(--accent); background: var(--accent10); border-radius: var(--r-xs); padding: 3px 5px; }
+  .dimh { display: flex; align-items: center; gap: 6px; font: 700 14px Inter; }
+  .dimh svg { color: var(--mutedLight); }
+  /* Chip de hoja (anatomía de linkPill): selección simple, relleno y sin ✓ */
+  .lp { background: var(--surface2); border-radius: var(--r-xs); padding: 6px 9px; font: 900 14px Inter; color: var(--text); text-align: center; }
+  .lp.on { background: var(--accent); color: var(--onAccent); }
+  .lp small { display: block; font: 500 10px Inter; color: var(--mutedLight); margin-top: 1px; }
+  .lp.on small { color: rgba(0,0,0,.6); }
+  .na { font: 500 12px Inter; color: var(--muted); }
+  .hint.warn { color: var(--orange); }
+  .sw.dis { opacity: .35; }
+  .lock { font-size: 13px; opacity: .6; }
+
+  /* DragSheet */
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-top-left-radius: var(--r-lg);
+           border-top-right-radius: var(--r-lg); border: 1px solid var(--border); border-bottom: 0; padding: 6px 15px 22px;
+           display: flex; flex-direction: column; gap: 8px; }
+  .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 6px auto 6px; }
+  .shd { display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px; }
+  .shd .t { font: 700 14px Inter; } .shd .d { font: 800 12px Inter; color: var(--accent); }
+  .gcap { font: 800 12px Inter; letter-spacing: 1.2px; color: var(--mutedLight); padding-top: 6px; }
+  .gcap.acc { color: var(--accent); }
+  .shint { font: 500 14px/1.4 Inter; color: var(--mutedLight); }
+  .link { font: 900 14px Inter; color: var(--mutedLight); }
+
+  /* ExerciseCard */
+  .xcard { background: var(--surface); border-radius: 16px; overflow: hidden; }
+  .xh { display: flex; gap: 10px; background: var(--surface2); padding: 14px 12px 14px 16px; align-items: flex-start; }
+  .xh .n { color: var(--accent); min-width: 22px; font: 900 16px/22px Inter; }
+  .xh .nmw { flex: 1; min-width: 0; }
+  .nml { font: 700 16px/22px Inter; letter-spacing: -.2px; }
+  .nml .v { font-weight: 500; color: var(--mutedLight); }
+  .nml .v.chg { color: var(--accent); font-weight: 700; }
+  .xh .tg { font: 700 14px Inter; color: var(--mutedLight); margin-top: 3px; } .xh .tg .k { color: var(--accent); }
+  .xb { padding: 10px 16px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .sp { background: var(--surface2); border-radius: var(--r-xs); padding: 6px; font: 800 12px Inter; color: var(--mutedLight); }
+  .sp.on { background: var(--accent10); color: var(--accent); }
+
+  /* Filas del editor de sesión */
+  .lrow { display: flex; align-items: center; background: var(--surface); border-radius: var(--r-sm); padding: 10px 12px; min-height: 58px; }
+  .lrow .rn { font: 800 12px Inter; color: var(--accent); margin-right: 12px; width: 12px; }
+  .lrow .rm { flex: 1; min-width: 0; }
+  .lrow .rm div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lrow .rm .t-bodyS .v { font-weight: 500; color: var(--mutedLight); }
+  .lrow .rm .t-label { color: var(--mutedLight); margin-top: 2px; }
+  .lrow .grip { color: var(--muted); font: 900 14px Inter; letter-spacing: -2px; }
+
+  /* Historial */
+  .hcard { background: var(--surface); border-radius: var(--r-md); padding: 12px 15px; display: flex; flex-direction: column; gap: 10px; }
+  .hex .t-bodyS span { color: var(--mutedLight); font: 500 12px Inter; }
+  .hex .pills { display: flex; gap: 4px; margin-top: 6px; align-items: center; }
+  .wpill { font: 800 12px Inter; padding: 6px 0 6px 6px; }
+  .wpill b { color: var(--accent); } .wpill u { text-decoration: none; color: var(--text); } .wpill s { text-decoration: none; color: var(--mutedLight); }
+
+  /* Progreso */
+  .prow { display: flex; align-items: center; background: var(--surface); padding: 10px 15px; }
+  .prow .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .prow .m .s { font: 500 12px Inter; color: var(--mutedLight); } .prow .m .s b { color: var(--accent); font-weight: 500; }
+  .prow .chev { font: 900 18px Inter; color: var(--mutedLight); margin-left: 6px; }
+  .prow.new { box-shadow: inset 2px 0 0 var(--accent); }
+  .mh { display: flex; gap: 6px; padding: 0 15px; align-items: center; }
+  .exbar { flex: 1; background: var(--accent); border-radius: var(--r-sm); padding: 10px 15px; display: flex; justify-content: space-between;
+           align-items: center; font: 800 12px Inter; letter-spacing: 1.2px; color: #000; text-transform: uppercase; }
+  .xclose { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--surface2); display: grid; place-items: center;
+            font: 500 12px Inter; color: var(--mutedLight); }
+  .fpills { display: flex; gap: 6px; padding: 15px 15px 0; overflow: hidden; }
+  .tiles { display: flex; gap: 10px; padding: 15px 15px 0; }
+  .tile { flex: 1; background: var(--surface); border-radius: var(--r-lg); padding: 15px; text-align: center; display: flex; flex-direction: column; gap: 10px; }
+  .tile .v { font: 900 22px Inter; color: var(--accent); } .tile .l { font: 800 12px Inter; letter-spacing: 1.2px; margin-top: 2px; }
+  .tile .s { font: 500 12px Inter; color: var(--muted); }
+  .chartbox { margin: 15px; background: var(--surface); border-radius: var(--r-md); padding: 12px; }
+
+  /* Nuevo ejercicio (CustomExerciseScreen) */
+  .ch-head { display: flex; align-items: center; justify-content: space-between; padding: 15px 15px 6px; }
+  .ch-head .x { width: 42px; height: 42px; border-radius: var(--r-sm); background: var(--surface2); display: grid; place-items: center; font: 900 16px Inter; }
+  .ninput { background: var(--surface2); border-radius: var(--r-sm); padding: 6px 10px; font: 900 16px Inter; letter-spacing: -.2px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-grip" viewBox="0 0 14 14"><path d="M1 8.5h12"/><path d="M4 4.5v6.5M7 3.5v7.5M10 4.5v6.5"/></symbol>
+  <symbol id="i-width" viewBox="0 0 14 14"><path d="M1.5 3v8M12.5 3v8M4 7h6M5.6 5.4L4 7l1.6 1.6M8.4 5.4L10 7 8.4 8.6"/></symbol>
+  <symbol id="i-var" viewBox="0 0 14 14"><path d="M2 4h10M2 10h10"/><circle cx="5" cy="4" r="1.6" fill="#1f1f1f"/><circle cx="9" cy="10" r="1.6" fill="#1f1f1f"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35" fill="none" stroke="#949494" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6" fill="none" stroke="#e6e6e6" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
+<h1>Variantes de ejercicio</h1>
+<p class="lead">
+  Una sola regla decide todo: <b>¿mueves más o menos el mismo peso?</b> Si no (otro implemento, a una mano), es
+  <b>otro ejercicio</b>, con su propio historial y progresión. Si sí (agarre, anchura), es una <b>variante</b>: solo
+  informa, se apunta en cada entreno y se puede filtrar en Progreso.
+</p>
+<div class="box">
+  <b>Versión sin familias</b>
+  <ul>
+    <li>La librería tiene un ejercicio por implemento, como hoy: Remo con barra, Remo con mancuerna, Peso muerto rumano
+      con barra, con mancuernas, con kettlebell… El buscador <b>no cambia</b> (solo pasa a buscar por palabras).</li>
+    <li>Agarre y anchura son la <b>variante</b>: solo informa, se apunta en cada entreno y se puede filtrar en Progreso.</li>
+    <li>A una mano es <b>otro ejercicio</b>: el que ya existe en la librería o, si no existe, uno que crea la app con id
+      fijo (§3).</li>
+    <li>Una sola hoja, <b>VARIANTE</b>, en el editor; en el Workout, solo su parte de agarre y anchura.</li>
+    <li><b>Ejercicio aparte</b>: convierte una variante en su propio ejercicio, para tener dos jalones en una sesión (§3).</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>0 · El modelo</h2>
+<p class="lead">
+  Nada de familias: cada ejercicio de la librería es un ejercicio, con su id y su historial. Lo único nuevo es la
+  <b>variante</b>, que va por debajo del ejercicio y no separa nada, y el <b>unilateral con id fijo</b>.
+</p>
+
+<div class="model">
+  <div class="members flat" style="border-top:0;padding-top:0">
+    <div class="mem"><b>Remo con barra</b><span class="hist">HISTORIAL PROPIO</span></div>
+    <div class="mem"><b>Remo con mancuerna</b><span class="hist">HISTORIAL PROPIO</span><span class="x">Ya es a una mano</span></div>
+    <div class="mem"><b>Remo en polea</b><span class="hist">HISTORIAL PROPIO</span><span class="x">Junta los dos de hoy</span></div>
+    <div class="mem"><b>Remo unilateral en polea</b><span class="hist">HISTORIAL PROPIO</span></div>
+    <div class="mem"><b>Remo en T</b><span class="hist">HISTORIAL PROPIO</span></div>
+  </div>
+  <div class="varbar">
+    <span class="k">VARIANTE</span>
+    <span class="dimh"><svg class="ic"><use href="#i-grip"/></svg>Agarre</span>
+    <span class="dimh"><svg class="ic"><use href="#i-width"/></svg>Anchura</span>
+    <span class="d">Solo informa: mismo historial. Se elige en el editor, se cambia en el Workout solo por hoy, se apunta
+      en cada entreno. La declara cada ejercicio (no todos tienen las dos).</span>
+  </div>
+</div>
+
+<table class="where">
+  <tr><th></th><th>Buscador</th><th>Editor · hoja VARIANTE</th><th>Workout · hoja</th><th>Historial</th></tr>
+  <tr><td>Implemento</td><td>Un ejercicio por implemento, como hoy</td><td class="no">— (Sustituir)</td><td class="no">—</td><td class="own">Propio</td></tr>
+  <tr><td>A una mano</td><td>Si existe, sale como ejercicio</td><td>Interruptor</td><td class="no">—</td><td class="own">Propio</td></tr>
+  <tr><td>Agarre · anchura</td><td class="no">—</td><td>Chips, opcionales</td><td>Chips, solo hoy</td><td>Compartido; se apunta y se filtra</td></tr>
+</table>
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>1 · Editor de ejercicio — una sola hoja</h2>
+<p class="lead">
+  La fila <b>VARIANTE</b> va la primera, encima del Resumen, y abre una hoja con dos grupos. Arriba, lo que <b>solo
+  informa</b> (agarre y anchura): es lo que más se toca. Abajo, los dos interruptores que <b>cambian el ejercicio</b>
+  (otro historial, otra progresión): Unilateral y Ejercicio aparte (§3). Cambiar de implemento sigue siendo
+  «Sustituir», como hoy.
+</p>
+
+<div class="rack">
+  <!-- 2a · editor -->
+  <div class="col">
+    <p class="cap"><b>A · EL EDITOR</b>La fila resume la hoja. OPCIONES pierde «Unilateral», que se muda a la hoja.</p>
+    <div class="screen">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Remo en polea</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed">
+        <div class="sec">VARIANTE</div>
+        <div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Neutro · Estrecho</div><div class="t-label">Una mano · agarre · anchura</div></div><span class="chev">›</span></div>
+        <div class="summary"><div class="t-caps">Resumen</div><div class="t-bodyS">3 × 10–12 · 90s</div><div class="s2">Doble progresión · +2.5 kg al completar todas las series</div></div>
+        <div class="sec fade2">VOLUMEN · CALENTAMIENTO · PROGRESIÓN</div>
+        <div class="sec">OPCIONES</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio principal</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Registrar RPE</div></div><span class="sw on"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Dropset en la última serie</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Tempo</div></div><span class="val">— <span>›</span></span></div>
+        </div>
+        <div class="callout">«Unilateral» ya no está aquí: cambia el ejercicio, así que vive en la hoja de VARIANTE.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2b · hoja, dos manos -->
+  <div class="col">
+    <p class="cap"><b>B · LA HOJA</b>Arriba, lo que solo informa; abajo, lo que cambia el ejercicio, cada
+      interruptor con su explicación.</p>
+    <div class="screen" style="height:760px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Remo en polea</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed"><div class="sec">VARIANTE</div><div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Neutro · Estrecho</div><div class="t-label">Una mano · agarre · anchura</div></div><span class="chev">›</span></div>
+        <div class="summary"><div class="t-caps">Resumen</div><div class="t-bodyS">3 × 10–12 · 90s</div><div class="s2">Doble progresión · +2.5 kg</div></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap">CÓMO SE HACE · SOLO INFORMA</div>
+        <div class="og">
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-grip"/></svg>Agarre</div>
+            <div class="chips"><span class="lp">Prono</span><span class="lp">Supino</span><span class="lp on">Neutro</span></div></div>
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-width"/></svg>Anchura</div>
+            <div class="chips"><span class="lp">Ancho</span><span class="lp">Medio</span><span class="lp on">Estrecho</span></div></div>
+        </div>
+        <div class="gcap">CAMBIA EL EJERCICIO</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Unilateral</div><div class="hint">Cuenta como otro ejercicio, con su propio historial y progresión.</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio aparte</div><div class="hint">«Remo en polea · Neutro · Estrecho» pasa a tener <b>su propia progresión</b> y podrás añadir otro «Remo en polea» a la sesión. La variante queda fija.</div></div><span class="sw"></span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note">
+      <li>Abajo nada es obligatorio: tocar la opción marcada la desmarca.</li>
+    </ul>
+  </div>
+
+  <!-- 2c · unilateral encendido -->
+  <div class="col">
+    <p class="cap"><b>C · UNILATERAL ENCENDIDO</b>El ejercicio pasa a «Remo unilateral en polea», que ya existe en la
+      librería (el título cambia). La anchura desaparece: una mano no tiene anchura.</p>
+    <div class="screen" style="height:760px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Remo unilateral en polea</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed"><div class="sec">VARIANTE</div><div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Una mano · Neutro</div><div class="t-label">Una mano · agarre · anchura</div></div><span class="chev">›</span></div>
+        <div class="summary"><div class="t-caps">Resumen</div><div class="t-bodyS">3 × 10–12 · 90s</div><div class="s2">Doble progresión · +2.5 kg</div></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap">CÓMO SE HACE · SOLO INFORMA</div>
+        <div class="og">
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-grip"/></svg>Agarre</div>
+            <div class="chips"><span class="lp">Prono</span><span class="lp">Supino</span><span class="lp on">Neutro</span></div></div>
+        </div>
+        <div class="na">Anchura: no aplica a una mano.</div>
+        <div class="gcap">CAMBIA EL EJERCICIO</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Unilateral</div><div class="hint">Cuenta como otro ejercicio, con su propio historial y progresión.</div></div><span class="sw on"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio aparte</div><div class="hint">«Remo unilateral en polea · Neutro» pasa a tener <b>su propia progresión</b> y podrás añadir otro «Remo unilateral en polea» a la sesión. La variante queda fija.</div></div><span class="sw"></span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note"><li>El Resumen pasa a «3 × 10–12 c/p»: la prescripción ya pone «c/p» a los unilaterales.</li></ul>
+  </div>
+
+  <!-- 1d · ejercicio que ya es a una mano -->
+  <div class="col">
+    <p class="cap"><b>D · UN EJERCICIO QUE YA ES A UNA MANO</b>Remo con mancuerna ya es a una mano: no hay
+      interruptor, solo el aviso.</p>
+    <div class="screen" style="height:760px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Remo con mancuerna</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed"><div class="sec">VARIANTE</div><div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Neutro</div><div class="t-label">Una mano · agarre · anchura</div></div><span class="chev">›</span></div>
+        <div class="summary"><div class="t-caps">Resumen</div><div class="t-bodyS">3 × 10–12 · 90s</div><div class="s2">Doble progresión · +2.5 kg</div></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap">CÓMO SE HACE · SOLO INFORMA</div>
+        <div class="og">
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-grip"/></svg>Agarre</div>
+            <div class="chips"><span class="lp">Prono</span><span class="lp on">Neutro</span></div></div>
+        </div>
+        <div class="gcap">CAMBIA EL EJERCICIO</div>
+        <div class="og">
+          <div class="orow off"><div class="m"><div class="t-bodyS">A una mano</div><div class="hint">Este ejercicio ya es unilateral.</div></div></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio aparte</div><div class="hint">«Remo con mancuerna · Neutro» pasa a tener <b>su propia progresión</b> y podrás añadir otro «Remo con mancuerna» a la sesión. La variante queda fija.</div></div><span class="sw"></span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note"><li>Cada ejercicio declara sus propias dimensiones: aquí el agarre solo tiene prono y neutro.</li></ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>2 · Unilateral que no está en la librería</h2>
+<p class="lead">
+  El jalón a una mano no existe en la librería. Al encender el interruptor, la app lo <b>crea como un ejercicio
+  propio</b> con un id fijo (<code>pulldown__uni</code>): nombre del original + «unilateral». Los ejercicios propios ya
+  funcionan en toda la app y viajan con el programa al cliente, así que no hay que tocar nada más. A partir de ahí
+  sale en el buscador como un ejercicio más.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · AL ENCENDERLO</b>Mismo gesto que en §1C. Lo único distinto: el ejercicio no existía y se crea.</p>
+    <div class="screen" style="height:720px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Jalón al pecho unilateral</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed"><div class="sec">VARIANTE</div><div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Una mano · Prono</div><div class="t-label">Implemento · agarre · anchura</div></div><span class="chev">›</span></div>
+        <div class="summary"><div class="t-caps">Resumen</div><div class="t-bodyS">3 × 10–12 · 90s</div><div class="s2">Doble progresión · +2.5 kg</div></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap">CÓMO SE HACE · SOLO INFORMA</div>
+        <div class="og">
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-grip"/></svg>Agarre</div>
+            <div class="chips"><span class="lp on">Prono</span><span class="lp">Supino</span><span class="lp">Neutro</span></div></div>
+        </div>
+        <div class="gcap">CAMBIA EL EJERCICIO</div>
+        <div class="og">
+          <div class="orow col"><div class="exname">Jalón al pecho unilateral <span class="tagnew">NUEVO</span></div></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Unilateral</div><div class="hint">Cuenta como otro ejercicio, con su propio historial y progresión.</div></div><span class="sw on"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio aparte</div><div class="hint">«Jalón al pecho unilateral · Prono» pasa a tener <b>su propia progresión</b> y podrás añadir otro «Jalón al pecho unilateral» a la sesión. La variante queda fija.</div></div><span class="sw"></span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note"><li>El historial empieza de cero: lo del jalón a dos manos se queda en el jalón a dos manos.</li></ul>
+  </div>
+  <div class="col">
+    <p class="cap"><b>B · EL BUSCADOR, DESPUÉS</b>Sale como un ejercicio más (contorno solo en la maqueta, para
+      señalarlo). Sin etiqueta CUSTOM: lo creó la app, no tú.</p>
+    <div class="screen">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Sesión B</div><div class="ttl">Añadir ejercicios</div></div><span class="addbtn off">Añadir</span></div>
+      <div class="hair"></div>
+      <div class="srow"><div class="sinput"><svg width="17" height="17"><use href="#i-search"/></svg><span class="q">jalón</span><span class="x">✕</span></div><div class="ibox"><svg width="20" height="20"><use href="#i-filter"/></svg></div></div>
+      <div class="create">＋ Crear ejercicio</div>
+      <div class="count">3 EJERCICIOS</div>
+      <div class="list">
+        <div class="xr"><div class="m"><div class="nm">Jalón al pecho</div><div class="mt">Espalda · Polea</div></div><span class="chk"><svg><use href="#i-check"/></svg></span></div>
+        <div class="xr" style="box-shadow:inset 2px 0 0 var(--accent)"><div class="m"><div class="nm">Jalón al pecho unilateral</div><div class="mt">Espalda · Polea</div></div><span class="chk"><svg><use href="#i-check"/></svg></span></div>
+        <div class="xr"><div class="m"><div class="nm">Jalón con triángulo</div><div class="mt">Espalda · Polea</div></div><span class="chk"><svg><use href="#i-check"/></svg></span></div>
+      </div>
+    </div>
+    <ul class="note">
+      <li>Mismo id en todos los móviles: si el entrenador y el cliente lo crean, llegan al mismo ejercicio.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>3 · Ejercicio aparte — dos jalones en la misma sesión</h2>
+<p class="lead">
+  Una sesión <b>no admite el mismo ejercicio dos veces</b>. Para tener dos jalones el mismo día, uno se convierte en
+  <b>ejercicio aparte</b>: su variante pasa a ser parte del nombre, con id fijo (<code>pulldown__pronated_wide</code>) y nombre «Jalón al pecho · Prono · Ancho» y
+  su propia progresión, igual que el unilateral. El texto del interruptor dice las dos cosas con los nombres de verdad:
+  <b>progresión propia</b> y <b>puedes añadir otro igual</b>. «Jalón con triángulo» sigue en la librería: lo distingue
+  el maneral, no el agarre.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · APAGADO</b>Con Prono · Ancho elegidos. El texto se escribe con el nombre que resultaría, no con
+      una explicación abstracta.</p>
+    <div class="screen" style="height:620px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Jalón al pecho</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed"><div class="sec">VARIANTE</div><div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Prono · Ancho</div><div class="t-label">Una mano · agarre · anchura</div></div><span class="chev">›</span></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap">CÓMO SE HACE · SOLO INFORMA</div>
+        <div class="og">
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-grip"/></svg>Agarre</div>
+            <div class="chips"><span class="lp on">Prono</span><span class="lp">Supino</span><span class="lp">Neutro</span></div></div>
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-width"/></svg>Anchura</div>
+            <div class="chips"><span class="lp on">Ancho</span><span class="lp">Medio</span><span class="lp">Estrecho</span></div></div>
+        </div>
+        <div class="gcap">CAMBIA EL EJERCICIO</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Unilateral</div><div class="hint">Cuenta como otro ejercicio, con su propio historial y progresión.</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio aparte</div><div class="hint">«Jalón al pecho · Prono · Ancho» pasa a tener <b>su propia progresión</b> y podrás añadir otro «Jalón al pecho» a la sesión. La variante queda fija.</div></div><span class="sw"></span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note"><li>Sin agarre ni anchura elegidos, el interruptor sale apagado y gris: «Elige antes un agarre o una
+      anchura».</li></ul>
+  </div>
+  <div class="col">
+    <p class="cap"><b>B · ENCENDIDO</b>El título pasa a «Jalón al pecho · Prono · Ancho», entero en negrita: la variante es parte de su nombre. La variante ya no se elige: es
+      parte del ejercicio.</p>
+    <div class="screen" style="height:620px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Jalón al pecho · Prono · Ancho</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed"><div class="sec">VARIANTE</div><div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Prono · Ancho</div><div class="t-label">Una mano · agarre · anchura</div></div><span class="chev">›</span></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap">CÓMO SE HACE · FIJA</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Prono · Ancho</div><div class="hint">Es parte del ejercicio. Para cambiarla, apaga «Ejercicio aparte».</div></div><span class="lock">🔒</span></div>
+        </div>
+        <div class="gcap">CAMBIA EL EJERCICIO</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Unilateral</div><div class="hint">Cuenta como otro ejercicio, con su propio historial y progresión.</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio aparte</div><div class="hint">Tiene <b>su propia progresión</b>. Ya puedes añadir otro «Jalón al pecho» a esta sesión.</div></div><span class="sw on"></span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note">
+      <li>Toast al activarlo: «Jalón al pecho · Prono · Ancho» es ahora un ejercicio aparte.</li>
+      <li>El historial empieza de cero; los prono-ancho de antes se quedan en el jalón normal (y el filtro de Progreso
+        los sigue enseñando ahí).</li>
+    </ul>
+  </div>
+  <div class="col">
+    <p class="cap"><b>C · NO SE PUEDE DESHACER AHORA</b>Ya hay un jalón normal en la sesión: apagarlo dejaría el mismo
+      ejercicio dos veces. El interruptor se queda fijo y dice por qué.</p>
+    <div class="screen" style="height:620px">
+      <div class="sh"><div class="back">‹</div><div class="mid"><div class="t-caps">Editar ejercicio</div><div class="ttl">Jalón al pecho · Prono · Ancho</div></div><div class="sp36"></div></div>
+      <div class="hair"></div>
+      <div class="ed"><div class="sec">VARIANTE</div><div class="navrow"><svg class="ic"><use href="#i-var"/></svg><div class="m"><div class="t-bodyS">Prono · Ancho</div><div class="t-label">Una mano · agarre · anchura</div></div><span class="chev">›</span></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap">CÓMO SE HACE · FIJA</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Prono · Ancho</div><div class="hint">Es parte del ejercicio. Para cambiarla, apaga «Ejercicio aparte».</div></div><span class="lock">🔒</span></div>
+        </div>
+        <div class="gcap">CAMBIA EL EJERCICIO</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">Unilateral</div><div class="hint">Cuenta como otro ejercicio, con su propio historial y progresión.</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Ejercicio aparte</div><div class="hint warn">No se puede juntar: ya hay un «Jalón al pecho» en esta sesión. Quítalo o sustitúyelo antes.</div></div><span class="sw on dis"></span></div>
+        </div>
+      </div>
+    </div>
+    <ul class="note"><li>La misma regla vale para los cuatro gestos: poner o quitar Unilateral y poner o quitar Ejercicio
+      aparte. Si el ejercicio que resultaría ya está en la sesión (o en otra sesión de su grupo vinculado), el
+      interruptor no se mueve.</li></ul>
+  </div>
+</div>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>D · LA SESIÓN</b>El aparte va entero en negrita (la variante es su nombre); el normal lleva la variante
+      en gris, porque se puede cambiar.</p>
+    <div class="screen"><div class="pad" style="gap:4px">
+      <div class="lrow"><span class="rn">1</span><div class="rm"><div class="t-bodyS">Jalón al pecho · Prono · Ancho</div><div class="t-label">Principal · 4×8–10 · 120s</div></div><span class="grip">⋮⋮</span></div>
+      <div class="lrow"><span class="rn">2</span><div class="rm"><div class="t-bodyS">Jalón al pecho<span class="v"> · Neutro · Estrecho</span></div><div class="t-label">3×10–12 · 90s</div></div><span class="grip">⋮⋮</span></div>
+      <div class="lrow"><span class="rn">3</span><div class="rm"><div class="t-bodyS">Remo en polea<span class="v"> · Neutro · Estrecho</span></div><div class="t-label">3×10–12 · 90s</div></div><span class="grip">⋮⋮</span></div>
+    </div></div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>E · EL BUSCADOR</b>Con el primero convertido, «Jalón al pecho» vuelve a salir y se puede añadir.</p>
+    <div class="screen">
+      <div class="srow"><div class="sinput"><svg width="17" height="17"><use href="#i-search"/></svg><span class="q">jalón</span><span class="x">✕</span></div><div class="ibox"><svg width="20" height="20"><use href="#i-filter"/></svg></div></div>
+      <div class="list" style="padding-top:15px">
+        <div class="xr sel"><div class="m"><div class="nm">Jalón al pecho</div><div class="mt">Espalda · Polea</div></div><span class="chk on"><svg><use href="#i-check"/></svg></span></div>
+        <div class="xr"><div class="m"><div class="nm">Jalón al pecho unilateral</div><div class="mt">Espalda · Polea</div></div><span class="chk"><svg><use href="#i-check"/></svg></span></div>
+        <div class="xr"><div class="m"><div class="nm">Jalón con triángulo</div><div class="mt">Espalda · Polea</div></div><span class="chk"><svg><use href="#i-check"/></svg></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>F · EN EL WORKOUT</b>El aparte no tiene nada que cambiar hoy: su nombre no es pulsable.</p>
+    <div class="screen"><div class="pad">
+      <div class="xcard"><div class="xh"><span class="n">1</span><div class="nmw">
+        <div class="nml">Jalón al pecho · Prono · Ancho</div>
+        <div class="tg"><span class="k">Principal</span> · 4 × 8–10 · 120s</div>
+      </div></div></div>
+      <div class="xcard"><div class="xh"><span class="n">2</span><div class="nmw">
+        <div class="nml">Jalón al pecho<span class="v">&nbsp;· Neutro · Estrecho</span></div>
+        <div class="tg">3 × 10–12 · 90s</div>
+      </div></div></div>
+    </div></div>
+  </div>
+</div>
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>4 · Workout — la variante, solo por hoy</h2>
+<p class="lead">
+  La variante va detrás del nombre, en gris y sin subrayado. Tocarla abre <b>la misma hoja, pero solo con agarre y
+  anchura</b>: en el entreno no se cambia de ejercicio (hoy no existe «sustituir» durante el
+  Workout). Lo que elijas se apunta en el registro de hoy y el programa no cambia.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · HOJA ABIERTA</b>La opción del programa lleva debajo «programa», para saber a qué vuelves.</p>
+    <div class="screen" style="height:560px">
+      <div class="pad">
+        <div class="xcard"><div class="xh"><span class="n">1</span><div class="nmw">
+          <div class="nml">Remo en polea<span class="v">&nbsp;· Neutro · Estrecho</span></div>
+          <div class="tg"><span class="k">Principal</span> · 3 × 10–12 · 90s</div>
+        </div></div></div>
+      </div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="shd"><span class="t">Variante</span><span class="d">Hecho</span></div>
+        <div class="gcap acc">HOY · SOLO ESTA SESIÓN</div>
+        <div class="og">
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-grip"/></svg>Agarre</div>
+            <div class="chips"><span class="lp on">Prono</span><span class="lp">Supino</span><span class="lp">Neutro<small>programa</small></span></div></div>
+          <div class="orow col"><div class="dimh"><svg class="ic"><use href="#i-width"/></svg>Anchura</div>
+            <div class="chips"><span class="lp">Ancho</span><span class="lp">Medio</span><span class="lp on">Estrecho<small>programa</small></span></div></div>
+        </div>
+        <div class="shint">El programa no cambia. Queda apuntado en el registro de hoy.</div>
+        <span class="link">↺ Volver a la del programa</span>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>B · AL CERRAR</b>La opción cambiada pasa a acento. Un unilateral lleva el «unilateral» en el nombre
+      (es otro ejercicio) y la variante detrás.</p>
+    <div class="screen"><div class="pad">
+      <div class="xcard"><div class="xh"><span class="n">1</span><div class="nmw">
+        <div class="nml">Remo en polea<span class="v">&nbsp;·</span> <span class="v chg">Prono</span><span class="v">&nbsp;· Estrecho</span></div>
+        <div class="tg"><span class="k">Principal</span> · 3 × 10–12 · 90s</div>
+      </div></div><div class="xb"><span class="sp on">60kg x</span><span class="sp on">12</span><span class="sp">12</span><span class="sp">12</span></div></div>
+      <div class="xcard"><div class="xh"><span class="n">2</span><div class="nmw">
+        <div class="nml">Remo unilateral en polea<span class="v">&nbsp;· Neutro</span></div>
+        <div class="tg">3 × 10–12 c/p · 90s</div>
+      </div></div></div>
+      <div class="xcard"><div class="xh"><span class="n">3</span><div class="nmw">
+        <div class="nml">Sentadilla con barra</div>
+        <div class="tg">4 × 5–8 · 150s</div>
+      </div></div></div>
+    </div></div>
+    <ul class="note">
+      <li>Sin variante elegida en el programa, no sale nada detrás del nombre y no hay nada que tocar.</li>
+      <li>Más adelante: un icono delante de la variante para que se vea que se toca.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>5 · Listas — editor de sesión e historial</h2>
+<p class="lead">
+  En el editor de sesión la variante va <b>en la línea del nombre</b>, como en el Workout: un solo texto de una línea
+  que se corta por el final, así que lo primero que se pierde es la variante, nunca el nombre. El historial dice lo que
+  se hizo de verdad.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>EDITOR DE SESIÓN</b>La línea de meta se queda como hoy.</p>
+    <div class="screen"><div class="pad" style="gap:4px">
+      <div class="lrow"><span class="rn">1</span><div class="rm"><div class="t-bodyS">Jalón al pecho<span class="v"> · Neutro · Ancho</span></div><div class="t-label">Principal · 4×8–10 · 120s</div></div><span class="grip">⋮⋮</span></div>
+      <div class="lrow"><span class="rn">2</span><div class="rm"><div class="t-bodyS">Remo unilateral en polea<span class="v"> · Neutro</span></div><div class="t-label">3×10–12 c/p · 90s</div></div><span class="grip">⋮⋮</span></div>
+      <div class="lrow"><span class="rn">3</span><div class="rm"><div class="t-bodyS">Peso muerto rumano con mancuernas</div><div class="t-label">3×8–10 · 120s</div></div><span class="grip">⋮⋮</span></div>
+    </div></div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>HISTORIAL · RESUMEN DE SESIÓN</b>Hoy fue prono aunque el programa diga neutro.</p>
+    <div class="screen"><div class="pad">
+      <div class="hcard">
+        <div class="hex"><div class="t-bodyS">Jalón al pecho <span>· Prono · Ancho</span></div>
+          <div class="pills"><span class="wpill"><b>60</b><u>kg</u><s> x</s></span><span class="sp on">10</span><span class="sp on">10</span><span class="sp on">9</span></div></div>
+        <div class="hex"><div class="t-bodyS">Remo unilateral en polea <span>· Neutro</span></div>
+          <div class="pills"><span class="wpill"><b>25</b><u>kg</u><s> x</s></span><span class="sp on">12</span><span class="sp on">12</span><span class="sp on">11</span></div></div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>6 · Progreso</h2>
+<p class="lead">
+  Cada ejercicio sale en la lista como hoy; el unilateral, como uno más, porque tiene su id. Dentro de un ejercicio, los chips de
+  arriba filtran <b>por variante</b>; solo salen las que hay en tu historial, y ninguno si solo has usado una. La
+  progresión automática no mira el filtro.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>A · LISTA DE EJERCICIOS</b>El unilateral es otra línea (marcada en la maqueta).</p>
+    <div class="screen"><div class="list" style="padding-top:15px">
+      <div class="prow"><div class="m"><div class="t-bodyS">Jalón al pecho</div><div class="s">15 sesiones · <b>+5%</b> progreso</div></div><span class="chev">›</span></div>
+      <div class="prow"><div class="m"><div class="t-bodyS">Remo en polea</div><div class="s">12 sesiones · <b>+8%</b> progreso</div></div><span class="chev">›</span></div>
+      <div class="prow new"><div class="m"><div class="t-bodyS">Remo unilateral en polea</div><div class="s">3 sesiones</div></div><span class="chev">›</span></div>
+      <div class="prow"><div class="m"><div class="t-bodyS">Sentadilla con barra</div><div class="s">20 sesiones · <b>+12%</b> progreso</div></div><span class="chev">›</span></div>
+    </div></div>
+  </div>
+  <div class="col">
+    <p class="cap"><b>B · DETALLE, FILTRADO POR NEUTRO</b>«Todas» es la vista de siempre. El 1RM y el PR se recalculan
+      solo con esos entrenos.</p>
+    <div class="screen" style="padding-top:14px">
+      <div class="mh"><div class="exbar">Jalón al pecho <span>▾</span></div><div class="xclose">✕</div></div>
+      <div class="fpills"><span class="pat">Todas</span><span class="pat on">Neutro</span><span class="pat">Prono</span><span class="pat">Supino</span></div>
+      <div class="tiles">
+        <div class="tile"><div><div class="v">78kg</div><div class="l">1RM</div></div><div class="s">PR 80kg · hace 2 sem</div></div>
+        <div class="tile"><div><div class="v">+6%</div><div class="l">TENDENCIA</div></div><div class="s">8 semanas</div></div>
+      </div>
+      <div class="chartbox">
+        <svg viewBox="0 0 320 110" width="100%">
+          <polyline fill="none" stroke="#3a3a3a" stroke-width="2" points="10,90 50,80 90,84 130,70 170,62 210,66 250,50 290,40"/>
+          <polyline fill="none" stroke="#aae216" stroke-width="2.5" points="10,90 90,84 170,62 250,50 290,40"/>
+          <g fill="#aae216"><circle cx="10" cy="90" r="4"/><circle cx="90" cy="84" r="4"/><circle cx="170" cy="62" r="4"/><circle cx="250" cy="50" r="4"/><circle cx="290" cy="40" r="4"/></g>
+          <g fill="#585858"><circle cx="50" cy="80" r="3"/><circle cx="130" cy="70" r="3"/><circle cx="210" cy="66" r="3"/></g>
+        </svg>
+      </div>
+    </div>
+    <ul class="note"><li>Los puntos grises son otras variantes (se podrían ocultar del todo).</li></ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>7 · Crear un ejercicio propio</h2>
+<p class="lead">
+  La pantalla de siempre gana una sección <b>VARIANTE</b> justo debajo del nombre: si es a una mano (el «Unilateral»
+  de OPCIONES se muda aquí) y qué dimensiones tiene.
+</p>
+<div class="rack">
+  <div class="col">
+    <p class="cap"><b>NUEVO EJERCICIO</b>El remo con cuerda no está en la librería.</p>
+    <div class="screen">
+      <div class="ch-head"><span class="t-title">Nuevo ejercicio</span><span class="x">✕</span></div>
+      <div class="ed">
+        <div class="sec">NOMBRE</div>
+        <div class="ninput">Remo con cuerda</div>
+        <div class="sec">VARIANTE</div>
+        <div class="og">
+          <div class="orow"><div class="m"><div class="t-bodyS">A una mano</div><div class="hint">Siempre unilateral: sin anchura.</div></div><span class="sw"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Agarre</div><div class="hint">Prono · Supino · Neutro</div></div><span class="sw on"></span></div>
+          <div class="orow"><div class="m"><div class="t-bodyS">Anchura</div><div class="hint">Ancho · Medio · Estrecho</div></div><span class="sw on"></span></div>
+        </div>
+        <div class="sec fade2">RESUMEN · VOLUMEN · PROGRESIÓN · OPCIONES · CLASIFICACIÓN</div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</body>
+</html>

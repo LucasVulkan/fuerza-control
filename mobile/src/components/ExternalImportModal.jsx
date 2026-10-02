@@ -19,13 +19,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import { parseImportFile } from '../utils/importFile';
 import ImportModal from './ImportModal';
 
+import { showDialog } from './ui/dialog';
 export default function ExternalImportModal() {
   const { t } = useTranslation();
 
@@ -46,7 +46,7 @@ export default function ExternalImportModal() {
     clearPendingExternalImport();
     const parsed = parseImportFile(rawContent);
     if (!parsed.ok) {
-      Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
+      showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams));
       return;
     }
     setImportState({ fileName, parsedData: parsed.data });

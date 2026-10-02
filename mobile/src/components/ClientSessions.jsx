@@ -11,20 +11,22 @@
  * (docs/specs/group-classes.md §4.1 y §4.6).
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Share } from 'react-native';
 import { Text } from './ui/Text';
 import Svg, { Path } from 'react-native-svg';
+import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
 import DragSheet from './DragSheet';
-import { MenuRow } from './ui/MenuList';
+import SheetRow from './ui/SheetRow';
+import { ROW_ICON } from './ui/rowIcons';
 import { ExerciseLines, SessionRow, TodayCard, SectionHeader } from './SessionList';
-import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
+import { FOLD_MS } from './ui/collapseOut';
+import { startCta, relativeTime } from '../utils/sessionRowText';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
-import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionToText } from '../utils/sessionText';
 import { lastExerciseRef } from '../utils/exerciseLinks';
 import { useWeightUnit } from '../hooks/useWeightUnit';
@@ -32,6 +34,7 @@ import { useLastDays } from '../hooks/useLastDays';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { confirmDiscardActive } from './ui/confirmDiscard';
 function PencilGlyph({ color }) {
   return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -57,14 +60,10 @@ function useClientStart(client) {
 
   const guard = (fn) => {
     if (!activeSession.templateId) { fn(); return; }
-    Alert.alert(t('workout.discardConfirm'), undefined, [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('workout.discardSession'), style: 'destructive', onPress: fn },
-    ]);
+    confirmDiscardActive(t, fn);
   };
   const mine = activeSession.forClient === client.id;
   return {
-    activeSession,
     activeId: mine ? activeSession.templateId : null,
     start: (templateId) => {
       if (mine && activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
@@ -196,16 +195,15 @@ function LogPastSheet({ visible, sessions, heroId, onClose, onLog, onPaste }) {
   );
 }
 
-export default function ClientSessions({ client, program, days, log }) {
+export default function ClientSessions({ client, program, days, log, fold }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   const navigation = useNavigation();
-  const [openId,  setOpenId]  = useState(null);
   const [logPast, setLogPast] = useState(false);
 
-  const { activeSession, activeId, start, logAt } = useClientStart(client);
+  const { activeId, start, logAt } = useClientStart(client);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
@@ -224,16 +222,10 @@ export default function ClientSessions({ client, program, days, log }) {
   const plan = sessionPlan({
     days: sessions.map((d) => ({ templateId: d.templateId, label: d.label })),
     log,
-    activeTemplateId: activeId,
     t,
   });
 
   const heroMeta = (d) => {
-    if (activeId === d.templateId) {
-      const exs  = d.template.exercises ?? [];
-      const done = exs.filter((ex) => isExerciseDone(ex, activeSession.setsState?.[ex.exerciseId] ?? [])).length;
-      return t('home.heroMetaActive', { done, total: exs.length, ago: elapsedShort(activeSession.startedAt) ?? '' });
-    }
     const stats = sessionStats(d.template, allExercises);
     const rel   = relativeTime(lastOfIn(log, d.templateId)?.timestamp, t);
     return [
@@ -251,10 +243,8 @@ export default function ClientSessions({ client, program, days, log }) {
         {plan.rows.map((row) => {
           const d = byId.get(row.templateId);
           if (!d) return null;
-          const open   = openId === row.templateId;
           const active = activeId === row.templateId;
           const cta    = startCta(t, d.label, { active, done: row.isDone });
-          const toggle = () => setOpenId(open ? null : row.templateId);
           const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${d.name}`;
           const lines  = <ExerciseLines template={d.template} allExercises={allExercises} />;
 
@@ -264,12 +254,11 @@ export default function ClientSessions({ client, program, days, log }) {
                 key={row.templateId}
                 marker={row.marker}
                 // «Le toca», no «Mi entreno de hoy»: el entreno es suyo.
-                flag={active ? t('home.sessionActive') : t('clients.sessionFlag')}
+                flag={t('clients.sessionFlag')}
                 name={d.name}
                 meta={heroMeta(d)}
-                open={open}
+                {...fold.row(row.templateId)}
                 cta={cta}
-                onToggle={toggle}
                 onStart={() => start(row.templateId)}
                 onShare={() => share(row.templateId)}
                 a11yLabel={`${plan.heroLabel}, ${a11y}`}
@@ -288,9 +277,8 @@ export default function ClientSessions({ client, program, days, log }) {
                 ? rel.toLowerCase()
                 : t('home.rowMinutes', { minutes: sessionStats(d.template, allExercises).minutes })}
               done={row.isDone}
-              open={open}
+              {...fold.row(row.templateId)}
               cta={cta}
-              onToggle={toggle}
               onStart={() => start(row.templateId)}
               onShare={() => share(row.templateId)}
               a11yLabel={a11y}
@@ -301,15 +289,19 @@ export default function ClientSessions({ client, program, days, log }) {
         })}
       </View>
 
-      <TouchableOpacity
-        style={styles.logPastBtn}
-        onPress={() => setLogPast(true)}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-      >
-        <PencilGlyph color={th.colors.text} />
-        <Text style={styles.logPastText}>{t('clients.logPast.open')}</Text>
-      </TouchableOpacity>
+      {/* Con `layout`, como todo lo que queda debajo de una sesión: sin él
+          salta a su sitio mientras la tarjeta sigue plegándose. */}
+      <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+        <TouchableOpacity
+          style={styles.logPastBtn}
+          onPress={() => setLogPast(true)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+        >
+          <PencilGlyph color={th.colors.text} />
+          <Text style={styles.logPastText}>{t('clients.logPast.open')}</Text>
+        </TouchableOpacity>
+      </Reanimated.View>
 
       {/* Montada solo mientras está abierta: así arranca siempre en la que
           toca y en Hoy. */}
@@ -332,12 +324,12 @@ export default function ClientSessions({ client, program, days, log }) {
  * creaste o le asignaste desde Plantillas. Sin app, se entrenan desde aquí;
  * con app le llegan con su programa y aquí solo se consultan y se editan.
  */
-export function ClientFreeSessions({ client, canStart, log }) {
+export function ClientFreeSessions({ client, canStart, log, fold }) {
   const { t }      = useTranslation();
   const styles     = useThemedStyles(makeStyles);
   const navigation = useNavigation();
-  const [openId, setOpenId] = useState(null);
-  const [sheet,  setSheet]  = useState(false);
+  // null · 'menu' · 'templates': las dos hojas de «+ Sesión libre», como en Inicio.
+  const [sheet,  setSheet]  = useState(null);
 
   const sessionTemplates   = useStore((s) => s.sessionTemplates);
   const createFreeTemplate = useStore((s) => s.createFreeTemplate);
@@ -365,26 +357,26 @@ export function ClientFreeSessions({ client, canStart, log }) {
   ].filter(Boolean).join(' · ');
 
   return (
-    <View style={styles.freeWrap}>
+    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.freeWrap}>
       {his.length > 0 && (
         <>
           <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
           <View style={styles.group}>
-            {his.map((tpl) => {
-              const open = openId === tpl.id;
+            {his.map((tpl, i) => {
               const rel  = relativeTime(lastOfIn(log, tpl.id)?.timestamp, t);
               return (
                 <SessionRow
                   key={tpl.id}
-                  marker=""
+                  marker={String(i + 1).padStart(2, '0')}
+                  // Número en el gris de las hechas, como en Inicio (U31).
+                  markerMuted
                   name={nameOf(tpl)}
                   meta={rel
                     ? rel.toLowerCase()
                     : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
                   done={false}
-                  open={open}
+                  {...fold.row(tpl.id)}
                   cta={startCta(t, '', { active: activeId === tpl.id, done: false })}
-                  onToggle={() => setOpenId(open ? null : tpl.id)}
                   // Solo sin app se empieza desde aquí: con código, la
                   // entrena él (trainer-logging.md §4.0.2).
                   onStart={canStart ? () => start(tpl.id) : undefined}
@@ -400,52 +392,72 @@ export function ClientFreeSessions({ client, canStart, log }) {
         </>
       )}
 
-      <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet(true)} activeOpacity={0.75} accessibilityRole="button">
-        <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
-      </TouchableOpacity>
+      <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+        <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet('menu')} activeOpacity={0.75} accessibilityRole="button">
+          <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
+        </TouchableOpacity>
+      </Reanimated.View>
 
-      {sheet && (
-        <DragSheet visible onClose={() => setSheet(false)} title={t('clients.freeSheet.title', { name: client.name })}>
+      {sheet === 'menu' && (
+        <DragSheet visible onClose={() => setSheet(null)} title={t('clients.freeSheet.title', { name: client.name })}>
           {/* Con app, la sesión viaja con su programa: sin programa no le llega. */}
           {!canStart && !client.activeProgramId && (
             <Text style={[styles.sheetHint, styles.sheetHintTop]}>{t('templates.assignSession.noProgram')}</Text>
           )}
           <View style={styles.sheetGroup}>
-            <MenuRow
+            <SheetRow
               isFirst
-              isLast
+              isLast={library.length === 0}
+              icon={ROW_ICON.new}
               label={t('clients.freeSheet.blank')}
               sub={t('clients.freeSheet.blankDesc')}
               subLines={0}
               minHeight={62}
-              onPress={() => { setSheet(false); edit(createFreeTemplate(null, client.id)); }}
+              onPress={() => { setSheet(null); edit(createFreeTemplate(null, client.id)); }}
             />
+            {/* Como en Inicio: las plantillas detrás de una fila con su número,
+                y no todas de golpe en esta hoja — con veinte no se encontraba
+                nada. El cambio de hoja es inmediato (iOS no presenta un Modal
+                mientras otro se va). */}
+            {library.length > 0 && (
+              <SheetRow
+                isLast
+                icon={ROW_ICON.preset}
+                label={t('freeSession.fromTemplates')}
+                value={String(library.length)}
+                sub={t('freeSession.fromTemplatesDesc')}
+                subLines={0}
+                minHeight={62}
+                onPress={() => setSheet('templates')}
+              />
+            )}
           </View>
-          {library.length > 0 && (
-            <>
-              <Text style={styles.sheetLabel}>{t('clients.freeSheet.fromTemplate').toUpperCase()}</Text>
-              <View style={styles.sheetGroup}>
-                {library.map((tpl, i) => (
-                  <MenuRow
-                    key={tpl.id}
-                    isFirst={i === 0}
-                    isLast={i === library.length - 1}
-                    label={nameOf(tpl)}
-                    sub={metaOf(tpl)}
-                    minHeight={62}
-                    onPress={() => {
-                      setSheet(false);
-                      copyFreeTemplate(tpl.id, { owner: client.id });
-                      showToast(t('clients.freeSheet.assigned', { name: client.name }), 2200, 'success');
-                    }}
-                  />
-                ))}
-              </View>
-            </>
-          )}
         </DragSheet>
       )}
-    </View>
+
+      {sheet === 'templates' && (
+        <DragSheet visible onClose={() => setSheet(null)} title={t('freeSession.templatesTitle')}>
+          <View style={styles.sheetGroup}>
+            {library.map((tpl, i) => (
+              <SheetRow
+                key={tpl.id}
+                icon={ROW_ICON.preset}
+                isFirst={i === 0}
+                isLast={i === library.length - 1}
+                label={nameOf(tpl)}
+                sub={metaOf(tpl)}
+                minHeight={62}
+                onPress={() => {
+                  setSheet(null);
+                  copyFreeTemplate(tpl.id, { owner: client.id });
+                  showToast(t('clients.freeSheet.assigned', { name: client.name }), 2200, 'success');
+                }}
+              />
+            ))}
+          </View>
+        </DragSheet>
+      )}
+    </Reanimated.View>
   );
 }
 

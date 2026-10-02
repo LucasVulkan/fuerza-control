@@ -23,7 +23,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/ui/Text';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Path, G, Circle } from 'react-native-svg';
@@ -56,6 +56,7 @@ import { parseImportFile } from '../utils/importFile';
 import { templatesOf } from '../utils/programOwnership';
 import { allProgramDays } from '../utils/stageProgress';
 
+import { showDialog } from '../components/ui/dialog';
 // Opciones de "días por semana" y de "sesiones por semana": el mismo rango en
 // las dos preguntas — una sola sesión ya es un programa válido y siete es el techo.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
@@ -613,7 +614,7 @@ export default function OnboardingScreen() {
       after();
     } catch (err) {
       console.error('Error generando programa:', err);
-      Alert.alert(t('common.error', 'Error'), t('onboarding.generateError', 'No se pudo generar el programa. Inténtalo de nuevo.'));
+      showDialog(t('common.error', 'Error'), t('onboarding.generateError', 'No se pudo generar el programa. Inténtalo de nuevo.'));
       setLoading(false);
     }
   }
@@ -650,13 +651,13 @@ export default function OnboardingScreen() {
       });
       const parsed = parseImportFile(raw);
       if (!parsed.ok) {
-        Alert.alert(t('common.error', 'Error'), t(parsed.errorKey, parsed.errorParams));
+        showDialog(t('common.error', 'Error'), t(parsed.errorKey, parsed.errorParams));
         return;
       }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        Alert.alert(t('common.error', 'Error'), err?.message ?? 'No se pudo leer el archivo');
+        showDialog(t('common.error', 'Error'), err?.message ?? t('errors.cannotReadFile'));
       }
     }
   }

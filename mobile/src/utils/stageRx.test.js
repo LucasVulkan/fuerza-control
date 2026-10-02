@@ -95,25 +95,56 @@ describe('applyRx — alcance', () => {
 });
 
 describe('applyRx — progresión', () => {
-  it('halves a fixed increment, resolving it from the library when absent', () => {
+  it('halves a fixed increment that sits above the step', () => {
+    const ex = { ...curl, progression: { type: 'double', increment: { type: 'fixed', value: 5 } } };
+    const [c] = applyRx([ex], { incrementScale: 0.5 }, LIB);
+    expect(c.progression.increment.value).toBe(2.5);
+  });
+
+  it('rounds to the resolved step and never goes below it (the library step 5 → stays 5)', () => {
+    // El salto por defecto es el escalón (5); la mitad (2,5) no es un escalón.
     const [s] = applyRx(SESSION, { incrementScale: 0.5 }, LIB);
-    expect(s.progression.increment.value).toBe(2.5);   // weightStep 5 → 2.5
+    expect(s.progression.increment.value).toBe(5);
   });
 
-  it('respects minIncrement when rounding', () => {
-    const ex = { ...squat, progression: { type: 'double', increment: { type: 'fixed', value: 5, minIncrement: 2.5 } } };
-    const [s] = applyRx([ex], { incrementScale: 0.5 }, LIB);
-    expect(s.progression.increment.value).toBe(2.5);
+  it("the exercise's own weightStep wins over the library's", () => {
+    const [s] = applyRx([{ ...squat, weightStep: 1.25 }], { incrementScale: 0.5 }, LIB);
+    expect(s.progression.increment.value).toBe(1.25);   // su salto por defecto es su escalón, y no baja de él
+    const ex = { ...squat, weightStep: 2.5, progression: { type: 'double', increment: { type: 'fixed', value: 5 } } };
+    expect(applyRx([ex], { incrementScale: 0.5 }, LIB)[0].progression.increment.value).toBe(2.5);
   });
 
-  it('scales pct and stepped increments too', () => {
+  it('scales pct; a legacy stepped increment is read as fixed from its first step', () => {
     const pct = { ...curl, progression: { type: 'double', increment: { type: 'pct', pct: 10 } } };
     const [p] = applyRx([pct], { incrementScale: 0.5 }, LIB);
     expect(p.progression.increment.pct).toBe(5);
 
-    const stepped = { ...curl, progression: { type: 'double', increment: { type: 'stepped', steps: [{ untilSession: 4, value: 5 }, { value: 2.5 }] } } };
+    const stepped = { ...curl, progression: { type: 'double', increment: { type: 'stepped', steps: [{ untilSession: 4, value: 10 }, { value: 2.5 }] } } };
     const [st] = applyRx([stepped], { incrementScale: 0.5 }, LIB);
-    expect(st.progression.increment.steps.map((x) => x.value)).toEqual([2.5, 1.25]);
+    expect(st.progression.increment).toEqual({ type: 'fixed', value: 5, pct: 2.5 });
+  });
+
+  it('Reps and Time have no weight step: integer, at least 1', () => {
+    const reps = { ...curl, progression: { type: 'reps', increment: { type: 'fixed', value: 4 } } };
+    expect(applyRx([reps], { incrementScale: 0.5 }, LIB)[0].progression.increment.value).toBe(2);
+    const one = { ...curl, progression: { type: 'reps' } };
+    expect(applyRx([one], { incrementScale: 0.5 }, LIB)[0].progression.increment.value).toBe(1);
+  });
+
+  it('does not write step or direction, and writes down only when it was saved', () => {
+    const [s] = applyRx(SESSION, { progressionHold: 'deload' }, LIB);
+    expect(s.progression).not.toHaveProperty('step');
+    expect(s.progression).not.toHaveProperty('direction');
+    expect(s.progression).not.toHaveProperty('down');
+    const saved = { ...squat, progression: { type: 'double', down: { fails: 2 } } };
+    expect(applyRx([saved], { progressionHold: 'deload' }, LIB)[0].progression.down).toEqual({ fails: 2 });
+    const never = { ...squat, progression: { type: 'double', down: 'never' } };
+    expect(applyRx([never], { progressionHold: 'deload' }, LIB)[0].progression.down).toBe('never');
+  });
+
+  it("keeps a saved 'weight' type: its goal is minReps, 'double' would move it to maxReps", () => {
+    const w = { ...squat, progression: { type: 'weight' } };
+    expect(applyRx([w], { progressionHold: 'deload' }, LIB)[0].progression.type).toBe('weight');
   });
 
   it('marks a deload without losing the rest of the progression config', () => {
@@ -163,8 +194,9 @@ describe('applyRx — los peldaños derivan de la BASE, no del anterior', () => 
   });
 
   it('a deload rung does not inherit the halved increment of another rung', () => {
-    const intense = applyRx(SESSION, { incrementScale: 0.5 }, LIB);
-    const deload  = applyRx(SESSION, { setsDelta: -1, progressionHold: 'deload' }, LIB);
+    const base    = [{ ...squat, weightStep: 2.5, progression: { type: 'double', increment: { type: 'fixed', value: 5 } } }];
+    const intense = applyRx(base, { incrementScale: 0.5 }, LIB);
+    const deload  = applyRx(base, { setsDelta: -1, progressionHold: 'deload' }, LIB);
     expect(intense[0].progression.increment.value).toBe(2.5);
     expect(deload[0].progression.increment.value).toBe(5);   // desde la base
   });

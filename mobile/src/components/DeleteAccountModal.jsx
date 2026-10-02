@@ -18,7 +18,7 @@
  */
 
 import { useState } from 'react';
-import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
 import { useTranslation } from 'react-i18next';
 
@@ -28,6 +28,7 @@ import { SectionLabel } from './ui/MenuList';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from './ui/dialog';
 export default function DeleteAccountModal({ visible, onClose }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -47,7 +48,7 @@ export default function DeleteAccountModal({ visible, onClose }) {
   const asClient   = !!clientSync.slotId;
 
   function handleDelete() {
-    Alert.alert(
+    showDialog(
       t('deleteAccount.confirmTitle'),
       t('deleteAccount.confirmBody'),
       [
@@ -61,7 +62,7 @@ export default function DeleteAccountModal({ visible, onClose }) {
               showToast(t('deleteAccount.toastDone'), 2600, 'neutral');
               onClose();
             } catch (err) {
-              Alert.alert(t('deleteAccount.errTitle'), err?.message ?? t('deleteAccount.errBody'));
+              showDialog(t('deleteAccount.errTitle'), err?.message ?? t('deleteAccount.errBody'));
             } finally {
               setLoading(false);
             }

@@ -5,6 +5,7 @@
  * React Native / Expo surface to `test/native-stub.js`.
  */
 
+import { EXERCISE_LIBRARY } from '../src/data/exerciseLibrary';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
@@ -1672,7 +1673,7 @@ describe('sesiones libres en el recap — free-sessions.md T22', () => {
 
   it('los ejercicios añadidos en el entreno pasan a la sesión libre, sin tocar los que ya tenía', () => {
     const id = useStore.getState().createFreeTemplate({ exercises: [{ exerciseId: 'squat', sets: 3 }] });
-    useStore.getState().updateExerciseParams(id, 'squat', { progressionModel: 'submax' });
+    useStore.getState().updateExerciseParams(id, 'squat', { progressionModel: 'fixed' });
     useStore.setState({ workoutLog: [{
       id: 'log_t', sessionTemplateId: id, free: true, timestamp: 1,
       exercises: [
@@ -1684,7 +1685,7 @@ describe('sesiones libres en el recap — free-sessions.md T22', () => {
     expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(1);
     const exs = useStore.getState().sessionTemplates[id].exercises;
     expect(exs.map((e) => e.exerciseId)).toEqual(['squat', 'bench_press_barbell']);
-    expect(exs[0]).toMatchObject({ sets: 3, progressionModel: 'submax' });
+    expect(exs[0]).toMatchObject({ sets: 3, progressionModel: 'fixed' });
     expect(exs[1]).toMatchObject({ sets: 2, minReps: 6, maxReps: 8 });
     // Repetirlo no los duplica.
     expect(useStore.getState().addEntryExercisesToTemplate('log_t')).toBe(0);
@@ -1909,6 +1910,46 @@ describe('el entrenador apunta por el cliente — trainer-logging.md C19', () =>
 
     expect(useStore.getState().clientLogs.cli_1[0]).toMatchObject({ sessionRpe: 7, bodyWeight: 62 });
     expect(useStore.getState().profile.bodyWeight).toBe(80);
+  });
+
+  it('el peso se sella al guardar (P62): el del perfil, y cambiarlo después no la altera', () => {
+    const pid = programaDeCliente();
+    const tid = prog(pid).stages[0].days[0].sessionTemplateId;
+    useStore.setState((s) => ({ profile: { ...s.profile, bodyWeight: 62 } }));
+    const { entryId } = entrenar(tid);
+    useStore.setState((s) => ({ profile: { ...s.profile, bodyWeight: 70 } }));
+
+    expect(useStore.getState().workoutLog.find((e) => e.id === entryId).bodyWeight).toBe(62);
+  });
+
+  it('el entreno de un cliente sella el último peso de SU log, no el mío', () => {
+    const pid = programaDeCliente();
+    const [a, b] = prog(pid).stages[0].days.map((d) => d.sessionTemplateId);
+    const primera = entrenar(a, { forClient: 'cli_1' });
+    expect(useStore.getState().clientLogs.cli_1[0].bodyWeight).toBeNull();   // sin peso conocido
+
+    useStore.getState().setSessionFeedback(primera.entryId, { bodyWeight: 58.5 }, 'cli_1');
+    entrenar(b, { forClient: 'cli_1' });
+
+    expect(useStore.getState().clientLogs.cli_1[1].bodyWeight).toBe(58.5);
+    expect(useStore.getState().profile.bodyWeight).toBe(80);
+  });
+
+  it('sin peso en el perfil la sesión queda con null', () => {
+    const pid = programaDeCliente();
+    useStore.setState((s) => ({ profile: { ...s.profile, bodyWeight: null } }));
+    const { entryId } = entrenar(prog(pid).stages[0].days[0].sessionTemplateId);
+
+    expect(useStore.getState().workoutLog.find((e) => e.id === entryId).bodyWeight).toBeNull();
+  });
+
+  it('la nota corregida en el recap va a la entrada del cliente', () => {
+    const pid = programaDeCliente();
+    const res = entrenar(prog(pid).stages[0].days[0].sessionTemplateId, { forClient: 'cli_1' });
+
+    useStore.getState().setSessionFeedback(res.entryId, { notes: 'Hombro cargado' }, 'cli_1');
+
+    expect(useStore.getState().clientLogs.cli_1[0].notes).toBe('Hombro cargado');
   });
 
   it('un entreno mío sigue igual: mi historial, con reloj y descansos', () => {
@@ -2155,3 +2196,308 @@ describe('plantillas de sesión aparte de mis sesiones — group-classes.md §4.
     expect(tpl(dup)).toMatchObject({ kind: 'template', onHome: false, name: 'Copia' });
   });
 });
+
+describe('ejercicios juntados al rehidratar — exercise-variants.md P41', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(AsyncStorage, 'getItem').mockResolvedValue(null);
+  });
+
+  it('plantillas e historial pasan al id nuevo con su variante', async () => {
+    const state = {
+      sessionTemplates: { t1: { id: 't1', exercises: [{ exerciseId: 'pulldown_supinated', sets: 3 }] } },
+      workoutLog: [{ id: 'l1', sessionTemplateId: 't1', timestamp: 1, exercises: [{ exerciseId: 'pulldown_supinated', sets: [] }] }],
+      clientLogs: {},
+    };
+    rehydrateCallback()(state, undefined);
+    expect(state.sessionTemplates.t1.exercises[0]).toMatchObject({ exerciseId: 'pulldown', variant: { grip: 'supinated' } });
+    expect(state.workoutLog[0].exercises[0]).toMatchObject({ exerciseId: 'pulldown', variant: { grip: 'supinated' } });
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
+  });
+
+  it('la sesión en curso sigue al ejercicio juntado', async () => {
+    const abierta = {
+      templateId: 't1', startedAt: Date.now(), setsState: { seated_row_neutral: [{ weight: '40', reps: '', time: '', done: false }] },
+      exerciseNotes: {}, adHocExercises: [],
+    };
+    AsyncStorage.getItem.mockResolvedValue(JSON.stringify(abierta));
+    rehydrateCallback()({}, undefined);
+    await vi.waitFor(() => expect(useStore.getState().activeSession.templateId).toBe('t1'));
+    expect(useStore.getState().activeSession.setsState).toEqual({ cable_row: [{ weight: '40', reps: '', time: '', done: false }] });
+  });
+});
+
+describe('la variante en la sesión — exercise-variants.md P42', () => {
+  beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY }); });
+
+  function sesionConJalon(variant) {
+    const pid = useStore.getState().createEmptyProgram(1, 'Var');
+    const tid = Object.keys(useStore.getState().sessionTemplates).find(
+      (id) => useStore.getState().sessionTemplates[id].programId === pid,
+    );
+    useStore.setState((s) => ({
+      sessionTemplates: {
+        ...s.sessionTemplates,
+        [tid]: { ...s.sessionTemplates[tid], exercises: [{ exerciseId: 'pulldown', sets: 1, ...(variant ? { variant } : {}) }] },
+      },
+    }));
+    return tid;
+  }
+
+  it('guardar apunta la variante del programa en el registro', () => {
+    const tid = sesionConJalon({ grip: 'neutral', width: 'narrow' });
+    useStore.getState().startSession(tid);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { pulldown: [{ weight: '50', reps: '10', time: '', done: true }] } },
+    }));
+    const { entryId } = useStore.getState().saveSession();
+    const entry = useStore.getState().workoutLog.find((e) => e.id === entryId);
+    expect(entry.exercises[0].variant).toEqual({ grip: 'neutral', width: 'narrow' });
+  });
+
+  it('sin variante no se escribe la clave', () => {
+    const tid = sesionConJalon(null);
+    useStore.getState().startSession(tid);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { pulldown: [{ weight: '50', reps: '10', time: '', done: true }] } },
+    }));
+    const { entryId } = useStore.getState().saveSession();
+    const entry = useStore.getState().workoutLog.find((e) => e.id === entryId);
+    expect('variant' in entry.exercises[0]).toBe(false);
+  });
+
+  it('sustituir conserva solo lo que el ejercicio nuevo declara', () => {
+    const tid = sesionConJalon({ grip: 'supinated', width: 'wide' });
+    useStore.getState().replaceExercise(tid, 'pulldown', 'barbell_row');   // prono/supino · ancho/medio
+    expect(useStore.getState().sessionTemplates[tid].exercises[0].variant).toEqual({ grip: 'supinated', width: 'wide' });
+    useStore.getState().replaceExercise(tid, 'barbell_row', 'squat_barbell');  // sin variante
+    expect('variant' in useStore.getState().sessionTemplates[tid].exercises[0]).toBe(false);
+  });
+});
+
+describe('la variante de hoy — exercise-variants.md P43', () => {
+  beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY }); });
+
+  function entrenarJalon(setToday) {
+    const pid = useStore.getState().createEmptyProgram(1, 'Hoy');
+    const tid = Object.keys(useStore.getState().sessionTemplates).find(
+      (id) => useStore.getState().sessionTemplates[id].programId === pid,
+    );
+    useStore.setState((s) => ({
+      sessionTemplates: {
+        ...s.sessionTemplates,
+        [tid]: { ...s.sessionTemplates[tid], exercises: [{ exerciseId: 'pulldown', sets: 1, variant: { grip: 'neutral' } }] },
+      },
+    }));
+    useStore.getState().startSession(tid);
+    setToday?.();
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { pulldown: [{ weight: '50', reps: '10', time: '', done: true }] } },
+    }));
+    const { entryId } = useStore.getState().saveSession();
+    return { tid, entry: useStore.getState().workoutLog.find((e) => e.id === entryId) };
+  }
+
+  it('lo cambiado hoy va al registro y el programa no cambia', () => {
+    const { tid, entry } = entrenarJalon(() => useStore.getState().setSessionVariant('pulldown', { grip: 'pronated' }));
+    expect(entry.exercises[0].variant).toEqual({ grip: 'pronated' });
+    expect(useStore.getState().sessionTemplates[tid].exercises[0].variant).toEqual({ grip: 'neutral' });
+  });
+
+  it('volver a la del programa borra el cambio de hoy', () => {
+    const { entry } = entrenarJalon(() => {
+      useStore.getState().setSessionVariant('pulldown', { grip: 'pronated' });
+      useStore.getState().setSessionVariant('pulldown', undefined);
+    });
+    expect(entry.exercises[0].variant).toEqual({ grip: 'neutral' });
+  });
+
+  it('hoy sin especificar no escribe variante', () => {
+    const { entry } = entrenarJalon(() => useStore.getState().setSessionVariant('pulldown', {}));
+    expect('variant' in entry.exercises[0]).toBe(false);
+  });
+});
+
+describe('unilateral y ejercicio aparte — exercise-variants.md P44', () => {
+  beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY, customExercises: {} }); });
+
+  /** Un programa de dos sesiones; `ejercicios[i]` son los de la sesión i. */
+  function programa(...ejercicios) {
+    const pid = useStore.getState().createEmptyProgram(ejercicios.length, 'Id');
+    const tids = Object.keys(useStore.getState().sessionTemplates).filter(
+      (id) => useStore.getState().sessionTemplates[id].programId === pid,
+    );
+    useStore.setState((s) => ({
+      sessionTemplates: {
+        ...s.sessionTemplates,
+        ...Object.fromEntries(tids.map((tid, i) => [tid, { ...s.sessionTemplates[tid], exercises: ejercicios[i] }])),
+      },
+    }));
+    return tids;
+  }
+  const exs = (tid) => useStore.getState().sessionTemplates[tid].exercises;
+
+  it('unilateral con gemelo: pasa al de la librería y conserva la configuración', () => {
+    const [t] = programa([{ exerciseId: 'cable_row', sets: 4, restSec: 75, variant: { grip: 'neutral', width: 'wide' } }]);
+    const res = useStore.getState().changeExerciseIdentity(t, 'cable_row', { root: 'cable_row', uni: true, variant: null });
+    expect(res).toEqual({ id: 'single_arm_cable_row' });
+    // Una mano no tiene anchura; el agarre se queda.
+    expect(exs(t)[0]).toMatchObject({ exerciseId: 'single_arm_cable_row', sets: 4, restSec: 75, variant: { grip: 'neutral' } });
+    expect(useStore.getState().customExercises).toEqual({});
+  });
+
+  it('unilateral sin gemelo: se crea el derivado como ejercicio propio', () => {
+    const [t] = programa([{ exerciseId: 'pulldown', sets: 3 }]);
+    useStore.getState().changeExerciseIdentity(t, 'pulldown', { root: 'pulldown', uni: true, variant: null });
+    expect(exs(t)[0].exerciseId).toBe('pulldown__uni');
+    expect(useStore.getState().customExercises.pulldown__uni).toMatchObject({ name: 'Jalón al pecho unilateral', isCustom: false });
+  });
+
+  it('aparte: la variante queda fija en la sesión y apagarlo la devuelve como variante normal', () => {
+    const v = { grip: 'pronated', width: 'wide' };
+    const [t] = programa([{ exerciseId: 'pulldown', sets: 3, variant: v }]);
+    useStore.getState().changeExerciseIdentity(t, 'pulldown', { root: 'pulldown', uni: false, variant: v });
+    expect(exs(t)[0]).toMatchObject({ exerciseId: 'pulldown__pronated_wide', variant: v });
+    useStore.getState().changeExerciseIdentity(t, 'pulldown__pronated_wide', { root: 'pulldown', uni: false, variant: null });
+    expect(exs(t)[0]).toMatchObject({ exerciseId: 'pulldown', variant: v });
+  });
+
+  it('bloqueo: no deja el mismo ejercicio dos veces en la sesión', () => {
+    const v = { grip: 'pronated' };
+    const [t] = programa([
+      { exerciseId: 'pulldown__pronated', sets: 3, variant: v },
+      { exerciseId: 'pulldown', sets: 3 },
+    ]);
+    useStore.setState({
+      customExercises: { pulldown__pronated: { ...EXERCISE_LIBRARY.pulldown, id: 'pulldown__pronated', variants: {}, derived: { root: 'pulldown', unilateral: false, variant: v } } },
+    });
+    const target = { root: 'pulldown', uni: false, variant: null };
+    expect(useStore.getState().identityCheck(t, 'pulldown__pronated', target)).toMatchObject({ blocked: true, linked: false, name: 'Jalón al pecho' });
+    expect(useStore.getState().changeExerciseIdentity(t, 'pulldown__pronated', target)).toMatchObject({ blocked: true });
+    expect(exs(t).map((e) => e.exerciseId)).toEqual(['pulldown__pronated', 'pulldown']);
+  });
+
+  it('vinculado: cambia en todo el grupo, y se bloquea si choca en otra sesión del grupo', () => {
+    const [a, b] = programa(
+      [{ exerciseId: 'pulldown', sets: 3, linkGroup: 'g1' }],
+      [{ exerciseId: 'pulldown', sets: 3, linkGroup: 'g1' }, { exerciseId: 'pulldown__uni', sets: 2 }],
+    );
+    useStore.setState({ customExercises: { pulldown__uni: { ...EXERCISE_LIBRARY.pulldown, id: 'pulldown__uni', isUnilateral: true, derived: { root: 'pulldown', unilateral: true, variant: null } } } });
+    const uni = { root: 'pulldown', uni: true, variant: null };
+    expect(useStore.getState().identityCheck(a, 'pulldown', uni)).toMatchObject({ blocked: true, linked: true });
+
+    useStore.setState((s) => ({ sessionTemplates: { ...s.sessionTemplates, [b]: { ...s.sessionTemplates[b], exercises: exs(b).slice(0, 1) } } }));
+    expect(useStore.getState().changeExerciseIdentity(a, 'pulldown', uni)).toEqual({ id: 'pulldown__uni' });
+    expect(exs(a)[0].exerciseId).toBe('pulldown__uni');
+    expect(exs(b)[0].exerciseId).toBe('pulldown__uni');
+  });
+});
+
+describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  const S = () => useStore.getState();
+  const f = (i, k, v) => S().updateSetField('squat_barbell', i, k, v);
+  // Sin progresión: el gris es lo de la última vez (con ella es el plan, P56 §6.1,
+  // y el 90×8 de abajo subiría a 95×6).
+  const free = (extra = {}) => {
+    const id = S().createFreeTemplate({ exercises: [{ exerciseId: 'squat_barbell', sets: 2 }] });
+    useStore.setState((st) => ({ sessionTemplates: { ...st.sessionTemplates, [id]: {
+      ...st.sessionTemplates[id],
+      exercises: st.sessionTemplates[id].exercises.map((e) => ({ ...e, progression: { type: 'none' }, ...extra })),
+    } } }));
+    return id;
+  };
+  const train = (id, fill, at) => {
+    vi.setSystemTime(at);
+    S().startSession(id);
+    [0, 1].forEach(fill);
+    const { entryId } = S().saveSession();
+    return S().workoutLog.find((e) => e.id === entryId).exercises[0].sets;
+  };
+
+  it('peso y RPE escritos con las reps en gris: guarda las reps de referencia', () => {
+    const id = free();
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'weight', '100'); f(i, 'rpe', '8'); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '100', reps: '8', rpe: '8', done: true })));
+  });
+
+  it('solo el RPE escrito, peso y reps en gris, sin ✓: la serie se da por buena', () => {
+    const id = free();
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'rpe', '8'); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '90', reps: '8', rpe: '8', done: true })));
+  });
+
+  it('una serie sin tocar no se guarda, aunque tenga gris', () => {
+    const id = free();
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { if (i === 0) f(i, 'reps', '9'); }, 1_700_100_000_000);
+    expect(sets).toEqual([expect.objectContaining({ weight: '90', reps: '9', done: true })]);
+  });
+
+  it('✓ sin peso ni reps propios: los de referencia, sin perder el RPE', () => {
+    const id = free();
+    train(id, (i) => { f(i, 'weight', '90'); f(i, 'reps', '8'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'rpe', '7'); f(i, 'done', true); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '90', reps: '8', rpe: '7', done: true })));
+  });
+
+  // ── P56 §6.1: el gris es el plan ─────────────────────────────────────────────
+  const withProgression = (progression, extra = {}) => free({ progression, minReps: 8, maxReps: 12, weightStep: 2.5, ...extra });
+  const DOUBLE = { type: 'double', increment: { type: 'fixed', value: 2.5 } };
+
+  it('P56: ✓ sin escribir guarda el peso del plan (62.5), no el de la última vez (60)', () => {
+    const id = withProgression(DOUBLE);
+    train(id, (i) => { f(i, 'weight', '60'); f(i, 'reps', '12'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'done', true); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '62.5', reps: '12', done: true })));
+  });
+
+  it('P56: si no se cumplió, el gris es lo que hiciste (mantener)', () => {
+    const id = withProgression(DOUBLE);
+    vi.setSystemTime(1_700_000_000_000);
+    S().startSession(id);
+    f(0, 'weight', '60'); f(0, 'reps', '12'); f(1, 'weight', '60'); f(1, 'reps', '9');
+    S().saveSession();
+    vi.setSystemTime(1_700_100_000_000);
+    S().startSession(id);
+    [0, 1].forEach((i) => f(i, 'done', true));
+    const { entryId } = S().saveSession();
+    const sets = S().workoutLog.find((e) => e.id === entryId).exercises[0].sets;
+    expect(sets.map((x) => [x.weight, x.reps])).toEqual([['60', '12'], ['60', '9']]);
+  });
+
+  it('P56: lo escrito a mano gana al plan, y el objetivo del entrenador al plan', () => {
+    const id = withProgression(DOUBLE);
+    train(id, (i) => { f(i, 'weight', '60'); f(i, 'reps', '12'); }, 1_700_000_000_000);
+    const sets = train(id, (i) => { f(i, 'weight', '70'); }, 1_700_100_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '70', reps: '12' })));
+  });
+
+  it('P56: Por esfuerzo guarda el peso del plan calculado con las tres últimas sesiones', () => {
+    // 5 reps @8 = 7RM: 57 / 60 / 63 kg → 1RM 70.3 / 74 / 77.7 (media 74). A 5 @8
+    // el peso del plan es 60 con la media y 63 solo con la última.
+    const id = withProgression({ type: 'effort', targetRpe: 8 }, { minReps: 5, maxReps: 5 });
+    const eff = (w) => (i) => { f(i, 'weight', w); f(i, 'reps', '5'); f(i, 'rpe', '8'); };
+    train(id, eff('57'), 1_700_000_000_000);
+    train(id, eff('60'), 1_700_100_000_000);
+    train(id, eff('63'), 1_700_200_000_000);
+    const sets = train(id, (i) => { f(i, 'done', true); }, 1_700_300_000_000);
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '60', reps: '5' })));
+  });
+
+  it('P56 §6.5: el log de una etapa de descarga lleva deload: true; el de una normal, no', () => {
+    const normal = withProgression(DOUBLE);
+    const a = train(normal, (i) => { f(i, 'weight', '60'); f(i, 'reps', '12'); }, 1_700_000_000_000);
+    expect(a).toHaveLength(2);
+    expect(S().workoutLog.at(-1).exercises[0]).not.toHaveProperty('deload');
+    const dl = withProgression({ ...DOUBLE, hold: 'deload' });
+    train(dl, (i) => { f(i, 'weight', '60'); f(i, 'reps', '8'); }, 1_700_100_000_000);
+    expect(S().workoutLog.at(-1).exercises[0].deload).toBe(true);
+  });
+});
+

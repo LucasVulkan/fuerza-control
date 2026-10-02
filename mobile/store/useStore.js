@@ -36,7 +36,9 @@ import { EXERCISE_LIBRARY } from '../src/data/exerciseLibrary';
 import { generateId } from '../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload, programTemplateIds } from '../src/utils/clientLogs';
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
-import { linkGroupTemplateIds, lastExerciseRef, pickLinkedConfig } from '../src/utils/exerciseLinks';
+import { linkGroupTemplateIds, recentExerciseRefs, pickLinkedConfig } from '../src/utils/exerciseLinks';
+import { getProgression, progressionHistory } from '../src/utils/progression';
+import { planSet } from '../src/utils/setPlan';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
@@ -59,6 +61,9 @@ import {
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../src/data/archetypes';
+import { migrateExerciseRefs } from '../src/utils/exerciseIdMigration';
+import { cleanVariant, isEmptyVariant } from '../src/utils/variants';
+import { compose } from '../src/utils/exerciseIdentity';
 import { adaptArchetype } from '../src/utils/archetypeAdapter';
 
 // Mobile i18n instance
@@ -241,6 +246,9 @@ const INITIAL_ACTIVE_SESSION = {
   startedAt: null,
   notes: '',
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
+  // La variante de HOY, si difiere de la del programa (exercise-variants.md §5.1).
+  // Sin clave = la del programa; `{}` = hoy sin especificar.
+  variants:      {},   // { [exerciseId]: { grip?, width? } }
   adHocExercises: [],
   freeSessionName: '',
   freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
@@ -299,13 +307,15 @@ const DAY_COLORS = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 
 // ─── Program diff helper ──────────────────────────────────────────────────────
 /**
  * Compares the current active program with an incoming programJson from the trainer.
- * Returns a string[] with human-readable change lines, e.g.:
- *   ["+1 etapa nueva", "Etapa 1: +2 sesiones", "Sesión A: +3 ejercicios"]
+ * Devuelve las líneas como `{ k, p }` —clave de `programUpdate.diff` y sus
+ * parámetros— y no como texto: el store no traduce, y así el modal las pinta
+ * en el idioma de la app cuando se abre (U34). `stageN`/`sessionN` son el
+ * número de etapa o sesión cuando no tienen nombre.
  */
 function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
   const { programs, profile, sessionTemplates } = storeState;
   const oldProg = programs[profile.activeProgramId];
-  if (!oldProg) return ['Programa nuevo del entrenador'];
+  if (!oldProg) return [{ k: 'newProgram' }];
 
   const newPrograms    = { ...(newProgramJson.programs ?? {}), ...(newProgramJson.program ? { [newProgramJson.program.id]: newProgramJson.program } : {}) };
   const newProg        = newPrograms[profile.activeProgramId] ?? Object.values(newPrograms)[0];
@@ -325,29 +335,29 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
   const activation = newProg?.stageActivatedAt ?? null;
   if (activation && activation !== lastActivation) {
     const moved = newStages[newProg?.currentStageIndex ?? 0];
-    if (moved) lines.push(`Tu entrenador te pasa a ${moved.name ?? 'otra etapa'}`);
+    if (moved) lines.push(moved.name ? { k: 'movedTo', p: { name: moved.name } } : { k: 'movedToUnnamed' });
   }
 
   const stageDiff = newStages.length - oldStages.length;
-  if (stageDiff > 0) lines.push(`+${stageDiff} etapa${stageDiff > 1 ? 's' : ''} nueva${stageDiff > 1 ? 's' : ''}`);
-  if (stageDiff < 0) lines.push(`${Math.abs(stageDiff)} etapa${Math.abs(stageDiff) > 1 ? 's' : ''} eliminada${Math.abs(stageDiff) > 1 ? 's' : ''}`);
+  if (stageDiff > 0) lines.push({ k: 'stagesAdded',   p: { count: stageDiff } });
+  if (stageDiff < 0) lines.push({ k: 'stagesRemoved', p: { count: -stageDiff } });
 
   for (let si = 0; si < Math.min(oldStages.length, newStages.length); si++) {
     const oldDays = oldStages[si].days ?? [];
     const newDays = newStages[si].days ?? [];
-    const stageLabel = oldStages.length > 1 ? `Etapa ${si + 1}` : null;
+    const multiStage = oldStages.length > 1;
     const sesDiff = newDays.length - oldDays.length;
 
     // Un cambio de candado suele venir solo, sin nada más: sin esta línea el
     // cliente vería "Cambios menores en el programa" para lo único que le importa.
     if (!!oldStages[si].locked !== !!newStages[si].locked) {
-      const stageName = newStages[si].name ?? stageLabel ?? `Etapa ${si + 1}`;
-      lines.push(`${stageName} ${newStages[si].locked ? 'bloqueada' : 'desbloqueada'}`);
+      const stage = newStages[si].name ? { stage: newStages[si].name } : { stageN: si + 1 };
+      lines.push({ k: newStages[si].locked ? 'stageLocked' : 'stageUnlocked', p: stage });
     }
 
     if (sesDiff !== 0) {
-      const prefix = stageLabel ? `${stageLabel}: ` : '';
-      lines.push(`${prefix}${sesDiff > 0 ? '+' : ''}${sesDiff} sesión${Math.abs(sesDiff) > 1 ? 'es' : ''}`);
+      const p = { count: Math.abs(sesDiff), delta: `${sesDiff > 0 ? '+' : ''}${sesDiff}`, n: si + 1 };
+      lines.push({ k: multiStage ? 'stageSessions' : 'sessions', p });
     }
 
     for (let di = 0; di < Math.min(oldDays.length, newDays.length); di++) {
@@ -355,13 +365,13 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
       const newEx = (newTemplates[newDays[di].sessionTemplateId]?.exercises ?? []).length;
       const exDiff = newEx - oldEx;
       if (exDiff !== 0) {
-        const sesLabel = newDays[di].label ?? `Sesión ${di + 1}`;
-        lines.push(`${sesLabel}: ${exDiff > 0 ? '+' : ''}${exDiff} ejercicio${Math.abs(exDiff) > 1 ? 's' : ''}`);
+        const session = newDays[di].label ? { session: newDays[di].label } : { sessionN: di + 1 };
+        lines.push({ k: 'exercises', p: { ...session, count: Math.abs(exDiff), delta: `${exDiff > 0 ? '+' : ''}${exDiff}` } });
       }
     }
   }
 
-  return lines.length > 0 ? lines : ['Cambios menores en el programa'];
+  return lines.length > 0 ? lines : [{ k: 'minor' }];
 }
 
 // ─── Persistencia ──────────────────────────────────────────────────────────────
@@ -844,6 +854,9 @@ export const useStore = create(
       // Mobile: receives parsedData (already parsed JSON) + mode string
       importForClient: (clientId, parsedData, mode) => {
         let data = parsedData;
+        // Un fichero de una versión anterior trae los ids de antes de juntar
+        // los ejercicios repetidos (exercise-variants.md §3.3).
+        migrateExerciseRefs(data, get().getEffectiveLibrary());
         const client = get().clients[clientId];
         if (!client) return;
 
@@ -1055,6 +1068,71 @@ export const useStore = create(
         return gid;
       },
 
+      /**
+       * ¿A qué ejercicio lleva un cambio de identidad (unilateral / ejercicio
+       * aparte) y se puede hacer? No se puede si el resultado ya está en la
+       * sesión o en otra de su grupo vinculado: una sesión no admite el mismo
+       * ejercicio dos veces (exercise-variants.md §6.5).
+       * `target` = `{ root, uni, variant }` (exerciseIdentity).
+       */
+      identityCheck: (templateId, exerciseId, target) => {
+        const lib = get().getEffectiveLibrary();
+        const { id, def } = compose(target, lib);
+        const tpl = get().getEffectiveTemplate(templateId);
+        const ex  = tpl?.exercises?.find((e) => e.exerciseId === exerciseId);
+        const linked = ex?.linkGroup
+          ? linkGroupTemplateIds(get().programs[tpl.programId], exerciseId, ex.linkGroup, get().getEffectiveTemplate)
+          : [];
+        const tids = [...new Set([templateId, ...linked])];
+        const where = id === exerciseId ? null : tids.find((tid) =>
+          get().getEffectiveTemplate(tid)?.exercises?.some((e) => e.exerciseId === id));
+        return {
+          id, def, tids,
+          name:    (def ?? lib[id])?.name ?? id,
+          blocked: !!where,
+          linked:  !!where && where !== templateId,
+        };
+      },
+
+      /**
+       * Cambia el ejercicio por su versión unilateral o «aparte» en la sesión y
+       * en todo su grupo vinculado, conservando la configuración. Un derivado
+       * que no existía se guarda en `customExercises`. Devuelve `{ id }`, o
+       * `{ blocked: true }` sin tocar nada.
+       */
+      changeExerciseIdentity: (templateId, exerciseId, target) => {
+        const check = get().identityCheck(templateId, exerciseId, target);
+        if (check.blocked) return { blocked: true, name: check.name };
+        if (check.id === exerciseId) return { id: exerciseId };
+        const newDef = check.def ?? get().getEffectiveLibrary()[check.id];
+        const fixed  = isEmptyVariant(target.variant) ? null : target.variant;
+        set((s) => {
+          const sessionTemplates = { ...s.sessionTemplates };
+          for (const tid of check.tids) {
+            const tpl = get().getEffectiveTemplate(tid);
+            if (!tpl) continue;
+            sessionTemplates[tid] = {
+              ...tpl,
+              exercises: tpl.exercises.map((ex) => {
+                if (ex.exerciseId !== exerciseId) return ex;
+                const next = { ...ex, exerciseId: check.id, progressionOverride: null };
+                // Aparte: la variante es la fija. Si no, la que había, limpia
+                // contra el ejercicio nuevo (una mano no tiene anchura).
+                const variant = fixed ?? cleanVariant(ex.variant, newDef);
+                if (variant) next.variant = { ...variant }; else delete next.variant;
+                delete next.isUnilateral;
+                return next;
+              }),
+            };
+          }
+          return {
+            sessionTemplates,
+            ...(check.def ? { customExercises: { ...s.customExercises, [check.id]: check.def } } : {}),
+          };
+        });
+        return { id: check.id };
+      },
+
       replaceExercise: (templateId, oldExerciseId, newExerciseId) => {
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
@@ -1062,9 +1140,15 @@ export const useStore = create(
         // la sesión también creaba el duplicado (fallo 15). El barrido original
         // no lo contaba.
         if (template.exercises.some((ex) => ex.exerciseId === newExerciseId)) return;
-        const updatedExercises = template.exercises.map((ex) =>
-          ex.exerciseId !== oldExerciseId ? ex : { ...ex, exerciseId: newExerciseId, progressionOverride: null }
-        );
+        const newDef = get().getEffectiveLibrary()[newExerciseId];
+        const updatedExercises = template.exercises.map((ex) => {
+          if (ex.exerciseId !== oldExerciseId) return ex;
+          const next = { ...ex, exerciseId: newExerciseId, progressionOverride: null };
+          // Un agarre de jalón no tiene sentido en un press (exercise-variants.md §4.5).
+          const variant = cleanVariant(ex.variant, newDef);
+          if (variant) next.variant = variant; else delete next.variant;
+          return next;
+        });
         set((s) => ({
           sessionTemplates: {
             ...s.sessionTemplates,
@@ -1944,6 +2028,7 @@ export const useStore = create(
         set({
           activeSession: {
             ...INITIAL_ACTIVE_SESSION, templateId, setsState, adHocExercises,
+            variants: prefill?.variants ?? {},
             startedAt: Date.now(), forClient, loggedAt, logOnly,
           },
           ui: { ...get().ui, view: 'workout' },
@@ -1965,6 +2050,14 @@ export const useStore = create(
         set((s) => ({ activeSession: { ...s.activeSession, freeSessionName: name } })),
 
       /** Sets the client's per-exercise feedback note for the active session. */
+      // `undefined` borra la clave: vuelve a la del programa.
+      setSessionVariant: (exerciseId, variant) =>
+        set((s) => {
+          const variants = { ...(s.activeSession.variants ?? {}) };
+          if (variant === undefined) delete variants[exerciseId]; else variants[exerciseId] = variant;
+          return { activeSession: { ...s.activeSession, variants } };
+        }),
+
       setExerciseNote: (exerciseId, text) =>
         set((s) => ({
           activeSession: {
@@ -2339,6 +2432,14 @@ export const useStore = create(
           return { ok: true, entryId };
         };
 
+        // Lo que se hizo de verdad: la variante de hoy si se cambió en el Workout,
+        // si no la del programa. Vacía no se escribe (exercise-variants.md §5.1).
+        const todayVariant = (exerciseId, programVariant) => {
+          const today = activeSession.variants ?? {};
+          const v = Object.prototype.hasOwnProperty.call(today, exerciseId) ? today[exerciseId] : programVariant;
+          return isEmptyVariant(v) ? {} : { variant: v };
+        };
+
         // ── Free session — no template, only ad-hoc exercises ─────────────────
         if (activeSession.templateId === '__free__') {
           const adHoc = activeSession.adHocExercises ?? [];
@@ -2359,7 +2460,7 @@ export const useStore = create(
             timestamp:         Date.now(),
             duration:          activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
             notes:             activeSession.notes ?? '',
-            bodyWeight:        null,
+            bodyWeight:        get().profile.bodyWeight ?? null,
             ...(freeBlocksLog.length > 0 ? { blocks: freeBlocksLog } : {}),
             // La config va al log porque es lo que la plantilla congela (§7.4):
             // sin ella, repetir una sesión libre recuperaba los ejercicios pero
@@ -2367,6 +2468,7 @@ export const useStore = create(
             exercises:         adHoc.map((a) => ({
               exerciseId: a.exerciseId, isAdHoc: true, sets: a.setsState,
               ...(a.config ?? {}),
+              ...todayVariant(a.exerciseId, a.config?.variant),
               ...(freeNotes[a.exerciseId]?.trim() ? { note: freeNotes[a.exerciseId].trim() } : {}),
             })),
           };
@@ -2382,18 +2484,25 @@ export const useStore = create(
         const template = getEffectiveTemplate(activeSession.templateId);
         if (!template) return { ok: false, error: 'Template no encontrado' };
 
-        function resolveSet(s, lastSet) {
-          // Cualquier dato → registrado como hecho (sin necesidad de pulsar ✓)
-          if (s.weight !== '' || s.reps !== '' || s.time !== '') {
-            return { ...s, done: true };
-          }
-          // Sin datos propios, pero ✓ marcado y hay sesión anterior → rellenar con valores anteriores
-          if (s.done && lastSet) {
-            return {
-              weight: lastSet.weight ?? '', reps: lastSet.reps ?? '', time: lastSet.time ?? '', done: true,
-            };
-          }
-          return s;
+        // Lo que la tarjeta pinta en gris (el objetivo del entrenador, el plan de la
+        // progresión o la última sesión) es lo que se da por hecho en un campo
+        // vacío: el mismo relleno que hace ✓ en `ExerciseCard`, y por eso sale de
+        // la misma `planSet` (progresion-clara §6.1). Sin él, una serie con peso y
+        // RPE escritos y las reps en gris se guardaba SIN reps, y la progresión
+        // por esfuerzo no podía calcular nada (QA P48). El RPE y el resto se
+        // conservan.
+        const sessionOverride = get().clientSync.pendingOverrides?.[activeSession.templateId] ?? null;
+        const library = get().getEffectiveLibrary();
+        function resolveSet(s, plan) {
+          const fill = (k) => (s[k] !== '' && s[k] != null ? s[k] : plan[k].value);
+          // Algo escrito a mano en la serie (el RPE también) o ✓ → la serie está
+          // hecha y lo que quede en gris se da por bueno. Una serie sin tocar no.
+          const typed = ['weight', 'reps', 'time', 'rpe'].some((k) => s[k] !== '' && s[k] != null);
+          if (!typed && !s.done) return s;
+          const r = { ...s, weight: fill('weight'), reps: fill('reps'), time: fill('time') };
+          // Solo el RPE y nada en gris que completar: no hay serie que guardar.
+          if (r.weight === '' && r.reps === '' && r.time === '') return s;
+          return { ...r, done: true };
         }
 
         const sessionExNotes = activeSession.exerciseNotes ?? {};
@@ -2402,22 +2511,41 @@ export const useStore = create(
 
         const ownerProgramForLinks = template?.programId ? programs[template.programId] : null;
         const exercises = template.exercises
-          .map(({ exerciseId, sets: totalSets, minReps, maxReps, restSec, linkGroup }) => {
+          .map((exConfig) => {
+            const { exerciseId, sets: totalSets, minReps, maxReps, restSec, variant } = exConfig;
             const setsData = activeSession.setsState[exerciseId] ?? [];
             // Linked exercises autofill from the group's latest performance
-            // (any session of the group), not just this template's.
-            const lastExData = lastExerciseRef({
+            // (any session of the group), not just this template's. Las tres
+            // últimas, como en la tarjeta: Por esfuerzo promedia el 1RM (§6.5).
+            const recent = recentExerciseRefs({
               workoutLog,
               program:     ownerProgramForLinks,
               templateId:  activeSession.templateId,
-              exConfig:    { exerciseId, linkGroup },
+              exConfig,
               getTemplate: get().getEffectiveTemplate,
+            }, 3).map((r) => r.exercise);
+            const lastSets = recent[0]?.sets ?? [];
+            // El mismo chip que enseña la tarjeta (el texto no importa aquí).
+            let chip = null;
+            if (lastSets.length) {
+              try { chip = getProgression(exConfig, library[exerciseId], lastSets, () => '', progressionHistory(recent)); }
+              catch { /* sin chip: el gris es la última vez */ }
+            }
+            const plan = (i) => planSet({
+              exConfig, def: library[exerciseId], chip, lastSets,
+              overrideEx: sessionOverride?.exercises?.[exerciseId], index: i,
             });
-            const lastSets = lastExData?.sets ?? [];
-            const resolved = setsData.map((s, i) => resolveSet(s, lastSets[i]));
+            const resolved = setsData.map((s, i) => resolveSet(s, plan(i)));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);
             if (validSets.length === 0) return null;
-            return { exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId) };
+            return {
+              exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId),
+              // Cómo se hizo: solo informa y se filtra (exercise-variants.md §2.4).
+              ...todayVariant(exerciseId, variant),
+              // Una sesión de etapa de descarga no cuenta para la media del 1RM
+              // de Por esfuerzo (§6.5): el log la marca.
+              ...(exConfig.progression?.hold === 'deload' ? { deload: true } : {}),
+            };
           })
           .filter(Boolean);
 
@@ -2450,7 +2578,11 @@ export const useStore = create(
             ? sessionStats(template, get().getEffectiveLibrary()).minutes * 60000
             : activeSession.startedAt ? Date.now() - activeSession.startedAt : 0,
           notes: activeSession.notes ?? '',
-          bodyWeight: null,
+          // Sellado (progresion-clara §9.2): el peso que el recap enseñaría. El
+          // mío, o el último que se apuntó al cliente; nunca el mío para él.
+          bodyWeight: forClient
+            ? ([...workoutLog].reverse().find((e) => e.bodyWeight != null)?.bodyWeight ?? null)
+            : (get().profile.bodyWeight ?? null),
           // Full planned volume of the template — skipped exercises drop out of
           // `exercises`, so the recap can't reconstruct the plan without this.
           plannedSets: template.exercises.reduce((a, ex) => a + (ex.sets ?? 0), 0),
@@ -2461,6 +2593,7 @@ export const useStore = create(
             ...(activeSession.adHocExercises ?? []).map((adHoc) => ({
               exerciseId: adHoc.exerciseId, isAdHoc: true, sets: adHoc.setsState,
               ...(adHoc.config ?? {}),
+              ...todayVariant(adHoc.exerciseId, adHoc.config?.variant),
               ...exNote(adHoc.exerciseId),
             })),
           ],
@@ -2539,13 +2672,15 @@ export const useStore = create(
        * Both are optional and patched independently — passing only one leaves
        * the other untouched.
        */
-      setSessionFeedback: (logId, { sessionRpe, bodyWeight } = {}, clientId = null) =>
+      setSessionFeedback: (logId, { sessionRpe, bodyWeight, notes } = {}, clientId = null) =>
         set((state) => {
           const patch = (e) => (
             e.id !== logId ? e : {
               ...e,
               ...(sessionRpe  !== undefined ? { sessionRpe }  : {}),
               ...(bodyWeight  !== undefined ? { bodyWeight }  : {}),
+              // La nota del entreno se corrige en el recap (pulido-ui.md §2).
+              ...(notes       !== undefined ? { notes }       : {}),
             }
           );
           // El recap del entreno de un cliente escribe en SU entrada, y su peso
@@ -2935,6 +3070,9 @@ export const useStore = create(
       // ── Import ────────────────────────────────────────────────────────────────
 
       importData: (data, sections, { silent = false } = {}) => {
+        // Ids de antes de juntar los ejercicios repetidos (exercise-variants.md
+        // §3.3): un backup viejo, o el programa de un entrenador sin actualizar.
+        migrateExerciseRefs(data, get().getEffectiveLibrary());
         // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
         // de OTRO dueño, esto es una copia, no una actualización. Sin esto,
         // importar como propio el programa de un cliente se lo quita — su ficha
@@ -3613,8 +3751,14 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const { history, customExercises: clientCustom, progress, updatedAt } =
-            await downloadHistory(client.syncSlotId);
+          const downloaded = await downloadHistory(client.syncSlotId);
+          // Un cliente con la versión vieja sube los ids de antes de juntar los
+          // ejercicios repetidos (exercise-variants.md §3.3).
+          const incoming = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
+          migrateExerciseRefs(incoming, get().getEffectiveLibrary());
+          const { progress, updatedAt } = downloaded;
+          const history      = downloaded.history ? incoming.workoutLog : downloaded.history;
+          const clientCustom = incoming.customExercises;
           // Mirror the client's counters verbatim — never recompute them here
           // (spec §3.1). Kept even when there is no new history to merge.
           // The session count comes fresh with them: it is the same number the
@@ -3866,8 +4010,12 @@ export const useStore = create(
        */
       _restoreFromSlot: async (slotId, programId, mergeHistory) => {
         try {
-          const { history: remoteEntries, customExercises: remoteCustom, progress } =
-            await downloadHistory(slotId);
+          const downloaded = await downloadHistory(slotId);
+          const incoming   = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
+          migrateExerciseRefs(incoming, get().getEffectiveLibrary());   // exercise-variants.md §3.3
+          const { progress } = downloaded;
+          const remoteEntries = incoming.workoutLog;
+          const remoteCustom  = incoming.customExercises;
 
           // Same merge rule as a live program update: the blob wins UNLESS the
           // imported program carries an activation stamp newer than the one the
@@ -3981,6 +4129,11 @@ export const useStore = create(
 
         try {
           const { programJson, updatedAt, trainerName, overrides } = await downloadProgram(clientSync.slotId);
+          // Un entrenador con la versión vieja manda los ids de antes de juntar
+          // los ejercicios repetidos (exercise-variants.md §3.3). Antes del
+          // diff, o el aviso contaría como cambio lo que solo es un id nuevo.
+          migrateExerciseRefs(programJson, get().getEffectiveLibrary());
+          migrateExerciseRefs({ clientSync: { pendingOverrides: overrides } }, get().getEffectiveLibrary());
 
           // Always sync trainer name if it changed (independent of program updates)
           if (trainerName !== undefined && trainerName !== clientSync.trainerName) {
@@ -4652,6 +4805,11 @@ export const useStore = create(
             delete state.freeSessionPresets;
           }
 
+          // Los ejercicios repetidos por agarre se juntaron en uno con su
+          // variante (exercise-variants.md §3.3): plantillas, historial, alias
+          // y prescripciones pasan al id nuevo. Idempotente.
+          migrateExerciseRefs(state, EXERCISE_LIBRARY);
+
         } catch (e) {
           console.warn('[rehydrate] migration failed, booting with what loaded:', e);
         } finally {
@@ -4662,7 +4820,14 @@ export const useStore = create(
           // pase lo que pase— se mantiene porque va en el `.finally()` de la
           // cadena, que corre también si la lectura revienta.
           AsyncStorage.getItem(SESSION_STORAGE_KEY)
-            .then((raw) => { if (raw) useStore.setState({ activeSession: JSON.parse(raw) }); })
+            .then((raw) => {
+              if (!raw) return;
+              const activeSession = JSON.parse(raw);
+              // La sesión en curso guarda series por id: si se abrió con la
+              // versión anterior, sus claves siguen al ejercicio juntado.
+              migrateExerciseRefs({ activeSession }, EXERCISE_LIBRARY);
+              useStore.setState({ activeSession });
+            })
             .catch((e) => console.warn('[rehydrate] sesión en curso ilegible:', e))
             .finally(() => {
               // Caducidad de 12 h, para que la app no abra siempre en Workout

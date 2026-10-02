@@ -17,10 +17,7 @@ import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { collapseOut, FOLD_MS } from './ui/collapseOut';
 import { targetLabel, exerciseName } from '../utils/prescription';
-
-// Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
-// token propio (mismo caso que el #81a71e del banner, ver theme.js).
-const LIMA = '#b8ff00';
+import { variantLabel, displayVariant } from '../utils/variants';
 
 // ── Sesiones ──────────────────────────────────────────────────────────────
 //
@@ -33,10 +30,11 @@ const LIMA = '#b8ff00';
 // elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
 // mirar una sesión sin empezarla.
 
-export function HeroChevron({ size = 13, color = LIMA }) {
+export function HeroChevron({ size = 13, color }) {
+  const th = useTheme();
   return (
     <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
-      <Path d="M4 2l4.5 4L4 10" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M4 2l4.5 4L4 10" stroke={color ?? th.colors.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -55,10 +53,13 @@ export function ExerciseLines({ template, allExercises }) {
   const exercises = template.exercises ?? [];
   const blocks    = template.blocks ?? [];
 
-  const line = (key, idx, name, right) => (
+  const line = (key, idx, name, right, variant = '') => (
     <View key={key} style={styles.exRow}>
       <Text style={styles.exIdx}>{idx}</Text>
-      <Text style={styles.exName} numberOfLines={1}>{name}</Text>
+      <Text style={styles.exName} numberOfLines={1}>
+        {name}
+        {variant ? <Text style={styles.exVariant}>{` · ${variant}`}</Text> : null}
+      </Text>
       <Text style={styles.exTarget}>{right}</Text>
     </View>
   );
@@ -72,6 +73,7 @@ export function ExerciseLines({ template, allExercises }) {
           i + 1,
           exerciseName(def, i18n.language, ex.exerciseId),
           targetLabel(def, ex, t, { compact: true }),
+          variantLabel(displayVariant(ex.variant, def), t),
         );
       })}
       {blocks.map((block, i) => line(
@@ -90,8 +92,8 @@ export function ExerciseLines({ template, allExercises }) {
  * «puedes, pero no es lo que toca» sin un diálogo de confirmación.
  */
 export function SessionRow({
-  marker, name, meta, done, adapted, by, open,
-  cta, onToggle, onStart, onEdit, onShare, a11yLabel, children,
+  marker, markerMuted, name, meta, done, adapted, by, open,
+  cta, onToggle, onStart, onEdit, onShare, onBodyLayout, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -107,19 +109,20 @@ export function SessionRow({
         accessibilityState={{ expanded: open }}
         accessibilityHint={t(open ? 'home.collapse' : 'home.expand')}
       >
-        <Text style={[styles.sesGlyph, done && styles.sesGlyphDone]}>{marker}</Text>
+        <Text style={[styles.sesGlyph, (done || markerMuted) && styles.sesGlyphDone]}>{marker}</Text>
         <Text style={[styles.sesName, done && styles.sesNameDone]} numberOfLines={1}>{name}</Text>
         {!!adapted && <Text style={styles.rowAdapted}>{t('home.adapted')}</Text>}
         {/* «de Lucas»: una sesión que manda el entrenador. Azul = entrenador. */}
         {!!by && <Text style={styles.rowAdapted} numberOfLines={1}>{t('home.fromTrainer', { name: by })}</Text>}
         <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
-        {done && <CheckIcon size={14} color={LIMA} />}
+        {done && <CheckIcon size={14} color={th.colors.accent} />}
       </TouchableOpacity>
 
       {open && (
         <Reanimated.View
           entering={FadeIn.duration(180)}
           exiting={collapseOut}
+          onLayout={onBodyLayout}
           style={styles.sesBody}
         >
           <View style={styles.sesBodyRule} />
@@ -180,9 +183,10 @@ export function SessionRow({
  * por dentro y no lo mueve de sitio.
  */
 export function TodayCard({
-  marker, flag, name, meta, open, cta, onToggle, onStart, onShare, a11yLabel, children,
+  marker, flag, name, meta, open, cta, onToggle, onStart, onShare, onBodyLayout, a11yLabel, children,
 }) {
   const { t }  = useTranslation();
+  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.today}>
@@ -214,6 +218,7 @@ export function TodayCard({
         <Reanimated.View
           entering={FadeIn.duration(180)}
           exiting={collapseOut}
+          onLayout={onBodyLayout}
           style={styles.todayBox}
         >
           {children}
@@ -244,7 +249,7 @@ export function TodayCard({
             accessibilityRole="button"
             accessibilityLabel={t('sessionText.share')}
           >
-            <ShareIcon color={LIMA} />
+            <ShareIcon color={th.colors.accent} />
           </TouchableOpacity>
         )}
       </Reanimated.View>
@@ -342,8 +347,12 @@ const makeStyles = (th) => StyleSheet.create({
     // Ajustada a la tinta de la Inter Black a este cuerpo (24 px medidos sobre
     // el .ttf), sin los 2 px de holgura que traía. Lo que separa la letra del
     // nombre es el `gap` de la fila, no una caja con aire de sobra.
-    width:              24,
-    color:              LIMA,
+    // Mínimo y no fijo: las sesiones libres llevan número (01, 02…) y dos
+    // cifras no caben en 24. Cifras tabulares para que todas midan lo mismo y
+    // los nombres queden alineados.
+    minWidth:           24,
+    fontVariant:        ['tabular-nums'],
+    color:              th.colors.accent,
   },
   sesGlyphDone: { color: th.colors.muted },
   sesName:      { ...textStyles.itemTitle, flex: 1, color: th.colors.text },
@@ -475,7 +484,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderRadius:    th.radius.md,
     padding:         spacing.lg,
   },
-  todayBtnText: { ...textStyles.button, color: LIMA },
+  todayBtnText: { ...textStyles.button, color: th.colors.accent },
   // COMPARTIR junto a EMPEZAR: lo justo para el icono, con el relleno del botón.
   shareBtn: { flex: 0, justifyContent: 'center' },
 
@@ -486,5 +495,6 @@ const makeStyles = (th) => StyleSheet.create({
   exRow:  { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md, paddingVertical: spacing.xs2 },
   exIdx:    { ...textStyles.label, width: 13, color: th.colors.muted },
   exName:   { ...textStyles.body, flex: 1, color: th.colors.text },
+  exVariant: { color: th.colors.mutedLight },
   exTarget: { ...textStyles.label, color: th.colors.mutedLight },
 });

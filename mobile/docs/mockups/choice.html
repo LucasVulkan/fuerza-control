@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elección única — maqueta FormaFit (U40)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #151515; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --redText: #ff5e58;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --r-xs: 4px; --r-md: 10px; --r-lg: 18px;
+  }
+  .t-bodyS  { font: 700 14px Inter; }
+  .t-rowLbl { font: 800 14px Inter; }
+  .t-button { font: 900 14px Inter; }
+  .t-label  { font: 500 12px/17px Inter; }
+  .t-labelS { font: 800 12px Inter; }
+  .t-caps   { font: 800 12px Inter; letter-spacing: 1.2px; text-transform: uppercase; }
+
+  /* ── Andamio ── */
+  body { background: #0d0d0d; font-family: Inter, sans-serif; color: var(--text); padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 1000px; margin-bottom: 14px; }
+  .lead b, .box b { color: #c9c9c9; font-weight: 800; }
+  h2 { font: 900 15px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); margin: 54px 0 6px; padding-top: 22px; border-top: 1px solid #262626; }
+  .rack { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .card { width: 345px; }
+  .cap { font: 700 11px/1.5 Inter; color: #8f8f8f; margin: 0 0 10px; min-height: 62px; }
+  .cap > b { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); margin-bottom: 3px; }
+  .box { max-width: 1000px; border: 1px solid #262626; border-radius: 12px; padding: 14px 18px; font: 500 12.5px/1.65 Inter; color: #9a9a9a; margin-top: 16px; }
+  .box li { margin: 0 0 3px 16px; }
+  code { font: 500 11px ui-monospace, monospace; color: #bdbdbd; }
+  .stage { background: var(--bg); border-radius: 16px; padding: 15px; border: 1px solid #222; }
+
+  /* ══════ Filas (MenuRow) ══════ */
+  .sec { display: flex; flex-direction: column; }
+  .shd { display: flex; align-items: baseline; gap: 8px; padding: 0 4px; margin-bottom: 8px; }
+  .shd .t-caps { color: var(--mutedLight); }
+  .shd .err { color: var(--redText); }
+  .group { display: flex; flex-direction: column; gap: 2px; }
+  .row { display: flex; align-items: center; gap: 15px; min-height: 52px; background: var(--surface); padding: 10px 15px; border-radius: var(--r-xs); position: relative; }
+  .row.tall { min-height: 62px; }
+  .group .row:first-child { border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
+  .group .row:last-child  { border-bottom-left-radius: var(--r-md); border-bottom-right-radius: var(--r-md); }
+  .row .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .row .sub { color: var(--mutedLight); }
+  .danger { color: var(--redText); }
+
+  /* ── Marcadores (22 px, centrados en vertical, a la derecha) ── */
+  .rd { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; position: relative; }
+
+  /* 1 · Tu propuesta: aro vacío → relleno lima */
+  .v1 .rd { border: 2px solid var(--muted); }
+  .v1 .on .rd { border-color: var(--accent); background: var(--accent); }
+
+  /* 2 · Relleno lima con check en negro */
+  .v2 .rd { border: 2px solid var(--muted); }
+  .v2 .on .rd { border-color: var(--accent); background: var(--accent); }
+  .v2 .on .rd::after { content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px; border: solid var(--onAccent); border-width: 0 2.4px 2.4px 0; transform: rotate(45deg); }
+
+  /* 3 · Radio clásico: aro lima + punto */
+  .v3 .rd { border: 2px solid var(--muted); }
+  .v3 .on .rd { border-color: var(--accent); }
+  .v3 .on .rd::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent); }
+
+  /* 4 · Relleno con check + la fila se tiñe y el nombre pasa a lima */
+  .v4 .rd { border: 2px solid var(--muted); }
+  .v4 .on { background: var(--accent10); }
+  .v4 .on .t-rowLbl { color: var(--accent); }
+  .v4 .on .rd { border-color: var(--accent); background: var(--accent); }
+  .v4 .on .rd::after { content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px; border: solid var(--onAccent); border-width: 0 2.4px 2.4px 0; transform: rotate(45deg); }
+
+  /* 5 · Relleno con check + filo lima a la izquierda */
+  .v5 .rd { border: 2px solid var(--muted); }
+  .v5 .on::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; background: var(--accent); }
+  .v5 .on .rd { border-color: var(--accent); background: var(--accent); }
+  .v5 .on .rd::after { content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px; border: solid var(--onAccent); border-width: 0 2.4px 2.4px 0; transform: rotate(45deg); }
+
+  /* Botón de la app */
+  .cta { height: 44px; border-radius: var(--r-md); background: var(--accent); color: var(--onAccent); display: flex; align-items: center; justify-content: center; margin-top: 15px; }
+  .cta.off { background: var(--surface2); color: var(--muted); }
+  .tap { font: 700 10px Inter; color: #6d6d6d; text-align: center; margin-top: 6px; }
+  .sw { width: 44px; height: 24px; border-radius: 12px; background: var(--accent); position: relative; flex-shrink: 0; }
+  .sw::after { content: ''; position: absolute; top: 2px; left: 22px; width: 20px; height: 20px; border-radius: 50%; background: var(--onAccent); }
+  .gap { height: 15px; }
+</style>
+</head>
+<body>
+
+<h1>Elección única: una pieza estándar</h1>
+<p class="lead">
+  Para cuando hay <b>dos o más opciones excluyentes</b> (importar, la frecuencia de Drive, la etapa en curso, el modo de progresión…).
+  La idea: una sola pieza, <code>ChoiceRow</code>, que es la fila de siempre (<code>MenuRow</code>: etiqueta, explicación opcional) con un
+  <b>marcador redondo a la derecha, centrado en vertical</b>. Hoy la app marca la elegida con un check suelto y las demás con un hueco:
+  no se ve que se pueda elegir hasta que eliges.
+</p>
+<p class="lead">
+  Abajo, cinco marcadores con las mismas tres opciones, la del medio elegida. Lo único que cambia entre ellos es cómo se ve la elegida.
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>1 · El marcador</h2>
+<div class="rack">
+  <div class="card v1">
+    <p class="cap"><b>1 · TU PROPUESTA</b>Aro gris vacío; al elegir se rellena de lima. Limpio, pero solo cambia el color de un círculo de 22 px.</p>
+    <div class="stage"><div class="group">
+      <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+      <div class="row on"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+      <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+    </div></div>
+  </div>
+  <div class="card v2">
+    <p class="cap"><b>2 · RELLENO + CHECK</b>Lo mismo, con un check negro dentro del círculo lleno. Se lee como «hecho» aunque no distingas bien el color.</p>
+    <div class="stage"><div class="group">
+      <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+      <div class="row on"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+      <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+    </div></div>
+  </div>
+  <div class="card v3">
+    <p class="cap"><b>3 · RADIO CLÁSICO</b>Aro lima con un punto dentro: el de iOS y Android. Todo el mundo lo reconoce, pero es el que menos pesa de los cinco.</p>
+    <div class="stage"><div class="group">
+      <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+      <div class="row on"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+      <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+    </div></div>
+  </div>
+  <div class="card v4">
+    <p class="cap"><b>4 · RELLENO + CHECK + FILA TEÑIDA</b>Además, la fila elegida se tiñe (<code>tint/accent-10</code>) y su nombre pasa a lima. Es el feedback más claro: se ve desde lejos cuál está.</p>
+    <div class="stage"><div class="group">
+      <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+      <div class="row on"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+      <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+    </div></div>
+  </div>
+  <div class="card v5">
+    <p class="cap"><b>5 · RELLENO + CHECK + FILO</b>En vez de teñir la fila, un filo lima a la izquierda, como la barra de las superseries. Marca la fila sin cambiar su fondo.</p>
+    <div class="stage"><div class="group">
+      <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+      <div class="row on"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+      <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+    </div></div>
+  </div>
+</div>
+<div class="box">
+  <b>Lo que comparten las cinco</b>
+  <ul>
+    <li>Toda la fila se pulsa, no solo el círculo. Elegir otra apaga la anterior (con un fundido corto, 150 ms).</li>
+    <li>El aro apagado va en <code>muted</code>: se ve que hay algo que marcar sin competir con el texto.</li>
+    <li>Una opción que borra lleva el nombre en rojo (<code>redText</code>), elegida o no.</li>
+    <li>Sirve con y sin explicación debajo (ver la parte 3).</li>
+  </ul>
+  Mi recomendación: <b>4</b>. Es tu propuesta (el círculo que se rellena) con el feedback más claro que pedías; el check dentro ayuda a quien no distingue bien el lima.
+  Si la fila teñida te parece demasiado, <b>2</b>.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>2 · Opción obligatoria sin elegir</h2>
+<p class="lead">
+  Historial y plantillas <b>no vienen elegidos</b>: hay que decidir qué hacer con ellos. Mientras falte alguno, «Importar» va apagado
+  (<code>surface2</code>, texto <code>muted</code>) pero se puede pulsar: al pulsarlo, cada sección sin elegir dice en rojo, al lado de su título, que falta.
+  El aviso se va de esa sección en cuanto eliges algo en ella. (Mostrado con el marcador 4.)
+</p>
+<div class="rack">
+  <div class="card v4">
+    <p class="cap"><b>A · AL ABRIR</b>Nada elegido en historial ni plantillas. «Importar» apagado. Sin avisos todavía: no se regaña antes de tiempo.</p>
+    <div class="stage">
+      <div class="sec"><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">Programa activo</span><span class="sub t-label">Activa el programa importado</span></div><span class="sw"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl">Ejercicios propios</span><span class="sub t-label">12 ejercicios</span></div><span class="sw"></span></div>
+      </div></div>
+      <div class="gap"></div>
+      <div class="sec"><div class="shd"><span class="t-caps">Historial · 124 sesiones</span></div><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+      </div></div>
+      <div class="gap"></div>
+      <div class="sec"><div class="shd"><span class="t-caps">Plantillas · 4</span></div><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todas</span></div><span class="rd"></span></div>
+      </div></div>
+      <div class="cta off t-button">Importar</div>
+    </div>
+  </div>
+
+  <div class="card v4">
+    <p class="cap"><b>B · PULSAS «IMPORTAR»</b>Has elegido historial pero no plantillas. No importa nada: «Elige una» sale en rojo al lado de su título.</p>
+    <div class="stage">
+      <div class="sec"><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">Programa activo</span><span class="sub t-label">Activa el programa importado</span></div><span class="sw"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl">Ejercicios propios</span><span class="sub t-label">12 ejercicios</span></div><span class="sw"></span></div>
+      </div></div>
+      <div class="gap"></div>
+      <div class="sec"><div class="shd"><span class="t-caps">Historial · 124 sesiones</span></div><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+        <div class="row on"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+      </div></div>
+      <div class="gap"></div>
+      <div class="sec"><div class="shd"><span class="t-caps">Plantillas · 4</span><span class="t-labelS err">Elige una</span></div><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todas</span></div><span class="rd"></span></div>
+      </div></div>
+      <div class="cta off t-button">Importar</div>
+      <p class="tap">↑ pulsado</p>
+    </div>
+  </div>
+
+  <div class="card v4">
+    <p class="cap"><b>C · TODO ELEGIDO</b>El aviso se va al elegir. «Importar» se enciende en lima.</p>
+    <div class="stage">
+      <div class="sec"><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">Programa activo</span><span class="sub t-label">Activa el programa importado</span></div><span class="sw"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl">Ejercicios propios</span><span class="sub t-label">12 ejercicios</span></div><span class="sw"></span></div>
+      </div></div>
+      <div class="gap"></div>
+      <div class="sec"><div class="shd"><span class="t-caps">Historial · 124 sesiones</span></div><div class="group">
+        <div class="row"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+        <div class="row on"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todo el historial</span></div><span class="rd"></span></div>
+      </div></div>
+      <div class="gap"></div>
+      <div class="sec"><div class="shd"><span class="t-caps">Plantillas · 4</span></div><div class="group">
+        <div class="row on"><div class="meta"><span class="t-rowLbl">No importar</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl">Añadir las que falten</span></div><span class="rd"></span></div>
+        <div class="row"><div class="meta"><span class="t-rowLbl danger">Sustituir todas</span></div><span class="rd"></span></div>
+      </div></div>
+      <div class="cta t-button">Importar</div>
+    </div>
+  </div>
+</div>
+<div class="box">
+  <b>La regla, para que valga en toda la app</b>
+  <ul>
+    <li>Una elección <b>obligatoria</b> nace sin nada elegido solo cuando elegir mal cuesta algo (aquí, borrar tu historial). Si hay una opción segura evidente, viene elegida y no hay aviso.</li>
+    <li>Botón apagado pero pulsable, como el «Añadir» de Nuevo ejercicio sin nombre (U36): pulsarlo señala lo que falta, no hace nada más.</li>
+    <li>El aviso va en el título de la sección que falta (<code>labelStrong</code>, <code>redText</code>), no en un toast ni debajo del botón: donde está el problema.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2>3 · Con explicación debajo (importar un programa)</h2>
+<div class="rack">
+  <div class="card v4">
+    <p class="cap"><b>MARCADOR 4, FILAS ALTAS</b>Las formas de importar un programa. Aquí sí hay una opción segura (la primera), así que viene elegida y el botón está encendido.</p>
+    <div class="stage">
+      <div class="group">
+        <div class="row tall on"><div class="meta"><span class="t-rowLbl">Programa e historial</span><span class="sub t-label">Activa el programa y añade sus sesiones a tu historial</span></div><span class="rd"></span></div>
+        <div class="row tall"><div class="meta"><span class="t-rowLbl">Solo el historial</span><span class="sub t-label">Mantiene tu programa y añade las sesiones del archivo</span></div><span class="rd"></span></div>
+        <div class="row tall"><div class="meta"><span class="t-rowLbl">Solo el programa</span><span class="sub t-label">Activa el programa sin tocar tu historial</span></div><span class="rd"></span></div>
+      </div>
+      <div class="cta t-button">Importar</div>
+    </div>
+  </div>
+  <div class="card v2">
+    <p class="cap"><b>MARCADOR 2, FILAS ALTAS</b>Lo mismo sin teñir la fila, para comparar con explicación.</p>
+    <div class="stage">
+      <div class="group">
+        <div class="row tall on"><div class="meta"><span class="t-rowLbl">Programa e historial</span><span class="sub t-label">Activa el programa y añade sus sesiones a tu historial</span></div><span class="rd"></span></div>
+        <div class="row tall"><div class="meta"><span class="t-rowLbl">Solo el historial</span><span class="sub t-label">Mantiene tu programa y añade las sesiones del archivo</span></div><span class="rd"></span></div>
+        <div class="row tall"><div class="meta"><span class="t-rowLbl">Solo el programa</span><span class="sub t-label">Activa el programa sin tocar tu historial</span></div><span class="rd"></span></div>
+      </div>
+      <div class="cta t-button">Importar</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

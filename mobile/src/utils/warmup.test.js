@@ -92,4 +92,17 @@ describe('resolveWorkWeight', () => {
     expect(resolveWorkWeight(null, null, null)).toBeNull();
     expect(resolveWorkWeight(undefined, undefined, undefined)).toBeNull();
   });
+
+  it('P56: el peso del plan va tras el del entrenador y antes de la última sesión', () => {
+    const lastExercise = { sets: [{ weight: '60', reps: '12', done: true }] };
+    expect(resolveWorkWeight(null, lastExercise, 50, { suggestedWeight: 62.5 })).toBe(62.5);
+    expect(resolveWorkWeight({ weight: 90 }, lastExercise, 50, { suggestedWeight: 62.5 })).toBe(90);
+  });
+
+  it('P56: en asistidos el número del plan es la ayuda, no entra; sin número, tampoco', () => {
+    const lastExercise = { sets: [{ weight: '20', reps: '8', done: true }] };
+    expect(resolveWorkWeight(null, lastExercise, null, { assist: true, suggestedWeight: 17.5 })).toBe(20);
+    expect(resolveWorkWeight(null, lastExercise, null, { suggestedWeight: null })).toBe(20);
+    expect(resolveWorkWeight(null, null, 65, { suggestedWeight: 0 })).toBe(65);
+  });
 });

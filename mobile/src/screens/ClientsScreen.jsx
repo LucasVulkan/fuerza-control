@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, Modal, Alert, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -17,7 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
-import Reanimated, { LinearTransition, FadeIn, FadeOutUp } from 'react-native-reanimated';
+import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -25,6 +25,8 @@ import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ClientSessions, { ClientFreeSessions } from '../components/ClientSessions';
@@ -49,11 +51,14 @@ import { sessionStats } from '../utils/sessionStats';
 import { parseImportFile } from '../utils/importFile';
 import { programsOf, templatesOf } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
-import { LockIcon, CheckIcon, ChevronDown, MenuIcon } from '../components/ui/EditorIcons';
-import { collapseOut, FOLD_MS } from '../components/ui/collapseOut';
-import ProgramCard from '../components/ui/ProgramCard';
+import { LockIcon, CheckIcon, ChevronDown, MenuIcon, CloseIcon } from '../components/ui/EditorIcons';
+import { useSteadyFold } from '../components/ui/useSteadyFold';
+import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
+import InfoSection from '../components/ui/InfoSection';
 import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
 
+import { showDialog } from '../components/ui/dialog';
+import { confirmDiscardActive } from '../components/ui/confirmDiscard';
 // Sesiones por semana — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
@@ -106,68 +111,7 @@ function FilterChip({ label, active, onPress, count }) {
   );
 }
 
-function GhostBtn({ label, onPress, danger }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity style={styles.ghostBtn} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.ghostBtnText, danger && { color: th.colors.red }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 // ── Status dot ─────────────────────────────────────────────────────────────────
-
-// ── Sección plegable de Info ──────────────────────────────────────────────────
-
-/**
- * Categoría de la pestaña Info: una tarjeta `surface` con el título a la
- * izquierda y **su resumen a la derecha**.
- *
- * El resumen es lo que justifica el componente. El acordeón anterior eran
- * rótulos a sangre con separadores de 1px: con todo cerrado —que es como se
- * entra— la pantalla no decía nada, cuatro etiquetas y cuatro flechas. Aquí
- * cada cabecera lleva el dato que resume su sección (estado, nombre completo,
- * último peso, pendiente de cobro, conexión), así que Info se lee sin abrir
- * nada y solo se despliega lo que se va a tocar.
- *
- * El plegado es el mismo de las sesiones de la Home, y a propósito:
- * `LinearTransition` en la tarjeta y `collapseOut` en el cuerpo, que encoge
- * además de desvanecerse.
- */
-function InfoSection({ title, summary, tone, open, onToggle, children }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const toneColor = tone === 'accent' ? th.colors.accent
-    : tone === 'green'  ? th.colors.green
-    : tone === 'orange' ? th.colors.orange
-    : th.colors.mutedLight;
-  return (
-    <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.infoSec}>
-      <TouchableOpacity
-        style={styles.infoSecHead}
-        onPress={onToggle}
-        activeOpacity={0.75}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-      >
-        <Text style={styles.infoSecTitle}>{title}</Text>
-        <Text style={[styles.infoSecSum, { color: toneColor }]} numberOfLines={1}>{summary ?? ''}</Text>
-        <View style={open ? styles.infoSecChevOpen : null}>
-          <ChevronDown size={12} color={open ? th.colors.accent : th.colors.muted} />
-        </View>
-      </TouchableOpacity>
-      {open && (
-        <Reanimated.View entering={FadeIn.duration(180)} exiting={collapseOut} style={styles.infoSecBody}>
-          {/* Filete a sangre: separa cabecera y cuerpo sin meter una segunda
-              superficie, el mismo recurso que la tarjeta de programa. */}
-          <View style={styles.infoSecRule} />
-          {children}
-        </Reanimated.View>
-      )}
-    </Reanimated.View>
-  );
-}
 
 /**
  * Fila de la lista agrupada de Info (`getCardRadii`): el patrón denso que ya
@@ -237,34 +181,28 @@ function ExerciseMiniCard({ exerciseId, logs }) {
 function ClientImportModal({ fileName, parsedData, onImport, onClose }) {
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  // Hoja estándar (U34): elegir cómo importar es elegir entre opciones.
+  // Cancelar es cerrarla; el nombre del fichero va de primera línea.
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.importModalWrap}>
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>IMPORTAR PROGRAMA</Text>
-          <Text style={styles.modalSub} numberOfLines={1}>{fileName}</Text>
-          <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-            {[
-              { mode: 'replace',     label: t('clients.importModal.replaceLabel'),     desc: t('clients.importModal.replaceDesc') },
-              { mode: 'replace_log', label: t('clients.importModal.replaceLogLabel'),  desc: t('clients.importModal.replaceLogDesc') },
-              { mode: 'merge_log',   label: t('clients.importModal.mergeLogLabel'),    desc: t('clients.importModal.mergeLogDesc') },
-            ].map(({ mode, label, desc }) => (
-              <TouchableOpacity
-                key={mode}
-                style={styles.importOption}
-                onPress={() => onImport(parsedData, mode)}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.importOptionLabel}>{label}</Text>
-                <Text style={styles.importOptionDesc}>{desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <GhostBtn label="Cancelar" onPress={onClose} />
-        </View>
-      </View>
-    </Modal>
+    <DragSheet visible onClose={onClose} title={t('clients.importModal.title')}>
+      <Text style={styles.modalSub} numberOfLines={1}>{fileName}</Text>
+      <Section style={styles.importSheetRows}>
+        {[
+          { mode: 'replace',     icon: ROW_ICON.import,  label: t('clients.importModal.replaceLabel'),    desc: t('clients.importModal.replaceDesc') },
+          { mode: 'replace_log', icon: ROW_ICON.history, label: t('clients.importModal.replaceLogLabel'), desc: t('clients.importModal.replaceLogDesc') },
+          { mode: 'merge_log',   icon: ROW_ICON.new,     label: t('clients.importModal.mergeLogLabel'),   desc: t('clients.importModal.mergeLogDesc') },
+        ].map(({ mode, icon, label, desc }) => (
+          <SheetRow
+            key={mode}
+            icon={icon}
+            label={label}
+            sub={desc}
+            subLines={0}
+            onPress={() => onImport(parsedData, mode)}
+          />
+        ))}
+      </Section>
+    </DragSheet>
   );
 }
 
@@ -305,7 +243,7 @@ function AssignedProgramCard({
   program, getEffectiveTemplate, allExercises, adherence, adherence4w, loadPct,
   dirty, client, link, log, archivedCount,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImport, onNewProgram,
-  onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived,
+  onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived, fold,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -419,8 +357,8 @@ function AssignedProgramCard({
       )}
 
       {/* ── Tarjeta de programa ── la misma que la Home: las dos pantallas
-          convergían sin saberlo (docs/specs/home-sessions.md §4). El pie de
-          acciones va DENTRO, que es el único cambio real de la convergencia. */}
+          convergían sin saberlo (docs/specs/home-sessions.md §4). Las acciones
+          van debajo y fuera, como en el tab Programa (U32). */}
       <ProgramCard
         variant="client"
         name={program.name}
@@ -450,16 +388,14 @@ function AssignedProgramCard({
         adherenceColor={attnColor}
         pace={paceHasData ? paceRaw : null}
         loadPct={loadPct}
-        onEdit={onEdit}
-        onView={onView}
-        onMore={() => setMenuOpen(true)}
       />
+      <ProgramActions onEdit={onEdit} onView={onView} onMore={() => setMenuOpen(true)} />
 
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
           hace de su app (trainer-logging.md §3.1). Preparar no aplica: manda
           ajustes a un móvil que aquí no hay. ── */}
       {link === 'none' ? (
-        <ClientSessions client={client} program={program} days={currentDays} log={log} />
+        <ClientSessions client={client} program={program} days={currentDays} log={log} fold={fold} />
       ) : (<>
       {/* ── Próxima sesión — sección propia ── */}
       <Text style={styles.apSectionLabel}>{t('clients.nextSectionLabel').toUpperCase()}</Text>
@@ -485,21 +421,23 @@ function AssignedProgramCard({
 
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
-        <View style={styles.sheetBody}>
-          <SheetRow label={t('clients.menuNewProgram')} onPress={onNewProgram} />
-          {onUpload && <SheetRow label={t('clients.menuUpload')} onPress={onUpload} />}
-          <SheetRow label={t('clients.menuImport')} onPress={onImport} />
-          <SheetRow label={t('clients.menuShare')}  onPress={onShare} />
-          <SheetRow label={t('clients.menuExport')} onPress={onExport} />
+        <Section style={styles.sheetSection}>
+          <SheetRow icon={ROW_ICON.new}    label={t('clients.menuNewProgram')} onPress={onNewProgram} />
+          {onUpload && <SheetRow icon={ROW_ICON.send} label={t('clients.menuUpload')} onPress={onUpload} />}
+          <SheetRow icon={ROW_ICON.import} label={t('clients.menuImport')} onPress={onImport} />
+          <SheetRow icon={ROW_ICON.share}  label={t('clients.menuShare')}  onPress={onShare} />
+          <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={onExport} />
           {archivedCount > 0 && (
             <SheetRow
-              label={`${t('clients.menuArchived')} · ${archivedCount}`}
+              icon={ROW_ICON.archived}
+              label={t('clients.menuArchived')}
+              value={String(archivedCount)}
               onPress={onShowArchived}
             />
           )}
-          {onDeassign && <SheetRow label={t('clients.menuDeassign')} onPress={onDeassign} />}
-          <SheetRow label={t('clients.menuDelete')} onPress={onDelete} danger />
-        </View>
+          {onDeassign && <SheetRow icon={ROW_ICON.unassign} label={t('clients.menuDeassign')} onPress={onDeassign} />}
+          <SheetRow icon={ROW_ICON.trash} label={t('clients.menuDelete')} onPress={onDelete} danger />
+        </Section>
       </DragSheet>
     </>
   );
@@ -534,7 +472,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
    * Ver `docs/specs/client-connection.md` §4.4.
    */
   function handleReissue() {
-    Alert.alert(
+    showDialog(
       t('clients.codeCard.reissueConfirmTitle'),
       t('clients.codeCard.reissueConfirmBody', { name: client.name }),
       [
@@ -548,7 +486,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
               await reissueClientCode(client.id);
               showToast(t('clients.codeCard.reissueDone'), 2200, 'success');
             } catch (err) {
-              Alert.alert(t('clients.codeCard.reissueError'), err?.message ?? '');
+              showDialog(t('clients.codeCard.reissueError'), err?.message ?? '');
             } finally {
               setReissuing(false);
             }
@@ -559,7 +497,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   }
 
   function handleCancel() {
-    Alert.alert(
+    showDialog(
       t('clients.codeCard.cancelConfirmTitle'),
       t('clients.codeCard.cancelConfirmBody', { name: client.name }),
       [
@@ -572,7 +510,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
               await cancelClientInvitation(client.id);
               showToast(t('clients.codeCard.cancelDone'), 2200, 'neutral');
             } catch (err) {
-              Alert.alert('Error', err?.message ?? '');
+              showDialog(t('common.error'), err?.message ?? '');
             }
           },
         },
@@ -703,7 +641,7 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
       showToast(t('clients.moveToApp.done'), 2200, 'success');
       onClose();
     } catch (err) {
-      Alert.alert('Error', err?.message ?? t('clients.keyTab.connectError'));
+      showDialog(t('common.error'), err?.message ?? t('clients.keyTab.connectError'));
     } finally {
       setBusy(false);
     }
@@ -764,20 +702,16 @@ function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExp
         <MenuIcon horizontal color={th.colors.muted2} />
       </TouchableOpacity>
 
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)} />
-        <View style={styles.contextMenu}>
-          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onReactivate(); }}>
-            <Text style={[styles.contextMenuText, { color: th.colors.accent }]}>{t('clients.menuReactivate')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onExport(); }}>
-            <Text style={styles.contextMenuText}>{t('clients.menuExport')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.contextMenuItem} onPress={() => { setMenuOpen(false); onDelete(); }}>
-            <Text style={[styles.contextMenuText, { color: th.colors.red }]}>{t('clients.menuDelete')}</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      {/* Hoja de opciones estándar (U30/U34): antes un Modal con filas de texto. */}
+      {menuOpen && (
+        <DragSheet visible onClose={() => setMenuOpen(false)} title={program.name}>
+          <Section style={styles.importSheetRows}>
+            <SheetRow icon={ROW_ICON.sync}   label={t('clients.menuReactivate')} onPress={onReactivate} />
+            <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')}     onPress={onExport} />
+            <SheetRow icon={ROW_ICON.trash}  label={t('clients.menuDelete')}     onPress={onDelete} danger />
+          </Section>
+        </DragSheet>
+      )}
     </View>
   );
 }
@@ -1264,34 +1198,32 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
     await Clipboard.setStringAsync(client.syncCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-    showToast('Código copiado', 2200, 'neutral');
+    showToast(t('clients.keyTab.copied'), 2200, 'neutral');
   }
 
   async function handleConnect() {
     setLoading(true);
     try {
       await onConnectCloud();
-      showToast('Cliente conectado', 2200, 'success');
+      showToast(t('clients.clientConnected'), 2200, 'success');
       onClose();
     } catch (err) {
-      Alert.alert('Error', err.message ?? 'No se pudo conectar.');
+      showDialog(t('common.error'), err.message ?? t('clients.keyTab.connectError'));
     } finally {
       setLoading(false);
     }
   }
 
+  // Hoja estándar (U34): antes era un Modal propio con su velo y su asa.
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.infoSheet}>
-        <View style={styles.infoSheetHandle} />
-        <Text style={styles.infoSheetName}>{client.name}</Text>
+    <DragSheet visible onClose={onClose} title={client.name}>
+      <View style={styles.infoSheetBody}>
 
         {client.syncSlotId ? (
           client.syncCode ? (
             <View style={styles.infoCodeRow}>
               <View style={styles.infoCodeBox}>
-                <Text style={styles.infoCodeLabel}>CÓDIGO CLIENTE</Text>
+                <Text style={styles.infoCodeLabel}>{t('clients.infoCodeLabel')}</Text>
                 <Text style={styles.infoCodeText}>{client.syncCode}</Text>
               </View>
               <TouchableOpacity style={styles.infoCopyBtn} onPress={handleCopy} activeOpacity={0.7}>
@@ -1300,8 +1232,8 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
             </View>
           ) : (
             <View style={styles.infoCodeBox}>
-              <Text style={styles.infoCodeLabel}>SINCRONIZACIÓN EN LA NUBE</Text>
-              <Text style={styles.infoCodeSub}>Conectado · sin código local</Text>
+              <Text style={styles.infoCodeLabel}>{t('clients.infoCloudLabel')}</Text>
+              <Text style={styles.infoCodeSub}>{t('clients.infoCloudNoCode')}</Text>
             </View>
           )
         ) : (
@@ -1317,42 +1249,18 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
           </TouchableOpacity>
         )}
       </View>
-    </Modal>
+    </DragSheet>
   );
 }
 
-// ── Action sheet icons ──────────────────────────────────────────────────────────
+// ── Iconos de la tarjeta de cliente ──────────────────────────────────────────────────────────
 
-function ChartIcon({ size = 20, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M18 20V10M12 20V4M6 20v-6" stroke={color} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  );
-}
 function TargetIcon({ size = 20, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.8} />
       <Circle cx="12" cy="12" r="5" stroke={color} strokeWidth={1.8} />
       <Circle cx="12" cy="12" r="1.6" fill={color} />
-    </Svg>
-  );
-}
-function PencilIcon({ size = 20, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 20h9" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
-      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
-            stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-function PersonIcon({ size = 20, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx="12" cy="8" r="4" stroke={color} strokeWidth={1.8} />
     </Svg>
   );
 }
@@ -1366,61 +1274,51 @@ function CloudUpIcon({ size = 20, color }) {
 }
 
 // ── ClientActionsSheet ──────────────────────────────────────────────────────────
-// The "···" menu on a client card: keeps the frequent action one tap on the card
-// and tucks the rest (next session, edit program, info) behind this sheet.
+// The "···" menu on a client card (pulsación larga): keeps the frequent action
+// one tap on the card and tucks the rest (next session, edit program, info)
+// behind this sheet. Era un `Modal` propio con filas `›` de texto; desde
+// pulido-ui.md §3 es un `DragSheet` con las filas de opción de la app.
 
 function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
+  const th = useTheme();
   const { t } = useTranslation();
+  // Cierre al instante, como antes: varias acciones abren otro Modal (el
+  // editor de programa) y en iOS no se presenta uno mientras otro se va.
   const run = (fn) => () => { onClose(); fn(); };
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.infoSheet}>
-        <View style={styles.infoSheetHandle} />
-        <Text style={styles.infoSheetName}>{client.name}</Text>
-
+    <DragSheet visible onClose={onClose} title={client.name}>
+      <Section style={{ marginBottom: spacing.lg }}>
         {/* Sin app: entrenar con él es lo primero (trainer-logging.md §3.1). */}
         {onStart && (
-          <TouchableOpacity style={styles.actionRow} onPress={run(onStart)} activeOpacity={0.7}>
-            <Text style={[styles.actionLabel, { color: th.colors.accent }]}>{startLabel}</Text>
-            <Text style={[styles.actionChevron, { color: th.colors.accent }]}>›</Text>
-          </TouchableOpacity>
+          <SheetRow
+            icon={ROW_ICON.start}
+            iconColor={th.colors.accent}
+            labelColor={th.colors.accent}
+            label={startLabel}
+            onPress={run(onStart)}
+          />
         )}
-
-        <TouchableOpacity style={styles.actionRow} onPress={run(onProgress)} activeOpacity={0.7}>
-          <ChartIcon color={th.colors.muted} />
-          <Text style={styles.actionLabel}>{t('clients.actProgress')}</Text>
-          {newSessionsCount > 0 && (
-            <View style={styles.actionBadge}>
-              <Text style={styles.actionBadgeText}>{newSessionsCount > 99 ? '99+' : newSessionsCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Preparar manda ajustes a su móvil: sin app no hay a quién. */}
+        <SheetRow
+          icon={ROW_ICON.progress}
+          label={t('clients.actProgress')}
+          badge={newSessionsCount > 0 ? (newSessionsCount > 99 ? '99+' : String(newSessionsCount)) : null}
+          onPress={run(onProgress)}
+        />
+        {/* Preparar manda ajustes a su móvil: sin app no hay a quién. Azul:
+            es lo que el entrenador le prescribe. */}
         {onNextSession && (
-          <TouchableOpacity style={[styles.actionRow, styles.actionRowNext]} onPress={run(onNextSession)} activeOpacity={0.7}>
-            <TargetIcon color={th.colors.blue} />
-            <Text style={[styles.actionLabel, { color: th.colors.blue }]}>{t('clients.actNextSession')}</Text>
-            <Text style={styles.actionChevron}>›</Text>
-          </TouchableOpacity>
+          <SheetRow
+            icon={ROW_ICON.target}
+            iconColor={th.colors.blue}
+            labelColor={th.colors.blue}
+            label={t('clients.actNextSession')}
+            onPress={run(onNextSession)}
+          />
         )}
-
-        <TouchableOpacity style={styles.actionRow} onPress={run(onEditProgram)} activeOpacity={0.7}>
-          <PencilIcon color={th.colors.muted} />
-          <Text style={styles.actionLabel}>{t('clients.actEditProgram')}</Text>
-          <Text style={styles.actionChevron}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionRow} onPress={run(onInfo)} activeOpacity={0.7}>
-          <PersonIcon color={th.colors.muted} />
-          <Text style={styles.actionLabel}>{t('clients.actInfo')}</Text>
-          <Text style={styles.actionChevron}>›</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
+        <SheetRow icon={ROW_ICON.edit} label={t('clients.actEditProgram')} onPress={run(onEditProgram)} />
+        <SheetRow icon={ROW_ICON.user} label={t('clients.actInfo')}        onPress={run(onInfo)} />
+      </Section>
+    </DragSheet>
   );
 }
 
@@ -1714,6 +1612,9 @@ export default function ClientsScreen() {
   const billLang = i18n.language?.startsWith('en') ? 'en' : 'es';
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
+  // Las sesiones de la ficha: un solo acordeón entre las del programa y las
+  // libres, y sin saltos al plegar cerca del final (como Inicio).
+  const fold       = useSteadyFold();
 
   // ── Store ──────────────────────────────────────────────────────────────────
   const clients                = useStore((s) => s.clients);
@@ -1904,10 +1805,7 @@ export default function ClientsScreen() {
       onPress: () => {
         if (activeForClient === c.id && activeTemplateId === heroId) { navigation.navigate('Workout'); return; }
         if (!activeTemplateId) { go(); return; }
-        Alert.alert(t('workout.discardConfirm'), undefined, [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('workout.discardSession'), style: 'destructive', onPress: go },
-        ]);
+        confirmDiscardActive(t, go);
       },
     };
   })();
@@ -2256,7 +2154,7 @@ export default function ClientsScreen() {
       // bloqueada, y dejarla abierta aquí borraría el aviso que recuerda que ese
       // cliente está parado.
       updateStage(programId, stageIdx, { locked: true });
-      Alert.alert('Error', err.message ?? t('clients.programUploadError'));
+      showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
     }
   }
 
@@ -2290,12 +2188,12 @@ export default function ClientsScreen() {
   }
 
   function handleDeleteClient(clientId) {
-    Alert.alert(
+    showDialog(
       t('clients.deleteClientTitle'),
       t('clients.deleteClientConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => {
           deleteClient(clientId);
           if (selectedClientId === clientId) { setSelectedClientId(null); setView('list'); }
         }},
@@ -2308,7 +2206,7 @@ export default function ClientsScreen() {
   function confirmReplaceActive(onConfirm) {
     const hasActive = selectedClient?.activeProgramId && programs[selectedClient.activeProgramId];
     if (!hasActive) { onConfirm(); return; }
-    Alert.alert(
+    showDialog(
       t('clients.replaceActiveTitle'),
       t('clients.replaceActiveConfirm'),
       [
@@ -2351,11 +2249,11 @@ export default function ClientsScreen() {
         encoding: FileSystem.EncodingType.UTF8,
       });
       const parsed = parseImportFile(raw);
-      if (!parsed.ok) { Alert.alert(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
+      if (!parsed.ok) { showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return; }
       setImportState({ fileName: result.assets[0].name, parsedData: parsed.data });
     } catch (err) {
       if (!err?.message?.includes('cancel')) {
-        Alert.alert('Error', err?.message ?? 'No se pudo leer el archivo');
+        showDialog(t('common.error'), err?.message ?? t('errors.cannotReadFile'));
       }
     }
   }
@@ -2425,16 +2323,14 @@ export default function ClientsScreen() {
         <AppHeader />
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={styles.emptyTitle}>Gestión de clientes</Text>
-          <Text style={styles.emptyBody}>
-            Lleva el seguimiento de tus clientes, asígnales programas y controla su facturación.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('clients.proGateTitle')}</Text>
+          <Text style={styles.emptyBody}>{t('clients.proGateBody')}</Text>
           <TouchableOpacity
             style={styles.proBtn}
             onPress={() => setShowPaywall(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.proBtnText}>Ver planes PRO</Text>
+            <Text style={styles.proBtnText}>{t('clients.proGateCta')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.hideTabBtn}
@@ -2444,7 +2340,7 @@ export default function ClientsScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Text style={styles.hideTabBtnText}>Ocultar tab</Text>
+            <Text style={styles.hideTabBtnText}>{t('templates.hideTab')}</Text>
           </TouchableOpacity>
         </View>
         {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
@@ -2510,14 +2406,14 @@ export default function ClientsScreen() {
               await uploadProgramToClient(selectedClientId, programId);
               showToast(t('clients.programSent'), 2200, 'success');
             } catch (err) {
-              Alert.alert('Error', err.message ?? t('clients.programUploadError'));
+              showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
             }
           };
           // Abrir la etapa y enviarla en un solo toque: un desbloqueo que se
           // queda sin enviar no desbloquea nada. Arrastra las ediciones que
           // hubiera pendientes en ese programa, igual que "Enviar programa".
           const unlockStage = (stageIdx) => unlockClientStage(selectedClientId, stageIdx);
-          const confirmDelete = (program) => Alert.alert(
+          const confirmDelete = (program) => showDialog(
             t('clients.deleteProgramTitle'),
             t('clients.deleteProgramConfirm', { name: program.name }),
             [
@@ -2527,7 +2423,7 @@ export default function ClientsScreen() {
           );
           // Reactivating an archived program replaces the active one (the model
           // keeps exactly one active) — confirm before the swap.
-          const reactivate = (program) => Alert.alert(
+          const reactivate = (program) => showDialog(
             t('clients.reactivateTitle'),
             t('clients.reactivateConfirm', { name: program.name }),
             [
@@ -2540,7 +2436,7 @@ export default function ClientsScreen() {
           );
 
           return (
-            <ScrollView contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
+            <ScrollView {...fold.scrollProps} contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
               {/* Invitado: lo primero es que canjee el código. Se retira sola
                   cuando lo hace, y el código queda en Info (C28 §4.0.6). */}
               {linkOf(selectedClient) === 'invited' && (
@@ -2585,6 +2481,7 @@ export default function ClientsScreen() {
                   // segundo se monta mientras el primero aún se está cerrando y
                   // en Android se queda sin presentar. Se abre al terminar.
                   onShowArchived={() => setTimeout(() => setShowPrevious(true), 250)}
+                  fold={fold}
                 />
               ) : (
                 // Un título y la acción principal, en acento. La pista de debajo
@@ -2599,7 +2496,7 @@ export default function ClientsScreen() {
 
               {/* Sus sesiones libres, con y sin programa: una rutina suelta no
                   necesita uno (group-classes.md §4.1, C24). */}
-              <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} />
+              <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} fold={fold} />
 
               {/* Programas anteriores — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}
@@ -2625,6 +2522,7 @@ export default function ClientsScreen() {
                   ))}
                 </View>
               </DragSheet>
+              <View style={{ height: fold.pad }} />
             </ScrollView>
           );
         })()}
@@ -2868,7 +2766,7 @@ export default function ClientsScreen() {
                         <Text style={styles.rowDate}>{formatBillDate(entry.date, billLang, true)}</Text>
                         <Text style={styles.rowValue}>{entry.weight} kg</Text>
                         <TouchableOpacity onPress={() => removeClientBodyWeight(selectedClientId, entry.date)} hitSlop={8}>
-                          <Text style={styles.rowDelete}>✕</Text>
+                          <CloseIcon size={14} color={th.colors.muted} />
                         </TouchableOpacity>
                       </InfoRow>
                     ))}
@@ -2939,7 +2837,7 @@ export default function ClientsScreen() {
                             <TouchableOpacity
                               style={styles.billMain}
                               activeOpacity={1}
-                              onLongPress={() => Alert.alert(
+                              onLongPress={() => showDialog(
                                 t('clients.menuDelete'),
                                 t('clients.billDeleteConfirm'),
                                 [
@@ -3139,7 +3037,7 @@ export default function ClientsScreen() {
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')} hitSlop={8} style={styles.searchClearBtn}>
-                <Text style={styles.searchClearText}>✕</Text>
+                <CloseIcon size={16} color={th.colors.mutedLight} />
               </TouchableOpacity>
             )}
           </View>
@@ -3211,7 +3109,7 @@ export default function ClientsScreen() {
                 <View key={id} style={styles.tagRowPill}>
                   <Text style={styles.tagRowPillText}>{tagName}</Text>
                   <TouchableOpacity onPress={() => toggleTagFilter(id)} hitSlop={8} activeOpacity={0.7}>
-                    <Text style={styles.tagRowPillX}>×</Text>
+                    <CloseIcon size={12} color={th.colors.onAccent} />
                   </TouchableOpacity>
                 </View>
               );
@@ -3306,9 +3204,9 @@ export default function ClientsScreen() {
                     if (!client.activeProgramId) return;
                     try {
                       await uploadProgramToClient(client.id, client.activeProgramId);
-                      showToast('Programa enviado', 2200, 'success');
+                      showToast(t('clients.programSent'), 2200, 'success');
                     } catch (err) {
-                      Alert.alert('Error', err.message ?? 'No se pudo subir el programa.');
+                      showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
                     }
                   }}
                   onOpenActions={() => setActionsClientId(client.id)}
@@ -3317,7 +3215,7 @@ export default function ClientsScreen() {
                       await sendOverrides(client.id);
                       showToast(t('clients.overrideSent'), 2200, 'success');
                     } catch (err) {
-                      Alert.alert('Error', err.message ?? t('clients.overrideSendFailed'));
+                      showToast(err.message ?? t('clients.overrideSendFailed'), 3000, 'error');
                     }
                   }}
                   onUnlockStage={(stageIdx) => unlockClientStage(client.id, stageIdx)}
@@ -3486,7 +3384,7 @@ export default function ClientsScreen() {
                             <Text style={[styles.tagActionText, { color: th.colors.accent }]}>✓</Text>
                           </TouchableOpacity>
                           <TouchableOpacity style={styles.tagActionBtn} onPress={() => setTagRenameId(null)} hitSlop={8}>
-                            <Text style={styles.tagActionText}>✕</Text>
+                            <CloseIcon size={16} color={th.colors.mutedLight} />
                           </TouchableOpacity>
                         </View>
                       );
@@ -3515,7 +3413,7 @@ export default function ClientsScreen() {
                           style={styles.tagActionBtn}
                           onPress={() => {
                             if (usedBy === 0) { deleteTag(id); return; }
-                            Alert.alert(
+                            showDialog(
                               t('clients.deleteTagTitle'),
                               t('clients.deleteTagConfirm', { name, count: usedBy }),
                               [
@@ -3526,7 +3424,7 @@ export default function ClientsScreen() {
                           }}
                           hitSlop={8}
                         >
-                          <Text style={[styles.tagActionText, { color: th.colors.red }]}>✕</Text>
+                          <CloseIcon size={16} color={th.colors.red} />
                         </TouchableOpacity>
                       </View>
                     );
@@ -3835,10 +3733,6 @@ const makeStyles = (th) => StyleSheet.create({
   searchClearBtn: {
     paddingLeft: spacing.xs2,
   },
-  searchClearText: {
-    ...textStyles.body,
-    color: th.colors.mutedLight,
-  },
 
   // Row 3: Filter pills row. Sin marginTop negativo: el gap con el buscador
   // lo da el `gap` del listHeader (space/sm=6), igual que el que hay entre el
@@ -3894,11 +3788,6 @@ const makeStyles = (th) => StyleSheet.create({
   tagRowPillText: {
     ...textStyles.labelStrong,
     color: th.colors.onAccent,
-  },
-  tagRowPillX: {
-    ...textStyles.labelStrong,
-    color:      th.colors.onAccent,
-    lineHeight: 14,
   },
 
   // Legacy — keep chip styles for compatibility with other views
@@ -3973,30 +3862,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Client info sheet ──
-  infoSheet: {
-    position:             'absolute',
-    bottom:               0,
-    left:                 0,
-    right:                0,
-    backgroundColor:      th.colors.bg,
-    borderTopLeftRadius:  th.radius.xl,
-    borderTopRightRadius: th.radius.xl,
-    borderTopWidth:       borders.thin,
-    borderTopColor:       th.colors.borderCard,
-    paddingHorizontal:    spacing.xl,
-    paddingBottom:        spacing.xxl,
-    paddingTop:           spacing.sm,
-    gap:                  spacing.sm,
-  },
-  infoSheetHandle: {
-    width:           36,
-    height:          4,
-    backgroundColor: th.colors.border,
-    borderRadius:    2,
-    alignSelf:       'center',
-    marginBottom:    spacing.sm,
-  },
-  infoSheetName: { ...textStyles.itemTitle, color: th.colors.text, marginBottom: spacing.xs },
+  infoSheetBody: { gap: spacing.sm, paddingBottom: spacing.sm },
   infoCodeRow: {
     flexDirection: 'row',
     alignItems:    'center',
@@ -4116,30 +3982,6 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:      0,
   },
   pendingBtnText: { ...textStyles.button, color: th.colors.onAccent },
-  // Action sheet rows (··· menu)
-  actionRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius:    th.radius.sm,
-    gap:             spacing.sm,
-  },
-  actionRowNext: {
-    backgroundColor: withOpacity(th.colors.blue, 0.08),
-  },
-  actionLabel:   { ...textStyles.body, flex: 1, color: th.colors.text },
-  actionChevron: { ...textStyles.heading, color: th.colors.mutedLight },
-  actionBadge: {
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.full,
-    minWidth:          20,
-    height:            20,
-    alignItems:        'center',
-    justifyContent:    'center',
-    paddingHorizontal: 6,
-  },
-  actionBadgeText: { ...textStyles.labelStrong, color: th.colors.onAccent },
   // Cuerpo: columna de datos + CTA. Figma alinea el botón arriba dentro de un
   // bloque fijo de 40px; aquí el bloque crece (2 avisos = 1 línea más), así que
   // el botón va centrado contra el alto real.
@@ -4366,6 +4208,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           spacing.sm,
     paddingBottom: spacing.lg,
   },
+  sheetSection: { marginBottom: spacing.lg },
 
   // ── Código de conexión ──
   codeCard: {
@@ -4576,44 +4419,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.lg,
     gap:               spacing.md,
   },
-  infoSec: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
-    overflow:        'hidden',
-  },
-  infoSecHead: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.md,
-    minHeight:         52,
-    paddingHorizontal: spacing.lg,
-  },
-  infoSecTitle: {
-    ...textStyles.labelStrong,
-    textTransform: 'uppercase',
-    color:         th.colors.text,
-  },
-  // Ocupa el hueco que deja el título aunque esté vacío: si no, el galón se
-  // pega al rótulo en las secciones sin resumen y las cabeceras no casan.
-  infoSecSum: {
-    ...textStyles.body,
-    flex:      1,
-    textAlign: 'right',
-  },
-  infoSecChevOpen: { transform: [{ rotate: '180deg' }] },
-  infoSecBody: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom:     spacing.lg,
-    gap:               spacing.lg,
-    overflow:          'hidden',
-  },
-  // Filete a sangre: sale del padding de la tarjeta por los dos lados.
-  infoSecRule: {
-    height:           borders.thin,
-    backgroundColor:  th.colors.border,
-    marginHorizontal: -spacing.lg,
-  },
-
   infoBlock: { gap: spacing.sm },
   infoLabel: {
     ...textStyles.caps,
@@ -4679,7 +4484,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   rowDate:   { ...textStyles.label, color: th.colors.mutedLight, flex: 1 },
   rowValue:  { ...textStyles.labelStrong, color: th.colors.text },
-  rowDelete: { ...textStyles.labelStrong, color: th.colors.muted },
 
   // ── Fila de alta (peso, etiqueta nueva) ──
   addRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -5029,67 +4833,8 @@ const makeStyles = (th) => StyleSheet.create({
   calDayText:    { ...textStyles.labelStrong, color: th.colors.text },
   calDayTextSel: { color: th.colors.onAccent },
 
-  // ── Buttons ──
-  ghostBtn: {
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.border,
-    borderRadius:      th.radius.sm,
-  },
-  ghostBtnText: { ...textStyles.body, color: th.colors.mutedLight },
-
   // ── Modals ──
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  // Wrapper that centers modal card vertically (sits in normal flow above backdrop)
-  importModalWrap: {
-    position:       'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    pointerEvents:  'box-none',
-  },
-  modalCard: {
-    backgroundColor:   th.colors.bg,
-    borderWidth:       borders.thin,
-    borderColor:       th.colors.borderCard,
-    borderRadius:      th.radius.lg,
-    padding:           spacing.xl,
-    gap:               spacing.md,
-  },
-  modalTitle: { ...textStyles.heading, color: th.colors.text },
   modalSub:   { ...textStyles.label, color: th.colors.muted },
-  // ── Import options ──
-  importOption: {
-    backgroundColor: th.colors.surface2,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  importOptionLabel: { ...textStyles.body,  color: th.colors.text },
-  importOptionDesc:  { ...textStyles.label, color: th.colors.mutedLight, marginTop: 2 },
-
-  // ── Context menu ──
-  contextMenu: {
-    position:        'absolute',
-    bottom:          spacing.xxl * 2,
-    left:            spacing.xl,
-    right:           spacing.xl,
-    backgroundColor: th.colors.bg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    borderRadius:    th.radius.md,
-    overflow:        'hidden',
-  },
-  contextMenuItem: {
-    padding:           spacing.md,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-  },
-  contextMenuText: { ...textStyles.body, color: th.colors.text },
+  importSheetRows: { marginTop: spacing.md, marginBottom: spacing.sm },
 });
 

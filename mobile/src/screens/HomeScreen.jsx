@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/Text';
 // Reanimated lleva las dos mitades del plegado: el `layout` de la tarjeta
 // anima su propio alto y el contenido entra y sale con opacidad. Es el patrón
@@ -13,27 +13,26 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, addDays } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
+import ActiveSessionBanner from '../components/ActiveSessionBanner';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
-import { MenuRow } from '../components/ui/MenuList';
+import SheetRow from '../components/ui/SheetRow';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import NoProgram from '../components/ui/NoProgram';
-import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
+import { spacing, textStyles, borders, lh } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { isStageLocked } from '../utils/stageLocks';
 import { FOLD_MS } from '../components/ui/collapseOut';
+import { useSteadyFold } from '../components/ui/useSteadyFold';
 import {
   ExerciseLines, SessionRow, TodayCard, SectionHeader,
 } from '../components/SessionList';
-import { startCta, relativeTime, elapsedShort } from '../utils/sessionRowText';
+import { startCta, relativeTime } from '../utils/sessionRowText';
 import { getWeekStatuses } from '../utils/weekProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
-import { isExerciseDone } from '../utils/exerciseStatus';
 
-// Tint base "lima" (#b8ff00) — distinto del accent sólido (#aae216), sin
-// token propio (mismo caso que el #81a71e del banner, ver theme.js).
-const LIMA = '#b8ff00';
-
+import { confirmDiscardActive } from '../components/ui/confirmDiscard';
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 // ── Weekly selector (L M X J V S D + 7 dots) ────────────────────────────────────
@@ -99,7 +98,8 @@ export default function HomeScreen() {
   const [tplList,     setTplList]     = useState(false);
   // Acordeón puro: como mucho una sesión abierta. Ni se persiste ni se
   // recuerda al volver — es una preferencia de un segundo, no un ajuste.
-  const [openId,      setOpenId]      = useState(null);
+  // Sin saltos de golpe al plegar cerca del final: `useSteadyFold`.
+  const fold = useSteadyFold();
 
   const activeProgram        = useStore(selectActiveProgram);
   const activeSession        = useStore((s) => s.activeSession);
@@ -120,11 +120,6 @@ export default function HomeScreen() {
   const snoozeStageBanner    = useStore((s) => s.snoozeStageBanner);
   const stageBannerSnooze    = useStore((s) => s.stageBannerSnooze);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
-  // Entreno de un cliente sin app a medias: sus filas no son las mías, así que
-  // sin este aviso se quedaría perdido (trainer-logging.md §3.7).
-  const runningClient        = useStore((s) => (
-    s.activeSession.forClient ? s.clients[s.activeSession.forClient] ?? null : null
-  ));
   const customExercises      = useStore((s) => s.customExercises);
 
   const allExercises = useMemo(
@@ -132,30 +127,18 @@ export default function HomeScreen() {
     [exerciseLibrary, customExercises],
   );
 
-  // Empezar cualquier cosa con una sesión a medias la descartaba en silencio.
-  const confirmDiscardActive = (onConfirm) => {
-    Alert.alert(
-      t('workout.discardConfirm'),
-      undefined,
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('workout.discardSession'), style: 'destructive', onPress: onConfirm },
-      ],
-    );
-  };
-
   // Empezar una sesión que no toca ya no lleva diálogo: hay que abrir su
   // tarjeta y pulsar un botón que además va en contorno, o sea dos toques
   // deliberados. El aviso solo añadía fricción (spec §5.6). Descartar una
   // sesión a medias, en cambio, se sigue confirmando: ahí sí se pierde algo.
   const requestStart = (templateId) => {
     if (activeSession.templateId === templateId) { navigation.navigate('Workout'); return; }
-    if (activeSession.templateId) { confirmDiscardActive(() => startSession(templateId)); return; }
+    if (activeSession.templateId) { confirmDiscardActive(t, () => startSession(templateId)); return; }
     startSession(templateId);
   };
 
   const startFree = () => {
-    if (activeSession.templateId) { confirmDiscardActive(() => startFreeSession()); return; }
+    if (activeSession.templateId) { confirmDiscardActive(t, () => startFreeSession()); return; }
     startFreeSession();
   };
 
@@ -194,28 +177,14 @@ export default function HomeScreen() {
       <ProgramUpdateModal />
 
       <ScrollView
+        {...fold.scrollProps}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <WeekSelector workoutLog={workoutLog} />
+        {/* La sesión a medias, sea cual sea, arriba de todo (U52). */}
+        <ActiveSessionBanner />
 
-        {runningClient && (
-          <TouchableOpacity
-            style={styles.running}
-            onPress={() => navigation.navigate('Workout')}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-          >
-            <View style={styles.runningDot} />
-            <Text style={styles.runningText} numberOfLines={1}>
-              {t('home.clientRunning', {
-                label: getEffectiveTemplate(activeSession.templateId)?.label ?? '',
-                name:  runningClient.name,
-              })}
-            </Text>
-            <Text style={styles.runningCta}>{t('home.btnContinue').toUpperCase()}</Text>
-          </TouchableOpacity>
-        )}
+        <WeekSelector workoutLog={workoutLog} />
 
         {activeProgram ? (() => {
           // Dónde va de la etapa: la misma cuenta que ve su entrenador
@@ -242,8 +211,7 @@ export default function HomeScreen() {
           // ¿Cuál toca y por qué? — rótulo, marcadores y contador, en un sitio.
           const plan = sessionPlan({
             days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
-            log:              workoutLog,
-            activeTemplateId: activeSession.templateId,
+            log: workoutLog,
             t,
           });
 
@@ -298,16 +266,8 @@ export default function HomeScreen() {
                   };
           // La meta de la tarjeta de hoy: los dos primeros datos salen de
           // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
-          // vez. Con la sesión a medias cambia entera — cuánto llevas y desde
-          // cuándo, que es lo único que importa para volver a ella.
+          // vez. Igual si está a medias: cuánto llevas lo dice el banner (U52).
           const todayMeta = (day) => {
-            if (activeSession.templateId === day.templateId) {
-              const exs  = day.template.exercises ?? [];
-              const done = exs.filter((ex) => isExerciseDone(ex, activeSession.setsState?.[ex.exerciseId] ?? [])).length;
-              return t('home.heroMetaActive', {
-                done, total: exs.length, ago: elapsedShort(activeSession.startedAt) ?? '',
-              });
-            }
             const stats = sessionStats(day.template, allExercises);
             const rel   = relativeTime(day.lastSession?.timestamp, t);
             return [
@@ -363,11 +323,9 @@ export default function HomeScreen() {
                   {plan.rows.map((row) => {
                     const day = byId.get(row.templateId);
                     if (!day) return null;
-                    const open   = openId === row.templateId;
                     const active = activeSession.templateId === row.templateId;
                     const name   = day.template.name ?? '';
                     const cta    = startCta(t, day.template.label ?? '', { active, done: row.isDone });
-                    const toggle = () => setOpenId(open ? null : row.templateId);
                     const start  = () => requestStart(row.templateId);
                     const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`;
                     const lines  = (
@@ -382,9 +340,8 @@ export default function HomeScreen() {
                           flag={plan.heroLabel}
                           name={name}
                           meta={todayMeta(day)}
-                          open={open}
+                          {...fold.row(row.templateId)}
                           cta={cta}
-                          onToggle={toggle}
                           onStart={start}
                           a11yLabel={`${plan.heroLabel}, ${a11y}`}
                         >
@@ -410,9 +367,8 @@ export default function HomeScreen() {
                         // "Adaptada" es texto, no una pastilla: menos ruido, y el
                         // azul sigue significando entrenador.
                         adapted={!!clientSync.pendingOverrides?.[row.templateId]}
-                        open={open}
+                        {...fold.row(row.templateId)}
                         cta={cta}
-                        onToggle={toggle}
                         onStart={start}
                         a11yLabel={a11y}
                       >
@@ -438,25 +394,24 @@ export default function HomeScreen() {
             <View style={styles.freeSection}>
               <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
               <View style={styles.group}>
-                {homeFree.map((tpl) => {
-                  const open   = openId === tpl.id;
+                {homeFree.map((tpl, i) => {
                   const active = activeSession.templateId === tpl.id;
                   const rel    = relativeTime(getLastSession(tpl.id)?.timestamp, t);
                   const name   = freeName(tpl);
                   return (
                     <SessionRow
                       key={tpl.id}
-                      // Sin letra: el hueco se queda para que los nombres se
-                      // alineen con los de las sesiones del programa.
-                      marker=""
+                      // Número donde las del programa llevan la letra (U31), en el
+                      // gris de las hechas y no en lima: numera, no dice qué toca.
+                      marker={String(i + 1).padStart(2, '0')}
+                      markerMuted
                       name={name}
                       meta={rel
                         ? rel.toLowerCase()
                         : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
                       done={false}
-                      open={open}
+                      {...fold.row(tpl.id)}
                       cta={startCta(t, '', { active, done: false })}
-                      onToggle={() => setOpenId(open ? null : tpl.id)}
                       onStart={() => requestStart(tpl.id)}
                       // Las que manda el entrenador no se editan: si quieres
                       // una tuya, la haces con «Crear» (group-classes.md §4.4).
@@ -472,20 +427,25 @@ export default function HomeScreen() {
             </View>
           )}
 
-          <TouchableOpacity
-            style={styles.freeSessionBtn}
-            onPress={handleFreePress}
-            activeOpacity={0.75}
-            accessibilityRole="button"
-          >
-            <Text style={styles.freeSessionBtnText}>
-              {activeSession.templateId === '__free__'
-                ? t('freeSession.btnContinue')
-                : t('freeSession.btn')}
-            </Text>
-          </TouchableOpacity>
+          {/* Con `layout` propio: al abrir una sesión libre se mueve dentro de
+              la sección, y el `layout` de fuera no lo cubre. */}
+          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+            <TouchableOpacity
+              style={styles.freeSessionBtn}
+              onPress={handleFreePress}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={styles.freeSessionBtnText}>
+                {activeSession.templateId === '__free__'
+                  ? t('freeSession.btnContinue')
+                  : t('freeSession.btn')}
+              </Text>
+            </TouchableOpacity>
+          </Reanimated.View>
         </Reanimated.View>
 
+        <View style={{ height: fold.pad }} />
       </ScrollView>
 
       {/* Modals */}
@@ -493,16 +453,18 @@ export default function HomeScreen() {
       {freeSheet && (
         <DragSheet visible onClose={() => setFreeSheet(false)} title={t('freeSession.startTitle')}>
           <View style={styles.sheetGroup}>
-            <MenuRow
+            <SheetRow
               isFirst
+              icon={ROW_ICON.start}
               label={t('freeSession.startNow')}
               sub={t('freeSession.startNowDesc')}
               subLines={0}
               minHeight={62}
               onPress={() => { setFreeSheet(false); startFree(); }}
             />
-            <MenuRow
+            <SheetRow
               isLast={templates.length === 0}
+              icon={ROW_ICON.new}
               label={t('freeSession.create')}
               sub={t('freeSession.createDesc')}
               subLines={0}
@@ -516,9 +478,11 @@ export default function HomeScreen() {
                 la adaptas sin tocar la plantilla. Sin plantillas (sin PRO, o sin
                 haber hecho ninguna) no sale. */}
             {templates.length > 0 && (
-              <MenuRow
+              <SheetRow
                 isLast
-                label={t('freeSession.fromTemplates', { count: templates.length })}
+                icon={ROW_ICON.preset}
+                label={t('freeSession.fromTemplates')}
+                value={String(templates.length)}
                 sub={t('freeSession.fromTemplatesDesc')}
                 subLines={0}
                 minHeight={62}
@@ -534,8 +498,9 @@ export default function HomeScreen() {
         <DragSheet visible onClose={() => setTplList(false)} title={t('freeSession.templatesTitle')}>
           <View style={styles.sheetGroup}>
             {templates.map((tpl, i) => (
-              <MenuRow
+              <SheetRow
                 key={tpl.id}
+                icon={ROW_ICON.preset}
                 isFirst={i === 0}
                 isLast={i === templates.length - 1}
                 label={freeName(tpl)}
@@ -579,30 +544,15 @@ const makeStyles = (th) => StyleSheet.create({
   },
   weekLetters: { flexDirection: 'row', justifyContent: 'space-between' },
   weekLetter:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  weekLetterToday: { color: LIMA },
+  weekLetterToday: { color: th.colors.accent },
   weekDots: { flexDirection: 'row', justifyContent: 'space-between' },
   weekDot: {
     width:        12,
     height:       12,
     borderRadius: 6,
   },
-  weekDotTrained: { backgroundColor: LIMA },
+  weekDotTrained: { backgroundColor: th.colors.accent },
   weekDotIdle:    { backgroundColor: th.colors.muted },
-
-  // Entreno de un cliente a medias. Azul: es cosa de entrenador.
-  running: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.md,
-    marginTop:         spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    borderRadius:      th.radius.md,
-    backgroundColor:   withOpacity(th.colors.blue, 0.12),
-  },
-  runningDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: th.colors.blue },
-  runningText: { ...textStyles.body, flex: 1, color: th.colors.text },
-  runningCta:  { ...textStyles.labelStrong, color: th.colors.blue },
 
   // La lista de sesiones vive en `components/SessionList.jsx`; aquí solo el
   // contenedor de las sesiones libres, que es el mismo `group`.

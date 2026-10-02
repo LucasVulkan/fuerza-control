@@ -16,10 +16,12 @@
  * corrida.
  */
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Alert, Share } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Share, useWindowDimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
+import Reanimated, {
+  useAnimatedRef, useSharedValue, withTiming, LayoutAnimationConfig,
+} from 'react-native-reanimated';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
@@ -29,17 +31,22 @@ import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import { ArrowIcon, MenuIcon, DragIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, MenuIcon, DragIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
+import { Section } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
+import { variantLabel, displayVariant } from '../utils/variants';
 import { useWeightUnit } from '../hooks/useWeightUnit';
+import { DEFAULT_TARGET } from '../utils/progression';
 
+import { showDialog } from '../components/ui/dialog';
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 // Los dos botones de acción, su separación y el aire que queda entre el último
@@ -52,6 +59,10 @@ const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2 + ACTION_GAP + ACTION_INSET;
 // Separación entre huecos de la lista (space/sm) y entre miembros de una misma
 // superserie (radius/xxs = 2, el valor que Figma usa también como gap).
 const CARD_GAP = spacing.sm;
+
+// Cambiar de sesión desliza la página con la curva del resalte del segmentado.
+// Fuera del componente: un worklet no puede capturar `SegmentedControl` entero.
+const SLIDE = SegmentedControl.TIMING;
 const SS_GAP   = 2;
 
 // ─── Texto de las filas ───────────────────────────────────────────────────────
@@ -61,11 +72,13 @@ const SS_GAP   = 2;
 // formato de bloque.
 function rowMeta(exConfig, t) {
   const timed = exConfig.inputType === 'time' || exConfig.inputType === 'weight_time';
+  const minReps = exConfig.minReps ?? DEFAULT_TARGET.minReps;
+  const maxReps = exConfig.maxReps ?? DEFAULT_TARGET.maxReps;
   const range = timed
     ? `${exConfig.minTime ?? 20}–${exConfig.maxTime ?? 40} s`
-    : exConfig.minReps && exConfig.maxReps
-      ? `${exConfig.minReps}–${exConfig.maxReps}`
-      : t('workout.submax', 'submáx');
+    : exConfig.progression?.type === 'effort'
+      ? `${minReps} @RPE ${exConfig.progression.targetRpe ?? 8}`
+      : minReps === maxReps ? `${minReps}` : `${minReps}–${maxReps}`;
   const parts = [`${exConfig.sets} × ${range}`, `${exConfig.restSec}s`];
   if (exConfig.isKey) parts.unshift(t('common.keyExercise'));
   return parts.join(' · ');
@@ -106,7 +119,7 @@ function volumeLine(patternSets, blockCount, t) {
 // ahí, así que no compite con este swipe horizontal ni con el ScrollView.
 
 function EditorRow({
-  number, name, meta, pill, radii, onPress,
+  number, name, variant, meta, pill, radii, onPress,
   isOpen, onOpenChange, onSwipeDelete, onSubstitute,
 }) {
   const { t }  = useTranslation();
@@ -192,7 +205,13 @@ function EditorRow({
           activeOpacity={0.7}
         >
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.rowName} numberOfLines={1}>{name}</Text>
+            {/* Nombre y variante en UN texto de una línea: al cortarse por el
+                final se pierde antes la variante que el nombre
+                (exercise-variants.md §4.2). */}
+            <Text style={styles.rowName} numberOfLines={1}>
+              {name}
+              {variant ? <Text style={styles.rowVariant}>{` · ${variant}`}</Text> : null}
+            </Text>
             <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
           </View>
           {pill ? (
@@ -220,6 +239,28 @@ export default function SessionEditorScreen({ navigation, route }) {
   // La sesión abierta es estado local (no un parámetro de ruta) para que el
   // segmented pueda cambiar de sesión sin apilar pantallas.
   const [templateId, setTemplateId] = useState(initialTemplateId);
+
+  // Cambio de sesión: la página vieja sale por un lado y la nueva entra por el
+  // otro, como un pager. No es un pager de verdad: la página va con
+  // `key={templateId}` y se remonta entera, y así sus filas ya no hacen el
+  // fundido de fábrica de la lista al cambiar de ids. +1 = la nueva está a la
+  // derecha. 0 al abrir: la primera página no desliza.
+  const { width: screenW } = useWindowDimensions();
+  const slideDir = useSharedValue(0);
+  const pageEntering = () => {
+    'worklet';
+    return {
+      initialValues: { transform: [{ translateX: slideDir.value * screenW }] },
+      animations:    { transform: [{ translateX: withTiming(0, SLIDE) }] },
+    };
+  };
+  const pageExiting = () => {
+    'worklet';
+    return {
+      initialValues: { transform: [{ translateX: 0 }] },
+      animations:    { transform: [{ translateX: withTiming(-slideDir.value * screenW, SLIDE) }] },
+    };
+  };
 
   const programs         = useStore((s) => s.programs);
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
@@ -278,6 +319,7 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   function switchSession(id) {
     if (id === templateId) return;
+    slideDir.value = sessionIds.indexOf(id) > sessionIds.indexOf(templateId) ? 1 : -1;
     setEditingName(false);
     setOpenRowId(null);
     setTemplateId(id);
@@ -371,7 +413,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   }
 
   function handleRemoveBlock(block) {
-    Alert.alert(
+    showDialog(
       t('blocks.deleteBlock'),
       t('blocks.deleteConfirm', { name: block.name ?? t(`blocks.formats.${block.format}`) }),
       [
@@ -385,9 +427,9 @@ export default function SessionEditorScreen({ navigation, route }) {
   }
 
   function handleDeleteSession() {
-    Alert.alert(
+    showDialog(
       t('editor.sessionDeleteBtn'),
-      `¿Eliminar "${template.name}"?`,
+      t('editor.sessionDeleteConfirm', { name: template.name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -404,10 +446,10 @@ export default function SessionEditorScreen({ navigation, route }) {
   function handleDeleteFree() {
     setMenuOpen(false);
     if (activeTemplateId === templateId) {
-      Alert.alert(t('freeSession.delete'), t('freeSession.deleteActive'));
+      showDialog(t('freeSession.delete'), t('freeSession.deleteActive'));
       return;
     }
-    Alert.alert(
+    showDialog(
       t('freeSession.delete'),
       t('freeSession.deleteConfirm', { name: template.name || t('freeSession.templateUnnamed') }),
       [
@@ -476,91 +518,102 @@ export default function SessionEditorScreen({ navigation, route }) {
           />
         )}
 
-        {/* ── Resumen (208:1936) ── */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTag}>
-            {isFree ? t('freeSession.badge') : t('editor.summarySession', { label: template.label ?? '' })}
-          </Text>
-          <Text style={styles.summaryMain}>
-            {stats.minutes > 0
-              ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
-              : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
-          </Text>
-          {volume && <Text style={styles.summaryVolume}>{volume}</Text>}
-        </View>
+        <Reanimated.View key={templateId} style={styles.page} entering={pageEntering} exiting={pageExiting}>
+          {/* Lo de dentro no hace su propio fundido al montarse o desmontarse con
+              la página; lo que se añada o quite después, sí. */}
+          <LayoutAnimationConfig skipEntering skipExiting>
+            {/* ── Resumen (208:1936) ── */}
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTag}>
+                {isFree ? t('freeSession.badge') : t('editor.summarySession', { label: template.label ?? '' })}
+              </Text>
+              <Text style={styles.summaryMain}>
+                {stats.minutes > 0
+                  ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
+                  : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
+              </Text>
+              {volume && <Text style={styles.summaryVolume}>{volume}</Text>}
+            </View>
 
-        {/* ── Lista ── */}
-        <View style={styles.section}>
-          <Text style={styles.secTitle}>
-            {t('editor.sectionExercises', { n: slots.length }).toUpperCase()}
-          </Text>
-          <Sortable.Grid
-            {...SORTABLE_PROPS}
-            data={slots}
-            keyExtractor={(slot) => slot.id}
-            rowGap={CARD_GAP}
-            scrollableRef={scrollRef}
-            onDragEnd={handleReorder}
-            renderItem={({ item: slot, index }) => (
-              <Slot
-                slot={slot}
-                number={index + 1}
-                openRowId={openRowId}
-                setOpenRowId={setOpenRowId}
-                metaFor={metaFor}
-                allExercises={allExercises}
-                t={t}
-                onOpenExercise={openExercise}
-                onOpenBlock={openBlock}
-                onRemoveExercise={handleRemoveExercise}
-                onRemoveBlock={handleRemoveBlock}
-                onSubstitute={(exerciseId) => navigation.navigate('ExerciseSelector', {
-                  templateId, currentExerciseId: exerciseId, existingPatterns: [],
-                })}
+            {/* ── Lista ── */}
+            <View style={styles.section}>
+              <Text style={styles.secTitle}>
+                {t('editor.sectionExercises', { n: slots.length }).toUpperCase()}
+              </Text>
+              <Sortable.Grid
+                {...SORTABLE_PROPS}
+                data={slots}
+                keyExtractor={(slot) => slot.id}
+                rowGap={CARD_GAP}
+                scrollableRef={scrollRef}
+                onDragEnd={handleReorder}
+                renderItem={({ item: slot, index }) => (
+                  <Slot
+                    slot={slot}
+                    number={index + 1}
+                    openRowId={openRowId}
+                    setOpenRowId={setOpenRowId}
+                    metaFor={metaFor}
+                    allExercises={allExercises}
+                    t={t}
+                    onOpenExercise={openExercise}
+                    onOpenBlock={openBlock}
+                    onRemoveExercise={handleRemoveExercise}
+                    onRemoveBlock={handleRemoveBlock}
+                    onSubstitute={(exerciseId) => navigation.navigate('ExerciseSelector', {
+                      templateId, currentExerciseId: exerciseId, existingPatterns: [],
+                    })}
+                  />
+                )}
               />
-            )}
-          />
-        </View>
+            </View>
 
-        {/* ── Añadir (210:2784) ── */}
-        <TouchableOpacity style={styles.addBtn} onPress={() => setAddSheetOpen(true)} activeOpacity={0.7}>
-          <Text style={styles.addBtnText}>
-            <Text style={styles.addBtnPlus}>+</Text>{` ${t('editor.addLabel')}`}
-          </Text>
-        </TouchableOpacity>
+            {/* ── Añadir (210:2784) ── */}
+            <TouchableOpacity style={styles.addBtn} onPress={() => setAddSheetOpen(true)} activeOpacity={0.7}>
+              <Text style={styles.addBtnText}>
+                <Text style={styles.addBtnPlus}>+</Text>{` ${t('editor.addLabel')}`}
+              </Text>
+            </TouchableOpacity>
+          </LayoutAnimationConfig>
+        </Reanimated.View>
       </Reanimated.ScrollView>
 
       {/* ── Hoja de "añadir" — el Alert nativo de Android no se puede estilar ── */}
       <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
-        <View style={styles.sheetBody}>
+        <Section style={styles.sheetSection}>
           <SheetRow
+            icon={ROW_ICON.exercise}
             label={t('editor.addExerciseOption')}
             onPress={handleAddExercise}
           />
           <SheetRow
+            icon={ROW_ICON.block}
             label={t('editor.addBlockOption')}
             onPress={createNewBlock}
           />
           {blockPresets.length > 0 && (
             <SheetRow
+              icon={ROW_ICON.preset}
               label={t('editor.addPresetOption')}
               onPress={() => setPresetSheetOpen(true)}
             />
           )}
-        </View>
+        </Section>
       </DragSheet>
 
       {/* ── Menú "···" ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.sessionMenuTitle')}>
-        <View style={styles.sheetBody}>
+        <Section style={styles.sheetSection}>
           {/* Sin lápiz en la cabecera, esto es lo que recuerda que el nombre se
               puede cambiar; el toque sobre el propio nombre sigue valiendo. */}
           <SheetRow
+            icon={ROW_ICON.rename}
             label={t('editor.renameOption')}
             onPress={startEditName}
           />
           {/* Sin pesos: aquí no se sabe para quién es (trainer-logging.md §5). */}
           <SheetRow
+            icon={ROW_ICON.text}
             label={t('sessionText.menu')}
             onPress={() => {
               setMenuOpen(false);
@@ -571,12 +624,14 @@ export default function SessionEditorScreen({ navigation, route }) {
           />
           {isFree && (
             <SheetRow
+              icon={ROW_ICON.trash}
               label={t('freeSession.delete')}
               danger
               onPress={handleDeleteFree}
             />
           )}
           {!isFree && <SheetRow
+            icon={ROW_ICON.duplicate}
             label={t('editor.sessionDuplicateBtn')}
             onPress={() => {
               const newId = duplicateSessionInProgram(programId, templateId);
@@ -588,12 +643,13 @@ export default function SessionEditorScreen({ navigation, route }) {
           />}
           {canDelete && programId && (
             <SheetRow
+              icon={ROW_ICON.trash}
               label={t('editor.sessionDeleteBtn')}
               danger
               onPress={handleDeleteSession}
             />
           )}
-        </View>
+        </Section>
       </DragSheet>
 
       {/* ── Selector de preset ── */}
@@ -602,37 +658,34 @@ export default function SessionEditorScreen({ navigation, route }) {
         onClose={() => setPresetSheetOpen(false)}
         title={t('blocks.fromPreset')}
       >
-        <View style={styles.sheetBody}>
+        <Section style={styles.sheetSection}>
           {blockPresets.map((preset) => (
-            <View key={preset.presetId} style={styles.presetRow}>
-              <TouchableOpacity
-                style={{ flex: 1, minWidth: 0 }}
-                onPress={() => handlePickPreset(preset)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.presetName} numberOfLines={1}>
-                  {preset.name ?? t(`blocks.formats.${preset.format}`)}
-                </Text>
-                <Text style={styles.presetMeta}>{blockMeta(preset, t)}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                hitSlop={8}
-                onPress={() => {
-                  Alert.alert(
-                    t('blocks.deletePreset'),
-                    t('blocks.deleteConfirm', { name: preset.name ?? t(`blocks.formats.${preset.format}`) }),
-                    [
-                      { text: t('common.cancel'), style: 'cancel' },
-                      { text: t('blocks.deletePreset'), style: 'destructive', onPress: () => deleteBlockPreset(preset.presetId) },
-                    ]
-                  );
-                }}
-              >
-                <Text style={styles.presetRemove}>✕</Text>
-              </TouchableOpacity>
-            </View>
+            <SheetRow
+              key={preset.presetId}
+              icon={ROW_ICON.preset}
+              label={preset.name ?? t(`blocks.formats.${preset.format}`)}
+              sub={blockMeta(preset, t)}
+              onPress={() => handlePickPreset(preset)}
+              control={(
+                <TouchableOpacity
+                  hitSlop={8}
+                  onPress={() => {
+                    showDialog(
+                      t('blocks.deletePreset'),
+                      t('blocks.deleteConfirm', { name: preset.name ?? t(`blocks.formats.${preset.format}`) }),
+                      [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        { text: t('blocks.deletePreset'), style: 'destructive', onPress: () => deleteBlockPreset(preset.presetId) },
+                      ]
+                    );
+                  }}
+                >
+                  <CloseIcon size={14} color={th.colors.mutedLight} />
+                </TouchableOpacity>
+              )}
+            />
           ))}
-        </View>
+        </Section>
       </DragSheet>
 
     </SafeAreaView>
@@ -670,6 +723,7 @@ function Slot({
         // igual que la numeración de WorkoutScreen.
         number: slot.members.length > 1 ? `${pad}${String.fromCharCode(65 + i)}` : pad,
         name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
+        variant: variantLabel(displayVariant(ex.variant, allExercises[ex.exerciseId]), t),
         meta:   metaFor(ex),
         // "Principal" va en el subtítulo (`rowMeta`), no como pill: la única
         // pill que queda es la de formato de bloque, y "Principal" no cabe.
@@ -688,6 +742,7 @@ function Slot({
           key={row.key}
           number={row.number}
           name={row.name}
+          variant={row.variant}
           meta={row.meta}
           pill={row.pill}
           radii={isGroup ? groupRadii(i, rows.length) : null}
@@ -727,6 +782,8 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:        spacing.md,
     gap:               spacing.md,
   },
+  // Lo que desliza al cambiar de sesión: repite el gap del scroll.
+  page: { gap: spacing.md },
 
   // Etiqueta de sección, igual que en el editor de programa.
   section:  { gap: spacing.xs2 },
@@ -762,6 +819,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
+  rowVariant: { ...textStyles.body, color: th.colors.mutedLight },
   // Sin `marginTop`: el hueco nombre→meta lo pone el interlineado y nada más,
   // igual que en las tarjetas de sesión del editor de programa (`sesMeta`).
   rowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
@@ -814,15 +872,5 @@ const makeStyles = (th) => StyleSheet.create({
   addBtnPlus:  { color: th.colors.accent },
 
   // ── Hojas ──
-  sheetBody: { paddingBottom: spacing.sm, gap: spacing.md },
-  presetRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: th.colors.surface2,
-    borderRadius: th.radius.sm,
-    padding: spacing.md,
-  },
-  presetName:   { ...textStyles.bodyStrong, color: th.colors.text },
-  // Mismo par nombre+meta que `rowMeta`: sin margen, lo separa el interlineado.
-  presetMeta:   { ...textStyles.label, color: th.colors.mutedLight },
-  presetRemove: { ...textStyles.body, color: th.colors.mutedLight, padding: spacing.xs },
+  sheetSection: { marginBottom: spacing.sm },
 });

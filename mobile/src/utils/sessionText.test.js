@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { sessionToText, SEP, parseSessionText, readAnswer, parseRx, exerciseIndex } from './sessionText';
+import { sessionToText, SEP, parseSessionText, readAnswer, parseRx, exerciseIndex, resolveName } from './sessionText';
+import { compose } from './exerciseIdentity';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 import es from '../locales/es.json';
 import en from '../locales/en.json';
@@ -24,7 +25,7 @@ describe('sessionToText', () => {
       { exerciseId: 'squat_barbell', sets: 4, minReps: 6, maxReps: 6 },
       { exerciseId: 'bulgarian_split_squat', sets: 3, minReps: 10, maxReps: 10 },
       { exerciseId: 'plank', sets: 3, inputType: 'time', minTime: 40, maxTime: 40, progressionModel: 'time_progression' },
-      { exerciseId: 'burpee', sets: 3, progressionModel: 'submax' },
+      { exerciseId: 'burpee', sets: 3 },
     ],
     blocks: [{
       id: 'b1', format: 'amrap', capSec: 720, name: null,
@@ -38,7 +39,7 @@ describe('sessionToText', () => {
     expect(lines[1]).toBe('Sentadilla con barra · 4x6:');
     expect(lines[2]).toBe('Sentadilla búlgara · 3x10 c/p:');
     expect(lines[3]).toBe(`${LIB.plank.name} · 3x40s:`);
-    expect(lines[4]).toBe(`${LIB.burpee.name} · 3 series:`);
+    expect(lines[4]).toBe(`${LIB.burpee.name} · 3x8-12:`);
     expect(lines[5]).toBe(`AMRAP 12' · 10 ${LIB.burpee.name}, 200 m ${LIB.burpee.name}:`);
     expect(lines[6]).toBe('');
     expect(lines[7]).toBe(es.sessionText.howTo);
@@ -57,6 +58,18 @@ describe('sessionToText', () => {
     expect(bulg).toMatch(/^Sentadilla búlgara · 3x10 c\/p · 1\d(\.5)?kg:$/);
     // Sin historial ni peso, la línea no cambia.
     expect(plank).toBe(`${LIB.plank.name} · 3x40s:`);
+  });
+
+  it('Por esfuerzo: «3x5 @RPE8» y el peso que calcula el motor, que el pegado sigue leyendo', () => {
+    const tpl = { label: 'A', name: 'Fuerza', exercises: [
+      { exerciseId: 'skull_crusher', sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } },
+    ] };
+    // 80 × 5 a RPE 7: más fácil de lo previsto → 82.5 con paso 2.5 (effort-progression.md §2.2).
+    const last = { sets: [1, 2, 3].map(() => ({ weight: '80', reps: '5', rpe: '7', done: true })) };
+    const line = sessionToText(tpl, LIB, t, { language: 'es', fmtWeight: (kg) => `${kg}kg`, lastExercise: () => last })
+      .split('\n')[1];
+    expect(line).toBe(`${LIB.skull_crusher.name} · 3x5 @RPE8 · 82.5kg:`);
+    expect(parseRx('3x5 @RPE8')).toEqual({ sets: 3, reps: 5 });
   });
 
   it('una sesión libre sin letra titula solo con el nombre', () => {
@@ -270,5 +283,45 @@ describe('ida y vuelta completa', () => {
     expect(find('Banca')).toBe('squat_barbell');
     expect(find('fantasma')).toBeNull();
     expect(find('SENTADILLA CON BARRA')).toBe('squat_barbell');
+  });
+});
+
+// exercise-variants.md §5.2: la variante viaja con « · » y el lector la separa.
+describe('variantes en el texto', () => {
+  const template = {
+    label: 'B', name: 'Tirón',
+    exercises: [
+      { exerciseId: 'pulldown', sets: 3, minReps: 8, maxReps: 10, variant: { grip: 'pronated', width: 'wide' } },
+      { exerciseId: 'cable_row', sets: 3, minReps: 10, maxReps: 12 },
+    ],
+  };
+
+  it('la variante va detrás del nombre, antes de la receta', () => {
+    const text = sessionToText(template, LIB, t, { language: 'es' });
+    expect(text).toContain(`Jalón al pecho${SEP}Prono${SEP}Ancho${SEP}3x8-10:`);
+    expect(text).toContain(`Remo en polea${SEP}3x10-12:`);
+  });
+
+  it('ida y vuelta: el nombre y su variante se reconocen', () => {
+    const text = sessionToText(template, LIB, t, { language: 'es' }).replace('3x8-10:', '3x8-10: 60x10 60x9 55x10');
+    const { lines } = parseSessionText(text);
+    const find = exerciseIndex(LIB);
+    const jalon = lines.find((l) => l.name.startsWith('Jalón'));
+    expect(jalon.rx).toEqual({ sets: 3, reps: 8 });
+    expect(resolveName(jalon.nameSegs, find)).toEqual({ exerciseId: 'pulldown', variant: { grip: 'pronated', width: 'wide' } });
+    const remo = lines.find((l) => l.name.startsWith('Remo'));
+    expect(resolveName(remo.nameSegs, find)).toEqual({ exerciseId: 'cable_row', variant: null });
+  });
+
+  it('un ejercicio aparte que existe gana al nombre con variante', () => {
+    const { id, def } = compose({ root: 'pulldown', variant: { grip: 'pronated', width: 'wide' } }, LIB);
+    const find = exerciseIndex({ ...LIB, [id]: def });
+    expect(resolveName(['Jalón al pecho', 'Prono', 'Ancho'], find)).toEqual({ exerciseId: id, variant: null });
+  });
+
+  it('lo que sobra y no es variante se ignora; en inglés también se lee', () => {
+    const find = exerciseIndex(LIB);
+    expect(resolveName(['Jalón al pecho', 'agarre raro'], find)).toEqual({ exerciseId: 'pulldown', variant: null });
+    expect(resolveName(['Lat Pulldown', 'Neutral'], find)).toEqual({ exerciseId: 'pulldown', variant: { grip: 'neutral' } });
   });
 });

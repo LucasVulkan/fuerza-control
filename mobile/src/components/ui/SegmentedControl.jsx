@@ -19,7 +19,9 @@
 import { useRef, useLayoutEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './Text';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, cancelAnimation, Easing,
+} from 'react-native-reanimated';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
 
@@ -29,7 +31,12 @@ const PAD = spacing.xs2;
 const GAP = spacing.sm;
 
 const TIMING = { duration: 200, easing: Easing.inOut(Easing.ease) };
+// Aparecer y desaparecer (sin selección ↔ con selección): crece desde el centro
+// de la opción, o se encoge hacia él. Nunca viaja desde donde se apagó.
+const GROW   = { duration: 220, easing: Easing.out(Easing.cubic) };
+const SHRINK = { duration: 160, easing: Easing.in(Easing.cubic) };
 
+// Una opción puede llevar `disabled`: sigue a la vista, apagada, y no se elige.
 export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
   const th     = useTheme();
@@ -44,33 +51,55 @@ export default function SegmentedControl({ options, value, onChange }) {
   // pintado lleva el resalte puesto.
   const idx     = useSharedValue(hasSelection ? activeIndex : 0);
   const opacity = useSharedValue(hasSelection ? 1 : 0);
+  const scale   = useSharedValue(hasSelection ? 1 : 0);
   const mounted = useRef(false);
+  const hadSelection = useRef(hasSelection);
 
   // `useLayoutEffect`, no `useEffect`: colocar el resalte después de pintar deja
   // un frame sin él.
+  //
+  // Tres transiciones, y cada una con su gesto:
+  //   · con selección → otra opción: el resalte DESLIZA (lo de siempre);
+  //   · sin selección → una opción: APARECE en su sitio creciendo a lo ancho
+  //     desde el centro, con el alto entero. Antes se quedaba apagado donde estaba y, al volver, viajaba
+  //     desde allí: quitar la primera y elegir la última lo cruzaba entero;
+  //   · con selección → ninguna: se ESTRECHA hacia su centro y se queda ahí.
   useLayoutEffect(() => {
-    // Sin selección el resalte se apaga y se queda donde estaba, así que la
-    // primera elección entra de golpe en vez de deslizar desde un sitio que el
-    // usuario no llegó a ver.
-    if (!hasSelection) {
+    const had = hadSelection.current;
+    hadSelection.current = hasSelection;
+
+    if (!mounted.current) {
+      // Primera colocación: de golpe, ya en su sitio.
       mounted.current = true;
-      opacity.value   = 0;
+      if (hasSelection) idx.value = activeIndex;
       return;
     }
-    opacity.value = 1;
-    if (mounted.current) {
-      idx.value = withTiming(activeIndex, TIMING);
+    if (!hasSelection) {
+      scale.value   = withTiming(0, SHRINK);
+      opacity.value = withTiming(0, SHRINK);
       return;
     }
-    mounted.current = true;
-    idx.value       = activeIndex;   // primera colocación: de golpe
-  }, [activeIndex, hasSelection, idx, opacity]);
+    if (!had) {
+      // Si todavía se estaba encogiendo en otro sitio, se corta: aparece aquí.
+      cancelAnimation(idx);
+      idx.value     = activeIndex;
+      scale.value   = 0;
+      scale.value   = withTiming(1, GROW);
+      opacity.value = withTiming(1, GROW);
+      return;
+    }
+    idx.value = withTiming(activeIndex, TIMING);
+  }, [activeIndex, hasSelection, idx, opacity, scale]);
 
   const highlightStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
+    // Primero se sitúa y luego se escala: la escala es sobre su propio centro,
+    // así que crece desde el centro de la opción. Solo a lo ancho: el alto va
+    // entero desde el primer frame (QA P44).
     transform: [
       { translateX: `${idx.value * 100}%` },
       { translateX: idx.value * GAP },
+      { scaleX: scale.value },
     ],
   }));
 
@@ -84,18 +113,19 @@ export default function SegmentedControl({ options, value, onChange }) {
         />
         {options.slice(1).map(({ id }) => <View key={id} style={styles.slot} />)}
       </View>
-      {options.map(({ id, label }) => {
+      {options.map(({ id, label, disabled }) => {
         const active = value === id;
         return (
           <TouchableOpacity
             key={id}
             style={styles.option}
-            onPress={() => onChange(id)}
+            onPress={disabled ? undefined : () => onChange(id)}
+            disabled={disabled}
             activeOpacity={0.75}
           >
             {/* Un label largo (p. ej. "Pendiente · 12" en Facturación) partiría
                 el pill en dos líneas y desalinearía el highlight animado. */}
-            <Text style={[styles.optionText, active && styles.optionTextActive]} numberOfLines={1}>
+            <Text style={[styles.optionText, active && styles.optionTextActive, disabled && styles.optionTextOff]} numberOfLines={1}>
               {label}
             </Text>
           </TouchableOpacity>
@@ -104,6 +134,11 @@ export default function SegmentedControl({ options, value, onChange }) {
     </View>
   );
 }
+
+// Colgado del componente (un export suelto rompe el fast refresh): quien anime
+// algo al compás del resalte —el pager de `stats/ProgressPanel.jsx`— usa esta
+// misma curva y va clavado con él.
+SegmentedControl.TIMING = TIMING;
 
 const makeStyles = (th) => StyleSheet.create({
   container: {
@@ -135,5 +170,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
   optionTextActive: {
     color: th.colors.onAccent,
+  },
+  // `disabled` en una opción: se ve pero no se elige (la hoja de Progresión).
+  optionTextOff: {
+    color: th.colors.muted,
   },
 });

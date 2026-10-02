@@ -13,7 +13,7 @@
  * nuevo.
  */
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -24,7 +24,7 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import { SessionChips, DayChips } from '../components/ClientSessions';
 import { useLastDays } from '../hooks/useLastDays';
 import { useWeightUnit } from '../hooks/useWeightUnit';
-import { parseSessionText, readAnswer, exerciseIndex, normName } from '../utils/sessionText';
+import { parseSessionText, readAnswer, exerciseIndex, normName, resolveName } from '../utils/sessionText';
 import { exerciseName } from '../utils/prescription';
 import { clientLink } from '../utils/clientLink';
 import { sessionPlan } from '../utils/sessionPlan';
@@ -34,6 +34,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import es from '../locales/es.json';
 import en from '../locales/en.json';
 
+import { confirmDiscardActive } from '../components/ui/confirmDiscard';
 /** Las sesiones que se le pueden apuntar: las de su etapa y sus libres. */
 function sessionsOf(client, programs, sessionTemplates, unnamed) {
   const program = programs[client?.activeProgramId];
@@ -123,7 +124,7 @@ export default function PasteWorkoutScreen({ navigation, route }) {
   // Sin cabecera que la diga (texto a mano, o la borraron): la que más
   // ejercicios comparte con el texto. Solo si no, la que le toca.
   const findAny = useMemo(() => exerciseIndex(allExercises, exerciseAliases ?? {}), [allExercises, exerciseAliases]);
-  const textIds = new Set(parsed.lines.filter((l) => !l.ignored && !l.block).map((l) => findAny(l.name)).filter(Boolean));
+  const textIds = new Set(parsed.lines.filter((l) => !l.ignored && !l.block).map((l) => resolveName(l.nameSegs, findAny).exerciseId).filter(Boolean));
   let byExercises = null;
   let most = 0;
   sessions.forEach((s) => {
@@ -144,7 +145,8 @@ export default function PasteWorkoutScreen({ navigation, route }) {
   const rows = parsed.lines.map((l, i) => {
     if (l.ignored) return { key: i, kind: 'ignored', raw: l.raw };
     if (l.block)   return { key: i, kind: 'block', raw: l.raw, name: l.name };
-    return { key: i, kind: 'ex', name: l.name, exerciseId: find(l.name), sets: readAnswer(l.answer, l.rx, l.hint) };
+    const { exerciseId, variant } = resolveName(l.nameSegs, find);
+    return { key: i, kind: 'ex', name: l.name, exerciseId, variant, sets: readAnswer(l.answer, l.rx, l.hint) };
   });
   const usable = rows.filter((r) => r.kind === 'ex' && r.exerciseId && r.sets);
 
@@ -177,7 +179,10 @@ export default function PasteWorkoutScreen({ navigation, route }) {
     };
     const setsState = {};
     const adHoc = [];
+    // La variante que traía el texto va como «la de hoy» (exercise-variants.md §5.2).
+    const variants = {};
     usable.forEach((r) => {
+      if (r.variant) variants[r.exerciseId] = r.variant;
       const sets = r.sets.map(kgSet);
       if (inSession.has(r.exerciseId)) setsState[r.exerciseId] = [...(setsState[r.exerciseId] ?? []), ...sets];
       else {
@@ -187,13 +192,10 @@ export default function PasteWorkoutScreen({ navigation, route }) {
     });
     const go = () => {
       navigation.goBack();
-      startSession(tplId, { forClient: clientId, loggedAt: days[dayIdx].ts, logOnly: true, prefill: { setsState, adHoc } });
+      startSession(tplId, { forClient: clientId, loggedAt: days[dayIdx].ts, logOnly: true, prefill: { setsState, adHoc, variants } });
     };
     if (!activeSession.templateId) { go(); return; }
-    Alert.alert(t('workout.discardConfirm'), undefined, [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('workout.discardSession'), style: 'destructive', onPress: go },
-    ]);
+    confirmDiscardActive(t, go);
   }
 
   const canGo = !!clientId && !!tplId && usable.length > 0;

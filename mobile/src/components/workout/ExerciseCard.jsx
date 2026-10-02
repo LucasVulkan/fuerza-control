@@ -25,25 +25,30 @@
  *   Fallback a progressionModel === 'time_progression' para retrocompatibilidad.
  */
 
-import { View, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, TouchableOpacity, Pressable, StyleSheet, Animated, Easing } from 'react-native';
 import { Text, MAX_FONT_SCALE } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
+import SetPills from './SetPills';
 import { GRID } from './grid';
 import NotesModal from './NotesModal';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { getProgression } from '../../utils/progression';
+import { getProgression, progressionHistory, progressionRule } from '../../utils/progression';
+import { planSet } from '../../utils/setPlan';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../utils/warmup';
-import { resolveExerciseReference, resolveRef } from '../../utils/sessionOverride';
-import { groupSetsByWeight, getPillVariant, buildSetLabel } from '../../utils/setDisplay';
-import { targetLabel as buildTarget } from '../../utils/prescription';
+import { targetLabel as buildTarget, firstTimeRx } from '../../utils/prescription';
+import { DIM_ORDER, variantDims, isEmptyVariant, sameVariant, displayVariant } from '../../utils/variants';
+import VariantPicker from '../ui/VariantPicker';
+import AnimatedHeight from '../ui/AnimatedHeight';
+import DragSheet from '../DragSheet';
 import { isExerciseDone } from '../../utils/exerciseStatus';
-import { spacing, textStyles, withOpacity, lh, LINE } from '../../theme';
+import { spacing, textStyles, withOpacity, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
+import { CloseIcon } from '../ui/EditorIcons';
 // ── Geometría del spec ────────────────────────────────────────────────────────
 // Radios: card 16 · celdas y botones grandes 11 · botones pequeños 9.
 const R_CARD  = 16;
@@ -52,6 +57,16 @@ const R_SMALL = 9;
 // Esquina interior de un miembro de superserie — las dos cards del par se pegan
 // (gap 2, SupersetBlock) y aplanan las esquinas que se tocan.
 const R_INNER = 4;
+
+// Textos de la fila «Primera vez» y de su ficha, según qué se busca.
+const FIRST_LABEL = {
+  weight: 'workout.progression.firstWeight', effort: 'workout.progression.firstWeight',
+  bodyweight: 'workout.progression.firstBodyweight', time: 'workout.progression.firstTime',
+};
+const FIRST_TODAY = {
+  weight: 'workout.progSheet.firstWeight', effort: 'workout.progSheet.firstEffort',
+  bodyweight: 'workout.progSheet.firstBodyweight', time: 'workout.progSheet.firstTime',
+};
 
 // ── NoteIcon — icono file-text del spec §3 (stroke 2.2, round) ────────────────
 // Icono de notas ÚNICO de la app: lo usan tanto el botón de notas de la card
@@ -90,6 +105,7 @@ export default function ExerciseCard({
   def,
   setsState,
   lastExercise,
+  recentSessions,          // las 3 últimas veces, [{ timestamp, exercise }], la más reciente primero (la 1ª es lastExercise)
   onFieldChange,
   onToggleDone,
   onAddSet,
@@ -111,9 +127,7 @@ export default function ExerciseCard({
   const { t, i18n } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { label: weightLabel, toDisplay, toKg, fmt, scrollStep: weightScrollStep } = useWeightUnit();
-  // "Kg" capitalizado — misma técnica que HistoryScreen (label crudo viene en minúscula).
-  const unitLabel = weightLabel.charAt(0).toUpperCase() + weightLabel.slice(1);
+  const { label: weightLabel, toDisplay, toKg, scrollStep: weightScrollStep } = useWeightUnit();
 
   // Trainer note (instructions written in the program editor)
   const trainerNote = exConfig.trainerNote?.trim() || null;
@@ -134,6 +148,17 @@ export default function ExerciseCard({
 
   const hasTimer = inputType === 'time' || inputType === 'weight_time';
 
+  // ── Chip de progresión ─────────────────────────────────────────────────────
+  // Va antes que el calentamiento: este rampa hacia el peso del plan (§6.2). Por
+  // esfuerzo lee además las sesiones anteriores (§6.5); las demás progresiones
+  // no las miran.
+  const progression = (() => {
+    if (!lastExercise?.sets?.length) return null;
+    const recent = recentSessions?.length ? recentSessions.map((r) => r.exercise) : [lastExercise];
+    try { return getProgression(exConfig, def, lastExercise.sets, t, progressionHistory(recent)); }
+    catch { return null; }
+  })();
+
   // ── Warmup (spec §4.3/§4.4) ───────────────────────────────────────────────
   // Informational only — NOT part of setsState, nothing is persisted. Purely
   // recalculated on every render from the current work weight; marking a row
@@ -149,7 +174,7 @@ export default function ExerciseCard({
   const typedFirstWorkWeight = firstWorkWeight !== '' && firstWorkWeight != null
     ? parseFloat(firstWorkWeight) : undefined;
   const workWeightKg = hasWarmup
-    ? resolveWorkWeight(overrideEx, lastExercise, typedFirstWorkWeight)
+    ? resolveWorkWeight(overrideEx, lastExercise, typedFirstWorkWeight, progression)
     : null;
   const warmupComputed = computeWarmupWeights(warmupStepsArr, workWeightKg);
   const warmupNoReference = hasWarmup && workWeightKg == null;
@@ -174,6 +199,25 @@ export default function ExerciseCard({
   const name = def
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
     : exConfig.exerciseId;
+
+  // ── Variante de hoy (exercise-variants.md §5.1) ─────────────────────────────
+  // La del programa, salvo que hoy se haya cambiado en la hoja. Solo informa: se
+  // apunta en el registro y el programa no cambia.
+  const programVariant = exConfig.variant ?? null;
+  const todayVariants  = useStore((s) => s.activeSession.variants);
+  const setSessionVariant = useStore((s) => s.setSessionVariant);
+  const hasToday = !!todayVariants && Object.prototype.hasOwnProperty.call(todayVariants, exConfig.exerciseId);
+  const variant  = hasToday ? todayVariants[exConfig.exerciseId] : programVariant;
+  const [variantSheetOpen, setVariantSheetOpen] = useState(false);
+  // Sin variante en el programa no hay nada que cambiar hoy (decisión del usuario).
+  const canChangeVariant = variantDims(def).length > 0 && (!isEmptyVariant(programVariant) || hasToday);
+  // Un ejercicio aparte ya lleva la variante en el nombre: no se repite.
+  const shown = displayVariant(variant, def);
+  const variantParts = DIM_ORDER.filter((d) => shown?.[d]).map((d) => ({
+    dim:     d,
+    label:   t(`variants.options.${d}.${variant[d]}`),
+    changed: variant[d] !== programVariant?.[d],
+  }));
 
   // Dropset: checking the last work set is NOT the end of the exercise — the
   // drops come next. Hold the auto-collapse until at least one drop exists and
@@ -347,22 +391,16 @@ export default function ExerciseCard({
       onFieldChange(setIdx, 'time', String(prev.time));
   }
 
-  const progression = (() => {
-    if (!lastExercise?.sets?.length) return null;
-    try { return getProgression(exConfig, def, lastExercise.sets, t); }
-    catch { return null; }
-  })();
-
   // ── ProgressionLine (spec §4.1) — solo tipografía: dir + destino + salto ────
   // `dir` sale de progression.type. El detalle NO es un rango: "7.5 → 2.5 kg" no
   // dice si bajas A 2.5 o RESTAS 2.5, y encima su flecha compite con la de `dir`.
   // Se parte en dos: `target` es el peso al que vas (la instrucción) y `delta` es
   // el salto respecto a la última sesión, en pastilla aparte y en gris para que no
-  // pelee con el acento. Sin sugerencia numérica (progresión por reps) cae al
-  // mensaje largo, y ahí el label pierde la preposición ("Subir", no "Subir a").
-  // `why` es el porque en una linea gris debajo: solo acompana a la instruccion
-  // numerica -- con el mensaje largo sobra, porque ese mensaje YA es el motivo.
-  const { progTarget, progDelta, progWhy } = (() => {
+  // pelee con el acento. Sin sugerencia numérica cae al mensaje largo, y ahí el
+  // label pierde la preposición ("Subir", no "Subir a"). El porqué ya no va en
+  // una frase debajo (rompía la rejilla de la tarjeta): está en la ficha que abre
+  // la línea entera (§6.3).
+  const { progTarget, progDelta } = (() => {
     if (!progression) return {};
     const sets = lastExercise?.sets ?? [];
     const signed = (n) => `${n > 0 ? '+' : '−'}${Math.abs(n)}`;
@@ -373,19 +411,28 @@ export default function ExerciseCard({
       return {
         progTarget: `${next} ${weightLabel}`,
         progDelta:  cur != null && cur !== next ? signed(Math.round((next - cur) * 100) / 100) : null,
-        progWhy:    progression.why ?? null,
       };
     }
     if (progression.suggestedTime != null) {
-      const cur  = Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
+      // El salto se cuenta desde la serie de la que parte (la más floja), no
+      // desde la mejor: 45/45/40 → «45 s +5», no «45 s» a secas.
+      const cur  = progression.from ?? Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
       const next = progression.suggestedTime;
       return {
         progTarget: `${next} s`,
-        progDelta:  cur > 0 && cur !== next ? signed(next - cur) : null,
-        progWhy:    progression.why ?? null,
+        progDelta:  progression.type !== 'hold' && cur > 0 && cur !== next ? signed(next - cur) : null,
       };
     }
-    return { progTarget: progression.msg, progDelta: null, progWhy: null };
+    // Reps con número, como peso y tiempo: antes caía a la frase larga (QA P52).
+    if (progression.suggestedReps != null) {
+      const cur  = progression.from;
+      const next = progression.suggestedReps;
+      return {
+        progTarget: t('workout.progressionReps', { count: next }),
+        progDelta:  progression.type !== 'hold' && cur != null && cur !== next ? signed(next - cur) : null,
+      };
+    }
+    return { progTarget: progression.msg, progDelta: null };
   })();
   const PROG_ARROW = { up: '↑', hold: '→', down: '↓' };
   // "Subir a 62.5 kg" solo tiene sentido con un número detrás: con el mensaje
@@ -393,12 +440,33 @@ export default function ExerciseCard({
   const progKey = (() => {
     if (!progression) return null;
     const base = progression.reason === 'deload' ? 'deload' : progression.type;
-    const numeric = progression.suggestedWeight != null || progression.suggestedTime != null;
+    const numeric = progression.suggestedWeight != null || progression.suggestedTime != null
+      || progression.suggestedReps != null;
+    // Por esfuerzo el número es SIEMPRE el peso de hoy, suba o no: «Peso
+    // objetivo» (effort-progression.md §5.2). La flecha y el delta dicen si sube.
+    if (progression.effort && numeric) return 'effortTo';
+    // Asistido: el número es la ayuda. «Subir a 17,5» se leía como más ayuda.
+    if (progression.assist && numeric && base === 'up')   return 'assistLessTo';
+    if (progression.assist && numeric && base === 'down') return 'assistMoreTo';
     return numeric && base !== 'hold' ? `${base}To` : base;
   })();
 
-  const targetLabel = buildTarget(def, exConfig, t)
+  // Con Reps o Tiempo la cabecera dice la meta de hoy («3 × 9 reps»), no el
+  // inicio (§6.3); sin chip con número, el inicio con «+».
+  const today = progression?.suggestedReps != null ? { reps: progression.suggestedReps }
+    : progression?.suggestedTime != null ? { time: progression.suggestedTime }
+    : null;
+  const targetLabel = buildTarget(def, exConfig, t, { today })
     + (hasWarmup ? t('workout.warmup.metaSuffix', { count: warmupStepsArr.length }) : '');
+
+  // Sin historial no hay chip: la fila «Primera vez» dice qué buscar leyendo la
+  // progresión de la config. No en los ejercicios añadidos sobre la marcha
+  // (`onEditTarget`): no tienen progresión que explicar.
+  const [progSheetOpen, setProgSheetOpen] = useState(false);
+  const firstTime = !lastExercise?.sets?.length && !hasCoachTarget && !onEditTarget
+    ? firstTimeRx(def, exConfig) : null;
+  const e1rmShown = progression?.effort && progression.e1rm != null
+    ? Math.round(toDisplay(progression.e1rm)) : null;
 
   // ── Piezas compartidas del render ───────────────────────────────────────────
   // El header (num/check + nombre/target + notas) es PERSISTENTE: se pinta una
@@ -422,7 +490,24 @@ export default function ExerciseCard({
   const nameBlock = (
     <>
       <View style={styles.nameRow}>
-        <Text style={styles.name} numberOfLines={2}>{name}</Text>
+        {/* La variante detrás del nombre, en gris y sin subrayado
+            (exercise-variants.md §4.3): mismo estilo, solo cambia el color. */}
+        <Text style={styles.name} numberOfLines={2}>
+          {name}
+          {/* Pulsable solo desplegada: plegada, tocar la cabecera la despliega.
+              Lo cambiado hoy va en acento. */}
+          {variantParts.length ? (
+            <Text
+              style={styles.nameVariant}
+              onPress={canChangeVariant && !isCollapsed ? () => setVariantSheetOpen(true) : undefined}
+              suppressHighlighting
+            >
+              {variantParts.map((p) => (
+                <Text key={p.dim} style={p.changed ? styles.nameVariantChanged : null}>{` · ${p.label}`}</Text>
+              ))}
+            </Text>
+          ) : null}
+        </Text>
       </View>
       {/* "Principal" es metadato, no badge: como pastilla junto al nombre se
           llevaba una fila entera en cuanto el nombre era largo. Va delante del
@@ -484,61 +569,10 @@ export default function ExerciseCard({
     </View>
   );
 
-  // Resumen de series colapsado — reutiliza setDisplay.js (misma lógica que
-  // History/Progress); "fuera de rango" = ROJO aquí (decisión de usuario).
+  // Resumen de series colapsado — `SetPills` (misma lógica/estilo que History).
   const pillsBlock = (
     <View style={styles.collapsedPillsRow}>
-      {groupSetsByWeight(setsState).map((group, gi) => (
-        <View key={`grp-${gi}`} style={styles.setGroup}>
-          {group.weight ? (
-            <View style={styles.weightPill}>
-              <Text style={styles.weightPillText}>
-                <Text style={styles.weightPillNum}>{toDisplay(group.weight)}</Text>
-                <Text style={styles.weightPillUnit}>{unitLabel}</Text>
-                <Text style={styles.weightPillX}>{' x'}</Text>
-              </Text>
-            </View>
-          ) : null}
-          {group.sets.map((s, i) => {
-            const variant = getPillVariant(s, exConfig);
-            const { main, rpeNum } = buildSetLabel(s, i, fmt, true);
-            return (
-              <View
-                key={`set-${gi}-${i}`}
-                style={[
-                  styles.setPill,
-                  variant === 'done'    && styles.setPillDone,
-                  variant === 'partial' && styles.setPillPartial,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.setPillText,
-                    variant === 'done'    && styles.setPillTextDone,
-                    variant === 'partial' && styles.setPillTextPartial,
-                  ]}
-                >
-                  {main}
-                  {rpeNum ? (
-                    <>
-                      <Text
-                        style={[
-                          styles.setPillRpeAt,
-                          variant === 'done'    && styles.setPillRpeAtDone,
-                          variant === 'partial' && styles.setPillRpeAtPartial,
-                        ]}
-                      >
-                        @
-                      </Text>
-                      {rpeNum}
-                    </>
-                  ) : null}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      ))}
+      <SetPills sets={setsState} exConfig={exConfig} />
     </View>
   );
 
@@ -607,10 +641,14 @@ export default function ExerciseCard({
         /* ── Expanded view — Body (spec §4), padding 12 16 14 ── */
         <View style={styles.body}>
 
-          {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo */}
+          {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo.
+              La fila entera abre la ficha (§6.3): regla, la última vez y hoy. */}
           {!hasCoachTarget && progression ? (
             <View style={styles.progBlock}>
-              <View style={styles.progLine}>
+              <Pressable
+                style={({ pressed }) => [styles.progLine, pressed && styles.progLinePressed]}
+                onPress={() => setProgSheetOpen(true)}
+              >
                 <Text style={[
                   styles.progDir,
                   progression.type === 'hold' && styles.progDirHold,
@@ -628,8 +666,29 @@ export default function ExerciseCard({
                     <Text style={styles.progDeltaText}>{progDelta}</Text>
                   </View>
                 ) : null}
-              </View>
-              {progWhy ? <Text style={styles.progWhy}>{progWhy}</Text> : null}
+                {/* Por esfuerzo: el 1RM al final de la línea (§6.3). */}
+                {e1rmShown != null ? (
+                  <Text style={styles.progE1rm}>{`${t('workout.e1rmShort')} ${e1rmShown}`}</Text>
+                ) : progression.effort && progression.noRpe ? (
+                  <Text style={styles.progE1rm}>{t('workout.e1rmNoRpe')}</Text>
+                ) : null}
+              </Pressable>
+            </View>
+          ) : null}
+
+          {/* Primera vez (§6.3) — misma anatomía, en `text`: qué buscar. */}
+          {!hasCoachTarget && !progression && firstTime ? (
+            <View style={styles.progBlock}>
+              <Pressable
+                style={({ pressed }) => [styles.progLine, pressed && styles.progLinePressed]}
+                onPress={() => setProgSheetOpen(true)}
+              >
+                <Text style={[styles.progDir, styles.progDirFirst]}>
+                  <Text style={styles.progArrow}>◇</Text>
+                  {` ${t(FIRST_LABEL[firstTime.kind])}`}
+                </Text>
+                <Text style={styles.progDetail}>{firstTime.value}</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -763,31 +822,15 @@ export default function ExerciseCard({
           <View style={styles.setList}>
             {setsState.map((set, realIndex) => {
               const wi = realIndex;
-              const lastSet = lastExercise?.sets?.[wi];
-              const prevWeightDisplay = lastSet?.weight != null && lastSet?.weight !== ''
-                ? String(toDisplay(lastSet.weight)) : '';
-              const prevReps = lastSet?.reps != null && lastSet?.reps !== ''
-                ? String(lastSet.reps) : '';
-              const prevTime = lastSet?.time != null && lastSet?.time !== ''
-                ? String(lastSet.time) : '';
-
-              // Trainer target (if any) wins over the last-session reference and
-              // renders blue; otherwise the grey ghost stays.
-              const coachWeightDisp = overrideEx?.weight != null && overrideEx?.weight !== ''
-                ? String(toDisplay(overrideEx.weight)) : undefined;
-              const ref = resolveExerciseReference(
-                { weight: coachWeightDisp, reps: overrideEx?.reps },
-                prevWeightDisplay,
-                prevReps,
-              );
-              const timeRef = resolveRef(
-                overrideEx?.time != null && overrideEx?.time !== '' ? overrideEx.time : undefined,
-                prevTime,
-              );
-              const rpeRef  = resolveRef(
-                overrideEx?.rpe != null && overrideEx?.rpe !== '' ? overrideEx.rpe : undefined,
-                '', // no last-session RPE ghost
-              );
+              // El gris es el plan (§6.1, `planSet`): lo del entrenador (azul), si no
+              // lo que la progresión pide hoy, si no lo de la última vez. ✓ rellena
+              // con lo mismo que se ve, y `saveSession` usa la misma función.
+              const plan = planSet({
+                exConfig, def, chip: progression, lastSets: lastExercise?.sets, overrideEx, index: wi,
+              });
+              // `planSet` devuelve kg; la pantalla pinta en la unidad del usuario.
+              const weightRef = plan.weight.value !== ''
+                ? { ...plan.weight, value: String(toDisplay(plan.weight.value)) } : plan.weight;
 
               return (
                 <SetRow
@@ -810,14 +853,14 @@ export default function ExerciseCard({
                       ? String(toDisplay(set.weight))
                       : ''
                   }
-                  prevWeightDisplay={ref.weight.value}
-                  prevReps={ref.reps.value}
-                  prevTime={timeRef.value}
-                  prevWeightSource={ref.weight.source}
-                  prevRepsSource={ref.reps.source}
-                  prevTimeSource={timeRef.source}
-                  prevRpe={rpeRef.value}
-                  prevRpeSource={rpeRef.source}
+                  prevWeightDisplay={weightRef.value}
+                  prevReps={plan.reps.value}
+                  prevTime={plan.time.value}
+                  prevWeightSource={weightRef.source}
+                  prevRepsSource={plan.reps.source}
+                  prevTimeSource={plan.time.source}
+                  prevRpe={plan.rpe.value}
+                  prevRpeSource={plan.rpe.source}
                   weightScrollStep={weightScrollStep}
                   showHint={realIndex === activeSetIndex}
                   onWeightChange={(v) => {
@@ -834,25 +877,16 @@ export default function ExerciseCard({
                       const needsWeight = inputType === 'weight_reps' || inputType === 'weight_time';
                       const needsReps   = inputType === 'weight_reps' || inputType === 'reps';
                       const needsTime   = inputType === 'time'        || inputType === 'weight_time';
-                      // Coach target (kg) fills before the last-session value.
-                      const fillWeight = overrideEx?.weight != null && overrideEx?.weight !== ''
-                        ? overrideEx.weight : lastSet?.weight;
-                      const fillReps   = overrideEx?.reps != null && overrideEx?.reps !== ''
-                        ? overrideEx.reps : lastSet?.reps;
-                      const fillTime   = overrideEx?.time != null && overrideEx?.time !== ''
-                        ? overrideEx.time : lastSet?.time;
-
-                      if (needsWeight && (set.weight === '' || set.weight == null)
-                          && fillWeight != null && fillWeight !== '') {
-                        onFieldChange(realIndex, 'weight', String(fillWeight));
+                      // Lo mismo que se ve en gris (`plan`, en kg): el objetivo del
+                      // entrenador, el plan o la última vez.
+                      if (needsWeight && (set.weight === '' || set.weight == null) && plan.weight.value !== '') {
+                        onFieldChange(realIndex, 'weight', plan.weight.value);
                       }
-                      if (needsReps && (set.reps === '' || set.reps == null)
-                          && fillReps != null && fillReps !== '') {
-                        onFieldChange(realIndex, 'reps', String(fillReps));
+                      if (needsReps && (set.reps === '' || set.reps == null) && plan.reps.value !== '') {
+                        onFieldChange(realIndex, 'reps', plan.reps.value);
                       }
-                      if (needsTime && (set.time === '' || set.time == null)
-                          && fillTime != null && fillTime !== '') {
-                        onFieldChange(realIndex, 'time', String(fillTime));
+                      if (needsTime && (set.time === '' || set.time == null) && plan.time.value !== '') {
+                        onFieldChange(realIndex, 'time', plan.time.value);
                       }
                     }
                     onToggleDone(realIndex);
@@ -892,7 +926,7 @@ export default function ExerciseCard({
                       />
                     </View>
                     <TouchableOpacity style={styles.dropRemoveBtn} onPress={() => onRemoveDrop(di)} hitSlop={8}>
-                      <Text style={styles.dropRemoveText}>✕</Text>
+                      <CloseIcon size={14} color={th.colors.mutedLight} />
                     </TouchableOpacity>
                   </View>
                 );
@@ -917,6 +951,75 @@ export default function ExerciseCard({
       )}
 
       </Animated.View>
+
+      {/* Variante solo por hoy (exercise-variants.md §5.1, maqueta §4A) */}
+      {canChangeVariant && (
+        <DragSheet
+          visible={variantSheetOpen}
+          onClose={() => setVariantSheetOpen(false)}
+          title={t('variants.title')}
+        >
+          <AnimatedHeight>
+            <View style={styles.variantSheet}>
+              <View style={{ gap: spacing.sm }}>
+                <Text style={styles.variantCaption}>{t('variants.todayTitle').toUpperCase()}</Text>
+                {/* Sin desmarcar (hoy se cambia, no se deja en blanco) y con el
+                    icono de volver en cada fila cambiada (QA P43). Igual que el
+                    programa → sin cambio de hoy. */}
+                <VariantPicker
+                  def={def}
+                  value={variant}
+                  resetTo={programVariant}
+                  allowDeselect={false}
+                  onChange={(next) => setSessionVariant(
+                    exConfig.exerciseId,
+                    sameVariant(next, programVariant) ? undefined : next,
+                  )}
+                />
+              </View>
+              <Text style={styles.variantHint}>{t('variants.todayHint')}</Text>
+            </View>
+          </AnimatedHeight>
+        </DragSheet>
+      )}
+
+      {/* La ficha de la recomendación (§6.3): regla, la última vez y hoy */}
+      {(progression || firstTime) && (
+        <DragSheet
+          visible={progSheetOpen}
+          onClose={() => setProgSheetOpen(false)}
+          title={name}
+        >
+          <View style={styles.progSheet}>
+            {progression?.reason !== 'deload' ? (
+              <View style={styles.progSheetBlock}>
+                <Text style={styles.progSheetCaption}>{t('workout.progSheet.rule').toUpperCase()}</Text>
+                <Text style={styles.progSheetText}>{progressionRule(exConfig, def, t, weightLabel)}</Text>
+              </View>
+            ) : null}
+            {progression && lastExercise?.sets?.length ? (
+              <View style={styles.progSheetBlock}>
+                <Text style={styles.progSheetCaption}>{t('workout.progSheet.lastTime').toUpperCase()}</Text>
+                <SetPills sets={lastExercise.sets} exConfig={exConfig} neutral />
+              </View>
+            ) : null}
+            <View style={styles.progSheetBlock}>
+              <Text style={styles.progSheetCaption}>{t('workout.progSheet.today').toUpperCase()}</Text>
+              <Text style={styles.progSheetText}>
+                {progression
+                  ? progression.why
+                  : t(FIRST_TODAY[firstTime.kind], { what: firstTime.value })}
+              </Text>
+              {e1rmShown != null ? (
+                <Text style={styles.progSheetText}>
+                  {t(progression.e1rmSessions > 1 ? 'workout.progSheet.e1rmMany' : 'workout.progSheet.e1rmOne',
+                    { count: progression.e1rmSessions, kg: `${e1rmShown} ${weightLabel}` })}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </DragSheet>
+      )}
 
       {/* Nota del ejercicio — mismo modal que las notas de sesión, título = nombre del ejercicio */}
       {onClientNoteChange && (
@@ -1004,6 +1107,11 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.text,
     flexShrink: 1,
   },
+  nameVariant: { color: th.colors.mutedLight },
+  nameVariantChanged: { color: th.colors.accent },
+  variantSheet:   { gap: spacing.lg, paddingBottom: spacing.sm },
+  variantCaption: { ...textStyles.caps, color: th.colors.accent },
+  variantHint:    { ...textStyles.body, color: th.colors.mutedLight },
   keyInline: {
     color:      th.colors.accent,
     fontFamily: 'Inter_700Bold',
@@ -1060,14 +1168,6 @@ const makeStyles = (th) => StyleSheet.create({
     gap:           8,
     paddingTop:    2,
   },
-  // El motivo es contexto, no instruccion: gris, minuscula y sin punto para que
-  // se lea despues del que, no antes.
-  progWhy: {
-    ...textStyles.body,
-    lineHeight: lh(textStyles.body.fontSize, LINE.row),
-    color:      th.colors.mutedLight,
-    marginTop:  1,
-  },
   progDir: {
     ...textStyles.caps,
     color:         th.colors.accent,
@@ -1089,6 +1189,27 @@ const makeStyles = (th) => StyleSheet.create({
   progDirHold: {
     color: th.colors.mutedLight,
   },
+  // Primera vez: «◇ Busca tu peso», en `text` (ni acento ni gris: no hay nada
+  // que comparar todavía).
+  progDirFirst: {
+    color: th.colors.text,
+  },
+  progLinePressed: {
+    opacity: 0.7,
+  },
+  // El 1RM de Por esfuerzo, al final de la línea y apagado (§6.3).
+  progE1rm: {
+    ...textStyles.label,
+    marginLeft:  'auto',
+    flexShrink:  0,
+    color:       th.colors.muted,
+    fontVariant: ['tabular-nums'],
+  },
+  // La ficha de la recomendación: tres bloques, título pequeño + contenido.
+  progSheet:        { gap: spacing.lg, paddingBottom: spacing.sm },
+  progSheetBlock:   { gap: spacing.xs },
+  progSheetCaption: { ...textStyles.caps, color: th.colors.muted },
+  progSheetText:    { ...textStyles.body, color: th.colors.text },
   progDirCoach: {
     ...textStyles.caps,
     color:         th.colors.blue,
@@ -1223,7 +1344,6 @@ const makeStyles = (th) => StyleSheet.create({
   dropRemoveBtn: {
     padding: spacing.xs,
   },
-  dropRemoveText: { ...textStyles.label, color: th.colors.mutedLight },
   // §4.6 AddSetLink — texto centrado, sin caja. padding 6 0 2, "+" con 6px de
   // separación (gap, no un espacio en el texto). Compartido con "Añadir drop".
   addLink: {
@@ -1287,56 +1407,10 @@ const makeStyles = (th) => StyleSheet.create({
     top:      0,
   },
 
-  // Resumen de series colapsado — MISMA lógica/estilo que HistoryScreen
-  // (groupSetsByWeight + getPillVariant + buildSetLabel de setDisplay.js).
-  // Única diferencia real: aquí "fuera de rango" es ROJO (pedido del usuario).
+  // Resumen de series colapsado — el hueco alrededor de `SetPills`.
   collapsedPillsRow: {
-    flexDirection:     'row',
-    flexWrap:          'wrap',
-    gap:               8,
     paddingHorizontal: 16,
     paddingTop:        12,
     paddingBottom:     14,
   },
-  setGroup: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-  },
-  weightPill: {
-    paddingVertical: spacing.sm,
-  },
-  weightPillText: {
-    ...textStyles.label,
-  },
-  weightPillNum:  { color: th.colors.accent },
-  weightPillUnit: { color: th.colors.text },
-  weightPillX:    { color: th.colors.mutedLight },
-
-  setPill: {
-    backgroundColor: th.colors.bg,
-    borderRadius:    R_SMALL,
-    paddingHorizontal: 8,
-    paddingVertical:   6,
-  },
-  setPillDone: {
-    backgroundColor: th.tint.accent10,
-  },
-  setPillPartial: {
-    backgroundColor: th.tint.red30,
-  },
-  setPillText: {
-    ...textStyles.label,
-    color: th.colors.mutedLight,
-  },
-  setPillTextDone: {
-    color: th.colors.accent,
-  },
-  setPillTextPartial: {
-    color: th.colors.red,
-  },
-  // El "@" de "12@8" — más apagado que el resto del número, mismo color base del pill.
-  setPillRpeAt:        { color: th.colors.muted },
-  setPillRpeAtDone:    { color: th.tint.accent50 },
-  setPillRpeAtPartial: { color: th.tint.red50 },
 });

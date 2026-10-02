@@ -15,7 +15,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, ScrollView, StyleSheet, Alert, Keyboard } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet, Keyboard } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +29,7 @@ import { GRID } from '../components/workout/grid';
 import { spacing, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
+import { showDialog } from '../components/ui/dialog';
 // Radio de la tarjeta de ejercicio del Workout (`ExerciseCard`: R_CARD).
 const R_CARD  = 16;
 
@@ -169,7 +170,7 @@ export default function NextSessionScreen({ navigation, route }) {
   async function handleSend() {
     Keyboard.dismiss();
     if (!client.syncSlotId) {
-      Alert.alert(t('nextSession.notConnectedTitle'), t('nextSession.notConnectedBody'));
+      showDialog(t('nextSession.notConnectedTitle'), t('nextSession.notConnectedBody'));
       return;
     }
     try {
@@ -177,7 +178,7 @@ export default function NextSessionScreen({ navigation, route }) {
       showToast(t('nextSession.sent', { name: client.name }), 2200, 'success');
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', err.message ?? t('nextSession.sendFailed'));
+      showToast(err.message ?? t('nextSession.sendFailed'), 3000, 'error');
     }
   }
 
