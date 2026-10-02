@@ -162,14 +162,21 @@ describe('progression.type = "effort" (effort-progression.md §4.2)', () => {
     const chip = getProgression(cfg({ progression: { type: 'effort', targetRpe: 8, hold: 'deload' } }), lib, at('6'), tk);
     expect(chip).toMatchObject({ type: 'hold', reason: 'deload', suggestedWeight: 80 });
   });
-  it('redondea al escalón del ejercicio (§4.4); 0 o sin él → 2.5', () => {
-    // RPE 7 → 82.16: con paso 1 → 82; con paso 5 → 80 (antes, como mucho 2.5); con 0 o sin él → 82.5.
+  it('redondea al escalón de la librería, como mucho 2.5; 0 o sin él → 2.5', () => {
+    // RPE 7 → 82.16: con paso 1 → 82; con paso 5 → 82.5 (a 5 se comía la subida, QA P54.3); con 0 o sin él → 82.5.
     expect(getProgression(cfg(), { weightStep: 1 }, at('7'), tk).suggestedWeight).toBe(82);
-    expect(getProgression(cfg(), { weightStep: 5 }, at('7'), tk).suggestedWeight).toBe(80);
+    expect(getProgression(cfg(), { weightStep: 5 }, at('7'), tk).suggestedWeight).toBe(82.5);
     expect(getProgression(cfg(), { weightStep: 0 }, at('7'), tk).suggestedWeight).toBe(82.5);
     expect(getProgression(cfg(), null, at('7'), tk).suggestedWeight).toBe(82.5);
   });
-  it('el escalón del ejercicio (exConfig.weightStep) manda sobre el de la librería', () => {
+  it('QA P54.3: peso muerto (escalón 5) a 60 kg, 3×4 @7 o 3×5 @8 pidiendo 4 @8 → sube a 62.5', () => {
+    const dl = { sets: 3, minReps: 4, maxReps: 4, progression: { type: 'effort', targetRpe: 8 } };
+    const rows = (reps, rpe) => [1, 2, 3].map(() => ({ weight: '60', reps, rpe, done: true }));
+    expect(getProgression(dl, { weightStep: 5 }, rows('4', '7'), tk)).toMatchObject({ type: 'up', suggestedWeight: 62.5 });
+    expect(getProgression(dl, { weightStep: 5 }, rows('5', '8'), tk)).toMatchObject({ type: 'up', suggestedWeight: 62.5 });
+  });
+  it('el escalón del ejercicio (exConfig.weightStep) manda sobre el de la librería, también por encima de 2.5', () => {
+    expect(getProgression(cfg({ weightStep: 5 }), { weightStep: 5 }, at('7'), tk).suggestedWeight).toBe(80);
     expect(getProgression(cfg({ weightStep: 1 }), { weightStep: 5 }, at('7'), tk).suggestedWeight).toBe(82);
     expect(getProgression(cfg({ weightStep: 1.25 }), { weightStep: 5 }, at('7'), tk).suggestedWeight % 1.25).toBe(0);
   });

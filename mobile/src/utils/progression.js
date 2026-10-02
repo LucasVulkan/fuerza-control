@@ -100,10 +100,16 @@ export function defaultIncrement(type, def, step) {
 
 // ── resolveProgressionConfig ──────────────────────────────────────────────────
 
-/** El escalón de peso del ejercicio: el suyo, el de la librería o 2,5 (§4.1). */
-function resolveStep(ec, d) {
+/**
+ * El escalón de peso del ejercicio: el suyo, el de la librería o 2,5 (§4.1).
+ * En Por esfuerzo el de la librería es como mucho 2,5: ahí es la resolución de
+ * la carga, no el salto de la automática, y a 5 kg un punto de RPE (+2,8 %) no
+ * movía el peso por debajo de ~90 kg (QA P48, otra vez en QA P54.3).
+ */
+function resolveStep(ec, d, type) {
   if (ec.weightStep > 0) return ec.weightStep;
-  return d.weightStep > 0 ? d.weightStep : 2.5;
+  const lib = d.weightStep > 0 ? d.weightStep : 2.5;
+  return type === 'effort' ? Math.min(lib, 2.5) : lib;
 }
 
 /**
@@ -124,11 +130,10 @@ export function resolveProgressionConfig(exConfig, def) {
   const ec = exConfig ?? {};
   const d  = def     ?? {};
   const p  = ec.progression?.type ? ec.progression : null;
-  const step = resolveStep(ec, d);
-
   const type = p
     ? (p.type === 'weight' ? 'double' : p.type)
     : (LEGACY_REVERSE_MAP[ec.progressionModel ?? d.progressionModel ?? 'double_progression'] ?? 'double');
+  const step = resolveStep(ec, d, type);
 
   const ev   = p?.evaluation ?? {};
   const mode = ev.mode === 'pct' ? 'part' : (EVALUATION_MODES.includes(ev.mode) ? ev.mode : 'all_complete');

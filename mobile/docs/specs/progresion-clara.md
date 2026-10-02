@@ -333,9 +333,12 @@ Si una etapa sube las series y la regla de bajar queda por debajo de
     P52, 2-oct): antes Reps no traía número y la tarjeta pintaba la frase larga
     en el hueco de la cifra. Lo que queda para P54 es quitar el rango (meta =
     inicio como suelo) y el `part`.
-- **Por esfuerzo**: redondea al `step` resuelto (antes,
-  `min(def.weightStep, 2,5)`). Esto **cambia** el redondeo de los ejercicios con
-  escalón de 4, 5 o 10 kg: ahora el usuario lo ve y lo puede bajar en la hoja.
+- **Por esfuerzo**: redondea al `step` resuelto, que en Por esfuerzo es
+  `exConfig.weightStep` o, si no, `min(def.weightStep, 2,5)`: ahí el escalón es
+  la resolución de la carga, no el salto. Con el de la librería tal cual (5 kg)
+  un punto de RPE (+2,8 %) no movía el peso por debajo de ~90 kg y todo era
+  «mantener» (QA P54.3, ya visto en QA P48). El usuario lo ve y lo puede cambiar
+  en la hoja, también por encima de 2,5.
   Con `effortWhen: 'reach'`: si el cálculo deja el peso igual (`type: 'hold'`)
   y todas las series llegaron a las reps objetivo, sube un `step`
   (`type: 'up'`, `why_effortReached`, nuevo).
@@ -381,7 +384,8 @@ si no, se borran.
 2. En Doble, con al menos el 80 % de las series en el suelo, el texto era «Bien
    ejecutado… busca más reps»; ahora es el de mantener (`normal_hold`). El peso
    no cambia.
-3. Por esfuerzo redondea al escalón del ejercicio, no a 2,5 como máximo.
+3. ~~Por esfuerzo redondea al escalón del ejercicio, no a 2,5 como máximo.~~
+   Revertido en QA P54.3: sin escalón propio, sigue siendo como mucho 2,5.
 
 ### 4.7 Tests
 
@@ -395,11 +399,18 @@ rango y con reps fijas, Por esfuerzo, sin historial. `stageRx.test.js`:
 
 **Probar P54**
 
-- [ ] Press banca 3 × 8–12 en Automática: 12/12/12 con 60 kg → «Subir a 62.5»;
+- [x] Press banca 3 × 8–12 en Automática: 12/12/12 con 60 kg → «Subir a 62.5»;
   12/10/9 → «Mantener 60»; 9/7/7 → «Bajar a 57.5».
-- [ ] La misma con una serie de 12 a RPE 10 y el resto bien: ya no baja.
-- [ ] Peso muerto Por esfuerzo con escalón de librería 5 kg: el peso propuesto
-  es múltiplo de 5.
+- [ ] El mismo press banca con **Registrar RPE** encendido y **Cuándo sube =
+  RPE** (máx. 8): hacer 12/10/9 con 60 kg, las tres a RPE 10 → «Mantener 60».
+  Antes de P54 decía «Bajar a 57.5» (la media de RPE pasaba de 9,5); ahora solo
+  baja la regla de fallos, y 12/10/9 no falla ninguna.
+- [ ] Peso muerto Por esfuerzo 3 × 4 @8, con 60 kg: hacer 3 × 4 @7 → «Subir a
+  62.5»; hacer 3 × 5 @8 → también «Subir a 62.5» (las dos equivalen a 7 reps
+  a fallo).
+  (2-oct: con el escalón de librería, 5 kg, las dos decían «Mantener»: +2,8 %
+  no llegaba a medio escalón. Arreglado: en Por esfuerzo, como mucho 2,5 salvo
+  escalón propio.)
 - [ ] Una etapa de descarga sigue diciendo «Descarga» y no sube ni baja.
 
 ## 5. P55 — Editor: Qué pides y la hoja de Progresión
@@ -476,8 +487,9 @@ esfuerzo; la opción RPE máx. ya no depende de haberlo encendido antes.
 
 `commitValues` escribe la forma de §4.1: `type` (`double` para Peso por reglas,
 también con reps fijas), `evaluation`, `increment`, `down`, `targetRpe` +
-`effortWhen` en Por esfuerzo, y `exConfig.weightStep` **solo si difiere** del de
-la librería (así un cambio en la librería sigue llegando a los ejercicios que no
+`effortWhen` en Por esfuerzo, y `exConfig.weightStep` **solo si difiere** del
+que se resuelve sin él (el de la librería; en Por esfuerzo, ese con tope 2,5:
+§4.4) (así un cambio en la librería sigue llegando a los ejercicios que no
 lo tocaron). Desaparecen del estado del editor `progMode`, `evalPct` e
 `incrMin`.
 
