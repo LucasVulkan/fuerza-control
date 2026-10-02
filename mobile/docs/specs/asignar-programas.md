@@ -121,6 +121,10 @@ vuelve al paso 1 (la misma que usará P50).
 Las listas de origen son `ChoiceRow` y abajo va el nombre (prellenado con el del
 origen, editable, `NameField`) y el botón **«Asignar»**.
 
+El botón del paso 2 va **fijo al pie de la hoja**, fuera del scroll (QA 2-oct-2026:
+con una lista larga, al elegir no se veía qué hacer después). `DragSheet` gana una
+prop `footer` para eso.
+
 Al asignar: `cloneProgramFromTemplate(id, { owner: clientId, name })` +
 `setClientActiveProgram`, igual que hace hoy `handleCreateFromTemplate`, y se abre
 el editor.
@@ -129,9 +133,14 @@ el editor.
 
 Todos los programas que no son plantilla (`kind !== 'template'`), **menos el
 activo de este cliente**, agrupados por dueño: «Tuyos» (`owner: 'me'`) y un
-grupo por cliente, ordenados por nombre. Dentro de cada grupo, el activo primero
-con la etiqueta «activo» y luego los archivados, los más recientes primero
-(`programsOf`). Subtítulo de cada fila: `N sesiones · N etapas`.
+grupo por cliente, ordenados por nombre. Subtítulo de cada fila:
+`N sesiones · N etapas`.
+
+Arriba, un `SegmentedControl` **«Activos | Archivados»** (QA 2-oct-2026: con todo
+mezclado, solo «Tuyos» ya eran 6 o 7 filas). Activos = el activo de cada dueño;
+Archivados = el resto, los más recientes primero (`programsOf`). Sin etiqueta
+«activo»: ya lo dice el segmentado. Nace en Activos; si una de las dos vistas
+está vacía no hay segmentado y se enseña la otra.
 
 Entran también los archivados del propio cliente. Para volver a uno tal cual ya
 está «Reactivar»; esto lo copia de cero (progreso nuevo).
@@ -148,7 +157,7 @@ abierta.
   trae, y «Asignar» → `importForClient(clientId, data, 'replace')`. Sin campo de
   nombre: se importa con el suyo.
 - Con programa **y** entrenos → en ese paso 2, además, un `ToggleRow`
-  «Importar también su historial (N sesiones)», apagado por defecto. Encendido
+  «Importar historial (N)», apagado por defecto. Encendido
   → modo `replace_log`.
 - Importar no abre el editor (como hoy).
 
@@ -171,38 +180,42 @@ ya trae su historial si se quiere.
 
 **Probar C30**
 
-- [ ] Cliente sin programa → botón «Asignar programa» → salen los orígenes:
+- [x] Cliente sin programa → botón «Asignar programa» → salen los orígenes:
   En blanco y Desde archivo siempre; Plantilla solo si hay plantillas; De otro
   cliente solo si hay algún programa que copiar.
-- [ ] Tocar un origen → la página se desliza y aparece «‹» junto al título;
+- [x] Tocar un origen → la página se desliza y aparece «‹» junto al título;
   «‹» vuelve a los orígenes sin cerrar la hoja. Cerrar la hoja desde la página 2
   y reabrirla → empieza otra vez en los orígenes.
 - [ ] En blanco → el formulario de antes (nombre, sesiones, semanas) →
-  «CREAR Y EDITAR» crea el programa y abre el editor.
-- [ ] Plantilla → filas con radio, ninguna elegida y «ASIGNAR» apagado → al
+  «CREAR Y EDITAR» crea el programa y abre el editor. — ❌ 2-oct-2026: al
+  cerrarse el teclado de Android la hoja se queda subida y asoma la app por
+  debajo (fallo de `DragSheet`, afecta a toda hoja con campo de texto). Arreglado en 4803b87: volver a probar.
+- [x] Plantilla → filas con radio, ninguna elegida y «ASIGNAR» apagado → al
   elegir una se rellena el nombre → «ASIGNAR» → abre el editor con la copia.
 - [ ] De otro cliente → grupo «Tuyos» y un grupo por cliente por orden
   alfabético; en cada uno el activo primero con la etiqueta «activo»; cada fila
   dice «N sesiones · N etapas». El activo de ESTE cliente no sale; sus programas
-  anteriores sí.
-- [ ] Asignar uno de otro cliente → se abre el editor con la copia; editarla
+  anteriores sí. — ❌ 2-oct-2026: con los archivados mezclados abruma (6-7 en
+  «Tuyos») → segmentado Activos | Archivados (§4.3); y «ASIGNAR» tiene que
+  verse siempre, fijo al pie (§4.2). Arreglado en 4803b87: volver a probar.
+- [x] Asignar uno de otro cliente → se abre el editor con la copia; editarla
   no cambia el programa del otro cliente.
-- [ ] Desde archivo → se abre el selector con la hoja abierta (probarlo
+- [x] Desde archivo → se abre el selector con la hoja abierta (probarlo
   también en iPhone) → página con el nombre del programa y del archivo →
   «ASIGNAR» → queda como activo, sin abrir el editor.
-- [ ] Desde archivo con un archivo sin programa → diálogo «El archivo no
+- [x] Desde archivo con un archivo sin programa → diálogo «El archivo no
   contiene ningún programa» y la hoja sigue en los orígenes.
-- [ ] Archivo con entrenos → sale «Importar también su historial (N
-  sesiones)», apagado. Apagado → el historial del cliente no cambia; encendido →
-  los entrenos aparecen en su historial.
-- [ ] Cliente con programa activo → arriba de la hoja, en naranja,
+- [ ] Archivo con entrenos → sale «Importar historial (N)», apagado. Apagado → el historial del cliente no cambia; encendido →
+  los entrenos aparecen en su historial. — ❌ 2-oct-2026: el texto era
+  «Importar también su historial (N sesiones)»; queda «Importar historial (N)». Arreglado en 4803b87: volver a probar.
+- [x] Cliente con programa activo → arriba de la hoja, en naranja,
   «Sustituye a X, que pasa a Programas anteriores»; al asignar no sale ningún
   diálogo de confirmación, y el anterior está en Programas anteriores.
-- [ ] ··· de la tarjeta → «Asignar programa» (ya no «Nuevo programa») abre
+- [x] ··· de la tarjeta → «Asignar programa» (ya no «Nuevo programa») abre
   la hoja; ya no está «Importar programa».
-- [ ] ··· → «Importar historial» (debajo de Exportar) → elegir un archivo
+- [x] ··· → «Importar historial» (debajo de Exportar) → elegir un archivo
   con entrenos → toast «N sesiones importadas», el programa activo no cambia.
-- [ ] Cliente con app: el programa asignado queda pendiente de subir (o se
+- [x] Cliente con app: el programa asignado queda pendiente de subir (o se
   sube solo si es invitado), como antes.
 
 ## 5. C31 — Copiar a otro cliente y guardar como plantilla
