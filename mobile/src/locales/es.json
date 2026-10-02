@@ -1843,6 +1843,7 @@
       "weightAssist": "En un asistido progresar es quitar ayuda: lo sabe el ejercicio, no hay que configurarlo.",
       "weightFixed": "Sube el peso; las reps se quedan en {{reps}}.",
       "weightRange": "Sube el peso y las reps vuelven a {{min}}.",
+      "weightTime": "Sube el peso y el tiempo vuelve a {{min}}.",
       "reps": "Suben las reps desde tu serie más floja; el peso no se toca.",
       "time": "Sube el tiempo desde tu serie más floja.",
       "none": "Sin progresión: el gris repite lo de la última vez y el peso lo cambias tú."
@@ -2534,6 +2535,10 @@
     "why_partHit": "{{hit}} de {{n}} series llegaron a {{goal}}",
     "why_belowMin": "no llegaste al mínimo de repeticiones",
     "why_holdReps": "completa todas las repeticiones antes de subir",
+    "why_allHitTime": "aguantaste el tiempo máximo en todas las series",
+    "why_belowMinTime": "no llegaste al tiempo mínimo",
+    "why_holdTime": "llega al tiempo máximo en todas las series antes de subir",
+    "normal_strugglingTime": "No llegaste al tiempo mínimo. Prueba con {{next}}kg para consolidar técnica.",
     "why_rpeAbove": "llegaste a la meta, pero con un RPE medio por encima de {{maxRpe}}",
     "why_deload": "semana de descarga del bloque",
     "why_timeAllHit": "tu serie más floja fue de {{n}} s",

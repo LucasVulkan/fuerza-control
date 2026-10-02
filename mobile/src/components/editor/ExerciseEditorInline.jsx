@@ -393,7 +393,9 @@ export default function ExerciseEditorInline({
   // La frase de la regla sale del mismo motor que decide (§5.2): el Resumen, la
   // fila y la hoja dicen lo mismo.
   const ruleTxt = progressionRule(
-    { ...exConfig, sets, minReps, maxReps, minTime, maxTime, ...buildProgression(prog, ctx) },
+    // `inputType` de ahora: con otra medida elegida y sin guardar, la frase
+    // seguiría hablando de reps (P61).
+    { ...exConfig, sets, minReps, maxReps, minTime, maxTime, inputType: isTime ? 'weight_time' : 'weight_reps', ...buildProgression(prog, ctx) },
     def, t, weightLabel,
   );
   const progTitle = prog.up === 'none'
@@ -467,10 +469,12 @@ export default function ExerciseEditorInline({
   const sheetSteps = [];
   const addStep = (key, title, body) => sheetSteps.push({ key, title, body });
   const ofSets  = t('exerciseEditor.ofN', { n: sets });
-  const goal    = repsMode === 'fixed' ? minReps : maxReps;
+  // La meta de Peso: el máximo del rango o las reps fijas; con Tiempo, los segundos.
+  const goal    = isTime ? `${maxTime} s` : repsMode === 'fixed' ? minReps : maxReps;
+  const floorTxt = isTime ? `${minTime} s` : minReps;
 
   const upHint = prog.up === 'weight'
-    ? (assist ? 'weightAssist' : repsMode === 'fixed' ? 'weightFixed' : 'weightRange')
+    ? (assist ? 'weightAssist' : isTime ? 'weightTime' : repsMode === 'fixed' ? 'weightFixed' : 'weightRange')
     : prog.up;
   addStep('up', t('exerciseEditor.stepUp'), (
     <>
@@ -481,7 +485,7 @@ export default function ExerciseEditorInline({
         value={prog.up}
         onChange={(id) => patchProg({ up: id })}
       />
-      {hint(t(`exerciseEditor.upHint.${upHint}`, { reps: minReps, min: minReps }))}
+      {hint(t(`exerciseEditor.upHint.${upHint}`, { reps: minReps, min: floorTxt }))}
     </>
   ));
 
@@ -694,7 +698,7 @@ export default function ExerciseEditorInline({
                   max={sets}
                 />,
               )}
-              {hint(t(assist ? 'exerciseEditor.downHintAssist' : 'exerciseEditor.downHint', { fails: prog.fails, inc: incTxt, floor: minReps }))}
+              {hint(t(assist ? 'exerciseEditor.downHintAssist' : 'exerciseEditor.downHint', { fails: prog.fails, inc: incTxt, floor: floorTxt }))}
               {prog.when === 'part' && hint(t('exerciseEditor.downPartHint', { need: prog.need, n: sets, min: lowest }))}
             </>
           ) : hint(t('exerciseEditor.downNeverHint'))}

@@ -9,7 +9,8 @@
  *   type:      'double' | 'reps' | 'time' | 'effort' | 'none'
  *     double  → «Peso · por reglas» (el nombre interno se mantiene): todas las
  *               series llegan a la meta (el máximo del rango, o las reps fijas)
- *               → sube el peso; si fallan las suficientes bajo el mínimo → baja
+ *               → sube el peso; si fallan las suficientes bajo el mínimo → baja.
+ *               Con medida Tiempo, lo mismo en segundos (mínimo y máximo de tiempo)
  *     reps    → la meta es la serie más floja de la última sesión + el salto
  *     time    → ídem en segundos
  *     effort  → reps objetivo @ targetRpe; el peso sale del e1RM de la última
@@ -108,6 +109,17 @@ export function defaultIncrement(type, def, step) {
  */
 function typicallyReps(def) {
   return isBodyweight(def) && !(def.weightStep > 0);
+}
+
+/**
+ * ¿La medida del ejercicio es tiempo? Misma lectura que el editor y la
+ * prescripción: `inputType`, y sin él el modelo de progresión. Con medida
+ * Tiempo, «Peso» (`double`) evalúa en segundos (P61, §8.2).
+ */
+export function isTimed(exConfig, def) {
+  const input = exConfig?.inputType
+    ?? ((exConfig?.progressionModel ?? def?.progressionModel) === 'time_progression' ? 'time' : 'weight_reps');
+  return input === 'time' || input === 'weight_time';
 }
 
 // ── resolveProgressionConfig ──────────────────────────────────────────────────
@@ -268,11 +280,14 @@ function verdict(prog, doneSets, n, floor, goal, key = 'minReps') {
   };
 }
 
-/** El motivo de subir dice lo que pasó de verdad: con Parcial no llegaron todas. */
-function whyUp(prog, v, goal, t) {
+/**
+ * El motivo de subir dice lo que pasó de verdad: con Parcial no llegaron todas.
+ * `timed` (Tiempo + Peso, P61): la meta son segundos y los textos dicen tiempo.
+ */
+function whyUp(prog, v, goal, t, timed = false) {
   return prog.evaluation.mode === 'part' && v.hitGoal < v.n
-    ? t('progression.why_partHit', { hit: v.hitGoal, n: v.n, goal })
-    : t('progression.why_allHit');
+    ? t('progression.why_partHit', { hit: v.hitGoal, n: v.n, goal: timed ? `${goal} s` : goal })
+    : t(timed ? 'progression.why_allHitTime' : 'progression.why_allHit');
 }
 
 /** El motivo de mantener: la meta se alcanzó pero el RPE se pasó, o no se llegó. */
@@ -326,21 +341,23 @@ function chipReps(prog, doneSets, n, start, t) {
 
 /**
  * «Peso · por reglas» (§4.2): sube → baja → mantener. `goal` es la meta (el
- * máximo del rango, o las reps fijas) y `floor` el suelo (`minReps`).
+ * máximo del rango, o las reps fijas) y `floor` el suelo (`minReps`). Con medida
+ * Tiempo (`timed`, P61) son los segundos: máximo y mínimo de tiempo.
  */
-function chipDouble(prog, doneSets, n, maxW, floor, goal, t) {
-  const v = verdict(prog, doneSets, n, floor, goal);
+function chipDouble(prog, doneSets, n, maxW, floor, goal, t, timed = false) {
+  const v = verdict(prog, doneSets, n, floor, goal, timed ? 'minTime' : 'minReps');
   const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
+  const sfx = timed ? 'Time' : '';
 
   if (v.up) {
     const next = maxW + computeIncrement(maxW, prog.increment, prog.step);
-    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: whyUp(prog, v, goal, t), suggestedWeight: next, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: whyUp(prog, v, goal, t, timed), suggestedWeight: next, suggestedTime: null };
   }
   if (v.down && maxW > 0) {
     const next = Math.max(0, maxW - computeIncrement(maxW, prog.increment, prog.step));
-    return { type: 'down', icon: '⬇', msg: t('progression.normal_struggling', { next }), why: t('progression.why_belowMin'), suggestedWeight: next, suggestedTime: null };
+    return { type: 'down', icon: '⬇', msg: t(`progression.normal_struggling${sfx}`, { next }), why: t(`progression.why_belowMin${sfx}`), suggestedWeight: next, suggestedTime: null };
   }
-  return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: whyHold(prog, v, 'progression.why_holdReps', {}, t), suggestedWeight: maxW || null, suggestedTime: null };
+  return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: whyHold(prog, v, `progression.why_hold${timed ? 'Time' : 'Reps'}`, {}, t), suggestedWeight: maxW || null, suggestedTime: null };
 }
 
 /**
@@ -418,8 +435,8 @@ function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload
 }
 
 /** El espejo de `chipDouble` para asistidos: subir es quitar ayuda, bajar es ponerla. */
-function chipDoubleDecrease(prog, doneSets, n, assistance, floor, goal, t) {
-  const v = verdict(prog, doneSets, n, floor, goal);
+function chipDoubleDecrease(prog, doneSets, n, assistance, floor, goal, t, timed = false) {
+  const v = verdict(prog, doneSets, n, floor, goal, timed ? 'minTime' : 'minReps');
   const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist');
 
   if (v.up && assistance > 0) {
@@ -427,16 +444,16 @@ function chipDoubleDecrease(prog, doneSets, n, assistance, floor, goal, t) {
     const msg  = next === 0
       ? t('progression.decrease_lastAssist', { assist: assistance })
       : t('progression.decrease_allHit', { next });
-    return { type: 'up', icon: '⬆', msg, why: whyUp(prog, v, goal, t), suggestedWeight: next, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg, why: whyUp(prog, v, goal, t, timed), suggestedWeight: next, suggestedTime: null };
   }
   if (v.up && assistance === 0) {
-    return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: whyUp(prog, v, goal, t), suggestedWeight: 0, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: whyUp(prog, v, goal, t, timed), suggestedWeight: 0, suggestedTime: null };
   }
   if (v.down && assistance < 999) {
     const next = assistance + computeIncrement(assistance, prog.increment, prog.step);
-    return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t('progression.why_belowMin'), suggestedWeight: next, suggestedTime: null };
+    return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why_belowMin${timed ? 'Time' : ''}`), suggestedWeight: next, suggestedTime: null };
   }
-  return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, 'progression.why_holdReps', {}, t), suggestedWeight: assistance || null, suggestedTime: null };
+  return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `progression.why_hold${timed ? 'Time' : 'Reps'}`, {}, t), suggestedWeight: assistance || null, suggestedTime: null };
 }
 
 // ── Main entry point ──────────────────────────────────────────────────────────
@@ -514,14 +531,17 @@ export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastD
   const maxW = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0));
   // Lo guardado como `type: 'weight'` (reps fijas, sin rango en el motor) tenía
   // por meta el mínimo: leerlo con `maxReps` cambiaría cuándo sube (§4.1).
-  const goal = exConfig?.progression?.type === 'weight' ? minReps : maxReps;
+  // Tiempo + Peso (P61): la misma doble progresión sobre segundos.
+  const timed = isTimed(exConfig, def);
+  const floor = timed ? minTime : minReps;
+  const goal  = exConfig?.progression?.type === 'weight' ? floor : (timed ? maxTime : maxReps);
 
   if (prog.direction === 'decrease') {
     // `assist`: el número es la AYUDA; la tarjeta no puede decir «Subir a 17,5»
     // cuando lo que toca es quitar ayuda (QA P52).
-    return { ...chipDoubleDecrease(prog, doneSets, totalSets, maxW, minReps, goal, t), assist: true };
+    return { ...chipDoubleDecrease(prog, doneSets, totalSets, maxW, floor, goal, t, timed), assist: true };
   }
-  return chipDouble(prog, doneSets, totalSets, maxW, minReps, goal, t);
+  return chipDouble(prog, doneSets, totalSets, maxW, floor, goal, t, timed);
 }
 
 // ── progressionRule ───────────────────────────────────────────────────────────
@@ -546,6 +566,7 @@ export function progressionRule(exConfig, def, t, unit = 'kg') {
   const minReps = exConfig?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps;
   const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps;
   const minTime = exConfig?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;
+  const maxTime = exConfig?.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime;
   const n       = exConfig?.sets ?? def?.sets ?? 3;
 
   if (prog.type === 'effort') {
@@ -569,7 +590,10 @@ export function progressionRule(exConfig, def, t, unit = 'kg') {
       { inc: text, when, floor: timed ? minTime : minReps });
   }
 
-  const goal = exConfig?.progression?.type === 'weight' ? minReps : maxReps;
+  // Tiempo + Peso (P61): la meta son los segundos.
+  const timed = isTimed(exConfig, def);
+  const legacy = exConfig?.progression?.type === 'weight';
+  const goal = timed ? `${legacy ? minTime : maxTime} s` : legacy ? minReps : maxReps;
   const text = inc.type === 'pct' ? `${inc.pct} %` : `${inc.value} ${unit}`;
   const assist = prog.direction === 'decrease';
   const head = t(assist ? 'progression.rule.assistUp' : 'progression.rule.weightUp', { inc: text, when, goal });

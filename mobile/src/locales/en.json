@@ -1843,6 +1843,7 @@
       "weightAssist": "On an assisted exercise, progressing means taking help away: the exercise knows it, nothing to set up.",
       "weightFixed": "The weight goes up; reps stay at {{reps}}.",
       "weightRange": "The weight goes up and reps go back to {{min}}.",
+      "weightTime": "The weight goes up and the time goes back to {{min}}.",
       "reps": "Reps go up from your weakest set; the weight is not touched.",
       "time": "Time goes up from your weakest set.",
       "none": "No progression: the grey repeats last time and you change the weight yourself."
@@ -2534,6 +2535,10 @@
     "why_partHit": "{{hit}} of {{n}} sets reached {{goal}}",
     "why_belowMin": "you didn't reach the minimum reps",
     "why_holdReps": "complete every rep before going up",
+    "why_allHitTime": "you held the maximum time in every set",
+    "why_belowMinTime": "you didn't reach the minimum time",
+    "why_holdTime": "reach the maximum time in every set before going up",
+    "normal_strugglingTime": "Did not reach the minimum time. Try {{next}}kg to consolidate technique.",
     "why_rpeAbove": "you reached the goal, but with an average RPE above {{maxRpe}}",
     "why_deload": "deload week in this block",
     "why_timeAllHit": "your weakest set was {{n}}s",

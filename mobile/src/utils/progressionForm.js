@@ -37,10 +37,11 @@ export const libraryStep = (def, effort) =>
 /**
  * Qué sube, en el orden de la hoja. Peso siempre con medida Reps: todo ejercicio
  * se puede lastrar, también los de peso corporal (QA P55.5); en un asistido es
- * «Asistencia ↓».
+ * «Asistencia ↓». Con medida Tiempo, Peso es una doble progresión en segundos
+ * (P61).
  */
 export function upOptions({ metric }) {
-  if (metric === 'time') return ['time', 'none'];
+  if (metric === 'time') return ['time', 'weight', 'none'];
   return ['weight', 'reps', 'none'];
 }
 

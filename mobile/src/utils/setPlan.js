@@ -10,7 +10,7 @@
  * en kg, como strings; pasarlos a lo que el usuario ve es cosa de la pantalla.
  */
 
-import { DEFAULT_TARGET } from './progression';
+import { DEFAULT_TARGET, isTimed } from './progression';
 
 const has = (v) => v != null && v !== '';
 
@@ -45,7 +45,13 @@ export function planSet({ exConfig, def, chip, lastSets, overrideEx, index }) {
     // La meta de la progresión: las reps fijas, o el máximo del rango. El
     // `type: 'weight'` antiguo tenía por meta el mínimo, como en el chip.
     plan.weight = chip.suggestedWeight;
-    plan.reps   = exConfig?.progression?.type === 'weight' ? minReps : maxReps;
+    if (isTimed(exConfig, def)) {
+      // Tiempo + Peso (P61): con otro peso el tiempo se vuelve a construir
+      // desde abajo, al mínimo.
+      plan.time = exConfig?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;
+    } else {
+      plan.reps = exConfig?.progression?.type === 'weight' ? minReps : maxReps;
+    }
   }
   // En mantener el gris es lo que hiciste (decisión 4), no el inicio: solo
   // sube con 'up'.

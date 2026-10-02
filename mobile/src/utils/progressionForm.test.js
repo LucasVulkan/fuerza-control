@@ -10,9 +10,9 @@ const ctx = (over = {}) => ({ def: BB, sets: 3, metric: 'reps', range: true, ...
 const init = (exConfig = {}, c = ctx()) => initProgForm({ sets: c.sets, ...exConfig }, c.def, c);
 
 describe('P55 — qué se ofrece en Qué sube (§5.3)', () => {
-  it('con carga: Peso · Reps · Nada; en tiempo: Tiempo · Nada', () => {
+  it('con carga: Peso · Reps · Nada; en tiempo: Tiempo · Peso · Nada (P61)', () => {
     expect(upOptions(ctx())).toEqual(['weight', 'reps', 'none']);
-    expect(upOptions(ctx({ metric: 'time' }))).toEqual(['time', 'none']);
+    expect(upOptions(ctx({ metric: 'time' }))).toEqual(['time', 'weight', 'none']);
   });
   it('todo se puede lastrar: Peso también en dominadas supinas (QA P55.5)', () => {
     expect(upOptions(ctx({ def: LIB.pull_up_supine }))).toEqual(['weight', 'reps', 'none']);
@@ -51,7 +51,7 @@ describe('P55 — coherencia (normalize)', () => {
     expect(normalizeProgForm({ ...init(), when: 'part' }, ctx({ sets: 1 })).when).toBe('all_complete');
   });
   it('lo que sube deja de valer → el primero válido, con su salto por defecto', () => {
-    const f = patchProgForm({ ...init(), up: 'weight' }, {}, ctx({ metric: 'time' }));
+    const f = patchProgForm({ ...init(), up: 'reps' }, {}, ctx({ metric: 'time' }));
     expect(f).toMatchObject({ up: 'time', incType: 'fixed', incValue: 5 });
     const g = patchProgForm({ ...init(), up: 'weight' }, { up: 'reps' }, ctx());
     expect(g).toMatchObject({ up: 'reps', incValue: 1 });
@@ -122,8 +122,15 @@ describe('P55 — leer y guardar (§5.5)', () => {
     expect(init({ ...press, weightStep: 1.25 }).step).toBe(1.25);
     expect(init(press).step).toBeNull();
   });
-  it('plancha guardada como Doble se abre como Tiempo, con su salto', () => {
+  it('Tiempo + Peso (P61): una plancha guardada como Doble se abre como Peso, sin Cómo, y se guarda como double', () => {
     const c = ctx({ metric: 'time' });
-    expect(init({ minTime: 30, maxTime: 60, progression: { type: 'double' } }, c)).toMatchObject({ up: 'time', incValue: 5 });
+    const f = init({ minTime: 30, maxTime: 60, progression: { type: 'double' } }, c);
+    expect(f).toMatchObject({ up: 'weight', how: 'rules', incValue: 2.5 });
+    expect(showHow(f, c)).toBe(false);
+    expect(buildProgression(f, c)).toMatchObject({ progression: { type: 'double', down: { fails: 2 } }, progressionModel: 'double_progression' });
+  });
+  it('plancha de la librería (modelo de tiempo) se abre como Tiempo, con su salto', () => {
+    const c = ctx({ metric: 'time', def: LIB.plank });
+    expect(init({ minTime: 30, maxTime: 60 }, c)).toMatchObject({ up: 'time', incValue: 5 });
   });
 });

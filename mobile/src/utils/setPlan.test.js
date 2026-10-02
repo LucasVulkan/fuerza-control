@@ -123,3 +123,35 @@ describe('planSet — con el motor de verdad', () => {
     expect(p.weight).toEqual({ value: '60', source: 'last' });
   });
 });
+
+describe('planSet — Tiempo + Peso vuelve al mínimo (P61 §8.2)', () => {
+  const cfg = { sets: 3, minTime: 30, maxTime: 60, inputType: 'weight_time', progression: { type: 'double' } };
+  const rows = (kg, secs) => secs.map((s) => ({ weight: kg, time: String(s), done: true }));
+  const plan = (r, index = 0, c = cfg) => planSet({ exConfig: c, def: BB, chip: getProgression(c, BB, r, tk), lastSets: r, index });
+
+  it('60/60/60 con 5 kg → 7.5 kg y el gris pide 30 s, en las tres series', () => {
+    for (let i = 0; i < 3; i++) {
+      const p = plan(rows('5', [60, 60, 60]), i);
+      expect([p.weight.value, p.time.value, p.time.source]).toEqual(['7.5', '30', 'plan']);
+      expect(p.reps.value).toBe('');
+    }
+  });
+  it('al bajar también: peso del plan y tiempo mínimo', () => {
+    const p = plan(rows('5', [60, 20, 20]));
+    expect([p.weight.value, p.time.value]).toEqual(['2.5', '30']);
+  });
+  it('en mantener el gris es lo hecho: 5 kg × 60 · 50 · 40 s', () => {
+    const r = rows('5', [60, 50, 40]);
+    expect([0, 1, 2].map((i) => plan(r, i).time.value)).toEqual(['60', '50', '40']);
+    expect(plan(r, 1).weight).toEqual({ value: '5', source: 'last' });
+  });
+  it('sin minTime en la plantilla, el de la librería o el de por defecto', () => {
+    const c = { ...cfg, minTime: undefined };
+    expect(planSet({ exConfig: c, def: { ...BB, minTime: 25 }, chip: { type: 'up', suggestedWeight: 7.5 }, index: 0 }).time.value).toBe('25');
+    expect(planSet({ exConfig: c, def: BB, chip: { type: 'up', suggestedWeight: 7.5 }, index: 0 }).time.value).toBe('20');
+  });
+  it('el entrenador gana al plan', () => {
+    const p = planSet({ exConfig: cfg, def: BB, chip: { type: 'up', suggestedWeight: 7.5 }, overrideEx: { time: 40 }, index: 0 });
+    expect(p.time).toEqual({ value: '40', source: 'coach' });
+  });
+});

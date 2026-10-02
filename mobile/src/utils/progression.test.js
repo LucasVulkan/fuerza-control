@@ -711,3 +711,98 @@ describe('P56 — Por esfuerzo: el 1RM de las tres últimas sesiones (§6.5)', (
     expect(progressionHistory([])).toEqual({ earlier: [], lastDeload: false });
   });
 });
+
+// ── P61 — Tiempo con carga (docs/specs/progresion-clara.md §8) ──────────────
+
+describe('P61 — Tiempo + Peso: doble progresión en segundos (§8.2)', () => {
+  const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
+  // Plancha 30–60 s con 5 kg: cada serie es [kg, segundos].
+  const plank = (progression = {}, extra = {}) => ({
+    sets: 3, minTime: 30, maxTime: 60, inputType: 'weight_time', progression: { type: 'double', ...progression }, ...extra,
+  });
+  const run = (cfg, secs, kg = '5', def = BB) => getProgression(
+    cfg, def, secs.map((s) => ({ weight: kg, time: String(s), done: true })), tk,
+  );
+
+  it('todas al máximo: sube el peso (+2,5) y no dice nada de reps', () => {
+    expect(run(plank(), [60, 60, 60])).toMatchObject({
+      type: 'up', suggestedWeight: 7.5, suggestedTime: null, why: 'progression.why_allHitTime',
+    });
+  });
+  it('una serie por debajo del máximo mantiene el peso', () => {
+    expect(run(plank(), [60, 60, 50])).toMatchObject({ type: 'hold', suggestedWeight: 5, why: 'progression.why_holdTime{}' });
+  });
+  it('tiempo fijo 45–45: 45/45/45 sube; 45/40/45 mantiene', () => {
+    const c = plank({}, { minTime: 45, maxTime: 45 });
+    expect(run(c, [45, 45, 45]).type).toBe('up');
+    expect(run(c, [45, 40, 45])).toMatchObject({ type: 'hold', suggestedWeight: 5 });
+  });
+  it('baja con la regla: 2 de 3 series bajo el mínimo de tiempo → peso − salto', () => {
+    expect(run(plank(), [60, 20, 20])).toMatchObject({
+      type: 'down', suggestedWeight: 2.5, why: 'progression.why_belowMinTime',
+    });
+    // 1 de 3 bajo el mínimo no llega a «2 de 3»
+    expect(run(plank(), [60, 45, 20]).type).toBe('hold');
+    expect(run(plank({ down: 'never' }), [20, 20, 20]).type).toBe('hold');
+    expect(run(plank({ down: { fails: 3 } }), [60, 20, 20]).type).toBe('hold');
+  });
+  it('Parcial: 2 de 3 al máximo sube, y el motivo habla de segundos', () => {
+    expect(run(plank({ evaluation: { mode: 'part', need: 2 } }), [60, 60, 40])).toMatchObject({
+      type: 'up', suggestedWeight: 7.5, why: 'progression.why_partHit{"hit":2,"n":3,"goal":"60 s"}',
+    });
+  });
+  it('RPE máx.: con el RPE pasado mantiene', () => {
+    const c = plank({ evaluation: { mode: 'rpe', maxRpe: 8 } });
+    const go = (rpe) => getProgression(c, BB, [60, 60, 60].map((s) => ({ weight: '5', time: String(s), rpe, done: true })), tk);
+    expect(go('7').type).toBe('up');
+    expect(go('9')).toMatchObject({ type: 'hold', why: 'progression.why_rpeAbove{"maxRpe":8}' });
+  });
+  it('porcentaje: redondea al escalón', () => {
+    const c = plank({ increment: { type: 'pct', pct: 10 } });
+    expect(run(c, [60, 60, 60], '40').suggestedWeight).toBe(45);
+  });
+  it('asistido (dominada asistida a tiempo): quita ayuda al llegar al máximo y pone ayuda si falla', () => {
+    const assisted = { progressionDirection: 'decrease', weightStep: 2.5 };
+    expect(run(plank(), [60, 60, 60], '20', assisted)).toMatchObject({ type: 'up', assist: true, suggestedWeight: 17.5 });
+    expect(run(plank(), [20, 20, 60], '20', assisted)).toMatchObject({ type: 'down', assist: true, suggestedWeight: 22.5 });
+  });
+  it('sin peso apuntado y todas al máximo, sube desde 0 (como en reps)', () => {
+    expect(run(plank(), [60, 60, 60], '').type).toBe('up');
+  });
+  it('el mismo ejercicio con medida Reps sigue evaluando reps', () => {
+    const reps = { sets: 3, minReps: 8, maxReps: 12, inputType: 'weight_reps', progression: { type: 'double' } };
+    expect(getProgression(reps, BB, [12, 12, 12].map((r) => ({ weight: '60', reps: String(r), done: true })), tk))
+      .toMatchObject({ type: 'up', why: 'progression.why_allHit' });
+  });
+  it('Tiempo + Tiempo sigue igual: sube segundos y no propone kilos', () => {
+    const c = { sets: 3, minTime: 30, maxTime: 30, inputType: 'weight_time', progression: { type: 'time' } };
+    expect(run(c, [45, 45, 40])).toMatchObject({ type: 'up', suggestedTime: 45, suggestedWeight: null });
+  });
+  it('sin inputType, el modelo de tiempo de la librería también cuenta como Tiempo', () => {
+    const c = { sets: 3, minTime: 30, maxTime: 60, progression: { type: 'double' } };
+    expect(run(c, [60, 60, 60], '5', { progressionModel: 'time_progression' }).type).toBe('up');
+    expect(run(c, [40, 40, 40], '5', { progressionModel: 'time_progression' }).type).toBe('hold');
+  });
+  it('progressionRule: «Sube 2.5 kg cuando todas las series lleguen a 60 s · baja si fallan 2 de 3»', () => {
+    expect(progressionRule(plank({ increment: { type: 'fixed', value: 2.5 } }), BB, tk)).toBe(
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"60 s"}progression.rule.weightDown{"fails":2,"n":3}');
+  });
+});
+
+describe('P61 — la frase de la regla en palabras (es y en)', async () => {
+  const { default: i18n } = await import('i18next');
+  const es = (await import('../locales/es.json')).default;
+  const en = (await import('../locales/en.json')).default;
+  const cfg = { sets: 3, minTime: 30, maxTime: 60, inputType: 'weight_time', progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
+  const tIn = (lng, res) => {
+    const inst = i18n.createInstance();
+    inst.init({ lng, resources: { [lng]: { translation: res } }, interpolation: { escapeValue: false } });
+    return inst.t.bind(inst);
+  };
+  it('es', () => {
+    expect(progressionRule(cfg, BB, tIn('es', es))).toBe('Sube 2.5 kg cuando todas las series lleguen a 60 s · baja si fallan 2 de 3');
+  });
+  it('en', () => {
+    expect(progressionRule(cfg, BB, tIn('en', en))).toBe('Adds 2.5 kg when all sets reach 60 s · drops if 2 of 3 fail');
+  });
+});
