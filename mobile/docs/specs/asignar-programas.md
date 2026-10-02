@@ -6,7 +6,7 @@
 > Fase C30 · hecho · «Asignar programa»: una hoja con cuatro orígenes · §4
 > Fase C31 · hecho · Guardar como plantilla el programa de un cliente · §5
 >
-> Estado: C29 terminada, C30 hecha y probada, C31 hecha (2-oct-2026; «Copiar a otro cliente» descartado, §1.3). Spec cerrada el 1-oct-2026. Sin maqueta: las hojas
+> Estado: C29 terminada, C30 y C31 hechas y probadas (2-oct-2026; «Copiar a otro cliente» descartado, §1.3). Spec cerrada el 1-oct-2026. Sin maqueta: las hojas
 > reutilizan piezas que ya existen (`SheetRow`, `ChoiceRow`, `AssignSheet` de
 > Plantillas, `NewProgramSheet`). Sale del mismo análisis que
 > [`editor-vinculacion.md`](editor-vinculacion.md), y el usuario aprobó la
@@ -292,7 +292,7 @@ anteriores y el cliente se quedará sin programa activo»), como Reactivar. Icon
   confirmación y deja la pestaña sin programa.
 - [x] Con un programa que te ha mandado tu entrenador → ··· → solo Importar
   historial y Eliminar programa.
-- [ ] Ficha de cliente → ··· → «Archivar» en lugar de «Quitar asignación» →
+- [x] Ficha de cliente → ··· → «Archivar» en lugar de «Quitar asignación» →
   pide confirmación → el programa pasa a Programas archivados y el cliente queda
   sin programa activo. Cancelar no cambia nada.
 - [x] Asignar esa plantilla a otro cliente → empieza en la etapa 1 sin progreso,
