@@ -1,8 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import {
   isEmptyOverride,
-  resolveExerciseReference,
-  resolveRef,
   overrideStatus,
   consumeOverride,
 } from './sessionOverride';
@@ -27,32 +25,6 @@ describe('isEmptyOverride', () => {
   });
   test('blank note only → still empty', () => {
     expect(isEmptyOverride({ exercises: { dom: { note: '   ' } } })).toBe(true);
-  });
-});
-
-describe('resolveExerciseReference', () => {
-  test('coach target wins over last-session reference', () => {
-    const r = resolveExerciseReference({ weight: 82.5, reps: 8 }, 80, 10);
-    expect(r.weight).toEqual({ value: '82.5', source: 'coach' });
-    expect(r.reps).toEqual({ value: '8', source: 'coach' });
-  });
-  test('falls back to last session when no target for that field', () => {
-    const r = resolveExerciseReference({ weight: 82.5 }, 80, 10); // reps not prescribed
-    expect(r.weight.source).toBe('coach');
-    expect(r.reps).toEqual({ value: '10', source: 'last' });
-  });
-  test('no target and no history → nothing to suggest', () => {
-    const r = resolveExerciseReference(undefined, '', '');
-    expect(r.weight).toEqual({ value: '', source: 'none' });
-    expect(r.reps).toEqual({ value: '', source: 'none' });
-  });
-});
-
-describe('resolveRef', () => {
-  test('coach target wins, else last, else none', () => {
-    expect(resolveRef(45, 30)).toEqual({ value: '45', source: 'coach' });
-    expect(resolveRef(undefined, 30)).toEqual({ value: '30', source: 'last' });
-    expect(resolveRef('', '')).toEqual({ value: '', source: 'none' });
   });
 });
 

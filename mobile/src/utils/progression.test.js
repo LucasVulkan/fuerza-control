@@ -1,5 +1,5 @@
 import { describe, it, test, expect } from 'vitest';
-import { getProgression, resolveProgressionConfig, progressionRule } from './progression';
+import { getProgression, resolveProgressionConfig, progressionRule, progressionHistory } from './progression';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 
 // getProgression builds an i18n message via t(); we only assert chip.type,
@@ -649,5 +649,65 @@ describe('P55 — progressionRule (§5.2)', () => {
       .toBe('progression.rule.effortBeat{"reps":5,"rpe":8}');
     expect(progressionRule({ progression: { type: 'effort', effortWhen: 'reach' }, minReps: 5 }, BB, tk)).toContain('effortReach');
     expect(progressionRule({ progression: { type: 'none' } }, BB, tk)).toBe('progression.rule.none');
+  });
+});
+
+describe('P56 — Por esfuerzo: el 1RM de las tres últimas sesiones (§6.5)', () => {
+  const tk = (k) => k;
+  const cfg = { sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } };
+  const lib = { weightStep: 2.5 };
+  // 5 reps @8 = 7RM: 60 kg → 1RM 74; 57 → 70.3; 63 → 77.7 (su media es 74).
+  const ses = (w, rpe = '8') => [1, 2, 3].map(() => ({ weight: String(w), reps: '5', rpe, done: true }));
+  const ONE_RM = 1 + 7 / 30;
+
+  it('con tres sesiones el 1RM es la media de las tres', () => {
+    const c = getProgression(cfg, lib, ses(60), tk, { earlier: [ses(57), ses(63)] });
+    expect(c.e1rm).toBeCloseTo(74, 5);
+    expect(c.e1rmSessions).toBe(3);
+    // El peso de partida sigue siendo el de la última sesión.
+    expect(c.suggestedWeight).toBe(60);
+  });
+  it('solo cuenta la última y las dos anteriores', () => {
+    const c = getProgression(cfg, lib, ses(60), tk, { earlier: [ses(57), ses(63), ses(100)] });
+    expect(c.e1rm).toBeCloseTo(74, 5);
+    expect(c.e1rmSessions).toBe(3);
+  });
+  it('una sesión anterior sin RPE no cuenta', () => {
+    const c = getProgression(cfg, lib, ses(60), tk, { earlier: [ses(50, ''), ses(63)] });
+    expect(c.e1rm).toBeCloseTo((60 + 63) / 2 * ONE_RM, 5);
+    expect(c.e1rmSessions).toBe(2);
+  });
+  it('con una sola sesión, la de hoy', () => {
+    const c = getProgression(cfg, lib, ses(60), tk);
+    expect(c.e1rm).toBeCloseTo(60 * ONE_RM, 5);
+    expect(c.e1rmSessions).toBe(1);
+  });
+  it('la última sin RPE sigue pidiendo el RPE, aunque haya anteriores con él', () => {
+    const c = getProgression(cfg, lib, ses(60, ''), tk, { earlier: [ses(57), ses(63)] });
+    expect(c).toMatchObject({ type: 'hold', suggestedWeight: 60, why: 'progression.why_effortNoRpe', e1rm: null });
+  });
+  it('última de descarga con RPE: el 1RM sale de las anteriores, sin pedir el RPE', () => {
+    const c = getProgression(cfg, lib, ses(40), tk, { earlier: [ses(60), ses(63)], lastDeload: true });
+    expect(c.why).not.toBe('progression.why_effortNoRpe');
+    expect(c.e1rm).toBeCloseTo((60 + 63) / 2 * ONE_RM, 5);
+    expect(c.e1rmSessions).toBe(2);
+    // El peso de partida (flecha y delta) sigue siendo el de la última.
+    expect(c.suggestedWeight).not.toBeNull();
+  });
+  it('última de descarga y ninguna anterior válida: why_effortNoRpe', () => {
+    const c = getProgression(cfg, lib, ses(40), tk, { earlier: [], lastDeload: true });
+    expect(c).toMatchObject({ type: 'hold', suggestedWeight: 40, why: 'progression.why_effortNoRpe', e1rm: null });
+  });
+  it('Por reglas ignora las opciones', () => {
+    const rules = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double' } };
+    const sets = [1, 2, 3].map(() => ({ weight: '60', reps: '12', done: true }));
+    expect(getProgression(rules, BB, sets, tk, { earlier: [ses(57)], lastDeload: true }))
+      .toEqual(getProgression(rules, BB, sets, tk));
+  });
+  it('progressionHistory: earlier sin las de descarga y lastDeload de la primera', () => {
+    const a = { sets: ['a'], deload: true }, b = { sets: ['b'] }, c = { sets: ['c'], deload: true }, d = { sets: ['d'] };
+    expect(progressionHistory([a, b, c, d])).toEqual({ earlier: [['b'], ['d']], lastDeload: true });
+    expect(progressionHistory([b])).toEqual({ earlier: [], lastDeload: false });
+    expect(progressionHistory([])).toEqual({ earlier: [], lastDeload: false });
   });
 });

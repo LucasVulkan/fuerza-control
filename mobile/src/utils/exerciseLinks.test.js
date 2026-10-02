@@ -3,6 +3,7 @@ import {
   programTemplateIds, linkGroupTemplateIds, lastLinkedExercise,
   exerciseLinkGroups, exerciseInstanceCount, pickLinkedConfig,
   templateChainIds, lastExerciseRef, LINKED_CONFIG_KEYS,
+  recentLinkedExercises, recentExerciseRefs,
 } from './exerciseLinks';
 
 const TPLS = {
@@ -187,5 +188,45 @@ describe('lastExerciseRef', () => {
 
   it('is null-safe on a missing exConfig', () => {
     expect(lastExerciseRef({ workoutLog: log, program, templateId: 'tpl2', exConfig: null, getTemplate: get })).toBeNull();
+  });
+});
+
+describe('recentLinkedExercises / recentExerciseRefs (P56 §6.5)', () => {
+  const sets = (kg) => [{ weight: String(kg), reps: '5', done: true }];
+  const log = [
+    { sessionTemplateId: 'tplA', timestamp: 100, exercises: [{ exerciseId: 'squat', sets: sets(80) }] },
+    { sessionTemplateId: 'tplB', timestamp: 300, exercises: [{ exerciseId: 'squat', sets: sets(90) }] },
+    { sessionTemplateId: 'tplA', timestamp: 200, exercises: [{ exerciseId: 'squat', sets: [] }] },   // sin series: no cuenta
+    { sessionTemplateId: 'tplA', timestamp: 250, exercises: [{ exerciseId: 'squat', sets: sets(85) }] },
+    { sessionTemplateId: 'tplC', timestamp: 400, exercises: [{ exerciseId: 'squat', sets: sets(99) }] }, // otro grupo
+  ];
+
+  it('las n últimas con series, la más reciente primero y con su fecha', () => {
+    const r = recentLinkedExercises(log, ['tplA', 'tplB'], 'squat', 3);
+    expect(r.map((x) => x.timestamp)).toEqual([300, 250, 100]);
+    expect(r[0].exercise.sets[0].weight).toBe('90');
+    expect(recentLinkedExercises(log, ['tplA', 'tplB'], 'squat', 2)).toHaveLength(2);
+    expect(recentLinkedExercises(log, ['tplA', 'tplB'], 'nada', 3)).toEqual([]);
+  });
+
+  it('lastLinkedExercise es la primera de recentLinkedExercises', () => {
+    expect(lastLinkedExercise(log, ['tplA', 'tplB'], 'squat')).toBe(
+      recentLinkedExercises(log, ['tplA', 'tplB'], 'squat', 1)[0].exercise);
+  });
+
+  it('recentExerciseRefs: grupo vinculado o cadena de plantillas, y lastExerciseRef no cambia', () => {
+    const tpls = {
+      tplA: { id: 'tplA', exercises: [{ exerciseId: 'squat', linkGroup: 'g1' }] },
+      tplB: { id: 'tplB', exercises: [{ exerciseId: 'squat', linkGroup: 'g1' }] },
+      tplC: { id: 'tplC', exercises: [{ exerciseId: 'squat' }] },
+    };
+    const program = { days: [{ sessionTemplateId: 'tplA' }, { sessionTemplateId: 'tplB' }, { sessionTemplateId: 'tplC' }] };
+    const args = { workoutLog: log, program, templateId: 'tplB', exConfig: { exerciseId: 'squat', linkGroup: 'g1' }, getTemplate: (id) => tpls[id] };
+    expect(recentExerciseRefs(args, 3).map((x) => x.timestamp)).toEqual([300, 250, 100]);
+    expect(lastExerciseRef(args).sets[0].weight).toBe('90');
+    // sin vincular: solo la cadena de su propia plantilla
+    const solo = { ...args, templateId: 'tplC', exConfig: { exerciseId: 'squat' } };
+    expect(recentExerciseRefs(solo, 3).map((x) => x.timestamp)).toEqual([400]);
+    expect(recentExerciseRefs({ ...args, exConfig: null }, 3)).toEqual([]);
   });
 });

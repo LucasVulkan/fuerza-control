@@ -37,14 +37,18 @@ export function computeWarmupWeights(steps, workWeightKg) {
 /**
  * Reference work weight for the day, resolved in cascade (spec §2):
  * 1. Trainer's one-off prescription (`pendingOverrides`) for this exercise.
- * 2. Top set weight from the last logged session — same `lastExercise`
+ * 2. The weight of today's plan (`chip.suggestedWeight`, P56 §6.2): the
+ *    warmup ramps toward what the progression asks for, not last week's.
+ *    Not in assisted exercises (`chip.assist`): there the number is the help.
+ * 3. Top set weight from the last logged session — same `lastExercise`
  *    reference the workout screen already resolves (linkGroup-aware), and
  *    the same "counts as logged" notion as `doneSets` (excludes warmup sets).
- * 3. Whatever the athlete has already typed for their first work set.
- * Returns null when none of the three is available.
+ * 4. Whatever the athlete has already typed for their first work set.
+ * Returns null when none of the four is available.
  */
-export function resolveWorkWeight(overrideEx, lastExercise, typedFirstWorkWeight) {
+export function resolveWorkWeight(overrideEx, lastExercise, typedFirstWorkWeight, chip = null) {
   if (overrideEx?.weight != null) return overrideEx.weight;
+  if (chip && !chip.assist && chip.suggestedWeight > 0) return chip.suggestedWeight;
   const top = topSetWeight(lastExercise);
   if (top != null) return top;
   return typedFirstWorkWeight ?? null;

@@ -42,6 +42,8 @@ export function todayWeight(exConfig, def, lastExercise, t) {
 function prescription(def, ex, t) {
   const rx = targetLabel(def, ex, t, { compact: true })
     .replace(/×/g, 'x').replace(/–/g, '-').replace(/ s$/, 's')
+    // El «+» del inicio de Reps y Tiempo (P56) no lo lee el pegado: queda el inicio.
+    .replace(/(\d)\+/, '$1')
     // El tiempo no junta un rango cerrado como las reps: «40-40s» es «40s».
     .replace(/(?<!\d)(\d+)-\1(?!\d)/, '$1');
   // En compacto `targetLabel` se come el «por lado»; a quien entrena solo le hace falta.

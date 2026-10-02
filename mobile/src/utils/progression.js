@@ -344,28 +344,50 @@ function chipDouble(prog, doneSets, n, maxW, floor, goal, t) {
 }
 
 /**
+ * El 1RM de una sesión: la media de lo que dan sus series con peso, reps y RPE
+ * (cota baja por serie, `e1rmAtLeast`: una serie fácil sube el peso, nunca lo
+ * baja ni se descarta, QA P48). `null` si ninguna lo da.
+ */
+function sessionE1rm(sets) {
+  const v = sets.map((s) => e1rmAtLeast(s.weight, s.reps, s.rpe)).filter((x) => x !== null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+/** Las series de una sesión que cuentan: con algo apuntado o con ✓. */
+const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time);
+
+/**
  * Por esfuerzo (effort-progression.md §4.2): el e1RM es la media del de cada
- * serie con peso, reps y RPE; el peso siguiente, el que da `targetRpe` a las
- * reps objetivo, redondeado al escalón del ejercicio (`step`).
+ * sesión (§6.5: las tres últimas con RPE, no solo la última; un error de medio
+ * punto al apuntar el RPE ya movía el peso más que un escalón); el peso
+ * siguiente, el que da `targetRpe` a las reps objetivo, redondeado al escalón
+ * del ejercicio (`step`).
+ *
+ * `history.earlier`: series de las sesiones anteriores a la última, ya sin las
+ * de descarga, de más reciente a más antigua. `history.lastDeload`: la última
+ * fue de descarga (series fáciles, la estimación menos fiable): no cuenta, y el
+ * 1RM sale de las anteriores. La última que NO es de descarga y no da 1RM sigue
+ * siendo «apunta el RPE»: la media no sustituye a apuntarlo.
  *
  * `effortWhen: 'reach'` (§4.4): si el cálculo deja el peso igual y todas las
  * series llegaron a las reps objetivo, sube un escalón.
  */
-function chipEffort(prog, doneSets, n, targetReps, t) {
+function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload = false } = {}) {
   const maxW = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0));
   const keep = (why) => ({
     effort: true, type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why),
-    suggestedWeight: maxW || null, suggestedTime: null, e1rm: null, raw: null,
+    suggestedWeight: maxW || null, suggestedTime: null, e1rm: null, raw: null, e1rmSessions: null,
   });
 
-  // Cota baja por serie (`e1rmAtLeast`): una serie fácil sube el peso, nunca
-  // lo baja ni se descarta (QA P48).
-  const e1rms = doneSets
-    .map((s) => e1rmAtLeast(s.weight, s.reps, s.rpe))
-    .filter((v) => v !== null);
-  if (!e1rms.length) return keep('progression.why_effortNoRpe');
+  const lastE1rm = sessionE1rm(doneSets);
+  if (lastE1rm === null && !lastDeload) return keep('progression.why_effortNoRpe');
 
-  const e1rm = e1rms.reduce((a, b) => a + b, 0) / e1rms.length;
+  const sessions = [lastDeload ? null : lastE1rm, ...earlier.map((s) => sessionE1rm(loggedSets(s)))]
+    .filter((v) => v !== null)
+    .slice(0, 3);
+  if (!sessions.length) return keep('progression.why_effortNoRpe');
+
+  const e1rm = sessions.reduce((a, b) => a + b, 0) / sessions.length;
   const raw  = weightForReps(e1rm, targetReps, prog.targetRpe);
   if (raw === null) return keep('progression.why_effortUnreliable');
 
@@ -379,7 +401,7 @@ function chipEffort(prog, doneSets, n, targetReps, t) {
     return {
       effort: true, type: 'up', icon: '⬆',
       msg: t('progression.effort_noWeight'), why: t('progression.why_effortReached'),
-      suggestedWeight: maxW + prog.step, suggestedTime: null, e1rm, raw,
+      suggestedWeight: maxW + prog.step, suggestedTime: null, e1rm, raw, e1rmSessions: sessions.length,
     };
   }
 
@@ -389,7 +411,7 @@ function chipEffort(prog, doneSets, n, targetReps, t) {
     effort: true,
     type, icon: { up: '⬆', down: '⬇', hold: '→' }[type],
     msg: t('progression.effort_noWeight'), why: t(`progression.${why}`),
-    suggestedWeight: next, suggestedTime: null, e1rm, raw,
+    suggestedWeight: next, suggestedTime: null, e1rm, raw, e1rmSessions: sessions.length,
   };
 }
 
@@ -418,15 +440,34 @@ function chipDoubleDecrease(prog, doneSets, n, assistance, floor, goal, t) {
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 /**
+ * Las opciones de `getProgression` a partir de las últimas veces del ejercicio
+ * (objetos del log, la más reciente primero: la primera es la `lastSets` de
+ * hoy). Las de descarga no entran en `earlier` y la última dice si lo fue
+ * (§6.5). La tarjeta y el guardado salen de aquí, para que el plan guardado sea
+ * el que se ve.
+ *
+ * @param {object[]} recent  `recentExerciseRefs(...).map((r) => r.exercise)`
+ */
+export function progressionHistory(recent) {
+  const [last, ...rest] = recent ?? [];
+  return {
+    earlier: rest.filter((ex) => !ex.deload).map((ex) => ex.sets),
+    lastDeload: !!last?.deload,
+  };
+}
+
+/**
  * Generates a progression chip for ExerciseCard.
  *
  * @param {object}   exConfig   Template exercise config (sets, minReps, progression, …)
  * @param {object}   def        Library / custom exercise definition (fallback defaults)
  * @param {array}    lastSets   Sets logged in the last session for this exercise
  * @param {function} t          i18next translate function
+ * @param {object}   [opts]     `earlier` y `lastDeload` (§6.5): ver `progressionHistory`.
+ *                              Solo los lee Por esfuerzo.
  * @returns chip object | null
  */
-export function getProgression(exConfig, def, lastSets, t) {
+export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastDeload = false } = {}) {
   if (!lastSets?.length) return null;
 
   const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time);
@@ -457,7 +498,7 @@ export function getProgression(exConfig, def, lastSets, t) {
   }
 
   if (prog.type === 'effort') {
-    return chipEffort(prog, doneSets, totalSets, minReps, t);
+    return chipEffort(prog, doneSets, totalSets, minReps, t, { earlier, lastDeload });
   }
 
   if (prog.type === 'time') {
