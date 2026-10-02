@@ -5,11 +5,11 @@
 > Fase P52 · hecho · Cuatro fallos del motor · §2
 > Fase P53 · terminado · Diseño y maqueta: Qué pides, la hoja de Progresión y el plan en el Workout · §3
 > Fase P54 · hecho · Motor: el modelo nuevo y el plan de cada serie · §4
-> Fase P55 · pendiente · Editor: Qué pides y la hoja de Progresión · §5
+> Fase P55 · hecho · Editor: Qué pides y la hoja de Progresión · §5
 > Fase P56 · pendiente · Workout: el plan en el gris y la línea de recomendación · §6
 > Fase P57 · pendiente · La última vez: botón, línea o debajo de cada serie · §7
 >
-> Estado: **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
@@ -724,6 +724,6 @@ P57 las pasa también, con su fecha, a la vista de la última vez.
 | P52 | `f5311ef` | cuatro fallos del motor |
 | P53 | `e8c4f2e` … `8f52105` | diseño y maqueta (v1 → v3 + variantes de A) |
 | P54 | `2fc2f19` | motor: modelo nuevo, chip único de peso, `setPlan` |
-| P55 | — | |
+| P55 | `400d1de`, `56327d5` | motor (`canAddWeight`, `exact`, `progressionRule`) y editor (`progressionForm.js`, hoja nueva) |
 | P56 | — | |
 | P57 | — | |
