@@ -6,11 +6,11 @@
 > Fase P53 · terminado · Diseño y maqueta: Qué pides, la hoja de Progresión y el plan en el Workout · §3
 > Fase P54 · hecho · Motor: el modelo nuevo y el plan de cada serie · §4
 > Fase P55 · hecho · Editor: Qué pides y la hoja de Progresión · §5
-> Fase P56 · pendiente · Workout: el plan en el gris y la línea de recomendación · §6
+> Fase P56 · hecho · Workout: el plan en el gris y la línea de recomendación · §6
 > Fase P57 · pendiente · La última vez: botón, línea o debajo de cada serie · §7
 > Fase P61 · pendiente · Peso corporal (cuenta o solo lastre) y tiempo con carga · §8
 >
-> Estado: **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
@@ -688,6 +688,26 @@ Las pastillas de la tarjeta plegada (`pillsBlock`, ~533-587) salen a
 quita el color de dentro y fuera de rango (para «la última vez»). Las usan la
 tarjeta plegada, la ficha (§6.3) y P57.
 
+**Cómo quedó (P56, decisiones donde la spec no llegaba)**
+
+- `getProgression(..., { earlier, lastDeload })` lo arma `progressionHistory(recent)`
+  (`progression.js`) desde los objetos del log; tarjeta y `saveSession` lo usan
+  igual. `WorkoutScreen` pasa a la tarjeta `recentSessions` (`[{ timestamp, exercise }]`,
+  la primera es `lastExercise`): P57 solo tiene que leerlas.
+- La fila «Primera vez» no sale en los ejercicios añadidos sobre la marcha
+  (`onEditTarget`): no tienen progresión que explicar. Sale de `firstTimeRx` (`prescription.js`).
+- La ficha de una descarga lleva LA ÚLTIMA VEZ y HOY, sin REGLA (la regla de la
+  config diría «sube…» y la etapa pide mantener). Sin historial, REGLA y HOY.
+- Pastillas `neutral`: sobre `surface2` (sobre la hoja o la tarjeta, la de `bg`
+  no se vería) y con el peso en `text`.
+- `sessionText` (texto para compartir) quita el «+»: lo que se pega de vuelta no
+  lo lee.
+- Se borran `resolveRef` y `resolveExerciseReference` (`sessionOverride.js`).
+- Sin RPE en la última sesión, la línea dice «Peso objetivo» con el mismo peso y
+  sin 1RM; el «sin RPE, el peso se queda igual» vive ahora solo en la ficha.
+- `progressionRule` en la ficha recibe la etiqueta de la unidad pero el valor
+  sigue en kg, como en el editor (en lb sale «2.5 lb»): pendiente de los dos.
+
 **Probar P56**
 
 - [ ] Tras 12/12/12 con 60 kg: el gris de las tres series dice 62.5 × 12; ✓ sin
@@ -887,6 +907,6 @@ Tiempo + Peso vuelve al mínimo. `sessionRecap.test.js` / `improvement.test.js`:
 | P53 | `e8c4f2e` … `8f52105` | diseño y maqueta (v1 → v3 + variantes de A) |
 | P54 | `2fc2f19` | motor: modelo nuevo, chip único de peso, `setPlan` |
 | P55 | `400d1de`, `56327d5` | motor (`canAddWeight`, `exact`, `progressionRule`) y editor (`progressionForm.js`, hoja nueva) |
-| P56 | — | |
+| P56 | `66a5719`, `e04682f` | motor (1RM de tres sesiones, `progressionHistory`, calentamiento, `targetLabel` con `today`, `firstTimeRx`) y Workout (`planSet` en tarjeta y guardado, línea + ficha, `SetPills`) |
 | P57 | — | |
 | P61 | — | |
