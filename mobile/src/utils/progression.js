@@ -101,12 +101,13 @@ export function defaultIncrement(type, def, step) {
 }
 
 /**
- * ¿Tiene sentido subirle peso a este ejercicio? Los de peso corporal solo si se
- * pueden lastrar (dominadas, fondos y flexiones: son los que traen `weightStep`
- * en la librería). Un `def` desconocido cuenta como con carga (§5.3-bis).
+ * ¿Lo típico de este ejercicio es subir reps? Los de peso corporal que la
+ * librería no lastra por defecto (`weightStep` 0: hollow, rueda, crunch…). Solo
+ * decide el valor por defecto: todo ejercicio se puede lastrar si lo eliges
+ * (QA P55.5). Un `def` desconocido cuenta como con carga.
  */
-export function canAddWeight(def) {
-  return !isBodyweight(def) || def.weightStep > 0;
+function typicallyReps(def) {
+  return isBodyweight(def) && !(def.weightStep > 0);
 }
 
 // ── resolveProgressionConfig ──────────────────────────────────────────────────
@@ -148,11 +149,12 @@ export function resolveProgressionConfig(exConfig, def) {
   let type = p
     ? (p.type === 'weight' ? 'double' : p.type)
     : (LEGACY_REVERSE_MAP[ec.progressionModel ?? d.progressionModel ?? 'double_progression'] ?? 'double');
-  // Sin carga y sin lastre posible, «Peso» no existe: se progresa en reps
-  // (§5.3-bis). Los asistidos no cambian. Se mira el `def` original: `{}` de
-  // `def ?? {}` pasaría por peso corporal.
-  const toReps = type === 'double' && direction === 'increase' && !canAddWeight(def);
-  if (toReps) type = 'reps';
+  // Sin progresión guardada, lo típico del ejercicio: los de peso corporal que
+  // la librería no lastra vienen en Doble y proponían kilos; por defecto suben
+  // reps (§5.3-bis). Elegir Peso en la hoja se respeta. Los asistidos no
+  // cambian. Se mira el `def` original: `{}` de `def ?? {}` pasaría por peso
+  // corporal.
+  if (!p && type === 'double' && direction === 'increase' && typicallyReps(def)) type = 'reps';
   const step = resolveStep(ec, d, type);
 
   const ev   = p?.evaluation ?? {};
@@ -173,8 +175,7 @@ export function resolveProgressionConfig(exConfig, def) {
     evaluation: { mode, need, maxRpe: ev.maxRpe ?? 8 },
     increment: {
       type:  inc.type === 'pct' ? 'pct' : 'fixed',
-      // El salto guardado de un «Peso» leído como Reps eran kilos: no vale.
-      value: (toReps ? undefined : (inc.type === 'stepped' ? inc.steps?.[0]?.value : undefined) ?? inc.value) ?? defaultIncrement(type, d, step),
+      value: (inc.type === 'stepped' ? inc.steps?.[0]?.value : undefined) ?? inc.value ?? defaultIncrement(type, d, step),
       pct:   inc.pct ?? 5,
     },
     down:       p?.down ?? null,

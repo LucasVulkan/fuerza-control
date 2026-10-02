@@ -14,8 +14,8 @@ describe('P55 — qué se ofrece en Qué sube (§5.3)', () => {
     expect(upOptions(ctx())).toEqual(['weight', 'reps', 'none']);
     expect(upOptions(ctx({ metric: 'time' }))).toEqual(['time', 'none']);
   });
-  it('dominadas sin carga (supinas): sin Peso; con lastre y asistidas: con Peso', () => {
-    expect(upOptions(ctx({ def: LIB.pull_up_supine }))).toEqual(['reps', 'none']);
+  it('todo se puede lastrar: Peso también en dominadas supinas (QA P55.5)', () => {
+    expect(upOptions(ctx({ def: LIB.pull_up_supine }))).toEqual(['weight', 'reps', 'none']);
     expect(upOptions(ctx({ def: LIB.pull_up }))).toContain('weight');
     expect(upOptions(ctx({ def: LIB.pull_up_assisted }))).toContain('weight');
   });

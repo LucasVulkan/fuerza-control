@@ -28,7 +28,7 @@ import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { Text, TextInput } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
-import { DEFAULT_TARGET, progressionRule, canAddWeight } from '../../utils/progression';
+import { DEFAULT_TARGET, progressionRule } from '../../utils/progression';
 import {
   initProgForm, patchProgForm, buildProgression, upOptions, showHow, effortBlocked, isEffort as isEffortForm,
   needsRpe, minFails, libraryStep,
@@ -482,7 +482,6 @@ export default function ExerciseEditorInline({
         onChange={(id) => patchProg({ up: id })}
       />
       {hint(t(`exerciseEditor.upHint.${upHint}`, { reps: minReps, min: minReps }))}
-      {!isTime && !assist && !canAddWeight(def) && hint(t('exerciseEditor.upNoLoad'))}
     </>
   ));
 

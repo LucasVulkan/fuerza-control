@@ -1,5 +1,5 @@
 import { describe, it, test, expect } from 'vitest';
-import { getProgression, resolveProgressionConfig, canAddWeight, progressionRule } from './progression';
+import { getProgression, resolveProgressionConfig, progressionRule } from './progression';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 
 // getProgression builds an i18n message via t(); we only assert chip.type,
@@ -570,20 +570,15 @@ describe('P54 — Reps y Tiempo: la meta es la última + el salto (§4.4)', () =
   });
 });
 
-describe('P55 — Peso solo en lo que se puede lastrar (§5.3-bis)', () => {
-  it('canAddWeight: con carga, o sin ella pero con escalón; un def desconocido cuenta como con carga', () => {
-    expect(canAddWeight(LIB.pull_up)).toBe(true);
-    expect(canAddWeight(LIB.pull_up_supine)).toBe(false);
-    expect(canAddWeight({ equipment: ['barbell'] })).toBe(true);
-    expect(canAddWeight(null)).toBe(true);
-  });
-  it('un Doble sin lastre posible se lee como Reps; con lastre, no', () => {
-    expect(resolveProgressionConfig({ progression: { type: 'double' } }, LIB.pull_up_supine).type).toBe('reps');
+describe('P55 — lo típico del peso corporal solo decide el valor por defecto (§5.3-bis, QA P55.5)', () => {
+  it('sin progresión guardada, un Doble de la librería sin lastre se lee como Reps; con lastre, no', () => {
     expect(resolveProgressionConfig({}, LIB.pull_up_supine).type).toBe('reps');
-    expect(resolveProgressionConfig({ progression: { type: 'double' } }, LIB.pull_up).type).toBe('double');
+    expect(resolveProgressionConfig({}, LIB.pull_up_supine).increment.value).toBe(1);
+    expect(resolveProgressionConfig({}, LIB.pull_up).type).toBe('double');
+    expect(resolveProgressionConfig({}, null).type).toBe('double');
   });
-  it('el salto guardado de un Peso leído como Reps no se arrastra', () => {
-    expect(resolveProgressionConfig({ progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } }, LIB.pull_up_supine).increment.value).toBe(1);
+  it('Peso elegido en la hoja se respeta, también sin lastre en la librería', () => {
+    expect(resolveProgressionConfig({ progression: { type: 'double' } }, LIB.pull_up_supine).type).toBe('double');
   });
   it('los asistidos no cambian: Doble con decrease', () => {
     expect(resolveProgressionConfig({}, LIB.pull_up_assisted)).toMatchObject({ type: 'double', direction: 'decrease' });

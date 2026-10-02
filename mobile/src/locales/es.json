@@ -1833,7 +1833,6 @@
       "time": "Sube el tiempo desde tu serie más floja.",
       "none": "Sin progresión: el gris repite lo de la última vez y el peso lo cambias tú."
     },
-    "upNoLoad": "Ejercicio sin carga: no hay peso que subir.",
     "howRules": "Por reglas",
     "howEffort": "Por esfuerzo",
     "howRulesHint": "Subes cuando se cumple la regla de abajo.",

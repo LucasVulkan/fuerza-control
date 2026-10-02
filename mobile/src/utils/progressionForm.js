@@ -19,7 +19,7 @@
  * `ctx` = { def, sets, metric: 'reps' | 'time', range: boolean } — lo que viene
  * de Volumen: `range` es «Rango» frente a «Reps fijas».
  */
-import { resolveProgressionConfig, canAddWeight, defaultIncrement } from './progression';
+import { resolveProgressionConfig, defaultIncrement } from './progression';
 import { isBodyweight } from './trainingLoad';
 
 /** Lo de hoy (§4.3): baja con menos del 60 % de las series al mínimo. */
@@ -34,10 +34,14 @@ export const libraryStep = (def, effort) =>
 
 // ── Qué se ofrece ─────────────────────────────────────────────────────────────
 
-/** Qué sube, en el orden de la hoja. Peso solo si hay peso que subir o ayuda que quitar. */
-export function upOptions({ def, metric }) {
+/**
+ * Qué sube, en el orden de la hoja. Peso siempre con medida Reps: todo ejercicio
+ * se puede lastrar, también los de peso corporal (QA P55.5); en un asistido es
+ * «Asistencia ↓».
+ */
+export function upOptions({ metric }) {
   if (metric === 'time') return ['time', 'none'];
-  return [...(isAssist(def) || canAddWeight(def) ? ['weight'] : []), 'reps', 'none'];
+  return ['weight', 'reps', 'none'];
 }
 
 /** Cómo (Por reglas · Por esfuerzo): Peso en reps, con carga externa y sin asistir. */

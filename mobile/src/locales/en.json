@@ -1833,7 +1833,6 @@
       "time": "Time goes up from your weakest set.",
       "none": "No progression: the grey repeats last time and you change the weight yourself."
     },
-    "upNoLoad": "Exercise with no load: there is no weight to add.",
     "howRules": "By rules",
     "howEffort": "By effort",
     "howRulesHint": "You go up when the rule below is met.",

@@ -484,12 +484,13 @@ lastradas son de peso corporal y se progresan con lastre (P41 juntó las
 lastradas en Dominadas). La librería ya lo dice con el escalón: de los 66
 ejercicios sin carga, solo esos tres tienen `weightStep > 0`.
 
-- `canAddWeight(def)` en `progression.js` (exportada): `!isBodyweight(def) ||
-  def.weightStep > 0`. `isBodyweight` viene de `trainingLoad.js` (no hay ciclo
-  de imports).
-- **Motor**: `resolveProgressionConfig` lee `type: 'double'` como `'reps'` si
-  `!canAddWeight(def)` y la dirección es `'increase'` (los asistidos no
-  cambian). Son ~40 ejercicios de la librería (hollow, rueda, dominadas supinas,
+- **Corregido en QA P55.5 (2-oct): todo ejercicio se puede lastrar**, también
+  una plancha. Qué sube ofrece Peso siempre con medida Reps; la librería solo
+  decide **el valor por defecto**.
+- **Motor**: sin `progression` guardada, `resolveProgressionConfig` lee
+  `'double'` como `'reps'` si el ejercicio es de peso corporal con
+  `weightStep` 0 en la librería y la dirección es `'increase'` (los asistidos no
+  cambian). Un Peso elegido en la hoja se respeta. Son ~40 ejercicios de la librería (hollow, rueda, dominadas supinas,
   crunch…) que vienen en Doble con escalón 0 y proponían kilos. Con eso el
   editor, que inicializa desde `resolveProgressionConfig`, y el motor dicen lo
   mismo. Test: `pull_up_supine` (0) → `reps`; `pull_up` (2,5) → `double`;
@@ -548,10 +549,12 @@ lo tocaron). Desaparecen del estado del editor `progMode`, `evalPct` e
 - [ ] Parcial 2 de 3 → Cuándo baja no deja bajar de 2; con Parcial 1 de 3, no
   baja de 3.
 - [ ] Cuándo sube = RPE máx. → Registrar RPE se enciende y no se puede apagar.
-- [ ] Dominadas supinas (sin carga, sin lastre): Qué sube ofrece Reps y Nada,
-  no Peso. Dominadas (se lastran): ofrecen Peso, pero sin Cómo (Por esfuerzo
-  solo con carga externa). Dominadas asistidas: «Asistencia ↓», sin Cómo, con
-  Cuándo baja.
+- [ ] Dominadas supinas: Qué sube ofrece Peso, Reps y Nada, y por defecto
+  viene Reps. Dominadas: por defecto Peso; sin Cómo (Por esfuerzo solo con
+  carga externa, hasta decidir el peso corporal). Dominadas asistidas:
+  «Asistencia ↓», sin Cómo, con Cuándo baja.
+  (2-oct: Peso salía capado en lo que la librería no lastra; todo ejercicio se
+  puede lastrar, la librería solo decide el valor por defecto. Arreglado.)
 - [ ] Un ejercicio de una etapa de descarga: cambiar algo en el editor y en el
   Workout sigue diciendo «Descarga» (antes, editar lo cancelaba).
 - [ ] Plancha (Tiempo): solo Tiempo y Nada; el salto en segundos enteros.
