@@ -1,12 +1,12 @@
 # Spec — Asignar programas: una puerta, cualquier origen
 
 > Tema: conexión
-> En corto: Darle un programa a un cliente se hace desde un solo botón, «Asignar programa», que deja elegir el origen: en blanco, una plantilla, el programa de otro cliente o un archivo. Desde cualquier programa se puede copiar a otro cliente o guardar como plantilla. Un programa siempre se copia, nunca se comparte.
+> En corto: Darle un programa a un cliente se hace desde un solo botón, «Asignar programa», que deja elegir el origen: en blanco, una plantilla, el programa de otro cliente o un archivo. Desde cualquier programa de un cliente se puede guardar como plantilla. Un programa siempre se copia, nunca se comparte.
 > Fase C29 · terminado · Las copias de programas conservan la cadena entre etapas · §3
 > Fase C30 · hecho · «Asignar programa»: una hoja con cuatro orígenes · §4
-> Fase C31 · pendiente · Copiar a otro cliente y guardar como plantilla · §5
+> Fase C31 · hecho · Guardar como plantilla el programa de un cliente · §5
 >
-> Estado: C29 terminada y C30 hecha y probada (2-oct-2026); C31 pendiente. Spec cerrada el 1-oct-2026. Sin maqueta: las hojas
+> Estado: C29 terminada, C30 hecha y probada, C31 hecha (2-oct-2026; «Copiar a otro cliente» descartado, §1.3). Spec cerrada el 1-oct-2026. Sin maqueta: las hojas
 > reutilizan piezas que ya existen (`SheetRow`, `ChoiceRow`, `AssignSheet` de
 > Plantillas, `NewProgramSheet`). Sale del mismo análisis que
 > [`editor-vinculacion.md`](editor-vinculacion.md), y el usuario aprobó la
@@ -44,8 +44,12 @@ llamada con otro origen o con `kind: 'template'`.
   independiente. Una plantilla es un programa sin dueño (`kind: 'template'`).
 - **Una sola puerta en la ficha del cliente**: «Asignar programa» sustituye a
   «Nuevo programa», tenga o no programa activo.
-- **Desde cualquier programa** (activo o archivado): «Copiar a otro cliente» y
-  «Guardar como plantilla».
+- **Desde cualquier programa** de un cliente (activo o archivado): «Guardar como
+  plantilla».
+- **No hay «Copiar a otro cliente»** (decidido el 2-oct-2026, al empezar C31): hace
+  lo mismo que «Asignar programa» → «De otro cliente» desde la ficha del otro
+  (C30), solo que empezando por el otro lado. Para dárselo a varios clientes,
+  «Guardar como plantilla» y asignarla desde Plantillas. No volver a proponerlo.
 - **Importar historial va aparte** de importar programa.
 - **No hay sincronización plantilla → copias** («actualizar a todos los que la
   usan»): choca con que cada copia se adapta a su cliente. Si algún día hace
@@ -58,7 +62,7 @@ llamada con otro origen o con `kind: 'template'`.
   aviso de reemplazo (`confirmReplaceActive`).
 - La subida al cliente con app: el programa nuevo queda `programDirty` como hoy;
   el invitado se sube solo (C28) y el conectado enseña «Subir».
-- La pantalla Plantillas y su «Asignar» siguen igual (C31 reutiliza su hoja).
+- La pantalla Plantillas y su «Asignar» siguen igual.
 
 ## 3. C29 — Las copias conservan la cadena entre etapas
 
@@ -213,47 +217,39 @@ ya trae su historial si se quiere.
 - [x] Cliente con app: el programa asignado queda pendiente de subir (o se
   sube solo si es invitado), como antes.
 
-## 5. C31 — Copiar a otro cliente y guardar como plantilla
+## 5. C31 — Guardar como plantilla
 
 ### 5.1 Dónde
 
 - Menú ··· de `AssignedProgramCard` (programa activo).
-- Menú de `ArchivedProgramRow` (Programas anteriores), junto a Reactivar.
-- Programas propios del entrenador (`owner: 'me'`): donde ya tengan menú, lo
-  mismo. Si no lo tienen, se deja para cuando lo tengan.
+- Menú de `ArchivedProgramRow` (Programas anteriores), junto a Reactivar. Como
+  las demás opciones de esa fila, cierra también la hoja de Programas
+  anteriores: el toast se pinta debajo de las hojas abiertas.
+- Los programas propios del entrenador (`owner: 'me'`) no tienen menú ···; se
+  quedan fuera hasta que lo tengan.
 
-### 5.2 «Copiar a otro cliente»
-
-Abre la `AssignSheet` de Plantillas (`ProgramScreen.jsx`), que se mueve a
-`components/AssignProgramSheet.jsx` para usarla en las dos pantallas. Ya trae lo
-necesario: lista de clientes con «sustituye a X» o «sin programa» en cada fila,
-nombre de la copia y «Asignar». Desde la ficha de un cliente, ese cliente no sale
-en la lista. Al asignar, toast «Copiado a {{client}}» y **no** se abre el editor
-(no navegar fuera de la ficha que estabas mirando). Hoy
-`cloneProgramFromTemplate` con `owner` de cliente fija `_editingProgramId`; se
-añade una opción `{ open: false }` para no hacerlo.
-
-### 5.3 «Guardar como plantilla»
+### 5.2 «Guardar como plantilla»
 
 `cloneProgramFromTemplate(id, { kind: 'template', name })`, con el nombre del
-programa sin sufijo (el usuario lo renombra en Plantillas si quiere). Toast
-«Guardado en Plantillas». Sin hoja: es reversible borrando la plantilla.
+programa sin sufijo (el usuario lo renombra en Plantillas si quiere). No abre el
+editor ni toca el programa activo de nadie (con `owner: 'me'` y `kind:
+'template'` la función ya no lo hace). Toast «Guardado en Plantillas». Sin hoja:
+es reversible borrando la plantilla.
 
-### 5.4 i18n (es / en)
+### 5.3 i18n (es / en)
 
-`clients.menuCopyTo`, `clients.menuSaveTemplate`, `clients.toastCopiedTo`,
-`clients.toastSavedTemplate`.
+`clients.menuSaveTemplate`, `clients.toastSavedTemplate`.
 
 **Probar C31**
 
-- [ ] Programa activo de X → ··· → «Copiar a otro cliente» → elegir Y → Y tiene una
-  copia como activo; seguimos en la ficha de X.
-- [ ] La copia de Y empieza en su etapa 1 sin progreso, aunque X fuera por la 3.
-- [ ] Programa archivado → «Copiar a otro cliente» funciona igual.
-- [ ] ··· → «Guardar como plantilla» → aparece en Plantillas; editarla no cambia el
-  programa del cliente.
-- [ ] Programa de varias etapas copiado a otro cliente → al pasar a la etapa 2,
-  la primera sesión enseña los pesos de la etapa 1 de **esa** copia (C29).
+- [ ] Programa activo → ··· → «Guardar como plantilla» → toast «Guardado en
+  Plantillas»; seguimos en la ficha del cliente.
+- [ ] La plantilla sale en Plantillas con el mismo nombre, sesiones y etapas;
+  editarla no cambia el programa del cliente, y al revés.
+- [ ] Programas anteriores → ··· de uno → «Guardar como plantilla» → se cierra la
+  hoja, sale el toast y la plantilla está en Plantillas.
+- [ ] Asignar esa plantilla a otro cliente → empieza en la etapa 1 sin progreso,
+  aunque el original fuera más avanzado.
 
 ## Fases
 
@@ -261,4 +257,4 @@ programa sin sufijo (el usuario lo renombra en Plantillas si quiere). Toast
 |---|---|---|---|---|
 | C29 | `derivedFrom` reescrito en `cloneProgramFromTemplate` + test | — | 🟢 | ✅ eeb598f — derivedFrom remapeado dentro de la copia + test |
 | C30 | Hoja «Asignar programa» con cuatro orígenes; «Importar historial» aparte | C29 | 🟡 | ✅ 15351db — `AssignProgramSheet` de dos páginas, `DragSheet.onBack`, `copySources` + test |
-| C31 | «Copiar a otro cliente» y «Guardar como plantilla» en los menús de programa | C29 | 🟢 | pendiente |
+| C31 | «Guardar como plantilla» en los menús de programa del cliente | C29 | 🟢 | ✅ 20d938a — fila en el ··· del activo y de Programas anteriores + test del store |
