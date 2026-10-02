@@ -215,6 +215,7 @@ export default function ExerciseEditorInline({
     warmupMode, warmupSets, warmupCustomSteps, warmupRestSec,
   };
 
+  const stageHold = exConfig.progression?.hold ?? null;
   const commitValues = useCallback((s) => {
     const isTimeMode = s.metric === 'time';
     const inputType  = s.metric === 'time' ? 'weight_time' : 'weight_reps';
@@ -240,7 +241,9 @@ export default function ExerciseEditorInline({
       supersetWithNext: s.supersetWithNext || null,
       warmup,
       progressionModel,
-      progression,
+      // `hold` lo escribe la etapa (applyRx), no la hoja: sin él, tocar un
+      // ejercicio de una etapa de descarga cancelaba la descarga.
+      progression: stageHold ? { ...progression, hold: stageHold } : progression,
       // Solo si difiere del escalón de la librería (§5.5); null lo deja a ella.
       weightStep,
     };
@@ -256,7 +259,7 @@ export default function ExerciseEditorInline({
     }
 
     updateRef.current(templateId, exConfig.exerciseId, updates);
-  }, [templateId, exConfig.exerciseId, def]);
+  }, [templateId, exConfig.exerciseId, stageHold, def]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {

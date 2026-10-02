@@ -548,8 +548,12 @@ lo tocaron). Desaparecen del estado del editor `progMode`, `evalPct` e
 - [ ] Parcial 2 de 3 → Cuándo baja no deja bajar de 2; con Parcial 1 de 3, no
   baja de 3.
 - [ ] Cuándo sube = RPE máx. → Registrar RPE se enciende y no se puede apagar.
-- [ ] Dominadas (sin carga): Qué sube no ofrece Peso. Dominadas asistidas:
-  «Asistencia ↓», sin Cómo.
+- [ ] Dominadas supinas (sin carga, sin lastre): Qué sube ofrece Reps y Nada,
+  no Peso. Dominadas (se lastran): ofrecen Peso, pero sin Cómo (Por esfuerzo
+  solo con carga externa). Dominadas asistidas: «Asistencia ↓», sin Cómo, con
+  Cuándo baja.
+- [ ] Un ejercicio de una etapa de descarga: cambiar algo en el editor y en el
+  Workout sigue diciendo «Descarga» (antes, editar lo cancelaba).
 - [ ] Plancha (Tiempo): solo Tiempo y Nada; el salto en segundos enteros.
 - [ ] Por esfuerzo: cambiar el escalón a 1,25 y comprobar en el Workout que el
   peso propuesto es múltiplo de 1,25.
