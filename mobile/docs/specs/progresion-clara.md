@@ -12,7 +12,7 @@
 > Fase P62 · hecho · Peso corporal: sellado en la sesión y fila en el menú · §9
 > Fase P63 · aparcado · Peso corporal en el motor (Por esfuerzo, 1RM y récords) · §10
 >
-> Estado: **P61 hecha** (2-oct-2026, `d77ffd3`; falta probarla a mano). **P62 hecha y probada** (2-oct-2026, `6fd801d`). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **P61 hecha y probada** (2-oct-2026, `d77ffd3`). **P62 hecha y probada** (2-oct-2026, `6fd801d`). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
@@ -838,11 +838,11 @@ Peso. `setPlan.test.js`: Tiempo + Peso vuelve al mínimo.
 
 **Probar P61**
 
-- [ ] Plancha con medida Tiempo: Qué sube ofrece Peso. 30–60 s, 60/60/60 con
+- [x] Plancha con medida Tiempo: Qué sube ofrece Peso. 30–60 s, 60/60/60 con
   5 kg → «Subir a 7.5» y el gris pide 30 s.
-- [ ] Plancha 45–45 con 5 kg: 45/45/45 → sube; 45/40/45 → mantiene.
-- [ ] Fallos bajo el mínimo de tiempo con «Cuándo baja»: baja el peso.
-- [ ] Tiempo + Tiempo sigue como antes (sin sugerir kilos).
+- [x] Plancha 45–45 con 5 kg: 45/45/45 → sube; 45/40/45 → mantiene.
+- [x] Fallos bajo el mínimo de tiempo con «Cuándo baja»: baja el peso.
+- [x] Tiempo + Tiempo sigue como antes (sin sugerir kilos).
 
 ## 9. P62 — Peso corporal: sellado en la sesión y fila en el menú
 
