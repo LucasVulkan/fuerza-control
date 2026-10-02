@@ -6,7 +6,7 @@
 > Fase C30 · hecho · «Asignar programa»: una hoja con cuatro orígenes · §4
 > Fase C31 · pendiente · Copiar a otro cliente y guardar como plantilla · §5
 >
-> Estado: spec cerrada el 1-oct-2026, SIN implementar. Sin maqueta: las hojas
+> Estado: C29 terminada y C30 hecha y probada (2-oct-2026); C31 pendiente. Spec cerrada el 1-oct-2026. Sin maqueta: las hojas
 > reutilizan piezas que ya existen (`SheetRow`, `ChoiceRow`, `AssignSheet` de
 > Plantillas, `NewProgramSheet`). Sale del mismo análisis que
 > [`editor-vinculacion.md`](editor-vinculacion.md), y el usuario aprobó la
@@ -186,18 +186,14 @@ ya trae su historial si se quiere.
 - [x] Tocar un origen → la página se desliza y aparece «‹» junto al título;
   «‹» vuelve a los orígenes sin cerrar la hoja. Cerrar la hoja desde la página 2
   y reabrirla → empieza otra vez en los orígenes.
-- [ ] En blanco → el formulario de antes (nombre, sesiones, semanas) →
-  «CREAR Y EDITAR» crea el programa y abre el editor. — ❌ 2-oct-2026: al
-  cerrarse el teclado de Android la hoja se queda subida y asoma la app por
-  debajo (fallo de `DragSheet`, afecta a toda hoja con campo de texto). Arreglado en 4803b87: volver a probar.
+- [x] En blanco → el formulario de antes (nombre, sesiones, semanas) →
+  «CREAR Y EDITAR» crea el programa y abre el editor.
 - [x] Plantilla → filas con radio, ninguna elegida y «ASIGNAR» apagado → al
   elegir una se rellena el nombre → «ASIGNAR» → abre el editor con la copia.
-- [ ] De otro cliente → grupo «Tuyos» y un grupo por cliente por orden
+- [x] De otro cliente → grupo «Tuyos» y un grupo por cliente por orden
   alfabético; en cada uno el activo primero con la etiqueta «activo»; cada fila
   dice «N sesiones · N etapas». El activo de ESTE cliente no sale; sus programas
-  anteriores sí. — ❌ 2-oct-2026: con los archivados mezclados abruma (6-7 en
-  «Tuyos») → segmentado Activos | Archivados (§4.3); y «ASIGNAR» tiene que
-  verse siempre, fijo al pie (§4.2). Arreglado en 4803b87: volver a probar.
+  anteriores sí.
 - [x] Asignar uno de otro cliente → se abre el editor con la copia; editarla
   no cambia el programa del otro cliente.
 - [x] Desde archivo → se abre el selector con la hoja abierta (probarlo
@@ -205,9 +201,8 @@ ya trae su historial si se quiere.
   «ASIGNAR» → queda como activo, sin abrir el editor.
 - [x] Desde archivo con un archivo sin programa → diálogo «El archivo no
   contiene ningún programa» y la hoja sigue en los orígenes.
-- [ ] Archivo con entrenos → sale «Importar historial (N)», apagado. Apagado → el historial del cliente no cambia; encendido →
-  los entrenos aparecen en su historial. — ❌ 2-oct-2026: el texto era
-  «Importar también su historial (N sesiones)»; queda «Importar historial (N)». Arreglado en 4803b87: volver a probar.
+- [x] Archivo con entrenos → sale «Importar historial (N)», apagado. Apagado → el historial del cliente no cambia; encendido →
+  los entrenos aparecen en su historial.
 - [x] Cliente con programa activo → arriba de la hoja, en naranja,
   «Sustituye a X, que pasa a Programas anteriores»; al asignar no sale ningún
   diálogo de confirmación, y el anterior está en Programas anteriores.
