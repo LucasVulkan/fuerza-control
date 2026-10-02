@@ -2334,9 +2334,9 @@
       "fromClient": "De otro cliente",
       "fromFile": "Desde archivo",
       "mine": "Tuyos",
-      "activeTag": "activo",
-      "withHistory_one": "Importar también su historial ({{count}} sesión)",
-      "withHistory_other": "Importar también su historial ({{count}} sesiones)",
+      "viewActive": "Activos",
+      "viewArchived": "Archivados",
+      "withHistory": "Importar historial ({{count}})",
       "assignBtn": "ASIGNAR",
       "noProgramInFile": "El archivo no contiene ningún programa"
     }

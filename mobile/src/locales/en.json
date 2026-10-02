@@ -2334,9 +2334,9 @@
       "fromClient": "From another client",
       "fromFile": "From file",
       "mine": "Yours",
-      "activeTag": "active",
-      "withHistory_one": "Also import its history ({{count}} session)",
-      "withHistory_other": "Also import its history ({{count}} sessions)",
+      "viewActive": "Active",
+      "viewArchived": "Archived",
+      "withHistory": "Import history ({{count}})",
       "assignBtn": "ASSIGN",
       "noProgramInFile": "The file contains no program"
     }

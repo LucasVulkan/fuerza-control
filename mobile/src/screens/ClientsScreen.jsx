@@ -729,6 +729,7 @@ function AssignProgramSheet({
   const [pickedId,      setPickedId]      = useState('');
   const [file,          setFile]          = useState(null); // { fileName, data }
   const [withHistory,   setWithHistory]   = useState(false);
+  const [clientView,    setClientView]    = useState('active'); // 'active' | 'archived'
 
   // +1 = la página nueva entra por la derecha (avanzar), -1 por la izquierda.
   const { width: screenW } = useWindowDimensions();
@@ -765,6 +766,20 @@ function AssignProgramSheet({
   // Sin opción segura evidente, las listas nacen sin elegir (ver `ChoiceRow`).
   function pick(p) { setPickedId(p.id); setName(p.name); }
 
+  // «De otro cliente»: cada grupo se parte en Activos / Archivados y los grupos
+  // que se quedan vacíos en la vista no salen. Si una de las dos vistas no tiene
+  // nada, no hay segmentado y se enseña la otra.
+  const groupsOf = (active) => sources
+    .map((g) => ({ ...g, items: g.items.filter((i) => Boolean(i.isActive) === active) }))
+    .filter((g) => g.items.length > 0);
+  const activeGroups   = groupsOf(true);
+  const archivedGroups = groupsOf(false);
+  const hasBothViews   = activeGroups.length > 0 && archivedGroups.length > 0;
+  const shownView      = hasBothViews ? clientView : (activeGroups.length > 0 ? 'active' : 'archived');
+  const clientGroups   = shownView === 'active' ? activeGroups : archivedGroups;
+
+  function changeClientView(next) { setClientView(next); setPickedId(''); setName(''); }
+
   const canAssign = step === 'blank' ? name.trim().length > 0 : step === 'file' || Boolean(pickedId);
 
   function submit() {
@@ -795,6 +810,18 @@ function AssignProgramSheet({
       onClose={onClose}
       title={t('clients.assign.title')}
       onBack={step === 'origin' ? undefined : () => go('origin')}
+      footer={step === 'origin' ? undefined : (
+        <TouchableOpacity
+          style={[styles.sheetCta, styles.assignCta, !canAssign && { opacity: 0.4 }]}
+          disabled={!canAssign}
+          onPress={submit}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.sheetCtaText}>
+            {step === 'blank' ? t('clients.newProgramModal.createBtn') : t('clients.assign.assignBtn')}
+          </Text>
+        </TouchableOpacity>
+      )}
     >
       {/* El aviso de reemplazo se lee ANTES de asignar, como en Plantillas. */}
       {!!activeName && (
@@ -875,15 +902,23 @@ function AssignProgramSheet({
 
           {step === 'client' && (
             <>
-              {sources.map((g) => (
+              {hasBothViews && (
+                <SegmentedControl
+                  options={[
+                    { id: 'active',   label: t('clients.assign.viewActive') },
+                    { id: 'archived', label: t('clients.assign.viewArchived') },
+                  ]}
+                  value={clientView}
+                  onChange={changeClientView}
+                />
+              )}
+              {clientGroups.map((g) => (
                 <Section key={g.owner} title={g.name ?? t('clients.assign.mine')} style={styles.assignSection}>
-                  {g.items.map(({ program: p, isActive }) => (
+                  {g.items.map(({ program: p }) => (
                     <ChoiceRow
                       key={p.id}
                       label={p.name}
                       sub={programMeta(p, t)}
-                      badge={isActive ? t('clients.assign.activeTag') : undefined}
-                      badgeMuted
                       selected={pickedId === p.id}
                       onPress={() => pick(p)}
                     />
@@ -908,19 +943,6 @@ function AssignProgramSheet({
                 />
               )}
             </>
-          )}
-
-          {step !== 'origin' && (
-            <TouchableOpacity
-              style={[styles.sheetCta, !canAssign && { opacity: 0.4 }]}
-              disabled={!canAssign}
-              onPress={submit}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.sheetCtaText}>
-                {step === 'blank' ? t('clients.newProgramModal.createBtn') : t('clients.assign.assignBtn')}
-              </Text>
-            </TouchableOpacity>
           )}
 
         </Reanimated.View>
@@ -4742,6 +4764,8 @@ const makeStyles = (th) => StyleSheet.create({
   // `gap` de `formSheetBody`.
   assignReplaces: { ...textStyles.body, color: th.colors.orange, marginBottom: spacing.md },
   assignSection:  { marginBottom: 0 },
+  // En el pie de la hoja: el margen de arriba ya lo pone el propio pie.
+  assignCta:      { marginTop: 0 },
   // Lista de plantillas: filas de hoja (`sheetRowBase`) con el tinte accent de
   // seleccionado que ya usan las tarjetas del onboarding y las filas activas
   // del planificador.
