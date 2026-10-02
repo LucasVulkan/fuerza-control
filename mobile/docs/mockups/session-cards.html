@@ -14,8 +14,8 @@
   :root {
     --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
     --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
-    --accent: #aae216; --onAccent: #000; --redText: #ff5e58; --blue: #4c85ff;
-    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5); --blue30: rgba(0,62,195,.3);
+    --accent: #aae216; --onAccent: #000;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
     --r-xxs: 2px; --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
     --ease: cubic-bezier(.2,.8,.2,1);
   }
@@ -53,7 +53,6 @@
   .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 15px 24px; scrollbar-width: none; }
   .scroll::-webkit-scrollbar { display: none; }
 
-  /* Cabecera (ScreenHeader) */
   .hd { display: flex; align-items: center; gap: 12px; padding: 16px 15px 12px; flex-shrink: 0; }
   .hd .back { color: var(--mutedLight); font: 900 22px/22px Inter; }
   .hd .who { flex: 1; min-width: 0; }
@@ -64,10 +63,17 @@
   .seg b { flex: 1; text-align: center; font: 700 14px Inter; padding: 8px 4px; border-radius: 999px; color: var(--text); }
   .seg b.on { background: var(--accent); color: var(--onAccent); }
   .sec { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 0 10px; }
-  .sec .t-caps { color: var(--mutedLight); }
-  .sec .t-label { color: var(--mutedLight); }
+  .sec .t-caps, .sec .t-label { color: var(--mutedLight); }
 
-  /* Botones −/+ (los del stepper de link-exercises) */
+  .toast { position: absolute; left: 50%; bottom: 28px; transform: translate(-50%, 12px); background: var(--surface2); color: var(--text);
+           border-radius: var(--r-md); padding: 10px 14px; opacity: 0; pointer-events: none; white-space: nowrap;
+           transition: opacity .2s, transform .2s var(--ease); z-index: 20; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Reordenar: el hueco que deja lo que llevas y lo que llevas */
+  .ph { opacity: .2; }
+  .ghost { box-shadow: 0 18px 40px rgba(0,0,0,.65); transition: none; }
+
   .pm { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--surface2); display: grid; place-items: center;
         font: 900 16px/1 Inter; color: var(--text); cursor: pointer; flex-shrink: 0; transition: background .12s; }
   .pm:active { background: var(--border); }
@@ -75,74 +81,63 @@
   .val { font: 900 18px Inter; font-variant-numeric: tabular-nums; text-align: center; min-width: 30px; }
   .bump { animation: bump .22s var(--ease); }
   @keyframes bump { 40% { transform: scale(1.18); color: var(--accent); } }
-
-  /* ══════ A · GRID DE CARTAS QUE SE DAN LA VUELTA ══════ */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .grid .wide { grid-column: 1 / -1; }
-  .flip { perspective: 900px; height: 180px; cursor: pointer; }
-  .flip .in { position: relative; width: 100%; height: 100%; transition: transform .45s var(--ease); transform-style: preserve-3d; }
-  .flip.back .in { transform: rotateY(180deg); }
-  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
-          background: var(--surface); border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; }
-  .face.rev { transform: rotateY(180deg); background: var(--surface2); cursor: default; }
-  .face .top { display: flex; align-items: center; justify-content: space-between; }
-  .face .n { color: var(--accent); }
-  .face .pat { color: var(--muted); }
-  .face .nm { margin-top: 10px; }
-  .face .vr { color: var(--mutedLight); margin-top: 1px; }
-  .face .dose { margin-top: auto; color: var(--text); }
-  .face .dose em { font-style: normal; color: var(--mutedLight); font-weight: 800; font-size: 16px; margin: 0 2px; }
-  .face .meta { color: var(--mutedLight); margin-top: 4px; }
-  .face .pencil { width: 24px; height: 24px; border-radius: var(--r-sm); display: grid; place-items: center; color: var(--mutedLight); }
+  .pill { background: var(--accent10); color: var(--accent); border-radius: var(--r-xs); padding: 6px 8px; }
   .key { color: var(--accent); }
-  .rev .rw { display: flex; align-items: center; justify-content: space-between; }
-  .rev .rw + .rw { margin-top: 4px; }
-  .rev .rw .t-label { color: var(--mutedLight); }
-  .rev .rw .ctl { display: flex; align-items: center; gap: 2px; }
-  .rev .rw .val { font-size: 15px; min-width: 40px; }
-  .rev .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
-  .rev .foot .lnk { color: var(--accent50); cursor: pointer; }
-  .rev .foot .done { background: var(--accent); color: #000; border-radius: var(--r-sm); padding: 6px 12px; cursor: pointer; }
 
-  /* Superserie: el marco de la app (borde izquierdo acento) abraza las dos cartas */
-  .ss { grid-column: 1 / -1; border-left: 2px solid var(--accent); padding-left: 8px; }
-  .ss .lbl { color: var(--accent); margin: 2px 0 6px; display: flex; gap: 6px; align-items: center; }
-  .ss .lbl span { color: var(--mutedLight); letter-spacing: 0; text-transform: none; font-weight: 500; }
+  /* ══════ A · GRID ══════ */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid > .wide, .grid > .ss { grid-column: 1 / -1; }
+  /* Jerarquía: número (orden) → nombre → todo lo demás, que baja a 12 y gris */
+  .gc { background: var(--surface); border-radius: var(--r-md); padding: 10px 12px 12px; height: 136px;
+        display: flex; flex-direction: column; cursor: pointer; transition: background .12s; }
+  .gc:active { background: var(--surface2); }
+  .gc .top { display: flex; align-items: flex-start; justify-content: space-between; }
+  .gc .num { color: var(--accent); }
+  .gc .top .t-label { margin-top: 6px; }
+  .gc .nm { margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .gc .sub { color: var(--mutedLight); }
+  .gc .dose { color: var(--mutedLight); margin-top: auto; }
+  .gc.blk { height: auto; }
+  .gc.blk .top .pill { margin-top: 2px; }
+  .gc .moves { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+  .gc .moves span { background: var(--surface2); border-radius: var(--r-xs); padding: 3px 6px; color: var(--mutedLight); }
+  .gc.mini { height: 92px; }
+  .gc.mini .num { font: italic 800 28px/30px 'Barlow Condensed'; }
+  .gc.mini .nm { font-size: 14px; line-height: 18px; }
+  .gc.mini .dose, .gc.mini .moves, .gc.mini .sub { display: none; }
+
+  .ss { border-left: 2px solid var(--accent); padding-left: 8px; }
+  .ss .lbl { color: var(--accent); margin: 2px 0 6px; }
   .ss .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-  /* Bloque: carta ancha */
-  .blk { background: var(--surface); border-radius: var(--r-md); padding: 12px; display: flex; gap: 12px; align-items: center; }
-  .blk .n { color: var(--accent); }
-  .blk .mid { flex: 1; min-width: 0; }
-  .blk .mid .t-label { color: var(--mutedLight); margin-top: 2px; }
-  .pill { background: var(--accent10); color: var(--accent); border-radius: var(--r-xs); padding: 6px 8px; }
-  .moves { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
-  .moves span { background: var(--surface2); border-radius: var(--r-xs); padding: 3px 6px; color: var(--mutedLight); }
+  /* ══════ A2 · LISTA GRANDE ══════ */
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .lc { background: var(--surface); border-radius: var(--r-md); padding: 10px 14px 14px; cursor: pointer; transition: background .12s; }
+  .lc:active { background: var(--surface2); }
+  .lc .l1 { display: flex; align-items: baseline; gap: 10px; }
+  .lc .num { color: var(--accent); min-width: 44px; }
+  .lc .nm { flex: 1; min-width: 0; }  /* sin overflow:hidden: movería la línea base y el número se descuadra */
+  .lc .l1 .t-label, .lc .l1 .pill { flex-shrink: 0; }
+  .lc .in { margin-left: 54px; }
+  .lc .sub { color: var(--mutedLight); margin-top: -2px; }
+  .lc .tags { display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap; }
+  .lc .tags span { background: var(--surface2); border-radius: var(--r-xs); padding: 3px 6px; color: var(--mutedLight); }
+  .lc .tags span b { color: var(--text); font-weight: 800; }
+  .list > .ss .pair { display: flex; flex-direction: column; gap: 2px; }
+  .list > .ss .pair .lc:first-child { border-radius: var(--r-md) var(--r-md) var(--r-xxs) var(--r-xxs); }
+  .list > .ss .pair .lc:last-child { border-radius: var(--r-xxs) var(--r-xxs) var(--r-md) var(--r-md); }
+  .list .addc { height: 52px; }
 
-  .addc { border: 1.5px dashed var(--border); border-radius: var(--r-md); display: grid; place-items: center; height: 180px;
-          color: var(--accent50); cursor: pointer; text-align: center; }
-  .addc b { display: block; color: var(--accent); font: 900 28px/1 Inter; margin-bottom: 6px; }
-  .addc.row { height: 52px; }
-  .addc.row b { display: inline; font-size: 14px; margin: 0 4px 0 0; }
-
-  /* ══════ B · GRID CON MANDOS A LA VISTA ══════ */
-  .tile { background: var(--surface); border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; }
-  .tile .top { display: flex; justify-content: space-between; align-items: center; }
-  .tile .n { color: var(--accent); }
-  .tile .nm { margin-top: 8px; min-height: 36px; }
-  .tile .vr { color: var(--mutedLight); }
-  .tile .ctl { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-  .tile .ln { display: flex; align-items: center; background: var(--bg); border-radius: var(--r-sm); padding: 4px; }
-  .tile .ln .val { flex: 1; font-size: 15px; }
-  .tile .ln .val small { display: block; font: 800 9.5px Inter; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-top: 1px; }
-  .tile .meta { color: var(--mutedLight); margin-top: 8px; }
+  .addc { grid-column: 1 / -1; border: 1.5px dashed var(--border); border-radius: var(--r-md); height: 52px;
+          display: grid; place-items: center; color: var(--accent50); cursor: pointer; }
+  .addc b { color: var(--accent); margin-right: 4px; }
 
   /* ══════ C · BARAJA APILADA ══════ */
-  .deckwrap { flex: 1; display: flex; flex-direction: column; padding: 4px 0 0; min-height: 0; }
+  .deckwrap { flex: 1; display: flex; flex-direction: column; padding: 4px 0 0; min-height: 0; position: relative; }
   .deck { position: relative; flex: 1; margin: 6px 22px 0; min-height: 0; }
-  .card { position: absolute; inset: 0 0 22px 0; background: var(--surface); border-radius: var(--r-lg); padding: 18px;
+  .card { position: absolute; inset: 0 0 52px 0; background: var(--surface); border-radius: var(--r-lg); padding: 18px;
           display: flex; flex-direction: column; transform-origin: 50% 110%; will-change: transform;
-          box-shadow: 0 -1px 0 #2c2c2c inset, 0 10px 30px rgba(0,0,0,.45); touch-action: pan-y; }
+          box-shadow: 0 10px 30px rgba(0,0,0,.45); touch-action: pan-y; }
   .card.anim { transition: transform .32s var(--ease), opacity .32s var(--ease); }
   .card.under { pointer-events: none; }
   .card.under > * { opacity: 0; }
@@ -153,7 +148,7 @@
   .card .vr { color: var(--mutedLight); margin-top: 4px; }
   .card .dose { margin: 14px 0 4px; color: var(--accent); display: flex; align-items: baseline; gap: 8px; }
   .card .dose small { font: 500 14px Inter; color: var(--mutedLight); }
-  .card .sstag { display: inline-flex; gap: 6px; align-self: flex-start; margin-top: 12px; }
+  .card .sstag { align-self: flex-start; margin-top: 12px; }
   .last { margin-top: 18px; }
   .last .t-caps { font-size: 10px; letter-spacing: 1px; color: var(--muted); }
   .last .sets { display: flex; gap: 4px; margin: 8px 0 6px; }
@@ -180,26 +175,55 @@
   .card.addcard .opts { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 10px; }
   .card.addcard .opts div { background: var(--surface); border-radius: var(--r-md); padding: 14px; cursor: pointer; }
   .hint { position: absolute; top: 50%; transform: translateY(-50%); font: 900 13px Inter; letter-spacing: 1.2px; text-transform: uppercase;
-          padding: 6px 10px; border-radius: var(--r-sm); opacity: 0; pointer-events: none; }
+          padding: 6px 10px; border-radius: var(--r-sm); opacity: 0; pointer-events: none; color: var(--accent); background: var(--accent10); z-index: 90; }
+
+  /* Superserie: el lenguaje de la app (borde izquierdo acento) en las dos cartas */
+  .card.ss { box-shadow: inset 2px 0 0 var(--accent), 0 10px 30px rgba(0,0,0,.45); }
+  /* C: en la 3a, la 3b asoma más y enseña su nombre; el borde de abajo de la 3a se enciende y las une */
+  .card.ss.sslink { box-shadow: inset 2px 0 0 var(--accent), inset 0 -2px 0 var(--accent), 0 10px 30px rgba(0,0,0,.45); }
+  .peek { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; display: none; align-items: center; gap: 6px;
+          padding: 0 18px 0 20px; background: var(--accent10); color: var(--accent); border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  .peek span { color: var(--mutedLight); font-weight: 500; }
+  .card.ssnext > .peek { display: flex; opacity: 1; }
+  .clip { display: none; }
 
   .strip { display: flex; gap: 6px; padding: 12px 15px 20px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
   .strip::-webkit-scrollbar { display: none; }
   .chip { flex-shrink: 0; min-width: 40px; height: 40px; padding: 0 10px; border-radius: var(--r-md); background: var(--surface);
           display: grid; place-items: center; color: var(--mutedLight); cursor: pointer; transition: background .15s, color .15s; }
   .chip.on { background: var(--accent); color: #000; }
-  .chip.ssl { border-bottom: 2px solid var(--accent); }
   .chip.add { color: var(--accent); background: transparent; border: 1.5px dashed var(--border); }
+  /* La pareja de superserie es una sola pieza: se mueve junta */
+  .chipg { display: flex; gap: 2px; padding: 2px; border-radius: 12px; background: var(--accent10); flex-shrink: 0; margin: -2px 0; }
+  .chipg .chip { height: 40px; }
 
   /* ══════ D · CARRUSEL CON VECINOS ══════ */
-  .car { flex: 1; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 37px 0;
+  .car { flex: 1; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 37px 0; position: relative;
          scrollbar-width: none; min-height: 0; overscroll-behavior-x: contain; }
   .car::-webkit-scrollbar { display: none; }
   .car .card { position: relative; inset: auto; flex: 0 0 300px; scroll-snap-align: center; margin-bottom: 10px;
                transform-origin: 50% 50%; transition: transform .25s var(--ease), opacity .25s; touch-action: auto; }
   .car .card.side { transform: scale(.93); opacity: .55; }
+  /* D: la pareja va más junta y una grapa acento cruza el hueco */
+  .car .card.ssb { margin-left: -4px; }
+  .car .clip { display: block; position: absolute; right: -14px; top: 50%; width: 22px; height: 56px; margin-top: -28px;
+               background: var(--accent); border-radius: var(--r-xs); z-index: 2; }
+  .car .clip::before, .car .clip::after { content: ''; position: absolute; left: 50%; width: 4px; height: 4px; margin-left: -2px;
+               border-radius: 2px; background: #000; }
+  .car .clip::before { top: 12px; } .car .clip::after { bottom: 12px; }
   .dots { display: flex; gap: 6px; justify-content: center; padding: 6px 0 22px; flex-shrink: 0; }
   .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border); transition: width .2s var(--ease), background .2s; }
   .dots i.on { width: 18px; background: var(--accent); }
+  .dots i.ss { background: var(--accent50); }
+  .dots i.on.ss { background: var(--accent); }
+
+  /* D: al mantener una carta, la baraja «se aleja» y queda la grid para ordenar */
+  .order { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; z-index: 10;
+           opacity: 0; transform: scale(1.08); pointer-events: none; transition: opacity .22s var(--ease), transform .28s var(--ease); }
+  .order.on { opacity: 1; transform: none; pointer-events: auto; }
+  .order .ohd { display: flex; align-items: center; justify-content: space-between; padding: 22px 15px 4px; }
+  .order .ohd .t-label { color: var(--mutedLight); margin-top: 2px; }
+  .order .done { background: var(--accent); color: #000; border-radius: var(--r-md); padding: 10px 16px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -207,75 +231,80 @@
 <h1>Editor de sesión — ejercicios como cartas</h1>
 <p class="lead">
   Exploración de formas más agradables de enseñar los ejercicios de una sesión. Misma cabecera y mismo segmentado
-  A/B/C que hoy; <b>sin el resumen</b>. Todo con los tokens de formaFit. <b>Las cuatro pantallas funcionan</b>:
-  los −/+ cambian los valores, las cartas de A se dan la vuelta, la baraja de C se pasa arrastrando y el carrusel de D
-  se desliza.
+  A/B/C que hoy; <b>sin el resumen</b>. Tokens de formaFit. <b>Todo funciona</b>: tocar abre la ficha (aquí, un aviso),
+  <b>mantener pulsado y arrastrar reordena</b>, los −/+ cambian valores y las cartas se pasan deslizando.
 </p>
 
 <h2>Grid · tarjetas</h2>
 <div class="rack">
   <div class="col">
-    <p class="cap"><b>A · CARTAS QUE SE DAN LA VUELTA</b>Por delante se leen; tocar el lápiz la gira y detrás están los
-      mandos. Tocar la carta (no el lápiz) abre la ficha completa, como hoy.</p>
+    <p class="cap"><b>A · GRID</b>Primero se lee el orden (número grande en acento), luego el nombre. La dosis baja a
+      gris pequeño abajo. Tocar abre la ficha; mantener y arrastrar mueve.</p>
     <div class="phone" id="A"></div>
     <ul class="note">
-      <li><b>Lo bueno:</b> la cara se queda limpia y grande; editar es un gesto deliberado, no un dedo que roza un +.</li>
-      <li><b>Lo flojo:</b> solo cabe lo rápido (series, reps, descanso). Progresión y RPE siguen en la ficha.</li>
-      <li>Reordenar: pulsación larga y arrastrar. <code>Sortable.Grid</code> ya está en la pantalla, solo cambia <code>columns</code>.</li>
+      <li>El número es <code>heroGlyph</code> (Barlow, el del marcador de sesión): el mismo idioma que «A/B/C».</li>
+      <li>La superserie y el bloque se mueven enteros; el orden dentro de la superserie, en su ficha.</li>
+      <li>Implementación: <code>Sortable.Grid</code> ya está en la pantalla, cambia <code>columns</code> y la tarjeta.</li>
     </ul>
   </div>
 
   <div class="col">
-    <p class="cap"><b>B · MANDOS A LA VISTA</b>Cada tarjeta lleva sus −/+ de series y reps siempre visibles.
-      El + de reps mueve el rango entero (8–10 → 9–11).</p>
-    <div class="phone" id="B"></div>
+    <p class="cap"><b>A2 · LISTA GRANDE</b>Una tarjeta por fila, como la del AMRAP. Número y nombre en la misma línea
+      (mismas tipos que el grid); la dosis va en etiquetas. Tocar abre la ficha; mantener y arrastrar mueve.</p>
+    <div class="phone" id="A2"></div>
     <ul class="note">
-      <li><b>Lo bueno:</b> cero pasos: ajustar 6 ejercicios son 6 toques.</li>
-      <li><b>Lo flojo:</b> la tarjeta es más alta y caben ~4 en pantalla; la sesión se ve menos de un vistazo.</li>
-      <li>Mover el rango entero es una decisión: para tocar mín y máx por separado, la ficha.</li>
+      <li>Más ancho para el nombre: «Remo unilateral con mancuerna» cabe sin cortarse en dos líneas.</li>
+      <li>La superserie son dos tarjetas pegadas (2 px, como hoy) dentro del marco acento.</li>
+      <li>Implementación: es la lista actual (<code>Sortable.Grid</code> de una columna) con otra fila.</li>
     </ul>
   </div>
 </div>
 
-<h2>Baraja · de una en una</h2>
+<h2>Cartas · de una en una</h2>
 <div class="rack">
   <div class="col">
-    <p class="cap"><b>C · BARAJA APILADA</b>Arrastra la carta a la izquierda para pasar y a la derecha para volver.
-      Debajo, las fichas numeradas saltan directo a cualquier carta.</p>
+    <p class="cap"><b>C · BARAJA APILADA</b>Arrastra la carta a la izquierda para pasar, a la derecha para volver.
+      <b style="display:inline;color:#c9c9c9;letter-spacing:0">Orden:</b> mantén una ficha de la tira de abajo y arrástrala.</p>
     <div class="phone" id="C"></div>
     <ul class="note">
-      <li><b>Lo bueno:</b> la carta tiene sitio para todo: series, mín, máx, descanso y la progresión a un toque.</li>
-      <li><b>Lo flojo:</b> se pierde la vista de conjunto; la tira de abajo es lo que la devuelve.</li>
-      <li>La superserie se marca en la tira con el subrayado acento (3a·3b) y en la carta con la etiqueta.</li>
+      <li><b>Orden:</b> la tira ya es la vista de conjunto, así que se ordena ahí. La pareja de superserie es una sola pieza.</li>
+      <li><b>Superserie:</b> ve a la carta 3a. La 3b asoma por debajo más de lo normal y enseña su nombre; el borde de abajo de la 3a
+        se enciende y las une. Las dos llevan el borde izquierdo acento, como la superserie de la lista de hoy.</li>
     </ul>
   </div>
 
   <div class="col">
-    <p class="cap"><b>D · CARRUSEL CON VECINOS</b>Las cartas van en fila y asoman las de los lados: se ve que hay más
-      sin necesidad de la tira. Scroll nativo con imán.</p>
+    <p class="cap"><b>D · CARRUSEL CON VECINOS</b>Desliza de lado.
+      <b style="display:inline;color:#c9c9c9;letter-spacing:0">Orden:</b> mantén pulsada cualquier carta: la baraja se aleja y queda la grid para arrastrar.</p>
     <div class="phone" id="D"></div>
     <ul class="note">
-      <li><b>Lo bueno:</b> el swipe es el scroll de toda la vida (FlatList horizontal + <code>snapToInterval</code>), nada que inventar.</li>
-      <li><b>Lo flojo:</b> menos «carta» que C; es más un carrusel que una baraja.</li>
+      <li><b>Orden:</b> mantener «aleja» las cartas hasta la grid A en pequeño (solo número y nombre). Una pantalla
+        menos que diseñar: la vista de ordenar es la grid.</li>
+      <li><b>Superserie:</b> desliza hasta la 3a. La 3b no se encoge como las demás vecinas: se queda pegada a tamaño
+        completo y una grapa acento cruza el hueco. En los puntos, la pareja va en acento suave.</li>
     </ul>
   </div>
 </div>
 
 <script>
-// ── Datos: Sesión A · Tirón ──
-const DATA = [
-  { id: '1',  name: 'Dominadas', variant: 'Lastre', pat: 'Tracción V', sets: 4, min: 6, max: 8, rest: 120, key: true, prog: 'Auto', last: [7, 7, 6, 6], load: '+20 kg' },
-  { id: '2',  name: 'Remo con barra', variant: 'Pendlay', pat: 'Tracción H', sets: 4, min: 8, max: 10, rest: 90, prog: 'Auto', last: [10, 10, 9, 8], load: '70 kg' },
-  { id: '3a', name: 'Face pull', variant: 'Polea', pat: 'Hombro', sets: 3, min: 12, max: 15, rest: 0, ss: '3', prog: 'Fija', last: [15, 14, 12], load: '25 kg' },
-  { id: '3b', name: 'Curl martillo', variant: 'Mancuernas', pat: 'Bíceps', sets: 3, min: 10, max: 12, rest: 60, ss: '3', prog: 'Auto', last: [12, 11, 10], load: '14 kg' },
-  { id: '4',  name: 'Remo unilateral', variant: 'Mancuerna', pat: 'Tracción H', sets: 3, min: 10, max: 12, rest: 75, prog: 'Submáx', last: [12, 12, 11], load: '32 kg' },
-  { id: '5',  name: 'Plancha', variant: 'Frontal', pat: 'Core', sets: 3, min: 30, max: 45, rest: 45, time: true, prog: 'Fija', last: [45, 40, 35], load: 'peso corporal' },
-  { id: '6',  block: 'AMRAP', mins: 10, moves: ['Kettlebell swing · 15', 'Burpees · 10', 'Remo ergo · 12 cal'] },
+// ── Datos: Sesión A · Tirón, por unidades (una unidad = lo que se mueve junto) ──
+const UNITS = [
+  { k: 'u1', ex: [{ id: 'dom', name: 'Dominadas', variant: 'Lastre', pat: 'Tracción V', sets: 4, min: 6, max: 8, rest: 120, key: true, prog: 'Auto', last: [7, 7, 6, 6], load: '+20 kg' }] },
+  { k: 'u2', ex: [{ id: 'remo', name: 'Remo con barra', variant: 'Pendlay', pat: 'Tracción H', sets: 4, min: 8, max: 10, rest: 90, prog: 'Auto', last: [10, 10, 9, 8], load: '70 kg' }] },
+  { k: 'u3', ex: [
+    { id: 'face', name: 'Face pull', variant: 'Polea', pat: 'Hombro', sets: 3, min: 12, max: 15, rest: 0, prog: 'Fija', last: [15, 14, 12], load: '25 kg' },
+    { id: 'curl', name: 'Curl martillo', variant: 'Mancuernas', pat: 'Bíceps', sets: 3, min: 10, max: 12, rest: 60, prog: 'Auto', last: [12, 11, 10], load: '14 kg' }] },
+  { k: 'u4', ex: [{ id: 'uni', name: 'Remo unilateral', variant: 'Mancuerna', pat: 'Tracción H', sets: 3, min: 10, max: 12, rest: 75, prog: 'Submáx', last: [12, 12, 11], load: '32 kg' }] },
+  { k: 'u5', ex: [{ id: 'plan', name: 'Plancha', variant: 'Frontal', pat: 'Core', sets: 3, min: 30, max: 45, rest: 45, time: true, prog: 'Fija', last: [45, 40, 35], load: 'Peso corporal' }] },
+  { k: 'u6', ex: [{ id: 'amrap', block: 'AMRAP', name: 'Finisher metabólico', mins: 10, moves: ['Kettlebell swing · 15', 'Burpees · 10', 'Remo ergo · 12 cal'] }] },
 ];
-const clone = () => DATA.map(d => ({ ...d }));
+const cloneUnits = () => UNITS.map(u => ({ k: u.k, ex: u.ex.map(e => ({ ...e })) }));
+const lab = (i, j, n) => n > 1 ? `${i + 1}${'ab'[j]}` : `${i + 1}`;
+const flat = units => units.flatMap((u, i) => u.ex.map((e, j) => ({ e, u, j, n: u.ex.length, lab: lab(i, j, u.ex.length) })));
+const reorder = (units, keys) => units.sort((a, b) => keys.indexOf(a.k) - keys.indexOf(b.k));
 const range = e => e.min === e.max ? `${e.min}` : `${e.min}–${e.max}`;
 const unit = e => e.time ? ' s' : '';
-const restTxt = s => s === 0 ? 'Sin descanso' : `${s} s`;
+const restTxt = s => s === 0 ? 'sin descanso' : `${s} s`;
 const STEP = { sets: [1, 1, 10], min: [1, 1, 99], max: [1, 1, 99], rest: [15, 0, 300], mins: [1, 1, 60] };
 
 function shell(body) {
@@ -286,153 +315,167 @@ function shell(body) {
       <span class="ic">⋯</span><span class="ic ok">✓</span>
     </div>
     <div class="seg"><b class="on">A</b><b>B</b><b>C</b></div>
-    ${body}`;
+    ${body}
+    <div class="toast t-bodyS"></div>`;
+}
+function toast(root, msg) {
+  const t = root.querySelector('.toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 1400);
 }
 const pm = (k, d, big) => `<b class="pm${big ? ' big' : ''}" data-k="${k}" data-d="${d}">${d < 0 ? '−' : '+'}</b>`;
 
-// Un único manejador de −/+ por teléfono: localiza el ejercicio, cambia el valor y repinta.
-function wireSteppers(root, list, repaint) {
+// ── Mantener y arrastrar para reordenar los hijos de `box` que llevan data-k ──
+// ponytail: elementFromPoint + insertBefore + FLIP con WAAPI; sin autoscroll mientras arrastras.
+function flip(box, mutate) {
+  const kids = [...box.children], before = kids.map(k => k.getBoundingClientRect());
+  mutate();
+  kids.forEach((k, i) => {
+    const b = k.getBoundingClientRect(), dx = before[i].left - b.left, dy = before[i].top - b.top;
+    if (dx || dy) k.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  });
+}
+function sortable(box, onDrop, delay = 320) {
+  let t = null, drag = null, p0 = null;
+  const unitOf = node => [...box.children].find(c => c.dataset.k && c.contains(node));
+  box.addEventListener('pointerdown', ev => {
+    const el = unitOf(ev.target); if (!el || ev.target.closest('.pm')) return;
+    p0 = { x: ev.clientX, y: ev.clientY };
+    t = setTimeout(() => { t = null; start(el); }, delay);
+  });
+  window.addEventListener('pointermove', ev => {
+    if (t && Math.hypot(ev.clientX - p0.x, ev.clientY - p0.y) > 8) { clearTimeout(t); t = null; }
+    if (!drag) return;
+    ev.preventDefault();
+    drag.ghost.style.transform = `translate(${ev.clientX - p0.x}px, ${ev.clientY - p0.y}px) scale(1.05)`;
+    const tgt = unitOf(document.elementFromPoint(ev.clientX, ev.clientY));
+    if (!tgt || tgt === drag.el) { if (tgt) drag.last = null; return; }
+    if (tgt === drag.last) return;
+    drag.last = tgt;
+    const kids = [...box.children], after = kids.indexOf(tgt) > kids.indexOf(drag.el);
+    flip(box, () => box.insertBefore(drag.el, after ? tgt.nextSibling : tgt));
+  });
+  window.addEventListener('pointerup', () => {
+    clearTimeout(t); t = null;
+    if (!drag) return;
+    drag.ghost.remove(); drag.el.classList.remove('ph');
+    drag = null;
+    box.dataset.dragged = '1'; setTimeout(() => delete box.dataset.dragged, 0);  // que el click de soltar no abra nada
+    onDrop([...box.children].map(c => c.dataset.k).filter(Boolean));
+  });
+  function start(el) {
+    const r = el.getBoundingClientRect(), ghost = el.cloneNode(true);
+    Object.assign(ghost.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+                                 margin: 0, zIndex: 999, pointerEvents: 'none', transform: 'scale(1.05)' });
+    ghost.classList.add('ghost'); document.body.appendChild(ghost);
+    el.classList.add('ph');
+    drag = { el, ghost, last: null };
+    navigator.vibrate?.(10);
+  }
+}
+
+// ── Steppers (C y D) ──
+function wireSteppers(root, getUnits) {
   root.addEventListener('click', ev => {
     const b = ev.target.closest('.pm'); if (!b) return;
     ev.stopPropagation();
-    const e = list.find(x => x.id === b.closest('[data-id]').dataset.id);
-    const k = b.dataset.k, d = +b.dataset.d;
-    if (k === 'shift') {            // B: mueve el rango entero
-      if (e.min + d < 1) return;
-      e.min += d; e.max += d;
-    } else {
-      const [s, lo, hi] = STEP[k];
-      let v = Math.min(hi, Math.max(lo, e[k] + d * s));
-      if (k === 'min') v = Math.min(v, e.max);
-      if (k === 'max') v = Math.max(v, e.min);
-      e[k] = v;
-    }
-    repaint(e.id, k);
-  });
-}
-function flash(root, id, k) {
-  root.querySelectorAll(`[data-id="${id}"] [data-v="${k === 'shift' ? 'range' : k}"]`).forEach(el => {
-    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    const id = b.closest('[data-id]').dataset.id, e = flat(getUnits()).find(f => f.e.id === id).e;
+    const k = b.dataset.k, [s, lo, hi] = STEP[k];
+    let v = Math.min(hi, Math.max(lo, e[k] + +b.dataset.d * s));
+    if (k === 'min') v = Math.min(v, e.max);
+    if (k === 'max') v = Math.max(v, e.min);
+    e[k] = v;
+    root.querySelectorAll(`[data-id="${id}"] [data-v]`).forEach(el => {
+      const f = el.dataset.v;
+      el.textContent = f === 'range' ? range(e) : e[f];
+      if (f === k || (f === 'range' && (k === 'min' || k === 'max'))) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    });
   });
 }
 
-// ══════ A ══════
+// ══════ Grid (A, y la vista de ordenar de D) ══════
+const gcard = (f, mini) => f.e.block ? `
+  <div class="gc blk${mini ? ' mini' : ''}" data-open="${f.e.name}">
+    <div class="top"><span class="t-heroGlyph num">${f.lab}</span><span class="t-label pill">${f.e.block}</span></div>
+    <div class="t-item nm">${f.e.name}</div>
+    <div class="t-label sub">${f.e.moves.length} movimientos · ${f.e.mins} min</div>
+    <div class="moves">${f.e.moves.map(m => `<span class="t-micro">${m.split(' · ')[0]}</span>`).join('')}</div>
+  </div>` : `
+  <div class="gc${mini ? ' mini' : ''}" data-open="${f.e.name}">
+    <div class="top"><span class="t-heroGlyph num">${f.lab}</span>${f.e.key ? '<span class="t-label key">Principal</span>' : ''}</div>
+    <div class="t-item nm">${f.e.name}</div>
+    <div class="t-label sub">${f.e.variant}</div>
+    <div class="t-label dose">${f.e.sets} × ${range(f.e)}${unit(f.e)} · ${restTxt(f.e.rest)}</div>
+  </div>`;
+const gridUnits = (units, mini) => units.map((u, i) => u.ex.length > 1
+  ? `<div class="ss" data-k="${u.k}"><div class="t-caps lbl">Superserie</div>
+       <div class="pair">${u.ex.map((e, j) => gcard({ e, lab: lab(i, j, 2) }, mini)).join('')}</div></div>`
+  : `<div class="${u.ex[0].block ? 'wide' : ''}" data-k="${u.k}">${gcard({ e: u.ex[0], lab: lab(i, 0, 1) }, mini)}</div>`).join('');
+
 (function () {
-  const root = document.getElementById('A'), list = clone(), flipped = new Set();
-  const front = e => `
-    <div class="face">
-      <div class="top"><span class="t-labelS n">${e.id}</span><span class="pencil" data-flip>✎</span></div>
-      <div class="t-bodyS nm">${e.name}</div>
-      <div class="t-label vr">${e.variant}</div>
-      <div class="t-title dose"><span data-v="sets">${e.sets}</span><em>×</em><span data-v="range">${range(e)}${unit(e)}</span></div>
-      <div class="t-label meta">${e.key ? '<span class="key">Principal</span> · ' : ''}<span data-v="rest">${restTxt(e.rest)}</span></div>
-    </div>`;
-  const row = (lbl, k, v) => `
-    <div class="rw"><span class="t-label">${lbl}</span>
-      <span class="ctl">${pm(k, -1)}<span class="val" data-v="${k}">${v}</span>${pm(k, 1)}</span></div>`;
-  const back = e => `
-    <div class="face rev">
-      ${row('Series', 'sets', e.sets)}
-      ${row('Mín', 'min', e.min)}
-      ${row('Máx', 'max', e.max)}
-      ${row('Desc.', 'rest', e.rest)}
-      <div class="foot"><span class="t-label lnk">Ficha ›</span><span class="t-button done" data-flip>Listo</span></div>
-    </div>`;
-  const card = e => `<div class="flip${flipped.has(e.id) ? ' back' : ''}" data-id="${e.id}"><div class="in">${front(e)}${back(e)}</div></div>`;
-  const block = e => `
-    <div class="blk wide" data-id="${e.id}">
-      <span class="t-labelS n">${e.id}</span>
-      <div class="mid"><div class="t-bodyS">Finisher metabólico</div>
-        <div class="t-label">${e.moves.length} movimientos · ${e.mins} min</div>
-        <div class="moves">${e.moves.map(m => `<span class="t-micro">${m.split(' · ')[0]}</span>`).join('')}</div></div>
-      <span class="t-label pill">${e.block}</span>
-    </div>`;
-  function paint() {
-    const ss = list.filter(e => e.ss);
-    let html = '', ssDone = false;
-    for (const e of list) {
-      if (e.block) html += block(e);
-      else if (e.ss) {
-        if (ssDone) continue; ssDone = true;
-        html += `<div class="ss"><div class="t-caps lbl">Superserie <span>· sin descanso entre ellos</span></div>
-                 <div class="pair">${ss.map(card).join('')}</div></div>`;
-      } else html += card(e);
-    }
-    root.innerHTML = shell(`<div class="scroll">
-      <div class="sec"><span class="t-caps">Ejercicios (${list.length})</span><span class="t-label">Mantén para mover</span></div>
-      <div class="grid">${html}<div class="addc wide row t-button"><span><b>+</b>Añadir</span></div></div></div>`);
-  }
-  root.addEventListener('click', ev => {
-    const f = ev.target.closest('[data-flip]'); if (!f) return;
-    const id = f.closest('[data-id]').dataset.id;
-    flipped.has(id) ? flipped.delete(id) : flipped.add(id);
-    f.closest('.flip').classList.toggle('back');
+  const root = document.getElementById('A'), units = cloneUnits();
+  root.innerHTML = shell(`<div class="scroll">
+    <div class="sec"><span class="t-caps">Ejercicios (${flat(units).length})</span><span class="t-label">Mantén para mover</span></div>
+    <div class="grid"></div></div>`);
+  const grid = root.querySelector('.grid');
+  const paint = () => { grid.innerHTML = gridUnits(units) + '<div class="addc t-button"><span><b>+</b>Añadir</span></div>'; };
+  grid.addEventListener('click', ev => {
+    const c = ev.target.closest('[data-open]');
+    if (c && !grid.dataset.dragged) toast(root, `Abre la ficha de ${c.dataset.open}`);
   });
-  wireSteppers(root, list, (id, k) => {
-    const e = list.find(x => x.id === id);
-    root.querySelectorAll(`[data-id="${id}"] [data-v]`).forEach(el => {
-      const v = el.dataset.v;
-      el.textContent = v === 'range' ? range(e) + unit(e) : v === 'rest' && el.closest('.meta') ? restTxt(e.rest) : e[v];
-    });
-    flash(root, id, k);
-  });
+  sortable(grid, keys => { reorder(units, keys); paint(); });
   paint();
 })();
 
-// ══════ B ══════
+// ══════ A2 · lista grande ══════
+const lcard = f => {
+  const e = f.e, right = e.block ? `<span class="t-label pill">${e.block}</span>` : e.key ? '<span class="t-label key">Principal</span>' : '';
+  const tags = e.block
+    ? e.moves.map(m => `<span class="t-micro">${m.split(' · ')[0]}</span>`)
+    : [`<b>${e.sets}</b> series`, `<b>${range(e)}</b> ${e.time ? 's' : 'reps'}`, e.rest ? `<b>${e.rest}</b> s descanso` : 'sin descanso']
+        .map(t => `<span class="t-label">${t}</span>`);
+  return `
+  <div class="lc" data-open="${e.name}">
+    <div class="l1"><span class="t-heroGlyph num">${f.lab}</span><span class="t-item nm">${e.name}</span>${right}</div>
+    <div class="in"><div class="t-label sub">${e.block ? `${e.moves.length} movimientos · ${e.mins} min` : e.variant}</div>
+      <div class="tags">${tags.join('')}</div></div>
+  </div>`;
+};
+const listUnits = units => units.map((u, i) => u.ex.length > 1
+  ? `<div class="ss" data-k="${u.k}"><div class="t-caps lbl">Superserie</div>
+       <div class="pair">${u.ex.map((e, j) => lcard({ e, lab: lab(i, j, 2) })).join('')}</div></div>`
+  : `<div data-k="${u.k}">${lcard({ e: u.ex[0], lab: lab(i, 0, 1) })}</div>`).join('');
+
 (function () {
-  const root = document.getElementById('B'), list = clone();
-  const tile = e => `
-    <div class="tile" data-id="${e.id}">
-      <div class="top"><span class="t-labelS n">${e.id}</span>${e.key ? '<span class="t-label key">Principal</span>' : ''}</div>
-      <div class="nm"><div class="t-bodyS">${e.name}</div><div class="t-label vr">${e.variant}</div></div>
-      <div class="ctl">
-        <div class="ln">${pm('sets', -1)}<span class="val"><span data-v="sets">${e.sets}</span><small>series</small></span>${pm('sets', 1)}</div>
-        <div class="ln">${pm('shift', -1)}<span class="val"><span data-v="range">${range(e)}</span><small>${e.time ? 'segundos' : 'reps'}</small></span>${pm('shift', 1)}</div>
-      </div>
-      <div class="t-label meta">${restTxt(e.rest)} · ${e.prog}</div>
-    </div>`;
-  const block = e => `
-    <div class="blk wide" data-id="${e.id}">
-      <span class="t-labelS n">${e.id}</span>
-      <div class="mid"><div class="t-bodyS">Finisher metabólico</div><div class="t-label">${e.moves.length} movimientos</div></div>
-      <div class="tile" style="padding:0;background:none"><div class="ln">${pm('mins', -1)}<span class="val"><span data-v="mins">${e.mins}</span><small>min</small></span>${pm('mins', 1)}</div></div>
-      <span class="t-label pill">${e.block}</span>
-    </div>`;
-  let html = '', ssDone = false;
-  for (const e of list) {
-    if (e.block) html += block(e);
-    else if (e.ss) {
-      if (ssDone) continue; ssDone = true;
-      html += `<div class="ss"><div class="t-caps lbl">Superserie</div><div class="pair">${list.filter(x => x.ss).map(tile).join('')}</div></div>`;
-    } else html += tile(e);
-  }
+  const root = document.getElementById('A2'), units = cloneUnits();
   root.innerHTML = shell(`<div class="scroll">
-    <div class="sec"><span class="t-caps">Ejercicios (${list.length})</span><span class="t-label">Mantén para mover</span></div>
-    <div class="grid">${html}<div class="addc wide row t-button"><span><b>+</b>Añadir</span></div></div></div>`);
-  wireSteppers(root, list, (id, k) => {
-    const e = list.find(x => x.id === id);
-    root.querySelectorAll(`[data-id="${id}"] [data-v]`).forEach(el => {
-      el.textContent = el.dataset.v === 'range' ? range(e) : e[el.dataset.v];
-    });
-    flash(root, id, k);
+    <div class="sec"><span class="t-caps">Ejercicios (${flat(units).length})</span><span class="t-label">Mantén para mover</span></div>
+    <div class="list"></div></div>`);
+  const list = root.querySelector('.list');
+  const paint = () => { list.innerHTML = listUnits(units) + '<div class="addc t-button"><span><b>+</b>Añadir</span></div>'; };
+  list.addEventListener('click', ev => {
+    const c = ev.target.closest('[data-open]');
+    if (c && !list.dataset.dragged) toast(root, `Abre la ficha de ${c.dataset.open}`);
   });
+  sortable(list, keys => { reorder(units, keys); paint(); });
+  paint();
 })();
 
 // ── Carta grande (C y D) ──
-function bigCard(e, i, n) {
-  if (e === 'add') return `
-    <div class="card addcard" data-i="${i}">
+function bigCard(f, i, n) {
+  if (!f) return `
+    <div class="card addcard" data-add>
       <div class="plus">+</div><div class="t-heading">Añadir</div>
       <div class="t-label">La última carta de la baraja siempre es esta.</div>
       <div class="opts"><div class="t-button">Ejercicio</div><div class="t-button">Bloque (AMRAP, EMOM…)</div></div>
     </div>`;
-  const top = `<div class="top"><span class="t-caps"><b>${e.id}</b> · ${i + 1} de ${n}</span>
-    <span class="t-caps">${e.block ? '' : e.pat}</span></div>`;
+  const e = f.e, ss = f.n > 1;
+  const cls = `card${e.block ? ' blkcard' : ''}${ss ? ` ss ss${'ab'[f.j]}` : ''}`;
+  const top = `<div class="top"><span class="t-caps"><b>${f.lab}</b> · ${i + 1} de ${n}</span><span class="t-caps">${e.pat ?? ''}</span></div>`;
+  const attrs = `class="${cls}" data-id="${e.id}" data-u="${f.u.k}"`;
   if (e.block) return `
-    <div class="card blkcard" data-i="${i}" data-id="${e.id}">
+    <div ${attrs}>
       ${top}
-      <div class="t-heroName nm">Finisher metabólico</div>
+      <div class="t-heroName nm">${e.name}</div>
       <span class="t-label pill sstag">${e.block}</span>
       <div class="moveslist">${e.moves.map(m => { const [a, b] = m.split(' · ');
         return `<div><span class="t-bodyS">${a}</span><span class="t-label">${b}</span></div>`; }).join('')}</div>
@@ -445,12 +488,13 @@ function bigCard(e, i, n) {
   const knob = (lbl, k, v, u) => `
     <div class="knob"><div class="t-caps">${lbl}</div>
       <div class="r">${pm(k, -1)}<span class="val"><span data-v="${k}">${v}</span>${u ? `<small>${u}</small>` : ''}</span>${pm(k, 1)}</div></div>`;
+  const partner = ss && f.j === 1 ? `<div class="peek t-labelS">Superserie · sigue ${f.lab.toUpperCase()} <span>${e.name}</span></div>` : '';
   return `
-    <div class="card" data-i="${i}" data-id="${e.id}">
+    <div ${attrs}>
       ${top}
       <div class="t-heroName nm">${e.name}</div>
       <div class="t-body vr">${e.variant}${e.key ? ' · <span class="key">Principal</span>' : ''}</div>
-      ${e.ss ? `<span class="t-label pill sstag">Superserie · ${e.id === '3a' ? '1 de 2' : '2 de 2'}</span>` : ''}
+      ${ss ? `<span class="t-label pill sstag">Superserie · ${f.j + 1} de 2</span>` : ''}
       <div class="t-heroGlyph dose"><span data-v="sets">${e.sets}</span>×<span data-v="range">${range(e)}</span><small>${e.time ? 'segundos' : 'reps'}</small></div>
       <div class="last"><div class="t-caps">Última vez · 26 sep</div>
         <div class="sets">${e.last.map(r => `<span class="t-labelS${r >= e.max ? ' hit' : ''}">${r}</span>`).join('')}</div>
@@ -463,55 +507,57 @@ function bigCard(e, i, n) {
       </div>
       <div class="prog"><div><div class="t-label">Progresión</div><div class="t-bodyS"><b>${e.prog}</b></div></div><span class="t-button" style="color:var(--mutedLight)">›</span></div>
       <div class="t-button open">Abrir ficha completa</div>
+      ${ss && f.j === 0 ? '<i class="clip"></i>' : ''}
+      ${partner}
     </div>`;
-}
-function repaintBig(root, list) {
-  return (id, k) => {
-    const e = list.find(x => x.id === id);
-    root.querySelectorAll(`[data-id="${id}"] [data-v]`).forEach(el => {
-      el.textContent = el.dataset.v === 'range' ? range(e) : e[el.dataset.v];
-    });
-    flash(root, id, k);
-    if (k === 'min' || k === 'max') flash(root, id, 'shift');
-  };
 }
 
 // ══════ C · baraja ══════
 (function () {
-  const root = document.getElementById('C'), list = clone(), items = [...list, 'add'];
-  let cur = 0;
-  root.innerHTML = shell(`
-    <div class="deckwrap">
-      <div class="deck">${items.map((e, i) => bigCard(e, i, list.length)).join('')}
-        <span class="hint" style="left:6px;color:var(--accent);background:var(--accent10)">‹ Anterior</span>
-        <span class="hint" style="right:6px;color:var(--accent);background:var(--accent10)">Siguiente ›</span>
-      </div>
-      <div class="strip">${items.map((e, i) => e === 'add'
-        ? `<div class="chip add t-button" data-go="${i}">+</div>`
-        : `<div class="chip t-labelS${e.ss ? ' ssl' : ''}" data-go="${i}">${e.id}</div>`).join('')}</div>
-    </div>`);
-  const cards = [...root.querySelectorAll('.card')], chips = [...root.querySelectorAll('.chip')];
-  const [hintL, hintR] = root.querySelectorAll('.hint');
+  const root = document.getElementById('C'), units = cloneUnits();
+  root.innerHTML = shell(`<div class="deckwrap"><div class="deck"></div><div class="strip"></div></div>`);
+  const deck = root.querySelector('.deck'), strip = root.querySelector('.strip');
+  let items = [], cards = [], cur = 0, curId = 'dom', hintL, hintR;
 
+  function paint() {
+    const fl = flat(units); items = [...fl, null];
+    deck.innerHTML = items.map((f, i) => bigCard(f, i, fl.length)).join('') +
+      '<span class="hint" style="left:6px">‹ Anterior</span><span class="hint" style="right:6px">Siguiente ›</span>';
+    strip.innerHTML = units.map((u, i) => u.ex.length > 1
+      ? `<div class="chipg" data-k="${u.k}">${u.ex.map((e, j) => `<div class="chip t-labelS" data-go="${e.id}">${lab(i, j, 2)}</div>`).join('')}</div>`
+      : `<div class="chip t-labelS" data-k="${u.k}" data-go="${u.ex[0].id}">${i + 1}</div>`).join('') +
+      '<div class="chip add t-button" data-go="add">+</div>';
+    cards = [...deck.querySelectorAll('.card')];
+    [hintL, hintR] = deck.querySelectorAll('.hint');
+    cur = Math.max(0, items.findIndex(f => (f ? f.e.id : 'add') === curId));
+    layout(false);
+  }
   function layout(anim = true) {
+    const f = items[cur], link = !!f && f.n > 1 && f.j === 0;   // en la 3a: la 3b asoma con su nombre
     cards.forEach((c, i) => {
       const d = i - cur;
       c.classList.toggle('anim', anim);
       c.classList.toggle('under', d !== 0);
+      c.classList.toggle('sslink', link && d === 0);
+      c.classList.toggle('ssnext', link && d === 1);
       if (d < 0)      { c.style.transform = 'translateX(-130%) rotate(-14deg)'; c.style.opacity = 0; c.style.zIndex = 50 + i; }
       else if (d > 2) { c.style.transform = 'translateY(24px) scale(.88)'; c.style.opacity = 0; c.style.zIndex = 40 - d; }
-      else            { c.style.transform = `translateY(${d * 11}px) scale(${1 - d * .05})`; c.style.opacity = 1; c.style.zIndex = 40 - d;
-                        c.style.background = d ? (d === 1 ? '#1a1a1a' : '#161616') : ''; }
+      else {
+        const y = link ? [0, 40, 50][d] : d * 11, s = link ? [1, .98, .92][d] : 1 - d * .05;
+        c.style.transform = `translateY(${y}px) scale(${s})`; c.style.opacity = 1; c.style.zIndex = 40 - d;
+        c.style.background = d === 0 ? '' : link && d === 1 ? '#1a1a1a' : d === 1 ? '#1a1a1a' : '#161616';
+      }
     });
-    chips.forEach((c, i) => c.classList.toggle('on', i === cur));
-    const strip = chips[cur].parentElement;   // no scrollIntoView: arrastraría la página entera
-    strip.scrollTo({ left: chips[cur].offsetLeft - strip.clientWidth / 2 + 20, behavior: anim ? 'smooth' : 'auto' });
+    curId = f ? f.e.id : 'add';
+    strip.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.go === curId));
+    const on = strip.querySelector('.chip.on');   // no scrollIntoView: arrastraría la página entera
+    if (on) strip.scrollTo({ left: on.offsetLeft - strip.clientWidth / 2 + 20, behavior: anim ? 'smooth' : 'auto' });
   }
   const go = i => { cur = Math.max(0, Math.min(items.length - 1, i)); layout(); };
 
-  // Arrastre: solo la carta de arriba; si el gesto empieza en un −/+ no hay arrastre.
+  // Pasar cartas: solo la de arriba; si el gesto empieza en un −/+ no hay arrastre.
   let x0 = null, dx = 0;
-  root.querySelector('.deck').addEventListener('pointerdown', ev => {
+  deck.addEventListener('pointerdown', ev => {
     if (ev.target.closest('.pm, .opts div')) return;
     const c = cards[cur]; if (!c.contains(ev.target)) return;
     x0 = ev.clientX; dx = 0; c.classList.remove('anim'); c.setPointerCapture(ev.pointerId);
@@ -519,12 +565,11 @@ function repaintBig(root, list) {
   root.addEventListener('pointermove', ev => {
     if (x0 === null) return;
     dx = ev.clientX - x0;
-    if (dx > 0 && cur === 0) dx *= .25;                 // primera carta: resiste
-    if (dx < 0 && cur === items.length - 1) dx *= .25;  // la de añadir: resiste
+    if ((dx > 0 && cur === 0) || (dx < 0 && cur === items.length - 1)) dx *= .25;   // los extremos resisten
     cards[cur].style.transform = `translateX(${dx}px) rotate(${dx / 22}deg)`;
     hintR.style.opacity = Math.min(1, -dx / 90); hintL.style.opacity = Math.min(1, dx / 90);
-    if (dx > 0 && cur > 0) {                              // la anterior vuelve por la izquierda
-      const p = cards[cur - 1]; p.classList.remove('anim'); p.classList.remove('under');
+    if (dx > 0 && cur > 0) {                       // la anterior vuelve por la izquierda
+      const p = cards[cur - 1]; p.classList.remove('anim', 'under');
       p.style.opacity = 1; p.style.transform = `translateX(${-130 + Math.min(100, dx / 2.6)}%) rotate(${-14 + dx / 22}deg)`;
     }
   });
@@ -534,37 +579,79 @@ function repaintBig(root, list) {
     if (dx < -80) go(cur + 1); else if (dx > 80) go(cur - 1); else layout();
   };
   root.addEventListener('pointerup', end); root.addEventListener('pointercancel', end);
-  root.addEventListener('click', ev => { const g = ev.target.closest('[data-go]'); if (g) go(+g.dataset.go); });
-  wireSteppers(root, list, repaintBig(root, list));
-  layout(false);
+  strip.addEventListener('click', ev => {
+    const g = ev.target.closest('[data-go]');
+    if (g && !strip.dataset.dragged) go(items.findIndex(f => (f ? f.e.id : 'add') === g.dataset.go));
+  });
+  sortable(strip, keys => { reorder(units, keys); paint(); toast(root, 'Orden cambiado'); });
+  wireSteppers(root, () => units);
+  paint();
 })();
 
 // ══════ D · carrusel ══════
 (function () {
-  const root = document.getElementById('D'), list = clone(), items = [...list, 'add'];
+  const root = document.getElementById('D'), units = cloneUnits();
   root.innerHTML = shell(`
-    <div class="deckwrap">
-      <div class="car">${items.map((e, i) => bigCard(e, i, list.length)).join('')}</div>
-      <div class="dots">${items.map(() => '<i></i>').join('')}</div>
+    <div class="deckwrap"><div class="car"></div><div class="dots"></div></div>
+    <div class="order">
+      <div class="ohd"><div><div class="t-heading">Ordenar</div><div class="t-label">Arrastra para cambiar el orden</div></div>
+        <span class="t-button done">Listo</span></div>
+      <div class="scroll"><div class="grid" style="margin-top:10px"></div></div>
     </div>`);
-  const car = root.querySelector('.car'), cards = [...car.children], dots = [...root.querySelectorAll('.dots i')];
-  const sync = () => {
+  const car = root.querySelector('.car'), dots = root.querySelector('.dots'),
+        order = root.querySelector('.order'), ogrid = order.querySelector('.grid');
+  let cards = [], dotEls = [], best = 0;
+
+  const center = i => cards[i].offsetLeft - (car.clientWidth - cards[i].offsetWidth) / 2;
+  function paint(keepId) {
+    const fl = flat(units), items = [...fl, null];
+    car.innerHTML = items.map((f, i) => bigCard(f, i, fl.length)).join('');
+    dots.innerHTML = items.map(f => `<i class="${f && f.n > 1 ? 'ss' : ''}"></i>`).join('');
+    cards = [...car.children]; dotEls = [...dots.children];
+    const idx = Math.max(0, items.findIndex(f => f && f.e.id === keepId));
+    car.style.scrollSnapType = 'none'; car.scrollLeft = center(idx); car.style.scrollSnapType = '';
+    sync();
+  }
+  function sync() {
     const mid = car.scrollLeft + car.clientWidth / 2;
-    let best = 0, bd = 1e9;
+    let bd = 1e9;
     cards.forEach((c, i) => { const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = i; } });
-    cards.forEach((c, i) => c.classList.toggle('side', i !== best));
-    dots.forEach((d, i) => d.classList.toggle('on', i === best));
-  };
+    const u = cards[best].dataset.u;
+    // La pareja de superserie no se encoge: se queda pegada a la que miras.
+    cards.forEach((c, i) => c.classList.toggle('side', i !== best && !(u && c.dataset.u === u)));
+    dotEls.forEach((d, i) => d.classList.toggle('on', i === best));
+  }
   car.addEventListener('scroll', sync, { passive: true });
-  // Ratón en escritorio: arrastrar también desliza.
-  let x0 = null, s0 = 0;
-  car.addEventListener('pointerdown', ev => { if (ev.pointerType !== 'mouse' || ev.target.closest('.pm')) return;
-    x0 = ev.clientX; s0 = car.scrollLeft; car.style.scrollSnapType = 'none'; });
-  window.addEventListener('pointermove', ev => { if (x0 !== null) car.scrollLeft = s0 - (ev.clientX - x0); });
-  window.addEventListener('pointerup', () => { if (x0 === null) return; x0 = null; car.style.scrollSnapType = '';
-    const w = cards[0].offsetWidth + 10; car.scrollTo({ left: Math.round(car.scrollLeft / w) * w, behavior: 'smooth' }); });
-  wireSteppers(root, list, repaintBig(root, list));
-  sync();
+
+  // Ratón: arrastrar desliza. Mantener quieto 450 ms abre «Ordenar».
+  let x0 = null, s0 = 0, hold = null;
+  car.addEventListener('pointerdown', ev => {
+    if (ev.target.closest('.pm, .opts div')) return;
+    const card = ev.target.closest('.card[data-id]');
+    if (card) hold = setTimeout(() => { hold = null; x0 = null; car.style.scrollSnapType = ''; openOrder(); }, 450);
+    if (ev.pointerType === 'mouse') { x0 = ev.clientX; s0 = car.scrollLeft; car.style.scrollSnapType = 'none'; }
+    car._p = ev.clientX;
+  });
+  window.addEventListener('pointermove', ev => {
+    if (hold && Math.abs(ev.clientX - car._p) > 8) { clearTimeout(hold); hold = null; }
+    if (x0 !== null) car.scrollLeft = s0 - (ev.clientX - x0);
+  });
+  window.addEventListener('pointerup', () => {
+    clearTimeout(hold); hold = null;
+    if (x0 === null) return;
+    x0 = null; sync(); car.style.scrollSnapType = '';
+    car.scrollTo({ left: center(best), behavior: 'smooth' });
+  });
+
+  const paintOrder = () => { ogrid.innerHTML = gridUnits(units, true); };
+  function openOrder() { paintOrder(); order.classList.add('on'); navigator.vibrate?.(10); }
+  order.querySelector('.done').addEventListener('click', () => {
+    const keep = cards[best]?.dataset.id;
+    order.classList.remove('on'); paint(keep);
+  });
+  sortable(ogrid, keys => { reorder(units, keys); paintOrder(); }, 120);
+  wireSteppers(root, () => units);
+  paint('dom');
 })();
 </script>
 </body>
