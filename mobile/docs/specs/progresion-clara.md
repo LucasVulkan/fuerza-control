@@ -489,7 +489,8 @@ Decisión del usuario: quien elige Por esfuerzo es avanzado y quiere ver el
 1RM estimado y, si lo pide, el peso calculado sin redondear.
 
 - **Motor** (`progression.js`, `chipEffort`): el chip trae además `e1rm` (la
-  media de la última sesión, la que usa el cálculo) y `raw` (el peso antes de
+  media de las series de la última sesión, la que usa el cálculo; en P56 pasa
+  a ser la media de las tres últimas, §6.5) y `raw` (el peso antes de
   redondear). Ambos `null` cuando no hay cálculo (sin RPE, poco fiable,
   descarga).
 - **Exacto**: `exConfig.weightStep: 'exact'`. Solo en Por esfuerzo; en Por
@@ -576,13 +577,55 @@ En el bloque `progBlock` (~654-678):
 - **Por esfuerzo: el 1RM al final de la línea** (decisión del usuario, 2-oct),
   en `muted` y alineado a la derecha: `↑ PESO OBJETIVO 62.5 kg +2.5   1RM 74`.
   Sale de `chip.e1rm`, redondeado a kg entero y en la unidad del usuario; sin
-  `e1rm`, no sale. La ficha (bloque HOY) dice de dónde viene: «1RM estimado de
-  la última sesión: 74 kg». Es la media de las series de la última sesión, no
-  el de Progreso (la mejor serie en 6 semanas): por eso lo dice.
+  `e1rm`, no sale. La ficha (bloque HOY) dice de dónde viene: «1RM estimado,
+  media de tus 3 últimas sesiones: 74 kg» (o «de tu última sesión» si solo hay
+  una, §6.5). No es el de Progreso (la mejor serie en 6 semanas): por eso lo
+  dice.
 - Objetivo del entrenador y descarga: como hoy (azul).
 - **A2 · Banda** (la misma fila sobre `tint.accent10`, o azul en descarga) se
   deja detrás de una constante en el archivo para probarla en el móvil; la
   elección final se apunta aquí.
+
+### 6.5 Por esfuerzo: el 1RM de las tres últimas sesiones (decisión 2-oct)
+
+Hoy el 1RM sale de la última sesión sola (la media de sus series). Un error de
+medio punto al apuntar el RPE ya es un 1,5–2 % del 1RM, más que un escalón de
+2,5 en 100 kg: el peso bailaba semana a semana sin que cambiara nada, y un día
+malo o una descarga (series fáciles, la estimación menos fiable) arrastraban
+la sesión siguiente. Con la media de tres, el ruido baja casi a la mitad y el
+retraso es de una sesión como mucho; «al superarlo» ya empuja hacia arriba.
+
+- **De dónde salen.** `exerciseLinks.js`: `recentLinkedExercises(workoutLog,
+  templateIds, exerciseId, n)` → `[{ timestamp, exercise }]`, las `n` últimas
+  con series, más recientes primero; `lastLinkedExercise` pasa a ser
+  `recentLinkedExercises(…, 1)[0]?.exercise` (mismo resultado, tiene tests).
+  Y `recentExerciseRefs(args, n)`, con los mismos argumentos y el mismo alcance
+  que `lastExerciseRef` (vinculación o cadena de plantillas), que pasa a ser
+  `recentExerciseRefs(args, 1)[0]?.exercise`. **Se adelanta de P57 (§7.2)**,
+  que lo reutiliza.
+- **Motor.** `getProgression(exConfig, def, lastSets, t, earlier = [])`:
+  `earlier` son las series de las sesiones anteriores a la última (arrays de
+  sets, de más reciente a más antigua). Solo lo lee `chipEffort`: el 1RM de
+  cada sesión es la media de sus series (como hoy); se descartan las que no dan
+  1RM (sin RPE) y las de descarga; `e1rm` = media simple de las tres primeras
+  válidas, empezando por la última. Si la última no da 1RM, el chip sigue
+  siendo `why_effortNoRpe` (lo de hoy): la media no sustituye a apuntar el RPE.
+  El peso de partida (`maxW`, para la flecha y el delta) sigue siendo el de la
+  última sesión. El chip trae `e1rmSessions` (1–3) para el texto de la ficha.
+- **Descargas.** `saveSession` escribe `deload: true` en el ejercicio del log
+  cuando su `exConfig.progression.hold === 'deload'`. `earlier` llega ya sin
+  ellas (el que llama las filtra) y la última, si es de descarga, cuenta como
+  sin 1RM para la media pero sigue siendo `lastSets`.
+- **Quién lo pasa.** `WorkoutScreen` calcula para cada tarjeta las tres
+  últimas con `recentExerciseRefs` (la primera es la `lastExercise` de hoy) y
+  la tarjeta llama a `getProgression` con las otras dos; `saveSession` (§6.1)
+  hace lo mismo para que el plan guardado sea el que se ve. `sessionText` sigue
+  con la última sola (texto para compartir).
+- **Tests.** `progression.test.js`: con tres sesiones de 1RM 72, 74 y 76 el
+  `e1rm` es 74; una sin RPE no cuenta; con una sola, la de hoy; última sin RPE
+  → `why_effortNoRpe`. `exerciseLinks.test.js`: `recentLinkedExercises` y que
+  `lastLinkedExercise`/`lastExerciseRef` no cambian. `useStore.test.js`: el
+  log de una etapa de descarga lleva `deload: true`.
 
 ### 6.4 Pastillas reutilizables
 
@@ -597,6 +640,10 @@ tarjeta plegada, la ficha (§6.3) y P57.
   escribir nada guarda 62.5 × 12 (verlo en Historial).
 - [ ] Tras 12/10/9: el gris repite 60 × 12 · 10 · 9.
 - [ ] El calentamiento de ese día rampa hacia 62.5, no hacia 60.
+- [ ] Peso muerto Por esfuerzo con tres sesiones (1RM distintos): la línea
+  enseña la media y la ficha dice «media de tus 3 últimas sesiones». Hacer una
+  cuarta sin apuntar RPE → «apunta el RPE», no un peso.
+- [ ] Una sesión de etapa de descarga no entra en esa media.
 - [ ] Ya no hay frase gris bajo la recomendación; al tocar la línea sale la
   ficha con la regla, la última vez y el motivo.
 - [ ] Ejercicio sin historial: «Busca tu peso · 8–12 reps»; dominadas sin
@@ -618,12 +665,9 @@ idioma): «Última sesión» con `SegmentedControl` Botón · Línea · Serie.
 
 ### 7.2 De dónde salen las sesiones
 
-`exerciseLinks.js`: `recentLinkedExercises(workoutLog, templateIds, exerciseId,
-n)` → `[{ timestamp, exercise }]`, las `n` últimas con series, más recientes
-primero. `lastLinkedExercise` pasa a ser `recentLinkedExercises(…, 1)[0]?.exercise`
-(mismo resultado; tiene tests). `WorkoutScreen` pasa a cada tarjeta las tres
-últimas con el mismo alcance que `lastExerciseRef` (vinculación o cadena de
-plantillas) y su fecha.
+`recentLinkedExercises` y `recentExerciseRefs` ya existen (P56, §6.5).
+`WorkoutScreen` ya calcula las tres últimas de cada tarjeta para Por esfuerzo:
+P57 las pasa también, con su fecha, a la vista de la última vez.
 
 ### 7.3 Las tres vistas
 
