@@ -586,6 +586,11 @@ del entrenador y antes de la última sesión: el peso del plan
 (`chip.suggestedWeight`). Si no, el calentamiento rampa hacia el peso de la
 semana pasada.
 
+Revisión contra el código (2-oct): en `ExerciseCard` el calentamiento se
+calcula (~157) **antes** que el chip (~374): hay que subir el cálculo del chip.
+En asistidos (`chip.assist`) el número del plan es la ayuda, no un peso: ahí
+no entra en la cascada.
+
 ### 6.3 La línea de recomendación (variante A)
 
 En el bloque `progBlock` (~654-678):
@@ -600,11 +605,22 @@ En el bloque `progBlock` (~654-678):
   (`targetLabel`) dice también la meta de hoy: «3 × 9 reps», no el inicio. En
   las listas sin historial a mano (Inicio, editor de sesión) se pinta el
   inicio con un «+»: «3 × 8+ reps».
+  Cómo (revisión 2-oct): `prescription.targetLabel(def, ex, t, { compact,
+  today })`. Con progresión Reps o Tiempo y sin `today`, el inicio con «+»
+  («3 × 8+ reps», «3 × 30+ s»): hoy pinta «30–30 s» desde que P55 guarda un
+  solo inicio. La tarjeta pasa `today = { reps: chip.suggestedReps }` o
+  `{ time: chip.suggestedTime }` cuando el chip trae número. El resto de tipos
+  no cambia.
 - **Primera vez** (sin historial, progresión ≠ `none`, sin objetivo del
   entrenador): una fila nueva con la misma anatomía, en `text`:
   «◇ BUSCA TU PESO · 8–12 reps» (con carga), «◇ HAZ LAS QUE PUEDAS · 6–12»
   (sin carga), «◇ AGUANTA LO QUE PUEDAS · 30–60 s» (tiempo), «◇ BUSCA TU PESO ·
   5 @ RPE 8» (por esfuerzo). La ficha dice qué buscar.
+  «Sin carga» = `isBodyweight(def)`, sea cual sea Qué sube (unas dominadas en
+  Peso empiezan sin lastre: «haz las que puedas»). Lo de la derecha es la
+  prescripción sin las series, como en la cabecera (rango, «8+», «30–60 s»,
+  «5 @ RPE 8»). La progresión se lee con `resolveProgressionConfig` (sin
+  historial no hay chip).
 - Fija (`type: 'none'`): sin línea, como hoy.
 - **Por esfuerzo: el 1RM al final de la línea** (decisión del usuario, 2-oct),
   en `muted` y alineado a la derecha: `↑ PESO OBJETIVO 62.5 kg +2.5   1RM 74`.
@@ -635,20 +651,24 @@ retraso es de una sesión como mucho; «al superarlo» ya empuja hacia arriba.
   que `lastExerciseRef` (vinculación o cadena de plantillas), que pasa a ser
   `recentExerciseRefs(args, 1)[0]?.exercise`. **Se adelanta de P57 (§7.2)**,
   que lo reutiliza.
-- **Motor.** `getProgression(exConfig, def, lastSets, t, { earlier = [] } = {})`
-  (un objeto de opciones: P61 le añade `bodyWeight`):
-  `earlier` son las series de las sesiones anteriores a la última (arrays de
-  sets, de más reciente a más antigua). Solo lo lee `chipEffort`: el 1RM de
-  cada sesión es la media de sus series (como hoy); se descartan las que no dan
-  1RM (sin RPE) y las de descarga; `e1rm` = media simple de las tres primeras
-  válidas, empezando por la última. Si la última no da 1RM, el chip sigue
-  siendo `why_effortNoRpe` (lo de hoy): la media no sustituye a apuntar el RPE.
+- **Motor.** `getProgression(exConfig, def, lastSets, t, { earlier = [],
+  lastDeload = false } = {})` (un objeto de opciones: P61 le añade
+  `bodyWeight`): `earlier` son las series de las sesiones anteriores a la
+  última, ya sin las de descarga (arrays de sets, de más reciente a más
+  antigua), y `lastDeload` dice si la última fue de descarga (el log la marca,
+  ver abajo; `lastSets` no lo lleva). Solo lo lee `chipEffort`: el 1RM de cada
+  sesión es la media de sus series (como hoy); se descartan las que no dan 1RM
+  (sin RPE) y la última si es de descarga; `e1rm` = media simple de las tres
+  primeras válidas, empezando por la última. Si la última **no es de
+  descarga** y no da 1RM, el chip sigue siendo `why_effortNoRpe` (lo de hoy):
+  la media no sustituye a apuntar el RPE. Si es de descarga, el 1RM sale de las
+  anteriores; sin ninguna válida, `why_effortNoRpe`.
   El peso de partida (`maxW`, para la flecha y el delta) sigue siendo el de la
   última sesión. El chip trae `e1rmSessions` (1–3) para el texto de la ficha.
 - **Descargas.** `saveSession` escribe `deload: true` en el ejercicio del log
-  cuando su `exConfig.progression.hold === 'deload'`. `earlier` llega ya sin
-  ellas (el que llama las filtra) y la última, si es de descarga, cuenta como
-  sin 1RM para la media pero sigue siendo `lastSets`.
+  cuando su `exConfig.progression.hold === 'deload'`. El que llama filtra
+  `earlier` y pasa `lastDeload` (la última sigue siendo `lastSets`: el peso de
+  partida, la flecha y el delta salen de ella).
 - **Quién lo pasa.** `WorkoutScreen` calcula para cada tarjeta las tres
   últimas con `recentExerciseRefs` (la primera es la `lastExercise` de hoy) y
   la tarjeta llama a `getProgression` con las otras dos; `saveSession` (§6.1)
@@ -656,7 +676,8 @@ retraso es de una sesión como mucho; «al superarlo» ya empuja hacia arriba.
   con la última sola (texto para compartir).
 - **Tests.** `progression.test.js`: con tres sesiones de 1RM 72, 74 y 76 el
   `e1rm` es 74; una sin RPE no cuenta; con una sola, la de hoy; última sin RPE
-  → `why_effortNoRpe`. `exerciseLinks.test.js`: `recentLinkedExercises` y que
+  → `why_effortNoRpe`; última de descarga (`lastDeload`) con RPE → el 1RM sale
+  de las anteriores, sin `why_effortNoRpe`. `exerciseLinks.test.js`: `recentLinkedExercises` y que
   `lastLinkedExercise`/`lastExerciseRef` no cambian. `useStore.test.js`: el
   log de una etapa de descarga lleva `deload: true`.
 
