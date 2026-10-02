@@ -162,6 +162,11 @@ export default function MyProgramScreen() {
   const navigate           = useStore((s) => s.navigate);
   const clients            = useStore((s) => s.clients);
   const clientSync         = useStore((s) => s.clientSync);
+  const cloneProgramFromTemplate = useStore((s) => s.cloneProgramFromTemplate);
+  const showToast          = useStore((s) => s.showToast);
+  // La misma regla que enseña la pestaña Plantillas (`showProTabs`): sin ella,
+  // la plantilla iría a parar a donde no se ve.
+  const hasTemplates       = useStore((s) => (s.profile?.isPro ?? false) || !(s.profile?.proTabsHidden ?? false));
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
@@ -329,8 +334,19 @@ export default function MyProgramScreen() {
       {menuOpen && (
         <DragSheet visible onClose={() => setMenuOpen(false)} title={t('home.moreOptions')}>
           <View style={styles.sheetGroup}>
+            {hasTemplates && (
+              <SheetRow
+                isFirst
+                icon={ROW_ICON.preset}
+                label={t('clients.menuSaveTemplate')}
+                onPress={() => {
+                  cloneProgramFromTemplate(activeProgram.id, { kind: 'template', name: activeProgram.name });
+                  showToast(t('clients.toastSavedTemplate'));
+                }}
+              />
+            )}
             <SheetRow
-              isFirst
+              isFirst={!hasTemplates}
               isLast
               icon={ROW_ICON.archived}
               label={t('home.archive')}

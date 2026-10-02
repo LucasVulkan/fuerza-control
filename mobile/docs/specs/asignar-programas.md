@@ -225,8 +225,11 @@ ya trae su historial si se quiere.
 - Menú de `ArchivedProgramRow` (Programas anteriores), junto a Reactivar. Como
   las demás opciones de esa fila, cierra también la hoja de Programas
   anteriores: el toast se pinta debajo de las hojas abiertas.
-- Los programas propios del entrenador (`owner: 'me'`) no tienen menú ···; se
-  quedan fuera hasta que lo tengan.
+- Tu propio programa activo: el ··· de la pestaña Programa (`MyProgramScreen`),
+  encima de Archivar. Solo si se ve la pestaña Plantillas (`showProTabs`); si no,
+  la plantilla iría a donde no se ve. (QA 2-oct-2026: la spec decía que no tenía
+  menú, y sí lo tenía.) Tus programas archivados (menú ≡ → Archivados) no tienen
+  menú propio: fuera.
 
 ### 5.2 «Guardar como plantilla»
 
@@ -248,6 +251,8 @@ es reversible borrando la plantilla.
   editarla no cambia el programa del cliente, y al revés.
 - [ ] Programas anteriores → ··· de uno → «Guardar como plantilla» → se cierra la
   hoja, sale el toast y la plantilla está en Plantillas.
+- [ ] Pestaña Programa (tu programa) → ··· → «Guardar como plantilla» encima de
+  Archivar → toast y la plantilla está en Plantillas; tu programa sigue activo.
 - [ ] Asignar esa plantilla a otro cliente → empieza en la etapa 1 sin progreso,
   aunque el original fuera más avanzado.
 
