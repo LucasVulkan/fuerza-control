@@ -461,7 +461,7 @@ pasos se numeran según los que salgan. Reglas de qué se ofrece:
 | **Qué sube** | siempre | Medida Reps: Peso (no si `isBodyweight(def)`; «Asistencia ↓» si `def.progressionDirection === 'decrease'`), Reps, Nada. Medida Tiempo: Tiempo, Nada |
 | **Cómo** | Peso, medida Reps, carga externa, no asistido | Por reglas · Por esfuerzo. Por esfuerzo **apagado** con rango, con la pista en naranja «Por esfuerzo necesita reps fijas: cámbialo en Volumen» |
 | **RPE objetivo** | Por esfuerzo | `StepField` 6–10 + «N en recámara» |
-| **Escalón de peso** | Por esfuerzo | `StepField` paso 0,25, mín. 0,25 |
+| **Escalón de peso** | Por esfuerzo | `StepField` paso 0,25, mín. 0,25, y la opción **Exacto** (§5.4-bis) |
 | **Cuándo sube** (esfuerzo) | Por esfuerzo | Al superarlo · Al llegar, con su pista |
 | **Cuándo sube** | Por reglas, Reps, Tiempo | Todas · Parcial · RPE máx. Parcial: `StepField` «Tienen que llegar» con valor «N de M», de 1 a M−1. RPE máx.: `StepField` 6–10 |
 | **Cuánto sube** | Por reglas, Reps, Tiempo | Peso: Fijo · Porcentaje + valor; con Porcentaje, además **Escalón** («Redondea al escalón»). Reps: entero 1–10. Tiempo: entero en pasos de 5 s |
@@ -482,6 +482,26 @@ Si la progresión necesita RPE (Por esfuerzo, o Cuándo sube = RPE máx.), el
 `ToggleRow` de Registrar RPE se muestra encendido, **bloqueado** y con la pista
 «Lo pide la progresión», y se guarda `trackRpe: true`. Hoy eso solo lo hacía Por
 esfuerzo; la opción RPE máx. ya no depende de haberlo encendido antes.
+
+### 5.4-bis Por esfuerzo: el 1RM y el peso exacto (QA P54, 2-oct)
+
+Decisión del usuario: quien elige Por esfuerzo es avanzado y quiere ver el
+1RM estimado y, si lo pide, el peso calculado sin redondear.
+
+- **Motor** (`progression.js`, `chipEffort`): el chip trae además `e1rm` (la
+  media de la última sesión, la que usa el cálculo) y `raw` (el peso antes de
+  redondear). Ambos `null` cuando no hay cálculo (sin RPE, poco fiable,
+  descarga).
+- **Exacto**: `exConfig.weightStep: 'exact'`. Solo en Por esfuerzo; en Por
+  reglas se lee como ausente. `resolveStep` lo deja pasar tal cual y
+  `chipEffort` redondea `raw` a 0,1 kg en vez de al escalón. Con Exacto no sale
+  el paso «Cuándo sube» de Por esfuerzo (el peso se mueve con cualquier
+  cambio y «Al llegar» no se daría nunca): se guarda `effortWhen: 'beat'`.
+- **Hoja**: el paso Escalón es un segmentado **Escalón · Exacto**; con Escalón,
+  el `StepField` de siempre debajo. Pista de Exacto: «Propone el peso
+  calculado tal cual: tú decides qué cargas».
+- Tests: `e1rm` y `raw` en el chip; Exacto da 61.7 donde el escalón 2,5 da
+  62.5; `'exact'` en un ejercicio Por reglas se ignora.
 
 ### 5.5 Qué se guarda
 
@@ -507,6 +527,9 @@ lo tocaron). Desaparecen del estado del editor `progMode`, `evalPct` e
 - [ ] Plancha (Tiempo): solo Tiempo y Nada; el salto en segundos enteros.
 - [ ] Por esfuerzo: cambiar el escalón a 1,25 y comprobar en el Workout que el
   peso propuesto es múltiplo de 1,25.
+- [ ] Peso muerto Por esfuerzo, Escalón → **Exacto**: «Cuándo sube» desaparece,
+  y tras 3 × 4 @7 con 60 kg el Workout propone 61.7 kg (con escalón 2,5,
+  62.5).
 - [ ] Guardar, salir y volver a entrar: la hoja recupera todo lo elegido.
 
 ## 6. P56 — Workout: el plan en el gris y la línea de recomendación
@@ -550,6 +573,12 @@ En el bloque `progBlock` (~654-678):
   (sin carga), «◇ AGUANTA LO QUE PUEDAS · 30–60 s» (tiempo), «◇ BUSCA TU PESO ·
   5 @ RPE 8» (por esfuerzo). La ficha dice qué buscar.
 - Fija (`type: 'none'`): sin línea, como hoy.
+- **Por esfuerzo: el 1RM al final de la línea** (decisión del usuario, 2-oct),
+  en `muted` y alineado a la derecha: `↑ PESO OBJETIVO 62.5 kg +2.5   1RM 74`.
+  Sale de `chip.e1rm`, redondeado a kg entero y en la unidad del usuario; sin
+  `e1rm`, no sale. La ficha (bloque HOY) dice de dónde viene: «1RM estimado de
+  la última sesión: 74 kg». Es la media de las series de la última sesión, no
+  el de Progreso (la mejor serie en 6 semanas): por eso lo dice.
 - Objetivo del entrenador y descarga: como hoy (azul).
 - **A2 · Banda** (la misma fila sobre `tint.accent10`, o azul en descarga) se
   deja detrás de una constante en el archivo para probarla en el móvil; la
@@ -574,6 +603,8 @@ tarjeta plegada, la ficha (§6.3) y P57.
   historial: «Haz las que puedas».
 - [ ] Dominadas en Reps tras 9/8/8: «Subir a 9 reps +1» y el gris pide 9.
 - [ ] Objetivo del entrenador: la línea azul y el gris azul, como antes.
+- [ ] Peso muerto Por esfuerzo tras 3 × 4 @7 con 60 kg: la línea acaba en
+  «1RM 74» y la ficha dice que es de la última sesión. Sin RPE apuntado, sin 1RM.
 - [ ] Banda A2 activada a mano: valorar y apuntar aquí la elección.
 
 ## 7. P57 — La última vez: botón, línea o debajo de cada serie
