@@ -36,6 +36,7 @@ const TIMING = { duration: 200, easing: Easing.inOut(Easing.ease) };
 const GROW   = { duration: 220, easing: Easing.out(Easing.cubic) };
 const SHRINK = { duration: 160, easing: Easing.in(Easing.cubic) };
 
+// Una opción puede llevar `disabled`: sigue a la vista, apagada, y no se elige.
 export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
   const th     = useTheme();
@@ -112,18 +113,19 @@ export default function SegmentedControl({ options, value, onChange }) {
         />
         {options.slice(1).map(({ id }) => <View key={id} style={styles.slot} />)}
       </View>
-      {options.map(({ id, label }) => {
+      {options.map(({ id, label, disabled }) => {
         const active = value === id;
         return (
           <TouchableOpacity
             key={id}
             style={styles.option}
-            onPress={() => onChange(id)}
+            onPress={disabled ? undefined : () => onChange(id)}
+            disabled={disabled}
             activeOpacity={0.75}
           >
             {/* Un label largo (p. ej. "Pendiente · 12" en Facturación) partiría
                 el pill en dos líneas y desalinearía el highlight animado. */}
-            <Text style={[styles.optionText, active && styles.optionTextActive]} numberOfLines={1}>
+            <Text style={[styles.optionText, active && styles.optionTextActive, disabled && styles.optionTextOff]} numberOfLines={1}>
               {label}
             </Text>
           </TouchableOpacity>
@@ -168,5 +170,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
   optionTextActive: {
     color: th.colors.onAccent,
+  },
+  // `disabled` en una opción: se ve pero no se elige (la hoja de Progresión).
+  optionTextOff: {
+    color: th.colors.muted,
   },
 });

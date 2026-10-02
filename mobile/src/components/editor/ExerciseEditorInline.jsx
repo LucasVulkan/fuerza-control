@@ -10,8 +10,10 @@
  * Tres piezas de la app no existen en el mock y se resolvieron con el patrón
  * "fila + hoja" que Figma sí usa para Progresión y Tempo (decisión del usuario):
  *   · Calentamiento — sección propia con una fila que abre su DragSheet.
- *   · Modo de progresión (Auto/Fija/Submáx) — pasa a ser el paso 1 de la hoja
- *     de progresión, así la pantalla queda con una sola fila como en Figma.
+ *   · Progresión — una sola fila (título + la frase de la regla) que abre la
+ *     hoja con sus pasos: qué sube, cómo, cuándo sube, cuánto y cuándo baja
+ *     (progresion-clara.md §5; la lógica de qué se ofrece vive en
+ *     `utils/progressionForm.js`).
  *   · Tempo — la fila muestra el valor y abre una hoja con el input.
  * Los botones Sustituir / Eliminar del final tampoco están en Figma: son
  * funcionalidad pedida aparte, con el lenguaje de los botones que descubre el
@@ -22,12 +24,16 @@
  */
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { Text, TextInput } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
-import { resolveProgressionConfig, LEGACY_TYPE_MAP, DEFAULT_TARGET, defaultIncrement } from '../../utils/progression';
+import { DEFAULT_TARGET, progressionRule, canAddWeight } from '../../utils/progression';
+import {
+  initProgForm, patchProgForm, buildProgression, upOptions, showHow, effortBlocked, isEffort as isEffortForm,
+  needsRpe, minFails, libraryStep,
+} from '../../utils/progressionForm';
 import { MAX_RELIABLE_REPS } from '../../utils/oneRm';
-import { isBodyweight } from '../../utils/trainingLoad';
 import { exerciseLinkGroups, exerciseInstanceCount } from '../../utils/exerciseLinks';
 import { warmupSteps } from '../../utils/warmup';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
@@ -39,37 +45,10 @@ import VariantPicker from '../ui/VariantPicker';
 import AnimatedHeight from '../ui/AnimatedHeight';
 import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
 import { decompose, compose, canBeUnilateral } from '../../utils/exerciseIdentity';
-import StepField, { STEP_BTN } from '../ui/StepField';
+import StepField from '../ui/StepField';
 import { OptionRow, ToggleRow, NavRow, NoteRow, CHEVRON_GREY } from '../ui/EditorRows';
 import { GRID } from '../workout/grid';
 import DragSheet from '../DragSheet';
-
-// ─── IncrementInput ───────────────────────────────────────────────────────────
-
-function IncrementInput({ value, onChange, unit }) {
-  const styles = useThemedStyles(makeStyles);
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => { setDraft(String(value)); }, [value]);
-
-  return (
-    <View style={styles.incrInputRow}>
-      <TextInput
-        style={styles.incrInput}
-        value={draft}
-        onChangeText={(v) => { if (/^\d*\.?\d*$/.test(v)) setDraft(v); }}
-        onBlur={() => {
-          const n = parseFloat(draft);
-          const clamped = isNaN(n) || n < 0 ? 0 : n;
-          setDraft(String(clamped));
-          onChange(clamped);
-        }}
-        keyboardType="decimal-pad"
-        selectTextOnFocus
-      />
-      <Text style={styles.incrUnit}>{unit}</Text>
-    </View>
-  );
-}
 
 // ─── WarmupStepRow ────────────────────────────────────────────────────────────
 
@@ -131,50 +110,42 @@ function WarmupStepRow({ index, step, onChange, onRemove }) {
 // Editor state derived from an exConfig — used at mount and to re-sync after
 // joining a link group (which may adopt the group's config).
 function computeInitial(exConfig, def) {
-  const initProg = resolveProgressionConfig(exConfig, def);
-
   const initInputType = exConfig.inputType ?? (
     (exConfig.progressionModel ?? def?.progressionModel) === 'time_progression' ? 'time' : 'weight_reps'
   );
   const initMetric = initInputType === 'time' || initInputType === 'weight_time' ? 'time' : 'reps';
 
-  // Progression mode: 'auto' (engine suggests), 'fixed' (target, no
-  // suggestions) or 'effort' (reps @ RPE, weight from e1RM —
-  // effort-progression.md). Lo guardado como 'submax' se lee como Fija.
-  const initMode = initProg.type === 'none' ? 'fixed' : initProg.type === 'effort' ? 'effort' : 'auto';
-  const initType = initProg.type === 'none' || initProg.type === 'effort' ? 'double' : initProg.type;
+  const sets    = exConfig.sets    ?? 3;
+  const minReps = exConfig.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps;
+  const maxReps = exConfig.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps;
+  const minTime = exConfig.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;
+  const maxTime = exConfig.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime;
+  // «Rango» o «Reps fijas» se deduce de lo guardado (§5.1); con Reps y Tiempo
+  // no hay rango, solo un inicio (§4.4).
+  const range = minReps !== maxReps;
+  const ctx = { def, sets, metric: initMetric, range };
+  const prog = initProgForm(exConfig, def, ctx);
+  const startReps = prog.up === 'reps' && initMetric === 'reps';
+  const startTime = prog.up === 'time' && initMetric === 'time';
 
   const w = exConfig.warmup ?? null;
 
   return {
-    sets:           exConfig.sets         ?? 3,
+    sets,
     restSec:        exConfig.restSec      ?? 90,
-    minReps:        exConfig.minReps      ?? def?.minReps ?? DEFAULT_TARGET.minReps,
-    maxReps:        exConfig.maxReps      ?? def?.maxReps ?? DEFAULT_TARGET.maxReps,
-    minTime:        exConfig.minTime      ?? def?.minTime ?? DEFAULT_TARGET.minTime,
-    maxTime:        exConfig.maxTime      ?? def?.maxTime ?? DEFAULT_TARGET.maxTime,
+    minReps,
+    maxReps:        startReps ? minReps : maxReps,
+    minTime,
+    maxTime:        startTime ? minTime : maxTime,
+    repsMode:       range && !startReps ? 'range' : 'fixed',
     metric:         initMetric,
     isKey:          exConfig.isKey        ?? false,
     variant:        exConfig.variant      ?? null,
     tempo:          exConfig.tempo        ?? '',
     trainerNote:    exConfig.trainerNote  ?? '',
-    trackRpe:       exConfig.trackRpe     ?? false,
-    evalMaxRpe:     initProg.evaluation.maxRpe ?? 8,
-    targetRpe:      initProg.targetRpe,
-    progMode:       initMode,
-    progType:       initType,
-    // Puente hasta P55: el editor aún no conoce 'part' (progresion-clara.md
-    // §4.1) y lo lee como 'pct'. `floor`, no `round`: el editor guarda
-    // `evalPct / 100` como pctThreshold y el motor lo vuelve a leer con el
-    // techo; con `round`, 2 de 3 (67 %) se re-guardaba como 3 de 3.
-    evalMode:       initProg.evaluation.mode === 'part' ? 'pct' : initProg.evaluation.mode,
-    evalPct:        initProg.evaluation.mode === 'part'
-      ? Math.floor(initProg.evaluation.need / (exConfig.sets ?? 3) * 100 + 1e-9)
-      : 80,
-    incrType:       initProg.increment.type === 'stepped' ? 'fixed' : initProg.increment.type,
-    incrFixedValue: initProg.increment.value        ?? 2.5,
-    incrPctValue:   initProg.increment.pct          ?? 5,
-    incrMin:        initProg.increment.minIncrement ?? 0,
+    // Lo que pide la progresión se enciende solo (§5.4).
+    trackRpe:       (exConfig.trackRpe ?? false) || needsRpe(prog, ctx),
+    prog,
     dropset:        exConfig.dropset ?? false,
     supersetWithNext: exConfig.supersetWithNext ?? false,
     warmupMode:        w ? w.mode : 'none',
@@ -217,17 +188,9 @@ export default function ExerciseEditorInline({
   const [variant,        setVariant]        = useState(i.variant);
   const [tempo,          setTempo]          = useState(i.tempo);
   const [trainerNote,    setTrainerNote]    = useState(i.trainerNote);
+  const [repsMode,       setRepsMode]       = useState(i.repsMode);
   const [trackRpe,       setTrackRpe]       = useState(i.trackRpe);
-  const [evalMaxRpe,     setEvalMaxRpe]     = useState(i.evalMaxRpe);
-  const [targetRpe,      setTargetRpe]      = useState(i.targetRpe);
-  const [progMode,       setProgMode]       = useState(i.progMode);
-  const [progType,       setProgType]       = useState(i.progType);
-  const [evalMode,       setEvalMode]       = useState(i.evalMode);
-  const [evalPct,        setEvalPct]        = useState(i.evalPct);
-  const [incrType,       setIncrType]       = useState(i.incrType);
-  const [incrFixedValue, setIncrFixedValue] = useState(i.incrFixedValue);
-  const [incrPctValue,   setIncrPctValue]   = useState(i.incrPctValue);
-  const [incrMin,        setIncrMin]        = useState(i.incrMin);
+  const [prog,           setProg]           = useState(i.prog);
   const [dropset,        setDropset]        = useState(i.dropset);
   const [supersetWithNext, setSupersetWithNext] = useState(i.supersetWithNext);
   const [warmupMode,        setWarmupMode]        = useState(i.warmupMode);
@@ -246,9 +209,8 @@ export default function ExerciseEditorInline({
   useEffect(() => { updateRef.current = updateExerciseParams; }, [updateExerciseParams]);
 
   stateRef.current = {
-    sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, variant, tempo, trainerNote,
-    trackRpe, evalMaxRpe, targetRpe,
-    progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin,
+    sets, restSec, minReps, maxReps, minTime, maxTime, metric, repsMode, isKey, variant, tempo, trainerNote,
+    trackRpe, prog,
     dropset, supersetWithNext,
     warmupMode, warmupSets, warmupCustomSteps, warmupRestSec,
   };
@@ -256,7 +218,8 @@ export default function ExerciseEditorInline({
   const commitValues = useCallback((s) => {
     const isTimeMode = s.metric === 'time';
     const inputType  = s.metric === 'time' ? 'weight_time' : 'weight_reps';
-    const effType    = s.progMode === 'auto' ? s.progType : s.progMode === 'effort' ? 'effort' : 'none';
+    const pctx = { def, sets: s.sets, metric: s.metric, range: s.repsMode === 'range' };
+    const { progression, weightStep, progressionModel } = buildProgression(s.prog, pctx);
     const warmup = s.warmupMode === 'auto'
       ? { mode: 'auto', sets: s.warmupSets, restSec: s.warmupRestSec }
       : s.warmupMode === 'custom'
@@ -271,47 +234,25 @@ export default function ExerciseEditorInline({
       variant:      def?.derived?.variant ?? cleanVariant(s.variant, def) ?? null,
       tempo:        s.tempo.trim() || null,
       trainerNote:  s.trainerNote.trim() || null,
-      // Por esfuerzo no funciona sin RPE: se guarda encendido (§4.3).
-      trackRpe:     s.progMode === 'effort' ? true : s.trackRpe,
+      // Lo que pide la progresión (Por esfuerzo, RPE máx.) se guarda encendido (§5.4).
+      trackRpe:     s.trackRpe || needsRpe(s.prog, pctx),
       dropset:      s.dropset || null,
       supersetWithNext: s.supersetWithNext || null,
       warmup,
-      // 'fixed' keeps double_progression so the target range still renders in
-      // the workout; progression.type 'none' is what makes it fixed.
-      progressionModel: s.progMode === 'auto'
-        ? (LEGACY_TYPE_MAP[s.progType] ?? 'double_progression')
-        : 'double_progression',
-      progression: {
-        // Sin `direction`: es del ejercicio (asistido = baja) y la resuelve
-        // `resolveProgressionConfig` desde el def (P52).
-        type:      effType,
-        ...(s.progMode === 'effort' ? { targetRpe: s.targetRpe } : {}),
-        evaluation: {
-          // RPE mode only makes sense when RPE is being recorded
-          mode:         s.evalMode === 'rpe' && !s.trackRpe ? 'all_complete' : s.evalMode,
-          pctThreshold: s.evalPct / 100,
-          maxRpe:       s.evalMaxRpe,
-          minRir:       2,
-        },
-        increment: {
-          type:         s.incrType,
-          value:        s.incrFixedValue,
-          pct:          s.incrPctValue,
-          steps:        [],
-          minIncrement: s.incrMin > 0 ? s.incrMin : null,
-        },
-        seed: { weight: null, reps: null, time: null },
-      },
+      progressionModel,
+      progression,
+      // Solo si difiere del escalón de la librería (§5.5); null lo deja a ella.
+      weightStep,
     };
 
+    // Reps y Tiempo piden un solo valor de inicio, y Por esfuerzo reps fijas
+    // (§5.1): min = max.
+    const oneReps = s.repsMode === 'fixed' || progression.type === 'reps' || progression.type === 'effort';
     if (isTimeMode) {
-      updates.minTime = s.minTime; updates.maxTime = s.maxTime;
+      updates.minTime = s.minTime; updates.maxTime = progression.type === 'time' ? s.minTime : s.maxTime;
       updates.minReps = null;      updates.maxReps = null;
-    } else if (s.progMode === 'effort') {
-      // Reps objetivo, no rango: se guarda min = max (§1.2.4).
-      updates.minReps = s.minReps; updates.maxReps = s.minReps;
     } else {
-      updates.minReps = s.minReps; updates.maxReps = s.maxReps;
+      updates.minReps = s.minReps; updates.maxReps = oneReps ? s.minReps : s.maxReps;
     }
 
     updateRef.current(templateId, exConfig.exerciseId, updates);
@@ -325,9 +266,8 @@ export default function ExerciseEditorInline({
     timerRef.current = setTimeout(() => { commitValues(stateRef.current); }, 400);
     return () => clearTimeout(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, isKey, variant, tempo, trainerNote,
-      trackRpe, evalMaxRpe, targetRpe,
-      progMode, progType, evalMode, evalPct, incrType, incrFixedValue, incrPctValue, incrMin, dropset,
+  }, [sets, restSec, minReps, maxReps, minTime, maxTime, metric, repsMode, isKey, variant, tempo, trainerNote,
+      trackRpe, prog, dropset,
       supersetWithNext, warmupMode, warmupSets, warmupCustomSteps, warmupRestSec]);
 
   useEffect(() => {
@@ -348,16 +288,11 @@ export default function ExerciseEditorInline({
     setSets(v.sets);           setRestSec(v.restSec);
     setMinReps(v.minReps);     setMaxReps(v.maxReps);
     setMinTime(v.minTime);     setMaxTime(v.maxTime);
-    setMetric(v.metric);       setTempo(v.tempo);
+    setMetric(v.metric);       setRepsMode(v.repsMode);   setTempo(v.tempo);
     setVariant(v.variant);
     setIsKey(v.isKey);
     setTrainerNote(v.trainerNote);
-    setTrackRpe(v.trackRpe);   setEvalMaxRpe(v.evalMaxRpe);
-    setTargetRpe(v.targetRpe);
-    setProgMode(v.progMode);   setProgType(v.progType);
-    setEvalMode(v.evalMode);   setEvalPct(v.evalPct);
-    setIncrType(v.incrType);   setIncrFixedValue(v.incrFixedValue);
-    setIncrPctValue(v.incrPctValue); setIncrMin(v.incrMin);
+    setTrackRpe(v.trackRpe);   setProg(v.prog);
     setDropset(v.dropset);
     setSupersetWithNext(v.supersetWithNext);
     setWarmupMode(v.warmupMode);   setWarmupSets(v.warmupSets);
@@ -390,62 +325,56 @@ export default function ExerciseEditorInline({
     .map((st) => t('exerciseEditor.warmup.rampStep', { pct: st.pct, reps: st.reps }))
     .join(' · ');
 
-  const isTime        = metric === 'time';
-  const showTimeRange = isTime;
-  const showRepsIncr  = progType === 'reps';
-  const showTimeIncr  = progType === 'time';
+  const isTime = metric === 'time';
 
-  // Por esfuerzo: solo con carga externa, en reps y sin asistencia (§2.4).
-  const canEffort = !isTime && !isBodyweight(def)
-    && (def?.progressionDirection ?? 'increase') !== 'decrease';
-  const isEffort  = progMode === 'effort';
-  const effortRir = 10 - targetRpe;
+  // ── Progresión: lo que se ofrece sale de `progressionForm` (§5.3) ───────────
+  const ctx = { def, sets, metric, range: repsMode === 'range' };
+  // Un cambio deja el estado coherente de una vez, sin pasar por un render a
+  // medias: lo que deja de valer vuelve al primero válido (§5.3), Registrar RPE
+  // se enciende si la progresión lo pide (§5.4) y Reps o Tiempo piden un solo
+  // valor de inicio, el mínimo del rango (§5.1).
+  function settle(next, c) {
+    setProg(next);
+    if (needsRpe(next, c)) setTrackRpe(true);
+    if (next.up === 'reps' && c.metric === 'reps') { setMaxReps(minReps); setRepsMode('fixed'); }
+    if (next.up === 'time' && c.metric === 'time') setMaxTime(minTime);
+  }
+  const patchProg = (patch) => settle(patchProgForm(prog, patch, ctx), ctx);
+  // Volumen puede dejar sin valer lo elegido: menos series, otra medida, un Rango.
+  function changeVolume(over, apply) {
+    const c = { ...ctx, ...over };
+    apply();
+    settle(patchProgForm(prog, {}, c), c);
+  }
+  const effort    = isEffortForm(prog, ctx);
+  const lockRpe   = needsRpe(prog, ctx);
+  const assist    = def?.progressionDirection === 'decrease';
+  // Reps y Tiempo piden un solo valor de inicio, no un rango (§5.1).
+  const startReps = prog.up === 'reps' && !isTime;
+  const startTime = prog.up === 'time' && isTime;
+
+  const effortRir = 10 - prog.targetRpe;
   const effortRirTxt = effortRir === 0
     ? t('exerciseEditor.effortFailure')
     : t('exerciseEditor.effortRir', { count: effortRir });
   // Misma regla que el motor: pasado MAX_RELIABLE_REPS no calcula (§2.3).
-  const effortUnreliable = isEffort && minReps + effortRir >= MAX_RELIABLE_REPS;
+  const effortUnreliable = effort && minReps + effortRir >= MAX_RELIABLE_REPS;
   const effortWarn = effortUnreliable ? (
     <Text style={styles.warnHint}>{t('exerciseEditor.effortUnreliable', { max: MAX_RELIABLE_REPS })}</Text>
   ) : null;
 
-  function selectProgMode(mode) {
-    if (mode === 'effort') { setMaxReps(minReps); setTrackRpe(true); }
-    setProgMode(mode);
+  function selectRepsMode(m) {
+    changeVolume({ range: m === 'range' }, () => {
+      setMaxReps(m === 'fixed' ? minReps : Math.min(50, minReps + 4));
+      setRepsMode(m);
+    });
   }
-  // Cada cosa que sube tiene su salto: 2,5 kg como reps eran 3 reps (P52).
-  function selectProgType(type) {
-    if (type !== progType) setIncrFixedValue(defaultIncrement(type, def));
-    setProgType(type);
-  }
-  function selectMetric(m) {
-    if (m === 'time' && progMode === 'effort') setProgMode('auto');
-    setMetric(m);
-  }
-
-  const PROG_MODES = ['auto', 'fixed', ...(canEffort || isEffort ? ['effort'] : [])].map((id) => ({
-    id, label: t(`exerciseEditor.progModes.${id}`),
-  }));
-  const PROG_TYPES = ['double', 'weight', 'reps', 'time'].map((id) => ({
-    id, label: t(`exerciseEditor.progTypes.${id}`),
-  }));
-  const EVAL_MODES = [
-    { id: 'all_complete', label: t('exerciseEditor.evalModes.all_complete') },
-    { id: 'pct',          label: t('exerciseEditor.evalModes.pct')          },
-    // RPE evaluation only offered when the exercise records RPE
-    ...(trackRpe ? [{ id: 'rpe', label: t('exerciseEditor.evalModes.rpe') }] : []),
-  ];
-  const INCR_TYPES = [
-    { id: 'fixed', label: t('exerciseEditor.incrTypes.fixed') },
-    { id: 'pct',   label: t('exerciseEditor.incrTypes.pct')   },
-  ];
 
   // ── Live summary ────────────────────────────────────────────────────────────
-  const effEvalMode = evalMode === 'rpe' && !trackRpe ? 'all_complete' : evalMode;
   const rangeTxt = isTime
     ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
-    : isEffort
-      ? t('exerciseEditor.effortVolume', { reps: minReps, rpe: targetRpe })
+    : effort
+      ? t('exerciseEditor.effortVolume', { reps: minReps, rpe: prog.targetRpe })
       : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
   // El calentamiento abre la prescripción, así que va delante: "C×2 · 3 × 8–12…".
   const warmupCount = warmupMode === 'auto'
@@ -458,30 +387,17 @@ export default function ExerciseEditorInline({
     dropset ? t('exerciseEditor.dropsetSummary') : null,
   ].filter(Boolean).join(' · ');
 
-  const incTxt = progType === 'reps'
-    ? String(incrFixedValue)
-    : incrType === 'pct'
-      ? `${incrPctValue} %`
-      : `${incrFixedValue} ${showTimeIncr ? 's' : weightLabel}`;
-  const progLine = progMode === 'auto'
-    ? t(`exerciseEditor.summaryProg.${progType}`, {
-        inc:  incTxt,
-        eval: t(`exerciseEditor.summaryEval.${effEvalMode}`, { pct: evalPct, rpe: evalMaxRpe }),
-        max:  isTime ? maxTime : maxReps,
-      })
-    : t(`exerciseEditor.summaryProg.${progMode}`, { rpe: targetRpe });
-
-  // Subtítulo de la fila de progresión — el mismo formato que dibuja Figma
-  // ("Doble · todas las series · +2.5 kg").
-  const progRowSub = progMode === 'auto'
-    ? [
-        t(`exerciseEditor.progTypes.${progType}`),
-        t(`exerciseEditor.summaryEval.${effEvalMode}`, { pct: evalPct, rpe: evalMaxRpe }),
-        `+${incTxt}`,
-      ].join(' · ')
-    : isEffort
-      ? `RPE ${targetRpe} · ${effortRirTxt}`
-      : t(`exerciseEditor.progModeDesc.${progMode}`);
+  // La frase de la regla sale del mismo motor que decide (§5.2): el Resumen, la
+  // fila y la hoja dicen lo mismo.
+  const ruleTxt = progressionRule(
+    { ...exConfig, sets, minReps, maxReps, minTime, maxTime, ...buildProgression(prog, ctx) },
+    def, t, weightLabel,
+  );
+  const progTitle = prog.up === 'none'
+    ? t('exerciseEditor.progTitle.none')
+    : effort
+      ? t('exerciseEditor.progTitle.effort', { rpe: prog.targetRpe })
+      : t(`exerciseEditor.progTitle.${prog.up === 'weight' ? (assist ? 'assist' : 'weight') : prog.up}`);
 
   const warmupRestTxt = warmupRestSec > 0
     ? t('exerciseEditor.warmup.restShort', { s: warmupRestSec })
@@ -539,6 +455,252 @@ export default function ExerciseEditorInline({
   }).join(' · ');
   const rowTitle = variantLabel(apartOn ? ident.variant : variant, t) || t('variants.none');
 
+  // ── La hoja de Progresión: un paso por pregunta, solo los que encajan con lo
+  // elegido antes (§5.3). Los pasos se numeran según los que salgan.
+  const hint     = (txt) => <Text style={[styles.hint, styles.stepHint]}>{txt}</Text>;
+  const warnHint = (txt) => <Text style={[styles.warnHint, styles.stepHint]}>{txt}</Text>;
+  const gap      = (node) => <View style={styles.stepGap}>{node}</View>;
+  const libStep  = libraryStep(def, effort);
+  const sheetSteps = [];
+  const addStep = (key, title, body) => sheetSteps.push({ key, title, body });
+  const ofSets  = t('exerciseEditor.ofN', { n: sets });
+  const goal    = repsMode === 'fixed' ? minReps : maxReps;
+
+  const upHint = prog.up === 'weight'
+    ? (assist ? 'weightAssist' : repsMode === 'fixed' ? 'weightFixed' : 'weightRange')
+    : prog.up;
+  addStep('up', t('exerciseEditor.stepUp'), (
+    <>
+      <SegmentedControl
+        options={upOptions(ctx).map((id) => ({
+          id, label: t(`exerciseEditor.upOptions.${id === 'weight' && assist ? 'assist' : id}`),
+        }))}
+        value={prog.up}
+        onChange={(id) => patchProg({ up: id })}
+      />
+      {hint(t(`exerciseEditor.upHint.${upHint}`, { reps: minReps, min: minReps }))}
+      {!isTime && !assist && !canAddWeight(def) && hint(t('exerciseEditor.upNoLoad'))}
+    </>
+  ));
+
+  if (prog.up !== 'none' && showHow(prog, ctx)) {
+    addStep('how', t('exerciseEditor.stepHow'), (
+      <>
+        <SegmentedControl
+          options={[
+            { id: 'rules',  label: t('exerciseEditor.howRules') },
+            { id: 'effort', label: t('exerciseEditor.howEffort'), disabled: effortBlocked(ctx) },
+          ]}
+          value={prog.how}
+          onChange={(id) => patchProg({ how: id })}
+        />
+        {hint(t(effort ? 'exerciseEditor.howEffortHint' : 'exerciseEditor.howRulesHint'))}
+        {effortBlocked(ctx) && warnHint(t('exerciseEditor.effortNeedsFixed'))}
+      </>
+    ));
+  }
+
+  if (effort) {
+    addStep('rpe', t('exerciseEditor.stepRpe'), (
+      <>
+        <StepField
+          horizontal
+          label={t('exerciseEditor.maxRpeLabel')}
+          value={prog.targetRpe}
+          onChange={(v) => patchProg({ targetRpe: v })}
+          min={6}
+          max={10}
+        />
+        {hint(`${effortRirTxt}. ${t('exerciseEditor.rpeAutoOn')}`)}
+        {effortWarn}
+      </>
+    ));
+    addStep('stepSize', t('exerciseEditor.stepSize'), (
+      <>
+        <SegmentedControl
+          options={['step', 'exact'].map((id) => ({ id, label: t(`exerciseEditor.stepSizeOpt.${id}`) }))}
+          value={prog.exact ? 'exact' : 'step'}
+          onChange={(id) => patchProg({ exact: id === 'exact' })}
+        />
+        {!prog.exact && gap(
+          <StepField
+            horizontal
+            label={t('exerciseEditor.stepSizeLabel')}
+            unit={weightLabel}
+            value={prog.step ?? libStep}
+            onChange={(v) => patchProg({ step: v })}
+            min={0.25}
+            max={10}
+            step={0.25}
+          />,
+        )}
+        {hint(t(prog.exact ? 'exerciseEditor.stepSizeExactHint' : 'exerciseEditor.stepSizeHint'))}
+      </>
+    ));
+    // Con Exacto el peso se mueve con cualquier cambio y «Al llegar» no se daría nunca.
+    if (!prog.exact) {
+      addStep('effWhen', t('exerciseEditor.stepWhen'), (
+        <>
+          <SegmentedControl
+            options={['beat', 'reach'].map((id) => ({ id, label: t(`exerciseEditor.effWhen.${id}`) }))}
+            value={prog.effWhen}
+            onChange={(id) => patchProg({ effWhen: id })}
+          />
+          {hint(t(`exerciseEditor.effWhenHint.${prog.effWhen}`, { step: prog.step ?? libStep, unit: weightLabel }))}
+          {hint(t('exerciseEditor.effDownHint'))}
+        </>
+      ));
+    }
+  } else if (prog.up !== 'none') {
+    const whenTxt = prog.when === 'part'
+      ? t('progression.rule.whenPart', { need: prog.need, n: sets })
+      : prog.when === 'rpe'
+        ? t('progression.rule.whenRpe', { rpe: prog.maxRpe })
+        : t('progression.rule.whenAll');
+    const metaTxt = prog.up === 'weight'
+      ? t('exerciseEditor.metaReach', { goal })
+      : t('exerciseEditor.metaOver', { floor: isTime ? `${minTime} s` : minReps });
+    addStep('when', t('exerciseEditor.stepWhen'), (
+      <>
+        <SegmentedControl
+          options={['all_complete', 'part', 'rpe'].map((id) => ({
+            id, label: t(`exerciseEditor.evalModes.${id}`), disabled: id === 'part' && sets < 2,
+          }))}
+          value={prog.when}
+          onChange={(id) => patchProg({ when: id })}
+        />
+        {prog.when === 'part' && gap(
+          <StepField
+            horizontal
+            label={t('exerciseEditor.needLabel')}
+            unit={ofSets}
+            value={prog.need}
+            onChange={(v) => patchProg({ need: v })}
+            min={1}
+            max={Math.max(1, sets - 1)}
+          />,
+        )}
+        {prog.when === 'rpe' && gap(
+          <StepField
+            horizontal
+            label={t('exerciseEditor.rpeMaxLabel')}
+            value={prog.maxRpe}
+            onChange={(v) => patchProg({ maxRpe: v })}
+            min={6}
+            max={10}
+          />,
+        )}
+        {hint(`${t('exerciseEditor.whenHint', { when: whenTxt, meta: metaTxt })}${prog.when === 'rpe' ? ` ${t('exerciseEditor.rpeAutoOn')}` : ''}`)}
+      </>
+    ));
+
+    addStep('incr', t('exerciseEditor.stepIncr'), prog.up === 'weight' ? (
+      <>
+        <SegmentedControl
+          options={['fixed', 'pct'].map((id) => ({ id, label: t(`exerciseEditor.incrTypes.${id}`) }))}
+          value={prog.incType}
+          onChange={(id) => patchProg({ incType: id })}
+        />
+        {hint(t(`exerciseEditor.incrTypeDesc.${prog.incType}`))}
+        {gap(prog.incType === 'pct' ? (
+          <StepField
+            horizontal unit="%"
+            label={t('exerciseEditor.incrValueLabel')}
+            value={prog.incPct}
+            onChange={(v) => patchProg({ incPct: v })}
+            min={1}
+            max={50}
+          />
+        ) : (
+          // Paso 0.25: la placa más pequeña habitual es de 1.25 kg por lado, así
+          // que las subidas útiles son múltiplos de 0.25 y no de 1.
+          <StepField
+            horizontal
+            label={t(assist ? 'exerciseEditor.incAssistLabel' : 'exerciseEditor.incWeightLabel')}
+            unit={weightLabel}
+            value={prog.incValue}
+            onChange={(v) => patchProg({ incValue: v })}
+            min={0.25}
+            max={50}
+            step={0.25}
+          />
+        ))}
+        {prog.incType === 'pct' && (
+          <>
+            {gap(
+              <StepField
+                horizontal
+                label={t('exerciseEditor.roundStepLabel')}
+                unit={weightLabel}
+                value={prog.step ?? libStep}
+                onChange={(v) => patchProg({ step: v })}
+                min={0.25}
+                max={10}
+                step={0.25}
+              />,
+            )}
+            {hint(t('exerciseEditor.stepSizeHintPct'))}
+          </>
+        )}
+      </>
+    ) : (
+      <>
+        {prog.up === 'reps' ? (
+          <StepField
+            horizontal
+            label={t('exerciseEditor.incrFixedRepsLabel')}
+            value={prog.incValue}
+            onChange={(v) => patchProg({ incValue: v })}
+            min={1}
+            max={10}
+          />
+        ) : (
+          <StepField
+            horizontal unit="s"
+            label={t('exerciseEditor.incTimeLabel')}
+            value={prog.incValue}
+            onChange={(v) => patchProg({ incValue: v })}
+            min={5}
+            max={60}
+            step={5}
+          />
+        )}
+        {hint(t(prog.up === 'reps' ? 'exerciseEditor.incIntHintReps' : 'exerciseEditor.incIntHintTime'))}
+      </>
+    ));
+
+    if (prog.up === 'weight') {
+      const incTxt = prog.incType === 'pct' ? `${prog.incPct} %` : `${prog.incValue} ${weightLabel}`;
+      const lowest = minFails(prog, ctx);
+      addStep('down', t('exerciseEditor.stepDown'), (
+        <>
+          <SegmentedControl
+            options={['never', 'fail'].map((id) => ({ id, label: t(`exerciseEditor.downOpt.${id}`) }))}
+            value={prog.down}
+            onChange={(id) => patchProg({ down: id })}
+          />
+          {prog.down === 'fail' ? (
+            <>
+              {gap(
+                <StepField
+                  horizontal
+                  label={t('exerciseEditor.failsLabel')}
+                  unit={ofSets}
+                  value={prog.fails}
+                  onChange={(v) => patchProg({ fails: v })}
+                  min={lowest}
+                  max={sets}
+                />,
+              )}
+              {hint(t(assist ? 'exerciseEditor.downHintAssist' : 'exerciseEditor.downHint', { fails: prog.fails, inc: incTxt, floor: minReps }))}
+              {prog.when === 'part' && hint(t('exerciseEditor.downPartHint', { need: prog.need, n: sets, min: lowest }))}
+            </>
+          ) : hint(t('exerciseEditor.downNeverHint'))}
+        </>
+      ));
+    }
+  }
+
   return (
     <View style={styles.container}>
 
@@ -546,7 +708,7 @@ export default function ExerciseEditorInline({
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
         <Text style={styles.summaryMain}>{volumeLine}</Text>
-        <Text style={styles.summarySub}>{progLine}</Text>
+        <Text style={styles.summarySub}>{ruleTxt}</Text>
       </View>
 
       {/* ══ VOLUMEN ══════════════════════════════════════════════════════════ */}
@@ -558,24 +720,35 @@ export default function ExerciseEditorInline({
             { id: 'time', label: t('exerciseEditor.metricTime').toUpperCase() },
           ]}
           value={metric}
-          onChange={selectMetric}
+          onChange={(m) => changeVolume({ metric: m }, () => setMetric(m))}
         />
+        {/* Rango o reps fijas (§5.1). Con Reps como progresión no hay rango:
+            el campo de abajo es solo el inicio. */}
+        {!isTime && !startReps && (
+          <SegmentedControl
+            options={['range', 'fixed'].map((id) => ({ id, label: t(`exerciseEditor.repsMode.${id}`) }))}
+            value={repsMode}
+            onChange={selectRepsMode}
+          />
+        )}
 
         <View style={styles.grid}>
           <View style={styles.gridRow}>
-            <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={setSets}    min={1}  max={8}   />
+            <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={(v) => changeVolume({ sets: v }, () => setSets(v))} min={1}  max={8}   />
             <StepField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} unit="s" />
           </View>
 
-          {showTimeRange ? (
+          {startTime ? (
+            // Un solo campo: la variante de una línea (QA P47).
+            <StepField horizontal label={t('exerciseEditor.fieldStartTime')} value={minTime} onChange={(v) => { setMinTime(v); setMaxTime(v); }} min={5} max={300} unit="s" />
+          ) : isTime ? (
             <View style={styles.gridRow}>
               <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
               <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
             </View>
-          ) : isEffort ? (
+          ) : startReps || repsMode === 'fixed' ? (
             <>
-              {/* Un solo campo: la variante de una línea (QA P47). */}
-              <StepField horizontal label={t('exerciseEditor.fieldTargetReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
+              <StepField horizontal label={t(startReps ? 'exerciseEditor.fieldStartReps' : 'exerciseEditor.fieldFixedReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
               {effortWarn}
             </>
           ) : (
@@ -615,8 +788,8 @@ export default function ExerciseEditorInline({
         <Text style={styles.secLabel}>{t('exerciseEditor.sectionProgression').toUpperCase()}</Text>
         <NavRow
           icon={<ProgressionIcon size={15} color={th.colors.accent} />}
-          title={t(`exerciseEditor.progModes.${progMode}`)}
-          subtitle={progRowSub}
+          title={progTitle}
+          subtitle={ruleTxt}
           onPress={() => setSheetOpen(true)}
         />
       </View>
@@ -636,14 +809,11 @@ export default function ExerciseEditorInline({
         />
         <ToggleRow
           label={t('exerciseEditor.trackRpeLabel')}
-          value={trackRpe || isEffort}
-          disabled={isEffort}
-          alwaysHint={isEffort}
-          hint={isEffort ? t('exerciseEditor.trackRpeLocked') : undefined}
-          onChange={(v) => {
-            setTrackRpe(v);
-            if (!v && evalMode === 'rpe') setEvalMode('all_complete');
-          }}
+          value={trackRpe || lockRpe}
+          disabled={lockRpe}
+          alwaysHint={lockRpe}
+          hint={lockRpe ? t('exerciseEditor.trackRpeLocked') : undefined}
+          onChange={setTrackRpe}
         />
         {!isTime && (
           <ToggleRow
@@ -905,148 +1075,19 @@ export default function ExerciseEditorInline({
         onClose={() => setSheetOpen(false)}
         title={t('exerciseEditor.sectionProgression')}
       >
-        <View style={styles.sheetBody}>
-
-          {/* 1 · Modo */}
-          <View>
-            <Text style={styles.stepTitle}>
-              <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepMode')}
-            </Text>
-            <SegmentedControl options={PROG_MODES} value={progMode} onChange={selectProgMode} />
-            <Text style={styles.hint}>{t(`exerciseEditor.progModeDesc.${progMode}`)}</Text>
+        {/* Los pasos entran y salen según lo elegido: la hoja sigue su alto. */}
+        <AnimatedHeight>
+          <View style={styles.sheetBody}>
+            {sheetSteps.map((st, n) => (
+              <Reanimated.View key={st.key} entering={FadeIn.duration(180)}>
+                <Text style={styles.stepTitle}>
+                  <Text style={styles.stepNum}>{`${n + 1} · `}</Text>{st.title}
+                </Text>
+                {st.body}
+              </Reanimated.View>
+            ))}
           </View>
-
-          {isEffort && (
-            <View>
-              <Text style={styles.stepTitle}>
-                <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepEffort')}
-              </Text>
-              <StepField
-                horizontal
-                label={t('exerciseEditor.maxRpeLabel')}
-                value={targetRpe}
-                onChange={setTargetRpe}
-                min={6}
-                max={10}
-              />
-              <Text style={styles.hint}>{effortRirTxt}</Text>
-              {effortWarn}
-            </View>
-          )}
-
-          {progMode === 'auto' && (
-            <>
-              {/* 2 · Qué progresa */}
-              <View>
-                <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepType')}
-                </Text>
-                <SegmentedControl options={PROG_TYPES} value={progType} onChange={selectProgType} />
-                <Text style={styles.hint}>{t(`exerciseEditor.progTypeDesc.${progType}`)}</Text>
-              </View>
-
-              {/* 3 · Cuándo se cumple */}
-              <View>
-                <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>3 · </Text>{t('exerciseEditor.stepEval')}
-                </Text>
-                <SegmentedControl options={EVAL_MODES} value={effEvalMode} onChange={setEvalMode} />
-                <Text style={styles.hint}>{t(`exerciseEditor.evalModeDesc.${effEvalMode}`)}</Text>
-                {evalMode === 'pct' && (
-                  <View style={{ marginTop: spacing.md }}>
-                    <StepField
-                      horizontal unit="%"
-                      label={t('exerciseEditor.evalPctLabel')}
-                      value={evalPct}
-                      onChange={setEvalPct}
-                      min={50}
-                      max={100}
-                    />
-                  </View>
-                )}
-                {evalMode === 'rpe' && trackRpe && (
-                  <View style={{ marginTop: spacing.md }}>
-                    <StepField
-                      horizontal
-                      label={t('exerciseEditor.maxRpeLabel')}
-                      value={evalMaxRpe}
-                      onChange={setEvalMaxRpe}
-                      min={6}
-                      max={10}
-                    />
-                  </View>
-                )}
-              </View>
-
-              {/* 4 · Cuánto sube */}
-              <View>
-                <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>4 · </Text>{t('exerciseEditor.stepIncr')}
-                </Text>
-                {showRepsIncr ? (
-                  <StepField
-                    horizontal
-                    label={t('exerciseEditor.incrFixedRepsLabel')}
-                    value={incrFixedValue}
-                    onChange={setIncrFixedValue}
-                    min={1}
-                    max={10}
-                  />
-                ) : (
-                  <>
-                    <SegmentedControl options={INCR_TYPES} value={incrType} onChange={setIncrType} />
-                    <Text style={styles.hint}>{t(`exerciseEditor.incrTypeDesc.${incrType}`)}</Text>
-                    <View style={{ marginTop: spacing.md }}>
-                      {incrType === 'pct' ? (
-                        <StepField
-                          horizontal unit="%"
-                          label={t('exerciseEditor.incrValueLabel')}
-                          value={incrPctValue}
-                          onChange={setIncrPctValue}
-                          min={1}
-                          max={50}
-                        />
-                      ) : (
-                        // Paso 0.25: la placa más pequeña habitual es de 1.25 kg
-                        // por lado, así que las subidas útiles son múltiplos de
-                        // 0.25 y no de 1.
-                        <StepField
-                          horizontal
-                          label={t('exerciseEditor.incrValueLabel')}
-                          unit={showTimeIncr ? 's' : weightLabel}
-                          value={incrFixedValue}
-                          onChange={setIncrFixedValue}
-                          min={0}
-                          max={50}
-                          step={0.25}
-                        />
-                      )}
-                    </View>
-                    {incrType === 'pct' && (
-                      <View style={styles.incrMinRow}>
-                        <View style={styles.incrMinMeta}>
-                          <Text style={styles.optRowLabel}>{t('exerciseEditor.incrMinLabel')}</Text>
-                          <Text style={styles.optRowHint}>{t('exerciseEditor.incrMinHint')}</Text>
-                        </View>
-                        <IncrementInput
-                          value={incrMin}
-                          onChange={setIncrMin}
-                          unit={showTimeIncr ? 's' : weightLabel}
-                        />
-                      </View>
-                    )}
-                  </>
-                )}
-              </View>
-            </>
-          )}
-
-          {/* Resultado en lenguaje natural */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summarySub}>{progLine}</Text>
-          </View>
-
-        </View>
+        </AnimatedHeight>
       </DragSheet>
 
     </View>
@@ -1199,33 +1240,6 @@ const makeStyles = (th) => StyleSheet.create({
   addStepText:        { ...textStyles.button, color: th.tint.accent50 },
   addPlus:            { color: th.colors.accent },
 
-  // ── Incremento (hoja) ─────────────────────────────────────────────────────
-  incrInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  // Sin ± (QA): es un dato que se teclea, no que se ajusta. En `surface`, que
-  // es lo que se despega del `bg` de la hoja.
-  incrInput: {
-    minWidth:           80,
-    height:             STEP_BTN,
-    backgroundColor:    th.colors.surface,
-    borderRadius:       th.radius.sm,
-    paddingHorizontal:  spacing.md,
-    ...textStyles.itemTitle,
-    color:              th.colors.text,
-    textAlign:          'center',
-    textAlignVertical:  'center',
-    includeFontPadding: false,
-    paddingVertical:    0,
-  },
-  incrUnit: { ...textStyles.label, color: th.colors.mutedLight },
-  incrMinRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    gap:            spacing.md,
-    marginTop:      spacing.md,
-  },
-  incrMinMeta: { flex: 1, minWidth: 0, gap: spacing.xs },
-
   // ── Tempo (hoja) ──────────────────────────────────────────────────────────
   tempoInput: {
     alignSelf:          'center',
@@ -1252,4 +1266,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom:  spacing.sm,
   },
   stepNum: { color: th.colors.accent },
+  // La pista bajo el control de un paso, y el campo ± que cuelga de él.
+  stepHint: { marginTop: spacing.sm2 },
+  stepGap:  { marginTop: spacing.sm2 },
 });
