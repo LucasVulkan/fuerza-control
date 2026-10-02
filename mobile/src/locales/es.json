@@ -1493,6 +1493,7 @@
   "errors": {
     "cannotReadFile": "No se pudo leer el archivo",
     "invalidFile": "Archivo no válido",
+    "noHistoryInFile": "El archivo no contiene ningún entreno",
     "importNoVersion": "El archivo no tiene campo \"version\".",
     "importBadVersion": "Versión {{version}} no compatible.",
     "importBadJson": "El archivo no es un JSON válido."
@@ -2139,7 +2140,7 @@
     "noActiveProgram": "Sin programa activo",
     "noActiveProgramHint": "Reactiva uno de abajo o asigna uno nuevo con ＋",
     "menuUpload": "Subir a cliente",
-    "menuDeassign": "Quitar asignación",
+    "menuDeassign": "Archivar",
     "menuSaveTemplate": "Guardar como plantilla",
     "menuExport": "Exportar",
     "menuDelete": "Eliminar programa",

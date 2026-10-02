@@ -1493,6 +1493,7 @@
   "errors": {
     "cannotReadFile": "Could not read the file",
     "invalidFile": "Invalid file",
+    "noHistoryInFile": "The file contains no workouts",
     "importNoVersion": "The file has no \"version\" field.",
     "importBadVersion": "Version {{version}} is not supported.",
     "importBadJson": "The file is not valid JSON."
@@ -2139,7 +2140,7 @@
     "noActiveProgram": "No active program",
     "noActiveProgramHint": "Reactivate one below or assign a new one with ＋",
     "menuUpload": "Upload to client",
-    "menuDeassign": "Unassign",
+    "menuDeassign": "Archive",
     "menuSaveTemplate": "Save as template",
     "menuExport": "Export",
     "menuDelete": "Delete program",

@@ -12,8 +12,6 @@ import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -49,7 +47,7 @@ import {
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
-import { parseImportFile } from '../utils/importFile';
+import { pickImportFile } from '../utils/pickImportFile';
 import { programsOf, templatesOf, copySources } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
 import { LockIcon, CheckIcon, ChevronDown, MenuIcon, CloseIcon } from '../components/ui/EditorIcons';
@@ -401,13 +399,13 @@ function AssignedProgramCard({
           <SheetRow icon={ROW_ICON.preset} label={t('clients.menuSaveTemplate')} onPress={onSaveTemplate} />
           {archivedCount > 0 && (
             <SheetRow
-              icon={ROW_ICON.archived}
+              icon={ROW_ICON.history}
               label={t('clients.menuArchived')}
               value={String(archivedCount)}
               onPress={onShowArchived}
             />
           )}
-          {onDeassign && <SheetRow icon={ROW_ICON.unassign} label={t('clients.menuDeassign')} onPress={onDeassign} />}
+          {onDeassign && <SheetRow icon={ROW_ICON.archived} label={t('clients.menuDeassign')} onPress={onDeassign} />}
           <SheetRow icon={ROW_ICON.trash} label={t('clients.menuDelete')} onPress={onDelete} danger />
         </Section>
       </DragSheet>
@@ -2309,33 +2307,10 @@ export default function ClientsScreen() {
     importForClient(selectedClientId, data, withHistory ? 'replace_log' : 'replace');
   }
 
-  // Elegir y leer un archivo de la app. Devuelve `{ fileName, data }`, o null si
-  // se cancela o falla (el error ya está avisado).
-  async function pickImportFile() {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/json', '*/*'],
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled || !result.assets?.length) return null;
-      const raw = await FileSystem.readAsStringAsync(result.assets[0].uri, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      const parsed = parseImportFile(raw);
-      if (!parsed.ok) { showDialog(t('errors.invalidFile'), t(parsed.errorKey, parsed.errorParams)); return null; }
-      return { fileName: result.assets[0].name, data: parsed.data };
-    } catch (err) {
-      if (!err?.message?.includes('cancel')) {
-        showDialog(t('common.error'), err?.message ?? t('errors.cannotReadFile'));
-      }
-      return null;
-    }
-  }
-
   // «Desde archivo» de la hoja de asignar: sin programa dentro no hay nada que asignar.
   // Diálogo y no toast: el toast se pinta debajo del `Modal` de la hoja abierta.
   async function pickAssignFile() {
-    const picked = await pickImportFile();
+    const picked = await pickImportFile(t);
     if (picked && !picked.data.program) {
       showDialog(t('errors.invalidFile'), t('clients.assign.noProgramInFile'));
       return null;
@@ -2345,7 +2320,7 @@ export default function ClientsScreen() {
 
   // ··· → «Importar historial»: solo añade entrenos, no toca el programa.
   async function handleImportHistory() {
-    const picked = await pickImportFile();
+    const picked = await pickImportFile(t);
     if (picked) importForClient(selectedClientId, picked.data, 'merge_log');
   }
 
