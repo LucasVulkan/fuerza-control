@@ -2303,10 +2303,11 @@ export default function ClientsScreen() {
   }
 
   // «Desde archivo» de la hoja de asignar: sin programa dentro no hay nada que asignar.
+  // Diálogo y no toast: el toast se pinta debajo del `Modal` de la hoja abierta.
   async function pickAssignFile() {
     const picked = await pickImportFile();
     if (picked && !picked.data.program) {
-      showToast(t('clients.assign.noProgramInFile'), 2200, 'error');
+      showDialog(t('errors.invalidFile'), t('clients.assign.noProgramInFile'));
       return null;
     }
     return picked;

@@ -3,7 +3,7 @@
 > Tema: conexión
 > En corto: Darle un programa a un cliente se hace desde un solo botón, «Asignar programa», que deja elegir el origen: en blanco, una plantilla, el programa de otro cliente o un archivo. Desde cualquier programa se puede copiar a otro cliente o guardar como plantilla. Un programa siempre se copia, nunca se comparte.
 > Fase C29 · terminado · Las copias de programas conservan la cadena entre etapas · §3
-> Fase C30 · pendiente · «Asignar programa»: una hoja con cuatro orígenes · §4
+> Fase C30 · hecho · «Asignar programa»: una hoja con cuatro orígenes · §4
 > Fase C31 · pendiente · Copiar a otro cliente y guardar como plantilla · §5
 >
 > Estado: spec cerrada el 1-oct-2026, SIN implementar. Sin maqueta: las hojas
@@ -103,7 +103,9 @@ línea arriba: «Sustituye a **{{name}}**, que pasa a Programas anteriores».
 Sustituye al diálogo de `confirmReplaceActive`: el aviso se lee antes de elegir,
 como ya hace `AssignSheet` en Plantillas.
 
-Paso 1, **origen** (`SheetRow` con icono y flecha):
+Paso 1, **origen**: filas `MenuRow` + `RowIcon` (icono y galón) en una
+`Section`. **No `SheetRow`**: esa cierra la hoja al tocarla, y aquí hay que
+pasar al paso 2.
 
 | Origen | Paso 2 |
 |---|---|
@@ -114,6 +116,8 @@ Paso 1, **origen** (`SheetRow` con icono y flecha):
 
 Paso 2 dentro de la misma hoja, cambiando de página como en
 [`editor-vinculacion.md`](editor-vinculacion.md) §5.3: nada de dos `Modal` seguidos.
+`DragSheet` gana una prop `onBack`: con ella, «‹» a la izquierda del título
+vuelve al paso 1 (la misma que usará P50).
 Las listas de origen son `ChoiceRow` y abajo va el nombre (prellenado con el del
 origen, editable, `NameField`) y el botón **«Asignar»**.
 
@@ -134,21 +138,29 @@ está «Reactivar»; esto lo copia de cero (progreso nuevo).
 
 ### 4.4 «Desde archivo»
 
-`handleImportPick` de hoy: `DocumentPicker` → `parseImportFile`.
+`handleImportPick` de hoy: `DocumentPicker` → `parseImportFile`, con la hoja
+abierta.
 
 - Archivo sin programa → el error de hoy («El archivo no contiene ningún
-  programa»).
-- Con programa → `importForClient(clientId, data, 'replace')`.
-- Con programa **y** entrenos → antes de importar, una línea con interruptor
+  programa») y se queda en el paso 1.
+- Con programa → **siempre** paso 2 (decidido el 2-oct-2026: los cuatro
+  orígenes acaban en «Asignar»): nombre del archivo y nombre del programa que
+  trae, y «Asignar» → `importForClient(clientId, data, 'replace')`. Sin campo de
+  nombre: se importa con el suyo.
+- Con programa **y** entrenos → en ese paso 2, además, un `ToggleRow`
   «Importar también su historial (N sesiones)», apagado por defecto. Encendido
   → modo `replace_log`.
+- Importar no abre el editor (como hoy).
 
 ### 4.5 «Importar historial»
 
 En el menú ··· de la tarjeta, debajo de Exportar: **«Importar historial»** →
 selector → `importForClient(clientId, data, 'merge_log')`, con el toast de hoy.
-Sale también sin programa activo, en el mismo menú del tab (el estado vacío
-gana un ··· si hoy no lo tiene). `ClientImportModal` desaparece.
+`ClientImportModal` desaparece.
+
+Sin programa activo **no** hay «Importar historial» ni ··· nuevo (decidido el
+2-oct-2026): sin programa, lo que se importa es un programa, y «Desde archivo»
+ya trae su historial si se quiere.
 
 ### 4.6 i18n (es / en)
 
@@ -159,21 +171,39 @@ gana un ··· si hoy no lo tiene). `ClientImportModal` desaparece.
 
 **Probar C30**
 
-- [ ] Cliente sin programa → botón «Asignar programa» → salen los cuatro orígenes
-  (Plantilla solo si hay plantillas).
-- [ ] En blanco → mismo formulario de antes → crea y abre el editor.
-- [ ] Plantilla → lista → nombre prellenado → Asignar → abre el editor con la
-  copia.
-- [ ] De otro cliente → programas agrupados por dueño, activos primero → asignar
-  uno → copia independiente: editarla no cambia el original.
-- [ ] Desde archivo con un cliente **sin** programa → lo importa como activo.
-- [ ] Archivo con entrenos → sale el interruptor de historial; encendido, los
-  entrenos aparecen en su historial.
-- [ ] Cliente con programa activo → la hoja avisa arriba de cuál sustituye; al
-  asignar, el anterior está en Programas anteriores.
-- [ ] ··· → «Importar historial» → añade entrenos sin tocar el programa.
-- [ ] Cliente con app: el programa asignado queda pendiente de subir (o se sube
-  solo si es invitado), como antes.
+- [ ] Cliente sin programa → botón «Asignar programa» → salen los orígenes:
+  En blanco y Desde archivo siempre; Plantilla solo si hay plantillas; De otro
+  cliente solo si hay algún programa que copiar.
+- [ ] Tocar un origen → la página se desliza y aparece «‹» junto al título;
+  «‹» vuelve a los orígenes sin cerrar la hoja. Cerrar la hoja desde la página 2
+  y reabrirla → empieza otra vez en los orígenes.
+- [ ] En blanco → el formulario de antes (nombre, sesiones, semanas) →
+  «CREAR Y EDITAR» crea el programa y abre el editor.
+- [ ] Plantilla → filas con radio, ninguna elegida y «ASIGNAR» apagado → al
+  elegir una se rellena el nombre → «ASIGNAR» → abre el editor con la copia.
+- [ ] De otro cliente → grupo «Tuyos» y un grupo por cliente por orden
+  alfabético; en cada uno el activo primero con la etiqueta «activo»; cada fila
+  dice «N sesiones · N etapas». El activo de ESTE cliente no sale; sus programas
+  anteriores sí.
+- [ ] Asignar uno de otro cliente → se abre el editor con la copia; editarla
+  no cambia el programa del otro cliente.
+- [ ] Desde archivo → se abre el selector con la hoja abierta (probarlo
+  también en iPhone) → página con el nombre del programa y del archivo →
+  «ASIGNAR» → queda como activo, sin abrir el editor.
+- [ ] Desde archivo con un archivo sin programa → diálogo «El archivo no
+  contiene ningún programa» y la hoja sigue en los orígenes.
+- [ ] Archivo con entrenos → sale «Importar también su historial (N
+  sesiones)», apagado. Apagado → el historial del cliente no cambia; encendido →
+  los entrenos aparecen en su historial.
+- [ ] Cliente con programa activo → arriba de la hoja, en naranja,
+  «Sustituye a X, que pasa a Programas anteriores»; al asignar no sale ningún
+  diálogo de confirmación, y el anterior está en Programas anteriores.
+- [ ] ··· de la tarjeta → «Asignar programa» (ya no «Nuevo programa») abre
+  la hoja; ya no está «Importar programa».
+- [ ] ··· → «Importar historial» (debajo de Exportar) → elegir un archivo
+  con entrenos → toast «N sesiones importadas», el programa activo no cambia.
+- [ ] Cliente con app: el programa asignado queda pendiente de subir (o se
+  sube solo si es invitado), como antes.
 
 ## 5. C31 — Copiar a otro cliente y guardar como plantilla
 
@@ -222,5 +252,5 @@ programa sin sufijo (el usuario lo renombra en Plantillas si quiere). Toast
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
 | C29 | `derivedFrom` reescrito en `cloneProgramFromTemplate` + test | — | 🟢 | ✅ eeb598f — derivedFrom remapeado dentro de la copia + test |
-| C30 | Hoja «Asignar programa» con cuatro orígenes; «Importar historial» aparte | C29 | 🟡 | pendiente |
+| C30 | Hoja «Asignar programa» con cuatro orígenes; «Importar historial» aparte | C29 | 🟡 | ✅ 15351db — `AssignProgramSheet` de dos páginas, `DragSheet.onBack`, `copySources` + test |
 | C31 | «Copiar a otro cliente» y «Guardar como plantilla» en los menús de programa | C29 | 🟢 | pendiente |
