@@ -369,14 +369,25 @@ function hitMaxEnough(prog, doneSets, totalSets, maxReps) {
     return r > 0 ? r >= maxReps : !!s.done;
   }).length;
   const need = prog.evaluation?.mode === 'pct' ? prog.evaluation.pctThreshold : 1;
-  return atMax / Math.max(1, totalSets) >= need;
+  return { ok: atMax / Math.max(1, totalSets) >= need, atMax };
+}
+
+/**
+ * El motivo de subir dice lo que pasó de verdad: con «% mínimo» no llegaron
+ * todas, y «completaste todas las series» era falso (QA P52).
+ */
+function whyHit(hit, totalSets, maxReps, t) {
+  return hit.atMax >= totalSets
+    ? t('progression.why_allHit')
+    : t('progression.why_partHit', { n: hit.atMax, total: totalSets, max: maxReps });
 }
 
 function chipDouble(prog, doneSets, totalSets, maxW, minReps, maxReps, t) {
   // qualRate: fraction of sets where reps >= minReps (or done without reps data)
   const qualCount  = countQualifyingSets(doneSets, { minReps });
   const qualRate   = qualCount / Math.max(1, totalSets);
-  const allHitMax  = hitMaxEnough(prog, doneSets, totalSets, maxReps);
+  const hit        = hitMaxEnough(prog, doneSets, totalSets, maxReps);
+  const allHitMax  = hit.ok;
   const mostHitMin = qualRate >= 0.8;
   const struggling = qualRate < 0.6;
   const weightStr  = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
@@ -398,7 +409,7 @@ function chipDouble(prog, doneSets, totalSets, maxW, minReps, maxReps, t) {
   if (allHitMax && (!rpeGate || rpeGate.avg <= rpeGate.target)) {
     const inc  = computeIncrement(maxW, prog.increment);
     const next = maxW + inc;
-    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: t('progression.why_allHit'), suggestedWeight: next, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: whyHit(hit, totalSets, maxReps, t), suggestedWeight: next, suggestedTime: null };
   }
   if (rpeGate && rpeGate.avg > 9.5 && maxW > 0) {
     const inc  = computeIncrement(maxW, prog.increment);
@@ -459,7 +470,8 @@ function chipEffort(prog, doneSets, def, targetReps, t) {
 function chipDoubleDecrease(prog, doneSets, totalSets, assistance, minReps, maxReps, t) {
   const qualCount  = countQualifyingSets(doneSets, { minReps });
   const qualRate   = qualCount / Math.max(1, totalSets);
-  const allHitMax  = hitMaxEnough(prog, doneSets, totalSets, maxReps);
+  const hit        = hitMaxEnough(prog, doneSets, totalSets, maxReps);
+  const allHitMax  = hit.ok;
   const mostHitMin = qualRate >= 0.8;
   const struggling = qualRate < 0.6;
   const assistStr  = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist');
@@ -470,10 +482,10 @@ function chipDoubleDecrease(prog, doneSets, totalSets, assistance, minReps, maxR
     const msg  = next === 0
       ? t('progression.decrease_lastAssist', { assist: assistance })
       : t('progression.decrease_allHit', { next });
-    return { type: 'up', icon: '⬆', msg, why: t('progression.why_allHit'), suggestedWeight: next, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg, why: whyHit(hit, totalSets, maxReps, t), suggestedWeight: next, suggestedTime: null };
   }
   if (allHitMax && assistance === 0) {
-    return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: t('progression.why_allHit'), suggestedWeight: 0, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: whyHit(hit, totalSets, maxReps, t), suggestedWeight: 0, suggestedTime: null };
   }
   if (mostHitMin) {
     return { type: 'hold', icon: '→', msg: t('progression.decrease_mostHit', { assistStr }), why: t('progression.why_holdReps'), suggestedWeight: assistance || null, suggestedTime: null };
@@ -544,7 +556,9 @@ export function getProgression(exConfig, def, lastSets, t) {
   const maxW    = Math.max(0, ...weights);
 
   if (prog.direction === 'decrease') {
-    return chipDoubleDecrease(prog, doneSets, totalSets, maxW, minReps, maxReps, t);
+    // `assist`: el número es la AYUDA; la tarjeta no puede decir «Subir a 17,5»
+    // cuando lo que toca es quitar ayuda (QA P52).
+    return { ...chipDoubleDecrease(prog, doneSets, totalSets, maxW, minReps, maxReps, t), assist: true };
   }
   if (prog.type === 'weight') {
     return chipWeight(prog, doneSets, totalSets, maxW, minReps, minTime, t);

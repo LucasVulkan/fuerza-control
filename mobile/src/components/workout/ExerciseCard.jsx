@@ -421,6 +421,9 @@ export default function ExerciseCard({
     // Por esfuerzo el número es SIEMPRE el peso de hoy, suba o no: «Peso
     // objetivo» (effort-progression.md §5.2). La flecha y el delta dicen si sube.
     if (progression.effort && numeric) return 'effortTo';
+    // Asistido: el número es la ayuda. «Subir a 17,5» se leía como más ayuda.
+    if (progression.assist && numeric && base === 'up')   return 'assistLessTo';
+    if (progression.assist && numeric && base === 'down') return 'assistMoreTo';
     return numeric && base !== 'hold' ? `${base}To` : base;
   })();
 

@@ -265,3 +265,23 @@ describe('P52 — los cuatro fallos del motor', () => {
     });
   });
 });
+
+describe('QA P52 — los textos dicen lo que pasó', () => {
+  const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
+  const done = (rows) => rows.map(([weight, reps]) => ({ weight, reps, done: true }));
+  it('«% mínimo» que sube sin todas al máximo: el motivo cuenta las que llegaron', () => {
+    const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', evaluation: { mode: 'pct', pctThreshold: 0.6 } } };
+    const c = getProgression(cfg, {}, done([['60', '12'], ['60', '12'], ['60', '9']]), tk);
+    expect(c.why).toBe('progression.why_partHit{"n":2,"total":3,"max":12}');
+  });
+  it('todas al máximo: el motivo de siempre', () => {
+    const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double' } };
+    expect(getProgression(cfg, {}, done([['60', '12'], ['60', '12'], ['60', '12']]), tk).why).toBe('progression.why_allHit');
+  });
+  it('asistido: el chip va marcado para que la tarjeta no diga «Subir»', () => {
+    const c = getProgression({ sets: 3, minReps: 6, maxReps: 10, progression: { type: 'double' } },
+      { progressionDirection: 'decrease', weightStep: 2.5 }, done([['20', '10'], ['20', '10'], ['20', '10']]), tk);
+    expect(c.assist).toBe(true);
+    expect(c.suggestedWeight).toBe(17.5);
+  });
+});

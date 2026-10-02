@@ -750,7 +750,7 @@
     "coachTarget": "Objetivo de tu entrenador",
     "thisSession": "esta sesión",
     "setsSectionLabel": "Series",
-    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar", "deload": "Descarga", "upTo": "Subir a", "downTo": "Bajar a", "deloadTo": "Descarga a", "effortTo": "Peso objetivo" },
+    "progression": { "up": "Subir", "hold": "Mantener", "down": "Bajar", "deload": "Descarga", "upTo": "Subir a", "downTo": "Bajar a", "deloadTo": "Descarga a", "effortTo": "Peso objetivo", "assistLessTo": "Menos ayuda", "assistMoreTo": "Más ayuda" },
     "warmup": {
       "blockLabel": "Calentamiento",
       "metaSuffix": " · C×{{count}}",
@@ -2478,6 +2478,7 @@
     "normal_hold": "Sigue con {{weightStr}} y foco en la técnica.",
     "deload_hold": "Semana de descarga: mantén {{weightStr}} y deja 3-4 reps en recámara.",
     "why_allHit": "completaste todas las repeticiones de todas las series",
+    "why_partHit": "{{n}} de {{total}} series llegaron a {{max}}",
     "why_belowMin": "no llegaste al mínimo de repeticiones",
     "why_holdReps": "completa todas las repeticiones antes de subir",
     "why_rpeHigh": "las series salieron demasiado exigentes",

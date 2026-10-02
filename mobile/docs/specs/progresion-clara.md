@@ -78,13 +78,22 @@ Queda fuera a propósito (va en P53): medida Tiempo + tipo Doble sugiere «sube 
 
 **Probar P52**
 
-- [ ] Dominadas en Automática · Reps, rango 6–12: hacer 9/8/8 → la próxima vez
-  dice «apunta a 9 reps». Hacer 7/6/5 → «llega al mínimo».
+- [ ] Dominadas: en el editor, Progresión → Automática y en «Qué progresa»
+  elegir **Reps** (por defecto vienen en Doble). Rango 6–12, hacer 9/8/8 → la
+  próxima vez dice «apunta a 9 reps». Hacer 7/6/5 → «llega al mínimo».
+  — 2-oct: probado en Doble («mantén y busca más reps», que es lo correcto en
+  Doble); falta repetirlo con Reps.
 - [ ] Plancha en Automática · Tiempo, 30–60 s: hacer 45/45/40 → la próxima vez
   propone 45 s. Al cambiar el tipo a Tiempo en el editor, el salto pasa a 5 s.
+  — 2-oct: propone 45 s; falta confirmar que fue con 45/45/40 y el salto de 5 s.
 - [ ] Dominadas asistidas: cambiar las series en el editor y completar todas al
-  máximo con 20 kg → propone **bajar** a 17,5 kg.
-- [ ] Press banca en Doble con «% mínimo» al 60 %: 2 de 3 series al máximo → sube.
+  máximo con 20 kg → la tarjeta dice «↑ MENOS AYUDA 17.5 kg −2.5».
+  — ❌ 2-oct: el número era bueno pero decía «Subir a 17.5». Arreglado
+  (`assist` en el chip → «Menos ayuda» / «Más ayuda»); volver a probar.
+- [ ] Press banca en Doble con «% mínimo» al 60 %: 2 de 3 series al máximo → sube,
+  y el motivo dice «2 de 3 series llegaron a 12».
+  — ❌ 2-oct: subía, pero el motivo decía «completaste todas las repeticiones de
+  todas las series». Arreglado (`why_partHit`); volver a probar.
 
 ## 3. P53 — Qué pides en el editor, la progresión en su hoja, el plan en el Workout
 
