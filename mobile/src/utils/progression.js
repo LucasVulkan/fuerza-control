@@ -40,7 +40,8 @@
  * }
  *
  * Fuera de `progression`: `exConfig.weightStep`, el escalón de peso del
- * ejercicio (ausente → el de la librería, o 2,5).
+ * ejercicio (ausente → el de la librería, o 2,5), o 'exact' en Por esfuerzo
+ * (el peso calculado sin redondear al escalón, §5.4-bis).
  *
  * ── Lectura de lo antiguo (sin migrar datos) ────────────────────────────────
  * `type: 'weight'` → 'double' con meta = minReps · `mode: 'pct'` +
@@ -51,6 +52,7 @@
  */
 
 import { e1rmAtLeast, weightForReps } from './oneRm';
+import { isBodyweight } from './trainingLoad';
 
 // ── Public constants ──────────────────────────────────────────────────────────
 
@@ -98,6 +100,15 @@ export function defaultIncrement(type, def, step) {
   return step ?? (def?.weightStep > 0 ? def.weightStep : 2.5);
 }
 
+/**
+ * ¿Tiene sentido subirle peso a este ejercicio? Los de peso corporal solo si se
+ * pueden lastrar (dominadas, fondos y flexiones: son los que traen `weightStep`
+ * en la librería). Un `def` desconocido cuenta como con carga (§5.3-bis).
+ */
+export function canAddWeight(def) {
+  return !isBodyweight(def) || def.weightStep > 0;
+}
+
 // ── resolveProgressionConfig ──────────────────────────────────────────────────
 
 /**
@@ -130,9 +141,18 @@ export function resolveProgressionConfig(exConfig, def) {
   const ec = exConfig ?? {};
   const d  = def     ?? {};
   const p  = ec.progression?.type ? ec.progression : null;
-  const type = p
+  // La dirección es del ejercicio (asistido = baja), no un ajuste: el
+  // editor guardaba siempre 'increase' y una asistida editada pedía MÁS
+  // asistencia (P52). `p.direction` solo cuenta si el ejercicio ya no existe.
+  const direction = d.progressionDirection ?? p?.direction ?? 'increase';
+  let type = p
     ? (p.type === 'weight' ? 'double' : p.type)
     : (LEGACY_REVERSE_MAP[ec.progressionModel ?? d.progressionModel ?? 'double_progression'] ?? 'double');
+  // Sin carga y sin lastre posible, «Peso» no existe: se progresa en reps
+  // (§5.3-bis). Los asistidos no cambian. Se mira el `def` original: `{}` de
+  // `def ?? {}` pasaría por peso corporal.
+  const toReps = type === 'double' && direction === 'increase' && !canAddWeight(def);
+  if (toReps) type = 'reps';
   const step = resolveStep(ec, d, type);
 
   const ev   = p?.evaluation ?? {};
@@ -144,15 +164,17 @@ export function resolveProgressionConfig(exConfig, def) {
   const inc = p?.increment ?? {};
   return {
     type,
-    // La dirección es del ejercicio (asistido = baja), no un ajuste: el
-    // editor guardaba siempre 'increase' y una asistida editada pedía MÁS
-    // asistencia (P52). `p.direction` solo cuenta si el ejercicio ya no existe.
-    direction: d.progressionDirection ?? p?.direction ?? 'increase',
+    direction,
     step,
+    // 'exact' solo vale en Por esfuerzo; en Por reglas se lee como ausente. El
+    // `step` de arriba sigue siendo un número (stageRx y defaultIncrement
+    // hacen cuentas con él).
+    exact: type === 'effort' && ec.weightStep === 'exact',
     evaluation: { mode, need, maxRpe: ev.maxRpe ?? 8 },
     increment: {
       type:  inc.type === 'pct' ? 'pct' : 'fixed',
-      value: (inc.type === 'stepped' ? inc.steps?.[0]?.value : undefined) ?? inc.value ?? defaultIncrement(type, d, step),
+      // El salto guardado de un «Peso» leído como Reps eran kilos: no vale.
+      value: (toReps ? undefined : (inc.type === 'stepped' ? inc.steps?.[0]?.value : undefined) ?? inc.value) ?? defaultIncrement(type, d, step),
       pct:   inc.pct ?? 5,
     },
     down:       p?.down ?? null,
@@ -332,7 +354,7 @@ function chipEffort(prog, doneSets, n, targetReps, t) {
   const maxW = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0));
   const keep = (why) => ({
     effort: true, type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why),
-    suggestedWeight: maxW || null, suggestedTime: null,
+    suggestedWeight: maxW || null, suggestedTime: null, e1rm: null, raw: null,
   });
 
   // Cota baja por serie (`e1rmAtLeast`): una serie fácil sube el peso, nunca
@@ -346,15 +368,17 @@ function chipEffort(prog, doneSets, n, targetReps, t) {
   const raw  = weightForReps(e1rm, targetReps, prog.targetRpe);
   if (raw === null) return keep('progression.why_effortUnreliable');
 
-  const next = Math.round(raw / prog.step) * prog.step;
+  // Exacto (§5.4-bis): el cálculo tal cual, a 0,1 kg; sin escalón no hay
+  // «Al llegar» que valga (el peso se mueve con cualquier cambio).
+  const next = prog.exact ? Math.round(raw * 10) / 10 : Math.round(raw / prog.step) * prog.step;
   const type = next > maxW ? 'up' : next < maxW ? 'down' : 'hold';
 
-  if (type === 'hold' && prog.effortWhen === 'reach'
+  if (!prog.exact && type === 'hold' && prog.effortWhen === 'reach'
       && countQualifyingSets(doneSets, { minReps: targetReps }) >= n) {
     return {
       effort: true, type: 'up', icon: '⬆',
       msg: t('progression.effort_noWeight'), why: t('progression.why_effortReached'),
-      suggestedWeight: maxW + prog.step, suggestedTime: null,
+      suggestedWeight: maxW + prog.step, suggestedTime: null, e1rm, raw,
     };
   }
 
@@ -364,7 +388,7 @@ function chipEffort(prog, doneSets, n, targetReps, t) {
     effort: true,
     type, icon: { up: '⬆', down: '⬇', hold: '→' }[type],
     msg: t('progression.effort_noWeight'), why: t(`progression.${why}`),
-    suggestedWeight: next, suggestedTime: null,
+    suggestedWeight: next, suggestedTime: null, e1rm, raw,
   };
 }
 
@@ -454,6 +478,60 @@ export function getProgression(exConfig, def, lastSets, t) {
     return { ...chipDoubleDecrease(prog, doneSets, totalSets, maxW, minReps, goal, t), assist: true };
   }
   return chipDouble(prog, doneSets, totalSets, maxW, minReps, goal, t);
+}
+
+// ── progressionRule ───────────────────────────────────────────────────────────
+
+/**
+ * La regla de la progresión en una frase (§5.2): la que enseña el editor bajo
+ * «Progresión» y en su Resumen, y la ficha del Workout (P56). Lee la misma
+ * config resuelta que el motor, así que no puede decir otra cosa.
+ *
+ * `unit`: la unidad de peso que se pinta (el editor pasa la del usuario).
+ *
+ * @param {object} exConfig  Template exercise config
+ * @param {object} def       Library / custom exercise definition
+ * @param {function} t       i18next translate function
+ * @param {string} [unit]
+ * @returns {string}
+ */
+export function progressionRule(exConfig, def, t, unit = 'kg') {
+  const prog = resolveProgressionConfig(exConfig, def);
+  if (prog.type === 'none') return t('progression.rule.none');
+
+  const minReps = exConfig?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps;
+  const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps;
+  const minTime = exConfig?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;
+  const n       = exConfig?.sets ?? def?.sets ?? 3;
+
+  if (prog.type === 'effort') {
+    return t(prog.effortWhen === 'reach' && !prog.exact ? 'progression.rule.effortReach' : 'progression.rule.effortBeat',
+      { reps: minReps, rpe: prog.targetRpe });
+  }
+
+  const ev   = prog.evaluation;
+  const when = ev.mode === 'part'
+    ? t('progression.rule.whenPart', { need: Math.min(Math.max(ev.need, 1), n), n })
+    : ev.mode === 'rpe'
+      ? t('progression.rule.whenRpe', { rpe: ev.maxRpe })
+      : t('progression.rule.whenAll');
+
+  const inc = prog.increment;
+  if (prog.type === 'reps' || prog.type === 'time') {
+    const timed = prog.type === 'time';
+    const text  = inc.type === 'pct' ? `${inc.pct} %`
+      : timed ? `${inc.value} s` : t('progression.rule.incReps', { count: inc.value });
+    return t(timed ? 'progression.rule.timeUp' : 'progression.rule.repsUp',
+      { inc: text, when, floor: timed ? minTime : minReps });
+  }
+
+  const goal = exConfig?.progression?.type === 'weight' ? minReps : maxReps;
+  const text = inc.type === 'pct' ? `${inc.pct} %` : `${inc.value} ${unit}`;
+  const assist = prog.direction === 'decrease';
+  const head = t(assist ? 'progression.rule.assistUp' : 'progression.rule.weightUp', { inc: text, when, goal });
+  if (prog.down === 'never') return head;
+  const fails = Math.min(Math.max(prog.down?.fails ?? Math.floor(n * 0.4) + 1, 1), n);
+  return head + t(assist ? 'progression.rule.assistDown' : 'progression.rule.weightDown', { fails, n });
 }
 
 // ── summarizeSets ─────────────────────────────────────────────────────────────

@@ -241,11 +241,12 @@ export function applyRx(exercises, rx, allExercises = {}) {
     if (r.incrementScale !== 1 || r.progressionHold !== null) {
       // Materializar la progresión resuelta: un ejercicio sin `progression`
       // explícita hereda la del `def`, y si escribiéramos solo `hold` encima
-      // perderíamos el resto al no existir el objeto. `step` y `direction` son
+      // perderíamos el resto al no existir el objeto. `step`, `direction` y `exact` son
       // del ejercicio y se resuelven siempre: no se escriben. `down` solo si
       // venía guardado — su defecto depende de las series de la sesión (§4.1).
       const { step, down, ...prog } = resolveProgressionConfig(ex, allExercises[ex.exerciseId]);
       delete prog.direction;
+      delete prog.exact;
       const weighted = prog.type !== 'reps' && prog.type !== 'time';
       next.progression = {
         ...prog,

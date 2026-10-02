@@ -3,6 +3,7 @@ import { planSet } from './setPlan';
 import { getProgression } from './progression';
 
 const tk = (k) => k;
+const BB = { equipment: ['barbell'] };
 const last3 = (weight, reps) => reps.map((r) => ({ weight, reps: String(r), done: true }));
 
 describe('planSet — el orden de §4.5', () => {
@@ -102,7 +103,7 @@ describe('planSet — Reps y Tiempo', () => {
 
 describe('planSet — con el motor de verdad', () => {
   const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double' } };
-  const plan = (rows, index = 0) => planSet({ exConfig: cfg, def: {}, chip: getProgression(cfg, {}, rows, tk), lastSets: rows, index });
+  const plan = (rows, index = 0) => planSet({ exConfig: cfg, def: BB, chip: getProgression(cfg, BB, rows, tk), lastSets: rows, index });
 
   it('12/12/12 con 60 → 62.5 × 12 en las tres series', () => {
     for (let i = 0; i < 3; i++) {
