@@ -154,6 +154,12 @@
   .card .dose { margin: 14px 0 4px; color: var(--accent); display: flex; align-items: baseline; gap: 8px; }
   .card .dose small { font: 500 14px Inter; color: var(--mutedLight); }
   .card .sstag { display: inline-flex; gap: 6px; align-self: flex-start; margin-top: 12px; }
+  .last { margin-top: 18px; }
+  .last .t-caps { font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+  .last .sets { display: flex; gap: 4px; margin: 8px 0 6px; }
+  .last .sets span { flex: 1; text-align: center; background: var(--bg); border-radius: var(--r-sm); padding: 8px 0; color: var(--mutedLight); }
+  .last .sets span.hit { color: var(--accent); background: var(--accent10); }
+  .last .t-label { color: var(--mutedLight); }
   .knobs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto; }
   .knob { background: var(--surface2); border-radius: var(--r-md); padding: 10px; }
   .knob .t-caps { font-size: 10px; letter-spacing: 1px; color: var(--mutedLight); }
@@ -258,12 +264,12 @@
 <script>
 // ── Datos: Sesión A · Tirón ──
 const DATA = [
-  { id: '1',  name: 'Dominadas', variant: 'Lastre', pat: 'Tracción V', sets: 4, min: 6, max: 8, rest: 120, key: true, prog: 'Auto' },
-  { id: '2',  name: 'Remo con barra', variant: 'Pendlay', pat: 'Tracción H', sets: 4, min: 8, max: 10, rest: 90, prog: 'Auto' },
-  { id: '3a', name: 'Face pull', variant: 'Polea', pat: 'Hombro', sets: 3, min: 12, max: 15, rest: 0, ss: '3', prog: 'Fija' },
-  { id: '3b', name: 'Curl martillo', variant: 'Mancuernas', pat: 'Bíceps', sets: 3, min: 10, max: 12, rest: 60, ss: '3', prog: 'Auto' },
-  { id: '4',  name: 'Remo unilateral', variant: 'Mancuerna', pat: 'Tracción H', sets: 3, min: 10, max: 12, rest: 75, prog: 'Submáx' },
-  { id: '5',  name: 'Plancha', variant: 'Frontal', pat: 'Core', sets: 3, min: 30, max: 45, rest: 45, time: true, prog: 'Fija' },
+  { id: '1',  name: 'Dominadas', variant: 'Lastre', pat: 'Tracción V', sets: 4, min: 6, max: 8, rest: 120, key: true, prog: 'Auto', last: [7, 7, 6, 6], load: '+20 kg' },
+  { id: '2',  name: 'Remo con barra', variant: 'Pendlay', pat: 'Tracción H', sets: 4, min: 8, max: 10, rest: 90, prog: 'Auto', last: [10, 10, 9, 8], load: '70 kg' },
+  { id: '3a', name: 'Face pull', variant: 'Polea', pat: 'Hombro', sets: 3, min: 12, max: 15, rest: 0, ss: '3', prog: 'Fija', last: [15, 14, 12], load: '25 kg' },
+  { id: '3b', name: 'Curl martillo', variant: 'Mancuernas', pat: 'Bíceps', sets: 3, min: 10, max: 12, rest: 60, ss: '3', prog: 'Auto', last: [12, 11, 10], load: '14 kg' },
+  { id: '4',  name: 'Remo unilateral', variant: 'Mancuerna', pat: 'Tracción H', sets: 3, min: 10, max: 12, rest: 75, prog: 'Submáx', last: [12, 12, 11], load: '32 kg' },
+  { id: '5',  name: 'Plancha', variant: 'Frontal', pat: 'Core', sets: 3, min: 30, max: 45, rest: 45, time: true, prog: 'Fija', last: [45, 40, 35], load: 'peso corporal' },
   { id: '6',  block: 'AMRAP', mins: 10, moves: ['Kettlebell swing · 15', 'Burpees · 10', 'Remo ergo · 12 cal'] },
 ];
 const clone = () => DATA.map(d => ({ ...d }));
@@ -446,6 +452,9 @@ function bigCard(e, i, n) {
       <div class="t-body vr">${e.variant}${e.key ? ' · <span class="key">Principal</span>' : ''}</div>
       ${e.ss ? `<span class="t-label pill sstag">Superserie · ${e.id === '3a' ? '1 de 2' : '2 de 2'}</span>` : ''}
       <div class="t-heroGlyph dose"><span data-v="sets">${e.sets}</span>×<span data-v="range">${range(e)}</span><small>${e.time ? 'segundos' : 'reps'}</small></div>
+      <div class="last"><div class="t-caps">Última vez · 26 sep</div>
+        <div class="sets">${e.last.map(r => `<span class="t-labelS${r >= e.max ? ' hit' : ''}">${r}</span>`).join('')}</div>
+        <div class="t-label">${e.load}${e.time ? ' · segundos' : ''}</div></div>
       <div class="knobs">
         ${knob('Series', 'sets', e.sets)}
         ${knob('Descanso', 'rest', e.rest, 's')}

@@ -407,7 +407,17 @@ export default function ExerciseCard({
       const next = progression.suggestedTime;
       return {
         progTarget: `${next} s`,
-        progDelta:  cur > 0 && cur !== next ? signed(next - cur) : null,
+        progDelta:  progression.type !== 'hold' && cur > 0 && cur !== next ? signed(next - cur) : null,
+        progWhy:    progression.why ?? null,
+      };
+    }
+    // Reps con número, como peso y tiempo: antes caía a la frase larga (QA P52).
+    if (progression.suggestedReps != null) {
+      const cur  = progression.from;
+      const next = progression.suggestedReps;
+      return {
+        progTarget: t('workout.progressionReps', { count: next }),
+        progDelta:  progression.type !== 'hold' && cur != null && cur !== next ? signed(next - cur) : null,
         progWhy:    progression.why ?? null,
       };
     }
@@ -419,7 +429,8 @@ export default function ExerciseCard({
   const progKey = (() => {
     if (!progression) return null;
     const base = progression.reason === 'deload' ? 'deload' : progression.type;
-    const numeric = progression.suggestedWeight != null || progression.suggestedTime != null;
+    const numeric = progression.suggestedWeight != null || progression.suggestedTime != null
+      || progression.suggestedReps != null;
     // Por esfuerzo el número es SIEMPRE el peso de hoy, suba o no: «Peso
     // objetivo» (effort-progression.md §5.2). La flecha y el delta dicen si sube.
     if (progression.effort && numeric) return 'effortTo';

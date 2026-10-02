@@ -286,3 +286,19 @@ describe('QA P52 — los textos dicen lo que pasó', () => {
     expect(c.suggestedWeight).toBe(17.5);
   });
 });
+
+describe('QA P52 — Reps y Tiempo llevan número, también al mantener', () => {
+  const done = (rows) => rows.map(([reps, time]) => ({ reps, time, done: true }));
+  it('Reps sube: cifra, desde dónde y motivo', () => {
+    const c = getProgression({ sets: 3, minReps: 6, maxReps: 12, progression: { type: 'reps' } }, {}, done([['9'], ['8'], ['8']]), t);
+    expect([c.type, c.suggestedReps, c.from]).toEqual(['up', 9, 8]);
+  });
+  it('Reps mantiene: la cifra es el mínimo', () => {
+    const c = getProgression({ sets: 3, minReps: 6, maxReps: 12, progression: { type: 'reps' } }, {}, done([['7'], ['6'], ['5']]), t);
+    expect([c.type, c.suggestedReps]).toEqual(['hold', 6]);
+  });
+  it('Tiempo mantiene: la cifra es el mínimo', () => {
+    const c = getProgression({ sets: 3, minTime: 30, maxTime: 60, inputType: 'time', progression: { type: 'time' } }, {}, done([['', '35'], ['', '25'], ['', '30']]), t);
+    expect([c.type, c.suggestedTime]).toEqual(['hold', 30]);
+  });
+});

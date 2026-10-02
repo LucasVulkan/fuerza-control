@@ -325,11 +325,13 @@ function chipTime(prog, doneSets, totalSets, minTime, maxTime, t) {
   if (result === 'advance' && ok.length) {
     const base = Math.min(...ok);
     const next = Math.round(base + Math.max(1, computeIncrement(base, prog.increment)));
-    return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAllHit'), suggestedWeight: null, suggestedTime: next,
+    return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAllHit', { n: base }), suggestedWeight: null, suggestedTime: next,
       // `from`: la serie de la que parte el salto, para que el delta diga +5 y no nada (QA P52).
       from: base };
   }
-  return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: minTime, max: maxTime }), suggestedWeight: null, suggestedTime: null };
+  // Mantener también lleva número (el mínimo): sin él la tarjeta pintaba la
+  // frase larga en el hueco de la cifra (QA P52).
+  return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: minTime, max: maxTime }), why: t('progression.why_timeHold', { min: minTime }), suggestedWeight: null, suggestedTime: minTime };
 }
 
 function chipReps(prog, doneSets, totalSets, minReps, t) {
@@ -338,9 +340,11 @@ function chipReps(prog, doneSets, totalSets, minReps, t) {
   if (result === 'advance' && ok.length) {
     const base     = Math.min(...ok);
     const nextReps = base + Math.max(1, Math.round(computeIncrement(base, prog.increment)));
-    return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next: nextReps }), suggestedWeight: null, suggestedTime: null };
+    return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next: nextReps }), why: t('progression.why_repsUp', { n: base }),
+      suggestedWeight: null, suggestedTime: null, suggestedReps: nextReps, from: base };
   }
-  return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), suggestedWeight: null, suggestedTime: null };
+  return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), why: t('progression.why_repsHold', { min: minReps }),
+    suggestedWeight: null, suggestedTime: null, suggestedReps: minReps };
 }
 
 function chipWeight(prog, doneSets, totalSets, maxW, minReps, minTime, t) {
