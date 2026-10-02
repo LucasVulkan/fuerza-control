@@ -542,28 +542,28 @@ lo tocaron). Desaparecen del estado del editor `progMode`, `evalPct` e
 
 **Probar P55**
 
-- [ ] Abrir la hoja de un press banca: Qué sube · Cómo · Cuándo sube · Cuánto
+- [x] Abrir la hoja de un press banca: Qué sube · Cómo · Cuándo sube · Cuánto
   sube · Cuándo baja, y la frase del Resumen dice lo mismo que la hoja.
-- [ ] Con Rango, Por esfuerzo sale apagado con la pista naranja; al pasar a Reps
+- [x] Con Rango, Por esfuerzo sale apagado con la pista naranja; al pasar a Reps
   fijas se puede elegir, y al volver a Rango vuelve solo a Por reglas.
-- [ ] Parcial 2 de 3 → Cuándo baja no deja bajar de 2; con Parcial 1 de 3, no
+- [x] Parcial 2 de 3 → Cuándo baja no deja bajar de 2; con Parcial 1 de 3, no
   baja de 3.
-- [ ] Cuándo sube = RPE máx. → Registrar RPE se enciende y no se puede apagar.
-- [ ] Dominadas supinas: Qué sube ofrece Peso, Reps y Nada, y por defecto
+- [x] Cuándo sube = RPE máx. → Registrar RPE se enciende y no se puede apagar.
+- [x] Dominadas supinas: Qué sube ofrece Peso, Reps y Nada, y por defecto
   viene Reps. Dominadas: por defecto Peso; sin Cómo (Por esfuerzo solo con
   carga externa, hasta decidir el peso corporal). Dominadas asistidas:
   «Asistencia ↓», sin Cómo, con Cuándo baja.
   (2-oct: Peso salía capado en lo que la librería no lastra; todo ejercicio se
   puede lastrar, la librería solo decide el valor por defecto. Arreglado.)
-- [ ] Un ejercicio de una etapa de descarga: cambiar algo en el editor y en el
+- [x] Un ejercicio de una etapa de descarga: cambiar algo en el editor y en el
   Workout sigue diciendo «Descarga» (antes, editar lo cancelaba).
-- [ ] Plancha (Tiempo): solo Tiempo y Nada; el salto en segundos enteros.
-- [ ] Por esfuerzo: cambiar el escalón a 1,25 y comprobar en el Workout que el
+- [x] Plancha (Tiempo): solo Tiempo y Nada; el salto en segundos enteros.
+- [x] Por esfuerzo: cambiar el escalón a 1,25 y comprobar en el Workout que el
   peso propuesto es múltiplo de 1,25.
-- [ ] Peso muerto Por esfuerzo, Escalón → **Exacto**: «Cuándo sube» desaparece,
+- [x] Peso muerto Por esfuerzo, Escalón → **Exacto**: «Cuándo sube» desaparece,
   y tras 3 × 4 @7 con 60 kg el Workout propone 61.7 kg (con escalón 2,5,
   62.5).
-- [ ] Guardar, salir y volver a entrar: la hoja recupera todo lo elegido.
+- [x] Guardar, salir y volver a entrar: la hoja recupera todo lo elegido.
 
 ## 6. P56 — Workout: el plan en el gris y la línea de recomendación
 
