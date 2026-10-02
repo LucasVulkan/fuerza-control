@@ -4,12 +4,12 @@
 > En corto: El motor de progresión ya cubre casi todas las formas de entrenar, pero daba consejos equivocados en cuatro casos y ni el editor ni el Workout dejaban claro qué decide. Primero se arreglan los fallos; después se ordena en tres preguntas (qué pides, qué sube, cuándo y cuánto) y el plan del motor pasa a ser el gris de cada serie.
 > Fase P52 · hecho · Cuatro fallos del motor · §2
 > Fase P53 · terminado · Diseño y maqueta: Qué pides, la hoja de Progresión y el plan en el Workout · §3
-> Fase P54 · pendiente · Motor: el modelo nuevo y el plan de cada serie · §4
+> Fase P54 · hecho · Motor: el modelo nuevo y el plan de cada serie · §4
 > Fase P55 · pendiente · Editor: Qué pides y la hoja de Progresión · §5
 > Fase P56 · pendiente · Workout: el plan en el gris y la línea de recomendación · §6
 > Fase P57 · pendiente · La última vez: botón, línea o debajo de cada serie · §7
 >
-> Estado: **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
@@ -611,7 +611,7 @@ plantillas) y su fecha.
 |---|---|---|
 | P52 | `f5311ef` | cuatro fallos del motor |
 | P53 | `e8c4f2e` … `8f52105` | diseño y maqueta (v1 → v3 + variantes de A) |
-| P54 | — | |
+| P54 | `2fc2f19` | motor: modelo nuevo, chip único de peso, `setPlan` |
 | P55 | — | |
 | P56 | — | |
 | P57 | — | |
