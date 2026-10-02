@@ -12,7 +12,7 @@
 > Fase P62 · hecho · Peso corporal: sellado en la sesión y fila en el menú · §9
 > Fase P63 · aparcado · Peso corporal en el motor (Por esfuerzo, 1RM y récords) · §10
 >
-> Estado: **P62 hecha** (2-oct-2026, `6fd801d`; falta probarla a mano). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **P62 hecha y probada** (2-oct-2026, `6fd801d`). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P54 → P55 → P56 → P57 (§4-§7), escritas para que las haga un
@@ -885,14 +885,14 @@ usa el último peso de su log y no el mío; sin peso, `null`.
 
 **Probar P62**
 
-- [ ] Menú → Preferencias: pulsar «Peso corporal», escribir 55.1 → queda 55.1
+- [x] Menú → Preferencias: pulsar «Peso corporal», escribir 55.1 → queda 55.1
   al cerrar y reabrir el menú.
-- [ ] Escribir «abc», 0 o 900: vuelve al valor de antes.
-- [ ] Con LB: se enseña en libras y, al volver a KG, sigue siendo el mismo peso.
-- [ ] Terminar un entreno: el recap trae ese peso sin tocarlo. Cambiar el peso
+- [x] Escribir «abc», 0 o 900: vuelve al valor de antes.
+- [x] Con LB: se enseña en libras y, al volver a KG, sigue siendo el mismo peso.
+- [x] Terminar un entreno: el recap trae ese peso sin tocarlo. Cambiar el peso
   en el menú → la carga de esa sesión (Progreso → Carga) no cambia.
-- [ ] Corregir el peso en el recap → el menú lo enseña.
-- [ ] Entreno apuntado a un cliente sin app: el recap trae el último peso del
+- [x] Corregir el peso en el recap → el menú lo enseña.
+- [x] Entreno apuntado a un cliente sin app: el recap trae el último peso del
   cliente, no el mío, y el menú no se mueve.
 
 ## 10. P63 — Peso corporal en el motor (aparcada)
