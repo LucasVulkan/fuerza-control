@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: La barra lima de las cabeceras estaba copiada cinco veces y se caía con nombres reales; pasa a un componente único sobre el fondo de la app, y de paso los dos últimos modales de Clientes pasan a hoja.
+> Inicio: 2026-09-04
+> Fin: 2026-09-09
 > Fase U03-01 · terminado · Cabecera única, fuera de la banda accent, y las dos hojas que faltaban en Clientes · §2 · antes U10
 > Fase U03-02 · terminado · La cabecera pasa a barra: gris arriba, nombre debajo, regla segmentada · §6 · antes U11
 >

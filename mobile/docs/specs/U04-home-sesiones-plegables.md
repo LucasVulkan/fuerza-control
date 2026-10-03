@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: Las sesiones dejan de ser «un hero + una lista» y pasan a ser una única lista de filas plegables; la que toca hoy es una de ellas, en lima, con la letra grande y su botón puesto, y todas se abren al tocarlas para enseñar los ejercicios.
+> Inicio: 2026-09-08
+> Fin: 2026-09-08
 > Fase U04-01 · terminado · Cimientos: tokens de texto y `targetLabel()` extraído · §4 · antes U12
 > Fase U04-02 · terminado · La lista plegable: filas, tarjeta de hoy, desplegable y botones · §5 · antes U13
 >

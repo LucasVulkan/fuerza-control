@@ -2,6 +2,8 @@
 
 > Tema: conexión
 > En corto: El entrenador puede tener grupos (clases colectivas) además de clientes, asignar sesiones libres a un cliente o a un grupo, abrir la clase que toca en modo pizarra y apuntar «clase dada».
+> Inicio: 2026-09-28
+> Fin: 2026-09-28
 > Fase C06-01 · aparcado · El grupo como tipo de cliente · §3 · antes C23
 > Fase C06-02 · hecho · Sesiones libres de un cliente (la parte de grupos, aparcada) · §4 · antes C24
 > Fase C06-03 · aparcado · Modo pizarra · §5 · antes C25

@@ -2,6 +2,8 @@
 
 > Tema: conexión
 > En corto: Cómo se emparejan entrenador y cliente con un código, y qué pasa al reinstalar, reconectar o cambiar de entrenador. Es el protocolo, no una pantalla.
+> Inicio: 2026-08-13
+> Fin: 2026-08-13
 > Fase C01-01 · terminado · App 1a: store y servicios del modelo de conexión · §6 · antes C01
 > Fase C01-02 · terminado · App 1b: pantallas de conectar, reconectar y cambiar de entrenador · §6 · antes C02
 > Fase C01-03 · terminado · SQL desplegado: seis funciones `security definer`, sin `claim_trainer_slots` · §6 · antes C03

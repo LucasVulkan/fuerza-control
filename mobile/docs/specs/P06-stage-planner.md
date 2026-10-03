@@ -2,6 +2,7 @@
 
 > Tema: programas
 > En corto: Una etapa deja de ser un duplicado del programa entero y pasa a ser una regla («mismas sesiones, +1 serie, −5% de peso»), así que hacerlo evolucionar cuesta minutos en vez de reeditar N sesiones a mano.
+> Inicio: 2026-08-03
 > Fase P06-01 · terminado · Unificación del modelo + paso de ciclos en los dos modales de creación · §3 · antes P24
 > Fase P06-02 · terminado · `applyRx` + `templateChainIds` + `addStageToProgram({rx})` · §4 · antes P25
 > Fase P06-03 · terminado · Switch «principal» + pill KEY, que habilita `scope` · §5 · antes P26

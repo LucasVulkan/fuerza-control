@@ -2,6 +2,8 @@
 
 > Tema: entrenamiento
 > En corto: Dropset (series inmediatas bajando peso) y superserie (dos ejercicios encadenados sin descanso) en el mundo fuerza, reutilizando la tarjeta de ejercicio de siempre.
+> Inicio: 2026-07-06
+> Fin: 2026-07-06
 > Fase T03-01 · terminado · Dropset: datos, toggle de editor, sub-filas y filtros de contabilidad · §1 · antes T08
 > Fase T03-02 · terminado · Superserie: flag, agrupado, `SupersetBlock` y regla de descanso · §2 · antes T09
 >

@@ -2,6 +2,7 @@
 
 > Tema: programas
 > En corto: Las tarjetas de sesión del editor de programa se deslizan para duplicar o eliminar, como las filas de ejercicio. Vincular un ejercicio entre sesiones deja de ser elegir «Grupo 1» y pasa a ser ver las programaciones que tiene ese ejercicio en la etapa y meter esta sesión en una de ellas; al añadir ejercicios que ya están en otras sesiones, una hoja ofrece vincularlos.
+> Inicio: 2026-10-03
 > Fase P11-01 · hecho · Deslizar las tarjetas de sesión del editor de programa · §3 · antes P49
 > Fase P11-02 · pendiente · Vinculación en el editor de ejercicio: grupo «Programación» y hoja de programaciones · §4 · antes P50
 > Fase P11-03 · pendiente · Vincular al añadir ejercicios · §5 · antes P51

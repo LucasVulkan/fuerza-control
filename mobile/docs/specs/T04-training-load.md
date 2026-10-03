@@ -2,6 +2,8 @@
 
 > Tema: entrenamiento
 > En corto: Cuánto trabajo está absorbiendo el atleta: sRPE al terminar la sesión, carga interna y externa, monotonía y una vista de Carga con tendencia y series por grupo muscular.
+> Inicio: 2026-07-31
+> Fin: 2026-08-01
 > Fase T04-01 · terminado · `entry.sessionRpe` + peso corporal + UI de recap (`0bda778`) · §9 · antes T10
 > Fase T04-02 · terminado · `trainingLoad.js` + 52 tests + unificación de tonelaje · §9 · antes T11
 > Fase T04-03 · terminado · Segmentado EJERCICIOS/CARGA + `LoadTab` con tendencia · §9 · antes T12

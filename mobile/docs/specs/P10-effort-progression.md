@@ -2,6 +2,8 @@
 
 > Tema: programas
 > En corto: Un tercer modo de progresión para avanzados: el entrenador pide reps y un RPE, y la app calcula el peso de cada sesión a partir del 1RM estimado con el RPE que apuntó el cliente. Sustituye a «submáx», que desaparece: sus ejercicios pasan a Fija.
+> Inicio: 2026-09-29
+> Fin: 2026-09-29
 > Fase P10-01 · hecho · Fuera «submáx»: sus ejercicios pasan a Fija · §3 · antes P46
 > Fase P10-02 · hecho · Motor y editor del modo Por esfuerzo · §4 · antes P47
 > Fase P10-03 · hecho · El objetivo por esfuerzo en el Workout y las listas · §5 · antes P48

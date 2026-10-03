@@ -2,6 +2,8 @@
 
 > Tema: onboarding
 > En corto: El alta del usuario nuevo en tres preguntas y tres portadas, en vez del cuestionario largo. La revisión 1 se rechazó en QA porque no se parecía a la app; esta es la 2.
+> Inicio: 2026-09-01
+> Fin: 2026-09-03
 > Fase O01-01 · terminado · Revisión 2: tres preguntas y tres portadas, con la UI de la app · §2 · antes O01
 > Fase O01-02 · terminado · Las cuatro pantallas que quedaban con la UI vieja · §14 · antes O03
 >

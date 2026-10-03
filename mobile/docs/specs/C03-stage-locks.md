@@ -2,6 +2,8 @@
 
 > Tema: conexión
 > En corto: El entrenador puede cerrar una etapa con candado: el cliente sigue entrenando la suya y no entra en la siguiente hasta que se la abran. Desde sep-2026 incluye que el programa del entrenador sea de solo lectura en el móvil del cliente.
+> Inicio: 2026-07-30
+> Fin: 2026-09-03
 > Fase C03-01 · terminado · `stageWeeksCompleted` sustituye a `stageSessionsCompleted` (`0884d09`) · §3.2 · antes C07
 > Fase C03-02 · terminado · Blob `progress` en el historial; el entrenador lo espeja (`8d63d9a`) · §3.1 · antes C08
 > Fase C03-03 · terminado · Reglas de import + poda del modal de actualización (`e1a4d21`) · §6.3 · antes C09

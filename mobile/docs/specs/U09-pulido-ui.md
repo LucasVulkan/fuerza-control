@@ -2,6 +2,7 @@
 
 > Tema: ui
 > En corto: Mejoras visuales y de estandarización apuntadas el 29-sep-2026 para más adelante: pantallas que se deslizan con el segmentado, un recap legible, hojas de opciones y confirmaciones todas iguales, textos sin traducir, un solo lima, cabeceras, pantallas vacías y una hoja de progresión duplicada.
+> Inicio: 2026-09-29
 > Fase U09-01 · hecho · Progresión: las pantallas se deslizan con el segmentado · §1 · antes U28
 > Fase U09-02 · hecho · Recap: distribución y legibilidad · §2 · antes U29
 > Fase U09-03 · hecho · Hojas de opciones con icono y estandarizadas · §3 · antes U30

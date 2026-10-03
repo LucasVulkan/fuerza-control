@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 que no son de conexión: atrás tras una sesión llevaba a una pantalla negra y el check del editor siempre iba a Sesiones; Progreso restaba kg de repeticiones; la gráfica de ejercicio pintaba un frame y saltaba; y la Barlow no salía en iPhone.
+> Inicio: 2026-09-22
+> Fin: 2026-09-23
 > Fase U08-01 · terminado · Volver a Main sin apilar otro Main (bugs 1 y 6) · §3 · antes U24
 > Fase U08-02 · terminado · Progreso sin mezclar unidades (bug 7) · §4 · antes U25
 > Fase U08-03 · terminado · La gráfica de ejercicio entra sin salto (bug 9) · §5 · antes U26

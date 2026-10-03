@@ -2,6 +2,8 @@
 
 > Tema: entrenamiento
 > En corto: Series de calentamiento calculadas a partir del peso de trabajo, como pills informativas que no se registran ni cuentan para el volumen.
+> Inicio: 2026-07-08
+> Fin: 2026-07-10
 > Fase T05-01 · terminado · `src/utils/warmup.js` + tests (`45a74ee`) · §6 · antes T16
 > Fase T05-02 · terminado · Editor: bloque Calentamiento con 3 modos (`f04a254`) · §6 · antes T17
 > Fase T05-03 · terminado · Workout: fila de pills no registradas (rediseño de la fase 3) · §7 · antes T18

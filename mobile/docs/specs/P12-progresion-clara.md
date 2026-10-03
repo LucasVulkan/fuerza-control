@@ -2,6 +2,7 @@
 
 > Tema: programas
 > En corto: El motor de progresión ya cubre casi todas las formas de entrenar, pero daba consejos equivocados en cuatro casos y ni el editor ni el Workout dejaban claro qué decide. Primero se arreglan los fallos; después se ordena en tres preguntas (qué pides, qué sube, cuándo y cuánto) y el plan del motor pasa a ser el gris de cada serie.
+> Inicio: 2026-10-01
 > Fase P12-01 · hecho · Cuatro fallos del motor · §2 · antes P52
 > Fase P12-02 · terminado · Diseño y maqueta: Qué pides, la hoja de Progresión y el plan en el Workout · §3 · antes P53
 > Fase P12-03 · hecho · Motor: el modelo nuevo y el plan de cada serie · §4 · antes P54

@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: El banner lima deja de ser del programa y pasa a ser la sesión que toca; el programa baja a una tarjeta que se comparte con la ficha de cliente, y las tres frases que dan por hecho que entrenas rotando salen de la pantalla a una función.
+> Inicio: 2026-09-05
+> Fin: 2026-09-05
 > Fase U02-01 · terminado · Rediseño de la HomeView: hero, lista agrupada, semana desnuda · §3 · antes U06
 > Fase U02-02 · terminado · `ProgramCard` compartida con `ClientsScreen` · §4 · antes U07
 > Fase U02-03 · terminado · `sessionPlan()`: rótulo, marcador y contador fuera de la pantalla · §5 · antes U08

@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: Reestructuración del repositorio: se borra la app web y queda solo el móvil, y el estado deja de reescribirse entero en cada cambio.
+> Inicio: 2026-09-02
+> Fin: 2026-09-03
 > Fase U01-01 · terminado · Borrar la app web y traer el motor dentro de `mobile/` · §2 · antes U01
 > Fase U01-02 · terminado · Sacar la sesión en curso del blob persistido · §3 · antes U02
 > Fase U01-03 · aparcado · Recortes de features: sólo se hizo el generador · §4 · antes U03

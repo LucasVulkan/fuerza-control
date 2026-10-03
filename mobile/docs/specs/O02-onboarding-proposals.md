@@ -2,6 +2,8 @@
 
 > Tema: onboarding
 > En corto: Tras las tres preguntas, en vez de generar un programa a ciegas, se le enseñan al usuario las plantillas que le encajan ordenadas por ajuste, y elige.
+> Inicio: 2026-08-28
+> Fin: 2026-08-29
 > Fase O02-01 · terminado · Lista de plantillas propuestas tras las tres preguntas · §1 · antes O02
 >
 > Estado: **implementada** (ago 2026). Es la **fase 6** de

@@ -2,6 +2,8 @@
 
 > Tema: conexión
 > En corto: Darle un programa a un cliente se hace desde un solo botón, «Asignar programa», que deja elegir el origen: en blanco, una plantilla, el programa de otro cliente o un archivo. Desde cualquier programa de un cliente se puede guardar como plantilla. Un programa siempre se copia, nunca se comparte.
+> Inicio: 2026-10-02
+> Fin: 2026-10-02
 > Fase C07-01 · terminado · Las copias de programas conservan la cadena entre etapas · §3 · antes C29
 > Fase C07-02 · hecho · «Asignar programa»: una hoja con cuatro orígenes · §4 · antes C30
 > Fase C07-03 · hecho · Guardar como plantilla el programa de un cliente · §5 · antes C31

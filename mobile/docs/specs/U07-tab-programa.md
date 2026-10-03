@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: El Historial deja de ser pestaña y se mete dentro de Progresión; su hueco en la barra lo ocupa «Programa», una pantalla plana que dice dónde vas del programa y guarda sus tres acciones, y así el tab de Sesiones se queda con las sesiones de entreno y nada más.
+> Inicio: 2026-09-13
+> Fin: 2026-09-13
 > Fase U07-01 · terminado · Limpieza previa: fuera el bloque de conexiones duplicado y el mapeo muerto · §3 · antes U21
 > Fase U07-02 · terminado · El tab «Programa»: la tarjeta, las etapas y las acciones · §4 · antes U22
 > Fase U07-03 · terminado · El Historial entra en Progresión · §5 · antes U23

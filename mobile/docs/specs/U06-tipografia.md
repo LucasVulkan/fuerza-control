@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: La app tenía 177 combinaciones distintas de cuerpo × peso × tracking repartidas por 47 ficheros; ahora tiene una escala de ocho pasos, catorce papeles con nombre y tres reglas, y el bold vuelve a significar algo porque ya no está en todas partes.
+> Inicio: 2026-09-10
+> Fin: 2026-09-10
 > Fase U06-01 · terminado · Los papeles: `textStyles` se rehace y `typography` se retira · §4 · antes U17
 > Fase U06-02 · terminado · Las pantallas: los 170 `fontSize` a pelo caen sobre los papeles · §5 · antes U18
 > Fase U06-03 · terminado · El suelo de legibilidad y los dos pesos que sobraban · §6 · antes U19

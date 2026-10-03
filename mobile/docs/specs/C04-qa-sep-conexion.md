@@ -2,6 +2,8 @@
 
 > Tema: conexión
 > En corto: Cuatro arreglos de la ronda de QA del 22-sep-2026 en la conexión entrenador↔cliente: el RPE, las sesiones libres y el cambio de etapa no llegaban al entrenador; el aviso "sin revisar" no se apagaba al mirar; "subir cambios" salía sin cambios; y "Preparar sesión" abría siempre la A.
+> Inicio: 2026-09-23
+> Fin: 2026-09-23
 > Fase C04-01 · terminado · Un solo disparador de envío del cliente + fusión por id en el entrenador (bugs 2, 12, 14) · §3 · antes C15
 > Fase C04-02 · terminado · "Sin revisar" se apaga al mirar y el aviso lleva al historial (bugs 5, 13) · §4 · antes C16
 > Fase C04-03 · terminado · "Cambios sin subir" solo cuando hay cambios (bug 11) · §5 · antes C17

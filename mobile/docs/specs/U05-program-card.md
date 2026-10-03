@@ -2,6 +2,8 @@
 
 > Tema: ui
 > En corto: La tarjeta «Tu programa» de la Home deja de llevar botones: se pulsa el nombre para ver el programa y la etapa para elegirla, y todas las acciones (editar, archivar) se mudan al visualizador, que pasa a ser la pantalla del programa.
+> Inicio: 2026-09-09
+> Fin: 2026-09-09
 > Fase U05-01 · terminado · La tarjeta: una superficie, dos zonas pulsables, progreso en dos niveles · §3 · antes U14
 > Fase U05-02 · terminado · El visualizador hereda las acciones y el selector compartido · §4 · antes U15
 >

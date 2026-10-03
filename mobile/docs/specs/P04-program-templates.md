@@ -2,6 +2,7 @@
 
 > Tema: programas
 > En corto: En vez de inventar el programa ejercicio a ejercicio, se parte de plantillas reales que se adaptan a los días, el material y el tiempo de cada uno.
+> Inicio: 2026-08-08
 > Fase P04-01 · terminado · Resolvedor de slots · §5.2 · antes P10
 > Fase P04-02 · terminado · Escalera de compresión + `DISCIPLINE_RULES` · §5.3 · antes P11
 > Fase P04-03 · terminado · Sesiones cortas: presupuesto sin calentamiento y superserie de opuestos · §5.3.1 · antes P12

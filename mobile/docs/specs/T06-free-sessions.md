@@ -2,6 +2,8 @@
 
 > Tema: entrenamiento
 > En corto: Una sesión libre guardada pasa a ser una sesión normal sin programa: se edita con el mismo editor, puede estar a la vista en Inicio, progresa por su cuenta y, al acabarla, puedes decir que sustituye a una sesión del programa.
+> Inicio: 2026-09-26
+> Fin: 2026-09-26
 > Fase T06-01 · terminado · Modelo: la sesión libre es un `sessionTemplate` sin programa · §4 · antes T19
 > Fase T06-02 · terminado · Editor de sesión en modo libre · §5 · antes T20
 > Fase T06-03 · terminado · Inicio: sección «Sesiones libres» y hoja de «＋ Sesión libre» · §6 · antes T21

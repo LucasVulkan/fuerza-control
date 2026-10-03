@@ -2,6 +2,8 @@
 
 > Tema: conexión
 > En corto: Para clientes que no usan la app, el entrenador entrena con ellos desde su ficha o apunta después lo que hicieron; si el cliente se conecta más tarde, recibe todo lo apuntado.
+> Inicio: 2026-09-28
+> Fin: 2026-09-28
 > Fase C05-01 · hecho · Entrenar y apuntar para un cliente sin conectar · §3 · antes C19
 > Fase C05-02 · hecho · Con app o sin app: lo decide el entrenador, y el código solo existe si hace falta · §4.0 · antes C28
 > Fase C05-03 · hecho · Traspaso al pasar a la app: el cliente recibe lo apuntado · §4 · antes C20

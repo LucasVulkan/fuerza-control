@@ -67,6 +67,8 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 
 > Tema: monetización
 > En corto: Una frase, en cristiano, de qué va la cosa.
+> Inicio: 2026-09-14
+> Fin: 2026-09-28
 > Fase M01-01 · pendiente · Identidad en RevenueCat · §3
 > Fase M01-02 · pendiente · Freemium 2+2 y hoja de elección · §4 · antes M02
 >
@@ -86,6 +88,14 @@ desconocido, `npm run estado` **falla** en vez de callarse:
   página la enseña entera al pulsar la fase, así que no hay que buscarla a mano.
   Si apunta a un encabezado que no existe, `npm run estado` falla — un puntero
   roto se descubre al generar y no al pulsarlo.
+- **`Inicio`** / **`Fin`** — el día en que se **trabajó** la spec, no el día en que se
+  escribió. `Inicio` = cuando la primera tarea salió de `pendiente`; `Fin` =
+  cuando la última lo hizo (esté o no probada). Alimentan la **línea de tiempo** de
+  la página. **Las tareas `aparcado` no cuentan**: ni empiezan una spec ni impiden
+  que acabe, y una spec solo con aparcadas no sale. El generador exige el `Inicio`
+  en cuanto hay una tarea empezada, el `Fin` en cuanto no queda ninguna
+  pendiente, y falla si hay un `Fin` con tareas pendientes (si se reabre una
+  spec, se borra). Formato `AAAA-MM-DD`; el error dice qué día es hoy.
 - **`Estado`** — la prosa de siempre. Sigue siendo la fuente de verdad del
   detalle; la página no la pinta porque no cabe.
 
@@ -162,6 +172,8 @@ cuadra en vez de generar una página que miente — así que si duda, ejecútalo
 1. En la **cabecera** de la spec, su línea `> Fase …` pasa a `hecho` (o a
    `terminado` si no hay nada que probar a mano). Esto es lo que manda: es lo
    que lee la página.
+   Si es **la primera** de la spec en salir de `pendiente`, se añade `> Inicio:` con
+   la fecha de hoy; si es **la última** (descontando las aparcadas), `> Fin:`.
 2. En la **tabla `## Fases`** del documento, su fila recibe el commit y lo que
    haya que decir (`✅ 0884d09 — …`). Es el registro, no el estado.
 3. Si está en `hecho`, su lista `**Probar <código>**` con las casillas de lo
@@ -200,7 +212,8 @@ cuadra en vez de generar una página que miente — así que si duda, ejecútalo
 Tema desconocido · falta `En corto` o `Estado` · una spec sin fases · un archivo
 sin prefijo de spec · una tarea que no cuelga de su spec · una spec que no
 empieza por la letra de su tema · **dos specs con el mismo código** · un
-estado de fase que no es `pendiente`/`hecho`/`terminado`/`aparcado` · una `§`
+estado de fase que no es `pendiente`/`hecho`/`terminado`/`aparcado` · un
+`Inicio`/`Fin` ausente, sobrante, mal formado o con el `Fin` antes del `Inicio` · una `§`
 que apunta a un encabezado que no existe · un fallo de la auditoría sin
 `> En corto:` · una fase `hecho` sin lista de pruebas · una `terminado` con
 casillas sin marcar · un `**Probar X**` sin casillas o de una fase que no es de

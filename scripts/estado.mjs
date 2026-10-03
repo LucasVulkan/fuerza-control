@@ -79,6 +79,10 @@ const letraDe = (tema) => TEMAS.find(([t]) => t === tema)?.[2];
 
 const ESTADOS = ['pendiente', 'hecho', 'terminado', 'aparcado'];
 
+// Hoy en local (`sv` da AAAA-MM-DD): las fechas de las specs son del día en que se trabajó.
+const HOY = new Date().toLocaleDateString('sv');
+const esFecha = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+
 const leer = (f) => readFileSync(join(SPECS, f), 'utf8').replace(/\r/g, '');
 const esc  = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -239,6 +243,8 @@ const specs = readdirSync(SPECS)
       tema:    clave(lineas, 'Tema'),
       corto:   clave(lineas, 'En corto'),
       estado:  clave(lineas, 'Estado'),
+      inicio:  clave(lineas, 'Inicio'),
+      fin:     clave(lineas, 'Fin'),
       fases,
     };
     for (const k of ['tema', 'corto', 'estado']) {
@@ -253,6 +259,22 @@ const specs = readdirSync(SPECS)
     if (codigo[0] !== letraDe(spec.tema)) throw new Error(`${f}: la spec ${codigo} no empieza por "${letraDe(spec.tema)}", la letra del tema "${spec.tema}"`);
     const repetida = fases.find((x, i) => fases.findIndex((y) => y.codigo === x.codigo) !== i);
     if (repetida) throw new Error(`${f}: la fase ${repetida.codigo} aparece dos veces`);
+
+    // Fechas de trabajo. Las tareas aparcadas NO cuentan: ni empiezan la spec ni
+    // impiden que acabe. Inicio = el día en que la primera salió de «pendiente»
+    // (no el día en que se escribió la spec); Fin = el día en que la última lo hizo.
+    const activas   = fases.filter((x) => x.estado !== 'aparcado');
+    const empezada  = activas.some((x) => x.estado !== 'pendiente');
+    const completa  = activas.length > 0 && activas.every((x) => x.estado !== 'pendiente');
+    for (const [k, v] of [['Inicio', spec.inicio], ['Fin', spec.fin]]) {
+      if (v && !esFecha(v)) throw new Error(`${f}: "> ${k}: ${v}" no es una fecha AAAA-MM-DD`);
+    }
+    if (empezada && !spec.inicio) throw new Error(`${f}: tiene tareas empezadas y le falta "> Inicio: AAAA-MM-DD" bajo "En corto" — el día en que salió de pendiente la primera (hoy es ${HOY})`);
+    if (!empezada && spec.inicio) throw new Error(`${f}: lleva "> Inicio:" pero ninguna tarea ha salido de pendiente (las aparcadas no cuentan). Quítalo`);
+    if (completa && !spec.fin) throw new Error(`${f}: todas sus tareas (salvo las aparcadas) están hechas y le falta "> Fin: AAAA-MM-DD" bajo "Inicio" (hoy es ${HOY})`);
+    if (!completa && spec.fin) throw new Error(`${f}: lleva "> Fin:" pero le quedan tareas pendientes. Quítalo`);
+    if (spec.fin && spec.fin < spec.inicio) throw new Error(`${f}: "Fin" (${spec.fin}) es anterior a "Inicio" (${spec.inicio})`);
+    if (spec.inicio > HOY) throw new Error(`${f}: "Inicio" (${spec.inicio}) es futuro; hoy es ${HOY}`);
     return spec;
   })
   .sort((a, b) => TEMAS.findIndex(([t]) => t === a.tema) - TEMAS.findIndex(([t]) => t === b.tema)
@@ -312,7 +334,8 @@ const commit = execFileSync('git', ['log', '-1', '--format=%h|%ad|%s', '--date=s
 for (const s of specs) {
   s.c = cuenta(s.fases);
   s.id = s.archivo.replace(/\.md$/, '');
-  s.grupo = s.c.probar ? 'probar' : s.c.hacer ? 'hacer' : 'hecha';
+  // Sin ninguna tarea viva (todas aparcadas) no es «completada»: está aparcada.
+  s.grupo = s.c.probar ? 'probar' : s.c.hacer ? 'hacer' : s.c.terminada ? 'hecha' : 'aparcada';
 }
 const avance = (c) => c.terminada / (c.terminada + c.probar + c.hacer || 1);
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
@@ -395,8 +418,9 @@ const franjaProbar = () => {
 };
 
 const vistaTema = ([tema, nombre, l]) => {
-  const vivas = specsDe(tema).filter((s) => s.grupo !== 'hecha');
+  const vivas = specsDe(tema).filter((s) => s.grupo === 'probar' || s.grupo === 'hacer');
   const hechas = specsDe(tema).filter((s) => s.grupo === 'hecha');
+  const aparcadas = specsDe(tema).filter((s) => s.grupo === 'aparcada');
   const c = cuentaTema(tema);
   return `<section class="detalle" data-vista="t-${esc(tema)}" data-padre="" hidden>
   <button class="volver" data-abre="">← Todo</button>
@@ -407,8 +431,71 @@ const vistaTema = ([tema, nombre, l]) => {
   ${vivas.length ? `<div class="tiles">${vivas.map(tarjeta).join('')}</div>` : ''}
   ${hechas.length ? `<section class="bloque b-hecha"><h2><span class="punto"></span>Completadas<span class="n">${hechas.length}</span></h2>
     <div class="minis">${hechas.map(mini).join('')}</div></section>` : ''}
+  ${aparcadas.length ? `<section class="bloque"><h2><span class="punto"></span>Aparcadas<span class="n">${aparcadas.length}</span></h2>
+    <p class="sub">Todas sus tareas están aparcadas: no cuentan.</p>
+    <div class="minis">${aparcadas.map(mini).join('')}</div></section>` : ''}
 </section>`;
 };
+
+// ── Línea de tiempo ───────────────────────────────────────────────────────────
+// Una barra por spec, de su Inicio a su Fin (o a hoy si sigue abierta). Las
+// aparcadas no cuentan, así que una spec solo con aparcadas no sale; y una spec
+// sin ninguna tarea empezada va abajo, en «Sin iniciar».
+const DIA = 864e5;
+const diaN = (s) => Math.round(Date.parse(s) / DIA);
+const fechaCorta = (s) => new Date(`${s}T00:00:00Z`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' }).replace('.', '');
+const duracion = (s) => diaN(s.fin || HOY) - diaN(s.inicio) + 1;
+
+const lineaTiempo = () => {
+  const con = specs.filter((s) => s.inicio);
+  if (con.length === 0) return '<p class="sub">Ninguna spec ha empezado todavía.</p>';
+  const PX = 9;   // por día: unos 95 días caben en una pantalla de escritorio
+  let d0 = Math.min(...con.map((s) => diaN(s.inicio)));
+  d0 -= (new Date(d0 * DIA).getUTCDay() + 6) % 7;            // al lunes de esa semana
+  const dHoy = diaN(HOY);
+  const dias = dHoy - d0 + 1 + 6;                             // 6 días de aire para el «12 d» de la última
+  const semanas = Array.from({ length: Math.ceil(dias / 7) }, (_, i) => d0 + i * 7);
+
+  const cab = `<div class="tl-etq tl-cab"></div><div class="tl-pista tl-cab">${semanas.map((w) =>
+    `<span class="tl-sem" style="left:${(w - d0) * PX}px">${fechaCorta(new Date(w * DIA).toISOString().slice(0, 10))}</span>`).join('')}</div>`;
+
+  const fila = (s) => {
+    const x0 = (diaN(s.inicio) - d0) * PX;
+    const d = duracion(s);
+    const w = d * PX;
+    const rango = `${fechaCorta(s.inicio)} → ${s.fin ? fechaCorta(s.fin) : 'hoy'}`;
+    return `<div class="tl-etq"><button data-abre="${esc(s.id)}" title="${esc(s.titulo)}">${letra(s)}<span class="tl-tit">${esc(s.titulo)}</span></button>
+        <span class="tl-rango">${rango}</span></div>
+      <div class="tl-pista"><button class="tl-barra g-${s.grupo}${s.fin ? '' : ' abierta'}" data-abre="${esc(s.id)}"
+          style="left:${x0}px;width:${w}px" title="${esc(`${s.codigo} · ${rango} · ${plural(d, 'día', 'días')}`)}"></button>
+        <span class="tl-dur" style="left:${x0 + w + 6}px">${d} d</span></div>`;
+  };
+
+  const filas = TEMAS.filter(([t]) => t !== 'errores').map(([tema, nombre, l]) => {
+    const ss = con.filter((s) => s.tema === tema).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.codigo.localeCompare(b.codigo));
+    if (ss.length === 0) return '';
+    return `<div class="tl-etq tl-tema"><span class="letra">${l}</span>${esc(nombre)}</div><div class="tl-pista tl-tema"></div>${ss.map(fila).join('')}`;
+  }).join('');
+
+  const cerradas = con.filter((s) => s.fin);
+  const media = cerradas.length ? Math.round(cerradas.reduce((a, s) => a + duracion(s), 0) / cerradas.length) : 0;
+  const sinIniciar = specs.filter((s) => !s.inicio && s.grupo !== 'aparcada');
+
+  return `<p class="corto">${plural(con.length, 'spec empezada', 'specs empezadas')} · ${plural(cerradas.length, 'terminada', 'terminadas')}
+      (duración media ${plural(media, 'día', 'días')}) · ${plural(con.length - cerradas.length, 'abierta', 'abiertas')}.
+      Las tareas aparcadas no cuentan.</p>
+    <div class="leyenda"><span><i class="g-hecha"></i>implementada y probada</span><span><i class="g-probar"></i>por probar</span>
+      <span><i class="g-hacer"></i>con tareas por hacer</span><span><i class="abierta g-hacer"></i>sigue abierta (llega a hoy)</span></div>
+    <div class="tl-scroll"><div class="tl" style="--px:${PX}px;--ancho:${dias * PX}px;--hoy:${(dHoy - d0) * PX + PX / 2}px">${cab}${filas}</div></div>
+    ${sinIniciar.length ? `<section class="bloque"><h2><span class="punto"></span>Sin iniciar<span class="n">${sinIniciar.length}</span></h2>
+      <p class="sub">Ninguna tarea ha salido de «pendiente».</p><div class="minis">${sinIniciar.map(mini).join('')}</div></section>` : ''}`;
+};
+
+const vistaLinea = () => `<section class="detalle" data-vista="linea" data-padre="" hidden>
+  <button class="volver" data-abre="">← Todo</button>
+  <div class="dcab"><div><div class="tema">Temas</div><h2>Línea de tiempo</h2></div></div>
+  ${lineaTiempo()}
+</section>`;
 
 const cuentaGrupo = (g) => specs.filter((s) => s.grupo === g).length;
 const cifra = (g, num, texto) => `<div class="cifra c-${g}"><b>${num}</b><span>${texto}</span></div>`;
@@ -536,6 +623,40 @@ const html = `<!doctype html>
   .pp:hover{border-color:var(--pend)} .pp .pt{flex:1;line-height:1.35}
   .pp .cod{background:var(--pendbg);color:var(--pend)}
   .antes{font-size:10.5px;color:var(--mut2);font-family:ui-monospace,monospace}
+  .irlinea{margin-left:auto;font:500 12px Inter,sans-serif;text-transform:none;letter-spacing:0;color:var(--acc);
+           border:1px solid var(--accbg);background:var(--accbg);border-radius:20px;padding:6px 12px}
+  .irlinea:hover{border-color:var(--acc)}
+
+  /* ── línea de tiempo ── */
+  .leyenda{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 0;font-size:12px;color:var(--mut)}
+  .leyenda span{display:flex;align-items:center;gap:6px}
+  .leyenda i{width:22px;height:10px;border-radius:3px;display:inline-block}
+  .tl-scroll{margin-top:18px;overflow-x:auto;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
+  .tl{--etq:190px;display:grid;grid-template-columns:var(--etq) var(--ancho);min-width:max-content}
+  .tl-etq{position:sticky;left:0;z-index:2;background:var(--card);border-right:1px solid var(--bd);border-bottom:1px solid #1e2124;
+          padding:6px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+  .tl-etq button{display:flex;gap:7px;align-items:baseline;font-size:12.5px;line-height:1.3}
+  .tl-etq button:hover .tl-tit{color:var(--tx)}
+  .tl-tit{color:#c5c9ce;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tl-rango{font-size:10.5px;color:var(--mut2);padding-left:1px}
+  .tl-pista{position:relative;height:50px;border-bottom:1px solid #1e2124;
+            background-image:linear-gradient(to right,#22252a 1px,transparent 1px);background-size:calc(7*var(--px)) 100%}
+  .tl-pista::after{content:"";position:absolute;top:0;bottom:0;left:var(--hoy);width:2px;background:var(--acc);opacity:.55;pointer-events:none}
+  .tl-cab{height:30px;border-bottom:1px solid var(--bd);background-color:var(--card)}
+  .tl-cab::after{display:none}
+  .tl-sem{position:absolute;top:8px;font-size:10.5px;color:var(--mut2);padding-left:4px;white-space:nowrap}
+  .tl-tema{height:30px;background-color:var(--card2);flex-direction:row;align-items:center;gap:8px;
+           font:700 12px/1 var(--num);text-transform:uppercase;letter-spacing:.05em;color:var(--tx)}
+  .tl-etq.tl-tema{background:var(--card2)}
+  .tl-pista.tl-tema{background-color:var(--card2)}
+  .tl-barra{position:absolute;top:15px;height:20px;border-radius:5px;min-width:6px}
+  .tl-barra.g-hecha{background:var(--acc)} .tl-barra.g-probar{background:var(--pend)} .tl-barra.g-hacer{background:#5a6068}
+  .tl-barra:hover{filter:brightness(1.15);outline:2px solid #fff3}
+  .tl-barra.abierta{border-top-right-radius:0;border-bottom-right-radius:0;
+                    -webkit-mask-image:linear-gradient(to right,#000 70%,rgba(0,0,0,.25));mask-image:linear-gradient(to right,#000 70%,rgba(0,0,0,.25))}
+  .tl-dur{position:absolute;top:19px;font-size:11px;color:var(--mut);white-space:nowrap}
+  .leyenda i.g-hecha{background:var(--acc)} .leyenda i.g-probar{background:var(--pend)} .leyenda i.g-hacer{background:#5a6068}
+  .leyenda i.abierta{background:linear-gradient(to right,#5a6068 55%,rgba(90,96,104,.2))}
   .detalle .tiles{margin-top:20px}
   .detalle .bloque{margin-top:28px}
   .letra{flex:none;font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mut);
@@ -602,6 +723,7 @@ const html = `<!doctype html>
   footer{color:var(--mut2);font-size:12px;margin-top:48px;border-top:1px solid var(--bd);padding-top:14px}
 
   @media (max-width:600px){
+    .tl{--etq:128px}
     h1{font-size:28px}
     .resumen{gap:6px} .cifra{padding:10px 12px} .cifra b{font-size:34px} .cifra span{font-size:11.5px}
     .tiles{grid-template-columns:1fr}
@@ -626,7 +748,8 @@ const html = `<!doctype html>
     ${franjaProbar()}
 
     <section class="bloque">
-      <h2><span class="punto"></span>Temas<span class="n">${TEMAS.length}</span></h2>
+      <h2><span class="punto"></span>Temas<span class="n">${TEMAS.length}</span>
+        <button class="irlinea" data-abre="linea">Línea de tiempo →</button></h2>
       <p class="sub">Tema › spec › tarea: <code>C05-02</code> es la tarea 2 de la spec 5 de Entrenador ↔ cliente.</p>
       <div class="tiles">${TEMAS.filter(([t]) => t !== 'errores').map(tarjetaTema).join('')}
         <button class="tile" data-abre="errores"><span class="tcuerpo">
@@ -639,6 +762,7 @@ const html = `<!doctype html>
 
   ${TEMAS.filter(([t]) => t !== 'errores').map(vistaTema).join('\n')}
   ${specs.map(detalle).join('\n')}
+  ${vistaLinea()}
 
   <section class="detalle" data-vista="errores" data-padre="" hidden>
     <button class="volver" data-abre="">← Todo</button>
@@ -669,6 +793,9 @@ const html = `<!doctype html>
     tablero.hidden = !!abierta;
     vistas.forEach((v) => { v.hidden = v.dataset.vista !== abierta; });
     try { localStorage.setItem('estado.spec', abierta); } catch {}
+    // En el móvil la línea no cabe: se abre mirando a hoy, que es el extremo derecho.
+    const sc = document.querySelector('.tl-scroll');
+    if (abierta === 'linea' && sc) sc.scrollLeft = sc.scrollWidth;
   };
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-abre]');

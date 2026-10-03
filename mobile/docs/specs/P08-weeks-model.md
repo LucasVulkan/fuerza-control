@@ -2,6 +2,8 @@
 
 > Tema: programas
 > En corto: La app deja de contar «ciclos» (vueltas completas a todas las sesiones) y pasa a contar semanas de calendario: entrenos por semana, etapas de N semanas y, al acabar una, una comprobación de si se entrenó lo que tocaba que propone alargarla.
+> Inicio: 2026-09-25
+> Fin: 2026-09-25
 > Fase P08-01 · terminado · Modelo puro: semanas, estado de etapa, sesión que toca · §4 · antes P36
 > Fase P08-02 · terminado · Store, migración y sincronización cliente ↔ entrenador · §5 · antes P37
 > Fase P08-03 · terminado · Pantallas del atleta · §6 · antes P38

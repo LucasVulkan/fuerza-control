@@ -2,6 +2,8 @@
 
 > Tema: programas
 > En corto: Agarre y anchura dejan de ser ejercicios distintos: son la «variante» de uno solo, que informa, se apunta en cada entreno y se puede filtrar en Progreso. Lo que cambia la carga (a una mano, o separar una variante para tener dos jalones el mismo día) sí es otro ejercicio, con id fijo y progresión propia.
+> Inicio: 2026-09-29
+> Fin: 2026-09-29
 > Fase P09-01 · hecho · Librería: fusión de repetidos, migración de ids y buscador por palabras · §3 · antes P41
 > Fase P09-02 · hecho · La variante en el editor y en las listas · §4 · antes P42
 > Fase P09-03 · hecho · La variante de hoy en el Workout, compartir y pegar · §5 · antes P43
