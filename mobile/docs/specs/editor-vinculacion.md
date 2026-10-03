@@ -364,6 +364,28 @@ Van dentro de P50: si no, la fase se apoya en ellos.
    `exerciseEditor.warmup.<modo>` y el resto, `warmupRowSub`. `ruleTxt` es una
    frase larga: el meta se corta a una línea (`numberOfLines`).
 
+### 4.9 Propuestas sin decidir (3-oct-2026)
+
+Salieron de la misma revisión. Ninguna entra en P50 hasta que el usuario decida.
+
+1. **Un solo aviso, no dos.** §4.2 pone las fichas «Vinculado» en el Resumen y
+   además una línea debajo, y dicen lo mismo. Propuesta: una sola línea dentro
+   del Resumen, con las fichas `sm tint` y «Lo que cambies aquí cambia también en
+   A y C» (habla del ejercicio, no de las sesiones).
+2. **Filas que parecen iguales y no lo son.** El título de cada fila de la hoja
+   (§4.4) es solo `rowMeta` (`4 × 5 · 150s`): dos filas con la misma pinta pueden
+   tener progresión distinta, y «Usar» sobrescribiría la tuya sin que se vea.
+   Propuesta: añadir el nombre de la progresión (`4 × 5 · 150s · Doble
+   progresión`).
+3. **Vincular cuatro sesiones cuesta tres viajes.** Como solo se mueve la sesión
+   que editas (§1.3), vincular la sentadilla de A, B, C y D obliga a entrar en B,
+   C y D (sesión → ejercicio → hoja). P51 lo cubre al añadir, no en programas ya
+   hechos. Propuesta: botón «Vincular todas aquí» en la hoja con ≥3 filas, o
+   dejarlo como está.
+4. **Nombre del grupo.** El grupo se llama «Programación» pero no incluye
+   Volumen, y la hoja llama «programación» a la configuración entera (Volumen
+   incluido). Se entiende, pero si sale otro nombre para el grupo, mejor.
+
 **Probar P50**
 
 - [ ] Editor de ejercicio: debajo de VOLUMEN un solo título PROGRAMACIÓN con
