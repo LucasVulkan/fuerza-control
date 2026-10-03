@@ -15,8 +15,8 @@
  * así, de modo que los bloques van siempre al final. La numeración sigue
  * corrida.
  */
-import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, PanResponder, Share, useWindowDimensions } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, TouchableOpacity, StyleSheet, Share, useWindowDimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, {
@@ -31,7 +31,8 @@ import { sessionSlots, slotsToArrays } from '../utils/sessionSlots';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import { ArrowIcon, MenuIcon, DragIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
+import SwipeRow from '../components/ui/SwipeRow';
+import { MenuIcon, DragIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
@@ -48,13 +49,6 @@ import { DEFAULT_TARGET } from '../utils/progression';
 
 import { showDialog } from '../components/ui/dialog';
 // ─── Constantes ───────────────────────────────────────────────────────────────
-
-// Los dos botones de acción, su separación y el aire que queda entre el último
-// y la tarjeta ya deslizada. La tarjeta se esconde exactamente esa distancia.
-const ACTION_BTN_WIDTH = 104;
-const ACTION_GAP       = spacing.sm;
-const ACTION_INSET     = spacing.md;
-const SWIPE_OPEN       = ACTION_BTN_WIDTH * 2 + ACTION_GAP + ACTION_INSET;
 
 // Separación entre huecos de la lista (space/sm) y entre miembros de una misma
 // superserie (radius/xxs = 2, el valor que Figma usa también como gap).
@@ -126,103 +120,38 @@ function EditorRow({
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
-  // Inicializador perezoso en vez de useRef: el valor es igual de estable y
-  // no se lee ningún `.current` durante el render.
-  const [dragX] = useState(() => new Animated.Value(0));
-  const openRef = useRef(false);
-
-  const cbs = useRef({ onOpenChange, onPress });
-  useEffect(() => { cbs.current = { onOpenChange, onPress }; });
-
-  // Otra fila se abrió (o una acción cerró ésta) — ciérrala.
-  useEffect(() => {
-    if (!isOpen && openRef.current) {
-      openRef.current = false;
-      Animated.spring(dragX, { toValue: 0, useNativeDriver: false, tension: 80 }).start();
-    }
-  }, [isOpen, dragX]);
-
-  /* eslint-disable-next-line react-hooks/refs */
-  const [pan] = useState(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gs) => !openRef.current && gs.dx > 8 && gs.dx > Math.abs(gs.dy) * 1.3,
-    onPanResponderMove: (_, gs) => {
-      if (gs.dx > 0) dragX.setValue(Math.min(gs.dx, SWIPE_OPEN));
-    },
-    onPanResponderRelease: (_, gs) => {
-      const opening = gs.dx >= SWIPE_OPEN / 2;
-      openRef.current = opening;
-      Animated.spring(dragX, { toValue: opening ? SWIPE_OPEN : 0, useNativeDriver: false, tension: 80 }).start();
-      cbs.current.onOpenChange(opening);
-    },
-    onPanResponderTerminate: () => {
-      if (!openRef.current) Animated.spring(dragX, { toValue: 0, useNativeDriver: false }).start();
-    },
-  }));
-
-  function closeRow() {
-    openRef.current = false;
-    Animated.spring(dragX, { toValue: 0, useNativeDriver: false, tension: 80 }).start();
-    cbs.current.onOpenChange(false);
-  }
+  const actions = [];
+  if (onSubstitute) actions.push({ label: t('editor.rowSubstitute'), onPress: onSubstitute, kind: 'neutral' });
+  actions.push({ label: t('editor.rowDelete'), onPress: onSwipeDelete, kind: 'danger' });
 
   return (
-    <View style={{ position: 'relative' }}>
-      <View style={styles.actionPanel} pointerEvents="box-none">
-        {onSubstitute && (
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnSubstitute]}
-            onPress={() => { closeRow(); onSubstitute(); }}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.actionBtnSubstituteText}>{t('editor.rowSubstitute')}</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.actionBtnDelete]}
-          onPress={() => { closeRow(); onSwipeDelete(); }}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.actionBtnDeleteText}>{t('editor.rowDelete')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Animated.View
-        style={[styles.row, radii, { transform: [{ translateX: dragX }] }]}
-        {...pan.panHandlers}
-      >
-        {isOpen ? (
-          // Abierta, el número se cambia por una flecha hacia atrás: es la pista
-          // de que la tarjeta se devuelve a su sitio tocándola.
-          <View style={styles.rowNumberSlot}>
-            <ArrowIcon size={16} color={th.colors.mutedLight} back />
-          </View>
-        ) : (
-          <Text style={styles.rowNumber}>{number}</Text>
-        )}
-        <TouchableOpacity
-          style={styles.rowBody}
-          onPress={() => { if (openRef.current) closeRow(); else cbs.current.onPress(); }}
-          activeOpacity={0.7}
-        >
-          <View style={{ flex: 1, minWidth: 0 }}>
-            {/* Nombre y variante en UN texto de una línea: al cortarse por el
-                final se pierde antes la variante que el nombre
-                (exercise-variants.md §4.2). */}
-            <Text style={styles.rowName} numberOfLines={1}>
-              {name}
-              {variant ? <Text style={styles.rowVariant}>{` · ${variant}`}</Text> : null}
-            </Text>
-            <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
-          </View>
-          {pill ? (
-            <View style={styles.pill}><Text style={styles.pillText}>{pill}</Text></View>
-          ) : null}
-        </TouchableOpacity>
+    <SwipeRow
+      actions={actions}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      leading={<Text style={styles.rowNumber}>{number}</Text>}
+      onPress={onPress}
+      radii={radii}
+      handle={(
         <Sortable.Handle style={styles.dragHandle}>
           <DragIcon color={th.colors.mutedLight} />
         </Sortable.Handle>
-      </Animated.View>
-    </View>
+      )}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        {/* Nombre y variante en UN texto de una línea: al cortarse por el
+            final se pierde antes la variante que el nombre
+            (exercise-variants.md §4.2). */}
+        <Text style={styles.rowName} numberOfLines={1}>
+          {name}
+          {variant ? <Text style={styles.rowVariant}>{` · ${variant}`}</Text> : null}
+        </Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
+      </View>
+      {pill ? (
+        <View style={styles.pill}><Text style={styles.pillText}>{pill}</Text></View>
+      ) : null}
+    </SwipeRow>
   );
 }
 
@@ -319,7 +248,10 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   function switchSession(id) {
     if (id === templateId) return;
-    slideDir.value = sessionIds.indexOf(id) > sessionIds.indexOf(templateId) ? 1 : -1;
+    // Una copia recién creada aún no está en `sessionIds` (la lista es de antes de
+    // duplicar): entra por la derecha.
+    const to = sessionIds.indexOf(id);
+    slideDir.value = to < 0 || to > sessionIds.indexOf(templateId) ? 1 : -1;
     setEditingName(false);
     setOpenRowId(null);
     setTemplateId(id);
@@ -805,19 +737,8 @@ const makeStyles = (th) => StyleSheet.create({
   summaryMain:   { ...textStyles.bodyStrong, color: th.colors.text },
   summaryVolume: { ...textStyles.label, color: th.tint.accent50 },
 
-  // ── Fila ──
-  row: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    backgroundColor:   th.colors.surface,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm2,
-  },
-  // 12 es literal de Figma (no hay token); el asa va a `space/sm` del contenido.
-  rowNumber: { ...textStyles.labelStrong, color: th.colors.accent, marginRight: 12 },
-  rowNumberSlot: { marginRight: 12, alignItems: 'center', justifyContent: 'center' },
-  rowBody:   { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // ── Fila ── (la tarjeta, el gesto y el panel de acciones viven en `ui/SwipeRow`)
+  rowNumber: { ...textStyles.labelStrong, color: th.colors.accent },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
   rowVariant: { ...textStyles.body, color: th.colors.mutedLight },
   // Sin `marginTop`: el hueco nombre→meta lo pone el interlineado y nada más,
@@ -842,29 +763,6 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.sm,
   },
   pillText: { ...textStyles.label, color: th.colors.accent },
-
-  // Panel de acciones bajo la fila, descubierto al deslizar. Son botones con el
-  // lenguaje de la app (radius/sm + text/card-type), no bloques de color a sangre.
-  actionPanel: {
-    position: 'absolute', left: 0, top: 0, bottom: 0,
-    flexDirection: 'row', width: SWIPE_OPEN,
-    gap: ACTION_GAP,
-    // Aire por dentro: los botones no llegan al alto de la fila ni se pegan a
-    // la tarjeta cuando ésta termina de deslizarse.
-    paddingVertical: spacing.sm,
-    paddingRight:    ACTION_INSET,
-  },
-  actionBtn: {
-    width: ACTION_BTN_WIDTH,
-    alignItems: 'center', justifyContent: 'center',
-    borderRadius: th.radius.sm,
-    paddingHorizontal: spacing.lg,
-  },
-  // `surface2`: el mismo relleno que los botones Secondary de Figma.
-  actionBtnSubstitute:     { backgroundColor: th.colors.surface2 },
-  actionBtnSubstituteText: { ...textStyles.labelStrong, color: th.colors.text, textAlign: 'center' },
-  actionBtnDelete:         { backgroundColor: th.tint.red30 },
-  actionBtnDeleteText:     { ...textStyles.labelStrong, color: th.tint.red50, textAlign: 'center' },
 
   // ── Añadir ── (texto plano, sin caja — así está ya en Figma)
   addBtn:      { alignItems: 'center', paddingVertical: spacing.md },
