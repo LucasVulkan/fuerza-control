@@ -744,9 +744,14 @@ const makeStyles = (th) => StyleSheet.create({
   // Sin `marginTop`: el hueco nombre→meta lo pone el interlineado y nada más,
   // igual que en las tarjetas de sesión del editor de programa (`sesMeta`).
   rowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
+  // El asa se agarra en toda la esquina derecha de la fila: el padding agranda la
+  // zona de toque hasta los bordes de la tarjeta y los márgenes negativos lo
+  // compensan, así que el icono no se mueve (QA P49: había que ser muy preciso).
   dragHandle: {
     alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center',
-    marginLeft: spacing.sm,
+    paddingLeft:  spacing.md, marginLeft:  spacing.sm - spacing.md,
+    paddingRight: spacing.md, marginRight: -spacing.md,
+    paddingVertical: spacing.sm2, marginVertical: -spacing.sm2,
   },
 
   // Superserie: barra accent a la izquierda envolviendo el grupo (209:2479).

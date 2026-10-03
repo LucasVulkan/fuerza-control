@@ -590,12 +590,18 @@ const makeStyles = (th) => StyleSheet.create({
     paddingRight:      spacing.sm,
     paddingVertical:   spacing.md,
   },
+  // Zona de toque hasta los bordes de la tarjeta; los márgenes negativos
+  // compensan el padding y el icono se queda donde estaba (QA P49).
   dragHandle: {
-    width:          26,
-    alignSelf:      'stretch',
-    alignItems:     'center',
-    justifyContent: 'center',
-    marginLeft:     spacing.sm,
+    alignSelf:       'stretch',
+    alignItems:      'center',
+    justifyContent:  'center',
+    paddingLeft:     spacing.md,
+    marginLeft:      spacing.sm - spacing.md,
+    paddingRight:    spacing.sm,
+    marginRight:     -spacing.sm,
+    paddingVertical: spacing.md,
+    marginVertical:  -spacing.md,
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
   // minWidth 16 = el ancho de la flecha ‹ que la sustituye al abrir la tarjeta.
