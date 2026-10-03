@@ -453,40 +453,54 @@ const lineaTiempo = () => {
   let d0 = Math.min(...con.map((s) => diaN(s.inicio)));
   d0 -= (new Date(d0 * DIA).getUTCDay() + 6) % 7;            // al lunes de esa semana
   const dHoy = diaN(HOY);
-  const dias = dHoy - d0 + 1 + 6;                             // 6 días de aire para el «12 d» de la última
+  const dias = dHoy - d0 + 1 + 6;
+  const ancho = dias * PX;
   const semanas = Array.from({ length: Math.ceil(dias / 7) }, (_, i) => d0 + i * 7);
 
   const cab = `<div class="tl-etq tl-cab"></div><div class="tl-pista tl-cab">${semanas.map((w) =>
     `<span class="tl-sem" style="left:${(w - d0) * PX}px">${fechaCorta(new Date(w * DIA).toISOString().slice(0, 10))}</span>`).join('')}</div>`;
 
+  // Una línea por spec: el nombre no baja de línea (se ve entero en el título al
+  // pasar el ratón) y las fechas viajan junto a la barra, no debajo del nombre.
+  // El texto va a la derecha de la barra, o a su izquierda si ahí ya no cabe.
   const fila = (s) => {
     const x0 = (diaN(s.inicio) - d0) * PX;
     const d = duracion(s);
     const w = d * PX;
     const rango = `${fechaCorta(s.inicio)} → ${s.fin ? fechaCorta(s.fin) : 'hoy'}`;
-    return `<div class="tl-etq"><button data-abre="${esc(s.id)}" title="${esc(s.titulo)}">${letra(s)}<span class="tl-tit">${esc(s.titulo)}</span></button>
-        <span class="tl-rango">${rango}</span></div>
+    const texto = `${d} d · ${rango}`;
+    const aLaDerecha = x0 + w + 6 + 150 <= ancho;
+    const pos = aLaDerecha ? `left:${x0 + w + 6}px` : `right:${ancho - x0 + 6}px`;
+    return `<div class="tl-etq"><button data-abre="${esc(s.id)}" title="${esc(`${s.codigo} · ${s.titulo}`)}">${letra(s)}<span class="tl-tit">${esc(s.titulo)}</span></button></div>
       <div class="tl-pista"><button class="tl-barra g-${s.grupo}${s.fin ? '' : ' abierta'}" data-abre="${esc(s.id)}"
           style="left:${x0}px;width:${w}px" title="${esc(`${s.codigo} · ${rango} · ${plural(d, 'día', 'días')}`)}"></button>
-        <span class="tl-dur" style="left:${x0 + w + 6}px">${d} d</span></div>`;
+        <span class="tl-dur" style="${pos}">${texto}</span></div>`;
   };
+  const cabGrupo = (letraTxt, nombre, n) => `<div class="tl-etq tl-tema"><span class="letra">${esc(letraTxt)}</span>${esc(nombre)}${n ? `<span class="n">${n}</span>` : ''}</div><div class="tl-pista tl-tema"></div>`;
+  const porInicio = (a, b) => a.inicio.localeCompare(b.inicio) || a.codigo.localeCompare(b.codigo);
 
-  const filas = TEMAS.filter(([t]) => t !== 'errores').map(([tema, nombre, l]) => {
-    const ss = con.filter((s) => s.tema === tema).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.codigo.localeCompare(b.codigo));
-    if (ss.length === 0) return '';
-    return `<div class="tl-etq tl-tema"><span class="letra">${l}</span>${esc(nombre)}</div><div class="tl-pista tl-tema"></div>${ss.map(fila).join('')}`;
+  // Orden 1: por tema, dentro de cada uno las que empezaron antes primero.
+  const filasTema = TEMAS.filter(([t]) => t !== 'errores').map(([tema, nombre, l]) => {
+    const ss = con.filter((s) => s.tema === tema).sort(porInicio);
+    return ss.length ? cabGrupo(l, nombre) + ss.map(fila).join('') : '';
   }).join('');
+  // Orden 2: lo que sigue abierto primero, y dentro de cada bloque, las más antiguas arriba.
+  const abiertas  = con.filter((s) => !s.fin).sort(porInicio);
+  const cerradas  = con.filter((s) => s.fin).sort(porInicio);
+  const filasProgreso = (abiertas.length ? cabGrupo('▶', 'En progreso', abiertas.length) + abiertas.map(fila).join('') : '')
+    + (cerradas.length ? cabGrupo('✓', 'Terminadas', cerradas.length) + cerradas.map(fila).join('') : '');
 
-  const cerradas = con.filter((s) => s.fin);
+  const tabla = (orden, filas) => `<div class="tl-scroll" data-orden="${orden}" hidden><div class="tl" style="--px:${PX}px;--ancho:${ancho}px;--hoy:${(dHoy - d0) * PX + PX / 2}px">${cab}${filas}</div></div>`;
   const media = cerradas.length ? Math.round(cerradas.reduce((a, s) => a + duracion(s), 0) / cerradas.length) : 0;
   const sinIniciar = specs.filter((s) => !s.inicio && s.grupo !== 'aparcada');
 
   return `<p class="corto">${plural(con.length, 'spec empezada', 'specs empezadas')} · ${plural(cerradas.length, 'terminada', 'terminadas')}
-      (duración media ${plural(media, 'día', 'días')}) · ${plural(con.length - cerradas.length, 'abierta', 'abiertas')}.
+      (duración media ${plural(media, 'día', 'días')}) · ${plural(abiertas.length, 'abierta', 'abiertas')}.
       Las tareas aparcadas no cuentan.</p>
+    <div class="orden" role="group" aria-label="Orden"><button data-orden="tema">Por tema</button><button data-orden="progreso">En progreso primero</button></div>
     <div class="leyenda"><span><i class="g-hecha"></i>implementada y probada</span><span><i class="g-probar"></i>por probar</span>
       <span><i class="g-hacer"></i>con tareas por hacer</span><span><i class="abierta g-hacer"></i>sigue abierta (llega a hoy)</span></div>
-    <div class="tl-scroll"><div class="tl" style="--px:${PX}px;--ancho:${dias * PX}px;--hoy:${(dHoy - d0) * PX + PX / 2}px">${cab}${filas}</div></div>
+    ${tabla('tema', filasTema)}${tabla('progreso', filasProgreso)}
     ${sinIniciar.length ? `<section class="bloque"><h2><span class="punto"></span>Sin iniciar<span class="n">${sinIniciar.length}</span></h2>
       <p class="sub">Ninguna tarea ha salido de «pendiente».</p><div class="minis">${sinIniciar.map(mini).join('')}</div></section>` : ''}`;
 };
@@ -632,14 +646,13 @@ const html = `<!doctype html>
   .leyenda span{display:flex;align-items:center;gap:6px}
   .leyenda i{width:22px;height:10px;border-radius:3px;display:inline-block}
   .tl-scroll{margin-top:18px;overflow-x:auto;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
-  .tl{--etq:190px;display:grid;grid-template-columns:var(--etq) var(--ancho);min-width:max-content}
+  .tl{--etq:300px;display:grid;grid-template-columns:var(--etq) var(--ancho);min-width:max-content}
   .tl-etq{position:sticky;left:0;z-index:2;background:var(--card);border-right:1px solid var(--bd);border-bottom:1px solid #1e2124;
-          padding:6px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
-  .tl-etq button{display:flex;gap:7px;align-items:baseline;font-size:12.5px;line-height:1.3}
+          padding:0 10px;display:flex;align-items:center;min-width:0}
+  .tl-etq button{display:flex;gap:7px;align-items:baseline;font-size:12.5px;line-height:1.3;min-width:0;max-width:100%}
   .tl-etq button:hover .tl-tit{color:var(--tx)}
-  .tl-tit{color:#c5c9ce;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .tl-rango{font-size:10.5px;color:var(--mut2);padding-left:1px}
-  .tl-pista{position:relative;height:50px;border-bottom:1px solid #1e2124;
+  .tl-tit{color:#c5c9ce;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .tl-pista{position:relative;height:32px;border-bottom:1px solid #1e2124;
             background-image:linear-gradient(to right,#22252a 1px,transparent 1px);background-size:calc(7*var(--px)) 100%}
   .tl-pista::after{content:"";position:absolute;top:0;bottom:0;left:var(--hoy);width:2px;background:var(--acc);opacity:.55;pointer-events:none}
   .tl-cab{height:30px;border-bottom:1px solid var(--bd);background-color:var(--card)}
@@ -649,12 +662,16 @@ const html = `<!doctype html>
            font:700 12px/1 var(--num);text-transform:uppercase;letter-spacing:.05em;color:var(--tx)}
   .tl-etq.tl-tema{background:var(--card2)}
   .tl-pista.tl-tema{background-color:var(--card2)}
-  .tl-barra{position:absolute;top:15px;height:20px;border-radius:5px;min-width:6px}
+  .tl-barra{position:absolute;top:7px;height:18px;border-radius:5px;min-width:6px}
   .tl-barra.g-hecha{background:var(--acc)} .tl-barra.g-probar{background:var(--pend)} .tl-barra.g-hacer{background:#5a6068}
   .tl-barra:hover{filter:brightness(1.15);outline:2px solid #fff3}
   .tl-barra.abierta{border-top-right-radius:0;border-bottom-right-radius:0;
                     -webkit-mask-image:linear-gradient(to right,#000 70%,rgba(0,0,0,.25));mask-image:linear-gradient(to right,#000 70%,rgba(0,0,0,.25))}
-  .tl-dur{position:absolute;top:19px;font-size:11px;color:var(--mut);white-space:nowrap}
+  .tl-dur{position:absolute;top:8px;font-size:11px;color:var(--mut);white-space:nowrap}
+  .tl-tema .n{font:600 11px/1 Inter,sans-serif;color:var(--mut);background:var(--card);border-radius:20px;padding:3px 7px;margin-left:4px}
+  .orden{display:flex;gap:6px;margin-top:14px}
+  .orden button{font-size:12.5px;color:var(--mut);padding:7px 13px;border:1px solid var(--bd);border-radius:20px}
+  .orden button[aria-pressed=true]{background:var(--accbg);color:var(--acc);border-color:var(--acc)}
   .leyenda i.g-hecha{background:var(--acc)} .leyenda i.g-probar{background:var(--pend)} .leyenda i.g-hacer{background:#5a6068}
   .leyenda i.abierta{background:linear-gradient(to right,#5a6068 55%,rgba(90,96,104,.2))}
   .detalle .tiles{margin-top:20px}
@@ -723,7 +740,7 @@ const html = `<!doctype html>
   footer{color:var(--mut2);font-size:12px;margin-top:48px;border-top:1px solid var(--bd);padding-top:14px}
 
   @media (max-width:600px){
-    .tl{--etq:128px}
+    .tl{--etq:150px}
     h1{font-size:28px}
     .resumen{gap:6px} .cifra{padding:10px 12px} .cifra b{font-size:34px} .cifra span{font-size:11.5px}
     .tiles{grid-template-columns:1fr}
@@ -794,7 +811,7 @@ const html = `<!doctype html>
     vistas.forEach((v) => { v.hidden = v.dataset.vista !== abierta; });
     try { localStorage.setItem('estado.spec', abierta); } catch {}
     // En el móvil la línea no cabe: se abre mirando a hoy, que es el extremo derecho.
-    const sc = document.querySelector('.tl-scroll');
+    const sc = document.querySelector('.tl-scroll:not([hidden])');
     if (abierta === 'linea' && sc) sc.scrollLeft = sc.scrollWidth;
   };
   document.addEventListener('click', (e) => {
@@ -804,6 +821,21 @@ const html = `<!doctype html>
     pintar();
     window.scrollTo(0, 0);
   });
+  // Orden de la línea de tiempo: por tema o lo abierto primero. Se recuerda; sin localStorage, por tema.
+  let orden = 'tema';
+  try { orden = localStorage.getItem('estado.orden') || 'tema'; } catch {}
+  const pintarOrden = () => {
+    document.querySelectorAll('.tl-scroll').forEach((e) => { e.hidden = e.dataset.orden !== orden; });
+    document.querySelectorAll('.orden button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.orden === orden)));
+    try { localStorage.setItem('estado.orden', orden); } catch {}
+    const sc = document.querySelector('.tl-scroll:not([hidden])');
+    if (abierta === 'linea' && sc) sc.scrollLeft = sc.scrollWidth;
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-orden]');
+    if (b && b.tagName === 'BUTTON') { orden = b.dataset.orden; pintarOrden(); }
+  });
+  pintarOrden();
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !abierta) return;
     abierta = document.querySelector('[data-vista="' + abierta + '"]').dataset.padre;
