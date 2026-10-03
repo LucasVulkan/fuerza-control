@@ -1,6 +1,6 @@
 /**
  * Compresión de sesión por presupuesto de tiempo — spec
- * `mobile/docs/specs/program-templates.md` §5.3 y §5.6.
+ * `mobile/docs/specs/P04-program-templates.md` §5.3 y §5.6.
  *
  * Lo que sustituye: `trimToTimeBudget` saltaba de "el ejercicio está" a "el
  * ejercicio no está" sin pasar por "el ejercicio está con dos series". Aquí la
@@ -17,7 +17,7 @@
  *
  * Este módulo unificó la estimación de tiempo que el generador procedural y
  * `archetypeAdapter` duplicaban a propósito. El procedural ya no existe
- * (rediseno.md §4), pero la unificación se queda: la fórmula pasó de tres
+ * (U01-rediseno.md §4), pero la unificación se queda: la fórmula pasó de tres
  * líneas a una escalera de seis peldaños con tabla por disciplina, y ahí dos
  * copias divergen seguro.
  */
@@ -27,7 +27,7 @@ import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 // Transición/montaje por ejercicio: buscar máquina, montar peso, ajustar.
 const EXERCISE_OVERHEAD_SEC = 120;
 // Calentamiento general, una vez por sesión (si la sesión no está vacía).
-// Revisar cuando exista la feature warmup-sets (mobile/docs/specs/warmup-sets.md)
+// Revisar cuando exista la feature warmup-sets (mobile/docs/specs/T05-warmup-sets.md)
 // para no contar el calentamiento dos veces.
 const SESSION_OVERHEAD_SEC = 480;
 

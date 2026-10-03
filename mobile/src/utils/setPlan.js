@@ -2,7 +2,7 @@
  * setPlan — el gris de cada serie: lo que el Workout sugiere en una casilla
  * vacía y lo que un ✓ sin escribir guarda.
  *
- * Spec: `docs/specs/progresion-clara.md` §4.5.
+ * Spec: `docs/specs/P12-progresion-clara.md` §4.5.
  *
  * Antes se decidía en dos sitios que se copiaban a mano (la tarjeta y el
  * guardado); si divergían, lo que se veía en gris no era lo que se guardaba.

@@ -14,7 +14,7 @@
  * además de desvanecerse.
  *
  * Salió de la pestaña Info de la ficha de cliente; la usa también la nota del
- * recap (pulido-ui.md §2).
+ * recap (U09-pulido-ui.md §2).
  */
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import Reanimated, { LinearTransition, FadeIn } from 'react-native-reanimated';

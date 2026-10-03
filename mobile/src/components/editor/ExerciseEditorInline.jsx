@@ -12,7 +12,7 @@
  *   · Calentamiento — sección propia con una fila que abre su DragSheet.
  *   · Progresión — una sola fila (título + la frase de la regla) que abre la
  *     hoja con sus pasos: qué sube, cómo, cuándo sube, cuánto y cuándo baja
- *     (progresion-clara.md §5; la lógica de qué se ofrece vive en
+ *     (P12-progresion-clara.md §5; la lógica de qué se ofrece vive en
  *     `utils/progressionForm.js`).
  *   · Tempo — la fila muestra el valor y abre una hoja con el input.
  * Los botones Sustituir / Eliminar del final tampoco están en Figma: son
@@ -230,7 +230,7 @@ export default function ExerciseEditorInline({
     const updates = {
       sets: s.sets, restSec: s.restSec, inputType,
       isKey:        s.isKey,
-      // Solo informa (exercise-variants.md §2.3); vacía se guarda null. Un
+      // Solo informa (P09-exercise-variants.md §2.3); vacía se guarda null. Un
       // ejercicio aparte conserva su variante fija: es lo que permite deshacerlo.
       variant:      def?.derived?.variant ?? cleanVariant(s.variant, def) ?? null,
       tempo:        s.tempo.trim() || null,
@@ -411,7 +411,7 @@ export default function ExerciseEditorInline({
       ? t('exerciseEditor.warmup.rowAutoSub',   { sets: warmupSets, rest: warmupRestTxt })
       : t('exerciseEditor.warmup.rowCustomSub', { n: warmupCustomSteps.length, rest: warmupRestTxt });
 
-  // ── Qué ejercicio es: unilateral y ejercicio aparte (exercise-variants.md §6) ─
+  // ── Qué ejercicio es: unilateral y ejercicio aparte (P09-exercise-variants.md §6) ─
   // Los dos interruptores cambian el ejercicio (otro historial); la variante de
   // arriba solo informa.
   const dims    = variantDims(def);
@@ -558,7 +558,7 @@ export default function ExerciseEditorInline({
       <View style={styles.optGroup}>
         {/* Marca el ejercicio como básico del día. Además de leerse de un
             vistazo en la lista de la sesión, es lo que permite que una regla de
-            etapa distinga keys de accesorios (stage-planner.md §5). */}
+            etapa distinga keys de accesorios (P06-stage-planner.md §5). */}
         <ToggleRow
           label={t('exerciseEditor.isKeyLabel')}
           hint={t('exerciseEditor.isKeyHint')}

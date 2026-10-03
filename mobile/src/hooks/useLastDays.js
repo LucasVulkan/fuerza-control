@@ -5,7 +5,7 @@ const DAY_MS = 86400000;
 
 /**
  * Hoy y los 6 anteriores, a la hora de montar (la que lleva la entrada): los
- * días que se pueden elegir al apuntar un entreno pasado (trainer-logging.md
+ * días que se pueden elegir al apuntar un entreno pasado (C05-trainer-logging.md
  * §3.2 y §6.4).
  */
 export function useLastDays() {

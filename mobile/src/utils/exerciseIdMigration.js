@@ -1,6 +1,6 @@
 /**
  * Los ejercicios que se juntaron en uno con su variante
- * (docs/specs/exercise-variants.md §3.3): tres jalones en «Jalón al pecho», dos
+ * (docs/specs/P09-exercise-variants.md §3.3): tres jalones en «Jalón al pecho», dos
  * remos en «Remo en polea» y las dominadas (sin lastre, lastradas y de agarre
  * neutro) en «Dominadas».
  *
@@ -90,7 +90,7 @@ function applyTo(list, map, ctx) {
 }
 
 /**
- * `exConfig.isUnilateral` desaparece (exercise-variants.md §6.4): a una mano es
+ * `exConfig.isUnilateral` desaparece (P09-exercise-variants.md §6.4): a una mano es
  * otro ejercicio. Encendido sobre uno de dos manos pasa a su versión unilateral
  * (el gemelo de la librería o el derivado `<id>__uni`), si no choca con otro de
  * la sesión. La clave se borra siempre.

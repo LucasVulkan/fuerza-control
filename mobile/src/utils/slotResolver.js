@@ -1,5 +1,5 @@
 /**
- * Resolvedor de slots — spec `mobile/docs/specs/program-templates.md` §5.2.
+ * Resolvedor de slots — spec `mobile/docs/specs/P04-program-templates.md` §5.2.
  *
  * Un ejercicio de una plantilla no es un ejercicio: es un **slot**
  * (`{ pattern, primaryGroup, tier }`) con una preferencia (`exerciseId`).

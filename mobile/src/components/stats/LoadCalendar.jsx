@@ -4,7 +4,7 @@
  * Vivía en la cabecera del Historial, y ahí estaba en el sitio equivocado: lo
  * que pinta es `internalLoad`, la misma util que sostiene el resto de esta
  * pestaña. No dice «qué hice» —eso es la lista de sesiones— sino «cuánto me
- * machaqué», que es la pregunta de Carga (spec tab-programa.md §5.1).
+ * machaqué», que es la pregunta de Carga (spec U07-tab-programa.md §5.1).
  *
  * Al mudarse pierde el filtro por día: seleccionar un día servía para filtrar
  * la lista del historial, y aquí no hay lista que filtrar. Era además un gesto

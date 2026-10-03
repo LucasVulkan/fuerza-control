@@ -15,7 +15,7 @@
  *     Editor"). Es lo que antes eran los chips de "Patrón"/"Material" + las
  *     opciones avanzadas de nivel — ahora como tags de un único NavRow.
  *
- * Volumen y Progresión son los del editor (progresion-clara.md §12, P65): la
+ * Volumen y Progresión son los del editor (P12-progresion-clara.md §12, P65): la
  * misma hoja (`ProgressionSheet`) y el mismo formulario (`progressionForm`),
  * con un `def` borrador para que las opciones que ofrece sean las del
  * ejercicio que saldrá. La progresión entera se guarda en `def.progression`.
@@ -211,8 +211,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
       isCompound,
       isKeyCandidate:       true,
       isUnilateral,
-      // Dimensiones de variante (exercise-variants.md §4.6): todas las opciones.
-      // Dimensiones de variante (exercise-variants.md §4.6): las que se
+      // Dimensiones de variante (P09-exercise-variants.md §4.6): todas las opciones.
+      // Dimensiones de variante (P09-exercise-variants.md §4.6): las que se
       // eligieron en la hoja, con todas sus opciones.
       ...(isEmptyVariant(variant) ? {} : {
         variants: {

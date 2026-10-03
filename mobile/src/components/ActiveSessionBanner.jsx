@@ -1,5 +1,5 @@
 /**
- * ActiveSessionBanner — la sesión a medias, arriba de Inicio (pulido-ui.md
+ * ActiveSessionBanner — la sesión a medias, arriba de Inicio (U09-pulido-ui.md
  * §16, U52). Sale siempre que haya una, sea cual sea: la del programa deja de
  * apropiarse del hero, y una libre o la sobre la marcha no tenían dónde verse.
  *

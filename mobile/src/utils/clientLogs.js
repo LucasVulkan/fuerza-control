@@ -114,7 +114,7 @@ export function scopeFilterForUpload({
  * patches entries after saving them (the recap's RPE and body weight), and
  * without this the trainer kept the first copy forever. Entries absent from
  * `incoming` are kept either way. File imports leave it off so they never
- * overwrite the trainer's copy (docs/specs/qa-sep-conexion.md §3.2 d).
+ * overwrite the trainer's copy (docs/specs/C04-qa-sep-conexion.md §3.2 d).
  *
  * Returns `existing` itself when nothing is added or replaced (no re-render).
  */

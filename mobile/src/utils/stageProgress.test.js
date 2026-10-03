@@ -268,7 +268,7 @@ describe('closeOpenStage — una etapa sin límite se cierra al añadir otra det
 });
 
 
-// ── Modelo unificado (docs/specs/stage-planner.md §3) ────────────────────────
+// ── Modelo unificado (docs/specs/P06-stage-planner.md §3) ────────────────────────
 
 describe('withStages', () => {
   const stageA = { id: 'st_a', name: 'A', days: [{ sessionTemplateId: 'tpl_a' }] };
@@ -290,7 +290,7 @@ describe('withStages', () => {
     expect(p.currentStageIndex).toBe(0);
   });
 
-  // El espejo murió (program-model.md §5): `withStages` ya no escribe `days`, y
+  // El espejo murió (P03-program-model.md §5): `withStages` ya no escribe `days`, y
   // por eso no puede derivar. Lo que había aquí era un test de que el espejo NO
   // se quedaba viejo tras escribir en una etapa que no era la activa.
   it('no escribe ninguna copia de los días', () => {

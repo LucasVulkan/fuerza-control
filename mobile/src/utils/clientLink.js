@@ -1,5 +1,5 @@
 /**
- * clientLink — con app o sin app, en UN sitio (docs/specs/trainer-logging.md
+ * clientLink — con app o sin app, en UN sitio (docs/specs/C05-trainer-logging.md
  * §4.0, C28). Antes la lista, el aviso de cambios y la ficha lo decidían cada
  * uno a su manera, y un cliente presencial salía «Cambios sin enviar» siempre.
  *

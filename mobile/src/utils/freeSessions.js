@@ -1,5 +1,5 @@
 /**
- * Sesiones libres — docs/specs/free-sessions.md.
+ * Sesiones libres — docs/specs/T06-free-sessions.md.
  *
  * Una sesión libre guardada es un `sessionTemplate` normal con `programId: null`
  * y un `owner` (§4.1): el editor, el Workout, el recap y la progresión la tratan

@@ -25,7 +25,7 @@ import { normalizeWeeklyVolume } from './weeklyVolume';
 import { cleanVariant } from './variants';
 
 // Series/reps/descanso por objetivo. Vivían en `programGenerator.js`, que era
-// quien las escribía primero; al retirarse el procedural (rediseno.md §4) se
+// quien las escribía primero; al retirarse el procedural (U01-rediseno.md §4) se
 // mudan aquí, su único consumidor.
 export const GOAL_PARAMS = {
   hypertrophy:  { sets: 3, minReps: 8,  maxReps: 12, restSec: 90  },
@@ -122,7 +122,7 @@ function getLimitationNote(group, limitations) {
  * - Elimina 1 accessory
  * - Añade 1 core si no hay ninguno
  *
- * Spec onboarding-simple.md §5.1: hasta ahora el recorte era invisible — el
+ * Spec O01-onboarding-simple.md §5.1: hasta ahora el recorte era invisible — el
  * usuario veía menos ejercicios de los que prometía la tarjeta y nadie se lo
  * explicaba. Ahora reporta qué quitó y qué añadió para que el panel de
  * ajustes lo pueda decir.

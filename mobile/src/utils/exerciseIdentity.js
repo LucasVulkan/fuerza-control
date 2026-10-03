@@ -1,5 +1,5 @@
 /**
- * Qué ejercicio es: la parte que SÍ separa historial (docs/specs/exercise-variants.md §2.5).
+ * Qué ejercicio es: la parte que SÍ separa historial (docs/specs/P09-exercise-variants.md §2.5).
  *
  * Un ejercicio se describe como `{ root, uni, variant }`:
  *   - `root`    el de dos manos del que sale (o él mismo, si es unilateral de por sí);

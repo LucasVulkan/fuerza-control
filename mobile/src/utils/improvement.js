@@ -4,7 +4,7 @@
  * Salieron de `components/stats/ProgressTab.jsx` porque allí elegían la métrica
  * SESIÓN A SESIÓN (`kg ?? reps`): una sesión a 0 kg valía la suma de
  * repeticiones y la siguiente, a 7,5 kg, valía kilos — y el detalle decía
- * "−37,5 kg" de un ejercicio que había subido (docs/specs/qa-sep-pantallas.md §4).
+ * "−37,5 kg" de un ejercicio que había subido (docs/specs/U08-qa-sep-pantallas.md §4).
  *
  * La regla (§4.2):
  *   1. La métrica se decide UNA vez por serie de sesiones (`seriesMetric`) y

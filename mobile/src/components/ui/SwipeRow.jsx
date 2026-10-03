@@ -1,6 +1,6 @@
 /**
  * SwipeRow — fila que se desliza a la derecha y descubre 1 o 2 botones de acción
- * (editor-vinculacion.md §2.1). Es lo que `EditorRow` (editor de sesión) llevaba
+ * (P11-editor-vinculacion.md §2.1). Es lo que `EditorRow` (editor de sesión) llevaba
  * dentro y ahora comparten las tarjetas de sesión del editor de programa.
  *
  * El contenido no es cosa suya: pone el gesto, el panel de acciones detrás, el

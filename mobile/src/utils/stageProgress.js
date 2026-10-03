@@ -1,6 +1,6 @@
 /**
  * Progreso por etapas — la ÚNICA regla de «por dónde va el atleta», igual en su
- * móvil y en el espejo que ve su entrenador. Spec: `docs/specs/weeks-model.md`.
+ * móvil y en el espejo que ve su entrenador. Spec: `docs/specs/P08-weeks-model.md`.
  *
  * Una etapa dura SEMANAS de calendario, contadas desde el lunes de la semana 1
  * (`weekOne`), que la fija la primera sesión guardada en ella. Al acabar se
@@ -28,12 +28,12 @@ import { generateId } from './formatters';
 // ── Etapas ────────────────────────────────────────────────────────────────────
 
 /**
- * EVERY program owns at least one stage (`docs/specs/stage-planner.md` §3).
+ * EVERY program owns at least one stage (`docs/specs/P06-stage-planner.md` §3).
  *
  * Asigna las etapas y clampa el índice activo. Hasta sep-2026 mantenía además
  * `program.days`, un espejo desnormalizado de los días de la etapa activa que
  * media app leía directamente — y que seis escrituras se saltaban. El espejo
- * murió (`docs/specs/program-model.md` §5): quien quiera esos días los pide con
+ * murió (`docs/specs/P03-program-model.md` §5): quien quiera esos días los pide con
  * `stageDays`, que los lee de donde están.
  *
  * @param {object}  program
@@ -102,7 +102,7 @@ export function ensureStages(program, stageName = 'Etapa 1') {
 /**
  * Entrenos que se esperan cada semana en una etapa: SUS SESIONES, y punto. Una
  * etapa de 4 sesiones son 4 entrenos por semana; si la siguiente tiene 2, son 2.
- * No hay un dato aparte que configurar (weeks-model.md §0.4).
+ * No hay un dato aparte que configurar (P08-weeks-model.md §0.4).
  */
 export const weeklySessions = (stage) => Math.max(1, stage?.days?.length ?? 0);
 
@@ -236,7 +236,7 @@ export function recordSession(progress, { inCurrentStage, today }) {
 }
 
 /**
- * «Cuenta como Sesión X» de una sesión libre (free-sessions.md §7.3): el patch
+ * «Cuenta como Sesión X» de una sesión libre (T06-free-sessions.md §7.3): el patch
  * del contador al marcar, desmarcar o cambiar la sesión sustituida.
  *
  * - De no contar a contar: lo mismo que guardar una sesión de la etapa.
@@ -406,7 +406,7 @@ export function progressBlob(program, appliedActivation = null) {
 
 /**
  * Whether any field `progressBlob` ships differs between two versions of a
- * program — the client uploads when this flips (qa-sep-conexion.md §3.2 a).
+ * program — the client uploads when this flips (C04-qa-sep-conexion.md §3.2 a).
  */
 export function progressChanged(a, b) {
   return a?.id !== b?.id || PROGRESS_KEYS.some((k) => a?.[k] !== b?.[k]);

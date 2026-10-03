@@ -1,5 +1,5 @@
 /**
- * LoadTab — panel de carga de entrenamiento (fase 3 de docs/specs/training-load.md).
+ * LoadTab — panel de carga de entrenamiento (fase 3 de docs/specs/T04-training-load.md).
  *
  * Props (mismos que ProgressTab, para que el conmutador sea intercambiable):
  *   baseLog             WorkoutLog[]  – sesiones a analizar, ya filtradas por sujeto.

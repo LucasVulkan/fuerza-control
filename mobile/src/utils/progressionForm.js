@@ -1,6 +1,6 @@
 /**
  * El estado de la hoja de Progresión del editor de ejercicio
- * (docs/specs/progresion-clara.md §5.3): lo que se ofrece en cada paso según lo
+ * (docs/specs/P12-progresion-clara.md §5.3): lo que se ofrece en cada paso según lo
  * elegido antes, y cómo se guarda. Todo puro; la hoja solo pinta.
  *
  * Forma del estado (`f`), con los nombres internos del motor donde existen:

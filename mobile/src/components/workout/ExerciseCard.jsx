@@ -200,7 +200,7 @@ export default function ExerciseCard({
     ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name)
     : exConfig.exerciseId;
 
-  // ── Variante de hoy (exercise-variants.md §5.1) ─────────────────────────────
+  // ── Variante de hoy (P09-exercise-variants.md §5.1) ─────────────────────────────
   // La del programa, salvo que hoy se haya cambiado en la hoja. Solo informa: se
   // apunta en el registro y el programa no cambia.
   const programVariant = exConfig.variant ?? null;
@@ -443,7 +443,7 @@ export default function ExerciseCard({
     const numeric = progression.suggestedWeight != null || progression.suggestedTime != null
       || progression.suggestedReps != null;
     // Por esfuerzo el número es SIEMPRE el peso de hoy, suba o no: «Peso
-    // objetivo» (effort-progression.md §5.2). La flecha y el delta dicen si sube.
+    // objetivo» (P10-effort-progression.md §5.2). La flecha y el delta dicen si sube.
     if (progression.effort && numeric) return 'effortTo';
     // Asistido: el número es la ayuda. «Subir a 17,5» se leía como más ayuda.
     if (progression.assist && numeric && base === 'up')   return 'assistLessTo';
@@ -491,7 +491,7 @@ export default function ExerciseCard({
     <>
       <View style={styles.nameRow}>
         {/* La variante detrás del nombre, en gris y sin subrayado
-            (exercise-variants.md §4.3): mismo estilo, solo cambia el color. */}
+            (P09-exercise-variants.md §4.3): mismo estilo, solo cambia el color. */}
         <Text style={styles.name} numberOfLines={2}>
           {name}
           {/* Pulsable solo desplegada: plegada, tocar la cabecera la despliega.
@@ -952,7 +952,7 @@ export default function ExerciseCard({
 
       </Animated.View>
 
-      {/* Variante solo por hoy (exercise-variants.md §5.1, maqueta §4A) */}
+      {/* Variante solo por hoy (P09-exercise-variants.md §5.1, maqueta §4A) */}
       {canChangeVariant && (
         <DragSheet
           visible={variantSheetOpen}

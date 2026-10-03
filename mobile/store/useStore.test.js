@@ -52,7 +52,7 @@ describe('onRehydrateStorage — fallo 1', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  // Desde que la sesión en curso vive en su propia clave (`rediseno.md` §3), el
+  // Desde que la sesión en curso vive en su propia clave (`U01-rediseno.md` §3), el
   // flag baja DENTRO de la promesa que la lee: hay que ceder el turno antes de
   // comprobarlo. Lo que se sigue exigiendo es lo mismo — que acabe en `true`
   // pase lo que pase.
@@ -605,7 +605,7 @@ describe('isPro — fallo 9', () => {
 });
 
 /**
- * Modelo de programas — `owner` + `kind` (`docs/specs/program-model.md` §3).
+ * Modelo de programas — `owner` + `kind` (`docs/specs/P03-program-model.md` §3).
  *
  * Cubre lo que el modelo viejo no podía enunciar: un solo dueño, la lista del
  * cliente derivada, un solo camino de borrado, y la identidad al importar.
@@ -842,7 +842,7 @@ describe('program-model — owner/kind', () => {
  * un cliente que en ese móvil no existe: invisible, y sin un error.
  */
 /**
- * Ciclos → semanas (`docs/specs/weeks-model.md` §5): lo que escriben las
+ * Ciclos → semanas (`docs/specs/P08-weeks-model.md` §5): lo que escriben las
  * acciones de etapa y la migración al rehidratar.
  */
 describe('weeks-model — acciones de etapa', () => {
@@ -1196,7 +1196,7 @@ describe('program-model — sustituir el activo lo archiva', () => {
 });
 
 /**
- * Un solo diccionario de sesiones (`docs/specs/program-model.md` §4).
+ * Un solo diccionario de sesiones (`docs/specs/P03-program-model.md` §4).
  *
  * `userPrograms` era la capa de ediciones sobre los originales de semilla.
  * Desde que todo lo que crea el usuario nace ya en `sessionTemplates`, la capa
@@ -1325,7 +1325,7 @@ describe('program-model — un solo diccionario de sesiones', () => {
 });
 
 /**
- * Muere el espejo `program.days` (`docs/specs/program-model.md` §5).
+ * Muere el espejo `program.days` (`docs/specs/P03-program-model.md` §5).
  *
  * Lo que estos tests protegen no es el borrado: es que NADA de lo que colgaba
  * del espejo se caiga con el. El espejo alimentaba tres cosas que importan —el
@@ -1594,7 +1594,7 @@ describe('setAdHocSets — bajar el contador no borra lo registrado', () => {
   });
 });
 
-describe('sesiones libres — free-sessions.md T19', () => {
+describe('sesiones libres — T06-free-sessions.md T19', () => {
   const ENTRY = {
     id: 'log_f1', sessionTemplateId: '__free__', sessionName: 'Agarre', free: true, timestamp: 1000,
     exercises: [{ exerciseId: 'squat', isAdHoc: true, sets: [{ weight: '100', reps: '5', time: '', done: true }] }],
@@ -1693,7 +1693,7 @@ describe('sesiones libres — free-sessions.md T19', () => {
   });
 });
 
-describe('sesiones libres en el recap — free-sessions.md T22', () => {
+describe('sesiones libres en el recap — T06-free-sessions.md T22', () => {
   beforeEach(() => {
     useStore.setState({
       exerciseLibrary: { squat: { id: 'squat' }, bench_press_barbell: { id: 'bench_press_barbell' } },
@@ -1903,7 +1903,7 @@ describe('"subir cambios" solo cuando hay cambios — qa-sep-conexion C17', () =
   });
 });
 
-describe('el entrenador apunta por el cliente — trainer-logging.md C19', () => {
+describe('el entrenador apunta por el cliente — C05-trainer-logging.md C19', () => {
   beforeEach(() => {
     useStore.setState({
       programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [],
@@ -2062,7 +2062,7 @@ describe('el entrenador apunta por el cliente — trainer-logging.md C19', () =>
   });
 });
 
-describe('sesiones libres de un cliente — group-classes.md C24/C27', () => {
+describe('sesiones libres de un cliente — C06-group-classes.md C24/C27', () => {
   beforeEach(() => {
     useStore.setState({
       programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [],
@@ -2152,7 +2152,7 @@ describe('sesiones libres de un cliente — group-classes.md C24/C27', () => {
   });
 });
 
-describe('con app o sin app — trainer-logging.md C28 y C20', () => {
+describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
   const cloud = { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: 'code', code: null };
 
   beforeEach(() => {
@@ -2240,7 +2240,7 @@ describe('con app o sin app — trainer-logging.md C28 y C20', () => {
   });
 });
 
-describe('plantillas de sesión aparte de mis sesiones — group-classes.md §4.6', () => {
+describe('plantillas de sesión aparte de mis sesiones — C06-group-classes.md §4.6', () => {
   beforeEach(() => {
     useStore.setState({ sessionTemplates: {}, clients: {}, programs: {} });
   });
@@ -2267,7 +2267,7 @@ describe('plantillas de sesión aparte de mis sesiones — group-classes.md §4.
   });
 });
 
-describe('ejercicios juntados al rehidratar — exercise-variants.md P41', () => {
+describe('ejercicios juntados al rehidratar — P09-exercise-variants.md P41', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -2298,7 +2298,7 @@ describe('ejercicios juntados al rehidratar — exercise-variants.md P41', () =>
   });
 });
 
-describe('la variante en la sesión — exercise-variants.md P42', () => {
+describe('la variante en la sesión — P09-exercise-variants.md P42', () => {
   beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY }); });
 
   function sesionConJalon(variant) {
@@ -2346,7 +2346,7 @@ describe('la variante en la sesión — exercise-variants.md P42', () => {
   });
 });
 
-describe('la variante de hoy — exercise-variants.md P43', () => {
+describe('la variante de hoy — P09-exercise-variants.md P43', () => {
   beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY }); });
 
   function entrenarJalon(setToday) {
@@ -2389,7 +2389,7 @@ describe('la variante de hoy — exercise-variants.md P43', () => {
   });
 });
 
-describe('unilateral y ejercicio aparte — exercise-variants.md P44', () => {
+describe('unilateral y ejercicio aparte — P09-exercise-variants.md P44', () => {
   beforeEach(() => { useStore.setState({ exerciseLibrary: EXERCISE_LIBRARY, customExercises: {} }); });
 
   /** Un programa de dos sesiones; `ejercicios[i]` son los de la sesión i. */

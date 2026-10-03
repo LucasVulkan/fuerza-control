@@ -17,4 +17,4 @@ npm run estado                   # mobile/docs/estado.html desde las specs
 Hubo una app web en la raíz (`src/components`, `src/hooks`, `src/store`) con su
 propia copia del store. Se borró en sep-2026 tras cuatro meses congelada; el
 porqué y el cómo, en
-[`mobile/docs/specs/rediseno.md`](mobile/docs/specs/rediseno.md) §2.
+[`mobile/docs/specs/U01-rediseno.md`](mobile/docs/specs/U01-rediseno.md) §2.

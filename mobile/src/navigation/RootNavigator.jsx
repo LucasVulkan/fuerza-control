@@ -107,7 +107,7 @@ function MainTabs() {
       {/* El programa vive aquí y no al final del scroll de Sesiones. El punto
           avisa de que hay una etapa terminada esperando — el aviso completo se
           queda en Sesiones, que es lo que decide qué entrenas mañana
-          (docs/specs/tab-programa.md §4.4). */}
+          (docs/specs/U07-tab-programa.md §4.4). */}
       <Tab.Screen
         name="MyProgram"
         component={MyProgramScreen}

@@ -1,7 +1,7 @@
 /**
  * ProgramDetailScreen — visualizador de programa.
  *
- * Spec: `mobile/docs/specs/program-view.md`.
+ * Spec: `mobile/docs/specs/P05-program-view.md`.
  *
  * Es un VISUALIZADOR, no un tracker: no dice en qué etapa va el atleta ni por
  * qué semana. Dice qué ES el programa — cuántas etapas, cuánto volumen por
@@ -178,7 +178,7 @@ function ExerciseRow({ num, exConfig, def, name, inGroup }) {
           <Text style={styles.exRxMain}>{main}</Text>
           {exConfig.isKey && <Text style={styles.keyBadge}>{t('common.keyExercise')}</Text>}
           {/* En superserie el descanso es del grupo, no de la fila: lo pinta la
-              cabecera del grupo (strength-blocks.md §2). */}
+              cabecera del grupo (T03-strength-blocks.md §2). */}
           {restSec != null && !inGroup && <Text style={styles.exRxRest}>{restSec} s</Text>}
         </View>
         {warmup > 0 && (
@@ -362,7 +362,7 @@ export default function ProgramDetailScreen() {
   );
 
   // Los días viven en su etapa y en ningún otro sitio: el espejo `program.days`
-  // murió (program-model.md §5). Todo programa tiene al menos una etapa.
+  // murió (P03-program-model.md §5). Todo programa tiene al menos una etapa.
   const stages = useMemo(() => program?.stages ?? [], [program]);
 
   const idx   = Math.min(stageIdx, stages.length - 1);

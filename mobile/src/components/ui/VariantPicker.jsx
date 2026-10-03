@@ -1,6 +1,6 @@
 /**
  * VariantPicker — el «cómo se hace» de la hoja Variante
- * (docs/specs/exercise-variants.md §4.1).
+ * (docs/specs/P09-exercise-variants.md §4.1).
  *
  * Un paso por dimensión que el ejercicio declara (`def.variants`), con el
  * formato de los pasos de la hoja de Progresión: título numerado en versales y

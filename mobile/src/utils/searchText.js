@@ -3,7 +3,7 @@
  * letra de menos tiene que encontrar el ejercicio igual.
  *
  * Tres pasadas, de más estricta a más laxa, y cada una solo si la anterior no
- * devuelve nada (exercise-variants.md §3.4):
+ * devuelve nada (P09-exercise-variants.md §3.4):
  *   1. todas las palabras de la búsqueda, en cualquier orden y como parte de
  *      palabra ("remo polea" → "Remo en polea", "chin up" → "Chin-ups");
  *   2. la búsqueda sin espacios dentro del texto sin espacios ("chinup");

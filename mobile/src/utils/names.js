@@ -2,7 +2,7 @@
  * Longitud de los nombres que el usuario escribe: programas y sesiones.
  *
  * El techo lo pone la cabecera, que aguanta ~32 caracteres a 16px
- * (`docs/specs/cabeceras.md` §6). El suelo lo pone la Home: el nombre de la
+ * (`docs/specs/U03-cabeceras.md` §6). El suelo lo pone la Home: el nombre de la
  * sesión de hoy va a 24px Black **sin `numberOfLines`**, y ahí sólo caben ~20
  * en una línea. 25 se queda entre las dos: un nombre largo puede partir la
  * tarjeta de hoy en dos líneas, que es el precio aceptado por tener sitio para

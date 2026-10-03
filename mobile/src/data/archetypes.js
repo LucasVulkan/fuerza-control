@@ -13,7 +13,7 @@ import { EXERCISE_LIBRARY } from './exerciseLibrary';
 
 /**
  * Fases por defecto según el objetivo de la plantilla — spec
- * `mobile/docs/specs/program-templates.md` §6.
+ * `mobile/docs/specs/P04-program-templates.md` §6.
  *
  * La primera fase ES la etapa base, por eso su `rx` es `null`. Las demás se
  * materializan clonando la base y aplicando su regla, así que los deltas son
@@ -723,7 +723,7 @@ export const ARCHETYPES = [
     // Sus 21 series de glúteo por ciclo son el programa, no un exceso: sin esto
     // el normalizador las recorta al techo de intermedio (20) y la plantilla
     // deja de ser una plantilla de glúteo. Protege también del recorte por
-    // redundancia (program-templates.md §5.3).
+    // redundancia (P04-program-templates.md §5.3).
     volumeEmphasis: ['glutes_hamstrings'],
     days: [
       {
@@ -831,7 +831,7 @@ export const ARCHETYPES = [
 ];
 
 /**
- * Ranking de plantillas — spec `mobile/docs/specs/program-templates.md` §7.
+ * Ranking de plantillas — spec `mobile/docs/specs/P04-program-templates.md` §7.
  *
  * Sustituye al `findBestArchetype` de coincidencia exacta, que exigía el mismo
  * `daysPerWeek` en sus tres tiers: como todas las plantillas son de 3 o 4
@@ -919,7 +919,7 @@ function equipmentGap(archetype, equipment = []) {
  * `answers.equipment` es opcional, y su AUSENCIA no es lo mismo que una lista
  * vacía: `[]` significa "sé lo que tiene y es sólo su peso corporal", y ausente
  * significa "todavía no se lo he preguntado". El onboarding móvil enseña la
- * lista antes de preguntar el material (onboarding-proposals.md §1), y puntuar
+ * lista antes de preguntar el material (O02-onboarding-proposals.md §1), y puntuar
  * ese hueco como si no tuviera nada invertía el orden — hundía las plantillas de
  * barra y sacaba primero una de 2 sesiones a quien había pedido entrenar 4.
  * Sin material conocido no se resta nada y no se emite `needsBarbell`: el coste

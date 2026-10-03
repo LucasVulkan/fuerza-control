@@ -1,6 +1,6 @@
 /**
  * Stage locks — a trainer can close a stage so the athlete cannot enter it until
- * they open it. See `mobile/docs/specs/stage-locks.md`.
+ * they open it. See `mobile/docs/specs/C03-stage-locks.md`.
  *
  * The padlock (`stage.locked`) lives inside the program, which is exclusive to
  * one client: every way of assigning a program clones it with fresh ids, so a

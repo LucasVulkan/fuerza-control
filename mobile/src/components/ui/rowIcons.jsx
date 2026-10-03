@@ -23,7 +23,7 @@ export const ROW_ICON = {
   docs:     <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>,
   trash:    <Path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />,
 
-  // Las hojas de opciones (pulido-ui.md §3).
+  // Las hojas de opciones (U09-pulido-ui.md §3).
   view:      <G><Path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><Circle cx="12" cy="12" r="3" /></G>,
   edit:      <G><Path d="M12 20h9" /><Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></G>,
   duplicate: <G><Rect x="9" y="9" width="12" height="12" rx="2" /><Path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></G>,

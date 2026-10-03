@@ -6,13 +6,13 @@
  * de otro color. La pantalla pasaba de header negro → banda gris → contenido
  * negro, y una banda gris no existe en ningún otro sitio de la app. Ahora la
  * pantalla entera va sobre `bg` y la banda desaparece
- * (docs/specs/home-sessions.md §4.6).
+ * (docs/specs/U02-home-sessions.md §4.6).
  *
  * Sigue sin ser `SegmentedControl` con otra piel: track `surface2` y
  * `radius.full` allí, `surface` y `radius.md` aquí.
  *
  * ⚠️ **La píldora activa va en `accent`.** Nació neutra —la regla de
- * `specs/home-sessions.md` §4.6 reservaba el lima para los segmentados de
+ * `specs/U02-home-sessions.md` §4.6 reservaba el lima para los segmentados de
  * filtro—, pero en QA sobre la ficha de cliente el usuario la quiso en acento:
  * la pestaña en la que estás es el dato más importante de la cabecera y en
  * `surface2` casi no se veía. La diferencia con el segmentado la siguen

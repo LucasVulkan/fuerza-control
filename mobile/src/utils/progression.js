@@ -1,5 +1,5 @@
 /**
- * Progression logic v3 (docs/specs/progresion-clara.md §4).
+ * Progression logic v3 (docs/specs/P12-progresion-clara.md §4).
  *
  * ── Data model ──────────────────────────────────────────────────────────────
  * Lives in exConfig.progression (template-level, per-exercise config). Tres
@@ -14,7 +14,7 @@
  *     reps    → la meta es la serie más floja de la última sesión + el salto
  *     time    → ídem en segundos
  *     effort  → reps objetivo @ targetRpe; el peso sale del e1RM de la última
- *               sesión con su RPE (effort-progression.md)
+ *               sesión con su RPE (P10-effort-progression.md)
  *     none    → sin chip (lo decide el usuario)
  *
  *   evaluation: {
@@ -80,7 +80,7 @@ export const LEGACY_TYPE_MAP = {
   none:   'fixed',
 };
 
-// `fixed` es el valor de librería para «Fija» (effort-progression.md §3.1).
+// `fixed` es el valor de librería para «Fija» (P10-effort-progression.md §3.1).
 // `submax` ya no se escribe: queda para leer como Fija lo guardado antes.
 const LEGACY_REVERSE_MAP = {
   double_progression: 'double',
@@ -380,7 +380,7 @@ function sessionE1rm(sets) {
 const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time);
 
 /**
- * Por esfuerzo (effort-progression.md §4.2): el e1RM es la media del de cada
+ * Por esfuerzo (P10-effort-progression.md §4.2): el e1RM es la media del de cada
  * sesión (§6.5: las tres últimas con RPE, no solo la última; un error de medio
  * punto al apuntar el RPE ya movía el peso más que un escalón); el peso
  * siguiente, el que da `targetRpe` a las reps objetivo, redondeado al escalón

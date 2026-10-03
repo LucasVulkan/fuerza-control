@@ -1,7 +1,7 @@
 /**
  * trainingLoad — carga interna y externa de entrenamiento, puro.
  *
- * Spec completa (fórmulas, decisiones y por qué): `mobile/docs/specs/training-load.md`.
+ * Spec completa (fórmulas, decisiones y por qué): `mobile/docs/specs/T04-training-load.md`.
  *
  * Dos magnitudes, deliberadamente separadas:
  *   - interna  = sRPE × minutos (Foster). Lo que la sesión te costó.
@@ -650,7 +650,7 @@ export function setsByMuscleGroup(log, allExercises, { from = null, to = Date.no
 
 /**
  * Series PRESCRITAS por grupo muscular en una vuelta a las sesiones que se le
- * pasen — con las de una etapa, una semana (weeks-model.md §0.4). La gemela de `setsByMuscleGroup`: una cuenta lo planificado
+ * pasen — con las de una etapa, una semana (P08-weeks-model.md §0.4). La gemela de `setsByMuscleGroup`: una cuenta lo planificado
  * y otra lo hecho, y viven pegadas a propósito — si las reglas de atribución
  * divergen, comparar el programa con lo entrenado deja de significar nada.
  *

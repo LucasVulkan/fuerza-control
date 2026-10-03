@@ -140,7 +140,7 @@ function updateLastSetDrops(setsState, exerciseId, updater) {
  */
 /**
  * Las viejas `freeSessionPresets` convertidas en sesiones libres
- * (free-sessions.md §4.5). Id derivado del `presetId`: importar dos veces el
+ * (T06-free-sessions.md §4.5). Id derivado del `presetId`: importar dos veces el
  * mismo backup pisa la misma sesión en vez de duplicarla.
  */
 function freeTemplatesFromPresets(presets, lib) {
@@ -164,7 +164,7 @@ function mergeFileSessions(current, file) {
  */
 function normalizeIncomingProgram(p) {
   // El progreso, en la forma de semanas: un `.fitdata` viejo trae ciclos
-  // (weeks-model.md §5.4).
+  // (P08-weeks-model.md §5.4).
   const staged = normalizeProgress(ensureStages(p));
   if (staged.owner) return staged;                  // v3
   const { mode, clientId, ...rest } = staged;       // v1 / v2
@@ -246,14 +246,14 @@ const INITIAL_ACTIVE_SESSION = {
   startedAt: null,
   notes: '',
   exerciseNotes: {},   // { [exerciseId]: string } — client feedback per exercise
-  // La variante de HOY, si difiere de la del programa (exercise-variants.md §5.1).
+  // La variante de HOY, si difiere de la del programa (P09-exercise-variants.md §5.1).
   // Sin clave = la del programa; `{}` = hoy sin especificar.
   variants:      {},   // { [exerciseId]: { grip?, width? } }
   adHocExercises: [],
   freeSessionName: '',
   freeBlocks: [],      // bloques creados DURANTE una sesión libre (no hay plantilla donde guardarlos)
   blockState: {},      // { [blockId]: { startedAt, finishedAt, rounds, extraReps, failed[], timeSec } }
-  // Entreno de un cliente sin app, apuntado por el entrenador (trainer-logging.md §3.3).
+  // Entreno de un cliente sin app, apuntado por el entrenador (C05-trainer-logging.md §3.3).
   forClient: null,     // id del cliente dueño del entreno; null = mío
   loggedAt:  null,     // ms del día elegido en «Apuntar sesión pasada»; null = ahora
   logOnly:   false,    // modo registro: sin reloj ni descansos (§3.4)
@@ -378,7 +378,7 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
 
 /**
  * La sesión en curso vive en su propia clave, fuera del blob principal
- * (`docs/specs/rediseno.md` §3). Antes iba dentro del `partialize`, así que
+ * (`docs/specs/U01-rediseno.md` §3). Antes iba dentro del `partialize`, así que
  * cada tecla del campo de peso serializaba el estado entero — historial de
  * todos los clientes incluido, megabytes para un entrenador.
  */
@@ -450,12 +450,12 @@ export const useStore = create(
       clients: {},
       tagRegistry: [],   // [{ id, name }] — global tag list
       // { 'banca': 'bench_press_barbell' } — cómo llama cada entrenador a sus
-      // ejercicios en un texto pegado (trainer-logging.md §6.3). Clave normalizada.
+      // ejercicios en un texto pegado (C05-trainer-logging.md §6.3). Clave normalizada.
       exerciseAliases: {},
       customExercises: {},
       blockPresets: [],  // [{ presetId, ...ConditioningBlock sin id }] — frozen copies, device-global
       // { [programId]: 'YYYY-MM-DD' } — el aviso de fin de etapa no se enseña
-      // antes de ese día (weeks-model.md §6.1). Local de este móvil: no viaja.
+      // antes de ese día (P08-weeks-model.md §6.1). Local de este móvil: no viaja.
       // Persistido y no en `ui`, que no lo está: un «Una semana más» no puede
       // olvidarse al cerrar la app.
       stageBannerSnooze: {},
@@ -537,17 +537,17 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       // `archetypeId`: la plantilla que el usuario eligió en la pantalla de
-      // propuestas (onboarding-proposals.md §3.3). Sin él, la primera del
+      // propuestas (O02-onboarding-proposals.md §3.3). Sin él, la primera del
       // ranking — que es lo que hacía el onboarding antiguo y lo que sigue
       // haciendo cualquier llamada que no ofrezca elección.
       generateAndActivateProgram: async (answers, archetypeId = null) => {
         const normalizedAnswers = normalizeOnboardingAnswers(answers);
 
         // El ranking puntúa TODO el catálogo sin filtrar nada
-        // (program-templates.md §7): siempre hay plantilla, así que no hay
+        // (P04-program-templates.md §7): siempre hay plantilla, así que no hay
         // rama alternativa. Un catálogo vacío revienta aquí, y es lo que se
         // quiere: el generador procedural que hacía de relleno se retiró en
-        // rediseno.md §4 porque lo único que conseguía era que un catálogo
+        // U01-rediseno.md §4 porque lo único que conseguía era que un catálogo
         // roto pasara desapercibido.
         const ranked = rankArchetypes(normalizedAnswers);
         const archetype = (archetypeId
@@ -569,9 +569,9 @@ export const useStore = create(
           ui: { ...s.ui, view: 'home' },
         }));
 
-        // Fases 2..N de la plantilla (program-templates.md §6.2). La primera ya
+        // Fases 2..N de la plantilla (P04-program-templates.md §6.2). La primera ya
         // es la etapa base. `sourceStageIdx: 0` porque los deltas son absolutos
-        // contra la base, no acumulativos (stage-planner.md §2.4).
+        // contra la base, no acumulativos (P06-stage-planner.md §2.4).
         for (const phase of (phases ?? []).slice(1)) {
           get().addStageToProgram(program.id, {
             rx: phase.rx,
@@ -646,7 +646,7 @@ export const useStore = create(
        * `withApp`: el cliente va a entrenar con la app, así que se le crea el
        * código. Sin él no se crea nada en el servidor: le apuntas tú, y un
        * cliente sin código no se queda «pendiente de enviar» para siempre
-       * (trainer-logging.md §4.0).
+       * (C05-trainer-logging.md §4.0).
        */
       createClient: async (name, { withApp = false } = {}) => {
         const id = generateId('client');
@@ -764,7 +764,7 @@ export const useStore = create(
       /**
        * Recomputes programDirty for every client that has this program as their
        * active one and a sync slot: dirty means "what I would upload now differs
-       * from what I last uploaded" (qa-sep-conexion.md §5). Safe to call on
+       * from what I last uploaded" (C04-qa-sep-conexion.md §5). Safe to call on
        * every editor exit — leaving without changes, or undoing them, stays
        * clean. A client never uploaded to (no stored signature) is dirty.
        */
@@ -855,7 +855,7 @@ export const useStore = create(
       importForClient: (clientId, parsedData, mode) => {
         let data = parsedData;
         // Un fichero de una versión anterior trae los ids de antes de juntar
-        // los ejercicios repetidos (exercise-variants.md §3.3).
+        // los ejercicios repetidos (P09-exercise-variants.md §3.3).
         migrateExerciseRefs(data, get().getEffectiveLibrary());
         const client = get().clients[clientId];
         if (!client) return;
@@ -1072,7 +1072,7 @@ export const useStore = create(
        * ¿A qué ejercicio lleva un cambio de identidad (unilateral / ejercicio
        * aparte) y se puede hacer? No se puede si el resultado ya está en la
        * sesión o en otra de su grupo vinculado: una sesión no admite el mismo
-       * ejercicio dos veces (exercise-variants.md §6.5).
+       * ejercicio dos veces (P09-exercise-variants.md §6.5).
        * `target` = `{ root, uni, variant }` (exerciseIdentity).
        */
       identityCheck: (templateId, exerciseId, target) => {
@@ -1144,7 +1144,7 @@ export const useStore = create(
         const updatedExercises = template.exercises.map((ex) => {
           if (ex.exerciseId !== oldExerciseId) return ex;
           const next = { ...ex, exerciseId: newExerciseId, progressionOverride: null };
-          // Un agarre de jalón no tiene sentido en un press (exercise-variants.md §4.5).
+          // Un agarre de jalón no tiene sentido en un press (P09-exercise-variants.md §4.5).
           const variant = cleanVariant(ex.variant, newDef);
           if (variant) next.variant = variant; else delete next.variant;
           return next;
@@ -1259,7 +1259,7 @@ export const useStore = create(
       // Plantillas de sesión libre — se congelan desde una entrada YA guardada
       // del historial (el recap es quien las ofrece), no desde la sesión en
       // curso: al empezar no sabes si merece guardarse, al acabarla sí.
-      // ── Sesiones libres (docs/specs/free-sessions.md §4.3) ────────────────
+      // ── Sesiones libres (docs/specs/T06-free-sessions.md §4.3) ────────────────
       // Una sesión libre es un `sessionTemplate` con `programId: null`: todo lo
       // que edita plantillas (ejercicios, bloques, nombre) le vale tal cual.
 
@@ -1267,7 +1267,7 @@ export const useStore = create(
        * Crea una sesión libre, vacía o desde un plan (`presetFromEntry`).
        * `asTemplate`: es una plantilla de sesión de la pestaña Plantillas
        * (`kind: 'template'`, como las de programa), no una sesión mía: no sale
-       * en Inicio ni se entrena, solo se asigna (group-classes.md §4.6).
+       * en Inicio ni se entrena, solo se asigna (C06-group-classes.md §4.6).
        */
       createFreeTemplate: (plan = null, owner = 'me', { asTemplate = false } = {}) => {
         const id = generateId('tpl');
@@ -1356,7 +1356,7 @@ export const useStore = create(
       },
 
       /**
-       * Copia una sesión libre (group-classes.md §4.6): asignar una plantilla a
+       * Copia una sesión libre (C06-group-classes.md §4.6): asignar una plantilla a
        * un cliente o a mí, o duplicarla dentro de Plantillas (`asTemplate`).
        * Copia y no referencia, como los programas: adaptar la tuya o la del
        * cliente no toca la plantilla. Los bloques estrenan id para que sus
@@ -1709,7 +1709,7 @@ export const useStore = create(
         // entrenador, los campos del programa son de SU copia y no se mueven
         // nunca (él no entrena el programa del cliente), así que cerraría la
         // etapa en 1 semana por muchas que lleve el cliente. `athleteProgress`
-        // lee el blob del cliente (stage-locks.md §9, weeks-model.md §3.7).
+        // lee el blob del cliente (C03-stage-locks.md §9, P08-weeks-model.md §3.7).
         const progress = athleteProgress(program, ownerClient(clients, program));
         const updatedStages = [...closeOpenStage(existingStages, progress.currentStageIndex, progress), newStage];
 
@@ -1845,7 +1845,7 @@ export const useStore = create(
         return stageIndex + 1;
       },
 
-      // Every program keeps at least one stage (`docs/specs/stage-planner.md`
+      // Every program keeps at least one stage (`docs/specs/P06-stage-planner.md`
       // §3): removing the last one is a no-op, and there is no longer a
       // "collapse back to a stage-less program" branch.
       removeStageFromProgram: (programId, stageIndex) => {
@@ -1911,7 +1911,7 @@ export const useStore = create(
       },
 
       // Semanas que el ATLETA añade a su etapa desde el aviso de fin
-      // (weeks-model.md §6.1). Es progreso, no definición: `durationWeeks` es
+      // (P08-weeks-model.md §6.1). Es progreso, no definición: `durationWeeks` es
       // del autor y la duración real es la suma. En el móvil del entrenador,
       // para el programa de un cliente, no hace nada — él cambia la duración
       // en el editor.
@@ -2022,10 +2022,10 @@ export const useStore = create(
       /**
        * `forClient`: el entreno es de un cliente sin app y se guarda en su
        * historial. `loggedAt` + `logOnly`: «Apuntar sesión pasada», sin reloj ni
-       * descansos (trainer-logging.md §3.3-3.4).
+       * descansos (C05-trainer-logging.md §3.3-3.4).
        */
       /**
-       * `prefill` (un texto pegado, trainer-logging.md §6.4): `{ setsState, adHoc }`
+       * `prefill` (un texto pegado, C05-trainer-logging.md §6.4): `{ setsState, adHoc }`
        * con las series ya leídas. Las de la sesión van a su sitio, recortadas o
        * completadas a sus series (el Workout no admite más); el resto entra como
        * ejercicios añadidos.
@@ -2430,7 +2430,7 @@ export const useStore = create(
       saveSession: () => {
         const { activeSession, getEffectiveTemplate, programs, clients } = get();
         if (!activeSession.templateId) return { ok: false, error: 'No hay sesión activa' };
-        // De quién es el entreno (trainer-logging.md §3.3): se lee y se escribe
+        // De quién es el entreno (C05-trainer-logging.md §3.3): se lee y se escribe
         // en su historial. Un cliente sin app no toca mi `workoutLog`.
         const forClient  = activeSession.forClient ?? null;
         const workoutLog = ownerLogOf(get(), forClient);
@@ -2438,7 +2438,7 @@ export const useStore = create(
 
         // Lo que toca después de guardar, en las dos ramas. El envío al
         // entrenador ya no va aquí: lo dispara el cambio de `workoutLog`
-        // (suscriptor al final del fichero, qa-sep-conexion.md §3.2 a).
+        // (suscriptor al final del fichero, C04-qa-sep-conexion.md §3.2 a).
         const finish = (entryId) => {
           get().stopRestTimer();
           // Per-session Drive backup (fire and forget, non-blocking)
@@ -2450,7 +2450,7 @@ export const useStore = create(
         };
 
         // Lo que se hizo de verdad: la variante de hoy si se cambió en el Workout,
-        // si no la del programa. Vacía no se escribe (exercise-variants.md §5.1).
+        // si no la del programa. Vacía no se escribe (P09-exercise-variants.md §5.1).
         const todayVariant = (exerciseId, programVariant) => {
           const today = activeSession.variants ?? {};
           const v = Object.prototype.hasOwnProperty.call(today, exerciseId) ? today[exerciseId] : programVariant;
@@ -2557,7 +2557,7 @@ export const useStore = create(
             if (validSets.length === 0) return null;
             return {
               exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId),
-              // Cómo se hizo: solo informa y se filtra (exercise-variants.md §2.4).
+              // Cómo se hizo: solo informa y se filtra (P09-exercise-variants.md §2.4).
               ...todayVariant(exerciseId, variant),
               // Una sesión de etapa de descarga no cuenta para la media del 1RM
               // de Por esfuerzo (§6.5): el log la marca.
@@ -2578,7 +2578,7 @@ export const useStore = create(
         // que apunta un entrenador.
         const wasAdapted = !forClient && !!get().clientSync.pendingOverrides?.[activeSession.templateId];
 
-        // Sesión libre guardada (free-sessions.md §4.2): la entrada lo dice
+        // Sesión libre guardada (T06-free-sessions.md §4.2): la entrada lo dice
         // ella misma, porque en el móvil del entrenador la plantilla no existe.
         const isFreeTpl = !template.programId;
 
@@ -2617,7 +2617,7 @@ export const useStore = create(
         };
 
         // Progreso de etapa. Guardar es el ÚNICO escritor de las fechas de
-        // inicio (weeks-model.md §3.2): la primera sesión de la etapa la
+        // inicio (P08-weeks-model.md §3.2): la primera sesión de la etapa la
         // empieza. Solo cuenta una sesión de la etapa en la que se está; la
         // regla vive en `recordSession` para que el espejo del entrenador no
         // pueda desviarse de ella.
@@ -2696,7 +2696,7 @@ export const useStore = create(
               ...e,
               ...(sessionRpe  !== undefined ? { sessionRpe }  : {}),
               ...(bodyWeight  !== undefined ? { bodyWeight }  : {}),
-              // La nota del entreno se corrige en el recap (pulido-ui.md §2).
+              // La nota del entreno se corrige en el recap (U09-pulido-ui.md §2).
               ...(notes       !== undefined ? { notes }       : {}),
             }
           );
@@ -2722,7 +2722,7 @@ export const useStore = create(
        *                    libres cuentan como ajenas, que es justo lo que se
        *                    quiere limpiar (pruebas, semillas, sueltas) — salvo
        *                    las que sustituyen a una sesión: esas son del
-       *                    programa (free-sessions.md §8).
+       *                    programa (T06-free-sessions.md §8).
        *
        * Devuelve cuántas se borraron, para el toast.
        */
@@ -2978,7 +2978,7 @@ export const useStore = create(
           if (sessionTemplates[id]) relTpl[id] = sessionTemplates[id];
         });
         // Las sesiones libres del cliente viajan con su programa, con el mismo
-        // id en los dos móviles (group-classes.md §4.4). Solo si hay alguna: con
+        // id en los dos móviles (C06-group-classes.md §4.4). Solo si hay alguna: con
         // la clave vacía cambiaría la firma de todos los clientes ya enviados.
         const freeSessions = program.owner !== 'me'
           ? Object.fromEntries(Object.values(sessionTemplates)
@@ -3087,7 +3087,7 @@ export const useStore = create(
       // ── Import ────────────────────────────────────────────────────────────────
 
       importData: (data, sections, { silent = false } = {}) => {
-        // Ids de antes de juntar los ejercicios repetidos (exercise-variants.md
+        // Ids de antes de juntar los ejercicios repetidos (P09-exercise-variants.md
         // §3.3): un backup viejo, o el programa de un entrenador sin actualizar.
         migrateExerciseRefs(data, get().getEffectiveLibrary());
         // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
@@ -3148,7 +3148,7 @@ export const useStore = create(
           if (needsTemplateData) {
             updates.sessionTemplates = mergeFileSessions(s.sessionTemplates, data);
           }
-          // Las sesiones libres que manda el entrenador (group-classes.md §4.4)
+          // Las sesiones libres que manda el entrenador (C06-group-classes.md §4.4)
           // se SUSTITUYEN enteras: las que borró desaparecen. Llegan como mías
           // (`owner: 'me'`, igual que el programa) y marcadas `fromTrainer`,
           // que es lo que les quita EDITAR. Sin la clave, solo se retiran si
@@ -3260,7 +3260,7 @@ export const useStore = create(
                 ...presets.filter((p) => !known.has(p.presetId)),
               ];
             }
-            // Backups de antes de free-sessions.md: sus plantillas de sesión
+            // Backups de antes de T06-free-sessions.md: sus plantillas de sesión
             // libre entran como sesiones libres de verdad (§4.5).
             if (data.freeSessionPresets?.length) {
               const lib = { ...s.exerciseLibrary, ...(updates.customExercises ?? s.customExercises) };
@@ -3770,7 +3770,7 @@ export const useStore = create(
         try {
           const downloaded = await downloadHistory(client.syncSlotId);
           // Un cliente con la versión vieja sube los ids de antes de juntar los
-          // ejercicios repetidos (exercise-variants.md §3.3).
+          // ejercicios repetidos (P09-exercise-variants.md §3.3).
           const incoming = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
           migrateExerciseRefs(incoming, get().getEffectiveLibrary());
           const { progress, updatedAt } = downloaded;
@@ -3781,7 +3781,7 @@ export const useStore = create(
           // The session count comes fresh with them: it is the same number the
           // server keeps in `sessions_count` (both written by `uploadHistory`
           // from one list), and `markHistoryViewed` must not mark a stale one
-          // as seen (qa-sep-conexion.md §4).
+          // as seen (C04-qa-sep-conexion.md §4).
           set((s) => ({
             clients: {
               ...s.clients,
@@ -3928,7 +3928,7 @@ export const useStore = create(
                 remoteSessionsCount: slot.sessions_count ?? 0,
                 syncLinked:          !!slot.client_id,
                 // La etapa que pinta la lista sigue al cliente sin abrir su
-                // ficha (qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
+                // ficha (C04-qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
                 progress:            slot.progress ?? next[clientId].progress,
               };
             }
@@ -3943,7 +3943,7 @@ export const useStore = create(
       /**
        * Reemite el código de un cliente: código nuevo y asiento liberado, sin
        * tocar su historial. Es la salida de los tres casos que antes no tenían
-       * ninguna (`docs/specs/client-connection.md` §3.3, §3.4, §4.4):
+       * ninguna (`docs/specs/C01-client-connection.md` §3.3, §3.4, §4.4):
        *
        *   · el cliente reinstaló siendo anónimo y su identidad se perdió;
        *   · perdió el código;
@@ -4029,7 +4029,7 @@ export const useStore = create(
         try {
           const downloaded = await downloadHistory(slotId);
           const incoming   = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
-          migrateExerciseRefs(incoming, get().getEffectiveLibrary());   // exercise-variants.md §3.3
+          migrateExerciseRefs(incoming, get().getEffectiveLibrary());   // P09-exercise-variants.md §3.3
           const { progress } = downloaded;
           const remoteEntries = incoming.workoutLog;
           const remoteCustom  = incoming.customExercises;
@@ -4147,7 +4147,7 @@ export const useStore = create(
         try {
           const { programJson, updatedAt, trainerName, overrides } = await downloadProgram(clientSync.slotId);
           // Un entrenador con la versión vieja manda los ids de antes de juntar
-          // los ejercicios repetidos (exercise-variants.md §3.3). Antes del
+          // los ejercicios repetidos (P09-exercise-variants.md §3.3). Antes del
           // diff, o el aviso contaría como cambio lo que solo es un id nuevo.
           migrateExerciseRefs(programJson, get().getEffectiveLibrary());
           migrateExerciseRefs({ clientSync: { pendingOverrides: overrides } }, get().getEffectiveLibrary());
@@ -4703,7 +4703,7 @@ export const useStore = create(
 
           // migración pre-publicación
           // `owner` + `kind` sustituyen a `mode`, `clientId` y las listas
-          // (`docs/specs/program-model.md` §3.1). Va la PRIMERA: la migración de
+          // (`docs/specs/P03-program-model.md` §3.1). Va la PRIMERA: la migración de
           // `clientLogs` de abajo necesita saber de quién es cada programa, y ya
           // no lo lee de `programIds`. Idempotente, como las demás.
           if (state.programs) {
@@ -4744,7 +4744,7 @@ export const useStore = create(
           if (state.clientSync && !state.clientSync.pendingOverrides) state.clientSync.pendingOverrides = {};
 
           // Migrate: every program owns at least one stage
-          // (`docs/specs/stage-planner.md` §3). The migrated stage gets
+          // (`docs/specs/P06-stage-planner.md` §3). The migrated stage gets
           // `durationWeeks: null` — "no limit" — which is exactly how a
           // stage-less program behaved, so nobody's running program suddenly
           // grows an ending. Idempotent, so it costs nothing on later launches.
@@ -4755,7 +4755,7 @@ export const useStore = create(
             });
 
             // migración pre-publicación
-            // Ciclos → semanas (weeks-model.md §5.4): los contadores de ciclos
+            // Ciclos → semanas (P08-weeks-model.md §5.4): los contadores de ciclos
             // pasan a sesiones y fechas. VA DESPUÉS de `ensureStages`: necesita
             // las sesiones de la etapa en curso para saber cuánto era un ciclo.
             // Idempotente — un programa ya migrado sale igual.
@@ -4764,7 +4764,7 @@ export const useStore = create(
             });
 
             // migración pre-publicación
-            // Muere el espejo `program.days` (`program-model.md` §5). VA DESPUÉS
+            // Muere el espejo `program.days` (`P03-program-model.md` §5). VA DESPUÉS
             // de `ensureStages`, que es justo quien lo lee para armar la etapa
             // de un programa antiguo: al revés, esos programas se quedarían sin
             // sesiones. A partir de aquí los días viven en su etapa y en ningún
@@ -4812,7 +4812,7 @@ export const useStore = create(
 
           // migración pre-publicación
           // Las plantillas de sesión libre pasan a ser sesiones libres de verdad
-          // (free-sessions.md §4.5). Una sola vez: la clave se borra.
+          // (T06-free-sessions.md §4.5). Una sola vez: la clave se borra.
           if (state.freeSessionPresets) {
             const lib = { ...EXERCISE_LIBRARY, ...(state.customExercises ?? {}) };
             state.sessionTemplates = {
@@ -4823,7 +4823,7 @@ export const useStore = create(
           }
 
           // Los ejercicios repetidos por agarre se juntaron en uno con su
-          // variante (exercise-variants.md §3.3): plantillas, historial, alias
+          // variante (P09-exercise-variants.md §3.3): plantillas, historial, alias
           // y prescripciones pasan al id nuevo. Idempotente.
           migrateExerciseRefs(state, EXERCISE_LIBRARY);
 
@@ -4916,7 +4916,7 @@ useStore.subscribe((s, prev) => {
 
 // Lo que el entrenador espeja del cliente —historial y progreso— sube cuando
 // CAMBIA, no solo al guardar una sesión: el RPE del recap, avanzar de etapa o
-// aplicar un programa también cuentan (docs/specs/qa-sep-conexion.md §3).
+// aplicar un programa también cuentan (docs/specs/C04-qa-sep-conexion.md §3).
 // En el móvil del entrenador `slotId` es null y no hace nada.
 // ponytail: si la app muere dentro de la espera, lo cubre el siguiente cambio,
 // que sube el log entero. Marcar `pendingUpload` al programar la subida lo

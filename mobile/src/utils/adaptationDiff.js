@@ -1,5 +1,5 @@
 /**
- * adaptationDiff.js — spec onboarding-simple.md §5.2.
+ * adaptationDiff.js — spec O01-onboarding-simple.md §5.2.
  *
  * `adaptArchetype` sabe qué sesiones no caben en el presupuesto (`overTime`)
  * pero no qué quitó para que cupieran. Se calcula comparando dos adaptaciones

@@ -6,12 +6,12 @@ import { programTemplateOf } from './freeSessions';
  *
  * Las tres frases que daban por hecho que se entrena rotando estaban repartidas
  * por la HomeView disfrazadas de detalles de maquetación (docs/specs/
- * home-sessions.md §5): el rótulo del hero, el marcador de la fila y el
+ * U02-home-sessions.md §5): el rótulo del hero, el marcador de la fila y el
  * contador. Aquí están juntas, y es la ÚNICA regla de "qué toca": la usan la
  * Home del atleta, la tarjeta de cliente y "Preparar sesión" del entrenador,
  * cada uno con su historial (el propio, o el espejado del cliente).
  *
- * Desde weeks-model.md §3.5 no hay rotación guardada: toca **la que más tiempo
+ * Desde P08-weeks-model.md §3.5 no hay rotación guardada: toca **la que más tiempo
  * llevas sin hacer**. En el uso normal es la misma rotación (A B C A B → C; si
  * te saltas C y repites A, sigue siendo C) y con 3 sesiones y 4 días reproduce
  * la rotación de siempre. Al leerse del historial, borrar una sesión cambia la
@@ -37,7 +37,7 @@ export function sessionPlan({ days = [], log = [], now = Date.now(), t }) {
   let weekDone    = 0;
   log.forEach((entry) => {
     // Una sesión libre marcada «Cuenta como C» cuenta como la C
-    // (free-sessions.md §8): la marca hecha, mueve el hero y suma a la semana.
+    // (T06-free-sessions.md §8): la marca hecha, mueve el hero y suma a la semana.
     const tid = programTemplateOf(entry);
     const ts  = entry.timestamp;
     if (!ids.has(tid) || typeof ts !== 'number') return;
@@ -48,7 +48,7 @@ export function sessionPlan({ days = [], log = [], now = Date.now(), t }) {
   // La de última vez más antigua; las nunca hechas primero y, a igualdad, el
   // orden del programa (el `<` estricto se queda con la primera). La sesión a
   // medias NO manda: tiene su banner en Inicio, y si fuera el hero diría que
-  // toca una que no toca (pulido-ui.md §16, U52).
+  // toca una que no toca (U09-pulido-ui.md §16, U52).
   const hero = days.reduce((best, d) =>
     (best == null || (lastDone[d.templateId] ?? -Infinity) < (lastDone[best.templateId] ?? -Infinity) ? d : best),
   null);
@@ -57,18 +57,18 @@ export function sessionPlan({ days = [], log = [], now = Date.now(), t }) {
     heroTemplateId: hero?.templateId ?? null,
     heroLabel:      hero == null ? null : t('home.sessionNext'),
     // El hero no sale de la lista: la pantalla las pinta todas en orden y a la
-    // que toca le da otra escala en su hueco (home-sesiones-plegables.md §4.4).
+    // que toca le da otra escala en su hueco (U04-home-sesiones-plegables.md §4.4).
     rows: days.map((d) => ({
       templateId: d.templateId,
       // Cadena corta, no "la letra": el hueco de marcador aguanta tres
       // caracteres sin que nada se rompa.
       marker:     d.label ?? '',
-      // Hecha ESTA semana (weeks-model.md §3.6).
+      // Hecha ESTA semana (P08-weeks-model.md §3.6).
       isDone:     (lastDone[d.templateId] ?? -Infinity) >= weekStart,
       isHero:     d.templateId === hero?.templateId,
     })),
     // Entrenos de la semana contra las sesiones de la etapa, que son los que se
-    // esperan cada semana (weeks-model.md §0.4). Se cuentan entrenos y no filas
+    // esperan cada semana (P08-weeks-model.md §0.4). Se cuentan entrenos y no filas
     // marcadas: repetir la A cuenta como uno más.
     subtitle: days.length
       ? t('home.weekCount', { done: weekDone, total: days.length })

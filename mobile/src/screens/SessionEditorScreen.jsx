@@ -10,7 +10,7 @@
  * radios interiores a 2px, envueltas en una barra accent a la izquierda.
  *
  * Ojo con el orden: el mock coloca el bloque a media lista, pero la spec de
- * acondicionamiento manda (`docs/specs/conditioning-blocks.md` §"Los bloques se
+ * acondicionamiento manda (`docs/specs/T01-conditioning-blocks.md` §"Los bloques se
  * renderizan después de los ejercicios de fuerza") y WorkoutScreen ya lo hace
  * así, de modo que los bloques van siempre al final. La numeración sigue
  * corrida.
@@ -141,7 +141,7 @@ function EditorRow({
       <View style={{ flex: 1, minWidth: 0 }}>
         {/* Nombre y variante en UN texto de una línea: al cortarse por el
             final se pierde antes la variante que el nombre
-            (exercise-variants.md §4.2). */}
+            (P09-exercise-variants.md §4.2). */}
         <Text style={styles.rowName} numberOfLines={1}>
           {name}
           {variant ? <Text style={styles.rowVariant}>{` · ${variant}`}</Text> : null}
@@ -219,9 +219,9 @@ export default function SessionEditorScreen({ navigation, route }) {
   const sessionIds = days.map((d) => d.sessionTemplateId);
   const canDelete  = sessionIds.length > 1;
 
-  // Sesión libre (free-sessions.md §5): sin programa, sin hermanas A/B/C.
+  // Sesión libre (T06-free-sessions.md §5): sin programa, sin hermanas A/B/C.
   const isFree = !!template && !template.programId;
-  // Plantilla de sesión (group-classes.md §4.6): lo dice la ceja.
+  // Plantilla de sesión (C06-group-classes.md §4.6): lo dice la ceja.
   const isTpl  = isFree && template.kind === 'template';
 
   // «Crear» da de alta la sesión antes de abrir el editor: si se sale sin
@@ -543,7 +543,7 @@ export default function SessionEditorScreen({ navigation, route }) {
             label={t('editor.renameOption')}
             onPress={startEditName}
           />
-          {/* Sin pesos: aquí no se sabe para quién es (trainer-logging.md §5). */}
+          {/* Sin pesos: aquí no se sabe para quién es (C05-trainer-logging.md §5). */}
           <SheetRow
             icon={ROW_ICON.text}
             label={t('sessionText.menu')}

@@ -40,7 +40,7 @@
  * construida a mano—, y desde la hoja se puede elegir otra. Elegir la base
  * elige DE QUÉ SE COPIA, nunca dónde cae.
  *
- * Spec: `mobile/docs/specs/stage-planner.md` §14.
+ * Spec: `mobile/docs/specs/P06-stage-planner.md` §14.
  */
 
 import { useEffect, useState } from 'react';
@@ -411,14 +411,14 @@ export default function StagePlannerScreen({ navigation, route }) {
   const stages    = program?.stages ?? [];
 
   // Desde la ficha del cliente nadie pasa por `useEditorExit`: sin esto, las
-  // etapas añadidas aquí no se ofrecían para subir (qa-sep-conexion.md §5).
+  // etapas añadidas aquí no se ofrecían para subir (C04-qa-sep-conexion.md §5).
   // La acción compara firmas, así que salir sin cambios no marca nada.
   useEffect(() => () => markProgramDirtyForClients(programId), [programId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!program || stages.length === 0) return null;
 
   // Donde va el ATLETA: en el móvil del entrenador, su blob — no la copia del
-  // programa (weeks-model.md §3.7).
+  // programa (P08-weeks-model.md §3.7).
   const owner       = ownerClient(clients, program);
   const status      = stageStatus(program, athleteProgress(program, owner));
   const activeIdx   = status.stageIdx;

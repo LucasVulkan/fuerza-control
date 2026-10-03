@@ -8,7 +8,7 @@ const t = (key, fallback) => fallback ?? key;
 const BB = { equipment: ['barbell'] };
 
 describe('targetLabel', () => {
-  it('Fija, y lo guardado como submáx, se lee con su rango (effort-progression.md §3)', () => {
+  it('Fija, y lo guardado como submáx, se lee con su rango (P10-effort-progression.md §3)', () => {
     const burpee = { progressionModel: 'fixed', minReps: null, maxReps: null };
     expect(targetLabel(burpee, { sets: 3 }, t)).toBe('3 × 8–12 reps');
     expect(targetLabel({ progressionModel: 'double_progression', minReps: 5, maxReps: 8 },
@@ -48,7 +48,7 @@ describe('targetLabel', () => {
   });
 
   it('unilateral se dice entero y se calla en compacto', () => {
-    // A una mano lo dice el ejercicio, no la sesión (exercise-variants.md §6.4).
+    // A una mano lo dice el ejercicio, no la sesión (P09-exercise-variants.md §6.4).
     const s = { sets: 3, minReps: 10, maxReps: 10 };
     expect(targetLabel({ ...BB, isUnilateral: true }, s, t)).toBe('3 × 10 reps por lado');
     expect(targetLabel({ ...BB, isUnilateral: true }, s, t, { compact: true })).toBe('3×10');
@@ -91,7 +91,7 @@ describe('targetLabel — Reps y Tiempo: el inicio con «+» y la meta de hoy (P
   });
 });
 
-describe('targetLabel — Por esfuerzo (effort-progression.md §5.1)', () => {
+describe('targetLabel — Por esfuerzo (P10-effort-progression.md §5.1)', () => {
   const tt = (key, o) => (typeof o === 'object' ? `${key}:${o.rpe ?? ''}/${o.count ?? ''}` : (o ?? key));
   const ex = (rpe) => ({ sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: rpe } });
 

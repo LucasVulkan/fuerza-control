@@ -237,7 +237,7 @@ function makeClient(db, { uid = 'client-uid-1' } = {}) {
       }
     },
     // Guardar sesión: registra la entrada Y mueve el progreso del programa,
-    // igual que saveSession en el store (weeks-model.md §3.2).
+    // igual que saveSession en el store (P08-weeks-model.md §3.2).
     logSession(entry) {
       state.workoutLog.push(entry);
       const id = state.activeProgramId;
@@ -396,7 +396,7 @@ describe('protocolo entrenador↔cliente — flujo enlazado completo', () => {
 describe('progresión espejada — cliente y entrenador nunca divergen', () => {
   // Las dos caras de lo mismo: lo que el cliente tiene en su programa y lo que
   // el entrenador lee del último envío — ambas por `athleteProgress`, la única
-  // puerta (weeks-model.md §3.7). El entrenador pasa SU copia del programa,
+  // puerta (P08-weeks-model.md §3.7). El entrenador pasa SU copia del programa,
   // que no se mueve: si la leyera, estaría siempre en la etapa 0 y a cero.
   const copiaEntrenador = (programId) => ensureStages(programFile(programId, ['tplA', 'tplB']).program);
   const enCliente    = (client, programId) => athleteProgress(ensureStages(client.state.programs[programId]));

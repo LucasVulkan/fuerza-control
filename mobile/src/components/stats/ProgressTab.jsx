@@ -75,7 +75,7 @@ const periodOptions = (t) => [
 function filterLog(log, scope, period, programTemplateIds) {
   let filtered = [...log];
   if (scope === 'program' && programTemplateIds.size > 0) {
-    // Las libres entran solo si sustituyen a una sesión (free-sessions.md §8).
+    // Las libres entran solo si sustituyen a una sesión (T06-free-sessions.md §8).
     filtered = filtered.filter((e) => programTemplateIds.has(programTemplateOf(e)));
   }
   if (period !== 'all') {
@@ -830,7 +830,7 @@ function ExerciseDetailModal({ visible, onClose, exerciseId, def: initDef, rawLo
               )}
               {/* Una serie nueva se monta de cero: con el recorte a 0 y sin
                   ancho medido no hay frame con la geometría de la anterior
-                  (qa-sep-pantallas.md §5). */}
+                  (U08-qa-sep-pantallas.md §5). */}
               <MiniLineChart
                 key={`${activeId}|${activeMetric}|${modalPeriod}|${modalScope}|${pctMode}`}
                 data={chartData}
@@ -1111,7 +1111,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       )
     )];
     // «Programa actual» enseña los ejercicios del programa… y los de las
-    // sesiones libres que sustituyen a una (free-sessions.md §8): si el
+    // sesiones libres que sustituyen a una (T06-free-sessions.md §8): si el
     // entreno cuenta como del programa, lo que se hizo en él también. En
     // `filteredLog` ya solo quedan las libres marcadas.
     const allowed = new Set([

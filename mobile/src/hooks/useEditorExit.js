@@ -22,7 +22,7 @@ import { backToMain } from '../navigation/navigationRef';
 
 // `templateId`: la sesión que se edita, si la hay. Una sesión libre no es de
 // ningún programa, así que salir de ella no puede marcar el activo como
-// pendiente de reenviar ni decir «Programa editado» (free-sessions.md §5).
+// pendiente de reenviar ni decir «Programa editado» (T06-free-sessions.md §5).
 export function useEditorExit(navigation, templateId = null) {
   const { t } = useTranslation();
   const markProgramDirtyForClients = useStore((s) => s.markProgramDirtyForClients);
@@ -37,7 +37,7 @@ export function useEditorExit(navigation, templateId = null) {
     const tpl = templateId ? st.sessionTemplates[templateId] : null;
     if (tpl && !tpl.programId) {
       // La de un cliente viaja con su programa: queda pendiente de enviar
-      // (group-classes.md §4.2).
+      // (C06-group-classes.md §4.2).
       if ((tpl.owner ?? 'me') !== 'me') st.markClientDirty(tpl.owner);
       showToast(t('freeSession.toastSaved'), 2200, 'success');
       return;

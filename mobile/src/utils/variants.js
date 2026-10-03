@@ -2,7 +2,7 @@
  * La variante de un ejercicio: cómo se hace (agarre, anchura) sin que cambie
  * qué ejercicio es. Solo informa: no toca la progresión ni los récords, se
  * apunta en cada entreno y se puede filtrar en Progreso
- * (docs/specs/exercise-variants.md §2.1).
+ * (docs/specs/P09-exercise-variants.md §2.1).
  *
  * Una variante es `{ grip?, width? }` con valores del catálogo; `{}` o ausente
  * es «sin especificar».

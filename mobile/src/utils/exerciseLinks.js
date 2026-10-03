@@ -169,7 +169,7 @@ export function exerciseInstanceCount(program, exerciseId, getTemplate) {
 
 /**
  * Vincula automáticamente lo que el ciclo repite — spec
- * `mobile/docs/specs/program-templates.md` §5.5.
+ * `mobile/docs/specs/P04-program-templates.md` §5.5.
  *
  * Las plantillas repiten a propósito el mismo ejercicio en varias sesiones del
  * ciclo: la progresión doble necesita exposición repetida al mismo movimiento.

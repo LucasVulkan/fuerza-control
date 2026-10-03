@@ -1,7 +1,7 @@
 /**
  * MetricInfo — el "¿de dónde sale este número?" de la app.
  *
- * Fase 2 de `mobile/docs/specs/metric-transparency.md`. Dos piezas que se usan
+ * Fase 2 de `mobile/docs/specs/T02-metric-transparency.md`. Dos piezas que se usan
  * siempre juntas, por eso viven en el mismo fichero:
  *
  *   InfoLabel        la etiqueta del dato, tocable, con su icono ⓘ.

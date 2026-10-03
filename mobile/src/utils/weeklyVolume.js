@@ -1,6 +1,6 @@
 /**
  * Volumen semanal por grupo muscular — spec
- * `mobile/docs/specs/program-templates.md` §5.4.
+ * `mobile/docs/specs/P04-program-templates.md` §5.4.
  *
  * El problema que resuelve: la plantilla fija las series **por ciclo**, y la
  * frecuencia las multiplica sin que nadie lo comprobara. La misma plantilla de

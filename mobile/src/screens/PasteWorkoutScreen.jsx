@@ -1,6 +1,6 @@
 /**
  * PasteWorkoutScreen — pegar el texto que devolvió un cliente y que la app lo
- * entienda (docs/specs/trainer-logging.md §6, C22).
+ * entienda (docs/specs/C05-trainer-logging.md §6, C22).
  *
  * Se entra desde la cabecera de Clientes (sin cliente: lo dice el propio
  * texto, que lleva su nombre en la cabecera) o desde «Apuntar sesión pasada»
@@ -179,7 +179,7 @@ export default function PasteWorkoutScreen({ navigation, route }) {
     };
     const setsState = {};
     const adHoc = [];
-    // La variante que traía el texto va como «la de hoy» (exercise-variants.md §5.2).
+    // La variante que traía el texto va como «la de hoy» (P09-exercise-variants.md §5.2).
     const variants = {};
     usable.forEach((r) => {
       if (r.variant) variants[r.exerciseId] = r.variant;

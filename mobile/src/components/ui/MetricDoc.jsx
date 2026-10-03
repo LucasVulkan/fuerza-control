@@ -1,7 +1,7 @@
 /**
  * MetricDoc — ficha de una métrica: qué mide, cómo se calcula, reglas y límites.
  *
- * Spec: `mobile/docs/specs/metric-transparency.md`.
+ * Spec: `mobile/docs/specs/T02-metric-transparency.md`.
  *
  * Vive aquí y no dentro de `DocsScreen` porque lo pintan DOS superficies —el
  * glosario y el `MetricInfoSheet` que sale al tocar un dato— y la spec exige un

@@ -33,7 +33,7 @@ import Reanimated, {
  * que hay DENTRO del Modal: el Modal es otra ventana, y en Android sus márgenes
  * no son los de la raíz de la app. Con los de la raíz, la hoja acababa unas
  * veces subida un alto de barra de navegación de más y otras veces debajo de
- * los botones (pulido-ui.md §3).
+ * los botones (U09-pulido-ui.md §3).
  *
  * El contenido desplazable llega hasta el borde de abajo, con `NavScrim`
  * encima: la zona de los botones va tapada del todo y justo por encima las

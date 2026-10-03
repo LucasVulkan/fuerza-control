@@ -7,7 +7,7 @@
  *   - Ahora no    → dismisses, update stays pending
  *
  * There is no "start from scratch": progress is a counter owned by the client,
- * not something the trainer's copy can reset (see `docs/specs/stage-locks.md`
+ * not something the trainer's copy can reset (see `docs/specs/C03-stage-locks.md`
  * §6.2). Only the trainer activating a different stage moves them.
  *
  * Desde U34 no pinta nada propio: es una decisión, así que sale con el diálogo

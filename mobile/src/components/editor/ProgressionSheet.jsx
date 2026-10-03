@@ -1,5 +1,5 @@
 /**
- * ProgressionSheet — el cuerpo de la hoja de Progresión (progresion-clara.md
+ * ProgressionSheet — el cuerpo de la hoja de Progresión (P12-progresion-clara.md
  * §5.3 y §12): un paso por pregunta, solo los que encajan con lo elegido antes,
  * numerados según los que salgan. Lo usan el editor de ejercicio y el alta de
  * ejercicio propio: la misma hoja en los dos sitios.

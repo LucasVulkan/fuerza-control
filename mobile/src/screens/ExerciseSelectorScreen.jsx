@@ -479,7 +479,7 @@ const makeStyles = (th) => StyleSheet.create({
   exNameRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   // El mismo par que `rowName`/`rowMeta` del editor de sesión: 14 Bold sobre 12
   // Medium, sin margen entre ellos —los separa el interlineado—. Un nombre
-  // dentro de una lista va a `bodyStrong` (docs/specs/tipografia.md §9.4).
+  // dentro de una lista va a `bodyStrong` (docs/specs/U06-tipografia.md §9.4).
   exName:     { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   exNameSel:  { color: th.colors.accent },
   exMeta:     { ...textStyles.label, color: th.colors.mutedLight },

@@ -64,7 +64,7 @@ describe('getProgression — guards', () => {
   });
 });
 
-// ── Descarga (docs/specs/stage-planner.md §6) ───────────────────────────────
+// ── Descarga (docs/specs/P06-stage-planner.md §6) ───────────────────────────────
 
 describe('progression.hold = "deload"', () => {
   const t = (k, o) => (o ? `${k}:${JSON.stringify(o)}` : k);
@@ -127,7 +127,7 @@ describe('progression.hold = "deload"', () => {
   });
 });
 
-describe('progression.type = "effort" (effort-progression.md §4.2)', () => {
+describe('progression.type = "effort" (P10-effort-progression.md §4.2)', () => {
   const tk = (k) => k;
   const cfg = (extra = {}) => ({
     sets: 3, minReps: 5, maxReps: 5,
@@ -317,7 +317,7 @@ describe('QA P52 — Reps y Tiempo llevan número, también al mantener', () => 
   });
 });
 
-// ── P54 — el modelo nuevo (docs/specs/progresion-clara.md §4) ───────────────
+// ── P54 — el modelo nuevo (docs/specs/P12-progresion-clara.md §4) ───────────────
 
 describe('P54 — «Peso · por reglas» (§4.2)', () => {
   const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
@@ -738,7 +738,7 @@ describe('P56 — Por esfuerzo: el 1RM de las tres últimas sesiones (§6.5)', (
   });
 });
 
-// ── P61 — Tiempo con carga (docs/specs/progresion-clara.md §8) ──────────────
+// ── P61 — Tiempo con carga (docs/specs/P12-progresion-clara.md §8) ──────────────
 
 describe('P61 — Tiempo + Peso: doble progresión en segundos (§8.2)', () => {
   const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;

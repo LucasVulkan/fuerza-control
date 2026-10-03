@@ -1,5 +1,5 @@
 /**
- * El contrato entre el onboarding y el motor (`onboarding-proposals.md` §8).
+ * El contrato entre el onboarding y el motor (`O02-onboarding-proposals.md` §8).
  *
  * La pantalla dejó de elegir la plantilla por su cuenta: la elige el usuario en
  * la lista de propuestas y la pasa como `archetypeId`. Lo que aquí se vigila es

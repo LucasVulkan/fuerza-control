@@ -3,7 +3,7 @@
  *
  * 4 modos:
  *   null              → selector (Auto / Manual / Importar / Plantilla / Entrenador)
- *   'auto'            → tres preguntas → propuestas → tu programa (onboarding-simple.md)
+ *   'auto'            → tres preguntas → propuestas → tu programa (O01-onboarding-simple.md)
  *   'manual'          → nombre + nº de sesiones
  *   'template_picker' → clonar una plantilla propia
  *
@@ -13,7 +13,7 @@
  * hasta EMPEZAR/EDITAR — por eso "ver otro programa" no deja programas
  * huérfanos.
  *
- * Revisión 2 (docs/specs/onboarding-simple.md): la UI ya no porta el
+ * Revisión 2 (docs/specs/O01-onboarding-simple.md): la UI ya no porta el
  * onboarding web (`OptionCard`/`OnboardingStep`/`OnboardingProgress`
  * desaparecieron) — cada pieza sale de una pantalla migrada ya cerrada, con
  * cita de fichero y línea en la spec.
@@ -97,7 +97,7 @@ const totalSetsOf  = (exercisesLists) => exercisesLists.reduce(
 
 // ─── Tarjeta de modo ──────────────────────────────────────────────────────────
 //
-// Misma anatomía que `QuestionCard` (§4 de onboarding-simple.md: tarjeta de
+// Misma anatomía que `QuestionCard` (§4 de O01-onboarding-simple.md: tarjeta de
 // elección, NO lista agrupada), más el icono gris de `MenuList` y la flecha de
 // fila navegable. Los emoji se van con la migración: no hay ni uno en ninguna
 // pantalla ya cerrada.
@@ -253,7 +253,7 @@ const NOTE_PRIORITY = ['levelStretch', 'lowFrequency'];
 
 /** El aviso que manda, o `null` si no hay nada que decir. */
 function proposalNote(t, entry, daysPerWeek) {
-  // Las sesiones del programa son sus entrenos por semana (weeks-model.md §0.4),
+  // Las sesiones del programa son sus entrenos por semana (P08-weeks-model.md §0.4),
   // y el generador puede proponer más o menos que los días elegidos: se acepta y
   // se ajusta en el editor (§8.1). Es lo primero que hay que saber, así que manda.
   const sessions = entry.sessionsPerCycle;
@@ -309,7 +309,7 @@ function SessionRow({ tpl, index, allEx, exName, expanded, onToggle, countsWarmu
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
   const accent = resolveColor(th, tpl.color ?? 'var(--day1)');
-  // Duración estimada con el MISMO criterio que el recorte (program-templates.md
+  // Duración estimada con el MISMO criterio que el recorte (P04-program-templates.md
   // §5.3.1): por debajo de `NO_WARMUP_BELOW_MIN` (45) no se cuenta el calentamiento,
   // así que aquí no se usa `sessionStats` — daría un número que contradice al
   // presupuesto que acaba de aplicarse.

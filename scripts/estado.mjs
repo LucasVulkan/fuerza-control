@@ -13,13 +13,18 @@
  *
  *   > Tema: <uno de TEMAS>
  *   > En corto: una frase, en cristiano, de qué va la cosa
- *   > Fase C19 · <estado> · Título de la fase · §3
+ *   > Fase C05-01 · <estado> · Título de la fase · §3 · antes C19   ← «antes» es opcional
  *   >
  *   > Estado: **…**   ← la prosa de siempre, con el detalle
  *
+ * El archivo se llama `C05-trainer-logging.md`: tema (C) + número de spec (05) +
+ * nombre. Las fases son `C05-01`, `C05-02`… dentro de SU spec: tema > spec > tarea.
+ * «antes» guarda el código de cuando las fases se numeraban por tema (C19), que
+ * sigue en comentarios de src/ y mensajes de commit: `npm run estado C19` lo traduce.
+ *
  * y, en cualquier sitio del documento, la lista de pruebas de cada fase:
  *
- *   **Probar C19**
+ *   **Probar C05-01**
  *
  *   - [ ] Lo que hay que comprobar en el móvil…
  *     (las líneas sangradas siguen siendo la misma casilla)
@@ -40,7 +45,8 @@
  * Si una convención se rompe, esto FALLA en vez de callarse: una página de
  * estado que omite cosas en silencio es peor que no tenerla.
  *
- * Uso: `npm run estado`
+ * Uso: `npm run estado`            regenera la página
+ *      `npm run estado C19`       traduce un código viejo (o enseña una spec/tarea nueva)
  */
 
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -85,15 +91,15 @@ const md = (s) => esc(s)
   .replace(/\*\*/g, '');
 
 /**
- * Listas `**Probar C19**` + casillas `- [ ]` / `- [x]`, en cualquier parte del
+ * Listas `**Probar C05-01**` + casillas `- [ ]` / `- [x]`, en cualquier parte del
  * documento. Se admite el prefijo `>` porque alguna vive dentro de una cita.
- * Devuelve `{ C19: [{ hecha, texto }] }`.
+ * Devuelve `{ 'C05-01': [{ hecha, texto }] }`.
  */
 function pruebasDe(texto, f) {
   const lineas = texto.split('\n').map((l) => l.replace(/^>\s?/, ''));
   const out = {};
   for (let i = 0; i < lineas.length; i++) {
-    const m = lineas[i].match(/^\*\*Probar ([A-Z]\d{2})\*\*\s*$/);
+    const m = lineas[i].match(/^\*\*Probar ([A-Z]\d{2}-\d{2})\*\*\s*$/);
     if (!m) continue;
     const lista = (out[m[1]] ??= []);
     let j = i + 1;
@@ -167,24 +173,28 @@ function seccionDe(texto, num) {
 }
 
 /**
- * `> Fase M01 · pendiente · Identidad en RevenueCat · §3`
+ * `> Fase M01-01 · pendiente · Identidad en RevenueCat · §3 · antes M01`
+ *
+ * El `antes` es opcional y va el último.
  *
  * Solo la cabecera, hasta la linea `> Estado:`: mas abajo la prosa tiene frases
  * que empiezan por "Fase 3 ..." dentro de la misma cita.
  */
-const fasesDe = (lineas, f) => lineas
+const fasesDe = (lineas, f, codSpec) => lineas
   .slice(0, Math.max(0, lineas.findIndex((l) => l.startsWith('> Estado:'))))
   .filter((l) => l.startsWith('> Fase '))
   .map((l) => {
     const trozos = l.slice(7).split('·').map((x) => x.trim());
+    const antes = /^antes [A-Z]\d{2}$/.test(trozos.at(-1)) ? trozos.pop().slice(6) : '';
     const [codigo, estado] = trozos;
     const ref = trozos[trozos.length - 1];
-    if (!/^[A-Z]\d{2}$/.test(codigo)) throw new Error(`${f}: código de fase "${codigo}" — se espera una letra y dos dígitos, p. ej. M01`);
+    if (!/^[A-Z]\d{2}-\d{2}$/.test(codigo)) throw new Error(`${f}: código de fase "${codigo}" — se espera spec + tarea, p. ej. M01-02`);
+    if (!codigo.startsWith(`${codSpec}-`)) throw new Error(`${f}: la fase ${codigo} no cuelga de la spec ${codSpec} (el prefijo del archivo)`);
     if (!ESTADOS.includes(estado)) throw new Error(`${f}: la fase ${codigo} tiene estado "${estado}". Los válidos: ${ESTADOS.join(', ')}`);
     if (!/^§[\d.]+$/.test(ref)) throw new Error(`${f}: la fase ${codigo} no acaba en "· §N", la sección del documento que la cuenta`);
     const titulo = trozos.slice(2, -1).join(' · ').trim();
     if (!titulo) throw new Error(`${f}: la fase ${codigo} no tiene título`);
-    return { codigo, estado, titulo, ref };
+    return { codigo, estado, titulo, ref, antes };
   });
 
 /** Pestaña en la que cae una fase: lo único que decide la página. */
@@ -198,13 +208,15 @@ const situacionDe = (x) => {
 const specs = readdirSync(SPECS)
   .filter((f) => f.endsWith('.md') && f !== 'README.md' && f !== 'auditoria-tecnica.md')
   .map((f) => {
+    const codigo = f.match(/^([A-Z]\d{2})-/)?.[1];
+    if (!codigo) throw new Error(`${f}: el archivo debe empezar por su código de spec, p. ej. C05-${f}`);
     const texto  = leer(f);
     const lineas = texto.split('\n');
     if (/\*\*Probar en dispositivo/.test(texto)) {
       throw new Error(`${f}: queda un "**Probar en dispositivo.**" suelto. Las pruebas van en una lista "**Probar Xnn**" con casillas "- [ ]" (ver scripts/estado.mjs)`);
     }
     const pruebas = pruebasDe(texto, f);
-    const fases  = fasesDe(lineas, f).map((x) => {
+    const fases  = fasesDe(lineas, f, codigo).map((x) => {
       const cuerpo = seccionDe(texto, x.ref.slice(1));
       // Una referencia que ya no existe es un puntero roto: mejor que reviente
       // aquí que descubrirlo al pulsarla.
@@ -222,6 +234,7 @@ const specs = readdirSync(SPECS)
     if (ajenas.length) throw new Error(`${f}: "**Probar ${ajenas[0]}**" no corresponde a ninguna fase de su cabecera`);
     const spec = {
       archivo: f,
+      codigo,
       titulo:  (lineas[0] ?? '').replace(/^#\s*(Spec —\s*)?/, '').trim() || basename(f, '.md'),
       tema:    clave(lineas, 'Tema'),
       corto:   clave(lineas, 'En corto'),
@@ -235,23 +248,42 @@ const specs = readdirSync(SPECS)
       throw new Error(`${f}: tema "${spec.tema}" desconocido. Los válidos: ${TEMAS.map(([t]) => t).join(', ')}`);
     }
     if (fases.length === 0) {
-      throw new Error(`${f}: ninguna línea "> Fase ${letraDe(spec.tema) ?? 'X'}NN · estado · título". Toda spec tiene al menos una.`);
+      throw new Error(`${f}: ninguna línea "> Fase ${codigo}-01 · estado · título". Toda spec tiene al menos una.`);
     }
-    const ajena = fases.find((x) => x.codigo[0] !== letraDe(spec.tema));
-    if (ajena) throw new Error(`${f}: la fase ${ajena.codigo} no empieza por "${letraDe(spec.tema)}", la letra del tema "${spec.tema}"`);
+    if (codigo[0] !== letraDe(spec.tema)) throw new Error(`${f}: la spec ${codigo} no empieza por "${letraDe(spec.tema)}", la letra del tema "${spec.tema}"`);
+    const repetida = fases.find((x, i) => fases.findIndex((y) => y.codigo === x.codigo) !== i);
+    if (repetida) throw new Error(`${f}: la fase ${repetida.codigo} aparece dos veces`);
     return spec;
   })
   .sort((a, b) => TEMAS.findIndex(([t]) => t === a.tema) - TEMAS.findIndex(([t]) => t === b.tema)
-    || a.titulo.localeCompare(b.titulo));
+    || a.codigo.localeCompare(b.codigo));
 
-// Los códigos son la forma de referirse a una fase entre sesiones: si dos
-// specs se pisan, el de ayer deja de significar lo que decía.
+// Los códigos son la forma de referirse a una spec entre sesiones: si dos se
+// pisan, el de ayer deja de significar lo que decía. Las fases cuelgan de su
+// spec (se comprueba arriba), así que basta con que no haya dos specs iguales.
 const vistos = new Map();
 for (const s of specs) {
-  for (const { codigo } of s.fases) {
-    if (vistos.has(codigo)) throw new Error(`Código ${codigo} repetido: ${vistos.get(codigo)} y ${s.archivo}`);
-    vistos.set(codigo, s.archivo);
+  if (vistos.has(s.codigo)) throw new Error(`Código de spec ${s.codigo} repetido: ${vistos.get(s.codigo)} y ${s.archivo}`);
+  vistos.set(s.codigo, s.archivo);
+}
+const viejos = new Map(); // 'C19' → { s, x }
+for (const s of specs) for (const x of s.fases) if (x.antes) viejos.set(x.antes, { s, x });
+
+// `npm run estado C19` / `C05` / `C05-01`: traduce y sale, sin regenerar nada.
+const consulta = process.argv[2]?.toUpperCase();
+if (consulta) {
+  const hit = viejos.get(consulta)
+    ?? specs.flatMap((s) => s.fases.map((x) => ({ s, x }))).find(({ x }) => x.codigo === consulta);
+  if (hit) {
+    const { s, x } = hit;
+    console.log(`${x.antes === consulta ? `${consulta} (código antiguo) → ` : ''}${x.codigo} · ${x.titulo}\n  ${s.codigo} ${s.titulo} · ${s.archivo} ${x.ref} · ${x.estado}`);
+  } else if (vistos.has(consulta)) {
+    const s = specs.find((y) => y.codigo === consulta);
+    console.log(`${s.codigo} · ${s.titulo} · ${s.archivo}\n${s.fases.map((x) => `  ${x.codigo} · ${x.estado} · ${x.titulo}`).join('\n')}`);
+  } else {
+    console.error(`${consulta}: ni spec, ni tarea, ni código antiguo.`); process.exit(1);
   }
+  process.exit(0);
 }
 
 // ── Datos derivados ───────────────────────────────────────────────────────────
@@ -313,7 +345,7 @@ const chips = (c) => [
   c.aparcada ? `<span class="chip">${plural(c.aparcada, 'aparcada', 'aparcadas')}</span>` : '',
 ].join('');
 
-const letra = (s) => `<span class="letra" title="${esc(nombreTema(s.tema))}">${letraDe(s.tema)}</span>`;
+const letra = (s) => `<span class="letra" title="${esc(nombreTema(s.tema))}">${esc(s.codigo)}</span>`;
 
 // ── Tablero ───────────────────────────────────────────────────────────────────
 const tarjeta = (s) => `<button class="tile g-${s.grupo}" data-abre="${esc(s.id)}">
@@ -328,22 +360,50 @@ const tarjeta = (s) => `<button class="tile g-${s.grupo}" data-abre="${esc(s.id)
 const mini = (s) => `<button class="mini" data-abre="${esc(s.id)}">${letra(s)}<span>${esc(s.titulo)}</span>
   <span class="nfases">${plural(s.fases.length, 'fase', 'fases')}</span></button>`;
 
-const BLOQUES = [
-  ['probar', 'Por probar',           'Programado; falta que lo compruebes en el móvil.',
-    (a, b) => b.c.casillas - a.c.casillas],
-  ['hacer',  'Con cosas pendientes', 'Tienen fases sin programar todavía.',
-    (a, b) => avance(b.c) - avance(a.c) || a.titulo.localeCompare(b.titulo)],
-  ['hecha',  'Completadas',          'Todas sus fases terminadas.', () => 0],
-];
+/** Tema > spec > tarea. El tablero enseña los temas; cada tema, sus specs en orden de código. */
+const specsDe = (tema) => specs.filter((s) => s.tema === tema);
+const cuentaTema = (tema) => cuenta(specsDe(tema).flatMap((s) => s.fases));
 
-const bloque = ([g, titulo, sub, orden]) => {
-  const grupo = specs.filter((s) => s.grupo === g).sort(orden);
-  if (grupo.length === 0) return '';
-  return `<section class="bloque b-${g}">
-    <h2><span class="punto"></span>${titulo}<span class="n">${grupo.length}</span></h2>
-    <p class="sub">${sub}</p>
-    <div class="${g === 'hecha' ? 'minis' : 'tiles'}">${grupo.map(g === 'hecha' ? mini : tarjeta).join('')}</div>
+const tarjetaTema = ([tema, nombre, l]) => {
+  const ss = specsDe(tema);
+  const c = cuentaTema(tema);
+  return `<button class="tile ${c.casillas ? 'g-probar' : ''}" data-abre="t-${esc(tema)}">
+  ${anillo(c, 56)}
+  <span class="tcuerpo">
+    <span class="tcab"><span class="letra">${l}</span><b>${esc(nombre)}</b></span>
+    <span class="corto">${plural(ss.length, 'spec', 'specs')} · ${plural(ss.flatMap((s) => s.fases).length, 'tarea', 'tareas')}</span>
+    <span class="chips">${chips(c)}</span>
+  </span>
+</button>`;
+};
+
+/** Franja que cruza los temas: lo único que el usuario tiene que accionar. */
+const franjaProbar = () => {
+  const xs = specs.flatMap((s) => s.fases.filter((x) => x.situacion === 'probar').map((x) => ({ s, x })));
+  if (xs.length === 0) return '';
+  return `<section class="bloque b-probar">
+    <h2><span class="punto"></span>Por probar<span class="n">${xs.length}</span></h2>
+    <p class="sub">Programado; falta que lo compruebes en el móvil.</p>
+    <div class="lista-probar">${xs.map(({ s, x }) => `<button class="pp" data-abre="${esc(s.id)}">
+      <span class="cod">${esc(x.codigo)}</span>${antes(x)}<span class="pt">${md(x.titulo)}</span>
+      <span class="chip p">${plural(x.pruebas.filter((p) => !p.hecha).length, 'prueba', 'pruebas')}</span></button>`).join('')}</div>
   </section>`;
+};
+
+const vistaTema = ([tema, nombre, l]) => {
+  const vivas = specsDe(tema).filter((s) => s.grupo !== 'hecha');
+  const hechas = specsDe(tema).filter((s) => s.grupo === 'hecha');
+  const c = cuentaTema(tema);
+  return `<section class="detalle" data-vista="t-${esc(tema)}" data-padre="" hidden>
+  <button class="volver" data-abre="">← Todo</button>
+  <div class="dcab">${anillo(c, 88)}
+    <div><div class="tema"><span class="letra">${l}</span>Tema</div>
+      <h2>${esc(nombre)}</h2><p class="corto">${plural(specsDe(tema).length, 'spec', 'specs')}, por orden de código.</p>
+      <div class="chips">${chips(c)}</div></div></div>
+  ${vivas.length ? `<div class="tiles">${vivas.map(tarjeta).join('')}</div>` : ''}
+  ${hechas.length ? `<section class="bloque b-hecha"><h2><span class="punto"></span>Completadas<span class="n">${hechas.length}</span></h2>
+    <div class="minis">${hechas.map(mini).join('')}</div></section>` : ''}
+</section>`;
 };
 
 const cuentaGrupo = (g) => specs.filter((s) => s.grupo === g).length;
@@ -353,33 +413,35 @@ const cifra = (g, num, texto) => `<div class="cifra c-${g}"><b>${num}</b><span>$
 const verDoc = (x, archivo) => `<details class="doc"><summary>Ver ${esc(x.ref)} de la spec</summary>
   <span class="ruta-doc">${esc(archivo)} ${esc(x.ref)}</span><pre>${esc(x.cuerpo)}</pre></details>`;
 
+const antes = (x) => (x.antes ? `<span class="antes">antes ${esc(x.antes)}</span>` : '');
+
 const casillas = (x) => `<ol class="pruebas">${x.pruebas.map((p, i) => `<li class="${p.hecha ? 'ok' : ''}">
   <span class="caja">${p.hecha ? '✓' : ''}</span><span class="n">${x.codigo}.${i + 1}</span><span>${md(p.texto)}</span></li>`).join('')}</ol>`;
 
 const fase = {
   probar: (x, s) => `<div class="fase probar">
-    <div class="fcab"><span class="cod">${esc(x.codigo)}</span><b>${md(x.titulo)}</b>
+    <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<b>${md(x.titulo)}</b>
       <span class="chip p">${x.pruebas.filter((p) => p.hecha).length}/${x.pruebas.length}</span></div>
     ${casillas(x)}
     <div class="pista-uso">Cuando lo pruebes, dile a Claude «<b>${esc(x.codigo)} probada</b>» o «<b>${esc(x.codigo)}.1 falla: …</b>».</div>
     ${verDoc(x, s.archivo)}
   </div>`,
   hacer: (x, s) => `<div class="fase hacer ${x.situacion}">
-    <div class="fcab"><span class="cod">${esc(x.codigo)}</span><b>${md(x.titulo)}</b>
+    <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<b>${md(x.titulo)}</b>
       ${x.situacion === 'aparcada' ? '<span class="chip">aparcada</span>' : ''}
       ${x.pruebas.length ? `<span class="chip">${plural(x.pruebas.length, 'prueba preparada', 'pruebas preparadas')}</span>` : ''}</div>
     ${verDoc(x, s.archivo)}
   </div>`,
   terminada: (x) => `<div class="fase terminada">
-    <div class="fcab"><span class="cod">${esc(x.codigo)}</span><span>${md(x.titulo)}</span>
+    <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<span>${md(x.titulo)}</span>
       ${x.pruebas.length ? `<span class="chip t">✓ ${plural(x.pruebas.length, 'probada', 'probadas')}</span>` : ''}</div>
   </div>`,
 };
 
 const SECCIONES = [['probar', 'Por probar'], ['hacer', 'Por hacer'], ['terminada', 'Terminado']];
 
-const detalle = (s) => `<section class="detalle" data-vista="${esc(s.id)}" hidden>
-  <button class="volver" data-abre="">← Todas las specs</button>
+const detalle = (s) => `<section class="detalle" data-vista="${esc(s.id)}" data-padre="t-${esc(s.tema)}" hidden>
+  <button class="volver" data-abre="t-${esc(s.tema)}">← ${esc(nombreTema(s.tema))}</button>
   <div class="dcab">
     ${anillo(s.c, 88)}
     <div><div class="tema">${letra(s)}${esc(nombreTema(s.tema))} · <code>${esc(s.archivo)}</code></div>
@@ -464,6 +526,14 @@ const html = `<!doctype html>
   .chip.p{background:var(--pendbg);color:var(--pend);font-weight:600}
   .chip.t{background:var(--accbg);color:var(--acc)}
   .chip.h{background:#262a30;color:var(--tx)}
+  .lista-probar{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .pp{display:flex;gap:10px;align-items:center;background:#1f1c14;border:1px solid #4a3f22;border-left:3px solid var(--pend);
+      border-radius:10px;padding:10px 14px;font-size:14px}
+  .pp:hover{border-color:var(--pend)} .pp .pt{flex:1;line-height:1.35}
+  .pp .cod{background:var(--pendbg);color:var(--pend)}
+  .antes{font-size:10.5px;color:var(--mut2);font-family:ui-monospace,monospace}
+  .detalle .tiles{margin-top:20px}
+  .detalle .bloque{margin-top:28px}
   .letra{flex:none;font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mut);
          background:var(--pista);border-radius:5px;padding:4px 5px}
 
@@ -543,27 +613,31 @@ const html = `<!doctype html>
 
   <div id="tablero">
     <div class="resumen">
-      ${cifra('probar', cuentaGrupo('probar'), `specs por probar · ${plural(total.casillas, 'prueba', 'pruebas')}`)}
-      ${cifra('hacer', cuentaGrupo('hacer'), 'specs con cosas pendientes')}
-      ${cifra('hecha', cuentaGrupo('hecha'), 'specs completadas')}
+      ${cifra('probar', total.probar, `tareas por probar · ${plural(total.casillas, 'prueba', 'pruebas')}`)}
+      ${cifra('hacer', total.hacer, 'tareas por hacer')}
+      ${cifra('hecha', total.terminada, 'tareas terminadas')}
     </div>
-    <div class="global">${barra(total)}<span>${total.terminada}/${total.terminada + total.probar + total.hacer} fases</span></div>
+    <div class="global">${barra(total)}<span>${total.terminada}/${total.terminada + total.probar + total.hacer} tareas</span></div>
 
-    ${BLOQUES.map(bloque).join('')}
+    ${franjaProbar()}
 
     <section class="bloque">
-      <h2><span class="punto"></span>Auditoría técnica<span class="n">${hechos}/${fallos.length}</span></h2>
-      <p class="sub">Los fallos de <code>auditoria-tecnica.md</code>.</p>
-      <div class="minis"><button class="mini errores" data-abre="errores"><span class="letra">E</span>
-        <span>${hechos === fallos.length ? 'Todos los fallos resueltos' : plural(fallos.length - hechos, 'fallo pendiente', 'fallos pendientes')}</span>
-        <span class="nfases">${hechos}/${fallos.length}</span></button></div>
+      <h2><span class="punto"></span>Temas<span class="n">${TEMAS.length}</span></h2>
+      <p class="sub">Tema › spec › tarea: <code>C05-02</code> es la tarea 2 de la spec 5 de Entrenador ↔ cliente.</p>
+      <div class="tiles">${TEMAS.filter(([t]) => t !== 'errores').map(tarjetaTema).join('')}
+        <button class="tile" data-abre="errores"><span class="tcuerpo">
+          <span class="tcab"><span class="letra">E</span><b>Errores · auditoría técnica</b></span>
+          <span class="corto">${hechos === fallos.length ? 'Todos los fallos resueltos' : plural(fallos.length - hechos, 'fallo pendiente', 'fallos pendientes')}</span>
+          <span class="chips"><span class="chip ${hechos === fallos.length ? 't' : 'h'}">${hechos}/${fallos.length}</span></span></span></button>
+      </div>
     </section>
   </div>
 
+  ${TEMAS.filter(([t]) => t !== 'errores').map(vistaTema).join('\n')}
   ${specs.map(detalle).join('\n')}
 
-  <section class="detalle" data-vista="errores" hidden>
-    <button class="volver" data-abre="">← Todas las specs</button>
+  <section class="detalle" data-vista="errores" data-padre="" hidden>
+    <button class="volver" data-abre="">← Todo</button>
     <div class="dcab"><div><div class="tema"><span class="letra">E</span>Errores · <code>auditoria-tecnica.md</code></div>
       <h2>Auditoría técnica</h2><p class="corto">${hechos}/${fallos.length} resueltos · críticos
       ${criticos.filter((f) => f.hecho).length}/${criticos.length} · ${resumenSev}</p></div></div>
@@ -599,7 +673,11 @@ const html = `<!doctype html>
     pintar();
     window.scrollTo(0, 0);
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && abierta) { abierta = ''; pintar(); } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !abierta) return;
+    abierta = document.querySelector('[data-vista="' + abierta + '"]').dataset.padre;
+    pintar();
+  });
   pintar();
 </script>
 </body></html>`;
@@ -607,12 +685,11 @@ const html = `<!doctype html>
 writeFileSync(SALIDA, html, 'utf8');
 // Buscar a mano el siguiente numero libre es justo como se acaba reutilizando
 // uno: se imprime, y quien anada una fase copia de aqui.
-const libres = TEMAS.map(([, , l]) => {
-  const usados = [...vistos.keys(), ...fallos.map((f) => `E${String(f.num).padStart(2, '0')}`)]
-    .filter((c) => c[0] === l).map((c) => Number(c.slice(1)));
+const libres = TEMAS.filter(([t]) => t !== 'errores').map(([, , l]) => {
+  const usados = specs.filter((s) => s.codigo[0] === l).map((s) => Number(s.codigo.slice(1)));
   return `${l}${String(Math.max(0, ...usados) + 1).padStart(2, '0')}`;
 });
-console.log(`Siguiente código libre: ${libres.join(' · ')}`);
+console.log(`Siguiente spec libre: ${libres.join(' · ')}  (la tarea nueva de una spec es su última + 1)`);
 
 const porProbar = todasFases.filter((x) => x.situacion === 'probar').map((x) => x.codigo);
 console.log(`${total.terminada} terminadas · ${total.probar} por probar${porProbar.length ? ` (${porProbar.join(', ')})` : ''} `

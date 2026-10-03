@@ -8,7 +8,7 @@
  * interruptores, exportar mientras exporta), y en una hoja de opciones todas
  * cierran. La acción corre a la vez que empieza el cierre, no después.
  *
- * Hasta pulido-ui.md §3 (U30) era otra anatomía —fila suelta `surface2` sin
+ * Hasta U09-pulido-ui.md §3 (U30) era otra anatomía —fila suelta `surface2` sin
  * icono— y convivía con `MenuRow` en las mismas pantallas; ahora las hojas con
  * lista hablan todas igual. Van agrupadas: envolverlas en `Section` (sin
  * título) para que la primera y la última lleven sus radios.

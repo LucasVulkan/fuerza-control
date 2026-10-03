@@ -3,7 +3,7 @@
  * gestión.
  *
  * Era una pantalla con su pestaña propia. Pasa a ser el tercer segmento de
- * Progresión (spec tab-programa.md §5): el historial no necesitaba una pestaña
+ * Progresión (spec U07-tab-programa.md §5): el historial no necesitaba una pestaña
  * de la barra, y su hueco lo ocupa «Programa». Al dejar de ser pantalla pierde
  * su `AppHeader`, su contenedor y el `paddingTop` del notch — los pone
  * `StatsScreen`, que es quien la monta ahora.
@@ -114,7 +114,7 @@ export default function HistoryList() {
   const filtered = useMemo(() => {
     let list = [...workoutLog];
     if (scope === 'program' && effectiveTemplateIds.size > 0) {
-      // Las libres marcadas «Cuenta como» son del programa (free-sessions.md §8).
+      // Las libres marcadas «Cuenta como» son del programa (T06-free-sessions.md §8).
       list = list.filter((e) => effectiveTemplateIds.has(programTemplateOf(e)));
     }
     return list.sort((a, b) => b.timestamp - a.timestamp);
@@ -157,7 +157,7 @@ export default function HistoryList() {
       {/* Un solo control: ámbito y etapas viven dentro de la hoja que abre
           este chip. Apilados fuera —conmutador + tira de pastillas— eran dos
           filas de filtro antes de la primera sesión, y con el conmutador de
-          Progresión encima habrían sido tres (spec tab-programa.md §5.1). */}
+          Progresión encima habrían sido tres (spec U07-tab-programa.md §5.1). */}
       <View style={styles.scopeRow}>
         <TouchableOpacity
           style={styles.filterChip}

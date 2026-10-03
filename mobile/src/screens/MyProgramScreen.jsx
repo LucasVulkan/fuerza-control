@@ -1,7 +1,7 @@
 /**
  * MyProgramScreen — el tab «Programa»: dónde vas del programa.
  *
- * Spec: `docs/specs/tab-programa.md` §4.
+ * Spec: `docs/specs/U07-tab-programa.md` §4.
  *
  * Pantalla PLANA, sin control segmentado: el visualizador sigue siendo
  * `ProgramDetailScreen`, una pantalla del stack, y aquí solo se dice en qué
@@ -85,7 +85,7 @@ function CheckIcon({ size = 16, color }) {
 // Era una hoja (`DragSheet`) que había que abrir desde la tarjeta. Aquí están a
 // la vista: en la pantalla donde la pregunta es *dónde voy*, cuántas etapas
 // tiene el programa y cuál viene después no pueden estar detrás de un gesto
-// (spec tab-programa.md §4.3).
+// (spec U07-tab-programa.md §4.3).
 //
 // Al perder la hoja, elegir pierde el peso que le daba tener que abrirla, así
 // que cambiar de etapa pasa a confirmarse — ver `confirmStage` más abajo.
@@ -183,13 +183,13 @@ export default function MyProgramScreen() {
   // Las mismas tres cifras que el entrenador ve del cliente, calculadas aquí del
   // lado del atleta: se ve de sí mismo exactamente lo que ven de él.
   // Los entrenos por semana de la etapa en la que está: son el objetivo de la
-  // adherencia (weeks-model.md §4.3).
+  // adherencia (P08-weeks-model.md §4.3).
   const perWeek = activeProgram
     ? weeklySessions(activeProgram.stages?.[athleteProgress(activeProgram).currentStageIndex])
     : 0;
 
   // Las sesiones libres solo cuentan si sustituyen a una del programa
-  // (free-sessions.md §8); la carga, en cambio, las cuenta todas.
+  // (T06-free-sessions.md §8); la carga, en cambio, las cuenta todas.
   const programLog = useMemo(() => workoutLog.filter(countsForProgram), [workoutLog]);
 
   const adherence = useMemo(() => computeAdherence({

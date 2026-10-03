@@ -1,6 +1,6 @@
 /**
  * Fases de una plantilla → etapas del programa
- * (`docs/specs/program-templates.md` §6).
+ * (`docs/specs/P04-program-templates.md` §6).
  *
  * Vive junto al store porque el mecanismo es suyo: `adaptArchetype` sólo produce
  * la etapa base, y las fases 2..N las materializa `generateAndActivateProgram`
@@ -47,7 +47,7 @@ describe('fases de plantilla → etapas', () => {
   });
 
   // Era "`days` sigue espejando la etapa activa". El espejo murió: los días
-  // viven en su etapa y en ningún otro sitio (program-model.md §5).
+  // viven en su etapa y en ningún otro sitio (P03-program-model.md §5).
   it('el programa no guarda una copia de los días de la etapa', async () => {
     const { program } = await generate();
     expect(program.days).toBeUndefined();
@@ -64,7 +64,7 @@ describe('fases de plantilla → etapas', () => {
       expect(ids.some((id) => base.includes(id))).toBe(false); // ids frescos
       ids.forEach((id, i) => {
         // Sin la cadena, la primera sesión de cada fase deja al cliente sin chip
-        // de progresión y sin pesos de referencia (stage-planner.md §4.1).
+        // de progresión y sin pesos de referencia (P06-stage-planner.md §4.1).
         expect(sessionTemplates[id].derivedFrom).toBe(base[i]);
       });
     });

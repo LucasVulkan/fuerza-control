@@ -46,7 +46,7 @@ describe('buildBackupPayload', () => {
     expect(payload.tagRegistry).toEqual([{ id: 'tag_1', name: 'Lesionado' }]);
     expect(payload.blockPresets).toEqual([{ presetId: 'pre_1', format: 'amrap' }]);
     // Las sesiones libres ya no van aparte: son `sessionTemplates` sin
-    // programa (free-sessions.md §4.5), y la clave vieja no viaja.
+    // programa (T06-free-sessions.md §4.5), y la clave vieja no viaja.
     expect(payload.freeSessionPresets).toBeUndefined();
   });
 

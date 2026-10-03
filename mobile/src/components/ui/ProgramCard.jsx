@@ -4,7 +4,7 @@
  * Sale de `AssignedProgramCard` (tab de Programa de la ficha de cliente), que
  * ya era esta tarjeta: mismo bloque nombre + semana, misma barra de etapa, mismas
  * acciones. Las dos pantallas convergían sin saberlo, así que ahora la
- * comparten (docs/specs/home-sessions.md §4).
+ * comparten (docs/specs/U02-home-sessions.md §4).
  *
  * ── Una sola superficie ────────────────────────────────────────────────────
  *
@@ -197,7 +197,7 @@ export default function ProgramCard({
             )}
           </View>
 
-          {/* Dónde va, con palabras: semana y sesiones (weeks-model.md §6.3). */}
+          {/* Dónde va, con palabras: semana y sesiones (P08-weeks-model.md §6.3). */}
           {!!stage.detail && <Text style={styles.stageDetail}>{stage.detail}</Text>}
 
           {/* Un tramo por etapa, de ancho proporcional a sus semanas. La etapa

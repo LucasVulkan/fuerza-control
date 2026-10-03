@@ -142,7 +142,7 @@ export default function HomeScreen() {
     startFreeSession();
   };
 
-  // ── Sesiones libres (free-sessions.md §6) ──
+  // ── Sesiones libres (T06-free-sessions.md §6) ──
   // Solo las MÍAS (§4.1.1): las de un cliente o un grupo no salen en mi Inicio.
   // `Object.values` conserva el orden de alta, que es el de la lista.
   // Sin las plantillas de sesión: esas viven en Plantillas y se asignan (§4.6).
@@ -150,7 +150,7 @@ export default function HomeScreen() {
   // Toda sesión mía sale en Inicio (QA 28-sep): lo que no quieres aquí es una
   // plantilla, y las plantillas viven en Plantillas.
   const homeFree = myFree;
-  // Las plantillas de sesión, para llevarte una copia (group-classes.md §4.6).
+  // Las plantillas de sesión, para llevarte una copia (C06-group-classes.md §4.6).
   const templates = Object.values(sessionTemplates)
     .filter((tpl) => !tpl.programId && tpl.kind === 'template')
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -188,7 +188,7 @@ export default function HomeScreen() {
 
         {activeProgram ? (() => {
           // Dónde va de la etapa: la misma cuenta que ve su entrenador
-          // (weeks-model.md §3.7). El día se lee al pintar.
+          // (P08-weeks-model.md §3.7). El día se lee al pintar.
           const today       = localDay();
           const progress    = athleteProgress(activeProgram);
           const status      = stageStatus(activeProgram, progress, today);
@@ -215,7 +215,7 @@ export default function HomeScreen() {
             t,
           });
 
-          // ── Aviso de fin de etapa (weeks-model.md §6.1) ──
+          // ── Aviso de fin de etapa (P08-weeks-model.md §6.1) ──
           // Cuatro casos y un solo sitio que decide si sale (`stageBannerDue`,
           // el mismo que enciende el punto del tab). Cada uno dice qué ha pasado
           // y ofrece una acción principal y otra discreta.
@@ -385,7 +385,7 @@ export default function HomeScreen() {
           <NoProgram />
         )}
 
-        {/* ── Sesiones libres (free-sessions.md §6.1) ── También sin programa:
+        {/* ── Sesiones libres (T06-free-sessions.md §6.1) ── También sin programa:
             tener sesiones sueltas sin programa es justo uno de sus usos. Con
             `layout` porque al plegar una sesión de arriba sube o baja: sin él
             daba el salto de golpe mientras la tarjeta seguía animando. */}
@@ -414,7 +414,7 @@ export default function HomeScreen() {
                       cta={startCta(t, '', { active, done: false })}
                       onStart={() => requestStart(tpl.id)}
                       // Las que manda el entrenador no se editan: si quieres
-                      // una tuya, la haces con «Crear» (group-classes.md §4.4).
+                      // una tuya, la haces con «Crear» (C06-group-classes.md §4.4).
                       onEdit={tpl.fromTrainer ? undefined : () => editFree(tpl.id)}
                       by={tpl.fromTrainer ? (tpl.trainerName || clientSync.trainerName || '') : null}
                       a11yLabel={`${t('freeSession.badge')}, ${name}`}
@@ -449,7 +449,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Modals */}
-      {/* ── ＋ Sesión libre (free-sessions.md §6.2) ── */}
+      {/* ── ＋ Sesión libre (T06-free-sessions.md §6.2) ── */}
       {freeSheet && (
         <DragSheet visible onClose={() => setFreeSheet(false)} title={t('freeSession.startTitle')}>
           <View style={styles.sheetGroup}>

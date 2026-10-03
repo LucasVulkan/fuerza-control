@@ -4,8 +4,8 @@
  * ejercicios y el rótulo de sección.
  *
  * Salieron de `HomeScreen` sin cambios para que la ficha de un cliente sin app
- * enseñe lo mismo que vería él (trainer-logging.md §3.1): el entrenador hace de
- * su app. Las reglas de diseño están en docs/specs/home-sesiones-plegables.md §5.
+ * enseñe lo mismo que vería él (C05-trainer-logging.md §3.1): el entrenador hace de
+ * su app. Las reglas de diseño están en docs/specs/U04-home-sesiones-plegables.md §5.
  */
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
@@ -24,7 +24,7 @@ import { variantLabel, displayVariant } from '../utils/variants';
 // Una sola lista en el orden del programa. Cada sesión es una fila plegable y la que
 // toca hoy es esa misma fila a otra escala: en lima, con la letra grande y su
 // botón puesto. Toda la cabecera abre; SOLO el botón entra a entrenar
-// (docs/specs/home-sesiones-plegables.md §5).
+// (docs/specs/U04-home-sesiones-plegables.md §5).
 //
 // El hero suelto que había antes ya no existe: se sacaba de la lista, obligaba a
 // elegir entre enseñar los ejercicios o caber en pantalla, y no había manera de
@@ -129,11 +129,11 @@ export function SessionRow({
           {children}
           {/* Botones sólidos a todo el ancho (QA 26-sep): primario en acento;
               una sesión ya hecha esta semana repite con el secundario, que la
-              que toca es otra. Con `onEdit` (sesiones libres, free-sessions.md
+              que toca es otra. Con `onEdit` (sesiones libres, T06-free-sessions.md
               §6.1) EDITAR va al lado, también secundario. */}
           <View style={styles.sesBtnRow}>
             {/* Sin `onStart` la fila solo se consulta y se edita: la sesión libre
-                de un cliente con app la entrena él (group-classes.md §4.1). */}
+                de un cliente con app la entrena él (C06-group-classes.md §4.1). */}
             {!!onStart && (
             <TouchableOpacity
               style={[styles.sesBtn, done && styles.sesBtnSecondary]}
@@ -316,7 +316,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Lista de sesiones ───────────────────────────────────────────────────
   // Los cuerpos y los huecos salen de la sesión de diseño
-  // (docs/specs/home-sesiones-plegables.md §5), no de Figma: donde no hay token
+  // (docs/specs/U04-home-sesiones-plegables.md §5), no de Figma: donde no hay token
   // —14, 12, 11— va el número exacto de la spec.
   //
   // Tarjetas sueltas, no una lista agrupada: cualquiera se despliega, así que

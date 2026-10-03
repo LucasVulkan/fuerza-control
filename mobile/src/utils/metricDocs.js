@@ -1,7 +1,7 @@
 /**
  * metricDocs — registro de las métricas que la app enseña.
  *
- * Spec: `mobile/docs/specs/metric-transparency.md`.
+ * Spec: `mobile/docs/specs/T02-metric-transparency.md`.
  *
  * Aquí NO vive el texto: vive en `metrics.*` de `src/locales/{es,en}.json`, con
  * cinco campos por métrica, deliberadamente separados para no mezclar concepto

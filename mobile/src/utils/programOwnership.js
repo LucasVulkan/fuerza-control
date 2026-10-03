@@ -5,7 +5,7 @@
  * dice para qué sirve. Sustituyen a `mode` + `program.clientId` +
  * `client.programIds[]` + `profile.secondaryProgramIds[]`: cuatro registros del
  * mismo hecho que nadie obligaba a estar de acuerdo, y cuyo invariante lo
- * sostenía quien leía (spec `docs/specs/program-model.md` §1).
+ * sostenía quien leía (spec `docs/specs/P03-program-model.md` §1).
  *
  * La lista de programas de un cliente ya no se guarda: **se calcula**. No puede
  * contener ids muertos porque no contiene ids.

@@ -129,7 +129,7 @@ export function LockIcon({ size = 14, color, solid = false }) {
   );
 }
 
-// Información — dispara la ficha de una métrica (docs/specs/metric-transparency.md).
+// Información — dispara la ficha de una métrica (docs/specs/T02-metric-transparency.md).
 // Tampoco sale de Figma: el diseño no contempla esta feature. Trazo 2 como el
 // resto de iconos dibujados a mano, y aro sin relleno para que no compita con
 // el número al que acompaña.
@@ -143,7 +143,7 @@ export function InfoIcon({ size = 12, color }) {
   );
 }
 
-// Variantes de ejercicio (docs/specs/exercise-variants.md). No salen de Figma:
+// Variantes de ejercicio (docs/specs/P09-exercise-variants.md). No salen de Figma:
 // trazo fino, caja de 14/15 como el resto de iconos de fila.
 
 // Fila VARIANTE del editor: dos deslizadores.

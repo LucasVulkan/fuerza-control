@@ -16,7 +16,7 @@
  * y guarda. Endurecer la entrada quita los bordes, no el fondo: quien conozca
  * un código tiene la cuenta. Eso se cierra moviendo la recuperación a una
  * función que valide el código y emita la sesión, con la contraseña real como
- * secreto aleatorio que nadie ve — ver `docs/specs/client-connection.md` §4.3.
+ * secreto aleatorio que nadie ve — ver `docs/specs/C01-client-connection.md` §4.3.
  *
  * ponytail: sin cabeceras CORS, igual que `delete-account` — solo la llama la
  * app móvil, donde fetch no aplica CORS.

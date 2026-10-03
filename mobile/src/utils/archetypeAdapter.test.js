@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { adaptArchetype } from './archetypeAdapter';
 import { ARCHETYPES } from '../data/archetypes';
 
-// Spec onboarding-simple.md §5.1: `levelCuts` es lo que `reduceForBeginner`
+// Spec O01-onboarding-simple.md §5.1: `levelCuts` es lo que `reduceForBeginner`
 // tuvo que quitar/añadir para bajar una plantilla de otro nivel a beginner.
 const byId = (id) => ARCHETYPES.find((a) => a.id === id);
 
@@ -31,7 +31,7 @@ describe('adaptArchetype — levelCuts', () => {
   });
 });
 
-// exercise-variants.md §3.2: los jalones se juntaron en uno con su agarre.
+// P09-exercise-variants.md §3.2: los jalones se juntaron en uno con su agarre.
 describe('arquetipos y variantes', () => {
   it('ningún día repite ejercicio (una sesión no admite el mismo dos veces)', () => {
     for (const a of ARCHETYPES) {

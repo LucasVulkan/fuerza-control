@@ -64,7 +64,7 @@ describe('sessionToText', () => {
     const tpl = { label: 'A', name: 'Fuerza', exercises: [
       { exerciseId: 'skull_crusher', sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } },
     ] };
-    // 80 × 5 a RPE 7: más fácil de lo previsto → 82.5 con paso 2.5 (effort-progression.md §2.2).
+    // 80 × 5 a RPE 7: más fácil de lo previsto → 82.5 con paso 2.5 (P10-effort-progression.md §2.2).
     const last = { sets: [1, 2, 3].map(() => ({ weight: '80', reps: '5', rpe: '7', done: true })) };
     const line = sessionToText(tpl, LIB, t, { language: 'es', fmtWeight: (kg) => `${kg}kg`, lastExercise: () => last })
       .split('\n')[1];
@@ -286,7 +286,7 @@ describe('ida y vuelta completa', () => {
   });
 });
 
-// exercise-variants.md §5.2: la variante viaja con « · » y el lector la separa.
+// P09-exercise-variants.md §5.2: la variante viaja con « · » y el lector la separa.
 describe('variantes en el texto', () => {
   const template = {
     label: 'B', name: 'Tirón',

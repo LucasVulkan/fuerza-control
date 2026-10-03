@@ -75,7 +75,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
   const customExercises      = useStore((s) => s.customExercises);
   const allExercises = { ...exerciseLibrary, ...customExercises };
 
-  // Las dos clases de sesión libre (free-sessions.md §4.2); en el móvil del
+  // Las dos clases de sesión libre (T06-free-sessions.md §4.2); en el móvil del
   // entrenador la plantilla no existe y la entrada es la única pista.
   const isFree   = isFreeEntry(session);
   const template = isFree ? null : getEffectiveTemplate(session.sessionTemplateId);
@@ -154,7 +154,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
           <View key={ex.exerciseId} style={styles.exSection}>
             <Text style={styles.exName}>
               {exName}
-              {/* Lo que se hizo, no lo que decía el programa (exercise-variants.md §4.4). */}
+              {/* Lo que se hizo, no lo que decía el programa (P09-exercise-variants.md §4.4). */}
               {displayVariant(ex.variant, def) ? <Text style={styles.exVariant}>{` · ${variantLabel(ex.variant, t)}`}</Text> : null}
             </Text>
             <View style={styles.setPills}>

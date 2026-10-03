@@ -1,6 +1,6 @@
 /**
  * AdaptationPanel — el detalle de los ajustes, por secciones (spec
- * onboarding-simple.md §8). Reemplaza a `AdaptationNotice`: en vez de un
+ * O01-onboarding-simple.md §8). Reemplaza a `AdaptationNotice`: en vez de un
  * párrafo, tres listas con color — sustituidos (lima), quitados (naranja),
  * sin cubrir (rojo) — cada fila con la etiqueta del motivo a la derecha.
  *

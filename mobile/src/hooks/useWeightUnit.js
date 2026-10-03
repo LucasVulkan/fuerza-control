@@ -9,7 +9,7 @@ export function useWeightUnit() {
   // Memo por unidad: antes eran funciones nuevas en cada render, y todo
   // `useMemo`/efecto que dependiera de `fmt` o `toDisplay` se recalculaba
   // siempre — la gráfica del detalle de ejercicio relanzaba su animación en
-  // cada render (docs/specs/qa-sep-pantallas.md §5).
+  // cada render (docs/specs/U08-qa-sep-pantallas.md §5).
   return useMemo(() => {
     const isLb = unit === 'lb';
 

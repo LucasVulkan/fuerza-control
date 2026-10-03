@@ -231,7 +231,7 @@ export default function WorkoutScreen() {
   const exerciseLibrary    = useStore((s) => s.exerciseLibrary);
   const customExercises    = useStore((s) => s.customExercises);
   // El historial del dueño del entreno: el mío o el del cliente sin app para
-  // el que apunto (trainer-logging.md §3.3). De ahí salen los pesos de la
+  // el que apunto (C05-trainer-logging.md §3.3). De ahí salen los pesos de la
   // última vez y la progresión.
   const workoutLog         = useStore((s) => ownerLogOf(s));
   const clientName         = useStore((s) => (
@@ -452,7 +452,7 @@ export default function WorkoutScreen() {
   // sesión libre); el reloj se concatena dentro de HeaderEyebrow/HeaderCompactSummary.
   // Una sesión libre GUARDADA va por el camino de plantilla (`isFree` es solo la
   // sobre la marcha), pero no tiene letra: se rotula como libre
-  // (free-sessions.md §6.3). Se renombra en el editor, no aquí.
+  // (T06-free-sessions.md §6.3). Se renombra en el editor, no aquí.
   const isFreeTpl       = !isFree && !!template && !template.programId;
   const sessionLabel    = (isFree || isFreeTpl) ? t('freeSession.badge').toUpperCase() : t('workout.sessionLabel', { label: template?.label ?? '' });
   // Entreno de un cliente: la ceja dice de quién es, en el azul del

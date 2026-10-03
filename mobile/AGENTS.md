@@ -11,7 +11,7 @@ Never "the closest thing that already exists in the code".
 
 **One deliberate exception: the type scale.** Text size and tracking no longer
 follow Figma — they follow the fourteen roles in `src/theme.js` (`textStyles`),
-specced in [`docs/specs/tipografia.md`](docs/specs/tipografia.md). Figma's bodies
+specced in [`docs/specs/U06-tipografia.md`](docs/specs/U06-tipografia.md). Figma's bodies
 were set on iPhone, where SF Pro switches to its "Text" optical cut below ~20px;
 Inter has no such axis and read thinner than the design assumed. Never add a
 `fontSize` / `fontWeight` / `letterSpacing` of your own: pick a role and, if you
@@ -32,9 +32,14 @@ Quick pointers:
 `docs/specs/` tiene una spec por feature grande y
 [`docs/specs/README.md`](docs/specs/README.md) es su índice. **Léelo antes de
 tocar cualquier spec**: fija la cabecera estándar que llevan todas, los códigos
-con los que se habla de cada cosa (`M02` es la fase 2 de monetización, `E14` el
-fallo 14 de la auditoría) y el procedimiento para cerrar una fase, añadir una
-spec o añadir un fallo.
+con los que se habla de cada cosa y el procedimiento para cerrar una fase, añadir
+una spec o añadir un fallo.
+
+Códigos: **tema › spec › tarea**. `C05-02` es la tarea 2 de la spec `C05`
+(archivo `docs/specs/C05-trainer-logging.md`), del tema `C` (Entrenador ↔
+cliente); `E14` es el fallo 14 de la auditoría. Los comentarios de `src/` y los
+commits anteriores al 3-oct-2026 usan los códigos viejos por tema (`C19`):
+`npm run estado C19` los traduce.
 
 `npm run estado` regenera `docs/estado.html` —la foto de qué falta y qué
 está hecho— leyéndolo todo de las specs, y **falla** si la cabecera de alguna no
@@ -42,7 +47,7 @@ cuadra. Ejecútalo después de tocar cualquier documento de `docs/specs/`.
 
 **Al cerrar una fase con pruebas a mano** va a `hecho` con su lista `**Probar
 <código>**` de casillas; si no hay nada que probar, a `terminado`. Cuando el
-usuario dice «C19 probada» o «C19.2 falla: …», se marca o se anota la casilla en
+usuario dice «C05-01 probada» o «C05-01.2 falla: …», se marca o se anota la casilla en
 la spec y `npm run estado` (README §*Pruebas en dispositivo*).
 
 # Expo HAS CHANGED

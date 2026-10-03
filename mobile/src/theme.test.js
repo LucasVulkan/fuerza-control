@@ -50,7 +50,7 @@ describe('MAX_FONT_SCALE', () => {
 // ── El sistema tipográfico se vigila solo ─────────────────────────────────────
 // Sin esto, en tres meses hay un decimoquinto papel a 15 px con tracking 0.7 y
 // nadie se entera hasta que la app vuelve a sonar a cacofonía. Cada `it` de aquí
-// es una de las reglas de la spec (docs/specs/tipografia.md §3).
+// es una de las reglas de la spec (docs/specs/U06-tipografia.md §3).
 describe('escala tipográfica', () => {
   const roles = Object.entries(textStyles);
   const inter = roles.filter(([, s]) => s.fontFamily.startsWith('Inter_'));

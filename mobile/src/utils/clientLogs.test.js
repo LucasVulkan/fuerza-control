@@ -128,7 +128,7 @@ describe('reidProgramFile', () => {
   });
 });
 
-describe('scopeFilterForUpload — sesiones libres (free-sessions.md §4.2)', () => {
+describe('scopeFilterForUpload — sesiones libres (T06-free-sessions.md §4.2)', () => {
   const programs = { prog_t: { id: 'prog_t', owner: 'me', stages: [{ days: [{ sessionTemplateId: 'tpl_t' }] }] } };
   const base = { programs, customExercises: {}, trainerProgramIds: ['prog_t'], linkedAt: '1970-01-01T00:00:00.200Z' };
 

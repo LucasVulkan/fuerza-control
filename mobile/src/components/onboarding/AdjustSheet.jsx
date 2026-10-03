@@ -1,5 +1,5 @@
 /**
- * AdjustSheet — la hoja única de ajustes (spec onboarding-simple.md §7).
+ * AdjustSheet — la hoja única de ajustes (spec O01-onboarding-simple.md §7).
  *
  * Un `DragSheet` con tres secciones numeradas, mismo formato que la hoja de
  * Progresión del editor de ejercicio (`ExerciseEditorInline.jsx:706`):

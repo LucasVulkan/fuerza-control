@@ -110,7 +110,7 @@ describe('pickLinkedConfig', () => {
   });
 });
 
-// ── Cadena de etapas (docs/specs/stage-planner.md §4.1) ─────────────────────
+// ── Cadena de etapas (docs/specs/P06-stage-planner.md §4.1) ─────────────────────
 
 describe('templateChainIds', () => {
   // Etapa 3 → etapa 2 → etapa 1, mismo día de la semana.

@@ -10,10 +10,10 @@
  * ── Por qué es una barra y no un título grande ─────────────────────────────
  *
  * Antes de esto fue una barra lima flotante (se cayó: ver §1 de
- * `docs/specs/cabeceras.md`) y después un título de 25px Black con una regla
+ * `docs/specs/U03-cabeceras.md`) y después un título de 25px Black con una regla
  * lima de 5px debajo. Lo segundo funcionaba, pero la cabecera se leía antes que
  * el contenido en las tres pantallas donde más contenido hay. Se maquetaron
- * ocho variantes con nombres reales del generador (`docs/specs/cabeceras.md`
+ * ocho variantes con nombres reales del generador (`docs/specs/U03-cabeceras.md`
  * §6) y ésta es la que gana:
  *
  * - **Una fila de 56.** La identidad va arriba en `accent` y el nombre debajo
@@ -315,7 +315,7 @@ const makeStyles = (th) => StyleSheet.create({
   // cabecera decidía por su cuenta y no coincidían.
   // En `accent`: es la línea que te sitúa, y en gris se leía después del nombre
   // en vez de antes. Revierte el "el acento se gasta una sola vez" de §6 de
-  // `docs/specs/cabeceras.md` — el contraste ya estaba medido y es el mejor de
+  // `docs/specs/U03-cabeceras.md` — el contraste ya estaba medido y es el mejor de
   // los dos (§1.2).
   eyebrow: {
     ...textStyles.caps,

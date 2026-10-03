@@ -110,7 +110,7 @@ export default function NextSessionScreen({ navigation, route }) {
 
   // La que le toca, por la misma regla que la Home del cliente y la tarjeta de
   // Clientes: `sessionPlan()` sobre SU historial — la que más tiempo lleva sin
-  // hacer (qa-sep-conexion.md §6, weeks-model.md §3.5). Antes abría siempre la A.
+  // hacer (C04-qa-sep-conexion.md §6, P08-weeks-model.md §3.5). Antes abría siempre la A.
   const nextId = useMemo(() => {
     if (!activeProgram) return null;
     const days = templateIds.map((tid) => ({ templateId: tid, label: getEffectiveTemplate(tid)?.label }));

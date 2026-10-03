@@ -14,7 +14,7 @@
  *  · Cabecera calcada de Clientes (`PLANTILLAS · N` + `+ Plantilla` a 42), sin
  *    buscador: Figma no lo dibuja aquí y con pocas plantillas sería ruido.
  *
- * Segmentado Programas / Sesiones (group-classes.md §4.6, C27): las plantillas
+ * Segmentado Programas / Sesiones (C06-group-classes.md §4.6, C27): las plantillas
  * de sesión son sesiones libres con `kind: 'template'`, como las de programa.
  * No salen en Inicio: se asignan, a clientes o a ti, y cada uno recibe su copia
  * para adaptarla sin tocar la plantilla.

@@ -38,7 +38,7 @@ No es un retoque de colores: es un refactor completo de interfaz, pantalla por p
 | **Bloques AMRAP / EMOM / For time** | ✅ | `src/components/editor/BlockEditorInline.jsx` |
 | **Buscador de ejercicios** | ✅ | `src/screens/ExerciseSelectorScreen.jsx` |
 | **Alta de ejercicio nuevo** | ✅ | `src/screens/CustomExerciseScreen.jsx` |
-| **Onboarding** (setup → modo → tres preguntas → propuestas → tu programa) | ✅ 6/6 pantallas, sin nodo en Figma — cada pieza copiada de una pantalla ya migrada. Revisar cuando exista el nodo. Spec: [`specs/onboarding-simple.md`](specs/onboarding-simple.md) (O01 + O03) | `src/screens/OnboardingScreen.jsx`, `src/screens/SetupScreen.jsx`, `components/onboarding/*` |
+| **Onboarding** (setup → modo → tres preguntas → propuestas → tu programa) | ✅ 6/6 pantallas, sin nodo en Figma — cada pieza copiada de una pantalla ya migrada. Revisar cuando exista el nodo. Spec: [`specs/O01-onboarding-simple.md`](specs/O01-onboarding-simple.md) (O01-01 + O01-02) | `src/screens/OnboardingScreen.jsx`, `src/screens/SetupScreen.jsx`, `components/onboarding/*` |
 | **Preparar sesión** (prescripción puntual del entrenador) | ✅ sin nodo en Figma — cabecera, segmentado y resumen del editor de sesión; tarjeta, rejilla de celdas y tira de nota del Workout. Valores en azul (entrenador) | `src/screens/NextSessionScreen.jsx` |
 | **Workout Screen (el último)** | ✅ 5/5 partes (en testeo) | `src/screens/WorkoutScreen.jsx`, `components/workout/*` — **guía dedicada: [`workout-screen-migration.md`](workout-screen-migration.md)**, con el desglose parte por parte |
 
@@ -215,7 +215,7 @@ abajo**.
 - **Tarjeta de programa asignado** — dos colores, como la tarjeta de ejercicio
   del workout: cabecera `surface2` (padding 14/16, los del spec v6 de
   `ExerciseCard`, sin token) y cuerpo `surface`, todo en `radius/lg`.
-  > ⚠️ **Superado (sep 2026) por [`specs/program-card.md`](specs/program-card.md).**
+  > ⚠️ **Superado (sep 2026) por [`specs/U05-program-card.md`](specs/U05-program-card.md).**
   > La tarjeta es hoy **una sola superficie** —los dos tonos se caen, y lo que
   > separa nombre de etapa es un filete de 1px a sangre—, las cifras pierden su
   > caja y `StageSegBar` está **borrada**: el progreso lo pintan una barra de
@@ -361,7 +361,7 @@ código. Misma funcionalidad que antes; lo que cambia es cómo se presenta.
 
 Pantalla **nueva**, no un restyle: no existe en Figma porque la feature es
 posterior al diseño. Spec funcional completa en
-[`specs/training-load.md`](specs/training-load.md); aquí solo lo visual.
+[`specs/T04-training-load.md`](specs/T04-training-load.md); aquí solo lo visual.
 
 - **Entrada**: `SegmentedControl` `EJERCICIOS | CARGA` en `ProgressPanel.jsx`,
   que consumen tanto `StatsScreen` como el detalle de cliente de `ClientsScreen`.
@@ -381,7 +381,7 @@ posterior al diseño. Spec funcional completa en
   las reglas §4 de la spec, no son decisiones estéticas.
 - **Iconos ⓘ solo en los títulos de gráfico.** Las tarjetas pequeñas son
   pulsables enteras y sin icono: en una caja de 108 px con un número grande y dos
-  etiquetas el aro era ruido. Ver [`specs/metric-transparency.md`](specs/metric-transparency.md).
+  etiquetas el aro era ruido. Ver [`specs/T02-metric-transparency.md`](specs/T02-metric-transparency.md).
 
 ### Recap de sesión — desglose
 
@@ -556,7 +556,7 @@ Resumen y botón de añadir con el editor de programa — los iconos comunes viv
   `03B`): sus filas van a 2px con los radios interiores a `radius/xxs` y el grupo
   envuelto en una barra `accent` de 2px a la izquierda (`209:2479`).
 - **Bloques mezclados con los ejercicios**, como en el mock. Esto **supera** la regla de
-  `docs/specs/conditioning-blocks.md` que los mandaba siempre al final (la spec queda
+  `docs/specs/T01-conditioning-blocks.md` que los mandaba siempre al final (la spec queda
   anotada). Cualquier hueco puede ir a cualquier posición y ese orden es también el que
   se entrena: `WorkoutScreen` pinta la lista con el mismo helper
   (`src/utils/sessionSlots.js`), bloques incluidos, y sus puntos de progreso siguen ese
@@ -957,7 +957,7 @@ sube al modal), así que el estado del flujo vive en un solo sitio.
 
 ### Onboarding — desglose
 
-Nodo de Figma: **ninguno**. Spec: [`specs/onboarding-simple.md`](specs/onboarding-simple.md)
+Nodo de Figma: **ninguno**. Spec: [`specs/O01-onboarding-simple.md`](specs/O01-onboarding-simple.md)
 (revisión 2). El flujo es **nivel → qué buscas → días → propuestas → tu programa**: tres
 preguntas que auto-avanzan, tres portadas con "ver todas", y un programa con una fila de
 ajustes que abre una hoja única.
@@ -1000,7 +1000,7 @@ Decisiones propias, por no haber precedente:
 - **Botón EDITAR (secundario)** en `surface2` sólido sin borde — la variante ya cerrada en
   HomeView (`EDITAR | VER`).
 - **Los emoji del selector de modo** (🤖 ✏️ 📥 📐 👤) eran la inconsistencia conocida de
-  O01, porque la spec dejaba esa pantalla intacta. **Se fueron en O03** (§ de abajo),
+  O01-01, porque la spec dejaba esa pantalla intacta. **Se fueron en O01-02** (§ de abajo),
   junto con la última `typography` legada del fichero.
 
 Esta revisión trae además **dos cambios de motor**, los únicos: `reduceForBeginner`
@@ -1009,10 +1009,10 @@ el campo `levelCuts`— y `mobile/src/utils/adaptationDiff.js` calcula qué se l
 presupuesto de tiempo. Sin ellos el panel no podía decir la verdad, que es el punto de la
 pantalla.
 
-### Onboarding · O03 — las cuatro pantallas que faltaban
+### Onboarding · O01-02 — las cuatro pantallas que faltaban
 
-Sin nodo en Figma, igual que O01. Spec:
-[`specs/onboarding-simple.md`](specs/onboarding-simple.md) §14, con el mockup
+Sin nodo en Figma, igual que O01-01. Spec:
+[`specs/O01-onboarding-simple.md`](specs/O01-onboarding-simple.md) §14, con el mockup
 aprobado antes de tocar código.
 
 | Pantalla | Antes | Ahora |
@@ -1363,7 +1363,7 @@ listas ni controles nuevos.
   `{ options: [{id,label}], value, onChange }`. Solo existen 2 variantes reales en Figma;
   la de 2 líneas ("Etapas") es exclusiva de selección de etapa.
 - **Modales "···"**: Figma unifica TODOS los menús contextuales de la app en un mismo
-  patrón (fila con icono gris, texto y galón). Desde U30 la fila de opción es
+  patrón (fila con icono gris, texto y galón). Desde U09-03 la fila de opción es
   **`SheetRow`** (ver *Modales — SIEMPRE `DragSheet`*, abajo). `sheetRowBase(th)`
   (`src/theme.js`) queda para las dos filas sueltas que no son de hoja: `surface2`,
   `radius/sm`, px `space/md`, py `space/sm2` y **`minHeight: 48`** (QA: "las filas
@@ -1408,7 +1408,7 @@ estilar y desentona con todo lo demás.
   "cerrar".
 - **Hojas con lista de opciones: `SheetRow` (`ui/SheetRow`) dentro de `Section`**
   (sin título, para que la primera y la última lleven sus radios). Desde
-  pulido-ui.md §3 (U30) `SheetRow` es `MenuRow` —icono · texto · subtítulo ·
+  U09-pulido-ui.md §3 (U09-03) `SheetRow` es `MenuRow` —icono · texto · subtítulo ·
   dato a la derecha · galón, la fila del menú ≡ y de Inicio— que además **cierra
   la hoja con su animación**. Todas llevan icono, de `ROW_ICON` (`ui/rowIcons`):
   `icon={ROW_ICON.edit}`. Lo destructivo, `danger` (icono y texto en

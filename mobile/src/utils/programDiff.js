@@ -1,7 +1,7 @@
 /**
  * programDiff — qué cambia de verdad entre dos etapas de un programa.
  *
- * Spec: `mobile/docs/specs/program-view.md` §4.2.
+ * Spec: `mobile/docs/specs/P05-program-view.md` §4.2.
  *
  * ── Por qué no se lee `stage.rx` ────────────────────────────────────────────
  *

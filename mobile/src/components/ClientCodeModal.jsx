@@ -181,7 +181,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
       setSlotInfo(info);
       // Un hueco que nadie ha canjeado y ya tiene historial es lo que te
       // apuntó tu entrenador (o tu copia de antes de reinstalar): fusionar es
-      // lo que quieres casi siempre (trainer-logging.md §4.3, C20).
+      // lo que quieres casi siempre (C05-trainer-logging.md §4.3, C20).
       setHistoryMode(info.hasRemoteHistory && !info.alreadyLinked ? 'merge' : 'program');
       setStep('confirm');
     } catch (err) {

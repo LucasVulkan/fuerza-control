@@ -10,7 +10,7 @@
 > un camino de dos) y el §25 (`blockPresets` no es un mapa).
 >
 > Queda pendiente **de prueba en dispositivo**, no de código: los dos escenarios
-> de (re)conexión de [client-connection.md](client-connection.md).
+> de (re)conexión de [C01-client-connection.md](C01-client-connection.md).
 >
 > La segunda mitad del [fallo 8](#8) —sacar el código del entrenador a
 > SecureStore— queda **descartada a propósito**; el motivo, en su sección.
@@ -21,7 +21,7 @@
 >
 > El [fallo 26](#26) fue el más grave del documento y no salió del barrido:
 > apareció al leer SQL que no estaba en el repositorio. Los fallos 5, 7, 8 y 26
-> se rediseñaron juntos en [client-connection.md](client-connection.md).
+> se rediseñaron juntos en [C01-client-connection.md](C01-client-connection.md).
 >
 > Barrido de corrección sobre el móvil siguiendo el flujo real
 > (`index.js → App.js → RootNavigator → screens → store → services → utils`) y
@@ -30,7 +30,7 @@
 > uno lleva la condición exacta que lo dispara.
 >
 > **Alcance.** Todo lo de aquí afecta a la app móvil, que desde sep-2026 es la
-> única que hay: la fase 1 de [rediseno.md](rediseno.md) §2 borró la app web y
+> única que hay: la fase 1 de [U01-rediseno.md](U01-rediseno.md) §2 borró la app web y
 > movió `src/utils`, `src/data` y `src/locales` dentro de `mobile/src/`. Las
 > rutas `src/…` de este documento se leen como `mobile/src/…` (y las de
 > `store/useStore.js`, como `mobile/store/useStore.js`); no se reescriben en
@@ -70,7 +70,7 @@ En concreto, antes de implementar cualquier fallo:
 
 1. **Lee el código de hoy**, no el del diagnóstico. Este documento es de
    ago-2026 y desde entonces la app se movió entera dentro de `mobile/`, se
-   reescribió el onboarding y se ejecutaron `rediseno.md` y `program-model.md`.
+   reescribió el onboarding y se ejecutaron `U01-rediseno.md` y `P03-program-model.md`.
    Cada sección revisada lleva una nota con su fecha; la que no la lleva, no se
    ha revisado.
 2. **Busca los otros sitios afectados.** Casi siempre hay más de los que dice el
@@ -762,7 +762,7 @@ muerto que aparentaba funcionar.
 
 Y ya había costado dinero sin darlo: al implementar el planificador de etapas se
 unificó en `lastExerciseRef` cómo tres sitios resolvían la última referencia, y
-uno de esos tres era esta función (`stage-planner.md` §"Cómo quedó al
+uno de esos tres era esta función (`P06-stage-planner.md` §"Cómo quedó al
 implementar"). Se refactorizó código que nadie ejecuta.
 
 **Así que se borra**, junto con el import de `getProgression` que solo ella
@@ -849,7 +849,7 @@ antes de reenviar con `p_takeover: true`. Complementario: rate limiting sobre
 el `p_takeover`. El código deja de desalojar del todo: solo abre asientos
 vacíos. Quien reinstala pide un código nuevo a su entrenador, que lo reemite con
 un toque. Decisión del usuario; el razonamiento completo está en
-[client-connection.md](client-connection.md) §3.3.
+[C01-client-connection.md](C01-client-connection.md) §3.3.
 
 Dos correcciones al arreglo propuesto aquí, ambas necesarias:
 
@@ -980,11 +980,11 @@ Y el cálculo no sale:
 - **Se arriesga mucho.** Hay que migrar el código de quien ya lo tiene guardado,
   y si esa migración falla el entrenador **pierde la cuenta y todos sus clientes
   para siempre** — es el escenario sin recuperación de
-  [client-connection.md](client-connection.md) §4.3.
+  [C01-client-connection.md](C01-client-connection.md) §4.3.
 - **No toca el fondo.** El código sigue siendo la contraseña; guardarlo mejor no
   cambia que quien lo vea tenga la cuenta.
 
-Lo que sí lo resuelve es la fase de recuperación de `client-connection.md` §4.3:
+Lo que sí lo resuelve es la fase de recuperación de `C01-client-connection.md` §4.3:
 que la recuperación pase por una función de servidor con límite de intentos y
 que la contraseña real sea un secreto aleatorio que nadie ve. **Con eso hecho,
 mover el código a SecureStore deja de importar casi.** Hacerlo antes es asumir
@@ -1355,7 +1355,7 @@ Beneficio adicional: `beginEditSession` deja de hacer un
 sesiones editadas en cada apertura del editor — un bloqueo del hilo JS
 proporcional al tamaño de la base del entrenador.
 
-`bulk-edit.md` §5 y §16 documentan este circuito y hay que actualizarlos.
+`P01-bulk-edit.md` §5 y §16 documentan este circuito y hay que actualizarlos.
 
 
 ### ✅ Resuelto (sep 2026)
@@ -1395,7 +1395,7 @@ queda ningún escritor concurrente del que protegerse.
 
 Dos cosas más que el diagnóstico daba por buenas y ya no lo eran:
 
-- **`userPrograms` no existe.** Lo fusionó [program-model.md](program-model.md)
+- **`userPrograms` no existe.** Lo fusionó [P03-program-model.md](P03-program-model.md)
   en el diccionario único `sessionTemplates`. El código de ejemplo del arreglo
   no compilaba.
 - **El editor es alcanzable para un cliente conectado.** El botón "Editar" de
@@ -2257,7 +2257,7 @@ Lo único que se pierde es que los huecos sigan al entrenador al cambiar de modo
 de cuenta, un flujo poco frecuente.
 
 **Arreglo.** No se parchea, se sustituye por su espejo correcto: ceder en vez
-de reclamar. Ver [client-connection.md](client-connection.md) §4.2 y
+de reclamar. Ver [C01-client-connection.md](C01-client-connection.md) §4.2 y
 `supabase/connection_model.sql`.
 
 ### ✅ Resuelto (ago 2026)
@@ -2310,7 +2310,7 @@ Cosas que aparecieron en la auditoría y se dejan fuera a propósito:
 1. ~~**La app web**~~ (`src/store`, `src/components`, `src/hooks`). Tenía su
    propia copia del store con el mismo fallo de [§6](#6)
    (`src/hooks/useWorkout.js:65`, `src/store/useStore.js:1456`). **Borrada en
-   sep-2026** — fase 1 de [rediseno.md](rediseno.md) §2. El fallo se fue con
+   sep-2026** — fase 1 de [U01-rediseno.md](U01-rediseno.md) §2. El fallo se fue con
    ella.
 2. **El diseño "la contraseña del entrenador es su código"**. [§8](#8) arregla la
    validación y el almacenamiento en claro, no el modelo.

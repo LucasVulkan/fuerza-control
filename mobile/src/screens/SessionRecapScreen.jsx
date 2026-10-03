@@ -1,7 +1,7 @@
 /**
  * SessionRecapScreen — post-session summary, shown right after saving.
  *
- * Orden y lenguaje: docs/specs/pulido-ui.md §2 (U29), maqueta en
+ * Orden y lenguaje: docs/specs/U09-pulido-ui.md §2 (U29), maqueta en
  * `docs/mockups/recap.html`. Cada bloque habla uno de tres lenguajes y siempre
  * el mismo, para que se vea de un vistazo qué se lee y qué se toca:
  *
@@ -16,7 +16,7 @@
  * con HECHO es fijo y avisa de que falta el sRPE sin obligar a contestarlo.
  *
  * Lo único que ESCRIBE es el feedback (sRPE, peso, nota — `setSessionFeedback`,
- * docs/specs/training-load.md §2) y las decisiones de sesión libre.
+ * docs/specs/T04-training-load.md §2) y las decisiones de sesión libre.
  *
  * Estilo: FormaFit, sin nodo en Figma — hereda tokens y anatomías de otras
  * pantallas: la letra y el nombre en Barlow son los de la sesión de hoy en
@@ -143,7 +143,7 @@ function fmtDuration(ms) {
 }
 
 export default function SessionRecapScreen({ navigation, route }) {
-  // `clientId`: el entreno era de un cliente sin app (trainer-logging.md §3.3).
+  // `clientId`: el entreno era de un cliente sin app (C05-trainer-logging.md §3.3).
   // Todo se lee de su historial y el recap vuelve a Clientes.
   const { entryId, clientId = null } = route.params ?? {};
   const { t, i18n } = useTranslation();
@@ -224,7 +224,7 @@ export default function SessionRecapScreen({ navigation, route }) {
     return i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name;
   };
 
-  // La variante con la que se hizo hoy (exercise-variants.md §4.4).
+  // La variante con la que se hizo hoy (P09-exercise-variants.md §4.4).
   const entryVariant = (id) => variantLabel(
     displayVariant(entry.exercises?.find((e) => e.exerciseId === id)?.variant, allExercises[id]), t,
   );
@@ -267,7 +267,7 @@ export default function SessionRecapScreen({ navigation, route }) {
     .sort((a, b) => (b.value - b.prev) / (b.prev || 1) - (a.value - a.prev) / (a.prev || 1));
   const prIds  = new Set(prs.map((p) => p.exerciseId));
   // Solo con una vez anterior: sin ella no hay nada que decir (las series ya
-  // las sabes — pulido-ui.md §2).
+  // las sabes — U09-pulido-ui.md §2).
   const deltas = compareToLast(entry, workoutLog);
 
   const rpeMissing = entry.sessionRpe == null;
@@ -624,7 +624,7 @@ export default function SessionRecapScreen({ navigation, route }) {
               <Text style={styles.secTitle}>{t('recap.freeTitle')}</Text>
             </View>
 
-            {/* Cuenta para el programa (free-sessions.md §7.3): la sesión libre
+            {/* Cuenta para el programa (T06-free-sessions.md §7.3): la sesión libre
                 sustituye a una de la etapa. Cambia en los dos sentidos mientras se
                 está aquí; el contador de la etapa lo sigue. */}
             {isFree && stageDays.length > 0 && (
@@ -670,7 +670,7 @@ export default function SessionRecapScreen({ navigation, route }) {
                 )}
                 {/* Guardar como sesión libre — solo la sobre la marcha, y solo
                     aquí: al empezarla no sabes si merece guardarse, al acabarla sí
-                    (free-sessions.md §7.1). */}
+                    (T06-free-sessions.md §7.1). */}
                 {onTheFly && (
                   <MenuRow
                     isFirst={!(newExIds.length > 0 || exercisesAdded)}

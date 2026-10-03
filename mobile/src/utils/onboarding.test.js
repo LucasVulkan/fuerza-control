@@ -14,9 +14,9 @@ function normalizeEquipment(equipment) {
 
 /**
  * Replica el camino real, que desde que existe el ranking
- * (program-templates.md §7) es uno solo: siempre gana una plantilla y la
+ * (P04-program-templates.md §7) es uno solo: siempre gana una plantilla y la
  * adapta. El generador procedural que hacía de relleno se borró en
- * rediseno.md §4 — si `rankArchetypes` devolviera vacío, esto revienta, que es
+ * U01-rediseno.md §4 — si `rankArchetypes` devolviera vacío, esto revienta, que es
  * exactamente lo que se quiere saber.
  */
 function runOnboarding(answers) {
@@ -59,7 +59,7 @@ function checkInvariants(result, answers, normalizedEquipment, archetype) {
   const violations = [];
 
   // El nº de sesiones lo fija la PLANTILLA, no los días pedidos
-  // (program-templates.md §2.2): `daysPerWeek` es frecuencia, y el ciclo rota a
+  // (P04-program-templates.md §2.2): `daysPerWeek` es frecuencia, y el ciclo rota a
   // la velocidad que haga falta. Sólo el camino procedural, que monta el ciclo
   // desde cero, lo deriva de los días — capado a 6 (con 7 el ciclo rota).
   const expectedSessions = archetype ? archetype.days.length : Math.min(answers.daysPerWeek, 6);
@@ -68,15 +68,15 @@ function checkInvariants(result, answers, normalizedEquipment, archetype) {
     violations.push(`sessions: got ${programDays.length}, expected ${expectedSessions}`);
   }
 
-  // Modelo unificado (docs/specs/stage-planner.md §3): todo programa nace con
+  // Modelo unificado (docs/specs/P06-stage-planner.md §3): todo programa nace con
   // UNA etapa, y sus días viven SOLO ahí — el espejo `program.days` murió en la
-  // fase 3 de program-model.md. Las fases 2..N de una plantilla las materializa
+  // fase 3 de P03-program-model.md. Las fases 2..N de una plantilla las materializa
   // el store, no el adaptador.
   if ((program.stages?.length ?? 0) !== 1) {
     violations.push(`stages: got ${program.stages?.length ?? 0}, expected 1`);
   } else {
     // `null` = sin límite (plantilla sin fases y camino procedural); un entero
-    // positivo = la duración de la primera fase (program-templates.md §6.1).
+    // positivo = la duración de la primera fase (P04-program-templates.md §6.1).
     // Lo que no vale es 0, negativo o `undefined`, que romperían `stageStatus`.
     const weeks = program.stages[0].durationWeeks;
     if (weeks !== null && !(Number.isInteger(weeks) && weeks > 0)) {
@@ -278,7 +278,7 @@ describe('regresión — casos con nombre propio', () => {
 
   it('fuerza + 5 días → la plantilla fija las sesiones, el ciclo rota más rápido', () => {
     // Antes esto exigía 5 sesiones: era el procedural montando una por día.
-    // Con el ranking manda la plantilla (program-templates.md §2.2) y el ciclo
+    // Con el ranking manda la plantilla (P04-program-templates.md §2.2) y el ciclo
     // de 3 sesiones se recorre 1,67 veces por semana.
     const answers = {
       level: 'intermediate', discipline: 'strength', distribution: 'full_body',

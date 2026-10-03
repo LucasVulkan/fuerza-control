@@ -1,4 +1,4 @@
-// El modelo de semanas (docs/specs/weeks-model.md). Vive aparte de
+// El modelo de semanas (docs/specs/P08-weeks-model.md). Vive aparte de
 // stageProgress.test.js para que la P37, al borrar los ciclos, no toque esto.
 import { describe, it, expect } from 'vitest';
 import {

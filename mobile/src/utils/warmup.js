@@ -1,5 +1,5 @@
 /**
- * warmup — pure helpers for the warmup-set ramp (see docs/specs/warmup-sets.md §1-2).
+ * warmup — pure helpers for the warmup-set ramp (see docs/specs/T05-warmup-sets.md §1-2).
  */
 import { doneSets } from './sessionRecap';
 

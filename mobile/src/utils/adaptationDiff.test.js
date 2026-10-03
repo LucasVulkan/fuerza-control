@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { diffAdaptations } from './adaptationDiff';
 
-// Sesiones fabricadas a mano — sin motor, spec onboarding-simple.md §5.2.
+// Sesiones fabricadas a mano — sin motor, spec O01-onboarding-simple.md §5.2.
 const tpl = (label, exercises) => ({ label, exercises });
 const result = (templates) => ({
   sessionTemplates: Object.fromEntries(templates.map((t, i) => [`t${i}`, t])),

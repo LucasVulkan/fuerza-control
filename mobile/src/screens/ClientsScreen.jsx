@@ -65,7 +65,7 @@ const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
 /**
  * Entrenos que se esperan por semana: las sesiones de la etapa en la que está EL
- * CLIENTE (weeks-model.md §0.4). No la de la copia del entrenador, que es la que
+ * CLIENTE (P08-weeks-model.md §0.4). No la de la copia del entrenador, que es la que
  * él activó y no se mueve — el fallo de stage-locks §9 que seguía vivo aquí.
  */
 function weeklyTarget(program, client) {
@@ -221,7 +221,7 @@ function AssignedProgramCard({
 
   // ── Dónde va el cliente ──
   // Espejado de su última subida, nunca recalculado aquí: la copia del programa
-  // en este móvil es la del entrenador y no se mueve (weeks-model.md §3.7).
+  // en este móvil es la del entrenador y no se mueve (P08-weeks-model.md §3.7).
   // `stageStatus` es la misma cuenta que ve el cliente en su Home.
   const stages       = program.stages ?? [];
   const status       = stageStatus(program, athleteProgress(program, client));
@@ -258,7 +258,7 @@ function AssignedProgramCard({
   const nextLocked   = stageDone && !!nextStage.locked;
   // Terminó la ÚLTIMA etapa: repetirá el bloque para siempre y en silencio, que
   // es lo que hace falta para dejar de planificar todo por adelantado
-  // (`client-triage.md` §2). Mismo aviso que la etapa bloqueada — también está
+  // (`C02-client-triage.md` §2). Mismo aviso que la etapa bloqueada — también está
   // parado esperándote, solo que aquí el trabajo pendiente es montar el bloque.
   const blockDone    = stageEnded && !nextStage;
 
@@ -326,7 +326,7 @@ function AssignedProgramCard({
       )}
 
       {/* ── Tarjeta de programa ── la misma que la Home: las dos pantallas
-          convergían sin saberlo (docs/specs/home-sessions.md §4). Las acciones
+          convergían sin saberlo (docs/specs/U02-home-sessions.md §4). Las acciones
           van debajo y fuera, como en el tab Programa (U32). */}
       <ProgramCard
         variant="client"
@@ -361,7 +361,7 @@ function AssignedProgramCard({
       <ProgramActions onEdit={onEdit} onView={onView} onMore={() => setMenuOpen(true)} />
 
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
-          hace de su app (trainer-logging.md §3.1). Preparar no aplica: manda
+          hace de su app (C05-trainer-logging.md §3.1). Preparar no aplica: manda
           ajustes a un móvil que aquí no hay. ── */}
       {link === 'none' ? (
         <ClientSessions client={client} program={program} days={currentDays} log={log} fold={fold} />
@@ -416,7 +416,7 @@ function AssignedProgramCard({
 // Fila de hoja — mismo patrón que los dos editores: surface2, radius/sm,
 // padding space/md, texto card-type y la flecha a la derecha.
 /**
- * ClientCodeBlock — el código de un cliente con código (trainer-logging.md
+ * ClientCodeBlock — el código de un cliente con código (C05-trainer-logging.md
  * §4.0.5-4.0.6, C28). Un cliente sin app no tiene: su Info ofrece «Pasar a la
  * app», que es lo que lo genera.
  *
@@ -439,7 +439,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
    * Código nuevo + asiento liberado. Es la única salida de tres situaciones que
    * hasta ahora no tenían ninguna: el cliente reinstaló siendo anónimo y su
    * identidad se perdió, perdió el código, o el código se filtró.
-   * Ver `docs/specs/client-connection.md` §4.4.
+   * Ver `docs/specs/C01-client-connection.md` §4.4.
    */
   function handleReissue() {
     showDialog(
@@ -700,7 +700,7 @@ function programMeta(p, t) {
 }
 
 /**
- * La única puerta para darle un programa a un cliente (asignar-programas.md §4).
+ * La única puerta para darle un programa a un cliente (C07-asignar-programas.md §4).
  * Una `DragSheet` con dos páginas —no dos hojas seguidas: en Android un `Modal`
  * que se abre mientras otro se cierra no se presenta—: el origen (en blanco,
  * plantilla, de otro cliente, desde archivo) y, tras elegirlo, la elección y el
@@ -708,7 +708,7 @@ function programMeta(p, t) {
  *
  * La etiqueta de las sesiones dice "Sesiones por semana": el número crea las
  * sesiones distintas de la etapa (A, B, C…), y esas SON los entrenos que se
- * esperan cada semana (weeks-model.md §0.4).
+ * esperan cada semana (P08-weeks-model.md §0.4).
  *
  * `sources`: `copySources(...)`. `onPickFile` devuelve `{ fileName, data }` o
  * null (y ya ha avisado del error). Cada `onAssign*` cierra la hoja.
@@ -1352,7 +1352,7 @@ function CloudUpIcon({ size = 20, color }) {
 // The "···" menu on a client card (pulsación larga): keeps the frequent action
 // one tap on the card and tucks the rest (next session, edit program, info)
 // behind this sheet. Era un `Modal` propio con filas `›` de texto; desde
-// pulido-ui.md §3 es un `DragSheet` con las filas de opción de la app.
+// U09-pulido-ui.md §3 es un `DragSheet` con las filas de opción de la app.
 
 function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
   const th = useTheme();
@@ -1363,7 +1363,7 @@ function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart,
   return (
     <DragSheet visible onClose={onClose} title={client.name}>
       <Section style={{ marginBottom: spacing.lg }}>
-        {/* Sin app: entrenar con él es lo primero (trainer-logging.md §3.1). */}
+        {/* Sin app: entrenar con él es lo primero (C05-trainer-logging.md §3.1). */}
         {onStart && (
           <SheetRow
             icon={ROW_ICON.start}
@@ -1462,7 +1462,7 @@ function ClientListCard({
   }
 
   // Program info — posición espejada del último envío del cliente, leída con
-  // la misma cuenta que su Home (`stageStatus`, weeks-model.md §3.7).
+  // la misma cuenta que su Home (`stageStatus`, P08-weeks-model.md §3.7).
   const status         = activeProgram ? stageStatus(activeProgram, athleteProgress(activeProgram, client)) : null;
   const stageIdx       = status?.stageIdx ?? 0;
   const currentStage   = status?.stage ?? null;
@@ -1503,7 +1503,7 @@ function ClientListCard({
 
   // Una sola acción a la derecha, por urgencia. El botón constante de "Progreso"
   // desaparece: sin nada urgente el hueco lo ocupa la fecha o "N sin revisar".
-  // Un entreno suyo a medias (lo apuntaba yo, trainer-logging.md §3.7) va
+  // Un entreno suyo a medias (lo apuntaba yo, C05-trainer-logging.md §3.7) va
   // primero: es lo único de la lista que se está perdiendo ahora mismo.
   const cta = inProgress
     ? { label: t('clients.btnContinue'), bg: th.colors.accent, onPress: onContinue }
@@ -1841,7 +1841,7 @@ export default function ClientsScreen() {
   const adherenceByClient = useMemo(() => {
     const out = {};
     Object.values(clients ?? {}).forEach((c) => {
-      // Las libres solo cuentan si sustituyen a una sesión (free-sessions.md §8).
+      // Las libres solo cuentan si sustituyen a una sesión (T06-free-sessions.md §8).
       const sessions = (clientLogs[c.id] ?? []).filter(countsForProgram);
       const target   = weeklyTarget(programs[c.activeProgramId], c);
       // `pct` viaja pegado al estado porque la tarjeta ya recibe este objeto:
@@ -1854,7 +1854,7 @@ export default function ClientsScreen() {
     return out;
   }, [clients, programs, clientLogs]);
 
-  // ── Entreno de un cliente sin app (trainer-logging.md §3.7) ──
+  // ── Entreno de un cliente sin app (C05-trainer-logging.md §3.7) ──
   const activeForClient  = useStore((s) => s.activeSession.forClient);
   const activeTemplateId = useStore((s) => s.activeSession.templateId);
   const startSession     = useStore((s) => s.startSession);
@@ -2081,7 +2081,7 @@ export default function ClientsScreen() {
 
   const filteredLog = useMemo(() => {
     // «Programa actual»: sus sesiones y las libres que sustituyen a una
-    // (free-sessions.md §8). Antes entraban TODAS las libres (bug 14); desde
+    // (T06-free-sessions.md §8). Antes entraban TODAS las libres (bug 14); desde
     // que existe «Cuenta como», las demás se ven en «Todo», no aquí.
     let log = scopeFilter === 'active'
       ? clientBaseLog.filter((e) => activeClientTemplateIds.has(programTemplateOf(e)))
@@ -2187,7 +2187,7 @@ export default function ClientsScreen() {
   // el historial del cliente, y el hero de Programas enseña así su etapa real.
   // Las sesiones "sin revisar" viven en el slot, no en `clientLogs`: se marcan
   // como vistas solo al mirar Historial o Progreso y DESPUÉS de bajarlas — si la
-  // descarga falla, el aviso tiene que seguir ahí (qa-sep-conexion.md §4).
+  // descarga falla, el aviso tiene que seguir ahí (C04-qa-sep-conexion.md §4).
   // ponytail: una descarga por cambio de pestaña; cachear por cliente si se nota.
   const detailSyncSlot = view === 'detail' && trainerSync.mode && trainerSync.mode !== 'offline'
     ? clients[selectedClientId]?.syncSlotId : null;
@@ -2442,7 +2442,7 @@ export default function ClientsScreen() {
             Lo que distingue estas pestañas de los controles segmentados que
             filtran dentro de cada tab ya no es el fondo sobre el que flotan sino
             el color del highlight — la píldora lima es siempre el filtro
-            (docs/specs/home-sessions.md §4.6). */}
+            (docs/specs/U02-home-sessions.md §4.6). */}
         {/* ‹ · nombre · última actividad, todo en una línea */}
         <View style={styles.detailHeader}>
           <TouchableOpacity onPress={() => setView('list')} hitSlop={12} style={styles.backBtn}>
@@ -2566,7 +2566,7 @@ export default function ClientsScreen() {
               )}
 
               {/* Sus sesiones libres, con y sin programa: una rutina suelta no
-                  necesita uno (group-classes.md §4.1, C24). */}
+                  necesita uno (C06-group-classes.md §4.1, C24). */}
               <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} fold={fold} />
 
               {/* Programas archivados — fuera de la vista, en su propia hoja:
@@ -3050,7 +3050,7 @@ export default function ClientsScreen() {
           </Text>
           <View style={styles.hdrRightCluster}>
             <View style={styles.hdrIconGroup}>
-              {/* Pegar un entreno (trainer-logging.md §6.4): el texto dice de
+              {/* Pegar un entreno (C05-trainer-logging.md §6.4): el texto dice de
                   quién es. Ocupa el hueco de la facturación global, retirada
                   el 28-sep. Mismo tamaño y trazo que la nube. */}
               <TouchableOpacity

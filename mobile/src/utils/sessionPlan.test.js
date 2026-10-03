@@ -117,7 +117,7 @@ describe('sessionPlan — esta semana', () => {
 
 });
 
-describe('sessionPlan — sesiones libres (free-sessions.md §8)', () => {
+describe('sessionPlan — sesiones libres (T06-free-sessions.md §8)', () => {
   const libre = (ts, extra = {}) => ({ sessionTemplateId: 'tpl_libre', free: true, timestamp: ts, ...extra });
 
   it('una libre sin marcar no cuenta: ni marca, ni mueve el hero, ni suma a la semana', () => {

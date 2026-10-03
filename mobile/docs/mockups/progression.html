@@ -230,7 +230,7 @@
 
 <h1>Progresión clara</h1>
 <p class="lead">
-  Maqueta de la fase <b>P53</b>, v2 (<code>docs/specs/progresion-clara.md</code>). No añade formas de progresar: <b>ordena las que ya
+  Maqueta de la fase <b>P12-02</b>, v2 (<code>docs/specs/P12-progresion-clara.md</code>). No añade formas de progresar: <b>ordena las que ya
   hay</b> en tres preguntas que se hace el entrenador, y hace que lo que decide el motor <b>llegue a la serie</b> en vez de
   quedarse en un apunte. El selector de abajo mueve a la vez el editor y la tarjeta del Workout.
 </p>
@@ -481,7 +481,7 @@ function setEd(k, v) {
   if (k === 'metric') Object.assign(ed, v === 'time' ? { min: 30, max: 60, ask: 'range' } : { min: 8, max: 12 });
   if (k === 'ask' && v === 'fixed') ed.reps = ed.min;
   normalize(ed);
-  // Cada cosa que sube tiene su salto (P52: 2,5 kg como reps eran 3 reps).
+  // Cada cosa que sube tiene su salto (P12-01: 2,5 kg como reps eran 3 reps).
   if (ed.up !== prevUp) ed.inc = { weight: 2.5, reps: 1, time: 5 }[ed.up] ?? ed.inc;
   render();
 }

@@ -9,7 +9,7 @@
  */
 
 // Exportada para que la ficha de la métrica interpole el valor real en vez de
-// tenerlo tecleado en el JSON de i18n (ver docs/specs/metric-transparency.md §2.1).
+// tenerlo tecleado en el JSON de i18n (ver docs/specs/T02-metric-transparency.md §2.1).
 export const MAX_RELIABLE_REPS = 12;
 
 /**
@@ -51,7 +51,7 @@ export function e1rmAtLeast(weight, reps, rpe) {
  * La inversa de `epley1RM`: el peso para hacer `reps` a `rpe` con un 1RM
  * `e1rm`. null si las reps equivalentes (reps + recámara) pasan de
  * MAX_RELIABLE_REPS. La usa la progresión por esfuerzo
- * (docs/specs/effort-progression.md §2.2).
+ * (docs/specs/P10-effort-progression.md §2.2).
  */
 export function weightForReps(e1rm, reps, rpe) {
   const r = reps + (10 - rpe);

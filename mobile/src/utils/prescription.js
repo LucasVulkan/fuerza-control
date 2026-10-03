@@ -3,7 +3,7 @@
  *
  * Vivía dentro de `workout/ExerciseCard.jsx` como `buildTarget`, que era el
  * único sitio que la pintaba. La Home la necesita ahora para la lista de
- * ejercicios de la sesión desplegada (docs/specs/home-sesiones-plegables.md
+ * ejercicios de la sesión desplegada (docs/specs/U04-home-sesiones-plegables.md
  * §4.3), así que sale aquí entera — con todas sus ramas, que no son pocas:
  * reps, tiempo, rango min–max y unilateral, más el fallback a los
  * valores del ejercicio de la librería cuando la sesión no los fija.
@@ -27,7 +27,7 @@ import { isBodyweight } from './trainingLoad';
 /**
  * «RPE 8 (2 en recámara)»: el RPE es lo que el cliente apunta en su columna y
  * la recámara lo que se entiende; juntos le enseñan la equivalencia
- * (effort-progression.md §5.1).
+ * (P10-effort-progression.md §5.1).
  */
 export function effortLabel(rpe, t) {
   const rir = 10 - rpe;

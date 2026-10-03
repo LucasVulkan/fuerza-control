@@ -96,7 +96,7 @@ describe('migrateExerciseRefs', () => {
   });
 });
 
-describe('isUnilateral de la sesión — exercise-variants.md §6.4', () => {
+describe('isUnilateral de la sesión — P09-exercise-variants.md §6.4', () => {
   it('encendido sobre uno de dos manos pasa a su versión unilateral y la clave se va', () => {
     const data = {
       sessionTemplates: { t: { id: 't', exercises: [

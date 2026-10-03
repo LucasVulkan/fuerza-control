@@ -2,7 +2,7 @@
  * stageRx — la regla de etapa (`rx`): la transformación que convierte los
  * ejercicios de una etapa en los de la siguiente.
  *
- * Spec: `mobile/docs/specs/stage-planner.md` §4.3.
+ * Spec: `mobile/docs/specs/P06-stage-planner.md` §4.3.
  *
  * ── La decisión de diseño que hay que entender antes de tocar esto ──────────
  *
@@ -187,7 +187,7 @@ function inScope(exConfig, scope) {
  *
  * Se aplica sobre el valor de la etapa BASE (ver cabecera), y respeta la forma
  * de cada tipo de `increment`: 'fixed' escala `value` y 'pct' escala `pct`. El
- * valor se redondea al `step` resuelto del ejercicio (progresion-clara.md §4.1),
+ * valor se redondea al `step` resuelto del ejercicio (P12-progresion-clara.md §4.1),
  * sin bajar de él: un escalón de 5 kg no puede quedarse en 2,5. Reps y Tiempo
  * no tienen escalón de kilos (`step` null): entero, mínimo 1 (§4.4).
  */
@@ -251,7 +251,7 @@ export function applyRx(exercises, rx, allExercises = {}) {
       next.progression = {
         ...prog,
         // 'weight' se lee como 'double' pero con meta = minReps: reescribirlo
-        // cambiaría cuándo sube (progresion-clara.md §4.1).
+        // cambiaría cuándo sube (P12-progresion-clara.md §4.1).
         ...(ex.progression?.type === 'weight' ? { type: 'weight' } : {}),
         ...(down != null ? { down } : {}),
         increment: scaleIncrement(prog.increment, r.incrementScale, weighted ? step : null),

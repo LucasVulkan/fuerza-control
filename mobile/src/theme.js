@@ -75,7 +75,7 @@ export const radius = {
 };
 
 // ─── Tipografía: catorce papeles y nada más ───────────────────────────────────
-// Spec: docs/specs/tipografia.md. Lo que había antes eran DOS sistemas a la vez
+// Spec: docs/specs/U06-tipografia.md. Lo que había antes eran DOS sistemas a la vez
 // —una escala suelta `typography.{xs,sm,base,md,lg,xl,xxl}` y veinte tokens
 // compuestos— y por debajo 170 `fontSize` a pelo: 177 combinaciones distintas de
 // cuerpo × peso × tracking para una app de 47 pantallas. Eso no es jerarquía,
@@ -127,7 +127,7 @@ export const radius = {
 // color, radio ni layout.
 // iOS resuelve una fuente embebida por su nombre PostScript (tabla `name` del
 // .ttf: `BarlowCondensed-ExtraBoldItalic`); el alias que registra `useFonts`
-// era lo que fallaba en iPhone (docs/specs/qa-sep-pantallas.md §6). Inter sigue
+// era lo que fallaba en iPhone (docs/specs/U08-qa-sep-pantallas.md §6). Inter sigue
 // por alias porque ahí sí sale — si algún día falla igual, mismo remedio.
 const BARLOW = Platform.select({
   ios:     'BarlowCondensed-ExtraBoldItalic',
@@ -157,7 +157,7 @@ export const textStyles = {
   // entreno, su celda de serie y la cabecera de «Próxima sesión».
   // Bold y no Black porque ahí el nombre se lee, no se busca. Un nombre dentro
   // de una lista —editores, historial, progresión— va a `bodyStrong`: comparte
-  // cuerpo con su meta y manda por peso (ver docs/specs/tipografia.md §9.4).
+  // cuerpo con su meta y manda por peso (ver docs/specs/U06-tipografia.md §9.4).
   itemTitleQuiet: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: -0.2 },
 
   // ── Cuerpo ──────────────────────────────────────────────────────────────────

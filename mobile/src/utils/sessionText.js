@@ -1,6 +1,6 @@
 /**
  * sessionToText — una sesión como texto para mandarla por WhatsApp
- * (docs/specs/trainer-logging.md §5, C21).
+ * (docs/specs/C05-trainer-logging.md §5, C21).
  *
  *   Sesión C · Pierna fuerza
  *   Sentadilla · 4x6 · 102.5kg:
@@ -97,7 +97,7 @@ export function sessionToText(template, allExercises, t, {
       return [
         exerciseName(def, language, ex.exerciseId),
         // La variante con el mismo « · » que en pantalla: el lector sabe
-        // separarla del nombre (exercise-variants.md §5.2).
+        // separarla del nombre (P09-exercise-variants.md §5.2).
         ...variantParts(displayVariant(ex.variant, def), t),
         prescription(def, ex, t),
         kg != null ? fmtWeight(kg) : null,
@@ -259,7 +259,7 @@ export function parseSessionText(text) {
     const block = segs.some((x) => BLOCK_RE.test(x));
     // El nombre son todos los trozos hasta la receta o el peso, no solo el
     // primero: un ejercicio aparte o una variante también llevan « · »
-    // (exercise-variants.md §5.2). Qué parte es nombre y qué variante lo decide
+    // (P09-exercise-variants.md §5.2). Qué parte es nombre y qué variante lo decide
     // `resolveName`, que conoce los ejercicios.
     const cut      = block ? 1 : segs.findIndex((x, i) => i > 0 && (parseRx(x) || parseWeight(x) != null));
     const nameSegs = cut < 0 ? segs : segs.slice(0, cut);

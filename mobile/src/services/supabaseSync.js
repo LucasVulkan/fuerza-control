@@ -118,7 +118,7 @@ export async function updateTrainerNameForSlots(trainerId, trainerName) {
  *  - progress:        the client's stage progress (etapa, día de inicio, sesiones
  *                     hechas, semanas añadidas) — the trainer MIRRORS it rather
  *                     than recomputing it from `entries`, and the client restores
- *                     it from here after a reinstall. See `docs/specs/weeks-model.md` §3.1.
+ *                     it from here after a reinstall. See `docs/specs/P08-weeks-model.md` §3.1.
  * Backward-compat: old clients uploaded a plain array — downloadHistory handles both.
  */
 export async function uploadHistory(slotId, entries, customExercises = {}, progress = null) {
@@ -225,7 +225,7 @@ export async function getSlotByClientCode(clientCode) {
  * otra vez tras reinstalar" de "soy otro con su código".
  *
  * Reintentar siendo ya el ocupante está permitido — es idempotente.
- * Ver `docs/specs/client-connection.md` §3.
+ * Ver `docs/specs/C01-client-connection.md` §3.
  */
 export async function linkClientToSlot(clientCode) {
   const { data, error } = await supabase.rpc('link_client_to_slot', { p_code: clientCode });

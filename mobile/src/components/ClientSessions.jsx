@@ -3,12 +3,12 @@
  *
  * `ClientSessions` es la de un cliente SIN app: sus sesiones como las vería él
  * en su Inicio, con EMPEZAR, y la puerta para apuntar lo que ya hizo
- * (docs/specs/trainer-logging.md §3.1-3.2). El entrenador hace de su app, así
+ * (docs/specs/C05-trainer-logging.md §3.1-3.2). El entrenador hace de su app, así
  * que las piezas son las de Inicio (`SessionList`), leídas contra el historial
  * del cliente. La ficha de un cliente conectado no la usa: allí entrena él.
  *
  * `ClientFreeSessions` son sus sesiones libres, con y sin app
- * (docs/specs/group-classes.md §4.1 y §4.6).
+ * (docs/specs/C06-group-classes.md §4.1 y §4.6).
  */
 import { useState, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Share } from 'react-native';
@@ -74,7 +74,7 @@ function useClientStart(client) {
 }
 
 /**
- * COMPARTIR (trainer-logging.md §5): la sesión como texto, con los pesos de
+ * COMPARTIR (C05-trainer-logging.md §5): la sesión como texto, con los pesos de
  * hoy sacados de SU historial, a la hoja de compartir del sistema — que ya
  * trae WhatsApp y «Copiar».
  */
@@ -320,7 +320,7 @@ export default function ClientSessions({ client, program, days, log, fold }) {
 }
 
 /**
- * Las sesiones libres de un cliente (group-classes.md §4.1, C24): las que le
+ * Las sesiones libres de un cliente (C06-group-classes.md §4.1, C24): las que le
  * creaste o le asignaste desde Plantillas. Sin app, se entrenan desde aquí;
  * con app le llegan con su programa y aquí solo se consultan y se editan.
  */
@@ -378,7 +378,7 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
                   {...fold.row(tpl.id)}
                   cta={startCta(t, '', { active: activeId === tpl.id, done: false })}
                   // Solo sin app se empieza desde aquí: con código, la
-                  // entrena él (trainer-logging.md §4.0.2).
+                  // entrena él (C05-trainer-logging.md §4.0.2).
                   onStart={canStart ? () => start(tpl.id) : undefined}
                   onEdit={() => edit(tpl.id)}
                   onShare={() => share(tpl.id)}
