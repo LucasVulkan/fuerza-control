@@ -40,7 +40,7 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
-import { ArrowIcon, ProgressionIcon, VariantIcon, LockIcon, CloseIcon } from '../ui/EditorIcons';
+import { ArrowIcon, ProgressionIcon, VariantIcon, WarmupIcon, LockIcon, CloseIcon } from '../ui/EditorIcons';
 import VariantPicker from '../ui/VariantPicker';
 import AnimatedHeight from '../ui/AnimatedHeight';
 import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
@@ -766,38 +766,39 @@ export default function ExerciseEditorInline({
         </View>
       </View>
 
-      {/* ══ VARIANTE (no está en Figma — maqueta exercise-variants §1A) ═════ */}
-      {showVariantRow && (
-        <View style={styles.block}>
-          <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
+      {/* ══ PROGRAMACIÓN (P64 — maqueta link-exercises §1A) ═════════════════
+          Un grupo de fichas: título = nombre de la ficha, meta = valor en
+          negrita · resto en gris. Las hojas que abren no cambian. */}
+      <View style={styles.block}>
+        <Text style={styles.secLabel}>{t('exerciseEditor.sectionProgramming').toUpperCase()}</Text>
+        <View style={styles.optGroup}>
           <NavRow
-            icon={<VariantIcon size={15} color={th.colors.accent} />}
-            title={rowTitle}
-            subtitle={dimsSub}
-            onPress={() => setVariantSheetOpen(true)}
+            grouped
+            icon={<ProgressionIcon size={15} color={th.colors.accent} />}
+            title={t('exerciseEditor.sectionProgression')}
+            strong={progTitle}
+            subtitle={ruleTxt}
+            onPress={() => setSheetOpen(true)}
           />
+          <NavRow
+            grouped
+            icon={<WarmupIcon size={15} color={th.colors.accent} />}
+            title={t('exerciseEditor.warmup.title')}
+            strong={t(`exerciseEditor.warmup.${warmupMode}`)}
+            subtitle={warmupRowSub}
+            onPress={() => setWarmupSheetOpen(true)}
+          />
+          {showVariantRow && (
+            <NavRow
+              grouped
+              icon={<VariantIcon size={15} color={th.colors.accent} />}
+              title={t('variants.section')}
+              strong={rowTitle}
+              subtitle={dimsSub}
+              onPress={() => setVariantSheetOpen(true)}
+            />
+          )}
         </View>
-      )}
-
-      {/* ══ CALENTAMIENTO (no está en Figma — fila + hoja) ═══════════════════ */}
-      <View style={styles.block}>
-        <Text style={styles.secLabel}>{t('exerciseEditor.warmup.title').toUpperCase()}</Text>
-        <NavRow
-          title={t(`exerciseEditor.warmup.${warmupMode}`)}
-          subtitle={warmupRowSub}
-          onPress={() => setWarmupSheetOpen(true)}
-        />
-      </View>
-
-      {/* ══ PROGRESIÓN (142:1157) ════════════════════════════════════════════ */}
-      <View style={styles.block}>
-        <Text style={styles.secLabel}>{t('exerciseEditor.sectionProgression').toUpperCase()}</Text>
-        <NavRow
-          icon={<ProgressionIcon size={15} color={th.colors.accent} />}
-          title={progTitle}
-          subtitle={ruleTxt}
-          onPress={() => setSheetOpen(true)}
-        />
       </View>
 
       {/* ══ OPCIONES (Option blocks, 176:1902 + 176:1952) ════════════════════ */}

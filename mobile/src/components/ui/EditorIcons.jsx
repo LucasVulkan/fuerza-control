@@ -157,6 +157,16 @@ export function VariantIcon({ size = 15, color }) {
   );
 }
 
+// Calentamiento: escalera de tres peldaños (maqueta link-exercises, `#i-warm`).
+// Tampoco sale de Figma; mismo tamaño y trazo que VariantIcon.
+export function WarmupIcon({ size = 15, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <Path d="M2 11h2.5V8.5H7V6h2.5V3.5H12" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // Volver a la del programa (hoja «solo hoy» del Workout): flecha en círculo.
 export function ResetIcon({ size = 18, color }) {
   return (

@@ -1792,6 +1792,7 @@
     "toastUpdated": "Exercise updated",
     "toastSubstituted": "Exercise substituted",
     "sectionVolume": "Volume",
+    "sectionProgramming": "Programming",
     "sectionOptions": "Options",
     "trainerNoteLabel": "Note for the client",
     "trainerNoteHint": "Shown on the exercise during the workout",

@@ -115,15 +115,26 @@ export function ToggleRow({ label, hint, value, onChange, alwaysHint = false, di
 // Fila navegable "Progresion" (`163:1212`): icono opcional, título, subtítulo y
 // chevron. Se reutiliza para Progresión y Calentamiento (editor) y Tags/
 // Progresión (alta de ejercicio).
-export function NavRow({ icon, title, subtitle, onPress }) {
+// `strong`: trozo en negrita delante del subtítulo, en la misma línea (P64: el
+// valor de la ficha, «Doble progresión», y detrás la regla en gris). Con él el
+// subtítulo se corta a una línea. `grouped`: fila dentro de un grupo de fichas
+// (radio y alto de la maqueta) en vez de tarjeta suelta.
+export function NavRow({ icon, title, subtitle, strong, grouped = false, onPress }) {
   const styles = useThemedStyles(makeStyles);
   const th     = useTheme();
   return (
-    <TouchableOpacity style={styles.navRow} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.navRow, grouped && styles.navRowGrouped]} onPress={onPress} activeOpacity={0.7}>
       {icon}
       <View style={styles.navRowMeta}>
         <Text style={styles.navRowTitle}>{title}</Text>
-        <Text style={styles.navRowSub}>{subtitle}</Text>
+        {strong ? (
+          <Text style={styles.navRowSub} numberOfLines={1}>
+            <Text style={styles.navRowStrong}>{strong}</Text>
+            {subtitle ? ` · ${subtitle}` : ''}
+          </Text>
+        ) : (
+          <Text style={styles.navRowSub}>{subtitle}</Text>
+        )}
       </View>
       <ArrowIcon size={ROW_CHEVRON} color={th.colors.accent} />
     </TouchableOpacity>
@@ -165,6 +176,13 @@ const makeStyles = (th) => StyleSheet.create({
   navRowMeta:  { flex: 1, minWidth: 0, gap: spacing.xs },
   navRowTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   navRowSub:   { ...textStyles.label,           color: th.colors.mutedLight },
+  navRowStrong: { ...textStyles.labelStrong,    color: th.colors.mutedLight },
+  navRowGrouped: {
+    borderRadius:      th.radius.xxs ?? 2,
+    minHeight:         58,
+    paddingHorizontal: spacing.lg,
+    paddingVertical:   spacing.sm,
+  },
 
   // ── Lista agrupada de opciones (176:1902) ─────────────────────────────────
   optRow: {
