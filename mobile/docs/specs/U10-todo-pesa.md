@@ -288,41 +288,41 @@ hacia arriba (unos 13).
 
 **Probar U10-01**
 
-- [ ] Arrastrar a la derecha la casilla KG de la serie activa: la capa crece
+- [x] Arrastrar a la derecha la casilla KG de la serie activa: la capa crece
   desde la casilla hasta cubrir la fila, la marca sale bajo el dedo con el
   peso actual (sin cambiarlo) y sigue al dedo; derecha es más.
-- [ ] Cada paso vibra suave. La burbuja enseña el valor con su unidad y no se
+- [x] Cada paso vibra suave. La burbuja enseña el valor con su unidad y no se
   sale de la tarjeta en S1, ni con calentamiento ni sin él.
-- [ ] Al soltar, la capa vuelve a la casilla y la cifra cambia sin rodar.
-- [ ] Peso: 16 kg a lo ancho, también con tres cifras, marcas
+- [x] Al soltar, la capa vuelve a la casilla y la cifra cambia sin rodar.
+- [x] Peso: 16 kg a lo ancho, también con tres cifras, marcas
   grandes cada 2 kg, medianas cada 1 kg y un punto en cada 0,5, de 0,5 en 0,5. Los números, iguales
   y a la misma altura, alternan blanco y gris y no se pisan, tampoco con tres
   cifras.
   Apuntar si cuesta atinar o si los números se amontonan, para afinar las
   constantes de `scrubScale.js` (D1).
-- [ ] Con 55,9 en la casilla, al deslizar el valor pasa por 55,5 · 56 · 56,5
+- [x] Con 55,9 en la casilla, al deslizar el valor pasa por 55,5 · 56 · 56,5
   (no por 55,4 · 56,4); soltar sin mover el dedo deja 55,9.
-- [ ] Reps: la marca sale bajo el dedo con las reps actuales y se atina sin
+- [x] Reps: la marca sale bajo el dedo con las reps actuales y se atina sin
   esfuerzo.
-- [ ] Con 0 kg (o reps muy bajas) el 0 queda en el extremo izquierdo de la
+- [x] Con 0 kg (o reps muy bajas) el 0 queda en el extremo izquierdo de la
   regla, sin hueco vacío, y el valor salta al de bajo el dedo al empezar.
-- [ ] Al soltar, el número nuevo se ve en la casilla en cuanto la regla empieza
+- [x] Al soltar, el número nuevo se ve en la casilla en cuanto la regla empieza
   a encoger.
-- [ ] RPE: la regla va de 1 a 10 a lo ancho de la fila. Al empezar, la marca
+- [x] RPE: la regla va de 1 a 10 a lo ancho de la fila. Al empezar, la marca
   sale bajo el dedo (también con el RPE vacío) y se llega a cualquier número
   de un solo gesto.
-- [ ] En 57,5 no se ilumina el 60: un número se pone en lima solo cuando el
+- [x] En 57,5 no se ilumina el 60: un número se pone en lima solo cuando el
   valor es exactamente ese.
-- [ ] Mientras arrastras, la lista no hace scroll aunque el dedo se desvíe en
+- [x] Mientras arrastras, la lista no hace scroll aunque el dedo se desvíe en
   vertical.
-- [ ] Tocar sin arrastrar sigue abriendo el teclado.
-- [ ] Las filas de dropset (D1…) se comportan igual.
-- [ ] En libras: pasos de 1 lb y rango en lb.
-- [ ] La burbuja no cambia de ancho al pasar de 99.5 a 100 ni al aparecer el
+- [x] Tocar sin arrastrar sigue abriendo el teclado.
+- [x] Las filas de dropset (D1…) se comportan igual.
+- [x] En libras: pasos de 1 lb y rango en lb.
+- [x] La burbuja no cambia de ancho al pasar de 99.5 a 100 ni al aparecer el
   decimal, y la cifra de las unidades no se mueve dentro de ella.
-- [ ] Con la regla, la cifra de la casilla se ve centrada entera, decimal
+- [x] Con la regla, la cifra de la casilla se ve centrada entera, decimal
   incluido.
-- [ ] Ajustes › Preferencias › «Regla al deslizar» apagado: el gesto vuelve a
+- [x] Ajustes › Preferencias › «Regla al deslizar» apagado: el gesto vuelve a
   ser el de antes (la cifra cambia en la casilla, pivote en el entero, sin
   regla ni burbuja). Encendido otra vez: regla.
 
@@ -401,21 +401,21 @@ más fácil de usar sin mirar. El usuario las aprobó todas.
 
 **Probar U10-10**
 
-- [ ] Peso: cada medio kilo vibra suave y cada kilo entero algo más fuerte.
+- [x] Peso: cada medio kilo vibra suave y cada kilo entero algo más fuerte.
   En libras, más fuerte cada 5 lb. Reps y RPE, todos suaves. Moviendo el dedo
   deprisa no vibra; al ir despacio, sí.
-- [ ] Con un objetivo en gris (casilla vacía, plan o última vez), la regla
+- [x] Con un objetivo en gris (casilla vacía, plan o última vez), la regla
   enseña una raya corta y ancha blanca en él; con objetivo del entrenador,
   azul. Con un valor escrito distinto del objetivo se ve también la de
   partida, en lima. Siempre se ven y se distinguen bien de la marca.
-- [ ] Si el objetivo cae fuera de la regla, su marca sale pegada al borde de
+- [x] Si el objetivo cae fuera de la regla, su marca sale pegada al borde de
   ese lado, más tenue.
-- [ ] La burbuja enseña debajo «+2.5» / «−1» respecto a la partida, y no
+- [x] La burbuja enseña debajo «+2.5» / «−1» respecto a la partida, y no
   cambia de alto con diferencia 0.
-- [ ] Al acercar el dedo a un borde aparece el indicador y se va
+- [x] Al acercar el dedo a un borde aparece el indicador y se va
   intensificando; pegado al borde, la regla avanza sola, más deprisa cuanto
   más cerca. Hacia abajo se para en 0. El RPE no se desplaza.
-- [ ] Subir el dedo por encima de la fila: la regla se apaga y la burbuja
+- [x] Subir el dedo por encima de la fila: la regla se apaga y la burbuja
   dice «Cancelar»; soltar ahí deja el valor como estaba. Volver a bajar el
   dedo retoma el ajuste.
 
@@ -454,11 +454,11 @@ queda):
 
 **Probar U10-12**
 
-- [ ] En un ejercicio por tiempo, deslizar la casilla de segundos despliega
+- [x] En un ejercicio por tiempo, deslizar la casilla de segundos despliega
   la regla: de 5 en 5, todos los números visibles, la marca bajo el dedo.
-- [ ] Lo mismo en peso + tiempo, en las dos casillas.
-- [ ] Con «Regla al deslizar» apagado, los segundos vuelven al gesto antiguo.
-- [ ] La burbuja del RPE dice «8 RPE», centrada, con la unidad detrás como
+- [x] Lo mismo en peso + tiempo, en las dos casillas.
+- [x] Con «Regla al deslizar» apagado, los segundos vuelven al gesto antiguo.
+- [x] La burbuja del RPE dice «8 RPE», centrada, con la unidad detrás como
   en kg y reps.
 
 ---
@@ -909,4 +909,4 @@ reutiliza el mismo panel.
 | U10-09 | Plan frente a real en Carga (§10) | 🟡 | sincronía de los resúmenes (§10) | pendiente, sin prioridad |
 | U10-10 | La regla, más precisa (§2.6) | 🟡 | U10-01 | hecho · 2a6104c |
 | U10-11 | Paso del ejercicio en la regla (§2.7) | 🟡 | U10-01 | pendiente, más adelante |
-| U10-12 | La regla en los segundos (§2.8) | 🟢 | U10-01 | hecho |
+| U10-12 | La regla en los segundos (§2.8) | 🟢 | U10-01 | hecho · c64c63a |
