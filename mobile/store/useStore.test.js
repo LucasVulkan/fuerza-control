@@ -1477,6 +1477,42 @@ describe('program-model — sin espejo `days`', () => {
   });
 });
 
+describe('sesiones de una etapa — duplicar y eliminar reetiquetan (editor-vinculacion P49)', () => {
+  beforeEach(() => {
+    useStore.setState({ programs: {}, sessionTemplates: {}, clients: {}, clientLogs: {}, workoutLog: [] });
+  });
+
+  /** Programa de 3 sesiones A, B, C (en ese orden). */
+  function abc() {
+    const pid = useStore.getState().createEmptyProgram(3, 'Mío');
+    const ids = useStore.getState().programs[pid].stages[0].days.map((d) => d.sessionTemplateId);
+    return { pid, ids };
+  }
+  const dias = (pid) => useStore.getState().programs[pid].stages[0].days;
+  const tpl = (id) => useStore.getState().sessionTemplates[id];
+
+  it('duplicar B de A, B, C deja la copia en 3.ª posición y la antigua C pasa a D', () => {
+    const { pid, ids: [a, b, c] } = abc();
+
+    const copia = useStore.getState().duplicateSessionInProgram(pid, b);
+
+    expect(dias(pid).map((d) => d.sessionTemplateId)).toEqual([a, b, copia, c]);
+    expect(dias(pid).map((d) => d.label)).toEqual(['A', 'B', 'C', 'D']);
+    expect([a, b, copia, c].map((id) => tpl(id).label)).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('eliminar B de A, B, C deja A, B con la antigua C como B', () => {
+    const { pid, ids: [a, b, c] } = abc();
+
+    useStore.getState().removeSessionFromProgram(pid, b);
+
+    expect(dias(pid).map((d) => d.sessionTemplateId)).toEqual([a, c]);
+    expect(dias(pid).map((d) => d.label)).toEqual(['A', 'B']);
+    expect(tpl(c).label).toBe('B');
+    expect(tpl(b)).toBeUndefined();
+  });
+});
+
 describe('clearWorkoutLog — fallo 18', () => {
   const log = [{ id: 'a', sessionTemplateId: 't1' }, { id: 'b', sessionTemplateId: 't2' }];
 

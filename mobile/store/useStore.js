@@ -1547,7 +1547,9 @@ export const useStore = create(
         const src = sessionTemplates[templateId];
         if (!src) return null;
 
-        const i = days.length;
+        // La copia va justo detrás del original; la letra definitiva la pone
+        // `reorderSessionsInStage` (reetiqueta la etapa por posición).
+        const i = days.findIndex((d) => d.sessionTemplateId === templateId) + 1;
         const label = labels[i] ?? String(i + 1);
         const tplId = generateId('tpl');
         const newTemplate = {
@@ -1562,7 +1564,7 @@ export const useStore = create(
           exercises: (src.exercises ?? []).map((ex) => ({ ...ex, linkGroup: null })),
           blocks: (src.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
         };
-        const newDays = [...days, { sessionTemplateId: tplId, label }];
+        const newDays = [...days.slice(0, i), { sessionTemplateId: tplId, label }, ...days.slice(i)];
 
         const newStages = program.stages.map((st, idx) =>
           idx === stageIdx ? { ...st, days: newDays } : st
@@ -1571,6 +1573,7 @@ export const useStore = create(
           sessionTemplates: { ...s.sessionTemplates, [tplId]: newTemplate },
           programs: { ...s.programs, [programId]: withStages(program, newStages) },
         }));
+        get().reorderSessionsInStage(programId, stageIdx, newDays.map((d) => d.sessionTemplateId));
         return tplId;
       },
 
@@ -1579,6 +1582,7 @@ export const useStore = create(
         const program = ensureStages(programs[programId]);
         if (!program) return;
 
+        const stageIdx = program.stages.findIndex((st) => st.days.some((d) => d.sessionTemplateId === templateId));
         const newStages = program.stages.map((st) => ({
           ...st,
           days: st.days.filter((d) => d.sessionTemplateId !== templateId),
@@ -1591,6 +1595,10 @@ export const useStore = create(
             sessionTemplates: nextSessionTemplates,
           };
         });
+        // Las letras son la posición en la etapa: la que pierde una sesión se reetiqueta.
+        if (stageIdx >= 0) {
+          get().reorderSessionsInStage(programId, stageIdx, newStages[stageIdx].days.map((d) => d.sessionTemplateId));
+        }
       },
 
       // Reorders the sessions of a stage to match `orderedTemplateIds`. The
@@ -1608,7 +1616,7 @@ export const useStore = create(
         const days = program.stages[idx]?.days ?? [];
         if (orderedTemplateIds.length !== days.length) return;
 
-        const labels  = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const labels  = DAY_LABELS;
         const newDays = orderedTemplateIds.map((id, i) => ({
           ...days.find((d) => d.sessionTemplateId === id),
           sessionTemplateId: id,
