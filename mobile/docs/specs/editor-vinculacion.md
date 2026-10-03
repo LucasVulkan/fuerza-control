@@ -6,7 +6,7 @@
 > Fase P50 · pendiente · Vinculación en el editor de ejercicio: grupo «Programación» y hoja de programaciones · §4
 > Fase P51 · pendiente · Vincular al añadir ejercicios · §5
 >
-> Estado: spec cerrada el 1-oct-2026; P49 implementada el 3-oct-2026 (pendiente de probar), P50 y P51 SIN implementar. Maqueta aprobada:
+> Estado: spec cerrada el 1-oct-2026; P49 implementada y probada el 3-oct-2026, P50 y P51 SIN implementar. Maqueta aprobada:
 > [`docs/mockups/link-exercises.html`](../mockups/link-exercises.html) (v4; las
 > referencias «maqueta §N» de abajo son a ella). Sale de una sesión de diseño con
 > el usuario que pasó por cuatro versiones: casillas por sesión (v1, descartada:
@@ -208,17 +208,17 @@ Fuera de alcance: `BlockEditorInline` tiene una tercera copia del mismo gesto
 
 **Probar P49**
 
-- [ ] Deslizar a la derecha una tarjeta de sesión → salen Duplicar y Eliminar; la
+- [x] Deslizar a la derecha una tarjeta de sesión → salen Duplicar y Eliminar; la
   letra se cambia por ‹; tocar la tarjeta la cierra sin abrir la sesión.
-- [ ] Abrir una tarjeta y deslizar otra → la primera se cierra.
-- [ ] Duplicar → la copia sale debajo, con letra nueva, y la lista no se abre.
-- [ ] Eliminar → confirmación; al aceptar desaparece y las letras se reajustan.
-- [ ] Etapa con una sola sesión → solo sale Duplicar.
-- [ ] Arrastrar por el asa sigue reordenando, y deslizar en horizontal no mueve la
+- [x] Abrir una tarjeta y deslizar otra → la primera se cierra.
+- [x] Duplicar → la copia sale debajo, con letra nueva, y la lista no se abre.
+- [x] Eliminar → confirmación; al aceptar desaparece y las letras se reajustan.
+- [x] Etapa con una sola sesión → solo sale Duplicar.
+- [x] Arrastrar por el asa sigue reordenando, y deslizar en horizontal no mueve la
   página.
-- [ ] Las filas del editor de sesión se comportan igual que antes (Sustituir /
+- [x] Las filas del editor de sesión se comportan igual que antes (Sustituir /
   Eliminar).
-- [ ] Desde el ··· del editor de sesión: Duplicar pone la copia detrás de la
+- [x] Desde el ··· del editor de sesión: Duplicar pone la copia detrás de la
   original (entra deslizando por la derecha) y Eliminar reajusta las letras.
 
 ## 4. P50 — Vinculación en el editor de ejercicio
