@@ -56,21 +56,19 @@ export default function ArchivedProgramsSheet({
 }) {
   const { t, i18n } = useTranslation();
   const styles      = useThemedStyles(makeStyles);
-  // El programa abierto en su página de opciones; null = la lista.
-  const [optionsId, setOptionsId] = useState(null);
+  // El programa abierto en su página de opciones; null = la lista. Se guarda el
+  // programa y no su id: Reactivar o Eliminar lo sacan de `programs` mientras la
+  // hoja aún se está cerrando, y con el id la página saltaría a la lista.
+  const [selected, setSelected] = useState(null);
   const { slide, pageEntering, pageExiting } = useSlidePages();
 
   const sorted = useMemo(
     () => [...programs].sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? '')),
     [programs],
   );
-  // Si el programa desaparece estando en sus opciones, `selected` es null y la
-  // hoja vuelve sola a la lista.
-  const selected = optionsId ? programs.find((p) => p.id === optionsId) ?? null : null;
-
   // Al reabrir sale la lista, no las opciones de la vez anterior (ajuste durante
   // el render, no un efecto: la hoja ya no se ve cuando `visible` pasa a false).
-  if (!visible && optionsId) setOptionsId(null);
+  if (!visible && selected) setSelected(null);
 
   const locale = i18n.language?.startsWith('es') ? 'es-ES' : 'en-GB';
   function metaOf(program) {
@@ -81,8 +79,8 @@ export default function ArchivedProgramsSheet({
     ].filter(Boolean).join(' · ');
   }
 
-  function open(id) { slide(1); setOptionsId(id); }
-  function back()   { slide(-1); setOptionsId(null); }
+  function open(p) { slide(1); setSelected(p); }
+  function back()  { slide(-1); setSelected(null); }
 
   return (
     <DragSheet
@@ -113,7 +111,7 @@ export default function ArchivedProgramsSheet({
           ) : (
             <Section style={styles.section}>
               {sorted.map((p) => (
-                <MenuRow key={p.id} label={p.name} sub={metaOf(p)} onPress={() => open(p.id)} />
+                <MenuRow key={p.id} label={p.name} sub={metaOf(p)} onPress={() => open(p)} />
               ))}
             </Section>
           )}
