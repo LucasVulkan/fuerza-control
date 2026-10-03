@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workout sport v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,500;0,700;0,800;0,900;1,900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --muted2: #4d4d4d;
+    --accent: #aae216; --onAccent: #000;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --cut: 8px;          /* desplazamiento del corte en 44 px de alto ≈ 10°, paralelo a la cursiva de Inter */
+    --ease: cubic-bezier(.33,1,.68,1);   /* Easing.out(cubic) */
+  }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #080808; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 900px; margin-bottom: 14px; }
+  .lead b, .note b { color: #c9c9c9; font-weight: 800; }
+  .rack { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col h2 { font: 800 11px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: #8f8f8f; margin-bottom: 10px; }
+  .col.new h2 { color: var(--accent); }
+  .note { font: 500 12px/1.65 Inter; color: #8a8a8a; max-width: 380px; }
+  .note h3 { font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); text-transform: uppercase; margin: 18px 0 6px; }
+  .note h3:first-child { margin-top: 0; }
+  .note li { margin: 0 0 5px 16px; }
+  .note code { color: #c9c9c9; }
+  .demo { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font: 700 12px Inter; color: #8f8f8f; margin-bottom: 8px; }
+  .demo button { font: 800 12px Inter; background: #1b1b1b; color: #c9c9c9; border: 1px solid #2a2a2a; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+
+  /* ══════ PANTALLA ══════ */
+  .screen { width: 375px; max-width: 100%; background: var(--bg); border-radius: 26px; border: 1px solid #222;
+            padding: 14px 15px 18px; display: flex; flex-direction: column; gap: 14px; user-select: none; }
+
+  /* ── ExerciseCard (estado de hoy) ── */
+  .card { background: var(--surface); border-radius: 16px; overflow: hidden; border: 1px solid transparent; }
+  .ss { display: flex; flex-direction: column; gap: 2px; }
+  .ss .card:first-child { border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; }
+  .ss .card:last-child  { border-top-left-radius: 4px; border-top-right-radius: 4px; }
+  .hdr { display: flex; align-items: flex-start; gap: 10px; background: var(--surface2); padding: 14px 12px 14px 16px; cursor: default; }
+  .num { min-width: 22px; position: relative; font: 900 16px/22px Inter; letter-spacing: -.2px; color: var(--accent);
+         font-variant-numeric: tabular-nums; }
+  .num .n, .num .ck { transition: opacity .2s var(--ease), color .2s var(--ease); position: relative; }
+  .num .ck { position: absolute; left: 0; right: 0; top: 0; text-align: center; opacity: 0; }
+  .card.folded .num .n { opacity: 0; }
+  .card.folded .num .ck { opacity: 1; }
+  .nameBlk { flex: 1; min-width: 0; }
+  .name { font: 700 16px/22px Inter; letter-spacing: -.2px; color: var(--text); }
+  .name .var { color: var(--mutedLight); }
+  .target { font: 700 14px Inter; color: var(--mutedLight); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .note-ic { width: 32px; height: 32px; margin-top: -5px; display: grid; place-items: center; color: var(--muted); flex-shrink: 0; }
+
+  .body { padding: 12px 16px 14px; }
+  .card.folded .body { display: none; }
+  .pills { display: none; gap: 6px; flex-wrap: wrap; padding: 12px 16px 14px; }
+  .card.folded .pills { display: flex; }
+  .pill { font: 800 12px Inter; padding: 6px; border-radius: 4px; background: var(--accent10); color: var(--accent); }
+  .pill.w { background: none; padding-left: 0; }
+  .pill.w i { font-style: normal; color: var(--text); }
+  .prog { font: 700 14px Inter; color: var(--accent); margin-bottom: 12px; }
+  .prog span { color: var(--mutedLight); font-weight: 500; }
+  .grid-h, .row { display: flex; align-items: center; gap: 10px; }
+  .grid-h { margin-bottom: 8px; }
+  .grid-h .lbl { height: auto; }
+  .grid-h .c { flex: 1; text-align: center; font: 800 12px Inter; letter-spacing: 1.2px; color: var(--muted); }
+  .grid-h .b { width: 42px; flex-shrink: 0; }
+  .rows { display: flex; flex-direction: column; gap: 8px; }
+
+  .lbl { width: 26px; flex-shrink: 0; position: relative; height: 44px; display: flex; align-items: center; }
+  .lbl .s { font: 800 12px Inter; color: var(--mutedLight); font-variant-numeric: tabular-nums; transition: color .16s; }
+  .row.done .lbl .s, .row.cur .lbl .s { color: var(--accent); }
+
+  .cell { flex: 1; height: 44px; border-radius: 11px; background: var(--bg); display: flex; align-items: center;
+          justify-content: center; position: relative; font: 800 16px Inter; letter-spacing: -.2px; color: var(--text);
+          font-variant-numeric: tabular-nums; transition: background .18s, box-shadow .18s, color .18s; }
+  .cell.ghost { font-weight: 700; color: var(--muted2); }
+  .cell.empty { font-weight: 700; color: var(--muted); }
+  .row.done .cell { background: var(--accent10); color: var(--accent); }
+  .row.cur .cell { box-shadow: inset 0 0 0 .5px var(--accent50); }
+  .chev { position: absolute; top: 0; bottom: 0; display: none; align-items: center; color: var(--accent50); font: 800 13px Inter; }
+  .chev.l { left: 6px; } .chev.r { right: 6px; }
+  .row.cur .chev { display: flex; }
+  .chk { width: 42px; height: 44px; border-radius: 11px; background: var(--surface2); display: grid; place-items: center;
+         font: 800 16px Inter; color: var(--mutedLight); flex-shrink: 0; cursor: pointer; transition: background .18s, color .18s; }
+  .row.cur .chk { color: var(--accent50); }
+  .row.done .chk { background: var(--accent); color: var(--onAccent); font-weight: 900; }
+
+  /* ══════ PROPUESTA v2 — una sola forma: SportTab ══════
+     44 de alto, apoyada en el borde izquierdo (x = 0, sin sangrado), lado izquierdo
+     recto, derecho cortado 8 px (≈10°), esquinas vivas. Texto siempre en x = 16.
+     En RN: <Polygon points="0,0 T,0 T-8,44 0,44"> de react-native-svg, no skewX. */
+  .v2 .tab { position: relative; height: 44px; display: flex; align-items: center; padding: 0 14px 0 16px; }
+  .v2 .tab::before, .v2 .tab::after { content: ''; position: absolute; inset: 0;
+    clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%); }
+  .v2 .tab::before { background: var(--bg); }                       /* capa oscura (resto) */
+  .v2 .tab::after  { background: var(--accent); opacity: 0;         /* capa lima (en curso) */
+                 transition: opacity .2s var(--ease); }
+  .v2 .tab > * { position: relative; z-index: 1; }
+
+  /* Cambio 1 · Dorsal del número — centrado en la cabecera, pegado al borde */
+  .v2 .hdr { align-items: center; padding-left: 0; }
+  .v2 .hdr .note-ic { align-self: flex-start; }
+  .v2 .num { min-width: 0; margin-right: 0; font: italic 900 22px/26px Inter; letter-spacing: -.5px;
+             color: var(--accent); }                            /* rol title + familia Black Italic */
+  .v2 .num .n, .v2 .num .ck { padding-right: 2px; }             /* la cursiva no recorta el último glifo */
+  .v2 .num .ck { position: absolute; left: 16px; right: 14px; top: 9px; font-style: normal; }
+  .v2 .card.live .num::after { opacity: 1; }
+  .v2 .card.live .num .n { color: var(--onAccent); }
+
+  /* Cambio 2 · Serie activa — la misma forma, T = 44 */
+  .v2 .lbl .tab { position: absolute; left: -16px; top: 0; width: 44px; padding: 0 0 0 16px;
+                  opacity: 0; transform: translateX(-6px);
+                  transition: opacity .16s var(--ease), transform .2s var(--ease); pointer-events: none; }
+  .v2 .lbl .tab::before { display: none; }
+  .v2 .lbl .tab::after  { opacity: 1; }
+  .v2 .lbl .tab .s { font: italic 900 12px Inter; color: var(--onAccent); }   /* labelStrong + Black Italic */
+  .v2 .row.cur .lbl .tab { opacity: 1; transform: none; transition-duration: .2s; }
+  .lbl .tab { display: none; }
+  .v2 .lbl .tab { display: flex; }
+</style>
+</head>
+<body>
+
+<h1>Workout más sport · v2</h1>
+<p class="lead">Rehecha con la crítica de diseño. <b>Una sola forma</b>, la <b>SportTab</b>: 44 px de alto, apoyada en el borde izquierdo de la tarjeta, lado derecho cortado ≈10° (paralelo a la cursiva de Inter). <b>1 · Dorsal del número</b>, centrado en la cabecera. <b>2 · Serie activa</b>, la misma forma. <b>El lima significa «aquí estás»</b>: solo la tarjeta en curso lleva el dorsal lima; las demás, la misma forma en oscuro. El nombre se queda recto, como hoy.</p>
+
+<div class="demo">
+  <button id="next">✓ Marcar la serie activa</button>
+  <button id="reset">Reiniciar</button>
+  <span>· o toca cualquier ✓. Recorre el ejercicio 02 y luego la superserie 03A/03B alternando, para ver cómo se mueve el dorsal lima.</span>
+</div>
+
+<div class="rack">
+  <div class="col"><h2>Hoy</h2><div class="screen" id="a"></div></div>
+  <div class="col new"><h2>Propuesta v2</h2><div class="screen v2" id="b"></div></div>
+  <div class="note">
+    <h3>Qué cambia respecto a la v1</h3>
+    <ul>
+      <li><b>Dorsal centrado</b> en la cabecera y pegado al borde, no en la esquina: abraza nombre + prescripción en vez de colgar a media altura. Sin sangrados ni dependencia del radio de la tarjeta (superseries incluidas).</li>
+      <li><b>Lima solo en curso.</b> Resto: misma forma en <code>bg</code> con número lima. Plegada: ✓ lima en la forma oscura. En la superserie el lima salta entre 03A y 03B con la serie activa.</li>
+      <li><b>Corte de 8 px en 44 (≈10°)</b>, paralelo a los fustes de la cursiva; antes 14°.</li>
+      <li><b>Pestaña de serie más estrecha</b> (44 de ancho visible, misma forma): 8 px de aire con la celda KG arriba, 16 abajo. Ya no pesa más que el dorsal ni se pega a la celda.</li>
+      <li><b>Nombre recto</b> (<code>itemTitleQuiet</code> como hoy): sin cursiva en toda la columna, sin fuente nueva ni prebuild.</li>
+      <li>«S2» en <code>labelStrong</code> con familia Black Italic (antes 900/12, fuera de escala).</li>
+      <li>Entrada de la pestaña de serie: opacidad + 6 px desde el borde, 200 ms; salida 160 ms.</li>
+    </ul>
+    <h3>Dónde me aparto de la crítica</h3>
+    <ul>
+      <li>Proponía quitar el cero («2» en vez de «02») para que el dorsal mida lo mismo que la pestaña de serie. <b>La app ya pinta «02» / «03A»</b>; cambiar ese contenido es otra decisión, así que lo mantengo. Consecuencia: el dorsal es más ancho (≈58 px con «02», ≈72 con «03A») y el nombre entra en x ≈ 68–82 (hoy 48).</li>
+    </ul>
+    <h3>Para RN (de la crítica)</h3>
+    <ul>
+      <li>Forma con <code>Polygon</code> de react-native-svg (ya instalado), no <code>skewX</code>: en Android la diagonal sale en escalera.</li>
+      <li>Dos capas (oscura / lima) con fundido de opacidad en Reanimated, no <code>fill</code> animado.</li>
+      <li>Ancho del dorsal por <code>onLayout</code> del texto, o <code>maxFontSizeMultiplier</code> 1,2 para que el escalado no se salga del corte.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const noteIc = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2.5h7l3 3v8H3z"/><path d="M5.5 8h5M5.5 10.5h3.5"/></svg>';
+
+  // Tarjetas: la 01 ya hecha y plegada; 02 normal; 03A/03B superserie; 04 pendiente con nombre largo.
+  const CARDS = [
+    { id: 'c1', num: '01', name: 'Press banca', target: '3 × 8-10 reps', sets: [], folded: true,
+      pills: '<span class="pill w">60<i>kg</i></span><span class="pill">10</span><span class="pill">10</span><span class="pill">9</span>' },
+    { id: 'c2', num: '02', name: 'Puente de glúteo', variant: ' · Barra', target: '3 × 8-10 reps', prog: 'Sube a 55 kg <span>· hiciste 10, 10, 9</span>',
+      sets: [['52.5', '10', '7'], ['52.5', '9', '8'], ['52.5', '8', '8']] },
+    { id: 'c3', num: '03A', name: 'Remo con mancuerna', target: '2 × 10-12 reps', group: 'ss',
+      sets: [['24', '12', '7'], ['24', '11', '8']] },
+    { id: 'c4', num: '03B', name: 'Fondos en paralelas', target: '2 × 8-10 reps', group: 'ss',
+      sets: [['0', '10', '7'], ['0', '9', '8']] },
+    { id: 'c5', num: '04', name: 'Elevación de talones de pie en máquina', target: '3 × 12-15 reps',
+      sets: [['80', '15', '7'], ['80', '14', '8'], ['80', '13', '8']] },
+  ];
+  // Orden real de las series: la superserie alterna A, B, A, B.
+  const STEPS = [['c2', 0], ['c2', 1], ['c2', 2], ['c3', 0], ['c4', 0], ['c3', 1], ['c4', 1], ['c5', 0], ['c5', 1], ['c5', 2]];
+  let done = 0;
+
+  function cardHTML(c) {
+    const cell = '<div class="cell"><span class="chev l">‹</span><span class="v"></span><span class="chev r">›</span></div>';
+    const rows = c.sets.map((_, i) => `<div class="row" data-c="${c.id}" data-r="${i}">
+        <div class="lbl"><span class="s">S${i + 1}</span><div class="tab"><span class="s">S${i + 1}</span></div></div>
+        ${cell}${cell}${cell}<div class="chk">✓</div></div>`).join('');
+    return `<div class="card" data-id="${c.id}">
+      <div class="hdr">
+        <div class="num tab"><span class="n">${c.num}</span><span class="ck">✓</span></div>
+        <div class="nameBlk"><div class="name">${c.name}${c.variant ? `<span class="var">${c.variant}</span>` : ''}</div><div class="target">${c.target}</div></div>
+        <div class="note-ic">${noteIc}</div>
+      </div>
+      <div class="pills">${c.pills || (c.sets.length ? `<span class="pill w">${c.sets[0][0]}<i>kg</i></span>` + c.sets.map((x) => `<span class="pill">${x[1]}</span>`).join('') : '')}</div>
+      ${c.sets.length ? `<div class="body">${c.prog ? `<div class="prog">${c.prog}</div>` : ''}
+        <div class="grid-h"><div class="lbl"></div><div class="c">KG</div><div class="c">REP</div><div class="c">RPE</div><div class="b"></div></div>
+        <div class="rows">${rows}</div></div>` : ''}
+    </div>`;
+  }
+
+  function render() {
+    let html = '', ss = '';
+    for (const c of CARDS) {
+      if (c.group) { ss += cardHTML(c); continue; }
+      if (ss) { html += `<div class="ss">${ss}</div>`; ss = ''; }
+      html += cardHTML(c);
+    }
+    for (const id of ['a', 'b']) document.getElementById(id).innerHTML = html;
+    document.querySelectorAll('.chk').forEach((el) => el.onclick = () => {
+      const row = el.closest('.row');
+      const k = STEPS.findIndex(([c, r]) => c === row.dataset.c && r === +row.dataset.r);
+      done = k < done ? k : k + 1; update();
+    });
+    update();
+  }
+
+  // Solo cambian clases y textos: así se ven las transiciones.
+  function update() {
+    const active = STEPS[done];
+    const stepIdx = (c, r) => STEPS.findIndex(([sc, sr]) => sc === c && sr === r);
+    for (const c of CARDS) {
+      const allDone = c.folded || c.sets.every((_, r) => stepIdx(c.id, r) < done);
+      const live = active && active[0] === c.id;
+      document.querySelectorAll(`.card[data-id="${c.id}"]`).forEach((el) => {
+        el.classList.toggle('folded', allDone);
+        el.classList.toggle('live', !!live);
+      });
+    }
+    document.querySelectorAll('.row').forEach((row) => {
+      const c = CARDS.find((x) => x.id === row.dataset.c), r = +row.dataset.r, k = stepIdx(c.id, r);
+      const isDone = k < done, isCur = k === done, shown = isDone || isCur || r === 0 || stepIdx(c.id, r - 1) < done;
+      row.className = 'row' + (isDone ? ' done' : isCur ? ' cur' : '');
+      row.querySelectorAll('.cell').forEach((cell, j) => {
+        cell.className = 'cell' + (isDone ? '' : shown ? ' ghost' : ' empty');
+        cell.querySelector('.v').textContent = shown ? c.sets[r][j] : '–';
+      });
+    });
+  }
+
+  document.getElementById('next').onclick = () => { done = Math.min(done + 1, STEPS.length); update(); };
+  document.getElementById('reset').onclick = () => { done = 0; update(); };
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workout más sport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ══════ TOKENS formaFit (src/themes.js · src/theme.js) ══════ */
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --muted2: #4d4d4d;
+    --accent: #aae216; --onAccent: #000;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --skew: 14deg;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+
+  /* ── Andamio (no es UI) ── */
+  body { background: #080808; font-family: Inter, sans-serif; color: var(--text);
+         padding: 34px 28px 90px; -webkit-font-smoothing: antialiased; }
+  h1 { font: 900 26px/1.2 Inter; letter-spacing: -.6px; margin-bottom: 8px; }
+  .lead { font: 500 13px/1.65 Inter; color: #8f8f8f; max-width: 900px; margin-bottom: 14px; }
+  .lead b, .note b { color: #c9c9c9; font-weight: 800; }
+  .rack { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; margin-top: 18px; }
+  .col h2 { font: 800 11px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: #8f8f8f; margin-bottom: 10px; }
+  .col.new h2 { color: var(--accent); }
+  .note { font: 500 12px/1.65 Inter; color: #8a8a8a; max-width: 380px; }
+  .note h3 { font: 800 11px Inter; letter-spacing: 1.4px; color: var(--accent); text-transform: uppercase; margin: 18px 0 6px; }
+  .note h3:first-child { margin-top: 0; }
+  .note li { margin: 0 0 5px 16px; }
+  .demo { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font: 700 12px Inter; color: #8f8f8f; margin-bottom: 8px; }
+  .demo button { font: 800 12px Inter; background: #1b1b1b; color: #c9c9c9; border: 1px solid #2a2a2a; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .demo button.on { color: #000; background: var(--accent); border-color: var(--accent); }
+
+  /* ══════ PANTALLA ══════ */
+  .screen { width: 375px; max-width: 100%; background: var(--bg); border-radius: 26px; border: 1px solid #222;
+            padding: 14px 15px 18px; display: flex; flex-direction: column; gap: 14px; user-select: none; }
+
+  /* ── ExerciseCard (§2) ── */
+  .card { background: var(--surface); border-radius: 16px; overflow: hidden; border: 1px solid transparent; }
+  .hdr { display: flex; align-items: flex-start; gap: 10px; background: var(--surface2); padding: 14px 12px 14px 16px; }
+  .num { min-width: 22px; font: 900 16px/22px Inter; letter-spacing: -.2px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .nameBlk { flex: 1; min-width: 0; }
+  .name { font: 700 16px/22px Inter; letter-spacing: -.2px; color: var(--text); }
+  .name .var { color: var(--mutedLight); }
+  .target { font: 700 14px Inter; color: var(--mutedLight); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .note-ic { width: 32px; height: 32px; margin-top: -5px; display: grid; place-items: center; color: var(--muted); flex-shrink: 0; }
+
+  .body { padding: 12px 16px 14px; }
+  .prog { font: 700 14px Inter; color: var(--accent); margin-bottom: 12px; }
+  .prog span { color: var(--mutedLight); font-weight: 500; }
+  .grid-h, .row { display: flex; align-items: center; gap: 10px; }
+  .grid-h { margin-bottom: 8px; }
+  .grid-h .lbl, .row .lbl { width: 26px; flex-shrink: 0; }
+  .grid-h .c { flex: 1; text-align: center; font: 800 12px Inter; letter-spacing: 1.2px; color: var(--muted); }
+  .grid-h .b { width: 42px; flex-shrink: 0; }
+  .rows { display: flex; flex-direction: column; gap: 8px; }
+
+  .lbl { position: relative; height: 44px; display: flex; align-items: center; }
+  .lbl .s { font: 800 12px Inter; color: var(--mutedLight); font-variant-numeric: tabular-nums; transition: color .18s; }
+  .row.done .lbl .s { color: var(--accent); }
+  .row.cur  .lbl .s { color: var(--accent); }
+
+  .cell { flex: 1; height: 44px; border-radius: 11px; background: var(--bg); display: flex; align-items: center;
+          justify-content: center; position: relative; font: 800 16px Inter; letter-spacing: -.2px; color: var(--text);
+          font-variant-numeric: tabular-nums; transition: background .18s, box-shadow .18s; }
+  .cell.ghost { font-weight: 700; color: var(--muted2); }
+  .cell.empty { font-weight: 700; color: var(--muted); }
+  .row.done .cell { background: var(--accent10); color: var(--accent); }
+  .row.cur .cell { box-shadow: inset 0 0 0 .5px var(--accent50); }
+  .chev { position: absolute; top: 0; bottom: 0; display: none; align-items: center; color: var(--accent50); font: 800 13px Inter; }
+  .chev.l { left: 6px; } .chev.r { right: 6px; }
+  .row.cur .chev { display: flex; }
+
+  .chk { width: 42px; height: 44px; border-radius: 11px; background: var(--surface2); display: grid; place-items: center;
+         font: 800 16px Inter; color: var(--mutedLight); flex-shrink: 0; cursor: pointer; transition: background .18s, color .18s; }
+  .row.cur .chk { color: var(--accent50); }
+  .row.done .chk { background: var(--accent); color: var(--onAccent); font-weight: 900; }
+
+  /* tarjeta plegada (hecha) */
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 16px 14px; }
+  .pill { font: 800 12px Inter; padding: 6px; border-radius: 4px; background: var(--accent10); color: var(--accent); }
+  .pill.w { background: none; padding-left: 0; }
+  .pill.w i { font-style: normal; color: var(--text); }
+
+  /* ══════ PROPUESTA SPORT ══════ */
+  /* 1 · Número: pestaña lima en la esquina, con corte diagonal. Sangra por arriba
+         y por la izquierda; la card (overflow hidden) recorta ese lado. */
+  .sport .num { position: relative; margin: -14px 4px 0 -28px; height: 50px; padding: 0 12px 0 26px;
+                display: flex; align-items: center; justify-content: center;
+                font: italic 900 22px/26px Inter; letter-spacing: -.5px; color: var(--onAccent); }
+  .sport .num::before { content: ''; position: absolute; inset: 0; background: var(--accent);
+                        transform: skewX(calc(-1 * var(--skew))); z-index: 0; transition: background .2s; }
+  .sport .num b { position: relative; z-index: 1; font: inherit; }
+  /* variante «solo en curso»: las demás tarjetas, pestaña oscura y número lima */
+  .sport.only-cur .card:not(.live) .num { color: var(--accent); }
+  .sport.only-cur .card:not(.live) .num::before { background: var(--bg); }
+
+  /*    Nombre: mismo rol (16, itemTitleQuiet), en ExtraBold Italic: cursiva real de la fuente. */
+  .sport .name { font: italic 800 16px/22px Inter; letter-spacing: -.2px; }
+
+  /* 2 · Serie activa: misma pestaña, sale del borde de la card; texto onAccent. */
+  .sport .lbl .tab { position: absolute; top: 0; bottom: 0; left: -24px; right: -4px; padding-left: 24px;
+                     display: flex; align-items: center; opacity: 0; transition: opacity .18s var(--ease); }
+  .sport .lbl .tab::before { content: ''; position: absolute; inset: 0; background: var(--accent);
+                             transform: skewX(calc(-1 * var(--skew))); }
+  .sport .lbl .tab .s { position: relative; font: italic 900 12px Inter; color: var(--onAccent); }
+  .sport .row.cur .lbl .tab { opacity: 1; }
+  .lbl .tab { display: none; }
+  .sport .lbl .tab { display: flex; }
+</style>
+</head>
+<body>
+
+<h1>Workout más sport</h1>
+<p class="lead">Dos cambios y ninguno más, con <b>un mismo gesto</b>: una pestaña lima con corte diagonal (14°) que sale del borde de la tarjeta.
+<b>1 · Número y nombre</b>: el número pasa a una pestaña en la esquina, en Black Italic negro sobre lima; el nombre, en ExtraBold Italic al mismo tamaño.
+<b>2 · Serie activa</b>: «S2» en la misma pestaña, texto en <code>onAccent</code>. Las celdas, la rejilla y los colores de serie hecha no cambian.</p>
+
+<div class="demo">
+  <span>Serie activa:</span>
+  <button id="next">✓ Marcar la activa</button>
+  <button id="reset">Reiniciar</button>
+  <span style="margin-left:14px">Pestaña del número:</span>
+  <button class="tabmode on" data-m="all">Lima en todas</button>
+  <button class="tabmode" data-m="cur">Lima solo en curso</button>
+</div>
+
+<div class="rack">
+  <div class="col"><h2>Hoy</h2><div class="screen" id="a"></div></div>
+  <div class="col new"><h2>Propuesta</h2><div class="screen sport" id="b"></div></div>
+  <div class="note">
+    <h3>Qué cambia</h3>
+    <ul>
+      <li><b>Pestaña del número</b>: alto 50, toca el borde superior e izquierdo (la tarjeta recorta), el corte diagonal queda a la derecha. Al plegarse la tarjeta, el ✓ aparece en el mismo sitio, negro sobre lima.</li>
+      <li><b>Número</b>: rol <code>title</code> (22) con la familia Black Italic, que ya está embebida.</li>
+      <li><b>Nombre</b>: mismo tamaño que hoy (16, <code>itemTitleQuiet</code>), en ExtraBold Italic en vez de Bold. Habría que embeber <code>Inter_800ExtraBold_Italic</code> (y un prebuild para Android).</li>
+      <li><b>Serie activa</b>: pestaña del alto de la celda (44) desde el borde de la tarjeta; entra y sale con un fundido de 180 ms. Al marcarla, «S2» vuelve a lima como hoy.</li>
+    </ul>
+    <h3>Qué no cambia</h3>
+    <ul>
+      <li>Ancho de columnas: la pestaña de la serie sangra hacia fuera, los encabezados KG/REP/RPE siguen alineados.</li>
+      <li>Celdas, chevrones, check, tarjeta plegada con pills.</li>
+    </ul>
+    <h3>A decidir</h3>
+    <ul>
+      <li>Con varias tarjetas en pantalla, la pestaña lima en todas suma mucho acento. Alternativa: lima solo en la tarjeta en curso y oscura en el resto (botón de arriba).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const SETS = [
+    { w: '52.5', r: '10', rpe: '7' },
+    { w: '52.5', r: '9',  rpe: '8' },
+    { w: '52.5', r: '8',  rpe: '8' },
+  ];
+  let done = 1;
+
+  const noteIc = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2.5h7l3 3v8H3z"/><path d="M5.5 8h5M5.5 10.5h3.5"/></svg>';
+
+  // Las filas se pintan una vez y luego solo cambian de clase: así se ven las
+  // transiciones (fundido de la pestaña, color del check).
+  function rowHTML(i) {
+    const cell = '<div class="cell"><span class="chev l">‹</span><span class="v"></span><span class="chev r">›</span></div>';
+    return `<div class="row" data-r="${i}">
+      <div class="lbl"><span class="s">S${i + 1}</span><div class="tab"><span class="s">S${i + 1}</span></div></div>
+      ${cell}${cell}${cell}
+      <div class="chk" data-i="${i}">✓</div>
+    </div>`;
+  }
+
+  function update() {
+    document.querySelectorAll('.row').forEach((row) => {
+      const i = +row.dataset.r, s = SETS[i];
+      const isDone = i < done, isCur = i === done, shown = isDone || isCur || i === done + 1;
+      row.className = 'row' + (isDone ? ' done' : isCur ? ' cur' : '');
+      row.querySelectorAll('.cell').forEach((c, k) => {
+        c.className = 'cell' + (isDone ? '' : shown ? ' ghost' : ' empty');
+        c.querySelector('.v').textContent = shown ? [s.w, s.r, s.rpe][k] : '–';
+      });
+    });
+  }
+
+  function render() {
+    for (const id of ['a', 'b']) {
+      document.getElementById(id).innerHTML = `
+        <div class="card">
+          <div class="hdr">
+            <div class="num"><b>1</b></div>
+            <div class="nameBlk"><div class="name">Press banca</div><div class="target">3 × 8-10 reps</div></div>
+            <div class="note-ic">${noteIc}</div>
+          </div>
+          <div class="pills"><span class="pill w">60<i>kg</i></span><span class="pill">10</span><span class="pill">10</span><span class="pill">9</span></div>
+        </div>
+        <div class="card live">
+          <div class="hdr">
+            <div class="num"><b>2</b></div>
+            <div class="nameBlk"><div class="name">Puente de glúteo<span class="var"> · Barra</span></div><div class="target">3 × 8-10 reps</div></div>
+            <div class="note-ic">${noteIc}</div>
+          </div>
+          <div class="body">
+            <div class="prog">Sube a 55 kg <span>· hiciste 10, 10, 9</span></div>
+            <div class="grid-h"><div class="lbl" style="height:auto"></div><div class="c">KG</div><div class="c">REP</div><div class="c">RPE</div><div class="b"></div></div>
+            <div class="rows">${SETS.map((_, i) => rowHTML(i)).join('')}</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="hdr">
+            <div class="num"><b>3</b></div>
+            <div class="nameBlk"><div class="name">Remo con mancuerna</div><div class="target">3 × 10-12 reps</div></div>
+            <div class="note-ic">${noteIc}</div>
+          </div>
+        </div>`;
+    }
+    document.querySelectorAll('.chk').forEach((el) => el.onclick = () => {
+      const i = +el.dataset.i; done = i < done ? i : i + 1; update();
+    });
+    update();
+  }
+
+  document.getElementById('next').onclick = () => { done = Math.min(done + 1, SETS.length); update(); };
+  document.getElementById('reset').onclick = () => { done = 0; update(); };
+  document.querySelectorAll('.tabmode').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('.tabmode').forEach((x) => x.classList.toggle('on', x === b));
+    document.getElementById('b').classList.toggle('only-cur', b.dataset.m === 'cur');
+  });
+  render();
+</script>
+</body>
+</html>
