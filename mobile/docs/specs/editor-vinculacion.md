@@ -2,11 +2,11 @@
 
 > Tema: programas
 > En corto: Las tarjetas de sesión del editor de programa se deslizan para duplicar o eliminar, como las filas de ejercicio. Vincular un ejercicio entre sesiones deja de ser elegir «Grupo 1» y pasa a ser ver las programaciones que tiene ese ejercicio en la etapa y meter esta sesión en una de ellas; al añadir ejercicios que ya están en otras sesiones, una hoja ofrece vincularlos.
-> Fase P49 · pendiente · Deslizar las tarjetas de sesión del editor de programa · §3
+> Fase P49 · hecho · Deslizar las tarjetas de sesión del editor de programa · §3
 > Fase P50 · pendiente · Vinculación en el editor de ejercicio: grupo «Programación» y hoja de programaciones · §4
 > Fase P51 · pendiente · Vincular al añadir ejercicios · §5
 >
-> Estado: spec cerrada el 1-oct-2026, SIN implementar. Maqueta aprobada:
+> Estado: spec cerrada el 1-oct-2026; P49 implementada el 3-oct-2026 (pendiente de probar), P50 y P51 SIN implementar. Maqueta aprobada:
 > [`docs/mockups/link-exercises.html`](../mockups/link-exercises.html) (v4; las
 > referencias «maqueta §N» de abajo son a ella). Sale de una sesión de diseño con
 > el usuario que pasó por cuatro versiones: casillas por sesión (v1, descartada:
@@ -186,6 +186,26 @@ Maqueta: ninguna (mismo gesto que las filas de ejercicio).
 - Un solo estado `openRowId` en la pantalla, como en el editor de sesión: abrir
   una tarjeta cierra la otra; empezar a arrastrar cierra la abierta.
 
+**Store (revisión 3-oct-2026: la spec prometía dos cosas que el store no hacía).**
+Se arregla en las acciones, no en la pantalla, para que valga también desde el ···
+del editor de sesión:
+
+- `duplicateSessionInProgram` **añadía la copia al final**: pasa a insertarla
+  justo detrás del original y reetiquetar la etapa por posición.
+- `removeSessionFromProgram` **no reetiquetaba** (borrar B de A, B, C dejaba A, C):
+  pasa a reetiquetar la etapa de la que sale.
+- Reetiquetar = lo que ya hace `reorderSessionsInStage` (letra del día y `label`
+  de la plantilla según la posición). Se reutiliza, no se duplica; y su lista de
+  letras pasa a ser `DAY_LABELS` (tenía 6, `DAY_LABELS` tiene 7).
+- Tests en `useStore.test.js`: duplicar B de A, B, C → A, B, copia(C), D; eliminar
+  B → A, B (la antigua C pasa a B, plantilla incluida).
+- `switchSession` del editor de sesión calcula el sentido del deslizamiento con
+  la lista de antes de duplicar (la copia no está → `-1`, entra por la
+  izquierda); la copia entra por la derecha.
+
+Fuera de alcance: `BlockEditorInline` tiene una tercera copia del mismo gesto
+(un botón, otra anchura); se queda como está.
+
 **Probar P49**
 
 - [ ] Deslizar a la derecha una tarjeta de sesión → salen Duplicar y Eliminar; la
@@ -198,6 +218,8 @@ Maqueta: ninguna (mismo gesto que las filas de ejercicio).
   página.
 - [ ] Las filas del editor de sesión se comportan igual que antes (Sustituir /
   Eliminar).
+- [ ] Desde el ··· del editor de sesión: Duplicar pone la copia detrás de la
+  original (entra deslizando por la derecha) y Eliminar reajusta las letras.
 
 ## 4. P50 — Vinculación en el editor de ejercicio
 
@@ -412,6 +434,6 @@ desde su ficha.
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
-| P49 | `SwipeRow` + tarjetas de sesión con Duplicar/Eliminar | — | 🟢 | pendiente |
+| P49 | `SwipeRow` + tarjetas de sesión con Duplicar/Eliminar | — | 🟢 | hecho |
 | P50 | `linkRows` por etapa, `SessionChips`, grupo «Programación», ficha y hoja de vinculación, aviso en el Resumen | P49 (no estricto) | 🟡 | pendiente |
 | P51 | Pista en el buscador + hoja «Vincular ejercicios» de dos páginas | P50 | 🟡 | pendiente |
