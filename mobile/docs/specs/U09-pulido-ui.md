@@ -836,6 +836,36 @@ Dos listas de programas archivados con interfaz vieja:
 Las dos, a la misma pieza: filas de la app y las acciones en el `⋯` (hoja de
 opciones de U09-03), y la del menú ≡ a `DragSheet`. Maqueta antes.
 
+**Diseño cerrado con el usuario (3-oct-2026), sin maqueta.**
+
+- **Una pieza**, `components/ArchivedProgramsSheet.jsx`: una `DragSheet` con
+  la lista en una `Section` de `MenuRow` (sin icono): el nombre y debajo
+  «N sesiones · fecha de la última» (lo que hoy calcula Clientes; sin sesiones,
+  «Sin sesiones aún»), con su galón. Ordenada por `archivedAt`, la más reciente
+  arriba. Vacía: un texto (`emptyText`), como ahora.
+- **Tocar la fila abre la hoja de opciones** de ese programa (`DragSheet` con
+  el nombre de título y `SheetRow`), encima de la lista, como ya hace el `⋯` de
+  Clientes (probado en U09-07). Fuera los iconos sueltos (ver, descargar) y el
+  `⋯`.
+- **Las mismas acciones en las dos**, en este orden: Reactivar (`sync`), Ver
+  (`view`), Exportar (`export`, con historial), Guardar como plantilla
+  (`preset`), Eliminar (`trash`, en rojo). Ver, Reactivar, Guardar y Eliminar
+  cierran también la lista; Exportar la deja abierta (como hoy).
+- **Tus programas (menú ≡)** ganan lo que solo tenían los de cliente:
+  - Reactivar: `restoreProgram`. Si hay un programa activo, antes el mismo
+    diálogo que en Clientes («pasará a ser el activo y el actual se
+    archivará»); sin activo, directo. Después, el toast de siempre.
+  - Ver: `setPrintingProgram`. Exportar: `exportSpecificProgram(id, true)`.
+  - Guardar como plantilla: solo con PRO (sin PRO la plantilla iría a una
+    pestaña que no ves); `cloneProgramFromTemplate(id, { kind: 'template' })`
+    y el toast de Clientes.
+  - Eliminar: el diálogo de confirmar de Clientes y `deleteProgram(id, false)`
+    (el historial se queda).
+- **Textos**: «Restaurar» pasa a «Reactivar» también en los tuyos (es la misma
+  acción). Las etiquetas de la pieza en `archived.*`.
+- Fuera `ArchivedProgramsModal` (con su `Modal` y su velo) y
+  `ArchivedProgramRow`, con sus estilos y las claves que queden sin uso.
+
 ## 15. U09-15 — Sesión libre: el bloque se edita en la pantalla de Editar bloque
 
 En una sesión libre en curso, añadir un bloque de acondicionamiento en el
@@ -1020,7 +1050,7 @@ se perderán.».
 | U09-11 | Hoja de progresión única | ✅ resuelta por P12-10 (`2c2dc25`) | 🟢 |
 | U09-12 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U09-13 | Importar archivo al estándar; `ChoiceRow` como pieza de elección única | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
-| U09-14 | Programas archivados (cliente y menú ≡) al estándar (maqueta antes) | pendiente | 🟡 |
+| U09-14 | Programas archivados (cliente y menú ≡): una pieza, mismas acciones | pendiente | 🟡 |
 | U09-15 | Sesión libre: el bloque se edita en `BlockEditorScreen` | ✅ rama `feat/recap` | 🟢 |
 | U09-16 | Banner de sesión en curso; el hero deja de seguir a la activa | ✅ rama `feat/recap` | 🟡 |
 | U09-17 | Descartar sesión dice cuál, sin pregunta | ✅ rama `feat/recap` | 🟢 |
