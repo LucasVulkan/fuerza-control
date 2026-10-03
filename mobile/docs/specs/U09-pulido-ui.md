@@ -918,8 +918,9 @@ que viene de un hook lo rechaza el lint del compilador de React, y es la
 `DragSheet`: el título es «Programas archivados» y, en las opciones, el nombre
 del programa con el ‹. Las `SheetRow` cierran la hoja entera (ya no hay
 `closeThen`); Exportar es una `MenuRow` con su `RowIcon` y no cierra. La
-página se reinicia a la lista cuando la hoja se cierra, y si el programa
-desaparece estando en sus opciones vuelve a la lista.
+página se reinicia a la lista cuando la hoja se cierra. La hoja guarda el
+programa abierto y no su id: Reactivar o Eliminar lo sacan de la lista mientras
+la hoja se cierra, y con el id la página saltaba a la lista a medio cerrar.
 
 **Probar U09-14**
 
@@ -1013,18 +1014,18 @@ imports que dejaron de usarse (`Modal`, `SafeAreaView`, `GestureHandlerRootView`
 
 **Probar U09-15**
 
-- [ ] Sesión libre en curso → Añadir → Bloque: se abre la pantalla Editar bloque
+- [x] Sesión libre en curso → Añadir → Bloque: se abre la pantalla Editar bloque
   (‹ y ✓ arriba), deslizando desde la derecha y no como hoja.
-- [ ] El ✓ vuelve al Workout, sin toast «Programa editado» y con el bloque
+- [x] El ✓ vuelve al Workout, sin toast «Programa editado» y con el bloque
   como lo dejaste.
-- [ ] El ‹ hace lo mismo que el ✓.
-- [ ] El lápiz de un bloque que ya estaba en el Workout abre la misma pantalla.
-- [ ] Con dos bloques en la sesión libre, el desplegable de la cabecera salta
+- [x] El ‹ hace lo mismo que el ✓.
+- [x] El lápiz de un bloque que ya estaba en el Workout abre la misma pantalla.
+- [x] Con dos bloques en la sesión libre, el desplegable de la cabecera salta
   entre ellos.
-- [ ] Añadir movimiento (dentro del bloque) abre el selector encima del editor
+- [x] Añadir movimiento (dentro del bloque) abre el selector encima del editor
   y el movimiento elegido aparece en el bloque al volver.
-- [ ] Borrar el bloque desde el editor vuelve al Workout y el bloque ya no está.
-- [ ] En una sesión de programa, editar un bloque desde el editor de sesión sigue
+- [x] Borrar el bloque desde el editor vuelve al Workout y el bloque ya no está.
+- [x] En una sesión de programa, editar un bloque desde el editor de sesión sigue
   igual: el ✓ dice «Programa editado» y vuelve a Main.
 
 ## 16. U09-16 — Inicio: banner de sesión en curso
