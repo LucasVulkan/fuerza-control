@@ -893,40 +893,59 @@ Donde la spec no llegaba:
   claves de `clients.*`, en vez de ir a una pieza compartida: son una docena
   de líneas.
 
+### 14.1 Las opciones, como página de la misma hoja
+
+Pedido en la prueba (3-oct-2026): la hoja de opciones encima de la lista es la
+única pareja de hojas apiladas de la app, y en iOS no está claro cómo se porta.
+Pasa a ser como **Asignar programa** de Clientes (`AssignProgramSheet`): una sola
+`DragSheet` con dos páginas.
+
+- Tocar un programa desliza a su página de opciones (entra por la derecha); el
+  título de la hoja pasa a ser el nombre del programa y sale el ‹ de `onBack`,
+  que vuelve deslizando a la lista. Con `AnimatedHeight`, la altura acompaña.
+- Las opciones son las mismas `SheetRow`, en el mismo orden. Las que cerraban
+  la lista la cierran (la hoja entera, con su animación); Exportar no cierra y
+  se queda en la página de opciones.
+- La animación de páginas está copiada igual en `AssignProgramSheet` y en
+  `SessionEditorScreen`; con una tercera, sale a un hook (`slideDir` +
+  `pageEntering`/`pageExiting`) que usan los tres.
+
 **Probar U09-14**
 
-- [ ] Ficha de cliente → Programa → Programas archivados (con algún programa
+- [x] Ficha de cliente → Programa → Programas archivados (con algún programa
   archivado): las filas son las de la app (nombre, y debajo «N sesiones ·
   fecha» o «Aún sin sesiones», con su galón); ya no hay iconos de ojo,
   descarga ni `⋯`. La más recientemente archivada, arriba.
-- [ ] Menú ≡ → Programas archivados: es una hoja (no un modal con velo), con
+- [x] Menú ≡ → Programas archivados: es una hoja (no un modal con velo), con
   las mismas filas y el mismo orden; sin botón «Cerrar» (se cierra con
   arrastre o tocando fuera).
 - [ ] Tocar una fila (en los dos sitios) abre sus opciones encima de la lista,
   con el nombre del programa de título: Reactivar, Ver, Exportar, Guardar como
-  plantilla y Eliminar (este en rojo), en ese orden.
-- [ ] Ver cierra la lista y abre la vista de impresión de ese programa
+  plantilla y Eliminar (este en rojo), en ese orden. — ❌ 2026-10-03: funciona, pero
+  dos hojas apiladas no se usan en ningún otro sitio de la app y no está claro
+  en iOS: pasa a páginas dentro de una sola hoja (§14.1).
+- [x] Ver cierra la lista y abre la vista de impresión de ese programa
   (cliente y propios).
-- [ ] Exportar abre el compartir con el programa y su historial, y la lista
+- [x] Exportar abre el compartir con el programa y su historial, y la lista
   se queda abierta debajo.
-- [ ] Reactivar un programa tuyo con otro activo: antes sale el diálogo
+- [x] Reactivar un programa tuyo con otro activo: antes sale el diálogo
   («pasará a ser el activo y el actual se archivará»); al aceptar, el programa
   pasa a activo, el anterior queda archivado y sale el toast.
-- [ ] Reactivar un programa tuyo sin ningún programa activo: lo reactiva
+- [x] Reactivar un programa tuyo sin ningún programa activo: lo reactiva
   directamente, con su toast, sin diálogo.
-- [ ] Reactivar uno de un cliente: el diálogo de siempre y el programa pasa a ser
+- [x] Reactivar uno de un cliente: el diálogo de siempre y el programa pasa a ser
   el activo de ese cliente.
-- [ ] Guardar como plantilla (con PRO), en los tuyos y en los del cliente:
+- [x] Guardar como plantilla (con PRO), en los tuyos y en los del cliente:
   sale el toast «Guardado en Plantillas» y la plantilla aparece en la pestaña
   de Plantillas.
-- [ ] Sin PRO, el menú ≡ no tiene la fila «Guardar como plantilla» en las
+- [x] Sin PRO, el menú ≡ no tiene la fila «Guardar como plantilla» en las
   opciones de un programa archivado.
-- [ ] Eliminar (en los dos sitios): el diálogo de confirmar con el nombre y,
+- [x] Eliminar (en los dos sitios): el diálogo de confirmar con el nombre y,
   al aceptar, el programa desaparece de la lista y sus sesiones siguen en el
   Historial.
-- [ ] Sin programas archivados: la lista dice «No hay programas archivados»
+- [x] Sin programas archivados: la lista dice «No hay programas archivados»
   en el menú ≡ y «Este cliente no tiene programas archivados» en la ficha.
-- [ ] Con la app en inglés, las etiquetas de la hoja de opciones salen en
+- [x] Con la app en inglés, las etiquetas de la hoja de opciones salen en
   inglés (Reactivate, View, Export, Save as template, Delete).
 
 ## 15. U09-15 — Sesión libre: el bloque se edita en la pantalla de Editar bloque
