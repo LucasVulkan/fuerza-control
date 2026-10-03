@@ -670,35 +670,35 @@ Lo que salió distinto de lo previsto o que la spec no fijaba:
 
 **Probar U09-10**
 
-- [ ] Historial sin sesiones (programa actual y «todas»): un icono de reloj
+- [x] Historial sin sesiones (programa actual y «todas»): un icono de reloj
   de línea en gris con el texto, sin emoji.
-- [ ] Progresión → Ejercicios sin datos (primera sesión, búsqueda sin
+- [x] Progresión → Ejercicios sin datos (primera sesión, búsqueda sin
   resultados, sin datos): icono de barras de línea y el texto adecuado a cada caso.
-- [ ] Progresión → Carga sin sesiones o sin RPE: icono de barras y su texto,
+- [x] Progresión → Carga sin sesiones o sin RPE: icono de barras y su texto,
   centrado, y el pull to refresh sigue funcionando.
-- [ ] Inicio y Programa sin programa activo: icono de pesa de línea, el texto y
+- [x] Inicio y Programa sin programa activo: icono de pesa de línea, el texto y
   el botón lima «Nuevo programa» que sigue haciendo lo mismo (y con un
   entrenador vinculado, avisa antes de desvincular).
-- [ ] Clientes sin PRO: icono de persona, título, texto, botón PRO lima (abre el
+- [x] Clientes sin PRO: icono de persona, título, texto, botón PRO lima (abre el
   pago) y «Ocultar pestaña» en gris debajo, que sigue ocultándola y vuelve a Inicio.
-- [ ] Clientes PRO sin clientes (y buscando algo que no existe): icono de
+- [x] Clientes PRO sin clientes (y buscando algo que no existe): icono de
   persona y el texto, centrado en la pantalla.
-- [ ] Plantillas sin PRO: icono de marcador, título, texto, botón PRO y
+- [x] Plantillas sin PRO: icono de marcador, título, texto, botón PRO y
   «Ocultar pestaña», igual que Clientes.
-- [ ] Plantillas → Sesiones sin ninguna: icono, texto y botón «Crear» que
+- [x] Plantillas → Sesiones sin ninguna: icono, texto y botón «Crear» que
   crea una sesión como antes.
-- [ ] Plantillas → Programas sin ninguno: icono, texto y botón «Crear», y ya no
+- [x] Plantillas → Programas sin ninguno: icono, texto y botón «Crear», y ya no
   repite el título «Plantillas» sobre la cabecera «PLANTILLAS · 0».
-- [ ] Clientes → ficha → Info de un cliente con código: el botón de copiar
+- [x] Clientes → ficha → Info de un cliente con código: el botón de copiar
   enseña un icono de copiar en gris; al pulsarlo pasa a una marca lima
   durante un momento y el código queda copiado.
-- [ ] Historial → abrir una sesión con una nota de ejercicio: el icono de
+- [x] Historial → abrir una sesión con una nota de ejercicio: el icono de
   documento en gris delante del texto, y el texto no se desborda.
-- [ ] Workout de un cliente con nota del entrenador en un ejercicio: icono de
+- [x] Workout de un cliente con nota del entrenador en un ejercicio: icono de
   documento delante; la nota se recorta a una línea y se expande al tocarla.
-- [ ] Fin de descanso con la app en castellano: la notificación sale en
+- [x] Fin de descanso con la app en castellano: la notificación sale en
   castellano, sin el ✅ («¡A por la siguiente serie!»).
-- [ ] Lo mismo con la app en inglés: título y cuerpo salen en inglés, y los
+- [x] Lo mismo con la app en inglés: título y cuerpo salen en inglés, y los
   canales de notificación de la app en los ajustes de Android también.
 
 ## 11. U09-11 — Una sola hoja de progresión
