@@ -931,7 +931,7 @@ la hoja se cierra, y con el id la página saltaba a la lista a medio cerrar.
 - [x] Menú ≡ → Programas archivados: es una hoja (no un modal con velo), con
   las mismas filas y el mismo orden; sin botón «Cerrar» (se cierra con
   arrastre o tocando fuera).
-- [ ] Tocar una fila (en los dos sitios) desliza, dentro de la misma hoja, a sus
+- [x] Tocar una fila (en los dos sitios) desliza, dentro de la misma hoja, a sus
   opciones: el nombre del programa de título, un ‹ a su izquierda, y Reactivar,
   Ver, Exportar, Guardar como plantilla y Eliminar (este en rojo), en ese orden.
 - [x] Ver cierra la lista y abre la vista de impresión de ese programa
@@ -957,16 +957,16 @@ la hoja se cierra, y con el id la página saltaba a la lista a medio cerrar.
   en el menú ≡ y «Este cliente no tiene programas archivados» en la ficha.
 - [x] Con la app en inglés, las etiquetas de la hoja de opciones salen en
   inglés (Reactivate, View, Export, Save as template, Delete).
-- [ ] El ‹ de las opciones vuelve deslizando a la lista, y el título vuelve a
+- [x] El ‹ de las opciones vuelve deslizando a la lista, y el título vuelve a
   ser «Programas archivados».
-- [ ] Cerrar la hoja estando en las opciones y reabrirla: sale en la lista,
+- [x] Cerrar la hoja estando en las opciones y reabrirla: sale en la lista,
   no en las opciones de antes.
-- [ ] Exportar no cierra la hoja: se queda en la página de opciones. Reactivar,
+- [x] Exportar no cierra la hoja: se queda en la página de opciones. Reactivar,
   Ver, Guardar como plantilla y Eliminar sí la cierran (con su animación).
-- [ ] Todo lo anterior, en iOS y en Android.
-- [ ] Clientes → Asignar programa sigue deslizando igual entre sus páginas
+- [x] Todo lo anterior, en iOS y en Android.
+- [x] Clientes → Asignar programa sigue deslizando igual entre sus páginas
   (origen y elección) y el ‹ vuelve.
-- [ ] El editor de sesión sigue deslizando la página al cambiar de sesión con el
+- [x] El editor de sesión sigue deslizando la página al cambiar de sesión con el
   segmentado, hacia el lado que toca.
 
 ## 15. U09-15 — Sesión libre: el bloque se edita en la pantalla de Editar bloque
