@@ -532,6 +532,8 @@ sueltos con su título: VARIANTE, CALENTAMIENTO, PROGRESIÓN, cada uno con un
   pasa al mismo grupo PROGRAMACIÓN con Progresión y Variante (no tiene
   Calentamiento: va por sesión). Su hoja de Progresión sigue siendo la vieja
   (Automática / Fija), así que la negrita dice el modo y no qué sube.
+  Unificar esa hoja con la del editor es **P65**, en
+  [`progresion-clara.md`](progresion-clara.md) §12 (es de la hoja de Progresión).
 
 **Probar P64**
 
@@ -546,7 +548,7 @@ sueltos con su título: VARIANTE, CALENTAMIENTO, PROGRESIÓN, cada uno con un
   actualiza al cerrar.
 - [x] Alta de ejercicio propio y onboarding: sus filas navegables se ven igual
   que antes.
-- [ ] Alta de ejercicio propio: PROGRAMACIÓN con Progresión («**Automática** ·
+- [x] Alta de ejercicio propio: PROGRAMACIÓN con Progresión («**Automática** ·
   +2.5 kg») y Variante en un grupo, como en el editor.
 
 ## Fases
