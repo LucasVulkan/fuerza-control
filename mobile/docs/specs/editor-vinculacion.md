@@ -5,7 +5,7 @@
 > Fase P49 · hecho · Deslizar las tarjetas de sesión del editor de programa · §3
 > Fase P50 · pendiente · Vinculación en el editor de ejercicio: grupo «Programación» y hoja de programaciones · §4
 > Fase P51 · pendiente · Vincular al añadir ejercicios · §5
-> Fase P64 · pendiente · Grupo «Programación» en el editor de ejercicio (sale de P50) · §6
+> Fase P64 · hecho · Grupo «Programación» en el editor de ejercicio (sale de P50) · §6
 >
 > Estado: spec cerrada el 1-oct-2026; P49 implementada y probada el 3-oct-2026, P50 y P51 SIN implementar. Maqueta aprobada:
 > [`docs/mockups/link-exercises.html`](../mockups/link-exercises.html) (v4; las
@@ -549,4 +549,4 @@ sueltos con su título: VARIANTE, CALENTAMIENTO, PROGRESIÓN, cada uno con un
 | P49 | `SwipeRow` + tarjetas de sesión con Duplicar/Eliminar | — | 🟢 | hecho |
 | P50 | `linkRows` por etapa, `SessionChips`, ficha y hoja de vinculación, aviso en el Resumen | P64 | 🟡 | pendiente |
 | P51 | Pista en el buscador + hoja «Vincular ejercicios» de dos páginas | P50 | 🟡 | pendiente |
-| P64 | Grupo «Programación» (Progresión, Calentamiento, Variante) en el editor de ejercicio | — | 🟢 | pendiente |
+| P64 | Grupo «Programación» (Progresión, Calentamiento, Variante) en el editor de ejercicio | — | 🟢 | hecho |
