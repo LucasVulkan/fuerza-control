@@ -15,10 +15,10 @@
  *     Editor"). Es lo que antes eran los chips de "Patrón"/"Material" + las
  *     opciones avanzadas de nivel — ahora como tags de un único NavRow.
  *
- * La Progresión reutiliza el mismo sistema (Modo → Tipo → Incremento) que el
- * editor, aunque solo persiste lo que la ficha de librería puede guardar
- * (`progressionModel`/`weightStep`) — el modo de evaluación es una config por
- * SESIÓN, no de la ficha, así que ese paso no aplica aquí.
+ * Volumen y Progresión son los del editor (progresion-clara.md §12, P65): la
+ * misma hoja (`ProgressionSheet`) y el mismo formulario (`progressionForm`),
+ * con un `def` borrador para que las opciones que ofrece sean las del
+ * ejercicio que saldrá. La progresión entera se guarda en `def.progression`.
  */
 import { useState } from 'react';
 import { View, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
@@ -26,7 +26,11 @@ import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { LEGACY_TYPE_MAP } from '../utils/progression';
+import { LEGACY_TYPE_MAP, progressionRule, DEFAULT_TARGET } from '../utils/progression';
+import {
+  initProgForm, patchProgForm, buildProgression, isEffort as isEffortForm, needsRpe,
+} from '../utils/progressionForm';
+import { MAX_RELIABLE_REPS } from '../utils/oneRm';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -36,11 +40,15 @@ import { NavRow, OptionRow, ToggleRow, NoteRow, CHEVRON_GREY } from '../componen
 import { ArrowIcon, ProgressionIcon, VariantIcon } from '../components/ui/EditorIcons';
 import VariantPicker from '../components/ui/VariantPicker';
 import AnimatedHeight from '../components/ui/AnimatedHeight';
+import ProgressionSheet from '../components/editor/ProgressionSheet';
 import DragSheet from '../components/DragSheet';
 import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
 import { VARIANT_DIMS, variantLabel, isEmptyVariant } from '../utils/variants';
 
 import ScreenHeader from '../components/ui/ScreenHeader';
+// El escalón de peso del `def` borrador y de partida del ejercicio: el de siempre.
+const DRAFT_STEP = 2.5;
+
 function generateCustomId() {
   return 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
 }
@@ -66,14 +74,12 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const [metric,  setMetric]  = useState('reps');
   const [sets,    setSets]    = useState(3);
   const [restSec, setRestSec] = useState(90);
-  const [minReps, setMinReps] = useState(8);
-  const [maxReps, setMaxReps] = useState(12);
-  const [minTime, setMinTime] = useState(20);
-  const [maxTime, setMaxTime] = useState(40);
-
-  const [progMode,       setProgMode]       = useState('auto');
-  const [progType,       setProgType]       = useState('double');
-  const [incrFixedValue, setIncrFixedValue] = useState(2.5);
+  const [minReps, setMinReps] = useState(DEFAULT_TARGET.minReps);
+  const [maxReps, setMaxReps] = useState(DEFAULT_TARGET.maxReps);
+  const [minTime, setMinTime] = useState(DEFAULT_TARGET.minTime);
+  const [maxTime, setMaxTime] = useState(DEFAULT_TARGET.maxTime);
+  // «Rango» o «Reps fijas» (§5.1), como en el editor.
+  const [repsMode, setRepsMode] = useState('range');
 
   const [pattern,      setPattern]      = useState('');
   const [primaryGroup, setPrimaryGroup] = useState('');
@@ -92,26 +98,75 @@ export default function CustomExerciseScreen({ navigation, route }) {
   const [tagsSheetOpen,  setTagsSheetOpen]  = useState(false);
   const [tempoSheetOpen, setTempoSheetOpen] = useState(false);
 
-  const isTime        = metric === 'time';
-  const showTimeRange = isTime;
-  const showRepsIncr   = progType === 'reps';
-  const showTimeIncr   = progType === 'time';
+  const isTime = metric === 'time';
 
   function toggleEquipment(val) {
     setEquipment((prev) => (prev.includes(val) ? prev.filter((e) => e !== val) : [...prev, val]));
   }
 
+  // ── Progresión: el formulario del editor sobre un `def` borrador (§12.1) ────
+  // Lo que la pantalla ya sabe del ejercicio: de ahí salen las opciones que
+  // ofrece la hoja (`canAddWeight`, Por esfuerzo pide carga externa…).
+  const draftDef = {
+    progressionDirection: 'increase',
+    weightStep:           DRAFT_STEP,
+    isCustom:             true,
+    equipment, level, isCompound, isUnilateral,
+    inputType:            isTime ? 'weight_time' : 'weight_reps',
+  };
+  const ctx = { def: draftDef, sets, metric, range: repsMode === 'range' };
+  const [prog, setProg] = useState(() => initProgForm({}, draftDef, ctx));
+  // Un cambio deja el estado coherente de una vez (como `settle` del editor):
+  // Reps o Tiempo piden un solo valor de inicio, el mínimo del rango (§5.1).
+  function settle(next, c) {
+    setProg(next);
+    if (next.up === 'reps' && c.metric === 'reps') { setMaxReps(minReps); setRepsMode('fixed'); }
+    if (next.up === 'time' && c.metric === 'time') setMaxTime(minTime);
+  }
+  const patchProg = (patch) => settle(patchProgForm(prog, patch, ctx), ctx);
+  // Volumen puede dejar sin valer lo elegido: menos series, otra medida, un Rango.
+  function changeVolume(over, apply) {
+    const c = { ...ctx, ...over };
+    apply();
+    settle(patchProgForm(prog, {}, c), c);
+  }
+  function selectRepsMode(m) {
+    changeVolume({ range: m === 'range' }, () => {
+      setMaxReps(m === 'fixed' ? minReps : Math.min(50, minReps + 4));
+      setRepsMode(m);
+    });
+  }
+  const effort    = isEffortForm(prog, ctx);
+  // Reps y Tiempo piden un solo valor de inicio, no un rango (§5.1).
+  const startReps = prog.up === 'reps' && !isTime;
+  const startTime = prog.up === 'time' && isTime;
+  const effortRir = 10 - prog.targetRpe;
+  // Misma regla que el motor: pasado MAX_RELIABLE_REPS no calcula (§2.3).
+  const effortWarn = effort && minReps + effortRir >= MAX_RELIABLE_REPS ? (
+    <Text style={styles.warnHint}>{t('exerciseEditor.effortUnreliable', { max: MAX_RELIABLE_REPS })}</Text>
+  ) : null;
+
   // ── Resumen / textos en lenguaje natural (mismo cálculo que el editor real) ──
   const rangeTxt = isTime
     ? `${minTime === maxTime ? minTime : `${minTime}–${maxTime}`} s`
-    : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
+    : effort
+      ? t('exerciseEditor.effortVolume', { reps: minReps, rpe: prog.targetRpe })
+      : `${minReps === maxReps ? minReps : `${minReps}–${maxReps}`} reps`;
 
-  const incTxt = showRepsIncr
-    ? String(incrFixedValue)
-    : `${incrFixedValue} ${showTimeIncr ? 's' : weightLabel}`;
-  const progLine = progMode === 'auto'
-    ? `${t(`exerciseEditor.progModeDesc.${progMode}`)} · +${incTxt}`
-    : t(`exerciseEditor.progModeDesc.${progMode}`);
+  // La frase de la regla sale del mismo motor que decide: el Resumen y la ficha
+  // dicen lo mismo que el editor (§5.2).
+  const ruleCfg = {
+    sets, minReps, maxReps, minTime, maxTime,
+    inputType: isTime ? 'weight_time' : 'weight_reps',
+    ...buildProgression(prog, ctx),
+  };
+  const ruleTxt   = progressionRule(ruleCfg, draftDef, t, weightLabel);
+  const ruleShort = progressionRule(ruleCfg, draftDef, t, weightLabel, { short: true });
+  const progTitle = prog.up === 'none'
+    ? t('exerciseEditor.progTitle.none')
+    : effort
+      ? t('exerciseEditor.progTitle.effort')
+      : t(`exerciseEditor.progTitle.${prog.up}`);
 
   const patternLabel = pattern ? t(`exerciseSelector.patterns.${pattern}`) : null;
   const groupLabel   = primaryGroup ? t(`exerciseSelector.groups.${primaryGroup}`) : null;
@@ -132,11 +187,18 @@ export default function CustomExerciseScreen({ navigation, route }) {
 
     const id = generateCustomId();
     const isTimeMode = metric === 'time';
-    // Fija se guarda como 'fixed': con 'double_progression' el ejercicio
-    // nacía en Automática al añadirlo a una sesión.
-    const progressionModel = progMode === 'auto'
-      ? (LEGACY_TYPE_MAP[progType] ?? 'double_progression')
-      : 'fixed';
+    // La progresión entera va en el `def` (§12.2). `progressionModel` se sigue
+    // escribiendo, lo leen otros sitios: `fixed` sin progresión.
+    const { progression, weightStep } = buildProgression(prog, ctx);
+    const progressionModel = prog.up === 'none'
+      ? 'fixed'
+      : (LEGACY_TYPE_MAP[progression.type] ?? 'double_progression');
+    // Reps y Tiempo piden un solo valor de inicio, y Por esfuerzo reps fijas
+    // (§5.1): min = max.
+    const oneReps = repsMode === 'fixed' || progression.type === 'reps' || progression.type === 'effort';
+    const target = isTimeMode
+      ? { minTime, maxTime: progression.type === 'time' ? minTime : maxTime }
+      : { minReps, maxReps: oneReps ? minReps : maxReps };
 
     const def = {
       id,
@@ -159,10 +221,12 @@ export default function CustomExerciseScreen({ navigation, route }) {
         },
       }),
       progressionModel,
+      progression,
       progressionDirection: 'increase',
       sets,
-      ...(isTimeMode ? { minTime, maxTime } : { minReps, maxReps }),
-      weightStep: incrFixedValue,
+      ...target,
+      // El escalón elegido, o 'exact' (Por esfuerzo); si no, el de partida.
+      weightStep: weightStep ?? DRAFT_STEP,
       restSec,
       tips:       notes.trim() ? [notes.trim()] : [],
       isCustom:   true,
@@ -175,15 +239,18 @@ export default function CustomExerciseScreen({ navigation, route }) {
     // Lo elegido en la hoja es la variante de este ejercicio donde se añade:
     // en la sesión (plantilla) o, en un entreno en marcha, la de hoy.
     const chosen = isEmptyVariant(variant) ? null : variant;
+    // Lo que pide la progresión (Por esfuerzo, RPE máx.) va encendido en la
+    // plantilla (§5.4).
+    const params = { ...(chosen ? { variant: chosen } : {}), ...(needsRpe(prog, ctx) ? { trackRpe: true } : {}) };
     if (sessionMode) {
       addAdHocExercise(id);
       if (chosen) setSessionVariant(id, chosen);
     } else if (templateId && currentExerciseId) {
       replaceExercise(templateId, currentExerciseId, id);
-      if (chosen) updateExerciseParams(templateId, id, { variant: chosen });
+      if (Object.keys(params).length) updateExerciseParams(templateId, id, params);
     } else if (templateId) {
       addExercise(templateId, id);
-      if (chosen) updateExerciseParams(templateId, id, { variant: chosen });
+      if (Object.keys(params).length) updateExerciseParams(templateId, id, params);
     }
     showToast(t('customExercise.toastCreated'), 2200, 'success');
     navigation.pop(2);
@@ -234,7 +301,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
             <Text style={styles.summaryMain}>{volumeLine}</Text>
-            <Text style={styles.summarySub}>{progLine}</Text>
+            <Text style={styles.summarySub}>{ruleTxt}</Text>
           </View>
 
           {/* ══ VOLUMEN ═══════════════════════════════════════════════════════ */}
@@ -246,18 +313,34 @@ export default function CustomExerciseScreen({ navigation, route }) {
                 { id: 'time', label: t('exerciseEditor.metricTime').toUpperCase() },
               ]}
               value={metric}
-              onChange={setMetric}
+              onChange={(m) => changeVolume({ metric: m }, () => setMetric(m))}
             />
+            {/* Rango o reps fijas (§5.1). Con Reps como progresión no hay rango:
+                el campo de abajo es solo el inicio. */}
+            {!isTime && !startReps && (
+              <SegmentedControl
+                options={['range', 'fixed'].map((id) => ({ id, label: t(`exerciseEditor.repsMode.${id}`) }))}
+                value={repsMode}
+                onChange={selectRepsMode}
+              />
+            )}
             <View style={styles.grid}>
               <View style={styles.gridRow}>
-                <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={setSets}    min={1}  max={8}   />
+                <StepField label={t('exerciseEditor.fieldSets')} value={sets}    onChange={(v) => changeVolume({ sets: v }, () => setSets(v))} min={1}  max={8}   />
                 <StepField label={t('exerciseEditor.fieldRest')} value={restSec} onChange={setRestSec} min={30} max={300} unit="s" />
               </View>
-              {showTimeRange ? (
+              {startTime ? (
+                <StepField horizontal label={t('exerciseEditor.fieldStartTime')} value={minTime} onChange={(v) => { setMinTime(v); setMaxTime(v); }} min={5} max={300} unit="s" />
+              ) : isTime ? (
                 <View style={styles.gridRow}>
                   <StepField label={t('exerciseEditor.fieldMinTime')} value={minTime} onChange={setMinTime} min={5} max={300} unit="s" />
                   <StepField label={t('exerciseEditor.fieldMaxTime')} value={maxTime} onChange={setMaxTime} min={5} max={300} unit="s" />
                 </View>
+              ) : startReps || repsMode === 'fixed' ? (
+                <>
+                  <StepField horizontal label={t(startReps ? 'exerciseEditor.fieldStartReps' : 'exerciseEditor.fieldFixedReps')} value={minReps} onChange={(v) => { setMinReps(v); setMaxReps(v); }} min={1} max={50} />
+                  {effortWarn}
+                </>
               ) : (
                 <View style={styles.gridRow}>
                   <StepField label={t('exerciseEditor.fieldMinReps')} value={minReps} onChange={setMinReps} min={1} max={50} />
@@ -275,8 +358,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
                 grouped
                 icon={<ProgressionIcon size={15} color={th.colors.accent} />}
                 title={t('exerciseEditor.sectionProgression')}
-                strong={t(`exerciseEditor.progModes.${progMode}`)}
-                subtitle={progMode === 'auto' ? `+${incTxt}` : null}
+                strong={progTitle}
+                subtitle={ruleShort}
                 onPress={() => setProgSheetOpen(true)}
               />
               <NavRow
@@ -387,62 +470,21 @@ export default function CustomExerciseScreen({ navigation, route }) {
         </View>
       </DragSheet>
 
-      {/* ══ HOJA: progresión — mismos pasos que el editor real, sin el paso de
-          evaluación (es config por sesión, no de la ficha) ═══════════════════ */}
+      {/* ══ HOJA: progresión — la misma del editor (P65) ═════════════════════ */}
       <DragSheet
         visible={progSheetOpen}
         onClose={() => setProgSheetOpen(false)}
         title={t('exerciseEditor.sectionProgression')}
       >
-        <View style={styles.sheetBody}>
-          <View>
-            <Text style={styles.stepTitle}>
-              <Text style={styles.stepNum}>1 · </Text>{t('exerciseEditor.stepMode')}
-            </Text>
-            <SegmentedControl
-              options={['auto', 'fixed'].map((id) => ({ id, label: t(`exerciseEditor.progModes.${id}`) }))}
-              value={progMode}
-              onChange={setProgMode}
-            />
-            <Text style={styles.hint}>{t(`exerciseEditor.progModeDesc.${progMode}`)}</Text>
-          </View>
-
-          {progMode === 'auto' && (
-            <>
-              <View>
-                <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>2 · </Text>{t('exerciseEditor.stepType')}
-                </Text>
-                <SegmentedControl
-                  options={['double', 'weight', 'reps', 'time'].map((id) => ({ id, label: t(`exerciseEditor.progTypes.${id}`) }))}
-                  value={progType}
-                  onChange={setProgType}
-                />
-                <Text style={styles.hint}>{t(`exerciseEditor.progTypeDesc.${progType}`)}</Text>
-              </View>
-
-              <View>
-                <Text style={styles.stepTitle}>
-                  <Text style={styles.stepNum}>3 · </Text>{t('exerciseEditor.stepIncr')}
-                </Text>
-                <StepField
-                  horizontal
-                  label={showRepsIncr ? t('exerciseEditor.incrFixedRepsLabel') : t('exerciseEditor.incrValueLabel')}
-                  unit={showRepsIncr ? undefined : (showTimeIncr ? 's' : weightLabel)}
-                  value={incrFixedValue}
-                  onChange={setIncrFixedValue}
-                  min={showRepsIncr ? 1 : 0}
-                  max={showRepsIncr ? 10 : 50}
-                  step={showRepsIncr ? 1 : 0.25}
-                />
-              </View>
-            </>
-          )}
-
-          <View style={styles.summaryCard}>
-            <Text style={styles.summarySub}>{progLine}</Text>
-          </View>
-        </View>
+        <ProgressionSheet
+          prog={prog}
+          ctx={ctx}
+          minReps={minReps}
+          maxReps={maxReps}
+          minTime={minTime}
+          maxTime={maxTime}
+          onPatch={patchProg}
+        />
       </DragSheet>
 
       {/* ══ HOJA: clasificación (patrón / grupo muscular / equipo / tipo / nivel) */}
@@ -578,6 +620,8 @@ const makeStyles = (th) => StyleSheet.create({
   grid:    { gap: spacing.md },
   gridRow: { flexDirection: 'row', gap: spacing.md },
   hint:    { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
+  // Aviso de fiabilidad de Por esfuerzo: el naranja de `optRowWarn` (EditorRows).
+  warnHint: { ...textStyles.body, color: th.colors.orange, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
 
   optGroup: { borderRadius: th.radius.md, overflow: 'hidden', gap: spacing.xs },
 
@@ -607,7 +651,6 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.caps, color: th.colors.mutedLight,
     textTransform: 'uppercase', marginBottom: spacing.sm,
   },
-  stepNum: { color: th.colors.accent },
 
   pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pill: {

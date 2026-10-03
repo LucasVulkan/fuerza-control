@@ -1800,20 +1800,6 @@
     "sectionProgression": "Progresión",
     "sectionEvaluation": "EVALUACIÓN",
     "sectionIncrement": "INCREMENTO",
-    "progTypes": {
-      "double": "Doble",
-      "weight": "Peso",
-      "reps": "Reps",
-      "time": "Tiempo",
-      "none": "Ninguna"
-    },
-    "progTypeDesc": {
-      "double": "Aumenta reps hasta el máximo, luego sube peso",
-      "weight": "Completa la sesión → sube peso (reps fijas)",
-      "reps": "Todas llegan al mínimo → tu serie más floja + el salto es el nuevo objetivo",
-      "time": "Todas llegan al mínimo → tu serie más floja + el salto es el nuevo objetivo",
-      "none": "Sin chip automático — el atleta decide"
-    },
     "evalModes": {
       "all_complete": "Todas",
       "part": "Parcial",
@@ -1900,11 +1886,6 @@
     },
     "incrFixedRepsLabel": "Reps por subida",
     "incrValueLabel": "Incremento",
-    "progModes": {
-      "auto": "Automática",
-      "fixed": "Fija",
-      "effort": "Por esfuerzo"
-    },
     "dropsetLabel": "Dropset en la última serie",
     "dropsetHint": "Al terminar la última serie podrás añadir sub-series a peso decreciente, sin descanso.",
     "dropsetSummary": "dropset final",
@@ -1915,13 +1896,6 @@
     "linkNone": "Ninguna",
     "linkNew": "Nuevo grupo",
     "linkGroupN": "Grupo {{n}}",
-    "progModeDesc": {
-      "auto": "La app sugiere subidas según tu rendimiento",
-      "fixed": "Objetivo fijo — la app no sugiere cambios",
-      "effort": "Pides reps y un RPE; la app calcula el peso de cada sesión con el 1RM estimado"
-    },
-    "stepMode": "Modo de progresión",
-    "stepType": "Qué progresa",
     "stepIncr": "Cuánto sube",
     "summaryTitle": "RESUMEN DEL EJERCICIO",
     "restSummary": "{{s}}s descanso",

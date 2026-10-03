@@ -118,6 +118,7 @@ function typicallyReps(def) {
  */
 export function isTimed(exConfig, def) {
   const input = exConfig?.inputType
+    ?? def?.inputType
     ?? ((exConfig?.progressionModel ?? def?.progressionModel) === 'time_progression' ? 'time' : 'weight_reps');
   return input === 'time' || input === 'weight_time';
 }
@@ -138,7 +139,8 @@ function resolveStep(ec, d, type) {
 
 /**
  * Returns a fully normalized progression config (§4.1).
- * Priority: exConfig.progression > legacy exConfig fields > def fields > defaults.
+ * Priority: exConfig.progression > def.progression (el alta de un ejercicio propio,
+ * §12) > legacy exConfig fields > def fields > defaults.
  *
  * Exported so the exercise editor can initialize its state from existing data.
  *
@@ -153,7 +155,10 @@ function resolveStep(ec, d, type) {
 export function resolveProgressionConfig(exConfig, def) {
   const ec = exConfig ?? {};
   const d  = def     ?? {};
-  const p  = ec.progression?.type ? ec.progression : null;
+  // Un ejercicio propio guarda su progresión entera en el `def` (P65): vale
+  // mientras la plantilla no tenga la suya.
+  const defProg = !ec.progression?.type && d.progression?.type ? d.progression : null;
+  const p  = ec.progression?.type ? ec.progression : defProg;
   // La dirección es del ejercicio (asistido = baja), no un ajuste: el
   // editor guardaba siempre 'increase' y una asistida editada pedía MÁS
   // asistencia (P52). `p.direction` solo cuenta si el ejercicio ya no existe.
@@ -183,7 +188,8 @@ export function resolveProgressionConfig(exConfig, def) {
     // 'exact' solo vale en Por esfuerzo; en Por reglas se lee como ausente. El
     // `step` de arriba sigue siendo un número (stageRx y defaultIncrement
     // hacen cuentas con él).
-    exact: type === 'effort' && ec.weightStep === 'exact',
+    // En un ejercicio propio, Exacto vive en el `def` junto a su progresión.
+    exact: type === 'effort' && (ec.weightStep === 'exact' || (!!defProg && d.weightStep === 'exact')),
     evaluation: { mode, need, maxRpe: ev.maxRpe ?? 8 },
     increment: {
       type:  inc.type === 'pct' ? 'pct' : 'fixed',

@@ -1800,20 +1800,6 @@
     "sectionProgression": "Progression",
     "sectionEvaluation": "EVALUATION",
     "sectionIncrement": "INCREMENT",
-    "progTypes": {
-      "double": "Double",
-      "weight": "Weight",
-      "reps": "Reps",
-      "time": "Time",
-      "none": "None"
-    },
-    "progTypeDesc": {
-      "double": "Increase reps to max, then add weight",
-      "weight": "Complete session → add weight (fixed reps)",
-      "reps": "Every set reaches the minimum → your weakest set + the step is the new target",
-      "time": "Every set reaches the minimum → your weakest set + the step is the new target",
-      "none": "No automatic chip — athlete decides"
-    },
     "evalModes": {
       "all_complete": "All",
       "part": "Partial",
@@ -1900,11 +1886,6 @@
     },
     "incrFixedRepsLabel": "Reps per bump",
     "incrValueLabel": "Increment",
-    "progModes": {
-      "auto": "Automatic",
-      "fixed": "Fixed",
-      "effort": "By effort"
-    },
     "dropsetLabel": "Dropset on the last set",
     "dropsetHint": "After the last set you'll be able to add sub-sets at decreasing weight, no rest.",
     "dropsetSummary": "final dropset",
@@ -1915,13 +1896,6 @@
     "linkNone": "None",
     "linkNew": "New group",
     "linkGroupN": "Group {{n}}",
-    "progModeDesc": {
-      "auto": "The app suggests increases based on your performance",
-      "fixed": "Fixed target — the app won't suggest changes",
-      "effort": "You set reps and an RPE; the app works out each session's weight from the estimated 1RM"
-    },
-    "stepMode": "Progression mode",
-    "stepType": "What progresses",
     "stepIncr": "How much it adds",
     "summaryTitle": "EXERCISE SUMMARY",
     "restSummary": "{{s}}s rest",

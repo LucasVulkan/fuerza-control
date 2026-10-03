@@ -1,5 +1,5 @@
 import { describe, it, test, expect } from 'vitest';
-import { getProgression, resolveProgressionConfig, progressionRule, progressionHistory } from './progression';
+import { getProgression, resolveProgressionConfig, progressionRule, progressionHistory, isTimed } from './progression';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 
 // getProgression builds an i18n message via t(); we only assert chip.type,
@@ -472,6 +472,25 @@ describe('P54 — lectura de lo antiguo y escalón (§4.1)', () => {
     expect(resolveProgressionConfig({ weightStep: 0 }, { weightStep: 0 }).step).toBe(2.5);
     expect(resolveProgressionConfig({}, null).step).toBe(2.5);
     expect(resolveProgressionConfig({}, { progressionDirection: 'decrease' }).direction).toBe('decrease');
+  });
+  it('P65: def.progression es el valor por defecto: exConfig.progression > def.progression > campos viejos', () => {
+    const def = { progressionModel: 'time_progression', weightStep: 5, progression: { type: 'effort', targetRpe: 9, effortWhen: 'reach' } };
+    // Sin progresión en la plantilla, manda la del def (por encima de progressionModel).
+    expect(resolveProgressionConfig({}, def)).toMatchObject({ type: 'effort', targetRpe: 9, effortWhen: 'reach', step: 2.5 });
+    // Con la suya, la de la plantilla.
+    expect(resolveProgressionConfig({ progression: { type: 'reps' } }, def).type).toBe('reps');
+    // Un `hold` suelto de una etapa (sin type) no tapa la del def.
+    expect(resolveProgressionConfig({ progression: { hold: 'deload' } }, def).type).toBe('effort');
+    // Exacto del def solo cuenta si la progresión viene del def.
+    const exactDef = { weightStep: 'exact', progression: { type: 'effort' } };
+    expect(resolveProgressionConfig({}, exactDef).exact).toBe(true);
+    expect(resolveProgressionConfig({ weightStep: null, progression: { type: 'effort' } }, exactDef).exact).toBe(false);
+    // Sin progression en el def, los campos viejos como siempre.
+    expect(resolveProgressionConfig({}, { progressionModel: 'time_progression' }).type).toBe('time');
+  });
+  it('P65: la medida sale de def.inputType si la plantilla no la trae', () => {
+    expect(isTimed({}, { inputType: 'weight_time', progressionModel: 'double_progression' })).toBe(true);
+    expect(isTimed({ inputType: 'weight_reps' }, { inputType: 'weight_time' })).toBe(false);
   });
   it('el salto por defecto de Peso es el escalón resuelto', () => {
     expect(resolveProgressionConfig({ weightStep: 1.25, progression: { type: 'double' } }, { weightStep: 5 }).increment.value).toBe(1.25);
