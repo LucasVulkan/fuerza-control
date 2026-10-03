@@ -11,18 +11,17 @@
  * entrenador. Antes iba con las cadenas en castellano a pelo en el JSX; al
  * mudarse pasa a las claves que ya existían para el otro sitio.
  */
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { Text } from './Text';
+import EmptyState from './EmptyState';
+import { ROW_ICON } from './rowIcons';
 import { useStore } from '../../../store/useStore';
-import { spacing, textStyles, lh } from '../../theme';
-import { useThemedStyles } from '../../useTheme';
+import { spacing } from '../../theme';
 
 import { showDialog } from './dialog';
 export default function NoProgram() {
   const { t }      = useTranslation();
-  const styles     = useThemedStyles(makeStyles);
   const navigate   = useStore((s) => s.navigate);
   const clientSync = useStore((s) => s.clientSync);
 
@@ -39,40 +38,16 @@ export default function NoProgram() {
   };
 
   return (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>🏋️</Text>
-      <Text style={styles.emptyText}>{t('home.noActiveProgram')}</Text>
-      <TouchableOpacity
-        style={styles.newProgramBtn}
-        onPress={start}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-      >
-        <Text style={styles.newProgramBtnText}>{t('home.newProgram')}</Text>
-      </TouchableOpacity>
-    </View>
+    <EmptyState
+      style={styles.wrap}
+      icon={ROW_ICON.exercise}
+      text={t('home.noActiveProgram')}
+      action={{ label: t('home.newProgram'), onPress: start }}
+    />
   );
 }
 
-const makeStyles = (th) => StyleSheet.create({
-  emptyState: {
-    alignItems:      'center',
-    paddingVertical: spacing.xxl * 2,
-    gap:             spacing.lg,
-  },
-  emptyIcon: { fontSize: 40 },
-  emptyText: {
-    ...textStyles.body,
-    color:      th.colors.mutedLight,
-    textAlign:  'center',
-    lineHeight: lh(textStyles.body.fontSize),
-  },
-  newProgramBtn: {
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical:   spacing.lg,
-    marginTop:         spacing.sm,
-  },
-  newProgramBtnText: { ...textStyles.button, color: th.colors.bg },
+// Va dentro de una lista que se desplaza, no ocupa la pantalla.
+const styles = StyleSheet.create({
+  wrap: { paddingVertical: spacing.xxl * 2 },
 });

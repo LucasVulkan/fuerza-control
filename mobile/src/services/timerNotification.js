@@ -13,10 +13,15 @@
  * iOS: expo-notifications para la notificación de fin (unchanged).
  *
  * Todas las funciones async son seguras sin await — no lanzan nunca.
+ *
+ * Los textos salen de i18n en el momento de mostrar o programar (`i18n.t`, no
+ * el hook: esto no es React). Los canales de Android se nombran al crearlos al
+ * arrancar, con el idioma que haya entonces.
  */
 
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import i18n from '../i18n';
 
 // ─── Notifee (Android only) ───────────────────────────────────────────────────
 
@@ -70,7 +75,7 @@ export async function setupNotificationChannels() {
 
   await _notifee.createChannel({
     id:         'rest-timer',
-    name:       'Temporizador de descanso',
+    name:       i18n.t('restTimer.notifChannelRest'),
     importance: _AndroidImportance.LOW,
     vibration:  false,
     lights:     false,
@@ -78,7 +83,7 @@ export async function setupNotificationChannels() {
 
   await _notifee.createChannel({
     id:         'rest-done',
-    name:       'Fin de descanso',
+    name:       i18n.t('restTimer.notifChannelDone'),
     importance: _AndroidImportance.HIGH,
     vibration:  true,
   });
@@ -115,8 +120,8 @@ export async function showCountdownNotification(exerciseName, endAt) {
   try {
     await _notifee.displayNotification({
       id:    COUNTDOWN_ID,
-      title: exerciseName ?? 'Descansando…',
-      body:  'Temporizador de descanso',
+      title: exerciseName ?? i18n.t('restTimer.notifResting'),
+      body:  i18n.t('restTimer.notifChannelRest'),
       android: {
         channelId:            'rest-timer',
         ongoing:              true,
@@ -143,10 +148,10 @@ export async function dismissCountdownNotification() {
  * Se dispara aunque la app esté cerrada.
  */
 export async function scheduleOsDoneNotification(seconds, exerciseName) {
-  const title = '✅ ¡A por la siguiente serie!';
+  const title = i18n.t('restTimer.notifDoneTitle');
   const body  = exerciseName
-    ? `${exerciseName} — descansaste bien`
-    : '¡Descanso terminado!';
+    ? i18n.t('restTimer.notifDoneBodyNamed', { name: exerciseName })
+    : i18n.t('restTimer.notifDoneBody');
 
   if (Platform.OS === 'ios') {
     try {

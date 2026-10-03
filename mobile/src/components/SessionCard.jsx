@@ -30,6 +30,11 @@ import { isFreeEntry } from '../utils/freeSessions';
 import { variantLabel, displayVariant } from '../utils/variants';
 
 import { showDialog } from './ui/dialog';
+import { RowIcon } from './ui/MenuList';
+import { ROW_ICON } from './ui/rowIcons';
+
+// Icono de nota delante del texto de la nota.
+const NOTE_ICON = 13;
 // Same badge-per-format mapping as SessionEditorScreen's block rows / recap.
 const BLOCK_BADGE_STYLE = {
   amrap:    'badgeBlockAmrap',
@@ -221,7 +226,12 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
               ))}
             </View>
             {!!ex.note && (
-              <Text style={styles.exNote}>📝 {ex.note}</Text>
+              <View style={styles.exNoteRow}>
+                <View style={styles.exNoteIcon}>
+                  <RowIcon size={NOTE_ICON}>{ROW_ICON.text}</RowIcon>
+                </View>
+                <Text style={styles.exNote}>{ex.note}</Text>
+              </View>
             )}
           </View>
         );
@@ -410,7 +420,12 @@ const makeStyles = (th) => StyleSheet.create({
   },
   exName: { ...textStyles.bodyStrong, color: th.colors.text },
   exVariant: { ...textStyles.body, color: th.colors.mutedLight },
+  // El icono va en fila con el texto, que es el que se recorta/expande; el
+  // `marginTop` lo centra en la primera línea.
+  exNoteRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  exNoteIcon: { marginTop: (lh(textStyles.body.fontSize) - NOTE_ICON) / 2 },
   exNote: {
+    flex:       1,
     ...textStyles.body,
     color:      th.colors.accent,
     lineHeight: lh(textStyles.body.fontSize),

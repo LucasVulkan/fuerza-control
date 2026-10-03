@@ -25,9 +25,10 @@ import { programTemplateOf } from '../../utils/freeSessions';
 import DragSheet from '../DragSheet';
 import SheetRow from '../ui/SheetRow';
 import { Section, MenuRow } from '../ui/MenuList';
+import EmptyState from '../ui/EmptyState';
 import { ROW_ICON } from '../ui/rowIcons';
 import SessionCard from '../SessionCard';
-import { spacing, textStyles, lh } from '../../theme';
+import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { volumeDeltas } from '../../utils/sessionRecap';
 
@@ -203,14 +204,13 @@ export default function HistoryList() {
           />
         )}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyText}>
-              {scope === 'program'
-                ? t('history.noSessionsProgram')
-                : t('history.noSessionsEmpty')}
-            </Text>
-          </View>
+          <EmptyState
+            style={styles.emptyState}
+            icon={ROW_ICON.history}
+            text={scope === 'program'
+              ? t('history.noSessionsProgram')
+              : t('history.noSessionsEmpty')}
+          />
         }
       />
 
@@ -334,17 +334,5 @@ const makeStyles = (th) => StyleSheet.create({
   cardGutter: { marginHorizontal: spacing.lg },
 
   // Empty state
-  emptyState: {
-    alignItems:     'center',
-    justifyContent: 'center',
-    padding:        spacing.xxl,
-    gap:            spacing.md,
-  },
-  emptyIcon: { fontSize: 32 },
-  emptyText: {
-    ...textStyles.body,
-    color:      th.colors.mutedLight,
-    textAlign:  'center',
-    lineHeight: lh(textStyles.body.fontSize),
-  },
+  emptyState: { paddingVertical: spacing.xxl },
 });

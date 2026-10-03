@@ -19,7 +19,7 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import NoProgram from '../components/ui/NoProgram';
-import { spacing, textStyles, borders, lh } from '../theme';
+import { spacing, textStyles, borders } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { isStageLocked } from '../utils/stageLocks';
 import { FOLD_MS } from '../components/ui/collapseOut';
@@ -628,28 +628,6 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.button,
     color: th.colors.accent,
   },
-
-  // ── Empty state ───────────────────────────────────────────────────────────────
-  emptyState: {
-    alignItems:      'center',
-    paddingVertical: spacing.xxl * 2,
-    gap:             spacing.lg,
-  },
-  emptyIcon: { fontSize: 40 },
-  emptyText: {
-    ...textStyles.body,
-    color:      th.colors.muted,
-    textAlign:  'center',
-    lineHeight: lh(textStyles.body.fontSize),
-  },
-  newProgramBtn: {
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical:   spacing.lg,
-    marginTop:         spacing.sm,
-  },
-  newProgramBtnText: { ...textStyles.button, color: th.colors.bg },
 
   // ── Hojas (DragSheet + filas de MenuList) ────────────────────────────────────
   sheetGroup:     { gap: spacing.xs, paddingBottom: spacing.sm },

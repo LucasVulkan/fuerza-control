@@ -32,6 +32,8 @@ import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import LoadCalendar from './LoadCalendar';
 import SegmentedControl from '../ui/SegmentedControl';
+import EmptyState from '../ui/EmptyState';
+import { ROW_ICON } from '../ui/rowIcons';
 import { InfoLabel, MetricInfoSheet } from '../ui/MetricInfo';
 
 // "7D" no existe aquí: siete barras y dos líneas planas no son una tendencia.
@@ -388,11 +390,11 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
   if (!hasSessions || !hasRpe) {
     return scroll(
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyText}>
-          {!hasSessions ? t('load.emptyNoSessions') : t('load.emptyNoRpe')}
-        </Text>
-      </View>,
+      <EmptyState
+        style={styles.emptyState}
+        icon={ROW_ICON.progress}
+        text={!hasSessions ? t('load.emptyNoSessions') : t('load.emptyNoRpe')}
+      />,
     );
   }
 
@@ -793,6 +795,5 @@ const makeStyles = (th) => StyleSheet.create({
   groupCount: { ...textStyles.labelStrong, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'] },
   groupHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
 
-  emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-  emptyText:  { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center', lineHeight: 19 },
+  emptyState: { paddingVertical: spacing.xxl },
 });

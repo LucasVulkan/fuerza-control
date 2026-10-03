@@ -24,6 +24,7 @@ import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { Section, MenuRow, ChoiceRow, RowIcon } from '../components/ui/MenuList';
+import EmptyState from '../components/ui/EmptyState';
 import AnimatedHeight from '../components/ui/AnimatedHeight';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
@@ -1262,6 +1263,7 @@ function GlobalAddBillingSheet({ clients, lang, lockedClientId, onClose }) {
 // ── Client info sheet (⋯ modal) ────────────────────────────────────────────────
 
 function ClientInfoSheet({ client, onClose, onConnectCloud }) {
+  const th = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const showToast = useStore((s) => s.showToast);
@@ -1302,7 +1304,9 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
                 <Text style={styles.infoCodeText}>{client.syncCode}</Text>
               </View>
               <TouchableOpacity style={styles.infoCopyBtn} onPress={handleCopy} activeOpacity={0.7}>
-                <Text style={styles.infoCopyBtnText}>{copied ? '✓' : '📋'}</Text>
+                {copied
+                  ? <CheckIcon size={18} color={th.colors.accent} />
+                  : <RowIcon>{ROW_ICON.duplicate}</RowIcon>}
               </TouchableOpacity>
             </View>
           ) : (
@@ -2382,28 +2386,20 @@ export default function ClientsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppHeader />
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={styles.emptyTitle}>{t('clients.proGateTitle')}</Text>
-          <Text style={styles.emptyBody}>{t('clients.proGateBody')}</Text>
-          <TouchableOpacity
-            style={styles.proBtn}
-            onPress={() => setShowPaywall(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.proBtnText}>{t('clients.proGateCta')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.hideTabBtn}
-            onPress={() => {
+        <EmptyState
+          style={styles.emptyState}
+          icon={ROW_ICON.user}
+          title={t('clients.proGateTitle')}
+          text={t('clients.proGateBody')}
+          action={{ label: t('clients.proGateCta'), onPress: () => setShowPaywall(true) }}
+          secondary={{
+            label:   t('templates.hideTab'),
+            onPress: () => {
               setProfile({ proTabsHidden: true });
               navigation.navigate('Home');
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.hideTabBtnText}>{t('templates.hideTab')}</Text>
-          </TouchableOpacity>
-        </View>
+            },
+          }}
+        />
         {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       </View>
     );
@@ -3221,12 +3217,11 @@ export default function ClientsScreen() {
       {/* Client list */}
       <Reanimated.View style={{ flex: 1 }} layout={LinearTransition.duration(240)}>
       {clientList.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={styles.emptyBody}>
-            {search ? t('clients.noResults') : t('clients.noClientsEmpty')}
-          </Text>
-        </View>
+        <EmptyState
+          style={styles.emptyState}
+          icon={ROW_ICON.user}
+          text={search ? t('clients.noResults') : t('clients.noClientsEmpty')}
+        />
       ) : (
         <FlatList
           data={clientList}
@@ -3891,36 +3886,7 @@ const makeStyles = (th) => StyleSheet.create({
   // (old client card styles removed — replaced by cCard* styles above)
 
   // ── Empty ──
-  emptyState: {
-    flex:            1,
-    alignItems:      'center',
-    justifyContent:  'center',
-    padding:         spacing.xxl,
-    gap:             spacing.sm,
-  },
-  emptyIcon: { fontSize: 32 },
-  emptyTitle: { ...textStyles.bodyStrong, color: th.colors.text },
-  emptyBody: {
-    ...textStyles.body,
-    color:        th.colors.mutedLight,
-    textAlign:    'center',
-    lineHeight:   lh(textStyles.body.fontSize),
-    marginBottom: spacing.lg,
-  },
-  proBtn: {
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm,
-    paddingVertical:   spacing.md,
-    paddingHorizontal: spacing.xl,
-    marginTop:       spacing.xs,
-  },
-  proBtnText: { ...textStyles.button, color: th.colors.bg },
-  hideTabBtn: {
-    marginTop:         spacing.sm,
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  hideTabBtnText: { ...textStyles.label, color: th.colors.mutedLight, textAlign: 'center' },
+  emptyState: { flex: 1 },
   emptyText: {
     ...textStyles.label,
     color:           th.colors.mutedLight,
@@ -3960,7 +3926,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  infoCopyBtnText: { fontSize: 18 },
   infoSheetBtnAccent: {
     backgroundColor:   withOpacity(th.colors.accent, 0.08),
     borderWidth:       borders.thin,

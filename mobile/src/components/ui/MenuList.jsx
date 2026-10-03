@@ -24,12 +24,14 @@ import { ArrowIcon } from './EditorIcons';
 // 6.46×10.77 (regla 4 de UI-MIGRATION: caja de icono ≠ icono visible).
 export const ROW_CHEVRON = 10.77;
 
-export function RowIcon({ children, color }) {
+// `size`/`strokeWidth` solo los cambia `EmptyState` (32 con trazo 1.8, para que
+// no engorde al escalar); en las filas y hojas son siempre 18 y 2.4.
+export function RowIcon({ children, color, size = 18, strokeWidth = 2.4 }) {
   const th = useTheme();
   return (
     <Svg
-      width={18} height={18} viewBox="0 0 24 24" fill="none"
-      stroke={color ?? th.colors.mutedLight} strokeWidth={2.4}
+      width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color ?? th.colors.mutedLight} strokeWidth={strokeWidth}
       strokeLinecap="round" strokeLinejoin="round"
     >
       {children}

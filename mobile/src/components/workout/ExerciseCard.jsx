@@ -49,6 +49,11 @@ import { spacing, textStyles, withOpacity, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 import { CloseIcon } from '../ui/EditorIcons';
+import { RowIcon } from '../ui/MenuList';
+import { ROW_ICON } from '../ui/rowIcons';
+
+// Icono de nota delante de la nota del entrenador.
+const NOTE_ICON = 13;
 // ── Geometría del spec ────────────────────────────────────────────────────────
 // Radios: card 16 · celdas y botones grandes 11 · botones pequeños 9.
 const R_CARD  = 16;
@@ -706,10 +711,15 @@ export default function ExerciseCard({
               onPress={() => setNoteExpanded((v) => !v)}
               activeOpacity={0.7}
             >
-              <Text style={styles.trainerNoteText} numberOfLines={noteExpanded ? undefined : 1}>
-                📋 {trainerName ? <Text style={styles.trainerNoteName}>{trainerName}: </Text> : null}
-                {trainerNote}
-              </Text>
+              <View style={styles.trainerNoteRow}>
+                <View style={styles.trainerNoteIcon}>
+                  <RowIcon size={NOTE_ICON}>{ROW_ICON.text}</RowIcon>
+                </View>
+                <Text style={styles.trainerNoteText} numberOfLines={noteExpanded ? undefined : 1}>
+                  {trainerName ? <Text style={styles.trainerNoteName}>{trainerName}: </Text> : null}
+                  {trainerNote}
+                </Text>
+              </View>
             </TouchableOpacity>
           ) : null}
 
@@ -1367,7 +1377,12 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   6,
     marginBottom:      12,
   },
+  // El icono va en fila con el texto, que es el que se recorta/expande; el
+  // `marginTop` lo centra en la primera línea.
+  trainerNoteRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  trainerNoteIcon: { marginTop: (lh(textStyles.label.fontSize) - NOTE_ICON) / 2 },
   trainerNoteText: {
+    flex: 1,
     ...textStyles.label,
     color:      th.colors.text,
     lineHeight: lh(textStyles.label.fontSize),

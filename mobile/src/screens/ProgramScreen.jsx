@@ -36,6 +36,7 @@ import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { Section } from '../components/ui/MenuList';
+import EmptyState from '../components/ui/EmptyState';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
@@ -479,20 +480,17 @@ export default function ProgramScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppHeader />
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>{t('templates.proTitle')}</Text>
-          <Text style={styles.emptyBody}>{t('templates.proBody')}</Text>
-          <TouchableOpacity style={styles.cta} onPress={() => setShowPaywall(true)} activeOpacity={0.85}>
-            <Text style={styles.ctaText}>{t('templates.proCta')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.hideTabBtn}
-            onPress={() => { setProfile({ proTabsHidden: true }); navigation.navigate('Home'); }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.hideTabBtnText}>{t('templates.hideTab')}</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          style={styles.emptyState}
+          icon={ROW_ICON.preset}
+          title={t('templates.proTitle')}
+          text={t('templates.proBody')}
+          action={{ label: t('templates.proCta'), onPress: () => setShowPaywall(true) }}
+          secondary={{
+            label:   t('templates.hideTab'),
+            onPress: () => { setProfile({ proTabsHidden: true }); navigation.navigate('Home'); },
+          }}
+        />
         {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       </View>
     );
@@ -533,12 +531,12 @@ export default function ProgramScreen() {
 
       {isSessions ? (
         sessionList.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyBody}>{t('templates.sessionsEmpty')}</Text>
-            <TouchableOpacity style={styles.cta} onPress={handleCreateSession} activeOpacity={0.85}>
-              <Text style={styles.ctaText}>{t('templates.newModal.createBtn')}</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            style={styles.emptyState}
+            icon={ROW_ICON.preset}
+            text={t('templates.sessionsEmpty')}
+            action={{ label: t('templates.newModal.createBtn'), onPress: handleCreateSession }}
+          />
         ) : (
           <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
             {sessionList.map((tpl) => (
@@ -553,13 +551,12 @@ export default function ProgramScreen() {
           </ScrollView>
         )
       ) : templateList.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>{t('templates.title')}</Text>
-          <Text style={styles.emptyBody}>{t('templates.empty')}</Text>
-          <TouchableOpacity style={styles.cta} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
-            <Text style={styles.ctaText}>{t('templates.newModal.createBtn')}</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          style={styles.emptyState}
+          icon={ROW_ICON.preset}
+          text={t('templates.empty')}
+          action={{ label: t('templates.newModal.createBtn'), onPress: () => setShowCreate(true) }}
+        />
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {templateList.map((program) => (
@@ -820,21 +817,5 @@ const makeStyles = (th) => StyleSheet.create({
   ctaTextDisabled: { color: th.colors.mutedLight },
 
   // ── Estado vacío / gate PRO ──
-  emptyState: {
-    flex:           1,
-    alignItems:     'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xxl,
-    gap:            spacing.md,
-  },
-  emptyTitle: { ...textStyles.title, color: th.colors.text },
-  emptyBody: {
-    ...textStyles.body,
-    color:        th.colors.mutedLight,
-    textAlign:    'center',
-    lineHeight:   18,
-    marginBottom: spacing.sm,
-  },
-  hideTabBtn:     { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  hideTabBtnText: { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  emptyState: { flex: 1 },
 });

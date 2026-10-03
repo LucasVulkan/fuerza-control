@@ -2483,7 +2483,13 @@
   "restTimer": {
     "remaining": "{{count}}s restantes",
     "go": "¡Adelante!",
-    "skip": "Saltar ›"
+    "skip": "Saltar ›",
+    "notifChannelRest": "Temporizador de descanso",
+    "notifChannelDone": "Fin de descanso",
+    "notifResting": "Descansando…",
+    "notifDoneTitle": "¡A por la siguiente serie!",
+    "notifDoneBodyNamed": "{{name}} — descansaste bien",
+    "notifDoneBody": "¡Descanso terminado!"
   },
   "progression": {
     "time_allHitMax": "Todas las series por encima del mínimo. Apunta a {{next}} s en todas la próxima vez.",

@@ -43,6 +43,8 @@ import { filterBySearch } from '../../utils/searchText';
 import SegmentedControl  from '../ui/SegmentedControl';
 import { MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown, CloseIcon } from '../ui/EditorIcons';
+import EmptyState from '../ui/EmptyState';
+import { ROW_ICON } from '../ui/rowIcons';
 import { programTemplateOf, isFreeEntry } from '../../utils/freeSessions';
 
 // ── Animated SVG primitives ───────────────────────────────────────────────────
@@ -1299,16 +1301,15 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
       {/* Lista de ejercicios (siempre visible) */}
       {displayedExercises.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📈</Text>
-          <Text style={styles.emptyText}>
-            {baseLog.length === 0
-              ? t('stats.emptyFirstSession')
-              : search.trim()
-                ? t('stats.emptyNoMatch')
-                : t('stats.noData')}
-          </Text>
-        </View>
+        <EmptyState
+          style={styles.emptyState}
+          icon={ROW_ICON.progress}
+          text={baseLog.length === 0
+            ? t('stats.emptyFirstSession')
+            : search.trim()
+              ? t('stats.emptyNoMatch')
+              : t('stats.noData')}
+        />
       ) : (
         <Reanimated.View style={styles.exerciseList} layout={LinearTransition.duration(200)}>
           {displayedExercises.map((exerciseId, idx) => {
@@ -1834,7 +1835,5 @@ const makeStyles = (th) => StyleSheet.create({
   modalSesEmpty: { ...textStyles.label, color: th.colors.mutedLight, paddingVertical: spacing.md, textAlign: 'center' },
 
   // ── Empty state ────────────────────────────────────────────────────────────
-  emptyState: { alignItems: 'center', padding: spacing.xxl, gap: spacing.md },
-  emptyIcon:  { fontSize: 32 },
-  emptyText:  { ...textStyles.body, color: th.colors.mutedLight, textAlign: 'center', lineHeight: lh(textStyles.body.fontSize) },
+  emptyState: { paddingVertical: spacing.xxl },
 });

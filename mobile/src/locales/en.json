@@ -2483,7 +2483,13 @@
   "restTimer": {
     "remaining": "{{count}}s remaining",
     "go": "Go!",
-    "skip": "Skip ›"
+    "skip": "Skip ›",
+    "notifChannelRest": "Rest timer",
+    "notifChannelDone": "Rest finished",
+    "notifResting": "Resting…",
+    "notifDoneTitle": "Time for the next set!",
+    "notifDoneBodyNamed": "{{name}} — nicely rested",
+    "notifDoneBody": "Rest finished!"
   },
   "progression": {
     "time_allHitMax": "Every set above the minimum. Aim for {{next}}s on all of them next time.",

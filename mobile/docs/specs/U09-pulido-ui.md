@@ -12,7 +12,7 @@
 > Fase U09-07 · hecho · Textos fijos a i18n y modales viejos a DragSheet · §7 · antes U34
 > Fase U09-08 · hecho · Un solo lima, como token del tema · §8 · antes U35
 > Fase U09-09 · hecho · Cabecera de cerrar compartida y ✕ como icono · §9 · antes U36
-> Fase U09-10 · pendiente · Pantalla vacía común, sin emojis · §10 · antes U37
+> Fase U09-10 · hecho · Pantalla vacía común, sin emojis · §10 · antes U37
 > Fase U09-11 · terminado · Una sola hoja de progresión · §11 · antes U38
 > Fase U09-12 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12 · antes U39
 > Fase U09-13 · hecho · Importar archivo: el contenido de la hoja al estándar · §13 · antes U40
@@ -640,6 +640,66 @@ Limpieza: `HomeScreen` conserva `emptyState`/`emptyIcon`/`emptyText`/
   pide iconos que no existen —facturación— y va con el rediseño del pago) y
   los ⬆/⬇ de `utils/progression.js` (son datos del motor, no se pintan tal cual).
 
+**Hecho (3-oct-2026).** `components/ui/EmptyState.jsx` y `RowIcon` con `size` y
+`strokeWidth` (por defecto 18 y 2.4, las filas no cambian). Las nueve pantallas
+de la tabla lo usan, cada una con el `flex: 1` o el `paddingVertical` que ya
+tenía; `NoProgram` se queda como envoltorio (lleva el aviso de desconexión) y
+solo cambia lo que pinta. Fuera los estilos `empty*`, `proBtn*`, `hideTabBtn*`
+y `newProgramBtn*` de `ClientsScreen`, `ProgramScreen`, `HomeScreen`,
+`NoProgram`, `HistoryList`, `ProgressTab` y `LoadTab` (`emptyText` de Clientes y
+`cta` de Programa siguen: los usan otros sitios). `templates.title` se queda: es
+la cabecera «PLANTILLAS · N».
+
+Lo que salió distinto de lo previsto o que la spec no fijaba:
+
+- Los dos botones secundarios de «Ocultar pestaña» pasan a `labelStrong` (el de
+  Clientes iba a `label`); es el del `ProgramScreen`.
+- El texto de `NoProgram` pasa de `muted` a `mutedLight`, como el resto.
+- Las notas: el icono va en `mutedLight` y el texto conserva su color (lima en
+  `SessionCard`, `text` en la del entrenador); el icono se centra en la primera
+  línea con un `marginTop` calculado.
+- `timerNotification.js` tenía más texto fijo que los tres citados: también los
+  dos nombres de canal de Android («Temporizador de descanso», «Fin de
+  descanso») y el título y cuerpo de la notificación de cuenta atrás
+  («Descansando…»). Todo en `restTimer.notif*`. Se traduce con `i18n.t` en el
+  momento de mostrar; los canales se nombran al arrancar, con el idioma que
+  haya entonces (el idioma guardado se aplica al rehidratar, que puede llegar
+  después), y se corrigen en el siguiente arranque.
+- No se toca `infoCodeText` (16 px, ver «Otros detalles»): solo el botón de copiar.
+
+**Probar U09-10**
+
+- [ ] Historial sin sesiones (programa actual y «todas»): un icono de reloj
+  de línea en gris con el texto, sin emoji.
+- [ ] Progresión → Ejercicios sin datos (primera sesión, búsqueda sin
+  resultados, sin datos): icono de barras de línea y el texto adecuado a cada caso.
+- [ ] Progresión → Carga sin sesiones o sin RPE: icono de barras y su texto,
+  centrado, y el pull to refresh sigue funcionando.
+- [ ] Inicio y Programa sin programa activo: icono de pesa de línea, el texto y
+  el botón lima «Nuevo programa» que sigue haciendo lo mismo (y con un
+  entrenador vinculado, avisa antes de desvincular).
+- [ ] Clientes sin PRO: icono de persona, título, texto, botón PRO lima (abre el
+  pago) y «Ocultar pestaña» en gris debajo, que sigue ocultándola y vuelve a Inicio.
+- [ ] Clientes PRO sin clientes (y buscando algo que no existe): icono de
+  persona y el texto, centrado en la pantalla.
+- [ ] Plantillas sin PRO: icono de marcador, título, texto, botón PRO y
+  «Ocultar pestaña», igual que Clientes.
+- [ ] Plantillas → Sesiones sin ninguna: icono, texto y botón «Crear» que
+  crea una sesión como antes.
+- [ ] Plantillas → Programas sin ninguno: icono, texto y botón «Crear», y ya no
+  repite el título «Plantillas» sobre la cabecera «PLANTILLAS · 0».
+- [ ] Clientes → ficha → Info de un cliente con código: el botón de copiar
+  enseña un icono de copiar en gris; al pulsarlo pasa a una marca lima
+  durante un momento y el código queda copiado.
+- [ ] Historial → abrir una sesión con una nota de ejercicio: el icono de
+  documento en gris delante del texto, y el texto no se desborda.
+- [ ] Workout de un cliente con nota del entrenador en un ejercicio: icono de
+  documento delante; la nota se recorta a una línea y se expande al tocarla.
+- [ ] Fin de descanso con la app en castellano: la notificación sale en
+  castellano, sin el ✅ («¡A por la siguiente serie!»).
+- [ ] Lo mismo con la app en inglés: título y cuerpo salen en inglés, y los
+  canales de notificación de la app en los ajustes de Android también.
+
 ## 11. U09-11 — Una sola hoja de progresión
 
 La hoja de progresión de `editor/ExerciseEditorInline.jsx` y la de
@@ -956,7 +1016,7 @@ se perderán.».
 | U09-07 | Textos fijos a i18n; pago, importar e Info/archivados de Clientes a `DragSheet`; actualización de programa a diálogo | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U09-08 | Un solo lima: `#b8ff00` pasa a `accent` | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U09-09 | Esas cuatro pantallas a `ScreenHeader`; ✕ como icono | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
-| U09-10 | `EmptyState` común en las nueve pantallas vacías; fuera los emojis de la UI | pendiente | 🟡 |
+| U09-10 | `EmptyState` común en las nueve pantallas vacías; fuera los emojis de la UI | ✅ rama `feat/recap` | 🟡 |
 | U09-11 | Hoja de progresión única | ✅ resuelta por P12-10 (`2c2dc25`) | 🟢 |
 | U09-12 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U09-13 | Importar archivo al estándar; `ChoiceRow` como pieza de elección única | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
