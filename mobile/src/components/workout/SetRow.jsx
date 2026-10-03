@@ -14,34 +14,25 @@
  */
 
 import { View, TouchableOpacity, StyleSheet, PanResponder, Keyboard, Pressable, Animated } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Text, TextInput } from '../ui/Text';
-import Svg, { Path } from 'react-native-svg';
+import Chevron from './Chevron';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { spacing, borders, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import { useStore } from '../../../store/useStore';
+import { useWeightUnit } from '../../hooks/useWeightUnit';
+import {
+  scrubRuler, scrubValueAt, scrubIsStrong, scrubEdge, scrubPan, scrubPanDir, scrubPanMs,
+  SCRUB_CANCEL_DY, SCRUB_HAPTIC_MAX_VX,
+} from '../../utils/scrubScale';
 import { GRID } from './grid';
+import ScrubRuler, { SCRUB_MS } from './ScrubRuler';
 
 const STEP_PX  = 8;
 const H_THRESH = 12;
 
-// ── Chevron ───────────────────────────────────────────────────────────────────
-// Path exacto del asset "Subtract" de Figma (Input Field Current/Empty, ~4.3×7.1),
-// siempre en tint/accent-50 — no cambia de color entre estado idle/scroll-activo.
-const CHEVRON_W = 4.28102;
-const CHEVRON_H = 7.13504;
-
-function Chevron({ direction = 'right', size = 8, color }) {
-  return (
-    <Svg
-      width={size * (CHEVRON_W / CHEVRON_H)}
-      height={size}
-      viewBox={`0 0 ${CHEVRON_W} ${CHEVRON_H}`}
-      style={direction === 'left' ? { transform: [{ scaleX: -1 }] } : undefined}
-    >
-      <Path d="M3.5 3.56752L0.5 6.06752V5.2218L2.48499 3.56752L0.5 1.91259V1.06752L3.5 3.56752Z" fill={color} />
-    </Svg>
-  );
-}
+// El chevron (siempre en tint/accent-50 en la casilla activa) vive en ./Chevron.
 
 // ── TimerButton ───────────────────────────────────────────────────────────────
 
@@ -90,6 +81,13 @@ function TimerButton({ onTime }) {
 }
 
 // ── InputCell ─────────────────────────────────────────────────────────────────
+//
+// Dos modos de gesto, según `scrubField`:
+//  · sin él (o en tiempo): el de siempre — la cifra cambia en la casilla mientras
+//    arrastras, con chevrones y borde lima.
+//  · con él ('weight' | 'reps' | 'rpe', preferencia «Regla al deslizar», U10-01):
+//    la casilla NO cambia durante el gesto. Avisa a SetRow (que pinta la regla y
+//    la burbuja) y al soltar guarda el valor, sin animación.
 
 function InputCell({
   value,
@@ -100,6 +98,13 @@ function InputCell({
   scrollStep = 1,
   showHint   = false,   // fila activa → estado "Current" del Input Field (105:2416)
   isDone     = false,   // serie marcada como hecha → texto en accent tint-50
+  scrubField,           // 'weight' | 'reps' | 'rpe' → modo regla; sin valor → gesto de siempre
+  scrubUnit  = 'kg',
+  rowWidth   = 0,
+  measureRow,           // (cb) mide la View de la fila al activarse: hace falta la x del dedo en ella
+  onScrubStart,         // ({ field, ruler, value, cell, initial, hasValue, prevValue, prevSource }) al activarse, con la medida ya hecha
+  onScrubMove,          // ({ value?, ruler?, edge?, cancel? }) solo lo que cambia
+  onScrubEnd,           // () al soltar o al cancelarse
 }) {
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
@@ -119,6 +124,12 @@ function InputCell({
   const onChangeRef   = useRef(onChangeText);
   const scrollStepRef = useRef(scrollStep);
   const lastDxRef     = useRef(0);
+  const liveRef       = useRef({});      // props que lee el gesto (creado una sola vez)
+  const cellRect      = useRef({ x: 0, width: 0 });
+  // Mientras dura la regla: { pending, ruler, value, initial, rowPageX, fingerX, edge,
+  // cancel, panTimer }. `pending` = gesto ya reclamado pero aún sin la medida de la
+  // fila (se ignoran los moves).
+  const scrubRef      = useRef(null);
   // Animated value for the accent overlay — fades in when scroll starts, out when it ends
   const accentAnim    = useRef(new Animated.Value(0)).current;
 
@@ -132,6 +143,14 @@ function InputCell({
 
   useEffect(() => { onChangeRef.current   = onChangeText; }, [onChangeText]);
   useEffect(() => { scrollStepRef.current = scrollStep;   }, [scrollStep]);
+  useEffect(() => {
+    liveRef.current = {
+      scrubField, scrubUnit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd,
+      prevValue, prevSource, hasValue: value !== null && value !== undefined && value !== '',
+    };
+  });
+  // El avance automático por los bordes no sobrevive a la casilla.
+  useEffect(() => () => clearTimeout(scrubRef.current?.panTimer), []);
 
   const openEditor = useCallback(() => {
     editingRef.current = true;
@@ -151,6 +170,67 @@ function InputCell({
     Animated.timing(accentAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
   }, []);
 
+  // Cada cambio de valor vibra: «redondo» (1 kg, 5 lb) con Light, el resto con el
+  // tic fino (U10-10 §2.6.1).
+  const buzz = useCallback((ruler, v) => {
+    (scrubIsStrong(ruler, v)
+      ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      : Haptics.selectionAsync()
+    ).catch(() => {});
+  }, []);
+
+  // Valor bajo el dedo con la regla y la x actuales: lo cambia y avisa a SetRow.
+  const retarget = useCallback((sc, extra) => {
+    const v = scrubValueAt(sc.ruler, sc.fingerX);
+    const patch = { ...extra };
+    if (v !== sc.value) { sc.value = v; patch.value = v; if (!sc.fast) buzz(sc.ruler, v); }
+    return patch;
+  }, [buzz]);
+
+  const stopPan = useCallback((sc) => {
+    if (sc) { clearTimeout(sc.panTimer); sc.panTimer = null; }
+  }, []);
+
+  // Un paso de regla cada cierto tiempo mientras el dedo siga a menos de 24 dp del
+  // borde (peso y reps); más deprisa cuanto más cerca. El RPE no llega aquí.
+  const panTickRef = useRef(null);
+  useEffect(() => {
+    panTickRef.current = (sc) => {
+      sc.panTimer = null;
+      if (scrubRef.current !== sc || sc.cancel) return;
+      const rowW = liveRef.current.rowWidth;
+      const dir = scrubPanDir(sc.fingerX, rowW);
+      if (!dir) return;
+      const next = scrubPan(sc.ruler, dir);
+      if (next !== sc.ruler) {
+        sc.ruler = next;
+        sc.fast = false;   // el dedo está quieto en el borde: el avance sí vibra
+        liveRef.current.onScrubMove?.(retarget(sc, { ruler: next }));
+      }
+      sc.panTimer = setTimeout(() => panTickRef.current?.(sc), scrubPanMs(sc.fingerX, rowW));
+    };
+  });
+  const panTick = useCallback((sc) => panTickRef.current?.(sc), []);
+
+  // Soltar o cancelar en modo regla: cierra la capa y, si el valor cambió respecto
+  // al de la casilla, lo guarda en el siguiente frame (como el gesto de siempre).
+  // Soltar en modo cancelar no guarda nada.
+  const finishScrub = useCallback(() => {
+    const sc = scrubRef.current;
+    scrubRef.current  = null;
+    isSwiping.current = false;
+    stopPan(sc);
+    if (!sc || sc.pending) return;      // la medida no llegó: la capa nunca se abrió
+    liveRef.current.onScrubEnd?.();
+    if (sc.cancel || sc.value === sc.initial) return;
+    const val = sc.value;
+    localValueRef.current = val;
+    // La casilla ya enseña el número nuevo bajo la capa, que se desvanece al encoger
+    // (el efecto de `value` lo confirmará cuando el padre devuelva el valor guardado).
+    setLocalValue(String(val));
+    requestAnimationFrame(() => { onChangeRef.current(String(val)); });
+  }, [stopPan]);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder:        () => false,
@@ -159,14 +239,90 @@ function InputCell({
         !editingRef.current
         && Math.abs(gs.dx) > H_THRESH
         && Math.abs(gs.dx) > Math.abs(gs.dy) * 2,
-      onPanResponderGrant: () => {
+      // En modo regla el ScrollView no puede robar el gesto a media regla.
+      onPanResponderTerminationRequest: () => !scrubRef.current,
+      onPanResponderGrant: (e, gs) => {
         Keyboard.dismiss();
         isSwiping.current = true;
         lastDxRef.current = 0;
+        const live = liveRef.current;
+        if (live.scrubField && live.measureRow) {
+          // La marca sale bajo el dedo: hace falta su x dentro de la fila. Hasta que
+          // llega la medida el gesto ya es nuestro (pending → no se puede robar).
+          const field  = live.scrubField;
+          const sc     = {
+            pending: true, ruler: null, value: 0, initial: localValueRef.current, rowPageX: 0,
+            fingerX: 0, edge: 0, cancel: false, panTimer: null, pans: field !== 'rpe',
+          };
+          const fingerPageX = gs.moveX || e.nativeEvent.pageX;
+          scrubRef.current = sc;
+          live.measureRow((_x, _y, w, _h, pageX) => {
+            if (scrubRef.current !== sc) return;   // se soltó antes de que llegara la medida
+            const lv = liveRef.current;
+            const ruler = scrubRuler(field, sc.initial, fingerPageX - pageX, w || lv.rowWidth, { unit: lv.scrubUnit });
+            sc.pending = false;
+            sc.rowPageX = pageX;
+            sc.ruler = ruler;
+            sc.value = ruler.start;
+            sc.fingerX = fingerPageX - pageX;
+            const prevNum = parseFloat(lv.prevValue);
+            lv.onScrubStart?.({
+              field, ruler, value: ruler.start, cell: { ...cellRect.current },
+              initial: sc.initial, hasValue: lv.hasValue,
+              prevValue: Number.isFinite(prevNum) ? prevNum : null, prevSource: lv.prevSource,
+            });
+            // RPE y reglas absolutas: el valor bajo el dedo puede no ser el de la casilla; ya cuenta como cambio.
+            if (ruler.start !== sc.initial) buzz(ruler, ruler.start);
+          });
+          return;
+        }
         setScrollActive(true);
         fadeIn();
       },
       onPanResponderMove: (_, gs) => {
+        const sc = scrubRef.current;
+        if (sc) {
+          if (sc.pending) return;
+          const lv = liveRef.current;
+          sc.fingerX = gs.moveX - sc.rowPageX;
+          sc.fast = Math.abs(gs.vx) > SCRUB_HAPTIC_MAX_VX;
+          const cancel = gs.dy < -SCRUB_CANCEL_DY;
+          if (cancel !== sc.cancel) {
+            sc.cancel = cancel;
+            if (cancel) {
+              // Modo cancelar: la marca vuelve a la partida y la regla se apaga; no se
+              // avanza por los bordes.
+              stopPan(sc);
+              sc.edge = 0;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              lv.onScrubMove?.({ cancel: true, value: sc.initial, edge: 0 });
+              return;
+            }
+            // Volver a bajar retoma el valor bajo el dedo.
+            const patch = { cancel: false };
+            const v = scrubValueAt(sc.ruler, sc.fingerX);
+            sc.value = v;
+            patch.value = v;
+            const edge = sc.pans ? scrubEdge(sc.fingerX, lv.rowWidth) : 0;
+            sc.edge = edge;
+            patch.edge = edge;
+            lv.onScrubMove?.(patch);
+          } else if (!cancel) {
+            const patch = retarget(sc, {});
+            const edge = sc.pans ? scrubEdge(sc.fingerX, lv.rowWidth) : 0;
+            if (edge !== sc.edge) { sc.edge = edge; patch.edge = edge; }
+            if (Object.keys(patch).length) lv.onScrubMove?.(patch);
+          } else {
+            return;
+          }
+          // Avance por los bordes: arranca al entrar en la zona y se limpia al salir.
+          if (!sc.cancel && sc.pans && scrubPanDir(sc.fingerX, lv.rowWidth)) {
+            if (!sc.panTimer) sc.panTimer = setTimeout(() => panTick(sc), scrubPanMs(sc.fingerX, lv.rowWidth));
+          } else {
+            stopPan(sc);
+          }
+          return;
+        }
         const currSteps = Math.trunc(gs.dx / STEP_PX);
         const lastSteps = Math.trunc(lastDxRef.current / STEP_PX);
         const delta     = currSteps - lastSteps;
@@ -181,6 +337,7 @@ function InputCell({
         }
       },
       onPanResponderRelease: () => {
+        if (scrubRef.current) { finishScrub(); return; }
         isSwiping.current = false;
         setScrollActive(false);
         lastDxRef.current = 0;
@@ -189,6 +346,7 @@ function InputCell({
         fadeOut();
       },
       onPanResponderTerminate: () => {
+        if (scrubRef.current) { finishScrub(); return; }
         isSwiping.current = false;
         setScrollActive(false);
         lastDxRef.current = 0;
@@ -239,7 +397,14 @@ function InputCell({
   const isCurrent = showHint;
 
   return (
-    <View style={styles.inputCell} {...panResponder.panHandlers}>
+    <View
+      style={styles.inputCell}
+      onLayout={(e) => {
+        const { x, width } = e.nativeEvent.layout;
+        cellRect.current = { x, width };
+      }}
+      {...panResponder.panHandlers}
+    >
       <Pressable
         onPress={openEditor}
         style={[
@@ -249,11 +414,19 @@ function InputCell({
         ]}
       >
         {renderStr ? (
-          <View style={styles.numRow}>
-            <View style={styles.decPart} />
-            <Text style={[styles.valueText, isDone && styles.valueTextDone, ghostStyle]}>{intStr}</Text>
-            <Text style={[styles.valueText, styles.decPart, isDone && styles.valueTextDone, ghostStyle]} numberOfLines={1}>{decStr}</Text>
-          </View>
+          scrubField ? (
+            // Modo regla: la cifra entera, decimal incluido, centrada (la casilla no
+            // cambia mientras arrastras, así que no hace falta el pivote del entero).
+            <Text style={[styles.valueText, isDone && styles.valueTextDone, ghostStyle]} numberOfLines={1}>
+              {renderStr}
+            </Text>
+          ) : (
+            <View style={styles.numRow}>
+              <View style={styles.decPart} />
+              <Text style={[styles.valueText, isDone && styles.valueTextDone, ghostStyle]}>{intStr}</Text>
+              <Text style={[styles.valueText, styles.decPart, isDone && styles.valueTextDone, ghostStyle]} numberOfLines={1}>{decStr}</Text>
+            </View>
+          )
         ) : (
           <Text style={styles.placeholder}>–</Text>
         )}
@@ -304,8 +477,47 @@ export default function SetRow({
 }) {
   const styles = useThemedStyles(makeStyles);
   const numLabel = label ?? `S${index + 1}`;
+
+  // ── Regla al deslizar (U10-01) ──
+  // El estado del gesto vive aquí: la capa cubre TODA la fila, no solo la casilla
+  // que se arrastra. `InputCell` avisa; SetRow pinta `ScrubRuler`.
+  const ruler = useStore((s) => s.profile?.scrubRuler ?? true);
+  const { unit } = useWeightUnit();
+  const [rowWidth, setRowWidth] = useState(0);
+  const rowRef = useRef(null);
+  const measureRow = useCallback((cb) => rowRef.current?.measure(cb), []);
+  // { id, field, ruler, value, cell, closing, initial, hasValue, prevValue, prevSource, edge, cancel }
+  const [scrub, setScrub] = useState(null);
+  const scrubId    = useRef(0);
+  const closeTimer = useRef(null);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+  const onScrubStart = useCallback((info) => {
+    clearTimeout(closeTimer.current);
+    scrubId.current += 1;
+    setScrub({ id: scrubId.current, ...info, edge: 0, cancel: false, closing: false });
+  }, []);
+  // `patch` trae solo lo que cambia: { value, ruler, edge, cancel }.
+  const onScrubMove = useCallback((patch) => {
+    setScrub((sc) => (sc && !sc.closing ? { ...sc, ...patch } : sc));
+  }, []);
+  const onScrubEnd = useCallback(() => {
+    setScrub((sc) => (sc ? { ...sc, closing: true } : sc));
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setScrub(null), SCRUB_MS + 30);
+  }, []);
+  // Solo peso, reps y RPE; el tiempo (scrollStep 5) conserva su gesto.
+  const scrubProps = (field) => (ruler ? {
+    scrubField: field, scrubUnit: unit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd,
+  } : null);
+
   return (
-    <View style={styles.row}>
+    <View
+      ref={rowRef}
+      collapsable={false}
+      style={[styles.row, scrub && styles.rowScrubbing]}
+      onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}
+    >
       {onCopyPrev ? (
         <TouchableOpacity onPress={onCopyPrev} hitSlop={8}>
           <Text style={[styles.setNum, set.done && styles.setNumDone, isActive && styles.setNumActive]}>{numLabel}</Text>
@@ -326,6 +538,7 @@ export default function SetRow({
             scrollStep={weightScrollStep ?? 0.5}
             showHint={showHint}
             isDone={set.done}
+            {...scrubProps('weight')}
           />
           <InputCell
             value={set.reps ?? ''}
@@ -336,6 +549,7 @@ export default function SetRow({
             scrollStep={1}
             showHint={showHint}
             isDone={set.done}
+            {...scrubProps('reps')}
           />
         </>
       )}
@@ -351,6 +565,7 @@ export default function SetRow({
           scrollStep={1}
           showHint={showHint}
           isDone={set.done}
+          {...scrubProps('reps')}
         />
       )}
 
@@ -383,6 +598,7 @@ export default function SetRow({
             scrollStep={weightScrollStep ?? 0.5}
             showHint={showHint}
             isDone={set.done}
+            {...scrubProps('weight')}
           />
           <InputCell
             value={set.time ?? ''}
@@ -407,6 +623,7 @@ export default function SetRow({
           onChangeText={onRpeChange}
           keyboardType="decimal-pad"
           isDone={set.done}
+          {...scrubProps('rpe')}
         />
       )}
 
@@ -425,6 +642,24 @@ export default function SetRow({
           set.done && styles.doneMarkActive,
         ]}>✓</Text>
       </TouchableOpacity>
+
+      {scrub && rowWidth > 0 ? (
+        <ScrubRuler
+          key={scrub.id}
+          field={scrub.field}
+          ruler={scrub.ruler}
+          value={scrub.value}
+          cell={scrub.cell}
+          rowWidth={rowWidth}
+          closing={scrub.closing}
+          initial={scrub.initial}
+          hasValue={scrub.hasValue}
+          prevValue={scrub.prevValue}
+          prevSource={scrub.prevSource}
+          edge={scrub.edge}
+          cancel={scrub.cancel}
+        />
+      ) : null}
     </View>
   );
 }
@@ -437,6 +672,9 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'center',
     gap:           GRID.GAP,
   },
+  // Mientras se arrastra una regla, la fila sube sobre las filas vecinas (la
+  // burbuja asoma por encima de la suya).
+  rowScrubbing: { zIndex: 20 },
   // Label "S1" (§4.5) — 12/800, muted, tabular. Fila completada → lime.
   setNum: {
     ...textStyles.labelStrong,

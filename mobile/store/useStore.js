@@ -236,6 +236,7 @@ const INITIAL_PROFILE = {
   // que solo existe bajo __DEV__.
   isPro: false,
   proTabsHidden: false,
+  scrubRuler: true,       // U10-01: la casilla se despliega en una regla al arrastrar
   language: 'es',
   weightUnit: 'kg',
 };

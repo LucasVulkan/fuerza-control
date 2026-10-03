@@ -2,7 +2,8 @@
 
 > Tema: ui
 > En corto: Lo que hace que la app se sienta de gimnasio y no un formulario: casillas que se despliegan en una regla al arrastrarlas, un metrónomo para el tempo, un descanso que avisa al final, la rampa del calentamiento, la tarjeta de hoy que se convierte en la cabecera del entreno y la ola de etapas del planificador.
-> Fase U10-01 · pendiente · Casillas que se despliegan en una regla (KG, reps, RPE) · §2 · antes U43
+> Inicio: 2026-10-03
+> Fase U10-01 · hecho · Casillas que se despliegan en una regla (KG, reps, RPE) · §2 · antes U43
 > Fase U10-02 · pendiente · Metrónomo de tempo · §3 · antes U44
 > Fase U10-03 · pendiente · Los últimos segundos del descanso vibran y laten · §4 · antes U45
 > Fase U10-04 · pendiente · Rampa del calentamiento en el Workout · §5 · antes U46
@@ -11,6 +12,8 @@
 > Fase U10-07 · pendiente · Ola de etapas en el planificador · §8 · antes U49
 > Fase U10-08 · pendiente · La ola como vista previa al añadir etapas · §9 · antes U50
 > Fase U10-09 · pendiente · Plan frente a real en Carga · §10 · antes U51
+> Fase U10-10 · hecho · La regla, más precisa: vibración por enteros, partida y objetivo, ±, bordes que desplazan, cancelar · §2.6
+> Fase U10-11 · pendiente · La regla se para en el incremento mínimo del ejercicio (preferencia) · §2.7
 >
 > Estado: **spec cerrada el 30-sep-2026, SIN implementar**. D1 y D2 cerradas
 > el mismo día; queda abierta D3 (la tira de tramos del metrónomo, §1.4), que
@@ -61,13 +64,13 @@ cabecera del Workout.
 - **Paso del peso:** sigue siendo el de hoy, 0,5 kg o 1 lb
   (`useWeightUnit().scrollStep`).
 - **Rango del peso:** unos ±20 kg alrededor del peso de partida, con una regla
-  fija que no se amplía (§1.4, D1). El espaciado se afina después, en el móvil.
+  fija que no se amplía (§1.4, D1). Revisado el 3-oct: 16 kg a lo ancho (§2.3). El espaciado se afina después, en el móvil.
 - **Rango de reps:** estrecho y de enteros («te sueles mover entre 5 y 15»),
   para que se vean todos los valores y se atine sin esfuerzo.
 - **RPE:** igual que las reps, enteros y todos a la vista.
-- **Cifras:** ruedan en vertical una sola vez, al soltar. Mientras arrastras
-  manda la burbuja. Así se evita el «borrón» de cifras que se amontonaban al ir
-  rápido.
+- **Cifras:** mientras arrastras manda la burbuja; la casilla no cambia hasta
+  soltar. Así se evita el «borrón» de cifras que se amontonaban al ir rápido.
+  (El rodar de la cifra al soltar se quitó el 3-oct: «no hace falta».)
 - **Tempo:** barra cargada con discos repetidos (no una pirámide de un disco de
   cada) y con el extremo de la barra visible. **Lo que sube y baja es la
   pesa**, sin fondo que se mueva, sobre una **línea de suelo**. Más adelante
@@ -146,6 +149,13 @@ Solo el **peso, las reps y el RPE**. El tiempo mantiene el gesto de hoy (ver
 §2.5). El mismo `SetRow` sirve las filas de dropset (`D1`…), que heredan el
 cambio sin tocar nada.
 
+0. **Es una preferencia (3-oct, decisión del usuario).** El gesto de hoy no se
+   borra: en Ajustes › Preferencias, una fila «Regla al deslizar» con un
+   `Switch` (como «Pestañas PRO») guarda `profile.scrubRuler`. Por defecto
+   **activada** (`?? true`). Apagada, `InputCell` hace exactamente lo de hoy
+   (cifra que cambia en la casilla, pivote en el entero, chevrones, sin regla).
+   Todo lo que sigue es el modo encendido.
+
 1. **Se activa igual que hoy**: mismo umbral y misma condición horizontal.
    Añadir `onPanResponderTerminationRequest: () => false` para que el
    `ScrollView` no robe el gesto a media regla.
@@ -159,14 +169,27 @@ cambio sin tocar nada.
    - Borde fino en `th.colors.accent` y radio `GRID.RADIUS`.
    - Tapa REPS y RPE mientras dura el gesto, que es justo lo que se quiere:
      solo se edita un valor.
-3. **Dentro de la capa, una regla fija:**
-   - marcas en `th.colors.muted`, las grandes en `mutedLight`, con números;
-   - una **marca lima vertical** que empieza sobre el valor de partida y se
-     mueve con el dedo **en relativo**: `x = x(valorInicial) + dx`, recortada
-     a los extremos de la regla. El valor es el paso más cercano a esa x.
+3. **Dentro de la capa, una regla:**
+   - rayas largas y cortas en `mutedLight` (la longitud ya las distingue) y
+     puntos en `muted`, con números;
+   - una **marca lima vertical que está siempre bajo el dedo** (3-oct, el
+     usuario: «la marca tiene que salir donde tienes el dedo»). La x de la
+     marca es la del dedo en la fila, recortada a los extremos de la regla, y
+     se ajusta al paso más cercano. El valor es el de la regla en esa x;
+   - un número de la regla se ilumina **solo cuando el valor es exactamente
+     ese número**. Iluminar el más cercano confundía: en 57,5 se encendía el
+     60 y parecía que ya estabas ahí.
 4. **Burbuja** por encima de la fila:
    - fondo `accent`, texto `onAccent`, `textStyles` de título;
-   - lleva el valor con su unidad («102,5 kg», «8 reps», «RPE 8»);
+   - lleva el valor con su unidad («102.5 kg», «8 reps», «RPE 8»), con el
+     mismo separador decimal que la casilla;
+   - **ancho fijo**, el que pide el caso más largo (tres cifras, decimal y
+     unidad: «999.5 kg»/«999 lb»), para que no cambie de tamaño al pasar de
+     99,5 a 100 ni al aparecer el decimal;
+   - **las cifras pivotan en las unidades**: la cifra de las unidades queda
+     siempre en el mismo sitio de la burbuja; las decenas y centenas crecen
+     hacia la izquierda y el decimal y la unidad cuelgan a la derecha. Así el
+     número se lee al pasar y no salta;
    - centrada sobre la marca y recortada para no salirse de la tarjeta;
    - hace falta porque el dedo tapa la marca.
    - Ojo: la tarjeta tiene `overflow: 'hidden'`. Encima de S1 están las
@@ -175,23 +198,69 @@ cambio sin tocar nada.
 5. **Cada cambio de valor** → `Haptics.selectionAsync()`.
 6. **Al soltar:**
    - se guarda el valor (el `onChangeText` de siempre);
-   - la capa vuelve al tamaño de la casilla en 180 ms y desaparece;
-   - la cifra de la casilla **rueda una vez**, hacia arriba si subió y hacia
-     abajo si bajó, en unos 220 ms (contenedor de 22 px con `overflow: hidden`,
-     y `entering`/`exiting` con desplazamiento vertical según el signo);
-   - solo rueda cuando el cambio viene de la regla: ni al teclear, ni al
-     rellenar con ✓, ni al montar.
+   - la capa vuelve al tamaño de la casilla en 180 ms y **a la vez se
+     desvanece**: el número nuevo de la casilla se ve desde que la regla
+     empieza a encoger, no cuando ha terminado (3-oct);
+   - la cifra de la casilla cambia sin animación. El rodar de la cifra se
+     quitó el 3-oct («no hace falta que la cifra ruede»).
+7. **La cifra de la casilla, centrada entera** (decimal incluido). Hoy se
+   centra solo la parte entera y el decimal cuelga en una caja de 36 px, porque
+   la cifra cambia en la casilla mientras arrastras. Con la regla la casilla
+   no cambia durante el gesto (manda la burbuja), así que se centra el texto
+   completo. Solo en el modo regla; el modo de hoy conserva su pivote.
 
 ### 2.3 Rangos
 
-| Campo | Regla | Paso | Números |
-|---|---|---|---|
-| Peso | Fija, ±20 kg (±40 lb) alrededor del valor de partida, sin ampliar (D1). Suelo 0 | `scrollStep` (0,5 kg / 1 lb) | Cada 5 kg (10 lb); marca grande cada 5 y pequeña cada 2,5 |
-| Reps | 13 enteros centrados en el valor de partida (`v−6 … v+6`). Si el valor es bajo, la ventana se desplaza para empezar en 0 | 1 | Todos |
-| RPE | 1 a 10, fija | 1 | Todos |
+Dos clases de regla (revisado el 3-oct):
+
+- **Anclada al dedo (peso y reps).** La escala es fija (pasos a lo ancho de
+  la regla) y el valor de partida queda **justo bajo el dedo** al activarse:
+  el gesto empieza sin cambiar el valor y la marca sale donde está el dedo. Lo
+  que cabe a cada lado depende de dónde esté el dedo en la fila.
+  **El 0 nunca queda dentro de la fila** (3-oct, el usuario): si anclar el
+  valor bajo el dedo dejaría el 0 a la derecha del borde izquierdo de la regla
+  (valor bajo o 0, hueco vacío a la izquierda), la regla se pone con el **0 en
+  el extremo izquierdo** y pasa a ser absoluta, como la del RPE: el valor es
+  el de bajo el dedo y salta a él al activarse (con 0 kg y el dedo en la
+  casilla KG, a unos 5-6 kg). Con un valor bajo ese salto no molesta.
+- **Fija y absoluta (RPE).** 1 a 10 a lo ancho de toda la regla. El valor es
+  el número bajo el dedo, también al activarse: se llega a cualquier RPE de un
+  solo gesto, esté vacío o no.
+
+| Campo | Regla | Pasos a lo ancho | Paso | Marcas |
+|---|---|---|---|---|
+| Peso | Anclada al dedo. 0 a la izquierda | 32 (16 kg), con dos y con tres cifras / 55 (55 lb); 36 (36 lb) si la regla llega a 100 | `scrollStep` (0,5 kg / 1 lb) | Grande cada 2 kg, mediana cada 1 kg y un punto en los 0,5 (`| . : . |`); lb: grande cada 5, mediana cada 1 |
+| Reps | Anclada al dedo. 0 a la izquierda | 12 (13 enteros) | 1 | Todas grandes |
+| RPE | Fija, 1 a 10 | 9 | 1 | Todas grandes |
+
+**Números:** van sobre las marcas grandes, pero solo los que caben: se usa el
+menor múltiplo del intervalo de las marcas grandes cuya separación en pantalla
+llega a un mínimo de píxeles (constante). Con 50 pasos en unos 300 dp, cada 2
+kg son ~22-24 dp. Todos los números van en `labelStrong` y a la misma altura,
+y en el peso **alternan blanco y gris** (3-oct, el usuario): 20 blanco, 22
+gris, 24 blanco… Blancos los múltiplos de 4 kg (de 10 lb). Así se leen cada 2
+kg sin amontonarse. El número que es exactamente el valor va en lima.
+(Probado y descartado: alternar grande arriba y pequeño abajo, «queda feo».
+Aparcado: un efecto lupa bajo el dedo; el dedo tapa justo esa zona.)
+
+**Tres cifras:** si la regla llega a 100, la escala del peso pasa a 16 kg (36
+lb) a lo ancho: menos números y más separados, para que «100», «102»… quepan.
+A esos pesos no se ajusta de 20 en 20. Marcas y números van en múltiplos absolutos (84, 86, 88…), no
+relativos al valor.
 
 El valor de partida es el escrito o, si la casilla está vacía, el valor
-fantasma (`prevValue`). Es lo mismo que ya usa `localValueRef` hoy.
+fantasma (`prevValue`). Es lo mismo que ya usa `localValueRef` hoy. En reps se
+redondea al entero. Los valores van por la **rejilla absoluta** de `step`
+(3-oct): con 55,9 en la casilla la regla va por 55,5 · 56 · 56,5, no por 55,4 ·
+56,4. El valor de partida, aunque esté fuera de la rejilla, se mantiene
+mientras el dedo no se aleje medio paso: sin moverlo, no cambia.
+
+Cambio sobre D1 (3-oct): la regla del peso ya no es de ±20 kg. Son 16 kg a lo
+ancho de la fila, igual con dos que con tres cifras: es una herramienta de
+**ajuste fino**, con un dedo, mientras entrenas (el usuario: «tiene que ser
+preciso»; quedarse corto solo pesa la primera vez). Con el dedo en la casilla
+KG, a la izquierda de la fila, hay menos regla hacia abajo (unos 3 kg) que
+hacia arriba (unos 13).
 
 ### 2.4 Dónde va el código
 
@@ -199,14 +268,16 @@ fantasma (`prevValue`). Es lo mismo que ya usa `localValueRef` hoy.
   - el estado del gesto (`{ field, start, value }`) sube de `InputCell` a
     `SetRow` con tres avisos (`onScrubStart`, `onScrubMove`, `onScrubEnd`);
   - `SetRow` pinta la capa;
-  - `InputCell` conserva la apertura del teclado y el rodar de la cifra.
+  - `InputCell` conserva la apertura del teclado.
 - Componente nuevo `components/workout/ScrubRuler.jsx`: la capa, la regla y la
   burbuja.
-- Función pura nueva en `utils/scrubScale.js`:
-  `scrubWindow(field, start, { unit })` → `{ min, max, step, labelEvery }`.
-  Los rangos de §2.3 son constantes al principio del fichero: es el mando para
-  afinar el espaciado en el móvil (D1). Con su test: bordes, suelo 0,
-  desplazamiento de la ventana de reps y libras.
+- Funciones puras nuevas en `utils/scrubScale.js`: la regla de un campo a
+  partir del valor de partida, la x del dedo en la fila y el ancho de la fila
+  (`min`, `max`, `step`, px por paso, origen, marcas y cada cuánto van los
+  números), la x de un valor y el valor en una x. Los rangos de §2.3 son
+  constantes al principio del fichero: es el mando para afinar el espaciado
+  en el móvil (D1). Con su test: anclaje bajo el dedo, suelo 0, recorte a los
+  extremos, RPE absoluto, libras y el aclarado de números.
 
 ### 2.5 Fuera de alcance
 
@@ -218,23 +289,151 @@ fantasma (`prevValue`). Es lo mismo que ya usa `localValueRef` hoy.
 **Probar U10-01**
 
 - [ ] Arrastrar a la derecha la casilla KG de la serie activa: la capa crece
-  desde la casilla hasta cubrir la fila, la marca empieza sobre el peso actual
-  y sigue al dedo; derecha es más.
+  desde la casilla hasta cubrir la fila, la marca sale bajo el dedo con el
+  peso actual (sin cambiarlo) y sigue al dedo; derecha es más.
 - [ ] Cada paso vibra suave. La burbuja enseña el valor con su unidad y no se
   sale de la tarjeta en S1, ni con calentamiento ni sin él.
-- [ ] Al soltar, la capa vuelve a la casilla y la cifra rueda una vez: hacia
-  arriba si subió y hacia abajo si bajó.
-- [ ] Peso: la regla cubre ±20 kg y va de 0,5 en 0,5. Apuntar si cuesta atinar,
-  para afinar las constantes de `scrubWindow` (D1).
-- [ ] Reps: se ven 13 enteros y se atina sin esfuerzo. Con reps 3, la regla
-  empieza en 0.
-- [ ] RPE: la regla va de 1 a 10.
+- [ ] Al soltar, la capa vuelve a la casilla y la cifra cambia sin rodar.
+- [ ] Peso: 16 kg a lo ancho, también con tres cifras, marcas
+  grandes cada 2 kg, medianas cada 1 kg y un punto en cada 0,5, de 0,5 en 0,5. Los números, iguales
+  y a la misma altura, alternan blanco y gris y no se pisan, tampoco con tres
+  cifras.
+  Apuntar si cuesta atinar o si los números se amontonan, para afinar las
+  constantes de `scrubScale.js` (D1).
+- [ ] Con 55,9 en la casilla, al deslizar el valor pasa por 55,5 · 56 · 56,5
+  (no por 55,4 · 56,4); soltar sin mover el dedo deja 55,9.
+- [ ] Reps: la marca sale bajo el dedo con las reps actuales y se atina sin
+  esfuerzo.
+- [ ] Con 0 kg (o reps muy bajas) el 0 queda en el extremo izquierdo de la
+  regla, sin hueco vacío, y el valor salta al de bajo el dedo al empezar.
+- [ ] Al soltar, el número nuevo se ve en la casilla en cuanto la regla empieza
+  a encoger.
+- [ ] RPE: la regla va de 1 a 10 a lo ancho de la fila. Al empezar, la marca
+  sale bajo el dedo (también con el RPE vacío) y se llega a cualquier número
+  de un solo gesto.
+- [ ] En 57,5 no se ilumina el 60: un número se pone en lima solo cuando el
+  valor es exactamente ese.
 - [ ] Mientras arrastras, la lista no hace scroll aunque el dedo se desvíe en
   vertical.
-- [ ] Tocar sin arrastrar sigue abriendo el teclado. Teclear un valor no hace
-  rodar la cifra.
+- [ ] Tocar sin arrastrar sigue abriendo el teclado.
 - [ ] Las filas de dropset (D1…) se comportan igual.
 - [ ] En libras: pasos de 1 lb y rango en lb.
+- [ ] La burbuja no cambia de ancho al pasar de 99.5 a 100 ni al aparecer el
+  decimal, y la cifra de las unidades no se mueve dentro de ella.
+- [ ] Con la regla, la cifra de la casilla se ve centrada entera, decimal
+  incluido.
+- [ ] Ajustes › Preferencias › «Regla al deslizar» apagado: el gesto vuelve a
+  ser el de antes (la cifra cambia en la casilla, pivote en el entero, sin
+  regla ni burbuja). Encendido otra vez: regla.
+
+### 2.6 U10-10 — La regla, más precisa
+
+Salió de probar U10-01 (3-oct). La regla es una herramienta de **ajuste fino,
+con un dedo, mientras entrenas**: estas cinco piezas la hacen más precisa y
+más fácil de usar sin mirar. El usuario las aprobó todas.
+
+1. **Vibración por escalones.** Cada paso sigue vibrando, pero con dos
+   fuerzas:
+   - paso «fino» → `Haptics.selectionAsync()` (el de hoy);
+   - paso «redondo» → `Haptics.impactAsync(ImpactFeedbackStyle.Light)`, un
+     poco más fuerte.
+   **Solo vibra si vas despacio** (3-oct): con el dedo a más de
+   `SCRUB_HAPTIC_MAX_VX` (0,15 px/ms, de `gs.vx`) los pasos no vibran; al
+   recorrer la regla deprisa sobra, al afinar es cuando ayuda. El avance por
+   los bordes (punto 4) vibra siempre: el dedo está quieto. Más adelante el
+   usuario podrá desactivar la vibración en Preferencias (3-oct, sin fase).
+   Redondo = múltiplo de `strongEvery`: **1 kg** (los medios kilos son finos),
+   **5 lb**. En reps y RPE cada paso ya es una unidad: todos finos. Es una
+   constante más de `scrubScale.js`. (Excepción consciente a §1.1, donde
+   `Light` era «cambio de fase»: aquí el usuario quiere contar kilos sin
+   mirar.)
+
+2. **Rayas de partida y de objetivo**: cortas, a la altura de la raya pequeña
+   (y 33-40), de color pleno y más anchas que una raya normal (3 dp), para
+   que siempre se vean; la marca, alta y encima, sigue siendo «dónde estás».
+   Antes fueron pastillas en la franja baja («un poco invisibles») y luego
+   líneas finas a toda la altura («no me termina de gustar») (3-oct):
+   - **partida**: el valor de la casilla al empezar el gesto, en lima
+     (`th.colors.accent`). Sirve para volver a él si te pasas;
+   - **objetivo**: el valor fantasma de la casilla (`prevValue`), que es lo
+     que la progresión, el plan o el entrenador piden hoy. En azul
+     (`th.colors.blue`) si viene del entrenador (`prevSource === 'coach'`), en
+     blanco (`th.colors.text`) si no. Solo se pinta si es distinto de la partida
+     (con la casilla vacía, partida y objetivo son el mismo valor: una sola
+     marca, la de objetivo);
+   - si una de las dos cae fuera de la regla, se pinta pegada al borde por el
+     que queda, a media opacidad: indica hacia dónde está.
+
+3. **El cambio en la burbuja.** Debajo del valor, en una segunda línea
+   pequeña (`labelStrong`, `onAccent` sin apagar: en `micro` apagado apenas se
+   leía sobre lima), la diferencia con la partida:
+   «+2.5», «−1», en la unidad del campo. Con diferencia 0 la línea queda
+   vacía pero **reserva su sitio**: la burbuja no cambia de alto. La
+   diferencia también pivota en las unidades, como el valor (§2.2 punto 4).
+   El usuario: la progresión ya habla así («sube a 57 (+2.5)»).
+
+4. **Bordes que desplazan la regla.** Hoy la regla solo llega a lo que cabe
+   en la fila (con 16 kg y el dedo en KG, unos 3 kg hacia abajo).
+   - **Indicador**: al acercar el dedo a un borde de la regla aparece, en ese
+     borde y dentro de la capa, un indicador lima (un chevrón hacia fuera o
+     un degradado estrecho) que **va cobrando intensidad** según te acercas:
+     opacidad de 0 a 1 entre 56 y 24 dp del borde de la fila.
+   - **Desplazamiento**: a menos de 24 dp del borde, la regla avanza sola
+     hacia ese lado mientras el dedo sigue ahí, aunque no se mueva. Avanza
+     un paso cada cierto tiempo, más deprisa cuanto más cerca del borde
+     (de ~180 ms por paso al entrar a ~60 ms pegado al borde). Cada paso
+     cambia el valor bajo el dedo y vibra como cualquier otro (punto 1).
+   - Desplazar es mover los valores bajo la marca: `min`, `max` y
+     `originValue` suben o bajan un paso; `originX` no cambia. El 0 sigue
+     siendo el suelo: hacia abajo se para cuando `min` llega a 0.
+   - Solo en las reglas que no lo enseñan todo: peso y reps. El RPE (1-10
+     siempre a la vista) no se desplaza ni tiene indicador.
+   - Constantes (zonas y velocidades) arriba de `scrubScale.js`.
+
+5. **Cancelar.** Si con el gesto en marcha el dedo sube más de 48 dp por
+   encima de donde empezó (`gs.dy < −48`), se entra en modo cancelar:
+   - la marca vuelve a la partida y la regla se apaga (opacidad ~0,4);
+   - la burbuja enseña el valor de partida y, en la línea del cambio,
+     «Cancelar» (i18n: `workout.scrubCancel`, es «Cancelar» / en «Cancel»);
+   - una vibración `Light` al entrar;
+   - soltar ahí no guarda nada; volver a bajar el dedo retoma el gesto
+     normal, con el valor bajo el dedo.
+
+**Probar U10-10**
+
+- [ ] Peso: cada medio kilo vibra suave y cada kilo entero algo más fuerte.
+  En libras, más fuerte cada 5 lb. Reps y RPE, todos suaves. Moviendo el dedo
+  deprisa no vibra; al ir despacio, sí.
+- [ ] Con un objetivo en gris (casilla vacía, plan o última vez), la regla
+  enseña una raya corta y ancha blanca en él; con objetivo del entrenador,
+  azul. Con un valor escrito distinto del objetivo se ve también la de
+  partida, en lima. Siempre se ven y se distinguen bien de la marca.
+- [ ] Si el objetivo cae fuera de la regla, su marca sale pegada al borde de
+  ese lado, más tenue.
+- [ ] La burbuja enseña debajo «+2.5» / «−1» respecto a la partida, y no
+  cambia de alto con diferencia 0.
+- [ ] Al acercar el dedo a un borde aparece el indicador y se va
+  intensificando; pegado al borde, la regla avanza sola, más deprisa cuanto
+  más cerca. Hacia abajo se para en 0. El RPE no se desplaza.
+- [ ] Subir el dedo por encima de la fila: la regla se apaga y la burbuja
+  dice «Cancelar»; soltar ahí deja el valor como estaba. Volver a bajar el
+  dedo retoma el ajuste.
+
+### 2.7 U10-11 — La regla se para en el incremento mínimo del ejercicio
+
+**Más adelante** (3-oct, el usuario: «quizás esto se puede dejar para más
+adelante»). Con barra se sube de 2,5 en 2,5, con mancuernas de 2 en 2. La
+progresión y los ejercicios ya traen un **incremento mínimo** (ver
+`increment` en `utils/progression.js`). La regla podría pararse solo en esos
+pesos: menos posiciones, más fácil acertar.
+
+- Lo decide el usuario: preferencia «Regla por incremento del ejercicio» (o
+  similar), apagada por defecto; apagada, la regla va de 0,5 kg / 1 lb como
+  en U10-01.
+- Por pensar al especificar: qué incremento manda si el ejercicio y la
+  progresión no coinciden, qué pasa con un valor fuera de esa rejilla (el
+  mismo trato que §2.3: se mantiene hasta mover el dedo), y la escala (con
+  pasos de 2,5 kg cabe más rango en la fila).
 
 ---
 
@@ -673,7 +872,7 @@ reutiliza el mismo panel.
 
 | Fase | Qué | Coste | Depende de | Estado |
 |---|---|---|---|---|
-| U10-01 | Casillas que se despliegan en una regla (§2) | 🟡 | — | pendiente |
+| U10-01 | Casillas que se despliegan en una regla (§2) | 🟡 | — | hecho |
 | U10-02 | Metrónomo de tempo (§3) | 🟡 | D3 | pendiente |
 | U10-03 | Final del descanso (§4) | 🟢 | — | pendiente |
 | U10-04 | Rampa del calentamiento en el Workout (§5) | 🟢 | — | pendiente |
@@ -682,3 +881,5 @@ reutiliza el mismo panel.
 | U10-07 | Ola de etapas en el planificador (§8) | 🟡 | cerrar la intensidad (§8.2) | pendiente |
 | U10-08 | Ola como vista previa al añadir etapas (§9) | 🟢 | U10-07 | pendiente |
 | U10-09 | Plan frente a real en Carga (§10) | 🟡 | sincronía de los resúmenes (§10) | pendiente, sin prioridad |
+| U10-10 | La regla, más precisa (§2.6) | 🟡 | U10-01 | hecho |
+| U10-11 | Paso del ejercicio en la regla (§2.7) | 🟡 | U10-01 | pendiente, más adelante |

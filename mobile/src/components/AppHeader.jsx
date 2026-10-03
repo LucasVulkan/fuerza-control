@@ -360,6 +360,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   const unit          = profile.weightUnit    ?? 'kg';
   const isPro         = profile.isPro         ?? false;
   const proTabsHidden = profile.proTabsHidden ?? false;
+  const scrubRuler    = profile.scrubRuler    ?? true;
 
   function go(route) { onClose(); navigation.navigate(route); }
 
@@ -502,6 +503,13 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
             onPress={() => setProfile({ proTabsHidden: !proTabsHidden })}
           />
         )}
+        <MenuRow
+          label={t('header.scrubRulerLabel')}
+          sub={t('header.scrubRulerHint')}
+          minHeight={62}
+          control={<Switch value={scrubRuler} />}
+          onPress={() => setProfile({ scrubRuler: !scrubRuler })}
+        />
       </Section>
 
       <Section title={t('header.sectionAccount')}>
