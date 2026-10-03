@@ -11,7 +11,7 @@
 > Fase P61 · hecho · Tiempo con carga (Tiempo + Peso, doble en segundos) · §8
 > Fase P62 · hecho · Peso corporal: sellado en la sesión y fila en el menú · §9
 > Fase P63 · aparcado · Peso corporal en el motor (Por esfuerzo, 1RM y récords) · §10
-> Fase P65 · pendiente · Alta de ejercicio propio con la misma hoja de Progresión que el editor · §12
+> Fase P65 · hecho · Alta de ejercicio propio con la misma hoja de Progresión que el editor · §12
 >
 > Estado: **P61 hecha y probada** (2-oct-2026, `d77ffd3`). **P62 hecha y probada** (2-oct-2026, `6fd801d`). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
@@ -998,7 +998,7 @@ peso → `why_effortNoBodyweight`), `progressionForm.test.js`,
 | P61 | `d77ffd3` | motor (`isTimed`, `chipDouble`/`chipDoubleDecrease` en segundos, `progressionRule`), `planSet` al tiempo mínimo y hoja con Tiempo · Peso · Nada |
 | P62 | `6fd801d` | sellado del peso en `saveSession` (sesión libre incluida) y fila «Peso corporal» en el menú (`parseBodyWeight`) |
 | P63 | — | aparcada (2-oct): peso corporal en el motor |
-| P65 | — | |
+| P65 | `2c2dc25` | `ProgressionSheet.jsx` extraída del editor y usada también en el alta; `def.progression` (`resolveProgressionConfig`, `isTimed` y `computeInitial` leen `def.inputType`); `trackRpe` al añadir |
 
 ## 12. P65 — Alta de ejercicio propio con la misma hoja de Progresión
 
