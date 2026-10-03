@@ -635,6 +635,13 @@ describe('P55 — progressionRule (§5.2)', () => {
     expect(progressionRule(pct, BB, tk, 'lb')).toContain('"inc":"5 %"');
     expect(progressionRule(bench, BB, tk, 'lb')).toContain('"inc":"2.5 lb"');
   });
+  it('short (QA P64): una línea, sin el «cuándo» ni la cola de bajar', () => {
+    const s = { short: true };
+    expect(progressionRule(bench, BB, tk, 'kg', s)).toBe(
+      'progression.rule.weightShort{"inc":"2.5 kg","goal":"progression.rule.incReps{\\"count\\":12}"}');
+    expect(progressionRule({ sets: 3 }, LIB.pull_up_assisted, tk, 'kg', s)).toMatch(/^progression\.rule\.assistShort/);
+    expect(progressionRule({ ...bench, progression: { type: 'none' } }, BB, tk, 'kg', s)).toBe('');
+  });
   it('Asistido: «quita» y «más ayuda»', () => {
     expect(progressionRule({ sets: 3 }, LIB.pull_up_assisted, tk)).toMatch(/^progression\.rule\.assistUp.*assistDown/);
   });

@@ -557,11 +557,15 @@ export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastD
  * @param {object} def       Library / custom exercise definition
  * @param {function} t       i18next translate function
  * @param {string} [unit]
+ * @param {object} [opts]
+ * @param {boolean} [opts.short]  versión de una línea para la ficha del editor
+ *   (QA P64): solo cuánto sube y hacia dónde; el «cuándo» y el «baja si…» se
+ *   quedan en la frase larga del Resumen.
  * @returns {string}
  */
-export function progressionRule(exConfig, def, t, unit = 'kg') {
+export function progressionRule(exConfig, def, t, unit = 'kg', { short = false } = {}) {
   const prog = resolveProgressionConfig(exConfig, def);
-  if (prog.type === 'none') return t('progression.rule.none');
+  if (prog.type === 'none') return short ? '' : t('progression.rule.none');
 
   const minReps = exConfig?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps;
   const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps;
@@ -570,6 +574,7 @@ export function progressionRule(exConfig, def, t, unit = 'kg') {
   const n       = exConfig?.sets ?? def?.sets ?? 3;
 
   if (prog.type === 'effort') {
+    if (short) return t('progression.rule.effortShort', { reps: minReps, rpe: prog.targetRpe });
     return t(prog.effortWhen === 'reach' && !prog.exact ? 'progression.rule.effortReach' : 'progression.rule.effortBeat',
       { reps: minReps, rpe: prog.targetRpe });
   }
@@ -586,6 +591,7 @@ export function progressionRule(exConfig, def, t, unit = 'kg') {
     const timed = prog.type === 'time';
     const text  = inc.type === 'pct' ? `${inc.pct} %`
       : timed ? `${inc.value} s` : t('progression.rule.incReps', { count: inc.value });
+    if (short) return t('progression.rule.weakestShort', { inc: text });
     return t(timed ? 'progression.rule.timeUp' : 'progression.rule.repsUp',
       { inc: text, when, floor: timed ? minTime : minReps });
   }
@@ -596,6 +602,12 @@ export function progressionRule(exConfig, def, t, unit = 'kg') {
   const goal = timed ? `${legacy ? minTime : maxTime} s` : legacy ? minReps : maxReps;
   const text = inc.type === 'pct' ? `${inc.pct} %` : `${inc.value} ${unit}`;
   const assist = prog.direction === 'decrease';
+  if (short) {
+    return t(assist ? 'progression.rule.assistShort' : 'progression.rule.weightShort', {
+      inc: text,
+      goal: timed ? goal : t('progression.rule.incReps', { count: goal }),
+    });
+  }
   const head = t(assist ? 'progression.rule.assistUp' : 'progression.rule.weightUp', { inc: text, when, goal });
   if (prog.down === 'never') return head;
   const fails = Math.min(Math.max(prog.down?.fails ?? Math.floor(n * 0.4) + 1, 1), n);

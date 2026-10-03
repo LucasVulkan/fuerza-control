@@ -392,23 +392,24 @@ export default function ExerciseEditorInline({
 
   // La frase de la regla sale del mismo motor que decide (§5.2): el Resumen, la
   // fila y la hoja dicen lo mismo.
-  const ruleTxt = progressionRule(
-    // `inputType` de ahora: con otra medida elegida y sin guardar, la frase
-    // seguiría hablando de reps (P61).
-    { ...exConfig, sets, minReps, maxReps, minTime, maxTime, inputType: isTime ? 'weight_time' : 'weight_reps', ...buildProgression(prog, ctx) },
-    def, t, weightLabel,
-  );
+  // `inputType` de ahora: con otra medida elegida y sin guardar, la frase
+  // seguiría hablando de reps (P61).
+  const ruleCfg = { ...exConfig, sets, minReps, maxReps, minTime, maxTime, inputType: isTime ? 'weight_time' : 'weight_reps', ...buildProgression(prog, ctx) };
+  const ruleTxt = progressionRule(ruleCfg, def, t, weightLabel);
+  // La ficha de PROGRAMACIÓN tiene una línea: la frase entera ya está en el Resumen.
+  const ruleShort = progressionRule(ruleCfg, def, t, weightLabel, { short: true });
   const progTitle = prog.up === 'none'
     ? t('exerciseEditor.progTitle.none')
     : effort
-      ? t('exerciseEditor.progTitle.effort', { rpe: prog.targetRpe })
+      ? t('exerciseEditor.progTitle.effort')
       : t(`exerciseEditor.progTitle.${prog.up === 'weight' ? (assist ? 'assist' : 'weight') : prog.up}`);
 
   const warmupRestTxt = warmupRestSec > 0
     ? t('exerciseEditor.warmup.restShort', { s: warmupRestSec })
     : t('exerciseEditor.warmup.noTimer');
+  // «Ninguno» ya lo dice todo en la ficha.
   const warmupRowSub = warmupMode === 'none'
-    ? t('exerciseEditor.warmup.rowNoneSub')
+    ? null
     : warmupMode === 'auto'
       ? t('exerciseEditor.warmup.rowAutoSub',   { sets: warmupSets, rest: warmupRestTxt })
       : t('exerciseEditor.warmup.rowCustomSub', { n: warmupCustomSteps.length, rest: warmupRestTxt });
@@ -777,7 +778,7 @@ export default function ExerciseEditorInline({
             icon={<ProgressionIcon size={15} color={th.colors.accent} />}
             title={t('exerciseEditor.sectionProgression')}
             strong={progTitle}
-            subtitle={ruleTxt}
+            subtitle={ruleShort}
             onPress={() => setSheetOpen(true)}
           />
           <NavRow

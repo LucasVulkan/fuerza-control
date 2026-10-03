@@ -1797,7 +1797,7 @@
     "trainerNoteLabel": "Nota para el cliente",
     "trainerNoteHint": "Visible en el ejercicio durante la sesión",
     "trainerNotePlaceholder": "Ej. codos a 45°, baja en 3 segundos…",
-    "sectionProgression": "PROGRESIÓN",
+    "sectionProgression": "Progresión",
     "sectionEvaluation": "EVALUACIÓN",
     "sectionIncrement": "INCREMENTO",
     "progTypes": {
@@ -1829,11 +1829,11 @@
     "repsMode": { "range": "Rango", "fixed": "Reps fijas" },
     "progTitle": {
       "none": "Sin progresión",
-      "weight": "Automática · Peso",
-      "assist": "Automática · Asistencia",
-      "reps": "Automática · Reps",
-      "time": "Automática · Tiempo",
-      "effort": "Por esfuerzo · RPE {{rpe}}"
+      "weight": "Peso",
+      "assist": "Asistencia",
+      "reps": "Reps",
+      "time": "Tiempo",
+      "effort": "Por esfuerzo"
     },
     "stepUp": "Qué sube",
     "stepHow": "Cómo",
@@ -1940,8 +1940,7 @@
       "addStep": "Añadir paso",
       "summaryCount": "C×{{n}}",
       "rampStep": "{{pct}}% × {{reps}}",
-      "restShort": "{{s}}s de descanso",
-      "rowNoneSub": "Sin series de aproximación",
+      "restShort": "{{s}}s",
       "rowAutoSub": "{{sets}} series · {{rest}}",
       "rowCustomSub": "{{n}} pasos · {{rest}}"
     }
@@ -2561,7 +2560,11 @@
       "repsUp": "+{{inc}} sobre tu serie más floja cuando {{when}} pasen de {{floor}}",
       "timeUp": "+{{inc}} sobre tu serie más floja cuando {{when}} pasen de {{floor}} s",
       "incReps_one": "{{count}} rep",
-      "incReps_other": "{{count}} reps"
+      "incReps_other": "{{count}} reps",
+      "effortShort": "{{reps}} reps a RPE {{rpe}}",
+      "weakestShort": "+{{inc}} sobre la serie más floja",
+      "weightShort": "+{{inc}} al llegar a {{goal}}",
+      "assistShort": "−{{inc}} al llegar a {{goal}}"
     },
     "withAssist": "{{kg}}kg de asistencia",
     "noAssist": "sin asistencia",

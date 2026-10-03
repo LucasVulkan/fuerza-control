@@ -1797,7 +1797,7 @@
     "trainerNoteLabel": "Note for the client",
     "trainerNoteHint": "Shown on the exercise during the workout",
     "trainerNotePlaceholder": "E.g. elbows at 45°, lower in 3 seconds…",
-    "sectionProgression": "PROGRESSION",
+    "sectionProgression": "Progression",
     "sectionEvaluation": "EVALUATION",
     "sectionIncrement": "INCREMENT",
     "progTypes": {
@@ -1829,11 +1829,11 @@
     "repsMode": { "range": "Range", "fixed": "Fixed reps" },
     "progTitle": {
       "none": "No progression",
-      "weight": "Automatic · Weight",
-      "assist": "Automatic · Assistance",
-      "reps": "Automatic · Reps",
-      "time": "Automatic · Time",
-      "effort": "By effort · RPE {{rpe}}"
+      "weight": "Weight",
+      "assist": "Assistance",
+      "reps": "Reps",
+      "time": "Time",
+      "effort": "By effort"
     },
     "stepUp": "What goes up",
     "stepHow": "How",
@@ -1940,8 +1940,7 @@
       "addStep": "Add step",
       "summaryCount": "W×{{n}}",
       "rampStep": "{{pct}}% × {{reps}}",
-      "restShort": "{{s}}s rest",
-      "rowNoneSub": "No warm-up sets",
+      "restShort": "{{s}}s",
       "rowAutoSub": "{{sets}} sets · {{rest}}",
       "rowCustomSub": "{{n}} steps · {{rest}}"
     }
@@ -2561,7 +2560,11 @@
       "repsUp": "+{{inc}} on your weakest set when {{when}} get past {{floor}}",
       "timeUp": "+{{inc}} on your weakest set when {{when}} get past {{floor}} s",
       "incReps_one": "{{count}} rep",
-      "incReps_other": "{{count}} reps"
+      "incReps_other": "{{count}} reps",
+      "effortShort": "{{reps}} reps at RPE {{rpe}}",
+      "weakestShort": "+{{inc}} on your weakest set",
+      "weightShort": "+{{inc}} at {{goal}}",
+      "assistShort": "−{{inc}} at {{goal}}"
     },
     "withAssist": "{{kg}}kg assistance",
     "noAssist": "no assistance",
