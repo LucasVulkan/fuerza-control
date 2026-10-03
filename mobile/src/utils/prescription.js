@@ -36,7 +36,7 @@ export function effortLabel(rpe, t) {
 
 export function targetLabel(def, exConfig, t, { compact = false, today = null } = {}) {
   if (!def) return '';
-  const inputType  = exConfig.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
+  const inputType  = exConfig.inputType ?? def.inputType ?? (def.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
   const sets       = exConfig.sets ?? 0;
   // Lo que falta sale del mismo sitio que en el editor y el motor: si no, el
   // editor enseña «8–12» y aquí no hay nada que pintar.
@@ -85,7 +85,7 @@ export function targetLabel(def, exConfig, t, { compact = false, today = null } 
 export function firstTimeRx(def, exConfig) {
   const prog = resolveProgressionConfig(exConfig, def);
   if (prog.type === 'none') return null;
-  const inputType = exConfig.inputType ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
+  const inputType = exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
   const minReps = exConfig.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps;
   const maxReps = exConfig.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps;
   const minTime = exConfig.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime;

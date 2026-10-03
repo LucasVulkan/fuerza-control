@@ -35,7 +35,7 @@ const R_CARD  = 16;
 
 /** Input type for an exercise (matches ExerciseCard's fallback logic). */
 function inputTypeFor(exConfig, def) {
-  return exConfig.inputType ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
+  return exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'time' : 'weight_reps');
 }
 
 /** Editable target fields for an exercise: [key, column label] pairs. */
