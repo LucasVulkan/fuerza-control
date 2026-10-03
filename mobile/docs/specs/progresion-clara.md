@@ -11,6 +11,7 @@
 > Fase P61 · hecho · Tiempo con carga (Tiempo + Peso, doble en segundos) · §8
 > Fase P62 · hecho · Peso corporal: sellado en la sesión y fila en el menú · §9
 > Fase P63 · aparcado · Peso corporal en el motor (Por esfuerzo, 1RM y récords) · §10
+> Fase P65 · pendiente · Alta de ejercicio propio con la misma hoja de Progresión que el editor · §12
 >
 > Estado: **P61 hecha y probada** (2-oct-2026, `d77ffd3`). **P62 hecha y probada** (2-oct-2026, `6fd801d`). **P56 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P55 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P54 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P52 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P53 (diseño) cerrada** con el usuario el 1-oct: maqueta
@@ -997,3 +998,72 @@ peso → `why_effortNoBodyweight`), `progressionForm.test.js`,
 | P61 | `d77ffd3` | motor (`isTimed`, `chipDouble`/`chipDoubleDecrease` en segundos, `progressionRule`), `planSet` al tiempo mínimo y hoja con Tiempo · Peso · Nada |
 | P62 | `6fd801d` | sellado del peso en `saveSession` (sesión libre incluida) y fila «Peso corporal» en el menú (`parseBodyWeight`) |
 | P63 | — | aparcada (2-oct): peso corporal en el motor |
+| P65 | — | |
+
+## 12. P65 — Alta de ejercicio propio con la misma hoja de Progresión
+
+Pedido en QA de P64 (3-oct-2026): «la hoja de progresión tiene que ser igual; ¿qué
+sentido tiene tener dos?». `CustomExerciseScreen` se quedó con la hoja de antes
+de P55 (Automática / Fija → tipo → incremento) y guarda en el `def` solo
+`progressionModel` (nombre viejo) y `weightStep`. El editor usa la hoja de P55
+(`progressionForm.js`: `initProgForm`, `patchProgForm`, `buildProgression`,
+`needsRpe`, `upOptions`…), que vive en línea dentro de
+`components/editor/ExerciseEditorInline.jsx` (`sheetSteps` / `addStep`, ~470-710,
+y el `DragSheet` de ~1080).
+
+### 12.1 Una sola hoja
+
+- Se saca el cuerpo de la hoja de Progresión de `ExerciseEditorInline` a un
+  componente propio, `components/editor/ProgressionSheet.jsx` (pasos numerados,
+  hints y avisos, idénticos a hoy). Recibe el formulario (`prog`), el contexto
+  (`ctx`: `def`, `sets`, `metric`, `range`), lo que necesite para pintar (unidad
+  de peso, `minReps`, etc.) y un `onPatch(patch)`. Lo de «dejar el estado
+  coherente» (`settle`: encender RPE, pasar a un solo valor de inicio…) se queda
+  en quien lo usa, porque toca el estado de Volumen de cada pantalla.
+- `ExerciseEditorInline` lo usa **sin cambiar nada visible** (P55 está probada).
+- `CustomExerciseScreen` lo usa en lugar de su hoja vieja. Su estado de
+  progresión pasa a ser el mismo formulario: `initProgForm({}, borrador, ctx)`,
+  con un `def` borrador armado con lo que lleva la pantalla (`progressionDirection:
+  'increase'`, `weightStep`, `isCustom`, equipo…), para que las opciones que
+  ofrece (`canAddWeight`, Por esfuerzo…) sean las mismas que tendrá el
+  ejercicio.
+- **Volumen igual que en el editor**: la hoja depende de Rango / Reps fijas y
+  del inicio único de Reps y Tiempo (§5.1), así que el bloque VOLUMEN del alta
+  pasa a tener los mismos controles que el del editor (medida, Rango / Reps
+  fijas, campos de inicio). Si conviene, se extrae también; si no, se copia la
+  lógica mínima (`changeVolume` / `settle`).
+- La ficha (grupo PROGRAMACIÓN, P64) y el Resumen del alta usan lo mismo que el
+  editor: negrita `exerciseEditor.progTitle.*`, resto
+  `progressionRule(…, { short: true })`, y la frase larga en el Resumen.
+
+### 12.2 Dónde se guarda
+
+- El `def` del ejercicio propio guarda la progresión entera:
+  `def.progression = buildProgression(prog, ctx)`. `progressionModel` se sigue
+  escribiendo (lo leen otros sitios) con el equivalente: `fixed` si `up ===
+  'none'`, si no el de `LEGACY_TYPE_MAP` del tipo.
+- `resolveProgressionConfig` (`utils/progression.js`) acepta `def.progression`
+  como valor por defecto: prioridad `exConfig.progression` > `def.progression` >
+  campos viejos. Test en `progression.test.js`.
+- Si la progresión pide RPE (`needsRpe`), al añadirlo a una plantilla se escribe
+  `trackRpe: true` con `updateExerciseParams`, igual que ya se hace con la
+  variante en `handleCreate`.
+- De paso: `computeInitial` del editor lee `exConfig.inputType ??
+  def?.inputType ?? …`. Hoy un ejercicio propio de Tiempo con progresión Doble se
+  abría en el editor como Reps, porque `addExercise` no copia `inputType`.
+- Se borran las claves i18n que dejen de usarse (`progModes`, `progModeDesc`,
+  `progTypes`, `progTypeDesc`, `stepMode`, `stepType`, `stepIncr`… solo si nadie
+  más las usa: buscarlas antes).
+
+**Probar P65**
+
+- [ ] Alta de ejercicio propio → la hoja de Progresión es la misma del editor
+  (mismos pasos, opciones y textos).
+- [ ] Crear uno con Peso, +5 kg, «baja si fallan 2 de 3» → al abrirlo en la
+  sesión, la hoja del editor enseña exactamente eso.
+- [ ] Crear uno Por esfuerzo → en la sesión, Registrar RPE encendido y bloqueado.
+- [ ] Crear uno de Tiempo → en el editor de la sesión sale en Tiempo, no en Reps.
+- [ ] Volumen del alta: Rango / Reps fijas y los campos de inicio como en el
+  editor.
+- [ ] Editor de ejercicio: la hoja de Progresión sigue igual que antes (no
+  regresión de P55).
