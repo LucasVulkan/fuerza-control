@@ -5,6 +5,7 @@
 > Fase P49 · hecho · Deslizar las tarjetas de sesión del editor de programa · §3
 > Fase P50 · pendiente · Vinculación en el editor de ejercicio: grupo «Programación» y hoja de programaciones · §4
 > Fase P51 · pendiente · Vincular al añadir ejercicios · §5
+> Fase P64 · pendiente · Grupo «Programación» en el editor de ejercicio (sale de P50) · §6
 >
 > Estado: spec cerrada el 1-oct-2026; P49 implementada y probada el 3-oct-2026, P50 y P51 SIN implementar. Maqueta aprobada:
 > [`docs/mockups/link-exercises.html`](../mockups/link-exercises.html) (v4; las
@@ -227,6 +228,9 @@ Maqueta §1 (editor) y §2 (hoja).
 
 ### 4.1 Grupo «Programación»
 
+> **Sale a P64 (§6), 3-oct-2026.** Lo que queda aquí para P50 es solo añadir la
+> cuarta ficha, Vinculación, al grupo que deja hecho P64.
+
 Debajo de VOLUMEN, las cuatro fichas que hoy son «título · ficha» por separado
 van en **un solo grupo** con el título **PROGRAMACIÓN** (i18n
 `exerciseEditor.sectionProgramming`), en este orden:
@@ -358,7 +362,7 @@ Van dentro de P50: si no, la fase se apoya en ellos.
    en cada sesión. Efecto lateral: `autoLinkRepeated` del generador agrupa por
    `pickLinkedConfig`, así que deja de juntar instancias con distinto
    calentamiento (correcto).
-3. **La tabla de §4.1 se quedó vieja con P55.** Ya no hay modos «Auto» / «Fija»:
+3. **La tabla de §4.1 se quedó vieja con P55** (ya corregido en P64, §6). Ya no hay modos «Auto» / «Fija»:
    en Progresión la negrita es `progTitle` («Doble progresión», «Por esfuerzo
    @8»…) y el resto del meta, `ruleTxt`; en Calentamiento la negrita es
    `exerciseEditor.warmup.<modo>` y el resto, `warmupRowSub`. `ruleTxt` es una
@@ -388,9 +392,8 @@ Salieron de la misma revisión. Ninguna entra en P50 hasta que el usuario decida
 
 **Probar P50**
 
-- [ ] Editor de ejercicio: debajo de VOLUMEN un solo título PROGRAMACIÓN con
-  Progresión, Calentamiento, Variante y Vinculación; los títulos sueltos ya no
-  están.
+- [ ] Editor de ejercicio: la ficha Vinculación es la cuarta del grupo
+  PROGRAMACIÓN de P64, y la sección vieja de pastillas ya no está.
 - [ ] Ejercicio que solo está en esta sesión de la etapa → ficha Vinculación
   apagada, «no está en otras sesiones», no abre nada.
 - [ ] Mismo ejercicio en otra etapa pero no en esta → sigue apagada.
@@ -483,10 +486,67 @@ desde su ficha.
   la programación de su fila y sus fichas pequeñas.
 - [ ] Android: abrir y cerrar la hoja varias veces seguidas no la deja colgada.
 
+## 6. P64 — Grupo «Programación» en el editor de ejercicio
+
+Sale de P50 §4.1 (3-oct-2026) para hacerse ya, sin esperar a la vinculación.
+Maqueta §1A, el bloque PROGRAMACIÓN (sin la ficha Vinculación ni la franja de
+arriba, que son de P50).
+
+Archivo: `src/components/editor/ExerciseEditorInline.jsx` (hoy, tres bloques
+sueltos con su título: VARIANTE, CALENTAMIENTO, PROGRESIÓN, cada uno con un
+`NavRow` cuyo título es el valor —«Doble progresión»— y el subtítulo la regla).
+
+- Debajo de VOLUMEN, **un solo título PROGRAMACIÓN** (i18n
+  `exerciseEditor.sectionProgramming`, es «Programación» / en «Programming») y
+  un grupo con las fichas en este orden:
+
+  | Ficha | Título (blanco) | Meta: **negrita** · resto (gris) |
+  |---|---|---|
+  | Progresión | `exerciseEditor.sectionProgression` | **`progTitle`** · `ruleTxt` |
+  | Calentamiento | `exerciseEditor.warmup.title` | **`exerciseEditor.warmup.<modo>`** · `warmupRowSub` |
+  | Variante (solo si `showVariantRow`) | `variants.section` | **`rowTitle`** · `dimsSub` |
+
+  Lo que hoy es el título de la ficha pasa a ser la parte en negrita del meta, y
+  el título pasa a ser el nombre de la ficha. El meta, a **una línea**
+  (`numberOfLines={1}`): `ruleTxt` es una frase larga y se corta.
+- **Anatomía**: grupo como el de OPCIONES (`styles.optGroup`: fondo `surface`,
+  separación entre filas y radios exteriores del contenedor); cada fila con el
+  contenido del `NavRow` de hoy: icono accent a la izquierda, título
+  `bodyStrong`, meta `label` en `mutedLight` con el trozo en negrita (mismo rol,
+  peso fuerte; precedente de dos pesos en `MenuList.GroupedRow` /
+  `textStyles.labelStrong`), flecha accent. Nada de `fontSize` / `fontWeight`
+  propios (AGENTS.md).
+- **Iconos**: Progresión `ProgressionIcon`, Variante `VariantIcon` (los de hoy).
+  Calentamiento no tiene: se dibuja uno en `ui/EditorIcons.jsx` a partir del
+  `#i-warm` de la maqueta, mismo tamaño (15) y trazo que los otros dos.
+- `NavRow` (`ui/EditorRows.jsx`) también lo usan `CustomExerciseScreen` y
+  `OnboardingScreen`: no se les cambia nada visible. Si hace falta la negrita,
+  que sea una prop opcional (p. ej. `strong`, el trozo en negrita delante del
+  `subtitle`) y el grupo se monte con lo que ya hay.
+- Se borran los títulos sueltos VARIANTE, CALENTAMIENTO y PROGRESIÓN. Las hojas
+  que abre cada ficha no cambian.
+- La sección vieja de vinculación (pastillas bajo OPCIONES) **se queda como
+  está** hasta P50.
+
+**Probar P64**
+
+- [ ] Editor de ejercicio: debajo de VOLUMEN un solo título PROGRAMACIÓN con
+  Progresión, Calentamiento y Variante (en ese orden) en un mismo grupo; los
+  títulos sueltos ya no están.
+- [ ] Cada ficha: título blanco, debajo el valor en negrita y la regla en gris en
+  una línea; tocarla abre su hoja de siempre.
+- [ ] Ejercicio sin variantes (p. ej. uno de máquina sin agarre) → el grupo
+  tiene solo Progresión y Calentamiento.
+- [ ] Cambiar la progresión o el calentamiento en su hoja → la ficha se
+  actualiza al cerrar.
+- [ ] Alta de ejercicio propio y onboarding: sus filas navegables se ven igual
+  que antes.
+
 ## Fases
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
 | P49 | `SwipeRow` + tarjetas de sesión con Duplicar/Eliminar | — | 🟢 | hecho |
-| P50 | `linkRows` por etapa, `SessionChips`, grupo «Programación», ficha y hoja de vinculación, aviso en el Resumen | P49 (no estricto) | 🟡 | pendiente |
+| P50 | `linkRows` por etapa, `SessionChips`, ficha y hoja de vinculación, aviso en el Resumen | P64 | 🟡 | pendiente |
 | P51 | Pista en el buscador + hoja «Vincular ejercicios» de dos páginas | P50 | 🟡 | pendiente |
+| P64 | Grupo «Programación» (Progresión, Calentamiento, Variante) en el editor de ejercicio | — | 🟢 | pendiente |
