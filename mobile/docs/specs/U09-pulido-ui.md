@@ -3,6 +3,7 @@
 > Tema: ui
 > En corto: Mejoras visuales y de estandarización apuntadas el 29-sep-2026 para más adelante: pantallas que se deslizan con el segmentado, un recap legible, hojas de opciones y confirmaciones todas iguales, textos sin traducir, un solo lima, cabeceras, pantallas vacías y una hoja de progresión duplicada.
 > Inicio: 2026-09-29
+> Fin: 2026-10-03
 > Fase U09-01 · hecho · Progresión: las pantallas se deslizan con el segmentado · §1 · antes U28
 > Fase U09-02 · hecho · Recap: distribución y legibilidad · §2 · antes U29
 > Fase U09-03 · hecho · Hojas de opciones con icono y estandarizadas · §3 · antes U30
@@ -16,7 +17,7 @@
 > Fase U09-11 · terminado · Una sola hoja de progresión · §11 · antes U38
 > Fase U09-12 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12 · antes U39
 > Fase U09-13 · hecho · Importar archivo: el contenido de la hoja al estándar · §13 · antes U40
-> Fase U09-14 · pendiente · Programas archivados: la lista al estándar · §14 · antes U41
+> Fase U09-14 · hecho · Programas archivados: la lista al estándar · §14 · antes U41
 > Fase U09-15 · hecho · Sesión libre: el bloque se edita en la pantalla de Editar bloque · §15 · antes U42
 > Fase U09-16 · hecho · Inicio: banner de sesión en curso · §16 · antes U52
 > Fase U09-17 · hecho · Descartar sesión dice cuál · §17 · antes U53
@@ -866,6 +867,68 @@ opciones de U09-03), y la del menú ≡ a `DragSheet`. Maqueta antes.
 - Fuera `ArchivedProgramsModal` (con su `Modal` y su velo) y
   `ArchivedProgramRow`, con sus estilos y las claves que queden sin uso.
 
+**Hecho (3-oct-2026).** `components/ArchivedProgramsSheet.jsx` recibe `visible`,
+`programs`, `log`, `emptyText` y los callbacks `onReactivate`/`onView`/
+`onExport`/`onSaveTemplate`/`onDelete` (cada uno recibe el programa). La
+ficha de cliente la usa con sus handlers de siempre; el menú ≡ con un
+componente pequeño de `AppHeader` (`MyArchivedPrograms`) que lleva las
+confirmaciones y los toasts de los tuyos. Fuera `ArchivedProgramsModal`,
+`ArchivedProgramRow`, `EyeIcon`, `DownloadIcon`, los estilos `arch*`, `restoreBtn*`,
+`modalBackdrop`, `noActiveSub` e `importSheetRows`, y las claves `archived.restore`
+y `archived.close`.
+
+Donde la spec no llegaba:
+
+- `archived.title` pasa de «PROGRAMAS ARCHIVADOS» a «Programas archivados»:
+  era el título en mayúsculas del modal, y el de una `DragSheet` va en
+  minúsculas.
+- La lista vacía de la ficha de cliente conserva su texto
+  (`clients.noArchivedPrograms`, «Este cliente no tiene…») vía `emptyText`; la de
+  los tuyos usa `archived.empty`.
+- «Sesiones · fecha» sigue con `clients.programSessions`/`clients.noSessionsYet`
+  («Aún sin sesiones»), sin duplicarlas en `archived.*`; en `archived.*` solo
+  están las cinco etiquetas de la hoja de opciones.
+- Eliminar en los tuyos no saca toast (en Clientes tampoco).
+- Los confirmar de Reactivar y Eliminar se repiten en `AppHeader` con las
+  claves de `clients.*`, en vez de ir a una pieza compartida: son una docena
+  de líneas.
+
+**Probar U09-14**
+
+- [ ] Ficha de cliente → Programa → Programas archivados (con algún programa
+  archivado): las filas son las de la app (nombre, y debajo «N sesiones ·
+  fecha» o «Aún sin sesiones», con su galón); ya no hay iconos de ojo,
+  descarga ni `⋯`. La más recientemente archivada, arriba.
+- [ ] Menú ≡ → Programas archivados: es una hoja (no un modal con velo), con
+  las mismas filas y el mismo orden; sin botón «Cerrar» (se cierra con
+  arrastre o tocando fuera).
+- [ ] Tocar una fila (en los dos sitios) abre sus opciones encima de la lista,
+  con el nombre del programa de título: Reactivar, Ver, Exportar, Guardar como
+  plantilla y Eliminar (este en rojo), en ese orden.
+- [ ] Ver cierra la lista y abre la vista de impresión de ese programa
+  (cliente y propios).
+- [ ] Exportar abre el compartir con el programa y su historial, y la lista
+  se queda abierta debajo.
+- [ ] Reactivar un programa tuyo con otro activo: antes sale el diálogo
+  («pasará a ser el activo y el actual se archivará»); al aceptar, el programa
+  pasa a activo, el anterior queda archivado y sale el toast.
+- [ ] Reactivar un programa tuyo sin ningún programa activo: lo reactiva
+  directamente, con su toast, sin diálogo.
+- [ ] Reactivar uno de un cliente: el diálogo de siempre y el programa pasa a ser
+  el activo de ese cliente.
+- [ ] Guardar como plantilla (con PRO), en los tuyos y en los del cliente:
+  sale el toast «Guardado en Plantillas» y la plantilla aparece en la pestaña
+  de Plantillas.
+- [ ] Sin PRO, el menú ≡ no tiene la fila «Guardar como plantilla» en las
+  opciones de un programa archivado.
+- [ ] Eliminar (en los dos sitios): el diálogo de confirmar con el nombre y,
+  al aceptar, el programa desaparece de la lista y sus sesiones siguen en el
+  Historial.
+- [ ] Sin programas archivados: la lista dice «No hay programas archivados»
+  en el menú ≡ y «Este cliente no tiene programas archivados» en la ficha.
+- [ ] Con la app en inglés, las etiquetas de la hoja de opciones salen en
+  inglés (Reactivate, View, Export, Save as template, Delete).
+
 ## 15. U09-15 — Sesión libre: el bloque se edita en la pantalla de Editar bloque
 
 En una sesión libre en curso, añadir un bloque de acondicionamiento en el
@@ -1050,7 +1113,7 @@ se perderán.».
 | U09-11 | Hoja de progresión única | ✅ resuelta por P12-10 (`2c2dc25`) | 🟢 |
 | U09-12 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U09-13 | Importar archivo al estándar; `ChoiceRow` como pieza de elección única | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
-| U09-14 | Programas archivados (cliente y menú ≡): una pieza, mismas acciones | pendiente | 🟡 |
+| U09-14 | Programas archivados (cliente y menú ≡): una pieza, mismas acciones | ✅ rama `feat/recap` | 🟡 |
 | U09-15 | Sesión libre: el bloque se edita en `BlockEditorScreen` | ✅ rama `feat/recap` | 🟢 |
 | U09-16 | Banner de sesión en curso; el hero deja de seguir a la activa | ✅ rama `feat/recap` | 🟡 |
 | U09-17 | Descartar sesión dice cuál, sin pregunta | ✅ rama `feat/recap` | 🟢 |

@@ -955,13 +955,14 @@
     }
   },
   "archived": {
-    "title": "PROGRAMAS ARCHIVADOS",
+    "title": "Programas archivados",
     "empty": "No hay programas archivados.",
     "archivedOn": "Archivado: {{date}} · {{count}} sesiones registradas",
     "export": "Exportar",
     "delete": "Eliminar",
-    "restore": "Restaurar",
-    "close": "Cerrar",
+    "reactivate": "Reactivar",
+    "view": "Ver",
+    "saveTemplate": "Guardar como plantilla",
     "deleteModal": {
       "title": "ELIMINAR PROGRAMA",
       "desc": "Esta acción es permanente e irreversible.",

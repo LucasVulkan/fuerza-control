@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from './ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +21,7 @@ import { useWeightUnit } from '../hooks/useWeightUnit';
 import { programsOf } from '../utils/programOwnership';
 import ImportModal from './ImportModal';
 import DragSheet   from './DragSheet';
+import ArchivedProgramsSheet from './ArchivedProgramsSheet';
 import TrainerSyncModal      from './TrainerSyncModal';
 import DeleteAccountModal    from './DeleteAccountModal';
 import PaywallModal from './PaywallModal';
@@ -179,61 +180,69 @@ function ThemeSwatches() {
   );
 }
 
-// ── Archived programs modal ───────────────────────────────────────────────────
+// ── Programas archivados ──────────────────────────────────────────────────────
 
-function ArchivedProgramsModal({ onClose }) {
-  const styles = useThemedStyles(makeStyles);
-  const { t }          = useTranslation();
-  const programs       = useStore((s) => s.programs);
-  const restoreProgram = useStore((s) => s.restoreProgram);
-  const showToast      = useStore((s) => s.showToast);
+// Los tuyos: la misma hoja que la ficha de cliente (`ArchivedProgramsSheet`),
+// con las confirmaciones y los avisos de aquí.
+function MyArchivedPrograms({ onClose }) {
+  const { t }  = useTranslation();
+  const programs        = useStore((s) => s.programs);
+  const workoutLog      = useStore((s) => s.workoutLog);
+  const isPro           = useStore((s) => s.profile?.isPro ?? false);
+  const activeProgramId = useStore((s) => s.profile?.activeProgramId);
+  const restoreProgram            = useStore((s) => s.restoreProgram);
+  const deleteProgram             = useStore((s) => s.deleteProgram);
+  const exportSpecificProgram     = useStore((s) => s.exportSpecificProgram);
+  const cloneProgramFromTemplate  = useStore((s) => s.cloneProgramFromTemplate);
+  const setPrintingProgram        = useStore((s) => s.setPrintingProgram);
+  const showToast                 = useStore((s) => s.showToast);
 
   // `programsOf` excluye las plantillas: sin eso, una plantilla archivada
   // pasaría por `restoreProgram` y se convertiría en el programa activo.
-  const archivedList = useMemo(
-    () => programsOf(programs, 'me')
-      .filter((p) => p.status === 'archived')
-      .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? '')),
+  const archived = useMemo(
+    () => programsOf(programs, 'me').filter((p) => p.status === 'archived'),
     [programs],
   );
 
+  const reactivate = (program) => {
+    const run = () => { restoreProgram(program.id); showToast(t('header.toastRestored'), 2200, 'success'); };
+    // Con otro programa activo, el cambio lo archiva: se avisa antes.
+    if (!activeProgramId) { run(); return; }
+    showDialog(
+      t('clients.reactivateTitle'),
+      t('clients.reactivateConfirm', { name: program.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('clients.menuReactivate'), onPress: run },
+      ],
+    );
+  };
+
+  const confirmDelete = (program) => showDialog(
+    t('clients.deleteProgramTitle'),
+    t('clients.deleteProgramConfirm', { name: program.name }),
+    [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('clients.menuDelete'), style: 'destructive', onPress: () => deleteProgram(program.id, false) },
+    ],
+  );
+
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.archivedOuter}>
-        <View style={styles.archivedModal}>
-          <Text style={styles.archivedTitle}>{t('archived.title')}</Text>
-
-          {archivedList.length === 0 ? (
-            <Text style={styles.archivedEmpty}>{t('archived.empty')}</Text>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
-              {archivedList.map((p) => (
-                <View key={p.id} style={styles.archivedRow}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.archivedName} numberOfLines={1}>{p.name}</Text>
-                    {p.archivedAt && (
-                      <Text style={styles.archivedDate}>{p.archivedAt}</Text>
-                    )}
-                  </View>
-                  <TouchableOpacity
-                    style={styles.restoreBtn}
-                    onPress={() => { restoreProgram(p.id); showToast(t('header.toastRestored'), 2200, 'success'); onClose(); }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.restoreBtnText}>{t('archived.restore')}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-
-          <TouchableOpacity style={styles.archivedCloseBtn} onPress={onClose}>
-            <Text style={styles.archivedCloseBtnText}>{t('archived.close')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
+    <ArchivedProgramsSheet
+      visible
+      onClose={onClose}
+      programs={archived}
+      log={workoutLog}
+      onReactivate={reactivate}
+      onView={(p) => setPrintingProgram(p.id)}
+      onExport={(p) => exportSpecificProgram(p.id, true)}
+      // Sin PRO la plantilla iría a una pestaña que no ves: la fila no sale.
+      onSaveTemplate={isPro ? (p) => {
+        cloneProgramFromTemplate(p.id, { kind: 'template', name: p.name });
+        showToast(t('clients.toastSavedTemplate'));
+      } : undefined}
+      onDelete={confirmDelete}
+    />
   );
 }
 
@@ -661,7 +670,7 @@ export default function AppHeader() {
       />
 
       {showArchived && (
-        <ArchivedProgramsModal onClose={() => setShowArchived(false)} />
+        <MyArchivedPrograms onClose={() => setShowArchived(false)} />
       )}
 
       <ExportSheet visible={showExport} onClose={() => setShowExport(false)} />
@@ -806,57 +815,4 @@ const makeStyles = (th) => StyleSheet.create({
   chipStripe: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 13 },
   themeName:  { ...textStyles.label, color: th.colors.muted },
   themeNameActive: { fontFamily: 'Inter_900Black', color: th.colors.accent },
-
-  // Archived programs modal
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  archivedOuter: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent:    'center',
-    paddingHorizontal: spacing.xl,
-  },
-  archivedModal: {
-    backgroundColor: th.colors.bg,
-    borderRadius:    th.radius.lg,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.borderCard,
-    padding:         spacing.xl,
-    gap:             spacing.md,
-  },
-  archivedTitle: { ...textStyles.caps, color: th.colors.muted },
-  archivedEmpty: {
-    ...textStyles.label,
-    color:           th.colors.mutedLight,
-    textAlign:       'center',
-    paddingVertical: spacing.md,
-  },
-  archivedRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: borders.thin,
-    borderBottomColor: th.colors.border,
-    gap:             spacing.sm,
-  },
-  archivedName: { ...textStyles.body,  color: th.colors.text },
-  archivedDate: { ...textStyles.label, color: th.colors.muted, marginTop: 2 },
-  restoreBtn: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 2,
-    borderRadius:      th.radius.sm,
-    backgroundColor:   `${th.colors.accent}18`,
-    borderWidth:       borders.thin,
-    borderColor:       `${th.colors.accent}40`,
-  },
-  restoreBtnText: { ...textStyles.label, color: th.colors.accent },
-  archivedCloseBtn: {
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    alignItems:      'center',
-  },
-  archivedCloseBtnText: { ...textStyles.body, color: th.colors.mutedLight },
 });

@@ -955,13 +955,14 @@
     }
   },
   "archived": {
-    "title": "ARCHIVED PROGRAMS",
+    "title": "Archived programs",
     "empty": "No archived programs.",
     "archivedOn": "Archived: {{date}} · {{count}} sessions recorded",
     "export": "Export",
     "delete": "Delete",
-    "restore": "Restore",
-    "close": "Close",
+    "reactivate": "Reactivate",
+    "view": "View",
+    "saveTemplate": "Save as template",
     "deleteModal": {
       "title": "DELETE PROGRAM",
       "desc": "This action is permanent and irreversible.",

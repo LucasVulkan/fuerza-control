@@ -25,6 +25,7 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { Section, MenuRow, ChoiceRow, RowIcon } from '../components/ui/MenuList';
 import EmptyState from '../components/ui/EmptyState';
+import ArchivedProgramsSheet from '../components/ArchivedProgramsSheet';
 import AnimatedHeight from '../components/ui/AnimatedHeight';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { ToggleRow } from '../components/ui/EditorRows';
@@ -51,7 +52,7 @@ import { sessionStats } from '../utils/sessionStats';
 import { pickImportFile } from '../utils/pickImportFile';
 import { programsOf, templatesOf, copySources } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
-import { LockIcon, CheckIcon, ChevronDown, MenuIcon, CloseIcon } from '../components/ui/EditorIcons';
+import { LockIcon, CheckIcon, ChevronDown, CloseIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
 import InfoSection from '../components/ui/InfoSection';
@@ -176,23 +177,6 @@ function ExerciseMiniCard({ exerciseId, logs }) {
   );
 }
 
-// ── Small icons for program rows ───────────────────────────────────────────────
-
-function EyeIcon({ size = 18, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth={1.7} />
-    </Svg>
-  );
-}
-function DownloadIcon({ size = 18, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 3v12M8 11l4 4 4-4M5 21h14" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
 // Flecha de "enviar" de los CTA de la tarjeta de cliente. Va con el trazo del
 // texto que acompaña (card-type es ExtraBold): la "↑" tipográfica se veía
 // canija al lado de la etiqueta.
@@ -637,54 +621,6 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
         </TouchableOpacity>
       </View>
     </DragSheet>
-  );
-}
-
-// ── Archived (previous) program row — compact ───────────────────────────────────
-
-function ArchivedProgramRow({ program, lastActivity, sessionCount, onView, onExport, onSaveTemplate, onReactivate, onDelete }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const { t, i18n } = useTranslation();
-  const isEs = i18n.language?.startsWith('es');
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const lastStr = lastActivity
-    ? new Date(lastActivity).toLocaleDateString(isEs ? 'es-ES' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    : null;
-  const meta = [
-    sessionCount > 0 ? t('clients.programSessions', { count: sessionCount }) : t('clients.noSessionsYet'),
-    lastStr,
-  ].filter(Boolean).join(' · ');
-
-  return (
-    <View style={styles.archRow}>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.archName} numberOfLines={1}>{program.name}</Text>
-        <Text style={styles.archMeta} numberOfLines={1}>{meta}</Text>
-      </View>
-      <TouchableOpacity onPress={onView} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
-        <EyeIcon size={17} color={th.colors.muted2} />
-      </TouchableOpacity>
-      <TouchableOpacity onPress={onExport} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
-        <DownloadIcon size={17} color={th.colors.muted2} />
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={8} style={styles.archIcon} activeOpacity={0.6}>
-        <MenuIcon horizontal color={th.colors.muted2} />
-      </TouchableOpacity>
-
-      {/* Hoja de opciones estándar (U30/U34): antes un Modal con filas de texto. */}
-      {menuOpen && (
-        <DragSheet visible onClose={() => setMenuOpen(false)} title={program.name}>
-          <Section style={styles.importSheetRows}>
-            <SheetRow icon={ROW_ICON.sync}   label={t('clients.menuReactivate')} onPress={onReactivate} />
-            <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')}     onPress={onExport} />
-            <SheetRow icon={ROW_ICON.preset} label={t('clients.menuSaveTemplate')} onPress={onSaveTemplate} />
-            <SheetRow icon={ROW_ICON.trash}  label={t('clients.menuDelete')}     onPress={onDelete} danger />
-          </Section>
-        </DragSheet>
-      )}
-    </View>
   );
 }
 
@@ -2342,17 +2278,6 @@ export default function ClientsScreen() {
     }
   }
 
-  function getSessionCount(program) {
-    const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
-    return clientBaseLog.filter((e) => ids.has(programTemplateOf(e))).length;
-  }
-
-  function getLastActivity(program) {
-    const ids = new Set(allProgramDays(program).map((d) => d.sessionTemplateId));
-    const sessions = clientBaseLog.filter((e) => ids.has(programTemplateOf(e)));
-    return sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : null;
-  }
-
   function getExerciseLogs(exerciseId) {
     return filteredLog
       .filter((log) => log.exercises.some((e) =>
@@ -2567,29 +2492,18 @@ export default function ClientsScreen() {
 
               {/* Programas archivados — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}
-              <DragSheet
+              <ArchivedProgramsSheet
                 visible={showPrevious}
                 onClose={() => setShowPrevious(false)}
-                title={t('clients.menuArchived')}
-              >
-                <View style={styles.sheetBody}>
-                  {previousPrograms.length === 0 ? (
-                    <Text style={styles.noActiveSub}>{t('clients.noArchivedPrograms')}</Text>
-                  ) : previousPrograms.map((program) => (
-                    <ArchivedProgramRow
-                      key={program.id}
-                      program={program}
-                      lastActivity={getLastActivity(program)}
-                      sessionCount={getSessionCount(program)}
-                      onView={() => { setShowPrevious(false); setPrintingProgram(program.id); }}
-                      onExport={() => exportSpecificProgram(program.id, true)}
-                      onSaveTemplate={() => { setShowPrevious(false); saveAsTemplate(program); }}
-                      onReactivate={() => { setShowPrevious(false); reactivate(program); }}
-                      onDelete={() => { setShowPrevious(false); confirmDelete(program); }}
-                    />
-                  ))}
-                </View>
-              </DragSheet>
+                programs={previousPrograms}
+                log={clientBaseLog}
+                emptyText={t('clients.noArchivedPrograms')}
+                onReactivate={reactivate}
+                onView={(p) => setPrintingProgram(p.id)}
+                onExport={(p) => exportSpecificProgram(p.id, true)}
+                onSaveTemplate={saveAsTemplate}
+                onDelete={confirmDelete}
+              />
               <View style={{ height: fold.pad }} />
             </ScrollView>
           );
@@ -4365,7 +4279,6 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   noActiveTitle: { ...textStyles.bodyStrong, color: th.colors.text },
-  noActiveSub:   { ...textStyles.body, lineHeight: 21, color: th.colors.mutedLight },
   noActiveBtn: {
     alignSelf:       'stretch',
     height:          44,
@@ -4375,24 +4288,6 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   noActiveBtnText: { ...textStyles.button, color: th.colors.onAccent },
-
-  // ── Previous (archived) programs ──
-  archRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:    th.radius.md,
-    borderWidth:     borders.thin,
-    borderColor:     th.colors.border,
-    backgroundColor: `${th.colors.surface}80`,
-  },
-  archName: { ...textStyles.body,  color: th.colors.muted },
-  archMeta: { ...textStyles.label, color: th.colors.muted2, marginTop: 2 },
-  archIcon: {
-    padding: spacing.xs,
-  },
 
   // ── Exercise mini card ──
   exMiniCard: {
@@ -4870,6 +4765,5 @@ const makeStyles = (th) => StyleSheet.create({
   calDayText:    { ...textStyles.labelStrong, color: th.colors.text },
   calDayTextSel: { color: th.colors.onAccent },
 
-  importSheetRows: { marginTop: spacing.md, marginBottom: spacing.sm },
 });
 
