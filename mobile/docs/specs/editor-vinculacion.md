@@ -336,6 +336,34 @@ programa) y la ficha está siempre, apagada si no hay con quién. Si reaparece, 
 síntoma será la ficha apagada sin motivo, y la sospecha anotada (un `exerciseId`
 distinto entre A y C) se ve a simple vista en el mapa.
 
+### 4.8 Fallos encontrados al revisar la spec (3-oct-2026)
+
+Van dentro de P50: si no, la fase se apoya en ellos.
+
+1. **Un vinculado se queda sin historial al cambiar de etapa.** Crear o duplicar
+   una etapa da id nuevo a los grupos (`remapGroup`), y `recentExerciseRefs`
+   (`src/utils/exerciseLinks.js`), si hay `linkGroup`, mira solo las plantillas
+   de ese grupo, que en la etapa nueva aún no tienen entrenos. Los sueltos siguen
+   la cadena `derivedFrom` y sí tienen referencia; los vinculados empiezan cada
+   etapa sin pesos ni progresión. Ya pasa hoy; P50 y P51 multiplican los
+   vinculados. Arreglo: con grupo, los ids son la cadena `templateChainIds` de
+   cada plantilla del grupo (sin repetidos). Test en `exerciseLinks.test.js`:
+   etapa 2 recién creada de una etapa 1 con A·B vinculadas y entrenadas → la
+   referencia de A en la etapa 2 es la última de A o B en la etapa 1.
+2. **El calentamiento y el dropset no viajan con el grupo.** `LINKED_CONFIG_KEYS`
+   es anterior a `warmup` y `dropset` y no los incluye: rompe la regla «la
+   configuración de un grupo vinculado es idéntica, sin excepciones», y el texto
+   de la hoja (§4.4, «lo que edites en una cambia en todas») mentiría. Se añaden
+   los dos. `supersetWithNext` se queda fuera: depende del ejercicio que va detrás
+   en cada sesión. Efecto lateral: `autoLinkRepeated` del generador agrupa por
+   `pickLinkedConfig`, así que deja de juntar instancias con distinto
+   calentamiento (correcto).
+3. **La tabla de §4.1 se quedó vieja con P55.** Ya no hay modos «Auto» / «Fija»:
+   en Progresión la negrita es `progTitle` («Doble progresión», «Por esfuerzo
+   @8»…) y el resto del meta, `ruleTxt`; en Calentamiento la negrita es
+   `exerciseEditor.warmup.<modo>` y el resto, `warmupRowSub`. `ruleTxt` es una
+   frase larga: el meta se corta a una línea (`numberOfLines`).
+
 **Probar P50**
 
 - [ ] Editor de ejercicio: debajo de VOLUMEN un solo título PROGRAMACIÓN con
@@ -359,6 +387,9 @@ distinto entre A y C) se ve a simple vista en el mapa.
 - [ ] Editar series en una vinculada → cambia en las demás (no regresión).
 - [ ] Editor de sesión: los vinculados llevan las fichas pequeñas en su línea.
 - [ ] Borrar la sesión A de un grupo A·B → en B la ficha dice «Sin vincular».
+- [ ] Etapa nueva desde una con la sentadilla A·B vinculada y entrenada → en la
+  primera sesión de la etapa nueva salen los pesos de referencia de la anterior.
+- [ ] Cambiar el calentamiento de un vinculado → cambia en las otras sesiones.
 
 ## 5. P51 — Vincular al añadir ejercicios
 
