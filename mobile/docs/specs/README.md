@@ -51,6 +51,12 @@ cada tarea conserva el suyo al final de su cabecera (`· antes C19`) y
 `npm run estado C19` lo traduce (`C05-01` · título · archivo). `grep "antes C19"`
 también vale. No se asignan códigos antiguos nuevos.
 
+**Ojo con un `Cnn` suelto**: es ambiguo (la `C05` antigua era una tarea de triaje; la
+`C05` nueva es una spec). En un comentario de `src/` o un commit anterior al
+3-oct-2026 es el código antiguo; en cualquier texto nuevo, una spec se escribe
+`C05` y una tarea siempre con su guion, `C05-02`. `npm run estado C05` enseña las dos
+lecturas.
+
 ## Cabecera estándar de una spec
 
 Es **obligatoria** y la lee el generador. Si falta algo o trae un valor

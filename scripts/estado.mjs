@@ -270,19 +270,23 @@ const viejos = new Map(); // 'C19' → { s, x }
 for (const s of specs) for (const x of s.fases) if (x.antes) viejos.set(x.antes, { s, x });
 
 // `npm run estado C19` / `C05` / `C05-01`: traduce y sale, sin regenerar nada.
+// Un `Cnn` suelto es ambiguo: spec nueva Y tarea antigua (C05 era una tarea de
+// triaje y hoy es una spec). Se enseñan las dos lecturas.
 const consulta = process.argv[2]?.toUpperCase();
 if (consulta) {
-  const hit = viejos.get(consulta)
-    ?? specs.flatMap((s) => s.fases.map((x) => ({ s, x }))).find(({ x }) => x.codigo === consulta);
-  if (hit) {
-    const { s, x } = hit;
-    console.log(`${x.antes === consulta ? `${consulta} (código antiguo) → ` : ''}${x.codigo} · ${x.titulo}\n  ${s.codigo} ${s.titulo} · ${s.archivo} ${x.ref} · ${x.estado}`);
-  } else if (vistos.has(consulta)) {
-    const s = specs.find((y) => y.codigo === consulta);
-    console.log(`${s.codigo} · ${s.titulo} · ${s.archivo}\n${s.fases.map((x) => `  ${x.codigo} · ${x.estado} · ${x.titulo}`).join('\n')}`);
-  } else {
-    console.error(`${consulta}: ni spec, ni tarea, ni código antiguo.`); process.exit(1);
+  const tarea = ({ s, x }) => [`${x.codigo} · ${x.titulo}`, `    ${s.codigo} ${s.titulo} · ${s.archivo} ${x.ref} · ${x.estado}`].join('\n');
+  const lecturas = [];
+  const viejo = viejos.get(consulta);
+  if (viejo) lecturas.push(`${consulta} como código ANTIGUO (comentarios de src/, commits) → ${tarea(viejo)}`);
+  const nueva = specs.find((s) => s.codigo === consulta);
+  if (nueva) {
+    lecturas.push([`${consulta} como SPEC → ${nueva.titulo} · ${nueva.archivo}`,
+      ...nueva.fases.map((x) => `    ${x.codigo} · ${x.estado} · ${x.titulo}`)].join('\n'));
   }
+  const fase = specs.flatMap((s) => s.fases.map((x) => ({ s, x }))).find(({ x }) => x.codigo === consulta);
+  if (fase) lecturas.push(`TAREA → ${tarea(fase)}`);
+  if (!lecturas.length) { console.error(`${consulta}: ni spec, ni tarea, ni código antiguo.`); process.exit(1); }
+  console.log(lecturas.join('\n'));
   process.exit(0);
 }
 
