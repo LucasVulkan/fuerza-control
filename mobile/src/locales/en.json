@@ -1541,6 +1541,7 @@
     "edited": "Edited",
     "rowSubstitute": "Substitute",
     "rowDelete": "Delete",
+    "rowDuplicate": "Duplicate",
     "setsRest": "{{sets}} sets · {{rest}}s rest",
     "close": "Close",
     "addExercise": "＋ Add exercise",

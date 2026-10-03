@@ -13,8 +13,9 @@ import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
 import StageSelector from '../components/ui/StageSelector';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import SwipeRow from '../components/ui/SwipeRow';
 import StepField from '../components/ui/StepField';
-import { ArrowIcon, DragIcon, LockIcon, CheckIcon } from '../components/ui/EditorIcons';
+import { DragIcon, LockIcon, CheckIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
@@ -29,32 +30,38 @@ const CARD_GAP = spacing.sm;
 
 // ─── Tarjeta de sesión ────────────────────────────────────────────────────────
 // Sesion Card / "Sesion card editor de programa" (210:3152) con dos cambios
-// pedidos: el eyebrow "SESIÓN A" se sustituye por la letra delante del nombre, y
-// se antepone un asa de arrastre.
+// pedidos: el eyebrow "SESIÓN A" se sustituye por la letra, y la tarjeta se
+// desliza como una fila de ejercicio del editor de sesión (`ui/SwipeRow`): la
+// letra va a la izquierda, donde allí va el número, y el asa a la derecha.
+// Sin la flecha accent de antes: con el asa pegada al borde y la ‹ de la tarjeta
+// abierta eran tres símbolos de navegación en 40px.
 //
 // El reordenado lo lleva `react-native-sortables` (ver la lista más abajo): el
 // asa solo tiene que envolverse en `Sortable.Handle`.
 
-function SessionCard({ label, name, meta, onPress }) {
+function SessionCard({ label, name, meta, actions, isOpen, onOpenChange, onPress }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   return (
-    <View style={styles.sesCard}>
-      <Sortable.Handle style={styles.dragHandle}>
-        <DragIcon color={th.colors.mutedLight} />
-      </Sortable.Handle>
-      <TouchableOpacity style={styles.sesBody} onPress={onPress} activeOpacity={0.7}>
-        {/* La letra acompaña al bloque entero (nombre + meta), centrada contra
-            él — no es un prefijo del nombre. */}
-        <Text style={styles.sesLetter}>{label}</Text>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.sesName} numberOfLines={1}>{name}</Text>
-          <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
-        </View>
-        <ArrowIcon size={18} color={th.colors.accent} />
-      </TouchableOpacity>
-    </View>
+    <SwipeRow
+      actions={actions}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      onPress={onPress}
+      style={styles.sesCard}
+      leading={<Text style={styles.sesLetter}>{label}</Text>}
+      handle={(
+        <Sortable.Handle style={styles.dragHandle}>
+          <DragIcon color={th.colors.mutedLight} />
+        </Sortable.Handle>
+      )}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.sesName} numberOfLines={1}>{name}</Text>
+        <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
+      </View>
+    </SwipeRow>
   );
 }
 
@@ -79,6 +86,8 @@ export default function ProgramEditorScreen({ navigation }) {
   const updateStage           = useStore((s) => s.updateStage);
   const setCurrentStage       = useStore((s) => s.setCurrentStage);
   const reorderSessionsInStage = useStore((s) => s.reorderSessionsInStage);
+  const duplicateSessionInProgram = useStore((s) => s.duplicateSessionInProgram);
+  const removeSessionFromProgram  = useStore((s) => s.removeSessionFromProgram);
   const showToast             = useStore((s) => s.showToast);
   const { commit, done }      = useEditorExit(navigation);
 
@@ -95,6 +104,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const [editingName, setEditingName]           = useState(false);
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
+  const [openRowId, setOpenRowId]               = useState(null); // tarjeta con el panel de acciones abierto
 
   const selectedStage = activeProgram?.stages?.[selectedStageIdx] ?? null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
@@ -157,11 +167,32 @@ export default function ProgramEditorScreen({ navigation }) {
     .filter((s) => s.template);
 
   function handleReorder({ data }) {
+    setOpenRowId(null);
     reorderSessionsInStage(
       editingId,
       selectedStageIdx,
       data.map((s) => s.id),
     );
+  }
+
+  function handleDeleteSession({ id, template }) {
+    showDialog(
+      t('editor.sessionDeleteBtn'),
+      t('editor.sessionDeleteConfirm', { name: template.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('editor.sessionDeleteBtn'), style: 'destructive',
+          onPress: () => removeSessionFromProgram(editingId, id),
+        },
+      ]
+    );
+  }
+
+  function handleDuplicateSession(id) {
+    if (duplicateSessionInProgram(editingId, id)) {
+      showToast(t('editor.toastSessionDuplicated'), 2200, 'success');
+    }
   }
 
   function commitName() {
@@ -187,6 +218,7 @@ export default function ProgramEditorScreen({ navigation }) {
           text: t('common.delete'), style: 'destructive',
           onPress: () => {
             setStageSheetOpen(false);
+            setOpenRowId(null);
             removeStageFromProgram(editingId, selectedStageIdx);
             setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
             showToast(t('editor.toastStageDeleted'), 2200, 'neutral');
@@ -286,7 +318,7 @@ export default function ProgramEditorScreen({ navigation }) {
               if (idx < 0) return;
               // Segunda pulsación sobre la etapa ya activa → abre el modal.
               if (idx === selectedStageIdx) setStageSheetOpen(true);
-              else setSelectedStageIdx(idx);
+              else { setOpenRowId(null); setSelectedStageIdx(idx); }
             }}
             // El `+` lleva al plan del programa: allí se ve lo que ya hay y
             // desde allí se añade. La hoja de dos filas que bifurcaba entre
@@ -311,12 +343,27 @@ export default function ProgramEditorScreen({ navigation }) {
             keyExtractor={(s) => s.id}
             rowGap={CARD_GAP}
             scrollableRef={scrollRef}
+            onDragStart={() => setOpenRowId(null)}
             onDragEnd={handleReorder}
             renderItem={({ item: { id, template } }) => {
               const stats = sessionStats(template, allExercises);
+              const actions = [{
+                label: t('editor.rowDuplicate'), kind: 'neutral',
+                onPress: () => handleDuplicateSession(id),
+              }];
+              // Como en el editor de sesión: la última sesión de la etapa no se borra.
+              if (sortableSessions.length > 1) {
+                actions.push({
+                  label: t('editor.rowDelete'), kind: 'danger',
+                  onPress: () => handleDeleteSession({ id, template }),
+                });
+              }
               return (
                 <SessionCard
                   label={template.label ?? ''}
+                  actions={actions}
+                  isOpen={openRowId === id}
+                  onOpenChange={(open) => setOpenRowId(open ? id : null)}
                   name={template.name ?? ''}
                   meta={stats.minutes > 0
                     ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
@@ -533,31 +580,25 @@ const makeStyles = (th) => StyleSheet.create({
   summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
 
   // ── Tarjeta de sesión ──
-  // paddingLeft `space/sm`: los puntos del asa empiezan a 9px dentro de su caja
-  // de 26, así que 6+9 deja el contenido en los 15px (`space/lg`) de Figma.
+  // Lo que `SwipeRow` no decide: la tarjeta de sesión es más alta y más
+  // redondeada que una fila de ejercicio (radius/md, space/md arriba y abajo).
+  // Mismos 15px (`space/lg`) de Figma a la izquierda; a la derecha 6 porque el
+  // icono del asa ya trae 9px de aire dentro de su caja de 26.
   sesCard: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    backgroundColor:  th.colors.surface,
-    borderRadius:     th.radius.md,
-    paddingLeft:      spacing.sm,
-    paddingRight:     spacing.lg,
-    paddingVertical:  spacing.md,
+    borderRadius:      th.radius.md,
+    paddingLeft:       spacing.lg,
+    paddingRight:      spacing.sm,
+    paddingVertical:   spacing.md,
   },
   dragHandle: {
     width:          26,
     alignSelf:      'stretch',
     alignItems:     'center',
     justifyContent: 'center',
-  },
-  sesBody: {
-    flex:          1,
-    minWidth:      0,
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.md,
+    marginLeft:     spacing.sm,
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
+  // minWidth 16 = el ancho de la flecha ‹ que la sustituye al abrir la tarjeta.
   sesLetter: { ...textStyles.itemTitle, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
   sesName:   { ...textStyles.bodyStrong, color: th.colors.text },
   sesMeta:   { ...textStyles.label, color: th.colors.mutedLight },
