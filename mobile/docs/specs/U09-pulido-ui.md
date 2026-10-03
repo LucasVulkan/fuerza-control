@@ -13,7 +13,7 @@
 > Fase U09-08 · hecho · Un solo lima, como token del tema · §8 · antes U35
 > Fase U09-09 · hecho · Cabecera de cerrar compartida y ✕ como icono · §9 · antes U36
 > Fase U09-10 · pendiente · Pantalla vacía común, sin emojis · §10 · antes U37
-> Fase U09-11 · pendiente · Una sola hoja de progresión · §11 · antes U38
+> Fase U09-11 · terminado · Una sola hoja de progresión · §11 · antes U38
 > Fase U09-12 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12 · antes U39
 > Fase U09-13 · hecho · Importar archivo: el contenido de la hoja al estándar · §13 · antes U40
 > Fase U09-14 · pendiente · Programas archivados: la lista al estándar · §14 · antes U41
@@ -571,6 +571,75 @@ Cinco pantallas vacías con emoji a 32 o 40 px: 📭 `HistoryList`, 📈
 cambian por un componente `EmptyState` con icono de línea (como `RowIcon`),
 título y texto.
 
+**Revisado contra el código (3-oct-2026).** Las cinco siguen ahí, pero no son
+las únicas pantallas vacías: hay otras cuatro sin emoji y cada una con su
+tipografía y su botón (`ProgramScreen` ×3: puerta PRO, sin sesiones, sin
+plantillas; `LoadTab`). Una pieza «común» que deja fuera cuatro de nueve no
+lo es. Y quedan emojis fuera de las pantallas vacías.
+
+### 10.1 La pieza
+
+`components/ui/EmptyState.jsx`, de arriba abajo y centrado:
+
+- **Icono** (opcional): un trazo de `ROW_ICON`, a 32 px en `mutedLight`.
+  `RowIcon` gana `size` (por defecto 18, como ahora) y `strokeWidth` (por
+  defecto 2.4); aquí 32 y 1.8, para que el trazo no engorde al escalar. Sin
+  caja ni círculo detrás: va donde iba el emoji.
+- **Título** (opcional): `textStyles.bodyStrong`, `text`.
+- **Texto**: `textStyles.body`, `mutedLight`, centrado, `lh(body)`.
+- **Acción** (opcional, `{ label, onPress }`): el botón lima que ya usa
+  `ProgramScreen` (`cta`: alto 44, `radius.md`, `labelStrong` en `onAccent`).
+  Hoy hay tres botones distintos para lo mismo (`NoProgram` en `radius.md` con
+  `button`/`bg`, la puerta PRO de Clientes en `radius.sm`), se quedan en uno.
+- **Secundaria** (opcional, `{ label, onPress }`): texto en `mutedLight`, el
+  «Ocultar pestaña» de las puertas PRO.
+- `gap: spacing.md`, `paddingHorizontal: spacing.xxl`; `style` para que quien
+  la usa diga si ocupa la pantalla (`flex: 1`, centrado vertical) o va en una
+  lista (`paddingVertical`).
+
+### 10.2 Dónde
+
+| Sitio | Icono | Título | Acción |
+|---|---|---|---|
+| `HistoryList` (📭) | `history` | — | — |
+| `ProgressTab` (📈) | `progress` | — | — |
+| `LoadTab` | `progress` | — | — |
+| `NoProgram` (🏋️) | `exercise` | — | Nuevo programa |
+| Clientes, puerta PRO (👥) | `user` | sí | PRO + ocultar pestaña |
+| Clientes, sin clientes (👥) | `user` | — | — |
+| Plantillas, puerta PRO | `preset` | sí | PRO + ocultar pestaña |
+| Plantillas, sin sesiones | `preset` | — | Crear |
+| Plantillas, sin plantillas | `preset` | — | Crear |
+
+«Sin plantillas» pierde su título («Plantillas»): repetía la cabecera
+«PLANTILLAS · 0» que tiene justo encima. Los títulos de Plantillas pasan de
+`title` a `bodyStrong`, como Clientes.
+
+Fuera: los avisos de una línea dentro de una lista o una hoja («sin sesiones
+en este filtro», «sin datos de peso», facturación, gráficas) no son pantallas
+vacías y se quedan como están.
+
+Limpieza: `HomeScreen` conserva `emptyState`/`emptyIcon`/`emptyText`/
+`newProgramBtn*` en sus estilos sin usarlos desde que eso se mudó a
+`NoProgram`; se borran.
+
+### 10.3 El resto de emojis
+
+- Copiar el código del cliente (Clientes → Info): 📋 / ✓ de texto (a 18 px,
+  fuera de la escala) → `ROW_ICON.duplicate` / `CheckIcon`, en `mutedLight` y
+  lima al copiar.
+- Nota del ejercicio en el historial (`SessionCard`, 📝) y nota del entrenador
+  en el Workout (`ExerciseCard`, 📋): el emoji delante del texto → `ROW_ICON.text`
+  a 13 px en `mutedLight`, en fila con el texto (el texto sigue siendo el que
+  se recorta/expande).
+- Aviso de fin de descanso (`services/timerNotification.js`): título y cuerpo
+  en castellano a pelo (`'✅ ¡A por la siguiente serie!'`, «descansaste bien»,
+  «¡Descanso terminado!») → claves i18n en `es`/`en`, sin el ✅. Se le escapó
+  a U09-07.
+- **Se quedan:** los emojis de la lista de ventajas del `PaywallModal` (cambiarlos
+  pide iconos que no existen —facturación— y va con el rediseño del pago) y
+  los ⬆/⬇ de `utils/progression.js` (son datos del motor, no se pintan tal cual).
+
 ## 11. U09-11 — Una sola hoja de progresión
 
 La hoja de progresión de `editor/ExerciseEditorInline.jsx` y la de
@@ -579,6 +648,11 @@ le falta el paso «Cuándo se cumple» (`stepEval`) y numera 3 el incremento.
 Sacar una sola pieza, y decidir si el alta debe tener el paso de evaluación.
 Al usuario (29-sep-2026) no le cuadra que se quitara en el alta; lo más
 probable es una simplificación fuera de lugar. Se decide al llegar a la fase.
+
+**Resuelto por P12-10 (3-oct-2026, `2c2dc25`).** La hoja salió a
+`components/editor/ProgressionSheet.jsx` y la usan el editor y el alta, con
+todos los pasos (también «Cuándo se cumple»). Nada más que hacer aquí; las
+pruebas van en P12-10.
 
 ## 12. U09-12 — Editar sesión: la página se desliza al cambiar de sesión
 
@@ -712,6 +786,31 @@ a pantalla completa propio de `WorkoutScreen` (barra con el nombre y
 a esa pantalla en vez de montar la suya; hay que ver cómo trabaja con el
 `templateId` `'__free__'` de la sesión libre.
 
+**Revisado contra el código (3-oct-2026).** El store ya acepta `'__free__'`
+en `addBlockToSession`/`updateBlock`/`removeBlockFromSession` (escriben en
+`activeSession.freeBlocks`), así que `BlockEditorInline` vale tal cual. Lo que
+no vale de `BlockEditorScreen` con ese id:
+
+- **Lee los bloques de `sessionTemplates[templateId]`**, que para `'__free__'`
+  no existe: la pantalla saldría vacía (`!block` → `null`). Para `'__free__'`
+  los bloques son `activeSession.freeBlocks` (y de ahí también el desplegable
+  para saltar entre bloques).
+- **El ✓ es `useEditorExit().done`**: marca el programa activo como pendiente
+  de reenviar a sus clientes, dice «Programa editado» y `backToMain` desapila
+  hasta Main, **sacándote del entreno**. Con `'__free__'` el ✓ hace lo mismo
+  que ‹: `navigation.goBack()`, sin toast ni marcas (la sesión libre no es de
+  ningún programa; los bloques ya están escritos en el momento).
+
+Y de paso se arregla un fallo de hoy: dentro del `Modal`, «Añadir movimiento»
+navega a `ExerciseSelector`, que es una pantalla del stack y se abre **debajo**
+del modal. Como pantalla, el selector entra encima y vuelve al bloque.
+
+En `WorkoutScreen`: añadir bloque = `addBlockToSession('__free__', bloque)` y
+`navigate('BlockEditor', { templateId: '__free__', blockId })`; el lápiz del
+bloque, lo mismo sin añadir. Fuera el `Modal`, `editingBlockId`,
+`blockScrollRef`, los estilos `blockHeader*`/`modalSafe` y los imports que
+queden sin uso (`GestureHandlerRootView`, `BlockEditorInline`…).
+
 ## 16. U09-16 — Inicio: banner de sesión en curso
 
 Hoy, si empiezas una sesión que no es la que toca y vuelves a Inicio, esa
@@ -833,8 +932,8 @@ se perderán.».
 | U09-07 | Textos fijos a i18n; pago, importar e Info/archivados de Clientes a `DragSheet`; actualización de programa a diálogo | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U09-08 | Un solo lima: `#b8ff00` pasa a `accent` | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U09-09 | Esas cuatro pantallas a `ScreenHeader`; ✕ como icono | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
-| U09-10 | `EmptyState` común | pendiente | 🟢 |
-| U09-11 | Hoja de progresión única | pendiente | 🟢 |
+| U09-10 | `EmptyState` común en las nueve pantallas vacías; fuera los emojis de la UI | pendiente | 🟡 |
+| U09-11 | Hoja de progresión única | ✅ resuelta por P12-10 (`2c2dc25`) | 🟢 |
 | U09-12 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U09-13 | Importar archivo al estándar; `ChoiceRow` como pieza de elección única | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U09-14 | Programas archivados (cliente y menú ≡) al estándar (maqueta antes) | pendiente | 🟡 |
