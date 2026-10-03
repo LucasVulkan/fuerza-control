@@ -7,6 +7,11 @@
  * contenido en OTRA jerarquía nativa, fuera del de `App.js`, y sin uno propio
  * el asa de arrastre de los movimientos no respondía. Una pantalla del stack
  * cuelga del de `App.js` y no hace falta.
+ *
+ * La usa también la sesión libre del Workout con `templateId: '__free__'`: ahí
+ * no hay plantilla, los bloques viven en `activeSession.freeBlocks`, y el ✓ no
+ * es la salida del modo edición sino un ‹ más (no hay programa que marcar ni
+ * Main al que volver: sacaría del entreno).
  */
 import { useState } from 'react';
 import { TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
@@ -33,12 +38,14 @@ export default function BlockEditorScreen({ navigation, route }) {
   // bloque nuevo se parezca al anterior.
   const [swap, setSwap] = useState(0);
 
+  const isFree = templateId === '__free__';
   const template        = useStore((s) => s.sessionTemplates[templateId]);
+  const freeBlocks      = useStore((s) => s.activeSession.freeBlocks) ?? [];
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
-  const blocks = template?.blocks ?? [];
+  const blocks = isFree ? freeBlocks : template?.blocks ?? [];
   const block  = blocks.find((b) => b.id === blockId) ?? null;
 
   // El ScrollView de la pantalla: la lista de movimientos lo necesita para
@@ -70,7 +77,7 @@ export default function BlockEditorScreen({ navigation, route }) {
           onSelect:  selectBlock,
         } : null}
         right={() => (
-          <TouchableOpacity onPress={done} hitSlop={12} accessibilityRole="button">
+          <TouchableOpacity onPress={isFree ? () => navigation.goBack() : done} hitSlop={12} accessibilityRole="button">
             <CheckIcon size={20} color={th.colors.accent} />
           </TouchableOpacity>
         )}

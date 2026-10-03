@@ -17,7 +17,7 @@
 > Fase U09-12 · hecho · Editar sesión: la página se desliza al cambiar de sesión · §12 · antes U39
 > Fase U09-13 · hecho · Importar archivo: el contenido de la hoja al estándar · §13 · antes U40
 > Fase U09-14 · pendiente · Programas archivados: la lista al estándar · §14 · antes U41
-> Fase U09-15 · pendiente · Sesión libre: el bloque se edita en la pantalla de Editar bloque · §15 · antes U42
+> Fase U09-15 · hecho · Sesión libre: el bloque se edita en la pantalla de Editar bloque · §15 · antes U42
 > Fase U09-16 · hecho · Inicio: banner de sesión en curso · §16 · antes U52
 > Fase U09-17 · hecho · Descartar sesión dice cuál · §17 · antes U53
 >
@@ -811,6 +811,30 @@ bloque, lo mismo sin añadir. Fuera el `Modal`, `editingBlockId`,
 `blockScrollRef`, los estilos `blockHeader*`/`modalSafe` y los imports que
 queden sin uso (`GestureHandlerRootView`, `BlockEditorInline`…).
 
+**Hecho (3-oct-2026).** `BlockEditorScreen` toma los bloques de
+`activeSession.freeBlocks` cuando `templateId` es `'__free__'` y su ✓ hace
+`goBack()` en ese caso; con cualquier otra plantilla no cambia. `WorkoutScreen`
+navega a esa pantalla al añadir un bloque y desde el lápiz, y pierde el `Modal`,
+`editingBlockId`, `blockScrollRef`, los estilos `blockHeader*`/`modalSafe` y los
+imports que dejaron de usarse (`Modal`, `SafeAreaView`, `GestureHandlerRootView`,
+`Reanimated`, `BlockEditorInline`).
+
+**Probar U09-15**
+
+- [ ] Sesión libre en curso → Añadir → Bloque: se abre la pantalla Editar bloque
+  (‹ y ✓ arriba), deslizando desde la derecha y no como hoja.
+- [ ] El ✓ vuelve al Workout, sin toast «Programa editado» y con el bloque
+  como lo dejaste.
+- [ ] El ‹ hace lo mismo que el ✓.
+- [ ] El lápiz de un bloque que ya estaba en el Workout abre la misma pantalla.
+- [ ] Con dos bloques en la sesión libre, el desplegable de la cabecera salta
+  entre ellos.
+- [ ] Añadir movimiento (dentro del bloque) abre el selector encima del editor
+  y el movimiento elegido aparece en el bloque al volver.
+- [ ] Borrar el bloque desde el editor vuelve al Workout y el bloque ya no está.
+- [ ] En una sesión de programa, editar un bloque desde el editor de sesión sigue
+  igual: el ✓ dice «Programa editado» y vuelve a Main.
+
 ## 16. U09-16 — Inicio: banner de sesión en curso
 
 Hoy, si empiezas una sesión que no es la que toca y vuelves a Inicio, esa
@@ -937,6 +961,6 @@ se perderán.».
 | U09-12 | Editar sesión: la página se desliza al cambiar de sesión | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟢 |
 | U09-13 | Importar archivo al estándar; `ChoiceRow` como pieza de elección única | ✅ rama `feat/recap` — probada en dispositivo 30-sep | 🟡 |
 | U09-14 | Programas archivados (cliente y menú ≡) al estándar (maqueta antes) | pendiente | 🟡 |
-| U09-15 | Sesión libre: el bloque se edita en `BlockEditorScreen` | pendiente | 🟢 |
+| U09-15 | Sesión libre: el bloque se edita en `BlockEditorScreen` | ✅ rama `feat/recap` | 🟢 |
 | U09-16 | Banner de sesión en curso; el hero deja de seguir a la activa | ✅ rama `feat/recap` | 🟡 |
 | U09-17 | Descartar sesión dice cuál, sin pregunta | ✅ rama `feat/recap` | 🟢 |

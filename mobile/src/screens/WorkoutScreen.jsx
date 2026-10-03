@@ -1,12 +1,10 @@
-import { View, ScrollView, TouchableOpacity, KeyboardAvoidingView, Modal, Platform, StyleSheet, Animated, PanResponder } from 'react-native';
+import { View, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet, Animated, PanResponder } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle } from 'react-native-svg';
-import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import { useStore, ownerLogOf } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import ExerciseCard, { NoteIcon } from '../components/workout/ExerciseCard';
@@ -15,7 +13,6 @@ import { ArrowIcon } from '../components/ui/EditorIcons';
 import SupersetBlock from '../components/workout/SupersetBlock';
 import ConditioningBlockCard from '../components/workout/ConditioningBlockCard';
 import NotesModal from '../components/workout/NotesModal';
-import BlockEditorInline from '../components/editor/BlockEditorInline';
 import DragSheet from '../components/DragSheet';
 import NavScrim from '../components/ui/NavScrim';
 import SheetRow from '../components/ui/SheetRow';
@@ -222,8 +219,6 @@ export default function WorkoutScreen() {
   const [addSheetOpen, setAddSheetOpen]   = useState(false);
   // Ejercicio ad-hoc cuya línea de objetivo se ha pulsado.
   const [editingAdHoc, setEditingAdHoc]   = useState(null);
-  const [editingBlockId, setEditingBlockId] = useState(null);
-  const blockScrollRef = useAnimatedRef();
 
   // Store state
   const activeSession      = useStore((s) => s.activeSession);
@@ -277,7 +272,6 @@ export default function WorkoutScreen() {
   // Bloques de la sesión libre: no hay plantilla donde guardarlos, viven en la
   // propia sesión y se pintan al final, en el orden en que se añadieron.
   const freeBlocks = isFree ? (activeSession.freeBlocks ?? []) : [];
-  const editingBlock = editingBlockId ? freeBlocks.find((b) => b.id === editingBlockId) ?? null : null;
 
   // Sync setsState when template exercises change (e.g. after editing the program)
   useEffect(() => {
@@ -373,7 +367,7 @@ export default function WorkoutScreen() {
         onUpdate={(patch) => updateBlockState(block.id, patch)}
         onFinish={() => finishBlock(block.id)}
         onReset={() => resetBlock(block.id)}
-        onEdit={isFree ? () => setEditingBlockId(block.id) : undefined}
+        onEdit={isFree ? () => editFreeBlock(block.id) : undefined}
       />
     );
   }
@@ -388,10 +382,16 @@ export default function WorkoutScreen() {
     });
   }
 
+  // El bloque de la sesión libre se edita en la pantalla del editor de sesión,
+  // con `'__free__'` por plantilla (sus bloques viven en `activeSession.freeBlocks`).
+  function editFreeBlock(blockId) {
+    navigation.navigate('BlockEditor', { templateId: '__free__', blockId });
+  }
+
   function handleAddBlock() {
     const block = defaultBlock();
     addBlockToSession('__free__', block);
-    setEditingBlockId(block.id);
+    editFreeBlock(block.id);
   }
 
   // Global active-set pointer (highlight) — recalculated when the "shape" of
@@ -709,8 +709,8 @@ export default function WorkoutScreen() {
       <DragSheet visible={addSheetOpen} onClose={() => setAddSheetOpen(false)} title={t('editor.addSheetTitle')}>
         {/* Las mismas dos filas que la hoja «Añadir» del editor de sesión. */}
         <Section style={styles.sheetSection}>
-          {/* Se cierra al instante y no con la animación: el bloque abre otro
-              Modal, y en iOS no se presenta uno mientras otro se va. */}
+          {/* Se cierra al instante y no con la animación: la hoja es un Modal
+              y la pantalla que se abre debajo no debe esperar a que se vaya. */}
           <SheetRow icon={ROW_ICON.exercise} label={t('editor.addExerciseOption')} onPress={() => { setAddSheetOpen(false); handleAddExercise(); }} />
           <SheetRow icon={ROW_ICON.block}    label={t('editor.addBlockOption')}    onPress={() => { setAddSheetOpen(false); handleAddBlock(); }} />
         </Section>
@@ -734,56 +734,6 @@ export default function WorkoutScreen() {
           />
         );
       })()}
-
-      {/* Editor del bloque de la sesión libre — el mismo inline que el editor de
-          sesión. `GestureHandlerRootView` propio: un Modal de RN monta en otra
-          jerarquía nativa y sin él no llegan los gestos de arrastre. */}
-      {editingBlock && (
-        <Modal
-          visible
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setEditingBlockId(null)}
-        >
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <SafeAreaView edges={['top', 'bottom']} style={styles.modalSafe}>
-              <View style={styles.blockHeader}>
-                <View style={styles.blockHeaderBar}>
-                  <Text style={styles.blockHeaderTitle} numberOfLines={1}>
-                    {editingBlock.name ?? t(`blocks.formats.${editingBlock.format}`)}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.blockHeaderAccept}
-                  onPress={() => setEditingBlockId(null)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.blockHeaderAcceptTxt}>{t('common.accept')}</Text>
-                </TouchableOpacity>
-              </View>
-              <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              >
-                <Reanimated.ScrollView
-                  ref={blockScrollRef}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  <BlockEditorInline
-                    templateId="__free__"
-                    block={editingBlock}
-                    allExercises={allExercises}
-                    onClose={() => setEditingBlockId(null)}
-                    navigation={navigation}
-                    scrollableRef={blockScrollRef}
-                  />
-                </Reanimated.ScrollView>
-              </KeyboardAvoidingView>
-            </SafeAreaView>
-          </GestureHandlerRootView>
-        </Modal>
-      )}
 
       {/* La lista pasa por debajo de los botones de Android (sin zona segura
           abajo, a propósito): un velo del color del fondo los despega del
@@ -943,39 +893,8 @@ const makeStyles = (th) => StyleSheet.create({
   addBtnText: { ...textStyles.button, color: th.tint.accent50 },
   addBtnPlus: { color: th.colors.accent },
 
-  // Hoja de "añadir" + editor de bloque de la sesión libre
+  // Hoja de "añadir" de la sesión libre
   sheetSection: { marginBottom: spacing.sm },
-  modalSafe:    { flex: 1, backgroundColor: th.colors.bg },
-  blockHeader: {
-    flexDirection:     'row',
-    alignItems:        'stretch',
-    gap:               spacing.xl,
-    paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.lg,
-    paddingBottom:     spacing.md,
-  },
-  blockHeaderBar: {
-    flex:              1,
-    minWidth:          0,
-    justifyContent:    'center',
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-  },
-  blockHeaderTitle: {
-    ...textStyles.caps,
-    color:         th.colors.onAccent,
-    textTransform: 'uppercase',
-  },
-  blockHeaderAccept: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.md,
-    padding:         spacing.md,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  blockHeaderAcceptTxt: { ...textStyles.labelStrong, color: th.colors.text },
 
   // Save / discard
   saveBtn: {
