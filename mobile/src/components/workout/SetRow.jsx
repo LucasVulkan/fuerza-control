@@ -85,7 +85,7 @@ function TimerButton({ onTime }) {
 // Dos modos de gesto, según `scrubField`:
 //  · sin él (o en tiempo): el de siempre — la cifra cambia en la casilla mientras
 //    arrastras, con chevrones y borde lima.
-//  · con él ('weight' | 'reps' | 'rpe', preferencia «Regla al deslizar», U10-01):
+//  · con él ('weight' | 'reps' | 'rpe' | 'time', preferencia «Regla al deslizar», U10-01):
 //    la casilla NO cambia durante el gesto. Avisa a SetRow (que pinta la regla y
 //    la burbuja) y al soltar guarda el valor, sin animación.
 
@@ -98,7 +98,7 @@ function InputCell({
   scrollStep = 1,
   showHint   = false,   // fila activa → estado "Current" del Input Field (105:2416)
   isDone     = false,   // serie marcada como hecha → texto en accent tint-50
-  scrubField,           // 'weight' | 'reps' | 'rpe' → modo regla; sin valor → gesto de siempre
+  scrubField,           // 'weight' | 'reps' | 'rpe' | 'time' → modo regla; sin valor → gesto de siempre
   scrubUnit  = 'kg',
   rowWidth   = 0,
   measureRow,           // (cb) mide la View de la fila al activarse: hace falta la x del dedo en ella
@@ -506,7 +506,7 @@ export default function SetRow({
     clearTimeout(closeTimer.current);
     closeTimer.current = setTimeout(() => setScrub(null), SCRUB_MS + 30);
   }, []);
-  // Solo peso, reps y RPE; el tiempo (scrollStep 5) conserva su gesto.
+  // Peso, reps, RPE y segundos (U10-12); apagada la preferencia, el gesto de siempre.
   const scrubProps = (field) => (ruler ? {
     scrubField: field, scrubUnit: unit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd,
   } : null);
@@ -581,6 +581,7 @@ export default function SetRow({
             scrollStep={5}
             showHint={showHint}
             isDone={set.done}
+            {...scrubProps('time')}
           />
           <TimerButton onTime={onTimeChange} />
         </>
@@ -609,6 +610,7 @@ export default function SetRow({
             scrollStep={5}
             showHint={showHint}
             isDone={set.done}
+            {...scrubProps('time')}
           />
           <TimerButton onTime={onTimeChange} />
         </>

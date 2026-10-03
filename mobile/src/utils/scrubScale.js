@@ -30,7 +30,13 @@ const WEIGHT = {
   kg: { step: 0.5, tickEvery: 1, labelEvery: 2, steps: 32, steps3: 32, strongEvery: 1 },
   lb: { step: 1,   tickEvery: 1, labelEvery: 5, steps: 55, steps3: 36, strongEvery: 5 },
 };
-const REPS_STEPS = 12;
+// Reps y segundos: anclados al dedo como el peso, todos los números a la vista
+// (numberEvery fijo). Segundos de 5 en 5, 50 s a lo ancho: ~28 dp por paso, y
+// «120» cabe (los números alternan blanco y gris, 30 blanco · 35 gris).
+const FIELDS = {
+  reps: { step: 1, tickEvery: 1, labelEvery: 1, numberEvery: 1, strongEvery: 0, steps: 12 },
+  time: { step: 5, tickEvery: 5, labelEvery: 5, numberEvery: 5, strongEvery: 0, steps: 10 },
+};
 const RPE_STEPS  = 9;
 const RPE = { min: 1, max: 10 };
 
@@ -93,7 +99,7 @@ export function scrubValueAt(r, x) {
  */
 export function scrubRuler(field, start, fingerX, rowWidth, { unit = 'kg' } = {}) {
   const wt = WEIGHT[unit === 'lb' ? 'lb' : 'kg'];
-  if (field !== 'weight') return rulerFor(field, start, fingerX, rowWidth, field === 'rpe' ? RPE_STEPS : REPS_STEPS, wt);
+  if (field !== 'weight') return rulerFor(field, start, fingerX, rowWidth, field === 'rpe' ? RPE_STEPS : FIELDS[field].steps, wt);
   const r = rulerFor(field, start, fingerX, rowWidth, wt.steps, wt);
   return r.max >= 100 ? rulerFor(field, start, fingerX, rowWidth, wt.steps3, wt, true) : r;
 }
@@ -109,9 +115,10 @@ function rulerFor(field, start, fingerX, rowWidth, steps, wt, threeDigits = fals
     return { ...r, start: scrubValueAt(r, fingerX) };
   }
 
-  const { step, tickEvery, labelEvery } = field === 'reps' ? { step: 1, tickEvery: 1, labelEvery: 1 } : wt;
-  const strongEvery = field === 'reps' ? 0 : wt.strongEvery;
-  const numberEvery = field === 'reps' ? 1 : numberEveryFor(labelEvery, step, px, threeDigits ? MIN_NUMBER_GAP.three : MIN_NUMBER_GAP.two);   // reps: todos (2 cifras caben a 23 dp)
+  const f = FIELDS[field] ?? wt;
+  const { step, tickEvery, labelEvery, strongEvery } = f;
+  const numberEvery = f.numberEvery
+    ?? numberEveryFor(labelEvery, step, px, threeDigits ? MIN_NUMBER_GAP.three : MIN_NUMBER_GAP.two);
   const s   = field === 'reps' ? Math.max(0, Math.round(num(start))) : Math.max(0, round2(num(start)));
   const fx0 = clamp(fingerX, SCRUB_PAD, Math.max(SCRUB_PAD, rowWidth - SCRUB_PAD));
   // El 0 nunca queda dentro de la fila: si anclar el valor bajo el dedo dejaría

@@ -339,3 +339,26 @@ describe('scrubPan', () => {
     expect(scrubTicks(r).every((t) => t.value >= r.min && t.value <= r.max)).toBe(true);
   });
 });
+
+describe('scrubRuler · segundos (U10-12)', () => {
+  test('de 5 en 5, 50 s a lo ancho, anclada al dedo, todos los números', () => {
+    const r = scrubRuler('time', 60, MID, W);
+    expect(r).toMatchObject({ step: 5, tickEvery: 5, numberEvery: 5, start: 60, originX: MID });
+    expect(r.px).toBe(28);
+    expect(scrubValueAt(r, MID + 28)).toBe(65);
+    expect(scrubValueAt(r, MID - 56)).toBe(50);
+    expect(scrubTicks(r).every((x) => x.numbered)).toBe(true);
+  });
+
+  test('blancos los múltiplos de 10, grises los de 5', () => {
+    const t = scrubTicks(scrubRuler('time', 60, MID, W));
+    expect(t.find((x) => x.value === 60).bright).toBe(true);
+    expect(t.find((x) => x.value === 65).bright).toBe(false);
+  });
+
+  test('un valor fuera de la rejilla (47) se queda hasta mover el dedo y luego va de 5 en 5', () => {
+    const r = scrubRuler('time', 47, MID, W);
+    expect(scrubValueAt(r, MID)).toBe(47);
+    expect(scrubValueAt(r, MID + 28)).toBe(50);
+  });
+});

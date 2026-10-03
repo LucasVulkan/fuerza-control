@@ -14,6 +14,7 @@
 > Fase U10-09 · pendiente · Plan frente a real en Carga · §10 · antes U51
 > Fase U10-10 · hecho · La regla, más precisa: vibración por enteros, partida y objetivo, ±, bordes que desplazan, cancelar · §2.6
 > Fase U10-11 · pendiente · La regla se para en el incremento mínimo del ejercicio (preferencia) · §2.7
+> Fase U10-12 · hecho · La regla también en las casillas de segundos · §2.8
 >
 > Estado: **spec cerrada el 30-sep-2026, SIN implementar**. D1 y D2 cerradas
 > el mismo día; queda abierta D3 (la tira de tramos del metrónomo, §1.4), que
@@ -181,7 +182,8 @@ cambio sin tocar nada.
      60 y parecía que ya estabas ahí.
 4. **Burbuja** por encima de la fila:
    - fondo `accent`, texto `onAccent`, `textStyles` de título;
-   - lleva el valor con su unidad («102.5 kg», «8 reps», «RPE 8»), con el
+   - lleva el valor con su unidad, **siempre detrás** («102.5 kg», «8 reps»,
+     «8 RPE», «45 s»; el RPE delante quedaba al revés y descentrado), con el
      mismo separador decimal que la casilla;
    - **ancho fijo**, el que pide el caso más largo (tres cifras, decimal y
      unidad: «999.5 kg»/«999 lb»), para que no cambie de tamaño al pasar de
@@ -281,9 +283,7 @@ hacia arriba (unos 13).
 
 ### 2.5 Fuera de alcance
 
-- Casillas de tiempo (`inputType: 'time'`/`'weight_time'`): mantienen el gesto
-  de hoy. Si la regla gusta, se estudia aparte (±60 s de 5 en 5 son 25
-  posiciones, cabrían).
+- ~~Casillas de tiempo~~: entran en U10-12 (§2.8).
 - El editor de ejercicio y el de bloques: no tienen este gesto.
 
 **Probar U10-01**
@@ -434,6 +434,32 @@ pesos: menos posiciones, más fácil acertar.
   progresión no coinciden, qué pasa con un valor fuera de esa rejilla (el
   mismo trato que §2.3: se mantiene hasta mover el dedo), y la escala (con
   pasos de 2,5 kg cabe más rango en la fila).
+
+
+### 2.8 U10-12 — La regla también en las casillas de segundos
+
+3-oct, el usuario: en segundos seguía el gesto antiguo. Las casillas de tiempo
+(`inputType: 'time'` y `'weight_time'`) usan la misma regla que las reps
+cuando la preferencia está encendida (apagada, el gesto antiguo, que se
+queda):
+
+- anclada al dedo, de **5 en 5 s**, 50 s a lo ancho (10 pasos, ~28 dp cada
+  uno), con el 0 a la izquierda si el valor es bajo y avance por los bordes;
+- **todos los números a la vista**, alternando blanco (múltiplos de 10) y
+  gris, como el peso;
+- rejilla absoluta: un 47 se mantiene hasta mover el dedo y luego va por 45 ·
+  50 · 55;
+- burbuja «45 s», con la diferencia («+15 s») debajo;
+- vibración: todos los pasos finos.
+
+**Probar U10-12**
+
+- [ ] En un ejercicio por tiempo, deslizar la casilla de segundos despliega
+  la regla: de 5 en 5, todos los números visibles, la marca bajo el dedo.
+- [ ] Lo mismo en peso + tiempo, en las dos casillas.
+- [ ] Con «Regla al deslizar» apagado, los segundos vuelven al gesto antiguo.
+- [ ] La burbuja del RPE dice «8 RPE», centrada, con la unidad detrás como
+  en kg y reps.
 
 ---
 
@@ -872,7 +898,7 @@ reutiliza el mismo panel.
 
 | Fase | Qué | Coste | Depende de | Estado |
 |---|---|---|---|---|
-| U10-01 | Casillas que se despliegan en una regla (§2) | 🟡 | — | hecho |
+| U10-01 | Casillas que se despliegan en una regla (§2) | 🟡 | — | hecho · 2a6104c |
 | U10-02 | Metrónomo de tempo (§3) | 🟡 | D3 | pendiente |
 | U10-03 | Final del descanso (§4) | 🟢 | — | pendiente |
 | U10-04 | Rampa del calentamiento en el Workout (§5) | 🟢 | — | pendiente |
@@ -881,5 +907,6 @@ reutiliza el mismo panel.
 | U10-07 | Ola de etapas en el planificador (§8) | 🟡 | cerrar la intensidad (§8.2) | pendiente |
 | U10-08 | Ola como vista previa al añadir etapas (§9) | 🟢 | U10-07 | pendiente |
 | U10-09 | Plan frente a real en Carga (§10) | 🟡 | sincronía de los resúmenes (§10) | pendiente, sin prioridad |
-| U10-10 | La regla, más precisa (§2.6) | 🟡 | U10-01 | hecho |
+| U10-10 | La regla, más precisa (§2.6) | 🟡 | U10-01 | hecho · 2a6104c |
 | U10-11 | Paso del ejercicio en la regla (§2.7) | 🟡 | U10-01 | pendiente, más adelante |
+| U10-12 | La regla en los segundos (§2.8) | 🟢 | U10-01 | hecho |

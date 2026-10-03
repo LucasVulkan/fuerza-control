@@ -123,21 +123,25 @@ export default function ScrubRuler({
 
   // ── Burbuja ────────────────────────────────────────────────────────────────
   const [intStr, decStr] = splitValue(value);
-  const unit   = field === 'weight' ? weightLabel : field === 'reps' ? t('workout.reps').toLowerCase() : '';
-  const prefix = field === 'rpe' ? 'RPE ' : '';
+  // La unidad siempre detrás, como en «57.5 kg» y «8 reps»: «8 RPE», «45 s».
+  const unit = field === 'weight' ? weightLabel
+    : field === 'reps' ? t('workout.reps').toLowerCase()
+    : field === 'time' ? 's'
+    : 'RPE';
   // En libras la casilla también puede llevar .5 (toDisplay redondea a 0,5).
   const hasDecSlot = field === 'weight';
-  const leftW  = em(prefix.length * EM.caps + 3 * EM.digit);
+  // RPE no pasa de 10: dos cifras; reservar tres lo descentraba.
+  const leftW  = em((field === 'rpe' ? 2 : 3) * EM.digit);
   const rightW = em(
     (hasDecSlot ? EM.dot + EM.digit : 0)
-    + (unit ? EM.space + unit.length * EM.letter : 0),
+    + EM.space + unit.length * (field === 'rpe' ? EM.caps : EM.letter),
   );
   const bubbleW = leftW + rightW + 2 * BUBBLE_PAD;
   // Segunda línea: diferencia con la partida («+2.5», «−1»), pivotando en las
   // unidades como el valor; en modo cancelar, «Cancelar». Con 0 va vacía pero
   // la burbuja reserva su alto.
   const [dInt, dDec] = splitValue(scrubDiffText(value, initial));
-  const diffUnit = unit ? ` ${unit}` : '';
+  const diffUnit = ` ${unit}`;
   const bubbleLeft = Math.max(0, Math.min(rowWidth - bubbleW, markerX - bubbleW / 2));
 
   const cx = cell.x;
@@ -213,10 +217,10 @@ export default function ScrubRuler({
       >
         <View style={styles.bubbleLine1}>
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleLeftText, { width: leftW }]}>
-            {prefix + intStr}
+            {intStr}
           </Text>
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: rightW }]}>
-            {decStr + (unit ? ` ${unit}` : '')}
+            {`${decStr} ${unit}`}
           </Text>
         </View>
         <View style={styles.bubbleLine2}>
