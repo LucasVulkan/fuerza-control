@@ -528,19 +528,26 @@ sueltos con su título: VARIANTE, CALENTAMIENTO, PROGRESIÓN, cada uno con un
 - La sección vieja de vinculación (pastillas bajo OPCIONES) **se queda como
   está** hasta P50.
 
+- **Alta de ejercicio propio** (QA P64, 3-oct-2026): `CustomExerciseScreen`
+  pasa al mismo grupo PROGRAMACIÓN con Progresión y Variante (no tiene
+  Calentamiento: va por sesión). Su hoja de Progresión sigue siendo la vieja
+  (Automática / Fija), así que la negrita dice el modo y no qué sube.
+
 **Probar P64**
 
-- [ ] Editor de ejercicio: debajo de VOLUMEN un solo título PROGRAMACIÓN con
+- [x] Editor de ejercicio: debajo de VOLUMEN un solo título PROGRAMACIÓN con
   Progresión, Calentamiento y Variante (en ese orden) en un mismo grupo; los
   títulos sueltos ya no están.
-- [ ] Cada ficha: título blanco, debajo el valor en negrita y la regla en gris en
+- [x] Cada ficha: título blanco, debajo el valor en negrita y la regla en gris en
   una línea; tocarla abre su hoja de siempre.
-- [ ] Ejercicio sin variantes (p. ej. uno de máquina sin agarre) → el grupo
+- [x] Ejercicio sin variantes (p. ej. uno de máquina sin agarre) → el grupo
   tiene solo Progresión y Calentamiento.
-- [ ] Cambiar la progresión o el calentamiento en su hoja → la ficha se
+- [x] Cambiar la progresión o el calentamiento en su hoja → la ficha se
   actualiza al cerrar.
-- [ ] Alta de ejercicio propio y onboarding: sus filas navegables se ven igual
+- [x] Alta de ejercicio propio y onboarding: sus filas navegables se ven igual
   que antes.
+- [ ] Alta de ejercicio propio: PROGRAMACIÓN con Progresión («**Automática** ·
+  +2.5 kg») y Variante en un grupo, como en el editor.
 
 ## Fases
 

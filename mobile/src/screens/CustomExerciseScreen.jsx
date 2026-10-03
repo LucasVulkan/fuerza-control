@@ -267,29 +267,30 @@ export default function CustomExerciseScreen({ navigation, route }) {
             </View>
           </View>
 
-          {/* ══ VARIANTE — la misma fila + hoja que el editor (QA P44) ═══════ */}
+          {/* ══ PROGRAMACIÓN — el mismo grupo de fichas que el editor (P64) ═══ */}
           <View style={styles.block}>
-            <Text style={styles.secLabel}>{t('variants.section').toUpperCase()}</Text>
-            <NavRow
-              icon={<VariantIcon size={15} color={th.colors.accent} />}
-              title={[
-                ...(isUnilateral ? [t('variants.unilateral')] : []),
-                ...(variantLabel(variant, t) ? [variantLabel(variant, t)] : []),
-              ].join(' · ') || t('variants.none')}
-              subtitle={`${t('variants.dim.unilateral')} · ${t('variants.dim.grip').toLowerCase()} · ${t('variants.dim.width').toLowerCase()}`}
-              onPress={() => setVariantSheetOpen(true)}
-            />
-          </View>
-
-          {/* ══ PROGRESIÓN — mismo sistema que el editor real ═══════════════════ */}
-          <View style={styles.block}>
-            <Text style={styles.secLabel}>{t('exerciseEditor.sectionProgression').toUpperCase()}</Text>
-            <NavRow
-              icon={<ProgressionIcon size={15} color={th.colors.accent} />}
-              title={t(`exerciseEditor.progModes.${progMode}`)}
-              subtitle={progLine}
-              onPress={() => setProgSheetOpen(true)}
-            />
+            <Text style={styles.secLabel}>{t('exerciseEditor.sectionProgramming').toUpperCase()}</Text>
+            <View style={styles.optGroup}>
+              <NavRow
+                grouped
+                icon={<ProgressionIcon size={15} color={th.colors.accent} />}
+                title={t('exerciseEditor.sectionProgression')}
+                strong={t(`exerciseEditor.progModes.${progMode}`)}
+                subtitle={progMode === 'auto' ? `+${incTxt}` : null}
+                onPress={() => setProgSheetOpen(true)}
+              />
+              <NavRow
+                grouped
+                icon={<VariantIcon size={15} color={th.colors.accent} />}
+                title={t('variants.section')}
+                strong={[
+                  ...(isUnilateral ? [t('variants.unilateral')] : []),
+                  ...(variantLabel(variant, t) ? [variantLabel(variant, t)] : []),
+                ].join(' · ') || t('variants.none')}
+                subtitle={`${t('variants.dim.unilateral')} · ${t('variants.dim.grip').toLowerCase()} · ${t('variants.dim.width').toLowerCase()}`}
+                onPress={() => setVariantSheetOpen(true)}
+              />
+            </View>
           </View>
 
           {/* ══ OPCIONES ══════════════════════════════════════════════════════ */}
