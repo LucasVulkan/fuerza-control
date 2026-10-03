@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share, useWindowDimensions } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
-import Reanimated, { LinearTransition, FadeOutUp, useSharedValue, withTiming } from 'react-native-reanimated';
+import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -25,6 +25,7 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { Section, MenuRow, ChoiceRow, RowIcon } from '../components/ui/MenuList';
 import EmptyState from '../components/ui/EmptyState';
+import { useSlidePages } from '../components/ui/useSlidePages';
 import ArchivedProgramsSheet from '../components/ArchivedProgramsSheet';
 import AnimatedHeight from '../components/ui/AnimatedHeight';
 import { ROW_ICON } from '../components/ui/rowIcons';
@@ -626,11 +627,6 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
 
 // ── Asignar programa ───────────────────────────────────────────────────────────
 
-// Cambiar de página desliza el contenido con la curva del segmentado, como el
-// pager del editor de sesión. Fuera del componente: un worklet no captura
-// `SegmentedControl` entero.
-const SLIDE = SegmentedControl.TIMING;
-
 /** «N sesiones · N etapas», el subtítulo de las listas de origen. */
 function programMeta(p, t) {
   return `${t('common.session', { count: allProgramDays(p).length })} · ${t('history.stagesCount', { count: p.stages?.length || 1 })}`;
@@ -669,25 +665,10 @@ function AssignProgramSheet({
   const [clientView,    setClientView]    = useState('active'); // 'active' | 'archived'
 
   // +1 = la página nueva entra por la derecha (avanzar), -1 por la izquierda.
-  const { width: screenW } = useWindowDimensions();
-  const slideDir = useSharedValue(0);
-  const pageEntering = () => {
-    'worklet';
-    return {
-      initialValues: { transform: [{ translateX: slideDir.value * screenW }] },
-      animations:    { transform: [{ translateX: withTiming(0, SLIDE) }] },
-    };
-  };
-  const pageExiting = () => {
-    'worklet';
-    return {
-      initialValues: { transform: [{ translateX: 0 }] },
-      animations:    { transform: [{ translateX: withTiming(-slideDir.value * screenW, SLIDE) }] },
-    };
-  };
+  const { slide, pageEntering, pageExiting } = useSlidePages();
 
   function go(next) {
-    slideDir.value = next === 'origin' ? -1 : 1;
+    slide(next === 'origin' ? -1 : 1);
     if (next !== 'origin') { setName(''); setPickedId(''); }
     setStep(next);
   }

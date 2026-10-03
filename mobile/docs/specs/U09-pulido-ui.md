@@ -910,6 +910,17 @@ Pasa a ser como **Asignar programa** de Clientes (`AssignProgramSheet`): una sol
   `SessionEditorScreen`; con una tercera, sale a un hook (`slideDir` +
   `pageEntering`/`pageExiting`) que usan los tres.
 
+**Hecho (3-oct-2026).** La animación sale a `components/ui/useSlidePages.js` y la
+usan `AssignProgramSheet`, `SessionEditorScreen` y `ArchivedProgramsSheet`. El
+hook devuelve `slide(dir)` en vez de `slideDir` suelto: asignar `.value` a algo
+que viene de un hook lo rechaza el lint del compilador de React, y es la
+única diferencia con lo previsto. `ArchivedProgramsSheet` es una sola
+`DragSheet`: el título es «Programas archivados» y, en las opciones, el nombre
+del programa con el ‹. Las `SheetRow` cierran la hoja entera (ya no hay
+`closeThen`); Exportar es una `MenuRow` con su `RowIcon` y no cierra. La
+página se reinicia a la lista cuando la hoja se cierra, y si el programa
+desaparece estando en sus opciones vuelve a la lista.
+
 **Probar U09-14**
 
 - [x] Ficha de cliente → Programa → Programas archivados (con algún programa
@@ -919,11 +930,9 @@ Pasa a ser como **Asignar programa** de Clientes (`AssignProgramSheet`): una sol
 - [x] Menú ≡ → Programas archivados: es una hoja (no un modal con velo), con
   las mismas filas y el mismo orden; sin botón «Cerrar» (se cierra con
   arrastre o tocando fuera).
-- [ ] Tocar una fila (en los dos sitios) abre sus opciones encima de la lista,
-  con el nombre del programa de título: Reactivar, Ver, Exportar, Guardar como
-  plantilla y Eliminar (este en rojo), en ese orden. — ❌ 2026-10-03: funciona, pero
-  dos hojas apiladas no se usan en ningún otro sitio de la app y no está claro
-  en iOS: pasa a páginas dentro de una sola hoja (§14.1).
+- [ ] Tocar una fila (en los dos sitios) desliza, dentro de la misma hoja, a sus
+  opciones: el nombre del programa de título, un ‹ a su izquierda, y Reactivar,
+  Ver, Exportar, Guardar como plantilla y Eliminar (este en rojo), en ese orden.
 - [x] Ver cierra la lista y abre la vista de impresión de ese programa
   (cliente y propios).
 - [x] Exportar abre el compartir con el programa y su historial, y la lista
@@ -947,6 +956,17 @@ Pasa a ser como **Asignar programa** de Clientes (`AssignProgramSheet`): una sol
   en el menú ≡ y «Este cliente no tiene programas archivados» en la ficha.
 - [x] Con la app en inglés, las etiquetas de la hoja de opciones salen en
   inglés (Reactivate, View, Export, Save as template, Delete).
+- [ ] El ‹ de las opciones vuelve deslizando a la lista, y el título vuelve a
+  ser «Programas archivados».
+- [ ] Cerrar la hoja estando en las opciones y reabrirla: sale en la lista,
+  no en las opciones de antes.
+- [ ] Exportar no cierra la hoja: se queda en la página de opciones. Reactivar,
+  Ver, Guardar como plantilla y Eliminar sí la cierran (con su animación).
+- [ ] Todo lo anterior, en iOS y en Android.
+- [ ] Clientes → Asignar programa sigue deslizando igual entre sus páginas
+  (origen y elección) y el ‹ vuelve.
+- [ ] El editor de sesión sigue deslizando la página al cambiar de sesión con el
+  segmentado, hacia el lado que toca.
 
 ## 15. U09-15 — Sesión libre: el bloque se edita en la pantalla de Editar bloque
 
