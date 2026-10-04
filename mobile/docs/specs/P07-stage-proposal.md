@@ -2,13 +2,13 @@
 
 > Tema: programas
 > En corto: Al cerrar una etapa, la app redacta un BORRADOR de la siguiente leyendo las métricas del cliente (adherencia, carga, rendimiento). Nunca automático: el entrenador acepta, edita o descarta.
-> Fase P07-01 · pendiente · `stageStart`/`stageLog` + `isProgramAuthor` extraído · §4.1 · antes P30
-> Fase P07-02 · pendiente · `perfTrend` + `costSignal` + `stageCharacter` + `readClientState` · §4.2 · antes P31
-> Fase P07-03 · pendiente · `stageProposal.js` + tests + calibración con la semilla · §4.3 · antes P32
-> Fase P07-04 · pendiente · Prellenado del planificador + línea en el hero · §8 · antes P33
-> Fase P07-05 · pendiente · Entrada en Home + aviso de etapa sin límite + cool-down · §8 · antes P34
+> Fase P07-01 · aparcado · `stageStart`/`stageLog` + `isProgramAuthor` extraído · §4.1 · antes P30
+> Fase P07-02 · aparcado · `perfTrend` + `costSignal` + `stageCharacter` + `readClientState` · §4.2 · antes P31
+> Fase P07-03 · aparcado · `stageProposal.js` + tests + calibración con la semilla · §4.3 · antes P32
+> Fase P07-04 · aparcado · Prellenado del planificador + línea en el hero · §8 · antes P33
+> Fase P07-05 · aparcado · Entrada en Home + aviso de etapa sin límite + cool-down · §8 · antes P34
 >
-> Estado: **spec cerrada, sin implementar** (ago 2026). Es la **P4** del análisis
+> Estado: **aparcada entera** (4-oct-2026, decisión del usuario). Antes: **spec cerrada, sin implementar** (ago 2026). Es la **P4** del análisis
 > de 5 palancas que produjo [P06-stage-planner.md](P06-stage-planner.md) (P1) y
 > [C02-client-triage.md](C02-client-triage.md) (P3). Origen: conversación Opus + usuario
 > (ago 2026).

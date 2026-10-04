@@ -3,18 +3,18 @@
 > Tema: programas
 > En corto: El motor de progresión ya cubre casi todas las formas de entrenar, pero daba consejos equivocados en cuatro casos y ni el editor ni el Workout dejaban claro qué decide. Primero se arreglan los fallos; después se ordena en tres preguntas (qué pides, qué sube, cuándo y cuánto) y el plan del motor pasa a ser el gris de cada serie.
 > Inicio: 2026-10-01
+> Fin: 2026-10-03
 > Fase P12-01 · hecho · Cuatro fallos del motor · §2 · antes P52
 > Fase P12-02 · terminado · Diseño y maqueta: Qué pides, la hoja de Progresión y el plan en el Workout · §3 · antes P53
 > Fase P12-03 · hecho · Motor: el modelo nuevo y el plan de cada serie · §4 · antes P54
 > Fase P12-04 · hecho · Editor: Qué pides y la hoja de Progresión · §5 · antes P55
 > Fase P12-05 · hecho · Workout: el plan en el gris y la línea de recomendación · §6 · antes P56
-> Fase P12-06 · pendiente · La última vez: botón, línea o debajo de cada serie · §7 · antes P57
 > Fase P12-07 · hecho · Tiempo con carga (Tiempo + Peso, doble en segundos) · §8 · antes P61
 > Fase P12-08 · hecho · Peso corporal: sellado en la sesión y fila en el menú · §9 · antes P62
 > Fase P12-09 · aparcado · Peso corporal en el motor (Por esfuerzo, 1RM y récords) · §10 · antes P63
-> Fase P12-10 · hecho · Alta de ejercicio propio con la misma hoja de Progresión que el editor · §12 · antes P65
+> Fase P12-10 · terminado · Alta de ejercicio propio con la misma hoja de Progresión que el editor · §12 · antes P65
 >
-> Estado: **P12-07 hecha y probada** (2-oct-2026, `d77ffd3`). **P12-08 hecha y probada** (2-oct-2026, `6fd801d`). **P12-05 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P12-04 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P12-03 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P12-01 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
+> Estado: **4-oct-2026: P12-06 se mueve a [U11-01](U11-preferencias-ui.md) (Preferencias de UI) y P12-10 se da por terminada.** **P12-07 hecha y probada** (2-oct-2026, `d77ffd3`). **P12-08 hecha y probada** (2-oct-2026, `6fd801d`). **P12-05 hecha** (2-oct-2026, `66a5719` + `e04682f`; falta probarla a mano). **P12-04 hecha** (2-oct-2026, `400d1de` + `56327d5`; falta probarla a mano). **P12-03 hecha** (2-oct-2026, `2fc2f19`; falta probarla a mano). **P12-01 hecha y probada** (1-oct/2-oct-2026, `f5311ef` + arreglos de QA
 > `fa2e48f`, `6f8cb45`, `0f9e3a8`; rama `feat/recap`). **P12-02 (diseño) cerrada** con el usuario el 1-oct: maqueta
 > `docs/mockups/progression.html`, decisiones en §3.1. Implementación en cuatro
 > fases encadenadas, P12-03 → P12-04 → P12-05 → P12-06 (§4-§7), escritas para que las haga un
@@ -735,43 +735,10 @@ tarjeta plegada, la ficha (§6.3) y P12-06.
 - [x] Banda A2 activada a mano: valorar y apuntar aquí la elección.
   (2-oct: descartada, se queda la línea suelta.)
 
-## 7. P12-06 — La última vez: botón, línea o debajo de cada serie
+## 7. P12-06 — movida a U11-01
 
-### 7.1 La preferencia
-
-`profile.lastSessionView: 'button' | 'line' | 'below'`, **por defecto
-`'button'`**. Se guarda con `setProfile` (el `profile` ya persiste). Fila nueva
-en el menú, sección Preferencias de `AppHeader.jsx` (donde están unidades e
-idioma): «Última sesión» con `SegmentedControl` Botón · Línea · Serie.
-
-### 7.2 De dónde salen las sesiones
-
-`recentLinkedExercises` y `recentExerciseRefs` ya existen (P12-05, §6.5).
-`WorkoutScreen` ya calcula las tres últimas de cada tarjeta para Por esfuerzo:
-P12-06 las pasa también, con su fecha, a la vista de la última vez.
-
-### 7.3 Las tres vistas
-
-- **Botón** (por defecto): icono de historial en la cabecera de la tarjeta, a
-  la izquierda del de notas, solo si hay historial. Abre una `DragSheet` con las
-  tres últimas sesiones: fecha (`toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })`,
-  como `SessionRecapScreen`; **no** `formatters.formatDate`, que fija `es-ES`) y
-  `SetPills neutral`. No hay enlace a Progreso (no existe navegación al
-  detalle de un ejercicio desde el Workout; se añade si se pide).
-- **Línea**: bajo la recomendación, «ÚLTIMA · LUN 29 SEP» en `caps`/`muted` y
-  las pastillas neutras. Sin color (decisión 1-oct).
-- **Debajo de cada serie**: bajo cada `SetRow`, una fila de 12 px en `muted` con
-  lo de esa serie la última vez, alineada con las columnas (`GRID`), y «ANT.» en
-  la columna de la etiqueta. Solo en la tarjeta abierta.
-
-**Probar P12-06**
-
-- [ ] Instalación limpia: la tarjeta trae el icono de historial y abre las tres
-  últimas sesiones con su fecha.
-- [ ] Cambiar en el menú a Línea: la fila «Última · fecha» sin color bajo la
-  recomendación. A Serie: lo de la última vez debajo de cada serie, alineado.
-- [ ] Ejercicio vinculado entre sesiones A y C: el historial mezcla las dos.
-- [ ] Sin historial: ni icono, ni línea, ni filas.
+El 4-oct-2026 pasó a [U11-preferencias-ui.md](U11-preferencias-ui.md) §2, con su texto
+y sus casillas, porque es una preferencia de UI. El código P12-06 no se reutiliza.
 
 ## 8. P12-07 — Tiempo con carga
 
@@ -995,7 +962,7 @@ peso → `why_effortNoBodyweight`), `progressionForm.test.js`,
 | P12-03 | `2fc2f19` | motor: modelo nuevo, chip único de peso, `setPlan` |
 | P12-04 | `400d1de`, `56327d5` | motor (`canAddWeight`, `exact`, `progressionRule`) y editor (`progressionForm.js`, hoja nueva) |
 | P12-05 | `66a5719`, `e04682f` | motor (1RM de tres sesiones, `progressionHistory`, calentamiento, `targetLabel` con `today`, `firstTimeRx`) y Workout (`planSet` en tarjeta y guardado, línea + ficha, `SetPills`) |
-| P12-06 | — | |
+| P12-06 | — | movida a U11-01 (4-oct) |
 | P12-07 | `d77ffd3` | motor (`isTimed`, `chipDouble`/`chipDoubleDecrease` en segundos, `progressionRule`), `planSet` al tiempo mínimo y hoja con Tiempo · Peso · Nada |
 | P12-08 | `6fd801d` | sellado del peso en `saveSession` (sesión libre incluida) y fila «Peso corporal» en el menú (`parseBodyWeight`) |
 | P12-09 | — | aparcada (2-oct): peso corporal en el motor |
@@ -1056,15 +1023,15 @@ y el `DragSheet` de ~1080).
   `progTypes`, `progTypeDesc`, `stepMode`, `stepType`, `stepIncr`… solo si nadie
   más las usa: buscarlas antes).
 
-**Probar P12-10**
+**Lo que se iba a probar en P12-10** (dada por terminada el 4-oct-2026 sin marcar casilla a casilla)
 
-- [ ] Alta de ejercicio propio → la hoja de Progresión es la misma del editor
+- Alta de ejercicio propio → la hoja de Progresión es la misma del editor
   (mismos pasos, opciones y textos).
-- [ ] Crear uno con Peso, +5 kg, «baja si fallan 2 de 3» → al abrirlo en la
+- Crear uno con Peso, +5 kg, «baja si fallan 2 de 3» → al abrirlo en la
   sesión, la hoja del editor enseña exactamente eso.
-- [ ] Crear uno Por esfuerzo → en la sesión, Registrar RPE encendido y bloqueado.
-- [ ] Crear uno de Tiempo → en el editor de la sesión sale en Tiempo, no en Reps.
-- [ ] Volumen del alta: Rango / Reps fijas y los campos de inicio como en el
+- Crear uno Por esfuerzo → en la sesión, Registrar RPE encendido y bloqueado.
+- Crear uno de Tiempo → en el editor de la sesión sale en Tiempo, no en Reps.
+- Volumen del alta: Rango / Reps fijas y los campos de inicio como en el
   editor.
-- [ ] Editor de ejercicio: la hoja de Progresión sigue igual que antes (no
+- Editor de ejercicio: la hoja de Progresión sigue igual que antes (no
   regresión de P12-04).

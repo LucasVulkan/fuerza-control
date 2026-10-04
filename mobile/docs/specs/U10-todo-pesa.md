@@ -4,19 +4,18 @@
 > En corto: Lo que hace que la app se sienta de gimnasio y no un formulario: casillas que se despliegan en una regla al arrastrarlas, un metrónomo para el tempo, un descanso que avisa al final, la rampa del calentamiento, la tarjeta de hoy que se convierte en la cabecera del entreno y la ola de etapas del planificador.
 > Inicio: 2026-10-03
 > Fase U10-01 · hecho · Casillas que se despliegan en una regla (KG, reps, RPE) · §2 · antes U43
-> Fase U10-02 · pendiente · Metrónomo de tempo · §3 · antes U44
+> Fase U10-02 · aparcado · Metrónomo de tempo · §3 · antes U44
 > Fase U10-03 · pendiente · Los últimos segundos del descanso vibran y laten · §4 · antes U45
 > Fase U10-04 · pendiente · Rampa del calentamiento en el Workout · §5 · antes U46
 > Fase U10-05 · pendiente · Escalera del calentamiento en el editor · §6 · antes U47
 > Fase U10-06 · pendiente · De la tarjeta de hoy a la cabecera del Workout · §7 · antes U48
-> Fase U10-07 · pendiente · Ola de etapas en el planificador · §8 · antes U49
-> Fase U10-08 · pendiente · La ola como vista previa al añadir etapas · §9 · antes U50
-> Fase U10-09 · pendiente · Plan frente a real en Carga · §10 · antes U51
+> Fase U10-07 · aparcado · Ola de etapas en el planificador · §8 · antes U49
+> Fase U10-08 · aparcado · La ola como vista previa al añadir etapas · §9 · antes U50
+> Fase U10-09 · aparcado · Plan frente a real en Carga · §10 · antes U51
 > Fase U10-10 · hecho · La regla, más precisa: vibración por enteros, partida y objetivo, ±, bordes que desplazan, cancelar · §2.6
-> Fase U10-11 · pendiente · La regla se para en el incremento mínimo del ejercicio (preferencia) · §2.7
 > Fase U10-12 · hecho · La regla también en las casillas de segundos · §2.8
 >
-> Estado: **spec cerrada el 30-sep-2026, SIN implementar**. D1 y D2 cerradas
+> Estado: **4-oct-2026: para la V1 solo quedan U10-03 a U10-06; U10-02, U10-07, U10-08 y U10-09 se aparcan** (decisión del usuario). **Spec cerrada el 30-sep-2026**. D1 y D2 cerradas
 > el mismo día; queda abierta D3 (la tira de tramos del metrónomo, §1.4), que
 > se resuelve al implementar U10-02. Sale de una conversación de exploración con el usuario sobre cómo
 > hacer la app «menos sobria»: se enseñaron maquetas de unas quince ideas y
@@ -419,22 +418,10 @@ más fácil de usar sin mirar. El usuario las aprobó todas.
   dice «Cancelar»; soltar ahí deja el valor como estaba. Volver a bajar el
   dedo retoma el ajuste.
 
-### 2.7 U10-11 — La regla se para en el incremento mínimo del ejercicio
+### 2.7 U10-11 — movida a U11-02
 
-**Más adelante** (3-oct, el usuario: «quizás esto se puede dejar para más
-adelante»). Con barra se sube de 2,5 en 2,5, con mancuernas de 2 en 2. La
-progresión y los ejercicios ya traen un **incremento mínimo** (ver
-`increment` en `utils/progression.js`). La regla podría pararse solo en esos
-pesos: menos posiciones, más fácil acertar.
-
-- Lo decide el usuario: preferencia «Regla por incremento del ejercicio» (o
-  similar), apagada por defecto; apagada, la regla va de 0,5 kg / 1 lb como
-  en U10-01.
-- Por pensar al especificar: qué incremento manda si el ejercicio y la
-  progresión no coinciden, qué pasa con un valor fuera de esa rejilla (el
-  mismo trato que §2.3: se mantiene hasta mover el dedo), y la escala (con
-  pasos de 2,5 kg cabe más rango en la fila).
-
+El 4-oct-2026 pasó a [U11-preferencias-ui.md](U11-preferencias-ui.md) §3 (Preferencias de
+UI), con su texto. El código U10-11 no se reutiliza.
 
 ### 2.8 U10-12 — La regla también en las casillas de segundos
 
@@ -908,5 +895,5 @@ reutiliza el mismo panel.
 | U10-08 | Ola como vista previa al añadir etapas (§9) | 🟢 | U10-07 | pendiente |
 | U10-09 | Plan frente a real en Carga (§10) | 🟡 | sincronía de los resúmenes (§10) | pendiente, sin prioridad |
 | U10-10 | La regla, más precisa (§2.6) | 🟡 | U10-01 | hecho · 2a6104c |
-| U10-11 | Paso del ejercicio en la regla (§2.7) | 🟡 | U10-01 | pendiente, más adelante |
+| U10-11 | Paso del ejercicio en la regla (§2.7) | 🟡 | U10-01 | movida a U11-02 (4-oct) |
 | U10-12 | La regla en los segundos (§2.8) | 🟢 | U10-01 | hecho · c64c63a |

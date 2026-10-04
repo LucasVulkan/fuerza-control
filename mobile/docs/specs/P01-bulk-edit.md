@@ -2,11 +2,22 @@
 
 > Tema: programas
 > En corto: Cambiar muchas filas del editor de una vez: el descanso de las 24 filas de un bloque, una serie más a todos los accesorios, o press banca por inclinado en las siete sesiones donde aparece. Lo que en Excel es arrastrar una columna.
-> Fase P01-01 · pendiente · `bulkEdit.js` + pantalla + alcance sesión/etapa + Series/Reps/Descanso · §4 · antes P01
-> Fase P01-02 · pendiente · Sustitución masiva reutilizando lista y alcance de la P01-01 · §5 · antes P02
-> Fase P01-03 · pendiente · Campo Progresión (incremento a la mitad / descarga) · §11 · antes P03
+> Fase P01-01 · aparcado · `bulkEdit.js` + pantalla + alcance sesión/etapa + Series/Reps/Descanso · §4 · antes P01
+> Fase P01-02 · aparcado · Sustitución masiva reutilizando lista y alcance de la P01-01 · §5 · antes P02
+> Fase P01-03 · aparcado · Campo Progresión (incremento a la mitad / descarga) · §11 · antes P03
 >
-> Estado: **spec cerrada, sin implementar** (ago 2026).
+> Estado: **aparcada entera** (4-oct-2026, decisión del usuario tras revisarla).
+> Antes: **spec cerrada, sin implementar** (ago 2026).
+>
+> **Si se retoma, la spec ya no vale tal cual** (revisión del 4-oct-2026):
+> 1. El §3.1 ya no se cumple: el editor guarda cada cambio al momento
+>    (`useEditorExit`) y nadie restaura `_editSnapshot`, así que un cambio masivo
+>    no tiene deshacer. Habría que hacerle uno propio (los toasts no llevan botón).
+> 2. P11-02/03 (vincular por programaciones) cubre buena parte de «el mismo
+>    ejercicio en varias sesiones»; a P01-01 le quedaría editar ejercicios distintos a la vez.
+> 3. P01-03 está escrita contra el modelo de progresión anterior a P12.
+> 4. Propuesta para P01-02: en vez de la pantalla masiva, al sustituir desde el
+>    editor de ejercicio preguntar «¿También en las otras N sesiones?» (patrón de P11-03).
 >
 > Qué resuelve: lo que un entrenador hace en Excel arrastrando una columna.
 > Cambiar el descanso de las 24 filas de un bloque, subir una serie a todos los

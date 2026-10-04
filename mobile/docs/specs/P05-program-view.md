@@ -3,12 +3,13 @@
 > Tema: programas
 > En corto: La pantalla que enseña QUÉ es el programa —sesiones, ejercicios, volumen por grupo— sin mezclarlo con en qué semana va el atleta.
 > Inicio: 2026-08-05
+> Fin: 2026-08-05
 > Fase P05-01 · terminado · La sesión deja de mentir: superserie, dropset, calentamiento, bloques · §6 · antes P20
 > Fase P05-02 · terminado · Cabecera y selector: resumen, autoría, chips de etapa · §6 · antes P21
 > Fase P05-03 · terminado · Volumen y diff: `plannedSetsByGroup`, `stageDiff` y tarjeta de barras · §6 · antes P22
-> Fase P05-04 · pendiente · Export a PDF — decisión de producto, pediría `expo-print` · §6 · antes P23
+> Fase P05-04 · aparcado · Export a PDF — decisión de producto, pediría `expo-print` · §6 · antes P23
 >
-> Estado: **fases 1-3 implementadas** (ago 2026); fase 4 (export a PDF)
+> Estado: **fases 1-3 implementadas** (ago 2026); fase 4 (export a PDF, **aparcada** el 4-oct-2026)
 > pendiente de decisión de producto. Origen: conversación
 > Opus + usuario sobre `ProgramDetailScreen`, que había quedado desactualizada.
 > Mockups aprobados sobre esquema (no sobre Figma: la fidelidad se extrae al
