@@ -9,9 +9,9 @@
 > Fase P06-04 · terminado · `progressionHold: deload` en `progression.js` · §6 · antes P27
 > Fase P06-05 · terminado · Pantalla del planificador · §7 · antes P28
 > Fase P06-06 · pendiente · Recap consciente de la descarga · §4.2 · antes P29
-> Fase P06-07 · pendiente · Rediseño del planificador: el plan y la hoja de añadir · §14 · antes P35
+> Fase P06-07 · hecho · Rediseño del planificador: el plan y la hoja de añadir · §14 · antes P35
 >
-> Estado: **fases 0-4 implementadas** (ago 2026). 5 fases, cada una un
+> Estado: **fases 0-4 y 6 implementadas** (ago-sep 2026); pendiente la 5. 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
 > (ago 2026) sobre cómo usar las métricas ya existentes para programar más
 > rápido. El análisis completo derivó en 5 palancas (P1-P5); **esta spec es la
@@ -1030,3 +1030,37 @@ Además de todo lo de §10: **este rediseño no escribe una línea de store**.
 `addStageLadder` y `addStageToProgram` no cambian de firma ni de
 comportamiento — siguen añadiendo al final y siguen cerrando la etapa abierta
 con `closeOpenStage`.
+
+### 14.10 Cómo quedó al implementar
+
+Se cumple lo de arriba salvo la forma del plan, que cambió en la revisión (los
+porqués están en la cabecera de `StagePlannerScreen.jsx`):
+
+- El plan es una **línea de tiempo con tarjetas acordeón**, no filas con un
+  stepper y una hoja «Etapa»: nombre, semanas, candado, duplicar y eliminar
+  viven en la tarjeta desplegada.
+- Plegada, la tarjeta dice el **volumen** (sesiones · ejercicios · series); la
+  regla baja al cuerpo como «Creada con…». La etapa en curso lleva el marcador
+  en acento y «semana N de M», no la etiqueta EN CURSO.
+- Se añade desde un **hueco punteado** al final de la línea con el número que le
+  toca, no con un botón «+ AÑADIR ETAPAS».
+- *Vacío* no es una cuarta pastilla: la hoja abre **sin preset** y con la lista
+  vacía. Duración en semanas, no ciclos (P08).
+- `editor.addSheetTitle` no se borró: lo usan el editor de sesión y el Workout.
+
+**Probar P06-07**
+
+- [ ] Programa con un cliente a mitad de la etapa 2 → añadir 3 etapas desde la
+  hoja: aparecen al final (5, 6, 7…), con sus nombres, y el cliente sigue en la
+  misma etapa y semana.
+- [ ] Hoja con solo `+ descarga` → se crea 1 etapa de 1 semana; al entrenarla,
+  el Workout no propone subir peso.
+- [ ] `+ trabajo` sin tocar nada → la etapa nueva es copia literal de la base, y
+  la siguiente vez que abres la hoja la base por defecto es ESA etapa.
+- [ ] Base = una etapa derivada (con «Creada con…») → los cambios se suman a lo
+  que esa etapa tiene ahora, no a la original.
+- [ ] Duplicar una etapa del medio → la copia va al final, no detrás de ella.
+- [ ] Renombrar una etapa, salir del campo y borrar otra → cada etapa conserva
+  su nombre (no se cruzan).
+- [ ] Desde la ficha del cliente → planificador → añadir etapas y volver: se
+  ofrece subir los cambios al cliente. Entrar y salir sin tocar nada no lo ofrece.
