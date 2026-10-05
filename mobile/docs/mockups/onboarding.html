@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding por caminos — maqueta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --page: #0a0a0a; --pageText: #e6e6e6; --pageMuted: #949494; --pageCard: #171717; --pageBorder: #2a2a2a;
+    --pageAccent: #aae216;
+  }
+  body { background: var(--page); color: var(--pageText); font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--pageMuted); font: 500 14px/1.5 Inter; max-width: 820px; margin-bottom: 24px; }
+  .wrap { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .side { flex: 1; min-width: 300px; max-width: 640px; display: flex; flex-direction: column; gap: 18px; }
+  .box { background: var(--pageCard); border: 1px solid var(--pageBorder); border-radius: 14px; padding: 16px; }
+  .box h2 { font: 800 15px Inter; margin-bottom: 8px; }
+  .box h2 b { color: var(--pageAccent); }
+  .box p, .box li { color: var(--pageMuted); font: 500 13px/1.55 Inter; }
+  .box li { margin-left: 18px; margin-bottom: 4px; }
+  .box li b, .box p b { color: var(--pageText); }
+  .why { color: var(--pageText) !important; }
+  .tag { display: inline-block; font: 800 10px Inter; letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; background: #262626; color: var(--pageMuted); margin-right: 4px; }
+  .tag.real { background: rgba(170,226,22,.14); color: var(--pageAccent); }
+  .tag.data { background: rgba(76,133,255,.16); color: #7aa5ff; }
+  .tag.sim  { background: rgba(251,146,60,.14); color: #fb923c; }
+
+  /* mapa */
+  .map { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .map .col { display: flex; flex-direction: column; gap: 5px; }
+  .map .col > span { font: 800 10px Inter; letter-spacing: .1em; text-transform: uppercase; color: var(--pageMuted); margin-bottom: 2px; }
+  .map .common { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .node { font: 700 11.5px Inter; padding: 6px 8px; background: #222; border: 1px solid #2e2e2e; border-radius: 8px; cursor: pointer; color: var(--pageText); text-align: left; }
+  .node:hover { border-color: #555; }
+  .node.on { border-color: var(--pageAccent); color: var(--pageAccent); }
+  .node.seen { background: #1d2610; }
+  .arrow { color: #555; font: 700 12px Inter; }
+
+  /* ════════ TELÉFONO ════════ */
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000; --blue: #4c85ff;
+    --r: 16px;
+    width: 375px; max-width: 100%; height: 760px; background: var(--bg); color: var(--text);
+    border-radius: 34px; border: 8px solid #1b1b1b; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; transition: background .3s, color .3s; flex: none;
+  }
+  .tint { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .status { height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font: 800 12px Inter; color: var(--text); flex: none; }
+  .top { padding: 6px 16px 10px; flex: none; }
+  .toprow { display: flex; align-items: center; justify-content: space-between; height: 32px; }
+  .iconbtn { width: 32px; height: 32px; border-radius: 10px; background: var(--surface); border: 0; color: var(--text); font: 800 16px Inter; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .iconbtn.hide { visibility: hidden; }
+  .skip { background: none; border: 0; color: var(--mutedLight); font: 800 12px Inter; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; padding: 8px 0 8px 12px; }
+  .skip.hide { visibility: hidden; }
+  .prog { display: flex; gap: 6px; margin-top: 10px; }
+  .seg { flex: 1; }
+  .seg .bar { height: 5px; border-radius: 3px; background: var(--surface2); overflow: hidden; }
+  .seg .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .35s cubic-bezier(.35,0,.15,1); }
+  .seg small { display: block; font: 800 9px Inter; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
+  .seg.cur small { color: var(--text); }
+  .seg.done small { color: var(--mutedLight); }
+
+  .screen { flex: 1; overflow-y: auto; padding: 8px 16px 16px; display: flex; flex-direction: column; animation: in .28s cubic-bezier(.35,0,.15,1); }
+  .screen.back { animation-name: inBack; }
+  @keyframes in { from { opacity: 0; transform: translateX(24px); } }
+  @keyframes inBack { from { opacity: 0; transform: translateX(-24px); } }
+  .screen::-webkit-scrollbar { display: none; }
+  .eyebrow { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 6px 0 8px; }
+  .h { font: 900 27px/1.1 Inter; letter-spacing: -.01em; margin-bottom: 8px; }
+  .sub { font: 500 14px/1.45 Inter; color: var(--mutedLight); margin-bottom: 20px; }
+  .opts { display: flex; flex-direction: column; gap: 10px; }
+  .opt { display: flex; align-items: center; gap: 14px; background: var(--surface); border-radius: var(--r); padding: 16px; cursor: pointer; border: 1.5px solid transparent; text-align: left; color: var(--text); transition: transform .12s, border-color .15s; width: 100%; font-family: Inter; }
+  .opt:active { transform: scale(.98); }
+  .opt.on { border-color: var(--accent); }
+  .opt .ico { width: 46px; height: 46px; border-radius: 12px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 23px; flex: none; }
+  .opt.on .ico { background: var(--accent); }
+  .opt b { display: block; font: 800 16px Inter; }
+  .opt small { display: block; font: 500 12.5px/1.35 Inter; color: var(--mutedLight); margin-top: 3px; }
+  .opt .rec { margin-left: auto; font: 800 9px Inter; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 4px 7px; border-radius: 6px; align-self: flex-start; flex: none; }
+  .opt.big { padding: 20px 16px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile { background: var(--surface); border-radius: var(--r); padding: 22px 12px; text-align: center; cursor: pointer; border: 1.5px solid transparent; color: var(--text); font-family: Inter; }
+  .tile.on { border-color: var(--accent); }
+  .tile .big { font: 900 34px Inter; display: block; }
+  .tile small { font: 600 12px Inter; color: var(--mutedLight); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { flex: 1 0 28%; background: var(--surface); border-radius: 12px; padding: 16px 6px; text-align: center; font: 800 15px Inter; cursor: pointer; border: 1.5px solid transparent; color: var(--text); }
+  .chip.on { background: var(--accent); color: var(--onAccent); }
+  .spacer { flex: 1; min-height: 16px; }
+  .cta { width: 100%; background: var(--accent); color: var(--onAccent); border: 0; border-radius: 14px; padding: 17px; font: 900 15px Inter; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
+  .cta:disabled { opacity: .35; cursor: default; }
+  .ghost { width: 100%; background: none; border: 0; color: var(--mutedLight); font: 800 13px Inter; padding: 14px; cursor: pointer; }
+  .note { background: var(--surface); border-radius: 12px; padding: 12px 14px; font: 500 12.5px/1.45 Inter; color: var(--mutedLight); margin-top: 14px; display: flex; gap: 10px; }
+  .note.acc { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text); }
+  .note.blue { background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--text); }
+  .note b { color: var(--text); }
+  .input { width: 100%; background: var(--surface); border: 1.5px solid var(--surface2); border-radius: 14px; padding: 16px; font: 800 18px Inter; color: var(--text); outline: none; }
+  .input:focus { border-color: var(--accent); }
+  .code { display: flex; gap: 6px; justify-content: center; margin: 6px 0 10px; }
+  .code input { width: 44px; height: 56px; background: var(--surface); border: 1.5px solid var(--surface2); border-radius: 12px; text-align: center; font: 900 22px Inter; color: var(--text); text-transform: uppercase; outline: none; }
+  .code input:focus { border-color: var(--accent); }
+  .bigcode { background: var(--surface); border-radius: 18px; padding: 22px; text-align: center; margin-bottom: 12px; }
+  .bigcode .c { font: 900 34px Inter; letter-spacing: .14em; color: var(--accent); }
+  .bigcode small { font: 600 12px Inter; color: var(--mutedLight); }
+  .row2 { display: flex; gap: 8px; }
+  .btn2 { flex: 1; background: var(--surface2); color: var(--text); border: 0; border-radius: 12px; padding: 13px; font: 800 13px Inter; cursor: pointer; }
+  .btn2.acc { background: var(--accent); color: var(--onAccent); }
+  .logo { font: italic 800 46px 'Barlow Condensed'; letter-spacing: .01em; line-height: .95; }
+  .logo span { color: var(--accent); }
+
+  /* demo de entrada */
+  .setrow { display: flex; gap: 8px; align-items: center; }
+  .setrow .lbl { width: 22px; font: 800 12px Inter; color: var(--mutedLight); }
+  .cell { flex: 1; height: 62px; border-radius: 12px; background: var(--bg); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); display: flex; flex-direction: column; align-items: center; justify-content: center; font: 900 22px Inter; color: var(--text); position: relative; overflow: hidden; touch-action: none; cursor: ew-resize; user-select: none; }
+  .cell.v { cursor: ns-resize; }
+  .cell em { font: 800 9px Inter; letter-spacing: .1em; color: var(--mutedLight); font-style: normal; }
+  .cell .ruler { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; opacity: 0; transition: opacity .15s;
+    background: repeating-linear-gradient(90deg, var(--accent) 0 1.5px, transparent 1.5px 12px); background-size: 12px 8px; background-repeat: repeat-x; background-position-y: bottom; }
+  .cell.drag .ruler { opacity: .8; }
+  .cell .ruler::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 2px; height: 16px; background: var(--text); transform: translateX(-1px); }
+  .cell.pop { animation: pop .12s; }
+  @keyframes pop { 50% { transform: scale(1.06); } }
+  .bubble { position: absolute; top: -2px; left: 50%; transform: translate(-50%,-100%); background: var(--accent); color: var(--onAccent); font: 900 13px Inter; padding: 5px 9px; border-radius: 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+  .demo { background: var(--surface); border-radius: var(--r); padding: 16px 14px; margin-bottom: 14px; }
+  .demo .hint { font: 600 12px Inter; color: var(--mutedLight); text-align: center; margin-top: 10px; }
+
+  /* tema */
+  .themes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+  .sw { border-radius: 14px; height: 92px; cursor: pointer; border: 2px solid transparent; position: relative; overflow: hidden; padding: 8px 6px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+  .sw.on { border-color: var(--text); }
+  .sw i { display: block; height: 10px; border-radius: 3px; }
+  .sw span { font: 800 9.5px Inter; text-align: center; margin-top: 2px; }
+  .preview { background: var(--surface); border-radius: var(--r); padding: 14px; }
+  .preview .pt { font: 800 15px Inter; }
+  .preview .pm { font: 600 12px Inter; color: var(--mutedLight); margin: 3px 0 12px; }
+  .pill { display: inline-block; background: var(--accent); color: var(--onAccent); font: 900 11px Inter; padding: 6px 10px; border-radius: 8px; letter-spacing: .05em; }
+
+  /* tarjetas de "aprende" */
+  .learn { background: var(--surface); border-radius: 20px; padding: 16px; margin-bottom: 14px; position: relative; }
+  .mini { background: var(--bg); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+  .mrow { background: var(--surface); border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 8px; font: 800 12px Inter; }
+  .mrow .l { width: 24px; height: 24px; border-radius: 7px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 12px Inter; color: var(--accent); flex: none; }
+  .mrow small { font: 600 10.5px Inter; color: var(--mutedLight); display: block; }
+  .spot { outline: 2.5px solid var(--accent); outline-offset: 2px; animation: pulse 1.4s infinite; position: relative; z-index: 1; }
+  @keyframes pulse { 50% { outline-color: color-mix(in srgb, var(--accent) 30%, transparent); } }
+  .finger { position: absolute; font-size: 22px; animation: tap 1.4s infinite; pointer-events: none; z-index: 2; }
+  @keyframes tap { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-3px,-4px) scale(.9); } }
+  .dots { display: flex; gap: 6px; justify-content: center; margin: 4px 0 14px; }
+  .dots i { width: 7px; height: 7px; border-radius: 4px; background: var(--surface2); transition: width .2s; }
+  .dots i.on { width: 20px; background: var(--accent); }
+  .lt { font: 900 19px Inter; margin: 14px 0 4px; }
+  .ld { font: 500 13px/1.45 Inter; color: var(--mutedLight); }
+  .fab { position: absolute; right: 10px; bottom: 10px; width: 36px; height: 36px; border-radius: 12px; background: var(--accent); color: var(--onAccent); font: 900 20px Inter; display: flex; align-items: center; justify-content: center; }
+
+  /* plantillas */
+  .tpl { background: var(--surface); border-radius: var(--r); padding: 14px 16px; cursor: pointer; border: 1.5px solid transparent; text-align: left; color: var(--text); width: 100%; font-family: Inter; }
+  .tpl.on { border-color: var(--accent); }
+  .tpl .tn { font: 800 15px Inter; display: flex; justify-content: space-between; align-items: center; }
+  .tpl .tm { font: 600 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .tpl .ss { display: flex; gap: 5px; margin-top: 10px; }
+  .tpl .ss i { font: 900 11px Inter; font-style: normal; background: var(--surface2); border-radius: 6px; padding: 4px 7px; color: var(--accent); }
+
+  /* hoja de compartir */
+  .sheet { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; z-index: 20; animation: fade .2s; }
+  @keyframes fade { from { opacity: 0; } }
+  .sheet .card { background: var(--surface); width: 100%; border-radius: 22px 22px 0 0; padding: 10px 16px 24px; animation: up .25s cubic-bezier(.35,0,.15,1); }
+  @keyframes up { from { transform: translateY(100%); } }
+  .grab { width: 38px; height: 4px; border-radius: 2px; background: var(--muted); margin: 0 auto 14px; }
+  .msg { background: var(--bg); border-radius: 14px; padding: 14px; font: 500 13px/1.5 Inter; color: var(--text); margin-bottom: 14px; }
+  .msg a { color: var(--blue); }
+  .apps { display: flex; justify-content: space-around; }
+  .apps div { text-align: center; font: 700 11px Inter; color: var(--mutedLight); cursor: pointer; }
+  .apps div b { display: flex; width: 50px; height: 50px; border-radius: 14px; background: var(--surface2); align-items: center; justify-content: center; font-size: 22px; margin-bottom: 5px; }
+  .toast { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--text); color: var(--bg); font: 800 12px Inter; padding: 10px 14px; border-radius: 10px; z-index: 30; animation: fade .2s; white-space: nowrap; }
+  .check { display: flex; gap: 10px; align-items: center; background: var(--surface); border-radius: 12px; padding: 12px 14px; font: 700 13.5px Inter; margin-bottom: 8px; }
+  .check i { width: 22px; height: 22px; border-radius: 11px; background: var(--accent); color: var(--onAccent); display: flex; align-items: center; justify-content: center; font: 900 12px Inter; font-style: normal; flex: none; }
+  .check.off i { background: var(--surface2); color: var(--mutedLight); }
+  .check.off { color: var(--mutedLight); }
+  .celebrate { font-size: 54px; text-align: center; margin: 20px 0 6px; animation: pop .5s; }
+
+  /* constructor guiado */
+  .bbar { background: var(--surface); border-radius: 14px; padding: 10px 12px; margin-bottom: 14px; }
+  .bbar .caps { font: 800 9.5px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--mutedLight); }
+  .bchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .bchips i { font: 800 10.5px Inter; font-style: normal; padding: 5px 8px; border-radius: 7px; background: var(--surface2); color: var(--muted); transition: background .25s, color .25s; }
+  .bchips i.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .sessgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .sess { background: var(--surface); border-radius: 14px; padding: 12px 10px; animation: sessIn .35s cubic-bezier(.35,0,.15,1) backwards; }
+  @keyframes sessIn { from { opacity: 0; transform: translateY(10px) scale(.9); } }
+  .sess b { display: block; font: 900 24px Inter; color: var(--accent); }
+  .sess small { display: block; font: 800 11px Inter; margin-top: 2px; }
+  .sess em { font: 600 10.5px Inter; font-style: normal; color: var(--muted); }
+  .sblock { background: var(--surface); border-radius: var(--r); padding: 12px; margin-bottom: 8px; }
+  .sblock.dim { opacity: .55; padding: 10px 12px; }
+  .shead { display: flex; align-items: center; gap: 10px; font: 800 14px Inter; }
+  .shead .l { width: 28px; height: 28px; border-radius: 8px; background: var(--surface2); color: var(--accent); display: flex; align-items: center; justify-content: center; font: 900 14px Inter; }
+  .shead small { margin-left: auto; font: 600 11px Inter; color: var(--muted); }
+  .exrow { background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font: 800 13px Inter; display: flex; justify-content: space-between; align-items: center; animation: sessIn .3s backwards; }
+  .exrow small { font: 600 11px Inter; color: var(--mutedLight); }
+  .addbtn { width: 100%; margin-top: 8px; background: none; border: 1.5px dashed var(--muted); border-radius: 10px; padding: 11px; color: var(--accent); font: 800 13px Inter; cursor: pointer; }
+  .picker { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; animation: fade .2s; }
+  .picker button { background: var(--bg); border: 0; border-radius: 10px; padding: 11px 12px; color: var(--text); font: 700 13px Inter; text-align: left; cursor: pointer; display: flex; justify-content: space-between; }
+  .picker button small { color: var(--mutedLight); font-weight: 600; }
+  .field { background: var(--surface); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+  .field > .caps, .fl { font: 800 9.5px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--mutedLight); display: block; margin-bottom: 8px; }
+  .fl b { color: var(--accent); }
+  .steppers { display: flex; gap: 8px; }
+  .stp { flex: 1; background: var(--bg); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; padding: 6px; }
+  .stp button { width: 30px; height: 30px; border-radius: 9px; border: 0; background: var(--surface2); color: var(--text); font: 900 16px Inter; cursor: pointer; }
+  .stp span { text-align: center; font: 900 18px Inter; }
+  .stp span small { display: block; font: 800 8.5px Inter; letter-spacing: .1em; color: var(--mutedLight); }
+  .sgc { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; gap: 2px; }
+  .sgc b { flex: 1; text-align: center; font: 800 12px Inter; padding: 8px 2px; border-radius: 8px; color: var(--mutedLight); cursor: pointer; }
+  .sgc b.on { background: var(--surface2); color: var(--text); }
+  .fhint { font: 500 11.5px/1.4 Inter; color: var(--mutedLight); margin-top: 7px; }
+  .fhint.warn { color: #fb923c; }
+  .rule { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 12px; padding: 10px 12px; font: 700 12.5px/1.4 Inter; margin-bottom: 12px; }
+  .rule b { color: var(--accent); }
+  .tgl { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--surface2); cursor: pointer; }
+  .tgl:first-of-type { border-top: 0; }
+  .tgl div { flex: 1; font: 800 13px Inter; }
+  .tgl div small { display: block; font: 500 11px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .sw2 { width: 38px; height: 22px; border-radius: 11px; background: var(--surface2); position: relative; transition: background .2s; flex: none; }
+  .sw2::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 8px; background: var(--mutedLight); transition: transform .2s, background .2s; }
+  .sw2.on { background: var(--accent); }
+  .sw2.on::after { transform: translateX(16px); background: var(--onAccent); }
+  .assign { display: flex; align-items: center; gap: 10px; margin: 8px 0 14px; }
+  .assign .a { flex: 1; background: var(--surface); border-radius: 14px; padding: 14px 12px; }
+  .assign .a b { display: block; font: 800 14px Inter; }
+  .assign .a small { font: 600 11px Inter; color: var(--mutedLight); }
+  .assign .arr { color: var(--accent); font: 900 22px Inter; animation: nudge 1.2s infinite; }
+  @keyframes nudge { 50% { transform: translateX(4px); } }
+  .linkbtn { background: none; border: 0; color: var(--accent); font: 800 12.5px Inter; cursor: pointer; padding: 10px 0; }
+
+  @media (max-width: 420px) {
+    body { padding: 20px 0 60px; }
+    h1, .lead { padding: 0 16px; }
+    .phone { border-radius: 0; border-width: 0; width: 100%; height: 720px; }
+    .side { padding: 0 16px; min-width: 0; }
+    .map { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Onboarding por caminos</h1>
+<p class="lead">Maqueta para decidir el recorrido, no la UI final. Se puede tocar todo: los botones avanzan, <b>Saltar</b> se salta el tramo entero con los valores por defecto, la flecha vuelve, el tema se aplica en vivo y la celda de peso se arrastra de verdad. A la derecha, el mapa (cada nodo salta a su pantalla) y la nota de la pantalla que estás viendo.</p>
+
+<div class="wrap">
+  <div class="phone" id="phone">
+    <div class="status"><span>9:41</span><span>▮▮▮ ◔</span></div>
+    <div class="top" id="top"></div>
+    <div class="screen" id="screen"></div>
+  </div>
+
+  <div class="side">
+    <div class="box" id="notes"></div>
+    <div class="box">
+      <h2>Mapa del recorrido</h2>
+      <div class="map" id="map"></div>
+      <p style="margin-top:10px"><span class="tag real">real</span> crea algo de verdad en la app · <span class="tag data">dato</span> solo se guarda para saber quién eres · <span class="tag sim">simulada</span> enseña sin tocar nada</p>
+    </div>
+    <div class="box">
+      <h2>Decisiones que la maqueta propone <b>(y cuáles tienes que tomar tú)</b></h2>
+      <ul>
+        <li><b>Nadie tiene que llamarse «atleta».</b> La bifurcación pregunta por la situación, no por la identidad: <i>Soy entrenador/a · Entreno con un entrenador · Entreno por mi cuenta</i>. Así «tengo entrenador» queda en primera fila, que es lo que pedías, y en ningún texto de la app hace falta un sustantivo para el no-entrenador.</li>
+        <li><b>Entrenador que también entrena</b> es el caso normal, no la excepción. Al final del camino del entrenador: «¿También entrenas tú?» → empalma con el de «por mi cuenta». Hoy <code>proTabsHidden</code> ya es esa preferencia; el rol la fija y se puede cambiar en el menú.</li>
+        <li><b>Sin paywall en el onboarding.</b> Si dice que lleva más de 2 clientes, una línea honesta («gratis hasta 2, con Pro sin límite»), sin botón de compra. El paywall salta al crear el 3.º cliente, que es cuando ya ha visto el valor. Esto <b>no necesita que M01 esté cerrada</b>: solo que el 2+2 sea la regla. Si M01 acaba con prueba gratis, la línea cambia a «prueba Pro X días».</li>
+        <li><b>Constructor guiado, uno solo para tres sitios.</b> Sesiones (aparecen al elegir el número) → un ejercicio en A → su volumen → su progresión → «sigue editándolo luego». Lo usan el entrenador (su 1.ª plantilla, que luego asigna al cliente que acaba de crear), «montar el mío» y «copiar a mano el programa de mi entrenador». Cambia la profundidad, no las pantallas: <b>principiante</b> = volumen con nombre (Fuerza 5 · Músculo 10…) y una pregunta, «¿quieres que la app te diga cuándo subir o bajar?»; <b>avanzado y entrenador</b> = rango, descanso y el editor de progresión real, con los extras a la vista como interruptores opcionales. En cada paso, «Lo termino después» sale con lo que haya guardado.</li>
+        <li><b>«Hazlo» de verdad, «aprende» simulado.</b> Crear el primer cliente, ponerle programa y conectarlo son las pantallas normales de la app con otra cara: al acabar, el cliente existe. Las explicaciones (cómo abrir una sesión, editar, sesión libre) son tarjetas animadas de 3-4 pasos, y se repiten como pista la primera vez que entra en cada pantalla real.</li>
+        <li><b>La elección regla/deslizar es la propia práctica.</b> Esa pantalla enseña a rellenar una serie mientras elige: matas dos pájaros. Guarda en <code>profile.scrubRuler</code>, que ya existe.</li>
+        <li><b>Los datos del entrenador</b> (nº de clientes, clases en grupo) se guardan en <code>profile</code> ya. Para verlos tú hace falta A01 (analítica), que está en espera precisamente por el onboarding. El grupo sí cambia algo: si da clases, «crea tu primer cliente» ofrece «es un grupo» (C06).</li>
+        <li><b>Abierto — idioma:</b> ¿pantalla propia o solo el del móvil con un enlace «cambiar»? La maqueta la pone porque la pediste; una sola pantalla con dos tarjetas que avanza sola cuesta un toque.</li>
+        <li><b>Abierto — «Ya tengo cuenta»</b> en la bienvenida (reinstalación, móvil nuevo): lleva a recuperar con código/Google. Sin eso, quien reinstala repite el onboarding entero.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const THEMES = {
+  formaFit: { name: 'FormaFit', bg:'#0f0f0f', surface:'#1f1f1f', surface2:'#272727', text:'#e6e6e6', mutedLight:'#949494', muted:'#585858', accent:'#aae216', onAccent:'#000', r:'16px' },
+  dark:     { name: 'Oscuro',   bg:'#0a0a0a', surface:'#141414', surface2:'#1a1a1a', text:'#f0f0f0', mutedLight:'#9a9a9a', muted:'#555555', accent:'#e8ff47', onAccent:'#0a0a0a', r:'10px' },
+  midnight: { name: 'Midnight', bg:'#04091a', surface:'#0c1535', surface2:'#111e45', text:'#d8eeff', mutedLight:'#7fa8cc', muted:'#2d5070', accent:'#00c8f0', onAccent:'#04091a', r:'10px' },
+  earthy:   { name: 'Earthy',   bg:'#dbd5c8', surface:'#e6e0d4', surface2:'#cfc9bc', text:'#26200f', mutedLight:'#4a4336', muted:'#6e6455', accent:'#6a9458', onAccent:'#fff', r:'10px' },
+  space:    { name: 'Space',    bg:'#efefef', surface:'#ffffff', surface2:'#d6d6d6', text:'#0a0a0a', mutedLight:'#444444', muted:'#666666', accent:'#111111', onAccent:'#fff', r:'18px' },
+};
+
+const S = {
+  lang: 'es', unit: 'kg', theme: 'formaFit', input: null, role: null,
+  nClients: null, groups: null, clientName: '', isGroup: false, program: null, connected: null,
+  coachApp: null, level: null, goal: null, days: null, path: null, alsoTrains: null,
+  kg: 80, reps: 8, learnIdx: 0, code: ['', '', '', '', '', ''],
+  // constructor guiado
+  bctx: null, nSess: null, exs: [], ex: null, picker: false, autoProg: null, progFull: false, volDone: false, progDone: false, progName: '',
+};
+const LETTERS = 'ABCDEF';
+const EX_BEG = [['Sentadilla goblet','Pierna'],['Press banca con mancuernas','Pecho'],['Remo en polea','Espalda'],['Prensa','Pierna'],['Plancha','Core']];
+const EX_ADV = [['Sentadilla','Pierna'],['Press banca','Pecho'],['Peso muerto','Cadena posterior'],['Dominadas','Espalda'],['Press militar','Hombro']];
+// Quien entra al constructor decide su profundidad: el principiante ve una pregunta de progresión;
+// el avanzado y el entrenador, el editor de ejercicio con todo.
+const builderExit = () => S.bctx === 'trainer' ? 't_assign' : 'a_learn';
+function startBuilder(ctx) {
+  Object.assign(S, { bctx: ctx, nSess: ctx === 'trainer' ? null : (S.days || null), exs: [], ex: null, picker: false, autoProg: null, progFull: ctx !== 'beg', volDone: false, progDone: false });
+  go('b_sessions');
+}
+function ensureBuilder() {
+  if (!S.bctx) S.bctx = S.role === 'trainer' ? 'trainer' : S.level === 'adv' ? 'adv' : 'beg';
+  S.progFull = S.progFull || S.bctx !== 'beg';
+  if (!S.nSess) S.nSess = 3;
+  if (!S.ex) addEx(S.bctx === 'beg' ? EX_BEG[1][0] : EX_ADV[1][0]);
+}
+function addEx(n) {
+  const beg = S.bctx === 'beg';
+  S.ex = { name: n, sets: 3, min: beg ? 10 : 8, max: beg ? 10 : 12, rest: 90, up: 'weight', how: 'rules', when: 'all', down: 2, rpe: 8, warmup: false, drop: false, ss: false, link: false };
+  S.exs = [S.ex]; S.picker = false;
+}
+function setEx(k, v) { S.ex[k] = v; render(false, true); }
+const progLabel = () => {
+  if (!S.progDone) return T('Progresión', 'Progression');
+  if (!S.progFull) return S.autoProg ? T('La app te guía', 'App-guided') : T('Peso a tu aire', 'Your call');
+  return S.ex.up === 'none' ? T('Sin progresión', 'No progression') : S.ex.how === 'effort' ? T('Por esfuerzo', 'By effort') : T('Por reglas', 'By rules');
+};
+const repsTxt = (e) => e.min === e.max ? e.min : `${e.min}-${e.max}`;
+const tplName = () => S.progName.trim() || (S.bctx === 'trainer' ? T('Plantilla 1', 'Template 1') : T('Mi programa', 'My program'));
+function bbar() {
+  const n = S.nSess || 0, e = S.exs.length;
+  const items = [
+    [n ? `${n} ${T('sesiones', 'sessions')}` : T('Sesiones', 'Sessions'), !!n],
+    [e ? `${S.ex.name}` : T('Ejercicios', 'Exercises'), !!e],
+    [S.volDone ? `${S.ex.sets}×${repsTxt(S.ex)}` : T('Volumen', 'Volume'), S.volDone],
+    [progLabel(), S.progDone],
+  ];
+  return `<div class="bbar"><span class="caps">${S.bctx === 'trainer' ? T('Tu primera plantilla', 'Your first template') : T('Tu programa', 'Your program')}</span>
+    <div class="bchips">${items.map(([l, ok]) => `<i class="${ok ? 'on' : ''}">${ok ? '✓ ' : ''}${l}</i>`).join('')}</div></div>`;
+}
+const later = () => `<button class="ghost" onclick="go(builderExit())">${T('Lo termino después', 'Finish later')}</button>`;
+const stp = (k, label, min, max, step = 1) => `<div class="stp"><button onclick="setEx('${k}',Math.max(${min},S.ex.${k}-${step}))">−</button><span>${S.ex[k]}<small>${label}</small></span><button onclick="setEx('${k}',Math.min(${max},S.ex.${k}+${step}))">+</button></div>`;
+const sgc = (k, opts) => `<div class="sgc">${opts.map(([v, l]) => `<b class="${S.ex[k] === v ? 'on' : ''}" onclick="setEx('${k}',${typeof v === 'string' ? `'${v}'` : v})">${l}</b>`).join('')}</div>`;
+const tgl = (k, title, desc) => `<div class="tgl" onclick="setEx('${k}',!S.ex.${k})"><div>${title}<small>${desc}</small></div><span class="sw2 ${S.ex[k] ? 'on' : ''}"></span></div>`;
+function ruleSentence() {
+  const e = S.ex, u = S.unit;
+  if (e.up === 'none') return T('Sin progresión: verás lo de la última vez y el peso lo cambias tú.', 'No progression: you see last time and change the weight yourself.');
+  if (e.up === 'reps') return T(`Suben las reps desde tu serie más floja hasta <b>${e.max}</b>; el peso no se toca.`, `Reps go up from your weakest set to <b>${e.max}</b>; weight stays.`);
+  if (e.how === 'effort') return T(`Cada sesión la app calcula el peso para que ${e.sets}×${e.min} te quede en <b>RPE ${e.rpe}</b>.`, `Each session the app picks the weight so ${e.sets}×${e.min} lands at <b>RPE ${e.rpe}</b>.`);
+  const when = e.when === 'all' ? T('todas las series', 'every set') : T('una serie', 'one set');
+  const reach = e.min === e.max ? e.min : e.max;
+  return T(`Cuando ${when} lleguen a <b>${reach}</b> reps → <b>+2,5 ${u}</b>${e.min !== e.max ? ` y vuelves a ${e.min}` : ''}.`, `When ${when} reach <b>${reach}</b> reps → <b>+2.5 ${u}</b>${e.min !== e.max ? ` and back to ${e.min}` : ''}.`);
+}
+const hist = [];
+const seen = new Set();
+let cur = 'welcome';
+
+// Tramos de la barra: el progreso se lee por tramo, no por pantalla.
+const SECTIONS = ['Ajustes', 'Tú', 'Configura', 'Aprende'];
+const SEC_OF = {
+  welcome: -1, lang: 0, units: 0, theme: 0, input: 0, role: 1,
+  t_clients: 1, t_groups: 1, t_client: 2, t_tplIntro: 2, t_program: 2, t_assign: 2, t_connect: 2, t_self: 2, t_learn: 3,
+  c_app: 1, c_code: 2, c_linked: 2, c_ask: 2, c_noapp: 2, c_copy: 2,
+  s_level: 1, s_choice: 1, s_goal: 2, s_days: 2, s_props: 2, a_learn: 3, done: 4,
+  b_sessions: 2, b_exercise: 2, b_volume: 2, b_prog: 2, b_done: 2,
+};
+
+function secTotal(sec) {
+  if (sec === 0) return 4;
+  if (sec === 1) return S.role === 'coached' ? 2 : 3;
+  if (sec === 2) {
+    if (S.role === 'trainer') return 5 + (S.bctx ? 5 : 1);
+    if (S.role === 'self') return S.path === 'own' ? 5 : 3;
+    return S.bctx ? 6 : 2;
+  }
+  return 1;
+}
+function sectionProgress(id) {
+  const sec = SEC_OF[id];
+  // Avance dentro del tramo: pantallas del tramo ya vistas en este recorrido.
+  const inSec = new Set([...hist, id].filter(x => SEC_OF[x] === sec));
+  return Math.min(1, inSec.size / secTotal(sec));
+}
+
+// Saltar = saltar el tramo con los valores por defecto.
+const SKIP_TO = {
+  lang: 'role', units: 'role', theme: 'role', input: 'role',
+  t_clients: 't_client', t_groups: 't_client',
+  t_client: 't_learn', t_tplIntro: 't_connect', t_program: 't_connect', t_assign: 't_connect', t_connect: 't_self', t_self: 't_learn', t_learn: 'done',
+  c_app: 'a_learn', c_code: 'a_learn', c_ask: 'a_learn', c_noapp: 'a_learn', c_copy: 'a_learn', c_linked: 'a_learn',
+  s_level: 's_props', s_choice: 's_props', s_goal: 's_props', s_days: 's_props', s_props: 'a_learn', a_learn: 'done',
+  b_sessions: builderExit, b_exercise: builderExit, b_volume: builderExit, b_prog: builderExit, b_done: builderExit,
+};
+const skipTarget = () => typeof SKIP_TO[cur] === 'function' ? SKIP_TO[cur]() : SKIP_TO[cur];
+
+function go(id, opts = {}) {
+  if (!opts.back) hist.push(cur);
+  if (id === 't_learn' || id === 'a_learn') S.learnIdx = 0;
+  cur = id; seen.add(id); render(opts.back);
+}
+function back() { if (hist.length) { cur = hist.pop(); render(true); } }
+function pick(key, val, next, delay = 260) {
+  S[key] = val; render(false, true);
+  if (next) setTimeout(() => go(typeof next === 'function' ? next() : next), delay);
+}
+function applyTheme() {
+  const t = THEMES[S.theme], p = document.getElementById('phone');
+  for (const k of ['bg','surface','surface2','text','mutedLight','muted','accent','onAccent']) p.style.setProperty('--' + k, t[k]);
+  p.style.setProperty('--r', t.r);
+}
+const T = (es, en) => S.lang === 'en' ? en : es;
+const name = () => S.clientName.trim() || (S.isGroup ? 'Grupo de las 19:00' : 'Ana');
+
+// ════════ PANTALLAS ════════
+const SCREENS = {
+  welcome: {
+    note: ['Bienvenida', 'Una sola pantalla, sin texto que leer. «Ya tengo cuenta» es para quien reinstala o cambia de móvil: recupera con su código o Google y se salta todo.', []],
+    html: () => `
+      <div class="spacer"></div>
+      <div class="logo">FUERZA<br><span>&amp; CONTROL</span></div>
+      <p class="sub" style="margin-top:14px">${T('Tu entrenamiento, tus números, tu progreso. En dos minutos lo dejamos a tu medida.', 'Your training, your numbers, your progress. Two minutes to make it yours.')}</p>
+      <div class="spacer"></div>
+      <button class="cta" onclick="go('lang')">${T('Empezar', 'Start')}</button>
+      <button class="ghost" onclick="toast('→ recuperar cuenta (código / Google)')">${T('Ya tengo cuenta', 'I already have an account')}</button>`,
+  },
+  lang: {
+    note: ['Idioma', 'Viene marcado el del móvil; tocar avanza solo. Si se queda, es un toque de coste. Alternativa: quitarla y dejar «cambiar idioma» como enlace en la bienvenida.', ['data']],
+    html: () => `
+      <div class="eyebrow">1 · ${T('Idioma', 'Language')}</div>
+      <div class="h">${T('¿En qué idioma?', 'Which language?')}</div>
+      <p class="sub">${T('Hemos puesto el de tu móvil.', 'We picked your phone’s.')}</p>
+      <div class="opts">
+        ${opt('lang','es','🇪🇸','Español','', 'units')}
+        ${opt('lang','en','🇬🇧','English','', 'units')}
+      </div>`,
+  },
+  units: {
+    note: ['Unidades', 'Dos baldosas grandes, avanza al tocar. El número de ejemplo enseña lo que cambia en vez de explicarlo.', ['data']],
+    html: () => `
+      <div class="eyebrow">2 · ${T('Unidades', 'Units')}</div>
+      <div class="h">${T('¿Kilos o libras?', 'Kilos or pounds?')}</div>
+      <p class="sub">${T('Se cambia cuando quieras en el menú.', 'You can change it any time.')}</p>
+      <div class="grid2">
+        <button class="tile ${S.unit==='kg'?'on':''}" onclick="pick('unit','kg','theme')"><span class="big">80</span><small>kg</small></button>
+        <button class="tile ${S.unit==='lb'?'on':''}" onclick="pick('unit','lb','theme')"><span class="big">175</span><small>lb</small></button>
+      </div>`,
+  },
+  theme: {
+    note: ['Tema', 'Tocar una muestra repinta TODO el teléfono al momento — es la mejor explicación posible. Aquí no avanza solo: se prueban varios.', ['data']],
+    html: () => `
+      <div class="eyebrow">3 · ${T('Aspecto', 'Look')}</div>
+      <div class="h">${T('Elige tu estilo', 'Pick your style')}</div>
+      <p class="sub">${T('Toca para probarlo.', 'Tap to try it.')}</p>
+      <div class="themes">${Object.entries(THEMES).map(([id, t]) => `
+        <div class="sw ${S.theme===id?'on':''}" style="background:${t.bg}" onclick="S.theme='${id}';applyTheme();render(false,true)">
+          <i style="background:${t.surface}"></i><i style="background:${t.accent};width:60%"></i>
+          <span style="color:${t.text}">${t.name}</span></div>`).join('')}
+      </div>
+      <div class="preview">
+        <div class="pt">${T('Sesión A · Empuje', 'Session A · Push')}</div>
+        <div class="pm">5 ${T('ejercicios', 'exercises')} · ~55 min</div>
+        <span class="pill">${T('EMPEZAR', 'START')}</span>
+      </div>
+      <div class="spacer"></div>
+      <button class="cta" onclick="go('input')">${T('Siguiente', 'Next')}</button>`,
+  },
+  input: {
+    note: ['Cómo meter los números', 'Es la práctica de «cómo rellenar una serie» disfrazada de pregunta: arrastra la celda en un modo y en el otro, y quédate con el que te guste. Guarda <code>profile.scrubRuler</code>, que ya existe en Preferencias.', ['data','sim']],
+    html: () => {
+      const ruler = S.input !== 'scroll';
+      return `
+      <div class="eyebrow">4 · ${T('Registrar series', 'Logging sets')}</div>
+      <div class="h">${T('Pruébalo: arrastra el peso', 'Try it: drag the weight')}</div>
+      <p class="sub">${T('Así se apunta una serie en el entreno. Elige cómo te resulta más cómodo.', 'This is how you log a set. Pick what feels best.')}</p>
+      <div class="demo">
+        <div class="setrow">
+          <span class="lbl">S1</span>
+          <div class="cell ${ruler?'':'v'}" id="cellKg" data-k="kg" data-step="2.5"><div class="bubble"></div><span id="vkg">${fmt(S.kg)}</span><em>${S.unit.toUpperCase()}</em><div class="ruler"></div></div>
+          <div class="cell ${ruler?'':'v'}" id="cellReps" data-k="reps" data-step="1"><div class="bubble"></div><span id="vreps">${S.reps}</span><em>REPS</em><div class="ruler"></div></div>
+        </div>
+        <div class="hint">${ruler ? T('← desliza a los lados →', '← slide sideways →') : T('↑ desliza arriba o abajo ↓', '↑ slide up or down ↓')}</div>
+      </div>
+      <div class="opts">
+        <button class="opt ${ruler?'on':''}" onclick="S.input='ruler';render(false,true)"><span class="ico">📏</span><span><b>${T('Con regla', 'With a ruler')}</b><small>${T('Aparece una regla y ves cada paso. Más preciso.', 'A ruler shows every step. More precise.')}</small></span></button>
+        <button class="opt ${!ruler?'on':''}" onclick="S.input='scroll';render(false,true)"><span class="ico">👆</span><span><b>${T('Solo deslizar', 'Just swipe')}</b><small>${T('El número sube y baja con el dedo. Más rápido.', 'The number follows your finger. Faster.')}</small></span></button>
+      </div>
+      <div class="spacer"></div>
+      <button class="cta" onclick="if(!S.input)S.input='ruler';go('role')">${T('Me quedo con este', 'Use this one')}</button>`;
+    },
+    after: bindCells,
+  },
+  role: {
+    note: ['La bifurcación', 'La única pantalla obligatoria (no tiene «Saltar»). Pregunta la situación, no la identidad, y «tengo entrenador» sale en primera fila. Cada respuesta abre un camino distinto del mapa.', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Sobre ti', 'About you')}</div>
+      <div class="h">${T('¿Cómo entrenas?', 'How do you train?')}</div>
+      <p class="sub">${T('Así te llevamos directo a lo tuyo.', 'So we take you straight to what matters.')}</p>
+      <div class="opts">
+        ${opt('role','self','🏋️', T('Por mi cuenta','On my own'), T('Sigo un programa o me lo monto yo','I follow a program or build my own'), 's_level', true)}
+        ${opt('role','coached','🤝', T('Con un entrenador','With a coach'), T('Alguien me prepara el programa','Someone writes my program'), 'c_app', true)}
+        ${opt('role','trainer','📋', T('Soy entrenador/a','I’m a coach'), T('Preparo programas para mis clientes','I write programs for clients'), 't_clients', true)}
+      </div>`,
+  },
+
+  // ── ENTRENADOR ──
+  t_clients: {
+    note: ['Entrenador · nº de clientes', 'Dato para ti, no cambia el recorrido. Si elige más de 2, aparece la línea del plan gratis — informativa, sin botón de compra. El paywall llega al crear el 3.º cliente.', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Tu trabajo', 'Your work')} · 1/2</div>
+      <div class="h">${T('¿Con cuántos clientes trabajas?', 'How many clients do you train?')}</div>
+      <p class="sub">${T('Más o menos. Nos ayuda a mejorar la app.', 'Roughly. It helps us improve the app.')}</p>
+      <div class="chips">${['Empiezo','1-5','6-15','16-30','+30'].map(v => `<div class="chip ${S.nClients===v?'on':''}" onclick="pick('nClients','${v}')">${v}</div>`).join('')}</div>
+      ${S.nClients && !['Empiezo','1-5'].includes(S.nClients) ? `<div class="note acc">💡 <span>${T('Empiezas gratis con <b>2 clientes y 2 plantillas</b>. Cuando necesites más, Pro quita el límite.', 'Start free with <b>2 clients and 2 templates</b>. Pro removes the limit when you need it.')}</span></div>` : ''}
+      <div class="spacer"></div>
+      <button class="cta" ${S.nClients?'':'disabled'} onclick="go('t_groups')">${T('Siguiente', 'Next')}</button>`,
+  },
+  t_groups: {
+    note: ['Entrenador · clases en grupo', 'Dato, y además decide una cosa: si da clases, al crear el primer cliente aparece «es un grupo» (C06).', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Tu trabajo', 'Your work')} · 2/2</div>
+      <div class="h">${T('¿Das clases en grupo?', 'Do you run group classes?')}</div>
+      <p class="sub">${T('Grupos reducidos, clases dirigidas, circuitos…', 'Small groups, classes, circuits…')}</p>
+      <div class="opts">
+        ${opt('groups','yes','👥', T('Sí, habitualmente','Yes, regularly'), '', 't_client')}
+        ${opt('groups','some','🔁', T('A veces','Sometimes'), '', 't_client')}
+        ${opt('groups','no','🙋', T('No, solo individual','No, one-to-one only'), '', 't_client')}
+      </div>`,
+  },
+  t_client: {
+    note: ['Entrenador · crea tu primer cliente', 'Real: al pulsar, el cliente existe en Clientes. Con un ejemplo ya escrito («Ana») por si quiere probar sin pensar. Si da clases, el interruptor de grupo.', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Paso 1 de 3', 'Step 1 of 3')}</div>
+      <div class="h">${T('Crea tu primer cliente', 'Add your first client')}</div>
+      <p class="sub">${T('Solo el nombre. El resto, cuando quieras.', 'Just a name. The rest whenever you like.')}</p>
+      <input class="input" placeholder="${S.isGroup ? T('Grupo de las 19:00','7pm group') : 'Ana'}" value="${S.clientName}" oninput="S.clientName=this.value">
+      ${S.groups && S.groups !== 'no' ? `
+      <div class="opts" style="margin-top:10px">
+        <button class="opt ${S.isGroup?'on':''}" onclick="S.isGroup=!S.isGroup;render(false,true)"><span class="ico">👥</span><span><b>${T('Es un grupo','It’s a group')}</b><small>${T('Una clase con varios alumnos y una pizarra','A class with several members and a board')}</small></span></button>
+      </div>` : ''}
+      <div class="spacer"></div>
+      <button class="cta" onclick="go('t_tplIntro')">${T('Crear', 'Create')}</button>`,
+  },
+  t_tplIntro: {
+    note: ['Entrenador · su programa', 'La recomendada es montar su primera plantilla con el constructor guiado: ve el editor real, invierte tres minutos en algo suyo y sale con una plantilla que reutiliza. El catálogo queda como atajo, y «después» siempre existe.', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Paso 2 de 3', 'Step 2 of 3')}</div>
+      <div class="h">${T('Ahora, el programa de', 'Now, a program for')} ${name()}</div>
+      <p class="sub">${T('Monta tu primera plantilla: la usarás con este cliente y con los siguientes.', 'Build your first template: use it for this client and the next ones.')}</p>
+      <div class="opts">
+        <button class="opt big" onclick="startBuilder('trainer')"><span class="ico">🛠️</span><span><b>${T('Montar mi primera plantilla','Build my first template')}</b><small>${T('Sesiones, un ejercicio y su progresión. Lo demás, cuando quieras.','Sessions, one exercise and its progression. The rest whenever you like.')}</small></span><span class="rec">~3 min</span></button>
+        <button class="opt" onclick="go('t_program')"><span class="ico">🗂️</span><span><b>${T('Partir de una del catálogo','Start from the catalog')}</b><small>${T('Full Body, Upper/Lower, PPL…','Full Body, Upper/Lower, PPL…')}</small></span></button>
+      </div>
+      <div class="spacer"></div>
+      <button class="ghost" onclick="go('t_connect')">${T('Lo hago después', 'Later')}</button>`,
+  },
+  t_assign: {
+    note: ['Entrenador · asignar', 'Real (C07 «Asignar programa»). Se enseña el gesto que repetirá con cada cliente: plantilla → cliente. El contador «1 de 2 gratis» es el de M01: el límite se ve antes de chocar con él, sin paywall.', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Paso 2 de 3', 'Step 2 of 3')}</div>
+      <div class="h">${T('Asígnasela a', 'Assign it to')} ${name()}</div>
+      <p class="sub">${T('Cada cliente recibe su copia y avanza a su ritmo. La plantilla queda guardada para el siguiente.', 'Each client gets their own copy and progresses at their pace. The template stays for the next one.')}</p>
+      <div class="assign">
+        <div class="a"><span class="caps" style="font:800 9px Inter;letter-spacing:.1em;color:var(--mutedLight)">${T('PLANTILLA','TEMPLATE')}</span><b>${S.program && S.program !== 'tpl1' ? progName() : tplName()}</b><small>${S.nSess || 3} ${T('sesiones','sessions')}${S.exs.length ? ' · ' + S.ex.name : ''}</small></div>
+        <span class="arr">→</span>
+        <div class="a" style="text-align:center"><b style="font-size:22px">${name()[0]}</b><small>${name()}</small></div>
+      </div>
+      <div class="note">🗂️ <span>${T('Plantillas: <b>1 de 2</b> gratis.', 'Templates: <b>1 of 2</b> free.')}</span></div>
+      <div class="spacer"></div>
+      <button class="cta" onclick="S.program=S.program||'tpl1';go('t_connect')">${T('Asignar', 'Assign')}</button>
+      <button class="ghost" onclick="go('t_connect')">${T('Ahora no', 'Not now')}</button>`,
+  },
+  t_program: {
+    note: ['Entrenador · desde el catálogo', 'El atajo: asigna una plantilla del catálogo (C07 «Asignar programa»). Se guarda también como su primera plantilla (cuenta en el 2+2).', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Paso 2 de 3', 'Step 2 of 3')}</div>
+      <div class="h">${T('Ponle un programa a', 'Give a program to')} ${name()}</div>
+      <p class="sub">${T('Elige una y la ajustas después.', 'Pick one and tweak it later.')}</p>
+      <div class="opts">
+        ${tpl('fb','Full Body · 3 días', T('3 sesiones · 8 semanas','3 sessions · 8 weeks'), ['A','B','C'])}
+        ${tpl('ul','Upper / Lower', T('4 sesiones · 10 semanas','4 sessions · 10 weeks'), ['A','B','C','D'])}
+        ${tpl('ppl','PPL · 3 días', T('3 sesiones · 12 semanas','3 sessions · 12 weeks'), ['A','B','C'])}
+      </div>
+      <div class="spacer"></div>
+      <button class="cta" ${S.program?'':'disabled'} onclick="go('t_connect')">${T('Asignar', 'Assign')}</button>
+      <button class="ghost" onclick="S.program=null;go('t_connect')">${T('Lo hago después', 'Later')}</button>`,
+  },
+
+  // ── CONSTRUCTOR GUIADO (compartido) ──
+  b_sessions: {
+    note: ['Constructor · sesiones', 'Paso 1 de 4 del constructor. Elegir un número hace que aparezcan las sesiones (A, B, C…) al momento. Son las sesiones de cada semana, sin un campo «días» aparte. Si ya contestó los días antes, vienen puestas. La barra de arriba se va llenando: es la sensación de estar construyendo algo.', ['real']],
+    html: () => `
+      ${bbar()}
+      <div class="eyebrow">1 / 4 · ${T('Sesiones', 'Sessions')}</div>
+      <div class="h">${S.bctx === 'trainer' ? T('¿Cuántas sesiones por semana?', 'How many sessions per week?') : T('¿Cuántos días vas a entrenar?', 'How many days will you train?')}</div>
+      <p class="sub">${T('Cada día, una sesión distinta. Se cambia cuando quieras.', 'Each day is a different session. Change it any time.')}</p>
+      <div class="chips">${[1,2,3,4,5,6].map(d => `<div class="chip ${S.nSess===d?'on':''}" style="flex-basis:14%" onclick="S.nSess=${d};render(false,true)">${d}</div>`).join('')}</div>
+      <div class="sessgrid">${LETTERS.slice(0, S.nSess || 0).split('').map((l, i) => `<div class="sess" style="animation-delay:${i * 70}ms"><b>${l}</b><small>${T('Sesión', 'Session')} ${l}</small><em>${T('vacía', 'empty')}</em></div>`).join('')}</div>
+      <div class="spacer"></div>
+      <button class="cta" ${S.nSess ? '' : 'disabled'} onclick="go('b_exercise')">${T('Siguiente', 'Next')}</button>
+      ${later()}`,
+  },
+  b_exercise: {
+    note: ['Constructor · un ejercicio', 'Solo uno, en la sesión A: basta para ver cómo funciona. Las demás sesiones se ven vacías y se dice que se rellenan después. La lista corta cambia con el nivel (máquinas y mancuernas para el principiante, básicos con barra para el avanzado).', ['real']],
+    html: () => {
+      const list = S.bctx === 'beg' ? EX_BEG : EX_ADV;
+      return `
+      ${bbar()}
+      <div class="eyebrow">2 / 4 · ${T('Ejercicios', 'Exercises')}</div>
+      <div class="h">${T('Añade el primer ejercicio', 'Add the first exercise')}</div>
+      <p class="sub">${T('Con uno basta para ver cómo va. El resto lo rellenas luego.', 'One is enough to see how it works. Fill the rest later.')}</p>
+      <div class="sblock">
+        <div class="shead"><span class="l">A</span>${T('Sesión A', 'Session A')}<small>${S.exs.length} ${T('ej.', 'ex.')}</small></div>
+        ${S.exs.map(e => `<div class="exrow">${e.name}<small>${e.sets}×${repsTxt(e)}</small></div>`).join('')}
+        ${S.exs.length ? '' : S.picker
+          ? `<div class="picker">${list.map(([n, g]) => `<button onclick="addEx('${n}');render(false,true)">${n}<small>${g}</small></button>`).join('')}</div>`
+          : `<button class="addbtn spot" onclick="S.picker=true;render(false,true)">+ ${T('Añadir ejercicio', 'Add exercise')}</button>`}
+      </div>
+      ${LETTERS.slice(1, S.nSess || 3).split('').map(l => `<div class="sblock dim"><div class="shead"><span class="l">${l}</span>${T('Sesión', 'Session')} ${l}<small>${T('después', 'later')}</small></div></div>`).join('')}
+      <div class="spacer"></div>
+      <button class="cta" ${S.exs.length ? '' : 'disabled'} onclick="go('b_volume')">${S.exs.length ? T('Configurar', 'Set up') + ' ' + S.ex.name : T('Siguiente', 'Next')}</button>
+      ${later()}`;
+    },
+  },
+  b_volume: {
+    note: ['Constructor · volumen', 'Principiante: tres opciones con nombre (Fuerza 5 · Músculo 10 · Resistencia 15) y las series, sin rangos ni descansos. Avanzado y entrenador: series, rango de reps y descanso, como en el editor de ejercicio real. Todo viene con un valor sensato: se puede pasar sin tocar nada.', ['real']],
+    html: () => {
+      const e = S.ex, beg = S.bctx === 'beg';
+      return `
+      ${bbar()}
+      <div class="eyebrow">3 / 4 · ${T('Volumen', 'Volume')}</div>
+      <div class="h">${e.name}</div>
+      <p class="sub">${beg ? T('¿Cuántas series y repeticiones? Si dudas, deja lo que hay.', 'How many sets and reps? If unsure, keep it.') : T('Series, repeticiones y descanso.', 'Sets, reps and rest.')}</p>
+      ${beg ? `
+        <div class="field"><span class="fl">${T('Repeticiones', 'Reps')}</span>
+          ${sgcRaw([[5, T('Fuerza · 5','Strength · 5')],[10, T('Músculo · 10','Muscle · 10')],[15, T('Resist. · 15','Endur. · 15')]], e.min, "S.ex.min=S.ex.max=%v;render(false,true)")}
+        </div>
+        <div class="field"><span class="fl">${T('Series', 'Sets')}</span><div class="steppers">${stp('sets', T('SERIES','SETS'), 1, 8)}</div></div>`
+      : `
+        <div class="field"><span class="fl">${T('Series y repeticiones', 'Sets and reps')}</span>
+          <div class="steppers">${stp('sets', T('SERIES','SETS'), 1, 10)}${stp('min', 'MIN', 1, 30)}${stp('max', 'MAX', 1, 30)}</div>
+          <div class="fhint">${e.min === e.max ? T(`Reps fijas: ${e.min}.`, `Fixed reps: ${e.min}.`) : T(`Rango ${e.min}-${e.max}: subes reps hasta ${e.max} y luego peso.`, `Range ${e.min}-${e.max}: add reps up to ${e.max}, then weight.`)}</div>
+        </div>
+        <div class="field"><span class="fl">${T('Descanso', 'Rest')}</span>${sgc('rest', [[60,'1:00'],[90,'1:30'],[120,'2:00'],[180,'3:00']])}</div>`}
+      <div class="spacer"></div>
+      <button class="cta" onclick="if(S.ex.max<S.ex.min)S.ex.max=S.ex.min;S.volDone=true;go('b_prog')">${T('Siguiente', 'Next')}</button>
+      ${later()}`;
+    },
+  },
+  b_prog: {
+    note: ['Constructor · progresión', 'Aquí es donde más cambia. <b>Principiante:</b> una sola pregunta, «¿quieres que la app te diga cuándo subir o bajar el peso?», con un ejemplo de verdad; el enlace «ver todas las opciones» abre el editor completo, así que nunca queda bloqueado. <b>Avanzado y entrenador:</b> el editor de progresión real (Qué sube · Cómo · Cuándo sube · Cuándo baja) con la regla escrita en una frase arriba, y los extras (calentamiento, dropset, superserie, vincular) como interruptores marcados como opcionales: los ve todos sin tener que tocar ninguno.', ['real']],
+    html: () => S.progFull ? progFull() : progSimple(),
+  },
+  b_done: {
+    note: ['Constructor · listo', 'El cierre: se ve lo construido (A con su ejercicio, el resto vacías) y se dice dónde seguir. Nombre opcional, con uno puesto. El entrenador sigue a asignarla; el resto, a «Aprende».', ['real']],
+    html: () => `
+      ${bbar()}
+      <div class="eyebrow">${T('¡Hecho!', 'Done!')}</div>
+      <div class="h">${S.bctx === 'trainer' ? T('Tu plantilla ya tiene forma', 'Your template is taking shape') : T('Tu programa ya tiene forma', 'Your program is taking shape')}</div>
+      <input class="input" style="margin:6px 0 12px" placeholder="${tplName()}" value="${S.progName}" oninput="S.progName=this.value">
+      <div class="sblock">
+        <div class="shead"><span class="l">A</span>${T('Sesión A', 'Session A')}<small>1 ${T('ej.', 'ex.')}</small></div>
+        <div class="exrow">${S.ex.name}<small>${S.ex.sets}×${repsTxt(S.ex)} · ${progLabel()}</small></div>
+      </div>
+      ${LETTERS.slice(1, S.nSess).split('').map(l => `<div class="sblock dim"><div class="shead"><span class="l">${l}</span>${T('Sesión', 'Session')} ${l}<small>${T('vacía', 'empty')}</small></div></div>`).join('')}
+      <div class="note acc">✏️ <span>${T('Sigue editándolo cuando termines: <b>Programa → ' + tplName() + '</b>. Copiar sesiones, etapas, vincular ejercicios… todo está ahí.', 'Keep editing when you’re done: <b>Program → ' + tplName() + '</b>.')}</span></div>
+      <div class="spacer"></div>
+      <button class="cta" onclick="S.program=S.bctx==='trainer'?'tpl1':'own';go(builderExit())">${S.bctx === 'trainer' ? T('Asignar a', 'Assign to') + ' ' + name() : T('Guardar', 'Save')}</button>`,
+  },
+  t_connect: {
+    note: ['Entrenador · conéctalo', 'Real: genera el código (C01) y comparte la invitación con enlace (M01-04). «Lo apunto yo» es el cliente sin app (C05): también vale y se dice. Sin cuenta todavía, aquí se crea la de código en un toque.', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Paso 3 de 3', 'Step 3 of 3')}</div>
+      <div class="h">${T('Conecta a', 'Connect')} ${name()}</div>
+      <p class="sub">${T('Con la app en su móvil recibe el programa y te llegan sus entrenos solos.', 'With the app on their phone they get the program and their workouts reach you automatically.')}</p>
+      <div class="bigcode"><div class="c">XK7·42P</div><small>${T('Su código de cliente', 'Their client code')}</small></div>
+      <div class="row2"><button class="btn2 acc" onclick="share('invite')">${T('Enviar invitación', 'Send invite')}</button><button class="btn2" onclick="toast('Código copiado')">${T('Copiar', 'Copy')}</button></div>
+      <div class="note blue">📝 <span>${T('<b>¿No usa la app?</b> No pasa nada: tú apuntas sus sesiones desde su ficha, o pegas el texto que te mande por WhatsApp.', '<b>Not using the app?</b> Fine: you log their sessions from their profile, or paste the text they send you.')}</span></div>
+      <div class="spacer"></div>
+      <button class="cta" onclick="go('t_self')">${T('Siguiente', 'Next')}</button>`,
+  },
+  t_self: {
+    note: ['Entrenador · ¿también entrenas tú?', 'Sí → empalma con «por mi cuenta» (nivel, plantillas). No → oculta Inicio-de-atleta y deja Clientes como pestaña principal (hoy sería al revés que <code>proTabsHidden</code>).', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Una más', 'One more')}</div>
+      <div class="h">${T('¿Y tú también entrenas?', 'Do you train too?')}</div>
+      <p class="sub">${T('Muchos entrenadores llevan aquí su propio programa.', 'Many coaches track their own program here.')}</p>
+      <div class="opts">
+        ${opt('alsoTrains','yes','💪', T('Sí, quiero llevar el mío','Yes, I’ll track mine'), T('Te ayudamos a elegir programa','We’ll help you pick a program'), 's_level')}
+        ${opt('alsoTrains','no','📋', T('No, solo clientes','No, clients only'), T('Clientes será tu pantalla principal','Clients becomes your home'), 't_learn')}
+      </div>`,
+  },
+  t_learn: {
+    note: ['Entrenador · aprende', 'Simulada: 4 tarjetas con mini-pantallas animadas y un dedo que señala. Cortas y saltables. Las mismas pistas reaparecen la primera vez que entra en cada pantalla real.', ['sim']],
+    html: () => learn([
+      ['Tus clientes, de un vistazo', 'Quién entrenó, quién lleva días sin hacerlo y quién tiene sesiones nuevas que revisar.', miniClients()],
+      ['Plantillas: programa una vez', 'Guarda un programa como plantilla y asígnalo a varios clientes. Cada uno avanza a su ritmo.', miniTemplates()],
+      ['Ajusta su próxima sesión', 'Desde su ficha cambias pesos o ejercicios de la siguiente sesión sin tocar el programa.', miniNext()],
+      ...(S.groups && S.groups !== 'no' ? [['Pizarra para tus clases', 'Abre la sesión del grupo en grande y marca la clase como dada.', miniBoard()]] : []),
+    ], 'done'),
+  },
+
+  // ── CON ENTRENADOR ──
+  c_app: {
+    note: ['Con entrenador · ¿usa la app?', 'Tres salidas claras, la del código primero. Si llegó por enlace de invitación, esta pantalla se salta y el código viene puesto.', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Tu entrenador', 'Your coach')}</div>
+      <div class="h">${T('¿Tu entrenador usa Fuerza & Control?', 'Does your coach use Fuerza & Control?')}</div>
+      <p class="sub">${T('Si la usa, te manda el programa y ve tus entrenos.', 'If so, they send your program and see your workouts.')}</p>
+      <div class="opts">
+        ${opt('coachApp','code','🔑', T('Sí, tengo su código','Yes, I have a code'), T('6 letras y números','6 characters'), 'c_code', true)}
+        ${opt('coachApp','nocode','💬', T('Sí, pero no tengo código','Yes, but no code yet'), T('Te decimos cómo pedírselo','We’ll tell you how to ask'), 'c_ask', true)}
+        ${opt('coachApp','no','📱', T('No la usa','They don’t use it'), T('Invítale, o sigue su programa tú','Invite them, or follow their plan yourself'), 'c_noapp', true)}
+      </div>`,
+  },
+  c_code: {
+    note: ['Con entrenador · código', 'Real: <code>ClientCodeModal</code> como pantalla. Seis casillas que aceptan pegar el código entero.', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Conectar', 'Connect')}</div>
+      <div class="h">${T('Escribe el código de tu entrenador', 'Enter your coach’s code')}</div>
+      <p class="sub">${T('Te lo ha mandado por mensaje o te lo enseña en su móvil.', 'They sent it to you or can show it on their phone.')}</p>
+      <div class="code">${S.code.map((c,i) => `<input maxlength="1" value="${c}" oninput="codeIn(${i},this)">`).join('')}</div>
+      <button class="ghost" onclick="S.code='XK742P'.split('');render(false,true)">${T('Pegar', 'Paste')}</button>
+      <div class="spacer"></div>
+      <button class="cta" ${S.code.every(Boolean)?'':'disabled'} onclick="go('c_linked')">${T('Conectar', 'Connect')}</button>`,
+  },
+  c_linked: {
+    note: ['Con entrenador · conectado', 'Celebración corta y la expectativa clara: qué pasa ahora y qué puede hacer mientras.', ['real']],
+    html: () => `
+      <div class="celebrate">🤝</div>
+      <div class="h" style="text-align:center">${T('Conectado con Marta', 'Connected with Marta')}</div>
+      <p class="sub" style="text-align:center">${T('Tu programa aparecerá en Inicio en cuanto te lo asigne. Mientras, puedes registrar sesiones libres.', 'Your program shows up on Home once she assigns it. Meanwhile, you can log free sessions.')}</p>
+      <div class="spacer"></div>
+      <button class="cta" onclick="go('a_learn')">${T('Siguiente', 'Next')}</button>`,
+  },
+  c_ask: {
+    note: ['Con entrenador · pedir el código', 'Comparte un mensaje ya escrito. Puede seguir y meter el código más tarde desde el menú.', ['sim']],
+    html: () => `
+      <div class="eyebrow">${T('Pídeselo', 'Ask for it')}</div>
+      <div class="h">${T('Tu entrenador genera el código', 'Your coach creates the code')}</div>
+      <p class="sub">${T('Lo saca en Clientes → tu ficha → Conectar. Mándale esto:', 'It’s in Clients → your profile → Connect. Send them this:')}</p>
+      <div class="msg">${T('¡Hola! Ya tengo Fuerza &amp; Control. ¿Me pasas mi código de cliente para conectarme?', 'Hi! I’ve got Fuerza &amp; Control. Can you send me my client code?')}</div>
+      <button class="cta" onclick="share('ask')">${T('Enviar mensaje', 'Send message')}</button>
+      <div class="spacer"></div>
+      <button class="ghost" onclick="go('a_learn')">${T('Lo meto más tarde', 'I’ll enter it later')}</button>`,
+  },
+  c_noapp: {
+    note: ['Con entrenador · no usa la app', 'Las dos cosas a la vez, no una u otra: invitarle (el mensaje lleva el enlace a la store) y, mientras, copiar su programa para seguirlo ya. Cuando el entrenador entre, puede adoptar ese programa.', ['sim','real']],
+    html: () => `
+      <div class="eyebrow">${T('Sin app', 'No app')}</div>
+      <div class="h">${T('Dos formas de seguir con tu entrenador', 'Two ways to keep working with your coach')}</div>
+      <div class="opts" style="margin-top:10px">
+        <button class="opt big" onclick="share('coach')"><span class="ico">📨</span><span><b>${T('Invítale a la app','Invite them')}</b><small>${T('Podrá gestionar tu programa desde su móvil y ver tus entrenos. Gratis hasta 2 clientes.','They can manage your program and see your workouts. Free for 2 clients.')}</small></span></button>
+        <button class="opt big" onclick="go('c_copy')"><span class="ico">📋</span><span><b>${T('Copia su programa','Copy their program')}</b><small>${T('Te lo pasó en PDF, foto o WhatsApp: lo montamos aquí para que lo sigas.','Got it as a PDF, photo or chat? Rebuild it here and follow it.')}</small></span><span class="rec">${T('Mientras','Meanwhile')}</span></button>
+      </div>`,
+  },
+  c_copy: {
+    note: ['Con entrenador · copiar su programa', 'Real. Pegar texto reutiliza el analizador de C22 (hoy solo entiende sesiones sueltas: haría falta extenderlo a un programa). «Desde cero» es el editor. «Parecida» es el catálogo.', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Copiar programa', 'Copy program')}</div>
+      <div class="h">${T('¿Cómo te lo pasó?', 'How did you get it?')}</div>
+      <div class="opts" style="margin-top:10px">
+        <button class="opt" onclick="toast('→ pegar texto · analizador C22')"><span class="ico">💬</span><span><b>${T('Texto (WhatsApp, notas)','Text (chat, notes)')}</b><small>${T('Pégalo y lo entendemos','Paste it and we parse it')}</small></span></button>
+        <button class="opt" onclick="startBuilder('adv')"><span class="ico">✏️</span><span><b>${T('Lo copio a mano','I’ll type it in')}</b><small>${T('Editor de programas, sesión a sesión','Program editor, session by session')}</small></span></button>
+        <button class="opt" onclick="S.path='tpl';go('s_props')"><span class="ico">🗂️</span><span><b>${T('Empiezo de una parecida','Start from a similar one')}</b><small>${T('Elige plantilla y cámbiala','Pick a template and edit it')}</small></span></button>
+      </div>`,
+  },
+
+  // ── POR MI CUENTA ──
+  s_level: {
+    note: ['Por mi cuenta · nivel', 'Decide dos cosas: qué se recomienda (principiante → plantilla primero) y la profundidad del constructor si monta el suyo (principiante → una pregunta de progresión; avanzado → el editor completo). Es la pregunta 1 de O01, igual.', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Tu programa', 'Your program')} · 1/3</div>
+      <div class="h">${T('¿Cuánto llevas entrenando fuerza?', 'How long have you lifted?')}</div>
+      <div class="opts" style="margin-top:10px">
+        ${opt('level','beg','🌱', T('Empiezo','Just starting'), T('Menos de 6 meses','Under 6 months'), 's_choice')}
+        ${opt('level','int','📈', T('Llevo un tiempo','A while'), T('De 6 meses a 2 años','6 months to 2 years'), 's_choice')}
+        ${opt('level','adv','🔥', T('Mucho','A long time'), T('Más de 2 años, sé lo que hago','2+ years, I know my stuff'), 's_choice')}
+      </div>`,
+  },
+  s_goal: {
+    note: ['Por mi cuenta · qué buscas', 'Pregunta 2 de O01 (identidad). Solo en el camino de plantillas.', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Tu programa', 'Your program')} · 2/3</div>
+      <div class="h">${T('¿Qué buscas?', 'What’s your goal?')}</div>
+      <div class="grid2" style="margin-top:10px">
+        ${[['hyp','💪',T('Ganar músculo','Build muscle')],['str','🏋️',T('Ponerte fuerte','Get strong')],['glu','🍑',T('Glúteo y pierna','Glutes & legs')],['cal','🤸',T('Calistenia','Calisthenics')]].map(([v,i,l]) =>
+          `<button class="tile ${S.goal===v?'on':''}" onclick="pick('goal','${v}','s_days')"><span class="big" style="font-size:30px">${i}</span><small style="color:var(--text);font-weight:800">${l}</small></button>`).join('')}
+      </div>`,
+  },
+  s_days: {
+    note: ['Por mi cuenta · días', 'Pregunta 3 de O01. Nada premarcado. Solo en el camino de plantillas.', ['data']],
+    html: () => `
+      <div class="eyebrow">${T('Tu programa', 'Your program')} · 3/3</div>
+      <div class="h">${T('¿Cuántos días a la semana?', 'How many days a week?')}</div>
+      <p class="sub">${T('Los que de verdad puedes, no los que te gustaría.', 'What you can really do, not what you wish.')}</p>
+      <div class="chips">${[1,2,3,4,5,6,7].map(d => `<div class="chip ${S.days===d?'on':''}" style="flex-basis:20%" onclick="pick('days',${d},'s_props')">${d}</div>`).join('')}</div>`,
+  },
+  s_choice: {
+    note: ['Por mi cuenta · plantilla o el mío', 'Va justo después del nivel: quien monta el suyo no necesita «qué buscas» ni «días» (los días se eligen en el constructor). Al principiante se le recomienda la plantilla y «el mío» baja a enlace; al avanzado, las dos al mismo peso. «Montar el mío» abre el constructor guiado, en su versión sencilla o completa según el nivel.', ['data']],
+    html: () => {
+      const beg = S.level === 'beg';
+      return `
+      <div class="eyebrow">${T('Tu programa', 'Your program')}</div>
+      <div class="h">${beg ? T('Te proponemos un programa hecho', 'We’ll suggest a ready-made program') : T('¿Plantilla o el tuyo?', 'Template or your own?')}</div>
+      <p class="sub">${beg ? T('Diseñado para empezar con buena técnica y progresar cada semana.', 'Built to start with good form and progress every week.') : T('Las dos se editan después todo lo que quieras.', 'Both can be edited as much as you like.')}</p>
+      <div class="opts">
+        <button class="opt big" onclick="S.path='tpl';go('s_goal')"><span class="ico">🗂️</span><span><b>${T('Ver programas para mí','See programs for me')}</b><small>${T('Dos preguntas más y te enseñamos 3','Two more questions and we show you 3')}</small></span>${beg?`<span class="rec">${T('Recomendado','Recommended')}</span>`:''}</button>
+        ${beg ? '' : `<button class="opt big" onclick="S.path='own';startBuilder(S.level==='adv'?'adv':'beg')"><span class="ico">✏️</span><span><b>${T('Montar el mío','Build my own')}</b><small>${T('Sesiones, ejercicios y progresión a tu manera','Sessions, exercises and progression your way')}</small></span></button>`}
+      </div>
+      <div class="spacer"></div>
+      ${beg ? `<button class="ghost" onclick="S.path='own';startBuilder(S.level==='adv'?'adv':'beg')">${T('Prefiero montarlo yo', 'I’d rather build my own')}</button>` : ''}
+      <button class="ghost" onclick="toast('→ importar backup .fitdata')">${T('Tengo una copia de seguridad', 'I have a backup')}</button>`;
+    },
+  },
+  s_props: {
+    note: ['Por mi cuenta · propuestas', 'Es la pantalla de propuestas de O01 tal cual (con su ajuste de tiempo/material después). Aquí resumida.', ['real']],
+    html: () => `
+      <div class="eyebrow">${T('Para ti', 'For you')}</div>
+      <div class="h">${T('Elige tu programa', 'Pick your program')}</div>
+      <div class="opts" style="margin-top:8px">
+        ${tpl('fb','Full Body · Iniciación', T('3 sesiones · 8 semanas','3 sessions · 8 weeks'), ['A','B','C'], true)}
+        ${tpl('ul','Upper / Lower', T('4 sesiones · 10 semanas','4 sessions · 10 weeks'), ['A','B','C','D'])}
+        ${tpl('ppl','PPL · 3 días', T('3 sesiones · 12 semanas','3 sessions · 12 weeks'), ['A','B','C'])}
+      </div>
+      <button class="ghost">${T('Ver todas', 'See all')}</button>
+      <div class="spacer"></div>
+      <button class="cta" ${S.program?'':'disabled'} onclick="go('a_learn')">${T('Empezar con este', 'Start with this')}</button>`,
+  },
+  a_learn: {
+    note: ['Aprende (no entrenador)', 'Simulada. Las cuatro cosas básicas que pediste: abrir una sesión, rellenar, editar el programa, sesión libre. Con el programa recién elegido en las mini-pantallas, si lo hay.', ['sim']],
+    html: () => learn([
+      ['Tu sesión de hoy, en Inicio', 'Toca la sesión que toca y pulsa Empezar. La app sabe cuál es la siguiente.', miniHome(true)],
+      ['Apunta cada serie', S.input === 'scroll' ? 'Desliza peso y reps arriba o abajo y marca la serie. El descanso empieza solo.' : 'Desliza peso y reps con la regla y marca la serie. El descanso empieza solo.', miniSet()],
+      ['Cambia lo que quieras', 'Desde Programa editas ejercicios, series y progresión. Los cambios valen desde la próxima sesión.', miniTemplates(true)],
+      ['¿Hoy algo distinto? Sesión libre', 'Con el + entrenas fuera del programa. Puedes contarla como una sesión del programa o no.', miniHome(false)],
+    ], 'done'),
+  },
+
+  done: {
+    note: ['Listo', 'Resumen con lo que ya existe (lo «real» del recorrido) y lo que quedó pendiente, para que «Lo hago después» no se pierda: los pendientes reaparecen como tarjeta en Inicio/Clientes.', []],
+    html: () => {
+      const items = S.role === 'trainer' ? [
+        [true, `${T('Cliente','Client')}: ${name()}`],
+        [!!S.program, S.program === 'tpl1' ? T('Plantilla «' + tplName() + '» asignada','Template «' + tplName() + '» assigned') : S.program ? T('Programa asignado','Program assigned') : T('Asignar programa','Assign a program')],
+        ...(S.program === 'tpl1' ? [[false, T('Rellenar las sesiones ' + LETTERS.slice(1, S.nSess).split('').join(', ') + ' de la plantilla', 'Fill in sessions ' + LETTERS.slice(1, S.nSess).split('').join(', '))]] : []),
+        [false, T('Esperando a que se conecte','Waiting for them to connect')],
+        ...(S.alsoTrains === 'yes' ? [[!!S.program, T('Tu propio programa','Your own program')]] : []),
+      ] : S.role === 'coached' ? [
+        [S.coachApp === 'code', S.coachApp === 'code' ? T('Conectado con tu entrenador','Connected to your coach') : T('Conectar con tu entrenador','Connect with your coach')],
+        [!!S.program, S.program ? T('Programa listo','Program ready') : T('Tu programa llegará de tu entrenador','Your program will come from your coach')],
+      ] : [
+        [!!S.program, S.program === 'own' ? T('«' + tplName() + '» creado','«' + tplName() + '» created') : S.program ? T('Programa listo','Program ready') : T('Elegir programa','Pick a program')],
+        ...(S.program === 'own' && S.nSess > 1 ? [[false, T('Rellenar las sesiones ' + LETTERS.slice(1, S.nSess).split('').join(', '), 'Fill in sessions ' + LETTERS.slice(1, S.nSess).split('').join(', '))]] : []),
+        [true, T('Preferencias guardadas','Preferences saved')],
+      ];
+      return `
+      <div class="celebrate">🎉</div>
+      <div class="h" style="text-align:center">${T('Todo listo', 'All set')}</div>
+      <p class="sub" style="text-align:center">${T('Lo pendiente te espera en Inicio.', 'Anything pending is waiting on Home.')}</p>
+      ${items.map(([ok, l]) => `<div class="check ${ok?'':'off'}"><i>${ok?'✓':'·'}</i>${l}</div>`).join('')}
+      <div class="spacer"></div>
+      <button class="cta" onclick="restart()">${T('Ir a la app', 'Go to the app')}</button>`;
+    },
+  },
+};
+
+// ════════ PROGRESIÓN DEL CONSTRUCTOR ════════
+function sgcRaw(opts, val, onTpl) {
+  return `<div class="sgc">${opts.map(([v, l]) => `<b class="${val === v ? 'on' : ''}" onclick="${onTpl.replace('%v', v)}">${l}</b>`).join('')}</div>`;
+}
+function progSimple() {
+  const e = S.ex, u = S.unit;
+  return `
+    ${bbar()}
+    <div class="eyebrow">4 / 4 · ${T('Progresión', 'Progression')}</div>
+    <div class="h">${T('¿Quieres que la app te diga cuándo subir o bajar el peso?', 'Want the app to tell you when to go up or down in weight?')}</div>
+    <p class="sub">${T('Según cómo te salgan las series.', 'Based on how your sets go.')}</p>
+    <div class="opts">
+      <button class="opt big ${S.autoProg === true ? 'on' : ''}" onclick="S.autoProg=true;S.ex.up='weight';S.ex.how='rules';S.progDone=true;render(false,true);setTimeout(()=>go('b_done'),260)"><span class="ico">📈</span><span><b>${T('Sí, guíame', 'Yes, guide me')}</b><small>${T(`Si completas ${e.sets}×${e.max} con 40 ${u}, la próxima vez te propondremos 42,5. Si te cuesta, menos.`, `Hit ${e.sets}×${e.max} with 40 ${u} and next time we’ll suggest 42.5. If it’s hard, less.`)}</small></span><span class="rec">${T('Recomendado', 'Recommended')}</span></button>
+      <button class="opt big ${S.autoProg === false ? 'on' : ''}" onclick="S.autoProg=false;S.ex.up='none';S.progDone=true;render(false,true);setTimeout(()=>go('b_done'),260)"><span class="ico">🎛️</span><span><b>${T('No, lo decido yo', 'No, I’ll decide')}</b><small>${T('Verás lo que hiciste la última vez y tú eliges el peso.', 'You’ll see last time and choose the weight.')}</small></span></button>
+    </div>
+    <div class="spacer"></div>
+    <button class="linkbtn" onclick="S.progFull=true;render(false,true)">${T('Ver todas las opciones de progresión →', 'See all progression options →')}</button>
+    ${later()}`;
+}
+function progFull() {
+  const e = S.ex;
+  let n = 0;
+  const st = (title) => `<span class="fl"><b>${++n}</b> · ${title}</span>`;
+  const rangeForEffort = e.how === 'effort' && e.min !== e.max;
+  if (rangeForEffort) { e.max = e.min; }
+  return `
+    ${bbar()}
+    <div class="eyebrow">4 / 4 · ${T('Progresión', 'Progression')}</div>
+    <div class="h" style="font-size:23px">${T('Cómo progresa', 'How it progresses')} ${e.name.toLowerCase()}</div>
+    <div class="rule">${ruleSentence()}</div>
+    <div class="field">${st(T('Qué sube', 'What goes up'))}${sgc('up', [['weight', T('Peso','Weight')], ['reps', 'Reps'], ['none', T('Nada','Nothing')]])}</div>
+    ${e.up === 'weight' ? `
+    <div class="field">${st(T('Cómo', 'How'))}${sgc('how', [['rules', T('Por reglas','By rules')], ['effort', T('Por esfuerzo','By effort')]])}
+      <div class="fhint">${e.how === 'effort' ? T('La app calcula el peso de cada sesión con el 1RM estimado y el RPE que apuntas.', 'The app sets each session’s weight from your estimated 1RM and logged RPE.') : T('Subes cuando se cumple la regla de abajo.', 'You go up when the rule below is met.')}</div>
+      ${rangeForEffort ? `<div class="fhint warn">${T(`Por esfuerzo necesita reps fijas: pasamos a ${e.min}.`, `Effort needs fixed reps: set to ${e.min}.`)}</div>` : ''}
+    </div>
+    ${e.how === 'effort'
+      ? `<div class="field">${st(T('RPE objetivo', 'Target RPE'))}<div class="steppers">${stp('rpe', 'RPE', 6, 10)}</div><div class="fhint">${T(`${10 - e.rpe === 0 ? 'Al fallo' : `Te quedan ${10 - e.rpe} reps en recámara`}.`, `${10 - e.rpe} reps in reserve.`)}</div></div>`
+      : `<div class="field">${st(T('Cuándo sube', 'When it goes up'))}${sgc('when', [['all', T('Todas las series','Every set')], ['one', T('Una serie','One set')]])}</div>`}
+    <div class="field">${st(T('Cuándo baja', 'When it goes down'))}${sgc('down', [[2, T('2 fallos','2 misses')], [3, T('3 fallos','3 misses')], [0, T('Nunca','Never')]])}</div>` : ''}
+    <div class="field"><span class="fl">${T('Y si quieres más · todo opcional', 'Want more? · all optional')}</span>
+      ${tgl('warmup', T('Series de calentamiento','Warm-up sets'), T('Calculadas sobre tu peso de trabajo','Based on your working weight'))}
+      ${tgl('drop', T('Dropset en la última serie','Drop set on the last set'), T('Bajas el peso y sigues sin descanso','Drop the weight and keep going'))}
+      ${tgl('ss', T('Superserie con el siguiente','Superset with the next one'), T('Se hacen seguidos y descansas al final','Back to back, rest at the end'))}
+      ${tgl('link', T('Vincular con otras sesiones','Link across sessions'), T('El mismo ejercicio en A y C comparte progresión','Same exercise in A and C shares progression'))}
+    </div>
+    <button class="cta" onclick="S.progDone=true;go('b_done')">${T('Guardar ejercicio', 'Save exercise')}</button>
+    ${later()}`;
+}
+
+// ════════ PIEZAS ════════
+function opt(key, val, ico, title, desc, next, big) {
+  return `<button class="opt ${big?'big':''} ${S[key]===val?'on':''}" onclick="pick('${key}','${val}','${next}')"><span class="ico">${ico}</span><span><b>${title}</b>${desc?`<small>${desc}</small>`:''}</span></button>`;
+}
+function tpl(id, n, m, ss, rec) {
+  return `<button class="tpl ${S.program===id?'on':''}" onclick="S.program='${id}';render(false,true)"><div class="tn">${n}${rec?`<span class="rec" style="font:800 9px Inter;letter-spacing:.1em;color:var(--accent)">${T('RECOMENDADO','RECOMMENDED')}</span>`:''}</div><div class="tm">${m}</div><div class="ss">${ss.map(s=>`<i>${s}</i>`).join('')}</div></button>`;
+}
+function learn(cards, next) {
+  const i = Math.min(S.learnIdx, cards.length - 1), [title, desc, mini] = cards[i], last = i === cards.length - 1;
+  return `
+    <div class="dots">${cards.map((_, j) => `<i class="${j===i?'on':''}"></i>`).join('')}</div>
+    <div class="learn">${mini}</div>
+    <div class="lt">${title}</div>
+    <p class="ld">${desc}</p>
+    <div class="spacer"></div>
+    <div class="row2">
+      ${i > 0 ? `<button class="btn2" onclick="S.learnIdx--;render(true,true)">${T('Anterior','Back')}</button>` : ''}
+      <button class="btn2 acc" onclick="${last ? `go('${next}')` : `S.learnIdx++;render(false,true)`}">${last ? T('Entendido','Got it') : T('Siguiente','Next')}</button>
+    </div>`;
+}
+const progName = () => ({ fb: 'Full Body', ul: 'Upper / Lower', ppl: 'PPL', own: T('Mi programa','My program') })[S.program] || 'Full Body';
+function miniHome(spotFirst) {
+  return `<div class="mini">
+    <div style="font:900 13px Inter;padding:2px 2px 4px">${progName()} <span style="color:var(--mutedLight);font-weight:700;font-size:11px">· ${T('semana','week')} 1</span></div>
+    <div class="mrow ${spotFirst?'spot':''}"><span class="l">A</span><div>${T('Empuje','Push')}<small>${T('Toca hoy','Up today')} · 5 ej.</small></div><span class="pill" style="margin-left:auto;font-size:9px;padding:4px 7px">${T('EMPEZAR','START')}</span></div>
+    <div class="mrow"><span class="l">B</span><div>${T('Tracción','Pull')}<small>5 ej.</small></div></div>
+    <div class="mrow"><span class="l">C</span><div>${T('Pierna','Legs')}<small>6 ej.</small></div></div>
+    <div class="fab ${spotFirst?'':'spot'}">+</div>
+    <span class="finger" style="${spotFirst ? 'right:30px;top:52px' : 'right:4px;bottom:-6px'}">👆</span>
+  </div>`;
+}
+function miniSet() {
+  return `<div class="mini">
+    <div style="font:800 12px Inter;padding:2px">Press banca <span style="color:var(--mutedLight)">· 3×8</span></div>
+    ${[1,2,3].map(n => `<div class="mrow" style="padding:7px 8px"><span style="width:20px;color:var(--mutedLight)">S${n}</span>
+      <div class="${n===2?'spot':''}" style="flex:1;background:var(--bg);border-radius:8px;padding:7px;text-align:center">${n<3?'80':'—'} ${S.unit}</div>
+      <div style="flex:1;background:var(--bg);border-radius:8px;padding:7px;text-align:center">${n<3?'8':'—'}</div>
+      <div style="width:28px;height:28px;border-radius:8px;background:${n===1?'var(--accent)':'var(--surface2)'};color:${n===1?'var(--onAccent)':'var(--mutedLight)'};display:flex;align-items:center;justify-content:center">✓</div></div>`).join('')}
+    <span class="finger" style="left:40%;top:78px">👆</span>
+  </div>`;
+}
+function miniTemplates(edit) {
+  return `<div class="mini">
+    ${(edit ? [['A',T('Empuje','Push'),'Press banca · 3×8'],['B',T('Tracción','Pull'),'Remo · 3×10']] : [['FB','Full Body','3 '+T('clientes','clients')],['UL','Upper / Lower','1 '+T('cliente','client')]]).map(([l,n,m],k) =>
+      `<div class="mrow ${k===0?'spot':''}"><span class="l" style="width:${l.length>1?30:24}px">${l}</span><div>${n}<small>${m}</small></div><span style="margin-left:auto;color:var(--accent)">›</span></div>`).join('')}
+    <span class="finger" style="right:14px;top:22px">👆</span>
+  </div>`;
+}
+function miniClients() {
+  return `<div class="mini">
+    ${[[name(),T('Entrenó hoy · 2 sesiones nuevas','Trained today · 2 new'),true],['Luis',T('Hace 6 días','6 days ago'),false],['Marta',T('Al día','Up to date'),false]].map(([n,m,s]) =>
+      `<div class="mrow ${s?'spot':''}"><span class="l" style="border-radius:12px;color:var(--text)">${n[0]}</span><div>${n}<small>${m}</small></div>${s?'<span class="pill" style="margin-left:auto;font-size:9px;padding:3px 6px">2</span>':''}</div>`).join('')}
+    <span class="finger" style="right:20px;top:18px">👆</span>
+  </div>`;
+}
+function miniNext() {
+  return `<div class="mini">
+    <div style="font:800 12px Inter;padding:2px">${name()} · ${T('próxima: Sesión B','next: Session B')}</div>
+    <div class="mrow"><div>Sentadilla<small>4×6 · 100 ${S.unit}</small></div><span class="spot" style="margin-left:auto;padding:4px 8px;border-radius:7px;background:var(--surface2)">→ 95</span></div>
+    <div class="mrow"><div>Peso muerto rumano<small>3×10</small></div></div>
+    <span class="finger" style="right:10px;top:40px">👆</span>
+  </div>`;
+}
+function miniBoard() {
+  return `<div class="mini" style="text-align:center">
+    <div style="font:900 22px Inter;color:var(--accent);margin:6px 0">B</div>
+    <div style="font:900 15px Inter">Circuito · 4 ${T('rondas','rounds')}</div>
+    <div style="font:700 11px Inter;color:var(--mutedLight);margin:4px 0 10px">Swing · Push-up · Remo TRX</div>
+    <span class="pill spot">${T('CLASE DADA','CLASS DONE')}</span>
+  </div>`;
+}
+
+// ════════ DEMO DE ENTRADA ════════
+const fmt = (v) => Number.isInteger(v) ? v : v.toFixed(1).replace('.', ',');
+function bindCells() {
+  document.querySelectorAll('.cell').forEach(cell => {
+    let start = null, base = 0;
+    const k = cell.dataset.k, step = Number(cell.dataset.step), bub = cell.querySelector('.bubble'), ruler = cell.querySelector('.ruler');
+    cell.addEventListener('pointerdown', e => { start = { x: e.clientX, y: e.clientY }; base = S[k]; cell.setPointerCapture(e.pointerId); cell.classList.add('drag'); });
+    cell.addEventListener('pointermove', e => {
+      if (!start) return;
+      const scroll = S.input === 'scroll';
+      const d = scroll ? (start.y - e.clientY) / 14 : (e.clientX - start.x) / 12;
+      const v = Math.max(0, base + Math.round(d) * step);
+      if (!scroll) ruler.style.backgroundPositionX = `${-(e.clientX - start.x)}px`;
+      if (v !== S[k]) {
+        S[k] = v; document.getElementById('v' + k).textContent = fmt(v);
+        cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop');
+      }
+    });
+    const end = () => { start = null; cell.classList.remove('drag'); };
+    cell.addEventListener('pointerup', end); cell.addEventListener('pointercancel', end);
+  });
+}
+
+// ════════ VARIOS ════════
+function codeIn(i, el) {
+  S.code[i] = el.value.toUpperCase();
+  const ins = document.querySelectorAll('.code input');
+  if (el.value && ins[i + 1]) ins[i + 1].focus();
+  document.querySelector('.cta').disabled = !S.code.every(Boolean);
+}
+function share(kind) {
+  const msgs = {
+    invite: T(`¡Hola ${name()}! Te he preparado el programa en Fuerza &amp; Control. Descárgala y conéctate con mi código <b>XK742P</b>:<br><a>fuerzaycontrol.app/join/XK742P</a>`, `Hi ${name()}! Your program is ready in Fuerza &amp; Control. Get the app and connect with my code <b>XK742P</b>:<br><a>fuerzaycontrol.app/join/XK742P</a>`),
+    ask: T('¡Hola! Ya tengo Fuerza &amp; Control. ¿Me pasas mi código de cliente para conectarme?', 'Hi! I’ve got Fuerza &amp; Control. Can you send me my client code?'),
+    coach: T('¡Hola! Estoy usando Fuerza &amp; Control para entrenar. Si la instalas puedes gestionar mi programa desde ahí y ver mis entrenos (gratis hasta 2 clientes):<br><a>fuerzaycontrol.app/coach</a>', 'Hi! I’m training with Fuerza &amp; Control. Install it and you can manage my program and see my workouts (free for 2 clients):<br><a>fuerzaycontrol.app/coach</a>'),
+  };
+  const el = document.createElement('div');
+  el.className = 'sheet';
+  el.innerHTML = `<div class="card"><div class="grab"></div><div class="msg">${msgs[kind]}</div>
+    <div class="apps">${[['💬','WhatsApp'],['✉️',T('Mensajes','Messages')],['📧','Email'],['🔗',T('Copiar','Copy')]].map(([i,l]) => `<div onclick="this.closest('.sheet').remove();toast('${T('Enviado (simulado)','Sent (mock)')}')"><b>${i}</b>${l}</div>`).join('')}</div></div>`;
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+  document.getElementById('phone').appendChild(el);
+}
+function toast(msg) {
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  document.getElementById('phone').appendChild(el); setTimeout(() => el.remove(), 1600);
+}
+function restart() {
+  Object.assign(S, { role: null, nClients: null, groups: null, clientName: '', isGroup: false, program: null, coachApp: null, level: null, goal: null, days: null, path: null, alsoTrains: null, code: ['', '', '', '', '', ''] });
+  hist.length = 0; cur = 'welcome'; toast('→ Inicio de la app (la maqueta vuelve a empezar)'); render();
+}
+
+// ════════ RENDER ════════
+function render(isBack, inPlace) {
+  const sc = SCREENS[cur], sec = SEC_OF[cur];
+  const top = document.getElementById('top');
+  const showBar = sec >= 0 && sec < 4;
+  top.innerHTML = `
+    <div class="toprow">
+      <button class="iconbtn ${hist.length && cur !== 'done' ? '' : 'hide'}" onclick="back()">‹</button>
+      <button class="skip ${SKIP_TO[cur] ? '' : 'hide'}" onclick="go(skipTarget())">${T('Saltar', 'Skip')}${sec === 0 ? ' ' + T('ajustes','settings') : ''}</button>
+    </div>
+    ${showBar ? `<div class="prog">${SECTIONS.map((l, i) => `
+      <div class="seg ${i === sec ? 'cur' : i < sec ? 'done' : ''}"><div class="bar"><i style="width:${i < sec ? 100 : i === sec ? Math.round(sectionProgress(cur) * 100) : 0}%"></i></div><small>${l}</small></div>`).join('')}</div>` : ''}`;
+  const el = document.getElementById('screen');
+  const keepScroll = inPlace ? el.scrollTop : 0;
+  el.className = 'screen' + (isBack ? ' back' : '');
+  if (inPlace) el.style.animation = 'none'; else el.style.animation = '';
+  el.innerHTML = sc.html();
+  el.scrollTop = keepScroll;
+  if (sc.after) sc.after();
+
+  const [title, why, tags] = sc.note;
+  document.getElementById('notes').innerHTML = `
+    <h2>Pantalla: <b>${title}</b></h2>
+    <p style="margin-bottom:8px">${tags.map(t => `<span class="tag ${t}">${{ real: 'real', data: 'dato', sim: 'simulada' }[t]}</span>`).join('')}</p>
+    <p class="why">${why}</p>`;
+  renderMap();
+}
+
+const MAP = {
+  common: [['welcome','Bienvenida'],['lang','Idioma'],['units','Unidades'],['theme','Tema'],['input','Regla / deslizar'],['role','¿Cómo entrenas?']],
+  cols: [
+    ['Por mi cuenta', [['s_level','Nivel'],['s_choice','Plantilla o el mío'],['s_goal','· Qué buscas'],['s_days','· Días'],['s_props','· Propuestas'],['b_sessions:self','· Montar el mío ⤵'],['a_learn','Aprende ×4'],['done','Listo']]],
+    ['Con entrenador', [['c_app','¿Usa la app?'],['c_code','Código'],['c_linked','Conectado'],['c_ask','Pedir código'],['c_noapp','No usa la app'],['c_copy','Copiar su programa'],['b_sessions:coached','· A mano ⤵'],['a_learn','Aprende ×4'],['done','Listo']]],
+    ['Entrenador', [['t_clients','Nº clientes'],['t_groups','Clases en grupo'],['t_client','Primer cliente'],['t_tplIntro','Su programa'],['b_sessions:trainer','· 1.ª plantilla ⤵'],['t_program','· Del catálogo'],['t_assign','Asignar'],['t_connect','Conectarlo'],['t_self','¿Entrenas tú?'],['t_learn','Aprende ×3-4'],['done','Listo']]],
+  ],
+  builder: [['b_sessions','Sesiones'],['b_exercise','Un ejercicio'],['b_volume','Volumen'],['b_prog','Progresión (simple / completa)'],['b_done','Listo · sigue luego']],
+};
+const ROLE_OF_COL = ['self', 'coached', 'trainer'];
+function renderMap() {
+  const node = ([key, l]) => { const id = key.split(':')[0]; return `<button class="node ${id===cur?'on':''} ${seen.has(id)&&id!==cur?'seen':''}" onclick="jump('${key}')">${l}</button>`; };
+  document.getElementById('map').innerHTML =
+    `<div class="common">${MAP.common.map(node).join('<span class="arrow">→</span>')}</div>` +
+    MAP.cols.map(([t, ns], ci) => `<div class="col" data-role="${ROLE_OF_COL[ci]}"><span>${t}</span>${ns.map(node).join('')}</div>`).join('') +
+    `<div class="common" style="margin-top:6px"><span style="font:800 10px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--pageMuted);margin-right:4px">⤵ Constructor guiado</span>${MAP.builder.map(node).join('<span class="arrow">→</span>')}</div>`;
+}
+function jump(key) {
+  const [id, from] = key.split(':');
+  if (from) {
+    // Entrada al constructor desde una columna: el rol y la profundidad salen de ella.
+    S.role = from;
+    return startBuilder(from === 'trainer' ? 'trainer' : from === 'coached' ? 'adv' : S.level === 'adv' ? 'adv' : 'beg');
+  }
+  // Saltar desde el mapa fija el rol de esa columna para que las pantallas tengan sentido.
+  const col = MAP.cols.findIndex(([, ns]) => ns.some(([n]) => n === id) && !['a_learn','done'].includes(id));
+  if (col >= 0) S.role = ROLE_OF_COL[col];
+  if (id.startsWith('b_')) ensureBuilder();
+  go(id);
+}
+
+applyTheme(); seen.add('welcome'); render();
+</script>
+</body>
+</html>
