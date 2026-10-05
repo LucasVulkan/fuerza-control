@@ -27,7 +27,8 @@
 
 import { View, TouchableOpacity, Pressable, StyleSheet, Animated, Easing } from 'react-native';
 import { Text, MAX_FONT_SCALE } from '../ui/Text';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing as REasing } from 'react-native-reanimated';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import SetRow from './SetRow';
@@ -104,6 +105,17 @@ export function NoteIcon({ size = 21, color }) {
 }
 
 // ── ExerciseCard ──────────────────────────────────────────────────────────────
+
+// U10-04 · relleno de una fila del calentamiento: ancho = su %, y el color
+// cambia con un fundido de 300 ms. El primer render fija el color sin animar.
+function WarmupFill({ pct, color, style }) {
+  const bg = useSharedValue(color);
+  useEffect(() => {
+    bg.value = withTiming(color, { duration: 300, easing: REasing.bezier(0.35, 0, 0.15, 1) });
+  }, [color, bg]);
+  const anim = useAnimatedStyle(() => ({ backgroundColor: bg.value }));
+  return <Reanimated.View pointerEvents="none" style={[style, { width: `${pct}%` }, anim]} />;
+}
 
 export default function ExerciseCard({
   exConfig,
@@ -186,6 +198,7 @@ export default function ExerciseCard({
   const warmupRestSec = exConfig.warmup?.restSec ?? 60;
   const warmupAllDone = hasWarmup && warmupDone.size >= warmupStepsArr.length;
   const warmupCollapsed = warmupAllDone && !warmupReopened;
+  const warmupNext = warmupStepsArr.findIndex((_, i) => !warmupDone.has(i));
 
   function toggleWarmupRow(i) {
     setWarmupDone((prev) => {
@@ -198,7 +211,15 @@ export default function ExerciseCard({
       }
       return next;
     });
-    setWarmupReopened(false);
+    // El último ✓: se deja ver en lima (fundido de 300 ms) y luego se pliega.
+    // ponytail: setTimeout sin limpiar; un setState tras desmontar no hace nada.
+    const completes = !warmupDone.has(i) && warmupDone.size + 1 >= warmupStepsArr.length;
+    if (completes) {
+      setWarmupReopened(true);
+      setTimeout(() => setWarmupReopened(false), 350);
+    } else {
+      setWarmupReopened(false);
+    }
   }
 
   const name = def
@@ -472,6 +493,7 @@ export default function ExerciseCard({
     ? firstTimeRx(def, exConfig) : null;
   const e1rmShown = progression?.effort && progression.e1rm != null
     ? Math.round(toDisplay(progression.e1rm)) : null;
+  const sheetRule = progressionRule(exConfig, def, t, weightLabel, { parts: true });
 
   // ── Piezas compartidas del render ───────────────────────────────────────────
   // El header (num/check + nombre/target + notas) es PERSISTENTE: se pinta una
@@ -646,6 +668,122 @@ export default function ExerciseCard({
         /* ── Expanded view — Body (spec §4), padding 12 16 14 ── */
         <View style={styles.body}>
 
+          {/* Trainer note — 1-line clamp, tap to expand */}
+          {trainerNote ? (
+            <TouchableOpacity
+              style={styles.trainerNote}
+              onPress={() => setNoteExpanded((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.trainerNoteRow}>
+                <View style={styles.trainerNoteIcon}>
+                  <RowIcon size={NOTE_ICON}>{ROW_ICON.text}</RowIcon>
+                </View>
+                <Text style={styles.trainerNoteText} numberOfLines={noteExpanded ? undefined : 1}>
+                  {trainerName ? <Text style={styles.trainerNoteName}>{trainerName}: </Text> : null}
+                  {trainerNote}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Coach one-off note (this session) — additive with the program note */}
+          {coachNote ? (
+            <View style={styles.coachNote}>
+              <Text style={styles.coachNoteText}>
+                {trainerName ? <Text style={styles.coachNoteName}>{trainerName}: </Text> : null}
+                {coachNote}
+                <Text style={styles.coachNoteTag}>{`  · ${t('workout.thisSession')}`}</Text>
+              </Text>
+            </View>
+          ) : null}
+
+          {/* U10-04: plegar y desplegar el calentamiento anima la altura. */}
+          {hasWarmup ? (
+          <AnimatedHeight>
+          {/* ── WarmupSection colapsada (§4.4) ── */}
+          {warmupCollapsed ? (
+            <TouchableOpacity
+              style={styles.warmupCollapsed}
+              onPress={() => setWarmupReopened(true)}
+              activeOpacity={0.7}
+            >
+              <Svg width={18} height={12} viewBox="0 0 18 12">
+                <Rect x={0} y={8} width={4} height={4} rx={1} fill={th.colors.accent} />
+                <Rect x={7} y={5} width={4} height={7} rx={1} fill={th.colors.accent} />
+                <Rect x={14} y={1} width={4} height={11} rx={1} fill={th.colors.accent} />
+              </Svg>
+              <Text style={styles.warmupCollapsedText} numberOfLines={1}>
+                {t('workout.warmup.collapsedSummary', {
+                  label: t('workout.warmup.blockLabel'),
+                  count: warmupStepsArr.length,
+                  weight: workWeightKg != null ? `${toDisplay(workWeightKg)} ${weightLabel}` : '—',
+                })}
+              </Text>
+              <Text style={styles.warmupCollapsedChevron}>⌄</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* ── WarmupSection expandida (§4.3) ── */}
+          {!warmupCollapsed ? (
+            <View style={styles.warmupSection}>
+              <View style={styles.sectionLabelRow}>
+                <Text style={styles.sectionLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
+                <Text style={styles.sectionLabelMeta}>
+                  {warmupRestSec > 0
+                    ? t('workout.warmup.restLabel', { sec: warmupRestSec })
+                    : t('workout.warmup.noTimer')}
+                </Text>
+              </View>
+              {warmupNoReference ? (
+                <Text style={styles.warmupBanner}>{t('workout.warmup.noReference')}</Text>
+              ) : null}
+              <View style={styles.warmupRows}>
+                {warmupComputed.map((step, wi) => {
+                  const done = warmupDone.has(wi);
+                  const isNext = wi === warmupNext;
+                  const hasWeight = step.weightKg != null;
+                  // toDisplay() ya convierte a la unidad activa — NO usar fmt() aquí,
+                  // que además añade el sufijo de unidad (duplicaría "Kg").
+                  const numStr = hasWeight ? String(toDisplay(step.weightKg)) : `${warmupStepsArr[wi].pct}%`;
+                  return (
+                    <View key={wi} style={styles.warmupRow}>
+                      {/* U10-04: caja de 34 sin fondo propio; el relleno es la rampa. */}
+                      <View style={styles.warmupBar}>
+                        <WarmupFill
+                          pct={warmupStepsArr[wi].pct}
+                          color={done ? th.tint.accent10 : th.colors.surface2}
+                          style={styles.warmupFill}
+                        />
+                        <Text style={[styles.warmupRowLabel, isNext && styles.warmupRowLabelNext]}>{`C${wi + 1}`}</Text>
+                        <Text style={styles.warmupDetail} numberOfLines={1}>
+                          <Text style={[styles.warmupWeight, done && styles.warmupTextOff]}>{numStr}</Text>
+                          {hasWeight ? <Text style={[styles.warmupWeight, done && styles.warmupTextOff]}>{` ${weightLabel}`}</Text> : null}
+                          <Text style={[styles.warmupTimes, done && styles.warmupTextOff]}>{' × '}</Text>
+                          <Text style={[styles.warmupReps, done && styles.warmupTextOff]}>{step.reps}</Text>
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.warmupCheck, done && styles.warmupCheckDone]}
+                        onPress={() => toggleWarmupRow(wi)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.warmupCheckMark,
+                          isNext && styles.warmupCheckMarkNext,
+                          done && styles.warmupCheckMarkDone,
+                        ]}>✓</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+          </AnimatedHeight>
+          ) : null}
+
+          {/* U10-04: la línea de objetivo va entre el calentamiento y las series. */}
           {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo.
               La fila entera abre la ficha (§6.3): regla, la última vez y hoy. */}
           {!hasCoachTarget && progression ? (
@@ -701,99 +839,6 @@ export default function ExerciseCard({
           {hasCoachTarget ? (
             <View style={styles.progLine}>
               <Text style={styles.progDirCoach}>{`◎ ${t('workout.coachTarget')}`}</Text>
-            </View>
-          ) : null}
-
-          {/* Trainer note — 1-line clamp, tap to expand */}
-          {trainerNote ? (
-            <TouchableOpacity
-              style={styles.trainerNote}
-              onPress={() => setNoteExpanded((v) => !v)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.trainerNoteRow}>
-                <View style={styles.trainerNoteIcon}>
-                  <RowIcon size={NOTE_ICON}>{ROW_ICON.text}</RowIcon>
-                </View>
-                <Text style={styles.trainerNoteText} numberOfLines={noteExpanded ? undefined : 1}>
-                  {trainerName ? <Text style={styles.trainerNoteName}>{trainerName}: </Text> : null}
-                  {trainerNote}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : null}
-
-          {/* Coach one-off note (this session) — additive with the program note */}
-          {coachNote ? (
-            <View style={styles.coachNote}>
-              <Text style={styles.coachNoteText}>
-                {trainerName ? <Text style={styles.coachNoteName}>{trainerName}: </Text> : null}
-                {coachNote}
-                <Text style={styles.coachNoteTag}>{`  · ${t('workout.thisSession')}`}</Text>
-              </Text>
-            </View>
-          ) : null}
-
-          {/* ── WarmupSection colapsada (§4.4) ── */}
-          {hasWarmup && warmupCollapsed ? (
-            <TouchableOpacity
-              style={styles.warmupCollapsed}
-              onPress={() => setWarmupReopened(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.warmupCollapsedTick}>✓</Text>
-              <Text style={styles.warmupCollapsedText} numberOfLines={1}>
-                {t('workout.warmup.collapsedSummary', {
-                  label: t('workout.warmup.blockLabel'),
-                  count: warmupStepsArr.length,
-                  weight: workWeightKg != null ? `${toDisplay(workWeightKg)} ${weightLabel}` : '—',
-                })}
-              </Text>
-              <Text style={styles.warmupCollapsedChevron}>⌄</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {/* ── WarmupSection expandida (§4.3) ── */}
-          {hasWarmup && !warmupCollapsed ? (
-            <View style={styles.warmupSection}>
-              <View style={styles.sectionLabelRow}>
-                <Text style={styles.sectionLabel}>{t('workout.warmup.blockLabel').toUpperCase()}</Text>
-                <Text style={styles.sectionLabelMeta}>
-                  {warmupRestSec > 0
-                    ? t('workout.warmup.restLabel', { sec: warmupRestSec })
-                    : t('workout.warmup.noTimer')}
-                </Text>
-              </View>
-              {warmupNoReference ? (
-                <Text style={styles.warmupBanner}>{t('workout.warmup.noReference')}</Text>
-              ) : null}
-              <View style={styles.warmupRows}>
-                {warmupComputed.map((step, wi) => {
-                  const done = warmupDone.has(wi);
-                  const hasWeight = step.weightKg != null;
-                  // toDisplay() ya convierte a la unidad activa — NO usar fmt() aquí,
-                  // que además añade el sufijo de unidad (duplicaría "Kg").
-                  const numStr = hasWeight ? String(toDisplay(step.weightKg)) : `${warmupStepsArr[wi].pct}%`;
-                  return (
-                    <View key={wi} style={styles.warmupRow}>
-                      <Text style={[styles.warmupRowLabel, done && styles.warmupTextOff]}>{`C${wi + 1}`}</Text>
-                      <Text style={styles.warmupDetail} numberOfLines={1}>
-                        <Text style={[styles.warmupWeight, done && styles.warmupTextOff]}>{numStr}</Text>
-                        {hasWeight ? <Text style={[styles.warmupWeight, done && styles.warmupTextOff]}>{` ${weightLabel}`}</Text> : null}
-                        <Text style={[styles.warmupTimes, done && styles.warmupTextOff]}>{' × '}</Text>
-                        <Text style={[styles.warmupReps, done && styles.warmupTextOff]}>{step.reps}</Text>
-                      </Text>
-                      <TouchableOpacity
-                        style={[styles.warmupCheck, done && styles.warmupCheckDone]}
-                        onPress={() => toggleWarmupRow(wi)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.warmupCheckMark, done && styles.warmupCheckMarkDone]}>✓</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </View>
             </View>
           ) : null}
 
@@ -993,7 +1038,9 @@ export default function ExerciseCard({
         </DragSheet>
       )}
 
-      {/* La ficha de la recomendación (§6.3): regla, la última vez y hoy */}
+      {/* La ficha de la recomendación (§6.3). U10-04: primero lo que pasó la
+          última vez (las series y una frase que lo resume), después la regla
+          con jerarquía: la acción grande, la condición y cuándo baja debajo. */}
       {(progression || firstTime) && (
         <DragSheet
           visible={progSheetOpen}
@@ -1001,32 +1048,41 @@ export default function ExerciseCard({
           title={name}
         >
           <View style={styles.progSheet}>
-            {progression?.reason !== 'deload' ? (
-              <View style={styles.progSheetBlock}>
-                <Text style={styles.progSheetCaption}>{t('workout.progSheet.rule').toUpperCase()}</Text>
-                <Text style={styles.progSheetText}>{progressionRule(exConfig, def, t, weightLabel)}</Text>
-              </View>
-            ) : null}
-            {progression && lastExercise?.sets?.length ? (
-              <View style={styles.progSheetBlock}>
+            {progression ? (
+              <View style={styles.progSheetBox}>
                 <Text style={styles.progSheetCaption}>{t('workout.progSheet.lastTime').toUpperCase()}</Text>
-                <SetPills sets={lastExercise.sets} exConfig={exConfig} neutral />
+                {lastExercise?.sets?.length ? (
+                  <SetPills sets={lastExercise.sets} exConfig={exConfig} neutral />
+                ) : null}
+                <Text style={styles.progSheetVerdict}>
+                  <Text style={[
+                    styles.progSheetArrow,
+                    progression.type === 'hold' && styles.progDirHold,
+                    progression.reason === 'deload' && styles.progDirDeload,
+                  ]}>{`${PROG_ARROW[progression.type] ?? '→'}  `}</Text>
+                  {progression.why}
+                </Text>
+                {e1rmShown != null ? (
+                  <Text style={styles.progSheetMeta}>
+                    {t(progression.e1rmSessions > 1 ? 'workout.progSheet.e1rmMany' : 'workout.progSheet.e1rmOne',
+                      { count: progression.e1rmSessions, kg: `${e1rmShown} ${weightLabel}` })}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.progSheetBox}>
+                <Text style={styles.progSheetCaption}>{t('workout.progSheet.first').toUpperCase()}</Text>
+                <Text style={styles.progSheetVerdict}>{t(FIRST_TODAY[firstTime.kind], { what: firstTime.value })}</Text>
+              </View>
+            )}
+            {progression?.reason !== 'deload' ? (
+              <View style={styles.progSheetBox}>
+                <Text style={styles.progSheetCaption}>{t('workout.progSheet.rule').toUpperCase()}</Text>
+                <Text style={styles.progSheetAction}>{sheetRule.action}</Text>
+                {sheetRule.when ? <Text style={styles.progSheetWhen}>{sheetRule.when}</Text> : null}
+                {sheetRule.down ? <Text style={styles.progSheetDown}>{sheetRule.down}</Text> : null}
               </View>
             ) : null}
-            <View style={styles.progSheetBlock}>
-              <Text style={styles.progSheetCaption}>{t('workout.progSheet.today').toUpperCase()}</Text>
-              <Text style={styles.progSheetText}>
-                {progression
-                  ? progression.why
-                  : t(FIRST_TODAY[firstTime.kind], { what: firstTime.value })}
-              </Text>
-              {e1rmShown != null ? (
-                <Text style={styles.progSheetText}>
-                  {t(progression.e1rmSessions > 1 ? 'workout.progSheet.e1rmMany' : 'workout.progSheet.e1rmOne',
-                    { count: progression.e1rmSessions, kg: `${e1rmShown} ${weightLabel}` })}
-                </Text>
-              ) : null}
-            </View>
           </View>
         </DragSheet>
       )}
@@ -1216,10 +1272,29 @@ const makeStyles = (th) => StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   // La ficha de la recomendación: tres bloques, título pequeño + contenido.
-  progSheet:        { gap: spacing.lg, paddingBottom: spacing.sm },
-  progSheetBlock:   { gap: spacing.xs },
-  progSheetCaption: { ...textStyles.caps, color: th.colors.muted },
-  progSheetText:    { ...textStyles.body, color: th.colors.text },
+  // Ficha de la recomendación (U10-04): cada sección es una caja `surface`
+  // sobre el `bg` de la hoja, como las tarjetas sobre la pantalla.
+  progSheet:        { gap: spacing.sm, paddingBottom: spacing.sm },
+  progSheetBox: {
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    padding:         14,
+    gap:             8,
+  },
+  progSheetCaption: { ...textStyles.caps, color: th.colors.mutedLight },
+  progSheetVerdict: { ...textStyles.bodyStrong, color: th.colors.text, lineHeight: lh(textStyles.bodyStrong.fontSize) },
+  progSheetArrow:   { color: th.colors.accent },
+  progSheetMeta:    { ...textStyles.label, color: th.colors.mutedLight },
+  progSheetAction:  { ...textStyles.itemTitle, color: th.colors.text },
+  progSheetWhen:    { ...textStyles.body, color: th.colors.mutedLight, marginTop: -4 },
+  progSheetDown: {
+    ...textStyles.label,
+    color:          th.colors.mutedLight,
+    borderTopWidth: 1,
+    borderTopColor: th.colors.border,
+    paddingTop:     8,
+    marginTop:      2,
+  },
   progDirCoach: {
     ...textStyles.caps,
     color:         th.colors.blue,
@@ -1233,15 +1308,16 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // El salto va en pastilla gris, no en acento: dos amarillos en la misma línea
   // se disputan la mirada y el destino deja de ser lo primero que se lee.
+  // Mismo gris que los ✓ (`btnFill`): `surface2` casi no se separaba de la tarjeta.
   progDeltaPill: {
-    backgroundColor: th.colors.surface2,
+    backgroundColor: th.colors.btnFill,
     borderRadius:    999,
     paddingHorizontal: 8,
     paddingVertical:   2,
   },
   progDeltaText: {
     ...textStyles.labelStrong,
-    color:       th.colors.mutedLight,
+    color:       th.colors.text,
     fontVariant: ['tabular-nums'],
   },
 
@@ -1273,34 +1349,53 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'center',
     gap:           10,
   },
+  // U10-04: etiqueta + detalle en una caja del alto del ✓, sin fondo; detrás, el relleno.
+  warmupBar: {
+    flex:          1,
+    height:        GRID.CELL_H,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           10,
+    paddingLeft:   8,
+  },
+  warmupFill: {
+    position:     'absolute',
+    left:         0,
+    top:          0,
+    bottom:       0,
+    borderRadius: th.radius.sm,
+  },
   warmupRowLabel: {
     ...textStyles.labelStrong,
     width:       GRID.LABEL_W,
     color:       th.colors.muted,
     fontVariant: ['tabular-nums'],
   },
+  warmupRowLabelNext: { color: th.colors.accent },
   warmupDetail: {
     ...textStyles.body,
     flex:        1,
     fontVariant: ['tabular-nums'],
   },
   warmupWeight: { fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
-  warmupTimes:  { fontFamily: 'Inter_500Medium',    color: th.colors.muted },
+  warmupTimes:  { fontFamily: 'Inter_500Medium',    color: th.colors.mutedLight },
   warmupReps:   { fontFamily: 'Inter_700Bold',      color: th.colors.mutedLight },
   // Fila completada: todo el texto se apaga a muted2.
   warmupTextOff: { color: th.colors.muted },
+  // Igual que el ✓ de las series (SetRow `doneBtn`).
   warmupCheck: {
     width:           GRID.BTN_W,
-    height:          34,
-    borderRadius:    R_SMALL,
-    backgroundColor: th.colors.surface2,
+    height:          GRID.CELL_H,
+    borderRadius:    GRID.RADIUS,
+    backgroundColor: th.colors.btnFill,
     alignItems:      'center',
     justifyContent:  'center',
   },
   warmupCheckDone: {
     backgroundColor: th.colors.accent,
   },
-  warmupCheckMark: { ...textStyles.body, color: th.colors.mutedLight },
+  warmupCheckMark: { ...textStyles.itemTitle, color: th.colors.mutedLight },
+  warmupCheckMarkNext: { color: th.tint.accent50 },
   warmupCheckMarkDone: { fontFamily: 'Inter_900Black', color: th.colors.onAccent },
 
   // §4.4 WarmupSection colapsada — row, gap 8, padding 2 0 14.
@@ -1311,7 +1406,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:    2,
     paddingBottom: 14,
   },
-  warmupCollapsedTick: { ...textStyles.labelStrong, fontFamily: 'Inter_900Black', color: th.colors.accent },
   warmupCollapsedText: {
     ...textStyles.labelStrong,
     flexShrink:  1,

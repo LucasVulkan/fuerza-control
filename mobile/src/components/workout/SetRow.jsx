@@ -17,6 +17,7 @@ import { View, TouchableOpacity, StyleSheet, PanResponder, Keyboard, Pressable, 
 import * as Haptics from 'expo-haptics';
 import { Text, TextInput } from '../ui/Text';
 import Chevron from './Chevron';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { spacing, borders, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -38,6 +39,7 @@ const H_THRESH = 12;
 
 function TimerButton({ onTime }) {
   const styles = useThemedStyles(makeStyles);
+  const th = useTheme();
   const [running,  setRunning]  = useState(false);
   const baseRef    = useRef(0);      // accumulated seconds before current segment
   const startRef   = useRef(null);   // Date.now() when current segment started
@@ -67,15 +69,25 @@ function TimerButton({ onTime }) {
     }
   }
 
+  const iconColor = running ? th.colors.accent : th.colors.mutedLight;
   return (
     <TouchableOpacity
       style={[styles.timerBtn, running && styles.timerBtnRunning]}
       onPress={toggle}
       hitSlop={6}
     >
-      <Text style={[styles.timerBtnIcon, running && styles.timerBtnIconRunning]}>
-        {running ? '▐▐' : '▶'}
-      </Text>
+      {/* SVG y no glifos: el ▐▐ no se centraba. Picos redondeados 1 px. */}
+      <Svg width={16} height={16} viewBox="0 0 16 16">
+        {running ? (
+          <>
+            <Rect x={3.5} y={2} width={3.5} height={12} rx={1} fill={iconColor} />
+            <Rect x={9} y={2} width={3.5} height={12} rx={1} fill={iconColor} />
+          </>
+        ) : (
+          // El trazo de 2 con unión redonda redondea los picos con radio 1.
+          <Path d="M4.5 3 L13 8 L4.5 13 Z" fill={iconColor} stroke={iconColor} strokeWidth={2} strokeLinejoin="round" />
+        )}
+      </Svg>
     </TouchableOpacity>
   );
 }
@@ -775,7 +787,7 @@ const makeStyles = (th) => StyleSheet.create({
     width:           GRID.BTN_W,
     height:          GRID.CELL_H,
     borderRadius:    GRID.RADIUS,
-    backgroundColor: th.colors.surface2,
+    backgroundColor: th.colors.btnFill,
     alignItems:      'center',
     justifyContent:  'center',
   },
@@ -792,21 +804,11 @@ const makeStyles = (th) => StyleSheet.create({
     width:           GRID.BTN_W,
     height:          GRID.CELL_H,
     borderRadius:    GRID.RADIUS,
-    backgroundColor: th.colors.surface2,
+    backgroundColor: th.colors.btnFill,
     alignItems:      'center',
     justifyContent:  'center',
   },
   timerBtnRunning: {
     backgroundColor: th.tint.accent10,
-  },
-  timerBtnIcon: {
-    ...textStyles.itemTitle,
-    color:              th.colors.mutedLight,
-    lineHeight:         16,
-    includeFontPadding: false,
-    textAlign:          'center',
-  },
-  timerBtnIconRunning: {
-    color: th.colors.accent,
   },
 });

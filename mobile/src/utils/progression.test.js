@@ -831,4 +831,15 @@ describe('P61 — la frase de la regla en palabras (es y en)', async () => {
   it('en', () => {
     expect(progressionRule(cfg, BB, tIn('en', en))).toBe('Adds 2.5 kg when all sets reach 60 s · drops if 2 of 3 fail');
   });
+  it('en piezas, para la ficha del Workout (U10-04)', () => {
+    const t = tIn('es', es);
+    const bench = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
+    expect(progressionRule(bench, BB, t, 'kg', { parts: true })).toEqual({
+      action: 'Sube 2.5 kg', when: 'cuando todas las series lleguen a 12 reps', down: 'Baja si fallan 2 de 3 series',
+    });
+    expect(progressionRule({ ...bench, progression: { ...bench.progression, down: 'never' } }, BB, t, 'kg', { parts: true }).down).toBeNull();
+    expect(progressionRule({ sets: 3, minReps: 6, progression: { type: 'reps' } }, BB, t, 'kg', { parts: true }).when)
+      .toBe('cuando todas las series pasen de 6 reps');
+    expect(progressionRule({ progression: { type: 'none' } }, BB, t, 'kg', { parts: true })).toEqual({ action: 'El peso lo cambias tú' });
+  });
 });

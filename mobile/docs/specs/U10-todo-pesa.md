@@ -6,7 +6,7 @@
 > Fase U10-01 · hecho · Casillas que se despliegan en una regla (KG, reps, RPE) · §2 · antes U43
 > Fase U10-02 · aparcado · Metrónomo de tempo · §3 · antes U44
 > Fase U10-03 · pendiente · Los últimos segundos del descanso vibran y laten · §4 · antes U45
-> Fase U10-04 · pendiente · Rampa del calentamiento en el Workout · §5 · antes U46
+> Fase U10-04 · hecho · Rampa del calentamiento en el Workout · §5 · antes U46
 > Fase U10-05 · pendiente · Escalera del calentamiento en el editor · §6 · antes U47
 > Fase U10-06 · pendiente · De la tarjeta de hoy a la cabecera del Workout · §7 · antes U48
 > Fase U10-07 · aparcado · Ola de etapas en el planificador · §8 · antes U49
@@ -600,31 +600,77 @@ siempre.
   **Sin banda oscura debajo** (decisión del usuario): la rampa se dibuja
   directamente sobre la tarjeta.
 - **Colores del relleno:**
-  - pendiente → `th.colors.surface2`;
-  - la siguiente por hacer → `th.colors.border`, un paso más claro;
-    `border` es un color de línea, pero aquí vale como relleno;
+  - sin hacer → `th.colors.surface2` (la siguiente se distingue por la
+    etiqueta en lima);
   - hecha → `th.tint.accent10`, como `inputDone`.
+- **Los ✓ sin marcar** (calentamiento y series) pasan a un token nuevo,
+  `th.colors.btnFill`, un paso más claro que el relleno, para que el botón sea
+  el ✓ y no la fila. Vale lo mismo que `border` en todos los temas salvo
+  Midnight, donde es un gris (`#6f6f6f`) con el brillo del cian de `border`.
+  El ✓ del calentamiento es idéntico al de las series: 42 × 44, radio 11, y el
+  de la siguiente por hacer en `accent50`, como la serie activa. La caja de la
+  fila sube a 44 con él. El botón ▶ del temporizador usa también `btnFill`, y
+  sus iconos ▶ y ⏸ pasan a SVG (16 × 16) con los picos redondeados 1 px; el ⏸
+  con glifos no salía centrado.
+- **Pill del delta** en la línea de objetivo: fondo `btnFill` y texto `text`.
+- **Ficha de la recomendación** (la que abre la línea de objetivo, P10 §6.3),
+  rehecha (decisión del usuario, 5-oct): cada sección en una caja `surface`.
+  Primero **La última vez**: las series y una frase de lo que pasó (el `why`
+  de la progresión, reescrito para hablar de la última sesión, con la flecha
+  del color de la recomendación) y el 1RM si va Por esfuerzo. Después **La
+  regla**, en piezas (`progressionRule(..., { parts: true })`): la acción en
+  `itemTitle` («Sube 2,5 kg»), la condición en gris y cuándo baja tras una raya.
+  La sección «Hoy» desaparece: su texto era el motivo, y ahora es la frase de
+  la última vez. Sin sesiones, la caja es «Primera vez».
+  El × del detalle va en `mutedLight`. (Decisión del usuario, 5-oct: antes la
+  siguiente fila iba en `border` y los ✓ en `surface2`, y la fila parecía más
+  botón que el ✓.)
 - El texto no cambia de estilo. La etiqueta de la siguiente por hacer pasa a
   `accent`, como la serie activa.
 - Al marcar o desmarcar, el color cambia con un fundido de 300 ms. **No hay
   animación de entrada al montar** (§1.1).
+- **Plegar y desplegar anima la altura** (`AnimatedHeight`, 220 ms). Al
+  marcar el último, se espera 350 ms para que se vea el ✓ en lima y luego se
+  pliega.
 - **Calentamiento plegado** (`warmupCollapsed`): el ✓ de la línea resumen se
   cambia por una mini escalera de tres barras lima (SVG de 18 × 12). El resto
   de la línea no cambia.
 
 Sin fila S1 discontinua: el rótulo SERIES ya separa (decisión del usuario).
 
+**La línea de objetivo baja** (decisión del usuario, 5-oct, al implementar):
+la línea de progresión («↑ Sube peso 100 kg», «Primera vez» o el objetivo del
+entrenador) va **entre el calentamiento y el rótulo SERIES**, justo encima de
+las series a las que se refiere. Sin calentamiento queda tras las notas, encima
+de las series. Pendiente de verlo en el móvil.
+
 **Probar U10-04**
 
 - [ ] Sentadilla con calentamiento automático de 3: las filas se rellenan al
   40, 60 y 80 % y juntas se leen como una rampa.
 - [ ] El relleno va directamente sobre la tarjeta, sin banda oscura debajo.
-- [ ] La siguiente por hacer tiene el relleno más claro y la etiqueta en lima.
+- [ ] Los ✓ sin marcar se leen como botón, más claros que el relleno de las
+  filas. El × de «25 kg × 8» se lee bien.
+- [ ] La siguiente por hacer tiene la etiqueta en lima.
   Al marcarla se tiñe de lima con un fundido.
 - [ ] Sin peso de referencia (ejercicio nuevo), las filas se rellenan igual,
   por su %.
 - [ ] Con todo marcado, la línea plegada lleva la mini escalera en vez del ✓.
+- [ ] Al marcar el último, el ✓ se pone lima y el calentamiento se pliega
+  animado, sin golpe; tocar la línea plegada lo despliega también animado.
+- [ ] Los ✓ del calentamiento son iguales que los de las series (tamaño,
+  color, el de la siguiente en lima tenue).
+- [ ] En Midnight los ✓ sin marcar son grises, no cianes.
+- [ ] En un ejercicio por segundos, el ▶ tiene el mismo fondo que el ✓, picos
+  redondeados, y al pulsarlo el ⏸ sale centrado y redondeado.
+- [ ] La pill del delta («+2,5») se separa de la tarjeta y su texto se lee bien.
+- [ ] La ficha de la recomendación: arriba «La última vez» (series y una frase
+  de lo que pasó), debajo «La regla» con la acción grande, la condición en gris
+  y, separada por una raya, cuándo baja. Cada sección en su caja. Sin «Hoy».
+- [ ] Ejercicio nuevo: la ficha enseña «Primera vez» con qué buscar y la regla.
 - [ ] Con un calentamiento a medida de 5 pasos, cada fila con su %.
+- [ ] La línea de objetivo sale entre el calentamiento y SERIES; sin
+  calentamiento, tras las notas y encima de las series.
 
 ---
 
@@ -888,7 +934,7 @@ reutiliza el mismo panel.
 | U10-01 | Casillas que se despliegan en una regla (§2) | 🟡 | — | hecho · 2a6104c |
 | U10-02 | Metrónomo de tempo (§3) | 🟡 | D3 | pendiente |
 | U10-03 | Final del descanso (§4) | 🟢 | — | pendiente |
-| U10-04 | Rampa del calentamiento en el Workout (§5) | 🟢 | — | pendiente |
+| U10-04 | Rampa del calentamiento en el Workout (§5) | 🟢 | — | hecho |
 | U10-05 | Escalera del calentamiento en el editor (§6) | 🟢 | — | pendiente |
 | U10-06 | Tarjeta de hoy → cabecera (§7) | 🟡 | — | pendiente |
 | U10-07 | Ola de etapas en el planificador (§8) | 🟡 | cerrar la intensidad (§8.2) | pendiente |

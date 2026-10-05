@@ -569,9 +569,11 @@ export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastD
  *   quedan en la frase larga del Resumen.
  * @returns {string}
  */
-export function progressionRule(exConfig, def, t, unit = 'kg', { short = false } = {}) {
+// `parts`: la regla en piezas para la ficha del Workout (U10-04) — `action` es
+// lo que pasa («Sube 2,5 kg»), `when` la condición y `down` cuándo baja.
+export function progressionRule(exConfig, def, t, unit = 'kg', { short = false, parts = false } = {}) {
   const prog = resolveProgressionConfig(exConfig, def);
-  if (prog.type === 'none') return short ? '' : t('progression.rule.none');
+  if (prog.type === 'none') return parts ? { action: t('progression.rule.none') } : short ? '' : t('progression.rule.none');
 
   const minReps = exConfig?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps;
   const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps;
@@ -581,7 +583,12 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false }
 
   if (prog.type === 'effort') {
     if (short) return t('progression.rule.effortShort', { reps: minReps, rpe: prog.targetRpe });
-    return t(prog.effortWhen === 'reach' && !prog.exact ? 'progression.rule.effortReach' : 'progression.rule.effortBeat',
+    const reach = prog.effortWhen === 'reach' && !prog.exact;
+    if (parts) return {
+      action: t('progression.rule.effortAction', { reps: minReps, rpe: prog.targetRpe }),
+      when:   t(reach ? 'progression.rule.effortWhenReach' : 'progression.rule.effortWhenBeat'),
+    };
+    return t(reach ? 'progression.rule.effortReach' : 'progression.rule.effortBeat',
       { reps: minReps, rpe: prog.targetRpe });
   }
 
@@ -598,6 +605,10 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false }
     const text  = inc.type === 'pct' ? `${inc.pct} %`
       : timed ? `${inc.value} s` : t('progression.rule.incReps', { count: inc.value });
     if (short) return t('progression.rule.weakestShort', { inc: text });
+    if (parts) return {
+      action: t('progression.rule.weakestShort', { inc: text }),
+      when:   t(timed ? 'progression.rule.whenTime' : 'progression.rule.whenReps', { when, floor: timed ? minTime : minReps }),
+    };
     return t(timed ? 'progression.rule.timeUp' : 'progression.rule.repsUp',
       { inc: text, when, floor: timed ? minTime : minReps });
   }
@@ -614,9 +625,15 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false }
       goal: timed ? goal : t('progression.rule.incReps', { count: goal }),
     });
   }
+  const fails = Math.min(Math.max(prog.down?.fails ?? Math.floor(n * 0.4) + 1, 1), n);
+  if (parts) return {
+    action: t(assist ? 'progression.rule.assistAction' : 'progression.rule.weightAction', { inc: text }),
+    when:   t('progression.rule.whenGoal', { when, goal: timed ? goal : t('progression.rule.incReps', { count: goal }) }),
+    down:   prog.down === 'never' ? null
+      : t(assist ? 'progression.rule.assistDownLine' : 'progression.rule.weightDownLine', { fails, n }),
+  };
   const head = t(assist ? 'progression.rule.assistUp' : 'progression.rule.weightUp', { inc: text, when, goal });
   if (prog.down === 'never') return head;
-  const fails = Math.min(Math.max(prog.down?.fails ?? Math.floor(n * 0.4) + 1, 1), n);
   return head + t(assist ? 'progression.rule.assistDown' : 'progression.rule.weightDown', { fails, n });
 }
 
