@@ -1,0 +1,254 @@
+<title>Cabecera y sesión en curso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:ital,wght@0,500;0,700;0,800;0,900;1,900&display=swap">
+<style>
+/* Layout: dos bloques de teléfonos a 375 — caja sí/no, y las cuatro maneras de convivir con el banner «En curso». */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --accent50:rgba(184,255,0,.5);
+  --xs:2px; --xs2:4px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px;
+  --r-xs:4px; --r-md:10px;
+  --page:#080808; --ink-dim:#8a8a8a; --rule:#222;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+body{background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 24px 90px}
+.wrap{max-width:1640px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px; text-wrap:balance}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:74ch; margin:0}
+.lead b,.sub b{color:var(--text); font-weight:800}
+h2{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); margin:56px 0 8px; padding-top:22px; border-top:1px solid var(--rule)}
+.sub{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:74ch; margin:0}
+
+.ctrl{display:flex; flex-wrap:wrap; gap:var(--sm); align-items:center; margin:20px 0 26px}
+.ctrl span{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-dim); margin:0 6px 0 14px}
+.ctrl span:first-child{margin-left:0}
+.ctrl button{all:unset; cursor:pointer; font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--text);
+  background:var(--surface2); border-radius:999px; padding:9px 14px; transition:background .16s,color .16s}
+.ctrl button[aria-pressed="true"]{background:var(--accent); color:var(--onAccent)}
+.ctrl button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.rail{display:flex; gap:30px; overflow-x:auto; padding-bottom:12px; align-items:flex-start}
+.col{flex:0 0 375px; width:375px; max-width:100%}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h3{font:900 18px/1.2 var(--inter); letter-spacing:-.2px; margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:60px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:#fb923c}
+.pro b,.con b{color:var(--text); font-weight:700}
+
+/* ══════ TELÉFONO ══════ */
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:690px; position:relative}
+.phone::after{content:''; position:absolute; left:0; right:0; bottom:0; height:60px; background:linear-gradient(transparent,var(--bg)); pointer-events:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight)}
+.ah{display:flex; align-items:center; padding:var(--md) var(--xl) var(--sm)}
+.logo{min-width:88px; display:flex; align-items:center; gap:var(--xs)}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.clock{flex:1; text-align:center; font:800 12px var(--inter); letter-spacing:1.2px; color:var(--mutedLight)}
+.menu{min-width:36px; display:flex; justify-content:flex-end}
+.content{padding:var(--sm) var(--lg) 0}
+
+/* lo que entra y sale: alto animado de 0 a su contenido */
+.fold{display:grid; grid-template-rows:1fr; transition:grid-template-rows .32s var(--ease), opacity .24s}
+.fold > div{overflow:hidden; min-height:0}
+.fold.off{grid-template-rows:0fr; opacity:0}
+
+/* banner «En curso» — ActiveSessionBanner tal cual */
+.run{display:flex; align-items:center; gap:var(--md); background:var(--accent); border-radius:var(--r-md); padding:var(--md) var(--lg); margin-bottom:var(--sm)}
+.run .b{flex:1; min-width:0}
+.run .ey{display:flex; align-items:center; gap:var(--sm); margin-bottom:var(--xs2); font:800 12px/14px var(--inter); letter-spacing:1.2px; color:var(--onAccent)}
+.run .ey i{width:6px; height:6px; border-radius:3px; background:var(--onAccent)}
+.run .nm{font:900 16px/19px var(--inter); letter-spacing:-.2px; color:var(--onAccent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.run .bt{background:var(--onAccent); border-radius:var(--r-md); padding:11px var(--lg); font:900 12px var(--inter); letter-spacing:1.2px; color:var(--accent)}
+
+/* cabecera A */
+.caps{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--mutedLight)}
+.caps em{font-style:normal; color:var(--text)}
+.hA{padding:var(--xs2) var(--xs2) var(--md)}
+.hA .top{display:flex; gap:var(--sm2); align-items:baseline}
+.hA .top .caps:last-child{margin-left:auto}
+.hA .nm{font:800 18px/22px var(--inter); letter-spacing:-.2px; margin:var(--xs2) 0 var(--md)}
+.bar{display:flex; gap:var(--xs2)}
+.bar i{display:block; height:6px; border-radius:3px; background:var(--border); overflow:hidden; position:relative}
+.bar i.done{background:var(--accent50)}
+.bar i b{position:absolute; inset:0 auto 0 0; background:var(--accent); border-radius:3px}
+/* la misma, en caja con la semana */
+.box{background:var(--surface); border-radius:var(--r-md); padding:var(--md) var(--lg) var(--lg)}
+.box .hA{padding:0 0 var(--lg)}
+.box .wk{padding:0 var(--xs2)}
+.box .wk .d:not(.on){background:var(--border)}
+/* acoplado: banner y caja como lista agrupada — radios por posición, 2 px de fondo entre medias */
+.glued .run{border-radius:var(--r-md) var(--r-md) var(--r-xs) var(--r-xs); margin-bottom:var(--xs)}
+.glued.on .box{border-radius:var(--r-xs) var(--r-xs) var(--r-md) var(--r-md)}
+.box{transition:border-radius .32s var(--ease)}
+
+/* semana */
+.wk{display:grid; gap:var(--md); padding:9px var(--xl)}
+.wk .r{display:flex; justify-content:space-between}
+.wk .l{font:800 12px var(--inter); color:var(--mutedLight); width:12px; text-align:center}
+.wk .l.on{color:var(--accent)}
+.wk .d{width:12px; height:12px; border-radius:6px; background:var(--muted)}
+.wk .d.on{background:var(--accent)}
+/* sesiones */
+.sh{display:flex; align-items:baseline; gap:var(--sm); padding:0 var(--xs2); margin:var(--lg) 0 var(--sm2)}
+.sh b{font:800 12px var(--inter); letter-spacing:1.2px}
+.sh span{margin-left:auto; font:800 12px var(--inter); letter-spacing:1.2px; color:var(--mutedLight)}
+.today{background:var(--accent); border-radius:var(--r-md); margin:var(--xs2) 0}
+.today .hd{padding:14px var(--lg) 11px}
+.today .fl{font:800 12px var(--inter); letter-spacing:1.2px; color:rgba(0,0,0,.55)}
+.today .row{display:flex; align-items:flex-end; gap:4px; margin-top:var(--sm)}
+.today .g{font:italic 800 34px/39px var(--barlow); width:27px; color:var(--onAccent)}
+.today .nm{font:italic 800 28px/34px var(--barlow); color:var(--onAccent)}
+.today .rl{height:2px; border-radius:2px; background:rgba(0,0,0,.85); margin-top:11px}
+.today .mt{font:800 12px var(--inter); letter-spacing:1.2px; color:rgba(0,0,0,.55); margin-top:var(--sm)}
+.today .ft{padding:11px var(--sm) var(--sm)}
+.today .bt{display:flex; justify-content:space-between; align-items:center; background:var(--onAccent); border-radius:var(--r-md); padding:var(--lg)}
+.today .bt b{font:900 14px var(--inter); color:var(--accent)}
+.grp{display:grid; gap:var(--xs2)}
+.ses{background:var(--surface); border-radius:var(--r-md); height:60px; display:flex; align-items:center; gap:8px; padding:0 14px}
+.ses .g{font:900 22px/22px var(--inter); letter-spacing:-.5px; min-width:24px; color:var(--accent)}
+.ses.done .g{color:var(--muted)}
+.ses .nm{flex:1; min-width:0; font:900 16px var(--inter); letter-spacing:-.2px}
+.ses.done .nm{color:var(--mutedLight)}
+.ses .mt{font:500 12px var(--inter); color:var(--muted)}
+
+.verdict{margin-top:56px; border-top:1px solid var(--rule); padding-top:26px; max-width:80ch}
+.verdict h3{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); margin:0 0 10px}
+.verdict p{font:500 14px/1.7 var(--inter); color:var(--ink-dim); margin:0 0 12px}
+.verdict b{color:var(--text); font-weight:700}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <h1>Cabecera y sesión en curso</h1>
+  <p class="lead">Segunda ronda sobre la <b>propuesta A</b>. Primero, si va suelta sobre el fondo o compartiendo caja con
+    la semana. Después, qué hace cuando sale el banner <b>En curso</b>, que hoy va arriba de todo en Inicio.</p>
+
+  <h2>Suelta o en caja</h2>
+  <p class="sub">El mismo contenido, en la Home entera. La pregunta es si la versión suelta deja demasiado texto
+    flotando sobre el fondo entre el logo y la tarjeta lima.</p>
+  <div class="rail" id="rail1"></div>
+
+  <h2>Con una sesión en curso</h2>
+  <p class="sub">Pulsa <b>Sesión en curso</b> para ver cómo entra el banner y qué se mueve. El selector de cabecera cambia
+    las tres primeras; la cuarta solo existe con caja.</p>
+  <div class="ctrl">
+    <span>Sesión en curso</span>
+    <button id="run-on" data-run="1" aria-pressed="true">Sí</button>
+    <button id="run-off" data-run="0" aria-pressed="false">No</button>
+    <span>Cabecera</span>
+    <button id="hd-free" data-box="0" aria-pressed="false">Suelta</button>
+    <button id="hd-box" data-box="1" aria-pressed="true">En caja</button>
+  </div>
+  <div class="rail" id="rail2"></div>
+
+  <div class="verdict">
+    <h3>Cómo lo veo</h3>
+    <p><b>La caja gana.</b> Suelta no queda mal, pero son dos bloques de texto gris flotando (cabecera y semana) antes de la
+      primera pieza con forma, y la semana pierde su relación con el programa. En caja se leen como una sola respuesta a
+      «¿dónde estoy?», de lo grande a lo pequeño, y la pantalla queda en tres piezas: orientación, la que toca y el resto.
+      El coste es que la caja es <code>surface</code>, igual que las filas; se distingue porque no tiene letra y está arriba.</p>
+    <p><b>Con el banner, que empuje o que se acople; ni tapar ni ir en medio.</b> El banner es una acción urgente y la
+      cabecera es contexto, así que el orden correcto es banner primero. Sustituir la cabecera ahorra 100 px, pero
+      hace que la pantalla cambie de forma según haya sesión o no, y el banner de una sesión libre o de un cliente no
+      tiene nada que ver con el programa: quitarte el programa por eso no tiene sentido. Meterlo entre cabecera y semana
+      separa dos cosas que van juntas.</p>
+    <p>Con caja, mi preferida es <b>D · Acoplado</b>: es exactamente <b>B · Empuja</b> con los radios de la lista agrupada,
+      así que banner y caja se leen como un solo bloque arriba y la tarjeta lima de abajo sigue siendo la siguiente pieza.
+      Es casi gratis en código: el banner ya va primero en el <code>ScrollView</code>, solo cambian dos radios y un margen.
+      Si la cabecera fuese suelta, me quedaría con <b>B</b>.</p>
+    <p>Una cosa a vigilar: con banner hay <b>dos piezas lima</b> seguidas (banner y la que toca). Ya pasa hoy, no lo
+      introduce la cabecera, pero si se ve cargado la salida que ya anotaste en el banner es volver a <code>surface</code>
+      con solo el botón en lima.</p>
+  </div>
+</div>
+
+<script>
+const C = { name:'Hipertrofia AF', week:7, total:12, stageIdx:1, wis:3,
+            stages:[{n:'Fuerza',w:4},{n:'Volumen',w:4},{n:'Intensidad',w:4}] };
+let run = true, boxed = true;
+
+const bar = () => `<div class="bar">` + C.stages.map((s,i) =>
+  i < C.stageIdx ? `<i class="done" style="flex:${s.w}"></i>`
+  : i > C.stageIdx ? `<i style="flex:${s.w}"></i>`
+  : `<i style="flex:${s.w}"><b style="width:${C.wis/s.w*100}%"></b></i>`).join('') + `</div>`;
+const head = () => `<div class="hA"><div class="top"><span class="caps">Semana ${C.week} de ${C.total}</span>
+  <span class="caps">Etapa ${C.stageIdx+1} · <em>${C.stages[C.stageIdx].n}</em></span></div>
+  <div class="nm">${C.name}</div>${bar()}</div>`;
+const week = () => `<div class="wk">
+  <div class="r">${['L','M','X','J','V','S','D'].map((l,i)=>`<span class="l ${i===3?'on':''}">${l}</span>`).join('')}</div>
+  <div class="r">${[1,0,1,0,0,0,0].map(o=>`<span class="d ${o?'on':''}"></span>`).join('')}</div></div>`;
+const orient = box => box ? `<div class="box">${head()}${week()}</div>` : head() + week();
+const banner = on => `<div class="fold ${on?'':'off'}"><div><div class="run"><div class="b">
+  <div class="ey"><i></i>EN CURSO · 24:31</div><div class="nm">Tirón pesado</div></div><span class="bt">CONTINUAR</span></div></div></div>`;
+const rest = `<div class="sh"><b>SESIONES</b><span>2 DE 4 ESTA SEMANA</span></div>
+  <div class="today"><div class="hd"><div class="fl">SIGUIENTE</div>
+    <div class="row"><span class="g">C</span><span class="nm">Pierna completa</span></div>
+    <div class="rl"></div><div class="mt">6 EJERCICIOS · ~52 MIN · HACE 8 DÍAS</div></div>
+    <div class="ft"><div class="bt"><b>EMPEZAR</b><svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M4 2l4.5 4L4 10" stroke="#aae216" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div></div>
+  <div class="grp">
+    <div class="ses done"><span class="g">A</span><span class="nm">Empuje pesado</span><span class="mt">lun</span></div>
+    <div class="ses done"><span class="g">B</span><span class="nm">Tirón pesado</span><span class="mt">mié</span></div>
+    <div class="ses"><span class="g">D</span><span class="nm">Hombro y brazo</span><span class="mt">~40 min</span></div>
+  </div>`;
+const phone = inner => `<div class="phone"><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="ah"><span class="logo"><b>Forma</b><u>FIT</u></span><span class="clock">9:41 · JUE 8 OCT</span>
+  <span class="menu"><svg width="22" height="22" viewBox="0 0 26 26"><path d="M10 4.5H24.5V7.5H8Z M6 11.1H24.5V14.1H4Z M2.4 17.7H24.5V20.7H.4Z" fill="#aae216"/></svg></span></div>
+  <div class="content">${inner}</div></div>`;
+const col = (tag, title, why, inner, pro, con) => `<div class="col"><div class="tag">${tag}</div><h3>${title}</h3>
+  <p class="why">${why}</p>${phone(inner)}${pro?`<p class="pro">${pro}</p>`:''}${con?`<p class="con">${con}</p>`:''}</div>`;
+
+document.getElementById('rail1').innerHTML =
+  col('Suelta', 'A sobre el fondo', 'Cabecera y semana como dos bloques sin forma, cada uno con su aire.',
+      orient(false) + rest, 'La más ligera: no añade ninguna superficie.',
+      'Dos bloques de texto gris antes de la primera pieza con forma. La semana no se lee como parte del programa.') +
+  col('En caja', 'A con la semana dentro', 'Programa, barra y días en una sola caja: de lo grande a lo pequeño.',
+      orient(true) + rest, 'Tres piezas en pantalla: dónde estoy, la que toca, el resto. Los puntos sin entrenar pasan a <b>border</b> para verse sobre surface.',
+      'Una superficie más, del mismo gris que las filas de sesión.');
+
+function render2() {
+  const B = [
+    ['A', 'Tapa la cabecera', 'Mientras hay sesión en curso, el banner ocupa el sitio de la cabecera. La semana se queda.',
+      banner(run) + (boxed
+        ? `<div class="box"><div class="fold ${run?'off':''}"><div>${head()}</div></div>${week()}</div>`
+        : `<div class="fold ${run?'off':''}"><div>${head()}</div></div>${week()}`),
+      'Ahorra unos 100 px: la tarjeta de hoy apenas baja.',
+      'La pantalla cambia de forma según haya sesión. Y si la sesión es libre o de un cliente, te quita el programa por algo que no tiene que ver con él.'],
+    ['B', 'Empuja', 'El banner va arriba de todo y todo lo demás baja. Es lo que hace hoy el código.',
+      banner(run) + orient(boxed),
+      'Nada desaparece y el orden es el bueno: primero la acción urgente, luego el contexto.',
+      'La tarjeta de hoy baja unos 64 px.'],
+    ['C', 'Entre cabecera y semana', 'La cabecera se queda fija arriba; el banner entra debajo.',
+      boxed ? orient(true).replace('<div class="box">', '<div class="box" style="margin-bottom:6px">') + banner(run)
+            : head() + banner(run) + week(),
+      'La cabecera no se mueve nunca.',
+      '<b>Suelta</b>, separa la semana del programa. <b>En caja</b>, la acción urgente queda por debajo del contexto.'],
+    ['D', 'Acoplado a la caja', 'Banner y caja como lista agrupada: 2 px de separación y radios por posición. Solo con caja.',
+      `<div class="glued ${run?'on':''}">${banner(run)}${orient(true)}</div>`,
+      'Se lee como un solo bloque. Es B con dos radios distintos: casi gratis en código.',
+      'Necesita la versión en caja.'],
+  ];
+  document.getElementById('rail2').innerHTML = B.map(b => col('Opción ' + b[0], b[1], b[2], b[3] + rest, b[4], b[5])).join('');
+}
+function press(attr, val) { document.querySelectorAll(`[data-${attr}]`).forEach(b => b.setAttribute('aria-pressed', b.dataset[attr] === val)); }
+document.querySelectorAll('[data-run]').forEach(b => b.addEventListener('click', () => {
+  run = b.dataset.run === '1'; press('run', b.dataset.run);
+  // animar en vez de repintar: el repintado mataría la transición
+  document.querySelectorAll('#rail2 .col').forEach((colEl, i) => {
+    const folds = colEl.querySelectorAll('.fold');
+    if (i === 0) { folds[0].classList.toggle('off', !run); folds[1].classList.toggle('off', run); }
+    else folds[0].classList.toggle('off', !run);
+    colEl.querySelector('.glued')?.classList.toggle('on', run);
+  });
+}));
+document.querySelectorAll('[data-box]').forEach(b => b.addEventListener('click', () => {
+  boxed = b.dataset.box === '1'; press('box', b.dataset.box); render2();
+}));
+render2();
+</script>

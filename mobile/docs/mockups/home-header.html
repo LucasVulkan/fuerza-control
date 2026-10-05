@@ -1,0 +1,298 @@
+<title>Cabecera del Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:ital,wght@0,500;0,700;0,800;0,900;1,900&display=swap">
+<style>
+/* Layout: una fila de teléfonos a 375 con la Home real alrededor de cada cabecera, para juzgar la jerarquía en contexto. */
+:root{
+  color-scheme:dark;
+  /* tokens EXACTOS de formaFit (src/themes.js) */
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --accent50:rgba(184,255,0,.5); --accent10:rgba(184,255,0,.1);
+  --blue:#4c85ff;
+  /* spacing de Figma (src/theme.js) */
+  --xs:2px; --xs2:4px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px; --xxl:28px;
+  --r-xs:4px; --r-sm:6px; --r-md:10px;
+  /* andamio de la página, no es UI de la app */
+  --page:#080808; --ink-dim:#8a8a8a; --rule:#222;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 24px 90px}
+.wrap{max-width:1500px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px; text-wrap:balance}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:72ch; margin:0}
+.lead b{color:var(--text); font-weight:800}
+
+/* selector de caso */
+.cases{display:flex; flex-wrap:wrap; gap:var(--sm); align-items:center; margin:26px 0 30px}
+.cases span{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-dim); margin-right:6px}
+.cases button{all:unset; cursor:pointer; font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--text);
+  background:var(--surface2); border-radius:999px; padding:9px 14px; transition:background .16s,color .16s}
+.cases button[aria-pressed="true"]{background:var(--accent); color:var(--onAccent)}
+.cases button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.rail{display:flex; gap:34px; overflow-x:auto; padding-bottom:12px; align-items:flex-start}
+.col{flex:0 0 375px; width:375px; max-width:100%}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h2{font:900 18px/1.2 var(--inter); letter-spacing:-.2px; margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:62px}
+.levels{list-style:none; margin:14px 0 0; padding:0; display:grid; gap:7px}
+.levels li{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); display:flex; gap:10px}
+.levels li i{font-style:normal; font:900 11px/18px var(--inter); color:var(--onAccent); background:var(--accent); width:18px; height:18px; border-radius:4px; text-align:center; flex-shrink:0}
+.levels li.n2 i{background:var(--mutedLight)} .levels li.n3 i{background:var(--muted); color:var(--text)}
+.levels b{color:var(--text); font-weight:700}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:#fb923c}
+
+/* ══════ TELÉFONO ══════ */
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:640px; position:relative}
+.phone::after{content:''; position:absolute; left:0; right:0; bottom:0; height:60px; background:linear-gradient(transparent,var(--bg)); pointer-events:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight)}
+/* AppHeader */
+.ah{display:flex; align-items:center; padding:var(--md) var(--xl) var(--sm)}
+.logo{min-width:88px; display:flex; align-items:center; gap:var(--xs)}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px; color:var(--text)}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.clock{flex:1; text-align:center; font:800 12px var(--inter); letter-spacing:1.2px; color:var(--mutedLight)}
+.menu{min-width:36px; display:flex; justify-content:flex-end}
+.content{padding:var(--sm) var(--lg) 0}
+/* semana */
+.wk{display:grid; gap:var(--md); padding:9px var(--xl)}
+.wk .r{display:flex; justify-content:space-between}
+.wk .l{font:800 12px var(--inter); color:var(--mutedLight); width:12px; text-align:center}
+.wk .l.on{color:var(--accent)}
+.wk .d{width:12px; height:12px; border-radius:6px; background:var(--muted)}
+.wk .d.on{background:var(--accent)}
+/* rótulo de sección */
+.sh{display:flex; align-items:baseline; gap:var(--sm); padding:0 var(--xs2); margin:var(--lg) 0 var(--sm2)}
+.sh b{font:800 12px var(--inter); letter-spacing:1.2px; color:var(--text)}
+.sh span{margin-left:auto; font:800 12px var(--inter); letter-spacing:1.2px; color:var(--mutedLight)}
+/* la que toca */
+.today{background:var(--accent); border-radius:var(--r-md); margin:var(--xs2) 0}
+.today .hd{padding:14px var(--lg) 11px}
+.today .fl{font:800 12px var(--inter); letter-spacing:1.2px; color:rgba(0,0,0,.55)}
+.today .row{display:flex; align-items:flex-end; gap:4px; margin-top:var(--sm)}
+.today .g{font:italic 800 34px/39px var(--barlow); width:27px; color:var(--onAccent)}
+.today .nm{font:italic 800 28px/34px var(--barlow); color:var(--onAccent)}
+.today .rl{height:2px; border-radius:2px; background:rgba(0,0,0,.85); margin-top:11px}
+.today .mt{font:800 12px var(--inter); letter-spacing:1.2px; color:rgba(0,0,0,.55); margin-top:var(--sm)}
+.today .ft{padding:11px var(--sm) var(--sm)}
+.today .bt{display:flex; justify-content:space-between; align-items:center; background:var(--onAccent); border-radius:var(--r-md); padding:var(--lg)}
+.today .bt b{font:900 14px var(--inter); color:var(--accent)}
+/* filas */
+.grp{display:grid; gap:var(--xs2)}
+.ses{background:var(--surface); border-radius:var(--r-md); height:60px; display:flex; align-items:center; gap:8px; padding:0 14px}
+.ses .g{font:900 22px/22px var(--inter); letter-spacing:-.5px; min-width:24px; color:var(--accent)}
+.ses.done .g{color:var(--muted)}
+.ses .nm{flex:1; min-width:0; font:900 16px var(--inter); letter-spacing:-.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ses.done .nm{color:var(--mutedLight)}
+.ses .mt{font:500 12px var(--inter); color:var(--muted)}
+
+/* ══════ PIEZAS COMUNES DE LAS PROPUESTAS ══════ */
+.caps{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--mutedLight)}
+.caps em{font-style:normal; color:var(--text)}
+.ell{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+/* barra por etapas: tramo proporcional a sus semanas; hechas en tinte, la actual se llena por semanas */
+.bar{display:flex; gap:var(--xs2)}
+.bar i{display:block; height:6px; border-radius:3px; background:var(--border); overflow:hidden; position:relative}
+.bar i.done{background:var(--accent50)}
+.bar i b{position:absolute; inset:0 auto 0 0; background:var(--accent); border-radius:3px}
+.bar i.open{background:linear-gradient(90deg,var(--border) 40%,transparent)}
+.bar.thin i{height:3px; border-radius:2px}
+
+/* A · ceja y nombre */
+.pA{padding:var(--xs2) var(--xs2) var(--md)}
+.pA .top{display:flex; gap:var(--sm2); align-items:baseline}
+.pA .top .caps:last-child{margin-left:auto; flex-shrink:0}
+.pA .nm{font:800 18px/22px var(--inter); letter-spacing:-.2px; margin:var(--xs2) 0 var(--md)}
+
+/* B · una línea */
+.pB{padding:var(--xs2) var(--xs2) var(--md)}
+.pB .r{display:flex; align-items:baseline; gap:var(--md)}
+.pB .nm{flex:1; font:700 14px var(--inter); color:var(--text)}
+.pB .wkn{font:500 12px var(--inter); color:var(--mutedLight); flex-shrink:0; font-variant-numeric:tabular-nums}
+.pB .wkn b{font-weight:800; color:var(--text)}
+.track{height:2px; border-radius:1px; background:var(--border); margin-top:var(--sm2); position:relative; overflow:hidden}
+.track b{position:absolute; inset:0 auto 0 0; background:var(--accent50)}
+.track.open{background:linear-gradient(90deg,var(--border) 50%,transparent)}
+
+/* C · fusionada con la semana */
+.pC{background:var(--surface); border-radius:var(--r-md); padding:var(--md) var(--lg) var(--lg); margin-bottom:var(--xs2)}
+.pC .r{display:flex; align-items:baseline; gap:var(--md)}
+.pC .nm{flex:1; font:700 14px var(--inter)}
+.pC .wkn{font:500 12px var(--inter); color:var(--mutedLight); flex-shrink:0}
+.pC .wkn b{font-weight:800; color:var(--text)}
+.pC .bar{margin:var(--sm2) 0 var(--lg)}
+.pC .wk{padding:0 var(--xs2)}
+.pC .wk .d:not(.on){background:var(--border)}
+
+/* D · marcador a la derecha (la cabecera de ProgramCard, sin tarjeta) */
+.pD{display:flex; gap:var(--md); padding:var(--xs2) var(--xs2) var(--md); align-items:flex-start}
+.pD .l{flex:1; min-width:0}
+.pD .rt{flex-shrink:0; text-align:right}
+.pD .nm{font:900 16px/20px var(--inter); letter-spacing:-.2px; margin-top:var(--xs)}
+.pD .num{font:900 16px/20px var(--inter); letter-spacing:-.2px; color:var(--accent); margin-top:var(--xs); font-variant-numeric:tabular-nums}
+.pD .num small{font:500 12px var(--inter); letter-spacing:0; color:var(--mutedLight)}
+.pD .st{font:500 12px var(--inter); color:var(--mutedLight); margin-top:var(--xs2)}
+
+/* E · recorrido de etapas */
+.pE{padding:var(--xs2) var(--xs2) var(--md)}
+.pE .r{display:flex; align-items:baseline; gap:var(--md); margin-bottom:var(--sm2)}
+.pE .nm{flex:1; font:700 14px var(--inter)}
+.pE .wkn{font:500 12px var(--inter); color:var(--mutedLight); flex-shrink:0}
+.pE .wkn b{font-weight:800; color:var(--text)}
+.pE .names{display:flex; gap:var(--xs2); margin-top:var(--sm)}
+.pE .names span{font:500 11px var(--inter); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.pE .names span.now{color:var(--text); font-weight:800}
+.pE .names span.past{color:var(--mutedLight)}
+
+.verdict{margin-top:56px; border-top:1px solid var(--rule); padding-top:26px; max-width:80ch}
+.verdict h3{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); margin:0 0 10px}
+.verdict p{font:500 14px/1.7 var(--inter); color:var(--ink-dim); margin:0 0 12px}
+.verdict b{color:var(--text); font-weight:700}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <h1>Cabecera del Home</h1>
+  <p class="lead">Cinco formas de decir <b>en qué programa estás y por qué semana vas</b> al entrar en Inicio. Es una pieza
+    de orientación, no de acción: tiene que leerse antes que la semana y las sesiones, pero <b>nunca más alto que la tarjeta
+    de la que toca</b>, que sigue siendo la única pieza en lima. Todas usan los tokens de formaFit y van entre el
+    <code>AppHeader</code> y la semana. Cambia el caso para ver cómo aguanta cada una.</p>
+
+  <div class="cases" role="group" aria-label="Caso">
+    <span>Caso</span>
+    <button id="c-normal" data-case="normal" aria-pressed="true">Normal</button>
+    <button id="c-largo" data-case="largo" aria-pressed="false">Nombre largo</button>
+    <button id="c-abierto" data-case="abierto" aria-pressed="false">Etapa sin fin</button>
+    <button id="c-inicio" data-case="inicio" aria-pressed="false">Primera semana</button>
+  </div>
+
+  <div class="rail" id="rail"></div>
+
+  <div class="verdict">
+    <h3>Mi recomendación</h3>
+    <p><b>A · Ceja y nombre.</b> Es la única que separa los tres niveles sin pelearse con nada: el nombre a 18 es el primer
+      dato que se lee arriba, pero queda claramente por debajo de los 28 de la tarjeta lima; la ceja dice semana y etapa en
+      la voz que ya usan todas las cejas de la app; y la barra es la misma de la tarjeta de programa, con un cambio: la
+      etapa en curso se llena por semanas en vez de entera, porque aquí lo que se cuenta son semanas.</p>
+    <p><b>C</b> es la más económica si la pantalla se queda corta: absorbe la semana en vez de añadir un bloque, a cambio
+      de meter una tarjeta <code>surface</code> más y de que los puntos sin entrenar bajen a <code>border</code>. <b>B</b>
+      es la mínima, por si A pesa demasiado en el uso real.</p>
+    <p>Ninguna lleva chevron: la pediste informativa. Si luego quieres que lleve a la pestaña Programa, A y D admiten un
+      <code>›</code> junto a la ceja sin rehacer nada.</p>
+  </div>
+</div>
+
+<script>
+const CASES = {
+  normal:  { name:'Hipertrofia AF', week:7, stageIdx:1, wis:3,
+             stages:[{n:'Fuerza',w:4},{n:'Volumen',w:4},{n:'Intensidad',w:4}] },
+  largo:   { name:'Full Body · Hipertrofia · Barra libre', week:7, stageIdx:1, wis:3,
+             stages:[{n:'Adaptación anatómica',w:4},{n:'Hipertrofia',w:4},{n:'Fuerza máxima',w:4}] },
+  abierto: { name:'Fuerza base', week:9, stageIdx:1, wis:5,
+             stages:[{n:'Adaptación',w:4},{n:'Fuerza',w:null}] },
+  inicio:  { name:'Hipertrofia AF', week:1, stageIdx:0, wis:1,
+             stages:[{n:'Fuerza',w:4},{n:'Volumen',w:4},{n:'Intensidad',w:4}] },
+};
+const total  = c => c.stages.every(s => s.w) ? c.stages.reduce((a,s) => a + s.w, 0) : null;
+const st     = c => c.stages[c.stageIdx];
+const pad    = n => String(n).padStart(2,'0');
+const wkTxt  = c => total(c) ? `Semana <b>${c.week}</b> de ${total(c)}` : `Semana <b>${c.week}</b>`;
+const stTxt  = c => `Etapa ${c.stageIdx+1} · <em>${st(c).n}</em>`;
+const stWk   = c => st(c).w ? `sem. ${c.wis} de ${st(c).w}` : `sem. ${c.wis}`;
+
+// Tramo por etapa, proporcional; la abierta pesa lo que lleva + algo, y se desvanece.
+function bar(c, cls='') {
+  return `<div class="bar ${cls}">` + c.stages.map((s,i) => {
+    const flex = s.w ?? Math.max(c.wis + 2, 4);
+    if (i < c.stageIdx) return `<i class="done" style="flex:${flex}"></i>`;
+    if (i > c.stageIdx) return `<i style="flex:${flex}"></i>`;
+    const pct = s.w ? c.wis / s.w * 100 : c.wis / flex * 100;
+    return `<i class="${s.w ? '' : 'open'}" style="flex:${flex}"><b style="width:${pct}%"></b></i>`;
+  }).join('') + `</div>`;
+}
+function track(c) {
+  const t = total(c);
+  const pct = t ? c.week / t * 100 : 60;
+  return `<div class="track ${t ? '' : 'open'}"><b style="width:${pct}%"></b></div>`;
+}
+const week = (dotsOff='') => `<div class="wk ${dotsOff}">
+  <div class="r">${['L','M','X','J','V','S','D'].map((l,i)=>`<span class="l ${i===3?'on':''}">${l}</span>`).join('')}</div>
+  <div class="r">${[1,0,1,0,0,0,0].map(o=>`<span class="d ${o?'on':''}"></span>`).join('')}</div></div>`;
+
+const P = [
+  { id:'A', title:'Ceja y nombre',
+    why:'El patrón de las cabeceras de la app: ceja en versales, nombre debajo y la barra de etapas de la tarjeta de programa.',
+    levels:[['Nombre del programa','18 · ExtraBold · text'],['Semana y etapa','ceja caps · mutedLight'],['Barra','6 px, se llena por semanas']],
+    pro:'Tres niveles nítidos y todos con voz que ya existe. El nombre largo rompe a dos líneas sin perder nada.',
+    con:'Es la más alta (~80 px). Empuja la tarjeta de hoy medio dedo hacia abajo.',
+    head: c => `<div class="pA">
+      <div class="top"><span class="caps">${wkTxt(c).replace(/<\/?b>/g,'')}</span><span class="caps ell">${stTxt(c)}</span></div>
+      <div class="nm">${c.name}</div>${bar(c)}</div>${week()}` },
+  { id:'B', title:'Una línea',
+    why:'Lo mínimo: nombre y semana en una fila, y un filete de progreso del programa entero debajo. Sin etapas.',
+    levels:[['Nombre','14 · Bold · text'],['Semana','12 · número en ExtraBold'],['Filete','2 px · accent50']],
+    pro:'Ocupa ~34 px. No le quita protagonismo a nada y se lee de un vistazo.',
+    con:'No dice en qué etapa estás. El nombre largo se trunca.',
+    head: c => `<div class="pB"><div class="r"><span class="nm ell">${c.name}</span><span class="wkn">${wkTxt(c)}</span></div>${track(c)}</div>${week()}` },
+  { id:'C', title:'Fusionada con la semana',
+    why:'El programa y la semana son la misma pregunta («¿dónde estoy?») a dos escalas. Un solo bloque en vez de dos.',
+    levels:[['Nombre','14 · Bold · text'],['Semana del programa','12 · derecha'],['Barra + días de esta semana','dentro del mismo bloque']],
+    pro:'No añade altura neta: la semana ya estaba. Lee de lo grande (programa) a lo pequeño (hoy).',
+    con:'Mete otra tarjeta surface, la misma que las filas de sesión. Los puntos sin entrenar bajan a border para no apagarse sobre surface.',
+    head: c => `<div class="pC"><div class="r"><span class="nm ell">${c.name}</span><span class="wkn">${wkTxt(c)}</span></div>${bar(c,'thin')}${week()}</div>` },
+  { id:'D', title:'Marcador a la derecha',
+    why:'La cabecera de la tarjeta de programa sin la tarjeta: nombre a la izquierda y el número de semana en lima a la derecha.',
+    levels:[['Nombre + número de semana','16 · Black · el número en accent'],['Cejas','PROGRAMA / SEMANA'],['Etapa','12 · mutedLight']],
+    pro:'Reutiliza tal cual una pieza que ya existe y se reconoce. El número se encuentra sin leer.',
+    con:'Es un segundo lima en la pantalla, pequeño, pero compite con el de la tarjeta de hoy. Sin barra.',
+    head: c => `<div class="pD"><div class="l"><div class="caps">Programa</div><div class="nm">${c.name}</div>
+      <div class="st">Etapa ${c.stageIdx+1} · ${st(c).n} · ${stWk(c)}</div></div>
+      <div class="rt"><div class="caps">Semana</div><div class="num">${pad(c.week)}${total(c)?`<small> /${total(c)}</small>`:''}</div></div></div>${week()}` },
+  { id:'E', title:'Recorrido de etapas',
+    why:'La barra manda: cada tramo lleva el nombre de su etapa debajo y la actual se resalta. Dice qué viene después.',
+    levels:[['Nombre','14 · Bold · text'],['Barra con etapas','6 px · nombres a 11'],['Semana','12 · derecha']],
+    pro:'La única que enseña lo que queda por delante, no solo dónde estás.',
+    con:'Con tres etapas de nombre largo los rótulos se truncan; con una etapa de 2 semanas no caben.',
+    head: c => `<div class="pE"><div class="r"><span class="nm ell">${c.name}</span><span class="wkn">${wkTxt(c)}</span></div>${bar(c)}
+      <div class="names">${c.stages.map((s,i)=>`<span class="${i===c.stageIdx?'now':i<c.stageIdx?'past':''}" style="flex:${s.w ?? Math.max(c.wis+2,4)}">${s.n}</span>`).join('')}</div></div>${week()}` },
+];
+
+function home(p, c) {
+  return `<div class="phone" aria-label="Propuesta ${p.id}">
+    <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="ah"><span class="logo"><b>Forma</b><u>FIT</u></span><span class="clock">9:41 · JUE 8 OCT</span>
+      <span class="menu"><svg width="22" height="22" viewBox="0 0 26 26"><path d="M10 4.5H24.5V7.5H8Z M6 11.1H24.5V14.1H4Z M2.4 17.7H24.5V20.7H.4Z" fill="#aae216"/></svg></span></div>
+    <div class="content">
+      ${p.head(c)}
+      <div class="sh"><b>SESIONES</b><span>2 DE 4 ESTA SEMANA</span></div>
+      <div class="today"><div class="hd"><div class="fl">SIGUIENTE</div>
+        <div class="row"><span class="g">C</span><span class="nm">Pierna completa</span></div>
+        <div class="rl"></div><div class="mt">6 EJERCICIOS · ~52 MIN · HACE 8 DÍAS</div></div>
+        <div class="ft"><div class="bt"><b>EMPEZAR</b><svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M4 2l4.5 4L4 10" stroke="#aae216" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div></div>
+      <div class="grp">
+        <div class="ses done"><span class="g">A</span><span class="nm">Empuje pesado</span><span class="mt">lun</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#aae216" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="ses done"><span class="g">B</span><span class="nm">Tirón pesado</span><span class="mt">mié</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#aae216" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="ses"><span class="g">D</span><span class="nm">Hombro y brazo</span><span class="mt">~40 min</span></div>
+      </div>
+    </div></div>`;
+}
+
+function render(key) {
+  const c = CASES[key];
+  document.getElementById('rail').innerHTML = P.map(p => `<div class="col">
+    <div class="tag">Propuesta ${p.id}</div><h2>${p.title}</h2><p class="why">${p.why}</p>
+    ${home(p, c)}
+    <ul class="levels">${p.levels.map((l,i)=>`<li class="n${i+1}"><i>${i+1}</i><span><b>${l[0]}</b> · ${l[1]}</span></li>`).join('')}</ul>
+    <p class="pro">${p.pro}</p><p class="con">${p.con}</p></div>`).join('');
+  document.querySelectorAll('.cases button').forEach(b => b.setAttribute('aria-pressed', b.dataset.case === key));
+}
+document.querySelectorAll('.cases button').forEach(b => b.addEventListener('click', () => render(b.dataset.case)));
+render('normal');
+</script>
