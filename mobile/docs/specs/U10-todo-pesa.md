@@ -958,25 +958,30 @@ reutiliza el mismo panel.
 
 ## 12. U10-13 — Las filas de las hojas siguen a la hoja
 
-Salió al probar U10-06 (5-oct-2026). En toda hoja con lista (`DragSheet` +
-`SheetRow`: el «…» de Programa y el resto), la posición de cada fila depende
-de la altura de la hoja, no de un tiempo: con la hoja arriba del todo están
-todas en su sitio, y al arrastrarla para cerrar van saliendo hacia la derecha
-una tras otra, la de arriba primero, pegadas al dedo. Al abrir entran de
-derecha a izquierda y la de arriba es la última en llegar, justo cuando la
+Salió al probar U10-06 (5-oct-2026). En toda hoja (`DragSheet`: el menú ≡, el
+«…» de Programa y el resto), las filas (`MenuRow`, y con ella `SheetRow`) y los
+títulos de sección (`Section`, `SectionLabel`) siguen a la hoja: su posición
+depende de la altura de la hoja, no de un tiempo. Con la hoja arriba del todo
+están todos en su sitio, y al arrastrarla para cerrar van saliendo hacia la
+derecha uno tras otro, el de arriba primero, pegados al dedo. Al abrir entran
+de derecha a izquierda y el de arriba es el último en llegar, justo cuando la
 hoja termina de subir. Se probó el orden contrario y se descartó.
 
-- `DragSheet` pasa por `SheetContext` su `translateY` (`y`) y un turno por
-  fila (`nextIndex`, el orden de montaje, que es el de arriba abajo; vuelve a
-  0 en cada apertura). `translateY` pasa de ref a estado para poder viajar por
-  el contexto.
-- `SheetRow` se envuelve en un `Animated.View` con dos interpolaciones del
-  mismo `y` (hilo nativo): desplazamiento de 0 al ancho de la pantalla en
-  `ROW_SPAN` = 300 px de hoja, empezando `ROW_STEP` = 40 px después que la de
-  encima; y fundido que acaba a la mitad de ese tramo (`ROW_FADE` = 0,5), para
-  que se vea desaparecer por el fundido antes de llegar al borde.
-- Solo las filas (`SheetRow`): campos, tarjetas o botones de una hoja no se
-  mueven.
+- `DragSheet` pasa por `SheetContext` su `translateY` (`y`) y `bodyRef`, la
+  caja del scroll. `translateY` pasa de ref a estado para poder viajar por el
+  contexto.
+- `SheetSlide` (en `ui/MenuList.jsx`) envuelve cada fila y cada título en un
+  `Animated.View` con dos interpolaciones del mismo `y` (hilo nativo):
+  desplazamiento de 0 al ancho de la pantalla en `ROW_SPAN` = 300 px de hoja,
+  y fundido que acaba a la mitad de ese tramo (`ROW_FADE` = 0,5), para que se
+  vea desaparecer por el fundido antes de llegar al borde.
+- **El turno sale de la posición**, no del orden de montaje: cada pieza se mide
+  contra `bodyRef` al colocarse y empieza `ROW_STAGGER` = 0,65 px de hoja por
+  cada px que la separa de lo alto (≈ 40 px por fila). Con un contador por
+  orden de montaje, los títulos de Datos y Preferencias del menú ≡ se
+  adelantaban a las filas de encima.
+- Fuera de una hoja, `MenuRow` y los títulos van tal cual. El bloque de
+  identidad PRO del menú, campos, tarjetas y botones de una hoja no se mueven.
 
 **Probar U10-13**
 
@@ -986,3 +991,5 @@ hoja termina de subir. Se probó el orden contrario y se descartó.
   tras otra, la de arriba primero, siguiendo al dedo; soltar sin cerrar las
   devuelve.
 - [x] Cada fila se funde antes de llegar al borde.
+- [x] Menú ≡: filas y títulos de sección salen en el orden de la pantalla; el
+  título de Datos no se adelanta a Drive ni a Sincronización.

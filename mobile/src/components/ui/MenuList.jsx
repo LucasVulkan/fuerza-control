@@ -10,8 +10,8 @@
  * `space/xs` y radios asimétricos por posición (`getCardRadii`). Los iconos van
  * en gris: son decoración funcional, el lima queda para lo que informa.
  */
-import { Children, cloneElement } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Children, cloneElement, useContext, useRef, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Animated, useWindowDimensions } from 'react-native';
 import { Text } from './Text';
 import Svg from 'react-native-svg';
 import Reanimated, { FadeIn } from 'react-native-reanimated';
@@ -19,6 +19,7 @@ import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { spacing, textStyles, getCardRadii, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { ArrowIcon } from './EditorIcons';
+import { SheetContext } from './sheetContext';
 
 // Chevron de fila navegable: la caja de Figma mide 14 pero el glifo real son
 // 6.46×10.77 (regla 4 de UI-MIGRATION: caja de icono ≠ icono visible).
@@ -42,7 +43,7 @@ export function RowIcon({ children, color, size = 18, strokeWidth = 2.4 }) {
 /** La etiqueta de sección suelta, para bloques que no son una lista de filas. */
 export function SectionLabel({ children, style }) {
   const styles = useThemedStyles(makeStyles);
-  return <Text style={[styles.sectionLabel, style]}>{children}</Text>;
+  return <SheetSlide><Text style={[styles.sectionLabel, style]}>{children}</Text></SheetSlide>;
 }
 
 /**
@@ -58,7 +59,7 @@ export function Section({ title, children, style }) {
   const rows   = Children.toArray(children);
   return (
     <View style={[styles.section, style]}>
-      {title != null && <Text style={styles.sectionLabel}>{title}</Text>}
+      {title != null && <SheetSlide><Text style={styles.sectionLabel}>{title}</Text></SheetSlide>}
       <View style={styles.group}>
         {rows.map((row, i) =>
           cloneElement(row, { isFirst: i === 0, isLast: i === rows.length - 1 }),
@@ -101,6 +102,45 @@ export function Status({ tone, label, color }) {
  * (un nombre de programa o una fecha larga no cabían), así que las filas que
  * solo informan lo apilan y así se lee entero.
  */
+// Dentro de un `DragSheet` (menú ≡, «…» de Programa y el resto) las filas y
+// los títulos de sección siguen a la hoja (U10-todo-pesa.md §12): con la hoja
+// arriba del todo están todos en su sitio, y al arrastrarla para cerrar van
+// saliendo hacia la derecha uno tras otro, el de arriba primero. Cada pieza
+// hace su recorrido en `ROW_SPAN` px de hoja y empieza según dónde está:
+// `ROW_STAGGER` px de hoja por cada px que la separa de lo alto de la hoja
+// (≈ 40 px por fila). El turno sale de la posición medida y no del orden de
+// montaje, que no siempre es el de la pantalla. El fundido acaba a
+// `ROW_FADE` del tramo: se ve desaparecer antes del borde.
+// Fuera de una hoja, la pieza tal cual.
+const ROW_STAGGER = 0.65;
+const ROW_SPAN    = 300;
+const ROW_FADE    = 0.5;
+
+function SheetSlide({ children }) {
+  const sheet     = useContext(SheetContext);
+  const { width } = useWindowDimensions();
+  const ref       = useRef(null);
+  const [start, setStart] = useState(0);
+  if (!sheet?.y) return children;
+  // Se mide al colocarse, con la hoja aún sin desplazar: la `y` es la de su
+  // sitio en la hoja. Hasta medir vale 0; la hoja aún está abajo y da igual.
+  const measure = () => ref.current?.measureLayout(
+    sheet.bodyRef.current,
+    (_, y) => setStart(Math.max(y, 0) * ROW_STAGGER),
+  );
+  const style = {
+    opacity: sheet.y.interpolate({
+      inputRange: [start, start + ROW_SPAN * ROW_FADE], outputRange: [1, 0], extrapolate: 'clamp',
+    }),
+    transform: [{
+      translateX: sheet.y.interpolate({
+        inputRange: [start, start + ROW_SPAN], outputRange: [0, width], extrapolate: 'clamp',
+      }),
+    }],
+  };
+  return <Animated.View ref={ref} onLayout={measure} style={style}>{children}</Animated.View>;
+}
+
 export function MenuRow({
   icon, label, labelColor, sub, subLines = 1, value, valueBelow, badge, badgeMuted, status, control,
   onPress, disabled, minHeight, isFirst, isLast, accessibilityRole, accessibilityState,
@@ -110,6 +150,7 @@ export function MenuRow({
   const Wrap   = onPress ? TouchableOpacity : View;
   const press  = onPress ? { onPress, activeOpacity: 0.7, disabled, accessibilityRole, accessibilityState } : null;
   return (
+    <SheetSlide>
     <Wrap
       style={[
         styles.row,
@@ -145,6 +186,7 @@ export function MenuRow({
         <ArrowIcon size={ROW_CHEVRON} color={th.colors.muted} />
       )}
     </Wrap>
+    </SheetSlide>
   );
 }
 

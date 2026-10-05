@@ -42,7 +42,7 @@ import Reanimated, {
  * margen va DENTRO del scroll, así que una hoja corta acaba donde acababa y el
  * velo solo cubre aire.
  */
-function SheetCard({ style, header, footer, children }) {
+function SheetCard({ style, header, footer, bodyRef, children }) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   // Arriba, el mismo fundido bajo la cabecera, pero solo al desplazar: con la
@@ -56,7 +56,7 @@ function SheetCard({ style, header, footer, children }) {
   return (
     <Animated.View style={style}>
       {header}
-      <View style={styles.body}>
+      <View ref={bodyRef} style={styles.body}>
         <Reanimated.ScrollView
           bounces={false}
           showsVerticalScrollIndicator={false}
@@ -137,14 +137,14 @@ export default function DragSheet({ visible, onClose, title, action, onBack, foo
 
   // Valor estable: `close` se rehace en cada render y no puede viajar por el
   // contexto sin repintar a todo el que lo lea.
-  // `y` y `nextIndex` son para las filas (`SheetRow`): se colocan según la
-  // altura de la hoja, cada una con su turno (el orden en que se montan, que
-  // es el de arriba abajo). El turno vuelve a 0 en cada apertura.
-  const rowCount = useRef(0);
+  // `y` y `bodyRef` son para las filas y los títulos (`MenuList`): se
+  // colocan según la altura de la hoja, cada uno con su turno según dónde está
+  // dentro de ella (medido contra `bodyRef`, la caja del scroll).
+  const bodyRef = useRef(null);
   const sheet = useMemo(() => ({
-    dismiss:   () => closeRef.current(),
-    y:         translateY,
-    nextIndex: () => rowCount.current++,
+    dismiss: () => closeRef.current(),
+    y:       translateY,
+    bodyRef,
   }), [translateY]);
 
   const panResponder = useRef(
@@ -182,7 +182,6 @@ export default function DragSheet({ visible, onClose, title, action, onBack, foo
 
   // Slide-in al abrir
   useEffect(() => {
-    rowCount.current = 0;
     if (visible) {
       translateY.setValue(900);
       Animated.spring(translateY, {
@@ -224,6 +223,7 @@ export default function DragSheet({ visible, onClose, title, action, onBack, foo
         <SheetCard
           style={[styles.card, tall && styles.cardTall, { transform: [{ translateY }] }]}
           footer={footer}
+          bodyRef={bodyRef}
           header={(
             <>
               <View {...panResponder.panHandlers} style={styles.handleWrap}>
