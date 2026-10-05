@@ -14,6 +14,7 @@ import { useStore, selectActiveProgram } from '../../store/useStore';
 import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, addDays } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import ActiveSessionBanner from '../components/ActiveSessionBanner';
+import HomeProgramCard from '../components/HomeProgramCard';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -183,6 +184,13 @@ export default function HomeScreen() {
       >
         {/* La sesión a medias, sea cual sea, arriba de todo (U52). */}
         <ActiveSessionBanner />
+
+        {/* En qué programa estás y por qué semana vas (U12). Lleva al tab
+            Programa. Provisional: el reparto entre Inicio y Programa está por
+            diseñar (U12-02). */}
+        {activeProgram && (
+          <HomeProgramCard program={activeProgram} onOpen={() => navigation.navigate('MyProgram')} />
+        )}
 
         <WeekSelector workoutLog={workoutLog} />
 

@@ -642,6 +642,7 @@
     "sessions": "Tus sesiones",
     "weekProgress": "Semana {{current}} de {{total}}",
     "stageDefault": "Etapa {{n}}",
+    "openProgram": "Abre tu programa",
     "stageWeeks_one": "{{count}} semana",
     "stageWeeks_other": "{{count}} semanas",
     "stageSessionsPerWeek_one": "{{count}} sesión por semana",
