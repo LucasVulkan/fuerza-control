@@ -29,6 +29,18 @@ import { sessionSlots } from '../utils/sessionSlots';
 import { useElapsedText } from '../components/ui/useElapsedText';
 import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
 import { backToMain } from '../navigation/navigationRef';
+import Reanimated, { SlideInRight, Easing } from 'react-native-reanimated';
+
+// Al abrir la sesión los ejercicios entran como tarjetas, de derecha a
+// izquierda desde fuera de la pantalla y sin fundido, uno tras otro
+// (U10-todo-pesa.md §7). Solo al montar: volver al Workout desde una pantalla
+// apilada encima no lo remonta, y lo que se añade luego no va en esta lista.
+// El primero espera a que la pantalla casi haya entrado: sin espera llegaba
+// pegado a la cabecera.
+const cardIn = (i) => SlideInRight
+  .duration(360)
+  .easing(Easing.bezier(0.35, 0, 0.15, 1))
+  .delay(100 + 200 * i);
 
 
 // ── Global "active set" pointer ───────────────────────────────────────────────
@@ -620,7 +632,9 @@ export default function WorkoutScreen() {
                 {cards}
               </SupersetBlock>
             );
-          })}
+          }).map((node, i) => (
+            <Reanimated.View key={node.key} entering={cardIn(i)}>{node}</Reanimated.View>
+          ))}
 
           {/* Ad-hoc exercises added during this session — continúan la numeración */}
           {(activeSession.adHocExercises ?? []).map((adHoc, adHocIdx) => {

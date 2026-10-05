@@ -8,7 +8,7 @@
 > Fase U10-03 · pendiente · Los últimos segundos del descanso vibran y laten · §4 · antes U45
 > Fase U10-04 · hecho · Rampa del calentamiento en el Workout · §5 · antes U46
 > Fase U10-05 · pendiente · Escalera del calentamiento en el editor · §6 · antes U47
-> Fase U10-06 · pendiente · De la tarjeta de hoy a la cabecera del Workout · §7 · antes U48
+> Fase U10-06 · hecho · Los ejercicios entran escalonados al abrir el Workout · §7 · antes U48
 > Fase U10-07 · aparcado · Ola de etapas en el planificador · §8 · antes U49
 > Fase U10-08 · aparcado · La ola como vista previa al añadir etapas · §9 · antes U50
 > Fase U10-09 · aparcado · Plan frente a real en Carga · §10 · antes U51
@@ -646,30 +646,30 @@ de las series. Pendiente de verlo en el móvil.
 
 **Probar U10-04**
 
-- [ ] Sentadilla con calentamiento automático de 3: las filas se rellenan al
+- [x] Sentadilla con calentamiento automático de 3: las filas se rellenan al
   40, 60 y 80 % y juntas se leen como una rampa.
-- [ ] El relleno va directamente sobre la tarjeta, sin banda oscura debajo.
-- [ ] Los ✓ sin marcar se leen como botón, más claros que el relleno de las
+- [x] El relleno va directamente sobre la tarjeta, sin banda oscura debajo.
+- [x] Los ✓ sin marcar se leen como botón, más claros que el relleno de las
   filas. El × de «25 kg × 8» se lee bien.
-- [ ] La siguiente por hacer tiene la etiqueta en lima.
+- [x] La siguiente por hacer tiene la etiqueta en lima.
   Al marcarla se tiñe de lima con un fundido.
-- [ ] Sin peso de referencia (ejercicio nuevo), las filas se rellenan igual,
+- [x] Sin peso de referencia (ejercicio nuevo), las filas se rellenan igual,
   por su %.
-- [ ] Con todo marcado, la línea plegada lleva la mini escalera en vez del ✓.
-- [ ] Al marcar el último, el ✓ se pone lima y el calentamiento se pliega
+- [x] Con todo marcado, la línea plegada lleva la mini escalera en vez del ✓.
+- [x] Al marcar el último, el ✓ se pone lima y el calentamiento se pliega
   animado, sin golpe; tocar la línea plegada lo despliega también animado.
-- [ ] Los ✓ del calentamiento son iguales que los de las series (tamaño,
+- [x] Los ✓ del calentamiento son iguales que los de las series (tamaño,
   color, el de la siguiente en lima tenue).
-- [ ] En Midnight los ✓ sin marcar son grises, no cianes.
-- [ ] En un ejercicio por segundos, el ▶ tiene el mismo fondo que el ✓, picos
+- [x] En Midnight los ✓ sin marcar son grises, no cianes.
+- [x] En un ejercicio por segundos, el ▶ tiene el mismo fondo que el ✓, picos
   redondeados, y al pulsarlo el ⏸ sale centrado y redondeado.
-- [ ] La pill del delta («+2,5») se separa de la tarjeta y su texto se lee bien.
-- [ ] La ficha de la recomendación: arriba «La última vez» (series y una frase
+- [x] La pill del delta («+2,5») se separa de la tarjeta y su texto se lee bien.
+- [x] La ficha de la recomendación: arriba «La última vez» (series y una frase
   de lo que pasó), debajo «La regla» con la acción grande, la condición en gris
   y, separada por una raya, cuándo baja. Cada sección en su caja. Sin «Hoy».
-- [ ] Ejercicio nuevo: la ficha enseña «Primera vez» con qué buscar y la regla.
-- [ ] Con un calentamiento a medida de 5 pasos, cada fila con su %.
-- [ ] La línea de objetivo sale entre el calentamiento y SERIES; sin
+- [x] Ejercicio nuevo: la ficha enseña «Primera vez» con qué buscar y la regla.
+- [x] Con un calentamiento a medida de 5 pasos, cada fila con su %.
+- [x] La línea de objetivo sale entre el calentamiento y SERIES; sin
   calentamiento, tras las notas y encima de las series.
 
 ---
@@ -707,7 +707,7 @@ de las series. Pendiente de verlo en el móvil.
 
 ---
 
-## 7. U10-06 — De la tarjeta de hoy a la cabecera del Workout
+## 7. U10-06 — De la tarjeta de hoy a la cabecera del Workout (reducida: ver §7.3)
 
 ### 7.1 Qué se ve
 
@@ -763,21 +763,29 @@ transición inversa.
 - con el teclado abierto al pulsar EMPEZAR (no debería pasar), cancelar la
   transición y navegar como siempre.
 
+### 7.3 Cómo quedó (5-oct-2026): solo la entrada escalonada
+
+Se implementó la transición entera (tarjeta de hoy y banner «En curso» →
+cabecera) y **no convenció al usuario: se revirtió**. De §7 queda solo el
+punto 4, cambiado de dirección: al abrir el Workout, las tarjetas de ejercicio
+entran **como tarjetas, de derecha a izquierda** desde fuera de la pantalla y
+sin fundido, escalonadas 200 ms (`SlideInRight`, 360 ms, curva de §1.1). El
+primero sale a los 100 ms: sin espera llegaba pegado a la cabecera. Entrar por
+cualquier camino lo hace; volver al Workout desde una pantalla apilada encima
+no, porque no se remonta. Los ejercicios añadidos sobre la marcha y los bloques
+de la sesión libre no animan.
+
+Al volver atrás las tarjetas desaparecen de golpe al empezar el deslizamiento.
+Se intentó retenerlo para que salieran escalonadas y no lo arregló: se revirtió
+y se deja así (decisión del usuario, 5-oct-2026).
+
 **Probar U10-06**
 
-- [ ] Inicio → EMPEZAR en la tarjeta de hoy: la caja lima sube y se estira
-  hasta la cabecera; el nombre encoge hasta el título y la raya se parte en los
-  segmentos de progreso. Sin salto al terminar.
-- [ ] Los ejercicios suben escalonados después; el botón de volver y las notas
-  aparecen al final.
-- [ ] CONTINUAR una sesión en curso hace la misma transición.
-- [ ] Desde la ficha de un cliente sin app (su tarjeta de hoy), igual.
-- [ ] Empezar desde una fila plegada, una sesión libre o una notificación: la
-  animación de siempre, sin copia fantasma.
-- [ ] Salir del Workout y volver a entrar por otro camino: los ejercicios no
-  vuelven a animar.
-- [ ] Android e iPhone: la copia sale exactamente sobre la tarjeta (sin
-  desplazamiento por la barra de estado).
+- [x] Abrir una sesión (EMPEZAR, CONTINUAR, el banner «En curso», una sesión
+  libre): los ejercicios entran como tarjetas de derecha a izquierda, sin fundido, uno tras otro, sin rebote.
+- [x] Con un ejercicio desplegado o una superserie, el bloque entra entero y
+  los huecos entre tarjetas son los de siempre.
+- [x] Ir al selector de ejercicios y volver: no vuelven a animar.
 
 ---
 
@@ -936,7 +944,7 @@ reutiliza el mismo panel.
 | U10-03 | Final del descanso (§4) | 🟢 | — | pendiente |
 | U10-04 | Rampa del calentamiento en el Workout (§5) | 🟢 | — | hecho |
 | U10-05 | Escalera del calentamiento en el editor (§6) | 🟢 | — | pendiente |
-| U10-06 | Tarjeta de hoy → cabecera (§7) | 🟡 | — | pendiente |
+| U10-06 | Ejercicios escalonados al abrir el Workout (§7) | 🟢 | — | hecho |
 | U10-07 | Ola de etapas en el planificador (§8) | 🟡 | cerrar la intensidad (§8.2) | pendiente |
 | U10-08 | Ola como vista previa al añadir etapas (§9) | 🟢 | U10-07 | pendiente |
 | U10-09 | Plan frente a real en Carga (§10) | 🟡 | sincronía de los resúmenes (§10) | pendiente, sin prioridad |
