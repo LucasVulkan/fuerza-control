@@ -1,14 +1,16 @@
-# Spec — Monetización: freemium 2+2, pago dual e invitación de clientes
+# Spec — Monetización: plan gratis, pago dual e invitación de clientes
 
 > Tema: monetización
-> En corto: Freemium 2+2: el entrenador lleva dos clientes y dos plantillas gratis. Hoy el muro es todo o nada, así que no puede probar el producto con lo que hace a diario. Incluye el pago desde el móvil del cliente y la invitación.
+> En corto: Plan gratis: 3 clientes (como mucho 1 con app) y 1 plantilla de programa + 1 de sesión; Pro, anual o pago único, lo quita todo. Hoy el muro es todo o nada, así que no puede probar el producto con lo que hace a diario. Incluye el pago desde el móvil del cliente y la invitación.
 > Fase M01-01 · pendiente · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) · §3 · antes M01
-> Fase M01-02 · pendiente · Freemium 2+2: congelado por cliente y hoja de elección · §4 · antes M02
+> Fase M01-02 · pendiente · Plan gratis 3 (1 con app) + 1 + 1: límites, congelado por cliente y hoja de elección · §4 · antes M02
 > Fase M01-03 · pendiente · Paywall dual + i18n + enlaces legales · §5 · antes M03
 > Fase M01-04 · pendiente · Invitar cliente nivel 1 + página estática · §6 · antes M04
+> Fase M01-05 · pendiente · Montar App Store, Google Play y RevenueCat (guia-pagos.md) · §7
 >
-> Estado: **SIN IMPLEMENTAR** (sep 2026). 4 fases: 0 identidad · 1 freemium ·
-> 2 paywall dual · 3 invitar cliente.
+> Estado: **SIN IMPLEMENTAR**. §4 reescrita el 5-oct-2026 (antes era 2+2); queda
+> §4.9 cerrada: el congelado no caduca, porque no cuesta dinero. Precios cerrados:
+> anual + pago único, sin mensual.
 >
 > Origen: revisión del plan de marketing. El muro actual es **todo o nada** —
 > sin Pro no hay ni un cliente ni una plantilla — y eso deja al entrenador sin
@@ -29,9 +31,9 @@
 
 | | Hoy | Con esta spec |
 |---|---|---|
-| Clientes | 0 sin Pro | **2 gratis**, ilimitados con Pro; el resto **congelados**, no borrados (§4.5) |
-| Plantillas | 0 sin Pro | **2 gratis**, ilimitadas con Pro |
-| Precio | un pago único | **anual O pago único**, mismo entitlement |
+| Clientes | 0 sin Pro | **3 gratis, como mucho 1 con app**; ilimitados con Pro. Al caducar, el resto **congelados** en solo lectura, no borrados (§4.5) |
+| Plantillas | 0 sin Pro | **1 de programa + 1 de sesión** gratis; ilimitadas con Pro. Al caducar se quedan, pero no se asignan (§4.8) |
+| Precio | un pago único | **anual O pago único**, mismo entitlement. Sin mensual (decidido 5-oct-2026) |
 | Compartir código | copiar al portapapeles | botón **Invitar** con enlace |
 | Identidad en RevenueCat | anónima por instalación | el `userId` de Supabase |
 
@@ -181,143 +183,255 @@ sin correo, sin OAuth.
 
 ---
 
-## 4. Fase 1 — Freemium 2+2
+## 4. Fase 1 — Plan gratis: 3 clientes (1 conectado) + 1 + 1 plantillas
+
+> **Reescrita el 5-oct-2026.** Sustituye al 2+2 original. Cambian tres cosas: los
+> clientes se cuentan en dos bolsas (conectados y manuales), las plantillas se
+> cuentan por tipo (programa y sesión), y al caducar se congelan también los
+> manuales.
 
 ### 4.1 El límite
 
 ```js
-const FREE_CLIENTS   = 2;
-const FREE_TEMPLATES = 2;
+const FREE = { clients: 3, connected: 1, programTemplates: 1, sessionTemplates: 1 };
 ```
 
-Se cuentan los **actuales**, no los creados alguna vez:
-`Object.keys(clients).length` y `templatesOf(programs).length`. Borrar y
-recrear es un agujero, pero es un agujero que solo usa quien tiene 2 clientes de
-verdad; contar el histórico obliga a un contador persistido que hay que migrar,
-respaldar y explicar.
+- **Conectado** = el cliente tiene `syncSlotId`: invitado (código emitido, sin
+  canjear) o vinculado. Una invitación pendiente **ocupa** el hueco; cancelarla
+  (`cancelClientInvitation`) lo libera.
+- **Manual** = sin `syncSlotId`: le apuntas tú (C05).
+- La regla son **dos comprobaciones, no dos bolsas fijas**: `total ≤ 3` y
+  `conectados ≤ 1`. Tres manuales y ningún conectado vale.
+- **Plantilla de programa** = `programs[*].kind === 'template'` (`templatesOf`).
+- **Plantilla de sesión** = `sessionTemplates[*]` con `!programId && kind === 'template'`
+  (la lista de la pestaña Plantillas, `ProgramScreen.jsx`). Las sesiones libres
+  guardadas en Inicio (`onHome`) **no son plantillas** y no cuentan.
+
+Se cuentan los **actuales**, no los creados alguna vez: borrar y recrear es un
+agujero, pero contar el histórico obliga a un contador persistido que hay que
+migrar, respaldar y explicar.
+
+Una sola función pura, en `src/utils/freePlan.js`, con sus tests:
+
+```js
+// ¿Cabe este conjunto de clientes en el plan gratis?
+export const fitsFree = (clients) =>
+  clients.length <= FREE.clients
+  && clients.filter((c) => c.syncSlotId).length <= FREE.connected;
+```
+
+Crear un cliente es `fitsFree([...todos, nuevo])`; conectar uno es
+`fitsFree(todos con ese marcado como conectado)`; la hoja de elección de §4.6
+valida la selección con **la misma función**. Un único sitio donde está escrita
+la regla.
 
 ### 4.2 Dónde va la puerta
 
-| Acción | Fichero | Qué hace si se pasa del límite |
-|---|---|---|
-| Crear cliente | `useStore.js:576` `createClient` / `ClientsScreen.jsx:2184` `handleCreateClient` | no crea, abre el paywall |
-| Crear plantilla | `ProgramScreen.jsx:361` `handleCreateTemplate` | no crea, abre el paywall |
-| Duplicar plantilla | `ProgramScreen.jsx:369` | igual |
-| Invitar cliente (fase 3) | `ClientsScreen` | paywall **antes** de generar nada |
+Todas las acciones pasan por el store, así que el guard va **dentro de la acción**
+(no en las pantallas: el bucle de «enviar todo» y los atajos se lo saltarían).
+Si se pasa del límite, la acción no hace nada, devuelve `null` y deja
+`ui.paywallReason` puesto; un único `PaywallModal` montado en `App.js` lo lee.
+Hoy el modal vive dentro de `AppHeader` con estado local.
 
-La comprobación vive en el store como un selector, no repartida por las
-pantallas: `canCreateClient()` / `canCreateTemplate()`. Dos funciones de una
-línea, un único sitio donde está escrita la regla.
+| Acción del store | Llamada desde | Cuenta contra |
+|---|---|---|
+| `createClient` (`useStore.js:652`) | Clientes, onboarding | `clients`; con `withApp`, también `connected` |
+| `connectClientToCloud` (`:3562`), y por tanto `moveClientToApp` (`:3587`) | ficha del cliente | `connected` |
+| Invitar (M01-04) | Clientes | `connected`, **antes** de generar el slot |
+| `createEmptyProgram(..., 'template')` (`:1474`) | `ProgramScreen` | `programTemplates` |
+| `cloneProgramFromTemplate(..., { kind: 'template' })` (`:1945`) | duplicar (`ProgramScreen.jsx:454`), guardar como plantilla (`AppHeader.jsx:241`, `ClientsScreen.jsx:2221`, `MyProgramScreen.jsx:377`) | `programTemplates` |
+| `createFreeTemplate(..., { asTemplate: true })` (`:1273`) | `ProgramScreen` | `sessionTemplates` |
+| `copyFreeTemplate(..., { asTemplate: true })` (`:1366`) | duplicar (`ProgramScreen.jsx:650`) | `sessionTemplates` |
+
+`ui.paywallReason` es uno de `'clients' | 'connected' | 'programTemplates' |
+'sessionTemplates' | 'assignTemplate'`, y elige el titular del paywall
+(*«Conecta a más de un cliente con Pro»*…). El resto del paywall es el mismo.
+
+**No se limita** importar un `.fitdata` con plantillas (`mergeFileSessions`): quien
+importa ya tiene los datos en un archivo. Se apunta y se mira si aparece.
 
 ### 4.3 Qué se borra
 
-- `ClientsScreen.jsx:2319-2350` — el bloque `if (!isPro)` entero, con su
-  `emptyState`, su botón "Ver planes PRO" y su "Ocultar tab".
-- `ProgramScreen.jsx:394-414` — ídem, con las claves i18n `templates.proTitle`,
-  `proBody`, `proCta` (`es.json:2043-2045`) y sus pares en `en.json`.
-- `OnboardingScreen.jsx:902` — `isPro && templateList.length > 0` pasa a
-  `templateList.length > 0`.
-- `RootNavigator.jsx:62` — `showProTabs = isPro || !proTabsHidden` pasa a
-  `!proTabsHidden`.
-- `AppHeader.jsx:480` — el `!isPro &&` que envuelve la fila de ocultar tabs.
+Los muros de todo o nada, con su `emptyState`, su «Ver planes PRO» y su «Ocultar
+tab»:
 
-`proTabsHidden` **sobrevive** y se simplifica: deja de ser un parche del muro y
-pasa a ser lo que siempre quiso ser, una preferencia — *"no soy entrenador,
-quítame esos tabs"*. Los botones "Ocultar tab" de dentro de los muros
-desaparecen con ellos; la fila del menú de ajustes se queda.
+- `ClientsScreen.jsx:2291` — el bloque `if (!isPro)` entero. Revisar con él el
+  efecto de `:2045`, que solo corre «como usuario PRO».
+- `ProgramScreen.jsx:479` — ídem, con las claves `templates.proTitle`, `proBody`,
+  `proCta` en `es.json` y `en.json`.
+- `OnboardingScreen.jsx:906` — `isPro && templateList.length > 0` pasa a
+  `templateList.length > 0`.
+- `RootNavigator.jsx:69` — `showProTabs = isPro || !proTabsHidden` pasa a
+  `!proTabsHidden`.
+- `MyProgramScreen.jsx:175` — `hasTemplates` deja de mirar `isPro`.
+- `AppHeader.jsx:240` — `onSaveTemplate={isPro ? … : undefined}` pasa a ser
+  siempre la función; el límite lo pone el store.
+- `AppHeader.jsx:497` — el `!isPro &&` que envuelve la fila de ocultar tabs.
+
+`proTabsHidden` **sobrevive** como lo que siempre quiso ser: una preferencia
+(*«no soy entrenador, quítame esos tabs»*).
+
+**Las líneas son de oct-2026: comprobarlas antes de tocar nada.**
 
 ### 4.4 Qué se añade
 
-- **Contador visible** en Clientes y en Plantillas cuando no hay Pro: `2/2`
-  junto al botón de crear. Sin contador, el usuario descubre el límite chocando
-  contra él, que es la peor forma de enterarse.
-- El paywall se abre desde la acción bloqueada, y su copy cambia (§5.2).
-- **Estado congelado en la tarjeta del cliente** (§4.5), con el contador de
-  entrenos sin descargar, y la hoja de elección de los dos activos (§4.6).
+- **Contador visible** sin Pro: en Clientes, `2/3 clientes · 1/1 con app`; en
+  Plantillas, `1/1` en cada sección. Sin contador, el usuario descubre el límite
+  chocando contra él.
+- **Estado congelado** en la tarjeta y la ficha del cliente (§4.5), con el
+  contador de entrenos sin descargar en los conectados.
+- **Hoja de elección** (§4.6).
 - `profile.freeClientIds: []` en el estado persistido. No necesita migración: el
-  valor por defecto es válido y solo se consulta con más de 2 clientes.
+  valor por defecto es válido y solo se consulta cuando hay más clientes de los
+  que caben.
 
-### 4.5 Qué pasa al caducar con más clientes de los gratis
+### 4.5 Al caducar: clientes
 
-**No se borra ni se oculta nada. Se congela la sincronización, cliente a
-cliente.** Borrar datos de gente que pagó es la vía rápida a las reseñas de una
-estrella, y ocultarlos es lo mismo con otro nombre: el entrenador sigue teniendo
-a esos clientes en la vida real.
+**No se borra ni se oculta nada.** Borrar datos de gente que pagó es la vía
+rápida a las reseñas de una estrella, y ocultarlos es lo mismo con otro nombre.
 
-Un cliente está **activo** o **congelado**. Dos activos sin Pro; los demás,
-congelados.
+Un cliente está **activo** o **congelado**. Si todos caben en el plan gratis
+(`fitsFree`), todos están activos. Si no, solo los que el entrenador elige en
+§4.6.
 
-| | Cliente congelado | Dónde va el guard |
-|---|---|---|
-| Descargar historial | ❌ | `downloadClientHistory` (`useStore.js:3158`) |
-| Asignar / subir programa | ❌ | `uploadProgramToClient` (`useStore.js:3065`) |
-| Ajustes (overrides de la próxima sesión) | ❌ | `sendOverrides` (`useStore.js:3137`) |
-| Editar su programa | ❌ | entrada al editor desde la ficha |
-| "Enviar todo" masivo | salta los congelados | bucle de `ClientsScreen.jsx:1925` |
-| Reemitir código | ❌ | es mantenimiento de la conexión |
-| Ver historial y progreso | ✅ congelados en la fecha del corte | — |
-| Ver su programa | ✅ solo lectura | — |
-| Eliminar el cliente | ✅ | — |
-| Facturación, notas, peso, ficha | ✅ | registros locales del entrenador, no sincronización |
-| Contador de entrenos sin descargar | ✅ **sigue subiendo** | `refreshTrainerSlots` **no se toca** |
+**Congelado = solo lectura, y sin sincronización.** Es la misma regla para los
+dos tipos; al conectado se le suma lo de la red.
 
-**Al cliente no se le dice nada.** Sigue entrenando y subiendo con normalidad.
-*"Tu entrenador ha dejado de pagar"* es un mensaje que no beneficia a nadie, y
-además el cliente conserva el último programa recibido porque su
-`checkAndPullProgramUpdates` (`useStore.js:3512`) simplemente no encuentra nada
-nuevo.
+| | Manual | Conectado | Dónde va el guard |
+|---|---|---|---|
+| Ver ficha, historial y progreso | ✅ | ✅ (hasta la fecha del corte) | — |
+| Ver su programa | ✅ solo lectura | ✅ solo lectura | — |
+| Facturación, notas, peso, datos | ✅ | ✅ | registros locales del entrenador, no se tocan |
+| Eliminar el cliente | ✅ | ✅ | — |
+| Apuntarle una sesión (EMPEZAR) | ❌ | ❌ | `startSession` con `forClient` (`useStore.js:2034`) |
+| Editar su programa / crearle uno / asignarle | ❌ | ❌ | entrada al editor, `createProgramForClient` (`:915`), `setClientActiveProgram` (`:752`), `importForClient` (`:856`) |
+| Asignarle sesiones libres | ❌ | ❌ | `copyFreeTemplate` con `owner` = cliente (`:1366`) |
+| **Enviarle** programa o ajustes | — | ❌ | `uploadProgramToClient` (`:3661`), `sendOverrides` (`:3740`) |
+| **Recibir** su historial | — | ❌ | `downloadClientHistory` (`:3763`) |
+| Reemitir código | — | ❌ | `reissueClientCode` (`:3956`) |
+| «Enviar todo» masivo | — | salta los congelados | bucle de `ClientsScreen` (buscar `uploadProgramToClient` dentro de un bucle) |
+| Contador de entrenos sin descargar | — | ✅ **sigue subiendo** | `refreshTrainerSlots` **no se toca** |
 
-### 4.6 Cuáles son los dos activos
+El guard es un selector, `isClientFrozen(clientId)`, al principio de cada
+función de la tabla. La pantalla lo usa además para pintar el candado y
+deshabilitar botones, pero la protección real es la del store.
 
-Campo nuevo, `profile.freeClientIds` (exactamente 2 ids), y un selector:
+**El lado del cliente conectado no cambia.** Sigue entrenando y **sigue subiendo**
+su historial a su hueco: lo que se corta es el tramo hueco ↔ entrenador, no el
+móvil del cliente. No se le avisa: *«tu entrenador ha dejado de pagar»* no
+beneficia a nadie, y conserva el último programa recibido porque
+`checkAndPullProgramUpdates` no encuentra nada nuevo. El día que el entrenador
+vuelva a pagar, una sola descarga trae todo (§4.7).
+
+### 4.6 Con quién sigues: la hoja de elección
+
+Campo `profile.freeClientIds` y el selector:
 
 ```js
-isClientFrozen(clientId) =
+isClientFrozen(id) =
   !isPro
-  && Object.keys(clients).length > FREE_CLIENTS
-  && !freeClientIds.includes(clientId)
+  && !fitsFree(todosLosClientes)
+  && !freeClientIds.includes(id)
 ```
 
-La hoja de elección aparece cuando `!isPro && clientes > 2` y `freeClientIds` no
-contiene 2 ids que sigan existiendo. Eso ocurre **solo tras una caducidad**: el
-usuario gratis de toda la vida nunca la ve, porque con 2 clientes o menos el
-array ni se consulta y el límite de §4.2 se encarga de que no haya un tercero.
-Mientras no elija, todo está congelado — seguro por defecto en vez de
-silenciosamente equivocado.
+La hoja aparece cuando `!isPro`, los clientes no caben, y `freeClientIds` no es
+una selección válida — ids que existen y que, juntos, cumplen `fitsFree`. Eso
+ocurre **solo tras una caducidad**: el usuario gratis de toda la vida nunca la ve,
+porque §4.2 no le deja pasarse. Mientras no elija, todo está congelado: seguro
+por defecto en vez de silenciosamente equivocado.
 
-**Por qué lo elige el entrenador y no un criterio automático.** La regla obvia
-—los 2 más antiguos— es determinista y gratis (el id es
-`client_<Date.now()>_<rand>`, así que ordena solo por id), pero elige
-exactamente mal: los 2 clientes más antiguos de un entrenador con 10 suelen ser
-los que ya no entrena. Se quedaría con dos fantasmas vivos y sus 8 clientes
-reales congelados, justo en el momento en que está decidiendo si vuelve a pagar.
+La hoja deja marcar hasta 3 y, como mucho, 1 con app; el botón de confirmar se
+habilita cuando `fitsFree(seleccionados)`. Se puede volver a abrir desde
+Clientes para cambiar la elección (sin coste: no hay nada que mover).
+
+**Lo elige el entrenador, no la antigüedad.** Los 3 clientes más antiguos de un
+entrenador con 10 suelen ser los que ya no entrena.
 
 ### 4.7 Por qué esto sale casi gratis
 
-Tres hechos del código que hacen que el modelo de §4.5 no necesite
-infraestructura nueva:
+1. **Todas las acciones ya son por cliente** (reciben `clientId`). Congelar es un
+   `if` al principio de cada una.
+2. **El backlog no hay que construirlo.** `uploadHistory` (`supabaseSync.js`)
+   escribe el **log entero** en cada subida, no incrementos. El conectado
+   congelado sigue sobrescribiendo su historial completo en el hueco, así que al
+   volver a pagar **una descarga trae todo lo acumulado**.
+3. **El contador de entrenos pendientes ya está calculado.** `refreshTrainerSlots`
+   lee solo `sessions_count`, y `ClientsScreen` ya computa
+   `remoteSessionsCount - lastSeenSessionsCount`. No se bloquea (es metadato, no
+   historial), así que el congelado enseña *«7 entrenos sin descargar»* y el
+   número sube solo. Es el mejor gancho de reconversión del producto: enseña el
+   valor exacto de volver a pagar sin regalarlo.
 
-1. **Las cuatro acciones ya son por cliente.** `uploadProgramToClient`,
-   `sendOverrides`, `downloadClientHistory` y el borrado reciben todas el
-   `clientId`. La distinción activo/congelado es un `if` al principio de tres
-   funciones, más una condición en el bucle de "enviar todo".
-2. **El backlog no hay que construirlo.** `uploadHistory`
-   (`supabaseSync.js:124`) escribe el **log entero** en cada subida
-   (`history_json: { entries }`, `sessions_count: entries.length`), no
-   incrementos. El cliente congelado sigue sobrescribiendo su historial completo
-   en su slot, así que el día que el entrenador vuelva a pagar **una sola
-   descarga trae todo lo acumulado**. Sin cola, sin tabla de pendientes, sin
-   nada.
-3. **El contador de entrenos pendientes ya está calculado.**
-   `refreshTrainerSlots` (`useStore.js:3246`) es un poll ligero que lee solo
-   `sessions_count` sin bajarse el JSON del historial, y `ClientsScreen.jsx:1897`
-   ya computa `remoteSessionsCount - lastSeenSessionsCount` por cliente. Ese poll
-   **no se bloquea**: es metadato, no historial. Así que un cliente congelado
-   enseña *"7 entrenos sin descargar"* y el número sube solo, sin escribir una
-   línea.
+### 4.8 Al caducar: plantillas
 
-El punto 3 es además el mejor gancho de reconversión que tiene el producto:
-enseña el valor exacto de volver a pagar sin regalarlo.
+**Se quedan, se ven y se editan, pero no se asignan** mientras haya más de las
+que da el plan, contando cada tipo por separado.
+
+| Con más plantillas de las gratis (por tipo) | |
+|---|---|
+| Verlas, editarlas, borrarlas | ✅ |
+| Crear o duplicar | ❌ (es §4.2) |
+| **Asignar** a un cliente o a ti mismo | ❌ **ninguna de ese tipo** |
+
+«Asignar» es `cloneProgramFromTemplate` con `kind: 'program'` desde una plantilla
+(`ProgramScreen.jsx:460`, `ClientsScreen.jsx:2212`, `OnboardingScreen.jsx:637`) y
+`copyFreeTemplate` sin `asTemplate` desde una plantilla de sesión
+(`ProgramScreen.jsx:677`, `ClientSessions.jsx:452`, `HomeScreen.jsx:519`). El
+guard va en esas dos funciones del store, con `paywallReason: 'assignTemplate'`.
+
+**Ninguna, no «todas menos una».** Elegir cuál sigue viva pediría otra hoja de
+elección. Así la salida es clara y la decide el usuario: hacerse Pro, o borrar
+hasta quedarse en 1 y vuelve a funcionar. El paywall de este caso lo dice con
+esas palabras. *(Decisión del 5-oct-2026; si en uso real molesta, la alternativa
+barata es «la más reciente sigue asignable».)*
+
+### 4.9 Límite de tiempo del congelado
+
+**Qué pidió el usuario (5-oct-2026):** el conectado congelado sigue subiendo
+sus entrenos —para que el entrenador vea cuántos no está pudiendo gestionar—,
+pero si en 1-2 meses no se paga, se corta también eso, para no mantener en
+Supabase nada que cueste dinero.
+
+**Decisión: no se construye el corte, porque lo que cortaría no cuesta dinero.**
+Se deja la cuenta escrita para que nadie lo vuelva a plantear por coste.
+
+En Supabase **no se paga por llamada**. Las peticiones a la base de datos no se
+cobran. Se paga por: GB guardados, GB *descargados* (egress), usuarios activos al
+mes (MAU) y el tamaño de la máquina (§12.2). Un conectado congelado:
+
+| Concepto | Qué hace el congelado | Coste al mes |
+|---|---|---|
+| Base de datos | su historial crece ~17 KB al mes (~0,5 MB al año, §12.3) | ~0,000002 $ |
+| Egress | **subir es gratis** (es *ingress*); nadie descarga, el entrenador está congelado | 0 |
+| Poll del contador | `refreshTrainerSlots` lee un número por cliente | 0 en la práctica |
+| MAU anónimo | el cliente sigue usando la app con su sesión | 0 hasta 100.000 MAU; después 0,00325 $ |
+
+**Peor caso: un tercio de céntimo al mes por cliente congelado**, y solo pasados
+los 100.000 MAU del plan Pro de Supabase. Mil congelados cuestan, como mucho,
+3 $ al mes.
+
+Además, cortar no ahorraría ni eso:
+- **El MAU no se ahorra parando la subida.** El cliente sigue entrando con su
+  sesión. Habría que desvincularlo del todo, y eso es tocar su móvil.
+- **Alguien tiene que ejecutarlo.** El servidor no sabe quién ha pagado (§9).
+  Hacerlo bien pide el webhook de RevenueCat → Edge Function → `frozen_at` en
+  los huecos → `pg_cron` que los vacíe → que el móvil del cliente entienda que
+  su hueco ha muerto. Son unos dos días de trabajo con SQL y casos raros.
+- **Se pierde el gancho.** Pasados los 2 meses el contador de entrenos sin
+  descargar se para, y volver a pagar ya no trae el historial de una vez (§4.7).
+
+**Lo que sí crece sin techo ya tiene su sitio:** los huecos abandonados se
+limpian con la línea de §12.6 cuando la base de datos pase de ~4 GB.
+
+**Si se reabre** (por otra razón que no sea el coste), el diseño mínimo es el
+de arriba: `frozen_at` escrito por el webhook de expiración de RevenueCat,
+cuyo `app_user_id` ya es el `trainerSync.userId` tras M01-01.
+
+**Margen antes de congelar:** para los **fallos de cobro** ya existe sin código.
+El *billing grace period* de las dos stores mantiene el entitlement activo
+mientras reintentan cobrar; solo hay que activarlo (guía de pagos, pasos A8 y
+G4). Para la cancelación voluntaria no se da margen: la propia suscripción ya
+dura hasta el final del periodo pagado.
 
 ---
 
@@ -330,9 +444,9 @@ enseña el valor exacto de volver a pagar sin regalarlo.
 sin tocar una línea de la lógica de compra. El paywall ya itera sobre
 `offering.availablePackages`, así que también pinta los dos sin cambios.
 
-**Ahora o nunca:** el entitlement se llama `'Forma - Fit Pro'`, con espacios y
-un guion. Funciona, pero si se va a renombrar a algo sano (`pro`), este es el
-último momento: no hay compradores.
+El entitlement **se queda como está**, `'Forma - Fit Pro'` (decisión del
+5-oct-2026): ya funciona, y renombrarlo obliga a crear uno nuevo y mover los
+productos. Los productos nuevos se enganchan a este.
 
 ### 5.2 Lo que hay que cambiar en `PaywallModal.jsx`
 
@@ -349,8 +463,8 @@ un guion. Funciona, pero si se va a renombrar a algo sano (`pro`), este es el
    se toca entera.
 5. **`PRO_FEATURES` reescrita** para el modelo nuevo: hoy vende "Gestión
    completa de clientes" y "Crear plantillas de entrenamiento", que a partir de
-   la fase 1 **son gratis**. Pasa a vender *clientes ilimitados* y *plantillas
-   ilimitadas*.
+   la fase 1 **son gratis**. Pasa a vender *clientes ilimitados*, *todos los clientes con app* y
+   *plantillas ilimitadas*.
 
 ### 5.3 El caso feo: anual → pago único
 
@@ -424,47 +538,18 @@ riesgo nuevo, porque copiar y pegar el código ya hace exactamente eso hoy.
 
 ## 7. Configuración de las stores y de RevenueCat
 
-### Google Play
+Paso a paso, con el orden y cómo se hablan las piezas, en
+[guia-pagos.md](../guia-pagos.md). Es la tarea M01-05: no es código, pero
+bloquea probar la M01-03 y es lo más lento de todo (el contrato de Apple).
 
-1. **Monetizar → Suscripciones**: `forma_pro`, plan base anual (P1Y),
-   auto-renovable. Precio y países.
-2. **Monetizar → Productos integrados**: `forma_pro_lifetime`, producto
-   gestionado (no consumible).
-3. **Service account** con acceso a la Google Play Developer API y su JSON
-   subido **a RevenueCat** (ver datos financieros + gestionar pedidos y
-   suscripciones). **No es** la `google-service-account.json` de `eas submit`:
-   es otra.
-4. **Real-time developer notifications**: topic de Pub/Sub apuntando al endpoint
-   de RevenueCat. Sin esto, renovaciones y cancelaciones llegan tarde o no
-   llegan.
-5. App publicada al menos en track interno (✅ ya) y el probador como *licensed
-   tester*, o las compras fallan sin explicación.
+Los identificadores, fijados aquí para que la guía y el código no diverjan:
 
-### App Store
-
-Se parte de cero: no hay app iOS en RevenueCat.
-
-1. **Contrato de Apps de Pago firmado + datos bancarios y fiscales completos.**
-   Sin esto los productos se quedan en *Missing Metadata* y `getOfferings()`
-   devuelve vacío. **Es lo más lento de todo**: empezar por aquí.
-2. **Suscripción auto-renovable** de 1 año dentro de un Subscription Group.
-3. **Compra No Consumible** para el pago único (no consumible es el que se
-   restaura).
-4. **In-App Purchase Key (.p8)** y **App-Specific Shared Secret** subidos a
-   RevenueCat.
-5. **App Store Server Notifications V2** apuntando a RevenueCat.
-6. Rellenar `RC_IOS_API_KEY` (`src/config/revenuecat.js:13`).
-7. Lo de §5.4.
-
-### RevenueCat
-
-1. Un proyecto, **dos apps** (iOS + Android) → dos claves públicas.
-2. Importar los 4 productos (2 por plataforma).
-3. Un **Offering** (`default`) con dos **Packages**: `$rc_annual` y
-   `$rc_lifetime` — RevenueCat tiene identificadores nativos para estos dos
-   casos exactos.
-4. Los 4 productos apuntando **al mismo entitlement**.
-5. **Restore Behavior → transferir al nuevo App User ID** (§3.3).
+| Qué | Id |
+|---|---|
+| Entitlement | `Forma - Fit Pro` (el que ya existe, §5.1) |
+| Suscripción anual | `forma_pro_annual` (Apple) · `forma_pro` con plan base `annual` (Google) |
+| Pago único | `forma_pro_lifetime` (las dos) |
+| Offering | `default`, con los paquetes `$rc_annual` y `$rc_lifetime` |
 
 ---
 
@@ -473,14 +558,19 @@ Se parte de cero: no hay app iOS en RevenueCat.
 | Decisión | Motivo |
 |---|---|
 | Límite por conteo **actual**, no histórico | un contador persistido hay que migrar, respaldar y explicar |
-| Al caducar: **congelar la sincronización, no borrar** | borrar datos de quien pagó es la vía rápida a la reseña de una estrella |
-| Los 2 activos **los elige el entrenador**, no la antigüedad | los 2 clientes más antiguos de un entrenador con 10 suelen ser los que ya no entrena |
+| Gratis: **3 clientes, como mucho 1 con app**, y 1 + 1 plantillas | conectar es lo que cuesta servidor y lo que más vale; manual no cuesta nada (5-oct-2026) |
+| Dos comprobaciones (`total ≤ 3`, `con app ≤ 1`), no dos bolsas fijas | una sola función, `fitsFree`, sirve para crear, conectar y elegir |
+| Al caducar: **congelar en solo lectura, no borrar**, manuales incluidos | borrar datos de quien pagó es la reseña de una estrella; sin congelar los manuales, pagar un año y crear 50 sale gratis después |
+| Los activos **los elige el entrenador**, no la antigüedad | los clientes más antiguos de un entrenador con 10 suelen ser los que ya no entrena |
+| Plantillas al caducar: se quedan, **no se asigna ninguna** del tipo que se pasa | elegir cuál sigue viva pediría otra hoja; borrar hasta 1 o pagar es una salida clara |
+| Precios: **anual + pago único**, sin mensual | decisión del usuario, 5-oct-2026 |
 | El contador de entrenos pendientes **sigue subiendo** en los congelados | enseña el valor exacto de volver a pagar sin regalarlo, y ya está calculado |
 | Al cliente no se le avisa de nada | *"tu entrenador ha dejado de pagar"* no beneficia a nadie |
 | `trainerSync.userId` como App User ID | es el único id estable que sobrevive a reinstalar, y ya existe |
 | Cuenta por código automática tras comprar sin cuenta | un toque, sin correo; la pantalla `code_reveal` ya existe y ya dice lo correcto |
 | Los dos productos visibles siempre | perder conversión duele más que una línea de copy sobre cancelar |
-| Renombrar el entitlement, si se hace, **ahora** | no hay compradores; después habría que migrarlos |
+| El entitlement **se queda `Forma - Fit Pro`** | ya funciona; renombrarlo es crear otro y mover productos |
+| Sin corte del congelado a los 1-2 meses | un congelado cuesta < 1/3 de céntimo al mes; cortar pide webhook + cron (§4.9) |
 
 ---
 
@@ -553,7 +643,7 @@ abandono en la invitación aparece medido.
 |---|---|---|---|
 | **0** | Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) | ½ día | la primera venta |
 | **—** | Papeleo de stores, **en paralelo desde el día 1** | espera | fase 2 |
-| **1** | Freemium 2+2 + congelado por cliente + hoja de elección | 2-3 días | — |
+| **1** | Plan gratis 3 (1 con app) + 1 + 1, congelado por cliente + hoja de elección | 2-3 días | — |
 | **2** | Paywall dual + i18n + enlaces legales | ½ día | productos creados |
 | **3** | Invitar cliente nivel 1 + página estática | 1 día | — |
 
@@ -563,9 +653,9 @@ que nada.
 
 ---
 
-## 12. Coste de infraestructura: qué pasa si el 2+2 lo usan miles
+## 12. Coste de infraestructura: qué pasa si el plan gratis lo usan miles
 
-Regalar dos huecos significa gente usando tu Supabase sin pagar. La pregunta es
+Regalar huecos significa gente usando tu Supabase sin pagar. La pregunta es
 cuándo eso deja de ser gratis para ti. Números de septiembre de 2026, medidos
 contra este repositorio.
 
@@ -637,12 +727,12 @@ Ya en Pro y pasados todos los incluidos, lo peor del caso:
 **Un céntimo al mes por entrenador gratis activo.** Diez mil entrenadores
 gratis y activos son ~$100/mes; mil son ~$10, dentro del $25 que ya se paga.
 
-### 12.5 Qué implica para el 2+2
+### 12.5 Qué implica para el plan gratis
 
-**Los dos huecos gratis no son un riesgo financiero.** No hay escenario
+**Los huecos gratis no son un riesgo financiero.** No hay escenario
 plausible en el que la generosidad del muro cueste más de lo que trae: para que
 Supabase duela hace falta un volumen de entrenadores en el que la conversión a
-Pro paga la factura veinte veces. El 2+2 de §4 es sostenible tal como está
+Pro paga la factura veinte veces. El plan gratis de §4 es sostenible tal como está
 escrito, y esta sección existe para que nadie lo recorte por miedo a una factura
 que no llega.
 
