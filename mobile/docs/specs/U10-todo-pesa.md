@@ -14,6 +14,7 @@
 > Fase U10-09 · aparcado · Plan frente a real en Carga · §10 · antes U51
 > Fase U10-10 · hecho · La regla, más precisa: vibración por enteros, partida y objetivo, ±, bordes que desplazan, cancelar · §2.6
 > Fase U10-12 · hecho · La regla también en las casillas de segundos · §2.8
+> Fase U10-13 · hecho · Las filas de las hojas siguen a la hoja · §12
 >
 > Estado: **4-oct-2026: para la V1 solo quedan U10-03 a U10-06; U10-02, U10-07, U10-08 y U10-09 se aparcan** (decisión del usuario). **Spec cerrada el 30-sep-2026**. D1 y D2 cerradas
 > el mismo día; queda abierta D3 (la tira de tramos del metrónomo, §1.4), que
@@ -951,3 +952,37 @@ reutiliza el mismo panel.
 | U10-10 | La regla, más precisa (§2.6) | 🟡 | U10-01 | hecho · 2a6104c |
 | U10-11 | Paso del ejercicio en la regla (§2.7) | 🟡 | U10-01 | movida a U11-02 (4-oct) |
 | U10-12 | La regla en los segundos (§2.8) | 🟢 | U10-01 | hecho · c64c63a |
+| U10-13 | Las filas de las hojas siguen a la hoja (§12) | 🟢 | — | hecho |
+
+---
+
+## 12. U10-13 — Las filas de las hojas siguen a la hoja
+
+Salió al probar U10-06 (5-oct-2026). En toda hoja con lista (`DragSheet` +
+`SheetRow`: el «…» de Programa y el resto), la posición de cada fila depende
+de la altura de la hoja, no de un tiempo: con la hoja arriba del todo están
+todas en su sitio, y al arrastrarla para cerrar van saliendo hacia la derecha
+una tras otra, la de arriba primero, pegadas al dedo. Al abrir entran de
+derecha a izquierda y la de arriba es la última en llegar, justo cuando la
+hoja termina de subir. Se probó el orden contrario y se descartó.
+
+- `DragSheet` pasa por `SheetContext` su `translateY` (`y`) y un turno por
+  fila (`nextIndex`, el orden de montaje, que es el de arriba abajo; vuelve a
+  0 en cada apertura). `translateY` pasa de ref a estado para poder viajar por
+  el contexto.
+- `SheetRow` se envuelve en un `Animated.View` con dos interpolaciones del
+  mismo `y` (hilo nativo): desplazamiento de 0 al ancho de la pantalla en
+  `ROW_SPAN` = 300 px de hoja, empezando `ROW_STEP` = 40 px después que la de
+  encima; y fundido que acaba a la mitad de ese tramo (`ROW_FADE` = 0,5), para
+  que se vea desaparecer por el fundido antes de llegar al borde.
+- Solo las filas (`SheetRow`): campos, tarjetas o botones de una hoja no se
+  mueven.
+
+**Probar U10-13**
+
+- [x] Abrir el «…» de Programa: las filas entran de derecha a izquierda con la
+  hoja y están todas en su sitio cuando llega arriba.
+- [x] Arrastrar la hoja hacia abajo despacio: las filas salen a la derecha una
+  tras otra, la de arriba primero, siguiendo al dedo; soltar sin cerrar las
+  devuelve.
+- [x] Cada fila se funde antes de llegar al borde.

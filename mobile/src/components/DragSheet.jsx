@@ -104,7 +104,9 @@ export default function DragSheet({ visible, onClose, title, action, onBack, foo
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
 
-  const translateY      = useRef(new Animated.Value(900)).current;
+  // En estado y no en ref: viaja por el contexto a las filas, y un ref leído al
+  // pintar es lo que el compilador de React no admite.
+  const [translateY]    = useState(() => new Animated.Value(900));
   const backdropOpacity = translateY.interpolate({
     inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp',
   });
@@ -135,7 +137,15 @@ export default function DragSheet({ visible, onClose, title, action, onBack, foo
 
   // Valor estable: `close` se rehace en cada render y no puede viajar por el
   // contexto sin repintar a todo el que lo lea.
-  const sheet = useMemo(() => ({ dismiss: () => closeRef.current() }), []);
+  // `y` y `nextIndex` son para las filas (`SheetRow`): se colocan según la
+  // altura de la hoja, cada una con su turno (el orden en que se montan, que
+  // es el de arriba abajo). El turno vuelve a 0 en cada apertura.
+  const rowCount = useRef(0);
+  const sheet = useMemo(() => ({
+    dismiss:   () => closeRef.current(),
+    y:         translateY,
+    nextIndex: () => rowCount.current++,
+  }), [translateY]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -172,6 +182,7 @@ export default function DragSheet({ visible, onClose, title, action, onBack, foo
 
   // Slide-in al abrir
   useEffect(() => {
+    rowCount.current = 0;
     if (visible) {
       translateY.setValue(900);
       Animated.spring(translateY, {
