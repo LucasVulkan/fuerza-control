@@ -1407,14 +1407,15 @@ const makeStyles = (th) => StyleSheet.create({
   scopeToggleTextActive: { color: th.colors.accent },
 
   // ── Progress cards (SESIONES · CARGA · VOLUMEN) ───────────────────────────────
-  // Figma 122:893: gap 10, altura fija 108, cards centradas (hug) en la fila.
-  statsGrid: { flexDirection: 'row', gap: spacing.md, width: '100%', height: 108, alignItems: 'center' },
+  // Figma 122:893: altura fija 108, cards centradas (hug) en la fila. El gap
+  // bajó de 10 a 8 y el radio de `lg` a `md` (U13 §12), como las de sesión.
+  statsGrid: { flexDirection: 'row', gap: spacing.sm2, width: '100%', height: 108, alignItems: 'center' },
   statTile: {
     flex:              1,
     backgroundColor:   th.colors.surface,
     paddingHorizontal: spacing.xl,
     paddingVertical:   spacing.lg,
-    borderRadius:      th.radius.lg,
+    borderRadius:      th.radius.md,
     alignItems:        'center',
     justifyContent:    'center',
     overflow:          'hidden',

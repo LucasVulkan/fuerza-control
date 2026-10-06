@@ -691,14 +691,14 @@ const makeStyles = (th) => StyleSheet.create({
   controlRow:    { flexDirection: 'row', alignItems: 'center' },
   segmentedWrap: { width: 198 },
 
-  // Mismas Progress cards que la pestaña de Ejercicios.
-  statsGrid: { flexDirection: 'row', gap: spacing.md, width: '100%', height: 108, alignItems: 'center' },
+  // Mismas Progress cards que la pestaña de Ejercicios (gap 8, radio `md`: U13 §12).
+  statsGrid: { flexDirection: 'row', gap: spacing.sm2, width: '100%', height: 108, alignItems: 'center' },
   statTile: {
     flex:              1,
     backgroundColor:   th.colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.lg,
-    borderRadius:      th.radius.lg,
+    borderRadius:      th.radius.md,
     alignItems:        'center',
     justifyContent:    'center',
     overflow:          'hidden',
@@ -716,7 +716,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   card: {
     backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
+    borderRadius:    th.radius.md,
     padding:         spacing.lg,
     gap:             spacing.md,
   },

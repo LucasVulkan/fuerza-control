@@ -235,7 +235,7 @@ const makeCal = (th) => StyleSheet.create({
   // que tenía en el Historial (con su filete inferior a sangre).
   wrap: {
     backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
+    borderRadius:    th.radius.md,
     padding:         spacing.lg,
     // Menos aire arriba que abajo: los chevrones de mes miden 28 de alto contra
     // una etiqueta de 12, así que la fila ya trae su propio hueco por dentro y

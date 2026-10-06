@@ -11,6 +11,8 @@
 > Fase U13-05 · hecho · Ajustes de la primera prueba, «la semana empieza por la A» (del programa) y el mismo botón · §8
 > Fase U13-06 · hecho · Programa libre: ninguna sesión toca · §9
 > Fase U13-07 · hecho · Menos colores en las pestañas: probado y vuelto atrás; pestañas un poco más oscuras · §10
+> Fase U13-08 · hecho · Radio más bajo en tarjetas de sesión y de programa, y menos aire en los botones del programa · §11
+> Fase U13-09 · hecho · Progresión: radio más bajo y menos aire entre las tarjetas de información · §12
 >
 > Estado: **U13-01 a U13-03 hechas el 6-oct-2026**, por probar en el móvil. Es la
 > variante **A · Tal cual** de la maqueta, elegida «para empezar y ajustar».
@@ -349,3 +351,38 @@ leía bien pero no convenció, y el mismo día se volvió a la de antes (letras 
 
 - [ ] Las pestañas sin abrir se ven algo más oscuras que antes y se siguen distinguiendo de la tarjeta gris.
 - [ ] REPETIR SESIÓN (y EDITAR / compartir) se distingue bien sobre la tarjeta, en la lista y en las pestañas.
+
+## 11. U13-08 — Radio más bajo y menos aire
+
+Pedido el 6-oct-2026, tras ver las pestañas en el móvil:
+
+- **Radio `md` (10) → `sm` (6)** en las tarjetas de sesión (fila, tarjeta de
+  hoy, tarjeta de pestañas), en sus botones (EMPEZAR / REPETIR / EDITAR, para no
+  quedar más redondos que la tarjeta que los contiene), en la tarjeta de programa
+  de Inicio (U12) y en la del tab Programa y la ficha de cliente (`ProgramCard`)
+  con sus botones Editar · Ver · ⋯ (`ProgramActions`).
+- **Aire de los botones del programa: 8 → 4** (`spacing.xs2`), entre la tarjeta y
+  los botones y entre botones: el mismo que separa las tarjetas de sesión.
+- Fuera de esto se quedan en `md`: el botón «+ Sesión libre», el banner de etapa
+  y el resto de tarjetas de la app.
+
+**Probar U13-08**
+
+- [ ] Las tarjetas de sesión (lista y pestañas) y sus botones tienen las esquinas menos redondas.
+- [ ] En el tab Programa, la tarjeta y Editar · Ver · ⋯ van con el radio nuevo y más juntos (4 entre tarjeta y botones y entre botones).
+
+## 12. U13-09 — Progresión: radio más bajo y menos aire
+
+Lo mismo que §11, en el tab Progresión (6-oct-2026):
+
+- **Radio `lg` (16) → `md` (10)** en las tarjetas de información SESIONES ·
+  CARGA · VOLUMEN (Ejercicios y Carga) y, en Carga, en la tarjeta de la gráfica
+  y la del calendario, para no mezclar dos radios en la misma pestaña.
+- **Separación entre las tres tarjetas: 10 → 8** (`spacing.sm2`). Se probaron 4
+  (la de las tarjetas de sesión) y 6, y se dejó en 8. El aire vertical
+  entre bloques de la pestaña no cambia.
+
+**Probar U13-09**
+
+- [ ] En Progresión › Ejercicios y › Carga, las tres tarjetas de arriba tienen las esquinas menos redondas y van más juntas.
+- [ ] En Carga, la gráfica y el calendario llevan el mismo radio que esas tarjetas.

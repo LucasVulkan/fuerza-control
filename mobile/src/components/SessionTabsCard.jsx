@@ -360,7 +360,7 @@ export default function SessionTabsCard({ sessions, heroId }) {
 
 const makeStyles = (th) => StyleSheet.create({
   card: {
-    borderRadius: th.radius.md,
+    borderRadius: th.radius.sm,
     overflow:     'hidden',
   },
   fill:  { position: 'absolute' },

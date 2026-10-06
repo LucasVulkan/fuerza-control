@@ -330,7 +330,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   sesCard: {
     backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.md,
+    borderRadius:    th.radius.sm,
     overflow:        'hidden',
   },
   sesHead: {
@@ -381,7 +381,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'space-between',
     backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.md,
+    borderRadius:    th.radius.sm,
     padding:         14,
   },
   sesBtnText:          { ...textStyles.button, color: th.colors.onAccent },
@@ -397,7 +397,7 @@ const makeStyles = (th) => StyleSheet.create({
   // negro: letra, raya y series. El botón se invierte.
   today: {
     backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.md,
+    borderRadius:    th.radius.sm,
     overflow:        'hidden',
     // La de hoy respira el doble que las demás por arriba y por abajo: es la
     // pieza grande y pegada a sus vecinas se leía como parte de la misma lista.
@@ -485,7 +485,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'space-between',
     backgroundColor: th.colors.onAccent,
-    borderRadius:    th.radius.md,
+    borderRadius:    th.radius.sm,
     padding:         spacing.lg,
   },
   todayBtnText: { ...textStyles.button, color: th.colors.accent },
