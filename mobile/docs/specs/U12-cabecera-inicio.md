@@ -46,7 +46,7 @@ semana, que no cambia. Sin programa activo no sale.
   duración: sin barra ni total), «Frame 167» (una etapa con duración: una barra)
   y `515:922` (varias etapas: un tramo por etapa). Cambio del usuario (6-oct):
   la etapa en curso va en la ceja, «TU PROGRAMA · ACUMULACIÓN» (su nombre, o «ETAPA 2» si no tiene), y sin contador de semana de la etapa.
-- **Caja**: `surface2`, radio `sm`. Izquierda: ceja «TU PROGRAMA» (`caps`,
+- **Caja**: `surface`, radio `md`, como las filas de sesión de la lista (Figma decía `surface2` y 6; el usuario lo igualó el 6-oct). Izquierda: ceja «TU PROGRAMA» (`caps`,
   `mutedLight`) y el nombre (`heading`, `accent`). Derecha, tras un corte en
   diagonal de 4 px del color del fondo: «SEMANA», la semana del programa a dos
   cifras (`heading`, `accent`, como el nombre) y, en la misma línea, «/12» (`caps`, `mutedLight`, como la ceja).

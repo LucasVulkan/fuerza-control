@@ -101,8 +101,8 @@ export default function HomeProgramCard({ program, onOpen }) {
 const makeStyles = (th) => StyleSheet.create({
   card: {
     flexDirection:   'row',
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
 
