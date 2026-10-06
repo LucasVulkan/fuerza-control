@@ -269,6 +269,25 @@ se mueve a la nueva. Ver M01 §3.3–3.4.
 es su `trainerSync.userId`) → **Grant entitlement** → `Forma - Fit Pro` → duración. Sin
 pasar por la store y sin código.
 
+### R9. Antes de publicar: que las compras de prueba no den Pro a cualquiera
+
+TestFlight compra **siempre** en sandbox, gratis, y cualquier tester invitado
+puede «comprar». RevenueCat no separa usuarios de prueba y de verdad: un mismo
+App User ID junta compras de los dos entornos. Desde M01-01 ese id es la cuenta
+del entrenador, así que un tester que «compra» el pago único en TestFlight y
+luego instala la versión de la App Store con la misma cuenta **tiene Pro gratis
+para siempre** (el pago único no caduca).
+
+**Project settings → General → Sandbox access**:
+- **Anybody** (por defecto): mientras se prueba.
+- **Allowed App User IDs only**, con los ids de las cuentas de prueba propias:
+  **antes de publicar**. Los demás pueden pasar por la compra en TestFlight, pero
+  no reciben Pro.
+
+Las compras de prueba se siguen registrando; solo dejan de dar Pro. Se arregla
+en el panel, sin tocar la app (el SDK de React Native no deja filtrar por
+entorno).
+
 ---
 
 ## G. Google Play
