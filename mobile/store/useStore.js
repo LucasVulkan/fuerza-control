@@ -4500,10 +4500,10 @@ export const useStore = create(
        *  - No borra el historial ni los programas de este móvil. Son datos del
        *    usuario y la app funciona sin cuenta; borrarlos de oficio sería
        *    destruir lo que no ha pedido. Para eso está desinstalar.
-       *  - No toca el Pro. RevenueCat va con ID anónimo (App.js solo llama a
-       *    `configure`, nunca a `logIn`), así que la compra está atada a la
-       *    cuenta de Apple/Google Play, no a esta. Se recupera con "Restaurar
-       *    compras".
+       *  - No se lleva el Pro. Sale de RevenueCat (`logOut`) para que la
+       *    siguiente cuenta de este móvil no herede la compra, pero la compra
+       *    sigue en la cuenta de Apple/Google Play y vuelve con "Restaurar
+       *    compra anterior" (M01 §3.3).
        *
        * ponytail: sin reintento. Si falla a medias la cuenta sigue viva (la
        * Edge Function borra el usuario de auth lo último) y volver a pulsar
@@ -4513,6 +4513,7 @@ export const useStore = create(
 
         await deleteRemoteAccount();
         await supabaseSignOut().catch(() => {});
+        await get()._purchasesLogOut();
 
         set(() => ({
           trainerSync: {
@@ -4543,6 +4544,49 @@ export const useStore = create(
       /** Returns the Purchases instance or null if the native module isn't loaded (Expo Go). */
       _getRC: () => {
         try { return require('react-native-purchases').default; } catch { return null; }
+      },
+
+      /**
+       * M01-01: el App User ID de RevenueCat es la cuenta del entrenador
+       * (`trainerSync.userId`), así el Pro sigue a la cuenta y no a la
+       * instalación: cruza de Android a iPhone y vuelve al reinstalar sin pulsar
+       * Restaurar (spec M01 §3). Lo llama App.js cada vez que cambia el id.
+       *
+       * Anónimo → cuenta: RevenueCat funde la compra solo. Cuenta A → cuenta B
+       * (código → Google) NO: la compra se queda en A. Si este móvil tenía Pro
+       * y B no lo trae, `restorePurchases` la mueve a B (Restore Behavior =
+       * transferir, en el dashboard). Solo con `switched` —un cambio de cuenta de
+       * verdad, no el arranque—, porque en iOS restaurar puede pedir la
+       * contraseña del Apple ID, y al arrancar «tenía Pro y ya no» es casi
+       * siempre una suscripción caducada.
+       */
+      syncPurchaserId: async (userId, { switched = false } = {}) => {
+        const RC = get()._getRC();
+        if (!RC || !userId) return;
+        try {
+          if (!(await RC.isConfigured())) return; // sin clave o build preview
+          const wasPro = get().profile.isPro;
+          const { customerInfo } = await RC.logIn(userId);
+          let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
+          if (switched && wasPro && !isPro) {
+            const info = await RC.restorePurchases();
+            isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
+          }
+          set((s) => ({ profile: { ...s.profile, isPro } }));
+        } catch (err) {
+          console.warn('[RevenueCat] logIn:', err?.message);
+        }
+      },
+
+      /** Suelta la cuenta en RevenueCat. Falla si ya es anónimo: no importa. */
+      _purchasesLogOut: async () => {
+        const RC = get()._getRC();
+        if (!RC) return;
+        try {
+          if (!(await RC.isConfigured())) return;
+          await RC.logOut();
+        } catch { /* ya era anónimo */ }
+        await get().checkProStatus();
       },
 
       /**

@@ -10,6 +10,10 @@
  *   • code_reveal → el código recién creado, para guardarlo
  *   • recovery    → recuperar la cuenta con un código existente
  *
+ * `purpose="purchase"` (M01 §3.5): se abre tras comprar Pro sin cuenta, para
+ * que la compra quede atada a una. Mismo flujo, con otro título, sin «Sin
+ * conexión» (para no guardar ya está «Ahora no») y Apple/Google preseleccionado.
+ *
  * Pasa a `DragSheet` como el resto de los modales (§9 de docs/UI-MIGRATION.md).
  * Toda la lógica de Supabase/OAuth (claim de slots, fallback por código,
  * refreshTrainerSlots) se conserva tal cual.
@@ -164,7 +168,13 @@ function ModeOption({ mode, active, unavailable, warn, warnTone, onPress, isFirs
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-export default function TrainerSyncModal({ visible, onClose, isFirstTime = true }) {
+// Lo que se preselecciona al comprar: la cuenta que recupera la compra en
+// cualquier móvil, no el código.
+const PURCHASE_DEFAULT = APPLE_AUTH_AVAILABLE ? 'apple' : 'google';
+
+export default function TrainerSyncModal({ visible, onClose, isFirstTime = true, purpose = 'sync' }) {
+  const forPurchase = purpose === 'purchase';
+  const modes = forPurchase ? MODES.filter((m) => m.id !== 'offline') : MODES;
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
@@ -172,7 +182,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   const setTrainerName     = useStore((s) => s.setTrainerName);
   const trainerSync        = useStore((s) => s.trainerSync);
 
-  const [selected,  setSelected]  = useState(trainerSync.mode ?? 'google');
+  const [selected,  setSelected]  = useState(forPurchase ? PURCHASE_DEFAULT : trainerSync.mode ?? 'google');
   const [loading,   setLoading]   = useState(false);
   const [screen,    setScreen]    = useState('select'); // 'select' | 'code_status' | 'code_reveal' | 'recovery'
   const [newCode,   setNewCode]   = useState(null);
@@ -188,8 +198,8 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (visible) {
       setNameInput(trainerSync.trainerName ?? '');
-      setSelected(trainerSync.mode ?? 'google');
-      setScreen(trainerSync.code ? 'code_status' : 'select');
+      setSelected(forPurchase ? PURCHASE_DEFAULT : trainerSync.mode ?? 'google');
+      setScreen(trainerSync.code && !forPurchase ? 'code_status' : 'select');
       setRecoverCode('');
       setRecoverError(null);
     }
@@ -461,7 +471,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
   }
 
   const titles = {
-    select:      isFirstTime ? t('sync.titleFirstTime') : t('sync.title'),
+    select:      forPurchase ? t('sync.purchaseTitle') : isFirstTime ? t('sync.titleFirstTime') : t('sync.title'),
     code_status: isFirstTime ? t('sync.titleFirstTime') : t('sync.title'),
     code_reveal: t('sync.revealTitle'),
     recovery:    t('sync.recoveryTitle'),
@@ -471,7 +481,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
     ? { label: t('common.accept'),      onPress: () => { setScreen('select'); onClose(); } }
     : screen === 'recovery'
       ? { label: t('trainer.codeBack'), onPress: () => setScreen('select') }
-      : { label: isFirstTime ? t('common.accept') : t('common.cancel'), onPress: onClose };
+      : { label: forPurchase ? t('sync.purchaseLater') : isFirstTime ? t('common.accept') : t('common.cancel'), onPress: onClose };
 
   return (
     <DragSheet
@@ -525,7 +535,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
           <CodeBox code={newCode} />
 
           <View style={styles.warnCard}>
-            <Text style={styles.warnText}>{t('sync.revealWarn')}</Text>
+            <Text style={styles.warnText}>{t(forPurchase ? 'sync.revealWarnPurchase' : 'sync.revealWarn')}</Text>
           </View>
 
           <TouchableOpacity
@@ -567,10 +577,10 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
       {/* ── Elegir modo ── */}
       {screen === 'select' && (
         <View style={styles.block}>
-          <Text style={styles.lead}>{t('sync.selectLead')}</Text>
+          <Text style={styles.lead}>{t(forPurchase ? 'sync.purchaseLead' : 'sync.selectLead')}</Text>
 
           <View style={styles.modes}>
-            {MODES.map((mode, i) => {
+            {modes.map((mode, i) => {
               const { text, tone } = warnFor(mode.id);
               return (
                 <ModeOption
@@ -582,13 +592,14 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true 
                   warnTone={tone}
                   onPress={() => setSelected(mode.id)}
                   isFirst={i === 0}
-                  isLast={i === MODES.length - 1}
+                  isLast={i === modes.length - 1}
                 />
               );
             })}
           </View>
 
-          <NameField value={nameInput} onChange={handleName} />
+          {/* Al comprar no va de clientes: el nombre que ven se pide al conectarlos. */}
+          {!forPurchase && <NameField value={nameInput} onChange={handleName} />}
 
           {/* Apple prohíbe arrancar su login desde un botón propio: tiene que
               ser el nativo. Por eso el CTA cambia de forma con el modo elegido

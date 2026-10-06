@@ -2,7 +2,8 @@
 
 > Tema: monetización
 > En corto: Plan gratis: 3 clientes (como mucho 1 con app) y 1 plantilla de programa + 1 de sesión; Pro, anual o pago único, lo quita todo. Hoy el muro es todo o nada, así que no puede probar el producto con lo que hace a diario. Incluye el pago desde el móvil del cliente y la invitación.
-> Fase M01-01 · pendiente · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) · §3 · antes M01
+> Inicio: 2026-10-06
+> Fase M01-01 · hecho · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) · §3 · antes M01
 > Fase M01-02 · pendiente · Plan gratis 3 (1 con app) + 1 + 1: límites, congelado por cliente y hoja de elección · §4 · antes M02
 > Fase M01-03 · pendiente · Paywall dual + i18n + enlaces legales · §5 · antes M03
 > Fase M01-04 · pendiente · Invitar cliente nivel 1 + página estática · §6 · antes M04
@@ -175,11 +176,76 @@ sesiones de `TrainerSyncModal` — la misma forma que `transfer_my_slots_to`.
 Quien compra en modo `offline` o sin modo solo tiene la capa 1: su Pro muere el
 día que cambie de sistema operativo.
 
-**Decisión:** tras una compra con éxito sin cuenta, crear la cuenta por código
-con `setupTrainerCodeAccount()` y enseñar la pantalla `code_reveal` de
-`TrainerSyncModal`, que **ya existe y ya dice lo correcto** — *"es la única
-forma de recuperar la cuenta"*. Solo hay que añadirle *"y tu compra"*. Un toque,
-sin correo, sin OAuth.
+**Decisión (revisada el 6-oct-2026):** no se obliga a tener cuenta para pagar,
+pero se **empuja a Google/Apple** justo después. Tras una compra con éxito sin
+`trainerSync.userId`, el paywall cede el sitio a `TrainerSyncModal` en modo
+`purpose="purchase"`:
+
+> **Guarda tu compra** — para recuperarla en otro móvil, aunque cambies de
+> Android a iPhone.
+> [ Continuar con Apple ] [ Continuar con Google ]  ← preseleccionado
+> Usar un código                                    ← secundario
+> Ahora no                                          ← cerrar la hoja
+
+- Sin la opción *Sin conexión*: no guarda nada, y para no guardar ya está
+  *Ahora no*.
+- Si elige código, el `code_reveal` lleva el aviso con *"y tu compra"*.
+- Quien cierra con *Ahora no* se queda con la capa 1 (Restaurar), igual que hoy.
+
+**Por qué no obligar.** Apple rechaza (5.1.1) exigir registro para comprar algo
+que no depende de una cuenta, y parte de Pro no depende: más clientes manuales y
+más plantillas funcionan sin servidor. La cuenta por código sí cumple —no pide
+ningún dato personal—, así que queda como alternativa, no como camino por
+defecto.
+
+**Por qué el código no es un riesgo para el Pro.** Quien pierde su código pierde
+su cuenta de entrenador (C01 §4.3), no la compra: crea otra cuenta y pulsa
+Restaurar, y RevenueCat la mueve (Restore Behavior = transferir, §3.3). Solo
+falla con otra cuenta de store **y** sin código; ahí el rescate es manual, con
+el recibo de la store y *Grant entitlement* en RevenueCat (guía de pagos, R8).
+
+### 3.6 Cómo quedó (6-oct-2026)
+
+Cambios respecto a §3.3, al contrastarlo con el código:
+
+- **`configure` espera a la hidratación y entra ya con `appUserID`** (`App.js`).
+  Configurar anónimo y hacer `logIn` después dejaba una carrera: el
+  `checkProStatus` del anónimo podía resolver tarde y pisar el Pro de la cuenta.
+  El efecto de `logIn` (`syncPurchaserId`) queda para los cambios de cuenta.
+- **`restorePurchases` tras el `logIn` solo en un cambio de cuenta real**
+  (`switched`: había un id y es otro), y solo si el móvil tenía Pro y la cuenta
+  nueva no lo trae. Al arrancar no: ahí «tenía Pro y ya no» es una suscripción
+  caducada, y en iOS restaurar puede pedir la contraseña del Apple ID. Va en el
+  store, no en `TrainerSyncModal`: cubre todos los caminos de cambio de cuenta.
+- **`logOut` solo al borrar la cuenta** (`_purchasesLogOut` en `deleteAccount`).
+  Pasar a *Sin conexión* **no** sale de RevenueCat: el Pro sigue en el móvil.
+  `resetTrainerSync` no se llama desde ningún sitio, así que no se toca.
+- §3.5: `TrainerSyncModal purpose="purchase"`, abierto desde `PaywallModal`
+  cuando la compra acaba sin `trainerSync.userId`.
+- Tests: `syncPurchaserId` en `store/useStore.test.js`.
+
+**Pendiente fuera del código:** Restore Behavior en el dashboard (guía de pagos,
+R7). Sin eso, la casilla M01-01.4 no puede pasar.
+
+Se prueba con un build sin `EXPO_PUBLIC_FORCE_PRO` (no el perfil `preview`), en
+Android, que es donde RevenueCat ya funciona.
+
+**Probar M01-01**
+
+- [ ] Entrenador con cuenta (código o Google) → RevenueCat › Customers: el
+  cliente que aparece tiene como App User ID el `trainerSync.userId`, no un
+  `$RCAnonymousID`.
+- [ ] Comprar Pro sin cuenta (modo *Sin conexión*) → sale «Guarda tu compra»
+  con Google preseleccionado y sin la opción *Sin conexión*; sin el campo del
+  nombre. *Ahora no* cierra y el Pro se queda.
+- [ ] Desde «Guarda tu compra», elegir código → el aviso del código menciona la
+  compra. En RevenueCat, el anónimo de la compra queda fundido en la cuenta nueva.
+- [ ] Con Pro y cuenta por código → pasar a Google → sigue con Pro (restaura y
+  mueve la compra a la cuenta nueva).
+- [ ] Desinstalar y reinstalar → entrar con la misma cuenta → Pro **sin** pulsar
+  Restaurar.
+- [ ] Borrar la cuenta → el Pro desaparece del móvil → *Restaurar compra
+  anterior* lo devuelve.
 
 ---
 

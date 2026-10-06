@@ -19,6 +19,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
 import DragSheet from './DragSheet';
+import TrainerSyncModal from './TrainerSyncModal';
 // ── Feature list ──────────────────────────────────────────────────────────────
 
 const PRO_FEATURES = [
@@ -46,6 +47,8 @@ export default function PaywallModal({ onClose }) {
   const [loading, setLoading]         = useState(true);
   const [purchasing, setPurchasing]   = useState(false);
   const [restoring, setRestoring]     = useState(false);
+  // Comprado sin cuenta: la hoja cede el sitio a «Guarda tu compra» (M01 §3.5).
+  const [askAccount, setAskAccount]   = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -77,7 +80,8 @@ export default function PaywallModal({ onClose }) {
             await restorePurchases().catch(() => {});
           }
         }
-        onClose();
+        if (!useStore.getState().trainerSync.userId) setAskAccount(true);
+        else onClose();
       } else if (!result.cancelled) {
         showDialog(t('paywall.errTitle'), result.error ?? t('drive.errBackupBody'));
       }
@@ -94,6 +98,10 @@ export default function PaywallModal({ onClose }) {
     } finally {
       setRestoring(false);
     }
+  }
+
+  if (askAccount) {
+    return <TrainerSyncModal visible purpose="purchase" isFirstTime={false} onClose={onClose} />;
   }
 
   return (

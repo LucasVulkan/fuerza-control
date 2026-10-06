@@ -11,6 +11,7 @@ import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLog
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
 import { localDay, addDays } from '../src/utils/stageProgress';
 import { templateChainIds } from '../src/utils/exerciseLinks';
+import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.
@@ -601,6 +602,42 @@ describe('isPro — fallo 9', () => {
 
     useStore.setState((s) => ({ profile: { ...s.profile, isPro: false } }));
     expect(await useStore.getState().checkProStatus()).toBe(false);
+  });
+});
+
+describe('syncPurchaserId — M01-01, el Pro sigue a la cuenta', () => {
+  const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} } });
+  let RC, getRC;
+  beforeEach(() => {
+    RC = {
+      isConfigured:     vi.fn(async () => true),
+      logIn:            vi.fn(async () => ({ customerInfo: info(false) })),
+      restorePurchases: vi.fn(async () => info(true)),
+    };
+    getRC = useStore.getState()._getRC;
+    useStore.setState({ _getRC: () => RC });
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
+  });
+  afterEach(() => useStore.setState({ _getRC: getRC }));
+
+  it('cambio de cuenta con Pro que no viaja solo → restaura y lo mueve', async () => {
+    await useStore.getState().syncPurchaserId('uuid-B', { switched: true });
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-B');
+    expect(RC.restorePurchases).toHaveBeenCalled();
+    expect(useStore.getState().profile.isPro).toBe(true);
+  });
+
+  it('al arrancar no restaura: «tenía Pro y ya no» es una suscripción caducada', async () => {
+    await useStore.getState().syncPurchaserId('uuid-A');
+    expect(RC.restorePurchases).not.toHaveBeenCalled();
+    expect(useStore.getState().profile.isPro).toBe(false);
+  });
+
+  it('sin RevenueCat configurado no toca nada', async () => {
+    RC.isConfigured = vi.fn(async () => false);
+    await useStore.getState().syncPurchaserId('uuid-B', { switched: true });
+    expect(RC.logIn).not.toHaveBeenCalled();
+    expect(useStore.getState().profile.isPro).toBe(true);
   });
 });
 

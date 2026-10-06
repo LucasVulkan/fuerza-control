@@ -158,7 +158,13 @@ export default function App() {
 
   // Initialise RevenueCat then sync pro status (native module — silently skipped in Expo Go)
   // EXPO_PUBLIC_FORCE_PRO=true skips the RC check (used in preview builds for testing)
+  //
+  // Espera a la hidratación para configurar YA con la cuenta del entrenador
+  // (M01-01). Configurar anónimo y hacer `logIn` después dejaba una carrera: el
+  // `checkProStatus` del anónimo podía resolver tarde y pisar el Pro de la cuenta.
+  const hasHydrated = useStore((s) => s._hasHydrated);
   useEffect(() => {
+    if (!hasHydrated) return;
     if (process.env.EXPO_PUBLIC_FORCE_PRO === 'true') return; // preview build → keep isPro as-is
     try {
       const Purchases = require('react-native-purchases').default;
@@ -173,12 +179,26 @@ export default function App() {
         console.warn('[RevenueCat] clave sin configurar para', Platform.OS, '— sin comprobacion de suscripcion');
         return;
       }
-      Purchases.configure({ apiKey });
+      const appUserID = useStore.getState().trainerSync.userId ?? undefined;
+      Purchases.configure({ apiKey, appUserID });
       checkProStatus();
     } catch {
       // Expo Go or build without native module — isPro stays as persisted value
     }
-  }, []);
+  }, [hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // M01-01: cambios de cuenta DESPUÉS de configurar (el arranque ya entra con
+  // `appUserID`; antes de configurar, `syncPurchaserId` no hace nada). El id
+  // anterior distingue un cambio de cuenta (código → Google) de la hidratación.
+  const trainerUserId = useStore((s) => s.trainerSync.userId);
+  const syncPurchaserId = useStore((s) => s.syncPurchaserId);
+  const prevTrainerUserIdRef = useRef(null);
+  useEffect(() => {
+    const prev = prevTrainerUserIdRef.current;
+    prevTrainerUserIdRef.current = trainerUserId;
+    if (!trainerUserId) return; // a «sin conexión» no se sale de RevenueCat: el Pro sigue
+    syncPurchaserId(trainerUserId, { switched: !!prev && prev !== trainerUserId });
+  }, [trainerUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!fontsLoaded) return null; // splash stays up until fonts are ready
 
