@@ -179,7 +179,7 @@ que dentro de tres meses alguien invente el decimoquinto.
 | `button` | 14 / 900 / 0 | todo lo que se pulsa y lleva palabra **(identidad)** |
 | `label` | 12 / 500 / 0 | metadatos, unidades, filas densas |
 | `labelStrong` | 12 / 800 / 0 | su énfasis |
-| `caps` | 12 / 800 / +1.2 | la ceja en versales, una para toda la app |
+| `caps` | 12 / 800 / +1.6 (era +1.2 hasta oct-2026) | la ceja en versales, una para toda la app |
 | `micro` | 11 / 500 / 0 | el suelo: tab bar, ejes, sufijos |
 | `code` | 22 / 900 / +4 | códigos de emparejamiento y tempo |
 
@@ -190,7 +190,7 @@ callada y su versión firme**, y se sube de peso antes que de cuerpo.
 |---|---|---|---|
 | 16 | `itemTitleQuiet` 700 | — | `itemTitle` 900 |
 | 14 | `body` 500 | `bodyStrong` 700 | `button` 900 |
-| 12 | `label` 500 | `labelStrong` 800 | `caps` 800 +1.2 |
+| 12 | `label` 500 | `labelStrong` 800 | `caps` 800 +1.6 |
 | 11 | `micro` 500 | — | — |
 
 ### 4.1 Mapa de los veinte tokens viejos

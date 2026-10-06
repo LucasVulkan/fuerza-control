@@ -75,13 +75,13 @@ describe('escala tipográfica', () => {
     }
   });
 
-  it('el tracking positivo es sólo para versales, y vale 1.2', () => {
+  it('el tracking positivo es sólo para versales, y vale 1.6', () => {
     // `code` queda fuera a propósito: se lee carácter a carácter, no como
     // palabra, así que su aire es funcional y no tipográfico.
     for (const [name, s] of roles) {
       if (name === 'code') continue;
       if (s.letterSpacing > 0) {
-        expect(s.letterSpacing, `${name} inventa un tracking positivo`).toBe(1.2);
+        expect(s.letterSpacing, `${name} inventa un tracking positivo`).toBe(1.6);
         expect(name, `${name} lleva tracking sin ser versales`).toBe('caps');
       }
     }

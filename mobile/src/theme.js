@@ -93,7 +93,7 @@ export const radius = {
 //
 // Tres reglas y ninguna excepción suelta:
 //
-//   1. TRACKING. Mayúsculas → +1.2. Caja baja hasta 22 → 0. Display > 22 →
+//   1. TRACKING. Mayúsculas → +1.6. Caja baja hasta 22 → 0. Display > 22 →
 //      −0.02 em. El tracking positivo sólo hace algo en versales; en caja baja a
 //      12 px abre huecos y frena la lectura. Había 27 valores distintos.
 //   2. PESO. Cuatro: 500 apaga, 700 firma, 800 rotula, 900 es identidad. Fuera
@@ -192,13 +192,13 @@ export const textStyles = {
   labelStrong: { fontFamily: 'Inter_800ExtraBold', fontSize: 12, letterSpacing: 0 },
   // La ceja en VERSALES, una sola para toda la app. Antes eran tres tokens
   // —`cardType` 12/800/1.2, `spacingTag` 12/800/2 y `smallBold` 10/600/1.12—
-  // que sumaban 201 sitios y decían LO MISMO. El +1.2 va aquí y en ningún otro
+  // que sumaban 201 sitios y decían LO MISMO. El tracking (+1.6 desde oct-2026, antes +1.2: el usuario pidió más aire) va aquí y en ningún otro
   // sitio: es el único caso en que el tracking positivo hace algo.
   //
   // No lleva `textTransform`: hay medio centenar de sitios que ya mandan la
   // cadena en mayúsculas desde el `.toUpperCase()` o desde el locale, y meterlo
   // aquí no cambiaría nada salvo tapar el día en que uno de ellos deje de serlo.
-  caps:  { fontFamily: 'Inter_800ExtraBold', fontSize: 12, letterSpacing: 1.2 },
+  caps:  { fontFamily: 'Inter_800ExtraBold', fontSize: 12, letterSpacing: 1.6 },
   // El suelo. Sólo tres sitios lo merecen: tab bar, ejes de gráfica y sufijos de
   // unidad. Si aparece un cuarto, casi siempre es que quería ser `label`.
   micro: { fontFamily: 'Inter_500Medium', fontSize: 11, letterSpacing: 0 },
