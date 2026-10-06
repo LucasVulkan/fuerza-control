@@ -145,19 +145,19 @@ igual sobre lima y sobre gris, entre la meta y el botón; `ExerciseLines` tal cu
 
 **Probar U13-01**
 
-- [ ] Menú › Preferencias › «Sesiones en pestañas»: Inicio cambia a una tarjeta con una pestaña por sesión; al apagarlo vuelve la lista.
-- [ ] Las pestañas se ven como en la captura: inclinadas, separadas por una línea de lima, esquinas de abajo redondas, la primera cortada recta por el borde de la tarjeta.
-- [ ] La sesión hecha esta semana lleva ✓ verde; las demás, su letra en blanco.
-- [ ] Al entrar, está abierta la que toca: tarjeta lima, nombre y meta en negro, EMPEZAR negro.
-- [ ] Tocar otra pestaña: la tarjeta pasa a gris, la pestaña de la que toca queda lima con su letra en negro, y el botón es lima (o REPETIR gris si está hecha).
-- [ ] EMPEZAR / CONTINUAR / REPETIR arranca esa sesión (o vuelve a la que está a medias).
-- [ ] Salir de Inicio y volver: está abierta otra vez la que toca.
-- [ ] Guardar la sesión que toca: al volver, la tarjeta abre la siguiente y la hecha lleva ✓.
-- [ ] Con 6 sesiones caben todas y el chevron; con 7 (o en un móvil estrecho), se estrechan sin pisarlo.
-- [ ] La abierta que no es la que toca lleva la letra en lima.
-- [ ] Tocar el nombre, la meta o el hueco del chevron despliega los ejercicios en la caja negra; otra vez, los recoge. El chevron apunta abajo mientras están abiertos.
-- [ ] Con los ejercicios abiertos, cambiar de pestaña enseña los de la otra sesión, sin cerrarse.
-- [ ] Con TalkBack / VoiceOver, cada pestaña se lee y se elige con doble toque.
+- [x] Menú › Preferencias › «Sesiones en pestañas»: Inicio cambia a una tarjeta con una pestaña por sesión; al apagarlo vuelve la lista.
+- [x] Las pestañas se ven como en la captura: inclinadas, separadas por una línea de lima, esquinas de abajo redondas, la primera cortada recta por el borde de la tarjeta.
+- [x] La sesión hecha esta semana lleva ✓ verde; las demás, su letra en blanco.
+- [x] Al entrar, está abierta la que toca: tarjeta lima, nombre y meta en negro, EMPEZAR negro.
+- [x] Tocar otra pestaña: la tarjeta pasa a gris, la pestaña de la que toca queda lima con su letra en negro, y el botón es lima (o REPETIR gris si está hecha).
+- [x] EMPEZAR / CONTINUAR / REPETIR arranca esa sesión (o vuelve a la que está a medias).
+- [x] Salir de Inicio y volver: está abierta otra vez la que toca.
+- [x] Guardar la sesión que toca: al volver, la tarjeta abre la siguiente y la hecha lleva ✓.
+- [x] Con 6 sesiones caben todas y el chevron; con 7 (o en un móvil estrecho), se estrechan sin pisarlo.
+- [x] La abierta que no es la que toca lleva la letra en lima.
+- [x] Tocar el nombre, la meta o el hueco del chevron despliega los ejercicios en la caja negra; otra vez, los recoge. El chevron apunta abajo mientras están abiertos.
+- [x] Con los ejercicios abiertos, cambiar de pestaña enseña los de la otra sesión, sin cerrarse.
+- [x] Con TalkBack / VoiceOver, cada pestaña se lee y se elige con doble toque.
 
 ## 4. U13-02 — El color se extiende desde la pestaña
 
@@ -199,15 +199,15 @@ acabar, pasa a ser el de debajo.
 
 **Probar U13-02**
 
-- [ ] De la que toca a otra: el gris sale de la pestaña tocada y cubre la tarjeta, sin parpadeo al acabar.
-- [ ] De otra a la que toca: el lima sale de su pestaña.
-- [ ] Tocar pestañas muy seguido no deja la tarjeta de un color que no toca.
-- [ ] El texto no se queda ilegible mientras el color avanza (negro sobre gris o blanco sobre lima un instante es aceptable; más, no).
-- [ ] Entre dos sesiones grises: la pestaña nueva se llena de gris desde abajo y la anterior se vacía.
-- [ ] El nombre entra desde la derecha al ir a una pestaña de la derecha, y desde la izquierda al revés; no da saltos.
-- [ ] Deslizando rápido por las pestañas no quedan pestañas a medio llenar ni nombres superpuestos.
-- [ ] Ir y volver deprisa entre la que toca y otra: el color se recoge o sigue desde donde iba, sin saltar a la tarjeta llena.
-- [ ] Ir y volver deprisa (tocando o deslizando) entre la que toca y otras: la pestaña de la que toca acaba siempre lima, y la abierta siempre del color de la tarjeta.
+- [x] De la que toca a otra: el gris sale de la pestaña tocada y cubre la tarjeta, sin parpadeo al acabar.
+- [x] De otra a la que toca: el lima sale de su pestaña.
+- [x] Tocar pestañas muy seguido no deja la tarjeta de un color que no toca.
+- [x] El texto no se queda ilegible mientras el color avanza (negro sobre gris o blanco sobre lima un instante es aceptable; más, no).
+- [x] Entre dos sesiones grises: la pestaña nueva se llena de gris desde abajo y la anterior se vacía.
+- [x] El nombre entra desde la derecha al ir a una pestaña de la derecha, y desde la izquierda al revés; no da saltos.
+- [x] Deslizando rápido por las pestañas no quedan pestañas a medio llenar ni nombres superpuestos.
+- [x] Ir y volver deprisa entre la que toca y otra: el color se recoge o sigue desde donde iba, sin saltar a la tarjeta llena.
+- [x] Ir y volver deprisa (tocando o deslizando) entre la que toca y otras: la pestaña de la que toca acaba siempre lima, y la abierta siempre del color de la tarjeta.
 
 ## 5. U13-03 — Deslizar por las pestañas
 
@@ -228,10 +228,10 @@ cambio. Un toque corto elige como siempre. Primero había que mantener pulsado
 
 **Probar U13-03**
 
-- [ ] Deslizar el dedo a lo largo de las pestañas, sin mantener: se van abriendo una a una, con un toque háptico en cada una.
-- [ ] Al soltar se queda abierta la última.
-- [ ] Empezar a hacer scroll de Inicio con el dedo sobre las pestañas sigue haciendo scroll, sin abrir ninguna.
-- [ ] Mientras se desliza, Inicio no se mueve en vertical.
+- [x] Deslizar el dedo a lo largo de las pestañas, sin mantener: se van abriendo una a una, con un toque háptico en cada una.
+- [x] Al soltar se queda abierta la última.
+- [x] Empezar a hacer scroll de Inicio con el dedo sobre las pestañas sigue haciendo scroll, sin abrir ninguna.
+- [x] Mientras se desliza, Inicio no se mueve en vertical.
 
 ## 6. U13-04 — Lo abierto (aparcado)
 
@@ -288,12 +288,12 @@ para tener dos.
 
 **Probar U13-05**
 
-- [ ] Sin tocar nada: con A y C hechas esta semana, B hecha otra semana y D nunca, toca la D (como siempre).
-- [ ] Editor del programa › «La semana empieza por la A»: en el mismo caso toca la B, en lista y en pestañas.
-- [ ] Con la opción y todas hechas esta semana, toca la que hace más tiempo que hiciste.
-- [ ] Con la opción, el lunes siguiente vuelve a tocar la A.
-- [ ] El entrenador la activa en el programa de un cliente y lo sube: al cliente le sale en el aviso de cambios, y su Inicio y la ficha del entrenador dicen la misma sesión.
-- [ ] El botón de las pestañas es igual que el de la lista: EMPEZAR SESIÓN B negro sobre lima en la que toca, lima en otra pendiente, gris al REPETIR.
+- [x] Sin tocar nada: con A y C hechas esta semana, B hecha otra semana y D nunca, toca la D (como siempre).
+- [x] Editor del programa › QUÉ SESIÓN TOCA › Desde la A: en el mismo caso toca la B, en lista y en pestañas.
+- [x] Con la opción y todas hechas esta semana, toca la que hace más tiempo que hiciste.
+- [ ] Con la opción, el lunes siguiente vuelve a tocar la A. — pendiente: no se puede ver hasta el lunes 12-oct
+- [x] El entrenador la activa en el programa de un cliente y lo sube: al cliente le sale en el aviso de cambios, y su Inicio y la ficha del entrenador dicen la misma sesión.
+- [x] El botón de las pestañas es igual que el de la lista: EMPEZAR SESIÓN B negro sobre lima en la que toca, lima en otra pendiente, gris al REPETIR.
 
 ## 9. U13-06 — Programa libre: ninguna sesión toca
 
@@ -320,11 +320,11 @@ quiere.
 
 **Probar U13-06**
 
-- [ ] Editor del programa › QUÉ SESIÓN TOCA › Libre: en Inicio (lista) ninguna sesión sale en lima.
-- [ ] En pestañas, ni la tarjeta ni ninguna pestaña en lima; se abre la primera sin hacer esta semana, y la abierta lleva la letra en lima.
-- [ ] Cambiar de pestaña llena y vacía las pestañas, sin círculo de color.
-- [ ] El botón de cualquier sesión es lima (o gris al REPETIR) y arranca esa sesión.
-- [ ] El entrenador pone Libre en el programa de un cliente y lo sube: el aviso dice que ya no hay sesión que toque; su ficha y «Preparar sesión» abren la primera de la etapa.
+- [x] Editor del programa › QUÉ SESIÓN TOCA › Libre: en Inicio (lista) ninguna sesión sale en lima.
+- [x] En pestañas, ni la tarjeta ni ninguna pestaña en lima; se abre la primera sin hacer esta semana, y la abierta lleva la letra en lima.
+- [x] Cambiar de pestaña llena y vacía las pestañas, sin círculo de color.
+- [x] El botón de cualquier sesión es lima (o gris al REPETIR) y arranca esa sesión.
+- [x] El entrenador pone Libre en el programa de un cliente y lo sube: el aviso dice que ya no hay sesión que toque; su ficha y «Preparar sesión» abren la primera de la etapa.
 
 ## 10. U13-07 — Menos colores en las pestañas: probado y vuelto atrás
 
@@ -349,8 +349,8 @@ leía bien pero no convenció, y el mismo día se volvió a la de antes (letras 
 
 **Probar U13-07**
 
-- [ ] Las pestañas sin abrir se ven algo más oscuras que antes y se siguen distinguiendo de la tarjeta gris.
-- [ ] REPETIR SESIÓN (y EDITAR / compartir) se distingue bien sobre la tarjeta, en la lista y en las pestañas.
+- [x] Las pestañas sin abrir se ven algo más oscuras que antes y se siguen distinguiendo de la tarjeta gris.
+- [x] REPETIR SESIÓN (y EDITAR / compartir) se distingue bien sobre la tarjeta, en la lista y en las pestañas.
 
 ## 11. U13-08 — Radio más bajo y menos aire
 
@@ -368,8 +368,8 @@ Pedido el 6-oct-2026, tras ver las pestañas en el móvil:
 
 **Probar U13-08**
 
-- [ ] Las tarjetas de sesión (lista y pestañas) y sus botones tienen las esquinas menos redondas.
-- [ ] En el tab Programa, la tarjeta y Editar · Ver · ⋯ van con el radio nuevo y más juntos (4 entre tarjeta y botones y entre botones).
+- [x] Las tarjetas de sesión (lista y pestañas) y sus botones tienen las esquinas menos redondas.
+- [x] En el tab Programa, la tarjeta y Editar · Ver · ⋯ van con el radio nuevo y más juntos (4 entre tarjeta y botones y entre botones).
 
 ## 12. U13-09 — Progresión: radio más bajo y menos aire
 
@@ -384,5 +384,5 @@ Lo mismo que §11, en el tab Progresión (6-oct-2026):
 
 **Probar U13-09**
 
-- [ ] En Progresión › Ejercicios y › Carga, las tres tarjetas de arriba tienen las esquinas menos redondas y van más juntas.
-- [ ] En Carga, la gráfica y el calendario llevan el mismo radio que esas tarjetas.
+- [x] En Progresión › Ejercicios y › Carga, las tres tarjetas de arriba tienen las esquinas menos redondas y van más juntas.
+- [x] En Carga, la gráfica y el calendario llevan el mismo radio que esas tarjetas.
