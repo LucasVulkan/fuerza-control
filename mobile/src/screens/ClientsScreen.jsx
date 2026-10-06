@@ -19,7 +19,6 @@ import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
-import PaywallModal from '../components/PaywallModal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -53,6 +52,10 @@ import { sessionStats } from '../utils/sessionStats';
 import { pickImportFile } from '../utils/pickImportFile';
 import { programsOf, templatesOf, copySources } from '../utils/programOwnership';
 import { filterBySearch } from '../utils/searchText';
+import { FREE, activeClientIds, canChooseMore } from '../utils/freePlan';
+import FreeClientsSheet from '../components/FreeClientsSheet';
+import ProBadge from '../components/ui/ProBadge';
+import { useFreeGates } from '../useFreeGates';
 import { LockIcon, CheckIcon, ChevronDown, CloseIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
@@ -199,6 +202,7 @@ function AssignedProgramCard({
   dirty, client, link, log, archivedCount,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImportHistory, onSaveTemplate, onAssign,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived, fold,
+  locked = false, templateLocked = false,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -270,8 +274,9 @@ function AssignedProgramCard({
             <Text style={styles.lockTag}>{t('clients.changesPendingTag')}</Text>
           </View>
           <Text style={styles.lockText}>{t('clients.changesPendingText')}</Text>
-          <TouchableOpacity style={styles.lockBtn} onPress={onUpload} activeOpacity={0.85}>
-            <Text style={styles.lockBtnText}>{t('clients.menuUpload')}</Text>
+          <TouchableOpacity style={[styles.lockBtn, locked && styles.lockBtnPro]} onPress={onUpload} activeOpacity={0.85}>
+            <Text style={[styles.lockBtnText, locked && styles.lockBtnTextPro]}>{t('clients.menuUpload')}</Text>
+            {locked && <ProBadge />}
           </TouchableOpacity>
         </View>
       )}
@@ -289,8 +294,9 @@ function AssignedProgramCard({
               next:    nextStage.name,
             })}
           </Text>
-          <TouchableOpacity style={styles.lockBtn} onPress={() => onUnlock(stageIdx + 1)} activeOpacity={0.85}>
-            <Text style={styles.lockBtnText}>{t('clients.stageUnlockBtn')}</Text>
+          <TouchableOpacity style={[styles.lockBtn, locked && styles.lockBtnPro]} onPress={() => onUnlock(stageIdx + 1)} activeOpacity={0.85}>
+            <Text style={[styles.lockBtnText, locked && styles.lockBtnTextPro]}>{t('clients.stageUnlockBtn')}</Text>
+            {locked && <ProBadge />}
           </TouchableOpacity>
         </View>
       )}
@@ -306,8 +312,9 @@ function AssignedProgramCard({
           <Text style={styles.lockText}>
             {t('clients.blockDoneText', { current: currentStage?.name ?? '' })}
           </Text>
-          <TouchableOpacity style={styles.lockBtn} onPress={onPlanStages} activeOpacity={0.85}>
-            <Text style={styles.lockBtnText}>{t('clients.blockDoneBtn')}</Text>
+          <TouchableOpacity style={[styles.lockBtn, locked && styles.lockBtnPro]} onPress={onPlanStages} activeOpacity={0.85}>
+            <Text style={[styles.lockBtnText, locked && styles.lockBtnTextPro]}>{t('clients.blockDoneBtn')}</Text>
+            {locked && <ProBadge />}
           </TouchableOpacity>
         </View>
       )}
@@ -345,7 +352,7 @@ function AssignedProgramCard({
         pace={paceHasData ? paceRaw : null}
         loadPct={loadPct}
       />
-      <ProgramActions onEdit={onEdit} onView={onView} onMore={() => setMenuOpen(true)} />
+      <ProgramActions onEdit={onEdit} onView={onView} onMore={() => setMenuOpen(true)} editLocked={locked} />
 
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
           hace de su app (C05-trainer-logging.md §3.1). Preparar no aplica: manda
@@ -365,9 +372,10 @@ function AssignedProgramCard({
             </Text>
           )}
         </View>
-        <TouchableOpacity style={[styles.apBtn, styles.apBtnAccent]} onPress={onPrescribe} activeOpacity={0.85}>
-          <TargetIcon size={16} color={th.colors.accent} />
-          <Text style={[styles.apBtnText, { color: th.colors.accent }]}>{t('clients.prepare')}</Text>
+        <TouchableOpacity style={[styles.apBtn, !locked && styles.apBtnAccent]} onPress={onPrescribe} activeOpacity={0.85}>
+          <TargetIcon size={16} color={locked ? th.colors.text : th.colors.accent} />
+          <Text style={[styles.apBtnText, { color: locked ? th.colors.text : th.colors.accent }]}>{t('clients.prepare')}</Text>
+          {locked && <ProBadge />}
         </TouchableOpacity>
       </View>
       {/* Con app: explica por qué aquí no se apunta (lo que se lee cuando un
@@ -378,12 +386,12 @@ function AssignedProgramCard({
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
         <Section style={styles.sheetSection}>
-          <SheetRow icon={ROW_ICON.new}    label={t('clients.assignProgram')} onPress={onAssign} />
-          {onUpload && <SheetRow icon={ROW_ICON.send} label={t('clients.menuUpload')} onPress={onUpload} />}
+          <SheetRow icon={ROW_ICON.new}    label={t('clients.assignProgram')} onPress={onAssign} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />
+          {onUpload && <SheetRow icon={ROW_ICON.send} label={t('clients.menuUpload')} onPress={onUpload} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />}
           <SheetRow icon={ROW_ICON.share}  label={t('clients.menuShare')}  onPress={onShare} />
           <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={onExport} />
-          <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={onImportHistory} />
-          <SheetRow icon={ROW_ICON.preset} label={t('clients.menuSaveTemplate')} onPress={onSaveTemplate} />
+          <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={onImportHistory} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />
+          <SheetRow icon={ROW_ICON.preset} label={t('clients.menuSaveTemplate')} onPress={onSaveTemplate} labelColor={templateLocked ? th.colors.mutedLight : undefined} badge={templateLocked ? 'PRO' : undefined} />
           {archivedCount > 0 && (
             <SheetRow
               icon={ROW_ICON.history}
@@ -475,6 +483,9 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
     );
   }
 
+  const { gates, gate } = useFreeGates();
+  const reissueLock = gates.client(client.id);
+
   async function handleCopy() {
     await Clipboard.setStringAsync(client.syncCode);
     setCopied(true);
@@ -489,10 +500,16 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   }
 
   const reissueRow = (
-    <TouchableOpacity style={styles.codeTertiary} onPress={handleReissue} disabled={reissuing} activeOpacity={0.6}>
+    <TouchableOpacity
+      style={[styles.codeTertiary, reissueLock && { flexDirection: 'row', gap: spacing.sm }]}
+      onPress={gate(reissueLock, handleReissue)}
+      disabled={reissuing}
+      activeOpacity={0.6}
+    >
       <Text style={styles.codeTertiaryText}>
         {reissuing ? t('clients.keyTab.connecting') : t('clients.codeCard.reissue')}
       </Text>
+      {!!reissueLock && <ProBadge />}
     </TouchableOpacity>
   );
 
@@ -594,9 +611,9 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
   async function handleGo() {
     setBusy(true);
     try {
-      await moveClientToApp(client.id);
-      showToast(t('clients.moveToApp.done'), 2200, 'success');
+      const moved = await moveClientToApp(client.id);
       onClose();
+      if (moved) showToast(t('clients.moveToApp.done'), 2200, 'success');
     } catch (err) {
       showDialog(t('common.error'), err?.message ?? t('clients.keyTab.connectError'));
     } finally {
@@ -1199,9 +1216,9 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
   async function handleConnect() {
     setLoading(true);
     try {
-      await onConnectCloud();
-      showToast(t('clients.clientConnected'), 2200, 'success');
+      const connected = await onConnectCloud();
       onClose();
+      if (connected) showToast(t('clients.clientConnected'), 2200, 'success');
     } catch (err) {
       showDialog(t('common.error'), err.message ?? t('clients.keyTab.connectError'));
     } finally {
@@ -1276,7 +1293,7 @@ function CloudUpIcon({ size = 20, color }) {
 // behind this sheet. Era un `Modal` propio con filas `›` de texto; desde
 // U09-pulido-ui.md §3 es un `DragSheet` con las filas de opción de la app.
 
-function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart, onClose, onProgress, onNextSession, onEditProgram, onInfo }) {
+function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart, onClose, onProgress, onNextSession, onEditProgram, onInfo, locked = false }) {
   const th = useTheme();
   const { t } = useTranslation();
   // Cierre al instante, como antes: varias acciones abren otro Modal (el
@@ -1289,8 +1306,9 @@ function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart,
         {onStart && (
           <SheetRow
             icon={ROW_ICON.start}
-            iconColor={th.colors.accent}
-            labelColor={th.colors.accent}
+            iconColor={locked ? undefined : th.colors.accent}
+            labelColor={locked ? th.colors.mutedLight : th.colors.accent}
+            badge={locked ? 'PRO' : undefined}
             label={startLabel}
             onPress={run(onStart)}
           />
@@ -1306,13 +1324,20 @@ function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart,
         {onNextSession && (
           <SheetRow
             icon={ROW_ICON.target}
-            iconColor={th.colors.blue}
-            labelColor={th.colors.blue}
+            iconColor={locked ? undefined : th.colors.blue}
+            labelColor={locked ? th.colors.mutedLight : th.colors.blue}
+            badge={locked ? 'PRO' : undefined}
             label={t('clients.actNextSession')}
             onPress={run(onNextSession)}
           />
         )}
-        <SheetRow icon={ROW_ICON.edit} label={t('clients.actEditProgram')} onPress={run(onEditProgram)} />
+        <SheetRow
+          icon={ROW_ICON.edit}
+          label={t('clients.actEditProgram')}
+          labelColor={locked ? th.colors.mutedLight : undefined}
+          badge={locked ? 'PRO' : undefined}
+          onPress={run(onEditProgram)}
+        />
         <SheetRow icon={ROW_ICON.user} label={t('clients.actInfo')}        onPress={run(onInfo)} />
       </Section>
     </DragSheet>
@@ -1364,7 +1389,7 @@ function ClientListCard({
   client, activeProgram, log, lastActivityTs, isConnected,
   adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
-  inProgress = false, onContinue, invited = false, linked = false,
+  inProgress = false, onContinue, invited = false, linked = false, frozen = false,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -1427,7 +1452,10 @@ function ClientListCard({
   // desaparece: sin nada urgente el hueco lo ocupa la fecha o "N sin revisar".
   // Un entreno suyo a medias (lo apuntaba yo, C05-trainer-logging.md §3.7) va
   // primero: es lo único de la lista que se está perdiendo ahora mismo.
-  const cta = inProgress
+  // Congelado (M01 §4.5): ni enviar ni desbloquear; tocar la tarjeta sigue
+  // abriendo su ficha en solo lectura.
+  const cta = frozen ? null
+    : inProgress
     ? { label: t('clients.btnContinue'), bg: th.colors.accent, onPress: onContinue }
     : !activeProgram
     ? { label: t('clients.btnProgramShort'), bg: th.colors.accent, onPress: onOpenEditor }
@@ -1446,14 +1474,15 @@ function ClientListCard({
   const manualStatus = client.status ?? 'active';
   // El invitado aún no ha canjeado el código: sin fecha que dar, lo dice
   // (C28 §4.0.4), con el mismo tratamiento que «Pausado».
-  const statusLabel  = manualStatus === 'paused'   ? t('clients.statusPaused')
+  const statusLabel  = frozen                      ? t('freePlan.frozenLabel')
+                     : manualStatus === 'paused'   ? t('clients.statusPaused')
                      : manualStatus === 'inactive' ? t('clients.statusInactive')
                      : invited                     ? t('clients.statusInvited')
                      : null;
 
   return (
     <TouchableOpacity
-      style={styles.cCard}
+      style={[styles.cCard, frozen && styles.cCardFrozen]}
       onPress={onPress}
       onLongPress={onOpenActions}
       delayLongPress={350}
@@ -1654,8 +1683,6 @@ export default function ClientsScreen() {
   const renameTag    = useStore((s) => s.renameTag);
   const deleteTag    = useStore((s) => s.deleteTag);
 
-  const isPro        = profile.isPro ?? false;
-  const setProfile   = useStore((s) => s.setProfile);
   const trainerSync  = useStore((s) => s.trainerSync);
   // Con app o sin app, en un solo sitio (C28): lista, aviso, ficha y hojas.
   const linkOf = useCallback((c) => clientLink(c, trainerSync), [trainerSync]);
@@ -1674,6 +1701,23 @@ export default function ClientsScreen() {
 
   const templatePrograms = useMemo(() => templatesOf(programs), [programs]);
 
+  // Plan gratis (M01 §4.5-4.6): los que siguen activos sin Pro. null = todos.
+  const isPro = profile.isPro ?? false;
+  const freeActive = useMemo(
+    () => (isPro ? null : activeClientIds(clients, profile.freeClientIds)),
+    [isPro, clients, profile.freeClientIds],
+  );
+  const isFrozen    = useCallback((id) => freeActive !== null && !freeActive.has(id), [freeActive]);
+  const frozenCount = freeActive === null ? 0 : Object.keys(clients ?? {}).length - freeActive.size;
+  const needsChoice = freeActive !== null && freeActive.size === 0;
+  // Elegido ya, el aviso desaparece: solo vuelve si queda un hueco que ocupar.
+  const freeRoom    = !needsChoice && freeActive !== null && canChooseMore(clients, profile.freeClientIds);
+  const [showFreeChoice, setShowFreeChoice] = useState(false);
+  // Lo mismo, acción a acción, para marcar con PRO lo que no se puede (§4.11).
+  const { gates, gate } = useFreeGates();
+  // Tras caducar sin elegir, la hoja sale sola: mientras no elija, todo congelado.
+  useEffect(() => { if (needsChoice) setShowFreeChoice(true); }, [needsChoice]); // eslint-disable-line react-hooks/set-state-in-effect
+
   const clientCounts = useMemo(() => {
     const all      = Object.values(clients ?? {});
     const active   = all.filter((c) => (c.status ?? 'active') !== 'inactive').length;
@@ -1682,7 +1726,6 @@ export default function ClientsScreen() {
   }, [clients]);
 
   // ── UI State ───────────────────────────────────────────────────────────────
-  const [showPaywall,      setShowPaywall]      = useState(false);
   const [view,             setView]             = useState('list'); // 'list' | 'detail'
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [activeTab,        setActiveTab]        = useState('programs');
@@ -1838,8 +1881,8 @@ export default function ClientsScreen() {
   // Solo los que tienen app: al invitado se le sube solo y al que no tiene no
   // se le manda nada.
   const pendingClients = useMemo(
-    () => Object.values(clients ?? {}).filter((c) => linkOf(c) === 'linked' && (c.programDirty || c.overridesDirty)),
-    [clients, linkOf],
+    () => Object.values(clients ?? {}).filter((c) => linkOf(c) === 'linked' && (c.programDirty || c.overridesDirty) && !isFrozen(c.id)),
+    [clients, linkOf, isFrozen],
   );
   const pendingOverrideCount = pendingClients.filter((c) => c.overridesDirty).length;
   const pendingProgramCount  = pendingClients.filter((c) => c.programDirty).length;
@@ -1910,10 +1953,22 @@ export default function ClientsScreen() {
     return list;
   }, [clients, search, statusFilter, tagFilter, sortMode, clientLogs, effectiveAdherenceFilter, adherenceByClient, unreviewedByClient]);
 
+  // Los congelados, al final y bajo su propio título (M01 §4.5): no se mezclan
+  // con los que llevas. Mismo orden dentro de cada grupo.
+  const listData = useMemo(() => {
+    if (!frozenCount) return clientList;
+    const cold = clientList.filter((c) => isFrozen(c.id));
+    if (!cold.length) return clientList;
+    return [...clientList.filter((c) => !isFrozen(c.id)), { id: '__frozen', __section: cold.length }, ...cold];
+  }, [clientList, frozenCount, isFrozen]);
+
   // tagRegistry is the source of truth — no useMemo needed
   const allTags = tagRegistry;
 
   const selectedClient = selectedClientId ? clients?.[selectedClientId] : null;
+  // El cliente abierto, congelado (M01 §4.5): sus acciones llevan PRO.
+  const detailLock = selectedClientId ? gates.client(selectedClientId) : null;
+  const connectLock = selectedClientId ? gates.connect(selectedClientId) : null;
 
   // Derivada, no guardada: no puede contener ids muertos porque no contiene
   // ids. De ahí que se fuera el `filter(Boolean)` que había aquí.
@@ -2044,10 +2099,8 @@ export default function ClientsScreen() {
   // ── Auto-open sync modal on first visit ────────────────────────────────────
 
   useEffect(() => {
-    if (isPro && trainerSync.mode === null) {
-      setShowSyncModal(true);
-    }
-  }, [isPro]); // run once when screen mounts as PRO user
+    if (trainerSync.mode === null) setShowSyncModal(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Auto-fetch slot session counts on mount ─────────────────────────────────
 
@@ -2176,10 +2229,11 @@ export default function ClientsScreen() {
     if (!canCreateClient) return;
     const name = newClientName.trim();
     const withApp = askClientMode && newClientMode === 'app';
+    setShowNewClient(false);
+    // Si el plan gratis lo para, el nombre se queda escrito para la próxima.
+    if (!(await createClient(name, { withApp }))) return;
     setNewClientName('');
     setNewClientMode(null);
-    setShowNewClient(false);
-    await createClient(name, { withApp });
   }
 
   function handleDeleteClient(clientId) {
@@ -2220,8 +2274,9 @@ export default function ClientsScreen() {
 
   // Copia suelta como plantilla: con `kind: 'template'` no abre el editor ni toca ningún programa activo.
   function saveAsTemplate(program) {
-    cloneProgramFromTemplate(program.id, { kind: 'template', name: program.name });
-    showToast(t('clients.toastSavedTemplate'));
+    if (cloneProgramFromTemplate(program.id, { kind: 'template', name: program.name })) {
+      showToast(t('clients.toastSavedTemplate'));
+    }
   }
 
   function handleAssignFile(data, withHistory) {
@@ -2289,29 +2344,6 @@ export default function ClientsScreen() {
   }
 
   // ── PRO gate ───────────────────────────────────────────────────────────────
-
-  if (!isPro) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <AppHeader />
-        <EmptyState
-          style={styles.emptyState}
-          icon={ROW_ICON.user}
-          title={t('clients.proGateTitle')}
-          text={t('clients.proGateBody')}
-          action={{ label: t('clients.proGateCta'), onPress: () => setShowPaywall(true) }}
-          secondary={{
-            label:   t('templates.hideTab'),
-            onPress: () => {
-              setProfile({ proTabsHidden: true });
-              navigation.navigate('Home');
-            },
-          }}
-        />
-        {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
-      </View>
-    );
-  }
 
   // ── Client detail ──────────────────────────────────────────────────────────
 
@@ -2417,6 +2449,8 @@ export default function ClientsScreen() {
 
               {activeProgram ? (
                 <AssignedProgramCard
+                  locked={!!detailLock}
+                  templateLocked={!!gates.newProgramTemplate}
                   program={activeProgram}
                   getEffectiveTemplate={getEffectiveTemplate}
                   allExercises={allExercises}
@@ -2429,17 +2463,17 @@ export default function ClientsScreen() {
                   log={clientBaseLog}
                   archivedCount={previousPrograms.length}
                   onView={() => setPrintingProgram(activeProgram.id)}
-                  onEdit={() => setEditingProgram(activeProgram.id)}
+                  onEdit={gate(detailLock, () => setEditingProgram(activeProgram.id))}
                   // Solo con app: al invitado se le sube solo, y durante esa
                   // subida el aviso naranja asomaba (C28 §4.0.4).
-                  onUpload={syncEnabled && linkOf(selectedClient) === 'linked' ? () => uploadProgram(activeProgram.id) : undefined}
-                  onPrescribe={() => navigation.navigate('NextSession', { clientId: selectedClientId })}
+                  onUpload={syncEnabled && linkOf(selectedClient) === 'linked' ? gate(detailLock, () => uploadProgram(activeProgram.id)) : undefined}
+                  onPrescribe={gate(detailLock, () => navigation.navigate('NextSession', { clientId: selectedClientId }))}
                   onShare={() => shareSpecificProgram(activeProgram.id, true)}
                   onExport={() => exportSpecificProgram(activeProgram.id, true)}
                   // Como `onShowArchived`: el segundo `Modal` espera a que se cierre el menú.
-                  onImportHistory={() => setTimeout(handleImportHistory, 250)}
-                  onSaveTemplate={() => saveAsTemplate(activeProgram)}
-                  onAssign={() => setTimeout(() => setShowAssign(true), 250)}
+                  onImportHistory={gate(detailLock, () => setTimeout(handleImportHistory, 250))}
+                  onSaveTemplate={gate(gates.newProgramTemplate, () => saveAsTemplate(activeProgram))}
+                  onAssign={gate(detailLock, () => setTimeout(() => setShowAssign(true), 250))}
                   // Archivar deja al cliente sin programa: se avisa antes, como al reactivar.
                   onDeassign={() => showDialog(
                     t('clients.archiveTitle'),
@@ -2450,8 +2484,8 @@ export default function ClientsScreen() {
                     ],
                   )}
                   onDelete={() => confirmDelete(activeProgram)}
-                  onUnlock={unlockStage}
-                  onPlanStages={() => navigation.navigate('StagePlanner', { programId: activeProgram.id })}
+                  onUnlock={gate(detailLock, unlockStage)}
+                  onPlanStages={gate(detailLock, () => navigation.navigate('StagePlanner', { programId: activeProgram.id }))}
                   // Dos `Modal` de RN no se relevan bien en el mismo tick: el
                   // segundo se monta mientras el primero aún se está cerrando y
                   // en Android se queda sin presentar. Se abre al terminar.
@@ -2463,8 +2497,9 @@ export default function ClientsScreen() {
                 // repetía lo mismo que el título y que el botón.
                 <View style={styles.noActiveBox}>
                   <Text style={styles.noActiveTitle}>{t('clients.noActiveProgram')}</Text>
-                  <TouchableOpacity style={styles.noActiveBtn} onPress={() => setShowAssign(true)} activeOpacity={0.85}>
-                    <Text style={styles.noActiveBtnText}>{t('clients.assignProgram')}</Text>
+                  <TouchableOpacity style={[styles.noActiveBtn, detailLock && styles.noActiveBtnPro]} onPress={gate(detailLock, () => setShowAssign(true))} activeOpacity={0.85}>
+                    <Text style={[styles.noActiveBtnText, detailLock && { color: th.colors.text }]}>{t('clients.assignProgram')}</Text>
+                    {!!detailLock && <ProBadge />}
                   </TouchableOpacity>
                 </View>
               )}
@@ -2481,10 +2516,12 @@ export default function ClientsScreen() {
                 programs={previousPrograms}
                 log={clientBaseLog}
                 emptyText={t('clients.noArchivedPrograms')}
-                onReactivate={reactivate}
+                reactivateLocked={!!detailLock}
+                saveTemplateLocked={!!gates.newProgramTemplate}
+                onReactivate={gate(detailLock, reactivate)}
                 onView={(p) => setPrintingProgram(p.id)}
                 onExport={(p) => exportSpecificProgram(p.id, true)}
-                onSaveTemplate={saveAsTemplate}
+                onSaveTemplate={gate(gates.newProgramTemplate, saveAsTemplate)}
                 onDelete={confirmDelete}
               />
               <View style={{ height: fold.pad }} />
@@ -2846,15 +2883,16 @@ export default function ClientsScreen() {
                   <>
                     <Text style={styles.codeExplain}>{t('clients.info.noAppLine')}</Text>
                     <TouchableOpacity
-                      style={styles.sheetCta}
-                      onPress={() => {
+                      style={[styles.sheetCta, connectLock && styles.noActiveBtnPro]}
+                      onPress={gate(connectLock, () => {
                         // Sin nube no hay código que generar: primero la conexión.
                         if (!trainerSync.mode || trainerSync.mode === 'offline') setShowSyncModal(true);
                         else setMoveToApp(true);
-                      }}
+                      })}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.sheetCtaText}>{t('clients.moveToApp.open')}</Text>
+                      <Text style={[styles.sheetCtaText, connectLock && { color: th.colors.text }]}>{t('clients.moveToApp.open')}</Text>
+                      {!!connectLock && <ProBadge />}
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -2939,7 +2977,7 @@ export default function ClientsScreen() {
         {/* Row 1: Title "CLIENTES N" · trainer tools (pegar entreno · cloud sync) · + Cliente */}
         <View style={styles.listTitleRow}>
           <Text style={styles.listTitle} numberOfLines={1}>
-            CLIENTES <Text style={styles.listTitleDot}>·</Text> <Text style={styles.listTitleCount}>{clientCounts.total}</Text>
+            CLIENTES <Text style={styles.listTitleDot}>·</Text> <Text style={styles.listTitleCount}>{isPro ? clientCounts.total : `${clientCounts.total}/${FREE.clients}`}</Text>
           </Text>
           <View style={styles.hdrRightCluster}>
             <View style={styles.hdrIconGroup}>
@@ -2974,7 +3012,8 @@ export default function ClientsScreen() {
               </TouchableOpacity>
             </View>
             {/* New client */}
-            <TouchableOpacity style={styles.hdrNewBtn} onPress={() => setShowNewClient(true)} activeOpacity={0.85}>
+            {/* Al tope abre el paywall; sin PRO dentro: no cabe en la cabecera. */}
+            <TouchableOpacity style={styles.hdrNewBtn} onPress={gate(gates.newClient, () => setShowNewClient(true))} activeOpacity={0.85}>
               <Text style={styles.hdrNewBtnText}>{t('clients.newBtn')}</Text>
             </TouchableOpacity>
           </View>
@@ -3111,6 +3150,24 @@ export default function ClientsScreen() {
         </Reanimated.View>
       )}
 
+      {/* Congelados por el plan gratis (M01 §4.5): cuántos y con quién sigues. */}
+      {frozenCount > 0 && (needsChoice || freeRoom) && (
+        <View style={[styles.pendingBanner, styles.frozenBanner]}>
+          <LockIcon size={19} color={th.colors.orange} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.pendingTitle} numberOfLines={1}>
+              {needsChoice ? t('freePlan.bannerTitle', { count: frozenCount }) : t('freePlan.roomTitle')}
+            </Text>
+            <Text style={styles.pendingSub} numberOfLines={2}>
+              {needsChoice ? t('freePlan.bannerSub', { max: FREE.clients, maxApp: FREE.connected }) : t('freePlan.roomSub')}
+            </Text>
+          </View>
+          <TouchableOpacity style={[styles.pendingBtn, styles.frozenBtn]} onPress={() => setShowFreeChoice(true)} activeOpacity={0.85}>
+            <Text style={styles.pendingBtnText}>{t('freePlan.bannerBtn')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Client list */}
       <Reanimated.View style={{ flex: 1 }} layout={LinearTransition.duration(240)}>
       {clientList.length === 0 ? (
@@ -3121,7 +3178,7 @@ export default function ClientsScreen() {
         />
       ) : (
         <FlatList
-          data={clientList}
+          data={listData}
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xxl + insets.bottom }}
           refreshControl={
@@ -3133,6 +3190,13 @@ export default function ClientsScreen() {
             />
           }
           renderItem={({ item: client }) => {
+            if (client.__section) {
+              return (
+                <Text style={[styles.apSectionLabel, { marginTop: spacing.lg, marginBottom: 0 }]}>
+                  {t('freePlan.frozenSection').toUpperCase()} · {client.__section}
+                </Text>
+              );
+            }
             const activeProgram   = programs[client.activeProgramId];
             // Solo con app hay avisos de envío; al invitado se le sube solo (C28).
             const link            = linkOf(client);
@@ -3151,6 +3215,7 @@ export default function ClientsScreen() {
                   isConnected={isConnected}
                   invited={link === 'invited'}
                   linked={link === 'linked'}
+                  frozen={isFrozen(client.id)}
                   adherence={adherenceByClient[client.id]}
                   newSessionsCount={getNewSessionsCount(client.id)}
                   onPress={() => handleSelectClient(client.id)}
@@ -3202,20 +3267,24 @@ export default function ClientsScreen() {
           client={clients[actionsClientId]}
           newSessionsCount={getNewSessionsCount(actionsClientId)}
           startLabel={actionsStart?.label}
-          onStart={actionsStart?.onPress}
+          locked={!!gates.client(actionsClientId)}
+          onStart={actionsStart && gate(gates.client(actionsClientId), actionsStart.onPress)}
           onClose={() => setActionsClientId(null)}
           onProgress={() => handleSelectClientProgress(actionsClientId)}
           onNextSession={linkOf(clients[actionsClientId]) !== 'none'
-            ? () => navigation.navigate('NextSession', { clientId: actionsClientId })
+            ? gate(gates.client(actionsClientId), () => navigation.navigate('NextSession', { clientId: actionsClientId }))
             : undefined}
           onEditProgram={() => {
             const c = clients[actionsClientId];
-            if (c?.activeProgramId) setEditingProgram(c.activeProgramId);
+            if (c?.activeProgramId && gates.client(actionsClientId)) gate('frozen')();
+            else if (c?.activeProgramId) setEditingProgram(c.activeProgramId);
             else handleSelectClient(actionsClientId);
           }}
           onInfo={() => handleSelectClientInfo(actionsClientId)}
         />
       )}
+
+      {showFreeChoice && <FreeClientsSheet onClose={() => setShowFreeChoice(false)} />}
 
       {/* Trainer sync mode modal */}
       <TrainerSyncModal
@@ -3448,11 +3517,13 @@ export default function ClientsScreen() {
                   { id: 'self', icon: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z' },
                 ].map(({ id, icon }) => {
                   const on = newClientMode === id;
+                  // Ya tiene su cliente con app: la opción lleva PRO y no se elige.
+                  const proLock = id === 'app' ? gates.newConnectedClient : null;
                   return (
                     <TouchableOpacity
                       key={id}
                       style={[styles.templateRow, styles.modeRow, on && styles.templateRowOn]}
-                      onPress={() => setNewClientMode(id)}
+                      onPress={proLock ? () => { setShowNewClient(false); gate(proLock)(); } : () => setNewClientMode(id)}
                       activeOpacity={0.75}
                       accessibilityRole="radio"
                       accessibilityState={{ selected: on }}
@@ -3467,7 +3538,9 @@ export default function ClientsScreen() {
                         <Text style={styles.modeSub}>{t(`clients.newClientModal.mode_${id}Sub`)}</Text>
                       </View>
                       {/* Hueco fijo: aparecer el ✓ no puede empujar el texto. */}
-                      <Text style={[styles.clientCheck, styles.modeCheck, !on && { opacity: 0 }]}>✓</Text>
+                      {proLock
+                        ? <ProBadge />
+                        : <Text style={[styles.clientCheck, styles.modeCheck, !on && { opacity: 0 }]}>✓</Text>}
                     </TouchableOpacity>
                   );
                 })}
@@ -3839,6 +3912,8 @@ const makeStyles = (th) => StyleSheet.create({
   // ── Client list card ──────────────────────────────────────────────────────────
   // El aire va entre el nombre y el bloque de abajo, no dentro de él: la línea
   // de programa/aviso se lee pegada al ritmo, no colgando del nombre.
+  // Congelado: se ve y se abre, pero se lee como fuera de juego.
+  cCardFrozen: { opacity: 0.5 },
   cCard: {
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.md,
@@ -3911,6 +3986,9 @@ const makeStyles = (th) => StyleSheet.create({
     flexShrink:      0,
   },
   pendingBtnText: { ...textStyles.button, color: th.colors.onAccent },
+  // El de congelados: naranja, el color de «parado» en la lista.
+  frozenBanner: { backgroundColor: withOpacity(th.colors.orange, 0.12) },
+  frozenBtn:    { backgroundColor: th.colors.orange },
   // Cuerpo: columna de datos + CTA. Figma alinea el botón arriba dentro de un
   // bloque fijo de 40px; aquí el bloque crece (2 avisos = 1 línea más), así que
   // el botón va centrado contra el alto real.
@@ -4271,6 +4349,10 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   noActiveBtnText: { ...textStyles.button, color: th.colors.onAccent },
+  // Bloqueados por el plan gratis (M01 §4.11): sin color de acción, con PRO.
+  noActiveBtnPro:  { backgroundColor: th.colors.surface2, flexDirection: 'row', gap: spacing.sm },
+  lockBtnPro:      { backgroundColor: th.colors.surface2, flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
+  lockBtnTextPro:  { color: th.colors.text },
 
   // ── Exercise mini card ──
   exMiniCard: {

@@ -605,6 +605,62 @@ describe('isPro — fallo 9', () => {
   });
 });
 
+describe('plan gratis — M01-02, la puerta va en la acción', () => {
+  beforeEach(() => {
+    useStore.setState((s) => ({
+      clients: {}, programs: {}, sessionTemplates: {},
+      profile: { ...s.profile, isPro: false, freeClientIds: [] },
+      ui: { ...s.ui, paywallReason: null },
+    }));
+  });
+
+  it('el cuarto cliente no se crea y abre el paywall', async () => {
+    for (const n of ['A', 'B', 'C']) expect(await useStore.getState().createClient(n)).toBeTruthy();
+    expect(await useStore.getState().createClient('D')).toBe(null);
+    expect(Object.keys(useStore.getState().clients)).toHaveLength(3);
+    expect(useStore.getState().ui.paywallReason).toBe('clients');
+  });
+
+  it('la segunda plantilla de programa no se crea; con Pro, sí', () => {
+    expect(useStore.getState().createEmptyProgram(3, 'T1', 'template')).toBeTruthy();
+    expect(useStore.getState().createEmptyProgram(3, 'T2', 'template')).toBe(null);
+    expect(useStore.getState().ui.paywallReason).toBe('programTemplates');
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
+    expect(useStore.getState().createEmptyProgram(3, 'T2', 'template')).toBeTruthy();
+  });
+
+  it('caducado con 2 plantillas: se quedan y se asignan; solo crear otra choca', () => {
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
+    const t1 = useStore.getState().createEmptyProgram(3, 'T1', 'template');
+    useStore.getState().createEmptyProgram(3, 'T2', 'template');
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: false } }));
+    expect(useStore.getState().cloneProgramFromTemplate(t1, { name: 'Mío' })).toBeTruthy();
+    expect(useStore.getState().cloneProgramFromTemplate(t1, { kind: 'template', name: 'Copia' })).toBe(null);
+  });
+
+  it('caducado sin elegir: el cliente congelado no sincroniza ni se le apunta nada', async () => {
+    const clients = Object.fromEntries(['a', 'b', 'c', 'd'].map((id) => [id, { id, name: id, syncSlotId: `s_${id}` }]));
+    useStore.setState({ clients });
+    await expect(useStore.getState().downloadClientHistory('a')).rejects.toThrow();
+    expect(useStore.getState().startSession('tpl', { forClient: 'a' })).toBe(null);
+    expect(useStore.getState().ui.paywallReason).toBe('frozen');
+    useStore.getState().setFreeClientIds(['a']);
+    expect(useStore.getState().isClientFrozen('a')).toBe(false);
+    expect(useStore.getState().isClientFrozen('b')).toBe(true);
+  });
+
+  it('lo elegido no se suelta, y volver a Pro lo olvida', () => {
+    const clients = Object.fromEntries(['a', 'b', 'c', 'd', 'e'].map((id) => [id, { id, name: id, syncSlotId: null }]));
+    useStore.setState({ clients });
+    useStore.getState().setFreeClientIds(['a', 'b', 'c']);
+    useStore.getState().setFreeClientIds(['d', 'e']);           // intento de rotar
+    expect(useStore.getState().isClientFrozen('a')).toBe(false);
+    expect(useStore.getState().isClientFrozen('d')).toBe(true);
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
+    expect(useStore.getState().profile.freeClientIds).toEqual([]);
+  });
+});
+
 describe('syncPurchaserId — M01-01, el Pro sigue a la cuenta', () => {
   const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} } });
   let RC, getRC;

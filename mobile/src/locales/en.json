@@ -42,7 +42,7 @@
     "theme": "Theme",
     "units": "Units",
     "bodyWeight": "Body weight",
-    "proTabsLabel": "PRO tabs",
+    "proTabsLabel": "Trainer tabs",
     "proTabsHint": "Shows the Clients and Templates tabs",
     "scrubRulerLabel": "Slide ruler",
     "scrubRulerHint": "Adjust KG, reps and RPE on a ruler",
@@ -982,9 +982,37 @@
       "withHistoryDesc": "Session history will also be deleted. No going back."
     }
   },
+  "freePlan": {
+    "frozenLabel": "Out of plan",
+    "outOfPlan": "Out of plan",
+    "bannerTitle_one": "{{count}} client out of plan",
+    "bannerTitle_other": "{{count}} clients out of plan",
+    "bannerSub": "The free plan covers {{max}} clients, {{maxApp}} with the app. Choose who you keep.",
+    "bannerBtn": "Choose",
+    "chooseTitle": "Who you keep",
+    "chooseLead": "Without Pro, the free plan covers 3 clients and only 1 with the app. The ones you don't pick go out of plan: you can see their history, but not log or send them anything. Nothing is deleted, but you can't change who you pick later.",
+    "chooseCount": "{{n}}/{{max}} clients · {{app}}/{{maxApp}} with the app",
+    "chooseCta": "Keep these",
+    "chooseMoreLead": "You have a free slot left in the free plan. You can fill it with a client out of plan; the ones you already picked stay.",
+    "alreadyChosen": "picked",
+    "roomTitle": "You have a free slot",
+    "roomSub": "You can bring a client back without going Pro.",
+    "frozenSection": "Out of plan",
+    "goPro": "I'd rather go Pro",
+    "withApp": "With the app",
+    "withoutApp": "You log for them"
+  },
   "paywall": {
     "title": "Unlock Forma Pro",
     "subtitle": "Everything you need to train and manage clients",
+    "reason": {
+      "clients": "The free plan covers up to 3 clients. With Pro, as many as you want.",
+      "connected": "The free plan includes 1 client with the app. With Pro, connect them all.",
+      "programTemplates": "The free plan includes 1 program template. With Pro, as many as you want.",
+      "sessionTemplates": "The free plan includes 1 session template. With Pro, as many as you want.",
+      "frozen": "This client is out of plan: the free plan covers up to 3 clients, 1 with the app. Go Pro or choose who you keep."
+    },
+    "frozenError": "Client out of plan: not included in the free plan.",
     "features": {
       "clients": "Full client management",
       "assign": "Assign programs to clients",
@@ -2012,9 +2040,6 @@
     "infoCodeLabel": "CLIENT CODE",
     "infoCloudLabel": "CLOUD SYNC",
     "infoCloudNoCode": "Connected · no local code",
-    "proGateTitle": "Client management",
-    "proGateBody": "Keep track of your clients, assign them programs and manage their billing.",
-    "proGateCta": "See PRO plans",
     "title": "Clients",
     "newBtn": "+ Client",
     "filterSheet": {
@@ -2365,10 +2390,6 @@
     "statWeeks_other": "weeks",
     "statSessions_one": "session",
     "statSessions_other": "sessions",
-    "proTitle": "Training templates",
-    "proBody": "Create templates and assign them to your clients in seconds. Standardise your programs and save time.",
-    "proCta": "SEE PRO PLANS",
-    "hideTab": "Hide tab",
     "copyNameSuffix": " (copy)",
     "segPrograms": "Programs",
     "segSessions": "Sessions",

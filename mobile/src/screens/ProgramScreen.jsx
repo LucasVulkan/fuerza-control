@@ -31,8 +31,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation }  from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { FREE } from '../utils/freePlan';
+import { useFreeGates } from '../useFreeGates';
 import AppHeader from '../components/AppHeader';
-import PaywallModal from '../components/PaywallModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { Section } from '../components/ui/MenuList';
@@ -201,6 +202,7 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
   );
   const [clientId,   setClientId]   = useState('');
   const [customName, setCustomName] = useState('');
+  const { gates } = useFreeGates();
 
   if (!program) return null;
 
@@ -225,11 +227,13 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
               {clientList.map((c) => {
                 const active   = clientId === c.id;
                 const current  = c.activeProgramId ? programs[c.activeProgramId] : null;
+                const out      = !!gates.client(c.id);
                 return (
                   <TouchableOpacity
                     key={c.id}
-                    style={[styles.clientRow, active && styles.clientRowActive]}
+                    style={[styles.clientRow, active && styles.clientRowActive, out && styles.clientRowOut]}
                     onPress={() => setClientId(c.id)}
+                    disabled={out}
                     activeOpacity={0.75}
                   >
                     <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
@@ -238,8 +242,9 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
                       </Text>
                       {/* El aviso de reemplazo se lee ANTES de asignar; por eso
                           esta pantalla ya no necesita el Alert de confirmación. */}
-                      <Text style={current ? styles.clientReplaces : styles.clientSub} numberOfLines={1}>
-                        {current
+                      <Text style={current && !out ? styles.clientReplaces : styles.clientSub} numberOfLines={1}>
+                        {out ? t('freePlan.outOfPlan')
+                          : current
                           ? t('templates.assignModal.replaces', { name: current.name })
                           : t('templates.assignModal.noProgram')}
                       </Text>
@@ -298,6 +303,7 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
     [clients]
   );
   const trainerSync = useStore((s) => s.trainerSync);
+  const { gates } = useFreeGates();
   const [picked, setPicked] = useState(() => new Set());
   const toggle = (id) => setPicked((prev) => {
     const next = new Set(prev);
@@ -322,18 +328,22 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
                 const active = picked.has(c.id);
                 // Con app, la sesión viaja con su programa: sin programa no le llega.
                 const noRoute = c.id !== 'me' && clientLink(c, trainerSync) !== 'none' && !c.activeProgramId;
+                const out     = c.id !== 'me' && !!gates.client(c.id);
                 return (
                   <TouchableOpacity
                     key={c.id}
-                    style={[styles.clientRow, active && styles.clientRowActive]}
+                    style={[styles.clientRow, active && styles.clientRowActive, out && styles.clientRowOut]}
                     onPress={() => toggle(c.id)}
+                    disabled={out}
                     activeOpacity={0.75}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: active }}
                   >
                     <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
                       <Text style={[styles.clientName, active && { color: th.colors.accent }]} numberOfLines={1}>{c.name}</Text>
-                      {noRoute && (
+                      {out ? (
+                        <Text style={styles.clientSub} numberOfLines={1}>{t('freePlan.outOfPlan')}</Text>
+                      ) : noRoute && (
                         <Text style={styles.clientReplaces} numberOfLines={2}>{t('templates.assignSession.noProgram')}</Text>
                       )}
                       {!!c.sub && <Text style={styles.clientSub} numberOfLines={1}>{c.sub}</Text>}
@@ -367,13 +377,13 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
 export default function ProgramScreen() {
   const { t }       = useTranslation();
   const styles      = useThemedStyles(makeStyles);
+  const th          = useTheme();
   const insets      = useSafeAreaInsets();
   const navigation  = useNavigation();
 
   const [showCreate,   setShowCreate]   = useState(false);
   const [menuTarget,   setMenuTarget]   = useState(null); // programId del "···"
   const [assignTarget, setAssignTarget] = useState(null); // programId a asignar
-  const [showPaywall,  setShowPaywall]  = useState(false);
   // Programas / Sesiones. Sin persistir: es un vistazo, no un ajuste.
   const [seg,          setSeg]          = useState('programs');
   const [sesMenu,      setSesMenu]      = useState(null); // templateId
@@ -384,10 +394,10 @@ export default function ProgramScreen() {
     { text: t('common.delete'), style: 'destructive', onPress: onConfirm },
   ]);
   const [sesAssign,    setSesAssign]    = useState(null); // templateId
+  const isPro = useStore((s) => s.profile?.isPro ?? false);
+  // Lo que el plan gratis no deja, marcado con PRO antes de tocarlo (M01 §4.11).
+  const { gates, gate } = useFreeGates();
 
-  const profile    = useStore((s) => s.profile);
-  const setProfile = useStore((s) => s.setProfile);
-  const isPro      = profile?.isPro ?? false;
 
   const programs                 = useStore((s) => s.programs);
   const clients                  = useStore((s) => s.clients);
@@ -414,6 +424,7 @@ export default function ProgramScreen() {
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [sessionTemplates]);
   const allExercises = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const isSessions   = seg === 'sessions';
+  const newLock      = isSessions ? gates.newSessionTemplate : gates.newProgramTemplate;
   const sesName      = (tpl) => tpl?.name || t('freeSession.templateUnnamed');
 
   function programCardStats(program) {
@@ -439,11 +450,12 @@ export default function ProgramScreen() {
   // para entrenarla, se la asigna uno a sí mismo.
   function handleCreateSession() {
     const id = createFreeTemplate(null, 'me', { asTemplate: true });
-    navigation.navigate('SessionEditor', { templateId: id });
+    if (id) navigation.navigate('SessionEditor', { templateId: id });
   }
 
   function handleCreate(name, numSessions, durationWeeks) {
     const newId = createEmptyProgram(numSessions, name, 'template', durationWeeks);
+    if (!newId) return;
     showToast(t('templates.toastCreated'), 2200, 'success');
     setEditingProgram(newId);
   }
@@ -451,8 +463,9 @@ export default function ProgramScreen() {
   function handleDuplicate(programId) {
     const src = programs[programId];
     if (!src) return;
-    cloneProgramFromTemplate(programId, { kind: 'template', name: src.name + t('templates.copyNameSuffix') });
-    showToast(t('templates.toastDuplicated'), 2200, 'success');
+    if (cloneProgramFromTemplate(programId, { kind: 'template', name: src.name + t('templates.copyNameSuffix') })) {
+      showToast(t('templates.toastDuplicated'), 2200, 'success');
+    }
   }
 
   function handleAssignToClient(clientId, programName) {
@@ -475,27 +488,6 @@ export default function ProgramScreen() {
     showToast(t('templates.toastDeleted'), 2200, 'neutral');
   }
 
-  // ── PRO gate ───────────────────────────────────────────────────────────────
-  if (!isPro) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <AppHeader />
-        <EmptyState
-          style={styles.emptyState}
-          icon={ROW_ICON.preset}
-          title={t('templates.proTitle')}
-          text={t('templates.proBody')}
-          action={{ label: t('templates.proCta'), onPress: () => setShowPaywall(true) }}
-          secondary={{
-            label:   t('templates.hideTab'),
-            onPress: () => { setProfile({ proTabsHidden: true }); navigation.navigate('Home'); },
-          }}
-        />
-        {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
-      </View>
-    );
-  }
-
   const menuProgram = menuTarget ? programs[menuTarget] : null;
 
   return (
@@ -507,11 +499,16 @@ export default function ProgramScreen() {
         <View style={styles.listTitleRow}>
           <Text style={styles.listTitle} numberOfLines={1}>
             {t('templates.title').toUpperCase()} <Text style={styles.listTitleDot}>·</Text>{' '}
-            <Text style={styles.listTitleCount}>{isSessions ? sessionList.length : templateList.length}</Text>
+            <Text style={styles.listTitleCount}>
+              {isSessions ? sessionList.length : templateList.length}
+              {/* Sin Pro, el tope del plan gratis al lado (M01 §4.4). */}
+              {!isPro && `/${isSessions ? FREE.sessionTemplates : FREE.programTemplates}`}
+            </Text>
           </Text>
+          {/* Al tope abre el paywall; sin PRO dentro: no cabe en la cabecera. */}
           <TouchableOpacity
             style={styles.hdrNewBtn}
-            onPress={() => (isSessions ? handleCreateSession() : setShowCreate(true))}
+            onPress={gate(newLock, () => (isSessions ? handleCreateSession() : setShowCreate(true)))}
             activeOpacity={0.85}
           >
             <Text style={styles.hdrNewBtnText}>{t('templates.newBtn')}</Text>
@@ -597,7 +594,9 @@ export default function ProgramScreen() {
           <SheetRow
             icon={ROW_ICON.duplicate}
             label={t('templates.contextDuplicate')}
-            onPress={() => handleDuplicate(menuTarget)}
+            labelColor={gates.newProgramTemplate ? th.colors.mutedLight : undefined}
+            badge={gates.newProgramTemplate ? 'PRO' : undefined}
+            onPress={gate(gates.newProgramTemplate, () => handleDuplicate(menuTarget))}
           />
           <SheetRow
             icon={ROW_ICON.share}
@@ -646,10 +645,14 @@ export default function ProgramScreen() {
           <SheetRow
             icon={ROW_ICON.duplicate}
             label={t('templates.contextDuplicate')}
-            onPress={() => {
-              copyFreeTemplate(sesMenu, { name: sesName(sessionTemplates[sesMenu]) + t('templates.copyNameSuffix'), asTemplate: true });
+            labelColor={gates.newSessionTemplate ? th.colors.mutedLight : undefined}
+            badge={gates.newSessionTemplate ? 'PRO' : undefined}
+            onPress={gates.newSessionTemplate ? () => { setSesMenu(null); gate(gates.newSessionTemplate)(); } : () => {
+              const id = sesMenu;
               setSesMenu(null);
-              showToast(t('templates.toastDuplicated'), 2200, 'success');
+              if (copyFreeTemplate(id, { name: sesName(sessionTemplates[id]) + t('templates.copyNameSuffix'), asTemplate: true })) {
+                showToast(t('templates.toastDuplicated'), 2200, 'success');
+              }
             }}
           />
           <SheetRow
@@ -674,8 +677,14 @@ export default function ProgramScreen() {
           clients={clients}
           onClose={() => setSesAssign(null)}
           onAssign={(clientIds) => {
-            clientIds.forEach((clientId) => copyFreeTemplate(sesAssign, { owner: clientId }));
+            // Se para en el primero que choca con el plan gratis: su paywall ya está abierto.
+            const done = [];
+            for (const clientId of clientIds) {
+              if (!copyFreeTemplate(sesAssign, { owner: clientId })) break;
+              done.push(clientId);
+            }
             setSesAssign(null);
+            if (done.length < clientIds.length) return;
             const who = (id) => (id === 'me' ? t('templates.assignSession.meToast') : clients[id]?.name ?? '');
             showToast(clientIds.length === 1
               ? t('templates.assignSession.toast', { name: who(clientIds[0]) })
@@ -797,6 +806,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
   },
   clientRowActive: { backgroundColor: th.tint.accent10 },
+  // Congelado por el plan gratis (M01 §4.12): se ve, no se elige.
+  clientRowOut:    { opacity: 0.5 },
   clientName:      { ...textStyles.labelStrong, color: th.colors.text },
   clientSub:       { ...textStyles.body, color: th.colors.mutedLight },
   clientReplaces:  { ...textStyles.body, color: th.colors.orange },

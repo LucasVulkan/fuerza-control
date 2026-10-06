@@ -38,6 +38,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
 import { startNewProgram } from '../utils/startNewProgram';
+import { useFreeGates } from '../useFreeGates';
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
 const WDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -188,7 +189,8 @@ function MyArchivedPrograms({ onClose }) {
   const { t }  = useTranslation();
   const programs        = useStore((s) => s.programs);
   const workoutLog      = useStore((s) => s.workoutLog);
-  const isPro           = useStore((s) => s.profile?.isPro ?? false);
+  const proTabsHidden   = useStore((s) => s.profile?.proTabsHidden ?? false);
+  const { gates, gate } = useFreeGates();
   const activeProgramId = useStore((s) => s.profile?.activeProgramId);
   const restoreProgram            = useStore((s) => s.restoreProgram);
   const deleteProgram             = useStore((s) => s.deleteProgram);
@@ -236,11 +238,12 @@ function MyArchivedPrograms({ onClose }) {
       onReactivate={reactivate}
       onView={(p) => setPrintingProgram(p.id)}
       onExport={(p) => exportSpecificProgram(p.id, true)}
-      // Sin PRO la plantilla iría a una pestaña que no ves: la fila no sale.
-      onSaveTemplate={isPro ? (p) => {
-        cloneProgramFromTemplate(p.id, { kind: 'template', name: p.name });
-        showToast(t('clients.toastSavedTemplate'));
-      } : undefined}
+      // Con las pestañas de entrenador ocultas, la plantilla iría a donde no
+      // se ve: la fila no sale. El límite del plan gratis lo pone el store.
+      saveTemplateLocked={!!gates.newProgramTemplate}
+      onSaveTemplate={proTabsHidden ? undefined : gate(gates.newProgramTemplate, (p) => {
+        if (cloneProgramFromTemplate(p.id, { kind: 'template', name: p.name })) showToast(t('clients.toastSavedTemplate'));
+      })}
       onDelete={confirmDelete}
     />
   );
@@ -495,15 +498,13 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           minHeight={58}
           control={<BodyWeightField />}
         />
-        {!isPro && (
-          <MenuRow
-            label={t('header.proTabsLabel')}
-            sub={t('header.proTabsHint')}
-            minHeight={62}
-            control={<Switch value={!proTabsHidden} />}
-            onPress={() => setProfile({ proTabsHidden: !proTabsHidden })}
-          />
-        )}
+        <MenuRow
+          label={t('header.proTabsLabel')}
+          sub={t('header.proTabsHint')}
+          minHeight={62}
+          control={<Switch value={!proTabsHidden} />}
+          onPress={() => setProfile({ proTabsHidden: !proTabsHidden })}
+        />
         {/* Cómo se ven las sesiones en Inicio (U13): la lista plegable o una
             sola tarjeta con una pestaña por sesión. */}
         <MenuRow

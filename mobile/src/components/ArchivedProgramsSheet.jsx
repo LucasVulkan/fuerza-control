@@ -33,7 +33,7 @@ import DragSheet from './DragSheet';
 import { allProgramDays } from '../utils/stageProgress';
 import { programTemplateOf } from '../utils/freeSessions';
 import { spacing, textStyles } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 
 // Sesiones del historial que cuentan para este programa y la fecha de la última.
 function programActivity(program, log) {
@@ -53,9 +53,14 @@ function programActivity(program, log) {
 export default function ArchivedProgramsSheet({
   visible, onClose, programs, log, emptyText,
   onReactivate, onView, onExport, onSaveTemplate, onDelete,
+  // M01 §4.11: el plan gratis no deja. La fila lleva PRO; quien la pasa ya
+  // manda un handler que abre el paywall.
+  reactivateLocked = false, saveTemplateLocked = false,
 }) {
   const { t, i18n } = useTranslation();
+  const th          = useTheme();
   const styles      = useThemedStyles(makeStyles);
+  const pro = (on) => (on ? { labelColor: th.colors.mutedLight, badge: 'PRO' } : null);
   // El programa abierto en su página de opciones; null = la lista. Se guarda el
   // programa y no su id: Reactivar o Eliminar lo sacan de `programs` mientras la
   // hoja aún se está cerrando, y con el id la página saltaría a la lista.
@@ -93,7 +98,7 @@ export default function ArchivedProgramsSheet({
         <Reanimated.View key={selected ? 'options' : 'list'} entering={pageEntering} exiting={pageExiting}>
           {selected ? (
             <Section style={styles.section}>
-              <SheetRow icon={ROW_ICON.sync} label={t('archived.reactivate')} onPress={() => onReactivate(selected)} />
+              <SheetRow icon={ROW_ICON.sync} label={t('archived.reactivate')} onPress={() => onReactivate(selected)} {...pro(reactivateLocked)} />
               <SheetRow icon={ROW_ICON.view} label={t('archived.view')}       onPress={() => onView(selected)} />
               {/* `MenuRow` y no `SheetRow`: no cierra la hoja. */}
               <MenuRow
@@ -102,7 +107,7 @@ export default function ArchivedProgramsSheet({
                 onPress={() => onExport(selected)}
               />
               {onSaveTemplate && (
-                <SheetRow icon={ROW_ICON.preset} label={t('archived.saveTemplate')} onPress={() => onSaveTemplate(selected)} />
+                <SheetRow icon={ROW_ICON.preset} label={t('archived.saveTemplate')} onPress={() => onSaveTemplate(selected)} {...pro(saveTemplateLocked)} />
               )}
               <SheetRow icon={ROW_ICON.trash} label={t('archived.delete')} onPress={() => onDelete(selected)} danger />
             </Section>

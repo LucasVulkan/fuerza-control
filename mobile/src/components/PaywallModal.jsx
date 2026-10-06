@@ -32,7 +32,7 @@ const PRO_FEATURES = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PaywallModal({ onClose }) {
+export default function PaywallModal({ onClose, reason = null }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -110,7 +110,7 @@ export default function PaywallModal({ onClose }) {
           <View style={styles.headerRow}>
             <Text style={styles.badge}>PRO</Text>
             <Text style={styles.title}>{t('paywall.title')}</Text>
-            <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
+            <Text style={styles.subtitle}>{t(reason ? `paywall.reason.${reason}` : 'paywall.subtitle')}</Text>
           </View>
 
           {/* Feature list */}

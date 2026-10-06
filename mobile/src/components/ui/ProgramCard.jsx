@@ -53,6 +53,7 @@ import Reanimated, {
 import { useTranslation } from 'react-i18next';
 
 import { MenuIcon } from './EditorIcons';
+import ProBadge from './ProBadge';
 import { spacing, textStyles, borders } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
@@ -260,15 +261,17 @@ export default function ProgramCard({
  * comparten el tab Programa y la ficha de cliente. Sin `onEdit`, Ver ocupa el
  * hueco. El `⋯` no ejecuta nunca: abre una lista.
  */
-export function ProgramActions({ onEdit, onView, onMore }) {
+/** `editLocked`: el plan gratis no deja editar (M01 §4.11) — PRO junto a EDITAR. */
+export function ProgramActions({ onEdit, onView, onMore, editLocked = false }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.actions}>
       {!!onEdit && (
-        <TouchableOpacity style={styles.actionBtn} onPress={onEdit} activeOpacity={0.75} accessibilityRole="button">
+        <TouchableOpacity style={[styles.actionBtn, editLocked && { flexDirection: 'row', gap: spacing.sm }]} onPress={onEdit} activeOpacity={0.75} accessibilityRole="button">
           <Text style={styles.actionBtnText} numberOfLines={1}>{t('programCard.edit')}</Text>
+          {editLocked && <ProBadge />}
         </TouchableOpacity>
       )}
       {!!onView && (

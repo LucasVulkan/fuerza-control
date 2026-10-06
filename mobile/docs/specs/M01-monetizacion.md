@@ -4,7 +4,7 @@
 > En corto: Plan gratis: 3 clientes (como mucho 1 con app) y 1 plantilla de programa + 1 de sesión; Pro, anual o pago único, lo quita todo. Hoy el muro es todo o nada, así que no puede probar el producto con lo que hace a diario. Incluye el pago desde el móvil del cliente y la invitación.
 > Inicio: 2026-10-06
 > Fase M01-01 · hecho · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) · §3 · antes M01
-> Fase M01-02 · pendiente · Plan gratis 3 (1 con app) + 1 + 1: límites, congelado por cliente y hoja de elección · §4 · antes M02
+> Fase M01-02 · hecho · Plan gratis 3 (1 con app) + 1 + 1: límites, congelado por cliente y hoja de elección · §4 · antes M02
 > Fase M01-03 · pendiente · Paywall dual + i18n + enlaces legales · §5 · antes M03
 > Fase M01-04 · pendiente · Invitar cliente nivel 1 + página estática · §6 · antes M04
 > Fase M01-05 · pendiente · Montar App Store, Google Play y RevenueCat (guia-pagos.md) · §7
@@ -310,7 +310,7 @@ Hoy el modal vive dentro de `AppHeader` con estado local.
 | `copyFreeTemplate(..., { asTemplate: true })` (`:1366`) | duplicar (`ProgramScreen.jsx:650`) | `sessionTemplates` |
 
 `ui.paywallReason` es uno de `'clients' | 'connected' | 'programTemplates' |
-'sessionTemplates' | 'assignTemplate'`, y elige el titular del paywall
+'sessionTemplates' | 'frozen'`, y elige el titular del paywall
 (*«Conecta a más de un cliente con Pro»*…). El resto del paywall es el mismo.
 
 **No se limita** importar un `.fitdata` con plantillas (`mergeFileSessions`): quien
@@ -430,26 +430,16 @@ entrenador con 10 suelen ser los que ya no entrena.
 
 ### 4.8 Al caducar: plantillas
 
-**Se quedan, se ven y se editan, pero no se asignan** mientras haya más de las
-que da el plan, contando cada tipo por separado.
+> **Revisado el 6-oct-2026 (QA).** La primera versión bloqueaba asignar
+> cualquier plantilla de un tipo si había más de las gratis. Descartado: la
+> plantilla la tienes, y asignarla a los clientes que el plan gratis te deja
+> llevar no es un extra. El límite de clientes ya pone el techo.
 
-| Con más plantillas de las gratis (por tipo) | |
-|---|---|
-| Verlas, editarlas, borrarlas | ✅ |
-| Crear o duplicar | ❌ (es §4.2) |
-| **Asignar** a un cliente o a ti mismo | ❌ **ninguna de ese tipo** |
-
-«Asignar» es `cloneProgramFromTemplate` con `kind: 'program'` desde una plantilla
-(`ProgramScreen.jsx:460`, `ClientsScreen.jsx:2212`, `OnboardingScreen.jsx:637`) y
-`copyFreeTemplate` sin `asTemplate` desde una plantilla de sesión
-(`ProgramScreen.jsx:677`, `ClientSessions.jsx:452`, `HomeScreen.jsx:519`). El
-guard va en esas dos funciones del store, con `paywallReason: 'assignTemplate'`.
-
-**Ninguna, no «todas menos una».** Elegir cuál sigue viva pediría otra hoja de
-elección. Así la salida es clara y la decide el usuario: hacerse Pro, o borrar
-hasta quedarse en 1 y vuelve a funcionar. El paywall de este caso lo dice con
-esas palabras. *(Decisión del 5-oct-2026; si en uso real molesta, la alternativa
-barata es «la más reciente sigue asignable».)*
+**Se quedan, se ven, se editan y se asignan.** Lo único que choca con el plan es
+**crear o duplicar** otra mientras se tengan las que da (§4.2). Asignar tiene
+una sola restricción, que es la del cliente: a uno **fuera de plan** no se le
+asigna nada (§4.5). En las hojas de asignar sale en gris, con «Fuera de plan»,
+y no se puede marcar.
 
 ### 4.9 Límite de tiempo del congelado
 
@@ -498,6 +488,122 @@ El *billing grace period* de las dos stores mantiene el entitlement activo
 mientras reintentan cobrar; solo hay que activarlo (guía de pagos, pasos A8 y
 G4). Para la cancelación voluntaria no se da margen: la propia suscripción ya
 dura hasta el final del periodo pagado.
+
+### 4.10 Cómo quedó (6-oct-2026)
+
+- **La regla**, pura y con tests: `src/utils/freePlan.js` (`fitsFree`,
+  `clientLimitReason`, `templateCounts`, `activeClientIds`, `isClientFrozen`,
+  `needsClientChoice`).
+- **Las puertas**, en el store (bloque «Plan gratis»): las de §4.2 y §4.8, más
+  las de §4.5 para el congelado. Además de las de la tabla se guarda
+  **`setEditingProgram`**: es la única entrada al editor, así que el programa
+  de un congelado se ve pero no se edita, venga de donde venga.
+- **Dos formas de decir que no**: crear, asignar y apuntar abren el paywall y
+  devuelven `null`; las de sincronizar (`uploadProgramToClient`,
+  `sendOverrides`, `downloadClientHistory`, `reissueClientCode`) **lanzan**
+  `paywall.frozenError`. Sus llamadas automáticas ya eran silenciosas (la
+  subida del invitado, la descarga al abrir la ficha) y así tampoco marcan el
+  historial como visto: el contador de pendientes sigue subiendo.
+- **El paywall global** no está en `App.js` sino en `RootNavigator`, junto al
+  toast y los diálogos (`GlobalPaywall`). Entra con 250 ms de retraso, como
+  las demás hojas que se abren al cerrar otra: en iOS un Modal no se presenta
+  mientras otro se va. El motivo cambia solo el subtítulo (`paywall.reason.*`);
+  la lista de ventajas se reescribe en M01-03.
+- **Contadores**: Clientes enseña `n/3` en el título; Plantillas, `n/1` en el
+  de cada segmento. El «con app» no lleva contador fijo en la cabecera: sale en
+  la hoja de elección y en el paywall, que es cuando importa.
+- **Congelado en la lista** (revisado tras QA, §4.11): van al final, bajo su
+  título «CONGELADOS · N», con la tarjeta atenuada, «Congelado» y sin botón de
+  acción. «Enviar todo» se los salta.
+- **«Pestañas PRO» pasa a «Pestañas de entrenador»**, y la fila sale siempre.
+- Al crear un cliente bloqueado, el nombre se queda escrito en el formulario.
+- Tests: `freePlan.test.js` y «plan gratis — M01-02» en `useStore.test.js`.
+
+Se prueba en desarrollo con el interruptor PRO/FREE del menú (sobrevive a los
+reinicios: está en `profile`), o en un build sin `EXPO_PUBLIC_FORCE_PRO`.
+
+### 4.11 QA del 6-oct-2026: elegir es para siempre, y PRO antes de tocar
+
+**La elección no se rota.** Con el aviso siempre a la vista y la hoja dejando
+desmarcar, se podía ir cambiando de clientes y acabar llevándolos a todos sin
+pagar. Ahora:
+
+- Lo elegido queda **fijo**: la hoja no deja desmarcarlo, y `setFreeClientIds`
+  solo añade (y no guarda nada que no quepa). `lockedClientIds` en `freePlan.js`.
+- El aviso naranja **desaparece** en cuanto hay una elección válida. Solo vuelve
+  —«Te queda un hueco libre»— si se borra a uno de los elegidos y algún
+  congelado cabe en el hueco (`canChooseMore`). Rotar cuesta borrar un cliente
+  con su historial: no compensa.
+- Volver a Pro **olvida** la elección (suscriptor en `useStore.js`). Si no, la
+  siguiente caducidad la daría por buena y congelaría de oficio a los clientes
+  nuevos de esa temporada.
+
+**Lenguaje de una acción bloqueada.** Antes la puerta solo estaba en el store:
+se entraba en la hoja (p. ej. elegir día al apuntar) y el paywall salía al
+final. Ahora la acción se marca **antes** de tocarla, siempre igual:
+
+- **No se apaga ni se esconde: pierde su color de acción y gana la etiqueta
+  PRO** (la pastilla lima del PRO del menú ≡). Un botón en acento pasa a
+  `surface2` con el texto normal y `ProBadge` al lado; una fila de hoja,
+  `MenuRow badge="PRO"` con la etiqueta en gris.
+- **Excepción: «+ Cliente» y «+ Plantilla» no llevan PRO** (QA: alargaba la
+  cabecera). Se ven igual y al tope abren el paywall directamente.
+- **Un cliente fuera de plan, como opción de una lista** (hojas de asignar), no
+  lleva PRO: sale en gris, con «Fuera de plan» y sin poder marcarse.
+- **Vocabulario**: en pantalla es «fuera de plan» (tarjeta, sección, aviso,
+  hojas, paywall). «Congelado» queda solo en el código y en esta spec.
+- **Tocarla abre el paywall directamente**, con su motivo, sin pasar por la
+  hoja que abriría.
+- La tarjeta del congelado sí se atenúa (opacidad 0,5): ahí no es una acción,
+  es un cliente fuera de juego.
+
+Piezas: `src/components/ui/ProBadge.jsx`; `freeGates()` en `freePlan.js` (el
+motivo de cada acción, o null) y el hook `src/useFreeGates.js`, que añade
+`gate(motivo, fn)`: con motivo, el toque abre el paywall; sin él, `fn`. La puerta
+de verdad sigue en el store; esto solo la enseña.
+
+Dónde se marca:
+
+| Pantalla | Acciones con PRO |
+|---|---|
+| Clientes | «Con app» en el alta si ya hay uno · pulsación larga de un congelado: Empezar, Preparar, Editar programa |
+| Ficha de un congelado | Editar · Preparar · Enviar cambios · Desbloquear etapa · Planificar · Asignar programa (botón y ⋯) · Importar historial · Reactivar archivado · EMPEZAR y Editar de sus sesiones · Apuntar sesión · + Sesión libre · Pasar a la app (si no cabe) · Reemitir código |
+| Plantillas | Duplicar al tope · en las hojas de asignar, cada cliente fuera de plan en gris («Fuera de plan», sin PRO) |
+| Guardar como plantilla | menú ⋯ del cliente, Mi programa y archivados (los dos) |
+
+**Probar M01-02**
+
+- [ ] En FREE: crear 3 clientes manuales → el cuarto abre el paywall con «El
+  plan gratis llega hasta 3 clientes», y el nombre sigue escrito al volver al
+  formulario. El título dice `3/3`.
+- [ ] En FREE con 1 cliente con app: crear otro «con app», o «Pasar a la app» a
+  uno manual → paywall de «1 cliente con app». El manual no cambia.
+- [ ] En FREE: crear 1 plantilla de programa y 1 de sesión → la segunda de cada
+  tipo (crear o duplicar, y «Guardar como plantilla» desde archivados o desde
+  Mi programa) abre el paywall. Las cabeceras dicen `1/1`.
+- [ ] Ya no hay muros: Clientes y Plantillas se abren en FREE; el onboarding
+  ofrece cargar una plantilla si existe.
+- [ ] En PRO: crear 5 clientes (2 con app) y 2 plantillas de cada → pasar a
+  FREE → sale sola «Con quién sigues», sin poder confirmar más de 3 o más de 1
+  con app.
+- [ ] Elegir 3 → el aviso naranja desaparece; los otros 2 van al final bajo
+  «FUERA DE PLAN · 2», atenuados, con «Fuera de plan» y sin botón. No hay
+  forma de volver a abrir la hoja.
+- [ ] Borrar a uno de los 3 elegidos → vuelve el aviso «Te queda un hueco
+  libre»; en la hoja, los 2 que quedan salen marcados y no se pueden desmarcar.
+- [ ] Ficha de un congelado: se ve historial, progreso e info. Todo lo de la
+  tabla de §4.11 lleva PRO y abre el paywall al tocarlo, sin abrir antes su
+  hoja (p. ej. Apuntar sesión no enseña los días).
+- [ ] En FREE al tope: «+ Cliente» y «+ Plantilla» se ven igual (sin PRO) y
+  abren el paywall; Duplicar y Guardar como plantilla llevan PRO y lo abren
+  directamente.
+- [ ] Congelado con app: su móvil sigue entrenando y subiendo; en la tarjeta del
+  entrenador el número de entrenos pendientes sube, y abrir su ficha no lo pone
+  a cero.
+- [ ] Con 2 plantillas de programa en FREE: las dos se asignan sin paywall. En
+  la hoja de asignar, los clientes fuera de plan salen en gris con «Fuera de
+  plan» y no se pueden marcar.
+- [ ] Volver a PRO → nada congelado, sin aviso ni contadores.
 
 ---
 
@@ -628,7 +734,7 @@ Los identificadores, fijados aquí para que la guía y el código no diverjan:
 | Dos comprobaciones (`total ≤ 3`, `con app ≤ 1`), no dos bolsas fijas | una sola función, `fitsFree`, sirve para crear, conectar y elegir |
 | Al caducar: **congelar en solo lectura, no borrar**, manuales incluidos | borrar datos de quien pagó es la reseña de una estrella; sin congelar los manuales, pagar un año y crear 50 sale gratis después |
 | Los activos **los elige el entrenador**, no la antigüedad | los clientes más antiguos de un entrenador con 10 suelen ser los que ya no entrena |
-| Plantillas al caducar: se quedan, **no se asigna ninguna** del tipo que se pasa | elegir cuál sigue viva pediría otra hoja; borrar hasta 1 o pagar es una salida clara |
+| Plantillas al caducar: se quedan **y se asignan**; solo crear otra choca | la plantilla ya es suya; el techo lo pone el límite de clientes (QA 6-oct) |
 | Precios: **anual + pago único**, sin mensual | decisión del usuario, 5-oct-2026 |
 | El contador de entrenos pendientes **sigue subiendo** en los congelados | enseña el valor exacto de volver a pagar sin regalarlo, y ya está calculado |
 | Al cliente no se le avisa de nada | *"tu entrenador ha dejado de pagar"* no beneficia a nadie |

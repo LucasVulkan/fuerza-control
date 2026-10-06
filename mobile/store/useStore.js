@@ -45,6 +45,7 @@ import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
 import { clientLink } from '../src/utils/clientLink';
+import { FREE, fitsFree, clientLimitReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds } from '../src/utils/freePlan';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -235,6 +236,9 @@ const INITIAL_PROFILE = {
   // explicitas: EXPO_PUBLIC_FORCE_PRO=true y el interruptor PRO/FREE del menu,
   // que solo existe bajo __DEV__.
   isPro: false,
+  // Con quién sigue sin Pro, si tiene más clientes de los que caben (M01 §4.6).
+  // Solo se consulta en ese caso: el valor por defecto no necesita migración.
+  freeClientIds: [],
   proTabsHidden: false,
   scrubRuler: true,       // U10-01: la casilla se despliega en una regla al arrastrar
   language: 'es',
@@ -291,6 +295,7 @@ const INITIAL_UI = {
   _viewingProgramId: null,
   _blockPickerResult: null,
   homeTab: 'session',
+  paywallReason: null,  // M01 §4.2: lo pone una acción que choca con el plan gratis
 };
 
 /** Una copia del objeto sin esa clave. */
@@ -652,6 +657,10 @@ export const useStore = create(
        * (C05-trainer-logging.md §4.0).
        */
       createClient: async (name, { withApp = false } = {}) => {
+        if (!get().profile.isPro) {
+          const reason = clientLimitReason([...Object.values(get().clients), { syncSlotId: withApp ? 'nuevo' : null }]);
+          if (reason) return get()._paywall(reason);
+        }
         const id = generateId('client');
         const clientBase = {
           id, name: name.trim(),
@@ -690,6 +699,46 @@ export const useStore = create(
           clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...fields } },
         }));
       },
+
+      // ── Plan gratis (M01 §4) ──────────────────────────────────────────────
+      // La regla vive en `src/utils/freePlan.js`; aquí, la puerta de cada acción.
+      // Las de crear/asignar abren el paywall y devuelven null; las de
+      // sincronizar lanzan (§4.5), porque sus llamadas automáticas ya son
+      // silenciosas y la manual enseña el mensaje.
+
+      /** Sin Pro y fuera de los que caben (§4.5). */
+      isClientFrozen: (clientId) => {
+        const { profile, clients } = get();
+        return isClientFrozenRule({ isPro: profile.isPro, clients, freeClientIds: profile.freeClientIds }, clientId);
+      },
+
+      _assertNotFrozen: (clientId) => {
+        if (get().isClientFrozen(clientId)) throw new Error(i18n.t('paywall.frozenError'));
+      },
+
+      /** Ya tiene las que da el plan: no puede crear otra. */
+      _templateLimitReached: (kind) => !get().profile.isPro && templateCounts(get())[kind] >= FREE[kind],
+
+      /** Abre el paywall global con su motivo; devuelve null para que la acción salga con él. */
+      _paywall: (reason) => {
+        set((s) => ({ ui: { ...s.ui, paywallReason: reason } }));
+        return null;
+      },
+
+      closePaywall: () => set((s) => ({ ui: { ...s.ui, paywallReason: null } })),
+
+      /**
+       * Solo añade: lo ya elegido no se suelta (si no, se rota y se acaba
+       * llevando a todos). Se limpia al volver a Pro, en el suscriptor de abajo.
+       */
+      setFreeClientIds: (ids) => set((s) => {
+        const locked = lockedClientIds(s.clients, s.profile.freeClientIds);
+        const merged = [...new Set([...locked, ...ids])];
+        // Lo que no cabe no se guarda: si no, la elección dejaría de ser válida
+        // y todo volvería a congelarse.
+        if (!fitsFree(merged.map((id) => s.clients[id]).filter(Boolean))) return {};
+        return { profile: { ...s.profile, freeClientIds: merged } };
+      }),
 
       // ── Tag registry ──────────────────────────────────────────────────────
       createTag: (name) => {
@@ -752,6 +801,7 @@ export const useStore = create(
       },
 
       setClientActiveProgram: (clientId, programId) => {
+        if (programId !== null && get().isClientFrozen(clientId)) return get()._paywall('frozen');
         // Assigning makes the program active (archiving the previous one) and
         // marks it dirty so the trainer pushes it. Deassigning clears both.
         set((s) => ({
@@ -856,6 +906,7 @@ export const useStore = create(
 
       // Mobile: receives parsedData (already parsed JSON) + mode string
       importForClient: (clientId, parsedData, mode) => {
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         let data = parsedData;
         // Un fichero de una versión anterior trae los ids de antes de juntar
         // los ejercicios repetidos (P09-exercise-variants.md §3.3).
@@ -915,6 +966,7 @@ export const useStore = create(
       },
 
       createProgramForClient: (clientId, numSessions, programName, durationWeeks = null) => {
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         const programId = generateId('prog');
         const labels    = ['A', 'B', 'C', 'D', 'E', 'F'];
         const colorList = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
@@ -1273,6 +1325,8 @@ export const useStore = create(
        * en Inicio ni se entrena, solo se asigna (C06-group-classes.md §4.6).
        */
       createFreeTemplate: (plan = null, owner = 'me', { asTemplate = false } = {}) => {
+        if (asTemplate && get()._templateLimitReached('sessionTemplates')) return get()._paywall('sessionTemplates');
+        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
         const id = generateId('tpl');
         const base = freeTemplateFromPreset(plan, {
           id, owner, newBlockId: () => generateId('blk'), lib: get().getEffectiveLibrary(),
@@ -1368,6 +1422,8 @@ export const useStore = create(
       copyFreeTemplate: (templateId, { owner = 'me', name, asTemplate = false } = {}) => {
         const src = get().sessionTemplates[templateId];
         if (!src || src.programId) return null;
+        if (asTemplate && get()._templateLimitReached('sessionTemplates')) return get()._paywall('sessionTemplates');
+        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
         const id   = generateId('tpl');
         const copy = JSON.parse(JSON.stringify(src));
         delete copy.fromTrainer;
@@ -1486,6 +1542,7 @@ export const useStore = create(
       },
 
       createEmptyProgram: (numSessions, programName = 'Mi programa', kind = 'program', durationWeeks = null) => {
+        if (kind === 'template' && get()._templateLimitReached('programTemplates')) return get()._paywall('programTemplates');
         const programId = generateId('prog');
         const labels = DAY_LABELS;
         const colors = DAY_COLORS;
@@ -1947,6 +2004,9 @@ export const useStore = create(
       },
 
       setEditingProgram: (programId) => {
+        // El programa de un cliente congelado se ve, no se edita (M01 §4.5).
+        const owner = get().programs[programId]?.owner;
+        if (owner && owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
         set((s) => ({ ui: { ...s.ui, _editingProgramId: programId } }));
         get().navigate('programEditor');
       },
@@ -1960,6 +2020,8 @@ export const useStore = create(
         const { programs, sessionTemplates } = get();
         const srcProgram = programs[sourceProgramId];
         if (!srcProgram) return null;
+        if (kind === 'template' && get()._templateLimitReached('programTemplates')) return get()._paywall('programTemplates');
+        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
 
         const newProgramId = generateId('prog');
         const newTemplates = {};
@@ -2046,6 +2108,7 @@ export const useStore = create(
        * ejercicios añadidos.
        */
       startSession: (templateId, { forClient = null, loggedAt = null, logOnly = false, prefill = null } = {}) => {
+        if (forClient && get().isClientFrozen(forClient)) return get()._paywall('frozen');
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
@@ -3579,6 +3642,10 @@ export const useStore = create(
         if (!client) throw new Error('Cliente no encontrado.');
         if (client.syncSlotId) throw new Error('Este cliente ya está conectado a la nube.');
         if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
+        if (!get().profile.isPro) {
+          const reason = clientLimitReason(Object.values(clients).map((c) => (c.id === clientId ? { ...c, syncSlotId: 'nuevo' } : c)));
+          if (reason) { get()._paywall(reason); return false; }
+        }
 
         // Ensure auth session is active — may have expired after app restart
         await _ensureTrainerSession(trainerSync);
@@ -3591,6 +3658,7 @@ export const useStore = create(
             [clientId]: { ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode },
           },
         }));
+        return true;
       },
 
       /**
@@ -3599,7 +3667,7 @@ export const useStore = create(
        * canjee. Desde aquí es invitado: EMPEZAR desaparece de su ficha.
        */
       moveClientToApp: async (clientId) => {
-        await get().connectClientToCloud(clientId);
+        if (!(await get().connectClientToCloud(clientId))) return false;
         // Lo de después es de lo que ya tiene código: si falla, la subida
         // silenciosa del invitado lo reintenta.
         try {
@@ -3609,6 +3677,7 @@ export const useStore = create(
         } catch (err) {
           console.warn('[moveClientToApp]', err.message);
         }
+        return true;
       },
 
       /**
@@ -3673,6 +3742,7 @@ export const useStore = create(
       },
 
       uploadProgramToClient: async (clientId, programId) => {
+        get()._assertNotFrozen(clientId);
         const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
@@ -3752,6 +3822,7 @@ export const useStore = create(
        * the client did before sending doesn't count as consuming it).
        */
       sendOverrides: async (clientId) => {
+        get()._assertNotFrozen(clientId);
         const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
@@ -3775,6 +3846,7 @@ export const useStore = create(
        * Uses the existing mergeWorkoutLog logic to avoid duplicates.
        */
       downloadClientHistory: async (clientId) => {
+        get()._assertNotFrozen(clientId);
         const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
@@ -3968,6 +4040,7 @@ export const useStore = create(
        * tres. Devuelve el código nuevo para poder enseñarlo al momento.
        */
       reissueClientCode: async (clientId) => {
+        get()._assertNotFrozen(clientId);
         const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client?.syncSlotId) throw new Error('Este cliente no tiene hueco en Supabase.');
@@ -5006,6 +5079,15 @@ useStore.subscribe((s, prev) => {
 // prescribir). Un solo suscriptor en vez de una llamada en cada acción. Si falla,
 // el flag se queda y el siguiente cambio de `clients` —el refresco de los huecos
 // al volver a Clientes— lo reintenta.
+// M01 §4.6: con Pro la elección de «con quién sigues» no pinta nada, y si se
+// quedara guardada, la próxima caducidad la daría por buena sin preguntar —con
+// los clientes nuevos de esa temporada congelados de oficio—.
+useStore.subscribe((s, prev) => {
+  if (s.profile.isPro && !prev.profile.isPro && s.profile.freeClientIds?.length) {
+    useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: [] } }));
+  }
+});
+
 const INVITED_DEBOUNCE_MS = 1500;
 const invitedTimers = {};
 const invitedInFlight = new Set();

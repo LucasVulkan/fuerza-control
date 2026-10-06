@@ -9,6 +9,7 @@
  */
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
+import ProBadge from './ui/ProBadge';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, { LinearTransition, FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -91,10 +92,28 @@ export function ExerciseLines({ template, allExercises }) {
  * (U13-inicio-pestanas.md §3.3). `hero`: el de la que toca, negro sobre lima.
  * Si no, lima; o `surface2` si ya está hecha esta semana y se repite.
  */
-export function StartButton({ hero, done, label, onPress }) {
+/**
+ * `locked` (M01 §4.11): el plan gratis no deja. Pierde el color de acción, lleva
+ * PRO en vez de la flecha, y quien lo usa pasa un `onPress` que abre el paywall.
+ */
+export function StartButton({ hero, done, label, onPress, locked = false }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const quiet  = !hero && done;
+  const quiet  = (!hero && done) || locked;
+  if (locked) {
+    return (
+      <TouchableOpacity
+        style={[hero ? styles.todayBtn : styles.sesBtn, styles.sesBtnSecondary]}
+        onPress={onPress}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}, PRO`}
+      >
+        <Text style={[styles.sesBtnText, styles.sesBtnTextSecondary]}>{label}</Text>
+        <ProBadge />
+      </TouchableOpacity>
+    );
+  }
   return (
     <TouchableOpacity
       style={hero ? styles.todayBtn : [styles.sesBtn, quiet && styles.sesBtnSecondary]}
@@ -116,7 +135,7 @@ export function StartButton({ hero, done, label, onPress }) {
  */
 export function SessionRow({
   marker, markerMuted, name, meta, done, adapted, by, open,
-  cta, onToggle, onStart, onEdit, onShare, onBodyLayout, a11yLabel, children,
+  cta, onToggle, onStart, onEdit, onShare, onBodyLayout, a11yLabel, children, locked = false,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -157,15 +176,16 @@ export function SessionRow({
           <View style={styles.sesBtnRow}>
             {/* Sin `onStart` la fila solo se consulta y se edita: la sesión libre
                 de un cliente con app la entrena él (C06-group-classes.md §4.1). */}
-            {!!onStart && <StartButton done={done} label={cta} onPress={onStart} />}
+            {!!onStart && <StartButton done={done} label={cta} onPress={onStart} locked={locked} />}
             {onEdit && (
               <TouchableOpacity
-                style={[styles.sesBtn, styles.sesBtnSecondary, onStart && styles.sesBtnEdit, !onStart && styles.sesBtnAlone]}
+                style={[styles.sesBtn, styles.sesBtnSecondary, onStart && styles.sesBtnEdit, !onStart && styles.sesBtnAlone, locked && { gap: spacing.sm }]}
                 onPress={onEdit}
                 activeOpacity={0.75}
                 accessibilityRole="button"
               >
                 <Text style={[styles.sesBtnText, styles.sesBtnTextSecondary]}>{t('home.edit').toUpperCase()}</Text>
+                {locked && <ProBadge />}
               </TouchableOpacity>
             )}
             {onShare && (
@@ -195,7 +215,7 @@ export function SessionRow({
  * por dentro y no lo mueve de sitio.
  */
 export function TodayCard({
-  marker, flag, name, meta, open, cta, onToggle, onStart, onShare, onBodyLayout, a11yLabel, children,
+  marker, flag, name, meta, open, cta, onToggle, onStart, onShare, onBodyLayout, a11yLabel, children, locked = false,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -241,7 +261,7 @@ export function TodayCard({
           plegar, y sin él Reanimated le quita el hueco de golpe — el botón
           saltaba a su sitio mientras la tarjeta seguía encogiendo. */}
       <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.todayFoot}>
-        <StartButton hero label={cta} onPress={onStart} />
+        <StartButton hero label={cta} onPress={onStart} locked={locked} />
         {/* Al lado de EMPEZAR y no en el desplegable: a un cliente sin app
             la sesión se le manda tanto como se entrena con él (§5). */}
         {onShare && (

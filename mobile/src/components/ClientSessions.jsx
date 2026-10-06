@@ -22,6 +22,8 @@ import { useStore } from '../../store/useStore';
 import DragSheet from './DragSheet';
 import SheetRow from './ui/SheetRow';
 import { ROW_ICON } from './ui/rowIcons';
+import ProBadge from './ui/ProBadge';
+import { useFreeGates } from '../useFreeGates';
 import { ExerciseLines, SessionRow, TodayCard, SectionHeader } from './SessionList';
 import { FOLD_MS } from './ui/collapseOut';
 import { startCta, relativeTime } from '../utils/sessionRowText';
@@ -204,6 +206,10 @@ export default function ClientSessions({ client, program, days, log, fold }) {
   const [logPast, setLogPast] = useState(false);
 
   const { activeId, start, logAt } = useClientStart(client);
+  // Congelado (M01 §4.5): EMPEZAR y APUNTAR llevan PRO y abren el paywall ya,
+  // sin pasar por la hoja de días.
+  const { gates, gate } = useFreeGates();
+  const lock = gates.client(client.id);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
@@ -260,7 +266,8 @@ export default function ClientSessions({ client, program, days, log, fold }) {
                 meta={heroMeta(d)}
                 {...fold.row(row.templateId)}
                 cta={cta}
-                onStart={() => start(row.templateId)}
+                locked={!!lock}
+                onStart={gate(lock, () => start(row.templateId))}
                 onShare={() => share(row.templateId)}
                 a11yLabel={`${plan.heroLabel}, ${a11y}`}
               >
@@ -280,7 +287,8 @@ export default function ClientSessions({ client, program, days, log, fold }) {
               done={row.isDone}
               {...fold.row(row.templateId)}
               cta={cta}
-              onStart={() => start(row.templateId)}
+              locked={!!lock}
+              onStart={gate(lock, () => start(row.templateId))}
               onShare={() => share(row.templateId)}
               a11yLabel={a11y}
             >
@@ -295,12 +303,13 @@ export default function ClientSessions({ client, program, days, log, fold }) {
       <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
         <TouchableOpacity
           style={styles.logPastBtn}
-          onPress={() => setLogPast(true)}
+          onPress={gate(lock, () => setLogPast(true))}
           activeOpacity={0.8}
           accessibilityRole="button"
         >
           <PencilGlyph color={th.colors.text} />
           <Text style={styles.logPastText}>{t('clients.logPast.open')}</Text>
+          {!!lock && <ProBadge />}
         </TouchableOpacity>
       </Reanimated.View>
 
@@ -327,6 +336,7 @@ export default function ClientSessions({ client, program, days, log, fold }) {
  */
 export function ClientFreeSessions({ client, canStart, log, fold }) {
   const { t }      = useTranslation();
+  const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   // null · 'menu' · 'templates': las dos hojas de «+ Sesión libre», como en Inicio.
@@ -344,6 +354,8 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
   );
   const { activeId, start } = useClientStart(client);
   const share = useShareSession(null, log, allExercises, client.name);
+  const { gates, gate } = useFreeGates();
+  const lock       = gates.client(client.id);
 
   const all     = Object.values(sessionTemplates).filter((tpl) => !tpl.programId);
   const his     = all.filter((tpl) => tpl.owner === client.id);
@@ -380,8 +392,9 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
                   cta={startCta(t, '', { active: activeId === tpl.id, done: false })}
                   // Solo sin app se empieza desde aquí: con código, la
                   // entrena él (C05-trainer-logging.md §4.0.2).
-                  onStart={canStart ? () => start(tpl.id) : undefined}
-                  onEdit={() => edit(tpl.id)}
+                  onStart={canStart ? gate(lock, () => start(tpl.id)) : undefined}
+                  onEdit={gate(lock, () => edit(tpl.id))}
+                  locked={!!lock}
                   onShare={() => share(tpl.id)}
                   a11yLabel={`${t('freeSession.badge')}, ${nameOf(tpl)}`}
                 >
@@ -394,9 +407,17 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
       )}
 
       <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
-        <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet('menu')} activeOpacity={0.75} accessibilityRole="button">
-          <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
-        </TouchableOpacity>
+        {lock ? (
+          // Bloqueado pierde el contorno lima de «crear» (M01 §4.11).
+          <TouchableOpacity style={[styles.freeBtn, styles.freeBtnLocked]} onPress={gate(lock)} activeOpacity={0.75} accessibilityRole="button">
+            <Text style={[styles.freeBtnText, { color: th.colors.text }]}>{t('freeSession.btn')}</Text>
+            <ProBadge />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.freeBtn} onPress={() => setSheet('menu')} activeOpacity={0.75} accessibilityRole="button">
+            <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
+          </TouchableOpacity>
+        )}
       </Reanimated.View>
 
       {sheet === 'menu' && (
@@ -414,7 +435,7 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
               sub={t('clients.freeSheet.blankDesc')}
               subLines={0}
               minHeight={62}
-              onPress={() => { setSheet(null); edit(createFreeTemplate(null, client.id)); }}
+              onPress={() => { setSheet(null); const id = createFreeTemplate(null, client.id); if (id) edit(id); }}
             />
             {/* Como en Inicio: las plantillas detrás de una fila con su número,
                 y no todas de golpe en esta hoja — con veinte no se encontraba
@@ -450,8 +471,9 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
                 minHeight={62}
                 onPress={() => {
                   setSheet(null);
-                  copyFreeTemplate(tpl.id, { owner: client.id });
-                  showToast(t('clients.freeSheet.assigned', { name: client.name }), 2200, 'success');
+                  if (copyFreeTemplate(tpl.id, { owner: client.id })) {
+                    showToast(t('clients.freeSheet.assigned', { name: client.name }), 2200, 'success');
+                  }
                 }}
               />
             ))}
@@ -492,6 +514,7 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:         spacing.md,
   },
   freeBtnText: { ...textStyles.button, color: th.colors.accent },
+  freeBtnLocked: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, borderColor: th.colors.border },
 
   // ── Hojas ──
   sheetGroup: { gap: spacing.xs, paddingBottom: spacing.sm },

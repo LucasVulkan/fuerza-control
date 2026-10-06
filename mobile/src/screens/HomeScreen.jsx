@@ -550,8 +550,7 @@ export default function HomeScreen() {
                 minHeight={62}
                 onPress={() => {
                   setTplList(false);
-                  copyFreeTemplate(tpl.id, { owner: 'me' });
-                  showToast(t('freeSession.addedToHome'), 2200, 'success');
+                  if (copyFreeTemplate(tpl.id, { owner: 'me' })) showToast(t('freeSession.addedToHome'), 2200, 'success');
                 }}
               />
             ))}

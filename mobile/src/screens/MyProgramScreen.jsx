@@ -41,6 +41,7 @@ import { DocSheet } from '../components/ui/DocPoints';
 import { LockIcon } from '../components/ui/EditorIcons';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
+import { useFreeGates } from '../useFreeGates';
 import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STATUS } from '../utils/adherence';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { countsForProgram } from '../utils/freeSessions';
@@ -172,7 +173,8 @@ export default function MyProgramScreen() {
   const exportSpecificProgram = useStore((s) => s.exportSpecificProgram);
   // La misma regla que enseña la pestaña Plantillas (`showProTabs`): sin ella,
   // la plantilla iría a parar a donde no se ve.
-  const hasTemplates       = useStore((s) => (s.profile?.isPro ?? false) || !(s.profile?.proTabsHidden ?? false));
+  const hasTemplates       = useStore((s) => !(s.profile?.proTabsHidden ?? false));
+  const { gates, gate }   = useFreeGates();
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
@@ -373,10 +375,13 @@ export default function MyProgramScreen() {
               <SheetRow
                 icon={ROW_ICON.preset}
                 label={t('clients.menuSaveTemplate')}
-                onPress={() => {
-                  cloneProgramFromTemplate(activeProgram.id, { kind: 'template', name: activeProgram.name });
-                  showToast(t('clients.toastSavedTemplate'));
-                }}
+                labelColor={gates.newProgramTemplate ? th.colors.mutedLight : undefined}
+                badge={gates.newProgramTemplate ? 'PRO' : undefined}
+                onPress={gate(gates.newProgramTemplate, () => {
+                  if (cloneProgramFromTemplate(activeProgram.id, { kind: 'template', name: activeProgram.name })) {
+                    showToast(t('clients.toastSavedTemplate'));
+                  }
+                })}
               />
             )}
             {!isTrainers && (

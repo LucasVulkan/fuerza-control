@@ -42,7 +42,7 @@
     "theme": "Tema",
     "units": "Unidades",
     "bodyWeight": "Peso corporal",
-    "proTabsLabel": "Pestañas PRO",
+    "proTabsLabel": "Pestañas de entrenador",
     "proTabsHint": "Muestra las pestañas de Clientes y Plantillas",
     "scrubRulerLabel": "Regla al deslizar",
     "scrubRulerHint": "KG, reps y RPE se ajustan sobre una regla",
@@ -982,9 +982,37 @@
       "withHistoryDesc": "Se elimina también el historial. No hay vuelta atrás."
     }
   },
+  "freePlan": {
+    "frozenLabel": "Fuera de plan",
+    "outOfPlan": "Fuera de plan",
+    "bannerTitle_one": "{{count}} cliente fuera de plan",
+    "bannerTitle_other": "{{count}} clientes fuera de plan",
+    "bannerSub": "El plan gratis llega a {{max}} clientes, {{maxApp}} con app. Elige con quién sigues.",
+    "bannerBtn": "Elegir",
+    "chooseTitle": "Con quién sigues",
+    "chooseLead": "Sin Pro, el plan gratis llega a 3 clientes y solo 1 con app. Los que no elijas quedan fuera de plan: puedes ver su historial, pero no apuntarles ni enviarles nada. No se borra nada, pero lo que elijas ya no se puede cambiar.",
+    "chooseCount": "{{n}}/{{max}} clientes · {{app}}/{{maxApp}} con app",
+    "chooseCta": "Seguir con estos",
+    "chooseMoreLead": "Te ha quedado un hueco en el plan gratis. Puedes ocuparlo con un cliente fuera de plan; los que ya elegiste no cambian.",
+    "alreadyChosen": "elegido",
+    "roomTitle": "Te queda un hueco libre",
+    "roomSub": "Puedes recuperar a un cliente sin hacerte Pro.",
+    "frozenSection": "Fuera de plan",
+    "goPro": "Prefiero hacerme Pro",
+    "withApp": "Con app",
+    "withoutApp": "Le apuntas tú"
+  },
   "paywall": {
     "title": "Desbloquea Forma Pro",
     "subtitle": "Todo lo que necesitas para entrenar y gestionar clientes",
+    "reason": {
+      "clients": "El plan gratis llega hasta 3 clientes. Con Pro, todos los que quieras.",
+      "connected": "El plan gratis incluye 1 cliente con app. Con Pro, conecta a todos.",
+      "programTemplates": "El plan gratis incluye 1 plantilla de programa. Con Pro, todas las que quieras.",
+      "sessionTemplates": "El plan gratis incluye 1 plantilla de sesión. Con Pro, todas las que quieras.",
+      "frozen": "Este cliente está fuera de plan: el plan gratis llega hasta 3 clientes, 1 con app. Hazte Pro o elige con quién sigues."
+    },
+    "frozenError": "Cliente fuera de plan: el plan gratis no lo incluye.",
     "features": {
       "clients": "Gestión completa de clientes",
       "assign": "Asignar programas a clientes",
@@ -2012,9 +2040,6 @@
     "infoCodeLabel": "CÓDIGO CLIENTE",
     "infoCloudLabel": "SINCRONIZACIÓN EN LA NUBE",
     "infoCloudNoCode": "Conectado · sin código local",
-    "proGateTitle": "Gestión de clientes",
-    "proGateBody": "Lleva el seguimiento de tus clientes, asígnales programas y controla su facturación.",
-    "proGateCta": "Ver planes PRO",
     "title": "Clientes",
     "newBtn": "+ Cliente",
     "filterSheet": {
@@ -2365,10 +2390,6 @@
     "statWeeks_other": "semanas",
     "statSessions_one": "sesión",
     "statSessions_other": "sesiones",
-    "proTitle": "Plantillas de entrenamiento",
-    "proBody": "Crea plantillas y asígnalas a tus clientes en segundos. Estandariza tus programas y ahorra tiempo.",
-    "proCta": "VER PLANES PRO",
-    "hideTab": "Ocultar tab",
     "copyNameSuffix": " (copia)",
     "segPrograms": "Programas",
     "segSessions": "Sesiones",

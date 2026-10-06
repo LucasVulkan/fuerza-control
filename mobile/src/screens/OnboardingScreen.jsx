@@ -452,7 +452,6 @@ export default function OnboardingScreen() {
   const customExercises            = useStore((s) => s.customExercises);
   const storeNavigate              = useStore((s) => s.navigate);
   const language                   = useStore((s) => s.profile?.language ?? 'es');
-  const isPro                      = useStore((s) => s.profile?.isPro ?? false);
   const programs                   = useStore((s) => s.programs);
   const clientSync                 = useStore((s) => s.clientSync);
   const unlinkFromTrainer          = useStore((s) => s.unlinkFromTrainer);
@@ -634,7 +633,7 @@ export default function OnboardingScreen() {
     const src = programs[selectedTemplateId];
     if (!src) return;
     const name = templateProgramName.trim() || src.name;
-    cloneProgramFromTemplate(selectedTemplateId, { name });
+    if (!cloneProgramFromTemplate(selectedTemplateId, { name })) return; // el plan gratis lo paró
     finish();
   }
 
@@ -903,7 +902,7 @@ export default function OnboardingScreen() {
             desc={t('onboarding.modeImportDesc')}
             onPress={handlePickFile}
           />
-          {isPro && templateList.length > 0 && (
+          {templateList.length > 0 && (
             <ModeCard
               icon="template"
               title={t('onboarding.modeTemplate')}

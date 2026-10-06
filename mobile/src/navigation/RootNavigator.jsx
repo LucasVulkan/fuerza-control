@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -35,6 +35,7 @@ import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
 import DialogHost            from '../components/ui/DialogHost';
+import PaywallModal          from '../components/PaywallModal';
 import ExternalImportModal   from '../components/ExternalImportModal';
 import { clientLink } from '../utils/clientLink';
 
@@ -64,9 +65,9 @@ function MainTabs() {
   const { t }          = useTranslation();
   const th             = useTheme();
   const styles         = useThemedStyles(makeStyles);
-  const isPro          = useStore((s) => s.profile?.isPro          ?? false);
+  // Ya no es el muro del Pro (M01 §4.3): una preferencia, «no soy entrenador».
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
-  const showProTabs    = isPro || !proTabsHidden;
+  const showProTabs    = !proTabsHidden;
   // Clients with unsent uploads (program changes and/or next-session prescriptions).
   // Etapa terminada esperando decisión: el punto del tab de Programa. La misma
   // regla que el aviso de la Home (`stageBannerDue`). El día se lee al pintar:
@@ -291,8 +292,28 @@ export default function RootNavigator() {
       <ExternalImportModal />
       {/* Confirmaciones y avisos (`showDialog`), en vez del Alert nativo. */}
       <DialogHost />
+      {/* El que abre una acción que choca con el plan gratis (M01 §4.2). */}
+      <GlobalPaywall />
     </View>
   );
+}
+
+/**
+ * Entra con 250 ms de retraso, como las demás hojas que se abren al cerrar
+ * otra: la acción bloqueada casi siempre sale de una hoja que se está cerrando,
+ * y en iOS un Modal no se presenta mientras otro se va.
+ */
+function GlobalPaywall() {
+  const reason       = useStore((s) => s.ui.paywallReason);
+  const closePaywall = useStore((s) => s.closePaywall);
+  const [shown, setShown] = useState(null);
+  useEffect(() => {
+    if (!reason) return undefined;
+    const timer = setTimeout(() => setShown(reason), 250);
+    return () => clearTimeout(timer);
+  }, [reason]);
+  const close = () => { setShown(null); closePaywall(); };
+  return reason && shown === reason ? <PaywallModal reason={reason} onClose={close} /> : null;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
