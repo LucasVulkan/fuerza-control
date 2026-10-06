@@ -649,6 +649,7 @@
     "weekProgress": "Week {{current}} of {{total}}",
     "stageDefault": "Stage {{n}}",
     "openProgram": "Opens your program",
+    "yourProgram": "Your program",
     "stageWeeks_one": "{{count}} week",
     "stageWeeks_other": "{{count}} weeks",
     "stageSessionsPerWeek_one": "{{count}} session per week",

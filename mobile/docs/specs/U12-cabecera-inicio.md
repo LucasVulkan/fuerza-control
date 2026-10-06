@@ -42,23 +42,23 @@ Decisiones del usuario (5-oct-2026):
 `src/components/HomeProgramCard.jsx`, montada en `HomeScreen` encima de la
 semana, que no cambia. Sin programa activo no sale.
 
-- **Caja**: `surface`, radio `md`, relleno `md` arriba y `lg` a los lados y abajo.
-- **Ceja** (`caps`, `mutedLight`, versales): a la izquierda la semana del
-  programa («SEMANA 7 DE 12»); a la derecha la etapa («ETAPA 2 · VOLUMEN», el
-  nombre en `text`). Si no cabe, cede la etapa.
+- **Diseño de Figma (6-oct-2026)**, tres casos: «Frame 156» (sin etapas ni
+  duración: sin barra ni total), «Frame 167» (una etapa con duración: una barra)
+  y `515:922` (varias etapas: un tramo por etapa). Cambio del usuario (6-oct):
+  la etapa en curso va en la ceja, «TU PROGRAMA · ACUMULACIÓN» (su nombre, o «ETAPA 2» si no tiene), y sin contador de semana de la etapa.
+- **Caja**: `surface2`, radio `sm`. Izquierda: ceja «TU PROGRAMA» (`caps`,
+  `mutedLight`) y el nombre (`heading`, `accent`). Derecha, tras un corte en
+  diagonal de 4 px del color del fondo: «SEMANA», la semana del programa a dos
+  cifras (`heading`, `accent`, como el nombre) y, en la misma línea, «/12» (`caps`, `mutedLight`, como la ceja).
   - La semana es `stageStatus().programWeek`. El total suma las semanas de las
     etapas, con la en curso alargada (`lengthWeeks`). Sin total si alguna etapa
-    no tiene techo, o si la semana ya lo pasa (las alargadas cerradas no dejan
-    rastro en el modelo). Sin empezar: «SIN EMPEZAR».
-  - Programa de una sola etapa sin techo: ni etapa ni barra, como en el tab.
-- **Nombre** (`heading`, 18, `text`), hasta dos líneas.
-- **Barra**: un tramo por etapa, proporcional a sus semanas (la abierta pesa 1),
-  6 px, `gap` 4. Las hechas en `tint.accent50`; la actual en `border` y se llena
-  en `accent` por semanas (`weekInStage / lengthWeeks`); la abierta va entera.
-  Diferencia con la de `ProgramCard`: allí la actual va entera, aquí se llena,
-  porque lo que se cuenta son semanas.
+    no tiene techo, o si la semana ya lo pasa. Sin empezar: «–».
+- **Barra**: 6 px, radio 1, pegada al margen de abajo. Tramos proporcionales a sus semanas (la abierta pesa
+  1); hechas en `tint.accent50`, la actual en `muted` y se llena en `accent` por
+  semanas. Con varias etapas los tramos (y el «07») van inclinados −12°, como en
+  Figma.
 - Pulsar la tarjeta: `navigation.navigate('MyProgram')`.
-- Texto nuevo: `home.openProgram` (pista de accesibilidad). Reutiliza `home.weekProgress`, `home.stageDefault`,
+- Texto nuevo: `home.openProgram` (pista de accesibilidad) y `home.yourProgram`. Reutiliza `home.weekProgress`, `home.stageDefault`,
   `programCard.stageWeekOpen` y `programCard.stageNotStarted`.
 
 **Probar U12-01**
