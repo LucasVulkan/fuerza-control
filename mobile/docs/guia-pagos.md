@@ -137,11 +137,17 @@ Escribirlo bien a la primera.
 
 ### A6. El pago único
 
-Dentro de la app → **In-App Purchases** → **+** → tipo **Non-Consumable**.
-(Non-consumable es el que se restaura; un consumible se gasta y no.)
-- Reference name: `Pro de por vida`.
-- **Product ID: `forma_pro_lifetime`**.
-- Precio, localización es/en, captura y nota, igual que en A5.
+**Ya existe: `formafit_pro_permanent`.** No se crea otro; el precio se cambia en
+el mismo producto: **In-App Purchases** → el producto → **Price Schedule** →
+**Add Pricing** → precio nuevo con inicio **Today**. No pasa revisión. **No
+borrarlo**: el Product ID no se podría volver a usar.
+
+Comprobar que su tipo es **Non-Consumable** (es el que se restaura; un
+consumible se gasta y no). El tipo no se puede cambiar después: si fuese
+consumible, entonces sí habría que crear otro, con un id nuevo.
+
+Para uno nuevo: **In-App Purchases** → **+** → **Non-Consumable**, con precio,
+localización es/en, captura y nota, igual que en A5.
 
 Precio: unas **2,5–3 veces el anual**. Si está más cerca, nadie compra la
 suscripción.
@@ -222,7 +228,7 @@ settings**:
 
 **Product catalog → Products**:
 - iOS: **Import** (con A7.2) o **+ New** escribiendo `forma_pro_annual` y
-  `forma_pro_lifetime` exactamente igual.
+  `formafit_pro_permanent` exactamente igual.
 - Android: los de G2 y G3. La suscripción de Google aparece como
   `forma_pro:annual` (producto:plan base).
 
@@ -240,7 +246,7 @@ como **Current**. Dentro, dos packages:
 | Package | Producto iOS | Producto Android |
 |---|---|---|
 | `$rc_annual` (Annual) | `forma_pro_annual` | `forma_pro:annual` |
-| `$rc_lifetime` (Lifetime) | `forma_pro_lifetime` | `forma_pro_lifetime` |
+| `$rc_lifetime` (Lifetime) | `formafit_pro_permanent` | el que ya existe (G3) |
 
 Es lo que pinta el paywall: `getOfferings()` devuelve la *Current*, y la app
 recorre sus paquetes. Si mañana se cambia de precio o se añade una opción, se
@@ -287,7 +293,7 @@ mensual, es otro plan base (`monthly`) del mismo `forma_pro`.
 
 **Monetize with Play → Products → One-time products** (antes «In-app
 products»). Si el actual ya existe con otro id, **se usa ese** y se apunta en
-M01 §7. Si no: `forma_pro_lifetime`, precio, activar.
+M01 §7. Si no: `formafit_pro_permanent` (mismo id que en Apple), precio, activar.
 
 ### G4. Periodo de gracia
 
