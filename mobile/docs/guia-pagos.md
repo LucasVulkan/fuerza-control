@@ -157,9 +157,13 @@ suscripción.
 App Store Connect → **Users and Access** → **Integrations**:
 1. **In-App Purchase** → *Generate In-App Purchase Key* → nombre «RevenueCat».
    **Descargar el `.p8` en ese momento: solo se puede descargar una vez.**
+   Se llama `SubscriptionKey_<KEYID>.p8`.
    Apuntar el **Key ID** y el **Issuer ID** (sale arriba en la misma página).
 2. *(Opcional, recomendado)* **App Store Connect API** → Team Keys → **+** →
-   rol *App Manager*. Otro `.p8` con su Key ID. Con esta, RevenueCat importa
+   rol *App Manager*. Otro `.p8` con su Key ID, que se llama
+   `AuthKey_<KEYID>.p8`. **Son dos claves distintas y van en dos pestañas
+   distintas de RevenueCat** (R1); si se cruzan, RevenueCat dice que el archivo
+   no es válido. Con esta, RevenueCat importa
    los productos solo y configura los avisos de R3 con un botón.
 
 Guardar los `.p8` fuera del repositorio (un gestor de contraseñas).
@@ -204,10 +208,11 @@ Ya hay proyecto y app Android (la clave `goog_…` está en el código).
 [app.revenuecat.com](https://app.revenuecat.com) → el proyecto → **Apps** →
 **+ New** → **App Store**:
 - Bundle ID: `com.formastudio.formafit`.
-- Pestaña **In-app purchase key configuration** → subir el `.p8` de A7.1 +
-  Issuer ID.
-- *(Si hiciste A7.2)* App Store Connect API → subir ese `.p8`, Key ID e Issuer
-  ID.
+- Pestaña **In-app purchase key configuration** → el `SubscriptionKey_….p8`
+  de A7.1 + Issuer ID.
+- *(Si hiciste A7.2)* Pestaña **App Store Connect API** → el `AuthKey_….p8`,
+  Issuer ID y **Vendor number** (App Store Connect → Payments and Financial
+  Reports, arriba a la izquierda).
 
 ### R2. La clave pública
 
