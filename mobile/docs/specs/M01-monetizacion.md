@@ -613,7 +613,7 @@ Los identificadores, fijados aquí para que la guía y el código no diverjan:
 | Qué | Id |
 |---|---|
 | Entitlement | `Forma - Fit Pro` (el que ya existe, §5.1) |
-| Suscripción anual | `forma_pro_annual` (Apple) · `forma_pro` con plan base `annual` (Google) |
+| Suscripción anual | `formafit_pro_annual` (Apple, ya creado) · `formafit_pro` con plan base `annual` (Google) |
 | Pago único | `formafit_pro_permanent` (Apple, ya creado) · Google: el que ya existe, **sin apuntar aún** |
 | Offering | `default`, con los paquetes `$rc_annual` y `$rc_lifetime` |
 

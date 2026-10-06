@@ -122,7 +122,7 @@ Dentro de la app → **Subscriptions** (barra lateral, sección Monetization):
      mensual, va en este mismo grupo y Apple gestiona el cambio.
 2. Dentro del grupo, **+** →
    - Reference name: `Pro anual` (interno).
-   - **Product ID: `forma_pro_annual`**.
+   - **Product ID: `formafit_pro_annual`**.
    - Duration: **1 year**.
 3. **Subscription Prices** → país base España, precio. Apple convierte al resto
    de países (se puede retocar país a país).
@@ -227,10 +227,10 @@ settings**:
 ### R4. Productos
 
 **Product catalog → Products**:
-- iOS: **Import** (con A7.2) o **+ New** escribiendo `forma_pro_annual` y
+- iOS: **Import** (con A7.2) o **+ New** escribiendo `formafit_pro_annual` y
   `formafit_pro_permanent` exactamente igual.
 - Android: los de G2 y G3. La suscripción de Google aparece como
-  `forma_pro:annual` (producto:plan base).
+  `formafit_pro:annual` (producto:plan base).
 
 ### R5. El entitlement `Forma - Fit Pro`
 
@@ -245,7 +245,7 @@ como **Current**. Dentro, dos packages:
 
 | Package | Producto iOS | Producto Android |
 |---|---|---|
-| `$rc_annual` (Annual) | `forma_pro_annual` | `forma_pro:annual` |
+| `$rc_annual` (Annual) | `formafit_pro_annual` | `formafit_pro:annual` |
 | `$rc_lifetime` (Lifetime) | `formafit_pro_permanent` | el que ya existe (G3) |
 
 Es lo que pinta el paywall: `getOfferings()` devuelve la *Current*, y la app
@@ -282,12 +282,12 @@ vez en el programa de comisión del 15 % desde la Play Console.
 
 Play Console → la app → **Monetize with Play → Products → Subscriptions** →
 **Create subscription**:
-- **Product ID: `forma_pro`**, nombre «Forma Pro».
+- **Product ID: `formafit_pro`**, nombre «Forma Pro».
 - **Add base plan** → id **`annual`** → *Auto-renewing*, periodo **1 year** →
   precios → **Activate**.
 
 En Google un producto de suscripción tiene planes base dentro: si algún día hay
-mensual, es otro plan base (`monthly`) del mismo `forma_pro`.
+mensual, es otro plan base (`monthly`) del mismo `formafit_pro`.
 
 ### G3. El pago único
 
