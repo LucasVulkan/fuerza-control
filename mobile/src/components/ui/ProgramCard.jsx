@@ -294,9 +294,9 @@ export function ProgramActions({ onEdit, onView, onMore }) {
 const makeStyles = (th) => StyleSheet.create({
   card: {
     backgroundColor: th.colors.surface,
-    // `radius/sm`, el de los botones de debajo: tarjeta y botones se leen
-    // como un solo bloque. Bajado de `md` con las de sesión (U13 §11).
-    borderRadius:    th.radius.sm,
+    // `radius/md`, el de los botones de debajo: tarjeta y botones se leen
+    // como un solo bloque (U13 §11: se probó `sm` y se volvió a `md`).
+    borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
 
@@ -418,7 +418,7 @@ const makeStyles = (th) => StyleSheet.create({
   actionBtn: {
     flex:            1,
     backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.sm,
+    borderRadius:    th.radius.md,
     paddingVertical: spacing.md,
     alignItems:      'center',
     justifyContent:  'center',

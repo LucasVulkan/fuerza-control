@@ -95,7 +95,7 @@ export default function HomeProgramCard({ program, onOpen }) {
 const makeStyles = (th) => StyleSheet.create({
   card: {
     backgroundColor:   th.colors.surface,
-    borderRadius:      th.radius.sm,
+    borderRadius:      th.radius.md,
     paddingTop:        spacing.md,
     paddingHorizontal: spacing.lg,
     paddingBottom:     spacing.lg,

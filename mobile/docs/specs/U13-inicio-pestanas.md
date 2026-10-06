@@ -11,7 +11,7 @@
 > Fase U13-05 · hecho · Ajustes de la primera prueba, «la semana empieza por la A» (del programa) y el mismo botón · §8
 > Fase U13-06 · hecho · Programa libre: ninguna sesión toca · §9
 > Fase U13-07 · hecho · Menos colores en las pestañas: probado y vuelto atrás; pestañas un poco más oscuras · §10
-> Fase U13-08 · hecho · Radio más bajo en tarjetas de sesión y de programa, y menos aire en los botones del programa · §11
+> Fase U13-08 · hecho · Menos aire en los botones del programa; el radio más bajo se probó y se volvió atrás · §11
 > Fase U13-09 · hecho · Progresión: radio más bajo y menos aire entre las tarjetas de información · §12
 >
 > Estado: **U13-01 a U13-03 hechas el 6-oct-2026**, por probar en el móvil. Es la
@@ -352,15 +352,15 @@ leía bien pero no convenció, y el mismo día se volvió a la de antes (letras 
 - [x] Las pestañas sin abrir se ven algo más oscuras que antes y se siguen distinguiendo de la tarjeta gris.
 - [x] REPETIR SESIÓN (y EDITAR / compartir) se distingue bien sobre la tarjeta, en la lista y en las pestañas.
 
-## 11. U13-08 — Radio más bajo y menos aire
+## 11. U13-08 — Menos aire en los botones del programa
 
 Pedido el 6-oct-2026, tras ver las pestañas en el móvil:
 
-- **Radio `md` (10) → `sm` (6)** en las tarjetas de sesión (fila, tarjeta de
-  hoy, tarjeta de pestañas), en sus botones (EMPEZAR / REPETIR / EDITAR, para no
-  quedar más redondos que la tarjeta que los contiene), en la tarjeta de programa
-  de Inicio (U12) y en la del tab Programa y la ficha de cliente (`ProgramCard`)
-  con sus botones Editar · Ver · ⋯ (`ProgramActions`).
+- **Radio**: se bajó de `md` (10) a `sm` (6) en las tarjetas de sesión (fila,
+  tarjeta de hoy, tarjeta de pestañas), sus botones, la tarjeta de programa de
+  Inicio (U12) y la del tab Programa y la ficha de cliente (`ProgramCard`) con
+  Editar · Ver · ⋯. Probado, y **el 6-oct-2026 se volvió a `md`** en todas ellas;
+  se queda el aire nuevo de abajo.
 - **Aire de los botones del programa: 8 → 4** (`spacing.xs2`), entre la tarjeta y
   los botones y entre botones: el mismo que separa las tarjetas de sesión.
 - Fuera de esto se quedan en `md`: el botón «+ Sesión libre», el banner de etapa
@@ -369,11 +369,12 @@ Pedido el 6-oct-2026, tras ver las pestañas en el móvil:
 **Probar U13-08**
 
 - [x] Las tarjetas de sesión (lista y pestañas) y sus botones tienen las esquinas menos redondas.
+- [ ] Vuelta a `md`: tarjetas de sesión, de programa y sus botones con el radio de antes; el aire entre la tarjeta de programa y sus botones sigue en 4.
 - [x] En el tab Programa, la tarjeta y Editar · Ver · ⋯ van con el radio nuevo y más juntos (4 entre tarjeta y botones y entre botones).
 
 ## 12. U13-09 — Progresión: radio más bajo y menos aire
 
-Lo mismo que §11, en el tab Progresión (6-oct-2026):
+En el tab Progresión (6-oct-2026), y aquí se queda:
 
 - **Radio `lg` (16) → `md` (10)** en las tarjetas de información SESIONES ·
   CARGA · VOLUMEN (Ejercicios y Carga) y, en Carga, en la tarjeta de la gráfica
