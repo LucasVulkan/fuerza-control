@@ -163,6 +163,11 @@ const formaFitColors = {
   borderCard: '#3a3a3a',
   // Relleno de los ✓ sin marcar (U10-04): un paso más claro que `surface2`.
   btnFill:    '#3a3a3a',
+  // Lo que va encima de una tarjeta en `surface`: las pestañas sin abrir del
+  // Inicio por pestañas y los botones secundarios de una sesión (REPETIR,
+  // EDITAR, compartir). Medio paso entre `surface2`, que sobre la tarjeta casi
+  // no se veía, y `border` (U13 §10).
+  surface3:   '#333333',
   green:      '#66fa39',
   orange:     '#fb923c',
   red:        '#ff0900',

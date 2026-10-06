@@ -9,6 +9,8 @@
 > Fase U13-03 · hecho · Mantener y deslizar por las pestañas · §5
 > Fase U13-04 · aparcado · Ver lo que hiciste la última vez · §6
 > Fase U13-05 · hecho · Ajustes de la primera prueba, «la semana empieza por la A» (del programa) y el mismo botón · §8
+> Fase U13-06 · hecho · Programa libre: ninguna sesión toca · §9
+> Fase U13-07 · hecho · Menos colores en las pestañas: probado y vuelto atrás; pestañas un poco más oscuras · §10
 >
 > Estado: **U13-01 a U13-03 hechas el 6-oct-2026**, por probar en el móvil. Es la
 > variante **A · Tal cual** de la maqueta, elegida «para empezar y ajustar».
@@ -22,7 +24,8 @@
 > vacía las pestañas y el nombre entra deslizando (§4), el botón es el de la
 > lista, y una opción del programa para que la semana empiece por la A (§8).
 > Segunda prueba: el relleno ya no se reinicia al ir y volver deprisa (§4) y
-> se arregló que los nombres se acumularan al deslizar.
+> se arregló que los nombres se acumularan al deslizar. **U13-06**: tercera opción
+> del programa, libre, sin sesión que toque (§9).
 
 ## 1. Por qué
 
@@ -94,7 +97,7 @@ de la meta.
 
 | Pieza | La que toca abierta (lima) | Otra abierta (`surface`) |
 |---|---|---|
-| Pestaña sin abrir | `border`, letra en `text`, ✓ en `green` | igual |
+| Pestaña sin abrir | `surface3` (§10), letra en `text`, ✓ en `green` | igual |
 | Pestaña de la que toca, sin abrir | — | lima, letra (o ✓) en `onAccent` |
 | Pestaña abierta | la tarjeta, letra en `onAccent` | la tarjeta, letra en `accent`, ✓ en `green` |
 | Nombre | `heroName`, `onAccent`, hasta 2 líneas | `heroName`, `text` |
@@ -255,21 +258,21 @@ alguna semana anterior mientras que la D nunca. Se probó a cambiar la regla par
 todos y se volvió atrás el mismo día: **la de siempre se queda por defecto** y la
 otra es una opción.
 
-- **Es del programa, no del usuario**: `program.weeklyOrder` (booleano, por
-  defecto apagado), con un interruptor al final del editor del programa:
-  **«La semana empieza por la A»** (`editor.weeklyOrderLabel` /
-  `editor.weeklyOrderHint`). Primero fue una preferencia del menú; se movió al
+- **Es del programa, no del usuario**: `program.sessionOrder`, al final del
+  editor del programa (QUÉ SESIÓN TOCA: Rotación · Desde la A · Libre). Empezó
+  siendo un interruptor (`weeklyOrder`) y pasó a tres valores con U13-06; como
+  era del mismo día, no hubo nada que migrar. Primero fue una preferencia del menú; se movió al
   programa porque la preferencia se quedaba en el móvil del cliente y su
   entrenador podía ver otra sesión como «la que toca».
 - Encendida: toca **la primera, en el orden del programa, que no has hecho esta
   semana**; con todas hechas, la de siempre. Cada lunes vuelve a la A, aunque la
   semana anterior quedara a medias.
-- `sessionPlan({ …, weekly })`, con `weekly: !!program.weeklyOrder` en los cinco
+- `sessionPlan({ …, order })`, con `order: program.sessionOrder` en los cinco
   sitios que dicen «la que toca»: Inicio (lista y pestañas), la ficha del cliente
   (`ClientSessions`), la tarjeta y el menú de Clientes, «Preparar sesión» y pegar
   un entreno.
 - Viaja con el programa: el cliente la recibe en la actualización, que lo dice
-  en su resumen de cambios (`programUpdate.diff.weeklyOrderOn` / `Off`).
+  en su resumen de cambios (`programUpdate.diff.order_<valor>`).
 - Texto de ayuda «Semana»: la regla de siempre y la del programa que empieza por
   la A.
 
@@ -289,3 +292,60 @@ para tener dos.
 - [ ] Con la opción, el lunes siguiente vuelve a tocar la A.
 - [ ] El entrenador la activa en el programa de un cliente y lo sube: al cliente le sale en el aviso de cambios, y su Inicio y la ficha del entrenador dicen la misma sesión.
 - [ ] El botón de las pestañas es igual que el de la lista: EMPEZAR SESIÓN B negro sobre lima en la que toca, lima en otra pendiente, gris al REPETIR.
+
+## 9. U13-06 — Programa libre: ninguna sesión toca
+
+Tercer valor de la opción del programa (§8.1): **`sessionOrder: 'free'`**, «Libre».
+Para programas sin orden, donde se hace la sesión que se quiere el día que se
+quiere.
+
+- `sessionPlan({ order: 'free' })` devuelve `heroTemplateId: null`: ninguna
+  toca. Los ✓ de hechas esta semana y el contador «2 de 4» siguen igual.
+- **Lista (U04)**: ya sabía pintarlo (U04 §4.4): todas las filas en gris, sin
+  tarjeta lima.
+- **Pestañas: nunca hay lima** (decisión del 6-oct-2026). Ni la tarjeta ni
+  ninguna pestaña: el lima es «la que toca» y aquí no toca ninguna; pintar la
+  abierta de lima le daría otro sentido según el programa. La tarjeta va en gris
+  con el botón lima, la abierta lleva la letra en lima y se llena y vacía como
+  siempre; no hay círculo, porque el color no cambia.
+- Al entrar se abre la **primera sin hacer esta semana**, sin destacarla; con
+  todas hechas, la primera.
+- Lo del entrenador ya aceptaba que no hubiera ninguna: la tarjeta de Clientes y
+  «Preparar sesión» caen a la primera de la etapa, el atajo «Empezar sesión B»
+  del menú de Clientes no sale, y pegar un entreno elige por los ejercicios.
+- Textos: `editor.sessionOrder*`, `programUpdate.diff.order_free` y la ayuda
+  «Semana».
+
+**Probar U13-06**
+
+- [ ] Editor del programa › QUÉ SESIÓN TOCA › Libre: en Inicio (lista) ninguna sesión sale en lima.
+- [ ] En pestañas, ni la tarjeta ni ninguna pestaña en lima; se abre la primera sin hacer esta semana, y la abierta lleva la letra en lima.
+- [ ] Cambiar de pestaña llena y vacía las pestañas, sin círculo de color.
+- [ ] El botón de cualquier sesión es lima (o gris al REPETIR) y arranca esa sesión.
+- [ ] El entrenador pone Libre en el programa de un cliente y lo sube: el aviso dice que ya no hay sesión que toque; su ficha y «Preparar sesión» abren la primera de la etapa.
+
+## 10. U13-07 — Menos colores en las pestañas: probado y vuelto atrás
+
+Con una sesión no hero abierta había demasiados colores: tres fondos de pestaña
+(lima, la tarjeta, `border`) y cuatro de letra (negro, lima, blanco, verde).
+Se probó la variante **E · Simplificada** de la maqueta
+(<https://claude.ai/artifact/QgYheVaGwFwoiAznQGppfd>): pestañas en `surface2` y
+un solo color de letra, lima entero en la abierta y al 50 % en las demás. Se
+leía bien pero no convenció, y el mismo día se volvió a la de antes (letras en
+`text`, la abierta en lima, ✓ verde) con un solo cambio:
+
+- **Pestañas sin abrir un poco más oscuras**: token nuevo `surface3` `#333333`
+  en el tema FormaFit (`themes.js`), medio paso entre `surface2` (`#272727`, se
+  perdía en la tarjeta gris) y `border` (`#3a3a3a`). Los otros temas no lo
+  tienen y caen a `border`.
+- Se volvió a probar el lima al 50 % en las letras sin abrir, ya sobre
+  `surface3`: se prefirió el blanco.
+- **Los botones secundarios de una sesión** (REPETIR, EDITAR, compartir), que en
+  `surface2` casi no se veían sobre la tarjeta, pasan también a `surface3`, en la
+  lista y en las pestañas (`sesBtnSecondary` de `SessionList`; los otros temas
+  caen a `surface2`).
+
+**Probar U13-07**
+
+- [ ] Las pestañas sin abrir se ven algo más oscuras que antes y se siguen distinguiendo de la tarjeta gris.
+- [ ] REPETIR SESIÓN (y EDITAR / compartir) se distingue bien sobre la tarjeta, en la lista y en las pestañas.

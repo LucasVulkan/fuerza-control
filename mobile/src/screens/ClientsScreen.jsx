@@ -221,7 +221,7 @@ function AssignedProgramCard({
     days: currentDays.map((d) => ({ templateId: d.sessionTemplateId, label: d.label })),
     log,
     t,
-    weekly: !!program.weeklyOrder,
+    order: program.sessionOrder,
   }).heroTemplateId;
   const nextDayIdx  = currentDays.findIndex((d) => d.sessionTemplateId === nextId);
   const nextDay     = currentDays[nextDayIdx >= 0 ? nextDayIdx : 0];
@@ -1791,7 +1791,7 @@ export default function ClientsScreen() {
       days: days.map((d) => ({ templateId: d.sessionTemplateId, label: d.label })),
       log:  clientLogs[c.id] ?? [],
       t,
-      weekly: !!program.weeklyOrder,
+      order: program.sessionOrder,
     }).heroTemplateId;
     if (!heroId) return null;
     const go = () => startSession(heroId, { forClient: c.id });

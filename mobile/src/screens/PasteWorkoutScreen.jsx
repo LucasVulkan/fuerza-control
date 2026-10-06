@@ -135,7 +135,7 @@ export default function PasteWorkoutScreen({ navigation, route }) {
     days: sessions.filter((s) => s.label).map((s) => ({ templateId: s.templateId, label: s.label })),
     log,
     t,
-    weekly: !!programs[client?.activeProgramId]?.weeklyOrder,
+    order: programs[client?.activeProgramId]?.sessionOrder,
   }).heroTemplateId;
   const tplId = [pickedTpl, headerTpl?.templateId, byExercises, hero, sessions[0]?.templateId]
     .find((id) => id && sessions.some((s) => s.templateId === id)) ?? null;

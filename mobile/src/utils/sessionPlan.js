@@ -17,8 +17,8 @@ import { programTemplateOf } from './freeSessions';
  * la rotación de siempre. Al leerse del historial, borrar una sesión cambia la
  * sugerencia — es una sugerencia, no progreso.
  *
- * Con `weekly` (opción del programa «La semana empieza por la A»,
- * `program.weeklyOrder`, U13-inicio-pestanas.md §8) toca en cambio la primera, en el orden del programa, que no has hecho esta
+ * `order` es la opción del programa (`program.sessionOrder`, U13-inicio-pestanas.md
+ * §8 y §9). Con `'weekly'` («La semana empieza por la A») toca en cambio la primera, en el orden del programa, que no has hecho esta
  * semana; con todas hechas, la de siempre. Cada lunes vuelve a la A.
  *
  * @param {object}   args
@@ -26,7 +26,8 @@ import { programTemplateOf } from './freeSessions';
  * @param {Array}    [args.log]            Historial: `[{ sessionTemplateId, timestamp }]`.
  * @param {number}   [args.now]            Reloj inyectable.
  * @param {Function} args.t                i18n.
- * @param {boolean}  [args.weekly]         El orden vuelve a empezar cada semana.
+ * @param {'rotation'|'weekly'|'free'} [args.order]  Por defecto, la rotación de
+ *        arriba. `'free'`: ninguna toca, sin hero (heroTemplateId null).
  * @returns {{
  *   heroTemplateId: string|null,  // null ⇒ no hay sesiones
  *   heroLabel:      string|null,
@@ -35,7 +36,7 @@ import { programTemplateOf } from './freeSessions';
  *   weekDone:       number,       // entrenos de la etapa desde el lunes, repeticiones incluidas
  * }}
  */
-export function sessionPlan({ days = [], log = [], now = Date.now(), t, weekly = false }) {
+export function sessionPlan({ days = [], log = [], now = Date.now(), t, order = 'rotation' }) {
   const ids       = new Set(days.map((d) => d.templateId));
   const weekStart = startOfWeek(now);
   const lastDone  = {};
@@ -55,8 +56,10 @@ export function sessionPlan({ days = [], log = [], now = Date.now(), t, weekly =
   // medias NO manda: tiene su banner en Inicio, y si fuera el hero diría que
   // toca una que no toca (U09-pulido-ui.md §16, U52).
   const lastOf = (d) => lastDone[d.templateId] ?? -Infinity;
-  const hero = (weekly && days.find((d) => lastOf(d) < weekStart))
-    || days.reduce((best, d) => (best == null || lastOf(d) < lastOf(best) ? d : best), null);
+  // Libre: ninguna toca; la pantalla no destaca ninguna (U04 §4.4).
+  const hero = order === 'free' ? null
+    : (order === 'weekly' && days.find((d) => lastOf(d) < weekStart))
+      || days.reduce((best, d) => (best == null || lastOf(d) < lastOf(best) ? d : best), null);
 
   return {
     heroTemplateId: hero?.templateId ?? null,

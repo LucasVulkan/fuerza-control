@@ -114,7 +114,7 @@ export default function NextSessionScreen({ navigation, route }) {
   const nextId = useMemo(() => {
     if (!activeProgram) return null;
     const days = templateIds.map((tid) => ({ templateId: tid, label: getEffectiveTemplate(tid)?.label }));
-    return sessionPlan({ days, log: clientLogs?.[clientId] ?? [], t, weekly: !!activeProgram.weeklyOrder }).heroTemplateId;
+    return sessionPlan({ days, log: clientLogs?.[clientId] ?? [], t, order: activeProgram.sessionOrder }).heroTemplateId;
   }, [activeProgram, templateIds, getEffectiveTemplate, clientLogs, clientId, t]);
 
   // Selected session — clamped during render so it stays valid without an effect.

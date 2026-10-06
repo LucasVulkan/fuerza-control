@@ -197,10 +197,10 @@ nuevas (`tpl_*` materializadas, stage-planner §4), así que empieza por A.
 Como es una lectura del historial, borrar una sesión cambia la sugerencia. Es
 aceptable: es una sugerencia, no progreso.
 
-**Opción del programa desde el 6-oct-2026** ([U13-inicio-pestanas.md](U13-inicio-pestanas.md) §8.1):
-con `program.weeklyOrder` («La semana empieza por la A»), toca la primera, en el
-orden del programa, que no has hecho esta semana (con todas hechas, la regla de
-arriba). Por defecto, la de arriba.
+**Opción del programa desde el 6-oct-2026** ([U13-inicio-pestanas.md](U13-inicio-pestanas.md) §8.1 y §9):
+`program.sessionOrder`. `'rotation'` (por defecto) es la regla de arriba;
+`'weekly'` («Desde la A»), la primera, en el orden del programa, que no has
+hecho esta semana (con todas hechas, la de arriba); `'free'`, ninguna toca.
 
 ### 3.6 «Esta semana»
 

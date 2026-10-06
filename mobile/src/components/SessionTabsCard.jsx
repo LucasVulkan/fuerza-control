@@ -89,7 +89,8 @@ function TabFill({ clipId, role, color, progress }) {
  * @param {Array<{ id, marker, name, meta, done, adapted, cta, onStart, a11y, lines }>} sessions
  *        `lines`: sus ejercicios (`ExerciseLines`), para el desplegable (§3.6).
  *        En el orden del programa.
- * @param {string|null} heroId  La que toca (`sessionPlan().heroTemplateId`).
+ * @param {string|null} heroId  La que toca (`sessionPlan().heroTemplateId`). Null en
+ *        un programa libre (§9): ninguna en lima, ni tarjeta ni pestaña.
  */
 export default function SessionTabsCard({ sessions, heroId }) {
   const { t }  = useTranslation();
@@ -97,19 +98,24 @@ export default function SessionTabsCard({ sessions, heroId }) {
   const styles = useThemedStyles(makeStyles);
   const C      = th.colors;
 
+  // La que se abre al entrar: la que toca; sin ninguna (libre), la primera sin
+  // hacer esta semana, y si están todas, la primera.
+  const startId  = heroId ?? (sessions.find((s) => !s.done) ?? sessions[0])?.id ?? null;
+  const startCol = startId === heroId ? C.accent : C.surface;
+
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [selId, setSelId] = useState(heroId);
+  const [selId, setSelId] = useState(startId);
   // Ejercicios a la vista: es de la tarjeta, no de la sesión, así que cambiar de
   // pestaña con ellos abiertos los deja abiertos (§3.6).
   const [open, setOpen] = useState(false);
   const toggle = () => setOpen((o) => !o);
   // El color de debajo y el que se está extendiendo encima, en un círculo que
   // crece desde la pestaña (§4). Al acabar, el de encima pasa a ser el de debajo.
-  const [base, setBase] = useState(C.accent);
-  const [fill, setFill] = useState({ color: C.accent, x: 0 });
+  const [base, setBase] = useState(startCol);
+  const [fill, setFill] = useState({ color: startCol, x: 0 });
   const scale = useSharedValue(0);
   // La pestaña que se llena y la que se vacía, con el color que se lleva (§4).
-  const [tabs, setTabs] = useState({ to: heroId, from: null, fromColor: C.accent });
+  const [tabs, setTabs] = useState({ to: startId, from: null, fromColor: startCol });
   const tabP = useSharedValue(1);
   // El nombre, la meta y los ejercicios entran del lado de la pestaña elegida.
   // Una sola vista que se desliza, no una por sesión con `entering`/`exiting`:
@@ -122,26 +128,26 @@ export default function SessionTabsCard({ sessions, heroId }) {
   // él se decidía sobre un color que ya no era (la que toca acababa en gris).
   // Una ref y no un valor compartido: la escritura de este desde JS va al hilo
   // de UI y podría no verse en el toque siguiente.
-  const live = useRef({ sel: heroId, base: C.accent, fill: C.accent });
+  const live = useRef({ sel: startId, base: startCol, fill: startCol });
 
   const n     = sessions.length;
   const pitch = size.width ? Math.min(PITCH, (size.width - CHEV_W - LEFT - SLANT) / Math.max(n, 1)) : PITCH;
-  const sel   = sessions.find((s) => s.id === selId) ?? sessions.find((s) => s.id === heroId) ?? sessions[0];
-  const colorFor = useCallback((id) => (id === heroId ? C.accent : C.surface), [heroId, C.accent, C.surface]);
+  const sel   = sessions.find((s) => s.id === selId) ?? sessions.find((s) => s.id === startId) ?? sessions[0];
+  const colorFor = useCallback((id) => (heroId != null && id === heroId ? C.accent : C.surface), [heroId, C.accent, C.surface]);
 
   // Al volver a Inicio, o al cambiar la que toca (se acaba de guardar una), la
   // tarjeta vuelve a la que toca: la elección es de un momento, no se recuerda.
   useFocusEffect(useCallback(() => {
-    live.current = { sel: heroId, base: C.accent, fill: C.accent };
-    setSelId(heroId);
-    setBase(C.accent);
-    setFill((f) => ({ ...f, color: C.accent }));
-    setTabs({ to: heroId, from: null, fromColor: C.accent });
+    live.current = { sel: startId, base: startCol, fill: startCol };
+    setSelId(startId);
+    setBase(startCol);
+    setFill((f) => ({ ...f, color: startCol }));
+    setTabs({ to: startId, from: null, fromColor: startCol });
     scale.set(0);
     tabP.set(1);
     slideX.set(0);
     fade.set(1);
-  }, [heroId, C.accent, scale, tabP, slideX, fade]));
+  }, [startId, startCol, scale, tabP, slideX, fade]));
 
   // El círculo llegó a cubrirla: su color pasa a ser el de debajo.
   const landed = useCallback((color) => {
@@ -233,7 +239,7 @@ export default function SessionTabsCard({ sessions, heroId }) {
 
   if (!n || !sel) return null;
 
-  const heroSel = sel.id === heroId;
+  const heroSel = heroId != null && sel.id === heroId;
   const R = Math.hypot(Math.max(fill.x, size.width - fill.x), Math.max(TAB_H / 2, size.height - TAB_H / 2));
 
   // Colores del cuerpo según el fondo (§3.3).
@@ -272,7 +278,7 @@ export default function SessionTabsCard({ sessions, heroId }) {
                 // tarjeta, que la llena hasta arriba y la funde con ella.
                 const role = s.id === tabs.to ? 'to' : s.id === tabs.from ? 'from' : null;
                 return [
-                  <Path key={`${s.id}-tab`} d={tabPath(i, pitch)} fill={s.id === heroId ? C.accent : C.border} />,
+                  <Path key={`${s.id}-tab`} d={tabPath(i, pitch)} fill={s.id === heroId ? C.accent : (C.surface3 ?? C.border)} />,
                   role && (
                     <TabFill
                       key={`${s.id}-fill`}
@@ -289,7 +295,7 @@ export default function SessionTabsCard({ sessions, heroId }) {
           {sessions.map((s, i) => {
             const selected = s.id === sel.id;
             const onLime   = s.id === heroId;   // la que toca: lima, abierta o no
-            // La abierta que no es la que toca, con la letra en lima.
+            // La abierta que no es la que toca, con la letra en lima (U13 §10).
             const color    = onLime ? C.onAccent : s.done ? C.green : selected ? C.accent : C.text;
             return (
               <View

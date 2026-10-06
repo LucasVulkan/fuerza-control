@@ -139,12 +139,12 @@ describe('sessionPlan — sesiones libres (T06-free-sessions.md §8)', () => {
   });
 });
 
-describe('sessionPlan — la semana empieza por la A (weekly, U13 §8)', () => {
+describe('sessionPlan — la semana empieza por la A (order: weekly, U13 §8)', () => {
   const SIX = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => ({ templateId: id, label: id.toUpperCase() }));
   const history = log(['b', at(2026, 9, 15)], ['a', at(2026, 9, 21)], ['c', at(2026, 9, 22)]);
 
   it('A y C esta semana, B la pasada, D nunca: toca la B', () => {
-    expect(sessionPlan({ days: SIX, log: history, now: NOW, t, weekly: true }).heroTemplateId).toBe('b');
+    expect(sessionPlan({ days: SIX, log: history, now: NOW, t, order: 'weekly' }).heroTemplateId).toBe('b');
   });
 
   it('sin la opción, la de siempre: la nunca hecha (D)', () => {
@@ -155,7 +155,7 @@ describe('sessionPlan — la semana empieza por la A (weekly, U13 §8)', () => {
     const plan = sessionPlan({
       days: DAYS,
       log: log(['c', at(2026, 9, 23)], ['a', at(2026, 9, 21)], ['b', at(2026, 9, 22)]),
-      now: NOW, t, weekly: true,
+      now: NOW, t, order: 'weekly',
     });
     expect(plan.heroTemplateId).toBe('a');
   });
@@ -167,10 +167,21 @@ describe('sessionPlan — la semana empieza por la A (weekly, U13 §8)', () => {
     const picks   = [];
     for (let i = 0; i < 8; i++) {
       const ts   = at(2026, 8, 3 + i);
-      const hero = sessionPlan({ days: DAYS, log: entries, now: ts, t, weekly: true }).heroTemplateId;
+      const hero = sessionPlan({ days: DAYS, log: entries, now: ts, t, order: 'weekly' }).heroTemplateId;
       picks.push(hero);
       entries.push({ sessionTemplateId: hero, timestamp: ts });
     }
     expect(picks.join('')).toBe('abcabcaa');
+  });
+});
+
+describe('sessionPlan — orden libre (order: free, U13 §9)', () => {
+  it('ninguna toca, pero los ✓ y el contador siguen', () => {
+    const plan = sessionPlan({ days: DAYS, log: log(['a', at(2026, 9, 21)]), now: NOW, t, order: 'free' });
+    expect(plan.heroTemplateId).toBeNull();
+    expect(plan.heroLabel).toBeNull();
+    expect(plan.rows.map((r) => r.isHero)).toEqual([false, false, false]);
+    expect(plan.rows.map((r) => r.isDone)).toEqual([true, false, false]);
+    expect(plan.subtitle).toBe('home.weekCount:{"done":1,"total":3}');
   });
 });

@@ -385,7 +385,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         14,
   },
   sesBtnText:          { ...textStyles.button, color: th.colors.onAccent },
-  sesBtnSecondary:     { backgroundColor: th.colors.surface2 },
+  // `surface3`: en `surface2`, sobre la tarjeta, casi no se veía (U13 §10).
+  sesBtnSecondary:     { backgroundColor: th.colors.surface3 ?? th.colors.surface2 },
   sesBtnTextSecondary: { color: th.colors.text },
   // EDITAR: lo justo para su palabra, que EMPEZAR es lo principal.
   sesBtnEdit:          { flex: 0, justifyContent: 'center' },

@@ -372,9 +372,8 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
     }
   }
 
-  if (!!oldProg.weeklyOrder !== !!newProg?.weeklyOrder) {
-    lines.push({ k: newProg?.weeklyOrder ? 'weeklyOrderOn' : 'weeklyOrderOff' });
-  }
+  const orderOf = (p) => p?.sessionOrder ?? 'rotation';
+  if (orderOf(oldProg) !== orderOf(newProg)) lines.push({ k: `order_${orderOf(newProg)}` });
   return lines.length > 0 ? lines : [{ k: 'minor' }];
 }
 
@@ -1463,13 +1462,14 @@ export const useStore = create(
         }));
       },
 
-      // Cada lunes vuelve a la A en vez de seguir la rotación (U13 §8). Es del
-      // programa: le llega al cliente con él, y su entrenador ve la misma.
-      setProgramWeeklyOrder: (programId, on) => {
+      // Qué sesión toca: 'rotation' (la que más tiempo llevas sin hacer, por
+      // defecto), 'weekly' (cada lunes vuelve a la A) o 'free' (ninguna). Es del
+      // programa: le llega al cliente con él, y su entrenador ve la misma (U13 §8-9).
+      setProgramSessionOrder: (programId, order) => {
         set((s) => ({
           programs: {
             ...s.programs,
-            [programId]: { ...s.programs[programId], weeklyOrder: on },
+            [programId]: { ...s.programs[programId], sessionOrder: order },
           },
         }));
       },

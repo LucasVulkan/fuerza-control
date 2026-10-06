@@ -224,8 +224,8 @@ export default function HomeScreen() {
             days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
             log: workoutLog,
             t,
-            // Cada lunes vuelve a la A, si el programa lo pide (U13 §8).
-            weekly: !!activeProgram.weeklyOrder,
+            // Rotación, la semana desde la A, o libre: lo dice el programa (U13 §8-9).
+            order: activeProgram.sessionOrder,
           });
 
           // ── Aviso de fin de etapa (P08-weeks-model.md §6.1) ──

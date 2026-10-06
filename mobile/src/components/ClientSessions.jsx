@@ -223,7 +223,7 @@ export default function ClientSessions({ client, program, days, log, fold }) {
     days: sessions.map((d) => ({ templateId: d.templateId, label: d.label })),
     log,
     t,
-    weekly: !!program.weeklyOrder,
+    order: program.sessionOrder,
   });
 
   const heroMeta = (d) => {
