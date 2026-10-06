@@ -372,6 +372,9 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
     }
   }
 
+  if (!!oldProg.weeklyOrder !== !!newProg?.weeklyOrder) {
+    lines.push({ k: newProg?.weeklyOrder ? 'weeklyOrderOn' : 'weeklyOrderOff' });
+  }
   return lines.length > 0 ? lines : [{ k: 'minor' }];
 }
 
@@ -1456,6 +1459,17 @@ export const useStore = create(
           programs: {
             ...s.programs,
             [programId]: { ...s.programs[programId], name: newName },
+          },
+        }));
+      },
+
+      // Cada lunes vuelve a la A en vez de seguir la rotación (U13 §8). Es del
+      // programa: le llega al cliente con él, y su entrenador ve la misma.
+      setProgramWeeklyOrder: (programId, on) => {
+        set((s) => ({
+          programs: {
+            ...s.programs,
+            [programId]: { ...s.programs[programId], weeklyOrder: on },
           },
         }));
       },

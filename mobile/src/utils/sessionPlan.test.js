@@ -138,3 +138,39 @@ describe('sessionPlan — sesiones libres (T06-free-sessions.md §8)', () => {
     expect(plan.weekDone).toBe(3);
   });
 });
+
+describe('sessionPlan — la semana empieza por la A (weekly, U13 §8)', () => {
+  const SIX = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => ({ templateId: id, label: id.toUpperCase() }));
+  const history = log(['b', at(2026, 9, 15)], ['a', at(2026, 9, 21)], ['c', at(2026, 9, 22)]);
+
+  it('A y C esta semana, B la pasada, D nunca: toca la B', () => {
+    expect(sessionPlan({ days: SIX, log: history, now: NOW, t, weekly: true }).heroTemplateId).toBe('b');
+  });
+
+  it('sin la opción, la de siempre: la nunca hecha (D)', () => {
+    expect(sessionPlan({ days: SIX, log: history, now: NOW, t }).heroTemplateId).toBe('d');
+  });
+
+  it('con todas hechas esta semana, la de última vez más antigua', () => {
+    const plan = sessionPlan({
+      days: DAYS,
+      log: log(['c', at(2026, 9, 23)], ['a', at(2026, 9, 21)], ['b', at(2026, 9, 22)]),
+      now: NOW, t, weekly: true,
+    });
+    expect(plan.heroTemplateId).toBe('a');
+  });
+
+  it('el lunes vuelve a la A', () => {
+    // Del lunes 3 al lunes 10 de agosto: hecho todo el miércoles, sigue la
+    // rotación; el lunes 10 empieza otra semana, y por la A.
+    const entries = [];
+    const picks   = [];
+    for (let i = 0; i < 8; i++) {
+      const ts   = at(2026, 8, 3 + i);
+      const hero = sessionPlan({ days: DAYS, log: entries, now: ts, t, weekly: true }).heroTemplateId;
+      picks.push(hero);
+      entries.push({ sessionTemplateId: hero, timestamp: ts });
+    }
+    expect(picks.join('')).toBe('abcabcaa');
+  });
+});

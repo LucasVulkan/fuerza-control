@@ -131,7 +131,12 @@ export default function PasteWorkoutScreen({ navigation, route }) {
     const n = (sessionTemplates[s.templateId]?.exercises ?? []).filter((e) => textIds.has(e.exerciseId)).length;
     if (n > most) { most = n; byExercises = s.templateId; }
   });
-  const hero = sessionPlan({ days: sessions.filter((s) => s.label).map((s) => ({ templateId: s.templateId, label: s.label })), log, t }).heroTemplateId;
+  const hero = sessionPlan({
+    days: sessions.filter((s) => s.label).map((s) => ({ templateId: s.templateId, label: s.label })),
+    log,
+    t,
+    weekly: !!programs[client?.activeProgramId]?.weeklyOrder,
+  }).heroTemplateId;
   const tplId = [pickedTpl, headerTpl?.templateId, byExercises, hero, sessions[0]?.templateId]
     .find((id) => id && sessions.some((s) => s.templateId === id)) ?? null;
   const template = sessionTemplates[tplId] ?? null;

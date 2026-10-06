@@ -6,6 +6,7 @@ import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { ToggleRow } from '../components/ui/EditorRows';
 import { ownerClient } from '../utils/programOwnership';
 import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -81,6 +82,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const ui                    = useStore((s) => s.ui);
   const addSessionToProgram   = useStore((s) => s.addSessionToProgram);
   const renameProgram              = useStore((s) => s.renameProgram);
+  const setProgramWeeklyOrder      = useStore((s) => s.setProgramWeeklyOrder);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
   const duplicateStageInProgram = useStore((s) => s.duplicateStageInProgram);
   const updateStage           = useStore((s) => s.updateStage);
@@ -394,6 +396,17 @@ export default function ProgramEditorScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* ── Qué sesión toca (U13 §8) ── */}
+        <View style={[styles.section, styles.toggleWrap]}>
+          <ToggleRow
+            label={t('editor.weeklyOrderLabel')}
+            hint={t('editor.weeklyOrderHint')}
+            alwaysHint
+            value={!!activeProgram.weeklyOrder}
+            onChange={(on) => setProgramWeeklyOrder(editingId, on)}
+          />
+        </View>
+
       </Reanimated.ScrollView>
 
       {/* ── Stage settings sheet ── */}
@@ -561,6 +574,9 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.md,
   },
   section:  { gap: spacing.xs2 },
+  // `ToggleRow` nace de una lista agrupada: suelta necesita el recorte para
+  // redondearse (lo mismo en ProgramScreen).
+  toggleWrap: { borderRadius: th.radius.sm, overflow: 'hidden' },
   secTitle: {
     ...textStyles.caps,
     color:      th.colors.mutedLight,

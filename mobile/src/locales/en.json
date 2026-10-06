@@ -46,6 +46,8 @@
     "proTabsHint": "Shows the Clients and Templates tabs",
     "scrubRulerLabel": "Slide ruler",
     "scrubRulerHint": "Adjust KG, reps and RPE on a ruler",
+    "homeTabsLabel": "Sessions as tabs",
+    "homeTabsHint": "One card on Home, with a tab per session",
     "sectionPrograms": "PROGRAMS",
     "sectionConnections": "CONNECTIONS",
     "sectionData": "DATA",
@@ -132,7 +134,7 @@
         "Every week you do the stage's sessions: if it has A, B and C, that's three workouts a week. In training theory, the microcycle.",
         "They are calendar weeks, Monday to Sunday.",
         "A stage starts with its first session. Monday to Wednesday, that week already counts; Thursday to Sunday, week 1 starts the next Monday, and whatever you train before still counts.",
-        "The session that's up is the one you've gone longest without doing."
+        "The session that's up is the one you've gone longest without doing. If the program starts every week with A, the first one you haven't done this week."
       ] },
       { "id": "stage", "title": "Stage", "points": [
         "A stretch of the program with one goal: build volume, gain strength, peak. In training theory, the mesocycle.",
@@ -1018,6 +1020,8 @@
       "sessionN": "Session {{n}}",
       "exercises_one": "{{session}}: {{delta}} exercise",
       "exercises_other": "{{session}}: {{delta}} exercises",
+      "weeklyOrderOn": "Every week starts with the first session",
+      "weeklyOrderOff": "The session up is the one you've gone longest without",
       "minor": "Minor changes to the program"
     }
   },
@@ -1567,6 +1571,8 @@
     "weeksQuestion": "How many weeks does this stage last?",
     "weeksNoLimit": "No limit — the stage runs until you add the next one",
     "sectionStages": "Stages",
+    "weeklyOrderLabel": "Weeks start with A",
+    "weeklyOrderHint": "Every Monday the first session is up. Otherwise, the one not done for the longest",
     "sectionSessions": "Sessions",
     "sessionsOf": "Sessions · {{stage}}",
     "stageTapHint": "Tap the active stage to edit it",

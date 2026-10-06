@@ -46,6 +46,8 @@
     "proTabsHint": "Muestra las pestañas de Clientes y Plantillas",
     "scrubRulerLabel": "Regla al deslizar",
     "scrubRulerHint": "KG, reps y RPE se ajustan sobre una regla",
+    "homeTabsLabel": "Sesiones en pestañas",
+    "homeTabsHint": "Una sola tarjeta en Inicio, con una pestaña por sesión",
     "sectionPrograms": "PROGRAMAS",
     "sectionConnections": "CONEXIONES",
     "sectionData": "DATOS",
@@ -132,7 +134,7 @@
         "Cada semana se hacen las sesiones de la etapa: si tiene A, B y C, son tres entrenos por semana. En entrenamiento, el microciclo.",
         "Son semanas de calendario, de lunes a domingo.",
         "La primera sesión de una etapa la empieza. Si es de lunes a miércoles, esa semana ya cuenta; de jueves a domingo, la semana 1 empieza el lunes siguiente, y lo que entrenes antes suma igual.",
-        "La sesión que toca es la que más tiempo llevas sin hacer."
+        "La sesión que toca es la que más tiempo llevas sin hacer. Si el programa empieza cada semana por la A, la primera que no has hecho esta semana."
       ] },
       { "id": "stage", "title": "Etapa", "points": [
         "Tramo del programa con un objetivo: acumular volumen, ganar fuerza, afinar. En entrenamiento, el mesociclo.",
@@ -1018,6 +1020,8 @@
       "sessionN": "Sesión {{n}}",
       "exercises_one": "{{session}}: {{delta}} ejercicio",
       "exercises_other": "{{session}}: {{delta}} ejercicios",
+      "weeklyOrderOn": "Cada semana empieza por la primera sesión",
+      "weeklyOrderOff": "Toca la sesión que más tiempo llevas sin hacer",
       "minor": "Cambios menores en el programa"
     }
   },
@@ -1567,6 +1571,8 @@
     "weeksQuestion": "¿Cuántas semanas dura esta etapa?",
     "weeksNoLimit": "Sin límite — la etapa dura hasta que añadas la siguiente",
     "sectionStages": "Etapas",
+    "weeklyOrderLabel": "La semana empieza por la A",
+    "weeklyOrderHint": "Cada lunes toca la primera sesión. Si no, toca la que más tiempo se lleva sin hacer",
     "sectionSessions": "Sesiones",
     "sessionsOf": "Sesiones · {{stage}}",
     "stageTapHint": "Toca la etapa activa para editarla",

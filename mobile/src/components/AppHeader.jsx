@@ -361,6 +361,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   const isPro         = profile.isPro         ?? false;
   const proTabsHidden = profile.proTabsHidden ?? false;
   const scrubRuler    = profile.scrubRuler    ?? true;
+  const homeTabs      = (profile.homeView ?? 'cards') === 'tabs';
 
   function go(route) { onClose(); navigation.navigate(route); }
 
@@ -503,6 +504,15 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
             onPress={() => setProfile({ proTabsHidden: !proTabsHidden })}
           />
         )}
+        {/* Cómo se ven las sesiones en Inicio (U13): la lista plegable o una
+            sola tarjeta con una pestaña por sesión. */}
+        <MenuRow
+          label={t('header.homeTabsLabel')}
+          sub={t('header.homeTabsHint')}
+          minHeight={62}
+          control={<Switch value={homeTabs} />}
+          onPress={() => setProfile({ homeView: homeTabs ? 'cards' : 'tabs' })}
+        />
         <MenuRow
           label={t('header.scrubRulerLabel')}
           sub={t('header.scrubRulerHint')}

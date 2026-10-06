@@ -428,6 +428,10 @@ precisamente hasta que el onboarding se asiente; sus eventos de onboarding
     programa», `fromApp`). Propuesta: el onboarding nuevo es solo de primer
     arranque y el creador de programa (O01 + constructor) sigue siendo la puerta
     de «Nuevo programa».
+11. **Cómo ver el programa** (6-oct-2026): preguntar si se quiere Inicio en lista
+    plegable o en pestañas ([U13](U13-inicio-pestanas.md)), enseñando las dos y
+    cómo se usan. Escribe `profile.homeView`. ¿En los ajustes del principio o al
+    final, cuando ya hay un programa que enseñar?
 
 ## 15. Siguiente paso
 

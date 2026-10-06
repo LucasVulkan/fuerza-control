@@ -87,6 +87,29 @@ export function ExerciseLines({ template, allExercises }) {
 }
 
 /**
+ * El botón de entrar a la sesión, el mismo en la lista y en las pestañas
+ * (U13-inicio-pestanas.md §3.3). `hero`: el de la que toca, negro sobre lima.
+ * Si no, lima; o `surface2` si ya está hecha esta semana y se repite.
+ */
+export function StartButton({ hero, done, label, onPress }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const quiet  = !hero && done;
+  return (
+    <TouchableOpacity
+      style={hero ? styles.todayBtn : [styles.sesBtn, quiet && styles.sesBtnSecondary]}
+      onPress={onPress}
+      activeOpacity={hero ? 0.85 : 0.75}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Text style={hero ? styles.todayBtnText : [styles.sesBtnText, quiet && styles.sesBtnTextSecondary]}>{label}</Text>
+      <HeroChevron color={hero ? th.colors.accent : quiet ? th.colors.text : th.colors.onAccent} />
+    </TouchableOpacity>
+  );
+}
+
+/**
  * Una sesión cualquiera: 60 px cerrada, y al abrirse los ejercicios y SU botón
  * —en contorno, no en relleno—. Que el botón solo exista abierta es lo que dice
  * «puedes, pero no es lo que toca» sin un diálogo de confirmación.
@@ -134,18 +157,7 @@ export function SessionRow({
           <View style={styles.sesBtnRow}>
             {/* Sin `onStart` la fila solo se consulta y se edita: la sesión libre
                 de un cliente con app la entrena él (C06-group-classes.md §4.1). */}
-            {!!onStart && (
-            <TouchableOpacity
-              style={[styles.sesBtn, done && styles.sesBtnSecondary]}
-              onPress={onStart}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={cta}
-            >
-              <Text style={[styles.sesBtnText, done && styles.sesBtnTextSecondary]}>{cta}</Text>
-              <HeroChevron color={done ? th.colors.text : th.colors.onAccent} />
-            </TouchableOpacity>
-            )}
+            {!!onStart && <StartButton done={done} label={cta} onPress={onStart} />}
             {onEdit && (
               <TouchableOpacity
                 style={[styles.sesBtn, styles.sesBtnSecondary, onStart && styles.sesBtnEdit, !onStart && styles.sesBtnAlone]}
@@ -229,16 +241,7 @@ export function TodayCard({
           plegar, y sin él Reanimated le quita el hueco de golpe — el botón
           saltaba a su sitio mientras la tarjeta seguía encogiendo. */}
       <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.todayFoot}>
-        <TouchableOpacity
-          style={styles.todayBtn}
-          onPress={onStart}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={cta}
-        >
-          <Text style={styles.todayBtnText}>{cta}</Text>
-          <HeroChevron />
-        </TouchableOpacity>
+        <StartButton hero label={cta} onPress={onStart} />
         {/* Al lado de EMPEZAR y no en el desplegable: a un cliente sin app
             la sesión se le manda tanto como se entrena con él (§5). */}
         {onShare && (

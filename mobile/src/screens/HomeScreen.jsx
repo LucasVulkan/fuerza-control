@@ -15,6 +15,7 @@ import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, ad
 import AppHeader from '../components/AppHeader';
 import ActiveSessionBanner from '../components/ActiveSessionBanner';
 import HomeProgramCard from '../components/HomeProgramCard';
+import SessionTabsCard from '../components/SessionTabsCard';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -122,6 +123,8 @@ export default function HomeScreen() {
   const stageBannerSnooze    = useStore((s) => s.stageBannerSnooze);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
+  // Lista plegable (U04) o una tarjeta con pestañas (U13), a elegir en Preferencias.
+  const homeView             = useStore((s) => s.profile.homeView ?? 'cards');
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
@@ -221,6 +224,8 @@ export default function HomeScreen() {
             days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
             log: workoutLog,
             t,
+            // Cada lunes vuelve a la A, si el programa lo pide (U13 §8).
+            weekly: !!activeProgram.weeklyOrder,
           });
 
           // ── Aviso de fin de etapa (P08-weeks-model.md §6.1) ──
@@ -327,6 +332,34 @@ export default function HomeScreen() {
                     más, en su hueco y a otra escala. NO es la lista agrupada de
                     Progreso: cada sesión es una tarjeta suelta con su radio
                     entero, porque cualquiera de ellas puede crecer. */}
+                {homeView === 'tabs' ? (
+                  <SessionTabsCard
+                    heroId={plan.heroTemplateId}
+                    sessions={plan.rows.filter((row) => byId.has(row.templateId)).map((row) => {
+                      const day   = byId.get(row.templateId);
+                      const stats = sessionStats(day.template, allExercises);
+                      const rel   = relativeTime(day.lastSession?.timestamp, t);
+                      const name  = day.template.name ?? '';
+                      return {
+                        id:      row.templateId,
+                        marker:  row.marker,
+                        name,
+                        done:    row.isDone,
+                        // Lo que dice la maqueta, y cuándo fue si ya está hecha.
+                        meta:    [
+                          t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
+                          row.isDone && rel ? rel : null,
+                        ].filter(Boolean).join(' · '),
+                        adapted: !!clientSync.pendingOverrides?.[row.templateId],
+                        // El mismo texto que en la lista: EMPEZAR SESIÓN B.
+                        cta:     startCta(t, day.template.label ?? '', { active: activeSession.templateId === row.templateId, done: row.isDone }),
+                        onStart: () => requestStart(row.templateId),
+                        a11y:    `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`,
+                        lines:   <ExerciseLines template={day.template} allExercises={allExercises} />,
+                      };
+                    })}
+                  />
+                ) : (
                 <View style={styles.group}>
                   {plan.rows.map((row) => {
                     const day = byId.get(row.templateId);
@@ -385,6 +418,7 @@ export default function HomeScreen() {
                     );
                   })}
                 </View>
+                )}
               </View>
 
             </>
