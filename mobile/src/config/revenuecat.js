@@ -8,8 +8,8 @@
 // Android key — production
 export const RC_ANDROID_API_KEY = 'goog_pJopTvjCRGKAhbzhpZPiaZnvTgq';
 
-// iOS key — fill in when you add the iOS app in RevenueCat
-export const RC_IOS_API_KEY = 'YOUR_IOS_API_KEY';
+// iOS key — production
+export const RC_IOS_API_KEY = 'appl_VCXyIYVGPDteOjepOlBvmuvrDqD';
 
 // Must match the entitlement ID you created in RevenueCat
 export const RC_PRO_ENTITLEMENT = 'Forma - Fit Pro';

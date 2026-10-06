@@ -68,7 +68,7 @@ Todo esto está comprobado contra el repositorio, no supuesto.
 | Problema | Dónde | Fase |
 |---|---|---|
 | `configure` **sin `appUserID`** → anónimo por instalación | `App.js:178` | 0 |
-| `RC_IOS_API_KEY = 'YOUR_IOS_API_KEY'` — iOS no existe en RevenueCat | `src/config/revenuecat.js:13` | 0 |
+| ~~`RC_IOS_API_KEY = 'YOUR_IOS_API_KEY'` — iOS no existe en RevenueCat~~ ✅ rellenada el 6-oct-2026 | `src/config/revenuecat.js` | 0 |
 | Muro binario en Clientes | `ClientsScreen.jsx:2319-2350` | 1 |
 | Muro binario en Plantillas | `ProgramScreen.jsx:394-414` | 1 |
 | Cargar plantilla oculto sin Pro en el onboarding | `OnboardingScreen.jsx:902` | 1 |
