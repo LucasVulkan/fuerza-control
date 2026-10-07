@@ -41,4 +41,9 @@ export const ROW_ICON = {
   save:      <G><Path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><Path d="M17 21v-8H7v8M7 3v5h8" /></G>,
   history:   <G><Path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><Path d="M3 3v5h5M12 7v5l3 2" /></G>,
   skip:      <G><Circle cx="12" cy="12" r="9" /><Path d="M5.6 5.6l12.8 12.8" /></G>,
+
+  // Las ventajas del paywall (M01-06).
+  phone:     <G><Rect x="6" y="2.5" width="12" height="19" rx="2.5" /><Path d="M11 18h2" /></G>,
+  users:     <G><Circle cx="9" cy="8" r="3.2" /><Path d="M2.5 19a6.5 6.5 0 0 1 13 0M16 4.8a3.2 3.2 0 0 1 0 6.4M18 13.6a6.5 6.5 0 0 1 3.5 5.4" /></G>,
+  templates: <G><Rect x="4" y="4" width="16" height="6" rx="2" /><Rect x="4" y="14" width="16" height="6" rx="2" /></G>,
 };

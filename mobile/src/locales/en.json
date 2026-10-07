@@ -1004,36 +1004,41 @@
     "withoutApp": "You log for them"
   },
   "paywall": {
-    "title": "Unlock Forma Pro",
-    "subtitle": "Everything you need to train and manage clients",
-    "reason": {
-      "clients": "The free plan covers up to 3 clients. With Pro, as many as you want.",
-      "connected": "The free plan includes 1 client with the app. With Pro, connect them all.",
-      "programTemplates": "The free plan includes 1 program template. With Pro, as many as you want.",
-      "sessionTemplates": "The free plan includes 1 session template. With Pro, as many as you want.",
-      "frozen": "This client is out of plan: the free plan covers up to 3 clients, 1 with the app. Go Pro or choose who you keep."
-    },
+    "headline": "Connect with\nall your\n*clients*",
+    "tagline": "ONE APP TO TRAIN THEM ALL",
     "frozenError": "Client out of plan: not included in the free plan.",
     "features": {
-      "clients": "Unlimited clients (free: up to 3)",
-      "connected": "All your clients on the app (free: 1)",
-      "templates": "Unlimited program and session templates"
+      "connected": {
+        "title": "All your clients *in sync*",
+        "desc": "You program, they train. All in sync without leaving the app."
+      },
+      "clients": {
+        "title": "*Unlimited* clients",
+        "desc": "The free plan covers 3."
+      },
+      "templates": {
+        "title": "*Unlimited* templates",
+        "desc": "Build programs and sessions ready to assign."
+      }
     },
+    "payTitle": "Choose your plan",
     "comingSoon": "Forma Pro coming soon",
     "plan": {
+      "recommended": "RECOMMENDED",
       "annual": "Yearly",
-      "annualPrice": "{{price}} per year · renews automatically",
+      "annualMonthly": "{{price}} per month",
+      "annualPer": "per year",
       "annualCta": "Subscribe · {{price}}/year",
-      "annualLegal": "Charged to your {{store}} account on confirmation. Renews every year at the same price unless cancelled at least 24 hours before the end of the period. You can cancel it in your {{store}} subscription settings.",
+      "annualLegal": "{{price}} per year. Renews automatically; cancel anytime in {{store}}.",
       "lifetime": "Lifetime",
-      "lifetimePrice": "{{price}} · one-time payment",
+      "lifetimeSub": "No renewals",
+      "lifetimePer": "one-time",
       "lifetimeCta": "Buy for {{price}}",
-      "lifetimeLegal": "One-time payment, no subscription: Forma Pro access is permanent."
+      "lifetimeLegal": "One-time payment of {{price}}, no subscription."
     },
     "terms": "Terms of use",
     "privacy": "Privacy",
-    "buy": "Buy Forma Pro",
-    "restore": "Restore previous purchase",
+    "restore": "Restore purchase",
     "processing": "Purchase processed, syncing…",
     "errTitle": "Couldn't complete the purchase"
   },

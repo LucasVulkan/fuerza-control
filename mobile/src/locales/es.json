@@ -1004,36 +1004,41 @@
     "withoutApp": "Le apuntas tú"
   },
   "paywall": {
-    "title": "Desbloquea Forma Pro",
-    "subtitle": "Todo lo que necesitas para entrenar y gestionar clientes",
-    "reason": {
-      "clients": "El plan gratis llega hasta 3 clientes. Con Pro, todos los que quieras.",
-      "connected": "El plan gratis incluye 1 cliente con app. Con Pro, conecta a todos.",
-      "programTemplates": "El plan gratis incluye 1 plantilla de programa. Con Pro, todas las que quieras.",
-      "sessionTemplates": "El plan gratis incluye 1 plantilla de sesión. Con Pro, todas las que quieras.",
-      "frozen": "Este cliente está fuera de plan: el plan gratis llega hasta 3 clientes, 1 con app. Hazte Pro o elige con quién sigues."
-    },
+    "headline": "Conecta con\ntodos tus\n*clientes*",
+    "tagline": "UNA APP PARA ENTRENARLOS A TODOS",
     "frozenError": "Cliente fuera de plan: el plan gratis no lo incluye.",
     "features": {
-      "clients": "Clientes ilimitados (gratis, hasta 3)",
-      "connected": "Todos tus clientes con la app (gratis, 1)",
-      "templates": "Plantillas de programa y de sesión ilimitadas"
+      "connected": {
+        "title": "Todos tus clientes *sincronizados*",
+        "desc": "Tú programas, ellos entrenan. Todo sincronizado sin salir de la app."
+      },
+      "clients": {
+        "title": "*Sin límite* de clientes",
+        "desc": "El plan gratis llega a 3."
+      },
+      "templates": {
+        "title": "*Sin límite* de plantillas",
+        "desc": "Crea programas y sesiones listos para asignar."
+      }
     },
+    "payTitle": "Forma de pago",
     "comingSoon": "Forma Pro próximamente",
     "plan": {
+      "recommended": "RECOMENDADO",
       "annual": "Anual",
-      "annualPrice": "{{price}} al año · se renueva sola",
+      "annualMonthly": "{{price}} al mes",
+      "annualPer": "al año",
       "annualCta": "Suscribirme · {{price}}/año",
-      "annualLegal": "Se cobra en tu cuenta de {{store}} al confirmar y se renueva cada año al mismo precio, salvo que la canceles al menos 24 horas antes de que acabe el periodo. Puedes cancelarla en los ajustes de suscripciones de {{store}}.",
+      "annualLegal": "{{price}} al año. Se renueva sola; cancélala cuando quieras desde {{store}}.",
       "lifetime": "Para siempre",
-      "lifetimePrice": "{{price}} · pago único",
+      "lifetimeSub": "Sin renovaciones",
+      "lifetimePer": "pago único",
       "lifetimeCta": "Comprar por {{price}}",
-      "lifetimeLegal": "Pago único, sin suscripción: el acceso a Forma Pro es permanente."
+      "lifetimeLegal": "Pago único de {{price}}, sin suscripción."
     },
     "terms": "Términos de uso",
     "privacy": "Privacidad",
-    "buy": "Comprar Forma Pro",
-    "restore": "Restaurar compra anterior",
+    "restore": "Restaurar compra",
     "processing": "Compra procesada, sincronizando…",
     "errTitle": "No se pudo completar la compra"
   },

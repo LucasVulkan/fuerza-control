@@ -313,7 +313,7 @@ function GlobalPaywall() {
     return () => clearTimeout(timer);
   }, [reason]);
   const close = () => { setShown(null); closePaywall(); };
-  return reason && shown === reason ? <PaywallModal reason={reason} onClose={close} /> : null;
+  return reason && shown === reason ? <PaywallModal onClose={close} /> : null;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────

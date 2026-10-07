@@ -8,6 +8,7 @@
 > Fase M01-03 · hecho · Paywall dual + i18n + enlaces legales · §5 · antes M03
 > Fase M01-04 · pendiente · Invitar cliente nivel 1 + página estática · §6 · antes M04
 > Fase M01-05 · pendiente · Montar App Store, Google Play y RevenueCat (guia-pagos.md) · §7
+> Fase M01-06 · hecho · Paywall rediseñado: pantalla propia, panel lima y planes en entradas · §5.7
 >
 > Estado: **SIN IMPLEMENTAR**. §4 reescrita el 5-oct-2026 (antes era 2+2); queda
 > §4.9 cerrada: el congelado no caduca, porque no cuesta dinero. Precios cerrados:
@@ -706,6 +707,57 @@ recomendaba 2,5–3×: con 2× la anual pierde atractivo a partir del segundo a�
 - [ ] «Términos de uso» abre el EULA en el navegador.
 - [ ] La lista de ventajas dice clientes ilimitados, todos con app y plantillas
   ilimitadas.
+- [ ] En inglés, los mismos textos traducidos.
+
+### 5.7 Rediseño: pantalla propia (M01-06, 7-oct-2026)
+
+Decidido iterando maquetas en el chat (versión «E»). Lo de M01-03 (planes por
+tipo, anual primero, enlaces) se queda; cambia la forma.
+
+- **Pantalla completa, no hoja.** Ventajas, dos planes, botón y lo que piden las
+  tiendas no cabían en una hoja al 85 %. Sigue siendo un `Modal` (ahora a
+  pantalla completa) para que las tres entradas no cambien: paywall global,
+  menú ≡ y «Guarda tu compra» tras comprar sin cuenta.
+- **Arriba, en negro, se desplaza si el móvil es bajo:** logotipo + PRO y la X;
+  titular en Barlow en tres líneas «Conecta con / todos tus / *clientes*»;
+  «UNA APP PARA ENTRENARLOS A TODOS»; la barra de tres tramos como separador;
+  tres ventajas con icono, la de la conexión primero.
+- **Abajo, fijo:** panel con degradado `accent`→`green` (SVG, sin dependencia
+  nueva) y esquinas de 40; «FORMA DE PAGO»; los planes como **entradas
+  perforadas** (muescas a los lados, línea discontinua antes del precio en
+  Barlow); botón negro con texto lima; una línea de precio y renovación;
+  Restaurar · Términos · Privacidad. Bajo los enlaces, solo el margen del
+  sistema.
+- **Elegir un plan** rellena la entrada de negro desde su botón, como las
+  pestañas de Inicio (U13-02, 450 ms): la que se deja se recoge, y cada entrada
+  sigue desde donde iba, sin reiniciarse. El texto cambia de color al mismo paso.
+- **El panel no salta de alto** al cambiar de plan: las dos líneas de renovación
+  se pintan superpuestas y el hueco es el de la más alta (`SameHeight`).
+- **Precio:** anual grande («59,99 €», «al año») y el mensual de la tienda
+  (`pricePerMonthString`) debajo del nombre; el pago único, «pago único».
+- **Texto legal corto:** una línea con precio, periodo, que se renueva y dónde
+  cancelar, que es lo que piden Apple (3.1.2) y Play junto al botón. El párrafo
+  de las 24 horas ya no es obligatorio.
+- **Fuera:** el motivo de entrada (`paywall.reason.*`, el subtítulo que cambiaba
+  según el límite) y los emojis. «Cómo funciona ›» de la referencia no se ha
+  puesto: necesita su propio contenido.
+
+**Probar M01-06**
+
+- [ ] Desde el menú ≡ y desde un límite del plan gratis: se abre a pantalla
+  completa, deslizando desde abajo, y la X lo cierra (también el botón atrás de
+  Android).
+- [ ] Arriba el logo, el titular en tres líneas con «clientes» en lima, la barra
+  y las tres ventajas; abajo el panel lima con las dos entradas y el botón negro.
+- [ ] Anual marcada al abrir. Tocar «Para siempre»: el negro sale de su botón y
+  la llena, y la anual se vacía hacia el suyo. Ir y volver deprisa no da saltos.
+- [ ] Al cambiar de plan el panel no cambia de alto; cambian el botón y la línea
+  de debajo («… al año. Se renueva sola…» / «Pago único de …, sin suscripción.»).
+- [ ] La anual enseña el mensual («4,99 € al mes») y la etiqueta RECOMENDADO.
+- [ ] En un móvil pequeño, la parte de arriba se desplaza y el panel se queda
+  fijo, sin tapar las ventajas al final.
+- [ ] Bajo Restaurar · Términos · Privacidad no queda hueco de más.
+- [ ] Comprar sin cuenta → sale «Guarda tu compra» como antes.
 - [ ] En inglés, los mismos textos traducidos.
 
 ---
