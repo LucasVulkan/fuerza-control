@@ -256,6 +256,7 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount }) {
   const [selected, setSelected]     = useState(null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring]   = useState(false);
+  const [panel, setPanel]           = useState(null);
 
   const store       = Platform.OS === 'ios' ? 'App Store' : 'Google Play';
   const selectedPkg = packages.find((p) => p.identifier === selected) ?? packages[0] ?? null;
@@ -358,16 +359,23 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount }) {
       </ScrollView>
 
       {/* ── Abajo, fijo: planes, botón y lo que piden las tiendas ── */}
-      <View style={[styles.panel, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
-        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Defs>
-            <LinearGradient id="paywallPanel" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={C.accent} />
-              <Stop offset="1" stopColor={C.green} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#paywallPanel)" />
-        </Svg>
+      <View
+        style={[styles.panel, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}
+        onLayout={(e) => setPanel({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      >
+        {/* Medido y no al 100 %: en Android el SVG se quedaba con el alto del
+            primer pintado (el panel aún cargando) y lo de debajo salía en negro. */}
+        {panel && (
+          <Svg width={panel.w} height={panel.h} style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Defs>
+              <LinearGradient id="paywallPanel" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={C.accent} />
+                <Stop offset="1" stopColor={C.green} />
+              </LinearGradient>
+            </Defs>
+            <Rect width={panel.w} height={panel.h} fill="url(#paywallPanel)" />
+          </Svg>
+        )}
 
         <Text style={styles.panelTitle}>{t('paywall.payTitle')}</Text>
 
@@ -508,6 +516,7 @@ const makeStyles = (th) => StyleSheet.create({
     borderTopLeftRadius:  PANEL_RADIUS,
     borderTopRightRadius: PANEL_RADIUS,
     overflow:             'hidden',
+    backgroundColor:      th.colors.accent,   // bajo el degradado, por si se queda corto un frame
     paddingHorizontal:    spacing.lg,
     paddingTop:           spacing.xl,
   },
