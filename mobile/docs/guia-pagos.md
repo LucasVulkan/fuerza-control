@@ -326,16 +326,31 @@ A8.
 
 ### G5. Credenciales para RevenueCat
 
-1. Google Cloud Console (proyecto vinculado a Play) → **IAM → Service
-   accounts** → crear una nueva («revenuecat») → **Keys → Add key → JSON** →
-   descargar.
-2. Play Console → **Users and permissions** → **Invite new users** → el correo
-   de esa service account → permisos de app: *View financial data*,
-   *Manage orders and subscriptions*.
-3. RevenueCat → app Android → **Service account credentials JSON** → subirlo.
+Todo en **el mismo proyecto de Google Cloud** (selector de proyecto, arriba a
+la izquierda). Cualquiera vale; Play Console ya no exige vincularlo.
+
+1. **APIs y servicios → Biblioteca** → activar **Google Play Android Developer
+   API** y **Google Play Developer Reporting API**.
+2. **IAM y administración → Cuentas de servicio → + Crear cuenta de servicio**
+   («revenuecat»). En el paso de **roles**, añadir dos: **Pub/Sub Admin** (para
+   los avisos de G6; RevenueCat dice *Pub/Sub Editor*, pero con él a veces
+   falla) y **Monitoring Viewer**. Terminar. La cuenta tiene que aparecer en la
+   lista con su correo `revenuecat@<proyecto>.iam.gserviceaccount.com`; si la
+   lista sale vacía, se creó en otro proyecto o no se terminó el asistente.
+3. En esa fila, **⋮ → Administrar claves → Agregar clave → Crear clave nueva →
+   JSON**. Se descarga sola: guardarla fuera del repositorio.
+4. Play Console → **Usuarios y permisos** (de la cuenta, no de la app) →
+   **Invitar a nuevos usuarios** → el correo de la cuenta de servicio → en
+   **Permisos de la aplicación**, Forma Fit, con: *Ver información de la app y
+   descargar informes*, *Ver datos financieros, pedidos y respuestas de
+   cancelación*, *Gestionar pedidos y suscripciones* y *Gestionar presencia en
+   Play Store*. Invitar (no hace falta que «acepte» nada).
+5. RevenueCat → app Android → **Service account credentials JSON** → subirlo.
 
 Google tarda **hasta 36 h** en dar por buenas unas credenciales nuevas: hasta
-entonces RevenueCat dice que no valen aunque estén bien.
+entonces RevenueCat dice que no valen aunque estén bien. Truco que suele
+acelerarlo: cambiar cualquier cosa de la descripción de un producto en
+*Monetizar* y guardar.
 
 ### G6. Avisos de Google → RevenueCat
 
@@ -349,7 +364,9 @@ Sin esto, las renovaciones y cancelaciones llegan tarde o no llegan.
 
 ### G7. Testers
 
-Play Console → **Setup → License testing** → añadir tu Gmail. Con esa cuenta las
+Play Console → **Todas las aplicaciones → Configuración (engranaje, abajo del
+menú) → License testing** (es de la cuenta, no de la app; no sale dentro del menú
+de la app) → añadir tu Gmail. Con esa cuenta las
 compras no se cobran y **1 año dura 30 minutos**. La cuenta además tiene que
 estar en el track interno.
 
