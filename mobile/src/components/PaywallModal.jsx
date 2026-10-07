@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Platform } from 'react-native';
 import { Text } from './ui/Text';
 import { useTranslation } from 'react-i18next';
 
@@ -20,15 +20,24 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { showDialog } from './ui/dialog';
 import DragSheet from './DragSheet';
 import TrainerSyncModal from './TrainerSyncModal';
+import { TERMS_URL, PRIVACY_URL } from '../config/legal';
 // ── Feature list ──────────────────────────────────────────────────────────────
 
+// Lo que Pro añade al plan gratis (M01 §4.1): lo demás ya es de todos.
 const PRO_FEATURES = [
   { emoji: '👥', key: 'clients' },
-  { emoji: '📋', key: 'assign' },
-  { emoji: '📈', key: 'progress' },
-  { emoji: '💶', key: 'billing' },
+  { emoji: '📱', key: 'connected' },
   { emoji: '📐', key: 'templates' },
 ];
+
+// Anual primero y preseleccionada: el pago único es la opción de quien ya está
+// convencido (M01 §5). Lo que no sea ninguno de los dos va detrás.
+const ORDER = { ANNUAL: 0, LIFETIME: 1 };
+const byPlan = (a, b) => (ORDER[a.packageType] ?? 9) - (ORDER[b.packageType] ?? 9);
+
+/** El texto de cada plan sale de su tipo, no del título de la tienda (que en
+ *  Play trae el nombre de la app y «(unreviewed)» pegados). */
+const planKey = (pkg) => (pkg?.packageType === 'ANNUAL' ? 'annual' : 'lifetime');
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -54,15 +63,14 @@ export default function PaywallModal({ onClose, reason = null }) {
     (async () => {
       const o = await getOffering();
       setOffering(o);
-      // Pre-select the first available package
-      if (o?.availablePackages?.length) {
-        setSelected(o.availablePackages[0].identifier);
-      }
+      const first = [...(o?.availablePackages ?? [])].sort(byPlan)[0];
+      if (first) setSelected(first.identifier);
       setLoading(false);
     })();
   }, []);
 
-  const packages = offering?.availablePackages ?? [];
+  const packages = [...(offering?.availablePackages ?? [])].sort(byPlan);
+  const store    = Platform.OS === 'ios' ? 'App Store' : 'Google Play';
   const selectedPkg = packages.find((p) => p.identifier === selected) ?? packages[0] ?? null;
 
   async function handlePurchase() {
@@ -144,10 +152,10 @@ export default function PaywallModal({ onClose, reason = null }) {
                     <View style={[styles.radio, isSelected && styles.radioActive]} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.pkgTitle, isSelected && styles.pkgTitleActive]}>
-                        {pkg.product.title || 'Forma Pro'}
+                        {t(`paywall.plan.${planKey(pkg)}`)}
                       </Text>
                       <Text style={styles.pkgPrice}>
-                        {t('paywall.oneTime', { price: pkg.product.priceString })}
+                        {t(`paywall.plan.${planKey(pkg)}Price`, { price: pkg.product.priceString })}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -168,7 +176,7 @@ export default function PaywallModal({ onClose, reason = null }) {
                 ? <ActivityIndicator size="small" color={th.colors.bg} />
                 : <Text style={styles.ctaTxt}>
                     {selectedPkg
-                      ? t('paywall.buyFor', { price: selectedPkg.product.priceString })
+                      ? t(`paywall.plan.${planKey(selectedPkg)}Cta`, { price: selectedPkg.product.priceString })
                       : t('paywall.buy')}
                   </Text>
               }
@@ -187,7 +195,22 @@ export default function PaywallModal({ onClose, reason = null }) {
             }
           </TouchableOpacity>
 
-          <Text style={styles.legal}>{t('paywall.legal')}</Text>
+          {/* Apple 3.1.2: precio, periodo y renovación a la vista, y los dos
+              enlaces. El texto cambia con el plan elegido. */}
+          {selectedPkg && (
+            <Text style={styles.legal}>{t(`paywall.plan.${planKey(selectedPkg)}Legal`, { store })}</Text>
+          )}
+          <View style={styles.links}>
+            <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL)} hitSlop={8}>
+              <Text style={styles.link}>{t('paywall.terms')}</Text>
+            </TouchableOpacity>
+            {/* ponytail: sin URL publicada no sale; ver config/legal.js. */}
+            {PRIVACY_URL && (
+              <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL)} hitSlop={8}>
+                <Text style={styles.link}>{t('paywall.privacy')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
     </DragSheet>
   );
 }
@@ -298,6 +321,14 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight:        lh(textStyles.label.fontSize),
     paddingHorizontal: spacing.sm,
   },
+
+  links: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    gap:            spacing.lg,
+    marginTop:      spacing.sm,
+  },
+  link: { ...textStyles.label, color: th.colors.mutedLight, textDecorationLine: 'underline' },
 
   // No products
   noProducts: {

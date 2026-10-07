@@ -5,7 +5,7 @@
 > Inicio: 2026-10-06
 > Fase M01-01 · hecho · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) · §3 · antes M01
 > Fase M01-02 · hecho · Plan gratis 3 (1 con app) + 1 + 1: límites, congelado por cliente y hoja de elección · §4 · antes M02
-> Fase M01-03 · pendiente · Paywall dual + i18n + enlaces legales · §5 · antes M03
+> Fase M01-03 · hecho · Paywall dual + i18n + enlaces legales · §5 · antes M03
 > Fase M01-04 · pendiente · Invitar cliente nivel 1 + página estática · §6 · antes M04
 > Fase M01-05 · pendiente · Montar App Store, Google Play y RevenueCat (guia-pagos.md) · §7
 >
@@ -667,6 +667,46 @@ Motivo 3.1.2, y es de los rechazos más comunes:
 ninguna URL pública**. Las dos stores exigen una, y §5.4 exige además el EULA.
 La misma página estática que necesita la fase 3 resuelve las tres cosas —
 privacidad, EULA y redirección de invitación — en un solo sitio alojado.
+
+### 5.6 Cómo quedó (7-oct-2026)
+
+Probado antes de tocarlo con un build de producción en Android: la oferta ya
+traía los dos paquetes, y el paywall los pintaba como «FormaFit Pro
+(com.formastudio.formafit (unreviewed))» y los dos con «Pago único».
+
+- **El nombre de cada plan sale del tipo de paquete**, no del título de la
+  tienda: Play le pega el nombre de la app y «(unreviewed)». `ANNUAL` →
+  «Anual», `LIFETIME` → «Para siempre» (`paywall.plan.*`).
+- **Anual primero y preseleccionado**; el pago único, detrás.
+- **Precio, botón y texto legal según el plan elegido**: «59,99 € al año · se
+  renueva sola» / «Suscribirme · 59,99 €/año» y el texto de renovación y
+  cancelación con el nombre de la tienda; «119,99 € · pago único» / «Comprar por
+  119,99 €» y «sin suscripción, permanente». El texto viejo («Sin
+  suscripciones») ya no existe.
+- **Enlaces**: Términos de uso (EULA estándar de Apple) y Privacidad, en
+  `src/config/legal.js`. **Privacidad sale solo cuando haya URL** (`PRIVACY_URL`
+  está a null): hay que publicarla antes de mandar a revisión (§5.5).
+- **Ventajas reescritas** para el modelo nuevo: clientes ilimitados (gratis 3),
+  todos con app (gratis 1), plantillas ilimitadas. Lo demás ya es de todos.
+- **§5.3 no se ha hecho**: el aviso de «cancela la anual si compras el pago
+  único» solo lo vería alguien con Pro, y con Pro el paywall no se abre. Se
+  añade si aparece el caso.
+
+Apunte de precio: hoy el pago único (119,99 €) es **2×** la anual (59,99 €). §5.3
+recomendaba 2,5–3×: con 2× la anual pierde atractivo a partir del segundo año.
+
+**Probar M01-03**
+
+- [ ] El paywall enseña «Anual» primero y marcado, y «Para siempre» debajo, sin
+  el nombre de la app ni «(unreviewed)».
+- [ ] Con «Anual» marcado: precio «al año · se renueva sola», botón
+  «Suscribirme · …/año» y el texto de renovación nombrando Google Play (o App
+  Store en iPhone). Con «Para siempre»: «pago único», «Comprar por …» y «sin
+  suscripción».
+- [ ] «Términos de uso» abre el EULA en el navegador.
+- [ ] La lista de ventajas dice clientes ilimitados, todos con app y plantillas
+  ilimitadas.
+- [ ] En inglés, los mismos textos traducidos.
 
 ---
 

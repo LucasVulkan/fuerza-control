@@ -1015,18 +1015,25 @@
     },
     "frozenError": "Client out of plan: not included in the free plan.",
     "features": {
-      "clients": "Full client management",
-      "assign": "Assign programs to clients",
-      "progress": "See your clients' progress in real time",
-      "billing": "Billing log",
-      "templates": "Create training templates"
+      "clients": "Unlimited clients (free: up to 3)",
+      "connected": "All your clients on the app (free: 1)",
+      "templates": "Unlimited program and session templates"
     },
     "comingSoon": "Forma Pro coming soon",
-    "oneTime": "{{price}} · One-time payment",
-    "buyFor": "Buy for {{price}}",
+    "plan": {
+      "annual": "Yearly",
+      "annualPrice": "{{price}} per year · renews automatically",
+      "annualCta": "Subscribe · {{price}}/year",
+      "annualLegal": "Charged to your {{store}} account on confirmation. Renews every year at the same price unless cancelled at least 24 hours before the end of the period. You can cancel it in your {{store}} subscription settings.",
+      "lifetime": "Lifetime",
+      "lifetimePrice": "{{price}} · one-time payment",
+      "lifetimeCta": "Buy for {{price}}",
+      "lifetimeLegal": "One-time payment, no subscription: Forma Pro access is permanent."
+    },
+    "terms": "Terms of use",
+    "privacy": "Privacy",
     "buy": "Buy Forma Pro",
     "restore": "Restore previous purchase",
-    "legal": "One-time payment. No subscriptions. Forma Pro access is permanent.",
     "processing": "Purchase processed, syncing…",
     "errTitle": "Couldn't complete the purchase"
   },

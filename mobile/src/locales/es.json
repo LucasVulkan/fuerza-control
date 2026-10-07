@@ -1015,18 +1015,25 @@
     },
     "frozenError": "Cliente fuera de plan: el plan gratis no lo incluye.",
     "features": {
-      "clients": "Gestión completa de clientes",
-      "assign": "Asignar programas a clientes",
-      "progress": "Ver el progreso de tus clientes en tiempo real",
-      "billing": "Registro de facturación",
-      "templates": "Crear plantillas de entrenamiento"
+      "clients": "Clientes ilimitados (gratis, hasta 3)",
+      "connected": "Todos tus clientes con la app (gratis, 1)",
+      "templates": "Plantillas de programa y de sesión ilimitadas"
     },
     "comingSoon": "Forma Pro próximamente",
-    "oneTime": "{{price}} · Pago único",
-    "buyFor": "Comprar por {{price}}",
+    "plan": {
+      "annual": "Anual",
+      "annualPrice": "{{price}} al año · se renueva sola",
+      "annualCta": "Suscribirme · {{price}}/año",
+      "annualLegal": "Se cobra en tu cuenta de {{store}} al confirmar y se renueva cada año al mismo precio, salvo que la canceles al menos 24 horas antes de que acabe el periodo. Puedes cancelarla en los ajustes de suscripciones de {{store}}.",
+      "lifetime": "Para siempre",
+      "lifetimePrice": "{{price}} · pago único",
+      "lifetimeCta": "Comprar por {{price}}",
+      "lifetimeLegal": "Pago único, sin suscripción: el acceso a Forma Pro es permanente."
+    },
+    "terms": "Términos de uso",
+    "privacy": "Privacidad",
     "buy": "Comprar Forma Pro",
     "restore": "Restaurar compra anterior",
-    "legal": "Pago único. Sin suscripciones. El acceso a Forma Pro es permanente.",
     "processing": "Compra procesada, sincronizando…",
     "errTitle": "No se pudo completar la compra"
   },
