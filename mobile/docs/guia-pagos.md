@@ -354,10 +354,23 @@ acelerarlo: cambiar cualquier cosa de la descripción de un producto en
 
 ### G6. Avisos de Google → RevenueCat
 
-1. RevenueCat → app Android → **Google developer notifications** → *Connect to
-   Google* → crea el topic de Pub/Sub. Copiar el nombre del topic.
-2. Play Console → **Monetize with Play → Monetization setup** → **Real-time
-   developer notifications** → pegar el topic → **Send test notification**.
+Requiere G5 funcionando (credenciales válidas, rol Pub/Sub Admin y la API de
+Cloud Pub/Sub activa): es la cuenta de servicio la que crea el topic.
+
+1. RevenueCat → app Android, debajo del JSON de G5 → desplegable **Google
+   Cloud Pub/Sub Topic ID** → elegir la opción de **crear uno nuevo** (no hace
+   falta tenerlo creado) → **Connect to Google**. Aparece el id del topic
+   (`projects/<proyecto>/topics/…`); si no, refrescar. Copiarlo.
+   - Si el desplegable sale vacío y sin opción de crear, las credenciales aún
+     no valen (las 36 h de G5) o falta el rol de Pub/Sub.
+   - A mano, si hace falta: Google Cloud → **Pub/Sub → Temas → Crear tema**;
+     en sus **Permisos**, añadir `google-play-developer-notifications@system.gserviceaccount.com`
+     con el rol **Publicador de Pub/Sub**; y elegir ese tema en el desplegable.
+2. Play Console → la app → **Monetizar con Play → Configuración de la
+   monetización** → **Notificaciones para desarrolladores en tiempo real** →
+   pegar el id en **Nombre del tema** → en el contenido, **Suscripciones,
+   compras anuladas y todos los productos únicos** (si no, el pago único no
+   avisa de reembolsos) → guardar → **Enviar notificación de prueba**.
    RevenueCat debe marcarla como recibida.
 
 Sin esto, las renovaciones y cancelaciones llegan tarde o no llegan.
