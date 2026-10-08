@@ -216,6 +216,45 @@ interruptor; el texto cambia a la vez con un fundido corto. Con
 - `/soporte`: correo de contacto y 4-5 preguntas frecuentes (restaurar compras,
   cancelar la suscripción, conectar con el entrenador, borrar la cuenta).
 
+### 5.3 Cómo va (8-oct-2026)
+
+Hecha la landing básica en `index.html`, **sin publicar** todavía:
+
+- Dos capas en la misma celda de una rejilla; la de Pro, encima, recortada
+  con `clip-path: circle()` desde el centro del interruptor. La transición CSS
+  hace sola lo de U13-02: invertida a medias, se recoge desde donde iba. Al
+  terminar, `settled` quita el recorte (lo que queda fuera de la pantalla
+  cambia sin verse); al volver se repone el círculo lleno y se recoge.
+- Interruptor **fijo** arriba a la derecha (GRATIS · PRO), `role="switch"`.
+  La capa inactiva va con `inert` + `aria-hidden`. `#pro` en la URL.
+- Sin la pastilla PRO del logo en el modo Pro: chocaba con el interruptor en
+  móvil, y el interruptor ya dice PRO.
+- Textos del usuario (8-oct): gratis = crear programas, periodización,
+  registro rápido; de regalo, métricas; con entrenador, él programa y sigue.
+  Pro = clientes sin límite, conexión y sincronización, todos de un vistazo,
+  plantillas; «pruébalo antes de pagar» con los límites de M01 §4. **Sin
+  precios** (decisión del usuario, 8-oct): cambian en las stores, no aquí.
+- **Marca de fondo en el corte**, como en el diseño original del paywall (la
+  marca de agua que se quedó fuera, M01 §5.7): grande, horizontal, sin trama y
+  cortada por la derecha. En Pro, «PRO» en la Barlow del titular, negro al
+  9 %; en Gratis, una mancuerna en lima al 10 %. Detrás del texto. (Se probó
+  con trama de puntos tipo serigrafía y el usuario la descartó.)
+- «Todos tus clientes de un vistazo» está escrito sin prometer el dashboard
+  de C08, que aún no existe.
+
+- **Cuerpo**: Gratis en gris (`#171717`), Pro en **negro puro** (`#000`),
+  decidido por el usuario el 8-oct (se probó el tinte lima apagado y el gris).
+- Publicada el 8-oct-2026 (repo de la web, `a242511` y siguientes).
+
+Validada como base el 8-oct-2026. Falta:
+
+- **Diseño y sitio de la mancuerna**: lo dará el usuario (la de ahora es
+  provisional).
+- **Textos**: se reescribirán; los de ahora son un primer paso.
+- **Capturas reales** de la app.
+- `/soporte` (necesita el correo, M02-07) y los botones de store cuando haya
+  fichas (hoy «Próximamente»).
+
 ---
 
 ## 6. M02-04 — Dominio propio (aparcado)
