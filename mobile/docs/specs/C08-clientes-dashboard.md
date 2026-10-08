@@ -4,7 +4,7 @@
 > En corto: La pantalla de Clientes pasa a leerse de un vistazo: arriba tres cifras que se pulsan para comparar a todos, y una fila por cliente que dice una sola cosa cada vez (dónde va, o qué necesita y el botón para hacerlo). Fuera las pills y el ruido de colores; el orden lo elige el entrenador y se queda guardado.
 > Inicio: 2026-10-08
 > Fase C08-01 · hecho · Avatar con color de identidad e insignia de «con app» · §3
-> Fase C08-02 · pendiente · La fila: aviso o programa, botón con icono, cuadraditos, última vez y muesca de sin revisar · §4
+> Fase C08-02 · hecho · La fila: aviso o programa, botón con icono, cuadraditos, última vez y muesca de sin revisar · §4
 > Fase C08-03 · pendiente · Tres tarjetas de resumen; adherencia y mejora como lentes · §5
 > Fase C08-04 · pendiente · Orden elegido y guardado: criterio, «lo que necesita algo, arriba» y a mano · §6
 > Fase C08-05 · pendiente · Rótulo de la lista: etiquetas con scroll, «Enviar todo» y fuera las pills · §7
@@ -13,7 +13,11 @@
 > `utils/identityColor.js` (+ test), `IDENTITY_COLORS` en `theme.js`, `color` al crear
 > cliente (las dos altas del store) y migración en `onRehydrateStorage`. Añadidos tras la
 > primera prueba: insignia de reloj para el invitado y el «atrás» de Android desde la
-> ficha vuelve a la lista (antes saltaba a Inicio; no lo causó C08). Las demás, sin implementar. Sale de iterar ocho
+> ficha vuelve a la lista (antes saltaba a Inicio; no lo causó C08).
+> **C08-02 implementada y probada** (8-oct-2026): `ClientListCard` reescrita, lista en bloques
+> agrupados con `getCardRadii`, fila de plegados, `weekExtra` en `sessionPlan` y
+> `utils/lastSeen.js` (los dos con test). Hasta C08-04 el orden sigue siendo el de hoy: los
+> avisos aún no suben solos. ponytail: los plegados se despliegan sin animar la altura. Las demás, sin implementar. Sale de iterar ocho
 > maquetas con el usuario en el chat; la que manda es
 > [`docs/mockups/clients-dashboard-8.html`](../mockups/clients-dashboard-8.html),
 > que es interactiva (caso tranquilo / movido / lunes, etiquetas, hoja de orden,
@@ -141,7 +145,7 @@ frente a tarjetas sueltas porque ahora todas las filas tienen la misma forma y
 se leen como una tabla; separarlas hace que cada una se lea como un objeto
 aparte, que es el ruido que se quita.
 
-Fila de ~62 px: `[avatar] [nombre / 2.ª línea] [derecha]`. Tocar la fila abre la
+Fila de **alto fijo, 70 px** (las dos líneas con `space/lg` arriba y abajo; más aire que la maqueta, tras la primera prueba), lleve lo que lleve: `[avatar] [nombre / 2.ª línea] [derecha]`. Tocar la fila abre la
 ficha (como hoy); mantener pulsado abre las acciones (como hoy).
 
 Fila **normal** (sin aviso con botón):
@@ -166,14 +170,15 @@ de su blob — `stageStatus(...)`, la misma cuenta que hoy). En su última seman
 `última semana` en `text` en vez de `sem N de M`, sin color: aviso previo sin
 alarma. Etapa sin duración: `programa · etapa`.
 
-Con aviso: **el aviso sustituye a la línea entera**, en el color de su dueño
+Con aviso: **el aviso sustituye a la línea entera**, en `labelStrong` (el 12 de la
+meta, en negrita) y en el color de su dueño
 (el código de hoy: lima = en marcha, azul = tuyo sin enviar, naranja = parado,
 rojo = en riesgo). Si tiene más de uno se pinta el de más prioridad y detrás un
 `+N` en `mutedLight`. Prioridad (la del CTA de hoy, más los dos sin botón):
 
 | # | Aviso | Cuándo (hoy en `ClientListCard`) | Color | Botón (icono · texto) |
 |---|---|---|---|---|
-| 1 | Entreno a medias | `inProgress` | accent | ▷ Continuar |
+| 1 | Entreno a medias | `inProgress` | blue | ▶ Continuar |
 | 2 | Sin programa | `!activeProgram` | text | + Programar |
 | 3 | Cambios sin enviar | `showDirty` (programa) | blue | ↑ Enviar |
 | 4 | Etapa siguiente bloqueada | `stageStuck` | orange | candado abierto · Desbloquear |
@@ -181,6 +186,9 @@ rojo = en riesgo). Si tiene más de uno se pinta el de más prioridad y detrás 
 | 6 | Cambios sin enviar | `showOverrideDirty` (prescripciones) | blue | ↑ Enviar |
 | 7 | Sin entrenar | adherencia `AT_RISK` | redText | — |
 | 8 | Bajando el ritmo | adherencia `SLIPPING` | orange | — |
+
+Con un entreno a medias (1) no se cuentan 7 ni 8: ese entreno es justo lo que
+los resuelve, aún sin guardar (salía «Entreno a medias +1» sin decir de qué).
 
 Los textos de 3-6 ya existen (`clients.pendingTitle`, `stageLockedShort`,
 `blockDoneShort`); los demás son claves nuevas (§8).
@@ -191,8 +199,8 @@ como hoy.
 
 ### 4.3 El botón
 
-Fondo `surface3`, texto `text` en versales (el rol de botón pequeño de
-`textStyles`), y delante **un icono de 15 px en el color del aviso**. El color
+Fondo `surface3`, texto `text` en `button` (la voz de «+ Cliente») y **sin versales** (en
+mayúsculas se comía la línea; cambiado tras la primera prueba), y delante **un icono sólido de 15 px en el color del aviso** (el triángulo de Continuar, con las puntas apenas redondeadas). El color
 va en el aviso y en el icono, **no en el fondo del botón**: «Sin entrenar» y
 «Bajando el ritmo» no tienen botón, y si el color viviera en el botón los dos
 avisos más graves se quedarían sin él. Iconos: los de `components/ui` si existen
@@ -263,26 +271,26 @@ siguen en la ficha.
 
 **Probar C08-02**
 
-- [ ] Cliente al día: nombre, cuadraditos a la altura del nombre, «programa ·
+- [x] Cliente al día: nombre, cuadraditos a la altura del nombre, «programa ·
   etapa · sem N de M» y la última vez a la derecha. Ningún otro color que el lima.
-- [ ] En la última semana de la etapa pone «última semana» en blanco.
-- [ ] Cliente con 6 sesiones por semana: los cuadraditos no tocan la línea de abajo.
-- [ ] Hacer las 3 de 3 y repetir una: 3 llenos y «+1». Hacer una sesión libre que
+- [x] En la última semana de la etapa pone «última semana» en blanco.
+- [x] Cliente con 6 sesiones por semana: los cuadraditos no tocan la línea de abajo.
+- [x] Hacer las 3 de 3 y repetir una: 3 llenos y «+1». Hacer una sesión libre que
   no sustituye a ninguna: «+1» más. Una libre marcada «cuenta como B»: llena
   un cuadradito, sin «+».
-- [ ] Cambios sin enviar: la 2.ª línea dice «Cambios sin enviar» en azul y a la
+- [x] Cambios sin enviar: la 2.ª línea dice «Cambios sin enviar» en azul y a la
   derecha «↑ ENVIAR» con la flecha azul; al enviar, la fila vuelve a la normal.
-- [ ] Etapa terminada sin siguiente: aviso naranja y «PLANIFICAR» abre el
+- [x] Etapa terminada sin siguiente: aviso naranja y «PLANIFICAR» abre el
   planificador. Con la siguiente bloqueada: «DESBLOQUEAR» la abre.
-- [ ] Cliente en riesgo: «Sin entrenar» en rojo, sin botón, con sus cuadraditos y
+- [x] Cliente en riesgo: «Sin entrenar» en rojo, sin botón, con sus cuadraditos y
   su última vez.
-- [ ] Dos avisos a la vez: sale el de más prioridad y «+1».
-- [ ] Cliente con app y 2 entrenos sin revisar: muesca lima «2» en la esquina
+- [x] Dos avisos a la vez: sale el de más prioridad y «+1».
+- [x] Cliente con app y 2 entrenos sin revisar: muesca lima «2» en la esquina
   inferior derecha, recortada en la esquina (también en la última fila del
   bloque, con su radio grande); tocarla abre su historial.
-- [ ] Entreno a medias y sin revisar a la vez: globo delante de «CONTINUAR».
-- [ ] Pausados e invitados plegados al final en una fila; al tocarla se despliegan.
-- [ ] Hoy · ayer · «lun» · «hace 9 d» · «nunca» salen donde toca, en español e inglés.
+- [x] Entreno a medias y sin revisar a la vez: globo delante de «CONTINUAR».
+- [x] Pausados e invitados plegados al final en una fila; al tocarla se despliegan.
+- [x] Hoy · ayer · «lun» · «hace 9 d» · «nunca» salen donde toca, en español e inglés.
 
 ## 5. Tres tarjetas de resumen; adherencia y mejora como lentes (C08-03)
 
@@ -477,6 +485,8 @@ JSON), bajo `clients.`:
 | `summary.needs` | necesitan algo | need something |
 | `summary.adherence` | adherencia media | avg adherence |
 | `summary.improvement` | mejora media | avg improvement |
+| `workoutInProgress` | Entreno a medias | Workout in progress |
+| `btnProgram` | Programar | Program |
 | `notTraining` | Sin entrenar | Not training |
 | `slowingDown` | Bajando el ritmo | Slowing down |
 | `blockDone` | Etapa terminada | Stage finished |

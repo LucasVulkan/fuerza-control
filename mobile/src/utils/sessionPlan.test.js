@@ -185,3 +185,33 @@ describe('sessionPlan — orden libre (order: free, U13 §9)', () => {
     expect(plan.subtitle).toBe('home.weekCount:{"done":1,"total":3}');
   });
 });
+
+describe('sessionPlan — lo de más (C08-clientes-dashboard.md §4.4)', () => {
+  const libre = (ts, extra = {}) => ({ sessionTemplateId: 'tpl_libre', free: true, timestamp: ts, ...extra });
+
+  it('las previstas no dan «+»; repetir de más y las libres sueltas, sí', () => {
+    const tres = log(['a', at(2026, 9, 21)], ['b', at(2026, 9, 22)], ['c', at(2026, 9, 23)]);
+    expect(sessionPlan({ days: DAYS, log: tres, now: NOW, t }).weekExtra).toBe(0);
+    const plan = sessionPlan({
+      days: DAYS,
+      log: [...tres, ...log(['a', at(2026, 9, 24, 8)]), libre(at(2026, 9, 23))],
+      now: NOW, t,
+    });
+    expect(plan.weekDone).toBe(4);
+    expect(plan.weekExtra).toBe(2);   // la A de más + la libre
+  });
+
+  it('una libre que cuenta como C no es de más; lo de la semana pasada, tampoco', () => {
+    const plan = sessionPlan({
+      days: DAYS,
+      log: [libre(at(2026, 9, 23), { countsAs: 'c' }), libre(at(2026, 9, 19)), ...log(['x', at(2026, 9, 18)])],
+      now: NOW, t,
+    });
+    expect(plan.weekExtra).toBe(0);
+  });
+
+  it('una sesión de otra etapa esta semana va de más', () => {
+    const plan = sessionPlan({ days: DAYS, log: log(['x', at(2026, 9, 22)]), now: NOW, t });
+    expect(plan.weekExtra).toBe(1);
+  });
+});

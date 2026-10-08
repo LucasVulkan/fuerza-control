@@ -34,6 +34,7 @@ import { programTemplateOf } from './freeSessions';
  *   rows:           Array<{ templateId: string, marker: string, isDone: boolean, isHero: boolean }>,
  *   subtitle:       string|null,  // null ⇒ no se pinta contador
  *   weekDone:       number,       // entrenos de la etapa desde el lunes, repeticiones incluidas
+ *   weekExtra:      number,       // lo de más esta semana: lo que pasa de las previstas + lo que no cuenta para la etapa
  * }}
  */
 export function sessionPlan({ days = [], log = [], now = Date.now(), t, order = 'rotation' }) {
@@ -41,12 +42,14 @@ export function sessionPlan({ days = [], log = [], now = Date.now(), t, order = 
   const weekStart = startOfWeek(now);
   const lastDone  = {};
   let weekDone    = 0;
+  let weekOutside = 0;   // de esta semana, sin sesión de la etapa: libres sueltas y de otras etapas
   log.forEach((entry) => {
     // Una sesión libre marcada «Cuenta como C» cuenta como la C
     // (T06-free-sessions.md §8): la marca hecha, mueve el hero y suma a la semana.
     const tid = programTemplateOf(entry);
     const ts  = entry.timestamp;
-    if (!ids.has(tid) || typeof ts !== 'number') return;
+    if (typeof ts !== 'number') return;
+    if (!ids.has(tid)) { if (ts >= weekStart) weekOutside += 1; return; }
     if (!(lastDone[tid] >= ts)) lastDone[tid] = ts;
     if (ts >= weekStart) weekDone += 1;
   });
@@ -83,5 +86,8 @@ export function sessionPlan({ days = [], log = [], now = Date.now(), t, order = 
       : null,
     // El número suelto, para quien compone su propia frase (tarjeta de cliente).
     weekDone,
+    // Los cuadraditos de la lista de Clientes son siempre las previstas; esto
+    // es el «+N» de detrás (C08-clientes-dashboard.md §4.4).
+    weekExtra: Math.max(0, weekDone - days.length) + weekOutside,
   };
 }
