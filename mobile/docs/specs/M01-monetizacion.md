@@ -789,6 +789,9 @@ Cambios:
 5. El botón respeta el límite de la fase 1: paywall **antes** de generar el slot,
    no después de que el cliente se haya descargado la app.
 
+La página estática (y su contrato `forma://join/<código>`) es la tarea
+**M02-02** de [M02-web.md](M02-web.md); esta fase es solo la parte de la app.
+
 Resultado: cliente que ya tiene la app → toca y entra vinculado. Cliente que no
 la tiene → instala y **pega el código a mano**, que va en el mismo mensaje.
 

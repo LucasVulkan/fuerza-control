@@ -7,7 +7,12 @@ código se pueda comprobar si esto sigue siendo verdad. El cuestionario es una
 declaración con consecuencias legales: revísalo antes de enviarlo, no lo
 copies a ciegas.
 
-Última revisión: 2026-08-05.
+Última revisión: 2026-10-08 (peso corporal en el historial, RevenueCat con
+`logIn` desde M01-01, suscripción anual, región de Supabase).
+
+La política pública que lo cuenta: <https://formafit-pro.github.io/privacidad/>
+(inglés en `/privacy/`), repo `formafit-pro.github.io` (spec M02). **Si cambia
+esto, cambia también la política.**
 
 ---
 
@@ -32,9 +37,9 @@ Tres destinos, y solo el primero es tuyo:
 
 | Destino | Qué recibe | Cuándo |
 |---|---|---|
-| **Supabase** (backend propio) | Cuenta, programas, historial del alumno | Solo con sincronización activada o alumno conectado |
+| **Supabase** (backend propio, región **UE**) | Cuenta, programas, historial del alumno | Solo con sincronización activada o alumno conectado |
 | **Google Drive del usuario** | Copia completa de sus datos | Solo si activa la copia de seguridad |
-| **RevenueCat** | Compra y un id anónimo | Solo al comprar o restaurar Pro |
+| **RevenueCat** (EE. UU.) | Compra y el id de usuario de Supabase del entrenador (M01-01) | Solo al comprar o restaurar Pro |
 
 El caso de Drive tiene una particularidad que conviene entender: se usa el
 scope `drive.file` (ver `SCOPES` en `mobile/src/screens/DriveBackupScreen.jsx`),
@@ -81,22 +86,30 @@ El historial de entrenamiento del alumno sube al hueco de su entrenador
 (`src/utils/clientLogs.js`): solo las sesiones de los programas de ese
 entrenador, más las sesiones libres posteriores al enlace.
 
-Lo que **no** sube: el peso corporal (`profile.bodyWeight`), el nombre del
-perfil, los objetivos, las respuestas del onboarding, ni el historial de
-programas ajenos al entrenador. Eso se queda en el móvil, y en la copia de
-Drive si el usuario la activa.
+**El peso corporal sí sube**: cada entrada del historial guarda el peso de ese
+día (`logEntry.bodyWeight`, que copia `profile.bodyWeight` al cerrar la sesión,
+y `setSessionFeedback` en el resumen), y el historial viaja entero. Por eso
+conviene declarar también **Health & Fitness → Health** (dato de salud que
+escribe el usuario), no solo Fitness.
+
+Lo que **no** sube: el nombre del perfil, los objetivos, las respuestas del
+onboarding, ni el historial de programas ajenos al entrenador. Eso se queda en
+el móvil, y en la copia de Drive si el usuario la activa.
 
 ### Identifiers → User ID
 **Sí, se recoge. Vinculado. Uso: App Functionality.**
 
-El `user.id` de Supabase, y el id anónimo que genera RevenueCat. Ninguno es un
-identificador de publicidad: `App.js` llama a `Purchases.configure` y **nunca**
-a `logIn`, así que el id de RevenueCat no se cruza con la cuenta de la app.
+El `user.id` de Supabase. Desde M01-01 **también es el id de RevenueCat** del
+entrenador: `App.js` configura con `appUserID = trainerSync.userId` y
+`syncPurchaserId` hace `logIn` al cambiar de cuenta, para que el Pro cruce de
+un móvil a otro. Sin cuenta (o en el móvil del cliente), RevenueCat usa su id
+anónimo. Ninguno es un identificador de publicidad.
 
 ### Purchases → Purchase History
 **Sí, se recoge. Vinculado. Uso: App Functionality.**
 
-RevenueCat, para saber si tienes Pro. Es un pago único, no una suscripción.
+RevenueCat, para saber si tienes Pro: **suscripción anual o pago único**
+(M01 §5), los dos sobre el mismo entitlement.
 
 ### User Content → Other User Content
 **Sí, se recoge. Vinculado. Uso: App Functionality.**
@@ -134,7 +147,8 @@ no destruye la fila: el programa y el código son del entrenador.
 
 ## Qué falta declarar fuera de este documento
 
-- **Política de privacidad**: Apple exige una URL pública y accesible. Tiene
-  que reflejar lo de arriba, incluido el borrado de cuenta.
+- **Política de privacidad**: publicada en
+  <https://formafit-pro.github.io/privacidad/>. Refleja lo de arriba, incluido
+  el borrado de cuenta. **Falta un correo de contacto** (M02-07).
 - Si publicas fuera de España y Latinoamérica, la política debería estar
   también en inglés.
