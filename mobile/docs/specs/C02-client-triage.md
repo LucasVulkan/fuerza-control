@@ -11,6 +11,8 @@
 > programar más rápido; la P1 es [P06-stage-planner.md](P06-stage-planner.md), esta es
 > la P3.
 >
+> **8-oct-2026:** las pills de esta spec las sustituye [C08-clientes-dashboard.md](C08-clientes-dashboard.md) (§7.3): las banderas siguen valiendo, pero como aviso en la fila, no como pill.
+>
 > Qué resuelve: con 20 clientes, la pregunta del entrenador no es "¿cuánta carga
 > lleva Ana?" sino **"¿a quién miro hoy?"**. El objetivo es convertir "repasar 20
 > clientes" en "mirar los 3 que lo piden".

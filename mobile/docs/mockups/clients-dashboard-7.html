@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clientes dashboard v7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;600;700;800;900&display=swap">
+<style>
+/* v7: tarjetas que se rellenan de lima (salvo «necesitan algo»); cuatro sitios para los sin revisar; sin pills, la etiqueta en el rótulo. */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --orange:#fb923c; --redText:#ff5e58; --blue:#4c85ff;
+  --xs2:4px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px;
+  --r-sm:6px; --r-md:10px;
+  --page:#080808; --ink-dim:#8a8a8a;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+.wrap{max-width:900px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:80ch; margin:0}
+.lead b{color:var(--text); font-weight:800}
+
+.ctrls{display:grid; gap:10px; margin:24px 0 30px}
+.cases{display:flex; flex-wrap:wrap; gap:var(--sm); align-items:center}
+.cases span{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-dim); width:96px}
+.cases button{all:unset; cursor:pointer; font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--text); background:var(--surface2); border-radius:999px; padding:9px 14px}
+.cases button[aria-pressed="true"]{background:var(--accent); color:var(--onAccent)}
+.cases button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.rail{display:flex; gap:34px; overflow-x:auto; padding-bottom:12px; align-items:flex-start}
+.col{flex:0 0 375px; width:375px; max-width:100%}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h2{font:900 18px/1.2 var(--inter); margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:62px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:var(--orange)}
+.pro b,.con b{color:var(--text)}
+
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:780px; position:relative}
+.phone::after{content:''; position:absolute; left:0; right:0; bottom:0; height:50px; background:linear-gradient(transparent,var(--bg)); pointer-events:none}
+.scroll{height:100%; overflow-y:auto; scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight)}
+.ah{display:flex; align-items:center; padding:var(--md) var(--xl) var(--sm)}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.ah .sp{flex:1}
+.ico{width:36px; height:36px; border-radius:var(--r-md); background:var(--surface); display:grid; place-items:center}
+.ico svg{width:18px; height:18px; stroke:var(--text); fill:none; stroke-width:1.8; stroke-linecap:round}
+.body{padding:var(--sm) var(--lg) 70px}
+.title{display:flex; align-items:center; gap:var(--sm2); margin:var(--sm) 0 var(--lg)}
+.title h3{flex:1; margin:0; font:italic 800 30px/1 var(--barlow); letter-spacing:.3px}
+.title h3 span{color:var(--mutedLight)}
+.new{background:var(--accent); color:var(--onAccent); font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; padding:11px 14px; border-radius:var(--r-md)}
+.search{height:40px; border-radius:var(--r-md); background:var(--surface); display:flex; align-items:center; gap:8px; padding:0 12px; font:500 14px var(--inter); color:var(--mutedLight); margin-bottom:var(--lg)}
+.search svg{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round}
+
+.sh{display:flex; align-items:baseline; gap:var(--sm); padding:0 12px 0 var(--xs2); margin:var(--xl) 0 var(--sm2)}
+.sh b{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase}
+.sh span{margin-left:auto; font:700 11px var(--inter); color:var(--mutedLight)}
+.sh a{margin-left:auto; font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; color:var(--blue)}
+
+/* resumen: una cifra que se entiende sola + dos contadores con la misma división que los avisos */
+.sum{background:var(--surface); border-radius:var(--r-md); padding:14px 14px 13px}
+.sum .top{display:flex; align-items:baseline; gap:8px}
+.sum .v{font:italic 800 34px/1 var(--barlow)}
+.sum .v small{font-size:20px; color:var(--mutedLight)}
+.sum .l{font:700 13px var(--inter); color:var(--mutedLight)}
+.bar{display:flex; gap:2px; margin:10px 0 12px}
+.bar i{flex:1; height:6px; border-radius:1.5px; background:var(--surface3)}
+.bar i.on{background:var(--accent)}
+.split{display:grid; grid-template-columns:1fr 1fr; gap:2px; margin:0 -14px -13px; border-top:2px solid var(--bg)}
+.split div{padding:11px 14px; font:700 12px/1.3 var(--inter); color:var(--mutedLight)}
+.split div + div{border-left:2px solid var(--bg)}
+.split b{display:block; font:italic 800 24px/1 var(--barlow); color:var(--text); margin-bottom:3px}
+
+.group{display:grid; grid-template-columns:minmax(0,1fr); gap:2px}
+.group > *{background:var(--surface); border-radius:2px}
+.group > :first-child{border-top-left-radius:var(--r-md); border-top-right-radius:var(--r-md)}
+.group > :last-child{border-bottom-left-radius:var(--r-md); border-bottom-right-radius:var(--r-md)}
+
+.cl{display:flex; align-items:center; gap:var(--md); padding:11px 12px; min-height:62px}
+.av{width:36px; height:36px; border-radius:18px; display:grid; place-items:center; font:800 13px var(--inter); flex-shrink:0}
+.cl .tx{flex:1; min-width:0}
+.cl .n{font:700 15px/1.25 var(--inter); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cl .p{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
+.cl .p em{font-style:normal; color:var(--text)}
+.cl .p small{font:700 11px var(--inter); color:var(--mutedLight); margin-left:4px}
+
+/* botón: icono + texto. Su color lo decide el interruptor */
+.btn{display:flex; align-items:center; gap:6px; font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; padding:8px 11px 8px 9px; border-radius:var(--r-sm); background:var(--surface3); color:var(--text); white-space:nowrap; flex-shrink:0}
+.btn svg{width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
+.chev{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0}
+.more{display:flex; align-items:center; gap:var(--md); padding:14px; font:600 13px var(--inter); color:var(--mutedLight)}
+.more span{flex:1}
+
+.notes{margin-top:44px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px}
+.note h3{font:900 15px/1.3 var(--inter); margin:0 0 6px}
+.note p{font:500 13px/1.6 var(--inter); color:var(--ink-dim); margin:0 0 8px}
+.note b{color:var(--text)}
+/* fila en dos líneas: nombre ··· cuadraditos / meta ··· dato */
+.cl .tx{display:grid; gap:3px}
+.l1,.l2{display:flex; align-items:center; gap:12px; min-width:0}
+.l1 .n,.l2 .p{flex:1; min-width:0; margin:0}
+.segs{display:flex; gap:3px; flex-shrink:0}
+.segs i{width:10px; height:10px; border-radius:2px; background:var(--surface3)}
+.segs i.on{background:var(--accent)}
+/* lo hecho de más (repeticiones + libres que no sustituyen): número detrás */
+.extra{font:800 11px var(--inter); color:var(--accent); margin-left:3px; line-height:10px}
+.kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sm)}
+.kpi{background:var(--surface); border-radius:var(--r-md); padding:12px 12px 11px}
+.kpi .v{font:italic 800 30px/1 var(--barlow)}
+.kpi .v small{font-size:18px; color:var(--mutedLight)}
+.kpi .v .up{color:var(--accent)}
+.kpi .l{font:700 11px/1.3 var(--inter); color:var(--mutedLight); margin-top:5px}
+.sub{font:600 11px var(--inter); color:var(--mutedLight); white-space:nowrap; flex-shrink:0}
+.sub b{color:var(--text); font-weight:800}
+.sub .plus{color:var(--accent); font-weight:800}
+/* tarjetas de arriba: la elegida se rellena de lima desde donde la tocas (450 ms, como Inicio por pestañas U13-02) */
+.kpi{position:relative; overflow:hidden; cursor:pointer; user-select:none; transition:transform .12s}
+.kpi:active{transform:scale(.96)}
+.kpi .fill{position:absolute; inset:0; background:var(--accent); clip-path:circle(0 at var(--x,50%) var(--y,50%)); transition:clip-path 450ms cubic-bezier(.33,1,.68,1)}
+.kpi.on .fill{clip-path:circle(150% at var(--x,50%) var(--y,50%))}
+.kpi .v,.kpi .l{position:relative; transition:color 450ms}
+.kpi.on .v,.kpi.on .v small,.kpi.on .v .up,.kpi.on .l{color:var(--onAccent)}
+.kpi .v .up{transition:color 450ms}
+
+/* lente: cifra del cliente a la derecha */
+.lens{display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; min-width:52px}
+.lens b{font:800 16px/1 var(--inter)}
+.lens b small{font:700 11px var(--inter); color:var(--mutedLight)}
+.lens .mb{width:52px; height:4px; border-radius:2px; background:var(--surface3); overflow:hidden}
+.lens .mb i{display:block; height:100%; border-radius:2px}
+
+/* sin revisar: globo con número, o muesca pegada al borde */
+.unr{display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--accent); color:var(--onAccent); font:900 11px/1 var(--inter); flex-shrink:0}
+.l2 .sub{display:flex; align-items:center; gap:6px}
+.l1 .unr{margin-right:auto}
+.l1 .n.fit{flex:0 1 auto}
+.notch{margin-right:-12px; background:var(--accent); color:var(--onAccent); font:900 12px/1 var(--inter); padding:4px 12px 4px 10px; min-width:32px; text-align:center; border-radius:9px 0 0 9px; white-space:nowrap; flex-shrink:0}
+.rgt{display:flex; align-items:center; gap:8px; flex-shrink:0}
+
+/* avatar: con app abajo a la derecha; no leídos (opción «en el avatar») arriba a la derecha */
+.av{position:relative}
+.av .app{position:absolute; right:-5px; bottom:-5px; width:19px; height:19px; border-radius:10px; background:var(--surface); display:grid; place-items:center}
+.av .app svg{width:12px; height:12px; stroke:var(--text); fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+.av .unr{position:absolute; right:-7px; top:-6px; box-shadow:0 0 0 2px var(--surface)}
+
+/* buscador + filtro; la etiqueta activa vive en el rótulo de la lista, no en una fila de pills */
+.srow{display:flex; gap:var(--sm2); margin-bottom:var(--lg)}
+.srow .search{flex:1; margin:0}
+.fbtn{width:40px; height:40px; border-radius:var(--r-md); background:var(--surface); display:grid; place-items:center; position:relative; flex-shrink:0}
+.fbtn svg{width:19px; height:19px; stroke:var(--text); fill:none; stroke-width:2; stroke-linecap:round}
+.fbtn.on svg{stroke:var(--accent)}
+.fbtn.on::after{content:''; position:absolute; right:8px; top:8px; width:7px; height:7px; border-radius:4px; background:var(--accent)}
+.sh .tagx{display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:var(--onAccent); font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; padding:4px 8px 4px 10px; border-radius:999px}
+.sh .tagx svg{width:11px; height:11px; stroke:currentColor; stroke-width:3; stroke-linecap:round}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Clientes · v7</h1>
+  <p class="lead">Por defecto <b>ninguna tarjeta está rellena</b>. Pulsar <b>Adherencia</b> o <b>Mejora</b> la rellena de lima desde donde tocas y cambia la derecha de cada cliente; pulsarla otra vez, o «Necesitan algo» (que solo hace el gesto), vuelve. Sin pills: la etiqueta activa va en el rótulo de la lista.</p>
+
+  <div class="ctrls">
+    <div class="cases" data-k="kase"><span>Caso</span>
+      <button data-v="calma">Día tranquilo</button><button data-v="movido" aria-pressed="true">Día movido</button><button data-v="lunes">Lunes 9:00</button></div>
+    <div class="cases" data-k="unr"><span>Sin revisar</span>
+      <button data-v="notch" aria-pressed="true">Muesca lima</button><button data-v="before">Delante de la fecha</button><button data-v="name">Junto al nombre</button><button data-v="avatar">En el avatar</button></div>
+    <div class="cases" data-k="tag"><span>Etiqueta</span>
+      <button data-v="" aria-pressed="true">Ninguna</button><button data-v="Presencial">Presencial</button></div>
+  </div>
+
+  <div class="rail">
+    <div class="col" style="flex-basis:375px">
+      <div class="phone"><div class="scroll" id="P1"></div></div>
+    </div>
+    <div class="col">
+      <div class="notes" style="margin-top:0; grid-template-columns:1fr">
+        <div class="note"><h3>Sin revisar</h3>
+          <p>Recomiendo la <b>muesca</b>. Si tiene entrenos sin revisar, su última vez es, por definición, el último de ellos: es reciente y casi no se pierde nada al taparla. La muesca va pegada al borde derecho, así que la columna sigue alineada y la línea del programa no se acorta.</p>
+          <p><b>Delante de la fecha</b> acorta la línea del programa, que es justo lo que temías. <b>Junto al nombre</b> funciona pero rompe la columna derecha como sitio de «cómo va». <b>En el avatar</b> es lo más WhatsApp, pero arriba y abajo del avatar compiten dos insignias.</p>
+          <p>En una fila con botón (Diego), el globo va siempre delante del botón.</p></div>
+        <div class="note"><h3>Pills fuera</h3>
+          <p>«En riesgo» y «Sin revisar» ya no hacen falta: los que tienen aviso suben solos y los no leídos se ven por la muesca. Lo que hacían las pills, filtrar, lo hacen ahora las tarjetas (ordenar por adherencia pone a los de riesgo arriba).</p></div>
+        <div class="note"><h3>Etiquetas</h3>
+          <p>Se eligen en la hoja de filtros, como hoy, pero la activa no abre una fila nueva de pills: <b>sustituye al rótulo «Clientes»</b> por una pastilla «Presencial · 3 ✕», que es lo que estás viendo. Las tres tarjetas cuentan solo a ese grupo. El botón de filtro lleva un punto lima mientras hay una activa.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// sw/sd = semana de la etapa / semanas que dura. free = libres que no sustituyen. last = última vez. app = con app.
+// adh = adherencia (4 sem). imp = mejora global (8 sem). tags = etiquetas.
+const CLIENTS = [
+  { n:'Ana López',    app:true, tags:['Presencial'], prog:'Hipertrofia',      stage:'Bloque 2',   sw:3, sd:6, tot:4, done:3, st:'ok',   last:'hoy',  adh:92, imp:8,  unrev:2 },
+  { n:'Marcos Ruiz',            tags:['Presencial'], prog:'Fuerza base',      stage:'Etapa 3',    sw:2, sd:4, tot:3, done:0, st:'risk', last:'hace 12 d', adh:41, imp:-3 },
+  { n:'Lucía Gómez',  app:true, tags:['Online'],     prog:'Recomposición',    stage:'Etapa 1',    sw:4, sd:4, tot:3, done:2, st:'ok',   last:'ayer', adh:85, imp:5, block:true },
+  { n:'Carla Núñez',  app:true, tags:['Online'],     prog:'Maratón',          stage:'Específico', sw:5, sd:8, tot:6, done:4, st:'ok',   last:'hoy',  adh:88, imp:4, free:1, unrev:1 },
+  { n:'Pablo Sanz',   app:true, tags:['Online'],     prog:'Carrera + fuerza', stage:'Base',       sw:3, sd:6, tot:3, done:1, st:'slip', last:'lun',  adh:68, imp:2 },
+  { n:'Elena Martín',           tags:['Presencial'], noprog:true },
+  { n:'Javier Ortiz', app:true, tags:['Online'],     prog:'Powerlifting',     stage:'Peaking',    sw:2, sd:3, tot:3, done:2, st:'ok',   last:'ayer', adh:95, imp:3, dirty:true },
+  { n:'Diego Romero',           tags:['Presencial'], prog:'Hipertrofia',      stage:'Bloque 1',   sw:2, sd:6, tot:4, done:3, st:'ok',   last:'hoy',  adh:100, imp:21, inprog:true, unrev:1 },
+  { n:'Tomás Gil',    app:true, tags:['Online'],     prog:'Fuerza base',      stage:'Etapa 2',    sw:1, sd:4, tot:3, done:2, st:'ok',   last:'mar',  adh:90, imp:6, dirty:true },
+  { n:'Sara Díaz',    paused:true, tags:['Presencial'] },
+  { n:'Irene Vidal',  invited:true, tags:[] },
+];
+const CASES = {
+  movido:{},
+  calma:{ 'Ana López':{unrev:0}, 'Marcos Ruiz':{st:'ok', done:2, last:'ayer', adh:78}, 'Lucía Gómez':{block:false},
+          'Pablo Sanz':{st:'ok', done:2, last:'mar', adh:84}, 'Javier Ortiz':{dirty:false},
+          'Diego Romero':{inprog:false, unrev:0}, 'Tomás Gil':{dirty:false, done:4},
+          'Elena Martín':{noprog:false, prog:'Iniciación', stage:'Etapa 1', sw:1, sd:4, tot:2, done:1, st:'ok', last:'ayer', adh:80, imp:12} },
+  lunes:{ 'Ana López':{done:1, unrev:1}, 'Lucía Gómez':{done:0, block:false, last:'sáb'}, 'Carla Núñez':{done:0, free:0, unrev:0, last:'dom'},
+          'Pablo Sanz':{done:0, st:'ok', last:'vie'}, 'Javier Ortiz':{done:0, dirty:false, last:'vie'}, 'Diego Romero':{done:0, inprog:false, unrev:0, last:'sáb'},
+          'Tomás Gil':{done:0, dirty:false, last:'jue'} },
+};
+
+const I = {
+  play:'<path d="M7 5v14l11-7z"/>',
+  send:'<path d="M12 16V4m-5 5 5-5 5 5M5 20h14"/>',
+  plan:'<path d="M4 7h16M4 7v12h16V7M4 7l2-3h12l2 3M12 11v5m-2.5-2.5h5"/>',
+  add:'<path d="M12 5v14M5 12h14"/>',
+  phone:'<path d="M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5zM11 18h2"/>',
+};
+const KINDS = [
+  { k:'inprog', c:'var(--accent)',  txt:'Entreno a medias',   btn:'Continuar',  i:'play' },
+  { k:'dirty',  c:'var(--blue)',    txt:'Cambios sin enviar', btn:'Enviar',     i:'send' },
+  { k:'block',  c:'var(--orange)',  txt:'Etapa terminada',    btn:'Planificar', i:'plan' },
+  { k:'noprog', c:'var(--text)',    txt:'Sin programa',       btn:'Programar',  i:'add'  },
+  { k:'risk',   c:'var(--redText)', txt:'Sin entrenar' },
+  { k:'slip',   c:'var(--orange)',  txt:'Bajando el ritmo' },
+];
+const has = (c,k) => k==='risk'||k==='slip' ? c.st===k : !!c[k];
+const pend = (c) => KINDS.filter(K => has(c, K.k));
+const off = (c) => c.paused || c.invited;
+
+const IDS = ['#b39dfa','#f28dc4','#4fd1c5','#d9b88a','#8fb8de','#c9a0dc'];
+const idColor = (n) => IDS[CLIENTS.findIndex(c=>c.n===n) % IDS.length];
+const ini = (n) => n.split(' ').map(w=>w[0]).join('').slice(0,2);
+const chev = '<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
+const state = { kase:'movido', unr:'notch', tag:'', lens:null };
+
+const button = (K) => `<div class="btn"><svg viewBox="0 0 24 24" style="color:${K.c}">${I[K.i]}</svg>${K.btn}</div>`;
+const globe = (c) => c.unrev ? `<span class="unr">${c.unrev}</span>` : '';
+const adhColor = (v) => v < 60 ? 'var(--redText)' : v < 75 ? 'var(--orange)' : 'var(--accent)';
+
+function avatar(c, withUnr){
+  const col = idColor(c.n);
+  const badge = c.app ? `<span class="app"><svg viewBox="0 0 24 24">${I.phone}</svg></span>` : '';
+  return `<div class="av" style="background:${col}2e; color:${col}">${ini(c.n)}${badge}${withUnr ? globe(c) : ''}</div>`;
+}
+
+function lensCell(c){
+  if (c.noprog) return `<div class="lens"><b style="color:var(--muted)">—</b></div>`;
+  if (state.lens==='adh')
+    return `<div class="lens"><b style="color:${c.adh<75?adhColor(c.adh):'var(--text)'}">${c.adh}<small>%</small></b><div class="mb"><i style="width:${c.adh}%; background:${adhColor(c.adh)}"></i></div></div>`;
+  return `<div class="lens"><b style="color:${c.imp>0?'var(--accent)':'var(--mutedLight)'}">${c.imp>0?'+':''}${c.imp}<small>%</small></b></div>`;
+}
+
+function row(c){
+  const p = pend(c), K = p[0];
+  const U = state.unr;
+  const btnRow = !state.lens && K?.btn;
+  // «Junto al nombre» y «en el avatar» no dependen de la fila; muesca y «delante de la fecha» sí (las filas con botón no tienen fecha).
+  const nameUnr = U==='name' && !btnRow ? globe(c) : '';
+  const name = `<div class="n ${nameUnr?'fit':''}">${c.n}</div>${nameUnr}`;
+  const av = avatar(c, U==='avatar');
+  const meta = K
+    ? `<div class="p" style="color:${K.c}">${K.txt}${p.length>1?`<small>+${p.length-1}</small>`:''}</div>`
+    : `<div class="p">${c.prog} · ${c.stage} · ${c.sw===c.sd ? '<em>última semana</em>' : `sem ${c.sw} de ${c.sd}`}</div>`;
+
+  if (state.lens)
+    return `<div class="cl">${av}<div class="tx"><div class="l1">${name}</div><div class="l2">${meta}</div></div>${lensCell(c)}</div>`;
+
+  if (btnRow)
+    return `<div class="cl">${av}<div class="tx"><div class="l1">${name}</div><div class="l2">${meta}</div></div><div class="rgt">${U==='avatar'?'':globe(c)}${button(K)}</div></div>`;
+
+  const extra = Math.max(0, c.done - c.tot) + (c.free || 0);
+  const segs = `<div class="segs">${Array.from({length:c.tot},(_,i)=>`<i class="${i<c.done?'on':''}"></i>`).join('')}${extra ? `<span class="extra">+${extra}</span>` : ''}</div>`;
+  const lastTxt = c.last==='hoy' ? '<b>hoy</b>' : c.last;
+  const right = c.unrev && U==='notch'  ? `<span class="notch">${c.unrev}</span>`
+              : c.unrev && U==='before' ? `<span class="sub">${globe(c)}${lastTxt}</span>`
+              : `<span class="sub">${lastTxt}</span>`;
+  return `<div class="cl">${av}<div class="tx"><div class="l1">${name}${segs}</div><div class="l2">${meta}${right}</div></div></div>`;
+}
+
+function data(){
+  return CLIENTS.map(c => ({...c, ...(CASES[state.kase][c.n]||{})}))
+    .filter(c => !state.tag || c.tags.includes(state.tag));
+}
+
+function listHTML(list){
+  const L = state.lens;
+  const rank = (c) => { const p = pend(c); return p.length ? KINDS.indexOf(p[0]) : c.unrev ? 50 : 99; };
+  const shown = list.filter(c=>!off(c)).sort(
+      L==='adh' ? (a,b)=>(a.adh??999)-(b.adh??999)
+    : L==='imp' ? (a,b)=>(a.imp??999)-(b.imp??999)
+    : (a,b)=>rank(a)-rank(b));
+  const folded = list.filter(off);
+  return `<div class="group">${shown.map(row).join('')}</div>`
+    + (folded.length ? `<div class="group" style="margin-top:var(--sm2)"><div class="more"><span>En pausa o esperando código · ${folded.map(c=>c.n.split(' ')[0]).join(', ')}</span>${chev}</div></div>` : '');
+}
+
+function headHTML(list){
+  const L = state.lens;
+  const dirty = list.filter(c=>c.dirty).length;
+  const right = L==='adh' ? '<span>Adherencia · peor primero</span>' : L==='imp' ? '<span>Mejora 8 sem · menor primero</span>'
+    : dirty>1 ? `<a>Enviar todo · ${dirty}</a>` : '<span>Esta semana</span>';
+  const left = state.tag
+    ? `<span class="tagx">${state.tag} · ${list.length}<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>`
+    : '<b>Clientes</b>';
+  return left + right;
+}
+
+function render(){
+  const list = data();
+  const act = list.filter(c=>!off(c) && !c.noprog);
+  const need = list.filter(c=>!off(c) && pend(c).length).length;
+  const adh = Math.round(act.reduce((s,c)=>s+c.adh,0) / act.length);
+  const imp = Math.round(act.reduce((s,c)=>s+c.imp,0) / act.length);
+  const L = state.lens;
+  const el = document.getElementById('P1');
+  el.innerHTML = `
+  <div class="sb"><span>${state.kase==='lunes'?'9:00':'9:41'}</span><span>●●● 100%</span></div>
+  <div class="ah"><div class="logo"><b>Forma</b><u>FIT</u></div><div class="sp"></div>
+    <div class="ico"><svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div></div>
+  <div class="body">
+    <div class="title"><h3>CLIENTES <span>· ${CLIENTS.length}</span></h3><div class="new">+ Cliente</div></div>
+    <div class="srow"><div class="search"><svg viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35"/></svg>Buscar cliente</div>
+      <div class="fbtn ${state.tag?'on':''}"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg></div></div>
+    <div class="kpis">
+      <div class="kpi" data-lens=""><div class="v">${need}</div><div class="l">necesitan algo</div></div>
+      <div class="kpi ${L==='adh'?'on':''}" data-lens="adh"><span class="fill"></span><div class="v">${adh}<small>%</small></div><div class="l">adherencia media</div></div>
+      <div class="kpi ${L==='imp'?'on':''}" data-lens="imp"><span class="fill"></span><div class="v"><span class="up">${imp>0?'+':''}${imp}</span><small>%</small></div><div class="l">mejora media</div></div>
+    </div>
+    <div class="sh" id="sh">${headHTML(list)}</div>
+    <div id="list">${listHTML(list)}</div>
+  </div>`;
+  el.querySelectorAll('.kpi').forEach(k => k.addEventListener('click', (e) => {
+    const r = k.getBoundingClientRect();
+    k.style.setProperty('--x', `${e.clientX - r.left}px`);
+    k.style.setProperty('--y', `${e.clientY - r.top}px`);
+    // «Necesitan algo» no se rellena: solo devuelve al estado normal. Las otras se alternan.
+    state.lens = !k.dataset.lens || state.lens === k.dataset.lens ? null : k.dataset.lens;
+    el.querySelectorAll('.kpi').forEach(x => x.classList.toggle('on', !!x.dataset.lens && x.dataset.lens === state.lens));
+    const l = data();
+    document.getElementById('sh').innerHTML = headHTML(l);
+    document.getElementById('list').innerHTML = listHTML(l);
+  }));
+}
+document.querySelectorAll('.cases').forEach(g => g.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x===b));
+  state[g.dataset.k] = b.dataset.v; render();
+}));
+render();
+</script>
+</body>
+</html>

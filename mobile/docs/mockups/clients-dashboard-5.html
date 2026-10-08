@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clientes dashboard v5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;600;700;800;900&display=swap">
+<style>
+/* v5: cuadraditos = sesiones previstas; lo de más, «+N» detrás; debajo la última vez. Arriba 3 tarjetas; los teléfonos comparan la tercera. */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --orange:#fb923c; --redText:#ff5e58; --blue:#4c85ff;
+  --xs2:4px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px;
+  --r-sm:6px; --r-md:10px;
+  --page:#080808; --ink-dim:#8a8a8a;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+.wrap{max-width:900px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:80ch; margin:0}
+.lead b{color:var(--text); font-weight:800}
+
+.ctrls{display:grid; gap:10px; margin:24px 0 30px}
+.cases{display:flex; flex-wrap:wrap; gap:var(--sm); align-items:center}
+.cases span{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-dim); width:96px}
+.cases button{all:unset; cursor:pointer; font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--text); background:var(--surface2); border-radius:999px; padding:9px 14px}
+.cases button[aria-pressed="true"]{background:var(--accent); color:var(--onAccent)}
+.cases button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.rail{display:flex; gap:34px; overflow-x:auto; padding-bottom:12px; align-items:flex-start}
+.col{flex:0 0 375px; width:375px; max-width:100%}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h2{font:900 18px/1.2 var(--inter); margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:62px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:var(--orange)}
+.pro b,.con b{color:var(--text)}
+
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:780px; position:relative}
+.phone::after{content:''; position:absolute; left:0; right:0; bottom:0; height:50px; background:linear-gradient(transparent,var(--bg)); pointer-events:none}
+.scroll{height:100%; overflow-y:auto; scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight)}
+.ah{display:flex; align-items:center; padding:var(--md) var(--xl) var(--sm)}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.ah .sp{flex:1}
+.ico{width:36px; height:36px; border-radius:var(--r-md); background:var(--surface); display:grid; place-items:center}
+.ico svg{width:18px; height:18px; stroke:var(--text); fill:none; stroke-width:1.8; stroke-linecap:round}
+.body{padding:var(--sm) var(--lg) 70px}
+.title{display:flex; align-items:center; gap:var(--sm2); margin:var(--sm) 0 var(--lg)}
+.title h3{flex:1; margin:0; font:italic 800 30px/1 var(--barlow); letter-spacing:.3px}
+.title h3 span{color:var(--mutedLight)}
+.new{background:var(--accent); color:var(--onAccent); font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; padding:11px 14px; border-radius:var(--r-md)}
+.search{height:40px; border-radius:var(--r-md); background:var(--surface); display:flex; align-items:center; gap:8px; padding:0 12px; font:500 14px var(--inter); color:var(--mutedLight); margin-bottom:var(--lg)}
+.search svg{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round}
+
+.sh{display:flex; align-items:baseline; gap:var(--sm); padding:0 12px 0 var(--xs2); margin:var(--xl) 0 var(--sm2)}
+.sh b{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase}
+.sh span{margin-left:auto; font:700 11px var(--inter); color:var(--mutedLight)}
+.sh a{margin-left:auto; font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; color:var(--blue)}
+
+/* resumen: una cifra que se entiende sola + dos contadores con la misma división que los avisos */
+.sum{background:var(--surface); border-radius:var(--r-md); padding:14px 14px 13px}
+.sum .top{display:flex; align-items:baseline; gap:8px}
+.sum .v{font:italic 800 34px/1 var(--barlow)}
+.sum .v small{font-size:20px; color:var(--mutedLight)}
+.sum .l{font:700 13px var(--inter); color:var(--mutedLight)}
+.bar{display:flex; gap:2px; margin:10px 0 12px}
+.bar i{flex:1; height:6px; border-radius:1.5px; background:var(--surface3)}
+.bar i.on{background:var(--accent)}
+.split{display:grid; grid-template-columns:1fr 1fr; gap:2px; margin:0 -14px -13px; border-top:2px solid var(--bg)}
+.split div{padding:11px 14px; font:700 12px/1.3 var(--inter); color:var(--mutedLight)}
+.split div + div{border-left:2px solid var(--bg)}
+.split b{display:block; font:italic 800 24px/1 var(--barlow); color:var(--text); margin-bottom:3px}
+
+.group{display:grid; grid-template-columns:minmax(0,1fr); gap:2px}
+.group > *{background:var(--surface); border-radius:2px}
+.group > :first-child{border-top-left-radius:var(--r-md); border-top-right-radius:var(--r-md)}
+.group > :last-child{border-bottom-left-radius:var(--r-md); border-bottom-right-radius:var(--r-md)}
+
+.cl{display:flex; align-items:center; gap:var(--md); padding:11px 12px; min-height:62px}
+.av{width:36px; height:36px; border-radius:18px; display:grid; place-items:center; font:800 13px var(--inter); flex-shrink:0}
+.cl .tx{flex:1; min-width:0}
+.cl .n{font:700 15px/1.25 var(--inter); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cl .p{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
+.cl .p em{font-style:normal; color:var(--text)}
+.cl .p small{font:700 11px var(--inter); color:var(--mutedLight); margin-left:4px}
+
+/* botón: icono + texto. Su color lo decide el interruptor */
+.btn{display:flex; align-items:center; gap:6px; font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; padding:8px 11px 8px 9px; border-radius:var(--r-sm); background:var(--surface3); color:var(--text); white-space:nowrap; flex-shrink:0}
+.btn svg{width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
+.chev{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0}
+.more{display:flex; align-items:center; gap:var(--md); padding:14px; font:600 13px var(--inter); color:var(--mutedLight)}
+.more span{flex:1}
+
+.notes{margin-top:44px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px}
+.note h3{font:900 15px/1.3 var(--inter); margin:0 0 6px}
+.note p{font:500 13px/1.6 var(--inter); color:var(--ink-dim); margin:0 0 8px}
+.note b{color:var(--text)}
+/* fila en dos líneas: nombre ··· cuadraditos / meta ··· dato */
+.cl .tx{display:grid; gap:3px}
+.l1,.l2{display:flex; align-items:center; gap:12px; min-width:0}
+.l1 .n,.l2 .p{flex:1; min-width:0; margin:0}
+.segs{display:flex; gap:3px; flex-shrink:0}
+.segs i{width:10px; height:10px; border-radius:2px; background:var(--surface3)}
+.segs i.on{background:var(--accent)}
+/* lo hecho de más (repeticiones + libres que no sustituyen): número detrás */
+.extra{font:800 11px var(--inter); color:var(--accent); margin-left:3px; line-height:10px}
+.kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sm)}
+.kpi{background:var(--surface); border-radius:var(--r-md); padding:12px 12px 11px}
+.kpi .v{font:italic 800 30px/1 var(--barlow)}
+.kpi .v small{font-size:18px; color:var(--mutedLight)}
+.kpi .v .up{color:var(--accent)}
+.kpi .l{font:700 11px/1.3 var(--inter); color:var(--mutedLight); margin-top:5px}
+.sub{font:600 11px var(--inter); color:var(--mutedLight); white-space:nowrap; flex-shrink:0}
+.sub b{color:var(--text); font-weight:800}
+.sub .plus{color:var(--accent); font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Clientes · v5</h1>
+  <p class="lead">Los cuadraditos son <b>siempre las sesiones previstas</b> de la semana. Lo que se hace de más (repetir una sesión o una libre que no sustituye a ninguna) va como <b>«+1», «+2»</b> detrás, y debajo, <b>la última vez</b>. Arriba vuelven las tres tarjetas; los dos teléfonos solo cambian en <b>la tercera</b>.</p>
+
+  <div class="ctrls">
+    <div class="cases" data-k="kase"><span>Caso</span>
+      <button data-v="calma">Día tranquilo</button><button data-v="movido" aria-pressed="true">Día movido</button><button data-v="lunes">Lunes 9:00</button></div>
+  </div>
+
+  <div class="rail">
+    <div class="col">
+      <div class="tag">Tercera tarjeta · mejora media</div>
+      <h2>«+6 %» de todos</h2>
+      <p class="why">La media de la «mejora global» de cada cliente, la misma que ya enseña su pestaña de progreso, en una ventana fija (8 semanas).</p>
+      <div class="phone"><div class="scroll" id="P1"></div></div>
+      <p class="pro"><b>Agrada verla</b> y ya se calcula por cliente.</p>
+      <p class="con">Mezcla gente que empieza (mejora mucho) con veteranos (mejora poco), y cuesta decir qué significa «+6 %» o qué hacer cuando baja.</p>
+    </div>
+    <div class="col">
+      <div class="tag">Tercera tarjeta · récords</div>
+      <h2>«9 récords en 7 días»</h2>
+      <p class="why">Cuántas marcas personales han batido tus clientes en los últimos 7 días, contando todos los ejercicios. Al tocarla, quién y en qué.</p>
+      <div class="phone"><div class="scroll" id="P2"></div></div>
+      <p class="pro"><b>Se entiende solo</b>, una descarga no lo estropea (esa semana simplemente no hay) y da motivo para escribir al cliente.</p>
+      <p class="con">Sube y baja con la semana; un número suelto, sin tendencia.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h3>Mejora media y descargas</h3>
+      <p>La mejora de cada cliente es una <b>recta de tendencia</b> por ejercicio, no «última sesión contra la primera», así que una semana de descarga apenas la mueve. Lo que sí la distorsiona es mezclar perfiles: un principiante a +25 % y un veterano a +2 % dan +13 %, que no describe a ninguno.</p>
+      <p>Recomiendo <b>récords</b> para la tarjeta. La mejora sigue donde ya está, en la ficha de cada cliente.</p></div>
+    <div class="note"><h3>Cuadraditos</h3>
+      <p>Siempre las sesiones previstas de su etapa. Se llenan con las del programa (y con las libres marcadas «cuenta como»). Lo que pasa de ahí, sea repetir una o una libre suelta, va con «+N» en lima: Carla hizo 4 de 6 y una libre (+1); Tomás, en el día tranquilo, hizo sus 3 y repitió una (+1).</p></div>
+    <div class="note"><h3>Necesitan algo</h3>
+      <p>Cuenta a todos los que tienen un aviso, con o sin botón: son exactamente las filas que suben arriba de la lista.</p></div>
+  </div>
+</div>
+
+<script>
+// sw/sd = semana de la etapa / semanas que dura. free = libres que no sustituyen a ninguna. last = última vez.
+const CLIENTS = [
+  { n:'Ana López', adh:92, imp:8, prs:2,    prog:'Hipertrofia',      stage:'Bloque 2',   sw:3, sd:6, tot:4, done:3, st:'ok',   last:'hoy', unrev:2 },
+  { n:'Marcos Ruiz', adh:41, imp:-3, prs:0,  prog:'Fuerza base',      stage:'Etapa 3',    sw:2, sd:4, tot:3, done:0, st:'risk', last:'hace 12 d' },
+  { n:'Lucía Gómez', adh:85, imp:5, prs:1,  prog:'Recomposición',    stage:'Etapa 1',    sw:4, sd:4, tot:3, done:2, st:'ok',   last:'ayer', block:true },
+  { n:'Carla Núñez', adh:88, imp:4, prs:1,  prog:'Maratón',          stage:'Específico', sw:5, sd:8, tot:6, done:4, st:'ok',   last:'hoy', free:1 },
+  { n:'Pablo Sanz', adh:68, imp:2, prs:0,   prog:'Carrera + fuerza', stage:'Base',       sw:3, sd:6, tot:3, done:1, st:'slip', last:'lun' },
+  { n:'Elena Martín', noprog:true },
+  { n:'Javier Ortiz', adh:95, imp:3, prs:2, prog:'Powerlifting',     stage:'Peaking',    sw:2, sd:3, tot:3, done:2, st:'ok',   last:'ayer', dirty:true },
+  { n:'Diego Romero', adh:100, imp:21, prs:3, prog:'Hipertrofia',      stage:'Bloque 1',   sw:2, sd:6, tot:4, done:3, st:'ok',   last:'hoy', inprog:true, unrev:1 },
+  { n:'Tomás Gil', adh:90, imp:6, prs:0,    prog:'Fuerza base',      stage:'Etapa 2',    sw:1, sd:4, tot:3, done:2, st:'ok',   last:'mar', dirty:true },
+  { n:'Sara Díaz',    paused:true },
+  { n:'Irene Vidal',  invited:true },
+];
+const CASES = {
+  movido:{},
+  calma:{ 'Ana López':{unrev:0}, 'Marcos Ruiz':{st:'ok', done:2, last:'ayer', adh:78}, 'Lucía Gómez':{block:false},
+          'Pablo Sanz':{st:'ok', done:2, last:'mar', adh:84}, 'Javier Ortiz':{dirty:false}, 'Diego Romero':{inprog:false, unrev:0},
+          'Tomás Gil':{dirty:false, done:4}, 'Elena Martín':{noprog:false, prog:'Iniciación', stage:'Etapa 1', sw:1, sd:4, tot:2, done:1, st:'ok', last:'ayer', adh:80, imp:12, prs:1} },
+  lunes:{ 'Ana López':{done:1, unrev:1}, 'Lucía Gómez':{done:0, block:false, last:'sáb'}, 'Carla Núñez':{done:0, free:0, last:'dom'},
+          'Pablo Sanz':{done:0, st:'ok', last:'vie'}, 'Javier Ortiz':{done:0, dirty:false, last:'vie'}, 'Diego Romero':{done:0, inprog:false, unrev:0, last:'sáb'},
+          'Tomás Gil':{done:0, dirty:false, last:'jue'} },
+};
+
+const I = {
+  play:'<path d="M7 5v14l11-7z"/>',
+  send:'<path d="M12 16V4m-5 5 5-5 5 5M5 20h14"/>',
+  plan:'<path d="M4 7h16M4 7v12h16V7M4 7l2-3h12l2 3M12 11v5m-2.5-2.5h5"/>',
+  add:'<path d="M12 5v14M5 12h14"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+};
+// Prioridad; el color dice de quién es la pelota (el código de hoy). Va en el aviso y en el icono del botón.
+const KINDS = [
+  { k:'inprog', c:'var(--accent)',  txt:()=>'Entreno a medias',   btn:'Continuar',  i:'play' },
+  { k:'dirty',  c:'var(--blue)',    txt:()=>'Cambios sin enviar', btn:'Enviar',     i:'send' },
+  { k:'block',  c:'var(--orange)',  txt:()=>'Etapa terminada',    btn:'Planificar', i:'plan' },
+  { k:'noprog', c:'var(--text)',    txt:()=>'Sin programa',       btn:'Programar',  i:'add'  },
+  { k:'risk',   c:'var(--redText)', txt:()=>'Sin entrenar' },
+  { k:'slip',   c:'var(--orange)',  txt:()=>'Bajando el ritmo' },
+  { k:'unrev',  c:'var(--accent)',  txt:(c)=>`${c.unrev} ${c.unrev>1?'entrenos':'entreno'} sin revisar`, btn:'Revisar', i:'eye' },
+];
+const has = (c,k) => k==='risk'||k==='slip' ? c.st===k : !!c[k];
+const pend = (c) => KINDS.filter(K => has(c, K.k));
+const rank = (c) => { const p = pend(c); return p.length ? KINDS.indexOf(p[0]) : 99; };
+const off = (c) => c.paused || c.invited;
+
+const IDS = ['#b39dfa','#f28dc4','#4fd1c5','#d9b88a','#8fb8de','#c9a0dc'];
+const idColor = (n) => IDS[CLIENTS.findIndex(c=>c.n===n) % IDS.length];
+const ini = (n) => n.split(' ').map(w=>w[0]).join('').slice(0,2);
+const chev = '<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
+const state = { kase:'movido' };
+
+const button = (K) => `<div class="btn"><svg viewBox="0 0 24 24" style="color:${K.c}">${I[K.i]}</svg>${K.btn}</div>`;
+
+function row(c, mode){
+  const col = idColor(c.n);
+  const p = pend(c), K = p[0];
+  const meta = K
+    ? `<div class="p" style="color:${K.c}">${K.txt(c, mode)}${p.length>1?`<small>+${p.length-1}</small>`:''}</div>`
+    : `<div class="p">${c.prog} · ${c.stage} · ${c.sw===c.sd ? '<em>última semana</em>' : `sem ${c.sw} de ${c.sd}`}</div>`;
+  const showWeek = !K?.btn && !c.noprog;
+  // Los cuadraditos son las previstas; lo de más (repetidas + libres que no cuentan) va con número detrás.
+  const extra = Math.max(0, c.done - c.tot) + (c.free || 0);
+  const segs = showWeek ? `<div class="segs">${Array.from({length:c.tot},(_,i)=>`<i class="${i<c.done?'on':''}"></i>`).join('')}${extra ? `<span class="extra">+${extra}</span>` : ''}</div>` : '';
+  const sub = showWeek ? `<span class="sub">${c.last==='hoy' ? '<b>hoy</b>' : c.last}</span>` : '';
+  const right = K?.btn ? button(K) : '';
+  return `<div class="cl"><div class="av" style="background:${col}2e; color:${col}">${ini(c.n)}</div>
+    <div class="tx"><div class="l1"><div class="n">${c.n}</div>${segs}</div><div class="l2">${meta}${sub}</div></div>${right}</div>`;
+}
+
+function phone(list, mode){
+  const act = list.filter(c=>!off(c) && !c.noprog);
+  const need = list.filter(c=>!off(c) && pend(c).length).length;
+  const adh = Math.round(act.reduce((s,c)=>s+c.adh,0) / act.length);
+  const third = mode==='imp'
+    ? (() => { const v = Math.round(act.reduce((s,c)=>s+c.imp,0) / act.length);
+        return `<div class="kpi"><div class="v"><span class="up">${v>0?'+':''}${v}</span><small>%</small></div><div class="l">mejora media · 8 sem</div></div>`; })()
+    : `<div class="kpi"><div class="v">${act.reduce((s,c)=>s+(state.kase==='lunes' ? Math.min(c.prs,1) : c.prs),0)}</div><div class="l">récords en 7 días</div></div>`;
+  const dirty = list.filter(c=>c.dirty).length;
+  const shown = list.filter(c=>!off(c)).sort((a,b)=>rank(a)-rank(b));
+  const folded = list.filter(off);
+  return `
+  <div class="sb"><span>${state.kase==='lunes'?'9:00':'9:41'}</span><span>●●● 100%</span></div>
+  <div class="ah"><div class="logo"><b>Forma</b><u>FIT</u></div><div class="sp"></div>
+    <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg></div></div>
+  <div class="body">
+    <div class="title"><h3>CLIENTES <span>· ${list.length}</span></h3><div class="new">+ Cliente</div></div>
+    <div class="search"><svg viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35"/></svg>Buscar cliente</div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${need}</div><div class="l">necesitan algo</div></div>
+      <div class="kpi"><div class="v">${adh}<small>%</small></div><div class="l">adherencia media</div></div>
+      ${third}
+    </div>
+    <div class="sh"><b>Clientes</b>${dirty>1 ? `<a>Enviar todo · ${dirty}</a>` : '<span>Esta semana</span>'}</div>
+    <div class="group">${shown.map(c=>row(c, mode)).join('')}</div>
+    <div class="group" style="margin-top:var(--sm2)"><div class="more"><span>En pausa o esperando código · ${folded.map(c=>c.n.split(' ')[0]).join(', ')}</span>${chev}</div></div>
+  </div>`;
+}
+
+function render(){
+  const list = CLIENTS.map(c => ({...c, ...(CASES[state.kase][c.n]||{})}));
+  document.getElementById('P1').innerHTML = phone(list, 'imp');
+  document.getElementById('P2').innerHTML = phone(list, 'prs');
+}
+document.querySelectorAll('.cases').forEach(g => g.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x===b));
+  state[g.dataset.k] = b.dataset.v; render();
+}));
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clientes como dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;600;700;800;900&display=swap">
+<style>
+/* Tres estructuras para la pantalla Clientes sobre los MISMOS datos. El selector cambia entre un día tranquilo y uno movido: lo que hay que juzgar es cómo aguanta cada estructura cuando se acumulan cosas. */
+:root{
+  color-scheme:dark;
+  /* tokens formaFit (src/themes.js) */
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --orange:#fb923c; --redText:#ff5e58; --blue:#4c85ff; --green:#66fa39;
+  --xs:2px; --xs2:4px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px; --xxl:28px;
+  --r-xs:4px; --r-sm:6px; --r-md:10px;
+  --page:#080808; --ink-dim:#8a8a8a;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+.wrap{max-width:1250px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:80ch; margin:0 0 8px}
+.lead b{color:var(--text); font-weight:800}
+.rules{font:500 13px/1.6 var(--inter); color:var(--ink-dim); margin:12px 0 0; padding-left:18px; max-width:80ch}
+.rules b{color:var(--text)}
+
+.cases{display:flex; flex-wrap:wrap; gap:var(--sm); align-items:center; margin:26px 0 30px}
+.cases span{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-dim); margin-right:6px}
+.cases button{all:unset; cursor:pointer; font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--text); background:var(--surface2); border-radius:999px; padding:9px 14px}
+.cases button[aria-pressed="true"]{background:var(--accent); color:var(--onAccent)}
+.cases button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.rail{display:flex; gap:34px; overflow-x:auto; padding-bottom:12px; align-items:flex-start}
+.col{flex:0 0 375px; width:375px; max-width:100%}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h2{font:900 18px/1.2 var(--inter); margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:82px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:var(--orange)}
+.pro b,.con b{color:var(--text)}
+
+/* ══════ TELÉFONO ══════ */
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:760px; position:relative}
+.phone::after{content:''; position:absolute; left:0; right:0; bottom:0; height:50px; background:linear-gradient(transparent,var(--bg)); pointer-events:none}
+.scroll{height:100%; overflow-y:auto; scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight)}
+.ah{display:flex; align-items:center; padding:var(--md) var(--xl) var(--sm)}
+.logo{display:flex; align-items:center; gap:var(--xs)}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.ah .sp{flex:1}
+.ico{width:36px; height:36px; border-radius:var(--r-md); background:var(--surface); display:grid; place-items:center; position:relative}
+.ico svg{width:18px; height:18px; stroke:var(--text); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+
+.body{padding:var(--sm) var(--lg) 70px}
+.title{display:flex; align-items:center; gap:var(--sm2); margin:var(--sm) 0 var(--lg)}
+.title h3{flex:1; margin:0; font:italic 800 30px/1 var(--barlow); letter-spacing:.3px}
+.title h3 span{color:var(--mutedLight)}
+.new{background:var(--accent); color:var(--onAccent); font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; padding:11px 14px; border-radius:var(--r-md)}
+.search{display:flex; gap:var(--sm2); margin-bottom:var(--lg)}
+.search .in{flex:1; height:40px; border-radius:var(--r-md); background:var(--surface); display:flex; align-items:center; gap:8px; padding:0 12px; font:500 14px var(--inter); color:var(--mutedLight)}
+.search svg{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round}
+
+/* rótulo de sección */
+.sh{display:flex; align-items:baseline; gap:var(--sm); padding:0 var(--xs2); margin:var(--xl) 0 var(--sm2)}
+.sh b{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase}
+.sh i{font-style:normal; font:800 12px var(--inter); color:var(--mutedLight)}
+.sh span{margin-left:auto; font:700 12px var(--inter); color:var(--mutedLight)}
+
+/* KPIs */
+.kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sm)}
+.kpi{background:var(--surface); border-radius:var(--r-md); padding:12px 12px 11px}
+.kpi .v{font:italic 800 30px/1 var(--barlow)}
+.kpi .v small{font-size:18px; color:var(--mutedLight)}
+.kpi .l{font:700 11px/1.3 var(--inter); color:var(--mutedLight); margin-top:5px}
+
+/* lista agrupada (primero/último redondeados, intermedios casi rectos) */
+.group{display:grid; grid-template-columns:minmax(0,1fr); gap:2px}
+.group > *{background:var(--surface); border-radius:2px}
+.group > :first-child{border-top-left-radius:var(--r-md); border-top-right-radius:var(--r-md)}
+.group > :last-child{border-bottom-left-radius:var(--r-md); border-bottom-right-radius:var(--r-md)}
+
+/* fila de pendiente (A) */
+.todo{display:flex; align-items:center; gap:var(--md); padding:12px 12px 12px 14px; min-height:56px}
+.dot{width:8px; height:8px; border-radius:4px; flex-shrink:0; background:var(--muted)}
+.todo .tx{flex:1; min-width:0}
+.todo .t{font:700 14px/1.25 var(--inter)}
+.todo .w{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
+.btn{font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; padding:9px 11px; border-radius:var(--r-sm); background:var(--surface3); color:var(--text); white-space:nowrap}
+.btn.acc{background:var(--accent); color:var(--onAccent)}
+.chev{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0}
+.allok{display:flex; align-items:center; gap:var(--md); padding:14px; font:600 13px var(--inter); color:var(--mutedLight)}
+.allok svg{width:18px; height:18px; stroke:var(--accent); fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+
+/* fila de cliente */
+.cl{display:flex; align-items:center; gap:var(--md); padding:11px 12px; min-height:60px; position:relative}
+.av{width:34px; height:34px; border-radius:17px; background:var(--surface3); display:grid; place-items:center; font:800 12px var(--inter); color:var(--mutedLight); flex-shrink:0; position:relative}
+.av .b{position:absolute; right:-2px; top:-2px; width:11px; height:11px; border-radius:6px; border:2px solid var(--surface)}
+.cl .tx{flex:1; min-width:0}
+.cl .n{font:700 15px/1.25 var(--inter); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cl .p{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
+.cl .p.warn{color:var(--orange)} .cl .p.risk{color:var(--redText)} .cl .p.mine{color:var(--blue)} .cl .p.go{color:var(--accent)}
+.wk{display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0}
+.segs{display:flex; gap:3px}
+.segs i{width:9px; height:9px; border-radius:2px; background:var(--surface3)}
+.segs i.on{background:var(--accent)}
+.wk small{font:700 11px var(--inter); color:var(--mutedLight)}
+.wk small b{color:var(--text); font-weight:800}
+.dim .n{color:var(--mutedLight)}
+.more{display:flex; align-items:center; gap:var(--md); padding:14px; font:600 13px var(--inter); color:var(--mutedLight)}
+.more span{flex:1}
+.link{font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; color:var(--accent); white-space:nowrap}
+
+/* tabla (C) */
+.banner{display:flex; align-items:center; gap:var(--md); background:var(--surface); border-radius:var(--r-md); padding:12px 12px 12px 14px; margin-top:var(--lg)}
+.banner .tx{flex:1; font:700 14px var(--inter)}
+.banner .tx small{display:block; font:500 12px var(--inter); color:var(--mutedLight); margin-top:2px}
+.banner .cnt{min-width:26px; height:26px; border-radius:13px; background:var(--accent); color:var(--onAccent); font:900 13px/26px var(--inter); text-align:center; padding:0 8px}
+.thead{display:grid; grid-template-columns:1fr 64px 46px; gap:var(--sm2); padding:0 12px 6px 16px; margin-top:var(--xl); font:800 10.5px var(--inter); letter-spacing:1.1px; text-transform:uppercase; color:var(--mutedLight)}
+.thead span:not(:first-child){text-align:right}
+.tr{display:grid; grid-template-columns:1fr 64px 46px; gap:var(--sm2); align-items:center; padding:11px 12px 11px 16px; position:relative}
+.tr::before{content:''; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:0 2px 2px 0; background:transparent}
+.tr.risk::before{background:var(--redText)} .tr.warn::before{background:var(--orange)} .tr.mine::before{background:var(--blue)} .tr.go::before{background:var(--accent)}
+.tr .n{font:700 14px/1.25 var(--inter); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.tr .p{font:500 11.5px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
+.tr .num{text-align:right; font:800 14px var(--inter)}
+.tr .num small{font:700 11px var(--inter); color:var(--mutedLight)}
+.tr .num.low{color:var(--redText)} .tr .num.mid{color:var(--orange)}
+.tr .num.na{color:var(--muted)}
+.legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 4px 0; font:600 11px var(--inter); color:var(--mutedLight)}
+.legend i{display:inline-block; width:3px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Clientes · como dashboard</h1>
+  <p class="lead">Mismos 10 clientes en las tres columnas. Lo que se compara es <b>dónde vive cada tipo de información</b>, no el acabado. Cambia a <b>«Día movido»</b> para ver cómo aguanta cada una cuando se juntan avisos: es donde la pantalla actual se vuelve ilegible.</p>
+  <ul class="rules">
+    <li><b>Las acciones salen de las tarjetas.</b> Hoy cada tarjeta puede llevar su botón de un color distinto; aquí una tarjeta de cliente no lleva botones.</li>
+    <li><b>Un solo dato de progreso por cliente:</b> entrenos de esta semana (3/4). La adherencia y el ritmo pasan a la ficha (o a una columna, en C).</li>
+    <li><b>El color solo marca qué necesita algo.</b> Al día = gris y lima, sin más.</li>
+  </ul>
+
+  <div class="cases" role="group" aria-label="Caso">
+    <span>Caso</span>
+    <button type="button" data-case="calma">Día tranquilo</button>
+    <button type="button" data-case="movido" aria-pressed="true">Día movido</button>
+  </div>
+
+  <div class="rail">
+    <div class="col">
+      <div class="tag">A · Bandeja arriba</div>
+      <h2>Pendiente + lista calmada</h2>
+      <p class="why">Arriba, tres cifras y una bandeja de pendientes agrupados <b>por tipo</b> (no por cliente). Debajo, la lista completa, toda igual. Si no hay nada, la bandeja se queda en una línea.</p>
+      <div class="phone"><div class="scroll" id="A"></div></div>
+      <p class="pro"><b>Lo urgente se lee en 2 segundos</b> y los envíos se hacen en bloque («Enviar todo»).</p>
+      <p class="con">Un cliente con aviso sale dos veces (en la bandeja y en la lista).</p>
+    </div>
+
+    <div class="col">
+      <div class="tag">B · Por estado</div>
+      <h2>La lista ya es el triaje</h2>
+      <p class="why">Sin cifras arriba. Cada cliente aparece <b>una vez</b>, en la sección de lo más urgente que tiene; en «Necesitan algo» la segunda línea dice qué y el enlace lo resuelve. Pausados, invitados y sin programa se pliegan al final.</p>
+      <div class="phone"><div class="scroll" id="B"></div></div>
+      <p class="pro"><b>Cero duplicados</b> y el orden de la lista ya responde «a quién miro hoy».</p>
+      <p class="con">Los clientes cambian de sección según el día: Ana no está siempre en el mismo sitio.</p>
+    </div>
+
+    <div class="col">
+      <div class="tag">C · Tabla</div>
+      <h2>Columnas fijas, avisos en un banner</h2>
+      <p class="why">Tres cifras arriba, un banner con el total de pendientes y una tabla de columnas fijas: <b>semana</b> y <b>adherencia</b>. El aviso por cliente es solo una raya a la izquierda.</p>
+      <div class="phone"><div class="scroll" id="C"></div></div>
+      <p class="pro"><b>Lo más «dashboard»:</b> se compara de un vistazo y ordenando por columna.</p>
+      <p class="con">Los pendientes quedan a un toque y la raya sola no dice qué pasa.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Datos de ejemplo. st: estado de adherencia (ok · slip · risk · muted · none).
+const CLIENTS = [
+  { n:'Ana López',     prog:'Hipertrofia',    stage:'Bloque 2', wk:6,  done:3, tot:4, adh:92, st:'ok',   last:'hoy',        app:true,  unrev:2 },
+  { n:'Marcos Ruiz',   prog:'Fuerza base',    stage:'Etapa 3',  wk:9,  done:0, tot:3, adh:41, st:'risk', last:'hace 12 días' },
+  { n:'Lucía Gómez',   prog:'Recomposición',  stage:'Etapa 1',  wk:4,  done:2, tot:3, adh:85, st:'ok',   last:'ayer',       app:true,  block:true },
+  { n:'Pablo Sanz',    prog:'Carrera + fuerza', stage:'Base',   wk:3,  done:1, tot:3, adh:68, st:'slip', last:'hace 6 días', app:true },
+  { n:'Elena Martín',  noprog:true },
+  { n:'Javier Ortiz',  prog:'Powerlifting',   stage:'Peaking',  wk:11, done:2, tot:3, adh:88, st:'ok',   last:'ayer',       app:true,  dirty:true },
+  { n:'Diego Romero',  prog:'Hipertrofia',    stage:'Bloque 1', wk:2,  done:3, tot:4, adh:100,st:'ok',   last:'hoy',        inprog:true, unrev:1 },
+  { n:'Tomás Gil',     prog:'Fuerza base',    stage:'Etapa 2',  wk:7,  done:2, tot:3, adh:90, st:'ok',   last:'ayer',       app:true },
+  { n:'Sara Díaz',     prog:'Movilidad',      stage:'Etapa 1',  wk:5,  done:0, tot:2, st:'muted', paused:true },
+  { n:'Irene Vidal',   invited:true },
+];
+// Día tranquilo: los mismos clientes con todo resuelto salvo un par de cosas.
+const CALM = {
+  'Ana López':{unrev:0}, 'Marcos Ruiz':{st:'ok', adh:84, done:2, last:'ayer'}, 'Lucía Gómez':{block:false},
+  'Pablo Sanz':{st:'ok', adh:80, done:2}, 'Javier Ortiz':{dirty:false}, 'Diego Romero':{inprog:false},
+};
+
+// Prioridad de lo pendiente. tone = de quién es la pelota (mismo código de color que hoy).
+const KINDS = [
+  { k:'inprog', tone:'var(--accent)',  one:'Entreno a medias',            btn:'Continuar', acc:true, short:'Entreno a medias',          cls:'go'   },
+  { k:'dirty',  tone:'var(--blue)',    one:'Cambios sin enviar',          btn:'Enviar todo',         short:'Cambios sin enviar',        cls:'mine' },
+  { k:'block',  tone:'var(--orange)',  one:'Etapa sin siguiente', btn:'Planificar',       short:'Etapa terminada · sin siguiente', cls:'warn' },
+  { k:'risk',   tone:'var(--redText)', one:'En riesgo',                                              short:'Sin entrenar',              cls:'risk' },
+  { k:'slip',   tone:'var(--orange)',  one:'Bajando el ritmo',                                       short:'Bajando el ritmo',          cls:'warn' },
+  { k:'unrev',  tone:'var(--accent)',  one:'Entrenos sin revisar',        btn:'Revisar',             short:'sin revisar',               cls:'go'   },
+];
+const has = (c,k) => k==='risk' ? c.st==='risk' : k==='slip' ? c.st==='slip' : !!c[k];
+const first = (c) => KINDS.find(K => has(c, K.k));
+const ini = (n) => n.split(' ').map(w=>w[0]).join('').slice(0,2);
+const active = (c) => !c.noprog && !c.paused && !c.invited;
+const chev = '<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
+
+const head = () => `
+  <div class="sb"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="ah"><div class="logo"><b>Forma</b><u>FIT</u></div><div class="sp"></div>
+    <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg></div></div>
+  <div class="body">
+  <div class="title"><h3>CLIENTES <span>· 10</span></h3><div class="new">+ Cliente</div></div>
+  <div class="search"><div class="in"><svg viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35"/></svg>Buscar cliente</div></div>`;
+
+function kpis(list){
+  const act = list.filter(active);
+  const done = act.reduce((s,c)=>s+c.done,0), tot = act.reduce((s,c)=>s+c.tot,0);
+  const trained = act.filter(c=>c.done>0).length;
+  const adh = Math.round(act.reduce((s,c)=>s+c.adh,0)/act.length);
+  return `<div class="kpis">
+    <div class="kpi"><div class="v">${trained}<small>/${act.length}</small></div><div class="l">entrenaron</div></div>
+    <div class="kpi"><div class="v">${done}<small>/${tot}</small></div><div class="l">sesiones</div></div>
+    <div class="kpi"><div class="v">${adh}<small>%</small></div><div class="l">adherencia</div></div>
+  </div>`;
+}
+
+const segs = (c) => `<div class="wk"><div class="segs">${Array.from({length:c.tot},(_,i)=>`<i class="${i<c.done?'on':''}"></i>`).join('')}</div><small><b>${c.done}</b>/${c.tot}</small></div>`;
+const progLine = (c) => `${c.prog} · ${c.stage} · Sem ${String(c.wk).padStart(2,'0')}`;
+
+function row(c, sub){
+  const off = !active(c);
+  const p = sub ?? (c.noprog ? 'Sin programa' : c.paused ? 'En pausa' : c.invited ? 'Esperando código' : progLine(c));
+  return `<div class="cl ${off?'dim':''}">
+    <div class="av">${ini(c.n)}</div>
+    <div class="tx"><div class="n">${c.n}</div><div class="p">${p}</div></div>
+    ${off ? chev : segs(c)}
+  </div>`;
+}
+
+// ── A · bandeja arriba ──
+function A(list){
+  const todos = KINDS.map(K => ({K, who:list.filter(c=>has(c,K.k))})).filter(x=>x.who.length);
+  const box = todos.length ? `<div class="group">${todos.map(({K,who}) => {
+      const n = K.k==='unrev' ? who.reduce((s,c)=>s+c.unrev,0) : who.length;
+      const names = who.map(c=>c.n.split(' ')[0]).join(', ');
+      const right = K.btn ? `<div class="btn ${K.acc?'acc':''}">${who.length>1 && K.k!=='dirty' ? 'Ver' : K.btn}</div>` : chev;
+      return `<div class="todo"><span class="dot" style="background:${K.tone}"></span>
+        <div class="tx"><div class="t">${K.one} · ${n}</div><div class="w">${names}</div></div>${right}</div>`;
+    }).join('')}</div>`
+    : `<div class="group"><div class="allok"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>Nada pendiente. Todos al día.</div></div>`;
+  const total = todos.reduce((s,x)=>s+x.who.length,0);
+  return head() + '<div class="sh" style="margin-top:0"><b>Esta semana</b></div>' + kpis(list)
+    + `<div class="sh"><b>Pendiente</b>${total?`<i>${total}</i>`:''}</div>` + box
+    + `<div class="sh"><b>Todos</b><span>Esta semana</span></div>`
+    + `<div class="group">${list.filter(active).map(c=>row(c)).join('')}</div>`
+    + `<div class="group" style="margin-top:var(--sm2)"><div class="more"><span>Sin programa, en pausa, invitados · ${list.filter(c=>!active(c)).length}</span>${chev}</div></div>`
+    + '</div>';
+}
+
+// ── B · por estado ──
+function B(list){
+  const act = list.filter(active);
+  const need = act.filter(first).sort((a,b)=>KINDS.indexOf(first(a))-KINDS.indexOf(first(b)));
+  const ok = act.filter(c=>!first(c));
+  const off = list.filter(c=>!active(c));
+  const sub = (c) => { const K = first(c);
+    const t = K.k==='risk' ? `Sin entrenar · ${c.last}` : K.k==='unrev' ? `${c.unrev} ${c.unrev>1?'entrenos':'entreno'} sin revisar` : K.short;
+    return { t, cls:K.cls, btn:K.btn==='Enviar todo'?'Enviar':K.btn }; };
+  const needRow = (c) => { const s = sub(c); return `<div class="cl">
+      <div class="av">${ini(c.n)}</div>
+      <div class="tx"><div class="n">${c.n}</div><div class="p ${s.cls}">${s.t}</div></div>
+      ${s.btn ? `<span class="link">${s.btn} ›</span>` : chev}</div>`; };
+  return head()
+    + (need.length ? `<div class="sh" style="margin-top:var(--sm)"><b>Necesitan algo</b><i>${need.length}</i></div><div class="group">${need.map(needRow).join('')}</div>` : '')
+    + `<div class="sh"><b>Al día</b><i>${ok.length}</i><span>Esta semana</span></div><div class="group">${ok.map(c=>row(c)).join('')}</div>`
+    + `<div class="sh"><b>Fuera de juego</b><i>${off.length}</i></div><div class="group"><div class="more"><span>${off.map(c=>c.n.split(' ')[0]).join(', ')}</span>${chev}</div></div>`
+    + '</div>';
+}
+
+// ── C · tabla ──
+function C(list){
+  const act = list.filter(active);
+  const pend = act.filter(first).length;
+  const tr = (c) => { const K = first(c);
+    const adhCls = c.adh < 60 ? 'low' : c.adh < 75 ? 'mid' : '';
+    return `<div class="tr ${K?K.cls:''}">
+      <div style="min-width:0"><div class="n">${c.n}</div><div class="p">${c.prog} · Sem ${String(c.wk).padStart(2,'0')}</div></div>
+      <div class="num">${c.done}<small>/${c.tot}</small></div>
+      <div class="num ${adhCls}">${c.adh}<small>%</small></div></div>`; };
+  const off = list.filter(c=>!active(c)).map(c => `<div class="tr"><div style="min-width:0"><div class="n" style="color:var(--mutedLight)">${c.n}</div><div class="p">${c.noprog?'Sin programa':c.paused?'En pausa':'Esperando código'}</div></div><div class="num na">—</div><div class="num na">—</div></div>`).join('');
+  return head() + '<div class="sh" style="margin-top:0"><b>Esta semana</b></div>' + kpis(list)
+    + (pend ? `<div class="banner"><div class="cnt">${pend}</div><div class="tx">Clientes que necesitan algo<small>Revisar, enviar, planificar…</small></div>${chev}</div>` : '')
+    + `<div class="thead"><span>Cliente</span><span>Semana ▾</span><span>Adh.</span></div>`
+    + `<div class="group">${act.map(tr).join('')}${off}</div>`
+    + `<div class="legend"><span><i style="background:var(--redText)"></i>en riesgo</span><span><i style="background:var(--orange)"></i>parado o bajando</span><span><i style="background:var(--blue)"></i>sin enviar</span><span><i style="background:var(--accent)"></i>a revisar</span></div>`
+    + '</div>';
+}
+
+function render(kase){
+  const list = CLIENTS.map(c => kase==='calma' ? {...c, ...(CALM[c.n]||{})} : c);
+  document.getElementById('A').innerHTML = A(list);
+  document.getElementById('B').innerHTML = B(list);
+  document.getElementById('C').innerHTML = C(list);
+}
+document.querySelectorAll('.cases button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.cases button').forEach(x => x.setAttribute('aria-pressed', x===b));
+  render(b.dataset.case);
+}));
+render('movido');
+</script>
+</body>
+</html>

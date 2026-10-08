@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clientes dashboard v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;600;700;800;900&display=swap">
+<style>
+/* v2: la estructura A sin duplicados (la fila cambia de estado). Dos teléfonos que solo difieren en el dato de progreso; los interruptores de arriba afectan a los dos. */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --orange:#fb923c; --redText:#ff5e58; --blue:#4c85ff;
+  --xs:2px; --xs2:4px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px;
+  --r-sm:6px; --r-md:10px;
+  --page:#080808; --ink-dim:#8a8a8a;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+.wrap{max-width:900px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:80ch; margin:0}
+.lead b{color:var(--text); font-weight:800}
+
+.ctrls{display:grid; gap:10px; margin:24px 0 30px}
+.cases{display:flex; flex-wrap:wrap; gap:var(--sm); align-items:center}
+.cases span{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-dim); width:96px}
+.cases button{all:unset; cursor:pointer; font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--text); background:var(--surface2); border-radius:999px; padding:9px 14px}
+.cases button[aria-pressed="true"]{background:var(--accent); color:var(--onAccent)}
+.cases button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.rail{display:flex; gap:34px; overflow-x:auto; padding-bottom:12px; align-items:flex-start}
+.col{flex:0 0 375px; width:375px; max-width:100%}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h2{font:900 18px/1.2 var(--inter); margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:62px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:var(--orange)}
+.pro b,.con b{color:var(--text)}
+
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:780px; position:relative}
+.phone::after{content:''; position:absolute; left:0; right:0; bottom:0; height:50px; background:linear-gradient(transparent,var(--bg)); pointer-events:none}
+.scroll{height:100%; overflow-y:auto; scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight)}
+.ah{display:flex; align-items:center; padding:var(--md) var(--xl) var(--sm)}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.ah .sp{flex:1}
+.ico{width:36px; height:36px; border-radius:var(--r-md); background:var(--surface); display:grid; place-items:center}
+.ico svg{width:18px; height:18px; stroke:var(--text); fill:none; stroke-width:1.8; stroke-linecap:round}
+.body{padding:var(--sm) var(--lg) 70px}
+.title{display:flex; align-items:center; gap:var(--sm2); margin:var(--sm) 0 var(--lg)}
+.title h3{flex:1; margin:0; font:italic 800 30px/1 var(--barlow); letter-spacing:.3px}
+.title h3 span{color:var(--mutedLight)}
+.new{background:var(--accent); color:var(--onAccent); font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; padding:11px 14px; border-radius:var(--r-md)}
+.search{height:40px; border-radius:var(--r-md); background:var(--surface); display:flex; align-items:center; gap:8px; padding:0 12px; font:500 14px var(--inter); color:var(--mutedLight); margin-bottom:var(--lg)}
+.search svg{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round}
+
+.sh{display:flex; align-items:baseline; gap:var(--sm); padding:0 var(--xs2); margin:var(--xl) 0 var(--sm2)}
+.sh b{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase}
+.sh span{margin-left:auto; font:700 12px var(--inter); color:var(--mutedLight)}
+.sh a{margin-left:auto; font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; color:var(--blue); text-decoration:none}
+
+.kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sm)}
+.kpi{background:var(--surface); border-radius:var(--r-md); padding:12px 12px 11px}
+.kpi .v{font:italic 800 30px/1 var(--barlow)}
+.kpi .v small{font-size:18px; color:var(--mutedLight)}
+.kpi .l{font:700 11px/1.3 var(--inter); color:var(--mutedLight); margin-top:5px}
+
+/* compactas: un bloque, 2 px entre filas, solo las esquinas de fuera redondeadas */
+.group{display:grid; grid-template-columns:minmax(0,1fr); gap:2px}
+.group > *{background:var(--surface); border-radius:2px}
+.group > :first-child{border-top-left-radius:var(--r-md); border-top-right-radius:var(--r-md)}
+.group > :last-child{border-bottom-left-radius:var(--r-md); border-bottom-right-radius:var(--r-md)}
+/* sueltas: cada cliente su tarjeta */
+.loose .group{gap:var(--sm2)}
+.loose .group > *{border-radius:var(--r-md)}
+
+.cl{display:flex; align-items:center; gap:var(--md); padding:11px 12px; min-height:62px}
+.av{width:36px; height:36px; border-radius:18px; display:grid; place-items:center; font:800 13px var(--inter); flex-shrink:0; background:var(--surface3); color:var(--mutedLight)}
+.noav .av{display:none}
+.noav .cl{padding-left:14px}
+.cl .tx{flex:1; min-width:0}
+.cl .n{font:700 15px/1.25 var(--inter); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cl .p{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px}
+.cl .p em{font-style:normal; color:var(--text)}
+.cl .p.warn{color:var(--orange)} .cl .p.risk{color:var(--redText)} .cl .p.mine{color:var(--blue)} .cl .p.go{color:var(--accent)} .cl .p.none{color:var(--text)}
+.cl .p small{font:700 11px var(--inter); color:var(--mutedLight); margin-left:4px}
+.btn{font:800 11px var(--inter); letter-spacing:1px; text-transform:uppercase; padding:9px 11px; border-radius:var(--r-sm); background:var(--surface3); color:var(--text); white-space:nowrap; flex-shrink:0}
+.chev{width:16px; height:16px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0}
+.more{display:flex; align-items:center; gap:var(--md); padding:14px; font:600 13px var(--inter); color:var(--mutedLight)}
+.more span{flex:1}
+
+/* progreso · esta semana */
+.wk{display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0}
+.segs{display:flex; gap:3px}
+.segs i{width:9px; height:9px; border-radius:2px; background:var(--surface3)}
+.segs i.on{background:var(--accent)}
+.wk small{font:700 11px var(--inter); color:var(--mutedLight)}
+.wk small b{color:var(--text); font-weight:800}
+/* progreso · 4 semanas: una columna por semana, de abajo arriba; la última es la actual */
+.w4{display:flex; align-items:flex-end; gap:6px; flex-shrink:0}
+.w4 .num{font:700 11px var(--inter); color:var(--mutedLight); margin-right:2px; align-self:center}
+.w4 .num b{color:var(--text); font-weight:800}
+.w4 .c{display:flex; flex-direction:column-reverse; gap:2px}
+.w4 .c i{width:8px; height:6px; border-radius:1.5px; background:var(--surface3)}
+.w4 .c i.on{background:var(--accent); opacity:.45}
+.w4 .c.now i{outline:1px solid var(--border); outline-offset:-1px; background:transparent}
+.w4 .c.now i.on{background:var(--accent); opacity:1; outline:none}
+
+.notes{margin-top:44px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px}
+.note h3{font:900 15px/1.3 var(--inter); margin:0 0 6px}
+.note p{font:500 13px/1.6 var(--inter); color:var(--ink-dim); margin:0 0 8px}
+.note b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Clientes · v2</h1>
+  <p class="lead">La A sin duplicados: <b>cada cliente sale una vez</b>. Si tiene algo pendiente, su segunda línea dice qué y a la derecha está el botón; los que tienen algo van arriba. Los dos teléfonos son iguales salvo el <b>dato de progreso</b>. Cambia a <b>«Lunes»</b> para ver el problema del reinicio semanal.</p>
+
+  <div class="ctrls">
+    <div class="cases" data-k="kase"><span>Caso</span>
+      <button data-v="calma">Día tranquilo</button><button data-v="movido" aria-pressed="true">Día movido</button><button data-v="lunes">Lunes 9:00</button></div>
+    <div class="cases" data-k="cards"><span>Tarjetas</span>
+      <button data-v="compact" aria-pressed="true">Compactas</button><button data-v="loose">Sueltas</button></div>
+    <div class="cases" data-k="avatar"><span>Avatar</span>
+      <button data-v="color" aria-pressed="true">Iniciales con color</button><button data-v="gris">Iniciales grises</button><button data-v="none">Sin avatar</button></div>
+  </div>
+
+  <div class="rail">
+    <div class="col">
+      <div class="tag">Progreso · esta semana</div>
+      <h2>Cuadraditos de la semana</h2>
+      <p class="why">Lo de la v1: entrenos desde el lunes contra los de su etapa. Se reinicia cada lunes.</p>
+      <div class="phone"><div class="scroll" id="P1"></div></div>
+      <p class="con"><b>El lunes todos están a 0</b> y la lista no dice nada; el jueves, 1/3 no distingue a quien siempre cumple de quien lleva un mes fallando.</p>
+    </div>
+    <div class="col">
+      <div class="tag">Progreso · últimas 4 semanas</div>
+      <h2>Una columna por semana</h2>
+      <p class="why">Las mismas casillas en columna: tres semanas pasadas en lima apagado y la actual a la derecha. Se lee la <b>tendencia</b>, no solo el estado de hoy.</p>
+      <div class="phone"><div class="scroll" id="P2"></div></div>
+      <p class="pro"><b>Nunca está vacío</b>, y una columna que va bajando se ve sin leer números: es la adherencia hecha dibujo.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h3>Compactas o sueltas</h3>
+      <p>Recomiendo <b>compactas</b>. Todas las filas tienen la misma forma y se leen de arriba abajo, como una tabla: separarlas en tarjetas añade 8 px por cliente y hace que cada una se lea como un objeto aparte, que es justo el ruido que queremos quitar. Las sueltas tienen sentido cuando cada tarjeta es distinta; aquí ya no lo son.</p></div>
+    <div class="note"><h3>Avatar</h3>
+      <p>Recomiendo <b>iniciales con un color fijo por cliente</b>, asignado solo al crearlo (el menos usado; se podría cambiar en la ficha). El color es lo que da el reconocimiento instantáneo: «Ana es la violeta». Los tonos están elegidos lejos del lima, el naranja, el rojo y el azul de los avisos para que no se lean como estado.</p>
+      <p>Una lista de iconos obliga a asignar 20 a mano y un icono no se asocia a una persona. La foto es la que mejor reconoce, pero pide selector, almacenamiento y sincronización; si llega, la manera natural es que <b>el cliente con app suba la suya</b> y le llegue al entrenador.</p></div>
+    <div class="note"><h3>Etapa en la línea del programa</h3>
+      <p>«Bloque 2 · sem 3 de 6» sustituye a «Semana 06» del programa: dice cuánto le queda a la etapa, que es lo que el entrenador necesita para planificar. En su última semana pone «última semana», sin color: aviso previo sin alarma.</p></div>
+  </div>
+</div>
+
+<script>
+// hist = entrenos de las 3 semanas anteriores (antigua → reciente); done = esta semana.
+// sw/sd = semana de la etapa / semanas que dura.
+const CLIENTS = [
+  { n:'Ana López',    prog:'Hipertrofia',      stage:'Bloque 2', sw:3, sd:6, tot:4, hist:[4,3,4], done:3, st:'ok',   unrev:2 },
+  { n:'Marcos Ruiz',  prog:'Fuerza base',      stage:'Etapa 3',  sw:2, sd:4, tot:3, hist:[2,1,0], done:0, st:'risk', last:'hace 12 días' },
+  { n:'Lucía Gómez',  prog:'Recomposición',    stage:'Etapa 1',  sw:4, sd:4, tot:3, hist:[3,3,2], done:2, st:'ok',   block:true },
+  { n:'Pablo Sanz',   prog:'Carrera + fuerza', stage:'Base',     sw:3, sd:6, tot:3, hist:[3,2,1], done:1, st:'slip' },
+  { n:'Elena Martín', noprog:true },
+  { n:'Javier Ortiz', prog:'Powerlifting',     stage:'Peaking',  sw:2, sd:3, tot:3, hist:[3,3,3], done:2, st:'ok',   dirty:true },
+  { n:'Diego Romero', prog:'Hipertrofia',      stage:'Bloque 1', sw:2, sd:6, tot:4, hist:[4,4,3], done:3, st:'ok',   inprog:true, unrev:1 },
+  { n:'Tomás Gil',    prog:'Fuerza base',      stage:'Etapa 2',  sw:1, sd:4, tot:3, hist:[2,3,3], done:2, st:'ok',   dirty:true },
+  { n:'Sara Díaz',    paused:true },
+  { n:'Irene Vidal',  invited:true },
+];
+const CASES = {
+  movido:{},
+  calma:{ 'Ana López':{unrev:0}, 'Marcos Ruiz':{st:'ok', hist:[3,2,3], done:2}, 'Lucía Gómez':{block:false},
+          'Pablo Sanz':{st:'ok', hist:[3,3,2], done:2}, 'Javier Ortiz':{dirty:false}, 'Diego Romero':{inprog:false, unrev:0},
+          'Tomás Gil':{dirty:false}, 'Elena Martín':{noprog:false, prog:'Iniciación', stage:'Etapa 1', sw:1, sd:4, tot:2, hist:[0,0,0], done:1, st:'ok'} },
+  lunes:{ 'Ana López':{done:1, unrev:1}, 'Lucía Gómez':{done:0, block:false}, 'Pablo Sanz':{done:0, st:'ok', hist:[3,3,2]},
+          'Javier Ortiz':{done:0, dirty:false}, 'Diego Romero':{done:0, inprog:false, unrev:0}, 'Tomás Gil':{done:0, dirty:false} },
+};
+
+// Prioridad de lo pendiente; el color dice de quién es la pelota (el código de hoy).
+const KINDS = [
+  { k:'inprog', cls:'go',   txt:()=>'Entreno a medias',                btn:'Continuar' },
+  { k:'dirty',  cls:'mine', txt:()=>'Cambios sin enviar',              btn:'Enviar' },
+  { k:'block',  cls:'warn', txt:()=>'Etapa terminada · sin siguiente', btn:'Planificar' },
+  { k:'noprog', cls:'none', txt:()=>'Sin programa',                    btn:'Programar' },
+  { k:'risk',   cls:'risk', txt:(c)=>`Sin entrenar · ${c.last}` },
+  { k:'slip',   cls:'warn', txt:()=>'Bajando el ritmo' },
+  { k:'unrev',  cls:'go',   txt:(c)=>`${c.unrev} ${c.unrev>1?'entrenos':'entreno'} sin revisar`, btn:'Revisar' },
+];
+const has = (c,k) => k==='risk'||k==='slip' ? c.st===k : !!c[k];
+const pend = (c) => KINDS.filter(K => has(c, K.k));
+const rank = (c) => { const p = pend(c); return p.length ? KINDS.indexOf(p[0]) : 99; };
+const off = (c) => c.paused || c.invited;
+
+// Color de identidad, lejos de lima / naranja / rojo / azul. Se reparte al crear el cliente (el menos usado), no por hash: así no se repiten seguidos.
+const IDS = ['#b39dfa','#f28dc4','#4fd1c5','#d9b88a','#8fb8de','#c9a0dc'];
+const idColor = (n) => IDS[CLIENTS.findIndex(c=>c.n===n) % IDS.length];
+const ini = (n) => n.split(' ').map(w=>w[0]).join('').slice(0,2);
+const chev = '<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
+const state = { kase:'movido', cards:'compact', avatar:'color' };
+
+function avatar(c){
+  if (state.avatar !== 'color') return `<div class="av">${ini(c.n)}</div>`;
+  const col = idColor(c.n);
+  return `<div class="av" style="background:${col}2e; color:${col}">${ini(c.n)}</div>`;
+}
+const weekNow = (c) => `<div class="wk"><div class="segs">${Array.from({length:c.tot},(_,i)=>`<i class="${i<c.done?'on':''}"></i>`).join('')}</div><small><b>${c.done}</b>/${c.tot}</small></div>`;
+const week4 = (c) => `<div class="w4"><span class="num"><b>${c.done}</b>/${c.tot}</span>${[...c.hist, c.done].map((d,w)=>
+  `<div class="c ${w===3?'now':''}">${Array.from({length:c.tot},(_,i)=>`<i class="${i<d?'on':''}"></i>`).join('')}</div>`).join('')}</div>`;
+
+function row(c, mode){
+  const p = pend(c);
+  const prog = () => `${c.prog} · ${c.stage} · ${c.sw===c.sd ? '<em>última semana</em>' : `sem ${c.sw} de ${c.sd}`}`;
+  const line = p.length ? `<div class="p ${p[0].cls}">${p[0].txt(c)}${p.length>1?`<small>+${p.length-1}</small>`:''}</div>` : `<div class="p">${prog()}</div>`;
+  // Los avisos sin acción (en riesgo, bajando) dejan el progreso a la derecha: es la prueba del aviso.
+  const right = p.length && p[0].btn ? `<div class="btn">${p[0].btn}</div>` : c.noprog ? chev : (mode==='w4' ? week4(c) : weekNow(c));
+  return `<div class="cl">${avatar(c)}<div class="tx"><div class="n">${c.n}</div>${line}</div>${right}</div>`;
+}
+
+function phone(list, mode){
+  const act = list.filter(c=>!off(c) && !c.noprog);
+  // «en 7 días»: el lunes por la mañana aún cuenta la semana pasada; el resto de días basta con esta.
+  const trained = act.filter(c => c.done>0 || (state.kase==='lunes' && c.hist[2]>0)).length;
+  const need = list.filter(c=>pend(c).length).length;
+  const pct = Math.round(100 * act.reduce((s,c)=>s+c.hist.reduce((a,b)=>a+b,0)+c.done,0) / act.reduce((s,c)=>s+c.tot*4,0));
+  const dirty = list.filter(c=>c.dirty).length;
+  const shown = list.filter(c=>!off(c)).sort((a,b)=>rank(a)-rank(b));
+  const folded = list.filter(off);
+  return `
+  <div class="sb"><span>${state.kase==='lunes'?'9:00':'9:41'}</span><span>●●● 100%</span></div>
+  <div class="ah"><div class="logo"><b>Forma</b><u>FIT</u></div><div class="sp"></div>
+    <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg></div></div>
+  <div class="body">
+    <div class="title"><h3>CLIENTES <span>· ${list.length}</span></h3><div class="new">+ Cliente</div></div>
+    <div class="search"><svg viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35"/></svg>Buscar cliente</div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${trained}<small>/${act.length}</small></div><div class="l">entrenaron en 7 días</div></div>
+      <div class="kpi"><div class="v">${need}</div><div class="l">necesitan algo</div></div>
+      <div class="kpi"><div class="v">${pct}<small>%</small></div><div class="l">adherencia 4 sem.</div></div>
+    </div>
+    <div class="sh"><b>Clientes</b>${dirty>1 ? `<a>Enviar todo · ${dirty}</a>` : `<span>${need ? 'Lo pendiente, primero' : 'Todos al día'}</span>`}</div>
+    <div class="group">${shown.map(c=>row(c, mode)).join('')}</div>
+    <div class="group" style="margin-top:var(--sm2)"><div class="more"><span>En pausa o esperando código · ${folded.map(c=>c.n.split(' ')[0]).join(', ')}</span>${chev}</div></div>
+  </div>`;
+}
+
+function render(){
+  const list = CLIENTS.map(c => ({...c, ...(CASES[state.kase][c.n]||{})}));
+  for (const [id, mode] of [['P1','now'],['P2','w4']]) {
+    const el = document.getElementById(id);
+    el.innerHTML = phone(list, mode);
+    el.classList.toggle('loose', state.cards==='loose');
+    el.classList.toggle('noav', state.avatar==='none');
+  }
+}
+document.querySelectorAll('.cases').forEach(g => g.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x===b));
+  state[g.dataset.k] = b.dataset.v; render();
+}));
+render();
+</script>
+</body>
+</html>
