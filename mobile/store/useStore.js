@@ -66,6 +66,7 @@ import { migrateExerciseRefs } from '../src/utils/exerciseIdMigration';
 import { cleanVariant, isEmptyVariant } from '../src/utils/variants';
 import { compose } from '../src/utils/exerciseIdentity';
 import { adaptArchetype } from '../src/utils/archetypeAdapter';
+import { nextIdentityColor, withIdentityColors } from '../src/utils/identityColor';
 
 // Mobile i18n instance
 import i18n from '../src/i18n';
@@ -676,6 +677,9 @@ export const useStore = create(
           bodyWeight: [], billing: [], status: 'active',
           syncCode: null,   // client_code shown to the trainer
           syncSlotId: null, // trainer_clients row id in Supabase
+          // Color de identidad: el menos usado (C08 §3.3). Se guarda para que
+          // borrar a otro no se lo cambie.
+          color: nextIdentityColor(Object.values(get().clients)),
         };
 
         set((s) => ({ clients: { ...s.clients, [id]: clientBase } }));
@@ -4006,6 +4010,7 @@ export const useStore = create(
                 bodyWeight: [], billing: [], status: 'active',
                 syncCode:    slot.client_code ?? null,
                 syncSlotId:  slot.id,
+                color:       nextIdentityColor(Object.values(next)),
               };
               known.add(slot.id);
             }
@@ -4967,6 +4972,10 @@ export const useStore = create(
           // variante (P09-exercise-variants.md §3.3): plantillas, historial, alias
           // y prescripciones pasan al id nuevo. Idempotente.
           migrateExerciseRefs(state, EXERCISE_LIBRARY);
+
+          // Color de identidad a los clientes que no lo tienen, en orden de alta
+          // (C08-clientes-dashboard.md §3.3). Idempotente.
+          if (state.clients) state.clients = withIdentityColors(state.clients);
 
         } catch (e) {
           console.warn('[rehydrate] migration failed, booting with what loaded:', e);

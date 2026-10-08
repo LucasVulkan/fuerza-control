@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share } from 'react-native';
+import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share, BackHandler } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -19,6 +19,7 @@ import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
+import ClientAvatar from '../components/ClientAvatar';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -1491,23 +1492,17 @@ function ClientListCard({
       delayLongPress={350}
       activeOpacity={0.75}
     >
+      {/* Insignia del avatar (C08 §3.4): móvil con app, reloj si aún no ha
+          canjeado el código. Sin app, nada: es el caso normal del presencial. */}
+      <ClientAvatar
+        client={client}
+        link={linked ? 'linked' : invited ? 'invited' : 'none'}
+        badgeLabel={linked ? t('clients.info.link_linked') : t('clients.statusInvited')}
+      />
+      <View style={styles.cContent}>
       {/* ── Línea 1: nombre · Semana NN ── */}
       <View style={styles.cTop}>
-        {/* Con app, un móvil pegado al nombre. Solo ellos: sin app es el caso
-            normal del presencial y marcarlo sería ruido, y el invitado ya lo
-            dice su «Esperando código». Gris y no azul: en la lista el azul es
-            «cambios sin enviar». */}
-        <View style={styles.cNameWrap}>
-          <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
-          {linked && (
-            <View style={styles.cAppIcon} accessible accessibilityLabel={t('clients.info.link_linked')}>
-              <Svg viewBox="0 0 24 24" width={14} height={14} fill="none"
-                stroke={th.colors.mutedLight} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                <Path d="M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5zM11 18h2" />
-              </Svg>
-            </View>
-          )}
-        </View>
+        <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
         {activeProgram && (
           <Text style={styles.cWeek}>
             {t('clients.weekLabel')}{' '}
@@ -1627,6 +1622,7 @@ function ClientListCard({
             <Text style={styles.cCtaText}>{cta.label}</Text>
           </TouchableOpacity>
         )}
+      </View>
       </View>
     </TouchableOpacity>
   );
@@ -2098,6 +2094,17 @@ export default function ClientsScreen() {
     });
     return unsub;
   }, [navigation]);
+
+  // La ficha es un estado de esta pantalla, no una pantalla apilada: sin esto,
+  // el «atrás» de Android salta al historial de pestañas y acaba en Inicio.
+  useFocusEffect(useCallback(() => {
+    if (view !== 'detail') return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setView('list');
+      return true;
+    });
+    return () => sub.remove();
+  }, [view]));
 
   // ── Auto-open sync modal on first visit ────────────────────────────────────
 
@@ -3918,12 +3925,16 @@ const makeStyles = (th) => StyleSheet.create({
   // Congelado: se ve y se abre, pero se lee como fuera de juego.
   cCardFrozen: { opacity: 0.5 },
   cCard: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
     backgroundColor:   th.colors.surface,
     borderRadius:      th.radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
-    gap:               spacing.md,
   },
+  // Todo lo que va a la derecha del avatar (C08 §3).
+  cContent: { flex: 1, minWidth: 0, gap: spacing.md },
   // Bold y no Black, la misma voz que el nombre del ejercicio en marcha
   // (`itemTitleQuiet`, ExerciseCard): en esta tarjeta el nombre no compite con
   // nadie por el vistazo —ya manda por posición y tamaño—, y la Black a 16
@@ -3934,25 +3945,12 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:    'baseline',
     gap:           spacing.sm,
   },
-  // El nombre encoge y el icono de «con app» va pegado a él, no al fondo.
-  cNameWrap: {
-    flex:          1,
-    minWidth:      0,
-    flexDirection: 'row',
-    alignItems:    'flex-end',
-    gap:           spacing.sm,
-  },
-  // Apoyado en la línea base del nombre. Con la caja del nombre fija (abajo:
-  // `lineHeight` 20 y sin el relleno de fuente de Android, que la alargaba y
-  // dejaba el icono por debajo de las letras en QA), de la base al fondo hay
-  // ~4.2 px; el trazo del icono trae ~1.5 px de aire abajo → 3 px sin token.
-  cAppIcon: { marginBottom: 3 },
   cName: {
     ...textStyles.itemTitleQuiet,
     lineHeight:         20,
     includeFontPadding: false,
     color:              th.colors.text,
-    flexShrink:         1,
+    flex:               1,
     minWidth:           0,
   },
   cWeek: {

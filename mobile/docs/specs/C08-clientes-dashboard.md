@@ -2,13 +2,18 @@
 
 > Tema: conexión
 > En corto: La pantalla de Clientes pasa a leerse de un vistazo: arriba tres cifras que se pulsan para comparar a todos, y una fila por cliente que dice una sola cosa cada vez (dónde va, o qué necesita y el botón para hacerlo). Fuera las pills y el ruido de colores; el orden lo elige el entrenador y se queda guardado.
-> Fase C08-01 · pendiente · Avatar con color de identidad e insignia de «con app» · §3
+> Inicio: 2026-10-08
+> Fase C08-01 · hecho · Avatar con color de identidad e insignia de «con app» · §3
 > Fase C08-02 · pendiente · La fila: aviso o programa, botón con icono, cuadraditos, última vez y muesca de sin revisar · §4
 > Fase C08-03 · pendiente · Tres tarjetas de resumen; adherencia y mejora como lentes · §5
 > Fase C08-04 · pendiente · Orden elegido y guardado: criterio, «lo que necesita algo, arriba» y a mano · §6
 > Fase C08-05 · pendiente · Rótulo de la lista: etiquetas con scroll, «Enviar todo» y fuera las pills · §7
 >
-> Estado: **spec cerrada, SIN implementar** (8-oct-2026). Sale de iterar ocho
+> Estado: **C08-01 implementada y probada** (8-oct-2026): `ClientAvatar.jsx`,
+> `utils/identityColor.js` (+ test), `IDENTITY_COLORS` en `theme.js`, `color` al crear
+> cliente (las dos altas del store) y migración en `onRehydrateStorage`. Añadidos tras la
+> primera prueba: insignia de reloj para el invitado y el «atrás» de Android desde la
+> ficha vuelve a la lista (antes saltaba a Inicio; no lo causó C08). Las demás, sin implementar. Sale de iterar ocho
 > maquetas con el usuario en el chat; la que manda es
 > [`docs/mockups/clients-dashboard-8.html`](../mockups/clients-dashboard-8.html),
 > que es interactiva (caso tranquilo / movido / lunes, etiquetas, hoja de orden,
@@ -105,19 +110,26 @@ Cliente con `linkOf(client) === 'linked'`: un círculo de 19 px pegado a la
 esquina **inferior derecha** del avatar (desborda 5 px), fondo `surface` (la
 tarjeta, así parece recortado) y dentro el icono de móvil de hoy
 (el `Path` de `cAppIcon`, [ClientsScreen.jsx](../../src/screens/ClientsScreen.jsx)) a 12 px,
-trazo `text`. **Se quita el móvil que hoy va junto al nombre.** Invitado (sin
-canjear el código) y sin app: sin insignia.
+trazo `text`. **Se quita el móvil que hoy va junto al nombre.**
+
+Invitado (`linkOf === 'invited'`: le generaste el código y aún no lo ha
+canjeado): la misma insignia con un **reloj** en `mutedLight`, «esperando».
+Sin app: sin insignia (es el caso normal del presencial).
 
 **Probar C08-01**
 
-- [ ] Clientes existentes: al abrir la app tras actualizar, cada uno tiene un color
+- [x] Clientes existentes: al abrir la app tras actualizar, cada uno tiene un color
   y al cerrar y abrir sigue teniendo el mismo.
-- [ ] Crear tres clientes seguidos: salen con colores distintos de los ya usados
+- [x] Crear tres clientes seguidos: salen con colores distintos de los ya usados
   mientras quede alguno libre.
-- [ ] Borrar un cliente: ningún otro cambia de color.
-- [ ] Cliente con app: insignia de móvil abajo a la derecha del avatar; sin el
-  móvil junto al nombre. Invitado y sin app: sin insignia.
-- [ ] Tema `earthy` y `space`: las iniciales se leen bien sobre su círculo.
+- [x] Borrar un cliente: ningún otro cambia de color.
+- [x] Cliente con app: insignia de móvil abajo a la derecha del avatar; sin el
+  móvil junto al nombre. Sin app: sin insignia.
+- [x] Cliente al que le generaste el código y aún no lo ha canjeado: insignia con
+  un reloj gris. Al canjearlo pasa a la del móvil.
+- [x] Abrir la ficha de un cliente y pulsar «atrás» en Android (botón o gesto):
+  vuelve a la lista de Clientes, no a Inicio.
+- [x] Tema `earthy` y `space`: las iniciales se leen bien sobre su círculo.
 
 ## 4. La fila (C08-02)
 

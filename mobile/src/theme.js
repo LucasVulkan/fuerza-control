@@ -282,6 +282,16 @@ export function textStyleFor(flatStyle) {
   return style;
 }
 
+// ─── Colores de identidad (C08-clientes-dashboard.md §3.2) ────────────────────
+// Uno por cliente, para reconocerlo de un vistazo en la lista. Lejos del lima,
+// naranja, rojo y azul de los avisos: nunca se leen como estado. Dos juegos
+// porque hay temas claros; el índice (`client.color`) vale para los dos.
+// ponytail: los de `light` son orientativos — comprobar ≥4.5:1 en earthy/space.
+export const IDENTITY_COLORS = {
+  dark:  ['#b39dfa', '#f28dc4', '#4fd1c5', '#d9b88a', '#8fb8de', '#c9a0dc'],
+  light: ['#6d4fd8', '#c2407f', '#1f8f86', '#8a6a3c', '#3f6f9e', '#8d4fa6'],
+};
+
 // ─── Border widths ────────────────────────────────────────────────────────────
 export const borders = {
   thin:   1,
