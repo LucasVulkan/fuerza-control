@@ -447,6 +447,9 @@ export default function OnboardingScreen() {
   const generateAndActivateProgram = useStore((s) => s.generateAndActivateProgram);
   const createEmptyProgram         = useStore((s) => s.createEmptyProgram);
   const cloneProgramFromTemplate   = useStore((s) => s.cloneProgramFromTemplate);
+  // Invitación (M01-04): con un código pendiente la hoja del código está
+  // abierta, en cuanto se llega a elegir modo. La hoja lo borra al cerrarse.
+  const pendingInvite              = useStore((s) => s.pendingInviteCode);
   const importData                 = useStore((s) => s.importData);
   const exerciseLibrary            = useStore((s) => s.exerciseLibrary);
   const customExercises            = useStore((s) => s.customExercises);
@@ -934,7 +937,7 @@ export default function OnboardingScreen() {
         )}
 
         <ClientCodeModal
-          visible={showClientCode}
+          visible={showClientCode || !!pendingInvite}
           onClose={() => setShowClientCode(false)}
           onSuccess={() => navigation.replace('Main')}
         />

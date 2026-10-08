@@ -36,6 +36,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 
 import { navigationRef } from './src/navigation/navigationRef';
+import { parseInviteUrl } from './src/config/web';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
 import { registerBackupTask } from './src/tasks/driveBackupTask';
@@ -51,6 +52,7 @@ export default function App() {
   const checkAndPullProgramUpdates  = useStore((s) => s.checkAndPullProgramUpdates);
   const showToast                   = useStore((s) => s.showToast);
   const setPendingExternalImport    = useStore((s) => s.setPendingExternalImport);
+  const setPendingInviteCode        = useStore((s) => s.setPendingInviteCode);
 
   // Custom fonts — Inter (Figma text styles) + Barlow Condensed (logo).
   // Each weight is its own named family: RN doesn't synthesize weights for
@@ -83,6 +85,16 @@ export default function App() {
   // with section selection (same UX as importing via the settings menu).
   const handleIncomingFile = useCallback(async (url) => {
     if (!url) return;
+
+    // Invitación de cliente (M01-04): forma://join/<código>, desde la página
+    // /join de la web. Va ANTES del filtro de ficheros, que descarta en
+    // silencio todo lo demás (M01 §10, trampa 1).
+    const invite = parseInviteUrl(url);
+    if (invite !== undefined) {
+      if (invite) setPendingInviteCode(invite);
+      return;
+    }
+
     // Accept content:// and file:// URIs (from our intent filter)
     // plus any URL that explicitly mentions .fitdata (e.g. warm-start deep links).
     // Reject anything else (OAuth redirects, push notifications, etc.).
@@ -106,7 +118,7 @@ export default function App() {
     } catch {
       showToast('No se pudo leer el archivo', 2200, 'error');
     }
-  }, [showToast, setPendingExternalImport]);
+  }, [showToast, setPendingExternalImport, setPendingInviteCode]);
 
   useEffect(() => {
     // Cold start — app opened directly from a file tap

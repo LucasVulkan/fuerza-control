@@ -50,6 +50,8 @@ export default function TrainerConnectionScreen() {
   const navigation = useNavigation();
 
   const clientSync            = useStore((s) => s.clientSync);
+  // Invitación (M01-04): RootNavigator trae aquí; la hoja se abre con el código.
+  const pendingInvite         = useStore((s) => s.pendingInviteCode);
   const programs              = useStore((s) => s.programs);
   const profile               = useStore((s) => s.profile);
   const disconnectFromTrainer = useStore((s) => s.unlinkFromTrainer);
@@ -280,8 +282,8 @@ export default function TrainerConnectionScreen() {
       </ScrollView>
 
       <ClientCodeModal
-        visible={showCodeModal}
-        startWithSocial={googleAutoStart}
+        visible={showCodeModal || !!pendingInvite}
+        startWithSocial={googleAutoStart && !pendingInvite}
         onClose={() => { setShowCodeModal(false); setGoogleAutoStart(false); }}
         onSuccess={() => { setShowCodeModal(false); setGoogleAutoStart(false); }}
       />

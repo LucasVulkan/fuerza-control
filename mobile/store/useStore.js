@@ -522,6 +522,12 @@ export const useStore = create(
       // NOT persisted. AppHeader watches this and shows ImportModal when set.
       pendingExternalImport: null,  // { rawContent: string, fileName: string } | null
 
+      // Invitación de cliente (M01-04) — App.js lo pone al llegar
+      // forma://join/<código>. NO se persiste. Mientras exista, la hoja del
+      // código (Onboarding o Conexión con entrenador) está abierta con él; se
+      // borra al cerrarla.
+      pendingInviteCode: null,      // 'XK7M-2P4T' | null
+
       // ══════════════════════════════════════════════════════════════════════
       // PROFILE
       // ══════════════════════════════════════════════════════════════════════
@@ -2993,6 +2999,9 @@ export const useStore = create(
         set({ pendingExternalImport: { rawContent, fileName } }),
       clearPendingExternalImport: () =>
         set({ pendingExternalImport: null }),
+
+      setPendingInviteCode: (code) => set({ pendingInviteCode: code }),
+      clearPendingInviteCode: () => set({ pendingInviteCode: null }),
 
       // ══════════════════════════════════════════════════════════════════════
       // EXPORT / SHARE (Native)

@@ -6,7 +6,7 @@
 > Fase M01-01 · hecho · Identidad en RevenueCat (`logIn`/`logOut`, restore behavior) · §3 · antes M01
 > Fase M01-02 · hecho · Plan gratis 3 (1 con app) + 1 + 1: límites, congelado por cliente y hoja de elección · §4 · antes M02
 > Fase M01-03 · hecho · Paywall dual + i18n + enlaces legales · §5 · antes M03
-> Fase M01-04 · pendiente · Invitar cliente nivel 1 + página estática · §6 · antes M04
+> Fase M01-04 · hecho · Invitar cliente nivel 1 + página estática · §6 · antes M04
 > Fase M01-05 · pendiente · Montar App Store, Google Play y RevenueCat (guia-pagos.md) · §7
 > Fase M01-06 · hecho · Paywall rediseñado: pantalla propia, panel lima y planes en entradas · §5.7
 >
@@ -800,6 +800,49 @@ la tiene → instala y **pega el código a mano**, que va en el mismo mensaje.
 `supabase/connection_model.sql` ya garantiza que un código filtrado solo abre
 asientos vacíos (client-connection §3.7). Mandar el código por WhatsApp no añade
 riesgo nuevo, porque copiar y pegar el código ya hace exactamente eso hoy.
+
+### 6.4 Cómo quedó (8-oct-2026)
+
+Rama `feat/invitacion`, junto con M02-06. La página `/join` es M02-02.
+
+- **Mensaje** (`ClientsScreen`, `handleShare`): enlace
+  `https://formafit-pro.github.io/join/?c=<código>` + el código escrito. El
+  botón sigue siendo «Compartir» y sigue apagado sin programa. La dirección de
+  la web vive en `src/config/web.js` (`WEB_URL`, `inviteUrl`); `legal.js` la
+  usa también.
+- **Entrada** (`App.js`): `parseInviteUrl` (en `web.js`, con test) reconoce
+  `forma://join/<código>` **antes** del filtro de ficheros y lo normaliza a
+  `XXXX-XXXX`; un código que no tenga 8 caracteres se ignora.
+- **`pendingInviteCode`** en el store, sin persistir. Mientras exista, la hoja
+  del código está abierta (`visible={abierta || !!pendiente}`, sin efecto que
+  cambie estado); la hoja lo borra al cerrarse, conecte o no.
+- **Dónde se abre:** `RootNavigator` lleva a **Conexión con entrenador** si la
+  app ya está en uso (`navigate` con `pop: true`, para no apilar otra). En
+  Setup u Onboarding no navega: la hoja se abre al llegar a elegir modo (si el
+  cliente está a medias en otro modo del onboarding, espera a que vuelva).
+- **La hoja valida sola** el código que llega y salta a confirmar; el cliente
+  sigue pulsando «Conectar». Si falla (código usado, reemitido) se queda en el
+  paso de teclear con el error de siempre.
+- Puntos 4 y 5 de §6.2: sin cambios. Sin conexión no hay código en la tarjeta,
+  y el límite gratis se aplica al crear el código (M01-02).
+- Un enlace ya canjeado, abierto otra vez: la página no lo sabe (es estática);
+  la app sí — `alreadyLinked` si es el mismo cliente, `SLOT_OCCUPIED` si es
+  otro móvil, «código no encontrado» si el entrenador lo reemitió.
+
+**Probar M01-04**
+
+- [ ] Entrenador: ficha de un cliente con programa → «Compartir»: el mensaje
+  lleva el enlace y el código.
+- [ ] Cliente con la app abierta (en Inicio): toca el enlace → «Abrir en Forma
+  Fit» → la app va a Conexión con entrenador y sale el paso de confirmar con
+  el programa; «Conectar» conecta.
+- [ ] Lo mismo con la app cerrada del todo (arranque en frío).
+- [ ] App recién instalada, sin terminar el Setup: tocar el enlace → al
+  terminar el Setup, la hoja del código sale sola con el código puesto.
+- [ ] Cerrar la hoja sin conectar: no vuelve a abrirse sola.
+- [ ] Enlace con un código que ya usó otro móvil: la hoja se queda en el paso
+  de teclear con el error de hueco ocupado.
+- [ ] Mensaje mandado por WhatsApp: el enlace se ve como enlace y abre `/join`.
 
 ---
 

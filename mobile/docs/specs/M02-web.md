@@ -8,7 +8,7 @@
 > Fase M02-03 · pendiente · Landing + soporte · §5
 > Fase M02-04 · aparcado · Dominio propio · §6
 > Fase M02-05 · aparcado · Enlaces directos a la app (App Links / Universal Links) · §7
-> Fase M02-06 · pendiente · Consentimiento al conectar, en la app · §10
+> Fase M02-06 · hecho · Consentimiento al conectar, en la app · §10
 > Fase M02-07 · pendiente · Correo de contacto en la web · §11
 >
 > Estado: **M02-01 y M02-02 publicadas** el 8-oct-2026 (repo
@@ -283,15 +283,24 @@ dominio.** No hace falta para M01-04: la página de §4 ya cubre el caso.
 ## 10. M02-06 — Consentimiento al conectar (app)
 
 La política (§3.1) apoya el envío de entrenos y peso corporal al entrenador en
-el **consentimiento explícito** del cliente (art. 9.2.a RGPD), dado al meter el
-código. Para que eso se sostenga, la pantalla donde el cliente mete el código
-(`ClientCodeModal`) lo dice antes de conectar, en una línea bajo el campo:
+el **consentimiento explícito** del cliente (art. 9.2.a RGPD), dado al
+conectar. Para que eso se sostenga, la hoja del código (`ClientCodeModal`) lo
+dice antes del botón «Conectar», con enlace a la política (`PRIVACY_URL`).
+Sin casilla que marcar: conectar, con eso a la vista, es el consentimiento.
 
-> «Al conectar, tu entrenador verá tus entrenos de sus programas y el peso que
-> anotes. Puedes desconectarte cuando quieras.»
+### 10.1 Cómo quedó (8-oct-2026)
 
-Con enlace a la política (`PRIVACY_URL`). Claves en `es` y `en`. Sin casilla
-que marcar: el acto de conectar, con esa línea a la vista, es el consentimiento.
+No hizo falta una línea nueva: el paso de confirmar ya tenía «QUÉ PASA AL
+CONECTAR», y su segunda viñeta (`trainer.codeImplies2`) decía solo la mitad.
+Ahora: *«Tu entrenador verá las sesiones que completes de sus programas y las
+libres a partir de hoy, con el peso que anotes. Puedes desconectarte cuando
+quieras.»* (es y en). Debajo de las viñetas, «Privacidad» abre la política.
+Rama `feat/invitacion`, con M01-04.
+
+**Probar M02-06**
+
+- [ ] Paso de confirmar del código: la segunda viñeta habla de las sesiones
+  libres y del peso, y «Privacidad» abre la política.
 
 ---
 

@@ -7,13 +7,17 @@
  *                   con Google o con Apple
  *   • confirmar   → qué programa ha encontrado y qué implica conectarse
  *
+ * Con un código pendiente de una invitación (M01-04, `pendingInviteCode`) la
+ * hoja lo rellena y lo valida sola, y salta a confirmar: el cliente sigue
+ * pulsando «Conectar». El pendiente se borra al cerrar la hoja.
+ *
  * Pasa a `DragSheet` como el resto de los modales de la app (§9 de
  * docs/UI-MIGRATION.md): fuera la tarjeta centrada con borde. Toda la lógica
  * (OAuth, validación, linkToTrainer/confirmGoogleReconnect) se conserva.
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet, Linking } from 'react-native';
 import { Text } from './ui/Text';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
@@ -24,6 +28,7 @@ import { useStore }              from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI } from '../config/google';
 import { APPLE_AUTH_AVAILABLE, signInWithApple } from '../services/appleAuth';
+import { PRIVACY_URL } from '../config/legal';
 import DragSheet from './DragSheet';
 import AppleSignInButton from './ui/AppleSignInButton';
 import CodeField from './ui/CodeField';
@@ -48,6 +53,8 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   const validateGoogleClient   = useStore((s) => s.validateGoogleClient);
   const confirmGoogleReconnect = useStore((s) => s.confirmGoogleReconnect);
   const clientSync             = useStore((s) => s.clientSync);
+  const pendingInvite          = useStore((s) => s.pendingInviteCode);
+  const clearPendingInvite     = useStore((s) => s.clearPendingInviteCode);
 
   const [step,         setStep]         = useState('enter'); // 'enter' | 'confirm'
   const [code,         setCode]         = useState('');
@@ -98,6 +105,17 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
       googlePromptAsync();
     }
   }, [startWithSocial, visible, googleRequest]); // eslint-disable-line
+
+  // Invitación: se rellena y se valida una vez por código. Si falla (código
+  // usado, reemitido), se queda en el paso de teclear con el error a la vista.
+  const validatedInvite = useRef(null);
+  useEffect(() => {
+    if (!visible || !pendingInvite || validatedInvite.current === pendingInvite) return;
+    validatedInvite.current = pendingInvite;
+    setCode(pendingInvite);
+    setStep('enter');
+    handleValidate(pendingInvite);
+  }, [visible, pendingInvite]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Busca el hueco del cliente con la identidad recién obtenida. */
   async function validateSocial({ provider, idToken, accessToken }) {
@@ -169,15 +187,17 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     setGoogleUserId(null);
     setSocialNoSlot(false);
     setError(null);
+    validatedInvite.current = null;
+    clearPendingInvite();
     onClose();
   }
 
-  async function handleValidate() {
-    if (!code.trim()) return;
+  async function handleValidate(value = code) {
+    if (!value.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const info = await validateClientCode(code);
+      const info = await validateClientCode(value);
       setSlotInfo(info);
       // Un hueco que nadie ha canjeado y ya tiene historial es lo que te
       // apuntó tu entrenador (o tu copia de antes de reinstalar): fusionar es
@@ -295,14 +315,14 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
             value={code}
             onChangeText={(v) => { setCode(v); setError(null); }}
             groups={2}
-            onSubmitEditing={handleValidate}
+            onSubmitEditing={() => handleValidate()}
             autoFocus
             error={error}
           />
 
           <TouchableOpacity
             style={[styles.primaryBtn, (!code.trim() || loading) && styles.btnDisabled]}
-            onPress={handleValidate}
+            onPress={() => handleValidate()}
             disabled={!code.trim() || loading}
             activeOpacity={0.85}
           >
@@ -394,6 +414,13 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
                 </View>
               ))}
             </View>
+            {/* Conectar es el consentimiento para compartir entrenos y peso
+                (política §4, M02-06): la política, a un toque. */}
+            {!!PRIVACY_URL && (
+              <Text style={styles.link} onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityRole="link">
+                {t('paywall.privacy')}
+              </Text>
+            )}
           </View>
 
           {!!error && <Text style={styles.error}>{error}</Text>}
@@ -443,6 +470,7 @@ const makeStyles = (th) => StyleSheet.create({
   bulletRow:  { flexDirection: 'row', gap: spacing.sm },
   bulletDot:  { ...textStyles.label, color: th.colors.accent, lineHeight: 15 },
   bulletText: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, flex: 1 },
+  link:       { ...textStyles.label, color: th.colors.accent, lineHeight: 15, marginTop: spacing.sm },
 
   ctaGroup: { gap: spacing.sm },
 

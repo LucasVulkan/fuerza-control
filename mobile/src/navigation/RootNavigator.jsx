@@ -181,6 +181,28 @@ export default function RootNavigator() {
     }
   }, [hasHydrated, initialRoute]);
 
+  // Invitación (M01-04): con la app ya en uso, el código pendiente se abre en
+  // Conexión con entrenador. En Setup/Onboarding no se navega: el onboarding
+  // abre la hoja del código él solo cuando llega a elegir modo.
+  const pendingInvite = useStore((s) => s.pendingInviteCode);
+  useEffect(() => {
+    if (!hasHydrated || !pendingInvite) return;
+    const go = () => {
+      const route = navigationRef.getCurrentRoute()?.name;
+      if (route === 'Setup' || route === 'Onboarding' || route === 'TrainerConnection') return;
+      navigationRef.navigate('TrainerConnection', undefined, { pop: true });
+    };
+    if (navigationRef.isReady()) {
+      go();
+    } else {
+      const unsubscribe = navigationRef.addListener('state', () => {
+        unsubscribe();
+        go();
+      });
+      return unsubscribe;
+    }
+  }, [hasHydrated, pendingInvite]);
+
   // Block render until AsyncStorage has been read. This prevents a brief flash
   // of MainTabs on first launch (new device → should open Setup/Onboarding).
   if (!hasHydrated) {

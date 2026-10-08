@@ -64,6 +64,7 @@ import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
 
 import { showDialog } from '../components/ui/dialog';
 import { confirmDiscardActive } from '../components/ui/confirmDiscard';
+import { inviteUrl } from '../config/web';
 // Sesiones por semana — el mismo rango que el alta manual del onboarding.
 const SESSION_CHOICES = [1, 2, 3, 4, 5, 6, 7];
 
@@ -493,10 +494,12 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
     setTimeout(() => setCopied(false), 1800);
   }
 
-  // ponytail: texto con el código; la invitación con enlace es la M04 y lo
-  // sustituye cuando llegue.
+  // Invitación (M01-04): el enlace abre la app con el código puesto (página
+  // /join de la web); el código va también escrito para quien instala desde
+  // cero, porque el enlace no sobrevive a la instalación (M01 §9).
   function handleShare() {
-    Share.share({ message: t('clients.codeCard.shareText', { code: client.syncCode }) }).catch(() => {});
+    const message = t('clients.codeCard.shareText', { code: client.syncCode, url: inviteUrl(client.syncCode) });
+    Share.share({ message }).catch(() => {});
   }
 
   const reissueRow = (
