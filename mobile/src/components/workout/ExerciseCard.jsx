@@ -249,7 +249,10 @@ export default function ExerciseCard({
   // drops come next. Hold the auto-collapse until at least one drop exists and
   // every drop is checked (adding a new undone drop re-opens the card).
   const allDone = isExerciseDone(exConfig, setsState);
-  const [collapsed,  setCollapsed]  = useState(false);
+  // Ya completo al montar (volver a la sesión): nace plegado, sin animar. Si se
+  // plegaba animando, el Reanimated.View con `entering` que lo envuelve en
+  // WorkoutScreen se quedaba con la altura desplegada → huecos y solapes.
+  const [collapsed,  setCollapsed]  = useState(allDone);
   const [manualOpen, setManualOpen] = useState(false);
   const isCollapsed          = collapsed && !manualOpen;
 
@@ -270,7 +273,7 @@ export default function ExerciseCard({
   // Progreso del check del header: 0 = expandido (se ve el número "03A"),
   // 1 = colapsado (se ve el ✓). Crossfade en el MISMO hueco, sin desplazar el
   // título (§3: el header es Num | NameBlock | NoteButton en las dos vistas).
-  const checkProgress = useRef(new Animated.Value(0)).current;
+  const checkProgress = useRef(new Animated.Value(allDone ? 1 : 0)).current;
   const numOpacity = checkProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   const expandedH   = useRef(0);
   const collapsedH  = useRef(80);
