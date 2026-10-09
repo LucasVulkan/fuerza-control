@@ -7,8 +7,9 @@
 > Fase P11-02 · pendiente · Vinculación en el editor de ejercicio: grupo «Programación» y hoja de programaciones · §4 · antes P50
 > Fase P11-03 · pendiente · Vincular al añadir ejercicios · §5 · antes P51
 > Fase P11-04 · hecho · Grupo «Programación» en el editor de ejercicio (sale de P11-02) · §6 · antes P64
+> Fase P11-05 · pendiente · Duplicar una sesión ofrece vincular sus ejercicios con la original · §7
 >
-> Estado: spec cerrada el 1-oct-2026; P11-01 implementada y probada el 3-oct-2026, P11-02 y P11-03 SIN implementar. Maqueta aprobada:
+> Estado: spec cerrada el 1-oct-2026; P11-01 implementada y probada el 3-oct-2026, P11-02, P11-03 y P11-05 SIN implementar. Maqueta aprobada:
 > [`docs/mockups/link-exercises.html`](../mockups/link-exercises.html) (v4; las
 > referencias «maqueta §N» de abajo son a ella). Sale de una sesión de diseño con
 > el usuario que pasó por cuatro versiones: casillas por sesión (v1, descartada:
@@ -552,6 +553,72 @@ sueltos con su título: VARIANTE, CALENTAMIENTO, PROGRESIÓN, cada uno con un
 - [x] Alta de ejercicio propio: PROGRAMACIÓN con Progresión («**Automática** ·
   +2.5 kg») y Variante en un grupo, como en el editor.
 
+## 7. P11-05 — Vincular al duplicar una sesión
+
+Maqueta: ninguna. Usa la hoja de dos botones de abajo y la mecánica de vinculación
+de P11-02 (sin pantalla nueva).
+
+Pide P11-02 (`linkRows`, `linkExerciseToRow`), no P11-03.
+
+### 7.1 Qué pasa al duplicar
+
+Hoy «Duplicar» (tarjeta de P11-01 y ··· del editor de sesión) copia la sesión sin
+vincular. Pasa a abrir una hoja pequeña, `DragSheet` titulada **«Duplicar sesión»**,
+con dos botones:
+
+- **«Duplicar»**: lo de hoy. La copia nace con `linkGroup: null`.
+- **«Duplicar y vincular ejercicios»**: la copia nace y cada uno de sus ejercicios
+  queda vinculado con el de la sesión original.
+
+Texto (afinable): «Los ejercicios de la copia pueden quedar vinculados con los de
+«A», para que funcionen como uno solo.» La letra de la original va en negrita.
+
+**Si la sesión no tiene ejercicios**, no sale la hoja: duplica directo, como hoy.
+
+### 7.2 Qué se vincula
+
+- Para cada ejercicio de la original: `linkExerciseToRow(copia, ejercicio, fila)`,
+  con `fila` la de `linkRows(program, original, ejercicio)` que contiene la original.
+  Es la misma mecánica que «Usar» de P11-02: si la original está suelta, la copia y
+  ella forman un grupo nuevo; si ya está vinculada con B, la copia entra en el
+  grupo de B y adopta su programación. La original no cambia su configuración.
+- Un ejercicio repetido dentro de la sesión (mismo `exerciseId` dos veces) se
+  empareja con su copia **por posición**.
+- Ámbito: la etapa, como siempre (la copia está en la misma etapa).
+
+### 7.3 Store
+
+`duplicateSessionInProgram(programId, tid)` **devuelve el `tid` de la copia**
+(cambio menor; hoy no devuelve nada). La pantalla hace la secuencia: duplicar, y
+si se eligió vincular, `linkExerciseToRow` por cada ejercicio. Son dos cambios de
+estado, sin deshacer propio: se deshace como cualquier vínculo, con «Separar»
+(P11-02 §4.4) o eliminando la copia.
+
+Tests en `useStore.test.js`: duplicar B de A, B, C vinculando → la copia de B tiene
+el mismo `linkGroup` que B y la misma config; A y C no cambian; sin vincular → la
+copia tiene `linkGroup: null`.
+
+### 7.4 i18n (es / en)
+
+`editor.duplicateSheetTitle`, `editor.duplicateSheetIntro`,
+`editor.duplicatePlain`, `editor.duplicateLinked`. El toast de P11-01
+(`editor.toastSessionDuplicated`) sirve para los dos casos.
+
+**Probar P11-05**
+
+- [ ] Deslizar una sesión con ejercicios y tocar Duplicar → sale la hoja con sus
+  dos botones; la sesión no se abre.
+- [ ] «Duplicar» → la copia se comporta como hoy (sin vincular).
+- [ ] «Duplicar y vincular ejercicios» → la copia sale debajo y cada ejercicio
+  muestra «Vinculado con A» en su ficha.
+- [ ] Sentadilla de A ya vinculada con B → la copia entra en A·B: la ficha dice
+  «Vinculado con A y B» en las tres.
+- [ ] Editar series en la copia → cambia en A (y en B si estaba).
+- [ ] Ejercicio repetido en la misma sesión → cada copia se vincula con su original.
+- [ ] Sesión sin ejercicios → no sale la hoja y duplica directo.
+- [ ] Desde el ··· del editor de sesión sale la misma hoja.
+- [ ] «Separar» en un ejercicio de la copia → vuelve a suelto y A no cambia.
+
 ## Fases
 
 | Fase | Qué | Depende de | Coste | Estado |
@@ -560,3 +627,4 @@ sueltos con su título: VARIANTE, CALENTAMIENTO, PROGRESIÓN, cada uno con un
 | P11-02 | `linkRows` por etapa, `SessionChips`, ficha y hoja de vinculación, aviso en el Resumen | P11-04 | 🟡 | pendiente |
 | P11-03 | Pista en el buscador + hoja «Vincular ejercicios» de dos páginas | P11-02 | 🟡 | pendiente |
 | P11-04 | Grupo «Programación» (Progresión, Calentamiento, Variante) en el editor de ejercicio | — | 🟢 | hecho |
+| P11-05 | Duplicar una sesión ofrece vincular sus ejercicios con la original | P11-02 | 🟢 | pendiente |
