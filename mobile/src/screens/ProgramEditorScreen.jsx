@@ -277,15 +277,11 @@ export default function ProgramEditorScreen({ navigation }) {
   const stageCards = stages.map((st, idx) => ({
     id:       st.id ?? String(idx),
     number:   idx + 1,
-    name:     st.name,
     range:    rangeLabel(st, ranges[idx]),
     done:     idx < activeStageIdx,
     deload:   isDeload(st),
     locked:   lockedAt(idx),
-    // Sesiones hechas de la etapa sobre las esperadas; sin límite no hay barrita.
-    progress: idx === activeStageIdx && status.expected
-      ? Math.min(1, status.done / status.expected)
-      : null,
+    now:      idx === activeStageIdx,
   }));
 
   function selectStage(idx) {

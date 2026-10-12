@@ -1613,7 +1613,7 @@
     "stagesLabelOpen_other": "stages · {{weeks}}+ weeks",
     "viewPlan": "View plan ›",
     "newStageA11y": "New stage",
-    "stageNumber": "Stage {{n}}",
+    "stageWord": "Stage",
     "stageRange": "wk {{from}}-{{to}}",
     "stageRangeOne": "wk {{from}}",
     "stageRangeOpen": "wk {{from}}+",

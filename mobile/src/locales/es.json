@@ -1613,7 +1613,7 @@
     "stagesLabelOpen_other": "etapas · {{weeks}}+ semanas",
     "viewPlan": "Ver plan ›",
     "newStageA11y": "Nueva etapa",
-    "stageNumber": "Etapa {{n}}",
+    "stageWord": "Etapa",
     "stageRange": "sem {{from}}-{{to}}",
     "stageRangeOne": "sem {{from}}",
     "stageRangeOpen": "sem {{from}}+",

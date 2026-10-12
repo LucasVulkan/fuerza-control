@@ -12,7 +12,8 @@
 > Fase P14-07 · pendiente · Programa de una sola etapa · §5.6
 >
 > Estado: **P14-02 a 04 implementadas, por probar** (12-oct-2026, rama
-> `feat/editor-etapas`). Mientras no lleguen 05-07: no hay botón de cifras, el
+> `feat/editor-etapas`). Las fichas de etapa se rehicieron tras la primera
+> prueba (§3.3, `stages-editor-6.html` F). Mientras no lleguen 05-07: no hay botón de cifras, el
 > engranaje abre la hoja de etapa de siempre, el «+» de las tarjetas y «Ver plan»
 > van al planificador sin `addFrom`, y un programa de una sola etapa enseña su
 > tarjeta y el rótulo (la vista propia es P14-07). Diseño: cinco rondas con el
@@ -112,34 +113,39 @@ caps `mutedLight`, «**6** ETAPAS · 19 SEMANAS» (el número en `text`), con «
 alguna etapa es sin límite («19+ SEMANAS», `programTotals().open`); a la derecha,
 «Ver plan ›» en `accent`, que navega a `StagePlanner`.
 
-### 3.3 Las tarjetas de etapa
+### 3.3 Las fichas de etapa
 
-- Una tarjeta por etapa, **100 × 72 dp**, radio 12, fondo `surface`, relleno 9/8.
-  Caben tres enteras y asoma la cuarta en un móvil de 375 (con 78 cabían cuatro,
-  pero «Acumulación» ya se cortaba).
-- Dentro, de arriba abajo:
-  - **«Etapa 2»** (500/11, sin negrita): «Etapa» y no solo el número, para que no
-    haya duda de qué son, y más ligero que el nombre para que mande el nombre
-    (decisiones del usuario). Con el **candado** rojo de 10 dp a la derecha
-    si está bloqueada (§5.2, quién lo ve). Hechas: «✓ Etapa 1».
-  - **Nombre** (700/12, una línea, se corta con «…»).
-  - **Tramo de semanas** (500/10, `muted`): «sem 1-4 · sem 5-8 · sem 9-11 · sem 12».
-    Dice sin palabras que son trozos seguidos del mismo calendario. Se calcula con
-    las `durationWeeks` previstas (no con las semanas alargadas del cliente); una
-    sin límite es «sem 13+», y **después** de una sin límite ya no hay calendario:
-    esas tarjetas dicen la duración («4 sem»).
-  - **En curso**: una **barrita de progreso** abajo, a todo el ancho, 3 dp (tinte
-    `accent` al 18 % de fondo, `accent` de relleno) con las sesiones hechas de la
-    etapa sobre las esperadas (`stageStatus().done / expected`). Sin límite, sin
-    barrita.
-- Estados: la **seleccionada**, borde 1,5 dp `accent`, fondo `surface2`, «Etapa N»
-  en `accent` y nombre en `text`; el resto, «Etapa N» y nombre en `mutedLight`;
-  las **hechas**, al 55 % de opacidad; las **descargas**, «Etapa N» en `blue` (y
-  borde `blue` si están seleccionadas).
-- **Al final, un cuadrado de 46 dp** con borde discontinuo (`border`), sin fondo,
-  y un **+** en `accent`. Abre la creación de etapa con la seleccionada como base
-  (§5.5).
-- **Se desplaza con el dedo** (con imán suave al principio de cada tarjeta) y **se
+Rehechas el 12-oct tras probar la v5 en el móvil: las tarjetas de 100 × 72 con
+«Etapa 2», nombre, tramo y barrita eran pequeñas para tanto texto y no pegaban
+con el resto de la app. Ahora hablan como el onboarding y el paywall (maqueta
+[`stages-editor-6.html`](../mockups/stages-editor-6.html), variante F).
+
+- Una ficha por etapa, **88 × 66 dp**, radio 14, fondo `surface`, relleno 9/10.
+  Caben tres y asoma la cuarta en un móvil de 375.
+- Dentro:
+  - Arriba, **el número** grande (`heroName`, Barlow cursiva) y, pegado detrás
+    y alineado por la base, **«ETAPA»** pequeño (`labelStrong`, `mutedLight`). No
+    se lee «Etapa 1», pero se entiende (decisión del usuario), y como la palabra
+    es más baja deja libre la esquina de arriba a la derecha.
+  - En esa esquina, el **punto** de la en curso (7 dp, `accent`) o el **candado**
+    rojo de 10 dp si está bloqueada (§5.2, quién lo ve). No coinciden nunca: la
+    en curso no puede estar bloqueada. El progreso de la en curso no va en la
+    ficha (la barrita se leía mal): lo dice la ceja de la cabecera.
+  - Abajo, **el tramo de semanas** (`label`, `mutedLight`): «sem 1-4 · sem 5-8 ·
+    sem 9-11 · sem 12». Dice sin palabras que son trozos seguidos del mismo
+    calendario. Se calcula con las `durationWeeks` previstas (no con las semanas
+    alargadas del cliente); una sin límite es «sem 13+», y **después** de una sin
+    límite ya no hay calendario: esas fichas dicen la duración («4 sem»).
+  - **Sin nombre**: ya lo dice la cabecera, justo debajo.
+- Estados: el número en `text`; en las **hechas**, en `muted`; en las
+  **descargas**, en `blue`. La **elegida** se rellena de lima (de `blue` si es
+  descarga) desde donde la tocó el dedo, en 450 ms, como las pestañas de Inicio
+  (U13-02); el texto pasa a `onAccent` (lo pequeño, al 65 %) al mismo paso. Si
+  se elige deslizando la cabecera, el relleno sale del centro.
+- **Al final, un cuadrado de 46 × 66 dp** con borde discontinuo (`muted`), sin
+  fondo, y un **+** en `accent`. Abre la creación de etapa con la seleccionada
+  como base (§5.5).
+- **Se desplaza con el dedo** (con imán suave al principio de cada ficha) y **se
   elige tocando**: desplazar solo mueve la fila, no cambia de etapa. Al cambiar de
   etapa por otro camino (deslizando la cabecera), la fila se mueve lo justo para que
   la elegida quede a la vista.
@@ -230,9 +236,9 @@ previstas con las mismas reglas que la pestaña Carga.
 
 Componente nuevo `src/components/ui/StageCards.jsx`:
 
-- Props: `stages` (`[{ id, number, name, range, done, deload, locked, progress }]`
+- Props: `stages` (`[{ id, number, range, done, deload, locked, now }]`
   ya resueltas por la pantalla), `value`, `onChange`, `onAdd`.
-- `ScrollView` horizontal sin barra, `snapToInterval={108}` (100 + 8 de hueco)
+- `ScrollView` horizontal sin barra, `snapToInterval={96}` (88 + 8 de hueco)
   con `snapToAlignment="start"` y `decelerationRate="fast"`; el contenido sale a
   sangre (margen −16 y relleno 16, como el resto de filas desplazables de la app).
   Tocar elige; desplazar no. Al cambiar `value` desde fuera, `scrollTo` animado
@@ -246,12 +252,12 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
 
 **Probar P14-03**
 
-- [ ] Programa de 6 etapas: se ven tres tarjetas y asoma la cuarta; la en curso con
-  su barrita, las hechas atenuadas con ✓, las descargas en azul.
-- [ ] Desplazar la fila no cambia de etapa; tocar una tarjeta la elige y la página
-  cambia.
+- [ ] Programa de 6 etapas: se ven tres fichas y asoma la cuarta; la en curso con
+  su punto, las hechas con el número apagado, las descargas en azul.
+- [ ] Desplazar la fila no cambia de etapa; tocar una ficha la elige, se rellena de
+  lima desde el dedo y la página cambia.
 - [ ] Detrás de la última, el «+».
-- [ ] «Etapa N», nombre y tramo caben; un nombre largo se corta con «…».
+- [ ] «N ETAPA» y el tramo caben, también con dos cifras («11 ETAPA», «sem 12-15»).
 - [ ] Tramos: «sem 1-4 · sem 5-8…»; con una etapa sin límite, «sem 13+», y las de
   después con su duración.
 - [ ] Rótulo «6 ETAPAS · 19 SEMANAS» y «19+» con una sin límite; «Ver plan ›» abre
@@ -259,8 +265,8 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
 - [ ] Móvil del entrenador con un cliente: el candado sale en las bloqueadas por
   delante de la de ahora; en un programa propio no sale nunca. Móvil del cliente:
   igual que hoy.
-- [ ] La barrita de la etapa en curso se llena con las sesiones hechas; en una etapa
-  sin límite no sale.
+- [ ] Elegir una descarga la rellena de azul; deslizar la cabecera rellena la nueva
+  desde el centro.
 
 ### 5.3 P14-04 — Cabecera de la etapa y sus sesiones
 
@@ -372,7 +378,7 @@ reformatear el JSON):
 
 - Nuevas: rótulo (`editor.stagesLabel` con `{{count}}` y `{{weeks}}`, y la variante
   abierta), tramo (`editor.stageRange`, `editor.stageRangeOpen`, `editor.stageRangeOne`),
-  «Etapa {{n}}», «SESIONES DE ESTA ETAPA» y «SESIONES», ceja (hecha, por venir, descarga, bloqueada), meta, «Todo el
+  «ETAPA» (`editor.stageWord`), «SESIONES DE ESTA ETAPA» y «SESIONES», ceja (hecha, por venir, descarga, bloqueada), meta, «Todo el
   programa», «Añadir etapas» y su línea, «Nueva etapa desde esta», el panel de cifras
   (comparar, de dónde sale, las tres cifras, «no hay con qué comparar»).
 - Fuera (solo las usa el editor): `editor.stageTapHint`, `editor.sessionsOf`,
@@ -414,3 +420,9 @@ reformatear el JSON):
    tarjetas y deja `SessionCard`/`SwipeRow` sin tocar (dentro hacían falta tarjeta
    hundida, Duplicar en otro color y recorte). La unidad la dan el rótulo, el aire
    y que todo entra deslizando junto.
+6. **12-oct** — `stages-editor-6.html`, tras probar la v5 en el móvil: las tarjetas
+   eran pequeñas para tanto texto y no pegaban con el resto de la app; la barrita
+   de la en curso se leía mal (pasó a un punto). Selector en la voz del onboarding:
+   números (A), tramos (B), fichas (C), y dos intermedias (D, E). Elegida una C
+   con «ETAPA» pequeño detrás del número, por la base (F). La cabecera con el
+   nombre se queda como está «por ahora».
