@@ -123,9 +123,11 @@ con el resto de la app. Ahora hablan como el onboarding y el paywall (maqueta
 - **Sin elegir, un cuadrado de 52 dp** (radio 14, fondo `surface`) con solo el
   número, grande (`heroName`, Barlow cursiva): en `text`, en `muted` si está
   hecha, en `blue` si es descarga.
-- **La elegida se abre** a 92 × 66 dp, creciendo hacia la derecha, y dice
+- **La elegida se abre** a 86 × 66 dp, creciendo hacia la derecha, y dice
   **«ETAPA 2»** —«ETAPA» pequeño (`labelStrong`) y el número grande, por la base—
-  con **el tramo de semanas** debajo (`label`). Se rellena de lima (de `blue` si
+  con **el tramo de semanas** debajo (`label`), todo centrado en la ficha. El número,
+  a altura de línea 34 (1,2 em: la Barlow se corta con menos) y 2 dp de aire a la
+  derecha para la cursiva. Se rellena de lima (de `blue` si
   es descarga) desde donde la tocó el dedo, en 450 ms, como las pestañas de Inicio
   (U13-02); el texto va en `onAccent` (lo pequeño, al 65 %). El número se va antes
   de crecer y «ETAPA N» con el tramo llegan cuando ya caben. Si se elige deslizando

@@ -27,7 +27,7 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import { LockIcon } from './EditorIcons';
 
 const SMALL   = 52;             // la ficha sin elegir: un cuadrado
-const OPEN_W  = 92;             // la elegida: cabe «ETAPA 11» y «sem 12-15»
+const OPEN_W  = 86;             // la elegida: cabe «ETAPA 11» y «sem 12-15»
 const OPEN_H  = 66;
 const GAP     = spacing.sm2;
 const PAD     = spacing.lg;     // la fila sale a sangre: el relleno de página va dentro
@@ -174,23 +174,25 @@ const makeStyles = (th) => StyleSheet.create({
   fill: { position: 'absolute', width: R * 2, height: R * 2, borderRadius: R },
 
   closed: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  // A ancho fijo de ficha abierta: el texto no se recoloca mientras crece, se
-  // destapa.
+  // A tamaño fijo de ficha abierta: el texto no se recoloca mientras crece, se
+  // destapa. Centrado en los dos ejes: el punto o el candado caben en la
+  // esquina sin reservarles sitio.
   open: {
-    position:          'absolute',
-    left:              0,
-    top:               0,
-    width:             OPEN_W,
-    height:            OPEN_H,
-    paddingTop:        9,
-    paddingHorizontal: spacing.md,
-    paddingBottom:     9,
-    justifyContent:    'space-between',
+    position:       'absolute',
+    left:           0,
+    top:            0,
+    width:          OPEN_W,
+    height:         OPEN_H,
+    alignItems:     'center',
+    justifyContent: 'center',
   },
   openTop: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs2 },
-  num:     { ...textStyles.heroName, lineHeight: 28, includeFontPadding: false },
+  // 34 = 1.2 em, lo que pide la Barlow para no cortarse (ver `todayName` en
+  // SessionList); y 2 de aire a la derecha para la inclinación de la cursiva.
+  num:     { ...textStyles.heroName, lineHeight: 34, includeFontPadding: false, paddingRight: 2 },
   word:    { ...textStyles.labelStrong, color: withOpacity(th.colors.onAccent, 0.65) },
-  range:   { ...textStyles.label, color: withOpacity(th.colors.onAccent, 0.65) },
+  // La caja de 34 del número ya trae aire debajo: se le recoge un poco.
+  range:   { ...textStyles.label, color: withOpacity(th.colors.onAccent, 0.65), marginTop: -spacing.xs2 },
 
   mark: { position: 'absolute', top: 7, right: 7 },
   dot:  { width: 7, height: 7, borderRadius: 4 },
