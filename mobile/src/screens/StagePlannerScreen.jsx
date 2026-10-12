@@ -64,7 +64,7 @@ import {
   LADDER_IDS, RX_FIELDS, SCOPES, buildRungs, newRung, describeRx, isNoopRx, fieldLabelKey,
 } from '../utils/stageRx';
 import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
-import { sessionStats } from '../utils/sessionStats';
+import { stageVolume } from '../utils/stageStats';
 
 import { showDialog } from '../components/ui/dialog';
 const CHIP = 21;   // marcador de la línea de tiempo
@@ -72,22 +72,6 @@ const CHIP = 21;   // marcador de la línea de tiempo
 // ficha de cliente. Es lo que hace que el marcador caiga centrado sin medir
 // nada — plegada, la tarjeta ES la cabecera.
 const HEAD_H = 52;
-
-/**
- * El volumen de una etapa: lo mismo que la tarjeta de sesión del editor dice de
- * una sesión, sumado a las de la etapa.
- *
- * Es la misma información en TODAS las tarjetas, y por eso sustituye a la regla
- * ("−3 reps en básicos") que solo tenían algunas: de un vistazo se compara el
- * trabajo de una etapa con el de la de al lado, que es lo que se va a mirar.
- * La procedencia no se pierde — baja al cuerpo desplegado.
- */
-function stageVolume(stage, sessionTemplates, allExercises) {
-  return (stage?.days ?? []).reduce((acc, { sessionTemplateId }) => {
-    const st = sessionStats(sessionTemplates[sessionTemplateId], allExercises);
-    return { sessions: acc.sessions + 1, exercises: acc.exercises + st.exercises, sets: acc.sets + st.sets };
-  }, { sessions: 0, exercises: 0, sets: 0 });
-}
 
 /** Índice de la etapa base por defecto: la última sin regla (la última a mano). */
 function baseStageIdx(stages) {

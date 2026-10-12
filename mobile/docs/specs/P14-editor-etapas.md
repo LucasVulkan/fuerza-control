@@ -4,14 +4,18 @@
 > En corto: En Editar programa, las etapas dejan de ser un segmentado con una segunda pulsación escondida y pasan a ser una fila de tarjetas («Etapa 2 · Acumulación · sem 5-8») que se desplaza con el dedo; debajo, la cabecera de la etapa elegida y sus sesiones sueltas, como en el editor de sesión, que siguen deslizándose, reordenándose y abriéndose como hoy.
 > Inicio: 2026-10-09
 > Fase P14-01 · terminado · Diseño del editor en cinco rondas con el usuario · §8
-> Fase P14-02 · pendiente · Cifras de una etapa: funciones puras y tests · §5.1
-> Fase P14-03 · pendiente · Tarjetas de etapa y rótulo · §5.2
-> Fase P14-04 · pendiente · Cabecera de la etapa y sus sesiones · §5.3
+> Fase P14-02 · terminado · Cifras de una etapa: funciones puras y tests · §5.1
+> Fase P14-03 · hecho · Tarjetas de etapa y rótulo · §5.2
+> Fase P14-04 · hecho · Cabecera de la etapa y sus sesiones · §5.3
 > Fase P14-05 · pendiente · Panel de cifras y grupos musculares · §5.4
 > Fase P14-06 · pendiente · Hoja de Ajustes y «nueva etapa» · §5.5
 > Fase P14-07 · pendiente · Programa de una sola etapa · §5.6
 >
-> Estado: **diseño cerrado, sin implementar** (12-oct-2026). Cinco rondas con el
+> Estado: **P14-02 a 04 implementadas, por probar** (12-oct-2026, rama
+> `feat/editor-etapas`). Mientras no lleguen 05-07: no hay botón de cifras, el
+> engranaje abre la hoja de etapa de siempre, el «+» de las tarjetas y «Ver plan»
+> van al planificador sin `addFrom`, y un programa de una sola etapa enseña su
+> tarjeta y el rótulo (la vista propia es P14-07). Diseño: cinco rondas con el
 > usuario (9 y 12-oct); la maqueta que manda es
 > [`docs/mockups/stages-editor-5.html`](../mockups/stages-editor-5.html) con las
 > sesiones **sueltas**. Las anteriores quedan como historia (§8); de la v4
@@ -217,6 +221,10 @@ nuevo si crece; con tests en vitest:
   sesiones de una etapa son las de una semana).
 - `stageBaseIdx(stages, idx)` → índice de la etapa de la que salió
   (`stage.derivedFromStageId`) o `null` (hecha a mano o duplicada).
+
+Hecho en `src/utils/stageStats.js` (+ `stageStats.test.js`). `stageSetsByGroup`
+envuelve `plannedSetsByGroup` de `trainingLoad.js`, que ya contaba las series
+previstas con las mismas reglas que la pestaña Carga.
 
 ### 5.2 P14-03 — Tarjetas de etapa y rótulo
 
