@@ -14,7 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import * as Clipboard from 'expo-clipboard';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import Reanimated, {
   LinearTransition, FadeOutUp, useAnimatedRef, useSharedValue, withTiming, withSequence, withDelay, Easing, useAnimatedProps, useAnimatedStyle, interpolateColor,
 } from 'react-native-reanimated';
@@ -1289,15 +1289,6 @@ function TargetIcon({ size = 20, color }) {
     </Svg>
   );
 }
-function CloudUpIcon({ size = 20, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M7 18a4 4 0 0 1-.5-7.97A6 6 0 0 1 18 9.5a3.5 3.5 0 0 1-.5 8.5" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M12 21V12M9 14.5l3-3 3 3" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
 // ── ClientActionsSheet ──────────────────────────────────────────────────────────
 // The "···" menu on a client card (pulsación larga): keeps the frequent action
 // one tap on the card and tucks the rest (next session, edit program, info)
@@ -1362,40 +1353,6 @@ function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart,
  * comportan igual (mismo contador, mismo filtro, mismo orden "el más parado
  * primero"), así que son datos y no dos ramas copiadas.
  */
-const ADHERENCE_PILLS = { at_risk: STATUS.AT_RISK, slipping: STATUS.SLIPPING };
-
-/**
- * Ephemeral filter pill that doubles as an attention counter.
- *
- * `ink` es el tono LEGIBLE de la familia y `color` el de relleno — la regla de
- * dos tonos del tema (sólido para rellenos, claro para texto pequeño sobre
- * fondo). Sin esto, "En riesgo" se pintaba con el rojo de relleno de formaFit
- * (#ff0900), que sobre el fondo teñido da 4.3:1 a 12 px: por debajo de AA, y a
- * ojo casi ilegible por ser un rojo sin nada de verde. El tono claro sube a
- * 5.7:1. El estado activo rellena con ese mismo tono claro por lo mismo: el
- * texto oscuro sobre #ff0900 se quedaba en 4.6:1.
- */
-function AttentionPill({ label, count, color, ink = color, active, onPress }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      style={[styles.attnPill, { backgroundColor: active ? ink : withOpacity(ink, 0.12) }]}
-      onPress={onPress}
-      activeOpacity={0.75}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-    >
-      <Text style={[styles.attnPillText, { color: active ? th.colors.bg : ink }]}>{label}</Text>
-      <View style={[styles.attnPillBadge, {
-        backgroundColor: active ? withOpacity(th.colors.bg, 0.25) : withOpacity(ink, 0.2),
-      }]}>
-        <Text style={[styles.attnPillBadgeText, { color: active ? th.colors.bg : ink }]}>{count}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 // Iconos de 15 px de los botones de la fila (C08-clientes-dashboard.md §4.3),
 // sólidos. El color va en el icono, el del aviso al que responde: el fondo del
 // botón es neutro. Cada trazo es `fill` (relleno, con un borde fino del mismo
@@ -1837,7 +1794,6 @@ export default function ClientsScreen() {
   const [statusFilter,     setStatusFilter]     = useState('active'); // 'active'|'inactive'|'all'
   const [tagFilter,        setTagFilter]        = useState([]);    // active tag IDs (used in filter)
   const [showFilterSheet,  setShowFilterSheet]  = useState(false);
-  const [adherenceFilter,  setAdherenceFilter]  = useState(null);   // null | 'at_risk' | 'unreviewed'
 
   function toggleTagFilter(id) {
     setTagFilter((p) => p.includes(id) ? p.filter((t) => t !== id) : [...p, id]);
@@ -1845,7 +1801,6 @@ export default function ClientsScreen() {
   function clearFilters() {
     setStatusFilter('active');
     setTagFilter([]);
-    setAdherenceFilter(null);
   }
   // Filters that diverge from the default view — drives the badge + applied row.
   const activeFilterCount = tagFilter.length + (statusFilter !== 'active' ? 1 : 0);
@@ -1996,26 +1951,6 @@ export default function ClientsScreen() {
     return out;
   }, [clients, trainerSync.lastSeenSessionsCount]);
 
-  // Pill counters — global avisos, not scoped to search/tags. Las dos pills de
-  // adherencia se cuentan en la misma pasada: es el mismo recorrido y el mismo
-  // dato. "Aflojando" es el aviso que llega a tiempo — `requiresAttention` ya
-  // incluía SLIPPING y la tarjeta ya lo pintaba, pero no se podía filtrar.
-  const attnCounts = useMemo(() => {
-    const out = { at_risk: 0, slipping: 0 };
-    Object.values(clients ?? {}).forEach((c) => {
-      const st = adherenceByClient[c.id]?.status;
-      if (st === STATUS.AT_RISK)       out.at_risk  += 1;
-      else if (st === STATUS.SLIPPING) out.slipping += 1;
-    });
-    return out;
-  }, [clients, adherenceByClient]);
-  const atRiskCount   = attnCounts.at_risk;
-  const slippingCount = attnCounts.slipping;
-  const unreviewedCount = useMemo(
-    () => Object.values(unreviewedByClient).filter((n) => n > 0).length,
-    [unreviewedByClient],
-  );
-
   // Clients with unsent uploads (program changes and/or next-session prescriptions).
   // Solo los que tienen app: al invitado se le sube solo y al que no tiene no
   // se le manda nada.
@@ -2023,8 +1958,6 @@ export default function ClientsScreen() {
     () => Object.values(clients ?? {}).filter((c) => linkOf(c) === 'linked' && (c.programDirty || c.overridesDirty) && !isFrozen(c.id)),
     [clients, linkOf, isFrozen],
   );
-  const pendingOverrideCount = pendingClients.filter((c) => c.overridesDirty).length;
-  const pendingProgramCount  = pendingClients.filter((c) => c.programDirty).length;
   const [sendingAll, setSendingAll] = useState(false);
 
   async function sendAllPending() {
@@ -2045,36 +1978,18 @@ export default function ClientsScreen() {
     );
   }
 
-  // If a filter's counter dropped to zero its pill is gone, so ignore it
-  // (derived, not stored — avoids resetting state from an effect).
-  const effectiveAdherenceFilter =
-    (ADHERENCE_PILLS[adherenceFilter] && attnCounts[adherenceFilter] === 0) ||
-    (adherenceFilter === 'unreviewed' && unreviewedCount === 0)
-      ? null : adherenceFilter;
-
-  // An adherence pill, when active, overrides the manual status/tag filters and
-  // jumps to its focused subset + order. Otherwise the list behaves as before.
   const clientList = useMemo(() => {
     let list = filterBySearch(Object.values(clients ?? {}), search, (c) => c.name);
 
-    const pillStatus = ADHERENCE_PILLS[effectiveAdherenceFilter];
-    if (pillStatus) {
-      list = list.filter((c) => adherenceByClient[c.id]?.status === pillStatus);
-    } else if (effectiveAdherenceFilter === 'unreviewed') {
-      list = list.filter((c) => (unreviewedByClient[c.id] ?? 0) > 0);
-    } else {
-      list = list
-        .filter((c) => {
-          const s = c.status ?? 'active';
-          if (statusFilter === 'active')   return s !== 'inactive';
-          if (statusFilter === 'inactive') return s === 'inactive';
-          return true;
-        })
-        .filter((c) => tagFilter.length === 0 || tagFilter.some((t) => (c.tags ?? []).includes(t)));
-    }
-
-    return list;
-  }, [clients, search, statusFilter, tagFilter, effectiveAdherenceFilter, adherenceByClient, unreviewedByClient]);
+    return list
+      .filter((c) => {
+        const s = c.status ?? 'active';
+        if (statusFilter === 'active')   return s !== 'inactive';
+        if (statusFilter === 'inactive') return s === 'inactive';
+        return true;
+      })
+      .filter((c) => tagFilter.length === 0 || tagFilter.some((t) => (c.tags ?? []).includes(t)));
+  }, [clients, search, statusFilter, tagFilter]);
 
   // Los congelados, al final y bajo su propio título (M01 §4.5): no se mezclan
   // con los que llevas. Mismo orden dentro de cada grupo.
@@ -3290,10 +3205,39 @@ export default function ClientsScreen() {
           />
         </View>
 
-        {/* Rótulo de la lista (§7.1): «Clientes» y el orden a la derecha. Con una
-            lente, el botón dice por qué está ordenada; en «Reordenar», «Listo». */}
+        {/* Rótulo de la lista (§7.1): «Clientes», o las etiquetas activas con scroll
+            horizontal (§7.2); el orden, fijo a la derecha. Con una lente, el botón
+            dice por qué está ordenada; en «Reordenar», «Listo». */}
         <View style={styles.listLabelRow}>
-          <Text style={styles.listLabel}>{t('clients.listHeader').toUpperCase()}</Text>
+          {tagFilter.length > 0 && !editing ? (
+            <View style={styles.tagsWrap}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.tagsRow} keyboardShouldPersistTaps="handled">
+                {tagFilter.map((id) => {
+                  const tagName = allTags.find((tg) => tg.id === id)?.name;
+                  if (!tagName) return null;
+                  return (
+                    <TouchableOpacity key={id} style={styles.tagRowPill} onPress={() => toggleTagFilter(id)} activeOpacity={0.7}>
+                      <Text style={styles.tagRowPillText}>{tagName.toUpperCase()}</Text>
+                      <CloseIcon size={12} color={th.colors.onAccent} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {/* Degradado de salida: avisa de que hay más a la derecha. */}
+              <Svg width={20} height="100%" style={styles.tagsFade} pointerEvents="none">
+                <Defs>
+                  <LinearGradient id="tagsFade" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={th.colors.bg} stopOpacity={0} />
+                    <Stop offset="1" stopColor={th.colors.bg} stopOpacity={1} />
+                  </LinearGradient>
+                </Defs>
+                <Rect width="100%" height="100%" fill="url(#tagsFade)" />
+              </Svg>
+            </View>
+          ) : (
+            <Text style={styles.listLabel}>{t('clients.listHeader').toUpperCase()}</Text>
+          )}
           {editing ? (
             <TouchableOpacity onPress={finishReorder} hitSlop={8}>
               <Text style={styles.sortDone}>{t('clients.sort.done')}</Text>
@@ -3301,101 +3245,37 @@ export default function ClientsScreen() {
           ) : (
             <TouchableOpacity style={styles.sortBtn} onPress={() => setShowSortSheet(true)} hitSlop={8}>
               <SortIcon color={th.colors.mutedLight} />
-              <Text style={styles.sortBtnText}>
-                {lens && order.by !== 'manual'
-                  ? t(lens === 'adh' ? 'clients.sort.lensAdherence' : 'clients.sort.lensImprovement')
-                  : t(`clients.sort.${order.by}`)}
-              </Text>
+              {/* Con etiquetas, solo el icono: el sitio es de las etiquetas. */}
+              {!tagFilter.length && (
+                <Text style={styles.sortBtnText}>
+                  {lens && order.by !== 'manual'
+                    ? t(lens === 'adh' ? 'clients.sort.lensAdherence' : 'clients.sort.lensImprovement')
+                    : t(`clients.sort.${order.by}`)}
+                </Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Row 3 — conditional: attention pills + applied filters. Hidden when
-            there's nothing to show, so the default state is two clean rows. */}
-        {(atRiskCount > 0 || slippingCount > 0 || unreviewedCount > 0 || tagFilter.length > 0) && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Attention pills — ephemeral: only when there's something to act on */}
-            {atRiskCount > 0 && (
-              <AttentionPill
-                label={t('clients.atRiskPill')}
-                count={atRiskCount}
-                color={th.colors.red}
-                ink={th.colors.redText}
-                active={adherenceFilter === 'at_risk'}
-                onPress={() => setAdherenceFilter((f) => (f === 'at_risk' ? null : 'at_risk'))}
-              />
-            )}
-            {slippingCount > 0 && (
-              <AttentionPill
-                label={t('clients.slippingPill')}
-                count={slippingCount}
-                color={th.colors.orange}
-                active={adherenceFilter === 'slipping'}
-                onPress={() => setAdherenceFilter((f) => (f === 'slipping' ? null : 'slipping'))}
-              />
-            )}
-            {unreviewedCount > 0 && (
-              <AttentionPill
-                label={t('clients.unreviewedPill')}
-                count={unreviewedCount}
-                color={th.colors.accent}
-                active={adherenceFilter === 'unreviewed'}
-                onPress={() => setAdherenceFilter((f) => (f === 'unreviewed' ? null : 'unreviewed'))}
-              />
-            )}
-
-            {/* Applied tag filters. El estado (Todos/Inactivos) NO pinta pill:
-                es una vista del segmentado, igual que el orden. */}
-            {tagFilter.map((id) => {
-              const tagName = allTags.find((tg) => tg.id === id)?.name;
-              if (!tagName) return null;
-              return (
-                <View key={id} style={styles.tagRowPill}>
-                  <Text style={styles.tagRowPillText}>{tagName}</Text>
-                  <TouchableOpacity onPress={() => toggleTagFilter(id)} hitSlop={8} activeOpacity={0.7}>
-                    <CloseIcon size={12} color={th.colors.onAccent} />
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </ScrollView>
-        )}
 
       </View>
 
-      {/* Global pending-uploads banner — between filters and the card list.
-          Al enviarlo todo, `pendingClients` se vacía y el aviso se desmonta: sale
-          hacia arriba y, cuando termina, el `layout` del bloque de la lista la
-          sube deslizando en vez de dar el salto. */}
-      {pendingClients.length > 0 && (
-        <Reanimated.View style={styles.pendingBanner} exiting={FadeOutUp.duration(220)}>
-          <CloudUpIcon size={19} color={th.colors.blue} />
-          {/* Titular corto y fijo: la frase larga no cabía en la columna que deja
-              el botón, y el detalle (a cuántos y de qué) se lee mejor abajo. */}
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.pendingTitle} numberOfLines={1}>
-              {t('clients.pendingTitle')}
-            </Text>
-            <Text style={styles.pendingSub} numberOfLines={2}>
-              {[
-                t('clients.pendingClientsCount', { count: pendingClients.length }),
-                pendingOverrideCount ? t('clients.pendingPrescriptions', { count: pendingOverrideCount }) : null,
-                pendingProgramCount  ? t('clients.pendingPrograms',      { count: pendingProgramCount })  : null,
-              ].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
+      {/* Enviar todo (C08 §7.4): solo con 2 o más clientes con cambios sin
+          enviar; con uno basta su botón en la fila. Al enviarlo todo se desmonta
+          hacia arriba y el `layout` de la lista la sube deslizando. */}
+      {pendingClients.length >= 2 && !editing && (
+        <Reanimated.View style={styles.sendAllRow} exiting={FadeOutUp.duration(220)}>
+          <Text style={styles.sendAllText} numberOfLines={1}>
+            {t('clients.sendAllRow', { count: pendingClients.length })}
+          </Text>
           <TouchableOpacity
-            style={[styles.pendingBtn, sendingAll && { opacity: 0.6 }]}
+            style={[styles.cCta, sendingAll && { opacity: 0.6 }]}
             onPress={sendAllPending}
             disabled={sendingAll}
             activeOpacity={0.85}
           >
-            <Text style={styles.pendingBtnText}>{sendingAll ? t('clients.sending') : t('clients.sendAll')}</Text>
+            <CtaIcon name="send" color={th.colors.blue} bg={th.colors.surface3 ?? th.colors.surface2} />
+            <Text style={styles.cCtaText}>{sendingAll ? t('clients.sending') : t('clients.sendAll')}</Text>
           </TouchableOpacity>
         </Reanimated.View>
       )}
@@ -3423,7 +3303,7 @@ export default function ClientsScreen() {
       {editing ? (
         <Reanimated.ScrollView
           ref={reorderScrollRef}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl + insets.bottom }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm2, paddingBottom: spacing.xxl + insets.bottom }}
         >
           <Sortable.Grid
             {...SORTABLE_PROPS}
@@ -3456,7 +3336,7 @@ export default function ClientsScreen() {
         <FlatList
           data={listData}
           keyExtractor={(item) => item.key}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, gap: spacing.xs, paddingBottom: spacing.xxl + insets.bottom }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm2, gap: spacing.xs, paddingBottom: spacing.xxl + insets.bottom }}
           refreshControl={
             <RefreshControl
               refreshing={refreshingList}
@@ -3640,7 +3520,7 @@ export default function ClientsScreen() {
                 { id: 'inactive', label: t('clients.filterSheet.statusInactive') },
               ]}
               value={statusFilter}
-              onChange={(id) => { setAdherenceFilter(null); setStatusFilter(id); }}
+              onChange={setStatusFilter}
             />
           </View>
 
@@ -3956,19 +3836,30 @@ const makeStyles = (th) => StyleSheet.create({
     borderColor:  th.colors.surface2,
   },
   // Filter button badge (nº of applied filters)
+  // El globo era de 14 con el texto en `caps`: 12 px con +1.6 de tracking no
+  // cabía y el número salía descentrado (el tracking deja aire a la derecha y la
+  // caja de línea pasaba del alto del círculo). Ahora como el globo de «sin
+  // revisar»: `labelStrong` sin tracking, caja de línea igual al círculo.
   filterBadge: {
     position:        'absolute',
-    top:             3,
-    right:           3,
-    minWidth:        14,
-    height:          14,
-    borderRadius:    7,
+    top:             2,
+    right:           2,
+    minWidth:        16,
+    height:          16,
+    borderRadius:    8,
     backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
-    paddingHorizontal: 3,
+    paddingHorizontal: spacing.xs,
   },
-  filterBadgeText: { ...textStyles.caps, color: th.colors.onAccent },
+  filterBadgeText: {
+    ...textStyles.labelStrong,
+    lineHeight:         16,
+    includeFontPadding: false,
+    textAlignVertical:  'center',
+    textAlign:          'center',
+    color:              th.colors.onAccent,
+  },
   // Unified filter sheet
   filterSheetBody: {
     gap:           spacing.lg,
@@ -4084,44 +3975,6 @@ const makeStyles = (th) => StyleSheet.create({
   // Row 3: Filter pills row. Sin marginTop negativo: el gap con el buscador
   // lo da el `gap` del listHeader (space/sm=6), igual que el que hay entre el
   // buscador y los botones de arriba.
-  filterRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom:  spacing.xs,
-  },
-  // Attention pills (En riesgo / Sin revisar) — misma geometría y tipografía que
-  // las pills de etiqueta; lo único propio es el color, que es semántico.
-  attnPill: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    borderRadius:      th.radius.sm,
-    flexShrink:        0,
-  },
-  attnPillText: {
-    ...textStyles.labelStrong,
-  },
-  attnPillBadge: {
-    borderRadius:      th.radius.full,
-    minWidth:          18,
-    height:            18,
-    alignItems:        'center',
-    justifyContent:    'center',
-    paddingHorizontal: spacing.xs2,
-    flexShrink:        0,
-  },
-  attnPillBadgeText: {
-    ...textStyles.label,
-    fontFamily: 'Inter_700Bold',
-  },
-  // Tag pills aplicadas — pill seleccionada del lenguaje nuevo: relleno accent
-  // sólido, `radius/sm` y `text/card-type` (igual que las pills de la hoja de
-  // filtros del buscador de ejercicios). Sin borde ni variante "inactiva": si
-  // está en esta fila, está aplicada.
   tagRowPill: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -4333,6 +4186,24 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface3 ?? th.colors.border,
   },
   cLensFill: { height: '100%', borderRadius: 2 },
+  // Etiquetas activas en el rótulo (§7.2): scroll horizontal con degradado.
+  tagsWrap:  { flex: 1, minWidth: 0, marginRight: spacing.md },
+  tagsRow:   { gap: spacing.sm, paddingRight: spacing.lg },
+  tagsFade:  { position: 'absolute', right: 0, top: 0, bottom: 0 },
+  // «Enviar todo» (§7.4): una fila del ancho de la lista, encima de ella.
+  sendAllRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    marginHorizontal:  spacing.lg,
+    marginTop:         spacing.sm2,
+    paddingLeft:       spacing.lg,
+    paddingRight:      spacing.md,
+    paddingVertical:   spacing.md,
+    borderRadius:      th.radius.md,
+    backgroundColor:   th.colors.surface,
+  },
+  sendAllText: { ...textStyles.labelStrong, color: th.colors.blue, flex: 1, minWidth: 0 },
   // Rótulo de la lista y botón de orden (§6.1, §7.1).
   listLabelRow: {
     flexDirection:     'row',
@@ -4340,6 +4211,8 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:    'space-between',
     paddingHorizontal: spacing.lg,
     paddingLeft:       spacing.lg + spacing.xs2,
+    // Como el rótulo de sección de Inicio (`SectionHeader`): space/lg encima y,
+    // hasta la primera fila, el space/sm2 del `paddingTop` de la lista.
     marginTop:         spacing.lg,
   },
   listLabel:   { ...textStyles.caps, color: th.colors.text },
@@ -4945,7 +4818,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.mutedLight,
     flexShrink: 1,
   },
-  // Pill de estado: geometría de `attnPill` un escalón por debajo (radius/xs,
+  // Pill de estado: geometría de la antigua pill de atención un escalón por debajo (radius/xs,
   // padding sm/xs2, `spacing-tag` en vez de `card-type`).
   billPill: {
     paddingHorizontal: spacing.sm,

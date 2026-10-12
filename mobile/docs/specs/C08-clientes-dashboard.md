@@ -3,13 +3,14 @@
 > Tema: conexión
 > En corto: La pantalla de Clientes pasa a leerse de un vistazo: arriba tres cifras que se pulsan para comparar a todos, y una fila por cliente que dice una sola cosa cada vez (dónde va, o qué necesita y el botón para hacerlo). Fuera las pills y el ruido de colores; el orden lo elige el entrenador y se queda guardado.
 > Inicio: 2026-10-08
+> Fin: 2026-10-12
 > Fase C08-01 · hecho · Avatar con color de identidad e insignia de «con app» · §3
 > Fase C08-02 · hecho · La fila: aviso o programa, botón con icono, cuadraditos, última vez y muesca de sin revisar · §4
 > Fase C08-03 · hecho · Tres tarjetas de resumen; adherencia y mejora como lentes · §5
 > Fase C08-04 · hecho · Orden elegido y guardado: criterio, «lo pendiente, arriba» y a mano · §6
-> Fase C08-05 · pendiente · Rótulo de la lista: etiquetas con scroll, «Enviar todo» y fuera las pills · §7
+> Fase C08-05 · hecho · Rótulo de la lista: etiquetas con scroll, «Enviar todo» y fuera las pills · §7
 >
-> Estado: **C08-01 implementada y probada** (8-oct-2026): `ClientAvatar.jsx`,
+> Estado: **C08 implementada y probada entera** (8→12-oct-2026). C08-01: `ClientAvatar.jsx`,
 > `utils/identityColor.js` (+ test), `IDENTITY_COLORS` en `theme.js`, `color` al crear
 > cliente (las dos altas del store) y migración en `onRehydrateStorage`. Añadidos tras la
 > primera prueba: insignia de reloj para el invitado y el «atrás» de Android desde la
@@ -28,7 +29,13 @@
 > **C08-04 implementada y probada** (12-oct-2026): `utils/orderClients.js` (+ test), orden en
 > `profile.clientsOrder`, hoja «Ordenar» (`ChoiceRow` + interruptor), modo «Reordenar» con
 > `Sortable.Grid` y asas. El rótulo de la lista ya existe con «CLIENTES» y el botón de orden;
-> C08-05 le añade «Esta semana» y las etiquetas. Fuera el orden de la hoja de filtros y sus claves. Las demás, sin implementar. Sale de iterar ocho
+> C08-05 le añade las etiquetas. Fuera el orden de la hoja de filtros y sus claves.
+> **C08-05 implementada y probada** (12-oct-2026): fuera las pills de atención
+> (`AttentionPill`, sus contadores y `adherenceFilter`), etiquetas en el rótulo con scroll y
+> degradado, «Enviar todo» compacto solo con 2 o más. Decisiones al implementar: sin «Esta
+> semana» en el rótulo (junto al botón de orden no queda sobre los cuadraditos y se leía
+> «Esta semana ⇅ Actividad»; la v8 tampoco lo llevaba); el botón de filtro conserva su
+> globo con el número de filtros en vez del punto lima. Las demás, sin implementar. Sale de iterar ocho
 > maquetas con el usuario en el chat; la que manda es
 > [`docs/mockups/clients-dashboard-8.html`](../mockups/clients-dashboard-8.html),
 > que es interactiva (caso tranquilo / movido / lunes, etiquetas, hoja de orden,
@@ -452,9 +459,8 @@ Orden final de la lista, en este orden de reglas:
 Entre las tarjetas y la lista, una línea:
 
 - Izquierda: **CLIENTES** (rol de rótulo de sección).
-- Derecha: el botón de orden (§6.1). Sin lente y sin etiquetas, a su izquierda
-  y en `mutedLight`, **Esta semana** encima de la columna de los cuadraditos.
-  Si no caben los dos, manda el botón de orden.
+- Derecha: el botón de orden (§6.1). Sin «Esta semana»: junto al botón de orden
+  no queda encima de los cuadraditos y se leía «Esta semana ⇅ Actividad».
 
 ### 7.2 Etiquetas
 
@@ -489,13 +495,13 @@ fila). Con uno solo basta su botón «Enviar» en la fila. El banner de congelad
 
 **Probar C08-05**
 
-- [ ] Sin etiquetas: «CLIENTES» a la izquierda, «Esta semana» y «⇅ Actividad» a la derecha.
-- [ ] Activar una etiqueta: el rótulo pasa a su pastilla lima con ✕; las tres
-  tarjetas cuentan solo a esos clientes; el botón de filtro lleva punto lima.
-- [ ] Activar tres: se desplazan en horizontal y el botón de orden sigue fijo a la
+- [x] Sin etiquetas: «CLIENTES» a la izquierda y «⇅ Actividad» a la derecha.
+- [x] Activar una etiqueta: el rótulo pasa a su pastilla lima con ✕; las tres
+  tarjetas cuentan solo a esos clientes; el botón de filtro lleva su globo.
+- [x] Activar tres: se desplazan en horizontal y el botón de orden sigue fijo a la
   derecha. La ✕ de una quita solo esa.
-- [ ] No hay pills de «En riesgo» ni «Sin revisar» en ningún caso.
-- [ ] Un cliente con cambios sin enviar: no hay banner, solo su botón. Dos: sale
+- [x] No hay pills de «En riesgo» ni «Sin revisar» en ningún caso.
+- [x] Un cliente con cambios sin enviar: no hay banner, solo su botón. Dos: sale
   la fila «Cambios sin enviar · 2 clientes» con «ENVIAR TODO», que los envía.
 
 ## 8. Textos nuevos (es · en)
