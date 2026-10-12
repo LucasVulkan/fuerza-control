@@ -1,27 +1,24 @@
-# Spec — Editor de programa: las etapas como pestañas de una carpeta
+# Spec — Editor de programa: tarjetas de etapa y sus sesiones
 
 > Tema: programas
-> En corto: En Editar programa, las etapas dejan de ser un segmentado con una segunda pulsación escondida y pasan a ser las pestañas de una carpeta: cada pestaña es un tramo de semanas del programa y, debajo, la tarjeta de la etapa lleva dentro sus sesiones, que siguen deslizándose, reordenándose y abriéndose como hoy.
+> En corto: En Editar programa, las etapas dejan de ser un segmentado con una segunda pulsación escondida y pasan a ser una fila de tarjetas («Etapa 2 · Acumulación · sem 5-8») que se desplaza con el dedo; debajo, la cabecera de la etapa elegida y sus sesiones sueltas, como en el editor de sesión, que siguen deslizándose, reordenándose y abriéndose como hoy.
 > Inicio: 2026-10-09
-> Fase P14-01 · terminado · Diseño del editor en cuatro rondas con el usuario · §8
+> Fase P14-01 · terminado · Diseño del editor en cinco rondas con el usuario · §8
 > Fase P14-02 · pendiente · Cifras de una etapa: funciones puras y tests · §5.1
-> Fase P14-03 · pendiente · Pestañas de etapa y rótulo · §5.2
-> Fase P14-04 · pendiente · Tarjeta de la etapa con sus sesiones dentro · §5.3
+> Fase P14-03 · pendiente · Tarjetas de etapa y rótulo · §5.2
+> Fase P14-04 · pendiente · Cabecera de la etapa y sus sesiones · §5.3
 > Fase P14-05 · pendiente · Panel de cifras y grupos musculares · §5.4
 > Fase P14-06 · pendiente · Hoja de Ajustes y «nueva etapa» · §5.5
 > Fase P14-07 · pendiente · Programa de una sola etapa · §5.6
 >
-> Estado: **diseño cerrado, sin implementar** (12-oct-2026). Cuatro rondas con el
+> Estado: **diseño cerrado, sin implementar** (12-oct-2026). Cinco rondas con el
 > usuario (9 y 12-oct); la maqueta que manda es
-> [`docs/mockups/stages-editor-4.html`](../mockups/stages-editor-4.html). Las
-> anteriores (`stages-v2.html` §1, `stages-editor-2.html`, `stages-editor-3.html`)
-> quedan como historia (§8). El creador de etapas y el planificador van aparte, en
+> [`docs/mockups/stages-editor-5.html`](../mockups/stages-editor-5.html) con las
+> sesiones **sueltas**. Las anteriores quedan como historia (§8); de la v4
+> (`stages-editor-4.html`) vale todo menos las pestañas y las sesiones dentro. El
+> creador de etapas y el planificador van aparte, en
 > [P15-creador-etapas.md](P15-creador-etapas.md); hasta que P15 exista, las
 > entradas a «nueva etapa» van al planificador de hoy (§5.5).
->
-> Las pestañas, «a confirmar cuando se vean en el móvil» (palabras del usuario): si
-> en el dispositivo no convencen, la alternativa con más números era la línea de
-> segmentos de `stages-editor-3.html`.
 
 ---
 
@@ -58,33 +55,39 @@ mismo programa** (tramos de semanas, el mesociclo), no como programas distintos.
   `stageStatus`, como ya hace el planificador.
 - **«Qué sesión toca»** (U13) se queda donde está, debajo.
 - **`ProgramDetailScreen`** (el visualizador) sigue con `StageSelector`; decidir si
-  pasa a pestañas es cosa de P15 §6.7. Por eso `StageSelector` no se borra.
+  pasa a tarjetas de etapa es cosa de P15 §6.7. Por eso `StageSelector` no se borra.
 - El planificador (`StagePlannerScreen`) no cambia salvo el parámetro de entrada de
   §5.5.
 
 ## 3. Cómo queda (diseño cerrado)
 
-De arriba abajo, con dos o más etapas:
+De arriba abajo, con dos o más etapas. Es el mismo esqueleto que el editor de
+sesión (`SessionEditorScreen`: chips A/B/C, tarjeta de resumen, «EJERCICIOS» y las
+tarjetas sueltas): quien sabe usar uno sabe usar el otro.
 
 ```
 ‹        EDITAR PROGRAMA                ✓
             Fuerza Base
-6 ETAPAS · 19 SEMANAS            Ver plan ›     ← rótulo, pegado a las pestañas
-      ┌─────┐┏━━━━━┓┌─────┐┌─────┐┌─────┐
-      │  ✓  │┃  2  ┃│ 3 🔒│ 4 🔒│  5  │┊ + ┊
-      │sem1-4│┃sem5-8┃│sem9-11│sem 12│...  ┊nueva┊
-      └─────┘┃ ▬▬─ ┃└─────┘└─────┘└─────┘
-╭─────────────┛     ┗──────────────────────╮   ← la pestaña se funde con el panel
-│ EN CURSO · SEMANA 2 DE 4       [≡] [⚙]   │
+6 ETAPAS · 19 SEMANAS            Ver plan ›     ← rótulo, pegado a las tarjetas
+┌─────────┐┏━━━━━━━━━┓┌──────────┐┌──
+│✓ Etapa 1│┃Etapa 2  ┃│Etapa 3 🔒││Eta      ← fila desplazable; «+» al final
+│Base     │┃Acumulac.┃│Intensif… ││
+│sem 1-4  │┃sem 5-8  ┃│sem 9-11  ││
+│         │┃▬▬▬───── ┃│          ││
+└─────────┘┗━━━━━━━━━┛└──────────┘└──
+╭──────────────────────────────────────────╮
+│ EN CURSO · SEMANA 2 DE 4       [≡] [⚙]   │   ← cabecera de la etapa
 │ 2 Acumulación                            │
 │ 4 semanas · 3 sesiones                   │
-│ ┌──────────────────────────────────────┐ │
-│ │ A  Pierna y empuje               ⠿   │ │   ← sesiones hundidas (bg sobre surface)
-│ │    5 ejercicios · 22 series · 75 min │ │
-│ └──────────────────────────────────────┘ │
-│   … B, C …                               │
-│       + Añadir sesión a Acumulación      │
 ╰──────────────────────────────────────────╯
+SESIONES DE ESTA ETAPA
+┌──────────────────────────────────────────┐
+│ A  Pierna y empuje                   ⠿   │   ← las tarjetas de sesión de hoy
+│    5 ejercicios · 22 series · 75 min     │
+└──────────────────────────────────────────┘
+  … B, C …
+       + Añadir sesión a Acumulación
+
 QUÉ SESIÓN TOCA
 [ Rotación | Semanal | Libre ]
 ```
@@ -93,49 +96,53 @@ QUÉ SESIÓN TOCA
 
 - La tarjeta de resumen (`summaryCard`) y el título «ETAPAS».
 - El texto de ayuda «toca otra vez para editar» (`editor.stageTapHint`).
-- El título «SESIONES DE …» (`editor.sessionsOf`).
+- El título «SESIONES DE …» con el nombre (`editor.sessionsOf`): pasa a ser
+  «SESIONES DE ESTA ETAPA», sin nombre (el nombre está en la cabecera, justo encima).
 - La segunda pulsación sobre la etapa seleccionada.
-- «N entrenos por semana»: ya lo dice la meta de la tarjeta.
+- «N entrenos por semana»: ya lo dice la meta de la cabecera.
 
 ### 3.2 El rótulo
 
-Una línea pegada a las pestañas (8 dp por debajo hasta las pestañas): a la
-izquierda, en caps `mutedLight`, «**6** ETAPAS · 19 SEMANAS» (el número en
-`text`), con «+» si alguna etapa es sin límite («19+ SEMANAS»,
-`programTotals().open`); a la derecha, «Ver plan ›» en `accent`, que navega a
-`StagePlanner`.
+Una línea pegada a las tarjetas (8 dp por debajo hasta ellas): a la izquierda, en
+caps `mutedLight`, «**6** ETAPAS · 19 SEMANAS» (el número en `text`), con «+» si
+alguna etapa es sin límite («19+ SEMANAS», `programTotals().open`); a la derecha,
+«Ver plan ›» en `accent`, que navega a `StagePlanner`.
 
-### 3.3 Las pestañas
+### 3.3 Las tarjetas de etapa
 
-- Una pestaña por etapa, **62 dp** de ancho (que quepa «sem 12-15»), 46 dp de alto
-  y radio 12 arriba; la seleccionada, 50 dp y radio 14, del color del panel
-  (`surface`), y **se funde con él**: dos esquinas cóncavas de 14 dp a sus lados,
-  abajo. Las demás, `#171717` (entre `bg` y `surface`; token nuevo, §5.2).
-- Dentro, dos líneas centradas: el **número** (900/13; `accent` la seleccionada,
-  `mutedLight` el resto, `muted` + ✓ las hechas, `blue` las descargas) y el
-  **tramo de semanas** (500/10, `muted`; `mutedLight` en la seleccionada).
-- **Tramo, no duración**: «sem 1-4 · sem 5-8 · sem 9-11 · sem 12». Dice sin
-  palabras que son trozos seguidos del mismo calendario. Se calcula con las
-  `durationWeeks` previstas (no con las semanas alargadas del cliente); una etapa
-  sin límite es «sem 13+», y **después** de una sin límite ya no hay calendario:
-  esas pestañas dicen la duración («4 sem»).
-- **En curso**: una **barrita de progreso** de 30×3 dp **debajo del tramo**
-  (tinte `accent` al 18 % de fondo, `accent` de relleno) con las sesiones hechas
-  de la etapa sobre las esperadas (`stageStatus().done / expected`). Sin límite,
-  sin barrita. Decidido por el usuario el 12-oct (la otra opción era bajo el número).
-- **Candado**: icono rojo de 9 dp junto al número en las bloqueadas (§5.2, quién
-  lo ve).
-- **Al final, una pestaña «+ nueva»** con borde discontinuo (`border`) sin fondo,
-  «+» y «nueva» en `accent`. Abre la creación de etapa con la seleccionada como
-  base (§5.5).
-- **Se arrastran con el dedo** y la seleccionada queda **siempre centrada** (imán
-  de 62 dp): soltar selecciona la que queda en el centro; tocar una la selecciona y
-  la centra. La primera y la última también se centran (relleno a los lados). Un
-  degradado de 26 dp a `bg` en cada borde dice que hay más.
+- Una tarjeta por etapa, **100 × 72 dp**, radio 12, fondo `surface`, relleno 9/8.
+  Caben tres enteras y asoma la cuarta en un móvil de 375 (con 78 cabían cuatro,
+  pero «Acumulación» ya se cortaba).
+- Dentro, de arriba abajo:
+  - **«Etapa 2»** (500/11, sin negrita): «Etapa» y no solo el número, para que no
+    haya duda de qué son, y más ligero que el nombre para que mande el nombre
+    (decisiones del usuario). Con el **candado** rojo de 10 dp a la derecha
+    si está bloqueada (§5.2, quién lo ve). Hechas: «✓ Etapa 1».
+  - **Nombre** (700/12, una línea, se corta con «…»).
+  - **Tramo de semanas** (500/10, `muted`): «sem 1-4 · sem 5-8 · sem 9-11 · sem 12».
+    Dice sin palabras que son trozos seguidos del mismo calendario. Se calcula con
+    las `durationWeeks` previstas (no con las semanas alargadas del cliente); una
+    sin límite es «sem 13+», y **después** de una sin límite ya no hay calendario:
+    esas tarjetas dicen la duración («4 sem»).
+  - **En curso**: una **barrita de progreso** abajo, a todo el ancho, 3 dp (tinte
+    `accent` al 18 % de fondo, `accent` de relleno) con las sesiones hechas de la
+    etapa sobre las esperadas (`stageStatus().done / expected`). Sin límite, sin
+    barrita.
+- Estados: la **seleccionada**, borde 1,5 dp `accent`, fondo `surface2`, «Etapa N»
+  en `accent` y nombre en `text`; el resto, «Etapa N» y nombre en `mutedLight`;
+  las **hechas**, al 55 % de opacidad; las **descargas**, «Etapa N» en `blue` (y
+  borde `blue` si están seleccionadas).
+- **Al final, un cuadrado de 46 dp** con borde discontinuo (`border`), sin fondo,
+  y un **+** en `accent`. Abre la creación de etapa con la seleccionada como base
+  (§5.5).
+- **Se desplaza con el dedo** (con imán suave al principio de cada tarjeta) y **se
+  elige tocando**: desplazar solo mueve la fila, no cambia de etapa. Al cambiar de
+  etapa por otro camino (deslizando la cabecera), la fila se mueve lo justo para que
+  la elegida quede a la vista.
 
-### 3.4 La tarjeta de la etapa (la carpeta)
+### 3.4 La cabecera de la etapa
 
-Panel `surface`, radio 18, relleno 16/14/14. Arriba:
+Tarjeta `surface`, radio 18, relleno 16/14:
 
 - **Ceja** (caps 10): el estado — «EN CURSO · SEMANA 2 DE 4» en `accent` (de
   `stageWeekLabel`), «HECHA», «POR VENIR» en `muted`, «DESCARGA» en `blue` si es de
@@ -146,26 +153,34 @@ Panel `surface`, radio 18, relleno 16/14/14. Arriba:
 - A la derecha, dos botones de 36 dp (`surface2`, radio 11): **cifras** (tres
   barras horizontales, §5.4) y **ajustes** (engranaje, §5.5).
 
-Debajo, a 14 dp, **las sesiones** (§4) y «+ Añadir sesión a **Acumulación**» como
-hoy (texto `accent50`, el nombre en `accent`, sin caja).
+Debajo, a 20 dp, el rótulo **«SESIONES DE ESTA ETAPA»** (caps `mutedLight`, como
+`secTitle`) y las sesiones (§4), con «+ Añadir sesión a **Acumulación**» como hoy
+(texto `accent50`, el nombre en `accent`, sin caja). Después, **más aire** (unos
+28 dp) antes de «QUÉ SESIÓN TOCA», para que cabecera y sesiones se lean como un
+grupo.
 
-**Cambiar de etapa** —tocando o arrastrando las pestañas, o **deslizando la
-cabecera de la tarjeta** a los lados— hace que la tarjeta entera salga y entre
-deslizando en la dirección del cambio (~320 ms). Nunca se cambia de etapa
-deslizando sobre una sesión (§4.2).
+**Cambiar de etapa** —tocando una tarjeta o **deslizando la cabecera** a los
+lados— hace que la página entera (cabecera, rótulo y sesiones) salga y entre
+deslizando en la dirección del cambio, con el mismo `useSlidePages` que usa el
+editor de sesión al cambiar de sesión. Es lo que hace que cabecera y sesiones se
+lean como una unidad sin compartir caja. Nunca se cambia de etapa deslizando sobre
+una sesión (§4.2).
 
-## 4. Las sesiones dentro de la carpeta
+## 4. Las sesiones
 
 ### 4.1 Todo lo de hoy sigue igual
 
-La lista es la misma `Sortable.Grid` con las mismas `SessionCard` (`SwipeRow`):
+Sueltas (decisión del 12-oct, por coherencia con el editor de sesión y para no
+apilar tres niveles de caja bajo las tarjetas de etapa), así que la lista es
+**exactamente** la de hoy: la misma `Sortable.Grid` con las mismas `SessionCard`
+(`SwipeRow`), sin tocar su aspecto.
 
-| Hoy | Dentro de la carpeta |
+| Hoy | En el editor nuevo |
 |---|---|
 | Tocar → `SessionEditor` | igual |
-| Deslizar a la derecha → Duplicar · Eliminar | igual; cambia el color del botón neutro (§4.3) |
+| Deslizar a la derecha → Duplicar · Eliminar | igual |
 | La última sesión de la etapa no se puede eliminar | igual |
-| Una tarjeta abierta a la vez (`openRowId`); se cierra al arrastrar o al cambiar de etapa | igual, y también se cierra al cambiar de etapa |
+| Una tarjeta abierta a la vez (`openRowId`); se cierra al arrastrar | igual, y también se cierra al cambiar de etapa |
 | Reordenar arrastrando **solo** desde el asa (`Sortable.Handle`) | igual, con el mismo autoscroll (`scrollableRef`) |
 | `handleReorder` → `reorderSessionsInStage` | igual |
 | Duplicar inserta tras el original y eliminar reetiqueta (P49) | igual |
@@ -173,25 +188,12 @@ La lista es la misma `Sortable.Grid` con las mismas `SessionCard` (`SwipeRow`):
 ### 4.2 Los gestos no se pisan
 
 - **Deslizar una sesión** (derecha) es de `SwipeRow`. **Cambiar de etapa** se hace
-  en las pestañas o en la **cabecera** de la tarjeta (ceja, título y meta), nunca
-  en la zona de sesiones.
+  en las tarjetas de etapa o en la **cabecera** (ceja, título y meta), nunca en la
+  zona de sesiones.
 - El gesto de la cabecera solo se activa en horizontal (activa a ±20 dp en x,
   falla a ±10 dp en y) para no robarle el scroll vertical a la pantalla, y no
   arranca sobre los dos botones.
 - Reordenar sigue siendo exclusivo del asa, así que tampoco choca con nada.
-
-### 4.3 Lo que cambia de aspecto
-
-- **Tarjeta hundida**: fondo `bg` (no `surface`) — se pasa por `style` a
-  `SwipeRow`, que ya lo admite. La letra sigue en `accent` sin caja.
-- **El botón neutro (Duplicar) en `bg`**: el `surface2` de siempre se perdería
-  sobre el panel `surface` (1,1:1). `SwipeRow` gana una prop para el fondo del botón
-  neutro (por defecto `surface2`, sin cambiar el editor de sesión). El de eliminar
-  sigue en `tint.red30`.
-- **Recorte**: la tarjeta deslizada no puede salirse del panel. Cada fila va en un
-  contenedor con `overflow: 'hidden'` y radio `md` (10). Comprobar en Android que
-  el recorte no corta la sombra/escala de la tarjeta levantada al reordenar
-  (casilla en §5.3).
 
 ## 5. Tareas
 
@@ -216,37 +218,32 @@ nuevo si crece; con tests en vitest:
 - `stageBaseIdx(stages, idx)` → índice de la etapa de la que salió
   (`stage.derivedFromStageId`) o `null` (hecha a mano o duplicada).
 
-### 5.2 P14-03 — Pestañas de etapa y rótulo
+### 5.2 P14-03 — Tarjetas de etapa y rótulo
 
-Componente nuevo `src/components/ui/StageTabs.jsx`:
+Componente nuevo `src/components/ui/StageCards.jsx`:
 
-- Props: `stages` (`[{ id, number, range, done, deload, locked, progress }]`
+- Props: `stages` (`[{ id, number, name, range, done, deload, locked, progress }]`
   ya resueltas por la pantalla), `value`, `onChange`, `onAdd`.
-- `ScrollView` horizontal, `snapToInterval={62}`, `decelerationRate="fast"`,
-  relleno lateral `(ancho − 62) / 2` para poder centrar la primera y la última;
-  `onMomentumScrollEnd` (y `onScrollEndDrag` sin inercia) selecciona la del centro;
-  al cambiar `value` desde fuera, `scrollTo` animado. La pestaña «+ nueva» va al
-  final del contenido y **no se selecciona** al soltar encima: solo con un toque.
-- Las esquinas cóncavas de la seleccionada con `react-native-svg` (dos `Path` de
-  14×14 en `surface`); en RN no hay degradado radial.
-- Token nuevo `tabOff: '#171717'` en `formaFit` (y uno equivalente en los temas
-  legados: el `surface` de cada uno oscurecido; si no convence, `bg`).
-- Degradados laterales con el componente de degradado que ya use la app (si no hay,
-  `react-native-svg` `LinearGradient`).
+- `ScrollView` horizontal sin barra, `snapToInterval={108}` (100 + 8 de hueco)
+  con `snapToAlignment="start"` y `decelerationRate="fast"`; el contenido sale a
+  sangre (margen −16 y relleno 16, como el resto de filas desplazables de la app).
+  Tocar elige; desplazar no. Al cambiar `value` desde fuera, `scrollTo` animado
+  solo si la tarjeta elegida no se ve entera.
+- El cuadrado «+» al final del contenido.
 - **Quién ve el candado**: en el móvil del cliente, `isStageLocked`; en el del
   entrenador, `stage.locked && idx > activeIdx` en un programa de un cliente (la
   regla de `canLockStage`). En un programa propio, nunca.
 - En `ProgramEditorScreen`: fuera `summaryCard`, `secTitle` de Etapas,
-  `StageSelector` y `stageHint`; dentro el rótulo (§3.2) y `StageTabs`.
+  `StageSelector` y `stageHint`; dentro el rótulo (§3.2) y `StageCards`.
 
 **Probar P14-03**
 
-- [ ] Programa de 6 etapas: se ven unas 5 pestañas, la en curso con su barrita, las
-  hechas con ✓; al arrastrar y soltar, la del centro queda seleccionada y la
-  tarjeta cambia.
-- [ ] Tocar una pestaña lejana la centra y la selecciona.
-- [ ] La primera y la última se pueden centrar; detrás de la última, «+ nueva».
-- [ ] Soltar con «+ nueva» en el centro no crea nada: vuelve a la última.
+- [ ] Programa de 6 etapas: se ven tres tarjetas y asoma la cuarta; la en curso con
+  su barrita, las hechas atenuadas con ✓, las descargas en azul.
+- [ ] Desplazar la fila no cambia de etapa; tocar una tarjeta la elige y la página
+  cambia.
+- [ ] Detrás de la última, el «+».
+- [ ] «Etapa N», nombre y tramo caben; un nombre largo se corta con «…».
 - [ ] Tramos: «sem 1-4 · sem 5-8…»; con una etapa sin límite, «sem 13+», y las de
   después con su duración.
 - [ ] Rótulo «6 ETAPAS · 19 SEMANAS» y «19+» con una sin límite; «Ver plan ›» abre
@@ -254,39 +251,38 @@ Componente nuevo `src/components/ui/StageTabs.jsx`:
 - [ ] Móvil del entrenador con un cliente: el candado sale en las bloqueadas por
   delante de la de ahora; en un programa propio no sale nunca. Móvil del cliente:
   igual que hoy.
-- [ ] La barrita, bajo el tramo de la pestaña en curso, se llena con las sesiones
-  hechas; en una etapa sin límite no sale.
-- [ ] Las pestañas en sí: ¿convencen en el móvil? (si no, segmentos, §8).
+- [ ] La barrita de la etapa en curso se llena con las sesiones hechas; en una etapa
+  sin límite no sale.
 
-### 5.3 P14-04 — Tarjeta de la etapa con sus sesiones dentro
+### 5.3 P14-04 — Cabecera de la etapa y sus sesiones
 
 - Cabecera (§3.4) con ceja, título y meta; los dos botones (el de cifras sin
   función hasta P14-05, o se deja fuera hasta entonces).
-- La lista de §4 dentro del panel, hundida, con el recorte y el botón neutro en
-  `bg` (prop nueva de `SwipeRow`).
-- Transición al cambiar de etapa: el bloque va con `key` = id de la etapa y
-  `entering`/`exiting` de Reanimated en la dirección del cambio
-  (`FadeInRight`/`FadeInLeft` o un `entering` propio de ~40 dp). Al cambiar se cierra
-  `openRowId`.
+- Rótulo «SESIONES DE ESTA ETAPA» y la lista de §4 tal cual está hoy.
+- Transición al cambiar de etapa con `useSlidePages`
+  (`src/components/ui/useSlidePages.js`), como `SessionEditorScreen`: la página
+  (cabecera + rótulo + lista) en un `Reanimated.View` con `key` = id de la etapa y
+  `entering`/`exiting` del hook, más `LayoutAnimationConfig skipEntering
+  skipExiting` dentro para que la lista no haga su propio fundido. Al cambiar se
+  cierra `openRowId`.
 - Gesto de la cabecera con `react-native-gesture-handler` (`Gesture.Pan`,
   `activeOffsetX([-20, 20])`, `failOffsetY([-10, 10])`): a más de 60 dp, etapa
-  siguiente o anterior; durante el arrastre la tarjeta sigue al dedo a ~45 %.
+  siguiente o anterior.
 - Fuera `editor.sessionsOf` y `editor.stageTapHint` de los locales.
 
 **Probar P14-04**
 
-- [ ] Cambiar de etapa por pestaña, arrastre de pestañas y deslizando la cabecera:
-  la tarjeta entra por el lado correcto y las sesiones son las de esa etapa.
+- [ ] Cambiar de etapa tocando una tarjeta y deslizando la cabecera: la página entra
+  por el lado correcto y las sesiones son las de esa etapa.
 - [ ] Deslizar la cabecera en vertical hace scroll de la pantalla, no cambia etapa.
-- [ ] Deslizar una sesión a la derecha abre Duplicar · Eliminar dentro del panel,
-  recortada; Duplicar se lee sobre el panel.
+- [ ] Deslizar una sesión a la derecha abre Duplicar · Eliminar como hoy.
 - [ ] Duplicar y eliminar una sesión funcionan; la última no se puede eliminar.
-- [ ] Reordenar por el asa dentro del panel, con autoscroll si la lista es larga; el
-  recorte no corta la tarjeta levantada (Android e iOS).
+- [ ] Reordenar por el asa, con autoscroll si la lista es larga.
 - [ ] Una sesión abierta se cierra al cambiar de etapa y al empezar a arrastrar.
 - [ ] Tocar una sesión abre su editor; volver deja la misma etapa seleccionada.
 - [ ] «+ Añadir sesión a X» añade a la etapa seleccionada.
 - [ ] Etapa bloqueada: ceja con «· 🔒 BLOQUEADA».
+- [ ] Cabecera y sesiones se leen como un grupo (aire antes de «Qué sesión toca»).
 
 ### 5.4 P14-05 — Panel de cifras y grupos musculares
 
@@ -326,8 +322,8 @@ El botón de cifras despliega, dentro de la cabecera y bajo un filete, un panel
   en el planificador. Se abre **solo** con el botón de ajustes.
 - Gana arriba de los botones **«＋ Nueva etapa desde esta»** (`accent10` con borde
   `accent50`).
-- **Mientras no exista el creador de P15**, «nueva etapa» (la hoja y la pestaña
-  «+ nueva») navega a `StagePlanner` con `{ programId, addFrom: idx }`, y el
+- **Mientras no exista el creador de P15**, «nueva etapa» (la hoja y el «+» del
+  final de las tarjetas) navega a `StagePlanner` con `{ programId, addFrom: idx }`, y el
   planificador abre su hoja «Añadir etapas» con esa etapa como base
   (`setSourceIdx(addFrom)` + `setAddOpen(true)` al montar). Es el único cambio en el
   planificador.
@@ -338,26 +334,27 @@ El botón de cifras despliega, dentro de la cabecera y bajo un filete, un panel
 
 - [ ] El engranaje abre Ajustes; tocar la etapa ya seleccionada no abre nada.
 - [ ] Nombre, semanas, sin límite, activar, candado y eliminar funcionan como hoy.
-- [ ] «Nueva etapa desde esta» y la pestaña «+ nueva» abren el planificador con la
+- [ ] «Nueva etapa desde esta» y el «+» de las tarjetas abren el planificador con la
   hoja de añadir abierta y esa etapa como base.
 - [ ] Duplicar sigue funcionando.
 
 ### 5.6 P14-07 — Programa de una sola etapa
 
-- **Sin pestañas ni rótulo.** La tarjeta sola, con la ceja «SIN LÍMITE DE SEMANAS»
+- **Sin tarjetas de etapa ni rótulo.** La cabecera sola, con la ceja «SIN LÍMITE DE SEMANAS»
   (o «N SEMANAS») y el título **«Todo el programa»** en vez del nombre de la etapa
   (repetiría el del programa), sin número; meta «3 sesiones por semana». Los dos
   botones igual. Sin gesto de cambiar etapa.
-- Debajo de la tarjeta, a 12 dp, un recuadro con borde discontinuo (`border`,
+- Debajo de la cabecera, a 12 dp, un recuadro con borde discontinuo (`border`,
   radio 12): un cuadrado discontinuo con «+», **«Añadir etapas»** en `accent` y una
   sola línea: «Bloques de varias semanas para trabajar un objetivo concreto.» Sin
   ejemplo ni más texto (decisión del usuario). Abre lo mismo que §5.5.
-- Al pasar a dos etapas aparecen las pestañas y el rótulo, y el recuadro se va.
+- Debajo, «SESIONES» (sin «de esta etapa») y la lista.
+- Al pasar a dos etapas aparecen las tarjetas de etapa y el rótulo, y el recuadro se va.
 
 **Probar P14-07**
 
-- [ ] Programa nuevo de una etapa: sin pestañas, «Todo el programa», «Añadir etapas».
-- [ ] Añadir una etapa desde ahí: al volver hay pestañas con dos tramos.
+- [ ] Programa nuevo de una etapa: sin tarjetas de etapa, «Todo el programa», «Añadir etapas».
+- [ ] Añadir una etapa desde ahí: al volver hay dos tarjetas de etapa con sus tramos.
 - [ ] Borrar etapas hasta dejar una: vuelve la vista de una sola.
 
 ## 6. i18n
@@ -367,7 +364,7 @@ reformatear el JSON):
 
 - Nuevas: rótulo (`editor.stagesLabel` con `{{count}}` y `{{weeks}}`, y la variante
   abierta), tramo (`editor.stageRange`, `editor.stageRangeOpen`, `editor.stageRangeOne`),
-  pestaña nueva, ceja (hecha, por venir, descarga, bloqueada), meta, «Todo el
+  «Etapa {{n}}», «SESIONES DE ESTA ETAPA» y «SESIONES», ceja (hecha, por venir, descarga, bloqueada), meta, «Todo el
   programa», «Añadir etapas» y su línea, «Nueva etapa desde esta», el panel de cifras
   (comparar, de dónde sale, las tres cifras, «no hay con qué comparar»).
 - Fuera (solo las usa el editor): `editor.stageTapHint`, `editor.sessionsOf`,
@@ -381,7 +378,7 @@ reformatear el JSON):
 - `StageSelector` (lo sigue usando `ProgramDetailScreen`).
 - `StagePlannerScreen` salvo el parámetro `addFrom` (§5.5) y el import de
   `stageVolume`.
-- El editor de sesión: el botón neutro de `SwipeRow` sigue en `surface2` por defecto.
+- `SessionCard`, `SwipeRow` y la lista de sesiones: se reutilizan sin cambios.
 
 ## 8. Cómo se llegó (rondas con el usuario)
 
@@ -401,3 +398,11 @@ reformatear el JSON):
    **tramo** de semanas (la barrita, bajo el tramo), **sin pestañas** con una sola etapa y «Añadir etapas» con
    una línea. La explicación de la primera vez («cada pestaña es una etapa…»)
    quedó **aparcada**. Comprobado el deslizar de sesiones dentro del panel.
+5. **12-oct** — `stages-editor-5.html`: en vez de pestañas, **tarjetas de etapa**
+   («Etapa 2», nombre, tramo y barrita; 100 dp, caben tres y asoma la cuarta; «+»
+   al final): «tienen algo más de peso». Sesiones **sueltas** debajo de la cabecera,
+   tras «SESIONES DE ESTA ETAPA», y no dentro de la tarjeta: es el esqueleto del
+   editor de sesión (con su `useSlidePages`), evita tres niveles de caja bajo las
+   tarjetas y deja `SessionCard`/`SwipeRow` sin tocar (dentro hacían falta tarjeta
+   hundida, Duplicar en otro color y recorte). La unidad la dan el rótulo, el aire
+   y que todo entra deslizando junto.

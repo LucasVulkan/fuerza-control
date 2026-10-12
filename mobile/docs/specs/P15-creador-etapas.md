@@ -33,8 +33,8 @@ La vista previa puede ser **exacta**: `applyRx` es pura y es lo mismo que ejecut
 
 ### 1.1 Lo que ya fija P14 (el editor)
 
-- **Un solo creador.** Las dos entradas del editor —la pestaña «+ nueva» al final
-  de las pestañas y «Nueva etapa desde esta» en Ajustes— abren **el mismo creador**,
+- **Un solo creador.** Las dos entradas del editor —el «+» al final de las
+  tarjetas de etapa y «Nueva etapa desde esta» en Ajustes— abren **el mismo creador**,
   con la etapa seleccionada como base. **Duplicar deja de ser un botón**: es crear
   con «Igual». Mientras este creador no exista, P14 manda al planificador de hoy
   (P14 §5.5).
@@ -59,7 +59,7 @@ Nada del store. Todo es UI sobre lo que ya existe:
 Maqueta [`stages-v2.html`](../mockups/stages-v2.html) §2. `AddStagesScreen`, apilada, con cabecera de editor y botón al pie.
 Sustituye a la `DragSheet` de `StagePlannerScreen`.
 
-**Entradas:** la pestaña «+ nueva», «Nueva etapa desde esta» en Ajustes y «Añadir etapas» con una sola etapa, todas del editor (P14; base = etapa seleccionada) y el hueco «+ Añadir
+**Entradas:** el «+» de las tarjetas de etapa, «Nueva etapa desde esta» en Ajustes y «Añadir etapas» con una sola etapa, todas del editor (P14; base = etapa seleccionada) y el hueco «+ Añadir
 etapas» del plan (base = `baseStageIdx`, la de hoy). Desde la ficha de cliente,
 por ruta con `programId`, como el plan.
 
@@ -204,7 +204,7 @@ De la primera ronda (9-oct), sin tocar todavía:
 6. **Duplicar dentro del creador** (P14): cómo se ve «Igual» para que duplicar sea
    un toque y no una búsqueda.
 7. **El visualizador** (`ProgramDetailScreen`) sigue con `StageSelector`: ¿pasa a
-   las pestañas de P14 (sin «+» ni Ajustes)?
+   las tarjetas de etapa de P14 (sin «+» ni Ajustes)?
 
 ## 7. Tareas previstas (se escriben al cerrar §6)
 
