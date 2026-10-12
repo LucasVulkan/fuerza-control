@@ -5,8 +5,8 @@
 > Inicio: 2026-10-08
 > Fase C08-01 · hecho · Avatar con color de identidad e insignia de «con app» · §3
 > Fase C08-02 · hecho · La fila: aviso o programa, botón con icono, cuadraditos, última vez y muesca de sin revisar · §4
-> Fase C08-03 · pendiente · Tres tarjetas de resumen; adherencia y mejora como lentes · §5
-> Fase C08-04 · pendiente · Orden elegido y guardado: criterio, «lo que necesita algo, arriba» y a mano · §6
+> Fase C08-03 · hecho · Tres tarjetas de resumen; adherencia y mejora como lentes · §5
+> Fase C08-04 · hecho · Orden elegido y guardado: criterio, «lo pendiente, arriba» y a mano · §6
 > Fase C08-05 · pendiente · Rótulo de la lista: etiquetas con scroll, «Enviar todo» y fuera las pills · §7
 >
 > Estado: **C08-01 implementada y probada** (8-oct-2026): `ClientAvatar.jsx`,
@@ -17,7 +17,18 @@
 > **C08-02 implementada y probada** (8-oct-2026): `ClientListCard` reescrita, lista en bloques
 > agrupados con `getCardRadii`, fila de plegados, `weekExtra` en `sessionPlan` y
 > `utils/lastSeen.js` (los dos con test). Hasta C08-04 el orden sigue siendo el de hoy: los
-> avisos aún no suben solos. ponytail: los plegados se despliegan sin animar la altura. Las demás, sin implementar. Sale de iterar ocho
+> avisos aún no suben solos. ponytail: los plegados se despliegan sin animar la altura.
+> **C08-03 implementada y probada** (9-oct-2026): `SummaryTile` (relleno circular desde el
+> toque, patrón de `PlanTicket`), `clientAvisos()` compartida por la fila y «Necesitan algo»,
+> `improvementByClient` (8 semanas, memoizada) y la lente en la fila. Las cifras cuentan la
+> lista principal tal como se ve (búsqueda y filtros incluidos). Las pills siguen hasta C08-05.
+> Tras la primera prueba: forma de las tarjetas de progresión (cifra · NOMBRE · «media 4 sem»),
+> «Necesitan algo» pasa a **Pendientes**, el lima entra siempre desde arriba a la izquierda y
+> pulsar Pendientes ilumina un momento las filas con algo pendiente.
+> **C08-04 implementada y probada** (12-oct-2026): `utils/orderClients.js` (+ test), orden en
+> `profile.clientsOrder`, hoja «Ordenar» (`ChoiceRow` + interruptor), modo «Reordenar» con
+> `Sortable.Grid` y asas. El rótulo de la lista ya existe con «CLIENTES» y el botón de orden;
+> C08-05 le añade «Esta semana» y las etiquetas. Fuera el orden de la hoja de filtros y sus claves. Las demás, sin implementar. Sale de iterar ocho
 > maquetas con el usuario en el chat; la que manda es
 > [`docs/mockups/clients-dashboard-8.html`](../mockups/clients-dashboard-8.html),
 > que es interactiva (caso tranquilo / movido / lunes, etiquetas, hoja de orden,
@@ -296,13 +307,22 @@ siguen en la ficha.
 
 ### 5.1 Las tarjetas
 
-Bajo el buscador, tres tarjetas iguales en fila (el formato de tarjetas de
-cifra que ya usa la app): cifra grande en Barlow (rol de cifra de `textStyles`)
-y una etiqueta debajo.
+Bajo el buscador, tres tarjetas iguales en fila con **la forma de las tarjetas
+de progresión** (`statTile` de ProgressTab), centradas: la cifra en `title`, el
+nombre en versales (`caps`) y una línea de qué mide en `label`:
+
+| Tarjeta | Nombre | Línea de abajo |
+|---|---|---|
+| Pendientes | PENDIENTES | — (la cifra se explica sola) |
+| Adherencia | ADHERENCIA | media 4 sem |
+| Mejora | MEJORA | media 8 sem |
+
+«Pendientes» y no «Avisos» (alarmante) ni «Acciones» (cuenta también a quien
+está «Sin entrenar», que no tiene botón).
 
 | Tarjeta | Cifra | Cuenta |
 |---|---|---|
-| **Necesitan algo** | nº de clientes | los de la lista (sin pausados, invitados ni congelados) con algún aviso de la tabla de §4.2. Los sin revisar no cuentan |
+| **Pendientes** | nº de clientes | los de la lista (sin pausados, invitados ni congelados) con algún aviso de la tabla de §4.2. Los sin revisar no cuentan |
 | **Adherencia media** | % | media de `adherence.pct` de los clientes con programa, sin pausados ni silenciados (`MUTED`), ignorando los `null`. Sin ninguno: «—» |
 | **Mejora media** | ±% | media de `computeOverallImprovement` de cada cliente sobre **sus últimas 8 semanas** de log, ignorando los `null`. Positiva en `accent` |
 
@@ -319,9 +339,9 @@ cliente (regresión por ejercicio); no se recalcula en cada render.
 
 **Adherencia** y **Mejora** se pulsan:
 
-- Pulsar una la **rellena de lima** desde el punto donde se toca: círculo que
-  crece hasta cubrirla en 450 ms (`Easing.out(Easing.cubic)`), texto a
-  `onAccent` al mismo paso; al soltarla se recoge hacia el mismo punto. Mismo
+- Pulsar una la **rellena de lima** desde **la esquina de arriba a la izquierda**,
+  siempre la misma para que sea consistente: círculo que crece hasta cubrirla en 450 ms (`Easing.out(Easing.cubic)`), texto a
+  `onAccent` al mismo paso; al soltarla se recoge hacia esa esquina. Mismo
   patrón que `PlanTicket` (un `useSharedValue` por tarjeta que sigue desde donde
   iba si vas y vuelves deprisa, nunca reinicia).
 - Mientras una está rellena, **la derecha de cada fila enseña la cifra de ese
@@ -334,25 +354,28 @@ cliente (regresión por ejercicio); no se recalcula en cada render.
   - La 2.ª línea **no cambia**: el aviso se queda porque explica la cifra.
 - La lista se ordena **de peor a mejor** por esa cifra, salvo con el orden «A
   mano» (§6.3), que no se mueve.
-- Pulsar otra vez la rellena, o pulsar la otra, la cambia. **Necesitan algo
-  nunca se rellena**: solo hace el gesto de pulsación (escala 0,96) y devuelve
-  al estado normal. **Por defecto ninguna está rellena.**
+- Pulsar otra vez la rellena, o pulsar la otra, la cambia. **Pendientes nunca
+  se rellena**: hace el gesto de pulsación (escala 0,96), devuelve al estado
+  normal y **las filas con algo pendiente se iluminan de lima un momento**
+  (velo lima al 18 %: sube en 180 ms, aguanta 450 y se apaga en 650). **Por defecto ninguna está rellena.**
 - Las lentes no se guardan: al salir de la pantalla y volver, estado normal.
 
 **Probar C08-03**
 
-- [ ] Al entrar, ninguna tarjeta está rellena. «Necesitan algo» cuenta lo mismo
-  que filas con aviso hay arriba de la lista.
-- [ ] Pulsar Adherencia: se rellena de lima desde donde tocaste; cada fila enseña
+- [x] Al entrar, ninguna tarjeta está rellena. «Pendientes» cuenta lo mismo
+  que filas con aviso hay en la lista.
+- [x] Pulsar «Pendientes»: las filas con aviso se iluminan de lima un momento y
+  vuelven a su color; las demás no.
+- [x] Pulsar Adherencia: se rellena de lima desde la esquina de arriba a la izquierda, toques donde toques; cada fila enseña
   su % con su barrita; la lista queda de menor a mayor.
-- [ ] Pulsar Mejora con Adherencia rellena: la primera se recoge, la segunda se
+- [x] Pulsar Mejora con Adherencia rellena: la primera se recoge, la segunda se
   rellena y las cifras cambian a mejora.
-- [ ] Pulsar la rellena otra vez, o «Necesitan algo»: vuelve todo a la vista normal
-  y al orden de antes. «Necesitan algo» solo hace el gesto, nunca queda rellena.
-- [ ] Pulsar deprisa varias veces: el relleno sigue desde donde iba, sin saltos.
-- [ ] Con la lente puesta, un cliente con «Cambios sin enviar» sigue diciéndolo en
+- [x] Pulsar la rellena otra vez, o «Pendientes»: vuelve todo a la vista normal
+  y al orden de antes. «Pendientes» nunca queda rellena.
+- [x] Pulsar deprisa varias veces: el relleno sigue desde donde iba, sin saltos.
+- [x] Con la lente puesta, un cliente con «Cambios sin enviar» sigue diciéndolo en
   su 2.ª línea, sin botón.
-- [ ] Con el orden «A mano», pulsar una lente cambia las cifras pero nadie se mueve.
+- [x] Con el orden «A mano», pulsar una lente cambia las cifras pero nadie se mueve.
 
 ## 6. Orden elegido y guardado (C08-04)
 
@@ -368,7 +391,7 @@ del criterio («Actividad», «Nombre», «A mano»). Con una lente rellena dice
   - **Nombre** — de la A a la Z.
   - **A mano** — tu orden, arrastrando.
 - Con «A mano» elegido, una fila **Reordenar ›** (§6.3).
-- **Lo que necesita algo, arriba** (interruptor, encendido por defecto): los
+- **Lo pendiente, arriba** (interruptor, encendido por defecto): los
   clientes con aviso van encima, por la prioridad de §4.2, y debajo el resto por
   el criterio. Apagado, el criterio manda sobre todos.
 
@@ -405,22 +428,22 @@ Orden final de la lista, en este orden de reglas:
   `react-native-sortables` (`Sortable.Handle`, `SORTABLE_PROPS`), igual que las
   sesiones en el editor de programa. Se arrastra por el asa porque mantener
   pulsada la fila ya abre sus acciones.
-- En edición se ve el orden puro (sin «lo que necesita algo, arriba»), las
+- En edición se ve el orden puro (sin «lo pendiente, arriba»), las
   tarjetas de arriba no responden y el botón de orden pasa a **Listo** en lima.
 - **Listo** guarda `manual` con el orden que se ve y vuelve a la vista normal.
 
 **Probar C08-04**
 
-- [ ] El rótulo de la lista enseña «⇅ Actividad»; al tocarlo sale la hoja Ordenar.
-- [ ] Elegir «Nombre», salir de la pantalla, cerrar la app y volver: sigue por nombre.
-- [ ] Apagar «Lo que necesita algo, arriba»: los clientes con aviso se colocan en
+- [x] El rótulo de la lista enseña «⇅ Actividad»; al tocarlo sale la hoja Ordenar.
+- [x] Elegir «Nombre», salir de la pantalla, cerrar la app y volver: sigue por nombre.
+- [x] Apagar «Lo pendiente, arriba»: los clientes con aviso se colocan en
   su sitio alfabético. Encenderlo: vuelven arriba.
-- [ ] Con «Lo que necesita algo, arriba» encendido, los de sin revisar van justo
+- [x] Con «Lo pendiente, arriba» encendido, los de sin revisar van justo
   después de los de aviso.
-- [ ] «A mano» → Reordenar: salen las asas, se arrastra por el asa, «Listo» lo
+- [x] «A mano» → Reordenar: salen las asas, se arrastra por el asa, «Listo» lo
   guarda; al volver a la pantalla el orden sigue.
-- [ ] Mantener pulsada una fila en modo normal sigue abriendo sus acciones.
-- [ ] Crear un cliente con orden «A mano»: aparece al final.
+- [x] Mantener pulsada una fila en modo normal sigue abriendo sus acciones.
+- [x] Crear un cliente con orden «A mano»: aparece al final.
 
 ## 7. Rótulo de la lista, etiquetas y «Enviar todo» (C08-05)
 
@@ -501,7 +524,7 @@ JSON), bajo `clients.`:
 | `sort.manual` / `sort.manualSub` | A mano / Tu orden, arrastrando | Manual / Your order, by dragging |
 | `sort.reorder` | Reordenar | Reorder |
 | `sort.done` | Listo | Done |
-| `sort.needsFirst` / `sort.needsFirstSub` | Lo que necesita algo, arriba / Avisos y botones encima de tu orden | Needs attention on top / Alerts and actions above your order |
+| `sort.needsFirst` / `sort.needsFirstSub` | Lo pendiente, arriba / Avisos y botones encima de tu orden | To do on top / Alerts and actions above your order |
 | `sort.lensAdherence` / `sort.lensImprovement` | Adherencia ↑ / Mejora ↑ | Adherence ↑ / Improvement ↑ |
 | `sendAllRow` | Cambios sin enviar · {{count}} clientes | Unsent changes · {{count}} clients |
 

@@ -6,16 +6,18 @@
  *   'detail'  → single client (4 tabs: programs, history, progress, info)
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, ScrollView, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share, BackHandler } from 'react-native';
-import { Text, TextInput } from '../components/ui/Text';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { View, ScrollView, FlatList, TouchableOpacity, Pressable, StyleSheet, KeyboardAvoidingView, Platform, RefreshControl, Share, BackHandler } from 'react-native';
+import { Text, TextInput, MAX_FONT_SCALE } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Circle } from 'react-native-svg';
-import Reanimated, { LinearTransition, FadeOutUp } from 'react-native-reanimated';
+import Reanimated, {
+  LinearTransition, FadeOutUp, useAnimatedRef, useSharedValue, withTiming, withSequence, withDelay, Easing, useAnimatedProps, useAnimatedStyle, interpolateColor,
+} from 'react-native-reanimated';
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
@@ -29,11 +31,15 @@ import { useSlidePages } from '../components/ui/useSlidePages';
 import ArchivedProgramsSheet from '../components/ArchivedProgramsSheet';
 import AnimatedHeight from '../components/ui/AnimatedHeight';
 import { ROW_ICON } from '../components/ui/rowIcons';
-import { ToggleRow } from '../components/ui/EditorRows';
+import { ToggleRow, Switch } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ClientSessions, { ClientFreeSessions } from '../components/ClientSessions';
 import { clientLink } from '../utils/clientLink';
+import { computeOverallImprovement } from '../utils/improvement';
 import { lastSeenLabel } from '../utils/lastSeen';
+import { orderClients, DEFAULT_CLIENTS_ORDER } from '../utils/orderClients';
+import Sortable from 'react-native-sortables';
+import { SORTABLE_PROPS } from '../components/ui/sortable';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
@@ -58,7 +64,7 @@ import { FREE, activeClientIds, canChooseMore } from '../utils/freePlan';
 import FreeClientsSheet from '../components/FreeClientsSheet';
 import ProBadge from '../components/ui/ProBadge';
 import { useFreeGates } from '../useFreeGates';
-import { LockIcon, CheckIcon, ChevronDown, CloseIcon } from '../components/ui/EditorIcons';
+import { LockIcon, CheckIcon, ChevronDown, CloseIcon, DragIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
 import InfoSection from '../components/ui/InfoSection';
@@ -1416,6 +1422,122 @@ function CtaIcon({ name, color, bg }) {
 }
 
 /**
+ * Los avisos de un cliente, por prioridad (C08-clientes-dashboard.md §4.2). Los
+ * usan la fila (el primero manda su 2.ª línea y su botón) y la tarjeta
+ * «Necesitan algo» (cuenta a quien tenga alguno), así que dicen lo mismo.
+ * Con un entreno a medias no hay aviso de adherencia: ese entreno es justo lo
+ * que lo resuelve, solo que aún no está guardado.
+ */
+function clientAvisos({ client, program, linked, inProgress, adherence }) {
+  const status = program ? stageStatus(program, athleteProgress(program, client)) : null;
+  const next   = program?.stages?.[(status?.stageIdx ?? 0) + 1];
+  const ended  = !!status?.ended;
+  const dirty  = linked && !!client.programDirty;
+  return [
+    inProgress && 'inprog',
+    !program && 'noprog',
+    dirty && 'dirty',
+    ended && !!next?.locked && 'stageStuck',
+    ended && !next && 'blockStuck',
+    linked && !dirty && !!client.overridesDirty && 'overrides',
+    !inProgress && adherence?.status === STATUS.AT_RISK && 'risk',
+    !inProgress && adherence?.status === STATUS.SLIPPING && 'slip',
+  ].filter(Boolean);
+}
+
+// Prioridad de los avisos para «Lo pendiente, arriba» (C08 §6.2): la misma de
+// `clientAvisos`, que ya los devuelve en este orden.
+const AVISO_RANK = ['inprog', 'noprog', 'dirty', 'stageStuck', 'blockStuck', 'overrides', 'risk', 'slip'];
+
+/** Icono ⇅ del botón de orden. */
+function SortIcon({ color }) {
+  return (
+    <Svg viewBox="0 0 24 24" width={14} height={14} fill="none"
+      stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3" />
+    </Svg>
+  );
+}
+
+/**
+ * Fila del modo «Reordenar» (C08 §6.3): la misma forma que la de la lista, sin
+ * nada a la derecha salvo el asa. Se arrastra solo por el asa.
+ */
+function ReorderRow({ client, meta, radii }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={[styles.cCard, styles.reorderRow, radii]}>
+      <ClientAvatar client={client} />
+      <View style={styles.cContent}>
+        <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
+        <Text style={styles.cMeta} numberOfLines={1}>{meta}</Text>
+      </View>
+      <Sortable.Handle style={styles.reorderHandle}>
+        <DragIcon color={th.colors.mutedLight} />
+      </Sortable.Handle>
+    </View>
+  );
+}
+
+const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
+const TILE_FILL_MS = 450;   // como el relleno de Inicio por pestañas (U13-02) y el paywall
+const TILE_MIN_MS  = 120;
+
+/**
+ * Una de las tres tarjetas de arriba (C08 §5), con la forma de las tarjetas de
+ * progresión: cifra, nombre en versales y una línea de qué mide. Elegida, el
+ * lima entra siempre desde la esquina de arriba a la izquierda y la cubre; al
+ * soltarla se recoge hacia ella. Lleva su propio avance, así que ir y volver
+ * deprisa sigue desde donde iba. El texto pasa a negro al mismo paso. Sin
+ * `selectable` solo hace el gesto de pulsación.
+ */
+function SummaryTile({ value, label, sub, selected = false, selectable = true, valueColor, onPress }) {
+  const th     = useTheme();
+  const C      = th.colors;
+  const styles = useThemedStyles(makeStyles);
+  const [size, setSize] = useState(null);
+  const p = useSharedValue(selected ? 1 : 0);
+
+  useEffect(() => {
+    const to = selected ? 1 : 0;
+    p.set(withTiming(to, {
+      duration: Math.max(TILE_MIN_MS, TILE_FILL_MS * Math.abs(to - p.get())),
+      easing:   Easing.out(Easing.cubic),
+    }));
+  }, [selected, p]);
+
+  const R = size ? Math.hypot(size.w, size.h) : 0;
+  const circleProps = useAnimatedProps(() => ({ r: p.get() * R }), [R]);
+  const base     = valueColor ?? C.text;
+  const valueInk = useAnimatedStyle(() => ({ color: interpolateColor(p.get(), [0, 1], [base, C.onAccent]) }), [base, C.onAccent]);
+  const labelInk = useAnimatedStyle(() => ({ color: interpolateColor(p.get(), [0, 1], [C.text, C.onAccent]) }), [C.text, C.onAccent]);
+  const subInk   = useAnimatedStyle(() => ({ color: interpolateColor(p.get(), [0, 1], [C.mutedLight, C.onAccent]) }), [C.mutedLight, C.onAccent]);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      style={({ pressed }) => [styles.kpi, pressed && styles.kpiPressed]}
+      accessibilityRole="button"
+      accessibilityState={selectable ? { selected } : undefined}
+      accessibilityLabel={[value, label, sub].filter(Boolean).join(' ')}
+    >
+      {selectable && size && (
+        <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <AnimatedCircle cx={0} cy={0} fill={C.accent} animatedProps={circleProps} />
+        </Svg>
+      )}
+      <View style={styles.kpiValueBlock}>
+        <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.kpiValue, valueInk]} numberOfLines={1}>{value}</Reanimated.Text>
+        <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.kpiLabel, labelInk]} numberOfLines={1}>{label}</Reanimated.Text>
+      </View>
+      {!!sub && <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.kpiSub, subInk]} numberOfLines={1}>{sub}</Reanimated.Text>}
+    </Pressable>
+  );
+}
+
+/**
  * Una fila de la lista de Clientes (C08-clientes-dashboard.md §4). Dice UNA
  * cosa en su segunda línea: dónde va (programa · etapa · semana) o, si lo hay,
  * el aviso que más pesa, con su botón a la derecha. Sin aviso con botón, a la
@@ -1430,14 +1552,11 @@ function ClientListCard({
   adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
   inProgress = false, onContinue, invited = false, linked = false, frozen = false,
-  dimmed = false, radii,
+  dimmed = false, radii, lens = null, improvement = null, flash = 0,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const showDirty         = isConnected && (client.programDirty ?? false);
-  const showOverrideDirty = isConnected && !showDirty && !!client.overridesDirty;
-
   // Posición espejada del último envío del cliente, leída con la misma cuenta
   // que su Home (`stageStatus`, P08-weeks-model.md §3.7).
   const status       = activeProgram ? stageStatus(activeProgram, athleteProgress(activeProgram, client)) : null;
@@ -1450,37 +1569,46 @@ function ClientListCard({
     log,
     t,
   });
-  // Parado, en sus dos formas: esperando a que le abras la siguiente etapa, o
-  // a que la montes porque no hay ninguna detrás.
-  const stageEnded = !!status?.ended;
-  const stageStuck = stageEnded && !!activeProgram.stages[stageIdx + 1]?.locked;
-  const blockStuck = stageEnded && !activeProgram.stages[stageIdx + 1];
-
   // Avisos por prioridad (§4.2): el primero manda la 2.ª línea y el botón; el
   // resto es un «+N». El color dice de quién es la pelota. Congelado (M01 §4.5)
   // y plegados (pausa / esperando código): sin avisos, se leen fuera de juego.
   const C = th.colors;
-  const avisos = frozen || dimmed ? [] : [
+  const AVISO = {
     // Azul: el entreno lo está apuntando el entrenador, la pelota es suya.
-    inProgress        && { text: t('clients.workoutInProgress'), color: C.blue,
-                           cta: { label: t('clients.btnContinue'), icon: 'play', onPress: onContinue } },
-    !activeProgram    && { text: t('clients.noActiveProgram'), color: C.text,
-                           cta: { label: t('clients.btnProgram'), icon: 'add', onPress: onOpenEditor } },
-    showDirty         && { text: t('clients.pendingTitle'), color: C.blue,
-                           cta: { label: t('clients.btnSendOverride'), icon: 'send', onPress: onUploadProgram } },
-    stageStuck        && { text: t('clients.stageLockedShort'), color: C.orange,
-                           cta: { label: t('clients.stageUnlockShort'), icon: 'unlock', onPress: () => onUnlockStage(stageIdx + 1) } },
-    blockStuck        && { text: t('clients.blockDoneShort'), color: C.orange,
-                           cta: { label: t('clients.blockPlanShort'), icon: 'plan', onPress: onPlanStages } },
-    showOverrideDirty && { text: t('clients.pendingTitle'), color: C.blue,
-                           cta: { label: t('clients.btnSendOverride'), icon: 'send', onPress: onSendOverrides } },
-    // Con un entreno a medias no hay aviso de adherencia: ese entreno es justo
-    // lo que lo resuelve, solo que aún no está guardado.
-    !inProgress && adherence?.status === STATUS.AT_RISK  && { text: t('clients.notTraining'), color: C.redText ?? C.red },
-    !inProgress && adherence?.status === STATUS.SLIPPING && { text: t('clients.slowingDown'), color: C.orange },
-  ].filter(Boolean);
+    inprog:     { text: t('clients.workoutInProgress'), color: C.blue,
+                  cta: { label: t('clients.btnContinue'), icon: 'play', onPress: onContinue } },
+    noprog:     { text: t('clients.noActiveProgram'), color: C.text,
+                  cta: { label: t('clients.btnProgram'), icon: 'add', onPress: onOpenEditor } },
+    dirty:      { text: t('clients.pendingTitle'), color: C.blue,
+                  cta: { label: t('clients.btnSendOverride'), icon: 'send', onPress: onUploadProgram } },
+    stageStuck: { text: t('clients.stageLockedShort'), color: C.orange,
+                  cta: { label: t('clients.stageUnlockShort'), icon: 'unlock', onPress: () => onUnlockStage(stageIdx + 1) } },
+    blockStuck: { text: t('clients.blockDoneShort'), color: C.orange,
+                  cta: { label: t('clients.blockPlanShort'), icon: 'plan', onPress: onPlanStages } },
+    overrides:  { text: t('clients.pendingTitle'), color: C.blue,
+                  cta: { label: t('clients.btnSendOverride'), icon: 'send', onPress: onSendOverrides } },
+    risk:       { text: t('clients.notTraining'), color: C.redText ?? C.red },
+    slip:       { text: t('clients.slowingDown'), color: C.orange },
+  };
+  const avisos = frozen || dimmed ? []
+    : clientAvisos({ client, program: activeProgram, linked: isConnected, inProgress, adherence }).map((k) => AVISO[k]);
   const aviso = avisos[0];
-  const cta   = aviso?.cta;
+
+  // Al pulsar «Pendientes» (§5.2) los que tienen algo se iluminan de lima un
+  // momento. Solo cuando `flash` cambia: una fila que entra en pantalla después
+  // no se enciende.
+  const glow     = useSharedValue(0);
+  const seenRef  = useRef(flash);
+  const pending  = avisos.length > 0;
+  useEffect(() => {
+    if (flash === seenRef.current) return;
+    seenRef.current = flash;
+    if (pending) glow.set(withSequence(withTiming(1, { duration: 180 }), withDelay(450, withTiming(0, { duration: 650 }))));
+  }, [flash, pending, glow]);
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.get() }));
+
+  // Con una lente puesta (§5.2) la derecha es de la cifra: sin botón ni muesca.
+  const cta   = lens ? null : aviso?.cta;
 
   // 2.ª línea sin aviso: programa · etapa · semana de la etapa (en su última,
   // «última semana» en blanco: aviso previo sin alarma).
@@ -1497,7 +1625,7 @@ function ClientListCard({
       : t('clients.stageNWeeks', { n: status.weekInStage, total: status.lengthWeeks });
   }
 
-  const showWeek  = !cta && !!activeProgram && !frozen && !dimmed && weekTotal > 0;
+  const showWeek  = !lens && !cta && !!activeProgram && !frozen && !dimmed && weekTotal > 0;
   const unread    = linked ? newSessionsCount : 0;
   const showNotch = showWeek && unread > 0;
   const last      = lastSeenLabel(lastActivityTs, { t, lang: i18n.language });
@@ -1510,6 +1638,7 @@ function ClientListCard({
       delayLongPress={350}
       activeOpacity={0.75}
     >
+      <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, radii, styles.cGlow, glowStyle]} />
       {/* Insignia del avatar (C08 §3.4): móvil con app, reloj si aún no ha
           canjeado el código. Sin app, nada: es el caso normal del presencial. */}
       <ClientAvatar
@@ -1561,6 +1690,30 @@ function ClientListCard({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Lente (§5.2): la cifra de este cliente en lo que se está comparando. */}
+      {lens && (() => {
+        const v = lens === 'adh'
+          ? (activeProgram && adherence?.status !== STATUS.MUTED ? adherence?.pct ?? null : null)
+          : (activeProgram ? improvement : null);
+        if (v == null) return <View style={styles.cLens}><Text style={[styles.cLensNum, { color: C.muted }]}>—</Text></View>;
+        const tone = lens === 'adh'
+          ? (v < 60 ? C.redText ?? C.red : v < 75 ? C.orange : null)
+          : (v > 0 ? C.accent : C.mutedLight);
+        return (
+          <View style={styles.cLens}>
+            <View style={styles.cLensRow}>
+              <Text style={[styles.cLensNum, { color: tone ?? C.text }]}>{lens === 'imp' && v > 0 ? '+' : ''}{v}</Text>
+              <Text style={styles.cLensUnit}>%</Text>
+            </View>
+            {lens === 'adh' && (
+              <View style={styles.cLensBar}>
+                <View style={[styles.cLensFill, { width: `${Math.min(100, v)}%`, backgroundColor: tone ?? C.accent }]} />
+              </View>
+            )}
+          </View>
+        );
+      })()}
 
       {/* Sin revisar: muesca metida en la esquina, con su radio (§4.5). Tapa la
           última vez, que es por fuerza la de esos entrenos. */}
@@ -1684,7 +1837,6 @@ export default function ClientsScreen() {
   const [statusFilter,     setStatusFilter]     = useState('active'); // 'active'|'inactive'|'all'
   const [tagFilter,        setTagFilter]        = useState([]);    // active tag IDs (used in filter)
   const [showFilterSheet,  setShowFilterSheet]  = useState(false);
-  const [sortMode,         setSortMode]         = useState('recent'); // 'recent'|'idle'|'name'
   const [adherenceFilter,  setAdherenceFilter]  = useState(null);   // null | 'at_risk' | 'unreviewed'
 
   function toggleTagFilter(id) {
@@ -1693,7 +1845,6 @@ export default function ClientsScreen() {
   function clearFilters() {
     setStatusFilter('active');
     setTagFilter([]);
-    setSortMode('recent');
     setAdherenceFilter(null);
   }
   // Filters that diverge from the default view — drives the badge + applied row.
@@ -1767,6 +1918,45 @@ export default function ClientsScreen() {
     });
     return out;
   }, [clients, programs, clientLogs]);
+
+  // Mejora global de cada cliente en sus últimas 8 semanas (C08 §5.1): la misma
+  // cuenta que su pestaña de progreso, recortada antes de llamarla porque es una
+  // regresión por ejercicio. Solo entradas con ejercicios (las de bloques
+  // sueltos no tienen de qué tirar).
+  // ponytail: el reloj se fija al montar; la ventana de 8 semanas no necesita más precisión.
+  const [mountedAt] = useState(() => Date.now());
+  const improvementByClient = useMemo(() => {
+    const since = mountedAt - 56 * 86_400_000;
+    const out = {};
+    Object.values(clients ?? {}).forEach((c) => {
+      const log = (clientLogs[c.id] ?? []).filter((e) => e.timestamp >= since && Array.isArray(e.exercises));
+      out[c.id] = log.length >= 2 ? computeOverallImprovement(log, allExercises) : null;
+    });
+    return out;
+  }, [clients, clientLogs, allExercises, mountedAt]);
+
+  // Lente de las tarjetas de arriba (§5.2): null · 'adh' · 'imp'. No se guarda.
+  const [lens, setLens] = useState(null);
+  const [flash, setFlash] = useState(0);
+
+  // Orden elegido (C08 §6): se guarda en el perfil, así que sobrevive a salir
+  // de la pantalla y a cerrar la app.
+  const setProfile  = useStore((s) => s.setProfile);
+  const order       = useMemo(() => ({ ...DEFAULT_CLIENTS_ORDER, ...(profile.clientsOrder ?? {}) }), [profile.clientsOrder]);
+  const setOrder    = (patch) => setProfile({ clientsOrder: { ...order, ...patch } });
+  const [showSortSheet, setShowSortSheet] = useState(false);
+  // Modo «Reordenar»: `draft` es el orden que se ve mientras se arrastra; «Listo»
+  // lo guarda.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState([]);
+  const reorderScrollRef      = useAnimatedRef();
+  const lastTsByClient = useMemo(() => {
+    const out = {};
+    Object.entries(clientLogs ?? {}).forEach(([id, log]) => {
+      out[id] = log?.length ? Math.max(...log.map((e) => e.timestamp ?? 0)) : 0;
+    });
+    return out;
+  }, [clientLogs]);
 
   // ── Entreno de un cliente sin app (C05-trainer-logging.md §3.7) ──
   const activeForClient  = useStore((s) => s.activeSession.forClient);
@@ -1883,24 +2073,8 @@ export default function ClientsScreen() {
         .filter((c) => tagFilter.length === 0 || tagFilter.some((t) => (c.tags ?? []).includes(t)));
     }
 
-    const lastTs = {};
-    list.forEach((c) => {
-      const sessions = clientLogs[c.id] ?? [];
-      lastTs[c.id] = sessions.length ? Math.max(...sessions.map((e) => e.timestamp)) : 0;
-    });
-    if (pillStatus) {
-      list.sort((a, b) => (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0)); // most idle first
-    } else if (effectiveAdherenceFilter === 'unreviewed') {
-      list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)); // most recent first
-    } else if (sortMode === 'name') {
-      list.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortMode === 'idle') {
-      list.sort((a, b) => (lastTs[a.id] ?? 0) - (lastTs[b.id] ?? 0));
-    } else {
-      list.sort((a, b) => (lastTs[b.id] ?? 0) - (lastTs[a.id] ?? 0)); // recent first
-    }
     return list;
-  }, [clients, search, statusFilter, tagFilter, sortMode, clientLogs, effectiveAdherenceFilter, adherenceByClient, unreviewedByClient]);
+  }, [clients, search, statusFilter, tagFilter, effectiveAdherenceFilter, adherenceByClient, unreviewedByClient]);
 
   // Los congelados, al final y bajo su propio título (M01 §4.5): no se mezclan
   // con los que llevas. Mismo orden dentro de cada grupo.
@@ -1908,13 +2082,53 @@ export default function ClientsScreen() {
   // pliega a los que están en pausa o esperando código (§4.6); y los congelados
   // al final y bajo su propio título (M01 §4.5). Mismo orden dentro de cada uno.
   const [foldOpen, setFoldOpen] = useState(false);
-  const listData = useMemo(() => {
+  const parts = useMemo(() => {
     const main = [], folded = [], cold = [];
     clientList.forEach((c) => {
       if (isFrozen(c.id)) cold.push(c);
       else if ((c.status ?? 'active') === 'paused' || linkOf(c) === 'invited') folded.push(c);
       else main.push(c);
     });
+    return { main, folded, cold };
+  }, [clientList, isFrozen, linkOf]);
+
+  // Las tres tarjetas cuentan a los de la lista principal (§5.1): ni plegados
+  // ni congelados.
+  const summary = useMemo(() => {
+    const avg = (xs) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+    const withProgram = parts.main.filter((c) => programs[c.activeProgramId]);
+    return {
+      needs: parts.main.filter((c) => clientAvisos({
+        client: c, program: programs[c.activeProgramId], linked: linkOf(c) === 'linked',
+        inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id],
+      }).length > 0).length,
+      adh: avg(withProgram
+        .filter((c) => adherenceByClient[c.id]?.status !== STATUS.MUTED && adherenceByClient[c.id]?.pct != null)
+        .map((c) => adherenceByClient[c.id].pct)),
+      imp: avg(withProgram.map((c) => improvementByClient[c.id]).filter((v) => v != null)),
+    };
+  }, [parts, programs, linkOf, activeForClient, adherenceByClient, improvementByClient]);
+
+  const listData = useMemo(() => {
+    // Orden (§6.2): la lista principal con la lente y «Lo pendiente, arriba»; los
+    // plegados y los congelados, solo por el criterio.
+    const lastTsOf = (c) => lastTsByClient[c.id];
+    const metricOf = lens === 'adh' ? (c) => (programs[c.activeProgramId] ? adherenceByClient[c.id]?.pct ?? null : null)
+                   : lens === 'imp' ? (c) => (programs[c.activeProgramId] ? improvementByClient[c.id] ?? null : null)
+                   : undefined;
+    const rankOf = (c) => {
+      const linked = linkOf(c) === 'linked';
+      const first  = clientAvisos({
+        client: c, program: programs[c.activeProgramId], linked,
+        inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id],
+      })[0];
+      if (first) return AVISO_RANK.indexOf(first);
+      return linked && (unreviewedByClient[c.id] ?? 0) > 0 ? 50 : 99;
+    };
+    const plain  = { by: order.by, manual: order.manual, needsFirst: false, lastTsOf };
+    const main   = orderClients(parts.main, { ...plain, needsFirst: order.needsFirst, lens, metricOf, rankOf });
+    const folded = orderClients(parts.folded, plain);
+    const cold   = orderClients(parts.cold, plain);
     const items = main.map((c) => ({ key: c.id, kind: 'client', client: c, block: 'main' }));
     if (folded.length) {
       items.push({ key: '__fold', kind: 'fold', block: 'fold', names: folded.map((c) => c.name.split(' ')[0]) });
@@ -1925,7 +2139,21 @@ export default function ClientsScreen() {
       cold.forEach((c) => items.push({ key: c.id, kind: 'client', client: c, block: 'cold' }));
     }
     return items;
-  }, [clientList, isFrozen, linkOf, foldOpen]);
+  }, [parts, foldOpen, lens, order, programs, adherenceByClient, improvementByClient, lastTsByClient,
+      linkOf, activeForClient, unreviewedByClient]);
+
+  // Reordenar a mano: se parte del orden a mano puro de la lista principal.
+  function startReorder() {
+    setShowSortSheet(false);
+    setLens(null);
+    setDraft(orderClients(parts.main, { by: 'manual', manual: order.manual, needsFirst: false }).map((c) => c.id));
+    setEditing(true);
+  }
+  function finishReorder() {
+    // Los que no se ven ahora (filtrados, plegados) conservan su sitio detrás.
+    setOrder({ manual: [...draft, ...order.manual.filter((id) => !draft.includes(id))] });
+    setEditing(false);
+  }
 
   // tagRegistry is the source of truth — no useMemo needed
   const allTags = tagRegistry;
@@ -3036,6 +3264,52 @@ export default function ClientsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Las tres tarjetas (C08 §5): «Necesitan algo» no se rellena, solo
+            vuelve a la vista normal; Adherencia y Mejora son lentes. */}
+        <View style={styles.kpis}>
+          <SummaryTile
+            value={summary.needs}
+            label={t('clients.summary.needs')}
+            selectable={false}
+            onPress={() => { if (editing) return; setLens(null); setFlash((f) => f + 1); }}
+          />
+          <SummaryTile
+            value={summary.adh == null ? '—' : `${summary.adh}%`}
+            label={t('clients.summary.adherence')}
+            sub={t('clients.summary.adherenceSub')}
+            selected={lens === 'adh'}
+            onPress={() => { if (!editing) setLens((l) => (l === 'adh' ? null : 'adh')); }}
+          />
+          <SummaryTile
+            value={summary.imp == null ? '—' : `${summary.imp > 0 ? '+' : ''}${summary.imp}%`}
+            valueColor={summary.imp == null ? null : summary.imp >= 0 ? th.colors.accent : th.colors.orange}
+            label={t('clients.summary.improvement')}
+            sub={t('clients.summary.improvementSub')}
+            selected={lens === 'imp'}
+            onPress={() => { if (!editing) setLens((l) => (l === 'imp' ? null : 'imp')); }}
+          />
+        </View>
+
+        {/* Rótulo de la lista (§7.1): «Clientes» y el orden a la derecha. Con una
+            lente, el botón dice por qué está ordenada; en «Reordenar», «Listo». */}
+        <View style={styles.listLabelRow}>
+          <Text style={styles.listLabel}>{t('clients.listHeader').toUpperCase()}</Text>
+          {editing ? (
+            <TouchableOpacity onPress={finishReorder} hitSlop={8}>
+              <Text style={styles.sortDone}>{t('clients.sort.done')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.sortBtn} onPress={() => setShowSortSheet(true)} hitSlop={8}>
+              <SortIcon color={th.colors.mutedLight} />
+              <Text style={styles.sortBtnText}>
+                {lens && order.by !== 'manual'
+                  ? t(lens === 'adh' ? 'clients.sort.lensAdherence' : 'clients.sort.lensImprovement')
+                  : t(`clients.sort.${order.by}`)}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Row 3 — conditional: attention pills + applied filters. Hidden when
             there's nothing to show, so the default state is two clean rows. */}
         {(atRiskCount > 0 || slippingCount > 0 || unreviewedCount > 0 || tagFilter.length > 0) && (
@@ -3146,7 +3420,33 @@ export default function ClientsScreen() {
 
       {/* Client list */}
       <Reanimated.View style={{ flex: 1 }} layout={LinearTransition.duration(240)}>
-      {clientList.length === 0 ? (
+      {editing ? (
+        <Reanimated.ScrollView
+          ref={reorderScrollRef}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl + insets.bottom }}
+        >
+          <Sortable.Grid
+            {...SORTABLE_PROPS}
+            data={draft}
+            keyExtractor={(id) => id}
+            rowGap={spacing.xs}
+            scrollableRef={reorderScrollRef}
+            onDragEnd={({ data }) => setDraft(data)}
+            renderItem={({ item: id, index }) => {
+              const c = clients[id];
+              if (!c) return null;
+              const prog = programs[c.activeProgramId];
+              return (
+                <ReorderRow
+                  client={c}
+                  meta={prog?.name ?? t('clients.noActiveProgram')}
+                  radii={getCardRadii(th, index === 0, index === draft.length - 1)}
+                />
+              );
+            }}
+          />
+        </Reanimated.ScrollView>
+      ) : clientList.length === 0 ? (
         <EmptyState
           style={styles.emptyState}
           icon={ROW_ICON.user}
@@ -3206,6 +3506,9 @@ export default function ClientsScreen() {
                 <ClientListCard
                   client={client}
                   radii={radii}
+                  lens={lens}
+                  flash={flash}
+                  improvement={improvementByClient[client.id]}
                   dimmed={!!item.dimmed || (client.status ?? 'active') === 'inactive'}
                   activeProgram={activeProgram}
                   log={clientSessions}
@@ -3292,7 +3595,34 @@ export default function ClientsScreen() {
         isFirstTime={isFirstTimeSync}
       />
 
-      {/* Unified filter sheet: status + sort + tags */}
+      {/* Ordenar (C08 §6.1): criterio, reordenar a mano y «Lo pendiente, arriba». */}
+      <DragSheet visible={showSortSheet} onClose={() => setShowSortSheet(false)} title={t('clients.sort.title')}>
+        <Section>
+          <ChoiceRow label={t('clients.sort.activity')} sub={t('clients.sort.activitySub')}
+            selected={order.by === 'activity'} onPress={() => setOrder({ by: 'activity' })} />
+          <ChoiceRow label={t('clients.sort.name')} sub={t('clients.sort.nameSub')}
+            selected={order.by === 'name'} onPress={() => setOrder({ by: 'name' })} />
+          <ChoiceRow label={t('clients.sort.manual')} sub={t('clients.sort.manualSub')}
+            selected={order.by === 'manual'} onPress={() => setOrder({ by: 'manual' })} />
+        </Section>
+        {order.by === 'manual' && (
+          <Section>
+            <MenuRow label={t('clients.sort.reorder')} onPress={startReorder} />
+          </Section>
+        )}
+        <Section style={{ marginBottom: 0 }}>
+          <MenuRow
+            label={t('clients.sort.needsFirst')}
+            sub={t('clients.sort.needsFirstSub')}
+            onPress={() => setOrder({ needsFirst: !order.needsFirst })}
+            control={<Switch value={order.needsFirst} />}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: order.needsFirst }}
+          />
+        </Section>
+      </DragSheet>
+
+      {/* Unified filter sheet: status + tags (el orden tiene su hoja) */}
       <DragSheet
         visible={showFilterSheet}
         onClose={() => { setShowFilterSheet(false); setTagSearchText(''); }}
@@ -3311,20 +3641,6 @@ export default function ClientsScreen() {
               ]}
               value={statusFilter}
               onChange={(id) => { setAdherenceFilter(null); setStatusFilter(id); }}
-            />
-          </View>
-
-          {/* Orden — segmented control */}
-          <View>
-            <Text style={styles.filterSecTitle}>{t('clients.filterSheet.sort')}</Text>
-            <SegmentedControl
-              options={[
-                { id: 'recent', label: t('clients.filterSheet.sortRecent') },
-                { id: 'idle',   label: t('clients.filterSheet.sortIdle') },
-                { id: 'name',   label: t('clients.filterSheet.sortName') },
-              ]}
-              value={sortMode}
-              onChange={setSortMode}
             />
           </View>
 
@@ -3464,7 +3780,7 @@ export default function ClientsScreen() {
           {/* Limpiar — siempre presente (altura constante); deshabilitado cuando
               no hay nada que limpiar, para que el modal no cambie de tamaño */}
           {(() => {
-            const canClear = activeFilterCount > 0 || sortMode !== 'recent';
+            const canClear = activeFilterCount > 0;
             return (
               <TouchableOpacity
                 style={[styles.filterClearBtn, !canClear && { opacity: 0.4 }]}
@@ -4003,6 +4319,63 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.colors.accent,
   },
   cNotchText: { ...textStyles.labelStrong, color: th.colors.onAccent, includeFontPadding: false },
+  cGlow: { backgroundColor: withOpacity(th.colors.accent, 0.18) },
+  // Lente (§5.2): cifra del cliente y, en adherencia, su barrita.
+  cLens:     { alignItems: 'flex-end', gap: spacing.sm, minWidth: 52, flexShrink: 0 },
+  cLensRow:  { flexDirection: 'row', alignItems: 'baseline' },
+  cLensNum:  { ...textStyles.itemTitleQuiet, includeFontPadding: false },
+  cLensUnit: { ...textStyles.label, color: th.colors.mutedLight },
+  cLensBar: {
+    width:           52,
+    height:          4,
+    borderRadius:    2,
+    overflow:        'hidden',
+    backgroundColor: th.colors.surface3 ?? th.colors.border,
+  },
+  cLensFill: { height: '100%', borderRadius: 2 },
+  // Rótulo de la lista y botón de orden (§6.1, §7.1).
+  listLabelRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingLeft:       spacing.lg + spacing.xs2,
+    marginTop:         spacing.lg,
+  },
+  listLabel:   { ...textStyles.caps, color: th.colors.text },
+  sortBtn:     { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
+  sortBtnText: { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  sortDone:    { ...textStyles.caps, color: th.colors.accent },
+  // Dentro de `Sortable.Grid` el alto fijo de la fila no basta para centrar
+  // (el texto salía pegado arriba): el aire va en relleno, como antes del alto fijo.
+  reorderRow:    { height: undefined, minHeight: 70, paddingVertical: spacing.lg },
+  reorderHandle: { paddingLeft: spacing.sm, alignSelf: 'stretch', justifyContent: 'center' },
+  // Las tres tarjetas de arriba (§5.1).
+  kpis: {
+    flexDirection:     'row',
+    gap:               spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginTop:         spacing.sm2,
+  },
+  // Misma forma que las tarjetas de progresión (`statTile`, ProgressTab).
+  kpi: {
+    flex:              1,
+    overflow:          'hidden',
+    alignItems:        'center',
+    // Arriba y no centrado: la que no lleva línea de abajo (Pendientes) tiene
+    // que dejar la cifra y el nombre a la misma altura que las otras.
+    justifyContent:    'flex-start',
+    gap:               spacing.sm2,
+    borderRadius:      th.radius.md,
+    backgroundColor:   th.colors.surface,
+    paddingHorizontal: spacing.sm2,
+    paddingVertical:   spacing.lg,
+  },
+  kpiPressed:    { transform: [{ scale: 0.96 }] },
+  kpiValueBlock: { alignItems: 'center', gap: spacing.xs },
+  kpiValue:      { ...textStyles.title, textAlign: 'center' },
+  kpiLabel:      { ...textStyles.caps, textTransform: 'uppercase', textAlign: 'center' },
+  kpiSub:        { ...textStyles.label, textAlign: 'center' },
   // Plegados: pausa y esperando código, en una fila al final (§4.6).
   cFold: {
     flexDirection:     'row',
