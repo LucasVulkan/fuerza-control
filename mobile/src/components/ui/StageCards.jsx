@@ -3,8 +3,8 @@
  * (docs/specs/P14-editor-etapas.md §3.3).
  *
  * Sin elegir, cada ficha es un cuadrado con su número en Barlow y nada más. La
- * elegida se ensancha y crece hasta decir «ETAPA 2» con el tramo de semanas
- * debajo, y se rellena de lima desde donde la tocó el dedo, como las pestañas
+ * elegida se ensancha y crece y apila, centrados, «ETAPA», el número y el tramo
+ * de semanas (variante D de `stages-editor-6.html`), y se rellena de lima desde donde la tocó el dedo, como las pestañas
  * de Inicio (U13-02). Al final, un «+».
  *
  * La fila se desplaza con el dedo y se elige TOCANDO: desplazar solo mueve la
@@ -16,7 +16,7 @@
  * dice la cabecera de debajo.
  */
 import { useEffect, useRef, useState } from 'react';
-import { View, Pressable, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor,
 } from 'react-native-reanimated';
@@ -27,14 +27,15 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import { LockIcon } from './EditorIcons';
 
 const SMALL   = 52;             // la ficha sin elegir: un cuadrado
-const OPEN_W  = 86;             // la elegida: cabe «ETAPA 11» y «sem 12-15»
-const OPEN_H  = 66;
+const OPEN_W  = 72;             // la elegida: cabe «sem 12-15»
+const OPEN_H  = 80;             // ETAPA / número / tramo, apilados
 const GAP     = spacing.sm2;
 const PAD     = spacing.lg;     // la fila sale a sangre: el relleno de página va dentro
 // El círculo del relleno cubre la ficha abierta desde cualquier punto.
 const R       = Math.ceil(Math.hypot(OPEN_W, OPEN_H));
 const FILL_MS = 450;            // como el relleno de Inicio por pestañas (U13-02)
 const MIN_MS  = 120;
+const MARK_TOP = 7;
 
 /**
  * Una ficha. Cada una lleva su propio avance, así que ir y volver deprisa sigue
@@ -67,6 +68,9 @@ function StageCard({ stage, selected, onPress }) {
   // llegan cuando ya hay sitio para ellos.
   const closed  = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0, 0.4], [1, 0], 'clamp') }));
   const open    = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0.5, 1], [0, 1], 'clamp') }));
+  // Cerrada, la marca va en la esquina; abierta, a media altura junto al
+  // número, porque arriba está «ETAPA».
+  const markAt  = useAnimatedStyle(() => ({ top: MARK_TOP + (OPEN_H / 2 - MARK_TOP - 5) * p.get() }));
   const dotBg   = useAnimatedStyle(() => ({ backgroundColor: interpolateColor(p.get(), [0, 1], [C.accent, C.onAccent]) }));
 
   const numColor = stage.deload ? C.blue : stage.done ? C.muted : C.text;
@@ -95,15 +99,13 @@ function StageCard({ stage, selected, onPress }) {
             <Text style={[styles.num, { color: numColor }]}>{stage.number}</Text>
           </Reanimated.View>
           <Reanimated.View style={[styles.open, open]}>
-            <View style={styles.openTop}>
-              <Text style={styles.word}>{t('editor.stageWord').toUpperCase()}</Text>
-              <Text style={[styles.num, { color: C.onAccent }]}>{stage.number}</Text>
-            </View>
+            <Text style={styles.word}>{t('editor.stageWord').toUpperCase()}</Text>
+            <Text style={[styles.num, styles.numOpen, { color: C.onAccent }]}>{stage.number}</Text>
             <Text style={styles.range} numberOfLines={1}>{stage.range}</Text>
           </Reanimated.View>
           {stage.locked
-            ? <View style={styles.mark}><LockIcon size={10} color={C.redText} solid /></View>
-            : stage.now && <Reanimated.View style={[styles.mark, styles.dot, dotBg]} />}
+            ? <Reanimated.View style={[styles.mark, markAt]}><LockIcon size={10} color={C.redText} solid /></Reanimated.View>
+            : stage.now && <Reanimated.View style={[styles.mark, styles.dot, markAt, dotBg]} />}
         </Reanimated.View>
       )}
     </Pressable>
@@ -186,15 +188,16 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  openTop: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs2 },
   // 34 = 1.2 em, lo que pide la Barlow para no cortarse (ver `todayName` en
   // SessionList); y 2 de aire a la derecha para la inclinación de la cursiva.
   num:     { ...textStyles.heroName, lineHeight: 34, includeFontPadding: false, paddingRight: 2 },
-  word:    { ...textStyles.labelStrong, color: withOpacity(th.colors.onAccent, 0.65) },
-  // La caja de 34 del número ya trae aire debajo: se le recoge un poco.
-  range:   { ...textStyles.label, color: withOpacity(th.colors.onAccent, 0.65), marginTop: -spacing.xs2 },
+  word:    { ...textStyles.caps, color: withOpacity(th.colors.onAccent, 0.65) },
+  // La caja de 34 trae aire arriba y abajo: se recoge para que los tres pisos
+  // se lean como una pieza.
+  numOpen: { marginVertical: -spacing.xs2 },
+  range:   { ...textStyles.label, color: withOpacity(th.colors.onAccent, 0.65) },
 
-  mark: { position: 'absolute', top: 7, right: 7 },
+  mark: { position: 'absolute', top: MARK_TOP, right: 7 },
   dot:  { width: 7, height: 7, borderRadius: 4 },
 
   add: {

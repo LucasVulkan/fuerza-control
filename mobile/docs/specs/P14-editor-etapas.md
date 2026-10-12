@@ -123,23 +123,23 @@ con el resto de la app. Ahora hablan como el onboarding y el paywall (maqueta
 - **Sin elegir, un cuadrado de 52 dp** (radio 14, fondo `surface`) con solo el
   número, grande (`heroName`, Barlow cursiva): en `text`, en `muted` si está
   hecha, en `blue` si es descarga.
-- **La elegida se abre** a 86 × 66 dp, creciendo hacia la derecha, y dice
-  **«ETAPA 2»** —«ETAPA» pequeño (`labelStrong`) y el número grande, por la base—
-  con **el tramo de semanas** debajo (`label`), todo centrado en la ficha. El número,
-  a altura de línea 34 (1,2 em: la Barlow se corta con menos) y 2 dp de aire a la
-  derecha para la cursiva. Se rellena de lima (de `blue` si
-  es descarga) desde donde la tocó el dedo, en 450 ms, como las pestañas de Inicio
-  (U13-02); el texto va en `onAccent` (lo pequeño, al 65 %). El número se va antes
-  de crecer y «ETAPA N» con el tramo llegan cuando ya caben. Si se elige deslizando
-  la cabecera, el relleno sale del centro. Las cerradas van centradas en la altura
-  de la abierta. (Segunda prueba del 12-oct: la ficha de 88 × 66 con «1 ETAPA» en
-  todas —variante F de la maqueta— se queda en la abierta, y al revés.)
+- **La elegida se abre** a 72 × 80 dp, creciendo hacia la derecha, y apila,
+  centrados, **«ETAPA»** (`caps`), **el número** grande y **el tramo de semanas**
+  (`label`): la variante D de la maqueta. (Tercera prueba del 12-oct: «ETAPA 2» en
+  una línea con el tramo debajo quedaba desequilibrada.) El número, a altura de
+  línea 34 (1,2 em: la Barlow se corta con menos) y 2 dp de aire a la derecha para
+  la cursiva. Se rellena de lima (de `blue` si es descarga) desde donde la tocó el
+  dedo, en 450 ms, como las pestañas de Inicio (U13-02); el texto va en `onAccent`
+  (lo pequeño, al 65 %). El número suelto se va antes de crecer y los tres pisos
+  llegan cuando ya caben. Si se elige deslizando la cabecera, el relleno sale del
+  centro. Las cerradas van centradas en la altura de la abierta.
 - El tramo: «sem 1-4 · sem 5-8 · sem 9-11 · sem 12». Dice sin palabras que son
   trozos seguidos del mismo calendario. Se calcula con las `durationWeeks`
   previstas (no con las semanas alargadas del cliente); una sin límite es
   «sem 13+», y **después** de una sin límite ya no hay calendario: esas fichas
   dicen la duración («4 sem»).
-- En la esquina de arriba a la derecha, el **punto** de la en curso (7 dp,
+- En la esquina de arriba a la derecha (abierta, a media altura junto al número,
+  porque arriba va «ETAPA»), el **punto** de la en curso (7 dp,
   `accent`; negro sobre el lima) o el **candado** rojo de 10 dp si está bloqueada
   (§5.2, quién lo ve). No coinciden nunca: la en curso no puede estar bloqueada.
   El progreso de la en curso no va en la ficha (la barrita se leía mal): lo dice
