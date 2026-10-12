@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapas en el editor v3 — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ══════ TOKENS formaFit (src/themes.js) ══════ */
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --blue: #4c85ff; --blueTint: rgba(76,133,255,.18);
+    --red: #ff5e58; --red50: rgba(255,94,88,.5);
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --tabOff: #171717;
+    --ease: cubic-bezier(.35,0,.15,1);
+  }
+  body { background: #070707; color: var(--text); font-family: Inter, sans-serif; padding: 32px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.5 Inter; max-width: 800px; margin-bottom: 20px; }
+  .note { color: var(--mutedLight); font: 500 13px/1.55 Inter; }
+  .note p { margin-bottom: 10px; }
+  .note b { color: var(--text); }
+  .note h3 { font: 800 14px Inter; color: var(--text); margin: 18px 0 6px; }
+  .note h3:first-child { margin-top: 0; }
+  .stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: var(--muted); width: 120px; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+  .ctl button:disabled { opacity: .35; cursor: default; }
+
+  /* ── teléfono ── */
+  .phone { width: 375px; height: 812px; background: var(--bg); border-radius: 30px; position: relative; overflow: hidden; border: 1px solid #1a1a1a; flex: none; }
+  .scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 0 16px 60px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .hdr { display: flex; align-items: center; gap: 8px; padding: 18px 0 14px; }
+  .hdr .bk { font: 500 26px/1 Inter; color: var(--muted); width: 24px; }
+  .hdr .mid { flex: 1; text-align: center; }
+  .eyebrow { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .htitle { font: 800 17px Inter; margin-top: 3px; }
+  .hdr .rt { width: 24px; color: var(--accent); font: 900 18px Inter; text-align: right; }
+  .caps { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 20px 0 6px; }
+  .sec a { font: 800 12px Inter; color: var(--accent); cursor: pointer; }
+  .card { background: var(--surface); border-radius: 18px; padding: 14px 16px; }
+  .meta { font: 500 12px/1.45 Inter; color: var(--mutedLight); }
+  .sg { display: flex; background: var(--surface2); border-radius: 10px; padding: 3px; }
+  .sg b { flex: 1; text-align: center; font: 800 12px Inter; padding: 8px 0; border-radius: 8px; color: var(--mutedLight); cursor: pointer; white-space: nowrap; }
+  .sg b.on { background: var(--border); color: var(--text); }
+  .toast { position: absolute; left: 16px; right: 16px; top: 64px; transform: translateY(-16px); background: var(--accent); color: #000; font: 800 12.5px/1.4 Inter; padding: 10px 14px; border-radius: 14px; opacity: 0; transition: all .3s var(--ease); z-index: 30; pointer-events: none; text-align: center; }
+  .toast.on { opacity: 1; transform: none; }
+  .sheetwrap { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-end; z-index: 20; }
+  .sheetwrap.on { display: flex; }
+  .sheet { width: 100%; background: var(--surface); border-radius: 22px 22px 0 0; padding: 10px 16px 26px; }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--muted); margin: 0 auto 14px; }
+  .srow { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-top: .5px solid var(--border); font: 700 14px Inter; }
+  .srow span { color: var(--mutedLight); font: 700 13px Inter; display: flex; align-items: center; gap: 6px; }
+  .newbtn { margin-top: 14px; border-radius: 12px; padding: 14px 0; text-align: center; font: 800 14px Inter; cursor: pointer; background: var(--accent10); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent50); }
+  .newhint { font: 500 12px/1.4 Inter; color: var(--muted); text-align: center; margin-top: 7px; }
+  .delbtn { margin-top: 12px; text-align: center; font: 800 13px Inter; color: var(--red); cursor: pointer; }
+
+  /* ══════ línea de tiempo ══════ */
+  .tl { position: relative; margin: 0 -16px; overflow: hidden; touch-action: pan-y; cursor: grab; user-select: none; }
+  .tl.drag { cursor: grabbing; }
+  .track { position: absolute; top: 0; left: 0; height: 100%; transition: transform .32s var(--ease); z-index: 1; }
+  .tl.drag .track { transition: none; }
+  .tlfade { position: absolute; top: 0; bottom: 0; width: 26px; pointer-events: none; z-index: 2; }
+  .tlfade.l { left: 0; background: linear-gradient(to right, var(--bg), rgba(15,15,15,0)); }
+  .tlfade.r { right: 0; background: linear-gradient(to left, var(--bg), rgba(15,15,15,0)); }
+  /* La pestaña de la carpeta: fija en el centro, porque la etapa seleccionada siempre está centrada. */
+  .ear { position: absolute; left: 50%; top: 8px; bottom: 0; background: var(--surface); border-radius: 16px 16px 0 0; z-index: 0; }
+  .ear::before, .ear::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; }
+  .ear::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--surface) 14px); }
+  .ear::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--surface) 14px); }
+
+  .node { position: absolute; top: 0; height: 100%; display: flex; flex-direction: column; align-items: center; }
+  .node .now { height: 14px; font: 900 8px Inter; letter-spacing: .12em; color: var(--accent); margin-top: 4px; white-space: nowrap; }
+  .node .ln { position: absolute; top: 31px; height: 2px; background: var(--border); }
+  .node .ln.l { left: 0; right: 50%; } .node .ln.r { left: 50%; right: 0; }
+  .node .ln.done { background: var(--muted); }
+  .node .ln.dash { background: none; height: 0; border-top: 2px dashed var(--border); }
+  .node.sel .ln { opacity: 0; }
+  .node .nm { margin-top: 7px; font: 800 11px Inter; color: var(--mutedLight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .25s; text-align: center; }
+  .node .wk { font: 500 10px Inter; color: var(--muted); margin-top: 1px; white-space: nowrap; }
+  .node.sel .nm { color: var(--text); } .node.sel .wk { color: var(--mutedLight); }
+  .lk { display: inline-flex; vertical-align: -1px; margin-left: 3px; }
+
+  /* marcador: círculo o cuadrado */
+  .mk { width: 28px; height: 28px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 12px Inter; color: var(--mutedLight); position: relative; z-index: 1; transition: background .25s, color .25s, transform .25s var(--ease); flex: none; }
+  .shape-circ .mk { border-radius: 14px; }
+  .shape-sq .mk { border-radius: 9px; width: 30px; height: 30px; margin-top: -1px; }
+  .node.done .mk { background: #1a1a1a; color: var(--muted); }
+  .node.isnow .mk { box-shadow: 0 0 0 1.5px var(--accent); }
+  .node.dl .mk { background: var(--blueTint); color: var(--blue); }
+  .node.sel .mk { background: var(--accent); color: #000; transform: scale(1.12); }
+  .node.sel.dl .mk { background: var(--blue); color: #fff; }
+  .mk .badge { position: absolute; right: -5px; top: -5px; width: 15px; height: 15px; border-radius: 8px; background: var(--bg); display: flex; align-items: center; justify-content: center; }
+  .node.ghost .mk { background: none; border: 1.5px dashed var(--muted); color: var(--accent); font-size: 16px; width: 26px; height: 26px; }
+  .node.ghost .nm, .node.ghost .wk { color: var(--accent); }
+
+  /* segmentos */
+  .shape-seg .node .snum { font: 900 12px Inter; color: var(--mutedLight); height: 16px; display: flex; align-items: center; transition: color .25s; }
+  .shape-seg .node .bar { margin-top: 6px; height: 6px; width: calc(100% - 4px); border-radius: 3px; background: var(--surface2); overflow: hidden; transition: height .25s var(--ease); }
+  .shape-seg .node .bar i { display: block; height: 100%; background: var(--muted); }
+  .shape-seg .node.isnow .bar i { background: var(--accent); }
+  .shape-seg .node.dl .bar { background: var(--blueTint); }
+  .shape-seg .node.sel .bar { height: 10px; margin-top: 4px; box-shadow: inset 0 0 0 1.5px var(--accent50); }
+  .shape-seg .node.sel.dl .bar { box-shadow: inset 0 0 0 1.5px var(--blue); }
+  .shape-seg .node.sel .snum { color: var(--accent); }
+  .shape-seg .node.done .snum { color: var(--muted); }
+  .shape-seg .node.dl .snum { color: var(--blue); }
+  .shape-seg .node.ghost .bar { background: none; border: 1.5px dashed var(--muted); }
+  .shape-seg .node.ghost .snum { color: var(--accent); font-size: 15px; }
+
+  /* pestañas: la línea ES la fila de pestañas de la carpeta */
+  .shape-tabs .node { justify-content: flex-end; }
+  .shape-tabs .tab { width: calc(100% - 4px); flex: 1; margin-top: 2px; background: var(--tabOff); border-radius: 12px 12px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: background .25s; padding: 0 4px; }
+  .shape-tabs .tab .tn { font: 900 13px Inter; color: var(--mutedLight); display: flex; align-items: center; }
+  .shape-tabs .tab .nm { margin-top: 2px; width: 100%; }
+  .shape-tabs .node.done .tab .tn { color: var(--muted); }
+  .shape-tabs .node.dl .tab .tn { color: var(--blue); }
+  .shape-tabs .node.sel .tab { background: var(--surface); width: 100%; border-radius: 14px 14px 0 0; }
+  .shape-tabs .node.sel .tab .tn { color: var(--accent); }
+  .shape-tabs .node.sel.dl .tab .tn { color: var(--blue); }
+  .shape-tabs .node.sel .tab::before, .shape-tabs .node.sel .tab::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; }
+  .shape-tabs .node.sel .tab::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--surface) 14px); }
+  .shape-tabs .node.sel .tab::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--surface) 14px); }
+  .shape-tabs .node.ghost .tab { background: none; border: 1.5px dashed var(--border); border-bottom: none; }
+  .shape-tabs .node.ghost .tab .tn { color: var(--accent); font-size: 16px; }
+  .shape-tabs .node.isnow .tab::marker { display: none; }
+
+  /* ══════ bloque de la etapa ══════ */
+  .block { position: relative; touch-action: pan-y; }
+  .block.in-r { animation: inR .32s var(--ease); }
+  .block.in-l { animation: inL .32s var(--ease); }
+  @keyframes inR { from { transform: translateX(46px); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes inL { from { transform: translateX(-46px); opacity: 0 } to { transform: none; opacity: 1 } }
+  .panel { background: var(--surface); border-radius: 18px; padding: 16px 14px 14px; }
+  .panel.solo { border-radius: 18px 18px 10px 10px; }
+  .fh { cursor: grab; user-select: none; }
+  .fhTop { display: flex; gap: 10px; align-items: flex-start; }
+  .fhTitle { flex: 1; min-width: 0; }
+  .tagline { font: 800 10px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .tagline .nw { color: var(--accent); } .tagline .dd { color: var(--blue); } .tagline .lkd { color: var(--red); display: inline-flex; align-items: center; gap: 4px; }
+  .fname { font: 900 20px Inter; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fname .fnum { color: var(--accent); margin-right: 7px; }
+  .fname .fnum.dl { color: var(--blue); }
+  .fmeta { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .fmeta .lkd { color: var(--red); display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+  .ficons { display: flex; gap: 6px; flex: none; }
+  .ib { width: 36px; height: 36px; border-radius: 11px; background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--mutedLight); transition: background .2s, color .2s; }
+  .ib.on { background: var(--accent10); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent50); }
+  .xpand { animation: grow .28s var(--ease); }
+  @keyframes grow { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+  .stats { margin-top: 14px; padding-top: 12px; border-top: .5px solid var(--border); }
+  .prov { font: 500 12px Inter; color: var(--mutedLight); margin: 10px 0 0; }
+  .prov em { font-style: normal; color: var(--text); font-weight: 700; }
+  .kpis { display: flex; gap: 6px; margin-top: 10px; }
+  .kpi { flex: 1; background: var(--surface2); border-radius: 10px; padding: 8px 9px; }
+  .kpi b { font: 900 15px Inter; }
+  .kpi i { font-style: normal; font: 800 10px Inter; margin-left: 4px; }
+  .kpi span { display: block; font: 500 10px Inter; color: var(--mutedLight); margin-top: 1px; }
+  .zone { display: grid; grid-template-columns: 60px 1fr 52px; align-items: center; gap: 8px; margin-top: 9px; }
+  .zone .zl { font: 500 12px Inter; color: var(--mutedLight); }
+  .zone .zt { position: relative; height: 10px; background: var(--surface2); border-radius: 5px; }
+  .zone .zb { position: absolute; top: 0; bottom: 0; background: var(--accent10); border-left: 1px solid rgba(170,226,22,.25); border-right: 1px solid rgba(170,226,22,.25); }
+  .zone .zf { position: absolute; left: 0; top: 2px; height: 6px; border-radius: 3px; background: var(--accent); transition: width .35s var(--ease); }
+  .zone .zf.lo { background: var(--mutedLight); } .zone .zf.hi { background: var(--red); }
+  .zone .zm { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--text); border-radius: 1px; }
+  .zone .zv { font: 900 12px Inter; text-align: right; white-space: nowrap; }
+  .zone .zv i { font-style: normal; font: 800 10px Inter; margin-left: 3px; }
+  .up { color: var(--accent); } .down { color: var(--blue); } .same { color: var(--muted); }
+
+  /* sesiones — copia de SessionCard del editor: radio 10, letra lima SIN fondo, nombre 14/700, meta 12/500 */
+  .slist { display: flex; flex-direction: column; gap: 8px; }
+  .sess { display: flex; gap: 14px; align-items: center; padding: 12px 6px 12px 16px; border-radius: 10px; }
+  .sess .lt { font: 900 16px Inter; color: var(--accent); min-width: 16px; text-align: center; }
+  .sess .nm { font: 700 14px Inter; }
+  .sess .grip { color: var(--mutedLight); width: 30px; text-align: center; font-size: 13px; }
+  .addsess { text-align: center; padding: 12px 0 2px; font: 800 13px Inter; color: var(--accent50); cursor: pointer; }
+  .addsess em { font-style: normal; color: var(--accent); }
+  /* dentro de la carpeta */
+  .in .slist { margin-top: 14px; }
+  .in.st-light .sess { background: var(--surface2); }
+  .in.st-sunk .sess { background: var(--bg); }
+  .in.st-rows .slist { gap: 0; margin-top: 10px; }
+  .in.st-rows .sess { border-radius: 0; border-top: .5px solid var(--border); padding-left: 4px; }
+  .in.st-rows .addsess { border-top: .5px solid var(--border); padding-top: 14px; }
+  /* debajo de la carpeta */
+  .below .slist { margin-top: 6px; }
+  .below .sess { background: var(--surface); }
+  .below .addsess { padding-top: 10px; }
+
+  .ordr { margin-top: 26px; }
+</style>
+</head>
+<body>
+<h1>Etapas en el editor de programa · v3</h1>
+<p class="lead">Tercera vuelta de <code>P14-etapas-v2.md</code> §3. Fija la <b>Carpeta</b> y prueba lo que quedó abierto: cómo se dibuja la línea de etapas (forma y cuánto texto lleva), sesiones dentro o justo debajo de la tarjeta, cómo se ve la tarjeta de sesión dentro, y dónde va el candado. «Nueva etapa» va al final de la línea y en Ajustes. Para ver el candado, selecciona la etapa 3 o la 4.</p>
+
+<div class="ctl" id="cShape"><span>Línea · forma</span><button data-x="circ">Círculos</button><button data-x="sq">Cuadrados</button><button data-x="seg">Segmentos</button><button data-x="tabs" class="on">Pestañas</button></div>
+<div class="ctl" id="cTxt"><span>Línea · texto</span><button data-x="name">Nombre y semanas</button><button data-x="weeks" class="on">Solo semanas</button><button data-x="num">Solo número</button></div>
+<div class="ctl" id="cSess"><span>Sesiones</span><button data-x="in" class="on">Dentro de la tarjeta</button><button data-x="below">Justo debajo</button></div>
+<div class="ctl" id="cSt"><span>Sesión dentro</span><button data-x="light">Clara</button><button data-x="sunk" class="on">Hundida</button><button data-x="rows">Filas</button></div>
+<div class="ctl" id="cLock"><span>Candado</span><button data-x="brow" class="on">En la ceja</button><button data-x="meta">En la meta</button></div>
+<div class="ctl" id="cN"><span>Etapas</span><button data-x="3">3</button><button data-x="6" class="on">6</button><button data-x="11">11</button></div>
+
+<div class="stage" style="margin-top:14px">
+  <div class="phone" id="ph">
+    <div class="toast" id="toast"></div>
+    <div class="scroll" id="sc"></div>
+    <div class="sheetwrap" id="sw"><div class="sheet" id="sb"></div></div>
+  </div>
+  <div style="max-width:470px" class="note">
+    <h3>La línea · forma</h3>
+    <p><b>Pestañas</b> (nueva): la línea deja de ser una línea y pasa a ser la fila de pestañas de la carpeta. La seleccionada es del color del panel y se funde con él; las demás, un gris entre el fondo y la tarjeta. Es la que más dice «carpeta» y no mete un elemento nuevo en la app. <b>Cuadrados</b>: el mismo radio que las letras de sesión, conectados por la línea. <b>Segmentos</b>: la barra de progreso por tramos que ya usa la app (tarjeta de programa, cabecera del entreno); la de ahora se va llenando con sus semanas. <b>Círculos</b>: los de la v2, para comparar.</p>
+    <h3>La línea · texto</h3>
+    <p>Con nombre caben unas cuatro y los largos se cortan («Intensificación pe…»). <b>Solo semanas</b> mete unas seis, y <b>solo número</b>, ocho: el nombre ya lo dice la tarjeta de abajo, que es la que se lee. Propuesta: solo semanas — la duración es lo único que la tarjeta no repite a la vista mientras navegas.</p>
+    <h3>Sesiones dentro o debajo</h3>
+    <p><b>Dentro</b>: la tarjeta de sesión tiene que distinguirse del panel. <b>Clara</b> (surface2 sobre surface) apenas se separa: 1,1 : 1. <b>Hundida</b> (el negro del fondo sobre el panel) se separa bien y se lee como «ranuras» de la carpeta. <b>Filas</b>: sin tarjeta, separadas por un filete; la más limpia, pero al deslizar para duplicar o eliminar la fila tiene que llevar su propio fondo. En las tres la letra va <b>sin fondo</b>, como hoy en la app.</p>
+    <p><b>Debajo</b>: la carpeta solo lleva la cabecera, y las sesiones son las tarjetas de hoy, sueltas, a 6 px. Sin título «Sesiones de…»: la proximidad hace el bloque, y el siguiente apartado queda a 26 px.</p>
+    <h3>La tarjeta de la etapa</h3>
+    <p>Número delante del nombre, en lima como la letra de las sesiones. Sin «Detalles»: lo que había dentro (de qué etapa salió, series por semana, reps de los básicos y minutos por sesión) pasa al icono de estadísticas, con los grupos musculares y la comparación, que ahora también da la diferencia de esas tres cifras.</p>
+    <p><b>Candado</b>: en la ceja («POR VENIR · 🔒 BLOQUEADA», en rojo) o al final de la meta. Además, en la línea, un candado pequeño junto al número.</p>
+    <h3>Nueva etapa</h3>
+    <p>Al final de la línea, con la forma de la línea en discontinuo, y en Ajustes: «Nueva etapa desde esta». Las dos abren <b>el mismo creador de etapas</b>, que trae la etapa seleccionada como base; duplicar deja de ser un botón aparte: es crear con «Igual».</p>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ═══════════ Programa de ejemplo ═══════════ */
+const BASE = {
+  A: [{ k: 1, m: 'Piernas', s: 4, lo: 5, hi: 8, r: 180 }, { k: 1, m: 'Pecho', s: 4, lo: 6, hi: 8, r: 150 }, { k: 0, m: 'Espalda', s: 3, lo: 8, hi: 12, r: 90 }, { k: 0, m: 'Piernas', s: 3, lo: 10, hi: 12, r: 90 }, { k: 0, m: 'Brazos', s: 3, lo: 10, hi: 15, r: 60 }],
+  B: [{ k: 1, m: 'Piernas', s: 3, lo: 4, hi: 6, r: 180 }, { k: 1, m: 'Hombros', s: 4, lo: 6, hi: 8, r: 120 }, { k: 0, m: 'Espalda', s: 4, lo: 6, hi: 10, r: 120 }, { k: 0, m: 'Piernas', s: 3, lo: 8, hi: 12, r: 90 }, { k: 0, m: 'Hombros', s: 3, lo: 12, hi: 15, r: 60 }],
+  C: [{ k: 1, m: 'Piernas', s: 3, lo: 6, hi: 8, r: 150 }, { k: 0, m: 'Pecho', s: 3, lo: 8, hi: 12, r: 90 }, { k: 0, m: 'Espalda', s: 3, lo: 10, hi: 12, r: 90 }, { k: 0, m: 'Pecho', s: 3, lo: 8, hi: 12, r: 90 }, { k: 0, m: 'Brazos', s: 3, lo: 12, hi: 15, r: 60 }],
+};
+const SESS = { A: 'Pierna y empuje', B: 'Bisagra y hombro', C: 'Torso' };
+const MUSCLES = ['Piernas', 'Pecho', 'Espalda', 'Hombros', 'Brazos'];
+const inScope = (ex, sc) => sc === 'keys' ? !!ex.k : sc === 'accessories' ? !ex.k : true;
+function applyRx(rx = {}) {
+  const out = {};
+  for (const [id, list] of Object.entries(BASE)) out[id] = list.map((ex) => !inScope(ex, rx.scope || 'all') ? { ...ex } : {
+    ...ex, s: Math.max(1, ex.s + (rx.setsDelta || 0)), lo: Math.max(1, ex.lo + (rx.repsShift || 0)), hi: Math.max(1, ex.hi + (rx.repsShift || 0)),
+    r: Math.max(15, Math.round(ex.r * (1 + (rx.restPct || 0) / 100) / 15) * 15),
+  });
+  return out;
+}
+function metrics(rx) {
+  const S = applyRx(rx); let sets = 0, kl = 0, kh = 0, kn = 0; const by = Object.fromEntries(MUSCLES.map((m) => [m, 0])), per = {};
+  for (const [id, list] of Object.entries(S)) {
+    let sec = 480, ss = 0;
+    for (const ex of list) { sets += ex.s; ss += ex.s; by[ex.m] += ex.s; sec += ex.s * (35 + ex.r) + 120; if (ex.k) { kl += ex.lo; kh += ex.hi; kn++; } }
+    per[id] = { sets: ss, min: Math.round(sec / 300) * 5 };
+  }
+  const min = Math.round(Object.values(per).reduce((a, p) => a + p.min, 0) / 3 / 5) * 5;
+  return { sets, by, per, min, repsLo: Math.round(kl / kn), repsHi: Math.round(kh / kn) };
+}
+function describe(st) {
+  const r = st.rx || {}, p = [], sc = r.scope === 'keys' ? ' en básicos' : r.scope === 'accessories' ? ' en accesorios' : '';
+  if (r.setsDelta) p.push(`${r.setsDelta > 0 ? '+' : '−'}${Math.abs(r.setsDelta)} serie${Math.abs(r.setsDelta) > 1 ? 's' : ''}${sc}`);
+  if (r.repsShift) p.push(`${r.repsShift > 0 ? '+' : '−'}${Math.abs(r.repsShift)} reps${sc}`);
+  if (r.restPct) p.push(`${r.restPct > 0 ? '+' : '−'}${Math.abs(r.restPct)}% descanso`);
+  if (st.kind === 'deload') p.push('sin progresión');
+  return p;
+}
+// `from` = etapa de la que salió (la cadena `derivedFrom`). Bloqueadas: por delante de la de ahora, programa de cliente.
+const ALL = [
+  { name: 'Base', weeks: 4, rx: {} },
+  { name: 'Acumulación', weeks: 4, rx: { setsDelta: 1 }, from: 0 },
+  { name: 'Intensificación pesada', weeks: 3, rx: { scope: 'keys', repsShift: -3, restPct: 25 }, from: 0, locked: true },
+  { name: 'Descarga', weeks: 1, kind: 'deload', rx: { setsDelta: -1 }, from: 0, locked: true },
+  { name: 'Acumulación II', weeks: 4, rx: { scope: 'accessories', setsDelta: 2 }, from: 0 },
+  { name: 'Realización', weeks: 3, rx: { scope: 'keys', repsShift: -4, setsDelta: -1, restPct: 50 }, from: 2 },
+  { name: 'Descarga 2', weeks: 1, kind: 'deload', rx: { setsDelta: -1 }, from: 0 },
+  { name: 'Volumen alto', weeks: 4, rx: { setsDelta: 2 }, from: 0 },
+  { name: 'Intensificación II', weeks: 3, rx: { scope: 'keys', repsShift: -3, restPct: 25 }, from: 0 },
+  { name: 'Descarga 3', weeks: 1, kind: 'deload', rx: { setsDelta: -1 }, from: 0 },
+  { name: 'Pico', weeks: 2, rx: { scope: 'keys', repsShift: -5, setsDelta: -1, restPct: 50 }, from: 8 },
+];
+const THREE = [ALL[0], ALL[1], { ...ALL[3], locked: false }];
+[...ALL, ...THREE].forEach((s) => s._m = metrics(s.rx));
+
+const S = { shape: 'tabs', txt: 'weeks', sess: 'in', st: 'sunk', lock: 'brow', n: 6, sel: 1, now: 1, nowWeek: 2, stats: false, cmp: 'prev', dir: null };
+const stages = () => S.n === 3 ? THREE : ALL.slice(0, S.n);
+const stateOf = (i) => i < S.now ? 'done' : i === S.now ? 'now' : 'next';
+
+const LOCK = (c = 'var(--red)', z = 10) => `<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0110 0v3" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><path d="M5 10h14v10H5z" stroke="${c}" stroke-width="2.4" fill="${c}" stroke-linejoin="round"/></svg>`;
+const IC = {
+  gear: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  stats: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 6h13M4 12h8M4 18h16"/></svg>',
+};
+
+/* ═══════════ Línea de tiempo ═══════════ */
+// Ancho de cada etapa y alto de la línea según cuánto texto lleva.
+const GEO = {
+  name:  { w: 84, h: 88, th: 58 },
+  weeks: { w: 58, h: 74, th: 48 },
+  num:   { w: 44, h: 58, th: 40 },
+};
+const PW = 375;
+const W = () => GEO[S.txt].w;
+const center = (i) => PW / 2 - (i * W() + W() / 2);
+let tlOffset = center(S.sel);
+
+function labelHTML(s) {
+  return (S.txt === 'name' ? `<div class="nm" style="max-width:${W() - 8}px">${s.name}</div>` : '')
+    + (S.txt !== 'num' ? `<div class="wk">${s.weeks} sem</div>` : '');
+}
+
+function nodeHTML(s, i, n) {
+  const state = stateOf(i), w = W();
+  const cls = ['node', state === 'done' && 'done', state === 'now' && 'isnow', s.kind === 'deload' && 'dl', S.sel === i && 'sel'].filter(Boolean).join(' ');
+  const num = state === 'done' && S.sel !== i ? '✓' : i + 1;
+  const lock = s.locked ? `<span class="lk">${LOCK('var(--red)', 9)}</span>` : '';
+  const pos = `style="left:${i * w}px;width:${w}px"`;
+  const now = `<div class="now">${state === 'now' ? 'AHORA' : ''}</div>`;
+  if (S.shape === 'tabs') {
+    return `<div class="${cls}" data-i="${i}" ${pos}>${now}<div class="tab"><div class="tn">${num}${lock}</div>${labelHTML(s)}</div></div>`;
+  }
+  if (S.shape === 'seg') {
+    const fill = state === 'done' ? 100 : state === 'now' ? Math.round(100 * S.nowWeek / s.weeks) : 0;
+    return `<div class="${cls}" data-i="${i}" ${pos}>${now}<div class="snum">${num}${lock}</div><div class="bar"><i style="width:${fill}%;${s.kind === 'deload' && state === 'done' ? 'background:var(--blue)' : ''}"></i></div>${labelHTML(s)}</div>`;
+  }
+  const lines = (i > 0 ? `<div class="ln l ${i <= S.now ? 'done' : ''}"></div>` : '') + `<div class="ln r ${i < S.now ? 'done' : ''} ${i === n - 1 ? 'dash' : ''}"></div>`;
+  return `<div class="${cls}" data-i="${i}" ${pos}>${lines}${now}<div class="mk">${num}${s.locked ? `<span class="badge">${LOCK('var(--red)', 9)}</span>` : ''}</div>${labelHTML(s)}</div>`;
+}
+
+function ghostHTML(n) {
+  const w = W(), pos = `style="left:${n * w}px;width:${w}px"`, lbl = S.txt === 'num' ? '' : `<div class="wk" style="color:var(--accent)">Nueva</div>`;
+  if (S.shape === 'tabs') return `<div class="node ghost" data-act="new" ${pos}><div class="now"></div><div class="tab"><div class="tn">+</div>${lbl}</div></div>`;
+  if (S.shape === 'seg') return `<div class="node ghost" data-act="new" ${pos}><div class="now"></div><div class="snum">+</div><div class="bar"></div>${lbl}</div>`;
+  return `<div class="node ghost" data-act="new" ${pos}><div class="ln l dash"></div><div class="now"></div><div class="mk">+</div>${lbl}</div>`;
+}
+
+function timelineHTML() {
+  const st = stages(), n = st.length, g = GEO[S.txt];
+  const ear = S.shape === 'tabs' ? '' : `<div class="ear" style="width:${W() + 8}px;margin-left:${-(W() + 8) / 2}px"></div>`;
+  return `<div class="tl shape-${S.shape}" id="tl" style="height:${S.shape === 'tabs' ? g.th + 18 : g.h}px">${ear}<div class="tlfade l"></div><div class="tlfade r"></div>
+    <div class="track" id="track" style="width:${(n + 1) * W()}px;transform:translateX(${tlOffset}px)">${st.map((s, i) => nodeHTML(s, i, n)).join('')}${ghostHTML(n)}</div></div>`;
+}
+
+function wireTimeline() {
+  const tl = $('tl'), track = $('track'), n = stages().length;
+  let x0 = null, off0 = 0, moved = false;
+  const minOff = center(n), maxOff = center(0);   // se puede llegar hasta el «+» del final
+  tl.onpointerdown = (e) => { x0 = e.clientX; off0 = tlOffset; moved = false; tl.setPointerCapture(e.pointerId); };
+  tl.onpointermove = (e) => {
+    if (x0 == null) return;
+    const dx = e.clientX - x0; if (Math.abs(dx) > 4) { moved = true; tl.classList.add('drag'); }
+    let o = off0 + dx;
+    if (o > maxOff) o = maxOff + (o - maxOff) * .35;
+    if (o < minOff) o = minOff + (o - minOff) * .35;
+    tlOffset = o; track.style.transform = `translateX(${o}px)`;
+  };
+  tl.onpointerup = (e) => {
+    tl.classList.remove('drag'); const was = x0; x0 = null; if (was == null) return;
+    if (!moved) {
+      const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-i],[data-act="new"]');
+      if (el?.dataset.act === 'new') { snap(S.sel); return newStage(); }
+      if (el) return select(+el.dataset.i);
+      return;
+    }
+    let idx = Math.round((PW / 2 - W() / 2 - tlOffset) / W());
+    const dx = e.clientX - was;
+    if (idx === S.sel && Math.abs(dx) > 30) idx -= Math.sign(dx);
+    // Soltar sobre el «+» no crea nada: se queda en la última. Crear es un toque.
+    select(clamp(idx, 0, n - 1));
+  };
+}
+function snap(i) { tlOffset = center(i); const t = $('track'); if (t) t.style.transform = `translateX(${tlOffset}px)`; }
+function select(i) { if (i !== S.sel) S.dir = i > S.sel ? 'r' : 'l'; S.sel = i; tlOffset = center(i); renderAll(); }
+
+/* ═══════════ El bloque ═══════════ */
+function headerHTML(i) {
+  const s = stages()[i], st = stateOf(i), dl = s.kind === 'deload';
+  const state = st === 'now' ? `<span class="nw">En curso · semana ${S.nowWeek} de ${s.weeks}</span>` : st === 'done' ? 'Hecha' : dl ? '<span class="dd">Descarga</span>' : 'Por venir';
+  const lockBrow = s.locked && S.lock === 'brow' ? `<span>·</span><span class="lkd">${LOCK()} Bloqueada</span>` : '';
+  const lockMeta = s.locked && S.lock === 'meta' ? `<span>·</span><span class="lkd">${LOCK()} Bloqueada</span>` : '';
+  let h = `<div class="fh" id="fh"><div class="fhTop">
+      <div class="fhTitle"><div class="tagline">${state}${lockBrow}</div>
+        <div class="fname"><span class="fnum ${dl ? 'dl' : ''}">${i + 1}</span>${s.name}</div>
+        <div class="fmeta"><span>${s.weeks} semana${s.weeks === 1 ? '' : 's'} · 3 sesiones</span>${lockMeta}</div></div>
+      <div class="ficons"><div class="ib ${S.stats ? 'on' : ''}" data-act="stats" title="Cifras y grupos musculares">${IC.stats}</div><div class="ib" data-act="set" title="Ajustes">${IC.gear}</div></div>
+    </div>`;
+  if (S.stats) h += statsHTML(i);
+  return h + '</div>';
+}
+
+function statsHTML(i) {
+  const st = stages(), s = st[i], m = s._m;
+  const cmpIdx = S.cmp === 'prev' ? (i > 0 ? i - 1 : null) : S.cmp === 'base' ? (s.from ?? null) : null;
+  const c = cmpIdx != null ? st[cmpIdx] : null, cm = c?._m;
+  const d = (v, cv, inv) => { if (cv == null) return ''; const x = v - cv; const good = inv ? -x : x; return `<i class="${good > 0 ? 'up' : good < 0 ? 'down' : 'same'}">${x === 0 ? '=' : (x > 0 ? '+' : '−') + Math.abs(x)}</i>`; };
+  const prov = describe(s), base = s.from != null ? st[s.from] : null;
+  const sc = (x) => Math.min(100, x / 30 * 100);
+  return `<div class="stats xpand">
+    <div class="sg">${[['none', 'Sin comparar'], ['prev', 'Con la anterior'], ['base', 'Con su base']].map(([id, l]) => `<b data-cmp="${id}" class="${S.cmp === id ? 'on' : ''}">${l}</b>`).join('')}</div>
+    <div class="prov">${prov.length ? `Sale de <em>${base ? `${s.from + 1} · ${base.name}` : '—'}</em> con ${prov.join(' · ')}` : 'Hecha a mano'}${c ? ` · comparando con <em>${cmpIdx + 1} · ${c.name}</em>` : ''}</div>
+    <div class="kpis"><div class="kpi"><b>${m.sets}</b>${d(m.sets, cm?.sets)}<span>series / semana</span></div><div class="kpi"><b>${m.repsLo}-${m.repsHi}</b>${d(Math.round((m.repsLo + m.repsHi) / 2), cm ? Math.round((cm.repsLo + cm.repsHi) / 2) : null, true)}<span>reps básicos</span></div><div class="kpi"><b>${m.min}′</b>${d(m.min, cm?.min)}<span>por sesión</span></div></div>
+    <div class="caps" style="display:flex;justify-content:space-between;margin:16px 0 0"><span>Series por semana y grupo</span><span>10-20</span></div>
+    ${MUSCLES.map((g) => { const v = m.by[g], cv = cm?.by[g];
+      return `<div class="zone"><span class="zl">${g}</span><div class="zt"><div class="zb" style="left:${sc(10)}%;width:${sc(20) - sc(10)}%"></div><div class="zf ${v < 10 ? 'lo' : v > 20 ? 'hi' : ''}" style="width:${sc(v)}%"></div>${cv != null ? `<div class="zm" style="left:${sc(cv)}%"></div>` : ''}</div><span class="zv" style="color:${v > 20 ? 'var(--red)' : 'var(--text)'}">${v}${d(v, cv)}</span></div>`; }).join('')}
+    ${S.cmp !== 'none' && !c ? `<div class="meta" style="margin-top:9px;color:var(--muted)">No hay con qué comparar: ${i === 0 ? 'es la primera etapa' : 'se hizo a mano'}.</div>` : ''}</div>`;
+}
+
+function sessionsHTML(i) {
+  const s = stages()[i], per = s._m.per;
+  return `<div class="slist">${Object.keys(per).map((id) => `<div class="sess"><span class="lt">${id}</span><div style="flex:1;min-width:0"><div class="nm">${SESS[id]}</div><div class="meta">5 ejercicios · ${per[id].sets} series · ${per[id].min} min</div></div><span class="grip">⠿</span></div>`).join('')}
+    <div class="addsess">+ Añadir sesión a <em>${s.name}</em></div></div>`;
+}
+
+function blockHTML() {
+  const i = S.sel, anim = S.dir ? `in-${S.dir}` : '';
+  // Con pestañas, la de la izquierda del todo pega con la esquina: el panel la cuadra si es la primera.
+  if (S.sess === 'in') return `<div class="block in st-${S.st} ${anim}" id="blk"><div class="panel">${headerHTML(i)}${sessionsHTML(i)}</div></div>`;
+  return `<div class="block below ${anim}" id="blk"><div class="panel solo">${headerHTML(i)}</div>${sessionsHTML(i)}</div>`;
+}
+
+function renderAll() {
+  const st = stages(), total = st.reduce((a, s) => a + s.weeks, 0);
+  S.sel = Math.min(S.sel, st.length - 1);
+  let h = `<div class="hdr"><span class="bk">‹</span><div class="mid"><div class="eyebrow">Editar programa</div><div class="htitle">Fuerza Base</div></div><span class="rt">✓</span></div>`;
+  h += `<div class="card"><div class="caps" style="color:var(--accent)">Programa</div><div style="font:900 18px Inter;margin-top:4px">${st.length} etapas · ${total} semanas</div><div class="meta" style="margin-top:2px">3 entrenos por semana</div></div>`;
+  h += `<div class="sec"><span class="caps">Etapas</span><a>Ver plan ›</a></div>`;
+  h += timelineHTML() + blockHTML();
+  h += `<div class="ordr"><div class="caps" style="margin-bottom:8px">Qué sesión toca</div><div class="sg"><b class="on">Rotación</b><b>Semanal</b><b>Libre</b></div></div>`;
+  $('sc').innerHTML = h; S.dir = null;
+  wireTimeline(); wireBlock();
+  document.querySelectorAll('#cSt button').forEach((b) => b.disabled = S.sess !== 'in');
+}
+
+function wireBlock() {
+  $('sc').querySelectorAll('[data-act]').forEach((el) => {
+    if (el.closest('#tl')) return;
+    el.onclick = (e) => { e.stopPropagation(); const a = el.dataset.act;
+      if (a === 'stats') { S.stats = !S.stats; renderAll(); } else if (a === 'set') openSettings(); };
+  });
+  $('sc').querySelectorAll('[data-cmp]').forEach((el) => el.onclick = () => { S.cmp = el.dataset.cmp; renderAll(); });
+  // Deslizar la cabecera de la etapa cambia de etapa; las sesiones NO (ahí el gesto es de SwipeRow).
+  const fh = $('fh'), blk = $('blk'); let x0 = null;
+  fh.onpointerdown = (e) => { if (e.target.closest('[data-act],[data-cmp]')) return; x0 = e.clientX; fh.setPointerCapture(e.pointerId); };
+  fh.onpointermove = (e) => { if (x0 == null) return; const dx = e.clientX - x0; blk.style.transform = `translateX(${dx * .45}px)`; blk.style.opacity = 1 - Math.min(.5, Math.abs(dx) / 400); };
+  fh.onpointerup = (e) => {
+    if (x0 == null) return; const dx = e.clientX - x0; x0 = null; blk.style.transform = ''; blk.style.opacity = '';
+    if (dx < -60 && S.sel < stages().length - 1) select(S.sel + 1); else if (dx > 60 && S.sel > 0) select(S.sel - 1);
+  };
+}
+
+function openSettings() {
+  const s = stages()[S.sel], st = stateOf(S.sel);
+  $('sb').innerHTML = `<div class="grab"></div><div style="font:800 16px Inter;margin-bottom:12px"><span style="color:var(--accent);margin-right:6px">${S.sel + 1}</span>${s.name}</div>
+    <div class="srow" style="border:none">Nombre<span>${s.name} ✎</span></div>
+    <div class="srow">Semanas<span>− ${s.weeks} +</span></div>
+    <div class="srow">${st === 'now' ? 'Es la etapa en curso' : 'Hacer que sea la etapa en curso'}<span>${st === 'now' ? '✓' : '›'}</span></div>
+    <div class="srow">Bloqueada para el cliente<span>${s.locked ? `${LOCK('var(--red)', 12)} Sí` : 'No'}</span></div>
+    <div class="newbtn" data-x="new">＋ Nueva etapa desde esta</div>
+    <div class="newhint">Abre el creador de etapas con «${s.name}» como base. Para duplicarla, elige «Igual».</div>
+    <div class="delbtn">Eliminar etapa</div>`;
+  $('sw').classList.add('on');
+  $('sb').querySelector('[data-x="new"]').onclick = () => { $('sw').classList.remove('on'); newStage(); };
+}
+$('sw').onclick = (e) => { if (e.target === $('sw')) $('sw').classList.remove('on'); };
+
+let tt;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2400); }
+function newStage() { toast(`→ Creador de etapas, partiendo de «${S.sel + 1} · ${stages()[S.sel].name}». Lo nuevo va al final del plan.`); }
+
+function bind(id, key, conv = (v) => v) {
+  document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => {
+    if (b.disabled) return;
+    S[key] = conv(b.dataset.x);
+    document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle('on', x === b));
+    S.sel = Math.min(S.sel, stages().length - 1); tlOffset = center(S.sel); renderAll();
+  });
+}
+bind('cShape', 'shape'); bind('cTxt', 'txt'); bind('cSess', 'sess'); bind('cSt', 'st'); bind('cLock', 'lock'); bind('cN', 'n', Number);
+renderAll();
+</script>
+</body>
+</html>

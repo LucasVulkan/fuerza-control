@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapas en el editor v4 — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ══════ TOKENS formaFit (src/themes.js) ══════ */
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --blue: #4c85ff; --blueTint: rgba(76,133,255,.18);
+    --red: #ff5e58; --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --tabOff: #171717; --ease: cubic-bezier(.35,0,.15,1);
+  }
+  body { background: #070707; color: var(--text); font-family: Inter, sans-serif; padding: 32px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.5 Inter; max-width: 800px; margin-bottom: 20px; }
+  .note { color: var(--mutedLight); font: 500 13px/1.55 Inter; }
+  .note p { margin-bottom: 10px; } .note b { color: var(--text); }
+  .note h3 { font: 800 14px Inter; color: var(--text); margin: 18px 0 6px; } .note h3:first-child { margin-top: 0; }
+  .stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: var(--muted); width: 120px; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+  .ctl button:disabled { opacity: .35; cursor: default; }
+
+  .phone { width: 375px; height: 812px; background: var(--bg); border-radius: 30px; position: relative; overflow: hidden; border: 1px solid #1a1a1a; flex: none; }
+  .scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 0 16px 60px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .hdr { display: flex; align-items: flex-start; gap: 8px; padding: 18px 0 12px; }
+  .hdr .bk { font: 500 26px/1 Inter; color: var(--muted); width: 24px; }
+  .hdr .mid { flex: 1; text-align: center; }
+  .eyebrow { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .htitle { font: 800 17px Inter; margin-top: 3px; }
+  .hsub { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .hsub a { color: var(--accent); font-weight: 800; cursor: pointer; }
+  .hdr .rt { width: 24px; color: var(--accent); font: 900 18px Inter; text-align: right; }
+  .caps { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .meta { font: 500 12px/1.45 Inter; color: var(--mutedLight); }
+  .sg { display: flex; background: var(--surface2); border-radius: 10px; padding: 3px; }
+  .sg b { flex: 1; text-align: center; font: 800 12px Inter; padding: 8px 0; border-radius: 8px; color: var(--mutedLight); cursor: pointer; white-space: nowrap; }
+  .sg b.on { background: var(--border); color: var(--text); }
+  .toast { position: absolute; left: 16px; right: 16px; top: 64px; transform: translateY(-16px); background: var(--accent); color: #000; font: 800 12.5px/1.4 Inter; padding: 10px 14px; border-radius: 14px; opacity: 0; transition: all .3s var(--ease); z-index: 30; pointer-events: none; text-align: center; }
+  .toast.on { opacity: 1; transform: none; }
+
+  /* rótulo de la carpeta: va pegado a las pestañas */
+  .label { display: flex; align-items: baseline; justify-content: space-between; margin: 8px 2px 8px; }
+  .label .lt { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--mutedLight); }
+  .label .lt b { color: var(--text); font-weight: 900; }
+  .label a { font: 800 12px Inter; color: var(--accent); cursor: pointer; }
+
+  /* explicación la primera vez */
+  .intro { background: var(--surface); border-radius: 16px; padding: 14px; margin: 4px 0 12px; display: flex; gap: 12px; animation: grow .3s var(--ease); }
+  .intro p { font: 500 12.5px/1.5 Inter; color: var(--mutedLight); }
+  .intro p b { color: var(--text); }
+  .intro .ok { font: 800 12px Inter; color: var(--accent); margin-top: 8px; cursor: pointer; display: inline-block; }
+  .intro .pic { flex: none; width: 70px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
+  .intro .pic .row { display: flex; gap: 2px; }
+  .intro .pic i { display: block; height: 12px; border-radius: 4px 4px 0 0; background: var(--tabOff); flex: 1; }
+  .intro .pic i.on { background: #2f2f2f; }
+  .intro .pic .body { height: 34px; background: #2f2f2f; border-radius: 0 4px 6px 6px; }
+  .intro .pic .wk { display: flex; gap: 2px; font: 800 7px Inter; color: var(--muted); }
+  .intro .pic .wk span { flex: 1; text-align: center; }
+
+  /* pestañas */
+  .tl { position: relative; margin: 0 -16px; overflow: hidden; touch-action: pan-y; cursor: grab; user-select: none; height: 50px; }
+  .track { position: absolute; top: 0; left: 0; height: 100%; transition: transform .32s var(--ease); z-index: 1; }
+  .tl.drag .track { transition: none; }
+  .tlfade { position: absolute; top: 0; bottom: 0; width: 26px; pointer-events: none; z-index: 2; }
+  .tlfade.l { left: 0; background: linear-gradient(to right, var(--bg), rgba(15,15,15,0)); }
+  .tlfade.r { right: 0; background: linear-gradient(to left, var(--bg), rgba(15,15,15,0)); }
+  .node { position: absolute; top: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .tab { width: calc(100% - 4px); height: 46px; background: var(--tabOff); border-radius: 12px 12px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: background .25s; }
+  .tab .tn { font: 900 13px Inter; color: var(--mutedLight); display: flex; align-items: center; gap: 3px; }
+  .tab .wk { font: 500 10px Inter; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .node.done .tab .tn { color: var(--muted); }
+  .node.dl .tab .tn { color: var(--blue); }
+  .node.sel .tab { background: var(--surface); width: 100%; height: 50px; border-radius: 14px 14px 0 0; }
+  .node.sel .tab .tn { color: var(--accent); }
+  .node.sel.dl .tab .tn { color: var(--blue); }
+  .node.sel .tab .wk { color: var(--mutedLight); }
+  .node.sel .tab::before, .node.sel .tab::after { content: ''; position: absolute; bottom: 0; width: 14px; height: 14px; }
+  .node.sel .tab::before { left: -14px; background: radial-gradient(circle at 0 0, transparent 13.5px, var(--surface) 14px); }
+  .node.sel .tab::after { right: -14px; background: radial-gradient(circle at 100% 0, transparent 13.5px, var(--surface) 14px); }
+  .node.ghost .tab { background: none; border: 1.5px dashed var(--border); border-bottom: none; }
+  .node.ghost .tab .tn { color: var(--accent); font-size: 16px; }
+  .node.ghost .tab .wk { color: var(--accent); }
+  /* «ahora» dentro de la propia pestaña */
+  .nowdot { width: 6px; height: 6px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 0 3px var(--accent10); }
+  .nowbar { width: 30px; height: 3px; border-radius: 2px; background: rgba(170,226,22,.18); overflow: hidden; margin: 3px 0 1px; }
+  .nowbar i { display: block; height: 100%; background: var(--accent); }
+  .lk { display: inline-flex; }
+
+  /* bloque */
+  .block { position: relative; touch-action: pan-y; }
+  .block.in-r { animation: inR .32s var(--ease); } .block.in-l { animation: inL .32s var(--ease); }
+  @keyframes inR { from { transform: translateX(46px); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes inL { from { transform: translateX(-46px); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes grow { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+  .panel { background: var(--surface); border-radius: 18px; padding: 16px 14px 14px; }
+  .fh { cursor: grab; user-select: none; }
+  .fhTop { display: flex; gap: 10px; align-items: flex-start; }
+  .fhTitle { flex: 1; min-width: 0; }
+  .tagline { font: 800 10px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .tagline .nw { color: var(--accent); } .tagline .dd { color: var(--blue); } .tagline .lkd { color: var(--red); display: inline-flex; align-items: center; gap: 4px; }
+  .fname { font: 900 20px Inter; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fname .fnum { color: var(--accent); margin-right: 7px; } .fname .fnum.dl { color: var(--blue); }
+  .fmeta { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .ficons { display: flex; gap: 6px; flex: none; }
+  .ib { width: 36px; height: 36px; border-radius: 11px; background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--mutedLight); }
+  .slist { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .sess { display: flex; gap: 14px; align-items: center; padding: 12px 6px 12px 16px; border-radius: 10px; background: var(--bg); }
+  .sess .lt { font: 900 16px Inter; color: var(--accent); min-width: 16px; text-align: center; }
+  .sess .nm { font: 700 14px Inter; }
+  .sess .grip { color: var(--mutedLight); width: 30px; text-align: center; font-size: 13px; }
+  /* SwipeRow dentro de la carpeta: la tarjeta se desliza a la derecha y descubre los botones */
+  .sw { position: relative; overflow: hidden; border-radius: 10px; }   /* recorta la tarjeta al deslizarla: no se sale del panel */
+  .sw .acts { position: absolute; left: 0; top: 0; bottom: 0; display: flex; gap: 6px; padding: 6px 12px 6px 0; }
+  .sw .acts b { width: 104px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font: 700 12px Inter; }
+  .sw .acts b.n { background: var(--bg); color: var(--text); }
+  .sw .acts b.d { background: rgba(189,6,0,.3); color: rgba(255,94,88,.9); }
+  .sw .sess { position: relative; transition: transform .25s var(--ease); touch-action: pan-y; cursor: grab; }
+  .addsess { text-align: center; padding: 12px 0 2px; font: 800 13px Inter; color: var(--accent50); cursor: pointer; }
+  .addsess em { font-style: normal; color: var(--accent); }
+  /* una sola etapa, sin pestañas */
+  .split { margin-top: 12px; border: 1px dashed var(--border); border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; cursor: pointer; }
+  .split .pl { width: 30px; height: 30px; border-radius: 9px; border: 1.5px dashed var(--muted); display: flex; align-items: center; justify-content: center; color: var(--accent); font: 900 16px Inter; flex: none; }
+  .split b { display: block; font: 800 13px Inter; color: var(--accent); }
+  .split span { font: 500 12px/1.45 Inter; color: var(--mutedLight); display: block; margin-top: 2px; }
+  .split { flex-direction: column; align-items: stretch; }
+  .split .top { display: flex; gap: 12px; align-items: center; }
+  .split .ex { display: flex; gap: 3px; margin-top: 12px; }
+  .split .ex div { border-radius: 8px; padding: 7px 8px; background: var(--surface); }
+  .split .ex div i { display: block; font-style: normal; font: 500 10px Inter; color: var(--muted); }
+  .split .ex div em { display: block; font-style: normal; font: 800 11px Inter; color: var(--text); margin-top: 1px; white-space: nowrap; }
+  .split .ex div.dl em { color: var(--blue); }
+  .ordr { margin-top: 26px; }
+</style>
+</head>
+<body>
+<h1>Etapas en el editor de programa · v4</h1>
+<p class="lead">Cuarta vuelta de <code>P14-etapas-v2.md</code> §3, cerrada. Fijado: pestañas con el <b>tramo de semanas</b>, sesiones hundidas, candado en la ceja, <b>rótulo</b> pegado a las pestañas (sin tarjeta de resumen) y <b>barrita de progreso</b> en la pestaña en curso. Con <b>una sola etapa</b>, sin pestañas y con «Añadir etapas». Cambia el número de etapas para ver los dos casos.</p>
+
+<div class="ctl" id="cBar"><span>Barrita</span><button data-x="num">Bajo el número</button><button data-x="wk" class="on">Bajo el tramo</button></div>
+<div class="ctl" id="cN"><span>Etapas</span><button data-x="1" class="on">1</button><button data-x="3">3</button><button data-x="6">6</button><button data-x="11">11</button></div>
+
+<div class="stage" style="margin-top:14px">
+  <div class="phone" id="ph"><div class="toast" id="toast"></div><div class="scroll" id="sc"></div></div>
+  <div style="max-width:470px" class="note">
+    <h3>Una sola etapa</h3>
+    <p>Sin pestañas: ceja «SIN LÍMITE DE SEMANAS», título «Todo el programa». Debajo, <b>«Añadir etapas»</b> con una sola línea: «Bloques de varias semanas para trabajar un objetivo concreto». Al crear la segunda etapa aparecen las pestañas, y el recuadro ya no sale.</p>
+    <h3>Dos o más</h3>
+    <p>Rótulo «6 ETAPAS · 19 SEMANAS · Ver plan ›» pegado a las pestañas; cada pestaña lleva su tramo («sem 5-8»), la en curso con la barrita de sesiones hechas, bajo el número o bajo el tramo.</p>
+    <p><b>Las sesiones dentro de la carpeta</b> se deslizan a la derecha como hoy: el botón Duplicar va en el negro del fondo (el <code>surface2</code> de siempre se perdería sobre el panel) y Eliminar en rojo. Prueba a arrastrar una tarjeta.</p>
+    <p>La explicación de la primera vez queda <b>aparcada</b>.</p>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const BASE = {
+  A: [{ s: 4, r: 180 }, { s: 4, r: 150 }, { s: 3, r: 90 }, { s: 3, r: 90 }, { s: 3, r: 60 }],
+  B: [{ s: 3, r: 180 }, { s: 4, r: 120 }, { s: 4, r: 120 }, { s: 3, r: 90 }, { s: 3, r: 60 }],
+  C: [{ s: 3, r: 150 }, { s: 3, r: 90 }, { s: 3, r: 90 }, { s: 3, r: 90 }, { s: 3, r: 60 }],
+};
+const SESS = { A: 'Pierna y empuje', B: 'Bisagra y hombro', C: 'Torso' };
+function per(sd = 0) { const o = {}; for (const [id, l] of Object.entries(BASE)) { let s = 0, sec = 480; l.forEach((e) => { const n = Math.max(1, e.s + sd); s += n; sec += n * (35 + e.r) + 120; }); o[id] = { sets: s, min: Math.round(sec / 300) * 5 }; } return o; }
+
+const ALL = [
+  { name: 'Base', weeks: 4, sd: 0 },
+  { name: 'Acumulación', weeks: 4, sd: 1 },
+  { name: 'Intensificación pesada', weeks: 3, sd: 0, locked: true },
+  { name: 'Descarga', weeks: 1, sd: -1, kind: 'deload', locked: true },
+  { name: 'Acumulación II', weeks: 4, sd: 2 },
+  { name: 'Realización', weeks: 3, sd: -1 },
+  { name: 'Descarga 2', weeks: 1, sd: -1, kind: 'deload' },
+  { name: 'Volumen alto', weeks: 4, sd: 2 },
+  { name: 'Intensificación II', weeks: 3, sd: 0 },
+  { name: 'Descarga 3', weeks: 1, sd: -1, kind: 'deload' },
+  { name: 'Pico', weeks: 2, sd: -1 },
+];
+const ONE = [{ name: 'Etapa 1', weeks: null, sd: 0 }];
+const THREE = [ALL[0], ALL[1], { ...ALL[3], locked: false }];
+
+const S = { barPos: 'wk', top: 'label', now: 'bar', wk: 'range', intro: 'no', n: 1, one: 'none', sel: 1, nowIdx: 1, nowWeek: 2, dir: null };
+const stages = () => S.n === 1 ? ONE : S.n === 3 ? THREE : ALL.slice(0, S.n);
+const stateOf = (i) => i < S.nowIdx ? 'done' : i === S.nowIdx ? 'now' : 'next';
+const startWeek = (i) => stages().slice(0, i).reduce((a, s) => a + (s.weeks ?? 0), 0) + 1;
+function wkLabel(s, i) {
+  if (S.wk === 'dur') return s.weeks == null ? 'sin límite' : `${s.weeks} sem`;
+  const a = startWeek(i);
+  if (s.weeks == null) return `sem ${a}+`;
+  return s.weeks === 1 ? `sem ${a}` : `sem ${a}-${a + s.weeks - 1}`;
+}
+const LOCK = (c = 'var(--red)', z = 10) => `<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0110 0v3" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><path d="M5 10h14v10H5z" stroke="${c}" stroke-width="2.4" fill="${c}" stroke-linejoin="round"/></svg>`;
+const IC = {
+  gear: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  stats: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 6h13M4 12h8M4 18h16"/></svg>',
+};
+
+/* pestañas — ancho 62 para que quepa «sem 12-15» */
+const NW = 62, PW = 375;
+const center = (i) => PW / 2 - (i * NW + NW / 2);
+let tlOffset = center(Math.min(S.sel, S.n - 1));
+const tabsShown = () => !(stages().length === 1 && S.one === 'none');
+
+function tabsHTML() {
+  const st = stages(), n = st.length;
+  const nodes = st.map((s, i) => {
+    const state = stateOf(i), cls = ['node', state === 'done' && 'done', s.kind === 'deload' && 'dl', S.sel === i && 'sel'].filter(Boolean).join(' ');
+    const num = state === 'done' && S.sel !== i ? '✓' : i + 1;
+    const nowMark = state === 'now' ? (S.now === 'dot' ? '<span class="nowdot"></span>' : '') : '';
+    const bar = state === 'now' && S.now === 'bar' && s.weeks ? `<div class="nowbar"><i style="width:${100 * S.nowWeek / s.weeks}%"></i></div>` : '';
+    const tn = `<div class="tn">${nowMark}${num}${s.locked ? `<span class="lk">${LOCK('var(--red)', 9)}</span>` : ''}</div>`, wk = `<div class="wk">${wkLabel(s, i)}</div>`;
+    return `<div class="${cls}" data-i="${i}" style="left:${i * NW}px;width:${NW}px"><div class="tab">${S.barPos === 'num' ? tn + bar + wk : tn + wk + bar}</div></div>`;
+  }).join('');
+  const ghost = `<div class="node ghost" data-act="new" style="left:${n * NW}px;width:${NW}px"><div class="tab"><div class="tn">+</div><div class="wk">nueva</div></div></div>`;
+  return `<div class="tl" id="tl"><div class="tlfade l"></div><div class="tlfade r"></div><div class="track" id="track" style="width:${(n + 1) * NW}px;transform:translateX(${tlOffset}px)">${nodes}${ghost}</div></div>`;
+}
+
+function wireTabs() {
+  const tl = $('tl'); if (!tl) return;
+  const track = $('track'), n = stages().length;
+  let x0 = null, off0 = 0, moved = false;
+  const minOff = center(n), maxOff = center(0);
+  tl.onpointerdown = (e) => { x0 = e.clientX; off0 = tlOffset; moved = false; tl.setPointerCapture(e.pointerId); };
+  tl.onpointermove = (e) => {
+    if (x0 == null) return; const dx = e.clientX - x0; if (Math.abs(dx) > 4) { moved = true; tl.classList.add('drag'); }
+    let o = off0 + dx; if (o > maxOff) o = maxOff + (o - maxOff) * .35; if (o < minOff) o = minOff + (o - minOff) * .35;
+    tlOffset = o; track.style.transform = `translateX(${o}px)`;
+  };
+  tl.onpointerup = (e) => {
+    tl.classList.remove('drag'); const was = x0; x0 = null; if (was == null) return;
+    if (!moved) {
+      const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-i],[data-act="new"]');
+      if (el?.dataset.act === 'new') { tlOffset = center(S.sel); track.style.transform = `translateX(${tlOffset}px)`; return newStage(); }
+      if (el) select(+el.dataset.i); return;
+    }
+    let idx = Math.round((PW / 2 - NW / 2 - tlOffset) / NW); const dx = e.clientX - was;
+    if (idx === S.sel && Math.abs(dx) > 30) idx -= Math.sign(dx);
+    select(clamp(idx, 0, n - 1));
+  };
+}
+function select(i) { if (i !== S.sel) S.dir = i > S.sel ? 'r' : 'l'; S.sel = i; tlOffset = center(i); render(); }
+
+function headerHTML(i) {
+  const st = stages(), s = st[i], state = stateOf(i), dl = s.kind === 'deload', single = st.length === 1;
+  let brow;
+  if (single) brow = s.weeks == null ? 'Sin límite de semanas' : `${s.weeks} semanas`;
+  else brow = state === 'now' ? `<span class="nw">En curso · semana ${S.nowWeek} de ${s.weeks}</span>` : state === 'done' ? 'Hecha' : dl ? '<span class="dd">Descarga</span>' : 'Por venir';
+  const lock = s.locked ? `<span>·</span><span class="lkd">${LOCK()} Bloqueada</span>` : '';
+  const meta = single ? '3 sesiones por semana' : `${s.weeks} semana${s.weeks === 1 ? '' : 's'} · 3 sesiones`;
+  // Sin pestañas, el nombre de la única etapa repetiría el del programa: se dice qué es.
+  const title = single && !tabsShown() ? 'Todo el programa' : `<span class="fnum ${dl ? 'dl' : ''}">${i + 1}</span>${s.name}`;
+  return `<div class="fh" id="fh"><div class="fhTop"><div class="fhTitle"><div class="tagline">${brow}${lock}</div><div class="fname">${title}</div><div class="fmeta">${meta}</div></div>
+    <div class="ficons"><div class="ib" title="Cifras y grupos musculares">${IC.stats}</div><div class="ib" title="Ajustes">${IC.gear}</div></div></div></div>`;
+}
+function sessionsHTML(i) {
+  const s = stages()[i], p = per(s.sd);
+  return `<div class="slist">${Object.keys(p).map((id) => `<div class="sw"><div class="acts"><b class="n">Duplicar</b><b class="d">Eliminar</b></div><div class="sess" data-sw><span class="lt">${id}</span><div style="flex:1;min-width:0"><div class="nm">${SESS[id]}</div><div class="meta">5 ejercicios · ${p[id].sets} series · ${p[id].min} min</div></div><span class="grip">⠿</span></div></div>`).join('')}
+    <div class="addsess">+ Añadir sesión${stages().length > 1 ? ` a <em>${s.name}</em>` : ''}</div></div>`;
+}
+
+function render() {
+  const st = stages(), n = st.length; S.sel = Math.min(S.sel, n - 1); S.nowIdx = Math.min(1, n - 1);
+  const open = st.some((s) => s.weeks == null), total = st.reduce((a, s) => a + (s.weeks ?? 0), 0);
+  const summary = n === 1 ? (open ? 'Sin límite de semanas' : `${total} semanas`) : `${n} etapas · ${total}${open ? '+' : ''} semanas`;
+  let h = `<div class="hdr"><span class="bk">‹</span><div class="mid"><div class="eyebrow">Editar programa</div><div class="htitle">Fuerza Base</div>${S.top === 'header' && tabsShown() ? `<div class="hsub">${summary} · <a>Ver plan ›</a></div>` : ''}</div><span class="rt">✓</span></div>`;
+  if (S.intro === 'yes' && n > 1) h += `<div class="intro"><div class="pic"><div class="row"><i></i><i class="on"></i><i></i></div><div class="body"></div><div class="wk"><span>1-4</span><span>5-8</span><span>9-11</span></div></div>
+    <div><p><b>Cada pestaña es una etapa de este programa</b>: tramos de semanas que van uno detrás de otro. El cliente entrena la de ahora y pasa a la siguiente al acabarla. Cada etapa tiene sus propias sesiones.</p><span class="ok" data-act="intro">Entendido</span></div></div>`;
+  if (tabsShown()) {
+    if (S.top === 'label') h += `<div class="label"><span class="lt">${n === 1 ? summary : `<b>${n}</b> etapas · ${total}${open ? '+' : ''} semanas`}</span><a>Ver plan ›</a></div>`;
+    h += tabsHTML();
+  }   // con una sola etapa y sin pestañas no hay rótulo: lo que dice ya está en la ceja, y el plan de una etapa no enseña nada
+  const anim = S.dir ? `in-${S.dir}` : '';
+  const splitBox = n === 1 && !tabsShown() ? `<div class="split" data-act="new"><div class="top"><div class="pl">+</div><div><b>Añadir etapas</b><span>Bloques de varias semanas para trabajar un objetivo concreto.</span></div></div></div>` : '';
+  h += `<div class="block ${anim}" id="blk"><div class="panel" style="${tabsShown() ? '' : 'margin-top:2px'}">${headerHTML(S.sel)}${sessionsHTML(S.sel)}</div>${splitBox}</div>`;
+  h += `<div class="ordr"><div class="caps" style="margin-bottom:8px">Qué sesión toca</div><div class="sg"><b class="on">Rotación</b><b>Semanal</b><b>Libre</b></div></div>`;
+  $('sc').innerHTML = h; S.dir = null;
+  wireTabs();
+  // Deslizar una sesión a la derecha (SwipeRow): abre 2 botones, 104 + 6 + 104 + 12.
+  $('sc').querySelectorAll('[data-sw]').forEach((c) => { let x0 = null, open = false;
+    c.onpointerdown = (e) => { x0 = e.clientX; c.setPointerCapture(e.pointerId); c.style.transition = 'none'; };
+    c.onpointermove = (e) => { if (x0 == null) return; const dx = clamp(e.clientX - x0 + (open ? 226 : 0), 0, 226); c.style.transform = `translateX(${dx}px)`; };
+    c.onpointerup = (e) => { if (x0 == null) return; const dx = e.clientX - x0 + (open ? 226 : 0); x0 = null; c.style.transition = ''; open = Math.abs(e.clientX - (e.clientX - dx)) > 4 ? dx > 113 : !open && false; c.style.transform = open ? 'translateX(226px)' : ''; };
+  });
+  $('sc').querySelectorAll('[data-act]').forEach((el) => { if (el.closest('#tl')) return; el.onclick = () => { if (el.dataset.act === 'intro') { S.intro = 'no'; setOn('cIntro', 'no'); render(); } else newStage(); }; });
+  const fh = $('fh'), blk = $('blk'); let x0 = null;
+  fh.onpointerdown = (e) => { if (!tabsShown()) return; x0 = e.clientX; fh.setPointerCapture(e.pointerId); };
+  fh.onpointermove = (e) => { if (x0 == null) return; const dx = e.clientX - x0; blk.style.transform = `translateX(${dx * .45}px)`; };
+  fh.onpointerup = (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; blk.style.transform = ''; if (dx < -60 && S.sel < n - 1) select(S.sel + 1); else if (dx > 60 && S.sel > 0) select(S.sel - 1); };
+}
+
+let tt;
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2400); }
+function newStage() { toast(`→ Creador de etapas, partiendo de «${stages()[S.sel].name}».`); }
+function setOn(id, x) { document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle('on', b.dataset.x === x)); }
+function bind(id, key, conv = (v) => v) {
+  document.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => { if (b.disabled) return; S[key] = conv(b.dataset.x); setOn(id, b.dataset.x); S.sel = Math.min(S.sel, stages().length - 1); tlOffset = center(S.sel); render(); });
+}
+bind('cN', 'n', Number); bind('cBar', 'barPos');
+render();
+</script>
+</body>
+</html>

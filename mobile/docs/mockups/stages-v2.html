@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapas v2 — maqueta FormaFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ══════ TOKENS formaFit (src/themes.js) ══════ */
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --blue: #4c85ff; --blueTint: rgba(76,133,255,.18);
+    --red50: #ff5e58;
+    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --ease: cubic-bezier(.35,0,.15,1);
+  }
+  body { background: #070707; color: var(--text); font-family: Inter, sans-serif; padding: 32px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.5 Inter; max-width: 760px; margin-bottom: 28px; }
+  section { margin-bottom: 56px; }
+  section > h2 { font: 800 16px Inter; margin-bottom: 4px; }
+  section > h2 b { color: var(--accent); font-weight: 900; }
+  section > p, .note { color: var(--mutedLight); font: 500 13px/1.55 Inter; max-width: 760px; margin-bottom: 14px; }
+  .note b { color: var(--text); }
+  .stage { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: var(--muted); margin-right: 2px; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+
+  /* ── teléfono ── */
+  .phone { width: 375px; height: 780px; background: var(--bg); border-radius: 28px; position: relative; overflow: hidden; border: 1px solid #1a1a1a; flex: none; }
+  .scroll { position: absolute; inset: 0; overflow-y: auto; padding: 0 16px 120px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .hdr { display: flex; align-items: center; gap: 8px; padding: 18px 0 14px; }
+  .hdr .bk { font: 500 26px/1 Inter; color: var(--muted); width: 24px; }
+  .hdr .mid { flex: 1; text-align: center; }
+  .eyebrow { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .htitle { font: 800 17px Inter; margin-top: 3px; }
+  .hdr .rt { width: 24px; color: var(--accent); font: 900 18px Inter; text-align: right; }
+  .caps { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 0 10px; }
+  .sec a { font: 800 12px Inter; color: var(--accent); cursor: pointer; text-decoration: none; }
+  .card { background: var(--surface); border-radius: 16px; padding: 14px 16px; }
+  .meta { font: 700 12px/1.45 Inter; color: var(--mutedLight); }
+  .name { font: 800 17px Inter; }
+  .btn { background: var(--accent); color: var(--onAccent); border-radius: 12px; padding: 15px 0; text-align: center; font: 900 14px Inter; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  .ghost { border: 1px dashed var(--muted); border-radius: 12px; padding: 13px 0; text-align: center; font: 800 13px Inter; color: var(--mutedLight); cursor: pointer; }
+  .sg { display: flex; background: var(--surface2); border-radius: 10px; padding: 3px; }
+  .sg b { flex: 1; text-align: center; font: 800 12px Inter; padding: 8px 0; border-radius: 8px; color: var(--mutedLight); cursor: pointer; }
+  .sg b.on { background: var(--border); color: var(--text); }
+  .foot { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 16px 22px; background: linear-gradient(to bottom, rgba(15,15,15,0), var(--bg) 30%); }
+  .sheetwrap { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-end; z-index: 20; }
+  .sheetwrap.on { display: flex; }
+  .sheet { width: 100%; background: var(--surface); border-radius: 22px 22px 0 0; padding: 10px 16px 24px; max-height: 88%; overflow-y: auto; }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--muted); margin: 0 auto 14px; }
+  .toast { position: absolute; left: 50%; top: 70px; transform: translate(-50%,-20px); background: var(--accent); color: #000; font: 900 13px Inter; padding: 9px 16px; border-radius: 99px; opacity: 0; transition: all .3s var(--ease); z-index: 30; pointer-events: none; }
+  .toast.on { opacity: 1; transform: translate(-50%,0); }
+
+  /* ── sesiones (editor) ── */
+  .sess { background: var(--surface); border-radius: 14px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+  .sess .lab { width: 30px; height: 30px; border-radius: 9px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 13px Inter; color: var(--accent); }
+  .sess .nm { font: 700 14px Inter; }
+
+  /* ── variante A: tira ── */
+  .strip { display: flex; gap: 4px; overflow-x: auto; padding: 14px 2px 2px; scrollbar-width: none; position: relative; }
+  .strip::-webkit-scrollbar { display: none; }
+  .seg { height: 46px; border-radius: 9px; background: var(--surface2); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; position: relative; transition: background .2s, transform .2s var(--ease); padding: 0 4px; overflow: visible; }
+  .seg .n { font: 900 12px Inter; color: var(--mutedLight); }
+  .seg .w { font: 700 10px Inter; color: var(--muted); margin-top: 1px; white-space: nowrap; }
+  .seg.done { background: #1a1a1a; }
+  .seg.done .n { color: var(--muted); }
+  .seg.dl { background: var(--blueTint); }
+  .seg.dl .n { color: var(--blue); }
+  .seg.sel { background: var(--accent); }
+  .seg.sel .n, .seg.sel .w { color: #000; }
+  .seg .now { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font: 900 8px Inter; letter-spacing: .1em; color: var(--accent); white-space: nowrap; }
+  .seg .now::after { content: ''; position: absolute; left: 50%; top: 10px; width: 1px; height: 4px; background: var(--accent); }
+  .seg.add { background: none; border: 1px dashed var(--muted); color: var(--accent); font: 800 18px Inter; width: 40px; }
+  .ruler { display: flex; justify-content: space-between; margin-top: 6px; }
+  .ficha { margin-top: 12px; }
+  .ficha .top { display: flex; align-items: flex-start; gap: 10px; }
+  .edit { display: flex; align-items: center; gap: 6px; background: var(--surface2); border-radius: 10px; padding: 8px 11px; font: 800 12px Inter; color: var(--text); cursor: pointer; flex: none; }
+  .tag { display: inline-block; font: 800 10px Inter; letter-spacing: .12em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; }
+  .tag.now { color: var(--accent); background: var(--accent10); }
+  .tag.done { color: var(--mutedLight); background: var(--surface2); }
+  .tag.next { color: var(--mutedLight); background: var(--surface2); }
+  .tag.dl { color: var(--blue); background: var(--blueTint); }
+  .tag.new { color: var(--accent); border: 1px dashed var(--accent50); }
+  .prov { font: 700 12px Inter; color: var(--muted); margin-top: 8px; }
+  .kpis { display: flex; gap: 6px; margin-top: 12px; }
+  .kpi { flex: 1; background: var(--bg); border-radius: 10px; padding: 8px 9px; }
+  .kpi b { display: block; font: 900 15px Inter; }
+  .kpi span { font: 700 10px Inter; color: var(--mutedLight); }
+  .navrow { display: flex; justify-content: space-between; margin-top: 10px; }
+  .navrow i { font-style: normal; font: 800 12px Inter; color: var(--mutedLight); cursor: pointer; }
+  .navrow i.off { color: var(--muted); opacity: .4; pointer-events: none; }
+
+  /* ── variante B: fichas deslizables ── */
+  .carousel { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 0 6px; scrollbar-width: none; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scroll-padding: 0 16px; }
+  .carousel::-webkit-scrollbar { display: none; }
+  .ccard { scroll-snap-align: start; flex: 0 0 258px; background: var(--surface); border-radius: 16px; padding: 14px; border: 1px solid transparent; cursor: pointer; transition: border-color .2s; }
+  .ccard.sel { border-color: var(--accent); }
+  .ccard.done { opacity: .55; }
+  .ccard.addc { border: 1px dashed var(--muted); background: none; display: flex; align-items: center; justify-content: center; flex-basis: 120px; color: var(--mutedLight); font: 800 13px Inter; }
+  .mini { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
+  .mini div { display: flex; align-items: center; gap: 8px; }
+  .mini span { width: 62px; font: 700 10px Inter; color: var(--muted); }
+  .mini em { height: 5px; border-radius: 3px; background: var(--mutedLight); display: block; }
+  .mini em.i { background: var(--accent); }
+  .dots { display: flex; gap: 5px; justify-content: center; margin-top: 8px; }
+  .dots i { width: 5px; height: 5px; border-radius: 3px; background: var(--border); }
+  .dots i.on { background: var(--accent); width: 14px; }
+
+  /* ── añadir etapas ── */
+  .wavecard { background: var(--surface); border-radius: 16px; padding: 12px 10px 8px; }
+  .wavecard svg { display: block; width: 100%; }
+  .cmp { margin-top: 10px; }
+  .cmphead { display: flex; align-items: center; gap: 8px; }
+  .cmphead .from, .cmphead .to { flex: 1; min-width: 0; background: var(--bg); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+  .cmphead .to { border: 1px dashed var(--accent50); }
+  .cmphead .arrow { color: var(--accent); font: 900 16px Inter; }
+  .cmphead .k { font: 800 9px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .cmphead .v { font: 800 13px Inter; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .cmphead .from .v::after { content: ' ▾'; color: var(--muted); font-size: 10px; }
+  .rows { margin-top: 8px; }
+  .crow { display: grid; grid-template-columns: 1fr 64px 18px 64px 56px; align-items: center; padding: 7px 2px; border-top: .5px solid var(--border); }
+  .crow:first-child { border-top: none; }
+  .crow .l { font: 700 12px Inter; color: var(--mutedLight); }
+  .crow .a { font: 700 13px Inter; color: var(--mutedLight); text-align: right; }
+  .crow .ar { text-align: center; color: var(--muted); font: 700 11px Inter; }
+  .crow .b { font: 900 14px Inter; text-align: left; }
+  .crow .d { font: 800 11px Inter; text-align: right; }
+  .up { color: var(--accent); } .down { color: var(--blue); } .same { color: var(--muted); }
+  .vs { display: flex; justify-content: flex-end; gap: 4px; margin-top: 6px; }
+  .vs b { font: 800 10px Inter; color: var(--muted); padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+  .vs b.on { color: var(--text); background: var(--surface2); }
+
+  .queue { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+  .queue::-webkit-scrollbar { display: none; }
+  .pill { flex: none; display: flex; align-items: center; gap: 7px; background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; padding: 8px 11px 8px 8px; cursor: pointer; transition: border-color .2s, transform .25s var(--ease); }
+  .pill .pn { width: 22px; height: 22px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font: 900 11px Inter; background: var(--surface2); color: var(--accent); }
+  .pill.dl .pn { color: var(--blue); background: var(--blueTint); }
+  .pill .pt { font: 800 12px Inter; white-space: nowrap; }
+  .pill .pw { font: 700 10px Inter; color: var(--mutedLight); }
+  .pill.sel { border: 1px solid var(--accent); }
+  .pill.addp { border-style: dashed; border-color: var(--muted); color: var(--accent); font: 900 16px Inter; padding: 8px 14px; }
+  .pill.pop { animation: pop .35s var(--ease); }
+  @keyframes pop { 0% { transform: scale(.6); opacity: 0 } 100% { transform: none; opacity: 1 } }
+  .nudge { display: flex; align-items: center; gap: 10px; background: var(--blueTint); border-radius: 12px; padding: 10px 12px; margin-top: 10px; }
+  .nudge p { flex: 1; font: 700 12px/1.4 Inter; color: #c9d8ff; }
+  .nudge b { font: 900 12px Inter; color: var(--blue); cursor: pointer; white-space: nowrap; }
+
+  .edhead { display: flex; gap: 10px; align-items: center; }
+  .edhead input { flex: 1; min-width: 0; background: var(--bg); border: none; border-radius: 10px; padding: 10px 12px; color: var(--text); font: 800 15px Inter; outline: none; }
+  .edhead input:focus { box-shadow: 0 0 0 1px var(--accent50); }
+  .step { display: flex; align-items: center; gap: 4px; background: var(--bg); border-radius: 10px; padding: 3px; }
+  .step i { width: 30px; height: 32px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-style: normal; font: 900 15px Inter; cursor: pointer; user-select: none; }
+  .step b { min-width: 46px; text-align: center; font: 800 13px Inter; }
+  .chars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
+  .char { background: var(--bg); border-radius: 12px; padding: 10px 4px 8px; text-align: center; cursor: pointer; border: 1px solid transparent; transition: border-color .2s, background .2s; }
+  .char svg { display: block; margin: 0 auto 5px; }
+  .char span { font: 800 11px Inter; color: var(--mutedLight); }
+  .char.on { border-color: var(--accent); background: var(--accent10); }
+  .char.on span { color: var(--text); }
+  .char.dlc.on { border-color: var(--blue); background: var(--blueTint); }
+
+  .pad { position: relative; margin-top: 14px; height: 214px; background: var(--bg); border-radius: 14px; touch-action: none; user-select: none; cursor: crosshair; overflow: hidden; }
+  .pad .ql { position: absolute; font: 800 9px Inter; letter-spacing: .12em; text-transform: uppercase; color: #3d3d3d; transition: color .2s; pointer-events: none; }
+  .pad .ql.on { color: var(--accent); }
+  .pad .ax { position: absolute; font: 800 9px Inter; letter-spacing: .1em; color: var(--muted); pointer-events: none; text-transform: uppercase; }
+  .pad svg { position: absolute; inset: 0; pointer-events: none; }
+  .knob { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 15px; background: var(--accent); box-shadow: 0 0 0 6px var(--accent10), 0 4px 12px rgba(0,0,0,.5); transition: left .12s var(--ease), top .12s var(--ease), background .2s; pointer-events: none; display: flex; align-items: center; justify-content: center; font: 900 9px Inter; color: #000; }
+  .knob.dl { background: var(--blue); box-shadow: 0 0 0 6px var(--blueTint), 0 4px 12px rgba(0,0,0,.5); }
+  .padval { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .padval .v { font: 800 13px Inter; }
+  .hap { font: 900 13px Inter; color: var(--accent); opacity: 0; transition: opacity .1s; }
+  .sliders .sl { margin-top: 14px; }
+  .sliders .slh { display: flex; justify-content: space-between; font: 700 12px Inter; color: var(--mutedLight); margin-bottom: 6px; }
+  .sliders .slh b { color: var(--text); font: 900 13px Inter; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row2 { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .row2 > span { font: 700 12px Inter; color: var(--mutedLight); }
+
+  .zone { display: grid; grid-template-columns: 62px 1fr 40px; align-items: center; gap: 8px; margin-top: 9px; }
+  .zone .zl { font: 700 12px Inter; color: var(--mutedLight); }
+  .zone .zt { position: relative; height: 10px; background: var(--bg); border-radius: 5px; }
+  .zone .zb { position: absolute; top: 0; bottom: 0; background: var(--accent10); border-left: 1px solid rgba(170,226,22,.25); border-right: 1px solid rgba(170,226,22,.25); }
+  .zone .zf { position: absolute; left: 0; top: 2px; height: 6px; border-radius: 3px; background: var(--accent); transition: width .35s var(--ease), background .2s; }
+  .zone .zf.lo { background: var(--mutedLight); }
+  .zone .zf.hi { background: var(--red50); }
+  .zone .zm { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--text); border-radius: 1px; transition: left .35s var(--ease); }
+  .zone .zv { font: 900 12px Inter; text-align: right; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .tabs b { font: 900 12px Inter; padding: 6px 12px; border-radius: 8px; background: var(--surface2); color: var(--mutedLight); cursor: pointer; }
+  .tabs b.on { background: var(--accent); color: #000; }
+  .exr { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-top: .5px solid var(--border); }
+  .exr:first-of-type { border-top: none; }
+  .exr .en { flex: 1; font: 700 13px Inter; min-width: 0; }
+  .exr .en small { display: block; font: 700 10px Inter; color: var(--muted); margin-top: 2px; letter-spacing: .08em; text-transform: uppercase; }
+  .exr .old { font: 700 11px Inter; color: var(--muted); text-decoration: line-through; white-space: nowrap; }
+  .exr .new { font: 800 12px Inter; white-space: nowrap; }
+  .exr .new em { font-style: normal; color: var(--accent); }
+
+  .chooser h4 { font: 800 16px Inter; margin-bottom: 4px; }
+  .chooser .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .chooser .opt { background: var(--bg); border-radius: 14px; padding: 12px; cursor: pointer; border: 1px solid transparent; }
+  .chooser .opt:hover { border-color: var(--border); }
+  .chooser .opt b { display: block; font: 800 13px Inter; margin-top: 6px; }
+  .chooser .opt span { font: 700 11px/1.35 Inter; color: var(--mutedLight); }
+  .chooser .blk { display: flex; gap: 3px; height: 22px; align-items: flex-end; }
+  .chooser .blk i { display: block; border-radius: 3px; background: var(--mutedLight); }
+  .chooser .blk i.d { background: var(--blue); }
+  .landing .pill { animation: land .6s var(--ease); }
+  @keyframes land { 0% { transform: translateY(0) } 40% { transform: translateY(-10px) scale(1.05) } 100% { transform: none } }
+
+  /* ── herramientas ── */
+  .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; max-width: 1180px; }
+  .tool { background: var(--surface); border-radius: 16px; padding: 16px; }
+  .tool h3 { font: 800 15px Inter; margin: 6px 0 6px; }
+  .tool p { font: 500 13px/1.5 Inter; color: var(--mutedLight); }
+  .tool .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tool .bd { font: 800 10px Inter; letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; background: var(--surface2); color: var(--mutedLight); }
+  .tool .bd.g { color: var(--accent); background: var(--accent10); }
+  .tool .bd.y { color: #ffcf4a; background: rgba(255,207,74,.12); }
+  .tool .bd.r { color: var(--red50); background: rgba(255,94,88,.12); }
+  .tool .fit { margin-top: 10px; font: 700 12px/1.45 Inter; color: var(--text); }
+</style>
+</head>
+<body>
+<h1>Etapas v2</h1>
+<p class="lead">Maqueta de la spec <code>P14-etapas-v2.md</code>. Tres partes: (1) la sección Etapas del editor de programa, sin segmentado ni la segunda pulsación oculta; (2) «Añadir etapas» como pantalla propia, con lo que cambia arriba, un mando para elegir el carácter y la vista previa exacta; (3) herramientas de periodización para más adelante. Tokens reales de formaFit, programa de ejemplo de 3 sesiones (A/B/C) con 15 ejercicios.</p>
+
+<!-- ═══════════════ 1 · EDITOR ═══════════════ -->
+<section id="ed">
+  <h2><b>1</b> · Editar programa — la sección Etapas</h2>
+  <p>El segmentado se sustituye por una de estas tres. En las tres, <b>tocar una etapa solo la selecciona</b> (cambia las sesiones de abajo) y editarla es un botón visible, <b>«Ajustes»</b>, en la ficha. El <b>+</b> abre directamente la pantalla de añadir, con la etapa seleccionada como base. Cambia el número de etapas para ver cómo escala.</p>
+  <div class="ctl" id="edVar"><span>Variante</span><button data-v="A" class="on">A · Tira + ficha</button><button data-v="B">B · Fichas deslizables</button><button data-v="C">C · Ola + ficha</button></div>
+  <div class="ctl" id="edN"><span>Etapas</span><button data-n="3">3</button><button data-n="6" class="on">6</button><button data-n="11">11</button></div>
+  <div class="stage">
+    <div class="phone" id="edPhone">
+      <div class="scroll" id="edScroll"></div>
+      <div class="sheetwrap" id="edSheet"><div class="sheet" id="edSheetBody"></div></div>
+    </div>
+    <div style="max-width:420px">
+      <p class="note"><b>A · Tira + ficha (recomendada).</b> Cada etapa es un tramo de ancho proporcional a sus semanas: se lee la forma del programa (lo largo, lo corto, las descargas en azul) sin leer nombres. Con muchas etapas los tramos se estrechan hasta un mínimo y la tira se desplaza. El nombre, que es lo que no cabía en el segmentado, vive en la ficha de abajo, con sus números.</p>
+      <p class="note"><b>B · Fichas deslizables.</b> Una ficha por etapa, se pasa con el dedo. Es la más «tarjeta», pero escondes el resto del programa: con 11 etapas no ves dónde estás.</p>
+      <p class="note"><b>C · Ola + ficha.</b> La ola de U10-07 hace de selector. Es la más rica, pero mete un gráfico en una pantalla que es para editar sesiones; la dejaría para el Plan.</p>
+      <p class="note"><b>Ficha:</b> estado (EN CURSO · semana 2 de 4 / HECHA / POR VENIR / DESCARGA), nombre, de qué se creó, y cuatro cifras comparables entre etapas: semanas, series por semana, reps de los básicos y minutos por sesión. ‹ › para pasar a la vecina sin volver a la tira.</p>
+      <p class="note"><b>Ajustes</b> abre la misma hoja de hoy (nombre, semanas, activar, candado, duplicar, eliminar). Una sola hoja compartida con el Plan: hoy esas opciones están repetidas en dos sitios con dos diseños.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 2 · AÑADIR ═══════════════ -->
+<section id="add">
+  <h2><b>2</b> · Añadir etapas — pantalla propia</h2>
+  <p>Arriba siempre: la ola (lo que hay, atenuado, y lo nuevo en discontinuo) y la comparación <b>de dónde partes → lo que añades</b>, cifra a cifra. Debajo, la cola de etapas nuevas; tocar una la edita. El carácter se elige con cuatro tarjetas o arrastrando el punto del <b>mando</b>: arriba más series, a la derecha más intensidad (menos reps). Todo lo de arriba se mueve al momento. Al final, cómo quedan los grupos musculares y cada ejercicio.</p>
+  <div class="ctl" id="adCtl"><span>Mando</span><button data-c="pad" class="on">Mando 2D</button><button data-c="sl">Deslizadores</button><span style="margin-left:14px">Estado</span><button id="adReset">Vacía</button><button id="adPreset">Con un bloque</button></div>
+  <div class="stage">
+    <div class="phone" id="adPhone">
+      <div class="toast" id="adToast"></div>
+      <div class="scroll" id="adScroll"></div>
+      <div class="foot" id="adFoot"></div>
+      <div class="sheetwrap" id="adSheet"><div class="sheet" id="adSheetBody"></div></div>
+    </div>
+    <div style="max-width:440px">
+      <p class="note"><b>Entrada.</b> El + del editor (base = la etapa seleccionada) o el hueco «+ Añadir etapas» del Plan (base = la de hoy, la última sin regla). Pantalla con cabecera y botón al pie, no hoja: tiene que caber la vista previa entera.</p>
+      <p class="note"><b>Vacía.</b> Primera pregunta: ¿una etapa o un bloque entero? Las etapas sueltas son cuatro caracteres; los bloques, escaleras que llenan la cola (las tres de hoy y dos nuevas: Ondulante y Hacia un pico).</p>
+      <p class="note"><b>Comparación.</b> «Parte de» es tocable (cambia la base). «Con la base / con la anterior»: las reglas se miden contra la base (decisión de P06), pero lo que el entrenador espera ver muchas veces es el salto desde la etapa de justo antes. Las dos son exactas: salen de aplicar la regla, como lo hará el guardado.</p>
+      <p class="note"><b>Mando 2D.</b> Es el «juego» de la pantalla. Casillas con imán (una serie, una rep), un toque de vibración en cada casilla (◆), y el cuadrante se ilumina y bautiza la etapa (Acumulación, Intensificación, Sobrecarga, Realización…) hasta que la renombras. Alcance y descanso debajo, como hoy. «Deslizadores» es la alternativa sobria, por si el mando no convence en el móvil.</p>
+      <p class="note"><b>Semanas</b> se eligen aquí (hoy no se puede, P06 §14.2.7): la ola y el total del botón dependen de ellas.</p>
+      <p class="note"><b>Grupos musculares.</b> Series por semana de cada grupo contra la franja 10-20 que la app ya usa (<code>SETS_TARGET_MIN/MAX</code>). La raya blanca es la base; la barra, la etapa nueva. Rojo por encima de 20.</p>
+      <p class="note"><b>Aviso.</b> Una sola regla, de estructura y sin métricas (respeta P06 §2.8): más de 8 semanas de trabajo seguidas sin descarga ⇒ «Añadir descarga» en un toque.</p>
+      <p class="note"><b>Al añadir</b>, las pastillas saltan, la ola pasa de discontinua a sólida, toast y vuelta a donde estabas con la primera etapa nueva seleccionada.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 3 · HERRAMIENTAS ═══════════════ -->
+<section id="tools">
+  <h2><b>3</b> · Más herramientas de periodización</h2>
+  <p>Ordenadas por lo que dan frente a lo que cuestan. «Encaja» = cómo entra en el modelo actual (las reglas <code>rx</code> que se materializan, todo se añade al final, la etapa es igual cada semana).</p>
+  <div class="tools" id="toolGrid"></div>
+</section>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ═══════════ Programa de ejemplo ═══════════ */
+const BASE = {
+  A: [
+    { n: 'Sentadilla', k: 1, m: 'Piernas', s: 4, lo: 5, hi: 8, r: 180 },
+    { n: 'Press banca', k: 1, m: 'Pecho', s: 4, lo: 6, hi: 8, r: 150 },
+    { n: 'Remo con barra', k: 0, m: 'Espalda', s: 3, lo: 8, hi: 12, r: 90 },
+    { n: 'Zancadas', k: 0, m: 'Piernas', s: 3, lo: 10, hi: 12, r: 90 },
+    { n: 'Curl con barra', k: 0, m: 'Brazos', s: 3, lo: 10, hi: 15, r: 60 },
+  ],
+  B: [
+    { n: 'Peso muerto', k: 1, m: 'Piernas', s: 3, lo: 4, hi: 6, r: 180 },
+    { n: 'Press militar', k: 1, m: 'Hombros', s: 4, lo: 6, hi: 8, r: 120 },
+    { n: 'Dominadas', k: 0, m: 'Espalda', s: 4, lo: 6, hi: 10, r: 120 },
+    { n: 'Hip thrust', k: 0, m: 'Piernas', s: 3, lo: 8, hi: 12, r: 90 },
+    { n: 'Elevaciones laterales', k: 0, m: 'Hombros', s: 3, lo: 12, hi: 15, r: 60 },
+  ],
+  C: [
+    { n: 'Sentadilla frontal', k: 1, m: 'Piernas', s: 3, lo: 6, hi: 8, r: 150 },
+    { n: 'Press inclinado', k: 0, m: 'Pecho', s: 3, lo: 8, hi: 12, r: 90 },
+    { n: 'Jalón al pecho', k: 0, m: 'Espalda', s: 3, lo: 10, hi: 12, r: 90 },
+    { n: 'Fondos', k: 0, m: 'Pecho', s: 3, lo: 8, hi: 12, r: 90 },
+    { n: 'Tríceps en polea', k: 0, m: 'Brazos', s: 3, lo: 12, hi: 15, r: 60 },
+  ],
+};
+const SESS = { A: 'Pierna y empuje', B: 'Bisagra y hombro', C: 'Torso' };
+const MUSCLES = ['Piernas', 'Pecho', 'Espalda', 'Hombros', 'Brazos'];
+
+/* applyRx simplificado: deltas absolutos contra la base, con los suelos de stageRx.js */
+function inScope(ex, scope) { return scope === 'keys' ? !!ex.k : scope === 'accessories' ? !ex.k : true; }
+function applyRx(rx = {}, src = BASE) {
+  const out = {};
+  for (const [id, list] of Object.entries(src)) {
+    out[id] = list.map((ex) => {
+      if (!inScope(ex, rx.scope || 'all')) return { ...ex };
+      const sh = rx.repsShift || 0;
+      return {
+        ...ex,
+        s: Math.max(1, ex.s + (rx.setsDelta || 0)),
+        lo: Math.max(1, ex.lo + sh), hi: Math.max(1, ex.hi + sh),
+        r: Math.max(15, Math.round(ex.r * (1 + (rx.restPct || 0) / 100) / 15) * 15),
+      };
+    });
+  }
+  return out;
+}
+/* Métricas de una etapa materializada */
+function metrics(rx, src = BASE) {
+  const S = applyRx(rx, src);
+  let sets = 0, minSum = 0, iw = 0, is = 0, kl = 0, kh = 0, kn = 0, rest = 0, rn = 0;
+  const by = Object.fromEntries(MUSCLES.map((m) => [m, 0]));
+  for (const list of Object.values(S)) {
+    let sec = 480;
+    for (const ex of list) {
+      sets += ex.s; by[ex.m] += ex.s; sec += ex.s * (35 + ex.r) + 120;
+      rest += ex.r; rn++;
+      if (ex.k) {
+        const mid = Math.min(12, (ex.lo + ex.hi) / 2);
+        is += ex.s / (1 + (mid + 2) / 30); iw += ex.s; kl += ex.lo; kh += ex.hi; kn++;
+      }
+    }
+    minSum += sec / 60;
+  }
+  return {
+    sets, by, min: Math.round(minSum / 3 / 5) * 5,
+    int: Math.round(100 * is / iw), reps: `${Math.round(kl / kn)}-${Math.round(kh / kn)}`,
+    repsMid: (kl + kh) / 2 / kn, rest: Math.round(rest / rn),
+  };
+}
+const fmtRest = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+/* Descripción de una regla, como describeRx */
+function describe(st) {
+  const r = st.rx || {}, p = [];
+  const sc = r.scope === 'keys' ? ' en básicos' : r.scope === 'accessories' ? ' en accesorios' : '';
+  if (r.setsDelta) p.push(`${r.setsDelta > 0 ? '+' : '−'}${Math.abs(r.setsDelta)} serie${Math.abs(r.setsDelta) > 1 ? 's' : ''}${sc}`);
+  if (r.repsShift) p.push(`${r.repsShift > 0 ? '+' : '−'}${Math.abs(r.repsShift)} reps${sc}`);
+  if (r.restPct) p.push(`${r.restPct > 0 ? '+' : '−'}${Math.abs(r.restPct)}% descanso`);
+  if (st.kind === 'deload') p.push('sin progresión');
+  return p;
+}
+
+/* Nombre por cuadrante del mando */
+function quadName(rx, kind) {
+  if (kind === 'deload') return 'Descarga';
+  const s = rx.setsDelta || 0, r = rx.repsShift || 0;
+  if (!s && !r) return 'Igual que la base';
+  if (s > 0 && r < 0) return 'Sobrecarga';
+  if (s > 0) return 'Acumulación';
+  if (s < 0 && r < 0) return 'Realización';
+  if (r < 0) return 'Intensificación';
+  if (s < 0) return 'Mantenimiento';
+  return 'Más repeticiones';
+}
+function quadId(rx, kind) {
+  if (kind === 'deload') return 'dl';
+  const s = rx.setsDelta || 0, r = rx.repsShift || 0;
+  if (!s && !r) return 'eq';
+  if (s > 0 && r >= 0) return 'vol';
+  if (r < 0) return s > 0 ? 'both' : 'int';
+  return 'low';
+}
+
+/* ═══════════ La ola ═══════════ */
+function curve(p) { let d = `M${p[0][0]} ${p[0][1]}`; for (let i = 1; i < p.length; i++) { const [a, b] = p[i - 1], [c, e] = p[i], m = (a + c) / 2; d += ` C${m} ${b} ${m} ${e} ${c} ${e}`; } return d; }
+function waveSVG(stages, o = {}) {
+  const W = 323, L = 4, R = W - 4, T = 14, B = o.h || 92, wk = [];
+  stages.forEach((s, si) => { const m = s._m || metrics(s.rx); for (let i = 0; i < s.weeks; i++) wk.push({ si, sets: m.sets, int: m.int }); });
+  const N = wk.length, cw = (R - L) / N;
+  const maxS = Math.max(...wk.map((w) => w.sets)) * 1.15;
+  const vy = (v) => B - (v / maxS) * (B - T - 4);
+  const iy = (p) => B - ((p - 62) / 26) * (B - T - 8);
+  const vp = [[L, vy(wk[0].sets)]], ip = [[L, iy(wk[0].int)]];
+  wk.forEach((w, i) => { const x = L + cw * i + cw / 2; vp.push([x, vy(w.sets)]); ip.push([x, iy(w.int)]); });
+  vp.push([R, vp[vp.length - 1][1]]); ip.push([R, ip[ip.length - 1][1]]);
+  let h = `<svg viewBox="0 0 ${W} ${B + (o.bands === false ? 6 : 46)}">`;
+  h += `<path d="${curve(vp)} L${R} ${B} L${L} ${B} Z" fill="#272727"/><path d="${curve(vp)}" fill="none" stroke="#949494" stroke-width="1.5"/>`;
+  h += `<path d="${curve(ip)}" fill="none" stroke="#aae216" stroke-width="2.5" stroke-linecap="round"/>`;
+  if (o.dimTo != null && o.dimTo < stages.length) {
+    const x = L + cw * stages.slice(0, o.dimTo).reduce((a, s) => a + s.weeks, 0);
+    h += `<rect x="${L}" y="${T - 8}" width="${x - L}" height="${B - T + 8}" fill="#1f1f1f" opacity=".62"/>`;
+    h += `<rect x="${x}" y="${T - 8}" width="${R - x}" height="${B - T + 8}" fill="url(#hatch)" opacity=".5"/>`;
+    h += `<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#aae216" stroke-width=".6" opacity=".25"/></pattern></defs>`;
+    h += `<line x1="${x}" x2="${x}" y1="${T - 8}" y2="${B}" stroke="#585858" stroke-dasharray="2 3"/><text x="${x + 4}" y="${T - 1}" font-family="Inter" font-size="8.5" font-weight="800" letter-spacing="1" fill="#aae216">NUEVAS</text>`;
+  }
+  if (o.now != null) {
+    const nx = L + cw * (o.now - 1) + cw / 2;
+    h += `<line x1="${nx}" x2="${nx}" y1="${T - 8}" y2="${B}" stroke="#aae216" stroke-dasharray="2 3" opacity=".7"/><circle cx="${nx}" cy="${iy(wk[o.now - 1].int)}" r="4" fill="#1f1f1f" stroke="#aae216" stroke-width="2.2"/>`;
+    if (o.dimTo == null) h += `<text x="${nx + 5}" y="${T - 1}" font-family="Inter" font-size="8.5" font-weight="800" fill="#aae216">SEM ${o.now}</text>`;
+  }
+  if (o.bands !== false) {
+    let x = L;
+    stages.forEach((s, i) => {
+      const w = s.weeks * cw, dl = s.kind === 'deload', sel = o.sel === i, nw = o.dimTo != null && i >= o.dimTo;
+      const fill = sel ? (dl ? 'rgba(76,133,255,.45)' : '#aae216') : dl ? 'rgba(76,133,255,.18)' : nw ? '#1f1f1f' : '#151515';
+      const tc = sel ? (dl ? '#e6e6e6' : '#000') : dl ? '#4c85ff' : nw ? '#aae216' : '#949494';
+      h += `<g data-si="${i}" style="cursor:pointer"><rect x="${x + 1}" y="${B + 8}" width="${Math.max(2, w - 2)}" height="22" rx="5" fill="${fill}" stroke="${nw && !sel ? '#aae216' : 'none'}" stroke-dasharray="3 2" stroke-opacity=".7"/>${w > 12 ? `<text x="${x + w / 2}" y="${B + 23}" text-anchor="middle" font-family="Inter" font-size="9.5" font-weight="900" fill="${tc}">${i + 1}</text>` : ''}</g>`;
+      x += w;
+    });
+    h += `<text x="${L}" y="${B + 44}" font-family="Inter" font-size="8.5" font-weight="800" letter-spacing=".8" fill="#aae216">— INTENSIDAD</text><text x="${L + 78}" y="${B + 44}" font-family="Inter" font-size="8.5" font-weight="800" letter-spacing=".8" fill="#949494">▆ SERIES/SEM</text><text x="${R}" y="${B + 44}" text-anchor="end" font-family="Inter" font-size="9" font-weight="700" fill="#585858">${N} semanas</text>`;
+  }
+  return h + '</svg>';
+}
+
+/* Números que ruedan */
+function roll(el, to, fmt = (v) => v) {
+  const from = +el.dataset.v || to; el.dataset.v = to;
+  if (from === to) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), d = 260;
+  const step = (t) => { const k = Math.min(1, (t - t0) / d), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(Math.round(from + (to - from) * e)); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+/* ═══════════ 1 · EDITOR ═══════════ */
+const ALL_STAGES = [
+  { name: 'Base', weeks: 4, rx: {} },
+  { name: 'Acumulación', weeks: 4, rx: { setsDelta: 1 } },
+  { name: 'Intensificación', weeks: 3, rx: { scope: 'keys', repsShift: -3, restPct: 25 } },
+  { name: 'Descarga', weeks: 1, kind: 'deload', rx: { setsDelta: -1 } },
+  { name: 'Acumulación II', weeks: 4, rx: { scope: 'accessories', setsDelta: 2 } },
+  { name: 'Realización', weeks: 3, rx: { scope: 'keys', repsShift: -4, setsDelta: -1, restPct: 50 } },
+  { name: 'Descarga 2', weeks: 1, kind: 'deload', rx: { setsDelta: -1 } },
+  { name: 'Volumen', weeks: 4, rx: { setsDelta: 2 } },
+  { name: 'Intensificación II', weeks: 3, rx: { scope: 'keys', repsShift: -3, restPct: 25 } },
+  { name: 'Descarga 3', weeks: 1, kind: 'deload', rx: { setsDelta: -1 } },
+  { name: 'Pico', weeks: 2, rx: { scope: 'keys', repsShift: -5, setsDelta: -1, restPct: 50 } },
+];
+const SETS3 = [ALL_STAGES[0], ALL_STAGES[1], { ...ALL_STAGES[3], name: 'Descarga' }];
+ALL_STAGES.forEach((s) => s._m = metrics(s.rx));
+SETS3.forEach((s) => s._m = s._m || metrics(s.rx));
+const ED = { v: 'A', n: 6, sel: 1, now: 1, nowWeek: 2 };
+const edStages = () => ED.n === 3 ? SETS3 : ALL_STAGES.slice(0, ED.n);
+const stateOf = (i) => i < ED.now ? 'done' : i === ED.now ? 'now' : 'next';
+
+function ficha(stages, i) {
+  const s = stages[i], st = stateOf(i), m = s._m, dl = s.kind === 'deload';
+  const tag = st === 'now' ? `<span class="tag now">En curso · semana ${ED.nowWeek} de ${s.weeks}</span>`
+    : st === 'done' ? `<span class="tag done">✓ Hecha</span>` : dl ? `<span class="tag dl">Descarga · por venir</span>` : `<span class="tag next">Por venir</span>`;
+  const prov = describe(s);
+  return `<div class="card ficha">
+    <div class="top"><div style="flex:1;min-width:0">${tag}<div class="name" style="margin-top:8px">${i + 1} · ${s.name}</div>
+      <div class="prov">${prov.length ? 'Creada con ' + prov.join(' · ') : 'Hecha a mano'}</div></div>
+      <div class="edit" data-act="settings">⚙ Ajustes</div></div>
+    <div class="kpis"><div class="kpi"><b>${s.weeks}</b><span>semanas</span></div><div class="kpi"><b>${m.sets}</b><span>series/sem</span></div><div class="kpi"><b>${m.reps}</b><span>reps básicos</span></div><div class="kpi"><b>${m.min}′</b><span>por sesión</span></div></div>
+    <div class="navrow"><i data-act="prev" class="${i === 0 ? 'off' : ''}">‹ ${i > 0 ? stages[i - 1].name : ''}</i><i data-act="next" class="${i === stages.length - 1 ? 'off' : ''}">${i < stages.length - 1 ? stages[i + 1].name : ''} ›</i></div>
+  </div>`;
+}
+
+function renderEditor() {
+  const stages = edStages(); ED.sel = Math.min(ED.sel, stages.length - 1);
+  const total = stages.reduce((a, s) => a + s.weeks, 0);
+  let h = `<div class="hdr"><span class="bk">‹</span><div class="mid"><div class="eyebrow">Editar programa</div><div class="htitle">Fuerza Base</div></div><span class="rt">✓</span></div>`;
+  h += `<div class="card" style="background:var(--surface)"><div class="caps" style="color:var(--accent)">Programa</div><div style="font:900 18px Inter;margin-top:4px">${stages.length} etapas · ${total} semanas</div><div class="meta" style="margin-top:2px">3 entrenos por semana</div></div>`;
+  h += `<div class="sec"><span class="caps">Etapas</span><a data-act="plan">Ver plan ›</a></div>`;
+
+  if (ED.v === 'A') {
+    // Proporcional a las semanas con un mínimo por tramo; solo se desplaza si ni con el mínimo cabe.
+    const minW = 34, avail = 343 - 44 - (stages.length) * 4;
+    let u = avail / total;
+    for (let k = 0; k < 4; k++) {
+      const short = stages.filter((s) => s.weeks * u < minW);
+      const longW = total - short.reduce((a, s) => a + s.weeks, 0);
+      if (longW > 0) u = (avail - short.length * minW) / longW;
+    }
+    if (u * Math.min(...stages.map((s) => s.weeks)) < minW && stages.length * minW > avail) u = 13;
+    h += `<div class="strip" id="strip">${stages.map((s, i) => {
+      const w = Math.max(minW, s.weeks * u), st = stateOf(i), cls = ['seg', st === 'done' && 'done', s.kind === 'deload' && 'dl', ED.sel === i && 'sel'].filter(Boolean).join(' ');
+      return `<div class="${cls}" data-i="${i}" style="width:${w}px">${st === 'now' ? '<span class="now">AHORA</span>' : ''}<span class="n">${st === 'done' && ED.sel !== i ? '✓' : i + 1}</span>${w >= 44 ? `<span class="w">${s.weeks} sem</span>` : ''}</div>`;
+    }).join('')}<div class="seg add" data-act="add">+</div></div>`;
+    h += `<div class="ruler"><span class="caps">Sem 1</span><span class="caps" style="color:var(--accent)">Hoy · sem ${stages.slice(0, ED.now).reduce((a, s) => a + s.weeks, 0) + ED.nowWeek}</span><span class="caps">Sem ${total}</span></div>`;
+    h += ficha(stages, ED.sel);
+  } else if (ED.v === 'B') {
+    const maxS = Math.max(...stages.map((s) => s._m.sets)), maxI = Math.max(...stages.map((s) => s._m.int));
+    h += `<div class="carousel" id="car">${stages.map((s, i) => {
+      const st = stateOf(i), m = s._m, dl = s.kind === 'deload';
+      const tag = st === 'now' ? `<span class="tag now">En curso · sem ${ED.nowWeek}/${s.weeks}</span>` : st === 'done' ? '<span class="tag done">✓ Hecha</span>' : dl ? '<span class="tag dl">Descarga</span>' : '<span class="tag next">Por venir</span>';
+      return `<div class="ccard ${ED.sel === i ? 'sel' : ''} ${st === 'done' ? 'done' : ''}" data-i="${i}">
+        <div style="display:flex;justify-content:space-between;align-items:center">${tag}<span class="edit" data-act="settings" style="padding:5px 8px">⚙</span></div>
+        <div class="name" style="margin-top:8px">${i + 1} · ${s.name}</div>
+        <div class="meta">${s.weeks} semanas · ${m.sets} series/sem · ${m.min}′</div>
+        <div class="mini"><div><span>Volumen</span><em style="width:${Math.round(150 * m.sets / maxS)}px"></em></div><div><span>Intensidad</span><em class="i" style="width:${Math.round(150 * (m.int - 60) / (maxI - 60))}px"></em></div></div>
+      </div>`;
+    }).join('')}<div class="ccard addc" data-act="add">+ Añadir</div></div>`;
+    h += `<div class="dots">${stages.map((_, i) => `<i class="${ED.sel === i ? 'on' : ''}"></i>`).join('')}</div>`;
+  } else {
+    const nowW = stages.slice(0, ED.now).reduce((a, s) => a + s.weeks, 0) + ED.nowWeek;
+    h += `<div class="wavecard" id="edWave">${waveSVG(stages, { sel: ED.sel, now: nowW })}</div>`;
+    h += ficha(stages, ED.sel);
+  }
+
+  const s = stages[ED.sel], S = applyRx(s.rx);
+  h += `<div class="sec"><span class="caps">Sesiones de ${s.name}</span></div>`;
+  h += Object.keys(S).map((id) => { let sets = 0, sec = 480; S[id].forEach((e) => { sets += e.s; sec += e.s * (35 + e.r) + 120; }); return `<div class="sess"><span class="lab">${id}</span><div style="flex:1"><div class="nm">${SESS[id]}</div><div class="meta">5 ejercicios · ${sets} series · ${Math.round(sec / 300) * 5} min</div></div><span style="color:var(--muted)">⠿</span></div>`; }).join('');
+  h += `<div class="ghost" style="margin-top:4px">+ Añadir sesión a <span style="color:var(--accent)">${s.name}</span></div>`;
+  $('edScroll').innerHTML = h;
+
+  $('edScroll').querySelectorAll('[data-i]').forEach((el) => el.onclick = (e) => { if (e.target.closest('[data-act]')) return; ED.sel = +el.dataset.i; renderEditor(); });
+  $('edScroll').querySelectorAll('[data-si]').forEach((el) => el.onclick = () => { ED.sel = +el.dataset.si; renderEditor(); });
+  $('edScroll').querySelectorAll('[data-act]').forEach((el) => el.onclick = (e) => {
+    e.stopPropagation(); const a = el.dataset.act;
+    if (a === 'prev') ED.sel--; else if (a === 'next') ED.sel++;
+    else if (a === 'settings') { const c = el.closest('[data-i]'); if (c) ED.sel = +c.dataset.i; openSettings(); return; }
+    else if (a === 'add') { document.getElementById('add').scrollIntoView({ behavior: 'smooth' }); return; }
+    else if (a === 'plan') return;
+    renderEditor();
+  });
+  const sel = $('edScroll').querySelector('.seg.sel, .ccard.sel');
+  if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+
+function openSettings() {
+  const s = edStages()[ED.sel], st = stateOf(ED.sel);
+  $('edSheetBody').innerHTML = `<div class="grab"></div><div style="font:800 16px Inter;margin-bottom:14px">Etapa ${ED.sel + 1}</div>
+    <div class="caps" style="margin-bottom:6px">Nombre</div><div class="edhead"><input value="${s.name}"></div>
+    <div class="row2"><span>Semanas</span><div class="step"><i>−</i><b>${s.weeks}</b><i>+</i></div></div>
+    <div class="meta" style="margin-top:4px;text-align:right;color:var(--muted)">o sin límite</div>
+    <div class="caps" style="margin:18px 0 8px">Estado</div>
+    ${st === 'now' ? '<div class="card" style="background:var(--bg)"><b style="font:800 14px Inter">Etapa en curso</b><div class="meta">Es la que se entrena ahora.</div></div>' : '<div class="ghost" style="border-style:solid;border-color:var(--border);color:var(--text)">Hacer que sea la etapa en curso</div>'}
+    <div class="row2" style="margin-top:16px"><span>🔒 Bloqueada para el cliente</span><span style="font:800 12px Inter;color:var(--muted)">Abierta</span></div>
+    <div style="display:flex;gap:8px;margin-top:18px"><div class="ghost" style="flex:1;border-style:solid;border-color:var(--border);color:var(--text)">Duplicar</div><div class="ghost" style="flex:1;border:none;color:var(--red50)">Eliminar</div></div>`;
+  $('edSheet').classList.add('on');
+}
+$('edSheet').onclick = (e) => { if (e.target === $('edSheet')) $('edSheet').classList.remove('on'); };
+document.querySelectorAll('#edVar button').forEach((b) => b.onclick = () => { ED.v = b.dataset.v; document.querySelectorAll('#edVar button').forEach((x) => x.classList.toggle('on', x === b)); renderEditor(); });
+document.querySelectorAll('#edN button').forEach((b) => b.onclick = () => { ED.n = +b.dataset.n; document.querySelectorAll('#edN button').forEach((x) => x.classList.toggle('on', x === b)); renderEditor(); });
+renderEditor();
+
+/* ═══════════ 2 · AÑADIR ETAPAS ═══════════ */
+const EXIST = [ALL_STAGES[0], ALL_STAGES[1]];   // Base (hecha) + Acumulación (en curso, sem 2)
+const AD = { base: 1, rungs: [], sel: null, ctrl: 'pad', vs: 'base', tab: 'A', landing: false };
+
+const CHARS = [
+  { id: 'vol', label: 'Volumen', rx: { setsDelta: 1, scope: 'all' }, icon: '<path d="M4 18V12M10 18V8M16 18V4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' },
+  { id: 'int', label: 'Intensidad', rx: { repsShift: -3, scope: 'keys', restPct: 25 }, icon: '<path d="M3 17 9 11l4 3 6-8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>' },
+  { id: 'eq', label: 'Igual', rx: {}, icon: '<path d="M4 9h14M4 14h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>' },
+  { id: 'dl', label: 'Descarga', rx: { setsDelta: -1, scope: 'all' }, kind: 'deload', icon: '<path d="M4 5v13M10 9v9M16 13v5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' },
+];
+const BLOCKS = [
+  { id: 'lin', label: 'Lineal', desc: 'Más series cada etapa y descarga', rungs: [['work', 4, { setsDelta: 1 }], ['work', 4, { setsDelta: 2 }], ['deload', 1, { setsDelta: -1 }]] },
+  { id: 'int', label: 'Intensificación', desc: 'Menos reps y más descanso en los básicos', rungs: [['work', 4, { scope: 'keys', repsShift: -3, restPct: 25 }], ['work', 3, { scope: 'keys', repsShift: -5, restPct: 50 }], ['deload', 1, { setsDelta: -1 }]] },
+  { id: 'acc', label: 'Accesorios', desc: 'Series extra solo en los accesorios', rungs: [['work', 4, { scope: 'accessories', setsDelta: 1 }], ['work', 4, { scope: 'accessories', setsDelta: 2 }], ['deload', 1, { setsDelta: -1 }]] },
+  { id: 'und', label: 'Ondulante', desc: 'Volumen e intensidad se turnan', nuevo: 1, rungs: [['work', 3, { setsDelta: 1 }], ['work', 3, { scope: 'keys', repsShift: -3, restPct: 25 }], ['work', 3, { setsDelta: 2 }], ['work', 3, { scope: 'keys', repsShift: -4, restPct: 50 }], ['deload', 1, { setsDelta: -1 }]] },
+  { id: 'peak', label: 'Hacia un pico', desc: 'Acumular, intensificar, afinar y descargar', nuevo: 1, rungs: [['work', 4, { setsDelta: 1 }], ['work', 3, { scope: 'keys', repsShift: -3, restPct: 25 }], ['work', 2, { scope: 'keys', repsShift: -5, setsDelta: -1, restPct: 50 }], ['deload', 1, { setsDelta: -2 }]] },
+];
+// Alto = series/semana; lima = la etapa sube intensidad (menos reps en básicos).
+function blockMini(rungs) { return `<div class="blk">${rungs.map(([k, w, rx]) => { const m = metrics(rx, baseS()); return `<i class="${k === 'deload' ? 'd' : ''}" style="width:${w * 5}px;height:${Math.round(clamp(4 + (m.sets - 40) * .55, 4, 22))}px;${k !== 'deload' && (rx.repsShift || 0) < 0 ? 'background:var(--accent)' : ''}"></i>`; }).join('')}</div>`; }
+
+function newRung(kind, weeks, rx, nameLocked = false) { return { kind, weeks, rx: { ...rx }, name: quadName(rx, kind), nameLocked }; }
+// Las etapas nuevas se materializan sobre la BASE elegida, como addStageLadder.
+const baseS = () => applyRx(EXIST[AD.base].rx);
+const rungM = (r) => metrics(r.rx, baseS());
+function allStages() { return [...EXIST, ...AD.rungs.map((r) => ({ ...r, _m: rungM(r) }))]; }
+function workWeeksSinceDeload() { let n = 0; for (const s of allStages()) n = s.kind === 'deload' ? 0 : n + s.weeks; return n; }
+
+function chooserHTML(first) {
+  return `<div class="chooser">${first ? '' : '<div class="grab"></div>'}
+    <h4>${first ? '¿Qué añades?' : 'Añadir a la cola'}</h4><div class="meta">Todo se puede retocar después, etapa a etapa.</div>
+    <div class="caps" style="margin-top:16px">Una etapa</div>
+    <div class="chars" style="margin-top:8px">${CHARS.map((c) => `<div class="char ${c.kind ? 'dlc' : ''}" data-ch="${c.id}"><svg width="22" height="22" viewBox="0 0 22 22" style="color:${c.kind ? 'var(--blue)' : 'var(--accent)'}">${c.icon}</svg><span>${c.label}</span></div>`).join('')}</div>
+    <div class="caps" style="margin-top:18px">Un bloque entero</div>
+    <div class="grid">${BLOCKS.map((b) => `<div class="opt" data-bl="${b.id}">${blockMini(b.rungs)}<b>${b.label}${b.nuevo ? ' <span class="tag new" style="font-size:8px;padding:1px 4px;vertical-align:2px">nuevo</span>' : ''}</b><span>${b.desc} · ${b.rungs.reduce((a, r) => a + r[1], 0)} sem</span></div>`).join('')}</div></div>`;
+}
+
+function cmpRows(a, b) {
+  const row = (l, av, bv, d, cls) => `<div class="crow"><span class="l">${l}</span><span class="a">${av}</span><span class="ar">→</span><span class="b">${bv}</span><span class="d ${cls}">${d}</span></div>`;
+  const sgn = (v, u = '') => v === 0 ? '=' : `${v > 0 ? '+' : '−'}${Math.abs(v)}${u}`;
+  const c = (v) => v > 0 ? 'up' : v < 0 ? 'down' : 'same';
+  return row('Series / semana', a.sets, `<span data-roll="sets">${b.sets}</span>`, sgn(b.sets - a.sets), c(b.sets - a.sets))
+    + row('Reps en básicos', a.reps, b.reps, sgn(Math.round(b.repsMid - a.repsMid)), c(a.repsMid - b.repsMid))
+    + row('Intensidad est.', `~${a.int}%`, `~<span data-roll="int">${b.int}</span>%`, sgn(b.int - a.int, ' pt'), c(b.int - a.int))
+    + row('Descanso medio', fmtRest(a.rest), fmtRest(b.rest), sgn(Math.round((b.rest - a.rest))) + (b.rest !== a.rest ? 's' : ''), c(b.rest - a.rest))
+    + row('Por sesión', `${a.min}′`, `<span data-roll="min">${b.min}</span>′`, sgn(b.min - a.min, '′'), c(b.min - a.min));
+}
+
+function renderAdd(opts = {}) {
+  const ex = EXIST.length, stages = allStages(), r = AD.sel != null ? AD.rungs[AD.sel] : null;
+  const nowW = EXIST[0].weeks + 2;
+  let h = `<div class="hdr"><span class="bk">‹</span><div class="mid"><div class="eyebrow">Añadir etapas</div><div class="htitle">Fuerza Base</div></div><span class="rt"></span></div>`;
+
+  h += `<div class="wavecard">${waveSVG(stages, { dimTo: AD.rungs.length && !AD.landing ? ex : null, sel: AD.sel != null ? ex + AD.sel : null, now: nowW })}`;
+  if (r) {
+    const baseSt = EXIST[AD.base];
+    const prev = AD.sel === 0 ? EXIST[ex - 1] : AD.rungs[AD.sel - 1];
+    const from = AD.vs === 'base' ? baseSt : prev;
+    const fromIdx = AD.vs === 'base' ? AD.base : ex + AD.sel - 1;
+    const a = from._m || rungM(from), b = rungM(r);
+    h += `<div class="cmp"><div class="cmphead"><div class="from" data-act="base"><div class="k">${AD.vs === 'base' ? 'Parte de' : 'Anterior'}</div><div class="v">${fromIdx + 1} · ${from.name}</div></div><span class="arrow">→</span><div class="to"><div class="k" style="color:var(--accent)">Nueva</div><div class="v">${ex + AD.sel + 1} · ${r.name}</div></div></div>
+      <div class="rows">${cmpRows(a, b)}</div>
+      <div class="vs"><b data-vs="base" class="${AD.vs === 'base' ? 'on' : ''}">Con la base</b><b data-vs="prev" class="${AD.vs === 'prev' ? 'on' : ''}">Con la anterior</b></div></div>`;
+  } else {
+    h += `<div class="meta" style="padding:8px 4px 4px">Lo que añadas aparecerá a la derecha de la raya, detrás de las ${ex} etapas que ya tiene el programa.</div>`;
+  }
+  h += `</div>`;
+
+  if (!AD.rungs.length) {
+    h += `<div class="sec"><span class="caps">Parte de</span></div><div class="card" data-act="base" style="cursor:pointer;display:flex;align-items:center;gap:10px"><span class="pill" style="pointer-events:none;border:none;padding:0;background:none"><span class="pn">${AD.base + 1}</span></span><div style="flex:1"><div style="font:800 14px Inter">${EXIST[AD.base].name}</div><div class="meta">${EXIST[AD.base].weeks} sem · ${EXIST[AD.base]._m.sets} series/sem · básicos a ${EXIST[AD.base]._m.reps}</div></div><span style="font:800 12px Inter;color:var(--accent)">Cambiar</span></div>`;
+    h += `<div class="card" style="margin-top:12px">${chooserHTML(true)}</div>`;
+  } else {
+    h += `<div class="sec"><span class="caps">Se añaden · ${AD.rungs.length} etapas · ${AD.rungs.reduce((a, x) => a + x.weeks, 0)} sem</span></div>`;
+    h += `<div class="queue ${AD.landing ? 'landing' : ''}">${AD.rungs.map((x, i) => `<div class="pill ${x.kind === 'deload' ? 'dl' : ''} ${AD.sel === i ? 'sel' : ''} ${opts.pop === i ? 'pop' : ''}" data-r="${i}"><span class="pn">${ex + i + 1}</span><div><div class="pt">${x.name}</div><div class="pw">${x.weeks} sem</div></div></div>`).join('')}<div class="pill addp" data-act="more">+</div></div>`;
+    if (workWeeksSinceDeload() > 8) h += `<div class="nudge"><p>${workWeeksSinceDeload()} semanas de trabajo seguidas sin descarga.</p><b data-act="adddl">+ Descarga</b></div>`;
+
+    if (r) {
+      const q = quadId(r.rx, r.kind);
+      h += `<div class="card" style="margin-top:12px">
+        <div class="edhead"><span class="tag ${r.kind === 'deload' ? 'dl' : 'new'}">${ex + AD.sel + 1}</span><input id="rname" value="${r.name}"><div class="step"><i data-w="-1">−</i><b>${r.weeks} sem</b><i data-w="1">+</i></div></div>
+        <div class="chars">${CHARS.map((c) => `<div class="char ${c.kind ? 'dlc' : ''} ${q === c.id || (c.id === 'int' && q === 'both' && 0) ? 'on' : ''}" data-set="${c.id}"><svg width="22" height="22" viewBox="0 0 22 22" style="color:${c.kind ? 'var(--blue)' : 'var(--accent)'}">${c.icon}</svg><span>${c.label}</span></div>`).join('')}</div>`;
+      if (AD.ctrl === 'pad') {
+        h += `<div class="pad" id="pad"><svg id="padsvg"></svg>
+          <span class="ql ${q === 'vol' ? 'on' : ''}" style="left:10px;top:10px">Acumulación</span>
+          <span class="ql ${q === 'both' ? 'on' : ''}" style="right:10px;top:10px">Sobrecarga</span>
+          <span class="ql ${(r.rx.setsDelta || 0) < 0 && (r.rx.repsShift || 0) < 0 ? 'on' : ''}" style="right:10px;bottom:10px">Realización</span>
+          <span class="ql ${q === 'low' || q === 'dl' ? 'on' : ''}" style="left:10px;bottom:10px;${q === 'dl' ? 'color:var(--blue)' : ''}">${r.kind === 'deload' ? 'Descarga' : 'Mantenimiento'}</span>
+          <span class="ax" style="left:50%;transform:translateX(-50%);top:4px">▲ Series</span>
+          <span class="ax" style="right:6px;top:50%;transform:translateY(-50%) rotate(90deg);transform-origin:right center;right:14px">Intensidad ▶</span>
+          <div class="knob ${r.kind === 'deload' ? 'dl' : ''}" id="knob"></div></div>
+          <div class="padval"><span class="v">${describe(r).join(' · ') || 'Igual que la base'}</span><span class="hap" id="hap">◆</span></div>`;
+      } else {
+        const sl = (k, l, mi, ma, st, f) => `<div class="sl"><div class="slh"><span>${l}</span><b>${f(r.rx[k] || 0)}</b></div><input type="range" min="${mi}" max="${ma}" step="${st}" value="${r.rx[k] || 0}" data-sl="${k}"></div>`;
+        h += `<div class="sliders">${sl('setsDelta', 'Series por ejercicio', -3, 3, 1, (v) => (v > 0 ? '+' : '') + v)}${sl('repsShift', 'Reps (menos = más intensidad)', -6, 6, 1, (v) => (v > 0 ? '+' : '') + v)}</div>`;
+      }
+      h += `<div class="row2"><span>Aplicar a</span><div class="sg" style="width:230px">${[['all', 'Todo'], ['keys', 'Básicos'], ['accessories', 'Accesorios']].map(([id, l]) => `<b data-sc="${id}" class="${(r.rx.scope || 'all') === id ? 'on' : ''}">${l}</b>`).join('')}</div></div>
+        <div class="row2"><span>Descanso</span><div class="step"><i data-rp="-5">−</i><b>${(r.rx.restPct || 0) > 0 ? '+' : ''}${r.rx.restPct || 0}%</b><i data-rp="5">+</i></div></div>
+        ${r.kind === 'deload' ? '<div class="meta" style="margin-top:10px;color:var(--blue)">Sin progresión mientras dure: los pesos no suben.</div>' : ''}
+        <div style="text-align:center;margin-top:14px;font:800 12px Inter;color:var(--red50);cursor:pointer" data-act="rm">Quitar esta etapa</div></div>`;
+
+      const bm = (EXIST[AD.base]._m).by, nm = rungM(r).by;
+      h += `<div class="sec"><span class="caps">Series por semana y grupo</span><span class="caps">10-20</span></div><div class="card">${MUSCLES.map((m) => {
+        const v = nm[m], sc = (x) => Math.min(100, x / 30 * 100);
+        return `<div class="zone"><span class="zl">${m}</span><div class="zt"><div class="zb" style="left:${sc(10)}%;width:${sc(20) - sc(10)}%"></div><div class="zf ${v < 10 ? 'lo' : v > 20 ? 'hi' : ''}" style="width:${sc(v)}%"></div><div class="zm" style="left:${sc(bm[m])}%"></div></div><span class="zv ${v > 20 ? '' : ''}" style="color:${v > 20 ? 'var(--red50)' : v < 10 ? 'var(--mutedLight)' : 'var(--text)'}">${v}</span></div>`;
+      }).join('')}<div class="meta" style="margin-top:10px;color:var(--muted)">Raya blanca: ${EXIST[AD.base].name}. Barra: ${r.name}.</div></div>`;
+
+      const S0 = baseS(), S1 = applyRx(r.rx, S0);
+      const fmt = (e) => `${e.s}×${e.lo}-${e.hi} · ${fmtRest(e.r)}`;
+      const hl = (o, n) => `<em style="${o.s === n.s ? 'color:var(--text)' : ''}">${n.s}</em>×<em style="${o.lo === n.lo ? 'color:var(--text)' : ''}">${n.lo}-${n.hi}</em> · <em style="${o.r === n.r ? 'color:var(--text)' : ''}">${fmtRest(n.r)}</em>`;
+      h += `<div class="sec"><span class="caps">Así queda</span></div><div class="card"><div class="tabs">${Object.keys(S1).map((id) => `<b data-tab="${id}" class="${AD.tab === id ? 'on' : ''}">${id}</b>`).join('')}</div>${S1[AD.tab].map((n, i) => { const o = S0[AD.tab][i], same = fmt(o) === fmt(n); return `<div class="exr"><div class="en">${n.n}<small>${n.k ? 'Básico' : 'Accesorio'}</small></div>${same ? `<span class="new" style="color:var(--mutedLight)">${fmt(n)}</span>` : `<span class="old">${fmt(o)}</span><span class="new">${hl(o, n)}</span>`}</div>`; }).join('')}</div>`;
+    }
+  }
+  $('adScroll').innerHTML = h;
+  const tw = AD.rungs.reduce((a, x) => a + x.weeks, 0);
+  $('adFoot').innerHTML = AD.rungs.length ? `<div class="btn" data-act="apply">Añadir ${AD.rungs.length} etapa${AD.rungs.length > 1 ? 's' : ''} · ${tw} sem</div>` : '';
+  wireAdd();
+  if (AD.ctrl === 'pad' && r) drawPad();
+}
+
+/* Mando 2D: x = repsShift +3 … −6 (derecha = más intensidad), y = setsDelta +3 … −3 */
+const PX = { min: -6, max: 3 }, PY = { min: -3, max: 3 };
+function padGeom() { const p = $('pad'); return { w: p.clientWidth, h: p.clientHeight, ml: 26, mr: 26, mt: 26, mb: 26 }; }
+function padPos(rx) { const g = padGeom(); const cx = (PX.max - (rx.repsShift || 0)) / (PX.max - PX.min), cy = (PY.max - (rx.setsDelta || 0)) / (PY.max - PY.min); return [g.ml + cx * (g.w - g.ml - g.mr), g.mt + cy * (g.h - g.mt - g.mb)]; }
+function drawPad() {
+  const g = padGeom(), r = AD.rungs[AD.sel];
+  let s = '';
+  for (let rs = PX.min; rs <= PX.max; rs++) for (let sd = PY.min; sd <= PY.max; sd++) { const [x, y] = padPos({ repsShift: rs, setsDelta: sd }); s += `<circle cx="${x}" cy="${y}" r="${rs === 0 && sd === 0 ? 0 : 1.6}" fill="#3a3a3a"/>`; }
+  const [bx, by] = padPos({}), [kx, ky] = padPos(r.rx);
+  s += `<line x1="${g.ml}" x2="${g.w - g.mr}" y1="${by}" y2="${by}" stroke="#2c2c2c"/><line x1="${bx}" x2="${bx}" y1="${g.mt}" y2="${g.h - g.mb}" stroke="#2c2c2c"/>`;
+  s += `<line x1="${bx}" y1="${by}" x2="${kx}" y2="${ky}" stroke="${r.kind === 'deload' ? '#4c85ff' : '#aae216'}" stroke-width="1.5" stroke-dasharray="3 3" opacity=".6"/>`;
+  s += `<circle cx="${bx}" cy="${by}" r="5" fill="none" stroke="#e6e6e6" stroke-width="1.5"/><text x="${bx + 8}" y="${by - 7}" font-family="Inter" font-size="8.5" font-weight="800" fill="#e6e6e6" letter-spacing=".8">BASE</text>`;
+  $('padsvg').innerHTML = s;
+  const k = $('knob'); k.style.left = kx + 'px'; k.style.top = ky + 'px';
+}
+function padPick(e) {
+  const g = padGeom(), rect = $('pad').getBoundingClientRect();
+  const fx = clamp((e.clientX - rect.left - g.ml) / (g.w - g.ml - g.mr), 0, 1), fy = clamp((e.clientY - rect.top - g.mt) / (g.h - g.mt - g.mb), 0, 1);
+  const rs = Math.round(PX.max - fx * (PX.max - PX.min)), sd = Math.round(PY.max - fy * (PY.max - PY.min));
+  const r = AD.rungs[AD.sel];
+  if ((r.rx.repsShift || 0) === rs && (r.rx.setsDelta || 0) === sd) return false;
+  r.rx.repsShift = rs; r.rx.setsDelta = sd;
+  // Mover el mando solo hacia intensidad pone el alcance en básicos, como el preset de hoy.
+  if (rs < 0 && sd <= 0 && !r.scopeTouched) r.rx.scope = 'keys';
+  if (sd > 0 && rs >= 0 && !r.scopeTouched) r.rx.scope = 'all';
+  if (!r.nameLocked) r.name = quadName(r.rx, r.kind);
+  return true;
+}
+
+function wireAdd() {
+  const root = $('adPhone');
+  root.querySelectorAll('[data-ch]').forEach((el) => el.onclick = () => {
+    const c = CHARS.find((x) => x.id === el.dataset.ch);
+    AD.rungs.push(newRung(c.kind || 'work', c.kind ? 1 : 4, c.rx)); AD.sel = AD.rungs.length - 1;
+    $('adSheet').classList.remove('on'); renderAdd({ pop: AD.sel });
+  });
+  root.querySelectorAll('[data-bl]').forEach((el) => el.onclick = () => {
+    const b = BLOCKS.find((x) => x.id === el.dataset.bl), start = AD.rungs.length;
+    b.rungs.forEach(([k, w, rx]) => AD.rungs.push(newRung(k, w, rx)));
+    AD.sel = start; $('adSheet').classList.remove('on'); renderAdd();
+  });
+  root.querySelectorAll('[data-r]').forEach((el) => el.onclick = () => { AD.sel = +el.dataset.r; renderAdd(); });
+  root.querySelectorAll('[data-si]').forEach((el) => el.onclick = () => { const i = +el.dataset.si - EXIST.length; if (i >= 0) { AD.sel = i; renderAdd(); } });
+  root.querySelectorAll('[data-vs]').forEach((el) => el.onclick = () => { AD.vs = el.dataset.vs; renderAdd(); });
+  root.querySelectorAll('[data-tab]').forEach((el) => el.onclick = () => { AD.tab = el.dataset.tab; renderAdd(); });
+  root.querySelectorAll('[data-set]').forEach((el) => el.onclick = () => {
+    const c = CHARS.find((x) => x.id === el.dataset.set), r = AD.rungs[AD.sel];
+    r.kind = c.kind || 'work'; r.rx = { ...c.rx }; r.scopeTouched = false;
+    if (c.kind && r.weeks > 2) r.weeks = 1; if (!c.kind && r.weeks < 2) r.weeks = 4;
+    if (!r.nameLocked) r.name = quadName(r.rx, r.kind); renderAdd();
+  });
+  root.querySelectorAll('[data-sc]').forEach((el) => el.onclick = () => { const r = AD.rungs[AD.sel]; r.rx.scope = el.dataset.sc; r.scopeTouched = true; renderAdd(); });
+  root.querySelectorAll('[data-w]').forEach((el) => el.onclick = () => { const r = AD.rungs[AD.sel]; r.weeks = clamp(r.weeks + +el.dataset.w, 1, 12); renderAdd(); });
+  root.querySelectorAll('[data-rp]').forEach((el) => el.onclick = () => { const r = AD.rungs[AD.sel]; r.rx.restPct = clamp((r.rx.restPct || 0) + +el.dataset.rp, -50, 100); renderAdd(); });
+  root.querySelectorAll('[data-sl]').forEach((el) => el.oninput = () => { const r = AD.rungs[AD.sel]; r.rx[el.dataset.sl] = +el.value; if (!r.nameLocked) r.name = quadName(r.rx, r.kind); renderAdd(); });
+  const nm = $('rname'); if (nm) nm.onchange = () => { const r = AD.rungs[AD.sel]; r.name = nm.value || quadName(r.rx, r.kind); r.nameLocked = !!nm.value; renderAdd(); };
+  root.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => {
+    const a = el.dataset.act;
+    if (a === 'more') { $('adSheetBody').innerHTML = chooserHTML(false); $('adSheet').classList.add('on'); wireAdd(); }
+    else if (a === 'adddl') { AD.rungs.push(newRung('deload', 1, { setsDelta: -1 })); AD.sel = AD.rungs.length - 1; renderAdd({ pop: AD.sel }); }
+    else if (a === 'rm') { AD.rungs.splice(AD.sel, 1); AD.sel = AD.rungs.length ? Math.min(AD.sel, AD.rungs.length - 1) : null; renderAdd(); }
+    else if (a === 'base') { $('adSheetBody').innerHTML = `<div class="grab"></div><div style="font:800 16px Inter;margin-bottom:4px">Parte de</div><div class="meta" style="margin-bottom:12px">De ella se copian las sesiones. Lo nuevo va siempre al final.</div>${EXIST.map((s, i) => `<div class="card" data-base="${i}" style="background:var(--bg);margin-bottom:8px;cursor:pointer;display:flex;gap:10px;align-items:center;${AD.base === i ? 'box-shadow:0 0 0 1px var(--accent)' : ''}"><span class="pill" style="border:none;padding:0;background:none"><span class="pn">${i + 1}</span></span><div style="flex:1"><b style="font:800 14px Inter">${s.name}</b><div class="meta">${s.weeks} sem · ${s._m.sets} series/sem · básicos a ${s._m.reps}</div></div></div>`).join('')}`; $('adSheet').classList.add('on'); $('adSheetBody').querySelectorAll('[data-base]').forEach((b) => b.onclick = () => { AD.base = +b.dataset.base; $('adSheet').classList.remove('on'); renderAdd(); }); }
+    else if (a === 'apply') {
+      const n = AD.rungs.length; AD.landing = true; AD.sel = null; renderAdd();
+      const t = $('adToast'); t.textContent = `+${n} etapas en el plan`; t.classList.add('on');
+      setTimeout(() => { t.classList.remove('on'); AD.landing = false; AD.rungs = []; renderAdd(); }, 1800);
+    }
+  });
+  const pad = $('pad');
+  if (pad) {
+    let drag = false;
+    const move = (e) => { if (padPick(e)) { const hp = $('hap'); renderAddSoft(); hp && (hp.style.opacity = 1, setTimeout(() => hp.style.opacity = 0, 120)); } };
+    pad.onpointerdown = (e) => { drag = true; pad.setPointerCapture(e.pointerId); move(e); };
+    pad.onpointermove = (e) => { if (drag) move(e); };
+    pad.onpointerup = () => { drag = false; renderAdd(); };
+  }
+}
+/* Durante el arrastre: re-pinta lo de arriba y el mando sin perder el puntero */
+function renderAddSoft() {
+  const sc = $('adScroll').scrollTop, pad = $('pad'), pid = pad && pad.hasPointerCapture;
+  const r = AD.rungs[AD.sel];
+  // la ola, la comparación, la pastilla y el mando
+  const ex = EXIST.length, stages = allStages(), nowW = EXIST[0].weeks + 2;
+  const wc = $('adScroll').querySelector('.wavecard svg'); if (wc) wc.outerHTML = waveSVG(stages, { dimTo: ex, sel: ex + AD.sel, now: nowW });
+  const baseSt = EXIST[AD.base], prev = AD.sel === 0 ? EXIST[ex - 1] : AD.rungs[AD.sel - 1], from = AD.vs === 'base' ? baseSt : prev;
+  const rows = $('adScroll').querySelector('.rows'); if (rows) rows.innerHTML = cmpRows(from._m || rungM(from), rungM(r));
+  const tv = $('adScroll').querySelector('.cmphead .to .v'); if (tv) tv.textContent = `${ex + AD.sel + 1} · ${r.name}`;
+  const pill = $('adScroll').querySelector(`.pill[data-r="${AD.sel}"] .pt`); if (pill) pill.textContent = r.name;
+  const pv = $('adScroll').querySelector('.padval .v'); if (pv) pv.textContent = describe(r).join(' · ') || 'Igual que la base';
+  const nm = $('rname'); if (nm) nm.value = r.name;
+  const q = quadId(r.rx, r.kind);
+  $('adScroll').querySelectorAll('[data-set]').forEach((el) => el.classList.toggle('on', el.dataset.set === q));
+  const qls = $('adScroll').querySelectorAll('.ql');
+  const s = r.rx.setsDelta || 0, rr = r.rx.repsShift || 0;
+  if (qls.length) { qls[0].classList.toggle('on', q === 'vol'); qls[1].classList.toggle('on', q === 'both'); qls[2].classList.toggle('on', s < 0 && rr < 0); qls[3].classList.toggle('on', q === 'low' || q === 'dl'); }
+  drawPad();
+}
+
+document.querySelectorAll('#adCtl [data-c]').forEach((b) => b.onclick = () => { AD.ctrl = b.dataset.c; document.querySelectorAll('#adCtl [data-c]').forEach((x) => x.classList.toggle('on', x === b)); renderAdd(); });
+$('adReset').onclick = () => { AD.rungs = []; AD.sel = null; renderAdd(); };
+$('adPreset').onclick = () => { AD.rungs = BLOCKS[1].rungs.map(([k, w, rx]) => newRung(k, w, rx)); AD.sel = 0; renderAdd(); };
+$('adSheet').onclick = (e) => { if (e.target === $('adSheet')) $('adSheet').classList.remove('on'); };
+renderAdd();
+
+/* ═══════════ 3 · HERRAMIENTAS ═══════════ */
+const TOOLS = [
+  { t: 'Esfuerzo (RIR/RPE) como palanca de la etapa', v: 'alto', c: 'bajo', d: 'Una cuarta palanca en la regla: «RPE objetivo +1» por etapa (7 → 8 → 9). Es la progresión de hipertrofia más usada (RIR que baja semana a semana) y hoy no se puede expresar.', f: 'Un campo más en rx (rpeShift) que applyRx materializa en targetRpe de los ejercicios Por esfuerzo. Mismo patrón que repsShift.' },
+  { t: 'Series por grupo muscular, en el plan', v: 'alto', c: 'bajo', d: 'La franja 10-20 series/semana por grupo, por etapa: en Añadir etapas (maqueta) y como fila plegable en la ficha de la etapa. El entrenador ve de un vistazo si la acumulación se pasa de pecho o se queda corta de espalda.', f: 'Una función pura sobre los sessionTemplates de la etapa; la franja ya existe en trainingLoad.js.' },
+  { t: 'Bloques guardados', v: 'alto', c: 'bajo', d: '«Guardar esta cola como bloque»: el entrenador reutiliza su propia escalera (su intensificación de 3 semanas, su descarga) con cualquier cliente. Aparecen junto a los bloques de la app en «Un bloque entero».', f: 'Los bloques son listas de { kind, weeks, rx }: lo mismo que ya come addStageLadder. Solo hay que guardarlos en el perfil.' },
+  { t: 'Más bloques de serie: Ondulante y Hacia un pico', v: 'medio', c: 'bajo', d: 'Los dos de la maqueta. Ondulante alterna volumen e intensidad cada 3 semanas; Hacia un pico acumula, intensifica, afina y descarga.', f: 'Solo datos en stageRx.js (buildRungs). Cero modelo nuevo.' },
+  { t: 'Planificar hacia una fecha', v: 'alto', c: 'medio', d: '«Competición / test el 14 de marzo»: la pantalla calcula cuántas semanas quedan y ajusta las semanas del bloque elegido para que el pico caiga ahí. Muy pedido en fuerza y deportes con temporada.', f: 'Las etapas no guardan fechas, pero «semana 1 = lunes más cercano» ya existe (P08): basta con la fecha objetivo en el programa y repartir semanas al crear. Nada se reprograma solo.' },
+  { t: 'Sustituir ejercicios en la etapa nueva', v: 'alto', c: 'medio', d: 'Último paso opcional de Añadir etapas: «Cambiar ejercicios», con las variantes de P09 sugeridas (sentadilla → sentadilla con pausa). Rotar estímulo entre bloques sin rehacer las sesiones a mano.', f: 'Fuera de rx (P07 §1.1 lo dejó claro): es una edición a mano sobre la etapa recién materializada, que ya se puede editar. Reusa el selector de variantes.' },
+  { t: 'Propuesta de etapa (P07)', v: 'alto', c: 'alto', d: 'La spec aparcada: al cerrar una etapa, la app redacta un borrador leyendo adherencia, rendimiento y coste. Con la pantalla nueva tiene un sitio natural: la cola llega prerrellenada con una línea de «por qué».', f: 'La pantalla nueva es exactamente el «prellenado» que P07 §8.2 necesitaba. Retomar P07 después de esto.' },
+  { t: 'Semana de test', v: 'medio', c: 'alto', d: 'Un tipo de etapa «Test»: poco volumen y una serie al máximo (AMRAP o 1RM) en los básicos, que actualiza el e1RM de referencia.', f: 'rx no sabe decir «una serie AMRAP». Hace falta un kind nuevo con su propio applyRx. Después de todo lo anterior.' },
+  { t: 'Ondas dentro de la etapa (3:1)', v: 'medio', c: 'alto', d: 'Que una etapa varíe por semana (base, +5 %, +10 %, descarga) en vez de ser igual las 4 semanas.', f: 'Choca con la regla de base del modelo: una etapa = la misma semana repetida. Hoy se consigue igual con etapas de 1 semana; la tira y la ola ya lo dibujan bien. No lo haría.' },
+];
+$('toolGrid').innerHTML = TOOLS.map((x) => `<div class="tool"><div class="badges"><span class="bd ${x.v === 'alto' ? 'g' : ''}">Valor ${x.v}</span><span class="bd ${x.c === 'bajo' ? 'g' : x.c === 'medio' ? 'y' : 'r'}">Coste ${x.c}</span></div><h3>${x.t}</h3><p>${x.d}</p><div class="fit">Encaja: <span style="color:var(--mutedLight);font-weight:500">${x.f}</span></div></div>`).join('');
+</script>
+</body>
+</html>
