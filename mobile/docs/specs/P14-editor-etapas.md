@@ -120,32 +120,33 @@ Rehechas el 12-oct tras probar la v5 en el móvil: las tarjetas de 100 × 72 con
 con el resto de la app. Ahora hablan como el onboarding y el paywall (maqueta
 [`stages-editor-6.html`](../mockups/stages-editor-6.html), variante F).
 
-- Una ficha por etapa, **88 × 66 dp**, radio 14, fondo `surface`, relleno 9/10.
-  Caben tres y asoma la cuarta en un móvil de 375.
-- Dentro:
-  - Arriba, **el número** grande (`heroName`, Barlow cursiva) y, pegado detrás
-    y alineado por la base, **«ETAPA»** pequeño (`labelStrong`, `mutedLight`). No
-    se lee «Etapa 1», pero se entiende (decisión del usuario), y como la palabra
-    es más baja deja libre la esquina de arriba a la derecha.
-  - En esa esquina, el **punto** de la en curso (7 dp, `accent`) o el **candado**
-    rojo de 10 dp si está bloqueada (§5.2, quién lo ve). No coinciden nunca: la
-    en curso no puede estar bloqueada. El progreso de la en curso no va en la
-    ficha (la barrita se leía mal): lo dice la ceja de la cabecera.
-  - Abajo, **el tramo de semanas** (`label`, `mutedLight`): «sem 1-4 · sem 5-8 ·
-    sem 9-11 · sem 12». Dice sin palabras que son trozos seguidos del mismo
-    calendario. Se calcula con las `durationWeeks` previstas (no con las semanas
-    alargadas del cliente); una sin límite es «sem 13+», y **después** de una sin
-    límite ya no hay calendario: esas fichas dicen la duración («4 sem»).
-  - **Sin nombre**: ya lo dice la cabecera, justo debajo.
-- Estados: el número en `text`; en las **hechas**, en `muted`; en las
-  **descargas**, en `blue`. La **elegida** se rellena de lima (de `blue` si es
-  descarga) desde donde la tocó el dedo, en 450 ms, como las pestañas de Inicio
-  (U13-02); el texto pasa a `onAccent` (lo pequeño, al 65 %) al mismo paso. Si
-  se elige deslizando la cabecera, el relleno sale del centro.
-- **Al final, un cuadrado de 46 × 66 dp** con borde discontinuo (`muted`), sin
+- **Sin elegir, un cuadrado de 52 dp** (radio 14, fondo `surface`) con solo el
+  número, grande (`heroName`, Barlow cursiva): en `text`, en `muted` si está
+  hecha, en `blue` si es descarga.
+- **La elegida se abre** a 92 × 66 dp, creciendo hacia la derecha, y dice
+  **«ETAPA 2»** —«ETAPA» pequeño (`labelStrong`) y el número grande, por la base—
+  con **el tramo de semanas** debajo (`label`). Se rellena de lima (de `blue` si
+  es descarga) desde donde la tocó el dedo, en 450 ms, como las pestañas de Inicio
+  (U13-02); el texto va en `onAccent` (lo pequeño, al 65 %). El número se va antes
+  de crecer y «ETAPA N» con el tramo llegan cuando ya caben. Si se elige deslizando
+  la cabecera, el relleno sale del centro. Las cerradas van centradas en la altura
+  de la abierta. (Segunda prueba del 12-oct: la ficha de 88 × 66 con «1 ETAPA» en
+  todas —variante F de la maqueta— se queda en la abierta, y al revés.)
+- El tramo: «sem 1-4 · sem 5-8 · sem 9-11 · sem 12». Dice sin palabras que son
+  trozos seguidos del mismo calendario. Se calcula con las `durationWeeks`
+  previstas (no con las semanas alargadas del cliente); una sin límite es
+  «sem 13+», y **después** de una sin límite ya no hay calendario: esas fichas
+  dicen la duración («4 sem»).
+- En la esquina de arriba a la derecha, el **punto** de la en curso (7 dp,
+  `accent`; negro sobre el lima) o el **candado** rojo de 10 dp si está bloqueada
+  (§5.2, quién lo ve). No coinciden nunca: la en curso no puede estar bloqueada.
+  El progreso de la en curso no va en la ficha (la barrita se leía mal): lo dice
+  la ceja de la cabecera.
+- **Sin nombre**: ya lo dice la cabecera, justo debajo.
+- **Al final, un cuadrado de 52 dp** con borde discontinuo (`muted`), sin
   fondo, y un **+** en `accent`. Abre la creación de etapa con la seleccionada
   como base (§5.5).
-- **Se desplaza con el dedo** (con imán suave al principio de cada ficha) y **se
+- **Se desplaza con el dedo** (sin imán: las fichas ya no miden lo mismo) y **se
   elige tocando**: desplazar solo mueve la fila, no cambia de etapa. Al cambiar de
   etapa por otro camino (deslizando la cabecera), la fila se mueve lo justo para que
   la elegida quede a la vista.
@@ -159,7 +160,8 @@ Tarjeta `surface`, radio 18, relleno 16/14:
   descarga y no ha llegado — y, si está bloqueada, «· 🔒 BLOQUEADA» en rojo.
 - **Título**: el número en `accent` (en `blue` si es descarga), 7 dp, y el nombre
   (900/20, una línea).
-- **Meta**: «4 semanas · 3 sesiones» (o «Sin límite de semanas · 3 sesiones»).
+- **Meta**: «4 SEMANAS · 3 SESIONES» (o «SIN LÍMITE DE SEMANAS · 3 SESIONES»), en
+  `caps` `mutedLight`, como la meta de la sesión en Inicio (decisión del 12-oct).
 - A la derecha, dos botones de 36 dp (`surface2`, radio 11): **cifras** (tres
   barras horizontales, §5.4) y **ajustes** (engranaje, §5.5).
 
@@ -238,8 +240,7 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
 
 - Props: `stages` (`[{ id, number, range, done, deload, locked, now }]`
   ya resueltas por la pantalla), `value`, `onChange`, `onAdd`.
-- `ScrollView` horizontal sin barra, `snapToInterval={96}` (88 + 8 de hueco)
-  con `snapToAlignment="start"` y `decelerationRate="fast"`; el contenido sale a
+- `ScrollView` horizontal sin barra; el contenido sale a
   sangre (margen −16 y relleno 16, como el resto de filas desplazables de la app).
   Tocar elige; desplazar no. Al cambiar `value` desde fuera, `scrollTo` animado
   solo si la tarjeta elegida no se ve entera.
@@ -252,12 +253,14 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
 
 **Probar P14-03**
 
-- [ ] Programa de 6 etapas: se ven tres fichas y asoma la cuarta; la en curso con
-  su punto, las hechas con el número apagado, las descargas en azul.
-- [ ] Desplazar la fila no cambia de etapa; tocar una ficha la elige, se rellena de
-  lima desde el dedo y la página cambia.
+- [ ] Programa de 6 etapas: la elegida abierta («ETAPA 2» y su tramo) y las demás
+  cuadradas con su número; la en curso con su punto, las hechas con el número
+  apagado, las descargas en azul.
+- [ ] Desplazar la fila no cambia de etapa; tocar una ficha la abre, se rellena de
+  lima desde el dedo, la anterior se cierra y la página cambia.
 - [ ] Detrás de la última, el «+».
-- [ ] «N ETAPA» y el tramo caben, también con dos cifras («11 ETAPA», «sem 12-15»).
+- [ ] «ETAPA N» y el tramo caben en la abierta, también con dos cifras («ETAPA 11»,
+  «sem 12-15»).
 - [ ] Tramos: «sem 1-4 · sem 5-8…»; con una etapa sin límite, «sem 13+», y las de
   después con su duración.
 - [ ] Rótulo «6 ETAPAS · 19 SEMANAS» y «19+» con una sin límite; «Ver plan ›» abre

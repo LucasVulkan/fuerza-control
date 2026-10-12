@@ -400,7 +400,7 @@ export default function ProgramEditorScreen({ navigation }) {
                       {selectedStage?.name ?? ''}
                     </Text>
                   </View>
-                  <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
+                  <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta.toUpperCase()}</Text>
                 </View>
               </GestureDetector>
               <TouchableOpacity
@@ -686,7 +686,9 @@ const makeStyles = (th) => StyleSheet.create({
   stageTitleRow:  { flexDirection: 'row', gap: 7, marginTop: spacing.xs2 },
   stageTitle:     { ...textStyles.title },
   stageTitleName: { flex: 1, color: th.colors.text },
-  stageMeta:      { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs },
+  // Como la meta de la sesión en Inicio («5 EJERCICIOS · ~55 MIN»): mismo tipo
+  // de dato, misma voz.
+  stageMeta:      { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.xs },
   headBtn: {
     width:           36,
     height:          36,
