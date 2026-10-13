@@ -7,3 +7,4 @@ export { default as FlowFooter } from './FlowFooter';
 export { default as FlowPanel, PanelButton } from './FlowPanel';
 export { default as FlowNote } from './FlowNote';
 export { default as FlowBody } from './FlowBody';
+export { shareAndContinue } from './shareAndContinue';

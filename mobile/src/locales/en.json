@@ -2788,7 +2788,74 @@
     },
     "builder": {},
     "self": {},
-    "coached": {},
+    "coached": {
+      "app": {
+        "title": "Does your coach use *Forma Fit*?",
+        "sub": "If so, they send you the program and see your workouts.",
+        "code": "Yes, I have their code",
+        "codeDesc": "Eight letters and numbers, like XK7M-2P4T",
+        "nocode": "Yes, but I have no code",
+        "nocodeDesc": "We'll tell you how to ask for it",
+        "no": "They don't use it",
+        "noDesc": "Invite them to the app or copy their program"
+      },
+      "code": {
+        "title": "Your *coach's* code",
+        "sub": "They sent it to you in a message or can show it on their phone.",
+        "subInvite": "It came with your invitation. Check that it's this one and continue.",
+        "continue": "Continue",
+        "later": "I'll enter it later"
+      },
+      "confirm": {
+        "title": "Program *found*",
+        "from": "From {{trainer}}",
+        "fromAnon": "From your coach",
+        "implies1": "It loads on your Home and you follow it as is. Your coach changes it, not you.",
+        "implies2": "{{trainer}} sees the sessions you complete, with the weights you log.",
+        "implies2Anon": "Your coach sees the sessions you complete, with the weights you log.",
+        "implies3": "If the program changes, we let you know and you decide when to switch.",
+        "implies4": "You can disconnect whenever you want.",
+        "connect": "Connect",
+        "connecting": "Connecting…"
+      },
+      "linked": {
+        "title": "Connected with *{{trainer}}*",
+        "titleAnon": "Connected with *your coach*",
+        "sub": "\"{{program}}\" is now on your Home. {{trainer}} sees the sessions you complete.",
+        "subAnon": "\"{{program}}\" is now on your Home. Your coach sees the sessions you complete.",
+        "hint": "Now, choose how to see your sessions."
+      },
+      "ask": {
+        "title": "Your coach creates the *code*",
+        "sub": "They find it in Clients → your profile → Connect. Send them this:",
+        "message": "Hi! I've got Forma Fit. Can you send me my client code so I can connect?",
+        "send": "Send message",
+        "later": "I'll enter it later"
+      },
+      "noapp": {
+        "title": "Two ways to keep working with your *coach*",
+        "invite": "Invite them to the app",
+        "inviteDesc": "They can manage your program from their phone and see your workouts. Free to start.",
+        "inviteMessage": "Hi! I'm training with Forma Fit. If you install it, you can manage my program there and see my workouts (free to start): {{url}}",
+        "copy": "Copy their program",
+        "copyDesc": "If you have it as a PDF, photo or message, copy it here to follow it.",
+        "meanwhile": "Meanwhile"
+      },
+      "copy": {
+        "title": "How do you *copy* it?",
+        "sub": "If you have it as a PDF, photo or message, copy it here to follow it.",
+        "hand": "I'll type it in",
+        "handDesc": "Program editor, session by session",
+        "similar": "Start from a similar one",
+        "similarDesc": "Pick a template and edit it"
+      },
+      "done": {
+        "linked": "Connected with {{trainer}}",
+        "linkedAnon": "Connected with your coach",
+        "program": "\"{{program}}\" on your Home",
+        "pending": "Connect with your coach · Menu → Trainer"
+      }
+    },
     "learn": {},
     "recover": {},
     "trainer": {},

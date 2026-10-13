@@ -2788,7 +2788,74 @@
     },
     "builder": {},
     "self": {},
-    "coached": {},
+    "coached": {
+      "app": {
+        "title": "¿Tu entrenador usa *Forma Fit*?",
+        "sub": "Si la usa, te manda el programa y ve tus entrenos.",
+        "code": "Sí, tengo su código",
+        "codeDesc": "Ocho letras y números, tipo XK7M-2P4T",
+        "nocode": "Sí, pero no tengo código",
+        "nocodeDesc": "Te decimos cómo pedírselo",
+        "no": "No la usa",
+        "noDesc": "Invítale a la app o copia su programa"
+      },
+      "code": {
+        "title": "El código de tu *entrenador*",
+        "sub": "Te lo ha mandado por mensaje o te lo enseña en su móvil.",
+        "subInvite": "Viene de tu invitación. Comprueba que es este y sigue.",
+        "continue": "Continuar",
+        "later": "Lo meto más tarde"
+      },
+      "confirm": {
+        "title": "Programa *encontrado*",
+        "from": "De {{trainer}}",
+        "fromAnon": "De tu entrenador",
+        "implies1": "Se carga en tu Inicio y lo sigues tal cual. Lo cambia tu entrenador, no tú.",
+        "implies2": "{{trainer}} verá las sesiones que completes, con el peso que anotes.",
+        "implies2Anon": "Tu entrenador verá las sesiones que completes, con el peso que anotes.",
+        "implies3": "Si cambia el programa, te avisamos y decides cuándo pasarte.",
+        "implies4": "Puedes desconectarte cuando quieras.",
+        "connect": "Conectar",
+        "connecting": "Conectando…"
+      },
+      "linked": {
+        "title": "Conectado con *{{trainer}}*",
+        "titleAnon": "Conectado con *tu entrenador*",
+        "sub": "\"{{program}}\" ya está en tu Inicio. {{trainer}} verá las sesiones que completes.",
+        "subAnon": "\"{{program}}\" ya está en tu Inicio. Tu entrenador verá las sesiones que completes.",
+        "hint": "Ahora, elige cómo ver tus sesiones."
+      },
+      "ask": {
+        "title": "Tu entrenador genera el *código*",
+        "sub": "Lo saca en Clientes → tu ficha → Conectar. Mándale esto:",
+        "message": "¡Hola! Ya tengo Forma Fit. ¿Me pasas mi código de cliente para conectarme?",
+        "send": "Enviar mensaje",
+        "later": "Lo meto más tarde"
+      },
+      "noapp": {
+        "title": "Dos formas de seguir con tu *entrenador*",
+        "invite": "Invítale a la app",
+        "inviteDesc": "Podrá gestionar tu programa desde su móvil y ver tus entrenos. Empezar es gratis.",
+        "inviteMessage": "¡Hola! Estoy usando Forma Fit para entrenar. Si la instalas, puedes gestionar mi programa desde ahí y ver mis entrenos (empezar es gratis): {{url}}",
+        "copy": "Copia su programa",
+        "copyDesc": "Si lo tienes en PDF, foto o mensaje, cópialo aquí para seguirlo.",
+        "meanwhile": "Mientras"
+      },
+      "copy": {
+        "title": "¿Cómo lo *copias*?",
+        "sub": "Si lo tienes en PDF, foto o mensaje, cópialo aquí para seguirlo.",
+        "hand": "Lo copio a mano",
+        "handDesc": "Editor de programas, sesión a sesión",
+        "similar": "Empiezo de uno parecido",
+        "similarDesc": "Elige una plantilla y cámbiala"
+      },
+      "done": {
+        "linked": "Conectado con {{trainer}}",
+        "linkedAnon": "Conectado con tu entrenador",
+        "program": "\"{{program}}\" en tu Inicio",
+        "pending": "Conectar con tu entrenador · Menú → Entrenador"
+      }
+    },
     "learn": {},
     "recover": {},
     "trainer": {},
