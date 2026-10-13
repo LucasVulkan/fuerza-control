@@ -462,7 +462,9 @@ export default function OnboardingScreen() {
   const templateList = useMemo(() => templatesOf(programs), [programs]);
 
   const [mode,               setMode]              = useState(null);
-  const [showClientCode,     setShowClientCode]     = useState(false);
+  // `openCode`: la salida provisional de «Con un entrenador» del recorrido nuevo
+  // (O03-01 §17.5) llega con la hoja del código ya abierta.
+  const [showClientCode,     setShowClientCode]     = useState(route.params?.openCode ?? false);
   const [step,               setStep]              = useState(0);
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [templateProgramName, setTemplateProgramName] = useState('');

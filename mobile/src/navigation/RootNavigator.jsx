@@ -17,7 +17,7 @@ import StatsScreen      from '../screens/StatsScreen';
 import ProgramScreen    from '../screens/ProgramScreen';
 import ClientsScreen    from '../screens/ClientsScreen';
 import WorkoutScreen       from '../screens/WorkoutScreen';
-import SetupScreen         from '../screens/SetupScreen';
+import OnboardingFlowScreen from '../screens/onboarding/OnboardingFlowScreen';
 import OnboardingScreen    from '../screens/OnboardingScreen';
 import ProgramDetailScreen    from '../screens/ProgramDetailScreen';
 import ProgramEditorScreen   from '../screens/ProgramEditorScreen';
@@ -182,14 +182,14 @@ export default function RootNavigator() {
   }, [hasHydrated, initialRoute]);
 
   // Invitación (M01-04): con la app ya en uso, el código pendiente se abre en
-  // Conexión con entrenador. En Setup/Onboarding no se navega: el onboarding
-  // abre la hoja del código él solo cuando llega a elegir modo.
+  // Conexión con entrenador. En Start/Onboarding no se navega: el recorrido de
+  // entrada ya lleva el código puesto (O03 §9.5) y el selector viejo abre la hoja.
   const pendingInvite = useStore((s) => s.pendingInviteCode);
   useEffect(() => {
     if (!hasHydrated || !pendingInvite) return;
     const go = () => {
       const route = navigationRef.getCurrentRoute()?.name;
-      if (route === 'Setup' || route === 'Onboarding' || route === 'TrainerConnection') return;
+      if (route === 'Start' || route === 'Onboarding' || route === 'TrainerConnection') return;
       navigationRef.navigate('TrainerConnection', undefined, { pop: true });
     };
     if (navigationRef.isReady()) {
@@ -204,7 +204,7 @@ export default function RootNavigator() {
   }, [hasHydrated, pendingInvite]);
 
   // Block render until AsyncStorage has been read. This prevents a brief flash
-  // of MainTabs on first launch (new device → should open Setup/Onboarding).
+  // of MainTabs on first launch (new device → should open Start).
   if (!hasHydrated) {
     return <View style={styles.hydrating} />;
   }
@@ -226,8 +226,8 @@ export default function RootNavigator() {
           options={{ animation: 'slide_from_right', gestureEnabled: false }}
         />
         <Stack.Screen
-          name="Setup"
-          component={SetupScreen}
+          name="Start"
+          component={OnboardingFlowScreen}
           options={{ animation: 'fade', gestureEnabled: false }}
         />
         <Stack.Screen

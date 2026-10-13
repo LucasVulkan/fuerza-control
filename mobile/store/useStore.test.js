@@ -9,6 +9,7 @@ import { EXERCISE_LIBRARY } from '../src/data/exerciseLibrary';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { programTemplateIds, scopeFilterForUpload } from '../src/utils/clientLogs';
 import { BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
+import { newFlow } from '../src/utils/onboardingFlow';
 import { localDay, addDays } from '../src/utils/stageProgress';
 import { templateChainIds } from '../src/utils/exerciseLinks';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
@@ -47,6 +48,54 @@ const AsyncStorage = (await import('@react-native-async-storage/async-storage'))
 /** The callback zustand invokes once the persisted state has been read. */
 const rehydrateCallback = () => useStore.persist.getOptions().onRehydrateStorage();
 
+describe('recorrido de entrada — acciones (O03 §16.2)', () => {
+  const flow = () => useStore.getState().onboardingFlow;
+
+  beforeEach(() => {
+    useStore.setState({ onboardingFlow: null });
+    useStore.getState().startOnboardingFlow();
+  });
+
+  it('flowGo empuja la pantalla al historial y flowBack la recupera, con lo contestado', () => {
+    const s = useStore.getState();
+    s.flowAnswer({ role: 'self' });
+    s.flowGo('units');
+    s.flowGo('theme');
+    expect(flow()).toMatchObject({ screen: 'theme', history: ['welcome', 'units'] });
+
+    s.flowBack();
+    expect(flow()).toMatchObject({ screen: 'units', history: ['welcome'] });
+    expect(flow().answers.role).toBe('self');   // nada se borra al volver
+  });
+
+  it('flowBack en la primera pantalla no hace nada', () => {
+    useStore.getState().flowBack();
+    expect(flow().screen).toBe('welcome');
+  });
+
+  it('flowDone sustituye por key, en su sitio', () => {
+    const s = useStore.getState();
+    s.flowDone({ key: 'client', ok: true, label: 'Ana' });
+    s.flowDone({ key: 'program', ok: false, label: 'Sin programa' });
+    s.flowDone({ key: 'client', ok: true, label: 'Marta' });
+    expect(flow().done.map((d) => d.label)).toEqual(['Marta', 'Sin programa']);
+  });
+
+  it('finishOnboardingFlow lo marca como hecho y cierra el recorrido', () => {
+    useStore.setState({ profile: { ...useStore.getState().profile, onboardingCompleted: false, setupComplete: false } });
+    useStore.getState().finishOnboardingFlow();
+    expect(flow()).toBe(null);
+    expect(useStore.getState().profile).toMatchObject({ onboardingCompleted: true, setupComplete: true });
+  });
+
+  it('la salida provisional cierra el recorrido sin dar el onboarding por hecho', () => {
+    useStore.setState({ profile: { ...useStore.getState().profile, onboardingCompleted: false, setupComplete: false } });
+    useStore.getState().finishOnboardingFlow({ route: 'Onboarding' });
+    expect(flow()).toBe(null);
+    expect(useStore.getState().profile).toMatchObject({ onboardingCompleted: false, setupComplete: true });
+  });
+});
+
 describe('onRehydrateStorage — fallo 1', () => {
   beforeEach(() => {
     useStore.setState({ _hasHydrated: false, _initialRoute: 'Main' });
@@ -72,16 +121,32 @@ describe('onRehydrateStorage — fallo 1', () => {
     await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
   });
 
-  it('sin estado que rehidratar arranca en Setup, no en Main', async () => {
+  it('sin estado que rehidratar arranca en Start, no en Main', async () => {
     // El store se queda con el estado inicial: mismo caso que una instalación
-    // nueva, así que la ruta tiene que ser la del primer arranque.
+    // nueva, así que la ruta tiene que ser la del primer arranque, y el
+    // recorrido nace ya en la bienvenida (O03 §16.4).
     useStore.setState({
+      onboardingFlow: null,
       profile: { ...useStore.getState().profile, setupComplete: false, onboardingCompleted: false, activeProgramId: null },
     });
 
     rehydrateCallback()(undefined, new Error('boom'));
 
-    await vi.waitFor(() => expect(useStore.getState()._initialRoute).toBe('Setup'));
+    await vi.waitFor(() => expect(useStore.getState()._initialRoute).toBe('Start'));
+    expect(useStore.getState().onboardingFlow).toMatchObject({ screen: 'welcome', entry: 'first' });
+  });
+
+  it('un recorrido en curso manda aunque ya haya programa y el onboarding esté marcado', async () => {
+    useStore.setState({
+      onboardingFlow: { ...newFlow(), screen: 'theme', history: ['welcome', 'units'] },
+      profile: { ...useStore.getState().profile, onboardingCompleted: true },
+    });
+
+    rehydrateCallback()({}, undefined);
+
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
+    expect(useStore.getState()._initialRoute).toBe('Start');
+    expect(useStore.getState().onboardingFlow.screen).toBe('theme');   // no se reinicia
   });
 });
 
@@ -93,7 +158,7 @@ describe('sesión en curso fuera del blob — rediseno §3', () => {
 
   beforeEach(() => {
     useStore.setState({
-      _hasHydrated: false, _initialRoute: 'Main',
+      _hasHydrated: false, _initialRoute: 'Main', onboardingFlow: null,
       activeSession: { templateId: null },
       profile: { ...useStore.getState().profile, setupComplete: true, onboardingCompleted: true },
     });

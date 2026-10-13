@@ -2734,6 +2734,66 @@
       "volume": "Adds sets to the accessories only; the key lifts are left alone."
     }
   },
+  "onboardingFlow": {
+    "common": {
+      "sections": {
+        "settings": "Settings",
+        "you": "You",
+        "setup": "Set up",
+        "learn": "Learn"
+      },
+      "stepOf": "· {{n}} of 4",
+      "completed": "Complete",
+      "newProgram": "New program",
+      "back": "Back",
+      "skip": "Skip",
+      "next": "Next",
+      "welcome": {
+        "hero": "Your program,\nyour sets,\n*your progress*",
+        "tagline": "Two minutes to make it yours",
+        "invited": "*{{trainer}}* invited you. Right after the settings we'll connect you.",
+        "invitedAnon": "*Your coach* invited you. Right after the settings we'll connect you.",
+        "panelTitle": "Shall we?",
+        "start": "Start",
+        "haveAccount": "I already have an account",
+        "language": "Language"
+      },
+      "units": {
+        "title": "Kilos or pounds?",
+        "sub": "You can change it any time in the menu."
+      },
+      "theme": {
+        "title": "Pick your style",
+        "sub": "Tap to try it.",
+        "previewTitle": "Session A · Push",
+        "previewMeta": "5 exercises · ~55 min",
+        "previewCta": "Start"
+      },
+      "role": {
+        "title": "How do you train?",
+        "sub": "So we take you straight to what matters.",
+        "self": "On my own",
+        "selfDesc": "I follow a program or create my own",
+        "coached": "With a coach",
+        "coachedDesc": "Someone prepares my program",
+        "trainer": "I'm a coach",
+        "trainerDesc": "I prepare programs for my clients"
+      }
+    },
+    "builder": {},
+    "self": {},
+    "coached": {},
+    "learn": {},
+    "recover": {},
+    "trainer": {},
+    "done": {
+      "title": "All *set*",
+      "sub": "Pick up the rest whenever you like.",
+      "panelTrain": "Let's train",
+      "panelClients": "Your clients are waiting",
+      "cta": "Go to the app"
+    }
+  },
   "deleteAccount": {
     "title": "Delete account",
     "lead": "Your account and everything stored in it will be deleted from the server. This can't be undone.",

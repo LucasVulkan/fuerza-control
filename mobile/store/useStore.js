@@ -72,7 +72,8 @@ import { nextIdentityColor, withIdentityColors } from '../src/utils/identityColo
 import i18n from '../src/i18n';
 
 // Navigation ref (wired up in App.js)
-import { navigateTo } from '../src/navigation/navigationRef';
+import { navigateTo, replaceRoot } from '../src/navigation/navigationRef';
+import { newFlow, initialRouteFor } from '../src/utils/onboardingFlow';
 
 /**
  * Respuestas del onboarding → forma que consume el motor.
@@ -226,7 +227,7 @@ const INITIAL_PROFILE = {
   activeProgramId: null,
   onboardingAnswers: {},
   onboardingCompleted: false,
-  setupComplete: false,   // true tras elegir idioma + unidad en SetupScreen
+  setupComplete: false,   // true al acabar (o saltar) el recorrido de entrada
   goals: [],
   bodyWeight: null,
   theme: 'formaFit',
@@ -529,6 +530,10 @@ export const useStore = create(
       // borra al cerrarla.
       pendingInviteCode: null,      // 'XK7M-2P4T' | null
 
+      // Recorrido de entrada por caminos (O03 §16.2). SÍ se persiste: matar la
+      // app a mitad y reabrir vuelve a la misma pantalla. `null` = no hay recorrido.
+      onboardingFlow: null,
+
       // ══════════════════════════════════════════════════════════════════════
       // PROFILE
       // ══════════════════════════════════════════════════════════════════════
@@ -550,6 +555,51 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
       // ONBOARDING
       // ══════════════════════════════════════════════════════════════════════
+
+      // ── Recorrido de entrada por caminos (O03 §16.2) ───────────────────────
+      // `entry`: 'first' (primer arranque) | 'newProgram' (desde la app, §25).
+      startOnboardingFlow: ({ entry = 'first' } = {}) => set({ onboardingFlow: newFlow(entry) }),
+
+      // Empuja la pantalla actual al historial (el «atrás») y va a `id`.
+      flowGo: (id) => set((s) => {
+        const f = s.onboardingFlow;
+        return f ? { onboardingFlow: { ...f, history: [...f.history, f.screen], screen: id } } : {};
+      }),
+
+      flowBack: () => set((s) => {
+        const f = s.onboardingFlow;
+        if (!f?.history.length) return {};
+        return { onboardingFlow: { ...f, history: f.history.slice(0, -1), screen: f.history[f.history.length - 1] } };
+      }),
+
+      // Mezcla lo contestado; nada se borra al volver atrás.
+      flowAnswer: (patch) => set((s) => {
+        const f = s.onboardingFlow;
+        return f ? { onboardingFlow: { ...f, answers: { ...f.answers, ...patch } } } : {};
+      }),
+
+      // Una línea de «Listo» ({ key, ok, label }); sustituye a la de su `key`.
+      flowDone: (item) => set((s) => {
+        const f = s.onboardingFlow;
+        if (!f) return {};
+        const done = f.done.some((d) => d.key === item.key)
+          ? f.done.map((d) => (d.key === item.key ? item : d))
+          : [...f.done, item];
+        return { onboardingFlow: { ...f, done } };
+      }),
+
+      // «Ir a la app» y cualquier salida temprana: marca el onboarding como hecho
+      // (sin esto, quien acaba sin programa volvería a él en cada arranque), cierra
+      // el recorrido y va a Main. `route` es la salida provisional hacia lo de
+      // hoy (el selector viejo, O03-01 §17.5): ahí el onboarding NO se da por hecho.
+      finishOnboardingFlow: ({ route = null, params } = {}) => {
+        set((s) => ({
+          onboardingFlow: null,
+          profile: { ...s.profile, setupComplete: true, ...(route ? {} : { onboardingCompleted: true }) },
+        }));
+        if (route) replaceRoot(route, params);
+        else navigateTo('home');
+      },
 
       // `archetypeId`: la plantilla que el usuario eligió en la pantalla de
       // propuestas (O02-onboarding-proposals.md §3.3). Sin él, la primera del
@@ -4805,6 +4855,7 @@ export const useStore = create(
         trainerSync: state.trainerSync,
         clientSync:  state.clientSync,   // persisted so the client stays connected across restarts
         theme:       state.theme,        // active UI theme
+        onboardingFlow: state.onboardingFlow,   // O03: matar la app a mitad vuelve a la misma pantalla
       }),
       onRehydrateStorage: () => (state, error) => {
         // Zustand calls this with (undefined, error) when the storage read
@@ -5026,22 +5077,23 @@ export const useStore = create(
               // Read the live store, not `state`: on the success path they are the
               // same object (middleware.js:431 passes get()), and on the failure
               // path `state` is undefined while the store still holds the initial
-              // state — which routes to Setup, same as a fresh install.
+              // state — which routes to Start, same as a fresh install.
               const s = useStore.getState();
               const hasProgram     = s.profile?.activeProgramId && s.programs?.[s.profile.activeProgramId];
-              const setupDone      = s.profile?.setupComplete;
-              const onboardingDone = s.profile?.onboardingCompleted;
+              const initialRoute = initialRouteFor({
+                flow:                s.onboardingFlow,
+                onboardingCompleted: s.profile?.onboardingCompleted,
+                hasProgram:          !!hasProgram,
+                hasActiveSession:    !!s.activeSession?.templateId,
+              });
 
-              let initialRoute = 'Main';
-              if (!setupDone && !onboardingDone && !hasProgram) {
-                initialRoute = 'Setup';
-              } else if (!onboardingDone && !hasProgram) {
-                initialRoute = 'Onboarding';
-              } else if (s.activeSession?.templateId) {
-                initialRoute = 'Workout';
-              }
-
-              useStore.setState({ _hasHydrated: true, _initialRoute: initialRoute });
+              // Instalación limpia: el recorrido nace aquí, no al montar la
+              // pantalla (que lo reiniciaría al cerrarse).
+              useStore.setState({
+                _hasHydrated: true,
+                _initialRoute: initialRoute,
+                ...(initialRoute === 'Start' && !s.onboardingFlow ? { onboardingFlow: newFlow('first') } : {}),
+              });
             });
         }
       },

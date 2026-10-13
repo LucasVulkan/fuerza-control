@@ -2734,6 +2734,66 @@
       "volume": "Sube series solo en los accesorios; los ejercicios principales no se tocan."
     }
   },
+  "onboardingFlow": {
+    "common": {
+      "sections": {
+        "settings": "Ajustes",
+        "you": "Tú",
+        "setup": "Configura",
+        "learn": "Aprende"
+      },
+      "stepOf": "· {{n}} de 4",
+      "completed": "Completado",
+      "newProgram": "Nuevo programa",
+      "back": "Atrás",
+      "skip": "Saltar",
+      "next": "Siguiente",
+      "welcome": {
+        "hero": "Tu programa,\ntus series,\n*tu progreso*",
+        "tagline": "Lo dejamos a tu medida en dos minutos",
+        "invited": "*{{trainer}}* te ha invitado. Al final de los ajustes te conectamos.",
+        "invitedAnon": "*Tu entrenador* te ha invitado. Al final de los ajustes te conectamos.",
+        "panelTitle": "¿Empezamos?",
+        "start": "Empezar",
+        "haveAccount": "Ya tengo cuenta",
+        "language": "Idioma"
+      },
+      "units": {
+        "title": "¿Kilos o libras?",
+        "sub": "Se cambia cuando quieras en el menú."
+      },
+      "theme": {
+        "title": "Elige tu estilo",
+        "sub": "Toca para probarlo.",
+        "previewTitle": "Sesión A · Empuje",
+        "previewMeta": "5 ejercicios · ~55 min",
+        "previewCta": "Empezar"
+      },
+      "role": {
+        "title": "¿Cómo entrenas?",
+        "sub": "Así te llevamos directo a lo tuyo.",
+        "self": "Por mi cuenta",
+        "selfDesc": "Sigo un programa o creo el mío",
+        "coached": "Con un entrenador",
+        "coachedDesc": "Alguien me prepara el programa",
+        "trainer": "Soy entrenador/a",
+        "trainerDesc": "Preparo programas para mis clientes"
+      }
+    },
+    "builder": {},
+    "self": {},
+    "coached": {},
+    "learn": {},
+    "recover": {},
+    "trainer": {},
+    "done": {
+      "title": "Todo *listo*",
+      "sub": "Lo que falta lo retomas cuando quieras.",
+      "panelTrain": "A entrenar",
+      "panelClients": "Tus clientes te esperan",
+      "cta": "Ir a la app"
+    }
+  },
   "deleteAccount": {
     "title": "Eliminar cuenta",
     "lead": "Se borra tu cuenta del servidor y todo lo que esté guardado en ella. Esto no se puede deshacer.",
