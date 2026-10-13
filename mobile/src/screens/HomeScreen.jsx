@@ -21,6 +21,8 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import NoProgram from '../components/ui/NoProgram';
+import { Rise } from '../components/ui/Rise';
+import { useEnterClock, EnterClock, ENTER_FAST } from '../hooks/useEnterClock';
 import { spacing, textStyles, borders } from '../theme';
 import { useThemedStyles } from '../useTheme';
 import { isStageLocked } from '../utils/stageLocks';
@@ -175,320 +177,336 @@ export default function HomeScreen() {
       : null,
   ].filter(Boolean).join(' · ');
 
+  const enterClock = useEnterClock({ speed: ENTER_FAST });
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
       <ProgramUpdateModal />
 
-      <ScrollView
-        {...fold.scrollProps}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* La sesión a medias, sea cual sea, arriba de todo (U52). */}
-        <ActiveSessionBanner />
+      {/* Entrada por partes al llegar a la pestaña, como Programa (U14 §4.3). */}
+      <EnterClock.Provider value={enterClock}>
+        <ScrollView
+          {...fold.scrollProps}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* La sesión a medias, sea cual sea, arriba de todo (U52). */}
+          <Rise index={0}><ActiveSessionBanner /></Rise>
 
-        {/* En qué programa estás y por qué semana vas (U12). Lleva al tab
-            Programa. Provisional: el reparto entre Inicio y Programa está por
-            diseñar (U12-02). */}
-        {activeProgram && (
-          <HomeProgramCard program={activeProgram} onOpen={() => navigation.navigate('MyProgram')} />
-        )}
+          {/* En qué programa estás y por qué semana vas (U12). Lleva al tab
+              Programa. Sin entrada por partes: ya está puesta al llegar, como en
+              Programa, y así no salta en ninguno de los dos sentidos (U14 §4.4). */}
+          {activeProgram && (
+            <HomeProgramCard program={activeProgram} onOpen={() => navigation.navigate('MyProgram')} />
+          )}
 
-        <WeekSelector workoutLog={workoutLog} />
+          <Rise index={1}><WeekSelector workoutLog={workoutLog} /></Rise>
 
-        {activeProgram ? (() => {
-          // Dónde va de la etapa: la misma cuenta que ve su entrenador
-          // (P08-weeks-model.md §3.7). El día se lee al pintar.
-          const today       = localDay();
-          const progress    = athleteProgress(activeProgram);
-          const status      = stageStatus(activeProgram, progress, today);
-          const stageIdx    = status.stageIdx;
-          const currentStage = status.stage;
-          const nextStage    = activeProgram.stages?.[stageIdx + 1] ?? null;
-          const nextStageLocked = isStageLocked(activeProgram, stageIdx + 1, clientSync);
+          {activeProgram ? (() => {
+            // Dónde va de la etapa: la misma cuenta que ve su entrenador
+            // (P08-weeks-model.md §3.7). El día se lee al pintar.
+            const today       = localDay();
+            const progress    = athleteProgress(activeProgram);
+            const status      = stageStatus(activeProgram, progress, today);
+            const stageIdx    = status.stageIdx;
+            const currentStage = status.stage;
+            const nextStage    = activeProgram.stages?.[stageIdx + 1] ?? null;
+            const nextStageLocked = isStageLocked(activeProgram, stageIdx + 1, clientSync);
 
-          // Las sesiones de la etapa, en el orden del programa.
-          const currentDays = stageDaysAt(activeProgram, stageIdx);
-          const days = currentDays
-            .map(({ sessionTemplateId }) => ({
-              templateId:  sessionTemplateId,
-              template:    getEffectiveTemplate(sessionTemplateId),
-              lastSession: getLastSession(sessionTemplateId),
-            }))
-            .filter((d) => d.template);
-          const byId = new Map(days.map((d) => [d.templateId, d]));
+            // Las sesiones de la etapa, en el orden del programa.
+            const currentDays = stageDaysAt(activeProgram, stageIdx);
+            const days = currentDays
+              .map(({ sessionTemplateId }) => ({
+                templateId:  sessionTemplateId,
+                template:    getEffectiveTemplate(sessionTemplateId),
+                lastSession: getLastSession(sessionTemplateId),
+              }))
+              .filter((d) => d.template);
+            const byId = new Map(days.map((d) => [d.templateId, d]));
 
-          // ¿Cuál toca y por qué? — rótulo, marcadores y contador, en un sitio.
-          const plan = sessionPlan({
-            days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
-            log: workoutLog,
-            t,
-            // Rotación, la semana desde la A, o libre: lo dice el programa (U13 §8-9).
-            order: activeProgram.sessionOrder,
-          });
+            // ¿Cuál toca y por qué? — rótulo, marcadores y contador, en un sitio.
+            const plan = sessionPlan({
+              days: days.map((d) => ({ templateId: d.templateId, label: d.template.label })),
+              log: workoutLog,
+              t,
+              // Rotación, la semana desde la A, o libre: lo dice el programa (U13 §8-9).
+              order: activeProgram.sessionOrder,
+            });
 
-          // ── Aviso de fin de etapa (P08-weeks-model.md §6.1) ──
-          // Cuatro casos y un solo sitio que decide si sale (`stageBannerDue`,
-          // el mismo que enciende el punto del tab). Cada uno dice qué ha pasado
-          // y ofrece una acción principal y otra discreta.
-          const pid     = activeProgram.id;
-          const names   = { current: currentStage?.name ?? t('home.currentStageDefault'), next: nextStage?.name ?? '' };
-          const advance = {
-            label:   t('home.advanceTo', { name: names.next.toUpperCase() }),
-            onPress: () => advanceStage(pid),
-          };
-          const banner = !nextStage || !stageBannerDue(activeProgram, progress, stageBannerSnooze?.[pid], today)
-            ? null
-            : nextStageLocked
-              // No puede avanzar: sigue en la etapa (stage-locks §0.1). Se le
-              // recuerda cada semana mientras su entrenador no la abra.
-              ? {
-                title: t('home.stageLockedTitle'),
-                text:  t('home.stageLockedText', names),
-                hint:  t('home.stageLockedHint'),
-                quiet: { label: t('home.understood'), onPress: () => snoozeStageBanner(pid, addDays(today, 7)) },
-              }
-              : status.ended && status.missingWeeks > 0
-                // Terminó por fecha sin entrenar lo que tocaba: se propone
-                // alargar, pero avanzar sigue a un toque.
+            // ── Aviso de fin de etapa (P08-weeks-model.md §6.1) ──
+            // Cuatro casos y un solo sitio que decide si sale (`stageBannerDue`,
+            // el mismo que enciende el punto del tab). Cada uno dice qué ha pasado
+            // y ofrece una acción principal y otra discreta.
+            const pid     = activeProgram.id;
+            const names   = { current: currentStage?.name ?? t('home.currentStageDefault'), next: nextStage?.name ?? '' };
+            const advance = {
+              label:   t('home.advanceTo', { name: names.next.toUpperCase() }),
+              onPress: () => advanceStage(pid),
+            };
+            const banner = !nextStage || !stageBannerDue(activeProgram, progress, stageBannerSnooze?.[pid], today)
+              ? null
+              : nextStageLocked
+                // No puede avanzar: sigue en la etapa (stage-locks §0.1). Se le
+                // recuerda cada semana mientras su entrenador no la abra.
                 ? {
-                  title: t('home.stageEndedTitle'),
-                  text:  t('home.stageBehindText', { ...names, done: status.done, expected: status.expected, count: status.missingWeeks }),
-                  main:  { label: t('home.extendWeeks', { count: status.missingWeeks }), onPress: () => extendStage(pid, status.missingWeeks) },
-                  quiet: advance,
+                  title: t('home.stageLockedTitle'),
+                  text:  t('home.stageLockedText', names),
+                  hint:  t('home.stageLockedHint'),
+                  quiet: { label: t('home.understood'), onPress: () => snoozeStageBanner(pid, addDays(today, 7)) },
                 }
-                : status.ended
+                : status.ended && status.missingWeeks > 0
+                  // Terminó por fecha sin entrenar lo que tocaba: se propone
+                  // alargar, pero avanzar sigue a un toque.
                   ? {
-                    title: t('home.stageCompleted'),
-                    text:  t('home.stageAdvanceText', names),
-                    main:  advance,
-                    // Con el aplazamiento: sin él, la semana añadida sería ya
-                    // la última con todo hecho y el aviso volvería al instante.
-                    quiet: {
-                      label:   t('home.oneMoreWeek'),
-                      onPress: () => { extendStage(pid, 1); snoozeStageBanner(pid, addDays(status.endsOn, 7)); },
-                    },
+                    title: t('home.stageEndedTitle'),
+                    text:  t('home.stageBehindText', { ...names, done: status.done, expected: status.expected, count: status.missingWeeks }),
+                    main:  { label: t('home.extendWeeks', { count: status.missingWeeks }), onPress: () => extendStage(pid, status.missingWeeks) },
+                    quiet: advance,
                   }
-                  // Anticipado: última semana y todas las sesiones hechas.
-                  : {
-                    title: t('home.stageCompleted'),
-                    text:  t('home.stageEarlyText', { ...names, expected: status.expected }),
-                    main:  advance,
-                    quiet: { label: t('home.notNow'), onPress: () => snoozeStageBanner(pid, status.endsOn) },
-                  };
-          // La meta de la tarjeta de hoy: los dos primeros datos salen de
-          // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
-          // vez. Igual si está a medias: cuánto llevas lo dice el banner (U52).
-          const todayMeta = (day) => {
-            const stats = sessionStats(day.template, allExercises);
-            const rel   = relativeTime(day.lastSession?.timestamp, t);
-            return [
-              t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
-              rel ? t('home.heroMetaLast', { rel: rel.toLowerCase() }) : t('home.firstTime').toLowerCase(),
-            ].join(' · ');
-          };
+                  : status.ended
+                    ? {
+                      title: t('home.stageCompleted'),
+                      text:  t('home.stageAdvanceText', names),
+                      main:  advance,
+                      // Con el aplazamiento: sin él, la semana añadida sería ya
+                      // la última con todo hecho y el aviso volvería al instante.
+                      quiet: {
+                        label:   t('home.oneMoreWeek'),
+                        onPress: () => { extendStage(pid, 1); snoozeStageBanner(pid, addDays(status.endsOn, 7)); },
+                      },
+                    }
+                    // Anticipado: última semana y todas las sesiones hechas.
+                    : {
+                      title: t('home.stageCompleted'),
+                      text:  t('home.stageEarlyText', { ...names, expected: status.expected }),
+                      main:  advance,
+                      quiet: { label: t('home.notNow'), onPress: () => snoozeStageBanner(pid, status.endsOn) },
+                    };
+            // La meta de la tarjeta de hoy: los dos primeros datos salen de
+            // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
+            // vez. Igual si está a medias: cuánto llevas lo dice el banner (U52).
+            const todayMeta = (day) => {
+              const stats = sessionStats(day.template, allExercises);
+              const rel   = relativeTime(day.lastSession?.timestamp, t);
+              return [
+                t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
+                rel ? t('home.heroMetaLast', { rel: rel.toLowerCase() }) : t('home.firstTime').toLowerCase(),
+              ].join(' · ');
+            };
 
-          return (
-            <>
-              <View>
-                <SectionHeader label={t('home.sessions').toUpperCase()} count={plan.subtitle} />
+            return (
+              <>
+                <View>
+                  <Rise index={2}>
+                    <SectionHeader label={t('home.sessions').toUpperCase()} count={plan.subtitle} />
+                  </Rise>
 
-                {/* Etapa terminada: el único "algo terminó" que persiste en la
-                    Home. Va ENCIMA del hero y no lo sustituye — la sesión que
-                    toca sigue siendo la que toca. Sin acción principal (etapa
-                    siguiente bloqueada) el botón que queda va en lima. */}
-                {banner && (
-                  <View style={styles.stageBanner}>
-                    <Text style={styles.stageBannerLabel}>{banner.title.toUpperCase()}</Text>
-                    <Text style={styles.stageBannerText}>{banner.text}</Text>
-                    {!!banner.hint && <Text style={styles.stageBannerHint}>{banner.hint}</Text>}
-                    <View style={styles.stageBannerBtns}>
-                      {banner.main && (
+                  {/* Etapa terminada: el único "algo terminó" que persiste en la
+                      Home. Va ENCIMA del hero y no lo sustituye — la sesión que
+                      toca sigue siendo la que toca. Sin acción principal (etapa
+                      siguiente bloqueada) el botón que queda va en lima. */}
+                  {banner && (
+                    <Rise index={3}>
+                    <View style={styles.stageBanner}>
+                      <Text style={styles.stageBannerLabel}>{banner.title.toUpperCase()}</Text>
+                      <Text style={styles.stageBannerText}>{banner.text}</Text>
+                      {!!banner.hint && <Text style={styles.stageBannerHint}>{banner.hint}</Text>}
+                      <View style={styles.stageBannerBtns}>
+                        {banner.main && (
+                          <TouchableOpacity
+                            style={[styles.stageBannerBtn, { flex: 2 }]}
+                            onPress={banner.main.onPress}
+                            activeOpacity={0.85}
+                            accessibilityRole="button"
+                          >
+                            <Text style={styles.stageBannerBtnText}>{banner.main.label}</Text>
+                          </TouchableOpacity>
+                        )}
                         <TouchableOpacity
-                          style={[styles.stageBannerBtn, { flex: 2 }]}
-                          onPress={banner.main.onPress}
-                          activeOpacity={0.85}
+                          style={[styles.stageBannerBtn, banner.main && styles.stageBannerBtnQuiet]}
+                          onPress={banner.quiet.onPress}
+                          activeOpacity={0.7}
                           accessibilityRole="button"
                         >
-                          <Text style={styles.stageBannerBtnText}>{banner.main.label}</Text>
+                          <Text style={[styles.stageBannerBtnText, banner.main && styles.stageBannerBtnTextQuiet]}>
+                            {banner.quiet.label}
+                          </Text>
                         </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
-                        style={[styles.stageBannerBtn, banner.main && styles.stageBannerBtnQuiet]}
-                        onPress={banner.quiet.onPress}
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                      >
-                        <Text style={[styles.stageBannerBtnText, banner.main && styles.stageBannerBtnTextQuiet]}>
-                          {banner.quiet.label}
-                        </Text>
-                      </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                )}
+                    </Rise>
+                  )}
 
-                {/* Todas las sesiones, en el orden del programa: la que toca es una
-                    más, en su hueco y a otra escala. NO es la lista agrupada de
-                    Progreso: cada sesión es una tarjeta suelta con su radio
-                    entero, porque cualquiera de ellas puede crecer. */}
-                {homeView === 'tabs' ? (
-                  <SessionTabsCard
-                    heroId={plan.heroTemplateId}
-                    sessions={plan.rows.filter((row) => byId.has(row.templateId)).map((row) => {
-                      const day   = byId.get(row.templateId);
+                  {/* Todas las sesiones, en el orden del programa: la que toca es una
+                      más, en su hueco y a otra escala. NO es la lista agrupada de
+                      Progreso: cada sesión es una tarjeta suelta con su radio
+                      entero, porque cualquiera de ellas puede crecer. */}
+                  {homeView === 'tabs' ? (
+                    <Rise index={4}>
+                    <SessionTabsCard
+                      heroId={plan.heroTemplateId}
+                      sessions={plan.rows.filter((row) => byId.has(row.templateId)).map((row) => {
+                        const day   = byId.get(row.templateId);
+                        const stats = sessionStats(day.template, allExercises);
+                        const rel   = relativeTime(day.lastSession?.timestamp, t);
+                        const name  = day.template.name ?? '';
+                        return {
+                          id:      row.templateId,
+                          marker:  row.marker,
+                          name,
+                          done:    row.isDone,
+                          // Lo que dice la maqueta, y cuándo fue si ya está hecha.
+                          meta:    [
+                            t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
+                            row.isDone && rel ? rel : null,
+                          ].filter(Boolean).join(' · '),
+                          adapted: !!clientSync.pendingOverrides?.[row.templateId],
+                          // El mismo texto que en la lista: EMPEZAR SESIÓN B.
+                          cta:     startCta(t, day.template.label ?? '', { active: activeSession.templateId === row.templateId, done: row.isDone }),
+                          onStart: () => requestStart(row.templateId),
+                          a11y:    `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`,
+                          lines:   <ExerciseLines template={day.template} allExercises={allExercises} />,
+                        };
+                      })}
+                    />
+                    </Rise>
+                  ) : (
+                  <View style={styles.group}>
+                    {plan.rows.map((row, rowIdx) => {
+                      const day = byId.get(row.templateId);
+                      if (!day) return null;
+                      const active = activeSession.templateId === row.templateId;
+                      const name   = day.template.name ?? '';
+                      const cta    = startCta(t, day.template.label ?? '', { active, done: row.isDone });
+                      const start  = () => requestStart(row.templateId);
+                      const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`;
+                      const lines  = (
+                        <ExerciseLines template={day.template} allExercises={allExercises} />
+                      );
+
+                      // Cada sesión entra en su turno. El envoltorio se lleva la
+                      // transición del plegado: si no, al plegar una, las de debajo
+                      // saltarían de golpe.
+                      const enter = (el) => (
+                        <Rise key={row.templateId} index={4 + rowIdx} layout={LinearTransition.duration(FOLD_MS)}>{el}</Rise>
+                      );
+
+                      if (row.isHero) {
+                        return enter(
+                          <TodayCard
+                            marker={row.marker}
+                            flag={plan.heroLabel}
+                            name={name}
+                            meta={todayMeta(day)}
+                            {...fold.row(row.templateId)}
+                            cta={cta}
+                            onStart={start}
+                            a11yLabel={`${plan.heroLabel}, ${a11y}`}
+                          >
+                            {lines}
+                          </TodayCard>
+                        );
+                      }
+
                       const stats = sessionStats(day.template, allExercises);
                       const rel   = relativeTime(day.lastSession?.timestamp, t);
-                      const name  = day.template.name ?? '';
-                      return {
-                        id:      row.templateId,
-                        marker:  row.marker,
-                        name,
-                        done:    row.isDone,
-                        // Lo que dice la maqueta, y cuándo fue si ya está hecha.
-                        meta:    [
-                          t('home.sessionMeta', { count: stats.exercises, minutes: stats.minutes }),
-                          row.isDone && rel ? rel : null,
-                        ].filter(Boolean).join(' · '),
-                        adapted: !!clientSync.pendingOverrides?.[row.templateId],
-                        // El mismo texto que en la lista: EMPEZAR SESIÓN B.
-                        cta:     startCta(t, day.template.label ?? '', { active: activeSession.templateId === row.templateId, done: row.isDone }),
-                        onStart: () => requestStart(row.templateId),
-                        a11y:    `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`,
-                        lines:   <ExerciseLines template={day.template} allExercises={allExercises} />,
-                      };
-                    })}
-                  />
-                ) : (
-                <View style={styles.group}>
-                  {plan.rows.map((row) => {
-                    const day = byId.get(row.templateId);
-                    if (!day) return null;
-                    const active = activeSession.templateId === row.templateId;
-                    const name   = day.template.name ?? '';
-                    const cta    = startCta(t, day.template.label ?? '', { active, done: row.isDone });
-                    const start  = () => requestStart(row.templateId);
-                    const a11y   = `${t('workout.sessionLabel', { label: row.marker })}, ${name}, ${row.isDone ? t('home.sessionDone') : t('home.sessionPending')}`;
-                    const lines  = (
-                      <ExerciseLines template={day.template} allExercises={allExercises} />
-                    );
-
-                    if (row.isHero) {
-                      return (
-                        <TodayCard
-                          key={row.templateId}
+                      return enter(
+                        <SessionRow
                           marker={row.marker}
-                          flag={plan.heroLabel}
                           name={name}
-                          meta={todayMeta(day)}
+                          // Hecha: cuándo fue. Pendiente: cuánto dura. Cuántos
+                          // ejercicios tiene está un toque más abajo, con los
+                          // ejercicios de verdad.
+                          meta={row.isDone && rel
+                            ? rel.toLowerCase()
+                            : t('home.rowMinutes', { minutes: stats.minutes })}
+                          done={row.isDone}
+                          // "Adaptada" es texto, no una pastilla: menos ruido, y el
+                          // azul sigue significando entrenador.
+                          adapted={!!clientSync.pendingOverrides?.[row.templateId]}
                           {...fold.row(row.templateId)}
                           cta={cta}
                           onStart={start}
-                          a11yLabel={`${plan.heroLabel}, ${a11y}`}
+                          a11yLabel={a11y}
                         >
                           {lines}
-                        </TodayCard>
+                        </SessionRow>
                       );
-                    }
+                    })}
+                  </View>
+                  )}
+                </View>
 
-                    const stats = sessionStats(day.template, allExercises);
-                    const rel   = relativeTime(day.lastSession?.timestamp, t);
+              </>
+            );
+          })() : (
+            <NoProgram />
+          )}
+
+          {/* ── Sesiones libres (T06-free-sessions.md §6.1) ── También sin programa:
+              tener sesiones sueltas sin programa es justo uno de sus usos. Con
+              `layout` porque al plegar una sesión de arriba sube o baja: sin él
+              daba el salto de golpe mientras la tarjeta seguía animando. */}
+          <Rise index={10} layout={LinearTransition.duration(FOLD_MS)}>
+            {homeFree.length > 0 && (
+              <View style={styles.freeSection}>
+                <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
+                <View style={styles.group}>
+                  {homeFree.map((tpl, i) => {
+                    const active = activeSession.templateId === tpl.id;
+                    const rel    = relativeTime(getLastSession(tpl.id)?.timestamp, t);
+                    const name   = freeName(tpl);
                     return (
                       <SessionRow
-                        key={row.templateId}
-                        marker={row.marker}
+                        key={tpl.id}
+                        // Número donde las del programa llevan la letra (U31), en el
+                        // gris de las hechas y no en lima: numera, no dice qué toca.
+                        marker={String(i + 1).padStart(2, '0')}
+                        markerMuted
                         name={name}
-                        // Hecha: cuándo fue. Pendiente: cuánto dura. Cuántos
-                        // ejercicios tiene está un toque más abajo, con los
-                        // ejercicios de verdad.
-                        meta={row.isDone && rel
+                        meta={rel
                           ? rel.toLowerCase()
-                          : t('home.rowMinutes', { minutes: stats.minutes })}
-                        done={row.isDone}
-                        // "Adaptada" es texto, no una pastilla: menos ruido, y el
-                        // azul sigue significando entrenador.
-                        adapted={!!clientSync.pendingOverrides?.[row.templateId]}
-                        {...fold.row(row.templateId)}
-                        cta={cta}
-                        onStart={start}
-                        a11yLabel={a11y}
+                          : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
+                        done={false}
+                        {...fold.row(tpl.id)}
+                        cta={startCta(t, '', { active, done: false })}
+                        onStart={() => requestStart(tpl.id)}
+                        // Las que manda el entrenador no se editan: si quieres
+                        // una tuya, la haces con «Crear» (C06-group-classes.md §4.4).
+                        onEdit={tpl.fromTrainer ? undefined : () => editFree(tpl.id)}
+                        by={tpl.fromTrainer ? (tpl.trainerName || clientSync.trainerName || '') : null}
+                        a11yLabel={`${t('freeSession.badge')}, ${name}`}
                       >
-                        {lines}
+                        <ExerciseLines template={tpl} allExercises={allExercises} />
                       </SessionRow>
                     );
                   })}
                 </View>
-                )}
               </View>
+            )}
 
-            </>
-          );
-        })() : (
-          <NoProgram />
-        )}
+            {/* Con `layout` propio: al abrir una sesión libre se mueve dentro de
+                la sección, y el `layout` de fuera no lo cubre. */}
+            <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+              <TouchableOpacity
+                style={styles.freeSessionBtn}
+                onPress={handleFreePress}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+              >
+                <Text style={styles.freeSessionBtnText}>
+                  {activeSession.templateId === '__free__'
+                    ? t('freeSession.btnContinue')
+                    : t('freeSession.btn')}
+                </Text>
+              </TouchableOpacity>
+            </Reanimated.View>
+          </Rise>
 
-        {/* ── Sesiones libres (T06-free-sessions.md §6.1) ── También sin programa:
-            tener sesiones sueltas sin programa es justo uno de sus usos. Con
-            `layout` porque al plegar una sesión de arriba sube o baja: sin él
-            daba el salto de golpe mientras la tarjeta seguía animando. */}
-        <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
-          {homeFree.length > 0 && (
-            <View style={styles.freeSection}>
-              <SectionHeader label={t('freeSession.sectionTitle').toUpperCase()} />
-              <View style={styles.group}>
-                {homeFree.map((tpl, i) => {
-                  const active = activeSession.templateId === tpl.id;
-                  const rel    = relativeTime(getLastSession(tpl.id)?.timestamp, t);
-                  const name   = freeName(tpl);
-                  return (
-                    <SessionRow
-                      key={tpl.id}
-                      // Número donde las del programa llevan la letra (U31), en el
-                      // gris de las hechas y no en lima: numera, no dice qué toca.
-                      marker={String(i + 1).padStart(2, '0')}
-                      markerMuted
-                      name={name}
-                      meta={rel
-                        ? rel.toLowerCase()
-                        : t('home.rowMinutes', { minutes: sessionStats(tpl, allExercises).minutes })}
-                      done={false}
-                      {...fold.row(tpl.id)}
-                      cta={startCta(t, '', { active, done: false })}
-                      onStart={() => requestStart(tpl.id)}
-                      // Las que manda el entrenador no se editan: si quieres
-                      // una tuya, la haces con «Crear» (C06-group-classes.md §4.4).
-                      onEdit={tpl.fromTrainer ? undefined : () => editFree(tpl.id)}
-                      by={tpl.fromTrainer ? (tpl.trainerName || clientSync.trainerName || '') : null}
-                      a11yLabel={`${t('freeSession.badge')}, ${name}`}
-                    >
-                      <ExerciseLines template={tpl} allExercises={allExercises} />
-                    </SessionRow>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Con `layout` propio: al abrir una sesión libre se mueve dentro de
-              la sección, y el `layout` de fuera no lo cubre. */}
-          <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
-            <TouchableOpacity
-              style={styles.freeSessionBtn}
-              onPress={handleFreePress}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-            >
-              <Text style={styles.freeSessionBtnText}>
-                {activeSession.templateId === '__free__'
-                  ? t('freeSession.btnContinue')
-                  : t('freeSession.btn')}
-              </Text>
-            </TouchableOpacity>
-          </Reanimated.View>
-        </Reanimated.View>
-
-        <View style={{ height: fold.pad }} />
-      </ScrollView>
+          <View style={{ height: fold.pad }} />
+        </ScrollView>
+      </EnterClock.Provider>
 
       {/* Modals */}
       {/* ── ＋ Sesión libre (T06-free-sessions.md §6.2) ── */}

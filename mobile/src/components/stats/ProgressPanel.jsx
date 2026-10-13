@@ -35,6 +35,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import SegmentedControl from '../ui/SegmentedControl';
+import { Rise } from '../ui/Rise';
 import ProgressTab from './ProgressTab';
 import LoadTab     from './LoadTab';
 import { spacing } from '../../theme';
@@ -96,9 +97,11 @@ export default function ProgressPanel({
     <View style={styles.fill}>
       {/* El aire lateral y el de arriba los ponía el contentContainer de cada
           pestaña cuando el conmutador iba dentro; ahora los pone su envoltorio. */}
-      <View style={styles.switcher}>
-        <SegmentedControl options={options} value={view} onChange={select} />
-      </View>
+      <Rise index={0}>
+        <View style={styles.switcher}>
+          <SegmentedControl options={options} value={view} onChange={select} />
+        </View>
+      </Rise>
 
       <View style={styles.viewport}>
         <Animated.View style={[styles.row, { width: `${count * 100}%` }, rowStyle]}>

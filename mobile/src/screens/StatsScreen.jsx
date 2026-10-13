@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore }    from '../../store/useStore';
 import { programTemplateIds as programTemplateIds_ } from '../utils/clientLogs';
 import AppHeader       from '../components/AppHeader';
+import { useEnterClock, EnterClock, ENTER_FAST } from '../hooks/useEnterClock';
 import ProgressPanel   from '../components/stats/ProgressPanel';
 import HistoryList     from '../components/history/HistoryList';
 import { useThemedStyles } from '../useTheme';
@@ -34,18 +35,23 @@ export default function StatsScreen() {
     [activeProgram],
   );
 
+  // Entrada por partes al llegar a la pestaña, como Programa (U14 §4.3).
+  const enterClock = useEnterClock({ speed: ENTER_FAST });
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
-      <ProgressPanel
-        baseLog={workoutLog}
-        programTemplateIds={programTemplateIds}
-        allExercises={allExercises}
-        fallbackBodyWeight={profile.bodyWeight ?? null}
-        // El tercer segmento sólo aquí: la ficha de cliente comparte este panel
-        // y ya tiene su propio tab de Historial.
-        history={<HistoryList />}
-      />
+      <EnterClock.Provider value={enterClock}>
+        <ProgressPanel
+          baseLog={workoutLog}
+          programTemplateIds={programTemplateIds}
+          allExercises={allExercises}
+          fallbackBodyWeight={profile.bodyWeight ?? null}
+          // El tercer segmento sólo aquí: la ficha de cliente comparte este panel
+          // y ya tiene su propio tab de Historial.
+          history={<HistoryList />}
+        />
+      </EnterClock.Provider>
     </View>
   );
 }

@@ -97,10 +97,10 @@ export default function SwipeRow({
       >
         {isOpen ? (
           // Abierta, el número se cambia por una flecha hacia atrás: es la pista
-          // de que la tarjeta se devuelve a su sitio tocándola.
-          <View style={styles.leadingSlot}>
+          // de que la tarjeta se devuelve a su sitio tocándola, también a ella.
+          <TouchableOpacity style={styles.leadingSlot} onPress={closeRow} hitSlop={12} activeOpacity={0.7}>
             <ArrowIcon size={16} color={th.colors.mutedLight} back />
-          </View>
+          </TouchableOpacity>
         ) : (
           <View style={styles.leadingSlot}>{leading}</View>
         )}

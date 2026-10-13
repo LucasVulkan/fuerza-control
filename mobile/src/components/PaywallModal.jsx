@@ -25,6 +25,7 @@ import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 
 import { Text, MAX_FONT_SCALE } from './ui/Text';
+import Marked from './ui/Marked';
 import { useStore } from '../../store/useStore';
 import { spacing, textStyles, lh, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -54,17 +55,6 @@ const byPlan = (a, b) => (ORDER[a.packageType] ?? 9) - (ORDER[b.packageType] ?? 
 /** El texto de cada plan sale de su tipo, no del título de la tienda (que en
  *  Play trae el nombre de la app y «(unreviewed)» pegados). */
 const planKey = (pkg) => (pkg?.packageType === 'ANNUAL' ? 'annual' : 'lifetime');
-
-/** «Todos tus clientes *sincronizados*»: lo que va entre asteriscos, en lima. */
-function Marked({ text, style, accentStyle }) {
-  return (
-    <Text style={style}>
-      {/* El estilo del padre también: nuestro `Text` le pone Inter a un estilo
-          sin familia, y el lima saldría en otra fuente que el resto. */}
-      {text.split('*').map((part, i) => (i % 2 ? <Text key={i} style={[style, accentStyle]}>{part}</Text> : part))}
-    </Text>
-  );
-}
 
 // ── Geometría ─────────────────────────────────────────────────────────────────
 

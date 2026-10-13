@@ -5,8 +5,10 @@
  * duración) y 515:922 (varias etapas: cada tramo de la barra es una etapa). La
  * etapa en curso va en la ceja, «TU PROGRAMA · ACUMULACIÓN», no sobre la barra.
  *
- * Pulsarla lleva al tab Programa, como el propio tab. Provisional: el reparto
- * entre esta tarjeta y la del tab está por diseñar (U12-02).
+ * Pulsarla lleva al tab Programa, como el propio tab. El tab Programa pinta esta
+ * MISMA tarjeta en el mismo sitio, sin `onOpen` y con lo que despliega como
+ * `children`, debajo de la fila de arriba (docs/specs/U14-pantalla-programa.md
+ * §4): así no salta al pasar de una pantalla a otra.
  */
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -27,11 +29,18 @@ function programWeeks(program, status) {
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
-export default function HomeProgramCard({ program, onOpen }) {
+/**
+ * `progress`: de quién es el avance (`athleteProgress(program, client)` en la
+ * ficha de cliente); sin él, el del dueño del móvil. `eyebrow`: la primera palabra
+ * de la ceja («Tu programa» / «Programa asignado»). `onOpen` hace pulsable la
+ * fila de arriba (solo ella: lo desplegado debajo no navega) y `openHint` dice
+ * adónde lleva: al tab Programa desde Inicio, y de vuelta a Sesión desde Programa.
+ */
+export default function HomeProgramCard({ program, progress, eyebrow, onOpen, openHint, onWeekInfo, children }) {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
 
-  const status = stageStatus(program, athleteProgress(program));
+  const status = stageStatus(program, progress ?? athleteProgress(program));
   const stages = program.stages ?? [];
   const week   = status.programWeek;
   const total  = programWeeks(program, status);
@@ -52,59 +61,72 @@ export default function HomeProgramCard({ program, onOpen }) {
     ? t('programCard.stageNotStarted')
     : showTotal ? t('home.weekProgress', { current: week, total }) : t('programCard.stageWeekOpen', { week });
 
+  // Ida y vuelta: en Inicio lleva a Programa, en Programa devuelve a Sesión. La
+  // ceja «SEMANA» de Programa va aparte: abre su ficha.
+  const Top = onOpen ? TouchableOpacity : View;
+  const topProps = onOpen ? {
+    onPress:            onOpen,
+    activeOpacity:      0.75,
+    accessibilityRole:  'button',
+    accessibilityLabel: [program.name, weekText, multi && [stageLabel, stageName].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+    accessibilityHint:  openHint ?? t('home.openProgram'),
+  } : null;
+  const weekCaps = <Text style={[styles.caps, styles.eyebrow]} numberOfLines={1}>{t('home.week').toUpperCase()}</Text>;
+
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onOpen}
-      activeOpacity={0.75}
-      accessibilityRole="button"
-      accessibilityLabel={[program.name, weekText, multi && [stageLabel, stageName].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
-      accessibilityHint={t('home.openProgram')}
-    >
-      <View style={styles.left}>
-        <Text style={[styles.caps, styles.eyebrow]} numberOfLines={1}>
-          {[t('home.yourProgram'), multi && (stageName || stageLabel)].filter(Boolean).join(' · ').toUpperCase()}
-        </Text>
-        <Text style={styles.name} numberOfLines={2}>{program.name}</Text>
+    <View style={styles.card}>
+      <Top style={styles.top} {...topProps}>
+        <View style={styles.left}>
+          <Text style={[styles.caps, styles.eyebrow]} numberOfLines={1}>
+            {[eyebrow ?? t('home.yourProgram'), multi && (stageName || stageLabel)].filter(Boolean).join(' · ').toUpperCase()}
+          </Text>
+          <Text style={styles.name} numberOfLines={2}>{program.name}</Text>
 
-        {/* Pegada al margen de abajo, por si la otra columna sale más alta. */}
-        {showBar && (
-          <View style={styles.foot}>
-            {/* Un tramo por etapa, proporcional a sus semanas (la abierta pesa 1).
-                Hechas en tinte; la actual se llena por semanas. */}
-            <View style={styles.bar}>
-              {stages.map((s, i) => (
-                <View
-                  key={i}
-                  style={[styles.seg, multi && styles.segSkew, { flex: Math.max(1, s.durationWeeks ?? 1) }, i < status.stageIdx && styles.segDone]}
-                >
-                  {i === status.stageIdx && <View style={[styles.segFill, { width: `${nowFill * 100}%` }]} />}
-                </View>
-              ))}
+          {/* Pegada al margen de abajo, por si la otra columna sale más alta. */}
+          {showBar && (
+            <View style={styles.foot}>
+              {/* Un tramo por etapa, proporcional a sus semanas (la abierta pesa 1).
+                  Hechas en tinte; la actual se llena por semanas. */}
+              <View style={styles.bar}>
+                {stages.map((s, i) => (
+                  <View
+                    key={i}
+                    style={[styles.seg, multi && styles.segSkew, { flex: Math.max(1, s.durationWeeks ?? 1) }, i < status.stageIdx && styles.segDone]}
+                  >
+                    {i === status.stageIdx && <View style={[styles.segFill, { width: `${nowFill * 100}%` }]} />}
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.right}>
-        <View style={styles.cut} />
-        <Text style={[styles.caps, styles.eyebrow]} numberOfLines={1}>{t('home.week').toUpperCase()}</Text>
-        <View style={styles.weekRow}>
-          <Text style={[styles.weekNow, multi && styles.weekNowSkew]}>{week == null ? '–' : pad2(week)}</Text>
-          {showTotal && <Text style={styles.weekTotal}>{`/${total}`}</Text>}
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
+
+        <View style={styles.right}>
+          <View style={styles.cut} />
+          {onWeekInfo
+            ? <TouchableOpacity onPress={onWeekInfo} hitSlop={10} activeOpacity={0.7}>{weekCaps}</TouchableOpacity>
+            : weekCaps}
+          <View style={styles.weekRow}>
+            <Text style={[styles.weekNow, multi && styles.weekNowSkew]}>{week == null ? '–' : pad2(week)}</Text>
+            {showTotal && <Text style={styles.weekTotal}>{`/${total}`}</Text>}
+          </View>
+        </View>
+      </Top>
+      {children}
+    </View>
   );
 }
 
 const makeStyles = (th) => StyleSheet.create({
   card: {
-    flexDirection:   'row',
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.md,
     overflow:        'hidden',
   },
+  // La fila de siempre. Recorta ella el corte en diagonal, que sale por arriba y
+  // por abajo: si no, en Programa cruzaría lo desplegado.
+  // Con su fondo: al pulsarla se apaga entera, como cuando se pulsaba la tarjeta.
+  top: { flexDirection: 'row', overflow: 'hidden', backgroundColor: th.colors.surface },
 
   left: { flex: 1, padding: spacing.lg },
   caps: { ...textStyles.caps, color: th.colors.mutedLight },
