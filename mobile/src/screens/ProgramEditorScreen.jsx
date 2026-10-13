@@ -25,7 +25,7 @@ import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
 import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
-import { stageWeekRanges } from '../utils/stageStats';
+import { stageWeekRanges, stageRangeLabel, isDeload } from '../utils/stageStats';
 import { useEditorExit } from '../hooks/useEditorExit';
 
 import { showDialog } from '../components/ui/dialog';
@@ -318,7 +318,6 @@ export default function ProgramEditorScreen({ navigation }) {
     && selectedStageIdx > activeStageIdx;
 
   // ── Tarjetas de etapa (P14 §3.3) ────────────────────────────────────────────
-  const isDeload = (st) => st?.rx?.progressionHold === 'deload';
   // Quién ve el candado: en el móvil del cliente, el de verdad; en el del
   // entrenador, el que puso él por delante de donde va el cliente (la regla de
   // `canLockStage`); en un programa propio, nadie.
@@ -326,17 +325,10 @@ export default function ProgramEditorScreen({ navigation }) {
     ? isStageLocked(activeProgram, idx, clientSync)
     : !!editedClient && !!stages[idx]?.locked && idx > activeStageIdx);
   const ranges = stageWeekRanges(stages);
-  // Tras una etapa sin límite ya no hay calendario: se dice la duración.
-  const rangeLabel = (st, r) => {
-    if (!r) return st.durationWeeks == null ? t('editor.weeksOpen') : t('editor.stageRangeWeeks', { n: st.durationWeeks });
-    if (r.to == null) return t('editor.stageRangeOpen', { from: r.from });
-    if (r.to === r.from) return t('editor.stageRangeOne', { from: r.from });
-    return t('editor.stageRange', { from: r.from, to: r.to });
-  };
   const stageCards = stages.map((st, idx) => ({
     id:       st.id ?? String(idx),
     number:   idx + 1,
-    range:    rangeLabel(st, ranges[idx]),
+    range:    stageRangeLabel(st, ranges[idx], t),
     done:     idx < activeStageIdx,
     deload:   isDeload(st),
     locked:   lockedAt(idx),
@@ -361,12 +353,11 @@ export default function ProgramEditorScreen({ navigation }) {
       : isDeload(selectedStage)
         ? { text: t('editor.stageBrowDeload'), color: th.colors.blue }
         : { text: t('editor.stageBrowNext'), color: th.colors.muted };
-  const stageMeta = [
-    selectedStage?.durationWeeks == null
-      ? t('editor.stageWeeksOpenLong')
-      : t('editor.weeksShort', { count: selectedStage.durationWeeks }),
-    t('editor.stageSessions', { count: editorDays.length }),
-  ].join(' · ');
+  // Semanas y sesiones por semana. El tramo («sem 5-8») no: ya lo dicen las
+  // fichas de encima.
+  const stageMeta = selectedStage
+    ? `${selectedStage.durationWeeks == null ? t('home.stageOpen') : t('editor.weeksShort', { count: selectedStage.durationWeeks })} · ${t('home.stageSessionsPerWeek', { count: editorDays.length })}`
+    : '';
 
   // Deslizar la cabecera a los lados cambia de etapa. Solo en horizontal, para
   // no robarle el scroll vertical a la pantalla; y fuera del engranaje, que
@@ -480,11 +471,11 @@ export default function ProgramEditorScreen({ navigation }) {
                     <Text style={[styles.stageTitle, { color: isDeload(selectedStage) ? th.colors.blue : th.colors.accent }]}>
                       {selectedStageIdx + 1}
                     </Text>
-                    <Text style={[styles.stageTitle, styles.stageTitleName]} numberOfLines={1}>
+                    <Text style={styles.stageTitleName} numberOfLines={1}>
                       {selectedStage?.name ?? ''}
                     </Text>
                   </View>
-                  <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta.toUpperCase()}</Text>
+                  <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
                 </View>
               </GestureDetector>
               <TouchableOpacity
@@ -770,12 +761,22 @@ const makeStyles = (th) => StyleSheet.create({
   stageHeadText:  { flex: 1, minWidth: 0 },
   browRow:        { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 },
   brow:           { ...textStyles.caps },
-  stageTitleRow:  { flexDirection: 'row', gap: 7, marginTop: spacing.xs2 },
-  stageTitle:     { ...textStyles.title },
-  stageTitleName: { flex: 1, color: th.colors.text },
-  // Como la meta de la sesión en Inicio («5 EJERCICIOS · ~55 MIN»): mismo tipo
-  // de dato, misma voz.
-  stageMeta:      { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.xs },
+  // Número y nombre como la ficha de la etapa en curso del tab Programa
+  // (U14 §5.3): Barlow, apoyados en el mismo suelo (la cuenta de los 39/34 está
+  // en `SessionList`), y el nombre en mayúsculas.
+  stageTitleRow:  { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: spacing.xs2 },
+  stageTitle:     { ...textStyles.heroGlyph, lineHeight: 39, includeFontPadding: false, paddingRight: 2 },
+  stageTitleName: {
+    ...textStyles.heroName,
+    lineHeight:         34,
+    includeFontPadding: false,
+    textTransform:      'uppercase',
+    paddingRight:       2,
+    flex:               1,
+    color:              th.colors.text,
+  },
+  // La meta, también como en Programa.
+  stageMeta:      { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
   headBtn: {
     width:           36,
     height:          36,

@@ -44,6 +44,7 @@ import SegmentedControl  from '../ui/SegmentedControl';
 import { MetricInfoSheet } from '../ui/MetricInfo';
 import { ChevronDown, CloseIcon } from '../ui/EditorIcons';
 import EmptyState from '../ui/EmptyState';
+import { Rise } from '../ui/Rise';
 import { ROW_ICON } from '../ui/rowIcons';
 import { programTemplateOf, isFreeEntry } from '../../utils/freeSessions';
 
@@ -1161,8 +1162,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       ) : undefined}
     >
       {/* ── Grupo control + cards (Figma 122:899: gap 15, py 10) ──────────────── */}
+      {/* Entra por partes solo en el tab Progresión (que da el reloj); en la
+          ficha de cliente los `Rise` no hacen nada. */}
       <View style={styles.headerGroup}>
       {/* ── Fila de control: período + toggle programa ──────────────────────── */}
+      <Rise index={1}>
       <View style={styles.controlRow}>
         <View style={styles.segmentedWrap}>
           <SegmentedControl options={periods} value={period} onChange={setPeriod} />
@@ -1179,8 +1183,10 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           </TouchableOpacity>
         )}
       </View>
+      </Rise>
 
       {/* ── Progress cards ───────────────────────────────────────────────────── */}
+      <Rise index={2}>
       <View style={styles.statsGrid}>
         <TouchableOpacity
           style={styles.statTile}
@@ -1222,9 +1228,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           </Text>
         </TouchableOpacity>
       </View>
+      </Rise>
       </View>
 
       {/* ── Búsqueda ──────────────────────────────────────────────────────── */}
+      <Rise index={3}>
       <View style={styles.searchBar}>
         <TextInput
           style={styles.searchInput}
@@ -1246,6 +1254,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           El desplegable se ancla inline al borde inferior de la barra (top:'100%')
           — nace pegado a ella y se mantiene pegado al hacer scroll, sin Modal ni
           medición de coordenadas (que causaba el gap por el offset de status bar). */}
+      </Rise>
+
+      {/* El `zIndex` del desplegable tiene que ganar a sus hermanos, que ahora
+          son los envoltorios: lo lleva el `Rise`. */}
+      <Rise index={4} style={styles.dropLayer}>
       <View style={styles.dropAnchor}>
         <TouchableOpacity
           style={[styles.listToggle, dropOpen && styles.listToggleOpen]}
@@ -1298,9 +1311,11 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
           </View>
         )}
       </View>
+      </Rise>
 
       {/* Lista de ejercicios (siempre visible) */}
       {displayedExercises.length === 0 ? (
+        <Rise index={5}>
         <EmptyState
           style={styles.emptyState}
           icon={ROW_ICON.progress}
@@ -1310,6 +1325,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
               ? t('stats.emptyNoMatch')
               : t('stats.noData')}
         />
+        </Rise>
       ) : (
         <Reanimated.View style={styles.exerciseList} layout={LinearTransition.duration(200)}>
           {displayedExercises.map((exerciseId, idx) => {
@@ -1318,8 +1334,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
             const allLogs    = getExerciseLogsFrom(exerciseId, filteredLogScope);
             const rawLogs    = getExerciseLogsFrom(exerciseId, baseLog);
             return (
+              <Rise key={exerciseId} index={5 + idx}>
               <ExerciseStatCard
-                key={exerciseId}
                 exerciseId={exerciseId}
                 def={def}
                 allLogs={allLogs}
@@ -1329,6 +1345,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
                 isFirst={idx === 0}
                 isLast={idx === displayedExercises.length - 1}
               />
+              </Rise>
             );
           })}
         </Reanimated.View>
@@ -1480,6 +1497,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Anclado inline: el contenedor da el contexto de posición y se eleva sobre
   // la lista de abajo; el menú cuelga de su borde inferior con top:'100%'.
   dropAnchor: { width: '100%', zIndex: 100 },
+  dropLayer:  { zIndex: 100 },
   // Sin bordes (estilo FormaFit), fondo surface2, esquinas superiores rectas
   // (continúan la barra) e inferiores redondeadas; sombra para separarlo del fondo.
   dropList: {

@@ -73,8 +73,10 @@ function StageCard({ stage, index, sel, selected, onPress }) {
   );
 
   return (
+    // Con retraso: al desplazar la fila con el dedo encima, la ficha no encoge.
     <Pressable
       onPress={onPress}
+      unstable_pressDelay={100}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={`${t('editor.stageWord')} ${stage.number}, ${stage.range}`}

@@ -19,129 +19,43 @@
  */
 import { useState, useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDays, athleteProgress, stageStatus, weeklySessions, stageDetail } from '../utils/stageProgress';
+import { stageDays, athleteProgress, stageStatus, weeklySessions } from '../utils/stageProgress';
 import { ownerClient } from '../utils/programOwnership';
 import { pickImportFile } from '../utils/pickImportFile';
-import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
+import { isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
 import { startNewProgram } from '../utils/startNewProgram';
 import { Text } from '../components/ui/Text';
-import { Section, MenuRow } from '../components/ui/MenuList';
+import { Section } from '../components/ui/MenuList';
 import SheetRow from '../components/ui/SheetRow';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import DragSheet from '../components/DragSheet';
-import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
+import HomeProgramCard from '../components/HomeProgramCard';
+import { ProgramActions } from '../components/ui/ProgramCard';
+import ProgramStages from '../components/ProgramStages';
+import { Rise, Unfold } from '../components/ui/Rise';
+import { useEnterClock, EnterClock } from '../hooks/useEnterClock';
+import ProgramCardDetail from '../components/ProgramCardDetail';
 import NoProgram from '../components/ui/NoProgram';
 import { DocSheet } from '../components/ui/DocPoints';
-import { LockIcon } from '../components/ui/EditorIcons';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { useFreeGates } from '../useFreeGates';
-import { computeAdherence, adherencePct, adherenceColor, requiresAttention, STATUS } from '../utils/adherence';
+import { computeAdherence, adherencePct, STATUS } from '../utils/adherence';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
 import { countsForProgram } from '../utils/freeSessions';
 
 import { showDialog } from '../components/ui/dialog';
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-/**
- * El bloque de etapa de la tarjeta (null cuando no hay nada que enseñar), todo
- * sacado de `stageStatus`: la misma cuenta que ve el entrenador del cliente.
- *
- * `totalWeeks` son las semanas de la etapa CON las añadidas, y es null cuando no
- * tiene techo (`durationWeeks: null`): quien lo lea no puede contar hacia él.
- */
-function computeStageInfo(program, status, t) {
-  const { stage, stageIdx } = status;
-  if (!stage) return null;
-  // Una sola etapa y sin límite = programa sin periodizar. No hay nada que
-  // contar ni total para los puntos, así que el bloque no se pinta.
-  if ((program.stages?.length ?? 0) === 1 && status.lengthWeeks == null) return null;
-
-  const defaultLabel = t('home.stageDefault', { n: stageIdx + 1 });
-  return {
-    stageLabel:  defaultLabel,
-    stageName:   stage.name ?? defaultLabel,
-    weekInStage: status.weekInStage,
-    totalWeeks:  status.lengthWeeks,
-    started:     status.started,
-    detail:      stageDetail(status, t),
-  };
-}
-
-function CheckIcon({ size = 16, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-// ── Las etapas ────────────────────────────────────────────────────────────────
-// Era una hoja (`DragSheet`) que había que abrir desde la tarjeta. Aquí están a
-// la vista: en la pantalla donde la pregunta es *dónde voy*, cuántas etapas
-// tiene el programa y cuál viene después no pueden estar detrás de un gesto
-// (spec U07-tab-programa.md §4.3).
-//
-// Al perder la hoja, elegir pierde el peso que le daba tener que abrirla, así
-// que cambiar de etapa pasa a confirmarse — ver `confirmStage` más abajo.
-
-function StageList({ program, onSelect }) {
-  const { t }      = useTranslation();
-  const th         = useTheme();
-  const styles     = useThemedStyles(makeStyles);
-  const clientSync = useStore((s) => s.clientSync);
-  const currentIdx = program.currentStageIndex ?? 0;
-  return (
-    <Section title={t('myProgram.stagesLabel')}>
-      {program.stages.map((stage, idx) => {
-        const isActive = idx === currentIdx;
-        const locked   = isStageLocked(program, idx, clientSync);
-        return (
-          <MenuRow
-            key={stage.id ?? idx}
-            // El número va en la columna de icono de la fila, como la letra de
-            // una sesión en la Home: dice el ORDEN, y lo que lo separa del
-            // nombre es el `gap` de la fila, no un espacio dentro del texto.
-            // Anidarlo en el `label` lo sacaba del papel tipográfico de la fila
-            // —el wrapper de `Text` le resuelve la familia por su propio estilo,
-            // no por el del padre— y salía en otra Inter.
-            icon={<Text style={styles.stageNum}>{idx + 1}</Text>}
-            label={stage.name}
-            labelColor={isActive ? th.colors.accent : undefined}
-            sub={locked
-              ? t('home.stageLockedShort')
-              : [
-                stage.durationWeeks == null ? t('home.stageOpen') : t('home.stageWeeks', { count: stage.durationWeeks }),
-                t('home.stageSessionsPerWeek', { count: weeklySessions(stage) }),
-              ].join(' · ')}
-            minHeight={62}
-            disabled={locked}
-            onPress={() => onSelect(idx)}
-            // La etapa en curso lleva el mismo check lima que las frecuencias
-            // de Drive. El hueco vacío de las demás mata el chevron de
-            // `MenuRow`: aquí se elige, no se navega.
-            control={isActive
-              ? <CheckIcon size={16} color={th.colors.accent} />
-              : locked
-                ? <LockIcon size={13} color={th.colors.muted} />
-                : <View style={styles.rowControlSpacer} />}
-          />
-        );
-      })}
-    </Section>
-  );
-}
-
 // ── MyProgramScreen ────────────────────────────────────────────────────────────
 
 export default function MyProgramScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -180,6 +94,9 @@ export default function MyProgramScreen() {
     () => ({ ...exerciseLibrary, ...customExercises }),
     [exerciseLibrary, customExercises],
   );
+
+  // El despliegue y la entrada por partes (U14 §4.3): un reloj para toda la pantalla.
+  const clock = useEnterClock();
 
   // ── Los 3 datos de la tarjeta ────────────────────────────────────────────────
   // Las mismas tres cifras que el entrenador ve del cliente, calculadas aquí del
@@ -220,32 +137,23 @@ export default function MyProgramScreen() {
   // Dónde va de la etapa. Sin memo: depende del día, y es aritmética de nada.
   const status = activeProgram ? stageStatus(activeProgram, athleteProgress(activeProgram)) : null;
 
-  /**
-   * Cambiar de etapa se confirma. No es solo por el gesto: `setCurrentStage`
-   * deja la etapa nueva sin empezar, así que **lo que llevas de la etapa en
-   * curso deja de contar** (semanas y sesiones). Si aún no la habías empezado,
-   * no se pierde nada y el aviso lo dice.
-   *
-   * El aviso va aquí y no dentro de la acción del store: `advanceStage` y el
-   * editor de programa la llaman también, con su propio contexto, y un `Alert`
-   * dentro se los comería a los tres.
-   */
-  const confirmStage = (idx) => {
-    if (!activeProgram || idx === (activeProgram.currentStageIndex ?? 0)) return;
-    const name = activeProgram.stages[idx]?.name ?? t('home.stageDefault', { n: idx + 1 });
-    showDialog(
-      t('myProgram.stageConfirm.title', { name }),
-      status?.started
-        ? t('myProgram.stageConfirm.bodyStarted', { name })
-        : t('myProgram.stageConfirm.body'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('myProgram.stageConfirm.confirm'), onPress: () => setCurrentStage(activeProgram.id, idx) },
-      ],
-    );
-  };
+  const pace = adherence.status === STATUS.NO_DATA ? null : adherence.recentPerWeek;
 
-  const stageIdx  = status?.stageIdx ?? 0;
+  // Quién hizo el programa: el entrenador de la primera plantilla que lo traiga,
+  // igual que en la Home. Sin memo a propósito: `getEffectiveTemplate` es
+  // estable y un memo sobre `activeProgram` no se enteraría de que se editó una sesión.
+  const trainerName = activeProgram
+    ? stageDays(activeProgram)
+        .map(({ sessionTemplateId }) => getEffectiveTemplate(sessionTemplateId)?.trainerName)
+        .find(Boolean) ?? null
+    : null;
+
+  // Cambiar de etapa se confirma en la hoja de `ProgramStages`; aquí llega ya
+  // confirmado. El aviso no va dentro de la acción del store: `advanceStage` y
+  // el editor de programa la llaman también, con su propio contexto.
+  const selectStage = (idx) => {
+    if (activeProgram && idx !== status?.stageIdx) setCurrentStage(activeProgram.id, idx);
+  };
 
   // Las mismas condiciones que tenía el visualizador, que es de donde vienen
   // estas dos acciones. Aquí el programa es el activo por construcción, así que
@@ -288,77 +196,58 @@ export default function MyProgramScreen() {
     archiveProgram(activeProgram.id, clearHistory);
     setArchiveOpen(false);
   };
-  const stageInfo = activeProgram ? computeStageInfo(activeProgram, status, t) : null;
-
-  // El nombre del entrenador sale de la primera plantilla que lo traiga, igual
-  // que en la Home. Sin memo a propósito: `getEffectiveTemplate` es estable y un
-  // memo sobre `activeProgram` no se enteraría de que se editó una sesión.
-  const trainerName = activeProgram
-    ? stageDays(activeProgram)
-        .map(({ sessionTemplateId }) => getEffectiveTemplate(sessionTemplateId)?.trainerName)
-        .find(Boolean) ?? null
-    : null;
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {activeProgram ? (
-          <ProgramCard
-            variant="self"
-            name={activeProgram.name}
-            weekNum={status?.programWeek}
-            trainerName={trainerName}
-            stage={stageInfo && {
-              label:       stageInfo.stageLabel,
-              name:        stageInfo.stageName,
-              weekInStage: stageInfo.weekInStage,
-              totalWeeks:  stageInfo.totalWeeks,
-              started:     stageInfo.started,
-              detail:      stageInfo.detail,
-            }}
-            // La barra pinta el PROGRAMA: un tramo por etapa, de ancho
-            // proporcional a sus semanas. La etapa abierta no tiene techo y la
-            // tarjeta le da el peso mínimo.
-            stages={activeProgram.stages?.map((s) => ({ weeks: s.durationWeeks }))}
-            stageIdx={stageIdx}
-            adherence={adherence4w}
-            adherenceColor={requiresAttention(adherence.status) ? adherenceColor(th, adherence.status) : null}
-            pace={adherence.status === STATUS.NO_DATA ? null : adherence.recentPerWeek}
-            loadPct={loadPct}
-            // La tarjeta no navega, no abre el selector y no lleva pie: dentro
-            // del tab de Programa nada de eso hace falta desambiguar, y el pie
-            // metía tres celdas con filetes dentro de una tarjeta que ya tiene
-            // dos bloques. Las acciones van sueltas debajo, en botones.
-            onWeekInfo={() => setWeekDoc(true)}
-          />
-        ) : (
-          <NoProgram />
-        )}
+      <EnterClock.Provider value={clock}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {activeProgram ? (
+            <HomeProgramCard
+              program={activeProgram}
+              // Ida y vuelta: la misma tarjeta que trajo hasta aquí devuelve a Sesión.
+              onOpen={() => navigation.navigate('Home')}
+              openHint={t('myProgram.backToSessions')}
+              onWeekInfo={() => setWeekDoc(true)}
+            >
+              <Unfold>
+                <ProgramCardDetail
+                  program={activeProgram}
+                  status={status}
+                  trainerName={trainerName}
+                  adherence={adherence4w}
+                  pace={pace}
+                  loadPct={loadPct}
+                />
+              </Unfold>
+            </HomeProgramCard>
+          ) : (
+            <NoProgram />
+          )}
 
-        {/* ── Las tres acciones ── van sobre las etapas: son lo que se viene
-            a hacer aquí. Archivar no merece un tercio del ancho (se hace una
-            vez en la vida del programa): va en el `⋯`. */}
-        {!!activeProgram && (
-          <ProgramActions
-            onEdit={canEdit ? () => navigate('programEditor') : null}
-            // Se fija SIEMPRE el programa que se va a mirar:
-            // `_viewingProgramId` es global, y entrar sin fijarlo dejaba ver
-            // el último que se abrió (una plantilla, el de un cliente).
-            onView={() => setPrintingProgram(activeProgram.id)}
-            onMore={isMine ? () => setMenuOpen(true) : null}
-          />
-        )}
+          {/* ── Las tres acciones ── van sobre las etapas: son lo que se viene
+              a hacer aquí. Archivar no merece un tercio del ancho (se hace una
+              vez en la vida del programa): va en el `⋯`. */}
+          {!!activeProgram && (
+            <Rise index={0}>
+              <ProgramActions
+                onEdit={canEdit ? () => navigate('programEditor') : null}
+                // Se fija SIEMPRE el programa que se va a mirar:
+                // `_viewingProgramId` es global, y entrar sin fijarlo dejaba ver
+                // el último que se abrió (una plantilla, el de un cliente).
+                onView={() => setPrintingProgram(activeProgram.id)}
+                onMore={isMine ? () => setMenuOpen(true) : null}
+              />
+            </Rise>
+          )}
 
-        {/* Con una sola etapa no hay nada que elegir. */}
-        {(activeProgram?.stages?.length ?? 0) > 1 && (
-          <View style={styles.stagesBlock}>
-            <StageList program={activeProgram} onSelect={confirmStage} />
-          </View>
-        )}
+          {/* Con una sola etapa no hay nada que elegir. */}
+          {(activeProgram?.stages?.length ?? 0) > 1 && (
+            <ProgramStages program={activeProgram} status={status} firstIndex={1} onSelect={selectStage} />
+          )}
 
-      </ScrollView>
+        </ScrollView>
+      </EnterClock.Provider>
 
       <DocSheet visible={weekDoc} sectionId="week" onClose={() => setWeekDoc(false)} />
 
@@ -436,29 +325,14 @@ const makeStyles = (th) => StyleSheet.create({
     flex:            1,
     backgroundColor: th.colors.bg,
   },
+  // Arriba, el mismo relleno que Inicio (`spacing.sm`): la tarjeta del
+  // programa cae en el mismo píxel en las dos pantallas y no salta (U14 §4.1).
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.lg,
+    paddingTop:        spacing.sm,
     paddingBottom:     spacing.xxl * 2,
   },
-  // `Section` ya trae su propio `marginBottom`; el aire de arriba lo pone el
-  // bloque, que es lo que lo separa de los botones.
-  stagesBlock: { marginTop: spacing.xl },
-  // Todos en acento, no solo el de la etapa en curso: en `mutedLight` se
-  // fundían con el meta de la propia fila, que va en ese gris y una línea más
-  // abajo. Quien marca dónde estás es el check, no el número.
-  //
-  // La columna de icono de `MenuRow` mide 20 y CENTRA su contenido, con un
-  // `gap` de 15 pensado para un icono de 18 que la llena. Una cifra ocupa ocho
-  // píxeles, así que sobra aire a los dos lados y el nombre se iba lejos.
-  //
-  // Se corrige SOLO por la derecha, con un margen negativo. Alinear la cifra a
-  // la derecha de su caja cerraba ese hueco pero abría otro peor: dejaba la
-  // sangría izquierda de la fila vacía, y esa sangría es la que alinea estas
-  // filas con las de Drive, Entrenador y el menú. La cifra se queda donde
-  // estaría un icono y lo único que se recorta es la distancia al nombre.
-  //
-  // El `gap` de la fila no se toca: es de `MenuRow` y lo comparte media app.
+
   // Las mismas hojas que tenía el visualizador.
   sheetSection: { marginBottom: spacing.sm },
   sheetGroup: { gap: spacing.xs, paddingBottom: spacing.sm },
@@ -470,10 +344,4 @@ const makeStyles = (th) => StyleSheet.create({
   },
   sheetIntroName: { color: th.colors.text },
 
-  stageNum: {
-    ...textStyles.bodyStrong,
-    color:       th.colors.accent,
-    marginRight: -spacing.md,
-  },
-  rowControlSpacer: { width: 16 },
 });

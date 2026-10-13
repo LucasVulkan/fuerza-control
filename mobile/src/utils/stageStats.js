@@ -32,6 +32,21 @@ export function stageWeekRanges(stages) {
   });
 }
 
+/** Etapa de descarga: se pinta en azul (P14 §3.3). */
+export const isDeload = (stage) => stage?.rx?.progressionHold === 'deload';
+
+/**
+ * El tramo de una etapa en palabras: «sem 5-8», «sem 12», «sem 13+», o su
+ * duración («4 sem») si va detrás de una sin límite. `range` es su entrada de
+ * `stageWeekRanges`. Lo comparten el editor y el tab Programa.
+ */
+export function stageRangeLabel(stage, range, t) {
+  if (!range) return stage.durationWeeks == null ? t('editor.weeksOpen') : t('editor.stageRangeWeeks', { n: stage.durationWeeks });
+  if (range.to == null) return t('editor.stageRangeOpen', { from: range.from });
+  if (range.to === range.from) return t('editor.stageRangeOne', { from: range.from });
+  return t('editor.stageRange', { from: range.from, to: range.to });
+}
+
 /**
  * El volumen de una etapa: lo mismo que la tarjeta de sesión del editor dice de
  * una sesión, sumado a las de la etapa.

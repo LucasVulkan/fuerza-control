@@ -38,6 +38,8 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { Section } from '../components/ui/MenuList';
 import EmptyState from '../components/ui/EmptyState';
+import { Rise } from '../components/ui/Rise';
+import { useEnterClock, EnterClock } from '../hooks/useEnterClock';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
@@ -489,84 +491,98 @@ export default function ProgramScreen() {
   }
 
   const menuProgram = menuTarget ? programs[menuTarget] : null;
+  const enterClock  = useEnterClock();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
 
-      {/* ── Cabecera: "PLANTILLAS · N" + "+ Plantilla" (misma de Clientes) ── */}
-      <View style={styles.listHeader}>
-        <View style={styles.listTitleRow}>
-          <Text style={styles.listTitle} numberOfLines={1}>
-            {t('templates.title').toUpperCase()} <Text style={styles.listTitleDot}>·</Text>{' '}
-            <Text style={styles.listTitleCount}>
-              {isSessions ? sessionList.length : templateList.length}
-              {/* Sin Pro, el tope del plan gratis al lado (M01 §4.4). */}
-              {!isPro && `/${isSessions ? FREE.sessionTemplates : FREE.programTemplates}`}
-            </Text>
-          </Text>
-          {/* Al tope abre el paywall; sin PRO dentro: no cabe en la cabecera. */}
-          <TouchableOpacity
-            style={styles.hdrNewBtn}
-            onPress={gate(newLock, () => (isSessions ? handleCreateSession() : setShowCreate(true)))}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.hdrNewBtnText}>{t('templates.newBtn')}</Text>
-          </TouchableOpacity>
+      {/* Entrada por partes al llegar a la pestaña, como Programa (U14 §4.3). */}
+      <EnterClock.Provider value={enterClock}>
+        {/* ── Cabecera: "PLANTILLAS · N" + "+ Plantilla" (misma de Clientes) ── */}
+        <View style={styles.listHeader}>
+          <Rise index={0}>
+            <View style={styles.listTitleRow}>
+              <Text style={styles.listTitle} numberOfLines={1}>
+                {t('templates.title').toUpperCase()} <Text style={styles.listTitleDot}>·</Text>{' '}
+                <Text style={styles.listTitleCount}>
+                  {isSessions ? sessionList.length : templateList.length}
+                  {/* Sin Pro, el tope del plan gratis al lado (M01 §4.4). */}
+                  {!isPro && `/${isSessions ? FREE.sessionTemplates : FREE.programTemplates}`}
+                </Text>
+              </Text>
+              {/* Al tope abre el paywall; sin PRO dentro: no cabe en la cabecera. */}
+              <TouchableOpacity
+                style={styles.hdrNewBtn}
+                onPress={gate(newLock, () => (isSessions ? handleCreateSession() : setShowCreate(true)))}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.hdrNewBtnText}>{t('templates.newBtn')}</Text>
+              </TouchableOpacity>
+            </View>
+          </Rise>
+          <Rise index={1}>
+            <View style={styles.segWrap}>
+              <SegmentedControl
+                options={[
+                  { id: 'programs', label: t('templates.segPrograms') },
+                  { id: 'sessions', label: t('templates.segSessions') },
+                ]}
+                value={seg}
+                onChange={setSeg}
+              />
+            </View>
+          </Rise>
         </View>
-        <View style={styles.segWrap}>
-          <SegmentedControl
-            options={[
-              { id: 'programs', label: t('templates.segPrograms') },
-              { id: 'sessions', label: t('templates.segSessions') },
-            ]}
-            value={seg}
-            onChange={setSeg}
-          />
-        </View>
-      </View>
 
-      {isSessions ? (
-        sessionList.length === 0 ? (
-          <EmptyState
-            style={styles.emptyState}
-            icon={ROW_ICON.preset}
-            text={t('templates.sessionsEmpty')}
-            action={{ label: t('templates.newModal.createBtn'), onPress: handleCreateSession }}
-          />
+        {isSessions ? (
+          sessionList.length === 0 ? (
+            <Rise index={2}>
+              <EmptyState
+                style={styles.emptyState}
+                icon={ROW_ICON.preset}
+                text={t('templates.sessionsEmpty')}
+                action={{ label: t('templates.newModal.createBtn'), onPress: handleCreateSession }}
+              />
+            </Rise>
+          ) : (
+            <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+              {sessionList.map((tpl, i) => (
+                <Rise key={tpl.id} index={2 + i}>
+                  <TemplateCard
+                    name={sesName(tpl)}
+                    stats={sessionCardStats(tpl)}
+                    onAssign={() => setSesAssign(tpl.id)}
+                    onMenu={() => setSesMenu(tpl.id)}
+                  />
+                </Rise>
+              ))}
+            </ScrollView>
+          )
+        ) : templateList.length === 0 ? (
+          <Rise index={2}>
+            <EmptyState
+              style={styles.emptyState}
+              icon={ROW_ICON.preset}
+              text={t('templates.empty')}
+              action={{ label: t('templates.newModal.createBtn'), onPress: () => setShowCreate(true) }}
+            />
+          </Rise>
         ) : (
           <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-            {sessionList.map((tpl) => (
-              <TemplateCard
-                key={tpl.id}
-                name={sesName(tpl)}
-                stats={sessionCardStats(tpl)}
-                onAssign={() => setSesAssign(tpl.id)}
-                onMenu={() => setSesMenu(tpl.id)}
-              />
+            {templateList.map((program, i) => (
+              <Rise key={program.id} index={2 + i}>
+                <TemplateCard
+                  name={program.name}
+                  stats={programCardStats(program)}
+                  onAssign={() => setAssignTarget(program.id)}
+                  onMenu={() => setMenuTarget(program.id)}
+                />
+              </Rise>
             ))}
           </ScrollView>
-        )
-      ) : templateList.length === 0 ? (
-        <EmptyState
-          style={styles.emptyState}
-          icon={ROW_ICON.preset}
-          text={t('templates.empty')}
-          action={{ label: t('templates.newModal.createBtn'), onPress: () => setShowCreate(true) }}
-        />
-      ) : (
-        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          {templateList.map((program) => (
-            <TemplateCard
-              key={program.id}
-              name={program.name}
-              stats={programCardStats(program)}
-              onAssign={() => setAssignTarget(program.id)}
-              onMenu={() => setMenuTarget(program.id)}
-            />
-          ))}
-        </ScrollView>
-      )}
+        )}
+      </EnterClock.Provider>
 
       <CreateSheet
         visible={showCreate}

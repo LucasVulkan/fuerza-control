@@ -75,6 +75,10 @@ semana, que no cambia. Sin programa activo no sale.
 
 **Pendiente de diseño; no se implementa nada hasta cerrarlo.**
 
+*(13-oct-2026)* La parte del tab Programa ya está diseñada en
+[U14](U14-pantalla-programa.md): Programa usa esta misma tarjeta, en el mismo sitio, y
+la despliega. Queda abierto aquí cómo se edita desde Inicio y dónde va la semana (L M X…).
+
 El problema, en palabras del usuario (5-oct-2026): ahora hay **dos tarjetas de
 programa**, la de Inicio y la del tab, y no está resuelto cómo mantener
 **sesiones y programa relativamente separados** pero que los dos tengan sentido

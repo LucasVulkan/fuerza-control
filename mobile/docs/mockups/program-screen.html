@@ -1,0 +1,575 @@
+<title>Pantalla Programa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;700;800;900&display=swap">
+<style>
+/* Layout: tres teléfonos a 375 (tema FormaFit) que arrancan en Programa; cada uno vuelve a Inicio y se despliega otra vez. */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --accent50:rgba(184,255,0,.5); --blue:#4c85ff;
+  --page:#080808; --ink-dim:#8a8a8a; --rule:#222;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+  --out:cubic-bezier(.33,1,.68,1);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+body{background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+button{font-family:var(--inter); border:0; cursor:pointer; color:inherit; background:none}
+.wrap{max-width:1240px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin-bottom:10px; text-wrap:balance}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:78ch}
+.lead b,.note b{color:var(--text); font-weight:800}
+.ctrl{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:22px 0 28px}
+.ctrl button{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; background:var(--accent); color:var(--onAccent); border-radius:999px; padding:10px 16px}
+.ctrl span{font:500 13px var(--inter); color:var(--ink-dim)}
+button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.rail{display:flex; flex-wrap:wrap; gap:30px; align-items:flex-start}
+.col{flex:0 1 375px; width:375px; max-width:100%; min-width:0}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h3{font:900 19px/1.2 var(--inter); letter-spacing:-.2px; margin:6px 0}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin-bottom:14px; min-height:100px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin-top:10px; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:#fb923c}
+.pro b,.con b{color:var(--text); font-weight:700}
+
+.notes{margin-top:60px; border-top:1px solid var(--rule); padding-top:26px; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:28px}
+.note h4{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); margin-bottom:10px}
+.note p,.note li{font:500 14px/1.65 var(--inter); color:var(--ink-dim)}
+.note li{margin:0 0 6px 18px}
+.note code{font:500 12.5px ui-monospace,monospace; color:var(--text)}
+
+/* ══════ TELÉFONO ══════ */
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:740px; position:relative; display:flex; flex-direction:column}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight); flex:none}
+.ah{display:flex; align-items:center; padding:10px 20px 6px; flex:none}
+.logo{min-width:88px; display:flex; align-items:center; gap:2px}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.clock{flex:1; text-align:center; font:800 12px var(--inter); letter-spacing:1.2px; color:var(--mutedLight)}
+.menu{min-width:36px; display:flex; justify-content:flex-end}
+/* Mismo relleno arriba en las dos pantallas (spacing.sm = 6): la tarjeta no se mueve. */
+.scr{flex:1; overflow-y:auto; padding:6px 15px 28px; scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+
+.caps{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--mutedLight)}
+.caps.acc{color:var(--accent)}
+.tight{line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+/* ── La tarjeta del programa: HomeProgramCard tal cual, más lo que despliega ── */
+.pc{background:var(--surface); border-radius:10px; overflow:hidden}
+.pc-top{display:flex; position:relative; overflow:hidden}
+.phone:not(.is-prog) .pc-top{cursor:pointer}
+.phone:not(.is-prog) .pc-top:active{background:var(--surface2)}
+.pc-l{flex:1; min-width:0; padding:15px; display:flex; flex-direction:column}
+.pc-name{font:800 18px/1.15 var(--inter); letter-spacing:-.2px; color:var(--accent); margin-top:4px}
+.pc-foot{margin-top:auto; padding-top:6px}
+.pbar{display:flex; gap:2px}
+.pbar i{height:6px; border-radius:1px; background:var(--muted); transform:skewX(-12deg); overflow:hidden; position:relative}
+.pbar i.done{background:var(--accent50)}
+.pbar i b{position:absolute; inset:0 auto 0 0; background:var(--accent)}
+.pc-r{display:flex; flex-direction:column; align-items:flex-end; padding:15px 15px 15px 28px; position:relative}
+.cut{position:absolute; left:4px; top:-20px; bottom:-20px; width:4px; background:var(--bg); transform:rotate(11deg)}
+.wkrow{display:flex; align-items:baseline; margin-top:4px}
+.wkrow b{font:800 18px/1.15 var(--inter); color:var(--accent); display:inline-block; transform:skewX(-12deg); font-variant-numeric:tabular-nums}
+.wkrow span{font:800 12px var(--inter); letter-spacing:1.6px; color:var(--mutedLight)}
+
+/* El despliegue: alto de 0 a su contenido. */
+.unfold{display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .36s var(--out), opacity .24s}
+.unfold > div{overflow:hidden; min-height:0}
+.is-prog .unfold{grid-template-rows:1fr; opacity:1}
+
+.x{padding:0 15px 15px}
+/* El corte del color del fondo, como la diagonal: separa sin meter otra línea gris. */
+.xr{height:2px; background:var(--bg); margin:0 -15px 14px}
+.xa{display:flex; align-items:center; gap:10px}
+.det{font:500 14px var(--inter); color:var(--text); margin-top:4px}
+.pips{display:flex; gap:4px; margin-left:auto}
+.pips i{width:16px; height:8px; border-radius:2px; background:var(--surface3); transform:skewX(-12deg)}
+.pips i.on{background:var(--accent)}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.stats b{display:block; font:italic 800 30px/32px var(--barlow); padding-right:2px; font-variant-numeric:tabular-nums}
+.stats small{font:500 12px var(--inter); color:var(--mutedLight); font-style:normal}
+.stats span{display:block; font:800 11px var(--inter); letter-spacing:1.4px; color:var(--mutedLight); margin-top:2px}
+.leg{display:flex; gap:2px; margin-top:6px}
+.leg span{font:800 11px var(--inter); color:var(--muted); padding-left:3px}
+.leg span.on{color:var(--accent)}
+
+/* ── Inicio y Programa debajo de la tarjeta: uno u otro ── */
+.is-prog .home, .phone:not(.is-prog) .prog{display:none}
+.stg{animation:rise .42s var(--out) backwards; animation-delay:calc(120ms + var(--i) * 45ms)}
+.still .stg{animation:none}
+@keyframes rise{from{opacity:0; transform:translateY(12px)}}
+
+/* Inicio — copiado de la Home de hoy */
+.wk{display:grid; gap:10px; padding:9px 20px}
+.wk .r{display:flex; justify-content:space-between}
+.wk .l{font:800 12px var(--inter); color:var(--mutedLight); width:12px; text-align:center}
+.wk .l.on{color:var(--accent)}
+.wk .d{width:12px; height:12px; border-radius:6px; background:var(--muted)}
+.wk .d.on{background:var(--accent)}
+.sh{display:flex; align-items:baseline; padding:0 4px; margin:15px 0 8px}
+.sh b{font:800 12px var(--inter); letter-spacing:1.6px}
+.sh span{margin-left:auto; font:800 12px var(--inter); letter-spacing:1.6px; color:var(--mutedLight)}
+.today{background:var(--accent); border-radius:10px; margin:4px 0}
+.today .hd{padding:14px 15px 11px}
+.today .fl,.np .fl{font:800 12px var(--inter); letter-spacing:1.6px; color:rgba(0,0,0,.55)}
+.today .row,.np .row{display:flex; align-items:flex-end; gap:4px; margin-top:6px}
+.today .g,.np .g{font:italic 800 34px/39px var(--barlow); min-width:22px; padding-right:2px; color:var(--onAccent)}
+.today .nm,.np .nm{font:italic 800 28px/34px var(--barlow); color:var(--onAccent)}
+.today .rl,.np .rl{height:2px; border-radius:2px; background:rgba(0,0,0,.85); margin-top:11px}
+.today .mt,.np .mt{font:800 12px var(--inter); letter-spacing:1.6px; color:rgba(0,0,0,.55); margin-top:8px}
+.today .ft{padding:11px 6px 6px}
+.today .bt{display:flex; justify-content:space-between; align-items:center; background:var(--onAccent); border-radius:10px; padding:15px}
+.today .bt b{font:900 14px var(--inter); color:var(--accent)}
+.grp{display:grid; gap:4px}
+.ses{background:var(--surface); border-radius:10px; height:60px; display:flex; align-items:center; gap:8px; padding:0 14px}
+.ses .g{font:900 22px/22px var(--inter); letter-spacing:-.5px; min-width:24px; color:var(--accent)}
+.ses.done .g{color:var(--muted)}
+.ses .nm{flex:1; min-width:0; font:900 16px var(--inter); letter-spacing:-.2px}
+.ses.done .nm{color:var(--mutedLight)}
+.ses .mt{font:500 12px var(--inter); color:var(--muted)}
+
+/* ── Piezas comunes de Programa ── */
+.acts{display:flex; gap:4px; margin-top:4px}
+.btn2{flex:1; background:var(--surface2); border-radius:10px; padding:15px 6px; font:900 13px var(--inter); letter-spacing:.4px; text-transform:uppercase; color:var(--text)}
+.btn2:active{background:var(--surface3)}
+.btn2.ic{flex:0 0 52px; font:900 16px/1 var(--inter); color:var(--mutedLight); letter-spacing:1px}
+.btn2.w{width:100%; margin-top:14px; background:var(--surface3)}
+.sec{display:flex; align-items:baseline; gap:8px; margin:24px 4px 10px}
+.sec b{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase}
+.sec span{margin-left:auto; font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--mutedLight)}
+.sec a{margin-left:auto; font:800 14px var(--inter); color:var(--accent); text-decoration:none}
+.ring{width:22px; height:22px; border-radius:11px; flex:none; box-shadow:inset 0 0 0 2px var(--muted); transition:box-shadow .3s}
+.ck{width:22px; height:22px; border-radius:11px; flex:none; background:var(--surface3); color:var(--mutedLight); font:900 12px/22px var(--inter); text-align:center}
+.pill{font:800 11px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); background:rgba(170,226,22,.12); border-radius:6px; padding:4px 7px; flex:none}
+
+/* A · filas con la voz del onboarding; elegir rellena de lima desde el círculo */
+.sts{display:grid; gap:6px}
+.st{position:relative; overflow:hidden; isolation:isolate; display:flex; align-items:center; gap:14px; width:100%; min-height:66px; padding:12px 16px; border-radius:18px; background:var(--surface); text-align:left; transition:color .45s var(--out), transform .12s}
+.st:active{transform:scale(.98)}
+.st::before{content:''; position:absolute; z-index:-1; width:900px; height:900px; border-radius:50%; background:var(--accent); left:calc(100% - 27px - 450px); top:calc(50% - 450px); transform:scale(0); transition:transform .45s var(--out)}
+.st.on::before{transform:scale(1)}
+.st.on{color:var(--onAccent)}
+.st.on .ring{box-shadow:inset 0 0 0 2px transparent}
+.st .g{font:italic 800 30px/34px var(--barlow); min-width:20px; padding-right:2px}
+.st .b{flex:1; min-width:0}
+.st .b b{display:block; font:700 16px/1.25 var(--inter)}
+.st .b small{display:block; font:500 13px/1.4 var(--inter); color:var(--mutedLight); margin-top:2px; transition:color .45s var(--out)}
+.st.on .b small{color:rgba(0,0,0,.68)}
+.st.done .g{color:var(--muted)}
+.st.done .b b{color:var(--mutedLight)}
+.st.deload .g{color:var(--blue)}
+.st.now{box-shadow:inset 0 0 0 1.5px var(--accent); cursor:default}
+.st.now .b b,.st.now .g{color:var(--accent)}
+
+/* A2 · «Esta etapa» en dos columnas, como el programa encima */
+.xs{display:flex; align-items:flex-start; gap:12px}
+.xs-l{flex:1; min-width:0}
+.xs-n{font:800 16px/1.2 var(--inter); letter-spacing:-.2px; margin-top:4px}
+.xs-r{display:flex; flex-direction:column; align-items:flex-end; gap:9px}
+.xs-r .pips{margin-left:0}
+/* A2 · la etapa en curso, en ficha: sin sesiones y sin lima de relleno */
+.stc{background:var(--surface); border-radius:18px; padding:14px 16px 16px}
+.stc .dc-n{margin-top:4px}
+.stc-p{display:flex; align-items:center; gap:12px; margin-top:12px}
+.wb2{display:flex; gap:4px; width:132px; flex:none}
+.wb2 i{flex:1; height:8px; border-radius:2px; background:var(--surface3); transform:skewX(-12deg)}
+.wb2 i.on{background:var(--accent)}
+.stc-p span{font:500 14px var(--inter)}
+.stc-p span b{font-weight:800}
+.stc.deload .caps.acc,.stc.deload .dc-n .g{color:var(--blue)}
+.stc.deload .wb2 i.on{background:var(--blue)}
+h2.round{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--ink-dim); margin:64px 0 22px; padding-top:22px; border-top:1px solid var(--rule)}
+
+/* B · las fichas del editor (StageCards), aquí para mirar */
+.tiles{display:flex; gap:8px; overflow-x:auto; margin:0 -15px; padding:0 15px; scrollbar-width:none}
+.tiles::-webkit-scrollbar{display:none}
+.tile{flex:none; width:72px; height:80px; border-radius:14px; background:var(--surface); position:relative; overflow:hidden; isolation:isolate; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:color .3s, transform .12s}
+.tile:active{transform:scale(.96)}
+.tile::before{content:''; position:absolute; z-index:-1; width:216px; height:216px; border-radius:50%; background:var(--accent); left:-36px; top:-108px; transform:scale(0); transition:transform .2s var(--out)}
+.tile.on::before{transform:scale(1); transition-duration:.45s}
+.tile.deload::before{background:var(--blue)}
+.tile .tw{font:800 12px var(--inter); letter-spacing:1.6px; color:var(--mutedLight)}
+.tile .tn{font:italic 800 28px/34px var(--barlow); margin:-4px 0; padding-right:2px}
+.tile .tr{font:500 12px var(--inter); color:var(--mutedLight)}
+.tile.done .tn{color:var(--muted)}
+.tile.deload .tn{color:var(--blue)}
+.tile.on{color:var(--onAccent)}
+.tile.on .tw,.tile.on .tr{color:rgba(0,0,0,.65)}
+.tile.on .tn{color:var(--onAccent)}
+.tile .dot{position:absolute; right:7px; top:35px; width:7px; height:7px; border-radius:4px; background:var(--accent)}
+.tile.on .dot{background:var(--onAccent)}
+.dc{background:var(--surface); border-radius:18px; padding:16px; margin-top:10px; animation:rise .3s var(--out)}
+.dc-n{display:flex; align-items:flex-end; gap:6px; margin-top:6px; font:italic 800 28px/34px var(--barlow); text-transform:uppercase}
+.dc-n .g{font-size:34px; line-height:39px; color:var(--accent); padding-right:2px}
+.dc-m{font:500 14px var(--inter); color:var(--mutedLight); margin-top:2px}
+.dc-s{display:grid; gap:2px; margin-top:14px; border-radius:10px; overflow:hidden}
+.ms{display:flex; align-items:center; gap:10px; background:var(--surface2); padding:11px 12px; font:700 14px var(--inter)}
+.ms .g{font:900 16px var(--inter); color:var(--accent); width:14px}
+.dc-p{display:flex; align-items:center; gap:10px; margin-top:14px}
+.dc-p .pips{margin-left:0}
+.dc-p span{font:500 14px var(--inter); color:var(--text)}
+
+/* C · la etapa en curso es la pieza lima, y el programa un cronograma */
+.np{background:var(--accent); border-radius:10px; padding:14px 15px 13px; color:var(--onAccent); margin-top:4px}
+.np.blue{background:var(--blue)}
+.wb{display:flex; gap:4px; margin-top:12px}
+.wb i{flex:1; height:8px; border-radius:2px; background:rgba(0,0,0,.18); transform:skewX(-12deg)}
+.wb i.on{background:#000}
+.tl{display:grid}
+.tr{display:flex; align-items:stretch; gap:12px; min-height:62px; width:100%; padding:0 10px 0 6px; border-radius:14px; text-align:left; transition:background .2s}
+.tr:not(.now):active,.tr.on{background:var(--surface)}
+.tr .rail{width:6px; display:flex; padding:3px 0; flex:none}
+.tr .rail i{flex:1; border-radius:3px; background:var(--muted); position:relative; overflow:hidden}
+.tr .rail i.done{background:var(--accent50)}
+.tr .rail i b{position:absolute; inset:0 0 auto 0; background:var(--accent)}
+.tr .tw{width:62px; flex:none; padding-top:13px; font:800 11px var(--inter); letter-spacing:1.2px; color:var(--mutedLight)}
+.tr .tb{flex:1; min-width:0; padding:11px 0}
+.tr .tb b{display:block; font:700 16px/1.25 var(--inter)}
+.tr .tb small{display:block; font:500 13px/1.4 var(--inter); color:var(--mutedLight); margin-top:2px}
+.tr .mk{align-self:center}
+.tr.done .tb b{color:var(--mutedLight)}
+.tr.now{cursor:default}
+.tr.now .tb b,.tr.now .tw{color:var(--accent)}
+.tr.deload .tb b{color:var(--blue)}
+
+/* ── Tab bar ── */
+.tabs{display:flex; height:60px; flex:none; border-top:1px solid #1c1c1c; background:var(--bg)}
+.tab{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font:700 11px var(--inter); color:var(--mutedLight)}
+.is-prog .tab.t-prog, .phone:not(.is-prog) .tab.t-home{color:var(--accent)}
+
+/* ── Hoja de confirmación, con la voz del onboarding ── */
+.sw{position:absolute; inset:0; z-index:10; display:flex; flex-direction:column; justify-content:flex-end}
+.scrim{position:absolute; inset:0; background:rgba(0,0,0,.62); animation:fade .25s}
+.sheet{position:relative; background:var(--surface); border-radius:18px 18px 0 0; padding:10px 16px 20px; animation:up .32s var(--out)}
+.grab{width:36px; height:4px; border-radius:2px; background:var(--muted); margin:0 auto 18px}
+.sheet .h{font:italic 800 30px/32px var(--barlow); text-transform:uppercase}
+.sheet .h em{font-style:inherit; color:var(--accent)}
+.sheet p{font:500 14px/1.5 var(--inter); color:var(--mutedLight); margin:8px 0 20px}
+.cta{width:100%; background:var(--accent); color:var(--onAccent); border-radius:10px; padding:17px; font:900 14px var(--inter); letter-spacing:.6px; text-transform:uppercase}
+.ghost{width:100%; color:var(--mutedLight); font:700 14px var(--inter); padding:14px}
+@keyframes fade{from{opacity:0}}
+@keyframes up{from{transform:translateY(100%)}}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="wrap">
+  <h1>Pantalla Programa</h1>
+  <p class="lead">Hoy Inicio pone su tarjeta a 6 px de la cabecera y Programa a 15, y son <b>dos componentes distintos</b>
+    (<code>HomeProgramCard</code> y <code>ProgramCard</code>): otro nombre, otra barra, la semana montada de otra forma. Por eso salta.
+    En las tres propuestas Programa usa <b>la misma tarjeta en el mismo sitio</b> y solo la alarga hacia abajo; lo de debajo entra por partes,
+    como en el onboarding. Lo que cambia entre ellas es cómo se cuenta la etapa y el resto del programa.</p>
+
+  <div class="ctrl">
+    <button type="button" id="replay">Ver el despliegue</button>
+    <span>En cada teléfono, toca la tarjeta en Inicio o cambia de pestaña. En Programa, toca otra etapa.</span>
+  </div>
+
+  <div class="rail">
+    <div class="col">
+      <div class="tag">Propuesta A2 · nueva</div>
+      <h3>A, con la etapa en ficha</h3>
+      <p class="why">La A con tus cambios. En la tarjeta, «Esta etapa» lleva el nombre debajo de la ceja y a la derecha la semana con sus tramos,
+        igual que el programa encima. En la lista, la etapa en curso es una ficha (como en B y C, sin sesiones y sin lima): «En curso · semana 3 de 4»,
+        el nombre, la barra corta por semanas y las sesiones hechas.</p>
+      <div class="phone" data-v="A2"></div>
+      <p class="pro"><b>La tarjeta se lee en dos pisos iguales</b>: programa y su semana, etapa y su semana.</p>
+      <p class="pro">En la lista, la etapa en curso destaca por tamaño y no por color: lo lima sigue siendo solo elegir.</p>
+      <p class="con">La semana de la etapa sale dos veces (en la tarjeta y en la ficha). Si sobra, la ficha puede quedarse solo con las sesiones.</p>
+    </div>
+
+    <div class="col">
+      <div class="tag">Propuesta A · antes</div>
+      <h3>Todo en la tarjeta</h3>
+      <p class="why">La tarjeta se alarga con «esta etapa» (semanas y sesiones) y las tres cifras. Debajo, los botones y las etapas
+        como filas grandes del onboarding: número en Barlow, la en curso con borde lima y, al elegir otra, relleno lima y confirmación.</p>
+      <div class="phone" data-v="A"></div>
+      <p class="pro"><b>El cambio más pequeño.</b> El mismo orden de hoy, con jerarquía: lo que es tuyo dentro de la tarjeta, lo que se elige fuera.</p>
+      <p class="pro">Todo lo de la etapa en curso cabe en un vistazo, sin bajar.</p>
+      <p class="con">Las etapas siguen leyéndose como una lista de ajustes, no como un recorrido.</p>
+    </div>
+  </div>
+
+  <h2 class="round">Las otras dos de la primera ronda</h2>
+  <div class="rail">
+
+    <div class="col">
+      <div class="tag">Propuesta B</div>
+      <h3>Como el editor</h3>
+      <p class="why">Las fichas de etapa del editor (P14), aquí para mirar. Tocar una abre su ficha: cuándo cae, cuántas sesiones
+        y cuáles son. Desde ahí se cambia de etapa. Quien usa el editor ya sabe usar esto.</p>
+      <div class="phone" data-v="B"></div>
+      <p class="pro"><b>Una pieza compartida</b> con el editor: las dos pantallas del programa hablan igual.</p>
+      <p class="pro">Ves las sesiones de la etapa que viene sin entrar a editar.</p>
+      <p class="con">Para ver otra etapa hay que tocarla: se lee menos de un vistazo que en A o C.</p>
+    </div>
+
+    <div class="col">
+      <div class="tag">Propuesta C</div>
+      <h3>La etapa en lima</h3>
+      <p class="why">La barra de la tarjeta despliega su leyenda y las cifras. Debajo, la etapa en curso es la pieza lima de la pantalla,
+        igual que la sesión que toca en Inicio. Luego el programa como cronograma, con la misma barra puesta en vertical, y los botones al final.</p>
+      <div class="phone" data-v="C"></div>
+      <p class="pro"><b>La jerarquía más clara</b>: programa, dónde estoy, qué viene, qué puedo hacer.</p>
+      <p class="pro">Inicio y Programa riman: en las dos, lo lima es «lo que toca».</p>
+      <p class="con">Editar baja al final; con muchas etapas queda a un scroll.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h4>Lo que comparten</h4>
+      <ul>
+        <li><b>La tarjeta de Inicio, idéntica y a la misma altura</b> (relleno de arriba a 6, como Inicio). En Programa no se pulsa.</li>
+        <li>Al entrar, la tarjeta se despliega en 360 ms y lo de debajo entra por partes, a 45 ms entre una y otra.</li>
+        <li>Las cifras en Barlow cursiva, como los números del onboarding y las fichas del editor.</li>
+        <li>Cambiar de etapa se confirma en una hoja con titular, en vez del diálogo del sistema. Es la única acción lima.</li>
+        <li>Lo nuevo va a radio 18 (el del onboarding); la tarjeta y los botones se quedan en 10, como Inicio.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h4>Segunda ronda</h4>
+      <p>Elegida la <b>A</b>, con la etapa en curso en ficha como B y C pero sin lima y sin la lista de sesiones: eso es la <b>A2</b>.
+        Los botones siguen pegados a la tarjeta y «Esta etapa» repite la forma de la fila del programa.</p>
+    </div>
+    <div class="note">
+      <h4>En el código</h4>
+      <ul>
+        <li><code>MyProgramScreen</code>: <code>paddingTop</code> a <code>spacing.sm</code> y <code>HomeProgramCard</code> con un hijo que se despliega.</li>
+        <li><code>ProgramCard</code> deja de usarse aquí; sigue en la ficha de cliente.</li>
+        <li>El despliegue, con Reanimated (alto y opacidad) al ganar el foco la pestaña.</li>
+        <li>Pulsar «SEMANA» sigue abriendo la ficha de la semana; las etapas bloqueadas llevan el candado de siempre.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const ST = [
+  { name: 'Base',            w: 4, per: 3, ses: 'ABC' },
+  { name: 'Acumulación',     w: 4, per: 3, ses: 'ABC' },
+  { name: 'Intensificación', w: 3, per: 4, ses: 'ABCD' },
+  { name: 'Descarga',        w: 1, per: 2, ses: 'AB', deload: true },
+];
+const SES = { A: 'Empuje pesado', B: 'Tirón pesado', C: 'Pierna completa', D: 'Hombro y brazo' };
+const TOTAL = ST.reduce((a, s) => a + s.w, 0);
+
+function range(i) {
+  let a = 1;
+  for (let k = 0; k < i; k++) a += ST[k].w;
+  const b = a + ST[i].w - 1;
+  return a === b ? `sem ${a}` : `sem ${a}-${b}`;
+}
+function info(s) {
+  const st = ST[s.cur], started = s.wk > 0;
+  const pw = started ? ST.slice(0, s.cur).reduce((a, x) => a + x.w, 0) + s.wk : null;
+  const exp = st.per * s.wk;
+  return { st, started, pw, exp, done: Math.max(0, exp - 2), fill: started ? s.wk / st.w : 0 };
+}
+const weeksWord = (n) => `${n} ${n > 1 ? 'semanas' : 'semana'}`;
+const detail = (s, I) => I.started ? `Semana ${s.wk} de ${I.st.w} · ${I.done} de ${I.exp} sesiones` : 'Sin empezar';
+const pips = (s, I) => `<span class="pips">${Array.from({ length: I.st.w }, (_, i) => `<i class="${I.started && i < s.wk ? 'on' : ''}"></i>`).join('')}</span>`;
+const stats = () => `<div class="stats">
+  <div><b>86<small>%</small></b><span>ADHERENCIA</span></div>
+  <div><b>3<small> ses/sem</small></b><span>RITMO</span></div>
+  <div><b>+12<small>%</small></b><span>CARGA</span></div></div>`;
+const acts = (extra = '') => `<div class="acts" ${extra}><button class="btn2">Editar</button><button class="btn2">Ver programa</button><button class="btn2 ic" aria-label="Más opciones">•••</button></div>`;
+const mark = (s, i) => i < s.cur ? '<span class="ck">✓</span>' : i === s.cur ? '<span class="pill">En curso</span>' : '<span class="ring"></span>';
+
+function card(s, ext, legend = '') {
+  const I = info(s);
+  return `<div class="pc">
+  <div class="pc-top" data-act="open">
+    <div class="pc-l">
+      <div class="caps tight">Tu programa · ${I.st.name}</div>
+      <div class="pc-name">Fuerza Base</div>
+      <div class="pc-foot">
+        <div class="pbar">${ST.map((x, i) => `<i style="flex:${x.w}" class="${i < s.cur ? 'done' : ''}">${i === s.cur ? `<b style="width:${I.fill * 100}%"></b>` : ''}</i>`).join('')}</div>
+        ${legend ? `<div class="unfold"><div>${legend}</div></div>` : ''}
+      </div>
+    </div>
+    <div class="pc-r"><i class="cut"></i><div class="caps tight">Semana</div>
+      <div class="wkrow"><b>${I.pw == null ? '–' : String(I.pw).padStart(2, '0')}</b><span>/${TOTAL}</span></div></div>
+  </div>
+  <div class="unfold"><div>${ext}</div></div></div>`;
+}
+
+const HOME = [
+  `<div class="wk"><div class="r">${['L','M','X','J','V','S','D'].map((l, i) => `<span class="l ${i === 1 ? 'on' : ''}">${l}</span>`).join('')}</div>
+   <div class="r">${[1,0,0,0,0,0,0].map((o) => `<span class="d ${o ? 'on' : ''}"></span>`).join('')}</div></div>`,
+  `<div class="sh"><b>SESIONES</b><span>1 DE 3 ESTA SEMANA</span></div>`,
+  `<div class="today"><div class="hd"><div class="fl">SIGUIENTE</div>
+    <div class="row"><span class="g">B</span><span class="nm">Tirón pesado</span></div>
+    <div class="rl"></div><div class="mt">6 EJERCICIOS · ~52 MIN · HACE 5 DÍAS</div></div>
+    <div class="ft"><div class="bt"><b>EMPEZAR</b><svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M4 2l4.5 4L4 10" stroke="#aae216" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div></div>`,
+  `<div class="grp">
+    <div class="ses done"><span class="g">A</span><span class="nm">Empuje pesado</span><span class="mt">lun</span></div>
+    <div class="ses"><span class="g">C</span><span class="nm">Pierna completa</span><span class="mt">~55 min</span></div></div>`,
+];
+
+const VAR = {
+  // A — la tarjeta se lleva la etapa y las cifras; debajo, botones y filas.
+  A: {
+    ext: (s) => { const I = info(s); return `<div class="x"><div class="xr"></div>
+      <div class="xa"><span class="caps">Esta etapa</span>${pips(s, I)}</div>
+      <div class="det">${detail(s, I)}</div>
+      <div class="xr" style="margin-top:14px"></div>${stats()}</div>`; },
+    body: (s) => [
+      acts(),
+      `<div class="sec"><b>Etapas</b><span>${ST.length} · ${TOTAL} semanas</span></div>`,
+      `<div class="sts">${ST.map((x, i) => `<button class="st ${i < s.cur ? 'done' : ''} ${i === s.cur ? 'now' : ''} ${x.deload ? 'deload' : ''}" ${i === s.cur ? '' : `data-act="pick" data-i="${i}"`}>
+        <span class="g">${i + 1}</span><span class="b"><b>${x.name}</b><small>${range(i)} · ${x.per} sesiones por semana</small></span>${mark(s, i)}</button>`).join('')}</div>`,
+    ],
+  },
+  // A2 — la A con «Esta etapa» en dos columnas y la etapa en curso en ficha.
+  A2: {
+    ext: (s) => { const I = info(s); return `<div class="x"><div class="xr"></div>
+      <div class="xs"><div class="xs-l"><div class="caps tight">Esta etapa</div><div class="xs-n">${I.st.name}</div></div>
+        <div class="xs-r"><div class="caps tight">${I.started ? `Semana ${s.wk}/${I.st.w}` : 'Sin empezar'}</div>${pips(s, I)}</div></div>
+      <div class="xr" style="margin-top:14px"></div>${stats()}</div>`; },
+    body: (s) => { const I = info(s); return [
+      acts(),
+      `<div class="sec"><b>Etapas</b><span>${ST.length} · ${TOTAL} semanas</span></div>`,
+      `<div class="sts">${ST.map((x, i) => i === s.cur
+        ? `<div class="stc ${x.deload ? 'deload' : ''}">
+            <div class="caps acc">${I.started ? `En curso · semana ${s.wk} de ${x.w}` : 'En curso · sin empezar'}</div>
+            <div class="dc-n"><span class="g">${i + 1}</span>${x.name}</div>
+            <div class="dc-m">${range(i)} · ${x.per} sesiones por semana</div>
+            <div class="stc-p"><span class="wb2">${Array.from({ length: x.w }, (_, k) => `<i class="${I.started && k < s.wk ? 'on' : ''}"></i>`).join('')}</span>
+              <span>${I.started ? `<b>${I.done}</b> de ${I.exp} sesiones` : 'Arranca con la próxima sesión'}</span></div></div>`
+        : `<button class="st ${i < s.cur ? 'done' : ''} ${x.deload ? 'deload' : ''}" data-act="pick" data-i="${i}">
+            <span class="g">${i + 1}</span><span class="b"><b>${x.name}</b><small>${range(i)} · ${x.per} sesiones por semana</small></span>${mark(s, i)}</button>`).join('')}</div>`,
+    ]; },
+  },
+  // B — las fichas del editor y la ficha de la elegida.
+  B: {
+    ext: () => `<div class="x"><div class="xr"></div>${stats()}</div>`,
+    body: (s) => [
+      acts(),
+      `<div class="sec"><b>${ST.length} etapas · ${TOTAL} semanas</b><a href="#" onclick="return false">Ver plan ›</a></div>`,
+      `<div class="tiles">${ST.map((x, i) => `<button class="tile ${i === s.sel ? 'on' : ''} ${i < s.cur ? 'done' : ''} ${x.deload ? 'deload' : ''}" data-act="sel" data-i="${i}">
+        <span class="tw">ETAPA</span><span class="tn">${i + 1}</span><span class="tr">${range(i)}</span>${i === s.cur ? '<i class="dot"></i>' : ''}</button>`).join('')}</div>`,
+      `<div class="dcw">${detailB(s)}</div>`,
+    ],
+  },
+  // C — leyenda y cifras en la tarjeta; la etapa en lima; el cronograma; los botones.
+  C: {
+    legend: (s) => `<div class="leg">${ST.map((x, i) => `<span style="flex:${x.w}" class="${i === s.cur ? 'on' : ''}">${i + 1}</span>`).join('')}</div>`,
+    ext: () => `<div class="x"><div class="xr"></div>${stats()}</div>`,
+    body: (s) => { const I = info(s); return [
+      `<div class="np ${I.st.deload ? 'blue' : ''}"><div class="fl">EN CURSO · ETAPA ${s.cur + 1} DE ${ST.length}</div>
+        <div class="row"><span class="g">${s.cur + 1}</span><span class="nm">${I.st.name}</span></div><div class="rl"></div>
+        <div class="wb">${Array.from({ length: I.st.w }, (_, i) => `<i class="${I.started && i < s.wk ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="mt">${I.started ? `SEMANA ${s.wk} DE ${I.st.w} · ${I.done} DE ${I.exp} SESIONES` : 'SIN EMPEZAR · ARRANCA CON LA PRÓXIMA SESIÓN'}</div></div>`,
+      `<div class="sec"><b>El programa</b><span>${TOTAL} semanas</span></div>`,
+      `<div class="tl">${ST.map((x, i) => `<button class="tr ${i < s.cur ? 'done' : ''} ${i === s.cur ? 'now' : ''} ${x.deload ? 'deload' : ''}" ${i === s.cur ? '' : `data-act="pick" data-i="${i}"`}>
+        <span class="rail"><i class="${i < s.cur ? 'done' : ''}">${i === s.cur ? `<b style="height:${I.fill * 100}%"></b>` : ''}</i></span>
+        <span class="tw">${range(i).toUpperCase()}</span>
+        <span class="tb"><b>${x.name}</b><small>${weeksWord(x.w)} · ${x.per} sesiones por semana</small></span>
+        <span class="mk">${i === s.cur ? '<span class="pill">Ahora</span>' : i < s.cur ? '<span class="ck">✓</span>' : '<span class="ring"></span>'}</span></button>`).join('')}</div>`,
+      acts('style="margin-top:24px"'),
+    ]; },
+  },
+};
+
+function detailB(s) {
+  const i = s.sel, st = ST[i], I = info(s);
+  const ey = i === s.cur ? (I.started ? `En curso · semana ${s.wk} de ${st.w}` : 'En curso · sin empezar')
+    : i < s.cur ? 'Hecha' : i === s.cur + 1 ? 'La siguiente' : 'Más adelante';
+  return `<div class="dc">
+    <div class="caps ${i === s.cur ? 'acc' : ''}">${ey}</div>
+    <div class="dc-n"><span class="g" ${st.deload ? 'style="color:var(--blue)"' : ''}>${i + 1}</span>${st.name}</div>
+    <div class="dc-m">${range(i)} · ${weeksWord(st.w)} · ${st.per} sesiones por semana</div>
+    <div class="dc-s">${[...st.ses].map((l) => `<div class="ms"><span class="g">${l}</span>${SES[l]}</div>`).join('')}</div>
+    ${i === s.cur
+      ? `<div class="dc-p">${pips(s, I)}<span>${I.started ? `${I.done} de ${I.exp} sesiones` : 'Sin empezar'}</span></div>`
+      : `<button class="btn2 w" data-act="pick" data-i="${i}">${i < s.cur ? 'Volver a esta etapa' : 'Pasar a esta etapa'}</button>`}</div>`;
+}
+
+const ICON = {
+  home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>',
+  prog: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+  stats: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V12M12 20V5M19 20v-9"/></svg>',
+};
+
+function render(el, still) {
+  const s = el._s, V = VAR[s.v];
+  const top = el.querySelector('.scr')?.scrollTop ?? 0;
+  const stg = (arr) => arr.map((h, i) => `<div class="stg" style="--i:${i}">${h}</div>`).join('');
+  el.innerHTML = `
+    <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="ah"><span class="logo"><b>Forma</b><u>FIT</u></span><span class="clock">9:41 · MAR 13 OCT</span>
+      <span class="menu"><svg width="22" height="22" viewBox="0 0 26 26"><path d="M10 4.5H24.5V7.5H8Z M6 11.1H24.5V14.1H4Z M2.4 17.7H24.5V20.7H.4Z" fill="#aae216"/></svg></span></div>
+    <div class="scr">
+      ${card(s, V.ext(s), V.legend ? V.legend(s) : '')}
+      <div class="home">${stg(HOME)}</div>
+      <div class="prog">${stg(V.body(s))}</div>
+    </div>
+    <div class="tabs">
+      <button class="tab t-home" data-act="tab" data-t="home">${ICON.home}Sesión</button>
+      <button class="tab t-prog" data-act="tab" data-t="prog">${ICON.prog}Programa</button>
+      <button class="tab">${ICON.stats}Progresión</button>
+    </div>`;
+  el.classList.toggle('is-prog', s.prog);
+  el.classList.toggle('still', !!still);
+  el.querySelector('.scr').scrollTop = top;
+}
+
+function go(el, prog) {
+  el._s.prog = prog;
+  el.classList.remove('still');
+  el.classList.toggle('is-prog', prog);
+  el.querySelector('.scr').scrollTop = 0;
+}
+
+function sheet(el, i, from) {
+  const s = el._s, cur = ST[s.cur], to = ST[i];
+  const body = s.wk > 0
+    ? `Empezarás ${to.name} desde la semana 1: lo que llevas de ${cur.name} deja de contar.`
+    : 'Pasarás a entrenar esta etapa.';
+  const w = document.createElement('div');
+  w.className = 'sw';
+  w.innerHTML = `<div class="scrim" data-act="cancel"></div><div class="sheet" role="dialog" aria-label="Cambiar de etapa">
+    <div class="grab"></div><div class="h">Cambiar a <em>${to.name}</em></div><p>${body}</p>
+    <button class="cta" data-act="ok" data-i="${i}">Cambiar de etapa</button><button class="ghost" data-act="cancel">Cancelar</button></div>`;
+  w._from = from;
+  el.appendChild(w);
+}
+
+document.querySelectorAll('.phone').forEach((el) => {
+  el._s = { v: el.dataset.v, prog: true, cur: 1, wk: 3, sel: 1 };
+  render(el);
+  el.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act]');
+    if (!t || !el.contains(t)) return;
+    const s = el._s, a = t.dataset.act, i = +t.dataset.i;
+    if (a === 'open' && !s.prog) go(el, true);
+    else if (a === 'tab') go(el, t.dataset.t === 'prog');
+    else if (a === 'sel') {
+      s.sel = i;
+      el.querySelectorAll('.tile').forEach((x) => x.classList.toggle('on', +x.dataset.i === i));
+      el.querySelector('.dcw').innerHTML = detailB(s);
+    } else if (a === 'pick') {
+      t.classList.add('on');
+      setTimeout(() => sheet(el, i, t), 300);
+    } else if (a === 'cancel' || a === 'ok') {
+      const w = el.querySelector('.sw');
+      w?._from?.classList.remove('on');
+      w?.remove();
+      if (a === 'ok') { s.cur = i; s.wk = 0; s.sel = i; render(el, true); }
+    }
+  });
+});
+
+document.getElementById('replay').addEventListener('click', () => {
+  document.querySelectorAll('.phone').forEach((el) => {
+    el.querySelector('.sw')?.remove();
+    go(el, false);
+    setTimeout(() => go(el, true), 1100);
+  });
+});
+</script>

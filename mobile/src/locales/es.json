@@ -717,11 +717,19 @@
   },
   "myProgram": {
     "stagesLabel": "Etapas",
+    "stagesTotal": "{{count}} · {{weeks}} semanas",
+    "backToSessions": "Vuelve a Sesión",
+    "thisStage": "Esta etapa",
+    "stageWeekShort": "Semana {{week}}/{{total}}",
+    "stageNow": "En curso",
+    "stageSessionsOf": "de {{expected}} sesiones",
+    "stageSessionsOpen_one": "{{count}} sesión",
+    "stageSessionsOpen_other": "{{count}} sesiones",
     "stageConfirm": {
-      "title": "Cambiar a {{name}}",
+      "title": "Cambiar a *{{name}}*",
       "body": "Pasarás a entrenar esta etapa.",
       "bodyStarted": "Empezarás {{name}} desde la semana 1: lo que llevas de la etapa en curso deja de contar.",
-      "confirm": "Cambiar"
+      "confirm": "Cambiar de etapa"
     }
   },
   "workout": {
@@ -1623,9 +1631,6 @@
     "stageBrowNext": "Por venir",
     "stageBrowDeload": "Descarga",
     "stageBrowLocked": "Bloqueada",
-    "stageWeeksOpenLong": "Sin límite de semanas",
-    "stageSessions_one": "{{count}} sesión",
-    "stageSessions_other": "{{count}} sesiones",
     "sessionsOfStage": "Sesiones de esta etapa",
     "stageSettingsA11y": "Ajustes de la etapa",
     "copySuffix": "(copia)",
@@ -2047,13 +2052,11 @@
     "toastCreated": "Ejercicio creado"
   },
   "programCard": {
-    "eyebrowSelf": "Tu programa",
     "eyebrowClient": "Programa asignado",
     "statAdherence": "Adherencia",
     "statPace": "Ritmo",
     "statLoad": "Carga",
     "sessionsPerWeek": "ses/sem",
-    "week": "Semana",
     "stageWeek": "Semana {{week}} de {{total}}",
     "stageWeekExtra": "Semana {{week}} de {{total}} (+{{extra}})",
     "stageWeekOpen": "Semana {{week}}",

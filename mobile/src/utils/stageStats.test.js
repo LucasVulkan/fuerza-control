@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  stageWeekRanges, stageVolume, stageKeyReps, stageMinutes, stageSetsByGroup, stageBaseIdx,
+  stageWeekRanges, stageRangeLabel, stageVolume, stageKeyReps, stageMinutes, stageSetsByGroup, stageBaseIdx,
 } from './stageStats';
 import { sessionStats } from './sessionStats';
 
@@ -90,4 +90,17 @@ describe('stageBaseIdx', () => {
   it('la etapa de la que salió', () => expect(stageBaseIdx(stages, 1)).toBe(0));
   it('null si es a mano', () => expect(stageBaseIdx(stages, 2)).toBeNull());
   it('null si su base ya no existe', () => expect(stageBaseIdx(stages, 3)).toBeNull());
+});
+
+describe('stageRangeLabel', () => {
+  // `t` de mentira: devuelve la clave con sus valores, basta para ver qué rama sale.
+  const t = (k, v) => `${k.split('.').pop()} ${Object.values(v ?? {}).join('-')}`.trim();
+  const stages = [{ durationWeeks: 4 }, { durationWeeks: 1 }, { durationWeeks: null }, { durationWeeks: 3 }, { durationWeeks: null }];
+  const ranges = stageWeekRanges(stages);
+  const label = (i) => stageRangeLabel(stages[i], ranges[i], t);
+  it('tramo', () => expect(label(0)).toBe('stageRange 1-4'));
+  it('una semana', () => expect(label(1)).toBe('stageRangeOne 5'));
+  it('sin límite', () => expect(label(2)).toBe('stageRangeOpen 6'));
+  it('tras una sin límite, su duración', () => expect(label(3)).toBe('stageRangeWeeks 3'));
+  it('sin límite tras otra sin límite', () => expect(label(4)).toBe('weeksOpen'));
 });

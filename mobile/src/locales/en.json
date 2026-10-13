@@ -717,11 +717,19 @@
   },
   "myProgram": {
     "stagesLabel": "Stages",
+    "stagesTotal": "{{count}} · {{weeks}} weeks",
+    "backToSessions": "Back to Session",
+    "thisStage": "This stage",
+    "stageWeekShort": "Week {{week}}/{{total}}",
+    "stageNow": "Current",
+    "stageSessionsOf": "of {{expected}} sessions",
+    "stageSessionsOpen_one": "{{count}} session",
+    "stageSessionsOpen_other": "{{count}} sessions",
     "stageConfirm": {
-      "title": "Switch to {{name}}",
+      "title": "Switch to *{{name}}*",
       "body": "You will start training this stage.",
       "bodyStarted": "You will start {{name}} from week 1: what you have done in the current stage stops counting.",
-      "confirm": "Switch"
+      "confirm": "Switch stage"
     }
   },
   "workout": {
@@ -1623,9 +1631,6 @@
     "stageBrowNext": "Upcoming",
     "stageBrowDeload": "Deload",
     "stageBrowLocked": "Locked",
-    "stageWeeksOpenLong": "No week limit",
-    "stageSessions_one": "{{count}} session",
-    "stageSessions_other": "{{count}} sessions",
     "sessionsOfStage": "Sessions in this stage",
     "stageSettingsA11y": "Stage settings",
     "copySuffix": "(copy)",
@@ -2047,13 +2052,11 @@
     "toastCreated": "Exercise created"
   },
   "programCard": {
-    "eyebrowSelf": "Your program",
     "eyebrowClient": "Assigned program",
     "statAdherence": "Adherence",
     "statPace": "Pace",
     "statLoad": "Load",
     "sessionsPerWeek": "ses/wk",
-    "week": "Week",
     "stageWeek": "Week {{week}} of {{total}}",
     "stageWeekExtra": "Week {{week}} of {{total}} (+{{extra}})",
     "stageWeekOpen": "Week {{week}}",

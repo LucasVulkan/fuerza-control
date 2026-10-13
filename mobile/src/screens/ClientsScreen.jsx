@@ -50,9 +50,9 @@ import { spacing, textStyles, borders, withOpacity, sheetRowBase, getCardRadii, 
 import { useTheme, useThemedStyles } from '../useTheme';
 import { summarizeSets } from '../utils/progression';
 import { volumeDeltas } from '../utils/sessionRecap';
-import { computeAdherence, requiresAttention, adherencePct, adherenceColor, STATUS } from '../utils/adherence';
+import { computeAdherence, adherencePct, STATUS } from '../utils/adherence';
 import {
-  athleteProgress, stageStatus, stageDetail, weeklySessions, stageDaysAt, allProgramDays,
+  athleteProgress, stageStatus, weeklySessions, stageDaysAt, allProgramDays,
 } from '../utils/stageProgress';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
@@ -66,7 +66,11 @@ import ProBadge from '../components/ui/ProBadge';
 import { useFreeGates } from '../useFreeGates';
 import { LockIcon, CheckIcon, ChevronDown, CloseIcon, DragIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
-import ProgramCard, { ProgramActions } from '../components/ui/ProgramCard';
+import { ProgramActions } from '../components/ui/ProgramCard';
+import HomeProgramCard from '../components/HomeProgramCard';
+import { Rise } from '../components/ui/Rise';
+import { useEnterClock, EnterClock, ENTER_FAST } from '../hooks/useEnterClock';
+import ProgramCardDetail from '../components/ProgramCardDetail';
 import InfoSection from '../components/ui/InfoSection';
 import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
 
@@ -223,7 +227,8 @@ function AssignedProgramCard({
   // en este móvil es la del entrenador y no se mueve (P08-weeks-model.md §3.7).
   // `stageStatus` es la misma cuenta que ve el cliente en su Home.
   const stages       = program.stages ?? [];
-  const status       = stageStatus(program, athleteProgress(program, client));
+  const progress     = athleteProgress(program, client);
+  const status       = stageStatus(program, progress);
   const stageIdx     = status.stageIdx;
   const currentStage = status.stage;
   const currentDays  = stageDaysAt(program, stageIdx);
@@ -243,11 +248,6 @@ function AssignedProgramCard({
   const nextName    = nextTpl?.name ?? '';
   const nextStats   = nextTpl ? sessionStats(nextTpl, allExercises) : null;
 
-  // ── Barra de etapas (varias etapas y con techo) ──
-  // Con una sola etapa no hay nada que situar: la barra mediría el programa
-  // entero contra sí mismo. Sin techo de semanas tampoco hay puntos que contar.
-  const showStageBar  = stages.length > 1 && status.lengthWeeks != null;
-
   // ── Did they finish the stage, and can they move on? ──
   // `isStageLocked` is no use here: it answers for the device it runs on, and
   // the trainer has no slot. The question is about the client, so it's the raw
@@ -265,12 +265,6 @@ function AssignedProgramCard({
   // ── Real pace ──
   const paceRaw     = adherence?.recentPerWeek ?? 0;
   const paceHasData = adherence != null && adherence.status !== STATUS.NO_DATA && paceRaw > 0;
-  // La adherencia es el único de los 3 datos que emite un veredicto, así que es
-  // el único que se colorea cuando pide atención.
-  const attnColor = adherence && requiresAttention(adherence.status)
-    ? adherenceColor(th, adherence.status)
-    : null;
-
   return (
     <>
       {/* ── Avisos ── van ENCIMA de la tarjeta: son lo que te para al abrir la
@@ -328,39 +322,24 @@ function AssignedProgramCard({
         </View>
       )}
 
-      {/* ── Tarjeta de programa ── la misma que la Home: las dos pantallas
-          convergían sin saberlo (docs/specs/U02-home-sessions.md §4). Las acciones
-          van debajo y fuera, como en el tab Programa (U32). */}
-      <ProgramCard
-        variant="client"
-        name={program.name}
-        weekNum={status.programWeek}
-        stage={showStageBar && {
-          label:       t('home.stageDefault', { n: stageIdx + 1 }),
-          name:        currentStage?.name,
-          weekInStage: status.weekInStage,
-          totalWeeks:  status.lengthWeeks,
-          started:     status.started,
-          // «Semana 5 de 5 (+1) · 9 de 12 sesiones»: lo que el cliente lleva y
-          // si alargó la etapa, en las mismas palabras que ve él.
-          detail:      stageDetail(status, t),
-        }}
-        // La barra pinta el PROGRAMA: un tramo por etapa, de ancho proporcional
-        // a sus semanas. Los puntos de dentro de la etapa los saca la tarjeta de
-        // `stage.weekInStage`/`totalWeeks`.
-        stages={stages.map((s) => ({ weeks: s.durationWeeks }))}
-        stageIdx={stageIdx}
-        // Terminó la etapa y no ha avanzado. Puede ser decisión suya o tuya
-        // ("una semana más"), así que se informa sin alarmar — el naranja se
-        // reserva para cuando NO puede avanzar.
-        stageNote={stageDone && !nextLocked
-          ? t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })
-          : null}
-        adherence={adherence4w}
-        adherenceColor={attnColor}
-        pace={paceHasData ? paceRaw : null}
-        loadPct={loadPct}
-      />
+      {/* ── Tarjeta de programa ── la misma que ve el cliente en su tab Programa
+          (U14 §4): la de Inicio con lo desplegado debajo, quieta. Sin línea de
+          autoría: aquí el entrenador ES el autor. Las acciones van debajo. */}
+      <HomeProgramCard program={program} progress={progress} eyebrow={t('programCard.eyebrowClient')}>
+        <ProgramCardDetail
+          program={program}
+          status={status}
+          adherence={adherence4w}
+          pace={paceHasData ? paceRaw : null}
+          loadPct={loadPct}
+          // Terminó la etapa y no ha avanzado. Puede ser decisión suya o tuya
+          // ("una semana más"), así que se informa sin alarmar — el naranja se
+          // reserva para cuando NO puede avanzar.
+          note={stageDone && !nextLocked
+            ? t('clients.stageFinishedStaying', { current: currentStage?.name ?? '' })
+            : null}
+        />
+      </HomeProgramCard>
       <ProgramActions onEdit={onEdit} onView={onView} onMore={() => setMenuOpen(true)} editLocked={locked} />
 
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
@@ -1700,6 +1679,9 @@ export default function ClientsScreen() {
   // Las sesiones de la ficha: un solo acordeón entre las del programa y las
   // libres, y sin saltos al plegar cerca del final (como Inicio).
   const fold       = useSteadyFold();
+  // Entrada por partes al llegar a la pestaña, como Programa (U14 §4.3). Solo
+  // la lista: la ficha de un cliente se abre dentro de la pestaña y no la repite.
+  const enterClock = useEnterClock({ speed: ENTER_FAST });
 
   // ── Store ──────────────────────────────────────────────────────────────────
   const clients                = useStore((s) => s.clients);
@@ -3090,10 +3072,12 @@ export default function ClientsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
 
+      <EnterClock.Provider value={enterClock}>
       {/* ── List header ── */}
       <View style={styles.listHeader}>
 
         {/* Row 1: Title "CLIENTES N" · trainer tools (pegar entreno · cloud sync) · + Cliente */}
+        <Rise index={0}>
         <View style={styles.listTitleRow}>
           <Text style={styles.listTitle} numberOfLines={1}>
             CLIENTES <Text style={styles.listTitleDot}>·</Text> <Text style={styles.listTitleCount}>{isPro ? clientCounts.total : `${clientCounts.total}/${FREE.clients}`}</Text>
@@ -3137,8 +3121,10 @@ export default function ClientsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </Rise>
 
         {/* Row 2: Search + Filters */}
+        <Rise index={1}>
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrap}>
             <Svg viewBox="0 0 24 24" width={17} height={17} fill="none"
@@ -3178,9 +3164,11 @@ export default function ClientsScreen() {
             )}
           </TouchableOpacity>
         </View>
+        </Rise>
 
         {/* Las tres tarjetas (C08 §5): «Necesitan algo» no se rellena, solo
             vuelve a la vista normal; Adherencia y Mejora son lentes. */}
+        <Rise index={2}>
         <View style={styles.kpis}>
           <SummaryTile
             value={summary.needs}
@@ -3204,10 +3192,12 @@ export default function ClientsScreen() {
             onPress={() => { if (!editing) setLens((l) => (l === 'imp' ? null : 'imp')); }}
           />
         </View>
+        </Rise>
 
         {/* Rótulo de la lista (§7.1): «Clientes», o las etiquetas activas con scroll
             horizontal (§7.2); el orden, fijo a la derecha. Con una lente, el botón
             dice por qué está ordenada; en «Reordenar», «Listo». */}
+        <Rise index={3}>
         <View style={styles.listLabelRow}>
           {tagFilter.length > 0 && !editing ? (
             <View style={styles.tagsWrap}>
@@ -3256,8 +3246,7 @@ export default function ClientsScreen() {
             </TouchableOpacity>
           )}
         </View>
-
-
+        </Rise>
       </View>
 
       {/* Enviar todo (C08 §7.4): solo con 2 o más clientes con cambios sin
@@ -3345,7 +3334,8 @@ export default function ClientsScreen() {
               colors={[th.colors.accent]}
             />
           }
-          renderItem={({ item, index }) => {
+          // Cada fila entra en su turno, detrás de la cabecera.
+          renderItem={({ item, index }) => <Rise index={4 + index}>{(() => {
             if (item.kind === 'section') {
               return (
                 <Text style={[styles.apSectionLabel, { marginTop: spacing.lg, marginBottom: spacing.xs2 }]}>
@@ -3438,10 +3428,11 @@ export default function ClientsScreen() {
                 )}
               </>
             );
-          }}
+          })()}</Rise>}
         />
       )}
       </Reanimated.View>
+      </EnterClock.Provider>
 
       {/* Client actions sheet (pulsación larga sobre la tarjeta) */}
       {actionsClientId && clients[actionsClientId] && (
