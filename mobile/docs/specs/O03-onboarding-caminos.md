@@ -2,7 +2,8 @@
 
 > Tema: onboarding
 > En corto: El alta lleva a cada usuario a lo suyo: ajustes básicos, una pregunta de cómo entrena y tres caminos distintos (por su cuenta, con entrenador, entrenador), con un constructor guiado de programa y unas tarjetas que enseñan lo básico. Todo saltable, y «Ya tengo cuenta» devuelve lo que había.
-> Fase O03-01 · pendiente · Armazón del recorrido y tramo común · §17
+> Inicio: 2026-10-13
+> Fase O03-01 · hecho · Armazón del recorrido y tramo común · §17
 > Fase O03-02 · pendiente · Constructor guiado I: sesiones, buscador corto y «ya tiene forma» · §18
 > Fase O03-03 · pendiente · Constructor guiado II: volumen y progresión en dos profundidades · §19
 > Fase O03-04 · pendiente · Camino «por mi cuenta» · §20
@@ -14,7 +15,7 @@
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
 > Fase O03-11 · pendiente · «Nuevo programa» con el recorrido nuevo · §25
 >
-> Estado: **spec cerrada, sin implementar** (13-oct-2026). Abierta el 4-oct como
+> Estado: **spec cerrada; O03-01 hecha, por probar** (13-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
 > recorrido contra el código; el 13-oct se revisó otra vez contra el código, se
 > corrigieron cinco cosas que no habrían funcionado (§2.2), se cerraron las diez
@@ -794,12 +795,38 @@ Hace:
 
 Fuera: todo lo que no es tramo común.
 
+**Lo que dejó hecho** (para las tareas que cuelgan de aquí):
+
+- **Pantallas**: cada una recibe `goTo(id)`. Si `id` aún no está en el registro,
+  `goTo` hace la salida provisional (prefijo `t_` → la app; `c_` → el selector
+  viejo con la hoja del código, vía el parámetro `openCode` de `Onboarding`; el
+  resto → el selector viejo). Al registrar su primera pantalla, un camino quita
+  su provisional **sin tocar nada**: basta que `SCREENS[id]` exista.
+- **Salida**: `finishOnboardingFlow()` hace lo de §16.4 y navega con `navigateTo('home')`
+  (reset si `Main` no está en la pila, `pop` si lo está: sirve para el `Start` apilado
+  de O03-11). `finishOnboardingFlow({ route, params })` es solo el provisional:
+  cierra el recorrido y resetea la pila a esa ruta **sin** marcar `onboardingCompleted`.
+- **Ruta inicial**: la calcula `initialRouteFor` (util, con test). El recorrido
+  nace al hidratar (`newFlow('first')`), no al montar `Start`.
+- **Valores de `answers`** que las rutas dan por hechos (cabecera de `onboardingFlow.js`):
+  `path` `'own'|'template'`, `coachApp` `'code'|'nocode'|'no'`, `alsoTrains` booleano,
+  `programSource` `'builder'|'catalog'|'proposal'|'import'|'coach'`.
+- **Piezas** (`components/onboarding/flow/`): además de las de §16.5, `FlowBody` (scroll +
+  pie + reloj de la entrada por partes; **cada pantalla es un `FlowBody`**),
+  `PanelButton` (botón del panel lima) y `useFill`. Opciones y baldosas aceptan `index`
+  (su turno en la entrada) y se meten dentro de `FlowBody`; `FlowTitle` ocupa los turnos
+  0 y 1. El relleno es una vista que escala bajo `overflow: hidden`, no SVG.
+- **Tipografía**: la bienvenida usa `heroGlyph` (34), no los 52 de la maqueta: ningún rol
+  pasa de 34 y la regla es no inventar `fontSize`.
+- **ESLint**: `eslint.config.js` apaga `react-refresh/only-export-components` en
+  `screens/onboarding/screens/*.jsx` (cada fichero exporta su registro).
+
 **Probar O03-01**
 
 - [ ] Instalación limpia (borrar datos de la app): abre en la bienvenida, no en
   `SetupScreen`. Con el móvil en inglés, la bienvenida sale en inglés y ES/EN la
   cambia al momento.
-- [ ] Empezar → Unidades: tocar «lb» rellena la baldosa de lima desde su círculo
+- [ ] Empezar → Unidades: tocar «lb» rellena la baldosa de lima desde el centro
   y avanza sola; la barra de «Ajustes» crece con animación.
 - [ ] Tema: tocar Midnight repinta todo el teléfono al instante; «Siguiente» lleva
   a «¿Cómo entrenas?».
@@ -810,6 +837,9 @@ Fuera: todo lo que no es tramo común.
 - [ ] «Por mi cuenta» (provisional) abre el selector de siempre; al terminar allí,
   la app ya no vuelve a la bienvenida al reabrirla. Las pestañas de entrenador no
   se ven.
+- [ ] «Con un entrenador» (provisional) abre el selector de siempre con la hoja
+  del código ya abierta; las pestañas de entrenador no se ven.
+- [ ] «Ya tengo cuenta» (provisional) abre el selector de siempre.
 - [ ] «Soy entrenador/a» (provisional) entra en la app con las pestañas de
   entrenador visibles.
 - [ ] Matar la app en «Tema» y reabrir: vuelve a «Tema».
@@ -1238,7 +1268,7 @@ usable entre olas gracias a los provisionales de O03-01 (§17.5).
 
 | Fase | Qué | Depende de | Estado |
 |---|---|---|---|
-| O03-01 | Armazón del recorrido y tramo común | — | pendiente |
+| O03-01 | Armazón del recorrido y tramo común | — | ✅ 6a126f6 — `OnboardingFlowScreen` (ruta `Start`) con registro, `onboardingFlow` en el store, `utils/onboardingFlow.js` + test, piezas `flow/` y las cinco pantallas comunes; `SetupScreen` borrada |
 | O03-02 | Constructor guiado I | O03-01 | pendiente |
 | O03-03 | Constructor guiado II | O03-02 | pendiente |
 | O03-04 | Camino «por mi cuenta» | O03-02 | pendiente |
