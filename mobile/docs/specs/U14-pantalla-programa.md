@@ -383,6 +383,6 @@ arriba. Radios y colores del tema `formaFit`.
 
 | Fase | Qué | Depende de | Estado |
 |---|---|---|---|
-| U14-01 | Tarjeta de Inicio desplegada en Programa: «Esta etapa», cifras, animación | — | ✅ sin commit — `HomeProgramCard` (`children`, `onWeekInfo`), `MyProgramScreen`; `Unfold`/`Rise` en `ProgramStages.jsx` |
-| U14-03 | Entrada por partes en Sesión, Progresión, Clientes y Plantillas | U14-01 | ✅ sin commit — `hooks/useEnterClock.js`, `ui/Rise.jsx` |
-| U14-02 | Etapas: rótulo, filas, ficha de la en curso, hoja de cambio | U14-01 (orden de pantalla) | ✅ sin commit — `src/components/ProgramStages.jsx`; `Marked` a `ui/`; `stageRangeLabel` e `isDeload` a `utils/stageStats.js` |
+| U14-01 | Tarjeta de Inicio desplegada en Programa: «Esta etapa», cifras, animación | — | ✅ add60a1 — `HomeProgramCard` (`children`, `onWeekInfo`), `MyProgramScreen`; `Unfold`/`Rise` en `ProgramStages.jsx` |
+| U14-03 | Entrada por partes en Sesión, Progresión, Clientes y Plantillas | U14-01 | ✅ add60a1 — `hooks/useEnterClock.js`, `ui/Rise.jsx` |
+| U14-02 | Etapas: rótulo, filas, ficha de la en curso, hoja de cambio | U14-01 (orden de pantalla) | ✅ add60a1 — `src/components/ProgramStages.jsx`; `Marked` a `ui/`; `stageRangeLabel` e `isDeload` a `utils/stageStats.js` |
