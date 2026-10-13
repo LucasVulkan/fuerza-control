@@ -14,7 +14,7 @@
  * «Forma Pro próximamente».
  */
 
-import { useState, useEffect, Children } from 'react';
+import { useState, useEffect, useRef, Children } from 'react';
 import { View, Pressable, ScrollView, StyleSheet, ActivityIndicator, Linking, Platform, Modal } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Defs, ClipPath, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -204,6 +204,11 @@ export default function PaywallModal({ onClose }) {
   const [loading, setLoading]   = useState(true);
   // Comprado sin cuenta: la pantalla cede el sitio a «Guarda tu compra» (M01 §3.5).
   const [askAccount, setAskAccount] = useState(false);
+  // «Ya tengo cuenta»: entrar con el código trae el Pro de esa cuenta (App.js
+  // → `syncPurchaserId`). Es también la vía de los revisores de las tiendas.
+  const [signIn, setSignIn] = useState(false);
+  const usedSignIn = useRef(false);
+  const isPro      = useStore((s) => s.profile.isPro);
 
   useEffect(() => {
     (async () => {
@@ -212,8 +217,16 @@ export default function PaywallModal({ onClose }) {
     })();
   }, [getOffering]);
 
+  // El Pro llega después de cerrar la hoja (logIn de RevenueCat): entonces sobra el paywall.
+  useEffect(() => {
+    if (usedSignIn.current && isPro) onClose();
+  }, [isPro]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (askAccount) {
     return <TrainerSyncModal visible purpose="purchase" isFirstTime={false} onClose={onClose} />;
+  }
+  if (signIn) {
+    return <TrainerSyncModal visible initialScreen="recovery" isFirstTime={false} onClose={() => setSignIn(false)} />;
   }
 
   // Borde a borde, como `DragSheet`: el `SafeAreaProvider` de dentro mide los
@@ -226,13 +239,14 @@ export default function PaywallModal({ onClose }) {
           loading={loading}
           onClose={onClose}
           onNeedsAccount={() => setAskAccount(true)}
+          onSignIn={() => { usedSignIn.current = true; setSignIn(true); }}
         />
       </SafeAreaProvider>
     </Modal>
   );
 }
 
-function PaywallBody({ packages, loading, onClose, onNeedsAccount }) {
+function PaywallBody({ packages, loading, onClose, onNeedsAccount, onSignIn }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const C      = th.colors;
@@ -242,6 +256,7 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount }) {
   const restorePurchases = useStore((s) => s.restorePurchases);
   const checkProStatus   = useStore((s) => s.checkProStatus);
   const showToast        = useStore((s) => s.showToast);
+  const hasAccount       = useStore((s) => !!s.trainerSync.userId);
 
   const [selected, setSelected]     = useState(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -350,7 +365,7 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount }) {
 
       {/* ── Abajo, fijo: planes, botón y lo que piden las tiendas ── */}
       <View
-        style={[styles.panel, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}
+        style={[styles.panel, { paddingBottom: insets.bottom + spacing.lg }]}
         onLayout={(e) => setPanel({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
       >
         {/* Medido y no al 100 %: en Android el SVG se quedaba con el alto del
@@ -420,6 +435,11 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount }) {
               ? <ActivityIndicator size="small" color={C.onAccent} />
               : <Text style={styles.link}>{t('paywall.restore')}</Text>}
           </Pressable>
+          {!hasAccount && (
+            <Pressable onPress={onSignIn} hitSlop={8} accessibilityRole="button">
+              <Text style={styles.link}>{t('paywall.signIn')}</Text>
+            </Pressable>
+          )}
           <Pressable onPress={() => Linking.openURL(TERMS_URL)} hitSlop={8} accessibilityRole="link">
             <Text style={styles.link}>{t('paywall.terms')}</Text>
           </Pressable>

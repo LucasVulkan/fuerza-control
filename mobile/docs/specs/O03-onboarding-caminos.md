@@ -1047,7 +1047,8 @@ real arriba y tres clientes de ejemplo (datos fijos, no del store).
 Hace, en `screens/recover.jsx`, la pantalla de §12:
 
 1. `TrainerSyncModal` gana la prop `initialScreen` (`'select'` por defecto;
-   `'recovery'` la abre en recuperar).
+   `'recovery'` la abre en recuperar). **Ya existe** (13-oct, para el «Ya tengo
+   cuenta» del paywall): aquí solo hay que usarla.
 2. «Entreno con un entrenador» → `ClientCodeModal` con `startWithSocial`.
 3. «Una copia de seguridad» → `DriveBackupScreen` (navegar) o el selector de
    archivo; al importar, terminar.

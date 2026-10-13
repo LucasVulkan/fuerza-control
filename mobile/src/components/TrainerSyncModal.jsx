@@ -10,6 +10,9 @@
  *   • code_reveal → el código recién creado, para guardarlo
  *   • recovery    → recuperar la cuenta con un código existente
  *
+ * `initialScreen="recovery"` la abre en recuperar con código (O03-07 y el
+ * «Ya tengo cuenta» del paywall); por defecto, `'select'`.
+ *
  * `purpose="purchase"` (M01 §3.5): se abre tras comprar Pro sin cuenta, para
  * que la compra quede atada a una. Mismo flujo, con otro título, sin «Sin
  * conexión» (para no guardar ya está «Ahora no») y Apple/Google preseleccionado.
@@ -172,7 +175,7 @@ function ModeOption({ mode, active, unavailable, warn, warnTone, onPress, isFirs
 // cualquier móvil, no el código.
 const PURCHASE_DEFAULT = APPLE_AUTH_AVAILABLE ? 'apple' : 'google';
 
-export default function TrainerSyncModal({ visible, onClose, isFirstTime = true, purpose = 'sync' }) {
+export default function TrainerSyncModal({ visible, onClose, isFirstTime = true, purpose = 'sync', initialScreen = 'select' }) {
   const forPurchase = purpose === 'purchase';
   const modes = forPurchase ? MODES.filter((m) => m.id !== 'offline') : MODES;
   const th     = useTheme();
@@ -184,7 +187,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
 
   const [selected,  setSelected]  = useState(forPurchase ? PURCHASE_DEFAULT : trainerSync.mode ?? 'google');
   const [loading,   setLoading]   = useState(false);
-  const [screen,    setScreen]    = useState('select'); // 'select' | 'code_status' | 'code_reveal' | 'recovery'
+  const [screen,    setScreen]    = useState(initialScreen); // 'select' | 'code_status' | 'code_reveal' | 'recovery'
   const [newCode,   setNewCode]   = useState(null);
   const [nameInput, setNameInput] = useState(trainerSync.trainerName ?? '');
 
@@ -199,7 +202,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
     if (visible) {
       setNameInput(trainerSync.trainerName ?? '');
       setSelected(forPurchase ? PURCHASE_DEFAULT : trainerSync.mode ?? 'google');
-      setScreen(trainerSync.code && !forPurchase ? 'code_status' : 'select');
+      setScreen(trainerSync.code && !forPurchase ? 'code_status' : initialScreen);
       setRecoverCode('');
       setRecoverError(null);
     }
