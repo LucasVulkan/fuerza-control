@@ -252,8 +252,13 @@ Validada como base el 8-oct-2026. Falta:
   provisional).
 - **Textos**: se reescribirán; los de ahora son un primer paso.
 - **Capturas reales** de la app.
-- `/soporte` (necesita el correo, M02-07) y los botones de store cuando haya
-  fichas (hoy «Próximamente»).
+- Los botones de store cuando haya fichas (hoy «Próximamente»).
+
+**`/soporte` y `/support`, hechas el 13-oct-2026** (sin publicar): correo
+provisional `formastudio.main@gmail.com` para la revisión (se cambia al de
+dominio en M02-07; la URL de soporte de App Store Connect no cambia) y 14
+preguntas con la ruta exacta en la app, sacada del código. Enlace «Soporte» en
+el pie de todas las páginas.
 
 ---
 
