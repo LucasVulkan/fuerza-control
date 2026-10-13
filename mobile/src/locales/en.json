@@ -2784,7 +2784,89 @@
     "builder": {},
     "self": {},
     "coached": {},
-    "learn": {},
+    "learn": {
+      "home": {
+        "title": "How do you want to see your *sessions*?",
+        "sub": "This is your Home. You can change it in Preferences.",
+        "list": "List",
+        "listDesc": "Every session, one under another",
+        "tabs": "Tabs",
+        "tabsDesc": "One card, a tab per session",
+        "forYou": "For you"
+      },
+      "input": {
+        "title": "Try it: drag the weight",
+        "sub": "This is how you log a set during a workout. Pick whichever feels best.",
+        "hint": "← slide sideways →",
+        "ruler": "With a ruler",
+        "rulerDesc": "A ruler appears under your finger and it saves when you let go. More precise.",
+        "swipe": "Just swipe",
+        "swipeDesc": "The number changes in the box as you drag. Faster.",
+        "keep": "Use this one"
+      },
+      "cards": {
+        "prev": "Back",
+        "done": "Got it",
+        "clients": {
+          "title": "Your clients at a *glance*",
+          "sub": "Who trained this week, who has been away for days, and who has new sessions to review (the colored notch)."
+        },
+        "today": {
+          "title": "Today's session, on *Home*",
+          "subCards": "The highlighted one is up next: tap Start. The app knows what comes next.",
+          "subTabs": "A tab per session. The highlighted one is up next: tap Start. Tap another tab to look ahead."
+        },
+        "edit": {
+          "title": "Change *anything*",
+          "sub": "From Program you edit exercises, sets and progression. Changes apply from the next session."
+        },
+        "sees": {
+          "title": "{{trainer}} sees your *workouts*",
+          "sub": "Every session you complete reaches them. If they change your program, you're told and you choose when to switch."
+        },
+        "free": {
+          "title": "Something different? *Free* session",
+          "sub": "Use + to train outside the program. It can count as a program session or not.",
+          "subLinked": "Use + to train outside the program. {{trainer}} will see it too."
+        },
+        "templates": {
+          "title": "Templates: program *once*",
+          "sub": "When {{client}}'s program works for others, save it as a template and assign it. Each client gets their own copy and moves at their own pace."
+        },
+        "next": {
+          "title": "Tweak their *next session*",
+          "sub": "From their profile, change weights or exercises in the next session without touching the program."
+        },
+        "log": {
+          "title": "Log their *sessions*",
+          "sub": "{{client}} doesn't use the app: from their profile you log what they do, or paste the text they send you on WhatsApp."
+        }
+      },
+      "mini": {
+        "exercise1": "Bench press · 3×8",
+        "exercise2": "Row · 3×10",
+        "clientsCount_one": "{{count}} client",
+        "clientsCount_other": "{{count}} clients",
+        "notAssigned": "not assigned",
+        "templateExample": "Base hypertrophy",
+        "nextHead": "{{name}} · next: session B",
+        "squat": "Squat",
+        "squatSub": "4×6 · 100 {{unit}}",
+        "rdl": "Romanian deadlift",
+        "logHead": "{{name}} · history",
+        "logWhen": "Monday · logged by you",
+        "logAdd": "+ Log a session",
+        "logPaste": "Paste WhatsApp text",
+        "coachChanged": "{{trainer}} updated your program",
+        "coachChange": "Incline press instead of bench",
+        "coachSession": "Today · {{count}} ex. · {{trainer}} will see it"
+      },
+      "sessionNames": ["Push", "Pull", "Legs", "Upper"],
+      "exampleClient": "Ana",
+      "yourClient": "your client",
+      "yourTrainer": "Your coach",
+      "yourTrainerLc": "your coach"
+    },
     "recover": {},
     "trainer": {},
     "done": {
