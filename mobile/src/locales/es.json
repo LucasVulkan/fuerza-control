@@ -2781,7 +2781,64 @@
         "trainerDesc": "Preparo programas para mis clientes"
       }
     },
-    "builder": {},
+    "builder": {
+      "defaultName": "Mi programa",
+      "defaultNameClient": "Programa de {{name}}",
+      "doneCreated": "«{{name}}» creado",
+      "doneSent": "«{{name}}» creado y enviado",
+      "fillSelf_one": "Rellenar la sesión {{letters}} · Programa",
+      "fillSelf_other": "Rellenar las sesiones {{letters}} · Programa",
+      "fillClient_one": "Rellenar la sesión {{letters}} y enviársela · Clientes → {{client}}",
+      "fillClient_other": "Rellenar las sesiones {{letters}} y enviárselas · Clientes → {{client}}",
+      "later": "Lo termino después",
+      "session": "Sesión {{letter}}",
+      "empty": "vacía",
+      "exCount": "{{count}} ej.",
+      "bar": {
+        "program": "Tu programa",
+        "programOf": "El programa de {{name}}",
+        "sessions": "Sesiones",
+        "sessionsN_one": "{{count}} sesión",
+        "sessionsN_other": "{{count}} sesiones",
+        "exercise": "Ejercicio",
+        "volume": "Volumen",
+        "progression": "Progresión"
+      },
+      "sessions": {
+        "titleSelf": "¿Cuántos días vas a *entrenar*?",
+        "titleTrainer": "¿Cuántas sesiones por *semana*?",
+        "sub": "Cada día, una sesión distinta. Se cambia cuando quieras."
+      },
+      "exercise": {
+        "title": "Añade el primer *ejercicio*",
+        "sub": "Con uno basta para ver cómo funciona. El resto lo rellenas luego.",
+        "add": "+ Añadir ejercicio",
+        "change": "Cambiar",
+        "later": "después",
+        "suggested": "Sugeridos",
+        "found_one": "{{count}} ejercicio",
+        "found_other": "{{count}} ejercicios",
+        "keepTyping": "sigue escribiendo",
+        "create": "＋ Crear «{{name}}»",
+        "createSub": "No está en el catálogo: lo creas tú",
+        "closeSearch": "Cerrar el buscador"
+      },
+      "done": {
+        "title": "Tu programa ya tiene *forma*",
+        "titleClient": "El programa de {{name}} ya tiene *forma*",
+        "sub": "Ponle un nombre si quieres.",
+        "nameLabel": "Nombre del programa",
+        "noteSelf": "Sigue editándolo cuando termines: *Programa → {{name}}*. Copiar sesiones, etapas, vincular ejercicios… todo está ahí.",
+        "clientsLabel": "Así lo verás en Clientes",
+        "noteClientEmpty_one": "La sesión {{letters}} está vacía. Rellénala en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",
+        "noteClientEmpty_other": "Las sesiones {{letters}} están vacías. Rellénalas en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",
+        "noteClientFull": "Sigue editándolo en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",
+        "listAnd": "y",
+        "save": "Guardar",
+        "saveSend": "Guardar y enviar a {{name}}",
+        "sendFailed": "No se pudo enviar. Revisa la conexión y vuelve a intentarlo."
+      }
+    },
     "self": {},
     "coached": {},
     "learn": {},

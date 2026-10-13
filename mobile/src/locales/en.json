@@ -2781,7 +2781,64 @@
         "trainerDesc": "I prepare programs for my clients"
       }
     },
-    "builder": {},
+    "builder": {
+      "defaultName": "My program",
+      "defaultNameClient": "{{name}}’s program",
+      "doneCreated": "“{{name}}” created",
+      "doneSent": "“{{name}}” created and sent",
+      "fillSelf_one": "Fill in session {{letters}} · Program",
+      "fillSelf_other": "Fill in sessions {{letters}} · Program",
+      "fillClient_one": "Fill in session {{letters}} and send it · Clients → {{client}}",
+      "fillClient_other": "Fill in sessions {{letters}} and send them · Clients → {{client}}",
+      "later": "Finish later",
+      "session": "Session {{letter}}",
+      "empty": "empty",
+      "exCount": "{{count}} ex.",
+      "bar": {
+        "program": "Your program",
+        "programOf": "{{name}}’s program",
+        "sessions": "Sessions",
+        "sessionsN_one": "{{count}} session",
+        "sessionsN_other": "{{count}} sessions",
+        "exercise": "Exercise",
+        "volume": "Volume",
+        "progression": "Progression"
+      },
+      "sessions": {
+        "titleSelf": "How many days will you *train*?",
+        "titleTrainer": "How many sessions per *week*?",
+        "sub": "Each day is a different session. Change it any time."
+      },
+      "exercise": {
+        "title": "Add the first *exercise*",
+        "sub": "One is enough to see how it works. Fill in the rest later.",
+        "add": "+ Add exercise",
+        "change": "Change",
+        "later": "later",
+        "suggested": "Suggested",
+        "found_one": "{{count}} exercise",
+        "found_other": "{{count}} exercises",
+        "keepTyping": "keep typing",
+        "create": "＋ Create “{{name}}”",
+        "createSub": "Not in the catalog: you create it",
+        "closeSearch": "Close search"
+      },
+      "done": {
+        "title": "Your program is taking *shape*",
+        "titleClient": "{{name}}’s program is taking *shape*",
+        "sub": "Give it a name if you like.",
+        "nameLabel": "Program name",
+        "noteSelf": "Keep editing when you’re done: *Program → {{name}}*. Copy sessions, stages, link exercises… it’s all there.",
+        "clientsLabel": "How it looks in Clients",
+        "noteClientEmpty_one": "Session {{letters}} is empty. Fill it in under *Clients → {{client}}*: each change reaches them with “↑ Send”.",
+        "noteClientEmpty_other": "Sessions {{letters}} are empty. Fill them in under *Clients → {{client}}*: each change reaches them with “↑ Send”.",
+        "noteClientFull": "Keep editing in *Clients → {{client}}*: each change reaches them with “↑ Send”.",
+        "listAnd": "and",
+        "save": "Save",
+        "saveSend": "Save and send to {{name}}",
+        "sendFailed": "Couldn’t send it. Check your connection and try again."
+      }
+    },
     "self": {},
     "coached": {},
     "learn": {},
