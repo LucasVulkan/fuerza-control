@@ -1025,7 +1025,9 @@ export const useStore = create(
         }
       },
 
-      createProgramForClient: (clientId, numSessions, programName, durationWeeks = null) => {
+      // `openEditor: false`: crea el programa sin abrir el editor (lo usa el
+      // constructor guiado del recorrido de entrada, O03-02, que sigue en su pantalla).
+      createProgramForClient: (clientId, numSessions, programName, durationWeeks = null, { openEditor = true } = {}) => {
         if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         const programId = generateId('prog');
         const labels    = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -1060,9 +1062,9 @@ export const useStore = create(
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
           // Sin lista que mantener: el programa es del cliente por su `owner`.
-          ui: { ...s.ui, _editingProgramId: programId },
+          ...(openEditor ? { ui: { ...s.ui, _editingProgramId: programId } } : {}),
         }));
-        get().navigate('programEditor');
+        if (openEditor) get().navigate('programEditor');
         return programId;
       },
 

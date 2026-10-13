@@ -796,6 +796,21 @@ describe('program-model — owner/kind', () => {
     expect(programs[clon].kind).toBe('program');   // una plantilla clonada a un cliente es un programa
   });
 
+  // O03-02: el constructor del recorrido crea el programa del cliente y sigue
+  // en su pantalla; el alta de Clientes (por defecto) abre el editor.
+  it('createProgramForClient: con openEditor:false no abre el editor ni toca _editingProgramId', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } }, ui: { ...useStore.getState().ui, view: 'clients', _editingProgramId: null } });
+
+    const pid = useStore.getState().createProgramForClient('cli_1', 2, 'Sin editor', null, { openEditor: false });
+    expect(useStore.getState().programs[pid].owner).toBe('cli_1');
+    expect(useStore.getState().ui._editingProgramId).toBeNull();
+    expect(useStore.getState().ui.view).toBe('clients');
+
+    const abierto = useStore.getState().createProgramForClient('cli_1', 2, 'Con editor');
+    expect(useStore.getState().ui._editingProgramId).toBe(abierto);
+    expect(useStore.getState().ui.view).toBe('programEditor');
+  });
+
   it('la plantilla no se convierte en mi programa activo; el programa sí', () => {
     const tpl = useStore.getState().createEmptyProgram(2, 'Plantilla', 'template');
     expect(useStore.getState().profile.activeProgramId).toBeNull();
