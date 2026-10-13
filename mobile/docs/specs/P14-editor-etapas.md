@@ -10,6 +10,7 @@
 > Fase P14-05 · pendiente · Panel de cifras y grupos musculares · §5.4
 > Fase P14-06 · pendiente · Hoja de Ajustes y «nueva etapa» · §5.5
 > Fase P14-07 · pendiente · Programa de una sola etapa · §5.6
+> Fase P14-08 · pendiente · Que asome la etapa de al lado al deslizar · §5.7
 >
 > Estado: **P14-02 a 04 implementadas, por probar** (12-oct-2026, rama
 > `feat/editor-etapas`). Las fichas de etapa se rehicieron tras la primera
@@ -120,38 +121,36 @@ Rehechas el 12-oct tras probar la v5 en el móvil: las tarjetas de 100 × 72 con
 con el resto de la app. Ahora hablan como el onboarding y el paywall (maqueta
 [`stages-editor-6.html`](../mockups/stages-editor-6.html), variante F).
 
-- **Sin elegir, un cuadrado de 52 dp** (radio 14, fondo `surface`) con solo el
-  número, grande (`heroName`, Barlow cursiva): en `text`, en `muted` si está
-  hecha, en `blue` si es descarga.
-- **La elegida se abre** a 72 × 80 dp, creciendo hacia la derecha, y apila,
-  centrados, **«ETAPA»** (`caps`), **el número** grande y **el tramo de semanas**
-  (`label`): la variante D de la maqueta. (Tercera prueba del 12-oct: «ETAPA 2» en
-  una línea con el tramo debajo quedaba desequilibrada.) El número, a altura de
-  línea 34 (1,2 em: la Barlow se corta con menos) y 2 dp de aire a la derecha para
-  la cursiva. Se rellena de lima (de `blue` si es descarga) desde donde la tocó el
-  dedo, en 450 ms, como las pestañas de Inicio (U13-02); el texto va en `onAccent`
-  (lo pequeño, al 65 %). El número suelto se va antes de crecer y los tres pisos
-  llegan cuando ya caben. Si se elige deslizando la cabecera, el relleno sale del
-  centro. Las cerradas van centradas en la altura de la abierta.
+- **Todas iguales** (13-oct, tras probarlas: se leen mejor aunque quepan menos):
+  72 × 80 dp, radio 14, fondo `surface`, y apilan, centrados, **«ETAPA»** (`caps`
+  `mutedLight`), **el número** grande (`heroName`, Barlow cursiva; en `text`, en
+  `muted` si está hecha, en `blue` si es descarga) y **el tramo de semanas**
+  (`label` `mutedLight`). El número, a altura de línea 34 (1,2 em: la Barlow se
+  corta con menos) y 2 dp de aire a la derecha para la cursiva.
+- **La elegida** se rellena de lima (de `blue` si es descarga) **siempre desde la
+  esquina de arriba a la derecha**, en 450 ms, como las pestañas de Inicio
+  (U13-02), venga de un toque o de deslizar la cabecera; el texto pasa a
+  `onAccent` (lo pequeño, al 65 %). La que se deja se vacía en 200 ms. Las dos
+  cosas arrancan al tocar, sin esperar a que la pantalla se repinte con la etapa
+  nueva (la elegida vive en un valor compartido, no en el render).
 - El tramo: «sem 1-4 · sem 5-8 · sem 9-11 · sem 12». Dice sin palabras que son
   trozos seguidos del mismo calendario. Se calcula con las `durationWeeks`
   previstas (no con las semanas alargadas del cliente); una sin límite es
   «sem 13+», y **después** de una sin límite ya no hay calendario: esas fichas
   dicen la duración («4 sem»).
-- En la esquina de arriba a la derecha (abierta, a media altura junto al número,
-  porque arriba va «ETAPA»), el **punto** de la en curso (7 dp,
+- A la derecha, a media altura junto al número (arriba va «ETAPA»), el **punto** de la en curso (7 dp,
   `accent`; negro sobre el lima) o el **candado** rojo de 10 dp si está bloqueada
   (§5.2, quién lo ve). No coinciden nunca: la en curso no puede estar bloqueada.
   El progreso de la en curso no va en la ficha (la barrita se leía mal): lo dice
   la ceja de la cabecera.
 - **Sin nombre**: ya lo dice la cabecera, justo debajo.
-- **Al final, un cuadrado de 52 dp** con borde discontinuo (`muted`), sin
+- **Al final, una ficha del mismo tamaño** con borde discontinuo (`muted`), sin
   fondo, y un **+** en `accent`. Abre la creación de etapa con la seleccionada
   como base (§5.5).
-- **Se desplaza con el dedo** (sin imán: las fichas ya no miden lo mismo) y **se
-  elige tocando**: desplazar solo mueve la fila, no cambia de etapa. Al cambiar de
-  etapa por otro camino (deslizando la cabecera), la fila se mueve lo justo para que
-  la elegida quede a la vista.
+- **Se desplaza con el dedo** (sin imán) y **se elige tocando**: desplazar solo
+  mueve la fila, no cambia de etapa. Si la elegida (por toque o por otro camino)
+  queda en un borde, la fila avanza hasta que **asome media ficha de la de al
+  lado**, para que no parezca la última.
 
 ### 3.4 La cabecera de la etapa
 
@@ -173,12 +172,29 @@ Debajo, a 20 dp, el rótulo **«SESIONES DE ESTA ETAPA»** (caps `mutedLight`, c
 28 dp) antes de «QUÉ SESIÓN TOCA», para que cabecera y sesiones se lean como un
 grupo.
 
-**Cambiar de etapa** —tocando una tarjeta o **deslizando la cabecera** a los
+**Cambiar de etapa** —tocando una ficha o **deslizando la cabecera** a los
 lados— hace que la página entera (cabecera, rótulo y sesiones) salga y entre
 deslizando en la dirección del cambio, con el mismo `useSlidePages` que usa el
 editor de sesión al cambiar de sesión. Es lo que hace que cabecera y sesiones se
-lean como una unidad sin compartir caja. Nunca se cambia de etapa deslizando sobre
-una sesión (§4.2).
+lean como una unidad sin compartir caja. **Mientras se desliza la cabecera, la
+página va con el dedo** (a un quinto si no hay etapa hacia ese lado) y se apaga
+al final del recorrido (opaca hasta un tercio del ancho, apagada a los nueve
+décimos), solo como respuesta visual: no asoma la etapa de al lado. Al soltar
+pasados 60 dp sigue saliendo y apagándose en 220 ms en el hilo de UI, sin esperar a
+que React pinte la etapa nueva, que entra como siempre al estar lista; si no,
+vuelve a su sitio en 200 ms. La ficha nueva se rellena al instante:
+la etapa elegida vive también en un valor compartido (`sel` de `StageCards`), así
+que el relleno y la recolocación de la fila no esperan a que React repinte la
+página. Cambiar de etapa **no mueve el scroll** de la pantalla: la página nueva
+sostiene medio segundo el alto de la vieja (sin eso la lista se montaba sin alto
+y la pantalla saltaba arriba). Nunca se cambia de etapa deslizando sobre una
+sesión (§4.2).
+
+El 13-oct se probaron, en este orden, un carrusel de cabeceras que seguía al dedo,
+sesiones que lo seguían fila a fila y luego en bloque, y todas las etapas montadas
+de entrada con un fundido. Todo se descartó (§8, rondas 7-12): bucles, desfases,
+fallos de carga, cierres de la app y, con todo montado, mucho lag al abrir y al
+cambiar. Seguir al dedo queda para P14-08.
 
 ## 4. Las sesiones
 
@@ -255,14 +271,15 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
 
 **Probar P14-03**
 
-- [ ] Programa de 6 etapas: la elegida abierta («ETAPA 2» y su tramo) y las demás
-  cuadradas con su número; la en curso con su punto, las hechas con el número
-  apagado, las descargas en azul.
-- [ ] Desplazar la fila no cambia de etapa; tocar una ficha la abre, se rellena de
-  lima desde el dedo, la anterior se cierra y la página cambia.
+- [ ] Programa de 6 etapas: todas las fichas iguales («ETAPA», número, tramo); la
+  en curso con su punto, las hechas con el número apagado, las descargas en azul.
+- [ ] Desplazar la fila no cambia de etapa; tocar una ficha la rellena de lima desde
+  la esquina de arriba a la derecha y la anterior se vacía a la vez, deprisa, las
+  dos al instante de tocar.
+- [ ] Tocar la ficha visible del borde: la fila avanza a la vez que se rellena y
+  asoma media ficha de la siguiente (o del «+»); igual hacia la izquierda.
 - [ ] Detrás de la última, el «+».
-- [ ] «ETAPA N» y el tramo caben en la abierta, también con dos cifras («ETAPA 11»,
-  «sem 12-15»).
+- [ ] El número y el tramo caben, también con dos cifras («11», «sem 12-15»).
 - [ ] Tramos: «sem 1-4 · sem 5-8…»; con una etapa sin límite, «sem 13+», y las de
   después con su duración.
 - [ ] Rótulo «6 ETAPAS · 19 SEMANAS» y «19+» con una sin límite; «Ver plan ›» abre
@@ -271,7 +288,7 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
   delante de la de ahora; en un programa propio no sale nunca. Móvil del cliente:
   igual que hoy.
 - [ ] Elegir una descarga la rellena de azul; deslizar la cabecera rellena la nueva
-  desde el centro.
+  también desde arriba a la derecha.
 
 ### 5.3 P14-04 — Cabecera de la etapa y sus sesiones
 
@@ -286,22 +303,42 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
   cierra `openRowId`.
 - Gesto de la cabecera con `react-native-gesture-handler` (`Gesture.Pan`,
   `activeOffsetX([-20, 20])`, `failOffsetY([-10, 10])`): a más de 60 dp, etapa
-  siguiente o anterior.
+  siguiente o anterior. Mientras se arrastra, la página se desplaza con el dedo y
+  se apaga (worklets del gesto + `dragX`; `dragStage` para que la nueva no herede
+  el desplazamiento). Al soltar, `dragX` sigue hasta salir y la salida de la
+  página (`exitPage`) arranca desde donde esté; cambiando de otra forma, la de
+  `useSlidePages`. Que asome la etapa de al lado es P14-08.
 - Fuera `editor.sessionsOf` y `editor.stageTapHint` de los locales.
 
 **Probar P14-04**
 
-- [ ] Cambiar de etapa tocando una tarjeta y deslizando la cabecera: la página entra
+- [ ] Cambiar de etapa tocando una ficha y deslizando la cabecera: la página entra
   por el lado correcto y las sesiones son las de esa etapa.
+- [ ] Al deslizar la cabecera, la página (cabecera y sesiones) va con el dedo hasta
+  el final y se apaga al acercarse al borde; soltando antes del umbral vuelve a su
+  sitio, y pasándolo sigue saliendo al momento (sin quedarse parada esperando) y
+  entra la nueva cuando esté lista.
+- [ ] En la primera etapa hacia la derecha y en la última hacia la izquierda, la
+  página apenas se mueve y vuelve al soltar.
+- [ ] Tras cambiar deslizando, volver a la etapa anterior tocando su ficha: entra
+  recta, no desplazada.
+- [ ] Al deslizar la cabecera, la ficha nueva se rellena (y la fila se recoloca si
+  hace falta) sin esperar a que entre la página.
 - [ ] Deslizar la cabecera en vertical hace scroll de la pantalla, no cambia etapa.
-- [ ] Deslizar una sesión a la derecha abre Duplicar · Eliminar como hoy.
+- [ ] Deslizar la cabecera deprisa varias veces: al parar, ficha y página son de la
+  misma etapa.
+- [ ] Deslizar una sesión a la derecha abre Duplicar · Eliminar como hoy; tocar
+  la flecha ‹ (o cualquier otro punto de la tarjeta) la devuelve a su sitio.
 - [ ] Duplicar y eliminar una sesión funcionan; la última no se puede eliminar.
 - [ ] Reordenar por el asa, con autoscroll si la lista es larga.
 - [ ] Una sesión abierta se cierra al cambiar de etapa y al empezar a arrastrar.
+- [ ] Con la pantalla bajada, cambiar de etapa no la devuelve arriba (salvo que la
+  nueva sea más corta y no quepa).
 - [ ] Tocar una sesión abre su editor; volver deja la misma etapa seleccionada.
 - [ ] «+ Añadir sesión a X» añade a la etapa seleccionada.
 - [ ] Etapa bloqueada: ceja con «· 🔒 BLOQUEADA».
-- [ ] Cabecera y sesiones se leen como un grupo (aire antes de «Qué sesión toca»).
+- [ ] Cabecera y sesiones se leen como un grupo: hay más aire entre «+ Añadir
+  sesión» y «QUÉ SESIÓN TOCA» que dentro del grupo. Prueba de vista, sin toques.
 
 ### 5.4 P14-05 — Panel de cifras y grupos musculares
 
@@ -376,6 +413,16 @@ El botón de cifras despliega, dentro de la cabecera y bajo un filete, un panel
 - [ ] Añadir una etapa desde ahí: al volver hay dos tarjetas de etapa con sus tramos.
 - [ ] Borrar etapas hasta dejar una: vuelve la vista de una sola.
 
+### 5.7 P14-08 — Que asome la etapa de al lado al deslizar
+
+Hoy, al deslizar la cabecera, la página se desplaza con el dedo y cambia de etapa
+al soltar, pero la de al lado no asoma detrás. Que asome sería solo estético, y el
+13-oct (§8, rondas
+7-12) salió caro: cuatro intentos con bucles, fallos de carga y cierres de la app.
+Si se retoma: una sola fuente de la etapa elegida, nada que se monte en el gesto,
+ningún efecto que mueva una cosa en respuesta a otra, y medir antes en el móvil
+(abrir el editor y cambiar de etapa no pueden ir más lentos que hoy).
+
 ## 6. i18n
 
 En `src/locales/es.json` **y** `en.json`, añadiendo línea a línea (nunca
@@ -431,3 +478,41 @@ reformatear el JSON):
    números (A), tramos (B), fichas (C), y dos intermedias (D, E). Elegida una C
    con «ETAPA» pequeño detrás del número, por la base (F). La cabecera con el
    nombre se queda como está «por ahora».
+7. **13-oct** — primera prueba de P14-03/04 en el móvil: todas las fichas en el
+   formato de la elegida (caben menos, se leen mejor) y el relleno siempre desde
+   arriba a la derecha; la cabecera, un carrusel que sigue al dedo con las
+   vecinas asomando (deslizarla no respondía hasta soltar); cambiar de etapa no
+   mueve el scroll; la flecha ‹ de una sesión abierta, pulsable.
+8. **13-oct (2)** — segunda prueba: la ficha que se deja tardaba en vaciarse; tocar
+   una ficha cambiaba la cabecera de golpe; las sesiones entraban después y por la
+   derecha, poco fluido. Ahora la ficha vieja se vacía al tocar, el carrusel viaja
+   hasta la tocada, la fila de fichas deja asomar la vecina en los bordes y las
+   sesiones salen y entran fila a fila colgadas del carrusel, como las hojas.
+9. **13-oct (3)** — tercera prueba: el fila a fila se sentía bien cuando iba, pero
+   con fallos de carga y visuales; la ficha se rellenaba tarde al deslizar, y
+   deslizar deprisa dejaba carrusel y etapa en bucle («Maximum update depth
+   exceeded»). Ahora el carrusel es la única fuente de la etapa, que cambia a
+   mitad de recorrido (en el hilo de UI para las fichas), y las sesiones vuelven
+   a ir en bloque, deslizando y fundiéndose.
+10. **13-oct (4)** — cuarta prueba: tocar la ficha del borde la recolocaba tarde
+    (se rellenaba y luego se movía); las sesiones no iban con la cabecera; a veces
+    la app se cerraba deslizando. Ahora la fila de fichas se mueve desde el hilo de
+    UI junto con el relleno, y las sesiones se colocan según el carrusel, sin
+    animaciones de salida (sospechosas del cierre; sin registro del error para
+    confirmarlo).
+11. **13-oct (5)** — tras cuatro rondas con fallos de carga, visuales, desfases y
+    cierres de la app, se simplifica: se cambia de etapa solo tocando una ficha,
+    todas las etapas se montan al abrir y el cambio es un fundido corto. Deslizar
+    queda para después, sobre esta base (P14-08).
+12. **13-oct (6)** — con todas las etapas montadas, mucho lag al abrir el editor y
+    al cambiar de etapa. Se vuelve al sistema del principio (cabecera con
+    `Gesture.Pan` y página que entra con `useSlidePages`), que iba bien; se quedan
+    de estas rondas las fichas iguales con relleno desde arriba a la derecha, el
+    relleno y la recolocación al instante (valor compartido), el borde que deja
+    asomar la vecina, el scroll que no vuelve arriba y la flecha ‹ pulsable.
+13. **13-oct (7)** — el sistema del principio va bien; se le añade respuesta al
+    deslizar: la página se desplaza con el dedo (sin asomar la de al lado) y, al
+    soltar pasado el umbral, sale desde ahí y entra la nueva como siempre.
+14. **13-oct (8)** — la página se quedaba a mitad (iba a media velocidad) y, al
+    soltar, parada hasta que cargaba la nueva. Ahora va 1:1 con el dedo, se apaga
+    al final y al soltar sigue saliendo sin esperar.

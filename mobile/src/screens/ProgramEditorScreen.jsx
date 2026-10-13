@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Reanimated, { useAnimatedRef, LayoutAnimationConfig } from 'react-native-reanimated';
+import Reanimated, {
+  useAnimatedRef, useSharedValue, useAnimatedStyle, withTiming, runOnJS, LayoutAnimationConfig,
+} from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +32,8 @@ import { showDialog } from '../components/ui/dialog';
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
 const CARD_GAP = spacing.sm;
+// Lo que tarda en irse la página soltada deslizando, desde donde esté.
+const DRAG_OUT = { duration: 220 };
 
 // ─── Tarjeta de sesión ────────────────────────────────────────────────────────
 // Sesion Card / "Sesion card editor de programa" (210:3152) con dos cambios
@@ -120,13 +124,65 @@ export default function ProgramEditorScreen({ navigation }) {
   // como el editor de sesión al cambiar de sesión (P14 §3.4).
   const { slide, pageEntering, pageExiting } = useSlidePages();
 
+  // La etapa elegida también en el hilo de UI: las fichas se rellenan y se
+  // recolocan en cuanto se cambia, sin esperar a que React repinte la etapa.
+  const page = useSharedValue(selectedStageIdx);
+
+  // Deslizar la cabecera desplaza la página con el dedo y la apaga al final del
+  // recorrido, solo como respuesta visual: la etapa cambia al soltar, como
+  // siempre. `dragStage` es la etapa arrastrada (-1 si el último cambio no fue
+  // deslizando): la página nueva no hereda el desplazamiento de la vieja.
+  const { width: screenW } = useWindowDimensions();
+  const dragX     = useSharedValue(0);
+  const dragStage = useSharedValue(-1);
+  // Opaca hasta un tercio del ancho; apagada del todo a los nueve décimos.
+  const fadeAt = (x) => {
+    'worklet';
+    return 1 - Math.min(Math.max((Math.abs(x) / screenW - 0.33) / 0.57, 0), 1);
+  };
+  const dragStyle = useAnimatedStyle(() => {
+    const x = dragStage.get() === selectedStageIdx ? dragX.get() : 0;
+    return { opacity: fadeAt(x), transform: [{ translateX: x }] };
+  });
+  // La página que se deja deslizando sigue su camino desde donde la llevaba el
+  // dedo; cambiando de otra forma, la salida de siempre.
+  const exitPage = () => {
+    'worklet';
+    if (dragStage.value < 0) return pageExiting();
+    const x = dragX.value;
+    return {
+      initialValues: { opacity: fadeAt(x), transform: [{ translateX: x }] },
+      animations:    {
+        opacity:   withTiming(0, DRAG_OUT),
+        transform: [{ translateX: withTiming((x < 0 ? -1 : 1) * screenW, DRAG_OUT) }],
+      },
+    };
+  };
+
+  // Al cambiar de etapa la lista nueva se monta sin alto hasta que se mide, y el
+  // ScrollView, al encogerse el contenido, saltaba arriba del todo. Se sostiene
+  // el alto de la página vieja mientras dura el cambio.
+  // Valores compartidos y no `useRef`: el gesto de la cabecera se construye en
+  // el render y el lint del compilador cree que leería ahí los `ref`.
+  const pageH     = useSharedValue(0);
+  const holdTimer = useSharedValue(0);
+  const [holdH, setHoldH] = useState(0);
+  function holdPage() {
+    setHoldH(pageH.get());
+    clearTimeout(holdTimer.get());
+    holdTimer.set(setTimeout(() => setHoldH(0), 500));
+  }
+
   useEffect(() => {
     if (selectedStage) setStageName(selectedStage.name);
   }, [selectedStageIdx, activeProgram?.stages?.length]);
 
   useEffect(() => {
     const max = (activeProgram?.stages?.length ?? 1) - 1;
-    if (selectedStageIdx > max) setSelectedStageIdx(max);
+    if (selectedStageIdx > max) {
+      page.set(max);
+      setSelectedStageIdx(max);
+    }
   }, [activeProgram?.stages?.length]);
 
 
@@ -211,7 +267,10 @@ export default function ProgramEditorScreen({ navigation }) {
             setStageSheetOpen(false);
             setOpenRowId(null);
             removeStageFromProgram(editingId, selectedStageIdx);
+            dragStage.set(-1);
             slide(-1);
+            holdPage();
+            page.set(Math.max(0, selectedStageIdx - 1));
             setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
             showToast(t('editor.toastStageDeleted'), 2200, 'neutral');
           },
@@ -284,9 +343,12 @@ export default function ProgramEditorScreen({ navigation }) {
     now:      idx === activeStageIdx,
   }));
 
-  function selectStage(idx) {
+  function selectStage(idx, swiped = false) {
     if (idx < 0 || idx >= stages.length || idx === selectedStageIdx) return;
+    page.set(idx);
+    if (!swiped) dragStage.set(-1);
     slide(idx > selectedStageIdx ? 1 : -1);
+    holdPage();
     setOpenRowId(null);
     setSelectedStageIdx(idx);
   }
@@ -309,14 +371,34 @@ export default function ProgramEditorScreen({ navigation }) {
   // Deslizar la cabecera a los lados cambia de etapa. Solo en horizontal, para
   // no robarle el scroll vertical a la pantalla; y fuera del engranaje, que
   // queda fuera del detector. Las sesiones no cambian de etapa: deslizarlas es
-  // de `SwipeRow` (§4.2).
+  // de `SwipeRow` (§4.2). Mientras se arrastra, la página va con el dedo (a un
+  // quinto si no hay etapa hacia ese lado). Al soltar pasados 60 dp sigue
+  // saliendo en el hilo de UI, sin esperar a que React pinte la etapa nueva, y
+  // cambia de etapa; si no, vuelve a su sitio.
+  const cur  = selectedStageIdx;
+  const last = stages.length - 1;
   const headSwipe = Gesture.Pan()
-    .runOnJS(true)
     .activeOffsetX([-20, 20])
     .failOffsetY([-10, 10])
+    .onStart(() => {
+      dragX.set(0);
+      dragStage.set(cur);
+    })
+    .onUpdate((e) => {
+      const edge = e.translationX < 0 ? cur >= last : cur <= 0;
+      dragX.set(e.translationX * (edge ? 0.2 : 1));
+    })
     .onEnd((e) => {
-      if (e.translationX < -60) selectStage(selectedStageIdx + 1);
-      else if (e.translationX > 60) selectStage(selectedStageIdx - 1);
+      const to = e.translationX < -60 ? cur + 1 : e.translationX > 60 ? cur - 1 : cur;
+      if (to !== cur && to >= 0 && to <= last) {
+        dragX.set(withTiming((to > cur ? -1 : 1) * screenW, DRAG_OUT));
+        runOnJS(selectStage)(to, true);
+      } else {
+        dragX.set(withTiming(0, { duration: 200 }));
+      }
+    })
+    .onFinalize((_, ok) => {
+      if (!ok) dragX.set(withTiming(0, { duration: 200 }));
     });
 
   return (
@@ -360,6 +442,7 @@ export default function ProgramEditorScreen({ navigation }) {
           <StageCards
             stages={stageCards}
             value={stageCards[selectedStageIdx]?.id}
+            sel={page}
             onChange={(id) => selectStage(stageCards.findIndex((c) => c.id === id))}
             // Hasta que exista el creador de etapas (P15), «nueva etapa» va al
             // planificador (P14 §5.5).
@@ -370,9 +453,10 @@ export default function ProgramEditorScreen({ navigation }) {
         {/* ── La etapa elegida: cabecera y sesiones, que entran juntas ── */}
         <Reanimated.View
           key={stageCards[selectedStageIdx]?.id ?? selectedStageIdx}
-          style={styles.page}
+          style={[styles.page, { minHeight: holdH }, dragStyle]}
           entering={pageEntering}
-          exiting={pageExiting}
+          exiting={exitPage}
+          onLayout={(e) => pageH.set(e.nativeEvent.layout.height)}
         >
           {/* Lo de dentro no hace su propio fundido al montarse o desmontarse con
               la página; lo que se añada o quite después, sí. */}
@@ -617,7 +701,10 @@ export default function ProgramEditorScreen({ navigation }) {
                   commitStageName(); // flush a pending rename so the copy inherits it
                   const newIdx = duplicateStageInProgram(editingId, selectedStageIdx);
                   if (newIdx != null) {
+                    dragStage.set(-1);
                     slide(1);
+                    holdPage();
+                    page.set(newIdx);
                     setSelectedStageIdx(newIdx);
                     showToast(t('editor.toastStageDuplicated'), 2200, 'success');
                   }
