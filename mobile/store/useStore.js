@@ -4758,7 +4758,7 @@ export const useStore = create(
       /** Purchases a RevenueCat Package. Returns { ok, isPro } or { ok: false, cancelled, error }. */
       purchasePackage: async (pkg) => {
         const RC = get()._getRC();
-        if (!RC) return { ok: false, error: 'Compras no disponibles en este entorno' };
+        if (!RC) return { ok: false, error: i18n.t('paywall.errUnavailable') };
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
           let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
@@ -4776,7 +4776,7 @@ export const useStore = create(
             const isPro = await get().restorePurchases().catch(() => false);
             return { ok: true, isPro };
           }
-          return { ok: false, error: e?.message ?? 'Error al procesar la compra' };
+          return { ok: false, error: e?.message ?? i18n.t('paywall.errPurchase') };
         }
       },
 
@@ -4788,10 +4788,10 @@ export const useStore = create(
           const info = await RC.restorePurchases();
           const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
           set((s) => ({ profile: { ...s.profile, isPro } }));
-          get().showToast(isPro ? 'Compra restaurada' : 'No se encontraron compras anteriores', 2200, isPro ? 'success' : 'neutral');
+          get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
           return isPro;
         } catch {
-          get().showToast('Error al restaurar compras', 2200, 'error');
+          get().showToast(i18n.t('paywall.restoreError'), 2200, 'error');
           return false;
         }
       },

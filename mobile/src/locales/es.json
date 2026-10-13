@@ -1049,7 +1049,12 @@
     "restore": "Restaurar compra",
     "signIn": "Ya tengo cuenta",
     "processing": "Compra procesada, sincronizando…",
-    "errTitle": "No se pudo completar la compra"
+    "errTitle": "No se pudo completar la compra",
+    "errPurchase": "Error al procesar la compra",
+    "errUnavailable": "Las compras no están disponibles aquí",
+    "restored": "Compra restaurada",
+    "restoreNone": "No se encontraron compras anteriores",
+    "restoreError": "Error al restaurar la compra"
   },
   "programUpdate": {
     "title": "Tu entrenador ha modificado el programa",

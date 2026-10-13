@@ -1049,7 +1049,12 @@
     "restore": "Restore purchase",
     "signIn": "I have an account",
     "processing": "Purchase processed, syncing…",
-    "errTitle": "Couldn't complete the purchase"
+    "errTitle": "Couldn't complete the purchase",
+    "errPurchase": "Couldn't process the purchase",
+    "errUnavailable": "Purchases aren't available here",
+    "restored": "Purchase restored",
+    "restoreNone": "No previous purchases found",
+    "restoreError": "Couldn't restore the purchase"
   },
   "programUpdate": {
     "title": "Your trainer has updated the program",
