@@ -22,6 +22,8 @@ import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
 import ClientAvatar from '../components/ClientAvatar';
+import ClientRow, { CtaIcon } from '../components/ClientRow';
+import { makeRowStyles } from '../components/clientRowStyles';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -1332,31 +1334,6 @@ function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart,
  * comportan igual (mismo contador, mismo filtro, mismo orden "el más parado
  * primero"), así que son datos y no dos ramas copiadas.
  */
-// Iconos de 15 px de los botones de la fila (C08-clientes-dashboard.md §4.3),
-// sólidos. El color va en el icono, el del aviso al que responde: el fondo del
-// botón es neutro. Cada trazo es `fill` (relleno, con un borde fino del mismo
-// color y uniones redondas: puntas apenas redondeadas), `line` (trazo) o `cut`
-// (trazo del color del botón, que «recorta» el relleno).
-const CTA_ICON = {
-  play:   [{ fill: 'M8 5.5v13l10.5-6.5z' }],
-  add:    [{ fill: 'M10.5 4.5h3v6h6v3h-6v6h-3v-6h-6v-3h6z' }],
-  send:   [{ fill: 'M12 3l6.5 7H14v5.5h-4V10H5.5z' }, { fill: 'M5 18.5h14V21H5z' }],
-  unlock: [{ line: 'M8 11V7.5a4 4 0 0 1 7.6-1.7' }, { fill: 'M5 11h14v10H5z' }],
-  plan:   [{ line: 'M8 3v4M16 3v4' }, { fill: 'M4 6h16v14H4z' }, { cut: 'M12 10.5v6M9 13.5h6' }],
-};
-
-function CtaIcon({ name, color, bg }) {
-  return (
-    <Svg viewBox="0 0 24 24" width={15} height={15} strokeLinecap="round" strokeLinejoin="round">
-      {CTA_ICON[name].map((p, i) => (
-        p.fill ? <Path key={i} d={p.fill} fill={color} stroke={color} strokeWidth={1.5} />
-        : p.line ? <Path key={i} d={p.line} fill="none" stroke={color} strokeWidth={2.4} />
-        : <Path key={i} d={p.cut} fill="none" stroke={bg} strokeWidth={2.2} />
-      ))}
-    </Svg>
-  );
-}
-
 /**
  * Los avisos de un cliente, por prioridad (C08-clientes-dashboard.md §4.2). Los
  * usan la fila (el primero manda su 2.ª línea y su botón) y la tarjeta
@@ -1402,12 +1379,13 @@ function SortIcon({ color }) {
 function ReorderRow({ client, meta, radii }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const row    = useThemedStyles(makeRowStyles);
   return (
-    <View style={[styles.cCard, styles.reorderRow, radii]}>
+    <View style={[row.cCard, styles.reorderRow, radii]}>
       <ClientAvatar client={client} />
-      <View style={styles.cContent}>
-        <Text style={styles.cName} numberOfLines={1}>{client.name}</Text>
-        <Text style={styles.cMeta} numberOfLines={1}>{meta}</Text>
+      <View style={row.cContent}>
+        <Text style={row.cName} numberOfLines={1}>{client.name}</Text>
+        <Text style={row.cMeta} numberOfLines={1}>{meta}</Text>
       </View>
       <Sortable.Handle style={styles.reorderHandle}>
         <DragIcon color={th.colors.mutedLight} />
@@ -1492,7 +1470,6 @@ function ClientListCard({
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
   // Posición espejada del último envío del cliente, leída con la misma cuenta
   // que su Home (`stageStatus`, P08-weeks-model.md §3.7).
   const status       = activeProgram ? stageStatus(activeProgram, athleteProgress(activeProgram, client)) : null;
@@ -1554,116 +1531,49 @@ function ClientListCard({
                  : manualStatus === 'inactive' ? t('clients.statusInactive')
                  : invited                     ? t('clients.statusInvited')
                  : null;
-  let weekBit = null;
+  let weekBit = null, weekBitStrong = false;
   if (status?.started && status.lengthWeeks != null) {
-    weekBit = status.weekInStage >= status.lengthWeeks
-      ? <Text style={styles.cMetaStrong}>{t('clients.lastWeek')}</Text>
+    weekBitStrong = status.weekInStage >= status.lengthWeeks;
+    weekBit = weekBitStrong
+      ? t('clients.lastWeek')
       : t('clients.stageNWeeks', { n: status.weekInStage, total: status.lengthWeeks });
   }
 
   const showWeek  = !lens && !cta && !!activeProgram && !frozen && !dimmed && weekTotal > 0;
   const unread    = linked ? newSessionsCount : 0;
-  const showNotch = showWeek && unread > 0;
   const last      = lastSeenLabel(lastActivityTs, { t, lang: i18n.language });
 
+  const meta = aviso
+    ? { text: aviso.text, color: aviso.color, more: avisos.length - 1 }
+    : {
+        text: outLabel ?? [activeProgram?.name, currentStage?.name].filter(Boolean).join(' · '),
+        tail: outLabel ? null : weekBit, tailStrong: weekBitStrong, more: avisos.length - 1,
+      };
+
+  // Lente (§5.2): la cifra de este cliente en lo que se está comparando.
+  const lensValue = lens === 'adh'
+    ? (activeProgram && adherence?.status !== STATUS.MUTED ? adherence?.pct ?? null : null)
+    : lens ? (activeProgram ? improvement : null) : null;
+
   return (
-    <TouchableOpacity
-      style={[styles.cCard, radii, frozen && styles.cCardFrozen]}
+    <ClientRow
+      client={client}
+      link={linked ? 'linked' : invited ? 'invited' : 'none'}
+      badgeLabel={linked ? t('clients.info.link_linked') : t('clients.statusInvited')}
+      radii={radii}
+      frozen={frozen}
+      dimmed={dimmed}
+      meta={meta}
+      week={showWeek ? { total: weekTotal, done: weekDone, extra: weekExtra, last } : null}
+      cta={cta ? { label: cta.label, icon: cta.icon, color: aviso.color, onPress: cta.onPress } : null}
+      unread={unread}
+      lens={lens}
+      lensValue={lensValue}
+      glowStyle={glowStyle}
       onPress={onPress}
       onLongPress={onOpenActions}
-      delayLongPress={350}
-      activeOpacity={0.75}
-    >
-      <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, radii, styles.cGlow, glowStyle]} />
-      {/* Insignia del avatar (C08 §3.4): móvil con app, reloj si aún no ha
-          canjeado el código. Sin app, nada: es el caso normal del presencial. */}
-      <ClientAvatar
-        client={client}
-        link={linked ? 'linked' : invited ? 'invited' : 'none'}
-        badgeLabel={linked ? t('clients.info.link_linked') : t('clients.statusInvited')}
-      />
-
-      <View style={styles.cContent}>
-        {/* Línea 1: nombre ··· cuadraditos de la semana. Van aquí y no abajo
-            para que con 6-7 sesiones no se peguen a la línea del programa. */}
-        <View style={styles.cLine}>
-          <Text style={[styles.cName, (dimmed || frozen) && styles.cNameDim]} numberOfLines={1}>{client.name}</Text>
-          {showWeek && (
-            <View style={styles.cSegs}>
-              {Array.from({ length: weekTotal }, (_, i) => (
-                <View key={i} style={[styles.cSeg, i < weekDone && styles.cSegOn]} />
-              ))}
-              {weekExtra > 0 && <Text style={styles.cExtra}>+{weekExtra}</Text>}
-            </View>
-          )}
-        </View>
-
-        {/* Línea 2: el aviso, o programa · etapa · semana ··· la última vez. */}
-        <View style={styles.cLine}>
-          <Text style={[styles.cMeta, aviso && [styles.cAviso, { color: aviso.color }]]} numberOfLines={1}>
-            {aviso ? aviso.text
-              : outLabel ?? [activeProgram?.name, currentStage?.name].filter(Boolean).join(' · ')}
-            {!aviso && !outLabel && weekBit ? <>{' · '}{weekBit}</> : null}
-            {avisos.length > 1 && <Text style={styles.cMore}>{`  +${avisos.length - 1}`}</Text>}
-          </Text>
-          {showWeek && !showNotch && (
-            <Text style={[styles.cLast, last.today && styles.cMetaStrong]}>{last.text}</Text>
-          )}
-        </View>
-      </View>
-
-      {cta && (
-        <View style={styles.cRight}>
-          {/* Sin revisar en una fila con botón: el globo va delante (§4.5). */}
-          {unread > 0 && (
-            <TouchableOpacity onPress={onViewUnreviewed} hitSlop={8} style={styles.cGlobe}>
-              <Text style={styles.cGlobeText}>{unread}</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={styles.cCta} onPress={cta.onPress} activeOpacity={0.85}>
-            <CtaIcon name={cta.icon} color={aviso.color} bg={C.surface3 ?? C.surface2} />
-            <Text style={styles.cCtaText}>{cta.label}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Lente (§5.2): la cifra de este cliente en lo que se está comparando. */}
-      {lens && (() => {
-        const v = lens === 'adh'
-          ? (activeProgram && adherence?.status !== STATUS.MUTED ? adherence?.pct ?? null : null)
-          : (activeProgram ? improvement : null);
-        if (v == null) return <View style={styles.cLens}><Text style={[styles.cLensNum, { color: C.muted }]}>—</Text></View>;
-        const tone = lens === 'adh'
-          ? (v < 60 ? C.redText ?? C.red : v < 75 ? C.orange : null)
-          : (v > 0 ? C.accent : C.mutedLight);
-        return (
-          <View style={styles.cLens}>
-            <View style={styles.cLensRow}>
-              <Text style={[styles.cLensNum, { color: tone ?? C.text }]}>{lens === 'imp' && v > 0 ? '+' : ''}{v}</Text>
-              <Text style={styles.cLensUnit}>%</Text>
-            </View>
-            {lens === 'adh' && (
-              <View style={styles.cLensBar}>
-                <View style={[styles.cLensFill, { width: `${Math.min(100, v)}%`, backgroundColor: tone ?? C.accent }]} />
-              </View>
-            )}
-          </View>
-        );
-      })()}
-
-      {/* Sin revisar: muesca metida en la esquina, con su radio (§4.5). Tapa la
-          última vez, que es por fuerza la de esos entrenos. */}
-      {showNotch && (
-        <TouchableOpacity
-          style={[styles.cNotch, { borderBottomRightRadius: radii?.borderBottomRightRadius ?? th.radius.md }]}
-          onPress={onViewUnreviewed}
-          hitSlop={8}
-          accessibilityLabel={t('clients.unreviewedSessions', { count: unread })}
-        >
-          <Text style={styles.cNotchText}>{unread}</Text>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+      onViewUnreviewed={onViewUnreviewed}
+    />
   );
 }
 
@@ -1672,6 +1582,7 @@ function ClientListCard({
 export default function ClientsScreen() {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const rowStyles = useThemedStyles(makeRowStyles);
   const { t, i18n } = useTranslation();
   const billLang = i18n.language?.startsWith('en') ? 'en' : 'es';
   const insets     = useSafeAreaInsets();
@@ -3258,13 +3169,13 @@ export default function ClientsScreen() {
             {t('clients.sendAllRow', { count: pendingClients.length })}
           </Text>
           <TouchableOpacity
-            style={[styles.cCta, sendingAll && { opacity: 0.6 }]}
+            style={[rowStyles.cCta, sendingAll && { opacity: 0.6 }]}
             onPress={sendAllPending}
             disabled={sendingAll}
             activeOpacity={0.85}
           >
             <CtaIcon name="send" color={th.colors.blue} bg={th.colors.surface3 ?? th.colors.surface2} />
-            <Text style={styles.cCtaText}>{sendingAll ? t('clients.sending') : t('clients.sendAll')}</Text>
+            <Text style={rowStyles.cCtaText}>{sendingAll ? t('clients.sending') : t('clients.sendAll')}</Text>
           </TouchableOpacity>
         </Reanimated.View>
       )}
@@ -4068,115 +3979,6 @@ const makeStyles = (th) => StyleSheet.create({
 
   // ── Key tab ───────────────────────────────────────────────────────────────────
 
-  // ── Client list card ──────────────────────────────────────────────────────────
-  // El aire va entre el nombre y el bloque de abajo, no dentro de él: la línea
-  // de programa/aviso se lee pegada al ritmo, no colgando del nombre.
-  // Congelado: se ve y se abre, pero se lee como fuera de juego.
-  cCardFrozen: { opacity: 0.5 },
-  // Fila de la lista agrupada (C08 §4.1): las esquinas las pone la lista.
-  cCard: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.md,
-    // Alto fijo: la fila no crece ni encoge según lleve botón, cuadraditos o
-    // aviso. 70 = las dos líneas (20 + 4 + ~16) con `space/lg` arriba y abajo.
-    height:            70,
-    backgroundColor:   th.colors.surface,
-    paddingHorizontal: spacing.md,
-  },
-  cContent: { flex: 1, minWidth: 0, gap: spacing.xs2 },
-  cLine: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.md,
-  },
-  // Bold y no Black: el nombre manda por posición y tamaño, no compite.
-  cName: {
-    ...textStyles.itemTitleQuiet,
-    lineHeight:         20,
-    includeFontPadding: false,
-    color:              th.colors.text,
-    flex:               1,
-    minWidth:           0,
-  },
-  cNameDim:    { color: th.colors.mutedLight },
-  cMeta:       { ...textStyles.label, color: th.colors.mutedLight, flex: 1, minWidth: 0 },
-  cMetaStrong: { ...textStyles.labelStrong, color: th.colors.text },
-  // El aviso, en el mismo 12 que la meta pero en negrita: es lo que se viene a cazar.
-  cAviso:      { ...textStyles.labelStrong },
-  cMore:       { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  cLast:       { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 0 },
-  // Cuadraditos: uno por sesión prevista de la semana (§4.4).
-  cSegs: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs2,
-    flexShrink:    0,
-  },
-  cSeg: {
-    width:           10,
-    height:          10,
-    borderRadius:    th.radius.xxs ?? 2,
-    backgroundColor: th.colors.surface3 ?? th.colors.border,
-  },
-  cSegOn: { backgroundColor: th.colors.accent },
-  cExtra: { ...textStyles.labelStrong, color: th.colors.accent, marginLeft: spacing.xs },
-  // Botón de la fila: fondo neutro, el color va en el icono (§4.3).
-  cRight: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    flexShrink:    0,
-  },
-  cCta: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.sm,
-    paddingVertical:   spacing.sm2,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    backgroundColor:   th.colors.surface3 ?? th.colors.surface2,
-  },
-  // La voz de todo botón (`button`, la de «+ Cliente»), sin versales: en
-  // mayúsculas se comía la línea.
-  cCtaText: { ...textStyles.button, color: th.colors.text },
-  // Sin revisar: globo delante del botón, o muesca en la esquina (§4.5).
-  cGlobe: {
-    minWidth:          18,
-    height:            18,
-    borderRadius:      9,
-    paddingHorizontal: spacing.xs2,
-    alignItems:        'center',
-    justifyContent:    'center',
-    backgroundColor:   th.colors.accent,
-  },
-  cGlobeText: { ...textStyles.labelStrong, color: th.colors.onAccent, includeFontPadding: false },
-  cNotch: {
-    position:          'absolute',
-    right:             0,
-    bottom:            0,
-    minWidth:          30,
-    alignItems:        'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    borderTopLeftRadius: th.radius.md,
-    backgroundColor:   th.colors.accent,
-  },
-  cNotchText: { ...textStyles.labelStrong, color: th.colors.onAccent, includeFontPadding: false },
-  cGlow: { backgroundColor: withOpacity(th.colors.accent, 0.18) },
-  // Lente (§5.2): cifra del cliente y, en adherencia, su barrita.
-  cLens:     { alignItems: 'flex-end', gap: spacing.sm, minWidth: 52, flexShrink: 0 },
-  cLensRow:  { flexDirection: 'row', alignItems: 'baseline' },
-  cLensNum:  { ...textStyles.itemTitleQuiet, includeFontPadding: false },
-  cLensUnit: { ...textStyles.label, color: th.colors.mutedLight },
-  cLensBar: {
-    width:           52,
-    height:          4,
-    borderRadius:    2,
-    overflow:        'hidden',
-    backgroundColor: th.colors.surface3 ?? th.colors.border,
-  },
-  cLensFill: { height: '100%', borderRadius: 2 },
   // Etiquetas activas en el rótulo (§7.2): scroll horizontal con degradado.
   tagsWrap:  { flex: 1, minWidth: 0, marginRight: spacing.md },
   tagsRow:   { gap: spacing.sm, paddingRight: spacing.lg },
