@@ -2,11 +2,12 @@
 
 > Tema: monetización
 > En corto: La cuenta de entrenador y el plan se ven y se gestionan en una página propia («Mi cuenta»), y entrar, cambiar de forma de entrar y salir pasan por un único sitio del código que se encarga de Supabase, de los clientes y del PRO a la vez.
-> Fase M03-01 · pendiente · Una sola puerta: acciones de cuenta en el store y hook `useTrainerAccount` · §5
+> Fase M03-01 · hecho · Una sola puerta: acciones de cuenta en el store y hook `useTrainerAccount` · §5
 > Fase M03-02 · pendiente · Página Mi cuenta y su fila en el menú · §6
 > Fase M03-03 · pendiente · Hoja de entrada simplificada y entradas desde Clientes · §7
+> Inicio: 2026-10-14
 >
-> Estado: **spec escrita el 14-oct-2026, sin implementar.** Sale del mapa
+> Estado: **spec escrita el 14-oct-2026; M03-01 hecha (87c3be8).** Sale del mapa
 > [`docs/mapa-cuenta-pro.md`](../mapa-cuenta-pro.md) y de la maqueta
 > [`docs/mockups/account.html`](../mockups/account.html), aprobada el 14-oct.
 > **M03-01 va antes que O03-08**: O03-08 §24 paso 3 pensaba sacar el mismo hook
@@ -27,7 +28,13 @@ Hoy la cuenta del entrenador y el PRO están repartidos y no los ve nadie entero
   ver cambiar `trainerSync.userId`; el store guarda el estado.
 - La fila «Sincronización con clientes» del menú **solo sale con PRO**, aunque el
   plan gratis permite un cliente conectado, que necesita cuenta.
-- Dos fallos que salen de ese reparto (mapa §5):
+- Tres fallos que salen de ese reparto (mapa §5 y revisión del 14-oct):
+  - **Pasar de código a Google/Apple no traspasa los clientes en el servidor.**
+    `finishSocialLogin` llama a `setTrainerSyncMode(provider, { userId })`, que
+    pone `code = null`, y *después* lee el código guardado para el traspaso:
+    siempre `null`. Desde `802eb3f` (13-ago). Los clientes siguen en la lista
+    (son locales), pero sus huecos siguen siendo de la cuenta del código y
+    mandarles programas choca con `trainer_id = auth.uid()`.
   - **A → Sin conexión → B deja a B sin PRO.** Al pasar por *Sin conexión* el id
     anterior queda `null`, el efecto de `App.js` cree que no es un cambio de
     cuenta y no restaura.
@@ -121,21 +128,28 @@ Una sección nueva en `store/useStore.js`, **«CUENTA DE ENTRENADOR»**, junto a
 
 | Acción | Hace | Devuelve |
 |---|---|---|
-| `enterTrainerAccount({ provider, idToken, accessToken })` | `loginTrainerWithIdToken` → `setTrainerSyncMode(provider, { userId })` → si había un **código guardado** distinto: entra con él, `transferMySlotsTo(userId)` y vuelve a la sesión social (lo que hoy hace `finishSocialLogin`) → `refreshTrainerSlots()` → `_enterPurchases(userId)` | `{ userId }` |
-| `createTrainerCodeAccount()` | `signOut` → `setupTrainerCodeAccount()` → `setTrainerSyncMode('code', { code, userId })` → traspaso desde el código anterior si lo había (lo de `doSwitch`) → `refreshTrainerSlots()` → `_enterPurchases(userId)` | `{ code, userId }` |
-| `recoverTrainerAccount(code)` | `recoverWithTrainerCode(code)` → `setTrainerSyncMode('code', { code: CÓDIGO_EN_MAYÚSCULAS, userId })` → **`refreshTrainerSlots()`** (fallo de §1) → `_enterPurchases(userId)` | `{ userId }` |
+Las tres de entrar empiezan **leyendo `trainerSync` anterior** (`prevCode`,
+`prevUserId`) **antes** de tocar nada: `setTrainerSyncMode` pone `code = null`, y
+leerlo después es el fallo de §1.
+
+| Acción | Hace | Devuelve |
+|---|---|---|
+| `enterTrainerAccount({ provider, idToken, accessToken, fullName })` | leer `prevCode`/`prevUserId` → `loginTrainerWithIdToken` → si `fullName` y no hay `trainerName`: `setTrainerName(fullName)` (Apple, solo la primera vez) → `setTrainerSyncMode(provider, { userId })` → si había `prevCode`: entra con él, `transferMySlotsTo(userId)` y vuelve a la sesión social → `refreshTrainerSlots()` → `syncPurchaserId(userId, { switched })` | `{ userId }` |
+| `createTrainerCodeAccount()` | leer `prev*` → `signOut` → `setupTrainerCodeAccount()` → `setTrainerSyncMode('code', { code, userId })` → si había `prevCode` distinto: traspaso desde él y vuelta a la nueva → `refreshTrainerSlots()` → `syncPurchaserId(userId, { switched })` | `{ code, userId }` |
+| `recoverTrainerAccount(code)` | leer `prev*` → `recoverWithTrainerCode(code)` → `setTrainerSyncMode('code', { code: CÓDIGO_EN_MAYÚSCULAS, userId })` → **`refreshTrainerSlots()`** (fallo de §1) → `syncPurchaserId(userId, { switched })` | `{ userId }` |
 | `leaveTrainerAccount()` | `signOut` de Supabase → `setTrainerSyncMode('offline')` (conserva `trainerName`). **No** toca RevenueCat (D9) | — |
 
-Y una privada, que sustituye al efecto de `App.js`:
+Con **`switched = userId !== prevUserId`**, que sustituye al efecto de `App.js`:
 
-- **`_enterPurchases(userId)`** = `syncPurchaserId(userId, { switched: true })`.
-  `switched: true` siempre, porque estas acciones solo se llaman al **entrar de
-  verdad** en una cuenta, nunca al arrancar. Con eso, «el móvil tenía PRO y la
-  cuenta nueva no» restaura y RevenueCat **mueve** la compra (D13), venga de
-  otra cuenta, de «sin cuenta» o de A → salir → B (fallo de §1).
+- Cambio de cuenta de verdad (A → B, sin cuenta → B y **A → salir → B**, donde
+  `prevUserId` es `null`): «el móvil tenía PRO y la cuenta nueva no» restaura y
+  RevenueCat **mueve** la compra (D13). Arregla el fallo de §1.
+- **Reconectar** con el código guardado (`handleReconnect` →
+  `recoverTrainerAccount(trainerSync.code)`) es el mismo usuario: `switched`
+  falso, no restaura. Si no, una suscripción caducada llamaría a
+  `restorePurchases` y en iOS podría pedir la contraseña del Apple ID sin motivo.
 
-`handleReconnect` (rehacer la sesión con el código guardado) **no cambia de
-cuenta**: pasa a `recoverTrainerAccount(trainerSync.code)` y le vale igual.
+No hace falta una acción privada `_enterPurchases`: es esa línea.
 
 Los errores **se lanzan**, no se tragan: la interfaz los enseña. Los traspasos de
 clientes siguen igual que hoy (si fallan, `console.error` y se sigue), porque
@@ -145,14 +159,12 @@ ya era así y no es lo que arregla esta spec.
 
 `src/hooks/useTrainerAccount.js`. Es **la parte que no puede vivir en el store**:
 la petición de Google (`AuthSession.useAuthRequest` es un hook) y la hoja nativa
-de Apple. Sale tal cual de `TrainerSyncModal` (el `useAuthRequest`, el
-`googleRequestRef`, el efecto de `googleResponse`, `exchangeCodeForTokens`,
-`handleApple`) y llama a las acciones de §5.1:
+de Apple. Consigue el `id_token` y llama a las acciones de §5.1; **no importa
+nada de `supabaseAuth`**:
 
 ```js
 const acct = useTrainerAccount();
-acct.googleReady            // bool: la petición de Google está lista (en Expo Go, false)
-acct.appleAvailable         // bool: APPLE_AUTH_AVAILABLE
+acct.isExpoGo               // bool: en Expo Go Google no puede (URI no registrable)
 acct.loading                // bool: hay una operación en curso
 acct.signInWithGoogle()     // Promise<{ userId }>: abre el navegador; resuelve al volver
 acct.signInWithApple()      // Promise<{ userId }>
@@ -161,10 +173,14 @@ acct.recover(code)          // Promise<{ userId }>
 acct.leave()                // Promise<void>
 ```
 
-- `signInWithGoogle` **devuelve una promesa** que resuelve cuando llega la
-  respuesta del navegador (el efecto de `googleResponse` la resuelve o la rechaza).
-  Si el usuario cancela, rechaza con `{ cancelled: true }` y quien llama no
-  enseña error.
+- `signInWithGoogle` hace `await promptAsync()`, que ya **devuelve** la respuesta
+  del navegador: sobran el efecto de `googleResponse` y el `googleRequestRef`.
+  Si el usuario cancela (Google o Apple), rechaza con `{ cancelled: true }` y
+  quien llama no enseña error.
+- Apple: lo que hoy hace `apple()`; el `fullName` va a `enterTrainerAccount`.
+  Sale `onAppleName`: tras entrar, el modal se cierra y el onboarding termina,
+  así que nadie veía ese nombre en pantalla. Disponibilidad de Apple: la
+  constante `APPLE_AUTH_AVAILABLE` de siempre, no un campo del hook.
 - El hook **no** pinta nada ni cierra nada: devuelve resultados. Cerrar la hoja,
   enseñar el código o navegar es cosa de quien lo usa.
 - O03-08 (§24 paso 3) usa este mismo hook en `t_account`; no hay que hacer otro.
@@ -192,20 +208,25 @@ En `store/useStore.test.js` (ya mockea RevenueCat para `syncPurchaserId`):
   llaman a `logIn(userId)`; con `isPro` antes y sin entitlement después, llaman a
   `restorePurchases`; sin `isPro` antes, no.
 - **A → `leaveTrainerAccount` → B con PRO en el móvil restaura** (el fallo de §1).
+- **Reconectar** (`recoverTrainerAccount` con el mismo código y usuario) con
+  `isPro` y sin entitlement **no** llama a `restorePurchases`.
+- **Código → Google traspasa:** con un código guardado, `enterTrainerAccount`
+  llama a `recoverWithTrainerCode(códigoViejo)` y a `transferMySlotsTo(userIdNuevo)`
+  (el fallo de §1).
 - `leaveTrainerAccount` no llama a `logOut` y deja `isPro` como estaba;
   `trainerSync` queda `{ mode: 'offline', code: null, userId: null }` con el
   `trainerName` intacto.
 - `recoverTrainerAccount` llama a `refreshTrainerSlots`.
 - **Frontera** (test nuevo, al estilo de `src/theme.test.js`): ningún archivo de
-  `src/` fuera de `store/` y `src/hooks/useTrainerAccount.js` importa
-  `setupTrainerCodeAccount`, `recoverWithTrainerCode` ni
-  `loginTrainerWithIdToken`, ni llama a `setTrainerSyncMode(`. Es lo que impide
-  que vuelva a repartirse.
+  `src/` importa `setupTrainerCodeAccount`, `recoverWithTrainerCode` ni
+  `loginTrainerWithIdToken`, ni llama a `setTrainerSyncMode(`. Solo `store/`.
+  Es lo que impide que vuelva a repartirse.
 
 **Probar M03-01**
 
-- [ ] Con cuenta por código y PRO → Menú → Sincronización → pasar a Google →
-  sigue con PRO, y los clientes siguen en la lista.
+- [ ] Con cuenta por código, PRO y un cliente conectado → Menú → Sincronización
+  → pasar a Google → sigue con PRO, y **mandar un programa a ese cliente le
+  llega** (antes los huecos se quedaban en la cuenta del código).
 - [ ] Con cuenta A y PRO → «Sin conexión» → entrar con el código de otra cuenta B
   → B tiene PRO (antes se quedaba sin él). En RevenueCat › Customers, la compra
   está en B y no en A.
@@ -502,6 +523,6 @@ errores nuevos frente a HEAD, `npx vitest run` desde la raíz).
 
 | Fase | Qué | Estado |
 |---|---|---|
-| M03-01 | Acciones del store + `useTrainerAccount`; fuera el efecto de `App.js`; test de frontera | pendiente |
+| M03-01 | Acciones del store + `useTrainerAccount`; fuera el efecto de `App.js`; test de frontera | ✅ 87c3be8 — también arregla el traspaso código → Google (§1) |
 | M03-02 | `AccountScreen`, fila del menú, `getProDetails` | pendiente |
 | M03-03 | `TrainerSyncModal` simplificado, primera visita, icono de Clientes | pendiente |

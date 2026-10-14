@@ -1132,7 +1132,10 @@ Hace, en `screens/trainer.jsx`, §7 entero:
    `useTrainerAccount({ onDone, onError, onAppleName })` → `{ loading, isExpoGo,
    google(), apple(), recover(code), createWithCode() }`—, que usan
    `TrainerSyncModal` y `r_trainer`/`r_code` de «Ya tengo cuenta». M03-01 la
-   sustituye por su contrato y adapta esos dos usos.)* El modal no
+   sustituye por su contrato y adapta esos dos usos. **Hecho en 87c3be8**: el
+   contrato es el de M03 §5.2, con promesas —`signInWithGoogle()`,
+   `signInWithApple()`, `createCode()`, `recover(code)`, `leave()`, `loading`,
+   `isExpoGo`—; cancelar rechaza con `{ cancelled: true }`.)* El modal no
    cambia para el usuario. Con la cuenta hecha, `connectClientToCloud(clientId)`.
 4. **t_code** (§7.5) con el bloqueo; **el mismo bloqueo en `code_reveal` de
    `TrainerSyncModal`** («Ya lo he guardado» desactivado hasta Copiar o Enviar).
