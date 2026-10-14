@@ -157,7 +157,10 @@ function Code({ goTo }) {
           </View>
         </>
       )}
-      <ClientCodeModal visible={social} startWithSocial onClose={() => setSocial(false)} onSuccess={linkedByAccount} />
+      {/* Montada solo mientras se usa: al desmontarse limpia el estado del código
+          (`useClientCode`, compartido), y montada siempre lo borraba al pasar a
+          «Programa encontrado». */}
+      {social && <ClientCodeModal visible startWithSocial onClose={() => setSocial(false)} onSuccess={linkedByAccount} />}
     </FlowBody>
   );
 }
