@@ -199,9 +199,9 @@ entrena, y porque la tarjeta siguiente enseña justo la vista elegida.
 (§25):
 
 ```
-Nuevo programa → Elige cómo empezar ─┬─ Programa recomendado → qué buscas → días → propuestas ─┐
+Nuevo programa → Elige cómo empezar ─┬─ Plantillas → qué buscas → días → propuestas ───────────┐
                                      ├─ Crear desde cero ⤵ ────────────────────────────────────┤
-                                     ├─ Desde una plantilla → elegir ──────────────────────────┼→ Programa listo → Inicio
+                                     ├─ Mis plantillas → elegir ───────────────────────────────┼→ Programa listo → Inicio
                                      ├─ Importar archivo ──────────────────────────────────────┘
                                      └─ Programa de tu entrenador → código → conectado → Inicio
 ```
@@ -1281,7 +1281,7 @@ Lo de §25.2-25.3 vale; esto lo completa (manda sobre lo de arriba si chocan):
    `b_sessions` hasta que exista el programa: está bien así (la flecha vuelve).
 4. **El nivel guardado.** `levelOf` ya cae a `profile.onboardingAnswers.level`,
    pero `isDeep` del constructor lee `answers.level` a secas. `n_source`, al
-   elegir «Programa recomendado» o «Crear desde cero», hace
+   elegir «Plantillas» o «Crear desde cero», hace
    `flowAnswer({ level: profile.onboardingAnswers?.level ?? null })`. Y `s_level`
    con `entry: 'newProgram'` sigue a `s_goal`, no a `s_choice`.
 5. **La flecha y el atrás de Android en `n_source`.** `canGoBack` es falso sin
