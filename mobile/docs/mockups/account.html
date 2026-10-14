@@ -96,8 +96,6 @@
   .meter i u.on.full { background: var(--orange); }
   .badge { display: inline-flex; align-items: center; gap: 6px; font: 800 11px Inter; letter-spacing: 1.2px; text-transform: uppercase; padding: 6px 9px; border-radius: 6px; margin-top: 14px; }
   .badge.ok { background: rgba(0,0,0,.14); }
-  .badge.warn { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
-  .plan.pro .badge.warn { background: var(--onAccent); color: var(--orange); }
   .links { display: flex; justify-content: center; gap: 22px; margin-top: 14px; }
   .links a { font: 800 13px Inter; color: var(--accent); cursor: pointer; }
 
@@ -192,7 +190,7 @@
       <li><b>Borrar cuenta</b> se muda del menú a esta página, al final.</li>
       <li>El <b>nombre para tus clientes</b> sale de Sincronización y vive aquí, como dato editable.</li>
       <li>Plan FREE: <b>qué te queda</b> en barras (clientes, conectados, plantillas), no una lista de lo que no tienes.</li>
-      <li>PRO comprado sin cuenta: aviso naranja <b>«Solo en este móvil»</b>; la acción es la de arriba, «Crear cuenta». Es el caso que hoy nadie ve.</li>
+      <li>PRO comprado sin cuenta: <b>«Guardado en tu cuenta de Google Play»</b>. Se recupera con Restaurar compra en cualquier móvil con esa cuenta; la cuenta de la app solo añade cambiar de plataforma y que vuelva solo.</li>
     </ul>
 
     <h3>Lo que no está</h3>
@@ -260,8 +258,8 @@ function planBlock() {
       <div class="top"><div class="name">Pro</div>
         <div class="kind">${annual ? 'Anual' : 'Para siempre'}<span>${annual ? 'Se renueva el 13 oct 2027' : 'Pago único'}</span></div></div>
       ${local
-        ? `<span class="badge warn">● Solo en este móvil</span>
-           <div class="why">Crea una cuenta arriba para no perderlo.</div>`
+        ? `<span class="badge ok">✓ Guardado en tu cuenta de ${store}</span>
+           <div class="why">Con una cuenta, también en ${store === 'Google Play' ? 'iPhone' : 'Android'}.</div>`
         : `<span class="badge ok">✓ Guardado en tu cuenta</span>
            ${annual ? `<div class="acts"><button class="btn dark" data-a="manage">Gestionar en ${store} ↗</button></div>` : ''}`}
     </div>
