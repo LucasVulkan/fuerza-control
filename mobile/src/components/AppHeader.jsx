@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { Text, TextInput } from './ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -22,13 +22,10 @@ import { programsOf } from '../utils/programOwnership';
 import ImportModal from './ImportModal';
 import DragSheet   from './DragSheet';
 import ArchivedProgramsSheet from './ArchivedProgramsSheet';
-import TrainerSyncModal      from './TrainerSyncModal';
-import DeleteAccountModal    from './DeleteAccountModal';
-import PaywallModal from './PaywallModal';
 import SegmentedControl from './ui/SegmentedControl';
 import { Switch }       from './ui/EditorRows';
-import { PencilIcon }   from './ui/EditorIcons';
-import { Section, MenuRow, Status, RowIcon } from './ui/MenuList';
+import { ArrowIcon }    from './ui/EditorIcons';
+import { Section, MenuRow, Status, RowIcon, SheetSlide, ROW_CHEVRON } from './ui/MenuList';
 import { ROW_ICON } from './ui/rowIcons';
 import FitLogo from './ui/FitLogo';
 import { formatWhen } from '../utils/formatWhen';
@@ -82,62 +79,38 @@ function MenuIcon({ size = 24 }) {
 // badge PRO, tema activo). Los trazos viven en `ui/rowIcons`, compartidos con
 // las hojas de opciones.
 
-// ── Bloque de identidad (solo PRO) ────────────────────────────────────────────
-// Quién eres va arriba, con el badge PRO al lado, no perdido en una sección
-// "Cuenta" a tres scrolls. La 2ª línea explica por qué ese nombre importa.
+// ── Fila de «Mi cuenta» ────────────────────────────────────────────────────────
+// Va arriba del todo, con o sin PRO, y abre la página (M03-02 §6.2): nombre del
+// entrenador (o «Mi cuenta» sin cuenta), cómo entra, y la chapa FREE/PRO.
 // Sin avatar (decisión del usuario: no hay icono de perfil).
 
-function IdentityBlock() {
+function AccountRow({ onPress }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
 
-  const trainerName    = useStore((s) => s.trainerSync?.trainerName);
-  const setTrainerName = useStore((s) => s.setTrainerName);
-
-  const [editing, setEditing] = useState(false);
-  const [draft,   setDraft]   = useState(trainerName ?? '');
-
-  function startEditing() { setDraft(trainerName ?? ''); setEditing(true); }
-  function commit() { setTrainerName(draft); setEditing(false); }
+  const mode        = useStore((s) => s.trainerSync?.mode);
+  const trainerName = useStore((s) => s.trainerSync?.trainerName);
+  const isPro       = useStore((s) => s.profile.isPro ?? false);
+  const hasAccount  = !!mode && mode !== 'offline';
 
   return (
-    <View style={styles.me}>
-      <View style={styles.meWho}>
-        {editing ? (
-          <TextInput
-            autoFocus
-            style={styles.meNameInput}
-            value={draft}
-            onChangeText={setDraft}
-            onBlur={commit}
-            onSubmitEditing={commit}
-            placeholder={t('header.namePlaceholder')}
-            placeholderTextColor={th.colors.muted}
-            returnKeyType="done"
-            maxLength={40}
-          />
-        ) : (
-          <View style={styles.meNameRow}>
-            <Text
-              style={[styles.meName, !trainerName && styles.meNameEmpty]}
-              numberOfLines={1}
-              onPress={startEditing}
-              suppressHighlighting
-            >
-              {trainerName || t('header.namePlaceholder')}
-            </Text>
-            <TouchableOpacity hitSlop={12} onPress={startEditing}>
-              <PencilIcon size={11} color={th.colors.muted} />
-            </TouchableOpacity>
-          </View>
-        )}
-        <Text style={styles.meRole} numberOfLines={1}>{t('header.identityRole')}</Text>
-      </View>
-      <View style={styles.plan}>
-        <Text style={styles.planText}>PRO</Text>
-      </View>
-    </View>
+    <SheetSlide>
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.acct, pressed && styles.acctPressed]}>
+        <View style={styles.acctMeta}>
+          <Text style={styles.acctName} numberOfLines={1}>
+            {(hasAccount && trainerName) || t('account.rowTitleNone')}
+          </Text>
+          <Text style={styles.acctSub} numberOfLines={1}>
+            {hasAccount ? t('account.rowSubTrainer', { how: t(`account.how.${mode}`) }) : t('account.rowSubNone')}
+          </Text>
+        </View>
+        <View style={[styles.acctChip, !isPro && styles.acctChipOff]}>
+          <Text style={[styles.acctChipText, !isPro && styles.acctChipTextOff]}>{isPro ? 'PRO' : 'FREE'}</Text>
+        </View>
+        <ArrowIcon size={ROW_CHEVRON} color={th.colors.muted} />
+      </Pressable>
+    </SheetSlide>
   );
 }
 
@@ -342,19 +315,16 @@ function BodyWeightField() {
 
 // ── Settings Sheet ─────────────────────────────────────────────────────────────
 
-function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExport, onChangeSyncMode, onDeleteAccount }) {
-  const th         = useTheme();
+function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExport }) {
   const styles     = useThemedStyles(makeStyles);
   const { t }      = useTranslation();
   const navigation = useNavigation();
-  const [showPaywall, setShowPaywall] = useState(false);
 
   const profile     = useStore((s) => s.profile);
   const setProfile  = useStore((s) => s.setProfile);
   const setLanguage = useStore((s) => s.setLanguage);
   const navigate    = useStore((s) => s.navigate);
   const clientSync  = useStore((s) => s.clientSync);
-  const trainerSync = useStore((s) => s.trainerSync);
   const driveBackup = useStore((s) => s.driveBackup);
   const archivedCount = useStore((s) => programsOf(s.programs, 'me')
     .filter((p) => p.status === 'archived').length);
@@ -382,19 +352,10 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
     : driveWhen                                  ? t('header.driveSubLast', { when: driveWhen })
     :                                              t('header.driveSubNever');
 
-  const syncMode   = trainerSync?.mode ?? null;
-  const syncActive = !!syncMode && syncMode !== 'offline';
-  const syncSub    = syncMode === 'google'  ? t('header.syncSubGoogle')
-    : syncMode === 'apple'   ? t('header.syncSubApple')
-    : syncMode === 'code'    ? t('header.syncSubCode')
-    : syncMode === 'offline' ? t('header.syncSubOffline')
-    :                          t('header.syncSubNone');
-
   return (
     <DragSheet visible={visible} onClose={onClose}>
-      {/* El bloque de identidad es la cabecera del menú y solo existe en PRO;
-          una cuenta free entra directa a los ajustes. */}
-      {isPro && <IdentityBlock />}
+      {/* «Mi cuenta» es la cabecera del menú, con o sin PRO. */}
+      <AccountRow onPress={() => go('Account')} />
 
       <Section title={t('header.sectionPrograms')}>
         <MenuRow
@@ -433,16 +394,6 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           } />}
           onPress={() => go('DriveBackup')}
         />
-        {isPro && (
-          <MenuRow
-            icon={<RowIcon>{ROW_ICON.sync}</RowIcon>}
-            label={t('header.clientSyncRow')}
-            sub={syncSub}
-            minHeight={62}
-            status={<Status tone={syncActive ? 'on' : 'off'} label={syncActive ? t('header.statusActive') : t('header.statusSetUp')} />}
-            onPress={() => { onClose(); onChangeSyncMode(); }}
-          />
-        )}
       </Section>
 
       <Section title={t('header.sectionData')}>
@@ -525,28 +476,9 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
       <Section title={t('header.sectionAccount')}>
         <MenuRow
-          icon={<RowIcon>{ROW_ICON.plan}</RowIcon>}
-          label={t('header.planRow')}
-          badge={isPro ? 'PRO' : 'FREE'}
-          badgeMuted={!isPro}
-          onPress={isPro ? undefined : () => setShowPaywall(true)}
-        />
-        <MenuRow
           icon={<RowIcon>{ROW_ICON.docs}</RowIcon>}
           label={t('header.docsRow')}
           onPress={() => go('Docs')}
-        />
-        {/* Apple pide (5.1.1(v)) que borrar la cuenta se encuentre desde
-            dentro. Va aquí, en CUENTA, y no dentro de Sincronización: esa
-            fila es solo para Pro y se abre desde Clientes. */}
-        <MenuRow
-          icon={<RowIcon color={th.tint.red50}>{ROW_ICON.trash}</RowIcon>}
-          label={t('header.deleteAccountRow')}
-          labelColor={th.tint.red50}
-          sub={t('header.deleteAccountSub')}
-          subLines={0}
-          minHeight={62}
-          onPress={() => { onClose(); onDeleteAccount(); }}
         />
       </Section>
 
@@ -559,8 +491,6 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           />
         </Section>
       )}
-
-      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
     </DragSheet>
   );
 }
@@ -577,8 +507,6 @@ export default function AppHeader() {
   const [picking,           setPicking]           = useState(false);
   const [showArchived,      setShowArchived]       = useState(false);
   const [showExport,        setShowExport]         = useState(false);
-  const [showSyncMode,      setShowSyncMode]       = useState(false);
-  const [showDeleteAccount, setShowDeleteAccount]  = useState(false);
   const [now,               setNow]               = useState(() => new Date());
 
   const importData                = useStore((s) => s.importData);
@@ -684,8 +612,6 @@ export default function AppHeader() {
         onImport={handlePickFile}
         onShowArchived={() => setShowArchived(true)}
         onShowExport={() => setShowExport(true)}
-        onChangeSyncMode={() => setShowSyncMode(true)}
-        onDeleteAccount={() => setShowDeleteAccount(true)}
       />
 
       {showArchived && (
@@ -693,17 +619,6 @@ export default function AppHeader() {
       )}
 
       <ExportSheet visible={showExport} onClose={() => setShowExport(false)} />
-
-      <TrainerSyncModal
-        visible={showSyncMode}
-        onClose={() => setShowSyncMode(false)}
-        isFirstTime={false}
-      />
-
-      <DeleteAccountModal
-        visible={showDeleteAccount}
-        onClose={() => setShowDeleteAccount(false)}
-      />
 
       {importState && (
         <ImportModal
@@ -771,36 +686,29 @@ const makeStyles = (th) => StyleSheet.create({
     lineHeight: lh(textStyles.label.fontSize),
   },
 
-  // ── Bloque de identidad ─────────────────────────────────────────────────────
-  // Medidas de la referencia (v29): fila con el badge a la derecha, 20 de aire
-  // por debajo antes de la primera etiqueta de sección.
-  me: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.md,
-    paddingHorizontal: spacing.xs2,
-    paddingBottom:     spacing.xl,
+  // ── Fila de «Mi cuenta» (maqueta account.html: `.acc-row`, sin avatar) ──────
+  acct: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             spacing.md,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.lg,
+    padding:         spacing.lg,
+    marginBottom:    spacing.xl,
   },
-  meWho:     { flex: 1, minWidth: 0 },
-  meNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  meName: { ...textStyles.itemTitle, color: th.colors.text, flexShrink: 1 },
-  meNameEmpty: { color: th.colors.mutedLight },
-  meNameInput: { ...textStyles.itemTitle, color: th.colors.text, padding: 0 },
-  meRole: {
-    ...textStyles.label,
-    color:         th.colors.mutedLight,
-    marginTop:     spacing.xs,
+  acctPressed: { transform: [{ scale: 0.98 }] },
+  acctMeta:    { flex: 1, minWidth: 0 },
+  acctName:    { ...textStyles.itemTitleQuiet, color: th.colors.text },
+  acctSub:     { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs2 },
+  acctChip: {
+    padding:         spacing.sm,
+    borderRadius:    th.radius.xs,
+    backgroundColor: th.colors.accent,
+    flexShrink:      0,
   },
-  plan: {
-    height:           28,
-    borderRadius:     9,
-    backgroundColor:  th.tint.accent10,
-    paddingHorizontal: 11,
-    alignItems:       'center',
-    justifyContent:   'center',
-    flexShrink:       0,
-  },
-  planText: { ...textStyles.caps, fontFamily: 'Inter_900Black', color: th.colors.accent },
+  acctChipOff:     { backgroundColor: th.colors.surface2 },
+  acctChipText:    { ...textStyles.labelStrong, color: th.colors.onAccent },
+  acctChipTextOff: { color: th.colors.mutedLight },
 
   // Segmentado pequeño dentro de la fila (unidades / idioma)
   segWrap: { width: 104, flexShrink: 0 },

@@ -27,8 +27,6 @@
 import { useState, useEffect } from 'react';
 import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Text, TextInput } from './ui/Text';
-import * as Clipboard   from 'expo-clipboard';
-import Svg, { Path, Circle } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
@@ -36,63 +34,13 @@ import { APPLE_AUTH_AVAILABLE } from '../services/appleAuth';
 import useTrainerAccount, { askCreateInstead } from '../hooks/useTrainerAccount';
 import DragSheet from './DragSheet';
 import CodeField from './ui/CodeField';
-import { SectionLabel, RowIcon } from './ui/MenuList';
+import { SectionLabel } from './ui/MenuList';
+import { GoogleIcon, AppleIcon, KeyIcon, ICON_SIZE } from './ui/AccountIcons';
+import CodeReveal from './CodeReveal';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
-
-// Iconos de las filas, los de la maqueta (account.html). Google lleva los
-// colores de su marca; Apple y la llave, el del texto.
-const ICON_SIZE = 20;
-function GoogleIcon() {
-  return (
-    <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24">
-      <Path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5z" />
-      <Path fill="#34A853" d="M12 22c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A10 10 0 0 0 12 22z" />
-      <Path fill="#FBBC05" d="M6.2 13.6a6 6 0 0 1 0-3.8V7.1H2.7a10 10 0 0 0 0 9z" />
-      <Path fill="#EA4335" d="M12 6c1.5 0 2.9.5 4 1.5l3-3A10 10 0 0 0 2.7 7.1l3.5 2.7C7 7.8 9.3 6 12 6z" />
-    </Svg>
-  );
-}
-function AppleIcon() {
-  const th = useTheme();
-  return (
-    <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill={th.colors.text}>
-      <Path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9a5 5 0 0 0-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5a11 11 0 0 0 1.4-2.9 4.5 4.5 0 0 1-2.7-4.1zM13.9 4.9A4.4 4.4 0 0 0 15 1.7a4.6 4.6 0 0 0-3 1.5 4.2 4.2 0 0 0-1 3.1c1.1.1 2.2-.6 2.9-1.4z" />
-    </Svg>
-  );
-}
-function KeyIcon() {
-  const th = useTheme();
-  return (
-    <RowIcon color={th.colors.text} size={ICON_SIZE} strokeWidth={2.2}>
-      <Circle cx="8" cy="15" r="4" />
-      <Path d="M11 12l9-9M17 6l3 3M14 9l2 2" />
-    </RowIcon>
-  );
-}
-
-// ── Caja del código (verlo y copiarlo) ────────────────────────────────────────
-
-function CodeBox({ code }) {
-  const styles = useThemedStyles(makeStyles);
-  const { t }  = useTranslation();
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    await Clipboard.setStringAsync(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.7}>
-      <Text style={styles.codeText}>{code}</Text>
-      <Text style={styles.codeHint}>{copied ? t('sync.copied') : t('sync.copyHint')}</Text>
-    </TouchableOpacity>
-  );
-}
 
 // ── Campo del nombre visible para los clientes ────────────────────────────────
 
@@ -286,23 +234,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
     >
       {/* ── Código recién creado ── */}
       {screen === 'code_reveal' && newCode && (
-        <View style={styles.block}>
-          <Text style={styles.lead}>{t('sync.revealLead')}</Text>
-
-          <CodeBox code={newCode} />
-
-          <View style={styles.warnCard}>
-            <Text style={styles.warnText}>{t(forPurchase ? 'sync.revealWarnPurchase' : 'sync.revealWarn')}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => { setScreen('select'); onClose(); }}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.primaryBtnText}>{t('sync.revealCta')}</Text>
-          </TouchableOpacity>
-        </View>
+        <CodeReveal code={newCode} purchase={forPurchase} onDone={() => { setScreen('select'); onClose(); }} />
       )}
 
       {/* ── «¿Cómo entrabas?»: el código, Google o Apple (solo entran) ── */}
@@ -372,21 +304,6 @@ const makeStyles = (th) => StyleSheet.create({
   hintLeft: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, marginTop: spacing.sm },
   link:     { ...textStyles.labelStrong, color: th.tint.accent50, textAlign: 'center' },
 
-  // Caja del código: el código es el protagonista, con la pista de copiar debajo.
-  codeBox: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.md,
-    paddingVertical: spacing.lg,
-    alignItems:      'center',
-    gap:             spacing.sm,
-  },
-  codeText: {
-    ...textStyles.code,
-    color:         th.colors.accent,
-    fontVariant:   ['tabular-nums'],
-  },
-  codeHint:   { ...textStyles.label, color: th.colors.mutedLight },
-
   // Filas que actúan directamente (`.opt` de la maqueta account.html).
   entries: { gap: spacing.sm2 },
   entry: {
@@ -410,13 +327,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   tagTxt: { ...textStyles.caps, color: th.colors.accent },
   chev:   { ...textStyles.title, color: th.colors.muted },
-
-  warnCard: {
-    backgroundColor: th.tint.orange30,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  warnText: { ...textStyles.label, color: th.tint.orange50, lineHeight: 15 },
 
   nameInput: {
     backgroundColor:   th.colors.surface2,

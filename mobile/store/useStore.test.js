@@ -821,6 +821,53 @@ describe('syncPurchaserId — M01-01, el Pro sigue a la cuenta', () => {
   });
 });
 
+describe('getProDetails — M03-02, el plan para «Mi cuenta»', () => {
+  let RC, getRC;
+  const entitlement = (ent, managementURL = 'https://tienda/gestionar') => ({
+    entitlements: { active: ent ? { [RC_PRO_ENTITLEMENT]: ent } : {} },
+    managementURL,
+  });
+  beforeEach(() => {
+    RC = { getCustomerInfo: vi.fn() };
+    getRC = useStore.getState()._getRC;
+    useStore.setState({ _getRC: () => RC });
+  });
+  afterEach(() => useStore.setState({ _getRC: getRC }));
+
+  it('con caducidad es anual y trae la fecha y el enlace de la tienda', async () => {
+    RC.getCustomerInfo.mockResolvedValue(entitlement({ store: 'PLAY_STORE', expirationDate: '2027-10-13T10:00:00Z' }));
+    expect(await useStore.getState().getProDetails()).toEqual({
+      kind: 'annual', expiresAt: '2027-10-13T10:00:00Z', store: 'PLAY_STORE', managementURL: 'https://tienda/gestionar',
+    });
+  });
+
+  it('sin caducidad es para siempre', async () => {
+    RC.getCustomerInfo.mockResolvedValue(entitlement({ store: 'APP_STORE', expirationDate: null }));
+    expect((await useStore.getState().getProDetails()).kind).toBe('lifetime');
+  });
+
+  it('el entitlement regalado (PROMOTIONAL) es un regalo aunque caduque', async () => {
+    RC.getCustomerInfo.mockResolvedValue(entitlement({ store: 'PROMOTIONAL', expirationDate: '2027-01-01T00:00:00Z' }));
+    expect((await useStore.getState().getProDetails()).kind).toBe('gift');
+  });
+
+  it('sin Pro activo, sin módulo nativo o con error devuelve null', async () => {
+    RC.getCustomerInfo.mockResolvedValue(entitlement(null));
+    expect(await useStore.getState().getProDetails()).toBeNull();
+    RC.getCustomerInfo.mockRejectedValue(new Error('sin red'));
+    expect(await useStore.getState().getProDetails()).toBeNull();
+    useStore.setState({ _getRC: () => null });
+    expect(await useStore.getState().getProDetails()).toBeNull();
+  });
+
+  it('no se persiste en el perfil', async () => {
+    RC.getCustomerInfo.mockResolvedValue(entitlement({ store: 'APP_STORE', expirationDate: null }));
+    const before = useStore.getState().profile;
+    await useStore.getState().getProDetails();
+    expect(useStore.getState().profile).toBe(before);
+  });
+});
+
 describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} } });
   const ts = () => useStore.getState().trainerSync;

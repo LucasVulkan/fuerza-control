@@ -4849,6 +4849,31 @@ export const useStore = create(
         }
       },
 
+      /**
+       * Qué plan Pro tiene este móvil, para la página «Mi cuenta» (M03-02 §6.4).
+       * Sin persistir: se mira al abrir la página. `kind`: 'annual' (con
+       * caducidad), 'lifetime' (sin ella) o 'gift' (entitlement regalado desde
+       * RevenueCat, `store === 'PROMOTIONAL'`). Sin módulo nativo (Expo Go), sin
+       * Pro activo o con error devuelve `null`.
+       */
+      getProDetails: async () => {
+        const RC = get()._getRC();
+        if (!RC) return null;
+        try {
+          const info = await RC.getCustomerInfo();
+          const ent  = info.entitlements.active[RC_PRO_ENTITLEMENT];
+          if (!ent) return null;
+          return {
+            kind: ent.store === 'PROMOTIONAL' ? 'gift' : ent.expirationDate ? 'annual' : 'lifetime',
+            expiresAt:     ent.expirationDate ?? null,
+            store:         ent.store ?? null,
+            managementURL: info.managementURL ?? null,
+          };
+        } catch {
+          return null;
+        }
+      },
+
       /** Fetches the current RevenueCat offering. Returns null if unavailable. */
       getOffering: async () => {
         const RC = get()._getRC();

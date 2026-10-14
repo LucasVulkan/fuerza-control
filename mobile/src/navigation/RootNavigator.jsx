@@ -31,6 +31,7 @@ import PasteWorkoutScreen from '../screens/PasteWorkoutScreen';
 import CustomExerciseScreen      from '../screens/CustomExerciseScreen';
 import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
+import AccountScreen            from '../screens/AccountScreen';
 import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
 import DialogHost            from '../components/ui/DialogHost';
@@ -292,6 +293,11 @@ export default function RootNavigator() {
         <Stack.Screen
           name="TrainerConnection"
           component={TrainerConnectionScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="Account"
+          component={AccountScreen}
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
