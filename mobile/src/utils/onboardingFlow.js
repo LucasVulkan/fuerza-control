@@ -23,7 +23,7 @@ export const SECTIONS = ['settings', 'you', 'setup', 'learn'];
 
 /** Tramo de cada pantalla. Lo que no está aquí no pinta barra (−1). */
 const SECTION_OF = {
-  welcome: -1, recover: -1,
+  welcome: -1, recover: -1, r_trainer: -1, r_code: -1, r_client: -1,
   units: 0, theme: 0,
   role: 1, t_clients: 1, t_groups: 1, s_level: 1, s_choice: 1,
   t_client: 2, t_account: 2, t_code: 2, t_program: 2, t_catalog: 2, t_assign: 2, t_invite: 2, t_self: 2,

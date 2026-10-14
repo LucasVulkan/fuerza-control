@@ -1,13 +1,15 @@
 /**
  * «Ya tengo cuenta» del recorrido de entrada (O03-07, spec §12, §23): «Recupera
- * lo tuyo». Tres entradas que abren lo que la app ya tiene:
+ * lo tuyo». Tres entradas:
  *
- *   · cuenta de entrenador → `TrainerSyncModal` en su pantalla de recuperar
- *   · entreno con entrenador → `ClientCodeModal` con `startWithSocial`
+ *   · cuenta de entrenador → `r_trainer` «¿Cómo entrabas?»: código (`r_code`),
+ *     Google o Apple, con `useTrainerAccount` (O03-13 §29.2; nunca crea cuenta)
+ *   · entreno con entrenador → `r_client` «¿Cómo te conectabas?»: su código o
+ *     Google/Apple, con `ClientCodeModal` (montado solo mientras se usa)
  *   · copia de seguridad → selector de archivo + `ImportModal`
  *
  * Si la recuperación sale bien se marca el onboarding como hecho y se va a la
- * app; si se cancela, se queda aquí.
+ * app; si se cancela, se queda donde estaba.
  *
  * Maqueta: docs/mockups/onboarding-2.html (recover).
  */
@@ -21,38 +23,27 @@ import { useStore } from '../../../../store/useStore';
 import { spacing } from '../../../theme';
 import { Rise } from '../../../components/ui/Rise';
 import { showDialog } from '../../../components/ui/dialog';
-import { FlowBody, FlowTitle, FlowOption, FlowNote } from '../../../components/onboarding/flow';
-import TrainerSyncModal from '../../../components/TrainerSyncModal';
+import CodeField from '../../../components/ui/CodeField';
+import useTrainerAccount from '../../../hooks/useTrainerAccount';
+import { APPLE_AUTH_AVAILABLE } from '../../../services/appleAuth';
+import { FlowBody, FlowTitle, FlowOption, FlowNote, FlowFooter } from '../../../components/onboarding/flow';
 import ClientCodeModal from '../../../components/ClientCodeModal';
 import ImportModal from '../../../components/ImportModal';
 import { parseImportFile } from '../../../utils/importFile';
 
-/** Lo que cambia cuando una cuenta de entrenador se recupera (la modal solo avisa con `onClose`). */
-const syncKey = () => {
-  const s = useStore.getState().trainerSync;
-  return `${s.mode}|${s.code}|${s.userId}`;
-};
+function finish(profile) {
+  const { setProfile, finishOnboardingFlow } = useStore.getState();
+  if (profile) setProfile(profile);
+  finishOnboardingFlow();
+}
 
-function Recover() {
+const finishTrainer = () => finish({ role: 'trainer', proTabsHidden: false });
+const finishClient  = () => finish({ role: 'coached', proTabsHidden: true });
+
+function Recover({ goTo }) {
   const { t } = useTranslation();
   const importData = useStore((s) => s.importData);
-  const [open, setOpen] = useState(null);   // 'trainer' | 'client' | null
   const [importState, setImportState] = useState(null);
-  const [before, setBefore] = useState(null);
-
-  function finish(profile) {
-    const { setProfile, finishOnboardingFlow } = useStore.getState();
-    if (profile) setProfile(profile);
-    finishOnboardingFlow();
-  }
-
-  function openTrainer() { setBefore(syncKey()); setOpen('trainer'); }
-
-  function closeTrainer() {
-    setOpen(null);
-    const s = useStore.getState().trainerSync;
-    if (s.mode && s.mode !== 'offline' && syncKey() !== before) finish({ role: 'trainer', proTabsHidden: false });
-  }
 
   async function pickFile() {
     try {
@@ -73,8 +64,8 @@ function Recover() {
   }
 
   const opts = [
-    ['trainer', openTrainer],
-    ['client', () => setOpen('client')],
+    ['trainer', () => goTo('r_trainer')],
+    ['client', () => goTo('r_client')],
     ['backup', pickFile],
   ];
 
@@ -95,13 +86,6 @@ function Recover() {
       </View>
       <Rise index={5}><FlowNote tone="blue" text={t('onboardingFlow.recover.note')} /></Rise>
 
-      <TrainerSyncModal visible={open === 'trainer'} onClose={closeTrainer} initialScreen="recovery" />
-      <ClientCodeModal
-        visible={open === 'client'}
-        startWithSocial
-        onClose={() => setOpen(null)}
-        onSuccess={() => finish({ role: 'coached', proTabsHidden: true })}
-      />
       {importState && (
         <ImportModal
           fileName={importState.fileName}
@@ -114,8 +98,85 @@ function Recover() {
   );
 }
 
+// ── Cómo entrabas (cuenta de entrenador, §29.2) ───────────────────────────────
+
+/** Los errores de entrar se quedan en la pantalla; en Expo Go Google y Apple no pueden. */
+function useTrainerEntry() {
+  const { t } = useTranslation();
+  const [error, setError] = useState(null);
+  const account = useTrainerAccount({ onDone: finishTrainer, onError: (_title, message) => setError(message) });
+  const social = (run) => () => {
+    setError(null);
+    if (account.isExpoGo) { setError(t('sync.onlyInstalled')); return; }
+    run();
+  };
+  return { ...account, error, setError, social };
+}
+
+function RecoverTrainer({ goTo }) {
+  const { t } = useTranslation();
+  const { google, apple, error, social } = useTrainerEntry();
+  return (
+    <FlowBody>
+      <FlowTitle text={t('onboardingFlow.recover.rTrainer.title')} sub={t('onboardingFlow.recover.rTrainer.sub')} />
+      <View style={styles.opts}>
+        <FlowOption index={2} chevron title={t('onboardingFlow.recover.rTrainer.code')} desc={t('onboardingFlow.recover.rTrainer.codeDesc')} onPick={() => goTo('r_code')} />
+        <FlowOption index={3} chevron title={t('onboardingFlow.recover.google')} onPick={social(google)} />
+        {APPLE_AUTH_AVAILABLE && <FlowOption index={4} chevron title={t('onboardingFlow.recover.apple')} onPick={social(apple)} />}
+      </View>
+      {!!error && <Rise index={5}><FlowNote tone="warn" text={error} /></Rise>}
+    </FlowBody>
+  );
+}
+
+function RecoverCode() {
+  const { t } = useTranslation();
+  const { loading, recover, error, setError } = useTrainerEntry();
+  const [code, setCode] = useState('');
+
+  async function enter() {
+    if (!code.trim() || loading) return;
+    setError(null);
+    const failed = await recover(code);
+    if (failed) setError(failed); else finishTrainer();
+  }
+
+  return (
+    <FlowBody
+      footer={<FlowFooter primary={{ label: t('onboardingFlow.recover.rCode.enter'), onPress: enter, disabled: !code.trim() || loading }} />}
+    >
+      <FlowTitle text={t('onboardingFlow.recover.rCode.title')} sub={t('onboardingFlow.recover.rCode.sub')} />
+      <Rise index={2}>
+        <CodeField value={code} onChangeText={(v) => { setCode(v); setError(null); }} groups={3} onSubmitEditing={enter} error={error} />
+      </Rise>
+    </FlowBody>
+  );
+}
+
+// ── Cómo te conectabas (entreno con entrenador, §29.2) ────────────────────────
+
+function RecoverClient() {
+  const { t } = useTranslation();
+  // 'code' = hoja normal con su código · 'social' = busca la conexión hecha con Google/Apple.
+  // Montada solo mientras se usa: al desmontarse limpia el estado compartido de `useClientCode`.
+  const [open, setOpen] = useState(null);
+  return (
+    <FlowBody>
+      <FlowTitle text={t('onboardingFlow.recover.rClient.title')} sub={t('onboardingFlow.recover.rClient.sub')} />
+      <View style={styles.opts}>
+        <FlowOption index={2} chevron title={t('onboardingFlow.recover.rClient.code')} onPick={() => setOpen('code')} />
+        <FlowOption index={3} chevron title={t('onboardingFlow.recover.google')} onPick={() => setOpen('social')} />
+        {APPLE_AUTH_AVAILABLE && <FlowOption index={4} chevron title={t('onboardingFlow.recover.apple')} onPick={() => setOpen('social')} />}
+      </View>
+      {open && (
+        <ClientCodeModal visible startWithSocial={open === 'social'} onClose={() => setOpen(null)} onSuccess={finishClient} />
+      )}
+    </FlowBody>
+  );
+}
+
 const styles = StyleSheet.create({
   opts: { gap: spacing.md },
 });
 
-export default { recover: Recover };
+export default { recover: Recover, r_trainer: RecoverTrainer, r_code: RecoverCode, r_client: RecoverClient };

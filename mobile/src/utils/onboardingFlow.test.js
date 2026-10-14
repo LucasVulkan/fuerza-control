@@ -10,6 +10,7 @@ describe('sectionOf', () => {
   it('bienvenida y recuperar no tienen barra; listo es el completado', () => {
     expect(sectionOf('welcome')).toBe(-1);
     expect(sectionOf('recover')).toBe(-1);
+    for (const id of ['r_trainer', 'r_code', 'r_client']) expect(sectionOf(id)).toBe(-1);
     expect(sectionOf('done')).toBe(SECTIONS.length);
   });
 
@@ -38,7 +39,7 @@ describe('skipTarget', () => {
   });
 
   it('la bifurcación no se puede saltar, ni la cuenta del entrenador ni su código', () => {
-    for (const id of ['welcome', 'recover', 'role', 't_account', 't_code', 'done']) {
+    for (const id of ['welcome', 'recover', 'r_trainer', 'r_code', 'r_client', 'role', 't_account', 't_code', 'done']) {
       expect(skipTarget(id, A({ role: 'trainer' }))).toBeNull();
     }
   });

@@ -3075,7 +3075,25 @@
       "clientDesc": "With the account you linked. Your program comes back",
       "backup": "A backup",
       "backupDesc": "From Google Drive or a .fitdata file",
-      "note": "Did you train with a trainer and not link an account? Ask them for a new code: your history is kept"
+      "note": "Did you train with a trainer and not link an account? Ask them for a new code: your history is kept",
+      "google": "With Google",
+      "apple": "With Apple",
+      "rTrainer": {
+        "title": "How did you *sign in*?",
+        "sub": "Pick what you used on your other phone",
+        "code": "With my personal code",
+        "codeDesc": "The 12-character one"
+      },
+      "rCode": {
+        "title": "Your *personal* code",
+        "sub": "Twelve characters; the dashes are added for you.",
+        "enter": "Sign in"
+      },
+      "rClient": {
+        "title": "How did you *connect*?",
+        "sub": "Pick what you used with your trainer",
+        "code": "With my trainer's code"
+      }
     },
     "trainer": {},
     "done": {
