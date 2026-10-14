@@ -2913,7 +2913,89 @@
         "pending": "Conectar con tu entrenador · Menú → Entrenador"
       }
     },
-    "learn": {},
+    "learn": {
+      "home": {
+        "title": "¿Cómo quieres ver tus *sesiones*?",
+        "sub": "Así será tu Inicio. Se cambia en Preferencias.",
+        "list": "Lista",
+        "listDesc": "Todas las sesiones, una debajo de otra",
+        "tabs": "Pestañas",
+        "tabsDesc": "Una tarjeta, una pestaña por sesión",
+        "forYou": "Para tu caso"
+      },
+      "input": {
+        "title": "Pruébalo: arrastra el peso",
+        "sub": "Así se apunta una serie en el entreno. Elige cómo te resulta más cómodo.",
+        "hint": "← desliza a los lados →",
+        "ruler": "Con regla",
+        "rulerDesc": "Sale una regla bajo el dedo y se guarda al soltar. Más preciso.",
+        "swipe": "Solo deslizar",
+        "swipeDesc": "La cifra cambia en la casilla mientras arrastras. Más rápido.",
+        "keep": "Me quedo con este"
+      },
+      "cards": {
+        "prev": "Anterior",
+        "done": "Entendido",
+        "clients": {
+          "title": "Tus clientes, de un *vistazo*",
+          "sub": "Quién entrenó esta semana, quién lleva días sin hacerlo y quién tiene sesiones nuevas que revisar (la muesca de color)."
+        },
+        "today": {
+          "title": "Tu sesión de hoy, en *Inicio*",
+          "subCards": "La resaltada es la que toca: pulsa Empezar. La app sabe cuál es la siguiente.",
+          "subTabs": "Una pestaña por sesión. La resaltada es la que toca: pulsa Empezar. Toca otra pestaña para ver las demás."
+        },
+        "edit": {
+          "title": "Cambia lo que *quieras*",
+          "sub": "Desde Programa editas ejercicios, series y progresión. Los cambios valen desde la próxima sesión."
+        },
+        "sees": {
+          "title": "{{trainer}} ve tus *entrenos*",
+          "sub": "Le llega cada sesión que completas. Si cambia tu programa, te avisamos y decides cuándo pasarte."
+        },
+        "free": {
+          "title": "¿Hoy algo distinto? Sesión *libre*",
+          "sub": "Con el + entrenas fuera del programa. Puedes contarla como una sesión del programa o no.",
+          "subLinked": "Con el + entrenas fuera del programa. {{trainer}} también la verá."
+        },
+        "templates": {
+          "title": "Plantillas: programa *una vez*",
+          "sub": "Cuando el programa de {{client}} te sirva para otros, guárdalo como plantilla y asígnalo. Cada uno recibe su copia y avanza a su ritmo."
+        },
+        "next": {
+          "title": "Ajusta su *próxima sesión*",
+          "sub": "Desde su ficha cambias pesos o ejercicios de la siguiente sesión sin tocar el programa."
+        },
+        "log": {
+          "title": "Apunta tú sus *sesiones*",
+          "sub": "{{client}} no usa la app: desde su ficha registras lo que hace, o pegas el texto que te mande por WhatsApp."
+        }
+      },
+      "mini": {
+        "exercise1": "Press banca · 3×8",
+        "exercise2": "Remo · 3×10",
+        "clientsCount_one": "{{count}} cliente",
+        "clientsCount_other": "{{count}} clientes",
+        "notAssigned": "sin asignar",
+        "templateExample": "Hipertrofia base",
+        "nextHead": "{{name}} · próxima: sesión B",
+        "squat": "Sentadilla",
+        "squatSub": "4×6 · 100 {{unit}}",
+        "rdl": "Peso muerto rumano",
+        "logHead": "{{name}} · historial",
+        "logWhen": "Lunes · apuntada por ti",
+        "logAdd": "+ Registrar sesión",
+        "logPaste": "Pegar texto de WhatsApp",
+        "coachChanged": "{{trainer}} ha cambiado tu programa",
+        "coachChange": "Press inclinado en vez de banca",
+        "coachSession": "Hoy · {{count}} ej. · {{trainer}} la verá"
+      },
+      "sessionNames": ["Empuje", "Tracción", "Pierna", "Torso"],
+      "exampleClient": "Ana",
+      "yourClient": "tu cliente",
+      "yourTrainer": "Tu entrenador",
+      "yourTrainerLc": "tu entrenador"
+    },
     "recover": {},
     "trainer": {},
     "done": {
