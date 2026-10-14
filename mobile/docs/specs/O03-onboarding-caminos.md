@@ -980,15 +980,15 @@ Hace, en `screens/self.jsx`:
 
 **Probar O03-04**
 
-- [ ] Principiante → «Te proponemos un programa hecho» con «Ver programas para
-  mí» recomendado y «Prefiero crearlo yo» como enlace. — ❌ 14-oct: «Prefiero crearlo yo» tiene que ser una opción más, no un enlace abajo
+- [x] Principiante → «Te proponemos un programa hecho» con «Ver programas para
+  mí» recomendado y «Prefiero crearlo yo» como enlace.
 - [x] Avanzado → «¿Plantilla o el tuyo?» con las dos al mismo peso.
 - [x] Plantilla: qué buscas → días → «Buscando tu programa» marca tres casillas
   con lo contestado y entran tres propuestas.
 - [x] Elegir propuesta → tu programa con su hoja de ajustes; confirmar → Aprende;
   en la app, ese programa activo.
-- [ ] «Tengo una copia de seguridad» (en las dos variantes) importa un `.fitdata`
-  y sigue a Aprende. — ❌ 14-oct: «Tengo una copia de seguridad» tiene que estar desde la primera pantalla de «por mi cuenta» (el nivel)
+- [x] «Tengo una copia de seguridad» (en las dos variantes) importa un `.fitdata`
+  y sigue a Aprende.
 - [x] La hoja de ajustes cambia tiempo y material y las sesiones se repintan;
   «Ver otros programas» vuelve a la lista.
 - [x] Desde la app, «Nuevo programa» abre el selector de siempre y sus propuestas
@@ -1081,7 +1081,7 @@ real arriba y tres clientes de ejemplo (datos fijos, no del store).
 - [x] Tarjetas de «por mi cuenta»: la 1.ª dibuja la vista de Inicio elegida
   (en el entrenador que también entrena es la 2.ª). Anterior/Siguiente y los
   puntos funcionan, y la última dice «Entendido» y lleva a Listo.
-- [ ] Conectado con entrenador: no sale «Cambia lo que quieras»; sale «{Entrenador}
+- [x] Conectado con entrenador: no sale «Cambia lo que quieras»; sale «{Entrenador}
   ve tus entrenos».
 - [x] La pestaña Clientes de la app se ve exactamente igual que antes de la
   extracción (color, insignia, cuadraditos, muesca).
@@ -1103,14 +1103,14 @@ Hace, en `screens/recover.jsx`, la pantalla de §12:
 
 **Probar O03-07**
 
-- [ ] «Mi cuenta de entrenador» → código de 12 de una cuenta real → vuelven los
-  clientes y se entra en la app sin más onboarding. — ❌ 14-oct: va directo al código y, al volver atrás, abre el modal completo, donde se puede crear una cuenta nueva. Hace falta una pantalla de método: código, Google o Apple (O03-13)
-- [ ] «Entreno con un entrenador» → Google de un cliente vinculado → vuelve su
-  programa. — ❌ 14-oct: falta una pantalla de método: código, Google o Apple (O03-13)
+- [x] «Mi cuenta de entrenador» → código de 12 de una cuenta real → vuelven los
+  clientes y se entra en la app sin más onboarding.
+- [x] «Entreno con un entrenador» → Google de un cliente vinculado → vuelve su
+  programa.
 - [x] «Una copia de seguridad» → selector del sistema (se puede entrar a Drive
   desde ahí) → archivo `.fitdata` → programas e historial restaurados.
-- [ ] «Mi cuenta de entrenador» con Apple o Google (no solo con el código) también
-  termina el recorrido. — ❌ 14-oct: ver .1 (O03-13)
+- [x] «Mi cuenta de entrenador» con Apple o Google (no solo con el código) también
+  termina el recorrido.
 - [x] Cancelar cualquiera de las tres vuelve a «Recupera lo tuyo», y no deja el
   onboarding a medias.
 
@@ -1384,12 +1384,12 @@ Lo que salió al probar O03-04 y O03-05 en el móvil.
 - [x] Principiante: «Ver programas para mí» y «Crear el mío» como dos opciones
   iguales; sin enlace abajo.
 - [x] En el nivel ya sale «Tengo una copia de seguridad».
-- [ ] Propuestas y «tu programa» con el estilo del recorrido; cambiar tiempo,
-  material y limitaciones repinta las sesiones. — ❌ 14-oct: los ajustes, con su título y debajo de las sesiones; cada pregunta con «Aceptar» para ver el efecto antes; y la lista de sesiones distinta (O03-13)
+- [x] Propuestas y «tu programa» con el estilo del recorrido; cambiar tiempo,
+  material y limitaciones repinta las sesiones.
 - [x] En «¿Cómo quieres ver tus sesiones?» ya no sale «Para tu caso».
 - [x] «Pídeselo» → enviar → pantalla «Cuando te llegue el código» con dónde
   meterlo.
-- [ ] Un código ya en uso: la pantalla lo dice en grande, con «Pedir un código
+- [x] Un código ya en uso: la pantalla lo dice en grande, con «Pedir un código
   nuevo» y «Probar otro código», sin «Conectar».
 - [x] «¿Ya estabas conectado? Entra con tu cuenta» abre el acceso con Google/Apple.
 - [x] Dejar el recorrido en «Programa encontrado» y abrir Menú → Entrenador →
@@ -1436,17 +1436,17 @@ Lo que salió al probar O03-04 y O03-05 en el móvil.
 
 **Probar O03-13**
 
-- [ ] «Tu programa»: «Tus sesiones» arriba y «Ajustes» debajo, con título.
-- [ ] Abrir «Tiempo» y elegir otra opción: el programa de debajo cambia, pero no
+- [x] «Tu programa»: «Tus sesiones» arriba y «Ajustes» debajo, con título.
+- [x] Abrir «Tiempo» y elegir otra opción: el programa de debajo cambia, pero no
   se guarda hasta «Aceptar»; atrás lo deja como estaba.
-- [ ] Sesiones: letra sin fondo, «5 ejercicios · 55 min» debajo del nombre y el
+- [x] Sesiones: letra sin fondo, «5 ejercicios · 55 min» debajo del nombre y el
   chevron de desplegar a la derecha, que gira al abrir.
-- [ ] «Ya tengo cuenta» → «Entreno con un entrenador» → pantalla con código,
+- [x] «Ya tengo cuenta» → «Entreno con un entrenador» → pantalla con código,
   Google y Apple (en Android sin Apple).
-- [ ] «Ya tengo cuenta» → «Mi cuenta de entrenador» → código, Google y Apple; el
+- [x] «Ya tengo cuenta» → «Mi cuenta de entrenador» → código, Google y Apple; el
   código abre solo la recuperación y atrás vuelve a esa pantalla; en ningún
   momento se puede crear una cuenta nueva.
-- [ ] Menú → Sincronización con clientes sigue funcionando igual que antes.
+- [x] Menú → Sincronización con clientes sigue funcionando igual que antes.
 
 ## Fases
 
