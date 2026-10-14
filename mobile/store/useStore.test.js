@@ -888,6 +888,33 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     expect(ts()).toMatchObject({ mode: 'offline', code: null, userId: null, trainerName: 'Ana' });
   });
 
+  // M03-03 §7.4: desde «Ya tengo cuenta», Google/Apple solo entran.
+  it('mustExist sin cuenta de entrenador: rechaza con notFound sin tocar nada', async () => {
+    authMock.loginTrainerWithIdToken.mockResolvedValueOnce({ existed: false });
+    const antes = ts();
+    await expect(useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok', mustExist: true }))
+      .rejects.toMatchObject({ notFound: true });
+    expect(authMock.loginTrainerWithIdToken).toHaveBeenCalledWith(expect.objectContaining({ mustExist: true }));
+    expect(ts()).toEqual(antes);
+    expect(RC.logIn).not.toHaveBeenCalled();
+    expect(authMock.recoverWithTrainerCode).not.toHaveBeenCalled();
+  });
+
+  it('mustExist con cuenta de entrenador entra como siempre', async () => {
+    authMock.loginTrainerWithIdToken.mockResolvedValueOnce({ userId: 'uuid-G', existed: true });
+    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok', mustExist: true });
+    expect(ts()).toMatchObject({ mode: 'google', userId: 'uuid-G' });
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
+  });
+
+  it('sin mustExist entra aunque no existiera (crear cuenta)', async () => {
+    authMock.loginTrainerWithIdToken.mockResolvedValue({ userId: 'uuid-G', existed: false });
+    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
+    expect(ts()).toMatchObject({ mode: 'google', userId: 'uuid-G' });
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
+  });
+
+  // Va la última: los tests de más abajo heredan el estado en que acaba (mode 'code').
   it('A → salir → B con PRO en el móvil restaura en B', async () => {
     await useStore.getState().leaveTrainerAccount();
     await useStore.getState().recoverTrainerAccount('BBBB-BBBB-BBBB');

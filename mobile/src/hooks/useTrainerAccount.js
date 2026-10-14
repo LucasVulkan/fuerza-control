@@ -9,10 +9,14 @@
  * código o navegar es cosa de quien lo usa. Si el usuario cancela Google o
  * Apple, la promesa rechaza con `{ cancelled: true }` y no hay que enseñar error.
  *
+ * `mustExist` (M03-03 §7.4, «Ya tengo cuenta»): Google y Apple solo ENTRAN. Si no
+ * hay cuenta de entrenador rechazan con `{ notFound: true, provider, createInstead }`;
+ * `createInstead()` crea la cuenta con los mismos tokens, sin reabrir Google ni Apple.
+ *
  *   · `isExpoGo`            — en Expo Go Google no puede (no hay URI registrable)
  *   · `loading`             — hay una operación en curso
- *   · `signInWithGoogle()`  — Promise<{ userId }>
- *   · `signInWithApple()`   — Promise<{ userId }>
+ *   · `signInWithGoogle({ mustExist })` — Promise<{ userId }>
+ *   · `signInWithApple({ mustExist })`   — Promise<{ userId }>
  *   · `createCode()`        — Promise<{ code, userId }>
  *   · `recover(code)`       — Promise<{ userId }>
  *   · `leave()`             — Promise<void>
@@ -28,6 +32,7 @@ import { useStore } from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
 import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI } from '../config/google';
 import { signInWithApple as appleSheet } from '../services/appleAuth';
+import { showDialog } from '../components/ui/dialog';
 
 // Required so the in-app browser can redirect back after OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -38,6 +43,19 @@ const GOOGLE_DISCOVERY = {
 };
 
 const CANCELLED = { cancelled: true };
+
+/**
+ * El aviso de «no hay cuenta» (§7.4) para quien recibe `{ notFound }`: «Probar
+ * con otro» no hace nada (el usuario vuelve a pulsar y elige otra cuenta) y
+ * «Crear una nueva» llama a `createInstead`. `onDone` / `onError` son de quien
+ * pregunta (cerrar la hoja, terminar el recorrido, enseñar el fallo).
+ */
+export function askCreateInstead(t, { provider, createInstead }, { onDone, onError }) {
+  showDialog(t('sync.notFoundTitle', { how: t(provider === 'apple' ? 'sync.howApple' : 'sync.howGoogle') }), undefined, [
+    { text: t('sync.tryOther'), style: 'cancel' },
+    { text: t('sync.createNew'), onPress: () => createInstead().then(onDone, onError) },
+  ]);
+}
 
 export default function useTrainerAccount() {
   const { t } = useTranslation();
@@ -68,9 +86,20 @@ export default function useTrainerAccount() {
     try { return await fn(...args); } finally { setLoading(false); }
   };
 
+  /** Entra con los tokens; con `mustExist` y sin cuenta, deja `createInstead` para crearla. */
+  async function enter(provider, args, mustExist) {
+    const { enterTrainerAccount } = useStore.getState();
+    try {
+      return await enterTrainerAccount({ provider, ...args, mustExist });
+    } catch (err) {
+      if (!err?.notFound) throw err;
+      throw { notFound: true, provider, createInstead: run(() => enterTrainerAccount({ provider, ...args })) };
+    }
+  }
+
   // `promptAsync` ya devuelve la respuesta del navegador: no hace falta
   // observar `response` en un efecto.
-  const signInWithGoogle = run(async () => {
+  const signInWithGoogle = run(async ({ mustExist = false } = {}) => {
     const res = await googlePromptAsync();
     if (res?.type !== 'success') throw CANCELLED;
     const tokens = await exchangeCodeForTokens({
@@ -80,20 +109,16 @@ export default function useTrainerAccount() {
       clientId:     GOOGLE_CLIENT_ID,
     });
     if (!tokens.id_token) throw new Error(t('sync.errNoIdToken'));
-    return useStore.getState().enterTrainerAccount({
-      provider: 'google', idToken: tokens.id_token, accessToken: tokens.access_token,
-    });
+    return enter('google', { idToken: tokens.id_token, accessToken: tokens.access_token }, mustExist);
   });
 
   // Apple no necesita el ida y vuelta del navegador: la hoja nativa devuelve
   // el id_token en la misma llamada.
-  const signInWithApple = run(async () => {
+  const signInWithApple = run(async ({ mustExist = false } = {}) => {
     const credential = await appleSheet();
     if (!credential) throw CANCELLED;
     if (!credential.idToken) throw new Error(t('sync.errNoIdToken'));
-    return useStore.getState().enterTrainerAccount({
-      provider: 'apple', idToken: credential.idToken, fullName: credential.fullName,
-    });
+    return enter('apple', { idToken: credential.idToken, fullName: credential.fullName }, mustExist);
   });
 
   const createCode = run(() => useStore.getState().createTrainerCodeAccount());

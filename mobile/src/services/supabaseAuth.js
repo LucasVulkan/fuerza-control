@@ -75,16 +75,31 @@ export async function setupTrainerCodeAccount() {
  *  - google → id_token del intercambio de código de expo-auth-session
  *  - apple  → identityToken de la hoja nativa (sin access_token, no lo hay)
  *
- * @param {{ provider: 'google'|'apple', idToken: string, accessToken?: string }} tokens
- * @returns {{ session, userId, email }}
+ * `signInWithIdToken` crea el usuario si no existe, así que desde «Ya tengo
+ * cuenta» hay que mirar si ya era entrenador ANTES del upsert (M03-03 §7.4):
+ * con `mustExist` y sin fila de entrenador cierra la sesión y devuelve
+ * `{ existed: false }` sin crear nada.
+ *
+ * @param {{ provider: 'google'|'apple', idToken: string, accessToken?: string, mustExist?: boolean }} tokens
+ * @returns {{ session, userId, email, existed } | { existed: false }}
  */
-export async function loginTrainerWithIdToken({ provider = 'google', idToken, accessToken }) {
+export async function loginTrainerWithIdToken({ provider = 'google', idToken, accessToken, mustExist = false }) {
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider,
     token:        idToken,
     access_token: accessToken,
   });
   if (error) throw error;
+
+  // ¿Ya era entrenador? Un cliente con ese Google tiene fila, pero no de entrenador.
+  const { data: prof, error: profError } = await supabase
+    .from('profiles').select('role').eq('id', data.user.id).maybeSingle();
+  if (mustExist && profError) throw profError;
+  const existed = prof?.role === 'trainer';
+  if (mustExist && !existed) {
+    await supabase.auth.signOut().catch(() => {});
+    return { existed: false };
+  }
 
   // Upsert trainer profile row (idempotent)
   await supabase.from('profiles').upsert({
@@ -96,6 +111,7 @@ export async function loginTrainerWithIdToken({ provider = 'google', idToken, ac
     session: data.session,
     userId:  data.user.id,
     email:   data.user.email ?? null,
+    existed,
   };
 }
 

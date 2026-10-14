@@ -3718,11 +3718,17 @@ export const useStore = create(
       // pone `code = null`, y leerlo después dejaba sin traspaso el paso de
       // código a Google/Apple (M03 §1).
 
-      /** Entrar con el id_token de Google o Apple. `fullName`: Apple, solo la primera vez. */
-      enterTrainerAccount: async ({ provider, idToken, accessToken, fullName }) => {
+      /**
+       * Entrar con el id_token de Google o Apple. `fullName`: Apple, solo la primera vez.
+       * `mustExist`: solo entrar, sin crear; rechaza con `{ notFound: true }` si no hay cuenta.
+       */
+      enterTrainerAccount: async ({ provider, idToken, accessToken, fullName, mustExist }) => {
         const { code: prevCode, userId: prevUserId } = get().trainerSync;
         const tokens = { provider, idToken, accessToken };
-        const { userId } = await loginTrainerWithIdToken(tokens);
+        const { userId, existed } = await loginTrainerWithIdToken({ ...tokens, mustExist });
+        // «Ya tengo cuenta» (M03-03 §7.4): si no hay cuenta, salir antes de tocar
+        // `trainerSync` ni RevenueCat. Quien llama puede repetir sin `mustExist`.
+        if (mustExist && !existed) throw { notFound: true };
         // Si el entrenador ya tenía nombre escrito, mandan sus letras.
         if (fullName && !get().trainerSync.trainerName) get().setTrainerName(fullName);
         get().setTrainerSyncMode(provider, { userId });

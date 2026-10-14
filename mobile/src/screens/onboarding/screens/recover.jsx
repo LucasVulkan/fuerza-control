@@ -3,7 +3,8 @@
  * lo tuyo». Tres entradas:
  *
  *   · cuenta de entrenador → `r_trainer` «¿Cómo entrabas?»: código (`r_code`),
- *     Google o Apple, con `useTrainerAccount` (O03-13 §29.2; nunca crea cuenta)
+ *     Google o Apple, con `useTrainerAccount` (O03-13 §29.2). Google y Apple solo
+ *     entran: sin cuenta preguntan si crear una nueva (M03-03 §7.4)
  *   · entreno con entrenador → `r_client` «¿Cómo te conectabas?»: su código o
  *     Google/Apple, con `ClientCodeModal` (montado solo mientras se usa)
  *   · copia de seguridad → selector de archivo + `ImportModal`
@@ -24,7 +25,7 @@ import { spacing } from '../../../theme';
 import { Rise } from '../../../components/ui/Rise';
 import { showDialog } from '../../../components/ui/dialog';
 import CodeField from '../../../components/ui/CodeField';
-import useTrainerAccount from '../../../hooks/useTrainerAccount';
+import useTrainerAccount, { askCreateInstead } from '../../../hooks/useTrainerAccount';
 import { APPLE_AUTH_AVAILABLE } from '../../../services/appleAuth';
 import { FlowBody, FlowTitle, FlowOption, FlowNote, FlowFooter } from '../../../components/onboarding/flow';
 import ClientCodeModal from '../../../components/ClientCodeModal';
@@ -112,7 +113,8 @@ function useTrainerEntry() {
       await run();
       finishTrainer();
     } catch (err) {
-      if (!err?.cancelled) setError(err?.message ?? t('sync.errGoogleBody'));
+      if (err?.notFound) askCreateInstead(t, err, { onDone: finishTrainer, onError: (e) => setError(e?.message ?? t('sync.errGoogleBody')) });
+      else if (!err?.cancelled) setError(err?.message ?? t('sync.errGoogleBody'));
     }
   };
   const social = (run) => () => {
@@ -130,8 +132,8 @@ function RecoverTrainer({ goTo }) {
       <FlowTitle text={t('onboardingFlow.recover.rTrainer.title')} sub={t('onboardingFlow.recover.rTrainer.sub')} />
       <View style={styles.opts}>
         <FlowOption index={2} chevron title={t('onboardingFlow.recover.rTrainer.code')} desc={t('onboardingFlow.recover.rTrainer.codeDesc')} onPick={() => goTo('r_code')} />
-        <FlowOption index={3} chevron title={t('onboardingFlow.recover.google')} onPick={social(google)} />
-        {APPLE_AUTH_AVAILABLE && <FlowOption index={4} chevron title={t('onboardingFlow.recover.apple')} onPick={social(apple)} />}
+        <FlowOption index={3} chevron title={t('onboardingFlow.recover.google')} onPick={social(() => google({ mustExist: true }))} />
+        {APPLE_AUTH_AVAILABLE && <FlowOption index={4} chevron title={t('onboardingFlow.recover.apple')} onPick={social(() => apple({ mustExist: true }))} />}
       </View>
       {!!error && <Rise index={5}><FlowNote tone="warn" text={error} /></Rise>}
     </FlowBody>

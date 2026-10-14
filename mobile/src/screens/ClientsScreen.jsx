@@ -1740,9 +1740,11 @@ export default function ClientsScreen() {
 
   // Detail - key tab
 
-  // Sync mode modal — shown on first visit (mode === null) or from hamburger menu
+  // Hoja de entrada a la cuenta — primera visita (mode === null) o al conectar un cliente sin cuenta
   const [showSyncModal, setShowSyncModal] = useState(false);
   const isFirstTimeSync = trainerSync.mode === null;
+  // La hoja se abrió para conectar un cliente: al crear la cuenta se sigue con ello.
+  const [connectAfterSync, setConnectAfterSync] = useState(false);
 
   // Client info sheet (⋯ button on card)
   const [infoSheetClientId, setInfoSheetClientId] = useState(null);
@@ -2898,7 +2900,7 @@ export default function ClientsScreen() {
                       style={[styles.sheetCta, connectLock && styles.noActiveBtnPro]}
                       onPress={gate(connectLock, () => {
                         // Sin nube no hay código que generar: primero la conexión.
-                        if (!trainerSync.mode || trainerSync.mode === 'offline') setShowSyncModal(true);
+                        if (!trainerSync.mode || trainerSync.mode === 'offline') { setConnectAfterSync(true); setShowSyncModal(true); }
                         else setMoveToApp(true);
                       })}
                       activeOpacity={0.85}
@@ -3010,7 +3012,7 @@ export default function ClientsScreen() {
                 </Svg>
               </TouchableOpacity>
               {/* Connectivity — status dot: green = sync on, orange = not set up, grey = offline */}
-              <TouchableOpacity style={styles.hdrIconBox} onPress={() => setShowSyncModal(true)} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.hdrIconBox} onPress={() => navigation.navigate('Account')} activeOpacity={0.7}>
                 <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                   <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
                 </Svg>
@@ -3373,7 +3375,15 @@ export default function ClientsScreen() {
       {/* Trainer sync mode modal */}
       <TrainerSyncModal
         visible={showSyncModal}
-        onClose={() => setShowSyncModal(false)}
+        onClose={() => {
+          setShowSyncModal(false);
+          // Cerrar sin crear cuenta es elegir «sin cuenta» (M03-03 §7.2): no vuelve
+          // a salir sola. Estado fresco: al crearla, `mode` ya no es null.
+          const sync = useStore.getState().trainerSync;
+          if (sync.mode === null) useStore.getState().leaveTrainerAccount();
+          if (connectAfterSync && sync.userId) setMoveToApp(true);
+          setConnectAfterSync(false);
+        }}
         isFirstTime={isFirstTimeSync}
       />
 
