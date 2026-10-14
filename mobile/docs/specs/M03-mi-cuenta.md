@@ -168,6 +168,12 @@ acct.leave()                // Promise<void>
 - El hook **no** pinta nada ni cierra nada: devuelve resultados. Cerrar la hoja,
   enseñar el código o navegar es cosa de quien lo usa.
 - O03-08 (§24 paso 3) usa este mismo hook en `t_account`; no hay que hacer otro.
+- **Ya existe una primera versión** (14-oct, O03-13, commit `3d26ba9`), con
+  callbacks en vez de promesas: `useTrainerAccount({ onDone, onError(title,
+  message), onAppleName })` → `{ loading, setLoading, isExpoGo, google(), apple(),
+  recover(code), createWithCode() }`. La usan `TrainerSyncModal` y las pantallas
+  `r_trainer`/`r_code` del onboarding (`screens/onboarding/screens/recover.jsx`).
+  M03-01 la **sustituye** por este contrato y adapta esos dos usos.
 
 ### 5.3 Lo que se quita
 
