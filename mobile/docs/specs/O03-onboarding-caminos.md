@@ -1331,7 +1331,7 @@ Lo de §25.2-25.3 vale; esto lo completa (manda sobre lo de arriba si chocan):
 - [x] «Programa de tu entrenador» → «Lo hago después» (o pedir el código →
   Siguiente) vuelve a la app, sin pasar por Aprende.
 - [x] Atrás de Android en «Elige cómo empezar» vuelve a la pestaña de donde vino.
-- [ ] «Elige cómo empezar» dice «Plantillas Forma Fit» (sin etiqueta) y «Mis plantillas».
+- [x] «Elige cómo empezar» dice «Plantillas Forma Fit» (sin etiqueta) y «Mis plantillas».
 
 ## 26. Aparcadas
 
