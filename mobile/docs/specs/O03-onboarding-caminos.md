@@ -13,11 +13,11 @@
 > Fase O03-08 · pendiente · Camino del entrenador · §24
 > Fase O03-09 · aparcado · Recuperar todo con un solo login · §26.1
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
-> Fase O03-11 · pendiente · «Nuevo programa» con el recorrido nuevo · §25
+> Fase O03-11 · hecho · «Nuevo programa» con el recorrido nuevo · §25
 > Fase O03-12 · hecho · Ajustes de la prueba del 14-oct: propuestas con el estilo del recorrido y «con entrenador» · §28
 > Fase O03-13 · hecho · Segunda prueba del 14-oct: «tu programa» y los métodos de «Ya tengo cuenta» · §29
 >
-> Estado: **olas 1-3 hechas (O03-01 a 07), por probar; falta la ola 4 (O03-08, O03-11)** (14-oct-2026). Abierta el 4-oct como
+> Estado: **hechas O03-01 a 07, 11, 12 y 13, por probar; solo falta O03-08 (espera a M03-01)** (14-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
 > recorrido contra el código; el 13-oct se revisó otra vez contra el código, se
 > corrigieron cinco cosas que no habrían funcionado (§2.2), se cerraron las diez
@@ -1258,6 +1258,58 @@ llama a `unlinkFromTrainer({ keepProgram: true })`.
 - `NoProgram` llama a `startNewProgram` en vez de repetir el aviso del
   entrenador: una sola entrada.
 
+### 25.4 Revisión contra el código (14-oct, antes de implementar)
+
+Lo de §25.2-25.3 vale; esto lo completa (manda sobre lo de arriba si chocan):
+
+1. **`goTo(null)` termina el recorrido.** `provisionalExit` de
+   `OnboardingFlowScreen` aún manda `c_*` y lo desconocido a la ruta `Onboarding`,
+   que se borra. Queda: id sin pantalla o `null` → `finishOnboardingFlow()` (sirve
+   para `t_*` hasta O03-08 y para las salidas de abajo). Fuera la opción `route`
+   de `finishOnboardingFlow`, `replaceRoot` de `navigationRef.js` (no la usa nadie
+   más) y su test de «salida provisional».
+2. **Salidas del camino «con entrenador» desde la app.** Además de `c_linked`,
+   `c_code` («Lo hago después») y `c_wait` («Siguiente») van hoy a
+   `learnStart(answers)`, o sea a Aprende. Util nuevo
+   `coachedExit(a, entry)`: `newProgram` → `null`; si no, `learnStart(a)`. Las
+   tres lo usan; el botón de `c_linked` con `newProgram` dice «Ir a la app»
+   (`onboardingFlow.done.cta`, la de «Listo»).
+3. **Constructor sin programa.** «Saltar» en `b_sessions` antes de «Siguiente» no
+   crea nada; `n_done` no tendría qué decir. `builderExit(a, 'newProgram')` →
+   `a.programId ? 'n_done' : null`. Con `null`, `skipTarget` deja sin «Saltar»
+   `b_sessions` hasta que exista el programa: está bien así (la flecha vuelve).
+4. **El nivel guardado.** `levelOf` ya cae a `profile.onboardingAnswers.level`,
+   pero `isDeep` del constructor lee `answers.level` a secas. `n_source`, al
+   elegir «Programa recomendado» o «Crear desde cero», hace
+   `flowAnswer({ level: profile.onboardingAnswers?.level ?? null })`. Y `s_level`
+   con `entry: 'newProgram'` sigue a `s_goal`, no a `s_choice`.
+5. **La flecha y el atrás de Android en `n_source`.** `canGoBack` es falso sin
+   historial. `OnboardingFlowScreen`: con `newProgram` y historial vacío la flecha
+   se ve y **cierra** (`finishOnboardingFlow({ back: true })`: quita el recorrido y
+   `goBack`, sin ir a Inicio, para volver a la pestaña de donde vino); el
+   `BackHandler` hace lo mismo y devuelve `true`.
+6. **`finishOnboardingFlow` con `newProgram`.** No toca `onboardingCompleted` ni
+   `setupComplete`. Desconecta (`unlinkFromTrainer({ keepProgram: true })`, sin
+   esperar, `.catch`) si hay `clientSync.slotId` **y** se creó algo propio:
+   `(a.programId || a.programSource === 'import') && a.programSource !== 'coach'`.
+   Eso cubre también cerrar con la flecha tras crear algo en el constructor y
+   volver. Después `navigateTo('home')` (ya hace lo de `backToMain`), o `goBack`
+   con `back: true`.
+7. **Arranque.** `onRehydrateStorage`: un `onboardingFlow` con `entry:
+   'newProgram'` se pone a `null` (hoy se queda guardado). Test en
+   `useStore.test.js`.
+8. **Entrada.** `viewToRoute`: fuera `'onboarding'`, entra `'start'` →
+   `{ screen: 'Start' }` (`navigateTo` ya apila con `pop: true`). `startNewProgram`
+   llama a `useStore.getState().startOnboardingFlow({ entry: 'newProgram' })` y a
+   `navigate('start')`; `NoProgram` llama a `startNewProgram`. La ruta `Start` ya
+   tiene `gestureEnabled: false`.
+9. **`n_templates`** guarda `programId` y `programSource: 'catalog'`; la
+   importación de `n_source` usa `useFitdataImport` + `importData` y guarda
+   `programSource: 'import'`. Textos nuevos en `onboardingFlow.newProgram.*`
+   (área nueva en los dos locales).
+10. Lo que **no** cambia: conectarse a otro entrenador estando ya conectado sigue
+    como hoy (no se suelta el hueco anterior; era igual en el selector viejo).
+
 **Probar O03-11**
 
 - [ ] ≡ → Nuevo programa: «Elige cómo empezar» con «Nuevo programa»
@@ -1275,6 +1327,9 @@ llama a `unlinkFromTrainer({ keepProgram: true })`.
 - [ ] El estado vacío de Programa (sin programa) abre el mismo recorrido.
 - [ ] Matar la app a mitad de «Nuevo programa» y reabrir: entra en la app, no en
   el recorrido.
+- [ ] «Programa de tu entrenador» → «Lo hago después» (o pedir el código →
+  Siguiente) vuelve a la app, sin pasar por Aprende.
+- [ ] Atrás de Android en «Elige cómo empezar» vuelve a la pestaña de donde vino.
 
 ## 26. Aparcadas
 
@@ -1462,6 +1517,6 @@ Lo que salió al probar O03-04 y O03-05 en el móvil.
 | O03-08 | Camino del entrenador | O03-02, 03, 05, 06, 07 | pendiente |
 | O03-09 | Recuperar todo con un solo login | O03-07 | aparcada |
 | O03-10 | Pendientes y pistas sobre las pantallas reales | O03-06 | aparcada |
-| O03-11 | «Nuevo programa» con el recorrido nuevo | O03-02, 03, 04, 05 | pendiente |
+| O03-11 | «Nuevo programa» con el recorrido nuevo | O03-02, 03, 04, 05 | ✅ b5e9c39 — `newProgram.jsx` (n_source, n_templates, n_done); `startNewProgram`/`NoProgram` apilan `Start`; `coachedExit`, `builderExit` con `programId`, `goTo(null)` termina, `finishOnboardingFlow({ back })`; fuera `OnboardingScreen`, la ruta `Onboarding`, `replaceRoot` y 152 claves `onboarding.*` |
 | O03-12 | Ajustes de la prueba del 14-oct | O03-04, 05 | ✅ 662f03e · edb3a2a (por mi cuenta: propuestas, «tu programa» y ajustes como pantalla `s_adjust`) · 0ee0269 (con entrenador: `c_wait`, código en uso, entrar con cuenta, modal en el código) |
 | O03-13 | Segunda prueba del 14-oct | O03-12 | ✅ bc7b6e8 (ajustes bajo las sesiones con Aceptar y repintado; `SessionFold`) · 3d26ba9 (primera versión de `useTrainerAccount`, con callbacks) · c5108c3 (`r_trainer`, `r_code`, `r_client`) |
