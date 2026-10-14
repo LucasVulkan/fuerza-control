@@ -15,6 +15,7 @@ describe('sectionOf', () => {
 
   it('cada pantalla cae en su tramo', () => {
     expect(['units', 'theme', 'role', 't_client', 'a_cards'].map(sectionOf)).toEqual([0, 0, 1, 2, 3]);
+    expect(sectionOf('s_adjust')).toBe(2);
   });
 });
 
@@ -32,6 +33,10 @@ describe('rutas tras los ajustes', () => {
 });
 
 describe('skipTarget', () => {
+  it('las preguntas de ajuste no se saltan: se vuelve con atrás', () => {
+    expect(skipTarget('s_adjust', A({ role: 'self' }))).toBeNull();
+  });
+
   it('la bifurcación no se puede saltar, ni la cuenta del entrenador ni su código', () => {
     for (const id of ['welcome', 'recover', 'role', 't_account', 't_code', 'done']) {
       expect(skipTarget(id, A({ role: 'trainer' }))).toBeNull();
