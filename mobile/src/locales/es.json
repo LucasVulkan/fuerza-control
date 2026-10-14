@@ -3074,7 +3074,25 @@
       "clientDesc": "Con la cuenta que vinculaste. Vuelve tu programa",
       "backup": "Una copia de seguridad",
       "backupDesc": "De Google Drive o un archivo .fitdata",
-      "note": "¿Entrenabas con un entrenador y no vinculaste cuenta? Pídele un código nuevo: tu historial se conserva"
+      "note": "¿Entrenabas con un entrenador y no vinculaste cuenta? Pídele un código nuevo: tu historial se conserva",
+      "google": "Con Google",
+      "apple": "Con Apple",
+      "rTrainer": {
+        "title": "¿Cómo *entrabas*?",
+        "sub": "Elige lo que usabas en el otro móvil",
+        "code": "Con mi código personal",
+        "codeDesc": "El de 12 caracteres"
+      },
+      "rCode": {
+        "title": "Tu código *personal*",
+        "sub": "Son doce caracteres; los guiones se ponen solos.",
+        "enter": "Entrar"
+      },
+      "rClient": {
+        "title": "¿Cómo te *conectabas*?",
+        "sub": "Elige lo que usabas con tu entrenador",
+        "code": "Con el código de mi entrenador"
+      }
     },
     "trainer": {},
     "done": {
