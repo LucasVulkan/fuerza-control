@@ -2893,8 +2893,8 @@
         "sessionsCount_one": "{{count}} sesión",
         "sessionsCount_other": "{{count}} sesiones",
         "programSub": "{{sessions}} sesiones · ~{{minutes}} min por sesión · {{sets}} series",
-        "sessionNote": "{{count}} ej. · ~{{minutes}} min",
         "sessionsTitle": "Tus sesiones",
+        "adjustTitle": "Ajustes",
         "minutes": "{{count}} min"
       },
       "adjust": {
@@ -2904,7 +2904,8 @@
         "equipSub": "Marca todo lo que tengas.",
         "limitsTitle": "¿Alguna *limitación*?",
         "limitsSub": "Cambiamos los ejercicios que podrían molestarte.",
-        "done": "Listo"
+        "accept": "Aceptar",
+        "preview": "Así queda tu programa"
       },
       "done": {
         "program": "\"{{name}}\" listo",
