@@ -2869,7 +2869,6 @@
         "recommended": "Recomendado",
         "own": "Crear el mío",
         "ownDesc": "Define sesiones, ejercicios y progresión",
-        "ownLink": "Prefiero crearlo yo",
         "backup": "Tengo una copia de seguridad"
       },
       "goal": {
@@ -2890,7 +2889,22 @@
         "previewSub": "Puedes cambiar cualquier cosa después, en el editor.",
         "start": "Empezar con este",
         "other": "Ver otros programas",
-        "generating": "Construyendo tu programa..."
+        "generating": "Construyendo tu programa...",
+        "sessionsCount_one": "{{count}} sesión",
+        "sessionsCount_other": "{{count}} sesiones",
+        "programSub": "{{sessions}} sesiones · ~{{minutes}} min por sesión · {{sets}} series",
+        "sessionNote": "{{count}} ej. · ~{{minutes}} min",
+        "sessionsTitle": "Tus sesiones",
+        "minutes": "{{count}} min"
+      },
+      "adjust": {
+        "timeTitle": "¿Cuánto *dura* tu sesión?",
+        "materialTitle": "¿Con qué *material* cuentas?",
+        "equipTitle": "¿Qué *material* tienes?",
+        "equipSub": "Marca todo lo que tengas.",
+        "limitsTitle": "¿Alguna *limitación*?",
+        "limitsSub": "Cambiamos los ejercicios que podrían molestarte.",
+        "done": "Listo"
       },
       "done": {
         "program": "\"{{name}}\" listo",
