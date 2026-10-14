@@ -5,17 +5,17 @@
 > Inicio: 2026-10-13
 > Fase O03-01 · hecho · Armazón del recorrido y tramo común · §17
 > Fase O03-02 · hecho · Constructor guiado I: sesiones, buscador corto y «ya tiene forma» · §18
-> Fase O03-03 · pendiente · Constructor guiado II: volumen en dos profundidades · §19
-> Fase O03-04 · pendiente · Camino «por mi cuenta» · §20
+> Fase O03-03 · hecho · Constructor guiado II: volumen en dos profundidades · §19
+> Fase O03-04 · hecho · Camino «por mi cuenta» · §20
 > Fase O03-05 · hecho · Camino «con entrenador» · §21
 > Fase O03-06 · hecho · Aprende: cómo ves Inicio, cómo apuntas y las tarjetas · §22
-> Fase O03-07 · pendiente · «Ya tengo cuenta», versión mínima · §23
+> Fase O03-07 · hecho · «Ya tengo cuenta», versión mínima · §23
 > Fase O03-08 · pendiente · Camino del entrenador · §24
 > Fase O03-09 · aparcado · Recuperar todo con un solo login · §26.1
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
 > Fase O03-11 · pendiente · «Nuevo programa» con el recorrido nuevo · §25
 >
-> Estado: **spec cerrada; olas 1 y 2 hechas (O03-01, 02, 05, 06), por probar** (14-oct-2026). Abierta el 4-oct como
+> Estado: **olas 1-3 hechas (O03-01 a 07), por probar; falta la ola 4 (O03-08, O03-11)** (14-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
 > recorrido contra el código; el 13-oct se revisó otra vez contra el código, se
 > corrigieron cinco cosas que no habrían funcionado (§2.2), se cerraron las diez
@@ -323,7 +323,7 @@ defecto); `trainer`, `false`. Se cambia después en el menú, como hoy.
    - En los dos, un enlace «Tengo una copia de seguridad» → importar `.fitdata`
      (lo de `handlePickFile` + `ImportModal` de hoy); tras importar, Aprende.
 3. **Plantilla** → **qué buscas** (cuatro baldosas con la palabra, sin emoji; los
-   valores de `StepIdentity` de O01) → **días** (1-7; `answers.daysPerWeek`) →
+   valores de `StepIdentity` de O01) → **días** (1-7; `answers.days`, que el motor recibe como `daysPerWeek`) →
    **preparando** → **propuestas** y **tu programa** de O01 con su hoja de ajustes,
    reutilizados (§20.2). **Preparando** (~1,5 s): «Buscando tu *programa*» y tres
    casillas que se marcan una a una (nivel, objetivo, días); luego entran las
@@ -543,8 +543,10 @@ abre lo que la app ya tiene:
   clientes» → `TrainerSyncModal` en su pantalla de recuperar.
 - **Entreno con un entrenador** — «Con la cuenta que vinculaste. Vuelve tu
   programa» → `ClientCodeModal` con `startWithSocial`.
-- **Una copia de seguridad** — «De Google Drive o un archivo .fitdata» →
-  `DriveBackupScreen` o el selector de archivo.
+- **Una copia de seguridad** — «De Google Drive o un archivo .fitdata» → el
+  selector de archivo del sistema (desde él se llega también a Drive) +
+  `ImportModal`. No `DriveBackupScreen`: al restaurar vuelve atrás sin avisar si
+  salió bien, y el recorrido no sabría cuándo terminar.
 
 Nota azul: «¿Entrenabas con un entrenador y no vinculaste cuenta? Pídele un código
 nuevo: tu historial se conserva». Pro vuelve con la misma cuenta o con
@@ -936,7 +938,11 @@ Hace, en `screens/builder.jsx`:
 - [ ] No hay paso de progresión: de Volumen se pasa a «Ya tiene forma», y la barra
   de arriba tiene tres fichas, todas encendidas.
 - [ ] Elegir 3 sesiones y pulsar «Saltar» sin «Siguiente»: el programa existe con
-  3 sesiones vacías.
+  3 sesiones vacías. También con los días ya contestados y sin tocar el selector.
+- [ ] Cambiar el ejercicio después de pasar por Volumen apaga la ficha de volumen.
+- [ ] Un ejercicio de tiempo en Volumen enseña solo series (y descanso en la
+  completa), sin reps.
+- [ ] Avanzado: poner mín 14 con máx 12 sube el máx a 14.
 
 ## 20. O03-04 — Camino «por mi cuenta»
 
@@ -968,9 +974,12 @@ Hace, en `screens/self.jsx`:
   con lo contestado y entran tres propuestas.
 - [ ] Elegir propuesta → tu programa con su hoja de ajustes; confirmar → Aprende;
   en la app, ese programa activo.
-- [ ] «Tengo una copia de seguridad» importa un `.fitdata` y sigue.
+- [ ] «Tengo una copia de seguridad» (en las dos variantes) importa un `.fitdata`
+  y sigue a Aprende.
+- [ ] La hoja de ajustes cambia tiempo y material y las sesiones se repintan;
+  «Ver otros programas» vuelve a la lista.
 - [ ] Desde la app, «Nuevo programa» abre el selector de siempre y sus propuestas
-  funcionan igual que antes.
+  funcionan igual que antes (hasta O03-11).
 
 ## 21. O03-05 — Camino «con entrenador»
 
@@ -1071,8 +1080,8 @@ Hace, en `screens/recover.jsx`, la pantalla de §12:
    `'recovery'` la abre en recuperar). **Ya existe** (13-oct, para el «Ya tengo
    cuenta» del paywall): aquí solo hay que usarla.
 2. «Entreno con un entrenador» → `ClientCodeModal` con `startWithSocial`.
-3. «Una copia de seguridad» → `DriveBackupScreen` (navegar) o el selector de
-   archivo; al importar, terminar.
+3. «Una copia de seguridad» → el selector de archivo + `ImportModal` (hecho así:
+   ver §12); al importar, terminar.
 4. Éxito en cualquiera → `finishOnboardingFlow()`; cancelar → se queda.
 5. Quitar el provisional de «Ya tengo cuenta» de O03-01.
 
@@ -1082,9 +1091,12 @@ Hace, en `screens/recover.jsx`, la pantalla de §12:
   clientes y se entra en la app sin más onboarding.
 - [ ] «Entreno con un entrenador» → Google de un cliente vinculado → vuelve su
   programa.
-- [ ] «Una copia de seguridad» → archivo `.fitdata` → programas e historial
-  restaurados.
-- [ ] Cancelar cualquiera de las tres vuelve a «Recupera lo tuyo».
+- [ ] «Una copia de seguridad» → selector del sistema (se puede entrar a Drive
+  desde ahí) → archivo `.fitdata` → programas e historial restaurados.
+- [ ] «Mi cuenta de entrenador» con Apple o Google (no solo con el código) también
+  termina el recorrido.
+- [ ] Cancelar cualquiera de las tres vuelve a «Recupera lo tuyo», y no deja el
+  onboarding a medias.
 
 ## 24. O03-08 — Camino del entrenador
 
@@ -1292,11 +1304,11 @@ usable entre olas gracias a los provisionales de O03-01 (§17.5).
 |---|---|---|---|
 | O03-01 | Armazón del recorrido y tramo común | — | ✅ 6a126f6 — `OnboardingFlowScreen` (ruta `Start`) con registro, `onboardingFlow` en el store, `utils/onboardingFlow.js` + test, piezas `flow/` y las cinco pantallas comunes; `SetupScreen` borrada |
 | O03-02 | Constructor guiado I | O03-01 | ✅ b36b9d2 · 2e0084c — b_sessions/b_exercise/b_done, `builderProgram.js` y `onboardingBuilder.js` con tests; `createProgramForClient(…, { openEditor })`. Pendiente para O03-03: «Saltar» en b_sessions sin «Siguiente» no crea el programa; b_exercise sale a `b_done` (`AFTER_EXERCISE`) |
-| O03-03 | Constructor guiado II (solo volumen; progresión aparcada el 14-oct) | O03-02 | pendiente |
-| O03-04 | Camino «por mi cuenta» | O03-02 | pendiente |
+| O03-03 | Constructor guiado II (solo volumen; progresión aparcada el 14-oct) | O03-02 | ✅ 9901e1f · 60e2538 — b_volume con `StepField` (no hizo falta extraer nada de `ExerciseEditorInline`), barra de tres fichas, `b_prog` fuera del util; el programa se crea al elegir el número, así «Saltar» ya lo deja hecho |
+| O03-04 | Camino «por mi cuenta» | O03-02 | ✅ 2e02bd8 · e196709 — `self.jsx`; de `OnboardingScreen` salen `proposalData.js`, `ProposalCard.jsx`, `usePreviewModel.js`, `ProgramPreview.jsx` y `useFitdataImport.jsx`. Atrás desde «tu programa» vuelve a días; «Ver otros programas» vuelve a la lista |
 | O03-05 | Camino «con entrenador» | O03-01 | ✅ 395c664 — `coached.jsx`, `hooks/useClientCode.js` (estado en un store de módulo) usado también por `ClientCodeModal`, `shareAndContinue`. `validateClientCode` no trae las letras de las sesiones: `c_confirm` no las pinta |
 | O03-06 | Aprende | O03-01 | ✅ ac13d22 · d58b1b6 — `ClientRow` extraída (la fila ya era `ClientListCard`; ésta calcula y `ClientRow` dibuja), `HomeViewPreview`, `ScrubDemo` sobre `ScrubRuler`/`scrubScale`, tarjetas por camino. En la fusión, el hueco de b_done (O03-02) pasó a `ClientRow` |
-| O03-07 | «Ya tengo cuenta», versión mínima | O03-01 | pendiente |
+| O03-07 | «Ya tengo cuenta», versión mínima | O03-01 | ✅ d2fc216 — `recover.jsx`; reutiliza `initialScreen` de `TrainerSyncModal` (de `02ac235`); el éxito del entrenador se detecta comparando `trainerSync` al cerrar. Con una cuenta ya en el móvil, el modal abre en su estado, no en recuperar |
 | O03-08 | Camino del entrenador | O03-02, 03, 05, 06, 07 | pendiente |
 | O03-09 | Recuperar todo con un solo login | O03-07 | aparcada |
 | O03-10 | Pendientes y pistas sobre las pantallas reales | O03-06 | aparcada |

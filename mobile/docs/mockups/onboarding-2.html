@@ -559,7 +559,6 @@ function bbar() {
     [n ? `${n} ${T('sesiones', 'sessions')}` : T('Sesiones', 'Sessions'), !!n],
     [e ? `${S.ex.name}` : T('Ejercicios', 'Exercises'), !!e],
     [S.volDone ? `${S.ex.sets}×${repsTxt(S.ex)}` : T('Volumen', 'Volume'), S.volDone],
-    [progLabel(), S.progDone],
   ];
   return `<div class="bbar"><span class="caps">${S.bctx === 'trainer' ? T(`El programa de ${name()}`, `${name()}’s program`) : T('Tu programa', 'Your program')}</span>
     <div class="bchips">${items.map(([l, ok]) => `<i class="${ok ? 'on' : ''}">${ok ? '✓ ' : ''}${l}</i>`).join('')}</div></div>`;
@@ -914,7 +913,7 @@ const SCREENS = {
         </div>
         <div class="field"><span class="fl">${T('Descanso', 'Rest')}</span>${sgc('rest', [[60,'1:00'],[90,'1:30'],[120,'2:00'],[180,'3:00']])}</div>`}
       <div class="spacer"></div>
-      <button class="cta" onclick="if(S.ex.max<S.ex.min)S.ex.max=S.ex.min;S.volDone=true;go('b_prog')">${T('Siguiente', 'Next')}</button>
+      <button class="cta" onclick="if(S.ex.max<S.ex.min)S.ex.max=S.ex.min;S.volDone=true;go('b_done')">${T('Siguiente', 'Next')}</button>
       ${later()}`;
     },
   },
@@ -941,10 +940,10 @@ const SCREENS = {
       })() : `
       <div class="sblock">
         <div class="shead"><span class="l">A</span>${T('Sesión A', 'Session A')}<small>1 ${T('ej.', 'ex.')}</small></div>
-        <div class="exrow">${S.ex.name}<small>${S.ex.sets}×${repsTxt(S.ex)} · ${progLabel()}</small></div>
+        <div class="exrow">${S.ex.name}<small>${S.ex.sets}×${repsTxt(S.ex)}</small></div>
       </div>
       ${LETTERS.slice(1, S.nSess).split('').map(l => `<div class="sblock dim"><div class="shead"><span class="l">${l}</span>${T('Sesión', 'Session')} ${l}<small>${T('vacía', 'empty')}</small></div></div>`).join('')}
-      <div class="note acc">✏️ <span>${T('Sigue editándolo cuando termines: <b>Programa → ' + tplName() + '</b>. Copiar sesiones, etapas, vincular ejercicios… todo está ahí.', 'Keep editing when you’re done: <b>Program → ' + tplName() + '</b>.')}</span></div>`}
+      <div class="note acc">✏️ <span>${T('Sigue editándolo cuando termines: <b>Programa → ' + tplName() + '</b>. Ahí cambias también cómo progresa cada ejercicio.', 'Keep editing when you’re done: <b>Program → ' + tplName() + '</b>.')}</span></div>`}
       <div class="spacer"></div>
       <button class="cta" onclick="S.program=S.bctx==='trainer'?'tpl1':'own';go(builderExit())">${S.bctx !== 'trainer' ? T('Guardar', 'Save') : S.clientMode === 'app' ? T(`Guardar y enviar a ${name()}`, `Save and send to ${name()}`) : T('Guardar', 'Save')}</button>`,
   },
@@ -1630,7 +1629,7 @@ const MAP = {
   ],
   newProgram: [['newprog','Nuevo programa ↗'],['n_templates','Desde una plantilla'],['n_done','Programa listo']],
   learn: [['a_home','Cómo ves Inicio'],['input','Cómo apuntas'],['a_learn','Tarjetas'],['done','Listo']],
-  builder: [['b_sessions','Sesiones'],['b_exercise','Un ejercicio'],['b_volume','Volumen'],['b_prog','Progresión (simple / completa)'],['b_done','Listo · sigue luego']],
+  builder: [['b_sessions','Sesiones'],['b_exercise','Un ejercicio'],['b_volume','Volumen'],['b_done','Listo · sigue luego']],
 };
 const ROLE_OF_COL = ['self', 'coached', 'trainer'];
 function renderMap() {
