@@ -39,9 +39,12 @@ const NONE = {};
 const answersOf = (s) => s.onboardingFlow?.answers ?? NONE;
 
 /**
- * Las sesiones que enseñan las miniaturas de Inicio: las del programa del usuario
- * (el del recorrido o el activo) si tiene al menos dos; si no, unas genéricas.
+ * Las sesiones que enseñan las miniaturas de Inicio: siempre tres (14-oct: con
+ * cuatro la lista se alargaba demasiado). Las del programa del usuario (el del
+ * recorrido o el activo) si tiene tres o más; si no, unas genéricas.
  */
+const PREVIEW_SESSIONS = 3;
+
 function usePreviewSessions() {
   const { t } = useTranslation();
   const program   = useStore((s) => s.programs[answersOf(s).programId ?? s.profile.activeProgramId]);
@@ -49,10 +52,10 @@ function usePreviewSessions() {
   const library   = useStore((s) => s.exerciseLibrary);
   const custom    = useStore((s) => s.customExercises);
   return useMemo(() => {
-    const real = previewSessions(program, templates, { ...library, ...custom });
-    if (real.length >= 2) return real;
+    const real = previewSessions(program, templates, { ...library, ...custom }, PREVIEW_SESSIONS);
+    if (real.length >= PREVIEW_SESSIONS) return real;
     const names = t('onboardingFlow.learn.sessionNames', { returnObjects: true });
-    return (Array.isArray(names) ? names : []).map((name, i) => ({
+    return (Array.isArray(names) ? names : []).slice(0, PREVIEW_SESSIONS).map((name, i) => ({
       marker: String.fromCharCode(65 + i), name, exercises: 5, minutes: 55,
     }));
   }, [program, templates, library, custom, t]);
