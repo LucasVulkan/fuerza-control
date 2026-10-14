@@ -907,10 +907,6 @@ Hace, en `screens/builder.jsx`:
   vacías.
 - [ ] «Lo termino después» en el paso 1 con 3 elegidas deja un programa con 3
   sesiones vacías y sigue el recorrido.
-- [ ] Entrenador (con O03-08): el programa aparece en la ficha del cliente, no en
-  Programas del entrenador ni en sus plantillas; no se abre el editor.
-- [ ] Entrenador (con O03-08): «Lo termino después» sin ningún ejercicio no
-  envía; con uno y cliente con app, sí. Sin red, sale igual y queda sin enviar.
 - [ ] «Cambiar» el ejercicio lo sustituye (no se duplica); cerrar el buscador
   con la ✕ sin elegir deja la sesión A como estaba.
 
@@ -1075,10 +1071,6 @@ real arriba y tres clientes de ejemplo (datos fijos, no del store).
 - [ ] Tarjetas de «por mi cuenta»: la 1.ª dibuja la vista de Inicio elegida
   (en el entrenador que también entrena es la 2.ª). Anterior/Siguiente y los
   puntos funcionan, y la última dice «Entendido» y lleva a Listo.
-- [ ] Entrenador (con O03-08): «Tus clientes, de un vistazo» enseña arriba su
-  cliente real (con reloj si es con app) y tres de ejemplo.
-- [ ] Entrenador que no entrena: «Apunta tú sus sesiones» solo sale si su
-  cliente es «le apuntas tú».
 - [ ] Conectado con entrenador: no sale «Cambia lo que quieras»; sale «{Entrenador}
   ve tus entrenos».
 - [ ] La pestaña Clientes de la app se ve exactamente igual que antes de la
@@ -1171,6 +1163,14 @@ Hace, en `screens/trainer.jsx`, §7 entero:
   de un vistazo» la primera.
 - [ ] Cliente «le apuntas tú» → no hay pantalla de cuenta; en Aprende sale «Apunta
   tú sus sesiones».
+- [ ] Constructor (de O03-02): el programa aparece en la ficha del cliente, no en
+  Programas del entrenador ni en sus plantillas; no se abre el editor.
+- [ ] Constructor (de O03-02): «Lo termino después» sin ningún ejercicio no
+  envía; con uno y cliente con app, sí. Sin red, sale igual y queda sin enviar.
+- [ ] Aprende (de O03-06): «Tus clientes, de un vistazo» enseña arriba su
+  cliente real (con reloj si es con app) y tres de ejemplo.
+- [ ] Aprende (de O03-06), entrenador que no entrena: «Apunta tú sus sesiones» solo sale si su
+  cliente es «le apuntas tú».
 
 ## 25. O03-11 — «Nuevo programa» con el recorrido nuevo
 
