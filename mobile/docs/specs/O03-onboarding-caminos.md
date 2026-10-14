@@ -199,7 +199,7 @@ entrena, y porque la tarjeta siguiente enseña justo la vista elegida.
 (§25):
 
 ```
-Nuevo programa → Elige cómo empezar ─┬─ Plantillas → qué buscas → días → propuestas ───────────┐
+Nuevo programa → Elige cómo empezar ─┬─ Plantillas Forma Fit → qué buscas → días → propuestas ─┐
                                      ├─ Crear desde cero ⤵ ────────────────────────────────────┤
                                      ├─ Mis plantillas → elegir ───────────────────────────────┼→ Programa listo → Inicio
                                      ├─ Importar archivo ──────────────────────────────────────┘
@@ -1215,7 +1215,7 @@ llama a `unlinkFromTrainer({ keepProgram: true })`.
   cualquier momento». Cinco `FlowOption` con «›». **Textos de app, no de colega**
   (decisión del usuario, 13-oct): cortos, neutros, sin «te lo montas» ni «te
   enseñamos 3»:
-  - **Plantillas** (etiqueta «Recomendado») — «Según tu nivel, tu
+  - **Plantillas Forma Fit** (sin etiqueta «Recomendado») — «Según tu nivel, tu
     objetivo y tus días de entreno» → `s_goal` con el nivel de `profile.onboardingAnswers.level` (si no
     hay, `s_level` primero) → `s_days` → `s_props` → confirmar → `n_done`.
   - **Crear desde cero** — «Define sesiones, ejercicios y progresión» →
@@ -1228,7 +1228,7 @@ llama a `unlinkFromTrainer({ keepProgram: true })`.
     `c_confirm` → `c_linked`, cuyo botón pasa a ser «Ir a la app».
   - **Importar archivo** — «Archivo .fitdata de una copia de seguridad» →
     selector + `ImportModal` → `n_done`.
-  (14-oct, prueba: "Programa recomendado" repetía la etiqueta; pasa a "Plantillas", y las guardadas del usuario a "Mis plantillas")
+  (14-oct, prueba: "Programa recomendado" repetía la etiqueta; pasa a "Plantillas", y las guardadas del usuario a "Mis plantillas"; luego "Plantillas Forma Fit", sin etiqueta: desde la app no se recomienda)
 - **`n_templates`** — «Elige una *plantilla*» · «Se crea una copia. La plantilla
   original no cambia». Lista de plantillas (nombre, «N sesiones · N etapas»,
   letras) con `FlowOption`, el nombre prellenado y editable (`NameField`) y
@@ -1281,7 +1281,7 @@ Lo de §25.2-25.3 vale; esto lo completa (manda sobre lo de arriba si chocan):
    `b_sessions` hasta que exista el programa: está bien así (la flecha vuelve).
 4. **El nivel guardado.** `levelOf` ya cae a `profile.onboardingAnswers.level`,
    pero `isDeep` del constructor lee `answers.level` a secas. `n_source`, al
-   elegir «Plantillas» o «Crear desde cero», hace
+   elegir «Plantillas Forma Fit» o «Crear desde cero», hace
    `flowAnswer({ level: profile.onboardingAnswers?.level ?? null })`. Y `s_level`
    con `entry: 'newProgram'` sigue a `s_goal`, no a `s_choice`.
 5. **La flecha y el atrás de Android en `n_source`.** `canGoBack` es falso sin
@@ -1331,7 +1331,7 @@ Lo de §25.2-25.3 vale; esto lo completa (manda sobre lo de arriba si chocan):
 - [x] «Programa de tu entrenador» → «Lo hago después» (o pedir el código →
   Siguiente) vuelve a la app, sin pasar por Aprende.
 - [x] Atrás de Android en «Elige cómo empezar» vuelve a la pestaña de donde vino.
-- [ ] «Elige cómo empezar» dice «Plantillas» (con la etiqueta «Recomendado») y «Mis plantillas»; ninguna repite «Recomendado».
+- [ ] «Elige cómo empezar» dice «Plantillas Forma Fit» (sin etiqueta) y «Mis plantillas».
 
 ## 26. Aparcadas
 

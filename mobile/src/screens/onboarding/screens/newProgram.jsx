@@ -64,7 +64,6 @@ function Source({ goTo }) {
           index={2}
           title={t(`${K}.source.recommended`)}
           desc={t(`${K}.source.recommendedDesc`)}
-          tag={t('onboardingFlow.self.choice.recommended')}
           onPick={() => goTo(savedLevel() ? 's_goal' : 's_level')}
         />
         <FlowOption
