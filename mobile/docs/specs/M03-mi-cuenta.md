@@ -508,7 +508,9 @@ entrando o creando como hoy.
    devuelve `{ existed: false }` **sin** hacer el `upsert`. Si no, como hoy, y
    devuelve también `existed`.
    - `profiles` no está en `supabase/*.sql` (se creó en el panel): **comprobar
-     en el panel** que la RLS deja a cada usuario leer su propia fila. Si no,
+     en el panel** que la RLS deja a cada usuario leer su propia fila.
+     **Comprobado el 14-oct:** política «Users manage their own profile»,
+     `ALL` con `auth.uid() = id`; vale. Si no,
      añadir la política `select … using (id = auth.uid())` y guardarla en un
      `.sql` nuevo de `supabase/`.
    - Un cliente que entró con ese Google (`loginClientWithIdToken`) no tiene
