@@ -15,6 +15,7 @@
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
 > Fase O03-11 · pendiente · «Nuevo programa» con el recorrido nuevo · §25
 > Fase O03-12 · hecho · Ajustes de la prueba del 14-oct: propuestas con el estilo del recorrido y «con entrenador» · §28
+> Fase O03-13 · pendiente · Segunda prueba del 14-oct: «tu programa» y los métodos de «Ya tengo cuenta» · §29
 >
 > Estado: **olas 1-3 hechas (O03-01 a 07), por probar; falta la ola 4 (O03-08, O03-11)** (14-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
@@ -1018,26 +1019,26 @@ Hace, en `screens/coached.jsx`:
 
 **Probar O03-05**
 
-- [ ] «Con un entrenador» abre directamente «El código de tu entrenador», con
+- [x] «Con un entrenador» abre directamente «El código de tu entrenador», con
   «¿No te lo ha pasado? Pídeselo» y, debajo, «¿Tu entrenador no usa Forma Fit?»
   con Invítale a la app y Crea su programa en la app.
 - [x] Pegar un código real → «Programa encontrado» con el
   nombre del entrenador y del programa y «Qué pasa al conectar».
 - [x] Conectar → panel «Conectado con {entrenador}» → en la app, su programa en
   Inicio y no se puede editar.
-- [ ] Código inventado → el error sale en la pantalla, sin cerrar nada.
-- [ ] «¿No te lo ha pasado? Pídeselo» → Enviar mensaje → elegir WhatsApp → al volver
+- [x] Código inventado → el error sale en la pantalla, sin cerrar nada.
+- [x] «¿No te lo ha pasado? Pídeselo» → Enviar mensaje → elegir WhatsApp → al volver
   pasa sola a «Cómo ves Inicio». (iOS: cerrar la hoja sin compartir → se queda.) — ❌ 14-oct: tras enviar el mensaje falta una pantalla que explique qué hacer cuando llegue el código
-- [ ] «Crea su programa en la app» → «Lo creo sesión a sesión» abre el constructor
+- [x] «Crea su programa en la app» → «Lo creo sesión a sesión» abre el constructor
   (sesiones, un ejercicio, volumen y listo: el mismo para todos desde el 14-oct;
   solo cambian los ejercicios sugeridos).
-- [ ] «Invítale a la app» abre compartir y, al volver, se queda en la pantalla.
+- [x] «Invítale a la app» abre compartir y, al volver, se queda en la pantalla.
 - [ ] Por invitación: enlace → bienvenida con la línea azul → unidades → tema →
   directamente el código ya puesto, sin «¿Cómo entrenas?».
-- [ ] El modal de código de la app (Menú → Entrenador) sigue funcionando igual. — ❌ 14-oct: el modal se abre en el estado en que quedó el onboarding (p. ej. «Programa encontrado» con hueco ocupado); tiene que abrir en el código
-- [ ] Por invitación, pulsar «Saltar» en el código: al acabar el recorrido no se
+- [x] El modal de código de la app (Menú → Entrenador) sigue funcionando igual. — ❌ 14-oct: el modal se abre en el estado en que quedó el onboarding (p. ej. «Programa encontrado» con hueco ocupado); tiene que abrir en el código
+- [x] Por invitación, pulsar «Saltar» en el código: al acabar el recorrido no se
   abre Conexión con entrenador.
-- [ ] La última pantalla del recorrido, «Todo listo» (después de Aprende), enseña
+- [x] La última pantalla del recorrido, «Todo listo» (después de Aprende), enseña
   «Conectado con {entrenador}» y «"{programa}" en Entreno» al conectar, o «Conectar
   con tu entrenador · Menú → Entrenador» si no.
 
@@ -1070,19 +1071,19 @@ real arriba y tres clientes de ejemplo (datos fijos, no del store).
 
 **Probar O03-06**
 
-- [ ] «Cómo ves Inicio»: las dos vistas lado a lado; en «Pestañas» tocar otra
+- [x] «Cómo ves Inicio»: las dos vistas lado a lado; en «Pestañas» tocar otra
   pestaña la abre en el dibujo. Elegir «Pestañas» → al terminar, Inicio sale en
   pestañas.
-- [ ] «Cómo apuntas»: con «Con regla», arrastrar el peso a la derecha enseña la
+- [x] «Cómo apuntas»: con «Con regla», arrastrar el peso a la derecha enseña la
   regla y el valor en la burbuja; al soltar se queda. Con «Solo deslizar», la
   cifra cambia en la casilla mientras arrastras.
-- [ ] Elegir «Solo deslizar» → en un entreno real, la casilla funciona sin regla.
-- [ ] Tarjetas de «por mi cuenta»: la 1.ª dibuja la vista de Inicio elegida
+- [x] Elegir «Solo deslizar» → en un entreno real, la casilla funciona sin regla.
+- [x] Tarjetas de «por mi cuenta»: la 1.ª dibuja la vista de Inicio elegida
   (en el entrenador que también entrena es la 2.ª). Anterior/Siguiente y los
   puntos funcionan, y la última dice «Entendido» y lleva a Listo.
 - [ ] Conectado con entrenador: no sale «Cambia lo que quieras»; sale «{Entrenador}
   ve tus entrenos».
-- [ ] La pestaña Clientes de la app se ve exactamente igual que antes de la
+- [x] La pestaña Clientes de la app se ve exactamente igual que antes de la
   extracción (color, insignia, cuadraditos, muesca).
 
 ## 23. O03-07 — «Ya tengo cuenta», versión mínima
@@ -1103,14 +1104,14 @@ Hace, en `screens/recover.jsx`, la pantalla de §12:
 **Probar O03-07**
 
 - [ ] «Mi cuenta de entrenador» → código de 12 de una cuenta real → vuelven los
-  clientes y se entra en la app sin más onboarding.
+  clientes y se entra en la app sin más onboarding. — ❌ 14-oct: va directo al código y, al volver atrás, abre el modal completo, donde se puede crear una cuenta nueva. Hace falta una pantalla de método: código, Google o Apple (O03-13)
 - [ ] «Entreno con un entrenador» → Google de un cliente vinculado → vuelve su
-  programa.
-- [ ] «Una copia de seguridad» → selector del sistema (se puede entrar a Drive
+  programa. — ❌ 14-oct: falta una pantalla de método: código, Google o Apple (O03-13)
+- [x] «Una copia de seguridad» → selector del sistema (se puede entrar a Drive
   desde ahí) → archivo `.fitdata` → programas e historial restaurados.
 - [ ] «Mi cuenta de entrenador» con Apple o Google (no solo con el código) también
-  termina el recorrido.
-- [ ] Cancelar cualquiera de las tres vuelve a «Recupera lo tuyo», y no deja el
+  termina el recorrido. — ❌ 14-oct: ver .1 (O03-13)
+- [x] Cancelar cualquiera de las tres vuelve a «Recupera lo tuyo», y no deja el
   onboarding a medias.
 
 ## 24. O03-08 — Camino del entrenador
@@ -1375,19 +1376,72 @@ Lo que salió al probar O03-04 y O03-05 en el móvil.
 
 **Probar O03-12**
 
-- [ ] Principiante: «Ver programas para mí» y «Crear el mío» como dos opciones
+- [x] Principiante: «Ver programas para mí» y «Crear el mío» como dos opciones
   iguales; sin enlace abajo.
-- [ ] En el nivel ya sale «Tengo una copia de seguridad».
+- [x] En el nivel ya sale «Tengo una copia de seguridad».
 - [ ] Propuestas y «tu programa» con el estilo del recorrido; cambiar tiempo,
-  material y limitaciones repinta las sesiones.
-- [ ] En «¿Cómo quieres ver tus sesiones?» ya no sale «Para tu caso».
-- [ ] «Pídeselo» → enviar → pantalla «Cuando te llegue el código» con dónde
+  material y limitaciones repinta las sesiones. — ❌ 14-oct: los ajustes, con su título y debajo de las sesiones; cada pregunta con «Aceptar» para ver el efecto antes; y la lista de sesiones distinta (O03-13)
+- [x] En «¿Cómo quieres ver tus sesiones?» ya no sale «Para tu caso».
+- [x] «Pídeselo» → enviar → pantalla «Cuando te llegue el código» con dónde
   meterlo.
 - [ ] Un código ya en uso: la pantalla lo dice en grande, con «Pedir un código
   nuevo» y «Probar otro código», sin «Conectar».
-- [ ] «¿Ya estabas conectado? Entra con tu cuenta» abre el acceso con Google/Apple.
-- [ ] Dejar el recorrido en «Programa encontrado» y abrir Menú → Entrenador →
+- [x] «¿Ya estabas conectado? Entra con tu cuenta» abre el acceso con Google/Apple.
+- [x] Dejar el recorrido en «Programa encontrado» y abrir Menú → Entrenador →
   Conectar con un código: abre en el código vacío.
+
+## 29. O03-13 — Segunda prueba del 14-oct
+
+### 29.1 «Tu programa» (s_props / s_adjust)
+
+1. **Los ajustes, debajo de las sesiones y con título «Ajustes»**: las tres
+   filas (tiempo, material, limitaciones) bajo «Tus sesiones», con un rótulo
+   «Ajustes» como el de «Tus sesiones».
+2. **Cada pregunta de ajuste con «Aceptar»**: elegir una opción ya no la da por
+   buena. La pantalla `s_adjust` enseña, debajo de las opciones, cómo queda el
+   programa con lo elegido (las sesiones repintadas con la elección provisional,
+   y los avisos de adaptación) y el pie lleva **Aceptar** (lima). Aceptar guarda
+   y vuelve; atrás vuelve sin guardar. Vale también para la lista de material y
+   las limitaciones (multi-selección).
+3. **La lista de sesiones**: la letra sin fondo (como en Entreno), y la meta
+   **debajo del nombre**, con el texto completo («5 ejercicios · 55 min»), no a
+   la derecha. A la derecha, un **chevron de desplegar** (abajo, que gira al
+   abrir), no el de navegar.
+
+### 29.2 «Ya tengo cuenta» con pantallas de método
+
+1. **«Entreno con un entrenador» → pantalla «¿Cómo te conectabas?»** con
+   `FlowOption`: «Con el código de mi entrenador» (→ el código, como `c_code`, o
+   `ClientCodeModal` sin `startWithSocial`) · «Con Google» · «Con Apple» (solo
+   iOS) → `ClientCodeModal` con `startWithSocial` (recupera la conexión hecha
+   antes con esa cuenta). Éxito → `finishOnboardingFlow()` con `role: 'coached'`.
+2. **«Mi cuenta de entrenador» → pantalla «¿Cómo entrabas?»**: «Con mi código
+   personal» · «Con Google» · «Con Apple» (solo iOS). **Nada más**: ni crear una
+   cuenta nueva ni «sin cuenta». El código abre solo la recuperación con código
+   (y atrás vuelve a esta pantalla, no al modal completo); Google y Apple entran
+   con esa cuenta, que recupera la cuenta de entrenador y sus clientes. Para no
+   depender del modal completo, la lógica de entrar (Google con `AuthSession`,
+   Apple, código: lo de `doSwitch`, `handleApple`, `handleRecover` de
+   `TrainerSyncModal`) se saca a un hook `src/hooks/useTrainerAccount.js` que usan
+   el modal y estas pantallas (es el mismo hook que pide O03-08 §24.3: lo hace
+   esta tarea y O03-08 lo reutiliza). El modal no cambia para el usuario.
+   Éxito → `finishOnboardingFlow()` con `role: 'trainer'`, `proTabsHidden: false`.
+3. En Expo Go, Google no funciona (lo dice el modal hoy): la opción se ve igual,
+   y el error, en la pantalla.
+
+**Probar O03-13**
+
+- [ ] «Tu programa»: «Tus sesiones» arriba y «Ajustes» debajo, con título.
+- [ ] Abrir «Tiempo» y elegir otra opción: el programa de debajo cambia, pero no
+  se guarda hasta «Aceptar»; atrás lo deja como estaba.
+- [ ] Sesiones: letra sin fondo, «5 ejercicios · 55 min» debajo del nombre y el
+  chevron de desplegar a la derecha, que gira al abrir.
+- [ ] «Ya tengo cuenta» → «Entreno con un entrenador» → pantalla con código,
+  Google y Apple (en Android sin Apple).
+- [ ] «Ya tengo cuenta» → «Mi cuenta de entrenador» → código, Google y Apple; el
+  código abre solo la recuperación y atrás vuelve a esa pantalla; en ningún
+  momento se puede crear una cuenta nueva.
+- [ ] Menú → Sincronización con clientes sigue funcionando igual que antes.
 
 ## Fases
 
@@ -1405,3 +1459,4 @@ Lo que salió al probar O03-04 y O03-05 en el móvil.
 | O03-10 | Pendientes y pistas sobre las pantallas reales | O03-06 | aparcada |
 | O03-11 | «Nuevo programa» con el recorrido nuevo | O03-02, 03, 04, 05 | pendiente |
 | O03-12 | Ajustes de la prueba del 14-oct | O03-04, 05 | ✅ 662f03e · edb3a2a (por mi cuenta: propuestas, «tu programa» y ajustes como pantalla `s_adjust`) · 0ee0269 (con entrenador: `c_wait`, código en uso, entrar con cuenta, modal en el código) |
+| O03-13 | Segunda prueba del 14-oct | O03-12 | pendiente |
