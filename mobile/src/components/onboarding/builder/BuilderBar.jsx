@@ -1,13 +1,11 @@
 /**
  * BuilderBar — la barra de fichas del constructor guiado (O03 §10.1): arriba de
- * cada paso, cuatro fichas que se encienden según se construye el programa —
- * «✓ 4 sesiones · ✓ Press banca · ✓ 3×8-12 · ✓ Por reglas». Es la sensación de
- * construir algo.
+ * cada paso, tres fichas que se encienden según se construye el programa —
+ * «✓ 4 sesiones · ✓ Press banca · ✓ 3×8-12». Es la sensación de construir algo.
  *
- * Las dos primeras salen del programa que se está montando. Volumen y progresión
- * las enciende O03-03 con `answers.volDone` / `answers.progDone` y el texto de la
- * ficha en `answers.volLabel` / `answers.progLabel`; hasta entonces se quedan
- * apagadas con su nombre.
+ * Las dos primeras salen del programa que se está montando. El volumen lo enciende
+ * `b_volume` con `answers.volDone` y el texto de la ficha en `answers.volLabel`;
+ * hasta entonces se queda apagada con su nombre.
  *
  *   sessions   las sesiones elegidas aún sin crear (el primer paso); si no, las del programa
  */
@@ -56,7 +54,6 @@ export default function BuilderBar({ sessions }) {
     [n ? t(`${K}.sessionsN`, { count: n }) : t(`${K}.sessions`), n > 0],
     [def ? exerciseName(def, language) : t(`${K}.exercise`), !!def],
     [a.volDone ? a.volLabel ?? t(`${K}.volume`) : t(`${K}.volume`), !!a.volDone],
-    [a.progDone ? a.progLabel ?? t(`${K}.progression`) : t(`${K}.progression`), !!a.progDone],
   ];
 
   return (

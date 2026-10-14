@@ -2806,8 +2806,7 @@
         "sessionsN_one": "{{count}} session",
         "sessionsN_other": "{{count}} sessions",
         "exercise": "Exercise",
-        "volume": "Volume",
-        "progression": "Progression"
+        "volume": "Volume"
       },
       "sessions": {
         "titleSelf": "How many days will you *train*?",
@@ -2828,12 +2827,26 @@
         "createSub": "Not in the catalog: you create it",
         "closeSearch": "Close search"
       },
+      "volume": {
+        "title": "Sets and *reps*",
+        "subSimple": "If unsure, keep what’s there.",
+        "subDeep": "Sets, reps and rest.",
+        "repsLabel": "Reps",
+        "strength": "Strength · {{reps}}",
+        "strengthDesc": "Few reps with heavy weight",
+        "muscle": "Muscle · {{reps}}",
+        "muscleDesc": "The middle ground for building muscle",
+        "endurance": "Endurance · {{reps}}",
+        "enduranceDesc": "More reps with lighter weight",
+        "hintFixed": "Fixed reps: {{reps}}.",
+        "hintRange": "Range {{min}}-{{max}}: add reps up to {{max}}, then weight."
+      },
       "done": {
         "title": "Your program is taking *shape*",
         "titleClient": "{{name}}’s program is taking *shape*",
         "sub": "Give it a name if you like.",
         "nameLabel": "Program name",
-        "noteSelf": "Keep editing when you’re done: *Program → {{name}}*. Copy sessions, stages, link exercises… it’s all there.",
+        "noteSelf": "Keep editing when you’re done: *Program → {{name}}*. You can also change how each exercise progresses there.",
         "clientsLabel": "How it looks in Clients",
         "noteClientEmpty_one": "Session {{letters}} is empty. Fill it in under *Clients → {{client}}*: each change reaches them with “↑ Send”.",
         "noteClientEmpty_other": "Sessions {{letters}} are empty. Fill them in under *Clients → {{client}}*: each change reaches them with “↑ Send”.",

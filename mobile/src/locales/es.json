@@ -2806,8 +2806,7 @@
         "sessionsN_one": "{{count}} sesión",
         "sessionsN_other": "{{count}} sesiones",
         "exercise": "Ejercicio",
-        "volume": "Volumen",
-        "progression": "Progresión"
+        "volume": "Volumen"
       },
       "sessions": {
         "titleSelf": "¿Cuántos días vas a *entrenar*?",
@@ -2828,12 +2827,26 @@
         "createSub": "No está en el catálogo: lo creas tú",
         "closeSearch": "Cerrar el buscador"
       },
+      "volume": {
+        "title": "Series y *repeticiones*",
+        "subSimple": "Si dudas, deja lo que hay.",
+        "subDeep": "Series, repeticiones y descanso.",
+        "repsLabel": "Repeticiones",
+        "strength": "Fuerza · {{reps}}",
+        "strengthDesc": "Pocas repeticiones con mucho peso",
+        "muscle": "Músculo · {{reps}}",
+        "muscleDesc": "El punto medio para ganar músculo",
+        "endurance": "Resistencia · {{reps}}",
+        "enduranceDesc": "Más repeticiones con menos peso",
+        "hintFixed": "Repeticiones fijas: {{reps}}.",
+        "hintRange": "Rango {{min}}-{{max}}: subes repeticiones hasta {{max}} y luego peso."
+      },
       "done": {
         "title": "Tu programa ya tiene *forma*",
         "titleClient": "El programa de {{name}} ya tiene *forma*",
         "sub": "Ponle un nombre si quieres.",
         "nameLabel": "Nombre del programa",
-        "noteSelf": "Sigue editándolo cuando termines: *Programa → {{name}}*. Copiar sesiones, etapas, vincular ejercicios… todo está ahí.",
+        "noteSelf": "Sigue editándolo cuando termines: *Programa → {{name}}*. Ahí cambias también cómo progresa cada ejercicio.",
         "clientsLabel": "Así lo verás en Clientes",
         "noteClientEmpty_one": "La sesión {{letters}} está vacía. Rellénala en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",
         "noteClientEmpty_other": "Las sesiones {{letters}} están vacías. Rellénalas en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",

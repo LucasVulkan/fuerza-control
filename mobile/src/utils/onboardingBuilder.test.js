@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { filterBySearch } from './searchText';
-import { isDeep, SUGGESTED, splitHit, buildCustomExercise } from './onboardingBuilder';
+import { isDeep, SUGGESTED, splitHit, buildCustomExercise, withReps, volumeLabel, REP_CHOICES } from './onboardingBuilder';
 
 describe('constructor guiado — profundidad (O03 §10.3)', () => {
   it('sencilla solo para self principiante o intermedio; el resto, completa', () => {
@@ -65,5 +65,24 @@ describe('buildCustomExercise', () => {
       sets: 3, minReps: 8, maxReps: 12, restSec: 90, inputType: 'weight_reps', progressionModel: 'double_progression',
     });
     expect(def.progression.type).toBe('double');
+  });
+});
+
+describe('volumen del constructor (O03-03)', () => {
+  it('withReps no deja el rango del revés', () => {
+    expect(withReps(8, 12, { minReps: 6 })).toEqual({ minReps: 6, maxReps: 12 });
+    expect(withReps(8, 12, { minReps: 14 })).toEqual({ minReps: 14, maxReps: 14 });
+    expect(withReps(8, 12, { maxReps: 6 })).toEqual({ minReps: 6, maxReps: 6 });
+    expect(withReps(8, 12, { maxReps: 10 })).toEqual({ minReps: 8, maxReps: 10 });
+  });
+
+  it('volumeLabel: rango, reps fijas y tiempo', () => {
+    expect(volumeLabel({ sets: 3, minReps: 8, maxReps: 12 })).toBe('3×8-12');
+    expect(volumeLabel({ sets: 4, minReps: 10, maxReps: 10 })).toBe('4×10');
+    expect(volumeLabel({ sets: 3, minReps: 30, maxReps: 30, time: true })).toBe('3×30s');
+  });
+
+  it('las tres opciones sencillas son 5 · 10 · 15', () => {
+    expect(REP_CHOICES.map((c) => c.reps)).toEqual([5, 10, 15]);
   });
 });
