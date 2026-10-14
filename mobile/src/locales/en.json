@@ -2844,7 +2844,54 @@
         "sendFailed": "Couldn’t send it. Check your connection and try again."
       }
     },
-    "self": {},
+    "self": {
+      "level": {
+        "title": "How long have you been *lifting*?",
+        "beginner": "Just starting",
+        "beginnerDesc": "Under 6 months",
+        "intermediate": "A while",
+        "intermediateDesc": "6 months to 2 years",
+        "advanced": "Experienced",
+        "advancedDesc": "Over 2 years"
+      },
+      "choice": {
+        "titleBeginner": "We suggest a ready-made *program*",
+        "titleOther": "Template or your *own*?",
+        "subBeginner": "Built to start with good form and progress every week.",
+        "subOther": "Both can be edited as much as you like.",
+        "programs": "See programs for me",
+        "programsDesc": "Based on your goal and training days",
+        "recommended": "Recommended",
+        "own": "Create my own",
+        "ownDesc": "Set sessions, exercises and progression",
+        "ownLink": "I'd rather create my own",
+        "backup": "I have a backup"
+      },
+      "goal": {
+        "title": "What's your *goal*?"
+      },
+      "days": {
+        "title": "How many days a *week*?",
+        "sub": "What you can really do, not what you wish."
+      },
+      "props": {
+        "searching": "Finding your *program*",
+        "searchingSub": "Based on your answers:",
+        "level": "Level: {{level}}",
+        "days_one": "{{count}} day a week",
+        "days_other": "{{count}} days a week",
+        "title": "Pick your *program*",
+        "sub": "Chosen from your answers. Tap one to see it in full.",
+        "previewSub": "You can change anything later, in the editor.",
+        "start": "Start with this one",
+        "other": "See other programs",
+        "generating": "Building your program..."
+      },
+      "done": {
+        "program": "\"{{name}}\" ready",
+        "imported": "Program ready"
+      }
+    },
     "coached": {
       "app": {
         "title": "Does your coach use *Forma Fit*?",
