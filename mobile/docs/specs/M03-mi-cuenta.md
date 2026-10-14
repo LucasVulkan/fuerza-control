@@ -569,6 +569,9 @@ Los nuevos en `sync.*` (es/en). Los que dejan de usarse (`sync.modeOffline*`,
   propia explicación.
 - [ ] Paywall → «Ya tengo cuenta» → la hoja se titula «Ya tengo cuenta», con
   Google/Apple y el código.
+- [ ] Mi cuenta (o paywall) → «Ya tengo cuenta» → el botón de la esquina dice
+  «Cancelar» y cierra la hoja. Mi cuenta → «Crear cuenta» → enlace «Ya tengo
+  cuenta» → ahí sí dice «Atrás» y vuelve a crear.
 - [ ] En Android no sale Apple en ningún sitio.
 - [ ] Reinstalar → «Ya tengo cuenta» → Google → elegir un Gmail que **nunca** se
   usó en la app → sale «No hay ninguna cuenta de entrenador con este Google».

@@ -136,8 +136,12 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
 
   const action = screen === 'code_reveal'
     ? { label: t('common.accept'),      onPress: () => { setScreen('select'); onClose(); } }
-    : screen === 'recovery'
+    // «Atrás» solo si se llegó a «Ya tengo cuenta» desde crear; abierta ya ahí
+    // (Mi cuenta, paywall), el botón cierra: no hay detrás a donde volver.
+    : screen === 'recovery' && initialScreen !== 'recovery'
       ? { label: t('trainer.codeBack'), onPress: () => setScreen('select') }
+      : screen === 'recovery'
+        ? { label: t('common.cancel'), onPress: onClose }
       : { label: forPurchase || isFirstTime ? t('sync.notNow') : t('common.cancel'), onPress: onClose };
 
   /** Los dos botones de marca, Apple (oficial, solo iOS) encima de Google. `mustExist`: solo conectar. */
