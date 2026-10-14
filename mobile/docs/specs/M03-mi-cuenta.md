@@ -422,7 +422,7 @@ nuevo).
   cuenta / Ya tengo cuenta; cada uno abre la hoja donde toca.
 - [ ] Con código: la tarjeta dice «CONECTADO CON CÓDIGO», el código en una línea;
   copiar → ✓ y se pega bien en otra app. Debajo, «CAMBIAR A» (Google ·
-  RECOMENDADO, y Apple en iPhone) y «DESCONECTAR O BORRAR». No hay «Más opciones».
+  RECOMENDADO, y Apple en iPhone) y «MÁS OPCIONES». No hay «Más opciones».
 - [ ] «CAMBIAR A» → Google → una línea de explicación y el botón blanco de
   Google → la tarjeta pasa a «CONECTADO CON GOOGLE» con el correo; los clientes
   y el PRO siguen. En iPhone, Apple confirma con el botón oficial de Apple.
@@ -591,8 +591,7 @@ El usuario revisó M03-02 y M03-03 y pidió estos cambios, que **mandan sobre §
 - **Fuera «Más opciones»** (ocultaba acciones tras un grupo sin título). La
   página enseña las acciones en secciones de `MenuList` con título, como el
   resto de la app: **«CAMBIAR A»** (las formas que no son la actual, Google y
-  Apple con la chapa RECOMENDADO; el código con su aviso) y **«DESCONECTAR O
-  BORRAR»**. Solo cliente: sección «BORRAR».
+  Apple con la chapa RECOMENDADO; el código con su aviso) y **«MÁS OPCIONES»**. Solo cliente: sección «BORRAR».
 - **Nombre para los clientes:** tarjeta con un hueco más oscuro (`bg`) y con
   borde, para que se vea que se escribe ahí.
 - **Botones de marca:** Apple vuelve al **botón oficial** (`AppleSignInButton`)
@@ -601,7 +600,7 @@ El usuario revisó M03-02 y M03-03 y pidió estos cambios, que **mandan sobre §
   cambiar de forma.
 - **Hoja de entrada (`select`):** título «Conecta con tus clientes», una línea
   de para qué sirve la cuenta, «CREA TU CUENTA» con los dos botones de marca,
-  una raya con «o» y debajo «Usar un código personal» con su aviso. Enlace «Ya
+  una raya con «o» y debajo «Usar un código personal» con su aviso («Guarda el código…», sin «Sin Google ni Apple»). Enlace «Ya
   tengo cuenta». **El campo del nombre sale de la hoja**: el nombre se toma de
   Apple o de Google (`user_metadata` de Supabase) si el entrenador no tenía uno,
   y se cambia en Mi cuenta.

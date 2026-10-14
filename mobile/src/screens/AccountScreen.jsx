@@ -13,7 +13,7 @@
  * que cambia de contenido sin cerrarse; desconectar se confirma con `showDialog`.
  *
  * Las acciones de la cuenta van en secciones con título, con las filas de
- * `MenuList` del resto de la app («CAMBIAR A», «DESCONECTAR O BORRAR»): un
+ * `MenuList` del resto de la app («CAMBIAR A», «MÁS OPCIONES»): un
  * grupo sin título escondido tras «Más opciones» no decía para qué era.
  */
 
