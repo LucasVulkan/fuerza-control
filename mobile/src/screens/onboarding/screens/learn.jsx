@@ -72,13 +72,13 @@ function ViewTile({ view, sessions, selected, title, desc, tag, onPress, index }
         accessibilityRole="radio"
         accessibilityLabel={[title, desc].filter(Boolean).join(', ')}
       >
-        {(p) => <ViewTileBody p={p} view={view} sessions={sessions} title={title} desc={desc} tag={tag} />}
+        {(p) => <ViewTileBody p={p} view={view} sessions={sessions} title={title} desc={desc} tag={tag} onPress={onPress} />}
       </FillPressable>
     </Rise>
   );
 }
 
-function ViewTileBody({ p, view, sessions, title, desc, tag }) {
+function ViewTileBody({ p, view, sessions, title, desc, tag, onPress }) {
   const C      = useTheme().colors;
   const styles = useThemedStyles(makeStyles);
   const titleInk = useInk(p, C.text, C.onAccent);
@@ -86,7 +86,7 @@ function ViewTileBody({ p, view, sessions, title, desc, tag }) {
   const tagBg    = useInk(p, withOpacity(C.accent, 0.12), C.onAccent, 'backgroundColor');
   return (
     <>
-      {/* El nombre arriba y, debajo, la miniatura en esquema (14-oct): se lee como un dibujo, no como algo que pulsar. */}
+      {/* El nombre arriba y, debajo, la miniatura de Inicio. */}
       <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.vtitle, titleInk]}>{title}</Reanimated.Text>
       <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.vdesc, descInk]}>{desc}</Reanimated.Text>
       {!!tag && (
@@ -95,7 +95,8 @@ function ViewTileBody({ p, view, sessions, title, desc, tag }) {
         </Reanimated.View>
       )}
       <View style={styles.vscreen}>
-        <View style={styles.vmini}><HomeViewPreview view={view} sessions={sessions} wireframe /></View>
+        {/* Tocar una pestaña la abre y, de paso, elige esta vista. */}
+        <View style={styles.vmini}><HomeViewPreview view={view} sessions={sessions} touchable onTab={onPress} /></View>
       </View>
     </>
   );
@@ -319,8 +320,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     marginTop:       spacing.md,
   },
-  // Un poco más pequeña que el ancho de la tarjeta (14-oct).
-  vmini: { width: '80%', alignSelf: 'center' },
+  // Más pequeña que el ancho de la tarjeta (14-oct): las dos caben casi sin scroll.
+  vmini: { width: '68%', alignSelf: 'center' },
   vtitle: { ...textStyles.itemTitleQuiet, paddingHorizontal: spacing.xs2 },
   vdesc:  { ...textStyles.label, marginTop: spacing.xs, paddingHorizontal: spacing.xs2, paddingBottom: spacing.xs2 },
   vtag: {
