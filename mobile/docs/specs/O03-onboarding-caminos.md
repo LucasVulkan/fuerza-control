@@ -4,18 +4,18 @@
 > En corto: El alta lleva a cada usuario a lo suyo: ajustes básicos, una pregunta de cómo entrena y tres caminos distintos (por su cuenta, con entrenador, entrenador), con un constructor guiado de programa y unas tarjetas que enseñan lo básico. Todo saltable, y «Ya tengo cuenta» devuelve lo que había.
 > Inicio: 2026-10-13
 > Fase O03-01 · hecho · Armazón del recorrido y tramo común · §17
-> Fase O03-02 · pendiente · Constructor guiado I: sesiones, buscador corto y «ya tiene forma» · §18
+> Fase O03-02 · hecho · Constructor guiado I: sesiones, buscador corto y «ya tiene forma» · §18
 > Fase O03-03 · pendiente · Constructor guiado II: volumen y progresión en dos profundidades · §19
 > Fase O03-04 · pendiente · Camino «por mi cuenta» · §20
-> Fase O03-05 · pendiente · Camino «con entrenador» · §21
-> Fase O03-06 · pendiente · Aprende: cómo ves Inicio, cómo apuntas y las tarjetas · §22
+> Fase O03-05 · hecho · Camino «con entrenador» · §21
+> Fase O03-06 · hecho · Aprende: cómo ves Inicio, cómo apuntas y las tarjetas · §22
 > Fase O03-07 · pendiente · «Ya tengo cuenta», versión mínima · §23
 > Fase O03-08 · pendiente · Camino del entrenador · §24
 > Fase O03-09 · aparcado · Recuperar todo con un solo login · §26.1
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
 > Fase O03-11 · pendiente · «Nuevo programa» con el recorrido nuevo · §25
 >
-> Estado: **spec cerrada; O03-01 hecha, por probar** (13-oct-2026). Abierta el 4-oct como
+> Estado: **spec cerrada; olas 1 y 2 hechas (O03-01, 02, 05, 06), por probar** (14-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
 > recorrido contra el código; el 13-oct se revisó otra vez contra el código, se
 > corrigieron cinco cosas que no habrían funcionado (§2.2), se cerraron las diez
@@ -896,6 +896,10 @@ Hace, en `screens/builder.jsx`:
   sesiones vacías y sigue el recorrido.
 - [ ] Entrenador (con O03-08): el programa aparece en la ficha del cliente, no en
   Programas del entrenador ni en sus plantillas; no se abre el editor.
+- [ ] Entrenador (con O03-08): «Lo termino después» sin ningún ejercicio no
+  envía; con uno y cliente con app, sí. Sin red, sale igual y queda sin enviar.
+- [ ] «Cambiar» el ejercicio lo sustituye (no se duplica); cerrar el buscador
+  con la ✕ sin elegir deja la sesión A como estaba.
 
 ## 19. O03-03 — Constructor guiado II: volumen y progresión
 
@@ -996,6 +1000,10 @@ Hace, en `screens/coached.jsx`:
 - [ ] Por invitación: enlace → bienvenida con la línea azul → unidades → tema →
   directamente el código ya puesto, sin «¿Cómo entrenas?».
 - [ ] El modal de código de la app (Menú → Entrenador) sigue funcionando igual.
+- [ ] Por invitación, pulsar «Saltar» en el código: al acabar el recorrido no se
+  abre Conexión con entrenador.
+- [ ] «Listo» enseña «Conectado con {entrenador}» y «"{programa}" en tu Inicio» al
+  conectar, o «Conectar con tu entrenador · Menú → Entrenador» si no.
 
 ## 22. O03-06 — Aprende
 
@@ -1033,8 +1041,13 @@ real arriba y tres clientes de ejemplo (datos fijos, no del store).
   regla y el valor en la burbuja; al soltar se queda. Con «Solo deslizar», la
   cifra cambia en la casilla mientras arrastras.
 - [ ] Elegir «Solo deslizar» → en un entreno real, la casilla funciona sin regla.
-- [ ] Tarjetas de «por mi cuenta»: la 2.ª dibuja la vista de Inicio elegida;
-  Anterior/Siguiente y los puntos funcionan.
+- [ ] Tarjetas de «por mi cuenta»: la 1.ª dibuja la vista de Inicio elegida
+  (en el entrenador que también entrena es la 2.ª). Anterior/Siguiente y los
+  puntos funcionan, y la última dice «Entendido» y lleva a Listo.
+- [ ] Entrenador (con O03-08): «Tus clientes, de un vistazo» enseña arriba su
+  cliente real (con reloj si es con app) y tres de ejemplo.
+- [ ] Entrenador que no entrena: «Apunta tú sus sesiones» solo sale si su
+  cliente es «le apuntas tú».
 - [ ] Conectado con entrenador: no sale «Cambia lo que quieras»; sale «{Entrenador}
   ve tus entrenos».
 - [ ] La pestaña Clientes de la app se ve exactamente igual que antes de la
@@ -1270,11 +1283,11 @@ usable entre olas gracias a los provisionales de O03-01 (§17.5).
 | Fase | Qué | Depende de | Estado |
 |---|---|---|---|
 | O03-01 | Armazón del recorrido y tramo común | — | ✅ 6a126f6 — `OnboardingFlowScreen` (ruta `Start`) con registro, `onboardingFlow` en el store, `utils/onboardingFlow.js` + test, piezas `flow/` y las cinco pantallas comunes; `SetupScreen` borrada |
-| O03-02 | Constructor guiado I | O03-01 | pendiente |
+| O03-02 | Constructor guiado I | O03-01 | ✅ b36b9d2 · 2e0084c — b_sessions/b_exercise/b_done, `builderProgram.js` y `onboardingBuilder.js` con tests; `createProgramForClient(…, { openEditor })`. Pendiente para O03-03: «Saltar» en b_sessions sin «Siguiente» no crea el programa; b_exercise sale a `b_done` (`AFTER_EXERCISE`) |
 | O03-03 | Constructor guiado II | O03-02 | pendiente |
 | O03-04 | Camino «por mi cuenta» | O03-02 | pendiente |
-| O03-05 | Camino «con entrenador» | O03-01 | pendiente |
-| O03-06 | Aprende | O03-01 | pendiente |
+| O03-05 | Camino «con entrenador» | O03-01 | ✅ 395c664 — `coached.jsx`, `hooks/useClientCode.js` (estado en un store de módulo) usado también por `ClientCodeModal`, `shareAndContinue`. `validateClientCode` no trae las letras de las sesiones: `c_confirm` no las pinta |
+| O03-06 | Aprende | O03-01 | ✅ ac13d22 · d58b1b6 — `ClientRow` extraída (la fila ya era `ClientListCard`; ésta calcula y `ClientRow` dibuja), `HomeViewPreview`, `ScrubDemo` sobre `ScrubRuler`/`scrubScale`, tarjetas por camino. En la fusión, el hueco de b_done (O03-02) pasó a `ClientRow` |
 | O03-07 | «Ya tengo cuenta», versión mínima | O03-01 | pendiente |
 | O03-08 | Camino del entrenador | O03-02, 03, 05, 06, 07 | pendiente |
 | O03-09 | Recuperar todo con un solo login | O03-07 | aparcada |

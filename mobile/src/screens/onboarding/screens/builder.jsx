@@ -32,7 +32,8 @@ import ExerciseSearch from '../../../components/onboarding/builder/ExerciseSearc
 import {
   LETTERS, useBuilderProgram, useExerciseDef, exerciseName,
 } from '../../../components/onboarding/builder/useBuilderProgram';
-import { spacing, textStyles, withOpacity } from '../../../theme';
+import { spacing, textStyles, withOpacity, getCardRadii } from '../../../theme';
+import ClientRow from '../../../components/ClientRow';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { equipmentOf } from '../../../utils/exerciseTaxonomy';
 import { SESSION_CHOICES, isDeep } from '../../../utils/onboardingBuilder';
@@ -219,18 +220,22 @@ function Exercise({ goTo }) {
 
 // ── 5 · «Ya tiene forma» (§10.1.5) ────────────────────────────────────────────
 
-/** El hueco de la fila de Clientes mientras no exista `<ClientRow>` (la extrae O03-06). */
-function ClientRowStub({ name, line }) {
-  const styles = useThemedStyles(makeStyles);
+/** La fila de Clientes de verdad (C08), ya con el programa: así lo verá en Clientes. */
+function BuilderClientRow({ line }) {
+  const { t } = useTranslation();
+  const th     = useTheme();
+  const client = useStore((s) => s.clients[answersOf(s).clientId]);
+  if (!client) return null;
+  const app = !!client.syncSlotId;
   return (
-    // O03-06: sustituir por <ClientRow>
-    <View style={styles.clientRow}>
-      <View style={styles.avatar}><Text style={styles.avatarTxt}>{name.trim().charAt(0).toUpperCase()}</Text></View>
-      <View style={styles.exMain}>
-        <Text style={styles.exName} numberOfLines={1}>{name}</Text>
-        <Text style={styles.exMeta} numberOfLines={1}>{line}</Text>
-      </View>
-    </View>
+    <ClientRow
+      client={client}
+      link={app ? 'invited' : 'none'}
+      badgeLabel={t('clients.statusInvited')}
+      radii={getCardRadii(th, true, true)}
+      meta={{ text: line }}
+      week={null}
+    />
   );
 }
 
@@ -312,7 +317,7 @@ function Done({ goTo }) {
       {trainer ? (
         <>
           <Rise index={4}><Text style={styles.label}>{t(`${K}.done.clientsLabel`)}</Text></Rise>
-          <Rise index={5}><ClientRowStub name={clientName} line={`${shown} · ${stageName}`} /></Rise>
+          <Rise index={5}><BuilderClientRow line={`${shown} · ${stageName}`} /></Rise>
         </>
       ) : (
         <>
@@ -374,13 +379,4 @@ const makeStyles = (th) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   label: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase', marginBottom: spacing.sm2 },
-  clientRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.lg - 3,
-    backgroundColor: th.colors.surface, borderRadius: th.radius.lg, padding: spacing.lg - 1,
-  },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: withOpacity(th.colors.blue, 0.18),
-  },
-  avatarTxt: { ...textStyles.heroName, color: th.colors.blue, lineHeight: 40, includeFontPadding: false },
 });
