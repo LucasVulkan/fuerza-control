@@ -97,7 +97,7 @@ Menú ▸ Borrar cuenta ──▶ borra en servidor + signOut + logOut de Revenu
 | Cuenta A (PRO) → **Sin conexión** → cuenta B | al pasar por `offline` el id previo queda `null`, `switched=false`, no se restaura: **B entra sin PRO** aunque la tienda tenga la compra | ⚠️ a comprobar; «Restaurar» lo arregla |
 | Cuenta A (PRO) → Sin conexión | sigue PRO (RevenueCat no hace `logOut`) | ✅ por diseño |
 | Borrar cuenta | `logOut` → PRO fuera; vuelve con «Restaurar» | ✅ por diseño (M01 §3.3) |
-| ¿Dos cuentas con PRO a la vez? | No, si el dashboard tiene **Restore Behavior = Transfer** (guía de pagos R7): restaurar *mueve* la compra, A la pierde al pasar a B. Nada de Supabase interviene; `transfer_my_slots_to` solo mueve clientes. Sin verificar: casilla M01-01.4 sin marcar | ⚠️ comprobar el ajuste |
+| ¿Dos cuentas con PRO a la vez? | No, si el dashboard tiene **Restore Behavior = Transfer** (guía de pagos R7): restaurar *mueve* la compra, A la pierde al pasar a B. Nada de Supabase interviene; `transfer_my_slots_to` solo mueve clientes. Ajuste confirmado en el dashboard (14-oct); falta la prueba M01-01.4 en el móvil | ✅ ajuste · prueba pendiente |
 | Revisor de la tienda | paywall → Ya tengo cuenta → código demo con entitlement promocional | ✅ desde `02ac235` |
 
 ---

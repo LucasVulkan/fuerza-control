@@ -52,6 +52,7 @@
   .t-labelStrong { font: 800 12px/1.2 Inter; }
   .t-caps        { font: 800 12px/1.2 Inter; letter-spacing: 1.6px; text-transform: uppercase; }
   .t-code        { font: 900 22px/1.2 Inter; letter-spacing: 4px; }
+  .t-code.sm     { font-size: 18px; } /* codeTextSm de TrainerSyncModal */
 
   .scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 0 var(--lg) 40px; scrollbar-width: none; }
   .scroll::-webkit-scrollbar { display: none; }
@@ -159,6 +160,24 @@
   .fact .off { color: var(--mutedLight); }
   .acts.col { flex-direction: column; }
   .btn.ghost { background: none; color: var(--mutedLight); }
+
+  /* Recomendado: la etiqueta de las opciones del onboarding (caps lima sobre accent10) */
+  .pill { color: var(--accent); background: var(--accent10); padding: var(--xs2) var(--sm); border-radius: var(--r-xs); flex: none; }
+  .opt .pill + .chev, .lrow .pill + .chev { margin-left: 0; }
+
+  /* Tarjeta compacta: el código y, a su derecha, copiar */
+  .haveRow { display: flex; align-items: center; justify-content: space-between; gap: var(--md); margin-top: var(--sm2); }
+  .haveRow .have { margin-top: 0; }
+  .iconBtn { width: 40px; height: 40px; border-radius: var(--r-md); border: 0; background: var(--surface2); color: var(--text); display: flex; align-items: center; justify-content: center; flex: none; transition: background .25s, color .25s; }
+  .iconBtn svg { width: 18px; height: 18px; }
+  .iconBtn.done { background: var(--accent10); color: var(--accent); }
+
+  /* Nombre: campo que se escribe ahí mismo */
+  .input { display: block; background: var(--surface); border-radius: var(--r-lg); padding: var(--md) var(--lg); margin-top: var(--sm2); border: 2px solid transparent; transition: border-color .2s; cursor: text; }
+  .input:focus-within { border-color: var(--accent); }
+  .input .k { display: block; color: var(--mutedLight); }
+  .input input { display: block; width: 100%; margin-top: var(--xs2); background: none; border: 0; outline: none; color: var(--text); padding: var(--xs) 0; }
+  .sheet .why { margin: 0 0 var(--xs); }
   .btn.danger { color: var(--redText); }
 </style>
 </head>
@@ -208,11 +227,14 @@
     <h3>Decisiones que propone</h3>
     <ul>
       <li>El bloque es la <b>cuenta de entrenador</b> y lleva todas sus acciones dentro. El plan va después y solo tiene las suyas.</li>
-      <li><b>«Cambiar de cuenta» pasa a ser «Entrar de otra forma»</b>: una fila por cada forma que no usas (Google, código; Apple en iPhone).</li>
-      <li>Cambiar de forma pide <b>confirmación con lo que pasa</b>: tus clientes y tu PRO pasan a la nueva; el código o la cuenta vieja dejan de servir.</li>
+      <li>Con código, <b>«Usar Google» sale fuera con «Recomendado»</b> (en iPhone, Apple). El resto —otras formas, salir, borrar— va en <b>«Más opciones»</b>.</li>
+      <li><b>Google y Apple llevan siempre «Recomendado»</b>, también al crear la cuenta.</li>
+      <li>Cambiar de forma pide confirmación con <b>una sola línea</b>: «Con Google no tendrás que guardar ningún código. Tus clientes y tu PRO siguen contigo.»</li>
+      <li>El código va compacto (<code>code</code> a 18, como <code>codeTextSm</code>) con copiar a la derecha.</li>
+      <li>El <b>nombre para tus clientes</b> es un campo que se edita ahí mismo.</li>
       <li><b>«Sin conexión» desaparece</b>: es «Salir de la cuenta», también con su confirmación.</li>
       <li><b>«Sincronización con clientes» sale del menú.</b> Los avisos de Clientes traen aquí.</li>
-      <li><b>Borrar la cuenta</b> y el <b>nombre para tus clientes</b> se mudan a este bloque.</li>
+      <li><b>Borrar la cuenta</b> se muda a este bloque (dentro de «Más opciones»).</li>
       <li>Plan FREE: <b>qué te queda</b> en barras. PRO sin cuenta: <b>«Guardado en tu cuenta de Google Play»</b>.</li>
     </ul>
 
@@ -230,6 +252,13 @@ const ICON = {
   google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5z"/><path fill="#34A853" d="M12 22c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.2 13.6a6 6 0 0 1 0-3.8V7.1H2.7a10 10 0 0 0 0 9z"/><path fill="#EA4335" d="M12 6c1.5 0 2.9.5 4 1.5l3-3A10 10 0 0 0 2.7 7.1l3.5 2.7C7 7.8 9.3 6 12 6z"/></svg>',
   apple:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9a5 5 0 0 0-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5a11 11 0 0 0 1.4-2.9 4.5 4.5 0 0 1-2.7-4.1zM13.9 4.9A4.4 4.4 0 0 0 15 1.7a4.6 4.6 0 0 0-3 1.5 4.2 4.2 0 0 0-1 3.1c1.1.1 2.2-.6 2.9-1.4z"/></svg>',
 };
+ICON.copy  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>';
+ICON.check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+// Mockup en Android: la forma social es Google (Apple solo existe en iPhone,
+// donde esto sería 'apple' y el texto «Google o Apple»).
+const SOCIAL = 'google';
+const SOCIAL_NAMES = 'Google';
+const PILL = '<span class="pill t-caps">Recomendado</span>';
 const S = { acct: 'code', plan: 'free', copied: false };
 const ACCT = {
   code:   { how: 'Código personal', short: 'código', use: 'Usar un código personal', icon: ICON.code, big: 'XK7M-2P4T-9QR3', cls: 'code', why: 'Es tu llave: con él entras en otro móvil.' },
@@ -254,25 +283,25 @@ function accountBlock() {
     </div>`;
   }
   const a = ACCT[S.acct];
-  const copy = S.acct === 'code'
-    ? `<div class="acts"><button class="btn t-button ${S.copied ? 'done' : ''}" data-a="copy">${S.copied ? 'Copiado ✓' : 'Copiar código'}</button></div>` : '';
-  // Las otras formas de entrar. Apple solo existe en iPhone: en este mockup
-  // (Android) sale únicamente si ya es la forma actual.
-  const others = ['google', 'code', ...(S.acct === 'apple' ? ['apple'] : [])].filter((m) => m !== S.acct);
+  const isCode = S.acct === 'code';
+  // Con código, la forma recomendada sale fuera como fila propia; lo demás
+  // (otras formas, salir, borrar) vive en «Más opciones».
+  const rec = isCode ? SOCIAL : null;
   return `<div class="card">
       <span class="how t-caps">${a.icon}Entras con ${a.short}</span>
-      <div class="have ${a.cls} ${a.cls === 'code' ? 't-code' : 't-heading'}">${a.big}</div>
-      ${a.why ? `<div class="why t-body">${a.why}</div>` : ''}
-      ${copy}
+      <div class="haveRow">
+        <div class="have ${a.cls} ${isCode ? 't-code sm' : 't-heading'}">${a.big}</div>
+        ${isCode ? `<button class="iconBtn ${S.copied ? 'done' : ''}" data-a="copy" aria-label="Copiar código">${S.copied ? ICON.check : ICON.copy}</button>` : ''}
+      </div>
+      ${isCode ? `<div class="why t-body">Código obligatorio para recuperar la cuenta de entrenador si cambias de móvil. Se recomienda usar ${SOCIAL_NAMES}.</div>` : ''}
     </div>
-    <div class="field"><div><span class="k t-caps">Tu nombre para los clientes</span><span class="v t-itemQuiet">Ana López</span></div><span class="ed t-button">Editar</span></div>
-    <div class="subsec t-caps">Entrar de otra forma</div>
-    <div class="list">
-      ${others.map((m) => `<button class="lrow" data-switch="${m}">${ICON[m]}<b class="t-itemQuiet">${ACCT[m].use}</b><span class="chev">›</span></button>`).join('')}
-    </div>
+    <label class="input">
+      <span class="k t-caps">Tu nombre para los clientes</span>
+      <input class="t-itemQuiet" value="Ana López" maxlength="40">
+    </label>
     <div class="list gap">
-      <button class="lrow" data-a="signout"><b class="t-itemQuiet">Salir de la cuenta</b><span class="chev">›</span></button>
-      <button class="lrow red" data-a="delete"><b class="t-itemQuiet">Borrar la cuenta</b><span class="chev">›</span></button>
+      ${rec ? `<button class="lrow" data-switch="${rec}">${ICON[rec]}<b class="t-itemQuiet">${ACCT[rec].use}</b>${PILL}<span class="chev">›</span></button>` : ''}
+      <button class="lrow" data-a="more"><b class="t-itemQuiet">Más opciones</b><span class="chev">›</span></button>
     </div>`;
 }
 
@@ -322,33 +351,45 @@ function toast(msg) {
   clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 1600);
 }
 
-// Confirmación: qué pasa con cada cosa al cambiar la forma de entrar o al salir.
+// Confirmación: una línea de por qué, y el botón.
 function confirmSheet(kind, to) {
-  const pro = S.plan !== 'free';
-  const from = ACCT[S.acct];
-  const fact = (what, result, tone = '') => `<div class="fact"><span class="t-bodyStrong">${what}</span><span class="t-labelStrong ${tone}">${result}</span></div>`;
-  let title, facts, cta;
+  let title, why, cta;
   if (kind === 'switch') {
     const t = ACCT[to];
     title = t.use;
-    facts = fact('Tus 2 clientes', `pasan a ${t.short}`, 'ok')
-      + (pro ? fact('Tu PRO', `pasa a ${t.short}`, 'ok') : '')
-      + (S.acct === 'code' ? fact('El código XK7M…', 'deja de servir', 'off') : fact(`Tu cuenta de ${from.short}`, 'deja de usarse', 'off'));
+    why = to === 'code'
+      ? 'Entrarás con un código de 12 caracteres. Guárdalo: sin él no podrás recuperar la cuenta.'
+      : `Con ${t.short} no tendrás que guardar ningún código. Tus clientes y tu PRO siguen contigo.`;
     cta = to === 'code' ? `<button class="btn acc t-button" data-pick="code">Crear el código</button>`
                         : `<button class="btn acc t-button" data-pick="${to}">Continuar con ${t.short}</button>`;
   } else {
     title = 'Salir de la cuenta';
-    facts = fact('Tus clientes', 'dejan de sincronizar', 'off')
-      + fact('Tus programas', 'se quedan en este móvil', 'ok')
-      + (pro ? fact('Tu PRO', 'se queda (Google Play)', 'ok') : '')
-      + fact('Para volver', S.acct === 'code' ? 'tu código' : `entra con ${from.short}`);
+    why = `Tus programas se quedan en este móvil y tus clientes dejan de sincronizar. Para volver, ${S.acct === 'code' ? 'necesitarás tu código' : `entra con ${ACCT[S.acct].short}`}.`;
     cta = `<button class="btn t-button danger" data-pick="none">Salir</button>`;
   }
-  document.getElementById('sheet').innerHTML = `
-    <div class="grab"></div><h4 class="t-title">${title}</h4>
-    <div class="facts">${facts}</div>
-    <div class="acts col">${cta}<button class="btn ghost t-button" data-a="close">Cancelar</button></div>`;
-  document.getElementById('page').classList.add('open');
+  openSheet(`<div class="grab"></div><h4 class="t-title">${title}</h4>
+    <div class="why t-body">${why}</div>
+    <div class="acts col">${cta}<button class="btn ghost t-button" data-a="close">Cancelar</button></div>`);
+}
+
+// Más opciones: las formas de entrar que no salen fuera, salir y borrar.
+function moreSheet() {
+  const shown = S.acct === 'code' ? SOCIAL : null;
+  const others = ['google', 'code', ...(S.acct === 'apple' ? ['apple'] : [])].filter((m) => m !== S.acct && m !== shown);
+  openSheet(`<div class="grab"></div><h4 class="t-title">Más opciones</h4>
+    ${others.length ? `<div class="list">${others.map((m) => `<button class="lrow" data-switch="${m}">${ICON[m]}<b class="t-itemQuiet">${ACCT[m].use}</b>${m === SOCIAL ? PILL : ''}<span class="chev">›</span></button>`).join('')}</div>` : ''}
+    <div class="list gap">
+      <button class="lrow" data-a="signout"><b class="t-itemQuiet">Salir de la cuenta</b><span class="chev">›</span></button>
+      <button class="lrow red" data-a="delete"><b class="t-itemQuiet">Borrar la cuenta</b><span class="chev">›</span></button>
+    </div>`);
+}
+
+function openSheet(html) {
+  const page = document.getElementById('page');
+  const sh = document.getElementById('sheet');
+  // Si ya hay una hoja abierta, se cambia el contenido sin cerrarla.
+  sh.innerHTML = html;
+  page.classList.add('open');
 }
 
 function sheet(kind) {
@@ -356,8 +397,7 @@ function sheet(kind) {
   const title = kind === 'signin' ? 'Entra en tu cuenta' : 'Crea tu cuenta de entrenador';
   document.getElementById('sheet').innerHTML = `
     <div class="grab"></div><h4 class="t-title">${title}</h4>
-    <button class="opt" data-pick="apple">${ICON.apple}<b class="t-itemQuiet">Continuar con Apple</b><span class="chev">›</span></button>
-    <button class="opt" data-pick="google">${ICON.google}<b class="t-itemQuiet">Continuar con Google</b><span class="chev">›</span></button>
+    <button class="opt" data-pick="google">${ICON.google}<b class="t-itemQuiet">Continuar con Google</b>${PILL}<span class="chev">›</span></button>
     ${kind === 'signin'
       ? `<button class="opt" data-pick="code">${ICON.code}<b class="t-itemQuiet">Tengo un código</b><span class="chev">›</span></button>`
       : `<button class="opt" data-pick="code">${ICON.code}<b class="t-itemQuiet">Crear un código personal</b><span class="chev">›</span></button>
@@ -381,6 +421,7 @@ document.addEventListener('click', (e) => {
   else if (act === 'copy') { S.copied = true; render(false); toast('Código copiado'); }
   else if (act === 'create' || act === 'signin') sheet(act);
   else if (act === 'signout') confirmSheet('signout');
+  else if (act === 'more') moreSheet();
   else if (act === 'pro') { S.plan = 'annual'; render(true); toast('(abre el paywall)'); }
   else if (act === 'restore') toast('(restaura con la tienda)');
   else if (act === 'manage') toast('(abre la suscripción en la tienda)');
