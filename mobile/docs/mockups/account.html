@@ -139,6 +139,27 @@
 
   .toast { position: absolute; left: 50%; bottom: 30px; transform: translate(-50%, 20px); background: var(--surface2); color: var(--text); padding: var(--md) var(--lg); border-radius: var(--r-md); opacity: 0; transition: opacity .2s, transform .3s var(--out); z-index: 9; white-space: nowrap; }
   .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Acciones de la cuenta: dentro de su bloque, en grupos de filas (como MenuList) */
+  .subsec { color: var(--mutedLight); margin: var(--xl) 0 var(--sm2); }
+  .list { background: var(--surface); border-radius: var(--r-lg); overflow: hidden; }
+  .list.gap { margin-top: var(--sm2); }
+  .lrow { display: flex; align-items: center; gap: var(--md); width: 100%; min-height: 56px; padding: 0 var(--lg); border: 0; background: none; color: var(--text); text-align: left; }
+  .lrow + .lrow { border-top: 1px solid var(--surface2); }
+  .lrow svg { width: 20px; height: 20px; flex: none; }
+  .lrow b { flex: 1; }
+  .lrow.red { color: var(--redText); }
+  .lrow:active { background: var(--surface2); }
+
+  /* Hoja de confirmación: qué pasa con cada cosa */
+  .facts { background: var(--surface); border-radius: var(--r-lg); }
+  .fact { display: flex; justify-content: space-between; align-items: center; gap: var(--md); padding: var(--md) var(--lg); min-height: 48px; }
+  .fact + .fact { border-top: 1px solid var(--surface2); }
+  .fact .ok { color: var(--accent); }
+  .fact .off { color: var(--mutedLight); }
+  .acts.col { flex-direction: column; }
+  .btn.ghost { background: none; color: var(--mutedLight); }
+  .btn.danger { color: var(--redText); }
 </style>
 </head>
 <body>
@@ -186,12 +207,13 @@
 
     <h3>Decisiones que propone</h3>
     <ul>
-      <li><b>«Sin conexión» desaparece</b> como modo: es «Sin cuenta». Salir de la cuenta te devuelve ahí.</li>
-      <li><b>«Sincronización con clientes» sale del menú.</b> La cuenta ya es la sincronización; los avisos de Clientes traen aquí.</li>
-      <li><b>Borrar cuenta</b> se muda del menú a esta página, al final.</li>
-      <li>El <b>nombre para tus clientes</b> sale de Sincronización y vive aquí, como dato editable.</li>
-      <li>Plan FREE: <b>qué te queda</b> en barras (clientes, conectados, plantillas), no una lista de lo que no tienes.</li>
-      <li>PRO comprado sin cuenta: <b>«Guardado en tu cuenta de Google Play»</b>. Se recupera con Restaurar compra en cualquier móvil con esa cuenta; la cuenta de la app solo añade cambiar de plataforma y que vuelva solo.</li>
+      <li>El bloque es la <b>cuenta de entrenador</b> y lleva todas sus acciones dentro. El plan va después y solo tiene las suyas.</li>
+      <li><b>«Cambiar de cuenta» pasa a ser «Entrar de otra forma»</b>: una fila por cada forma que no usas (Google, código; Apple en iPhone).</li>
+      <li>Cambiar de forma pide <b>confirmación con lo que pasa</b>: tus clientes y tu PRO pasan a la nueva; el código o la cuenta vieja dejan de servir.</li>
+      <li><b>«Sin conexión» desaparece</b>: es «Salir de la cuenta», también con su confirmación.</li>
+      <li><b>«Sincronización con clientes» sale del menú.</b> Los avisos de Clientes traen aquí.</li>
+      <li><b>Borrar la cuenta</b> y el <b>nombre para tus clientes</b> se mudan a este bloque.</li>
+      <li>Plan FREE: <b>qué te queda</b> en barras. PRO sin cuenta: <b>«Guardado en tu cuenta de Google Play»</b>.</li>
     </ul>
 
     <h3>Lo que no está</h3>
@@ -210,9 +232,9 @@ const ICON = {
 };
 const S = { acct: 'code', plan: 'free', copied: false };
 const ACCT = {
-  code:   { how: 'Código personal', icon: ICON.code, big: 'XK7M-2P4T-9QR3', cls: 'code', why: 'Es tu llave: con él entras en otro móvil.' },
-  google: { how: 'Google',          icon: ICON.google, big: 'ana.lopez@gmail.com', cls: 'mail', why: null },
-  apple:  { how: 'Apple',           icon: ICON.apple,  big: 'ana.lopez@icloud.com', cls: 'mail', why: null },
+  code:   { how: 'Código personal', short: 'código', use: 'Usar un código personal', icon: ICON.code, big: 'XK7M-2P4T-9QR3', cls: 'code', why: 'Es tu llave: con él entras en otro móvil.' },
+  google: { how: 'Google',          short: 'Google', use: 'Usar Google',             icon: ICON.google, big: 'ana.lopez@gmail.com', cls: 'mail', why: null },
+  apple:  { how: 'Apple',           short: 'Apple',  use: 'Usar Apple',              icon: ICON.apple,  big: 'ana.lopez@icloud.com', cls: 'mail', why: null },
 };
 const USAGE = [['Clientes', 2, 3], ['Conectados', 1, 1], ['Programas', 1, 1], ['Sesiones', 0, 1]];
 
@@ -234,13 +256,24 @@ function accountBlock() {
   const a = ACCT[S.acct];
   const copy = S.acct === 'code'
     ? `<div class="acts"><button class="btn t-button ${S.copied ? 'done' : ''}" data-a="copy">${S.copied ? 'Copiado ✓' : 'Copiar código'}</button></div>` : '';
+  // Las otras formas de entrar. Apple solo existe en iPhone: en este mockup
+  // (Android) sale únicamente si ya es la forma actual.
+  const others = ['google', 'code', ...(S.acct === 'apple' ? ['apple'] : [])].filter((m) => m !== S.acct);
   return `<div class="card">
-      <span class="how t-caps">${a.icon}${a.how}</span>
+      <span class="how t-caps">${a.icon}Entras con ${a.short}</span>
       <div class="have ${a.cls} ${a.cls === 'code' ? 't-code' : 't-heading'}">${a.big}</div>
       ${a.why ? `<div class="why t-body">${a.why}</div>` : ''}
       ${copy}
     </div>
-    <div class="field"><div><span class="k t-caps">Tu nombre para los clientes</span><span class="v t-itemQuiet">Ana López</span></div><span class="ed t-button">Editar</span></div>`;
+    <div class="field"><div><span class="k t-caps">Tu nombre para los clientes</span><span class="v t-itemQuiet">Ana López</span></div><span class="ed t-button">Editar</span></div>
+    <div class="subsec t-caps">Entrar de otra forma</div>
+    <div class="list">
+      ${others.map((m) => `<button class="lrow" data-switch="${m}">${ICON[m]}<b class="t-itemQuiet">${ACCT[m].use}</b><span class="chev">›</span></button>`).join('')}
+    </div>
+    <div class="list gap">
+      <button class="lrow" data-a="signout"><b class="t-itemQuiet">Salir de la cuenta</b><span class="chev">›</span></button>
+      <button class="lrow red" data-a="delete"><b class="t-itemQuiet">Borrar la cuenta</b><span class="chev">›</span></button>
+    </div>`;
 }
 
 function planBlock() {
@@ -267,26 +300,16 @@ function planBlock() {
     <div class="links"><a class="t-button" data-a="restore">Restaurar compra</a></div>`;
 }
 
-function tail() {
-  if (S.acct === 'none') return '';
-  return `<div class="tail">
-      <button class="t-itemQuiet" data-a="switch">Cambiar de cuenta <span>›</span></button>
-      <button class="t-itemQuiet" data-a="signout">Salir de la cuenta <span>›</span></button>
-      <button class="red t-itemQuiet" data-a="delete">Borrar cuenta <span>›</span></button>
-    </div>`;
-}
-
 function render(animate) {
   const sc = document.getElementById('scroll');
   sc.innerHTML = `
     <div class="hdr"><span class="bk">‹</span><div class="mid"><div class="eb t-caps">Ajustes</div><div class="ti t-heading">Mi cuenta</div></div><span class="sp"></span></div>
-    <div class="sec t-caps">Cuenta</div>${accountBlock()}
-    <div class="sec t-caps">Plan</div>${planBlock()}
-    ${tail()}`;
+    <div class="sec t-caps">Cuenta de entrenador</div>${accountBlock()}
+    <div class="sec t-caps">Plan</div>${planBlock()}`;
   if (animate) { sc.classList.remove('enter'); void sc.offsetWidth; sc.classList.add('enter'); }
   // fila del menú
   const pro = S.plan !== 'free';
-  document.getElementById('rowSub').textContent = S.acct === 'none' ? 'Sin cuenta' : ACCT[S.acct].how;
+  document.getElementById('rowSub').textContent = S.acct === 'none' ? 'Sin cuenta de entrenador' : `Entrenador · ${ACCT[S.acct].how}`;
   document.getElementById('rowName').textContent = S.acct === 'none' ? 'Mi cuenta' : 'Ana López';
   document.getElementById('avatar').textContent = S.acct === 'none' ? '?' : 'A';
   const chip = document.getElementById('rowChip');
@@ -299,9 +322,38 @@ function toast(msg) {
   clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 1600);
 }
 
+// Confirmación: qué pasa con cada cosa al cambiar la forma de entrar o al salir.
+function confirmSheet(kind, to) {
+  const pro = S.plan !== 'free';
+  const from = ACCT[S.acct];
+  const fact = (what, result, tone = '') => `<div class="fact"><span class="t-bodyStrong">${what}</span><span class="t-labelStrong ${tone}">${result}</span></div>`;
+  let title, facts, cta;
+  if (kind === 'switch') {
+    const t = ACCT[to];
+    title = t.use;
+    facts = fact('Tus 2 clientes', `pasan a ${t.short}`, 'ok')
+      + (pro ? fact('Tu PRO', `pasa a ${t.short}`, 'ok') : '')
+      + (S.acct === 'code' ? fact('El código XK7M…', 'deja de servir', 'off') : fact(`Tu cuenta de ${from.short}`, 'deja de usarse', 'off'));
+    cta = to === 'code' ? `<button class="btn acc t-button" data-pick="code">Crear el código</button>`
+                        : `<button class="btn acc t-button" data-pick="${to}">Continuar con ${t.short}</button>`;
+  } else {
+    title = 'Salir de la cuenta';
+    facts = fact('Tus clientes', 'dejan de sincronizar', 'off')
+      + fact('Tus programas', 'se quedan en este móvil', 'ok')
+      + (pro ? fact('Tu PRO', 'se queda (Google Play)', 'ok') : '')
+      + fact('Para volver', S.acct === 'code' ? 'tu código' : `entra con ${from.short}`);
+    cta = `<button class="btn t-button danger" data-pick="none">Salir</button>`;
+  }
+  document.getElementById('sheet').innerHTML = `
+    <div class="grab"></div><h4 class="t-title">${title}</h4>
+    <div class="facts">${facts}</div>
+    <div class="acts col">${cta}<button class="btn ghost t-button" data-a="close">Cancelar</button></div>`;
+  document.getElementById('page').classList.add('open');
+}
+
 function sheet(kind) {
   const page = document.getElementById('page');
-  const title = kind === 'signin' ? 'Entra en tu cuenta' : kind === 'switch' ? 'Cambiar de cuenta' : 'Crea tu cuenta';
+  const title = kind === 'signin' ? 'Entra en tu cuenta' : 'Crea tu cuenta de entrenador';
   document.getElementById('sheet').innerHTML = `
     <div class="grab"></div><h4 class="t-title">${title}</h4>
     <button class="opt" data-pick="apple">${ICON.apple}<b class="t-itemQuiet">Continuar con Apple</b><span class="chev">›</span></button>
@@ -320,15 +372,18 @@ document.addEventListener('click', (e) => {
   if (e.target.id === 'veil') { document.getElementById('page').classList.remove('open'); return; }
   const p = e.target.closest('[data-pick]');
   if (p) { document.getElementById('page').classList.remove('open'); S.acct = p.dataset.pick; S.copied = false; setTimeout(() => render(true), 250); return; }
+  const sw = e.target.closest('[data-switch]');
+  if (sw) { confirmSheet('switch', sw.dataset.switch); return; }
   const a = e.target.closest('[data-a]');
   if (!a) return;
   const act = a.dataset.a;
-  if (act === 'copy') { S.copied = true; render(false); toast('Código copiado'); }
-  else if (act === 'create' || act === 'signin' || act === 'switch') sheet(act);
+  if (act === 'close') document.getElementById('page').classList.remove('open');
+  else if (act === 'copy') { S.copied = true; render(false); toast('Código copiado'); }
+  else if (act === 'create' || act === 'signin') sheet(act);
+  else if (act === 'signout') confirmSheet('signout');
   else if (act === 'pro') { S.plan = 'annual'; render(true); toast('(abre el paywall)'); }
   else if (act === 'restore') toast('(restaura con la tienda)');
   else if (act === 'manage') toast('(abre la suscripción en la tienda)');
-  else if (act === 'signout') { S.acct = 'none'; render(true); toast('Has salido de la cuenta'); }
   else if (act === 'delete') toast('(confirmación de borrar cuenta)');
 });
 
