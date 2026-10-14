@@ -3790,7 +3790,9 @@ export const useStore = create(
 
       /** Salir: sin cuenta, y ya lo decidió. No sale de RevenueCat: el PRO se queda (D9). */
       leaveTrainerAccount: async () => {
-        await supabaseSignOut().catch(() => {});
+        // Sin cuenta de entrenador (primera visita, M03-03 §7.2) solo se fija el
+        // valor: la sesión de Supabase puede ser la anónima del lado cliente.
+        if (get().trainerSync.userId) await supabaseSignOut().catch(() => {});
         get().setTrainerSyncMode('offline');
       },
 

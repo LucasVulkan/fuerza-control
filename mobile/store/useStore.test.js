@@ -881,6 +881,13 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     expect(RC.restorePurchases).not.toHaveBeenCalled();
   });
 
+  it('sin cuenta de entrenador, salir solo fija offline: no cierra la sesión (puede ser la del cliente)', async () => {
+    useStore.setState((s) => ({ trainerSync: { ...s.trainerSync, mode: null, code: null, userId: null } }));
+    await useStore.getState().leaveTrainerAccount();
+    expect(authMock.signOut).not.toHaveBeenCalled();
+    expect(ts().mode).toBe('offline');
+  });
+
   it('salir no saca de RevenueCat y conserva el nombre', async () => {
     await useStore.getState().leaveTrainerAccount();
     expect(RC.logOut).not.toHaveBeenCalled();
