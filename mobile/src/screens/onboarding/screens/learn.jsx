@@ -1,7 +1,7 @@
 /**
  * Las pantallas del tramo «Aprende» del recorrido de entrada (O03-06, spec §11.2-11.4):
  *
- *   a_home   «¿Cómo quieres ver tus sesiones?» — Lista o Pestañas, lado a lado,
+ *   a_home   «¿Cómo quieres ver tus sesiones?» — Lista o Pestañas, una debajo de otra,
  *            cada una con su miniatura de Inicio. Guarda `profile.homeView`.
  *   a_input  «Pruébalo: arrastra el peso» — una fila de serie que se arrastra de
  *            verdad, con regla o solo deslizando. «Me quedo con este» guarda
@@ -305,12 +305,12 @@ export default { a_home: Home, a_input: Input, a_cards: Cards };
 
 const makeStyles = (th) => StyleSheet.create({
   // a_home
-  vrow:  { flexDirection: 'row', gap: spacing.md },
-  cell:  { flex: 1 },
+  // Una debajo de otra (14-oct): lado a lado las miniaturas se veían demasiado pequeñas.
+  vrow:  { gap: spacing.md },
+  cell:  {},
   vtile: {
-    flex:         1,
     borderRadius: th.radius.lg,
-    padding:      spacing.sm2,
+    padding:      spacing.md,
     alignItems:   'stretch',
   },
   vscreen: {
@@ -319,10 +319,12 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.sm2,
     marginBottom:    spacing.md,
   },
-  vtitle: { ...textStyles.itemTitleQuiet, textAlign: 'center' },
-  vdesc:  { ...textStyles.label, textAlign: 'center', marginTop: spacing.xs, paddingHorizontal: spacing.xs2, paddingBottom: spacing.sm },
+  vtitle: { ...textStyles.itemTitleQuiet, paddingHorizontal: spacing.xs2 },
+  vdesc:  { ...textStyles.label, marginTop: spacing.xs, paddingHorizontal: spacing.xs2, paddingBottom: spacing.xs2 },
   vtag: {
-    alignSelf:         'center',
+    alignSelf:         'flex-start',
+    marginTop:         spacing.sm,
+    marginLeft:        spacing.xs2,
     borderRadius:      th.radius.sm,
     paddingHorizontal: spacing.sm2,
     paddingVertical:   spacing.xs2 + 1,

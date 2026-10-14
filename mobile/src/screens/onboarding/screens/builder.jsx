@@ -246,6 +246,7 @@ function Volume({ goTo }) {
   const deep = useStore((s) => { const a = answersOf(s); return isDeep(a.builderCtx, a.level); });
   const { tplId, exId } = useBuilderProgram();
   const def = useExerciseDef(exId);
+  const language = useStore((s) => s.profile.language ?? 'es');
   const cfg = useStore((s) => (tplId && exId ? s.sessionTemplates[tplId]?.exercises?.find((e) => e.exerciseId === exId) ?? null : null));
   const time = isTimeEx(cfg, def);
   const busy = useRef(false);
@@ -297,7 +298,8 @@ function Volume({ goTo }) {
     >
       <Rise index={0}><BuilderBar /></Rise>
       <FlowTitle
-        text={t(`${K}.volume.title`)}
+        // El nombre del ejercicio de la sesión A: el volumen es suyo, no de todo el programa.
+        text={def ? exerciseName(def, language).replace(/\*/g, '') : t(`${K}.volume.title`)}
         sub={t(`${K}.volume.${deep ? 'subDeep' : 'subSimple'}`)}
         index={1}
       />

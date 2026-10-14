@@ -404,11 +404,11 @@ verá después en el editor.
    Mientras busca se ocultan la línea del titular y el botón. B, C… se ven
    vacías, con «después». **Fuera**: pills de patrón, hoja de filtros, selección
    múltiple.
-3. **Volumen** (§10.3).
+3. **Volumen** (§10.3). El titular es **el nombre del ejercicio** elegido, y el subtítulo dice que es de la sesión A: el volumen es de ese ejercicio, no de todo el programa.
 4. **Ya tiene forma** — nombre editable con uno puesto («Mi programa» /
    «Programa de {cliente}»).
    - `self` y `copy`: lo construido (A con su ejercicio, el resto vacías) y la nota
-     «Sigue editándolo cuando termines: Programa → {nombre}». **Guardar** → Aprende.
+     «Sigue editándolo cuando termines: Programa → Editar». **Guardar** → Aprende.
    - `trainer`: «Así lo verás en Clientes» con **la fila real** del cliente ya con
      el programa, y la nota «Las sesiones B y C están vacías. Rellénalas en
      Clientes → {cliente}: cada cambio le llega con «↑ Enviar»». Botón **«Guardar
@@ -482,7 +482,7 @@ próxima sesión y sesión libre, como esquemas.
 ### 11.2 Cómo ves Inicio
 
 Solo quien entrena. «¿Cómo quieres ver tus *sesiones*?» — «Así será tu Inicio. Se
-cambia en Preferencias». **Las dos opciones lado a lado**, cada una con su dibujo:
+cambia en Preferencias». **Las dos opciones una debajo de otra** (14-oct: lado a lado los dibujos se veían demasiado pequeños), cada una con su dibujo:
 **Lista** (`homeView: 'cards'`, por defecto) y **Pestañas** (`'tabs'`, U13), cuyas
 pestañas se tocan en el dibujo. Con entrenador conectado, «Pestañas» lleva «Para
 tu caso». Los nombres de sesión son los de su programa si ya lo tiene.
@@ -836,26 +836,26 @@ Fuera: todo lo que no es tramo común.
 
 **Probar O03-01**
 
-- [ ] Instalación limpia (borrar datos de la app): abre en la bienvenida, no en
+- [x] Instalación limpia (borrar datos de la app): abre en la bienvenida, no en
   `SetupScreen`. Con el móvil en inglés, la bienvenida sale en inglés y ES/EN la
   cambia al momento.
-- [ ] Empezar → Unidades: tocar «lb» rellena la baldosa de lima desde el centro
+- [x] Empezar → Unidades: tocar «lb» rellena la baldosa de lima desde el centro
   y avanza sola; la barra de «Ajustes» crece con animación.
-- [ ] Tema: tocar Midnight repinta todo el teléfono al instante; «Siguiente» lleva
+- [x] Tema: tocar Midnight repinta todo el teléfono al instante; «Siguiente» lleva
   a «¿Cómo entrenas?».
-- [ ] «¿Cómo entrenas?» no tiene «Saltar». «Saltar» en Unidades lleva directo a
+- [x] «¿Cómo entrenas?» no tiene «Saltar». «Saltar» en Unidades lleva directo a
   la bifurcación.
-- [ ] Atrás (flecha y botón físico de Android) vuelve pantalla a pantalla con lo
+- [x] Atrás (flecha y botón físico de Android) vuelve pantalla a pantalla con lo
   contestado marcado.
-- [ ] «Por mi cuenta» (provisional) abre el selector de siempre; al terminar allí,
+- [x] «Por mi cuenta» (provisional) abre el selector de siempre; al terminar allí,
   la app ya no vuelve a la bienvenida al reabrirla. Las pestañas de entrenador no
   se ven.
-- [ ] «Con un entrenador» (provisional) abre el selector de siempre con la hoja
+- [x] «Con un entrenador» (provisional) abre el selector de siempre con la hoja
   del código ya abierta; las pestañas de entrenador no se ven.
-- [ ] «Ya tengo cuenta» (provisional) abre el selector de siempre.
-- [ ] «Soy entrenador/a» (provisional) entra en la app con las pestañas de
+- [x] «Ya tengo cuenta» (provisional) abre el selector de siempre.
+- [x] «Soy entrenador/a» (provisional) entra en la app con las pestañas de
   entrenador visibles.
-- [ ] Matar la app en «Tema» y reabrir: vuelve a «Tema».
+- [x] Matar la app en «Tema» y reabrir: vuelve a «Tema».
 - [ ] Abrir un enlace `forma://join/XXXX-XXXX` con la app recién instalada: la
   bienvenida enseña la línea azul de la invitación.
 - [ ] Usuario existente (con programa) que actualiza: entra en la app como
