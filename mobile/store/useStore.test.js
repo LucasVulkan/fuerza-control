@@ -893,6 +893,16 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   });
   afterEach(() => useStore.setState({ _getRC: getRC }));
 
+  it('el nombre para los clientes sale de Google si no había uno; si lo había, manda el suyo', async () => {
+    authMock.loginTrainerWithIdToken.mockResolvedValue({ userId: 'uuid-G', name: 'Lucas G' });
+    syncMock.updateTrainerNameForSlots.mockResolvedValue();
+    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
+    expect(ts().trainerName).toBe('Ana');
+    useStore.setState((s) => ({ trainerSync: { ...s.trainerSync, trainerName: null } }));
+    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
+    expect(ts().trainerName).toBe('Lucas G');
+  });
+
   it('código → Google traspasa los huecos del código viejo a la cuenta nueva', async () => {
     await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
     expect(authMock.recoverWithTrainerCode).toHaveBeenCalledWith('AAAA-AAAA-AAAA');

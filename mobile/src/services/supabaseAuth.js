@@ -111,6 +111,8 @@ export async function loginTrainerWithIdToken({ provider = 'google', idToken, ac
     session: data.session,
     userId:  data.user.id,
     email:   data.user.email ?? null,
+    // El nombre de la cuenta de Google (Apple lo da aparte, en su hoja nativa).
+    name:    data.user.user_metadata?.full_name ?? data.user.user_metadata?.name ?? null,
     existed,
   };
 }

@@ -102,7 +102,7 @@ function AccountRow({ onPress }) {
             {(hasAccount && trainerName) || t('account.rowTitleNone')}
           </Text>
           <Text style={styles.acctSub} numberOfLines={1}>
-            {hasAccount ? t('account.rowSubTrainer', { how: t(`account.how.${mode}`) }) : t('account.rowSubNone')}
+            {hasAccount ? t('account.rowSubTrainer', { how: t(`account.short.${mode}`) }) : t('account.rowSubNone')}
           </Text>
         </View>
         <View style={[styles.acctChip, !isPro && styles.acctChipOff]}>
@@ -474,7 +474,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         />
       </Section>
 
-      <Section title={t('header.sectionAccount')}>
+      <Section title={t('header.sectionSupport')}>
         <MenuRow
           icon={<RowIcon>{ROW_ICON.docs}</RowIcon>}
           label={t('header.docsRow')}

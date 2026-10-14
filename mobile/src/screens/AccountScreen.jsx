@@ -9,11 +9,15 @@
  *
  * Entrar, cambiar de forma y salir pasan por `useTrainerAccount` y las acciones
  * de cuenta del store: aquí no se toca Supabase salvo para LEER el correo de la
- * sesión. Las confirmaciones, «Más opciones» y el código recién creado son una
- * sola `DragSheet` que cambia de contenido sin cerrarse, como la maqueta.
+ * sesión. Cambiar de forma y el código recién creado son una sola `DragSheet`
+ * que cambia de contenido sin cerrarse; desconectar se confirma con `showDialog`.
+ *
+ * Las acciones de la cuenta van en secciones con título, con las filas de
+ * `MenuList` del resto de la app («CAMBIAR A», «DESCONECTAR O BORRAR»): un
+ * grupo sin título escondido tras «Más opciones» no decía para qué era.
  */
 
-import { Children, cloneElement, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator, Linking, Platform, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,9 +35,10 @@ import { useEnterClock, EnterClock } from '../hooks/useEnterClock';
 import { FREE, templateCounts, isConnected } from '../utils/freePlan';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { Rise } from '../components/ui/Rise';
-import { ROW_CHEVRON } from '../components/ui/MenuList';
-import { ArrowIcon } from '../components/ui/EditorIcons';
+import { Section, MenuRow } from '../components/ui/MenuList';
 import { ModeIcon } from '../components/ui/AccountIcons';
+import AppleSignInButton from '../components/ui/AppleSignInButton';
+import GoogleSignInButton from '../components/ui/GoogleSignInButton';
 import { showDialog } from '../components/ui/dialog';
 import DragSheet from '../components/DragSheet';
 import CodeReveal from '../components/CodeReveal';
@@ -93,40 +98,6 @@ function Btn({ tone, label, loading, disabled, grow, onPress }) {
 function Explain({ children, tone }) {
   const styles = useThemedStyles(makeStyles);
   return <Text style={[styles.why, tone === 'onAccent' && styles.whyOnAccent]}>{children}</Text>;
-}
-
-/** «RECOMENDADO», la etiqueta de Google y Apple (D4). */
-function Pill() {
-  const styles = useThemedStyles(makeStyles);
-  const { t }  = useTranslation();
-  return <View style={styles.pill}><Text style={styles.pillText}>{t('sync.recommended')}</Text></View>;
-}
-
-/** Fila de un grupo (`.lrow`): icono opcional · título · etiqueta · chevron. */
-function ListRow({ icon, label, pill, danger, first, onPress }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.lrow, !first && styles.lrowBorder, pressed && styles.lrowPressed]}
-    >
-      {icon}
-      <Text style={[styles.lrowLabel, danger && { color: th.colors.redText }]} numberOfLines={1}>{label}</Text>
-      {pill && <Pill />}
-      <ArrowIcon size={ROW_CHEVRON} color={th.colors.muted} />
-    </Pressable>
-  );
-}
-
-/** Grupo de filas con su fondo; `toArray` descarta las filas condicionales que no salen. */
-function Group({ children, gap }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={[styles.list, gap && styles.listGap]}>
-      {Children.toArray(children).map((row, i) => cloneElement(row, { first: i === 0 }))}
-    </View>
-  );
 }
 
 /** El panel de PRO: degradado `accent` → `green`, el del panel del paywall. Medido, no al 100 % (ver PaywallModal). */
@@ -194,11 +165,11 @@ function NameField() {
   const [focus, setFocus] = useState(false);
   const input = useRef(null);
   return (
-    <Pressable style={[styles.input, focus && styles.inputFocus]} onPress={() => input.current?.focus()}>
+    <Pressable style={styles.nameCard} onPress={() => input.current?.focus()}>
       <Text style={styles.inputKey}>{t('account.nameLabel')}</Text>
       <TextInput
         ref={input}
-        style={styles.inputText}
+        style={[styles.inputBox, focus && styles.inputFocus]}
         value={draft}
         onChangeText={setDraft}
         onFocus={() => setFocus(true)}
@@ -234,7 +205,7 @@ export default function AccountScreen() {
   const mode       = trainerSync?.mode ?? null;
   const hasAccount = !!mode && mode !== 'offline';
 
-  const [sheet,       setSheet]       = useState(null); // { kind: 'more' | 'leave' } | { kind: 'switch', to } | { kind: 'reveal', code }
+  const [sheet,       setSheet]       = useState(null); // { kind: 'switch', to } | { kind: 'reveal', code }
   const [syncModal,   setSyncModal]   = useState(null); // 'select' | 'recovery'
   const [showDelete,  setShowDelete]  = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -287,17 +258,29 @@ export default function AccountScreen() {
     }
   }
 
-  async function doLeave() {
-    try {
-      await acct.leave();
-      setSheet(null);
-    } catch (err) {
-      showDialog(t('common.error'), err?.message);
-    }
+  function confirmLeave() {
+    const back = mode === 'code'
+      ? t('account.leaveBackCode')
+      : t('account.leaveBackSocial', { how: t(`account.short.${mode}`) });
+    showDialog(t('account.leaveTitle'), t('account.leaveWhy', { back }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('account.leaveCta'),
+        style: 'destructive',
+        onPress: () => acct.leave().catch((err) => showDialog(t('common.error'), err?.message)),
+      },
+    ]);
   }
 
-  // Borrar abre OTRO Modal: la hoja se cierra a mano antes (en iOS no se presenta uno mientras otro se va).
-  function openDelete() { setSheet(null); setShowDelete(true); }
+  /** La fila de borrar: sale con y sin cuenta de entrenador (D11). */
+  const deleteRow = (
+    <MenuRow
+      label={t('account.deleteRow')}
+      labelColor={th.colors.redText}
+      sub={t('account.deleteRowSub')}
+      onPress={() => setShowDelete(true)}
+    />
+  );
 
   // ── Plan ────────────────────────────────────────────────────────────────────
 
@@ -320,8 +303,7 @@ export default function AccountScreen() {
   const trainerBlock = !hasAccount ? (
     <>
       <View style={styles.card}>
-        <Text style={styles.how}>{t('account.thisPhone')}</Text>
-        <Text style={[styles.have, styles.haveNone]}>{t('account.none')}</Text>
+        <Text style={styles.how}>{t('account.notConnected')}</Text>
         <Explain>{t('account.noneWhy')}</Explain>
         <View style={styles.acts}>
           <Btn grow tone="acc" label={t('account.create')} onPress={() => setSyncModal('select')} />
@@ -329,7 +311,7 @@ export default function AccountScreen() {
         </View>
       </View>
       {hasRemoteAccount && (
-        <Group gap><ListRow label={t('account.more')} onPress={() => setSheet({ kind: 'more' })} /></Group>
+        <Section title={t('account.sectionDelete')} style={styles.subSection}>{deleteRow}</Section>
       )}
     </>
   ) : (
@@ -337,7 +319,7 @@ export default function AccountScreen() {
       <View style={styles.card}>
         <View style={styles.howRow}>
           <ModeIcon mode={mode} size={15} color={th.colors.mutedLight} />
-          <Text style={styles.how}>{t('account.enteredWith', { how: t(`account.short.${mode}`) })}</Text>
+          <Text style={styles.how}>{t('account.connectedWith', { how: t(`account.short.${mode}`) })}</Text>
         </View>
         {mode === 'code' ? (
           <>
@@ -363,18 +345,23 @@ export default function AccountScreen() {
 
       <NameField />
 
-      <Group gap>
-        {mode === 'code' && SOCIAL.map((m) => (
-          <ListRow
+      <Section title={t('account.sectionSwitch')} style={styles.subSection}>
+        {[...SOCIAL, 'code'].filter((m) => m !== mode).map((m) => (
+          <MenuRow
             key={m}
-            icon={<ModeIcon mode={m} />}
-            label={t(USE_KEY[m])}
-            pill
+            icon={<ModeIcon mode={m} size={18} color={th.colors.mutedLight} />}
+            label={t(`account.how.${m}`)}
+            sub={m === 'code' ? t('account.codeRowSub') : null}
+            badge={m === 'code' ? null : t('sync.recommended')}
             onPress={() => setSheet({ kind: 'switch', to: m })}
           />
         ))}
-        <ListRow label={t('account.more')} onPress={() => setSheet({ kind: 'more' })} />
-      </Group>
+      </Section>
+
+      <Section title={t('account.sectionLeave')} style={styles.subSection}>
+        <MenuRow label={t('account.leave')} sub={t('account.leaveRowSub')} onPress={confirmLeave} />
+        {deleteRow}
+      </Section>
     </>
   );
 
@@ -429,33 +416,8 @@ export default function AccountScreen() {
   // ── Contenido de la hoja ────────────────────────────────────────────────────
 
   let sheetBody = null;
-  if (sheet?.kind === 'more') {
-    const others = [...SOCIAL, 'code'].filter((m) => m !== mode && !(mode === 'code' && SOCIAL.includes(m)));
-    sheetBody = (
-      <>
-        <Text style={styles.sheetTitle}>{t('account.more')}</Text>
-        {hasAccount && others.length > 0 && (
-          <Group>
-            {others.map((m) => (
-              <ListRow
-                key={m}
-                icon={<ModeIcon mode={m} />}
-                label={t(USE_KEY[m])}
-                pill={m !== 'code'}
-                onPress={() => setSheet({ kind: 'switch', to: m })}
-              />
-            ))}
-          </Group>
-        )}
-        <Group gap={hasAccount && others.length > 0}>
-          {hasAccount && <ListRow label={t('account.leave')} onPress={() => setSheet({ kind: 'leave' })} />}
-          <ListRow label={t('account.deleteRow')} danger onPress={openDelete} />
-        </Group>
-      </>
-    );
-  } else if (sheet?.kind === 'switch') {
+  if (sheet?.kind === 'switch') {
     const to = sheet.to;
-    const how = t(`account.how.${to}`);
     sheetBody = (
       <>
         <Text style={styles.sheetTitle}>{t(USE_KEY[to])}</Text>
@@ -464,27 +426,14 @@ export default function AccountScreen() {
         </Explain>
         {to === 'google' && acct.isExpoGo && <Explain>{t('sync.onlyInstalled')}</Explain>}
         <View style={styles.actsCol}>
-          <Btn
-            tone="acc"
-            label={to === 'code' ? t('account.createCodeCta') : t('account.continueWith', { how })}
-            loading={acct.loading}
-            disabled={to === 'google' && acct.isExpoGo}
-            onPress={() => doSwitch(to)}
-          />
-          <Btn tone="ghost" label={t('common.cancel')} disabled={acct.loading} onPress={() => setSheet(null)} />
-        </View>
-      </>
-    );
-  } else if (sheet?.kind === 'leave') {
-    const back = mode === 'code'
-      ? t('account.leaveBackCode')
-      : t('account.leaveBackSocial', { how: t(`account.short.${mode}`) });
-    sheetBody = (
-      <>
-        <Text style={styles.sheetTitle}>{t('account.leave')}</Text>
-        <Explain>{t('account.leaveWhy', { back })}</Explain>
-        <View style={styles.actsCol}>
-          <Btn tone="danger" label={t('account.leaveCta')} loading={acct.loading} onPress={doLeave} />
+          {/* Google y Apple confirman con su propio botón, el mismo que en la hoja de entrada. */}
+          {to === 'apple' && <AppleSignInButton onPress={() => doSwitch('apple')} disabled={acct.loading} />}
+          {to === 'google' && (
+            <GoogleSignInButton onPress={() => doSwitch('google')} busy={acct.loading} disabled={acct.isExpoGo} />
+          )}
+          {to === 'code' && (
+            <Btn tone="acc" label={t('account.createCodeCta')} loading={acct.loading} onPress={() => doSwitch('code')} />
+          )}
           <Btn tone="ghost" label={t('common.cancel')} disabled={acct.loading} onPress={() => setSheet(null)} />
         </View>
       </>
@@ -545,7 +494,6 @@ const makeStyles = (th) => StyleSheet.create({
   howRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   how:     { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
   have:    { marginTop: spacing.sm2 },
-  haveNone: { ...textStyles.heading, color: th.colors.mutedLight },
   haveMail: { ...textStyles.heading, color: th.colors.text },
   // El código a 18 (`heading`), como el `codeTextSm` de antes: cabe en una línea con el botón de copiar.
   haveCode: { ...textStyles.code, fontSize: textStyles.heading.fontSize, color: th.colors.accent, flexShrink: 1, marginTop: 0 },
@@ -583,24 +531,27 @@ const makeStyles = (th) => StyleSheet.create({
   btnOff:     { opacity: 0.5 },
   btnText:    { ...textStyles.button, textTransform: 'uppercase' },
 
-  // Nombre para los clientes (`.input`)
-  input: {
-    backgroundColor: th.colors.surface, borderRadius: th.radius.lg, borderWidth: 2, borderColor: 'transparent',
-    paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginTop: spacing.sm2,
+  // Nombre para los clientes: tarjeta con un hueco más oscuro (`bg`) y con
+  // borde, para que se vea a la primera que ahí se escribe.
+  nameCard: {
+    backgroundColor: th.colors.surface, borderRadius: th.radius.lg,
+    padding: spacing.lg, marginTop: spacing.sm2, gap: spacing.sm2,
+  },
+  inputKey: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  inputBox: {
+    ...textStyles.itemTitleQuiet,
+    color:             th.colors.text,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.md,
+    borderWidth:       1,
+    borderColor:       th.colors.surface3,
+    paddingHorizontal: spacing.md,
+    paddingVertical:   spacing.md,
   },
   inputFocus: { borderColor: th.colors.accent },
-  inputKey:   { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
-  inputText:  { ...textStyles.itemTitleQuiet, color: th.colors.text, padding: 0, marginTop: spacing.xs2, paddingVertical: spacing.xs },
 
-  // Grupo de filas (`.list` / `.lrow`)
-  list:        { backgroundColor: th.colors.surface, borderRadius: th.radius.lg, overflow: 'hidden' },
-  listGap:     { marginTop: spacing.sm2 },
-  lrow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56, paddingHorizontal: spacing.lg },
-  lrowBorder:  { borderTopWidth: 1, borderTopColor: th.colors.surface2 },
-  lrowPressed: { backgroundColor: th.colors.surface2 },
-  lrowLabel:   { ...textStyles.itemTitleQuiet, flex: 1, color: th.colors.text },
-  pill:     { backgroundColor: th.tint.accent10, borderRadius: th.radius.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs2, flexShrink: 0 },
-  pillText: { ...textStyles.caps, color: th.colors.accent },
+  // Secciones de acciones (`Section` de MenuList) dentro del bloque de la cuenta.
+  subSection: { marginTop: spacing.xl, marginBottom: 0 },
 
   // Plan
   planTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },

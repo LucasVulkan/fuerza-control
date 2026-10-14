@@ -3725,12 +3725,13 @@ export const useStore = create(
       enterTrainerAccount: async ({ provider, idToken, accessToken, fullName, mustExist }) => {
         const { code: prevCode, userId: prevUserId } = get().trainerSync;
         const tokens = { provider, idToken, accessToken };
-        const { userId, existed } = await loginTrainerWithIdToken({ ...tokens, mustExist });
+        const { userId, existed, name } = await loginTrainerWithIdToken({ ...tokens, mustExist });
         // «Ya tengo cuenta» (M03-03 §7.4): si no hay cuenta, salir antes de tocar
         // `trainerSync` ni RevenueCat. Quien llama puede repetir sin `mustExist`.
         if (mustExist && !existed) throw { notFound: true };
-        // Si el entrenador ya tenía nombre escrito, mandan sus letras.
-        if (fullName && !get().trainerSync.trainerName) get().setTrainerName(fullName);
+        // El nombre que ven los clientes sale de Apple o Google (la hoja de
+        // entrada ya no lo pide); si el entrenador ya tenía uno, manda el suyo.
+        if ((fullName || name) && !get().trainerSync.trainerName) get().setTrainerName(fullName || name);
         get().setTrainerSyncMode(provider, { userId });
 
         // Cede quien posee: la transferencia va autenticada como el dueño VIEJO

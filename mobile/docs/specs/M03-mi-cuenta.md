@@ -417,21 +417,24 @@ nuevo).
 
 - [ ] Menú, sin PRO y sin cuenta: arriba sale «Mi cuenta · Sin cuenta de
   entrenador · FREE», sin avatar. Ya no están «Sincronización con clientes»,
-  «Plan» ni «Borrar cuenta».
-- [ ] Mi cuenta sin cuenta: «Sin cuenta» + Crear cuenta / Ya tengo cuenta; cada
-  uno abre la hoja donde toca.
-- [ ] Con código: el código en una línea; copiar → ✓ y se pega bien en otra app.
-  Fuera solo «Usar Google · RECOMENDADO» y «Más opciones».
-- [ ] «Usar Google» → una línea de explicación → Continuar → Google → la tarjeta
-  pasa a «ENTRAS CON GOOGLE» con el correo; los clientes y el PRO siguen.
-- [ ] Con Google → Más opciones → «Usar un código personal» → Crear el código →
-  «Ya lo he guardado» gris hasta copiar.
-- [ ] Nombre: cambiarlo en el campo → salir y volver → se ha guardado; un
-  cliente conectado ve el nombre nuevo en su próxima sincronización.
-- [ ] Salir de la cuenta con PRO → «Sin cuenta», y el plan sigue PRO con «Guardado
-  en tu cuenta de Google Play».
+  «Plan» ni «Borrar cuenta». La sección de Documentación se llama «SOPORTE».
+- [ ] Mi cuenta sin cuenta: tarjeta «SIN CONECTAR» con su explicación y Crear
+  cuenta / Ya tengo cuenta; cada uno abre la hoja donde toca.
+- [ ] Con código: la tarjeta dice «CONECTADO CON CÓDIGO», el código en una línea;
+  copiar → ✓ y se pega bien en otra app. Debajo, «CAMBIAR A» (Google ·
+  RECOMENDADO, y Apple en iPhone) y «DESCONECTAR O BORRAR». No hay «Más opciones».
+- [ ] «CAMBIAR A» → Google → una línea de explicación y el botón blanco de
+  Google → la tarjeta pasa a «CONECTADO CON GOOGLE» con el correo; los clientes
+  y el PRO siguen. En iPhone, Apple confirma con el botón oficial de Apple.
+- [ ] Con Google → «CAMBIAR A» → Código personal → Crear el código → «Ya lo he
+  guardado» gris hasta copiar o enviar.
+- [ ] Nombre: está en un hueco más oscuro con borde (lima al tocarlo); cambiarlo
+  → volver a la página → se ha guardado; un cliente conectado ve el nombre nuevo
+  en su próxima sincronización.
+- [ ] Desconectar con PRO → aviso de una línea → Desconectar → «SIN CONECTAR», y
+  el plan sigue PRO con «Guardado en tu cuenta de Google Play».
 - [ ] Solo cliente (conectado con un entrenador, sin cuenta propia) → Mi cuenta →
-  Más opciones → Borrar la cuenta abre el modal de siempre.
+  sección «BORRAR» → Borrar la cuenta abre el modal de siempre.
 - [ ] FREE con 2 clientes y 1 conectado: los medidores dicen 2/3 y 1/1.
 - [ ] PRO anual: «Anual · se renueva el …» y «Gestionar en Google Play» abre la
   suscripción en la tienda. Cuenta demo con entitlement regalado: «Regalado», sin
@@ -441,7 +444,6 @@ nuevo).
 - [ ] Clientes (primera vez) o paywall → crear un código personal: «Ya lo he
   guardado» gris hasta Copiar o Enviármelo, igual que en la página.
 - [ ] Arrastrar el menú ≡ para cerrarlo: la fila «Mi cuenta» sale con las demás.
-- [ ] En inglés, ningún texto de la página sale en castellano.
 
 ## 7. M03-03 — Hoja de entrada simplificada y entradas desde Clientes
 
@@ -553,26 +555,60 @@ Los nuevos en `sync.*` (es/en). Los que dejan de usarse (`sync.modeOffline*`,
 
 **Probar M03-03**
 
-- [ ] Clientes, primera vez: sale «Crea tu cuenta de entrenador» con Google ·
-  RECOMENDADO, Crear un código personal y «Ya tengo un código». No hay «Sin
-  conexión».
+- [ ] Clientes, primera vez: «Conecta con tus clientes», una línea de para qué
+  es, «CREA TU CUENTA» con los botones de Apple (iPhone) y Google a juego, «o»,
+  «Usar un código personal» con su aviso y el enlace «Ya tengo cuenta». Sin
+  campo de nombre ni «Sin conexión».
+- [ ] Crear la cuenta con Google → en Mi cuenta el nombre ya viene relleno con el
+  de Google.
 - [ ] «Ahora no» → volver a Clientes otro día → no vuelve a salir sola.
 - [ ] Icono de conexión de Clientes → abre Mi cuenta.
 - [ ] Conectar un cliente sin cuenta → la hoja sale en Clientes; al crear la
   cuenta se sigue conectando ese cliente (se abre la hoja de conexión de ese cliente).
-- [ ] Paywall → comprar sin cuenta → «Guarda tu compra» con la hoja nueva y
-  Google preseleccionado/primero.
-- [ ] Paywall → «Ya tengo cuenta» → entra en recuperar, como antes.
-- [ ] En Android no sale Apple en ningún sitio; en iPhone, Apple y Google con
-  Recomendado.
+- [ ] Paywall → comprar sin cuenta → «Guarda tu compra» con la misma hoja y su
+  propia explicación.
+- [ ] Paywall → «Ya tengo cuenta» → la hoja se titula «Ya tengo cuenta», con
+  Google/Apple y el código.
+- [ ] En Android no sale Apple en ningún sitio.
 - [ ] Reinstalar → «Ya tengo cuenta» → Google → elegir un Gmail que **nunca** se
   usó en la app → sale «No hay ninguna cuenta de entrenador con este Google».
   «Probar con otro» → Google otra vez → elegir el bueno → vuelven los clientes.
-- [ ] Lo mismo, pero «Crear una nueva» → entra en una cuenta vacía sin volver a
-  abrir Google.
+- [ ] Lo mismo, pero «Crear una nueva» → conecta con una cuenta vacía sin volver
+  a abrir Google.
 - [ ] Onboarding → «Ya tengo cuenta» → «Mi cuenta de entrenador» → Google con un
   Gmail sin cuenta → el mismo aviso.
 - [ ] «Crear cuenta» → Google con un Gmail nuevo → crea la cuenta sin preguntar.
+
+## 7b. Ajustes tras la primera revisión (14-oct)
+
+El usuario revisó M03-02 y M03-03 y pidió estos cambios, que **mandan sobre §6,
+§7 y la maqueta** donde choquen:
+
+- **Nada de «entrar» ni «salir» para el estado.** Ya estás dentro: la tarjeta
+  dice **«CONECTADO CON CÓDIGO / GOOGLE / APPLE»** (estado + elemento), la fila
+  del menú «Conectado con …», y la acción es **«Desconectar»** (confirmación con
+  `showDialog`, una línea). Sin cuenta: «SIN CONECTAR».
+- **Fuera «Más opciones»** (ocultaba acciones tras un grupo sin título). La
+  página enseña las acciones en secciones de `MenuList` con título, como el
+  resto de la app: **«CAMBIAR A»** (las formas que no son la actual, Google y
+  Apple con la chapa RECOMENDADO; el código con su aviso) y **«DESCONECTAR O
+  BORRAR»**. Solo cliente: sección «BORRAR».
+- **Nombre para los clientes:** tarjeta con un hueco más oscuro (`bg`) y con
+  borde, para que se vea que se escribe ahí.
+- **Botones de marca:** Apple vuelve al **botón oficial** (`AppleSignInButton`)
+  y Google tiene uno a juego (`ui/GoogleSignInButton`: blanco, 44 de alto, el
+  mismo radio, la «G» a color). Los usan la hoja de entrada y la confirmación de
+  cambiar de forma.
+- **Hoja de entrada (`select`):** título «Conecta con tus clientes», una línea
+  de para qué sirve la cuenta, «CREA TU CUENTA» con los dos botones de marca,
+  una raya con «o» y debajo «Usar un código personal» con su aviso. Enlace «Ya
+  tengo cuenta». **El campo del nombre sale de la hoja**: el nombre se toma de
+  Apple o de Google (`user_metadata` de Supabase) si el entrenador no tenía uno,
+  y se cambia en Mi cuenta.
+- **«Ya tengo cuenta»** vuelve a ser el título de `recovery` (no «¿Cómo
+  entrabas?»): «CON GOOGLE O APPLE» (solo conectan, §7.4), «o», «CON TU CÓDIGO
+  PERSONAL».
+- Menú: la sección de «Documentación» se llama **«SOPORTE»**.
 
 ## 8. Fuera de esta spec
 

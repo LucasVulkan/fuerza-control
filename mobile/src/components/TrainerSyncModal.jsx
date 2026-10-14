@@ -1,130 +1,74 @@
 /**
- * TrainerSyncModal — la hoja para ENTRAR o CREAR la cuenta del entrenador.
+ * TrainerSyncModal — la hoja para CREAR la cuenta del entrenador o conectarse
+ * con una que ya existe.
  *
  * Se abre la primera vez que entra en Clientes (`trainerSync.mode === null`),
- * al conectar un cliente sin cuenta y desde el paywall. Ver el código, copiarlo,
- * cambiar de forma de entrar o salir está en la página «Mi cuenta» (M03).
+ * al conectar un cliente sin cuenta, desde el paywall y desde «Mi cuenta». Ver
+ * el código, cambiar de forma o desconectarse está en la página «Mi cuenta» (M03).
  *
  * Tres pantallas dentro de la misma hoja:
- *   • select      → filas que actúan directamente: Google, Apple (solo iOS) o
- *                   «Crear un código personal»; el enlace «Ya tengo un código»
- *                   lleva a `recovery`
+ *   • select      → para qué sirve la cuenta (una línea), y cómo crearla: los
+ *                   botones de Apple (oficial, solo iOS) y Google, y debajo, como
+ *                   alternativa, el código personal. Enlace «Ya tengo cuenta».
+ *   • recovery    → «Ya tengo cuenta»: Google, Apple o el código. Aquí Google y
+ *                   Apple solo CONECTAN: si no hay cuenta avisan (M03-03 §7.4)
  *   • code_reveal → el código recién creado, para guardarlo
- *   • recovery    → «¿Cómo entrabas?»: el código, Google o Apple. Aquí Google y
- *                   Apple solo ENTRAN: si no hay cuenta avisan (M03-03 §7.4)
  *
- * `initialScreen="recovery"` la abre en «¿Cómo entrabas?» (el «Ya tengo cuenta»
- * del paywall y de la página); por defecto, `'select'`.
+ * El nombre que ven los clientes ya no se pide aquí: sale de Google o Apple y
+ * se cambia en «Mi cuenta». Arriba de todo, antes de elegir nada, despistaba.
  *
- * `purpose="purchase"` (M01 §3.5): se abre tras comprar Pro sin cuenta, para
- * que la compra quede atada a una. Mismo flujo, con otro título.
+ * `initialScreen="recovery"` la abre en «Ya tengo cuenta»; por defecto `'select'`.
+ * `purpose="purchase"` (M01 §3.5): tras comprar Pro sin cuenta, para atar la
+ * compra a una. Misma hoja con otro título y otra explicación.
  *
- * Pasa a `DragSheet` como el resto de los modales (§9 de docs/UI-MIGRATION.md).
  * Entrar y crear van por `useTrainerAccount` y las acciones de cuenta del
  * store (M03-01): aquí no se toca Supabase.
  */
 
 import { useState, useEffect } from 'react';
 import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { Text, TextInput } from './ui/Text';
+import { Text } from './ui/Text';
 import { useTranslation } from 'react-i18next';
 
-import { useStore } from '../../store/useStore';
 import { APPLE_AUTH_AVAILABLE } from '../services/appleAuth';
 import useTrainerAccount, { askCreateInstead } from '../hooks/useTrainerAccount';
 import DragSheet from './DragSheet';
 import CodeField from './ui/CodeField';
-import { SectionLabel } from './ui/MenuList';
-import { GoogleIcon, AppleIcon, KeyIcon, ICON_SIZE } from './ui/AccountIcons';
+import { Section, SectionLabel, MenuRow } from './ui/MenuList';
+import { KeyIcon } from './ui/AccountIcons';
+import AppleSignInButton from './ui/AppleSignInButton';
+import GoogleSignInButton from './ui/GoogleSignInButton';
 import CodeReveal from './CodeReveal';
-import { spacing, textStyles } from '../theme';
+import { spacing, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
-
-// ── Campo del nombre visible para los clientes ────────────────────────────────
-
-function NameField({ value, onChange }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const { t }  = useTranslation();
-  return (
-    <View>
-      <SectionLabel>{t('sync.nameLabel')}</SectionLabel>
-      <TextInput
-        style={styles.nameInput}
-        placeholder={t('sync.namePlaceholder')}
-        placeholderTextColor={th.colors.mutedLight}
-        value={value}
-        onChangeText={onChange}
-        returnKeyType="done"
-        autoCorrect={false}
-        maxLength={40}
-      />
-      <Text style={styles.hintLeft}>{t('sync.nameHint')}</Text>
-    </View>
-  );
-}
-
-// ── Fila que actúa directamente (la `.opt` de la maqueta) ─────────────────────
-
-function EntryRow({ icon, label, tag, busy, disabled, onPress }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      style={[styles.entry, disabled && styles.entryDisabled]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-    >
-      <View style={styles.entryIcon}>{icon}</View>
-      <Text style={styles.entryLabel}>{label}</Text>
-      {busy
-        ? <ActivityIndicator color={th.colors.accent} size="small" />
-        : (
-          <>
-            {!!tag && <View style={styles.tag}><Text style={styles.tagTxt}>{tag}</Text></View>}
-            <Text style={styles.chev}>›</Text>
-          </>
-        )}
-    </TouchableOpacity>
-  );
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
 
 export default function TrainerSyncModal({ visible, onClose, isFirstTime = true, purpose = 'sync', initialScreen = 'select' }) {
   const forPurchase = purpose === 'purchase';
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
-  const setTrainerName     = useStore((s) => s.setTrainerName);
-  const trainerSync        = useStore((s) => s.trainerSync);
 
-  const [screen,    setScreen]    = useState(initialScreen); // 'select' | 'code_reveal' | 'recovery'
-  const [newCode,   setNewCode]   = useState(null);
-  const [nameInput, setNameInput] = useState(trainerSync.trainerName ?? '');
-  // Qué fila está en marcha ('google' | 'apple' | 'code'), para su ruedecita.
-  const [pending,   setPending]   = useState(null);
+  const [screen,  setScreen]  = useState(initialScreen); // 'select' | 'code_reveal' | 'recovery'
+  const [newCode, setNewCode] = useState(null);
+  // Qué opción está en marcha ('google' | 'apple' | 'code' | 'recover'), para su ruedecita.
+  const [pending, setPending] = useState(null);
 
-  // Recuperar cuenta (antes una sub-pantalla con su propio estado)
-  const [recoverCode,    setRecoverCode]    = useState('');
-  const [recoverError,   setRecoverError]   = useState(null);
+  const [recoverCode,  setRecoverCode]  = useState('');
+  const [recoverError, setRecoverError] = useState(null);
 
-  // Sync local inputs when modal reopens (Modal stays mounted when hidden in RN).
+  // La hoja sigue montada al cerrarse: al volver a abrirla empieza de cero.
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (visible) {
-      setNameInput(trainerSync.trainerName ?? '');
       setScreen(initialScreen);
       setRecoverCode('');
       setRecoverError(null);
     }
   }, [visible]);
 
-  // Entrar con Google, Apple o código y crear cuenta: useTrainerAccount (lo comparte con el recorrido de entrada).
   const acct = useTrainerAccount();
-  const { loading, isExpoGo } = acct;
+  const { isExpoGo } = acct;
 
   function showSocialError(provider, err) {
     showDialog(
@@ -134,8 +78,8 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
   }
 
   /**
-   * Google o Apple: cerrar al entrar; cancelar no es un error. Con `mustExist`
-   * (desde «Ya tengo cuenta») solo entra: si no hay cuenta, pregunta (§7.4).
+   * Google o Apple: cerrar al conectar; cancelar no es un error. Con `mustExist`
+   * («Ya tengo cuenta») solo conecta: si no hay cuenta, pregunta (§7.4).
    */
   async function social(provider, mustExist = false) {
     setPending(provider);
@@ -166,28 +110,23 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
     }
   }
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
-
-  function handleName(v) {
-    setNameInput(v);
-    setTrainerName(v.trim() || null);
-  }
-
   async function handleRecover() {
-    if (!recoverCode.trim()) return;
+    if (!recoverCode.trim() || pending) return;
     setRecoverError(null);
+    setPending('recover');
     try {
       await acct.recover(recoverCode);
     } catch (err) {
       setRecoverError(err?.message ?? t('sync.errReconnectBody'));
       return;
+    } finally {
+      setPending(null);
     }
     setScreen('select');
     onClose();
   }
 
   const busy = pending !== null;
-  const socialDisabled = busy || isExpoGo;
 
   const titles = {
     select:      forPurchase ? t('sync.purchaseTitle') : t('sync.createTitle'),
@@ -201,28 +140,28 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
       ? { label: t('trainer.codeBack'), onPress: () => setScreen('select') }
       : { label: forPurchase || isFirstTime ? t('sync.notNow') : t('common.cancel'), onPress: onClose };
 
-  /** Google (y Apple en iOS) con «Recomendado». `mustExist`: solo entrar. */
-  const socialRows = (mustExist) => (
-    <>
+  /** Los dos botones de marca, Apple (oficial, solo iOS) encima de Google. `mustExist`: solo conectar. */
+  const socialButtons = (mustExist) => (
+    <View style={styles.socials}>
       {APPLE_AUTH_AVAILABLE && (
-        <EntryRow
-          icon={<AppleIcon />}
-          label={t('sync.rowApple')}
-          tag={t('sync.recommended')}
-          busy={pending === 'apple'}
-          disabled={socialDisabled}
-          onPress={() => social('apple', mustExist)}
-        />
+        <AppleSignInButton onPress={() => social('apple', mustExist)} disabled={busy || isExpoGo} />
       )}
-      <EntryRow
-        icon={<GoogleIcon />}
-        label={t('sync.rowGoogle')}
-        tag={t('sync.recommended')}
-        busy={pending === 'google'}
-        disabled={socialDisabled}
+      <GoogleSignInButton
         onPress={() => social('google', mustExist)}
+        busy={pending === 'google'}
+        disabled={busy || isExpoGo}
       />
-    </>
+      {isExpoGo && <Text style={styles.hint}>{t('sync.onlyInstalled')}</Text>}
+    </View>
+  );
+
+  /** La raya con la «o» que separa las cuentas de Google/Apple del código. */
+  const orDivider = (
+    <View style={styles.or}>
+      <View style={styles.orLine} />
+      <Text style={styles.orText}>{t('sync.or')}</Text>
+      <View style={styles.orLine} />
+    </View>
   );
 
   return (
@@ -232,65 +171,71 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
       title={titles[screen]}
       action={action}
     >
-      {/* ── Código recién creado ── */}
       {screen === 'code_reveal' && newCode && (
         <CodeReveal code={newCode} purchase={forPurchase} onDone={() => { setScreen('select'); onClose(); }} />
       )}
 
-      {/* ── «¿Cómo entrabas?»: el código, Google o Apple (solo entran) ── */}
+      {/* ── «Ya tengo cuenta»: Google, Apple (solo conectan) o el código ── */}
       {screen === 'recovery' && (
         <View style={styles.block}>
-          <Text style={styles.lead}>{t('sync.recoveryLead')}</Text>
-
-          <CodeField
-            value={recoverCode}
-            onChangeText={(v) => { setRecoverCode(v); setRecoverError(null); }}
-            groups={3}
-            onSubmitEditing={handleRecover}
-            error={recoverError}
-          />
-
-          <TouchableOpacity
-            style={[styles.primaryBtn, (!recoverCode.trim() || loading) && styles.btnDisabled]}
-            onPress={handleRecover}
-            disabled={!recoverCode.trim() || loading}
-            activeOpacity={0.85}
-          >
-            {loading && !busy
-              ? <ActivityIndicator color={th.colors.onAccent} />
-              : <Text style={styles.primaryBtnText}>{t('sync.recoveryCta')}</Text>}
-          </TouchableOpacity>
+          <Text style={styles.why}>{t('sync.recoveryLead')}</Text>
 
           <View>
             <SectionLabel>{t('sync.recoverySocial')}</SectionLabel>
-            <View style={styles.entries}>{socialRows(true)}</View>
-            {isExpoGo && <Text style={styles.hintLeft}>{t('sync.onlyInstalled')}</Text>}
+            {socialButtons(true)}
+          </View>
+
+          {orDivider}
+
+          <View>
+            <SectionLabel>{t('sync.recoveryCodeLabel')}</SectionLabel>
+            <CodeField
+              value={recoverCode}
+              onChangeText={(v) => { setRecoverCode(v); setRecoverError(null); }}
+              groups={3}
+              onSubmitEditing={handleRecover}
+              error={recoverError}
+            />
+            <TouchableOpacity
+              style={[styles.primaryBtn, (!recoverCode.trim() || busy) && styles.btnDisabled]}
+              onPress={handleRecover}
+              disabled={!recoverCode.trim() || busy}
+              activeOpacity={0.85}
+            >
+              {pending === 'recover'
+                ? <ActivityIndicator color={th.colors.onAccent} />
+                : <Text style={styles.primaryBtnText}>{t('sync.recoveryCta')}</Text>}
+            </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* ── Entrar o crear la cuenta ── */}
+      {/* ── Crear la cuenta ── */}
       {screen === 'select' && (
         <View style={styles.block}>
-          {forPurchase && <Text style={styles.lead}>{t('sync.purchaseLead')}</Text>}
+          <Text style={styles.why}>{t(forPurchase ? 'sync.purchaseLead' : 'sync.createLead')}</Text>
 
-          {/* El nombre solo hace falta al crear la cuenta: con ella puesta se cambia en «Mi cuenta». */}
-          {!forPurchase && !trainerSync.userId && <NameField value={nameInput} onChange={handleName} />}
+          <View>
+            <SectionLabel>{t('sync.createWith')}</SectionLabel>
+            {socialButtons(false)}
+          </View>
 
-          <View style={styles.entries}>
-            {socialRows(false)}
-            <EntryRow
-              icon={<KeyIcon />}
+          {orDivider}
+
+          <Section style={styles.lastSection}>
+            <MenuRow
+              icon={<KeyIcon size={18} color={th.colors.mutedLight} />}
               label={t('sync.rowCode')}
-              busy={pending === 'code'}
+              sub={t('sync.rowCodeSub')}
+              subLines={3}
               disabled={busy}
+              status={pending === 'code' ? <ActivityIndicator color={th.colors.accent} size="small" /> : null}
               onPress={createCode}
             />
-          </View>
-          {isExpoGo && <Text style={styles.hintLeft}>{t('sync.onlyInstalled')}</Text>}
+          </Section>
 
-          <TouchableOpacity onPress={() => setScreen('recovery')} disabled={busy} activeOpacity={0.7}>
-            <Text style={styles.link}>{t('sync.haveCode')}</Text>
+          <TouchableOpacity onPress={() => setScreen('recovery')} disabled={busy} activeOpacity={0.7} hitSlop={8}>
+            <Text style={styles.link}>{t('sync.haveAccount')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -300,42 +245,24 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
 
 const makeStyles = (th) => StyleSheet.create({
   block: { gap: spacing.lg, paddingBottom: spacing.md },
-  lead:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 18 },
-  hintLeft: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, marginTop: spacing.sm },
-  link:     { ...textStyles.labelStrong, color: th.tint.accent50, textAlign: 'center' },
+  // La explicación, una por pantalla: gris con barra a la izquierda, como en «Mi cuenta».
+  why: {
+    ...textStyles.body,
+    lineHeight:      lh(textStyles.body.fontSize),
+    color:           th.colors.mutedLight,
+    borderLeftWidth: 2,
+    borderLeftColor: th.colors.surface3,
+    paddingLeft:     spacing.sm2,
+  },
+  hint: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
+  link: { ...textStyles.button, color: th.colors.accent, textAlign: 'center' },
 
-  // Filas que actúan directamente (`.opt` de la maqueta account.html).
-  entries: { gap: spacing.sm2 },
-  entry: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.md,
-    minHeight:       56,
-    padding:         spacing.lg,
-    borderRadius:    th.radius.lg,
-    backgroundColor: th.colors.surface,
-  },
-  entryDisabled: { opacity: 0.45 },
-  entryIcon:     { width: ICON_SIZE, height: ICON_SIZE },
-  entryLabel:    { ...textStyles.itemTitleQuiet, flex: 1, color: th.colors.text },
-  // «Recomendado»: caps lima sobre accent10, como la etiqueta del recorrido de entrada.
-  tag: {
-    borderRadius:      th.radius.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs2,
-    backgroundColor:   th.tint.accent10,
-  },
-  tagTxt: { ...textStyles.caps, color: th.colors.accent },
-  chev:   { ...textStyles.title, color: th.colors.muted },
+  socials: { gap: spacing.sm2 },
+  lastSection: { marginBottom: 0 },
 
-  nameInput: {
-    backgroundColor:   th.colors.surface2,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    ...textStyles.itemTitle,
-    color:             th.colors.text,
-  },
+  or:     { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  orLine: { flex: 1, height: 1, backgroundColor: th.colors.surface3 },
+  orText: { ...textStyles.label, color: th.colors.mutedLight },
 
   primaryBtn: {
     height:          44,
@@ -343,6 +270,7 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
+    marginTop:       spacing.md,
   },
   primaryBtnText: { ...textStyles.button, color: th.colors.onAccent },
   btnDisabled:    { opacity: 0.5 },
