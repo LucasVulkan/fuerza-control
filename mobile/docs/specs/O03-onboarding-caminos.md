@@ -436,14 +436,13 @@ ejercicio, el programa queda en su ficha **sin enviar** y sin invitación.
   (trainer). Ejercicio: `addExercise`, `replaceExercise`, `addCustomExercise`.
   Sesiones: `addSessionToProgram`, `removeSessionFromProgram`. Nombre:
   `renameProgram`.
-- El volumen sencillo (tres opciones con nombre) es la única pieza propia.
 
 ### 10.3 Las dos profundidades
 
 | | Sencilla (principiante · intermedio) | Completa (avanzado · entrenador · copiar) |
 |---|---|---|
 | Sugeridos | Sentadilla goblet, Press de banca con mancuernas, Remo en polea, Prensa (pies centrados), Jalón al pecho | Sentadilla con barra, Press de banca con barra, Peso muerto convencional, Dominadas, Press militar con barra |
-| Volumen | tres opciones con nombre — **Fuerza · 5 / Músculo · 10 / Resistencia · 15** (reps fijas) — y el nº de series | series, reps mín-máx y descanso, como en el editor |
+| Volumen | series, reps mín-máx y descanso, como en el editor (14-oct: la versión sencilla «Fuerza · 5 / Músculo · 10 / Resistencia · 15» costaba entenderla y se quitó; sin asistencia por ahora) | igual |
 
 ### 10.4 La pregunta del principiante (aparcada, 14-oct)
 
@@ -936,8 +935,8 @@ Hace, en `screens/builder.jsx`:
 
 **Probar O03-03**
 
-- [ ] Principiante: Volumen enseña «Fuerza · 5 / Músculo · 10 / Resistencia · 15»
-  y series; sin rangos ni descanso.
+- [ ] Principiante: Volumen enseña lo mismo que avanzado (series, reps mín-máx y
+  descanso), sin opciones con nombre.
 - [ ] Avanzado: series, reps mín-máx y descanso; cambiar 3×8-12 a 4×6-8 y, en el
   editor, el ejercicio tiene 4×6-8 y ese descanso.
 - [ ] No hay paso de progresión: de Volumen se pasa a «Ya tiene forma», y la barra

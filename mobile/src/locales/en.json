@@ -2829,15 +2829,7 @@
       },
       "volume": {
         "title": "Sets and *reps*",
-        "subSimple": "Sets and reps in session A. If unsure, keep what’s there.",
         "subDeep": "Sets, reps and rest in session A.",
-        "repsLabel": "Reps",
-        "strength": "Strength · {{reps}}",
-        "strengthDesc": "Few reps with heavy weight",
-        "muscle": "Muscle · {{reps}}",
-        "muscleDesc": "The middle ground for building muscle",
-        "endurance": "Endurance · {{reps}}",
-        "enduranceDesc": "More reps with lighter weight",
         "hintFixed": "Fixed reps: {{reps}}.",
         "hintRange": "Range {{min}}-{{max}}: add reps up to {{max}}, then weight."
       },

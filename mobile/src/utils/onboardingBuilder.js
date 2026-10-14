@@ -93,12 +93,6 @@ export function buildCustomExercise(name, id = newCustomId()) {
 }
 
 /** Las tres opciones del volumen sencillo (§10.3): nombre y repeticiones fijas. */
-export const REP_CHOICES = [
-  { id: 'strength',  reps: 5 },
-  { id: 'muscle',    reps: 10 },
-  { id: 'endurance', reps: 15 },
-];
-
 /** Los topes de los campos de volumen: los mismos que `ExerciseEditorInline`. */
 export const VOLUME_LIMITS = { sets: [1, 8], rest: [30, 300], reps: [1, 50] };
 

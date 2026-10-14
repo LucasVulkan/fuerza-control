@@ -2829,15 +2829,7 @@
       },
       "volume": {
         "title": "Series y *repeticiones*",
-        "subSimple": "Series y repeticiones en la sesión A. Si dudas, deja lo que hay.",
         "subDeep": "Series, repeticiones y descanso en la sesión A.",
-        "repsLabel": "Repeticiones",
-        "strength": "Fuerza · {{reps}}",
-        "strengthDesc": "Pocas repeticiones con mucho peso",
-        "muscle": "Músculo · {{reps}}",
-        "muscleDesc": "El punto medio para ganar músculo",
-        "endurance": "Resistencia · {{reps}}",
-        "enduranceDesc": "Más repeticiones con menos peso",
         "hintFixed": "Repeticiones fijas: {{reps}}.",
         "hintRange": "Rango {{min}}-{{max}}: subes repeticiones hasta {{max}} y luego peso."
       },

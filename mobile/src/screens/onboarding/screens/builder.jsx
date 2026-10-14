@@ -26,7 +26,7 @@ import { Rise } from '../../../components/ui/Rise';
 import NumberChips from '../../../components/ui/NumberChips';
 import StepField from '../../../components/ui/StepField';
 import NameField from '../../../components/ui/NameField';
-import { FlowBody, FlowTitle, FlowFooter, FlowNote, FlowOption } from '../../../components/onboarding/flow';
+import { FlowBody, FlowTitle, FlowFooter, FlowNote } from '../../../components/onboarding/flow';
 import BuilderBar from '../../../components/onboarding/builder/BuilderBar';
 import SessionBlock from '../../../components/onboarding/builder/SessionBlock';
 import ExerciseSearch from '../../../components/onboarding/builder/ExerciseSearch';
@@ -39,7 +39,7 @@ import { useTheme, useThemedStyles } from '../../../useTheme';
 import { equipmentOf } from '../../../utils/exerciseTaxonomy';
 import { DEFAULT_TARGET } from '../../../utils/progression';
 import {
-  SESSION_CHOICES, isDeep, REP_CHOICES, VOLUME_LIMITS, withReps, volumeLabel,
+  SESSION_CHOICES, isDeep, VOLUME_LIMITS, withReps, volumeLabel,
 } from '../../../utils/onboardingBuilder';
 import {
   ensureBuilderProgram, defaultProgramName, syncBuilderDone, sendBuilderProgram, builderExitNow, leaveBuilder,
@@ -243,7 +243,8 @@ const isTimeEx = (cfg, def) => ['time', 'weight_time'].includes(cfg?.inputType ?
 function Volume({ goTo }) {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
-  const deep = useStore((s) => { const a = answersOf(s); return isDeep(a.builderCtx, a.level); });
+  // Todos ven series, repeticiones y descanso, como en el editor (14-oct: la versión
+  // sencilla «Fuerza · Músculo · Resistencia» costaba entenderla).
   const { tplId, exId } = useBuilderProgram();
   const def = useExerciseDef(exId);
   const language = useStore((s) => s.profile.language ?? 'es');
@@ -300,33 +301,17 @@ function Volume({ goTo }) {
       <FlowTitle
         // El nombre del ejercicio de la sesión A: el volumen es suyo, no de todo el programa.
         text={def ? exerciseName(def, language).replace(/\*/g, '') : t(`${K}.volume.title`)}
-        sub={t(`${K}.volume.${deep ? 'subDeep' : 'subSimple'}`)}
+        sub={t(`${K}.volume.subDeep`)}
         index={1}
       />
 
-      {!deep && !time && (
-        <>
-          <Rise index={3}><Text style={styles.label}>{t(`${K}.volume.repsLabel`)}</Text></Rise>
-          {REP_CHOICES.map((c, i) => (
-            <FlowOption
-              key={c.id}
-              index={4 + i}
-              title={t(`${K}.volume.${c.id}`, { reps: c.reps })}
-              desc={t(`${K}.volume.${c.id}Desc`)}
-              selected={fixed && v.minReps === c.reps}
-              onPress={() => write({ minReps: c.reps, maxReps: c.reps })}
-            />
-          ))}
-        </>
-      )}
-
-      <Rise index={deep ? 3 : 7}>
+      <Rise index={3}>
         <View style={styles.vGrid}>
           <View style={styles.vRow}>
             <StepField label={t('exerciseEditor.fieldSets')} value={v.sets} onChange={(x) => write({ sets: x })} min={sMin} max={sMax} />
-            {deep && <StepField label={t('exerciseEditor.fieldRest')} value={v.restSec} onChange={(x) => write({ restSec: x })} min={rMin} max={rMax} unit="s" />}
+            <StepField label={t('exerciseEditor.fieldRest')} value={v.restSec} onChange={(x) => write({ restSec: x })} min={rMin} max={rMax} unit="s" />
           </View>
-          {deep && !time && (
+          {!time && (
             <View style={styles.vRow}>
               <StepField label={t('exerciseEditor.fieldMinReps')} value={v.minReps} onChange={(x) => setReps({ minReps: x })} min={pMin} max={pMax} />
               <StepField label={t('exerciseEditor.fieldMaxReps')} value={v.maxReps} onChange={(x) => setReps({ maxReps: x })} min={pMin} max={pMax} />
@@ -334,7 +319,7 @@ function Volume({ goTo }) {
           )}
         </View>
       </Rise>
-      {deep && !time && (
+      {!time && (
         <Rise index={4}>
           <Text style={styles.hint}>
             {fixed ? t(`${K}.volume.hintFixed`, { reps: v.minReps }) : t(`${K}.volume.hintRange`, { min: v.minReps, max: v.maxReps })}

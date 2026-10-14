@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 import { filterBySearch } from './searchText';
-import { isDeep, SUGGESTED, splitHit, buildCustomExercise, withReps, volumeLabel, REP_CHOICES } from './onboardingBuilder';
+import { isDeep, SUGGESTED, splitHit, buildCustomExercise, withReps, volumeLabel } from './onboardingBuilder';
 
 describe('constructor guiado — profundidad (O03 §10.3)', () => {
   it('sencilla solo para self principiante o intermedio; el resto, completa', () => {
@@ -80,9 +80,5 @@ describe('volumen del constructor (O03-03)', () => {
     expect(volumeLabel({ sets: 3, minReps: 8, maxReps: 12 })).toBe('3×8-12');
     expect(volumeLabel({ sets: 4, minReps: 10, maxReps: 10 })).toBe('4×10');
     expect(volumeLabel({ sets: 3, minReps: 30, maxReps: 30, time: true })).toBe('3×30s');
-  });
-
-  it('las tres opciones sencillas son 5 · 10 · 15', () => {
-    expect(REP_CHOICES.map((c) => c.reps)).toEqual([5, 10, 15]);
   });
 });
