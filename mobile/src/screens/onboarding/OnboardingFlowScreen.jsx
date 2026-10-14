@@ -9,9 +9,9 @@
  * de desplazamiento, 260 ms, out cubic, hacia la izquierda al volver. El atrás de
  * Android hace lo que la flecha.
  *
- * Cada pantalla recibe `goTo(id)`. Si `id` aún no tiene pantalla (los caminos
- * llegan por olas), hace la SALIDA PROVISIONAL de O03-01 §17.5: termina el
- * recorrido y abre lo de hoy, para que la app siga usable.
+ * Cada pantalla recibe `goTo(id)`. Si `id` es `null` o no tiene pantalla (las
+ * salidas «a la app» de «Nuevo programa» y el camino del entrenador, que aún no
+ * existe), termina el recorrido: `finishOnboardingFlow()`.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { View, BackHandler, StyleSheet } from 'react-native';
@@ -41,24 +41,6 @@ const SCREENS = {
 
 const SLIDE_X  = 18;
 const SLIDE_MS = 260;
-
-/**
- * La salida provisional (O03-01 §17.5) hacia el camino que aún no existe:
- * entrenador → la app; con entrenador → el selector de siempre con la hoja del
- * código abierta; lo demás → el selector de siempre. Desaparece sola cuando el
- * camino registra su primera pantalla.
- */
-function provisionalExit(id) {
-  const { finishOnboardingFlow, setProfile } = useStore.getState();
-  if (id?.startsWith('t_')) {
-    finishOnboardingFlow();
-  } else if (id?.startsWith('c_')) {
-    setProfile({ role: 'coached', proTabsHidden: true });
-    finishOnboardingFlow({ route: 'Onboarding', params: { openCode: true } });
-  } else {
-    finishOnboardingFlow({ route: 'Onboarding' });
-  }
-}
 
 /** La pantalla que entra: se desplaza 18 px hacia su sitio (`dir` −1 = volviendo, 0 = sin mover). */
 function Slide({ dir, children }) {
@@ -105,12 +87,17 @@ export default function OnboardingFlowScreen() {
   }, [screen, entry]);
 
   // El atrás de Android hace lo que la flecha. En la bienvenida, lo de siempre;
-  // en el cierre no se sale (como la flecha, que ahí no está).
+  // en el cierre no se sale (como la flecha, que ahí no está). En la primera
+  // pantalla de «Nuevo programa» cierra el recorrido y vuelve a la app (§25.4.5).
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       const f = useStore.getState().onboardingFlow;
       if (!f) return false;
       if (canGoBack(f)) { useStore.getState().flowBack(); return true; }
+      if (f.entry === 'newProgram' && f.history.length === 0) {
+        useStore.getState().finishOnboardingFlow({ back: true });
+        return true;
+      }
       return f.history.length > 0;
     });
     return () => sub.remove();
@@ -118,7 +105,7 @@ export default function OnboardingFlowScreen() {
 
   const goTo = useCallback((id) => {
     if (id && SCREENS[id]) flowGo(id);
-    else provisionalExit(id);
+    else useStore.getState().finishOnboardingFlow();
   }, [flowGo]);
 
   const Screen = screen ? SCREENS[screen] : null;
@@ -128,6 +115,8 @@ export default function OnboardingFlowScreen() {
   const newProg = entry === 'newProgram';
   const showBar = sec >= 0 && !newProg;
   const skip    = skipTarget(screen, flow.answers, entry);
+  // Sin historial en «Nuevo programa» la flecha se ve y cierra, sin cambios.
+  const closes  = newProg && flow.history.length === 0;
   let name = '';
   if (newProg) name = t('onboardingFlow.common.newProgram');
   else if (sec >= SECTIONS.length) name = t('onboardingFlow.common.completed');
@@ -141,8 +130,8 @@ export default function OnboardingFlowScreen() {
         suffix={showBar && sec < SECTIONS.length ? t('onboardingFlow.common.stepOf', { n: sec + 1 }) : ''}
         fills={barFills(screen, flow.history, flow.answers)}
         showBar={showBar}
-        canBack={canGoBack(flow)}
-        onBack={flowBack}
+        canBack={canGoBack(flow) || closes}
+        onBack={closes ? () => useStore.getState().finishOnboardingFlow({ back: true }) : flowBack}
         backLabel={t('onboardingFlow.common.back')}
         canSkip={!!skip}
         onSkip={() => goTo(skip)}

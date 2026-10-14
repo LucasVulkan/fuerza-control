@@ -28,8 +28,8 @@ export function viewToRoute(view) {
       return { screen: 'Main', params: { screen: 'Program' } };
     case 'workout':
       return { screen: 'Workout' };
-    case 'onboarding':
-      return { screen: 'Onboarding' };
+    case 'start':
+      return { screen: 'Start' };
     case 'programEditor':
       return { screen: 'ProgramEditor' };
     default:
@@ -49,15 +49,6 @@ export function backToMain(navigation, params) {
   const inStack = navigation.getState()?.routes?.some((r) => r.name === 'Main');
   if (inStack) navigation.popTo('Main', params);
   else navigation.reset({ index: 0, routes: [{ name: 'Main', params }] });
-}
-
-/**
- * La pila pasa a ser solo `name`: el `replace` de quien no tiene `navigation` a
- * mano (el store). La salida provisional del recorrido de entrada (O03-01 §17.5).
- */
-export function replaceRoot(name, params) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.reset({ index: 0, routes: [{ name, params }] });
 }
 
 /**

@@ -58,6 +58,7 @@ function Level({ goTo }) {
   const level      = useStore((s) => answersOf(s).level);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const setProfile = useStore((s) => s.setProfile);
+  const entry      = useStore((s) => s.onboardingFlow?.entry);
   const backup     = useBackup(goTo);
 
   function pick(id) {
@@ -78,7 +79,8 @@ function Level({ goTo }) {
             desc={t(`onboardingFlow.self.level.${id}Desc`)}
             selected={level === id}
             onPress={() => pick(id)}
-            onPick={() => goTo('s_choice')}
+            // Desde la app no hay «¿plantilla o el mío?»: ya eligió «Programa recomendado» (§25.4.4).
+            onPick={() => goTo(entry === 'newProgram' ? 's_goal' : 's_choice')}
           />
         ))}
       </View>

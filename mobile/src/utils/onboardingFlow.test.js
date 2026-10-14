@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   SECTIONS, sectionOf, sectionProgress, barFills, skipTarget, afterSettings, afterProgram,
-  builderExit, afterProposal, learnStart, deviceLanguage, initialRouteFor, newFlow, canGoBack,
+  builderExit, afterProposal, learnStart, coachedExit, deviceLanguage, initialRouteFor, newFlow, canGoBack,
 } from './onboardingFlow';
 
 const A = (patch = {}) => ({ ...newFlow().answers, ...patch });
@@ -54,7 +54,7 @@ describe('skipTarget', () => {
   it('desde la app solo se salta dentro del constructor', () => {
     expect(skipTarget('s_level', A(), 'newProgram')).toBeNull();
     expect(skipTarget('n_source', A(), 'newProgram')).toBeNull();
-    expect(skipTarget('b_exercise', A(), 'newProgram')).toBe('n_done');
+    expect(skipTarget('b_exercise', A({ programId: 'prog_1' }), 'newProgram')).toBe('n_done');
   });
 });
 
@@ -70,7 +70,20 @@ describe('rutas de los caminos', () => {
     expect(builderExit(A({ builderCtx: 'copy' }))).toBe('a_home');
     expect(builderExit(A({ builderCtx: 'trainer', clientMode: 'app', sent: true }))).toBe('t_invite');
     expect(builderExit(A({ builderCtx: 'trainer', clientMode: 'self' }))).toBe('t_self');
-    expect(builderExit(A({ builderCtx: 'self' }), 'newProgram')).toBe('n_done');
+    expect(builderExit(A({ builderCtx: 'self', programId: 'prog_1' }), 'newProgram')).toBe('n_done');
+  });
+
+  it('desde la app, el constructor sin programa creado termina el recorrido', () => {
+    expect(builderExit(A({ builderCtx: 'self' }), 'newProgram')).toBeNull();
+    // y entonces «Saltar» no existe hasta que haya programa
+    expect(skipTarget('b_sessions', A(), 'newProgram')).toBeNull();
+    expect(skipTarget('b_sessions', A({ programId: 'prog_1' }), 'newProgram')).toBe('n_done');
+  });
+
+  it('las salidas del camino «con entrenador» van a Aprende, o terminan desde la app', () => {
+    expect(coachedExit(A({ role: 'coached' }))).toBe('a_home');
+    expect(coachedExit(A({ role: 'trainer' }))).toBe('a_cards');
+    expect(coachedExit(A({ role: 'coached' }), 'newProgram')).toBeNull();
   });
 
   it('las propuestas salen a Aprende, o al final de «Nuevo programa»', () => {

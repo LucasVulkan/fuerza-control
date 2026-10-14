@@ -1170,57 +1170,22 @@
       "gapText_other": "{{count}} huecos de {{group}}",
       "gapTag": "TU MATERIAL NO LLEGA"
     },
-    "generating": "GENERANDO PROGRAMA",
-    "buildingPlan": "Construyendo tu plan personalizado...",
-    "appName": "FUERZA & CONTROL",
-    "newProgram": "NUEVO PROGRAMA",
-    "howToCreate": "¿Cómo lo creamos?",
-    "modeAuto": "Elegir programa",
-    "modeAutoDesc": "Eliges entre programas ya hechos y lo adaptamos a tus días y tu material.",
-    "modeManual": "Programa vacío",
-    "modeManualDesc": "Montas tú la estructura y añades tus propios ejercicios.",
-    "modeImport": "Importar archivo",
-    "modeImportDesc": "Abre un archivo .fitdata exportado desde Forma Fit.",
-    "modeTemplate": "Cargar plantilla",
-    "modeTemplateDesc": "Parte de una de tus {{count}} plantillas guardadas.",
-    "modeTrainer": "Tengo un entrenador",
-    "modeTrainerDesc": "Introduce su código y recibe el programa ya sincronizado.",
-    "modeRecommended": "RECOMENDADO",
-    "modeFooterHint": "Sea cual sea el camino, luego puedes editarlo todo.",
-    "programName": "Nombre del programa",
-    "programNamePlaceholder": "Ej: Lucas - Full Body",
     "sessionsPerWeek": "Sesiones por semana",
-    "emptySessionsHint": "Se crearán {{count}} sesiones vacías. Podrás añadir más, y los ejercicios, desde el editor.",
-    "yourTemplates": "Tus plantillas",
-    "templateMeta": "{{count}} sesiones por semana",
-    "templateCopyHint": "La plantilla no se toca: se copia.",
-    "back": "ATRÁS",
-    "createProgram": "CREAR PROGRAMA",
-    "createAndEdit": "CREAR Y EDITAR",
-    "stepIndicator": "PASO {{current}} DE {{total}}",
     "identity": {
-      "title": "¿Qué buscas?",
-      "subtitle": "Con esto elegimos el tipo de programa.",
       "muscle": {
-        "label": "Ganar músculo",
-        "description": "Hipertrofia general. El enfoque más completo y versátil."
+        "label": "Ganar músculo"
       },
       "strength": {
-        "label": "Ponerte fuerte",
-        "description": "Sentadilla, peso muerto y press como eje. Series pesadas y descansos largos."
+        "label": "Ponerte fuerte"
       },
       "glutes_legs": {
-        "label": "Glúteo y pierna",
-        "description": "Máximo énfasis en glúteo, isquios y pierna."
+        "label": "Glúteo y pierna"
       },
       "calisthenics": {
-        "label": "Calistenia",
-        "description": "Peso corporal, agarre y core. Fuerza relativa y control del cuerpo."
+        "label": "Calistenia"
       }
     },
     "proposals": {
-      "eyebrow_one": "{{level}} · {{count}} DÍA",
-      "eyebrow_other": "{{level}} · {{count}} DÍAS",
       "best": "MEJOR",
       "phasesCount_one": "{{count}} fase",
       "phasesCount_other": "{{count}} fases",
@@ -1228,15 +1193,8 @@
       "setsLabel": "SERIES",
       "demandLabel": "EXIGENCIA",
       "weeks": "{{weeks}} semanas",
-      "title": "Selecciona tu programa",
-      "subtitle": "Elegidos por lo que has contestado. Toca uno para verlo entero.",
-      "seeProposals": "VER PROGRAMAS",
-      "recommended": "Recomendado",
       "seeAll": "Ver las {{total}} plantillas",
       "seeTop": "Ver sólo las recomendadas",
-      "another": "‹ Ver otro programa",
-      "forWhat": "{{days}} días · {{goal}}",
-      "change": "‹ cambiar",
       "notes": {
         "needsBarbell": "Diseñado con barra. Sin ella sustituimos {{exercises}} ejercicios.",
         "moreSessions_one": "Son {{sessions}} sesiones por semana, más que el día que elegiste. Puedes quitar alguna en el editor.",
@@ -1248,204 +1206,71 @@
       }
     },
     "generateError": "No se pudo generar el programa. Inténtalo de nuevo.",
-    "stepLevel": {
-      "headerTitle": "Tu nivel",
-      "hint": "Marca tu banda de volumen y qué programas te proponemos.",
-      "title": "¿Cuál es tu nivel?",
-      "subtitle": "Esto determina qué ejercicios y estructuras se incluirán en tu programa."
-    },
-    "stepDiscipline": {
-      "title": "¿Cuál es tu enfoque?",
-      "subtitle": "Define qué tipo de entrenamiento y ejercicios quieres priorizar."
-    },
-    "stepDistribution": {
-      "title": "¿Cómo distribuyes los días?",
-      "subtitle": "La distribución define la estructura de cada sesión.",
-      "recommended": "Recomendado",
-      "sevenDaysHint": "Con 7 días, incluye al menos un día suave o de descanso activo."
-    },
-    "stepDays": {
-      "headerTitle": "Días por semana",
-      "daysHint": "Cada sesión del programa es un entreno a la semana. Si un programa no cuadra con tus días, te lo decimos.",
-      "subtitleUpperLower": "Upper/Lower tiene 2 o 4 sesiones distintas. Puedes repetirlas con la frecuencia que quieras.",
-      "titleFullBody": "¿Cuántas sesiones?",
-      "titleFrequency": "Días por semana",
-      "subtitleFrequency": "¿Cuántos días a la semana entrenas?",
-      "daysCount": "{{count}} día a la semana",
-      "daysCount_other": "{{count}} días a la semana",
-      "allGroupsHint": "Todos los grupos en cada sesión",
-      "moreVarietyHint": "Mayor variedad de ejercicios y patrones"
-    },
-    "stepTime": {
-      "title": "Tiempo por sesión",
-      "subtitle": "¿Cuánto tiempo tienes para entrenar cada día?"
-    },
-    "sessionTimes": {
-      "30": {
-        "label": "30 min",
-        "description": "Sesiones exprés — solo lo esencial."
-      },
-      "45": {
-        "label": "45 min",
-        "description": "Sesiones compactas con lo importante."
-      },
-      "60": {
-        "label": "60 min",
-        "description": "La duración estándar de entrenamiento."
-      },
-      "90": {
-        "label": "90 min",
-        "description": "Sesiones largas con más volumen y variedad."
-      }
-    },
     "preview": {
-      "eyebrow": "TU PROGRAMA",
       "setsLabel": "SERIES",
       "perSessionLabel": "POR SESIÓN",
       "adjustSectionLabel": "Ajustes",
       "adjustNavSubtitle": "Tiempo, material y limitaciones",
       "adjustmentsRow_one": "{{count}} ajuste a tu programa",
       "adjustmentsRow_other": "{{count}} ajustes a tu programa",
-      "ready": "✓ TU PROGRAMA",
-      "edit": "EDITAR",
-      "start": "EMPEZAR",
       "exerciseCount": "{{exercises}} ejercicios",
       "setCount": "{{sets}} series",
-      "adaptedTitle": "LO QUE HEMOS AJUSTADO",
-      "unresolved": "No hemos podido cubrir {{slots}} huecos de {{group}} con tu material.",
-      "overTime": "Tu sesión {{label}} dura ~{{minutes}} min, más de los {{budget}} que pediste.",
       "overBudget": "Volumen de {{group}} por encima de lo recomendado para tu nivel.",
       "estimatedMinutes": "~{{minutes}} min",
-      "minutesPerSession": "~{{minutes}} min por sesión",
-      "adjustments": "{{count}} ajuste a tu material y a tu tiempo",
-      "adjustments_other": "{{count}} ajustes a tu material y a tu tiempo",
-      "changeLater": "Puedes cambiar cualquier cosa después, en el editor.",
       "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios."
     },
-    "stepGoal": {
-      "title": "¿Cuál es tu objetivo?",
-      "subtitle": "Determina el rango de repeticiones y el descanso entre series."
-    },
-    "stepEquipment": {
-      "title": "¿Qué equipo tienes?",
-      "subtitle": "Selecciona todo lo que tienes disponible habitualmente."
-    },
-    "stepLimitations": {
-      "title": "¿Tienes alguna limitación?",
-      "subtitle": "Se evitarán ejercicios que puedan agravar estas zonas como ejercicio principal."
-    },
-    "stepProgression": {
-      "title": "Modelo de progresión",
-      "subtitle": "Solo para avanzados. ¿Cómo prefieres progresar en los ejercicios principales?"
-    },
-    "generateProgram": "VER EL PROGRAMA",
     "levels": {
       "beginner": {
-        "label": "Principiante",
-        "description": "Menos de 1 año entrenando o volviendo tras una pausa larga.",
-        "detail": "Ejercicios guiados por máquina, patrones básicos con peso corporal y mancuernas. Progresión sencilla y segura."
+        "label": "Principiante"
       },
       "intermediate": {
-        "label": "Intermedio",
-        "description": "1–3 años entrenando con continuidad.",
-        "detail": "Mancuernas, cables, kettlebell y ejercicios de peso corporal técnicos como dominadas o fondos. Doble progresión."
+        "label": "Intermedio"
       },
       "advanced": {
-        "label": "Avanzado",
-        "description": "Más de 3 años con técnica sólida en movimientos libres.",
-        "detail": "Barra libre, ejercicios lastrados, periodización. Requiere buena técnica en sentadilla, peso muerto y press."
-      }
-    },
-    "disciplines": {
-      "standard": {
-        "label": "Estándar",
-        "description": "Hipertrofia y fuerza general. El enfoque más completo y versátil.",
-        "detail": "Cubre todos los patrones de movimiento con los mejores ejercicios para cada objetivo."
-      },
-      "calisthenics": {
-        "label": "Calistenia / Funcional",
-        "description": "Peso corporal, agarre y core. Con transferencia a deporte y disciplinas aéreas.",
-        "detail": "Dominadas, fondos, L-sit, hollow body. Fuerza relativa y control corporal."
-      },
-      "glutes_legs": {
-        "label": "Pierna & Glúteo",
-        "description": "Máximo énfasis en glúteo, isquios y pierna. Popular en programas femeninos.",
-        "detail": "Hip thrust, peso muerto rumano, prensa y variantes de sentadilla como ejercicios centrales."
-      },
-      "strength": {
-        "label": "Fuerza / Powerlifting",
-        "description": "Mover más peso. Sentadilla, peso muerto y press como eje central.",
-        "detail": "Rangos de 3–6 reps, descansos largos y progresión de carga como prioridad."
-      }
-    },
-    "distributions": {
-      "full_body": {
-        "label": "Full Body",
-        "description": "Todos los grupos musculares en cada sesión. 2–6 días."
-      },
-      "upper_lower": {
-        "label": "Upper / Lower",
-        "description": "Tren superior un día, inferior otro. 2 sesiones distintas."
-      },
-      "push_pull_legs": {
-        "label": "Push / Pull / Legs",
-        "description": "Un día de empuje, uno de tracción, uno de pierna. 3 sesiones."
+        "label": "Avanzado"
       }
     },
     "goals": {
       "hypertrophy": {
-        "label": "Hipertrofia",
-        "description": "Aumentar masa muscular. 8–12 reps por serie."
+        "label": "Hipertrofia"
       },
       "endurance": {
-        "label": "Resistencia",
-        "description": "Aguantar más. 12–20 reps, descansos cortos."
+        "label": "Resistencia"
       },
       "strength": {
-        "label": "Fuerza",
-        "description": "Mover más peso. 5–8 reps, descansos largos."
+        "label": "Fuerza"
       },
       "max_strength": {
-        "label": "Fuerza máxima",
-        "description": "Máximo rendimiento. 3–5 reps, solo avanzado."
+        "label": "Fuerza máxima"
       }
     },
     "equipment": {
       "bodyweight": {
-        "label": "Solo peso corporal",
-        "description": "Sin material — ejercicios con tu propio cuerpo."
+        "label": "Solo peso corporal"
       },
       "machines": {
-        "label": "Máquinas",
-        "description": "Prensa, polea, curl, extensión..."
+        "label": "Máquinas"
       },
       "dumbbells": {
-        "label": "Mancuernas",
-        "description": "Ajustables o fijas."
+        "label": "Mancuernas"
       },
       "barbell": {
-        "label": "Barra libre",
-        "description": "Barra olímpica con discos."
+        "label": "Barra libre"
       },
       "pullup_bar": {
-        "label": "Barra de dominadas",
-        "description": "Fija o de puerta."
+        "label": "Barra de dominadas"
       },
       "parallettes": {
-        "label": "Paralelas / Dip bar",
-        "description": "Para fondos y L-sit."
+        "label": "Paralelas / Dip bar"
       },
       "kettlebell": {
-        "label": "Kettlebell",
-        "description": "Una o varias."
+        "label": "Kettlebell"
       },
       "resistance_band": {
-        "label": "Bandas elásticas",
-        "description": "Para asistencia o activación."
+        "label": "Bandas elásticas"
       },
       "ab_wheel": {
-        "label": "Rueda abdominal",
-        "description": "Ab wheel rollout."
+        "label": "Rueda abdominal"
       }
     },
     "limitations": {
@@ -1466,56 +1291,9 @@
         "description": "Molestias en rodilla o menisco."
       }
     },
-    "equipmentPresets": {
-      "gym": {
-        "label": "Gimnasio completo",
-        "description": "Máquinas, mancuernas, barra, dominadas, kettlebell y bandas."
-      },
-      "home": {
-        "label": "Casa con mancuernas",
-        "description": "Mancuernas, bandas elásticas, barra de dominadas y rueda abdominal."
-      },
-      "bodyweight": {
-        "label": "Sólo peso corporal",
-        "description": "Sin material — ejercicios con tu propio cuerpo."
-      },
-      "custom": {
-        "label": "Personalizado",
-        "description": "Tu propia selección de material."
-      },
-      "customize": "Personalizar"
-    },
     "chips": {
       "limitationsCount": "{{count}} limitación",
       "limitationsCount_other": "{{count}} limitaciones"
-    },
-    "progressionModels": {
-      "double_progression": {
-        "label": "Doble progresión",
-        "description": "Llegas al máximo de reps → subes peso → vuelves al mínimo. El más habitual."
-      },
-      "linear": {
-        "label": "Progresión lineal",
-        "description": "Subes peso fijo cada sesión. Clásico en programas de fuerza como Starting Strength."
-      },
-      "reps_progression": {
-        "label": "Por repeticiones",
-        "description": "El peso no cambia, solo subes reps cada sesión."
-      }
-    },
-    "disabledReasons": {
-      "notForDiscipline": "No disponible para {{discipline}}",
-      "requiresIntermediate": "Requiere nivel intermedio",
-      "requiresAdvanced": "Requiere nivel avanzado"
-    },
-    "upperLowerOptions": {
-      "2sessions": "2 sesiones",
-      "4sessions": "4 sesiones"
-    },
-    "pplSessions": {
-      "push": "Sesión A — Empuje",
-      "pull": "Sesión B — Tracción",
-      "legs": "Sesión C — Pierna"
     }
   },
   "dayCard": {
@@ -3096,6 +2874,38 @@
       }
     },
     "trainer": {},
+    "newProgram": {
+      "source": {
+        "title": "Elige cómo *empezar*",
+        "sub": "Podrás editar el programa en cualquier momento.",
+        "recommended": "Programa recomendado",
+        "recommendedDesc": "Según tu nivel, tu objetivo y tus días de entreno",
+        "scratch": "Crear desde cero",
+        "scratchDesc": "Define sesiones, ejercicios y progresión",
+        "template": "Desde una plantilla",
+        "templateDesc": "Usa una de tus plantillas guardadas",
+        "coach": "Programa de tu entrenador",
+        "coachDesc": "Conéctate con el código de tu entrenador",
+        "import": "Importar archivo",
+        "importDesc": "Archivo .fitdata de una copia de seguridad"
+      },
+      "templates": {
+        "title": "Elige una *plantilla*",
+        "sub": "Se crea una copia. La plantilla original no cambia.",
+        "name": "Nombre del programa",
+        "use": "Usar esta",
+        "sessions_one": "{{count}} sesión",
+        "sessions_other": "{{count}} sesiones",
+        "stages_one": "{{count}} etapa",
+        "stages_other": "{{count}} etapas"
+      },
+      "done": {
+        "title": "Programa *listo*",
+        "sub": "«{{name}}» ya es tu programa activo.",
+        "subImport": "El archivo se ha importado.",
+        "hint": "Disponible en Inicio. Puedes editarlo en Programa."
+      }
+    },
     "done": {
       "title": "Todo *listo*",
       "sub": "Lo que falta lo retomas cuando quieras.",

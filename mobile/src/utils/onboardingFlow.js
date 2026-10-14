@@ -95,15 +95,26 @@ export const afterSettings = (a) => (a.viaInvite ? 'c_code' : 'role');
  */
 export const afterProgram = (a) => (a.clientMode === 'app' && a.sent ? 't_invite' : 't_self');
 
-/** Adónde sale el constructor guiado (§10). */
+/**
+ * Adónde sale el constructor guiado (§10). Desde la app, `null` (no hay pantalla =
+ * se termina el recorrido) mientras no exista el programa: «Saltar» antes de
+ * «Siguiente» no crea nada y `n_done` no tendría qué decir (§25.4.3).
+ */
 export function builderExit(a, entry = 'first') {
-  if (entry === 'newProgram') return 'n_done';
+  if (entry === 'newProgram') return a.programId ? 'n_done' : null;
   if (a.builderCtx === 'trainer') return afterProgram(a);
   return 'a_home';
 }
 
 /** Tras confirmar una propuesta (§8). */
 export const afterProposal = (entry = 'first') => (entry === 'newProgram' ? 'n_done' : 'a_home');
+
+/**
+ * Adónde salen las tres puntas del camino «con entrenador» (conectado, «lo hago
+ * después» y esperar el código). Desde la app no hay Aprende: `null` termina el
+ * recorrido (§25.4.2).
+ */
+export const coachedExit = (a, entry = 'first') => (entry === 'newProgram' ? null : learnStart(a));
 
 /** Primera pantalla de Aprende: el entrenador que no entrena solo ve sus tarjetas. */
 export const learnStart = (a) => (a.role === 'trainer' && a.alsoTrains !== true ? 'a_cards' : 'a_home');

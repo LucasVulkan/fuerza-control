@@ -25,7 +25,7 @@ import {
 } from '../../../components/onboarding/flow';
 import useClientCode from '../../../hooks/useClientCode';
 import ClientCodeModal from '../../../components/ClientCodeModal';
-import { learnStart } from '../../../utils/onboardingFlow';
+import { coachedExit } from '../../../utils/onboardingFlow';
 import { WEB_URL } from '../../../config/web';
 import { PRIVACY_URL } from '../../../config/legal';
 import { startBuilder } from '../startBuilder';
@@ -48,6 +48,7 @@ function Code({ goTo }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const answers    = useStore(answersOf);
+  const entry      = useStore((s) => s.onboardingFlow?.entry);
   const pending    = useStore((s) => s.pendingInviteCode);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const flowDone   = useStore((s) => s.flowDone);
@@ -80,7 +81,7 @@ function Code({ goTo }) {
 
   function later() {
     clearPendingInviteCode();
-    goTo(learnStart(answers));
+    goTo(coachedExit(answers, entry));
   }
 
   // Ya estuvo conectado con Google/Apple: la hoja de siempre busca su hueco y conecta.
@@ -300,6 +301,7 @@ function Linked({ goTo }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const answers = useStore(answersOf);
+  const entry   = useStore((s) => s.onboardingFlow?.entry);
   const { reset } = useClientCode();
   const trainer = answers.linked?.trainerName ?? null;
   const program = answers.linked?.programName ?? '';
@@ -309,7 +311,11 @@ function Linked({ goTo }) {
 
   const panel = (
     <FlowPanel desc={t('onboardingFlow.coached.linked.hint')}>
-      <PanelButton label={t('onboardingFlow.common.next')} onPress={() => goTo(learnStart(answers))} />
+      {/* Desde la app no hay Aprende: el botón cierra el recorrido. */}
+      <PanelButton
+        label={t(entry === 'newProgram' ? 'onboardingFlow.done.cta' : 'onboardingFlow.common.next')}
+        onPress={() => goTo(coachedExit(answers, entry))}
+      />
     </FlowPanel>
   );
 
@@ -360,11 +366,12 @@ function Ask({ goTo }) {
 function Wait({ goTo }) {
   const { t } = useTranslation();
   const answers = useStore(answersOf);
+  const entry   = useStore((s) => s.onboardingFlow?.entry);
   return (
     <FlowBody
       footer={(
         <FlowFooter
-          primary={{ label: t('onboardingFlow.coached.wait.next'), onPress: () => goTo(learnStart(answers)) }}
+          primary={{ label: t('onboardingFlow.coached.wait.next'), onPress: () => goTo(coachedExit(answers, entry)) }}
           secondary={[{ label: t('onboardingFlow.coached.wait.have'), onPress: () => goTo('c_code') }]}
         />
       )}

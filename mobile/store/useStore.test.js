@@ -88,11 +88,56 @@ describe('recorrido de entrada — acciones (O03 §16.2)', () => {
     expect(useStore.getState().profile).toMatchObject({ onboardingCompleted: true, setupComplete: true });
   });
 
-  it('la salida provisional cierra el recorrido sin dar el onboarding por hecho', () => {
-    useStore.setState({ profile: { ...useStore.getState().profile, onboardingCompleted: false, setupComplete: false } });
-    useStore.getState().finishOnboardingFlow({ route: 'Onboarding' });
-    expect(flow()).toBe(null);
-    expect(useStore.getState().profile).toMatchObject({ onboardingCompleted: false, setupComplete: true });
+  describe('desde la app («Nuevo programa», §25.4.6)', () => {
+    const unlink = vi.fn(async () => {});
+    const real = { unlinkFromTrainer: useStore.getState().unlinkFromTrainer, clientSync: useStore.getState().clientSync };
+
+    afterEach(() => useStore.setState(real));
+
+    beforeEach(() => {
+      unlink.mockClear();
+      useStore.setState({
+        unlinkFromTrainer: unlink,
+        clientSync: { ...useStore.getState().clientSync, slotId: 'slot_1' },
+        profile: { ...useStore.getState().profile, onboardingCompleted: false, setupComplete: false },
+      });
+      useStore.getState().startOnboardingFlow({ entry: 'newProgram' });
+    });
+
+    it('cierra el recorrido sin dar el onboarding por hecho', () => {
+      useStore.getState().finishOnboardingFlow();
+      expect(flow()).toBe(null);
+      expect(useStore.getState().profile).toMatchObject({ onboardingCompleted: false, setupComplete: false });
+    });
+
+    it('desconecta del entrenador si se creó algo propio o se importó', () => {
+      useStore.getState().flowAnswer({ programId: 'prog_1', programSource: 'builder' });
+      useStore.getState().finishOnboardingFlow({ back: true });
+      expect(unlink).toHaveBeenCalledWith({ keepProgram: true });
+      expect(flow()).toBe(null);
+
+      useStore.getState().startOnboardingFlow({ entry: 'newProgram' });
+      useStore.getState().flowAnswer({ programSource: 'import' });
+      useStore.getState().finishOnboardingFlow();
+      expect(unlink).toHaveBeenCalledTimes(2);
+    });
+
+    it('no desconecta si no se creó nada, o si se conectó a otro entrenador', () => {
+      useStore.getState().finishOnboardingFlow({ back: true });
+      expect(unlink).not.toHaveBeenCalled();
+
+      useStore.getState().startOnboardingFlow({ entry: 'newProgram' });
+      useStore.getState().flowAnswer({ programId: 'prog_1', programSource: 'coach' });
+      useStore.getState().finishOnboardingFlow();
+      expect(unlink).not.toHaveBeenCalled();
+    });
+
+    it('sin entrenador conectado no hay nada que soltar', () => {
+      useStore.setState({ clientSync: { ...useStore.getState().clientSync, slotId: null } });
+      useStore.getState().flowAnswer({ programId: 'prog_1', programSource: 'builder' });
+      useStore.getState().finishOnboardingFlow();
+      expect(unlink).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -134,6 +179,19 @@ describe('onRehydrateStorage — fallo 1', () => {
 
     await vi.waitFor(() => expect(useStore.getState()._initialRoute).toBe('Start'));
     expect(useStore.getState().onboardingFlow).toMatchObject({ screen: 'welcome', entry: 'first' });
+  });
+
+  it('un «Nuevo programa» a medias no se retoma: se borra y arranca la app', async () => {
+    useStore.setState({
+      onboardingFlow: { ...newFlow('newProgram'), screen: 's_goal', history: ['n_source'] },
+      profile: { ...useStore.getState().profile, onboardingCompleted: true },
+    });
+
+    rehydrateCallback()(useStore.getState(), undefined);
+
+    await vi.waitFor(() => expect(useStore.getState()._hasHydrated).toBe(true));
+    expect(useStore.getState().onboardingFlow).toBe(null);
+    expect(useStore.getState()._initialRoute).toBe('Main');
   });
 
   it('un recorrido en curso manda aunque ya haya programa y el onboarding esté marcado', async () => {

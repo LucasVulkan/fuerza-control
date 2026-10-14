@@ -1,9 +1,8 @@
 /**
  * El motor de «tu programa» en vivo (O01): la plantilla elegida adaptada a las
  * respuestas, lo que se llevó el recorte de tiempo y la lista de ajustes. Se
- * recalcula con cada toque de la hoja de ajustes. Lo comparten `OnboardingScreen`
- * y el camino «por mi cuenta» del recorrido nuevo (O03-04); lo pinta
- * `ProgramPreviewItems`.
+ * recalcula con cada toque de la hoja de ajustes. Lo usa el camino «por mi cuenta»
+ * del recorrido nuevo (O03-04); lo pinta `ProgramPreviewItems`.
  */
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

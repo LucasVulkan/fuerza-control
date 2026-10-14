@@ -6,10 +6,8 @@
  * Sesiones porque no tiene sesiones que listar y Programa porque no tiene
  * programa que enseñar, y las dos hacen la misma oferta.
  *
- * El aviso de desconexión es el mismo que el del menú `≡` —mismas claves— y
- * está por lo mismo: crear un programa nuevo estando vinculado te saca del
- * entrenador. Antes iba con las cadenas en castellano a pelo en el JSX; al
- * mudarse pasa a las claves que ya existían para el otro sitio.
+ * Una sola entrada: `startNewProgram`, la del menú `≡`, con su aviso de
+ * desconexión (crear un programa nuevo estando vinculado te saca del entrenador).
  */
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -18,31 +16,19 @@ import EmptyState from './EmptyState';
 import { ROW_ICON } from './rowIcons';
 import { useStore } from '../../../store/useStore';
 import { spacing } from '../../theme';
+import { startNewProgram } from '../../utils/startNewProgram';
 
-import { showDialog } from './dialog';
 export default function NoProgram() {
   const { t }      = useTranslation();
   const navigate   = useStore((s) => s.navigate);
   const clientSync = useStore((s) => s.clientSync);
-
-  const start = () => {
-    if (!clientSync?.slotId) { navigate('onboarding'); return; }
-    showDialog(
-      t('header.newProgramWarnTitle'),
-      t('header.newProgramWarnBody'),
-      [
-        { text: t('common.cancel'),   style: 'cancel' },
-        { text: t('common.continue'), style: 'destructive', onPress: () => navigate('onboarding') },
-      ],
-    );
-  };
 
   return (
     <EmptyState
       style={styles.wrap}
       icon={ROW_ICON.exercise}
       text={t('home.noActiveProgram')}
-      action={{ label: t('home.newProgram'), onPress: start }}
+      action={{ label: t('home.newProgram'), onPress: () => startNewProgram(t, clientSync, navigate) }}
     />
   );
 }

@@ -1170,57 +1170,22 @@
       "gapText_other": "{{count}} {{group}} gaps",
       "gapTag": "YOUR EQUIPMENT FALLS SHORT"
     },
-    "generating": "GENERATING PROGRAM",
-    "buildingPlan": "Building your personalized plan...",
-    "appName": "FUERZA & CONTROL",
-    "newProgram": "NEW PROGRAM",
-    "howToCreate": "How do we build it?",
-    "modeAuto": "Choose a program",
-    "modeAutoDesc": "You pick from ready-made programs and we adapt it to your days and your equipment.",
-    "modeManual": "Empty program",
-    "modeManualDesc": "You build the structure and add your own exercises.",
-    "modeImport": "Import a file",
-    "modeImportDesc": "Open a .fitdata file exported from Forma Fit.",
-    "modeTemplate": "Load a template",
-    "modeTemplateDesc": "Start from one of your {{count}} saved templates.",
-    "modeTrainer": "I have a trainer",
-    "modeTrainerDesc": "Enter their code and get the program already synced.",
-    "modeRecommended": "RECOMMENDED",
-    "modeFooterHint": "Whichever path you take, you can edit everything later.",
-    "programName": "Program name",
-    "programNamePlaceholder": "E.g. Lucas - Full Body",
     "sessionsPerWeek": "Sessions per week",
-    "emptySessionsHint": "{{count}} empty sessions will be created. You can add more, and the exercises, from the editor.",
-    "yourTemplates": "Your templates",
-    "templateMeta": "{{count}} sessions per week",
-    "templateCopyHint": "The template is not touched: it gets copied.",
-    "back": "BACK",
-    "createProgram": "CREATE PROGRAM",
-    "createAndEdit": "CREATE AND EDIT",
-    "stepIndicator": "STEP {{current}} OF {{total}}",
     "identity": {
-      "title": "What are you after?",
-      "subtitle": "This is what picks the kind of program.",
       "muscle": {
-        "label": "Build muscle",
-        "description": "General hypertrophy. The most complete and versatile approach."
+        "label": "Build muscle"
       },
       "strength": {
-        "label": "Get strong",
-        "description": "Squat, deadlift and press at the centre. Heavy sets, long rests."
+        "label": "Get strong"
       },
       "glutes_legs": {
-        "label": "Glutes and legs",
-        "description": "Maximum emphasis on glutes, hamstrings and legs."
+        "label": "Glutes and legs"
       },
       "calisthenics": {
-        "label": "Calisthenics",
-        "description": "Bodyweight, grip and core. Relative strength and body control."
+        "label": "Calisthenics"
       }
     },
     "proposals": {
-      "eyebrow_one": "{{level}} · {{count}} DAY",
-      "eyebrow_other": "{{level}} · {{count}} DAYS",
       "best": "BEST",
       "phasesCount_one": "{{count}} phase",
       "phasesCount_other": "{{count}} phases",
@@ -1228,15 +1193,8 @@
       "setsLabel": "SETS",
       "demandLabel": "DEMAND",
       "weeks": "{{weeks}} weeks",
-      "title": "Choose your program",
-      "subtitle": "Picked from what you answered. Tap one to see all of it.",
-      "seeProposals": "SEE PROGRAMS",
-      "recommended": "Recommended",
       "seeAll": "See all {{total}} templates",
       "seeTop": "See only the recommended ones",
-      "another": "‹ See another program",
-      "forWhat": "{{days}} days · {{goal}}",
-      "change": "‹ change",
       "notes": {
         "needsBarbell": "Built around the barbell. Without one we swap {{exercises}} exercises.",
         "moreSessions_one": "It's {{sessions}} sessions a week, more than the one day you chose. You can remove some in the editor.",
@@ -1248,204 +1206,71 @@
       }
     },
     "generateError": "Could not generate the program. Please try again.",
-    "stepLevel": {
-      "headerTitle": "Your level",
-      "hint": "It sets your volume band and which programs we propose.",
-      "title": "What's your level?",
-      "subtitle": "This determines which exercises and structures will be included in your program."
-    },
-    "stepDiscipline": {
-      "title": "What's your focus?",
-      "subtitle": "Define what type of training and exercises you want to prioritize."
-    },
-    "stepDistribution": {
-      "title": "How do you split your days?",
-      "subtitle": "The split defines the structure of each session.",
-      "recommended": "Recommended",
-      "sevenDaysHint": "With 7 days, include at least one easy or active-recovery day."
-    },
-    "stepDays": {
-      "headerTitle": "Days per week",
-      "daysHint": "Each session in the program is one workout a week. If a program doesn't match your days, we'll tell you.",
-      "subtitleUpperLower": "Upper/Lower has 2 or 4 distinct sessions. You can repeat them as often as you want.",
-      "titleFullBody": "How many sessions?",
-      "titleFrequency": "Days per week",
-      "subtitleFrequency": "How many days a week do you train?",
-      "daysCount": "{{count}} day per week",
-      "daysCount_other": "{{count}} days per week",
-      "allGroupsHint": "All muscle groups in each session",
-      "moreVarietyHint": "More exercise variety and patterns"
-    },
-    "stepTime": {
-      "title": "Time per session",
-      "subtitle": "How much time do you have to train each day?"
-    },
-    "sessionTimes": {
-      "30": {
-        "label": "30 min",
-        "description": "Express sessions — just the essentials."
-      },
-      "45": {
-        "label": "45 min",
-        "description": "Compact sessions covering what matters."
-      },
-      "60": {
-        "label": "60 min",
-        "description": "The standard training session length."
-      },
-      "90": {
-        "label": "90 min",
-        "description": "Long sessions with more volume and variety."
-      }
-    },
     "preview": {
-      "eyebrow": "YOUR PROGRAM",
       "setsLabel": "SETS",
       "perSessionLabel": "PER SESSION",
       "adjustSectionLabel": "Adjustments",
       "adjustNavSubtitle": "Time, equipment and limitations",
       "adjustmentsRow_one": "{{count}} adjustment to your program",
       "adjustmentsRow_other": "{{count}} adjustments to your program",
-      "ready": "✓ YOUR PROGRAM",
-      "edit": "EDIT",
-      "start": "START",
       "exerciseCount": "{{exercises}} exercises",
       "setCount": "{{sets}} sets",
-      "adaptedTitle": "WHAT WE ADJUSTED",
-      "unresolved": "We could not fill {{slots}} {{group}} slots with your equipment.",
-      "overTime": "Your session {{label}} runs ~{{minutes}} min, over the {{budget}} you asked for.",
       "overBudget": "{{group}} volume is above what we recommend for your level.",
       "estimatedMinutes": "~{{minutes}} min",
-      "minutesPerSession": "~{{minutes}} min per session",
-      "adjustments": "{{count}} adjustment to your equipment and your time",
-      "adjustments_other": "{{count}} adjustments to your equipment and your time",
-      "changeLater": "You can change anything later, in the editor.",
       "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises."
     },
-    "stepGoal": {
-      "title": "What's your goal?",
-      "subtitle": "Determines the rep range and rest between sets."
-    },
-    "stepEquipment": {
-      "title": "What equipment do you have?",
-      "subtitle": "Select everything you have available on a regular basis."
-    },
-    "stepLimitations": {
-      "title": "Do you have any limitations?",
-      "subtitle": "Exercises that could aggravate these areas will be avoided as main exercises."
-    },
-    "stepProgression": {
-      "title": "Progression model",
-      "subtitle": "Advanced only. How do you prefer to progress on main exercises?"
-    },
-    "generateProgram": "SEE THE PROGRAM",
     "levels": {
       "beginner": {
-        "label": "Beginner",
-        "description": "Less than 1 year training or returning after a long break.",
-        "detail": "Machine-guided exercises, basic bodyweight and dumbbell patterns. Simple and safe progression."
+        "label": "Beginner"
       },
       "intermediate": {
-        "label": "Intermediate",
-        "description": "1–3 years of consistent training.",
-        "detail": "Dumbbells, cables, kettlebell and technical bodyweight exercises like pull-ups or dips. Double progression."
+        "label": "Intermediate"
       },
       "advanced": {
-        "label": "Advanced",
-        "description": "3+ years with solid technique in free movements.",
-        "detail": "Barbell, weighted exercises, periodization. Requires good technique in squat, deadlift and press."
-      }
-    },
-    "disciplines": {
-      "standard": {
-        "label": "Standard",
-        "description": "Hypertrophy and general strength. The most complete and versatile approach.",
-        "detail": "Covers all movement patterns with the best exercises for each goal."
-      },
-      "calisthenics": {
-        "label": "Calisthenics / Functional",
-        "description": "Bodyweight, grip and core. With transfer to sports and aerial disciplines.",
-        "detail": "Pull-ups, dips, L-sit, hollow body. Relative strength and body control."
-      },
-      "glutes_legs": {
-        "label": "Legs & Glutes",
-        "description": "Maximum emphasis on glutes, hamstrings and legs. Popular in female programs.",
-        "detail": "Hip thrust, Romanian deadlift, leg press and squat variations as central exercises."
-      },
-      "strength": {
-        "label": "Strength / Powerlifting",
-        "description": "Move more weight. Squat, deadlift and press as the core.",
-        "detail": "3–6 rep ranges, long rests and load progression as priority."
-      }
-    },
-    "distributions": {
-      "full_body": {
-        "label": "Full Body",
-        "description": "All muscle groups in each session. 2–6 days."
-      },
-      "upper_lower": {
-        "label": "Upper / Lower",
-        "description": "Upper body one day, lower the next. 2 distinct sessions."
-      },
-      "push_pull_legs": {
-        "label": "Push / Pull / Legs",
-        "description": "One push day, one pull day, one legs day. 3 sessions."
+        "label": "Advanced"
       }
     },
     "goals": {
       "hypertrophy": {
-        "label": "Hypertrophy",
-        "description": "Build muscle mass. 8–12 reps per set."
+        "label": "Hypertrophy"
       },
       "endurance": {
-        "label": "Endurance",
-        "description": "Last longer. 12–20 reps, short rests."
+        "label": "Endurance"
       },
       "strength": {
-        "label": "Strength",
-        "description": "Move more weight. 5–8 reps, long rests."
+        "label": "Strength"
       },
       "max_strength": {
-        "label": "Max strength",
-        "description": "Peak performance. 3–5 reps, advanced only."
+        "label": "Max strength"
       }
     },
     "equipment": {
       "bodyweight": {
-        "label": "Bodyweight only",
-        "description": "No equipment — exercises using just your body."
+        "label": "Bodyweight only"
       },
       "machines": {
-        "label": "Machines",
-        "description": "Leg press, cable, curl, extension..."
+        "label": "Machines"
       },
       "dumbbells": {
-        "label": "Dumbbells",
-        "description": "Adjustable or fixed."
+        "label": "Dumbbells"
       },
       "barbell": {
-        "label": "Barbell",
-        "description": "Olympic barbell with plates."
+        "label": "Barbell"
       },
       "pullup_bar": {
-        "label": "Pull-up bar",
-        "description": "Wall-mounted or door frame."
+        "label": "Pull-up bar"
       },
       "parallettes": {
-        "label": "Parallettes / Dip bar",
-        "description": "For dips and L-sit."
+        "label": "Parallettes / Dip bar"
       },
       "kettlebell": {
-        "label": "Kettlebell",
-        "description": "One or more."
+        "label": "Kettlebell"
       },
       "resistance_band": {
-        "label": "Resistance bands",
-        "description": "For assistance or activation."
+        "label": "Resistance bands"
       },
       "ab_wheel": {
-        "label": "Ab wheel",
-        "description": "Ab wheel rollout."
+        "label": "Ab wheel"
       }
     },
     "limitations": {
@@ -1466,56 +1291,9 @@
         "description": "Discomfort in knee or meniscus."
       }
     },
-    "equipmentPresets": {
-      "gym": {
-        "label": "Full gym",
-        "description": "Machines, dumbbells, barbell, pull-up bar, kettlebell and bands."
-      },
-      "home": {
-        "label": "Home with dumbbells",
-        "description": "Dumbbells, resistance bands, pull-up bar and ab wheel."
-      },
-      "bodyweight": {
-        "label": "Bodyweight only",
-        "description": "No equipment — exercises with just your body."
-      },
-      "custom": {
-        "label": "Custom",
-        "description": "Your own choice of equipment."
-      },
-      "customize": "Customize"
-    },
     "chips": {
       "limitationsCount": "{{count}} limitation",
       "limitationsCount_other": "{{count}} limitations"
-    },
-    "progressionModels": {
-      "double_progression": {
-        "label": "Double progression",
-        "description": "Reach max reps → increase weight → return to min. The most common."
-      },
-      "linear": {
-        "label": "Linear progression",
-        "description": "Add a fixed weight each session. Classic in strength programs like Starting Strength."
-      },
-      "reps_progression": {
-        "label": "Rep progression",
-        "description": "Weight stays the same, only reps increase each session."
-      }
-    },
-    "disabledReasons": {
-      "notForDiscipline": "Not available for {{discipline}}",
-      "requiresIntermediate": "Requires intermediate level",
-      "requiresAdvanced": "Requires advanced level"
-    },
-    "upperLowerOptions": {
-      "2sessions": "2 sessions",
-      "4sessions": "4 sessions"
-    },
-    "pplSessions": {
-      "push": "Session A — Push",
-      "pull": "Session B — Pull",
-      "legs": "Session C — Legs"
     }
   },
   "dayCard": {
@@ -3096,6 +2874,38 @@
       }
     },
     "trainer": {},
+    "newProgram": {
+      "source": {
+        "title": "Choose how to *start*",
+        "sub": "You can edit the program at any time.",
+        "recommended": "Recommended program",
+        "recommendedDesc": "Based on your level, goal and training days",
+        "scratch": "Create from scratch",
+        "scratchDesc": "Set sessions, exercises and progression",
+        "template": "From a template",
+        "templateDesc": "Use one of your saved templates",
+        "coach": "Your coach's program",
+        "coachDesc": "Connect with your coach's code",
+        "import": "Import file",
+        "importDesc": ".fitdata file from a backup"
+      },
+      "templates": {
+        "title": "Pick a *template*",
+        "sub": "A copy is created. The original template stays the same.",
+        "name": "Program name",
+        "use": "Use this one",
+        "sessions_one": "{{count}} session",
+        "sessions_other": "{{count}} sessions",
+        "stages_one": "{{count}} stage",
+        "stages_other": "{{count}} stages"
+      },
+      "done": {
+        "title": "Program *ready*",
+        "sub": "«{{name}}» is now your active program.",
+        "subImport": "The file has been imported.",
+        "hint": "Available on Home. You can edit it in Program."
+      }
+    },
     "done": {
       "title": "All *set*",
       "sub": "Pick up the rest whenever you like.",

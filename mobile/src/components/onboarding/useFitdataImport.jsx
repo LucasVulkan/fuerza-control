@@ -1,8 +1,8 @@
 /**
  * Importar una copia de seguridad `.fitdata` desde el onboarding: el selector de
  * archivos y el `ImportModal` que deja elegir qué secciones traer. Sale de
- * `OnboardingScreen` (`handlePickFile` + `handleImport`) para compartirlo con el
- * camino «por mi cuenta» del recorrido nuevo (O03-04).
+ * `OnboardingScreen` (`handlePickFile` + `handleImport`, ya borrada) y lo usan el
+ * camino «por mi cuenta» (O03-04) y «Nuevo programa» (O03-11).
  *
  *   const { pickFile, modal } = useFitdataImport((data, sections) => { … });
  *

@@ -18,7 +18,6 @@ import ProgramScreen    from '../screens/ProgramScreen';
 import ClientsScreen    from '../screens/ClientsScreen';
 import WorkoutScreen       from '../screens/WorkoutScreen';
 import OnboardingFlowScreen from '../screens/onboarding/OnboardingFlowScreen';
-import OnboardingScreen    from '../screens/OnboardingScreen';
 import ProgramDetailScreen    from '../screens/ProgramDetailScreen';
 import ProgramEditorScreen   from '../screens/ProgramEditorScreen';
 import SessionEditorScreen   from '../screens/SessionEditorScreen';
@@ -182,14 +181,14 @@ export default function RootNavigator() {
   }, [hasHydrated, initialRoute]);
 
   // Invitación (M01-04): con la app ya en uso, el código pendiente se abre en
-  // Conexión con entrenador. En Start/Onboarding no se navega: el recorrido de
-  // entrada ya lleva el código puesto (O03 §9.5) y el selector viejo abre la hoja.
+  // Conexión con entrenador. En Start no se navega: el recorrido de
+  // entrada ya lleva el código puesto (O03 §9.5).
   const pendingInvite = useStore((s) => s.pendingInviteCode);
   useEffect(() => {
     if (!hasHydrated || !pendingInvite) return;
     const go = () => {
       const route = navigationRef.getCurrentRoute()?.name;
-      if (route === 'Start' || route === 'Onboarding' || route === 'TrainerConnection') return;
+      if (route === 'Start' || route === 'TrainerConnection') return;
       navigationRef.navigate('TrainerConnection', undefined, { pop: true });
     };
     if (navigationRef.isReady()) {
@@ -229,11 +228,6 @@ export default function RootNavigator() {
           name="Start"
           component={OnboardingFlowScreen}
           options={{ animation: 'fade', gestureEnabled: false }}
-        />
-        <Stack.Screen
-          name="Onboarding"
-          component={OnboardingScreen}
-          options={{ animation: 'slide_from_right', gestureEnabled: false }}
         />
         <Stack.Screen
           name="ProgramDetail"

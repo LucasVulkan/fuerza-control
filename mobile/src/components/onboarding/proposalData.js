@@ -1,7 +1,8 @@
 /**
  * Datos y funciones puras de las propuestas de programa (O01, docs/specs/O01-onboarding-simple.md),
- * compartidos por `OnboardingScreen` («Nuevo programa» de siempre) y por las
- * pantallas del camino «por mi cuenta» del recorrido nuevo (O03-04).
+ * de las pantallas del camino «por mi cuenta» del recorrido nuevo (O03-04), que
+ * también sirve a «Nuevo programa» desde la app (O03-11). Salieron de
+ * `OnboardingScreen`, que se borró.
  */
 import { EQUIP_PRESETS } from '../../utils/equipmentPresets';
 

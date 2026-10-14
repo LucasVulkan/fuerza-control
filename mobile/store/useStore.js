@@ -72,7 +72,7 @@ import { nextIdentityColor, withIdentityColors } from '../src/utils/identityColo
 import i18n from '../src/i18n';
 
 // Navigation ref (wired up in App.js)
-import { navigateTo, replaceRoot } from '../src/navigation/navigationRef';
+import { navigateTo, navigationRef } from '../src/navigation/navigationRef';
 import { newFlow, initialRouteFor } from '../src/utils/onboardingFlow';
 
 /**
@@ -590,14 +590,25 @@ export const useStore = create(
 
       // «Ir a la app» y cualquier salida temprana: marca el onboarding como hecho
       // (sin esto, quien acaba sin programa volvería a él en cada arranque), cierra
-      // el recorrido y va a Main. `route` es la salida provisional hacia lo de
-      // hoy (el selector viejo, O03-01 §17.5): ahí el onboarding NO se da por hecho.
-      finishOnboardingFlow: ({ route = null, params } = {}) => {
-        set((s) => ({
-          onboardingFlow: null,
-          profile: { ...s.profile, setupComplete: true, ...(route ? {} : { onboardingCompleted: true }) },
-        }));
-        if (route) replaceRoot(route, params);
+      // el recorrido y va a Main. Desde la app («Nuevo programa», §25.4.6) no toca
+      // esas marcas y, si se creó o importó algo propio, suelta el entrenador como
+      // hacía el selector viejo. `back`: cierra con la flecha, a la pestaña de donde vino.
+      finishOnboardingFlow: ({ back = false } = {}) => {
+        const f = get().onboardingFlow;
+        if (f?.entry === 'newProgram') {
+          const a = f.answers;
+          // keepProgram: el programa nuevo no se pisa con el previo a la conexión.
+          if (get().clientSync?.slotId && (a.programId || a.programSource === 'import') && a.programSource !== 'coach') {
+            get().unlinkFromTrainer({ keepProgram: true }).catch(() => {});
+          }
+          set({ onboardingFlow: null });
+        } else {
+          set((s) => ({
+            onboardingFlow: null,
+            profile: { ...s.profile, setupComplete: true, onboardingCompleted: true },
+          }));
+        }
+        if (back) { if (navigationRef.isReady()) navigationRef.goBack(); }
         else navigateTo('home');
       },
 
@@ -4879,6 +4890,10 @@ export const useStore = create(
               .catch(() => {});
           }
           if (!state) return;   // `finally` still runs
+
+          // «Nuevo programa» desde la app no se retoma (O03 §25.4.7): lo ya
+          // creado sigue en Programa. Sin esto arrancaría en el recorrido.
+          if (state.onboardingFlow?.entry === 'newProgram') state.onboardingFlow = null;
 
           // Apply language from persisted profile
           if (state.profile?.language) {
