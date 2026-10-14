@@ -479,7 +479,65 @@ dice `t('sync.notNow')` («Ahora no»).
   abriendo la hoja `TrainerSyncModal` ahí mismo, para no sacarle de lo que hacía.
 - Primera visita: §7.2.
 
-### 7.4 Textos
+### 7.4 «Ya tengo cuenta» con Google o Apple: que la cuenta exista
+
+**El problema** (visto el 14-oct): entrar con Google o Apple nunca dice «no
+existe». `signInWithIdToken` crea el usuario si no lo hay y
+`loginTrainerWithIdToken` le hace la fila de `profiles` con `role: 'trainer'`.
+Quien reinstala, va a «Ya tengo cuenta» y elige el Gmail que no era (el
+personal en vez del de trabajo) entra **sin aviso** en una cuenta nueva y vacía,
+y cree que ha perdido a sus clientes.
+
+**La regla:** desde **«Ya tengo cuenta»** Google y Apple solo **entran**; desde
+**«Crear cuenta»** (y al cambiar de forma desde la página, §6.5) siguen
+entrando o creando como hoy.
+
+**Dónde está «Ya tengo cuenta» con Google/Apple:**
+- La pantalla `recovery` de `TrainerSyncModal` pasa a ser «¿Cómo entrabas?»: el
+  campo del código como hoy y, debajo, filas de Google (y Apple en iOS) con
+  **Recomendado**. Es la que abren «Ya tengo cuenta» del paywall y de la página.
+- El onboarding: `r_trainer` (`screens/onboarding/screens/recover.jsx`), que ya
+  tiene Google y Apple.
+
+**Cómo** (de abajo arriba):
+
+1. `loginTrainerWithIdToken({ provider, idToken, accessToken, mustExist })`
+   (`supabaseAuth.js`): tras `signInWithIdToken`, **antes** del `upsert`, lee la
+   fila propia de `profiles` (`select('role').eq('id', user.id).maybeSingle()`).
+   `existed = role === 'trainer'`. Si `mustExist && !existed`: `signOut()` y
+   devuelve `{ existed: false }` **sin** hacer el `upsert`. Si no, como hoy, y
+   devuelve también `existed`.
+   - `profiles` no está en `supabase/*.sql` (se creó en el panel): **comprobar
+     en el panel** que la RLS deja a cada usuario leer su propia fila. Si no,
+     añadir la política `select … using (id = auth.uid())` y guardarla en un
+     `.sql` nuevo de `supabase/`.
+   - Un cliente que entró con ese Google (`loginClientWithIdToken`) no tiene
+     fila de entrenador: cuenta como «no existe», que es lo correcto.
+   - ponytail: el usuario de `auth.users` que crea `signInWithIdToken` se queda
+     aunque se descarte. Sin fila de `profiles` no pesa ni se ve; si algún día
+     estorban, un borrado periódico de usuarios sin perfil.
+2. `enterTrainerAccount({ …, mustExist })` (store): si el login devuelve
+   `existed: false`, **lanza `{ notFound: true }` sin haber tocado
+   `trainerSync`** ni RevenueCat (el login es lo primero que hace, así que basta
+   con salir antes del `setTrainerSyncMode`).
+3. Hook: `signInWithGoogle({ mustExist })` / `signInWithApple({ mustExist })`.
+   Con `notFound`, rechaza con `{ notFound: true, createInstead }`, donde
+   `createInstead()` repite `enterTrainerAccount` con **los mismos tokens** y
+   `mustExist: false` (reusar el `id_token` ya se hace hoy al volver a la sesión
+   social tras el traspaso), sin abrir otra vez Google ni Apple.
+4. Interfaz (la hoja y `r_trainer`): con `notFound`, `showDialog` de una línea
+   (D8): título `t('sync.notFoundTitle', { how })` — «No hay ninguna cuenta de
+   entrenador con este {{how}}» — y dos botones: **Probar con otro**
+   (`cancel`, no hace nada: el usuario vuelve a pulsar Google y elige otra
+   cuenta, gracias a `prompt: 'select_account'`) y **Crear una nueva** →
+   `createInstead()`, y sigue como si hubiera creado la cuenta.
+
+**Tests** (`store/useStore.test.js`): con `mustExist` y
+`loginTrainerWithIdToken` → `{ existed: false }`, `enterTrainerAccount` rechaza
+con `notFound`, `trainerSync` queda igual y no se llama a `logIn` de
+RevenueCat. Sin `mustExist`, entra aunque `existed` sea `false`.
+
+### 7.5 Textos
 
 Los nuevos en `sync.*` (es/en). Los que dejan de usarse (`sync.modeOffline*`,
 `sync.ctaOffline`, `sync.switch*`, `sync.status*`, `sync.reauth*`,
@@ -499,6 +557,14 @@ Los nuevos en `sync.*` (es/en). Los que dejan de usarse (`sync.modeOffline*`,
 - [ ] Paywall → «Ya tengo cuenta» → entra en recuperar, como antes.
 - [ ] En Android no sale Apple en ningún sitio; en iPhone, Apple y Google con
   Recomendado.
+- [ ] Reinstalar → «Ya tengo cuenta» → Google → elegir un Gmail que **nunca** se
+  usó en la app → sale «No hay ninguna cuenta de entrenador con este Google».
+  «Probar con otro» → Google otra vez → elegir el bueno → vuelven los clientes.
+- [ ] Lo mismo, pero «Crear una nueva» → entra en una cuenta vacía sin volver a
+  abrir Google.
+- [ ] Onboarding → «Ya tengo cuenta» → «Mi cuenta de entrenador» → Google con un
+  Gmail sin cuenta → el mismo aviso.
+- [ ] «Crear cuenta» → Google con un Gmail nuevo → crea la cuenta sin preguntar.
 
 ## 8. Fuera de esta spec
 
@@ -513,7 +579,7 @@ Los nuevos en `sync.*` (es/en). Los que dejan de usarse (`sync.modeOffline*`,
 | Ola | Tareas | Paralelo | Choques |
 |---|---|---|---|
 | 1 | M03-01 | sola | toca `TrainerSyncModal`, `App.js`, store: **antes que O03-08** |
-| 2 | M03-02 · M03-03 | sí, 2 worktrees | los dos añaden claves a `es.json`/`en.json` (líneas distintas). M03-02 toca `AppHeader`, `RootNavigator` y crea `AccountScreen`; M03-03 toca `TrainerSyncModal` y `ClientsScreen` |
+| 2 | M03-02 · M03-03 | sí, 2 worktrees | los dos añaden claves a `es.json`/`en.json` (líneas distintas). M03-02 toca `AppHeader`, `RootNavigator` y crea `AccountScreen`; M03-03 toca `TrainerSyncModal`, `ClientsScreen`, `recover.jsx`, el hook, `supabaseAuth.js` y `enterTrainerAccount` del store (M03-02 también toca el store, `getProDetails`: secciones distintas) |
 
 Cada encargo lleva esta spec entera, la maqueta y las reglas de siempre
 (`mobile/AGENTS.md`: tokens y `textStyles`, i18n en los dos idiomas, eslint sin
@@ -525,4 +591,4 @@ errores nuevos frente a HEAD, `npx vitest run` desde la raíz).
 |---|---|---|
 | M03-01 | Acciones del store + `useTrainerAccount`; fuera el efecto de `App.js`; test de frontera | ✅ 87c3be8 — también arregla el traspaso código → Google (§1) |
 | M03-02 | `AccountScreen`, fila del menú, `getProDetails` | pendiente |
-| M03-03 | `TrainerSyncModal` simplificado, primera visita, icono de Clientes | pendiente |
+| M03-03 | `TrainerSyncModal` simplificado, primera visita, icono de Clientes, «Ya tengo cuenta» con Google/Apple solo entra (§7.4) | pendiente |
