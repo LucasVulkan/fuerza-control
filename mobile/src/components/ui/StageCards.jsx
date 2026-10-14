@@ -159,7 +159,7 @@ const makeStyles = (th) => StyleSheet.create({
   card: {
     width:           CARD_W,
     height:          CARD_H,
-    borderRadius:    14,
+    borderRadius:    th.radius.md,
     backgroundColor: th.colors.surface,
     overflow:        'hidden',
   },
@@ -186,7 +186,7 @@ const makeStyles = (th) => StyleSheet.create({
   add: {
     width:          CARD_W,
     height:         CARD_H,
-    borderRadius:   14,
+    borderRadius:   th.radius.md,
     borderWidth:    1.5,
     borderStyle:    'dashed',
     borderColor:    th.colors.muted,
