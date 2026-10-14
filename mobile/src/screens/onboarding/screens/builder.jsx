@@ -1,16 +1,16 @@
 /**
  * Las pantallas del constructor guiado del recorrido de entrada (O03 §10, tareas
- * O03-02 y O03-03): sesiones, un ejercicio y «ya tiene forma». Un solo constructor
+ * O03-02 y O03-03): sesiones, un ejercicio, volumen y «ya tiene forma». Un solo constructor
  * para los tres sitios que lo usan (`startBuilder`: `'self'`, `'copy'`, `'trainer'`):
  * cambia la profundidad, no las pantallas.
  *
  * Crea el programa de verdad al salir del primer paso y los siguientes lo editan con
  * las acciones del store (ver `builderProgram.js`). Cada pantalla recibe `goTo(id)`.
  *
- * O03-03 añade aquí `b_volume` y `b_prog`: basta con cambiar `AFTER_EXERCISE` a
- * `'b_volume'` y que `b_prog` termine en `'b_done'`.
+ * No hay paso de progresión (decisión del 14-oct-2026): el ejercicio se queda con la
+ * que trae de la biblioteca y la nota de «ya tiene forma» dice dónde cambiarla.
  *
- * Maqueta: docs/mockups/onboarding-2.html (b_sessions, b_exercise, b_done).
+ * Maqueta: docs/mockups/onboarding-2.html (b_sessions, b_exercise, b_volume, b_done).
  */
 import { useEffect, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
@@ -24,8 +24,9 @@ import { useStore } from '../../../../store/useStore';
 import { Text } from '../../../components/ui/Text';
 import { Rise } from '../../../components/ui/Rise';
 import NumberChips from '../../../components/ui/NumberChips';
+import StepField from '../../../components/ui/StepField';
 import NameField from '../../../components/ui/NameField';
-import { FlowBody, FlowTitle, FlowFooter, FlowNote } from '../../../components/onboarding/flow';
+import { FlowBody, FlowTitle, FlowFooter, FlowNote, FlowOption } from '../../../components/onboarding/flow';
 import BuilderBar from '../../../components/onboarding/builder/BuilderBar';
 import SessionBlock from '../../../components/onboarding/builder/SessionBlock';
 import ExerciseSearch from '../../../components/onboarding/builder/ExerciseSearch';
@@ -36,15 +37,18 @@ import { spacing, textStyles, withOpacity, getCardRadii } from '../../../theme';
 import ClientRow from '../../../components/ClientRow';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { equipmentOf } from '../../../utils/exerciseTaxonomy';
-import { SESSION_CHOICES, isDeep } from '../../../utils/onboardingBuilder';
+import { DEFAULT_TARGET } from '../../../utils/progression';
+import {
+  SESSION_CHOICES, isDeep, REP_CHOICES, VOLUME_LIMITS, withReps, volumeLabel,
+} from '../../../utils/onboardingBuilder';
 import {
   ensureBuilderProgram, defaultProgramName, syncBuilderDone, sendBuilderProgram, builderExitNow, leaveBuilder,
 } from '../builderProgram';
 
 const K = 'onboardingFlow.builder';
 
-// Hasta que llegue O03-03 (volumen y progresión), el ejercicio lleva directo a «ya tiene forma».
-const AFTER_EXERCISE = 'b_done';   // O03-03: 'b_volume'
+// Tras el ejercicio viene el volumen, y de ahí «ya tiene forma».
+const AFTER_EXERCISE = 'b_volume';
 
 // Constante y no `{}` en el selector: zustand 5 repinta sin fin si devuelve un objeto nuevo cada vez.
 const NONE = {};
@@ -89,6 +93,14 @@ function Sessions({ goTo }) {
 
   const cardW = Math.floor((width - 2 * SIDE - 2 * GRID_GAP) / 3);
 
+  // El programa nace al elegir el número (y se ajusta si lo cambia), así «Saltar» en cualquier
+  // momento sale con él hecho. Los días ya contestados cuentan como elegidos.
+  function choose(v) {
+    setN(v);
+    ensureBuilderProgram(v, t);
+  }
+  useEffect(() => { if (n && !count) ensureBuilderProgram(n, t); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
   function next() {
     if (!n || busy.current) return;
     if (ensureBuilderProgram(n, t)) goTo('b_exercise');
@@ -112,7 +124,7 @@ function Sessions({ goTo }) {
     >
       <Rise index={0}><BuilderBar sessions={n ?? 0} /></Rise>
       <FlowTitle text={t(`${K}.sessions.${trainer ? 'titleTrainer' : 'titleSelf'}`)} sub={t(`${K}.sessions.sub`)} index={1} />
-      <Rise index={3}><NumberChips values={SESSION_CHOICES} value={n} onChange={setN} /></Rise>
+      <Rise index={3}><NumberChips values={SESSION_CHOICES} value={n} onChange={choose} /></Rise>
       <View style={styles.grid}>
         {LETTERS.slice(0, n ?? 0).split('').map((letter, i) => (
           <SessionCard key={letter} letter={letter} index={i} width={cardW} />
@@ -164,7 +176,10 @@ function Exercise({ goTo }) {
     const s = useStore.getState();
     if (tplId) {
       if (!exId) s.addExercise(tplId, id);
-      else if (id !== exId) s.replaceExercise(tplId, exId, id);
+      else if (id !== exId) {
+        s.replaceExercise(tplId, exId, id);
+        s.flowAnswer({ volDone: false, volLabel: null });   // otro ejercicio, otro volumen
+      }
     }
     setOpen(false);
     syncBuilderDone(t);
@@ -218,7 +233,115 @@ function Exercise({ goTo }) {
   );
 }
 
-// ── 5 · «Ya tiene forma» (§10.1.5) ────────────────────────────────────────────
+// ── 3 · Volumen (§10.3) ───────────────────────────────────────────────────────
+
+const isTimeEx = (cfg, def) => ['time', 'weight_time'].includes(cfg?.inputType ?? def?.inputType)
+  || (cfg?.progressionModel ?? def?.progressionModel) === 'time_progression';
+
+function Volume({ goTo }) {
+  const { t }  = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const deep = useStore((s) => { const a = answersOf(s); return isDeep(a.builderCtx, a.level); });
+  const { tplId, exId } = useBuilderProgram();
+  const def = useExerciseDef(exId);
+  const cfg = useStore((s) => (tplId && exId ? s.sessionTemplates[tplId]?.exercises?.find((e) => e.exerciseId === exId) ?? null : null));
+  const time = isTimeEx(cfg, def);
+  const busy = useRef(false);
+
+  // Los valores que ya tiene el ejercicio (los de la biblioteca si no se tocó): se puede pasar sin tocar nada.
+  const [v, setV] = useState(() => ({
+    sets:    cfg?.sets    ?? 3,
+    restSec: cfg?.restSec ?? 90,
+    minReps: cfg?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps,
+    maxReps: cfg?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps,
+    minTime: cfg?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime,
+  }));
+
+  // Cada cambio va al ejercicio real: «Saltar» y «Lo termino después» se llevan lo que haya.
+  function write(patch) {
+    setV((p) => ({ ...p, ...patch }));
+    if (tplId && exId) useStore.getState().updateExerciseParams(tplId, exId, patch);
+  }
+  const setReps = (change) => write(withReps(v.minReps, v.maxReps, change));
+
+  function lightChip() {
+    useStore.getState().flowAnswer({
+      volDone: true,
+      volLabel: volumeLabel({ sets: v.sets, minReps: time ? v.minTime : v.minReps, maxReps: v.maxReps, time }),
+    });
+  }
+  function next() { lightChip(); goTo('b_done'); }
+  async function later() {
+    if (busy.current) return;
+    busy.current = true;
+    lightChip();
+    await leaveBuilder(goTo, t);
+    busy.current = false;
+  }
+
+  const [sMin, sMax] = VOLUME_LIMITS.sets;
+  const [rMin, rMax] = VOLUME_LIMITS.rest;
+  const [pMin, pMax] = VOLUME_LIMITS.reps;
+  const fixed = v.minReps === v.maxReps;
+
+  return (
+    <FlowBody
+      footer={(
+        <FlowFooter
+          primary={{ label: t('onboardingFlow.common.next'), onPress: next }}
+          secondary={[{ label: t(`${K}.later`), onPress: later }]}
+        />
+      )}
+    >
+      <Rise index={0}><BuilderBar /></Rise>
+      <FlowTitle
+        text={t(`${K}.volume.title`)}
+        sub={t(`${K}.volume.${deep ? 'subDeep' : 'subSimple'}`)}
+        index={1}
+      />
+
+      {!deep && !time && (
+        <>
+          <Rise index={3}><Text style={styles.label}>{t(`${K}.volume.repsLabel`)}</Text></Rise>
+          {REP_CHOICES.map((c, i) => (
+            <FlowOption
+              key={c.id}
+              index={4 + i}
+              title={t(`${K}.volume.${c.id}`, { reps: c.reps })}
+              desc={t(`${K}.volume.${c.id}Desc`)}
+              selected={fixed && v.minReps === c.reps}
+              onPress={() => write({ minReps: c.reps, maxReps: c.reps })}
+            />
+          ))}
+        </>
+      )}
+
+      <Rise index={deep ? 3 : 7}>
+        <View style={styles.vGrid}>
+          <View style={styles.vRow}>
+            <StepField label={t('exerciseEditor.fieldSets')} value={v.sets} onChange={(x) => write({ sets: x })} min={sMin} max={sMax} />
+            {deep && <StepField label={t('exerciseEditor.fieldRest')} value={v.restSec} onChange={(x) => write({ restSec: x })} min={rMin} max={rMax} unit="s" />}
+          </View>
+          {deep && !time && (
+            <View style={styles.vRow}>
+              <StepField label={t('exerciseEditor.fieldMinReps')} value={v.minReps} onChange={(x) => setReps({ minReps: x })} min={pMin} max={pMax} />
+              <StepField label={t('exerciseEditor.fieldMaxReps')} value={v.maxReps} onChange={(x) => setReps({ maxReps: x })} min={pMin} max={pMax} />
+            </View>
+          )}
+        </View>
+      </Rise>
+      {deep && !time && (
+        <Rise index={4}>
+          <Text style={styles.hint}>
+            {fixed ? t(`${K}.volume.hintFixed`, { reps: v.minReps }) : t(`${K}.volume.hintRange`, { min: v.minReps, max: v.maxReps })}
+          </Text>
+        </Rise>
+      )}
+    </FlowBody>
+  );
+}
+
+// ── 4 · «Ya tiene forma» (§10.1.4) ────────────────────────────────────────────
 
 /** La fila de Clientes de verdad (C08), ya con el programa: así lo verá en Clientes. */
 function BuilderClientRow({ line }) {
@@ -342,7 +465,7 @@ function Done({ goTo }) {
   );
 }
 
-export default { b_sessions: Sessions, b_exercise: Exercise, b_done: Done };
+export default { b_sessions: Sessions, b_exercise: Exercise, b_volume: Volume, b_done: Done };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -370,6 +493,11 @@ const makeStyles = (th) => StyleSheet.create({
   exName: { ...textStyles.bodyStrong, color: th.colors.text },
   exMeta: { ...textStyles.label, color: th.colors.mutedLight },
   change: { ...textStyles.button, color: th.colors.accent },
+
+  // Volumen
+  vGrid: { gap: spacing.md, marginTop: spacing.sm2 },
+  vRow:  { flexDirection: 'row', gap: spacing.md },
+  hint:  { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.md },
 
   // Ya tiene forma
   nameInput: {

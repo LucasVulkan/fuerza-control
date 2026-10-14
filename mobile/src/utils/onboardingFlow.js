@@ -29,7 +29,7 @@ const SECTION_OF = {
   t_client: 2, t_account: 2, t_code: 2, t_program: 2, t_catalog: 2, t_assign: 2, t_invite: 2, t_self: 2,
   c_code: 2, c_confirm: 2, c_linked: 2, c_ask: 2, c_noapp: 2, c_copy: 2,
   s_goal: 2, s_days: 2, s_props: 2,
-  b_sessions: 2, b_exercise: 2, b_volume: 2, b_prog: 2, b_done: 2,
+  b_sessions: 2, b_exercise: 2, b_volume: 2, b_done: 2,
   n_source: 2, n_templates: 2, n_done: 2,
   a_home: 3, a_input: 3, a_cards: 3,
   done: 4,
@@ -48,16 +48,16 @@ function sectionTotal(sec, a) {
   if (sec === 2) {
     if (a.role === 'trainer') {
       // cliente, su programa y «¿entrenas tú?»; con app, la cuenta (y el código);
-      // constructor (5) o catálogo + asignar (2); invitar si tiene app y programa
+      // constructor (4) o catálogo + asignar (2); invitar si tiene app y programa
       const app = a.clientMode === 'app';
       const built = a.programSource === 'builder' || !!a.builderCtx;
       const prog = built || !!a.programSource;
-      return 3 + (app ? (a.account === 'code' ? 2 : 1) : 0) + (built ? 5 : prog ? 2 : 0) + (prog && app ? 1 : 0);
+      return 3 + (app ? (a.account === 'code' ? 2 : 1) : 0) + (built ? 4 : prog ? 2 : 0) + (prog && app ? 1 : 0);
     }
     if (a.role === 'self') return a.path === 'own' ? 5 : 3;
     if (a.role === 'coached') {
       if (a.coachApp === 'code') return 3;
-      return a.builderCtx ? 7 : a.coachApp === 'no' ? 3 : 1;
+      return a.builderCtx ? 6 : a.coachApp === 'no' ? 3 : 1;
     }
     return 3;
   }
@@ -127,7 +127,7 @@ export function skipTarget(id, a = {}, entry = 'first') {
     case 's_level': case 's_choice': case 's_goal': case 's_days': return 's_props';
     case 's_props': return 'a_home';
     case 'a_home': case 'a_input': case 'a_cards': return 'done';
-    case 'b_sessions': case 'b_exercise': case 'b_volume': case 'b_prog': case 'b_done': return builderExit(a, entry);
+    case 'b_sessions': case 'b_exercise': case 'b_volume': case 'b_done': return builderExit(a, entry);
     default: return null;   // welcome, recover, role, t_account, t_code, done, n_*
   }
 }

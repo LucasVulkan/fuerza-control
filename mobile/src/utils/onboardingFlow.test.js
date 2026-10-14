@@ -169,3 +169,19 @@ describe('newFlow', () => {
     expect(newFlow('newProgram').entry).toBe('newProgram');
   });
 });
+
+describe('constructor sin paso de progresión (O03-03)', () => {
+  it('b_prog ya no existe y los pasos del constructor saltan a la salida', () => {
+    expect(sectionOf('b_prog')).toBe(-1);
+    expect(skipTarget('b_prog', A({ builderCtx: 'self' }))).toBeNull();
+    for (const id of ['b_sessions', 'b_exercise', 'b_volume', 'b_done']) {
+      expect(skipTarget(id, A({ builderCtx: 'self' }))).toBe('a_home');
+    }
+  });
+
+  it('el tramo del constructor espera cuatro pantallas', () => {
+    const a = A({ role: 'trainer', clientMode: 'self', programSource: 'builder', builderCtx: 'trainer' });
+    const seen = ['t_client', 'b_sessions', 'b_exercise', 'b_volume'];
+    expect(sectionProgress('b_done', seen, a)).toBeCloseTo(5 / 7);
+  });
+});

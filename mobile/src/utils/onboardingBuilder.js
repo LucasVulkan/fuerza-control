@@ -91,3 +91,31 @@ export function buildCustomExercise(name, id = newCustomId()) {
     tempo:                null,
   };
 }
+
+/** Las tres opciones del volumen sencillo (§10.3): nombre y repeticiones fijas. */
+export const REP_CHOICES = [
+  { id: 'strength',  reps: 5 },
+  { id: 'muscle',    reps: 10 },
+  { id: 'endurance', reps: 15 },
+];
+
+/** Los topes de los campos de volumen: los mismos que `ExerciseEditorInline`. */
+export const VOLUME_LIMITS = { sets: [1, 8], rest: [30, 300], reps: [1, 50] };
+
+/**
+ * Cambia el mínimo o el máximo de reps sin dejar el rango del revés (min <= max):
+ * `{ minReps, maxReps }` listo para `updateExerciseParams`.
+ */
+export function withReps(minReps, maxReps, change) {
+  const min = change.minReps ?? minReps;
+  const max = change.maxReps ?? maxReps;
+  return change.minReps != null
+    ? { minReps: min, maxReps: Math.max(min, max) }
+    : { minReps: Math.min(min, max), maxReps: max };
+}
+
+/** El texto de la ficha de volumen de la barra: «3×8-12», «3×10», «3×30s». */
+export function volumeLabel({ sets, minReps, maxReps, time = false }) {
+  if (time) return `${sets}×${minReps}s`;
+  return `${sets}×${minReps === maxReps ? minReps : `${minReps}-${maxReps}`}`;
+}
