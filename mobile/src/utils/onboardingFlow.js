@@ -54,7 +54,7 @@ function sectionTotal(sec, a) {
       const prog = built || !!a.programSource;
       return 3 + (app ? (a.account === 'code' ? 2 : 1) : 0) + (built ? 4 : prog ? 2 : 0) + (prog && app ? 1 : 0);
     }
-    if (a.role === 'self') return a.path === 'own' ? 5 : 3;
+    if (a.role === 'self') return a.path === 'own' ? 4 : 3;
     if (a.role === 'coached') {
       if (a.coachApp === 'code') return 3;
       return a.builderCtx ? 6 : a.coachApp === 'no' ? 3 : 1;
