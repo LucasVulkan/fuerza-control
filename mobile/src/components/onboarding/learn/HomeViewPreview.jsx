@@ -9,12 +9,15 @@
  *   spot      null | 'start' (EMPEZAR late y se toca) | 'free' (el botón de sesión libre)
  *   touchable las pestañas se tocan (la lista nunca: solo se mira)
  *   onTab     (i) al tocar una pestaña
+ *   wireframe los textos pasan a barras grises, salvo las letras de sesión: el
+ *             mismo dibujo, que se lee como esquema y no como algo que pulsar
+ *             («¿Cómo quieres ver tus sesiones?», 14-oct)
  *
  * Las pestañas repiten la geometría de `SessionTabsCard` (`tabPath`, medida sobre
  * la maqueta del usuario): ese fichero no la exporta. Sin el relleno que crece
  * desde la pestaña: aquí el color de la tarjeta solo se funde.
  */
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, {
@@ -30,6 +33,43 @@ import Scaled from './Scaled';
 import Spot from './Spot';
 
 const W = 358;   // el ancho de una tarjeta de Inicio en un móvil de 390
+
+// ── Esquema: el texto se pinta transparente (ocupa lo mismo) y encima va una barra ──
+const Wire = createContext(false);
+
+/**
+ * Un texto de la miniatura. En esquema, la misma caja con el texto invisible y una
+ * barra encima: nada se mueve. `flex`: el texto ocupaba el hueco de la fila.
+ * `on`: va sobre lima (la barra se oscurece en vez de ser gris).
+ */
+function Txt({ style, flex = false, on = false, numberOfLines, animated = false, children }) {
+  const wire   = useContext(Wire);
+  const styles = useThemedStyles(makeStyles);
+  const T = animated ? Reanimated.Text : Text;
+  const props = animated ? { maxFontSizeMultiplier: MAX_FONT_SCALE } : {};
+  if (!wire) return <T {...props} style={style} numberOfLines={numberOfLines}>{children}</T>;
+  return (
+    <View style={flex ? styles.wireFlex : null}>
+      <View style={styles.wireBox}>
+        <T {...props} style={[style, styles.wireInk]} numberOfLines={numberOfLines}>{children}</T>
+        <View style={[styles.wireBar, on && styles.wireBarOn]} />
+      </View>
+    </View>
+  );
+}
+
+/** La cabecera SESIONES de Inicio, con su texto en barra si va en esquema. */
+function Section({ label }) {
+  const wire = useContext(Wire);
+  const styles = useThemedStyles(makeStyles);
+  if (!wire) return <SectionHeader label={label} />;
+  return (
+    <View>
+      <SectionHeader label={label} />
+      <View style={[styles.wireBar, styles.wireSection]} />
+    </View>
+  );
+}
 
 // ── Geometría de las pestañas (SessionTabsCard §3.2) ─────────────────────────
 const TAB_H  = 43;
@@ -72,20 +112,20 @@ function ListView({ sessions, spot }) {
   const [hero, ...rest] = sessions;
   return (
     <View>
-      <SectionHeader label={t('home.sessions').toUpperCase()} />
+      <Section label={t('home.sessions').toUpperCase()} />
       <View style={styles.group}>
         {hero && (
           <View style={styles.today}>
             <View style={styles.todayHead}>
-              <Text style={styles.todayFlag} numberOfLines={1}>{t('home.sessionNext')}</Text>
+              <Txt on style={styles.todayFlag} numberOfLines={1}>{t('home.sessionNext')}</Txt>
               <View style={styles.todayHeadRow}>
                 <Text style={styles.todayGlyph}>{hero.marker}</Text>
-                <Text style={styles.todayName} numberOfLines={2}>{hero.name}</Text>
+                <Txt on flex style={styles.todayName} numberOfLines={2}>{hero.name}</Txt>
               </View>
               <View style={styles.todayRule} />
-              <Text style={styles.todayMeta} numberOfLines={1}>
+              <Txt on style={styles.todayMeta} numberOfLines={1}>
                 {t('home.sessionMeta', { count: hero.exercises, minutes: hero.minutes })} · {t('home.firstTime').toLowerCase()}
-              </Text>
+              </Txt>
             </View>
             <View style={styles.todayFoot}>
               <StartBtn hero spot={spot === 'start'} label={t('home.btnStartSession', { label: hero.marker })} ring={th.colors.text} />
@@ -96,8 +136,8 @@ function ListView({ sessions, spot }) {
           <View key={s.marker + s.name} style={styles.sesCard}>
             <View style={styles.sesHead}>
               <Text style={styles.sesGlyph}>{s.marker}</Text>
-              <Text style={styles.sesName} numberOfLines={1}>{s.name}</Text>
-              <Text style={styles.sesMeta} numberOfLines={1}>{t('home.rowMinutes', { minutes: s.minutes })}</Text>
+              <Txt flex style={styles.sesName} numberOfLines={1}>{s.name}</Txt>
+              <Txt style={styles.sesMeta} numberOfLines={1}>{t('home.rowMinutes', { minutes: s.minutes })}</Txt>
             </View>
           </View>
         ))}
@@ -114,7 +154,7 @@ function FreeBtn() {
   const styles = useThemedStyles(makeStyles);
   return (
     <Spot radius={th.radius.md} finger={{ right: 28, bottom: -10 }} style={styles.freeWrap}>
-      <View style={styles.freeBtn}><Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text></View>
+      <View style={styles.freeBtn}><Txt style={styles.freeBtnText}>{t('freeSession.btn')}</Txt></View>
     </Spot>
   );
 }
@@ -122,7 +162,17 @@ function FreeBtn() {
 /** EMPEZAR, resaltado o no. El aro lleva `ring` si la tarjeta es lima (el lima no se vería). */
 function StartBtn({ hero, spot, label, ring }) {
   const th = useTheme();
-  const btn = <StartButton hero={hero} label={label} onPress={() => {}} />;
+  const wire   = useContext(Wire);
+  const styles = useThemedStyles(makeStyles);
+  // En esquema: el mismo botón, con su texto transparente y una barra encima.
+  const btn = !wire ? <StartButton hero={hero} label={label} onPress={() => {}} /> : (
+    <View style={styles.wireBtn}>
+      <StartButton hero={hero} label={label} onPress={() => {}} />
+      <View pointerEvents="none" style={[styles.wireBtnCover, { backgroundColor: hero ? th.colors.onAccent : th.colors.accent }]}>
+        <View style={[styles.wireBar, styles.wireBtnBar, hero ? styles.wireBtnBarHero : styles.wireBarOn]} />
+      </View>
+    </View>
+  );
   if (!spot) return btn;
   return (
     <Spot radius={th.radius.md} color={hero ? ring : undefined} finger={{ right: 18, bottom: -8 }} style={fixed.spotRow}>
@@ -161,7 +211,7 @@ function TabsView({ sessions, spot, touchable, onTab }) {
   if (!s) return null;
   return (
     <View>
-      <SectionHeader label={t('home.sessions').toUpperCase()} />
+      <Section label={t('home.sessions').toUpperCase()} />
       <Reanimated.View style={[styles.tcard, card]}>
         <View style={styles.strip}>
           <Svg width={W} height={TAB_H} style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -189,10 +239,10 @@ function TabsView({ sessions, spot, touchable, onTab }) {
           </View>
         </View>
         <View style={styles.tbody}>
-          <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.ttitle, ink]} numberOfLines={2}>{s.name}</Reanimated.Text>
-          <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.tmeta, metaInk]} numberOfLines={1}>
+          <Txt animated on={heroSel} style={[styles.ttitle, ink]} numberOfLines={2}>{s.name}</Txt>
+          <Txt animated on={heroSel} style={[styles.tmeta, metaInk]} numberOfLines={1}>
             {t('home.sessionMeta', { count: s.exercises, minutes: s.minutes }).toUpperCase()}
-          </Reanimated.Text>
+          </Txt>
           <View style={styles.btnRow}>
             <StartBtn hero={heroSel} spot={spot === 'start'} label={t('home.btnStartSession', { label: s.marker })} ring={C.text} />
           </View>
@@ -203,14 +253,16 @@ function TabsView({ sessions, spot, touchable, onTab }) {
   );
 }
 
-export default function HomeViewPreview({ view, sessions, spot = null, touchable = false, onTab }) {
+export default function HomeViewPreview({ view, sessions, spot = null, touchable = false, onTab, wireframe = false }) {
   return (
-    <Scaled designWidth={W}>
-      {view === 'tabs'
-        ? <TabsView sessions={sessions} spot={spot} touchable={touchable} onTab={onTab} />
-        // La lista solo se mira: sin toques.
-        : <View pointerEvents="none"><ListView sessions={sessions} spot={spot} /></View>}
-    </Scaled>
+    <Wire.Provider value={wireframe}>
+      <Scaled designWidth={W}>
+        {view === 'tabs'
+          ? <TabsView sessions={sessions} spot={spot} touchable={touchable} onTab={onTab} />
+          // La lista solo se mira: sin toques.
+          : <View pointerEvents="none"><ListView sessions={sessions} spot={spot} /></View>}
+      </Scaled>
+    </Wire.Provider>
   );
 }
 
@@ -221,6 +273,18 @@ const fixed = StyleSheet.create({
 });
 
 const makeStyles = (th) => StyleSheet.create({
+  // Esquema: el texto sigue ahí (ocupa lo mismo) pero transparente, con la barra encima.
+  wireFlex:  { flex: 1 },
+  wireBox:   { alignSelf: 'flex-start', maxWidth: '100%' },
+  wireInk:   { color: 'transparent' },
+  wireBar:   { position: 'absolute', left: 0, right: 0, top: '28%', bottom: '28%', borderRadius: 4, backgroundColor: th.colors.surface2 },
+  wireBarOn: { backgroundColor: withOpacity(th.colors.onAccent, 0.22) },
+  wireSection: { left: spacing.xs2, right: undefined, width: 74, top: spacing.lg + 3, bottom: spacing.sm2 + 3 },
+  wireBtn:      { flex: 1, flexDirection: 'row' },
+  wireBtnCover: { ...StyleSheet.absoluteFillObject, top: 6, bottom: 6, left: 10, right: 10, alignItems: 'center', justifyContent: 'center' },
+  wireBtnBar:   { position: 'relative', left: 0, right: 0, top: 0, bottom: 0, height: 10, width: '45%' },
+  wireBtnBarHero: { backgroundColor: th.colors.muted },
+
   group: { gap: spacing.xs2 },
 
   // La que toca hoy

@@ -482,7 +482,7 @@ próxima sesión y sesión libre, como esquemas.
 ### 11.2 Cómo ves Inicio
 
 Solo quien entrena. «¿Cómo quieres ver tus *sesiones*?» — «Así será tu Inicio. Se
-cambia en Preferencias». **Las dos opciones una debajo de otra** (14-oct: lado a lado los dibujos se veían demasiado pequeños), cada una con su nombre arriba y debajo **un esquema**: contornos y barras grises, y las letras de las sesiones como único detalle real (`HomeViewWireframe`). Así se lee como un dibujo de cómo será Inicio, no como algo que se pueda pulsar; la miniatura fiel queda para las tarjetas de Aprende:
+cambia en Preferencias». **Las dos opciones una debajo de otra** (14-oct: lado a lado los dibujos se veían demasiado pequeños), cada una con su nombre arriba y debajo **la miniatura de Inicio en esquema** (`HomeViewPreview` con `wireframe`): el mismo dibujo, colores y medidas, pero los textos pasan a barras grises salvo las letras de sesión, y no se toca nada. Así se lee como un dibujo de cómo será Inicio, no como algo que se pueda pulsar. Al 80 % del ancho:
 **Lista** (`homeView: 'cards'`, por defecto) y **Pestañas** (`'tabs'`, U13), cuyas
 pestañas se tocan en el dibujo. Con entrenador conectado, «Pestañas» lleva «Para
 tu caso». Los nombres de sesión son los de su programa si ya lo tiene.

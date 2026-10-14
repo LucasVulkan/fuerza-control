@@ -29,7 +29,6 @@ import { FlowBody, FlowTitle, FlowOption, FlowFooter } from '../../../components
 import { FillPressable } from '../../../components/onboarding/flow/FlowFill';
 import { useInk } from '../../../components/onboarding/flow/useFill';
 import HomeViewPreview from '../../../components/onboarding/learn/HomeViewPreview';
-import HomeViewWireframe from '../../../components/onboarding/learn/HomeViewWireframe';
 import ScrubDemo from '../../../components/onboarding/learn/ScrubDemo';
 import ClientsMini from '../../../components/onboarding/learn/ClientsMini';
 import { Mini, MiniTemplates, MiniNext, MiniLogFor, MiniCoach } from '../../../components/onboarding/learn/CardMinis';
@@ -87,7 +86,7 @@ function ViewTileBody({ p, view, sessions, title, desc, tag }) {
   const tagBg    = useInk(p, withOpacity(C.accent, 0.12), C.onAccent, 'backgroundColor');
   return (
     <>
-      {/* El nombre arriba y, debajo, el esquema (14-oct): se lee como un dibujo, no como algo que pulsar. */}
+      {/* El nombre arriba y, debajo, la miniatura en esquema (14-oct): se lee como un dibujo, no como algo que pulsar. */}
       <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.vtitle, titleInk]}>{title}</Reanimated.Text>
       <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.vdesc, descInk]}>{desc}</Reanimated.Text>
       {!!tag && (
@@ -96,7 +95,7 @@ function ViewTileBody({ p, view, sessions, title, desc, tag }) {
         </Reanimated.View>
       )}
       <View style={styles.vscreen}>
-        <HomeViewWireframe view={view} letters={sessions.map((x) => x.marker)} />
+        <View style={styles.vmini}><HomeViewPreview view={view} sessions={sessions} wireframe /></View>
       </View>
     </>
   );
@@ -320,6 +319,8 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.md,
     marginTop:       spacing.md,
   },
+  // Un poco más pequeña que el ancho de la tarjeta (14-oct).
+  vmini: { width: '80%', alignSelf: 'center' },
   vtitle: { ...textStyles.itemTitleQuiet, paddingHorizontal: spacing.xs2 },
   vdesc:  { ...textStyles.label, marginTop: spacing.xs, paddingHorizontal: spacing.xs2, paddingBottom: spacing.xs2 },
   vtag: {
