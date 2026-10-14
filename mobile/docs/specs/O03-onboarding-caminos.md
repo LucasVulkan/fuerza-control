@@ -1110,7 +1110,8 @@ Hace, en `screens/trainer.jsx`, §7 entero:
 3. **Cuenta**: la lógica de `TrainerSyncModal` para crear la cuenta (Google con
    `AuthSession`, Apple, código: `doSwitch`, `handleApple`, el efecto de la
    respuesta de Google, `setTrainerName`) pasa a un hook
-   `src/hooks/useTrainerAccount.js` que usan el modal y **t_account**. El modal no
+   `src/hooks/useTrainerAccount.js` que usan el modal y **t_account**. **Lo hace
+   M03-01** (`M03-mi-cuenta.md` §5.2, con su contrato): si ya está, aquí solo se usa. El modal no
    cambia para el usuario. Con la cuenta hecha, `connectClientToCloud(clientId)`.
 4. **t_code** (§7.5) con el bloqueo; **el mismo bloqueo en `code_reveal` de
    `TrainerSyncModal`** («Ya lo he guardado» desactivado hasta Copiar o Enviar).
