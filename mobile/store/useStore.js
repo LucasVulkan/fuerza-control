@@ -23,7 +23,7 @@ import { GOOGLE_CLIENT_ID } from '../src/config/google';
 import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot, reissueClientCode as reissueClientCodeRpc } from '../src/services/supabaseSync';
+import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot, reissueClientCode as reissueClientCodeRpc, transferMySlotsTo } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   dismissCountdownNotification,
@@ -59,6 +59,7 @@ import { supabase } from '../src/config/supabase';
 import {
   recoverWithTrainerCode, signInAnonymously, loginClientWithIdToken,
   deleteAccount as deleteRemoteAccount, signOut as supabaseSignOut,
+  setupTrainerCodeAccount, loginTrainerWithIdToken,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../src/data/archetypes';
@@ -3704,6 +3705,89 @@ export const useStore = create(
       resetTrainerSync: () =>
         set((state) => ({ trainerSync: { mode: null, code: null, userId: null, trainerName: state.trainerSync.trainerName } })),
 
+      // ══════════════════════════════════════════════════════════════════════
+      // CUENTA DE ENTRENADOR (M03-01 §5.1)
+      // ══════════════════════════════════════════════════════════════════════
+      //
+      // La única puerta para entrar, cambiar o salir de la cuenta: Supabase,
+      // traspaso de huecos, clientes y RevenueCat en un solo sitio. Fuera del
+      // store nadie llama a `supabaseAuth` para esto ni a `setTrainerSyncMode`
+      // (lo vigila `src/accountBoundary.test.js`).
+      //
+      // Todas leen la cuenta ANTERIOR antes de tocar nada: `setTrainerSyncMode`
+      // pone `code = null`, y leerlo después dejaba sin traspaso el paso de
+      // código a Google/Apple (M03 §1).
+
+      /** Entrar con el id_token de Google o Apple. `fullName`: Apple, solo la primera vez. */
+      enterTrainerAccount: async ({ provider, idToken, accessToken, fullName }) => {
+        const { code: prevCode, userId: prevUserId } = get().trainerSync;
+        const tokens = { provider, idToken, accessToken };
+        const { userId } = await loginTrainerWithIdToken(tokens);
+        // Si el entrenador ya tenía nombre escrito, mandan sus letras.
+        if (fullName && !get().trainerSync.trainerName) get().setTrainerName(fullName);
+        get().setTrainerSyncMode(provider, { userId });
+
+        // Cede quien posee: la transferencia va autenticada como el dueño VIEJO
+        // y el servidor filtra por `trainer_id = auth.uid()` (fallo 26). Solo
+        // se puede si la cuenta anterior era de código, la única que se
+        // recupera en silencio.
+        if (prevCode) {
+          try {
+            await recoverWithTrainerCode(prevCode);
+            await transferMySlotsTo(userId);
+          } catch (err) {
+            console.error('[TrainerAccount] traspaso de huecos fallido:', err.message);
+          }
+          await loginTrainerWithIdToken(tokens).catch(() => {}); // volver a la social
+        }
+
+        await get().refreshTrainerSlots().catch(() => {});
+        await get().syncPurchaserId(userId, { switched: userId !== prevUserId });
+        return { userId };
+      },
+
+      /** Crear una cuenta nueva con código personal. */
+      createTrainerCodeAccount: async () => {
+        const { code: prevCode, userId: prevUserId } = get().trainerSync;
+        await supabaseSignOut().catch(() => {});
+        const { code, userId } = await setupTrainerCodeAccount();
+        get().setTrainerSyncMode('code', { code, userId });
+
+        if (prevCode && prevCode !== code) {
+          try {
+            await recoverWithTrainerCode(prevCode);
+            await transferMySlotsTo(userId);
+          } catch (err) {
+            console.error('[TrainerAccount] traspaso desde el código anterior fallido:', err.message);
+          }
+          await recoverWithTrainerCode(code).catch(() => {}); // volver a la nueva
+        }
+
+        await get().refreshTrainerSlots().catch(() => {});
+        await get().syncPurchaserId(userId, { switched: userId !== prevUserId });
+        return { code, userId };
+      },
+
+      /**
+       * Entrar con un código existente. También reconectar con el guardado: es
+       * el mismo usuario, `switched` sale falso y no restaura compras (en iOS
+       * restaurar puede pedir la contraseña del Apple ID).
+       */
+      recoverTrainerAccount: async (code) => {
+        const { userId: prevUserId } = get().trainerSync;
+        const { userId } = await recoverWithTrainerCode(code);
+        get().setTrainerSyncMode('code', { code: code.trim().toUpperCase(), userId });
+        await get().refreshTrainerSlots().catch(() => {});
+        await get().syncPurchaserId(userId, { switched: userId !== prevUserId });
+        return { userId };
+      },
+
+      /** Salir: sin cuenta, y ya lo decidió. No sale de RevenueCat: el PRO se queda (D9). */
+      leaveTrainerAccount: async () => {
+        await supabaseSignOut().catch(() => {});
+        get().setTrainerSyncMode('offline');
+      },
+
       /**
        * Uploads a program to the client's Supabase slot.
        * Uses the same JSON format as the existing file export.
@@ -4700,7 +4784,8 @@ export const useStore = create(
        * M01-01: el App User ID de RevenueCat es la cuenta del entrenador
        * (`trainerSync.userId`), así el Pro sigue a la cuenta y no a la
        * instalación: cruza de Android a iPhone y vuelve al reinstalar sin pulsar
-       * Restaurar (spec M01 §3). Lo llama App.js cada vez que cambia el id.
+       * Restaurar (spec M01 §3). Lo llaman las acciones de CUENTA DE
+       * ENTRENADOR al entrar; al arrancar ya entra con `configure({ appUserID })`.
        *
        * Anónimo → cuenta: RevenueCat funde la compra solo. Cuenta A → cuenta B
        * (código → Google) NO: la compra se queda en A. Si este móvil tenía Pro

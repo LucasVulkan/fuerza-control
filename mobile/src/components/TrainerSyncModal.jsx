@@ -18,8 +18,8 @@
  * conexión» (para no guardar ya está «Ahora no») y Apple/Google preseleccionado.
  *
  * Pasa a `DragSheet` como el resto de los modales (§9 de docs/UI-MIGRATION.md).
- * Toda la lógica de Supabase/OAuth (claim de slots, fallback por código,
- * refreshTrainerSlots) se conserva tal cual.
+ * Entrar, cambiar y salir van por `useTrainerAccount` y las acciones de
+ * cuenta del store (M03-01): aquí no se toca Supabase.
  */
 
 import { useState, useEffect } from 'react';
@@ -30,7 +30,6 @@ import { Path, G, Circle } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../store/useStore';
-import { recoverWithTrainerCode, signOut as supabaseSignOut } from '../services/supabaseAuth';
 import { APPLE_AUTH_AVAILABLE } from '../services/appleAuth';
 import useTrainerAccount from '../hooks/useTrainerAccount';
 import DragSheet from './DragSheet';
@@ -168,7 +167,6 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
-  const setTrainerSyncMode = useStore((s) => s.setTrainerSyncMode);
   const setTrainerName     = useStore((s) => s.setTrainerName);
   const trainerSync        = useStore((s) => s.trainerSync);
 
@@ -195,11 +193,20 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
   }, [visible]);
 
   // Entrar con Google, Apple o código y crear cuenta: useTrainerAccount (lo comparte con el recorrido de entrada).
-  const { loading, setLoading, isExpoGo, google, apple, recover, createWithCode } = useTrainerAccount({
-    onDone: onClose,
-    onError: (title, message) => showDialog(title, message),
-    onAppleName: setNameInput,
-  });
+  const acct = useTrainerAccount();
+  const { loading, isExpoGo } = acct;
+
+  /** Google o Apple: cerrar al entrar; cancelar no es un error. */
+  async function social(signIn, errTitle) {
+    try {
+      await signIn();
+      onClose();
+    } catch (err) {
+      if (!err?.cancelled) showDialog(t(errTitle), err?.message ?? t('sync.errGoogleBody'));
+    }
+  }
+  const google = () => social(acct.signInWithGoogle, 'sync.errGoogleTitle');
+  const apple  = () => social(acct.signInWithApple,  'sync.errAppleTitle');
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -208,41 +215,33 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
     setTrainerName(v.trim() || null);
   }
 
-  /** Re-establishes the Supabase session using the code already stored in memory.
-   *  Also claims any local client slots that may be owned by a stale userId
-   *  (happens when a second trainer code was generated accidentally). */
+  /** Rehace la sesión con el código guardado. Es el mismo usuario: no hay
+   *  nada que traspasar ni compras que restaurar. */
   async function handleReconnect() {
-    setLoading(true);
     try {
-      // Recuperar la cuenta por código devuelve SIEMPRE el mismo user id — el
-      // correo sintético sale del propio código — así que los huecos ya son
-      // suyos y no hay nada que transferir. El `claimTrainerSlots` que había
-      // aquí no arreglaba ningún escenario real y sí abría el fallo 26.
-      const { userId } = await recoverWithTrainerCode(trainerSync.code);
-      setTrainerSyncMode('code', { code: trainerSync.code, userId });
-      await useStore.getState().refreshTrainerSlots().catch(() => {});
-
+      await acct.recover(trainerSync.code);
       onClose();
     } catch (err) {
-      showDialog(t('sync.errReconnectTitle'), err.message ?? t('sync.errReconnectBody'));
-    } finally {
-      setLoading(false);
+      showDialog(t('sync.errReconnectTitle'), err?.message ?? t('sync.errReconnectBody'));
     }
   }
 
   async function handleRecover() {
     if (!recoverCode.trim()) return;
     setRecoverError(null);
-    const error = await recover(recoverCode);
-    if (error) { setRecoverError(error); return; }
+    try {
+      await acct.recover(recoverCode);
+    } catch (err) {
+      setRecoverError(err?.message ?? t('sync.errReconnectBody'));
+      return;
+    }
     setScreen('select');
     onClose();
   }
 
   async function doSwitch() {
     if (selected === 'offline') {
-      await supabaseSignOut().catch(() => {});
-      setTrainerSyncMode('offline');
+      await acct.leave();
       onClose();
       return;
     }
@@ -258,10 +257,12 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
     }
 
     if (selected === 'code') {
-      const code = await createWithCode();
-      if (code) {
+      try {
+        const { code } = await acct.createCode();
         setNewCode(code);
         setScreen('code_reveal');
+      } catch (err) {
+        showDialog(t('sync.errAccountTitle'), err?.message ?? t('sync.errAccountBody'));
       }
     }
   }

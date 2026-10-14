@@ -32,6 +32,7 @@ const authMock = {
   signInAnonymously: vi.fn(async () => ({ userId: 'anon_1' })),
   recoverWithTrainerCode: vi.fn(), loginClientWithIdToken: vi.fn(),
   deleteAccount: vi.fn(), signOut: vi.fn(),
+  setupTrainerCodeAccount: vi.fn(), loginTrainerWithIdToken: vi.fn(),
 };
 vi.mock('../src/services/supabaseAuth', () => authMock);
 
@@ -816,6 +817,82 @@ describe('syncPurchaserId — M01-01, el Pro sigue a la cuenta', () => {
     RC.isConfigured = vi.fn(async () => false);
     await useStore.getState().syncPurchaserId('uuid-B', { switched: true });
     expect(RC.logIn).not.toHaveBeenCalled();
+    expect(useStore.getState().profile.isPro).toBe(true);
+  });
+});
+
+describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
+  const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} } });
+  const ts = () => useStore.getState().trainerSync;
+  let RC, getRC;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    RC = {
+      isConfigured:     vi.fn(async () => true),
+      logIn:            vi.fn(async () => ({ customerInfo: info(false) })),
+      logOut:           vi.fn(),
+      restorePurchases: vi.fn(async () => info(true)),
+    };
+    getRC = useStore.getState()._getRC;
+    useStore.setState((s) => ({
+      _getRC: () => RC,
+      profile: { ...s.profile, isPro: true },
+      trainerSync: { mode: 'code', code: 'AAAA-AAAA-AAAA', userId: 'uuid-A', trainerName: 'Ana', lastSeenSessionsCount: {} },
+    }));
+    authMock.recoverWithTrainerCode.mockImplementation(async (c) => ({ userId: c.startsWith('AAAA') ? 'uuid-A' : 'uuid-B' }));
+    authMock.loginTrainerWithIdToken.mockResolvedValue({ userId: 'uuid-G' });
+    authMock.setupTrainerCodeAccount.mockResolvedValue({ code: 'CCCC-CCCC-CCCC', userId: 'uuid-C' });
+    authMock.signOut.mockResolvedValue();
+  });
+  afterEach(() => useStore.setState({ _getRC: getRC }));
+
+  it('código → Google traspasa los huecos del código viejo a la cuenta nueva', async () => {
+    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
+    expect(authMock.recoverWithTrainerCode).toHaveBeenCalledWith('AAAA-AAAA-AAAA');
+    expect(syncMock.transferMySlotsTo).toHaveBeenCalledWith('uuid-G');
+    expect(ts()).toMatchObject({ mode: 'google', code: null, userId: 'uuid-G', trainerName: 'Ana' });
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
+    expect(RC.restorePurchases).toHaveBeenCalled();
+  });
+
+  it('crear código traspasa desde el anterior y entra en RevenueCat', async () => {
+    const res = await useStore.getState().createTrainerCodeAccount();
+    expect(res).toEqual({ code: 'CCCC-CCCC-CCCC', userId: 'uuid-C' });
+    expect(syncMock.transferMySlotsTo).toHaveBeenCalledWith('uuid-C');
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-C');
+  });
+
+  it('sin PRO antes, entrar no restaura', async () => {
+    useStore.setState((s) => ({ profile: { ...s.profile, isPro: false } }));
+    await useStore.getState().recoverTrainerAccount('bbbb-bbbb-bbbb');
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-B');
+    expect(RC.restorePurchases).not.toHaveBeenCalled();
+  });
+
+  it('recuperar con código guarda el código en mayúsculas y refresca los clientes', async () => {
+    await useStore.getState().recoverTrainerAccount('bbbb-bbbb-bbbb');
+    expect(ts()).toMatchObject({ mode: 'code', code: 'BBBB-BBBB-BBBB', userId: 'uuid-B' });
+    expect(syncMock.getTrainerSlots).toHaveBeenCalledWith('uuid-B');
+  });
+
+  it('reconectar con el mismo código no restaura compras', async () => {
+    await useStore.getState().recoverTrainerAccount('AAAA-AAAA-AAAA');
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-A');
+    expect(RC.restorePurchases).not.toHaveBeenCalled();
+  });
+
+  it('salir no saca de RevenueCat y conserva el nombre', async () => {
+    await useStore.getState().leaveTrainerAccount();
+    expect(RC.logOut).not.toHaveBeenCalled();
+    expect(useStore.getState().profile.isPro).toBe(true);
+    expect(ts()).toMatchObject({ mode: 'offline', code: null, userId: null, trainerName: 'Ana' });
+  });
+
+  it('A → salir → B con PRO en el móvil restaura en B', async () => {
+    await useStore.getState().leaveTrainerAccount();
+    await useStore.getState().recoverTrainerAccount('BBBB-BBBB-BBBB');
+    expect(RC.logIn).toHaveBeenCalledWith('uuid-B');
+    expect(RC.restorePurchases).toHaveBeenCalled();
     expect(useStore.getState().profile.isPro).toBe(true);
   });
 });

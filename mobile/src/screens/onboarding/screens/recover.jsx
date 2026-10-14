@@ -104,18 +104,27 @@ function Recover({ goTo }) {
 function useTrainerEntry() {
   const { t } = useTranslation();
   const [error, setError] = useState(null);
-  const account = useTrainerAccount({ onDone: finishTrainer, onError: (_title, message) => setError(message) });
-  const social = (run) => () => {
+  const account = useTrainerAccount();
+  /** Entra y termina; cancelar no es un error. */
+  const enter = (run) => async () => {
     setError(null);
-    if (account.isExpoGo) { setError(t('sync.onlyInstalled')); return; }
-    run();
+    try {
+      await run();
+      finishTrainer();
+    } catch (err) {
+      if (!err?.cancelled) setError(err?.message ?? t('sync.errGoogleBody'));
+    }
   };
-  return { ...account, error, setError, social };
+  const social = (run) => () => {
+    if (account.isExpoGo) { setError(t('sync.onlyInstalled')); return; }
+    enter(run)();
+  };
+  return { ...account, error, setError, enter, social };
 }
 
 function RecoverTrainer({ goTo }) {
   const { t } = useTranslation();
-  const { google, apple, error, social } = useTrainerEntry();
+  const { signInWithGoogle: google, signInWithApple: apple, error, social } = useTrainerEntry();
   return (
     <FlowBody>
       <FlowTitle text={t('onboardingFlow.recover.rTrainer.title')} sub={t('onboardingFlow.recover.rTrainer.sub')} />
@@ -131,14 +140,12 @@ function RecoverTrainer({ goTo }) {
 
 function RecoverCode() {
   const { t } = useTranslation();
-  const { loading, recover, error, setError } = useTrainerEntry();
+  const { loading, recover, error, setError, enter: enterWith } = useTrainerEntry();
   const [code, setCode] = useState('');
 
-  async function enter() {
+  function enter() {
     if (!code.trim() || loading) return;
-    setError(null);
-    const failed = await recover(code);
-    if (failed) setError(failed); else finishTrainer();
+    enterWith(() => recover(code))();
   }
 
   return (

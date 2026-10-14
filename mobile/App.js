@@ -199,18 +199,8 @@ export default function App() {
     }
   }, [hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // M01-01: cambios de cuenta DESPUÉS de configurar (el arranque ya entra con
-  // `appUserID`; antes de configurar, `syncPurchaserId` no hace nada). El id
-  // anterior distingue un cambio de cuenta (código → Google) de la hidratación.
-  const trainerUserId = useStore((s) => s.trainerSync.userId);
-  const syncPurchaserId = useStore((s) => s.syncPurchaserId);
-  const prevTrainerUserIdRef = useRef(null);
-  useEffect(() => {
-    const prev = prevTrainerUserIdRef.current;
-    prevTrainerUserIdRef.current = trainerUserId;
-    if (!trainerUserId) return; // a «sin conexión» no se sale de RevenueCat: el Pro sigue
-    syncPurchaserId(trainerUserId, { switched: !!prev && prev !== trainerUserId });
-  }, [trainerUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Los cambios de cuenta DESPUÉS de arrancar los lleva cada acción de cuenta
+  // del store (`syncPurchaserId`, M03-01), no un efecto que mire el id.
 
   if (!fontsLoaded) return null; // splash stays up until fonts are ready
 
