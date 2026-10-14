@@ -16,7 +16,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 // `supabaseAuth` importa el cliente real, que al construirse engancha un
 // temporizador de refresco contra el storage. Aquí no interesa nada de eso.
-vi.mock('../config/supabase', () => ({ supabase: { auth: {} } }));
+vi.mock('../config/supabase', () => ({}));
 
 const { generateTrainerCode } = await import('./supabaseAuth.js');
 

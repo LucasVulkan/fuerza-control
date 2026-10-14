@@ -86,14 +86,17 @@ export default function useTrainerAccount() {
     try { return await fn(...args); } finally { setLoading(false); }
   };
 
-  /** Entra con los tokens; con `mustExist` y sin cuenta, deja `createInstead` para crearla. */
+  /**
+   * Entra con los tokens; con `mustExist` y sin cuenta, deja `createInstead`
+   * para crearla con la misma cuenta ya abierta (el store no ha tocado ninguna
+   * sesión todavía).
+   */
   async function enter(provider, args, mustExist) {
-    const { enterTrainerAccount } = useStore.getState();
     try {
-      return await enterTrainerAccount({ provider, ...args, mustExist });
+      return await useStore.getState().enterTrainerAccount({ provider, ...args, mustExist });
     } catch (err) {
       if (!err?.notFound) throw err;
-      throw { notFound: true, provider, createInstead: run(() => enterTrainerAccount({ provider, ...args })) };
+      throw { notFound: true, provider, createInstead: run(err.createInstead) };
     }
   }
 

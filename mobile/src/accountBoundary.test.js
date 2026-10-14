@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 
 const SRC = fileURLToPath(new URL('.', import.meta.url));
 const DEFINES_THEM = join(SRC, 'services', 'supabaseAuth.js');
-const FORBIDDEN = /\b(setupTrainerCodeAccount|recoverWithTrainerCode|loginTrainerWithIdToken)\b|setTrainerSyncMode\(/;
+const FORBIDDEN = /\b(trainerCandidateFromIdToken|trainerCandidateFromCode|trainerCandidateNewCode|adoptTrainer|signInTrainerWithCode|signOutTrainer|deleteTrainerUser)\b/;
 
 function sources(dir) {
   return readdirSync(dir).flatMap((name) => {

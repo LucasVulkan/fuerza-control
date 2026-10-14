@@ -1,32 +1,42 @@
 /**
- * Supabase authentication service.
+ * Las cuentas de Supabase, una por papel (C09 §2.1):
  *
- * Three trainer modes:
- *  - 'code'    → generates a trainer code → creates email+pass account behind the scenes
- *                (email = trainer-{code}@fc.app, password = code)
- *                Recovery: user re-enters code → signInWithPassword
- *  - 'google'  → standard Google OAuth via Supabase
- *  - 'apple'   → Sign in with Apple (solo iOS), mismo id_token flow que Google
- *  - 'offline' → no Supabase auth at all
+ *  ENTRENADOR (`trainerSupabase`)
+ *   - 'code'   → código XXXX-XXXX-XXXX; detrás, un usuario email+contraseña
+ *                (email sintético sacado del código, contraseña = el código).
+ *                Se recupera escribiendo el código: mismo código, mismo usuario.
+ *   - 'google' / 'apple' → id_token del proveedor.
  *
- * Client mode: always anonymous (signInAnonymously), invisible to the user.
+ *  CLIENTE (`clientSupabase`)
+ *   - anónimo, invisible para el usuario; o su Google/Apple si lo vincula.
+ *
+ * Entrar en una cuenta NUEVA (crear, cambiar de forma, «Ya tengo cuenta») se
+ * hace en dos pasos para que nada quede a medias:
+ *   1. `…Candidate()` entra en un cliente TEMPORAL y devuelve la candidata
+ *      (`{ db, session, userId, … }`). La sesión viva no se toca.
+ *   2. Quien llama decide (traspasa, comprueba) y solo entonces `adopt…()`
+ *      instala la sesión de la candidata. Si algo falla antes, se tira y nada
+ *      ha cambiado.
+ *
+ * Nadie fuera del store llama a esto para la cuenta de entrenador
+ * (`src/accountBoundary.test.js`).
  */
 
-import { supabase } from '../config/supabase';
+import i18n from '../i18n';
+import { trainerSupabase, clientSupabase, createTempSupabase } from '../config/supabase';
 
-// Domain used to build fake emails for code-based trainer accounts.
-// Must NOT be a real deliverable domain so Supabase never sends real emails.
+// Dominio de los correos sintéticos de las cuentas por código: no existe, así
+// que Supabase nunca manda correo de verdad.
 const CODE_EMAIL_DOMAIN = 'noreply.fuerzacontrol.com';
 
-/** Turns a trainer code into a deterministic email. */
+const normCode = (code) => code.trim().toUpperCase();
+
+/** El código se convierte en un correo determinista. */
 function codeToEmail(code) {
-  return `trainer-${code.toLowerCase().replace(/-/g, '')}@${CODE_EMAIL_DOMAIN}`;
+  return `trainer-${normCode(code).toLowerCase().replace(/-/g, '')}@${CODE_EMAIL_DOMAIN}`;
 }
 
-/**
- * Generates a random trainer code in the format XXXX-XXXX-XXXX.
- * Uses unambiguous characters (no I, O, 0, 1) to avoid confusion.
- */
+/** Código de entrenador XXXX-XXXX-XXXX, sin caracteres ambiguos (ni I, O, 0, 1). */
 export function generateTrainerCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -34,164 +44,158 @@ export function generateTrainerCode() {
     if (i === 4 || i === 8) code += '-';
     code += chars[Math.floor(Math.random() * chars.length)];
   }
-  return code; // e.g. "XK7M-2P4T-9QR3"
+  return code;
+}
+
+function coded(code, message) {
+  return Object.assign(new Error(message), { code });
 }
 
 /**
- * Sets up "code" mode for a trainer.
- * Calls the Edge Function to create the user via admin API (no email sent, no rate limit).
- * Then signs in with email+password to get a real session.
- *
- * Returns { code, session, userId }.
+ * El usuario de la sesión guardada, o null. Si el token caducó y no hay red
+ * para renovarlo, LANZA: «sin red» no es «sin sesión», y confundirlos pediría
+ * volver a entrar con Google a quien solo está en un ascensor.
  */
-export async function setupTrainerCodeAccount() {
-  const code     = generateTrainerCode();
-  const email    = codeToEmail(code);
-  const password = code;
-
-  // Create user via Edge Function (uses admin API — no email, no rate limit)
-  const { data: fnData, error: fnError } = await supabase.functions.invoke(
-    'create-trainer-account',
-    { body: { code } },
-  );
-  if (fnError) throw fnError;
-  if (fnData?.error) throw new Error(fnData.error);
-
-  // Sign in to get a real session
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-
-  // Create trainer profile row
-  await supabase.from('profiles').upsert({
-    id:   data.user.id,
-    role: 'trainer',
-  });
-
-  return { code, session: data.session, userId: data.user.id };
+async function userIdOf(db) {
+  const { data, error } = await db.auth.getSession();
+  if (error?.name === 'AuthRetryableFetchError') throw error;
+  return data.session?.user?.id ?? null;
 }
 
-/**
- * Signs a trainer in with an id_token from a social provider.
- *  - google → id_token del intercambio de código de expo-auth-session
- *  - apple  → identityToken de la hoja nativa (sin access_token, no lo hay)
- *
- * `signInWithIdToken` crea el usuario si no existe, así que desde «Ya tengo
- * cuenta» hay que mirar si ya era entrenador ANTES del upsert (M03-03 §7.4):
- * con `mustExist` y sin fila de entrenador cierra la sesión y devuelve
- * `{ existed: false }` sin crear nada.
- *
- * @param {{ provider: 'google'|'apple', idToken: string, accessToken?: string, mustExist?: boolean }} tokens
- * @returns {{ session, userId, email, existed } | { existed: false }}
- */
-export async function loginTrainerWithIdToken({ provider = 'google', idToken, accessToken, mustExist = false }) {
-  const { data, error } = await supabase.auth.signInWithIdToken({
-    provider,
-    token:        idToken,
-    access_token: accessToken,
-  });
-  if (error) throw error;
+// ─── Entrenador ───────────────────────────────────────────────────────────────
 
-  // ¿Ya era entrenador? Un cliente con ese Google tiene fila, pero no de entrenador.
-  const { data: prof, error: profError } = await supabase
-    .from('profiles').select('role').eq('id', data.user.id).maybeSingle();
-  if (mustExist && profError) throw profError;
-  const existed = prof?.role === 'trainer';
-  if (mustExist && !existed) {
-    await supabase.auth.signOut().catch(() => {});
-    return { existed: false };
+/** Entra con el código en `db` (temporal o la viva). */
+async function passwordSignIn(db, code) {
+  const { data, error } = await db.auth.signInWithPassword({ email: codeToEmail(code), password: normCode(code) });
+  if (error) {
+    if (error.message?.includes('Invalid login')) throw coded('TRAINER_CODE_NOT_FOUND', i18n.t('trainer.errCodeNotFound'));
+    throw error;
   }
+  return data;
+}
 
-  // Upsert trainer profile row (idempotent)
-  await supabase.from('profiles').upsert({
-    id:   data.user.id,
-    role: 'trainer',
-  });
+/** ¿Este usuario ya es entrenador? Un cliente con ese Google tiene usuario, pero no perfil de entrenador. */
+async function isTrainer(db, userId) {
+  const { data, error } = await db.from('profiles').select('role').eq('id', userId).maybeSingle();
+  if (error) throw error;
+  return data?.role === 'trainer';
+}
 
+/** Candidata con Google o Apple. `name`: el de la cuenta de Google (Apple lo da aparte). */
+export async function trainerCandidateFromIdToken({ provider, idToken, accessToken }) {
+  const db = createTempSupabase();
+  const { data, error } = await db.auth.signInWithIdToken({ provider, token: idToken, access_token: accessToken });
+  if (error) throw error;
   return {
+    db,
     session: data.session,
     userId:  data.user.id,
     email:   data.user.email ?? null,
-    // El nombre de la cuenta de Google (Apple lo da aparte, en su hoja nativa).
     name:    data.user.user_metadata?.full_name ?? data.user.user_metadata?.name ?? null,
-    existed,
+    existed: await isTrainer(db, data.user.id),
   };
 }
 
-/**
- * Recovers a trainer session after reinstall using their code.
- * Returns the Supabase session.
- */
-export async function recoverWithTrainerCode(code) {
-  const email    = codeToEmail(code.trim().toUpperCase());
-  const password = code.trim().toUpperCase();
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    if (error.message.includes('Invalid login')) {
-      throw new Error('Código no encontrado. Comprueba que lo has escrito correctamente.');
-    }
-    throw error;
-  }
-
-  return { session: data.session, userId: data.user.id };
+/** Candidata con un código que ya existe. */
+export async function trainerCandidateFromCode(code) {
+  const db = createTempSupabase();
+  const data = await passwordSignIn(db, code);
+  return { db, session: data.session, userId: data.user.id, email: null, code: normCode(code), existed: true };
 }
 
 /**
- * Signs a client in with a social id_token (google | apple).
- * Unlike loginTrainerWithIdToken, this does NOT upsert a trainer profile row.
- * Used for client account linking and auto-reconnect on new devices.
- *
- * @param {{ provider: 'google'|'apple', idToken: string, accessToken?: string }} tokens
- * @returns {{ session, userId }}
+ * Candidata con un código NUEVO. La Edge Function crea el usuario por la API
+ * de administración (sin correo de confirmación ni límite de altas).
  */
-export async function loginClientWithIdToken({ provider = 'google', idToken, accessToken }) {
-  const { data, error } = await supabase.auth.signInWithIdToken({
-    provider,
-    token:        idToken,
-    access_token: accessToken,
-  });
-  if (error) throw error;
-  return { session: data.session, userId: data.user.id };
-}
-
-/**
- * Signs in anonymously (for clients).
- * Creates a persistent anonymous session in Supabase.
- */
-export async function signInAnonymously() {
-  const { data, error } = await supabase.auth.signInAnonymously();
-  if (error) throw error;
-  return { session: data.session, userId: data.user.id };
-}
-
-/**
- * Returns the current active session, or null if not signed in.
- */
-export async function getSession() {
-  const { data } = await supabase.auth.getSession();
-  return data.session ?? null;
-}
-
-/**
- * Signs out and clears the local session.
- */
-export async function signOut() {
-  await supabase.auth.signOut();
-}
-
-/**
- * Borra la cuenta del usuario que tiene sesión ahora mismo.
- *
- * Requisito de la App Store 5.1.1(v). Va por Edge Function porque eliminar el
- * usuario de `auth.users` necesita admin API, que no puede vivir en el cliente.
- * La función saca la identidad del JWT, así que aquí no se manda ningún id:
- * solo puedes borrar tu propia cuenta.
- *
- * Ver supabase/functions/delete-account/index.ts para qué se borra y qué no.
- */
-export async function deleteAccount() {
-  const { data, error } = await supabase.functions.invoke('delete-account');
+export async function trainerCandidateNewCode() {
+  const code = generateTrainerCode();
+  const db = createTempSupabase();
+  const { data, error } = await db.functions.invoke('create-trainer-account', { body: { code } });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
-  return data;
+  const signed = await passwordSignIn(db, code);
+  return { db, session: signed.session, userId: signed.user.id, email: null, code, existed: false };
 }
+
+/**
+ * Instala la candidata como cuenta de entrenador del móvil. Una cuenta nueva
+ * se marca como de entrenador ANTES de instalarla: si eso falla, no ha
+ * cambiado nada.
+ */
+export async function adoptTrainer(candidate) {
+  if (!candidate.existed) {
+    const { error } = await candidate.db.from('profiles').upsert({ id: candidate.userId, role: 'trainer' });
+    if (error) throw error;
+  }
+  const { error } = await trainerSupabase.auth.setSession({
+    access_token:  candidate.session.access_token,
+    refresh_token: candidate.session.refresh_token,
+  });
+  if (error) throw error;
+}
+
+/** El usuario de la sesión de entrenador de este móvil, o null. */
+export const trainerSessionUserId = () => userIdOf(trainerSupabase);
+
+/** Volver a entrar con el código en la sesión viva (sesión perdida, mismo usuario). */
+export async function signInTrainerWithCode(code) {
+  const data = await passwordSignIn(trainerSupabase, code);
+  return data.user.id;
+}
+
+export async function signOutTrainer() {
+  await trainerSupabase.auth.signOut({ scope: 'local' });
+}
+
+// ─── Cliente ──────────────────────────────────────────────────────────────────
+
+/**
+ * La identidad de cliente de este móvil: la que ya hay, o una anónima nueva.
+ * NUNCA crea otra si ya hay una: antes cada consulta de código abría un
+ * anónimo nuevo y el cliente perdía el asiento que ya tenía.
+ */
+export async function ensureClientSession() {
+  const existing = await userIdOf(clientSupabase);
+  if (existing) return existing;
+  const { data, error } = await clientSupabase.auth.signInAnonymously();
+  if (error) throw error;
+  return data.user.id;
+}
+
+export const clientSessionUserId = () => userIdOf(clientSupabase);
+
+/** Candidata de cliente con Google o Apple (vincular, o reconectar en otro móvil). */
+export async function clientCandidateFromIdToken({ provider, idToken, accessToken }) {
+  const db = createTempSupabase();
+  const { data, error } = await db.auth.signInWithIdToken({ provider, token: idToken, access_token: accessToken });
+  if (error) throw error;
+  return { db, session: data.session, userId: data.user.id };
+}
+
+export async function adoptClient(candidate) {
+  const { error } = await clientSupabase.auth.setSession({
+    access_token:  candidate.session.access_token,
+    refresh_token: candidate.session.refresh_token,
+  });
+  if (error) throw error;
+}
+
+export async function signOutClient() {
+  await clientSupabase.auth.signOut({ scope: 'local' });
+}
+
+// ─── Borrar cuenta ────────────────────────────────────────────────────────────
+
+/**
+ * Borra el usuario de la sesión de `db` (Requisito App Store 5.1.1(v)). La
+ * Edge Function saca la identidad del JWT: solo puedes borrar el tuyo. Ver
+ * supabase/functions/delete-account/index.ts.
+ */
+async function deleteUserOf(db) {
+  const { data, error } = await db.functions.invoke('delete-account');
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+}
+
+export const deleteTrainerUser = () => deleteUserOf(trainerSupabase);
+export const deleteClientUser  = () => deleteUserOf(clientSupabase);

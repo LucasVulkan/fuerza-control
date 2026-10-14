@@ -28,7 +28,7 @@ import Svg, { Path, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Reanimated, { FadeIn, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 import { useStore } from '../../store/useStore';
-import { supabase } from '../config/supabase';
+import { trainerSupabase } from '../config/supabase';
 import { APPLE_AUTH_AVAILABLE } from '../services/appleAuth';
 import useTrainerAccount from '../hooks/useTrainerAccount';
 import { useEnterClock, EnterClock } from '../hooks/useEnterClock';
@@ -211,18 +211,22 @@ export default function AccountScreen() {
   const [showDelete,  setShowDelete]  = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [copied,      setCopied]      = useState(false);
-  const [email,       setEmail]       = useState(null);
+  const [sessionEmail, setSessionEmail] = useState(null);
+  const [needsLogin,   setNeedsLogin]   = useState(false);
   const [pro,         setPro]         = useState(null);
 
-  // El correo de Google o Apple sale de la sesión de Supabase; se vuelve a leer
-  // cuando la sesión cambia (cambiar de forma la reemplaza en dos pasos).
+  // El correo de Google o Apple se guarda al entrar (`trainerSync.email`); las
+  // cuentas de antes de guardarlo lo leen de la sesión de entrenador. Y si
+  // Google/Apple perdió la sesión, se dice aquí con su botón (C09 §3.6): antes
+  // solo salía «Sesión expirada» al mandar algo, sin decir dónde arreglarlo.
   useEffect(() => {
+    if (!hasAccount) return undefined;
     let alive = true;
-    const read = (session) => { if (alive) setEmail(session?.user?.email ?? null); };
-    supabase.auth.getSession().then(({ data }) => read(data.session), () => {});
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => read(session));
-    return () => { alive = false; data.subscription.unsubscribe(); };
-  }, [mode]);
+    trainerSupabase.auth.getSession().then(({ data }) => { if (alive) setSessionEmail(data.session?.user?.email ?? null); }, () => {});
+    useStore.getState().trainerSessionState().then((st) => { if (alive) setNeedsLogin(st === 'login'); });
+    return () => { alive = false; };
+  }, [hasAccount, trainerSync?.userId]);
+  const email = trainerSync?.email ?? sessionEmail;
 
   // El plan se mira al abrir la página, no se lleva encima (`getProDetails`).
   useEffect(() => {
@@ -256,6 +260,18 @@ export default function AccountScreen() {
         t(to === 'apple' ? 'sync.errAppleTitle' : to === 'code' ? 'sync.errAccountTitle' : 'sync.errGoogleTitle'),
         err?.message ?? t(to === 'code' ? 'sync.errAccountBody' : 'sync.errGoogleBody'),
       );
+    }
+  }
+
+  /** Volver a entrar con la misma forma, sin crear nada. */
+  async function relogin() {
+    try {
+      await (mode === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)({ mustExist: true });
+      setNeedsLogin(false);
+    } catch (err) {
+      if (err?.cancelled) return;
+      const how = t(mode === 'apple' ? 'sync.howApple' : 'sync.howGoogle');
+      showDialog(err?.notFound ? t('sync.notFoundTitle', { how }) : t('common.error'), err?.notFound ? undefined : err?.message);
     }
   }
 
@@ -343,6 +359,17 @@ export default function AccountScreen() {
           <Text style={[styles.have, styles.haveMail]}>{email ?? t('account.emailHidden')}</Text>
         )}
       </View>
+
+      {needsLogin && mode !== 'code' && (
+        <View style={styles.card}>
+          <Explain>{t('account.reloginWhy', { how: t(`account.short.${mode}`) })}</Explain>
+          <View style={styles.actsCol}>
+            {mode === 'apple'
+              ? <AppleSignInButton onPress={relogin} disabled={acct.loading} />
+              : <GoogleSignInButton onPress={relogin} busy={acct.loading} disabled={acct.isExpoGo} />}
+          </View>
+        </View>
+      )}
 
       <NameField />
 

@@ -18,30 +18,32 @@ import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 // doble tiene que ofrecer todos los nombres o el import falla.
 const syncMock = {
   getTrainerSlots: vi.fn(async () => []),
-  createClientSlot: vi.fn(), uploadProgram: vi.fn(), downloadHistory: vi.fn(),
-  downloadProgram: vi.fn(), getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(),
-  uploadHistory: vi.fn(), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(),
-  getClientSlotByUserId: vi.fn(), transferClientSlot: vi.fn(),
-  updateTrainerNameForSlots: vi.fn(), releaseClientSlot: vi.fn(),
-  reissueClientCode: vi.fn(), transferMySlotsTo: vi.fn(),
+  createClientSlot: vi.fn(), uploadProgram: vi.fn(), uploadTrainerLog: vi.fn(), downloadHistory: vi.fn(),
+  downloadSlotProgram: vi.fn(async () => null), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(async () => true),
+  updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), transferMySlotsTo: vi.fn(async () => 0),
+  getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(), seatOf: vi.fn(), uploadHistory: vi.fn(),
+  releaseClientSlot: vi.fn(async () => 0), transferMySeatTo: vi.fn(),
 };
 vi.mock('../src/services/supabaseSync', () => syncMock);
 
-// Idem para la autenticación: el store la importa entera de forma estática.
+// Idem para la autenticación. La sesión de entrenador «es» siempre la de
+// `trainerSync.userId`: estos tests miran la lógica del store; las sesiones de
+// verdad, contra el SQL real, están en `connection.sim.test.js`.
 const authMock = {
-  signInAnonymously: vi.fn(async () => ({ userId: 'anon_1' })),
-  recoverWithTrainerCode: vi.fn(), loginClientWithIdToken: vi.fn(),
-  deleteAccount: vi.fn(), signOut: vi.fn(),
-  setupTrainerCodeAccount: vi.fn(), loginTrainerWithIdToken: vi.fn(),
+  trainerCandidateFromIdToken: vi.fn(), trainerCandidateFromCode: vi.fn(), trainerCandidateNewCode: vi.fn(),
+  adoptTrainer: vi.fn(async () => {}),
+  trainerSessionUserId: vi.fn(async () => useStore.getState().trainerSync.userId),
+  signInTrainerWithCode: vi.fn(), signOutTrainer: vi.fn(async () => {}),
+  ensureClientSession: vi.fn(async () => 'anon_1'), clientSessionUserId: vi.fn(async () => 'anon_1'),
+  clientCandidateFromIdToken: vi.fn(), adoptClient: vi.fn(), signOutClient: vi.fn(async () => {}),
+  deleteTrainerUser: vi.fn(), deleteClientUser: vi.fn(),
 };
 vi.mock('../src/services/supabaseAuth', () => authMock);
 
 // `_ensureTrainerSession` pide el cliente de Supabase antes de cualquier
 // llamada. Sin doble, el cliente real intenta leer la sesión del storage y
 // revienta con un `storage.getItem is not a function` que no dice nada.
-vi.mock('../src/config/supabase', () => ({
-  supabase: { auth: { getSession: async () => ({ data: { session: null } }) } },
-}));
+vi.mock('../src/config/supabase', () => ({ migrateLegacySession: async () => {} }));
 
 const { useStore, SESSION_STORAGE_KEY } = await import('./useStore.js');
 const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
@@ -552,8 +554,8 @@ describe('refreshTrainerSlots — fallo 5', () => {
     syncMock.getTrainerSlots.mockReset();
     useStore.setState({
       clients: {},
-      _refreshingSlots: false,
-      trainerSync: { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: null, code: null },
+      _refreshingSlots: null,
+      trainerSync: { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: null, code: null, deletedSlotIds: [] },
     });
   });
 
@@ -589,7 +591,7 @@ describe('refreshTrainerSlots — fallo 5', () => {
     syncMock.getTrainerSlots.mockRejectedValueOnce(new Error('sin red'));
 
     await expect(useStore.getState().refreshTrainerSlots()).rejects.toThrow('sin red');
-    expect(useStore.getState()._refreshingSlots).toBe(false);
+    expect(useStore.getState()._refreshingSlots).toBeNull();
 
     // Y el siguiente refresco vuelve a entrar.
     syncMock.getTrainerSlots.mockResolvedValueOnce([slot]);
@@ -621,11 +623,12 @@ describe('linkToTrainer — modelo de conexión', () => {
 
   beforeEach(() => {
     Object.values(syncMock).forEach((fn) => fn.mockReset?.());
-    authMock.signInAnonymously.mockResolvedValue({ userId: 'anon_1' });
     syncMock.getSlotByClientCode.mockResolvedValue(slot);
     syncMock.linkClientToSlot.mockResolvedValue('slot_1');
-    syncMock.downloadProgram.mockResolvedValue({ programJson, updatedAt: null, trainerName: 'Lucas', overrides: {} });
-    syncMock.downloadHistory.mockResolvedValue({ history: [], customExercises: {}, progress: null, updatedAt: null });
+    syncMock.seatOf.mockResolvedValue({
+      slotId: 'slot_1', programJson, updatedAt: '2026-08-01T10:00:00.000Z', trainerName: 'Lucas', overrides: {},
+      history: [], customExercises: {}, progress: null, historyUpdatedAt: null,
+    });
     useStore.setState({ programs: {}, clientSync: { ...useStore.getState().clientSync, slotId: null } });
   });
 
@@ -635,7 +638,7 @@ describe('linkToTrainer — modelo de conexión', () => {
     // El orden es la garantía: si se descargara antes, `get_slot_by_code`
     // tendría que seguir publicando el programa a cualquiera con el código.
     const linkOrder     = syncMock.linkClientToSlot.mock.invocationCallOrder[0];
-    const downloadOrder = syncMock.downloadProgram.mock.invocationCallOrder[0];
+    const downloadOrder = syncMock.seatOf.mock.invocationCallOrder[0];
     expect(linkOrder).toBeLessThan(downloadOrder);
   });
 
@@ -645,6 +648,8 @@ describe('linkToTrainer — modelo de conexión', () => {
     const { clientSync } = useStore.getState();
     expect(clientSync.slotId).toBe('slot_1');
     expect(clientSync.trainerProgramIds).toEqual(['prog_1']);
+    // La hora del servidor, no la del móvil (C09 §4.4).
+    expect(clientSync.lastProgramImportedAt).toBe('2026-08-01T10:00:00.000Z');
   });
 
   it('propaga SLOT_OCCUPIED sin importar nada', async () => {
@@ -653,7 +658,7 @@ describe('linkToTrainer — modelo de conexión', () => {
     syncMock.linkClientToSlot.mockRejectedValue(err);
 
     await expect(useStore.getState().linkToTrainer('ABCD-1234')).rejects.toMatchObject({ code: 'SLOT_OCCUPIED' });
-    expect(syncMock.downloadProgram).not.toHaveBeenCalled();
+    expect(syncMock.seatOf).not.toHaveBeenCalled();
     expect(useStore.getState().clientSync.slotId).toBeNull();
   });
 });
@@ -661,12 +666,11 @@ describe('linkToTrainer — modelo de conexión', () => {
 describe('validateClientCode — sin programa ni client_id publicados', () => {
   beforeEach(() => {
     Object.values(syncMock).forEach((fn) => fn.mockReset?.());
-    authMock.signInAnonymously.mockResolvedValue({ userId: 'anon_1' });
   });
 
   it('lee is_linked y program_name, que es todo lo que el servidor publica', async () => {
     syncMock.getSlotByClientCode.mockResolvedValue({
-      id: 'slot_1', program_name: 'Fuerza 3d', is_linked: true,
+      id: 'slot_1', program_name: 'Fuerza 3d', is_linked: true, is_mine: false,
       history_updated_at: '2026-08-01', trainer_name: 'Lucas',
     });
 
@@ -705,7 +709,7 @@ describe('reissueClientCode — la salida de la reconexión', () => {
   it('un cliente sin hueco en el servidor no se puede reemitir', async () => {
     useStore.setState({ clients: { cli_2: { id: 'cli_2', name: 'Sin hueco' } } });
 
-    await expect(useStore.getState().reissueClientCode('cli_2')).rejects.toThrow('no tiene hueco');
+    await expect(useStore.getState().reissueClientCode('cli_2')).rejects.toThrow('no tiene slot');
   });
 });
 
@@ -886,16 +890,17 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
       profile: { ...s.profile, isPro: true },
       trainerSync: { mode: 'code', code: 'AAAA-AAAA-AAAA', userId: 'uuid-A', trainerName: 'Ana', lastSeenSessionsCount: {} },
     }));
-    authMock.recoverWithTrainerCode.mockImplementation(async (c) => ({ userId: c.startsWith('AAAA') ? 'uuid-A' : 'uuid-B' }));
-    authMock.loginTrainerWithIdToken.mockResolvedValue({ userId: 'uuid-G' });
-    authMock.setupTrainerCodeAccount.mockResolvedValue({ code: 'CCCC-CCCC-CCCC', userId: 'uuid-C' });
-    authMock.signOut.mockResolvedValue();
+    authMock.trainerCandidateFromCode.mockImplementation(async (c) => ({
+      code: c.trim().toUpperCase(), userId: c.toUpperCase().startsWith('AAAA') ? 'uuid-A' : 'uuid-B', existed: true,
+    }));
+    authMock.trainerCandidateFromIdToken.mockResolvedValue({ userId: 'uuid-G', existed: true });
+    authMock.trainerCandidateNewCode.mockResolvedValue({ code: 'CCCC-CCCC-CCCC', userId: 'uuid-C', existed: false });
+    authMock.trainerSessionUserId.mockImplementation(async () => useStore.getState().trainerSync.userId);
   });
   afterEach(() => useStore.setState({ _getRC: getRC }));
 
   it('el nombre para los clientes sale de Google si no había uno; si lo había, manda el suyo', async () => {
-    authMock.loginTrainerWithIdToken.mockResolvedValue({ userId: 'uuid-G', name: 'Lucas G' });
-    syncMock.updateTrainerNameForSlots.mockResolvedValue();
+    authMock.trainerCandidateFromIdToken.mockResolvedValue({ userId: 'uuid-G', name: 'Lucas G', existed: true });
     await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
     expect(ts().trainerName).toBe('Ana');
     useStore.setState((s) => ({ trainerSync: { ...s.trainerSync, trainerName: null } }));
@@ -903,10 +908,10 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     expect(ts().trainerName).toBe('Lucas G');
   });
 
-  it('código → Google traspasa los huecos del código viejo a la cuenta nueva', async () => {
+  it('código → Google: la cuenta vieja cede sus huecos ANTES de instalar la nueva', async () => {
     await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
-    expect(authMock.recoverWithTrainerCode).toHaveBeenCalledWith('AAAA-AAAA-AAAA');
     expect(syncMock.transferMySlotsTo).toHaveBeenCalledWith('uuid-G');
+    expect(syncMock.transferMySlotsTo.mock.invocationCallOrder[0]).toBeLessThan(authMock.adoptTrainer.mock.invocationCallOrder[0]);
     expect(ts()).toMatchObject({ mode: 'google', code: null, userId: 'uuid-G', trainerName: 'Ana' });
     expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
     expect(RC.restorePurchases).toHaveBeenCalled();
@@ -929,7 +934,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   it('recuperar con código guarda el código en mayúsculas y refresca los clientes', async () => {
     await useStore.getState().recoverTrainerAccount('bbbb-bbbb-bbbb');
     expect(ts()).toMatchObject({ mode: 'code', code: 'BBBB-BBBB-BBBB', userId: 'uuid-B' });
-    expect(syncMock.getTrainerSlots).toHaveBeenCalledWith('uuid-B');
+    expect(syncMock.getTrainerSlots).toHaveBeenCalled();
   });
 
   it('reconectar con el mismo código no restaura compras', async () => {
@@ -941,7 +946,8 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   it('sin cuenta de entrenador, salir solo fija offline: no cierra la sesión (puede ser la del cliente)', async () => {
     useStore.setState((s) => ({ trainerSync: { ...s.trainerSync, mode: null, code: null, userId: null } }));
     await useStore.getState().leaveTrainerAccount();
-    expect(authMock.signOut).not.toHaveBeenCalled();
+    expect(authMock.signOutTrainer).not.toHaveBeenCalled();
+    expect(authMock.signOutClient).not.toHaveBeenCalled();
     expect(ts().mode).toBe('offline');
   });
 
@@ -954,28 +960,50 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
 
   // M03-03 §7.4: desde «Ya tengo cuenta», Google/Apple solo entran.
   it('mustExist sin cuenta de entrenador: rechaza con notFound sin tocar nada', async () => {
-    authMock.loginTrainerWithIdToken.mockResolvedValueOnce({ existed: false });
+    authMock.trainerCandidateFromIdToken.mockResolvedValueOnce({ userId: 'uuid-G', existed: false });
     const antes = ts();
     await expect(useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok', mustExist: true }))
       .rejects.toMatchObject({ notFound: true });
-    expect(authMock.loginTrainerWithIdToken).toHaveBeenCalledWith(expect.objectContaining({ mustExist: true }));
     expect(ts()).toEqual(antes);
     expect(RC.logIn).not.toHaveBeenCalled();
-    expect(authMock.recoverWithTrainerCode).not.toHaveBeenCalled();
+    expect(authMock.adoptTrainer).not.toHaveBeenCalled();
+    expect(syncMock.transferMySlotsTo).not.toHaveBeenCalled();
   });
 
   it('mustExist con cuenta de entrenador entra como siempre', async () => {
-    authMock.loginTrainerWithIdToken.mockResolvedValueOnce({ userId: 'uuid-G', existed: true });
+    authMock.trainerCandidateFromIdToken.mockResolvedValueOnce({ userId: 'uuid-G', existed: true });
     await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok', mustExist: true });
     expect(ts()).toMatchObject({ mode: 'google', userId: 'uuid-G' });
     expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
   });
 
   it('sin mustExist entra aunque no existiera (crear cuenta)', async () => {
-    authMock.loginTrainerWithIdToken.mockResolvedValue({ userId: 'uuid-G', existed: false });
+    authMock.trainerCandidateFromIdToken.mockResolvedValue({ userId: 'uuid-G', existed: false });
     await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
     expect(ts()).toMatchObject({ mode: 'google', userId: 'uuid-G' });
     expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
+  });
+
+  it('si el traspaso falla, no cambia nada: sigue en la cuenta vieja, con su código', async () => {
+    syncMock.transferMySlotsTo.mockRejectedValueOnce(Object.assign(new Error('Failed to fetch'), { code: 'NETWORK' }));
+    const antes = ts();
+    await expect(useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' })).rejects.toThrow();
+    expect(ts()).toEqual(antes);
+    expect(authMock.adoptTrainer).not.toHaveBeenCalled();
+    expect(RC.logIn).not.toHaveBeenCalled();
+  });
+
+  it('Google caducado con clientes en la nube: pide entrar antes de cambiar, sin tocar nada', async () => {
+    useStore.setState((s) => ({
+      trainerSync: { ...s.trainerSync, mode: 'google', code: null, userId: 'uuid-G' },
+      clients: { c1: { id: 'c1', name: 'Ana', syncSlotId: 'slot_1' } },
+    }));
+    authMock.trainerSessionUserId.mockResolvedValue(null);
+    authMock.trainerCandidateFromIdToken.mockResolvedValueOnce({ userId: 'uuid-X', existed: true, provider: 'apple' });
+    await expect(useStore.getState().enterTrainerAccount({ provider: 'apple', idToken: 'tok' }))
+      .rejects.toMatchObject({ code: 'TRAINER_LOGIN_NEEDED' });
+    expect(ts().userId).toBe('uuid-G');
+    useStore.setState({ clients: {} });
   });
 
   // Va la última: los tests de más abajo heredan el estado en que acaba (mode 'code').
@@ -2204,7 +2232,7 @@ describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () =
     expect(syncMock.uploadHistory).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(syncMock.uploadHistory).toHaveBeenCalledTimes(1);
-    expect(syncMock.uploadHistory.mock.calls[0][1][0].sessionRpe).toBe(8);
+    expect(syncMock.uploadHistory.mock.calls[0][0][0].sessionRpe).toBe(8);
   });
 
   it('avanzar de etapa sube el blob nuevo sin esperar a entrenar', () => {
@@ -2212,7 +2240,7 @@ describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () =
     vi.advanceTimersByTime(2000);
 
     expect(syncMock.uploadHistory).toHaveBeenCalledTimes(1);
-    expect(syncMock.uploadHistory.mock.calls[0][3]).toMatchObject({ programId: 'prog_c', currentStageIndex: 1 });
+    expect(syncMock.uploadHistory.mock.calls[0][2]).toMatchObject({ programId: 'prog_c', currentStageIndex: 1 });
   });
 
   it('una sesión libre se sube y para el temporizador de descanso', () => {
@@ -2230,7 +2258,7 @@ describe('subida al entrenador cuando algo cambia — qa-sep-conexion C15', () =
 
     vi.advanceTimersByTime(2000);
     expect(syncMock.uploadHistory).toHaveBeenCalledTimes(1);
-    expect(syncMock.uploadHistory.mock.calls[0][1].map((e) => e.id)).toContain(res.entryId);
+    expect(syncMock.uploadHistory.mock.calls[0][0].map((e) => e.id)).toContain(res.entryId);
   });
 
   it('sin entrenador no se sube nunca', () => {
@@ -2558,6 +2586,9 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
     Object.values(syncMock).forEach((fn) => fn.mockReset?.());
     syncMock.createClientSlot.mockResolvedValue({ slotId: 'slot_1', clientCode: 'K7QM-4XPA' });
     syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_id: null }]);
+    syncMock.uploadProgram.mockResolvedValue();
+    syncMock.uploadTrainerLog.mockResolvedValue();
+    syncMock.uploadOverrides.mockResolvedValue();
     useStore.setState({
       programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [], clients: {},
       trainerSync: cloud, _hasHydrated: true,
@@ -2587,7 +2618,7 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
     await useStore.getState().moveClientToApp(id);
 
     expect(cli(id).syncSlotId).toBe('slot_1');
-    const [slotId, entries, , progress] = syncMock.uploadHistory.mock.calls[0];
+    const [slotId, entries, , progress] = syncMock.uploadTrainerLog.mock.calls[0];
     expect(slotId).toBe('slot_1');
     expect(entries.map((e) => e.id)).toEqual(['log_1']);
     expect(progress.programId).toBe(pid);
@@ -2597,10 +2628,10 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
   it('no pisa al cliente: si ya canjeó el código, no sube lo apuntado', async () => {
     const id = await useStore.getState().createClient('Marta', { withApp: true });
-    syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_id: 'u_marta' }]);
+    // El servidor lo comprueba en la misma sentencia que escribiría.
+    syncMock.uploadTrainerLog.mockRejectedValue(Object.assign(new Error('SLOT_OCCUPIED'), { code: 'SLOT_OCCUPIED' }));
 
     expect(await useStore.getState().pushTrainerLogToSlot(id)).toBe(false);
-    expect(syncMock.uploadHistory).not.toHaveBeenCalled();
     expect(cli(id).syncLinked).toBe(true);
   });
 

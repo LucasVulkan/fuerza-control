@@ -572,9 +572,10 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
 
   return (
     <View style={styles.codeCard}>
-      <Text style={styles.codeTitle}>{t('clients.codeCard.waiting', { name: client.name }).toUpperCase()}</Text>
+      {/* Se fue él (se desconectó): el mismo código le sirve para volver. */}
+      <Text style={styles.codeTitle}>{t(client.syncLeftAt ? 'clients.codeCard.leftTitle' : 'clients.codeCard.waiting', { name: client.name }).toUpperCase()}</Text>
       <Text style={styles.codeExplain}>
-        {t(hasProgram ? 'clients.codeCard.waitLine' : 'clients.codeCard.needProgram')}
+        {t(client.syncLeftAt ? 'clients.codeCard.leftLine' : hasProgram ? 'clients.codeCard.waitLine' : 'clients.codeCard.needProgram')}
       </Text>
       {codeRow}
       {shareBtn}
@@ -2055,8 +2056,9 @@ export default function ClientsScreen() {
         : pending > 0 ? `${pending.toFixed(2)}€ ${t('clients.pendingLabel').toLowerCase()}`
         : t('clients.info.upToDate'),
       billingTone: pending > 0 ? 'orange' : null,
-      connection:     t(`clients.info.link_${linkOf(selectedClient)}`),
-      connectionTone: { none: null, invited: 'orange', linked: 'green' }[linkOf(selectedClient)],
+      // «De otra cuenta» y «se fue» se dicen: parecían «sin app» y «esperando» (C09 §3.4).
+      connection:     t(`clients.info.link_${selectedClient.syncOrphan ? 'orphan' : selectedClient.syncLeftAt ? 'left' : linkOf(selectedClient)}`),
+      connectionTone: selectedClient.syncOrphan || selectedClient.syncLeftAt ? 'orange' : { none: null, invited: 'orange', linked: 'green' }[linkOf(selectedClient)],
     };
   }, [selectedClient, t, linkOf]);
 

@@ -20,7 +20,7 @@
  *               nombre y código son suyos). Se va solo lo del cliente, y el
  *               historial se limpia porque el entrenador puede darle ese mismo
  *               código a otra persona. Mismo criterio que
- *               `release_client_slot()` en release_client_slot.sql.
+ *               `release_client_slot()` en supabase/schema.sql.
  *
  * Al final, `profiles` y el usuario de auth.
  *

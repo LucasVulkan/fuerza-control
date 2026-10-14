@@ -65,7 +65,10 @@ export default function TrainerConnectionScreen() {
 
   const lang          = profile.language ?? 'es';
   const isConnected   = !!clientSync.slotId;
-  const hasError      = !!(clientSync.pendingUpload || clientSync.syncErrorAt);
+  // El servidor dijo que ya no tiene asiento (C09 §4.3): no es un fallo de red
+  // que se arregle reintentando, hace falta un código nuevo.
+  const isLost        = isConnected && !!clientSync.lostAt;
+  const hasError      = !isLost && !!(clientSync.pendingUpload || clientSync.syncErrorAt);
   const activeProgram = profile.activeProgramId ? programs[profile.activeProgramId] : null;
 
   const when = (v) => formatWhen(v, lang, t('dayCard.today'), t('dayCard.yesterday'));
@@ -73,13 +76,15 @@ export default function TrainerConnectionScreen() {
   // ── Estado, en una frase ────────────────────────────────────────────────────
   // El estado no dice solo "error": dice qué está pendiente y qué se puede
   // hacer, que es lo que la versión anterior no contaba.
-  const state = !isConnected ? 'off' : hasError ? 'warn' : 'on';
-  const stateTag   = t(`trainer.tag${state === 'on' ? 'Connected' : state === 'warn' ? 'Pending' : 'Off'}`);
+  const state = !isConnected ? 'off' : isLost || hasError ? 'warn' : 'on';
+  const stateTag   = isLost ? t('trainer.tagLost') : t(`trainer.tag${state === 'on' ? 'Connected' : state === 'warn' ? 'Pending' : 'Off'}`);
   const stateTitle = !isConnected
     ? t('trainer.offTitle')
     : (clientSync.trainerName || t('trainer.unnamedTrainer'));
   const stateSub = !isConnected
     ? t('trainer.offSub')
+    : isLost
+      ? t('trainer.lostSub')
     : hasError
       ? t('trainer.pendingSub')
       : t('trainer.connectedSub');
@@ -203,7 +208,7 @@ export default function TrainerConnectionScreen() {
                   onPress={handleRetry}
                 />
               )}
-              {!clientSync.googleLinked && (
+              {!clientSync.googleLinked && !isLost && (
                 <MenuRow
                   icon={<RowIcon>{ICON_GOOGLE}</RowIcon>}
                   label={t(APPLE_AUTH_AVAILABLE ? 'trainer.linkAccountLabel' : 'trainer.linkGoogleLabel')}
@@ -215,8 +220,8 @@ export default function TrainerConnectionScreen() {
               )}
               <MenuRow
                 icon={<RowIcon>{ICON_TRAINER}</RowIcon>}
-                label={t('trainer.changeLabel')}
-                sub={t('trainer.changeSub')}
+                label={t(isLost ? 'trainer.lostCta' : 'trainer.changeLabel')}
+                sub={t(isLost ? 'trainer.lostCtaSub' : 'trainer.changeSub')}
                 subLines={0}
                 minHeight={62}
                 onPress={() => setShowCodeModal(true)}
