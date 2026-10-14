@@ -1315,7 +1315,7 @@ Lo de §25.2-25.3 vale; esto lo completa (manda sobre lo de arriba si chocan):
 
 - [x] ≡ → Nuevo programa: «Elige cómo empezar» con «Nuevo programa»
   arriba y sin barra de tramos. La flecha vuelve a la app sin cambios.
-- [x] «Plantillas» no pregunta el nivel → qué buscas → días → propuestas
+- [x] «Plantillas Forma Fit» no pregunta el nivel → qué buscas → días → propuestas
   → «Empezar con este» → «Programa listo» → Ir a la app abre Inicio con el
   programa nuevo.
 - [x] «Crear desde cero» → constructor → Guardar → «Programa listo».
