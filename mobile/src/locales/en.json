@@ -2905,7 +2905,8 @@
         "continue": "Continue",
         "later": "I'll enter it later",
         "askLink": "Didn’t get one? Ask for it",
-        "noApp": "Your coach doesn’t use Forma Fit?"
+        "noApp": "Your coach doesn’t use Forma Fit?",
+        "accountLink": "Connected before? Sign in with your account"
       },
       "confirm": {
         "title": "Program *found*",
@@ -2948,6 +2949,19 @@
         "similar": "Start from a similar one",
         "similarDesc": "Pick a template and adapt it"
       },
+      "busy": {
+        "title": "This code is already in *use*",
+        "ask": "Ask for a new code",
+        "other": "Try another code",
+        "message": "Hi! The Forma Fit code you sent me is already in use. Could you create a new one?"
+      },
+      "wait": {
+        "title": "When your *code* arrives",
+        "sub": "Your coach creates it in their app and sends it to you.",
+        "where": "Enter it in Menu → Coach → Connect with a code and you’ll be connected. Meanwhile, you can carry on.",
+        "next": "Carry on",
+        "have": "I have it"
+      },
       "done": {
         "linked": "Connected with {{trainer}}",
         "linkedAnon": "Connected with your coach",
@@ -2962,8 +2976,7 @@
         "list": "List",
         "listDesc": "Every session, one under another",
         "tabs": "Tabs",
-        "tabsDesc": "One card, a tab per session",
-        "forYou": "For you"
+        "tabsDesc": "One card, a tab per session"
       },
       "input": {
         "title": "Try it: drag the weight",

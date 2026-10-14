@@ -2905,7 +2905,8 @@
         "continue": "Continuar",
         "later": "Lo meto más tarde",
         "askLink": "¿No te lo ha pasado? Pídeselo",
-        "noApp": "¿Tu entrenador no usa Forma Fit?"
+        "noApp": "¿Tu entrenador no usa Forma Fit?",
+        "accountLink": "¿Ya estabas conectado? Entra con tu cuenta"
       },
       "confirm": {
         "title": "Programa *encontrado*",
@@ -2948,6 +2949,19 @@
         "similar": "Parto de uno parecido",
         "similarDesc": "Elige una plantilla y adáptala"
       },
+      "busy": {
+        "title": "Este código ya está en *uso*",
+        "ask": "Pedir un código nuevo",
+        "other": "Probar otro código",
+        "message": "¡Hola! El código de Forma Fit que me pasaste ya está en uso. ¿Me generas uno nuevo?"
+      },
+      "wait": {
+        "title": "Cuando te llegue el *código*",
+        "sub": "Tu entrenador lo genera en su app y te lo manda por mensaje.",
+        "where": "Introdúcelo en Menú → Entrenador → Conectar con un código y estarás conectado. Mientras, puedes seguir.",
+        "next": "Seguir",
+        "have": "Ya lo tengo"
+      },
       "done": {
         "linked": "Conectado con {{trainer}}",
         "linkedAnon": "Conectado con tu entrenador",
@@ -2962,8 +2976,7 @@
         "list": "Lista",
         "listDesc": "Todas las sesiones, una debajo de otra",
         "tabs": "Pestañas",
-        "tabsDesc": "Una tarjeta, una pestaña por sesión",
-        "forYou": "Para tu caso"
+        "tabsDesc": "Una tarjeta, una pestaña por sesión"
       },
       "input": {
         "title": "Pruébalo: arrastra el peso",

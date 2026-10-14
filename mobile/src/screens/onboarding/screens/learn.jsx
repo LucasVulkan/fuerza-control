@@ -111,7 +111,6 @@ function Home({ goTo }) {
   const styles = useThemedStyles(makeStyles);
   const view       = useStore((s) => s.profile.homeView ?? 'cards');
   const setProfile = useStore((s) => s.setProfile);
-  const linked     = useStore((s) => !!answersOf(s).linked);
   const sessions   = usePreviewSessions();
   return (
     <FlowBody footer={<FlowFooter primary={{ label: t('onboardingFlow.common.next'), onPress: () => goTo('a_input') }} />}>
@@ -125,8 +124,6 @@ function Home({ goTo }) {
         <ViewTile
           index={3} view="tabs" sessions={sessions} selected={view === 'tabs'}
           title={t('onboardingFlow.learn.home.tabs')} desc={t('onboardingFlow.learn.home.tabsDesc')}
-          // Con entrenador conectado se recomiendan: es para quien recibe un programa (U13 §1).
-          tag={linked ? t('onboardingFlow.learn.home.forYou') : null}
           onPress={() => setProfile({ homeView: 'tabs' })}
         />
       </View>

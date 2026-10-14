@@ -10,7 +10,7 @@
  *
  * Maqueta: docs/mockups/onboarding-2.html (c_app … c_copy).
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Share, Linking, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -24,6 +24,7 @@ import {
   FlowBody, FlowTitle, FlowOption, FlowFooter, FlowPanel, PanelButton, FlowNote, shareAndContinue,
 } from '../../../components/onboarding/flow';
 import useClientCode from '../../../hooks/useClientCode';
+import ClientCodeModal from '../../../components/ClientCodeModal';
 import { learnStart } from '../../../utils/onboardingFlow';
 import { WEB_URL } from '../../../config/web';
 import { PRIVACY_URL } from '../../../config/legal';
@@ -54,6 +55,7 @@ function Code({ goTo }) {
   const clearPendingInviteCode = useStore((s) => s.clearPendingInviteCode);
   const { code, setCode, loading, error, validate } = useClientCode();
   const { viaInvite, linked } = answers;
+  const [social, setSocial] = useState(false);
 
   // Al llegar: por invitación esta persona no pasó por la bifurcación (§9.5), así
   // que se le pone el rol aquí, y el código viene puesto. Sin conectar, queda pendiente en «Listo».
@@ -79,6 +81,22 @@ function Code({ goTo }) {
   function later() {
     clearPendingInviteCode();
     goTo(learnStart(answers));
+  }
+
+  // Ya estuvo conectado con Google/Apple: la hoja de siempre busca su hueco y conecta.
+  function linkedByAccount() {
+    setSocial(false);
+    const cs = useStore.getState().clientSync;
+    const name = cleanName(cs.trainerName);
+    const program = useStore.getState().programs[useStore.getState().profile.activeProgramId]?.name ?? '';
+    flowAnswer({ linked: { trainerName: name, programName: program }, programSource: 'coach', coachApp: 'code' });
+    flowDone({
+      key: 'coach', ok: true,
+      label: name ? t('onboardingFlow.coached.done.linked', { trainer: name }) : t('onboardingFlow.coached.done.linkedAnon'),
+    });
+    if (program) flowDone({ key: 'program', ok: true, label: t('onboardingFlow.coached.done.program', { program }) });
+    clearPendingInviteCode();
+    goTo('c_linked');
   }
 
   // Sin código: pedírselo. Su entrenador no usa la app: invitarle (no avanza) o crear su programa.
@@ -117,6 +135,8 @@ function Code({ goTo }) {
         <>
           <Rise index={3}>
             <Text style={styles.link} onPress={ask} accessibilityRole="link">{t('onboardingFlow.coached.code.askLink')}</Text>
+            {/* Solo recupera una conexión hecha antes con esa cuenta: la primera vez hace falta el código. */}
+            <Text style={styles.link} onPress={() => setSocial(true)} accessibilityRole="link">{t('onboardingFlow.coached.code.accountLink')}</Text>
           </Rise>
           <Rise index={4}><Text style={styles.label}>{t('onboardingFlow.coached.code.noApp')}</Text></Rise>
           <View style={styles.opts}>
@@ -137,6 +157,7 @@ function Code({ goTo }) {
           </View>
         </>
       )}
+      <ClientCodeModal visible={social} startWithSocial onClose={() => setSocial(false)} onSuccess={linkedByAccount} />
     </FlowBody>
   );
 }
@@ -157,6 +178,34 @@ function Confirm({ goTo }) {
   if (!slotInfo) return null;
 
   const trainer = cleanName(slotInfo.trainerName);
+
+  // El código ya lo usa otro móvil: conectar va a fallar, así que la pantalla solo
+  // cuenta eso y qué hacer (O03 §28.2).
+  if (slotInfo.alreadyLinked) {
+    return (
+      <FlowBody
+        footer={(
+          <FlowFooter
+            primary={{
+              label: t('onboardingFlow.coached.busy.ask'),
+              onPress: () => shareAndContinue(t('onboardingFlow.coached.busy.message'), () => {}),
+            }}
+            secondary={[{ label: t('onboardingFlow.coached.busy.other'), onPress: flowBack }]}
+          />
+        )}
+      >
+        <FlowTitle text={t('onboardingFlow.coached.busy.title')} sub={t('trainer.codeSlotOccupied')} />
+        <Rise index={2}>
+          <View style={styles.found}>
+            <Text style={styles.foundLabel}>
+              {trainer ? t('onboardingFlow.coached.confirm.from', { trainer }) : t('onboardingFlow.coached.confirm.fromAnon')}
+            </Text>
+            <Text style={styles.foundName}>{slotInfo.programName}</Text>
+          </View>
+        </Rise>
+      </FlowBody>
+    );
+  }
 
   async function connect() {
     if (loading || !(await confirm())) return;
@@ -197,7 +246,8 @@ function Confirm({ goTo }) {
       </Rise>
 
       {alreadyLinked && <Rise index={2}><FlowNote tone="warn" text={t('trainer.codeAlreadyLinked')} /></Rise>}
-      {slotInfo.alreadyLinked && <Rise index={2}><FlowNote tone="warn" text={t('trainer.codeSlotOccupied')} /></Rise>}
+      {/* El error de conectar, arriba y a la vista (abajo quedaba bajo el pliegue). */}
+      {!!error && <Rise index={2}><FlowNote tone="warn" text={error} /></Rise>}
 
       {/* La elección de historial solo existe si hay algo en la nube. */}
       {slotInfo.hasRemoteHistory && (
@@ -236,7 +286,6 @@ function Confirm({ goTo }) {
             {t('paywall.privacy')}
           </Text>
         )}
-        {!!error && <Text style={styles.error}>{error}</Text>}
       </Rise>
     </FlowBody>
   );
@@ -282,9 +331,9 @@ function Linked({ goTo }) {
 function Ask({ goTo }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
-  const answers = useStore(answersOf);
   const message = t('onboardingFlow.coached.ask.message');
-  const next = () => goTo(learnStart(answers));
+  // Enviado o no, la pantalla siguiente explica dónde meter el código cuando llegue.
+  const next = () => goTo('c_wait');
 
   return (
     <FlowBody
@@ -299,6 +348,26 @@ function Ask({ goTo }) {
       <Rise index={2}>
         <View style={styles.msg}><Text style={styles.msgTxt}>{message}</Text></View>
       </Rise>
+    </FlowBody>
+  );
+}
+
+// ── Cuando llegue el código (O03 §28.2) ──────────────────────────────────────
+
+function Wait({ goTo }) {
+  const { t } = useTranslation();
+  const answers = useStore(answersOf);
+  return (
+    <FlowBody
+      footer={(
+        <FlowFooter
+          primary={{ label: t('onboardingFlow.coached.wait.next'), onPress: () => goTo(learnStart(answers)) }}
+          secondary={[{ label: t('onboardingFlow.coached.wait.have'), onPress: () => goTo('c_code') }]}
+        />
+      )}
+    >
+      <FlowTitle text={t('onboardingFlow.coached.wait.title')} sub={t('onboardingFlow.coached.wait.sub')} />
+      <Rise index={2}><FlowNote tone="blue" text={t('onboardingFlow.coached.wait.where')} /></Rise>
     </FlowBody>
   );
 }
@@ -331,7 +400,7 @@ function Copy({ goTo }) {
   );
 }
 
-export default { c_code: Code, c_confirm: Confirm, c_linked: Linked, c_ask: Ask, c_copy: Copy };
+export default { c_code: Code, c_confirm: Confirm, c_linked: Linked, c_ask: Ask, c_wait: Wait, c_copy: Copy };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -358,7 +427,6 @@ const makeStyles = (th) => StyleSheet.create({
   bulletDot:  { ...textStyles.body, color: th.colors.accent, lineHeight: lh(14) },
   bulletText: { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(14), flex: 1 },
   link:       { ...textStyles.body, color: th.colors.accent, lineHeight: lh(14), marginTop: spacing.md },
-  error:      { ...textStyles.body, color: th.tint.red50, lineHeight: lh(14), marginTop: spacing.md },
 
   // Conectado
   avatar: {

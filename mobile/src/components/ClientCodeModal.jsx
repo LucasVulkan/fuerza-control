@@ -100,6 +100,10 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     }
   }, [startWithSocial, visible, googleRequest]); // eslint-disable-line
 
+  // Al abrirse, siempre en el código: el estado del hook es de módulo y lo comparte
+  // con el recorrido de entrada, que pudo dejarlo en «Programa encontrado» (O03 §28.2).
+  useEffect(() => { if (visible && !pendingInvite) reset(); }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // La hoja no deja nada a medias al desmontarse (el estado del hook es de módulo).
   useEffect(() => reset, []); // eslint-disable-line react-hooks/exhaustive-deps
 
