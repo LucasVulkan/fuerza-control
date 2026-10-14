@@ -29,6 +29,7 @@ import { FlowBody, FlowTitle, FlowOption, FlowFooter } from '../../../components
 import { FillPressable } from '../../../components/onboarding/flow/FlowFill';
 import { useInk } from '../../../components/onboarding/flow/useFill';
 import HomeViewPreview from '../../../components/onboarding/learn/HomeViewPreview';
+import HomeViewWireframe from '../../../components/onboarding/learn/HomeViewWireframe';
 import ScrubDemo from '../../../components/onboarding/learn/ScrubDemo';
 import ClientsMini from '../../../components/onboarding/learn/ClientsMini';
 import { Mini, MiniTemplates, MiniNext, MiniLogFor, MiniCoach } from '../../../components/onboarding/learn/CardMinis';
@@ -72,13 +73,13 @@ function ViewTile({ view, sessions, selected, title, desc, tag, onPress, index }
         accessibilityRole="radio"
         accessibilityLabel={[title, desc].filter(Boolean).join(', ')}
       >
-        {(p) => <ViewTileBody p={p} view={view} sessions={sessions} title={title} desc={desc} tag={tag} onPress={onPress} />}
+        {(p) => <ViewTileBody p={p} view={view} sessions={sessions} title={title} desc={desc} tag={tag} />}
       </FillPressable>
     </Rise>
   );
 }
 
-function ViewTileBody({ p, view, sessions, title, desc, tag, onPress }) {
+function ViewTileBody({ p, view, sessions, title, desc, tag }) {
   const C      = useTheme().colors;
   const styles = useThemedStyles(makeStyles);
   const titleInk = useInk(p, C.text, C.onAccent);
@@ -86,10 +87,7 @@ function ViewTileBody({ p, view, sessions, title, desc, tag, onPress }) {
   const tagBg    = useInk(p, withOpacity(C.accent, 0.12), C.onAccent, 'backgroundColor');
   return (
     <>
-      <View style={styles.vscreen}>
-        {/* Tocar una pestaña la abre y, de paso, elige esta vista (como en la maqueta). */}
-        <HomeViewPreview view={view} sessions={sessions} touchable onTab={onPress} />
-      </View>
+      {/* El nombre arriba y, debajo, el esquema (14-oct): se lee como un dibujo, no como algo que pulsar. */}
       <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.vtitle, titleInk]}>{title}</Reanimated.Text>
       <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.vdesc, descInk]}>{desc}</Reanimated.Text>
       {!!tag && (
@@ -97,6 +95,9 @@ function ViewTileBody({ p, view, sessions, title, desc, tag, onPress }) {
           <Text style={styles.vtagTxt}>{tag}</Text>
         </Reanimated.View>
       )}
+      <View style={styles.vscreen}>
+        <HomeViewWireframe view={view} letters={sessions.map((x) => x.marker)} />
+      </View>
     </>
   );
 }
@@ -316,8 +317,8 @@ const makeStyles = (th) => StyleSheet.create({
   vscreen: {
     backgroundColor: th.colors.bg,
     borderRadius:    th.radius.md,
-    padding:         spacing.sm2,
-    marginBottom:    spacing.md,
+    padding:         spacing.md,
+    marginTop:       spacing.md,
   },
   vtitle: { ...textStyles.itemTitleQuiet, paddingHorizontal: spacing.xs2 },
   vdesc:  { ...textStyles.label, marginTop: spacing.xs, paddingHorizontal: spacing.xs2, paddingBottom: spacing.xs2 },
