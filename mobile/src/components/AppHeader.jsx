@@ -692,7 +692,8 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     gap:             spacing.md,
     backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.lg,
+    // El radio de una fila suelta del menú (`getCardRadii` con primera y última).
+    borderRadius:    th.radius.md,
     padding:         spacing.lg,
     marginBottom:    spacing.xl,
   },
