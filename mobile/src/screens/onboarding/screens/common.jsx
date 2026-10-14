@@ -315,7 +315,8 @@ const makeStyles = (th) => StyleSheet.create({
   hero: {
     ...textStyles.heroGlyph,
     color:              th.colors.text,
-    lineHeight:         36,
+    lineHeight:         40,
+    paddingRight:       2,
     includeFontPadding: false,
     marginTop:          spacing.xxl + spacing.xl,
   },

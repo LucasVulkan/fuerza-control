@@ -10,10 +10,14 @@
  */
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
 import { Text } from '../../ui/Text';
 import { spacing, textStyles } from '../../../theme';
 import { useThemedStyles } from '../../../useTheme';
+
+// Los botones vibran como las opciones (que lo hacen al rellenarse): si no, «Siguiente» se siente muerto.
+const tap = (fn) => () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); fn?.(); };
 
 export default function FlowFooter({ primary, secondary = [], children }) {
   const styles = useThemedStyles(makeStyles);
@@ -22,7 +26,7 @@ export default function FlowFooter({ primary, secondary = [], children }) {
     <View style={[styles.foot, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
       {primary && (
         <Pressable
-          onPress={primary.onPress}
+          onPress={tap(primary.onPress)}
           disabled={primary.disabled}
           accessibilityRole="button"
           accessibilityState={{ disabled: !!primary.disabled }}
@@ -32,7 +36,7 @@ export default function FlowFooter({ primary, secondary = [], children }) {
         </Pressable>
       )}
       {secondary.map((s) => (
-        <Pressable key={s.label} onPress={s.onPress} accessibilityRole="button" style={styles.sec}>
+        <Pressable key={s.label} onPress={tap(s.onPress)} accessibilityRole="button" style={styles.sec}>
           <Text style={[styles.secTxt, s.accent && styles.secAccent]}>{s.label}</Text>
         </Pressable>
       ))}

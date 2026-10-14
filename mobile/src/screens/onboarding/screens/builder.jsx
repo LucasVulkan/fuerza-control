@@ -149,9 +149,11 @@ function AddButton({ label, onPress }) {
       withTiming(0, { duration: 900, easing: Easing.inOut(Easing.quad) }),
     ), -1));
   }, [beat, reduced]);
+  // Fuera del worklet: `withOpacity` es JS normal y en el hilo de UI no existe.
+  const clear = withOpacity(th.colors.accent, 0);
   const glow = useAnimatedStyle(() => ({
     borderColor:     interpolateColor(beat.get(), [0, 1], [th.colors.muted, th.colors.accent]),
-    backgroundColor: interpolateColor(beat.get(), [0, 1], [withOpacity(th.colors.accent, 0), th.tint.accent10]),
+    backgroundColor: interpolateColor(beat.get(), [0, 1], [clear, th.tint.accent10]),
   }));
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
@@ -473,7 +475,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Sesiones
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, marginTop: spacing.lg },
   sess: { backgroundColor: th.colors.surface, borderRadius: th.radius.lg, padding: spacing.md + 2 },
-  sessLetter: { ...textStyles.heroGlyph, color: th.colors.accent, lineHeight: 36, includeFontPadding: false },
+  sessLetter: { ...textStyles.heroGlyph, color: th.colors.accent, lineHeight: 40, paddingRight: 2, includeFontPadding: false },
   sessName:   { ...textStyles.bodyStrong, color: th.colors.text, marginTop: spacing.xs2 },
   sessEmpty:  { ...textStyles.label, color: th.colors.muted },
 

@@ -8,7 +8,7 @@
  *   label  la etiqueta, en versales, debajo
  *   word   `big` es una palabra, no una cifra: un escalón menos y sin hueco extra
  */
-import { StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 
 import { MAX_FONT_SCALE } from '../../ui/Text';
@@ -25,7 +25,14 @@ function TileBody({ p, big, label, word }) {
   const labelInk = useInk(p, C.mutedLight, withOpacity(C.onAccent, 0.68));
   return (
     <>
-      <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[word ? styles.word : styles.big, bigInk]}>{big}</Reanimated.Text>
+      {word ? (
+        // Siempre el alto de dos líneas: «Calistenia» y «Ganar músculo» miden lo mismo.
+        <View style={styles.wordBox}>
+          <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2} style={[styles.word, bigInk]}>{big}</Reanimated.Text>
+        </View>
+      ) : (
+        <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.big, bigInk]}>{big}</Reanimated.Text>
+      )}
       {!!label && <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.label, labelInk]}>{label}</Reanimated.Text>}
     </>
   );
@@ -58,7 +65,10 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     gap:               spacing.sm2,
   },
-  big:   { ...textStyles.heroGlyph, lineHeight: 38, includeFontPadding: false },
-  word:  { ...textStyles.heroName, textTransform: 'uppercase', lineHeight: 30, includeFontPadding: false, paddingVertical: spacing.md },
+  // Barlow cursiva: interlínea holgada (si no, se corta por abajo) y 2 px a la
+  // derecha para que no se coma la última cifra.
+  big:     { ...textStyles.heroGlyph, lineHeight: 40, paddingRight: 2, includeFontPadding: false },
+  wordBox: { minHeight: 2 * 34, justifyContent: 'center', marginVertical: spacing.sm },
+  word:    { ...textStyles.heroName, textTransform: 'uppercase', textAlign: 'center', lineHeight: 34, paddingRight: 2, includeFontPadding: false },
   label: { ...textStyles.caps, textTransform: 'uppercase' },
 });

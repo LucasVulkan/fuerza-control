@@ -2906,22 +2906,14 @@
       }
     },
     "coached": {
-      "app": {
-        "title": "¿Tu entrenador usa *Forma Fit*?",
-        "sub": "Si la usa, te manda el programa y ve tus entrenos.",
-        "code": "Sí, tengo su código",
-        "codeDesc": "Ocho letras y números, tipo XK7M-2P4T",
-        "nocode": "Sí, pero no tengo código",
-        "nocodeDesc": "Te decimos cómo pedírselo",
-        "no": "No la usa",
-        "noDesc": "Invítale a la app o copia su programa"
-      },
       "code": {
         "title": "El código de tu *entrenador*",
-        "sub": "Te lo ha mandado por mensaje o te lo enseña en su móvil.",
+        "sub": "Si tu entrenador usa Forma Fit, introduce el código que te ha pasado.",
         "subInvite": "Viene de tu invitación. Comprueba que es este y sigue.",
         "continue": "Continuar",
-        "later": "Lo meto más tarde"
+        "later": "Lo meto más tarde",
+        "askLink": "¿No te lo ha pasado? Pídeselo",
+        "noApp": "¿Tu entrenador no usa Forma Fit?"
       },
       "confirm": {
         "title": "Programa *encontrado*",
@@ -2950,21 +2942,19 @@
         "later": "Lo meto más tarde"
       },
       "noapp": {
-        "title": "Dos formas de seguir con tu *entrenador*",
         "invite": "Invítale a la app",
         "inviteDesc": "Podrá gestionar tu programa desde su móvil y ver tus entrenos. Empezar es gratis.",
         "inviteMessage": "¡Hola! Estoy usando Forma Fit para entrenar. Si la instalas, puedes gestionar mi programa desde ahí y ver mis entrenos (empezar es gratis): {{url}}",
-        "copy": "Copia su programa",
-        "copyDesc": "Si lo tienes en PDF, foto o mensaje, cópialo aquí para seguirlo.",
-        "meanwhile": "Mientras"
+        "copy": "Crea su programa en la app",
+        "copyDesc": "Pásalo sesión a sesión desde su PDF, foto o mensaje."
       },
       "copy": {
-        "title": "¿Cómo lo *copias*?",
-        "sub": "Si lo tienes en PDF, foto o mensaje, cópialo aquí para seguirlo.",
-        "hand": "Lo copio a mano",
-        "handDesc": "Editor de programas, sesión a sesión",
-        "similar": "Empiezo de uno parecido",
-        "similarDesc": "Elige una plantilla y cámbiala"
+        "title": "Crea su *programa*",
+        "sub": "Pásalo a la app para seguirlo y apuntar tus entrenos.",
+        "hand": "Lo creo sesión a sesión",
+        "handDesc": "Sesiones, ejercicios y series, como los tienes",
+        "similar": "Parto de uno parecido",
+        "similarDesc": "Elige una plantilla y adáptala"
       },
       "done": {
         "linked": "Conectado con {{trainer}}",

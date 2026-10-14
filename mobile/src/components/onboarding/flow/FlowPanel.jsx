@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
 import { Text } from '../../ui/Text';
 import { spacing, textStyles, lh, withOpacity } from '../../../theme';
@@ -50,7 +51,11 @@ export default function FlowPanel({ title, desc, children }) {
 export function PanelButton({ label, onPress, ghost = false }) {
   const styles = useThemedStyles(makeStyles);
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={ghost ? styles.ghost : styles.cta}>
+    <Pressable
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); onPress?.(); }}
+      accessibilityRole="button"
+      style={ghost ? styles.ghost : styles.cta}
+    >
       <Text style={ghost ? styles.ghostTxt : styles.ctaTxt}>{label}</Text>
     </Pressable>
   );

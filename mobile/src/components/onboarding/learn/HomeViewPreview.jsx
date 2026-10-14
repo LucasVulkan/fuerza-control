@@ -148,7 +148,9 @@ function TabsView({ sessions, spot, touchable, onTab }) {
 
   const card    = useAnimatedStyle(() => ({ backgroundColor: interpolateColor(lime.get(), [0, 1], [C.surface, C.accent]) }));
   const ink     = useAnimatedStyle(() => ({ color: interpolateColor(lime.get(), [0, 1], [C.text, C.onAccent]) }));
-  const metaInk = useAnimatedStyle(() => ({ color: interpolateColor(lime.get(), [0, 1], [C.mutedLight, withOpacity(C.onAccent, 0.55)]) }));
+  // Fuera del worklet: `withOpacity` es JS normal y en el hilo de UI no existe.
+  const metaOn  = withOpacity(C.onAccent, 0.55);
+  const metaInk = useAnimatedStyle(() => ({ color: interpolateColor(lime.get(), [0, 1], [C.mutedLight, metaOn]) }));
 
   function pick(i) {
     setSel(i);

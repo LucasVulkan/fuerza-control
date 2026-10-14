@@ -43,7 +43,10 @@ const makeStyles = (th) => StyleSheet.create({
   title: {
     ...textStyles.heroGlyph,
     color:              th.colors.text,
-    lineHeight:         36,
+    // Barlow cursiva: con menos interlínea se corta por abajo, y sin los 2 px
+    // de la derecha se come la última letra (como `nowNum` de ProgramStages).
+    lineHeight:         40,
+    paddingRight:       2,
     includeFontPadding: false,
     marginBottom:       spacing.md,
   },
@@ -51,7 +54,8 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.heroName,
     textTransform:      'uppercase',
     color:              th.colors.text,
-    lineHeight:         31,
+    lineHeight:         34,
+    paddingRight:       2,
     includeFontPadding: false,
     marginBottom:       spacing.md,
   },

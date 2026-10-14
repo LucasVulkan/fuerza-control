@@ -25,9 +25,9 @@ export const SECTIONS = ['settings', 'you', 'setup', 'learn'];
 const SECTION_OF = {
   welcome: -1, recover: -1,
   units: 0, theme: 0,
-  role: 1, t_clients: 1, t_groups: 1, c_app: 1, s_level: 1, s_choice: 1,
+  role: 1, t_clients: 1, t_groups: 1, s_level: 1, s_choice: 1,
   t_client: 2, t_account: 2, t_code: 2, t_program: 2, t_catalog: 2, t_assign: 2, t_invite: 2, t_self: 2,
-  c_code: 2, c_confirm: 2, c_linked: 2, c_ask: 2, c_noapp: 2, c_copy: 2,
+  c_code: 2, c_confirm: 2, c_linked: 2, c_ask: 2, c_copy: 2,
   s_goal: 2, s_days: 2, s_props: 2,
   b_sessions: 2, b_exercise: 2, b_volume: 2, b_done: 2,
   n_source: 2, n_templates: 2, n_done: 2,
@@ -44,7 +44,7 @@ export const sectionOf = (id) => SECTION_OF[id] ?? -1;
  */
 function sectionTotal(sec, a) {
   if (sec === 0) return 2;
-  if (sec === 1) return a.viaInvite ? 1 : a.role === 'coached' ? 2 : 3;
+  if (sec === 1) return a.viaInvite ? 1 : a.role === 'coached' ? 1 : 3;
   if (sec === 2) {
     if (a.role === 'trainer') {
       // cliente, su programa y «¿entrenas tú?»; con app, la cuenta (y el código);
@@ -56,8 +56,10 @@ function sectionTotal(sec, a) {
     }
     if (a.role === 'self') return a.path === 'own' ? 4 : 3;
     if (a.role === 'coached') {
-      if (a.coachApp === 'code') return 3;
-      return a.builderCtx ? 6 : a.coachApp === 'no' ? 3 : 1;
+      // El código abre el camino (14-oct): código → encontrado → conectado; o
+      // código → pedirlo; o código → crear su programa → las 4 del constructor.
+      if (a.builderCtx) return 6;
+      return a.coachApp === 'nocode' ? 2 : 3;
     }
     return 3;
   }
@@ -107,7 +109,7 @@ export const afterProposal = (entry = 'first') => (entry === 'newProgram' ? 'n_d
 export const learnStart = (a) => (a.role === 'trainer' && a.alsoTrains !== true ? 'a_cards' : 'a_home');
 
 /** Primera pantalla de cada camino, la que abre la bifurcación. */
-export const ROLE_START = { self: 's_level', coached: 'c_app', trainer: 't_clients' };
+export const ROLE_START = { self: 's_level', coached: 'c_code', trainer: 't_clients' };
 
 /**
  * Adónde lleva «Saltar», o `null` si no se puede (bifurcación, cuenta del
@@ -123,7 +125,7 @@ export function skipTarget(id, a = {}, entry = 'first') {
     case 't_program': case 't_catalog': case 't_assign': return afterProgram(a);
     case 't_invite': return 't_self';
     case 't_self': return 'a_cards';
-    case 'c_app': case 'c_code': case 'c_confirm': case 'c_ask': case 'c_noapp': case 'c_copy': case 'c_linked': return 'a_home';
+    case 'c_code': case 'c_confirm': case 'c_ask': case 'c_copy': case 'c_linked': return 'a_home';
     case 's_level': case 's_choice': case 's_goal': case 's_days': return 's_props';
     case 's_props': return 'a_home';
     case 'a_home': case 'a_input': case 'a_cards': return 'done';

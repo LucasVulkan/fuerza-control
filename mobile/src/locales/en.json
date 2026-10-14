@@ -2906,22 +2906,14 @@
       }
     },
     "coached": {
-      "app": {
-        "title": "Does your coach use *Forma Fit*?",
-        "sub": "If so, they send you the program and see your workouts.",
-        "code": "Yes, I have their code",
-        "codeDesc": "Eight letters and numbers, like XK7M-2P4T",
-        "nocode": "Yes, but I have no code",
-        "nocodeDesc": "We'll tell you how to ask for it",
-        "no": "They don't use it",
-        "noDesc": "Invite them to the app or copy their program"
-      },
       "code": {
         "title": "Your *coach's* code",
-        "sub": "They sent it to you in a message or can show it on their phone.",
+        "sub": "If your coach uses Forma Fit, enter the code they gave you.",
         "subInvite": "It came with your invitation. Check that it's this one and continue.",
         "continue": "Continue",
-        "later": "I'll enter it later"
+        "later": "I'll enter it later",
+        "askLink": "Didn’t get one? Ask for it",
+        "noApp": "Your coach doesn’t use Forma Fit?"
       },
       "confirm": {
         "title": "Program *found*",
@@ -2950,21 +2942,19 @@
         "later": "I'll enter it later"
       },
       "noapp": {
-        "title": "Two ways to keep working with your *coach*",
         "invite": "Invite them to the app",
         "inviteDesc": "They can manage your program from their phone and see your workouts. Free to start.",
         "inviteMessage": "Hi! I'm training with Forma Fit. If you install it, you can manage my program there and see my workouts (free to start): {{url}}",
-        "copy": "Copy their program",
-        "copyDesc": "If you have it as a PDF, photo or message, copy it here to follow it.",
-        "meanwhile": "Meanwhile"
+        "copy": "Create their program in the app",
+        "copyDesc": "Enter it session by session from their PDF, photo or message."
       },
       "copy": {
-        "title": "How do you *copy* it?",
-        "sub": "If you have it as a PDF, photo or message, copy it here to follow it.",
-        "hand": "I'll type it in",
-        "handDesc": "Program editor, session by session",
+        "title": "Create their *program*",
+        "sub": "Add it to the app to follow it and log your workouts.",
+        "hand": "I’ll enter it session by session",
+        "handDesc": "Sessions, exercises and sets, as you have them",
         "similar": "Start from a similar one",
-        "similarDesc": "Pick a template and edit it"
+        "similarDesc": "Pick a template and adapt it"
       },
       "done": {
         "linked": "Connected with {{trainer}}",

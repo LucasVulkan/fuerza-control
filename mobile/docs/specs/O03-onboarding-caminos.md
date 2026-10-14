@@ -169,12 +169,12 @@ Bienvenida (+ idioma) ─┬─ Empezar → Unidades → Tema → ¿Cómo entren
                                                           │
    ┌──────────────────────────────┬───────────────────────┴───────────────┐
 Por mi cuenta (§8)            Con entrenador (§9)                    Soy entrenador/a (§7)
-Nivel                         ¿Usa la app?                           Nº clientes · ¿Clases en grupo?  (datos)
-Plantilla o el mío            ├ Sí, tengo código → programa          Crea tu 1.er cliente: ¿cómo va a entrenar?
-├ plantilla: qué buscas,      │   encontrado → conectado             ├ con la app → tu cuenta (→ tu código)
-│  días, preparando,          ├ Sí, sin código → pedírselo           └ le apuntas tú
-│  propuestas (O01)           └ No usa la app → invítale             Su programa: crearlo ⤵ · catálogo → asignar · después
-└ el mío ⤵                        + cópialo (a mano ⤵ · parecido)    Invitarle (solo con app y programa)
+Nivel                         El código de tu entrenador             Nº clientes · ¿Clases en grupo?  (datos)
+Plantilla o el mío            ├ código → programa encontrado         Crea tu 1.er cliente: ¿cómo va a entrenar?
+├ plantilla: qué buscas,      │   → conectado                        ├ con la app → tu cuenta (→ tu código)
+│  días, preparando,          ├ ¿no te lo ha pasado? → pedírselo     └ le apuntas tú
+│  propuestas (O01)           └ ¿no usa Forma Fit? → invítale        Su programa: crearlo ⤵ · catálogo → asignar · después
+└ el mío ⤵                        · crea su programa (⤵ · parecido)  Invitarle (solo con app y programa)
                                                                      ¿También entrenas tú? ─ sí → «Por mi cuenta»
         │                              │                                 │ no
         └──── Aprende: cómo ves Inicio → cómo apuntas → tarjetas ────┘     └─ Aprende: tarjetas de entrenador
@@ -335,19 +335,28 @@ defecto); `trainer`, `false`. Se cambia después en el menú, como hoy.
 
 ## 9. Camino «con entrenador»
 
-1. **¿Tu entrenador usa Forma Fit?** (`profile.coachUsesApp`)
-   - **Sí, tengo su código** — «Ocho letras y números, tipo XK7M-2P4T».
-   - **Sí, pero no tengo código** → dónde lo saca (Clientes → tu ficha → Conectar)
-     y un mensaje ya escrito con **Enviar mensaje** (`Share.share`; al volver
-     **avanza solo** como en §7.8). «Lo meto más tarde» sigue a Aprende.
-   - **No la usa** → **Invítale a la app** (mensaje con enlace a la web
-     `WEB_URL`; «empezar es gratis», sin cifras) y **Copia su programa**
-     («mientras tanto»): **Lo copio a mano** → constructor completo (§10);
-     **Empiezo de uno parecido** → el camino de plantillas de §8 desde el nivel.
-     Sin «pegar texto» (§15).
-2. **El código** — `ui/CodeField` (8, `groups = 2`, guion solo, «Pegar»).
-   «Continuar» → `validateClientCode(code)`; el error se enseña en la pantalla,
-   con «Lo meto más tarde» como salida.
+1. **El código abre el camino** (decisión del usuario, 14-oct: sin la pregunta
+   «¿Tu entrenador usa Forma Fit?», que eran pasos de más para llegar al código o
+   a la invitación). «El código de tu *entrenador*» · «Si tu entrenador usa Forma
+   Fit, introduce el código que te ha pasado», y `ui/CodeField` (8, `groups = 2`,
+   guion solo, «Pegar»; sin abrir el teclado solo, para que se vea lo de debajo).
+   «Continuar» → `validateClientCode(code)`; el error se enseña en la pantalla.
+   «Lo meto más tarde» sigue a Aprende. Debajo, sin pantallas intermedias:
+   - **«¿No te lo ha pasado? Pídeselo»** (enlace) → dónde lo saca (Clientes → tu
+     ficha → Conectar) y un mensaje ya escrito con **Enviar mensaje**
+     (`Share.share`; al volver **avanza solo** como en §7.8).
+   - **«¿Tu entrenador no usa Forma Fit?»** y dos opciones:
+     - **Invítale a la app** — mensaje con enlace a la web `WEB_URL`; «empezar
+       es gratis», sin cifras. Comparte y no avanza.
+     - **Crea su programa en la app** — «Pásalo sesión a sesión desde su PDF,
+       foto o mensaje» → **Crea su *programa***: **Lo creo sesión a sesión** →
+       constructor completo (§10); **Parto de uno parecido** → el camino de
+       plantillas de §8 desde el nivel. Sin «pegar texto» (§15). («Copiar» daba
+       a entender otra cosa: no se copia nada, se crea en la app.)
+   - Por invitación no salen estas salidas: ya trae su código.
+   - `profile.coachUsesApp` y `answers.coachApp` (`code` · `nocode` · `no`) se
+     guardan según la salida.
+2. *(Fundido con el 1.)*
 3. **Programa encontrado** — el paso «confirmar» de `ClientCodeModal` como
    pantalla: tarjeta con borde azul (azul = entrenador): «De {entrenador} ·
    {programa}» y sus letras si el hueco las trae. Debajo, «Qué pasa al conectar»
@@ -638,7 +647,7 @@ src/screens/onboarding/OnboardingFlowScreen.jsx   ruta 'Start': cabecera + panta
 src/screens/onboarding/screens/common.jsx         bienvenida, unidades, tema, bifurcación, listo   (O03-01)
 src/screens/onboarding/screens/builder.jsx        b_sessions … b_done                               (O03-02, 03)
 src/screens/onboarding/screens/self.jsx           s_level … s_props                                 (O03-04)
-src/screens/onboarding/screens/coached.jsx        c_app … c_linked                                  (O03-05)
+src/screens/onboarding/screens/coached.jsx        c_code … c_copy                                   (O03-05)
 src/screens/onboarding/screens/learn.jsx          a_home, a_input, a_cards                          (O03-06)
 src/screens/onboarding/screens/recover.jsx        recover                                           (O03-07)
 src/screens/onboarding/screens/trainer.jsx        t_clients … t_self                                (O03-08)
@@ -987,9 +996,9 @@ Hace, en `screens/self.jsx`:
 
 Hace, en `screens/coached.jsx`:
 
-1. **c_app** (§9.1), **c_ask** (mensaje + compartir que avanza solo), **c_noapp**
-   (invitar + copiar), **c_copy** (a mano → `startBuilder('copy')`; parecido →
-   `s_level`).
+1. **c_ask** (mensaje + compartir que avanza solo) y **c_copy** (a mano →
+   `startBuilder('copy')`; parecido → `s_level`). *(14-oct: `c_app` y `c_noapp`
+   desaparecen; sus salidas van dentro de `c_code`, §9.1.)*
 2. **c_code**, **c_confirm**, **c_linked** (§9.2-9.4). **Extracción**: la lógica
    de los pasos «enter» y «confirm» de `ClientCodeModal` (validar, avisos,
    elección de historial, conectar, errores) pasa a un hook
@@ -1006,14 +1015,19 @@ Hace, en `screens/coached.jsx`:
 
 **Probar O03-05**
 
-- [ ] «Sí, tengo su código» → pegar un código real → «Programa encontrado» con el
+- [ ] «Con un entrenador» abre directamente «El código de tu entrenador», con
+  «¿No te lo ha pasado? Pídeselo» y, debajo, «¿Tu entrenador no usa Forma Fit?»
+  con Invítale a la app y Crea su programa en la app.
+- [ ] Pegar un código real → «Programa encontrado» con el
   nombre del entrenador y del programa y «Qué pasa al conectar».
 - [ ] Conectar → panel «Conectado con {entrenador}» → en la app, su programa en
   Inicio y no se puede editar.
 - [ ] Código inventado → el error sale en la pantalla, sin cerrar nada.
-- [ ] «Sí, pero no tengo código» → Enviar mensaje → elegir WhatsApp → al volver
+- [ ] «¿No te lo ha pasado? Pídeselo» → Enviar mensaje → elegir WhatsApp → al volver
   pasa sola a «Cómo ves Inicio». (iOS: cerrar la hoja sin compartir → se queda.)
-- [ ] «No la usa» → «Lo copio a mano» abre el constructor en su versión completa.
+- [ ] «Crea su programa en la app» → «Lo creo sesión a sesión» abre el constructor
+  en su versión completa.
+- [ ] «Invítale a la app» abre compartir y, al volver, se queda en la pantalla.
 - [ ] Por invitación: enlace → bienvenida con la línea azul → unidades → tema →
   directamente el código ya puesto, sin «¿Cómo entrenas?».
 - [ ] El modal de código de la app (Menú → Entrenador) sigue funcionando igual.

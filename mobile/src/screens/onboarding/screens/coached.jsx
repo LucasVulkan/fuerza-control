@@ -1,7 +1,8 @@
 /**
  * Las pantallas del camino «con entrenador» del recorrido de entrada
- * (O03-05, spec §9, §21): ¿usa la app?, el código, programa encontrado,
- * conectado, pedir el código, no usa la app y copiar su programa.
+ * (O03-05, spec §9, §21): el código (que abre el camino y lleva debajo las
+ * salidas de quien no lo tiene o cuyo entrenador no usa la app), programa
+ * encontrado, conectado, pedir el código y crear su programa.
  *
  * Cada una es un componente que `OnboardingFlowScreen` pinta por su id y recibe
  * `goTo(id)`. La lógica de conectarse (validar, avisos, historial, conectar) es
@@ -38,51 +39,13 @@ const cleanName = (name) => (name ? name.replace(/\*/g, '').trim() : '') || null
 /** «Conectar con tu entrenador · Menú → Entrenador»: lo pendiente en «Listo» hasta que se conecte. */
 const pendingItem = (t) => ({ key: 'coach', ok: false, label: t('onboardingFlow.coached.done.pending') });
 
-// ── ¿Tu entrenador usa la app? (§9.1) ─────────────────────────────────────────
-
-const APP_OPTIONS = [['code', 'c_code'], ['nocode', 'c_ask'], ['no', 'c_noapp']];
-
-function CoachApp({ goTo }) {
-  const { t } = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  const coachApp   = useStore((s) => answersOf(s).coachApp);
-  const linked     = useStore((s) => !!answersOf(s).linked);
-  const flowAnswer = useStore((s) => s.flowAnswer);
-  const flowDone   = useStore((s) => s.flowDone);
-  const setProfile = useStore((s) => s.setProfile);
-
-  function pick(key) {
-    flowAnswer({ coachApp: key });
-    setProfile({ coachUsesApp: key !== 'no' });
-    // Sin conectar, «Listo» lo deja pendiente; al conectar se sustituye por su `key`.
-    if (!linked) flowDone(pendingItem(t));
-  }
-
-  return (
-    <FlowBody>
-      <FlowTitle text={t('onboardingFlow.coached.app.title')} sub={t('onboardingFlow.coached.app.sub')} />
-      <View style={styles.opts}>
-        {APP_OPTIONS.map(([key, next], i) => (
-          <FlowOption
-            key={key}
-            index={2 + i}
-            chevron
-            title={t(`onboardingFlow.coached.app.${key}`)}
-            desc={t(`onboardingFlow.coached.app.${key}Desc`)}
-            selected={coachApp === key}
-            onPress={() => pick(key)}
-            onPick={() => goTo(next)}
-          />
-        ))}
-      </View>
-    </FlowBody>
-  );
-}
-
-// ── El código (§9.2) ──────────────────────────────────────────────────────────
+// ── El código (§9.1-9.2) ──────────────────────────────────────────────────────
+// Abre el camino: quien tiene código lo mete y sigue; debajo, «¿No te lo ha
+// pasado?» y, si su entrenador no usa la app, invitarle o crear su programa.
 
 function Code({ goTo }) {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const answers    = useStore(answersOf);
   const pending    = useStore((s) => s.pendingInviteCode);
   const flowAnswer = useStore((s) => s.flowAnswer);
@@ -118,6 +81,20 @@ function Code({ goTo }) {
     goTo(learnStart(answers));
   }
 
+  // Sin código: pedírselo. Su entrenador no usa la app: invitarle (no avanza) o crear su programa.
+  function ask() {
+    flowAnswer({ coachApp: 'nocode' });
+    goTo('c_ask');
+  }
+  function noApp() {
+    flowAnswer({ coachApp: 'no' });
+    setProfile({ coachUsesApp: false });
+  }
+  function invite() {
+    noApp();
+    Share.share({ message: t('onboardingFlow.coached.noapp.inviteMessage', { url: WEB_URL }) }).catch(() => {});
+  }
+
   return (
     <FlowBody
       footer={(
@@ -132,8 +109,34 @@ function Code({ goTo }) {
         sub={t(viaInvite ? 'onboardingFlow.coached.code.subInvite' : 'onboardingFlow.coached.code.sub')}
       />
       <Rise index={2}>
-        <CodeField value={code} onChangeText={setCode} groups={2} onSubmitEditing={next} autoFocus={!pending} error={error} />
+        <CodeField value={code} onChangeText={setCode} groups={2} onSubmitEditing={next} error={error} />
       </Rise>
+
+      {/* Quien llega por invitación ya tiene su código: no necesita las salidas. */}
+      {!viaInvite && (
+        <>
+          <Rise index={3}>
+            <Text style={styles.link} onPress={ask} accessibilityRole="link">{t('onboardingFlow.coached.code.askLink')}</Text>
+          </Rise>
+          <Rise index={4}><Text style={styles.label}>{t('onboardingFlow.coached.code.noApp')}</Text></Rise>
+          <View style={styles.opts}>
+            <FlowOption
+              index={5}
+              chevron
+              title={t('onboardingFlow.coached.noapp.invite')}
+              desc={t('onboardingFlow.coached.noapp.inviteDesc')}
+              onPick={invite}
+            />
+            <FlowOption
+              index={6}
+              chevron
+              title={t('onboardingFlow.coached.noapp.copy')}
+              desc={t('onboardingFlow.coached.noapp.copyDesc')}
+              onPick={() => { noApp(); goTo('c_copy'); }}
+            />
+          </View>
+        </>
+      )}
     </FlowBody>
   );
 }
@@ -300,39 +303,7 @@ function Ask({ goTo }) {
   );
 }
 
-// ── No usa la app: invitarle o copiar su programa (§9.1) ──────────────────────
-
-function NoApp({ goTo }) {
-  const { t } = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  // Invitar no avanza: la persona sigue con «Copia su programa» (o salta).
-  const invite = () => Share.share({ message: t('onboardingFlow.coached.noapp.inviteMessage', { url: WEB_URL }) }).catch(() => {});
-
-  return (
-    <FlowBody>
-      <FlowTitle text={t('onboardingFlow.coached.noapp.title')} />
-      <View style={styles.opts}>
-        <FlowOption
-          index={2}
-          chevron
-          title={t('onboardingFlow.coached.noapp.invite')}
-          desc={t('onboardingFlow.coached.noapp.inviteDesc')}
-          onPick={invite}
-        />
-        <FlowOption
-          index={3}
-          chevron
-          tag={t('onboardingFlow.coached.noapp.meanwhile')}
-          title={t('onboardingFlow.coached.noapp.copy')}
-          desc={t('onboardingFlow.coached.noapp.copyDesc')}
-          onPick={() => goTo('c_copy')}
-        />
-      </View>
-    </FlowBody>
-  );
-}
-
-// ── Copiar su programa (§9.1) ─────────────────────────────────────────────────
+// ── Crear su programa en la app (§9.1) ────────────────────────────────────────
 
 function Copy({ goTo }) {
   const { t } = useTranslation();
@@ -360,7 +331,7 @@ function Copy({ goTo }) {
   );
 }
 
-export default { c_app: CoachApp, c_code: Code, c_confirm: Confirm, c_linked: Linked, c_ask: Ask, c_noapp: NoApp, c_copy: Copy };
+export default { c_code: Code, c_confirm: Confirm, c_linked: Linked, c_ask: Ask, c_copy: Copy };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
