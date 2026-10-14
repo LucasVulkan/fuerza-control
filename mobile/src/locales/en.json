@@ -47,7 +47,7 @@
     "scrubRulerLabel": "Slide ruler",
     "scrubRulerHint": "Adjust KG, reps and RPE on a ruler",
     "homeTabsLabel": "Sessions as tabs",
-    "homeTabsHint": "One card on Home, with a tab per session",
+    "homeTabsHint": "One card in Workout, with a tab per session",
     "sectionPrograms": "PROGRAMS",
     "sectionConnections": "CONNECTIONS",
     "sectionData": "DATA",
@@ -125,7 +125,7 @@
         "The letter tells you when it comes up, not what it is: reorder them and they're reassigned."
       ] },
       { "id": "free", "title": "Free session", "points": [
-        "A session outside your program: mobility, grip, a hotel-gym day. Improvise it or save it and keep it on Home.",
+        "A session outside your program: mobility, grip, a hotel-gym day. Improvise it or save it and keep it in Workout.",
         "It doesn't touch your program: its weights progress on their own and it doesn't move your week or stage forward.",
         "If it replaces a session, mark it when you finish with \"Counts toward program\": it counts as that session for the week, the stage and adherence.",
         "Load always counts it: fatigue is real even when the session isn't part of the program."
@@ -629,7 +629,7 @@
     "disconnectConfirm": "Disconnect"
   },
   "tabs": {
-    "session": "Session",
+    "session": "Workout",
     "program": "Program",
     "progress": "Progress",
     "clients": "Clients",
@@ -809,7 +809,7 @@
     "fromTemplates": "From your templates",
     "fromTemplatesDesc": "Creates a copy of the template",
     "templatesTitle": "Your session templates",
-    "addedToHome": "Added to your Home",
+    "addedToHome": "Added to Workout",
     "sectionTitle": "Free sessions",
     "templateUnnamed": "Free session",
     "templateExercises_one": "{{count}} exercise",
@@ -1739,7 +1739,7 @@
     "newExercise": "new",
     "freeTitle": "This free session",
     "addExercisesSub": "The ones you added during the workout",
-    "saveAsFreeSub": "To repeat it from Home"
+    "saveAsFreeSub": "To repeat it from Workout"
   },
   "load": {
     "tabExercises": "Exercises",
@@ -2911,7 +2911,7 @@
         "title": "Program *found*",
         "from": "From {{trainer}}",
         "fromAnon": "From your coach",
-        "implies1": "It loads on your Home and you follow it as is. Your coach changes it, not you.",
+        "implies1": "It loads in Workout and you follow it as is. Your coach changes it, not you.",
         "implies2": "{{trainer}} sees the sessions you complete, with the weights you log.",
         "implies2Anon": "Your coach sees the sessions you complete, with the weights you log.",
         "implies3": "If the program changes, we let you know and you decide when to switch.",
@@ -2922,8 +2922,8 @@
       "linked": {
         "title": "Connected with *{{trainer}}*",
         "titleAnon": "Connected with *your coach*",
-        "sub": "\"{{program}}\" is now on your Home. {{trainer}} sees the sessions you complete.",
-        "subAnon": "\"{{program}}\" is now on your Home. Your coach sees the sessions you complete.",
+        "sub": "\"{{program}}\" is now in Workout. {{trainer}} sees the sessions you complete.",
+        "subAnon": "\"{{program}}\" is now in Workout. Your coach sees the sessions you complete.",
         "hint": "Now, choose how to see your sessions."
       },
       "ask": {
@@ -2951,14 +2951,14 @@
       "done": {
         "linked": "Connected with {{trainer}}",
         "linkedAnon": "Connected with your coach",
-        "program": "\"{{program}}\" on your Home",
+        "program": "\"{{program}}\" in Workout",
         "pending": "Connect with your coach · Menu → Trainer"
       }
     },
     "learn": {
       "home": {
         "title": "How do you want to see your *sessions*?",
-        "sub": "This is your Home. You can change it in Preferences.",
+        "sub": "This is how you'll see them in Workout. You can change it in Preferences.",
         "list": "List",
         "listDesc": "Every session, one under another",
         "tabs": "Tabs",
@@ -2983,9 +2983,9 @@
           "sub": "Who trained this week, who has been away for days, and who has new sessions to review (the colored notch)."
         },
         "today": {
-          "title": "Today's session, on *Home*",
-          "subCards": "The highlighted one is up next: tap Start. The app knows what comes next.",
-          "subTabs": "A tab per session. The highlighted one is up next: tap Start. Tap another tab to look ahead."
+          "title": "Today's *workout*",
+          "subCards": "It's in the Workout tab. The highlighted one is up next: tap Start. The app knows which comes next.",
+          "subTabs": "It's in the Workout tab, with a tab per session. The highlighted one is up next: tap Start."
         },
         "edit": {
           "title": "Change *anything*",

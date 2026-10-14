@@ -503,7 +503,9 @@ Cambiar de tarjeta cambia cómo responde la fila. «Me quedo con este» guarda
 
 **Por mi cuenta, con entrenador sin conectar y entrenador que también entrena**:
 1. *(solo entrenador)* **Tus clientes, de un vistazo** — como abajo.
-2. **Tu sesión de hoy, en Inicio** — la vista elegida, con Empezar resaltado.
+2. **Tu entreno de hoy** — la vista elegida, con Empezar resaltado, y debajo la
+   barra de pestañas de la app con **Entreno** resaltado (`TabBarMini`): «Lo
+   tienes en la pestaña Entreno…».
 3. **Cambia lo que quieras** — Programa → ejercicios, series, progresión.
 4. **¿Hoy algo distinto? Sesión libre** — el «+»; cuenta o no como sesión.
 
@@ -627,6 +629,11 @@ Todas tomadas; no queda nada abierto.
   copiado.
 - *(13-oct)* **Rol**: `self`/`coached` ocultan las pestañas de entrenador; el
   entrenador que no entrena arranca en Clientes y conserva Inicio (§6, §7.9).
+- *(14-oct)* **La pestaña de Inicio se llama «Entreno»** («Workout» en inglés),
+  no «Sesión»: enseña todas las sesiones y la libre, y «sesión» ya es otra cosa
+  en la app (las A, B, C…). Cambia `tabs.session` y los textos que nombraban la
+  pestaña («en tu Inicio» → «en Entreno»). En esta spec, «Inicio» sigue
+  designando esa pantalla.
 - *(13-oct)* **Re-entrada**: «Nuevo programa» entra por el mismo recorrido, por
   otra puerta: sin Ajustes, bifurcación ni Aprende, con las cinco salidas del
   selector de hoy y un cierre corto (§25). `OnboardingScreen` se borra. (La

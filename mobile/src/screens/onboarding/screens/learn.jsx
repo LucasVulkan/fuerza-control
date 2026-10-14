@@ -31,6 +31,7 @@ import { useInk } from '../../../components/onboarding/flow/useFill';
 import HomeViewPreview from '../../../components/onboarding/learn/HomeViewPreview';
 import ScrubDemo from '../../../components/onboarding/learn/ScrubDemo';
 import ClientsMini from '../../../components/onboarding/learn/ClientsMini';
+import TabBarMini from '../../../components/onboarding/learn/TabBarMini';
 import { Mini, MiniTemplates, MiniNext, MiniLogFor, MiniCoach } from '../../../components/onboarding/learn/CardMinis';
 import { previewSessions, learnCards } from '../../../utils/onboardingPreview';
 
@@ -208,7 +209,13 @@ function useCard(id) {
       return {
         title: L('today.title'),
         sub:   L(view === 'tabs' ? 'today.subTabs' : 'today.subCards'),
-        mini:  <Mini interactive><HomeViewPreview view={view} sessions={sessions} spot="start" touchable /></Mini>,
+        // Debajo, la barra de pestañas con Entreno resaltado: dónde vive lo que enseña.
+        mini:  (
+          <Mini interactive>
+            <HomeViewPreview view={view} sessions={sessions} spot="start" touchable />
+            <TabBarMini />
+          </Mini>
+        ),
       };
     case 'edit':
       return { title: L('edit.title'), sub: L('edit.sub'), mini: <MiniTemplates edit sessions={sessions} /> };

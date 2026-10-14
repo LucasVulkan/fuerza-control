@@ -47,7 +47,7 @@
     "scrubRulerLabel": "Regla al deslizar",
     "scrubRulerHint": "KG, reps y RPE se ajustan sobre una regla",
     "homeTabsLabel": "Sesiones en pestañas",
-    "homeTabsHint": "Una sola tarjeta en Inicio, con una pestaña por sesión",
+    "homeTabsHint": "Una sola tarjeta en Entreno, con una pestaña por sesión",
     "sectionPrograms": "PROGRAMAS",
     "sectionConnections": "CONEXIONES",
     "sectionData": "DATOS",
@@ -125,7 +125,7 @@
         "La letra dice cuándo toca, no qué es: al reordenarlas, se reasignan."
       ] },
       { "id": "free", "title": "Sesión libre", "points": [
-        "Una sesión fuera del programa: movilidad, agarre, la de un día de hotel. Puedes improvisarla o guardarla y tenerla en Inicio.",
+        "Una sesión fuera del programa: movilidad, agarre, la de un día de hotel. Puedes improvisarla o guardarla y tenerla en Entreno.",
         "No toca el programa: sus pesos progresan por su cuenta y no avanza la semana ni la etapa.",
         "Si sustituye a una sesión, márcalo al acabar con «Cuenta para el programa»: cuenta como esa sesión en la semana, la etapa y la adherencia.",
         "La carga la cuenta siempre: el cansancio es real aunque la sesión no sea del programa."
@@ -629,7 +629,7 @@
     "disconnectConfirm": "Desconectar"
   },
   "tabs": {
-    "session": "Sesión",
+    "session": "Entreno",
     "program": "Programa",
     "progress": "Progresión",
     "clients": "Clientes",
@@ -809,7 +809,7 @@
     "fromTemplates": "Desde tus plantillas",
     "fromTemplatesDesc": "Crea una copia de la plantilla",
     "templatesTitle": "Tus plantillas de sesión",
-    "addedToHome": "Añadida a tu Inicio",
+    "addedToHome": "Añadida a Entreno",
     "sectionTitle": "Sesiones libres",
     "templateUnnamed": "Sesión libre",
     "templateExercises_one": "{{count}} ejercicio",
@@ -1739,7 +1739,7 @@
     "newExercise": "nuevo",
     "freeTitle": "Esta sesión libre",
     "addExercisesSub": "Los que añadiste durante el entreno",
-    "saveAsFreeSub": "Para repetirla desde Inicio"
+    "saveAsFreeSub": "Para repetirla desde Entreno"
   },
   "load": {
     "tabExercises": "Ejercicios",
@@ -2911,7 +2911,7 @@
         "title": "Programa *encontrado*",
         "from": "De {{trainer}}",
         "fromAnon": "De tu entrenador",
-        "implies1": "Se carga en tu Inicio y lo sigues tal cual. Lo cambia tu entrenador, no tú.",
+        "implies1": "Se carga en Entreno y lo sigues tal cual. Lo cambia tu entrenador, no tú.",
         "implies2": "{{trainer}} verá las sesiones que completes, con el peso que anotes.",
         "implies2Anon": "Tu entrenador verá las sesiones que completes, con el peso que anotes.",
         "implies3": "Si cambia el programa, te avisamos y decides cuándo pasarte.",
@@ -2922,8 +2922,8 @@
       "linked": {
         "title": "Conectado con *{{trainer}}*",
         "titleAnon": "Conectado con *tu entrenador*",
-        "sub": "\"{{program}}\" ya está en tu Inicio. {{trainer}} verá las sesiones que completes.",
-        "subAnon": "\"{{program}}\" ya está en tu Inicio. Tu entrenador verá las sesiones que completes.",
+        "sub": "\"{{program}}\" ya está en Entreno. {{trainer}} verá las sesiones que completes.",
+        "subAnon": "\"{{program}}\" ya está en Entreno. Tu entrenador verá las sesiones que completes.",
         "hint": "Ahora, elige cómo ver tus sesiones."
       },
       "ask": {
@@ -2951,14 +2951,14 @@
       "done": {
         "linked": "Conectado con {{trainer}}",
         "linkedAnon": "Conectado con tu entrenador",
-        "program": "\"{{program}}\" en tu Inicio",
+        "program": "\"{{program}}\" en Entreno",
         "pending": "Conectar con tu entrenador · Menú → Entrenador"
       }
     },
     "learn": {
       "home": {
         "title": "¿Cómo quieres ver tus *sesiones*?",
-        "sub": "Así será tu Inicio. Se cambia en Preferencias.",
+        "sub": "Así las verás en Entreno. Se cambia en Preferencias.",
         "list": "Lista",
         "listDesc": "Todas las sesiones, una debajo de otra",
         "tabs": "Pestañas",
@@ -2983,9 +2983,9 @@
           "sub": "Quién entrenó esta semana, quién lleva días sin hacerlo y quién tiene sesiones nuevas que revisar (la muesca de color)."
         },
         "today": {
-          "title": "Tu sesión de hoy, en *Inicio*",
-          "subCards": "La resaltada es la que toca: pulsa Empezar. La app sabe cuál es la siguiente.",
-          "subTabs": "Una pestaña por sesión. La resaltada es la que toca: pulsa Empezar. Toca otra pestaña para ver las demás."
+          "title": "Tu entreno de *hoy*",
+          "subCards": "Lo tienes en la pestaña Entreno. La resaltada es la que toca: pulsa Empezar. La app sabe cuál es la siguiente.",
+          "subTabs": "Lo tienes en la pestaña Entreno, con una pestaña por sesión. La resaltada es la que toca: pulsa Empezar."
         },
         "edit": {
           "title": "Cambia lo que *quieras*",
