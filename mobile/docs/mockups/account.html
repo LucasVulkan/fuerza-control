@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi cuenta — mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070707; color: #e6e6e6; font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: #949494; font: 500 14px/1.5 Inter; max-width: 820px; margin-bottom: 18px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: #585858; width: 70px; }
+  .ctl button { background: #272727; color: #e6e6e6; border: 1px solid #3a3a3a; border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: #aae216; color: #aae216; }
+  .wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin-top: 16px; }
+  .notes { max-width: 420px; color: #949494; font: 500 13px/1.55 Inter; }
+  .notes h3 { font: 800 14px Inter; color: #e6e6e6; margin: 18px 0 6px; } .notes h3:first-child { margin-top: 0; }
+  .notes b { color: #e6e6e6; }
+  .notes li { margin: 0 0 5px 18px; }
+  .gram { display: grid; grid-template-columns: 130px 1fr; gap: 8px 12px; align-items: center; margin-top: 8px; }
+  .gram .s1 { font: italic 800 24px/1 'Barlow Condensed'; color: #e6e6e6; text-transform: uppercase; }
+  .gram .s2 { font: 800 13px Inter; color: #aae216; }
+  .gram .s3 { font: 500 12px/1.3 Inter; color: #949494; border-left: 2px solid #333; padding-left: 7px; }
+  .gram .s4 { font: 800 11px Inter; letter-spacing: 1.4px; color: #949494; }
+
+  /* ════════ TELÉFONO ════════ */
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --surface3: #333; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000; --green: #66fa39;
+    --blue: #4c85ff; --red: #ff5e58; --orange: #fb923c;
+    --r: 18px; --rb: 10px; --out: cubic-bezier(.33, 1, .68, 1);
+    width: 375px; max-width: 100%; height: 800px; background: var(--bg); color: var(--text);
+    border-radius: 34px; border: 8px solid #1b1b1b; position: relative; overflow: hidden; flex: none;
+  }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 0 16px 40px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .scroll.enter > * { animation: rise .4s var(--out) backwards; }
+  .scroll.enter > *:nth-child(2) { animation-delay: 40ms; } .scroll.enter > *:nth-child(3) { animation-delay: 80ms; }
+  .scroll.enter > *:nth-child(4) { animation-delay: 120ms; } .scroll.enter > *:nth-child(5) { animation-delay: 160ms; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+  /* Cabecera de detalle (ScreenHeader): ceja lima, título, regla lima a sangre */
+  .hdr { padding: 40px 0 0; }
+  .hdr .row { display: flex; align-items: center; gap: 10px; }
+  .hdr .bk { font: 500 26px/1 Inter; color: var(--accent); width: 18px; margin-top: -3px; }
+  .hdr .eb { font: 800 11px Inter; letter-spacing: 2.4px; text-transform: uppercase; color: var(--accent); }
+  .hdr .ti { font: 900 25px/26px Inter; letter-spacing: -.5px; margin: 6px 0 14px; }
+  .hdr .rule { height: 5px; background: var(--accent); margin: 0 -16px 22px; }
+
+  /* Gramática: CAPS = sección · Barlow = lo que tengo · verbo = lo que hago · línea con barra = explicación */
+  .sec { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--mutedLight); margin: 26px 0 10px; display: flex; justify-content: space-between; align-items: baseline; }
+  .sec:first-of-type { margin-top: 0; }
+  .card { background: var(--surface); border-radius: var(--r); padding: 18px 16px; position: relative; overflow: hidden; }
+  .how { display: inline-flex; align-items: center; gap: 7px; font: 800 11px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--mutedLight); }
+  .how svg { width: 15px; height: 15px; }
+  .big { font: italic 800 40px/1 'Barlow Condensed'; text-transform: uppercase; margin-top: 10px; word-break: break-all; }
+  .big.code { color: var(--accent); letter-spacing: .04em; font-size: 44px; }
+  .big.mail { font-size: 26px; line-height: 1.05; text-transform: none; font-style: normal; font-family: Inter; font-weight: 800; letter-spacing: -.3px; word-break: break-word; }
+  .big.none { color: var(--muted); }
+  .why { font: 500 13px/1.4 Inter; color: var(--mutedLight); border-left: 2px solid var(--surface3); padding-left: 9px; margin-top: 12px; }
+  .acts { display: flex; gap: 8px; margin-top: 16px; }
+  .btn { flex: 1; border: 0; border-radius: var(--rb); padding: 15px 8px; font: 900 13px Inter; letter-spacing: .4px; white-space: nowrap; text-transform: uppercase; background: var(--surface2); color: var(--text); transition: transform .12s, background .25s; }
+  .btn:active { transform: scale(.97); }
+  .btn.acc { background: var(--accent); color: var(--onAccent); }
+  .btn.dark { background: var(--onAccent); color: var(--accent); }
+  .btn.done { background: color-mix(in srgb, var(--accent) 16%, var(--surface2)); color: var(--accent); }
+
+  /* nombre: es un dato editable, se lee como dato */
+  .field { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-top: 8px; }
+  .field small { display: block; font: 800 11px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--mutedLight); }
+  .field b { display: block; font: 700 17px Inter; margin-top: 4px; }
+  .field .ed { color: var(--accent); font: 800 13px Inter; }
+
+  /* plan */
+  .plan { padding: 20px 16px 18px; }
+  .plan.pro { color: var(--onAccent); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 40%, var(--green))); }
+  .plan .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .plan .name { font: italic 800 56px/.9 'Barlow Condensed'; text-transform: uppercase; }
+  .plan .kind { font: 800 11px Inter; letter-spacing: 1.4px; text-transform: uppercase; text-align: right; margin-top: 4px; }
+  .plan .kind span { display: block; font: 700 14px Inter; letter-spacing: 0; text-transform: none; margin-top: 4px; }
+  .plan.pro .kind span { color: rgba(0,0,0,.72); }
+  .plan.free .kind span { color: var(--mutedLight); }
+  .plan.pro .why { color: rgba(0,0,0,.72); border-color: rgba(0,0,0,.25); }
+  .meters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; margin-top: 18px; }
+  .meter small { display: flex; justify-content: space-between; font: 800 11px Inter; letter-spacing: 1.2px; text-transform: uppercase; color: var(--mutedLight); }
+  .meter small b { font: italic 800 18px/1 'Barlow Condensed'; letter-spacing: 0; color: var(--text); }
+  .meter small b.full { color: var(--orange); }
+  .meter i { display: flex; gap: 3px; margin-top: 6px; }
+  .meter i u { flex: 1; height: 6px; border-radius: 3px; background: var(--surface3); }
+  .meter i u.on { background: var(--accent); }
+  .meter i u.on.full { background: var(--orange); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font: 800 11px Inter; letter-spacing: 1.2px; text-transform: uppercase; padding: 6px 9px; border-radius: 6px; margin-top: 14px; }
+  .badge.ok { background: rgba(0,0,0,.14); }
+  .badge.warn { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+  .plan.pro .badge.warn { background: var(--onAccent); color: var(--orange); }
+  .links { display: flex; justify-content: center; gap: 22px; margin-top: 14px; }
+  .links a { font: 800 13px Inter; color: var(--accent); cursor: pointer; }
+
+  /* salir y borrar: filas sueltas, al final, sin tarjeta */
+  .tail { margin-top: 30px; display: flex; flex-direction: column; }
+  .tail button { background: none; border: 0; text-align: left; padding: 15px 0; font: 700 15px Inter; color: var(--text); border-top: 1px solid var(--surface2); display: flex; justify-content: space-between; }
+  .tail button.red { color: var(--red); }
+  .tail button span { color: var(--muted); }
+
+  /* menú: la fila que abre la página */
+  .menu .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--surface3); margin: 12px auto 18px; }
+  .acc-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: var(--r); padding: 14px; cursor: pointer; position: relative; overflow: hidden; isolation: isolate; transition: transform .12s; }
+  .acc-row:active { transform: scale(.98); }
+  .avatar { width: 46px; height: 46px; border-radius: 23px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: italic 800 26px/1 'Barlow Condensed'; color: var(--accent); flex: none; }
+  .acc-row .t { flex: 1; min-width: 0; }
+  .acc-row b { display: block; font: 700 17px Inter; }
+  .acc-row small { display: block; font: 500 13px Inter; color: var(--mutedLight); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chipPlan { font: 900 11px Inter; letter-spacing: 1px; padding: 5px 8px; border-radius: 6px; background: var(--surface2); color: var(--mutedLight); flex: none; }
+  .chipPlan.pro { background: var(--accent); color: var(--onAccent); }
+  .chev { color: var(--muted); font: 700 22px/1 Inter; }
+  .ghostRows { margin-top: 22px; display: flex; flex-direction: column; gap: 8px; opacity: .35; }
+  .ghostRows div { height: 58px; border-radius: 14px; background: var(--surface); }
+  .ghostRows p { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--mutedLight); margin: 10px 0 2px; }
+
+  /* hoja: crear / cambiar de cuenta */
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 5; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 24px 24px 0 0; padding: 10px 16px 26px; transform: translateY(100%); transition: transform .35s var(--out); z-index: 6; }
+  .open .veil { opacity: 1; pointer-events: auto; }
+  .open .sheet { transform: none; }
+  .sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--surface3); margin: 0 auto 16px; }
+  .sheet h4 { font: italic 800 30px/1 'Barlow Condensed'; text-transform: uppercase; margin-bottom: 16px; }
+  .sheet h4 em { font-style: inherit; color: var(--accent); }
+  .opt { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 62px; padding: 14px 16px; border-radius: 14px; border: 0; background: var(--surface); color: var(--text); text-align: left; margin-bottom: 8px; transition: transform .12s; }
+  .opt:active { transform: scale(.98); }
+  .opt svg { width: 22px; height: 22px; flex: none; }
+  .opt b { flex: 1; font: 700 16px Inter; }
+  .opt .chev { margin-left: auto; }
+  .sheet .or { font: 800 11px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); text-align: center; margin: 14px 0 6px; }
+  .sheet .alt { width: 100%; background: none; border: 0; color: var(--accent); font: 800 15px Inter; padding: 12px; }
+
+  .toast { position: absolute; left: 50%; bottom: 30px; transform: translate(-50%, 20px); background: var(--surface2); color: var(--text); font: 700 13px Inter; padding: 11px 16px; border-radius: 12px; opacity: 0; transition: opacity .2s, transform .3s var(--out); z-index: 9; white-space: nowrap; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<h1>Mi cuenta</h1>
+<p class="lead">Página propia desde una fila fija al principio del menú, con o sin PRO. Dos bloques: <b>tu cuenta</b> y <b>tu plan</b>. Cambia los estados con los botones; los botones del teléfono responden.</p>
+
+<div class="ctl"><span>Cuenta</span>
+  <button data-k="acct" data-v="none">Sin cuenta</button>
+  <button data-k="acct" data-v="code" class="on">Código</button>
+  <button data-k="acct" data-v="google">Google</button>
+  <button data-k="acct" data-v="apple">Apple</button>
+</div>
+<div class="ctl"><span>Plan</span>
+  <button data-k="plan" data-v="free" class="on">Free</button>
+  <button data-k="plan" data-v="annual">PRO anual</button>
+  <button data-k="plan" data-v="lifetime">PRO para siempre</button>
+</div>
+
+<div class="wrap">
+  <div class="phone menu" id="menu"><div class="scroll">
+    <div class="grab"></div>
+    <div class="acc-row" id="accRow">
+      <div class="avatar" id="avatar">A</div>
+      <div class="t"><b id="rowName">Ana López</b><small id="rowSub">Código personal</small></div>
+      <span class="chipPlan" id="rowChip">FREE</span><span class="chev">›</span>
+    </div>
+    <div class="ghostRows"><p>Preferencias</p><div></div><div></div><div></div><p>Datos</p><div></div><div></div></div>
+  </div></div>
+
+  <div class="phone" id="page">
+    <div class="scroll" id="scroll"></div>
+    <div class="veil" id="veil"></div>
+    <div class="sheet" id="sheet"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="notes">
+    <h3>Cuatro estilos, uno por tipo de cosa</h3>
+    <div class="gram">
+      <span class="s4">CUENTA</span><span>Versales grises: título de bloque. Nada más.</span>
+      <span class="s1">XK7M-2P4T</span><span>Barlow grande: <b>lo que tienes</b>. Se lee de lejos.</span>
+      <span class="s2">COPIAR</span><span>Botón con un verbo: <b>lo que puedes hacer</b>. Nunca texto dentro.</span>
+      <span class="s3">Para entrar en otro móvil.</span><span>Barra a la izquierda: <b>explicación</b>. Una línea por bloque, como mucho.</span>
+    </div>
+
+    <h3>Decisiones que propone</h3>
+    <ul>
+      <li><b>«Sin conexión» desaparece</b> como modo: es «Sin cuenta». Salir de la cuenta te devuelve ahí.</li>
+      <li><b>«Sincronización con clientes» sale del menú.</b> La cuenta ya es la sincronización; los avisos de Clientes traen aquí.</li>
+      <li><b>Borrar cuenta</b> se muda del menú a esta página, al final.</li>
+      <li>El <b>nombre para tus clientes</b> sale de Sincronización y vive aquí, como dato editable.</li>
+      <li>Plan FREE: <b>qué te queda</b> en barras (clientes, conectados, plantillas), no una lista de lo que no tienes.</li>
+      <li>PRO comprado sin cuenta: aviso naranja <b>«Solo en este móvil»</b>; la acción es la de arriba, «Crear cuenta». Es el caso que hoy nadie ve.</li>
+    </ul>
+
+    <h3>Lo que no está</h3>
+    <ul>
+      <li>Copia en Google Drive: sigue en su fila del menú; no es la cuenta.</li>
+      <li>Iconos decorativos y párrafos: fuera.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const ICON = {
+  code:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></svg>',
+  google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5z"/><path fill="#34A853" d="M12 22c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.2 13.6a6 6 0 0 1 0-3.8V7.1H2.7a10 10 0 0 0 0 9z"/><path fill="#EA4335" d="M12 6c1.5 0 2.9.5 4 1.5l3-3A10 10 0 0 0 2.7 7.1l3.5 2.7C7 7.8 9.3 6 12 6z"/></svg>',
+  apple:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9a5 5 0 0 0-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5a11 11 0 0 0 1.4-2.9 4.5 4.5 0 0 1-2.7-4.1zM13.9 4.9A4.4 4.4 0 0 0 15 1.7a4.6 4.6 0 0 0-3 1.5 4.2 4.2 0 0 0-1 3.1c1.1.1 2.2-.6 2.9-1.4z"/></svg>',
+};
+const S = { acct: 'code', plan: 'free', copied: false };
+const ACCT = {
+  code:   { how: 'Código personal', icon: ICON.code, big: 'XK7M-2P4T-9QR3', cls: 'code', why: 'Es tu llave: con él entras en otro móvil.' },
+  google: { how: 'Google',          icon: ICON.google, big: 'ana.lopez@gmail.com', cls: 'mail', why: null },
+  apple:  { how: 'Apple',           icon: ICON.apple,  big: 'ana.lopez@icloud.com', cls: 'mail', why: null },
+};
+const USAGE = [['Clientes', 2, 3], ['Conectados', 1, 1], ['Programas', 1, 1], ['Sesiones', 0, 1]];
+
+function meter([label, n, max]) {
+  const full = n >= max;
+  const bars = Array.from({ length: max }, (_, i) => `<u class="${i < n ? 'on' : ''} ${full ? 'full' : ''}"></u>`).join('');
+  return `<div class="meter"><small>${label}<b class="${full ? 'full' : ''}">${n}/${max}</b></small><i>${bars}</i></div>`;
+}
+
+function accountBlock() {
+  if (S.acct === 'none') {
+    return `<div class="card">
+      <span class="how">Este móvil</span>
+      <div class="big none">Sin cuenta</div>
+      <div class="why">Todo se guarda solo en este móvil.</div>
+      <div class="acts"><button class="btn acc" data-a="create">Crear cuenta</button><button class="btn" data-a="signin">Ya tengo cuenta</button></div>
+    </div>`;
+  }
+  const a = ACCT[S.acct];
+  const copy = S.acct === 'code'
+    ? `<div class="acts"><button class="btn ${S.copied ? 'done' : ''}" data-a="copy">${S.copied ? 'Copiado ✓' : 'Copiar código'}</button></div>` : '';
+  return `<div class="card">
+      <span class="how">${a.icon}${a.how}</span>
+      <div class="big ${a.cls}">${a.big}</div>
+      ${a.why ? `<div class="why">${a.why}</div>` : ''}
+      ${copy}
+    </div>
+    <div class="field"><div><small>Tu nombre para los clientes</small><b>Ana López</b></div><span class="ed">Editar</span></div>`;
+}
+
+function planBlock() {
+  const store = 'Google Play';
+  if (S.plan === 'free') {
+    return `<div class="card plan free">
+      <div class="top"><div class="name">Free</div><div class="kind">Plan gratis<span>Sin caducidad</span></div></div>
+      <div class="meters">${USAGE.map(meter).join('')}</div>
+      <div class="acts"><button class="btn acc" data-a="pro">Pasar a PRO</button></div>
+      <div class="links"><a data-a="restore">Restaurar compra</a></div>
+    </div>`;
+  }
+  const annual = S.plan === 'annual';
+  const local = S.acct === 'none';
+  return `<div class="card plan pro">
+      <div class="top"><div class="name">Pro</div>
+        <div class="kind">${annual ? 'Anual' : 'Para siempre'}<span>${annual ? 'Se renueva el 13 oct 2027' : 'Pago único'}</span></div></div>
+      ${local
+        ? `<span class="badge warn">● Solo en este móvil</span>
+           <div class="why">Crea una cuenta arriba para no perderlo.</div>`
+        : `<span class="badge ok">✓ Guardado en tu cuenta</span>
+           ${annual ? `<div class="acts"><button class="btn dark" data-a="manage">Gestionar en ${store} ↗</button></div>` : ''}`}
+    </div>
+    <div class="links"><a data-a="restore">Restaurar compra</a></div>`;
+}
+
+function tail() {
+  if (S.acct === 'none') return '';
+  return `<div class="tail">
+      <button data-a="switch">Cambiar de cuenta <span>›</span></button>
+      <button data-a="signout">Salir de la cuenta <span>›</span></button>
+      <button class="red" data-a="delete">Borrar cuenta <span>›</span></button>
+    </div>`;
+}
+
+function render(animate) {
+  const sc = document.getElementById('scroll');
+  sc.innerHTML = `
+    <div class="hdr"><div class="row"><span class="bk">‹</span><span class="eb">Ajustes</span></div><div class="ti">Mi cuenta</div><div class="rule"></div></div>
+    <div class="sec">Cuenta</div>${accountBlock()}
+    <div class="sec">Plan</div>${planBlock()}
+    ${tail()}`;
+  if (animate) { sc.classList.remove('enter'); void sc.offsetWidth; sc.classList.add('enter'); }
+  // fila del menú
+  const pro = S.plan !== 'free';
+  document.getElementById('rowSub').textContent = S.acct === 'none' ? 'Sin cuenta' : ACCT[S.acct].how;
+  document.getElementById('rowName').textContent = S.acct === 'none' ? 'Mi cuenta' : 'Ana López';
+  document.getElementById('avatar').textContent = S.acct === 'none' ? '?' : 'A';
+  const chip = document.getElementById('rowChip');
+  chip.textContent = pro ? 'PRO' : 'FREE'; chip.className = 'chipPlan' + (pro ? ' pro' : '');
+  document.querySelectorAll('.ctl button').forEach((b) => b.classList.toggle('on', S[b.dataset.k] === b.dataset.v));
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 1600);
+}
+
+function sheet(kind) {
+  const page = document.getElementById('page');
+  const title = kind === 'signin' ? 'Entra en tu <em>cuenta</em>' : kind === 'switch' ? 'Cambiar de <em>cuenta</em>' : 'Crea tu <em>cuenta</em>';
+  document.getElementById('sheet').innerHTML = `
+    <div class="grab"></div><h4>${title}</h4>
+    <button class="opt" data-pick="apple">${ICON.apple}<b>Continuar con Apple</b><span class="chev">›</span></button>
+    <button class="opt" data-pick="google">${ICON.google}<b>Continuar con Google</b><span class="chev">›</span></button>
+    ${kind === 'signin'
+      ? `<button class="opt" data-pick="code">${ICON.code}<b>Tengo un código</b><span class="chev">›</span></button>`
+      : `<button class="opt" data-pick="code">${ICON.code}<b>Crear un código personal</b><span class="chev">›</span></button>
+         <div class="or">o</div><button class="alt" data-pick="code">Ya tengo un código</button>`}`;
+  page.classList.add('open');
+}
+
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('.ctl button');
+  if (c) { S[c.dataset.k] = c.dataset.v; S.copied = false; render(true); return; }
+  if (e.target.closest('#accRow')) { document.getElementById('page').scrollIntoView({ behavior: 'smooth', block: 'center' }); render(true); return; }
+  if (e.target.id === 'veil') { document.getElementById('page').classList.remove('open'); return; }
+  const p = e.target.closest('[data-pick]');
+  if (p) { document.getElementById('page').classList.remove('open'); S.acct = p.dataset.pick; S.copied = false; setTimeout(() => render(true), 250); return; }
+  const a = e.target.closest('[data-a]');
+  if (!a) return;
+  const act = a.dataset.a;
+  if (act === 'copy') { S.copied = true; render(false); toast('Código copiado'); }
+  else if (act === 'create' || act === 'signin' || act === 'switch') sheet(act);
+  else if (act === 'pro') { S.plan = 'annual'; render(true); toast('(abre el paywall)'); }
+  else if (act === 'restore') toast('(restaura con la tienda)');
+  else if (act === 'manage') toast('(abre la suscripción en la tienda)');
+  else if (act === 'signout') { S.acct = 'none'; render(true); toast('Has salido de la cuenta'); }
+  else if (act === 'delete') toast('(confirmación de borrar cuenta)');
+});
+
+render(false);
+</script>
+</body>
+</html>
