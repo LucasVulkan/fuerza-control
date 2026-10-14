@@ -4,10 +4,10 @@
 > En corto: La cuenta de entrenador y el plan se ven y se gestionan en una página propia («Mi cuenta»), y entrar, cambiar de forma de entrar y salir pasan por un único sitio del código que se encarga de Supabase, de los clientes y del PRO a la vez.
 > Fase M03-01 · hecho · Una sola puerta: acciones de cuenta en el store y hook `useTrainerAccount` · §5
 > Fase M03-02 · pendiente · Página Mi cuenta y su fila en el menú · §6
-> Fase M03-03 · pendiente · Hoja de entrada simplificada y entradas desde Clientes · §7
+> Fase M03-03 · hecho · Hoja de entrada simplificada y entradas desde Clientes · §7
 > Inicio: 2026-10-14
 >
-> Estado: **spec escrita el 14-oct-2026; M03-01 hecha (87c3be8).** Sale del mapa
+> Estado: **spec escrita el 14-oct-2026; M03-01 hecha (87c3be8), M03-03 hecha (e204f19).** Sale del mapa
 > [`docs/mapa-cuenta-pro.md`](../mapa-cuenta-pro.md) y de la maqueta
 > [`docs/mockups/account.html`](../mockups/account.html), aprobada el 14-oct.
 > **M03-01 va antes que O03-08**: O03-08 §24 paso 3 pensaba sacar el mismo hook
@@ -551,7 +551,7 @@ Los nuevos en `sync.*` (es/en). Los que dejan de usarse (`sync.modeOffline*`,
 - [ ] «Ahora no» → volver a Clientes otro día → no vuelve a salir sola.
 - [ ] Icono de conexión de Clientes → abre Mi cuenta.
 - [ ] Conectar un cliente sin cuenta → la hoja sale en Clientes; al crear la
-  cuenta se sigue conectando ese cliente.
+  cuenta se sigue conectando ese cliente (se abre la hoja de conexión de ese cliente).
 - [ ] Paywall → comprar sin cuenta → «Guarda tu compra» con la hoja nueva y
   Google preseleccionado/primero.
 - [ ] Paywall → «Ya tengo cuenta» → entra en recuperar, como antes.
@@ -591,4 +591,4 @@ errores nuevos frente a HEAD, `npx vitest run` desde la raíz).
 |---|---|---|
 | M03-01 | Acciones del store + `useTrainerAccount`; fuera el efecto de `App.js`; test de frontera | ✅ 87c3be8 — también arregla el traspaso código → Google (§1) |
 | M03-02 | `AccountScreen`, fila del menú, `getProDetails` | pendiente |
-| M03-03 | `TrainerSyncModal` simplificado, primera visita, icono de Clientes, «Ya tengo cuenta» con Google/Apple solo entra (§7.4) | pendiente |
+| M03-03 | `TrainerSyncModal` simplificado, primera visita, icono de Clientes, «Ya tengo cuenta» con Google/Apple solo entra (§7.4) | ✅ e204f19 — el icono de Clientes navega a `Account`, que crea M03-02; comprobar la RLS de `profiles` |
