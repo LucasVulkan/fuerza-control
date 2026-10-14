@@ -2869,7 +2869,6 @@
         "recommended": "Recommended",
         "own": "Create my own",
         "ownDesc": "Set sessions, exercises and progression",
-        "ownLink": "I'd rather create my own",
         "backup": "I have a backup"
       },
       "goal": {
@@ -2890,7 +2889,22 @@
         "previewSub": "You can change anything later, in the editor.",
         "start": "Start with this one",
         "other": "See other programs",
-        "generating": "Building your program..."
+        "generating": "Building your program...",
+        "sessionsCount_one": "{{count}} session",
+        "sessionsCount_other": "{{count}} sessions",
+        "programSub": "{{sessions}} sessions · ~{{minutes}} min each · {{sets}} sets",
+        "sessionNote": "{{count}} ex. · ~{{minutes}} min",
+        "sessionsTitle": "Your sessions",
+        "minutes": "{{count}} min"
+      },
+      "adjust": {
+        "timeTitle": "How long is your *session*?",
+        "materialTitle": "What *equipment* do you have?",
+        "equipTitle": "Which *equipment* do you have?",
+        "equipSub": "Tick everything you have.",
+        "limitsTitle": "Any *limitations*?",
+        "limitsSub": "We swap the exercises that could bother you.",
+        "done": "Done"
       },
       "done": {
         "program": "\"{{name}}\" ready",

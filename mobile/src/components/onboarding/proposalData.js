@@ -100,3 +100,13 @@ export function proposalNote(t, entry, daysPerWeek) {
     level:     t(`onboarding.levels.${entry.archetype.level}.label`, entry.archetype.level),
   });
 }
+
+export const EQUIP_IDS = ['bodyweight', 'machines', 'dumbbells', 'barbell', 'pullup_bar', 'parallettes', 'kettlebell', 'resistance_band', 'ab_wheel'];
+export const LIMIT_IDS = ['none', 'shoulder', 'lower_back', 'knee'];
+
+/** `id === exclusiveId` limpia el resto; cualquier otro lo quita del grupo. */
+export function toggleExclusive(current, id, exclusiveId) {
+  if (id === exclusiveId) return [exclusiveId];
+  const without = (current ?? []).filter((x) => x !== exclusiveId);
+  return without.includes(id) ? without.filter((x) => x !== id) : [...without, id];
+}

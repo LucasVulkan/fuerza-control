@@ -18,20 +18,10 @@ import SegmentedControl from '../ui/SegmentedControl';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { EQUIP_PRESETS, presetOf } from '../../utils/equipmentPresets';
+import { EQUIP_IDS, LIMIT_IDS, toggleExclusive } from './proposalData';
 
 const TIME_OPTIONS = [30, 45, 60, 90].map((min) => ({ id: min, label: String(min) }));
 const MATERIAL_OPTIONS = ['gym', 'home', 'bodyweight', 'custom'];
-// `bodyweight` va primero y es exclusivo: elegirlo limpia el resto.
-const EQUIP_IDS = ['bodyweight', 'machines', 'dumbbells', 'barbell', 'pullup_bar', 'parallettes', 'kettlebell', 'resistance_band', 'ab_wheel'];
-const LIMIT_IDS = ['none', 'shoulder', 'lower_back', 'knee'];
-
-/** `id === exclusiveId` limpia el resto; cualquier otro lo quita del grupo. */
-function toggleExclusive(current, id, exclusiveId) {
-  if (id === exclusiveId) return [exclusiveId];
-  const without = (current ?? []).filter((x) => x !== exclusiveId);
-  return without.includes(id) ? without.filter((x) => x !== id) : [...without, id];
-}
-
 function Pill({ label, selected, onPress }) {
   const styles = useThemedStyles(makeStyles);
   return (
