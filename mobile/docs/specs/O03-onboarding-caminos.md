@@ -14,7 +14,7 @@
 > Fase O03-09 · aparcado · Recuperar todo con un solo login · §26.1
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
 > Fase O03-11 · pendiente · «Nuevo programa» con el recorrido nuevo · §25
-> Fase O03-12 · pendiente · Ajustes de la prueba del 14-oct: propuestas con el estilo del recorrido y «con entrenador» · §28
+> Fase O03-12 · hecho · Ajustes de la prueba del 14-oct: propuestas con el estilo del recorrido y «con entrenador» · §28
 >
 > Estado: **olas 1-3 hechas (O03-01 a 07), por probar; falta la ola 4 (O03-08, O03-11)** (14-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
@@ -1404,4 +1404,4 @@ Lo que salió al probar O03-04 y O03-05 en el móvil.
 | O03-09 | Recuperar todo con un solo login | O03-07 | aparcada |
 | O03-10 | Pendientes y pistas sobre las pantallas reales | O03-06 | aparcada |
 | O03-11 | «Nuevo programa» con el recorrido nuevo | O03-02, 03, 04, 05 | pendiente |
-| O03-12 | Ajustes de la prueba del 14-oct | O03-04, 05 | pendiente |
+| O03-12 | Ajustes de la prueba del 14-oct | O03-04, 05 | ✅ 662f03e · edb3a2a (por mi cuenta: propuestas, «tu programa» y ajustes como pantalla `s_adjust`) · 0ee0269 (con entrenador: `c_wait`, código en uso, entrar con cuenta, modal en el código) |
