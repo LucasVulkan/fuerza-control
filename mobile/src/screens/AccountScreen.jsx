@@ -35,7 +35,8 @@ import { useEnterClock, EnterClock } from '../hooks/useEnterClock';
 import { FREE, templateCounts, isConnected } from '../utils/freePlan';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { Rise } from '../components/ui/Rise';
-import { Section, MenuRow } from '../components/ui/MenuList';
+import { Section, MenuRow, RowIcon } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
 import { ModeIcon } from '../components/ui/AccountIcons';
 import AppleSignInButton from '../components/ui/AppleSignInButton';
 import GoogleSignInButton from '../components/ui/GoogleSignInButton';
@@ -275,9 +276,9 @@ export default function AccountScreen() {
   /** La fila de borrar: sale con y sin cuenta de entrenador (D11). */
   const deleteRow = (
     <MenuRow
+      icon={<RowIcon color={th.tint.red50}>{ROW_ICON.trash}</RowIcon>}
       label={t('account.deleteRow')}
-      labelColor={th.colors.redText}
-      sub={t('account.deleteRowSub')}
+      labelColor={th.tint.red50}
       onPress={() => setShowDelete(true)}
     />
   );
@@ -351,7 +352,6 @@ export default function AccountScreen() {
             key={m}
             icon={<ModeIcon mode={m} size={18} color={th.colors.mutedLight} />}
             label={t(`account.how.${m}`)}
-            sub={m === 'code' ? t('account.codeRowSub') : null}
             badge={m === 'code' ? null : t('sync.recommended')}
             onPress={() => setSheet({ kind: 'switch', to: m })}
           />
@@ -359,14 +359,14 @@ export default function AccountScreen() {
       </Section>
 
       <Section title={t('account.sectionLeave')} style={styles.subSection}>
-        <MenuRow label={t('account.leave')} sub={t('account.leaveRowSub')} onPress={confirmLeave} />
+        <MenuRow icon={<RowIcon>{ROW_ICON.logout}</RowIcon>} label={t('account.leave')} onPress={confirmLeave} />
         {deleteRow}
       </Section>
     </>
   );
 
   const planBlock = !isPro ? (
-    <View style={styles.card}>
+    <View style={[styles.card, styles.cardPlan]}>
       <View style={styles.planTop}>
         <Text style={styles.planName}>FREE</Text>
         <Text style={styles.planKindFree}>{t('account.freeNoExpiry')}</Text>
@@ -386,7 +386,7 @@ export default function AccountScreen() {
     </View>
   ) : (
     <>
-      <GradientCard style={[styles.card, styles.cardPro]}>
+      <GradientCard style={[styles.card, styles.cardPlan, styles.cardPro]}>
         <View style={styles.planTop}>
           <Text style={[styles.planName, styles.onAccent]}>PRO</Text>
           {!!proKind && <Text style={[styles.planKindPro, styles.onAccent]}>{proKind}</Text>}
@@ -489,8 +489,10 @@ const makeStyles = (th) => StyleSheet.create({
   secNext: { marginTop: spacing.xxl },
 
   // Tarjeta (`.card`)
-  card:    { backgroundColor: th.colors.surface, borderRadius: th.radius.lg, padding: spacing.lg, overflow: 'hidden' },
-  cardPro: { backgroundColor: 'transparent' },
+  // El radio del resto de la app (`md`); solo el plan lleva el grande, para distinguirse.
+  card:     { backgroundColor: th.colors.surface, borderRadius: th.radius.md, padding: spacing.lg, overflow: 'hidden' },
+  cardPlan: { borderRadius: th.radius.lg },
+  cardPro:  { backgroundColor: 'transparent' },
   howRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   how:     { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
   have:    { marginTop: spacing.sm2 },
@@ -534,7 +536,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Nombre para los clientes: tarjeta con un hueco más oscuro (`bg`) y con
   // borde, para que se vea a la primera que ahí se escribe.
   nameCard: {
-    backgroundColor: th.colors.surface, borderRadius: th.radius.lg,
+    backgroundColor: th.colors.surface, borderRadius: th.radius.md,
     padding: spacing.lg, marginTop: spacing.sm2, gap: spacing.sm2,
   },
   inputKey: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
