@@ -5,7 +5,7 @@
 > Inicio: 2026-10-13
 > Fase O03-01 · hecho · Armazón del recorrido y tramo común · §17
 > Fase O03-02 · hecho · Constructor guiado I: sesiones, buscador corto y «ya tiene forma» · §18
-> Fase O03-03 · pendiente · Constructor guiado II: volumen y progresión en dos profundidades · §19
+> Fase O03-03 · pendiente · Constructor guiado II: volumen en dos profundidades · §19
 > Fase O03-04 · pendiente · Camino «por mi cuenta» · §20
 > Fase O03-05 · hecho · Camino «con entrenador» · §21
 > Fase O03-06 · hecho · Aprende: cómo ves Inicio, cómo apuntas y las tarjetas · §22
@@ -379,7 +379,7 @@ verá después en el editor.
 ### 10.1 Los pasos
 
 ```
-1 Sesiones → 2 Un ejercicio → 3 Volumen → 4 Progresión → 5 «Ya tiene forma»
+1 Sesiones → 2 Un ejercicio → 3 Volumen → 4 «Ya tiene forma»
 ```
 
 1. **Sesiones** — `NumberChips` 1-6; las tarjetas A, B, C… aparecen al momento.
@@ -396,8 +396,7 @@ verá después en el editor.
    vacías, con «después». **Fuera**: pills de patrón, hoja de filtros, selección
    múltiple.
 3. **Volumen** (§10.3).
-4. **Progresión** (§10.3-10.5).
-5. **Ya tiene forma** — nombre editable con uno puesto («Mi programa» /
+4. **Ya tiene forma** — nombre editable con uno puesto («Mi programa» /
    «Programa de {cliente}»).
    - `self` y `copy`: lo construido (A con su ejercicio, el resto vacías) y la nota
      «Sigue editándolo cuando termines: Programa → {nombre}». **Guardar** → Aprende.
@@ -407,8 +406,13 @@ verá después en el editor.
      y enviar a {cliente}»** (con app: `uploadProgramToClient`) o «Guardar».
      Sigue a invitar (§7.8) o a «¿también entrenas?».
 
-**La sensación de construir**: arriba, una barra con cuatro fichas que se
-encienden — «✓ 4 sesiones · ✓ Press banca · ✓ 3×8-12 · ✓ Por reglas».
+**La sensación de construir**: arriba, una barra con tres fichas que se
+encienden — «✓ 4 sesiones · ✓ Press banca · ✓ 3×8-12».
+
+**Sin paso de progresión** (decisión del usuario, 14-oct-2026: demasiado complejo
+para un onboarding). El ejercicio se queda con la progresión que trae de la
+biblioteca (`addExercise` no la toca: `progressionOverride: null`), y la nota de
+«Ya tiene forma» dice dónde cambiarla. §10.4 y §10.5 quedan como diseño aparcado.
 
 **Nunca obligatorio**: «Lo termino después» en cada paso y «Saltar» arriba salen
 guardando lo que haya (al menos las sesiones vacías). En modo `trainer` sin ningún
@@ -416,14 +420,14 @@ ejercicio, el programa queda en su ficha **sin enviar** y sin invitación.
 
 ### 10.2 Lo que se reutiliza
 
-- Volumen y progresión: los campos de `editor/ExerciseEditorInline.jsx` y
-  `editor/ProgressionSheet.jsx` (P12 §12), sobre el ejercicio real.
+- Volumen: los campos de `editor/ExerciseEditorInline.jsx`, sobre el ejercicio
+  real.
 - Buscador: `filterBySearch` y la misma fila que `ExerciseSelectorScreen`.
 - Crear el programa: `createEmptyProgram` (self/copy) y `createProgramForClient`
   (trainer). Ejercicio: `addExercise`, `replaceExercise`, `addCustomExercise`.
   Sesiones: `addSessionToProgram`, `removeSessionFromProgram`. Nombre:
   `renameProgram`.
-- El modo principiante (§10.4) es la única pieza propia.
+- El volumen sencillo (tres opciones con nombre) es la única pieza propia.
 
 ### 10.3 Las dos profundidades
 
@@ -431,10 +435,8 @@ ejercicio, el programa queda en su ficha **sin enviar** y sin invitación.
 |---|---|---|
 | Sugeridos | Sentadilla goblet, Press de banca con mancuernas, Remo en polea, Prensa (pies centrados), Jalón al pecho | Sentadilla con barra, Press de banca con barra, Peso muerto convencional, Dominadas, Press militar con barra |
 | Volumen | tres opciones con nombre — **Fuerza · 5 / Músculo · 10 / Resistencia · 15** (reps fijas) — y el nº de series | series, reps mín-máx y descanso, como en el editor |
-| Progresión | **una pregunta** (§10.4) | el editor de progresión real (§10.5) |
-| Extras | — | calentamiento, dropset, superserie y vincular, como interruptores |
 
-### 10.4 La pregunta del principiante
+### 10.4 La pregunta del principiante (aparcada, 14-oct)
 
 «¿Quieres que la app te diga cuándo subir o bajar el peso?» — según cómo te salgan
 las series.
@@ -448,7 +450,7 @@ las series.
 Debajo, **«Ver todas las opciones de progresión →»** abre el editor completo en el
 sitio.
 
-### 10.5 El editor completo
+### 10.5 El editor completo (aparcado, 14-oct)
 
 Los pasos de `ProgressionSheet`, con **la regla escrita en una frase arriba** que
 cambia con cada toque: Qué sube (Peso · Reps · Nada) → Cómo (Por reglas · Por
@@ -901,7 +903,7 @@ Hace, en `screens/builder.jsx`:
 - [ ] «Cambiar» el ejercicio lo sustituye (no se duplica); cerrar el buscador
   con la ✕ sin elegir deja la sesión A como estaba.
 
-## 19. O03-03 — Constructor guiado II: volumen y progresión
+## 19. O03-03 — Constructor guiado II: volumen
 
 **Depende de**: O03-02. **Ola 3**, en paralelo con O03-04 y O03-07.
 
@@ -912,23 +914,29 @@ Hace, en `screens/builder.jsx`:
    `updateExerciseParams` sobre el ejercicio de la sesión A. Reutilizar los
    campos de `ExerciseEditorInline`; si no se pueden sacar sin arrastrar el editor
    entero, extraer los campos a un componente compartido que usen los dos.
-2. **b_prog**: sencilla = la pregunta de §10.4 (con el ejemplo en su unidad) y el
-   enlace al editor completo; completa = `ProgressionSheet` con la frase de la
-   regla arriba (§10.5) y los extras como interruptores (los mismos campos que
-   el editor: calentamiento, dropset, superserie, `setExerciseLinkGroup`).
-3. Encender las fichas «3×8-12» y «Por reglas» de la barra.
+2. **Sin `b_prog`** (§10.1): `b_exercise` sigue a `b_volume` (la constante
+   `AFTER_EXERCISE` de `builder.jsx`) y `b_volume` a `b_done`. La barra de fichas
+   pasa a tres: quitar la de progresión y encender la de volumen («3×8-12»).
+   Quitar de `onboardingFlow.js` el id `b_prog` (tramo y `skipTarget`). La nota
+   de «Ya tiene forma» (`self`/`copy`) añade que la progresión se cambia en el
+   editor: «Sigue editándolo cuando termines: Programa → {nombre}. Ahí cambias
+   también cómo progresa cada ejercicio».
+3. **«Saltar» en b_sessions** (pendiente de O03-02): si hay un número elegido y
+   aún no hay programa, «Saltar» tiene que crearlo igual que «Siguiente» y «Lo
+   termino después» (§10.1 «Nunca obligatorio»). Elegir la forma más simple:
+   crear el programa al elegir el número (y ajustarlo después con las sesiones
+   del final) o un gancho de salida del constructor.
 
 **Probar O03-03**
 
 - [ ] Principiante: Volumen enseña «Fuerza · 5 / Músculo · 10 / Resistencia · 15»
   y series; sin rangos ni descanso.
-- [ ] Principiante: «Sí, guíame» rellena y avanza; en el editor, el ejercicio
-  tiene progresión por peso por reglas. «No, lo decido yo» → sin progresión.
-- [ ] Principiante: «Ver todas las opciones de progresión →» abre el editor
-  completo en el sitio.
-- [ ] Avanzado: con reps 8-12, elegir «Por esfuerzo» avisa y deja reps fijas en 8;
-  la frase de arriba cambia con cada toque.
-- [ ] Activar «Superserie con el siguiente» y comprobarlo en el editor después.
+- [ ] Avanzado: series, reps mín-máx y descanso; cambiar 3×8-12 a 4×6-8 y, en el
+  editor, el ejercicio tiene 4×6-8 y ese descanso.
+- [ ] No hay paso de progresión: de Volumen se pasa a «Ya tiene forma», y la barra
+  de arriba tiene tres fichas, todas encendidas.
+- [ ] Elegir 3 sesiones y pulsar «Saltar» sin «Siguiente»: el programa existe con
+  3 sesiones vacías.
 
 ## 20. O03-04 — Camino «por mi cuenta»
 
@@ -1284,7 +1292,7 @@ usable entre olas gracias a los provisionales de O03-01 (§17.5).
 |---|---|---|---|
 | O03-01 | Armazón del recorrido y tramo común | — | ✅ 6a126f6 — `OnboardingFlowScreen` (ruta `Start`) con registro, `onboardingFlow` en el store, `utils/onboardingFlow.js` + test, piezas `flow/` y las cinco pantallas comunes; `SetupScreen` borrada |
 | O03-02 | Constructor guiado I | O03-01 | ✅ b36b9d2 · 2e0084c — b_sessions/b_exercise/b_done, `builderProgram.js` y `onboardingBuilder.js` con tests; `createProgramForClient(…, { openEditor })`. Pendiente para O03-03: «Saltar» en b_sessions sin «Siguiente» no crea el programa; b_exercise sale a `b_done` (`AFTER_EXERCISE`) |
-| O03-03 | Constructor guiado II | O03-02 | pendiente |
+| O03-03 | Constructor guiado II (solo volumen; progresión aparcada el 14-oct) | O03-02 | pendiente |
 | O03-04 | Camino «por mi cuenta» | O03-02 | pendiente |
 | O03-05 | Camino «con entrenador» | O03-01 | ✅ 395c664 — `coached.jsx`, `hooks/useClientCode.js` (estado en un store de módulo) usado también por `ClientCodeModal`, `shareAndContinue`. `validateClientCode` no trae las letras de las sesiones: `c_confirm` no las pinta |
 | O03-06 | Aprende | O03-01 | ✅ ac13d22 · d58b1b6 — `ClientRow` extraída (la fila ya era `ClientListCard`; ésta calcula y `ClientRow` dibuja), `HomeViewPreview`, `ScrubDemo` sobre `ScrubRuler`/`scrubScale`, tarjetas por camino. En la fusión, el hueco de b_done (O03-02) pasó a `ClientRow` |
