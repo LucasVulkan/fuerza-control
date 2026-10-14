@@ -1215,12 +1215,12 @@ llama a `unlinkFromTrainer({ keepProgram: true })`.
   cualquier momento». Cinco `FlowOption` con «›». **Textos de app, no de colega**
   (decisión del usuario, 13-oct): cortos, neutros, sin «te lo montas» ni «te
   enseñamos 3»:
-  - **Programa recomendado** (etiqueta «Recomendado») — «Según tu nivel, tu
+  - **Plantillas** (etiqueta «Recomendado») — «Según tu nivel, tu
     objetivo y tus días de entreno» → `s_goal` con el nivel de `profile.onboardingAnswers.level` (si no
     hay, `s_level` primero) → `s_days` → `s_props` → confirmar → `n_done`.
   - **Crear desde cero** — «Define sesiones, ejercicios y progresión» →
     `startBuilder('self')`, profundidad según el nivel → `n_done`.
-  - **Desde una plantilla** — «Usa una de tus plantillas guardadas»; **solo si**
+  - **Mis plantillas** — «Usa una de tus plantillas guardadas»; **solo si**
     `templatesOf(programs)`
     no está vacío → `n_templates`.
   - **Programa de tu entrenador** — «Conéctate con el código de tu entrenador» →
@@ -1228,6 +1228,7 @@ llama a `unlinkFromTrainer({ keepProgram: true })`.
     `c_confirm` → `c_linked`, cuyo botón pasa a ser «Ir a la app».
   - **Importar archivo** — «Archivo .fitdata de una copia de seguridad» →
     selector + `ImportModal` → `n_done`.
+  (14-oct, prueba: "Programa recomendado" repetía la etiqueta; pasa a "Plantillas", y las guardadas del usuario a "Mis plantillas")
 - **`n_templates`** — «Elige una *plantilla*» · «Se crea una copia. La plantilla
   original no cambia». Lista de plantillas (nombre, «N sesiones · N etapas»,
   letras) con `FlowOption`, el nombre prellenado y editable (`NameField`) y
@@ -1312,24 +1313,25 @@ Lo de §25.2-25.3 vale; esto lo completa (manda sobre lo de arriba si chocan):
 
 **Probar O03-11**
 
-- [ ] ≡ → Nuevo programa: «Elige cómo empezar» con «Nuevo programa»
+- [x] ≡ → Nuevo programa: «Elige cómo empezar» con «Nuevo programa»
   arriba y sin barra de tramos. La flecha vuelve a la app sin cambios.
-- [ ] «Programa recomendado» no pregunta el nivel → qué buscas → días → propuestas
+- [x] «Plantillas» no pregunta el nivel → qué buscas → días → propuestas
   → «Empezar con este» → «Programa listo» → Ir a la app abre Inicio con el
   programa nuevo.
-- [ ] «Crear desde cero» → constructor → Guardar → «Programa listo».
-- [ ] Sin plantillas no sale «Desde una plantilla»; con una, «Usar esta» la copia
+- [x] «Crear desde cero» → constructor → Guardar → «Programa listo».
+- [x] Sin plantillas no sale «Mis plantillas»; con una, «Usar esta» la copia
   con el nombre puesto y la plantilla sigue igual en Plantillas.
-- [ ] Conectado a un entrenador: Nuevo programa avisa de la desconexión; al crear
+- [x] Conectado a un entrenador: Nuevo programa avisa de la desconexión; al crear
   uno, queda desconectado y el programa nuevo es editable.
-- [ ] «Programa de tu entrenador» → código → conectado → Ir a la app.
-- [ ] «Importar archivo» con un `.fitdata` → «Programa listo».
-- [ ] El estado vacío de Programa (sin programa) abre el mismo recorrido.
-- [ ] Matar la app a mitad de «Nuevo programa» y reabrir: entra en la app, no en
+- [x] «Programa de tu entrenador» → código → conectado → Ir a la app.
+- [x] «Importar archivo» con un `.fitdata` → «Programa listo».
+- [x] El estado vacío de Programa (sin programa) abre el mismo recorrido.
+- [x] Matar la app a mitad de «Nuevo programa» y reabrir: entra en la app, no en
   el recorrido.
-- [ ] «Programa de tu entrenador» → «Lo hago después» (o pedir el código →
+- [x] «Programa de tu entrenador» → «Lo hago después» (o pedir el código →
   Siguiente) vuelve a la app, sin pasar por Aprende.
-- [ ] Atrás de Android en «Elige cómo empezar» vuelve a la pestaña de donde vino.
+- [x] Atrás de Android en «Elige cómo empezar» vuelve a la pestaña de donde vino.
+- [ ] «Elige cómo empezar» dice «Plantillas» (con la etiqueta «Recomendado») y «Mis plantillas»; ninguna repite «Recomendado».
 
 ## 26. Aparcadas
 

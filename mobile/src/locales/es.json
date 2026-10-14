@@ -2878,11 +2878,11 @@
       "source": {
         "title": "Elige cómo *empezar*",
         "sub": "Podrás editar el programa en cualquier momento.",
-        "recommended": "Programa recomendado",
+        "recommended": "Plantillas",
         "recommendedDesc": "Según tu nivel, tu objetivo y tus días de entreno",
         "scratch": "Crear desde cero",
         "scratchDesc": "Define sesiones, ejercicios y progresión",
-        "template": "Desde una plantilla",
+        "template": "Mis plantillas",
         "templateDesc": "Usa una de tus plantillas guardadas",
         "coach": "Programa de tu entrenador",
         "coachDesc": "Conéctate con el código de tu entrenador",

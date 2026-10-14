@@ -2878,11 +2878,11 @@
       "source": {
         "title": "Choose how to *start*",
         "sub": "You can edit the program at any time.",
-        "recommended": "Recommended program",
+        "recommended": "Templates",
         "recommendedDesc": "Based on your level, goal and training days",
         "scratch": "Create from scratch",
         "scratchDesc": "Set sessions, exercises and progression",
-        "template": "From a template",
+        "template": "My templates",
         "templateDesc": "Use one of your saved templates",
         "coach": "Your coach's program",
         "coachDesc": "Connect with your coach's code",
