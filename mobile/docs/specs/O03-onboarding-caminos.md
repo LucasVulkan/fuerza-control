@@ -14,6 +14,7 @@
 > Fase O03-09 · aparcado · Recuperar todo con un solo login · §26.1
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
 > Fase O03-11 · pendiente · «Nuevo programa» con el recorrido nuevo · §25
+> Fase O03-12 · pendiente · Ajustes de la prueba del 14-oct: propuestas con el estilo del recorrido y «con entrenador» · §28
 >
 > Estado: **olas 1-3 hechas (O03-01 a 07), por probar; falta la ola 4 (O03-08, O03-11)** (14-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
@@ -903,17 +904,17 @@ Hace, en `screens/builder.jsx`:
 
 **Probar O03-02**
 
-- [ ] (Desde el mapa provisional o con O03-04 hecho) «Crear el mío» → elegir 4:
+- [x] (Desde el mapa provisional o con O03-04 hecho) «Crear el mío» → elegir 4:
   aparecen A-D al momento. Siguiente, atrás, elegir 2: al terminar el programa
   tiene 2 sesiones, no 6.
-- [ ] «+ Añadir ejercicio» → sin escribir salen cinco sugeridos; escribir «press»
+- [x] «+ Añadir ejercicio» → sin escribir salen cinco sugeridos; escribir «press»
   filtra con «press» en lima y el total; «zzz» ofrece «＋ Crear "zzz"».
-- [ ] Buscar «sentadilla» sin tilde encuentra «Sentadilla goblet».
-- [ ] Tras «Guardar», Programa enseña el programa con A y su ejercicio y B, C
+- [x] Buscar «sentadilla» sin tilde encuentra «Sentadilla goblet».
+- [x] Tras «Guardar», Programa enseña el programa con A y su ejercicio y B, C
   vacías.
-- [ ] «Lo termino después» en el paso 1 con 3 elegidas deja un programa con 3
+- [x] «Lo termino después» en el paso 1 con 3 elegidas deja un programa con 3
   sesiones vacías y sigue el recorrido.
-- [ ] «Cambiar» el ejercicio lo sustituye (no se duplica); cerrar el buscador
+- [x] «Cambiar» el ejercicio lo sustituye (no se duplica); cerrar el buscador
   con la ✕ sin elegir deja la sesión A como estaba.
 
 ## 19. O03-03 — Constructor guiado II: volumen
@@ -942,18 +943,18 @@ Hace, en `screens/builder.jsx`:
 
 **Probar O03-03**
 
-- [ ] Principiante: Volumen enseña lo mismo que avanzado (series, reps mín-máx y
+- [x] Principiante: Volumen enseña lo mismo que avanzado (series, reps mín-máx y
   descanso), sin opciones con nombre.
-- [ ] Avanzado: series, reps mín-máx y descanso; cambiar 3×8-12 a 4×6-8 y, en el
+- [x] Avanzado: series, reps mín-máx y descanso; cambiar 3×8-12 a 4×6-8 y, en el
   editor, el ejercicio tiene 4×6-8 y ese descanso.
-- [ ] No hay paso de progresión: de Volumen se pasa a «Ya tiene forma», y la barra
+- [x] No hay paso de progresión: de Volumen se pasa a «Ya tiene forma», y la barra
   de arriba tiene tres fichas, todas encendidas.
-- [ ] Elegir 3 sesiones y pulsar «Saltar» sin «Siguiente»: el programa existe con
+- [x] Elegir 3 sesiones y pulsar «Saltar» sin «Siguiente»: el programa existe con
   3 sesiones vacías. También con los días ya contestados y sin tocar el selector.
-- [ ] Cambiar el ejercicio después de pasar por Volumen apaga la ficha de volumen.
-- [ ] Un ejercicio de tiempo en Volumen enseña solo series (y descanso en la
+- [x] Cambiar el ejercicio después de pasar por Volumen apaga la ficha de volumen.
+- [x] Un ejercicio de tiempo en Volumen enseña solo series (y descanso en la
   completa), sin reps.
-- [ ] Avanzado: poner mín 14 con máx 12 sube el máx a 14.
+- [x] Avanzado: poner mín 14 con máx 12 sube el máx a 14.
 
 ## 20. O03-04 — Camino «por mi cuenta»
 
@@ -979,17 +980,17 @@ Hace, en `screens/self.jsx`:
 **Probar O03-04**
 
 - [ ] Principiante → «Te proponemos un programa hecho» con «Ver programas para
-  mí» recomendado y «Prefiero crearlo yo» como enlace.
-- [ ] Avanzado → «¿Plantilla o el tuyo?» con las dos al mismo peso.
-- [ ] Plantilla: qué buscas → días → «Buscando tu programa» marca tres casillas
+  mí» recomendado y «Prefiero crearlo yo» como enlace. — ❌ 14-oct: «Prefiero crearlo yo» tiene que ser una opción más, no un enlace abajo
+- [x] Avanzado → «¿Plantilla o el tuyo?» con las dos al mismo peso.
+- [x] Plantilla: qué buscas → días → «Buscando tu programa» marca tres casillas
   con lo contestado y entran tres propuestas.
-- [ ] Elegir propuesta → tu programa con su hoja de ajustes; confirmar → Aprende;
+- [x] Elegir propuesta → tu programa con su hoja de ajustes; confirmar → Aprende;
   en la app, ese programa activo.
 - [ ] «Tengo una copia de seguridad» (en las dos variantes) importa un `.fitdata`
-  y sigue a Aprende.
-- [ ] La hoja de ajustes cambia tiempo y material y las sesiones se repintan;
+  y sigue a Aprende. — ❌ 14-oct: «Tengo una copia de seguridad» tiene que estar desde la primera pantalla de «por mi cuenta» (el nivel)
+- [x] La hoja de ajustes cambia tiempo y material y las sesiones se repintan;
   «Ver otros programas» vuelve a la lista.
-- [ ] Desde la app, «Nuevo programa» abre el selector de siempre y sus propuestas
+- [x] Desde la app, «Nuevo programa» abre el selector de siempre y sus propuestas
   funcionan igual que antes (hasta O03-11).
 
 ## 21. O03-05 — Camino «con entrenador»
@@ -1020,23 +1021,25 @@ Hace, en `screens/coached.jsx`:
 - [ ] «Con un entrenador» abre directamente «El código de tu entrenador», con
   «¿No te lo ha pasado? Pídeselo» y, debajo, «¿Tu entrenador no usa Forma Fit?»
   con Invítale a la app y Crea su programa en la app.
-- [ ] Pegar un código real → «Programa encontrado» con el
+- [x] Pegar un código real → «Programa encontrado» con el
   nombre del entrenador y del programa y «Qué pasa al conectar».
-- [ ] Conectar → panel «Conectado con {entrenador}» → en la app, su programa en
+- [x] Conectar → panel «Conectado con {entrenador}» → en la app, su programa en
   Inicio y no se puede editar.
 - [ ] Código inventado → el error sale en la pantalla, sin cerrar nada.
 - [ ] «¿No te lo ha pasado? Pídeselo» → Enviar mensaje → elegir WhatsApp → al volver
-  pasa sola a «Cómo ves Inicio». (iOS: cerrar la hoja sin compartir → se queda.)
+  pasa sola a «Cómo ves Inicio». (iOS: cerrar la hoja sin compartir → se queda.) — ❌ 14-oct: tras enviar el mensaje falta una pantalla que explique qué hacer cuando llegue el código
 - [ ] «Crea su programa en la app» → «Lo creo sesión a sesión» abre el constructor
-  en su versión completa.
+  (sesiones, un ejercicio, volumen y listo: el mismo para todos desde el 14-oct;
+  solo cambian los ejercicios sugeridos).
 - [ ] «Invítale a la app» abre compartir y, al volver, se queda en la pantalla.
 - [ ] Por invitación: enlace → bienvenida con la línea azul → unidades → tema →
   directamente el código ya puesto, sin «¿Cómo entrenas?».
-- [ ] El modal de código de la app (Menú → Entrenador) sigue funcionando igual.
+- [ ] El modal de código de la app (Menú → Entrenador) sigue funcionando igual. — ❌ 14-oct: el modal se abre en el estado en que quedó el onboarding (p. ej. «Programa encontrado» con hueco ocupado); tiene que abrir en el código
 - [ ] Por invitación, pulsar «Saltar» en el código: al acabar el recorrido no se
   abre Conexión con entrenador.
-- [ ] «Listo» enseña «Conectado con {entrenador}» y «"{programa}" en tu Inicio» al
-  conectar, o «Conectar con tu entrenador · Menú → Entrenador» si no.
+- [ ] La última pantalla del recorrido, «Todo listo» (después de Aprende), enseña
+  «Conectado con {entrenador}» y «"{programa}" en Entreno» al conectar, o «Conectar
+  con tu entrenador · Menú → Entrenador» si no.
 
 ## 22. O03-06 — Aprende
 
@@ -1319,6 +1322,73 @@ rama viva, no en la ola siguiente.
 **Pruebas del usuario**: tras cada ola, las casillas de sus tareas. La app es
 usable entre olas gracias a los provisionales de O03-01 (§17.5).
 
+## 28. O03-12 — Ajustes de la prueba del 14-oct
+
+Lo que salió al probar O03-04 y O03-05 en el móvil.
+
+### 28.1 «Por mi cuenta»
+
+1. **«Prefiero crearlo yo» es una opción más** en `s_choice` del principiante,
+   con «Crear el mío» y su descripción, debajo de «Ver programas para mí»
+   (que sigue con la etiqueta «Recomendado»). Fuera el enlace de abajo: costaba
+   encontrarlo.
+2. **«Tengo una copia de seguridad» desde la primera pantalla** del camino
+   (`s_level`), como salida secundaria del pie, no solo en `s_choice`.
+3. **Las propuestas y «tu programa» con el estilo del recorrido.** Hoy
+   `s_props` reutiliza las piezas de O01 con su aspecto viejo (§20.2). Pasan al
+   estilo de §3.1, con la misma lógica:
+   - Las propuestas, como `FlowOption`/tarjetas grandes con relleno lima al
+     elegir: nombre, «N sesiones · N semanas», las letras de las sesiones y la
+     etiqueta «Recomendado» en la primera. «Ver todas» como secundaria.
+   - «Tu programa»: titular `FlowTitle` con el nombre, sus sesiones con las
+     piezas del constructor (`SessionBlock`) y el panel de ajustes plegado.
+   - **Los ajustes (tiempo por sesión, material, limitaciones)** siguen la
+     lógica del recorrido: cada uno una fila que abre su elección con
+     `FlowOption`/`FlowTile` (una pregunta, un titular), no la hoja de O01. Se
+     repinta el programa al cambiarlos, como hoy (`usePreviewModel`).
+   - Pie fijo: «Empezar con este» (lima) y «Ver otros programas».
+   - `OnboardingScreen` («Nuevo programa», hasta O03-11) puede quedarse con el
+     aspecto viejo: solo cambia el recorrido.
+
+### 28.2 «Con entrenador»
+
+1. **Fuera la etiqueta «Para tu caso»** de la opción Pestañas en «¿Cómo quieres
+   ver tus sesiones?»: no se entendía.
+2. **Después de pedir el código, una pantalla que explica qué hacer** (`c_wait`):
+   «Cuando te llegue el *código*» · «Introdúcelo en Menú → Entrenador → Conectar
+   con un código y estarás conectado. Mientras, puedes seguir». Botón «Seguir»
+   (→ Aprende) y secundaria «Ya lo tengo» (→ `c_code`). `c_ask` avanza aquí al
+   compartir (y con «Lo envío después», también).
+3. **Código ya en uso** (`slotInfo.alreadyLinked`): «Programa encontrado» no
+   puede parecer normal. La pantalla pasa a centrarse en eso: titular «Este
+   código ya está en *uso*», el texto de `trainer.codeSlotOccupied` y dos
+   acciones: «Pedir un código nuevo» (comparte el mensaje de `c_ask`, lima) y
+   «Probar otro código» (vuelve a `c_code`). Sin «Conectar». Los errores de
+   conectar, junto al botón (sin scroll).
+4. **«¿Ya estabas conectado? Entra con tu cuenta»**: enlace en `c_code` que abre
+   `ClientCodeModal` con `startWithSocial` (Google/Apple). Solo recupera una
+   conexión hecha antes con esa cuenta; la primera vez siempre hace falta el
+   código.
+5. **El modal del código (Menú → Entrenador) abre siempre en el código.** Hoy
+   comparte el estado con el recorrido (`useClientCode` es un store de módulo) y
+   abre donde se quedó. Se reinicia al abrirse.
+
+**Probar O03-12**
+
+- [ ] Principiante: «Ver programas para mí» y «Crear el mío» como dos opciones
+  iguales; sin enlace abajo.
+- [ ] En el nivel ya sale «Tengo una copia de seguridad».
+- [ ] Propuestas y «tu programa» con el estilo del recorrido; cambiar tiempo,
+  material y limitaciones repinta las sesiones.
+- [ ] En «¿Cómo quieres ver tus sesiones?» ya no sale «Para tu caso».
+- [ ] «Pídeselo» → enviar → pantalla «Cuando te llegue el código» con dónde
+  meterlo.
+- [ ] Un código ya en uso: la pantalla lo dice en grande, con «Pedir un código
+  nuevo» y «Probar otro código», sin «Conectar».
+- [ ] «¿Ya estabas conectado? Entra con tu cuenta» abre el acceso con Google/Apple.
+- [ ] Dejar el recorrido en «Programa encontrado» y abrir Menú → Entrenador →
+  Conectar con un código: abre en el código vacío.
+
 ## Fases
 
 | Fase | Qué | Depende de | Estado |
@@ -1334,3 +1404,4 @@ usable entre olas gracias a los provisionales de O03-01 (§17.5).
 | O03-09 | Recuperar todo con un solo login | O03-07 | aparcada |
 | O03-10 | Pendientes y pistas sobre las pantallas reales | O03-06 | aparcada |
 | O03-11 | «Nuevo programa» con el recorrido nuevo | O03-02, 03, 04, 05 | pendiente |
+| O03-12 | Ajustes de la prueba del 14-oct | O03-04, 05 | pendiente |
