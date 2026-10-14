@@ -2996,7 +2996,17 @@
       "yourTrainer": "Your coach",
       "yourTrainerLc": "your coach"
     },
-    "recover": {},
+    "recover": {
+      "title": "Recover what's *yours*",
+      "sub": "What did you have on your other phone?",
+      "trainer": "My trainer account",
+      "trainerDesc": "With Apple, Google or your 12-character code. Your clients come back",
+      "client": "I train with a trainer",
+      "clientDesc": "With the account you linked. Your program comes back",
+      "backup": "A backup",
+      "backupDesc": "From Google Drive or a .fitdata file",
+      "note": "Did you train with a trainer and not link an account? Ask them for a new code: your history is kept"
+    },
     "trainer": {},
     "done": {
       "title": "All *set*",

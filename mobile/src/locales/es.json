@@ -2996,7 +2996,17 @@
       "yourTrainer": "Tu entrenador",
       "yourTrainerLc": "tu entrenador"
     },
-    "recover": {},
+    "recover": {
+      "title": "Recupera lo *tuyo*",
+      "sub": "¿Qué tenías en el otro móvil?",
+      "trainer": "Mi cuenta de entrenador",
+      "trainerDesc": "Con Apple, Google o tu código de 12. Vuelven tus clientes",
+      "client": "Entreno con un entrenador",
+      "clientDesc": "Con la cuenta que vinculaste. Vuelve tu programa",
+      "backup": "Una copia de seguridad",
+      "backupDesc": "De Google Drive o un archivo .fitdata",
+      "note": "¿Entrenabas con un entrenador y no vinculaste cuenta? Pídele un código nuevo: tu historial se conserva"
+    },
     "trainer": {},
     "done": {
       "title": "Todo *listo*",
