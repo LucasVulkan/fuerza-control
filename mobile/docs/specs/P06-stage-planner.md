@@ -10,8 +10,9 @@
 > Fase P06-05 · terminado · Pantalla del planificador · §7 · antes P28
 > Fase P06-06 · pendiente · Recap consciente de la descarga · §4.2 · antes P29
 > Fase P06-07 · hecho · Rediseño del planificador: el plan y la hoja de añadir · §14 · antes P35
+> Fase P06-08 · pendiente · Progreso y Carga conscientes de la descarga · §15
 >
-> Estado: **fases 0-4 y 6 implementadas** (ago-sep 2026); pendiente la 5. 5 fases, cada una un
+> Estado: **fases 0-4 y 6 implementadas** (ago-sep 2026); pendientes la 5 (P06-06) y la 7 (P06-08). 5 fases, cada una un
 > commit que aporta valor por sí solo. Origen: conversación Opus + usuario
 > (ago 2026) sobre cómo usar las métricas ya existentes para programar más
 > rápido. El análisis completo derivó en 5 palancas (P1-P5); **esta spec es la
@@ -74,7 +75,9 @@ indistinguible de lo que escribiría el entrenador a mano. Consecuencias:
    Ocultarlo lee como "la app se ha roto" y el cliente sube el peso igual.
 6. **La cadena `derivedFrom` se aplica solo al grupo A** (referencia de
    progresión y prellenado), **no al grupo B** (comparaciones del recap e
-   historial). Razón en §4.2.
+   historial). Razón en §4.2. *Revisada el 15-oct-2026 (P06-06):* las
+   comparaciones por ejercicio y por bloque sí siguen la cadena; el % de volumen
+   de la sesión no. Ver §4.2.
 7. **`progression.type` y `direction` NO suben a la etapa.** Una plancha
    progresa por tiempo y una dominada asistida por goma, haya descarga o
    acumulación. Eso es física del ejercicio. Lo que sube es la *agresividad*.
@@ -323,33 +326,115 @@ Donde NO se sella es en `duplicateSessionInProgram`: ahí la copia y el original
 conviven en el mismo ciclo, así que es una sesión nueva, no la evolución de
 otra.
 
-### 4.2 Lo que NO entra: el grupo B (decisión cerrada, §2.6)
+### 4.2 El grupo B y la descarga (P06-06, revisada el 15-oct-2026)
 
-Tres funciones de `sessionRecap.js` filtran por `sessionTemplateId` y **se
-quedan como están**:
+Tres funciones de `sessionRecap.js` comparan con «la vez anterior de esta
+misma sesión» filtrando por `sessionTemplateId`:
 
-- [`compareToLast`](../../../src/utils/sessionRecap.js) (:185) — flechas de
-  delta por ejercicio en el recap.
-- `volumeDeltaByEntry` (:142) — el "+12%" de la tarjeta de Historial.
-- `prevBlockResult` (:165) — comparación de bloques AMRAP/EMOM.
+- [`compareToLast`](../../src/utils/sessionRecap.js): las flechas de delta por
+  ejercicio en el recap.
+- `volumeDeltas`: el «+12%» de la tarjeta de Historial y del recap (antes se
+  llamaba `volumeDeltaByEntry`).
+- `prevBlockResult`: «la última vez» de los bloques AMRAP/EMOM, en el recap y
+  en el Workout.
 
-(`detectPRs` **no** está afectada: filtra por `exerciseId` sobre todo el log,
-así que los PRs ya cruzan etapas sin tocar nada.)
+Como cada etapa crea `tpl_*` nuevos, **hoy la primera sesión de cada etapa sale
+sin comparación**. No muestra nada falso: simplemente no compara. (`detectPRs`
+no está afectada: filtra por `exerciseId` sobre todo el log.)
 
-Motivo de dejarlas fuera: el grupo A pregunta *"¿qué peso movió?"* — un hecho,
-inmune a que la prescripción cambie. El grupo B pregunta *"¿fue mejor o
-peor?"*, y el `rx` **acaba de cambiar la prescripción a propósito**. En un
-peldaño de descarga (`setsDelta: -1`) el cliente hace exactamente lo pedido y
-el recap le pintaría **−25% de volumen en rojo**: cierto pero pedagógicamente
-falso, y choca con la decisión ya cerrada de que el rojo apagado es para
-retrocesos reales.
+#### Por qué la propuesta original no valía
 
-**Encadenar el grupo B bien hecho no es cambiar un filtro**: es que la
-comparación sepa que la etapa es de descarga y lo diga en verde o con mensaje
-propio ("−25% volumen · descarga planificada ✓"). Depende de
-`progressionHold` (fase 3) y se hace **después**, como fase 5 o dentro de una
-revisión del recap. Comportamiento mientras tanto: idéntico al de hoy (sin
-delta en la primera sesión de cada etapa; nadie lo ha reportado).
+La versión anterior de este apartado proponía encadenar el grupo B y, en las
+descargas, pintar la bajada en verde («−25% volumen · descarga planificada ✓»).
+Revisada contra el código, fallaba en tres cosas:
+
+1. **Olvidaba la semana siguiente a la descarga.** Si la descarga sirve de
+   referencia, la primera sesión normal de después sale «+33% de volumen,
+   +1 serie» en verde: un progreso inventado, el mismo error que el rojo pero
+   al revés. La progresión ya lo resolvió (`progressionHistory`,
+   `progression.js`): **una sesión de descarga nunca es referencia**.
+2. **La descarga no es la única etapa con otra prescripción.** Una etapa de
+   fuerza después de una de hipertrofia baja el volumen a propósito. Comparar
+   el volumen total entre dos etapas compara dos cosas distintas, haya descarga
+   o no.
+3. **El color.** La descarga se pinta en **azul** en toda la app (`isDeload`,
+   `stageStats.js`, P14 §3.3), no en verde.
+
+#### La regla: los hechos cruzan etapas, las valoraciones no
+
+- **Por ejercicio y por bloque → sí cruzan.** «El peso máximo subió 2,5 kg» o
+  «hiciste 2 rondas más» son hechos sobre el mismo ejercicio o bloque, válidos
+  aunque cambie la etapa. Siguen la cadena `templateChainIds`
+  (`exerciseLinks.js`), igual que el grupo A. Esto **revisa la decisión §2.6**.
+- **El % de volumen de la sesión → no cruza.** Se queda dentro de la etapa, como
+  hoy. No es un hueco por cubrir: es lo correcto.
+- **Una sesión de descarga no sirve de referencia** para nada del grupo B
+  salvo los bloques. El `rx` no toca los bloques, así que su resultado sigue
+  siendo comparable.
+- **Una sesión de descarga se nombra**: en vez de flechas o del %, «descarga»
+  en azul.
+
+#### Qué es una sesión de descarga
+
+El log ya lo guarda: al cerrar la sesión, cada ejercicio con
+`progression.hold === 'deload'` lleva `deload: true` (`useStore.js`, en
+`saveSession`, desde el 2-oct-2026, `e04682f`). Una entrada es de descarga si
+**alguno** de sus ejercicios lo lleva. Helper nuevo en `sessionRecap.js`:
+
+```js
+export const isDeloadEntry = (entry) => (entry?.exercises ?? []).some((ex) => ex.deload);
+```
+
+Las entradas anteriores a esa fecha no llevan la marca y cuentan como normales:
+la descarga solo se puede crear desde el planificador (fase 4), y apenas se ha
+usado todavía.
+
+#### Trabajo
+
+1. **`compareToLast(entry, workoutLog, getTemplate)`**
+   - Plantillas candidatas: `templateChainIds(entry.sessionTemplateId,
+     getTemplate)`. Sin `getTemplate`, solo la propia (el comportamiento de hoy).
+   - Referencia: la entrada más reciente anterior a `entry` dentro de esas
+     plantillas **que no sea `isDeloadEntry`**.
+   - Si un ejercicio de `entry` lleva `deload: true` → `delta: { kind: 'deload',
+     diff: 0 }`, sin mirar la referencia.
+   - El resto, igual que hoy (ejercicio nuevo → `delta: null`; prioridad peso →
+     reps → tiempo → series).
+2. **`prevBlockResult(entry, workoutLog, blockId, getTemplate)`**: la misma
+   cadena (los bloques conservan su `id` al copiar la etapa, porque `cloneDays`
+   hace `...src`). No salta descargas.
+3. **`volumeDeltas(log)`**: el cálculo no cambia, salvo que **una entrada de
+   descarga no sirve de `prev`** dentro de su plantilla. Hoy no ocurre, pero sí
+   con etapas de descarga de más de una semana.
+4. **Pantallas**
+   - `SessionRecapScreen` pasa `(tid) => sessionTemplates[tid]` a
+     `compareToLast` y `prevBlockResult`. Pinta `kind: 'deload'` como la
+     etiqueta de descarga en azul. Si la entrada es de descarga, en el % de
+     volumen pone «descarga» en lugar del número.
+   - `WorkoutScreen` (`prevBlockResult`, ~:374) pasa el mismo `getTemplate`.
+   - `HistoryList` y `ClientsScreen`: la tarjeta de una entrada de descarga
+     enseña «descarga» en azul en el hueco del %.
+   - Recap de un cliente visto por el entrenador: las plantillas del cliente
+     deberían estar en `sessionTemplates` del entrenador, así que serviría el
+     mismo `getTemplate`. **Comprobarlo al implementar**: si falta alguna, la
+     cadena se corta en ella y vuelve el comportamiento de hoy
+     (`templateChainIds` se para en una plantilla que no existe).
+5. **i18n**: una clave para la etiqueta («Descarga» / «Deload»), o reutilizar
+   `progression.deload` si el contexto encaja.
+6. **Tests** (`sessionRecap.test.js`):
+   - la primera sesión de una etapa nueva compara con la última de la anterior;
+   - la sesión siguiente a una descarga compara con la de antes de la descarga;
+   - un ejercicio en descarga da `kind: 'deload'`;
+   - la cadena se corta si falta una plantilla;
+   - un bloque encuentra su resultado en la etapa anterior;
+   - `volumeDeltas` salta una entrada de descarga.
+
+Coste: 🟢. Todo lo que hace falta ya existe (la marca en el log, la cadena, la
+regla de saltar descargas): unas 40 líneas más los tests.
+
+Las pantallas de **Progreso** y **Carga** no entran aquí: ya leen el historial
+entero y cruzan etapas, pero no saben que una descarga estaba planificada. Eso
+es la P06-08 (§15).
 
 ### 4.3 `src/utils/stageRx.js` (nuevo, puro, con tests)
 
@@ -740,7 +825,7 @@ creación), `progression.deload_hold`, `editor.exerciseIsKey` / `editor.keyPill`
 - `progression.type` y `direction` por ejercicio (§2.7).
 - `duplicateStageInProgram` — copia literal, es otra acción y sigue teniendo
   sentido.
-- `sessionRecap.js` (§4.2).
+- `sessionRecap.js`, salvo lo que cambia la P06-06 (§4.2).
 - El generador de programas (`programGenerator.js` / `archetypeAdapter.js`) más
   allá de emitir `stages` en la fase 0.
 
@@ -753,8 +838,9 @@ creación), `progression.deload_hold`, `editor.exerciseIsKey` / `editor.keyPill`
 | 2 | Switch "principal" + pill KEY → habilita `scope` (§5) | 🟢 | ✅ **IMPLEMENTADA** — la pill reutiliza el hueco de la pill de bloque; `isKey` NO viaja en `LINKED_CONFIG_KEYS` |
 | 3 | `progressionHold: 'deload'` en `progression.js` (§6) | 🟢 | ✅ **IMPLEMENTADA** — no se puede ver en el móvil hasta la fase 4: nada escribe `hold` hasta que el planificador cree un peldaño de descarga |
 | 4 | Pantalla de planificador (§7) | 🔴 | ✅ **IMPLEMENTADA** — `StagePlannerScreen`, entrada por la hoja del `+`; la escalera se aplica al momento, sin borrador |
-| 5 | *(futuro)* Grupo B: recap consciente de la descarga (§4.2) | 🟡 | — |
-| 6 | Rediseño del planificador: el plan y la hoja de añadir (§14) | 🟡 | ⬜ **PENDIENTE** — solo UI + `stageRx.js`; cero store |
+| 5 | Grupo B: recap consciente de la descarga (§4.2, revisada 15-oct-2026) | 🟢 | ⬜ **PENDIENTE** |
+| 6 | Rediseño del planificador: el plan y la hoja de añadir (§14) | 🟡 | ✅ **IMPLEMENTADA** — solo UI + `stageRx.js`; cero store |
+| 7 | Progreso y Carga conscientes de la descarga (§15) | 🟡 | ⬜ **PENDIENTE** — diseño por cerrar |
 
 Las fases 0-3 aportan valor solas y son entregables por separado. La 4 es la
 que convierte todo lo anterior en una herramienta. La 6 la hace legible y
@@ -1064,3 +1150,67 @@ porqués están en la cabecera de `StagePlannerScreen.jsx`):
   su nombre (no se cruzan).
 - [ ] Desde la ficha del cliente → planificador → añadir etapas y volver: se
   ofrece subir los cambios al cliente. Entrar y salir sin tocar nada no lo ofrece.
+
+## 15. FASE 7 — Progreso y Carga conscientes de la descarga (P06-08) 🟡
+
+> Sale de la revisión de la P06-06 (15-oct-2026). **Diseño por cerrar**: lo de
+> abajo es el problema y la dirección, no una spec lista para implementar.
+
+### 15.1 El problema
+
+Al contrario que el recap, **Progreso y Carga ya cruzan etapas**: leen el
+historial entero por fechas (`LoadTab.jsx`, `trainingLoad.js`) o por ejercicio
+(`ProgressTab.jsx`, `getExerciseLogsFrom` en `improvement.js`, que no mira
+plantillas), y con el filtro «programa» incluyen todas sus etapas. Aquí no hay
+nada que encadenar.
+
+Lo que les falta es **saber que una descarga estaba planificada**. Ven la bajada
+pero no la distinguen de un mal momento:
+
+1. **Ficha de ejercicio (Progreso).** `lastSessionDelta`, la «última sesión» de
+   volumen y la lista sesión a sesión (`computeExSessionDeltas`) comparan cada
+   sesión con la anterior sin más. La semana de descarga aparece como una bajada
+   y la siguiente como un repunte que no es progreso real (el mismo error que
+   §4.2 punto 1). La tendencia (`linearRegressionPct`) también se la traga, y en
+   la gráfica la caída no tiene ninguna marca.
+2. **Carga, «esfuerzo vs carga».** El aviso de `effortTrend` deduce «descarga»
+   a partir de los números («↓ carga · ↓ esfuerzo → descarga»). No distingue una
+   descarga planificada de una semana en la que el cliente bajó el ritmo por su
+   cuenta, que es justo lo que le interesa al entrenador.
+3. **Carga, series indexadas.** `indexTo100` ya anota como limitación conocida
+   que, si la primera semana de la ventana fue una descarga, desplaza toda la
+   serie.
+
+### 15.2 El dato ya existe
+
+Cada ejercicio del log lleva `deload: true` si se hizo en una etapa de descarga
+(§4.2, *Qué es una sesión de descarga*), y `isDeloadEntry` (P06-06) dice si lo
+fue la sesión entera. `getExerciseLogsFrom` ya devuelve el objeto `exercise`,
+con la marca dentro. Una semana es de descarga si **todas** sus sesiones lo son
+(a decidir: ¿todas o la mayoría?).
+
+### 15.3 Dirección propuesta
+
+Misma regla de fondo que la P06-06: **una descarga no sirve de referencia y se
+muestra como planificada, en azul.**
+
+- **Ficha de ejercicio**: la sesión de descarga no es `prev` para el delta de la
+  siguiente; su fila enseña «descarga» en lugar del delta; su punto en la
+  gráfica, en azul. La tendencia la excluye.
+- **Esfuerzo vs carga**: si el último bloque que compara `effortTrend` está
+  hecho de semanas de descarga, el aviso dice «descarga planificada» (en azul)
+  en vez de «descarga». Si baja sin descarga planificada, se queda como hoy.
+- **Series indexadas** (`indexTo100`): la base salta las semanas de descarga.
+- **Gráficas semanales** (carga, rendimiento, strain): la semana de descarga se
+  marca, por ejemplo con la barra o el punto en azul.
+
+### 15.4 Por cerrar antes de implementar
+
+- Qué marca exacta lleva una semana o un punto de descarga en cada gráfica
+  (maqueta).
+- Si la tendencia de la ficha excluye la descarga o la deja con marca.
+- Si una semana con una sola sesión de descarga entre normales cuenta como
+  descarga.
+- El texto del aviso de Carga (es/en).
+- Si `ClientsScreen`, que reutiliza estas vistas para el cliente, necesita algo
+  más.
