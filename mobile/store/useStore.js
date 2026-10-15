@@ -67,7 +67,8 @@ import {
   deleteTrainerUser, deleteClientUser,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
-import { rankArchetypes } from '../src/data/archetypes';
+import { rankArchetypes, ARCHETYPES } from '../src/data/archetypes';
+import { EQUIP_PRESETS } from '../src/utils/equipmentPresets';
 import { migrateExerciseRefs } from '../src/utils/exerciseIdMigration';
 import { cleanVariant, isEmptyVariant } from '../src/utils/variants';
 import { compose } from '../src/utils/exerciseIdentity';
@@ -79,7 +80,7 @@ import i18n from '../src/i18n';
 
 // Navigation ref (wired up in App.js)
 import { navigateTo, navigationRef } from '../src/navigation/navigationRef';
-import { newFlow, initialRouteFor } from '../src/utils/onboardingFlow';
+import { newFlow, initialRouteFor, entryTab } from '../src/utils/onboardingFlow';
 
 /**
  * Respuestas del onboarding → forma que consume el motor.
@@ -624,7 +625,7 @@ export const useStore = create(
           }));
         }
         if (back) { if (navigationRef.isReady()) navigationRef.goBack(); }
-        else navigateTo('home');
+        else navigateTo(f?.entry !== 'newProgram' && entryTab(get().profile) === 'Clients' ? 'clients' : 'home');
       },
 
       // `archetypeId`: la plantilla que el usuario eligió en la pantalla de
@@ -675,6 +676,35 @@ export const useStore = create(
         // Return program so caller can show a preview before navigating
         const finalProgram = get().programs[program.id];
         return { program: finalProgram, sessionTemplates: get().sessionTemplates, phases };
+      },
+
+      /**
+       * Una plantilla del catálogo hecha programa de un cliente (O03 §7.7): con las
+       * respuestas por defecto de la plantilla (sus días, su objetivo, nivel
+       * intermedio y el material de gimnasio) y sus fases, como
+       * `generateAndActivateProgram`, pero del cliente (`owner`) y SIN tocar el
+       * perfil ni el programa activo del entrenador. No lo asigna: eso es
+       * `setClientActiveProgram`. Devuelve el id, o null (cliente congelado).
+       */
+      generateProgramForClient: (clientId, archetypeId) => {
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
+        const archetype = ARCHETYPES.find((a) => a.id === archetypeId);
+        if (!archetype) return null;
+        const answers = normalizeOnboardingAnswers({
+          level: 'intermediate', goal: archetype.goal, discipline: archetype.discipline,
+          daysPerWeek: archetype.days.length, equipment: EQUIP_PRESETS.gym, limitations: ['none'],
+        });
+        const { program, sessionTemplates, phases } = adaptArchetype(archetype, answers);
+        set((s) => ({
+          programs: { ...s.programs, [program.id]: { ...program, owner: clientId, kind: 'program' } },
+          sessionTemplates: { ...s.sessionTemplates, ...sessionTemplates },
+        }));
+        for (const phase of (phases ?? []).slice(1)) {
+          get().addStageToProgram(program.id, {
+            rx: phase.rx, name: phase.name, durationWeeks: phase.durationWeeks, sourceStageIdx: 0,
+          });
+        }
+        return program.id;
       },
 
       archiveProgram: (programId, clearHistory = false) => {

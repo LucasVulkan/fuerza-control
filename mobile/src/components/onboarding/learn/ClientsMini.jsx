@@ -13,7 +13,7 @@ import { useStore } from '../../../../store/useStore';
 import ClientRow from '../../ClientRow';
 import { getCardRadii, spacing } from '../../../theme';
 import { useTheme } from '../../../useTheme';
-import { stageDaysAt } from '../../../utils/stageProgress';
+import { newClientRow } from './newClientRow';
 import Spot from './Spot';
 
 // Constantes y no `{}` en el selector: zustand 5 repinta sin fin con un objeto nuevo cada vez.
@@ -34,23 +34,8 @@ export default function ClientsMini() {
   const program = programs[mine?.activeProgramId ?? answers.programId];
   const app     = answers.clientMode === 'app';
 
-  const never = { text: t('clients.lastNever').toLowerCase(), today: false };
-  const first = !program
-    // Sin programa todavía: el aviso de siempre, con su «Programar».
-    ? {
-        meta: { text: t('clients.noActiveProgram'), color: C.text },
-        cta:  { label: t('clients.btnProgram'), icon: 'add', color: C.text },
-        week: null,
-      }
-    : {
-        // Con app y sin canjear el código, la fila lo dice (C08 §3.4).
-        meta: { text: app ? t('clients.statusInvited') : [program.name, program.stages?.[0]?.name].filter(Boolean).join(' · ') },
-        cta:  null,
-        week: { total: Math.max(1, stageDaysAt(program, 0).length), done: 0, extra: 0, last: never },
-      };
-
   const rows = [
-    { client, link: app ? 'invited' : 'none', badgeLabel: t('clients.statusInvited'), ...first },
+    newClientRow(t, C, { client, program, app }),
     {
       client: { id: 'ex-1', name: 'Sara López', color: 3 }, link: 'linked', badgeLabel: t('clients.info.link_linked'),
       meta: { text: 'Full Body · ' + t('home.stageDefault', { n: 2 }), tail: t('clients.stageNWeeks', { n: 3, total: 6 }) },

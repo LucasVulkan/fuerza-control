@@ -144,6 +144,31 @@ describe('recorrido de entrada — acciones (O03 §16.2)', () => {
   });
 });
 
+describe('generateProgramForClient — catálogo al cliente (O03 §24.6)', () => {
+  it('el programa es del cliente, con sus fases, y el perfil no cambia', () => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {},
+      clients: { c1: { id: 'c1', name: 'Ana', activeProgramId: null } },
+      profile: { ...useStore.getState().profile, activeProgramId: null, onboardingAnswers: { level: 'beginner' } },
+    });
+    const before = useStore.getState().profile;
+    const id = useStore.getState().generateProgramForClient('c1', 'fullbody_hypertrophy_intermediate');
+
+    const program = useStore.getState().programs[id];
+    expect(program).toMatchObject({ owner: 'c1', kind: 'program', name: 'Full Body · 3 días' });
+    expect(program.stages.length).toBe(3);   // acumulación, intensificación y descarga
+    expect(program.stages[0].days.map((d) => d.label)).toEqual(['A', 'B', 'C']);
+    expect(useStore.getState().profile).toBe(before);
+    expect(useStore.getState().clients.c1.activeProgramId).toBe(null);   // asignar es aparte
+  });
+
+  it('una plantilla que no existe no crea nada', () => {
+    useStore.setState({ programs: {}, clients: { c1: { id: 'c1', name: 'Ana' } } });
+    expect(useStore.getState().generateProgramForClient('c1', 'no_existe')).toBe(null);
+    expect(useStore.getState().programs).toEqual({});
+  });
+});
+
 describe('onRehydrateStorage — fallo 1', () => {
   beforeEach(() => {
     useStore.setState({ _hasHydrated: false, _initialRoute: 'Main' });

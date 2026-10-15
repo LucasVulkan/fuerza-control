@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }        from '../../store/useStore';
+import { entryTab }        from '../utils/onboardingFlow';
 import { athleteProgress, stageBannerDue } from '../utils/stageProgress';
 import { navigationRef }   from './navigationRef';
 import { borders, textStyles } from '../theme';
@@ -68,6 +69,8 @@ function MainTabs() {
   // Ya no es el muro del Pro (M01 §4.3): una preferencia, «no soy entrenador».
   const proTabsHidden  = useStore((s) => s.profile?.proTabsHidden  ?? false);
   const showProTabs    = !proTabsHidden;
+  // El entrenador que no entrena abre en Clientes (O03 §7.9). Solo cuenta al montar.
+  const firstTab       = useStore((s) => entryTab(s.profile));
   // Clients with unsent uploads (program changes and/or next-session prescriptions).
   // Etapa terminada esperando decisión: el punto del tab de Programa. La misma
   // regla que el aviso de la Home (`stageBannerDue`). El día se lee al pintar:
@@ -81,6 +84,7 @@ function MainTabs() {
   );
   return (
     <Tab.Navigator
+      initialRouteName={firstTab}
       screenOptions={{
         headerShown: false,
         tabBarBackground: () => <TabBarBackground />,

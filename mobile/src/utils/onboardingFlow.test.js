@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   SECTIONS, sectionOf, sectionProgress, barFills, skipTarget, afterSettings, afterProgram,
-  builderExit, afterProposal, learnStart, coachedExit, deviceLanguage, initialRouteFor, newFlow, canGoBack,
+  builderExit, afterProposal, learnStart, coachedExit, deviceLanguage, initialRouteFor, newFlow, canGoBack, entryTab,
 } from './onboardingFlow';
 
 const A = (patch = {}) => ({ ...newFlow().answers, ...patch });
@@ -202,5 +202,18 @@ describe('constructor sin paso de progresión (O03-03)', () => {
     const a = A({ role: 'trainer', clientMode: 'self', programSource: 'builder', builderCtx: 'trainer' });
     const seen = ['t_client', 'b_sessions', 'b_exercise', 'b_volume'];
     expect(sectionProgress('b_done', seen, a)).toBeCloseTo(5 / 7);
+  });
+});
+
+describe('entryTab — la pestaña de entrada (§7.9)', () => {
+  it('Clientes para el entrenador que no entrena; Inicio en lo demás', () => {
+    expect(entryTab({ homeTab: 'Clients', proTabsHidden: false })).toBe('Clients');
+    expect(entryTab({ homeTab: 'Home' })).toBe('Home');
+    expect(entryTab({})).toBe('Home');
+    expect(entryTab(undefined)).toBe('Home');
+  });
+
+  it('con las pestañas de entrenador ocultas no hay Clientes: Inicio', () => {
+    expect(entryTab({ homeTab: 'Clients', proTabsHidden: true })).toBe('Home');
   });
 });

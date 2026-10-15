@@ -2908,7 +2908,113 @@
         "code": "Con el código de mi entrenador"
       }
     },
-    "trainer": {},
+    "trainer": {
+      "clients": {
+        "title": "¿Con cuántos *clientes* trabajas?",
+        "sub": "Más o menos. Nos ayuda a mejorar la app.",
+        "start": "Empiezo",
+        "free": "Empiezas gratis con *3 clientes (1 con la app) y 1 plantilla*. Cuando necesites más, Pro quita el límite."
+      },
+      "groups": {
+        "title": "¿Das clases en *grupo*?",
+        "sub": "Grupos reducidos, clases dirigidas, circuitos…",
+        "yes": "Sí, habitualmente",
+        "some": "A veces",
+        "no": "No, solo individual"
+      },
+      "client": {
+        "title": "Crea tu primer *cliente*",
+        "sub": "El nombre y cómo va a entrenar. Lo demás, desde su ficha.",
+        "placeholder": "Ana",
+        "nameLabel": "Nombre del cliente",
+        "hint": "Se cambia cuando quieras desde su ficha.",
+        "create": "Crear cliente"
+      },
+      "account": {
+        "title": "Tu cuenta de *entrenador*",
+        "sub": "Para que {{name}} reciba su programa en el móvil, tus clientes se guardan en tu cuenta.",
+        "nameLabel": "Tu nombre · lo ven tus clientes",
+        "namePlaceholder": "Ej. Lucas García",
+        "apple": "Continuar con Apple",
+        "appleDesc": "Con tu Apple ID. Nada que guardar.",
+        "google": "Continuar con Google",
+        "googleDesc": "Con tu cuenta de Google. Nada que guardar.",
+        "code": "Con un código personal",
+        "codeDesc": "La app te da un código y es tu única llave.",
+        "have": "Ya tengo cuenta de entrenador"
+      },
+      "code": {
+        "title": "Tu código *personal*",
+        "sub": "Es la llave de tu cuenta: con él recuperas a tus clientes si cambias de móvil o reinstalas la app.",
+        "label": "Tu código de entrenador",
+        "copy": "Copiar",
+        "copied": "✓ Copiado",
+        "send": "Enviármelo",
+        "sent": "✓ Enviado",
+        "saved": "Ya lo he guardado",
+        "saveFirst": "Cópialo o envíatelo",
+        "other": "Prefiero Google o Apple"
+      },
+      "program": {
+        "title": "Ahora, el programa de *{{name}}*",
+        "sub": "Es suyo: lo empiezas aquí y lo sigues editando desde su ficha.",
+        "create": "Crear su programa",
+        "createDesc": "Sesiones, un ejercicio y su volumen. Lo demás, cuando quieras.",
+        "createTag": "~3 min",
+        "catalog": "Partir de uno del catálogo",
+        "catalogDesc": "Full Body, Upper/Lower, PPL… Se le copia y lo ajustas en su ficha.",
+        "later": "Lo hago después",
+        "inviteAfter": "La invitación a {{name}} va después de darle programa: es lo primero que verá al meter el código."
+      },
+      "catalog": {
+        "title": "Elige uno para *{{name}}*",
+        "sub": "Lo ajustas después todo lo que quieras."
+      },
+      "assign": {
+        "title": "Asígnaselo a *{{name}}*",
+        "titleDone": "Asignado a *{{name}}*",
+        "subApp": "Se le copia y se le envía: lo tendrá en cuanto meta su código. Lo ajustas en su ficha.",
+        "subSelf": "Se le copia: lo ajustas en su ficha sin tocar el del catálogo.",
+        "fromCatalog": "Del catálogo",
+        "clientsLabel": "Así lo verás en Clientes",
+        "assign": "Asignar",
+        "assigned": "✓ Asignado",
+        "sendFailed": "No se pudo enviar. Queda en su ficha para enviarlo desde Clientes."
+      },
+      "invite": {
+        "title": "Invita a *{{name}}*",
+        "sub": "Cuando meta su código, recibirá «{{program}}» en Entreno y te llegarán sus entrenos.",
+        "codeLabel": "Su código de cliente",
+        "copy": "Copiar código",
+        "copied": "✓ Código copiado",
+        "clientsLabel": "En Clientes, hasta que lo meta",
+        "send": "Enviar invitación",
+        "later": "Lo envío después"
+      },
+      "self": {
+        "title": "¿Y tú también *entrenas*?",
+        "sub": "Muchos entrenadores llevan aquí su propio programa.",
+        "yes": "Sí, quiero llevar el mío",
+        "yesDesc": "Te ayudamos a elegir programa",
+        "no": "No, solo clientes",
+        "noDesc": "La app se abrirá en Clientes"
+      },
+      "done": {
+        "client": "Cliente: {{name}} · con la app",
+        "clientSelf": "Cliente: {{name}} · le apuntas tú",
+        "google": "Cuenta de Google",
+        "apple": "Cuenta de Apple",
+        "code": "Código personal guardado",
+        "codePending": "Guardar tu código personal · Menú → Mi cuenta",
+        "program": "Darle un programa · Clientes → {{name}}",
+        "invitePending": "Invitar a {{name}}, cuando tenga programa",
+        "catalog": "«{{program}}» asignado",
+        "catalogSent": "«{{program}}» asignado y enviado",
+        "invited": "Invitación enviada a {{name}}",
+        "wait": "Esperando a que {{name}} meta su código",
+        "inviteLater": "Enviar la invitación a {{name}} · Clientes → {{name}}"
+      }
+    },
     "newProgram": {
       "source": {
         "title": "Elige cómo *empezar*",

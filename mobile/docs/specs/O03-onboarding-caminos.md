@@ -3,6 +3,7 @@
 > Tema: onboarding
 > En corto: El alta lleva a cada usuario a lo suyo: ajustes básicos, una pregunta de cómo entrena y tres caminos distintos (por su cuenta, con entrenador, entrenador), con un constructor guiado de programa y unas tarjetas que enseñan lo básico. Todo saltable, y «Ya tengo cuenta» devuelve lo que había.
 > Inicio: 2026-10-13
+> Fin: 2026-10-15
 > Fase O03-01 · hecho · Armazón del recorrido y tramo común · §17
 > Fase O03-02 · hecho · Constructor guiado I: sesiones, buscador corto y «ya tiene forma» · §18
 > Fase O03-03 · hecho · Constructor guiado II: volumen en dos profundidades · §19
@@ -10,14 +11,14 @@
 > Fase O03-05 · hecho · Camino «con entrenador» · §21
 > Fase O03-06 · hecho · Aprende: cómo ves Inicio, cómo apuntas y las tarjetas · §22
 > Fase O03-07 · hecho · «Ya tengo cuenta», versión mínima · §23
-> Fase O03-08 · pendiente · Camino del entrenador · §24
+> Fase O03-08 · hecho · Camino del entrenador · §24
 > Fase O03-09 · aparcado · Recuperar todo con un solo login · §26.1
 > Fase O03-10 · aparcado · Pendientes y pistas sobre las pantallas reales · §26.2
 > Fase O03-11 · hecho · «Nuevo programa» con el recorrido nuevo · §25
 > Fase O03-12 · hecho · Ajustes de la prueba del 14-oct: propuestas con el estilo del recorrido y «con entrenador» · §28
 > Fase O03-13 · hecho · Segunda prueba del 14-oct: «tu programa» y los métodos de «Ya tengo cuenta» · §29
 >
-> Estado: **hechas O03-01 a 07, 11, 12 y 13, por probar; solo falta O03-08 (espera a M03-01)** (14-oct-2026). Abierta el 4-oct como
+> Estado: **hechas todas las tareas (O03-01 a 08, 11, 12 y 13); O03-08 por probar** (15-oct-2026). Abierta el 4-oct como
 > borrador; el 12-oct se cerró el estilo (el del paywall) y se rehízo el
 > recorrido contra el código; el 13-oct se revisó otra vez contra el código, se
 > corrigieron cinco cosas que no habrían funcionado (§2.2), se cerraron las diez
@@ -1155,6 +1156,29 @@ Hace, en `screens/trainer.jsx`, §7 entero:
 9. Quitar el provisional de «Soy entrenador/a» de O03-01. `flowDone` con todo lo
    de §11.5.
 
+**Lo que dejó hecho** (15-oct-2026):
+
+- **Cliente sin app hasta tener cuenta**: `t_client` crea con `createClient(name)` y,
+  si la cuenta ya existe, `connectClientToCloud`; si no, `t_account`. Un fallo al
+  pasarlo a la app no para el recorrido: aviso y queda sin app (sin invitación).
+- **Cuenta**: `useTrainerAccount` (M03-01). El nombre se guarda antes de entrar, así
+  Google/Apple no lo pisan. «Ya tengo cuenta de entrenador» abre `TrainerSyncModal`
+  en recuperar; el éxito se ve en `trainerSync.userId` al cerrar, y sigue a su
+  programa sin pasar por `t_code`.
+- **`t_code`** «Prefiero Google o Apple» vuelve a `t_account`: entrar con Google o
+  Apple se lleva la cuenta de código y sus clientes (`_enterCandidate`).
+- **Catálogo**: `t_catalog` lista los 11 `ARCHETYPES`; `t_assign` genera
+  (`generateProgramForClient`: nivel intermedio, material de gimnasio, el objetivo
+  y los días de la plantilla, sus fases), asigna y, con app, envía. Sin red queda
+  sin enviar y sin invitación. Al volver a una ya asignada, el botón es «Siguiente».
+- **«¿También entrenas?» → Sí**: «por mi cuenta» reutiliza `programId`,
+  `builderCtx` y las líneas `program`/`fill` de «Listo»; las del cliente se apartan
+  (`clientProgram`, `clientFill`, `clientProgramId`) y vuelven si se regresa a `t_self`.
+- **Pestaña de entrada**: `entryTab(profile)` (`'Clients'` solo con
+  `homeTab: 'Clients'` y las pestañas de entrenador visibles) la usan
+  `MainTabs.initialRouteName` y `finishOnboardingFlow` (vista nueva `'clients'` en
+  `viewToRoute`).
+
 **Probar O03-08**
 
 - [ ] Datos: «1-5» enseña la línea del plan gratis; «Empiezo» no.
@@ -1162,7 +1186,8 @@ Hace, en `screens/trainer.jsx`, §7 entero:
   Android no sale Apple.
 - [ ] Con código personal: «Ya lo he guardado» gris hasta pulsar Copiar o
   Enviármelo.
-- [ ] Menú → Sincronización → crear cuenta con código: el mismo bloqueo.
+- [ ] Fuera del recorrido (Clientes sin cuenta, o Mi cuenta → pasar a código):
+  crear cuenta con código tiene el mismo bloqueo (`CodeReveal`, M03).
 - [ ] «Crear su programa» con 3 sesiones y un ejercicio → «Guardar y enviar a Ana»
   → «Invita a Ana» con su código. En Clientes: Ana con el programa, sin «Cambios
   sin enviar», con el reloj de esperando código.
@@ -1519,7 +1544,7 @@ Lo que salió al probar O03-04 y O03-05 en el móvil.
 | O03-05 | Camino «con entrenador» | O03-01 | ✅ 395c664 — `coached.jsx`, `hooks/useClientCode.js` (estado en un store de módulo) usado también por `ClientCodeModal`, `shareAndContinue`. `validateClientCode` no trae las letras de las sesiones: `c_confirm` no las pinta |
 | O03-06 | Aprende | O03-01 | ✅ ac13d22 · d58b1b6 — `ClientRow` extraída (la fila ya era `ClientListCard`; ésta calcula y `ClientRow` dibuja), `HomeViewPreview`, `ScrubDemo` sobre `ScrubRuler`/`scrubScale`, tarjetas por camino. En la fusión, el hueco de b_done (O03-02) pasó a `ClientRow` |
 | O03-07 | «Ya tengo cuenta», versión mínima | O03-01 | ✅ d2fc216 — `recover.jsx`; reutiliza `initialScreen` de `TrainerSyncModal` (de `02ac235`); el éxito del entrenador se detecta comparando `trainerSync` al cerrar. Con una cuenta ya en el móvil, el modal abre en su estado, no en recuperar |
-| O03-08 | Camino del entrenador | O03-02, 03, 05, 06, 07 | pendiente |
+| O03-08 | Camino del entrenador | O03-02, 03, 05, 06, 07 | ✅ (sin commit) — `trainer.jsx` (t_clients … t_self); `generateProgramForClient` en el store + test; `entryTab` (util + test) para la pestaña de entrada en `MainTabs` y al terminar; `newClientRow` sale de `ClientsMini` para asignar/invitar. El bloqueo de `code_reveal` ya lo había puesto M03 (`CodeReveal`) |
 | O03-09 | Recuperar todo con un solo login | O03-07 | aparcada |
 | O03-10 | Pendientes y pistas sobre las pantallas reales | O03-06 | aparcada |
 | O03-11 | «Nuevo programa» con el recorrido nuevo | O03-02, 03, 04, 05 | ✅ b5e9c39 — `newProgram.jsx` (n_source, n_templates, n_done); `startNewProgram`/`NoProgram` apilan `Start`; `coachedExit`, `builderExit` con `programId`, `goTo(null)` termina, `finishOnboardingFlow({ back })`; fuera `OnboardingScreen`, la ruta `Onboarding`, `replaceRoot` y 152 claves `onboarding.*` |

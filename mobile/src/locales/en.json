@@ -2908,7 +2908,113 @@
         "code": "With my trainer's code"
       }
     },
-    "trainer": {},
+    "trainer": {
+      "clients": {
+        "title": "How many *clients* do you train?",
+        "sub": "Roughly. It helps us improve the app.",
+        "start": "Starting",
+        "free": "Start free with *3 clients (1 on the app) and 1 template*. Pro removes the limit when you need more."
+      },
+      "groups": {
+        "title": "Do you run *group* classes?",
+        "sub": "Small groups, classes, circuits…",
+        "yes": "Yes, regularly",
+        "some": "Sometimes",
+        "no": "No, one-to-one only"
+      },
+      "client": {
+        "title": "Add your first *client*",
+        "sub": "A name and how they'll train. The rest from their profile.",
+        "placeholder": "Ana",
+        "nameLabel": "Client name",
+        "hint": "You can change it any time from their profile.",
+        "create": "Create client"
+      },
+      "account": {
+        "title": "Your *coach* account",
+        "sub": "So {{name}} gets their program on their phone, your clients are kept in your account.",
+        "nameLabel": "Your name · clients see it",
+        "namePlaceholder": "e.g. Lucas García",
+        "apple": "Continue with Apple",
+        "appleDesc": "With your Apple ID. Nothing to keep.",
+        "google": "Continue with Google",
+        "googleDesc": "With your Google account. Nothing to keep.",
+        "code": "With a personal code",
+        "codeDesc": "The app gives you a code: it's your only key.",
+        "have": "I already have a coach account"
+      },
+      "code": {
+        "title": "Your *personal* code",
+        "sub": "It's the key to your account: it brings your clients back on a new phone or after a reinstall.",
+        "label": "Your coach code",
+        "copy": "Copy",
+        "copied": "✓ Copied",
+        "send": "Send it to me",
+        "sent": "✓ Sent",
+        "saved": "I've saved it",
+        "saveFirst": "Copy or send it first",
+        "other": "I'd rather use Google or Apple"
+      },
+      "program": {
+        "title": "Now, a program for *{{name}}*",
+        "sub": "It's theirs: start it here and keep editing it from their profile.",
+        "create": "Create their program",
+        "createDesc": "Sessions, one exercise and its volume. The rest whenever you like.",
+        "createTag": "~3 min",
+        "catalog": "Start from the catalog",
+        "catalogDesc": "Full Body, Upper/Lower, PPL… It's copied to them; tweak it in their profile.",
+        "later": "I'll do it later",
+        "inviteAfter": "{{name}}'s invite comes after giving them a program: it's the first thing they'll see with the code."
+      },
+      "catalog": {
+        "title": "Pick one for *{{name}}*",
+        "sub": "Tweak it later as much as you like."
+      },
+      "assign": {
+        "title": "Assign it to *{{name}}*",
+        "titleDone": "Assigned to *{{name}}*",
+        "subApp": "It's copied and sent: they get it as soon as they enter their code. Tweak it in their profile.",
+        "subSelf": "It's copied to them: tweak it in their profile without touching the catalog one.",
+        "fromCatalog": "From the catalog",
+        "clientsLabel": "How it looks in Clients",
+        "assign": "Assign",
+        "assigned": "✓ Assigned",
+        "sendFailed": "Couldn't send it. It stays in their profile to send from Clients."
+      },
+      "invite": {
+        "title": "Invite *{{name}}*",
+        "sub": "Once they enter their code, “{{program}}” lands in Workout and their workouts reach you.",
+        "codeLabel": "Their client code",
+        "copy": "Copy code",
+        "copied": "✓ Code copied",
+        "clientsLabel": "In Clients, until they enter it",
+        "send": "Send invite",
+        "later": "I'll send it later"
+      },
+      "self": {
+        "title": "Do you *train* too?",
+        "sub": "Many coaches track their own program here.",
+        "yes": "Yes, I'll track mine",
+        "yesDesc": "We'll help you pick a program",
+        "no": "No, clients only",
+        "noDesc": "The app will open on Clients"
+      },
+      "done": {
+        "client": "Client: {{name}} · on the app",
+        "clientSelf": "Client: {{name}} · you log for them",
+        "google": "Google account",
+        "apple": "Apple account",
+        "code": "Personal code saved",
+        "codePending": "Save your personal code · Menu → My account",
+        "program": "Give them a program · Clients → {{name}}",
+        "invitePending": "Invite {{name}} once they have a program",
+        "catalog": "“{{program}}” assigned",
+        "catalogSent": "“{{program}}” assigned and sent",
+        "invited": "Invite sent to {{name}}",
+        "wait": "Waiting for {{name}} to enter their code",
+        "inviteLater": "Send {{name}} the invite · Clients → {{name}}"
+      }
+    },
     "newProgram": {
       "source": {
         "title": "Choose how to *start*",

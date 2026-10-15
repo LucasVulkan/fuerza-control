@@ -21,6 +21,8 @@ export function viewToRoute(view) {
       return { screen: 'Main', params: { screen: 'MyProgram' } };
     case 'stats':
       return { screen: 'Main', params: { screen: 'Stats' } };
+    case 'clients':
+      return { screen: 'Main', params: { screen: 'Clients' } };
     case 'programPrint':
     case 'programSummary':
       return { screen: 'ProgramDetail' };

@@ -152,6 +152,12 @@ export function skipTarget(id, a = {}, entry = 'first') {
  */
 export const canGoBack = (flow) => !!flow && flow.history.length > 0 && flow.screen !== 'done' && flow.screen !== 'n_done';
 
+/**
+ * La pestaña con la que se abre la app (§7.9): Clientes para el entrenador que no
+ * entrena (`profile.homeTab`), salvo que tenga ocultas las pestañas de entrenador.
+ */
+export const entryTab = (profile) => (profile?.homeTab === 'Clients' && !profile?.proTabsHidden ? 'Clients' : 'Home');
+
 // ── Entrada ──────────────────────────────────────────────────────────────────
 
 /** El idioma del móvil: `en…` → inglés, lo demás → español (§5.2). */
