@@ -525,9 +525,14 @@ no sale. La 4 añade que su entrenador también ve las libres.
 2. **Plantillas: programa una vez** — «Cuando el programa de {cliente} te sirva
    para otros, guárdalo como plantilla y asígnalo. Cada uno recibe su copia y
    avanza a su ritmo» (C07-03).
-3. **Ajusta su próxima sesión** — desde la ficha, sin tocar el programa.
-4. *(solo si su cliente es «le apuntas tú»)* **Apunta tú sus sesiones** —
-   «Registrar sesión» o pegar el texto de WhatsApp (C05).
+3. **Ajusta su próxima sesión** — desde la ficha, sin tocar el programa. *Solo
+   si su cliente es con la app.*
+4. *(solo si su cliente es «le apuntas tú», en lugar de la 3; 15-oct: ajustar la
+   próxima sesión no le sirve, la apunta él)* **Apunta tú sus sesiones** —
+   «Empezar» o «Apuntar sesión pasada» (C05-01), y **Su entreno, por mensajes** —
+   la sesión como texto con el botón de compartir y su respuesta pegada en
+   «Apuntar sesión pasada → Pegar texto» (C05-04, C05-05). Dos tarjetas para que
+   se vea la diferencia entre apuntarlo él y que vaya y vuelva por mensajes.
 
 Las mini-pantallas usan lo creado (nombre del programa, del cliente, unidad, vista
 de Inicio).
@@ -1219,6 +1224,8 @@ Hace, en `screens/trainer.jsx`, §7 entero:
 - [ ] Ningún texto del recorrido dice «meter» el código.
 - [ ] Aprende (de O03-06), entrenador que no entrena: «Apunta tú sus sesiones» solo sale si su
   cliente es «le apuntas tú».
+- [ ] Cliente «le apuntas tú»: en Aprende no sale «Ajusta su próxima sesión»; salen
+  «Apunta tú sus sesiones» y, después, «Su entreno, por mensajes».
 
 ## 25. O03-11 — «Nuevo programa» con el recorrido nuevo
 

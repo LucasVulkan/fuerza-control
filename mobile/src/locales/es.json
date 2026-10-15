@@ -2849,9 +2849,13 @@
           "title": "Ajusta su *próxima sesión*",
           "sub": "Desde su ficha cambias pesos o ejercicios de la siguiente sesión sin tocar el programa."
         },
+        "text": {
+          "title": "Su entreno, por *mensajes*",
+          "sub": "Desde su ficha, el botón de compartir junto a «Empezar» le manda la sesión como texto. {{client}} te responde con lo que hizo y, en «Apuntar sesión pasada → Pegar texto», se apunta sola."
+        },
         "log": {
           "title": "Apunta tú sus *sesiones*",
-          "sub": "{{client}} no usa la app: desde su ficha registras lo que hace, o pegas el texto que te mande por WhatsApp."
+          "sub": "{{client}} no usa la app: desde su ficha, «Empezar» para llevar el entreno con él o «Apuntar sesión pasada» para lo que ya hizo."
         }
       },
       "mini": {
@@ -2867,8 +2871,11 @@
         "rdl": "Peso muerto rumano",
         "logHead": "{{name}} · historial",
         "logWhen": "Lunes · apuntada por ti",
-        "logAdd": "+ Registrar sesión",
-        "logPaste": "Pegar texto de WhatsApp",
+        "logAdd": "+ Apuntar sesión pasada",
+        "textStart": "Empezar",
+        "textPaste": "Pegar texto",
+        "textReply": "Sentadilla: 80x8 80x8 77,5x7",
+        "textBack": "{{name}} te responde",
         "coachChanged": "{{trainer}} ha cambiado tu programa",
         "coachChange": "Press inclinado en vez de banca",
         "coachSession": "Hoy · {{count}} ej. · {{trainer}} la verá"

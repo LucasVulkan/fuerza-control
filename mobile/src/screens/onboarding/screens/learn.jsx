@@ -32,7 +32,7 @@ import HomeViewPreview from '../../../components/onboarding/learn/HomeViewPrevie
 import ScrubDemo from '../../../components/onboarding/learn/ScrubDemo';
 import ClientsMini from '../../../components/onboarding/learn/ClientsMini';
 import TabBarMini from '../../../components/onboarding/learn/TabBarMini';
-import { Mini, MiniTemplates, MiniNext, MiniLogFor, MiniCoach } from '../../../components/onboarding/learn/CardMinis';
+import { Mini, MiniTemplates, MiniNext, MiniLogFor, MiniText, MiniCoach } from '../../../components/onboarding/learn/CardMinis';
 import { previewSessions, learnCards } from '../../../utils/onboardingPreview';
 
 // Constantes y no `{}` en el selector: zustand 5 repinta sin fin si devuelve un objeto nuevo cada vez.
@@ -240,6 +240,10 @@ function useCard(id) {
         sub:   L('next.sub'),
         mini:  <MiniNext clientName={clientName ?? t('onboardingFlow.learn.exampleClient')} />,
       };
+    case 'text': {
+      const name = clientName ?? t('onboardingFlow.learn.exampleClient');
+      return { title: L('text.title'), sub: L('text.sub', { client: name }), mini: <MiniText clientName={name} session={sessions[0]} /> };
+    }
     default: {   // 'log'
       const name = clientName ?? t('onboardingFlow.learn.exampleClient');
       return { title: L('log.title'), sub: L('log.sub', { client: name }), mini: <MiniLogFor clientName={name} session={sessions[0]} /> };

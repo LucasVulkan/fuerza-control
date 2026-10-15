@@ -2849,9 +2849,13 @@
           "title": "Tweak their *next session*",
           "sub": "From their profile, change weights or exercises in the next session without touching the program."
         },
+        "text": {
+          "title": "Their workout, by *message*",
+          "sub": "From their profile, the share button next to “Start” sends them the session as text. {{client}} replies with what they did and, in “Log a past session → Paste text”, it's logged for you."
+        },
         "log": {
           "title": "Log their *sessions*",
-          "sub": "{{client}} doesn't use the app: from their profile you log what they do, or paste the text they send you on WhatsApp."
+          "sub": "{{client}} doesn't use the app: from their profile, “Start” to run the workout with them or “Log a past session” for what they already did."
         }
       },
       "mini": {
@@ -2867,8 +2871,11 @@
         "rdl": "Romanian deadlift",
         "logHead": "{{name}} · history",
         "logWhen": "Monday · logged by you",
-        "logAdd": "+ Log a session",
-        "logPaste": "Paste WhatsApp text",
+        "logAdd": "+ Log a past session",
+        "textStart": "Start",
+        "textPaste": "Paste text",
+        "textReply": "Squat: 80x8 80x8 77.5x7",
+        "textBack": "{{name}} replies",
         "coachChanged": "{{trainer}} updated your program",
         "coachChange": "Incline press instead of bench",
         "coachSession": "Today · {{count}} ex. · {{trainer}} will see it"

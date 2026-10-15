@@ -27,14 +27,17 @@ export function previewSessions(program, sessionTemplates = {}, allExercises = {
 
 /**
  * Las tarjetas de «Aprende» (O03 §11.4) según lo contestado, por id:
- *  · entrenador que no entrena: clientes, plantillas, próxima sesión y, si su
- *    cliente es «le apuntas tú», apuntar sus sesiones
+ *  · entrenador que no entrena: clientes, plantillas y próxima sesión; si su
+ *    cliente es «le apuntas tú», en vez de la próxima sesión, apuntar sus
+ *    sesiones y su entreno por mensajes
  *  · el resto: [clientes, si es entrenador] · hoy · «Cambia lo que quieras»
  *    —o, con entrenador conectado, que él ve tus entrenos— · sesión libre
  */
 export function learnCards(a = {}) {
   if (a.role === 'trainer' && a.alsoTrains !== true) {
-    return ['clients', 'templates', 'next', ...(a.clientMode === 'self' ? ['log'] : [])];
+    // Al que le apuntas tú no le ajustas la próxima sesión: la apuntas tú, o se la
+    // mandas por mensaje y pegas lo que te devuelve.
+    return ['clients', 'templates', ...(a.clientMode === 'self' ? ['log', 'text'] : ['next'])];
   }
   return [...(a.role === 'trainer' ? ['clients'] : []), 'today', a.linked ? 'sees' : 'edit', 'free'];
 }

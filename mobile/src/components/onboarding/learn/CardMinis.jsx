@@ -1,7 +1,7 @@
 /**
  * Las mini-pantallas esquemáticas de las tarjetas de «Aprende» (O03 §11.1):
  * plantillas / «Cambia lo que quieras», la próxima sesión de un cliente, apuntar
- * sus sesiones y «tu entrenador ve tus entrenos». Son esquemas: lo que va a vivir
+ * sus sesiones, su entreno por mensajes y «tu entrenador ve tus entrenos». Son esquemas: lo que va a vivir
  * en la app de verdad (la vista de Inicio, la fila de Clientes) se dibuja con
  * `HomeViewPreview` y `ClientRow`, no aquí.
  *
@@ -16,6 +16,7 @@ import { spacing, textStyles, withOpacity } from '../../../theme';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { useWeightUnit } from '../../../hooks/useWeightUnit';
 import Spot from './Spot';
+import { ShareIcon } from '../../SessionList';
 
 /** El lienzo: el fondo de la app, con sus filas en `surface`. Solo se mira, salvo `interactive`. */
 export function Mini({ children, interactive = false }) {
@@ -98,7 +99,38 @@ export function MiniLogFor({ clientName, session }) {
       <Text style={styles.head} numberOfLines={1}>{t('onboardingFlow.learn.mini.logHead', { name: clientName })}</Text>
       <MiniRow lead={session.marker} title={session.name} sub={t('onboardingFlow.learn.mini.logWhen')} />
       <MiniRow center title={t('onboardingFlow.learn.mini.logAdd')} spot finger={{ right: '42%', bottom: -10 }} />
-      <MiniRow center muted title={t('onboardingFlow.learn.mini.logPaste')} grow={false} />
+    </Mini>
+  );
+}
+
+/**
+ * Enviar y recibir el entreno por mensajes (C05-04, C05-05): la sesión del
+ * cliente con sus dos botones, como en su ficha —Empezar y, al lado, compartir
+ * (resaltado)—; la respuesta que llega; y «Pegar texto» (resaltado) para apuntarla.
+ */
+export function MiniText({ clientName, session }) {
+  const { t } = useTranslation();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Mini>
+      <View style={styles.card}>
+        <View style={styles.cardHead}>
+          <View style={styles.lead}><Text style={styles.leadTxt}>{session.marker}</Text></View>
+          <Text style={[styles.title, styles.rowMain]} numberOfLines={1}>{session.name}</Text>
+        </View>
+        <View style={styles.cardFoot}>
+          <View style={styles.startBtn}>
+            <Text style={styles.startTxt}>{t('onboardingFlow.learn.mini.textStart').toUpperCase()}</Text>
+            <Text style={styles.startTxt}>›</Text>
+          </View>
+          <Spot radius={th.radius.md} finger={{ right: -6, bottom: -14 }}>
+            <View style={styles.shareBtn}><ShareIcon color={th.colors.text} /></View>
+          </Spot>
+        </View>
+      </View>
+      <MiniRow title={t('onboardingFlow.learn.mini.textReply')} sub={t('onboardingFlow.learn.mini.textBack', { name: clientName })} />
+      <MiniRow center title={t('onboardingFlow.learn.mini.textPaste')} spot />
     </Mini>
   );
 }
@@ -135,6 +167,19 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.sm,
   },
   head: { ...textStyles.bodyStrong, color: th.colors.text, padding: spacing.xs },
+  // La sesión del cliente con sus botones (`SessionList`: EMPEZAR lima y compartir en `surface3`).
+  card:     { backgroundColor: th.colors.surface, borderRadius: th.radius.md, padding: spacing.md, gap: spacing.md },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
+  cardFoot: { flexDirection: 'row', gap: spacing.sm },
+  startBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: th.colors.accent, borderRadius: th.radius.md, padding: spacing.md,
+  },
+  startTxt: { ...textStyles.button, color: th.colors.onAccent },
+  shareBtn: {
+    flex: 1, width: 46, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: th.colors.surface3 ?? th.colors.surface2, borderRadius: th.radius.md,
+  },
   row: {
     flexDirection:   'row',
     alignItems:      'center',

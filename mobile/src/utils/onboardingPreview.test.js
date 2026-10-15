@@ -47,8 +47,8 @@ describe('learnCards', () => {
     expect(learnCards({ role: 'trainer', alsoTrains: true })).toEqual(['clients', 'today', 'edit', 'free']);
   });
 
-  it('entrenador que no entrena: sus tres, y una cuarta solo si le apunta él', () => {
+  it('entrenador que no entrena: con app, la próxima sesión; si le apunta él, apuntar y por mensajes', () => {
     expect(learnCards({ role: 'trainer', alsoTrains: false, clientMode: 'app' })).toEqual(['clients', 'templates', 'next']);
-    expect(learnCards({ role: 'trainer', alsoTrains: false, clientMode: 'self' })).toEqual(['clients', 'templates', 'next', 'log']);
+    expect(learnCards({ role: 'trainer', alsoTrains: false, clientMode: 'self' })).toEqual(['clients', 'templates', 'log', 'text']);
   });
 });
