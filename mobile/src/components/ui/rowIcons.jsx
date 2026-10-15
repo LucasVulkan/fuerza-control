@@ -22,6 +22,8 @@ export const ROW_ICON = {
   plan:     <Path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z" />,
   docs:     <G><Circle cx="12" cy="12" r="9" /><Path d="M12 16v-4M12 8h.01" /></G>,
   trash:    <Path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />,
+  // Desconectar la cuenta (M03): la puerta y la flecha que sale.
+  logout:   <G><Path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" /><Path d="M16 17l5-5-5-5M21 12H9" /></G>,
 
   // Las hojas de opciones (U09-pulido-ui.md §3).
   view:      <G><Path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><Circle cx="12" cy="12" r="3" /></G>,

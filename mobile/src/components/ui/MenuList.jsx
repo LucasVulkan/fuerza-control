@@ -116,7 +116,7 @@ const ROW_STAGGER = 0.65;
 const ROW_SPAN    = 300;
 const ROW_FADE    = 0.5;
 
-function SheetSlide({ children }) {
+export function SheetSlide({ children }) {
   const sheet     = useContext(SheetContext);
   const { width } = useWindowDimensions();
   const ref       = useRef(null);

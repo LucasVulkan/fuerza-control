@@ -23,7 +23,11 @@ import { GOOGLE_CLIENT_ID } from '../src/config/google';
 import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
-import { createClientSlot, uploadProgram, downloadHistory, downloadProgram, getSlotByClientCode, linkClientToSlot, uploadHistory, uploadOverrides, deleteClientSlot, getClientSlotByUserId, transferClientSlot, updateTrainerNameForSlots, getTrainerSlots, releaseClientSlot, reissueClientCode as reissueClientCodeRpc } from '../src/services/supabaseSync';
+import {
+  createClientSlot, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
+  updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, transferMySlotsTo,
+  getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, transferMySeatTo,
+} from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
   dismissCountdownNotification,
@@ -55,10 +59,12 @@ import { applyRx } from '../src/utils/stageRx';
 import { isStageLocked } from '../src/utils/stageLocks';
 import { consumeOverride, overrideStatus } from '../src/utils/sessionOverride';
 import { buildBackupJson, BACKUP_STORAGE_KEY } from '../src/utils/backupPayload';
-import { supabase } from '../src/config/supabase';
+import { migrateLegacySession } from '../src/config/supabase';
 import {
-  recoverWithTrainerCode, signInAnonymously, loginClientWithIdToken,
-  deleteAccount as deleteRemoteAccount, signOut as supabaseSignOut,
+  trainerCandidateFromIdToken, trainerCandidateFromCode, trainerCandidateNewCode, adoptTrainer,
+  trainerSessionUserId, signInTrainerWithCode, signOutTrainer,
+  ensureClientSession, clientSessionUserId, clientCandidateFromIdToken, adoptClient, signOutClient,
+  deleteTrainerUser, deleteClientUser,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes } from '../src/data/archetypes';
@@ -72,7 +78,8 @@ import { nextIdentityColor, withIdentityColors } from '../src/utils/identityColo
 import i18n from '../src/i18n';
 
 // Navigation ref (wired up in App.js)
-import { navigateTo } from '../src/navigation/navigationRef';
+import { navigateTo, navigationRef } from '../src/navigation/navigationRef';
+import { newFlow, initialRouteFor } from '../src/utils/onboardingFlow';
 
 /**
  * Respuestas del onboarding → forma que consume el motor.
@@ -95,31 +102,54 @@ export function normalizeOnboardingAnswers(answers) {
 
 // ─── Initial state ─────────────────────────────────────────────────────────────
 
-// ── Trainer session guard ──────────────────────────────────────────────────────
-// Before any RLS-protected Supabase write, verify the session is active AND
-// belongs to the correct user (trainerSync.userId).
-// Cases handled:
-//  - No session at all (app restart, token expired) → re-auth with stored code
-//  - Session for wrong userId (trainer created a second code account) → re-auth
-//    with the stored code to switch back to the correct account
-// Import estatico a proposito, no `require`: los dos modulos son hojas (no hay
-// ciclo que romper) y un `require` lo resuelve Node saltandose por completo la
-// resolucion de Vite, asi que esta funcion quedaba fuera del alcance de los
-// tests. Ambos ya se cargaban igual al importar el store, via supabaseSync.
-async function _ensureTrainerSession(trainerSync) {
-  const { data: { session } } = await supabase.auth.getSession();
+// El lado cliente sin entrenador. Una sola definición: el estado inicial,
+// desconectarse y borrar la cuenta la comparten.
+const EMPTY_CLIENT_SYNC = {
+  slotId:                null,  // trainer_clients row id
+  clientCode:            null,  // the code the client entered
+  supabaseUserId:        null,  // anonymous Supabase user id (or social user id if linked)
+  googleLinked:          false, // true once the client has linked a social account
+  linkedProvider:        null,  // 'google' | 'apple' — cuál. null en los vinculados antes de que hubiera Apple (siempre Google)
+  trainerName:           null,  // trainer's display name (read from trainer_name column)
+  pendingUpload:         false, // true when last sessions upload failed
+  lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
+  lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
+  lastAppliedStageActivation: null, // `stageActivatedAt` already applied — a new one means the trainer moved this client
+  syncErrorAt:           null,  // ISO — timestamp of last failed upload to trainer
+  lostAt:                null,  // ISO — el servidor dijo que ya no tiene asiento (C09 §4.3)
+  pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
+  previousActiveProgramId: null, // el programa de antes de conectarse, para volver a él al salir
+  trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
+  linkedAt:              null,  // ISO — when the client connected (free sessions before this stay private)
+  pendingOverrides:      {},    // { [templateId]: override } — trainer's next-session prescriptions, consumed on save
+};
 
-  // Session is valid AND belongs to the expected trainer user → nothing to do
-  if (session && (!trainerSync.userId || session.user.id === trainerSync.userId)) return;
+// La cuenta de Google/Apple con la que un cliente busca su asiento en otro
+// móvil, entre «buscar» y «confirmar». En memoria y nada más: es una sesión.
+let _clientCandidate = null;
 
-  if (trainerSync.mode === 'code' && trainerSync.code) {
-    await recoverWithTrainerCode(trainerSync.code);
-  } else if (trainerSync.mode === 'google' || trainerSync.mode === 'apple') {
-    // Ni Google ni Apple se pueden renovar en silencio: los dos exigen que el
-    // usuario vuelva a pasar por la hoja de login.
-    throw new Error('Sesión expirada. Ve a Sincronización y vuelve a iniciar sesión.');
-  }
+
+// ── Sesión de entrenador ───────────────────────────────────────────────────────
+// Antes de hablar con el servidor como entrenador, la sesión de entrenador
+// tiene que ser la de `trainerSync.userId` (C09 §3). Con código se rehace sola
+// (mismo código, mismo usuario). Google y Apple no se renuevan en silencio:
+// `TRAINER_LOGIN_NEEDED`, y Mi cuenta ofrece volver a entrar.
+// La sesión de cliente vive aparte (`clientSupabase`): nada de aquí la toca.
+function trainerLoginNeeded(mode) {
+  const how = i18n.t(`account.short.${mode === 'apple' ? 'apple' : 'google'}`);
+  return Object.assign(new Error(i18n.t('account.loginNeededError', { how })), { code: 'TRAINER_LOGIN_NEEDED' });
 }
+
+async function _ensureTrainerSession(trainerSync) {
+  if (!trainerSync.userId) throw Object.assign(new Error(i18n.t('account.noAccountError')), { code: 'NO_TRAINER_ACCOUNT' });
+  if ((await trainerSessionUserId()) === trainerSync.userId) return;
+  if (trainerSync.mode === 'code' && trainerSync.code
+      && (await signInTrainerWithCode(trainerSync.code)) === trainerSync.userId) return;
+  throw trainerLoginNeeded(trainerSync.mode);
+}
+
+/** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
+const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
 
 // Dropset actions all touch the `drops` array of the LAST work set only
 // (dropset is prescribed as "last set carries drops", never an arbitrary one).
@@ -226,7 +256,7 @@ const INITIAL_PROFILE = {
   activeProgramId: null,
   onboardingAnswers: {},
   onboardingCompleted: false,
-  setupComplete: false,   // true tras elegir idioma + unidad en SetupScreen
+  setupComplete: false,   // true al acabar (o saltar) el recorrido de entrada
   goals: [],
   bodyWeight: null,
   theme: 'formaFit',
@@ -262,7 +292,7 @@ const INITIAL_ACTIVE_SESSION = {
   // Entreno de un cliente sin app, apuntado por el entrenador (C05-trainer-logging.md §3.3).
   forClient: null,     // id del cliente dueño del entreno; null = mío
   loggedAt:  null,     // ms del día elegido en «Apuntar sesión pasada»; null = ahora
-  logOnly:   false,    // modo registro: sin reloj ni descansos (§3.4)
+  logOnly:   false,    // modo registro: sin reloj ni descansos (§3.3)
 };
 
 const EMPTY_LOG = [];
@@ -475,28 +505,14 @@ export const useStore = create(
         mode:                  null,   // null | 'offline' | 'code' | 'google' | 'apple'
         code:                  null,   // string — trainer recovery code (only when mode === 'code')
         userId:                null,   // Supabase user.id once authenticated
+        email:                 null,   // Google/Apple: el correo de la cuenta, para decir cuál es aunque se pierda la sesión
         trainerName:           null,   // string — display name shown to clients on their programs
         lastSeenSessionsCount: {},     // { [clientId]: number } — count when trainer last viewed history
+        deletedSlotIds:        [],     // huecos de clientes borrados aquí, pendientes de borrar en el servidor (C09 §3.5)
       },
 
       // ── Client sync (when user is a client connected to a trainer) ────────
-      clientSync: {
-        slotId:                null,  // trainer_clients row id
-        clientCode:            null,  // the code the client entered
-        supabaseUserId:        null,  // anonymous Supabase user id (or social user id if linked)
-        googleLinked:          false, // true once the client has linked a social account
-        linkedProvider:        null,  // 'google' | 'apple' — cuál. null en los vinculados antes de que hubiera Apple (siempre Google)
-        trainerName:           null,  // trainer's display name (read from trainer_name column)
-        pendingUpload:         false, // true when last sessions upload failed
-        lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
-        lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
-        lastAppliedStageActivation: null, // `stageActivatedAt` already applied — a new one means the trainer moved this client
-        syncErrorAt:           null,  // ISO — timestamp of last failed upload to trainer
-        pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
-        trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
-        linkedAt:              null,  // ISO — when the client connected (free sessions before this stay private)
-        pendingOverrides:      {},    // { [templateId]: override } — trainer's next-session prescriptions, consumed on save
-      },
+      clientSync: { ...EMPTY_CLIENT_SYNC },
 
       // Static references (not persisted)
       exerciseLibrary: EXERCISE_LIBRARY,
@@ -529,6 +545,10 @@ export const useStore = create(
       // borra al cerrarla.
       pendingInviteCode: null,      // 'XK7M-2P4T' | null
 
+      // Recorrido de entrada por caminos (O03 §16.2). SÍ se persiste: matar la
+      // app a mitad y reabrir vuelve a la misma pantalla. `null` = no hay recorrido.
+      onboardingFlow: null,
+
       // ══════════════════════════════════════════════════════════════════════
       // PROFILE
       // ══════════════════════════════════════════════════════════════════════
@@ -550,6 +570,62 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
       // ONBOARDING
       // ══════════════════════════════════════════════════════════════════════
+
+      // ── Recorrido de entrada por caminos (O03 §16.2) ───────────────────────
+      // `entry`: 'first' (primer arranque) | 'newProgram' (desde la app, §25).
+      startOnboardingFlow: ({ entry = 'first' } = {}) => set({ onboardingFlow: newFlow(entry) }),
+
+      // Empuja la pantalla actual al historial (el «atrás») y va a `id`.
+      flowGo: (id) => set((s) => {
+        const f = s.onboardingFlow;
+        return f ? { onboardingFlow: { ...f, history: [...f.history, f.screen], screen: id } } : {};
+      }),
+
+      flowBack: () => set((s) => {
+        const f = s.onboardingFlow;
+        if (!f?.history.length) return {};
+        return { onboardingFlow: { ...f, history: f.history.slice(0, -1), screen: f.history[f.history.length - 1] } };
+      }),
+
+      // Mezcla lo contestado; nada se borra al volver atrás.
+      flowAnswer: (patch) => set((s) => {
+        const f = s.onboardingFlow;
+        return f ? { onboardingFlow: { ...f, answers: { ...f.answers, ...patch } } } : {};
+      }),
+
+      // Una línea de «Listo» ({ key, ok, label }); sustituye a la de su `key`.
+      flowDone: (item) => set((s) => {
+        const f = s.onboardingFlow;
+        if (!f) return {};
+        const done = f.done.some((d) => d.key === item.key)
+          ? f.done.map((d) => (d.key === item.key ? item : d))
+          : [...f.done, item];
+        return { onboardingFlow: { ...f, done } };
+      }),
+
+      // «Ir a la app» y cualquier salida temprana: marca el onboarding como hecho
+      // (sin esto, quien acaba sin programa volvería a él en cada arranque), cierra
+      // el recorrido y va a Main. Desde la app («Nuevo programa», §25.4.6) no toca
+      // esas marcas y, si se creó o importó algo propio, suelta el entrenador como
+      // hacía el selector viejo. `back`: cierra con la flecha, a la pestaña de donde vino.
+      finishOnboardingFlow: ({ back = false } = {}) => {
+        const f = get().onboardingFlow;
+        if (f?.entry === 'newProgram') {
+          const a = f.answers;
+          // keepProgram: el programa nuevo no se pisa con el previo a la conexión.
+          if (get().clientSync?.slotId && (a.programId || a.programSource === 'import') && a.programSource !== 'coach') {
+            get().unlinkFromTrainer({ keepProgram: true }).catch(() => {});
+          }
+          set({ onboardingFlow: null });
+        } else {
+          set((s) => ({
+            onboardingFlow: null,
+            profile: { ...s.profile, setupComplete: true, onboardingCompleted: true },
+          }));
+        }
+        if (back) { if (navigationRef.isReady()) navigationRef.goBack(); }
+        else navigateTo('home');
+      },
 
       // `archetypeId`: la plantilla que el usuario eligió en la pantalla de
       // propuestas (O02-onboarding-proposals.md §3.3). Sin él, la primera del
@@ -688,7 +764,8 @@ export const useStore = create(
         const { trainerSync } = get();
         if (withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
           try {
-            const { slotId, clientCode } = await createClientSlot(trainerSync.userId, name.trim());
+            await _ensureTrainerSession(trainerSync);
+            const { slotId, clientCode } = await createClientSlot(name.trim());
             set((s) => ({
               clients: {
                 ...s.clients,
@@ -696,8 +773,10 @@ export const useStore = create(
               },
             }));
           } catch (err) {
+            // El cliente queda creado, sin app. Se dice, para que no espere un
+            // código que no existe: «Pasar a la app» lo genera después.
             console.warn('[createClient] Supabase slot creation failed:', err.message);
-            // Non-fatal — client still created locally
+            get().showToast(i18n.t('clients.slotCreateError'), 3000, 'error');
           }
         }
 
@@ -775,11 +854,22 @@ export const useStore = create(
         }));
       },
 
+      /**
+       * Borra al cliente aquí al momento y su hueco del servidor en cuanto se
+       * pueda (C09 §3.5). El hueco queda apuntado en `trainerSync.deletedSlotIds`
+       * hasta que el servidor confirma el borrado: antes, sin red, el borrado
+       * se perdía y el siguiente refresco lo resucitaba como cliente nuevo, con
+       * el código aún válido. Devuelve la promesa del intento (no lanza).
+       */
       deleteClient: (clientId) => {
         const client = get().clients[clientId];
-        // Delete Supabase slot silently if it exists (invalidates client code)
         if (client?.syncSlotId) {
-          deleteClientSlot(client.syncSlotId).catch(() => {});
+          set((s) => ({
+            trainerSync: {
+              ...s.trainerSync,
+              deletedSlotIds: [...new Set([...(s.trainerSync.deletedSlotIds ?? []), client.syncSlotId])],
+            },
+          }));
         }
         set((s) => {
           // Purga en cadena: cada una sobre el resultado de la anterior, que es
@@ -802,6 +892,33 @@ export const useStore = create(
             clients, clientLogs,
           };
         });
+        return get()._flushDeletedSlots();
+      },
+
+      /**
+       * Borra en el servidor los huecos de clientes ya borrados aquí. Uno se
+       * olvida solo cuando el servidor dice que lo ha borrado: si contesta que
+       * no es de esta cuenta (es de la anterior), se guarda para cuando se
+       * vuelva a ella.
+       * ponytail: la lista solo crece con huecos de otra cuenta que nunca se
+       * vuelve a abrir; son unos pocos ids.
+       */
+      _flushDeletedSlots: async () => {
+        const { trainerSync } = get();
+        const pending = trainerSync.deletedSlotIds ?? [];
+        if (!pending.length || !trainerSync.userId) return;
+        try {
+          await _ensureTrainerSession(trainerSync);
+          for (const slotId of pending) {
+            if (await deleteClientSlot(slotId)) {
+              set((s) => ({
+                trainerSync: { ...s.trainerSync, deletedSlotIds: (s.trainerSync.deletedSlotIds ?? []).filter((x) => x !== slotId) },
+              }));
+            }
+          }
+        } catch (err) {
+          console.warn('[deleteClient] el hueco se borrará en el próximo refresco:', err.message);
+        }
       },
 
       renameClient: (clientId, name) => {
@@ -975,7 +1092,9 @@ export const useStore = create(
         }
       },
 
-      createProgramForClient: (clientId, numSessions, programName, durationWeeks = null) => {
+      // `openEditor: false`: crea el programa sin abrir el editor (lo usa el
+      // constructor guiado del recorrido de entrada, O03-02, que sigue en su pantalla).
+      createProgramForClient: (clientId, numSessions, programName, durationWeeks = null, { openEditor = true } = {}) => {
         if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         const programId = generateId('prog');
         const labels    = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -1010,9 +1129,9 @@ export const useStore = create(
           programs: { ...s.programs, [programId]: program },
           sessionTemplates: { ...s.sessionTemplates, ...newTemplates },
           // Sin lista que mantener: el programa es del cliente por su `owner`.
-          ui: { ...s.ui, _editingProgramId: programId },
+          ...(openEditor ? { ui: { ...s.ui, _editingProgramId: programId } } : {}),
         }));
-        get().navigate('programEditor');
+        if (openEditor) get().navigate('programEditor');
         return programId;
       },
 
@@ -3601,45 +3720,149 @@ export const useStore = create(
       // TRAINER SYNC (Supabase)
       // ══════════════════════════════════════════════════════════════════════
 
-      /**
-       * Sets the trainer sync mode and persists auth state.
-       * mode: 'offline' | 'code' | 'google' | 'apple'
-       * Payload: { code?, userId? }
-       * code/userId always reset to null unless explicitly provided so that
-       * switching modes never leaks stale credentials from the old mode.
-       */
-      setTrainerSyncMode: (mode, payload = {}) =>
-        set((state) => ({
-          trainerSync: {
-            ...state.trainerSync,
-            mode,
-            code:   payload.code   ?? null,
-            userId: payload.userId ?? null,
-          },
-        })),
-
-      /** Updates only the userId (e.g. after session restore). */
-      setTrainerSyncUserId: (userId) =>
-        set((state) => ({
-          trainerSync: { ...state.trainerSync, userId },
-        })),
-
-      /** Updates the trainer display name locally and syncs to all Supabase slots. */
+      /** El nombre que ven los clientes: aquí, y en todos sus huecos. */
       setTrainerName: (name) => {
         const trimmed = name?.trim() || null;
         set((state) => ({
           trainerSync: { ...state.trainerSync, trainerName: trimmed },
         }));
-        // Propagate to Supabase so clients see the new name on their next sync
         const { trainerSync } = get();
-        if (trainerSync.userId) {
-          updateTrainerNameForSlots(trainerSync.userId, trimmed).catch(() => {});
-        }
+        if (!trainerSync.userId) return;
+        // También va sellado en cada programa que se manda: si esto falla, el
+        // siguiente envío lo lleva igual.
+        _ensureTrainerSession(trainerSync)
+          .then(() => updateTrainerNameForSlots(trimmed))
+          .catch((err) => console.warn('[setTrainerName]', err.message));
       },
 
       /** Resets sync mode (e.g. when switching modes). */
       resetTrainerSync: () =>
-        set((state) => ({ trainerSync: { mode: null, code: null, userId: null, trainerName: state.trainerSync.trainerName } })),
+        set((state) => ({ trainerSync: { ...state.trainerSync, mode: null, code: null, userId: null, email: null } })),
+
+      // ══════════════════════════════════════════════════════════════════════
+      // CUENTA DE ENTRENADOR (M03-01 §5.1, C09 §3)
+      // ══════════════════════════════════════════════════════════════════════
+      //
+      // La única puerta para entrar, cambiar o salir de la cuenta: Supabase,
+      // traspaso de huecos, clientes y RevenueCat en un solo sitio. Fuera del
+      // store nadie llama a `supabaseAuth` para esto (lo vigila
+      // `src/accountBoundary.test.js`).
+      //
+      // Crear, cambiar de forma, «Ya tengo cuenta» y volver a entrar son lo
+      // mismo: una CANDIDATA (la cuenta nueva, abierta en un cliente temporal)
+      // que `_enterCandidate` instala. Funciona igual desde y hacia código,
+      // Google o Apple.
+
+      /**
+       * Instala una cuenta candidata como la cuenta de entrenador del móvil, con
+       * sus clientes. En este orden, y es lo que la hace a prueba de cortes:
+       *
+       *   1. La cuenta vieja CEDE sus huecos a la nueva, con su propia sesión
+       *      (solo se regala lo propio). Si falla, se lanza y no ha cambiado
+       *      nada: el móvil sigue en la vieja, con su código.
+       *   2. Se instala la sesión nueva.
+       *   3. Solo entonces se apunta la cuenta nueva en `trainerSync`.
+       *
+       * Si la app muere entre 1 y 3, los huecos ya son de la nueva y el móvil
+       * cree estar en la vieja: sus clientes salen «de otra cuenta» (no se
+       * borra nada) y volver a entrar en la nueva lo deja todo en su sitio,
+       * porque ceder otra vez desde la vieja no mueve nada.
+       */
+      _enterCandidate: async (candidate, mode, { fullName } = {}) => {
+        const prev = get().trainerSync;
+
+        if (prev.userId && prev.userId !== candidate.userId) {
+          let oldSession = true;
+          try {
+            await _ensureTrainerSession(prev);
+          } catch (err) {
+            // La cuenta vieja ya no existe (código borrado): no hay nada que ceder.
+            if (err.code === 'TRAINER_CODE_NOT_FOUND') oldSession = false;
+            // Sin sesión de Google/Apple no hay quien ceda. Sin clientes en la
+            // nube tampoco hay nada que perder; con ellos, que entre antes.
+            else if (err.code === 'TRAINER_LOGIN_NEEDED' && !hasCloudClients(get().clients)) oldSession = false;
+            else throw err;
+          }
+          if (oldSession) await transferMySlotsTo(candidate.userId);
+        }
+
+        await adoptTrainer(candidate);
+        set((s) => ({
+          trainerSync: {
+            ...s.trainerSync,
+            mode,
+            code:   mode === 'code' ? candidate.code : null,
+            userId: candidate.userId,
+            email:  candidate.email ?? null,
+          },
+        }));
+
+        // El nombre que ven los clientes sale de Apple o Google (la hoja de
+        // entrada ya no lo pide); si el entrenador ya tenía uno, manda el suyo.
+        const name = fullName || candidate.name;
+        if (name && !get().trainerSync.trainerName) get().setTrainerName(name);
+
+        await get().refreshTrainerSlots().catch((err) => console.warn('[TrainerAccount] refresco:', err.message));
+        await get().syncPurchaserId(candidate.userId, { switched: candidate.userId !== prev.userId });
+        return { userId: candidate.userId };
+      },
+
+      /**
+       * Entrar con el id_token de Google o Apple. `fullName`: Apple, solo la primera vez.
+       * `mustExist` («Ya tengo cuenta», M03-03 §7.4): si no hay cuenta de
+       * entrenador rechaza con `{ notFound: true, createInstead }` sin haber
+       * tocado NINGUNA sesión; `createInstead()` la crea con la misma candidata.
+       */
+      enterTrainerAccount: async ({ provider, idToken, accessToken, fullName, mustExist }) => {
+        const candidate = await trainerCandidateFromIdToken({ provider, idToken, accessToken });
+        const enter = () => get()._enterCandidate(candidate, provider, { fullName });
+        if (mustExist && !candidate.existed) throw { notFound: true, createInstead: enter };
+        return enter();
+      },
+
+      /** Crear una cuenta nueva con código personal. */
+      createTrainerCodeAccount: async () => {
+        const candidate = await trainerCandidateNewCode();
+        await get()._enterCandidate(candidate, 'code');
+        return { code: candidate.code, userId: candidate.userId };
+      },
+
+      /**
+       * Entrar con un código existente (reinstalar, «Ya tengo cuenta»). Con el
+       * mismo código es el mismo usuario: `switched` sale falso y no restaura
+       * compras (en iOS restaurar puede pedir la contraseña del Apple ID).
+       */
+      recoverTrainerAccount: async (code) => {
+        const candidate = await trainerCandidateFromCode(code);
+        return get()._enterCandidate(candidate, 'code');
+      },
+
+      /**
+       * ¿Puede este móvil hablar con el servidor como el entrenador? Para Mi
+       * cuenta: 'ok', 'login' (Google/Apple perdió la sesión: hay que volver a
+       * entrar con el mismo) o 'unknown' (sin red, o sin cuenta).
+       */
+      trainerSessionState: async () => {
+        const { trainerSync } = get();
+        if (!trainerSync.userId) return 'unknown';
+        try {
+          await _ensureTrainerSession(trainerSync);
+          return 'ok';
+        } catch (err) {
+          return err.code === 'TRAINER_LOGIN_NEEDED' ? 'login' : 'unknown';
+        }
+      },
+
+      /**
+       * Salir: el móvil deja la cuenta. Los clientes siguen en ella: volviendo a
+       * la misma, vuelve todo; entrando en otra, salen «de otra cuenta». Solo
+       * la sesión de entrenador: la de cliente no se toca. No sale de
+       * RevenueCat: el PRO se queda (D9).
+       */
+      leaveTrainerAccount: async () => {
+        if (get().trainerSync.userId) await signOutTrainer().catch(() => {});
+        set((s) => ({ trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null, email: null } }));
+      },
 
       /**
        * Uploads a program to the client's Supabase slot.
@@ -3653,7 +3876,8 @@ export const useStore = create(
         const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client) throw new Error('Cliente no encontrado.');
-        if (client.syncSlotId) throw new Error('Este cliente ya está conectado a la nube.');
+        // Uno «de otra cuenta» sí: pasarlo a la app en ESTA cuenta le da hueco nuevo.
+        if (client.syncSlotId && !client.syncOrphan) throw new Error('Este cliente ya está conectado a la nube.');
         if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
         if (!get().profile.isPro) {
           const reason = clientLimitReason(Object.values(clients).map((c) => (c.id === clientId ? { ...c, syncSlotId: 'nuevo' } : c)));
@@ -3663,12 +3887,15 @@ export const useStore = create(
         // Ensure auth session is active — may have expired after app restart
         await _ensureTrainerSession(trainerSync);
 
-        const { slotId, clientCode } = await createClientSlot(trainerSync.userId, client.name);
+        const { slotId, clientCode } = await createClientSlot(client.name);
 
         set((s) => ({
           clients: {
             ...s.clients,
-            [clientId]: { ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode },
+            [clientId]: {
+              ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode,
+              syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
+            },
           },
         }));
         return true;
@@ -3728,13 +3955,8 @@ export const useStore = create(
       pushTrainerLogToSlot: async (clientId) => {
         const { clients, trainerSync, clientLogs, customExercises, programs } = get();
         const client = clients[clientId];
-        if (!client?.syncSlotId || client.syncLinked) return false;
+        if (!client?.syncSlotId || client.syncLinked || client.syncOrphan) return false;
         await _ensureTrainerSession(trainerSync);
-        const slot = (await getTrainerSlots(trainerSync.userId)).find((x) => x.id === client.syncSlotId);
-        if (slot?.client_id) {
-          set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } } }));
-          return false;
-        }
         const entries = clientLogs[clientId] ?? [];
         const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
         const custom = Object.fromEntries(Object.entries(customExercises ?? {}).filter(([id]) => used.has(id)));
@@ -3742,7 +3964,17 @@ export const useStore = create(
         // El sello de activación es el del propio programa: así, al restaurar,
         // `mergeProgressOnImport` da por buena esta posición.
         const progress = program ? progressBlob(program, program.stageActivatedAt ?? null) : null;
-        await uploadHistory(client.syncSlotId, entries, custom, progress);
+        // El servidor solo escribe si el asiento sigue vacío, en la misma
+        // sentencia: si el cliente ya entró, SLOT_OCCUPIED y no se pisa nada.
+        try {
+          await uploadTrainerLog(client.syncSlotId, entries, custom, progress);
+        } catch (err) {
+          if (err.code === 'SLOT_OCCUPIED') {
+            set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } } }));
+            return false;
+          }
+          throw get()._slotError(clientId, err);
+        }
         // Son mis propios entrenos: no cuentan como «sin revisar».
         set((s) => ({
           clients: { ...s.clients, [clientId]: { ...s.clients[clientId], remoteSessionsCount: entries.length } },
@@ -3754,11 +3986,31 @@ export const useStore = create(
         return true;
       },
 
+      /**
+       * Un hueco que el servidor dice que ya no es de esta cuenta (SLOT_GONE):
+       * el cliente pasa a «de otra cuenta» y deja de mandársele nada. Devuelve
+       * el error para relanzarlo: quien llamaba tiene que enterarse.
+       */
+      _slotError: (clientId, err) => {
+        if (err?.code === 'SLOT_GONE' && get().clients[clientId]) {
+          set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncOrphan: true, syncLinked: false } } }));
+          return Object.assign(new Error(i18n.t('clients.slotGoneError')), { code: 'SLOT_GONE' });
+        }
+        return err;
+      },
+
+      /** Lanza si al cliente no se le puede mandar nada desde esta cuenta. */
+      _assertCloudClient: (clientId) => {
+        const client = get().clients[clientId];
+        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+        if (client.syncOrphan) throw Object.assign(new Error(i18n.t('clients.slotGoneError')), { code: 'SLOT_GONE' });
+        return client;
+      },
+
       uploadProgramToClient: async (clientId, programId) => {
         get()._assertNotFrozen(clientId);
-        const { clients, trainerSync } = get();
-        const client = clients[clientId];
-        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+        const { trainerSync } = get();
+        const client = get()._assertCloudClient(clientId);
 
         // Ensure auth session is active
         await _ensureTrainerSession(trainerSync);
@@ -3773,7 +4025,8 @@ export const useStore = create(
           [...Object.values(programData.sessionTemplates ?? {}), ...Object.values(programData.freeSessions ?? {})]
             .forEach((tpl) => { tpl.trainerName = trainerName.trim(); });
         }
-        await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null);
+        await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null)
+          .catch((err) => { throw get()._slotError(clientId, err); });
         // Clear pending-upload flag after successful push
         set((s) => ({
           clients: {
@@ -3836,16 +4089,15 @@ export const useStore = create(
        */
       sendOverrides: async (clientId) => {
         get()._assertNotFrozen(clientId);
-        const { clients, trainerSync } = get();
-        const client = clients[clientId];
-        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
+        const { trainerSync } = get();
+        const client = get()._assertCloudClient(clientId);
         await _ensureTrainerSession(trainerSync);
 
         const now = new Date().toISOString();
         const stamped = Object.fromEntries(
           Object.entries(client.nextOverrides ?? {}).map(([tid, ov]) => [tid, { ...ov, createdAt: now }]),
         );
-        await uploadOverrides(client.syncSlotId, stamped);
+        await uploadOverrides(client.syncSlotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
         set((s) => ({
           clients: {
             ...s.clients,
@@ -3860,15 +4112,12 @@ export const useStore = create(
        */
       downloadClientHistory: async (clientId) => {
         get()._assertNotFrozen(clientId);
-        const { clients, trainerSync } = get();
-        const client = clients[clientId];
-        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
-
-        // Ensure trainer session is active (may have expired after app restart)
+        const { trainerSync } = get();
+        const client = get()._assertCloudClient(clientId);
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const downloaded = await downloadHistory(client.syncSlotId);
+          const downloaded = await downloadHistory(client.syncSlotId).catch((err) => { throw get()._slotError(clientId, err); });
           // Un cliente con la versión vieja sube los ids de antes de juntar los
           // ejercicios repetidos (P09-exercise-variants.md §3.3).
           const incoming = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
@@ -3959,47 +4208,55 @@ export const useStore = create(
       },
 
       /**
-       * Fetches all trainer slots from Supabase and updates each local client's
-       * remoteSessionsCount and mirrored progress. Lightweight — reads sessions_count
-       * and only the `progress` key of the history JSON, never the entries.
-       * Called on ClientsScreen mount and pull-to-refresh.
+       * Pone la lista de clientes al día con los huecos del servidor (C09 §3.3).
+       * El servidor manda; aquí se refleja, sin borrar nada:
+       *
+       *  - Hueco que falta en local (reinstalar, otro móvil) → ficha nueva, con
+       *    el programa que hay en el hueco. TODOS: también el invitado, el
+       *    reemitido y el que se fue, que siguen siendo clientes de esta cuenta.
+       *  - Hueco conocido → contadores, «¿ha entrado?», «¿se fue?» y su código
+       *    (pudo reemitirse desde otro móvil).
+       *  - Cliente cuyo hueco ya no está en esta cuenta → «de otra cuenta»
+       *    (`syncOrphan`): no se le manda nada, y si se vuelve a la cuenta buena
+       *    se recupera solo. Borrarlo sería perder clientes por un error de cuenta.
+       *  - Huecos de clientes borrados aquí → se borran allí (`_flushDeletedSlots`).
+       *
+       * Ligero: del historial solo lee `progress`, nunca las entradas.
        */
       refreshTrainerSlots: async () => {
         const { trainerSync } = get();
         if (!trainerSync.userId) return;
 
-        // Guard de reentrada: hay dos disparadores que no se coordinan entre sí
-        // —el efecto de montaje y el pull-to-refresh de `ClientsScreen`— y las
-        // dos esperas de red dejan una ventana de 1-2 s. No es lo que evita el
-        // duplicado (eso lo hace leer dentro del `set`), sino la segunda ida al
-        // servidor y que un refresco viejo escriba contadores por encima de uno
-        // más nuevo.
-        // ponytail: un flag, no una cola. La segunda llamada se descarta en vez
-        // de esperar — el refresco es idempotente y ya lo está haciendo otra.
-        if (get()._refreshingSlots) return;
-        set({ _refreshingSlots: true });
+        // Guard de reentrada por cuenta: el efecto de montaje y el
+        // pull-to-refresh no se coordinan. El segundo de la MISMA cuenta se
+        // descarta (el refresco es idempotente); uno de otra cuenta no, que es
+        // justo el de después de cambiar.
+        // ponytail: un flag, no una cola.
+        if (get()._refreshingSlots === trainerSync.userId) return;
+        set({ _refreshingSlots: trainerSync.userId });
 
         try {
           await _ensureTrainerSession(trainerSync);
+          await get()._flushDeletedSlots();
 
-          const slots = await getTrainerSlots(trainerSync.userId);
+          // Qué huecos creía tener ANTES de preguntar: un cliente creado
+          // mientras tanto no está en la respuesta y no es «de otra cuenta».
+          const askedFor = new Set(Object.values(get().clients).map((c) => c.syncSlotId).filter(Boolean));
+          const slots = await getTrainerSlots();
+          const recovered = [];
 
-          // Un solo `set`, y `clients` leído DENTRO del updater, que es lo único
-          // atómico aquí. Antes se fotografiaba antes de las dos esperas de red:
-          // dos llamadas solapadas veían las dos la lista vacía y ambas creaban
-          // ficha para el mismo `syncSlotId` con `generateId` distintos. El
-          // duplicado no es cosmético — las dos apuntan al mismo hueco, así que
-          // mandar un programa desde una pisa lo que mandó la otra.
+          // Un solo `set`, y `clients` leído DENTRO del updater: dos refrescos
+          // solapados no pueden crear dos fichas para el mismo hueco.
           set((s) => {
+            // Mientras se preguntaba se cambió de cuenta: esta respuesta es de la vieja.
+            if (s.trainerSync.userId !== trainerSync.userId) return {};
             const next = { ...s.clients };
+            const deleted = new Set(s.trainerSync.deletedSlotIds ?? []);
+            const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
+            const known = new Set(Object.values(next).map((c) => c.syncSlotId).filter(Boolean));
 
-            // Huecos del servidor que faltan en local (p. ej. tras reinstalar).
-            // Solo los activos: un `disconnected_at` es un cliente que se soltó.
-            const known = new Set(
-              Object.values(next).map((c) => c.syncSlotId).filter(Boolean),
-            );
             for (const slot of slots) {
-              if (known.has(slot.id) || slot.disconnected_at) continue;
+              if (known.has(slot.id) || deleted.has(slot.id)) continue;
               const id = generateId('client');
               next[id] = {
                 id,
@@ -4008,36 +4265,70 @@ export const useStore = create(
                 activeProgramId: null,
                 fullName: '', phone: '', email: '', notes: '',
                 bodyWeight: [], billing: [], status: 'active',
-                syncCode:    slot.client_code ?? null,
                 syncSlotId:  slot.id,
                 color:       nextIdentityColor(Object.values(next)),
               };
               known.add(slot.id);
+              recovered.push(id);
             }
 
-            // Contadores y "¿ha canjeado ya el código?". `client_id` se rellena
-            // cuando el cliente se vincula, así que es la única señal real de
-            // conexión establecida que tiene el entrenador: tener hueco solo
-            // significa que TÚ lo creaste. La ficha la usa para retirar la
-            // tarjeta del código una vez el cliente ya está dentro.
-            const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
             for (const clientId of Object.keys(next)) {
-              const slot = bySlot.get(next[clientId].syncSlotId);
-              if (!slot) continue;
+              const c = next[clientId];
+              const slot = bySlot.get(c.syncSlotId);
+              if (!slot) {
+                if (askedFor.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
+                continue;
+              }
               next[clientId] = {
-                ...next[clientId],
+                ...c,
+                syncCode:            slot.client_code,
+                syncOrphan:          false,
                 remoteSessionsCount: slot.sessions_count ?? 0,
+                // `client_id` es la única señal real de que ha entrado: tener
+                // hueco solo significa que TÚ lo creaste.
                 syncLinked:          !!slot.client_id,
+                // Se fue él (desconectarse): el código sigue valiendo para volver.
+                syncLeftAt:          !slot.client_id && slot.disconnected_at ? slot.disconnected_at : null,
                 // La etapa que pinta la lista sigue al cliente sin abrir su
                 // ficha (C04-qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
-                progress:            slot.progress ?? next[clientId].progress,
+                progress:            slot.progress ?? c.progress,
               };
             }
 
             return { clients: next };
           });
+
+          for (const clientId of recovered) await get()._recoverSlotProgram(clientId);
         } finally {
-          set({ _refreshingSlots: false });
+          set({ _refreshingSlots: null });
+        }
+      },
+
+      /**
+       * Al recuperar un cliente del servidor, su programa vuelve con él: el
+       * que hay en el hueco es el último que se le mandó. Se marca como ya
+       * enviado, para que no salga «Cambios sin enviar» de algo que es idéntico.
+       * Sin programa, o con el cliente congelado por el plan, no hace nada.
+       */
+      _recoverSlotProgram: async (clientId) => {
+        const client = get().clients[clientId];
+        if (!client?.syncSlotId || get().isClientFrozen(clientId)) return;
+        try {
+          const file = await downloadSlotProgram(client.syncSlotId);
+          if (!file?.program) return;
+          get().importForClient(clientId, file, 'replace');
+          const programId = get().clients[clientId]?.activeProgramId;
+          const built = programId && get()._buildProgramJson(programId, false);
+          if (built) {
+            set((s) => ({
+              clients: {
+                ...s.clients,
+                [clientId]: { ...s.clients[clientId], programDirty: false, programUploadedSig: programSignature(JSON.parse(built.json)) },
+              },
+            }));
+          }
+        } catch (err) {
+          console.warn('[refreshTrainerSlots] programa no recuperado:', err.message);
         }
       },
 
@@ -4055,12 +4346,11 @@ export const useStore = create(
        */
       reissueClientCode: async (clientId) => {
         get()._assertNotFrozen(clientId);
-        const { clients, trainerSync } = get();
-        const client = clients[clientId];
-        if (!client?.syncSlotId) throw new Error('Este cliente no tiene hueco en Supabase.');
+        const { trainerSync } = get();
+        const client = get()._assertCloudClient(clientId);
 
         await _ensureTrainerSession(trainerSync);
-        const newCode = await reissueClientCodeRpc(client.syncSlotId);
+        const newCode = await reissueClientCodeRpc(client.syncSlotId).catch((err) => { throw get()._slotError(clientId, err); });
 
         set((s) => ({
           clients: {
@@ -4071,6 +4361,7 @@ export const useStore = create(
               // El asiento queda vacío: hasta que el cliente entre con el código
               // nuevo, la ficha vuelve a enseñar la tarjeta del código.
               syncLinked: false,
+              syncLeftAt: null,
             },
           },
         }));
@@ -4079,22 +4370,22 @@ export const useStore = create(
       },
 
       /**
-       * Validates a client code and returns slot info WITHOUT linking.
-       * Used in step 1 of the modal to show "Programa encontrado".
-       * Signs in anonymously first so RLS policies (auth.uid() checks) don't block the read.
+       * Consulta un código sin vincularse (paso 1: «Programa encontrado»).
+       * Usa la identidad de cliente que ya hubiera: antes abría un anónimo
+       * nuevo en cada consulta y el cliente perdía el asiento que ya tenía con
+       * solo escribir un código y cancelar.
        */
       validateClientCode: async (code) => {
-        await signInAnonymously(); // ensure we have a Supabase session before querying
+        await ensureClientSession();
         const slot = await getSlotByClientCode(code);
-        if (!slot) throw new Error('Código no encontrado. Comprueba que lo has escrito bien.');
-        if (!slot.program_name) throw new Error('El entrenador aún no ha subido ningún programa.');
+        if (!slot) throw Object.assign(new Error(i18n.t('trainer.errCodeNotFound')), { code: 'CODE_NOT_FOUND' });
+        if (!slot.program_name) throw new Error(i18n.t('trainer.errNoProgramYet'));
         return {
           slotId:           slot.id,
           programName:      slot.program_name,
-          // El hueco ya está ocupado: el enlace va a fallar con SLOT_OCCUPIED y
-          // la salida es que el entrenador reemita el código. La pantalla lo usa
-          // para decirlo ANTES de que el usuario pulse.
-          alreadyLinked:    !!slot.is_linked,
+          // Ocupado por OTRO: el enlace va a fallar con SLOT_OCCUPIED y la salida
+          // es que el entrenador reemita el código. Ocupado por mí no cuenta.
+          alreadyLinked:    !!slot.is_linked && !slot.is_mine,
           hasRemoteHistory: !!slot.history_updated_at,
           trainerName:      slot.trainer_name ?? null,
         };
@@ -4127,9 +4418,9 @@ export const useStore = create(
        * onto that program, overriding whatever the trainer's copy carried.
        * Never throws — a failed restore still leaves the client with a program.
        */
-      _restoreFromSlot: async (slotId, programId, mergeHistory) => {
+      _restoreFromSlot: async (seat, programId, mergeHistory) => {
         try {
-          const downloaded = await downloadHistory(slotId);
+          const downloaded = seat;
           const incoming   = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
           migrateExerciseRefs(incoming, get().getEffectiveLibrary());   // P09-exercise-variants.md §3.3
           const { progress } = downloaded;
@@ -4169,67 +4460,84 @@ export const useStore = create(
       },
 
       /**
-       * Links the client to a trainer slot and imports the program.
-       * Flow: anonymous sign-in → link slot → import program → save state.
+       * Conecta al cliente con el hueco del código e importa el programa.
+       * Identidad de cliente → ocupar el asiento → descargar (en este orden: la
+       * consulta por código no publica el programa) → importar.
        *
-       * @param {string}  code               The XXXX-XXXX trainer code.
+       * El servidor suelta el asiento que el cliente tuviera en otro hueco (un
+       * cliente, un asiento): «cambiar de entrenador» deja al anterior viendo
+       * que se fue, no un fantasma conectado para siempre.
+       *
+       * @param {string}  code               El código XXXX-XXXX.
        * @param {object}  [opts]
-       * @param {boolean} [opts.mergeHistory] If true, download remote history and merge
-       *                                      into the local workoutLog (deduplicated by id).
+       * @param {boolean} [opts.mergeHistory] Fusionar el historial del hueco con el local.
        */
       linkToTrainer: async (code, { mergeHistory = false } = {}) => {
-
-        // 1. Anonymous Supabase session
-        const { userId } = await signInAnonymously();
-
-        // 2. Look up slot. Ya no trae el programa: `get_slot_by_code` solo
-        // devuelve el nombre, para que un código filtrado no valga como llave
-        // de lectura del programa entero.
+        const userId = await ensureClientSession();
         const slot = await getSlotByClientCode(code);
-        if (!slot) throw new Error('Código no encontrado.');
-        if (!slot.program_name) throw new Error('El entrenador aún no ha subido ningún programa.');
+        if (!slot) throw Object.assign(new Error(i18n.t('trainer.errCodeNotFound')), { code: 'CODE_NOT_FOUND' });
+        if (!slot.program_name) throw new Error(i18n.t('trainer.errNoProgramYet'));
 
-        // 3. Ocupar el asiento. Lanza SLOT_OCCUPIED si hay otro dentro — la
-        // pantalla lo traduce a "pide un código nuevo a tu entrenador".
+        // Lanza SLOT_OCCUPIED si hay otro dentro — la pantalla lo traduce a
+        // "pide un código nuevo a tu entrenador".
         await linkClientToSlot(code);
+        await get()._adoptSeat({ code, userId, mergeHistory });
+        get().showToast(i18n.t('trainer.connectedToast'));
+      },
 
-        // 4. Ya somos el ocupante, así que ahora sí podemos descargar el
-        // programa. Este orden es el que permite que la consulta por código no
-        // publique nada aprovechable.
-        const { programJson } = await downloadProgram(slot.id);
-        if (!programJson) throw new Error('El entrenador aún no ha subido ningún programa.');
+      /**
+       * Ya ocupa un asiento: descarga su programa y se queda con él. Lo comparten
+       * entrar con código y reconectar con Google/Apple en otro móvil.
+       */
+      _adoptSeat: async ({ code = null, userId, provider = null, mergeHistory }) => {
+        const seat = await seatOf();
+        if (!seat) throw Object.assign(new Error(i18n.t('trainer.lostTitle')), { code: 'NO_SEAT' });
+        const { programJson } = seat;
+        if (!programJson) throw new Error(i18n.t('trainer.errNoProgramYet'));
 
-        // 5. Save previous activeProgramId so we can restore it on unlink
-        const previousActiveProgramId = get().profile.activeProgramId ?? null;
+        // Para volver a él al desconectarse. Si ya estaba conectado (cambia de
+        // entrenador), el de antes de todo, no el del entrenador anterior.
+        const prev = get().clientSync;
+        const previousActiveProgramId = prev.slotId ? prev.previousActiveProgramId : (get().profile.activeProgramId ?? null);
 
-        // 6. Import the program using existing logic (same format as file export)
         get().importData(programJson, { program: true, log: false }, { silent: true });
+        // El progreso siempre; el historial, si lo aceptó (spec §6.4).
+        await get()._restoreFromSlot(seat, programJson?.program?.id, mergeHistory);
 
-        // 7. Restore progress, and optionally the workout log, from the slot.
-        // The counters come back even when the user declines the history merge:
-        // progress is state, not a reading of the log (spec §6.4).
-        await get()._restoreFromSlot(slot.id, programJson?.program?.id, mergeHistory);
-
-        // 8. Save client sync state
         set(() => ({
           clientSync: {
-            slotId:                 slot.id,
-            clientCode:             code.trim().toUpperCase(),
+            slotId:                 seat.slotId,
+            clientCode:             code ? code.trim().toUpperCase() : null,
             supabaseUserId:         userId,
-            trainerName:            slot.trainer_name ?? null,
+            googleLinked:           !!provider,
+            linkedProvider:         provider,
+            trainerName:            seat.trainerName,
             pendingUpload:          false,
             lastSyncedAt:           null,
             syncErrorAt:            null,
-            lastProgramImportedAt:  new Date().toISOString(),
-            // Baseline for "did the trainer activate another stage?" (spec §6.3)
+            lostAt:                 null,
+            // La hora del SERVIDOR del programa importado, no la del móvil: se
+            // compara con `program_updated_at`, y con el reloj del móvil
+            // adelantado se ignoraban los cambios del entrenador (C09 §4.4).
+            lastProgramImportedAt:  seat.updatedAt ?? new Date().toISOString(),
+            // Base de «¿ha activado otra etapa el entrenador?» (spec §6.3)
             lastAppliedStageActivation: programJson?.program?.stageActivatedAt ?? null,
             previousActiveProgramId,
             trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),
+            pendingOverrides:       {},
           },
         }));
+      },
 
-        get().showToast('Conectado con el entrenador');
+      /**
+       * El servidor contestó que este cliente ya no tiene asiento (lo borró,
+       * le reemitió el código o borró su cuenta). Se dice en la pantalla de
+       * Entrenador y se deja de subir. Un corte de red NO llega aquí.
+       */
+      _markClientLost: () => {
+        if (get().clientSync.lostAt) return;
+        set((s) => ({ clientSync: { ...s.clientSync, lostAt: new Date().toISOString(), pendingUpload: false, pendingProgramUpdate: null } }));
       },
 
       /**
@@ -4240,14 +4548,17 @@ export const useStore = create(
        */
       checkAndPullProgramUpdates: async () => {
         const { clientSync } = get();
-        if (!clientSync.slotId) return;
+        if (!clientSync.slotId || clientSync.lostAt) return;
 
         // Corre al arrancar y al volver a primer plano: buen momento para
         // reintentar una subida que falló, sin esperar al botón del aviso.
         if (clientSync.pendingUpload) get().uploadHistoryToTrainer().catch(() => {});
 
         try {
-          const { programJson, updatedAt, trainerName, overrides } = await downloadProgram(clientSync.slotId);
+          const seat = await seatOf();
+          // Respuesta del servidor, no fallo de red: ya no tiene asiento.
+          if (!seat) { get()._markClientLost(); return; }
+          const { programJson, updatedAt, trainerName, overrides } = seat;
           // Un entrenador con la versión vieja manda los ids de antes de juntar
           // los ejercicios repetidos (P09-exercise-variants.md §3.3). Antes del
           // diff, o el aviso contaría como cambio lo que solo es un id nuevo.
@@ -4273,8 +4584,10 @@ export const useStore = create(
 
           if (!programJson || !updatedAt) return;
 
+          // Al día: es el mismo que se importó (misma hora del servidor, sin
+          // redondear) o uno anterior.
           const lastImport = clientSync.lastProgramImportedAt;
-          if (lastImport && new Date(updatedAt) <= new Date(lastImport)) return; // already up to date
+          if (lastImport && (updatedAt === lastImport || new Date(updatedAt) < new Date(lastImport))) return;
 
           // Build a simple diff so the modal can show what changed
           const diff = buildProgramDiff(get(), programJson, clientSync.lastAppliedStageActivation ?? null);
@@ -4287,7 +4600,7 @@ export const useStore = create(
             },
           }));
         } catch {
-          // Silent — network failure or RLS error; client keeps their local copy
+          // Sin red: se queda con su copia y se reintenta al volver a primer plano.
         }
       },
 
@@ -4326,7 +4639,7 @@ export const useStore = create(
           clientSync: {
             ...s.clientSync,
             pendingProgramUpdate:   null,
-            lastProgramImportedAt:  new Date().toISOString(),
+            lastProgramImportedAt:  pending.updatedAt ?? new Date().toISOString(),
             lastAppliedStageActivation: activation,
             // The updated program may carry a new id — keep it in upload scope
             trainerProgramIds: [...new Set([
@@ -4354,7 +4667,7 @@ export const useStore = create(
        */
       uploadHistoryToTrainer: async () => {
         const { clientSync, workoutLog, customExercises, programs, profile } = get();
-        if (!clientSync.slotId) return; // not linked to a trainer
+        if (!clientSync.slotId || clientSync.lostAt) return; // sin entrenador, o ya lo sabe
 
         // Privacy-scoped slice: only trainer-program sessions + post-link free
         // sessions leave the device. Links created before trainerProgramIds
@@ -4382,7 +4695,7 @@ export const useStore = create(
         );
 
         try {
-          await uploadHistory(clientSync.slotId, entries, relevantCustom, progress);
+          await uploadHistory(entries, relevantCustom, progress);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -4391,7 +4704,8 @@ export const useStore = create(
               syncErrorAt:   null,
             },
           }));
-        } catch {
+        } catch (err) {
+          if (err.code === 'NO_SEAT') { get()._markClientLost(); return; }
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -4404,7 +4718,7 @@ export const useStore = create(
 
       /** Disconnects the client from their trainer. */
       unlinkFromTrainer: async ({ keepProgram = false } = {}) => {
-        const { clientSync, trainerSync } = get();
+        const { clientSync } = get();
 
         // Soltar el hueco en el servidor ANTES de limpiar el estado local: hace
         // falta la sesión del cliente para que la RPC sepa qué fila es suya.
@@ -4412,7 +4726,7 @@ export const useStore = create(
         // entrenador seguía viendo al cliente como conectado.
         // No es fatal: desconectarse en local tiene que funcionar aunque no
         // haya red.
-        if (clientSync.slotId) {
+        if (clientSync.slotId && !clientSync.lostAt) {
           await releaseClientSlot().catch((err) => {
             console.error('[unlinkFromTrainer] releaseClientSlot failed:', err.message);
           });
@@ -4428,15 +4742,8 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { slotId: null, clientCode: null, supabaseUserId: null, googleLinked: false, linkedProvider: null, trainerName: null, pendingUpload: false, lastSyncedAt: null, syncErrorAt: null, lastProgramImportedAt: null, lastAppliedStageActivation: null, previousActiveProgramId: null, trainerProgramIds: [], linkedAt: null, pendingOverrides: {} },
+          clientSync: { ...EMPTY_CLIENT_SYNC },
         }));
-
-        // Restore trainer session automatically if we have the code
-        if (trainerSync.mode === 'code' && trainerSync.code) {
-          try {
-            await recoverWithTrainerCode(trainerSync.code);
-          } catch { /* silent — trainer can re-auth manually if needed */ }
-        }
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -4449,115 +4756,68 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       /**
-       * Validates a social login and finds the client's slot for auto-reconnect.
-       * Signs in (google|apple) → gets userId → queries trainer_clients by client_id.
-       * Requires the RLS policy "client_can_read_own_slot" in Supabase.
+       * Reconectar en otro móvil con Google/Apple: busca el asiento de esa
+       * cuenta SIN tocar la sesión de cliente de este móvil (cuenta candidata
+       * en un cliente temporal). Si no tiene, `{ found: false }` y no ha
+       * cambiado nada.
        *
-       * Returns { found: false } if no slot, or:
-       * { found: true, slotId, userId, programName, hasRemoteHistory }
+       * Devuelve `{ found: true, slotId, userId, programName, hasRemoteHistory }`.
        */
       validateGoogleClient: async ({ provider = 'google', idToken, accessToken }) => {
-        const { userId } = await loginClientWithIdToken({ provider, idToken, accessToken });
-
-        const slot = await getClientSlotByUserId(userId);
-        if (!slot) return { found: false };
-        if (!slot.program_json) throw new Error('Tu entrenador aún no ha subido ningún programa. Vuelve a intentarlo más tarde.');
-
+        const candidate = await clientCandidateFromIdToken({ provider, idToken, accessToken });
+        const seat = await seatOf(candidate.db);
+        if (!seat) return { found: false };
+        if (!seat.programJson) throw new Error(i18n.t('trainer.errNoProgramYet'));
+        _clientCandidate = candidate;
         return {
           found:            true,
-          slotId:           slot.id,
-          userId,
-          programName:      slot.program_json?.program?.name ?? 'Programa',
-          hasRemoteHistory: !!slot.history_updated_at,
+          slotId:           seat.slotId,
+          userId:           candidate.userId,
+          programName:      seat.programJson?.program?.name ?? 'Programa',
+          hasRemoteHistory: !!seat.historyUpdatedAt,
         };
       },
 
       /**
-       * Finalizes a Google-based client reconnect on a new device.
-       * Downloads the program from the slot and optionally merges remote history.
-       * Called after the user confirms in the modal (confirm step).
+       * Confirma la reconexión: la cuenta candidata pasa a ser la de cliente de
+       * este móvil. Si este móvil ocupaba otro asiento con su identidad
+       * anterior, se suelta (un cliente, un asiento).
        */
-      confirmGoogleReconnect: async ({ slotId, googleUserId, provider = 'google', mergeHistory = false }) => {
-        // 1. Download program (also fetches trainer_name)
-        const { programJson, trainerName } = await downloadProgram(slotId);
-        if (!programJson) throw new Error('No se pudo descargar el programa.');
-
-        // 2. Save current activeProgramId so it can be restored on disconnect
-        const previousActiveProgramId = get().profile.activeProgramId ?? null;
-
-        // 3. Import program
-        get().importData(programJson, { program: true, log: false }, { silent: true });
-
-        // 4. Restore progress (always) and history (if the user accepted)
-        await get()._restoreFromSlot(slotId, programJson?.program?.id, mergeHistory);
-
-        // 5. Save client sync state
-        set(() => ({
-          clientSync: {
-            slotId,
-            clientCode:             null,   // not known in the social reconnect flow
-            supabaseUserId:         googleUserId,
-            googleLinked:           true,
-            linkedProvider:         provider,
-            trainerName:            trainerName ?? null,
-            pendingUpload:          false,
-            lastSyncedAt:           null,
-            syncErrorAt:            null,
-            lastProgramImportedAt:  new Date().toISOString(),
-            lastAppliedStageActivation: programJson?.program?.stageActivatedAt ?? null,
-            previousActiveProgramId,
-            trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
-            linkedAt:               new Date().toISOString(),
-          },
-        }));
+      confirmGoogleReconnect: async ({ googleUserId, provider = 'google', mergeHistory = false }) => {
+        const candidate = _clientCandidate;
+        if (candidate?.userId !== googleUserId) throw new Error(i18n.t('trainer.errGoogle'));
+        const current = await clientSessionUserId();
+        if (current && current !== candidate.userId) await releaseClientSlot().catch(() => {});
+        await adoptClient(candidate);
+        _clientCandidate = null;
+        await get()._adoptSeat({ userId: candidate.userId, provider, mergeHistory });
       },
 
       /**
-       * Links the current anonymous client session to a social account (google|apple).
-       * Flow: login → loginClientWithIdToken → transferClientSlot (RPC) → update state.
+       * Vincula Google/Apple al cliente conectado: su asiento pasa de la
+       * identidad anónima a esa cuenta, y así sobrevive a reinstalar.
        *
-       * Must be called while the OLD anonymous session is still in memory
-       * (clientSync.supabaseUserId holds the old anonymous user ID).
-       * The RPC is called AS the new Google user, providing the old ID for verification.
+       * Con dos pruebas, una por cuenta: la sesión anónima (la viva) CEDE su
+       * asiento, y si la cuenta de Google ocupaba otro (de antes), lo suelta ella
+       * misma con su sesión (la candidata). Solo al final se instala la nueva.
        */
       linkGoogleForClient: async ({ provider = 'google', idToken, accessToken }) => {
         const { clientSync } = get();
-        if (!clientSync.slotId) throw new Error('No estás conectado a ningún entrenador.');
+        if (!clientSync.slotId) throw new Error(i18n.t('trainer.errNotConnected'));
+        const candidate = await clientCandidateFromIdToken({ provider, idToken, accessToken });
+        const current = await clientSessionUserId();
 
-        // oldUserId must be the ID that currently owns the slot in the DB.
-        // Prefer clientSync.supabaseUserId (saved when the client first connected)
-        // because it always matches the DB's client_id.
-        // Falling back to the live session only covers the legacy case where
-        // supabaseUserId was not yet persisted (pre-migration clients).
-        // Do NOT use currentUser?.id as the primary source: after a reinstall or
-        // session expiry, Supabase creates a new anonymous user whose ID does not
-        // match the slot's client_id → the RPC raises "slot not found or current
-        // owner id does not match" on the first attempt, then the second attempt
-        // silently skips the transfer (newUserId === oldUserId as Google user)
-        // without actually updating the DB — leaving future reconnects broken.
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        const oldUserId = clientSync.supabaseUserId ?? currentUser?.id;
-        if (!oldUserId) throw new Error('No se encontró sesión activa. Reconéctate con el código del entrenador.');
-
-        // 1. Sign in with Google — changes the Supabase session to the Google user.
-        //    Depending on the Supabase project config, this may either create a new
-        //    Google user OR link the Google identity to the existing anonymous account
-        //    (same user ID). We handle both cases below.
-        const { userId: newUserId } = await loginClientWithIdToken({ provider, idToken, accessToken });
-
-        // 2. Transfer the slot only if Supabase issued a distinct Google user ID.
-        //    If account-linking is enabled, newUserId === oldUserId and the slot
-        //    already belongs to the right user — no RPC call needed.
-        if (newUserId !== oldUserId) {
-          // Caller is now the Google user; RPC verifies old ID matches current client_id.
-          await transferClientSlot(clientSync.slotId, oldUserId, newUserId);
+        if (current !== candidate.userId) {
+          const old = await seatOf(candidate.db);
+          if (old && old.slotId !== clientSync.slotId) await releaseClientSlot(candidate.db);
+          await transferMySeatTo(candidate.userId);
         }
+        await adoptClient(candidate);
 
-        // 3. Update local state — slot is now owned by the Google user
         set((s) => ({
           clientSync: {
             ...s.clientSync,
-            supabaseUserId: newUserId,
+            supabaseUserId: candidate.userId,
             googleLinked:   true,
             linkedProvider: provider,
           },
@@ -4580,45 +4840,42 @@ export const useStore = create(
       },
 
       /**
-       * Borra la cuenta del servidor y deja la app como si nunca se hubiera
-       * conectado a nada. Requisito de la App Store 5.1.1(v).
+       * Borra del servidor TODO lo de este móvil: la cuenta de entrenador y la
+       * identidad de cliente, cada una con su sesión (cada Edge Function solo
+       * borra a quien llama). Requisito de la App Store 5.1.1(v).
        *
-       * Qué NO hace, a propósito:
-       *  - No borra el historial ni los programas de este móvil. Son datos del
-       *    usuario y la app funciona sin cuenta; borrarlos de oficio sería
-       *    destruir lo que no ha pedido. Para eso está desinstalar.
-       *  - No se lleva el Pro. Sale de RevenueCat (`logOut`) para que la
-       *    siguiente cuenta de este móvil no herede la compra, pero la compra
-       *    sigue en la cuenta de Apple/Google Play y vuelve con "Restaurar
-       *    compra anterior" (M01 §3.3).
+       * Qué NO hace, a propósito (es lo que promete la hoja):
+       *  - No borra nada de este móvil: historial, programas, ejercicios ni
+       *    clientes. Los que tenían app pasan a «sin app», con sus datos.
+       *  - No se lleva el Pro: sale de RevenueCat (`logOut`) para que la
+       *    siguiente cuenta no herede la compra, pero vuelve con «Restaurar».
        *
-       * ponytail: sin reintento. Si falla a medias la cuenta sigue viva (la
-       * Edge Function borra el usuario de auth lo último) y volver a pulsar
-       * reanuda desde donde estaba.
+       * Si la sesión de entrenador no se puede rehacer (Google/Apple caducado)
+       * lanza TRAINER_LOGIN_NEEDED antes de borrar nada: borrar a medias dejaría
+       * la cuenta viva en el servidor creyendo que ya no existe.
+       * ponytail: sin reintento. Si falla entre las dos, volver a pulsar sigue.
        */
       deleteAccount: async () => {
+        const { trainerSync } = get();
+        if (trainerSync.userId) await _ensureTrainerSession(trainerSync);
 
-        await deleteRemoteAccount();
-        await supabaseSignOut().catch(() => {});
+        if (trainerSync.userId) await deleteTrainerUser();
+        if (await clientSessionUserId()) await deleteClientUser();
+        await signOutTrainer().catch(() => {});
+        await signOutClient().catch(() => {});
         await get()._purchasesLogOut();
 
-        set(() => ({
+        set((s) => ({
           trainerSync: {
-            mode: 'offline', code: null, userId: null,
-            trainerName: null, lastSeenSessionsCount: {},
+            ...s.trainerSync,
+            mode: 'offline', code: null, userId: null, email: null,
+            trainerName: null, lastSeenSessionsCount: {}, deletedSlotIds: [],
           },
-          clientSync: {
-            slotId: null, clientCode: null, supabaseUserId: null,
-            googleLinked: false, linkedProvider: null, trainerName: null,
-            pendingUpload: false, lastSyncedAt: null, syncErrorAt: null,
-            lastProgramImportedAt: null, lastAppliedStageActivation: null,
-            previousActiveProgramId: null, trainerProgramIds: [],
-            linkedAt: null, pendingOverrides: {},
-          },
-          // Los clientes eran filas del servidor que ya no existen. Dejarlos en
-          // la lista sería enseñar gente con la que no se puede sincronizar.
-          clients: {},
-          clientLogs: {},
+          clientSync: { ...EMPTY_CLIENT_SYNC },
+          clients: Object.fromEntries(Object.entries(s.clients).map(([id, c]) => [id, c.syncSlotId ? {
+            ...c, syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false, syncLeftAt: null,
+            programDirty: false, overridesDirty: false, programUploadedSig: null,
+          } : c])),
         }));
 
         return { ok: true };
@@ -4637,7 +4894,8 @@ export const useStore = create(
        * M01-01: el App User ID de RevenueCat es la cuenta del entrenador
        * (`trainerSync.userId`), así el Pro sigue a la cuenta y no a la
        * instalación: cruza de Android a iPhone y vuelve al reinstalar sin pulsar
-       * Restaurar (spec M01 §3). Lo llama App.js cada vez que cambia el id.
+       * Restaurar (spec M01 §3). Lo llaman las acciones de CUENTA DE
+       * ENTRENADOR al entrar; al arrancar ya entra con `configure({ appUserID })`.
        *
        * Anónimo → cuenta: RevenueCat funde la compra solo. Cuenta A → cuenta B
        * (código → Google) NO: la compra se queda en A. Si este móvil tenía Pro
@@ -4693,6 +4951,31 @@ export const useStore = create(
         }
       },
 
+      /**
+       * Qué plan Pro tiene este móvil, para la página «Mi cuenta» (M03-02 §6.4).
+       * Sin persistir: se mira al abrir la página. `kind`: 'annual' (con
+       * caducidad), 'lifetime' (sin ella) o 'gift' (entitlement regalado desde
+       * RevenueCat, `store === 'PROMOTIONAL'`). Sin módulo nativo (Expo Go), sin
+       * Pro activo o con error devuelve `null`.
+       */
+      getProDetails: async () => {
+        const RC = get()._getRC();
+        if (!RC) return null;
+        try {
+          const info = await RC.getCustomerInfo();
+          const ent  = info.entitlements.active[RC_PRO_ENTITLEMENT];
+          if (!ent) return null;
+          return {
+            kind: ent.store === 'PROMOTIONAL' ? 'gift' : ent.expirationDate ? 'annual' : 'lifetime',
+            expiresAt:     ent.expirationDate ?? null,
+            store:         ent.store ?? null,
+            managementURL: info.managementURL ?? null,
+          };
+        } catch {
+          return null;
+        }
+      },
+
       /** Fetches the current RevenueCat offering. Returns null if unavailable. */
       getOffering: async () => {
         const RC = get()._getRC();
@@ -4708,7 +4991,7 @@ export const useStore = create(
       /** Purchases a RevenueCat Package. Returns { ok, isPro } or { ok: false, cancelled, error }. */
       purchasePackage: async (pkg) => {
         const RC = get()._getRC();
-        if (!RC) return { ok: false, error: 'Compras no disponibles en este entorno' };
+        if (!RC) return { ok: false, error: i18n.t('paywall.errUnavailable') };
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
           let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
@@ -4726,7 +5009,7 @@ export const useStore = create(
             const isPro = await get().restorePurchases().catch(() => false);
             return { ok: true, isPro };
           }
-          return { ok: false, error: e?.message ?? 'Error al procesar la compra' };
+          return { ok: false, error: e?.message ?? i18n.t('paywall.errPurchase') };
         }
       },
 
@@ -4738,10 +5021,10 @@ export const useStore = create(
           const info = await RC.restorePurchases();
           const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
           set((s) => ({ profile: { ...s.profile, isPro } }));
-          get().showToast(isPro ? 'Compra restaurada' : 'No se encontraron compras anteriores', 2200, isPro ? 'success' : 'neutral');
+          get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
           return isPro;
         } catch {
-          get().showToast('Error al restaurar compras', 2200, 'error');
+          get().showToast(i18n.t('paywall.restoreError'), 2200, 'error');
           return false;
         }
       },
@@ -4805,6 +5088,7 @@ export const useStore = create(
         trainerSync: state.trainerSync,
         clientSync:  state.clientSync,   // persisted so the client stays connected across restarts
         theme:       state.theme,        // active UI theme
+        onboardingFlow: state.onboardingFlow,   // O03: matar la app a mitad vuelve a la misma pantalla
       }),
       onRehydrateStorage: () => (state, error) => {
         // Zustand calls this with (undefined, error) when the storage read
@@ -4826,6 +5110,10 @@ export const useStore = create(
               .catch(() => {});
           }
           if (!state) return;   // `finally` still runs
+
+          // «Nuevo programa» desde la app no se retoma (O03 §25.4.7): lo ya
+          // creado sigue en Programa. Sin esto arrancaría en el recorrido.
+          if (state.onboardingFlow?.entry === 'newProgram') state.onboardingFlow = null;
 
           // Apply language from persisted profile
           if (state.profile?.language) {
@@ -5026,22 +5314,25 @@ export const useStore = create(
               // Read the live store, not `state`: on the success path they are the
               // same object (middleware.js:431 passes get()), and on the failure
               // path `state` is undefined while the store still holds the initial
-              // state — which routes to Setup, same as a fresh install.
+              // state — which routes to Start, same as a fresh install.
               const s = useStore.getState();
               const hasProgram     = s.profile?.activeProgramId && s.programs?.[s.profile.activeProgramId];
-              const setupDone      = s.profile?.setupComplete;
-              const onboardingDone = s.profile?.onboardingCompleted;
+              const initialRoute = initialRouteFor({
+                flow:                s.onboardingFlow,
+                onboardingCompleted: s.profile?.onboardingCompleted,
+                hasProgram:          !!hasProgram,
+                hasActiveSession:    !!s.activeSession?.templateId,
+              });
 
-              let initialRoute = 'Main';
-              if (!setupDone && !onboardingDone && !hasProgram) {
-                initialRoute = 'Setup';
-              } else if (!onboardingDone && !hasProgram) {
-                initialRoute = 'Onboarding';
-              } else if (s.activeSession?.templateId) {
-                initialRoute = 'Workout';
-              }
-
-              useStore.setState({ _hasHydrated: true, _initialRoute: initialRoute });
+              // Instalación limpia: el recorrido nace aquí, no al montar la
+              // pantalla (que lo reiniciaría al cerrarse).
+              useStore.setState({
+                _hasHydrated: true,
+                _initialRoute: initialRoute,
+                ...(initialRoute === 'Start' && !s.onboardingFlow ? { onboardingFlow: newFlow('first') } : {}),
+              });
+              // La sesión única de antes pasa al papel que le toca (C09 §2.1).
+              migrateLegacySession({ trainerUserId: s.trainerSync?.userId, clientUserId: s.clientSync?.supabaseUserId });
             });
         }
       },

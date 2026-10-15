@@ -2,7 +2,7 @@
  * FitLogo — las tres letras de "Fit" del logotipo, en `accent`.
  *
  * Estaba copiado literalmente en `AppHeader.jsx` y en `OnboardingScreen.jsx`;
- * con `SetupScreen` haciendo el tercer uso, vive aquí. Los paths salen del
+ * con una tercera pantalla que lo usaba, vive aquí. Los paths salen del
  * asset real, así que el alto manda y el ancho se deriva de la caja original
  * (378×126) para no deformarlo.
  */

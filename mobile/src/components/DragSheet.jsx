@@ -307,7 +307,9 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'space-between',
-    paddingBottom:  spacing.md,
+    // Aire sobre el título: sin él quedaba pegado al asa de arrastre.
+    paddingTop:     spacing.md,
+    paddingBottom:  spacing.lg,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
   // La misma caja que el «volver» de `ScreenHeader`.
@@ -319,6 +321,6 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  title: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
-  done:  { ...textStyles.labelStrong, color: th.colors.accent },
+  title: { ...textStyles.heading, color: th.colors.text, flexShrink: 1 },
+  done:  { ...textStyles.button, color: th.colors.accent },
 });

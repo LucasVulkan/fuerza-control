@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useStore }              from '../../store/useStore';
 import { exchangeCodeForTokens } from '../services/driveService';
+import useClientCode             from '../hooks/useClientCode';
 import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI } from '../config/google';
 import { APPLE_AUTH_AVAILABLE, signInWithApple } from '../services/appleAuth';
 import { PRIVACY_URL } from '../config/legal';
@@ -48,22 +49,15 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   const th        = useTheme();
   const styles    = useThemedStyles(makeStyles);
   const { t }     = useTranslation();
-  const validateClientCode     = useStore((s) => s.validateClientCode);
-  const linkToTrainer          = useStore((s) => s.linkToTrainer);
   const validateGoogleClient   = useStore((s) => s.validateGoogleClient);
-  const confirmGoogleReconnect = useStore((s) => s.confirmGoogleReconnect);
-  const clientSync             = useStore((s) => s.clientSync);
   const pendingInvite          = useStore((s) => s.pendingInviteCode);
   const clearPendingInvite     = useStore((s) => s.clearPendingInviteCode);
 
-  const [step,         setStep]         = useState('enter'); // 'enter' | 'confirm'
-  const [code,         setCode]         = useState('');
-  const [slotInfo,     setSlotInfo]     = useState(null); // { slotId, programName, alreadyLinked, hasRemoteHistory }
-  const [historyMode,  setHistoryMode]  = useState('program'); // 'program' | 'merge'
-  const [googleUserId, setGoogleUserId] = useState(null);  // set when the social reconnect finds a slot
-  const [socialProvider, setSocialProvider] = useState('google'); // con cuál se encontró
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState(null);
+  // Validar, elegir historial y conectar: useClientCode (lo comparte con el recorrido de entrada).
+  const {
+    step, code, slotInfo, historyMode, googleUserId, loading, error, alreadyLinked: isAlreadyLinked,
+    setCode, setHistoryMode, setError, back, reset, validate: handleValidate, confirm, foundByAccount,
+  } = useClientCode();
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialNoSlot,  setSocialNoSlot]  = useState(false);
 
@@ -106,6 +100,13 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     }
   }, [startWithSocial, visible, googleRequest]); // eslint-disable-line
 
+  // Al abrirse, siempre en el código: el estado del hook es de módulo y lo comparte
+  // con el recorrido de entrada, que pudo dejarlo en «Programa encontrado» (O03 §28.2).
+  useEffect(() => { if (visible && !pendingInvite) reset(); }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // La hoja no deja nada a medias al desmontarse (el estado del hook es de módulo).
+  useEffect(() => reset, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Invitación: se rellena y se valida una vez por código. Si falla (código
   // usado, reemitido), se queda en el paso de teclear con el error a la vista.
   const validatedInvite = useRef(null);
@@ -113,7 +114,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     if (!visible || !pendingInvite || validatedInvite.current === pendingInvite) return;
     validatedInvite.current = pendingInvite;
     setCode(pendingInvite);
-    setStep('enter');
+    back();
     handleValidate(pendingInvite);
   }, [visible, pendingInvite]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -124,16 +125,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
       setSocialNoSlot(true);
       return;
     }
-    setGoogleUserId(result.userId);
-    setSocialProvider(provider);
-    setSlotInfo({
-      slotId:           result.slotId,
-      programName:      result.programName,
-      hasRemoteHistory: result.hasRemoteHistory,
-      alreadyLinked:    false,
-    });
-    setHistoryMode('program');
-    setStep('confirm');
+    foundByAccount({ userId: result.userId, provider, slot: result });
   }
 
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
@@ -180,72 +172,19 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   }
 
   function handleClose() {
-    setStep('enter');
-    setCode('');
-    setSlotInfo(null);
-    setHistoryMode('program');
-    setGoogleUserId(null);
+    reset();
     setSocialNoSlot(false);
-    setError(null);
     validatedInvite.current = null;
     clearPendingInvite();
     onClose();
   }
 
-  async function handleValidate(value = code) {
-    if (!value.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const info = await validateClientCode(value);
-      setSlotInfo(info);
-      // Un hueco que nadie ha canjeado y ya tiene historial es lo que te
-      // apuntó tu entrenador (o tu copia de antes de reinstalar): fusionar es
-      // lo que quieres casi siempre (C05-trainer-logging.md §4.3, C20).
-      setHistoryMode(info.hasRemoteHistory && !info.alreadyLinked ? 'merge' : 'program');
-      setStep('confirm');
-    } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  /**
-   * Las RPC de conexión lanzan códigos secos y `supabaseSync` los deja en
-   * `err.code`. Se ramifica por ahí y no por el texto: `SLOT_OCCUPIED` no es un
-   * error que el usuario deba leer en crudo, es una instrucción de qué hacer.
-   */
-  function errorText(err) {
-    if (err?.code === 'SLOT_OCCUPIED')  return t('trainer.errSlotOccupied');
-    if (err?.code === 'CODE_NOT_FOUND') return t('trainer.errCodeNotFound');
-    return err?.message ?? t('trainer.errGoogle');
-  }
-
   async function handleConfirm() {
-    setLoading(true);
-    setError(null);
-    try {
-      if (googleUserId) {
-        await confirmGoogleReconnect({
-          slotId:       slotInfo.slotId,
-          googleUserId,
-          provider:     socialProvider,
-          mergeHistory: historyMode === 'merge',
-        });
-      } else {
-        await linkToTrainer(code, { mergeHistory: historyMode === 'merge' });
-      }
-      handleClose();
-      onSuccess?.();
-    } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setLoading(false);
-    }
+    if (!(await confirm())) return;
+    handleClose();
+    onSuccess?.();
   }
 
-  const isAlreadyLinked = !!clientSync.slotId;
   const isSocialScreen  = step === 'enter' && startWithSocial;
 
   // Los títulos de hoja de la app van en caso normal y cortos ("Añadir",
@@ -264,7 +203,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
       // El hueco de la derecha de la hoja hace de salida: atrás en el paso de
       // confirmación, cancelar en los demás. Así no hay dos botones abajo.
       action={step === 'confirm'
-        ? { label: t('trainer.codeBack'), onPress: () => setStep('enter') }
+        ? { label: t('trainer.codeBack'), onPress: back }
         : { label: t('common.cancel'),    onPress: handleClose }}
     >
       {/* ── Buscando la cuenta vinculada ── */}

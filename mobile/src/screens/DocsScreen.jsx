@@ -33,7 +33,7 @@ export default function DocsScreen() {
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       {/* Se entra deslizando desde la derecha: se sale con ‹, como el resto
           de pantallas a las que se navega (U36). */}
-      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('header.sectionAccount')} title={t('docs.title')} />
+      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('header.sectionSupport')} title={t('docs.title')} />
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Text style={styles.intro}>{t('docs.intro')}</Text>

@@ -178,7 +178,10 @@
   .setrow { display: flex; gap: 8px; align-items: center; }
   .setrow .lbl { width: 24px; font: 800 13px Inter; color: var(--mutedLight); }
   .cell { flex: 1; height: 70px; border-radius: 12px; background: var(--bg); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent); display: flex; flex-direction: column; align-items: center; justify-content: center; font: italic 800 34px/1 'Barlow Condensed'; color: var(--text); position: relative; overflow: hidden; touch-action: none; cursor: ew-resize; user-select: none; }
-  .cell.v { cursor: ns-resize; }
+  /* Sin regla (como SetRow sin scrubField): la cifra cambia en la casilla, con chevrones y borde lima. */
+  .cell .chv { position: absolute; top: 50%; transform: translateY(-50%); font: 700 20px Inter; font-style: normal; color: var(--muted); transition: color .15s; }
+  .cell .chv.l { left: 8px; } .cell .chv.r { right: 8px; }
+  .cell.drag .chv { color: var(--accent); }
   .cell em { font: 800 11px Inter; letter-spacing: 1.2px; color: var(--mutedLight); font-style: normal; margin-top: 2px; }
   .cell .ruler { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; opacity: 0; transition: opacity .15s;
     background: repeating-linear-gradient(90deg, var(--accent) 0 1.5px, transparent 1.5px 12px); background-size: 12px 8px; background-repeat: repeat-x; background-position-y: bottom; }
@@ -187,7 +190,13 @@
   .cell .ruler::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 2px; height: 16px; background: var(--text); transform: translateX(-1px); }
   .cell.pop { animation: pop .12s; }
   @keyframes pop { 50% { transform: scale(1.06); } }
-  .bubble { display: none; }
+  /* Con regla: la casilla no cambia durante el gesto; la burbuja enseña el valor y se guarda al soltar. */
+  .bubble { position: absolute; inset: 0 0 18px; display: none; align-items: center; justify-content: center; background: var(--bg); color: var(--accent); font: italic 800 34px/1 'Barlow Condensed'; }
+  .cell.drag.r .bubble { display: flex; }
+  .langsw { position: absolute; top: 0; right: 0; display: flex; gap: 2px; background: var(--surface); border-radius: var(--rb); padding: 3px; }
+  .langsw b { font: 800 12px Inter; letter-spacing: 1px; padding: 7px 10px; border-radius: 8px; color: var(--mutedLight); cursor: pointer; }
+  .langsw b.on { background: var(--surface2); color: var(--text); }
+  .invited { margin-top: 18px; font: 700 14px/1.45 Inter; color: var(--text); background: color-mix(in srgb, var(--blue) 14%, transparent); box-shadow: inset 3px 0 0 var(--blue); border-radius: 12px; padding: 12px 14px; }
   .demo { background: var(--surface); border-radius: var(--r); padding: 16px 14px; margin-bottom: 14px; }
   .demo .hint { font: 700 13px Inter; color: var(--accent); text-align: center; margin-top: 12px; }
 
@@ -449,6 +458,22 @@
         <li><b>Se nota el trabajo hecho.</b> Antes de las propuestas, tres casillas se marcan con lo que contestó (nivel, objetivo, días). Al final, una lista con lo hecho y lo pendiente.</li>
       </ul>
     </div>
+    <div class="box">
+      <h2>Revisión del <b>13-oct</b></h2>
+      <ul>
+        <li><b>Idioma, en la bienvenida.</b> Un selector ES · EN con el del móvil ya marcado. Ajustes se queda en dos pantallas: unidades y tema.</li>
+        <li><b>Cliente con app: el orden real.</b> El cliente se crea sin app; después de la cuenta pasa a la app (<code>moveClientToApp</code>), que genera su código y le sube el programa. En la pantalla no cambia nada, pero es lo único que funciona: hoy <code>createClient</code> sin cuenta lo deja sin app y no avisa.</li>
+        <li><b>El entrenador monta el programa de su cliente, no una plantilla.</b> Asignar una plantilla copia el programa, así que lo que completara luego en la plantilla no le llegaría al cliente, y tendría dos cosas a medias. Ahora el constructor crea directamente el programa de Ana (<code>createProgramForClient</code>), sin paso de asignar. Se sigue editando en Clientes → Ana y cada cambio le llega con «↑ Enviar». No gasta la única plantilla gratis; las plantillas se enseñan en Aprende. Asignar queda solo para el atajo del catálogo.</li>
+        <li><b>Guardar o asignar también envía.</b> En la app, asignar solo marca el programa como pendiente. Aquí se envía al momento (<code>uploadProgramToClient</code>), y la fila queda al día, sin «Cambios sin enviar». B y C le llegan vacías y se rellenan después.</li>
+        <li><b>Sin programa no hay invitación.</b> Con un código sin programa, al canjearlo el cliente ve el error «El entrenador aún no ha subido ningún programa». Con «Lo hago después» el paso de invitar no sale, y en «Listo» queda pendiente.</li>
+        <li><b>Regla o deslizar: los dos modos son horizontales</b> (<code>SetRow.jsx</code>). Sin regla, la cifra cambia en la casilla con chevrones; con regla, la casilla no se mueve, sale la regla y se guarda al soltar.</li>
+        <li><b>Por invitación.</b> Quien llega por el enlace se salta la bifurcación y el «¿usa la app?»: su código viene puesto (nodo «Por invitación» del mapa).</li>
+        <li><b>Rol → pestañas.</b> «Por mi cuenta» y «con entrenador» ocultan las de entrenador (<code>proTabsHidden</code>). El entrenador que no entrena arranca en Clientes y conserva Inicio.</li>
+        <li><b>«Nuevo programa» usa el recorrido nuevo</b> (fila «Desde la app» del mapa). Hoy abre el selector viejo sin flecha de volver y reemplazando la pila. Ahora es otra entrada al mismo recorrido, sin Ajustes, bifurcación ni Aprende: «Elige cómo empezar» con las cinco salidas de siempre y un cierre corto. <code>OnboardingScreen.jsx</code> se borra entero.</li>
+        <li><b>«Listo» marca el onboarding como hecho</b> en todos los caminos. Si no, quien acaba sin programa volvería al onboarding en cada arranque.</li>
+        <li><b>Fuera por ahora:</b> «Ya tengo cuenta» con búsqueda conjunta y «Esto es lo que había» (queda la versión mínima), pegar el programa del entrenador, adoptar el programa copiado, pistas que reaparecen y pendientes como tarjeta en Inicio.</li>
+      </ul>
+    </div>
     <div class="box" id="notes"></div>
     <div class="box">
       <h2>Mapa del recorrido</h2>
@@ -458,15 +483,15 @@
     <div class="box">
       <h2>El flujo, <b>contrastado con el código</b></h2>
       <ul>
-        <li><b>Ajustes se queda en tres:</b> idioma, unidades y tema. «Cómo ves Inicio» y «cómo apuntas» pasan a <b>Aprende</b> y solo los ve quien entrena: el entrenador que solo lleva clientes se ahorra dos pantallas que no le sirven, y el resto elige la vista y la ve en la tarjeta siguiente.</li>
+        <li><b>Ajustes se queda en dos:</b> unidades y tema (el idioma va en la bienvenida). «Cómo ves Inicio» y «cómo apuntas» pasan a <b>Aprende</b> y solo los ve quien entrena: el entrenador que solo lleva clientes se ahorra dos pantallas que no le sirven, y el resto elige la vista y la ve en la tarjeta siguiente.</li>
         <li><b>Cliente nuevo = la hoja real.</b> Nombre y «¿Cómo va a entrenar?» (<i>Entrena con la app</i> / <i>Le apuntas tú</i>), con los textos de la app. Sin opción de grupo: las clases en grupo solo se preguntan como dato.</li>
-        <li><b>Con app → cuenta del entrenador, sin salto.</b> En la app el modo «con app» solo existe con cuenta en la nube (<code>ClientsScreen.jsx:2344</code>), así que la cuenta va justo después: tu nombre, Apple (iPhone), Google o código personal. Con código, una pantalla propia para guardarlo, con el botón bloqueado hasta copiarlo o enviárselo <b>(propuesta: la app hoy no lo exige)</b>.</li>
-        <li><b>Asignar con piezas reales:</b> la plantilla y la fila de Clientes tal cual (C08). Al asignar, la fila pasa de «Sin programa · + Programar» a programa y cuadraditos. Después, la invitación solo si tiene app, porque al canjear el código el cliente recibe ya el programa asignado.</li>
+        <li><b>Con app → cuenta del entrenador, sin salto.</b> En la app el modo «con app» solo existe con cuenta en la nube (<code>ClientsScreen.jsx:2344</code>), así que la cuenta va justo después: tu nombre, Apple (iPhone), Google o código personal. Con código, una pantalla propia para guardarlo, con el botón bloqueado hasta copiarlo o enviárselo (también en <code>TrainerSyncModal</code>, fuera del onboarding).</li>
+        <li><b>Su programa con piezas reales:</b> la fila de Clientes tal cual (C08), ya con su programa al montarlo; desde el catálogo, la pantalla de asignar, donde la fila pasa de «Sin programa · + Programar» a programa y cuadraditos. En los dos casos se envía. Después, la invitación, solo si tiene app y programa: al canjear el código, el cliente recibe ya su programa.</li>
         <li><b>Cliente con código: sin espera.</b> El código (8 caracteres, XXXX-XXXX) enseña «Programa encontrado» antes de conectar, como <code>ClientCodeModal</code>, y al conectar ya está en Inicio. En Aprende no sale «Cambia lo que quieras» (no puede editar el programa de su entrenador); sale qué ve su entrenadora y cómo le llegan los cambios.</li>
         <li><b>Buscador en corto</b> en el constructor: campo «Buscar ejercicio» sobre el catálogo real (177), filas como las de la app, sugeridos por nivel y «Crear» si no está. Los filtros y la selección múltiple se quedan para el editor.</li>
         <li><b>Real frente a esquema:</b> la vista de Inicio y la fila de Clientes se dibujan como en la app, porque son las pantallas en las que va a vivir. Plantillas, próxima sesión y sesión libre siguen como esquemas.</li>
-        <li><b>Plan gratis real:</b> 3 clientes (1 con app) y 1 plantilla de programa (<code>FREE</code> en <code>freePlan.js</code>). La spec O03 aún dice 2+2: hay que corregirla.</li>
-        <li><b>«Ya tengo cuenta» lo recupera todo:</b> una puerta para la cuenta de entrenador, la conexión con el entrenador, Pro y la copia de seguridad. Lo único que no vive en ninguna cuenta es el programa y el historial de quien entrena por su cuenta: eso vuelve con la copia (Drive o archivo).</li>
+        <li><b>Plan gratis real:</b> 3 clientes (1 con app) y 1 plantilla de programa (<code>FREE</code> en <code>freePlan.js</code>).</li>
+        <li><b>«Ya tengo cuenta», versión mínima:</b> tres entradas que abren lo que ya existe (recuperar la cuenta de entrenador, volver a conectar con tu entrenador, restaurar una copia). La búsqueda conjunta por identidad queda para más adelante.</li>
       </ul>
     </div>
   </div>
@@ -495,7 +520,14 @@ const EX_BEG = [['Sentadilla goblet','Pierna'],['Press banca con mancuernas','Pe
 const EX_ADV = [['Sentadilla','Pierna'],['Press banca','Pecho'],['Peso muerto','Cadena posterior'],['Dominadas','Espalda'],['Press militar','Hombro']];
 // Quien entra al constructor decide su profundidad: el principiante ve una pregunta de progresión;
 // el avanzado y el entrenador, el editor de ejercicio con todo.
-const builderExit = () => S.bctx === 'trainer' ? 't_assign' : 'a_home';
+// Entrenador: lo construido ES el programa de su cliente (createProgramForClient), sin plantilla ni paso de
+// asignar. Con algún ejercicio se le envía; vacío, se queda en su ficha sin enviar.
+const builderExit = () => {
+  if (S.entry === 'newProgram') return 'n_done';
+  if (S.bctx !== 'trainer') return 'a_home';
+  S.program = 'tpl1'; S.assigned = S.exs.length > 0;
+  return afterAssign();
+};
 // El catálogo real (src/data/exerciseLibrary.js): nombre, «grupo · material», nivel 0-2.
 const CATALOG = [["Dominadas","Espalda · Barra dominadas",1],["Dominadas asistidas","Espalda · Barra dominadas, Bandas",0],["Remo en polea","Espalda · Polea",0],["Fondos en paralelas","Pecho · Paralelas",1],["Fondos asistidos (banda)","Pecho · Paralelas, Bandas",0],["Press de hombro mancuernas","Hombro · Mancuernas",1],["Press de hombro en máquina","Hombro · Máquina",0],["Flexiones (progresiva)","Pecho · Corporal",0],["Press pecho en máquina","Pecho · Máquina",0],["Peso muerto rumano (barra)","Glúteo e isquios · Barra",2],["Peso muerto rumano (mancuernas)","Glúteo e isquios · Mancuernas",1],["Swing con kettlebell","Glúteo e isquios · Kettlebell",1],["Hip thrust","Glúteo e isquios · Barra, Máquina",0],["Puente glúteo unilateral","Glúteo e isquios · Corporal",0],["Curl isquios tumbada","Glúteo e isquios · Máquina",0],["Sentadilla con barra","Cuádriceps · Barra",2],["Sentadilla búlgara","Cuádriceps · Mancuernas",1],["Zancada estática (split squat)","Cuádriceps · Mancuernas",0],["Zancada caminando","Cuádriceps · Mancuernas",1],["Prensa (pies centrados)","Cuádriceps · Máquina",0],["Prensa (pies altos)","Glúteo e isquios · Máquina",0],["Sentadilla goblet","Cuádriceps · Mancuernas, Kettlebell",0],["Abducción en máquina","Glúteo e isquios · Máquina",0],["Extensión cuádriceps","Cuádriceps · Máquina",0],["Curl bíceps supinación","Brazos · Mancuernas",0],["Hollow body hold","Core · Corporal",0],["L-sit en paralelas","Core · Paralelas",1],["Plancha frontal","Core · Corporal",0],["Dead bug","Core · Corporal",0],["Ab wheel rollout","Core · Rueda abdominal",1],["Elevación de piernas tumbada","Core · Corporal",0],["Dead hang activo","Agarre · Barra dominadas",0],["Press de banca con mancuernas","Pecho · Mancuernas",1],["Press de banca con barra","Pecho · Barra",2],["Aperturas en máquina (pec deck)","Pecho · Máquina",0],["Aperturas con mancuernas","Pecho · Mancuernas",1],["Fondos en banco","Pecho · Corporal",0],["Elevaciones laterales","Hombro · Mancuernas",0],["Remo con mancuerna (unilateral)","Espalda · Mancuernas",0],["Remo con barra","Espalda · Barra",2],["Remo australiano (barra baja)","Espalda · Barra dominadas",0],["Face pull en polea","Hombro · Polea",0],["Dominadas supinas","Espalda · Barra dominadas",1],["Hack squat","Cuádriceps · Máquina",1],["Step up con mancuernas","Cuádriceps · Mancuernas",0],["Good morning","Glúteo e isquios · Barra",2],["Patada de glúteo en polea","Glúteo e isquios · Polea",0],["Curl martillo","Brazos · Mancuernas",0],["Extensión tríceps en polea","Brazos · Polea",0],["Press francés (skull crusher)","Brazos · Barra, Mancuernas",1],["Crunch","Core · Corporal",0],["Crunch en polea","Core · Polea",0],["Russian twist","Core · Corporal",0],["Elevación de piernas en barra","Core · Barra dominadas",1],["Elevación de rodillas en barra","Core · Barra dominadas",0],["Press banca inclinado (mancuernas)","Pecho · Mancuernas",1],["Press militar con barra","Hombro · Barra",2],["Peso muerto convencional","Glúteo e isquios · Barra",2],["Curl de bíceps con barra","Brazos · Barra",0],["Jalón al pecho","Espalda · Polea",0],["Elevación de gemelos en máquina","Gemelos · Máquina",0],["Elevación de gemelos de pie","Gemelos · Corporal",0],["Sentadilla frontal con barra","Cuádriceps · Barra",2],["Zancada inversa con mancuernas","Cuádriceps · Mancuernas",0],["Zancada caminando con barra","Cuádriceps · Barra",2],["Pistol squat","Cuádriceps · Corporal",2],["Pistol squat asistida","Cuádriceps · Corporal",1],["Sentadilla cosaca","Cuádriceps · Corporal",1],["Sentadilla en cajón","Cuádriceps · Barra",1],["Sentadilla con salto","Cuádriceps · Corporal",1],["Salto al cajón","Cuádriceps · Corporal",1],["Sentadilla sissy","Cuádriceps · Corporal",1],["Prensa unilateral","Cuádriceps · Máquina",0],["Peso muerto sumo","Glúteo e isquios · Barra",2],["Peso muerto con trap bar","Glúteo e isquios · Barra",1],["Peso muerto rumano unilateral","Glúteo e isquios · Mancuernas",1],["Pull through en polea","Glúteo e isquios · Polea",0],["Puente de glúteos con barra","Glúteo e isquios · Barra",0],["Hip thrust unilateral","Glúteo e isquios · Corporal",0],["Curl nórdico","Glúteo e isquios · Corporal",2],["Glute Ham Raise","Glúteo e isquios · Máquina",2],["Extensión de espalda 45°","Glúteo e isquios · Máquina",0],["Reverse Hyperextension","Glúteo e isquios · Máquina",1],["Curl femoral sentado","Glúteo e isquios · Máquina",0],["Elevación de gemelos sentado","Gemelos · Máquina",0],["Gemelo en burro","Gemelos · Corporal",1],["Aducción en máquina","Glúteo e isquios · Máquina",0],["Press inclinado con barra","Pecho · Barra",2],["Aperturas inclinadas con mancuernas","Pecho · Mancuernas",1],["Cruce de poleas","Pecho · Polea",0],["Flexiones lastradas","Pecho · Corporal",1],["Flexiones diamante","Pecho · Corporal",1],["Flexiones declinadas","Pecho · Corporal",1],["Flexiones en anillas","Pecho · Anillas",1],["Flexión pica","Hombro · Corporal",1],["Flexión arquero","Pecho · Corporal",2],["Press Arnold","Hombro · Mancuernas",1],["Push press con barra","Hombro · Barra",1],["Push press con mancuernas","Hombro · Mancuernas",1],["Elevaciones laterales en polea","Hombro · Polea",0],["Elevación posterior (pájaros)","Hombro · Mancuernas",0],["Pájaros en máquina (pec deck invertida)","Hombro · Máquina",0],["Remo al mentón con barra","Hombro · Barra",1],["Encogimientos con barra","Hombro · Barra",0],["Encogimientos con mancuernas","Hombro · Mancuernas",0],["Remo en T","Espalda · Barra",1],["Remo pecho apoyado con mancuernas","Espalda · Mancuernas",0],["Remo en máquina","Espalda · Máquina",0],["Remo en anillas","Espalda · Anillas",0],["Seal Row","Espalda · Barra",1],["Pulldown brazos rectos","Espalda · Polea",0],["Pullover con mancuerna","Espalda · Mancuernas",1],["Remo Meadows","Espalda · Barra",1],["Subida de cuerda","Espalda · Cuerda",2],["Muscle-Up en barra","Espalda · Barra dominadas",2],["Muscle-Up asistido","Espalda · Barra dominadas, Bandas",1],["Fondos en anillas","Pecho · Anillas",1],["Flexión en pino (pared)","Hombro · Corporal",1],["Flexión en pino","Hombro · Corporal",2],["Equilibrio en pino","Hombro · Corporal",2],["Front lever","Espalda · Barra dominadas",2],["Back lever","Espalda · Barra dominadas",2],["Curl con barra EZ","Brazos · Barra",0],["Curl predicador en máquina","Brazos · Máquina",0],["Curl predicador con barra","Brazos · Barra",1],["Curl en polea","Brazos · Polea",0],["Curl concentración","Brazos · Mancuernas",0],["Curl inclinado con mancuernas","Brazos · Mancuernas",1],["Curl martillo en polea","Brazos · Polea",0],["Curl inverso con barra","Brazos · Barra",0],["Extensión tríceps sobre cabeza (mancuerna)","Brazos · Mancuernas",1],["Extensión tríceps sobre cabeza en polea","Brazos · Polea",0],["Press banca agarre cerrado","Brazos · Barra",1],["Patada de tríceps con mancuerna","Brazos · Mancuernas",0],["Plancha lateral","Core · Corporal",0],["Bird dog","Core · Corporal",0],["Toes to Bar","Core · Barra dominadas",1],["Sit-Up","Core · Corporal",0],["V-Up","Core · Corporal",1],["Mountain climber","Core · Corporal",0],["Crunch bicicleta","Core · Corporal",0],["Crunch oblicuo","Core · Corporal",0],["Press Pallof","Core · Polea",1],["Leñador en polea","Core · Polea",1],["Dragon flag","Core · Corporal",2],["Plancha de Copenhague","Core · Corporal",1],["Paseo del granjero","Agarre · Mancuernas",0],["Paseo maletín (unilateral)","Core · Mancuernas",0],["Burpee","Core · Corporal",1],["Zancada con salto","Cuádriceps · Corporal",1],["Thruster con barra","Cuádriceps · Barra",1],["Thruster con mancuernas","Cuádriceps · Mancuernas",1],["Olas con battle rope","Hombro · Cuerda",0],["Empuje de trineo","Cuádriceps · Corporal",1],["Arrastre en oso","Core · Corporal",0],["Pull-apart con banda","Hombro · Bandas",0],["Press declinado con barra","Pecho · Barra",1],["Press inclinado en máquina","Pecho · Máquina",0],["Press landmine","Hombro · Barra",1],["Remo landmine","Espalda · Barra",1],["Remo unilateral en polea","Espalda · Polea",0],["Remo polea alta","Espalda · Polea",0],["Hip thrust con mancuernas","Glúteo e isquios · Mancuernas",0],["Abducción de cadera en polea","Glúteo e isquios · Polea",0],["Sentadilla con pausa","Cuádriceps · Barra",2],["Prensa (pies abiertos)","Glúteo e isquios · Máquina",0],["Good morning con mancuernas","Glúteo e isquios · Mancuernas",1],["Curl de muñeca","Brazos · Mancuernas",0],["Press francés con barra EZ","Brazos · Barra",1],["Plancha con toque de hombro","Core · Corporal",0],["Plancha lastrada","Core · Corporal",1],["Sit-Up en GHD","Core · Máquina",2],["Inclinación planche","Hombro · Corporal",1],["Dominada máquina de escribir","Espalda · Barra dominadas",2],["Sentadilla Zercher","Cuádriceps · Barra",2],["Jefferson curl","Glúteo e isquios · Barra, Mancuernas",2],["Ski Erg","Espalda · Máquina",0]];
 function startBuilder(ctx) {
@@ -516,20 +548,19 @@ function addEx(n) {
 function setEx(k, v) { S.ex[k] = v; render(false, true); }
 const progLabel = () => {
   if (!S.progDone) return T('Progresión', 'Progression');
-  if (!S.progFull) return S.autoProg ? T('La app te guía', 'App-guided') : T('Peso a tu aire', 'Your call');
+  if (!S.progFull) return S.autoProg ? T('La app te guía', 'App-guided') : T('Peso manual', 'Manual weight');
   return S.ex.up === 'none' ? T('Sin progresión', 'No progression') : S.ex.how === 'effort' ? T('Por esfuerzo', 'By effort') : T('Por reglas', 'By rules');
 };
 const repsTxt = (e) => e.min === e.max ? e.min : `${e.min}-${e.max}`;
-const tplName = () => S.progName.trim() || (S.bctx === 'trainer' ? T('Plantilla 1', 'Template 1') : T('Mi programa', 'My program'));
+const tplName = () => S.progName.trim() || (S.bctx === 'trainer' ? T(`Programa de ${name()}`, `${name()}’s program`) : T('Mi programa', 'My program'));
 function bbar() {
   const n = S.nSess || 0, e = S.exs.length;
   const items = [
     [n ? `${n} ${T('sesiones', 'sessions')}` : T('Sesiones', 'Sessions'), !!n],
     [e ? `${S.ex.name}` : T('Ejercicios', 'Exercises'), !!e],
     [S.volDone ? `${S.ex.sets}×${repsTxt(S.ex)}` : T('Volumen', 'Volume'), S.volDone],
-    [progLabel(), S.progDone],
   ];
-  return `<div class="bbar"><span class="caps">${S.bctx === 'trainer' ? T('Tu primera plantilla', 'Your first template') : T('Tu programa', 'Your program')}</span>
+  return `<div class="bbar"><span class="caps">${S.bctx === 'trainer' ? T(`El programa de ${name()}`, `${name()}’s program`) : T('Tu programa', 'Your program')}</span>
     <div class="bchips">${items.map(([l, ok]) => `<i class="${ok ? 'on' : ''}">${ok ? '✓ ' : ''}${l}</i>`).join('')}</div></div>`;
 }
 const later = () => `<button class="ghost" onclick="go(builderExit())">${T('Lo termino después', 'Finish later')}</button>`;
@@ -552,20 +583,22 @@ let cur = 'welcome';
 // Tramos de la barra: el progreso se lee por tramo, no por pantalla.
 const SECTIONS = ['Ajustes', 'Tú', 'Configura', 'Aprende'];
 const SEC_OF = {
-  welcome: -1, recover: -1, recovered: -1, lang: 0, units: 0, theme: 0, role: 1,
+  welcome: -1, recover: -1, units: 0, theme: 0, role: 1,
   t_clients: 1, t_groups: 1, t_client: 2, t_account: 2, t_code: 2, t_tplIntro: 2, t_program: 2, t_assign: 2, t_connect: 2, t_self: 2, t_learn: 3,
   c_app: 1, c_code: 2, c_confirm: 2, c_linked: 2, c_ask: 2, c_noapp: 2, c_copy: 2,
   s_level: 1, s_choice: 1, s_goal: 2, s_days: 2, s_props: 2, a_home: 3, input: 3, a_learn: 3, done: 4,
   b_sessions: 2, b_exercise: 2, b_volume: 2, b_prog: 2, b_done: 2,
+  n_source: 2, n_templates: 2, n_done: 2,
 };
 
 function secTotal(sec) {
-  if (sec === 0) return 3;
-  if (sec === 1) return S.role === 'coached' ? 2 : 3;
+  if (sec === 0) return 2;
+  if (sec === 1) return S.viaInvite ? 1 : S.role === 'coached' ? 2 : 3;
   if (sec === 2) {
     if (S.role === 'trainer') {
-      const app = S.clientMode === 'app';
-      return 4 + (app ? (S.account === 'code' ? 3 : 2) : 0) + (S.bctx ? 5 : 1);
+      // cliente, su programa, ¿entrenas?; con app, la cuenta (y el código); constructor (5) o catálogo + asignar (2); invitar si tiene app y programa
+      const app = S.clientMode === 'app', prog = !!S.bctx || !!S.program;
+      return 3 + (app ? (S.account === 'code' ? 2 : 1) : 0) + (S.bctx ? 5 : S.program ? 2 : 0) + (prog && app ? 1 : 0);
     }
     if (S.role === 'self') return S.path === 'own' ? 5 : 3;
     if (S.coachApp === 'code') return 3;
@@ -582,7 +615,7 @@ function sectionProgress(id) {
 
 // Saltar = saltar el tramo con los valores por defecto.
 const SKIP_TO = {
-  lang: 'role', units: 'role', theme: 'role',
+  units: afterSettings, theme: afterSettings,
   t_clients: 't_client', t_groups: 't_client',
   // La cuenta no se salta: sin ella el cliente con app no tiene código.
   t_client: 't_learn', t_tplIntro: afterAssign, t_program: afterAssign, t_assign: afterAssign, t_connect: 't_self', t_self: 't_learn', t_learn: 'done',
@@ -591,7 +624,10 @@ const SKIP_TO = {
   a_home: 'done', input: 'done', a_learn: 'done',
   b_sessions: builderExit, b_exercise: builderExit, b_volume: builderExit, b_prog: builderExit, b_done: builderExit,
 };
-function afterAssign() { return S.clientMode === 'app' ? 't_connect' : 't_self'; }
+// Invitar solo con app Y con programa asignado: un código sin programa le da error al cliente al canjearlo.
+function afterAssign() { return S.clientMode === 'app' && S.assigned ? 't_connect' : 't_self'; }
+// Por invitación (forma://join/CÓDIGO): ni bifurcación ni «¿usa la app?», el código ya viene puesto.
+function afterSettings() { return S.viaInvite ? 'c_code' : 'role'; }
 const skipTarget = () => typeof SKIP_TO[cur] === 'function' ? SKIP_TO[cur]() : SKIP_TO[cur];
 
 function go(id, opts = {}) {
@@ -615,70 +651,37 @@ const name = () => S.clientName.trim() || 'Ana';
 // ════════ PANTALLAS ════════
 const SCREENS = {
   welcome: {
-    note: ['Bienvenida', 'Una sola pantalla, sin texto que leer. «Ya tengo cuenta» es para quien reinstala o cambia de móvil: recupera con su código o Google y se salta todo.', []],
+    note: ['Bienvenida', 'Una sola pantalla, sin texto que leer. El <b>idioma</b> va aquí, arriba a la derecha, con el del móvil ya marcado: toda la pantalla cambia al tocarlo y no cuesta una pantalla propia (hoy no se detecta: <code>i18n.js</code> fija «es»; basta con <code>Intl</code>). «Ya tengo cuenta» es para quien reinstala o cambia de móvil. Si llegó por un <b>enlace de invitación</b>, una línea azul lo dice y el recorrido se salta la bifurcación.', ['data']],
     html: () => `
-      <div class="brand"><span class="forma">Forma</span>${FIT_SVG}</div>
+      <div style="position:relative">
+        <div class="brand"><span class="forma">Forma</span>${FIT_SVG}</div>
+        <div class="langsw">${[['es','ES'],['en','EN']].map(([v, l]) => `<b class="${S.lang === v ? 'on' : ''}" onclick="S.lang='${v}';render(false,true)">${l}</b>`).join('')}</div>
+      </div>
       <div class="hero">${T('Tu programa,<br>tus series,<br><em>tu progreso</em>', 'Your program,<br>your sets,<br><em>your progress</em>')}</div>
       <div class="tagline">${T('Lo dejamos a tu medida en dos minutos', 'Two minutes to make it yours')}</div>
+      ${S.viaInvite ? `<div class="invited">${T('Marta te ha invitado. Al final de los ajustes te conectamos con ella.', 'Marta invited you. Right after the settings we’ll connect you.')}</div>` : ''}
       <div class="journey">${SECTIONS.map(s => `<div><i></i><span>${s}</span></div>`).join('')}</div>
       <div class="panel">
         <div class="pt">${T('¿Empezamos?', 'Shall we?')}</div>
-        <button class="cta" onclick="go('lang')">${T('Empezar', 'Start')}</button>
+        <button class="cta" onclick="go('units')">${T('Empezar', 'Start')}</button>
         <button class="ghost" onclick="go('recover')">${T('Ya tengo cuenta', 'I already have an account')}</button>
       </div>`,
   },
   recover: {
-    note: ['Ya tengo cuenta', 'Una sola puerta para todo lo que hoy se recupera por cuatro sitios distintos: la cuenta de entrenador (Apple, Google o código de 12, <code>TrainerSyncModal</code>), la conexión con el entrenador (la cuenta que vinculó el cliente, <code>ClientGoogleLinkModal</code>), Pro (RevenueCat atado a la misma cuenta, M01 §3) y la copia de seguridad (Drive o archivo). Entra una vez y la app busca en todos. Lo que no está en ninguna cuenta (el programa y el historial de quien entrena por su cuenta) solo vuelve con la copia.', ['real']],
+    note: ['Ya tengo cuenta · versión mínima', 'Tres entradas, cada una abre lo que la app ya tiene: la recuperación de <code>TrainerSyncModal</code> (Apple, Google o código de 12), la reconexión del cliente con su cuenta (<code>ClientCodeModal</code> con <code>startWithSocial</code>, <code>ClientGoogleLinkModal</code>) y <code>DriveBackupScreen</code> o el archivo <code>.fitdata</code>. Pro vuelve con la misma cuenta o con «Restaurar compras» del paywall. Al terminar cualquiera, a la app. <b>Aparcado</b>: un solo login que lo busque todo y la pantalla «Esto es lo que había» (necesitan una búsqueda conjunta por identidad que hoy no existe).', ['real']],
     html: () => `
       <div class="h">${T('Recupera lo *tuyo*', 'Get *your stuff* back')}</div>
-      <p class="sub">${T('Entra con lo que usaste la otra vez y te devolvemos todo lo que encontremos.', 'Sign in with what you used before and we’ll bring back everything we find.')}</p>
+      <p class="sub">${T('¿Qué tenías en el otro móvil?', 'What did you have on your other phone?')}</p>
       <div class="opts">
-        <button class="opt" onclick="recoverWith('apple')"><span><b>${T('Continuar con Apple', 'Continue with Apple')}</b><small>${T('Clientes, entrenador y Pro', 'Clients, coach and Pro')}</small></span><span class="rec">iPhone</span></button>
-        <button class="opt" onclick="recoverWith('google')"><span><b>${T('Continuar con Google', 'Continue with Google')}</b><small>${T('Clientes, entrenador, Pro y copias de Drive', 'Clients, coach, Pro and Drive backups')}</small></span></button>
-        <button class="opt" onclick="recoverWith('code')"><span><b>${T('Tengo un código de entrenador', 'I have a coach code')}</b><small>${T('Los doce caracteres que guardaste', 'The twelve characters you saved')}</small></span></button>
-        <button class="opt" onclick="recoverWith('backup')"><span><b>${T('Solo tengo una copia de seguridad', 'I only have a backup')}</b><small>${T('De Google Drive o un archivo .fitdata', 'From Google Drive or a .fitdata file')}</small></span></button>
+        <button class="opt" onclick="recoverWith('trainer')"><span><b>${T('Mi cuenta de entrenador', 'My coach account')}</b><small>${T('Con Apple, Google o tu código de 12. Vuelven tus clientes.', 'With Apple, Google or your 12-character code. Your clients come back.')}</small></span></button>
+        <button class="opt" onclick="recoverWith('client')"><span><b>${T('Entreno con un entrenador', 'I train with a coach')}</b><small>${T('Con la cuenta que vinculaste. Vuelve tu programa.', 'With the account you linked. Your program comes back.')}</small></span></button>
+        <button class="opt" onclick="recoverWith('backup')"><span><b>${T('Una copia de seguridad', 'A backup')}</b><small>${T('De Google Drive o un archivo .fitdata. Programas e historial.', 'From Google Drive or a .fitdata file. Programs and history.')}</small></span></button>
       </div>
       <div class="note blue"><span>${T('<b>¿Entrenabas con un entrenador y no vinculaste cuenta?</b> Pídele un código nuevo: tu historial se conserva.', '<b>Trained with a coach without linking an account?</b> Ask for a new code: your history is kept.')}</span></div>`,
-  },
-  recovered: {
-    note: ['Ya tengo cuenta · lo encontrado', 'Como el «preparando» de las propuestas: cada cosa se marca al encontrarla, y lo que no está sale en gris, sin alarma. La copia de Drive pide confirmación porque restaurar sustituye los datos del móvil (en un móvil recién instalado no se pierde nada). Si se recupera algo, el onboarding entero se salta: va directo a la app.', ['real']],
-    after: () => document.querySelectorAll('.prep div').forEach((r, i) => setTimeout(() => r.classList.add('ok'), 400 + i * 380)),
-    html: () => {
-      const k = S.recoverKind;
-      const items = k === 'backup'
-        ? [[true, T('Copia del 10 oct · programas e historial', 'Backup from Oct 10 · programs and history')]]
-        : [
-          [k !== 'backup', T('Cuenta de entrenador · 3 clientes', 'Coach account · 3 clients')],
-          [k !== 'code', T('Conexión con Marta · «Hipertrofia 4 días»', 'Linked to Marta · «Hipertrofia 4 días»')],
-          [k !== 'code', 'Forma Pro'],
-          [k === 'google', T('Copia de Drive del 10 oct · programas e historial', 'Drive backup from Oct 10 · programs and history')],
-        ];
-      return `
-      <div class="h">${T('Esto es lo que *había*', 'Here’s what we *found*')}</div>
-      <p class="sub">${k === 'code' ? T('Con el código vuelven tus clientes. Tu programa y tu historial, con una copia.', 'The code brings your clients back. Your program and history need a backup.') : T('Se ha recuperado en este móvil.', 'Restored on this phone.')}</p>
-      <div class="prep">${items.map(([ok, l]) => `<div class="${ok ? '' : 'miss'}"><i>✓</i>${ok ? l : l + ' · ' + T('no había', 'none')}</div>`).join('')}</div>
-      ${k === 'code' ? `<button class="linkbtn" style="align-self:flex-start;margin-top:8px" onclick="recoverWith('backup')">${T('Restaurar una copia de seguridad →', 'Restore a backup →')}</button>` : ''}
-      <div class="panel">
-        <div class="pd">${T('Todo lo demás, como lo dejaste.', 'Everything else, just as you left it.')}</div>
-        <button class="cta" onclick="restart()">${T('Ir a la app', 'Go to the app')}</button>
-      </div>`;
-    },
-  },
-  lang: {
-    note: ['Idioma', 'Viene marcado el del móvil; tocar avanza solo. Si se queda, es un toque de coste. Alternativa: quitarla y dejar «cambiar idioma» como enlace en la bienvenida.', ['data']],
-    html: () => `
-      <div class="eyebrow">1 · ${T('Idioma', 'Language')}</div>
-      <div class="h">${T('¿En qué idioma?', 'Which language?')}</div>
-      <p class="sub">${T('Hemos puesto el de tu móvil.', 'We picked your phone’s.')}</p>
-      <div class="opts">
-        ${opt('lang','es','🇪🇸','Español','', 'units')}
-        ${opt('lang','en','🇬🇧','English','', 'units')}
-      </div>`,
   },
   units: {
     note: ['Unidades', 'Dos baldosas grandes, avanza al tocar. El número de ejemplo enseña lo que cambia en vez de explicarlo.', ['data']],
     html: () => `
-      <div class="eyebrow">2 · ${T('Unidades', 'Units')}</div>
       <div class="h">${T('¿Kilos o libras?', 'Kilos or pounds?')}</div>
       <p class="sub">${T('Se cambia cuando quieras en el menú.', 'You can change it any time.')}</p>
       <div class="grid2">
@@ -703,27 +706,27 @@ const SCREENS = {
         <span class="pill">${T('EMPEZAR', 'START')}</span>
       </div>
       <div class="spacer"></div>
-      <button class="cta" onclick="go('role')">${T('Siguiente', 'Next')}</button>`,
+      <button class="cta" onclick="go(afterSettings())">${T('Siguiente', 'Next')}</button>`,
   },
   input: {
-    note: ['Aprende · cómo apuntas', 'Ahora va en Aprende, justo antes de las tarjetas, y solo para quien entrena: es una práctica, no un ajuste. Es la práctica de «cómo rellenar una serie» disfrazada de pregunta: arrastra la celda en un modo y en el otro, y quédate con el que te guste. Guarda <code>profile.scrubRuler</code>, que ya existe en Preferencias.', ['data','sim']],
+    note: ['Aprende · cómo apuntas', 'Va en Aprende, justo antes de las tarjetas, y solo para quien entrena: es la práctica de «cómo rellenar una serie» disfrazada de pregunta. Guarda <code>profile.scrubRuler</code> (Preferencias, por defecto con regla). <b>Comprobado en <code>SetRow.jsx</code></b>: los dos modos se arrastran a los lados. Sin regla, la cifra cambia en la casilla mientras arrastras, con chevrones y borde lima. Con regla, la casilla no se mueve: sale la regla con el valor bajo el dedo y se guarda al soltar.', ['data','sim']],
     html: () => {
       const ruler = S.input !== 'scroll';
+      const cell = (k, step, v, lbl) => `<div class="cell ${ruler ? 'r' : ''}" data-k="${k}" data-step="${step}">${ruler ? '' : '<i class="chv l">‹</i><i class="chv r">›</i>'}<div class="bubble"></div><span id="v${k}">${v}</span><em>${lbl}</em>${ruler ? '<div class="ruler"></div>' : ''}</div>`;
       return `
-      <div class="eyebrow">4 · ${T('Registrar series', 'Logging sets')}</div>
       <div class="h">${T('Pruébalo: arrastra el peso', 'Try it: drag the weight')}</div>
       <p class="sub">${T('Así se apunta una serie en el entreno. Elige cómo te resulta más cómodo.', 'This is how you log a set. Pick what feels best.')}</p>
       <div class="demo">
         <div class="setrow">
           <span class="lbl">S1</span>
-          <div class="cell ${ruler?'':'v'}" id="cellKg" data-k="kg" data-step="2.5"><div class="bubble"></div><span id="vkg">${fmt(S.kg)}</span><em>${S.unit.toUpperCase()}</em><div class="ruler"></div></div>
-          <div class="cell ${ruler?'':'v'}" id="cellReps" data-k="reps" data-step="1"><div class="bubble"></div><span id="vreps">${S.reps}</span><em>REPS</em><div class="ruler"></div></div>
+          ${cell('kg', 2.5, fmt(S.kg), S.unit.toUpperCase())}
+          ${cell('reps', 1, S.reps, 'REPS')}
         </div>
-        <div class="hint">${ruler ? T('← desliza a los lados →', '← slide sideways →') : T('↑ desliza arriba o abajo ↓', '↑ slide up or down ↓')}</div>
+        <div class="hint">${T('← desliza a los lados →', '← slide sideways →')}</div>
       </div>
       <div class="opts">
-        <button class="opt ${ruler?'on':''}" onclick="S.input='ruler';render(false,true)"><span class="ico">📏</span><span><b>${T('Con regla', 'With a ruler')}</b><small>${T('Aparece una regla y ves cada paso. Más preciso.', 'A ruler shows every step. More precise.')}</small></span></button>
-        <button class="opt ${!ruler?'on':''}" onclick="S.input='scroll';render(false,true)"><span class="ico">👆</span><span><b>${T('Solo deslizar', 'Just swipe')}</b><small>${T('El número sube y baja con el dedo. Más rápido.', 'The number follows your finger. Faster.')}</small></span></button>
+        <button class="opt ${ruler?'on':''}" onclick="S.input='ruler';render(false,true)"><span class="ico">📏</span><span><b>${T('Con regla', 'With a ruler')}</b><small>${T('Sale una regla bajo el dedo y se guarda al soltar. Más preciso.', 'A ruler appears under your finger; it saves when you let go. More precise.')}</small></span></button>
+        <button class="opt ${!ruler?'on':''}" onclick="S.input='scroll';render(false,true)"><span class="ico">👆</span><span><b>${T('Solo deslizar', 'Just swipe')}</b><small>${T('La cifra cambia en la casilla mientras arrastras. Más rápido.', 'The number changes in the box as you drag. Faster.')}</small></span></button>
       </div>
       <div class="spacer"></div>
       <button class="cta" onclick="if(!S.input)S.input='ruler';go('a_learn')">${T('Me quedo con este', 'Use this one')}</button>`;
@@ -731,13 +734,13 @@ const SCREENS = {
     after: bindCells,
   },
   role: {
-    note: ['La bifurcación', 'La única pantalla obligatoria (no tiene «Saltar»). Pregunta la situación, no la identidad, y «tengo entrenador» sale en primera fila. Cada respuesta abre un camino distinto del mapa.', ['data']],
+    note: ['La bifurcación', 'La única pantalla obligatoria (no tiene «Saltar»). Pregunta la situación, no la identidad, y «tengo entrenador» sale en primera fila. Cada respuesta abre un camino distinto del mapa. El rol decide las pestañas: «por mi cuenta» y «con entrenador» ocultan las de entrenador (<code>proTabsHidden: true</code>; hoy todos las ven por defecto). Quien llega por invitación no pasa por aquí.', ['data']],
     html: () => `
       <div class="eyebrow">${T('Sobre ti', 'About you')}</div>
       <div class="h">${T('¿Cómo entrenas?', 'How do you train?')}</div>
       <p class="sub">${T('Así te llevamos directo a lo tuyo.', 'So we take you straight to what matters.')}</p>
       <div class="opts">
-        ${opt('role','self','🏋️', T('Por mi cuenta','On my own'), T('Sigo un programa o me lo monto yo','I follow a program or build my own'), 's_level', true)}
+        ${opt('role','self','🏋️', T('Por mi cuenta','On my own'), T('Sigo un programa o creo el mío','I follow a program or create my own'), 's_level', true)}
         ${opt('role','coached','🤝', T('Con un entrenador','With a coach'), T('Alguien me prepara el programa','Someone writes my program'), 'c_app', true)}
         ${opt('role','trainer','📋', T('Soy entrenador/a','I’m a coach'), T('Preparo programas para mis clientes','I write programs for clients'), 't_clients', true)}
       </div>`,
@@ -767,7 +770,7 @@ const SCREENS = {
       </div>`,
   },
   t_client: {
-    note: ['Entrenador · crea tu primer cliente', 'Real: es la hoja «Nuevo cliente» de Clientes, con su pregunta «¿Cómo va a entrenar?» y sus textos. Con la app → hace falta una cuenta en la nube para darle código (en la app, sin nube ni se pregunta), así que la siguiente pantalla es la cuenta. Le apuntas tú → sin cuenta, se sigue al programa. Sin opción de grupo.', ['real']],
+    note: ['Entrenador · crea tu primer cliente', 'Real: es la hoja «Nuevo cliente» de Clientes, con su pregunta «¿Cómo va a entrenar?» y sus textos. Con la app → hace falta una cuenta en la nube para darle código (en la app, sin nube ni se pregunta), así que la siguiente pantalla es la cuenta. Le apuntas tú → sin cuenta, se sigue al programa. Sin opción de grupo. <b>Por debajo</b>: «Crear cliente» lo crea siempre sin app (<code>createClient(name)</code>); con «con la app», al tener la cuenta pasa a la app con <code>moveClientToApp</code>, que genera su código. Hoy <code>createClient</code> con app pero sin cuenta lo deja sin app y no avisa.', ['real']],
     html: () => `
       <div class="h">${T('Crea tu primer *cliente*', 'Add your first *client*')}</div>
       <p class="sub">${T('El nombre y cómo va a entrenar. Lo demás, desde su ficha.', 'A name and how they’ll train. The rest from their profile.')}</p>
@@ -798,7 +801,7 @@ const SCREENS = {
       <button class="ghost" onclick="toast('→ recuperar cuenta de entrenador (código / Google / Apple)')">${T('Ya tengo cuenta de entrenador', 'I already have a coach account')}</button>`,
   },
   t_code: {
-    note: ['Entrenador · tu código personal', 'Real (<code>code_reveal</code> de <code>TrainerSyncModal</code>, 12 caracteres). Es el paso que más importa del camino del entrenador: sin el código pierde la cuenta y a sus clientes. Por eso el botón no se activa hasta que lo copia o se lo envía (la app hoy no lo exige: propuesta), y «Todo listo» lo recuerda. La salida a Google/Apple está a mano para quien prefiera no depender de un código.', ['real']],
+    note: ['Entrenador · tu código personal', 'Real (<code>code_reveal</code> de <code>TrainerSyncModal</code>, 12 caracteres). Es el paso que más importa del camino del entrenador: sin el código pierde la cuenta y a sus clientes. Por eso el botón no se activa hasta que lo copia o se lo envía, aquí y también en <code>TrainerSyncModal</code> fuera del onboarding (hoy no lo exige), y «Todo listo» lo recuerda. La salida a Google/Apple está a mano para quien prefiera no depender de un código.', ['real']],
     html: () => `
       <div class="h">${T('Tu código *personal*', 'Your *personal* code')}</div>
       <p class="sub">${T('Es la llave de tu cuenta: con él recuperas a tus clientes si cambias de móvil o reinstalas la app.', 'It’s the key to your account: it brings your clients back on a new phone or a reinstall.')}</p>
@@ -813,34 +816,37 @@ const SCREENS = {
       <button class="ghost" onclick="S.account=null;back()">${T('Prefiero Google o Apple', 'I’d rather use Google or Apple')}</button>`,
   },
   t_tplIntro: {
-    note: ['Entrenador · su programa', 'La recomendada es montar su primera plantilla con el constructor guiado: ve el editor real, invierte tres minutos en algo suyo y sale con una plantilla que reutiliza. El catálogo queda como atajo, y «después» siempre existe. Ojo con el plan gratis: 1 plantilla de programa (M01), así que esta es la suya.', ['real']],
+    note: ['Entrenador · su programa', 'La recomendada es <b>montarle su programa</b> con el constructor guiado: ve el editor real e invierte tres minutos en algo suyo. <b>Es el programa del cliente, no una plantilla</b> (<code>createProgramForClient</code>): asignar una plantilla copia el programa, así que lo que completara luego en la plantilla no le llegaría al cliente, y tendría dos cosas a medias que seguir editando. Así hay una sola: se sigue en Clientes → {cliente} y cada cambio le llega con «↑ Enviar». De paso no gasta la única plantilla gratis. Las plantillas se enseñan en Aprende (guardar su programa como plantilla). El catálogo queda como atajo, y «después» siempre existe. <b>Con «Lo hago después» no hay invitación</b>: un código sin programa le da error al cliente («El entrenador aún no ha subido ningún programa»), así que se salta a «¿Y tú también entrenas?» e invitar queda pendiente en «Listo».', ['real']],
     html: () => `
       <div class="h">${T('Ahora, el programa de', 'Now, a program for')} ${name()}</div>
-      <p class="sub">${T('Monta tu primera plantilla: la usarás con este cliente y con los siguientes.', 'Build your first template: use it for this client and the next ones.')}</p>
+      <p class="sub">${T(`Es suyo: lo empiezas aquí y lo sigues editando desde su ficha.`, `It’s theirs: start it here and keep editing from their profile.`)}</p>
       <div class="opts">
-        <button class="opt big" onclick="startBuilder('trainer')"><span><b>${T('Montar mi primera plantilla','Build my first template')}</b><small>${T('Sesiones, un ejercicio y su progresión. Lo demás, cuando quieras.','Sessions, one exercise and its progression. The rest whenever you like.')}</small></span><span class="rec">~3 min</span></button>
-        <button class="opt" onclick="go('t_program')"><span><b>${T('Partir de una del catálogo','Start from the catalog')}</b><small>${T('Full Body, Upper/Lower, PPL…','Full Body, Upper/Lower, PPL…')}</small></span></button>
+        <button class="opt big" onclick="startBuilder('trainer')"><span><b>${T('Crear su programa','Create their program')}</b><small>${T('Sesiones, un ejercicio y su progresión. Lo demás, cuando quieras.','Sessions, one exercise and its progression. The rest whenever you like.')}</small></span><span class="rec">~3 min</span></button>
+        <button class="opt" onclick="go('t_program')"><span><b>${T('Partir de uno del catálogo','Start from the catalog')}</b><small>${T('Full Body, Upper/Lower, PPL… Se le copia y lo ajustas en su ficha.','Full Body, Upper/Lower, PPL… It’s copied to them; tweak it in their profile.')}</small></span></button>
       </div>
+      ${S.clientMode === 'app' ? `<p class="fhint">${T(`La invitación a ${name()} va después de darle programa: es lo primero que verá al meter el código.`, `${name()}’s invite comes after giving them a program: it’s the first thing they’ll see with the code.`)}</p>` : ''}
       <div class="spacer"></div>
       <button class="ghost" onclick="go(afterAssign())">${T('Lo hago después', 'Later')}</button>`,
   },
   t_assign: {
-    note: ['Entrenador · asignar', 'Real (C07, «Asignar programa»), y con las piezas de verdad: la plantilla como en Plantillas y la fila del cliente tal cual sale en Clientes (C08: avatar con su color, «Sin programa» y el botón «+ Programar»; con app, el reloj de «esperando código»). Al asignar, la fila cambia delante de él: programa, etapa y los cuadraditos de la semana. Es el gesto que repetirá con cada cliente.', ['real']],
+    note: ['Entrenador · asignar (solo desde el catálogo)', 'Solo sale si parte del catálogo: lo montado con el constructor ya es suyo y no se asigna. Real (C07, «Asignar programa»): se le copia y se ajusta en su ficha. Con las piezas de verdad: el programa como en Plantillas y la fila del cliente tal cual sale en Clientes (C08: avatar con su color, «Sin programa» y el botón «+ Programar»; con app, el reloj de «esperando código»). Al asignar, la fila cambia delante de él: programa, etapa y los cuadraditos de la semana. Es el gesto que repetirá con cada cliente. <b>Asignar también envía</b>: en la app, asignar solo marca el programa como pendiente («Cambios sin enviar»); aquí se sube al momento (<code>uploadProgramToClient</code>) para que el código funcione en cuanto lo canjee. ', ['real']],
     html: () => `
-      <div class="h">${S.assigned ? T('Asignada a', 'Assigned to') + ' ' + name() : T('Asígnasela a', 'Assign it to') + ' ' + name()}</div>
-      <p class="sub">${T('Cada cliente recibe su copia y avanza a su ritmo. La plantilla queda para el siguiente.', 'Each client gets a copy and moves at their pace. The template stays for the next one.')}</p>
-      <span class="fl">${T('Plantilla', 'Template')}</span>
+      <div class="h">${S.assigned ? T('Asignado a', 'Assigned to') + ' ' + name() : T('Asígnaselo a', 'Assign it to') + ' ' + name()}</div>
+      <p class="sub">${S.clientMode === 'app'
+        ? T(`Se le copia y se le envía: lo tendrá en cuanto meta su código. Lo ajustas en su ficha.`, `It’s copied and sent: they get it as soon as they enter the code. Tweak it in their profile.`)
+        : T('Se le copia: lo ajustas en su ficha sin tocar el del catálogo.', 'It’s copied to them: tweak it in their profile without touching the catalog one.')}</p>
+      <span class="fl">${T('Del catálogo', 'From the catalog')}</span>
       ${tplCard()}
       <div class="arrowdown">↓</div>
       <span class="fl">${T('Así lo verás en Clientes', 'How it looks in Clients')}</span>
       <div class="clist">${clientRow()}</div>
       <div class="spacer"></div>
-      <button class="cta" ${S.assigned ? 'disabled' : ''} onclick="assignNow()">${S.assigned ? '✓ ' + T('Asignada', 'Assigned') : T('Asignar', 'Assign')}</button>`,
+      <button class="cta" ${S.assigned ? 'disabled' : ''} onclick="assignNow()">${S.assigned ? '✓ ' + T('Asignado', 'Assigned') : T('Asignar', 'Assign')}</button>`,
   },
   t_program: {
     note: ['Entrenador · desde el catálogo', 'El atajo: elige una del catálogo y pasa a asignarla, con la misma pantalla de la fila del cliente.', ['real']],
     html: () => `
-      <div class="h">${T('Elige una para', 'Pick one for')} ${name()}</div>
+      <div class="h">${T('Elige uno para', 'Pick one for')} ${name()}</div>
       <p class="sub">${T('La ajustas después todo lo que quieras.', 'Tweak it later as much as you like.')}</p>
       <div class="opts">
         ${tpl('fb','Full Body · 3 días', T('3 sesiones · 8 semanas','3 sessions · 8 weeks'), ['A','B','C'])}
@@ -872,7 +878,7 @@ const SCREENS = {
     html: () => `
       ${bbar()}
       <div class="h">${T('Añade el primer *ejercicio*', 'Add the first *exercise*')}</div>
-      ${S.picker && !S.exs.length ? '' : `<p class="sub">${T('Con uno basta para ver cómo va. El resto lo rellenas luego.', 'One is enough to see how it works. Fill the rest later.')}</p>`}
+      ${S.picker && !S.exs.length ? '' : `<p class="sub">${T('Con uno basta para ver cómo funciona. El resto lo rellenas luego.', 'One is enough to see how it works. Fill the rest later.')}</p>`}
       <div class="sblock">
         <div class="shead"><span class="l">A</span>${T('Sesión A', 'Session A')}<small>${S.exs.length} ${T('ej.', 'ex.')}</small></div>
         ${S.exs.map(e => `<div class="exrow">${e.name}<small>${e.sets}×${repsTxt(e)}</small></div>`).join('')}
@@ -907,7 +913,7 @@ const SCREENS = {
         </div>
         <div class="field"><span class="fl">${T('Descanso', 'Rest')}</span>${sgc('rest', [[60,'1:00'],[90,'1:30'],[120,'2:00'],[180,'3:00']])}</div>`}
       <div class="spacer"></div>
-      <button class="cta" onclick="if(S.ex.max<S.ex.min)S.ex.max=S.ex.min;S.volDone=true;go('b_prog')">${T('Siguiente', 'Next')}</button>
+      <button class="cta" onclick="if(S.ex.max<S.ex.min)S.ex.max=S.ex.min;S.volDone=true;go('b_done')">${T('Siguiente', 'Next')}</button>
       ${later()}`;
     },
   },
@@ -916,51 +922,59 @@ const SCREENS = {
     html: () => S.progFull ? progFull() : progSimple(),
   },
   b_done: {
-    note: ['Constructor · listo', 'El cierre: se ve lo construido (A con su ejercicio, el resto vacías) y se dice dónde seguir. Nombre opcional, con uno puesto. El entrenador sigue a asignarla; el resto, a «Aprende».', ['real']],
+    note: ['Constructor · listo', 'El cierre: se ve lo construido (A con su ejercicio, el resto vacías) y se dice dónde seguir. Nombre opcional, con uno puesto. <b>Entrenador</b>: no hay paso de asignar, porque ya es el programa del cliente. Debajo, su fila de Clientes con el programa puesto, y el botón lo guarda y se lo envía (con app), para que el código funcione en cuanto lo canjee. B y C le llegan vacías y se rellenan desde su ficha, con «↑ Enviar» como cualquier cambio. El resto sigue a «Aprende».', ['real']],
     html: () => `
       ${bbar()}
       <div class="eyebrow">${T('¡Hecho!', 'Done!')}</div>
-      <div class="h">${S.bctx === 'trainer' ? T('Tu plantilla ya tiene forma', 'Your template is taking shape') : T('Tu programa ya tiene forma', 'Your program is taking shape')}</div>
+      <div class="h">${S.bctx === 'trainer' ? T(`El programa de ${name()} ya tiene *forma*`, `${name()}’s program is taking *shape*`) : T('Tu programa ya tiene forma', 'Your program is taking shape')}</div>
       <input class="input" style="margin:6px 0 12px" placeholder="${tplName()}" value="${S.progName}" oninput="S.progName=this.value">
+      ${S.bctx === 'trainer' ? (() => {
+        // Entrenador: lo construido ya lo dice la barra de arriba; aquí, dónde vive y dónde se sigue.
+        const rest = LETTERS.slice(1, S.nSess).split('').join(T(' y ', ' and '));
+        return `
+      <span class="fl" style="margin-top:6px">${T('Así lo verás en Clientes', 'How it looks in Clients')}</span>
+      <div class="clist">${clientRow({ line: ['', `${tplName()} · ${T('Etapa 1', 'Stage 1')}`] })}</div>
+      <div class="note acc">✏️ <span>${rest
+        ? T(`Las sesiones ${rest} están vacías. Rellénalas en <b>Clientes → ${name()}</b>: cada cambio le llega con «↑ Enviar».`, `Sessions ${rest} are empty. Fill them in <b>Clients → ${name()}</b>: each change reaches them with «↑ Send».`)
+        : T(`Sigue editándolo en <b>Clientes → ${name()}</b>: cada cambio le llega con «↑ Enviar».`, `Keep editing in <b>Clients → ${name()}</b>: each change reaches them with «↑ Send».`)}</span></div>`;
+      })() : `
       <div class="sblock">
         <div class="shead"><span class="l">A</span>${T('Sesión A', 'Session A')}<small>1 ${T('ej.', 'ex.')}</small></div>
-        <div class="exrow">${S.ex.name}<small>${S.ex.sets}×${repsTxt(S.ex)} · ${progLabel()}</small></div>
+        <div class="exrow">${S.ex.name}<small>${S.ex.sets}×${repsTxt(S.ex)}</small></div>
       </div>
       ${LETTERS.slice(1, S.nSess).split('').map(l => `<div class="sblock dim"><div class="shead"><span class="l">${l}</span>${T('Sesión', 'Session')} ${l}<small>${T('vacía', 'empty')}</small></div></div>`).join('')}
-      <div class="note acc">✏️ <span>${T('Sigue editándolo cuando termines: <b>Programa → ' + tplName() + '</b>. Copiar sesiones, etapas, vincular ejercicios… todo está ahí.', 'Keep editing when you’re done: <b>Program → ' + tplName() + '</b>.')}</span></div>
+      <div class="note acc">✏️ <span>${T('Sigue editándolo cuando termines: <b>Programa → ' + tplName() + '</b>. Ahí cambias también cómo progresa cada ejercicio.', 'Keep editing when you’re done: <b>Program → ' + tplName() + '</b>.')}</span></div>`}
       <div class="spacer"></div>
-      <button class="cta" onclick="S.program=S.bctx==='trainer'?'tpl1':'own';go(builderExit())">${S.bctx === 'trainer' ? T('Asignar a', 'Assign to') + ' ' + name() : T('Guardar', 'Save')}</button>`,
+      <button class="cta" onclick="S.program=S.bctx==='trainer'?'tpl1':'own';go(builderExit())">${S.bctx !== 'trainer' ? T('Guardar', 'Save') : S.clientMode === 'app' ? T(`Guardar y enviar a ${name()}`, `Save and send to ${name()}`) : T('Guardar', 'Save')}</button>`,
   },
   t_connect: {
-    note: ['Entrenador · invítale', 'Solo si entrena con la app. Real: su código de cliente (8 caracteres, C01) y la invitación con enlace (M01-04: el texto y el enlace son los de la app, <code>clients.codeCard.shareText</code> y <code>src/config/web.js</code>). Va después de asignar porque al canjear el código el cliente recibe el programa en ese momento. La fila de Clientes lleva el reloj de «esperando código» hasta que lo canjee.', ['real']],
+    note: ['Entrenador · invítale', 'Solo si entrena con la app <b>y ya tiene programa asignado</b> (sin programa, el código le daría error). Real: su código de cliente (8 caracteres, C01) y la invitación con enlace (M01-04: el texto y el enlace son los de la app, <code>clients.codeCard.shareText</code> y <code>src/config/web.js</code>). Va después de asignar porque al canjear el código el cliente recibe el programa en ese momento. La fila de Clientes lleva el reloj de «esperando código» hasta que lo canjee. <b>Al volver de compartir, avanza solo</b> (en iOS solo si compartió; en Android no se distingue y avanza siempre, y no pasa nada: el código sigue en su ficha y en «Listo» queda «Esperando a que meta su código»). «Lo envío después» es la salida sin compartir.', ['real']],
     html: () => `
       <div class="h">${T('Invita a', 'Invite')} ${name()}</div>
-      <p class="sub">${S.assigned
-        ? T(`Cuando meta su código, recibirá «${tplLabel()}» en su Inicio y te llegarán sus entrenos.`, `Once they enter the code, «${tplLabel()}» lands on their Home and their workouts reach you.`)
-        : T('Cuando meta su código, te llegarán sus entrenos. El programa se lo asignas cuando quieras.', 'Once they enter the code, their workouts reach you. Assign a program whenever you like.')}</p>
+      <p class="sub">${T(`Cuando meta su código, recibirá «${tplLabel()}» en su Inicio y te llegarán sus entrenos.`, `Once they enter the code, «${tplLabel()}» lands on their Home and their workouts reach you.`)}</p>
       <div class="bigcode"><div class="c">XK7M-2P4T</div><small>${T('Su código de cliente', 'Their client code')}</small></div>
       <button class="btn2" style="width:100%" onclick="toast('${T('Código copiado', 'Code copied')}')">${T('Copiar código', 'Copy code')}</button>
       <span class="fl" style="margin-top:20px">${T('En Clientes, hasta que lo meta', 'In Clients, until they enter it')}</span>
       <div class="clist">${clientRow()}</div>
       <div class="spacer"></div>
-      <button class="cta" onclick="share('invite')">${T('Enviar invitación', 'Send invite')}</button>
-      <button class="ghost" onclick="go('t_self')">${T('Siguiente', 'Next')}</button>`,
+      <button class="cta" onclick="share('invite', 't_self')">${T('Enviar invitación', 'Send invite')}</button>
+      <button class="ghost" onclick="go('t_self')">${T('Lo envío después', 'I’ll send it later')}</button>`,
   },
   t_self: {
-    note: ['Entrenador · ¿también entrenas tú?', 'Sí → empalma con «por mi cuenta» (nivel, plantillas) y después elige cómo ve su Inicio y cómo apunta. No → Clientes pasa a ser su pantalla principal y se salta esas dos preguntas, que no le sirven.', ['data']],
+    note: ['Entrenador · ¿también entrenas tú?', 'Sí → empalma con «por mi cuenta» (nivel, plantillas) y después elige cómo ve su Inicio y cómo apunta. No → la app arranca en Clientes (Inicio sigue ahí, solo deja de ser la pestaña de entrada) y se salta esas dos preguntas, que no le sirven.', ['data']],
     html: () => `
       <div class="h">${T('¿Y tú también *entrenas*?', 'Do you *train* too?')}</div>
       <p class="sub">${T('Muchos entrenadores llevan aquí su propio programa.', 'Many coaches track their own program here.')}</p>
       <div class="opts">
         ${opt('alsoTrains','yes','', T('Sí, quiero llevar el mío','Yes, I’ll track mine'), T('Te ayudamos a elegir programa','We’ll help you pick a program'), 's_level')}
-        ${opt('alsoTrains','no','', T('No, solo clientes','No, clients only'), T('Clientes será tu pantalla principal','Clients becomes your home'), 't_learn')}
+        ${opt('alsoTrains','no','', T('No, solo clientes','No, clients only'), T('La app se abrirá en Clientes','The app will open on Clients'), 't_learn')}
       </div>`,
   },
   t_learn: {
     note: ['Entrenador · aprende', 'Mezcla las dos formas: la primera tarjeta usa la fila real de Clientes (C08, con lo que acaba de crear arriba del todo) porque es la pantalla en la que va a vivir; las demás son esquemas simplificados. Si su cliente no usa la app, una tarjeta enseña a apuntarle las sesiones (C05).', ['sim']],
     html: () => learn([
       [T('Tus clientes, de un *vistazo*', 'Your clients at a *glance*'), T('Quién entrenó esta semana, quién lleva días sin hacerlo y quién tiene sesiones nuevas que revisar (la muesca lima).', 'Who trained this week, who’s been away, and who has new sessions to review (the lime notch).'), miniClients()],
-      [T('Plantillas: programa *una vez*', 'Templates: program *once*'), T('Guarda un programa como plantilla y asígnalo a varios clientes. Cada uno avanza a su ritmo.', 'Save a program as a template and assign it to several clients. Each moves at their own pace.'), miniTemplates()],
+      [T('Plantillas: programa *una vez*', 'Templates: program *once*'), T(`Cuando el programa de ${name()} te sirva para otros, guárdalo como plantilla y asígnalo. Cada uno recibe su copia y avanza a su ritmo.`, `When ${name()}’s program works for others, save it as a template and assign it. Each gets a copy and moves at their own pace.`), miniTemplates()],
       [T('Ajusta su *próxima sesión*', 'Tweak their *next session*'), T('Desde su ficha cambias pesos o ejercicios de la siguiente sesión sin tocar el programa.', 'From their profile, change the next session without touching the program.'), miniNext()],
       ...(S.clientMode === 'self' ? [[T('Apunta tú sus *sesiones*', 'Log their *sessions*'), T(`${name()} no usa la app: desde su ficha registras lo que hace, o pegas el texto que te mande por WhatsApp.`, `${name()} doesn’t use the app: log their sessions from their profile, or paste the text they send.`), miniLogFor()]] : []),
     ], 'done'),
@@ -968,7 +982,7 @@ const SCREENS = {
 
   // ── CON ENTRENADOR ──
   c_app: {
-    note: ['Con entrenador · ¿usa la app?', 'Tres salidas claras, la del código primero. Si llegó por enlace de invitación, esta pantalla se salta y el código viene puesto.', ['data']],
+    note: ['Con entrenador · ¿usa la app?', 'Tres salidas claras, la del código primero. Si llegó por enlace de invitación, esta pantalla y la bifurcación se saltan y el código viene puesto (nodo «Por invitación» del mapa).', ['data']],
     html: () => `
       <div class="h">${T('¿Tu entrenador usa *Forma Fit*?', 'Does your coach use *Forma Fit*?')}</div>
       <p class="sub">${T('Si la usa, te manda el programa y ve tus entrenos.', 'If so, they send your program and see your workouts.')}</p>
@@ -979,10 +993,10 @@ const SCREENS = {
       </div>`,
   },
   c_code: {
-    note: ['Con entrenador · código', 'Real: el primer paso de <code>ClientCodeModal</code> como pantalla. Ocho caracteres (XXXX-XXXX, el guion se pone solo); «Pegar» lo rellena entero.', ['real']],
+    note: ['Con entrenador · código', 'Real: el primer paso de <code>ClientCodeModal</code> como pantalla. Ocho caracteres (XXXX-XXXX, el guion se pone solo); «Pegar» lo rellena entero. Por invitación (<code>pendingInviteCode</code>) llega ya relleno, y es la primera pantalla después de Ajustes. Si el código no tiene programa (no debería pasar ya: el entrenador solo invita con programa), el error de <code>validateClientCode</code> se enseña aquí con «Lo meto más tarde».', ['real']],
     html: () => `
       <div class="h">${T('El código de tu *entrenador*', 'Your *coach’s* code')}</div>
-      <p class="sub">${T('Te lo ha mandado por mensaje o te lo enseña en su móvil.', 'They sent it to you or can show it on their phone.')}</p>
+      <p class="sub">${S.viaInvite ? T('Viene de la invitación de Marta. Comprueba que es este y sigue.', 'It came with Marta’s invite. Check it and continue.') : T('Te lo ha mandado por mensaje o te lo enseña en su móvil.', 'They sent it to you or can show it on their phone.')}</p>
       <div class="code">${S.code.map((c, i) => `${i === 4 ? '<span class="dash">-</span>' : ''}<input maxlength="1" value="${c}" oninput="codeIn(${i},this)">`).join('')}</div>
       <button class="linkbtn" style="align-self:center" onclick="S.code='XK7M2P4T'.split('');render(false,true)">${T('Pegar', 'Paste')}</button>
       <div class="spacer"></div>
@@ -1010,40 +1024,76 @@ const SCREENS = {
       <div class="h">${T('Conectado con *Marta*', 'Connected with *Marta*')}</div>
       <p class="sub">${T(`«${COACH_PROGRAM}» ya está en tu Inicio. Marta verá las sesiones que completes.`, `«${COACH_PROGRAM}» is on your Home. Marta will see the sessions you complete.`)}</p>
       <div class="panel">
-        <div class="pd">${T('Ahora, elige cómo ver tus sesiones.', 'Now, choose how to see your sessions.')}</div>
-        <button class="cta" onclick="go('a_home')">${T('Siguiente', 'Next')}</button>
+        ${S.entry === 'newProgram'
+          ? `<button class="cta" onclick="closeNewProgram()">${T('Ir a la app', 'Go to the app')}</button>`
+          : `<div class="pd">${T('Ahora, elige cómo ver tus sesiones.', 'Now, choose how to see your sessions.')}</div>
+        <button class="cta" onclick="go('a_home')">${T('Siguiente', 'Next')}</button>`}
       </div>`,
   },
   c_ask: {
-    note: ['Con entrenador · pedir el código', 'Comparte un mensaje ya escrito. Puede seguir y meter el código más tarde desde el menú.', ['sim']],
+    note: ['Con entrenador · pedir el código', 'Comparte un mensaje ya escrito y, al volver de compartir, avanza solo (como invitar). Puede seguir y meter el código más tarde desde el menú.', ['sim']],
     html: () => `
       <div class="eyebrow">${T('Pídeselo', 'Ask for it')}</div>
       <div class="h">${T('Tu entrenador genera el código', 'Your coach creates the code')}</div>
       <p class="sub">${T('Lo saca en Clientes → tu ficha → Conectar. Mándale esto:', 'It’s in Clients → your profile → Connect. Send them this:')}</p>
       <div class="msg">${T('¡Hola! Ya tengo Forma Fit. ¿Me pasas mi código de cliente para conectarme?', 'Hi! I’ve got Forma Fit. Can you send me my client code?')}</div>
-      <button class="cta" onclick="share('ask')">${T('Enviar mensaje', 'Send message')}</button>
+      <button class="cta" onclick="share('ask', 'a_home')">${T('Enviar mensaje', 'Send message')}</button>
       <div class="spacer"></div>
       <button class="ghost" onclick="go('a_home')">${T('Lo meto más tarde', 'I’ll enter it later')}</button>`,
   },
   c_noapp: {
-    note: ['Con entrenador · no usa la app', 'Las dos cosas a la vez, no una u otra: invitarle (el mensaje lleva el enlace a la store) y, mientras, copiar su programa para seguirlo ya. Cuando el entrenador entre, puede adoptar ese programa.', ['sim','real']],
+    note: ['Con entrenador · no usa la app', 'Las dos cosas a la vez, no una u otra: invitarle (el mensaje lleva el enlace a la store) y, mientras, copiar su programa para seguirlo ya. Que el entrenador adopte después ese programa queda fuera por ahora.', ['sim','real']],
     html: () => `
       <div class="eyebrow">${T('Sin app', 'No app')}</div>
       <div class="h">${T('Dos formas de seguir con tu entrenador', 'Two ways to keep working with your coach')}</div>
       <div class="opts" style="margin-top:10px">
-        <button class="opt big" onclick="share('coach')"><span class="ico">📨</span><span><b>${T('Invítale a la app','Invite them')}</b><small>${T('Podrá gestionar tu programa desde su móvil y ver tus entrenos. Gratis hasta 2 clientes.','They can manage your program and see your workouts. Free for 2 clients.')}</small></span></button>
-        <button class="opt big" onclick="go('c_copy')"><span class="ico">📋</span><span><b>${T('Copia su programa','Copy their program')}</b><small>${T('Te lo pasó en PDF, foto o WhatsApp: lo montamos aquí para que lo sigas.','Got it as a PDF, photo or chat? Rebuild it here and follow it.')}</small></span><span class="rec">${T('Mientras','Meanwhile')}</span></button>
+        <button class="opt big" onclick="share('coach')"><span class="ico">📨</span><span><b>${T('Invítale a la app','Invite them')}</b><small>${T('Podrá gestionar tu programa desde su móvil y ver tus entrenos. Empezar es gratis.','They can manage your program and see your workouts. Free to start.')}</small></span></button>
+        <button class="opt big" onclick="go('c_copy')"><span class="ico">📋</span><span><b>${T('Copia su programa','Copy their program')}</b><small>${T('Si lo tienes en PDF, foto o mensaje, cópialo aquí para seguirlo.','If you have it as a PDF, photo or message, copy it here to follow it.')}</small></span><span class="rec">${T('Mientras','Meanwhile')}</span></button>
       </div>`,
   },
   c_copy: {
-    note: ['Con entrenador · copiar su programa', 'Real. Pegar texto reutiliza el analizador de C22 (hoy solo entiende sesiones sueltas: haría falta extenderlo a un programa). «Desde cero» es el editor. «Parecida» es el catálogo.', ['real']],
+    note: ['Con entrenador · copiar su programa', 'Real. «A mano» es el constructor guiado en su versión completa; «parecida» es el catálogo. Fuera «pegar el texto»: el analizador de C05-05 solo entiende sesiones sueltas, y ampliarlo a un programa entero es una feature aparte.', ['real']],
     html: () => `
-      <div class="eyebrow">${T('Copiar programa', 'Copy program')}</div>
-      <div class="h">${T('¿Cómo te lo pasó?', 'How did you get it?')}</div>
-      <div class="opts" style="margin-top:10px">
-        <button class="opt" onclick="toast('→ pegar texto · analizador C22')"><span class="ico">💬</span><span><b>${T('Texto (WhatsApp, notas)','Text (chat, notes)')}</b><small>${T('Pégalo y lo entendemos','Paste it and we parse it')}</small></span></button>
+      <div class="h">${T('¿Cómo lo *copias*?', 'How do you *copy* it?')}</div>
+      <p class="sub">${T('Si lo tienes en PDF, foto o mensaje, cópialo aquí para seguirlo.', 'If you have it as a PDF, photo or message, copy it here to follow it.')}</p>
+      <div class="opts">
         <button class="opt" onclick="startBuilder('adv')"><span class="ico">✏️</span><span><b>${T('Lo copio a mano','I’ll type it in')}</b><small>${T('Editor de programas, sesión a sesión','Program editor, session by session')}</small></span></button>
         <button class="opt" onclick="S.path='tpl';go('s_props')"><span class="ico">🗂️</span><span><b>${T('Empiezo de una parecida','Start from a similar one')}</b><small>${T('Elige plantilla y cámbiala','Pick a template and edit it')}</small></span></button>
+      </div>`,
+  },
+
+  // ── NUEVO PROGRAMA (desde la app) ──
+  n_source: {
+    note: ['Nuevo programa · cómo empezar', 'Lo abre «Nuevo programa» (el ≡, el ··· de Programa y el estado vacío), que hoy lleva al selector viejo de <code>OnboardingScreen</code>, sin flecha para volver y reemplazando la pila. Ahora es el mismo recorrido por otra entrada: <b>sin Ajustes, sin bifurcación y sin Aprende</b>, y sin barra de tramos. Las mismas cinco salidas que el selector viejo, con las piezas nuevas. El nivel viene del primer onboarding (<code>profile.onboardingAnswers.level</code>); si no está, «Programa recomendado» lo pregunta primero. Textos de app, no de colega: cortos, neutros y con el verbo de lo que pasa. Con entrenador conectado, antes de llegar aquí sigue el aviso de que se desconecta (<code>startNewProgram</code>), y al crear el programa se desconecta como hoy. La flecha de esta pantalla cierra y vuelve a la app.', ['real']],
+    html: () => `
+      <div class="h">${T('Elige cómo *empezar*', 'Choose how to *start*')}</div>
+      <p class="sub">${T('Podrás editar el programa en cualquier momento.', 'You can edit the program at any time.')}</p>
+      <div class="opts">
+        <button class="opt big" onclick="S.path='tpl';go('s_goal')"><span><b>${T('Programa recomendado', 'Recommended program')}</b><small>${T('Según tu nivel, tu objetivo y tus días de entreno', 'Based on your level, goal and training days')}</small></span><span class="rec">${T('Recomendado', 'Recommended')}</span></button>
+        <button class="opt" onclick="S.path='own';startBuilder(S.level==='adv'?'adv':'beg')"><span><b>${T('Crear desde cero', 'Create from scratch')}</b><small>${T('Define sesiones, ejercicios y progresión', 'Set sessions, exercises and progression')}</small></span></button>
+        <button class="opt" onclick="go('n_templates')"><span><b>${T('Desde una plantilla', 'From a template')}</b><small>${T('Usa una de tus plantillas guardadas', 'Use one of your saved templates')}</small></span></button>
+        <button class="opt" onclick="S.role='coached';S.coachApp='code';go('c_code')"><span><b>${T('Programa de tu entrenador', 'Your coach’s program')}</b><small>${T('Conéctate con el código de tu entrenador', 'Connect with your coach’s code')}</small></span></button>
+        <button class="opt" onclick="toast('→ selector de archivo .fitdata (simulado)');S.program='import';setTimeout(()=>go('n_done'),900)"><span><b>${T('Importar archivo', 'Import file')}</b><small>${T('Archivo .fitdata de una copia de seguridad', '.fitdata file from a backup')}</small></span></button>
+      </div>`,
+  },
+  n_templates: {
+    note: ['Nuevo programa · desde una plantilla', 'Solo sale si tiene alguna (<code>templatesOf(programs)</code>). Elegir una y «Usar esta» la copia como programa propio (<code>cloneProgramFromTemplate(id, { name })</code>); el nombre viene puesto y se cambia. El plan gratis puede pararlo, como hoy.', ['real']],
+    html: () => `
+      <div class="h">${T('Elige una *plantilla*', 'Pick a *template*')}</div>
+      <p class="sub">${T('Se crea una copia. La plantilla original no cambia.', 'A copy is created. The original template stays the same.')}</p>
+      <div class="opts">${MY_TEMPLATES.map(([id, n, m, ss]) => tpl(id, n, m, ss)).join('')}</div>
+      <div class="spacer"></div>
+      <button class="cta" ${MY_TEMPLATES.some(([id]) => id === S.program) ? '' : 'disabled'} onclick="go('n_done')">${T('Usar esta', 'Use this one')}</button>`,
+  },
+  n_done: {
+    note: ['Nuevo programa · listo', 'Cierre corto en el panel lima, sin la lista de «Listo» ni Aprende: ya conoce la app. «Ir a la app» quita el recorrido de la pila y abre Inicio, donde está el programa nuevo (hoy se reemplaza la pila entera).', ['real']],
+    html: () => `
+      <div class="h">${T('Programa *listo*', 'Program *ready*')}</div>
+      <p class="sub">${S.program === 'import' ? T('El archivo se ha importado.', 'The file has been imported.') : T(`«${progName()}» ya es tu programa activo.`, `«${progName()}» is now your active program.`)}</p>
+      ${S.program === 'import' ? '' : `<div class="tpl static"><div class="tn">${progName()}</div><div class="tm">${T('Activo · Etapa 1', 'Active · Stage 1')}</div></div>`}
+      <div class="panel">
+        <div class="pd">${T('Disponible en Inicio. Puedes editarlo en Programa.', 'Available on Home. You can edit it in Program.')}</div>
+        <button class="cta" onclick="closeNewProgram()">${T('Ir a la app', 'Go to the app')}</button>
       </div>`,
   },
 
@@ -1056,7 +1106,7 @@ const SCREENS = {
       <div class="opts" style="margin-top:10px">
         ${opt('level','beg','🌱', T('Empiezo','Just starting'), T('Menos de 6 meses','Under 6 months'), 's_choice')}
         ${opt('level','int','📈', T('Llevo un tiempo','A while'), T('De 6 meses a 2 años','6 months to 2 years'), 's_choice')}
-        ${opt('level','adv','🔥', T('Mucho','A long time'), T('Más de 2 años, sé lo que hago','2+ years, I know my stuff'), 's_choice')}
+        ${opt('level','adv','🔥', T('Tengo experiencia','Experienced'), T('Más de 2 años','Over 2 years'), 's_choice')}
       </div>`,
   },
   s_goal: {
@@ -1086,11 +1136,11 @@ const SCREENS = {
       <div class="h">${beg ? T('Te proponemos un programa hecho', 'We’ll suggest a ready-made program') : T('¿Plantilla o el tuyo?', 'Template or your own?')}</div>
       <p class="sub">${beg ? T('Diseñado para empezar con buena técnica y progresar cada semana.', 'Built to start with good form and progress every week.') : T('Las dos se editan después todo lo que quieras.', 'Both can be edited as much as you like.')}</p>
       <div class="opts">
-        <button class="opt big" onclick="S.path='tpl';go('s_goal')"><span class="ico">🗂️</span><span><b>${T('Ver programas para mí','See programs for me')}</b><small>${T('Dos preguntas más y te enseñamos 3','Two more questions and we show you 3')}</small></span>${beg?`<span class="rec">${T('Recomendado','Recommended')}</span>`:''}</button>
-        ${beg ? '' : `<button class="opt big" onclick="S.path='own';startBuilder(S.level==='adv'?'adv':'beg')"><span class="ico">✏️</span><span><b>${T('Montar el mío','Build my own')}</b><small>${T('Sesiones, ejercicios y progresión a tu manera','Sessions, exercises and progression your way')}</small></span></button>`}
+        <button class="opt big" onclick="S.path='tpl';go('s_goal')"><span class="ico">🗂️</span><span><b>${T('Ver programas para mí','See programs for me')}</b><small>${T('Según tu objetivo y tus días de entreno','Based on your goal and training days')}</small></span>${beg?`<span class="rec">${T('Recomendado','Recommended')}</span>`:''}</button>
+        ${beg ? '' : `<button class="opt big" onclick="S.path='own';startBuilder(S.level==='adv'?'adv':'beg')"><span class="ico">✏️</span><span><b>${T('Crear el mío','Create my own')}</b><small>${T('Define sesiones, ejercicios y progresión','Set sessions, exercises and progression')}</small></span></button>`}
       </div>
       <div class="spacer"></div>
-      ${beg ? `<button class="ghost" onclick="S.path='own';startBuilder(S.level==='adv'?'adv':'beg')">${T('Prefiero montarlo yo', 'I’d rather build my own')}</button>` : ''}
+      ${beg ? `<button class="ghost" onclick="S.path='own';startBuilder(S.level==='adv'?'adv':'beg')">${T('Prefiero crearlo yo', 'I’d rather create my own')}</button>` : ''}
       <button class="ghost" onclick="toast('→ importar backup .fitdata')">${T('Tengo una copia de seguridad', 'I have a backup')}</button>`;
     },
   },
@@ -1110,7 +1160,7 @@ const SCREENS = {
       </div>
       <button class="ghost">${T('Ver todas', 'See all')}</button>
       <div class="spacer"></div>
-      <button class="cta" ${S.program?'':'disabled'} onclick="go('a_home')">${T('Empezar con este', 'Start with this')}</button>`,
+      <button class="cta" ${S.program?'':'disabled'} onclick="go(S.entry === 'newProgram' ? 'n_done' : 'a_home')">${T('Empezar con este', 'Start with this')}</button>`,
   },
   a_home: {
     note: ['Aprende · cómo ves Inicio', '<code>profile.homeView</code>: «cards» (lista, la de por defecto) o «tabs» (U13). Las dos a la vista, lado a lado, con su dibujo; en la de pestañas se pueden tocar las pestañas. Va aquí y no en Ajustes porque es de quien entrena (el entrenador que no entrena no la ve) y porque la tarjeta siguiente de Aprende enseña justo la vista elegida. Con entrenador se recomiendan las pestañas (U13 §1: para quien recibe un programa).', ['data']],
@@ -1144,15 +1194,20 @@ const SCREENS = {
   },
 
   done: {
-    note: ['Listo', 'Resumen con lo que ya existe (lo «real» del recorrido) y lo que quedó pendiente, para que «Lo hago después» no se pierda: los pendientes reaparecen como tarjeta en Inicio/Clientes. Al entrenador con código personal se le recuerda que lo tiene guardado y dónde volver a verlo.', []],
+    note: ['Listo', 'Resumen con lo que ya existe (lo «real» del recorrido) y lo que quedó pendiente, cada cosa con dónde se retoma. Al entrenador con código personal se le recuerda que lo tiene guardado y dónde volver a verlo. «Ir a la app» marca <code>onboardingCompleted</code> en todos los caminos: sin eso, quien acaba sin programa (entrenador que no entrena, «lo hago después») volvería al onboarding en cada arranque. <b>Aparcado</b>: que los pendientes reaparezcan como tarjeta en Inicio o Clientes.', []],
     html: () => {
       const rest = LETTERS.slice(1, S.nSess || 0).split('').join(', ');
       const items = S.role === 'trainer' ? [
         [true, `${T('Cliente', 'Client')}: ${name()} · ${S.clientMode === 'app' ? T('con la app', 'with the app') : T('le apuntas tú', 'you log')}`],
         ...(S.clientMode === 'app' ? [[!!S.account, S.account === 'code' ? T('Código personal guardado · Menú → Sincronización', 'Personal code saved · Menu → Sync') : S.account ? T(`Cuenta de ${S.account === 'apple' ? 'Apple' : 'Google'}`, `${S.account === 'apple' ? 'Apple' : 'Google'} account`) : T('Crear tu cuenta', 'Create your account')]] : []),
-        [S.assigned, S.assigned ? T(`«${tplLabel()}» asignada`, `«${tplLabel()}» assigned`) : T('Asignarle un programa', 'Assign a program')],
-        ...(S.assigned && S.program === 'tpl1' && rest ? [[false, T(`Rellenar las sesiones ${rest} de la plantilla`, `Fill in sessions ${rest}`)]] : []),
-        ...(S.clientMode === 'app' ? [[false, T(`Esperando a que ${name()} meta su código`, `Waiting for ${name()} to enter the code`)]] : []),
+        [S.assigned, S.assigned
+          ? (S.program === 'tpl1' ? T(`«${tplLabel()}» creado`, `«${tplLabel()}» created`) : T(`«${tplLabel()}» asignado`, `«${tplLabel()}» assigned`)) + (S.clientMode === 'app' ? T(' y enviado', ' and sent') : '')
+          : S.program === 'tpl1' ? T(`Terminar el programa de ${name()} · Clientes → ${name()}`, `Finish ${name()}’s program · Clients → ${name()}`)
+          : T(`Darle un programa · Clientes → ${name()}`, `Give them a program · Clients → ${name()}`)],
+        ...(S.assigned && S.program === 'tpl1' && rest ? [[false, T(`Rellenar las sesiones ${rest}${S.clientMode === 'app' ? ' y enviárselas' : ''} · Clientes → ${name()}`, `Fill in sessions ${rest}${S.clientMode === 'app' ? ' and send them' : ''}`)]] : []),
+        ...(S.clientMode === 'app' ? [[false, S.assigned
+          ? T(`Esperando a que ${name()} meta su código`, `Waiting for ${name()} to enter the code`)
+          : T(`Invitar a ${name()}, cuando tenga programa`, `Invite ${name()} once they have a program`)]] : []),
         ...(S.alsoTrains === 'yes' ? [[S.program === 'own' || ['fb', 'ul', 'ppl'].includes(S.program), T('Tu propio programa', 'Your own program')]] : []),
       ] : S.role === 'coached' ? (S.coachApp === 'code' ? [
         [true, T('Conectado con Marta', 'Connected with Marta')],
@@ -1166,10 +1221,10 @@ const SCREENS = {
       ];
       return `
       <div class="h">${T('Todo *listo*', 'All *set*')}</div>
-      <p class="sub">${T('Lo pendiente te espera en Inicio.', 'Anything pending is waiting on Home.')}</p>
+      <p class="sub">${T('Lo que falta lo retomas cuando quieras.', 'Pick up the rest whenever you like.')}</p>
       ${items.map(([ok, l]) => `<div class="check ${ok ? '' : 'off'}"><i>✓</i>${l}</div>`).join('')}
       <div class="panel">
-        <div class="pt">${S.role === 'trainer' && S.alsoTrains !== 'yes' ? T('A por tus clientes', 'Go get your clients') : T('A entrenar', 'Let’s train')}</div>
+        <div class="pt">${S.role === 'trainer' && S.alsoTrains !== 'yes' ? T('Tus clientes te esperan', 'Your clients are waiting') : T('A entrenar', 'Let’s train')}</div>
         <button class="cta" onclick="restart()">${T('Ir a la app', 'Go to the app')}</button>
       </div>`;
     },
@@ -1188,7 +1243,7 @@ function progSimple() {
     <div class="h">${T('¿Quieres que la app te diga cuándo subir o bajar el peso?', 'Want the app to tell you when to go up or down in weight?')}</div>
     <p class="sub">${T('Según cómo te salgan las series.', 'Based on how your sets go.')}</p>
     <div class="opts">
-      <button class="opt big ${S.autoProg === true ? 'on' : ''}" onclick="S.autoProg=true;S.ex.up='weight';S.ex.how='rules';S.progDone=true;render(false,true);setTimeout(()=>go('b_done'),520)"><span class="ico">📈</span><span><b>${T('Sí, guíame', 'Yes, guide me')}</b><small>${T(`Si completas ${e.sets}×${e.max} con 40 ${u}, la próxima vez te propondremos 42,5. Si te cuesta, menos.`, `Hit ${e.sets}×${e.max} with 40 ${u} and next time we’ll suggest 42.5. If it’s hard, less.`)}</small></span><span class="rec">${T('Recomendado', 'Recommended')}</span></button>
+      <button class="opt big ${S.autoProg === true ? 'on' : ''}" onclick="S.autoProg=true;S.ex.up='weight';S.ex.how='rules';S.progDone=true;render(false,true);setTimeout(()=>go('b_done'),520)"><span class="ico">📈</span><span><b>${T('Sí, guíame', 'Yes, guide me')}</b><small>${T(`Si completas ${e.sets}×${e.max} con 40 ${u}, la próxima vez te propondremos 42,5. Si no las completas, menos.`, `Hit ${e.sets}×${e.max} with 40 ${u} and next time we’ll suggest 42.5. If you miss them, less.`)}</small></span><span class="rec">${T('Recomendado', 'Recommended')}</span></button>
       <button class="opt big ${S.autoProg === false ? 'on' : ''}" onclick="S.autoProg=false;S.ex.up='none';S.progDone=true;render(false,true);setTimeout(()=>go('b_done'),520)"><span class="ico">🎛️</span><span><b>${T('No, lo decido yo', 'No, I’ll decide')}</b><small>${T('Verás lo que hiciste la última vez y tú eliges el peso.', 'You’ll see last time and choose the weight.')}</small></span></button>
     </div>
     <div class="spacer"></div>
@@ -1271,7 +1326,9 @@ function learn(cards, next) {
       <button class="btn2 acc" onclick="${last ? `go('${next}')` : `S.learnIdx++;render(false)`}">${last ? T('Entendido','Got it') : T('Siguiente','Next')}</button>
     </div>`;
 }
-const progName = () => ({ fb: 'Full Body', ul: 'Upper / Lower', ppl: 'PPL', own: T('Mi programa','My program'), coach: COACH_PROGRAM, tpl1: tplName() })[S.program] || 'Full Body';
+// Plantillas propias de ejemplo, para «Nuevo programa → Desde una plantilla».
+const MY_TEMPLATES = [['mt1', 'Hipertrofia base', '4 sesiones · 3 etapas', ['A','B','C','D']], ['mt2', 'Fuerza 5×5', '3 sesiones · 1 etapa', ['A','B','C']]];
+const progName = () => ({ fb: 'Full Body', ul: 'Upper / Lower', ppl: 'PPL', own: T('Mi programa','My program'), coach: COACH_PROGRAM, tpl1: tplName(), ...Object.fromEntries(MY_TEMPLATES.map(([id, n]) => [id, n])) })[S.program] || 'Full Body';
 // ── Inicio en miniatura: las dos vistas de profile.homeView ──
 const COACH_PROGRAM = 'Hipertrofia 4 días';
 const SESSIONS = () => S.program === 'coach'
@@ -1375,11 +1432,14 @@ function assignNow() {
   document.querySelector('.crow')?.classList.add('flash');
   setTimeout(() => { if (cur === 't_assign') go(afterAssign()); }, 1300);
 }
+// Versión mínima: cada entrada abre el flujo que ya existe y, al volver, a la app.
 function recoverWith(kind) {
-  S.recoverKind = kind;
-  if (kind === 'backup') return toast(T('→ copias de Drive o archivo .fitdata (simulado)', '→ Drive backups or .fitdata file (mock)'));
-  toast(kind === 'code' ? T('→ escribir el código (simulado)', '→ type the code (mock)') : `→ ${kind === 'apple' ? 'Apple' : 'Google'} (${T('simulado', 'mock')})`);
-  setTimeout(() => go('recovered'), 650);
+  toast({
+    trainer: '→ TrainerSyncModal · recuperar (Apple / Google / código)',
+    client: '→ ClientCodeModal · con tu cuenta (Apple / Google)',
+    backup: '→ DriveBackupScreen o archivo .fitdata',
+  }[kind]);
+  setTimeout(restart, 1400);
 }
 function signIn(kind) {
   S.account = kind;
@@ -1415,23 +1475,31 @@ const SEARCH_SVG = '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><p
 
 // ════════ DEMO DE ENTRADA ════════
 const fmt = (v) => Number.isInteger(v) ? v : v.toFixed(1).replace('.', ',');
+// Los dos modos van a los lados, como SetRow: sin regla la cifra cambia en la casilla;
+// con regla la casilla se queda quieta, la burbuja enseña el valor y se guarda al soltar.
 function bindCells() {
   document.querySelectorAll('.cell').forEach(cell => {
-    let start = null, base = 0;
+    let start = null, base = 0, live = 0;
     const k = cell.dataset.k, step = Number(cell.dataset.step), bub = cell.querySelector('.bubble'), ruler = cell.querySelector('.ruler');
-    cell.addEventListener('pointerdown', e => { start = { x: e.clientX, y: e.clientY }; base = S[k]; cell.setPointerCapture(e.pointerId); cell.classList.add('drag'); });
+    const pop = () => { cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); };
+    cell.addEventListener('pointerdown', e => {
+      start = e.clientX; base = live = S[k]; bub.textContent = fmt(base);
+      cell.setPointerCapture(e.pointerId); cell.classList.add('drag');
+    });
     cell.addEventListener('pointermove', e => {
-      if (!start) return;
-      const scroll = S.input === 'scroll';
-      const d = scroll ? (start.y - e.clientY) / 14 : (e.clientX - start.x) / 12;
-      const v = Math.max(0, base + Math.round(d) * step);
-      if (!scroll) ruler.style.backgroundPositionX = `${-(e.clientX - start.x)}px`;
-      if (v !== S[k]) {
-        S[k] = v; document.getElementById('v' + k).textContent = fmt(v);
-        cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop');
+      if (start === null) return;
+      const dx = e.clientX - start, v = Math.max(0, base + Math.round(dx / 12) * step);
+      if (ruler) {
+        ruler.style.backgroundPositionX = `${-dx}px`;
+        if (v !== live) { live = v; bub.textContent = fmt(v); pop(); }
+      } else if (v !== S[k]) {
+        S[k] = v; document.getElementById('v' + k).textContent = fmt(v); pop();
       }
     });
-    const end = () => { start = null; cell.classList.remove('drag'); };
+    const end = () => {
+      if (start !== null && ruler) { S[k] = live; document.getElementById('v' + k).textContent = fmt(live); }
+      start = null; cell.classList.remove('drag');
+    };
     cell.addEventListener('pointerup', end); cell.addEventListener('pointercancel', end);
   });
 }
@@ -1443,17 +1511,19 @@ function codeIn(i, el) {
   if (el.value && ins[i + 1]) ins[i + 1].focus();
   document.querySelector('.cta').disabled = !S.code.every(Boolean);
 }
-function share(kind) {
+// Compartido → avanza solo a `next` (Share.sharedAction). Cerrar la hoja sin compartir → se queda (dismissedAction,
+// solo iOS: en Android siempre llega «compartido» y avanza igual; lo pendiente sigue en la ficha y en «Listo»).
+function share(kind, next) {
   const msgs = {
     invite: T('Te invito a Forma Fit para enviarte tu programa. Toca para conectar: <a>https://formafit-pro.github.io/join/?c=XK7M-2P4T</a><br><br>Si te pide un código: <b>XK7M-2P4T</b>', 'I’m inviting you to Forma Fit to send you your program. Tap to connect: <a>https://formafit-pro.github.io/join/?c=XK7M-2P4T</a><br><br>If it asks for a code: <b>XK7M-2P4T</b>'),
     code: T('Mi código de entrenador de Forma Fit: <b>K7XM-2P4T-9QRB</b>. Guárdalo: recupera mi cuenta y mis clientes.', 'My Forma Fit coach code: <b>K7XM-2P4T-9QRB</b>. Keep it: it recovers my account and clients.'),
     ask: T('¡Hola! Ya tengo Forma Fit. ¿Me pasas mi código de cliente para conectarme?', 'Hi! I’ve got Forma Fit. Can you send me my client code?'),
-    coach: T('¡Hola! Estoy usando Forma Fit para entrenar. Si la instalas puedes gestionar mi programa desde ahí y ver mis entrenos (gratis hasta 2 clientes):<br><a>fuerzaycontrol.app/coach</a>', 'Hi! I’m training with Forma Fit. Install it and you can manage my program and see my workouts (free for 2 clients):<br><a>fuerzaycontrol.app/coach</a>'),
+    coach: T('¡Hola! Estoy usando Forma Fit para entrenar. Si la instalas puedes gestionar mi programa desde ahí y ver mis entrenos (empezar es gratis):<br><a>fuerzaycontrol.app/coach</a>', 'Hi! I’m training with Forma Fit. Install it and you can manage my program and see my workouts (free to start):<br><a>fuerzaycontrol.app/coach</a>'),
   };
   const el = document.createElement('div');
   el.className = 'sheet';
   el.innerHTML = `<div class="card"><div class="grab"></div><div class="msg">${msgs[kind]}</div>
-    <div class="apps">${[['💬','WhatsApp'],['✉️',T('Mensajes','Messages')],['📧','Email'],['🔗',T('Copiar','Copy')]].map(([i,l]) => `<div onclick="this.closest('.sheet').remove();toast('${T('Enviado (simulado)','Sent (mock)')}')"><b>${i}</b>${l}</div>`).join('')}</div></div>`;
+    <div class="apps">${[['💬','WhatsApp'],['✉️',T('Mensajes','Messages')],['📧','Email'],['🔗',T('Copiar','Copy')]].map(([i,l]) => `<div onclick="this.closest('.sheet').remove();toast('${T('Enviado (simulado)','Sent (mock)')}');${next ? `setTimeout(() => go('${next}'), 700)` : ''}"><b>${i}</b>${l}</div>`).join('')}</div></div>`;
   el.addEventListener('click', e => { if (e.target === el) el.remove(); });
   document.getElementById('phone').appendChild(el);
 }
@@ -1461,9 +1531,14 @@ function toast(msg) {
   const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
   document.getElementById('phone').appendChild(el); setTimeout(() => el.remove(), 1600);
 }
-function restart() {
-  Object.assign(S, { propsReady: false, role: null, nClients: null, groups: null, clientName: '', clientMode: null, account: null, trainerName: '', codeSaved: false, assigned: false, tabOpen: 0, program: null, coachApp: null, level: null, goal: null, days: null, path: null, alsoTrains: null, code: Array(8).fill('') });
-  hist.length = 0; cur = 'welcome'; toast('→ Inicio de la app (la maqueta vuelve a empezar)'); render();
+// «Nuevo programa»: cerrar quita el recorrido de la pila; con programa, abre Inicio.
+function closeNewProgram(cancel) {
+  restart(true);
+  toast(cancel ? '→ vuelve a donde estaba, sin cambios' : '→ Inicio, con el programa nuevo activo');
+}
+function restart(silent) {
+  Object.assign(S, { propsReady: false, role: null, nClients: null, groups: null, clientName: '', clientMode: null, account: null, trainerName: '', codeSaved: false, assigned: false, tabOpen: 0, program: null, coachApp: null, level: null, goal: null, days: null, path: null, alsoTrains: null, viaInvite: false, entry: null, bctx: null, input: null, code: Array(8).fill('') });
+  hist.length = 0; cur = 'welcome'; if (!silent) toast('→ la app, con onboardingCompleted (la maqueta vuelve a empezar)'); render();
 }
 
 // ════════ RENDER ════════
@@ -1472,14 +1547,18 @@ const SEL = '.opt,.tile,.chip,.tpl,.sgc b,.sw2';
 function render(isBack, inPlace) {
   const sc = SCREENS[cur], sec = SEC_OF[cur];
   const top = document.getElementById('top');
-  const showBar = sec >= 0;
+  // «Nuevo programa» desde la app: sin tramos (no hay Ajustes ni Aprende); «Saltar» solo en el constructor.
+  const newProg = S.entry === 'newProgram';
+  const showBar = sec >= 0 && !newProg;
   const w = SECTIONS.map((_, i) => i < sec ? 100 : i === sec ? Math.round(sectionProgress(cur) * 100) : 0);
   top.style.display = cur === 'welcome' ? 'none' : '';
+  const canBack = newProg ? cur !== 'n_done' : hist.length && cur !== 'done';
+  const canSkip = SKIP_TO[cur] && (!newProg || cur.startsWith('b_'));
   top.innerHTML = `
     <div class="toprow">
-      <button class="iconbtn ${hist.length && cur !== 'done' ? '' : 'hide'}" onclick="back()">‹</button>
-      <div class="secname">${sec >= 4 ? T('Completado', 'Complete') : showBar ? `${SECTIONS[sec]} <small>· ${sec + 1} ${T('de', 'of')} 4</small>` : ''}</div>
-      <button class="skip ${SKIP_TO[cur] ? '' : 'hide'}" onclick="go(skipTarget())">${T('Saltar', 'Skip')}</button>
+      <button class="iconbtn ${canBack ? '' : 'hide'}" onclick="${newProg && cur === 'n_source' ? 'closeNewProgram(true)' : 'back()'}">‹</button>
+      <div class="secname">${newProg ? T('Nuevo programa', 'New program') : sec >= 4 ? T('Completado', 'Complete') : showBar ? `${SECTIONS[sec]} <small>· ${sec + 1} ${T('de', 'of')} 4</small>` : ''}</div>
+      <button class="skip ${canSkip ? '' : 'hide'}" onclick="go(skipTarget())">${T('Saltar', 'Skip')}</button>
     </div>
     ${showBar ? `<div class="prog">${SECTIONS.map((_, i) => `<div class="bar"><i style="width:${prevW[i]}%"></i></div>`).join('')}</div>` : ''}`;
   void top.offsetWidth;
@@ -1542,14 +1621,15 @@ function render(isBack, inPlace) {
 }
 
 const MAP = {
-  common: [['welcome','Bienvenida'],['recover','· Ya tengo cuenta'],['recovered','· Lo encontrado'],['lang','Idioma'],['units','Unidades'],['theme','Tema'],['role','¿Cómo entrenas?']],
+  common: [['welcome','Bienvenida · idioma'],['recover','· Ya tengo cuenta'],['units','Unidades'],['theme','Tema'],['role','¿Cómo entrenas?']],
   cols: [
-    ['Por mi cuenta', [['s_level','Nivel'],['s_choice','Plantilla o el mío'],['s_goal','· Qué buscas'],['s_days','· Días'],['s_props','· Propuestas'],['b_sessions:self','· Montar el mío ⤵']]],
-    ['Con entrenador', [['c_app','¿Usa la app?'],['c_code','Código'],['c_confirm','Programa encontrado'],['c_linked','Conectado'],['c_ask','Pedir código'],['c_noapp','No usa la app'],['c_copy','Copiar su programa'],['b_sessions:coached','· A mano ⤵']]],
-    ['Entrenador', [['t_clients','Nº clientes'],['t_groups','Clases en grupo'],['t_client','Primer cliente'],['t_account','· Tu cuenta (con app)'],['t_code','· Tu código personal'],['t_tplIntro','Su programa'],['b_sessions:trainer','· 1.ª plantilla ⤵'],['t_program','· Del catálogo'],['t_assign','Asignar'],['t_connect','· Invitarle (con app)'],['t_self','¿Entrenas tú?'],['t_learn','Aprende (solo clientes)']]],
+    ['Por mi cuenta', [['s_level','Nivel'],['s_choice','Plantilla o el mío'],['s_goal','· Qué buscas'],['s_days','· Días'],['s_props','· Propuestas'],['b_sessions:self','· Crear el mío ⤵']]],
+    ['Con entrenador', [['invite','Por invitación ↗'],['c_app','¿Usa la app?'],['c_code','Código'],['c_confirm','Programa encontrado'],['c_linked','Conectado'],['c_ask','Pedir código'],['c_noapp','No usa la app'],['c_copy','Copiar su programa'],['b_sessions:coached','· A mano ⤵']]],
+    ['Entrenador', [['t_clients','Nº clientes'],['t_groups','Clases en grupo'],['t_client','Primer cliente'],['t_account','· Tu cuenta (con app)'],['t_code','· Tu código personal'],['t_tplIntro','Su programa'],['b_sessions:trainer','· Su programa ⤵'],['t_program','· Del catálogo'],['t_assign','· · Asignar'],['t_connect','· Invitarle (con app)'],['t_self','¿Entrenas tú?'],['t_learn','Aprende (solo clientes)']]],
   ],
+  newProgram: [['newprog','Nuevo programa ↗'],['n_templates','Desde una plantilla'],['n_done','Programa listo']],
   learn: [['a_home','Cómo ves Inicio'],['input','Cómo apuntas'],['a_learn','Tarjetas'],['done','Listo']],
-  builder: [['b_sessions','Sesiones'],['b_exercise','Un ejercicio'],['b_volume','Volumen'],['b_prog','Progresión (simple / completa)'],['b_done','Listo · sigue luego']],
+  builder: [['b_sessions','Sesiones'],['b_exercise','Un ejercicio'],['b_volume','Volumen'],['b_done','Listo · sigue luego']],
 };
 const ROLE_OF_COL = ['self', 'coached', 'trainer'];
 function renderMap() {
@@ -1558,10 +1638,26 @@ function renderMap() {
     `<div class="common">${MAP.common.map(node).join('<span class="arrow">→</span>')}</div>` +
     MAP.cols.map(([t, ns], ci) => `<div class="col" data-role="${ROLE_OF_COL[ci]}"><span>${t}</span>${ns.map(node).join('')}</div>`).join('') +
     `<div class="common" style="margin-top:6px"><span style="font:800 10px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--pageMuted);margin-right:4px">Aprende (quien entrena)</span>${MAP.learn.map(node).join('<span class="arrow">→</span>')}</div>` +
+    `<div class="common" style="margin-top:6px"><span style="font:800 10px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--pageMuted);margin-right:4px">Desde la app</span>${MAP.newProgram.map(node).join('<span class="arrow">→</span>')}</div>` +
     `<div class="common" style="margin-top:6px"><span style="font:800 10px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--pageMuted);margin-right:4px">⤵ Constructor guiado</span>${MAP.builder.map(node).join('<span class="arrow">→</span>')}</div>`;
 }
 function jump(key) {
   const [id, from] = key.split(':');
+  S.entry = id.startsWith('n_') ? 'newProgram' : null;
+  if (id === 'n_done' && !S.program) S.program = 'mt1';
+  if (id === 'newprog') {
+    // Usuario que ya hizo el onboarding: entra por «Nuevo programa», con su nivel ya contestado.
+    restart(true);
+    Object.assign(S, { entry: 'newProgram', role: 'self', level: 'int' });
+    cur = 'n_source'; seen.add(cur);
+    return render();
+  }
+  if (id === 'invite') {
+    // Enlace forma://join/CÓDIGO en un móvil recién instalado: la maqueta empieza de cero con el código puesto.
+    restart(true);
+    Object.assign(S, { viaInvite: true, role: 'coached', coachApp: 'code', code: 'XK7M2P4T'.split('') });
+    return render();
+  }
   if (from) {
     // Entrada al constructor desde una columna: el rol y la profundidad salen de ella.
     S.role = from;
@@ -1572,6 +1668,7 @@ function jump(key) {
   if (col >= 0) S.role = ROLE_OF_COL[col];
   if (id.startsWith('b_')) ensureBuilder();
   if (id === 't_assign' || id === 't_connect') S.clientMode = S.clientMode || 'app';
+  if (id === 't_assign' && (!S.program || S.program === 'tpl1')) { S.program = 'fb'; S.assigned = false; }
   if (id === 'c_confirm' || id === 'c_linked') S.coachApp = 'code';
   go(id);
 }

@@ -537,7 +537,7 @@ export default function ProgramScreen() {
 
         {isSessions ? (
           sessionList.length === 0 ? (
-            <Rise index={2}>
+            <Rise index={2} style={styles.emptyState}>
               <EmptyState
                 style={styles.emptyState}
                 icon={ROW_ICON.preset}
@@ -560,7 +560,7 @@ export default function ProgramScreen() {
             </ScrollView>
           )
         ) : templateList.length === 0 ? (
-          <Rise index={2}>
+          <Rise index={2} style={styles.emptyState}>
             <EmptyState
               style={styles.emptyState}
               icon={ROW_ICON.preset}

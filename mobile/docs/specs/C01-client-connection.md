@@ -14,7 +14,7 @@
 >
 > **Falta la prueba en dispositivo** de los dos escenarios que no se pueden
 > simular — ver §7.
-> El SQL vive en `supabase/connection_model.sql`. Desplegarlo **rompe la app
+> El SQL vive ahora en `supabase/schema.sql` (C09, que sustituye a este en lo que se solapa). Desplegar el de entonces **rompía la app
 > actual** (`get_slot_by_code` cambia de firma), así que servidor y app van
 > juntos.
 >

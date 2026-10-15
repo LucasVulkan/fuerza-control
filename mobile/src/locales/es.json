@@ -47,15 +47,13 @@
     "scrubRulerLabel": "Regla al deslizar",
     "scrubRulerHint": "KG, reps y RPE se ajustan sobre una regla",
     "homeTabsLabel": "Sesiones en pestañas",
-    "homeTabsHint": "Una sola tarjeta en Inicio, con una pestaña por sesión",
+    "homeTabsHint": "Una sola tarjeta en Entreno, con una pestaña por sesión",
     "sectionPrograms": "PROGRAMAS",
     "sectionConnections": "CONEXIONES",
     "sectionData": "DATOS",
     "sectionPreferences": "PREFERENCIAS",
-    "sectionAccount": "CUENTA",
+    "sectionSupport": "SOPORTE",
     "sectionDeveloper": "DESARROLLADOR",
-    "namePlaceholder": "Añade tu nombre",
-    "identityRole": "Entrenador · aparece en tus programas",
     "newProgramItem": "Nuevo programa",
     "archivedProgramsItem": "Programas archivados",
     "newProgramWarnTitle": "Crear nuevo programa",
@@ -69,18 +67,11 @@
     "driveSubNever": "Sin copias todavía",
     "driveSubReconnect": "Requiere volver a conectar",
     "driveSubOff": "Copia automática de tus datos",
-    "clientSyncRow": "Sincronización con clientes",
-    "syncSubGoogle": "Con cuenta de Google",
-    "syncSubApple": "Con cuenta de Apple",
-    "syncSubCode": "Con código de recuperación",
-    "syncSubOffline": "Solo en este dispositivo",
-    "syncSubNone": "Sin configurar",
     "statusConnected": "Conectado",
     "statusConnect": "Conectar",
     "statusActive": "Activa",
     "statusActivate": "Activar",
     "statusReconnect": "Reconectar",
-    "statusSetUp": "Configurar",
     "exportRow": "Exportar",
     "exportRowValue": "backup · programa",
     "exportSheetTitle": "Exportar",
@@ -88,10 +79,7 @@
     "exportBackupSub": "Todo: programas, historial y ajustes",
     "exportProgramHistory": "Exportar programa + historial",
     "exportProgramHistorySub": "Solo el programa activo y sus sesiones",
-    "planRow": "Plan",
     "docsRow": "Documentación",
-    "deleteAccountRow": "Eliminar mi cuenta",
-    "deleteAccountSub": "Borra tu cuenta y lo que haya en el servidor. No se puede deshacer.",
     "exporting": "Exportando…",
     "pendingBanner": "⚠️ Última sesión no enviada al entrenador · Toca para reintentar",
     "pendingBannerSyncing": "Sincronizando…",
@@ -125,7 +113,7 @@
         "La letra dice cuándo toca, no qué es: al reordenarlas, se reasignan."
       ] },
       { "id": "free", "title": "Sesión libre", "points": [
-        "Una sesión fuera del programa: movilidad, agarre, la de un día de hotel. Puedes improvisarla o guardarla y tenerla en Inicio.",
+        "Una sesión fuera del programa: movilidad, agarre, la de un día de hotel. Puedes improvisarla o guardarla y tenerla en Entreno.",
         "No toca el programa: sus pesos progresan por su cuenta y no avanza la semana ni la etapa.",
         "Si sustituye a una sesión, márcalo al acabar con «Cuenta para el programa»: cuenta como esa sesión en la semana, la etapa y la adherencia.",
         "La carga la cuenta siempre: el cansancio es real aunque la sesión no sea del programa."
@@ -470,6 +458,14 @@
     "codeSlotOccupied": "Este hueco ya lo ocupa un dispositivo. Si eres tú y has reinstalado la app, tu entrenador tiene que generarte un código nuevo: tu historial se conserva.",
     "errSlotOccupied": "Este hueco ya está ocupado. Pídele a tu entrenador que te genere un código nuevo — tu historial no se pierde.",
     "errCodeNotFound": "Código no encontrado. Comprueba que lo has escrito bien.",
+    "errNoProgramYet": "Tu entrenador aún no ha subido ningún programa. Vuelve a intentarlo más tarde.",
+    "errNotConnected": "No estás conectado a ningún entrenador.",
+    "connectedToast": "Conectado con el entrenador",
+    "tagLost": "DESCONECTADO",
+    "lostTitle": "Tu entrenador te ha desconectado",
+    "lostSub": "Tu entrenador te ha quitado de sus clientes o te ha dado un código nuevo. Pídeselo para volver: tu historial no se pierde.",
+    "lostCta": "Entrar con un código nuevo",
+    "lostCtaSub": "El que te dé tu entrenador.",
     "codeHistoryLabel": "TU HISTORIAL",
     "codeHistoryFromTrainer": "Tu entrenador ya te ha apuntado entrenos: fusiona el historial para verlos en el tuyo.",
     "codeHistoryProgram": "Solo el programa",
@@ -493,66 +489,99 @@
     "linkErrTitle": "No se pudo vincular",
     "linkErrBody": "No se pudo vincular la cuenta. Inténtalo otra vez."
   },
+  "account": {
+    "eyebrow": "AJUSTES",
+    "title": "Mi cuenta",
+    "rowTitleNone": "Mi cuenta",
+    "rowSubTrainer": "Conectado con {{how}}",
+    "rowSubNone": "Sin cuenta de entrenador",
+    "how": { "code": "Código personal", "google": "Google", "apple": "Apple" },
+    "short": { "code": "código", "google": "Google", "apple": "Apple" },
+    "sectionTrainer": "CUENTA DE ENTRENADOR",
+    "connectedWith": "Conectado con {{how}}",
+    "codeWhy": "Guárdalo: lo necesitas para recuperar la cuenta si cambias de móvil. Con {{social}} no hace falta ningún código.",
+    "socialAndroid": "Google",
+    "socialIos": "Google o Apple",
+    "emailHidden": "Correo oculto",
+    "copyCode": "Copiar código",
+    "nameLabel": "Tu nombre para los clientes",
+    "useGoogle": "Cambiar a Google",
+    "useApple": "Cambiar a Apple",
+    "useCode": "Cambiar a código personal",
+    "sectionSwitch": "CAMBIAR A",
+    "sectionLeave": "MÁS OPCIONES",
+    "sectionDelete": "BORRAR",
+    "notConnected": "Sin conectar",
+    "noneWhy": "Tus programas y clientes se guardan solo en este móvil. Con una cuenta envías programas a tus clientes y ves sus entrenos.",
+    "create": "Crear cuenta",
+    "haveAccount": "Ya tengo cuenta",
+    "sectionPlan": "PLAN",
+    "freeNoExpiry": "Sin caducidad",
+    "meter": { "clients": "Clientes", "connected": "Conectados", "programs": "Programas", "sessions": "Sesiones" },
+    "goPro": "Pasar a PRO",
+    "restore": "Restaurar compra",
+    "proAnnual": "Anual · se renueva el {{date}}",
+    "proLifetime": "Para siempre",
+    "proGift": "Regalado",
+    "savedInAccount": "✓ Guardado en tu cuenta",
+    "savedInStore": "✓ Guardado en tu cuenta de {{store}}",
+    "otherPlatformWhy": "Con una cuenta, también en {{other}}.",
+    "manage": "Gestionar en {{store}} ↗",
+    "switchSocialWhy": "Con {{how}} no tendrás que guardar ningún código. Tus clientes y tu PRO siguen contigo.",
+    "switchCodeWhy": "Te conectarás con un código de 12 caracteres. Guárdalo: sin él no podrás recuperar la cuenta.",
+    "createCodeCta": "Crear el código",
+    "leave": "Desconectar",
+    "leaveTitle": "¿Desconectar la cuenta?",
+    "leaveWhy": "Tus programas se quedan en este móvil, pero dejas de enviar programas a tus clientes y de ver sus entrenos. Tus clientes siguen en esta cuenta: para volver, {{back}}. Si entras con otra, no vendrán con ella.",
+    "leaveBackCode": "necesitarás tu código",
+    "leaveBackSocial": "conecta otra vez con {{how}}",
+    "leaveCta": "Desconectar",
+    "loginNeededError": "Vuelve a entrar con {{how}} en Mi cuenta para seguir.",
+    "noAccountError": "Primero crea tu cuenta de entrenador.",
+    "reloginWhy": "Tu sesión de {{how}} se ha cerrado. Vuelve a entrar con la misma cuenta para seguir enviando a tus clientes.",
+    "deleteRow": "Borrar la cuenta"
+  },
   "sync": {
-    "title": "Sincronización",
-    "titleFirstTime": "Gestión de clientes",
-    "selectLead": "Elige cómo quieres que la app guarde tus clientes. Puedes cambiarlo más adelante.",
     "purchaseTitle": "Guarda tu compra",
     "purchaseLead": "Vincúlala a una cuenta para recuperarla en cualquier móvil, aunque cambies de Android a iPhone.",
-    "purchaseLater": "Ahora no",
-    "modeGoogleTitle": "Con tu cuenta de Google",
-    "modeGoogleDesc": "Tus clientes quedan asociados a tu cuenta. No hay ningún código que guardar: entras con Google y ya está.",
-    "modeAppleTitle": "Con tu cuenta de Apple",
-    "modeAppleDesc": "Igual que con Google, pero con tu Apple ID. Puedes ocultar tu correo y aun así recuperar la cuenta.",
-    "modeCodeTitle": "Con un código personal",
-    "modeCodeDesc": "La app crea un código de 12 caracteres. Todo funciona igual, pero el código es tu única llave.",
-    "modeCodeWarn": "Guárdalo tú: sin ese código no se puede recuperar la cuenta.",
-    "modeOfflineTitle": "Sin cuenta",
-    "modeOfflineDesc": "Nada sale de este móvil. Compartes programas e historial exportando e importando archivos a mano.",
     "onlyInstalled": "Solo en la app instalada, no en Expo Go.",
-    "warnCodeExists": "Ya tienes un código. Si creas otro, tus clientes actuales dejan de sincronizar con él.",
-    "warnUpgrade": "Tus clientes actuales se pasan solos a tu cuenta.",
-    "nameLabel": "TU NOMBRE",
     "namePlaceholder": "Ej. Lucas García",
-    "nameHint": "Es el nombre que tus clientes ven en los programas que les envías.",
-    "ctaGoogle": "CONTINUAR CON GOOGLE",
-    "ctaConnected": "YA CONECTADO",
-    "reauthGoogleLink": "Entrar con otra cuenta de Google →",
-    "ctaCode": "CREAR MI CÓDIGO",
-    "ctaOffline": "SEGUIR SIN CUENTA",
-    "statusTag": "SINCRONIZANDO",
-    "statusTitle": "Tus clientes están sincronizados",
-    "statusSub": "Con tu código personal. Guárdalo: es lo que te devuelve la cuenta si cambias de móvil.",
-    "yourCodeLabel": "TU CÓDIGO",
     "copyHint": "Toca para copiar",
     "copied": "✓ Copiado",
-    "reauthCta": "VOLVER A AUTENTICAR",
-    "reauthHint": "Úsalo si la app dejó de reconocerte: vuelve a entrar con el código que ya tienes guardado.",
-    "changeModeLink": "Cambiar el modo de sincronización →",
     "revealTitle": "Tu código personal",
     "revealLead": "Este es tu código. Cópialo y guárdalo donde no lo pierdas: es la única forma de recuperar la cuenta.",
-    "revealWarn": "Si pierdes el móvil y no tienes el código, la cuenta y la sincronización con tus clientes no se pueden recuperar.",
+    "revealWarn": "Si pierdes el móvil y no tienes el código, no se puede recuperar la cuenta ni la conexión con tus clientes.",
     "revealWarnPurchase": "Si pierdes el móvil y no tienes el código, no se pueden recuperar ni la cuenta ni tu compra en otro móvil. En esta misma cuenta de la tienda, «Restaurar compra» sigue funcionando.",
     "revealCta": "YA LO HE GUARDADO",
-    "recoveryTitle": "Recuperar cuenta",
-    "recoveryLink": "¿Ya tienes un código? Recuperar cuenta →",
-    "reauthLink": "Volver a autenticarse con otro código →",
-    "recoveryLead": "Escribe tu código de entrenador para recuperar el acceso a tus clientes. Son doce caracteres; los guiones se ponen solos.",
-    "recoveryCta": "RECUPERAR",
-    "switchTitle": "¿Cambiar el modo?",
-    "switchBody": "Se cerrará la cuenta actual. Tus clientes se quedan guardados en este móvil, pero dejan de sincronizar hasta que vuelvas a entrar.",
-    "switchConfirm": "Cambiar",
-    "switchUpgradeTitle": "¿Pasar a tu cuenta?",
-    "switchUpgradeBody": "Tus clientes actuales se migran solos a tu cuenta y dejas de depender del código.",
-    "switchUpgradeConfirm": "Pasar a la cuenta",
+    "revealCopy": "COPIAR",
+    "revealSend": "ENVIÁRMELO",
+    "recoveryTitle": "Ya tengo cuenta",
+    "recoveryLead": "Conecta con tu cuenta de entrenador y recupera tus clientes y el plan PRO, si lo tenías. Usa el mismo método con el que creaste la cuenta.",
+    "recoveryCta": "CONECTAR",
     "errNoIdToken": "No se devolvió la identidad de la cuenta. Inténtalo otra vez.",
-    "errGoogleTitle": "No se pudo entrar con Google",
-    "errAppleTitle": "No se pudo entrar con Apple",
+    "errGoogleTitle": "No se pudo conectar con Google",
+    "errAppleTitle": "No se pudo conectar con Apple",
     "errGoogleBody": "Inténtalo otra vez en un momento.",
-    "errReconnectTitle": "No se pudo volver a autenticar",
     "errReconnectBody": "Comprueba tu código e inténtalo otra vez.",
     "errAccountTitle": "No se pudo crear la cuenta",
-    "errAccountBody": "Inténtalo otra vez en un momento."
+    "errAccountBody": "Inténtalo otra vez en un momento.",
+    "createTitle": "Conecta con tus clientes",
+    "createLead": "Crea una cuenta de entrenador para conectar con tus clientes, enviarles su programa y ver su historial en tu app. Sin cuenta puedes tener clientes, pero no conectarte con ellos.",
+    "createWith": "CREA TU CUENTA",
+    "or": "o",
+    "notNow": "Ahora no",
+    "rowGoogle": "Continuar con Google",
+    "rowCode": "Usar un código personal",
+    "rowCodeSub": "Guarda el código: sin él no podrás recuperar la cuenta.",
+    "recommended": "RECOMENDADO",
+    "haveAccount": "Ya tengo cuenta",
+    "recoverySocial": "CON GOOGLE O APPLE",
+    "recoveryCodeLabel": "CON TU CÓDIGO PERSONAL",
+    "howGoogle": "Google",
+    "howApple": "Apple ID",
+    "notFoundTitle": "No hay ninguna cuenta de entrenador con este {{how}}",
+    "tryOther": "Probar con otro",
+    "createNew": "Crear una nueva"
   },
   "drive": {
     "title": "Copia en Drive",
@@ -629,7 +658,7 @@
     "disconnectConfirm": "Desconectar"
   },
   "tabs": {
-    "session": "Sesión",
+    "session": "Entreno",
     "program": "Programa",
     "progress": "Progresión",
     "clients": "Clientes",
@@ -809,7 +838,7 @@
     "fromTemplates": "Desde tus plantillas",
     "fromTemplatesDesc": "Crea una copia de la plantilla",
     "templatesTitle": "Tus plantillas de sesión",
-    "addedToHome": "Añadida a tu Inicio",
+    "addedToHome": "Añadida a Entreno",
     "sectionTitle": "Sesiones libres",
     "templateUnnamed": "Sesión libre",
     "templateExercises_one": "{{count}} ejercicio",
@@ -1047,8 +1076,14 @@
     "terms": "Términos de uso",
     "privacy": "Privacidad",
     "restore": "Restaurar compra",
+    "signIn": "Ya tengo cuenta",
     "processing": "Compra procesada, sincronizando…",
-    "errTitle": "No se pudo completar la compra"
+    "errTitle": "No se pudo completar la compra",
+    "errPurchase": "Error al procesar la compra",
+    "errUnavailable": "Las compras no están disponibles aquí",
+    "restored": "Compra restaurada",
+    "restoreNone": "No se encontraron compras anteriores",
+    "restoreError": "Error al restaurar la compra"
   },
   "programUpdate": {
     "title": "Tu entrenador ha modificado el programa",
@@ -1164,57 +1199,22 @@
       "gapText_other": "{{count}} huecos de {{group}}",
       "gapTag": "TU MATERIAL NO LLEGA"
     },
-    "generating": "GENERANDO PROGRAMA",
-    "buildingPlan": "Construyendo tu plan personalizado...",
-    "appName": "FUERZA & CONTROL",
-    "newProgram": "NUEVO PROGRAMA",
-    "howToCreate": "¿Cómo lo creamos?",
-    "modeAuto": "Elegir programa",
-    "modeAutoDesc": "Eliges entre programas ya hechos y lo adaptamos a tus días y tu material.",
-    "modeManual": "Programa vacío",
-    "modeManualDesc": "Montas tú la estructura y añades tus propios ejercicios.",
-    "modeImport": "Importar archivo",
-    "modeImportDesc": "Abre un archivo .fitdata exportado desde Forma Fit.",
-    "modeTemplate": "Cargar plantilla",
-    "modeTemplateDesc": "Parte de una de tus {{count}} plantillas guardadas.",
-    "modeTrainer": "Tengo un entrenador",
-    "modeTrainerDesc": "Introduce su código y recibe el programa ya sincronizado.",
-    "modeRecommended": "RECOMENDADO",
-    "modeFooterHint": "Sea cual sea el camino, luego puedes editarlo todo.",
-    "programName": "Nombre del programa",
-    "programNamePlaceholder": "Ej: Lucas - Full Body",
     "sessionsPerWeek": "Sesiones por semana",
-    "emptySessionsHint": "Se crearán {{count}} sesiones vacías. Podrás añadir más, y los ejercicios, desde el editor.",
-    "yourTemplates": "Tus plantillas",
-    "templateMeta": "{{count}} sesiones por semana",
-    "templateCopyHint": "La plantilla no se toca: se copia.",
-    "back": "ATRÁS",
-    "createProgram": "CREAR PROGRAMA",
-    "createAndEdit": "CREAR Y EDITAR",
-    "stepIndicator": "PASO {{current}} DE {{total}}",
     "identity": {
-      "title": "¿Qué buscas?",
-      "subtitle": "Con esto elegimos el tipo de programa.",
       "muscle": {
-        "label": "Ganar músculo",
-        "description": "Hipertrofia general. El enfoque más completo y versátil."
+        "label": "Ganar músculo"
       },
       "strength": {
-        "label": "Ponerte fuerte",
-        "description": "Sentadilla, peso muerto y press como eje. Series pesadas y descansos largos."
+        "label": "Ponerte fuerte"
       },
       "glutes_legs": {
-        "label": "Glúteo y pierna",
-        "description": "Máximo énfasis en glúteo, isquios y pierna."
+        "label": "Glúteo y pierna"
       },
       "calisthenics": {
-        "label": "Calistenia",
-        "description": "Peso corporal, agarre y core. Fuerza relativa y control del cuerpo."
+        "label": "Calistenia"
       }
     },
     "proposals": {
-      "eyebrow_one": "{{level}} · {{count}} DÍA",
-      "eyebrow_other": "{{level}} · {{count}} DÍAS",
       "best": "MEJOR",
       "phasesCount_one": "{{count}} fase",
       "phasesCount_other": "{{count}} fases",
@@ -1222,15 +1222,8 @@
       "setsLabel": "SERIES",
       "demandLabel": "EXIGENCIA",
       "weeks": "{{weeks}} semanas",
-      "title": "Selecciona tu programa",
-      "subtitle": "Elegidos por lo que has contestado. Toca uno para verlo entero.",
-      "seeProposals": "VER PROGRAMAS",
-      "recommended": "Recomendado",
       "seeAll": "Ver las {{total}} plantillas",
       "seeTop": "Ver sólo las recomendadas",
-      "another": "‹ Ver otro programa",
-      "forWhat": "{{days}} días · {{goal}}",
-      "change": "‹ cambiar",
       "notes": {
         "needsBarbell": "Diseñado con barra. Sin ella sustituimos {{exercises}} ejercicios.",
         "moreSessions_one": "Son {{sessions}} sesiones por semana, más que el día que elegiste. Puedes quitar alguna en el editor.",
@@ -1242,204 +1235,71 @@
       }
     },
     "generateError": "No se pudo generar el programa. Inténtalo de nuevo.",
-    "stepLevel": {
-      "headerTitle": "Tu nivel",
-      "hint": "Marca tu banda de volumen y qué programas te proponemos.",
-      "title": "¿Cuál es tu nivel?",
-      "subtitle": "Esto determina qué ejercicios y estructuras se incluirán en tu programa."
-    },
-    "stepDiscipline": {
-      "title": "¿Cuál es tu enfoque?",
-      "subtitle": "Define qué tipo de entrenamiento y ejercicios quieres priorizar."
-    },
-    "stepDistribution": {
-      "title": "¿Cómo distribuyes los días?",
-      "subtitle": "La distribución define la estructura de cada sesión.",
-      "recommended": "Recomendado",
-      "sevenDaysHint": "Con 7 días, incluye al menos un día suave o de descanso activo."
-    },
-    "stepDays": {
-      "headerTitle": "Días por semana",
-      "daysHint": "Cada sesión del programa es un entreno a la semana. Si un programa no cuadra con tus días, te lo decimos.",
-      "subtitleUpperLower": "Upper/Lower tiene 2 o 4 sesiones distintas. Puedes repetirlas con la frecuencia que quieras.",
-      "titleFullBody": "¿Cuántas sesiones?",
-      "titleFrequency": "Días por semana",
-      "subtitleFrequency": "¿Cuántos días a la semana entrenas?",
-      "daysCount": "{{count}} día a la semana",
-      "daysCount_other": "{{count}} días a la semana",
-      "allGroupsHint": "Todos los grupos en cada sesión",
-      "moreVarietyHint": "Mayor variedad de ejercicios y patrones"
-    },
-    "stepTime": {
-      "title": "Tiempo por sesión",
-      "subtitle": "¿Cuánto tiempo tienes para entrenar cada día?"
-    },
-    "sessionTimes": {
-      "30": {
-        "label": "30 min",
-        "description": "Sesiones exprés — solo lo esencial."
-      },
-      "45": {
-        "label": "45 min",
-        "description": "Sesiones compactas con lo importante."
-      },
-      "60": {
-        "label": "60 min",
-        "description": "La duración estándar de entrenamiento."
-      },
-      "90": {
-        "label": "90 min",
-        "description": "Sesiones largas con más volumen y variedad."
-      }
-    },
     "preview": {
-      "eyebrow": "TU PROGRAMA",
       "setsLabel": "SERIES",
       "perSessionLabel": "POR SESIÓN",
       "adjustSectionLabel": "Ajustes",
       "adjustNavSubtitle": "Tiempo, material y limitaciones",
       "adjustmentsRow_one": "{{count}} ajuste a tu programa",
       "adjustmentsRow_other": "{{count}} ajustes a tu programa",
-      "ready": "✓ TU PROGRAMA",
-      "edit": "EDITAR",
-      "start": "EMPEZAR",
       "exerciseCount": "{{exercises}} ejercicios",
       "setCount": "{{sets}} series",
-      "adaptedTitle": "LO QUE HEMOS AJUSTADO",
-      "unresolved": "No hemos podido cubrir {{slots}} huecos de {{group}} con tu material.",
-      "overTime": "Tu sesión {{label}} dura ~{{minutes}} min, más de los {{budget}} que pediste.",
       "overBudget": "Volumen de {{group}} por encima de lo recomendado para tu nivel.",
       "estimatedMinutes": "~{{minutes}} min",
-      "minutesPerSession": "~{{minutes}} min por sesión",
-      "adjustments": "{{count}} ajuste a tu material y a tu tiempo",
-      "adjustments_other": "{{count}} ajustes a tu material y a tu tiempo",
-      "changeLater": "Puedes cambiar cualquier cosa después, en el editor.",
       "noWarmupNote": "Tiempo estimado sin calentamiento general — en sesiones cortas se entra a trabajar. Incluye el cambio de material entre ejercicios."
     },
-    "stepGoal": {
-      "title": "¿Cuál es tu objetivo?",
-      "subtitle": "Determina el rango de repeticiones y el descanso entre series."
-    },
-    "stepEquipment": {
-      "title": "¿Qué equipo tienes?",
-      "subtitle": "Selecciona todo lo que tienes disponible habitualmente."
-    },
-    "stepLimitations": {
-      "title": "¿Tienes alguna limitación?",
-      "subtitle": "Se evitarán ejercicios que puedan agravar estas zonas como ejercicio principal."
-    },
-    "stepProgression": {
-      "title": "Modelo de progresión",
-      "subtitle": "Solo para avanzados. ¿Cómo prefieres progresar en los ejercicios principales?"
-    },
-    "generateProgram": "VER EL PROGRAMA",
     "levels": {
       "beginner": {
-        "label": "Principiante",
-        "description": "Menos de 1 año entrenando o volviendo tras una pausa larga.",
-        "detail": "Ejercicios guiados por máquina, patrones básicos con peso corporal y mancuernas. Progresión sencilla y segura."
+        "label": "Principiante"
       },
       "intermediate": {
-        "label": "Intermedio",
-        "description": "1–3 años entrenando con continuidad.",
-        "detail": "Mancuernas, cables, kettlebell y ejercicios de peso corporal técnicos como dominadas o fondos. Doble progresión."
+        "label": "Intermedio"
       },
       "advanced": {
-        "label": "Avanzado",
-        "description": "Más de 3 años con técnica sólida en movimientos libres.",
-        "detail": "Barra libre, ejercicios lastrados, periodización. Requiere buena técnica en sentadilla, peso muerto y press."
-      }
-    },
-    "disciplines": {
-      "standard": {
-        "label": "Estándar",
-        "description": "Hipertrofia y fuerza general. El enfoque más completo y versátil.",
-        "detail": "Cubre todos los patrones de movimiento con los mejores ejercicios para cada objetivo."
-      },
-      "calisthenics": {
-        "label": "Calistenia / Funcional",
-        "description": "Peso corporal, agarre y core. Con transferencia a deporte y disciplinas aéreas.",
-        "detail": "Dominadas, fondos, L-sit, hollow body. Fuerza relativa y control corporal."
-      },
-      "glutes_legs": {
-        "label": "Pierna & Glúteo",
-        "description": "Máximo énfasis en glúteo, isquios y pierna. Popular en programas femeninos.",
-        "detail": "Hip thrust, peso muerto rumano, prensa y variantes de sentadilla como ejercicios centrales."
-      },
-      "strength": {
-        "label": "Fuerza / Powerlifting",
-        "description": "Mover más peso. Sentadilla, peso muerto y press como eje central.",
-        "detail": "Rangos de 3–6 reps, descansos largos y progresión de carga como prioridad."
-      }
-    },
-    "distributions": {
-      "full_body": {
-        "label": "Full Body",
-        "description": "Todos los grupos musculares en cada sesión. 2–6 días."
-      },
-      "upper_lower": {
-        "label": "Upper / Lower",
-        "description": "Tren superior un día, inferior otro. 2 sesiones distintas."
-      },
-      "push_pull_legs": {
-        "label": "Push / Pull / Legs",
-        "description": "Un día de empuje, uno de tracción, uno de pierna. 3 sesiones."
+        "label": "Avanzado"
       }
     },
     "goals": {
       "hypertrophy": {
-        "label": "Hipertrofia",
-        "description": "Aumentar masa muscular. 8–12 reps por serie."
+        "label": "Hipertrofia"
       },
       "endurance": {
-        "label": "Resistencia",
-        "description": "Aguantar más. 12–20 reps, descansos cortos."
+        "label": "Resistencia"
       },
       "strength": {
-        "label": "Fuerza",
-        "description": "Mover más peso. 5–8 reps, descansos largos."
+        "label": "Fuerza"
       },
       "max_strength": {
-        "label": "Fuerza máxima",
-        "description": "Máximo rendimiento. 3–5 reps, solo avanzado."
+        "label": "Fuerza máxima"
       }
     },
     "equipment": {
       "bodyweight": {
-        "label": "Solo peso corporal",
-        "description": "Sin material — ejercicios con tu propio cuerpo."
+        "label": "Solo peso corporal"
       },
       "machines": {
-        "label": "Máquinas",
-        "description": "Prensa, polea, curl, extensión..."
+        "label": "Máquinas"
       },
       "dumbbells": {
-        "label": "Mancuernas",
-        "description": "Ajustables o fijas."
+        "label": "Mancuernas"
       },
       "barbell": {
-        "label": "Barra libre",
-        "description": "Barra olímpica con discos."
+        "label": "Barra libre"
       },
       "pullup_bar": {
-        "label": "Barra de dominadas",
-        "description": "Fija o de puerta."
+        "label": "Barra de dominadas"
       },
       "parallettes": {
-        "label": "Paralelas / Dip bar",
-        "description": "Para fondos y L-sit."
+        "label": "Paralelas / Dip bar"
       },
       "kettlebell": {
-        "label": "Kettlebell",
-        "description": "Una o varias."
+        "label": "Kettlebell"
       },
       "resistance_band": {
-        "label": "Bandas elásticas",
-        "description": "Para asistencia o activación."
+        "label": "Bandas elásticas"
       },
       "ab_wheel": {
-        "label": "Rueda abdominal",
-        "description": "Ab wheel rollout."
+        "label": "Rueda abdominal"
       }
     },
     "limitations": {
@@ -1460,56 +1320,9 @@
         "description": "Molestias en rodilla o menisco."
       }
     },
-    "equipmentPresets": {
-      "gym": {
-        "label": "Gimnasio completo",
-        "description": "Máquinas, mancuernas, barra, dominadas, kettlebell y bandas."
-      },
-      "home": {
-        "label": "Casa con mancuernas",
-        "description": "Mancuernas, bandas elásticas, barra de dominadas y rueda abdominal."
-      },
-      "bodyweight": {
-        "label": "Sólo peso corporal",
-        "description": "Sin material — ejercicios con tu propio cuerpo."
-      },
-      "custom": {
-        "label": "Personalizado",
-        "description": "Tu propia selección de material."
-      },
-      "customize": "Personalizar"
-    },
     "chips": {
       "limitationsCount": "{{count}} limitación",
       "limitationsCount_other": "{{count}} limitaciones"
-    },
-    "progressionModels": {
-      "double_progression": {
-        "label": "Doble progresión",
-        "description": "Llegas al máximo de reps → subes peso → vuelves al mínimo. El más habitual."
-      },
-      "linear": {
-        "label": "Progresión lineal",
-        "description": "Subes peso fijo cada sesión. Clásico en programas de fuerza como Starting Strength."
-      },
-      "reps_progression": {
-        "label": "Por repeticiones",
-        "description": "El peso no cambia, solo subes reps cada sesión."
-      }
-    },
-    "disabledReasons": {
-      "notForDiscipline": "No disponible para {{discipline}}",
-      "requiresIntermediate": "Requiere nivel intermedio",
-      "requiresAdvanced": "Requiere nivel avanzado"
-    },
-    "upperLowerOptions": {
-      "2sessions": "2 sesiones",
-      "4sessions": "4 sesiones"
-    },
-    "pplSessions": {
-      "push": "Sesión A — Empuje",
-      "pull": "Sesión B — Tracción",
-      "legs": "Sesión C — Pierna"
     }
   },
   "dayCard": {
@@ -1733,7 +1546,7 @@
     "newExercise": "nuevo",
     "freeTitle": "Esta sesión libre",
     "addExercisesSub": "Los que añadiste durante el entreno",
-    "saveAsFreeSub": "Para repetirla desde Inicio"
+    "saveAsFreeSub": "Para repetirla desde Entreno"
   },
   "load": {
     "tabExercises": "Ejercicios",
@@ -2216,6 +2029,8 @@
     "menuReactivate": "Reactivar",
     "programSent": "Programa enviado",
     "programUploadError": "No se pudo subir el programa.",
+    "slotCreateError": "No se pudo generar su código. Pásalo a la app desde su ficha cuando tengas conexión.",
+    "slotGoneError": "Este cliente está en otra de tus cuentas. Entra con ella para mandarle cosas, o pásalo a la app en esta.",
     "deleteProgramTitle": "Eliminar programa",
     "deleteProgramConfirm": "¿Eliminar \"{{name}}\"?",
     "reactivateTitle": "Reactivar programa",
@@ -2262,6 +2077,8 @@
       "title": "CÓDIGO DE CONEXIÓN",
       "explain": "Dáselo a {{name}}: lo introduce en su app y a partir de ahí recibirá sus programas y tú verás su historial.",
       "waiting": "Esperando a {{name}}",
+      "leftTitle": "{{name}} se desconectó",
+      "leftLine": "Puede volver cuando quiera con este mismo código.",
       "waitLine": "Que descargue Forma Fit e introduzca este código.",
       "needProgram": "Asígnale un programa: el código funciona en cuanto tenga uno.",
       "share": "Compartir",
@@ -2355,6 +2172,8 @@
       "link_none": "Sin app",
       "link_invited": "Esperando código",
       "link_linked": "Con app",
+      "link_left": "Se desconectó",
+      "link_orphan": "En otra cuenta tuya",
       "noAppLine": "Le apuntas tú sus entrenos. Si empieza a usar la app, pásalo y recibirá todo lo que le hayas apuntado.",
       "upToDate": "Al día",
       "newTag": "Nueva",
@@ -2732,6 +2551,402 @@
       "linear": "Sube series en todos los ejercicios de la etapa para aumentar el volumen de trabajo.",
       "intensification": "Baja el rango de repeticiones de los ejercicios principales y alarga el descanso.",
       "volume": "Sube series solo en los accesorios; los ejercicios principales no se tocan."
+    }
+  },
+  "onboardingFlow": {
+    "common": {
+      "sections": {
+        "settings": "Ajustes",
+        "you": "Tú",
+        "setup": "Configura",
+        "learn": "Aprende"
+      },
+      "stepOf": "· {{n}} de 4",
+      "completed": "Completado",
+      "newProgram": "Nuevo programa",
+      "back": "Atrás",
+      "skip": "Saltar",
+      "next": "Siguiente",
+      "welcome": {
+        "hero": "Tu programa,\ntus series,\n*tu progreso*",
+        "tagline": "Lo dejamos a tu medida en dos minutos",
+        "invited": "*{{trainer}}* te ha invitado. Al final de los ajustes te conectamos.",
+        "invitedAnon": "*Tu entrenador* te ha invitado. Al final de los ajustes te conectamos.",
+        "panelTitle": "¿Empezamos?",
+        "start": "Empezar",
+        "haveAccount": "Ya tengo cuenta",
+        "language": "Idioma"
+      },
+      "units": {
+        "title": "¿Kilos o libras?",
+        "sub": "Se cambia cuando quieras en el menú."
+      },
+      "theme": {
+        "title": "Elige tu estilo",
+        "sub": "Toca para probarlo.",
+        "previewTitle": "Sesión A · Empuje",
+        "previewMeta": "5 ejercicios · ~55 min",
+        "previewCta": "Empezar"
+      },
+      "role": {
+        "title": "¿Cómo entrenas?",
+        "sub": "Así te llevamos directo a lo tuyo.",
+        "self": "Por mi cuenta",
+        "selfDesc": "Sigo un programa o creo el mío",
+        "coached": "Con un entrenador",
+        "coachedDesc": "Alguien me prepara el programa",
+        "trainer": "Soy entrenador/a",
+        "trainerDesc": "Preparo programas para mis clientes"
+      }
+    },
+    "builder": {
+      "defaultName": "Mi programa",
+      "defaultNameClient": "Programa de {{name}}",
+      "doneCreated": "«{{name}}» creado",
+      "doneSent": "«{{name}}» creado y enviado",
+      "fillSelf_one": "Rellenar la sesión {{letters}} · Programa",
+      "fillSelf_other": "Rellenar las sesiones {{letters}} · Programa",
+      "fillClient_one": "Rellenar la sesión {{letters}} y enviársela · Clientes → {{client}}",
+      "fillClient_other": "Rellenar las sesiones {{letters}} y enviárselas · Clientes → {{client}}",
+      "later": "Lo termino después",
+      "session": "Sesión {{letter}}",
+      "empty": "vacía",
+      "exCount": "{{count}} ej.",
+      "bar": {
+        "program": "Tu programa",
+        "programOf": "El programa de {{name}}",
+        "sessions": "Sesiones",
+        "sessionsN_one": "{{count}} sesión",
+        "sessionsN_other": "{{count}} sesiones",
+        "exercise": "Ejercicio",
+        "volume": "Volumen"
+      },
+      "sessions": {
+        "titleSelf": "¿Cuántos días vas a *entrenar*?",
+        "titleTrainer": "¿Cuántas sesiones por *semana*?",
+        "sub": "Cada día, una sesión distinta. Se cambia cuando quieras."
+      },
+      "exercise": {
+        "title": "Añade el primer *ejercicio*",
+        "sub": "Con uno basta para ver cómo funciona. El resto lo rellenas luego.",
+        "add": "+ Añadir ejercicio",
+        "change": "Cambiar",
+        "later": "después",
+        "suggested": "Sugeridos",
+        "found_one": "{{count}} ejercicio",
+        "found_other": "{{count}} ejercicios",
+        "keepTyping": "sigue escribiendo",
+        "create": "＋ Crear «{{name}}»",
+        "createSub": "No está en el catálogo: lo creas tú",
+        "closeSearch": "Cerrar el buscador"
+      },
+      "volume": {
+        "title": "Series y *repeticiones*",
+        "subDeep": "Series, repeticiones y descanso en la sesión A.",
+        "hintFixed": "Repeticiones fijas: {{reps}}.",
+        "hintRange": "Rango {{min}}-{{max}}: subes repeticiones hasta {{max}} y luego peso."
+      },
+      "done": {
+        "title": "Tu programa ya tiene *forma*",
+        "titleClient": "El programa de {{name}} ya tiene *forma*",
+        "sub": "Ponle un nombre si quieres.",
+        "nameLabel": "Nombre del programa",
+        "noteSelf": "Sigue editándolo cuando termines: *Programa → Editar*. Ahí cambias también cómo progresa cada ejercicio.",
+        "clientsLabel": "Así lo verás en Clientes",
+        "noteClientEmpty_one": "La sesión {{letters}} está vacía. Rellénala en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",
+        "noteClientEmpty_other": "Las sesiones {{letters}} están vacías. Rellénalas en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",
+        "noteClientFull": "Sigue editándolo en *Clientes → {{client}}*: cada cambio le llega con «↑ Enviar».",
+        "listAnd": "y",
+        "save": "Guardar",
+        "saveSend": "Guardar y enviar a {{name}}",
+        "sendFailed": "No se pudo enviar. Revisa la conexión y vuelve a intentarlo."
+      }
+    },
+    "self": {
+      "level": {
+        "title": "¿Cuánto llevas entrenando *fuerza*?",
+        "beginner": "Empiezo",
+        "beginnerDesc": "Menos de 6 meses",
+        "intermediate": "Llevo un tiempo",
+        "intermediateDesc": "De 6 meses a 2 años",
+        "advanced": "Tengo experiencia",
+        "advancedDesc": "Más de 2 años"
+      },
+      "choice": {
+        "titleBeginner": "Te proponemos un programa *hecho*",
+        "titleOther": "¿Plantilla o el *tuyo*?",
+        "subBeginner": "Diseñado para empezar con buena técnica y progresar cada semana.",
+        "subOther": "Las dos se editan después todo lo que quieras.",
+        "programs": "Ver programas para mí",
+        "programsDesc": "Según tu objetivo y tus días de entreno",
+        "recommended": "Recomendado",
+        "own": "Crear el mío",
+        "ownDesc": "Define sesiones, ejercicios y progresión",
+        "backup": "Tengo una copia de seguridad"
+      },
+      "goal": {
+        "title": "¿Qué *buscas*?"
+      },
+      "days": {
+        "title": "¿Cuántos días a la *semana*?",
+        "sub": "Los que de verdad puedes, no los que te gustaría."
+      },
+      "props": {
+        "searching": "Buscando tu *programa*",
+        "searchingSub": "Con lo que nos has contado:",
+        "level": "Nivel: {{level}}",
+        "days_one": "{{count}} día a la semana",
+        "days_other": "{{count}} días a la semana",
+        "title": "Elige tu *programa*",
+        "sub": "Elegidos por lo que has contestado. Toca uno para verlo entero.",
+        "previewSub": "Puedes cambiar cualquier cosa después, en el editor.",
+        "start": "Empezar con este",
+        "other": "Ver otros programas",
+        "generating": "Construyendo tu programa...",
+        "sessionsCount_one": "{{count}} sesión",
+        "sessionsCount_other": "{{count}} sesiones",
+        "programSub": "{{sessions}} sesiones · ~{{minutes}} min por sesión · {{sets}} series",
+        "sessionsTitle": "Tus sesiones",
+        "adjustTitle": "Ajustes",
+        "minutes": "{{count}} min"
+      },
+      "adjust": {
+        "timeTitle": "¿Cuánto *dura* tu sesión?",
+        "materialTitle": "¿Con qué *material* cuentas?",
+        "equipTitle": "¿Qué *material* tienes?",
+        "equipSub": "Marca todo lo que tengas.",
+        "limitsTitle": "¿Alguna *limitación*?",
+        "limitsSub": "Cambiamos los ejercicios que podrían molestarte.",
+        "accept": "Aceptar",
+        "preview": "Así queda tu programa"
+      },
+      "done": {
+        "program": "\"{{name}}\" listo",
+        "imported": "Programa listo"
+      }
+    },
+    "coached": {
+      "code": {
+        "title": "El código de tu *entrenador*",
+        "sub": "Si tu entrenador usa Forma Fit, introduce el código que te ha pasado.",
+        "subInvite": "Viene de tu invitación. Comprueba que es este y sigue.",
+        "continue": "Continuar",
+        "later": "Lo meto más tarde",
+        "askLink": "¿No te lo ha pasado? Pídeselo",
+        "noApp": "¿Tu entrenador no usa Forma Fit?",
+        "accountLink": "¿Ya estabas conectado? Entra con tu cuenta"
+      },
+      "confirm": {
+        "title": "Programa *encontrado*",
+        "from": "De {{trainer}}",
+        "fromAnon": "De tu entrenador",
+        "implies1": "Se carga en Entreno y lo sigues tal cual. Lo cambia tu entrenador, no tú.",
+        "implies2": "{{trainer}} verá las sesiones que completes, con el peso que anotes.",
+        "implies2Anon": "Tu entrenador verá las sesiones que completes, con el peso que anotes.",
+        "implies3": "Si cambia el programa, te avisamos y decides cuándo pasarte.",
+        "implies4": "Puedes desconectarte cuando quieras.",
+        "connect": "Conectar",
+        "connecting": "Conectando…"
+      },
+      "linked": {
+        "title": "Conectado con *{{trainer}}*",
+        "titleAnon": "Conectado con *tu entrenador*",
+        "sub": "\"{{program}}\" ya está en Entreno. {{trainer}} verá las sesiones que completes.",
+        "subAnon": "\"{{program}}\" ya está en Entreno. Tu entrenador verá las sesiones que completes.",
+        "hint": "Ahora, elige cómo ver tus sesiones."
+      },
+      "ask": {
+        "title": "Tu entrenador genera el *código*",
+        "sub": "Lo saca en Clientes → tu ficha → Conectar. Mándale esto:",
+        "message": "¡Hola! Ya tengo Forma Fit. ¿Me pasas mi código de cliente para conectarme?",
+        "send": "Enviar mensaje",
+        "later": "Lo meto más tarde"
+      },
+      "noapp": {
+        "invite": "Invítale a la app",
+        "inviteDesc": "Podrá gestionar tu programa desde su móvil y ver tus entrenos. Empezar es gratis.",
+        "inviteMessage": "¡Hola! Estoy usando Forma Fit para entrenar. Si la instalas, puedes gestionar mi programa desde ahí y ver mis entrenos (empezar es gratis): {{url}}",
+        "copy": "Crea su programa en la app",
+        "copyDesc": "Pásalo sesión a sesión desde su PDF, foto o mensaje."
+      },
+      "copy": {
+        "title": "Crea su *programa*",
+        "sub": "Pásalo a la app para seguirlo y apuntar tus entrenos.",
+        "hand": "Lo creo sesión a sesión",
+        "handDesc": "Sesiones, ejercicios y series, como los tienes",
+        "similar": "Parto de uno parecido",
+        "similarDesc": "Elige una plantilla y adáptala"
+      },
+      "busy": {
+        "title": "Este código ya está en *uso*",
+        "ask": "Pedir un código nuevo",
+        "other": "Probar otro código",
+        "message": "¡Hola! El código de Forma Fit que me pasaste ya está en uso. ¿Me generas uno nuevo?"
+      },
+      "wait": {
+        "title": "Cuando te llegue el *código*",
+        "sub": "Tu entrenador lo genera en su app y te lo manda por mensaje.",
+        "where": "Introdúcelo en Menú → Entrenador → Conectar con un código y estarás conectado. Mientras, puedes seguir.",
+        "next": "Seguir",
+        "have": "Ya lo tengo"
+      },
+      "done": {
+        "linked": "Conectado con {{trainer}}",
+        "linkedAnon": "Conectado con tu entrenador",
+        "program": "\"{{program}}\" en Entreno",
+        "pending": "Conectar con tu entrenador · Menú → Entrenador"
+      }
+    },
+    "learn": {
+      "home": {
+        "title": "¿Cómo quieres ver tus *sesiones*?",
+        "sub": "Así las verás en Entreno. Se cambia en Preferencias.",
+        "list": "Lista",
+        "listDesc": "Todas las sesiones, una debajo de otra",
+        "tabs": "Pestañas",
+        "tabsDesc": "Una tarjeta, una pestaña por sesión"
+      },
+      "input": {
+        "title": "Pruébalo: arrastra el peso",
+        "sub": "Así se apunta una serie en el entreno. Elige cómo te resulta más cómodo.",
+        "hint": "← desliza a los lados →",
+        "ruler": "Con regla",
+        "rulerDesc": "Sale una regla bajo el dedo y se guarda al soltar. Más preciso.",
+        "swipe": "Solo deslizar",
+        "swipeDesc": "La cifra cambia en la casilla mientras arrastras. Más rápido.",
+        "keep": "Me quedo con este"
+      },
+      "cards": {
+        "prev": "Anterior",
+        "done": "Entendido",
+        "clients": {
+          "title": "Tus clientes, de un *vistazo*",
+          "sub": "Quién entrenó esta semana, quién lleva días sin hacerlo y quién tiene sesiones nuevas que revisar (la muesca de color)."
+        },
+        "today": {
+          "title": "Tu entreno de *hoy*",
+          "subCards": "Lo tienes en la pestaña Entreno. La resaltada es la que toca: pulsa Empezar. La app sabe cuál es la siguiente.",
+          "subTabs": "Lo tienes en la pestaña Entreno, con una pestaña por sesión. La resaltada es la que toca: pulsa Empezar."
+        },
+        "edit": {
+          "title": "Cambia lo que *quieras*",
+          "sub": "Desde Programa editas ejercicios, series y progresión. Los cambios valen desde la próxima sesión."
+        },
+        "sees": {
+          "title": "{{trainer}} ve tus *entrenos*",
+          "sub": "Le llega cada sesión que completas. Si cambia tu programa, te avisamos y decides cuándo pasarte."
+        },
+        "free": {
+          "title": "¿Hoy algo distinto? Sesión *libre*",
+          "sub": "Con el + entrenas fuera del programa. Puedes contarla como una sesión del programa o no.",
+          "subLinked": "Con el + entrenas fuera del programa. {{trainer}} también la verá."
+        },
+        "templates": {
+          "title": "Plantillas: programa *una vez*",
+          "sub": "Cuando el programa de {{client}} te sirva para otros, guárdalo como plantilla y asígnalo. Cada uno recibe su copia y avanza a su ritmo."
+        },
+        "next": {
+          "title": "Ajusta su *próxima sesión*",
+          "sub": "Desde su ficha cambias pesos o ejercicios de la siguiente sesión sin tocar el programa."
+        },
+        "log": {
+          "title": "Apunta tú sus *sesiones*",
+          "sub": "{{client}} no usa la app: desde su ficha registras lo que hace, o pegas el texto que te mande por WhatsApp."
+        }
+      },
+      "mini": {
+        "exercise1": "Press banca · 3×8",
+        "exercise2": "Remo · 3×10",
+        "clientsCount_one": "{{count}} cliente",
+        "clientsCount_other": "{{count}} clientes",
+        "notAssigned": "sin asignar",
+        "templateExample": "Hipertrofia base",
+        "nextHead": "{{name}} · próxima: sesión B",
+        "squat": "Sentadilla",
+        "squatSub": "4×6 · 100 {{unit}}",
+        "rdl": "Peso muerto rumano",
+        "logHead": "{{name}} · historial",
+        "logWhen": "Lunes · apuntada por ti",
+        "logAdd": "+ Registrar sesión",
+        "logPaste": "Pegar texto de WhatsApp",
+        "coachChanged": "{{trainer}} ha cambiado tu programa",
+        "coachChange": "Press inclinado en vez de banca",
+        "coachSession": "Hoy · {{count}} ej. · {{trainer}} la verá"
+      },
+      "sessionNames": ["Empuje", "Tracción", "Pierna", "Torso"],
+      "exampleClient": "Ana",
+      "yourClient": "tu cliente",
+      "yourTrainer": "Tu entrenador",
+      "yourTrainerLc": "tu entrenador"
+    },
+    "recover": {
+      "title": "Recupera lo *tuyo*",
+      "sub": "¿Qué tenías en el otro móvil?",
+      "trainer": "Mi cuenta de entrenador",
+      "trainerDesc": "Con Apple, Google o tu código de 12. Vuelven tus clientes",
+      "client": "Entreno con un entrenador",
+      "clientDesc": "Con la cuenta que vinculaste. Vuelve tu programa",
+      "backup": "Una copia de seguridad",
+      "backupDesc": "De Google Drive o un archivo .fitdata",
+      "note": "¿Entrenabas con un entrenador y no vinculaste cuenta? Pídele un código nuevo: tu historial se conserva",
+      "google": "Con Google",
+      "apple": "Con Apple",
+      "rTrainer": {
+        "title": "¿Cómo *entrabas*?",
+        "sub": "Elige lo que usabas en el otro móvil",
+        "code": "Con mi código personal",
+        "codeDesc": "El de 12 caracteres"
+      },
+      "rCode": {
+        "title": "Tu código *personal*",
+        "sub": "Son doce caracteres; los guiones se ponen solos.",
+        "enter": "Entrar"
+      },
+      "rClient": {
+        "title": "¿Cómo te *conectabas*?",
+        "sub": "Elige lo que usabas con tu entrenador",
+        "code": "Con el código de mi entrenador"
+      }
+    },
+    "trainer": {},
+    "newProgram": {
+      "source": {
+        "title": "Elige cómo *empezar*",
+        "sub": "Podrás editar el programa en cualquier momento.",
+        "recommended": "Plantillas Forma Fit",
+        "recommendedDesc": "Según tu nivel, tu objetivo y tus días de entreno",
+        "scratch": "Crear desde cero",
+        "scratchDesc": "Define sesiones, ejercicios y progresión",
+        "template": "Mis plantillas",
+        "templateDesc": "Usa una de tus plantillas guardadas",
+        "coach": "Programa de tu entrenador",
+        "coachDesc": "Conéctate con el código de tu entrenador",
+        "import": "Importar archivo",
+        "importDesc": "Archivo .fitdata de una copia de seguridad"
+      },
+      "templates": {
+        "title": "Elige una *plantilla*",
+        "sub": "Se crea una copia. La plantilla original no cambia.",
+        "name": "Nombre del programa",
+        "use": "Usar esta",
+        "sessions_one": "{{count}} sesión",
+        "sessions_other": "{{count}} sesiones",
+        "stages_one": "{{count}} etapa",
+        "stages_other": "{{count}} etapas"
+      },
+      "done": {
+        "title": "Programa *listo*",
+        "sub": "«{{name}}» ya es tu programa activo.",
+        "subImport": "El archivo se ha importado.",
+        "hint": "Disponible en Inicio. Puedes editarlo en Programa."
+      }
+    },
+    "done": {
+      "title": "Todo *listo*",
+      "sub": "Lo que falta lo retomas cuando quieras.",
+      "panelTrain": "A entrenar",
+      "panelClients": "Tus clientes te esperan",
+      "cta": "Ir a la app"
     }
   },
   "deleteAccount": {

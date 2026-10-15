@@ -753,7 +753,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'flex-start',
     gap:               spacing.md,
     backgroundColor:   th.colors.surface,
-    borderRadius:      th.radius.lg,
+    borderRadius:      th.radius.md,
     paddingTop:        16,
     paddingHorizontal: 14,
     paddingBottom:     14,

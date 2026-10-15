@@ -26,4 +26,11 @@ export default defineConfig([
       'react-hooks/incompatible-library': ['warn',  { environment: { enableCustomTypeDefinitionForReanimated: true } }],
     },
   },
+  {
+    // El recorrido de entrada (O03 §16.1): cada fichero exporta el registro
+    // `{ id: Component }` de su camino. No es una pantalla suelta, y en RN no hay
+    // Fast Refresh de Vite que proteger.
+    files: ['mobile/src/screens/onboarding/screens/*.jsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])

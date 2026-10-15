@@ -28,10 +28,8 @@ export function viewToRoute(view) {
       return { screen: 'Main', params: { screen: 'Program' } };
     case 'workout':
       return { screen: 'Workout' };
-    case 'setup':
-      return { screen: 'Setup' };
-    case 'onboarding':
-      return { screen: 'Onboarding' };
+    case 'start':
+      return { screen: 'Start' };
     case 'programEditor':
       return { screen: 'ProgramEditor' };
     default:

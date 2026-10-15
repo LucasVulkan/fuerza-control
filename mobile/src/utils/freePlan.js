@@ -11,7 +11,8 @@ import { templatesOf } from './programOwnership';
 export const FREE = { clients: 3, connected: 1, programTemplates: 1, sessionTemplates: 1 };
 
 /** Con app = tiene hueco en el servidor: invitado (código sin canjear) o vinculado. */
-export const isConnected = (client) => !!client?.syncSlotId;
+// Uno «de otra cuenta» (C09 §3.4) no está conectado en esta: no ocupa plaza.
+export const isConnected = (client) => !!client?.syncSlotId && !client.syncOrphan;
 
 /**
  * ¿Cabe este conjunto de clientes en el plan gratis? Dos comprobaciones, no

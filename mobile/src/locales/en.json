@@ -47,15 +47,13 @@
     "scrubRulerLabel": "Slide ruler",
     "scrubRulerHint": "Adjust KG, reps and RPE on a ruler",
     "homeTabsLabel": "Sessions as tabs",
-    "homeTabsHint": "One card on Home, with a tab per session",
+    "homeTabsHint": "One card in Workout, with a tab per session",
     "sectionPrograms": "PROGRAMS",
     "sectionConnections": "CONNECTIONS",
     "sectionData": "DATA",
     "sectionPreferences": "PREFERENCES",
-    "sectionAccount": "ACCOUNT",
+    "sectionSupport": "SUPPORT",
     "sectionDeveloper": "DEVELOPER",
-    "namePlaceholder": "Add your name",
-    "identityRole": "Coach · shown on your programs",
     "newProgramItem": "New program",
     "archivedProgramsItem": "Archived programs",
     "newProgramWarnTitle": "Create a new program",
@@ -69,18 +67,11 @@
     "driveSubNever": "No backups yet",
     "driveSubReconnect": "Needs reconnecting",
     "driveSubOff": "Automatic copy of your data",
-    "clientSyncRow": "Client sync",
-    "syncSubGoogle": "With a Google account",
-    "syncSubApple": "With an Apple account",
-    "syncSubCode": "With a recovery code",
-    "syncSubOffline": "This device only",
-    "syncSubNone": "Not set up",
     "statusConnected": "Connected",
     "statusConnect": "Connect",
     "statusActive": "Active",
     "statusActivate": "Activate",
     "statusReconnect": "Reconnect",
-    "statusSetUp": "Set up",
     "exportRow": "Export",
     "exportRowValue": "backup · program",
     "exportSheetTitle": "Export",
@@ -88,10 +79,7 @@
     "exportBackupSub": "Everything: programs, history and settings",
     "exportProgramHistory": "Export program + history",
     "exportProgramHistorySub": "Only the active program and its sessions",
-    "planRow": "Plan",
     "docsRow": "Documentation",
-    "deleteAccountRow": "Delete my account",
-    "deleteAccountSub": "Deletes your account and everything on the server. Can't be undone.",
     "exporting": "Exporting…",
     "pendingBanner": "⚠️ Last session not sent to trainer · Tap to retry",
     "pendingBannerSyncing": "Syncing…",
@@ -125,7 +113,7 @@
         "The letter tells you when it comes up, not what it is: reorder them and they're reassigned."
       ] },
       { "id": "free", "title": "Free session", "points": [
-        "A session outside your program: mobility, grip, a hotel-gym day. Improvise it or save it and keep it on Home.",
+        "A session outside your program: mobility, grip, a hotel-gym day. Improvise it or save it and keep it in Workout.",
         "It doesn't touch your program: its weights progress on their own and it doesn't move your week or stage forward.",
         "If it replaces a session, mark it when you finish with \"Counts toward program\": it counts as that session for the week, the stage and adherence.",
         "Load always counts it: fatigue is real even when the session isn't part of the program."
@@ -470,6 +458,14 @@
     "codeSlotOccupied": "This slot is already taken by a device. If that's you and you reinstalled the app, your trainer needs to issue you a new code — your history is kept.",
     "errSlotOccupied": "This slot is already taken. Ask your trainer to issue you a new code — you won't lose your history.",
     "errCodeNotFound": "Code not found. Check that you typed it correctly.",
+    "errNoProgramYet": "Your trainer hasn't uploaded a program yet. Try again later.",
+    "errNotConnected": "You're not connected to any trainer.",
+    "connectedToast": "Connected to your trainer",
+    "tagLost": "DISCONNECTED",
+    "lostTitle": "Your trainer has disconnected you",
+    "lostSub": "Your trainer removed you from their clients or gave you a new code. Ask them for it to come back: you won't lose your history.",
+    "lostCta": "Enter a new code",
+    "lostCtaSub": "The one your trainer gives you.",
     "codeHistoryLabel": "YOUR HISTORY",
     "codeHistoryFromTrainer": "Your trainer already logged some workouts for you: merge the history to see them in yours.",
     "codeHistoryProgram": "Program only",
@@ -493,66 +489,99 @@
     "linkErrTitle": "Couldn't link",
     "linkErrBody": "Couldn't link the account. Try again."
   },
+  "account": {
+    "eyebrow": "SETTINGS",
+    "title": "My account",
+    "rowTitleNone": "My account",
+    "rowSubTrainer": "Connected with {{how}}",
+    "rowSubNone": "No trainer account",
+    "how": { "code": "Personal code", "google": "Google", "apple": "Apple" },
+    "short": { "code": "code", "google": "Google", "apple": "Apple" },
+    "sectionTrainer": "TRAINER ACCOUNT",
+    "connectedWith": "Connected with {{how}}",
+    "codeWhy": "Keep it safe: you need it to recover the account if you change phones. With {{social}} you don't need any code.",
+    "socialAndroid": "Google",
+    "socialIos": "Google or Apple",
+    "emailHidden": "Hidden email",
+    "copyCode": "Copy code",
+    "nameLabel": "Your name for your clients",
+    "useGoogle": "Switch to Google",
+    "useApple": "Switch to Apple",
+    "useCode": "Switch to a personal code",
+    "sectionSwitch": "SWITCH TO",
+    "sectionLeave": "MORE OPTIONS",
+    "sectionDelete": "DELETE",
+    "notConnected": "Not connected",
+    "noneWhy": "Your programs and clients are saved only on this phone. With an account you send programs to your clients and see their workouts.",
+    "create": "Create account",
+    "haveAccount": "Sign in",
+    "sectionPlan": "PLAN",
+    "freeNoExpiry": "No expiry",
+    "meter": { "clients": "Clients", "connected": "Connected", "programs": "Programs", "sessions": "Sessions" },
+    "goPro": "Go PRO",
+    "restore": "Restore purchase",
+    "proAnnual": "Annual · renews on {{date}}",
+    "proLifetime": "Forever",
+    "proGift": "Gifted",
+    "savedInAccount": "✓ Saved to your account",
+    "savedInStore": "✓ Saved to your {{store}} account",
+    "otherPlatformWhy": "With an account, also on {{other}}.",
+    "manage": "Manage in {{store}} ↗",
+    "switchSocialWhy": "With {{how}} you won't have to keep any code. Your clients and your PRO stay with you.",
+    "switchCodeWhy": "You'll connect with a 12-character code. Keep it safe: without it you can't recover the account.",
+    "createCodeCta": "Create the code",
+    "leave": "Disconnect",
+    "leaveTitle": "Disconnect the account?",
+    "leaveWhy": "Your programs stay on this phone, but you stop sending programs to your clients and seeing their workouts. Your clients stay in this account: to come back, {{back}}. If you sign in with another one, they won't come with it.",
+    "leaveBackCode": "you'll need your code",
+    "leaveBackSocial": "connect again with {{how}}",
+    "leaveCta": "Disconnect",
+    "loginNeededError": "Sign in again with {{how}} in My account to continue.",
+    "noAccountError": "Create your trainer account first.",
+    "reloginWhy": "Your {{how}} session has ended. Sign in again with the same account to keep sending to your clients.",
+    "deleteRow": "Delete the account"
+  },
   "sync": {
-    "title": "Sync",
-    "titleFirstTime": "Client management",
-    "selectLead": "Choose how the app should keep your clients. You can change this later.",
     "purchaseTitle": "Keep your purchase",
     "purchaseLead": "Link it to an account to get it back on any phone, even if you switch between Android and iPhone.",
-    "purchaseLater": "Not now",
-    "modeGoogleTitle": "With your Google account",
-    "modeGoogleDesc": "Your clients are tied to your account. There's no code to keep: you sign in with Google and that's it.",
-    "modeAppleTitle": "With your Apple account",
-    "modeAppleDesc": "Same as Google, but with your Apple ID. You can hide your email and still recover the account.",
-    "modeCodeTitle": "With a personal code",
-    "modeCodeDesc": "The app creates a 12-character code. Everything works the same, but that code is your only key.",
-    "modeCodeWarn": "Keeping it is on you: without that code the account can't be recovered.",
-    "modeOfflineTitle": "No account",
-    "modeOfflineDesc": "Nothing leaves this phone. You share programs and history by exporting and importing files by hand.",
     "onlyInstalled": "Installed app only, not Expo Go.",
-    "warnCodeExists": "You already have a code. Creating another one stops your current clients from syncing with it.",
-    "warnUpgrade": "Your current clients move to your account on their own.",
-    "nameLabel": "YOUR NAME",
     "namePlaceholder": "e.g. Lucas García",
-    "nameHint": "This is the name your clients see on the programs you send them.",
-    "ctaGoogle": "CONTINUE WITH GOOGLE",
-    "ctaConnected": "ALREADY CONNECTED",
-    "reauthGoogleLink": "Sign in with a different Google account →",
-    "ctaCode": "CREATE MY CODE",
-    "ctaOffline": "CONTINUE WITHOUT AN ACCOUNT",
-    "statusTag": "SYNCING",
-    "statusTitle": "Your clients are in sync",
-    "statusSub": "With your personal code. Keep it: it's what gives the account back if you change phones.",
-    "yourCodeLabel": "YOUR CODE",
     "copyHint": "Tap to copy",
     "copied": "✓ Copied",
-    "reauthCta": "SIGN IN AGAIN",
-    "reauthHint": "Use it if the app stopped recognising you: it signs in again with the code you already have.",
-    "changeModeLink": "Change the sync mode →",
     "revealTitle": "Your personal code",
     "revealLead": "This is your code. Copy it and keep it somewhere safe: it's the only way to recover the account.",
-    "revealWarn": "If you lose the phone and don't have the code, the account and the sync with your clients can't be recovered.",
+    "revealWarn": "If you lose the phone and don't have the code, the account and the connection with your clients can't be recovered.",
     "revealWarnPurchase": "If you lose the phone and don't have the code, neither the account nor your purchase can be recovered on another phone. On this same store account, \"Restore purchase\" still works.",
     "revealCta": "I'VE SAVED IT",
-    "recoveryTitle": "Recover account",
-    "recoveryLink": "Already have a code? Recover account →",
-    "reauthLink": "Sign in again with another code →",
-    "recoveryLead": "Type your trainer code to get your clients back. It's twelve characters; the dashes are added for you.",
-    "recoveryCta": "RECOVER",
-    "switchTitle": "Change the mode?",
-    "switchBody": "The current account will be signed out. Your clients stay on this phone, but stop syncing until you sign in again.",
-    "switchConfirm": "Change",
-    "switchUpgradeTitle": "Move to your account?",
-    "switchUpgradeBody": "Your current clients move to your account on their own and you stop depending on the code.",
-    "switchUpgradeConfirm": "Move to account",
+    "revealCopy": "COPY",
+    "revealSend": "SEND IT TO ME",
+    "recoveryTitle": "I already have an account",
+    "recoveryLead": "Connect to your trainer account and get back your clients and your PRO plan, if you had it. Use the same method you created the account with.",
+    "recoveryCta": "CONNECT",
     "errNoIdToken": "The account identity wasn't returned. Try again.",
-    "errGoogleTitle": "Couldn't sign in with Google",
-    "errAppleTitle": "Couldn't sign in with Apple",
+    "errGoogleTitle": "Couldn't connect with Google",
+    "errAppleTitle": "Couldn't connect with Apple",
     "errGoogleBody": "Try again in a moment.",
-    "errReconnectTitle": "Couldn't sign in again",
     "errReconnectBody": "Check your code and try again.",
     "errAccountTitle": "Couldn't create the account",
-    "errAccountBody": "Try again in a moment."
+    "errAccountBody": "Try again in a moment.",
+    "createTitle": "Connect with your clients",
+    "createLead": "Create a trainer account to connect with your clients, send them their program and see their history in your app. Without an account you can have clients, but not connect with them.",
+    "createWith": "CREATE YOUR ACCOUNT",
+    "or": "or",
+    "notNow": "Not now",
+    "rowGoogle": "Continue with Google",
+    "rowCode": "Use a personal code",
+    "rowCodeSub": "Keep the code safe: without it you can't recover the account.",
+    "recommended": "RECOMMENDED",
+    "haveAccount": "I already have an account",
+    "recoverySocial": "WITH GOOGLE OR APPLE",
+    "recoveryCodeLabel": "WITH YOUR PERSONAL CODE",
+    "howGoogle": "Google account",
+    "howApple": "Apple ID",
+    "notFoundTitle": "There is no trainer account with this {{how}}",
+    "tryOther": "Try another",
+    "createNew": "Create a new one"
   },
   "drive": {
     "title": "Drive backup",
@@ -629,7 +658,7 @@
     "disconnectConfirm": "Disconnect"
   },
   "tabs": {
-    "session": "Session",
+    "session": "Workout",
     "program": "Program",
     "progress": "Progress",
     "clients": "Clients",
@@ -809,7 +838,7 @@
     "fromTemplates": "From your templates",
     "fromTemplatesDesc": "Creates a copy of the template",
     "templatesTitle": "Your session templates",
-    "addedToHome": "Added to your Home",
+    "addedToHome": "Added to Workout",
     "sectionTitle": "Free sessions",
     "templateUnnamed": "Free session",
     "templateExercises_one": "{{count}} exercise",
@@ -1047,8 +1076,14 @@
     "terms": "Terms of use",
     "privacy": "Privacy",
     "restore": "Restore purchase",
+    "signIn": "I have an account",
     "processing": "Purchase processed, syncing…",
-    "errTitle": "Couldn't complete the purchase"
+    "errTitle": "Couldn't complete the purchase",
+    "errPurchase": "Couldn't process the purchase",
+    "errUnavailable": "Purchases aren't available here",
+    "restored": "Purchase restored",
+    "restoreNone": "No previous purchases found",
+    "restoreError": "Couldn't restore the purchase"
   },
   "programUpdate": {
     "title": "Your trainer has updated the program",
@@ -1164,57 +1199,22 @@
       "gapText_other": "{{count}} {{group}} gaps",
       "gapTag": "YOUR EQUIPMENT FALLS SHORT"
     },
-    "generating": "GENERATING PROGRAM",
-    "buildingPlan": "Building your personalized plan...",
-    "appName": "FUERZA & CONTROL",
-    "newProgram": "NEW PROGRAM",
-    "howToCreate": "How do we build it?",
-    "modeAuto": "Choose a program",
-    "modeAutoDesc": "You pick from ready-made programs and we adapt it to your days and your equipment.",
-    "modeManual": "Empty program",
-    "modeManualDesc": "You build the structure and add your own exercises.",
-    "modeImport": "Import a file",
-    "modeImportDesc": "Open a .fitdata file exported from Forma Fit.",
-    "modeTemplate": "Load a template",
-    "modeTemplateDesc": "Start from one of your {{count}} saved templates.",
-    "modeTrainer": "I have a trainer",
-    "modeTrainerDesc": "Enter their code and get the program already synced.",
-    "modeRecommended": "RECOMMENDED",
-    "modeFooterHint": "Whichever path you take, you can edit everything later.",
-    "programName": "Program name",
-    "programNamePlaceholder": "E.g. Lucas - Full Body",
     "sessionsPerWeek": "Sessions per week",
-    "emptySessionsHint": "{{count}} empty sessions will be created. You can add more, and the exercises, from the editor.",
-    "yourTemplates": "Your templates",
-    "templateMeta": "{{count}} sessions per week",
-    "templateCopyHint": "The template is not touched: it gets copied.",
-    "back": "BACK",
-    "createProgram": "CREATE PROGRAM",
-    "createAndEdit": "CREATE AND EDIT",
-    "stepIndicator": "STEP {{current}} OF {{total}}",
     "identity": {
-      "title": "What are you after?",
-      "subtitle": "This is what picks the kind of program.",
       "muscle": {
-        "label": "Build muscle",
-        "description": "General hypertrophy. The most complete and versatile approach."
+        "label": "Build muscle"
       },
       "strength": {
-        "label": "Get strong",
-        "description": "Squat, deadlift and press at the centre. Heavy sets, long rests."
+        "label": "Get strong"
       },
       "glutes_legs": {
-        "label": "Glutes and legs",
-        "description": "Maximum emphasis on glutes, hamstrings and legs."
+        "label": "Glutes and legs"
       },
       "calisthenics": {
-        "label": "Calisthenics",
-        "description": "Bodyweight, grip and core. Relative strength and body control."
+        "label": "Calisthenics"
       }
     },
     "proposals": {
-      "eyebrow_one": "{{level}} · {{count}} DAY",
-      "eyebrow_other": "{{level}} · {{count}} DAYS",
       "best": "BEST",
       "phasesCount_one": "{{count}} phase",
       "phasesCount_other": "{{count}} phases",
@@ -1222,15 +1222,8 @@
       "setsLabel": "SETS",
       "demandLabel": "DEMAND",
       "weeks": "{{weeks}} weeks",
-      "title": "Choose your program",
-      "subtitle": "Picked from what you answered. Tap one to see all of it.",
-      "seeProposals": "SEE PROGRAMS",
-      "recommended": "Recommended",
       "seeAll": "See all {{total}} templates",
       "seeTop": "See only the recommended ones",
-      "another": "‹ See another program",
-      "forWhat": "{{days}} days · {{goal}}",
-      "change": "‹ change",
       "notes": {
         "needsBarbell": "Built around the barbell. Without one we swap {{exercises}} exercises.",
         "moreSessions_one": "It's {{sessions}} sessions a week, more than the one day you chose. You can remove some in the editor.",
@@ -1242,204 +1235,71 @@
       }
     },
     "generateError": "Could not generate the program. Please try again.",
-    "stepLevel": {
-      "headerTitle": "Your level",
-      "hint": "It sets your volume band and which programs we propose.",
-      "title": "What's your level?",
-      "subtitle": "This determines which exercises and structures will be included in your program."
-    },
-    "stepDiscipline": {
-      "title": "What's your focus?",
-      "subtitle": "Define what type of training and exercises you want to prioritize."
-    },
-    "stepDistribution": {
-      "title": "How do you split your days?",
-      "subtitle": "The split defines the structure of each session.",
-      "recommended": "Recommended",
-      "sevenDaysHint": "With 7 days, include at least one easy or active-recovery day."
-    },
-    "stepDays": {
-      "headerTitle": "Days per week",
-      "daysHint": "Each session in the program is one workout a week. If a program doesn't match your days, we'll tell you.",
-      "subtitleUpperLower": "Upper/Lower has 2 or 4 distinct sessions. You can repeat them as often as you want.",
-      "titleFullBody": "How many sessions?",
-      "titleFrequency": "Days per week",
-      "subtitleFrequency": "How many days a week do you train?",
-      "daysCount": "{{count}} day per week",
-      "daysCount_other": "{{count}} days per week",
-      "allGroupsHint": "All muscle groups in each session",
-      "moreVarietyHint": "More exercise variety and patterns"
-    },
-    "stepTime": {
-      "title": "Time per session",
-      "subtitle": "How much time do you have to train each day?"
-    },
-    "sessionTimes": {
-      "30": {
-        "label": "30 min",
-        "description": "Express sessions — just the essentials."
-      },
-      "45": {
-        "label": "45 min",
-        "description": "Compact sessions covering what matters."
-      },
-      "60": {
-        "label": "60 min",
-        "description": "The standard training session length."
-      },
-      "90": {
-        "label": "90 min",
-        "description": "Long sessions with more volume and variety."
-      }
-    },
     "preview": {
-      "eyebrow": "YOUR PROGRAM",
       "setsLabel": "SETS",
       "perSessionLabel": "PER SESSION",
       "adjustSectionLabel": "Adjustments",
       "adjustNavSubtitle": "Time, equipment and limitations",
       "adjustmentsRow_one": "{{count}} adjustment to your program",
       "adjustmentsRow_other": "{{count}} adjustments to your program",
-      "ready": "✓ YOUR PROGRAM",
-      "edit": "EDIT",
-      "start": "START",
       "exerciseCount": "{{exercises}} exercises",
       "setCount": "{{sets}} sets",
-      "adaptedTitle": "WHAT WE ADJUSTED",
-      "unresolved": "We could not fill {{slots}} {{group}} slots with your equipment.",
-      "overTime": "Your session {{label}} runs ~{{minutes}} min, over the {{budget}} you asked for.",
       "overBudget": "{{group}} volume is above what we recommend for your level.",
       "estimatedMinutes": "~{{minutes}} min",
-      "minutesPerSession": "~{{minutes}} min per session",
-      "adjustments": "{{count}} adjustment to your equipment and your time",
-      "adjustments_other": "{{count}} adjustments to your equipment and your time",
-      "changeLater": "You can change anything later, in the editor.",
       "noWarmupNote": "Estimated without a general warm-up — short sessions go straight to work. Includes changing equipment between exercises."
     },
-    "stepGoal": {
-      "title": "What's your goal?",
-      "subtitle": "Determines the rep range and rest between sets."
-    },
-    "stepEquipment": {
-      "title": "What equipment do you have?",
-      "subtitle": "Select everything you have available on a regular basis."
-    },
-    "stepLimitations": {
-      "title": "Do you have any limitations?",
-      "subtitle": "Exercises that could aggravate these areas will be avoided as main exercises."
-    },
-    "stepProgression": {
-      "title": "Progression model",
-      "subtitle": "Advanced only. How do you prefer to progress on main exercises?"
-    },
-    "generateProgram": "SEE THE PROGRAM",
     "levels": {
       "beginner": {
-        "label": "Beginner",
-        "description": "Less than 1 year training or returning after a long break.",
-        "detail": "Machine-guided exercises, basic bodyweight and dumbbell patterns. Simple and safe progression."
+        "label": "Beginner"
       },
       "intermediate": {
-        "label": "Intermediate",
-        "description": "1–3 years of consistent training.",
-        "detail": "Dumbbells, cables, kettlebell and technical bodyweight exercises like pull-ups or dips. Double progression."
+        "label": "Intermediate"
       },
       "advanced": {
-        "label": "Advanced",
-        "description": "3+ years with solid technique in free movements.",
-        "detail": "Barbell, weighted exercises, periodization. Requires good technique in squat, deadlift and press."
-      }
-    },
-    "disciplines": {
-      "standard": {
-        "label": "Standard",
-        "description": "Hypertrophy and general strength. The most complete and versatile approach.",
-        "detail": "Covers all movement patterns with the best exercises for each goal."
-      },
-      "calisthenics": {
-        "label": "Calisthenics / Functional",
-        "description": "Bodyweight, grip and core. With transfer to sports and aerial disciplines.",
-        "detail": "Pull-ups, dips, L-sit, hollow body. Relative strength and body control."
-      },
-      "glutes_legs": {
-        "label": "Legs & Glutes",
-        "description": "Maximum emphasis on glutes, hamstrings and legs. Popular in female programs.",
-        "detail": "Hip thrust, Romanian deadlift, leg press and squat variations as central exercises."
-      },
-      "strength": {
-        "label": "Strength / Powerlifting",
-        "description": "Move more weight. Squat, deadlift and press as the core.",
-        "detail": "3–6 rep ranges, long rests and load progression as priority."
-      }
-    },
-    "distributions": {
-      "full_body": {
-        "label": "Full Body",
-        "description": "All muscle groups in each session. 2–6 days."
-      },
-      "upper_lower": {
-        "label": "Upper / Lower",
-        "description": "Upper body one day, lower the next. 2 distinct sessions."
-      },
-      "push_pull_legs": {
-        "label": "Push / Pull / Legs",
-        "description": "One push day, one pull day, one legs day. 3 sessions."
+        "label": "Advanced"
       }
     },
     "goals": {
       "hypertrophy": {
-        "label": "Hypertrophy",
-        "description": "Build muscle mass. 8–12 reps per set."
+        "label": "Hypertrophy"
       },
       "endurance": {
-        "label": "Endurance",
-        "description": "Last longer. 12–20 reps, short rests."
+        "label": "Endurance"
       },
       "strength": {
-        "label": "Strength",
-        "description": "Move more weight. 5–8 reps, long rests."
+        "label": "Strength"
       },
       "max_strength": {
-        "label": "Max strength",
-        "description": "Peak performance. 3–5 reps, advanced only."
+        "label": "Max strength"
       }
     },
     "equipment": {
       "bodyweight": {
-        "label": "Bodyweight only",
-        "description": "No equipment — exercises using just your body."
+        "label": "Bodyweight only"
       },
       "machines": {
-        "label": "Machines",
-        "description": "Leg press, cable, curl, extension..."
+        "label": "Machines"
       },
       "dumbbells": {
-        "label": "Dumbbells",
-        "description": "Adjustable or fixed."
+        "label": "Dumbbells"
       },
       "barbell": {
-        "label": "Barbell",
-        "description": "Olympic barbell with plates."
+        "label": "Barbell"
       },
       "pullup_bar": {
-        "label": "Pull-up bar",
-        "description": "Wall-mounted or door frame."
+        "label": "Pull-up bar"
       },
       "parallettes": {
-        "label": "Parallettes / Dip bar",
-        "description": "For dips and L-sit."
+        "label": "Parallettes / Dip bar"
       },
       "kettlebell": {
-        "label": "Kettlebell",
-        "description": "One or more."
+        "label": "Kettlebell"
       },
       "resistance_band": {
-        "label": "Resistance bands",
-        "description": "For assistance or activation."
+        "label": "Resistance bands"
       },
       "ab_wheel": {
-        "label": "Ab wheel",
-        "description": "Ab wheel rollout."
+        "label": "Ab wheel"
       }
     },
     "limitations": {
@@ -1460,56 +1320,9 @@
         "description": "Discomfort in knee or meniscus."
       }
     },
-    "equipmentPresets": {
-      "gym": {
-        "label": "Full gym",
-        "description": "Machines, dumbbells, barbell, pull-up bar, kettlebell and bands."
-      },
-      "home": {
-        "label": "Home with dumbbells",
-        "description": "Dumbbells, resistance bands, pull-up bar and ab wheel."
-      },
-      "bodyweight": {
-        "label": "Bodyweight only",
-        "description": "No equipment — exercises with just your body."
-      },
-      "custom": {
-        "label": "Custom",
-        "description": "Your own choice of equipment."
-      },
-      "customize": "Customize"
-    },
     "chips": {
       "limitationsCount": "{{count}} limitation",
       "limitationsCount_other": "{{count}} limitations"
-    },
-    "progressionModels": {
-      "double_progression": {
-        "label": "Double progression",
-        "description": "Reach max reps → increase weight → return to min. The most common."
-      },
-      "linear": {
-        "label": "Linear progression",
-        "description": "Add a fixed weight each session. Classic in strength programs like Starting Strength."
-      },
-      "reps_progression": {
-        "label": "Rep progression",
-        "description": "Weight stays the same, only reps increase each session."
-      }
-    },
-    "disabledReasons": {
-      "notForDiscipline": "Not available for {{discipline}}",
-      "requiresIntermediate": "Requires intermediate level",
-      "requiresAdvanced": "Requires advanced level"
-    },
-    "upperLowerOptions": {
-      "2sessions": "2 sessions",
-      "4sessions": "4 sessions"
-    },
-    "pplSessions": {
-      "push": "Session A — Push",
-      "pull": "Session B — Pull",
-      "legs": "Session C — Legs"
     }
   },
   "dayCard": {
@@ -1733,7 +1546,7 @@
     "newExercise": "new",
     "freeTitle": "This free session",
     "addExercisesSub": "The ones you added during the workout",
-    "saveAsFreeSub": "To repeat it from Home"
+    "saveAsFreeSub": "To repeat it from Workout"
   },
   "load": {
     "tabExercises": "Exercises",
@@ -2216,6 +2029,8 @@
     "menuReactivate": "Reactivate",
     "programSent": "Program sent",
     "programUploadError": "Couldn't upload the program.",
+    "slotCreateError": "Couldn't generate their code. Move them to the app from their profile once you're online.",
+    "slotGoneError": "This client is in another of your accounts. Sign in with it to send them things, or move them to the app in this one.",
     "deleteProgramTitle": "Delete program",
     "deleteProgramConfirm": "Delete \"{{name}}\"?",
     "reactivateTitle": "Reactivate program",
@@ -2262,6 +2077,8 @@
       "title": "CONNECTION CODE",
       "explain": "Give it to {{name}}: they enter it in their app and from then on they get their programs and you see their history.",
       "waiting": "Waiting for {{name}}",
+      "leftTitle": "{{name}} left",
+      "leftLine": "They can come back any time with this same code.",
       "waitLine": "They download Forma Fit and enter this code.",
       "needProgram": "Assign them a program: the code works as soon as they have one.",
       "share": "Share",
@@ -2355,6 +2172,8 @@
       "link_none": "No app",
       "link_invited": "Waiting for code",
       "link_linked": "With app",
+      "link_left": "Left",
+      "link_orphan": "In another of your accounts",
       "noAppLine": "You log their workouts. If they start using the app, move them and they will get everything you logged.",
       "upToDate": "Up to date",
       "newTag": "New",
@@ -2732,6 +2551,402 @@
       "linear": "Adds sets across every exercise in the stage to raise total work volume.",
       "intensification": "Lowers the key lifts’ rep range and lengthens the rest.",
       "volume": "Adds sets to the accessories only; the key lifts are left alone."
+    }
+  },
+  "onboardingFlow": {
+    "common": {
+      "sections": {
+        "settings": "Settings",
+        "you": "You",
+        "setup": "Set up",
+        "learn": "Learn"
+      },
+      "stepOf": "· {{n}} of 4",
+      "completed": "Complete",
+      "newProgram": "New program",
+      "back": "Back",
+      "skip": "Skip",
+      "next": "Next",
+      "welcome": {
+        "hero": "Your program,\nyour sets,\n*your progress*",
+        "tagline": "Two minutes to make it yours",
+        "invited": "*{{trainer}}* invited you. Right after the settings we'll connect you.",
+        "invitedAnon": "*Your coach* invited you. Right after the settings we'll connect you.",
+        "panelTitle": "Shall we?",
+        "start": "Start",
+        "haveAccount": "I already have an account",
+        "language": "Language"
+      },
+      "units": {
+        "title": "Kilos or pounds?",
+        "sub": "You can change it any time in the menu."
+      },
+      "theme": {
+        "title": "Pick your style",
+        "sub": "Tap to try it.",
+        "previewTitle": "Session A · Push",
+        "previewMeta": "5 exercises · ~55 min",
+        "previewCta": "Start"
+      },
+      "role": {
+        "title": "How do you train?",
+        "sub": "So we take you straight to what matters.",
+        "self": "On my own",
+        "selfDesc": "I follow a program or create my own",
+        "coached": "With a coach",
+        "coachedDesc": "Someone prepares my program",
+        "trainer": "I'm a coach",
+        "trainerDesc": "I prepare programs for my clients"
+      }
+    },
+    "builder": {
+      "defaultName": "My program",
+      "defaultNameClient": "{{name}}’s program",
+      "doneCreated": "“{{name}}” created",
+      "doneSent": "“{{name}}” created and sent",
+      "fillSelf_one": "Fill in session {{letters}} · Program",
+      "fillSelf_other": "Fill in sessions {{letters}} · Program",
+      "fillClient_one": "Fill in session {{letters}} and send it · Clients → {{client}}",
+      "fillClient_other": "Fill in sessions {{letters}} and send them · Clients → {{client}}",
+      "later": "Finish later",
+      "session": "Session {{letter}}",
+      "empty": "empty",
+      "exCount": "{{count}} ex.",
+      "bar": {
+        "program": "Your program",
+        "programOf": "{{name}}’s program",
+        "sessions": "Sessions",
+        "sessionsN_one": "{{count}} session",
+        "sessionsN_other": "{{count}} sessions",
+        "exercise": "Exercise",
+        "volume": "Volume"
+      },
+      "sessions": {
+        "titleSelf": "How many days will you *train*?",
+        "titleTrainer": "How many sessions per *week*?",
+        "sub": "Each day is a different session. Change it any time."
+      },
+      "exercise": {
+        "title": "Add the first *exercise*",
+        "sub": "One is enough to see how it works. Fill in the rest later.",
+        "add": "+ Add exercise",
+        "change": "Change",
+        "later": "later",
+        "suggested": "Suggested",
+        "found_one": "{{count}} exercise",
+        "found_other": "{{count}} exercises",
+        "keepTyping": "keep typing",
+        "create": "＋ Create “{{name}}”",
+        "createSub": "Not in the catalog: you create it",
+        "closeSearch": "Close search"
+      },
+      "volume": {
+        "title": "Sets and *reps*",
+        "subDeep": "Sets, reps and rest in session A.",
+        "hintFixed": "Fixed reps: {{reps}}.",
+        "hintRange": "Range {{min}}-{{max}}: add reps up to {{max}}, then weight."
+      },
+      "done": {
+        "title": "Your program is taking *shape*",
+        "titleClient": "{{name}}’s program is taking *shape*",
+        "sub": "Give it a name if you like.",
+        "nameLabel": "Program name",
+        "noteSelf": "Keep editing when you’re done: *Program → Edit*. You can also change how each exercise progresses there.",
+        "clientsLabel": "How it looks in Clients",
+        "noteClientEmpty_one": "Session {{letters}} is empty. Fill it in under *Clients → {{client}}*: each change reaches them with “↑ Send”.",
+        "noteClientEmpty_other": "Sessions {{letters}} are empty. Fill them in under *Clients → {{client}}*: each change reaches them with “↑ Send”.",
+        "noteClientFull": "Keep editing in *Clients → {{client}}*: each change reaches them with “↑ Send”.",
+        "listAnd": "and",
+        "save": "Save",
+        "saveSend": "Save and send to {{name}}",
+        "sendFailed": "Couldn’t send it. Check your connection and try again."
+      }
+    },
+    "self": {
+      "level": {
+        "title": "How long have you been *lifting*?",
+        "beginner": "Just starting",
+        "beginnerDesc": "Under 6 months",
+        "intermediate": "A while",
+        "intermediateDesc": "6 months to 2 years",
+        "advanced": "Experienced",
+        "advancedDesc": "Over 2 years"
+      },
+      "choice": {
+        "titleBeginner": "We suggest a ready-made *program*",
+        "titleOther": "Template or your *own*?",
+        "subBeginner": "Built to start with good form and progress every week.",
+        "subOther": "Both can be edited as much as you like.",
+        "programs": "See programs for me",
+        "programsDesc": "Based on your goal and training days",
+        "recommended": "Recommended",
+        "own": "Create my own",
+        "ownDesc": "Set sessions, exercises and progression",
+        "backup": "I have a backup"
+      },
+      "goal": {
+        "title": "What's your *goal*?"
+      },
+      "days": {
+        "title": "How many days a *week*?",
+        "sub": "What you can really do, not what you wish."
+      },
+      "props": {
+        "searching": "Finding your *program*",
+        "searchingSub": "Based on your answers:",
+        "level": "Level: {{level}}",
+        "days_one": "{{count}} day a week",
+        "days_other": "{{count}} days a week",
+        "title": "Pick your *program*",
+        "sub": "Chosen from your answers. Tap one to see it in full.",
+        "previewSub": "You can change anything later, in the editor.",
+        "start": "Start with this one",
+        "other": "See other programs",
+        "generating": "Building your program...",
+        "sessionsCount_one": "{{count}} session",
+        "sessionsCount_other": "{{count}} sessions",
+        "programSub": "{{sessions}} sessions · ~{{minutes}} min each · {{sets}} sets",
+        "sessionsTitle": "Your sessions",
+        "adjustTitle": "Settings",
+        "minutes": "{{count}} min"
+      },
+      "adjust": {
+        "timeTitle": "How long is your *session*?",
+        "materialTitle": "What *equipment* do you have?",
+        "equipTitle": "Which *equipment* do you have?",
+        "equipSub": "Tick everything you have.",
+        "limitsTitle": "Any *limitations*?",
+        "limitsSub": "We swap the exercises that could bother you.",
+        "accept": "Accept",
+        "preview": "Your program with this"
+      },
+      "done": {
+        "program": "\"{{name}}\" ready",
+        "imported": "Program ready"
+      }
+    },
+    "coached": {
+      "code": {
+        "title": "Your *coach's* code",
+        "sub": "If your coach uses Forma Fit, enter the code they gave you.",
+        "subInvite": "It came with your invitation. Check that it's this one and continue.",
+        "continue": "Continue",
+        "later": "I'll enter it later",
+        "askLink": "Didn’t get one? Ask for it",
+        "noApp": "Your coach doesn’t use Forma Fit?",
+        "accountLink": "Connected before? Sign in with your account"
+      },
+      "confirm": {
+        "title": "Program *found*",
+        "from": "From {{trainer}}",
+        "fromAnon": "From your coach",
+        "implies1": "It loads in Workout and you follow it as is. Your coach changes it, not you.",
+        "implies2": "{{trainer}} sees the sessions you complete, with the weights you log.",
+        "implies2Anon": "Your coach sees the sessions you complete, with the weights you log.",
+        "implies3": "If the program changes, we let you know and you decide when to switch.",
+        "implies4": "You can disconnect whenever you want.",
+        "connect": "Connect",
+        "connecting": "Connecting…"
+      },
+      "linked": {
+        "title": "Connected with *{{trainer}}*",
+        "titleAnon": "Connected with *your coach*",
+        "sub": "\"{{program}}\" is now in Workout. {{trainer}} sees the sessions you complete.",
+        "subAnon": "\"{{program}}\" is now in Workout. Your coach sees the sessions you complete.",
+        "hint": "Now, choose how to see your sessions."
+      },
+      "ask": {
+        "title": "Your coach creates the *code*",
+        "sub": "They find it in Clients → your profile → Connect. Send them this:",
+        "message": "Hi! I've got Forma Fit. Can you send me my client code so I can connect?",
+        "send": "Send message",
+        "later": "I'll enter it later"
+      },
+      "noapp": {
+        "invite": "Invite them to the app",
+        "inviteDesc": "They can manage your program from their phone and see your workouts. Free to start.",
+        "inviteMessage": "Hi! I'm training with Forma Fit. If you install it, you can manage my program there and see my workouts (free to start): {{url}}",
+        "copy": "Create their program in the app",
+        "copyDesc": "Enter it session by session from their PDF, photo or message."
+      },
+      "copy": {
+        "title": "Create their *program*",
+        "sub": "Add it to the app to follow it and log your workouts.",
+        "hand": "I’ll enter it session by session",
+        "handDesc": "Sessions, exercises and sets, as you have them",
+        "similar": "Start from a similar one",
+        "similarDesc": "Pick a template and adapt it"
+      },
+      "busy": {
+        "title": "This code is already in *use*",
+        "ask": "Ask for a new code",
+        "other": "Try another code",
+        "message": "Hi! The Forma Fit code you sent me is already in use. Could you create a new one?"
+      },
+      "wait": {
+        "title": "When your *code* arrives",
+        "sub": "Your coach creates it in their app and sends it to you.",
+        "where": "Enter it in Menu → Coach → Connect with a code and you’ll be connected. Meanwhile, you can carry on.",
+        "next": "Carry on",
+        "have": "I have it"
+      },
+      "done": {
+        "linked": "Connected with {{trainer}}",
+        "linkedAnon": "Connected with your coach",
+        "program": "\"{{program}}\" in Workout",
+        "pending": "Connect with your coach · Menu → Trainer"
+      }
+    },
+    "learn": {
+      "home": {
+        "title": "How do you want to see your *sessions*?",
+        "sub": "This is how you'll see them in Workout. You can change it in Preferences.",
+        "list": "List",
+        "listDesc": "Every session, one under another",
+        "tabs": "Tabs",
+        "tabsDesc": "One card, a tab per session"
+      },
+      "input": {
+        "title": "Try it: drag the weight",
+        "sub": "This is how you log a set during a workout. Pick whichever feels best.",
+        "hint": "← slide sideways →",
+        "ruler": "With a ruler",
+        "rulerDesc": "A ruler appears under your finger and it saves when you let go. More precise.",
+        "swipe": "Just swipe",
+        "swipeDesc": "The number changes in the box as you drag. Faster.",
+        "keep": "Use this one"
+      },
+      "cards": {
+        "prev": "Back",
+        "done": "Got it",
+        "clients": {
+          "title": "Your clients at a *glance*",
+          "sub": "Who trained this week, who has been away for days, and who has new sessions to review (the colored notch)."
+        },
+        "today": {
+          "title": "Today's *workout*",
+          "subCards": "It's in the Workout tab. The highlighted one is up next: tap Start. The app knows which comes next.",
+          "subTabs": "It's in the Workout tab, with a tab per session. The highlighted one is up next: tap Start."
+        },
+        "edit": {
+          "title": "Change *anything*",
+          "sub": "From Program you edit exercises, sets and progression. Changes apply from the next session."
+        },
+        "sees": {
+          "title": "{{trainer}} sees your *workouts*",
+          "sub": "Every session you complete reaches them. If they change your program, you're told and you choose when to switch."
+        },
+        "free": {
+          "title": "Something different? *Free* session",
+          "sub": "Use + to train outside the program. It can count as a program session or not.",
+          "subLinked": "Use + to train outside the program. {{trainer}} will see it too."
+        },
+        "templates": {
+          "title": "Templates: program *once*",
+          "sub": "When {{client}}'s program works for others, save it as a template and assign it. Each client gets their own copy and moves at their own pace."
+        },
+        "next": {
+          "title": "Tweak their *next session*",
+          "sub": "From their profile, change weights or exercises in the next session without touching the program."
+        },
+        "log": {
+          "title": "Log their *sessions*",
+          "sub": "{{client}} doesn't use the app: from their profile you log what they do, or paste the text they send you on WhatsApp."
+        }
+      },
+      "mini": {
+        "exercise1": "Bench press · 3×8",
+        "exercise2": "Row · 3×10",
+        "clientsCount_one": "{{count}} client",
+        "clientsCount_other": "{{count}} clients",
+        "notAssigned": "not assigned",
+        "templateExample": "Base hypertrophy",
+        "nextHead": "{{name}} · next: session B",
+        "squat": "Squat",
+        "squatSub": "4×6 · 100 {{unit}}",
+        "rdl": "Romanian deadlift",
+        "logHead": "{{name}} · history",
+        "logWhen": "Monday · logged by you",
+        "logAdd": "+ Log a session",
+        "logPaste": "Paste WhatsApp text",
+        "coachChanged": "{{trainer}} updated your program",
+        "coachChange": "Incline press instead of bench",
+        "coachSession": "Today · {{count}} ex. · {{trainer}} will see it"
+      },
+      "sessionNames": ["Push", "Pull", "Legs", "Upper"],
+      "exampleClient": "Ana",
+      "yourClient": "your client",
+      "yourTrainer": "Your coach",
+      "yourTrainerLc": "your coach"
+    },
+    "recover": {
+      "title": "Recover what's *yours*",
+      "sub": "What did you have on your other phone?",
+      "trainer": "My trainer account",
+      "trainerDesc": "With Apple, Google or your 12-character code. Your clients come back",
+      "client": "I train with a trainer",
+      "clientDesc": "With the account you linked. Your program comes back",
+      "backup": "A backup",
+      "backupDesc": "From Google Drive or a .fitdata file",
+      "note": "Did you train with a trainer and not link an account? Ask them for a new code: your history is kept",
+      "google": "With Google",
+      "apple": "With Apple",
+      "rTrainer": {
+        "title": "How did you *sign in*?",
+        "sub": "Pick what you used on your other phone",
+        "code": "With my personal code",
+        "codeDesc": "The 12-character one"
+      },
+      "rCode": {
+        "title": "Your *personal* code",
+        "sub": "Twelve characters; the dashes are added for you.",
+        "enter": "Sign in"
+      },
+      "rClient": {
+        "title": "How did you *connect*?",
+        "sub": "Pick what you used with your trainer",
+        "code": "With my trainer's code"
+      }
+    },
+    "trainer": {},
+    "newProgram": {
+      "source": {
+        "title": "Choose how to *start*",
+        "sub": "You can edit the program at any time.",
+        "recommended": "Forma Fit templates",
+        "recommendedDesc": "Based on your level, goal and training days",
+        "scratch": "Create from scratch",
+        "scratchDesc": "Set sessions, exercises and progression",
+        "template": "My templates",
+        "templateDesc": "Use one of your saved templates",
+        "coach": "Your coach's program",
+        "coachDesc": "Connect with your coach's code",
+        "import": "Import file",
+        "importDesc": ".fitdata file from a backup"
+      },
+      "templates": {
+        "title": "Pick a *template*",
+        "sub": "A copy is created. The original template stays the same.",
+        "name": "Program name",
+        "use": "Use this one",
+        "sessions_one": "{{count}} session",
+        "sessions_other": "{{count}} sessions",
+        "stages_one": "{{count}} stage",
+        "stages_other": "{{count}} stages"
+      },
+      "done": {
+        "title": "Program *ready*",
+        "sub": "«{{name}}» is now your active program.",
+        "subImport": "The file has been imported.",
+        "hint": "Available on Home. You can edit it in Program."
+      }
+    },
+    "done": {
+      "title": "All *set*",
+      "sub": "Pick up the rest whenever you like.",
+      "panelTrain": "Let's train",
+      "panelClients": "Your clients are waiting",
+      "cta": "Go to the app"
     }
   },
   "deleteAccount": {

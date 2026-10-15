@@ -1,487 +1,172 @@
 /**
- * TrainerSyncModal — cómo sincroniza el ENTRENADOR con sus clientes.
+ * TrainerSyncModal — la hoja para CREAR la cuenta del entrenador o conectarse
+ * con una que ya existe.
  *
- * Se abre la primera vez que entra en Clientes (`trainerSync.mode === null`) y
- * desde el menú principal ("Sincronización con clientes").
+ * Se abre la primera vez que entra en Clientes (`trainerSync.mode === null`),
+ * al conectar un cliente sin cuenta, desde el paywall y desde «Mi cuenta». Ver
+ * el código, cambiar de forma o desconectarse está en la página «Mi cuenta» (M03).
  *
- * Cuatro pantallas dentro de la misma hoja:
- *   • select      → elegir modo (Google / código personal / sin conexión)
- *   • code_status → ya hay código guardado: verlo, copiarlo, reautenticarse
+ * Tres pantallas dentro de la misma hoja:
+ *   • select      → para qué sirve la cuenta (una línea), y cómo crearla: los
+ *                   botones de Apple (oficial, solo iOS) y Google, y debajo, como
+ *                   alternativa, el código personal. Enlace «Ya tengo cuenta».
+ *   • recovery    → «Ya tengo cuenta»: Google, Apple o el código. Aquí Google y
+ *                   Apple solo CONECTAN: si no hay cuenta avisan (M03-03 §7.4)
  *   • code_reveal → el código recién creado, para guardarlo
- *   • recovery    → recuperar la cuenta con un código existente
  *
- * `purpose="purchase"` (M01 §3.5): se abre tras comprar Pro sin cuenta, para
- * que la compra quede atada a una. Mismo flujo, con otro título, sin «Sin
- * conexión» (para no guardar ya está «Ahora no») y Apple/Google preseleccionado.
+ * El nombre que ven los clientes ya no se pide aquí: sale de Google o Apple y
+ * se cambia en «Mi cuenta». Arriba de todo, antes de elegir nada, despistaba.
  *
- * Pasa a `DragSheet` como el resto de los modales (§9 de docs/UI-MIGRATION.md).
- * Toda la lógica de Supabase/OAuth (claim de slots, fallback por código,
- * refreshTrainerSlots) se conserva tal cual.
+ * `initialScreen="recovery"` la abre en «Ya tengo cuenta»; por defecto `'select'`.
+ * `purpose="purchase"` (M01 §3.5): tras comprar Pro sin cuenta, para atar la
+ * compra a una. Misma hoja con otro título y otra explicación.
+ *
+ * Entrar y crear van por `useTrainerAccount` y las acciones de cuenta del
+ * store (M03-01): aquí no se toca Supabase.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { Text, TextInput } from './ui/Text';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser  from 'expo-web-browser';
-import * as Clipboard   from 'expo-clipboard';
-import Constants        from 'expo-constants';
-import { Path, G, Circle } from 'react-native-svg';
+import { Text } from './ui/Text';
 import { useTranslation } from 'react-i18next';
 
-import { useStore } from '../../store/useStore';
-import { setupTrainerCodeAccount, recoverWithTrainerCode, loginTrainerWithIdToken, signOut as supabaseSignOut } from '../services/supabaseAuth';
-import { transferMySlotsTo } from '../services/supabaseSync';
-import { exchangeCodeForTokens } from '../services/driveService';
-import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI } from '../config/google';
-import { APPLE_AUTH_AVAILABLE, signInWithApple } from '../services/appleAuth';
+import { APPLE_AUTH_AVAILABLE } from '../services/appleAuth';
+import useTrainerAccount, { askCreateInstead } from '../hooks/useTrainerAccount';
 import DragSheet from './DragSheet';
 import CodeField from './ui/CodeField';
+import { Section, SectionLabel, MenuRow } from './ui/MenuList';
+import { KeyIcon } from './ui/AccountIcons';
 import AppleSignInButton from './ui/AppleSignInButton';
-import { CheckIcon } from './ui/EditorIcons';
-import { SectionLabel, RowIcon } from './ui/MenuList';
-import { spacing, textStyles, getCardRadii } from '../theme';
+import GoogleSignInButton from './ui/GoogleSignInButton';
+import CodeReveal from './CodeReveal';
+import { spacing, textStyles, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
-// Required so the in-app browser can redirect back after OAuth
-WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_DISCOVERY = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint:         'https://oauth2.googleapis.com/token',
-};
-
-// Los iconos dicen de qué va cada modo: cuenta en la nube, manzana, llave,
-// archivos.
-const ICON_CLOUD  = <Path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z" />;
-const ICON_APPLE  = <G><Path d="M16 13c0-2 1.6-3 1.7-3-1-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7s-1.6-.7-2.6-.7c-1.3 0-2.6.8-3.2 2-1.4 2.4-.4 6 1 8 .7 1 1.5 2 2.5 2s1.3-.6 2.5-.6 1.5.6 2.6.6 1.7-1 2.4-1.9c.7-1.1 1-2.2 1-2.2s-2-.8-2-3.3z" /><Path d="M14 6.5c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-1 1.6-.8 2.5.9.1 1.8-.4 2.4-1.2z" /></G>;
-const ICON_KEY    = <G><Circle cx="8" cy="12" r="3.5" /><Path d="M11.5 12H21M17 12v3.5" /></G>;
-const ICON_FOLDER = <Path d="M3 7h6l2 2h10v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />;
-
-// Apple va la primera en iOS: su guía pide que Sign in with Apple esté al menos
-// tan a la vista como el resto de logins sociales (§4.8). En Android no existe
-// el módulo nativo, así que la fila ni se monta.
-const MODES = [
-  ...(APPLE_AUTH_AVAILABLE ? [{ id: 'apple', icon: ICON_APPLE, expoOnly: true }] : []),
-  { id: 'google',  icon: ICON_CLOUD,  expoOnly: true },
-  { id: 'code',    icon: ICON_KEY                    },
-  { id: 'offline', icon: ICON_FOLDER                 },
-];
-const MODE_KEY = { google: 'Google', apple: 'Apple', code: 'Code', offline: 'Offline' };
-
-/** Los dos modos que entran con una cuenta de terceros. */
-const SOCIAL_MODES = ['google', 'apple'];
-
-// ── Caja del código (verlo y copiarlo) ────────────────────────────────────────
-
-function CodeBox({ code, small }) {
-  const styles = useThemedStyles(makeStyles);
-  const { t }  = useTranslation();
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    await Clipboard.setStringAsync(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.7}>
-      <Text style={[styles.codeText, small && styles.codeTextSm]}>{code}</Text>
-      <Text style={styles.codeHint}>{copied ? t('sync.copied') : t('sync.copyHint')}</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ── Campo del nombre visible para los clientes ────────────────────────────────
-
-function NameField({ value, onChange }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const { t }  = useTranslation();
-  return (
-    <View>
-      <SectionLabel>{t('sync.nameLabel')}</SectionLabel>
-      <TextInput
-        style={styles.nameInput}
-        placeholder={t('sync.namePlaceholder')}
-        placeholderTextColor={th.colors.mutedLight}
-        value={value}
-        onChangeText={onChange}
-        returnKeyType="done"
-        autoCorrect={false}
-        maxLength={40}
-      />
-      <Text style={styles.hintLeft}>{t('sync.nameHint')}</Text>
-    </View>
-  );
-}
-
-// ── Modo (fila agrupada con su aviso propio) ──────────────────────────────────
-
-function ModeOption({ mode, active, unavailable, warn, warnTone, onPress, isFirst, isLast }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const { t }  = useTranslation();
-  return (
-    <TouchableOpacity
-      style={[
-        styles.mode,
-        getCardRadii(th, isFirst, isLast),
-        // El check solo no bastaba para ver cuál está elegida: la fila activa
-        // se tiñe de lima además de agrandar la marca.
-        active && !unavailable && styles.modeActive,
-        unavailable && styles.modeDisabled,
-      ]}
-      onPress={() => !unavailable && onPress()}
-      activeOpacity={unavailable ? 1 : 0.7}
-    >
-      <View style={styles.modeTop}>
-        <View style={styles.modeIcon}>
-          <RowIcon color={active ? th.colors.accent : th.colors.mutedLight}>{mode.icon}</RowIcon>
-        </View>
-        <View style={styles.modeMeta}>
-          <Text style={[styles.modeTitle, active && { color: th.colors.accent }]}>
-            {t(`sync.mode${MODE_KEY[mode.id]}Title`)}
-          </Text>
-          <Text style={styles.modeDesc}>{t(`sync.mode${MODE_KEY[mode.id]}Desc`)}</Text>
-          {unavailable && <Text style={styles.modeUnavail}>{t('sync.onlyInstalled')}</Text>}
-        </View>
-        {!unavailable && (
-          active
-            ? <View style={styles.checkBadge}><CheckIcon size={16} color={th.colors.onAccent} /></View>
-            : <View style={styles.checkSpacer} />
-        )}
-      </View>
-      {active && !!warn && (
-        <Text style={[
-          styles.modeWarn,
-          { color: warnTone === 'good' ? th.colors.accent : th.tint.orange50 },
-        ]}>
-          {warn}
-        </Text>
-      )}
-    </TouchableOpacity>
-  );
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
-
-// Lo que se preselecciona al comprar: la cuenta que recupera la compra en
-// cualquier móvil, no el código.
-const PURCHASE_DEFAULT = APPLE_AUTH_AVAILABLE ? 'apple' : 'google';
-
-export default function TrainerSyncModal({ visible, onClose, isFirstTime = true, purpose = 'sync' }) {
+export default function TrainerSyncModal({ visible, onClose, isFirstTime = true, purpose = 'sync', initialScreen = 'select' }) {
   const forPurchase = purpose === 'purchase';
-  const modes = forPurchase ? MODES.filter((m) => m.id !== 'offline') : MODES;
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
-  const setTrainerSyncMode = useStore((s) => s.setTrainerSyncMode);
-  const setTrainerName     = useStore((s) => s.setTrainerName);
-  const trainerSync        = useStore((s) => s.trainerSync);
 
-  const [selected,  setSelected]  = useState(forPurchase ? PURCHASE_DEFAULT : trainerSync.mode ?? 'google');
-  const [loading,   setLoading]   = useState(false);
-  const [screen,    setScreen]    = useState('select'); // 'select' | 'code_status' | 'code_reveal' | 'recovery'
-  const [newCode,   setNewCode]   = useState(null);
-  const [nameInput, setNameInput] = useState(trainerSync.trainerName ?? '');
+  const [screen,  setScreen]  = useState(initialScreen); // 'select' | 'code_reveal' | 'recovery'
+  const [newCode, setNewCode] = useState(null);
+  // Qué opción está en marcha ('google' | 'apple' | 'code' | 'recover'), para su ruedecita.
+  const [pending, setPending] = useState(null);
 
-  // Recuperar cuenta (antes una sub-pantalla con su propio estado)
-  const [recoverCode,    setRecoverCode]    = useState('');
-  const [recoverError,   setRecoverError]   = useState(null);
+  const [recoverCode,  setRecoverCode]  = useState('');
+  const [recoverError, setRecoverError] = useState(null);
 
-  // Sync local inputs when modal reopens (Modal stays mounted when hidden in RN).
-  // If a code is already stored, jump directly to the "connected" status screen
-  // to prevent the trainer from accidentally creating a second account.
+  // La hoja sigue montada al cerrarse: al volver a abrirla empieza de cero.
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (visible) {
-      setNameInput(trainerSync.trainerName ?? '');
-      setSelected(forPurchase ? PURCHASE_DEFAULT : trainerSync.mode ?? 'google');
-      setScreen(trainerSync.code && !forPurchase ? 'code_status' : 'select');
+      setScreen(initialScreen);
       setRecoverCode('');
       setRecoverError(null);
     }
   }, [visible]);
 
-  // ── Google OAuth setup ───────────────────────────────────────────────────────
-  //
-  // expo-auth-session v7: useProxy removed. In Expo Go the redirect URI is always
-  // exp://127.0.0.1:8081 (can't be registered in GCC → OAuth disabled in dev).
-  // In standalone builds, the reverse-client-ID redirect from config/google is
-  // used directly (el cliente de Android o el de iOS según la plataforma).
-  //
-  const isExpoGo           = Constants.executionEnvironment === 'storeClient';
-  const googleClientId     = GOOGLE_CLIENT_ID;
-  const googleRedirectUri  = AuthSession.makeRedirectUri({ native: GOOGLE_REDIRECT_URI });
+  const acct = useTrainerAccount();
+  const { isExpoGo } = acct;
 
-  const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId:     googleClientId,
-      scopes:       ['openid', 'email', 'profile'],
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE:      true,
-      redirectUri:  googleRedirectUri,
-      extraParams:  { access_type: 'online', prompt: 'select_account' },
-    },
-    GOOGLE_DISCOVERY,
-  );
-
-  // Stable ref so the async callback always reads the latest codeVerifier
-  const googleRequestRef = useRef(googleRequest);
-  useEffect(() => { if (googleRequest) googleRequestRef.current = googleRequest; }, [googleRequest]);
+  function showSocialError(provider, err) {
+    showDialog(
+      t(provider === 'apple' ? 'sync.errAppleTitle' : 'sync.errGoogleTitle'),
+      err?.message ?? t('sync.errGoogleBody'),
+    );
+  }
 
   /**
-   * Cierra el login social y arrastra los huecos a la cuenta nueva.
-   *
-   * Google y Apple solo se diferencian en cómo se consigue el id_token (OAuth
-   * con navegador vs hoja nativa); a partir de aquí el camino es el mismo.
-   *
-   * **Cede quien posee, no reclama quien recibe.** Antes esto llamaba a
-   * `claimTrainerSlots(ids)`, que en el servidor era un update sin ninguna
-   * comprobación: bastaba conocer un UUID para hacerse entrenador de un hueco
-   * ajeno (fallo 26 de la auditoría). Ahora la transferencia se ejecuta
-   * autenticado como el dueño VIEJO y el servidor filtra por
-   * `trainer_id = auth.uid()`: solo puedes regalar lo que ya es tuyo. Por eso
-   * tampoco hace falta recolectar identificadores de huecos.
-   *
-   * El baile de sesiones (social → código → social) ya existía; lo único que
-   * cambia es que la transferencia ocurre en el tramo del medio.
-   *
-   * Limitación conocida y heredada: solo funciona si la cuenta anterior era de
-   * tipo código, que es la única que se puede recuperar en silencio. Pasar de
-   * una cuenta social a otra exige que el usuario entre en la vieja.
+   * Google o Apple: cerrar al conectar; cancelar no es un error. Con `mustExist`
+   * («Ya tengo cuenta») solo conecta: si no hay cuenta, pregunta (§7.4).
    */
-  async function finishSocialLogin({ provider, idToken, accessToken }) {
-    const { userId } = await loginTrainerWithIdToken({ provider, idToken, accessToken });
-    setTrainerSyncMode(provider, { userId });
-
-    const storedCode = useStore.getState().trainerSync.code;
-    if (storedCode) {
-      try {
-        await recoverWithTrainerCode(storedCode);        // sesión del dueño viejo
-        await transferMySlotsTo(userId);                 // where trainer_id = auth.uid()
-      } catch (err) {
-        console.error('[TrainerSync] transferencia de huecos fallida:', err.message);
-      }
-      // Volver a la sesión social pase lo que pase.
-      await loginTrainerWithIdToken({ provider, idToken, accessToken }).catch(() => {});
-    }
-
-    // Restore any server slots missing from local state (e.g. fresh install).
-    await useStore.getState().refreshTrainerSlots().catch(() => {});
-
-    onClose();
-  }
-
-  // Handle OAuth redirect response
-  useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
-    if (googleResponse?.type !== 'success') return;
-    (async () => {
-      setLoading(true);
-      try {
-        const tokens = await exchangeCodeForTokens({
-          code:         googleResponse.params.code,
-          codeVerifier: googleRequestRef.current?.codeVerifier,
-          redirectUri:  googleRedirectUri,
-          clientId:     googleClientId,
-        });
-        if (!tokens.id_token) throw new Error(t('sync.errNoIdToken'));
-
-        await finishSocialLogin({
-          provider:    'google',
-          idToken:     tokens.id_token,
-          accessToken: tokens.access_token,
-        });
-      } catch (err) {
-        showDialog(t('sync.errGoogleTitle'), err.message ?? t('sync.errGoogleBody'));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [googleResponse]); // eslint-disable-line
-
-  /**
-   * Apple no necesita el ida y vuelta del navegador: la hoja nativa devuelve el
-   * id_token en la misma llamada, así que no hay `response` que observar ni
-   * efecto que montar.
-   */
-  async function handleApple() {
-    setLoading(true);
+  async function social(provider, mustExist = false) {
+    setPending(provider);
     try {
-      const credential = await signInWithApple();
-      if (!credential) return;               // cancelado: ni error ni aviso
-      if (!credential.idToken) throw new Error(t('sync.errNoIdToken'));
-
-      // El nombre solo llega la primera vez que este usuario entra con Apple.
-      // Si el entrenador aún no puso el suyo, se aprovecha; si ya lo tiene
-      // escrito, mandan sus letras.
-      if (credential.fullName && !useStore.getState().trainerSync.trainerName) {
-        setTrainerName(credential.fullName);
-        setNameInput(credential.fullName);
-      }
-
-      await finishSocialLogin({
-        provider: 'apple',
-        idToken:  credential.idToken,
-      });
-    } catch (err) {
-      showDialog(t('sync.errAppleTitle'), err.message ?? t('sync.errGoogleBody'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ── Handlers ─────────────────────────────────────────────────────────────────
-
-  function handleName(v) {
-    setNameInput(v);
-    setTrainerName(v.trim() || null);
-  }
-
-  /** Re-establishes the Supabase session using the code already stored in memory.
-   *  Also claims any local client slots that may be owned by a stale userId
-   *  (happens when a second trainer code was generated accidentally). */
-  async function handleReconnect() {
-    setLoading(true);
-    try {
-      // Recuperar la cuenta por código devuelve SIEMPRE el mismo user id — el
-      // correo sintético sale del propio código — así que los huecos ya son
-      // suyos y no hay nada que transferir. El `claimTrainerSlots` que había
-      // aquí no arreglaba ningún escenario real y sí abría el fallo 26.
-      const { userId } = await recoverWithTrainerCode(trainerSync.code);
-      setTrainerSyncMode('code', { code: trainerSync.code, userId });
-      await useStore.getState().refreshTrainerSlots().catch(() => {});
-
+      await (provider === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)({ mustExist });
       onClose();
     } catch (err) {
-      showDialog(t('sync.errReconnectTitle'), err.message ?? t('sync.errReconnectBody'));
+      if (err?.notFound) {
+        askCreateInstead(t, err, { onDone: () => onClose(), onError: (e) => showSocialError(provider, e) });
+      } else if (!err?.cancelled) {
+        showSocialError(provider, err);
+      }
     } finally {
-      setLoading(false);
+      setPending(null);
+    }
+  }
+
+  async function createCode() {
+    setPending('code');
+    try {
+      const { code } = await acct.createCode();
+      setNewCode(code);
+      setScreen('code_reveal');
+    } catch (err) {
+      showDialog(t('sync.errAccountTitle'), err?.message ?? t('sync.errAccountBody'));
+    } finally {
+      setPending(null);
     }
   }
 
   async function handleRecover() {
-    if (!recoverCode.trim()) return;
-    setLoading(true);
+    if (!recoverCode.trim() || pending) return;
     setRecoverError(null);
+    setPending('recover');
     try {
-      const { userId } = await recoverWithTrainerCode(recoverCode);
-      setTrainerSyncMode('code', { code: recoverCode.trim().toUpperCase(), userId });
-      setScreen('select');
-      onClose();
+      await acct.recover(recoverCode);
     } catch (err) {
-      setRecoverError(err.message);
+      setRecoverError(err?.message ?? t('sync.errReconnectBody'));
+      return;
     } finally {
-      setLoading(false);
+      setPending(null);
     }
+    setScreen('select');
+    onClose();
   }
 
-  async function doSwitch() {
-    if (selected === 'offline') {
-      await supabaseSignOut().catch(() => {});
-      setTrainerSyncMode('offline');
-      onClose();
-      return;
-    }
-
-    if (selected === 'google') {
-      googlePromptAsync();
-      return;
-    }
-
-    if (selected === 'apple') {
-      handleApple();
-      return;
-    }
-
-    if (selected === 'code') {
-      setLoading(true);
-      try {
-        // El código anterior, antes de que `setTrainerSyncMode` lo sustituya:
-        // es la única forma de volver a la sesión del dueño viejo para cederle
-        // los huecos a la cuenta nueva.
-        const previousCode = useStore.getState().trainerSync.code;
-
-        await supabaseSignOut().catch(() => {});
-        const { code, userId } = await setupTrainerCodeAccount();
-        setTrainerSyncMode('code', { code, userId });
-
-        // Los huecos siguen siendo del dueño anterior y solo él puede cederlos
-        // (`where trainer_id = auth.uid()`). Si la cuenta anterior era social no
-        // se puede recuperar en silencio, así que ahí no hay traspaso posible
-        // sin que el usuario vuelva a entrar en ella — limitación conocida.
-        if (previousCode && previousCode !== code) {
-          try {
-            await recoverWithTrainerCode(previousCode);
-            await transferMySlotsTo(userId);
-          } catch (err) {
-            console.error('[TrainerSync] traspaso desde el código anterior fallido:', err.message);
-          }
-          await recoverWithTrainerCode(code).catch(() => {});   // volver a la nueva
-        }
-        await useStore.getState().refreshTrainerSlots().catch(() => {});
-
-        setNewCode(code);
-        setScreen('code_reveal');
-      } catch (err) {
-        showDialog(t('sync.errAccountTitle'), err.message ?? t('sync.errAccountBody'));
-      } finally {
-        setLoading(false);
-      }
-    }
-  }
-
-  function handleConfirm() {
-    const existingMode = trainerSync.mode;
-    // Warn when switching away from an already-configured mode
-    if (existingMode && existingMode !== 'offline' && existingMode !== selected) {
-      const isUpgrade = existingMode === 'code' && SOCIAL_MODES.includes(selected);
-      showDialog(
-        t(isUpgrade ? 'sync.switchUpgradeTitle' : 'sync.switchTitle'),
-        t(isUpgrade ? 'sync.switchUpgradeBody'  : 'sync.switchBody'),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t(isUpgrade ? 'sync.switchUpgradeConfirm' : 'sync.switchConfirm'),
-            style: isUpgrade ? 'default' : 'destructive',
-            onPress: doSwitch,
-          },
-        ],
-      );
-      return;
-    }
-    doSwitch();
-  }
-
-  const currentMode = trainerSync.mode;
-  // Ya está esa cuenta puesta y es la opción elegida: no hay nada que
-  // confirmar, solo cambiar de cuenta (enlace aparte).
-  const alreadyLinked = SOCIAL_MODES.includes(selected) && currentMode === selected;
-
-  // Aviso por modo: el genérico del código, el de "ya tienes uno" y el de que
-  // pasar a una cuenta migra los clientes solo (esto último es buena noticia,
-  // va en lima; el resto en naranja).
-  function warnFor(modeId) {
-    if (modeId === 'code' && trainerSync.code)               return { text: t('sync.warnCodeExists'), tone: 'warn' };
-    if (modeId === 'code')                                   return { text: t('sync.modeCodeWarn'),   tone: 'warn' };
-    if (SOCIAL_MODES.includes(modeId) && trainerSync.code)   return { text: t('sync.warnUpgrade'),    tone: 'good' };
-    return { text: null, tone: 'warn' };
-  }
+  const busy = pending !== null;
 
   const titles = {
-    select:      forPurchase ? t('sync.purchaseTitle') : isFirstTime ? t('sync.titleFirstTime') : t('sync.title'),
-    code_status: isFirstTime ? t('sync.titleFirstTime') : t('sync.title'),
+    select:      forPurchase ? t('sync.purchaseTitle') : t('sync.createTitle'),
     code_reveal: t('sync.revealTitle'),
     recovery:    t('sync.recoveryTitle'),
   };
 
   const action = screen === 'code_reveal'
     ? { label: t('common.accept'),      onPress: () => { setScreen('select'); onClose(); } }
-    : screen === 'recovery'
+    // «Atrás» solo si se llegó a «Ya tengo cuenta» desde crear; abierta ya ahí
+    // (Mi cuenta, paywall), el botón cierra: no hay detrás a donde volver.
+    : screen === 'recovery' && initialScreen !== 'recovery'
       ? { label: t('trainer.codeBack'), onPress: () => setScreen('select') }
-      : { label: forPurchase ? t('sync.purchaseLater') : isFirstTime ? t('common.accept') : t('common.cancel'), onPress: onClose };
+      : screen === 'recovery'
+        ? { label: t('common.cancel'), onPress: onClose }
+      : { label: forPurchase || isFirstTime ? t('sync.notNow') : t('common.cancel'), onPress: onClose };
+
+  /** Los dos botones de marca, Apple (oficial, solo iOS) encima de Google. `mustExist`: solo conectar. */
+  const socialButtons = (mustExist) => (
+    <View style={styles.socials}>
+      {APPLE_AUTH_AVAILABLE && (
+        <AppleSignInButton onPress={() => social('apple', mustExist)} disabled={busy || isExpoGo} />
+      )}
+      <GoogleSignInButton
+        onPress={() => social('google', mustExist)}
+        busy={pending === 'google'}
+        disabled={busy || isExpoGo}
+      />
+      {isExpoGo && <Text style={styles.hint}>{t('sync.onlyInstalled')}</Text>}
+    </View>
+  );
+
+  /** La raya con la «o» que separa las cuentas de Google/Apple del código. */
+  const orDivider = (
+    <View style={styles.or}>
+      <View style={styles.orLine} />
+      <Text style={styles.orText}>{t('sync.or')}</Text>
+      <View style={styles.orLine} />
+    </View>
+  );
 
   return (
     <DragSheet
@@ -490,158 +175,71 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
       title={titles[screen]}
       action={action}
     >
-      {/* ── Ya hay código guardado ── */}
-      {screen === 'code_status' && (
-        <View style={styles.block}>
-          <View style={styles.stateCard}>
-            <View style={styles.stateTagRow}>
-              <View style={styles.stateDot} />
-              <Text style={styles.stateTag}>{t('sync.statusTag')}</Text>
-            </View>
-            <Text style={styles.stateTitle}>{t('sync.statusTitle')}</Text>
-            <Text style={styles.stateSub}>{t('sync.statusSub')}</Text>
-          </View>
-
-          <View>
-            <SectionLabel>{t('sync.yourCodeLabel')}</SectionLabel>
-            <CodeBox code={trainerSync.code} small />
-          </View>
-
-          <NameField value={nameInput} onChange={handleName} />
-
-          <TouchableOpacity
-            style={[styles.secondaryBtn, loading && styles.btnDisabled]}
-            onPress={handleReconnect}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading
-              ? <ActivityIndicator color={th.colors.text} size="small" />
-              : <Text style={styles.secondaryBtnText}>{t('sync.reauthCta')}</Text>}
-          </TouchableOpacity>
-          <Text style={styles.hint}>{t('sync.reauthHint')}</Text>
-
-          <TouchableOpacity onPress={() => setScreen('select')} activeOpacity={0.7}>
-            <Text style={styles.link}>{t('sync.changeModeLink')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ── Código recién creado ── */}
       {screen === 'code_reveal' && newCode && (
-        <View style={styles.block}>
-          <Text style={styles.lead}>{t('sync.revealLead')}</Text>
-
-          <CodeBox code={newCode} />
-
-          <View style={styles.warnCard}>
-            <Text style={styles.warnText}>{t(forPurchase ? 'sync.revealWarnPurchase' : 'sync.revealWarn')}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => { setScreen('select'); onClose(); }}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.primaryBtnText}>{t('sync.revealCta')}</Text>
-          </TouchableOpacity>
-        </View>
+        <CodeReveal code={newCode} purchase={forPurchase} onDone={() => { setScreen('select'); onClose(); }} />
       )}
 
-      {/* ── Recuperar cuenta ── */}
+      {/* ── «Ya tengo cuenta»: Google, Apple (solo conectan) o el código ── */}
       {screen === 'recovery' && (
         <View style={styles.block}>
-          <Text style={styles.lead}>{t('sync.recoveryLead')}</Text>
+          <Text style={styles.why}>{t('sync.recoveryLead')}</Text>
 
-          <CodeField
-            value={recoverCode}
-            onChangeText={(v) => { setRecoverCode(v); setRecoverError(null); }}
-            groups={3}
-            onSubmitEditing={handleRecover}
-            error={recoverError}
-          />
+          <View>
+            <SectionLabel>{t('sync.recoverySocial')}</SectionLabel>
+            {socialButtons(true)}
+          </View>
 
-          <TouchableOpacity
-            style={[styles.primaryBtn, (!recoverCode.trim() || loading) && styles.btnDisabled]}
-            onPress={handleRecover}
-            disabled={!recoverCode.trim() || loading}
-            activeOpacity={0.85}
-          >
-            {loading
-              ? <ActivityIndicator color={th.colors.onAccent} />
-              : <Text style={styles.primaryBtnText}>{t('sync.recoveryCta')}</Text>}
-          </TouchableOpacity>
+          {orDivider}
+
+          <View>
+            <SectionLabel>{t('sync.recoveryCodeLabel')}</SectionLabel>
+            <CodeField
+              value={recoverCode}
+              onChangeText={(v) => { setRecoverCode(v); setRecoverError(null); }}
+              groups={3}
+              onSubmitEditing={handleRecover}
+              error={recoverError}
+            />
+            <TouchableOpacity
+              style={[styles.primaryBtn, (!recoverCode.trim() || busy) && styles.btnDisabled]}
+              onPress={handleRecover}
+              disabled={!recoverCode.trim() || busy}
+              activeOpacity={0.85}
+            >
+              {pending === 'recover'
+                ? <ActivityIndicator color={th.colors.onAccent} />
+                : <Text style={styles.primaryBtnText}>{t('sync.recoveryCta')}</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
-      {/* ── Elegir modo ── */}
+      {/* ── Crear la cuenta ── */}
       {screen === 'select' && (
         <View style={styles.block}>
-          <Text style={styles.lead}>{t(forPurchase ? 'sync.purchaseLead' : 'sync.selectLead')}</Text>
+          <Text style={styles.why}>{t(forPurchase ? 'sync.purchaseLead' : 'sync.createLead')}</Text>
 
-          <View style={styles.modes}>
-            {modes.map((mode, i) => {
-              const { text, tone } = warnFor(mode.id);
-              return (
-                <ModeOption
-                  key={mode.id}
-                  mode={mode}
-                  active={selected === mode.id}
-                  unavailable={mode.expoOnly && isExpoGo}
-                  warn={text}
-                  warnTone={tone}
-                  onPress={() => setSelected(mode.id)}
-                  isFirst={i === 0}
-                  isLast={i === modes.length - 1}
-                />
-              );
-            })}
+          <View>
+            <SectionLabel>{t('sync.createWith')}</SectionLabel>
+            {socialButtons(false)}
           </View>
 
-          {/* Al comprar no va de clientes: el nombre que ven se pide al conectarlos. */}
-          {!forPurchase && <NameField value={nameInput} onChange={handleName} />}
+          {orDivider}
 
-          {/* Apple prohíbe arrancar su login desde un botón propio: tiene que
-              ser el nativo. Por eso el CTA cambia de forma con el modo elegido
-              en vez de repintarse de lima con otro texto.
+          <Section style={styles.lastSection}>
+            <MenuRow
+              icon={<KeyIcon size={18} color={th.colors.mutedLight} />}
+              label={t('sync.rowCode')}
+              sub={t('sync.rowCodeSub')}
+              subLines={3}
+              disabled={busy}
+              status={pending === 'code' ? <ActivityIndicator color={th.colors.accent} size="small" /> : null}
+              onPress={createCode}
+            />
+          </Section>
 
-              Y a diferencia de Google, aquí el botón sigue activo estando ya
-              conectado: volver a pulsarlo es justo lo que permite cambiar de
-              cuenta, que en Google es el enlace de abajo. */}
-          {selected === 'apple' ? (
-            <AppleSignInButton onPress={handleConfirm} disabled={loading || isExpoGo} />
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.primaryBtn,
-                (loading || alreadyLinked || (selected === 'google' && isExpoGo)) && styles.btnDisabled,
-              ]}
-              onPress={handleConfirm}
-              disabled={loading || alreadyLinked || (selected === 'google' && isExpoGo)}
-              activeOpacity={0.85}
-            >
-              {loading
-                ? <ActivityIndicator color={th.colors.onAccent} />
-                : (
-                  <Text style={styles.primaryBtnText}>
-                    {t(alreadyLinked          ? 'sync.ctaConnected'
-                      : selected === 'offline' ? 'sync.ctaOffline'
-                      : selected === 'google'  ? 'sync.ctaGoogle'
-                      : 'sync.ctaCode')}
-                  </Text>
-                )}
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            onPress={() => alreadyLinked && selected === 'google' ? googlePromptAsync() : setScreen('recovery')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.link}>
-              {alreadyLinked && selected === 'google' ? t('sync.reauthGoogleLink')
-                : currentMode === 'code'              ? t('sync.reauthLink')
-                : t('sync.recoveryLink')}
-            </Text>
+          <TouchableOpacity onPress={() => setScreen('recovery')} disabled={busy} activeOpacity={0.7} hitSlop={8}>
+            <Text style={styles.link}>{t('sync.haveAccount')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -651,88 +249,24 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
 
 const makeStyles = (th) => StyleSheet.create({
   block: { gap: spacing.lg, paddingBottom: spacing.md },
-  lead:  { ...textStyles.body, color: th.colors.mutedLight, lineHeight: 18 },
-  hint:  {
-    ...textStyles.label,
-    color:      th.colors.mutedLight,
-    lineHeight: 15,
-    textAlign:  'center',
-    marginTop:  -spacing.md,
+  // La explicación, una por pantalla: gris con barra a la izquierda, como en «Mi cuenta».
+  why: {
+    ...textStyles.body,
+    lineHeight:      lh(textStyles.body.fontSize),
+    color:           th.colors.mutedLight,
+    borderLeftWidth: 2,
+    borderLeftColor: th.colors.surface3,
+    paddingLeft:     spacing.sm2,
   },
-  hintLeft: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15, marginTop: spacing.sm },
-  link:     { ...textStyles.labelStrong, color: th.tint.accent50, textAlign: 'center' },
+  hint: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
+  link: { ...textStyles.button, color: th.colors.accent, textAlign: 'center' },
 
-  // Estado "ya conectado" — tratamiento "Resumen" (tint/accent-10, sin borde).
-  stateCard: {
-    backgroundColor: th.tint.accent10,
-    borderRadius:    th.radius.md,
-    padding:         spacing.lg,
-    gap:             spacing.sm,
-  },
-  stateTagRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  stateDot:    { width: 7, height: 7, borderRadius: 3.5, backgroundColor: th.colors.accent },
-  stateTag:    { ...textStyles.caps, color: th.colors.mutedLight },
-  stateTitle:  { ...textStyles.itemTitle, color: th.colors.text },
-  stateSub:    { ...textStyles.label, color: th.tint.accent50, lineHeight: 15 },
+  socials: { gap: spacing.sm2 },
+  lastSection: { marginBottom: 0 },
 
-  // Caja del código: el código es el protagonista, con la pista de copiar debajo.
-  codeBox: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.md,
-    paddingVertical: spacing.lg,
-    alignItems:      'center',
-    gap:             spacing.sm,
-  },
-  codeText: {
-    ...textStyles.code,
-    color:         th.colors.accent,
-    fontVariant:   ['tabular-nums'],
-  },
-  codeTextSm: { fontSize: 18 },
-  codeHint:   { ...textStyles.label, color: th.colors.mutedLight },
-
-  // Modos, como lista agrupada (gap 2 + radios por posición) pero con sitio para
-  // el aviso propio de cada uno, que MenuRow no contempla.
-  modes: { gap: spacing.xs },
-  mode: {
-    backgroundColor:   th.colors.surface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    gap:               spacing.sm,
-  },
-  modeActive:   { backgroundColor: th.tint.accent10 },
-  modeDisabled: { opacity: 0.45 },
-  modeTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
-  modeIcon:     { width: 20, alignItems: 'center', paddingTop: 2, flexShrink: 0 },
-  modeMeta:     { flex: 1, minWidth: 0, gap: spacing.xs },
-  modeTitle:    { ...textStyles.bodyStrong, fontFamily: 'Inter_800ExtraBold', color: th.colors.text },
-  modeDesc:     { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
-  modeUnavail:  { ...textStyles.label, color: th.tint.orange50, lineHeight: 15 },
-  modeWarn:     { ...textStyles.label, lineHeight: 15, paddingLeft: 20 + spacing.lg },
-  // Marca de elegida: disco lima con el check en negativo. Ocupa 24 para que se
-  // vea de un vistazo; el hueco de las no elegidas mide lo mismo.
-  checkBadge: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: th.colors.accent,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  checkSpacer:  { width: 24, height: 24 },
-
-  warnCard: {
-    backgroundColor: th.tint.orange30,
-    borderRadius:    th.radius.sm,
-    padding:         spacing.md,
-  },
-  warnText: { ...textStyles.label, color: th.tint.orange50, lineHeight: 15 },
-
-  nameInput: {
-    backgroundColor:   th.colors.surface2,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-    ...textStyles.itemTitle,
-    color:             th.colors.text,
-  },
+  or:     { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  orLine: { flex: 1, height: 1, backgroundColor: th.colors.surface3 },
+  orText: { ...textStyles.label, color: th.colors.mutedLight },
 
   primaryBtn: {
     height:          44,
@@ -740,15 +274,8 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
     alignItems:      'center',
     justifyContent:  'center',
+    marginTop:       spacing.md,
   },
   primaryBtnText: { ...textStyles.button, color: th.colors.onAccent },
-  secondaryBtn: {
-    height:          44,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  secondaryBtnText: { ...textStyles.button, color: th.colors.text },
-  btnDisabled:      { opacity: 0.5 },
+  btnDisabled:    { opacity: 0.5 },
 });

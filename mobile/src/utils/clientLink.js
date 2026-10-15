@@ -9,10 +9,11 @@
  *             al canjearlo. Lo que cambie se le sube solo, sin aviso.
  *   'linked'  entrena con su app.
  *
- * Con el entrenador sin nube no viaja nada, así que todos son 'none'.
+ * Con el entrenador sin nube no viaja nada, así que todos son 'none'. Y uno
+ * «de otra cuenta» (`syncOrphan`, C09 §3.4) tampoco: su hueco no es de esta.
  */
 export function clientLink(client, trainerSync) {
-  if (!client?.syncSlotId) return 'none';
+  if (!client?.syncSlotId || client.syncOrphan) return 'none';
   const mode = trainerSync?.mode;
   if (!mode || mode === 'offline') return 'none';
   return client.syncLinked ? 'linked' : 'invited';
