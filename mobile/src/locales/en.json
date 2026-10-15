@@ -1622,9 +1622,9 @@
     "addActionN": "Add {{count}}",
     "titleReplace": "Replace exercise",
     "searchPlaceholder2": "Search exercise",
-    "patternGroups": { "push": "Push", "pull": "Pull", "squat": "Squat", "hinge": "Hinge", "core": "Core", "grip": "Grip", "calf": "Calves" },
-    "groups": { "chest": "Chest", "back": "Back", "shoulders": "Shoulders", "arms": "Arms", "biceps": "Biceps", "triceps": "Triceps", "quads": "Quads", "glutes_hamstrings": "Glutes & hams", "legs_lower": "Calves", "core": "Core", "grip": "Grip" },
-    "equipment": { "bodyweight": "Bodyweight", "barbell": "Barbell", "dumbbells": "Dumbbells", "cables": "Cable", "machines": "Machine", "kettlebell": "Kettlebell", "resistance_band": "Bands", "pullup_bar": "Pull-up bar", "parallettes": "Dip bar", "rings": "Rings", "ab_wheel": "Ab wheel", "rope": "Rope", "weight_belt": "Weight belt" },
+    "patternGroups": { "push": "Push", "pull": "Pull", "squat": "Squat", "hinge": "Hinge", "core": "Core", "grip": "Grip", "calf": "Calves", "conditioning": "Conditioning" },
+    "groups": { "chest": "Chest", "back": "Back", "shoulders": "Shoulders", "arms": "Arms", "biceps": "Biceps", "triceps": "Triceps", "quads": "Quads", "glutes_hamstrings": "Glutes & hams", "legs_lower": "Calves", "core": "Core", "grip": "Grip", "full_body": "Full body" },
+    "equipment": { "bodyweight": "Bodyweight", "barbell": "Barbell", "dumbbells": "Dumbbells", "cables": "Cable", "machines": "Machine", "kettlebell": "Kettlebell", "resistance_band": "Bands", "pullup_bar": "Pull-up bar", "parallettes": "Dip bar", "rings": "Rings", "ab_wheel": "Ab wheel", "rope": "Rope", "weight_belt": "Weight belt", "sled": "Sled", "cardio_machine": "Cardio machine", "medicine_ball": "Medicine ball", "jump_rope": "Jump rope", "battle_rope": "Battle rope" },
     "filters": { "title": "Filters", "clear": "Clear", "muscleGroup": "MUSCLE GROUP", "equipment": "EQUIPMENT", "type": "TYPE", "compound": "Compound", "isolation": "Isolation", "see_one": "See {{count}} exercise", "see_other": "See {{count}} exercises", "seeNone": "No results" },
     "title": "SELECT EXERCISE",
     "searchPlaceholder": "Search exercise...",
@@ -1651,7 +1651,8 @@
       "hip_hinge": "Legs (hip)",
       "core": "Core",
       "carry_grip": "Grip / Carry",
-      "calf_raise": "Calves"
+      "calf_raise": "Calves",
+      "conditioning": "Conditioning"
     },
     "muscles": {
       "latissimus_dorsi": "Back (lats)",

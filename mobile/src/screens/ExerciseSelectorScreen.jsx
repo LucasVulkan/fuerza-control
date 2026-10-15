@@ -33,7 +33,7 @@ import DragSheet from '../components/DragSheet';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { ArrowIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
 import {
-  PATTERN_GROUPS, GROUP_OF_PATTERN, muscleGroupIdsOf, equipmentOf,
+  PATTERN_GROUPS, GROUP_OF_PATTERN, muscleGroupIdsOf, equipmentOf, EQUIPMENT,
 } from '../utils/exerciseTaxonomy';
 import { filterBySearch } from '../utils/searchText';
 
@@ -41,12 +41,7 @@ import { filterBySearch } from '../utils/searchText';
 // (ver `muscleGroupIdsOf`) — no existe como `primaryGroup` real, solo aquí.
 const MUSCLE_GROUPS = [
   'chest', 'back', 'shoulders', 'biceps', 'triceps',
-  'quads', 'glutes_hamstrings', 'legs_lower', 'core', 'grip',
-];
-const EQUIPMENT = [
-  'bodyweight', 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell',
-  'resistance_band', 'pullup_bar', 'parallettes', 'rings',
-  'ab_wheel', 'rope', 'weight_belt',
+  'quads', 'glutes_hamstrings', 'legs_lower', 'core', 'grip', 'full_body',
 ];
 
 // ─── ExerciseSelectorScreen ───────────────────────────────────────────────────
@@ -157,7 +152,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
       .filter((ex) => !groupFilter.length || muscleGroupIdsOf(ex).some((id) => groupFilter.includes(id)))
       .filter((ex) => !equipFilter.length || equipmentOf(ex).some((e) => equipFilter.includes(e)))
       .filter((ex) => !typeFilter.length || typeFilter.includes(ex.isCompound ? 'compound' : 'isolation'));
-    return filterBySearch(byFilters, search, (ex) => [ex.name, ex.nameEn].filter(Boolean).join(' '))
+    return filterBySearch(byFilters, search, (ex) => [ex.name, ex.nameEn, ...(ex.aliases ?? [])].filter(Boolean).join(' '))
       .sort((a, b) => getExName(a).localeCompare(getExName(b)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, patternGroup, groupFilter, equipFilter, typeFilter, allExercises, currentExerciseId, taken, language]);

@@ -1622,9 +1622,9 @@
     "addActionN": "Añadir {{count}}",
     "titleReplace": "Sustituir ejercicio",
     "searchPlaceholder2": "Buscar ejercicio",
-    "patternGroups": { "push": "Empuje", "pull": "Tracción", "squat": "Sentadilla", "hinge": "Bisagra", "core": "Core", "grip": "Agarre", "calf": "Gemelos" },
-    "groups": { "chest": "Pecho", "back": "Espalda", "shoulders": "Hombro", "arms": "Brazos", "biceps": "Bíceps", "triceps": "Tríceps", "quads": "Cuádriceps", "glutes_hamstrings": "Glúteo e isquios", "legs_lower": "Gemelos", "core": "Core", "grip": "Agarre" },
-    "equipment": { "bodyweight": "Corporal", "barbell": "Barra", "dumbbells": "Mancuernas", "cables": "Polea", "machines": "Máquina", "kettlebell": "Kettlebell", "resistance_band": "Bandas", "pullup_bar": "Barra dominadas", "parallettes": "Paralelas", "rings": "Anillas", "ab_wheel": "Rueda abdominal", "rope": "Cuerda", "weight_belt": "Lastre" },
+    "patternGroups": { "push": "Empuje", "pull": "Tracción", "squat": "Sentadilla", "hinge": "Bisagra", "core": "Core", "grip": "Agarre", "calf": "Gemelos", "conditioning": "Acondicionamiento" },
+    "groups": { "chest": "Pecho", "back": "Espalda", "shoulders": "Hombro", "arms": "Brazos", "biceps": "Bíceps", "triceps": "Tríceps", "quads": "Cuádriceps", "glutes_hamstrings": "Glúteo e isquios", "legs_lower": "Gemelos", "core": "Core", "grip": "Agarre", "full_body": "Cuerpo completo" },
+    "equipment": { "bodyweight": "Corporal", "barbell": "Barra", "dumbbells": "Mancuernas", "cables": "Polea", "machines": "Máquina", "kettlebell": "Kettlebell", "resistance_band": "Bandas", "pullup_bar": "Barra dominadas", "parallettes": "Paralelas", "rings": "Anillas", "ab_wheel": "Rueda abdominal", "rope": "Cuerda", "weight_belt": "Lastre", "sled": "Trineo", "cardio_machine": "Máquina de cardio", "medicine_ball": "Balón medicinal", "jump_rope": "Comba", "battle_rope": "Battle rope" },
     "filters": { "title": "Filtros", "clear": "Limpiar", "muscleGroup": "GRUPO MUSCULAR", "equipment": "EQUIPO", "type": "TIPO", "compound": "Compuesto", "isolation": "Aislamiento", "see_one": "Ver {{count}} ejercicio", "see_other": "Ver {{count}} ejercicios", "seeNone": "Sin resultados" },
     "title": "SELECCIONAR EJERCICIO",
     "searchPlaceholder": "Buscar ejercicio...",
@@ -1651,7 +1651,8 @@
       "hip_hinge": "Pierna (cadera)",
       "core": "Core",
       "carry_grip": "Agarre / Carga",
-      "calf_raise": "Gemelos"
+      "calf_raise": "Gemelos",
+      "conditioning": "Acondicionamiento"
     },
     "muscles": {
       "latissimus_dorsi": "Espalda (dorsal)",

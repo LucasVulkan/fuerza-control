@@ -45,7 +45,7 @@ export default function ExerciseSearch({ deep, exclude = null, onPick, onClose }
   const hits = useMemo(() => {
     if (!text) return [];
     const all = Object.values(lib).filter((ex) => ex.id !== exclude);
-    return filterBySearch(all, text, (ex) => [ex.name, ex.nameEn].filter(Boolean).join(' '))
+    return filterBySearch(all, text, (ex) => [ex.name, ex.nameEn, ...(ex.aliases ?? [])].filter(Boolean).join(' '))
       .sort((a, b) => exerciseName(a, language).localeCompare(exerciseName(b, language)));
   }, [text, lib, exclude, language]);
 

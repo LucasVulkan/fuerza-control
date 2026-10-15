@@ -30,6 +30,9 @@ export const LEGACY_IDS = {
   pull_up_weighted_barbell: { id: 'pull_up', name: 'Dominadas sin lastre', nameEn: 'Pull-ups (bodyweight)' },
   pull_up_weighted:         { id: 'pull_up', name: 'Dominadas lastradas',  nameEn: 'Weighted Pull-ups' },
   pull_up_neutral:          { id: 'pull_up',   variant: { grip: 'neutral' } },
+  // T07: la barra EZ mueve lo mismo que la recta.
+  ez_bar_curl:              { id: 'bicep_curl_barbell', name: 'Curl con barra EZ', nameEn: 'EZ Bar Curl' },
+  ez_bar_skull_crusher:     { id: 'skull_crusher', name: 'Press francés con barra EZ', nameEn: 'EZ Bar Skull Crusher' },
 };
 
 // Un id viejo que se conservó como copia (un choque sin variante) ya es un

@@ -5,10 +5,13 @@
  * para que ambos filtren/clasifiquen exactamente igual.
  */
 
-// Los 9 `pattern` de la librería (valor exacto que se guarda en el ejercicio).
+// Los 10 `pattern` de la librería (valor exacto que se guarda en el ejercicio).
+// 'conditioning' (T07): lo que se usa sobre todo en bloques —cardio, comba,
+// trineo, wall ball…—; ninguna plantilla lo pide, así que el generador no lo
+// elige nunca.
 export const PATTERNS = [
   'vertical_pull', 'horizontal_pull', 'vertical_push', 'horizontal_push',
-  'squat', 'hip_hinge', 'core', 'carry_grip', 'calf_raise',
+  'squat', 'hip_hinge', 'core', 'carry_grip', 'calf_raise', 'conditioning',
 ];
 
 // Colapso a 7 grupos gruesos para la fila de pills del buscador (vertical y
@@ -21,15 +24,17 @@ export const PATTERN_GROUPS = [
   { id: 'core',  patterns: ['core'] },
   { id: 'grip',  patterns: ['carry_grip'] },
   { id: 'calf',  patterns: ['calf_raise'] },
+  { id: 'conditioning', patterns: ['conditioning'] },
 ];
 export const GROUP_OF_PATTERN = Object.fromEntries(
   PATTERN_GROUPS.flatMap((g) => g.patterns.map((p) => [p, g.id]))
 );
 
-// Los 9 `primaryGroup` reales de la librería.
+// Los 10 `primaryGroup` reales de la librería. 'full_body' solo lo llevan los
+// de acondicionamiento: ningún hueco de plantilla lo pide (T07).
 export const MUSCLE_GROUPS = [
   'chest', 'back', 'shoulders', 'arms',
-  'quads', 'glutes_hamstrings', 'legs_lower', 'core', 'grip',
+  'quads', 'glutes_hamstrings', 'legs_lower', 'core', 'grip', 'full_body',
 ];
 
 // `arms` se abre en Bíceps/Tríceps para el filtro del buscador, a partir de
@@ -50,6 +55,7 @@ export const EQUIPMENT = [
   'bodyweight', 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell',
   'resistance_band', 'pullup_bar', 'parallettes', 'rings',
   'ab_wheel', 'rope', 'weight_belt',
+  'sled', 'cardio_machine', 'medicine_ball', 'jump_rope', 'battle_rope',
 ];
 export function equipmentOf(ex) {
   const eq = ex.equipment?.length ? ex.equipment : ['bodyweight'];

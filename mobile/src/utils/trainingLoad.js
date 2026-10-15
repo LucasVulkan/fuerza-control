@@ -52,12 +52,12 @@ export const SETS_TARGET_MAX = 20;
 export const BLOCK_LOAD_PER_SEC = 0.04;
 
 // Equipo que aporta carga EXTERNA. Todo lo demás (barra de dominadas,
-// paralelas, anillas, rueda…) es aparato de sujeción: la carga es tu cuerpo.
-// Verificado contra la librería completa (182 ejercicios): 68 quedan como peso
-// corporal, y los 4 con progressionDirection 'decrease' (asistidos) caen todos
-// dentro, ninguno fuera.
+// paralelas, anillas, rueda, comba, máquinas de cardio…) es aparato de
+// sujeción o no lleva peso: la carga es tu cuerpo. Los 4 con
+// progressionDirection 'decrease' (asistidos) caen todos dentro.
+// El trineo y el balón medicinal sí: lo que se apunta es su peso (T07).
 const LOAD_BEARING_EQUIPMENT = new Set([
-  'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell',
+  'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell', 'sled', 'medicine_ball',
 ]);
 
 // ── Duración ──────────────────────────────────────────────────────────────────
