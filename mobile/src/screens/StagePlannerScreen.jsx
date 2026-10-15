@@ -377,8 +377,11 @@ export default function StagePlannerScreen({ navigation, route }) {
   const showToast       = useStore((s) => s.showToast);
 
   const [openStageId, setOpenStageId] = useState(null);
-  const [addOpen,     setAddOpen]     = useState(false);
-  const [sourceIdx,   setSourceIdx]   = useState(null);
+  // «Nueva etapa» desde el editor (P14 §5.5): se entra con la hoja de añadir ya
+  // abierta y esa etapa como base, y al aplicar se vuelve al editor.
+  const addFrom = route?.params?.addFrom;
+  const [addOpen,     setAddOpen]     = useState(addFrom != null);
+  const [sourceIdx,   setSourceIdx]   = useState(addFrom ?? null);
   // Sin preset seleccionado al abrir, y la lista vacía: "empezar de cero" es la
   // AUSENCIA de preset, no un cuarto preset. Como pastilla no cabía —cuatro
   // segmentos en una línea parten "Volumen total"— y como estado inicial no
@@ -472,6 +475,7 @@ export default function StagePlannerScreen({ navigation, route }) {
     const firstIdx = addStageLadder(programId, { sourceStageIdx: baseIdx, rungs: payload });
     setAddOpen(false);
     if (firstIdx != null) showToast(t('planner.toastAdded', { count: payload.length }), 2400, 'success');
+    if (firstIdx != null && addFrom != null) navigation.goBack();
   }
 
   function handleDuplicate(idx) {

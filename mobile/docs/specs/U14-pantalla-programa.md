@@ -226,7 +226,7 @@ Qué entra en cada una, por orden:
 - [ ] Una etapa alargada (con semanas añadidas) enseña su total con las añadidas.
 - [ ] Una etapa sin límite: «SEMANA N» sin tramos.
 - [ ] Recién cambiada de etapa (sin empezar): «SIN EMPEZAR» y los tramos apagados.
-- [ ] Programa de una sola etapa sin límite: sin «Esta etapa»; las cifras siguen.
+- [ ] Programa de una sola etapa, con o sin límite de semanas: sin «Esta etapa»; las cifras siguen (cambiado el 15-oct, P14 §5.6).
 - [ ] Las cifras en Barlow, centradas y sin color (un 100 % ya no sale en rojo).
 - [ ] Los dos cortes horizontales tienen el mismo grosor que la diagonal.
 - [ ] Con un programa de entrenador sale «● por Nombre» en azul debajo de la barra; con uno propio, no.

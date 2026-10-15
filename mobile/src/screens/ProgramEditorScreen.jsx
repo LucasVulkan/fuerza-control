@@ -10,10 +10,14 @@ import Sortable from 'react-native-sortables';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { ownerClient } from '../utils/programOwnership';
-import { spacing, textStyles, withOpacity } from '../theme';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { sessionStats } from '../utils/sessionStats';
 import DragSheet from '../components/DragSheet';
+import SheetRow from '../components/ui/SheetRow';
+import { Section, SectionLabel, MenuRow, Status, RowIcon } from '../components/ui/MenuList';
+import { ROW_ICON } from '../components/ui/rowIcons';
+import { Switch } from '../components/ui/EditorRows';
 import StageCards from '../components/ui/StageCards';
 import { useSlidePages } from '../components/ui/useSlidePages';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -200,6 +204,9 @@ export default function ProgramEditorScreen({ navigation }) {
   const editorDays = activeProgram.stages?.[selectedStageIdx]?.days ?? activeProgram.days ?? [];
 
   const stages = activeProgram.stages ?? [];
+  // Con una sola etapa no hay etapas que enseñar: ni fichas ni número, y la
+  // cabecera se llama como el programa (P14 §5.6).
+  const single = stages.length === 1;
   // Una etapa sin límite hace el total indeterminado: `programTotals` suma las
   // que sí lo tienen y avisa para marcarlo con "+".
   const totals = programTotals(activeProgram);
@@ -345,6 +352,14 @@ export default function ProgramEditorScreen({ navigation }) {
     setSelectedStageIdx(idx);
   }
 
+  // «Nueva etapa» (el «+» de las fichas y la hoja de Ajustes): hasta que exista
+  // el creador de etapas (P15), el planificador con su hoja de añadir abierta y
+  // esta etapa como base; al aplicar vuelve aquí (P14 §5.5).
+  function newStage() {
+    commitStageName();
+    navigation.navigate('StagePlanner', { programId: editingId, addFrom: selectedStageIdx });
+  }
+
   // ── Cabecera de la etapa (P14 §3.4) ─────────────────────────────────────────
   const brow = selectedStageIdx === activeStageIdx
     ? { text: t('editor.stageBrowNow', { week: stageWeekLabel(status, t) }), color: th.colors.accent }
@@ -369,6 +384,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const cur  = selectedStageIdx;
   const last = stages.length - 1;
   const headSwipe = Gesture.Pan()
+    .enabled(!single)
     .activeOffsetX([-20, 20])
     .failOffsetY([-10, 10])
     .onStart(() => {
@@ -422,23 +438,27 @@ export default function ProgramEditorScreen({ navigation }) {
         {/* ── Rótulo y tarjetas de etapa (P14 §3.2-3.3) ── */}
         <View style={styles.stagesBlock}>
           <View style={styles.stagesLabelRow}>
-            <Text style={styles.stagesLabel}>
-              <Text style={styles.stagesLabelNum}>{stages.length}</Text>
-              {` ${t(totals.open ? 'editor.stagesLabelOpen' : 'editor.stagesLabel', { count: stages.length, weeks: totals.weeks })}`.toUpperCase()}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('StagePlanner')} hitSlop={8} accessibilityRole="button">
+            {single ? (
+              <Text style={styles.stagesLabel}>{t('editor.stagesLabelNone').toUpperCase()}</Text>
+            ) : (
+              <Text style={styles.stagesLabel}>
+                <Text style={styles.stagesLabelNum}>{stages.length}</Text>
+                {` ${t(totals.open ? 'editor.stagesLabelOpen' : 'editor.stagesLabel', { count: stages.length, weeks: totals.weeks })}`.toUpperCase()}
+              </Text>
+            )}
+            <TouchableOpacity onPress={() => navigation.navigate('StagePlanner', { programId: editingId })} hitSlop={8} accessibilityRole="button">
               <Text style={styles.viewPlan}>{t('editor.viewPlan')}</Text>
             </TouchableOpacity>
           </View>
-          <StageCards
-            stages={stageCards}
-            value={stageCards[selectedStageIdx]?.id}
-            sel={page}
-            onChange={(id) => selectStage(stageCards.findIndex((c) => c.id === id))}
-            // Hasta que exista el creador de etapas (P15), «nueva etapa» va al
-            // planificador (P14 §5.5).
-            onAdd={() => navigation.navigate('StagePlanner')}
-          />
+          {!single && (
+            <StageCards
+              stages={stageCards}
+              value={stageCards[selectedStageIdx]?.id}
+              sel={page}
+              onChange={(id) => selectStage(stageCards.findIndex((c) => c.id === id))}
+              onAdd={newStage}
+            />
+          )}
         </View>
 
         {/* ── La etapa elegida: cabecera y sesiones, que entran juntas ── */}
@@ -468,11 +488,13 @@ export default function ProgramEditorScreen({ navigation }) {
                     )}
                   </View>
                   <View style={styles.stageTitleRow}>
-                    <Text style={[styles.stageTitle, { color: isDeload(selectedStage) ? th.colors.blue : th.colors.accent }]}>
-                      {selectedStageIdx + 1}
-                    </Text>
+                    {!single && (
+                      <Text style={[styles.stageTitle, { color: isDeload(selectedStage) ? th.colors.blue : th.colors.accent }]}>
+                        {selectedStageIdx + 1}
+                      </Text>
+                    )}
                     <Text style={styles.stageTitleName} numberOfLines={1}>
-                      {selectedStage?.name ?? ''}
+                      {(single ? activeProgram.name : selectedStage?.name) ?? ''}
                     </Text>
                   </View>
                   <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
@@ -489,7 +511,7 @@ export default function ProgramEditorScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sessionsTitle}>{t('editor.sessionsOfStage').toUpperCase()}</Text>
+            <Text style={styles.sessionsTitle}>{t(single ? 'editor.sectionSessions' : 'editor.sessionsOfStage').toUpperCase()}</Text>
 
             <Sortable.Grid
               {...SORTABLE_PROPS}
@@ -538,7 +560,7 @@ export default function ProgramEditorScreen({ navigation }) {
               activeOpacity={0.7}
             >
               <Text style={styles.addSessionBtnText}>
-                {selectedStage
+                {selectedStage && !single
                   ? <>
                       {t('editor.addSessionPrefix')}
                       <Text style={styles.addSessionBtnStage}>{selectedStage.name}</Text>
@@ -562,134 +584,143 @@ export default function ProgramEditorScreen({ navigation }) {
 
       </Reanimated.ScrollView>
 
-      {/* ── Stage settings sheet ── */}
+      {/* ── Ajustes de etapa ── Lo que se ajusta va en secciones con título, con
+          las filas del resto de la app (`MenuRow`): lo que informa no tiene
+          forma de botón y lo que se hace son filas con icono. */}
       <DragSheet
         visible={stageSheetOpen}
         onClose={() => { commitStageName(); setStageSheetOpen(false); }}
         title={t('editor.stageSheetTitle')}
+        doneLabel={t('common.accept')}
       >
         {selectedStage && (
-          <View style={styles.sheetBody}>
+          <View>
 
-            <View>
-              <Text style={styles.sheetLabel}>{t('editor.stageNameLabel')}</Text>
-              <TextInput
-                style={styles.sheetInput}
-                value={stageName}
-                onChangeText={setStageName}
-                onBlur={commitStageName}
-                onSubmitEditing={commitStageName}
-                placeholder={t('editor.stageName')}
-                placeholderTextColor={th.colors.mutedLight}
-                returnKeyType="done"
-              />
-            </View>
+            {/* Con una sola etapa el nombre no se ve en ningún sitio: la
+                cabecera se llama como el programa. */}
+            {!single && (
+              <View style={styles.sheetBlock}>
+                <SectionLabel>{t('editor.stageNameLabel')}</SectionLabel>
+                <TextInput
+                  style={styles.sheetInput}
+                  value={stageName}
+                  onChangeText={setStageName}
+                  onBlur={commitStageName}
+                  onSubmitEditing={commitStageName}
+                  placeholder={t('editor.stageName')}
+                  placeholderTextColor={th.colors.mutedLight}
+                  returnKeyType="done"
+                />
+              </View>
+            )}
 
             {/* Procedencia. Es una etiqueta, no una regla viva: `applyRx` se
                 materializó al crear la etapa y editarla a mano manda sobre
                 esto. Sin ella, a las tres semanas nadie recuerda qué escalera
                 montó. */}
             {selectedStage.rx && describeRx(selectedStage.rx, t).length > 0 && (
-              <View>
-                <Text style={styles.sheetLabel}>{t('editor.stageFromLabel')}</Text>
+              <View style={styles.sheetBlock}>
+                <SectionLabel>{t('editor.stageFromLabel')}</SectionLabel>
                 <Text style={styles.stageRxLine}>
                   {describeRx(selectedStage.rx, t).join(' · ')}
                 </Text>
               </View>
             )}
 
-            <View>
-              <Text style={styles.sheetLabel}>{t('editor.stageDurationLabel')}</Text>
-              {/* `durationWeeks: null` = sin límite de semanas: la etapa no
-                  termina sola. El stepper no puede representarlo, así que la
-                  opción vive en su propia fila y lo sustituye. */}
-              {selectedStage.durationWeeks == null ? (
-                <TouchableOpacity
-                  style={[styles.noLimitRow, styles.noLimitRowActive]}
-                  onPress={() => updateStage(editingId, selectedStageIdx, { durationWeeks: 4 })}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.noLimitTextActive}>{t('editor.weeksNoLimit')}</Text>
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <StepField
-                    horizontal
-                    label={t('editor.stageWeeksUnit')}
-                    value={selectedStage.durationWeeks}
-                    onChange={(v) => updateStage(editingId, selectedStageIdx, { durationWeeks: v })}
-                    min={1}
-                    max={52}
-                  />
-                  <TouchableOpacity
-                    style={styles.noLimitRow}
-                    onPress={() => updateStage(editingId, selectedStageIdx, { durationWeeks: null })}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.noLimitText}>{t('editor.weeksNoLimit')}</Text>
-                  </TouchableOpacity>
-                </>
+            {/* `durationWeeks: null` = sin límite: la etapa no termina sola. Un
+                interruptor, y el contador solo cuando hay semanas que contar. */}
+            <Section title={t('editor.stageDurationLabel')}>
+              <MenuRow
+                label={t('editor.stageNoLimit')}
+                sub={t('editor.stageNoLimitHint')}
+                subLines={0}
+                control={<Switch value={selectedStage.durationWeeks == null} />}
+                onPress={() => updateStage(editingId, selectedStageIdx, {
+                  durationWeeks: selectedStage.durationWeeks == null ? 4 : null,
+                })}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: selectedStage.durationWeeks == null }}
+              />
+              {selectedStage.durationWeeks != null && (
+                <MenuRow
+                  label={t('editor.stageWeeksUnit')}
+                  control={(
+                    <StepField
+                      horizontal
+                      flat
+                      label=""
+                      value={selectedStage.durationWeeks}
+                      onChange={(v) => updateStage(editingId, selectedStageIdx, { durationWeeks: v })}
+                      min={1}
+                      max={52}
+                    />
+                  )}
+                />
               )}
-            </View>
+            </Section>
 
-            <View>
-              <Text style={styles.sheetLabel}>{t('editor.stageStateLabel')}</Text>
-              {isStageActive ? (
-                <View style={styles.stateRow}>
-                  <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
-                    <Text style={styles.stateTitle}>{t('editor.stageIsActive')}</Text>
-                    <Text style={styles.stateHint}>{t('editor.stageActiveHint')}</Text>
-                  </View>
-                  <Text style={styles.activeBadge}>{t('editor.stageActiveBadge')}</Text>
-                </View>
-              ) : selectedStageLocked ? (
-                // Bloqueada por el entrenador: sin botón, porque `setCurrentStage`
-                // lo rechazaría igual y un botón que no hace nada es peor que
-                // ninguno.
-                <View style={styles.stateRow}>
-                  <LockIcon size={14} color={th.colors.muted} />
-                  <Text style={styles.stateHint}>{t('home.stageLockedShort')}</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.activateBtn}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setCurrentStage(editingId, selectedStageIdx);
-                    showToast(t('editor.toastStageActivated', { name: selectedStage.name }), 2200, 'success');
-                  }}
-                >
-                  <Text style={styles.activateBtnText}>{t('editor.stageActivateBtn')}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            {/* Con una sola etapa siempre es la de ahora: no hay estado que
+                decidir. */}
+            {!single && (
+              <Section title={t('editor.stageStateLabel')}>
+                {isStageActive ? (
+                  <MenuRow
+                    label={t('editor.stageStateNow')}
+                    status={<Status tone="on" label={stageWeekLabel(status, t)} />}
+                  />
+                ) : selectedStageLocked ? (
+                  // Bloqueada por el entrenador: `setCurrentStage` lo rechazaría,
+                  // así que solo se dice.
+                  <MenuRow
+                    icon={<LockIcon size={14} color={th.colors.redText} solid />}
+                    label={t('editor.stageAccessLocked')}
+                    sub={t('home.stageLockedShort')}
+                  />
+                ) : (
+                  <MenuRow
+                    icon={<RowIcon>{ROW_ICON.start}</RowIcon>}
+                    label={t('editor.stageMoveHere')}
+                    sub={t('editor.stageMoveHereSub')}
+                    onPress={() => {
+                      setCurrentStage(editingId, selectedStageIdx);
+                      showToast(t('editor.toastStageActivated', { name: selectedStage.name }), 2200, 'success');
+                    }}
+                  />
+                )}
+              </Section>
+            )}
 
             {/* Acceso: el candado que el cliente ve en su móvil. Solo por
                 delante de donde está — ver `canLockStage`. */}
             {canLockStage && (
-              <View>
-                <Text style={styles.sheetLabel}>{t('editor.stageAccessLabel')}</Text>
-                <SegmentedControl
-                  options={[
-                    { id: 'open',   label: t('editor.stageAccessOpen') },
-                    { id: 'locked', label: t('editor.stageAccessLocked') },
-                  ]}
-                  value={selectedStage.locked ? 'locked' : 'open'}
-                  onChange={(id) => updateStage(editingId, selectedStageIdx, { locked: id === 'locked' })}
+              <Section title={t('editor.stageAccessLabel')}>
+                <MenuRow
+                  label={t('editor.stageAccessLocked')}
+                  sub={t(selectedStage.locked ? 'editor.stageAccessLockedHint' : 'editor.stageAccessOpenHint')}
+                  subLines={0}
+                  control={<Switch value={!!selectedStage.locked} />}
+                  onPress={() => updateStage(editingId, selectedStageIdx, { locked: !selectedStage.locked })}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: !!selectedStage.locked }}
                 />
-                <Text style={[styles.stateHint, { marginTop: spacing.sm }]}>
-                  {t(selectedStage.locked ? 'editor.stageAccessLockedHint' : 'editor.stageAccessOpenHint')}
-                </Text>
-              </View>
+              </Section>
             )}
 
-            {/* Mismo par de botones que cierra el editor de ejercicio:
-                secundario `surface2` + destructivo `tint/red-30`. */}
-            <View style={styles.sheetBtnRow}>
-              <TouchableOpacity
-                style={styles.dupStageBtn}
+            {/* Las acciones cierran la hoja (`SheetRow`). */}
+            <Section title={t('editor.stageActionsLabel')} style={styles.sheetLast}>
+              <SheetRow
+                icon={ROW_ICON.new}
+                iconColor={th.colors.accent}
+                labelColor={th.colors.accent}
+                label={t('editor.stageNew')}
+                sub={t('editor.stageNewSub')}
+                onPress={newStage}
+              />
+              <SheetRow
+                icon={ROW_ICON.duplicate}
+                label={t('editor.stageDuplicateBtn')}
                 onPress={() => {
-                  commitStageName(); // flush a pending rename so the copy inherits it
+                  commitStageName(); // la copia hereda un nombre a medio escribir
                   const newIdx = duplicateStageInProgram(editingId, selectedStageIdx);
                   if (newIdx != null) {
                     dragStage.set(-1);
@@ -700,17 +731,16 @@ export default function ProgramEditorScreen({ navigation }) {
                     showToast(t('editor.toastStageDuplicated'), 2200, 'success');
                   }
                 }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.dupStageBtnText}>{t('editor.stageDuplicateBtn')}</Text>
-              </TouchableOpacity>
-
-              {activeProgram.stages.length > 1 && (
-                <TouchableOpacity style={styles.deleteStageBtn} onPress={handleDeleteStage} activeOpacity={0.8}>
-                  <Text style={styles.deleteStageBtnText}>{t('editor.stageDeleteBtn')}</Text>
-                </TouchableOpacity>
+              />
+              {!single && (
+                <SheetRow
+                  icon={ROW_ICON.trash}
+                  danger
+                  label={t('editor.stageDeleteBtn')}
+                  onPress={handleDeleteStage}
+                />
               )}
-            </View>
+            </Section>
 
           </View>
         )}
@@ -830,33 +860,10 @@ const makeStyles = (th) => StyleSheet.create({
 
   stageRxLine: { ...textStyles.label, color: th.colors.accent },
 
-  // Stage sheet
-  sheetBody: {
-    gap: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  // Etiqueta de paso dentro de una hoja: igual que las de sección del editor de
-  // ejercicio (`text/spacing-tag` mutedLight en mayúsculas).
-  sheetLabel: {
-    ...textStyles.caps,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-    marginBottom:  spacing.sm,
-  },
-  // "Sin límite de semanas" — fila propia porque el stepper no puede
-  // representar la ausencia de número.
-  noLimitRow: {
-    marginTop:         spacing.sm,
-    paddingVertical:   spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius:      th.radius.sm,
-    // Dentro de una hoja el fondo ya es `surface`: los campos van sobre `bg`
-    // para que se lean, mismo criterio que las hojas del editor de ejercicio.
-    backgroundColor:   th.colors.bg,
-  },
-  noLimitRowActive:  { backgroundColor: withOpacity(th.colors.accent, 0.12) },
-  noLimitText:       { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  noLimitTextActive: { ...textStyles.labelStrong, color: th.colors.accent },
+  // Hoja de ajustes de etapa: los bloques que no son filas llevan el mismo aire
+  // que las secciones (`Section`), y la última no necesita el de abajo.
+  sheetBlock: { marginBottom: spacing.xl },
+  sheetLast:  { marginBottom: 0 },
   // Dentro de una hoja el fondo YA es `bg`, así que los campos van sobre
   // `surface` para que se lean — mismo criterio que las hojas del editor de
   // ejercicio.
@@ -868,47 +875,4 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   spacing.md,
   },
-  stateRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.md,
-    backgroundColor:   th.colors.bg,
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-  },
-  activeBadge: {
-    ...textStyles.caps,
-    color:             th.colors.onAccent,
-    backgroundColor:   th.colors.accent,
-    borderRadius:      th.radius.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs2,
-    overflow:          'hidden',
-  },
-  stateTitle: { ...textStyles.labelStrong, color: th.colors.text },
-  stateHint:  { ...textStyles.label,      color: th.colors.mutedLight, lineHeight: 14 },
-  activateBtn: {
-    paddingVertical: spacing.md,
-    backgroundColor: th.colors.accent,
-    borderRadius:    th.radius.sm,
-    alignItems:      'center',
-  },
-  activateBtnText: { ...textStyles.button, color: th.colors.onAccent },
-  sheetBtnRow: { flexDirection: 'row', gap: spacing.sm },
-  dupStageBtn: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems:      'center',
-  },
-  dupStageBtnText: { ...textStyles.labelStrong, color: th.colors.text },
-  // Sin fondo, solo texto (QA): mismo tratamiento que "Descartar sesión".
-  deleteStageBtn: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    alignItems:      'center',
-  },
-  deleteStageBtnText: { ...textStyles.labelStrong, color: th.tint.red50 },
 });

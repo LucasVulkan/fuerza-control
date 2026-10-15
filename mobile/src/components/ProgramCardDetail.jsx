@@ -68,10 +68,9 @@ export default function ProgramCardDetail({ program, status, trainerName, adhere
   const { t, i18n } = useTranslation();
   const styles = useThemedStyles(makeStyles);
 
-  // Con una sola etapa y sin límite el programa no está periodizado: no hay
-  // etapa que contar.
-  const showStage = !!status?.stage
-    && !((program.stages?.length ?? 0) === 1 && status.lengthWeeks == null);
+  // Con una sola etapa el programa no está periodizado: no hay etapa que
+  // contar, tenga límite de semanas o no (P14 §5.6, 15-oct).
+  const showStage = !!status?.stage && (program.stages?.length ?? 0) > 1;
 
   // El ritmo se redondea a medias: «1,25 ses/sem» es una precisión que el dato no tiene.
   const half = pace != null && pace > 0 ? Math.round(pace * 2) / 2 : null;

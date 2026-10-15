@@ -8,23 +8,22 @@
 > Fase P14-03 · hecho · Tarjetas de etapa y rótulo · §5.2
 > Fase P14-04 · hecho · Cabecera de la etapa y sus sesiones · §5.3
 > Fase P14-05 · pendiente · Panel de cifras y grupos musculares · §5.4
-> Fase P14-06 · pendiente · Hoja de Ajustes y «nueva etapa» · §5.5
-> Fase P14-07 · pendiente · Programa de una sola etapa · §5.6
+> Fase P14-06 · hecho · Hoja «Ajustes de etapa» y «nueva etapa» · §5.5
+> Fase P14-07 · hecho · Programa de una sola etapa · §5.6
 > Fase P14-08 · pendiente · Que asome la etapa de al lado al deslizar · §5.7
 >
-> Estado: **P14-02 a 04 implementadas, por probar** (12-oct-2026, rama
-> `feat/editor-etapas`). Las fichas de etapa se rehicieron tras la primera
-> prueba (§3.3, `stages-editor-6.html` F). Mientras no lleguen 05-07: no hay botón de cifras, el
-> engranaje abre la hoja de etapa de siempre, el «+» de las tarjetas y «Ver plan»
-> van al planificador sin `addFrom`, y un programa de una sola etapa enseña su
-> tarjeta y el rótulo (la vista propia es P14-07). Diseño: cinco rondas con el
-> usuario (9 y 12-oct); la maqueta que manda es
+> Estado: **P14-03, 04, 06 y 07 implementadas, por probar** (03-04 el
+> 13-oct, 06-07 el 15-oct; todo en `main` salvo 06-07, en `feat/onboarding-caminos`).
+> Falta P14-05 (panel de cifras); P14-08 sigue pendiente. El 15-oct el usuario
+> rehízo P14-07 (§5.6: sin recuadro «Añadir etapas», se crea etapa desde «Ver
+> plan» o el engranaje) y pidió la hoja de ajustes nueva (§5.5). Diseño: la
+> maqueta que manda es
 > [`docs/mockups/stages-editor-5.html`](../mockups/stages-editor-5.html) con las
-> sesiones **sueltas**. Las anteriores quedan como historia (§8); de la v4
-> (`stages-editor-4.html`) vale todo menos las pestañas y las sesiones dentro. El
-> creador de etapas y el planificador van aparte, en
-> [P15-creador-etapas.md](P15-creador-etapas.md); hasta que P15 exista, las
-> entradas a «nueva etapa» van al planificador de hoy (§5.5).
+> sesiones **sueltas**, y las fichas de
+> [`stages-editor-6.html`](../mockups/stages-editor-6.html) F. Las anteriores
+> quedan como historia (§8). El creador de etapas y el planificador van aparte,
+> en [P15-creador-etapas.md](P15-creador-etapas.md); hasta que P15 exista, «nueva
+> etapa» va al planificador de hoy (§5.5).
 
 ---
 
@@ -371,47 +370,90 @@ El botón de cifras despliega, dentro de la cabecera y bajo un filete, un panel
 - [ ] Editar a mano las series de una sesión y volver: las cifras cambian.
 - [ ] Los colores de los grupos son los de Carga.
 
-### 5.5 P14-06 — Hoja de Ajustes y «nueva etapa»
+### 5.5 P14-06 — Hoja «Ajustes de etapa» y «nueva etapa»
 
-- La `DragSheet` de hoy pasa a componente propio `StageSettingsSheet` (nombre,
-  semanas o sin límite, en curso / activar, candado, eliminar), que P15 reutilizará
-  en el planificador. Se abre **solo** con el botón de ajustes.
-- Gana arriba de los botones **«＋ Nueva etapa desde esta»** (`accent10` con borde
-  `accent50`).
+Rehecha el 15-oct a petición del usuario: la de antes tenía un botón inventado
+para «sin límite», el estado al mismo nivel que un botón y los botones de abajo
+sin título.
+
+- Título **«Ajustes de etapa»**; el botón de la derecha dice **«Aceptar»**
+  (`DragSheet` gana `doneLabel`; cierra igual que «Cerrar»). Se abre **solo** con
+  el engranaje.
+- Todo con las filas del resto de la app (`Section` + `MenuRow` / `SheetRow` de
+  `MenuList`), en secciones con título:
+  - **NOMBRE** — el campo de siempre. Fuera con una sola etapa (no se ve en
+    ningún sitio).
+  - **DERIVADA DE** — la línea de `describeRx`, si la hay (P14-05 la llevará al
+    panel de cifras).
+  - **DURACIÓN** — «Sin límite de semanas» con interruptor (`Switch` de
+    `EditorRows`) y, si tiene límite, la fila «Semanas» con el contador (`StepField`
+    `flat` dentro de la fila).
+  - **ESTADO** (con dos o más etapas) — informa, no es botón: «En curso» con su
+    semana (`Status`); bloqueada por el entrenador, el candado y «La abre tu
+    entrenador»; si no, la fila de acción «Pasar a esta etapa».
+  - **ACCESO** (entrenador, programa de un cliente, por delante de la de ahora) —
+    «Bloqueada» con interruptor y la pista de siempre.
+  - **ETAPAS DEL PROGRAMA** — filas con icono que cierran la hoja: **«Nueva
+    etapa»** (en `accent`, «Se crea a partir de esta»), «Duplicar etapa» y
+    «Eliminar etapa» (roja; no con una sola).
 - **Mientras no exista el creador de P15**, «nueva etapa» (la hoja y el «+» del
-  final de las tarjetas) navega a `StagePlanner` con `{ programId, addFrom: idx }`, y el
-  planificador abre su hoja «Añadir etapas» con esa etapa como base
-  (`setSourceIdx(addFrom)` + `setAddOpen(true)` al montar). Es el único cambio en el
-  planificador.
+  final de las fichas) navega a `StagePlanner` con `{ programId, addFrom: idx }`:
+  el planificador entra con la hoja «Añadir etapas» abierta y esa etapa como base
+  (estado inicial de `addOpen` y `sourceIdx`), y **al aplicar vuelve al editor**.
+  En el planificador, el hueco del final dice «+ Nueva etapa».
 - **Duplicar se queda en la hoja hasta P15**: el usuario decidió que duplicar será
   «crear con Igual» en el creador, pero sin creador no hay dónde. P15 lo quita.
+- La hoja **no** se ha sacado a un `StageSettingsSheet` propio: solo la usa el
+  editor y depende de su estado (`slide`, `holdPage`, `dragStage`). Se saca cuando
+  P15 la necesite en el planificador.
 
 **Probar P14-06**
 
-- [ ] El engranaje abre Ajustes; tocar la etapa ya seleccionada no abre nada.
-- [ ] Nombre, semanas, sin límite, activar, candado y eliminar funcionan como hoy.
-- [ ] «Nueva etapa desde esta» y el «+» de las tarjetas abren el planificador con la
-  hoja de añadir abierta y esa etapa como base.
+- [ ] El engranaje abre «Ajustes de etapa» con «Aceptar» arriba; tocar la ficha
+  ya elegida no abre nada.
+- [ ] Nombre, semanas, el interruptor de sin límite, pasar a esta etapa, el
+  candado (entrenador) y eliminar funcionan.
+- [ ] El estado se lee como información, no como botón; «Pasar a esta etapa» solo
+  sale en una etapa que no es la de ahora ni está bloqueada.
+- [ ] «Nueva etapa» (hoja y «+» de las fichas) abre el planificador con la hoja de
+  añadir abierta y esa etapa como base; al aplicar vuelve al editor.
+- [ ] «Ver plan» → «+ Nueva etapa» abre la hoja de añadir; al aplicar se queda en
+  el planificador.
 - [ ] Duplicar sigue funcionando.
 
 ### 5.6 P14-07 — Programa de una sola etapa
 
-- **Sin tarjetas de etapa ni rótulo.** La cabecera sola, con la ceja «SIN LÍMITE DE SEMANAS»
-  (o «N SEMANAS») y el título **«Todo el programa»** en vez del nombre de la etapa
-  (repetiría el del programa), sin número; meta «3 sesiones por semana». Los dos
-  botones igual. Sin gesto de cambiar etapa.
-- Debajo de la cabecera, a 12 dp, un recuadro con borde discontinuo (`border`,
-  radio 12): un cuadrado discontinuo con «+», **«Añadir etapas»** en `accent` y una
-  sola línea: «Bloques de varias semanas para trabajar un objetivo concreto.» Sin
-  ejemplo ni más texto (decisión del usuario). Abre lo mismo que §5.5.
-- Debajo, «SESIONES» (sin «de esta etapa») y la lista.
-- Al pasar a dos etapas aparecen las tarjetas de etapa y el rótulo, y el recuadro se va.
+Rehecha por el usuario el 15-oct (sustituye al recuadro «Añadir etapas» del
+diseño anterior):
+
+- **Sin fichas de etapa.** El rótulo dice **«PROGRAMA SIN ETAPAS»**, con «Ver
+  plan ›» a la derecha como siempre.
+- La cabecera, igual que con varias, salvo:
+  - ceja **«EN CURSO · SEMANA 3 DE 8»**, o **«EN CURSO · SEMANA 3»** si no tiene
+    límite (`stageWeekLabel`, la misma de siempre);
+  - título **sin número** y con **el nombre del programa** (el de la etapa no se
+    enseña);
+  - sin gesto de cambiar de etapa.
+- Debajo, **«SESIONES»** (`editor.sectionSessions`) y «+ Añadir sesión», sin
+  nombre de etapa.
+- **Crear la segunda etapa**: desde «Ver plan» («+ Nueva etapa») o desde el
+  engranaje («Nueva etapa», §5.5). Al volver con dos etapas aparecen las fichas y
+  el rótulo de siempre.
+- **En Programa** (la tarjeta desplegada, `ProgramCardDetail`, que es también la
+  de la ficha del cliente) tampoco sale «Esta etapa» con una sola etapa, tenga
+  límite o no (antes solo se quitaba sin límite).
 
 **Probar P14-07**
 
-- [ ] Programa nuevo de una etapa: sin tarjetas de etapa, «Todo el programa», «Añadir etapas».
-- [ ] Añadir una etapa desde ahí: al volver hay dos tarjetas de etapa con sus tramos.
+- [ ] Programa de una etapa: sin fichas, «PROGRAMA SIN ETAPAS», ceja «EN CURSO ·
+  SEMANA N DE M» (o «SEMANA N» sin límite), título = nombre del programa, sin número.
+- [ ] Deslizar la cabecera no hace nada; «SESIONES» y «+ Añadir sesión».
+- [ ] La hoja de ajustes no enseña Nombre, Estado ni Eliminar.
+- [ ] Crear una etapa desde el engranaje: al aplicar vuelve al editor con dos fichas
+  y sus tramos.
 - [ ] Borrar etapas hasta dejar una: vuelve la vista de una sola.
+- [ ] En Programa (y en la ficha del cliente), un programa de una etapa no enseña
+  «Esta etapa», tenga límite o no; las cifras siguen.
 
 ### 5.7 P14-08 — Que asome la etapa de al lado al deslizar
 
@@ -428,15 +470,18 @@ ningún efecto que mueva una cosa en respuesta a otra, y medir antes en el móvi
 En `src/locales/es.json` **y** `en.json`, añadiendo línea a línea (nunca
 reformatear el JSON):
 
-- Nuevas: rótulo (`editor.stagesLabel` con `{{count}}` y `{{weeks}}`, y la variante
-  abierta), tramo (`editor.stageRange`, `editor.stageRangeOpen`, `editor.stageRangeOne`),
+- Nuevas: rótulo (`editor.stagesLabel` con `{{count}}` y `{{weeks}}`, la variante
+  abierta y `editor.stagesLabelNone`), hoja de ajustes (`editor.stageStateNow`,
+  `stageMoveHere(Sub)`, `stageActionsLabel`, `stageNew(Sub)`, `stageNoLimit(Hint)`), tramo (`editor.stageRange`, `editor.stageRangeOpen`, `editor.stageRangeOne`),
   «ETAPA» (`editor.stageWord`), «SESIONES DE ESTA ETAPA» y «SESIONES», ceja (hecha, por venir, descarga, bloqueada), meta, «Todo el
   programa», «Añadir etapas» y su línea, «Nueva etapa desde esta», el panel de cifras
   (comparar, de dónde sale, las tres cifras, «no hay con qué comparar»).
 - Fuera (solo las usa el editor): `editor.stageTapHint`, `editor.sessionsOf`,
   `editor.summaryProgram`, `editor.programSummary*`, `editor.sectionStages`,
-  `editor.sectionSessions`, `editor.stageSheetTitle` si la hoja nueva cambia el
-  título. `weeksShort`, `weeksOpen` y `stageDuplicateBtn` se usan fuera: se quedan.
+  `editor.stageActiveBadge`, `stageActivateBtn`, `stageActiveHint`, `stageIsActive`,
+  `stageAccessOpen` (quitadas el 15-oct). `editor.sectionSessions` se queda: la
+  usa la vista de una sola etapa. `weeksShort`, `weeksOpen` y `stageDuplicateBtn`
+  se usan fuera: se quedan.
 
 ## 7. Qué no tocar
 

@@ -92,6 +92,9 @@ function SheetCard({ style, header, footer, bodyRef, children }) {
  * ({ label, onPress }) cuando la hoja ya tiene su propia salida — p. ej. el
  * "Limpiar" de la hoja de filtros, que cierra con su CTA de abajo.
  *
+ * `doneLabel` solo cambia el texto del botón de cerrar («Aceptar» en vez de
+ * «Cerrar»): cierra igual, con la animación de la hoja.
+ *
  * `onBack`: con él, un «‹» a la izquierda del título (la caja de volver de
  * `ScreenHeader`) para las hojas de dos páginas: vuelve a la primera sin cerrar.
  *
@@ -99,7 +102,7 @@ function SheetCard({ style, header, footer, bodyRef, children }) {
  * navegación (el CTA que no puede perderse al desplazar una lista larga). Va
  * en el `bg` de la hoja; sin él la hoja se pinta como siempre.
  */
-export default function DragSheet({ visible, onClose, title, action, onBack, footer, tall, children }) {
+export default function DragSheet({ visible, onClose, title, action, doneLabel, onBack, footer, tall, children }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
@@ -242,7 +245,7 @@ export default function DragSheet({ visible, onClose, title, action, onBack, foo
                     <Text style={styles.title} numberOfLines={1}>{title}</Text>
                   </View>
                   <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
-                    <Text style={styles.done}>{action ? action.label : t('common.close')}</Text>
+                    <Text style={styles.done}>{action ? action.label : (doneLabel ?? t('common.close'))}</Text>
                   </TouchableOpacity>
                 </View>
               )}
