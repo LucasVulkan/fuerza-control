@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selector y Progreso v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;700;800;900&display=swap">
+<style>
+/* Tokens del tema formaFit (mobile/src/themes.js) y escala de mobile/src/theme.js */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --accent10:rgba(184,255,0,.1); --accent50:rgba(184,255,0,.5);
+  --orange:#fb923c; --orange30:rgba(251,146,60,.3); --green:#66fa39; --redText:#ff5e58;
+  --xs:2px; --xs2:4px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px; --xxl:28px;
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:18px;
+  --page:#080808; --ink-dim:#8a8a8a;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+.wrap{max-width:1000px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:80ch; margin:0}
+.lead b{color:var(--text); font-weight:800}
+button{font:inherit; color:inherit}
+
+/* ── pieza común ── */
+.common{display:flex; flex-wrap:wrap; gap:28px; align-items:center; background:#121212; border-radius:14px; padding:18px 20px; margin:26px 0 34px}
+.common .lbl{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.common .demo{display:flex; align-items:center; gap:10px; font:600 13px var(--inter); color:var(--ink-dim)}
+.common p{flex-basis:100%; margin:0; font:500 13px/1.6 var(--inter); color:var(--ink-dim)}
+.common p b{color:var(--text)}
+
+.rail{display:flex; gap:34px; overflow-x:auto; padding-bottom:14px; align-items:flex-start; scroll-snap-type:x proximity}
+.col{flex:0 0 375px; width:375px; max-width:100%; scroll-snap-align:start}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h2{font:900 18px/1.2 var(--inter); margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:82px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:var(--orange)}
+.pro b,.con b{color:var(--text)}
+
+/* ── teléfono ── */
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:780px; position:relative; display:flex; flex-direction:column}
+.scroll{flex:1; overflow-y:auto; scrollbar-width:none; position:relative}
+.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight); flex-shrink:0}
+.ah{display:flex; align-items:center; padding:var(--md) var(--xl) var(--sm); flex-shrink:0}
+.logo b{font:italic 900 19px var(--inter); letter-spacing:-1.14px}
+.logo u{text-decoration:none; font:italic 800 21px var(--barlow); color:var(--accent)}
+.ah .sp{flex:1}
+.ico{width:36px; height:36px; border-radius:var(--r-md); background:var(--surface); display:grid; place-items:center}
+.ico svg{width:18px; height:18px; stroke:var(--text); fill:none; stroke-width:1.8; stroke-linecap:round}
+
+/* ScreenHeader: volver 32 · ceja caps lima · título 18/800 centrado */
+.hdr{display:flex; align-items:center; gap:var(--md); padding:var(--md) var(--lg); flex-shrink:0}
+.back{all:unset; cursor:pointer; width:32px; height:32px; border-radius:var(--r-md); background:var(--surface2); display:grid; place-items:center; flex-shrink:0}
+.back svg{width:16px; height:16px; stroke:var(--text); fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+.hmid{flex:1; min-width:0; display:flex; flex-direction:column; align-items:center}
+.eyebrow{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--accent); white-space:nowrap}
+.htitle{all:unset; display:flex; align-items:center; gap:6px; max-width:100%; margin-top:2px; font:800 18px/1.25 var(--inter); letter-spacing:-.2px; white-space:nowrap}
+.htitle span{overflow:hidden; text-overflow:ellipsis}
+button.htitle{cursor:pointer; border-radius:var(--r-sm)}
+.htitle .chev{width:12px; height:12px; stroke:var(--mutedLight); fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; transition:transform .18s}
+.hright{min-width:32px; display:flex; justify-content:flex-end}
+.addbtn{all:unset; cursor:pointer; height:32px; padding:0 var(--md); border-radius:var(--r-md); background:var(--accent); color:var(--onAccent); font:900 14px var(--inter); display:grid; place-items:center; transition:background .15s,color .15s}
+.addbtn.off{background:var(--surface2); color:var(--muted); cursor:default}
+
+/* buscador + caja de filtros (Clientes) */
+.srow{display:flex; gap:var(--sm2); padding:var(--lg) var(--lg) 0}
+.search{flex:1; height:42px; border-radius:var(--r-sm); background:var(--surface2); display:flex; align-items:center; gap:var(--sm2); padding:0 var(--lg)}
+.search svg{width:17px; height:17px; stroke:var(--mutedLight); fill:none; stroke-width:2; stroke-linecap:round; flex-shrink:0}
+.search input{all:unset; flex:1; min-width:0; font:500 14px var(--inter); color:var(--text)}
+.search input::placeholder{color:var(--mutedLight)}
+.search .x{all:unset; cursor:pointer; display:none}
+.search .x svg{stroke:var(--mutedLight)}
+.search.has .x{display:block}
+.fbox{all:unset; cursor:pointer; width:42px; height:42px; border-radius:var(--r-sm); background:var(--surface2); display:grid; place-items:center; position:relative; flex-shrink:0}
+.fbox svg{width:20px; height:20px; stroke:var(--text); fill:none; stroke-width:2; stroke-linecap:round}
+.fbox.on{background:var(--accent10)}
+.fbox.on svg{stroke:var(--accent)}
+.fbox .badge{position:absolute; top:3px; right:3px; min-width:14px; height:14px; border-radius:7px; padding:0 3px; background:var(--accent); color:var(--onAccent); font:900 11px/14px var(--inter); text-align:center; display:none}
+.fbox.on .badge{display:block}
+
+/* pills (fila de patrón / sesiones): h36, radio completo */
+.pillrow{display:flex; gap:var(--sm); overflow-x:auto; scrollbar-width:none; padding:var(--md) var(--lg) 0}
+.pillrow::-webkit-scrollbar{display:none}
+.pill{all:unset; cursor:pointer; height:36px; padding:0 var(--lg); border-radius:999px; background:var(--surface2); color:var(--mutedLight); font:900 14px/36px var(--inter); white-space:nowrap; flex-shrink:0; transition:background .15s,color .15s}
+.pill.on{background:var(--accent); color:var(--onAccent)}
+.pill.sq{min-width:36px; padding:0 var(--md); text-align:center}
+
+.create{display:block; text-align:center; padding:var(--lg) 0 var(--md); font:900 14px var(--inter); color:var(--accent50)}
+.caps{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--mutedLight); padding:0 var(--lg)}
+.caps.gap{margin-top:var(--lg)}
+
+/* lista agrupada: 2px de hueco, radio 10 solo en los extremos */
+.group{display:grid; gap:var(--xs); padding:var(--sm) var(--lg) 0}
+.group > *{background:var(--surface); border-radius:2px}
+.group > :first-child{border-top-left-radius:var(--r-md); border-top-right-radius:var(--r-md)}
+.group > :last-child{border-bottom-left-radius:var(--r-md); border-bottom-right-radius:var(--r-md)}
+.row{display:flex; align-items:center; gap:var(--md); padding:var(--md) var(--lg); cursor:pointer; user-select:none; transition:background .15s}
+.row .tx{flex:1; min-width:0}
+.row .n{font:700 14px/1.35 var(--inter); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.row .n mark{background:none; color:var(--accent)}
+.row .m{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.row .m .in{color:var(--accent50); font-weight:700}
+.row.sel{background:var(--accent10)}
+.row.taken{cursor:default}
+.row.taken .tx{opacity:.45}
+.row .chev{font:900 18px var(--inter); color:var(--mutedLight)}
+.row .up{color:var(--accent)} .row .down{color:var(--orange)}
+
+/* ── el check redondo ── */
+.rc{width:24px; height:24px; border-radius:12px; box-shadow:inset 0 0 0 2px var(--muted); display:grid; place-items:center; flex-shrink:0; transition:box-shadow .15s, background .15s}
+.rc svg{width:14px; height:14px; stroke:var(--onAccent); fill:none; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; opacity:0; transform:scale(.4); transition:opacity .12s, transform .25s cubic-bezier(.34,1.8,.64,1)}
+.rc.on{background:var(--accent); box-shadow:none; animation:pop .28s cubic-bezier(.34,1.6,.64,1)}
+.rc.on svg{opacity:1; transform:none}
+.rc.done{background:var(--surface3); box-shadow:none}
+.rc.done svg{opacity:1; transform:none; stroke:var(--mutedLight)}
+@keyframes pop{0%{transform:scale(.8)} 60%{transform:scale(1.12)} 100%{transform:scale(1)}}
+.tray{display:flex; gap:var(--sm); overflow-x:auto; scrollbar-width:none; padding:var(--md) var(--lg) 0; max-height:0; opacity:0; transition:max-height .22s, opacity .22s, padding .22s}
+.tray::-webkit-scrollbar{display:none}
+.tray.show{max-height:46px; opacity:1}
+.tray:not(.show){padding-top:0}
+.chip{all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 8px 0 11px; border-radius:999px; background:var(--accent10); color:var(--accent); font:800 12px var(--inter); white-space:nowrap; flex-shrink:0; animation:chipIn .2s ease-out}
+.chip svg{width:12px; height:12px; stroke:currentColor; stroke-width:3; stroke-linecap:round}
+@keyframes chipIn{from{opacity:0; transform:scale(.85)}}
+
+/* ── segmentado (SegmentedControl) ── */
+.seg{display:flex; background:var(--surface2); border-radius:999px; padding:3px; gap:2px}
+.seg button{all:unset; cursor:pointer; flex:1; text-align:center; padding:var(--sm2) 0; border-radius:999px; font:700 14px var(--inter); color:var(--text); transition:background .18s, color .18s; white-space:nowrap}
+.seg button.on{background:var(--accent); color:var(--onAccent)}
+.panelseg{padding:var(--sm) var(--lg) 0; flex-shrink:0}
+
+/* tarjetas de arriba */
+.ctl{display:flex; justify-content:space-between; align-items:center; padding:var(--lg) var(--lg) 0}
+.ctl .seg{width:198px}
+.ptog{all:unset; cursor:pointer; padding:var(--md); border-radius:var(--r-sm); background:var(--surface2); color:var(--mutedLight); font:800 12px var(--inter)}
+.ptog.on{background:var(--accent); color:var(--onAccent)}
+.tiles{display:flex; gap:var(--sm2); padding:var(--lg) var(--lg) 0}
+.tile{flex:1; height:108px; background:var(--surface); border-radius:var(--r-md); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:0 6px; text-align:center}
+.tile .v{font:900 22px/1 var(--inter); letter-spacing:-.5px; color:var(--accent)}
+.tile .v.neg{color:var(--orange)}
+.tile .l{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase}
+.tile .s{font:500 12px var(--inter); color:var(--accent50); white-space:nowrap}
+.tile .s.mut{color:var(--muted)}
+
+/* historial */
+.month{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--mutedLight); padding:var(--xl) var(--lg) 0}
+.month:first-child{padding-top:var(--lg)}
+.ses{display:flex; align-items:center; gap:var(--md); padding:var(--md) var(--lg)}
+.ses .let{font:900 16px var(--inter); letter-spacing:-.2px; color:var(--accent); min-width:16px; text-align:center}
+.ses .tx{flex:1; min-width:0}
+.ses .n{font:700 14px/1.35 var(--inter); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ses .m{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap}
+.ses .d{font:500 12px var(--inter); color:var(--mutedLight); align-self:flex-start; padding-top:2px}
+.empty{font:500 14px var(--inter); color:var(--mutedLight); text-align:center; padding:40px 20px}
+
+/* ── hoja (DragSheet) dentro del teléfono ── */
+.veil{position:absolute; inset:0; background:rgba(0,0,0,.6); z-index:5; opacity:0; pointer-events:none; transition:opacity .25s}
+.sheet{position:absolute; left:0; right:0; bottom:0; max-height:85%; background:var(--bg); border:1px solid var(--border); border-bottom:0; border-radius:var(--r-lg) var(--r-lg) 0 0; padding:var(--sm) var(--lg) 24px; z-index:6; transform:translateY(105%); transition:transform .3s cubic-bezier(.33,1,.68,1); display:flex; flex-direction:column}
+.sheet.tall{height:85%}
+.phone.sheet-open .veil{opacity:1; pointer-events:auto}
+.phone.sheet-open .sheet{transform:none}
+.grab{width:36px; height:4px; border-radius:2px; background:var(--border); margin:var(--sm) auto}
+.shd{display:flex; align-items:center; justify-content:space-between; padding:var(--md) 0 var(--lg)}
+.shd h4{margin:0; font:800 18px var(--inter); letter-spacing:-.2px}
+.shd .act{all:unset; cursor:pointer; font:900 14px var(--inter); color:var(--accent)}
+.shd .act.off{opacity:.35; cursor:default}
+.sbody{flex:1; overflow-y:auto; scrollbar-width:none; margin:0 calc(-1 * var(--lg)); }
+.sbody::-webkit-scrollbar{display:none}
+.sbody .caps{margin-bottom:var(--sm)}
+.sbody .group{padding-top:0}
+.sbody .pillrow{padding-top:0; padding-bottom:var(--lg)}
+.sbody .srow{padding-top:0; padding-bottom:var(--md)}
+.cta{all:unset; cursor:pointer; display:block; text-align:center; height:44px; line-height:44px; border-radius:var(--r-md); background:var(--accent); color:var(--onAccent); font:900 14px var(--inter); margin-top:var(--md)}
+.danger{display:flex; align-items:center; gap:var(--md); padding:var(--md) var(--lg); color:var(--redText); font:700 14px var(--inter); cursor:pointer}
+.danger svg{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+.hint{font:500 12px/15px var(--inter); color:var(--mutedLight); padding:var(--sm2) calc(var(--lg) + var(--xs2)) 0}
+.sbody .seg{margin:0 var(--lg) var(--lg)}
+
+/* ── detalle de ejercicio ── */
+.det{position:relative; flex:1; overflow:hidden; touch-action:pan-y}
+.det .scroll{height:100%; transition:transform .22s cubic-bezier(.33,1,.68,1), opacity .22s}
+.det .scroll.dragging{transition:none}
+.peek{position:absolute; top:50%; transform:translateY(-50%); font:800 12px var(--inter); color:var(--mutedLight); opacity:0; pointer-events:none; max-width:120px; z-index:2}
+.peek.l{left:10px} .peek.r{right:10px; text-align:right}
+/* vecinos: «‹ anterior · siguiente ›» bajo la cabecera */
+.nbr{display:flex; justify-content:space-between; gap:var(--md); padding:0 var(--lg) var(--xs2); flex-shrink:0}
+.nbr button{all:unset; cursor:pointer; max-width:48%; font:700 12px var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:var(--xs2) 0}
+.nbr button:disabled{visibility:hidden}
+.nbr .nx{text-align:right}
+/* métricas: fila de pills, cabe la que haga falta */
+.mrow{padding-top:var(--lg)}
+.mrow .pill{height:32px; line-height:32px; padding:0 12px; font:800 12px/32px var(--inter)}
+/* cabecera de la gráfica: la cifra manda; al arrastrar, la del punto */
+.chead{padding:var(--lg) var(--lg) 0; min-height:72px}
+.chead .v{font:900 28px/1 var(--inter); letter-spacing:-.6px; font-variant-numeric:tabular-nums}
+.chead .v small{font:800 14px var(--inter); color:var(--mutedLight); letter-spacing:0; margin-left:3px}
+.chead .s{font:500 12px/1.4 var(--inter); color:var(--mutedLight); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.chead .s b{font-weight:800; color:var(--text)}
+.chead.scrub .v{color:var(--accent)}
+.cbox{padding:var(--sm) var(--lg) 0; touch-action:none; cursor:crosshair; user-select:none}
+.cbox svg{width:100%; height:180px; display:block; overflow:visible}
+.cbox text{font:500 11px var(--inter); fill:var(--mutedLight); font-variant-numeric:tabular-nums}
+.sesi{padding:var(--md) var(--lg); display:grid; gap:var(--sm)}
+.sesi .top{display:flex; justify-content:space-between; align-items:center}
+.sesi .dt{font:500 12px var(--inter); color:var(--mutedLight)}
+.sesi .rt{display:flex; gap:var(--sm); align-items:center}
+.pr{font:800 12px var(--inter); letter-spacing:1.6px; color:var(--accent); background:rgba(170,226,22,.12); border:1px solid rgba(170,226,22,.4); border-radius:var(--r-xs); padding:2px 6px}
+.dl{font:800 12px var(--inter)}
+.sets{display:flex; flex-wrap:wrap; gap:var(--xs); align-items:center}
+.sets .w{font:500 12px var(--inter); padding:var(--sm) 0 var(--sm) var(--sm)}
+.sets .w b{color:var(--accent); font-weight:500} .sets .w i{font-style:normal; color:var(--mutedLight)}
+.spill{background:var(--accent10); color:var(--accent); border-radius:var(--r-xs); padding:var(--sm); font:500 12px var(--inter)}
+.spill.part{background:var(--orange30); color:var(--orange)}
+.sesh{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--mutedLight); padding:var(--xl) var(--lg) 0}
+
+/* historial: tira de letras en una cápsula, multiselección */
+.lstrip{display:flex; gap:2px; background:var(--surface2); border-radius:999px; padding:3px; overflow-x:auto; scrollbar-width:none; flex:0 1 auto; min-width:0}
+.lstrip::-webkit-scrollbar{display:none}
+.lstrip button{all:unset; cursor:pointer; width:34px; height:34px; flex-shrink:0; border-radius:17px; text-align:center; font:900 14px/34px var(--inter); color:var(--mutedLight); transition:background .15s,color .15s}
+.lstrip button.on{background:var(--accent); color:var(--onAccent)}
+.hrow{display:flex; gap:var(--sm2); align-items:center; justify-content:space-between; padding:var(--md) var(--lg) 0}
+.hrow .fbox{margin-left:auto}
+.hcount{font:500 12px var(--inter); color:var(--mutedLight); padding:var(--sm2) var(--lg) 0}
+.hcount b{color:var(--text); font-weight:800}
+.toast{position:absolute; left:50%; bottom:28px; transform:translate(-50%,20px); background:var(--surface3); color:var(--text); font:700 13px var(--inter); padding:10px 16px; border-radius:var(--r-md); opacity:0; transition:all .25s; z-index:9; white-space:nowrap; pointer-events:none}
+.toast.show{opacity:1; transform:translate(-50%,0)}
+.coach{position:absolute; left:50%; bottom:26px; transform:translateX(-50%); background:var(--surface3); color:var(--text); font:700 12px var(--inter); padding:8px 14px; border-radius:999px; z-index:3; display:flex; gap:8px; align-items:center; transition:opacity .3s; white-space:nowrap}
+.coach svg{width:14px; height:14px; stroke:var(--accent); fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+
+.notes{margin-top:44px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px}
+.note h3{font:900 15px/1.3 var(--inter); margin:0 0 6px}
+.note p{font:500 13px/1.6 var(--inter); color:var(--ink-dim); margin:0 0 8px}
+.note b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Selector y Progreso · v2</h1>
+  <p class="lead">Cinco piezas sobre el tema <b>FormaFit</b> con los tokens reales. Todo se puede tocar: <b>marca ejercicios</b>, <b>busca</b>, <b>abre los filtros</b> y, en la última, <b>arrastra el contenido a los lados</b> para cambiar de ejercicio o <b>el dedo por la gráfica</b>. Si pulsas un ejercicio en Progreso › Ejercicios, se abre en la cuarta.</p>
+
+  <div class="common">
+    <span class="lbl">Pieza común · check redondo</span>
+    <span class="demo"><span class="rc" data-demo></span> sin marcar</span>
+    <span class="demo"><span class="rc on" data-demo><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> marcado</span>
+    <span class="demo"><span class="rc done"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> ya está (apagado)</span>
+    <p>Un solo componente para toda la app: el selector, las hojas de filtros de Progreso y del Historial, y las etiquetas de Clientes, que hoy pintan «✓» como texto. Sin marcar es un <b>aro gris</b>. Al marcarlo se <b>rellena de lima</b> con un pequeño rebote y, en el móvil, una vibración corta. Pulsa los dos primeros.</p>
+  </div>
+
+  <div class="rail">
+    <!-- 1 · Selector -->
+    <div class="col">
+      <div class="tag">1 · Selector de ejercicios</div>
+      <h2>Más rápido de leer y de marcar</h2>
+      <p class="why">Arriba aparece primero lo que ya usas en otras sesiones. La meta dice <b>dónde más está</b> cada ejercicio, y lo que ya está en esta sesión sale apagado en vez de desaparecer. Prueba a buscar «press».</p>
+      <div class="phone" id="p1"></div>
+      <p class="pro"><b>Bandeja</b>: marca dos o tres y cambia la búsqueda; lo marcado sigue a la vista y se quita con la ×.</p>
+      <p class="pro"><b>«en B y C»</b> cuenta solo las sesiones de la misma etapa.</p>
+      <p class="con">«En tu programa» solo sale con el buscador vacío y sin pill de patrón; buscando, la lista vuelve a ir de la A a la Z.</p>
+    </div>
+
+    <!-- 2 · Progreso › Ejercicios -->
+    <div class="col">
+      <div class="tag">2 · Progreso › Ejercicios</div>
+      <h2>Una fila en vez de dos</h2>
+      <p class="why">Buscador con lupa y la caja de filtros de Clientes. La barra lima y su desplegable se van; la selección múltiple pasa a una hoja, con <b>A · B · C</b> para marcar una sesión entera de golpe.</p>
+      <div class="phone" id="p2"></div>
+      <p class="pro">El badge dice cuántos ejercicios hay elegidos. <b>Restablecer</b> va arriba en la hoja, como «Limpiar» en los filtros del selector.</p>
+      <p class="con">La pill de sesión se enciende solo cuando están marcados <b>todos</b> sus ejercicios.</p>
+    </div>
+
+    <!-- 3 · Historial -->
+    <div class="col">
+      <div class="tag">3 · Progreso › Historial</div>
+      <h2>Filtrar por sesión</h2>
+      <p class="why">Fuera el chip «Todo ▾» y el «···». Las letras van en <b>una cápsula compacta</b>: caben seis sesiones y las libres (★) junto a la caja de filtros. Debajo, una línea dice qué estás viendo. El ámbito, las etapas y el borrado van en la caja de filtros.</p>
+      <div class="phone" id="p3"></div>
+      <p class="pro">Cada letra ocupa 34 px. Caben siete sesiones y las libres; con más, la cápsula se desliza de lado.</p>
+      <p class="pro">Solo aparecen las letras que hay en el historial.</p>
+      <p class="con">Con el ámbito «Todo», la «A» junta las A de todos los programas.</p>
+    </div>
+
+    <!-- 4 · Detalle -->
+    <div class="col">
+      <div class="tag">4 · Progresión de un ejercicio</div>
+      <h2>Una pantalla, no un modal</h2>
+      <p class="why">Cabecera estándar, con flecha de volver grande y el atrás del sistema. Debajo, <b>el ejercicio anterior y el siguiente</b>: se pulsan o se desliza el contenido. Si pulsas el nombre, se abre la hoja para elegir cualquiera. <b>Arrastra el dedo por la gráfica</b> para leer cada sesión.</p>
+      <div class="phone" id="p4"></div>
+      <p class="pro"><b>Gráfica nueva</b>: la cifra grande arriba (la última, o la del punto que tocas, con sus series), eje en <b>números enteros</b> que se ensancha si hace falta, como mucho <b>cuatro fechas</b>, y el tiempo real en horizontal (las semanas sin entrenar se ven como hueco).</p>
+      <p class="pro"><b>Métricas</b>: Peso máx · Reps máx (la mejor serie) · Reps totales · Volumen · e1RM (estimado).</p>
+      <p class="con">Sobre la gráfica, arrastrar recorre los puntos y no cambia de ejercicio: para eso, fuera de ella o con los nombres de arriba.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h3>Qué no cambia</h3><p>Las tarjetas de arriba, la gráfica, la lista de sesiones y sus pills de series siguen como están. Cambia el <b>marco</b> (cómo se entra, se busca, se filtra y se sale), que era lo anticuado.</p></div>
+    <div class="note"><h3>Por qué sin filtro de tiempo en el Historial</h3><p>El historial ya va ordenado por fecha, así que filtrar por periodo es lo mismo que hacer scroll. Las <b>cabeceras de mes</b> dan esa referencia sin añadir otro control.</p></div>
+    <div class="note"><h3>Reps máx y la «Mejora»</h3><p>Hoy «Reps» suma todas las series, y esa misma cifra calcula la <b>Mejora</b> de los ejercicios sin peso. Al separarla en <b>Reps máx</b> y <b>Reps totales</b>, propongo que la Mejora de esos ejercicios use Reps máx, que es lo que de verdad dice si haces más.</p></div>
+    <div class="note"><h3>e1RM</h3><p>En la tarjeta y en la gráfica pasa a llamarse <b>e1RM</b>, con «estimado» debajo: sale de la mejor serie de las últimas seis semanas, no de un 1RM probado.</p></div>
+    <div class="note"><h3>Borrar historial</h3><p>Va al final de la hoja de filtros, en rojo y separado, con el mismo aviso de ahora. Clientes ya mete gestión de etiquetas en su hoja de filtros, así que no es raro.</p></div>
+  </div>
+</div>
+
+<script>
+const CHECK = '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+const SEARCH = '<svg viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.35-4.35"/></svg>';
+const CLOSE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+const FILTER = '<svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg>';
+const BACK = '<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>';
+const CHEV = '<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+const SB = '<div class="sb"><span>9:41</span><span>●●● 100%</span></div>';
+const AH = '<div class="ah"><div class="logo"><b>Forma</b><u>FIT</u></div><div class="sp"></div><div class="ico"><svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div></div>';
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fold = (s) => [...s].map((c) => c.normalize('NFD')[0].toLowerCase()).join('');
+function hl(name, q) {
+  if (!q) return esc(name);
+  const i = fold(name).indexOf(fold(q));
+  if (i < 0) return esc(name);
+  return esc(name.slice(0, i)) + '<mark>' + esc(name.slice(i, i + q.length)) + '</mark>' + esc(name.slice(i + q.length));
+}
+const joinY = (a) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1];
+function toast(phone, msg) {
+  let t = phone.querySelector('.toast');
+  if (!t) { t = document.createElement('div'); t.className = 'toast'; phone.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1800);
+}
+function sheetShell(phone) {
+  phone.insertAdjacentHTML('beforeend', '<div class="veil"></div><div class="sheet"><div class="grab"></div><div class="sin"></div></div>');
+  const sheet = phone.querySelector('.sheet');
+  phone.querySelector('.veil').onclick = () => phone.classList.remove('sheet-open');
+  return sheet.querySelector('.sin');
+}
+
+document.querySelectorAll('[data-demo]').forEach((el) => {
+  el.innerHTML = CHECK;
+  el.onclick = () => el.classList.toggle('on');
+  el.style.cursor = 'pointer';
+});
+
+// ─── datos ────────────────────────────────────────────────────────────────────
+const LIB = [
+  ['Sentadilla trasera','Cuádriceps','Barra','squat',['A']],
+  ['Press banca','Pecho','Barra','push',['A','C']],
+  ['Remo con barra','Espalda','Barra','pull',['A']],
+  ['Plancha','Core','Corporal','core',['A']],
+  ['Peso muerto rumano','Glúteo e isquios','Barra','hinge',['B']],
+  ['Press militar','Hombro','Barra','push',['B']],
+  ['Dominadas','Espalda','Barra dominadas','pull',['B','C']],
+  ['Zancada búlgara','Cuádriceps','Mancuernas','squat',['B']],
+  ['Hip thrust','Glúteo e isquios','Barra','hinge',['C']],
+  ['Press inclinado con mancuernas','Pecho','Mancuernas','push',['C']],
+  ['Jalón al pecho','Espalda','Polea','pull',['C']],
+  ['Curl de bíceps','Bíceps','Mancuernas','pull',['C']],
+  ['Press francés','Tríceps','Barra','push',[]],
+  ['Fondos en paralelas','Pecho','Paralelas','push',[]],
+  ['Face pull','Hombro','Polea','pull',[]],
+  ['Elevaciones laterales','Hombro','Mancuernas','push',[]],
+  ['Peso muerto convencional','Glúteo e isquios','Barra','hinge',[]],
+  ['Sentadilla goblet','Cuádriceps','Kettlebell','squat',[]],
+  ['Prensa de piernas','Cuádriceps','Máquina','squat',[]],
+  ['Swing con kettlebell','Glúteo e isquios','Kettlebell','hinge',[]],
+  ['Rueda abdominal','Core','Rueda abdominal','core',[]],
+  ['Pallof press','Core','Polea','core',[]],
+  ['Remo con mancuerna','Espalda','Mancuernas','pull',[]],
+  ['Press de pecho en máquina','Pecho','Máquina','push',[]],
+  ['Extensión de tríceps en polea','Tríceps','Polea','push',[]],
+  ['Paseo del granjero','Agarre','Mancuernas','grip',[]],
+  ['Elevación de gemelos','Gemelos','Máquina','calf',[]],
+  ['Curl femoral','Glúteo e isquios','Máquina','hinge',[]],
+  ['Press Arnold','Hombro','Mancuernas','push',[]],
+  ['Remo invertido','Espalda','Anillas','pull',[]],
+].map(([n, g, e, p, s], i) => ({ id: 'e' + i, n, g, e, p, s }));
+const PATTERNS = [['push','Empuje'],['pull','Tracción'],['squat','Sentadilla'],['hinge','Bisagra'],['core','Core'],['grip','Agarre'],['calf','Gemelos']];
+const byName = (a, b) => a.n.localeCompare(b.n, 'es');
+
+// ─── 1 · selector ─────────────────────────────────────────────────────────────
+(function selector() {
+  const ph = document.getElementById('p1');
+  const EDITING = 'A';
+  const st = { q: '', pat: '', sel: [] };
+  ph.innerHTML = SB + `
+    <div class="hdr"><button class="back">${BACK}</button>
+      <div class="hmid"><div class="eyebrow">Editar sesión A</div><div class="htitle"><span data-title>Añadir ejercicios</span></div></div>
+      <div class="hright"><button class="addbtn off" data-add>Añadir</button></div></div>
+    <div class="srow"><label class="search">${SEARCH}<input placeholder="Buscar ejercicio" data-q><button class="x" data-clear>${CLOSE}</button></label>
+      <button class="fbox">${FILTER}<span class="badge">0</span></button></div>
+    <div class="tray" data-tray></div>
+    <div class="pillrow">${PATTERNS.map(([id, l]) => `<button class="pill" data-pat="${id}">${l}</button>`).join('')}</div>
+    <div class="scroll"><a class="create">＋ Crear ejercicio</a><div data-list></div><div style="height:30px"></div></div>`;
+  const $ = (s) => ph.querySelector(s);
+  const inp = $('[data-q]');
+  inp.oninput = () => { st.q = inp.value; render(); };
+  $('[data-clear]').onclick = (e) => { e.preventDefault(); inp.value = st.q = ''; render(); inp.focus(); };
+  ph.querySelectorAll('[data-pat]').forEach((b) => b.onclick = () => { st.pat = st.pat === b.dataset.pat ? '' : b.dataset.pat; render(); });
+  $('[data-add]').onclick = () => {
+    if (!st.sel.length) return;
+    toast(ph, st.sel.length === 1 ? 'Ejercicio añadido' : `${st.sel.length} ejercicios añadidos`);
+    st.sel = []; render(true);
+  };
+
+  function row(ex) {
+    const taken = ex.s.includes(EDITING);
+    const others = ex.s.filter((s) => s !== EDITING);
+    const on = st.sel.includes(ex.id);
+    const meta = taken
+      ? 'Ya en esta sesión'
+      : `${ex.g} · ${ex.e}${others.length ? ` · <span class="in">en ${joinY(others)}</span>` : ''}`;
+    return `<div class="row${on ? ' sel' : ''}${taken ? ' taken' : ''}" data-id="${ex.id}">
+      <div class="tx"><div class="n">${hl(ex.n, st.q.trim())}</div><div class="m">${meta}</div></div>
+      <span class="rc${on ? ' on' : ''}${taken ? ' done' : ''}">${CHECK}</span></div>`;
+  }
+
+  function render(keepAnim) {
+    const q = st.q.trim();
+    $('.search').classList.toggle('has', !!st.q);
+    ph.querySelectorAll('[data-pat]').forEach((b) => b.classList.toggle('on', b.dataset.pat === st.pat));
+    const all = LIB.filter((ex) => (!st.pat || ex.p === st.pat) && (!q || fold(ex.n).includes(fold(q)))).sort(byName);
+    let html;
+    if (!q && !st.pat) {
+      const prog = all.filter((ex) => ex.s.length && !ex.s.includes(EDITING));
+      const rest = all.filter((ex) => !prog.includes(ex));
+      html = `<div class="caps">En tu programa · ${prog.length}</div><div class="group">${prog.map(row).join('')}</div>
+              <div class="caps gap">Todos · ${rest.length}</div><div class="group">${rest.map(row).join('')}</div>`;
+    } else {
+      html = all.length
+        ? `<div class="caps">${all.length} ${all.length === 1 ? 'ejercicio' : 'ejercicios'}</div><div class="group">${all.map(row).join('')}</div>`
+        : `<div class="empty">Sin resultados — <span style="color:var(--accent)">＋ Crear «${esc(q)}»</span></div>`;
+    }
+    $('[data-list]').innerHTML = html;
+    ph.querySelectorAll('.row[data-id]').forEach((r) => r.onclick = () => toggle(r.dataset.id));
+    paintSel();
+  }
+  function paintSel() {
+    const n = st.sel.length;
+    $('[data-title]').textContent = n ? (n === 1 ? '1 seleccionado' : `${n} seleccionados`) : 'Añadir ejercicios';
+    const add = $('[data-add]');
+    add.classList.toggle('off', !n);
+    add.textContent = n ? `Añadir ${n}` : 'Añadir';
+    const tray = $('[data-tray]');
+    tray.classList.toggle('show', n > 0);
+    // Solo se pinta lo que cambia, para que los chips existentes no repitan la animación.
+    const have = [...tray.children].map((c) => c.dataset.id);
+    have.filter((id) => !st.sel.includes(id)).forEach((id) => tray.querySelector(`[data-id="${id}"]`).remove());
+    st.sel.filter((id) => !have.includes(id)).forEach((id) => {
+      const ex = LIB.find((e) => e.id === id);
+      const b = document.createElement('button');
+      b.className = 'chip'; b.dataset.id = id; b.innerHTML = `${esc(ex.n)} ${CLOSE}`;
+      b.onclick = () => toggle(id);
+      tray.appendChild(b);
+      tray.scrollLeft = tray.scrollWidth;
+    });
+  }
+  function toggle(id) {
+    const ex = LIB.find((e) => e.id === id);
+    if (ex.s.includes(EDITING)) return;
+    st.sel = st.sel.includes(id) ? st.sel.filter((x) => x !== id) : [...st.sel, id];
+    const r = ph.querySelector(`.row[data-id="${id}"]`);
+    if (r) {
+      const on = st.sel.includes(id);
+      r.classList.toggle('sel', on);
+      r.querySelector('.rc').classList.toggle('on', on);
+    }
+    paintSel();
+  }
+  render();
+})();
+
+// ─── progreso: datos de ejercicios con registros ──────────────────────────────
+const LOGGED = LIB.filter((e) => e.s.length).sort(byName).map((e, i) => {
+  const base = { 'Sentadilla trasera':100,'Press banca':80,'Remo con barra':70,'Peso muerto rumano':95,'Press militar':50,'Dominadas':12,'Zancada búlgara':22,'Hip thrust':120,'Jalón al pecho':60,'Curl de bíceps':14,'Press inclinado con mancuernas':28,'Plancha':45 }[e.n] ?? 40;
+  const pct = [12, 8, 5, 30, 15, 4, 20, -3, 18, 6, 10, 9][i % 12];
+  const sessions = 6 + ((i * 7) % 12);
+  return { ...e, base, pct, sessions, kind: e.n === 'Plancha' ? 'time' : 'kg' };
+});
+const detailBus = { open: null };
+
+// ─── 2 · Progreso › Ejercicios ────────────────────────────────────────────────
+(function progress() {
+  const ph = document.getElementById('p2');
+  const st = { q: '', sel: new Set(), period: 'all', prog: false };
+  ph.innerHTML = SB + AH + `
+    <div class="panelseg"><div class="seg"><button class="on">Ejercicios</button><button>Carga</button><button>Historial</button></div></div>
+    <div class="scroll">
+      <div class="ctl"><div class="seg" data-period>${['7D','1M','3M','Todo'].map((l, i) => `<button data-p="${['7d','1m','3m','all'][i]}">${l}</button>`).join('')}</div>
+        <button class="ptog" data-prog>Programa actual</button></div>
+      <div class="tiles">
+        <div class="tile"><div class="v">42</div><div class="l">Sesiones</div><div class="s">3 esta semana</div></div>
+        <div class="tile"><div class="v">+9%</div><div class="l">Mejora</div><div class="s">+2,5 kg última</div></div>
+        <div class="tile"><div class="v">+6%</div><div class="l">Volumen</div><div class="s">+340 kg última</div></div>
+      </div>
+      <div class="srow"><label class="search">${SEARCH}<input placeholder="Buscar ejercicio…" data-q><button class="x" data-clear>${CLOSE}</button></label>
+        <button class="fbox" data-filter>${FILTER}<span class="badge">0</span></button></div>
+      <div class="group" style="padding-top:var(--md)" data-list></div>
+      <div style="height:40px"></div>
+    </div>`;
+  const sin = sheetShell(ph);
+  const $ = (s) => ph.querySelector(s);
+  const inp = $('[data-q]');
+  inp.oninput = () => { st.q = inp.value; render(); };
+  $('[data-clear]').onclick = (e) => { e.preventDefault(); inp.value = st.q = ''; render(); };
+  ph.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { st.period = b.dataset.p; render(); });
+  $('[data-prog]').onclick = () => { st.prog = !st.prog; render(); };
+  $('[data-filter]').onclick = () => { renderSheet(); ph.classList.add('sheet-open'); };
+
+  const shown = () => {
+    const q = st.q.trim();
+    return LOGGED.filter((e) => (!st.sel.size || st.sel.has(e.id)) && (!q || fold(e.n).includes(fold(q))));
+  };
+  function render() {
+    ph.querySelectorAll('[data-p]').forEach((b) => b.classList.toggle('on', b.dataset.p === st.period));
+    $('[data-prog]').classList.toggle('on', st.prog);
+    $('.search').classList.toggle('has', !!st.q);
+    const fb = $('[data-filter]');
+    fb.classList.toggle('on', st.sel.size > 0);
+    fb.querySelector('.badge').textContent = st.sel.size;
+    const list = shown();
+    $('[data-list]').innerHTML = list.length ? list.map((e) => `
+      <div class="row" data-id="${e.id}"><div class="tx"><div class="n">${hl(e.n, st.q.trim())}</div>
+      <div class="m">${e.sessions} sesiones · <span class="${e.pct >= 0 ? 'up' : 'down'}">${e.pct > 0 ? '+' : ''}${e.pct}%</span> progreso</div></div>
+      <span class="chev">›</span></div>`).join('') : '<div class="empty" style="background:none">Ningún ejercicio coincide</div>';
+    ph.querySelectorAll('.row[data-id]').forEach((r) => r.onclick = () => detailBus.open?.(r.dataset.id, list.map((e) => e.id)));
+  }
+  function renderSheet() {
+    const n = st.sel.size;
+    const sesOn = (s) => { const ids = LOGGED.filter((e) => e.s.includes(s)).map((e) => e.id); return ids.every((id) => st.sel.has(id)); };
+    sin.innerHTML = `
+      <div class="shd"><h4>Filtrar ejercicios</h4><button class="act${n ? '' : ' off'}" data-reset>Restablecer</button></div>
+      <div class="sbody">
+        <div class="caps">Por sesión</div>
+        <div class="pillrow">${['A','B','C'].map((s) => `<button class="pill sq${sesOn(s) ? ' on' : ''}" data-ses="${s}">${s}</button>`).join('')}</div>
+        <div class="caps">Ejercicios · ${LOGGED.length}</div>
+        <div class="group">${LOGGED.map((e) => {
+          const on = st.sel.has(e.id);
+          return `<div class="row${on ? ' sel' : ''}" data-id="${e.id}"><div class="tx"><div class="n">${esc(e.n)}</div><div class="m">${e.sessions} sesiones · en ${joinY(e.s)}</div></div><span class="rc${on ? ' on' : ''}">${CHECK}</span></div>`;
+        }).join('')}</div>
+      </div>
+      <button class="cta" data-see>${n ? `Ver ${n} ${n === 1 ? 'ejercicio' : 'ejercicios'}` : 'Ver todos'}</button>`;
+    sin.querySelector('[data-reset]').onclick = () => { st.sel.clear(); renderSheet(); render(); };
+    sin.querySelector('[data-see]').onclick = () => ph.classList.remove('sheet-open');
+    sin.querySelectorAll('[data-ses]').forEach((b) => b.onclick = () => {
+      const ids = LOGGED.filter((e) => e.s.includes(b.dataset.ses)).map((e) => e.id);
+      const all = ids.every((id) => st.sel.has(id));
+      ids.forEach((id) => all ? st.sel.delete(id) : st.sel.add(id));
+      refreshSheet(); render();
+    });
+    sin.querySelectorAll('.row[data-id]').forEach((r) => r.onclick = () => {
+      const id = r.dataset.id;
+      st.sel.has(id) ? st.sel.delete(id) : st.sel.add(id);
+      refreshSheet(); render();
+    });
+  }
+  // Repinta en sitio (sin rehacer la hoja) para que el scroll y la animación del check se queden.
+  function refreshSheet() {
+    const n = st.sel.size;
+    sin.querySelectorAll('.row[data-id]').forEach((r) => {
+      const on = st.sel.has(r.dataset.id);
+      if (r.classList.contains('sel') !== on) { r.classList.toggle('sel', on); r.querySelector('.rc').classList.toggle('on', on); }
+    });
+    sin.querySelectorAll('[data-ses]').forEach((b) => {
+      const ids = LOGGED.filter((e) => e.s.includes(b.dataset.ses)).map((e) => e.id);
+      b.classList.toggle('on', ids.every((id) => st.sel.has(id)));
+    });
+    sin.querySelector('[data-reset]').classList.toggle('off', !n);
+    sin.querySelector('[data-see]').textContent = n ? `Ver ${n} ${n === 1 ? 'ejercicio' : 'ejercicios'}` : 'Ver todos';
+  }
+  render();
+})();
+
+// ─── 3 · Historial ────────────────────────────────────────────────────────────
+(function history() {
+  const ph = document.getElementById('p3');
+  // Programa de seis sesiones + libres: el caso que preocupaba (≥5 días por semana).
+  const NAMES = { A: 'Pierna', B: 'Empuje', C: 'Tracción', D: 'Bisagra', E: 'Torso', F: 'Cuerpo completo', L: 'Sesión libre' };
+  const SES = [
+    [14,'A',10],[13,'F',10],[12,'E',10],[10,'D',10],[9,'C',10],[8,'L',10],[7,'B',10],[6,'A',10],[4,'F',10],[3,'E',10],[1,'D',10],
+    [30,'C',9],[29,'B',9],[28,'A',9],[26,'L',9],[25,'F',9],[24,'E',9],[22,'D',9],[21,'C',9],[20,'B',9],
+  ].map(([d, l, m], i) => ({ id: 's' + i, d, l, m, sets: l === 'L' ? '12/12' : ['18/18','16/18','20/20'][i % 3], rpe: [8, 7, 9, 8][i % 4], dv: [4, -2, 6, null, 3, 1, -5, 2][i % 8], stage: m === 10 ? 'Fuerza' : 'Base', prog: l !== 'L' || i % 2 === 0 }));
+  const MONTHS = { 10: 'Octubre 2026', 9: 'Septiembre 2026' };
+  const MSHORT = { 10: 'oct', 9: 'sep' };
+  const st = { pills: new Set(), scope: 'all', stages: new Set() };
+  const present = ['A','B','C','D','E','F','L'].filter((l) => SES.some((s) => s.l === l));
+  ph.innerHTML = SB + AH + `
+    <div class="panelseg"><div class="seg"><button>Ejercicios</button><button>Carga</button><button class="on">Historial</button></div></div>
+    <div class="hrow"><div class="lstrip">${present.map((l) => `<button data-l="${l}" title="${NAMES[l]}">${l === 'L' ? '★' : l}</button>`).join('')}</div>
+      <button class="fbox" data-filter>${FILTER}<span class="badge">0</span></button></div>
+    <div class="hcount" data-count></div>
+    <div class="scroll" data-list></div>`;
+  const sin = sheetShell(ph);
+  const $ = (s) => ph.querySelector(s);
+  ph.querySelectorAll('[data-l]').forEach((b) => b.onclick = () => { st.pills.has(b.dataset.l) ? st.pills.delete(b.dataset.l) : st.pills.add(b.dataset.l); render(); });
+  $('[data-filter]').onclick = () => { renderSheet(); ph.classList.add('sheet-open'); };
+
+  function render() {
+    ph.querySelectorAll('[data-l]').forEach((b) => b.classList.toggle('on', st.pills.has(b.dataset.l)));
+    const count = (st.scope === 'program' ? 1 : 0) + st.stages.size;
+    $('[data-filter]').classList.toggle('on', count > 0);
+    $('[data-filter] .badge').textContent = count;
+    const list = SES.filter((s) => (!st.pills.size || st.pills.has(s.l))
+      && (st.scope === 'all' || s.prog) && (st.scope === 'all' || !st.stages.size || st.stages.has(s.stage)));
+    // Una línea que dice qué se está mirando: las letras solas no lo cuentan.
+    const picked = present.filter((l) => st.pills.has(l)).map((l) => l === 'L' ? 'libres' : l);
+    $('[data-count]').innerHTML = picked.length
+      ? `<b>${list.length}</b> ${list.length === 1 ? 'sesión' : 'sesiones'} · ${joinY(picked)}`
+      : `<b>${list.length}</b> sesiones`;
+    let html = '', month = null, buf = [];
+    const flush = () => { if (buf.length) html += `<div class="group">${buf.join('')}</div>`; buf = []; };
+    list.forEach((s) => {
+      if (s.m !== month) { flush(); month = s.m; html += `<div class="month">${MONTHS[s.m]}</div>`; }
+      const dv = s.dv == null ? '' : ` · <span style="color:${s.dv >= 0 ? 'var(--accent)' : 'var(--orange)'}">${s.dv > 0 ? '+' : ''}${s.dv}%</span>`;
+      buf.push(`<div class="ses"><span class="let">${s.l === 'L' ? '★' : s.l}</span><div class="tx"><div class="n">${NAMES[s.l]}</div>
+        <div class="m">${s.sets} series · RPE ${s.rpe}${dv}</div></div><span class="d">${s.d} ${MSHORT[s.m]}</span></div>`);
+    });
+    flush();
+    $('[data-list]').innerHTML = (html || '<div class="empty">No hay sesiones con estos filtros</div>') + '<div style="height:40px"></div>';
+  }
+  function renderSheet() {
+    const canClear = st.scope === 'program' || st.stages.size > 0;
+    sin.innerHTML = `
+      <div class="shd"><h4>Filtrar historial</h4><button class="act${canClear ? '' : ' off'}" data-reset>Limpiar</button></div>
+      <div class="sbody">
+        <div class="caps">Ámbito</div>
+        <div class="seg"><button data-scope="program" class="${st.scope === 'program' ? 'on' : ''}">Programa actual</button><button data-scope="all" class="${st.scope === 'all' ? 'on' : ''}">Todo</button></div>
+        ${st.scope === 'program' ? `<div class="caps">Etapas</div><div class="group" style="margin-bottom:var(--lg)">${['Base','Fuerza'].map((s, i) => {
+          const on = !st.stages.size || st.stages.has(s);
+          return `<div class="row" data-st="${s}"><div class="tx"><div class="n">Etapa ${i + 1} · ${s}</div></div><span class="rc${on ? ' on' : ''}">${CHECK}</span></div>`;
+        }).join('')}</div>` : ''}
+        <div class="caps" style="margin-top:var(--sm2)">Gestionar historial</div>
+        <div class="group">
+          <div class="danger"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>Borrar lo ajeno al programa activo</div>
+          <div class="danger"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Borrar todo el historial</div>
+        </div>
+        <div class="hint">Acciones sin deshacer. Exporta una copia desde ≡ → Exportar antes de borrar.</div>
+      </div>`;
+    sin.querySelector('[data-reset]').onclick = () => { st.scope = 'all'; st.stages.clear(); renderSheet(); render(); };
+    sin.querySelectorAll('[data-scope]').forEach((b) => b.onclick = () => { st.scope = b.dataset.scope; st.stages.clear(); renderSheet(); render(); });
+    sin.querySelectorAll('[data-st]').forEach((r) => r.onclick = () => {
+      const s = r.dataset.st;
+      if (!st.stages.size) { ['Base','Fuerza'].filter((x) => x !== s).forEach((x) => st.stages.add(x)); }
+      else if (st.stages.has(s)) { st.stages.delete(s); if (!st.stages.size) st.stages.add(s === 'Base' ? 'Fuerza' : 'Base'); }
+      else st.stages.add(s);
+      if (st.stages.size === 2) st.stages.clear();
+      renderSheet(); render();
+    });
+    sin.querySelectorAll('.danger').forEach((d) => d.onclick = () => toast(ph, 'Aquí va el aviso de confirmación'));
+  }
+  render();
+})();
+
+// ─── 4 · detalle de ejercicio ─────────────────────────────────────────────────
+const DAY = 864e5, END = new Date(2026, 9, 14).getTime();
+const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fdate = (t) => { const d = new Date(t); return `${d.getDate()} ${MES[d.getMonth()]}`; };
+const fnum = (v) => (Math.round(v * 10) / 10).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+const fint = (v) => Math.round(v).toLocaleString('es-ES');
+
+// Sesiones inventadas pero coherentes: ~6 meses, peso que sube a saltos de disco, reps que bailan.
+function genSessions(e) {
+  let seed = e.n.length * 97 + e.base;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const out = [];
+  for (let i = 0; i < 26; i++) {
+    const t = END - (25 - i) * 6.6 * DAY - Math.round(rnd() * 2) * DAY;
+    if (e.kind === 'time') {
+      const s = e.base + Math.floor(i / 2) * 5 - (rnd() < .2 ? 5 : 0);
+      out.push({ t, sets: [{ time: s }, { time: s }, { time: s - 5 }] });
+      continue;
+    }
+    const step = e.base >= 60 ? 2.5 : e.base >= 20 ? 2 : 1;
+    const trend = e.pct >= 0 ? Math.floor(i / 3) * step : -Math.floor(i / 9) * step;
+    const w = Math.max(step, e.base + trend - (rnd() < .1 ? step : 0));
+    // Al subir de peso, las reps bajan una; luego se recuperan (doble progresión).
+    const r1 = 6 + (i % 3);
+    out.push({ t, sets: [{ w, r: r1 }, { w, r: r1 - (rnd() < .3 ? 1 : 0) }, { w, r: r1 - 1 }] });
+  }
+  return out;
+}
+const METRICS = {
+  kg:      { label: 'Peso máx',     unit: 'kg',   v: (s) => Math.max(...s.sets.map((x) => x.w)) },
+  repsMax: { label: 'Reps máx',     unit: 'reps', v: (s) => Math.max(...s.sets.map((x) => x.r)) },
+  repsTot: { label: 'Reps totales', unit: 'reps', v: (s) => s.sets.reduce((a, x) => a + x.r, 0) },
+  vol:     { label: 'Volumen',      unit: 'kg',   v: (s) => s.sets.reduce((a, x) => a + x.w * x.r, 0) },
+  e1rm:    { label: 'e1RM',         unit: 'kg',   v: (s) => Math.max(...s.sets.map((x) => x.w * (1 + x.r / 30))) },
+  time:    { label: 'Tiempo máx',   unit: 's',    v: (s) => Math.max(...s.sets.map((x) => x.time)) },
+};
+const fmtM = (m, v) => (m === 'vol' || m === 'repsMax' || m === 'repsTot' || m === 'time') ? fint(v) : fnum(v);
+
+// Marcas «redondas»: paso 1/2/5 × 10ⁿ, nunca por debajo de 1 → el eje siempre en enteros.
+function niceTicks(min, max) {
+  const span = Math.max(max - min, 1);
+  const raw = span / 3;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = Math.max(1, [1, 2, 2.5, 5, 10].map((k) => k * mag).find((s) => s >= raw && Number.isInteger(s)) ?? 10 * mag);
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= hi + 1e-9; v += step) ticks.push(v);
+  return ticks;
+}
+const tickLabel = (v) => v >= 10000 ? `${Math.round(v / 1000)}k` : v.toLocaleString('es-ES');
+
+(function detail() {
+  const ph = document.getElementById('p4');
+  const st = { order: LOGGED.map((e) => e.id), idx: 1, period: '3m', metric: 'kg', q: '', scrub: null };
+  ph.innerHTML = SB + `
+    <div class="hdr"><button class="back">${BACK}</button>
+      <div class="hmid"><div class="eyebrow">Progresión</div><button class="htitle" data-title><span></span>${CHEV}</button></div>
+      <div class="hright"></div></div>
+    <div class="nbr"><button data-prev></button><button class="nx" data-next></button></div>
+    <div class="det"><div class="peek l" data-pl></div><div class="peek r" data-pr></div><div class="scroll" data-body></div></div>`;
+  const sin = sheetShell(ph);
+  ph.querySelector('.sheet').classList.add('tall');
+  const $ = (s) => ph.querySelector(s);
+  const body = $('[data-body]');
+  ph.querySelector('.back').onclick = () => toast(ph, 'Vuelve a Progreso');
+  $('[data-prev]').onclick = () => go(st.idx - 1, -1);
+  $('[data-next]').onclick = () => go(st.idx + 1, 1);
+
+  const cache = {};
+  const cur = () => LOGGED.find((e) => e.id === st.order[st.idx]);
+  const sessionsOf = (e) => (cache[e.id] ??= genSessions(e));
+  const inPeriod = (e) => {
+    const days = { '7d': 7, '1m': 30, '3m': 90, all: Infinity }[st.period];
+    return sessionsOf(e).filter((s) => END - s.t <= days * DAY);
+  };
+  const metricsFor = (e) => e.kind === 'time' ? ['time'] : ['kg', 'repsMax', 'repsTot', 'vol', 'e1rm'];
+  const setsText = (e, s) => e.kind === 'time' ? s.sets.map((x) => `${x.time}s`).join(', ') : `${fnum(s.sets[0].w)} kg × ${s.sets.map((x) => x.r).join(', ')}`;
+
+  function chartSvg(e, list) {
+    const M = METRICS[st.metric];
+    const W = 345, H = 180, top = 8, bot = H - 22;
+    const vals = list.map(M.v);
+    const ticks = niceTicks(Math.min(...vals), Math.max(...vals));
+    const lo = ticks[0], hi = ticks[ticks.length - 1];
+    // La columna del eje mide lo que mida su etiqueta más larga: caben 4 cifras sin recortar.
+    const labW = Math.max(...ticks.map((t) => tickLabel(t).length)) * 7 + 10;
+    const left = labW, right = W - 6;
+    const t0 = list[0].t, t1 = list[list.length - 1].t;
+    // X por FECHA, no por índice: dos semanas sin entrenar se ven como hueco.
+    const x = (t) => t1 === t0 ? (left + right) / 2 : left + ((t - t0) / (t1 - t0)) * (right - left);
+    const y = (v) => bot - ((v - lo) / (hi - lo || 1)) * (bot - top);
+    const pts = list.map((s, i) => ({ x: x(s.t), y: y(vals[i]), v: vals[i], s }));
+    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+    const area = `${line}L${pts[pts.length - 1].x.toFixed(1)},${bot}L${pts[0].x.toFixed(1)},${bot}Z`;
+    const grid = ticks.map((t) => `<line x1="${left}" x2="${right}" y1="${y(t)}" y2="${y(t)}" stroke="#2c2c2c" stroke-width="1" ${t === lo ? '' : 'stroke-dasharray="2 4"'}/>
+      <text x="${left - 8}" y="${y(t) + 4}" text-anchor="end">${tickLabel(t)}</text>`).join('');
+    // Fechas: como mucho cuatro, repartidas en el tiempo; nunca una por punto.
+    const nx = list.length < 2 ? 1 : Math.min(4, list.length);
+    const xl = Array.from({ length: nx }, (_, k) => {
+      const t = nx === 1 ? t0 : t0 + (k * (t1 - t0)) / (nx - 1);
+      const anchor = nx === 1 ? 'middle' : k === 0 ? 'start' : k === nx - 1 ? 'end' : 'middle';
+      return `<text x="${x(t)}" y="${H - 4}" text-anchor="${anchor}">${fdate(t)}</text>`;
+    }).join('');
+    const sel = st.scrub != null ? pts[st.scrub] : null;
+    const dots = pts.length <= 16 ? pts.map((p) => `<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="#0f0f0f" stroke="#aae216" stroke-width="1.5"/>`).join('') : '';
+    const last = pts[pts.length - 1];
+    const mark = sel
+      ? `<line x1="${sel.x}" x2="${sel.x}" y1="${top}" y2="${bot}" stroke="#949494" stroke-width="1"/><circle cx="${sel.x}" cy="${sel.y}" r="6" fill="#aae216" stroke="#0f0f0f" stroke-width="2.5"/>`
+      : `<circle cx="${last.x}" cy="${last.y}" r="5" fill="#aae216" stroke="#0f0f0f" stroke-width="2"/>`;
+    ph._pts = pts;
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs><linearGradient id="g4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#aae216" stop-opacity=".28"/><stop offset="1" stop-color="#aae216" stop-opacity="0"/></linearGradient></defs>
+      ${grid}<path d="${area}" fill="url(#g4)"/><path d="${line}" fill="none" stroke="#aae216" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}${mark}${xl}</svg>`;
+  }
+  function headHtml(e, list) {
+    const M = METRICS[st.metric];
+    const vals = list.map(M.v);
+    if (st.scrub != null) {
+      const s = list[st.scrub];
+      return `<div class="chead scrub"><div class="v">${fmtM(st.metric, vals[st.scrub])}<small>${M.unit}</small></div><div class="s"><b>${fdate(s.t)}</b> · ${setsText(e, s)}</div></div>`;
+    }
+    const d = vals[vals.length - 1] - vals[0];
+    const per = { '7d': 'en 7 días', '1m': 'en el último mes', '3m': 'en 3 meses', all: 'desde el principio' }[st.period];
+    return `<div class="chead"><div class="v">${fmtM(st.metric, vals[vals.length - 1])}<small>${M.unit}</small></div>
+      <div class="s">${M.label} · última sesión ${fdate(list[list.length - 1].t)}${list.length > 1 ? ` · <span style="color:${d >= 0 ? 'var(--accent)' : 'var(--orange)'};font-weight:800">${d >= 0 ? '+' : '−'}${fmtM(st.metric, Math.abs(d))} ${M.unit}</span> ${per}` : ''}</div></div>`;
+  }
+  function paintChart() {
+    const e = cur(), list = inPeriod(e);
+    if (list.length < 2) {
+      $('[data-head]').innerHTML = '<div class="chead"><div class="s">Hacen falta dos sesiones en este periodo para dibujar la gráfica.</div></div>';
+      $('[data-chart]').innerHTML = '';
+      return;
+    }
+    $('[data-head]').innerHTML = headHtml(e, list);
+    $('[data-chart]').innerHTML = chartSvg(e, list);
+  }
+  function content() {
+    const e = cur(), all = sessionsOf(e), list = inPeriod(e);
+    const M = METRICS[st.metric];
+    const kgV = all.map(METRICS[e.kind === 'time' ? 'time' : 'kg'].v);
+    const e1 = e.kind === 'time' ? null : Math.max(...all.slice(-6).map(METRICS.e1rm.v));
+    // Igual que la app (linearRegressionPct): % entre los extremos de la recta, no entre dos sesiones sueltas.
+    const reg = (vs) => {
+      const n = vs.length; if (n < 2) return null;
+      const mx = (n - 1) / 2, my = vs.reduce((a, v) => a + v, 0) / n;
+      const b = vs.reduce((a, v, i) => a + (i - mx) * (v - my), 0) / vs.reduce((a, _, i) => a + (i - mx) ** 2, 0);
+      const y0 = my - b * mx, y1 = y0 + b * (n - 1);
+      return Math.round((y1 / y0 - 1) * 100);
+    };
+    // La Mejora no sigue a la pill de la gráfica: siempre es la del peso (o el tiempo).
+    const base = METRICS[e.kind === 'time' ? 'time' : 'kg'];
+    const pct = reg(list.map(base.v));
+    const vol = e.kind !== 'time' ? reg(list.map(METRICS.vol.v)) : null;
+    // Récord: el mejor valor visto hasta esa sesión.
+    let best = -Infinity;
+    const rows = list.map((s, i) => {
+      const v = M.v(s), prev = i ? M.v(list[i - 1]) : null;
+      const pr = v > best && i > 0; best = Math.max(best, v);
+      return { s, v, d: prev == null ? null : v - prev, pr };
+    }).reverse().slice(0, 8);
+    return `
+      <div class="ctl" style="padding-top:var(--sm2)"><div class="seg">${['7D','1M','3M','Todo'].map((l, i) => { const id = ['7d','1m','3m','all'][i]; return `<button data-p="${id}" class="${st.period === id ? 'on' : ''}">${l}</button>`; }).join('')}</div>
+        <button class="ptog">Programa actual</button></div>
+      <div class="tiles">
+        ${e.kind === 'time'
+          ? `<div class="tile"><div class="v">${Math.max(...kgV)}s</div><div class="l">Récord</div><div class="s mut">hace 4 días</div></div>`
+          : `<div class="tile"><div class="v">${fint(e1)} kg</div><div class="l" style="text-transform:none">e1RM</div><div class="s mut">estimado · 6 sem.</div></div>`}
+        <div class="tile"><div class="v${(pct ?? 0) < 0 ? ' neg' : ''}">${pct == null ? '—' : `${pct > 0 ? '+' : ''}${pct}%`}</div><div class="l">Mejora</div><div class="s">${base.label.toLowerCase()}</div></div>
+        <div class="tile"><div class="v${(vol ?? 0) < 0 ? ' neg' : ''}">${vol == null ? list.length : `${vol > 0 ? '+' : ''}${vol}%`}</div><div class="l">${vol == null ? 'Sesiones' : 'Volumen'}</div><div class="s">${list.length} sesiones</div></div>
+      </div>
+      <div class="mrow"><div class="pillrow" style="padding-top:0">${metricsFor(e).map((m) => `<button class="pill${st.metric === m ? ' on' : ''}" data-m="${m}">${METRICS[m].label}</button>`).join('')}</div></div>
+      <div data-head></div>
+      <div class="cbox" data-chart></div>
+      <div class="sesh">Sesiones · ${M.label.toLowerCase()}</div>
+      <div class="group">${rows.map(({ s, v, d, pr }) => `
+        <div class="sesi"><div class="top"><span class="dt">${fdate(s.t)}</span><span class="rt">${pr ? '<span class="pr">PR</span>' : ''}
+          ${d == null ? '' : `<span class="dl" style="color:${d >= 0 ? 'var(--green)' : 'var(--orange)'}">${d > 0 ? '+' : d < 0 ? '−' : '±'}${fmtM(st.metric, Math.abs(d))} ${M.unit}</span>`}</span></div>
+          <div class="sets">${e.kind === 'time'
+            ? s.sets.map((x, i) => `<span class="spill${i === 2 ? ' part' : ''}">${x.time}s</span>`).join('')
+            : `<span class="w"><b>${fnum(s.sets[0].w)}</b>Kg<i> x</i></span>${s.sets.map((x) => `<span class="spill${x.r < 6 ? ' part' : ''}">${x.r}</span>`).join('')}`}
+          </div></div>`).join('')}</div>
+      <div style="height:40px"></div>`;
+  }
+  function paint() {
+    const e = cur();
+    if (!metricsFor(e).includes(st.metric)) st.metric = metricsFor(e)[0];
+    st.scrub = null;
+    $('[data-title] span').textContent = e.n;
+    body.innerHTML = content();
+    paintChart();
+    body.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { st.period = b.dataset.p; paint(); });
+    body.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => { st.metric = b.dataset.m; paint(); });
+    const prev = LOGGED.find((x) => x.id === st.order[st.idx - 1]);
+    const next = LOGGED.find((x) => x.id === st.order[st.idx + 1]);
+    const pb = $('[data-prev]'), nb = $('[data-next]');
+    pb.disabled = !prev; nb.disabled = !next;
+    pb.textContent = prev ? '‹ ' + prev.n : ''; nb.textContent = next ? next.n + ' ›' : '';
+    $('[data-pl]').textContent = prev ? '‹ ' + prev.n : '';
+    $('[data-pr]').textContent = next ? next.n + ' ›' : '';
+    // Arrastrar sobre la gráfica recorre los puntos; no cambia de ejercicio.
+    const cb = $('[data-chart]');
+    const pick = (ev) => {
+      if (!ph._pts) return;
+      const r = cb.querySelector('svg').getBoundingClientRect();
+      const px = (ev.clientX - r.left) * (345 / r.width);
+      let best = 0;
+      ph._pts.forEach((p, i) => { if (Math.abs(p.x - px) < Math.abs(ph._pts[best].x - px)) best = i; });
+      if (best !== st.scrub) { st.scrub = best; paintChart(); }
+    };
+    cb.onpointerdown = (ev) => { ev.stopPropagation(); cb.setPointerCapture(ev.pointerId); pick(ev); };
+    cb.onpointermove = (ev) => { if (cb.hasPointerCapture(ev.pointerId)) pick(ev); };
+    cb.onpointerup = cb.onpointercancel = () => { st.scrub = null; paintChart(); };
+  }
+  function go(to, dir) {
+    if (to < 0 || to >= st.order.length) { body.style.transform = ''; body.style.opacity = ''; return; }
+    body.style.transform = `translateX(${dir * -100}%)`; body.style.opacity = '0';
+    setTimeout(() => {
+      st.idx = to; paint(); body.scrollTop = 0;
+      body.classList.add('dragging');
+      body.style.transform = `translateX(${dir * 60}%)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        body.classList.remove('dragging');
+        body.style.transform = ''; body.style.opacity = '';
+      }));
+    }, 200);
+  }
+  // Arrastre horizontal fuera de la gráfica: cambia de ejercicio. Vertical sigue siendo scroll.
+  let sx = 0, sy = 0, dx = 0, mode = null;
+  const det = $('.det');
+  det.addEventListener('pointerdown', (ev) => { sx = ev.clientX; sy = ev.clientY; dx = 0; mode = 'maybe'; });
+  window.addEventListener('pointermove', (ev) => {
+    if (!mode) return;
+    const mx = ev.clientX - sx, my = ev.clientY - sy;
+    if (mode === 'maybe') {
+      if (Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my)) { mode = 'drag'; body.classList.add('dragging'); }
+      else if (Math.abs(my) > 8) { mode = null; return; }
+      else return;
+    }
+    dx = mx;
+    const edge = (dx > 0 && st.idx === 0) || (dx < 0 && st.idx === st.order.length - 1);
+    const eff = edge ? dx / 4 : dx;
+    body.style.transform = `translateX(${eff}px)`;
+    body.style.opacity = String(1 - Math.min(Math.abs(eff) / 400, .5));
+    $('[data-pl]').style.opacity = dx > 0 && !edge ? Math.min(dx / 80, 1) : 0;
+    $('[data-pr]').style.opacity = dx < 0 && !edge ? Math.min(-dx / 80, 1) : 0;
+  });
+  window.addEventListener('pointerup', () => {
+    if (mode !== 'drag') { mode = null; return; }
+    mode = null;
+    body.classList.remove('dragging');
+    $('[data-pl]').style.opacity = 0; $('[data-pr]').style.opacity = 0;
+    if (dx < -70) go(st.idx + 1, 1);
+    else if (dx > 70) go(st.idx - 1, -1);
+    else { body.style.transform = ''; body.style.opacity = ''; }
+  });
+
+  function renderSheet() {
+    const q = st.q.trim();
+    const list = st.order.map((id) => LOGGED.find((e) => e.id === id)).filter((e) => !q || fold(e.n).includes(fold(q)));
+    const curId = st.order[st.idx];
+    sin.innerHTML = `
+      <div class="shd"><h4>Cambiar ejercicio</h4></div>
+      <div class="sbody">
+        <div class="srow"><label class="search${st.q ? ' has' : ''}">${SEARCH}<input placeholder="Buscar ejercicio…" value="${esc(st.q)}" data-q><button class="x" data-clear>${CLOSE}</button></label></div>
+        <div class="group">${list.map((e) => `<div class="row${e.id === curId ? ' sel' : ''}" data-id="${e.id}"><div class="tx"><div class="n">${hl(e.n, q)}</div><div class="m">${e.sessions} sesiones · <span style="color:${e.pct >= 0 ? 'var(--accent)' : 'var(--orange)'}">${e.pct > 0 ? '+' : ''}${e.pct}%</span></div></div><span class="rc${e.id === curId ? ' on' : ''}">${CHECK}</span></div>`).join('') || '<div class="empty" style="background:none">Sin resultados</div>'}</div>
+      </div>`;
+    const inp = sin.querySelector('[data-q]');
+    inp.oninput = () => { st.q = inp.value; const pos = inp.selectionStart; renderSheet(); const n = sin.querySelector('[data-q]'); n.focus(); n.setSelectionRange(pos, pos); };
+    sin.querySelector('[data-clear]').onclick = (e) => { e.preventDefault(); st.q = ''; renderSheet(); };
+    sin.querySelectorAll('.row[data-id]').forEach((r) => r.onclick = () => {
+      const to = st.order.indexOf(r.dataset.id);
+      sin.querySelectorAll('.rc').forEach((c) => c.classList.remove('on'));
+      sin.querySelectorAll('.row').forEach((c) => c.classList.remove('sel'));
+      r.classList.add('sel'); r.querySelector('.rc').classList.add('on');
+      setTimeout(() => {
+        ph.classList.remove('sheet-open');
+        if (to !== st.idx) { body.style.opacity = '0'; setTimeout(() => { st.idx = to; st.q = ''; paint(); body.scrollTop = 0; body.style.opacity = ''; }, 200); }
+      }, 220);
+    });
+  }
+  $('[data-title]').onclick = () => { renderSheet(); ph.classList.add('sheet-open'); };
+
+  detailBus.open = (id, order) => {
+    st.order = order; st.idx = order.indexOf(id);
+    paint(); body.scrollTop = 0;
+    ph.closest('.col').scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  };
+  paint();
+})();
+</script>
+</body>
+</html>

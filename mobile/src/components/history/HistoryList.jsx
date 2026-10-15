@@ -13,7 +13,8 @@
  * `internalLoad`, que es de allí. Ver `stats/LoadCalendar.jsx`.
  */
 import { useState, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Text } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, { LinearTransition } from 'react-native-reanimated';
@@ -21,32 +22,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 import { programTemplateIds as programTemplateIds_ } from '../../utils/clientLogs';
-import { programTemplateOf } from '../../utils/freeSessions';
+import { programTemplateOf, isFreeEntry } from '../../utils/freeSessions';
 import DragSheet from '../DragSheet';
 import SheetRow from '../ui/SheetRow';
 import { Section, MenuRow } from '../ui/MenuList';
 import EmptyState from '../ui/EmptyState';
 import { ROW_ICON } from '../ui/rowIcons';
 import SessionCard from '../SessionCard';
-import { spacing, textStyles } from '../../theme';
+import SegmentedControl from '../ui/SegmentedControl';
+import RoundCheck from '../ui/RoundCheck';
+import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { volumeDeltas } from '../../utils/sessionRecap';
 
 
 import { showDialog } from '../ui/dialog';
-function CheckIcon({ size = 16, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
+
+// La letra de una entrada en la tira: la de su plantilla, o ★ si es libre
+// (como en la propia tarjeta, `SessionCard`).
+const FREE = '★';
 
 // ── Lista ──────────────────────────────────────────────────────────────────────
 
 export default function HistoryList() {
   const insets = useSafeAreaInsets();
-  const { t }  = useTranslation();
+  const { t, i18n } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -55,12 +55,13 @@ export default function HistoryList() {
   const clearWorkoutLog = useStore((s) => s.clearWorkoutLog);
   const showToast       = useStore((s) => s.showToast);
   const programs        = useStore((s) => s.programs);
+  const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const profile         = useStore((s) => s.profile);
   const activeProgram   = programs[profile.activeProgramId];
 
   const [scope,            setScope]            = useState('all');
   const [selectedStageIds, setSelectedStageIds] = useState(new Set());
-  const [menuOpen,         setMenuOpen]         = useState(false);
+  const [letters,          setLetters]          = useState(new Set());   // vacío = todas
   const [filterOpen,       setFilterOpen]       = useState(false);
 
   const hasStages = (activeProgram?.stages?.length ?? 0) > 0;
@@ -69,23 +70,20 @@ export default function HistoryList() {
   function handleScope(newScope) {
     setScope(newScope);
     setSelectedStageIds(new Set());
+    setLetters(new Set());
   }
 
-  // Lo que dice el chip: el ámbito, y la etapa sólo cuando se ha filtrado por
-  // alguna (sin filtro se miran todas, que es lo que ya dice "programa actual").
-  const stageFilterLabel = () => {
-    if (scope !== 'program' || !hasStages || selectedStageIds.size === 0) return null;
-    if (selectedStageIds.size === 1) {
-      const only = activeProgram.stages.find((st, idx) => selectedStageIds.has(st.id ?? idx));
-      return only?.name ?? null;
-    }
-    return t('history.stagesCount', { count: selectedStageIds.size });
-  };
-  const scopeLabel  = scope === 'program' ? t('history.currentProgram') : t('history.all');
-  const stageLabel  = stageFilterLabel();
-  const filterLabel = stageLabel ? `${scopeLabel} · ${stageLabel}` : scopeLabel;
+  function toggleLetter(l) {
+    Haptics.selectionAsync().catch(() => {});
+    setLetters((prev) => {
+      const next = new Set(prev);
+      if (next.has(l)) next.delete(l); else next.add(l);
+      return next;
+    });
+  }
 
   function toggleStage(stageId) {
+    Haptics.selectionAsync().catch(() => {});
     setSelectedStageIds((prev) => {
       const next = new Set(prev);
       if (next.has(stageId)) next.delete(stageId); else next.add(stageId);
@@ -112,7 +110,10 @@ export default function HistoryList() {
   // Una sola pasada para TODA la lista: por tarjeta sería O(n²).
   const deltas = useMemo(() => volumeDeltas(workoutLog), [workoutLog]);
 
-  const filtered = useMemo(() => {
+  const letterOf = (e) => (isFreeEntry(e) ? FREE : getEffectiveTemplate(e.sessionTemplateId)?.label ?? null);
+
+  // Lo que deja el ámbito; las letras filtran encima, y solo salen las que hay.
+  const scoped = useMemo(() => {
     let list = [...workoutLog];
     if (scope === 'program' && effectiveTemplateIds.size > 0) {
       // Las libres marcadas «Cuenta como» son del programa (T06-free-sessions.md §8).
@@ -120,6 +121,50 @@ export default function HistoryList() {
     }
     return list.sort((a, b) => b.timestamp - a.timestamp);
   }, [workoutLog, scope, effectiveTemplateIds]);
+
+  const present = useMemo(() => {
+    const set = new Set(scoped.map(letterOf).filter(Boolean));
+    return [...set].sort((a, b) => (a === FREE) - (b === FREE) || a.localeCompare(b));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoped, getEffectiveTemplate]);
+
+  const filtered = useMemo(
+    () => (letters.size ? scoped.filter((e) => letters.has(letterOf(e))) : scoped),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scoped, letters, getEffectiveTemplate],
+  );
+
+  // Las filas, con una cabecera por mes: el historial ya va por fecha, y el mes
+  // sitúa sin otro filtro. Cada bloque redondea sus extremos.
+  const rows = useMemo(() => {
+    const out = [];
+    let block = [];
+    let month = null;
+    const flush = () => {
+      block.forEach((r, i) => { r.isFirst = i === 0; r.isLast = i === block.length - 1; });
+      out.push(...block);
+      block = [];
+    };
+    const locale = i18n.language === 'en' ? 'en-GB' : 'es-ES';
+    filtered.forEach((e) => {
+      const d = new Date(e.timestamp);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (key !== month) {
+        flush();
+        month = key;
+        out.push({ id: `m-${key}`, month: `${d.toLocaleDateString(locale, { month: 'long' })} ${d.getFullYear()}` });
+      }
+      block.push({ id: e.id, entry: e });
+    });
+    flush();
+    return out;
+  }, [filtered, i18n.language]);
+
+  const filterCount = (scope === 'program' ? 1 : 0) + selectedStageIds.size;
+  const joinList = (items) => (items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')}${t('exerciseSelector.listAnd')}${items[items.length - 1]}`);
+  const pickedLabel = present.filter((l) => letters.has(l)).map((l) => (l === FREE ? t('history.freePlural') : l));
 
   /**
    * Borrado en bloque. Destructivo y sin deshacer, así que va con confirmación
@@ -152,32 +197,48 @@ export default function HistoryList() {
     );
   }
 
-  // Rendered inline so it closes over scope/hasStages/selectedStageIds state
+  // Las letras en una cápsula (caben siete y las libres junto a la caja de
+  // filtros) y una línea que dice qué se está viendo.
   const listHeader = (
     <>
-      {/* Un solo control: ámbito y etapas viven dentro de la hoja que abre
-          este chip. Apilados fuera —conmutador + tira de pastillas— eran dos
-          filas de filtro antes de la primera sesión, y con el conmutador de
-          Progresión encima habrían sido tres (spec U07-tab-programa.md §5.1). */}
       <View style={styles.scopeRow}>
+        {present.length > 1 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.lettersScroll} contentContainerStyle={styles.letters}>
+            {present.map((l) => {
+              const on = letters.has(l);
+              return (
+                <TouchableOpacity key={l} style={[styles.letter, on && styles.letterOn]} onPress={() => toggleLetter(l)} activeOpacity={0.7}>
+                  <Text style={[styles.letterText, on && styles.letterTextOn]}>{l}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        ) : <View style={styles.flex} />}
         <TouchableOpacity
-          style={styles.filterChip}
+          style={[styles.iconBox, filterCount > 0 && styles.iconBoxActive]}
           onPress={() => setFilterOpen(true)}
-          activeOpacity={0.75}
+          activeOpacity={0.7}
           accessibilityRole="button"
+          accessibilityLabel={t('history.filterTitle')}
         >
-          <Text style={styles.filterChipText} numberOfLines={1}>{filterLabel}</Text>
-          <Text style={styles.filterChipCaret}>{'▾'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuBtn}
-          onPress={() => setMenuOpen(true)}
-          activeOpacity={0.75}
-          hitSlop={8}
-        >
-          <Text style={styles.menuBtnGlyph}>···</Text>
+          <Svg viewBox="0 0 24 24" width={20} height={20} fill="none"
+            stroke={filterCount > 0 ? th.colors.accent : th.colors.text}
+            strokeWidth={2} strokeLinecap="round">
+            <Path d="M3 6h18M6 12h12M9 18h6" />
+          </Svg>
+          {filterCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{filterCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
+      {workoutLog.length > 0 && (
+        <Text style={styles.countLine} numberOfLines={1}>
+          {t('history.sessionsN', { count: filtered.length })}
+          {pickedLabel.length > 0 ? ` · ${joinList(pickedLabel)}` : ''}
+        </Text>
+      )}
     </>
   );
 
@@ -185,7 +246,7 @@ export default function HistoryList() {
     <View style={styles.container}>
       <Reanimated.FlatList
         itemLayoutAnimation={LinearTransition.duration(240)}
-        data={filtered}
+        data={rows}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={listHeader}
         contentContainerStyle={[
@@ -193,50 +254,50 @@ export default function HistoryList() {
           { paddingBottom: spacing.xxl + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item, index }) => (
+        renderItem={({ item }) => (item.month ? (
+          <Text style={styles.month}>{item.month}</Text>
+        ) : (
           <SessionCard
-            session={item}
+            session={item.entry}
             onDelete={deleteLogEntry}
             volumeDelta={deltas.get(item.id) ?? null}
             style={styles.cardGutter}
-            isFirst={index === 0}
-            isLast={index === filtered.length - 1}
+            isFirst={item.isFirst}
+            isLast={item.isLast}
           />
-        )}
+        ))}
         ListEmptyComponent={
           <EmptyState
             style={styles.emptyState}
             icon={ROW_ICON.history}
-            text={scope === 'program'
+            text={(scope === 'program' || letters.size > 0)
               ? t('history.noSessionsProgram')
               : t('history.noSessionsEmpty')}
           />
         }
       />
 
-      {/* Filtros — ámbito arriba, etapas debajo. Elegir ámbito cierra (es una
-          decisión y una sola); marcar etapas no, porque se marcan varias. */}
-      {filterOpen && (
-        <DragSheet visible onClose={() => setFilterOpen(false)} title={t('history.filterTitle')}>
-          <Section title={t('history.scopeLabel')}>
-            {[
+      {/* Filtros: ámbito y etapas; al final, separado y en rojo, el borrado
+          (lo que antes colgaba del «···»). */}
+      <DragSheet
+        visible={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        title={t('history.filterTitle')}
+        action={filterCount > 0 ? { label: t('exerciseSelector.filters.clear'), onPress: () => handleScope('all') } : undefined}
+      >
+        <View style={styles.sheetBody}>
+          <Text style={styles.sheetCaps}>{t('history.scopeLabel')}</Text>
+          <SegmentedControl
+            options={[
               { id: 'program', label: t('history.currentProgram') },
               { id: 'all',     label: t('history.all') },
-            ].map(({ id, label }) => (
-              <MenuRow
-                key={id}
-                label={label}
-                labelColor={scope === id ? th.colors.accent : undefined}
-                onPress={() => { handleScope(id); setFilterOpen(false); }}
-                control={scope === id
-                  ? <CheckIcon size={16} color={th.colors.accent} />
-                  : <View style={styles.rowControlSpacer} />}
-              />
-            ))}
-          </Section>
+            ]}
+            value={scope}
+            onChange={handleScope}
+          />
 
           {scope === 'program' && hasStages && (
-            <Section title={t('history.stagesLabel')}>
+            <Section title={t('history.stagesLabel')} style={styles.sheetSection}>
               {activeProgram.stages.map((stage, idx) => {
                 const stageId = stage.id ?? idx;
                 // Sin ninguna marcada se miran TODAS, así que todas salen
@@ -246,23 +307,15 @@ export default function HistoryList() {
                   <MenuRow
                     key={stageId}
                     label={stage.name}
-                    labelColor={on ? th.colors.accent : undefined}
                     onPress={() => toggleStage(stageId)}
-                    control={on
-                      ? <CheckIcon size={16} color={th.colors.accent} />
-                      : <View style={styles.rowControlSpacer} />}
+                    control={<RoundCheck on={on} />}
                   />
                 );
               })}
             </Section>
           )}
-        </DragSheet>
-      )}
 
-      {/* Gestión del historial — patrón unificado de modales (DragSheet) */}
-      <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('history.manageTitle')}>
-        <View style={styles.sheetBody}>
-          <Section style={styles.sheetSection}>
+          <Section title={t('history.manageTitle')} style={styles.sheetSection}>
             <SheetRow icon={ROW_ICON.history} label={t('history.clear.off_program.action')} onPress={() => confirmClear('off_program')} danger />
             <SheetRow icon={ROW_ICON.trash}   label={t('history.clear.all.action')}         onPress={() => confirmClear('all')}         danger />
           </Section>
@@ -281,42 +334,51 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.bg,
   },
 
-  // Scope selector
+  // Fila de arriba: la cápsula de letras y la caja de filtros (la de Clientes).
+  flex: { flex: 1 },
   scopeRow: {
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.sm2,
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
-    paddingBottom:     spacing.sm,
   },
-  // El chip: la misma caja que el `⋯` que tiene al lado, con el ancho que
-  // sobra. `surface2` porque es un control, no un dato.
-  filterChip: {
-    flex:              1,
-    height:            42,
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius:      th.radius.sm,
-    backgroundColor:   th.colors.surface2,
+  lettersScroll: { flexGrow: 0, flexShrink: 1, marginRight: 'auto' },
+  letters: {
+    flexDirection: 'row', gap: spacing.xs, padding: 3,
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.full,
   },
-  filterChipText:  { ...textStyles.labelStrong, flex: 1, color: th.colors.text },
-  filterChipCaret: { ...textStyles.label, color: th.colors.mutedLight },
-  rowControlSpacer: { width: 16 },
-  // 42×42 = misma caja que los botones que acompañan a la barra de búsqueda
-  // (docs/UI-MIGRATION.md §9), para que las cajas de acción sean una sola familia.
-  menuBtn: {
-    width: 42, height: 42, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
+  letter: {
+    width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
   },
-  menuBtnGlyph: { ...textStyles.itemTitle, color: th.colors.text, marginTop: -6 },
+  letterOn:     { backgroundColor: th.colors.accent },
+  letterText:   { ...textStyles.button, color: th.colors.mutedLight },
+  letterTextOn: { color: th.colors.onAccent },
+  iconBox: {
+    width: 42, height: 42, borderRadius: th.radius.sm,
+    backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  iconBoxActive: { backgroundColor: withOpacity(th.colors.accent, 0.10) },
+  filterBadge: {
+    position: 'absolute', top: 3, right: 3,
+    minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
+    backgroundColor: th.colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  filterBadgeText: { ...textStyles.micro, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
+  countLine: { ...textStyles.label, color: th.colors.mutedLight, paddingHorizontal: spacing.lg, paddingTop: spacing.sm2 },
+  // Mes: la caja de las cabeceras de sección, con aire encima para separar bloques.
+  month: {
+    ...textStyles.caps, textTransform: 'uppercase', color: th.colors.mutedLight,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs2,
+  },
 
-  // ── Hoja de gestión ──
-  sheetBody: { gap: spacing.xs2, paddingBottom: spacing.sm },
-  sheetSection: { marginBottom: 0 },
+  // ── Hoja de filtros ──
+  sheetBody: { paddingBottom: spacing.sm },
+  sheetCaps: { ...textStyles.caps, color: th.colors.mutedLight, paddingBottom: spacing.sm },
+  sheetSection: { marginTop: spacing.lg, marginBottom: 0 },
   sheetHint: {
     ...textStyles.label, color: th.colors.mutedLight,
     lineHeight: 15, paddingTop: spacing.sm, paddingHorizontal: spacing.xs2,

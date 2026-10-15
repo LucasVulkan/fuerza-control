@@ -47,6 +47,7 @@ import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
 import TabBar from '../components/ui/TabBar';
 import NavScrim from '../components/ui/NavScrim';
+import RoundCheck from '../components/ui/RoundCheck';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
 import { spacing, textStyles, borders, withOpacity, sheetRowBase, getCardRadii, lh } from '../theme';
@@ -3553,9 +3554,7 @@ export default function ClientsScreen() {
                           onPress={() => toggleTagFilter(id)}
                           activeOpacity={0.7}
                         >
-                          <View style={[styles.dropCheck, selected && styles.dropCheckActive]}>
-                            {selected && <Text style={styles.dropCheckMark}>✓</Text>}
-                          </View>
+                          <RoundCheck on={selected} size={20} />
                           <Text style={[styles.dropItemText, selected && styles.dropItemTextSel]} numberOfLines={1}>{name}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -3835,13 +3834,6 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.sm,
   },
   dropItemSel: { backgroundColor: withOpacity(th.colors.accent, 0.10) },
-  dropCheck: {
-    width: 18, height: 18, borderRadius: th.radius.xs,
-    borderWidth: borders.thin, borderColor: th.colors.text,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  dropCheckActive: { backgroundColor: th.colors.accent, borderColor: th.colors.accent },
-  dropCheckMark:   { ...textStyles.label, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
   dropItemText:    { flex: 1, ...textStyles.body, color: th.colors.text },
   dropItemTextSel: { color: th.colors.text },
   tagEmptyText: {

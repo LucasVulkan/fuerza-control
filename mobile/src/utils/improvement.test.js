@@ -64,4 +64,10 @@ describe('improvement — una métrica por serie (qa-sep-pantallas U25)', () => 
     expect(metricValue([set(0, 15)], 'kg', BODYWEIGHT)).toBe(0);
     expect(metricValue([set(0, 15)], 'kg', BARBELL)).toBeNull();
   });
+
+  it('reps suma todas las series; repsMax es la mejor', () => {
+    const sets = [set(0, 12), set(0, 10), set(0, 8)];
+    expect(metricValue(sets, 'reps', BODYWEIGHT)).toBe(30);
+    expect(metricValue(sets, 'repsMax', BODYWEIGHT)).toBe(12);
+  });
 });

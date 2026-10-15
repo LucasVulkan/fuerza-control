@@ -63,6 +63,12 @@ export function metricValue(sets, metric, def) {
     const v = done.reduce((a, s) => a + (parseInt(s.reps) || 0), 0);
     return v > 0 ? v : null;
   }
+  // La mejor serie: solo para la gráfica. La Mejora de los ejercicios sin peso
+  // sigue con las totales (`reps`).
+  if (metric === 'repsMax') {
+    const v = Math.max(...done.map((s) => parseInt(s.reps) || 0));
+    return v > 0 ? v : null;
+  }
   if (metric === 'vol') {
     const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0);
     return v > 0 ? Math.round(v) : null;

@@ -110,6 +110,10 @@ export default function ScreenHeader({
   // sesión. Excluyente con el título editable: el toque solo puede hacer una
   // cosa, y ni el ejercicio ni el bloque se renombran desde aquí.
   menu,
+  // Título que abre algo de quien llama (una hoja para elegir otro): el mismo
+  // chevron que `menu`, sin la lista anclada. Para listas largas, que el
+  // desplegable no deja desplazar.
+  onTitlePress,
   renaming = false,
   draft = '',
   onDraftChange,
@@ -181,14 +185,14 @@ export default function ScreenHeader({
                 // más largo y trunca a propósito: partirlo en dos haría que la
                 // barra cambiase de alto según el programa que abras.
                 numberOfLines={1}
-                onPress={editable ? onRenameStart : (menu ? () => setMenuOpen((o) => !o) : undefined)}
+                onPress={editable ? onRenameStart : (menu ? () => setMenuOpen((o) => !o) : onTitlePress)}
                 suppressHighlighting
               >
                 {title ?? ''}
               </Text>
-              {menu && (
+              {(menu || onTitlePress) && (
                 <TouchableOpacity
-                  onPress={() => setMenuOpen((o) => !o)}
+                  onPress={menu ? () => setMenuOpen((o) => !o) : onTitlePress}
                   hitSlop={12}
                   style={[styles.titleChevron, menuOpen && styles.titleChevronOpen]}
                 >

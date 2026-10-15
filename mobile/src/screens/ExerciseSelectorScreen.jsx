@@ -22,6 +22,8 @@
  */
 import { useState, useMemo } from 'react';
 import { View, TouchableOpacity, FlatList, ScrollView, StyleSheet } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Text, TextInput } from '../components/ui/Text';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,11 +33,13 @@ import { spacing, textStyles, withOpacity, getCardRadii } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import DragSheet from '../components/DragSheet';
 import ScreenHeader from '../components/ui/ScreenHeader';
-import { ArrowIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
+import { ArrowIcon, CloseIcon } from '../components/ui/EditorIcons';
+import RoundCheck from '../components/ui/RoundCheck';
 import {
   PATTERN_GROUPS, GROUP_OF_PATTERN, muscleGroupIdsOf, equipmentOf, EQUIPMENT,
 } from '../utils/exerciseTaxonomy';
 import { filterBySearch } from '../utils/searchText';
+import { splitHit } from '../utils/onboardingBuilder';
 
 // El buscador filtra por grupo muscular abriendo 'arms' en Bíceps/Tríceps
 // (ver `muscleGroupIdsOf`) — no existe como `primaryGroup` real, solo aquí.
@@ -70,6 +74,7 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
+  const programs         = useStore((s) => s.programs);
   const activeSession    = useStore((s) => s.activeSession);
   const addExercise      = useStore((s) => s.addExercise);
   const replaceExercise  = useStore((s) => s.replaceExercise);
@@ -84,14 +89,35 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
   // "hecho" y borrado (fallo 15). Aquí se corta el único camino por el que la
   // app podía crearlas: añadir y también SUSTITUIR por uno que ya está.
   // El picker de bloques queda fuera: ahí repetir movimiento es legítimo.
+  const tplId = sessionMode ? activeSession.templateId : templateId;
   const taken = useMemo(() => {
     if (blockPicker) return new Set();
-    const tplId = sessionMode ? activeSession.templateId : templateId;
     return new Set([
       ...(sessionTemplates[tplId]?.exercises ?? []).map((ex) => ex.exerciseId),
       ...(sessionMode ? (activeSession.adHocExercises ?? []).map((ex) => ex.exerciseId) : []),
     ]);
-  }, [blockPicker, sessionMode, templateId, sessionTemplates, activeSession]);
+  }, [blockPicker, sessionMode, tplId, sessionTemplates, activeSession]);
+
+  // En qué OTRAS sesiones está cada ejercicio: { exerciseId: ['B', 'C'] }. Solo
+  // las hermanas de la misma etapa (o del programa, si no tiene etapas): las de
+  // otra etapa son otro bloque de entreno y meterían ruido.
+  const inSiblings = useMemo(() => {
+    const map = {};
+    if (blockPicker || !tplId) return map;
+    const groups = Object.values(programs ?? {}).flatMap((pr) =>
+      pr?.stages?.length ? pr.stages.map((st) => st.days ?? []) : [pr?.days ?? []]);
+    const days = groups.find((g) => g.some((d) => d.sessionTemplateId === tplId)) ?? [];
+    days.filter((d) => d.sessionTemplateId !== tplId).forEach((d) => {
+      const tpl = sessionTemplates[d.sessionTemplateId];
+      if (!tpl?.label) return;
+      tpl.exercises.forEach((ex) => {
+        const labels = (map[ex.exerciseId] ??= []);
+        if (!labels.includes(tpl.label)) labels.push(tpl.label);
+      });
+    });
+    Object.values(map).forEach((labels) => labels.sort());
+    return map;
+  }, [blockPicker, tplId, programs, sessionTemplates]);
 
   const currentDef = currentExerciseId ? allLibrary[currentExerciseId] : null;
 
@@ -145,9 +171,11 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
 
   const allExercises = useMemo(() => Object.values(allLibrary), [allLibrary]);
 
+  // Lo que ya está en esta sesión sigue saliendo, apagado: si lo buscas, sabes
+  // que ya lo tienes en vez de ver «Sin resultados».
   const filtered = useMemo(() => {
     const byFilters = allExercises
-      .filter((ex) => ex.id !== currentExerciseId && !taken.has(ex.id))
+      .filter((ex) => ex.id !== currentExerciseId)
       .filter((ex) => !patternGroup || GROUP_OF_PATTERN[ex.pattern] === patternGroup)
       .filter((ex) => !groupFilter.length || muscleGroupIdsOf(ex).some((id) => groupFilter.includes(id)))
       .filter((ex) => !equipFilter.length || equipmentOf(ex).some((e) => equipFilter.includes(e)))
@@ -155,49 +183,84 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
     return filterBySearch(byFilters, search, (ex) => [ex.name, ex.nameEn, ...(ex.aliases ?? [])].filter(Boolean).join(' '))
       .sort((a, b) => getExName(a).localeCompare(getExName(b)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, patternGroup, groupFilter, equipFilter, typeFilter, allExercises, currentExerciseId, taken, language]);
+  }, [search, patternGroup, groupFilter, equipFilter, typeFilter, allExercises, currentExerciseId, language]);
 
-  const renderItem = ({ item: ex, index }) => {
+  // Sin buscar ni filtrar, primero lo que ya usas en las otras sesiones: casi
+  // siempre se añade algo de ahí. Las filas llevan su posición en el bloque
+  // (radios por extremos) y las cabeceras van como filas más de la lista.
+  const browsing = !search.trim() && !patternGroup && !activeFilterCount;
+  const rows = useMemo(() => {
+    const block = (list) => list.map((ex, i) => ({ key: ex.id, ex, first: i === 0, last: i === list.length - 1 }));
+    if (!browsing) {
+      return filtered.length
+        ? [{ key: 'h-count', header: t('exerciseSelector.exerciseCount', { count: filtered.length }) }, ...block(filtered)]
+        : [];
+    }
+    const mine = filtered.filter((ex) => inSiblings[ex.id] && !taken.has(ex.id));
+    const rest = filtered.filter((ex) => !mine.includes(ex));
+    return [
+      ...(mine.length ? [{ key: 'h-program', header: t('exerciseSelector.sectionProgram', { count: mine.length }) }, ...block(mine)] : []),
+      { key: 'h-all', header: t('exerciseSelector.sectionAll', { count: rest.length }), gap: mine.length > 0 },
+      ...block(rest),
+    ];
+  }, [browsing, filtered, inSiblings, taken, t]);
+
+  const joinList = (items) => items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')}${t('exerciseSelector.listAnd')}${items[items.length - 1]}`;
+
+  function toggleSelected(id) {
+    Haptics.selectionAsync().catch(() => {});
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  const renderItem = ({ item }) => {
+    if (item.header) {
+      return <Text style={[styles.sectionLabel, item.gap && styles.sectionLabelGap]}>{item.header}</Text>;
+    }
+    const { ex, first, last } = item;
+    const isTaken = taken.has(ex.id);
     const isSel = multiSelect && selectedIds.includes(ex.id);
-    const meta = [
-      t(`exerciseSelector.groups.${ex.primaryGroup}`, ex.primaryGroup),
-      equipmentOf(ex).map((e) => t(`exerciseSelector.equipment.${e}`, e)).join(', '),
-    ].join(' · ');
+    const others = inSiblings[ex.id] ?? [];
+    const name = getExName(ex);
+    const q = search.trim();
 
     return (
       <TouchableOpacity
-        style={[
-          styles.exRow,
-          getCardRadii(th, index === 0, index === filtered.length - 1),
-          isSel && styles.exRowSel,
-        ]}
-        onPress={() =>
-          multiSelect
-            ? setSelectedIds((prev) =>
-                prev.includes(ex.id) ? prev.filter((id) => id !== ex.id) : [...prev, ex.id])
-            : handleSelect(ex.id)
-        }
+        style={[styles.exRow, getCardRadii(th, first, last), isSel && styles.exRowSel]}
+        onPress={() => (multiSelect ? toggleSelected(ex.id) : handleSelect(ex.id))}
+        disabled={isTaken}
         activeOpacity={0.7}
       >
-        <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={[{ flex: 1, minWidth: 0 }, isTaken && styles.exTaken]}>
           <View style={styles.exNameRow}>
-            <Text style={[styles.exName, isSel && styles.exNameSel]} numberOfLines={1}>
-              {getExName(ex)}
+            <Text style={styles.exName} numberOfLines={1}>
+              {q ? splitHit(name, q).map((p, i) => (p.hit ? <Text key={i} style={[styles.exName, styles.exHit]}>{p.text}</Text> : p.text)) : name}
             </Text>
             {ex.isCustom && (
               <View style={styles.customBadge}><Text style={styles.customBadgeText}>{t('exerciseSelector.customBadge')}</Text></View>
             )}
           </View>
-          <Text style={styles.exMeta} numberOfLines={1}>{meta}</Text>
+          <Text style={styles.exMeta} numberOfLines={1}>
+            {isTaken ? t('exerciseSelector.alreadyHere') : (
+              <>
+                {t(`exerciseSelector.groups.${ex.primaryGroup}`, ex.primaryGroup)}
+                {' · '}
+                {equipmentOf(ex).map((e) => t(`exerciseSelector.equipment.${e}`, e)).join(', ')}
+                {others.length > 0 && (
+                  <>
+                    {' · '}
+                    <Text style={[styles.exMeta, styles.exIn]}>{t('exerciseSelector.inSessions', { list: joinList(others) })}</Text>
+                  </>
+                )}
+              </>
+            )}
+          </Text>
         </View>
 
-        {multiSelect ? (
-          <View style={[styles.check, isSel && styles.checkOn]}>
-            <CheckIcon size={16} color={isSel ? th.colors.onAccent : th.colors.muted} />
-          </View>
-        ) : (
-          <ArrowIcon size={16} color={th.colors.mutedLight} />
-        )}
+        {multiSelect || isTaken
+          ? <RoundCheck on={isSel} done={isTaken} />
+          : <ArrowIcon size={16} color={th.colors.mutedLight} />}
       </TouchableOpacity>
     );
   };
@@ -274,6 +337,23 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
+      {/* Bandeja de lo marcado: al cambiar de búsqueda lo elegido sale de la
+          lista, y aquí se sigue viendo y se quita con la ×. */}
+      {multiSelect && selectedIds.length > 0 && (
+        <Reanimated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tray} keyboardShouldPersistTaps="handled">
+            {selectedIds.map((id) => (
+              <Reanimated.View key={id} entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} layout={LinearTransition.duration(160)}>
+                <TouchableOpacity style={styles.chip} onPress={() => toggleSelected(id)} activeOpacity={0.7}>
+                  <Text style={styles.chipText} numberOfLines={1}>{allLibrary[id] ? getExName(allLibrary[id]) : id}</Text>
+                  <CloseIcon size={12} color={th.colors.accent} />
+                </TouchableOpacity>
+              </Reanimated.View>
+            ))}
+          </ScrollView>
+        </Reanimated.View>
+      )}
+
       {/* Pills de patrón — single-select, se desactiva volviendo a pulsarla */}
       <View style={styles.patternRowWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.patternRow}>
@@ -304,16 +384,12 @@ export default function ExerciseSelectorScreen({ navigation, route }) {
         <Text style={styles.createBtnText}>{t('exerciseSelector.createExercise')}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.sectionLabel}>
-        {t('exerciseSelector.exerciseCount', { count: filtered.length })}
-      </Text>
-
       <FlatList
         style={{ flex: 1 }}
-        data={filtered}
-        keyExtractor={(ex) => ex.id}
+        data={rows}
+        keyExtractor={(row) => row.key}
         renderItem={renderItem}
-        extraData={selectedIds}
+        extraData={[selectedIds, search]}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={<Text style={styles.emptyText}>{t('exerciseSelector.noResults')}</Text>}
@@ -452,10 +528,22 @@ const makeStyles = (th) => StyleSheet.create({
   createBtn:     { alignItems: 'center', paddingVertical: spacing.md, paddingTop: spacing.lg },
   createBtnText: { ...textStyles.button, color: th.tint.accent50 },
 
+  // Las cabeceras van dentro de la lista: el `gap` de 2 entre filas no las
+  // separa, así que llevan su propio aire debajo.
   sectionLabel: {
     ...textStyles.caps, color: th.colors.mutedLight,
-    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
+  sectionLabelGap: { paddingTop: spacing.lg },
+
+  // Bandeja de seleccionados: chips en tinte lima, como lo marcado en la lista.
+  tray: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    height: 28, paddingLeft: spacing.md, paddingRight: spacing.sm2,
+    borderRadius: th.radius.full, backgroundColor: th.tint.accent10,
+  },
+  chipText: { ...textStyles.labelStrong, color: th.colors.accent, maxWidth: 180 },
 
   // Lista compacta: el mismo bloque continuo que la lista de ejercicios de
   // Progresión —filas pegadas con 2px de hueco y los radios grandes sólo en los
@@ -476,22 +564,16 @@ const makeStyles = (th) => StyleSheet.create({
   // Medium, sin margen entre ellos —los separa el interlineado—. Un nombre
   // dentro de una lista va a `bodyStrong` (docs/specs/U06-tipografia.md §9.4).
   exName:     { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
-  exNameSel:  { color: th.colors.accent },
+  exHit:      { color: th.colors.accent },
+  // «en B y C»: dice dónde más está, en el tinte del lima para leerse sin gritar.
+  exIn:       { fontFamily: 'Inter_700Bold', color: th.tint.accent50 },
+  exTaken:    { opacity: 0.45 },
   exMeta:     { ...textStyles.label, color: th.colors.mutedLight },
   customBadge: {
     backgroundColor: th.tint.accent10, borderRadius: th.radius.xs,
     paddingHorizontal: 5, paddingVertical: 1,
   },
   customBadgeText: { ...textStyles.caps, color: th.colors.accent },
-
-  // 28 y no 36: en la fila compacta el alto lo pone el par nombre+meta, y una
-  // caja más grande lo estiraba sólo para el check.
-  check: {
-    width: 28, height: 28, borderRadius: th.radius.sm,
-    backgroundColor: th.colors.surface2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  checkOn: { backgroundColor: th.colors.accent },
 
   emptyText: {
     ...textStyles.body, color: th.colors.mutedLight,
