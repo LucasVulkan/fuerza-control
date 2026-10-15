@@ -13,7 +13,7 @@
  * `internalLoad`, que es de allí. Ver `stats/LoadCalendar.jsx`.
  */
 import { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Text } from '../ui/Text';
 import Svg, { Path } from 'react-native-svg';
@@ -61,7 +61,8 @@ export default function HistoryList() {
 
   const [scope,            setScope]            = useState('all');
   const [selectedStageIds, setSelectedStageIds] = useState(new Set());
-  const [letters,          setLetters]          = useState(new Set());   // vacío = todas
+  // Una sesión o todas (null): se filtra por una entera, no por dos o tres.
+  const [letter,           setLetter]           = useState(null);
   const [filterOpen,       setFilterOpen]       = useState(false);
 
   const hasStages = (activeProgram?.stages?.length ?? 0) > 0;
@@ -70,7 +71,7 @@ export default function HistoryList() {
   function handleScope(newScope) {
     setScope(newScope);
     setSelectedStageIds(new Set());
-    setLetters(new Set());
+    setLetter(null);
   }
 
   function toggleStage(stageId) {
@@ -122,21 +123,10 @@ export default function HistoryList() {
     return scoped.some(isFreeEntry) ? [...sorted, FREE] : sorted;
   }, [programTemplateIds, scoped, getEffectiveTemplate]);
 
-  // Ninguna marcada y todas marcadas enseñan lo mismo: las dos son «Todas».
-  // Al marcar la última, la selección se vacía y se enciende «Todas».
-  function toggleLetter(l) {
-    Haptics.selectionAsync().catch(() => {});
-    setLetters((prev) => {
-      const next = new Set(prev);
-      if (next.has(l)) next.delete(l); else next.add(l);
-      return present.every((x) => next.has(x)) ? new Set() : next;
-    });
-  }
-
   const filtered = useMemo(
-    () => (letters.size ? scoped.filter((e) => letters.has(letterOf(e))) : scoped),
+    () => (letter ? scoped.filter((e) => letterOf(e) === letter) : scoped),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scoped, letters, getEffectiveTemplate],
+    [scoped, letter, getEffectiveTemplate],
   );
 
   // Las filas, con una cabecera por mes: el historial ya va por fecha, y el mes
@@ -166,10 +156,6 @@ export default function HistoryList() {
   }, [filtered, i18n.language]);
 
   const filterCount = (scope === 'program' ? 1 : 0) + selectedStageIds.size;
-  const joinList = (items) => (items.length < 2
-    ? items.join('')
-    : `${items.slice(0, -1).join(', ')}${t('exerciseSelector.listAnd')}${items[items.length - 1]}`);
-  const pickedLabel = present.filter((l) => letters.has(l)).map((l) => (l === FREE ? t('history.freePlural') : l));
 
   /**
    * Borrado en bloque. Destructivo y sin deshacer, así que va con confirmación
@@ -202,29 +188,28 @@ export default function HistoryList() {
     );
   }
 
-  // Pills sueltas: «Todas», una por sesión y «Libres»; se desplazan si no
-  // caben junto a la caja de filtros. Debajo, una línea que dice qué se ve.
+  // Arriba, las sesiones en un segmentado a todo el ancho («Todas», una por
+  // sesión del programa y ★ si hay libres). Debajo, qué se está viendo y la
+  // caja de filtros (ámbito, etapas y borrado).
   const listHeader = (
     <>
+      {present.length > 0 && (
+        <View style={styles.sessionsRow}>
+          <SegmentedControl
+            options={[
+              { id: 'all', label: t('history.allSessions') },
+              ...present.map((l) => ({ id: l, label: l })),
+            ]}
+            value={letter ?? 'all'}
+            onChange={(id) => setLetter(id === 'all' ? null : id)}
+          />
+        </View>
+      )}
       <View style={styles.scopeRow}>
-        {present.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsScroll} contentContainerStyle={styles.pills}>
-            {[null, ...present].map((l) => {
-              const on = l === null ? letters.size === 0 : letters.has(l);
-              const label = l === null ? t('history.allSessions') : l === FREE ? t('history.freeLabel') : l;
-              return (
-                <TouchableOpacity
-                  key={l ?? 'all'}
-                  style={[styles.pill, l !== null && l !== FREE && styles.pillLetter, on && styles.pillOn]}
-                  onPress={() => (l === null ? setLetters(new Set()) : toggleLetter(l))}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.pillText, on && styles.pillTextOn]}>{label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        ) : <View style={styles.flex} />}
+        <Text style={styles.countLine} numberOfLines={1}>
+          {t('history.sessionsN', { count: filtered.length })}
+          {letter ? ` · ${letter === FREE ? t('history.freePlural') : letter}` : ''}
+        </Text>
         <TouchableOpacity
           style={[styles.iconBox, filterCount > 0 && styles.iconBoxActive]}
           onPress={() => setFilterOpen(true)}
@@ -244,12 +229,6 @@ export default function HistoryList() {
           )}
         </TouchableOpacity>
       </View>
-      {workoutLog.length > 0 && (
-        <Text style={styles.countLine} numberOfLines={1}>
-          {t('history.sessionsN', { count: filtered.length })}
-          {pickedLabel.length > 0 ? ` · ${joinList(pickedLabel)}` : ''}
-        </Text>
-      )}
     </>
   );
 
@@ -281,7 +260,7 @@ export default function HistoryList() {
           <EmptyState
             style={styles.emptyState}
             icon={ROW_ICON.history}
-            text={(scope === 'program' || letters.size > 0)
+            text={(scope === 'program' || letter)
               ? t('history.noSessionsProgram')
               : t('history.noSessionsEmpty')}
           />
@@ -354,17 +333,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
   },
-  pillsScroll: { flex: 1 },
-  pills:       { flexDirection: 'row', gap: spacing.sm },
-  // Las mismas pills que el patrón del selector: h36, radio completo.
-  pill: {
-    height: 36, paddingHorizontal: spacing.lg, borderRadius: th.radius.full,
-    backgroundColor: th.colors.surface2, alignItems: 'center', justifyContent: 'center',
-  },
-  pillLetter: { minWidth: 36, paddingHorizontal: spacing.md },
-  pillOn:     { backgroundColor: th.colors.accent },
-  pillText:   { ...textStyles.button, color: th.colors.mutedLight },
-  pillTextOn: { color: th.colors.onAccent },
+  sessionsRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   iconBox: {
     width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
@@ -378,7 +347,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   filterBadgeText: { ...textStyles.micro, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
-  countLine: { ...textStyles.label, color: th.colors.mutedLight, paddingHorizontal: spacing.lg, paddingTop: spacing.sm2 },
+  countLine: { ...textStyles.label, color: th.colors.mutedLight, flex: 1 },
   // Mes: la caja de las cabeceras de sección, con aire encima para separar bloques.
   month: {
     ...textStyles.caps, textTransform: 'uppercase', color: th.colors.mutedLight,

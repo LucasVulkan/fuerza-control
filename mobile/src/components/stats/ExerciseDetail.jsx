@@ -32,7 +32,7 @@ import ScreenHeader from '../ui/ScreenHeader';
 import SegmentedControl from '../ui/SegmentedControl';
 import RoundCheck from '../ui/RoundCheck';
 import { MetricInfoSheet } from '../ui/MetricInfo';
-import { CloseIcon } from '../ui/EditorIcons';
+import { ArrowIcon, CloseIcon } from '../ui/EditorIcons';
 import DragSheet from '../DragSheet';
 import ProgressChart from './ProgressChart';
 import { useStore } from '../../../store/useStore';
@@ -327,12 +327,20 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
       {/* El anterior y el siguiente: dicen que hay más, y se pulsan. */}
       {(prevId || nextId) && (
         <View style={styles.nbr}>
-          <TouchableOpacity style={styles.nbrBtn} disabled={!prevId} onPress={() => go(-1)} hitSlop={8} activeOpacity={0.6}>
-            <Text style={styles.nbrText} numberOfLines={1}>{prevId ? `‹ ${nameOf(prevId)}` : ''}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.nbrBtn} disabled={!nextId} onPress={() => go(1)} hitSlop={8} activeOpacity={0.6}>
-            <Text style={[styles.nbrText, styles.nbrTextNext]} numberOfLines={1}>{nextId ? `${nameOf(nextId)} ›` : ''}</Text>
-          </TouchableOpacity>
+          {/* El chevron va fuera del texto: un nombre largo se recorta, pero la
+              flecha que dice «se pulsa» sigue ahí. */}
+          {prevId ? (
+            <TouchableOpacity style={styles.nbrBtn} onPress={() => go(-1)} hitSlop={8} activeOpacity={0.6}>
+              <ArrowIcon size={10} color={th.colors.mutedLight} back />
+              <Text style={styles.nbrText} numberOfLines={1}>{nameOf(prevId)}</Text>
+            </TouchableOpacity>
+          ) : <View />}
+          {nextId ? (
+            <TouchableOpacity style={styles.nbrBtn} onPress={() => go(1)} hitSlop={8} activeOpacity={0.6}>
+              <Text style={styles.nbrText} numberOfLines={1}>{nameOf(nextId)}</Text>
+              <ArrowIcon size={10} color={th.colors.mutedLight} />
+            </TouchableOpacity>
+          ) : <View />}
         </View>
       )}
 
@@ -578,9 +586,9 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md,
     paddingHorizontal: spacing.lg, paddingTop: spacing.sm2,
   },
-  nbrBtn:      { maxWidth: '48%', paddingVertical: spacing.xs2 },
-  nbrText:     { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  nbrTextNext: { textAlign: 'right' },
+  // Cada uno se queda en su mitad, con aire antes del centro.
+  nbrBtn:  { maxWidth: '42%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs2 },
+  nbrText: { ...textStyles.labelStrong, color: th.colors.mutedLight, flexShrink: 1 },
 
   periodRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
