@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo por movimientos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;700;800;900&display=swap">
+<style>
+/* Cuatro teléfonos a 375 (tema FormaFit). Todo se puede tocar. */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --accent10:rgba(170,226,22,.1); --accent50:rgba(170,226,22,.5);
+  --orange:#fb923c; --blue:#4c85ff; --redText:#ff5e58;
+  --page:#080808; --ink-dim:#8a8a8a; --rule:#222;
+  --inter:Inter,system-ui,sans-serif; --barlow:'Barlow Condensed','Arial Narrow',sans-serif;
+  --out:cubic-bezier(.33,1,.68,1);
+  --r-sm:6px; --r-md:10px; --r-lg:18px;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+[hidden]{display:none!important}
+body{background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+button,input{font-family:var(--inter); border:0; color:inherit; background:none}
+button{cursor:pointer; -webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.wrap{max-width:1640px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin-bottom:10px; text-wrap:balance}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:84ch}
+.lead b,.note b{color:var(--text); font-weight:800}
+
+.rail{display:flex; flex-wrap:wrap; gap:30px; align-items:flex-start; margin-top:34px}
+.col{flex:0 1 375px; width:375px; max-width:100%; min-width:0}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h3{font:900 19px/1.2 var(--inter); letter-spacing:-.2px; margin:6px 0}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin-bottom:14px; min-height:84px}
+.col .why b{color:var(--text)}
+
+.notes{margin-top:60px; border-top:1px solid var(--rule); padding-top:26px; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:28px}
+.note h4{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); margin-bottom:10px}
+.note p,.note li{font:500 14px/1.65 var(--inter); color:var(--ink-dim)}
+.note li{margin:0 0 6px 18px}
+.note code{font:500 12.5px ui-monospace,monospace; color:var(--text)}
+
+/* ══════ TELÉFONO ══════ */
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:760px; position:relative; display:flex; flex-direction:column}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight); flex:none}
+.hd{display:flex; align-items:center; gap:10px; padding:8px 15px 4px; flex:none; min-height:48px}
+.hd h2{flex:1; font:900 22px/1.1 var(--inter); letter-spacing:-.5px}
+.hd .back{width:36px; height:36px; display:grid; place-items:center; border-radius:var(--r-sm); margin-left:-8px}
+.scr{flex:1; overflow-y:auto; padding:6px 15px 28px; scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+.caps{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--mutedLight)}
+.caps.acc{color:var(--accent)}
+.micro{font:500 11px/1.35 var(--inter); color:var(--mutedLight)}
+.label{font:500 12px/1.4 var(--inter); color:var(--mutedLight)}
+.num{font-variant-numeric:tabular-nums}
+
+/* Sitio (dónde entreno) — segmentado */
+.seg{display:flex; background:var(--surface); border-radius:var(--r-md); padding:3px; gap:3px}
+.seg button{flex:1; height:34px; border-radius:8px; font:900 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--mutedLight); display:flex; align-items:center; justify-content:center; gap:6px; transition:background .2s,color .2s}
+.seg button.on{background:var(--surface3); color:var(--text)}
+.seg button.on svg{color:var(--accent)}
+
+/* Buscador */
+.search{display:flex; align-items:center; gap:8px; background:var(--surface2); border-radius:var(--r-sm); height:44px; padding:0 12px; margin-top:10px}
+.search input{flex:1; min-width:0; font:500 15px var(--inter); outline:none}
+.search input::placeholder{color:var(--muted)}
+.search .clr{width:28px; height:28px; display:grid; place-items:center; border-radius:50%; color:var(--mutedLight)}
+.parsed{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; min-height:0}
+.ptok{font:800 12px var(--inter); padding:5px 9px; border-radius:999px; border:1px solid var(--accent50); color:var(--accent); display:inline-flex; gap:5px; align-items:center; animation:pop .25s var(--out)}
+.ptok i{font-style:normal; color:var(--mutedLight); font-weight:500}
+@keyframes pop{from{transform:scale(.85); opacity:0}}
+
+.pills{display:flex; gap:6px; overflow-x:auto; margin:12px -15px 0; padding:0 15px; scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex:none; height:36px; padding:0 15px; border-radius:999px; background:var(--surface2); font:900 14px var(--inter); color:var(--mutedLight); transition:background .2s,color .2s}
+.pill.on{background:var(--accent); color:var(--onAccent)}
+
+/* Atajo directo cuando la búsqueda ya describe una forma */
+.direct{margin-top:12px; background:var(--accent10); border:1px solid var(--accent50); border-radius:var(--r-md); padding:12px; display:flex; align-items:center; gap:12px; animation:pop .25s var(--out)}
+.direct .t{flex:1; min-width:0}
+.direct .t b{display:block; font:800 15px/1.25 var(--inter); color:var(--accent)}
+.plusbtn{width:44px; height:44px; border-radius:var(--r-md); background:var(--accent); color:var(--onAccent); display:grid; place-items:center; flex:none}
+
+/* Lista de movimientos: bloque continuo, radios grandes en los extremos */
+.list{display:flex; flex-direction:column; gap:2px; margin-top:12px}
+.mv{display:flex; align-items:center; gap:12px; background:var(--surface); padding:11px 12px 11px 15px; text-align:left; width:100%; min-height:60px; transition:background .15s}
+.mv:first-child{border-radius:var(--r-md) var(--r-md) 0 0}
+.mv:last-child{border-radius:0 0 var(--r-md) var(--r-md)}
+.mv:only-child{border-radius:var(--r-md)}
+.mv:active{background:var(--surface2)}
+.mv .t{flex:1; min-width:0}
+.mv .n{font:700 14px/1.3 var(--inter)}
+.mv .forms{font:italic 800 22px/1 var(--barlow); color:var(--accent); text-align:right; min-width:34px}
+.mv .forms small{display:block; font:500 10px var(--inter); font-style:normal; color:var(--mutedLight); letter-spacing:.2px}
+.glyph{width:38px; height:38px; border-radius:var(--r-sm); background:var(--surface2); display:grid; place-items:center; flex:none; font:italic 800 17px var(--barlow); color:var(--mutedLight)}
+.empty{padding:30px 10px; text-align:center}
+
+/* ══════ HOJA (compositor) ══════ */
+.veil{position:absolute; inset:0; background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .25s}
+.sheet{position:absolute; left:0; right:0; bottom:0; max-height:92%; background:var(--surface); border-radius:var(--r-lg) var(--r-lg) 0 0; transform:translateY(102%); transition:transform .34s var(--out); display:flex; flex-direction:column}
+.open .veil{opacity:1; pointer-events:auto}
+.open .sheet{transform:none}
+.grab{width:38px; height:4px; border-radius:2px; background:var(--border); margin:9px auto 4px; flex:none}
+.sh-body{overflow-y:auto; padding:6px 15px 10px; scrollbar-width:none}
+.sh-body::-webkit-scrollbar{display:none}
+.gen{font:800 20px/1.2 var(--inter); letter-spacing:-.3px; min-height:48px; transition:opacity .15s}
+.gen.flash{animation:flash .35s var(--out)}
+@keyframes flash{from{opacity:.25; transform:translateY(3px)}}
+.gen-sub{display:flex; gap:8px; align-items:center; margin-top:2px}
+.badge{font:800 10px var(--inter); letter-spacing:1px; text-transform:uppercase; padding:3px 7px; border-radius:4px; background:var(--surface3); color:var(--mutedLight)}
+.badge.acc{background:var(--accent10); color:var(--accent)}
+.badge.warn{background:rgba(251,146,60,.14); color:var(--orange)}
+
+.axis{margin-top:16px}
+.axis .ah{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px}
+.chips{display:flex; gap:6px; overflow-x:auto; margin:0 -15px; padding:0 15px 2px; scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none; height:40px; padding:0 14px; border-radius:var(--r-sm); background:var(--surface2); font:700 14px var(--inter); color:var(--text); position:relative; transition:background .18s,color .18s,opacity .18s}
+.chip.on{background:var(--accent); color:var(--onAccent)}
+.chip.dis{opacity:.32}
+.chip.info{height:34px; font-weight:500; font-size:13px}
+
+.presets{display:flex; gap:6px; overflow-x:auto; margin:0 -15px; padding:0 15px; scrollbar-width:none}
+.presets::-webkit-scrollbar{display:none}
+.preset{flex:none; padding:8px 12px; border-radius:var(--r-md); border:1px solid var(--border); text-align:left; min-width:108px}
+.preset b{display:block; font:800 13px var(--inter)}
+.preset span{font:500 11px var(--inter); color:var(--mutedLight)}
+.preset.on{border-color:var(--accent); background:var(--accent10)}
+.preset.on b{color:var(--accent)}
+
+.ref{margin-top:18px; background:var(--surface2); border-radius:var(--r-md); padding:12px 14px; display:flex; gap:12px; align-items:center}
+.ref .big{font:italic 800 34px/1 var(--barlow); color:var(--accent); white-space:nowrap}
+.ref .big small{font:800 14px var(--inter); font-style:normal; color:var(--mutedLight); margin-left:2px}
+.ref .t{flex:1; min-width:0}
+.ref .t b{display:block; font:700 13px/1.35 var(--inter)}
+
+.sh-foot{padding:10px 15px 18px; flex:none; border-top:1px solid var(--surface2)}
+.cta{width:100%; height:50px; border-radius:var(--r-md); background:var(--accent); color:var(--onAccent); font:900 14px var(--inter); letter-spacing:1.2px; text-transform:uppercase; transition:transform .1s}
+.cta:active{transform:scale(.98)}
+.cta.ghost{background:var(--surface2); color:var(--text)}
+
+.toast{position:absolute; left:15px; right:15px; bottom:18px; background:var(--surface3); border-radius:var(--r-md); padding:12px 14px; font:700 13px/1.35 var(--inter); display:flex; gap:10px; align-items:center; transform:translateY(140%); transition:transform .3s var(--out)}
+.toast.show{transform:none}
+.toast svg{color:var(--accent); flex:none}
+
+/* ══════ WORKOUT ══════ */
+.wk-card{background:var(--surface); border-radius:var(--r-md); margin-top:10px; overflow:hidden}
+.wk-top{padding:14px 15px 10px}
+.wk-name{font:900 16px/1.25 var(--inter); letter-spacing:-.2px; transition:opacity .2s}
+.wk-pres{display:flex; gap:8px; align-items:center; margin-top:4px}
+.swap{display:flex; gap:6px; overflow-x:auto; padding:0 15px 12px; scrollbar-width:none}
+.swap::-webkit-scrollbar{display:none}
+.swap .chip{height:34px; font-size:13px}
+.hint{margin:0 15px 12px; border-left:3px solid var(--accent); background:var(--accent10); border-radius:0 var(--r-sm) var(--r-sm) 0; padding:9px 11px; font:500 12.5px/1.45 var(--inter); color:var(--text)}
+.hint b{color:var(--accent)}
+.hint.warn{border-color:var(--orange); background:rgba(251,146,60,.1)}
+.hint.warn b{color:var(--orange)}
+.sets{border-top:1px solid var(--surface2)}
+.set{display:grid; grid-template-columns:34px 1fr 1fr 44px; align-items:center; gap:8px; padding:7px 15px; min-height:52px}
+.set + .set{border-top:1px solid var(--surface2)}
+.set .i{font:italic 800 18px var(--barlow); color:var(--muted)}
+.field{height:38px; border-radius:var(--r-sm); background:var(--surface2); display:flex; align-items:center; justify-content:center; gap:4px; font:800 16px var(--inter)}
+.field small{font:500 11px var(--inter); color:var(--mutedLight)}
+.tick{width:38px; height:38px; border-radius:var(--r-sm); background:var(--border); display:grid; place-items:center; color:var(--bg)}
+.tick.on{background:var(--accent); color:var(--onAccent)}
+
+/* ══════ ESCALERA ══════ */
+.lad-hero{background:var(--surface); border-radius:var(--r-md); padding:15px; margin-top:6px}
+.lad-hero .k{display:flex; align-items:flex-end; gap:12px; margin-top:6px}
+.lad-hero .big{font:italic 800 46px/.9 var(--barlow); color:var(--accent)}
+.lad-hero .big small{font:800 15px var(--inter); font-style:normal; color:var(--mutedLight)}
+.up{margin-top:12px; display:flex; gap:10px; align-items:center; background:var(--accent10); border-radius:var(--r-sm); padding:10px 12px}
+.up .t{flex:1; font:500 12.5px/1.4 var(--inter)}
+.up .t b{color:var(--accent)}
+.up button{height:36px; padding:0 12px; border-radius:var(--r-sm); background:var(--accent); color:var(--onAccent); font:900 12px var(--inter); letter-spacing:1px; text-transform:uppercase; flex:none}
+.ladder{margin-top:14px; position:relative}
+.rung{display:grid; grid-template-columns:22px 1fr auto; gap:12px; align-items:center; width:100%; text-align:left; padding:9px 0; min-height:52px}
+.rung .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--muted); background:var(--bg); justify-self:center; position:relative; z-index:1; transition:.2s}
+.rung.done .dot{background:var(--accent50); border-color:transparent}
+.rung.cur .dot{background:var(--accent); border-color:var(--accent); box-shadow:0 0 0 5px var(--accent10)}
+.rung .n{font:700 14px/1.3 var(--inter)}
+.rung.cur .n{color:var(--accent)}
+.rung.next .n{color:var(--text)}
+.rung:not(.done):not(.cur):not(.next) .n{color:var(--mutedLight)}
+.bw{width:96px; display:flex; flex-direction:column; align-items:flex-end; gap:4px}
+.bw span{font:800 12px var(--inter)}
+.bw i{display:block; height:4px; border-radius:1px; background:var(--surface3); width:100%; overflow:hidden; position:relative}
+.bw i b{position:absolute; inset:0 auto 0 0; background:var(--mutedLight); transform:skewX(-12deg)}
+.rung.cur .bw i b,.rung.done .bw i b{background:var(--accent)}
+.rail-line{position:absolute; left:10px; top:26px; bottom:26px; width:2px; background:var(--surface3)}
+
+/* ══════ PROGRESO ══════ */
+.chart{background:var(--surface); border-radius:var(--r-md); padding:14px 12px 10px; margin-top:10px}
+.chart svg{display:block; width:100%; height:auto}
+.legend{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px}
+.lg{height:34px; padding:0 11px; border-radius:999px; background:var(--surface2); font:700 12.5px var(--inter); color:var(--text); display:flex; align-items:center; gap:7px; transition:opacity .2s}
+.lg i{width:9px; height:9px; border-radius:50%}
+.lg.off{opacity:.35}
+.kpis{display:grid; grid-template-columns:1fr 1fr; gap:2px; margin-top:10px}
+.kpi{background:var(--surface); padding:12px 14px}
+.kpi:first-child{border-radius:var(--r-md) 0 0 var(--r-md)}
+.kpi:last-child{border-radius:0 var(--r-md) var(--r-md) 0}
+.kpi .v{font:italic 800 30px/1 var(--barlow); color:var(--text); margin-top:6px}
+.kpi .v small{font:800 13px var(--inter); font-style:normal; color:var(--mutedLight)}
+.forms-list{display:flex; flex-direction:column; gap:2px; margin-top:10px}
+.fr{display:flex; align-items:center; gap:10px; background:var(--surface); padding:11px 14px}
+.fr:first-child{border-radius:var(--r-md) var(--r-md) 0 0}
+.fr:last-child{border-radius:0 0 var(--r-md) var(--r-md)}
+.fr i{width:9px; height:9px; border-radius:50%; flex:none}
+.fr .t{flex:1; min-width:0; font:700 13.5px/1.3 var(--inter)}
+.fr .v{font:800 13px var(--inter); text-align:right}
+.fr .v small{display:block; font:500 11px var(--inter); color:var(--mutedLight)}
+
+@media (max-width:420px){
+  body{padding:24px 0 60px}
+  .wrap > h1,.wrap > .lead,.notes{padding:0 16px}
+  .rail{gap:40px}
+  .col{width:100%; flex:1 1 100%}
+  .col > .tag,.col > h3,.col > .why{padding:0 16px}
+  .phone{border-radius:0; border-left:0; border-right:0}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Catálogo por movimientos</h1>
+  <p class="lead">Idea: <b>no hay lista de ejercicios, hay movimientos con ejes</b>. Buscas «remo» y sale <b>un</b> Remo; el material, la postura y el lado son chips, y el nombre se escribe solo. Todo se puede tocar: <b>escribe en el buscador</b> (prueba «remo kb una mano» o «press sentado»), <b>abre un movimiento</b>, cambia de <b>Gimnasio a Casa</b> en el Workout, <b>sube por la escalera</b> de flexiones y <b>apaga formas</b> en Progreso. Tema FormaFit, tokens reales.</p>
+
+  <div class="rail">
+    <!-- ───────── 1 · BUSCADOR + COMPOSITOR ───────── -->
+    <section class="col">
+      <div class="tag">1 · Buscar</div>
+      <h3>Un movimiento, no trece remos</h3>
+      <p class="why">La lista enseña <b>movimientos</b> y cuántas formas tiene cada uno. Lo que escribes se lee: «kb», «una mano», «sentado» se vuelven chips. Al abrir uno, los ejes que <b>cambian la carga</b> van arriba; el agarre, abajo, solo informa.</p>
+      <div class="phone" id="p1">
+        <div class="sb"><span>9:41</span><span>●●● 100%</span></div>
+        <div class="hd">
+          <button class="back" aria-label="Volver"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <h2>Añadir</h2>
+        </div>
+        <div class="scr">
+          <div class="search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--mutedLight)" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="q" placeholder="Remo, press sentado, kb una mano…" autocomplete="off" aria-label="Buscar movimiento">
+            <button class="clr" id="qclr" aria-label="Borrar" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </div>
+          <div class="parsed" id="parsed"></div>
+          <div class="pills" id="pills"></div>
+          <div id="direct"></div>
+          <div class="caps" style="margin-top:16px" id="count"></div>
+          <div class="list" id="list"></div>
+        </div>
+
+        <div class="veil" id="veil"></div>
+        <div class="sheet" role="dialog" aria-label="Componer ejercicio">
+          <div class="grab"></div>
+          <div class="sh-body">
+            <div class="caps" id="sh-mv">Remo</div>
+            <div class="gen" id="gen"></div>
+            <div class="gen-sub" id="gen-sub"></div>
+            <div id="axes"></div>
+            <div class="axis" id="presets-wrap">
+              <div class="ah"><span class="caps">Con nombre propio</span></div>
+              <div class="presets" id="presets"></div>
+            </div>
+            <div class="ref" id="ref"></div>
+          </div>
+          <div class="sh-foot"><button class="cta" id="add">Añadir</button></div>
+        </div>
+        <div class="toast" id="toast"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span></span></div>
+      </div>
+    </section>
+
+    <!-- ───────── 2 · WORKOUT POR SITIO ───────── -->
+    <section class="col">
+      <div class="tag">2 · Entrenar</div>
+      <h3>El material es del sitio, no del ejercicio</h3>
+      <p class="why">El programa dice <b>«Remo, 3 × 8–10»</b>. El Workout elige la forma con lo que hay donde estás y <b>traduce el peso</b>: si en casa tu mancuerna más pesada es de 20 kg, sube las reps para compensar.</p>
+      <div class="phone" id="p2">
+        <div class="sb"><span>18:07</span><span>●●● 82%</span></div>
+        <div class="hd"><h2>Torso A</h2><span class="caps num" style="color:var(--accent)">24:10</span></div>
+        <div class="scr">
+          <div class="seg" id="place">
+            <button data-p="gym" class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>Gimnasio</button>
+            <button data-p="home"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-6 8 6v8H4z"/></svg>Casa</button>
+          </div>
+          <div class="micro" id="place-eq" style="margin-top:8px"></div>
+          <div id="wk"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── 3 · ESCALERA DE CALISTENIA ───────── -->
+    <section class="col">
+      <div class="tag">3 · Calistenia</div>
+      <h3>La palanca es otro eje</h3>
+      <p class="why">Cada peldaño mueve un <b>porcentaje de tu peso</b>. Llegar al tope de reps sube un peldaño igual que en pesas sube 2,5 kg, y la carga de entrenamiento lo cuenta en kilos de verdad.</p>
+      <div class="phone" id="p3">
+        <div class="sb"><span>9:41</span><span>●●● 100%</span></div>
+        <div class="hd">
+          <button class="back" aria-label="Volver"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <h2>Flexiones</h2>
+        </div>
+        <div class="scr">
+          <div class="lad-hero" id="lad-hero"></div>
+          <div class="caps" style="margin-top:18px">Peldaños · toca para cambiar</div>
+          <div class="ladder" id="ladder"><div class="rail-line"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── 4 · PROGRESO DEL MOVIMIENTO ───────── -->
+    <section class="col">
+      <div class="tag">4 · Progreso</div>
+      <h3>Una línea, todas las formas</h3>
+      <p class="why">El historial no se rompe al cambiar de implemento: todo se pasa a <b>kilos de remo con barra</b> con tus propios factores. Cada forma conserva su récord exacto debajo.</p>
+      <div class="phone" id="p4">
+        <div class="sb"><span>9:41</span><span>●●● 100%</span></div>
+        <div class="hd">
+          <button class="back" aria-label="Volver"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <h2>Remo</h2>
+        </div>
+        <div class="scr">
+          <div class="kpis">
+            <div class="kpi"><div class="caps">1RM estimado</div><div class="v num" id="k1">—</div></div>
+            <div class="kpi"><div class="caps">10 semanas</div><div class="v num" id="k2">—</div></div>
+          </div>
+          <div class="chart">
+            <div class="caps">En kg de remo con barra</div>
+            <svg id="svg" viewBox="0 0 330 180" role="img" aria-label="Evolución del remo"></svg>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div class="caps" style="margin-top:18px">Formas que has hecho</div>
+          <div class="forms-list" id="forms"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h4>Cómo está hecho</h4>
+      <ul>
+        <li><b>Movimiento</b> (unos 50): Remo, Press militar, Sentadilla… con su patrón, músculos y los ejes que admite.</li>
+        <li><b>Ejes</b> con reglas de qué casa con qué: anillas solo colgado, máquina sentado o con pecho apoyado. Las formas no se escriben: se cuentan (el número de la lista).</li>
+        <li><b>Nombre generado</b> con una plantilla por movimiento que sabe su género: «Press militar sentado», «Remo a una mano con mancuerna, pecho apoyado».</li>
+        <li><b>Nombres propios</b> (Meadows, Pendlay, Seal row) son atajos a un punto de los ejes, y se buscan.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h4>Historial y carga</h4>
+      <ul>
+        <li>Cada eje dice si <b>cambia la carga</b> (implemento, lado, apoyo, palanca) o <b>solo informa</b> (agarre, anchura) — la regla de P09, generalizada.</li>
+        <li>Id canónico por forma: <code>remo|mancuerna|una_mano|pecho</code>. Es lo que ya hace <code>exerciseIdentity</code> con <code>__uni</code>, con más ejes.</li>
+        <li>Factores entre formas, primero genéricos (mancuerna ≈ 40 % de la barra por mano) y luego <b>aprendidos de tus datos</b>. Siempre «≈», nunca un número exacto.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h4>Preguntas abiertas</h4>
+      <ul>
+        <li>¿Dónde se elige el sitio: al empezar el entreno, o lo deduce de la hora / el programa?</li>
+        <li>¿El entrenador puede fijar la forma (no solo el movimiento) cuando le importa?</li>
+        <li>¿Cuántos ejes enseña la hoja por defecto? Aquí, 3–4 con el agarre al final.</li>
+        <li>Los factores aquí son de ejemplo: habría que fijar una tabla de partida.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════ DATOS ════════════════ */
+const IMPL = { barbell:'Barra', db:'Mancuernas', kb:'Kettlebell', cable:'Polea', machine:'Máquina', smith:'Multipower', landmine:'Landmine', rings:'Anillas', bw:'Cuerpo', band:'Banda', trap:'Trap bar' };
+// Lo que hay en cada sitio (el perfil «Casa» tiene pesos máximos).
+const PLACES = {
+  gym:  { name:'Gimnasio', eq:Object.keys(IMPL), note:'Todo el material del gimnasio' },
+  home: { name:'Casa', eq:['db','kb','band','bw'], max:{ db:20, kb:16 }, note:'Mancuernas hasta 20 kg · kettlebell 16 kg · bandas · barra de dominadas' },
+};
+// Factor de carga respecto a la forma de referencia (por mano si es a una mano o con mancuernas).
+const BODY = 74; // kg del usuario de ejemplo
+
+const MOVES = [
+  { id:'row', name:'Remo', pattern:'pull', glyph:'R', aliases:['row','remar'],
+    axes:[
+      { id:'impl', label:'Implemento', load:true, opts:['barbell','db','kb','cable','machine','landmine','rings','bw','band'] },
+      { id:'pos', label:'Postura', load:true, opts:{ bent:'Inclinado de pie', chest:'Pecho apoyado', seated:'Sentado', hang:'Colgado' } },
+      { id:'side', label:'Lado', load:true, opts:{ bi:'Dos manos', uni:'Una mano' } },
+      { id:'grip', label:'Agarre', load:false, opts:{ pro:'Prono', neu:'Neutro', sup:'Supino' } },
+    ],
+    valid:{ pos:{ barbell:['bent','chest'], db:['bent','chest'], kb:['bent'], cable:['seated','bent'], machine:['seated','chest'], landmine:['bent'], rings:['hang'], bw:['hang'], band:['seated','bent'] },
+            side:{ barbell:['bi'], rings:['bi'], bw:['bi'] } },
+    def:{ impl:'barbell', pos:'bent', side:'bi', grip:'pro' },
+    factor:{ barbell:1, db:.42, kb:.42, cable:.9, machine:1, landmine:.75, band:null, rings:null, bw:null },
+    uniFactor:1.08, posFactor:{ chest:.88 },
+    title(c){
+      if (c.impl==='rings') return 'Remo en anillas';
+      if (c.impl==='bw') return 'Remo invertido';
+      if (c.impl==='landmine') return c.side==='uni' ? 'Remo landmine a una mano' : 'Remo en T';
+      const uni = c.side==='uni';
+      const im = { barbell:' con barra', db: uni?' con mancuerna':' con mancuernas', kb:' con kettlebell', cable:' en polea', machine:' en máquina', band:' con banda' }[c.impl];
+      const p = c.pos==='chest' ? ', pecho apoyado' : (c.pos==='bent' && ['cable','band'].includes(c.impl)) ? ' de pie' : '';
+      return 'Remo' + (uni?' a una mano':'') + im + p;
+    },
+    presets:[
+      { n:'Pendlay', s:'Barra · desde el suelo', c:{ impl:'barbell', pos:'bent', side:'bi' } },
+      { n:'Seal row', s:'Barra · pecho apoyado', c:{ impl:'barbell', pos:'chest', side:'bi' } },
+      { n:'Meadows', s:'Landmine · una mano', c:{ impl:'landmine', pos:'bent', side:'uni' } },
+      { n:'Kroc', s:'Mancuerna pesada', c:{ impl:'db', pos:'bent', side:'uni' } },
+      { n:'Remo en T', s:'Landmine · dos manos', c:{ impl:'landmine', pos:'bent', side:'bi' } },
+      { n:'Australiano', s:'Barra baja', c:{ impl:'bw', pos:'hang', side:'bi' } },
+    ],
+    ref:{ label:'remo con barra', w:80, r:8 },
+    history:{ 'db|bent|uni':{ w:32, r:10, ago:'hace 4 días' }, 'barbell|bent|bi':{ w:80, r:8, ago:'hace 11 días' }, 'cable|seated|bi':{ w:70, r:12, ago:'hace 3 semanas' } },
+  },
+  { id:'ohp', name:'Press militar', pattern:'push', glyph:'P', aliases:['press de hombros','overhead press','press hombro'],
+    axes:[
+      { id:'impl', label:'Implemento', load:true, opts:['barbell','db','kb','machine','smith','landmine','band'] },
+      { id:'pos', label:'Postura', load:true, opts:{ stand:'De pie', seated:'Sentado' } },
+      { id:'side', label:'Lado', load:true, opts:{ bi:'Dos manos', uni:'Una mano' } },
+      { id:'grip', label:'Agarre', load:false, opts:{ pro:'Prono', neu:'Neutro' } },
+    ],
+    valid:{ pos:{ machine:['seated'], smith:['seated','stand'], landmine:['stand'] }, side:{ barbell:['bi'], machine:['bi'], smith:['bi'] } },
+    def:{ impl:'barbell', pos:'stand', side:'bi', grip:'pro' },
+    factor:{ barbell:1, db:.4, kb:.4, machine:1.1, smith:1.05, landmine:.7, band:null }, uniFactor:1.05, posFactor:{ seated:.95 },
+    title(c){
+      const uni = c.side==='uni';
+      if (c.impl==='landmine') return 'Press landmine' + (uni?' a una mano':'');
+      const im = { barbell:' con barra', db: uni?' con mancuerna':' con mancuernas', kb:' con kettlebell', machine:' en máquina', smith:' en multipower', band:' con banda' }[c.impl];
+      return 'Press militar' + (c.pos==='seated' && c.impl!=='machine' ? ' sentado' : '') + (uni?' a una mano':'') + im;
+    },
+    presets:[
+      { n:'Arnold', s:'Mancuernas · girando', c:{ impl:'db', pos:'seated', side:'bi' } },
+      { n:'Z press', s:'Barra · sentado en el suelo', c:{ impl:'barbell', pos:'seated', side:'bi' } },
+    ],
+    ref:{ label:'press militar con barra', w:50, r:6 },
+    history:{ 'barbell|stand|bi':{ w:50, r:6, ago:'hace 2 días' }, 'db|seated|bi':{ w:20, r:10, ago:'hace 2 semanas' } },
+  },
+  { id:'squat', name:'Sentadilla', pattern:'legs', glyph:'S', aliases:['squat'],
+    axes:[
+      { id:'impl', label:'Implemento', load:true, opts:['barbell','bw','db','kb','smith','machine'] },
+      { id:'pos', label:'Dónde va la carga', load:true, opts:{ back:'Atrás', front:'Delante', goblet:'Goblet' } },
+      { id:'side', label:'Piernas', load:true, opts:{ bi:'Dos', uni:'Una (pistol)' } },
+    ],
+    valid:{ pos:{ barbell:['back','front'], smith:['back'], machine:['back'], db:['goblet'], kb:['goblet','front'], bw:['back'] }, side:{ barbell:['bi'], smith:['bi'], machine:['bi'] } },
+    def:{ impl:'barbell', pos:'back', side:'bi' },
+    factor:{ barbell:1, smith:1.05, machine:1.3, db:.35, kb:.35, bw:null }, uniFactor:.3, posFactor:{ front:.82 },
+    title(c){
+      if (c.side==='uni') return c.impl==='bw' ? 'Pistol squat' : 'Pistol squat con ' + IMPL[c.impl].toLowerCase().replace(/s$/,'');
+      if (c.impl==='bw') return 'Sentadilla sin peso';
+      if (c.impl==='machine') return 'Hack squat';
+      if (c.impl==='smith') return 'Sentadilla en multipower';
+      const im = { barbell:' con barra', db:' con mancuerna', kb:' con kettlebell' }[c.impl];
+      return 'Sentadilla' + (c.pos==='front'?' frontal':c.pos==='goblet'?' goblet':'') + im;
+    },
+    presets:[ { n:'Zercher', s:'Barra en los codos', c:{ impl:'barbell', pos:'front', side:'bi' } }, { n:'Con pausa', s:'Barra · 2 s abajo', c:{ impl:'barbell', pos:'back', side:'bi' } } ],
+    ref:{ label:'sentadilla con barra', w:110, r:5 }, history:{ 'barbell|back|bi':{ w:110, r:5, ago:'ayer' } },
+  },
+  { id:'curl', name:'Curl de bíceps', pattern:'pull', glyph:'C', aliases:['curl','biceps'],
+    axes:[
+      { id:'impl', label:'Implemento', load:true, opts:['barbell','db','cable','machine','kb','band'] },
+      { id:'pos', label:'Postura', load:true, opts:{ stand:'De pie', seated:'Sentado', incline:'Banco inclinado', preacher:'Predicador' } },
+      { id:'side', label:'Lado', load:true, opts:{ bi:'Dos manos', uni:'Una mano' } },
+    ],
+    valid:{ pos:{ machine:['preacher'], kb:['stand'], band:['stand'], barbell:['stand','preacher'], cable:['stand','preacher'] }, side:{ barbell:['bi'] } },
+    def:{ impl:'barbell', pos:'stand', side:'bi' },
+    factor:{ barbell:1, db:.42, cable:.85, machine:.9, kb:.42, band:null }, uniFactor:1.05, posFactor:{ incline:.85, preacher:.85 },
+    title(c){
+      const uni = c.side==='uni';
+      const im = { barbell:' con barra', db: uni?' con mancuerna':' con mancuernas', cable:' en polea', machine:' en máquina', kb:' con kettlebell', band:' con banda' }[c.impl];
+      const p = { seated:' sentado', incline:' en banco inclinado', preacher:' en predicador', stand:'' }[c.pos];
+      return 'Curl de bíceps' + (uni?' a una mano':'') + im + p;
+    },
+    presets:[ { n:'Concentración', s:'Mancuerna · sentado', c:{ impl:'db', pos:'seated', side:'uni' } }, { n:'Bayesian', s:'Polea · de espaldas', c:{ impl:'cable', pos:'stand', side:'uni' } } ],
+    ref:{ label:'curl con barra', w:35, r:10 }, history:{ 'db|stand|bi':{ w:14, r:12, ago:'hace 5 días' } },
+  },
+  { id:'dl', name:'Peso muerto', pattern:'hinge', glyph:'M', aliases:['deadlift','rumano','rdl'],
+    axes:[
+      { id:'impl', label:'Implemento', load:true, opts:['barbell','trap','db','kb'] },
+      { id:'pos', label:'Estilo', load:true, opts:{ conv:'Convencional', sumo:'Sumo', rdl:'Rumano' } },
+      { id:'side', label:'Piernas', load:true, opts:{ bi:'Dos', uni:'Una' } },
+    ],
+    valid:{ pos:{ trap:['conv'], kb:['sumo','rdl'] }, side:{ barbell:['bi'], trap:['bi'] } },
+    def:{ impl:'barbell', pos:'conv', side:'bi' },
+    factor:{ barbell:1, trap:1.05, db:.4, kb:.4 }, uniFactor:.6, posFactor:{ rdl:.75, sumo:1 },
+    title(c){
+      const uni = c.side==='uni';
+      const st = { conv:'', sumo:' sumo', rdl:' rumano' }[c.pos];
+      const im = { barbell:' con barra', trap:' con trap bar', db: uni?' con mancuerna':' con mancuernas', kb:' con kettlebell' }[c.impl];
+      return 'Peso muerto' + st + (uni?' a una pierna':'') + im;
+    },
+    presets:[ { n:'RDL', s:'Barra · rumano', c:{ impl:'barbell', pos:'rdl', side:'bi' } } ],
+    ref:{ label:'peso muerto con barra', w:150, r:3 }, history:{ 'barbell|conv|bi':{ w:150, r:3, ago:'hace 6 días' } },
+  },
+  { id:'push', name:'Flexiones', pattern:'push', glyph:'F', aliases:['push up','flexion'], ladder:true },
+  { id:'pullup', name:'Dominadas', pattern:'pull', glyph:'D', aliases:['pull up','chin up'], simple:['bw','band'] },
+  { id:'pulldown', name:'Jalón', pattern:'pull', glyph:'J', aliases:['lat pulldown'], simple:['cable','machine','band'] },
+  { id:'lunge', name:'Zancada', pattern:'legs', glyph:'Z', aliases:['lunge','split squat','búlgara'], simple:['bw','db','kb','barbell','smith'] },
+  { id:'hipthrust', name:'Hip thrust', pattern:'hinge', glyph:'H', aliases:['puente de glúteo'], simple:['barbell','machine','db','band','bw'] },
+  { id:'lateral', name:'Elevaciones laterales', pattern:'push', glyph:'E', aliases:['lateral raise'], simple:['db','cable','machine','band'] },
+  { id:'erg', name:'Remo ergómetro', pattern:'cond', glyph:'≈', aliases:['row erg','concept2'], simple:['machine'] },
+  { id:'rope', name:'Comba', pattern:'cond', glyph:'∞', aliases:['jump rope','dobles'], simple:['bw'] },
+  { id:'wallball', name:'Wall ball', pattern:'cond', glyph:'W', aliases:['balón medicinal'], simple:['bw'] },
+];
+const PATTERNS = [ ['all','Todo'], ['push','Empuje'], ['pull','Tracción'], ['legs','Pierna'], ['hinge','Bisagra'], ['cond','Acondicionamiento'] ];
+
+/* ════════════════ UTILIDADES ════════════════ */
+const $ = (s, r=document) => r.querySelector(s);
+const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/-/g,' ').trim();
+const optsOf = (ax) => Array.isArray(ax.opts) ? ax.opts : Object.keys(ax.opts);
+const labelOf = (ax, v) => ax.id==='impl' ? IMPL[v] : ax.opts[v];
+function allowed(mv, axId, c){
+  if (axId==='impl') return null;
+  const rule = mv.valid?.[axId]?.[c.impl];
+  const all = optsOf(mv.axes.find(a=>a.id===axId));
+  return rule ?? all;
+}
+function fix(mv, c){                       // deja la configuración en un punto válido
+  for (const ax of mv.axes){
+    if (ax.id==='impl') continue;
+    const ok = allowed(mv, ax.id, c);
+    if (!ok.includes(c[ax.id])) c[ax.id] = ok[0];
+  }
+  return c;
+}
+// Lo pedido manda: si no casa con el implemento, se busca uno con el que sí
+// (pedir «una mano» con la barra puesta pasa a mancuerna).
+function compose(mv, want, prefer){
+  const has = (k) => mv.axes.some((a) => a.id === k);
+  const asks = Object.entries(want).filter(([k, v]) => k !== 'impl' && has(k) && v != null);
+  const fits = (impl) => asks.every(([k, v]) => allowed(mv, k, { impl }).includes(v));
+  const impl = want.impl ?? [prefer, mv.def.impl, ...mv.axes[0].opts].find((i) => i && fits(i)) ?? mv.def.impl;
+  return fix(mv, { ...mv.def, ...Object.fromEntries(asks), impl, ...(want.grip ? { grip:want.grip } : {}) });
+}
+function countForms(mv){
+  if (!mv.axes) return mv.ladder ? LADDER.length : mv.simple.length;
+  let n = 0;
+  for (const impl of mv.axes[0].opts){
+    let k = 1;
+    for (const ax of mv.axes.slice(1)) if (ax.load) k *= allowed(mv, ax.id, { impl }).length;
+    n += k;
+  }
+  return n;
+}
+const keyOf = (c) => [c.impl, c.pos, c.side].join('|');
+const fromKey = (mv, k) => { const [impl, pos, side] = k.split('|'); return fix(mv, { ...mv.def, impl, pos, side }); };
+function loadFactor(mv, c){
+  const f = mv.factor[c.impl];
+  if (f == null) return null;
+  // Mancuerna y kettlebell ya van por mano; el resto, a una mano, carga más o menos la mitad.
+  const uni = c.side !== 'uni' ? 1 : ['db','kb'].includes(c.impl) ? mv.uniFactor : .55;
+  return f * uni * (mv.posFactor?.[c.pos] ?? 1);
+}
+const round = (x, step) => Math.max(step, Math.round(x / step) * step);
+
+/* ════════════════ 1 · BUSCADOR ════════════════ */
+const AXIS_WORDS = [
+  [/\b(kb|kettlebell|pesa rusa)\b/, { impl:'kb' }], [/\bmancuernas?\b|\bdb\b/, { impl:'db' }], [/\bbarra\b(?! baja)/, { impl:'barbell' }],
+  [/\bpolea\b|\bcable\b/, { impl:'cable' }], [/\bmaquina\b/, { impl:'machine' }], [/\bmultipower\b|\bsmith\b/, { impl:'smith' }],
+  [/\blandmine\b/, { impl:'landmine' }], [/\banillas\b/, { impl:'rings' }], [/\bbanda\b/, { impl:'band' }],
+  [/\buna mano\b|\bunilateral\b|\buna pierna\b/, { side:'uni' }], [/\bpecho apoyado\b|\bapoyado\b/, { pos:'chest' }],
+  [/\bsentado\b/, { pos:'seated' }], [/\bde pie\b/, { pos:'stand' }], [/\bfrontal\b/, { pos:'front' }], [/\bgoblet\b/, { pos:'goblet' }],
+  [/\brumano\b|\brdl\b/, { pos:'rdl' }], [/\bsumo\b/, { pos:'sumo' }], [/\binclinado\b/, { pos:'incline' }], [/\bpredicador\b/, { pos:'preacher' }],
+];
+let st = { q:'', pat:'all', mv:null, c:null, added:0 };
+
+function parse(q){
+  const n = norm(q);
+  if (!n) return { moves: MOVES, cfg:{}, tokens:[] };
+  const cfg = {}; const tokens = [];
+  let rest = n;
+  for (const [re, val] of AXIS_WORDS){
+    const m = rest.match(re);
+    if (m){ Object.assign(cfg, val); rest = rest.replace(re, ' '); tokens.push(val); }
+  }
+  rest = rest.replace(/\s+/g,' ').trim();
+  // Nombres propios de los atajos («meadows», «seal row»).
+  // Sin las palabras del movimiento: «remo» solo no es «Remo en T».
+  const own = new Set(MOVES.flatMap((m) => norm(m.name).split(' ')));
+  const bare = rest.split(' ').filter((w) => !own.has(w)).join(' ');
+  let preset = null;
+  if (bare.length >= 3) for (const mv of MOVES) for (const p of mv.presets ?? []) if (norm(p.n).includes(bare)) preset = { mv, p };
+  const words = rest.split(' ').filter(Boolean);
+  const moves = MOVES.filter((mv) => {
+    if (preset && preset.mv === mv) return true;
+    const hay = norm([mv.name, ...mv.aliases].join(' '));
+    return words.every((w) => hay.includes(w)) && (words.length || tokens.length);
+  }).filter((mv) => !tokens.length || mv.axes);   // con ejes escritos, solo los que los tienen
+  return { moves, cfg, tokens, preset, words };
+}
+
+function tokenLabel(t){
+  const [k, v] = Object.entries(t)[0];
+  if (k==='impl') return IMPL[v];
+  return { uni:'Una mano', chest:'Pecho apoyado', seated:'Sentado', stand:'De pie', front:'Frontal', goblet:'Goblet', rdl:'Rumano', sumo:'Sumo', incline:'Inclinado', preacher:'Predicador' }[v] ?? v;
+}
+
+function renderSearch(){
+  const { moves, cfg, tokens, preset } = parse(st.q);
+  $('#qclr').hidden = !st.q;
+  $('#parsed').innerHTML = tokens.map((t) => `<span class="ptok"><i>${Object.keys(t)[0]==='impl'?'Material':Object.keys(t)[0]==='side'?'Lado':'Postura'}</i>${tokenLabel(t)}</span>`).join('');
+  $('#pills').innerHTML = PATTERNS.map(([id, l]) => `<button class="pill ${st.pat===id?'on':''}" data-pat="${id}">${l}</button>`).join('');
+  const list = moves.filter((m) => st.pat==='all' || m.pattern===st.pat);
+
+  // Si la búsqueda ya describe una forma concreta de un solo movimiento: añadir directo.
+  let direct = '';
+  const target = preset?.mv ?? (list.length === 1 && list[0].axes ? list[0] : null);
+  if (target && (tokens.length || preset)){
+    const c = compose(target, { ...(preset?.p.c ?? {}), ...cfg });
+    direct = `<div class="direct"><div class="t"><span class="caps acc">${preset ? preset.p.n + ' · ' : ''}Lo que has escrito</span><b>${target.title(c)}</b></div>
+      <button class="plusbtn" data-direct="${target.id}" aria-label="Añadir"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+    st.directCfg = c;
+  }
+  $('#direct').innerHTML = direct;
+  $('#count').textContent = list.length === 1 ? '1 movimiento' : `${list.length} movimientos`;
+  $('#list').innerHTML = list.length ? list.map((mv) => {
+    const last = mv.history ? Object.entries(mv.history)[0] : null;
+    const meta = mv.ladder ? 'Escalera de 8 peldaños · vas por «Suelo»'
+      : last ? `Última: ${mv.title(fromKey(mv, last[0]))}`
+      : PATTERNS.find((p) => p[0]===mv.pattern)[1];
+    return `<button class="mv" data-mv="${mv.id}"><span class="glyph">${mv.glyph}</span><span class="t"><span class="n">${mv.name}</span><span class="label" style="display:block">${meta}</span></span>
+      <span class="forms num">${countForms(mv)}<small>formas</small></span></button>`;
+  }).join('') : `<div class="empty"><div class="label">Nada con «${st.q}». Puedes crearlo como movimiento propio.</div></div>`;
+}
+
+/* ── Compositor ── */
+function openSheet(mv, c){
+  if (mv.ladder){ toast('Las flexiones van por peldaños → mira el teléfono 3'); return; }
+  if (!mv.axes){ toast(`${mv.name}: en la maqueta solo están los 5 primeros`); return; }
+  st.mv = mv; st.c = compose(mv, c ?? {});
+  $('#p1').classList.add('open');
+  renderSheet(true);
+}
+function closeSheet(){ $('#p1').classList.remove('open'); }
+
+function renderSheet(first){
+  const mv = st.mv, c = st.c;
+  $('#sh-mv').textContent = mv.name;
+  const g = $('#gen'); g.textContent = mv.title(c);
+  if (!first){ g.classList.remove('flash'); void g.offsetWidth; g.classList.add('flash'); }
+  const away = !PLACES.home.eq.includes(c.impl);
+  const hist = mv.history[keyOf(c)];
+  $('#gen-sub').innerHTML = `<span class="badge ${hist?'acc':''}">${hist ? 'Ya la has hecho' : 'Nueva para ti'}</span>${away ? '<span class="badge">Solo en gimnasio</span>' : ''}`;
+
+  $('#axes').innerHTML = mv.axes.map((ax) => {
+    const ok = allowed(mv, ax.id, c);
+    const chips = optsOf(ax).map((v) => {
+      const dis = ok && !ok.includes(v);
+      return `<button class="chip ${ax.load?'':'info'} ${c[ax.id]===v?'on':''} ${dis?'dis':''}" data-ax="${ax.id}" data-v="${v}" ${dis?'title="Cambia el implemento"':''}>${labelOf(ax, v)}</button>`;
+    }).join('');
+    return `<div class="axis"><div class="ah"><span class="caps">${ax.label}</span><span class="micro">${ax.load ? '' : 'solo informa'}</span></div><div class="chips">${chips}</div></div>`;
+  }).join('');
+
+  $('#presets').innerHTML = mv.presets.map((p, i) => {
+    const on = Object.entries(p.c).every(([k, v]) => c[k] === v);
+    return `<button class="preset ${on?'on':''}" data-pre="${i}"><b>${p.n}</b><span>${p.s}</span></button>`;
+  }).join('');
+
+  // Referencia: lo que hiciste en esta forma o lo que te toca, traducido.
+  let ref;
+  const f = loadFactor(mv, c);
+  const perHand = c.impl==='db' || c.impl==='kb';
+  if (hist){
+    ref = `<div class="big num">${hist.w}<small>kg</small></div><div class="t"><b>× ${hist.r} reps, ${hist.ago}</b><span class="label">Sigues desde aquí: misma forma, mismo historial.</span></div>`;
+  } else if (f){
+    const w = round(mv.ref.w * f, c.impl==='kb' ? 4 : 2);
+    ref = `<div class="big num">≈${w}<small>kg${perHand?' / mano':''}</small></div><div class="t"><b>Para empezar, ${mv.ref.r}–${mv.ref.r + 2} reps</b><span class="label">Sale de tu ${mv.ref.label} (${mv.ref.w} kg × ${mv.ref.r}). Se ajusta en cuanto la hagas.</span></div>`;
+  } else {
+    ref = `<div class="big num">PC</div><div class="t"><b>Con tu peso corporal</b><span class="label">Se progresa por reps y por la inclinación del cuerpo.</span></div>`;
+  }
+  $('#ref').innerHTML = ref;
+}
+
+function toast(msg){
+  const t = $('#toast'); t.querySelector('span').textContent = msg; t.classList.add('show');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+$('#q').addEventListener('input', (e) => { st.q = e.target.value; renderSearch(); });
+$('#qclr').addEventListener('click', () => { st.q = ''; $('#q').value = ''; renderSearch(); $('#q').focus(); });
+$('#p1').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.pat){ st.pat = b.dataset.pat; renderSearch(); }
+  else if (b.dataset.mv){   // lo escrito (y el nombre propio) ya viene puesto
+    const mv = MOVES.find((m) => m.id === b.dataset.mv), { cfg, preset } = parse(st.q);
+    openSheet(mv, { ...(preset?.mv === mv ? preset.p.c : {}), ...cfg });
+  }
+  else if (b.dataset.direct){ const mv = MOVES.find((m) => m.id === b.dataset.direct); toast(`Añadido: ${mv.title(st.directCfg)}`); }
+  else if (b.dataset.ax === 'impl'){ st.c = fix(st.mv, { ...st.c, impl:b.dataset.v }); renderSheet(); }
+  else if (b.dataset.ax){ const { impl, ...rest } = st.c; st.c = compose(st.mv, { ...rest, [b.dataset.ax]:b.dataset.v }, impl); renderSheet(); }
+  else if (b.dataset.pre != null){ Object.assign(st.c, st.mv.presets[b.dataset.pre].c); fix(st.mv, st.c); renderSheet(); }
+  else if (b.id === 'add'){ const n = st.mv.title(st.c); closeSheet(); toast(`Añadido: ${n}`); }
+});
+$('#veil').addEventListener('click', closeSheet);
+
+/* ════════════════ 2 · WORKOUT ════════════════ */
+const ROW = MOVES[0], OHP = MOVES[1];
+const PLAN = [
+  { mv:ROW, sets:3, reps:[8,10], rpe:8, gym:{ impl:'barbell', pos:'bent', side:'bi' } },
+  { mv:OHP, sets:3, reps:[6,8],  rpe:8, gym:{ impl:'barbell', pos:'stand', side:'bi' } },
+];
+let place = 'gym';
+const wkCfg = PLAN.map((p) => ({ ...p.gym }));
+const ticks = PLAN.map(() => [true, false, false]);
+
+function resolve(p, i){
+  if (place === 'gym') return wkCfg[i];
+  // En casa: la primera forma del movimiento que se puede hacer con lo que hay.
+  const c = wkCfg[i];
+  if (PLACES.home.eq.includes(c.impl)) return c;
+  const prefs = p.mv.id === 'row' ? { impl:'db', pos:'bent', side:'uni' } : { impl:'db', pos:'stand', side:'bi' };
+  return fix(p.mv, { ...p.mv.def, ...prefs });
+}
+function renderWk(){
+  $('#place').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.p === place));
+  $('#place-eq').textContent = PLACES[place].note;
+  $('#wk').innerHTML = PLAN.map((p, i) => {
+    const c = resolve(p, i);
+    const f = loadFactor(p.mv, c);
+    const perHand = c.impl === 'db' || c.impl === 'kb';
+    let w = f ? round(p.mv.ref.w * f, 2) : null;
+    let reps = p.reps, hint = '';
+    const max = PLACES[place].max?.[c.impl];
+    if (place === 'home' && w && max && w > max){
+      // No llegas al peso: se compensa con reps (Epley, la misma fórmula que el 1RM).
+      const e1 = w * (1 + p.reps[1] / 30);
+      const r = Math.min(20, Math.round((e1 / max - 1) * 30));
+      reps = [r - 2, r];
+      hint = `<div class="hint warn">Tu mancuerna más pesada es de <b>${max} kg</b> y aquí tocarían ${w}. Sube a <b>${reps[0]}–${reps[1]} reps</b> para un esfuerzo parecido.</div>`;
+      w = max;
+    } else if (place === 'home' && keyOf(c) !== keyOf(p.gym)){
+      hint = `<div class="hint">Cambiado por lo que hay en Casa. <b>≈${w} kg${perHand ? ' por mano' : ''}</b> equivale a tu ${p.mv.ref.label} de ${p.mv.ref.w} kg.</div>`;
+    }
+    const avail = PLACES[place].eq;
+    const swaps = p.mv.axes[0].opts.filter((o) => avail.includes(o) && p.mv.factor[o] != null).slice(0, 5)
+      .map((o) => `<button class="chip ${c.impl === o ? 'on' : ''}" data-wk="${i}" data-impl="${o}">${IMPL[o]}</button>`).join('');
+    const rows = Array.from({ length:p.sets }, (_, s) => `<div class="set"><span class="i">${s + 1}</span>
+      <span class="field num">${w ?? '—'}<small>kg${perHand ? '/mano' : ''}</small></span><span class="field num">${s === 0 ? reps[1] : reps[0] + '–' + reps[1]}<small>reps</small></span>
+      <button class="tick ${ticks[i][s] ? 'on' : ''}" data-tick="${i}-${s}" aria-label="Serie hecha"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>`).join('');
+    return `<div class="wk-card"><div class="wk-top"><div class="caps">${p.mv.name} · del programa</div><div class="wk-name">${p.mv.title(c)}</div>
+      <div class="wk-pres"><span class="label num">${p.sets} × ${p.reps[0]}–${p.reps[1]} · RPE ${p.rpe}</span></div></div>
+      <div class="swap">${swaps}</div>${hint}<div class="sets">${rows}</div></div>`;
+  }).join('');
+}
+$('#p2').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.p){ place = b.dataset.p; renderWk(); }
+  else if (b.dataset.impl){ const i = +b.dataset.wk; wkCfg[i] = fix(PLAN[i].mv, { ...wkCfg[i], impl:b.dataset.impl }); renderWk(); }
+  else if (b.dataset.tick){ const [i, s] = b.dataset.tick.split('-').map(Number); ticks[i][s] = !ticks[i][s]; renderWk(); }
+});
+
+/* ════════════════ 3 · ESCALERA ════════════════ */
+const LADDER = [
+  { n:'En la pared', p:.2 }, { n:'Inclinadas (manos en banco)', p:.41 }, { n:'De rodillas', p:.49 }, { n:'Suelo', p:.64 },
+  { n:'Pies elevados', p:.70 }, { n:'Pseudo planche', p:.78 }, { n:'Arquero', p:.85 }, { n:'A una mano', p:.95 },
+];
+let cur = 3;
+function renderLadder(){
+  const r = LADDER[cur], nx = LADDER[cur + 1];
+  $('#lad-hero').innerHTML = `<div class="caps">Hoy · ${r.n}</div>
+    <div class="k"><div class="big num">${Math.round(BODY * r.p)}<small> kg</small></div><div class="label" style="padding-bottom:4px">mueves en cada rep<br>(${Math.round(r.p * 100)} % de tus ${BODY} kg)</div></div>
+    ${nx ? `<div class="up"><div class="t">3 × 15 hechas: has llegado al tope. <b>Siguiente: ${nx.n.toLowerCase()}</b>, ≈${Math.round(BODY * nx.p)} kg.</div><button id="go-up">Subir</button></div>`
+         : `<div class="up"><div class="t"><b>Último peldaño.</b> A partir de aquí, lastre.</div></div>`}`;
+  $('#ladder').innerHTML = '<div class="rail-line"></div>' + LADDER.map((s, i) => `<button class="rung ${i < cur ? 'done' : i === cur ? 'cur' : i === cur + 1 ? 'next' : ''}" data-r="${i}">
+      <span class="dot"></span><span class="n">${s.n}</span><span class="bw"><span class="num">${Math.round(s.p * 100)} %</span><i><b style="width:${s.p * 100}%"></b></i></span></button>`).join('');
+}
+$('#p3').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'go-up' && cur < LADDER.length - 1){ cur++; renderLadder(); }
+  else if (b.dataset.r){ cur = +b.dataset.r; renderLadder(); }
+});
+
+/* ════════════════ 4 · PROGRESO ════════════════ */
+const SERIES = [
+  { id:'bb', s:'Barra', n:'Remo con barra', col:'#aae216', pts:[[0,86],[1,88],[3,91],[5,92],[8,96]], best:'80 kg × 8' },
+  { id:'db', s:'Mancuerna · 1 mano', n:'Remo a una mano con mancuerna', col:'#4c85ff', pts:[[2,89],[4,92],[6,94],[9,98]], best:'32 kg × 10 / mano' },
+  { id:'cb', s:'Polea', n:'Remo en polea', col:'#fb923c', pts:[[1,87],[7,95]], best:'70 kg × 12' },
+];
+const shown = new Set(SERIES.map((s) => s.id));
+function renderProg(){
+  const W = 330, H = 180, L = 30, B = 22, T = 10, R = 8;
+  const ys = [84, 100];
+  const X = (w) => L + (w / 9) * (W - L - R), Y = (v) => T + (1 - (v - ys[0]) / (ys[1] - ys[0])) * (H - T - B);
+  let svg = '';
+  for (const v of [85, 90, 95, 100]) svg += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#2c2c2c"/><text x="${L - 6}" y="${Y(v) + 4}" fill="#949494" font-size="10" font-family="Inter" text-anchor="end">${v}</text>`;
+  for (const w of [0, 3, 6, 9]) svg += `<text x="${X(w)}" y="${H - 6}" fill="#949494" font-size="10" font-family="Inter" text-anchor="middle">S${w + 1}</text>`;
+  const all = SERIES.filter((s) => shown.has(s.id)).flatMap((s) => s.pts.map((p) => ({ ...s, w:p[0], v:p[1] }))).sort((a, b) => a.w - b.w);
+  if (all.length > 1) svg += `<polyline fill="none" stroke="#e6e6e6" stroke-opacity=".55" stroke-width="2" stroke-linejoin="round" points="${all.map((p) => `${X(p.w)},${Y(p.v)}`).join(' ')}"/>`;
+  for (const p of all) svg += `<circle cx="${X(p.w)}" cy="${Y(p.v)}" r="5" fill="${p.col}" stroke="#1f1f1f" stroke-width="2"/>`;
+  $('#svg').innerHTML = svg;
+  $('#legend').innerHTML = SERIES.map((s) => `<button class="lg ${shown.has(s.id) ? '' : 'off'}" data-s="${s.id}"><i style="background:${s.col}"></i>${s.s}</button>`).join('');
+  $('#forms').innerHTML = SERIES.map((s) => `<div class="fr"><i style="background:${s.col}"></i><span class="t">${s.n}</span><span class="v num">${s.best}<small>récord de la forma</small></span></div>`).join('');
+  const last = all.at(-1), first = all[0];
+  $('#k1').innerHTML = last ? `${last.v}<small> kg</small>` : '—';
+  $('#k2').innerHTML = last && first ? `+${last.v - first.v}<small> kg</small>` : '—';
+}
+$('#p4').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-s]'); if (!b) return;
+  if (shown.has(b.dataset.s) && shown.size > 1) shown.delete(b.dataset.s); else shown.add(b.dataset.s);
+  renderProg();
+});
+
+renderSearch(); renderWk(); renderLadder(); renderProg();
+</script>
+</body>
+</html>
