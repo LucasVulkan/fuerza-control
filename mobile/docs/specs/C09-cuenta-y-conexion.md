@@ -212,7 +212,7 @@ de una en una). Eso es lo de las casillas.
 **Probar C09-01**
 
 - [x] Ejecutar `schema.sql` en Supabase sin errores, y luego `audit.sql`: sale vacío.
-- [ ] Ejecutar `schema.sql` una segunda vez: tampoco da errores.
+- [x] Ejecutar `schema.sql` una segunda vez: tampoco da errores.
 
 **Probar C09-02**
 
