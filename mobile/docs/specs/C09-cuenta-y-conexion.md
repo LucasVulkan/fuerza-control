@@ -218,7 +218,7 @@ de una en una). Eso es lo de las casillas.
 
 - [ ] Móvil con la versión anterior, entrenador con código y conectado como
   cliente de otro: tras instalar la nueva, siguen funcionando los dos lados sin
-  volver a entrar (el cliente sube una sesión y le llega al entrenador).
+  volver a entrar (el cliente sube una sesión y le llega al entrenador). — ❌ 2026-10-15: con Google, Mi cuenta pidió volver a entrar (la sesión vieja no pasó a la nueva). Volver a entrar funcionó; aceptado como coste de actualizar una vez, no se toca.
 
 **Probar C09-03**
 
@@ -235,6 +235,8 @@ de una en una). Eso es lo de las casillas.
 - [ ] Borrar un cliente conectado en modo avión → quitar el modo avión → tirar
   para refrescar: no vuelve a aparecer, y en el móvil del cliente sale
   «DESCONECTADO».
+
+- [ ] Con la sesión de Google perdida: Clientes enseña «Reconecta tu cuenta de entrenador» encima de la lista y la nube tachada con punto naranja; entrar desde ese botón quita el aviso y la nube vuelve con punto verde. En Mi cuenta el aviso va dentro de la tarjeta de la cuenta.
 
 **Probar C09-04**
 
