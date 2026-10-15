@@ -11,7 +11,7 @@
 > Fase C09-05 · hecho · Banco de pruebas con varios móviles y auditoría del servidor · §5
 >
 > Estado: **implementado y en verde** (38 escenarios de simulación + 1940 tests).
-> **Falta desplegar `supabase/schema.sql`** (rompe la app anterior: van juntos) y
+> **`supabase/schema.sql` desplegado el 15-oct-2026** (`audit.sql` limpio). Falta
 > la prueba en dispositivo. Sustituye a C01 en lo que se solapa; C01 sigue
 > valiendo como historia de por qué el modelo de huecos es el que es.
 
@@ -211,7 +211,7 @@ de una en una). Eso es lo de las casillas.
 
 **Probar C09-01**
 
-- [ ] Ejecutar `schema.sql` en Supabase sin errores, y luego `audit.sql`: sale vacío.
+- [x] Ejecutar `schema.sql` en Supabase sin errores, y luego `audit.sql`: sale vacío.
 - [ ] Ejecutar `schema.sql` una segunda vez: tampoco da errores.
 
 **Probar C09-02**
