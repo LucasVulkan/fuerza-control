@@ -272,14 +272,15 @@ Cliente con app y `getNewSessionsCount(id) > 0`:
 Los sin revisar **no son un aviso**: no cambian la 2.ª línea ni cuentan en
 «Necesitan algo» (§5). Sí suben en el orden (§6.2).
 
-### 4.6 Pausados y esperando código
+### 4.6 Pausados e inactivos
 
-Los clientes `paused` y los invitados (`linkOf === 'invited'`) salen de la
-lista y se pliegan en **una fila** al final, en su propio bloque:
-`En pausa o esperando código · Sara, Irene ›`. Al tocarla se despliega en su
-sitio (`AnimatedHeight`) con sus filas en gris, sin cuadraditos. Los
-`inactive` siguen como hoy: ocultos por el filtro de estado de la hoja de
-filtros.
+Los clientes `paused` e `inactive` salen de la lista y se pliegan en **una
+fila** al final, en su propio bloque: `En pausa o inactivos · Sara, Irene ›`.
+Al tocarla se despliega en su sitio (`AnimatedHeight`) con sus filas en gris,
+sin cuadraditos. Los `inactive` solo están si el filtro de estado los enseña.
+*(15-oct-2026: los invitados —esperando código— ya no se pliegan: van en la
+lista con su reloj. Plegados, el cliente recién creado en el onboarding no se
+veía al entrar en Clientes.)*
 
 ### 4.7 Lo que sale de la fila
 
@@ -522,7 +523,7 @@ JSON), bajo `clients.`:
 | `stageNWeeks` | sem {{n}} de {{total}} | wk {{n}} of {{total}} |
 | `lastWeek` | última semana | last week |
 | `lastSeenDays` | hace {{count}} d | {{count}}d ago |
-| `folded` | En pausa o esperando código | Paused or awaiting code |
+| `folded` | En pausa o inactivos | Paused or inactive |
 | `listHeader` | Clientes | Clients |
 | `sort.title` | Ordenar | Sort |
 | `sort.activity` / `sort.activitySub` | Actividad / El que entrenó más recientemente, primero | Activity / Most recently trained first |

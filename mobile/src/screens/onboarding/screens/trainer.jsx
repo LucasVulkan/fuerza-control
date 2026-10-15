@@ -24,7 +24,6 @@ import { useTheme, useThemedStyles } from '../../../useTheme';
 import { Text } from '../../../components/ui/Text';
 import { Rise } from '../../../components/ui/Rise';
 import NameField from '../../../components/ui/NameField';
-import NumberChips from '../../../components/ui/NumberChips';
 import ClientRow from '../../../components/ClientRow';
 import TrainerSyncModal from '../../../components/TrainerSyncModal';
 import { newClientRow } from '../../../components/onboarding/learn/newClientRow';
@@ -33,7 +32,7 @@ import useTrainerAccount from '../../../hooks/useTrainerAccount';
 import { APPLE_AUTH_AVAILABLE } from '../../../services/appleAuth';
 import { inviteUrl } from '../../../config/web';
 import {
-  FlowBody, FlowTitle, FlowOption, FlowFooter, FlowNote, shareAndContinue,
+  FlowBody, FlowTitle, FlowOption, FlowTile, FlowFooter, FlowNote, shareAndContinue,
 } from '../../../components/onboarding/flow';
 import { afterProgram, learnStart } from '../../../utils/onboardingFlow';
 import { startBuilder } from '../startBuilder';
@@ -89,7 +88,8 @@ function MyClientRow({ program }) {
 
 // ── 1 · ¿Con cuántos clientes trabajas? (§7.1) ────────────────────────────────
 
-const BANDS = ['start', '1-5', '6-15', '16-30', '30+'];
+// Dos filas de dos baldosas grandes, como las de unidades.
+const BANDS = [['1-5', '6-15'], ['16-30', '30+']];
 
 function Clients({ goTo }) {
   const st = useThemedStyles(makeStyles);
@@ -97,10 +97,8 @@ function Clients({ goTo }) {
   const band       = useStore((s) => answersOf(s).clientsBand);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const setProfile = useStore((s) => s.setProfile);
-  const labels = BANDS.map((b) => (b === 'start' ? t(`${K}.clients.start`) : b === '30+' ? '+30' : b));
 
-  function pick(label) {
-    const b = BANDS[labels.indexOf(label)];
+  function pick(b) {
     flowAnswer({ clientsBand: b });
     setProfile({ trainerClientsBand: b });
   }
@@ -108,11 +106,22 @@ function Clients({ goTo }) {
   return (
     <FlowBody footer={<FlowFooter primary={{ label: t('onboardingFlow.common.next'), onPress: () => goTo('t_groups'), disabled: !band }} />}>
       <FlowTitle text={t(`${K}.clients.title`)} sub={t(`${K}.clients.sub`)} />
-      <Rise index={2}><NumberChips values={labels} value={band ? labels[BANDS.indexOf(band)] : null} onChange={pick} /></Rise>
-      {/* Si lleva clientes, lo que trae el plan gratis: solo informa, sin compra (§13). */}
-      {!!band && band !== 'start' && (
-        <Rise index={3}><FlowNote tone="acc" text={t(`${K}.clients.free`)} style={st.gapTop} /></Rise>
-      )}
+      {BANDS.map((row, r) => (
+        <View key={r} style={st.tiles}>
+          {row.map((b, i) => (
+            <FlowTile
+              key={b}
+              index={2 + r * 2 + i}
+              big={b === '30+' ? '+30' : b}
+              label={t(`${K}.clients.unit`)}
+              selected={band === b}
+              onPress={() => pick(b)}
+            />
+          ))}
+        </View>
+      ))}
+      {/* Lo que trae el plan gratis: solo informa, sin compra (§13). */}
+      {!!band && <Rise index={6}><FlowNote tone="acc" text={t(`${K}.clients.free`)} style={st.gapTop} /></Rise>}
     </FlowBody>
   );
 }
@@ -649,6 +658,7 @@ export default {
 
 const makeStyles = (th) => StyleSheet.create({
   opts:    { gap: spacing.md },
+  tiles:   { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   pair:    { flexDirection: 'row', gap: spacing.sm2, marginTop: spacing.md },
   half:    { flex: 1 },
   gapTop:  { marginTop: spacing.lg },

@@ -254,8 +254,9 @@ defecto); `trainer`, `false`. Se cambia después en el menú, como hoy.
 
 ## 7. Camino del entrenador
 
-1. **¿Con cuántos clientes trabajas?** — Empiezo · 1-5 · 6-15 · 16-30 · +30.
-   Dato (`profile.trainerClientsBand`). Salvo «Empiezo», la línea del plan gratis
+1. **¿Con cuántos clientes trabajas?** — 1-5 · 6-15 · 16-30 · +30, en baldosas
+   grandes de dos en dos (15-oct: los chips se veían pequeños y «Empiezo» sobraba).
+   Dato (`profile.trainerClientsBand`). Al elegir, la línea del plan gratis
    (§13). Botón «Siguiente».
 2. **¿Das clases en grupo?** — Sí, habitualmente · A veces · No, solo individual.
    Dato (`profile.trainerGroups`); no cambia nada (C06-01 aparcada). Avanza sola.
@@ -281,7 +282,7 @@ defecto); `trainer`, `false`. Se cambia después en el menú, como hoy.
    hasta copiarlo o enviárselo**. Salida «Prefiero Google o Apple» → vuelve al 4.
 6. **Ahora, el programa de {cliente}** — «Es suyo: lo empiezas aquí y lo sigues
    editando desde su ficha». Dos opciones y una salida:
-   - **Crear su programa** (~3 min) → constructor en modo entrenador (§10). El
+   - **Crear su programa** (~1 min) → constructor en modo entrenador (§10). El
      programa **es del cliente** (`createProgramForClient`), no una plantilla: no
      hay paso de asignar, y no gasta la única plantilla gratis. Al terminar se
      envía (§10.1 paso 5).
@@ -1181,7 +1182,8 @@ Hace, en `screens/trainer.jsx`, §7 entero:
 
 **Probar O03-08**
 
-- [ ] Datos: «1-5» enseña la línea del plan gratis; «Empiezo» no.
+- [ ] Datos: cuatro baldosas grandes (1-5 · 6-15 · 16-30 · +30, sin «Empiezo»);
+  al elegir una sale la línea del plan gratis.
 - [ ] Cliente «Ana» con la app → «Tu cuenta de entrenador» sin «Saltar»; en
   Android no sale Apple.
 - [ ] Con código personal: «Ya lo he guardado» gris hasta pulsar Copiar o
@@ -1212,6 +1214,9 @@ Hace, en `screens/trainer.jsx`, §7 entero:
   envía; con uno y cliente con app, sí. Sin red, sale igual y queda sin enviar.
 - [ ] Aprende (de O03-06): «Tus clientes, de un vistazo» enseña arriba su
   cliente real (con reloj si es con app) y tres de ejemplo.
+- [ ] Al acabar, en Clientes el cliente con app sale en la lista con su reloj,
+  no plegado (el plegable es solo para «En pausa o inactivos», C08 §4.6).
+- [ ] Ningún texto del recorrido dice «meter» el código.
 - [ ] Aprende (de O03-06), entrenador que no entrena: «Apunta tú sus sesiones» solo sale si su
   cliente es «le apuntas tú».
 

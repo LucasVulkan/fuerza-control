@@ -1951,7 +1951,7 @@
     "stageNWeeks": "sem {{n}} de {{total}}",
     "lastWeek": "última semana",
     "lastSeenDays": "hace {{count}} d",
-    "folded": "En pausa o esperando código",
+    "folded": "En pausa o inactivos",
     "sendAllRow": "Cambios sin enviar · {{count}} clientes",
     "listHeader": "Clientes",
     "sort": {
@@ -2731,7 +2731,7 @@
         "sub": "Si tu entrenador usa Forma Fit, introduce el código que te ha pasado.",
         "subInvite": "Viene de tu invitación. Comprueba que es este y sigue.",
         "continue": "Continuar",
-        "later": "Lo meto más tarde",
+        "later": "Lo introduzco más tarde",
         "askLink": "¿No te lo ha pasado? Pídeselo",
         "noApp": "¿Tu entrenador no usa Forma Fit?",
         "accountLink": "¿Ya estabas conectado? Entra con tu cuenta"
@@ -2760,7 +2760,7 @@
         "sub": "Lo saca en Clientes → tu ficha → Conectar. Mándale esto:",
         "message": "¡Hola! Ya tengo Forma Fit. ¿Me pasas mi código de cliente para conectarme?",
         "send": "Enviar mensaje",
-        "later": "Lo meto más tarde"
+        "later": "Lo introduzco más tarde"
       },
       "noapp": {
         "invite": "Invítale a la app",
@@ -2912,7 +2912,7 @@
       "clients": {
         "title": "¿Con cuántos *clientes* trabajas?",
         "sub": "Más o menos. Nos ayuda a mejorar la app.",
-        "start": "Empiezo",
+        "unit": "clientes",
         "free": "Empiezas gratis con *3 clientes (1 con la app) y 1 plantilla*. Cuando necesites más, Pro quita el límite."
       },
       "groups": {
@@ -2960,11 +2960,11 @@
         "sub": "Es suyo: lo empiezas aquí y lo sigues editando desde su ficha.",
         "create": "Crear su programa",
         "createDesc": "Sesiones, un ejercicio y su volumen. Lo demás, cuando quieras.",
-        "createTag": "~3 min",
+        "createTag": "~1 min",
         "catalog": "Partir de uno del catálogo",
         "catalogDesc": "Full Body, Upper/Lower, PPL… Se le copia y lo ajustas en su ficha.",
         "later": "Lo hago después",
-        "inviteAfter": "La invitación a {{name}} va después de darle programa: es lo primero que verá al meter el código."
+        "inviteAfter": "La invitación a {{name}} va después de darle programa: es lo primero que verá al usar su código."
       },
       "catalog": {
         "title": "Elige uno para *{{name}}*",
@@ -2973,7 +2973,7 @@
       "assign": {
         "title": "Asígnaselo a *{{name}}*",
         "titleDone": "Asignado a *{{name}}*",
-        "subApp": "Se le copia y se le envía: lo tendrá en cuanto meta su código. Lo ajustas en su ficha.",
+        "subApp": "Se le copia y se le envía: lo tendrá en cuanto use su código. Lo ajustas en su ficha.",
         "subSelf": "Se le copia: lo ajustas en su ficha sin tocar el del catálogo.",
         "fromCatalog": "Del catálogo",
         "clientsLabel": "Así lo verás en Clientes",
@@ -2983,11 +2983,11 @@
       },
       "invite": {
         "title": "Invita a *{{name}}*",
-        "sub": "Cuando meta su código, recibirá «{{program}}» en Entreno y te llegarán sus entrenos.",
+        "sub": "Cuando use su código, recibirá «{{program}}» en Entreno y te llegarán sus entrenos.",
         "codeLabel": "Su código de cliente",
         "copy": "Copiar código",
         "copied": "✓ Código copiado",
-        "clientsLabel": "En Clientes, hasta que lo meta",
+        "clientsLabel": "En Clientes, hasta que introduzca el código",
         "send": "Enviar invitación",
         "later": "Lo envío después"
       },
@@ -3011,7 +3011,7 @@
         "catalog": "«{{program}}» asignado",
         "catalogSent": "«{{program}}» asignado y enviado",
         "invited": "Invitación enviada a {{name}}",
-        "wait": "Esperando a que {{name}} meta su código",
+        "wait": "Esperando a que {{name}} use su código",
         "inviteLater": "Enviar la invitación a {{name}} · Clientes → {{name}}"
       }
     },

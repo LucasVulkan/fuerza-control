@@ -1889,19 +1889,20 @@ export default function ClientsScreen() {
 
   // Los congelados, al final y bajo su propio título (M01 §4.5): no se mezclan
   // con los que llevas. Mismo orden dentro de cada grupo.
-  // La lista va en bloques agrupados (C08 §4.1): los que llevas; una fila que
-  // pliega a los que están en pausa o esperando código (§4.6); y los congelados
-  // al final y bajo su propio título (M01 §4.5). Mismo orden dentro de cada uno.
+  // La lista va en bloques agrupados (C08 §4.1): los que llevas (también los que
+  // esperan código: si no, el recién creado no se ve, §4.6); una fila que pliega
+  // a los que están en pausa o inactivos; y los congelados al final y bajo su
+  // propio título (M01 §4.5). Mismo orden dentro de cada uno.
   const [foldOpen, setFoldOpen] = useState(false);
   const parts = useMemo(() => {
     const main = [], folded = [], cold = [];
     clientList.forEach((c) => {
       if (isFrozen(c.id)) cold.push(c);
-      else if ((c.status ?? 'active') === 'paused' || linkOf(c) === 'invited') folded.push(c);
+      else if ((c.status ?? 'active') !== 'active') folded.push(c);
       else main.push(c);
     });
     return { main, folded, cold };
-  }, [clientList, isFrozen, linkOf]);
+  }, [clientList, isFrozen]);
 
   // Las tres tarjetas cuentan a los de la lista principal (§5.1): ni plegados
   // ni congelados.

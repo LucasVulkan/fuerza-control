@@ -1951,7 +1951,7 @@
     "stageNWeeks": "wk {{n}} of {{total}}",
     "lastWeek": "last week",
     "lastSeenDays": "{{count}}d ago",
-    "folded": "Paused or awaiting code",
+    "folded": "Paused or inactive",
     "sendAllRow": "Unsent changes · {{count}} clients",
     "listHeader": "Clients",
     "sort": {
@@ -2912,7 +2912,7 @@
       "clients": {
         "title": "How many *clients* do you train?",
         "sub": "Roughly. It helps us improve the app.",
-        "start": "Starting",
+        "unit": "clients",
         "free": "Start free with *3 clients (1 on the app) and 1 template*. Pro removes the limit when you need more."
       },
       "groups": {
@@ -2960,7 +2960,7 @@
         "sub": "It's theirs: start it here and keep editing it from their profile.",
         "create": "Create their program",
         "createDesc": "Sessions, one exercise and its volume. The rest whenever you like.",
-        "createTag": "~3 min",
+        "createTag": "~1 min",
         "catalog": "Start from the catalog",
         "catalogDesc": "Full Body, Upper/Lower, PPL… It's copied to them; tweak it in their profile.",
         "later": "I'll do it later",
