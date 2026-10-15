@@ -245,7 +245,7 @@ export default function ClientSessions({ client, program, days, log, fold }) {
 
   return (
     <View style={styles.wrap}>
-      <SectionHeader label={t('home.sessions').toUpperCase()} count={plan.subtitle} />
+      <SectionHeader label={t('clients.sessionsTitle').toUpperCase()} count={plan.subtitle} />
       <View style={styles.group}>
         {plan.rows.map((row) => {
           const d = byId.get(row.templateId);

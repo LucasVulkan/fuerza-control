@@ -46,6 +46,7 @@ import StepField from '../components/ui/StepField';
 import NameField from '../components/ui/NameField';
 import NumberChips from '../components/ui/NumberChips';
 import TabBar from '../components/ui/TabBar';
+import NavScrim from '../components/ui/NavScrim';
 import ProgressPanel from '../components/stats/ProgressPanel';
 import SessionCard from '../components/SessionCard';
 import { spacing, textStyles, borders, withOpacity, sheetRowBase, getCardRadii, lh } from '../theme';
@@ -2416,6 +2417,15 @@ export default function ClientsScreen() {
         <View style={styles.detailTabs}>
           <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
         </View>
+        {/* Velo bajo las pestañas: al desplazar, las tarjetas se funden en vez
+            de tocar el control. Es una caja de alto 0 justo DESPUÉS de las
+            pestañas y el velo cuelga de ella hacia abajo, sobre el contenido
+            (con `top: '100%'` dentro de las pestañas acababa encima de ellas).
+            Mide el margen de arriba del contenido de cada pestaña, así que en
+            reposo no tapa nada. */}
+        <View pointerEvents="none" style={styles.detailTabsScrim}>
+          <NavScrim edge="top" fade={spacing.lg} />
+        </View>
 
         {/* ── Tab: Programas ── */}
         {activeTab === 'programs' && (() => {
@@ -4139,6 +4149,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
   },
+  detailTabsScrim: { height: 0, zIndex: 1 },
 
   // ── Tab content ──
   histFilterRow: {
