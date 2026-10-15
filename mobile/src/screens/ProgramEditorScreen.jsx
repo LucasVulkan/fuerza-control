@@ -94,7 +94,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const renameProgram              = useStore((s) => s.renameProgram);
   const setProgramSessionOrder     = useStore((s) => s.setProgramSessionOrder);
   const removeStageFromProgram = useStore((s) => s.removeStageFromProgram);
-  const duplicateStageInProgram = useStore((s) => s.duplicateStageInProgram);
+  const addStageToProgram     = useStore((s) => s.addStageToProgram);
   const updateStage           = useStore((s) => s.updateStage);
   const setCurrentStage       = useStore((s) => s.setCurrentStage);
   const reorderSessionsInStage = useStore((s) => s.reorderSessionsInStage);
@@ -719,17 +719,26 @@ export default function ProgramEditorScreen({ navigation }) {
               <SheetRow
                 icon={ROW_ICON.duplicate}
                 label={t('editor.stageDuplicateBtn')}
+                sub={t('editor.stageDuplicateSub')}
                 onPress={() => {
                   commitStageName(); // la copia hereda un nombre a medio escribir
-                  const newIdx = duplicateStageInProgram(editingId, selectedStageIdx);
-                  if (newIdx != null) {
-                    dragStage.set(-1);
-                    slide(1);
-                    holdPage();
-                    page.set(newIdx);
-                    setSelectedStageIdx(newIdx);
-                    showToast(t('editor.toastStageDuplicated'), 2200, 'success');
-                  }
+                  // Al final, como en el planificador, nunca detrás de la
+                  // original: el progreso del cliente guarda el ÍNDICE de su
+                  // etapa, y una copia en medio le movería de etapa sin avisar.
+                  const newIdx = stages.length;
+                  addStageToProgram(editingId, {
+                    sourceStageIdx: selectedStageIdx,
+                    name:           `${stageName.trim() || selectedStage.name} ${t('editor.copySuffix')}`,
+                    // Una etapa sin límite no se copia sin límite: misma regla
+                    // que el planificador.
+                    durationWeeks:  selectedStage.durationWeeks ?? 4,
+                  });
+                  dragStage.set(-1);
+                  slide(1);
+                  holdPage();
+                  page.set(newIdx);
+                  setSelectedStageIdx(newIdx);
+                  showToast(t('editor.toastStageDuplicated'), 2200, 'success');
                 }}
               />
               {!single && (

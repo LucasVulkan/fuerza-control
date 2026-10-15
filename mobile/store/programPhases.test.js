@@ -145,8 +145,8 @@ describe('fases de plantilla → etapas', () => {
   it('los grupos de vinculación no cruzan de fase', async () => {
     // Sin remapear, un ejercicio vinculado en la etapa base seguiria en el mismo
     // grupo en la fase 2: editar la intensificación editaría la acumulación, que
-    // es justo lo que las fases existen para separar. `duplicateStageInProgram`
-    // ya lo hacía; `addStageToProgram`, que es quien materializa las fases, no.
+    // es justo lo que las fases existen para separar. `addStageToProgram`, que es
+    // quien materializa las fases (y duplica), no remapeaba.
     const { program } = await generate();
     const { sessionTemplates } = useStore.getState();
 

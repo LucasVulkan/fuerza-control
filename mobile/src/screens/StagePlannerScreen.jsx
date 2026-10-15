@@ -487,7 +487,7 @@ export default function StagePlannerScreen({ navigation, route }) {
       // blob de progreso, y ahí nadie lo reajusta.
       name:           `${src.name} ${t('editor.copySuffix')}`,
       // `?? 4` porque una etapa abierta no se copia como abierta — misma regla
-      // que `duplicateStageInProgram`.
+      // que «Duplicar» en el editor.
       durationWeeks:  src.durationWeeks ?? 4,
     });
     setOpenStageId(null);

@@ -3,27 +3,26 @@
 > Tema: programas
 > En corto: En Editar programa, las etapas dejan de ser un segmentado con una segunda pulsación escondida y pasan a ser una fila de tarjetas («Etapa 2 · Acumulación · sem 5-8») que se desplaza con el dedo; debajo, la cabecera de la etapa elegida y sus sesiones sueltas, como en el editor de sesión, que siguen deslizándose, reordenándose y abriéndose como hoy.
 > Inicio: 2026-10-09
+> Fin: 2026-10-15
 > Fase P14-01 · terminado · Diseño del editor en cinco rondas con el usuario · §8
 > Fase P14-02 · terminado · Cifras de una etapa: funciones puras y tests · §5.1
 > Fase P14-03 · hecho · Tarjetas de etapa y rótulo · §5.2
 > Fase P14-04 · hecho · Cabecera de la etapa y sus sesiones · §5.3
-> Fase P14-05 · pendiente · Panel de cifras y grupos musculares · §5.4
+> Fase P14-05 · aparcado · Panel de cifras y grupos musculares · §5.4
 > Fase P14-06 · hecho · Hoja «Ajustes de etapa» y «nueva etapa» · §5.5
 > Fase P14-07 · hecho · Programa de una sola etapa · §5.6
-> Fase P14-08 · pendiente · Que asome la etapa de al lado al deslizar · §5.7
+> Fase P14-08 · aparcado · Que asome la etapa de al lado al deslizar · §5.7
 >
-> Estado: **P14-03, 04, 06 y 07 implementadas, por probar** (03-04 el
-> 13-oct, 06-07 el 15-oct; todo en `main` salvo 06-07, en `feat/onboarding-caminos`).
-> Falta P14-05 (panel de cifras); P14-08 sigue pendiente. El 15-oct el usuario
-> rehízo P14-07 (§5.6: sin recuadro «Añadir etapas», se crea etapa desde «Ver
-> plan» o el engranaje) y pidió la hoja de ajustes nueva (§5.5). Diseño: la
-> maqueta que manda es
-> [`docs/mockups/stages-editor-5.html`](../mockups/stages-editor-5.html) con las
-> sesiones **sueltas**, y las fichas de
-> [`stages-editor-6.html`](../mockups/stages-editor-6.html) F. Las anteriores
-> quedan como historia (§8). El creador de etapas y el planificador van aparte,
-> en [P15-creador-etapas.md](P15-creador-etapas.md); hasta que P15 exista, «nueva
-> etapa» va al planificador de hoy (§5.5).
+> Estado: **cerrada; P14-03, 04, 06 y 07 por probar** (03-04 el 13-oct, 06-07
+> el 15-oct). **P14-05** (panel de cifras y barra de grupos) y **P14-08** (que
+> asome la etapa de al lado) quedan **aparcadas** (15-oct, decisión del usuario).
+> El 15-oct el usuario rehízo P14-07 (§5.6) y pidió una hoja de ajustes nueva
+> (§5.5); después decidió que la hoja, el planificador y el creador se rediseñan
+> juntos en [P15](P15-creador-etapas.md): la hoja de hoy es provisional. Diseño
+> del editor: [`stages-editor-5.html`](../mockups/stages-editor-5.html) con las
+> sesiones **sueltas** y las fichas de
+> [`stages-editor-6.html`](../mockups/stages-editor-6.html) F; las anteriores
+> quedan como historia (§8).
 
 ---
 
@@ -49,10 +48,18 @@ mismo programa** (tramos de semanas, el mesociclo), no como programas distintos.
 ## 2. Lo que no cambia
 
 - **Nada del store.** Las acciones de hoy alcanzan: `updateStage`,
-  `setCurrentStage`, `removeStageFromProgram`, `duplicateStageInProgram`,
+  `setCurrentStage`, `removeStageFromProgram`, `addStageToProgram`,
   `reorderSessionsInStage`, `duplicateSessionInProgram`,
-  `removeSessionFromProgram`, `addSessionToProgram`.
-- **Todo se añade al final**, nunca en medio (P06 §14.2.2).
+  `removeSessionFromProgram`, `addSessionToProgram`. (`duplicateStageInProgram`
+  se borró el 15-oct: ver la línea siguiente.)
+- **Todo se añade al final**, nunca en medio (P06 §14.2.2). No es solo una regla
+  de diseño: el progreso del atleta guarda el **índice** de su etapa
+  (`currentStageIndex`, en su móvil y en el blob que ve el entrenador) y al
+  importar una actualización lo conserva (`mergeProgressOnImport`). Una etapa
+  metida por delante de la suya le movería de etapa sin avisar. Duplicar en el
+  editor la metía justo detrás de la original y lo hacía; desde el 15-oct
+  duplica al final con `addStageToProgram`, como ya hacía el planificador.
+  Insertar en medio exigiría guardar el progreso por id de etapa (P15).
 - Reglas del candado de [C03-stage-locks.md](C03-stage-locks.md) y `canLockStage`
   tal cual están en `ProgramEditorScreen`.
 - La etapa en curso REAL sale del blob del cliente, nunca de la copia del programa
@@ -153,23 +160,32 @@ con el resto de la app. Ahora hablan como el onboarding y el paywall (maqueta
 
 ### 3.4 La cabecera de la etapa
 
-Tarjeta `surface`, radio 18, relleno 16/14:
+Como está en el código (15-oct; la maqueta v5 la dibujaba en 900/20 y con radio
+18, y se cambió al implementar para que hable como la ficha de la etapa en curso
+del tab Programa, U14 §5.3):
 
-- **Ceja** (caps 10): el estado — «EN CURSO · SEMANA 2 DE 4» en `accent` (de
-  `stageWeekLabel`), «HECHA», «POR VENIR» en `muted`, «DESCARGA» en `blue` si es de
-  descarga y no ha llegado — y, si está bloqueada, «· 🔒 BLOQUEADA» en rojo.
-- **Título**: el número en `accent` (en `blue` si es descarga), 7 dp, y el nombre
-  (900/20, una línea).
-- **Meta**: «4 SEMANAS · 3 SESIONES» (o «SIN LÍMITE DE SEMANAS · 3 SESIONES»), en
-  `caps` `mutedLight`, como la meta de la sesión en Inicio (decisión del 12-oct).
-- A la derecha, dos botones de 36 dp (`surface2`, radio 11): **cifras** (tres
-  barras horizontales, §5.4) y **ajustes** (engranaje, §5.5).
+- **Tarjeta** `surface`, radio `radius.md`, relleno 16 arriba y 14 a los lados y
+  abajo. A la izquierda el texto (zona del gesto, §4.2); a la derecha, a `md`, el
+  botón de **ajustes**: 36 × 36, `surface2`, radio 11, engranaje `mutedLight`. El de
+  cifras era de P14-05, aparcada.
+- **Ceja** (`caps`): el estado — «EN CURSO · SEMANA 2 DE 4» en `accent` (de
+  `stageWeekLabel`: «SEMANA 3» sin límite, «SIN EMPEZAR» recién activada, «(+1)» si
+  se alargó), «HECHA» en `muted`, «DESCARGA» en `blue` si es de descarga y no ha
+  llegado, «POR VENIR» en `muted`. Si está bloqueada, detrás: «·» en `muted`,
+  candado sólido de 10 en `redText` y «BLOQUEADA» en `redText`.
+- **Título**, a `xs2` de la ceja, número y nombre apoyados en el mismo suelo y
+  separados `sm`: el número en `heroGlyph` (Barlow cursiva, alto de línea 39, 2 dp
+  de aire a la derecha) en `accent` (`blue` si es descarga); el nombre en `heroName`
+  (alto de línea 34), **en mayúsculas**, `text`, una línea.
+- **Meta**, a `xs`: `body` `mutedLight`, «4 semanas · 3 sesiones por semana» («Sin
+  límite · …» si no tiene).
+- Con **una sola etapa** (§5.6): sin número y con el nombre del programa.
 
-Debajo, a 20 dp, el rótulo **«SESIONES DE ESTA ETAPA»** (caps `mutedLight`, como
-`secTitle`) y las sesiones (§4), con «+ Añadir sesión a **Acumulación**» como hoy
-(texto `accent50`, el nombre en `accent`, sin caja). Después, **más aire** (unos
-28 dp) antes de «QUÉ SESIÓN TOCA», para que cabecera y sesiones se lean como un
-grupo.
+Debajo, a `xl`, el rótulo **«SESIONES DE ESTA ETAPA»** (`caps` `mutedLight`, `sm2`
+hasta la primera sesión; «SESIONES» con una sola etapa) y las sesiones (§4), con
+«+ Añadir sesión a **Acumulación**» (texto `accent50`, el nombre en `accent`, sin
+caja, relleno vertical `md`). Después, «QUÉ SESIÓN TOCA» con su `paddingTop` y el
+`gap` de la página: más aire que dentro del grupo.
 
 **Cambiar de etapa** —tocando una ficha o **deslizando la cabecera** a los
 lados— hace que la página entera (cabecera, rótulo y sesiones) salga y entre
@@ -341,6 +357,14 @@ Componente nuevo `src/components/ui/StageCards.jsx`:
 
 ### 5.4 P14-05 — Panel de cifras y grupos musculares
 
+> **Aparcada** (15-oct, decisión del usuario), con todo lo del panel. Si se
+> retoma: la barra de grupos con comparación ya existe como `VolumeBar` en
+> `ProgramDetailScreen` (raya de la otra etapa, diferencia y grupos que caen a 0):
+> se saca de ahí, no de `LoadTab`. «Su base» (`stageBaseIdx`, la etapa de la que
+> salió) no es la «base» del visualizador (la etapa 1): textos distintos. Si el
+> panel está abierto se guarda en la pantalla, porque la página se remonta con
+> cada etapa (`key`). Y «Derivada de» sale de la hoja de ajustes al panel.
+
 El botón de cifras despliega, dentro de la cabecera y bajo un filete, un panel
 (se cierra con el mismo botón; queda abierto al cambiar de etapa):
 
@@ -394,8 +418,10 @@ sin título.
   - **ACCESO** (entrenador, programa de un cliente, por delante de la de ahora) —
     «Bloqueada» con interruptor y la pista de siempre.
   - **ETAPAS DEL PROGRAMA** — filas con icono que cierran la hoja: **«Nueva
-    etapa»** (en `accent`, «Se crea a partir de esta»), «Duplicar etapa» y
-    «Eliminar etapa» (roja; no con una sola).
+    etapa»** (en `accent`, «Partiendo de esta, con cambios de series, reps o descarga»),
+    «Duplicar etapa» («Copia exacta, al final del programa») y «Eliminar etapa»
+    (roja; no con una sola). Las dos primeras se distinguen por lo que hacen: una
+    copia tal cual frente a una etapa con cambios. Las dos van al final (§2).
 - **Mientras no exista el creador de P15**, «nueva etapa» (la hoja y el «+» del
   final de las fichas) navega a `StagePlanner` con `{ programId, addFrom: idx }`:
   el planificador entra con la hoja «Añadir etapas» abierta y esa etapa como base
@@ -403,6 +429,8 @@ sin título.
   En el planificador, el hueco del final dice «+ Nueva etapa».
 - **Duplicar se queda en la hoja hasta P15**: el usuario decidió que duplicar será
   «crear con Igual» en el creador, pero sin creador no hay dónde. P15 lo quita.
+  Desde el 15-oct duplica **al final** (`addStageToProgram`, como el planificador)
+  y no detrás de la original, y se selecciona la copia.
 - La hoja **no** se ha sacado a un `StageSettingsSheet` propio: solo la usa el
   editor y depende de su estado (`slide`, `holdPage`, `dragStage`). Se saca cuando
   P15 la necesite en el planificador.
@@ -419,7 +447,8 @@ sin título.
   añadir abierta y esa etapa como base; al aplicar vuelve al editor.
 - [ ] «Ver plan» → «+ Nueva etapa» abre la hoja de añadir; al aplicar se queda en
   el planificador.
-- [ ] Duplicar sigue funcionando.
+- [ ] Duplicar crea la copia al final del programa (no detrás de la original) y la
+  selecciona; con un cliente en una etapa posterior, sigue en la suya.
 
 ### 5.6 P14-07 — Programa de una sola etapa
 
@@ -457,6 +486,8 @@ diseño anterior):
 
 ### 5.7 P14-08 — Que asome la etapa de al lado al deslizar
 
+> **Aparcada** (15-oct, decisión del usuario).
+
 Hoy, al deslizar la cabecera, la página se desplaza con el dedo y cambia de etapa
 al soltar, pero la de al lado no asoma detrás. Que asome sería solo estético, y el
 13-oct (§8, rondas
@@ -485,7 +516,8 @@ reformatear el JSON):
 
 ## 7. Qué no tocar
 
-- El store y sus acciones de etapa/sesión.
+- El store y sus acciones de etapa/sesión (salvo borrar `duplicateStageInProgram`,
+  §2).
 - `StageSelector` (lo sigue usando `ProgramDetailScreen`).
 - `StagePlannerScreen` salvo el parámetro `addFrom` (§5.5) y el import de
   `stageVolume`.

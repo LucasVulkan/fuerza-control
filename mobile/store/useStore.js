@@ -1891,7 +1891,7 @@ export const useStore = create(
         const updatedSessionTemplates = { ...sessionTemplates };
         const allExercises = { ...exerciseLibrary, ...customExercises };
 
-        // Mismos ids de grupo frescos que en `duplicateStageInProgram`: las
+        // Ids de grupo frescos: las
         // copias siguen vinculadas entre sí dentro de la etapa nueva, pero nunca
         // a la de origen. Sin esto, editar un ejercicio de la fase 2 editaría el
         // de la fase 1 — que es justo lo que las fases existen para separar.
@@ -1969,7 +1969,7 @@ export const useStore = create(
 
         const newStages = rungs.map(({ name, durationWeeks, rx }) => {
           // Un mapa de grupos por peldaño: cada etapa queda vinculada consigo
-          // misma y con ninguna otra (igual que `duplicateStageInProgram`).
+          // misma y con ninguna otra.
           const groupMap = {};
           const remapGroup = (g) => {
             if (!g) return null;
@@ -2017,63 +2017,6 @@ export const useStore = create(
         const newStages = program.stages.map((st, i) =>
           i === stageIndex ? { ...st, ...updates, days: updates.days ?? st.days ?? [] } : st);
         set((s) => ({ programs: { ...s.programs, [programId]: withStages(program, newStages) } }));
-      },
-
-      // Clones a stage (sessions included, edited versions win) right after the
-      // source. Returns the new stage index so the caller can select it.
-      duplicateStageInProgram: (programId, stageIndex) => {
-        const { programs, sessionTemplates } = get();
-        const program = programs[programId];
-        const src = program?.stages?.[stageIndex];
-        if (!src) return null;
-
-        const updatedSessionTemplates = { ...sessionTemplates };
-        // Link groups are remapped to fresh ids: copies stay linked to each
-        // other (within the new stage) but never to the original stage.
-        const groupMap = {};
-        const remapGroup = (g) => {
-          if (!g) return null;
-          if (!groupMap[g]) groupMap[g] = generateId('lnk');
-          return groupMap[g];
-        };
-        const newDays = (src.days ?? []).map(({ sessionTemplateId, label }) => {
-          const tpl = sessionTemplates[sessionTemplateId];
-          const newTplId = generateId('tpl');
-          updatedSessionTemplates[newTplId] = {
-            ...(tpl ?? { exercises: [], emphasis: '', color: 'var(--accent)' }),
-            id: newTplId,
-            programId,
-            // Misma cadena que en `addStageToProgram`: una etapa duplicada
-            // también acuña `tpl_*` nuevos, así que sin esto el cliente pierde
-            // igualmente sus pesos de referencia al entrar en ella (spec §4.1).
-            derivedFrom: sessionTemplateId,
-            exercises: (tpl?.exercises ?? []).map((ex) => ({ ...ex, linkGroup: remapGroup(ex.linkGroup) })),
-            blocks: (tpl?.blocks ?? []).map((b) => ({ ...b, id: generateId('blk') })),
-          };
-          return { sessionTemplateId: newTplId, label };
-        });
-
-        const newStage = {
-          id: generateId('stage'),
-          name: `${src.name} (copia)`,
-          durationWeeks: src.durationWeeks ?? 4,
-          days: newDays,
-        };
-        const newStages = [
-          ...program.stages.slice(0, stageIndex + 1),
-          newStage,
-          ...program.stages.slice(stageIndex + 1),
-        ];
-        // The copy lands after the source — shift the active index if it
-        // pointed past the insertion point.
-        const cur = program.currentStageIndex ?? 0;
-        const newCur = stageIndex < cur ? cur + 1 : cur;
-
-        set((s) => ({
-          sessionTemplates: updatedSessionTemplates,
-          programs: { ...s.programs, [programId]: withStages(program, newStages, newCur) },
-        }));
-        return stageIndex + 1;
       },
 
       // Every program keeps at least one stage (`docs/specs/P06-stage-planner.md`

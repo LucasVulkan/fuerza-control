@@ -2,7 +2,7 @@
 
 > Tema: programas
 > En corto: Añadir etapas pasa de una hoja difícil de seguir a una pantalla propia —el creador— que enseña de dónde partes, qué cambia y cómo queda cada ejercicio, con un mando para elegir el carácter de la etapa; el planificador pasa a ser el sitio donde se mira la periodización entera. Incluye ideas de más herramientas de periodización.
-> Fase P15-01 · pendiente · Rondas de diseño del creador y del planificador; partir en tareas · §6
+> Fase P15-01 · pendiente · Rondas de diseño del creador, del planificador y de la hoja de ajustes de etapa; partir en tareas · §6
 >
 > Estado: **borrador, sin tareas** (abierta el 12-oct-2026). Sale de la primera
 > ronda de [P14](P14-editor-etapas.md) (9-oct), cuando las dos cosas iban juntas: el
@@ -10,6 +10,10 @@
 > ya se hizo al principio más las rondas de ajustes que hagamos». Maqueta de partida:
 > [`docs/mockups/stages-v2.html`](../mockups/stages-v2.html) §2 y §3. Al usuario le
 > gustaron mucho cosas del planificador; nada está cerrado todavía.
+>
+> **15-oct**: el usuario quiere rehacer **juntos** tres sitios: la hoja «Ajustes de
+> etapa» (§4.1), el planificador (§4) y el creador (§3). La dirección del creador le
+> gusta; faltan rondas para afinarla.
 >
 > Revisa decisiones de [P06-stage-planner.md](P06-stage-planner.md): §14.2.1 (el plan
 > no es un asistente: sigue sin serlo, pero añadir sale a su propia pantalla) y
@@ -38,10 +42,16 @@ La vista previa puede ser **exacta**: `applyRx` es pura y es lo mismo que ejecut
   con la etapa seleccionada como base. **Duplicar deja de ser un botón**: es crear
   con «Igual». Mientras este creador no exista, P14 manda al planificador de hoy
   (P14 §5.5).
-- Con una sola etapa, el editor enseña «Añadir etapas», que también abre este
-  creador.
-- La hoja de Ajustes de una etapa es una sola (`StageSettingsSheet`, P14); el
-  planificador debería usar la misma en vez del acordeón de `StageCard` (§4).
+- Con una sola etapa (P14 §5.6, rehecha el 15-oct) no hay recuadro «Añadir
+  etapas»: se crea desde «Ver plan» o desde «Nueva etapa» en el engranaje, que
+  también abren este creador.
+- La hoja de Ajustes de una etapa es una sola; el planificador debería usar la
+  misma en vez del acordeón de `StageCard` (§4). Su diseño es de aquí (§4.1).
+- **Todo se añade al final** (P14 §2): el progreso del atleta guarda el índice de
+  su etapa, y una etapa metida en medio, por delante de la suya, le movería de
+  etapa. Si el creador ha de poder insertar donde se quiera, antes hay que pasar
+  el progreso a id de etapa (`currentStageIndex` → id, en el móvil del atleta, en
+  el blob que sube y en `mergeProgressOnImport`). Decisión abierta 8 (§6).
 
 ## 2. Lo que no cambia (modelo)
 
@@ -167,6 +177,24 @@ de U10-07 arriba y la línea de etapas. Cambia poco:
 - El hueco «+ Añadir etapas» navega a `AddStagesScreen`.
 - Fuera la `DragSheet`, `RungCard` y `Dropdown`.
 
+### 4.1 La hoja «Ajustes de etapa»
+
+La de P14 (15-oct) es **provisional**: sigue el patrón de la app (`Section` +
+`MenuRow`) y quitó lo peor de la anterior (el botón inventado de «sin límite», el
+estado con forma de botón), pero el usuario la quiere con **diseño propio**: tiene
+muchas opciones y muy distintas (nombre, duración, estado, candado, de dónde
+sale, nueva etapa, duplicar, eliminar) y una lista de filas no las hace fáciles de
+leer ni de usar. Tiene que ser interactiva, cómoda y clara a la primera.
+
+Lo que tiene que caber hoy (P14 §5.5): nombre (no con una sola etapa) · de dónde
+sale (`describeRx`) · semanas o sin límite · estado (en curso con su semana,
+hecha, por venir, bloqueada por el entrenador) y «pasar a esta etapa» · candado
+(entrenador, por delante de la de ahora) · nueva etapa · duplicar (hasta que sea
+«Igual» en el creador) · eliminar (no con una sola). Hoy «Nueva etapa» y
+«Duplicar» se distinguen solo por su subtítulo (con cambios / copia exacta): el
+diseño tiene que dejarlo claro de un vistazo, o fundirlas en el creador (§6.6).
+Se abre desde el engranaje del editor y, tras el refactor, desde el plan.
+
 ## 5. Más herramientas de periodización
 
 Maqueta [`stages-v2.html`](../mockups/stages-v2.html) §3. Ordenadas por valor frente a coste. Ninguna es parte de esta spec:
@@ -205,6 +233,12 @@ De la primera ronda (9-oct), sin tocar todavía:
    un toque y no una búsqueda.
 7. **El visualizador** (`ProgramDetailScreen`) sigue con `StageSelector`: ¿pasa a
    las tarjetas de etapa de P14 (sin «+» ni Ajustes)?
+8. **Insertar en medio** (15-oct): ¿se puede añadir una etapa entre dos? Hoy no
+   sin romper el progreso del cliente (§1.1). Opciones: seguir con «todo al final»,
+   o pasar el progreso a id de etapa (cambio de modelo y de sincronización) y
+   entonces ofrecer dónde va.
+9. **La hoja «Ajustes de etapa»** (§4.1): rondas de diseño propias, junto con las
+   del plan y el creador.
 
 ## 7. Tareas previstas (se escriben al cerrar §6)
 
@@ -215,6 +249,7 @@ De la primera ronda (9-oct), sin tocar todavía:
 | Mando 2D | gesto (gesture-handler + Reanimated), imán, haptics, cuadrantes y nombre | 🟡 | Pantalla del creador |
 | La ola | en el creador y en el plan (absorbe U10-07 y U10-08) | 🟡 | Métrica, Pantalla del creador |
 | Grupos musculares y aviso | reusa la función de series por grupo de P14; aviso de descarga | 🟢 | Pantalla del creador |
-| Plan con la hoja única | `StagePlannerScreen` abre `StageSettingsSheet` de P14; fuera el acordeón | 🟢 | P14 |
+| Hoja «Ajustes de etapa» | diseño propio (§4.1), sacada a componente para el editor y el plan | 🟡 | Rondas de §6.9 |
+| Plan con la hoja única | `StagePlannerScreen` abre la hoja de §4.1; fuera el acordeón | 🟢 | Hoja «Ajustes de etapa» |
 
 i18n en `es.json` y `en.json` en cada tarea.
