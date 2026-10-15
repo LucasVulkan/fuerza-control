@@ -58,20 +58,20 @@ const PERIOD_DAYS = { '7d': 7, '1m': 30, '3m': 90 };
 // gráfica: la Mejora de los ejercicios sin peso sigue con las totales.
 function getMetrics(def, logs, weightLabel, t) {
   if (def?.progressionModel === 'time_progression') {
-    return [{ id: 'time', label: t('stats.metricTime'), unit: 's' }];
+    return [{ id: 'time', label: t('stats.metricTime'), short: t('stats.metricTime'), unit: 's' }];
   }
   const reps = t('stats.metricReps').toLowerCase();
   const m = [
-    { id: 'repsMax', label: t('stats.metricMaxReps'),   unit: reps },
-    { id: 'reps',    label: t('stats.metricTotalReps'), unit: reps },
+    { id: 'repsMax', label: t('stats.metricMaxReps'),   short: t('stats.metricShortReps'),  unit: reps },
+    { id: 'reps',    label: t('stats.metricTotalReps'), short: t('stats.metricShortTotal'), unit: reps },
   ];
   if (seriesMetric(logs, def) !== 'kg') return m;
   return [
-    { id: 'kg', label: t('stats.metricMaxWeight'), unit: weightLabel },
+    { id: 'kg', label: t('stats.metricMaxWeight'), short: t('stats.metricShortWeight'), unit: weightLabel },
     ...m,
-    { id: 'vol',  label: t('stats.metricVolumeFull'), unit: weightLabel },
+    { id: 'vol',  label: t('stats.metricVolumeFull'), short: t('stats.metricShortVol'), unit: weightLabel },
     // «e1RM» y no «1RM»: es una estimación, no un máximo probado.
-    { id: 'e1rm', label: 'e1RM', unit: weightLabel },
+    { id: 'e1rm', label: 'e1RM', short: 'e1RM', unit: weightLabel },
   ];
 }
 
@@ -300,13 +300,14 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
   const lastVolSubStr = lastSesVolDelta === null ? null
     : `${signed(lastSesVolDelta, fmtVol(Math.abs(lastSesVolDelta), wDisplay))} ${weightLabel} ${t('stats.lastShort')}`;
 
-  // ── Cabecera de la gráfica: la cifra manda ─────────────────────────────────
+  // ── Tarjeta de la gráfica: la cifra es la de la sesión que se lee ──────────
   const fmtValue = (v) => (activeMetric === 'vol' || activeMetric === 'reps' || activeMetric === 'repsMax' || activeMetric === 'time')
     ? String(Math.round(v))
     : String(Math.round(v * 10) / 10);
   const sel   = scrub != null ? points[scrub] : null;
   const shown = sel ?? points[points.length - 1];
-  const delta = points.length > 1 ? points[points.length - 1].value - points[0].value : null;
+  // Lo que ha cambiado desde la primera sesión del periodo hasta la que se lee.
+  const delta = shown && shown !== points[0] ? shown.value - points[0].value : null;
 
   const pickerList = useMemo(
     () => filterBySearch(order, pickerQ, (exId) => nameOf(exId)),
@@ -397,55 +398,56 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
               </TouchableOpacity>
             </View>
 
-            {/* Métricas: pills que se reparten en dos líneas si no caben */}
-            {metrics.length > 1 && (
-              <View style={styles.metricRow}>
-                {metrics.map((m) => {
-                  const on = m.id === activeMetric;
-                  return (
-                    <TouchableOpacity
-                      key={m.id}
-                      style={[styles.metricPill, on && styles.metricPillOn]}
-                      onPress={() => { setChartMetric(m.id); setScrub(null); }}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.metricText, on && styles.metricTextOn]}>{m.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+            {/* La gráfica, en una tarjeta como las de Carga: métrica arriba,
+                cifra y cambio, la línea, y abajo la sesión que se está leyendo. */}
+            <View style={styles.chartCard}>
+              {metrics.length > 1 && (
+                <SegmentedControl
+                  options={metrics.map((m) => ({ id: m.id, label: m.short }))}
+                  value={activeMetric}
+                  onChange={(m) => { setChartMetric(m); setScrub(null); }}
+                />
+              )}
 
-            {/* La cifra grande: la última, o la del punto que se está tocando */}
-            {shown && (
-              <View style={styles.chead}>
-                <Text style={[styles.cheadValue, sel && styles.cheadValueSel]} numberOfLines={1}>
-                  {fmtValue(shown.value)}
-                  <Text style={styles.cheadUnit}>{` ${metric?.unit ?? ''}`}</Text>
-                </Text>
-                <Text style={styles.cheadSub} numberOfLines={1}>
-                  {sel ? `${fmtDay(sel.t)} · ${buildSessionSummary(sel.exercise, def, fmtWeight) ?? ''}`
-                    : delta === null ? fmtDay(shown.t) : (
-                      <>
-                        <Text style={[styles.cheadDelta, { color: delta >= 0 ? th.colors.accent : th.colors.orange }]}>
+              {shown && (
+                <View style={styles.cardHead}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {`${metric?.label ?? ''} · ${t('history.sessionsN', { count: points.length })}`}
+                  </Text>
+                  <View style={styles.valueRow}>
+                    <Text style={styles.value} numberOfLines={1}>
+                      {fmtValue(shown.value)}
+                      <Text style={styles.valueUnit}>{` ${metric?.unit ?? ''}`}</Text>
+                    </Text>
+                    {delta !== null && (
+                      <View style={[styles.chip, delta >= 0 ? styles.chipUp : styles.chipDown]}>
+                        <Text style={[styles.chipText, { color: delta >= 0 ? th.colors.accent : th.colors.orange }]}>
                           {`${delta >= 0 ? '+' : '−'}${fmtValue(Math.abs(delta))} ${metric?.unit ?? ''}`}
                         </Text>
-                        {' '}{t('stats.chartSince', { date: fmtDay(points[0].t) })}
-                      </>
+                      </View>
                     )}
-                </Text>
-              </View>
-            )}
+                  </View>
+                </View>
+              )}
 
-            <View style={styles.chartWrap}>
               <ProgressChart
                 key={`${id}|${activeMetric}|${period}|${scope}`}
                 points={points}
                 selected={scrub}
-                onScrub={setScrub}
+                onSelect={setScrub}
                 lockRef={lockRef}
                 emptyText={t('stats.chartNeedsTwo')}
               />
+
+              {shown && (
+                <View style={styles.strip}>
+                  <View style={styles.dot} />
+                  <Text style={styles.stripText} numberOfLines={2}>
+                    <Text style={styles.stripTitle}>{fmtDay(shown.t)}</Text>
+                    {` · ${buildSessionSummary(shown.exercise, def, fmtWeight) ?? ''}`}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Sesiones, en la métrica de la gráfica */}
@@ -574,7 +576,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Vecinos: gris y pequeños, bajo la cabecera.
   nbr: {
     flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md,
-    paddingHorizontal: spacing.lg, paddingBottom: spacing.xs2,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm2,
   },
   nbrBtn:      { maxWidth: '48%', paddingVertical: spacing.xs2 },
   nbrText:     { ...textStyles.labelStrong, color: th.colors.mutedLight },
@@ -612,22 +614,33 @@ const makeStyles = (th) => StyleSheet.create({
   statLabelAsIs: { textTransform: 'none' },
   statSub: { ...textStyles.label, textAlign: 'center' },
 
-  metricRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.xl },
-  metricPill: {
-    height: 32, paddingHorizontal: spacing.md, justifyContent: 'center',
-    borderRadius: th.radius.full, backgroundColor: th.colors.surface2,
+  chartCard: {
+    marginHorizontal: spacing.lg, marginTop: spacing.xl,
+    backgroundColor: th.colors.surface, borderRadius: th.radius.md,
+    padding: spacing.lg, gap: spacing.md,
   },
-  metricPillOn: { backgroundColor: th.colors.accent },
-  metricText:   { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  metricTextOn: { color: th.colors.onAccent },
-
-  chead:         { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.xs2 },
-  cheadValue:    { ...textStyles.title, color: th.colors.text },
-  cheadValueSel: { color: th.colors.accent },
-  cheadUnit:     { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  cheadSub:      { ...textStyles.label, color: th.colors.mutedLight },
-  cheadDelta:    { ...textStyles.labelStrong },
-  chartWrap:     { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  cardHead:  { gap: spacing.xs2 },
+  cardTitle: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  valueRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
+  value:     { ...textStyles.title, color: th.colors.text, flexShrink: 1 },
+  valueUnit: { ...textStyles.labelStrong, color: th.colors.mutedLight },
+  // El cambio en el periodo, como el chip de lectura de Carga.
+  chip: {
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.xs,
+    paddingHorizontal: spacing.sm2, paddingVertical: spacing.xs2,
+  },
+  chipUp:   { backgroundColor: th.tint.accent10 },
+  chipDown: { backgroundColor: th.tint.orange30 },
+  chipText: { ...textStyles.labelStrong },
+  // La sesión leída, en la tira de Carga.
+  strip: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm2,
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+  },
+  dot:        { width: 7, height: 7, borderRadius: 4, backgroundColor: th.colors.accent },
+  stripText:  { ...textStyles.label, color: th.colors.mutedLight, flex: 1, lineHeight: 15 },
+  stripTitle: { ...textStyles.label, color: th.colors.text },
 
   sesSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   sesList:    { gap: spacing.xs },

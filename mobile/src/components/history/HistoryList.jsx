@@ -73,15 +73,6 @@ export default function HistoryList() {
     setLetters(new Set());
   }
 
-  function toggleLetter(l) {
-    Haptics.selectionAsync().catch(() => {});
-    setLetters((prev) => {
-      const next = new Set(prev);
-      if (next.has(l)) next.delete(l); else next.add(l);
-      return next;
-    });
-  }
-
   function toggleStage(stageId) {
     Haptics.selectionAsync().catch(() => {});
     setSelectedStageIds((prev) => {
@@ -122,11 +113,25 @@ export default function HistoryList() {
     return list.sort((a, b) => b.timestamp - a.timestamp);
   }, [workoutLog, scope, effectiveTemplateIds]);
 
+  // Una pill por sesión del programa, tenga o no registros; «Libres» solo si
+  // hay alguna libre en la lista.
   const present = useMemo(() => {
-    const set = new Set(scoped.map(letterOf).filter(Boolean));
-    return [...set].sort((a, b) => (a === FREE) - (b === FREE) || a.localeCompare(b));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scoped, getEffectiveTemplate]);
+    const labels = new Set([...programTemplateIds]
+      .map((id) => getEffectiveTemplate(id)?.label).filter(Boolean));
+    const sorted = [...labels].sort((a, b) => a.localeCompare(b));
+    return scoped.some(isFreeEntry) ? [...sorted, FREE] : sorted;
+  }, [programTemplateIds, scoped, getEffectiveTemplate]);
+
+  // Ninguna marcada y todas marcadas enseñan lo mismo: las dos son «Todas».
+  // Al marcar la última, la selección se vacía y se enciende «Todas».
+  function toggleLetter(l) {
+    Haptics.selectionAsync().catch(() => {});
+    setLetters((prev) => {
+      const next = new Set(prev);
+      if (next.has(l)) next.delete(l); else next.add(l);
+      return present.every((x) => next.has(x)) ? new Set() : next;
+    });
+  }
 
   const filtered = useMemo(
     () => (letters.size ? scoped.filter((e) => letters.has(letterOf(e))) : scoped),
@@ -197,18 +202,24 @@ export default function HistoryList() {
     );
   }
 
-  // Las letras en una cápsula (caben siete y las libres junto a la caja de
-  // filtros) y una línea que dice qué se está viendo.
+  // Pills sueltas: «Todas», una por sesión y «Libres»; se desplazan si no
+  // caben junto a la caja de filtros. Debajo, una línea que dice qué se ve.
   const listHeader = (
     <>
       <View style={styles.scopeRow}>
-        {present.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.lettersScroll} contentContainerStyle={styles.letters}>
-            {present.map((l) => {
-              const on = letters.has(l);
+        {present.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsScroll} contentContainerStyle={styles.pills}>
+            {[null, ...present].map((l) => {
+              const on = l === null ? letters.size === 0 : letters.has(l);
+              const label = l === null ? t('history.allSessions') : l === FREE ? t('history.freeLabel') : l;
               return (
-                <TouchableOpacity key={l} style={[styles.letter, on && styles.letterOn]} onPress={() => toggleLetter(l)} activeOpacity={0.7}>
-                  <Text style={[styles.letterText, on && styles.letterTextOn]}>{l}</Text>
+                <TouchableOpacity
+                  key={l ?? 'all'}
+                  style={[styles.pill, l !== null && l !== FREE && styles.pillLetter, on && styles.pillOn]}
+                  onPress={() => (l === null ? setLetters(new Set()) : toggleLetter(l))}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pillText, on && styles.pillTextOn]}>{label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -343,18 +354,17 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
   },
-  lettersScroll: { flexGrow: 0, flexShrink: 1, marginRight: 'auto' },
-  letters: {
-    flexDirection: 'row', gap: spacing.xs, padding: 3,
-    backgroundColor: th.colors.surface2, borderRadius: th.radius.full,
+  pillsScroll: { flex: 1 },
+  pills:       { flexDirection: 'row', gap: spacing.sm },
+  // Las mismas pills que el patrón del selector: h36, radio completo.
+  pill: {
+    height: 36, paddingHorizontal: spacing.lg, borderRadius: th.radius.full,
+    backgroundColor: th.colors.surface2, alignItems: 'center', justifyContent: 'center',
   },
-  letter: {
-    width: 34, height: 34, borderRadius: 17,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  letterOn:     { backgroundColor: th.colors.accent },
-  letterText:   { ...textStyles.button, color: th.colors.mutedLight },
-  letterTextOn: { color: th.colors.onAccent },
+  pillLetter: { minWidth: 36, paddingHorizontal: spacing.md },
+  pillOn:     { backgroundColor: th.colors.accent },
+  pillText:   { ...textStyles.button, color: th.colors.mutedLight },
+  pillTextOn: { color: th.colors.onAccent },
   iconBox: {
     width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
