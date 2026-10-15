@@ -2113,10 +2113,18 @@ export default function ClientsScreen() {
     return () => sub.remove();
   }, [view]));
 
-  // ── Auto-open sync modal on first visit ────────────────────────────────────
+  // ── Primera visita sin cuenta: un aviso, no la hoja entera ────────────────
+  // Quien lleva clientes sin app (o acaba el onboarding con «le apuntas tú») no
+  // necesita la cuenta: se le cuenta para qué sirve y la crea si quiere.
+  // «Ahora no» es elegir «sin cuenta» y no vuelve a salir solo; cerrarlo sin
+  // contestar, sí.
 
   useEffect(() => {
-    if (trainerSync.mode === null) setShowSyncModal(true);
+    if (trainerSync.mode !== null) return;
+    showDialog(t('sync.createTitle'), t('sync.firstLead'), [
+      { text: t('sync.notNow'), style: 'cancel', onPress: () => useStore.getState().leaveTrainerAccount() },
+      { text: t('sync.firstCreate'), onPress: () => setShowSyncModal(true) },
+    ]);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Auto-fetch slot session counts on mount ─────────────────────────────────

@@ -479,6 +479,15 @@ primera visita sin crear cuenta pone `mode = 'offline'`** (vía
 `leaveTrainerAccount`, que con `mode` nulo solo fija el valor). El botón de cierre
 dice `t('sync.notNow')` («Ahora no»).
 
+*(15-oct-2026, prueba de O03-08)* **La primera visita ya no abre la hoja: abre
+un aviso** (`showDialog`): «Conecta con tus clientes» · «Si tus clientes usan
+Forma Fit, crea una cuenta para conectarte con ellos…» (`sync.firstLead`) y dos
+botones: **Ahora no** (`leaveTrainerAccount`: no vuelve a salir) y **Crear
+cuenta** (la hoja de siempre, con sus tres formas y «Ahora no»). Quien lleva
+clientes sin app —p. ej. al salir del onboarding con «le apuntas tú»— no tenía
+por qué toparse con la hoja entera. Cerrar el aviso sin contestar lo deja para
+la próxima visita.
+
 ### 7.3 Clientes
 
 - **Icono de conexión de la cabecera** → `navigation.navigate('Account')` (ya no
@@ -555,7 +564,9 @@ Los nuevos en `sync.*` (es/en). Los que dejan de usarse (`sync.modeOffline*`,
 
 **Probar M03-03**
 
-- [ ] Clientes, primera vez: «Conecta con tus clientes», una línea de para qué
+- [ ] Clientes, primera vez sin cuenta: sale el aviso «Conecta con tus clientes»
+  con «Ahora no» y «Crear cuenta» (§7.2, 15-oct). «Ahora no» → no vuelve a salir.
+- [ ] «Crear cuenta» del aviso: «Conecta con tus clientes», una línea de para qué
   es, «CREA TU CUENTA» con los botones de Apple (iPhone) y Google a juego, «o»,
   «Usar un código personal» con su aviso y el enlace «Ya tengo cuenta». Sin
   campo de nombre ni «Sin conexión».

@@ -570,6 +570,8 @@
     "createWith": "CREATE YOUR ACCOUNT",
     "or": "or",
     "notNow": "Not now",
+    "firstLead": "If your clients use Forma Fit, create an account to connect with them: you send them their program and see what they train. Without an account you can still manage them and log their sessions yourself.",
+    "firstCreate": "Create account",
     "rowGoogle": "Continue with Google",
     "rowCode": "Use a personal code",
     "rowCodeSub": "Keep the code safe: without it you can't recover the account.",

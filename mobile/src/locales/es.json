@@ -570,6 +570,8 @@
     "createWith": "CREA TU CUENTA",
     "or": "o",
     "notNow": "Ahora no",
+    "firstLead": "Si tus clientes usan Forma Fit, crea una cuenta para conectarte con ellos: les envías su programa y ves lo que entrenan. Sin cuenta también puedes llevarlos y apuntar tú sus sesiones.",
+    "firstCreate": "Crear cuenta",
     "rowGoogle": "Continuar con Google",
     "rowCode": "Usar un código personal",
     "rowCodeSub": "Guarda el código: sin él no podrás recuperar la cuenta.",
