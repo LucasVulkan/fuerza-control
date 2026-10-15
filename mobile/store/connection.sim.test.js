@@ -247,11 +247,13 @@ describe('entrenador: la sesión de Google/Apple se pierde', () => {
   it('Mi cuenta lo sabe, y volver a entrar con la misma cuenta lo arregla todo', async () => {
     const { t, c, clientId } = await setup();
     expect(await t.s.trainerSessionState()).toBe('login');
+    expect(t.s.trainerLoginNeeded).toBe(true);                   // Clientes y Mi cuenta lo avisan
     const programId = t.s.createProgramForClient(clientId, 1, 'x', null, { openEditor: false });
     await expect(t.s.uploadProgramToClient(clientId, programId)).rejects.toMatchObject({ code: 'TRAINER_LOGIN_NEEDED' });
 
     await t.s.enterTrainerAccount({ ...google('g1'), mustExist: true });
     expect(await t.s.trainerSessionState()).toBe('ok');
+    expect(t.s.trainerLoginNeeded).toBe(false);
     expect(await programReaches(t, c, clientId, 'de nuevo')).toBe(true);
   });
 

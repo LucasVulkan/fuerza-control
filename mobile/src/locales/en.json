@@ -538,6 +538,7 @@
     "leaveCta": "Disconnect",
     "loginNeededError": "Sign in again with {{how}} in My account to continue.",
     "noAccountError": "Create your trainer account first.",
+    "reloginTitle": "Reconnect your trainer account",
     "reloginWhy": "Your {{how}} session has ended. Sign in again with the same account to keep sending to your clients.",
     "deleteRow": "Delete the account"
   },

@@ -45,6 +45,7 @@ import DragSheet from '../components/DragSheet';
 import CodeReveal from '../components/CodeReveal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
+import TrainerRelogin from '../components/TrainerRelogin';
 import PaywallModal from '../components/PaywallModal';
 import { spacing, textStyles, lh, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -212,7 +213,7 @@ export default function AccountScreen() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [copied,      setCopied]      = useState(false);
   const [sessionEmail, setSessionEmail] = useState(null);
-  const [needsLogin,   setNeedsLogin]   = useState(false);
+  const needsLogin = useStore((s) => s.trainerLoginNeeded);
   const [pro,         setPro]         = useState(null);
 
   // El correo de Google o Apple se guarda al entrar (`trainerSync.email`); las
@@ -223,7 +224,7 @@ export default function AccountScreen() {
     if (!hasAccount) return undefined;
     let alive = true;
     trainerSupabase.auth.getSession().then(({ data }) => { if (alive) setSessionEmail(data.session?.user?.email ?? null); }, () => {});
-    useStore.getState().trainerSessionState().then((st) => { if (alive) setNeedsLogin(st === 'login'); });
+    useStore.getState().trainerSessionState();   // pone `trainerLoginNeeded`
     return () => { alive = false; };
   }, [hasAccount, trainerSync?.userId]);
   const email = trainerSync?.email ?? sessionEmail;
@@ -260,18 +261,6 @@ export default function AccountScreen() {
         t(to === 'apple' ? 'sync.errAppleTitle' : to === 'code' ? 'sync.errAccountTitle' : 'sync.errGoogleTitle'),
         err?.message ?? t(to === 'code' ? 'sync.errAccountBody' : 'sync.errGoogleBody'),
       );
-    }
-  }
-
-  /** Volver a entrar con la misma forma, sin crear nada. */
-  async function relogin() {
-    try {
-      await (mode === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)({ mustExist: true });
-      setNeedsLogin(false);
-    } catch (err) {
-      if (err?.cancelled) return;
-      const how = t(mode === 'apple' ? 'sync.howApple' : 'sync.howGoogle');
-      showDialog(err?.notFound ? t('sync.notFoundTitle', { how }) : t('common.error'), err?.notFound ? undefined : err?.message);
     }
   }
 
@@ -358,18 +347,9 @@ export default function AccountScreen() {
         ) : (
           <Text style={[styles.have, styles.haveMail]}>{email ?? t('account.emailHidden')}</Text>
         )}
+        {/* Dentro de la misma tarjeta: es el estado de esta cuenta, no otra cosa. */}
+        {needsLogin && mode !== 'code' && <TrainerRelogin />}
       </View>
-
-      {needsLogin && mode !== 'code' && (
-        <View style={styles.card}>
-          <Explain>{t('account.reloginWhy', { how: t(`account.short.${mode}`) })}</Explain>
-          <View style={styles.actsCol}>
-            {mode === 'apple'
-              ? <AppleSignInButton onPress={relogin} disabled={acct.loading} />
-              : <GoogleSignInButton onPress={relogin} busy={acct.loading} disabled={acct.isExpoGo} />}
-          </View>
-        </View>
-      )}
 
       <NameField />
 

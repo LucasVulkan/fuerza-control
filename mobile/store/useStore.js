@@ -143,10 +143,19 @@ function trainerLoginNeeded(mode) {
 
 async function _ensureTrainerSession(trainerSync) {
   if (!trainerSync.userId) throw Object.assign(new Error(i18n.t('account.noAccountError')), { code: 'NO_TRAINER_ACCOUNT' });
-  if ((await trainerSessionUserId()) === trainerSync.userId) return;
-  if (trainerSync.mode === 'code' && trainerSync.code
-      && (await signInTrainerWithCode(trainerSync.code)) === trainerSync.userId) return;
-  throw trainerLoginNeeded(trainerSync.mode);
+  const ok = (await trainerSessionUserId()) === trainerSync.userId
+    || (trainerSync.mode === 'code' && !!trainerSync.code
+        && (await signInTrainerWithCode(trainerSync.code)) === trainerSync.userId);
+  // Todo lo del entrenador pasa por aquí: es el sitio donde enterarse de que
+  // hay que volver a entrar, para avisarlo en Clientes y en Mi cuenta. Un
+  // fallo de red lanza antes y no cambia nada.
+  setTrainerLoginNeeded(!ok);
+  if (!ok) throw trainerLoginNeeded(trainerSync.mode);
+}
+
+/** `trainerLoginNeeded`: sin persistir; se vuelve a saber en la primera llamada al servidor. */
+function setTrainerLoginNeeded(value) {
+  if (useStore.getState().trainerLoginNeeded !== value) useStore.setState({ trainerLoginNeeded: value });
 }
 
 /** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
@@ -535,6 +544,8 @@ export const useStore = create(
       // muere a mitad de refresco, al arrancar tiene que valer `false` o el
       // refresco quedaria bloqueado para siempre.
       _refreshingSlots: false,
+      // Google/Apple perdió la sesión de entrenador: Clientes y Mi cuenta lo avisan (C09 §3.6). No se persiste.
+      trainerLoginNeeded: false,
 
       // External file import — set when the OS opens a .fitdata file via intent.
       // NOT persisted. AppHeader watches this and shows ImportModal when set.
@@ -3761,6 +3772,7 @@ export const useStore = create(
 
         await adoptTrainer(candidate);
         set((s) => ({
+          trainerLoginNeeded: false,
           trainerSync: {
             ...s.trainerSync,
             mode,
@@ -3834,7 +3846,7 @@ export const useStore = create(
        */
       leaveTrainerAccount: async () => {
         if (get().trainerSync.userId) await signOutTrainer().catch(() => {});
-        set((s) => ({ trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null, email: null } }));
+        set((s) => ({ trainerLoginNeeded: false, trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null, email: null } }));
       },
 
       /**
@@ -4839,6 +4851,7 @@ export const useStore = create(
         await get()._purchasesLogOut();
 
         set((s) => ({
+          trainerLoginNeeded: false,
           trainerSync: {
             ...s.trainerSync,
             mode: 'offline', code: null, userId: null, email: null,

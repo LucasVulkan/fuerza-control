@@ -538,6 +538,7 @@
     "leaveCta": "Desconectar",
     "loginNeededError": "Vuelve a entrar con {{how}} en Mi cuenta para seguir.",
     "noAccountError": "Primero crea tu cuenta de entrenador.",
+    "reloginTitle": "Reconecta tu cuenta de entrenador",
     "reloginWhy": "Tu sesión de {{how}} se ha cerrado. Vuelve a entrar con la misma cuenta para seguir enviando a tus clientes.",
     "deleteRow": "Borrar la cuenta"
   },

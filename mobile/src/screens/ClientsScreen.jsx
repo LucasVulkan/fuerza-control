@@ -24,6 +24,7 @@ import AppHeader from '../components/AppHeader';
 import ClientAvatar from '../components/ClientAvatar';
 import ClientRow, { CtaIcon } from '../components/ClientRow';
 import { makeRowStyles } from '../components/clientRowStyles';
+import TrainerRelogin from '../components/TrainerRelogin';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -1639,6 +1640,10 @@ export default function ClientsScreen() {
   const deleteTag    = useStore((s) => s.deleteTag);
 
   const trainerSync  = useStore((s) => s.trainerSync);
+  // Google/Apple perdió la sesión (C09 §3.6): se avisa aquí, que es donde se
+  // nota, y no solo al pulsar «Enviar». Lo pone el refresco de la lista.
+  const loginNeeded  = useStore((s) => s.trainerLoginNeeded) && (trainerSync.mode === 'google' || trainerSync.mode === 'apple');
+  const cloudOn      = !!trainerSync.mode && trainerSync.mode !== 'offline' && !loginNeeded;
   // Con app o sin app, en un solo sitio (C28): lista, aviso, ficha y hojas.
   const linkOf = useCallback((c) => clientLink(c, trainerSync), [trainerSync]);
 
@@ -3033,19 +3038,18 @@ export default function ClientsScreen() {
                   <Path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 3h6v3H9zM9 12h6M9 16h4" />
                 </Svg>
               </TouchableOpacity>
-              {/* Connectivity — status dot: green = sync on, orange = not set up, grey = offline */}
+              {/* Conexión de la cuenta de entrenador. Nube = conectada (punto
+                  verde); nube tachada = sin conexión: desconectada a propósito
+                  (punto gris), sin cuenta aún o sesión perdida (punto naranja). */}
               <TouchableOpacity style={styles.hdrIconBox} onPress={() => navigation.navigate('Account')} activeOpacity={0.7}>
                 <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+                  {cloudOn
+                    ? <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+                    : <Path d="M2 2l20 20M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07" />}
                 </Svg>
                 <View style={[
                   styles.syncStatusDot,
-                  {
-                    backgroundColor:
-                      trainerSync.mode === 'google' || trainerSync.mode === 'apple' || trainerSync.mode === 'code' ? th.colors.green
-                      : trainerSync.mode === 'offline' ? th.colors.muted2
-                      : th.colors.orange,
-                  },
+                  { backgroundColor: cloudOn ? th.colors.green : trainerSync.mode === 'offline' ? th.colors.muted2 : th.colors.orange },
                 ]} />
               </TouchableOpacity>
             </View>
@@ -3057,6 +3061,12 @@ export default function ClientsScreen() {
           </View>
         </View>
         </Rise>
+
+        {loginNeeded && (
+          <View style={styles.reloginCard}>
+            <TrainerRelogin title />
+          </View>
+        )}
 
         {/* Row 2: Search + Filters */}
         <Rise index={1}>
@@ -3703,6 +3713,15 @@ const makeStyles = (th) => StyleSheet.create({
   listHeader: {
     paddingTop: spacing.lg,
     gap:        spacing.sm,
+  },
+
+  // Aviso de sesión de entrenador perdida, sobre la búsqueda (C09 §3.6).
+  reloginCard: {
+    backgroundColor:  th.colors.surface,
+    borderRadius:     th.radius.md,
+    padding:          spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginTop:        spacing.xs2,
   },
 
   // Row 1: "CLIENTES N" + cluster de acciones (justify-between)
