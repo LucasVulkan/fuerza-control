@@ -1,0 +1,1262 @@
+{
+ "032-regla-deslizar.png": [
+  {
+   "key": "workout.kg",
+   "text": "Kg"
+  },
+  {
+   "key": "workout.reps",
+   "text": "Reps"
+  },
+  {
+   "key": "workout.addSetBtn",
+   "text": "Añadir serie"
+  },
+  {
+   "key": "workout.addExercise",
+   "text": "Añadir ejercicio"
+  },
+  {
+   "key": "workout.saveSession",
+   "text": "GUARDAR SESIÓN"
+  },
+  {
+   "key": "workout.discardSession",
+   "text": "Descartar sesión"
+  }
+ ],
+ "033-notas-ejercicio.png": [
+  {
+   "key": "common.save",
+   "text": "Guardar"
+  },
+  {
+   "key": "workout.clientNotePlaceholder",
+   "text": "Nota para tu entrenador (molestias, sensaciones…)"
+  },
+  {
+   "key": "workout.notesSavedWith",
+   "text": "Se guarda con la sesión al pulsar GUARDAR SESIÓN."
+  }
+ ],
+ "050-programa-arriba.png": [
+  {
+   "key": "programCard.eyebrowSelf",
+   "text": "Tu programa"
+  },
+  {
+   "key": "programCard.week",
+   "text": "Semana"
+  },
+  {
+   "key": "programCard.statAdherence",
+   "text": "Adherencia"
+  },
+  {
+   "key": "programCard.sessionsPerWeek",
+   "text": "ses/sem"
+  },
+  {
+   "key": "programCard.statPace",
+   "text": "Ritmo"
+  },
+  {
+   "key": "programCard.statLoad",
+   "text": "Carga"
+  },
+  {
+   "key": "programCard.edit",
+   "text": "EDITAR"
+  },
+  {
+   "key": "programCard.view",
+   "text": "VER PROGRAMA"
+  },
+  {
+   "key": "myProgram.stagesLabel",
+   "text": "Etapas"
+  },
+  {
+   "key": "programCard.stageWeekExtra",
+   "text": "Semana {{week}} de {{total}} (+{{extra}})"
+  },
+  {
+   "key": "programCard.stageSessions",
+   "text": "{{done}} de {{expected}} sesiones"
+  },
+  {
+   "key": "home.stageWeeks_one",
+   "text": "{{count}} semana"
+  },
+  {
+   "key": "home.stageWeeks_other",
+   "text": "{{count}} semanas"
+  },
+  {
+   "key": "home.stageSessionsPerWeek_other",
+   "text": "{{count}} sesiones por semana"
+  },
+  {
+   "key": "tabs.session",
+   "text": "Sesión"
+  },
+  {
+   "key": "tabs.program",
+   "text": "Programa"
+  },
+  {
+   "key": "tabs.progress",
+   "text": "Progresión"
+  },
+  {
+   "key": "tabs.clients",
+   "text": "Clientes"
+  },
+  {
+   "key": "tabs.templates",
+   "text": "Plantillas"
+  }
+ ],
+ "060-editor-programa.png": [
+  {
+   "key": "editor.titleEdit",
+   "text": "EDITAR PROGRAMA"
+  },
+  {
+   "key": "editor.stagesLabel_other",
+   "text": "etapas · {{weeks}} semanas"
+  },
+  {
+   "key": "editor.viewPlan",
+   "text": "Ver plan ›"
+  },
+  {
+   "key": "editor.stageWord",
+   "text": "Etapa"
+  },
+  {
+   "key": "editor.stageRange",
+   "text": "sem {{from}}-{{to}}"
+  },
+  {
+   "key": "editor.stageRangeOne",
+   "text": "sem {{from}}"
+  },
+  {
+   "key": "editor.stageBrowNow",
+   "text": "En curso · {{week}}"
+  },
+  {
+   "key": "editor.stageSessions_other",
+   "text": "{{count}} sesiones"
+  },
+  {
+   "key": "editor.sectionSessions",
+   "text": "Sesiones"
+  },
+  {
+   "key": "editor.sessionsOfStage",
+   "text": "Sesiones de esta etapa"
+  },
+  {
+   "key": "editor.sessionMeta",
+   "text": "{{ex}} ejercicios · {{sets}} series · ~{{min}} min"
+  },
+  {
+   "key": "editor.addSessionPrefix",
+   "text": "+ Añadir sesión a "
+  },
+  {
+   "key": "editor.sessionOrderTitle",
+   "text": "Qué sesión toca"
+  },
+  {
+   "key": "editor.sessionOrder_rotation",
+   "text": "Rotación"
+  },
+  {
+   "key": "editor.sessionOrder_weekly",
+   "text": "Desde la A"
+  },
+  {
+   "key": "editor.sessionOrder_free",
+   "text": "Libre"
+  },
+  {
+   "key": "editor.sessionOrderHint_rotation",
+   "text": "Toca la que más tiempo se lleva sin hacer."
+  }
+ ],
+ "064-planificador-etapas.png": [
+  {
+   "key": "planner.eyebrow",
+   "text": "Plan del programa"
+  },
+  {
+   "key": "planner.summaryTag",
+   "text": "AHORA MISMO"
+  },
+  {
+   "key": "planner.summary",
+   "text": "{{stages}} etapas · {{weeks}} semanas"
+  },
+  {
+   "key": "planner.summaryPerWeek",
+   "text": "{{count}} entrenos por semana"
+  },
+  {
+   "key": "planner.sectionStages",
+   "text": "Ya en el programa"
+  },
+  {
+   "key": "programCard.stageWeekExtra",
+   "text": "Semana {{week}} de {{total}} (+{{extra}})"
+  },
+  {
+   "key": "planner.stageVolume",
+   "text": "{{sessions}} sesiones · {{exercises}} ejercicios · {{sets}} series"
+  },
+  {
+   "key": "editor.stageWeeksUnit",
+   "text": "Semanas"
+  },
+  {
+   "key": "planner.addSlot",
+   "text": "+ Añadir etapas aquí"
+  }
+ ],
+ "067-selector-ejercicios.png": [
+  {
+   "key": "exerciseSelector.titleAdd",
+   "text": "Añadir ejercicios"
+  },
+  {
+   "key": "exerciseSelector.addAction",
+   "text": "Añadir"
+  },
+  {
+   "key": "exerciseSelector.searchPlaceholder2",
+   "text": "Buscar ejercicio"
+  },
+  {
+   "key": "exerciseSelector.patternGroups.push",
+   "text": "Empuje"
+  },
+  {
+   "key": "exerciseSelector.patternGroups.pull",
+   "text": "Tracción"
+  },
+  {
+   "key": "exerciseSelector.patternGroups.squat",
+   "text": "Sentadilla"
+  },
+  {
+   "key": "exerciseSelector.patternGroups.hinge",
+   "text": "Bisagra"
+  },
+  {
+   "key": "exerciseSelector.createExercise",
+   "text": "＋ Crear ejercicio"
+  },
+  {
+   "key": "exerciseSelector.exerciseCount_other",
+   "text": "{{count}} EJERCICIOS"
+  }
+ ],
+ "068-selector-sin-resultados.png": [
+  {
+   "key": "exerciseSelector.titleAdd",
+   "text": "Añadir ejercicios"
+  },
+  {
+   "key": "exerciseSelector.addAction",
+   "text": "Añadir"
+  },
+  {
+   "key": "exerciseSelector.createExercise",
+   "text": "＋ Crear ejercicio"
+  },
+  {
+   "key": "exerciseSelector.exerciseCount_other",
+   "text": "{{count}} EJERCICIOS"
+  },
+  {
+   "key": "exerciseSelector.noResults",
+   "text": "Sin resultados"
+  }
+ ],
+ "070-hoja-progresion.png": [
+  {
+   "key": "customExercise.eyebrow",
+   "text": "Ejercicio propio"
+  },
+  {
+   "key": "customExercise.title",
+   "text": "Nuevo ejercicio"
+  },
+  {
+   "key": "customExercise.nameLabel",
+   "text": "NOMBRE"
+  },
+  {
+   "key": "customExercise.namePlaceholder",
+   "text": "Ej: Press Pallof con cable"
+  },
+  {
+   "key": "exerciseEditor.summaryTitle",
+   "text": "RESUMEN DEL EJERCICIO"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": "exerciseEditor.stepUp",
+   "text": "Qué sube"
+  },
+  {
+   "key": "exerciseEditor.upOptions.weight",
+   "text": "Peso"
+  },
+  {
+   "key": "exerciseEditor.upOptions.reps",
+   "text": "Reps"
+  },
+  {
+   "key": "exerciseEditor.upOptions.none",
+   "text": "Nada"
+  },
+  {
+   "key": "exerciseEditor.upHint.weightRange",
+   "text": "Sube el peso y las reps vuelven a {{min}}."
+  },
+  {
+   "key": "exerciseEditor.stepWhen",
+   "text": "Cuándo sube"
+  },
+  {
+   "key": "exerciseEditor.evalModes.all_complete",
+   "text": "Todas"
+  },
+  {
+   "key": "exerciseEditor.evalModes.part",
+   "text": "Parcial"
+  },
+  {
+   "key": "exerciseEditor.evalModes.rpe",
+   "text": "RPE máx."
+  },
+  {
+   "key": "exerciseEditor.whenHint",
+   "text": "Sube cuando {{when}} {{meta}}. La meta sale de Volumen."
+  },
+  {
+   "key": "exerciseEditor.stepIncr",
+   "text": "Cuánto sube"
+  },
+  {
+   "key": "exerciseEditor.incrTypes.fixed",
+   "text": "Fijo"
+  },
+  {
+   "key": "exerciseEditor.incrTypes.pct",
+   "text": "Porcentaje"
+  },
+  {
+   "key": "exerciseEditor.incrTypeDesc.fixed",
+   "text": "Añade una cantidad fija en cada subida de carga"
+  },
+  {
+   "key": "exerciseEditor.incWeightLabel",
+   "text": "Peso que se suma"
+  },
+  {
+   "key": "exerciseEditor.stepDown",
+   "text": "Cuándo baja"
+  },
+  {
+   "key": "exerciseEditor.downOpt.never",
+   "text": "Nunca"
+  },
+  {
+   "key": "exerciseEditor.downOpt.fail",
+   "text": "Si fallan"
+  },
+  {
+   "key": "exerciseEditor.failsLabel",
+   "text": "Series bajo el mínimo"
+  },
+  {
+   "key": "exerciseEditor.downHint",
+   "text": "Baja {{inc}} si {{fails}} o más series no llegan al mínimo ({{floor}})."
+  },
+  {
+   "key": "exerciseEditor.sectionProgression",
+   "text": "Progresión"
+  },
+  {
+   "key": "exerciseSelector.addAction",
+   "text": "Añadir"
+  },
+  {
+   "key": "progression.rule.weightUp",
+   "text": "Sube {{inc}} cuando {{when}} lleguen a {{goal}}"
+  },
+  {
+   "key": "progression.rule.weightDown",
+   "text": " · baja si fallan {{fails}} de {{n}}"
+  }
+ ],
+ "072-ejercicio-personalizado.png": [
+  {
+   "key": "customExercise.eyebrow",
+   "text": "Ejercicio propio"
+  },
+  {
+   "key": "customExercise.title",
+   "text": "Nuevo ejercicio"
+  },
+  {
+   "key": "exerciseSelector.addAction",
+   "text": "Añadir"
+  },
+  {
+   "key": "customExercise.nameLabel",
+   "text": "NOMBRE"
+  },
+  {
+   "key": "customExercise.namePlaceholder",
+   "text": "Ej: Press Pallof con cable"
+  },
+  {
+   "key": "exerciseEditor.summaryTitle",
+   "text": "RESUMEN DEL EJERCICIO"
+  },
+  {
+   "key": "exerciseEditor.sectionVolume",
+   "text": "Volumen"
+  },
+  {
+   "key": "exerciseEditor.metricReps",
+   "text": "Reps"
+  },
+  {
+   "key": "exerciseEditor.metricTime",
+   "text": "Tiempo"
+  },
+  {
+   "key": "exerciseEditor.repsMode.range",
+   "text": "Rango"
+  },
+  {
+   "key": "exerciseEditor.repsMode.fixed",
+   "text": "Reps fijas"
+  },
+  {
+   "key": "exerciseEditor.fieldSets",
+   "text": "Series"
+  },
+  {
+   "key": "exerciseEditor.fieldRest",
+   "text": "Descanso"
+  },
+  {
+   "key": "exerciseEditor.fieldMinReps",
+   "text": "Reps mín"
+  },
+  {
+   "key": "exerciseEditor.fieldMaxReps",
+   "text": "Reps máx"
+  },
+  {
+   "key": "exerciseEditor.sectionProgramming",
+   "text": "Programación"
+  },
+  {
+   "key": "exerciseEditor.sectionProgression",
+   "text": "Progresión"
+  },
+  {
+   "key": "exerciseEditor.progTitle.weight",
+   "text": "Peso"
+  },
+  {
+   "key": "progression.rule.weightShort",
+   "text": "+{{inc}} al llegar a {{goal}}"
+  },
+  {
+   "key": "variants.section",
+   "text": "Variante"
+  },
+  {
+   "key": "variants.none",
+   "text": "Sin especificar"
+  },
+  {
+   "key": "variants.dim.unilateral",
+   "text": "Unilateral"
+  },
+  {
+   "key": "variants.dim.grip",
+   "text": "Agarre"
+  },
+  {
+   "key": "variants.dim.width",
+   "text": "Anchura"
+  },
+  {
+   "key": "exerciseEditor.sectionOptions",
+   "text": "Opciones"
+  },
+  {
+   "key": "exerciseEditor.tempoLabel",
+   "text": "Tempo"
+  },
+  {
+   "key": "customExercise.notesLabel",
+   "text": "NOTAS DE EJECUCIÓN"
+  },
+  {
+   "key": "exerciseEditor.restSummary",
+   "text": "{{s}}s descanso"
+  },
+  {
+   "key": "exerciseSelector.equipment.bodyweight",
+   "text": "Corporal"
+  }
+ ],
+ "080-progresion-principal.png": [
+  {
+   "key": "load.tabExercises",
+   "text": "Ejercicios"
+  },
+  {
+   "key": "load.tabLoad",
+   "text": "Carga"
+  },
+  {
+   "key": "load.tabHistory",
+   "text": "Historial"
+  },
+  {
+   "key": "stats.periodAll",
+   "text": "Todo"
+  },
+  {
+   "key": "stats.currentProgram",
+   "text": "Programa actual"
+  },
+  {
+   "key": "stats.statSessions",
+   "text": "Sesiones"
+  },
+  {
+   "key": "stats.thisWeek",
+   "text": "{{count}} esta semana"
+  },
+  {
+   "key": "stats.statTrend",
+   "text": "Mejora"
+  },
+  {
+   "key": "stats.statVolume",
+   "text": "Volumen"
+  },
+  {
+   "key": "exerciseSelector.searchPlaceholder",
+   "text": "Buscar ejercicio..."
+  },
+  {
+   "key": "stats.filterExercises",
+   "text": "Filtrar ejercicios"
+  }
+ ],
+ "081-carga-calendario.png": [
+  {
+   "key": "load.tabExercises",
+   "text": "Ejercicios"
+  },
+  {
+   "key": "load.tabLoad",
+   "text": "Carga"
+  },
+  {
+   "key": "load.tabHistory",
+   "text": "Historial"
+  },
+  {
+   "key": "months.9",
+   "text": "Octubre"
+  },
+  {
+   "key": "history.heatLegend",
+   "text": "Carga"
+  },
+  {
+   "key": "history.heatMore",
+   "text": "más"
+  },
+  {
+   "key": "history.heatNoRpe",
+   "text": "sin RPE"
+  },
+  {
+   "key": "stats.periodAll",
+   "text": "Todo"
+  },
+  {
+   "key": "load.load7d",
+   "text": "Carga 7d"
+  },
+  {
+   "key": "load.vs28d",
+   "text": "vs media 28d"
+  },
+  {
+   "key": "load.monotony",
+   "text": "Monoton."
+  },
+  {
+   "key": "load.needsSessions",
+   "text": "pocas sesiones"
+  },
+  {
+   "key": "load.sessions7d",
+   "text": "Sesiones"
+  },
+  {
+   "key": "load.avgPerWeek",
+   "text": "media {{n}}/sem"
+  },
+  {
+   "key": "load.strainTitle",
+   "text": "Strain por semana"
+  },
+  {
+   "key": "load.lastWeeks",
+   "text": "últimas {{count}}"
+  },
+  {
+   "key": "load.thisWeek",
+   "text": "esta semana"
+  },
+  {
+   "key": "load.strainHint",
+   "text": "Una barra por semana. Las de menos de 3 sesiones van en contorno."
+  },
+  {
+   "key": "load.trendTitle",
+   "text": "Evolución de la carga"
+  },
+  {
+   "key": "load.perDay",
+   "text": "por día"
+  }
+ ],
+ "082a-info-strain.png": [
+  {
+   "key": "chartDocs.strainWeekly.name",
+   "text": "Strain por semana"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": "chartDocs.strainWeekly.what",
+   "text": "El estrés acumulado de cada semana, una barra por semana. Las semanas con menos de 3 sesiones van en contorno: se entrenó, pero no hay dato fiable que dibujar."
+  },
+  {
+   "key": "docs.chartRead",
+   "text": "Cómo leerla"
+  },
+  {
+   "key": "chartDocs.strainWeekly.read",
+   "text": "Manda la forma, no la altura concreta. Tres o cuatro semanas subiendo y luego una caída es un mesociclo sano. Subir sin caer nunca es lo que hay que vigilar."
+  },
+  {
+   "key": "docs.chartParts",
+   "text": "Datos que lo componen"
+  },
+  {
+   "key": "metrics.strain.name",
+   "text": "Strain"
+  },
+  {
+   "key": "metrics.strain.what",
+   "text": "Resume el estrés acumulado de la semana juntando cuánta carga hiciste con lo poco que la variaste."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.strain.formula",
+   "text": "strain = carga total de la semana × monotonía"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.strain.rules",
+   "text": "Se muestra comparado con tu propio promedio de las 4 semanas anteriores. Se oculta cuando la semana tiene menos de {{minSessions}} sesiones, igual que la monotonía."
+  },
+  {
+   "key": "load.tabExercises",
+   "text": "Ejercicios"
+  },
+  {
+   "key": "load.tabLoad",
+   "text": "Carga"
+  },
+  {
+   "key": "load.tabHistory",
+   "text": "Historial"
+  }
+ ],
+ "082b-info-evolucion-carga.png": [
+  {
+   "key": "chartDocs.loadOverTime.name",
+   "text": "Evolución de la carga"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": "chartDocs.loadOverTime.what",
+   "text": "Cada barra es la carga de un día. Las dos líneas son la media de los últimos 7 días (lima) y de los últimos 28 (azul), que enseñan la forma general por debajo del ruido del día a día."
+  },
+  {
+   "key": "docs.chartRead",
+   "text": "Cómo leerla"
+  },
+  {
+   "key": "chartDocs.loadOverTime.read",
+   "text": "Cuando la línea de 7 días va por encima de la de 28 estás acumulando más carga de la habitual; cuando cae por debajo, estás descargando. Que se crucen a menudo es señal de alternancia sana. Lo que conviene vigilar es una separación grande y sostenida."
+  },
+  {
+   "key": "docs.chartParts",
+   "text": "Datos que lo componen"
+  },
+  {
+   "key": "metrics.sessionLoad.name",
+   "text": "Carga de la sesión"
+  },
+  {
+   "key": "metrics.sessionLoad.what",
+   "text": "Resume en un número cuánto te ha costado una sesión, juntando su duración con lo dura que te pareció. Es la base de todo el panel de Carga."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.sessionLoad.formula",
+   "text": "carga = sRPE × minutos de sesión"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "load.tabExercises",
+   "text": "Ejercicios"
+  },
+  {
+   "key": "load.tabLoad",
+   "text": "Carga"
+  },
+  {
+   "key": "load.tabHistory",
+   "text": "Historial"
+  }
+ ],
+ "090-clientes-panel.png": [
+  {
+   "key": "clients.title",
+   "text": "Clientes"
+  },
+  {
+   "key": "clients.newBtn",
+   "text": "+ Cliente"
+  },
+  {
+   "key": "clients.searchPlaceholder",
+   "text": "Buscar cliente…"
+  },
+  {
+   "key": null,
+   "text": "En riesgo"
+  },
+  {
+   "key": "clients.weekLabel",
+   "text": "Semana"
+  },
+  {
+   "key": "clients.stagePos",
+   "text": "Etapa {{idx}} de {{total}}"
+  },
+  {
+   "key": "clients.thisWeek",
+   "text": "esta semana"
+  },
+  {
+   "key": "clients.weekCompliance",
+   "text": "{{done}} de {{target}} esta semana"
+  },
+  {
+   "key": "clients.noPaceShort",
+   "text": "sin ritmo aún"
+  },
+  {
+   "key": "clients.lastNever",
+   "text": "Nunca"
+  },
+  {
+   "key": "clients.sessionsPerWeek",
+   "text": "ses/sem"
+  },
+  {
+   "key": "dayCard.daysAgo",
+   "text": "Hace {{count}} días"
+  },
+  {
+   "key": "tabs.session",
+   "text": "Sesión"
+  },
+  {
+   "key": "tabs.program",
+   "text": "Programa"
+  },
+  {
+   "key": "tabs.progress",
+   "text": "Progresión"
+  },
+  {
+   "key": "tabs.clients",
+   "text": "Clientes"
+  },
+  {
+   "key": "tabs.templates",
+   "text": "Plantillas"
+  }
+ ],
+ "100a-onboarding-paso1.png": [
+  {
+   "key": "header.sectionPrograms",
+   "text": "PROGRAMAS"
+  },
+  {
+   "key": "header.newProgramItem",
+   "text": "Nuevo programa"
+  },
+  {
+   "key": "header.archivedProgramsItem",
+   "text": "Programas archivados"
+  },
+  {
+   "key": "header.sectionConnections",
+   "text": "CONEXIONES"
+  },
+  {
+   "key": "header.trainerRow",
+   "text": "Entrenador"
+  },
+  {
+   "key": "header.statusConnected",
+   "text": "Conectado"
+  },
+  {
+   "key": "header.importFile",
+   "text": "Importar archivo"
+  },
+  {
+   "key": "header.sectionPreferences",
+   "text": "PREFERENCIAS"
+  },
+  {
+   "key": "header.units",
+   "text": "Unidades"
+  },
+  {
+   "key": "header.language",
+   "text": "Idioma"
+  },
+  {
+   "key": "header.theme",
+   "text": "Tema"
+  },
+  {
+   "key": null,
+   "text": "Oscuro"
+  },
+  {
+   "key": null,
+   "text": "Midnight"
+  },
+  {
+   "key": null,
+   "text": "Earthy"
+  },
+  {
+   "key": null,
+   "text": "Space"
+  },
+  {
+   "key": null,
+   "text": "FormaFit"
+  },
+  {
+   "key": "header.bodyWeight",
+   "text": "Peso corporal"
+  },
+  {
+   "key": "header.newProgramWarnTitle",
+   "text": "Crear nuevo programa"
+  },
+  {
+   "key": "header.newProgramWarnBody",
+   "text": "Al crear un programa nuevo te desconectarás de tu entrenador y el programa actual será reemplazado."
+  },
+  {
+   "key": "common.cancel",
+   "text": "Cancelar"
+  },
+  {
+   "key": "common.continue",
+   "text": "Continuar"
+  },
+  {
+   "key": null,
+   "text": "KG / LB"
+  },
+  {
+   "key": null,
+   "text": "ES / EN"
+  }
+ ],
+ "100b-onboarding-paso2.png": [
+  {
+   "key": "onboarding.newProgram",
+   "text": "NUEVO PROGRAMA"
+  },
+  {
+   "key": "onboarding.howToCreate",
+   "text": "¿Cómo lo creamos?"
+  },
+  {
+   "key": "onboarding.modeAuto",
+   "text": "Elegir programa"
+  },
+  {
+   "key": "onboarding.modeRecommended",
+   "text": "RECOMENDADO"
+  },
+  {
+   "key": "onboarding.modeAutoDesc",
+   "text": "Eliges entre programas ya hechos y lo adaptamos a tus días y tu material."
+  },
+  {
+   "key": "onboarding.modeManual",
+   "text": "Programa vacío"
+  },
+  {
+   "key": "onboarding.modeManualDesc",
+   "text": "Montas tú la estructura y añades tus propios ejercicios."
+  },
+  {
+   "key": "onboarding.modeImport",
+   "text": "Importar archivo"
+  },
+  {
+   "key": "onboarding.modeImportDesc",
+   "text": "Abre un archivo .fitdata exportado desde Forma Fit."
+  },
+  {
+   "key": "onboarding.modeTemplate",
+   "text": "Cargar plantilla"
+  },
+  {
+   "key": "onboarding.modeTemplateDesc",
+   "text": "Parte de una de tus {{count}} plantillas guardadas."
+  },
+  {
+   "key": "onboarding.modeTrainer",
+   "text": "Tengo un entrenador"
+  },
+  {
+   "key": "onboarding.modeTrainerDesc",
+   "text": "Introduce su código y recibe el programa ya sincronizado."
+  },
+  {
+   "key": "onboarding.modeFooterHint",
+   "text": "Sea cual sea el camino, luego puedes editarlo todo."
+  }
+ ],
+ "100c-onboarding-elegir.png": [
+  {
+   "key": "onboarding.newProgram",
+   "text": "NUEVO PROGRAMA"
+  },
+  {
+   "key": "onboarding.stepLevel.headerTitle",
+   "text": "Tu nivel"
+  },
+  {
+   "key": "onboarding.stepLevel.title",
+   "text": "¿Cuál es tu nivel?"
+  },
+  {
+   "key": "onboarding.levels.beginner.label",
+   "text": "Principiante"
+  },
+  {
+   "key": "onboarding.levels.beginner.description",
+   "text": "Menos de 1 año entrenando o volviendo tras una pausa larga."
+  },
+  {
+   "key": "onboarding.levels.intermediate.label",
+   "text": "Intermedio"
+  },
+  {
+   "key": "onboarding.levels.intermediate.description",
+   "text": "1–3 años entrenando con continuidad."
+  },
+  {
+   "key": "onboarding.levels.advanced.label",
+   "text": "Avanzado"
+  },
+  {
+   "key": "onboarding.levels.advanced.description",
+   "text": "Más de 3 años con técnica sólida en movimientos libres."
+  },
+  {
+   "key": "onboarding.stepLevel.hint",
+   "text": "Marca tu banda de volumen y qué programas te proponemos."
+  }
+ ],
+ "100d-onboarding-paso-siguiente.png": [
+  {
+   "key": "onboarding.newProgram",
+   "text": "NUEVO PROGRAMA"
+  },
+  {
+   "key": "onboarding.identity.title",
+   "text": "¿Qué buscas?"
+  },
+  {
+   "key": "onboarding.identity.muscle.label",
+   "text": "Ganar músculo"
+  },
+  {
+   "key": "onboarding.identity.muscle.description",
+   "text": "Hipertrofia general. El enfoque más completo y versátil."
+  },
+  {
+   "key": "onboarding.identity.strength.label",
+   "text": "Ponerte fuerte"
+  },
+  {
+   "key": "onboarding.identity.strength.description",
+   "text": "Sentadilla, peso muerto y press como eje. Series pesadas y descansos largos."
+  },
+  {
+   "key": "onboarding.identity.glutes_legs.label",
+   "text": "Glúteo y pierna"
+  },
+  {
+   "key": "onboarding.identity.glutes_legs.description",
+   "text": "Máximo énfasis en glúteo, isquios y pierna."
+  },
+  {
+   "key": "onboarding.identity.calisthenics.label",
+   "text": "Calistenia"
+  },
+  {
+   "key": "onboarding.identity.calisthenics.description",
+   "text": "Peso corporal, agarre y core. Fuerza relativa y control del cuerpo."
+  },
+  {
+   "key": "onboarding.identity.subtitle",
+   "text": "Con esto elegimos el tipo de programa."
+  }
+ ],
+ "100e-onboarding-paso-siguiente.png": [
+  {
+   "key": "onboarding.newProgram",
+   "text": "NUEVO PROGRAMA"
+  },
+  {
+   "key": "onboarding.stepDays.headerTitle",
+   "text": "Días por semana"
+  },
+  {
+   "key": "onboarding.stepDays.subtitleFrequency",
+   "text": "¿Cuántos días a la semana entrenas?"
+  },
+  {
+   "key": "onboarding.stepDays.daysHint",
+   "text": "Cada sesión del programa es un entreno a la semana. Si un programa no cuadra con tus días, te lo decimos."
+  }
+ ],
+ "100f-onboarding-paso-siguiente.png": [
+  {
+   "key": "onboarding.proposals.eyebrow_other",
+   "text": "{{level}} · {{count}} DÍAS"
+  },
+  {
+   "key": "onboarding.proposals.title",
+   "text": "Selecciona tu programa"
+  },
+  {
+   "key": "onboarding.proposals.weeks",
+   "text": "{{weeks}} semanas"
+  },
+  {
+   "key": "onboarding.proposals.phasesCount_other",
+   "text": "{{count}} fases"
+  },
+  {
+   "key": "onboarding.proposals.best",
+   "text": "MEJOR"
+  },
+  {
+   "key": "onboarding.proposals.sessionsLabel",
+   "text": "SESIONES"
+  },
+  {
+   "key": "onboarding.proposals.setsLabel",
+   "text": "SERIES"
+  },
+  {
+   "key": "onboarding.proposals.demandLabel",
+   "text": "EXIGENCIA"
+  },
+  {
+   "key": "editor.sessionMeta",
+   "text": "{{ex}} ejercicios · {{sets}} series · ~{{min}} min"
+  }
+ ],
+ "101a-confirmacion-programa.png": [
+  {
+   "key": "onboarding.preview.eyebrow",
+   "text": "TU PROGRAMA"
+  },
+  {
+   "key": "onboarding.proposals.weeks",
+   "text": "{{weeks}} semanas"
+  },
+  {
+   "key": "onboarding.proposals.phasesCount_other",
+   "text": "{{count}} fases"
+  },
+  {
+   "key": "onboarding.proposals.sessionsLabel",
+   "text": "SESIONES"
+  },
+  {
+   "key": "onboarding.preview.setsLabel",
+   "text": "SERIES"
+  },
+  {
+   "key": "onboarding.preview.perSessionLabel",
+   "text": "POR SESIÓN"
+  },
+  {
+   "key": "onboarding.preview.adjustSectionLabel",
+   "text": "Ajustes"
+  },
+  {
+   "key": "onboarding.preview.adjustNavSubtitle",
+   "text": "Tiempo, material y limitaciones"
+  },
+  {
+   "key": "onboarding.preview.edit",
+   "text": "EDITAR"
+  },
+  {
+   "key": "onboarding.preview.start",
+   "text": "EMPEZAR"
+  },
+  {
+   "key": "onboarding.preview.changeLater",
+   "text": "Puedes cambiar cualquier cosa después, en el editor."
+  }
+ ],
+ "101b-hoja-ajustes-sheet.png": [
+  {
+   "key": "onboarding.preview.eyebrow",
+   "text": "TU PROGRAMA"
+  },
+  {
+   "key": "onboarding.preview.adjustSectionLabel",
+   "text": "Ajustes"
+  },
+  {
+   "key": "onboarding.adjustSheet.title",
+   "text": "Ajustes"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": "onboarding.adjustSheet.step1",
+   "text": "Tiempo por sesión"
+  },
+  {
+   "key": "onboarding.adjustSheet.timeHintOk",
+   "text": "Cabe todo. Ningún recorte."
+  },
+  {
+   "key": "onboarding.adjustSheet.step2",
+   "text": "Material"
+  },
+  {
+   "key": "onboarding.adjustSheet.material.gym",
+   "text": "Gimnasio"
+  },
+  {
+   "key": "onboarding.adjustSheet.material.home",
+   "text": "Casa"
+  },
+  {
+   "key": "onboarding.adjustSheet.material.bodyweight",
+   "text": "Cuerpo"
+  },
+  {
+   "key": "onboarding.adjustSheet.material.custom",
+   "text": "Otro"
+  },
+  {
+   "key": "onboarding.adjustSheet.materialHint.gym",
+   "text": "Máquinas, mancuernas, barra, dominadas, kettlebell y bandas."
+  },
+  {
+   "key": "onboarding.adjustSheet.step3",
+   "text": "Limitaciones"
+  },
+  {
+   "key": "onboarding.limitations.none.label",
+   "text": "Sin limitaciones"
+  },
+  {
+   "key": "onboarding.limitations.shoulder.label",
+   "text": "Hombro / Trapecio"
+  },
+  {
+   "key": "onboarding.limitations.lower_back.label",
+   "text": "Zona lumbar"
+  },
+  {
+   "key": "onboarding.limitations.knee.label",
+   "text": "Rodilla"
+  },
+  {
+   "key": "onboarding.adjustSheet.limitationsHintNone",
+   "text": "Sin limitaciones activas."
+  }
+ ]
+}

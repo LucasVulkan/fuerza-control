@@ -2,11 +2,11 @@
 
 > Tema: conexión
 > En corto: Con 20 clientes la pregunta no es «cuánta carga lleva Ana» sino «a quién miro hoy». Dos banderas en la lista que suben solos los tres clientes que piden atención, usando métricas que ya se calculan.
-> Fase C02-01 · pendiente · Aviso en la fila del listado + cuarto estado del hero · §2 · antes C04
-> Fase C02-02 · pendiente · `clientAttention.js` + `blockFinished` + pill con contador · §10 · antes C05
-> Fase C02-03 · pendiente · `isStalled` + pill, calibrado contra la semilla · §3 · antes C06
+> Fase C02-01 · aparcado · Aviso en la fila del listado + cuarto estado del hero · §2 · antes C04
+> Fase C02-02 · aparcado · `clientAttention.js` + `blockFinished` + pill con contador · §10 · antes C05
+> Fase C02-03 · aparcado · `isStalled` + pill, calibrado contra la semilla · §3 · antes C06
 >
-> Estado: **spec cerrada, sin implementar** (ago 2026). Sale del análisis de 5
+> Estado: **spec cerrada, aparcada** (15-oct-2026). Ninguna fase se hará por ahora. Antes: «cerrada, sin implementar» (ago 2026). Sale del análisis de 5
 > palancas (P1-P5) sobre cómo usar las métricas que ya se calculan para
 > programar más rápido; la P1 es [P06-stage-planner.md](P06-stage-planner.md), esta es
 > la P3.

@@ -1,0 +1,1731 @@
+{
+ "001-menu-arriba.png": [
+  {
+   "key": "header.namePlaceholder",
+   "text": "Añade tu nombre"
+  },
+  {
+   "key": "header.identityRole",
+   "text": "Entrenador · aparece en tus programas"
+  },
+  {
+   "key": null,
+   "text": "PRO"
+  },
+  {
+   "key": "header.sectionPrograms",
+   "text": "PROGRAMAS"
+  },
+  {
+   "key": "header.newProgramItem",
+   "text": "Nuevo programa"
+  },
+  {
+   "key": "header.archivedProgramsItem",
+   "text": "Programas archivados"
+  },
+  {
+   "key": "header.sectionConnections",
+   "text": "CONEXIONES"
+  },
+  {
+   "key": "header.trainerRow",
+   "text": "Entrenador"
+  },
+  {
+   "key": "header.trainerSubCode",
+   "text": "sincroniza por código"
+  },
+  {
+   "key": "header.statusConnected",
+   "text": "Conectado"
+  },
+  {
+   "key": "header.driveRow",
+   "text": "Copia en Google Drive"
+  },
+  {
+   "key": "header.driveSubOff",
+   "text": "Copia automática de tus datos"
+  },
+  {
+   "key": "header.statusActivate",
+   "text": "Activar"
+  },
+  {
+   "key": "header.clientSyncRow",
+   "text": "Sincronización con clientes"
+  },
+  {
+   "key": "header.syncSubCode",
+   "text": "Con código de recuperación"
+  },
+  {
+   "key": "header.statusActive",
+   "text": "Activa"
+  },
+  {
+   "key": "header.sectionData",
+   "text": "DATOS"
+  },
+  {
+   "key": "header.exportRow",
+   "text": "Exportar"
+  },
+  {
+   "key": "header.exportRowValue",
+   "text": "backup · programa"
+  },
+  {
+   "key": "header.importFile",
+   "text": "Importar archivo"
+  },
+  {
+   "key": "header.sectionPreferences",
+   "text": "PREFERENCIAS"
+  },
+  {
+   "key": "header.units",
+   "text": "Unidades"
+  },
+  {
+   "key": null,
+   "text": "KG"
+  },
+  {
+   "key": null,
+   "text": "LB"
+  },
+  {
+   "key": "header.language",
+   "text": "Idioma"
+  },
+  {
+   "key": null,
+   "text": "ES"
+  },
+  {
+   "key": null,
+   "text": "EN"
+  }
+ ],
+ "002-menu-abajo.png": [
+  {
+   "key": "header.language",
+   "text": "Idioma"
+  },
+  {
+   "key": "header.theme",
+   "text": "Tema"
+  },
+  {
+   "key": null,
+   "text": "Oscuro"
+  },
+  {
+   "key": null,
+   "text": "Midnight"
+  },
+  {
+   "key": null,
+   "text": "Earthy"
+  },
+  {
+   "key": null,
+   "text": "Space"
+  },
+  {
+   "key": null,
+   "text": "FormaFit"
+  },
+  {
+   "key": "header.bodyWeight",
+   "text": "Peso corporal"
+  },
+  {
+   "key": "header.proTabsLabel",
+   "text": "Pestañas de entrenador"
+  },
+  {
+   "key": "header.proTabsHint",
+   "text": "Muestra las pestañas de Clientes y Plantillas"
+  },
+  {
+   "key": "header.homeTabsLabel",
+   "text": "Sesiones en pestañas"
+  },
+  {
+   "key": "header.homeTabsHint",
+   "text": "Una sola tarjeta en Inicio, con una pestaña por sesión"
+  },
+  {
+   "key": "header.scrubRulerLabel",
+   "text": "Regla al deslizar"
+  },
+  {
+   "key": "header.scrubRulerHint",
+   "text": "KG, reps y RPE se ajustan sobre una regla"
+  },
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "header.planRow",
+   "text": "Plan"
+  },
+  {
+   "key": null,
+   "text": "PRO"
+  },
+  {
+   "key": "header.docsRow",
+   "text": "Documentación"
+  },
+  {
+   "key": "header.deleteAccountRow",
+   "text": "Eliminar mi cuenta"
+  },
+  {
+   "key": "header.deleteAccountSub",
+   "text": "Borra tu cuenta y lo que haya en el servidor. No se puede deshacer."
+  },
+  {
+   "key": "header.sectionDeveloper",
+   "text": "DESARROLLADOR"
+  },
+  {
+   "key": "header.plan",
+   "text": "Plan:"
+  },
+  {
+   "key": "header.switchToFree",
+   "text": "Cambiar a FREE"
+  }
+ ],
+ "003-programas-archivados.png": [
+  {
+   "key": "programCard.eyebrowSelf",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "programCard.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.weekDayLetters.0",
+   "text": "L"
+  },
+  {
+   "key": "home.weekDayLetters.1",
+   "text": "M"
+  },
+  {
+   "key": "home.weekDayLetters.2",
+   "text": "X"
+  },
+  {
+   "key": "home.weekDayLetters.3",
+   "text": "J"
+  },
+  {
+   "key": "home.weekDayLetters.4",
+   "text": "V"
+  },
+  {
+   "key": "home.weekDayLetters.5",
+   "text": "S"
+  },
+  {
+   "key": "home.weekDayLetters.6",
+   "text": "D"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStartSession",
+   "text": "EMPEZAR SESIÓN {{label}}"
+  },
+  {
+   "key": "freeSession.sectionTitle",
+   "text": "Sesiones libres"
+  },
+  {
+   "key": "archived.title",
+   "text": "Programas archivados"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": null,
+   "text": "{{count}} sesiones · {{date}}"
+  },
+  {
+   "key": "clients.noSessionsYet",
+   "text": "Aún sin sesiones"
+  }
+ ],
+ "004-exportar.png": [
+  {
+   "key": "programCard.eyebrowSelf",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "programCard.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.weekDayLetters.0",
+   "text": "L"
+  },
+  {
+   "key": "home.weekDayLetters.1",
+   "text": "M"
+  },
+  {
+   "key": "home.weekDayLetters.2",
+   "text": "X"
+  },
+  {
+   "key": "home.weekDayLetters.3",
+   "text": "J"
+  },
+  {
+   "key": "home.weekDayLetters.4",
+   "text": "V"
+  },
+  {
+   "key": "home.weekDayLetters.5",
+   "text": "S"
+  },
+  {
+   "key": "home.weekDayLetters.6",
+   "text": "D"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStartSession",
+   "text": "EMPEZAR SESIÓN {{label}}"
+  },
+  {
+   "key": "freeSession.sectionTitle",
+   "text": "Sesiones libres"
+  },
+  {
+   "key": "home.rowMinutes",
+   "text": "~{{minutes}} min"
+  },
+  {
+   "key": "dayCard.weeksAgo",
+   "text": "Hace {{count}} semanas"
+  },
+  {
+   "key": "freeSession.btn",
+   "text": "+ Sesión libre"
+  },
+  {
+   "key": "header.exportSheetTitle",
+   "text": "Exportar"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": "header.exportBackup",
+   "text": "Exportar backup"
+  },
+  {
+   "key": "header.exportBackupSub",
+   "text": "Todo: programas, historial y ajustes"
+  },
+  {
+   "key": "header.exportProgramHistory",
+   "text": "Exportar programa + historial"
+  },
+  {
+   "key": "header.exportProgramHistorySub",
+   "text": "Solo el programa activo y sus sesiones"
+  }
+ ],
+ "005-importar-selector.png": [],
+ "006-entrenador-vincular.png": [
+  {
+   "key": "header.sectionConnections",
+   "text": "CONEXIONES"
+  },
+  {
+   "key": "trainer.title",
+   "text": "Entrenador"
+  },
+  {
+   "key": "trainer.tagConnected",
+   "text": "CONECTADO"
+  },
+  {
+   "key": "trainer.unnamedTrainer",
+   "text": "Tu entrenador"
+  },
+  {
+   "key": "trainer.connectedSub",
+   "text": "Te envía los programas y ve las sesiones que completas de ellos."
+  },
+  {
+   "key": "trainer.sectionDetails",
+   "text": "DETALLES"
+  },
+  {
+   "key": "trainer.rowProgram",
+   "text": "Programa que te envió"
+  },
+  {
+   "key": "trainer.rowProgramSub",
+   "text": "Si lo actualiza, la app te avisa y decides tú cuándo cambiarlo."
+  },
+  {
+   "key": "trainer.rowLastUpload",
+   "text": "Último envío de tu historial"
+  },
+  {
+   "key": "trainer.rowLastUploadSub",
+   "text": "Se envía solo, al terminar cada sesión."
+  },
+  {
+   "key": "trainer.rowAccessCode",
+   "text": "Entras con un código"
+  },
+  {
+   "key": "trainer.rowAccessCodeSub",
+   "text": "El código no caduca ni cambia: es siempre el mismo. Guárdalo para volver a entrar si cambias de móvil o reinstalas la app."
+  },
+  {
+   "key": "trainer.sectionPrivacy",
+   "text": "QUÉ VE TU ENTRENADOR"
+  },
+  {
+   "key": "trainer.sharedTitle",
+   "text": "Sí ve"
+  },
+  {
+   "key": "trainer.sharedBody",
+   "text": "Las sesiones que completas de los programas que él te envía, y las sesiones libres que hagas desde que os conectasteis."
+  },
+  {
+   "key": "trainer.notSharedTitle",
+   "text": "No ve"
+  },
+  {
+   "key": "trainer.notSharedBody",
+   "text": "Los programas que te hayas creado tú, ni nada de lo que entrenaste antes de conectaros."
+  },
+  {
+   "key": "trainer.sectionActions",
+   "text": "ACCIONES"
+  },
+  {
+   "key": "trainer.linkGoogleLabel",
+   "text": "Vincular mi cuenta de Google"
+  },
+  {
+   "key": "trainer.linkGoogleSub",
+   "text": "Para no depender del código si cambias de móvil o reinstalas la app."
+  },
+  {
+   "key": "trainer.changeLabel",
+   "text": "Cambiar de entrenador"
+  },
+  {
+   "key": "trainer.changeSub",
+   "text": "Te pedirá el código del nuevo. El programa actual se archiva y recibirás el suyo."
+  },
+  {
+   "key": "trainer.disconnectLabel",
+   "text": "Desconectarme"
+  },
+  {
+   "key": "trainer.disconnectSub",
+   "text": "Dejas de enviarle sesiones. Su programa se archiva y se restaura el que tenías antes. Para volver, el mismo código."
+  }
+ ],
+ "006b-vincular-google-previo.png": [
+  {
+   "key": "trainer.linkTitle",
+   "text": "Vincular cuenta"
+  },
+  {
+   "key": "common.cancel",
+   "text": "Cancelar"
+  },
+  {
+   "key": "trainer.linkLead",
+   "text": "Vincula una cuenta para recuperar la conexión con tu entrenador en otro móvil sin volver a pedirle el código."
+  },
+  {
+   "key": "trainer.linkWhatHappens",
+   "text": "QUÉ CAMBIA"
+  },
+  {
+   "key": "trainer.linkImplies1",
+   "text": "Tu conexión con el entrenador y tu historial se quedan como están."
+  },
+  {
+   "key": "trainer.linkImplies2",
+   "text": "En otro móvil basta con entrar con la misma cuenta."
+  },
+  {
+   "key": "trainer.linkImplies3",
+   "text": "Ya no tendrás que guardar ningún código."
+  },
+  {
+   "key": "trainer.linkCta",
+   "text": "CONTINUAR CON GOOGLE"
+  },
+  {
+   "key": "trainer.expoGoNote",
+   "text": "El inicio de sesión no funciona en Expo Go. Prueba con la app instalada."
+  }
+ ],
+ "006c-cambiar-entrenador.png": [
+  {
+   "key": "trainer.codeTitle",
+   "text": "Conectar con entrenador"
+  },
+  {
+   "key": "common.cancel",
+   "text": "Cancelar"
+  },
+  {
+   "key": "trainer.codeLead",
+   "text": "Escribe el código que te ha dado tu entrenador. Son ocho caracteres tipo XK7M-2P4T; el guion se pone solo."
+  },
+  {
+   "key": null,
+   "text": "XXXX-XXXX"
+  },
+  {
+   "key": "common.paste",
+   "text": "PEGAR"
+  },
+  {
+   "key": "trainer.codeContinue",
+   "text": "CONTINUAR"
+  },
+  {
+   "key": "trainer.or",
+   "text": "o"
+  },
+  {
+   "key": "trainer.googleCta",
+   "text": "RECONECTAR CON GOOGLE"
+  },
+  {
+   "key": "trainer.socialCtaHint",
+   "text": "Solo si ya estuviste conectado y vinculaste una cuenta: recupera la conexión sin tener que escribir el código otra vez."
+  },
+  {
+   "key": "trainer.expoGoNote",
+   "text": "El inicio de sesión no funciona en Expo Go. Prueba con la app instalada."
+  }
+ ],
+ "006d-desconectar.png": [
+  {
+   "key": "trainer.disconnectTitle",
+   "text": "Desconectarte de tu entrenador"
+  },
+  {
+   "key": "trainer.disconnectBody",
+   "text": "Dejarás de enviarle tus sesiones. Su programa se archivará y se restaurará el que tenías antes, si tenías uno. Podrás volver a conectarte con el mismo código."
+  },
+  {
+   "key": "common.cancel",
+   "text": "Cancelar"
+  },
+  {
+   "key": "trainer.disconnectConfirm",
+   "text": "Desconectarme"
+  }
+ ],
+ "007-copia-drive.png": [
+  {
+   "key": "header.sectionConnections",
+   "text": "CONEXIONES"
+  },
+  {
+   "key": "drive.title",
+   "text": "Copia en Drive"
+  },
+  {
+   "key": "drive.tabSettings",
+   "text": "Ajustes"
+  },
+  {
+   "key": "drive.tabBackups",
+   "text": "Copias"
+  },
+  {
+   "key": "drive.tagOff",
+   "text": "SIN COPIAS"
+  },
+  {
+   "key": "drive.offTitle",
+   "text": "Sin copia de seguridad"
+  },
+  {
+   "key": "drive.offSub",
+   "text": "Tus datos viven solo en este móvil. Si lo pierdes o reinstalas la app, se van con él."
+  },
+  {
+   "key": "drive.sectionHow",
+   "text": "QUÉ HACE"
+  },
+  {
+   "key": "drive.how1Title",
+   "text": "Guarda todo en tu Drive"
+  },
+  {
+   "key": "drive.how1Sub",
+   "text": "Programas, historial, ejercicios propios, ajustes, y también tus clientes y plantillas de sesión, en la carpeta «Forma Backups» de tu Google Drive."
+  },
+  {
+   "key": "drive.how2Title",
+   "text": "Es tu cuenta, no la nuestra"
+  },
+  {
+   "key": "drive.how2Sub",
+   "text": "La app solo puede ver los archivos que ella misma crea; el resto de tu Drive le es invisible."
+  },
+  {
+   "key": "drive.how3Title",
+   "text": "Se guardan las 30 últimas"
+  },
+  {
+   "key": "drive.how3Sub",
+   "text": "Cada copia es un archivo con su fecha. Al pasar de 30, las más viejas se borran solas."
+  },
+  {
+   "key": "drive.expoGoNote",
+   "text": "La conexión con Google no funciona en Expo Go. Prueba con la app instalada (build EAS)."
+  }
+ ],
+ "008-sync-clientes.png": [
+  {
+   "key": "programCard.eyebrowSelf",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "programCard.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.weekDayLetters.0",
+   "text": "L"
+  },
+  {
+   "key": "home.weekDayLetters.1",
+   "text": "M"
+  },
+  {
+   "key": "home.weekDayLetters.2",
+   "text": "X"
+  },
+  {
+   "key": "home.weekDayLetters.3",
+   "text": "J"
+  },
+  {
+   "key": "home.weekDayLetters.4",
+   "text": "V"
+  },
+  {
+   "key": "home.weekDayLetters.5",
+   "text": "S"
+  },
+  {
+   "key": "home.weekDayLetters.6",
+   "text": "D"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "sync.title",
+   "text": "Sincronización"
+  },
+  {
+   "key": "common.cancel",
+   "text": "Cancelar"
+  },
+  {
+   "key": "sync.statusTag",
+   "text": "SINCRONIZANDO"
+  },
+  {
+   "key": "sync.statusTitle",
+   "text": "Tus clientes están sincronizados"
+  },
+  {
+   "key": "sync.statusSub",
+   "text": "Con tu código personal. Guárdalo: es lo que te devuelve la cuenta si cambias de móvil."
+  },
+  {
+   "key": "sync.yourCodeLabel",
+   "text": "TU CÓDIGO"
+  },
+  {
+   "key": "sync.copyHint",
+   "text": "Toca para copiar"
+  },
+  {
+   "key": "sync.nameLabel",
+   "text": "TU NOMBRE"
+  },
+  {
+   "key": "sync.namePlaceholder",
+   "text": "Ej. Lucas García"
+  },
+  {
+   "key": "sync.nameHint",
+   "text": "Es el nombre que tus clientes ven en los programas que les envías."
+  },
+  {
+   "key": "sync.reauthCta",
+   "text": "VOLVER A AUTENTICAR"
+  },
+  {
+   "key": "sync.reauthHint",
+   "text": "Úsalo si la app dejó de reconocerte: vuelve a entrar con el código que ya tienes guardado."
+  },
+  {
+   "key": "sync.changeModeLink",
+   "text": "Cambiar el modo de sincronización →"
+  }
+ ],
+ "009a-unidades-idioma-tema.png": [
+  {
+   "key": "header.namePlaceholder",
+   "text": "Añade tu nombre"
+  },
+  {
+   "key": "header.identityRole",
+   "text": "Entrenador · aparece en tus programas"
+  },
+  {
+   "key": null,
+   "text": "PRO"
+  },
+  {
+   "key": "header.sectionPrograms",
+   "text": "PROGRAMAS"
+  },
+  {
+   "key": "header.newProgramItem",
+   "text": "Nuevo programa"
+  },
+  {
+   "key": "header.archivedProgramsItem",
+   "text": "Programas archivados"
+  },
+  {
+   "key": "header.sectionConnections",
+   "text": "CONEXIONES"
+  },
+  {
+   "key": "header.trainerRow",
+   "text": "Entrenador"
+  },
+  {
+   "key": "header.trainerSubCode",
+   "text": "sincroniza por código"
+  },
+  {
+   "key": "header.statusConnected",
+   "text": "Conectado"
+  },
+  {
+   "key": "header.driveRow",
+   "text": "Copia en Google Drive"
+  },
+  {
+   "key": "header.driveSubOff",
+   "text": "Copia automática de tus datos"
+  },
+  {
+   "key": "header.statusActivate",
+   "text": "Activar"
+  },
+  {
+   "key": "header.clientSyncRow",
+   "text": "Sincronización con clientes"
+  },
+  {
+   "key": "header.syncSubCode",
+   "text": "Con código de recuperación"
+  },
+  {
+   "key": "header.statusActive",
+   "text": "Activa"
+  },
+  {
+   "key": "header.sectionData",
+   "text": "DATOS"
+  },
+  {
+   "key": "header.exportRow",
+   "text": "Exportar"
+  },
+  {
+   "key": "header.exportRowValue",
+   "text": "backup · programa"
+  },
+  {
+   "key": "header.importFile",
+   "text": "Importar archivo"
+  },
+  {
+   "key": "header.sectionPreferences",
+   "text": "PREFERENCIAS"
+  },
+  {
+   "key": "header.units",
+   "text": "Unidades"
+  },
+  {
+   "key": null,
+   "text": "KG"
+  },
+  {
+   "key": null,
+   "text": "LB"
+  },
+  {
+   "key": "header.language",
+   "text": "Idioma"
+  },
+  {
+   "key": null,
+   "text": "ES"
+  },
+  {
+   "key": null,
+   "text": "EN"
+  }
+ ],
+ "009c-peso-corporal.png": [
+  {
+   "key": "header.language",
+   "text": "Idioma"
+  },
+  {
+   "key": "header.theme",
+   "text": "Tema"
+  },
+  {
+   "key": null,
+   "text": "Oscuro"
+  },
+  {
+   "key": null,
+   "text": "Midnight"
+  },
+  {
+   "key": null,
+   "text": "Earthy"
+  },
+  {
+   "key": null,
+   "text": "Space"
+  },
+  {
+   "key": null,
+   "text": "FormaFit"
+  },
+  {
+   "key": "header.bodyWeight",
+   "text": "Peso corporal"
+  },
+  {
+   "key": "header.proTabsLabel",
+   "text": "Pestañas de entrenador"
+  },
+  {
+   "key": "header.proTabsHint",
+   "text": "Muestra las pestañas de Clientes y Plantillas"
+  },
+  {
+   "key": "header.homeTabsLabel",
+   "text": "Sesiones en pestañas"
+  },
+  {
+   "key": "header.homeTabsHint",
+   "text": "Una sola tarjeta en Inicio, con una pestaña por sesión"
+  },
+  {
+   "key": "header.scrubRulerLabel",
+   "text": "Regla al deslizar"
+  },
+  {
+   "key": "header.scrubRulerHint",
+   "text": "KG, reps y RPE se ajustan sobre una regla"
+  },
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "header.planRow",
+   "text": "Plan"
+  },
+  {
+   "key": null,
+   "text": "PRO"
+  },
+  {
+   "key": "header.docsRow",
+   "text": "Documentación"
+  },
+  {
+   "key": "header.deleteAccountRow",
+   "text": "Eliminar mi cuenta"
+  },
+  {
+   "key": "header.deleteAccountSub",
+   "text": "Borra tu cuenta y lo que haya en el servidor. No se puede deshacer."
+  },
+  {
+   "key": "header.sectionDeveloper",
+   "text": "DESARROLLADOR"
+  },
+  {
+   "key": "header.plan",
+   "text": "Plan:"
+  },
+  {
+   "key": "header.switchToFree",
+   "text": "Cambiar a FREE"
+  }
+ ],
+ "010-pestanas-interruptores.png": [
+  {
+   "key": "header.language",
+   "text": "Idioma"
+  },
+  {
+   "key": "header.theme",
+   "text": "Tema"
+  },
+  {
+   "key": null,
+   "text": "Oscuro"
+  },
+  {
+   "key": null,
+   "text": "Midnight"
+  },
+  {
+   "key": null,
+   "text": "Earthy"
+  },
+  {
+   "key": null,
+   "text": "Space"
+  },
+  {
+   "key": null,
+   "text": "FormaFit"
+  },
+  {
+   "key": "header.bodyWeight",
+   "text": "Peso corporal"
+  },
+  {
+   "key": "header.proTabsLabel",
+   "text": "Pestañas de entrenador"
+  },
+  {
+   "key": "header.proTabsHint",
+   "text": "Muestra las pestañas de Clientes y Plantillas"
+  },
+  {
+   "key": "header.homeTabsLabel",
+   "text": "Sesiones en pestañas"
+  },
+  {
+   "key": "header.homeTabsHint",
+   "text": "Una sola tarjeta en Inicio, con una pestaña por sesión"
+  },
+  {
+   "key": "header.scrubRulerLabel",
+   "text": "Regla al deslizar"
+  },
+  {
+   "key": "header.scrubRulerHint",
+   "text": "KG, reps y RPE se ajustan sobre una regla"
+  },
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "header.planRow",
+   "text": "Plan"
+  },
+  {
+   "key": null,
+   "text": "PRO"
+  },
+  {
+   "key": "header.docsRow",
+   "text": "Documentación"
+  },
+  {
+   "key": "header.deleteAccountRow",
+   "text": "Eliminar mi cuenta"
+  },
+  {
+   "key": "header.deleteAccountSub",
+   "text": "Borra tu cuenta y lo que haya en el servidor. No se puede deshacer."
+  },
+  {
+   "key": "header.sectionDeveloper",
+   "text": "DESARROLLADOR"
+  },
+  {
+   "key": "header.plan",
+   "text": "Plan:"
+  },
+  {
+   "key": "header.switchToFree",
+   "text": "Cambiar a FREE"
+  }
+ ],
+ "011a-paywall.png": [
+  {
+   "key": null,
+   "text": "PRO"
+  },
+  {
+   "key": "paywall.headline",
+   "text": "Conecta con\ntodos tus\n*clientes*"
+  },
+  {
+   "key": null,
+   "text": "TODOS TUS CLIENTES"
+  },
+  {
+   "key": "paywall.tagline",
+   "text": "UNA APP PARA ENTRENARLOS A TODOS"
+  },
+  {
+   "key": "paywall.features.connected.title",
+   "text": "Todos tus clientes *sincronizados*"
+  },
+  {
+   "key": "paywall.features.connected.desc",
+   "text": "Tú programas, ellos entrenan. Todo sincronizado sin salir de la app."
+  },
+  {
+   "key": "paywall.features.clients.title",
+   "text": "*Sin límite* de clientes"
+  },
+  {
+   "key": "paywall.features.clients.desc",
+   "text": "El plan gratis llega a 3."
+  },
+  {
+   "key": "paywall.features.templates.title",
+   "text": "*Sin límite* de plantillas"
+  },
+  {
+   "key": "paywall.features.templates.desc",
+   "text": "Crea programas y sesiones listos para asignar."
+  },
+  {
+   "key": "paywall.payTitle",
+   "text": "Forma de pago"
+  },
+  {
+   "key": "paywall.comingSoon",
+   "text": "Forma Pro próximamente"
+  },
+  {
+   "key": "paywall.restore",
+   "text": "Restaurar compra"
+  },
+  {
+   "key": "paywall.terms",
+   "text": "Términos de uso"
+  },
+  {
+   "key": "paywall.privacy",
+   "text": "Privacidad"
+  }
+ ],
+ "012a-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.intro",
+   "text": "Cómo se organiza el entrenamiento en la app y qué significa cada término. Los cuatro primeros —sesión, semana, etapa y programa— encajan unos dentro de otros: cada uno agrupa al anterior."
+  },
+  {
+   "key": "docs.sections.0.title",
+   "text": "Sesión"
+  },
+  {
+   "key": "docs.sections.0.points.0",
+   "text": "Un día de entrenamiento: los ejercicios que haces de una sentada."
+  },
+  {
+   "key": "docs.sections.0.points.1",
+   "text": "Dentro de la etapa se nombran por orden: A, B, C…"
+  },
+  {
+   "key": "docs.sections.0.points.2",
+   "text": "La letra dice cuándo toca, no qué es: al reordenarlas, se reasignan."
+  },
+  {
+   "key": "docs.sections.1.title",
+   "text": "Sesión libre"
+  },
+  {
+   "key": "docs.sections.1.points.0",
+   "text": "Una sesión fuera del programa: movilidad, agarre, la de un día de hotel. Puedes improvisarla o guardarla y tenerla en Inicio."
+  },
+  {
+   "key": "docs.sections.1.points.1",
+   "text": "No toca el programa: sus pesos progresan por su cuenta y no avanza la semana ni la etapa."
+  },
+  {
+   "key": "docs.sections.1.points.2",
+   "text": "Si sustituye a una sesión, márcalo al acabar con «Cuenta para el programa»: cuenta como esa sesión en la semana, la etapa y la adherencia."
+  },
+  {
+   "key": "docs.sections.1.points.3",
+   "text": "La carga la cuenta siempre: el cansancio es real aunque la sesión no sea del programa."
+  },
+  {
+   "key": "docs.sections.2.title",
+   "text": "Semana"
+  },
+  {
+   "key": "docs.sections.2.points.0",
+   "text": "Cada semana se hacen las sesiones de la etapa: si tiene A, B y C, son tres entrenos por semana. En entrenamiento, el microciclo."
+  },
+  {
+   "key": "docs.sections.2.points.1",
+   "text": "Son semanas de calendario, de lunes a domingo."
+  },
+  {
+   "key": "docs.sections.2.points.2",
+   "text": "La primera sesión de una etapa la empieza. Si es de lunes a miércoles, esa semana ya cuenta; de jueves a domingo, la semana 1 empieza el lunes siguiente, y lo que entrenes antes suma igual."
+  },
+  {
+   "key": "docs.sections.2.points.3",
+   "text": "La sesión que toca es la que más tiempo llevas sin hacer. Si el programa empieza cada semana por la A, la primera que no has hecho esta semana; y si es libre, no toca ninguna."
+  }
+ ],
+ "012b-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.sections.2.title",
+   "text": "Semana"
+  },
+  {
+   "key": "docs.sections.2.points.2",
+   "text": "La primera sesión de una etapa la empieza. Si es de lunes a miércoles, esa semana ya cuenta; de jueves a domingo, la semana 1 empieza el lunes siguiente, y lo que entrenes antes suma igual."
+  },
+  {
+   "key": "docs.sections.2.points.3",
+   "text": "La sesión que toca es la que más tiempo llevas sin hacer. Si el programa empieza cada semana por la A, la primera que no has hecho esta semana; y si es libre, no toca ninguna."
+  },
+  {
+   "key": "docs.sections.3.title",
+   "text": "Etapa"
+  },
+  {
+   "key": "docs.sections.3.points.0",
+   "text": "Tramo del programa con un objetivo: acumular volumen, ganar fuerza, afinar. En entrenamiento, el mesociclo."
+  },
+  {
+   "key": "docs.sections.3.points.1",
+   "text": "Dura un número de semanas, y cada semana se hacen todas sus sesiones."
+  },
+  {
+   "key": "docs.sections.3.points.2",
+   "text": "Al acabar, la app mira si hiciste las sesiones que tocaban. Si faltan por valor de una semana o más, te propone alargarla; puedes avanzar igualmente."
+  },
+  {
+   "key": "docs.sections.3.points.3",
+   "text": "Si en la última semana ya las has hecho todas, puedes pasar a la siguiente antes. Nunca salta sola."
+  },
+  {
+   "key": "docs.sections.3.points.4",
+   "text": "Son lo que permite que un programa evolucione en vez de repetir siempre lo mismo."
+  },
+  {
+   "key": "docs.sections.4.title",
+   "text": "Programa"
+  },
+  {
+   "key": "docs.sections.4.points.0",
+   "text": "El plan completo de principio a fin: todas sus etapas juntas. En entrenamiento, el macrociclo."
+  },
+  {
+   "key": "docs.sections.4.points.1",
+   "text": "Solo hay uno activo a la vez."
+  },
+  {
+   "key": "docs.sections.4.points.2",
+   "text": "Los demás quedan archivados y puedes recuperarlos cuando quieras."
+  },
+  {
+   "key": "docs.sections.5.title",
+   "text": "Bloque"
+  },
+  {
+   "key": "docs.sections.5.points.0",
+   "text": "Trabajo de acondicionamiento con reloj en vez de series."
+  },
+  {
+   "key": "docs.sections.5.points.1",
+   "text": "AMRAP: máximas rondas en un tiempo."
+  },
+  {
+   "key": "docs.sections.5.points.2",
+   "text": "EMOM: una tarea por minuto."
+  },
+  {
+   "key": "docs.sections.5.points.3",
+   "text": "For time: un trabajo fijo, lo más rápido posible."
+  }
+ ],
+ "012c-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.sections.5.title",
+   "text": "Bloque"
+  },
+  {
+   "key": "docs.sections.5.points.0",
+   "text": "Trabajo de acondicionamiento con reloj en vez de series."
+  },
+  {
+   "key": "docs.sections.5.points.1",
+   "text": "AMRAP: máximas rondas en un tiempo."
+  },
+  {
+   "key": "docs.sections.5.points.2",
+   "text": "EMOM: una tarea por minuto."
+  },
+  {
+   "key": "docs.sections.5.points.3",
+   "text": "For time: un trabajo fijo, lo más rápido posible."
+  },
+  {
+   "key": "docs.sections.6.title",
+   "text": "Superserie"
+  },
+  {
+   "key": "docs.sections.6.points.0",
+   "text": "Dos o más ejercicios encadenados sin descanso entre ellos."
+  },
+  {
+   "key": "docs.sections.6.points.1",
+   "text": "El descanso se toma al terminar el último de la cadena."
+  },
+  {
+   "key": "docs.sections.7.title",
+   "text": "Dropset"
+  },
+  {
+   "key": "docs.sections.7.points.0",
+   "text": "Series extra al final de la última serie, bajando el peso sin descansar."
+  },
+  {
+   "key": "docs.sections.7.points.1",
+   "text": "Suman volumen."
+  },
+  {
+   "key": "docs.sections.7.points.2",
+   "text": "No cuentan para PRs ni para la progresión."
+  },
+  {
+   "key": "docs.sections.8.title",
+   "text": "Progresión"
+  },
+  {
+   "key": "docs.sections.8.points.0",
+   "text": "La regla que decide el peso de tu próxima sesión."
+  },
+  {
+   "key": "docs.sections.8.points.1",
+   "text": "Automática: sube si cumples el objetivo."
+  },
+  {
+   "key": "docs.sections.8.points.2",
+   "text": "Fija: siempre el mismo incremento."
+  },
+  {
+   "key": "docs.sections.8.points.3",
+   "text": "Por esfuerzo: pides un RPE y la app calcula el peso con tu 1RM estimado."
+  },
+  {
+   "key": "docs.sections.9.title",
+   "text": "RPE"
+  },
+  {
+   "key": "docs.sections.9.points.0",
+   "text": "Esfuerzo percibido de 1 a 10."
+  },
+  {
+   "key": "docs.sections.9.points.1",
+   "text": "Cuántas repeticiones te habrías dejado en el depósito."
+  },
+  {
+   "key": "docs.sections.9.points.2",
+   "text": "Un RPE 8 son unas 2 repeticiones de margen."
+  },
+  {
+   "key": "docs.sections.10.title",
+   "text": "1RM"
+  },
+  {
+   "key": "docs.sections.10.points.0",
+   "text": "El peso máximo estimado para una sola repetición."
+  },
+  {
+   "key": "docs.sections.10.points.1",
+   "text": "No se mide levantándolo: se calcula a partir de tus series."
+  },
+  {
+   "key": "docs.sections.11.title",
+   "text": "PR"
+  }
+ ],
+ "012d-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.sections.10.title",
+   "text": "1RM"
+  },
+  {
+   "key": "docs.sections.10.points.0",
+   "text": "El peso máximo estimado para una sola repetición."
+  },
+  {
+   "key": "docs.sections.10.points.1",
+   "text": "No se mide levantándolo: se calcula a partir de tus series."
+  },
+  {
+   "key": "docs.sections.11.title",
+   "text": "PR"
+  },
+  {
+   "key": "docs.sections.11.points.0",
+   "text": "Récord personal en un ejercicio."
+  },
+  {
+   "key": "docs.sections.11.points.1",
+   "text": "Más peso, más repeticiones con el mismo peso, o más volumen que en cualquier sesión anterior."
+  },
+  {
+   "key": "docs.metricsTitle",
+   "text": "Cómo se calcula cada número"
+  },
+  {
+   "key": "docs.metricsIntro",
+   "text": "Cada dato que ves en la app sale de una fórmula concreta, y todas tienen un límite. Aquí están las dos cosas."
+  },
+  {
+   "key": "docs.metricGroups.performance",
+   "text": "Rendimiento y récords"
+  },
+  {
+   "key": "metrics.e1rm.name",
+   "text": "1RM estimado"
+  },
+  {
+   "key": "metrics.e1rm.what",
+   "text": "Estima el peso máximo que podrías levantar una sola vez, sin tener que intentarlo de verdad. Sirve para seguir tu progreso en un ejercicio aunque cambies de repeticiones cada semana."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.e1rm.formula",
+   "text": "1RM estimado = peso × (1 + repeticiones ÷ 30)"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.e1rm.rules",
+   "text": "Si registras el RPE, se estima cuántas repeticiones te quedaban en reserva (10 − RPE) y se suman a las hechas antes de aplicar la fórmula: una serie a RPE 8 se calcula como si hubieras hecho dos repeticiones más."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.e1rm.caveat",
+   "text": "Es la fórmula de Epley, una estimación y no una medición. Se ignoran las series de más de {{maxReps}} repeticiones porque a partir de ahí sobreestima de forma notable."
+  },
+  {
+   "key": "metrics.pr.name",
+   "text": "Récord personal (PR)"
+  },
+  {
+   "key": "metrics.pr.what",
+   "text": "Señala las sesiones en las que superaste tu mejor registro anterior en un ejercicio."
+  }
+ ],
+ "012e-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.e1rm.caveat",
+   "text": "Es la fórmula de Epley, una estimación y no una medición. Se ignoran las series de más de {{maxReps}} repeticiones porque a partir de ahí sobreestima de forma notable."
+  },
+  {
+   "key": "metrics.pr.name",
+   "text": "Récord personal (PR)"
+  },
+  {
+   "key": "metrics.pr.what",
+   "text": "Señala las sesiones en las que superaste tu mejor registro anterior en un ejercicio."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.pr.formula",
+   "text": "se compara el 1RM estimado; si no se puede calcular, el peso máximo; y si tampoco, las repeticiones a peso corporal"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.pr.rules",
+   "text": "La comparación es contra todo tu historial anterior, no contra la última sesión. La primera vez que haces un ejercicio establece tu referencia inicial, así que no se considera un récord. Se marca un solo récord por ejercicio y sesión: el primero de esa escalera."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.pr.caveat",
+   "text": "Al apoyarse en el 1RM estimado, hereda su margen de error: un récord ajustado puede venir de la estimación y no de una mejora real."
+  },
+  {
+   "key": "metrics.performanceIndex.name",
+   "text": "Rendimiento"
+  },
+  {
+   "key": "metrics.performanceIndex.what",
+   "text": "Resume en un solo número cómo ha evolucionado tu rendimiento estimado en todos los ejercicios del período. Sirve para saber si el entrenamiento se está convirtiendo en resultados."
+  },
+  {
+   "key": "metrics.performanceIndex.formula",
+   "text": "media de (1RM estimado de cada ejercicio ÷ su valor inicial) × 100"
+  },
+  {
+   "key": "metrics.performanceIndex.rules",
+   "text": "Para cada semana se toma el mejor 1RM estimado conseguido en las 4 semanas anteriores, no el de esa semana suelta, para que una descarga no aparezca como pérdida de rendimiento. Un ejercicio entra solo si tiene valor inicial y al menos una semana posterior con datos. Se promedian los índices de cada ejercicio, no los kilos."
+  }
+ ],
+ "012f-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.performanceIndex.rules",
+   "text": "Para cada semana se toma el mejor 1RM estimado conseguido en las 4 semanas anteriores, no el de esa semana suelta, para que una descarga no aparezca como pérdida de rendimiento. Un ejercicio entra solo si tiene valor inicial y al menos una semana posterior con datos. Se promedian los índices de cada ejercicio, no los kilos."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.performanceIndex.caveat",
+   "text": "Es rendimiento estimado, no fuerza medida: se apoya por completo en el 1RM estimado. Cambiar de ejercicios a mitad del período mueve el número aunque tu rendimiento no cambie."
+  },
+  {
+   "key": "metrics.loadTrend.name",
+   "text": "Mejora"
+  },
+  {
+   "key": "metrics.loadTrend.what",
+   "text": "Indica si los pesos que mueves suben o bajan de media en el período, juntando todos tus ejercicios en un porcentaje."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.loadTrend.formula",
+   "text": "línea de tendencia (regresión lineal) sobre las sesiones de cada ejercicio; el porcentaje es el cambio entre sus extremos, promediado entre ejercicios"
+  },
+  {
+   "key": "metrics.loadTrend.rules",
+   "text": "Todos los ejercicios pesan lo mismo en el promedio, independientemente de cuántas sesiones tengan. Cada ejercicio se mide en una sola unidad: en kilos si alguna vez llevó peso, si no en repeticiones. Uno de peso corporal que empieza sin lastre no suma, porque no hay porcentaje sobre 0 kg."
+  },
+  {
+   "key": "metrics.loadTrend.caveat",
+   "text": "Es la pendiente de una recta ajustada a todas tus sesiones, no la diferencia entre la primera y la última. Un ejercicio recién estrenado, con pocos puntos, puede mover el resultado más de lo que le corresponde."
+  },
+  {
+   "key": "metrics.lastSessionDelta.name",
+   "text": "Diferencia con la sesión anterior"
+  },
+  {
+   "key": "metrics.lastSessionDelta.what",
+   "text": "Compara tu última sesión con la anterior del mismo tipo para ver de un vistazo si subiste o bajaste."
+  }
+ ],
+ "012g-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.lastSessionDelta.name",
+   "text": "Diferencia con la sesión anterior"
+  },
+  {
+   "key": "metrics.lastSessionDelta.what",
+   "text": "Compara tu última sesión con la anterior del mismo tipo para ver de un vistazo si subiste o bajaste."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.lastSessionDelta.formula",
+   "text": "(última − anterior) ÷ anterior × 100"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.lastSessionDelta.rules",
+   "text": "En el historial esta diferencia se calcula sobre el volumen y compara con la vez anterior de esa misma sesión, no con la sesión inmediatamente anterior en el tiempo."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.lastSessionDelta.caveat",
+   "text": "Son solo dos sesiones: un mal día, o uno especialmente bueno, mueven el resultado por completo."
+  },
+  {
+   "key": "docs.metricGroups.volume",
+   "text": "Volumen"
+  },
+  {
+   "key": "metrics.volume.name",
+   "text": "Volumen"
+  },
+  {
+   "key": "metrics.volume.what",
+   "text": "Suma los kilos totales que has movido en una sesión. Sirve para comparar la cantidad de trabajo entre sesiones parecidas."
+  },
+  {
+   "key": "metrics.volume.formula",
+   "text": "volumen = suma de (peso × repeticiones) de cada serie registrada"
+  },
+  {
+   "key": "metrics.volume.rules",
+   "text": "Cuenta también las sub-series de los dropsets."
+  },
+  {
+   "key": "metrics.volume.caveat",
+   "text": "Los ejercicios de peso corporal cuentan como 0 kg de volumen porque no tienen un peso externo registrado. Una sesión de dominadas y fondos puede salir con muy poco volumen aunque haya sido dura."
+  },
+  {
+   "key": "metrics.setsDonePlanned.name",
+   "text": "Series hechas y planificadas"
+  },
+  {
+   "key": "metrics.setsDonePlanned.what",
+   "text": "Muestra cuántas series registraste frente a las que tenía la sesión, para ver si la completaste."
+  }
+ ],
+ "012h-documentacion.png": [
+  {
+   "key": "header.sectionAccount",
+   "text": "CUENTA"
+  },
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.volume.caveat",
+   "text": "Los ejercicios de peso corporal cuentan como 0 kg de volumen porque no tienen un peso externo registrado. Una sesión de dominadas y fondos puede salir con muy poco volumen aunque haya sido dura."
+  },
+  {
+   "key": "metrics.setsDonePlanned.name",
+   "text": "Series hechas y planificadas"
+  },
+  {
+   "key": "metrics.setsDonePlanned.what",
+   "text": "Muestra cuántas series registraste frente a las que tenía la sesión, para ver si la completaste."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.setsDonePlanned.formula",
+   "text": "hechas = series con datos registrados o marcadas · planificadas = suma de las series de la plantilla"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.setsDonePlanned.rules",
+   "text": "Las planificadas se congelan al guardar la sesión. Un ejercicio que te saltas desaparece de la sesión guardada, pero sus series siguen contando en las planificadas: eso es lo que hace visible el hueco."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.setsDonePlanned.caveat",
+   "text": "Una serie marcada sin datos cuenta como hecha igual que una con peso y repeticiones."
+  },
+  {
+   "key": "metrics.volumeTrend.name",
+   "text": "Volumen (pestaña Progreso)"
+  },
+  {
+   "key": "metrics.volumeTrend.what",
+   "text": "Compara el volumen de la primera sesión del período con el de la última."
+  },
+  {
+   "key": "metrics.volumeTrend.formula",
+   "text": "(volumen de la última sesión − volumen de la primera) ÷ volumen de la primera × 100"
+  },
+  {
+   "key": "metrics.volumeTrend.caveat",
+   "text": "No es una línea de tendencia: son dos puntos. Una sesión atípica en cualquiera de los dos extremos cambia el resultado por completo."
+  },
+  {
+   "key": "metrics.muscleGroupSets.name",
+   "text": "Series por grupo muscular"
+  },
+  {
+   "key": "metrics.muscleGroupSets.what",
+   "text": "Reparte las series de los últimos 7 días entre los grupos musculares, para ver si alguno se está quedando corto."
+  },
+  {
+   "key": "metrics.muscleGroupSets.formula",
+   "text": "suma de las series de los ejercicios cuyo grupo muscular principal es ese"
+  },
+  {
+   "key": "metrics.muscleGroupSets.rules",
+   "text": "Cuenta volumen directo: un press de banca suma a pecho y no reparte nada a tríceps ni a hombro. Un dropset cuenta como una sola serie. Los grupos que entrenaste en las 4 semanas anteriores pero no en los últimos 7 días aparecen a cero en vez de desaparecer."
+  }
+ ]
+}

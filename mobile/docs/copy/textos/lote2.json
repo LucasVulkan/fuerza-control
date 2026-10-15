@@ -1,0 +1,1374 @@
+{
+ "012i-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.muscleGroupSets.name",
+   "text": "Series por grupo muscular"
+  },
+  {
+   "key": "metrics.muscleGroupSets.what",
+   "text": "Reparte las series de los últimos 7 días entre los grupos musculares, para ver si alguno se está quedando corto."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.muscleGroupSets.formula",
+   "text": "suma de las series de los ejercicios cuyo grupo muscular principal es ese"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.muscleGroupSets.rules",
+   "text": "Cuenta volumen directo: un press de banca suma a pecho y no reparte nada a tríceps ni a hombro. Un dropset cuenta como una sola serie. Los grupos que entrenaste en las 4 semanas anteriores pero no en los últimos 7 días aparecen a cero en vez de desaparecer."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.muscleGroupSets.caveat",
+   "text": "El rango de referencia de {{min}} a {{max}} series es orientativo para hipertrofia y depende de tu objetivo. Al ignorar el volumen indirecto, los grupos que trabajas sobre todo como secundarios salen más bajos de lo que realmente entrenas."
+  },
+  {
+   "key": "docs.metricGroups.load",
+   "text": "Carga"
+  },
+  {
+   "key": "metrics.sessionLoad.name",
+   "text": "Carga de la sesión"
+  },
+  {
+   "key": "metrics.sessionLoad.what",
+   "text": "Resume en un número cuánto te ha costado una sesión, juntando su duración con lo dura que te pareció. Es la base de todo el panel de Carga."
+  },
+  {
+   "key": "metrics.sessionLoad.formula",
+   "text": "carga = sRPE × minutos de sesión"
+  },
+  {
+   "key": "metrics.sessionLoad.rules",
+   "text": "Sin responder al sRPE no hay carga: la sesión deja un hueco en las gráficas, nunca un cero. Los bloques de acondicionamiento aportan {{blockFactor}} unidades por segundo activo."
+  },
+  {
+   "key": "metrics.sessionLoad.caveat",
+   "text": "Es el método sRPE de Foster. El número no significa nada por sí solo: solo tiene sentido comparado con tus propias sesiones. El factor de los bloques está calibrado a ojo y es la parte menos fiable del cálculo."
+  }
+ ],
+ "012j-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.sessionLoad.caveat",
+   "text": "Es el método sRPE de Foster. El número no significa nada por sí solo: solo tiene sentido comparado con tus propias sesiones. El factor de los bloques está calibrado a ojo y es la parte menos fiable del cálculo."
+  },
+  {
+   "key": "metrics.sessionMinutes.name",
+   "text": "Minutos de sesión"
+  },
+  {
+   "key": "metrics.sessionMinutes.what",
+   "text": "Es la duración que se usa para calcular la carga de la sesión."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.sessionMinutes.formula",
+   "text": "minutos = tiempo real transcurrido, limitado entre la mitad y el doble de la duración estimada"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.sessionMinutes.rules",
+   "text": "El tiempo real va desde que empiezas la sesión hasta que la guardas. El límite evita que una sesión que dejaste abierta varias horas multiplique tu carga."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.sessionMinutes.caveat",
+   "text": "Ese tiempo incluye descansos, pausas y el móvil en el bolsillo. Como las series no guardan la hora a la que las hiciste, no existe una medida del tiempo realmente activo."
+  },
+  {
+   "key": "metrics.externalLoad.name",
+   "text": "Carga externa"
+  },
+  {
+   "key": "metrics.externalLoad.what",
+   "text": "Mide el trabajo que hiciste en repeticiones ponderadas por lo cerca que estuviste de tu máximo. Sirve para comparar sesiones con ejercicios distintos."
+  },
+  {
+   "key": "metrics.externalLoad.formula",
+   "text": "carga externa = suma de repeticiones × (peso ÷ 1RM de referencia)"
+  },
+  {
+   "key": "metrics.externalLoad.rules",
+   "text": "El 1RM de referencia es tu mejor 1RM estimado de las 6 semanas anteriores a esa sesión, congelado por fecha para que un récord de hoy no reescriba tu historial. Los ejercicios de peso corporal necesitan que hayas registrado tu peso corporal; los isométricos y las series de tiempo no entran, porque no tienen repeticiones."
+  }
+ ],
+ "012k-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.externalLoad.rules",
+   "text": "El 1RM de referencia es tu mejor 1RM estimado de las 6 semanas anteriores a esa sesión, congelado por fecha para que un récord de hoy no reescriba tu historial. Los ejercicios de peso corporal necesitan que hayas registrado tu peso corporal; los isométricos y las series de tiempo no entran, porque no tienen repeticiones."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.externalLoad.caveat",
+   "text": "No es tonelaje: normaliza por tu capacidad actual, así que una serie de curl y una de sentadilla a la misma intensidad relativa aportan una carga similar. Al depender del 1RM estimado, hereda su margen de error."
+  },
+  {
+   "key": "metrics.movingAverage.name",
+   "text": "Medias de 7 y 28 días"
+  },
+  {
+   "key": "metrics.movingAverage.what",
+   "text": "Son las líneas suaves del gráfico de carga: tu carga habitual de la última semana y del último mes. Sirven para ver la forma general por encima del ruido del día a día."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.movingAverage.formula",
+   "text": "media de la carga diaria de los últimos 7 (o 28) días, contando los días de descanso como 0"
+  },
+  {
+   "key": "metrics.movingAverage.rules",
+   "text": "Mientras no tienes 28 días de historial se promedian los días que haya, en vez de dejar la línea sin empezar. Los días en los que entrenaste sin responder al sRPE quedan fuera del promedio en lugar de contar como cero: desconocido no es descanso."
+  },
+  {
+   "key": "metrics.movingAverage.caveat",
+   "text": "Una media móvil suaviza, pero también retrasa: un cambio real de carga tarda unos días en verse reflejado en la línea."
+  },
+  {
+   "key": "metrics.loadState.name",
+   "text": "Estado de carga"
+  },
+  {
+   "key": "metrics.loadState.what",
+   "text": "Resume si estás acumulando carga, manteniéndola estable o descargando."
+  },
+  {
+   "key": "metrics.loadState.formula",
+   "text": "media de 7 días ÷ media de 28 días → menos de 0,8 descarga · de 0,8 a 1,3 estable · más de 1,3 acumulación"
+  }
+ ],
+ "012l-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.loadState.name",
+   "text": "Estado de carga"
+  },
+  {
+   "key": "metrics.loadState.what",
+   "text": "Resume si estás acumulando carga, manteniéndola estable o descargando."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.loadState.formula",
+   "text": "media de 7 días ÷ media de 28 días → menos de 0,8 descarga · de 0,8 a 1,3 estable · más de 1,3 acumulación"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.loadState.rules",
+   "text": "Se muestra como estado y no como número a propósito."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.loadState.caveat",
+   "text": "Es la relación agudo/crónico. La versión numérica arrastra artefactos matemáticos conocidos y sus umbrales de riesgo no se replican de forma consistente en los estudios, así que conviene tomarlo como orientación y no como un semáforo."
+  },
+  {
+   "key": "metrics.monotony.name",
+   "text": "Monotonía"
+  },
+  {
+   "key": "metrics.monotony.what",
+   "text": "Indica si repites la misma carga día tras día sin variación, un patrón asociado a peor recuperación. Cuanto MÁS BAJA, mejor: significa que alternas días duros con días suaves."
+  },
+  {
+   "key": "metrics.monotony.formula",
+   "text": "monotonía = media de la carga diaria ÷ su desviación típica, sobre 7 días"
+  },
+  {
+   "key": "metrics.monotony.rules",
+   "text": "Los días de descanso cuentan como 0, tal como define el método original. Se oculta cuando la semana tiene menos de {{minSessions}} sesiones. Por encima de {{high}} se marca como alta; por debajo de {{moderate}}, como baja."
+  },
+  {
+   "key": "metrics.monotony.caveat",
+   "text": "Con una o dos sesiones en la semana, los días de descanso dominan la desviación y el número deja de significar nada: por eso se oculta en lugar de mostrarse en verde."
+  },
+  {
+   "key": "metrics.strain.name",
+   "text": "Strain"
+  },
+  {
+   "key": "metrics.strain.what",
+   "text": "Resume el estrés acumulado de la semana juntando cuánta carga hiciste con lo poco que la variaste."
+  }
+ ],
+ "012m-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.monotony.caveat",
+   "text": "Con una o dos sesiones en la semana, los días de descanso dominan la desviación y el número deja de significar nada: por eso se oculta en lugar de mostrarse en verde."
+  },
+  {
+   "key": "metrics.strain.name",
+   "text": "Strain"
+  },
+  {
+   "key": "metrics.strain.what",
+   "text": "Resume el estrés acumulado de la semana juntando cuánta carga hiciste con lo poco que la variaste."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.strain.formula",
+   "text": "strain = carga total de la semana × monotonía"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.strain.rules",
+   "text": "Se muestra comparado con tu propio promedio de las 4 semanas anteriores. Se oculta cuando la semana tiene menos de {{minSessions}} sesiones, igual que la monotonía."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.strain.caveat",
+   "text": "No existe un umbral universal de strain, así que nunca se muestra con colores fijos ni con un valor de alarma: solo tiene sentido frente a tu propio historial."
+  },
+  {
+   "key": "metrics.indexed100.name",
+   "text": "Base 100"
+  },
+  {
+   "key": "metrics.indexed100.what",
+   "text": "Es el reescalado que permite dibujar juntas dos magnitudes con unidades distintas, como la carga externa y el esfuerzo."
+  },
+  {
+   "key": "metrics.indexed100.formula",
+   "text": "valor ÷ primer valor del período × 100"
+  },
+  {
+   "key": "metrics.indexed100.rules",
+   "text": "El 100 corresponde al principio del período seleccionado, así que cambia al mover el selector."
+  },
+  {
+   "key": "metrics.indexed100.caveat",
+   "text": "Si la primera semana del período fue atípica —una descarga, por ejemplo— desplaza toda la serie hacia arriba."
+  },
+  {
+   "key": "metrics.loadHeatmap.name",
+   "text": "Mapa de calor del calendario"
+  },
+  {
+   "key": "metrics.loadHeatmap.what",
+   "text": "Tiñe cada día del calendario según la carga de la sesión, para localizar de un vistazo tus días duros y tus rachas."
+  }
+ ],
+ "012n-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.indexed100.caveat",
+   "text": "Si la primera semana del período fue atípica —una descarga, por ejemplo— desplaza toda la serie hacia arriba."
+  },
+  {
+   "key": "metrics.loadHeatmap.name",
+   "text": "Mapa de calor del calendario"
+  },
+  {
+   "key": "metrics.loadHeatmap.what",
+   "text": "Tiñe cada día del calendario según la carga de la sesión, para localizar de un vistazo tus días duros y tus rachas."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.loadHeatmap.formula",
+   "text": "cuatro escalones repartidos por cuartiles de tu propia carga diaria"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.loadHeatmap.rules",
+   "text": "Los cortes se calculan sobre todo tu historial, no sobre el mes visible, para que al cambiar de mes signifiquen lo mismo. Un día entrenado sin responder al sRPE se dibuja con contorno y sin relleno, porque no hay carga que representar."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.loadHeatmap.caveat",
+   "text": "El color ordena tus días entre sí, no contra un valor absoluto: siempre habrá días oscuros y días claros aunque entrenes de forma muy uniforme."
+  },
+  {
+   "key": "docs.metricGroups.session",
+   "text": "Sesión y plan"
+  },
+  {
+   "key": "metrics.sessionCount.name",
+   "text": "Sesiones"
+  },
+  {
+   "key": "metrics.sessionCount.what",
+   "text": "Cuenta las sesiones que has completado dentro del período seleccionado. Sirve para saber si estás manteniendo el ritmo."
+  },
+  {
+   "key": "metrics.sessionCount.formula",
+   "text": "número de sesiones guardadas dentro del período"
+  },
+  {
+   "key": "metrics.sessionCount.rules",
+   "text": "Responde al selector de período y al filtro de programa. El subtítulo «esta semana», en cambio, siempre cuenta la semana natural en curso, de lunes a domingo, con independencia del período elegido."
+  },
+  {
+   "key": "metrics.sessionCount.caveat",
+   "text": "Cuenta sesiones, no su tamaño: un calentamiento de diez minutos y una sesión de dos horas suman lo mismo."
+  }
+ ],
+ "012o-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.progressionChip.what",
+   "text": "Es la sugerencia de subir, mantener o bajar que aparece en cada ejercicio durante el entrenamiento, a partir de cómo te fue la última vez."
+  },
+  {
+   "key": "docs.metricFormulaApprox",
+   "text": "Cómo se calcula (simplificado)"
+  },
+  {
+   "key": "metrics.progressionChip.formula",
+   "text": "series válidas ÷ series objetivo, cruzado con el rango de repeticiones y con el RPE si lo registras"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.progressionChip.rules",
+   "text": "Una serie válida es la que alcanzó el mínimo de repeticiones (o de tiempo) del ejercicio; una serie marcada como hecha sin datos también cuenta. Con el modo de evaluación por RPE, subir exige además que el RPE promedio no supere el techo que hayas fijado."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.progressionChip.caveat",
+   "text": "Mira solo tu última sesión de ese ejercicio, no tu evolución. Es una sugerencia: ignorarla no afecta a nada más."
+  },
+  {
+   "key": "metrics.estimatedDuration.name",
+   "text": "Duración estimada"
+  },
+  {
+   "key": "metrics.estimatedDuration.what",
+   "text": "Calcula cuánto va a durar una sesión antes de hacerla, para poder ajustarla al tiempo del que dispones."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.estimatedDuration.formula",
+   "text": "series × (35 s + descanso) + 180 s por ejercicio + 480 s de calentamiento general"
+  },
+  {
+   "key": "metrics.estimatedDuration.rules",
+   "text": "Los 180 segundos por ejercicio cubren la transición: buscar la máquina, montar el peso, ajustar. En superseries se cuenta el descanso completo de cada miembro."
+  },
+  {
+   "key": "metrics.estimatedDuration.caveat",
+   "text": "Es un modelo, no una medida: asume que respetas los descansos configurados y no sabe si te entretienes entre series. En superseries sobreestima algo."
+  },
+  {
+   "key": "metrics.warmupWeight.name",
+   "text": "Pesos de calentamiento"
+  },
+  {
+   "key": "metrics.warmupWeight.what",
+   "text": "Propone los pesos de las series de aproximación a partir del peso de trabajo del día."
+  },
+  {
+   "key": "metrics.warmupWeight.formula",
+   "text": "peso = porcentaje del peso de trabajo del día, redondeado a 2,5 kg"
+  }
+ ],
+ "012p-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.warmupWeight.name",
+   "text": "Pesos de calentamiento"
+  },
+  {
+   "key": "metrics.warmupWeight.what",
+   "text": "Propone los pesos de las series de aproximación a partir del peso de trabajo del día."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.warmupWeight.formula",
+   "text": "peso = porcentaje del peso de trabajo del día, redondeado a 2,5 kg"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.warmupWeight.rules",
+   "text": "El peso de trabajo sale de la prescripción del entrenador o, si no la hay, de tu serie más pesada la última vez. Sin ninguna de las dos, las pills salen vacías hasta que escribas tu primer peso. No se guardan en el historial."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.warmupWeight.caveat",
+   "text": "Son orientativos: el porcentaje no distingue entre ejercicios ni tiene en cuenta cómo te encuentras ese día."
+  },
+  {
+   "key": "metrics.blockDelta.name",
+   "text": "Comparación de bloques"
+  },
+  {
+   "key": "metrics.blockDelta.what",
+   "text": "Indica si mejoraste respecto a la última vez que hiciste ese mismo bloque de acondicionamiento."
+  },
+  {
+   "key": "metrics.blockDelta.formula",
+   "text": "AMRAP: rondas y repeticiones · EMOM: rondas completadas · For time: tiempo"
+  },
+  {
+   "key": "metrics.blockDelta.rules",
+   "text": "En los bloques for time menos tiempo es mejor, así que el signo va invertido respecto a los otros dos formatos. Se compara contra la vez anterior de la misma sesión, no contra tu mejor resultado."
+  },
+  {
+   "key": "metrics.blockDelta.caveat",
+   "text": "Los bloques no registran el peso usado, así que dos resultados iguales con cargas distintas se comparan como si fueran equivalentes."
+  },
+  {
+   "key": "metrics.stageProgress.name",
+   "text": "Progreso de etapa"
+  },
+  {
+   "key": "metrics.stageProgress.what",
+   "text": "En qué semana de la etapa vas y cuántas sesiones llevas, para saber cuánto te queda y si hace falta alargarla."
+  }
+ ],
+ "012q-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "metrics.blockDelta.caveat",
+   "text": "Los bloques no registran el peso usado, así que dos resultados iguales con cargas distintas se comparan como si fueran equivalentes."
+  },
+  {
+   "key": "metrics.stageProgress.name",
+   "text": "Progreso de etapa"
+  },
+  {
+   "key": "metrics.stageProgress.what",
+   "text": "En qué semana de la etapa vas y cuántas sesiones llevas, para saber cuánto te queda y si hace falta alargarla."
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.stageProgress.formula",
+   "text": "semana de la etapa = semanas de calendario desde el lunes de la semana 1 · sesiones esperadas = semanas × sesiones de la etapa"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.stageProgress.rules",
+   "text": "La semana 1 la fija la primera sesión de la etapa (de jueves a domingo, empieza el lunes siguiente). Al acabar, si faltan sesiones por valor de una semana o más, se propone alargar. El contador de sesiones es del cliente y se replica al entrenador; no se deduce del historial, así que borrar una sesión no lo baja."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.stageProgress.caveat",
+   "text": "Las semanas que añades al alargar no suben las sesiones esperadas: sirven para recuperar las que faltaban."
+  },
+  {
+   "key": "docs.metricGroups.trainer",
+   "text": "Lado entrenador"
+  },
+  {
+   "key": "metrics.adherence.name",
+   "text": "Adherencia"
+  },
+  {
+   "key": "metrics.adherence.what",
+   "text": "Avisa de qué clientes se están descolgando de la frecuencia que pide su programa. Mide riesgo de abandono a partir del tiempo sin entrenar, no el porcentaje de sesiones cumplidas."
+  },
+  {
+   "key": "metrics.adherence.formula",
+   "text": "días desde la última sesión ÷ (7 ÷ sesiones por semana) → hasta 2 al día · más de 4 en riesgo"
+  },
+  {
+   "key": "metrics.adherence.rules",
+   "text": "El umbral se adapta a la frecuencia del programa, así que es justo entre clientes que entrenan 2 o 5 días por semana. El promedio semanal usa las 4 semanas completas anteriores, sin contar la que está en curso, para que un lunes por la mañana no parezca un frenazo. Pausar a un cliente silencia la adherencia."
+  },
+  {
+   "key": "metrics.adherence.caveat",
+   "text": "No es un porcentaje de cumplimiento: un cliente que entrena hoy sale bien aunque llevara tres semanas parado. Mide cuánto hace que no entrena en relación con lo que debería, no lo que ha hecho acumulado."
+  }
+ ],
+ "012r-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.stageProgress.formula",
+   "text": "semana de la etapa = semanas de calendario desde el lunes de la semana 1 · sesiones esperadas = semanas × sesiones de la etapa"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.stageProgress.rules",
+   "text": "La semana 1 la fija la primera sesión de la etapa (de jueves a domingo, empieza el lunes siguiente). Al acabar, si faltan sesiones por valor de una semana o más, se propone alargar. El contador de sesiones es del cliente y se replica al entrenador; no se deduce del historial, así que borrar una sesión no lo baja."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.stageProgress.caveat",
+   "text": "Las semanas que añades al alargar no suben las sesiones esperadas: sirven para recuperar las que faltaban."
+  },
+  {
+   "key": "docs.metricGroups.trainer",
+   "text": "Lado entrenador"
+  },
+  {
+   "key": "metrics.adherence.name",
+   "text": "Adherencia"
+  },
+  {
+   "key": "metrics.adherence.what",
+   "text": "Avisa de qué clientes se están descolgando de la frecuencia que pide su programa. Mide riesgo de abandono a partir del tiempo sin entrenar, no el porcentaje de sesiones cumplidas."
+  },
+  {
+   "key": "metrics.adherence.formula",
+   "text": "días desde la última sesión ÷ (7 ÷ sesiones por semana) → hasta 2 al día · más de 4 en riesgo"
+  },
+  {
+   "key": "metrics.adherence.rules",
+   "text": "El umbral se adapta a la frecuencia del programa, así que es justo entre clientes que entrenan 2 o 5 días por semana. El promedio semanal usa las 4 semanas completas anteriores, sin contar la que está en curso, para que un lunes por la mañana no parezca un frenazo. Pausar a un cliente silencia la adherencia."
+  },
+  {
+   "key": "metrics.adherence.caveat",
+   "text": "No es un porcentaje de cumplimiento: un cliente que entrena hoy sale bien aunque llevara tres semanas parado. Mide cuánto hace que no entrena en relación con lo que debería, no lo que ha hecho acumulado."
+  }
+ ],
+ "012v-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.stageProgress.formula",
+   "text": "semana de la etapa = semanas de calendario desde el lunes de la semana 1 · sesiones esperadas = semanas × sesiones de la etapa"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.stageProgress.rules",
+   "text": "La semana 1 la fija la primera sesión de la etapa (de jueves a domingo, empieza el lunes siguiente). Al acabar, si faltan sesiones por valor de una semana o más, se propone alargar. El contador de sesiones es del cliente y se replica al entrenador; no se deduce del historial, así que borrar una sesión no lo baja."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.stageProgress.caveat",
+   "text": "Las semanas que añades al alargar no suben las sesiones esperadas: sirven para recuperar las que faltaban."
+  },
+  {
+   "key": "docs.metricGroups.trainer",
+   "text": "Lado entrenador"
+  },
+  {
+   "key": "metrics.adherence.name",
+   "text": "Adherencia"
+  },
+  {
+   "key": "metrics.adherence.what",
+   "text": "Avisa de qué clientes se están descolgando de la frecuencia que pide su programa. Mide riesgo de abandono a partir del tiempo sin entrenar, no el porcentaje de sesiones cumplidas."
+  },
+  {
+   "key": "metrics.adherence.formula",
+   "text": "días desde la última sesión ÷ (7 ÷ sesiones por semana) → hasta 2 al día · más de 4 en riesgo"
+  },
+  {
+   "key": "metrics.adherence.rules",
+   "text": "El umbral se adapta a la frecuencia del programa, así que es justo entre clientes que entrenan 2 o 5 días por semana. El promedio semanal usa las 4 semanas completas anteriores, sin contar la que está en curso, para que un lunes por la mañana no parezca un frenazo. Pausar a un cliente silencia la adherencia."
+  },
+  {
+   "key": "metrics.adherence.caveat",
+   "text": "No es un porcentaje de cumplimiento: un cliente que entrena hoy sale bien aunque llevara tres semanas parado. Mide cuánto hace que no entrena en relación con lo que debería, no lo que ha hecho acumulado."
+  }
+ ],
+ "012w-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.stageProgress.formula",
+   "text": "semana de la etapa = semanas de calendario desde el lunes de la semana 1 · sesiones esperadas = semanas × sesiones de la etapa"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.stageProgress.rules",
+   "text": "La semana 1 la fija la primera sesión de la etapa (de jueves a domingo, empieza el lunes siguiente). Al acabar, si faltan sesiones por valor de una semana o más, se propone alargar. El contador de sesiones es del cliente y se replica al entrenador; no se deduce del historial, así que borrar una sesión no lo baja."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.stageProgress.caveat",
+   "text": "Las semanas que añades al alargar no suben las sesiones esperadas: sirven para recuperar las que faltaban."
+  },
+  {
+   "key": "docs.metricGroups.trainer",
+   "text": "Lado entrenador"
+  },
+  {
+   "key": "metrics.adherence.name",
+   "text": "Adherencia"
+  },
+  {
+   "key": "metrics.adherence.what",
+   "text": "Avisa de qué clientes se están descolgando de la frecuencia que pide su programa. Mide riesgo de abandono a partir del tiempo sin entrenar, no el porcentaje de sesiones cumplidas."
+  },
+  {
+   "key": "metrics.adherence.formula",
+   "text": "días desde la última sesión ÷ (7 ÷ sesiones por semana) → hasta 2 al día · más de 4 en riesgo"
+  },
+  {
+   "key": "metrics.adherence.rules",
+   "text": "El umbral se adapta a la frecuencia del programa, así que es justo entre clientes que entrenan 2 o 5 días por semana. El promedio semanal usa las 4 semanas completas anteriores, sin contar la que está en curso, para que un lunes por la mañana no parezca un frenazo. Pausar a un cliente silencia la adherencia."
+  },
+  {
+   "key": "metrics.adherence.caveat",
+   "text": "No es un porcentaje de cumplimiento: un cliente que entrena hoy sale bien aunque llevara tres semanas parado. Mide cuánto hace que no entrena en relación con lo que debería, no lo que ha hecho acumulado."
+  }
+ ],
+ "012y-documentacion.png": [
+  {
+   "key": "docs.title",
+   "text": "Documentación"
+  },
+  {
+   "key": "docs.metricFormula",
+   "text": "Cómo se calcula"
+  },
+  {
+   "key": "metrics.stageProgress.formula",
+   "text": "semana de la etapa = semanas de calendario desde el lunes de la semana 1 · sesiones esperadas = semanas × sesiones de la etapa"
+  },
+  {
+   "key": "docs.metricRules",
+   "text": "Reglas de la app"
+  },
+  {
+   "key": "metrics.stageProgress.rules",
+   "text": "La semana 1 la fija la primera sesión de la etapa (de jueves a domingo, empieza el lunes siguiente). Al acabar, si faltan sesiones por valor de una semana o más, se propone alargar. El contador de sesiones es del cliente y se replica al entrenador; no se deduce del historial, así que borrar una sesión no lo baja."
+  },
+  {
+   "key": "docs.metricCaveat",
+   "text": "Límites"
+  },
+  {
+   "key": "metrics.stageProgress.caveat",
+   "text": "Las semanas que añades al alargar no suben las sesiones esperadas: sirven para recuperar las que faltaban."
+  },
+  {
+   "key": "docs.metricGroups.trainer",
+   "text": "Lado entrenador"
+  },
+  {
+   "key": "metrics.adherence.name",
+   "text": "Adherencia"
+  },
+  {
+   "key": "metrics.adherence.what",
+   "text": "Avisa de qué clientes se están descolgando de la frecuencia que pide su programa. Mide riesgo de abandono a partir del tiempo sin entrenar, no el porcentaje de sesiones cumplidas."
+  },
+  {
+   "key": "metrics.adherence.formula",
+   "text": "días desde la última sesión ÷ (7 ÷ sesiones por semana) → hasta 2 al día · más de 4 en riesgo"
+  },
+  {
+   "key": "metrics.adherence.rules",
+   "text": "El umbral se adapta a la frecuencia del programa, así que es justo entre clientes que entrenan 2 o 5 días por semana. El promedio semanal usa las 4 semanas completas anteriores, sin contar la que está en curso, para que un lunes por la mañana no parezca un frenazo. Pausar a un cliente silencia la adherencia."
+  },
+  {
+   "key": "metrics.adherence.caveat",
+   "text": "No es un porcentaje de cumplimiento: un cliente que entrena hoy sale bien aunque llevara tres semanas parado. Mide cuánto hace que no entrena en relación con lo que debería, no lo que ha hecho acumulado."
+  }
+ ],
+ "013-eliminar-cuenta.png": [
+  {
+   "key": "home.yourProgram",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "home.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStartSession",
+   "text": "EMPEZAR SESIÓN {{label}}"
+  },
+  {
+   "key": "deleteAccount.title",
+   "text": "Eliminar cuenta"
+  },
+  {
+   "key": "common.cancel",
+   "text": "Cancelar"
+  },
+  {
+   "key": "deleteAccount.lead",
+   "text": "Se borra tu cuenta del servidor y todo lo que esté guardado en ella. Esto no se puede deshacer."
+  },
+  {
+   "key": "deleteAccount.whatHappens",
+   "text": "QUÉ SE BORRA"
+  },
+  {
+   "key": "deleteAccount.implTrainer",
+   "text": "Tus clientes dejan de estar sincronizados: pierden el programa que les enviaste y su código deja de funcionar."
+  },
+  {
+   "key": "deleteAccount.implClient",
+   "text": "Dejas de estar conectado con tu entrenador y se borra el historial que él tenía tuyo."
+  },
+  {
+   "key": "deleteAccount.implIrreversible",
+   "text": "No hay forma de recuperarlo. Ni con tu código, ni entrando otra vez con Google o Apple."
+  },
+  {
+   "key": "deleteAccount.whatStays",
+   "text": "QUÉ NO SE BORRA"
+  },
+  {
+   "key": "deleteAccount.staysLocal",
+   "text": "Tu historial, tus programas y tus ejercicios de este móvil se quedan como están. La app sigue funcionando sin cuenta."
+  },
+  {
+   "key": "deleteAccount.staysPro",
+   "text": "Si tienes Pro no lo pierdes: la compra va con tu cuenta de Apple o Google Play, no con esta. Se recupera con \"Restaurar compras\"."
+  },
+  {
+   "key": "deleteAccount.cta",
+   "text": "ELIMINAR MI CUENTA"
+  }
+ ],
+ "020-inicio-programa.png": [
+  {
+   "key": "home.yourProgram",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "home.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStartSession",
+   "text": "EMPEZAR SESIÓN {{label}}"
+  },
+  {
+   "key": "freeSession.sectionTitle",
+   "text": "Sesiones libres"
+  },
+  {
+   "key": "freeSession.templateUnnamed",
+   "text": "Sesión libre"
+  },
+  {
+   "key": "home.rowMinutes",
+   "text": "~{{minutes}} min"
+  },
+  {
+   "key": null,
+   "text": "hace 2 semanas"
+  },
+  {
+   "key": "freeSession.btn",
+   "text": "+ Sesión libre"
+  },
+  {
+   "key": "tabs.session",
+   "text": "Sesión"
+  },
+  {
+   "key": "tabs.program",
+   "text": "Programa"
+  },
+  {
+   "key": "tabs.progress",
+   "text": "Progresión"
+  },
+  {
+   "key": "tabs.clients",
+   "text": "Clientes"
+  },
+  {
+   "key": "tabs.templates",
+   "text": "Plantillas"
+  }
+ ],
+ "021-inicio-desplazado.png": [
+  {
+   "key": "home.yourProgram",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "home.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStartSession",
+   "text": "EMPEZAR SESIÓN {{label}}"
+  },
+  {
+   "key": "freeSession.sectionTitle",
+   "text": "Sesiones libres"
+  },
+  {
+   "key": "freeSession.templateUnnamed",
+   "text": "Sesión libre"
+  },
+  {
+   "key": "home.rowMinutes",
+   "text": "~{{minutes}} min"
+  },
+  {
+   "key": null,
+   "text": "hace 2 semanas"
+  },
+  {
+   "key": "freeSession.btn",
+   "text": "+ Sesión libre"
+  },
+  {
+   "key": "tabs.session",
+   "text": "Sesión"
+  },
+  {
+   "key": "tabs.program",
+   "text": "Programa"
+  },
+  {
+   "key": "tabs.progress",
+   "text": "Progresión"
+  },
+  {
+   "key": "tabs.clients",
+   "text": "Clientes"
+  },
+  {
+   "key": "tabs.templates",
+   "text": "Plantillas"
+  }
+ ],
+ "022-hoja-sesion-libre.png": [
+  {
+   "key": "home.yourProgram",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "home.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStartSession",
+   "text": "EMPEZAR SESIÓN {{label}}"
+  },
+  {
+   "key": "freeSession.sectionTitle",
+   "text": "Sesiones libres"
+  },
+  {
+   "key": "freeSession.templateUnnamed",
+   "text": "Sesión libre"
+  },
+  {
+   "key": "home.rowMinutes",
+   "text": "~{{minutes}} min"
+  },
+  {
+   "key": null,
+   "text": "hace 2 semanas"
+  },
+  {
+   "key": "freeSession.btn",
+   "text": "+ Sesión libre"
+  },
+  {
+   "key": "freeSession.badge",
+   "text": "Sesión libre"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": "freeSession.startNow",
+   "text": "Empezar ya"
+  },
+  {
+   "key": "freeSession.startNowDesc",
+   "text": "Una sesión en blanco, sobre la marcha"
+  },
+  {
+   "key": "freeSession.create",
+   "text": "Crear sesión libre"
+  },
+  {
+   "key": "freeSession.createDesc",
+   "text": "Prepárala en el editor para repetirla cuando quieras"
+  },
+  {
+   "key": "freeSession.fromTemplates",
+   "text": "Desde tus plantillas"
+  },
+  {
+   "key": "freeSession.fromTemplatesDesc",
+   "text": "Crea una copia de la plantilla"
+  }
+ ],
+ "023-hoja-desde-plantillas.png": [
+  {
+   "key": "home.yourProgram",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "home.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStartSession",
+   "text": "EMPEZAR SESIÓN {{label}}"
+  },
+  {
+   "key": "freeSession.sectionTitle",
+   "text": "Sesiones libres"
+  },
+  {
+   "key": "freeSession.templateUnnamed",
+   "text": "Sesión libre"
+  },
+  {
+   "key": "home.rowMinutes",
+   "text": "~{{minutes}} min"
+  },
+  {
+   "key": null,
+   "text": "hace 2 semanas"
+  },
+  {
+   "key": "freeSession.btn",
+   "text": "+ Sesión libre"
+  },
+  {
+   "key": "freeSession.templatesTitle",
+   "text": "Tus plantillas de sesión"
+  },
+  {
+   "key": "common.close",
+   "text": "Cerrar"
+  },
+  {
+   "key": "freeSession.templateExercises_other",
+   "text": "{{count}} ejercicios"
+  }
+ ],
+ "024-banner-sesion-activa.png": [
+  {
+   "key": "home.running",
+   "text": "En curso"
+  },
+  {
+   "key": "home.btnContinue",
+   "text": "CONTINUAR"
+  },
+  {
+   "key": "home.yourProgram",
+   "text": "Tu programa"
+  },
+  {
+   "key": "home.stageDefault",
+   "text": "Etapa {{n}}"
+  },
+  {
+   "key": "home.week",
+   "text": "Semana"
+  },
+  {
+   "key": "home.sessions",
+   "text": "Tus sesiones"
+  },
+  {
+   "key": "home.weekCount",
+   "text": "{{done}} de {{total}} esta semana"
+  },
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "home.sessionMeta",
+   "text": "{{count}} ejercicios · ~{{minutes}} min"
+  },
+  {
+   "key": "home.btnContinueSession",
+   "text": "CONTINUAR SESIÓN {{label}}"
+  },
+  {
+   "key": "freeSession.sectionTitle",
+   "text": "Sesiones libres"
+  },
+  {
+   "key": "freeSession.templateUnnamed",
+   "text": "Sesión libre"
+  },
+  {
+   "key": "home.rowMinutes",
+   "text": "~{{minutes}} min"
+  },
+  {
+   "key": "home.btnStart",
+   "text": "EMPEZAR"
+  },
+  {
+   "key": "tabs.session",
+   "text": "Sesión"
+  },
+  {
+   "key": "tabs.program",
+   "text": "Programa"
+  },
+  {
+   "key": "tabs.progress",
+   "text": "Progresión"
+  },
+  {
+   "key": "tabs.clients",
+   "text": "Clientes"
+  },
+  {
+   "key": "tabs.templates",
+   "text": "Plantillas"
+  },
+  {
+   "key": null,
+   "text": "hace 2 semanas"
+  }
+ ],
+ "030a-workout-vacio.png": [
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "workout.addExercise",
+   "text": "Añadir ejercicio"
+  },
+  {
+   "key": "workout.saveSession",
+   "text": "GUARDAR SESIÓN"
+  },
+  {
+   "key": "workout.discardSession",
+   "text": "Descartar sesión"
+  }
+ ],
+ "031a-workout-ejercicio.png": [
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "workout.kg",
+   "text": "Kg"
+  },
+  {
+   "key": "workout.reps",
+   "text": "Reps"
+  },
+  {
+   "key": "workout.addSetBtn",
+   "text": "Añadir serie"
+  },
+  {
+   "key": "workout.addExercise",
+   "text": "Añadir ejercicio"
+  },
+  {
+   "key": "workout.saveSession",
+   "text": "GUARDAR SESIÓN"
+  },
+  {
+   "key": "workout.discardSession",
+   "text": "Descartar sesión"
+  },
+  {
+   "key": null,
+   "text": "3 × 8–12 reps"
+  },
+  {
+   "key": null,
+   "text": "S1"
+  },
+  {
+   "key": null,
+   "text": "S2"
+  },
+  {
+   "key": null,
+   "text": "S3"
+  },
+  {
+   "key": "customExercise.toastCreated",
+   "text": "Ejercicio creado"
+  }
+ ],
+ "031b-serie-marcada-descanso.png": [
+  {
+   "key": "workout.sessionLabel",
+   "text": "Sesión {{label}}"
+  },
+  {
+   "key": "workout.kg",
+   "text": "Kg"
+  },
+  {
+   "key": "workout.reps",
+   "text": "Reps"
+  },
+  {
+   "key": "workout.addSetBtn",
+   "text": "Añadir serie"
+  },
+  {
+   "key": "workout.addExercise",
+   "text": "Añadir ejercicio"
+  },
+  {
+   "key": "workout.saveSession",
+   "text": "GUARDAR SESIÓN"
+  },
+  {
+   "key": "workout.discardSession",
+   "text": "Descartar sesión"
+  },
+  {
+   "key": null,
+   "text": "3 × 8–12 reps"
+  },
+  {
+   "key": null,
+   "text": "S1"
+  },
+  {
+   "key": null,
+   "text": "S2"
+  },
+  {
+   "key": null,
+   "text": "S3"
+  }
+ ]
+}

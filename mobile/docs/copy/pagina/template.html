@@ -1,0 +1,205 @@
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Copy de Forma Fit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: índice de pantallas a la izquierda; cada pantalla = captura grande + sus textos con la versión nueva al lado. */
+:root {
+  --bg: #f6f7f2; --panel: #ffffff; --fg: #1b1d17; --muted: #6b6f62; --line: #e1e3d9;
+  --accent: #5d7d00; --accent-soft: #eef6d2; --warn: #fff3dc; --warn-fg: #7a4b00; --shot: #10110e;
+  --sans: "Instrument Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121310; --panel: #1b1d18; --fg: #ecede6; --muted: #9a9e90; --line: #2c2f27;
+  --accent: #b9e425; --accent-soft: #273110; --warn: #33270f; --warn-fg: #f2c46b; --shot: #000; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121310; --panel: #1b1d18; --fg: #ecede6; --muted: #9a9e90; --line: #2c2f27;
+  --accent: #b9e425; --accent-soft: #273110; --warn: #33270f; --warn-fg: #f2c46b; --shot: #000; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--sans); }
+button, select, textarea { font: inherit; color: inherit }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px; flex-wrap: wrap }
+.top h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: -.01em }
+.top .count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums }
+.top .sp { flex: 1 }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 12px; cursor: pointer }
+.btn:hover { border-color: var(--accent) }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600 }
+.btn:focus-visible, textarea:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+#jump { display: none; max-width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel) }
+
+.wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 0; min-height: 100% }
+nav { border-right: 1px solid var(--line); padding: 12px 8px 40px; position: sticky; top: 57px; align-self: start; max-height: calc(100vh - 57px); overflow-y: auto }
+nav h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 8px 4px; font-weight: 600 }
+nav a { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 14px }
+nav a:hover { background: var(--accent-soft) }
+nav a.on { background: var(--accent); color: var(--bg) }
+nav a .n { font-family: var(--mono); font-size: 11px; color: var(--muted); min-width: 34px }
+nav a.on .n { color: inherit }
+nav a .b { margin-left: auto; font-size: 11px; font-weight: 600; background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 0 7px }
+nav a.on .b { background: var(--bg); }
+
+main { padding: 20px 24px 60px; min-width: 0 }
+.head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px }
+.head .area { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600 }
+.head h2 { margin: 0; font-size: 26px; letter-spacing: -.02em; text-wrap: balance }
+.head .pos { color: var(--muted); font-family: var(--mono); font-size: 12px }
+.head .nav2 { margin-left: auto; display: flex; gap: 8px }
+.screen { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 28px; align-items: start }
+.shot { position: sticky; top: 76px; background: var(--shot); border-radius: 22px; padding: 8px; cursor: zoom-in }
+.shot img { display: block; width: 100%; border-radius: 15px }
+.shot .hint { position: absolute; right: 16px; bottom: 16px; font-size: 12px; background: rgba(0,0,0,.6); color: #fff; padding: 2px 8px; border-radius: 6px }
+
+.warn { background: var(--warn); color: var(--warn-fg); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px }
+.warn b { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px }
+.warn ul { margin: 0; padding-left: 18px }
+.texts { display: grid; gap: 10px }
+.t { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px }
+.t.changed { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent) }
+.t .orig { white-space: pre-wrap; overflow-wrap: anywhere }
+.t .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-family: var(--mono); font-size: 11px; color: var(--muted) }
+.t .meta .hard { font-family: var(--sans); background: var(--warn); color: var(--warn-fg); padding: 0 6px; border-radius: 4px }
+.t .meta .also { font-family: var(--sans) }
+.t textarea { width: 100%; min-height: 40px; resize: vertical; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg) }
+.t textarea:not(:placeholder-shown) { border-style: solid; border-color: var(--accent) }
+.t .who { font-size: 12px; color: var(--muted) }
+.empty { color: var(--muted) }
+.status { font-size: 12px; color: var(--muted) }
+
+#zoom { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.88); overflow: auto; cursor: zoom-out; padding: 16px; display: flex; justify-content: center; align-items: flex-start }
+#zoom img { max-width: min(720px, 100%); height: auto; border-radius: 12px }
+
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: 1fr }
+  nav { display: none }
+  #jump { display: block; flex-basis: 100% }
+  main { padding: 16px }
+  .screen { grid-template-columns: 1fr }
+  .shot { position: static; max-width: 420px; margin: 0 auto; width: 100% }
+  .head .nav2 { margin-left: 0 }
+}
+@media (prefers-reduced-motion: no-preference) { .t { transition: border-color .15s } }
+</style>
+
+<div class="top">
+  <h1>Copy de Forma Fit</h1>
+  <span class="count" id="count"></span>
+  <span class="sp"></span>
+  <span class="status" id="status"></span>
+  <button class="btn" id="copy">Copiar cambios</button>
+  <select id="jump" aria-label="Ir a pantalla"></select>
+</div>
+<div class="wrap">
+  <nav id="nav" aria-label="Pantallas"></nav>
+  <main id="main"></main>
+</div>
+<div id="zoom" hidden><img alt=""></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const screens = DATA.areas.flatMap(a => a.screens.map(s => ({ ...s, area: a.name })));
+const notes = {};            // id → { text, at }
+let db = null, cur = 0;
+const $ = s => document.querySelector(s);
+const idOf = (s, t) => t.key ? 'k_' + t.key.replace(/[^\w]/g, '_') : 'h_' + s.id + '_' + t.text.slice(0, 40).replace(/[^\w]/g, '_');
+const keyScreens = {};       // clave → pantallas donde sale
+screens.forEach(s => s.texts.forEach(t => { if (t.key) (keyScreens[t.key] ||= []).push(s.id) }));
+
+function changedIn(s) { return s.texts.filter(t => notes[idOf(s, t)]?.text).length }
+function renderNav() {
+  const total = Object.values(notes).filter(n => n.text).length;
+  $('#count').textContent = `${screens.length} pantallas · ${total} cambio${total === 1 ? '' : 's'}`;
+  $('#nav').innerHTML = DATA.areas.map(a => `<h3>${esc(a.name)}</h3>` + a.screens.map(s => {
+    const i = screens.findIndex(x => x.id === s.id), c = changedIn(screens[i]);
+    return `<a href="#${s.id}" class="${i === cur ? 'on' : ''}"><span class="n">${esc(s.num)}</span><span>${esc(s.title)}</span>${c ? `<span class="b">${c}</span>` : ''}</a>`;
+  }).join('')).join('');
+  $('#jump').innerHTML = screens.map((s, i) => `<option value="${i}" ${i === cur ? 'selected' : ''}>${esc(s.area)} · ${esc(s.title)}</option>`).join('');
+}
+function renderScreen() {
+  const s = screens[cur];
+  $('#main').innerHTML = `
+    <div class="head"><span class="area">${esc(s.area)}</span><h2>${esc(s.title)}</h2><span class="pos">${cur + 1}/${screens.length}</span>
+      <span class="nav2"><button class="btn" id="prev" ${cur ? '' : 'disabled'}>← Anterior</button><button class="btn primary" id="next" ${cur < screens.length - 1 ? '' : 'disabled'}>Siguiente →</button></span></div>
+    <div class="screen">
+      <div class="shot" id="shot"><img src="img/${s.id}.jpg" alt="Captura: ${esc(s.title)}"><span class="hint">ampliar</span></div>
+      <div>
+        ${s.warn.length ? `<div class="warn"><b>Posibles problemas detectados</b><ul>${s.warn.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : ''}
+        <div class="texts">${s.texts.length ? s.texts.map((t, j) => {
+          const id = idOf(s, t), n = notes[id], also = t.key ? keyScreens[t.key].filter(x => x !== s.id).length : 0;
+          return `<div class="t ${n?.text ? 'changed' : ''}">
+            <div class="orig">${esc(t.text)}</div>
+            <div class="meta">${t.key ? esc(t.key) : '<span class="hard">texto fijo en el código</span>'}${also ? `<span class="also">· sale en ${also} pantalla${also > 1 ? 's' : ''} más</span>` : ''}</div>
+            <textarea id="ta-${j}" data-id="${id}" data-key="${esc(t.key || '')}" data-orig="${esc(t.text)}" rows="1" placeholder="Versión nueva (déjalo vacío si está bien)">${esc(n?.text || '')}</textarea>
+          </div>`;
+        }).join('') : '<p class="empty">No hay textos de la app en esta captura.</p>'}</div>
+      </div>
+    </div>`;
+  $('#prev').onclick = () => go(cur - 1);
+  $('#next').onclick = () => go(cur + 1);
+  $('#shot').onclick = () => { $('#zoom img').src = `img/${s.id}.jpg`; $('#zoom').hidden = false };
+  document.querySelectorAll('textarea').forEach(ta => { fit(ta); ta.oninput = () => { fit(ta); save(ta) } });
+}
+function go(i) { if (i < 0 || i >= screens.length) return; location.hash = screens[i].id }
+function fromHash() { const i = screens.findIndex(s => s.id === location.hash.slice(1)); cur = i < 0 ? 0 : i; renderNav(); renderScreen(); window.scrollTo(0, 0) }
+function fit(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px' }
+const timers = {};
+function save(ta) {
+  const id = ta.dataset.id, text = ta.value.trim();
+  notes[id] = { text, key: ta.dataset.key, orig: ta.dataset.orig, screen: screens[cur].id, at: Date.now() };
+  ta.closest('.t').classList.toggle('changed', !!text);
+  clearTimeout(timers[id]);
+  timers[id] = setTimeout(async () => {
+    try { localStorage.setItem('copy-notas', JSON.stringify(notes)) } catch (e) {}
+    if (!db) return;
+    $('#status').textContent = 'Guardando…';
+    try {
+      const ref = db.collection('notas').doc(id);
+      text ? await ref.set(notes[id]) : await ref.delete();
+      $('#status').textContent = 'Guardado';
+    } catch (e) { $('#status').textContent = e.code === 'not_granted' ? 'Solo lectura' : 'No se pudo guardar' }
+  }, 700);
+  renderNavLight();
+}
+let navT; function renderNavLight() { clearTimeout(navT); navT = setTimeout(renderNav, 300) }
+
+$('#copy').onclick = () => {
+  const rows = Object.values(notes).filter(n => n.text).sort((a, b) => a.screen.localeCompare(b.screen));
+  const txt = rows.length ? rows.map(n => `- ${n.key ? '`' + n.key + '`' : '(fijo en ' + n.screen + ')'}\n  antes: ${n.orig}\n  nuevo: ${n.text}`).join('\n') : '(sin cambios)';
+  const done = () => { $('#copy').textContent = 'Copiado ✓'; setTimeout(() => $('#copy').textContent = 'Copiar cambios', 1500) };
+  navigator.clipboard.writeText(txt).then(done, () => { const ta = document.createElement('textarea'); ta.value = txt; document.body.append(ta); ta.select(); try { document.execCommand('copy'); done() } catch (e) {} ta.remove() });
+};
+$('#jump').onchange = e => go(+e.target.value);
+$('#zoom').onclick = () => $('#zoom').hidden = true;
+addEventListener('hashchange', fromHash);
+addEventListener('keydown', e => {
+  if (e.target.matches('textarea, select')) return;
+  if (e.key === 'Escape') $('#zoom').hidden = true;
+  if (e.key === 'ArrowRight') go(cur + 1);
+  if (e.key === 'ArrowLeft') go(cur - 1);
+});
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])) }
+
+try { Object.assign(notes, JSON.parse(localStorage.getItem('copy-notas')) || {}) } catch (e) {}
+fromHash();
+
+// Notas compartidas: todos los que abren la página ven y editan las mismas.
+(async () => {
+  try { db = await window.claude?.use?.('db') } catch (e) {}
+  if (!db) { $('#status').textContent = 'Notas solo en este navegador'; return }
+  db.collection('notas').onSnapshot(snap => {
+    for (const k in notes) delete notes[k];
+    snap.docs.forEach(d => { notes[d.id] = d.data() });
+    renderNav();
+    // No pisar lo que se está escribiendo: solo se refrescan las cajas sin foco.
+    document.querySelectorAll('textarea').forEach(ta => {
+      if (ta === document.activeElement) return;
+      ta.value = notes[ta.dataset.id]?.text || ''; fit(ta);
+      ta.closest('.t').classList.toggle('changed', !!ta.value);
+    });
+  }, () => { $('#status').textContent = 'Sin conexión a las notas' });
+})();
+</script>
