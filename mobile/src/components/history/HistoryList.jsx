@@ -188,28 +188,24 @@ export default function HistoryList() {
     );
   }
 
-  // Arriba, las sesiones en un segmentado a todo el ancho («Todas», una por
-  // sesión del programa y ★ si hay libres). Debajo, qué se está viendo y la
-  // caja de filtros (ámbito, etapas y borrado).
+  // Una fila: las sesiones en un segmentado («Todas», una por sesión del
+  // programa y ★ si hay libres) y la caja de filtros (ámbito, etapas y
+  // borrado). Debajo, qué se está viendo.
   const listHeader = (
     <>
-      {present.length > 0 && (
-        <View style={styles.sessionsRow}>
-          <SegmentedControl
-            options={[
-              { id: 'all', label: t('history.allSessions') },
-              ...present.map((l) => ({ id: l, label: l })),
-            ]}
-            value={letter ?? 'all'}
-            onChange={(id) => setLetter(id === 'all' ? null : id)}
-          />
-        </View>
-      )}
       <View style={styles.scopeRow}>
-        <Text style={styles.countLine} numberOfLines={1}>
-          {t('history.sessionsN', { count: filtered.length })}
-          {letter ? ` · ${letter === FREE ? t('history.freePlural') : letter}` : ''}
-        </Text>
+        <View style={styles.flex}>
+          {present.length > 0 && (
+            <SegmentedControl
+              options={[
+                { id: 'all', label: t('history.allSessions') },
+                ...present.map((l) => ({ id: l, label: l })),
+              ]}
+              value={letter ?? 'all'}
+              onChange={(id) => setLetter(id === 'all' ? null : id)}
+            />
+          )}
+        </View>
         <TouchableOpacity
           style={[styles.iconBox, filterCount > 0 && styles.iconBoxActive]}
           onPress={() => setFilterOpen(true)}
@@ -229,6 +225,12 @@ export default function HistoryList() {
           )}
         </TouchableOpacity>
       </View>
+      {workoutLog.length > 0 && (
+        <Text style={styles.countLine} numberOfLines={1}>
+          {t('history.sessionsN', { count: filtered.length })}
+          {letter ? ` · ${letter === FREE ? t('history.freePlural') : letter}` : ''}
+        </Text>
+      )}
     </>
   );
 
@@ -333,7 +335,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop:        spacing.md,
   },
-  sessionsRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   iconBox: {
     width: 42, height: 42, borderRadius: th.radius.sm,
     backgroundColor: th.colors.surface2,
@@ -347,7 +348,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   filterBadgeText: { ...textStyles.micro, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
-  countLine: { ...textStyles.label, color: th.colors.mutedLight, flex: 1 },
+  countLine: { ...textStyles.label, color: th.colors.mutedLight, paddingHorizontal: spacing.lg, paddingTop: spacing.sm2 },
   // Mes: la caja de las cabeceras de sección, con aire encima para separar bloques.
   month: {
     ...textStyles.caps, textTransform: 'uppercase', color: th.colors.mutedLight,
