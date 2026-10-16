@@ -136,6 +136,19 @@
   .or { display: flex; align-items: center; gap: var(--md); color: var(--muted); margin: var(--lg) 0; }
   .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--surface2); }
   .err { color: var(--orange); text-align: center; margin-top: var(--sm2); }
+  .opt { display: flex; align-items: center; gap: var(--md); width: 100%; min-height: 56px; padding: var(--lg); border-radius: var(--r-lg); border: 0; background: var(--surface); color: var(--text); text-align: left; margin-bottom: var(--sm2); transition: transform .12s; }
+  .opt:active { transform: scale(.98); }
+  .opt svg { width: 20px; height: 20px; flex: none; }
+  .opt .ic { color: var(--accent); display: flex; }
+  .opt b { flex: 1; }
+  /* Invitar al entrenador: debajo de la tarjeta, discreto */
+  .invite { display: flex; align-items: center; gap: var(--md); width: 100%; margin-top: var(--md); padding: var(--lg); border-radius: var(--r-lg); border: 1px dashed var(--surface3); background: none; color: var(--text); text-align: left; }
+  .invite .t { flex: 1; }
+  .invite .t span { display: block; color: var(--mutedLight); }
+  .invite .t b { display: block; color: var(--accent); margin-top: var(--xs2); }
+  .invite svg { width: 20px; height: 20px; color: var(--accent); flex: none; }
+  .bubble { background: var(--surface); border-radius: var(--r-lg) var(--r-lg) var(--r-lg) var(--r-xs); padding: var(--md) var(--lg); margin: var(--lg) 0 var(--xs); color: var(--text); }
+  .bubble u { color: var(--accent); text-decoration: none; }
 </style>
 </head>
 <body>
@@ -180,8 +193,9 @@
     </ul>
     <h3>Sin entrenador</h3>
     <ul>
-      <li>Tres pasos con icono: <b>Te da un código → Recibes su programa → Le llegan tus sesiones</b>. Una línea antes: «Solo si un entrenador te prepara los programas».</li>
-      <li>Un botón: <b>Introducir código</b>. Quien ya estuvo conectado con Google o Apple: el enlace de debajo.</li>
+      <li><b>«Conecta con tu entrenador»</b> y una línea: «Si tu entrenador usa Forma Fit y te ha mandado un código, introdúcelo». Debajo, los tres pasos con icono.</li>
+      <li>Un botón: <b>Introducir código</b>. Debajo, <b>«Ya estaba conectado»</b>: abre «Volver a conectar» con Google, Apple (iPhone) y «Con mi código» — el mismo código que arriba, pero se lee como volver, no como empezar.</li>
+      <li><b>«¿Tu entrenador no usa Forma Fit? Invítale»</b>, fuera de la tarjeta y discreto: el mensaje de invitación que ya existe en el onboarding, con el enlace a la web.</li>
     </ul>
     <h3>Desconectado: un texto por motivo</h3>
     <ul>
@@ -189,7 +203,7 @@
       <li><b>Otro usó su código</b> → introducir código; si no fue él, que pida uno nuevo.</li>
       <li><b>Le quitó su entrenador</b> → pedirle un código nuevo.</li>
       <li><b>Con Google vinculado</b> solo puede «perder la conexión» (nadie le echa con el código), y la salida es <b>Continuar con Google</b>: el código no le vale, su hueco sigue a nombre de su cuenta.</li>
-      <li>Abajo, «Olvidar a este entrenador» para volver a «Sin entrenador».</li>
+      <li>Abajo, las mismas opciones que conectado: <b>Cambiar de entrenador</b> y <b>Desconectarme</b>.</li>
     </ul>
   </div>
 </div>
@@ -200,6 +214,7 @@ const ICON = {
   prog:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
   send:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>',
   swap:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>',
+  share:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>',
   out:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
   google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5z"/><path fill="#34A853" d="M12 22c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.2 13.6a6 6 0 0 1 0-3.8V7.1H2.7a10 10 0 0 0 0 9z"/><path fill="#EA4335" d="M12 6c1.5 0 2.9.5 4 1.5l3-3A10 10 0 0 0 2.7 7.1l3.5 2.7C7 7.8 9.3 6 12 6z"/></svg>',
   apple:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9a5 5 0 0 0-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5a11 11 0 0 0 1.4-2.9 4.5 4.5 0 0 1-2.7-4.1zM13.9 4.9A4.4 4.4 0 0 0 15 1.7a4.6 4.6 0 0 0-3 1.5 4.2 4.2 0 0 0-1 3.1c1.1.1 2.2-.6 2.9-1.4z"/></svg>',
@@ -225,16 +240,19 @@ function offPage() {
     <div class="sec t-caps">Tu entrenador</div>
     <div class="card">
       <span class="state t-caps"><i></i>Sin entrenador</span>
-      <div class="who t-heading">Entrena con tu entrenador</div>
-      <div class="why t-body">Solo si un entrenador te prepara los programas.</div>
+      <div class="who t-heading">Conecta con tu entrenador</div>
+      <div class="why t-body">Si tu entrenador usa Forma Fit y te ha mandado un código, introdúcelo.</div>
       <div class="steps">
         <div class="step"><div class="ic">${ICON.key}</div><p class="t-labelStrong">Te da un código</p></div>
         <div class="step"><div class="ic">${ICON.prog}</div><p class="t-labelStrong">Recibes su programa</p></div>
         <div class="step"><div class="ic">${ICON.send}</div><p class="t-labelStrong">Le llegan tus sesiones</p></div>
       </div>
       <div class="acts"><button class="btn acc t-button" data-a="code">Introducir código</button></div>
-      <button class="alt t-button" data-a="socialSheet">Ya estaba conectado con Google${S.os === 'ios' ? ' o Apple' : ''}</button>
-    </div>`;
+      <button class="alt t-button" data-a="reconnect">Ya estaba conectado</button>
+    </div>
+    <button class="invite" data-a="invite">
+      <span class="t"><span class="t-body">¿Tu entrenador no usa Forma Fit?</span><b class="t-button">Invítale</b></span>${ICON.share}
+    </button>`;
 }
 
 function onPage(pending) {
@@ -291,7 +309,8 @@ function lostPage() {
     </div>
     <div class="sec t-caps">Opciones</div>
     <div class="list">
-      <button class="lrow red" data-a="forget">${ICON.out}<b class="t-itemQuiet">Olvidar a este entrenador</b><span class="chev">›</span></button>
+      <button class="lrow" data-a="code">${ICON.swap}<b class="t-itemQuiet">Cambiar de entrenador</b><span class="chev">›</span></button>
+      <button class="lrow red" data-a="leave">${ICON.out}<b class="t-itemQuiet">Desconectarme</b><span class="chev">›</span></button>
     </div>`;
 }
 
@@ -313,15 +332,32 @@ function openSheet(html) {
 }
 const closeSheet = () => document.getElementById('page').classList.remove('open');
 
-function codeSheet(filled) {
+function reconnectSheet() {
+  openSheet(`<h4 class="t-title">Volver a conectar</h4>
+    <div class="why t-body">Como te conectabas antes.</div>
+    <div style="margin-top: var(--lg)">
+      <button class="opt" data-a="social">${ICON.google}<b class="t-itemQuiet">Continuar con Google</b><span class="chev">›</span></button>
+      ${S.os === 'ios' ? `<button class="opt" data-a="social">${ICON.apple}<b class="t-itemQuiet">Continuar con Apple</b><span class="chev">›</span></button>` : ''}
+      <button class="opt" data-a="codeBack"><span class="ic">${ICON.key}</span><b class="t-itemQuiet">Con mi código</b><span class="chev">›</span></button>
+    </div>`);
+}
+
+function inviteSheet() {
+  openSheet(`<h4 class="t-title">Invita a tu entrenador</h4>
+    <div class="why t-body">Podrá prepararte los programas y ver tus entrenos. Empezar es gratis.</div>
+    <div class="bubble t-body">¡Hola! Estoy usando Forma Fit para entrenar. Si la instalas, puedes gestionar mi programa desde ahí y ver mis entrenos (empezar es gratis): <u>formafit-pro.github.io</u></div>
+    <div class="acts"><button class="btn acc t-button" data-a="close">Compartir</button></div>`);
+}
+
+function codeSheet(filled, back) {
   const chars = (filled ? CODE : '').replace('-', '').padEnd(8, ' ').split('');
   const box = (c) => `<span class="${c === ' ' ? 'empty' : ''}">${c === ' ' ? '·' : c}</span>`;
-  openSheet(`<h4 class="t-title">${filled ? 'Volver a entrar' : 'Introduce el código'}</h4>
-    <div class="why t-body">${filled ? 'Tu código de siempre. Tu historial sigue ahí.' : 'Te lo da tu entrenador.'}</div>
+  openSheet(`<h4 class="t-title">${filled ? 'Volver a entrar' : back ? 'Volver a conectar' : 'Introduce el código'}</h4>
+    <div class="why t-body">${filled ? 'Tu código de siempre. Tu historial sigue ahí.' : back ? 'El que usabas. Tu historial sigue guardado.' : 'Te lo da tu entrenador.'}</div>
     <div class="codeIn">${chars.slice(0, 4).map(box).join('')}<em>–</em>${chars.slice(4).map(box).join('')}</div>
     <div class="acts"><button class="btn acc t-button" data-a="close">Continuar</button></div>
-    <div class="or t-caps">o</div>
-    <div class="acts" style="margin-top:0">${brandButtons()}</div>`);
+    ${back ? '' : `<div class="or t-caps">o</div>
+    <div class="acts" style="margin-top:0">${brandButtons()}</div>`}`);
 }
 
 function confirmSheet(title, why, cta) {
@@ -338,12 +374,13 @@ document.addEventListener('click', (e) => {
   switch (a.dataset.a) {
     case 'code':        codeSheet(false); break;
     case 'codeFilled':  codeSheet(true); break;
-    case 'socialSheet': openSheet(`<h4 class="t-title">Entra con tu cuenta</h4><div class="why t-body">La que vinculaste cuando estabas conectado.</div><div class="acts">${brandButtons()}</div>`); break;
+    case 'reconnect':   reconnectSheet(); break;
+    case 'codeBack':    codeSheet(false, true); break;
+    case 'invite':      inviteSheet(); break;
     case 'social':      closeSheet(); S.state = 'on'; S.access = 'google'; setTimeout(() => render(true), 250); break;
     case 'link':        openSheet(`<h4 class="t-title">Vincular una cuenta</h4><div class="why t-body">Para no depender del código si cambias de móvil o reinstalas la app.</div><div class="acts">${brandButtons()}</div>`); break;
     case 'retry':       S.state = 'on'; render(false); break;
     case 'leave':       confirmSheet('Desconectarte', 'Dejarás de enviarle tus sesiones y su programa se archivará. Puedes volver con el mismo código.', 'Desconectarme'); break;
-    case 'forget':      confirmSheet('Olvidar a este entrenador', 'Su programa se archivará y vuelves a tus propios programas.', 'Olvidar'); break;
     case 'toOff':       closeSheet(); S.state = 'off'; setTimeout(() => render(true), 250); break;
     case 'close':       closeSheet(); break;
   }
