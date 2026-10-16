@@ -46,11 +46,10 @@ export default function useClientCode() {
 
   /**
    * Las RPC de conexión lanzan códigos secos y `supabaseSync` los deja en
-   * `err.code`. Se ramifica por ahí y no por el texto: `SLOT_OCCUPIED` no es un
+   * `err.code`. Se ramifica por ahí y no por el texto: un código seco no es un
    * error que el usuario deba leer en crudo, es una instrucción de qué hacer.
    */
   function errorText(err) {
-    if (err?.code === 'SLOT_OCCUPIED')  return t('trainer.errSlotOccupied');
     if (err?.code === 'CODE_NOT_FOUND') return t('trainer.errCodeNotFound');
     return err?.message ?? t('trainer.errGoogle');
   }
@@ -63,10 +62,10 @@ export default function useClientCode() {
       const info = await useStore.getState().validateClientCode(value);
       patch({
         slotInfo: info,
-        // Un hueco que nadie ha canjeado y ya tiene historial es lo que te
-        // apuntó tu entrenador (o tu copia de antes de reinstalar): fusionar es
+        // Historial en el hueco: lo que te apuntó tu entrenador, o el tuyo de
+        // antes de reinstalar (el código siempre vale, C09 §4.6). Fusionar es
         // lo que quieres casi siempre (C05-trainer-logging.md §4.3, C20).
-        historyMode: info.hasRemoteHistory && !info.alreadyLinked ? 'merge' : 'program',
+        historyMode: info.hasRemoteHistory ? 'merge' : 'program',
         step: 'confirm',
       });
       return true;

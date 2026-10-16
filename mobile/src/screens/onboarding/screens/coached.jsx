@@ -183,34 +183,6 @@ function Confirm({ goTo }) {
 
   const trainer = cleanName(slotInfo.trainerName);
 
-  // El código ya lo usa otro móvil: conectar va a fallar, así que la pantalla solo
-  // cuenta eso y qué hacer (O03 §28.2).
-  if (slotInfo.alreadyLinked) {
-    return (
-      <FlowBody
-        footer={(
-          <FlowFooter
-            primary={{
-              label: t('onboardingFlow.coached.busy.ask'),
-              onPress: () => shareAndContinue(t('onboardingFlow.coached.busy.message'), () => {}),
-            }}
-            secondary={[{ label: t('onboardingFlow.coached.busy.other'), onPress: flowBack }]}
-          />
-        )}
-      >
-        <FlowTitle text={t('onboardingFlow.coached.busy.title')} sub={t('trainer.codeSlotOccupied')} />
-        <Rise index={2}>
-          <View style={styles.found}>
-            <Text style={styles.foundLabel}>
-              {trainer ? t('onboardingFlow.coached.confirm.from', { trainer }) : t('onboardingFlow.coached.confirm.fromAnon')}
-            </Text>
-            <Text style={styles.foundName}>{slotInfo.programName}</Text>
-          </View>
-        </Rise>
-      </FlowBody>
-    );
-  }
-
   async function connect() {
     if (loading || !(await confirm())) return;
     const info = slotInfo;
@@ -250,6 +222,8 @@ function Confirm({ goTo }) {
       </Rise>
 
       {alreadyLinked && <Rise index={2}><FlowNote tone="warn" text={t('trainer.codeAlreadyLinked')} /></Rise>}
+      {/* Lo usa otro móvil: el código siempre entra y ese se desconecta (C09 §4.6). */}
+      {slotInfo.alreadyLinked && <Rise index={2}><FlowNote tone="warn" text={t('trainer.codeSlotOccupied')} /></Rise>}
       {/* El error de conectar, arriba y a la vista (abajo quedaba bajo el pliegue). */}
       {!!error && <Rise index={2}><FlowNote tone="warn" text={error} /></Rise>}
 

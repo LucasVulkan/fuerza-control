@@ -26,7 +26,7 @@ import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBack
 import {
   createClientSlot, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, transferMySlotsTo,
-  getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, transferMySeatTo,
+  getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, transferMySeatTo, clientLostReason,
 } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
@@ -118,6 +118,7 @@ const EMPTY_CLIENT_SYNC = {
   lastAppliedStageActivation: null, // `stageActivatedAt` already applied — a new one means the trainer moved this client
   syncErrorAt:           null,  // ISO — timestamp of last failed upload to trainer
   lostAt:                null,  // ISO — el servidor dijo que ya no tiene asiento (C09 §4.3)
+  lostReason:            null,  // 'identity' (este móvil perdió su sesión) | 'taken' (alguien entró con su código) | 'gone' (su entrenador)
   pendingProgramUpdate:  null,  // { programJson, updatedAt, diff[] } — awaiting user action
   previousActiveProgramId: null, // el programa de antes de conectarse, para volver a él al salir
   trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
@@ -4368,8 +4369,8 @@ export const useStore = create(
         return {
           slotId:           slot.id,
           programName:      slot.program_name,
-          // Ocupado por OTRO: el enlace va a fallar con SLOT_OCCUPIED y la salida
-          // es que el entrenador reemita el código. Ocupado por mí no cuenta.
+          // Lo usa OTRO móvil: entrar lo desconecta (C09 §4.6). La hoja lo
+          // avisa antes de pulsar. Ocupado por mí no cuenta.
           alreadyLinked:    !!slot.is_linked && !slot.is_mine,
           hasRemoteHistory: !!slot.history_updated_at,
           trainerName:      slot.trainer_name ?? null,
@@ -4463,8 +4464,7 @@ export const useStore = create(
         if (!slot) throw Object.assign(new Error(i18n.t('trainer.errCodeNotFound')), { code: 'CODE_NOT_FOUND' });
         if (!slot.program_name) throw new Error(i18n.t('trainer.errNoProgramYet'));
 
-        // Lanza SLOT_OCCUPIED si hay otro dentro — la pantalla lo traduce a
-        // "pide un código nuevo a tu entrenador".
+        // El código siempre entra: si había otro dentro, sale él (C09 §4.6).
         await linkClientToSlot(code);
         await get()._adoptSeat({ code, userId, mergeHistory });
         get().showToast(i18n.t('trainer.connectedToast'));
@@ -4520,9 +4520,17 @@ export const useStore = create(
        * le reemitió el código o borró su cuenta). Se dice en la pantalla de
        * Entrenador y se deja de subir. Un corte de red NO llega aquí.
        */
-      _markClientLost: () => {
+      _markClientLost: async () => {
         if (get().clientSync.lostAt) return;
-        set((s) => ({ clientSync: { ...s.clientSync, lostAt: new Date().toISOString(), pendingUpload: false, pendingProgramUpdate: null } }));
+        set((s) => ({ clientSync: { ...s.clientSync, lostAt: new Date().toISOString(), lostReason: 'gone', pendingUpload: false, pendingProgramUpdate: null } }));
+        // Por qué, porque cambia qué hacer (C09 §4.6):
+        //   'identity'  este móvil perdió su identidad → volver a entrar con su código
+        //   'taken'     alguien entró con su código → si no fue él, código nuevo
+        //   'gone'      lo desconectó su entrenador → pedirle un código
+        // Sin respuesta se queda en lo general.
+        const reason = !(await clientSessionUserId().catch(() => 'unknown')) ? 'identity'
+          : await clientLostReason().catch(() => 'gone');
+        set((s) => ({ clientSync: { ...s.clientSync, lostReason: reason } }));
       },
 
       /**
@@ -4542,7 +4550,7 @@ export const useStore = create(
         try {
           const seat = await seatOf();
           // Respuesta del servidor, no fallo de red: ya no tiene asiento.
-          if (!seat) { get()._markClientLost(); return; }
+          if (!seat) { await get()._markClientLost(); return; }
           const { programJson, updatedAt, trainerName, overrides } = seat;
           // Un entrenador con la versión vieja manda los ids de antes de juntar
           // los ejercicios repetidos (P09-exercise-variants.md §3.3). Antes del
@@ -4690,7 +4698,7 @@ export const useStore = create(
             },
           }));
         } catch (err) {
-          if (err.code === 'NO_SEAT') { get()._markClientLost(); return; }
+          if (err.code === 'NO_SEAT') { await get()._markClientLost(); return; }
           set((s) => ({
             clientSync: {
               ...s.clientSync,

@@ -21,8 +21,9 @@
 --            SE FUE    client_id null, disconnected_at fecha (se desconectó él)
 --
 -- ── Las reglas, y dónde se hacen cumplir ────────────────────────────────────
---  1. Un asiento vacío se ocupa con el código. Uno ocupado solo lo suelta quien
---     está sentado o el dueño (reemitiendo).          → link_client_to_slot
+--  1. El código es la llave del cliente: con él se entra siempre, y quien
+--     estuviera dentro sale (y se le dice). Reemitirlo lo revoca.
+--                                                    → link_client_to_slot
 --  2. Un cliente ocupa como mucho UN asiento.         → índice único + link
 --  3. Nadie escribe la tabla directamente: TODA escritura es una función que
 --     comprueba de quién es la fila y FALLA con un código si no la encuentra.
@@ -32,7 +33,7 @@
 --                                                    → transfer_my_*
 --
 -- Códigos de error (la app ramifica por ellos, `supabaseSync.js`):
---   NOT_AUTHENTICATED  NOT_A_TRAINER  CODE_NOT_FOUND  SLOT_OCCUPIED  SLOT_GONE
+--   NOT_AUTHENTICATED  NOT_A_TRAINER  CODE_NOT_FOUND  SLOT_OCCUPIED (C20)  SLOT_GONE
 --   NO_SEAT  SEAT_TAKEN  BAD_TARGET  CODE_GENERATION_FAILED
 -- ============================================================================
 
@@ -63,6 +64,9 @@ alter table public.trainer_clients add column if not exists sessions_count      
 alter table public.trainer_clients add column if not exists overrides_json       jsonb;
 alter table public.trainer_clients add column if not exists overrides_updated_at timestamptz;
 alter table public.trainer_clients add column if not exists disconnected_at      timestamptz;
+-- Quién estaba dentro cuando otro entró con el código, para decírselo (§8).
+alter table public.trainer_clients add column if not exists displaced_client_id  uuid;
+alter table public.trainer_clients add column if not exists displaced_at         timestamptz;
 
 
 -- ── 2. Códigos de cliente ───────────────────────────────────────────────────
@@ -348,7 +352,8 @@ as $$
 declare v_code text := public.new_client_code();
 begin
   update public.trainer_clients
-     set client_code = v_code, client_id = null, disconnected_at = null
+     set client_code = v_code, client_id = null, disconnected_at = null,
+         displaced_client_id = null, displaced_at = null
    where id = p_slot_id and trainer_id = public._trainer();
   if not found then raise exception 'SLOT_GONE'; end if;
   return v_code;
@@ -402,10 +407,17 @@ as $$
    limit 1;
 $$;
 
--- Entrar con el código. Ocupar es UNA sentencia condicionada (dos clientes a la
--- vez con el mismo código: entra uno, el otro recibe SLOT_OCCUPIED). Y como un
--- cliente ocupa un solo asiento, entrar en uno suelta el que tuviera — así
--- «cambiar de entrenador» no deja al anterior con un fantasma dentro.
+-- Entrar con el código. EL CÓDIGO SIEMPRE VALE (decisión del 16-oct-2026, C09
+-- §4.6): es la llave del cliente. El servidor no puede saber si quien está
+-- dentro perdió su móvil (reinstalar deja su sesión viva aquí), así que en vez
+-- de pedir un código nuevo cada vez, quien trae el código entra y el de dentro
+-- sale — y se le dice que alguien entró con su código (`client_lost_reason`).
+-- Revocar un código filtrado sigue siendo reemitirlo.
+--
+-- La fila se bloquea (`for update`): dos a la vez con el mismo código entran
+-- uno detrás de otro y se queda el último. Y como un cliente ocupa un solo
+-- asiento, entrar en uno suelta el que tuviera: «cambiar de entrenador» no deja
+-- al anterior con un fantasma dentro.
 create or replace function public.link_client_to_slot(p_code text)
 returns uuid
 language plpgsql
@@ -415,8 +427,11 @@ as $$
 declare
   v_me   uuid := public._caller();
   v_slot uuid;
+  v_prev uuid;
 begin
-  select id into v_slot from public.trainer_clients where client_code = upper(trim(p_code));
+  select id, client_id into v_slot, v_prev
+    from public.trainer_clients where client_code = upper(trim(p_code))
+     for update;
   if v_slot is null then raise exception 'CODE_NOT_FOUND'; end if;
 
   update public.trainer_clients
@@ -426,12 +441,29 @@ begin
    where client_id = v_me and id <> v_slot;
 
   update public.trainer_clients
-     set client_id = v_me, disconnected_at = null
-   where id = v_slot and (client_id is null or client_id = v_me);
-  if not found then raise exception 'SLOT_OCCUPIED'; end if;
+     set client_id       = v_me,
+         disconnected_at = null,
+         displaced_client_id = case when v_prev is not null and v_prev <> v_me then v_prev else displaced_client_id end,
+         displaced_at        = case when v_prev is not null and v_prev <> v_me then now()  else displaced_at end
+   where id = v_slot;
 
   return v_slot;
 end;
+$$;
+
+-- ¿Por qué ya no tengo asiento? 'taken': alguien entró con mi código (si no
+-- fui yo en otro móvil, que me reemitan uno). 'gone': me desconectó el
+-- entrenador (borrado, código reemitido o cuenta borrada).
+create or replace function public.client_lost_reason()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case when exists (
+    select 1 from public.trainer_clients where displaced_client_id = auth.uid()
+  ) then 'taken' else 'gone' end;
 $$;
 
 -- El cliente sube lo suyo a SU asiento: no hace falta decir cuál, es el suyo.
@@ -515,7 +547,8 @@ begin
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'transfer_my_slots_to(uuid)', 'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()', 'transfer_my_seat_to(uuid)'
+    'client_upload_history(jsonb, integer)', 'release_client_slot()', 'transfer_my_seat_to(uuid)',
+    'client_lost_reason()'
   ] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
   end loop;
@@ -525,7 +558,8 @@ begin
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'transfer_my_slots_to(uuid)', 'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()', 'transfer_my_seat_to(uuid)'
+    'client_upload_history(jsonb, integer)', 'release_client_slot()', 'transfer_my_seat_to(uuid)',
+    'client_lost_reason()'
   ] loop
     execute format('grant execute on function public.%s to authenticated', f);
   end loop;

@@ -343,7 +343,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   const trainerLost      = !!clientSync?.slotId && !!clientSync.lostAt;
   const trainerConnected = !!clientSync?.slotId && !trainerLost;
   const trainerSub = trainerLost
-    ? t('trainer.lostTitle')
+    ? t('header.trainerSubLost')
     : trainerConnected
     ? [clientSync.trainerName, clientSync.googleLinked ? t('header.trainerSubGoogle') : t('header.trainerSubCode')]
         .filter(Boolean).join(' · ')

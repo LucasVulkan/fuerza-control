@@ -365,7 +365,7 @@ describe('el cliente se entera cuando lo desconectan', () => {
       await act(t, clientId);
 
       await c.s.checkAndPullProgramUpdates();
-      expect(c.s.clientSync.lostAt).toBeTruthy();
+      expect(c.s.clientSync).toMatchObject({ lostAt: expect.any(String), lostReason: 'gone' });
       await trainOnce(c);
       expect(c.s.clientSync.lastSyncedAt).toBeNull();          // no se da por subido
     });
@@ -384,7 +384,7 @@ describe('el cliente se entera cuando lo desconectan', () => {
     expect(c.s.clientSync.pendingUpload).toBe(true);
   });
 
-  it('con el código nuevo vuelve a entrar y su historial sigue ahí', async () => {
+  it('reinstala sin Google: con el MISMO código vuelve a entrar y su historial sigue ahí', async () => {
     const t = await phone('entrenador');
     let c = await phone('cliente');
     await t.s.createTrainerCodeAccount();
@@ -393,11 +393,40 @@ describe('el cliente se entera cuando lo desconectan', () => {
     await trainOnce(c, 'sesion-1');
 
     c = await reinstall(c);                                      // anónimo: identidad perdida
-    await expect(c.s.linkToTrainer(codeOf(t, clientId))).rejects.toMatchObject({ code: 'SLOT_OCCUPIED' });
-    const fresh = await t.s.reissueClientCode(clientId);
-    await c.s.validateClientCode(fresh);
-    await c.s.linkToTrainer(fresh, { mergeHistory: true });
+    const info = await c.s.validateClientCode(codeOf(t, clientId));
+    expect(info.alreadyLinked).toBe(true);                       // la hoja avisa: otro móvil lo usa
+    await c.s.linkToTrainer(codeOf(t, clientId), { mergeHistory: true });
     expect(c.s.workoutLog.map((e) => e.id)).toContain('sesion-1');
+    expect(await programReaches(t, c, clientId, 'tras reinstalar')).toBe(true);
+  });
+
+  it('el móvil pierde su sesión pero conserva los datos: lo dice, y su código lo arregla', async () => {
+    const t = await phone('entrenador');
+    const c = await phone('cliente');
+    await t.s.createTrainerCodeAccount();
+    const { clientId } = await newClientWithProgram(t);
+    await join(c, codeOf(t, clientId));
+    c.device.storage.delete('sb-client');                       // como lo de la migración
+
+    await c.s.checkAndPullProgramUpdates();
+    expect(c.s.clientSync).toMatchObject({ lostAt: expect.any(String), lostReason: 'identity' });
+    await c.s.linkToTrainer(c.s.clientSync.clientCode);
+    expect(c.s.clientSync.lostAt).toBeNull();
+    expect(await programReaches(t, c, clientId, 'de vuelta')).toBe(true);
+  });
+
+  it('el código reemitido sigue siendo la forma de revocar: el viejo ya no entra', async () => {
+    const t = await phone('entrenador');
+    const c = await phone('cliente');
+    await t.s.createTrainerCodeAccount();
+    const { clientId } = await newClientWithProgram(t);
+    const old = codeOf(t, clientId);
+    await join(c, old);
+    const fresh = await t.s.reissueClientCode(clientId);
+    const intruso = await phone('intruso');
+    await expect(intruso.s.linkToTrainer(old)).rejects.toMatchObject({ code: 'CODE_NOT_FOUND' });
+    await join(c, fresh);
+    expect(await programReaches(t, c, clientId, 'con el nuevo')).toBe(true);
   });
 });
 
@@ -576,12 +605,17 @@ describe('reglas del servidor (sin app de por medio)', () => {
     expect(error?.code).toBe('42501');
   });
 
-  it('dos clientes con el mismo código a la vez: entra uno', async () => {
+  it('el código siempre entra: el que estaba dentro sale y se le dice que alguien usó su código', async () => {
     const t = await phone('entrenador');
     await t.s.createTrainerCodeAccount();
     const { clientId } = await newClientWithProgram(t);
     const [c1, c2] = [await phone('c1'), await phone('c2')];
-    const res = await Promise.allSettled([join(c1, codeOf(t, clientId)), join(c2, codeOf(t, clientId))]);
-    expect(res.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    await join(c1, codeOf(t, clientId));
+    await join(c2, codeOf(t, clientId));
+
+    expect((await slotOf(t.s.clients[clientId].syncSlotId)).client_id).toBe(c2.s.clientSync.supabaseUserId);
+    await c1.s.checkAndPullProgramUpdates();
+    expect(c1.s.clientSync).toMatchObject({ lostAt: expect.any(String), lostReason: 'taken' });
+    expect(await programReaches(t, c2, clientId, 'para el que entró')).toBe(true);
   });
 });

@@ -3,12 +3,13 @@
 > Tema: conexión
 > En corto: Cambiar de forma de entrar (código, Google, Apple) en cualquier dirección se lleva a los clientes, ser entrenador y cliente en el mismo móvil ya no rompe nada, y nada se da por enviado sin que el servidor lo confirme. Con un banco de pruebas que mueve varios «móviles» contra el SQL real.
 > Inicio: 2026-10-14
-> Fin: 2026-10-14
+> Fin: 2026-10-16
 > Fase C09-01 · hecho · Servidor: un solo esquema y toda escritura por funciones que fallan si no encuentran la fila · §2.2
 > Fase C09-02 · hecho · Una sesión por papel y cuentas candidatas · §2.1
 > Fase C09-03 · hecho · Entrenador: traspaso en cualquier dirección, refresco que recupera y «de otra cuenta» · §3
 > Fase C09-04 · hecho · Cliente: un asiento, «te han desconectado» y Google/Apple sin tocar la sesión · §4
 > Fase C09-05 · hecho · Banco de pruebas con varios móviles y auditoría del servidor · §5
+> Fase C09-06 · hecho · El código siempre vale, tres motivos de desconexión y avisos del cliente · §4.6
 >
 > Estado: **implementado y en verde** (38 escenarios de simulación + 1940 tests).
 > **`supabase/schema.sql` desplegado el 15-oct-2026** (`audit.sql` limpio). Falta
@@ -66,8 +67,9 @@ cuatro SQL de antes (volver a ejecutar `secure_trainer_clients.sql` restauraba u
   que un cliente pudiera cambiar `trainer_id` o `program_json` de su fila.
 - **Un cliente, un asiento**: índice único parcial en `client_id`. Entrar con un
   código suelta el asiento que tuviera (cambiar de entrenador ya no deja un
-  fantasma al anterior). Ocupar es una sola sentencia condicionada: dos clientes
-  a la vez con el mismo código, entra uno.
+  fantasma al anterior).
+- **El código siempre vale** (§4.6): con él se entra aunque haya alguien dentro,
+  que sale y se entera. Reemitirlo es lo que lo revoca.
 - **Códigos únicos** por índice, generados siempre en el servidor.
 - **Claves foráneas a `auth.users`**: borrar un usuario (incluso desde el panel)
   se lleva sus huecos de entrenador y suelta su asiento de cliente.
@@ -161,9 +163,10 @@ lleva id de hueco, es «el mío».
 
 ### 4.3 «Tu entrenador te ha desconectado»
 
-Si el servidor contesta que no tiene asiento (borrado, código reemitido, cuenta
-del entrenador borrada), `clientSync.lostAt`: la pantalla Entrenador lo dice y
-ofrece «Entrar con un código nuevo»; se deja de subir. Un corte de red no cuenta.
+Si el servidor contesta que no tiene asiento, `clientSync.lostAt` y su motivo
+(`lostReason`, §4.6): la pantalla Entrenador lo dice con su salida, el menú pone
+«Reconectar» en naranja y la cabecera de todas las pantallas lleva una franja que
+lleva allí. Se deja de subir. Un corte de red no cuenta.
 
 ### 4.4 Programa actualizado
 
@@ -178,6 +181,63 @@ móvil adelantado se ignoraban los cambios del entrenador.
   ella misma con su sesión. Luego se instala. Sustituye a `transfer_client_slot`.
 - Reconectar en otro móvil: se busca el asiento con la candidata, sin tocar
   nada; si no hay, no ha cambiado nada.
+
+### 4.6 El código siempre vale (16-oct-2026)
+
+**El caso real que lo motivó.** Una clienta actualizó a la versión de las dos
+sesiones y salió «desconectada»: la app preguntó por su hueco antes de terminar
+de traspasar su sesión vieja, vio «sin sesión» y lo apuntó para siempre (arreglo:
+`sessionsReady`, §2.1). Y para volver le pedía un código nuevo al entrenador,
+porque su hueco seguía ocupado por su propia identidad perdida.
+
+**Por qué no se puede saber que alguien «perdió la conexión».** Al reinstalar,
+la sesión del móvil sigue viva en el servidor: Supabase no se entera de que el
+móvil la ha borrado. Para el servidor, «soy yo otra vez» y «soy otra persona
+con tu código» son la misma petición. Lo ideal (el mismo código te vuelve a
+meter solo si el de dentro ya no está) no es posible de forma fiable.
+
+**Decisión del usuario: el código es la llave del cliente.** Con él se entra
+siempre. Si había alguien dentro, sale, y el servidor apunta quién
+(`displaced_client_id`) para decírselo. Reemitir el código sigue siendo la
+forma de revocarlo. Sustituye a la decisión de C01 §9 («reinstalación anónima =
+código nuevo del entrenador»).
+
+Lo que cuesta: quien consiga el código puede quitarle el sitio al cliente y ver
+su historial. Queda a la vista (el cliente desbancado lo ve) y se corta
+reemitiendo.
+
+**Tres motivos de desconexión** (`clientSync.lostReason`), cada uno con su texto
+y su salida en la pantalla Entrenador:
+
+| Motivo | Qué pasó | Salida |
+|---|---|---|
+| `identity` | Este móvil perdió su sesión (no tiene ninguna) | «Volver a entrar con mi código», con el código ya puesto |
+| `taken` | Alguien entró con su código (`client_lost_reason()`) | El suyo si fue él en otro móvil, o uno nuevo del entrenador |
+| `gone` | El entrenador lo borró, reemitió el código o borró su cuenta | Pedirle un código |
+
+Con Google/Apple vinculado sale además «Reconectar con mi cuenta».
+
+La hoja del código ya no bloquea un código en uso: avisa («si conectas aquí,
+ese móvil se desconecta») y deja conectar, proponiendo fusionar el historial que
+haya en el hueco. El onboarding igual: fuera la pantalla «Este código ya está en
+uso».
+
+**Servidor**: `link_client_to_slot` bloquea la fila (`for update`) y ocupa siempre;
+`client_lost_reason()` nueva; columnas `displaced_client_id` y `displaced_at`
+(reemitir las limpia). **Hay que volver a ejecutar `schema.sql`** y `audit.sql`.
+
+**Probar C09-06**
+
+- [ ] Volver a ejecutar `schema.sql` en Supabase sin errores; `audit.sql`, vacío.
+- [ ] Cliente conectado → borrar los datos de la app → meter el MISMO código: la
+  hoja avisa de que otro móvil lo usa, conecta, y el historial vuelve.
+- [ ] Mismo código en dos móviles: el primero, al volver a abrir la app, ve la
+  franja arriba y en Entrenador «Alguien ha entrado con tu código»; el menú dice
+  «Reconectar» en naranja, no «Conectado».
+- [ ] El entrenador reemite el código: el cliente ve «Tu entrenador te ha
+  quitado…»; el código viejo da «Código no encontrado» y el nuevo entra.
+- [ ] Abrir el enlace de invitación con la pantalla Entrenador ya abierta: lo
+  primero que se ve es la hoja con el código puesto, sin otra hoja encima.
 
 ## 5. Banco de pruebas y auditoría
 

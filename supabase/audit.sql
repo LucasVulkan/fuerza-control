@@ -67,7 +67,7 @@ select 'función sin security definer', proname
                    'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
                    'trainer_reissue_client_code', 'transfer_my_slots_to', 'get_slot_by_code',
                    'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                   'transfer_my_seat_to')
+                   'transfer_my_seat_to', 'client_lost_reason')
 
 union all
 -- Y que estén todas.
@@ -76,5 +76,5 @@ select 'falta la función', f
                     'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
                     'trainer_reissue_client_code', 'transfer_my_slots_to', 'get_slot_by_code',
                     'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                    'transfer_my_seat_to']) as f
+                    'transfer_my_seat_to', 'client_lost_reason']) as f
  where not exists (select 1 from pg_proc where proname = f and pronamespace = 'public'::regnamespace);

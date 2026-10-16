@@ -45,7 +45,7 @@ const GOOGLE_DISCOVERY = {
   tokenEndpoint:         'https://oauth2.googleapis.com/token',
 };
 
-export default function ClientCodeModal({ visible, onClose, onSuccess, startWithSocial = false }) {
+export default function ClientCodeModal({ visible, onClose, onSuccess, startWithSocial = false, initialCode = null }) {
   const th        = useTheme();
   const styles    = useThemedStyles(makeStyles);
   const { t }     = useTranslation();
@@ -102,7 +102,12 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
 
   // Al abrirse, siempre en el código: el estado del hook es de módulo y lo comparte
   // con el recorrido de entrada, que pudo dejarlo en «Programa encontrado» (O03 §28.2).
-  useEffect(() => { if (visible && !pendingInvite) reset(); }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  // `initialCode`: el código de siempre, cuando vuelve a valer (C09 §4.6).
+  useEffect(() => {
+    if (!visible || pendingInvite) return;
+    reset();
+    if (initialCode) setCode(initialCode);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // La hoja no deja nada a medias al desmontarse (el estado del hook es de módulo).
   useEffect(() => reset, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -311,10 +316,8 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
             </View>
           )}
 
-          {/* El hueco lo ocupa otro dispositivo, así que lo más probable es que
-              el enlace falle con SLOT_OCCUPIED. No se bloquea aquí: si el
-              ocupante resulta ser este mismo usuario, el servidor deja pasar
-              —es idempotente— y quien decide es él, no esta pantalla. */}
+          {/* Lo usa otro móvil: el código siempre entra y ese móvil se
+              desconecta (C09 §4.6). Se dice antes de pulsar «Conectar». */}
           {slotInfo.alreadyLinked && !googleUserId && (
             <View style={styles.warnCard}>
               <Text style={styles.warnText}>{t('trainer.codeSlotOccupied')}</Text>

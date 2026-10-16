@@ -284,6 +284,8 @@ propio, ni fusión de cambios campo a campo. El problema nunca estuvo ahí.
 - **El código de entrenador seguirá siendo el mecanismo de recuperación**, pero
   el fallo 8 de la auditoría (que sea literalmente la contraseña de la cuenta)
   sigue abierto y se trata aparte.
-- **Reinstalación anónima = código nuevo del entrenador.** Decisión del usuario
+- ~~**Reinstalación anónima = código nuevo del entrenador.**~~ Decisión del usuario
   (ago 2026) frente a la alternativa de que el código desaloje con
   confirmación, que habría dejado el fallo 7 visible pero abierto.
+  **Revertida el 16-oct-2026** por el usuario: el código siempre vale y quien
+  estaba dentro sale y se entera (C09 §4.6).

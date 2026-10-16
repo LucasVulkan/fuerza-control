@@ -143,9 +143,9 @@ export async function getSlotByClientCode(clientCode) {
 }
 
 /**
- * Ocupa el asiento del código. Solo abre asientos vacíos (SLOT_OCCUPIED si hay
- * otro dentro) y suelta el que el cliente tuviera en otro hueco: un cliente,
- * un asiento.
+ * Ocupa el asiento del código. El código siempre entra: si había otro dentro,
+ * sale él (C09 §4.6). Suelta el que el cliente tuviera en otro hueco: un
+ * cliente, un asiento.
  */
 export function linkClientToSlot(clientCode) {
   return rpc(clientSupabase, 'link_client_to_slot', { p_code: clientCode });
@@ -176,6 +176,11 @@ export async function seatOf(db = clientSupabase) {
   const { data, error } = await db.from('trainer_clients').select(SEAT_COLS).eq('client_id', me).maybeSingle();
   if (error) throw syncError(error);
   return data ? seatShape(data) : null;
+}
+
+/** Por qué ya no tiene asiento: 'taken' (alguien entró con su código) o 'gone'. */
+export function clientLostReason() {
+  return rpc(clientSupabase, 'client_lost_reason', {});
 }
 
 /** El cliente sube lo suyo a su asiento. NO_SEAT si ya no tiene. */

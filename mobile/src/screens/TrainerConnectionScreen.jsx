@@ -68,6 +68,10 @@ export default function TrainerConnectionScreen() {
   // El servidor dijo que ya no tiene asiento (C09 §4.3): no es un fallo de red
   // que se arregle reintentando, hace falta un código nuevo.
   const isLost        = isConnected && !!clientSync.lostAt;
+  // Por qué (C09 §4.6): cada motivo tiene su texto y su salida. Con 'identity'
+  // y 'taken' el código de siempre sirve, y la hoja lo trae ya puesto.
+  const lostKey       = { identity: 'Identity', taken: 'Taken' }[clientSync.lostReason] ?? '';
+  const reuseCode     = isLost && !!lostKey && clientSync.clientCode ? clientSync.clientCode : null;
   const hasError      = !isLost && !!(clientSync.pendingUpload || clientSync.syncErrorAt);
   const activeProgram = profile.activeProgramId ? programs[profile.activeProgramId] : null;
 
@@ -84,7 +88,7 @@ export default function TrainerConnectionScreen() {
   const stateSub = !isConnected
     ? t('trainer.offSub')
     : isLost
-      ? t('trainer.lostSub')
+      ? t(`trainer.lostSub${lostKey}`)
     : hasError
       ? t('trainer.pendingSub')
       : t('trainer.connectedSub');
@@ -220,8 +224,8 @@ export default function TrainerConnectionScreen() {
               )}
               <MenuRow
                 icon={<RowIcon>{ICON_TRAINER}</RowIcon>}
-                label={t(isLost ? 'trainer.lostCta' : 'trainer.changeLabel')}
-                sub={t(isLost ? 'trainer.lostCtaSub' : 'trainer.changeSub')}
+                label={t(isLost ? `trainer.lostCta${lostKey}` : 'trainer.changeLabel')}
+                sub={t(isLost ? `trainer.lostCtaSub${lostKey}` : 'trainer.changeSub')}
                 subLines={0}
                 minHeight={62}
                 onPress={() => setShowCodeModal(true)}
@@ -299,6 +303,7 @@ export default function TrainerConnectionScreen() {
       </ScrollView>
 
       <ClientCodeModal
+        initialCode={reuseCode}
         visible={showCodeModal || !!pendingInvite}
         startWithSocial={googleAutoStart && !pendingInvite}
         onClose={() => { setShowCodeModal(false); setGoogleAutoStart(false); }}
