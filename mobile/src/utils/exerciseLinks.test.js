@@ -229,4 +229,22 @@ describe('recentLinkedExercises / recentExerciseRefs (P56 §6.5)', () => {
     expect(recentExerciseRefs(solo, 3).map((x) => x.timestamp)).toEqual([400]);
     expect(recentExerciseRefs({ ...args, exConfig: null }, 3)).toEqual([]);
   });
+
+  it('respaldo: sin historial propio, la última vez en cualquier sesión del programa', () => {
+    // Flexiones movidas de B a A: los entrenos de B siguen, pero A no los veía.
+    const tpls = {
+      tplA: { id: 'tplA', exercises: [{ exerciseId: 'pushup' }] },
+      tplB: { id: 'tplB', exercises: [] },
+    };
+    const program = { days: [{ sessionTemplateId: 'tplA' }, { sessionTemplateId: 'tplB' }] };
+    const moved = [
+      { sessionTemplateId: 'tplB',   timestamp: 100, exercises: [{ exerciseId: 'pushup', sets: sets(0) }] },
+      { sessionTemplateId: 'tplOld', timestamp: 200, exercises: [{ exerciseId: 'pushup', sets: sets(5) }] }, // otro programa
+    ];
+    const args = { workoutLog: moved, program, templateId: 'tplA', exConfig: { exerciseId: 'pushup' }, getTemplate: (id) => tpls[id] };
+    expect(recentExerciseRefs(args, 3).map((x) => x.timestamp)).toEqual([100]);
+    // con historial propio ya no se mezcla el de otras sesiones
+    const own = [...moved, { sessionTemplateId: 'tplA', timestamp: 50, exercises: [{ exerciseId: 'pushup', sets: sets(10) }] }];
+    expect(recentExerciseRefs({ ...args, workoutLog: own }, 3).map((x) => x.timestamp)).toEqual([50]);
+  });
 });

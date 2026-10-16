@@ -119,6 +119,12 @@ export function lastLinkedExercise(workoutLog, templateIds, exerciseId) {
  * A link group WINS over the derivation chain: it is an explicit decision by
  * the trainer ("these instances share their history"), while the chain is
  * automatic.
+ *
+ * Respaldo: si en su alcance no se ha hecho nunca, vale la última vez en
+ * cualquier sesión del programa. Un ejercicio movido de B a A (borrar y añadir)
+ * no empieza de cero, y un grupo vinculado recién creado al cambiar de etapa
+ * tampoco (P11 §4.8.1). Solo mientras no haya historial propio: no mezcla el de
+ * instancias sueltas que ya se entrenan por separado.
  */
 export function recentExerciseRefs({ workoutLog, program, templateId, exConfig, getTemplate }, n = 1) {
   const exerciseId = exConfig?.exerciseId;
@@ -126,7 +132,9 @@ export function recentExerciseRefs({ workoutLog, program, templateId, exConfig, 
   const ids = exConfig.linkGroup
     ? linkGroupTemplateIds(program, exerciseId, exConfig.linkGroup, getTemplate)
     : templateChainIds(templateId, getTemplate);
-  return recentLinkedExercises(workoutLog, ids, exerciseId, n);
+  const own = recentLinkedExercises(workoutLog, ids, exerciseId, n);
+  if (own.length) return own;
+  return recentLinkedExercises(workoutLog, programTemplateIds(program), exerciseId, n);
 }
 
 /**
