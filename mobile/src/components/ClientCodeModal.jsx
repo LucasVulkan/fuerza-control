@@ -4,7 +4,9 @@
  * Tres pantallas dentro de la misma hoja:
  *   • código      → teclea el XXXX-XXXX que le dio su entrenador
  *   • cuenta      → (abierta con `startWithSocial`) busca su cuenta ya vinculada,
- *                   con Google o con Apple
+ *                   con Google o con Apple. Con `reconnect` (C09 §4.8, «Ya estaba
+ *                   conectado») ofrece las tres formas: Google, Apple y «Con mi
+ *                   código». Con `autoProvider` lanza ese proveedor al abrirse.
  *   • confirmar   → qué programa ha encontrado y qué implica conectarse
  *
  * Con un código pendiente de una invitación (M01-04, `pendingInviteCode`) la
@@ -45,7 +47,9 @@ const GOOGLE_DISCOVERY = {
   tokenEndpoint:         'https://oauth2.googleapis.com/token',
 };
 
-export default function ClientCodeModal({ visible, onClose, onSuccess, startWithSocial = false, initialCode = null }) {
+export default function ClientCodeModal({
+  visible, onClose, onSuccess, startWithSocial = false, initialCode = null, reconnect = false, autoProvider = null,
+}) {
   const th        = useTheme();
   const styles    = useThemedStyles(makeStyles);
   const { t }     = useTranslation();
@@ -60,6 +64,8 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   } = useClientCode();
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialNoSlot,  setSocialNoSlot]  = useState(false);
+  // «Volver a conectar» → «Con mi código»: la pantalla del código, en esta misma hoja.
+  const [codeInstead,   setCodeInstead]   = useState(false);
 
   // ── Login social para reconectar (Google / Apple) ──────────────────────────
   const isExpoGo         = Constants.executionEnvironment === 'storeClient';
@@ -85,17 +91,22 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   // lanza Google directamente — que es como se comportaba antes de existir
   // Apple. En iOS hay dos y la pantalla enseña los dos botones: elegir por el
   // usuario sería justo lo que la guía 4.8 no quiere.
-  const showChooser = APPLE_AUTH_AVAILABLE;
+  const showChooser = APPLE_AUTH_AVAILABLE || reconnect;
+  // Qué lanzar solo al abrir: el que se pidió, o Google si no hay nada que elegir.
+  const autoLaunch = autoProvider ?? (showChooser ? null : 'google');
 
   useEffect(() => {
-    if (!startWithSocial || !visible || showChooser) {
+    if (!startWithSocial || !visible || !autoLaunch) {
       hasAutoTriggered.current = false;
       return;
     }
-    if (googleRequest && !hasAutoTriggered.current) {
+    if (hasAutoTriggered.current) return;
+    if (autoLaunch === 'apple') {
       hasAutoTriggered.current = true;
-      setSocialNoSlot(false);
-      setError(null);
+      handleApple();
+    } else if (googleRequest) {
+      // Al abrir no hay error ni «sin hueco» que limpiar: cerrar la hoja ya los limpia.
+      hasAutoTriggered.current = true;
       googlePromptAsync();
     }
   }, [startWithSocial, visible, googleRequest]); // eslint-disable-line
@@ -179,6 +190,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
   function handleClose() {
     reset();
     setSocialNoSlot(false);
+    setCodeInstead(false);
     validatedInvite.current = null;
     clearPendingInvite();
     onClose();
@@ -190,13 +202,15 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
     onSuccess?.();
   }
 
-  const isSocialScreen  = step === 'enter' && startWithSocial;
+  const isSocialScreen  = step === 'enter' && startWithSocial && !codeInstead;
 
   // Los títulos de hoja de la app van en caso normal y cortos ("Añadir",
   // "Tempo"), no en mayúsculas como los botones.
   const title = step === 'confirm'
     ? t(googleUserId ? 'trainer.codeFoundAccount' : 'trainer.codeFoundProgram')
-    : t(isSocialScreen
+    : t(reconnect && step === 'enter'
+      ? 'trainer.reconnectTitle'
+      : isSocialScreen
       ? (showChooser ? 'trainer.socialTitle' : 'trainer.googleTitle')
       : 'trainer.codeTitle');
 
@@ -216,6 +230,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
         <View style={styles.block}>
           <Text style={styles.lead}>
             {socialNoSlot                       ? t('trainer.socialNoSlot')
+              : reconnect && !socialLoading     ? t('trainer.reconnectLead')
               : showChooser && !socialLoading   ? t('trainer.socialLead')
                 :                                 t('trainer.socialSearching')}
           </Text>
@@ -245,13 +260,22 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
               </TouchableOpacity>
 
               <AppleSignInButton onPress={handleApple} disabled={isExpoGo} />
+              {reconnect && (
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={() => { setError(null); setSocialNoSlot(false); setCodeInstead(true); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.secondaryBtnText}>{t('trainer.reconnectCode')}</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
       )}
 
       {/* ── Teclear el código ── */}
-      {step === 'enter' && !startWithSocial && (
+      {step === 'enter' && (!startWithSocial || codeInstead) && (
         <View style={styles.block}>
           <Text style={styles.lead}>{t('trainer.codeLead')}</Text>
 
@@ -275,6 +299,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
               : <Text style={styles.primaryBtnText}>{t('trainer.codeContinue')}</Text>}
           </TouchableOpacity>
 
+          {!codeInstead && (<>
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>{t('trainer.or')}</Text>
@@ -298,6 +323,7 @@ export default function ClientCodeModal({ visible, onClose, onSuccess, startWith
           <Text style={styles.hint}>
             {socialNoSlot ? t('trainer.socialNoSlot') : t('trainer.socialCtaHint')}
           </Text>
+          </>)}
           {isExpoGo && <Text style={styles.hint}>{t('trainer.expoGoNote')}</Text>}
         </View>
       )}

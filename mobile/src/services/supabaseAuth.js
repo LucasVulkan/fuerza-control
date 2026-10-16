@@ -165,6 +165,20 @@ export async function ensureClientSession() {
 
 export const clientSessionUserId = () => userIdOf(clientSupabase);
 
+/**
+ * Con qué entra el cliente de este móvil: 'google', 'apple' o null (anónimo,
+ * solo con código). Lo que se enseña en «Acceso» y lo que decide si ofrecer
+ * vincular una cuenta: se mira en la sesión, no se supone.
+ */
+export async function clientProvider() {
+  await sessionsReady();
+  const { data } = await clientSupabase.auth.getSession();
+  const user = data.session?.user;
+  if (!user || user.is_anonymous) return null;
+  const provider = user.app_metadata?.provider;
+  return provider === 'apple' ? 'apple' : 'google';
+}
+
 /** Candidata de cliente con Google o Apple (vincular, o reconectar en otro móvil). */
 export async function clientCandidateFromIdToken({ provider, idToken, accessToken }) {
   const db = createTempSupabase();

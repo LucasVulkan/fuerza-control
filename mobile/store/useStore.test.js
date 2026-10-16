@@ -34,7 +34,7 @@ const authMock = {
   adoptTrainer: vi.fn(async () => {}),
   trainerSessionUserId: vi.fn(async () => useStore.getState().trainerSync.userId),
   signInTrainerWithCode: vi.fn(), signOutTrainer: vi.fn(async () => {}),
-  ensureClientSession: vi.fn(async () => 'anon_1'), clientSessionUserId: vi.fn(async () => 'anon_1'),
+  ensureClientSession: vi.fn(async () => 'anon_1'), clientSessionUserId: vi.fn(async () => 'anon_1'), clientProvider: vi.fn(async () => null),
   clientCandidateFromIdToken: vi.fn(), adoptClient: vi.fn(), signOutClient: vi.fn(async () => {}),
   deleteTrainerUser: vi.fn(), deleteClientUser: vi.fn(),
 };

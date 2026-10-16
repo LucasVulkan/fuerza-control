@@ -18,14 +18,14 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator, Linking, Platform, StyleSheet } from 'react-native';
+import { View, ScrollView, Pressable, Linking, Platform, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Reanimated, { FadeIn, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Reanimated, { FadeIn } from 'react-native-reanimated';
 
 import { useStore } from '../../store/useStore';
 import { trainerSupabase } from '../config/supabase';
@@ -35,6 +35,7 @@ import { useEnterClock, EnterClock } from '../hooks/useEnterClock';
 import { FREE, templateCounts, isConnected } from '../utils/freePlan';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { Rise } from '../components/ui/Rise';
+import { Press, Btn, Explain } from '../components/ui/CardKit';
 import { Section, MenuRow, RowIcon } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { ModeIcon } from '../components/ui/AccountIcons';
@@ -47,10 +48,8 @@ import TrainerSyncModal from '../components/TrainerSyncModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import TrainerRelogin from '../components/TrainerRelogin';
 import PaywallModal from '../components/PaywallModal';
-import { spacing, textStyles, lh, withOpacity } from '../theme';
+import { spacing, textStyles, withOpacity } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-
-const APressable = Reanimated.createAnimatedComponent(Pressable);
 
 // Cuánto tarda en volver el icono de copiar tras copiar.
 const COPIED_MS = 2000;
@@ -59,48 +58,6 @@ const SOCIAL = APPLE_AUTH_AVAILABLE ? ['apple', 'google'] : ['google'];
 const USE_KEY = { google: 'account.useGoogle', apple: 'account.useApple', code: 'account.useCode' };
 
 // ── Piezas sueltas ────────────────────────────────────────────────────────────
-
-/** Botón con `scale` al pulsar (§6.8). */
-function Press({ style, onPress, disabled, children }) {
-  const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
-  return (
-    <APressable
-      onPress={onPress}
-      disabled={disabled}
-      onPressIn={() => scale.set(withTiming(0.97, { duration: 120 }))}
-      onPressOut={() => scale.set(withTiming(1, { duration: 120 }))}
-      style={[style, anim]}
-    >
-      {children}
-    </APressable>
-  );
-}
-
-/** El botón de caja de la maqueta (`.btn`). `tone`: acc · dark · ghost · danger; sin él, `surface2`. */
-function Btn({ tone, label, loading, disabled, grow, onPress }) {
-  const th     = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const ink = {
-    acc:    th.colors.onAccent,
-    dark:   th.colors.accent,
-    ghost:  th.colors.mutedLight,
-    danger: th.colors.redText,
-  }[tone] ?? th.colors.text;
-  return (
-    <Press style={[styles.btn, grow && styles.btnGrow, styles[`btn_${tone}`], (disabled || loading) && styles.btnOff]} onPress={onPress} disabled={disabled || loading}>
-      {loading
-        ? <ActivityIndicator color={ink} />
-        : <Text style={[styles.btnText, { color: ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{label}</Text>}
-    </Press>
-  );
-}
-
-/** Texto de explicación: gris, con barra a la izquierda. */
-function Explain({ children, tone }) {
-  const styles = useThemedStyles(makeStyles);
-  return <Text style={[styles.why, tone === 'onAccent' && styles.whyOnAccent]}>{children}</Text>;
-}
 
 /** El panel de PRO: degradado `accent` → `green`, el del panel del paywall. Medido, no al 100 % (ver PaywallModal). */
 function GradientCard({ style, children }) {
@@ -513,32 +470,9 @@ const makeStyles = (th) => StyleSheet.create({
   },
   iconBtnDone: { backgroundColor: th.tint.accent10 },
 
-  // Explicación (`.why`): gris, con barra a la izquierda
-  why: {
-    ...textStyles.body,
-    lineHeight:      lh(textStyles.body.fontSize),
-    color:           th.colors.mutedLight,
-    borderLeftWidth: 2,
-    borderLeftColor: th.colors.surface3,
-    paddingLeft:     spacing.sm2,
-    marginTop:       spacing.md,
-  },
-  whyOnAccent: { color: th.colors.onAccent, borderLeftColor: withOpacity(th.colors.onAccent, 0.25) },
-
-  // Botones (`.btn`)
+  // Filas de botones (`Btn`, `Explain`: components/ui/CardKit)
   acts:    { flexDirection: 'row', gap: spacing.sm2, marginTop: spacing.lg },
   actsCol: { gap: spacing.sm2, marginTop: spacing.lg },
-  btn: {
-    borderRadius: th.radius.md, paddingVertical: spacing.lg, paddingHorizontal: spacing.sm2,
-    backgroundColor: th.colors.surface2, alignItems: 'center', justifyContent: 'center',
-  },
-  btnGrow:    { flex: 1 },
-  btn_acc:    { backgroundColor: th.colors.accent },
-  btn_dark:   { backgroundColor: th.colors.onAccent },
-  btn_ghost:  { backgroundColor: 'transparent' },
-  btn_danger: { backgroundColor: th.colors.surface2 },
-  btnOff:     { opacity: 0.5 },
-  btnText:    { ...textStyles.button, textTransform: 'uppercase' },
 
   // Nombre para los clientes: tarjeta con un hueco más oscuro (`bg`) y con
   // borde, para que se vea a la primera que ahí se escribe.

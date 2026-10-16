@@ -130,7 +130,8 @@ export async function createServer({ schema = SCHEMA } = {}) {
 }
 
 function publicUser(u) {
-  return { id: u.id, email: u.email, is_anonymous: u.anonymous, user_metadata: {} };
+  const provider = u.anonymous ? 'anonymous' : [...u.identities][0]?.split(':')[0] ?? 'email';
+  return { id: u.id, email: u.email, is_anonymous: u.anonymous, user_metadata: {}, app_metadata: { provider } };
 }
 
 function normalizeRow(row) {

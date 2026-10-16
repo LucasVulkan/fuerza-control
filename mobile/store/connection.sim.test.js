@@ -492,6 +492,26 @@ describe('cliente: cambiar de entrenador, desconectarse, vincular Google', () =>
     expect(await programReaches(b, c, cb.clientId, 'de B')).toBe(true);
   });
 
+  it('con Google, desconectarse y meter el código de otro entrenador: sigue entrando con su Google', async () => {
+    const a = await phone('entrenador A');
+    const b = await phone('entrenador B');
+    let c = await phone('cliente');
+    await a.s.createTrainerCodeAccount();
+    await b.s.createTrainerCodeAccount();
+    const ca = await newClientWithProgram(a);
+    const cb = await newClientWithProgram(b);
+    await join(c, codeOf(a, ca.clientId));
+    await c.s.linkGoogleForClient(google('cli'));
+    await c.s.unlinkFromTrainer();
+    expect(c.s.clientSync.googleLinked).toBe(false);
+
+    await join(c, codeOf(b, cb.clientId));
+    expect(c.s.clientSync).toMatchObject({ googleLinked: true, linkedProvider: 'google' });
+    c = await reinstall(c);                                      // y su Google lo recupera
+    const found = await c.s.validateGoogleClient(google('cli'));
+    expect(found.slotId).toBe(b.s.clients[cb.clientId].syncSlotId);
+  });
+
   it('desconectarse: el entrenador lo ve y el mismo código sirve para volver', async () => {
     const t = await phone('entrenador');
     const c = await phone('cliente');

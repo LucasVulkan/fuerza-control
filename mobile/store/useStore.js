@@ -63,7 +63,7 @@ import { migrateLegacySession } from '../src/config/supabase';
 import {
   trainerCandidateFromIdToken, trainerCandidateFromCode, trainerCandidateNewCode, adoptTrainer,
   trainerSessionUserId, signInTrainerWithCode, signOutTrainer,
-  ensureClientSession, clientSessionUserId, clientCandidateFromIdToken, adoptClient, signOutClient,
+  ensureClientSession, clientSessionUserId, clientProvider, clientCandidateFromIdToken, adoptClient, signOutClient,
   deleteTrainerUser, deleteClientUser,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
@@ -4485,6 +4485,9 @@ export const useStore = create(
        * entrar con código y reconectar con Google/Apple en otro móvil.
        */
       _adoptSeat: async ({ code = null, userId, provider = null, mergeHistory }) => {
+        // Si ya entraba con Google/Apple (se desconectó y mete el código de otro
+        // entrenador), sigue entrando con esa cuenta: no hay que volver a vincular.
+        provider = provider ?? await clientProvider().catch(() => null);
         const seat = await seatOf();
         if (!seat) throw Object.assign(new Error(i18n.t('trainer.lostTitle')), { code: 'NO_SEAT' });
         const { programJson } = seat;

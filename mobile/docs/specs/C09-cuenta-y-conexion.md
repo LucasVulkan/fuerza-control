@@ -11,6 +11,7 @@
 > Fase C09-05 · hecho · Banco de pruebas con varios móviles y auditoría del servidor · §5
 > Fase C09-06 · hecho · El código siempre vale, tres motivos de desconexión y avisos del cliente · §4.6
 > Fase C09-07 · hecho · Con Google/Apple vinculado, el código no echa al cliente · §4.7
+> Fase C09-08 · hecho · Pantalla Entrenador rehecha con la gramática de Mi cuenta · §4.8
 >
 > Estado: **implementado y en verde** (38 escenarios de simulación + 1940 tests).
 > **`supabase/schema.sql` desplegado el 15-oct-2026** (`audit.sql` limpio). Falta
@@ -273,6 +274,47 @@ Google solo su dueño.
 - [ ] La misma cliente borra los datos de la app → con el código, el mismo error;
   con «Reconectar con Google» vuelve con su programa y su historial.
 - [ ] El entrenador reemite su código → con el nuevo, cualquiera entra.
+
+### 4.8 La pantalla Entrenador (16-oct-2026)
+
+La de antes mezclaba datos que parecían botones con botones difíciles de
+encontrar. Maqueta aprobada: [`docs/mockups/trainer-connection.html`](../mockups/trainer-connection.html).
+
+- **Gramática de Mi cuenta**: `Btn`, `Explain` y `Press` salen de AccountScreen a
+  `components/ui/CardKit.jsx` y las usan las dos.
+- **Una tarjeta dice dónde estás**: punto de color + palabra (Conectado, Falta
+  enviar, Desconectado, Sin entrenador), el nombre del entrenador y tres datos en
+  filas finas (Programa, Último envío, Acceso) que no se pulsan. La acción que toca
+  va dentro: «Reintentar el envío» o la de volver.
+- **Debajo, Opciones** sin subtítulos: Vincular cuenta (si entra con código),
+  Cambiar de entrenador, Desconectarme. También al estar desconectado.
+- **Sin entrenador**: «Conecta con tu entrenador», una línea («Si tu entrenador
+  usa Forma Fit y te ha mandado un código, introdúcelo»), tres pasos con icono,
+  «Introducir código» y «Ya estaba conectado», que abre «Volver a conectar» con
+  Google, Apple (iPhone) y «Con mi código» en la misma hoja del código
+  (`ClientCodeModal` con `reconnect`). Debajo, «¿Tu entrenador no usa Forma Fit?
+  Invítale» con el mensaje de invitación del onboarding.
+- **Desconectado con Google/Apple**: la salida es el botón de esa cuenta
+  (`autoProvider` lanza el proveedor al abrir la hoja), no el código, que su propia
+  cuenta protege.
+- **Arreglo**: al conectar, la app mira con qué identidad entra (`clientProvider()`)
+  en vez de suponer «código». Quien tenía Google, se desconecta y mete el código de
+  otro entrenador sigue entrando con su Google y no se le ofrece vincularlo otra vez.
+
+**Probar C09-08**
+
+- [ ] Sin entrenador: se entiende qué es; «Introducir código» abre la hoja;
+  «Ya estaba conectado» ofrece Google (y Apple en iPhone) y «Con mi código»;
+  «Invítale» abre compartir con el mensaje y el enlace.
+- [ ] Conectado: estado, nombre del entrenador y los tres datos; Acceso dice el
+  código o Google. Opciones: Vincular (solo con código), Cambiar de entrenador,
+  Desconectarme.
+- [ ] Sin red, hacer una sesión: la tarjeta pasa a «Falta enviar» con «Falló ·…» y
+  «Reintentar el envío».
+- [ ] Desconectado con código: el texto de su motivo y su botón; con Google:
+  «Continuar con Google» lleva de vuelta.
+- [ ] Con Google: desconectarme y meter el código de otro entrenador → Acceso
+  sigue diciendo Google y no aparece «Vincular».
 
 ## 5. Banco de pruebas y auditoría
 
