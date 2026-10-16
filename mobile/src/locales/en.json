@@ -385,7 +385,6 @@
     }
   },
   "trainer": {
-    "sectionYours": "Your trainer",
     "sectionOptions": "Options",
     "offHeading": "Connect with your trainer",
     "offWhy": "If your trainer uses Forma Fit and sent you a code, enter it.",
@@ -412,7 +411,6 @@
     "title": "Trainer",
     "tagConnected": "CONNECTED",
     "tagPending": "NOT SENT YET",
-    "tagOff": "NO TRAINER",
     "unnamedTrainer": "Your trainer",
     "rowProgramNone": "None",
     "rowProgramNoneSub": "They haven't sent you a program yet.",

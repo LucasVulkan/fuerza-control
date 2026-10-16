@@ -22,7 +22,7 @@ import { Text } from '../components/ui/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, G } from 'react-native-svg';
 
 import { useStore }               from '../../store/useStore';
 import { APPLE_AUTH_AVAILABLE }   from '../services/appleAuth';
@@ -49,14 +49,23 @@ const STEP_PATHS = [
   'M22 2L11 13M22 2l-7 20-4-9-9-4z',                        // enviar
 ];
 
+// El avión de papel pesa abajo a la izquierda: centrado por su caja se ve
+// descentrado. Se corre un punto hacia arriba a la derecha.
+const STEP_NUDGE = [null, null, 'translate(-1 1)'];
+
 function StepIcon({ i, color }) {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-      {i === 0 && <Circle cx="8" cy="15" r="4" />}
-      <Path d={STEP_PATHS[i]} />
+      <G transform={STEP_NUDGE[i] ?? undefined}>
+        {i === 0 && <Circle cx="8" cy="15" r="4" />}
+        <Path d={STEP_PATHS[i]} />
+      </G>
     </Svg>
   );
 }
+
+// Compartir: flecha que sale de la bandeja.
+const SHARE_ICON = <Path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />;
 
 export default function TrainerConnectionScreen() {
   const th         = useTheme();
@@ -185,8 +194,7 @@ export default function TrainerConnectionScreen() {
     body = (
       <>
         <View style={styles.card}>
-          {stateLine('off', t('trainer.tagOff'))}
-          <Text style={styles.heading}>{t('trainer.offHeading')}</Text>
+          <Text style={styles.offHeading}>{t('trainer.offHeading')}</Text>
           <Explain>{t('trainer.offWhy')}</Explain>
           <View style={styles.steps}>
             <View style={styles.stepsLine} />
@@ -207,11 +215,10 @@ export default function TrainerConnectionScreen() {
 
         {/* Promo: discreta, fuera de la tarjeta. */}
         <Press style={styles.invite} onPress={invite}>
-          <View style={styles.inviteText}>
-            <Text style={styles.inviteQ}>{t('trainer.inviteQ')}</Text>
-            <Text style={styles.inviteCta}>{t('trainer.inviteCta')}</Text>
-          </View>
-          <RowIcon color={th.colors.accent}>{ROW_ICON.export}</RowIcon>
+          <Text style={styles.inviteQ} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            {t('trainer.inviteQ')} <Text style={styles.inviteCta}>{t('trainer.inviteCta')}</Text>
+          </Text>
+          <RowIcon color={th.colors.accent}>{SHARE_ICON}</RowIcon>
         </Press>
       </>
     );
@@ -266,10 +273,7 @@ export default function TrainerConnectionScreen() {
       <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('header.sectionConnections')} title={t('trainer.title')} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Rise index={0}>
-          <Text style={styles.sec}>{t('trainer.sectionYours')}</Text>
-          {body}
-        </Rise>
+        <Rise index={0}>{body}</Rise>
       </ScrollView>
 
       <ClientCodeModal
@@ -294,9 +298,8 @@ export default function TrainerConnectionScreen() {
 // Medidas de Mi cuenta (AccountScreen): mismas tarjetas, títulos y explicación.
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
-  content:   { paddingTop: spacing.xxl, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  content:   { paddingTop: spacing.xl, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
-  sec:  { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase', marginBottom: spacing.md },
   card: { backgroundColor: th.colors.surface, borderRadius: th.radius.md, padding: spacing.lg, overflow: 'hidden' },
 
   // Estado
@@ -309,7 +312,7 @@ const makeStyles = (th) => StyleSheet.create({
   stateWarn: { color: th.colors.orange },
   name:      { ...textStyles.title, color: th.colors.text, marginTop: spacing.sm2 },
   nameDim:   { color: th.colors.mutedLight },
-  heading:   { ...textStyles.heading, color: th.colors.text, marginTop: spacing.sm2 },
+  offHeading: { ...textStyles.heading, color: th.colors.text },
 
   // Datos
   facts:    { marginTop: spacing.lg, borderTopWidth: 1, borderTopColor: th.colors.surface2 },
@@ -328,10 +331,10 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Sin entrenador: tres pasos, unidos por una línea detrás de los iconos
   steps:     { flexDirection: 'row', marginTop: spacing.lg },
-  stepsLine: { position: 'absolute', top: 21, left: '17%', right: '17%', height: 2, backgroundColor: th.colors.surface3 },
+  stepsLine: { position: 'absolute', top: 21, left: '17%', right: '17%', height: 2, backgroundColor: th.colors.surface2 },
   step:      { flex: 1, alignItems: 'center', gap: spacing.sm2 },
   stepIcon: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: th.colors.surface2,
+    width: 44, height: 44, borderRadius: 22, backgroundColor: th.colors.surface3,
     alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: th.colors.surface,
   },
   stepText:  { ...textStyles.labelStrong, color: th.colors.text, textAlign: 'center' },
@@ -342,7 +345,6 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md,
     padding: spacing.lg, borderRadius: th.radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: th.colors.surface3,
   },
-  inviteText: { flex: 1, gap: spacing.xs2 },
-  inviteQ:    { ...textStyles.body, color: th.colors.mutedLight },
+  inviteQ:    { ...textStyles.body, color: th.colors.mutedLight, flex: 1 },
   inviteCta:  { ...textStyles.button, color: th.colors.accent },
 });

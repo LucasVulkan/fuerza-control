@@ -385,7 +385,6 @@
     }
   },
   "trainer": {
-    "sectionYours": "Tu entrenador",
     "sectionOptions": "Opciones",
     "offHeading": "Conecta con tu entrenador",
     "offWhy": "Si tu entrenador usa Forma Fit y te ha mandado un código, introdúcelo.",
@@ -412,7 +411,6 @@
     "title": "Entrenador",
     "tagConnected": "CONECTADO",
     "tagPending": "FALTA ENVIAR",
-    "tagOff": "SIN ENTRENADOR",
     "unnamedTrainer": "Tu entrenador",
     "rowProgramNone": "Ninguno",
     "rowProgramNoneSub": "Todavía no te ha enviado ningún programa.",
