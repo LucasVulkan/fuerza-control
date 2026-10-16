@@ -415,6 +415,35 @@ describe('el cliente se entera cuando lo desconectan', () => {
     expect(await programReaches(t, c, clientId, 'de vuelta')).toBe(true);
   });
 
+  it('con Google vinculado, el código no le echa: solo se vuelve a entrar con esa cuenta', async () => {
+    const t = await phone('entrenador');
+    let c = await phone('cliente');
+    await t.s.createTrainerCodeAccount();
+    const { clientId } = await newClientWithProgram(t);
+    const code = codeOf(t, clientId);
+    await join(c, code);
+    await c.s.linkGoogleForClient(google('cli'));
+
+    // Otro móvil con el código: ni valida ni entra, y la cliente sigue dentro.
+    const intruso = await phone('intruso');
+    await expect(intruso.s.validateClientCode(code)).rejects.toMatchObject({ code: 'SEAT_LOCKED' });
+    await expect(intruso.s.linkToTrainer(code)).rejects.toMatchObject({ code: 'SEAT_LOCKED' });
+    await trainOnce(c);
+    expect(c.s.clientSync.lastSyncedAt).toBeTruthy();
+
+    // Ella misma en un móvil nuevo: con el código tampoco; con su Google, sí.
+    c = await reinstall(c);
+    await expect(c.s.validateClientCode(code)).rejects.toMatchObject({ code: 'SEAT_LOCKED' });
+    const found = await c.s.validateGoogleClient(google('cli'));
+    await c.s.confirmGoogleReconnect({ slotId: found.slotId, googleUserId: found.userId, provider: 'google' });
+    expect(await programReaches(t, c, clientId, 'con su Google')).toBe(true);
+
+    // Si pierde el acceso a su Google, reemitir libera el asiento para el código nuevo.
+    const fresh = await t.s.reissueClientCode(clientId);
+    await join(intruso, fresh);
+    expect(await programReaches(t, intruso, clientId, 'tras reemitir')).toBe(true);
+  });
+
   it('el código reemitido sigue siendo la forma de revocar: el viejo ya no entra', async () => {
     const t = await phone('entrenador');
     const c = await phone('cliente');

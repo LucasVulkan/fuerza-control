@@ -38,6 +38,7 @@ const PRELUDE = `
     email text unique,
     is_anonymous boolean not null default false
   );
+  create table auth.identities (user_id uuid references auth.users on delete cascade, provider text);
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create role anon nologin;
@@ -105,6 +106,7 @@ export async function createServer({ schema = SCHEMA } = {}) {
       const user = { id, email, password, anonymous, identities: new Set(identity ? [identity] : []) };
       server.users.set(id, user);
       return server.admin('insert into auth.users (id, email, is_anonymous) values ($1, $2, $3)', [id, email, anonymous])
+        .then(() => identity && server.admin('insert into auth.identities (user_id, provider) values ($1, $2)', [id, identity.split(':')[0]]))
         .then(() => user);
     },
 

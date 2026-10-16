@@ -25,6 +25,7 @@ const INITIAL = {
   socialProvider: 'google',   // con cuál se encontró
   loading:        false,
   error:          null,
+  errorCode:      null,       // 'SEAT_LOCKED' → la pantalla ofrece entrar con Google/Apple
 };
 
 const useSession = create(() => INITIAL);
@@ -34,7 +35,7 @@ const patch = (p) => useSession.setState(p);
 const ACTIONS = {
   setCode:        (code) => patch({ code }),
   setHistoryMode: (historyMode) => patch({ historyMode }),
-  setError:       (error) => patch({ error }),
+  setError:       (error) => patch({ error, errorCode: null }),
   back:           () => patch({ step: 'enter' }),
   reset:          () => patch(INITIAL),
 };
@@ -57,7 +58,7 @@ export default function useClientCode() {
   /** Busca el hueco del código. `true` si lo encontró (queda en el paso «confirm»). */
   async function validate(value = s.code) {
     if (!value.trim()) return false;
-    patch({ loading: true, error: null });
+    patch({ loading: true, error: null, errorCode: null });
     try {
       const info = await useStore.getState().validateClientCode(value);
       patch({
@@ -70,7 +71,7 @@ export default function useClientCode() {
       });
       return true;
     } catch (err) {
-      patch({ error: errorText(err) });
+      patch({ error: errorText(err), errorCode: err?.code ?? null });
       return false;
     } finally {
       patch({ loading: false });

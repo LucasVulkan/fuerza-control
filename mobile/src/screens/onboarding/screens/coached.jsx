@@ -54,7 +54,7 @@ function Code({ goTo }) {
   const flowDone   = useStore((s) => s.flowDone);
   const setProfile = useStore((s) => s.setProfile);
   const clearPendingInviteCode = useStore((s) => s.clearPendingInviteCode);
-  const { code, setCode, loading, error, validate } = useClientCode();
+  const { code, setCode, loading, error, errorCode, validate } = useClientCode();
   const { viaInvite, linked } = answers;
   const [social, setSocial] = useState(false);
 
@@ -130,6 +130,14 @@ function Code({ goTo }) {
       <Rise index={2}>
         <CodeField value={code} onChangeText={setCode} groups={2} onSubmitEditing={next} error={error} />
       </Rise>
+
+      {/* Ese código lo protege su cuenta de Google/Apple (C09 §4.7): la salida es
+          entrar con ella, también si llegó por invitación. */}
+      {viaInvite && errorCode === 'SEAT_LOCKED' && (
+        <Rise index={3}>
+          <Text style={styles.link} onPress={() => setSocial(true)} accessibilityRole="link">{t('onboardingFlow.coached.code.accountLink')}</Text>
+        </Rise>
+      )}
 
       {/* Quien llega por invitación ya tiene su código: no necesita las salidas. */}
       {!viaInvite && (

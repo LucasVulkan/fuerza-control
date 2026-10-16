@@ -18,7 +18,7 @@
 import { trainerSupabase, clientSupabase, sessionsReady } from '../config/supabase';
 
 const RPC_CODES = [
-  'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'BAD_TARGET',
+  'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'SEAT_LOCKED', 'BAD_TARGET',
   'NOT_A_TRAINER', 'NOT_AUTHENTICATED', 'CODE_GENERATION_FAILED',
 ];
 
@@ -143,9 +143,9 @@ export async function getSlotByClientCode(clientCode) {
 }
 
 /**
- * Ocupa el asiento del código. El código siempre entra: si había otro dentro,
- * sale él (C09 §4.6). Suelta el que el cliente tuviera en otro hueco: un
- * cliente, un asiento.
+ * Ocupa el asiento del código. Si había otro dentro, sale él (C09 §4.6), salvo
+ * que entrara con Google/Apple: SEAT_LOCKED (§4.7). Suelta el que el cliente
+ * tuviera en otro hueco: un cliente, un asiento.
  */
 export function linkClientToSlot(clientCode) {
   return rpc(clientSupabase, 'link_client_to_slot', { p_code: clientCode });

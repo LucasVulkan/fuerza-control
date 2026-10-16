@@ -21,9 +21,10 @@
 --            SE FUE    client_id null, disconnected_at fecha (se desconectó él)
 --
 -- ── Las reglas, y dónde se hacen cumplir ────────────────────────────────────
---  1. El código es la llave del cliente: con él se entra siempre, y quien
---     estuviera dentro sale (y se le dice). Reemitirlo lo revoca.
---                                                    → link_client_to_slot
+--  1. El código es la llave del cliente: con él se entra, y quien estuviera
+--     dentro sale (y se le dice) — salvo que haya entrado con Google/Apple:
+--     a ese solo lo sustituye su misma cuenta. Reemitir el código lo revoca
+--     y libera el asiento.                           → link_client_to_slot
 --  2. Un cliente ocupa como mucho UN asiento.         → índice único + link
 --  3. Nadie escribe la tabla directamente: TODA escritura es una función que
 --     comprueba de quién es la fila y FALLA con un código si no la encuentra.
@@ -33,7 +34,7 @@
 --                                                    → transfer_my_*
 --
 -- Códigos de error (la app ramifica por ellos, `supabaseSync.js`):
---   NOT_AUTHENTICATED  NOT_A_TRAINER  CODE_NOT_FOUND  SLOT_OCCUPIED (C20)  SLOT_GONE
+--   NOT_AUTHENTICATED  NOT_A_TRAINER  CODE_NOT_FOUND  SEAT_LOCKED  SLOT_OCCUPIED (C20)  SLOT_GONE
 --   NO_SEAT  SEAT_TAKEN  BAD_TARGET  CODE_GENERATION_FAILED
 -- ============================================================================
 
@@ -193,6 +194,24 @@ grant  select, insert, update on public.profiles to authenticated;
 
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
+
+-- Un asiento ocupado por una cuenta de verdad (Google/Apple) no lo quita un
+-- código: devuelve con qué está protegido ('google', 'apple' o 'account'), o
+-- null si el ocupante es anónimo (entró solo con el código) o no hay nadie.
+create or replace function public._locked_by(p_user uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case when u.id is null or coalesce(u.is_anonymous, false) then null
+              else coalesce((select i.provider from auth.identities i
+                              where i.user_id = u.id and i.provider in ('google', 'apple')
+                              limit 1), 'account') end
+    from (select p_user as id) x
+    left join auth.users u on u.id = x.id;
+$$;
 
 create or replace function public._caller()
 returns uuid
@@ -393,6 +412,7 @@ returns table (
   program_updated_at timestamptz,
   is_linked          boolean,
   is_mine            boolean,
+  locked_by          text,
   history_updated_at timestamptz,
   trainer_name       text
 )
@@ -401,14 +421,19 @@ security definer
 set search_path = public
 as $$
   select t.id, t.client_name, t.program_json -> 'program' ->> 'name', t.program_updated_at,
-         t.client_id is not null, coalesce(t.client_id = auth.uid(), false), t.history_updated_at, t.trainer_name
+         t.client_id is not null, coalesce(t.client_id = auth.uid(), false),
+         case when t.client_id <> coalesce(auth.uid(), t.client_id) or auth.uid() is null
+              then public._locked_by(t.client_id) end,
+         t.history_updated_at, t.trainer_name
     from public.trainer_clients t
    where t.client_code = upper(trim(p_code))
    limit 1;
 $$;
 
 -- Entrar con el código. EL CÓDIGO SIEMPRE VALE (decisión del 16-oct-2026, C09
--- §4.6): es la llave del cliente. El servidor no puede saber si quien está
+-- §4.6), salvo contra quien entró con Google/Apple (§4.7, SEAT_LOCKED): una
+-- cuenta así solo la tiene esa persona, el código lo puede tener cualquiera.
+-- Para los demás, el código es la llave del cliente. El servidor no puede saber si quien está
 -- dentro perdió su móvil (reinstalar deja su sesión viva aquí), así que en vez
 -- de pedir un código nuevo cada vez, quien trae el código entra y el de dentro
 -- sale — y se le dice que alguien entró con su código (`client_lost_reason`).
@@ -433,6 +458,10 @@ begin
     from public.trainer_clients where client_code = upper(trim(p_code))
      for update;
   if v_slot is null then raise exception 'CODE_NOT_FOUND'; end if;
+  -- Dentro hay alguien con Google/Apple: el código no lo echa (C09 §4.7).
+  if v_prev is not null and v_prev <> v_me and public._locked_by(v_prev) is not null then
+    raise exception 'SEAT_LOCKED';
+  end if;
 
   update public.trainer_clients
      set client_id = null, disconnected_at = now(),
@@ -542,7 +571,7 @@ do $$
 declare f text;
 begin
   foreach f in array array[
-    'new_client_code()', '_caller()', '_trainer()', '_check_target(uuid)',
+    'new_client_code()', '_caller()', '_trainer()', '_check_target(uuid)', '_locked_by(uuid)',
     'trainer_create_slot(text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',

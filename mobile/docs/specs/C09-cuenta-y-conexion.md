@@ -10,6 +10,7 @@
 > Fase C09-04 · hecho · Cliente: un asiento, «te han desconectado» y Google/Apple sin tocar la sesión · §4
 > Fase C09-05 · hecho · Banco de pruebas con varios móviles y auditoría del servidor · §5
 > Fase C09-06 · hecho · El código siempre vale, tres motivos de desconexión y avisos del cliente · §4.6
+> Fase C09-07 · hecho · Con Google/Apple vinculado, el código no echa al cliente · §4.7
 >
 > Estado: **implementado y en verde** (38 escenarios de simulación + 1940 tests).
 > **`supabase/schema.sql` desplegado el 15-oct-2026** (`audit.sql` limpio). Falta
@@ -69,7 +70,8 @@ cuatro SQL de antes (volver a ejecutar `secure_trainer_clients.sql` restauraba u
   código suelta el asiento que tuviera (cambiar de entrenador ya no deja un
   fantasma al anterior).
 - **El código siempre vale** (§4.6): con él se entra aunque haya alguien dentro,
-  que sale y se entera. Reemitirlo es lo que lo revoca.
+  que sale y se entera — salvo que ese alguien entrara con Google/Apple (§4.7).
+  Reemitirlo es lo que lo revoca.
 - **Códigos únicos** por índice, generados siempre en el servidor.
 - **Claves foráneas a `auth.users`**: borrar un usuario (incluso desde el panel)
   se lleva sus huecos de entrenador y suelta su asiento de cliente.
@@ -238,6 +240,39 @@ uso».
   quitado…»; el código viejo da «Código no encontrado» y el nuevo entra.
 - [ ] Abrir el enlace de invitación con la pantalla Entrenador ya abierta: lo
   primero que se ve es la hoja con el código puesto, sin otra hoja encima.
+
+### 4.7 Con Google/Apple, solo esa cuenta (16-oct-2026)
+
+Propuesta del usuario: si el cliente está dentro con Google o Apple, nadie le
+puede echar con el código; solo entrando con esa misma cuenta, que lo lógico es
+que sea él. Encaja con §4.6: el código lo puede tener cualquiera, una cuenta de
+Google solo su dueño.
+
+| Quién ocupa el asiento | Con el código | Con su Google/Apple |
+|---|---|---|
+| Nadie | Entra | Entra (reconectar) |
+| Un anónimo (entró solo con código) | Entra; el otro sale con `taken` | — |
+| Una cuenta de Google/Apple | **No entra** (`SEAT_LOCKED`) | Entra |
+
+- **Servidor**: `_locked_by(usuario)` dice con qué está protegido un asiento
+  (`google`, `apple`, `account` o nada si es anónimo); `get_slot_by_code` lo
+  devuelve como `locked_by` y `link_client_to_slot` lanza `SEAT_LOCKED`. Hay que
+  volver a ejecutar `schema.sql`.
+- **App**: al validar el código sale el error «Este código está protegido con una
+  cuenta de Google: solo se entra con ella», en la hoja del código, que ya tiene
+  debajo los botones de Google y Apple. En el onboarding, si se llegó por
+  invitación, aparece el enlace «Entrar con mi cuenta» con el error.
+- **Si pierde el acceso a su cuenta**: el entrenador reemite el código, que libera
+  el asiento, y entra con el nuevo.
+- «Vincular cuenta» lo cuenta: «Y nadie puede quitarte el sitio con tu código».
+
+**Probar C09-07**
+
+- [ ] Cliente con Google vinculado → otro móvil mete su código: sale «Este código
+  está protegido con una cuenta de Google» y no entra; la cliente sigue conectada.
+- [ ] La misma cliente borra los datos de la app → con el código, el mismo error;
+  con «Reconectar con Google» vuelve con su programa y su historial.
+- [ ] El entrenador reemite su código → con el nuevo, cualquiera entra.
 
 ## 5. Banco de pruebas y auditoría
 
