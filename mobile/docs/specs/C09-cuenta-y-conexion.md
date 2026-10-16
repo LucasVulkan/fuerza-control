@@ -258,18 +258,18 @@ Google solo su dueño.
   (`google`, `apple`, `account` o nada si es anónimo); `get_slot_by_code` lo
   devuelve como `locked_by` y `link_client_to_slot` lanza `SEAT_LOCKED`. Hay que
   volver a ejecutar `schema.sql`.
-- **App**: al validar el código sale el error «Este código está protegido con una
-  cuenta de Google: solo se entra con ella», en la hoja del código, que ya tiene
-  debajo los botones de Google y Apple. En el onboarding, si se llegó por
+- **App**: al validar el código sale «Este código está vinculado a una cuenta. Si
+  es la tuya, vuelve a entrar con ella», en la hoja del código, que ya tiene
+  debajo los botones de Google y Apple. Sin decir cuál ni explicar la regla. En el onboarding, si se llegó por
   invitación, aparece el enlace «Entrar con mi cuenta» con el error.
 - **Si pierde el acceso a su cuenta**: el entrenador reemite el código, que libera
   el asiento, y entra con el nuevo.
-- «Vincular cuenta» lo cuenta: «Y nadie puede quitarte el sitio con tu código».
 
 **Probar C09-07**
 
 - [ ] Cliente con Google vinculado → otro móvil mete su código: sale «Este código
-  está protegido con una cuenta de Google» y no entra; la cliente sigue conectada.
+  está vinculado a una cuenta. Si es la tuya, vuelve a entrar con ella», con los
+  botones de Google/Apple debajo, y no entra; la cliente sigue conectada.
 - [ ] La misma cliente borra los datos de la app → con el código, el mismo error;
   con «Reconectar con Google» vuelve con su programa y su historial.
 - [ ] El entrenador reemite su código → con el nuevo, cualquiera entra.

@@ -159,16 +159,9 @@ function setTrainerLoginNeeded(value) {
   if (useStore.getState().trainerLoginNeeded !== value) useStore.setState({ trainerLoginNeeded: value });
 }
 
-/**
- * El asiento lo ocupa alguien que entró con Google/Apple (C09 §4.7): con el
- * código no se entra. El texto dice con qué cuenta, para que use esa.
- */
-function seatLockedError(provider) {
-  const how = provider === 'google' || provider === 'apple' ? i18n.t(`account.short.${provider}`) : null;
-  return Object.assign(
-    new Error(how ? i18n.t('trainer.errSeatLocked', { how }) : i18n.t('trainer.errSeatLockedAccount')),
-    { code: 'SEAT_LOCKED' },
-  );
+/** El asiento lo ocupa alguien que entró con Google/Apple (C09 §4.7): con el código no se entra. */
+function seatLockedError() {
+  return Object.assign(new Error(i18n.t('trainer.errSeatLocked')), { code: 'SEAT_LOCKED' });
 }
 
 /** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
@@ -4378,7 +4371,7 @@ export const useStore = create(
         const slot = await getSlotByClientCode(code);
         if (!slot) throw Object.assign(new Error(i18n.t('trainer.errCodeNotFound')), { code: 'CODE_NOT_FOUND' });
         if (!slot.program_name) throw new Error(i18n.t('trainer.errNoProgramYet'));
-        if (slot.locked_by) throw seatLockedError(slot.locked_by);
+        if (slot.locked_by) throw seatLockedError();
         return {
           slotId:           slot.id,
           programName:      slot.program_name,
@@ -4479,9 +4472,9 @@ export const useStore = create(
 
         // El código entra aunque haya otro dentro, que sale (C09 §4.6) — salvo
         // que haya entrado con Google/Apple: a ese no lo echa un código (§4.7).
-        if (slot.locked_by) throw seatLockedError(slot.locked_by);
+        if (slot.locked_by) throw seatLockedError();
         await linkClientToSlot(code).catch((err) => {
-          throw err.code === 'SEAT_LOCKED' ? seatLockedError('account') : err;
+          throw err.code === 'SEAT_LOCKED' ? seatLockedError() : err;
         });
         await get()._adoptSeat({ code, userId, mergeHistory });
         get().showToast(i18n.t('trainer.connectedToast'));
