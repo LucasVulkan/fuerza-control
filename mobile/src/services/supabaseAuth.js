@@ -23,7 +23,7 @@
  */
 
 import i18n from '../i18n';
-import { trainerSupabase, clientSupabase, createTempSupabase } from '../config/supabase';
+import { trainerSupabase, clientSupabase, createTempSupabase, sessionsReady } from '../config/supabase';
 
 // Dominio de los correos sintéticos de las cuentas por código: no existe, así
 // que Supabase nunca manda correo de verdad.
@@ -57,6 +57,7 @@ function coded(code, message) {
  * volver a entrar con Google a quien solo está en un ascensor.
  */
 async function userIdOf(db) {
+  await sessionsReady();   // la sesión de la versión anterior aún se está traspasando
   const { data, error } = await db.auth.getSession();
   if (error?.name === 'AuthRetryableFetchError') throw error;
   return data.session?.user?.id ?? null;

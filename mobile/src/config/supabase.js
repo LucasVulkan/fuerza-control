@@ -51,6 +51,18 @@ export function createTempSupabase() {
  * ponytail: se puede borrar cuando no quede ningún móvil con la versión de una sola sesión.
  */
 const LEGACY_KEY = 'sb-jturfpwaimpwxkkpkgov-auth-token';
+
+// Nadie habla con el servidor hasta que esto acaba (`sessionsReady`): antes,
+// preguntar por el hueco del cliente ANTES de traspasar su sesión veía «sin
+// sesión» y lo daba por desconectado, y crear un anónimo a la vez hacía que el
+// traspaso viera sesión y no hiciera nada — la identidad vieja se perdía.
+// ponytail: si la hidratación no llegara a llamar a la migración, a los 5 s se
+// sigue igualmente (sin migrar, que es como empieza una instalación nueva).
+let markReady;
+const ready = new Promise((resolve) => { markReady = resolve; });
+setTimeout(() => markReady(), 5000);
+export const sessionsReady = () => ready;
+
 export async function migrateLegacySession({ trainerUserId, clientUserId }) {
   try {
     const raw = await AsyncStorage.getItem(LEGACY_KEY);
@@ -62,8 +74,15 @@ export async function migrateLegacySession({ trainerUserId, clientUserId }) {
       : null;
     if (target) {
       const { data } = await target.auth.getSession();
-      if (!data.session) await target.auth.setSession(session);
+      if (!data.session) {
+        const { error } = await target.auth.setSession(session);
+        // Sin red: se deja para el próximo arranque. Otro error (token
+        // revocado) es definitivo: la sesión vieja ya no sirve.
+        if (error?.name === 'AuthRetryableFetchError') return;
+      }
     }
     await AsyncStorage.removeItem(LEGACY_KEY);
-  } catch { /* una sesión que no se puede migrar se rehace entrando */ }
+  } catch { /* una sesión que no se puede migrar se rehace entrando */ } finally {
+    markReady();
+  }
 }

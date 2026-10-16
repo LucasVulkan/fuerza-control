@@ -81,6 +81,7 @@
     "exportProgramHistorySub": "Only the active program and its sessions",
     "docsRow": "Documentation",
     "exporting": "Exporting…",
+    "lostBanner": "Your trainer has disconnected you · Tap to reconnect",
     "pendingBanner": "⚠️ Last session not sent to trainer · Tap to retry",
     "pendingBannerSyncing": "Syncing…",
     "toastRestored": "Program restored",

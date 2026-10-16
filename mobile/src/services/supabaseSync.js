@@ -15,7 +15,7 @@
  *   NETWORK              no hubo respuesta. No dice nada del hueco: se reintenta.
  */
 
-import { trainerSupabase, clientSupabase } from '../config/supabase';
+import { trainerSupabase, clientSupabase, sessionsReady } from '../config/supabase';
 
 const RPC_CODES = [
   'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'BAD_TARGET',
@@ -33,12 +33,14 @@ export function syncError(error) {
 }
 
 async function rpc(db, name, args) {
+  await sessionsReady();   // la sesión de la versión anterior aún se está traspasando
   const { data, error } = await db.rpc(name, args);
   if (error) throw syncError(error);
   return data;
 }
 
 async function myId(db) {
+  await sessionsReady();
   const { data } = await db.auth.getSession();
   return data.session?.user?.id ?? null;
 }

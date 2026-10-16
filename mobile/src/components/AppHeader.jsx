@@ -339,8 +339,12 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   function go(route) { onClose(); navigation.navigate(route); }
 
   // ── Conexiones: estado visible en la propia fila ─────────────────────────────
-  const trainerConnected = !!clientSync?.slotId;
-  const trainerSub = trainerConnected
+  // Desconectada por su entrenador (C09 §4.3): ni «Conectado» ni «Conectar».
+  const trainerLost      = !!clientSync?.slotId && !!clientSync.lostAt;
+  const trainerConnected = !!clientSync?.slotId && !trainerLost;
+  const trainerSub = trainerLost
+    ? t('trainer.lostTitle')
+    : trainerConnected
     ? [clientSync.trainerName, clientSync.googleLinked ? t('header.trainerSubGoogle') : t('header.trainerSubCode')]
         .filter(Boolean).join(' · ')
     : t('header.trainerSubOff');
@@ -379,7 +383,10 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
           label={t('header.trainerRow')}
           sub={trainerSub}
           minHeight={62}
-          status={<Status tone={trainerConnected ? 'on' : 'off'} label={trainerConnected ? t('header.statusConnected') : t('header.statusConnect')} />}
+          status={<Status
+            tone={trainerLost ? 'warn' : trainerConnected ? 'on' : 'off'}
+            label={trainerLost ? t('header.statusReconnect') : trainerConnected ? t('header.statusConnected') : t('header.statusConnect')}
+          />}
           onPress={() => go('TrainerConnection')}
         />
         <MenuRow
@@ -514,7 +521,9 @@ export default function AppHeader() {
   const navigate                  = useStore((s) => s.navigate);
   const language                  = useStore((s) => s.profile?.language ?? 'es');
   const pendingUpload             = useStore((s) => s.clientSync?.pendingUpload);
+  const trainerLost               = useStore((s) => !!s.clientSync?.slotId && !!s.clientSync.lostAt);
   const uploadHistoryToTrainer    = useStore((s) => s.uploadHistoryToTrainer);
+  const headerNavigation          = useNavigation();
 
   const [retrying, setRetrying] = useState(false);
 
@@ -592,8 +601,20 @@ export default function AppHeader() {
         </TouchableOpacity>
       </View>
 
+      {/* Desconectada por su entrenador (C09 §4.3): en todas las pantallas, no
+          solo dentro de Entrenador. Lleva allí, donde está la salida. */}
+      {trainerLost && (
+        <TouchableOpacity
+          style={styles.pendingBanner}
+          onPress={() => headerNavigation.navigate('TrainerConnection')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.pendingBannerText}>{t('header.lostBanner')}</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Pending upload banner — shown when client's last history upload failed */}
-      {pendingUpload && (
+      {pendingUpload && !trainerLost && (
         <TouchableOpacity
           style={styles.pendingBanner}
           onPress={handleRetryUpload}

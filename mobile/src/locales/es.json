@@ -81,6 +81,7 @@
     "exportProgramHistorySub": "Solo el programa activo y sus sesiones",
     "docsRow": "Documentación",
     "exporting": "Exportando…",
+    "lostBanner": "Tu entrenador te ha desconectado · Toca para volver a conectar",
     "pendingBanner": "⚠️ Última sesión no enviada al entrenador · Toca para reintentar",
     "pendingBannerSyncing": "Sincronizando…",
     "toastRestored": "Programa restaurado",

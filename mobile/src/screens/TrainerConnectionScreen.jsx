@@ -226,6 +226,18 @@ export default function TrainerConnectionScreen() {
                 minHeight={62}
                 onPress={() => setShowCodeModal(true)}
               />
+              {/* Desconectada con Google/Apple vinculado: puede que su cuenta
+                  siga teniendo hueco (otro móvil, otra sesión). */}
+              {isLost && clientSync.googleLinked && (
+                <MenuRow
+                  icon={<RowIcon>{ICON_GOOGLE}</RowIcon>}
+                  label={t(APPLE_AUTH_AVAILABLE ? 'trainer.socialTitle' : 'trainer.googleTitle')}
+                  sub={t('trainer.socialCtaHint')}
+                  subLines={0}
+                  minHeight={62}
+                  onPress={() => { setGoogleAutoStart(true); setShowCodeModal(true); }}
+                />
+              )}
               <MenuRow
                 icon={<RowIcon color={th.tint.red50}>{ICON_UNLINK}</RowIcon>}
                 label={t('trainer.disconnectLabel')}
@@ -294,7 +306,8 @@ export default function TrainerConnectionScreen() {
       />
 
       <ClientGoogleLinkModal
-        visible={showGoogleModal}
+        // Con una invitación pendiente, lo primero que se ve es la hoja con el código.
+        visible={showGoogleModal && !pendingInvite}
         onClose={() => setShowGoogleModal(false)}
       />
     </SafeAreaView>

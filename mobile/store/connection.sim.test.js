@@ -27,6 +27,7 @@ function simConfig(device) {
     clientSupabase:     createSimClient(device, { storageKey: 'sb-client' }),
     createTempSupabase: () => createSimClient(device, { persistSession: false }),
     migrateLegacySession: async () => {},
+    sessionsReady:        async () => {},
   };
 }
 
