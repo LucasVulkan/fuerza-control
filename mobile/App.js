@@ -40,7 +40,7 @@ import { parseInviteUrl } from './src/config/web';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
 import { registerBackupTask } from './src/tasks/driveBackupTask';
-import { RC_ANDROID_API_KEY, RC_IOS_API_KEY } from './src/config/revenuecat';
+import { RC_ANDROID_API_KEY, RC_IOS_API_KEY, RC_PRO_ENTITLEMENT } from './src/config/revenuecat';
 import { useStore } from './store/useStore';
 
 // Ventana mínima entre dos comprobaciones de programa. Cambiar de app y volver
@@ -194,6 +194,16 @@ export default function App() {
       const appUserID = useStore.getState().trainerSync.userId ?? undefined;
       Purchases.configure({ apiKey, appUserID });
       checkProStatus();
+      // Sin esto `isPro` solo se miraba al arrancar en frío y al cambiar de
+      // cuenta: una concesión, una revocación o una caducidad con la app
+      // suspendida no se veía hasta cerrarla del todo. El SDK refresca solo al
+      // volver a primer plano y avisa aquí de cada cambio.
+      const onInfo = (info) => {
+        const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
+        useStore.setState((s) => ({ profile: { ...s.profile, isPro } }));
+      };
+      Purchases.addCustomerInfoUpdateListener(onInfo);
+      return () => Purchases.removeCustomerInfoUpdateListener(onInfo);
     } catch {
       // Expo Go or build without native module — isPro stays as persisted value
     }
