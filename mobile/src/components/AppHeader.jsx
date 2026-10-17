@@ -413,7 +413,10 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         <MenuRow
           icon={<RowIcon>{ROW_ICON.import}</RowIcon>}
           label={t('header.importFile')}
-          onPress={() => { onClose(); onImport(); }}
+          // En iOS el selector no sale si se abre mientras la hoja se cierra, y su
+          // promesa se queda colgada: el segundo toque da «Different document
+          // picking in progress». Espera a la hoja, como en la ficha del cliente.
+          onPress={() => { onClose(); setTimeout(onImport, 250); }}
         />
       </Section>
 

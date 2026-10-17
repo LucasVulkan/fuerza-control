@@ -22,7 +22,26 @@
       "bundleIdentifier": "com.formastudio.formafit",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSSupportsOpeningDocumentsInPlace": false,
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Forma Fit",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["com.formastudio.formafit.fitdata"]
+          }
+        ],
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.formastudio.formafit.fitdata",
+            "UTTypeDescription": "Forma Fit",
+            "UTTypeConformsTo": ["public.json"],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": ["fitdata"],
+              "public.mime-type": ["application/x-fitdata"]
+            }
+          }
+        ]
       }
     },
     "android": {
