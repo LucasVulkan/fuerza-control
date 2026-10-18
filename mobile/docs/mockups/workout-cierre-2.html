@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cierre del entreno v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070707; color: #e6e6e6; font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: #949494; font: 500 14px/1.5 Inter; max-width: 860px; margin-bottom: 18px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: #585858; width: 90px; }
+  .ctl button { background: #272727; color: #e6e6e6; border: 1px solid #3a3a3a; border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: #aae216; color: #aae216; }
+  .wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin-top: 14px; }
+  .note { max-width: 440px; color: #949494; font: 500 13px/1.55 Inter; }
+  .note h3 { font: 800 14px Inter; color: #e6e6e6; margin: 18px 0 6px; } .note h3:first-child { margin-top: 0; }
+  .note b { color: #e6e6e6; }
+
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000; --blue: #4c85ff; --red: #ff5e58;
+    width: 375px; height: 780px; background: var(--bg); border-radius: 34px; border: 8px solid #1b1b1b;
+    position: relative; overflow: hidden; flex: none;
+  }
+  .hdr { position: absolute; top: 0; left: 0; right: 0; z-index: 3; background: var(--bg); }
+  .hdr .row { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 15px; }
+  .hdr .bk { width: 32px; height: 32px; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center; }
+  .hdr .mid { flex: 1; }
+  .hdr .e { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--mutedLight); }
+  .hdr .e b { color: var(--accent); font-weight: 800; }
+  .hdr .t { font: 700 16px Inter; margin-top: 2px; }
+  .rule { display: flex; gap: 2px; height: 3px; }
+  .rule i { flex: 1; background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .rule i.d { background: var(--accent); }
+  .scroll { position: absolute; top: 59px; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 10px 15px 40px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  .exc { background: var(--surface); border-radius: 16px; padding: 12px 15px; margin-bottom: 10px; }
+  .exc .h { display: flex; align-items: baseline; gap: 10px; }
+  .exc .n { font: italic 800 20px 'Barlow Condensed'; color: var(--muted); }
+  .exc .nm { font: 700 16px Inter; flex: 1; }
+  .exc .c { font: 800 12px Inter; color: var(--mutedLight); }
+  .exc.full .c { color: var(--accent); }
+  .sets { display: flex; gap: 6px; margin-top: 10px; }
+  .sets i { width: 26px; height: 26px; border-radius: 13px; border: 1.5px solid #3a3a3a; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .sets i.d { background: var(--accent); border-color: var(--accent); }
+  .sets i.d::after { content: ''; width: 9px; height: 5px; border: solid #000; border-width: 0 0 2.4px 2.4px; transform: translateY(-1px) rotate(-45deg); }
+
+  .addcard { border: 1.5px dashed #3a3a3a; border-radius: 16px; padding: 14px; text-align: center; font: 900 14px Inter; color: #c9ea72; margin-bottom: 10px; }
+  .addcard b { color: var(--accent); }
+
+  /* tarjeta de cierre compacta */
+  .closing { margin-top: 18px; background: var(--surface); border-radius: 16px; padding: 14px 15px 15px; }
+  .closing .top { display: flex; align-items: baseline; gap: 6px; }
+  .closing .top b { font: italic 800 26px/1 'Barlow Condensed'; }
+  .closing .top .of { font: 500 14px Inter; color: var(--mutedLight); }
+  .closing .top .m { margin-left: auto; font: 500 12px Inter; color: var(--mutedLight); }
+  .pbar { height: 5px; border-radius: 3px; background: var(--surface2); overflow: hidden; margin: 10px 0 12px; }
+  .pbar u { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s; }
+  .btns { display: flex; gap: 8px; }
+  .endbtn { flex: 1; background: var(--accent); color: var(--onAccent); border-radius: 10px; text-align: center; padding: 14px; font: 900 14px Inter; cursor: pointer; transition: background .25s, color .25s; }
+  .endbtn.part { background: var(--surface2); color: var(--text); }
+  .trash { width: 48px; flex: none; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+  /* hoja de terminar con X arriba */
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); z-index: 5; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .veil.show { opacity: 1; pointer-events: auto; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px 15px 24px; z-index: 6;
+    transform: translateY(105%); transition: transform .26s cubic-bezier(.33,1,.68,1); }
+  .sheet.show { transform: none; }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: #3a3a3a; margin: 0 auto 10px; }
+  .sh { display: flex; align-items: center; justify-content: space-between; }
+  .sh .st { font: 900 22px Inter; letter-spacing: -.5px; }
+  .x { width: 32px; height: 32px; border-radius: 16px; background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .sheet .sub { font: 500 14px/21px Inter; color: var(--mutedLight); margin: 4px 0 14px; }
+  .sheet .stats { display: flex; background: var(--bg); border-radius: 10px; padding: 12px 0; margin-bottom: 12px; }
+  .sheet .stats div { flex: 1; text-align: center; } .sheet .stats div + div { border-left: 1px solid #272727; }
+  .sheet .stats b { display: block; font: italic 800 26px/1 'Barlow Condensed'; }
+  .sheet .stats span { font: 500 12px Inter; color: var(--mutedLight); }
+  .left { margin-bottom: 16px; }
+  .left .cap { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--mutedLight); text-transform: uppercase; margin-bottom: 2px; }
+  .left .lr { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #272727; font: 700 14px Inter; }
+  .left .lr span { font: 500 12px Inter; color: var(--mutedLight); }
+  .left .lr span.z { color: #ffb3ae; }
+  .sheet .p { background: var(--accent); color: var(--onAccent); border-radius: 10px; text-align: center; padding: 14px; font: 900 14px Inter; cursor: pointer; }
+
+  .dveil { position: absolute; inset: 0; background: rgba(0,0,0,.65); z-index: 8; display: none; align-items: center; justify-content: center; padding: 0 28px; }
+  .dveil.show { display: flex; }
+  .dlg { background: var(--surface2); border-radius: 16px; padding: 20px; width: 100%; }
+  .dlg .t { font: 800 18px Inter; }
+  .dlg .s { font: 800 12px Inter; color: var(--accent); margin-top: 6px; }
+  .dlg .b { font: 500 14px/21px Inter; color: var(--mutedLight); margin: 10px 0 18px; }
+  .dlg .p { background: var(--surface); color: var(--text); border-radius: 10px; text-align: center; padding: 14px; font: 900 14px Inter; cursor: pointer; }
+  .dlg .d { text-align: center; padding: 14px 0 2px; font: 800 12px Inter; letter-spacing: 1.6px; color: var(--red); text-transform: uppercase; cursor: pointer; }
+  .gone { position: absolute; inset: 59px 0 0; background: var(--bg); z-index: 7; display: none; align-items: center; justify-content: center; text-align: center;
+    color: var(--mutedLight); font: 500 14px/1.5 Inter; padding: 40px; }
+  .gone.show { display: flex; }
+</style>
+</head>
+<body>
+<h1>Cierre del entreno v2 — compacto, con descartar a mano y la hoja con X</h1>
+<p class="lead">La tarjeta de cierre pierde la ceja y queda en dos líneas: cifras con barra, y debajo <b>Terminar</b> con una papelera al lado. Descartar se puede hacer siempre, también con todo hecho, sin ser un tercer botón apilado. La hoja de terminar se cierra con la X de arriba y solo tiene una acción. Toca los círculos de las series para cambiar el progreso.</p>
+
+<div class="ctl"><span>Progreso</span>
+  <button data-pr="part" class="on">A medias (13/20)</button>
+  <button data-pr="full">Todo hecho (20/20)</button>
+</div>
+
+<div class="wrap">
+  <div class="phone" id="ph">
+    <div class="hdr">
+      <div class="row">
+        <div class="bk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+        <div class="mid"><div class="e">SESIÓN A · <b>48:12</b></div><div class="t">Torso pesado</div></div>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#949494" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h5"/></svg>
+      </div>
+      <div class="rule"></div>
+    </div>
+    <div class="scroll">
+      <div id="list"></div>
+      <div class="addcard"><b>+</b> Añadir ejercicio</div>
+
+      <div class="closing">
+        <div class="top"><b class="sdone">13</b><span class="of">de <span class="stot">20</span> series</span><span class="m">48 min</span></div>
+        <div class="pbar"><u></u></div>
+        <div class="btns">
+          <div class="endbtn" data-end>Terminar sesión</div>
+          <div class="trash" data-discard title="Descartar sesión"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff5e58" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="veil"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="sh"><div class="st">Terminar sesión</div><div class="x" data-close><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#e6e6e6" stroke-width="3" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></div></div>
+      <div class="sub">Se guarda lo que has marcado. Las series sin marcar no cuentan.</div>
+      <div class="stats">
+        <div><b class="sdone">13</b><span>series</span></div>
+        <div><b>48</b><span>min</span></div>
+        <div><b>6.240</b><span>kg</span></div>
+      </div>
+      <div class="left"><div class="cap">Sin terminar</div><div id="leftList"></div></div>
+      <div class="p" data-save>Guardar sesión</div>
+    </div>
+
+    <div class="dveil">
+      <div class="dlg">
+        <div class="t">¿Descartar la sesión?</div>
+        <div class="s"></div>
+        <div class="b">No se guarda nada de este entreno, y no se puede recuperar.</div>
+        <div class="p" data-keep>Volver al entreno</div>
+        <div class="d" data-really>Descartar sesión</div>
+      </div>
+    </div>
+    <div class="gone"></div>
+  </div>
+
+  <div class="note">
+    <h3>Más compacta</h3>
+    Sin la ceja «Esta sesión», con las cifras y el tiempo en una línea y la barra debajo. Pasa de unos 170 a unos 120 px.
+    <h3>Descartar, siempre a mano</h3>
+    La papelera va al lado de Terminar, en la misma fila: es un botón pequeño, no un tercer botón a lo ancho. Funciona con el entreno a medias y con todo hecho, y siempre pide confirmación con lo que se pierde. La confirmación va con el mismo texto que ya usa la app en Inicio (<b>confirmDiscardActive</b>).
+    <h3>Terminar</h3>
+    A medias, el botón va en gris y abre la hoja. Con todo hecho se pone en lima y va directo al resumen, sin hoja (pulsa «Todo hecho» o marca todas las series).
+    <h3>La hoja</h3>
+    Se cierra con la <b>X</b> de arriba, con el velo o deslizando hacia abajo, como cualquier hoja. Dentro queda una sola acción, <b>Guardar sesión</b>, con lo que se guarda y lo que se queda sin terminar. Descartar ya no está aquí, porque vive en la tarjeta.
+  </div>
+</div>
+
+<script>
+  const ph = document.getElementById('ph');
+  const EX = [['Press banca', 4], ['Remo con barra', 4], ['Press militar', 3], ['Dominadas', 3], ['Fondos', 3], ['Curl martillo', 3]];
+  const PART = [4, 4, 3, 2, 0, 0];
+  let counts = [...PART];
+  function render() {
+    const total = EX.reduce((a, e) => a + e[1], 0);
+    const done = counts.reduce((a, b) => a + b, 0);
+    const full = done === total;
+    document.getElementById('list').innerHTML = EX.map(([nm, n], i) => `
+      <div class="exc ${counts[i] === n ? 'full' : ''}"><div class="h"><span class="n">0${i + 1}</span><span class="nm">${nm}</span><span class="c">${counts[i]}/${n}</span></div>
+      <div class="sets">${Array.from({ length: n }, (_, k) => `<i data-i="${i}" data-k="${k}" class="${k < counts[i] ? 'd' : ''}"></i>`).join('')}</div></div>`).join('');
+    document.querySelector('.rule').innerHTML = EX.map((e, i) => `<i class="${counts[i] === e[1] ? 'd' : ''}"></i>`).join('');
+    document.querySelectorAll('.sdone').forEach((e) => e.textContent = done);
+    document.querySelectorAll('.stot').forEach((e) => e.textContent = total);
+    document.querySelector('.pbar u').style.width = `${(done / total) * 100}%`;
+    document.querySelector('.endbtn').classList.toggle('part', !full);
+    document.querySelector('.dlg .s').textContent = `Torso pesado · ${done} de ${total} series`;
+    document.getElementById('leftList').innerHTML = EX.map(([nm, n], i) => counts[i] === n ? '' :
+      `<div class="lr">${nm}<span class="${counts[i] ? '' : 'z'}">${counts[i] ? `${counts[i]} de ${n}` : 'sin empezar'}</span></div>`).join('');
+    document.querySelectorAll('.sets i').forEach((s) => s.onclick = () => {
+      const i = +s.dataset.i, k = +s.dataset.k;
+      counts[i] = k < counts[i] ? k : k + 1;
+      sync(); render();
+    });
+  }
+  function sync() {
+    const full = counts.every((c, i) => c === EX[i][1]);
+    document.querySelectorAll('[data-pr]').forEach((x) => x.classList.toggle('on', x.dataset.pr === (full ? 'full' : 'part')));
+  }
+  const veil = ph.querySelector('.veil'), sheet = ph.querySelector('.sheet'), dveil = ph.querySelector('.dveil'), gone = ph.querySelector('.gone');
+  const openSheet = (v) => { veil.classList.toggle('show', v); sheet.classList.toggle('show', v); };
+  const leave = (msg) => { openSheet(false); dveil.classList.remove('show'); gone.textContent = msg; gone.classList.add('show'); };
+  ph.querySelector('[data-end]').onclick = () => {
+    const full = counts.every((c, i) => c === EX[i][1]);
+    full ? leave('Todo hecho: va directo al resumen de la sesión, sin hoja.') : openSheet(true);
+  };
+  ph.querySelector('[data-close]').onclick = () => openSheet(false);
+  veil.onclick = () => openSheet(false);
+  ph.querySelector('[data-save]').onclick = () => leave('Guarda las series marcadas y va al resumen de la sesión.');
+  ph.querySelector('[data-discard]').onclick = () => dveil.classList.add('show');
+  ph.querySelector('[data-keep]').onclick = () => dveil.classList.remove('show');
+  ph.querySelector('[data-really]').onclick = () => leave('Sesión descartada. Vuelve a Inicio.');
+  document.querySelectorAll('[data-pr]').forEach((b) => b.onclick = () => {
+    counts = b.dataset.pr === 'full' ? EX.map((e) => e[1]) : [...PART];
+    gone.classList.remove('show'); openSheet(false); sync(); render();
+  });
+  render();
+</script>
+</body>
+</html>

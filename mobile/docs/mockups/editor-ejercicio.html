@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor de ejercicio v5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070707; color: #e6e6e6; font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: #949494; font: 500 14px/1.5 Inter; max-width: 900px; margin-bottom: 18px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: #585858; width: 90px; }
+  .ctl button { background: #272727; color: #e6e6e6; border: 1px solid #3a3a3a; border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: #aae216; color: #aae216; }
+  .wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin-top: 14px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .col > .cap { font: 800 12px Inter; letter-spacing: 1.6px; color: #949494; text-transform: uppercase; }
+  .note { max-width: 420px; color: #949494; font: 500 13px/1.55 Inter; }
+  .note h3 { font: 800 14px Inter; color: #e6e6e6; margin: 18px 0 6px; } .note h3:first-child { margin-top: 0; }
+  .note b { color: #e6e6e6; }
+
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000; --red: #ff5e58; --blue: #4c85ff;
+    --a50: rgba(184,255,0,.5); --r50: rgba(255,94,88,.5);
+    width: 375px; height: 800px; background: #000; border-radius: 34px; border: 8px solid #1b1b1b;
+    position: relative; overflow: hidden; flex: none;
+  }
+  .under { position: absolute; left: 14px; right: 14px; top: 14px; height: 60px; border-radius: 14px 14px 0 0; background: #191919; display: none;
+    padding: 12px 14px; font: 800 12px Inter; letter-spacing: 1.6px; color: #4a4a4a; }
+  .page { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; }
+  .pSheet .under { display: block; }
+  .pSheet .page { top: 26px; border-radius: 16px 16px 0 0; }
+
+  /* cabecera v5 */
+  .hdr { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 15px; flex: none; position: relative; border-bottom: 1px solid transparent; transition: border-color .2s; z-index: 3; background: var(--bg); }
+  .pSheet .hdr { border-radius: 16px 16px 0 0; }
+  .hdr.folded { border-bottom-color: #262626; }
+  .back { flex: 1; display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; }
+  .back span { font: 700 14px Inter; color: var(--accent); white-space: nowrap; transition: opacity .15s; }
+  .hdr.folded .back span { opacity: 0; }
+  .ok { width: 40px; height: 32px; display: flex; align-items: center; justify-content: flex-end; cursor: pointer; }
+  .mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 190px; text-align: center; }
+  .mid .f { opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; pointer-events: none; cursor: pointer; }
+  .hdr.folded .mid .f { opacity: 1; transform: none; pointer-events: auto; }
+  .mid .e { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--accent); text-transform: uppercase; white-space: nowrap; }
+  .mid .t { font: 700 14px Inter; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+
+  .scroll { flex: 1; overflow-y: auto; padding: 4px 15px 43px; scrollbar-width: none; display: flex; flex-direction: column; gap: 10px; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .scroll > * { flex: none; }
+
+  /* tarjeta de identidad gris — absorbe el «Resumen del ejercicio» */
+  .idc { position: relative; background: var(--surface2); border-radius: 16px; padding: 13px 15px 14px 18px; flex: none; }
+  .idc .eb { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--accent); text-transform: uppercase; }
+  .idc .nmrow { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; cursor: pointer; }
+  .idc .nm { font: 800 24px/1.05 'Barlow Condensed'; }
+  .idc .dd { width: 22px; height: 22px; border-radius: 6px; background: var(--surface); display: flex; align-items: center; justify-content: center; transition: transform .2s; }
+  .dropOpen .idc .dd { transform: rotate(180deg); }
+  .idc .nums { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin-top: 3px; }
+  .idc .nums span { font: 500 12px Inter; color: var(--mutedLight); }
+  .idc .nums b { font: italic 800 16px/1 'Barlow Condensed'; color: var(--text); margin-right: 3px; }
+  .idc .rule { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding-top: 10px; border-top: 1px solid #333; font: 500 12px/1.4 Inter; color: var(--a50); }
+  .idc .rule svg { flex: none; margin-top: 1px; }
+  .idc .rule b { color: var(--accent); font-weight: 800; }
+  .idc .link { display: none; align-items: center; gap: 6px; margin-top: 8px; font: 800 12px Inter; color: var(--text); }
+  .idc .link span { font-weight: 500; color: var(--mutedLight); }
+  .linked .idc .link { display: flex; }
+
+  .idc .lst { position: absolute; top: 12px; right: 12px; height: 30px; padding: 0 9px; border-radius: 10px; background: var(--surface);
+    display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .idc .lst .cnt { font: 800 12px Inter; color: var(--mutedLight); }
+  .idc .nm { margin-right: 70px; }
+  .noCorner .idc .lst { display: none; }
+  /* anterior / siguiente, como en Progreso › ejercicio */
+  .nbr { display: none; justify-content: space-between; gap: 10px; padding: 0 15px 8px; flex: none; }
+  .withNbr .nbr { display: flex; }
+  .nbr div { max-width: 42%; display: flex; align-items: center; gap: 6px; padding: 4px 0; cursor: pointer; font: 800 12px Inter; color: var(--mutedLight); white-space: nowrap; }
+  .nbr div span { overflow: hidden; text-overflow: ellipsis; }
+  .nbr div.off { visibility: hidden; }
+  .slide { transition: transform .22s cubic-bezier(.33,1,.68,1), opacity .22s; }
+  /* lista de hermanos, anclada bajo la tarjeta */
+  .drop { position: absolute; left: 15px; right: 15px; z-index: 6; background: var(--surface2); border-radius: 10px; padding: 4px; box-shadow: 0 12px 30px rgba(0,0,0,.6);
+    display: none; }
+  .dropOpen .drop { display: block; }
+  .drop div { display: flex; gap: 10px; align-items: baseline; padding: 10px 12px; border-radius: 8px; font: 700 14px Inter; cursor: pointer; }
+  .drop div i { font: italic 800 16px 'Barlow Condensed'; color: var(--muted); font-style: italic; width: 20px; }
+  .drop div.on { background: var(--surface); color: var(--accent); }
+  .drop div.on i { color: var(--accent); }
+  .dveil { position: absolute; inset: 0; z-index: 5; display: none; }
+  .dropOpen .dveil { display: block; }
+
+  .sec { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--mutedLight); padding-top: 10px; }
+  .segc { display: flex; background: var(--surface); border-radius: 10px; padding: 3px; }
+  .segc div { flex: 1; text-align: center; padding: 8px 0; border-radius: 8px; font: 900 14px Inter; color: var(--mutedLight); }
+  .segc .on { background: var(--surface2); color: var(--text); }
+  .grid { display: flex; gap: 10px; }
+  .step { flex: 1; height: 82px; background: var(--surface); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .step .l { font: 700 14px Inter; }
+  .step .c { display: flex; align-items: center; gap: 14px; }
+  .step .c i { width: 26px; height: 26px; border-radius: 13px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 16px Inter; color: var(--accent); font-style: normal; cursor: pointer; }
+  .step .c b { font: 900 18px Inter; min-width: 34px; text-align: center; }
+  .step .c b.ch { color: var(--accent); }
+
+  .group { border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
+  .nav { background: var(--surface); min-height: 58px; padding: 6px 15px; display: flex; align-items: center; gap: 12px; }
+  .nav .ic { width: 15px; flex: none; }
+  .nav .m { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .nav .t { font: 700 14px Inter; }
+  .nav .s { font: 500 12px Inter; color: var(--mutedLight); }
+  .nav .s b { font-weight: 800; }
+  .opt { background: var(--surface); min-height: 52px; padding: 8px 15px; display: flex; align-items: center; gap: 12px; }
+  .opt .m { flex: 1; } .opt .t { font: 700 14px Inter; } .opt .h { font: 500 14px/1.45 Inter; color: var(--mutedLight); margin-top: 2px; }
+  .sw { width: 36px; height: 20px; border-radius: 10px; background: #3a3a3a; position: relative; flex: none; cursor: pointer; transition: background .2s; }
+  .sw::after { content: ''; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 7px; background: #9a9a9a; transition: transform .2s, background .2s; }
+  .sw.on { background: var(--accent); } .sw.on::after { transform: translateX(16px); background: #000; }
+  .note2 { background: var(--surface); padding: 10px 15px 12px; }
+  .note2 .t { font: 700 14px Inter; margin-bottom: 6px; }
+  .note2 .in { background: var(--bg); border-radius: 6px; padding: 8px; font: 500 12px Inter; color: var(--muted); height: 52px; }
+  .note2 .h { font: 500 14px Inter; color: var(--mutedLight); margin-top: 6px; }
+
+  .linkCard { background: var(--surface); border-radius: 10px; padding: 10px 15px; display: flex; flex-direction: column; gap: 6px; }
+  .pill { background: var(--surface2); border-radius: 4px; padding: 6px 9px; font: 900 14px Inter; cursor: pointer; }
+  .pill.on { background: var(--accent); color: #000; }
+  .addg { padding: 6px 0; font: 900 14px Inter; color: var(--a50); } .addg b { color: var(--accent); }
+  .linkCard .h { font: 500 14px/1.45 Inter; color: var(--mutedLight); }
+  .btns { display: flex; gap: 6px; padding-top: 10px; }
+  .btns div { flex: 1; text-align: center; padding: 10px; border-radius: 6px; font: 900 14px Inter; }
+  .btns .sub { background: var(--surface2); } .btns .del { color: var(--r50); }
+
+  .exitmsg { position: absolute; inset: 0; background: var(--bg); z-index: 7; display: none; align-items: center; justify-content: center;
+    text-align: center; color: var(--mutedLight); font: 500 14px/1.5 Inter; padding: 40px; }
+  .exitmsg.show { display: flex; }
+</style>
+</head>
+<body>
+<h1>Editor de ejercicio con la cabecera v5</h1>
+<p class="lead">El contenido es el de la pantalla de hoy (<b>ExerciseEditorInline</b>), con sus textos y en su orden: Volumen, Programación, Opciones, Vinculación y Sustituir/Eliminar. Cambian tres cosas. La cabecera pasa a ser «‹ sesión» y el check. El <b>Resumen del ejercicio</b> se convierte en la tarjeta gris. Y el desplegable para saltar a otro ejercicio pasa del título de la cabecera al nombre de la tarjeta. Toca el nombre, haz scroll y cambia la vinculación.</p>
+
+<div class="ctl"><span>Cambiar de ej.</span>
+  <button data-nv="both" class="on">Esquina + anterior/siguiente</button>
+  <button data-nv="corner">Solo esquina</button>
+  <button data-nv="nbr">Solo anterior/siguiente</button>
+</div>
+<div class="ctl"><span>Vinculación</span>
+  <button data-l="linked" class="on">Vinculado (A y C)</button>
+  <button data-l="">Sin vincular</button>
+</div>
+<div class="ctl"><span>Presentación</span>
+  <button data-pr="pSheet" class="on">Hoja</button>
+  <button data-pr="pFull">Pantalla completa</button>
+</div>
+
+<div class="wrap">
+  <div class="col">
+    <div class="cap">3 · Ejercicio</div>
+    <div class="phone pSheet linked" id="ph">
+      <div class="under">SESIÓN A</div>
+      <div class="page">
+        <div class="hdr">
+          <div class="mid"><div class="f" data-drop><div class="e">Ejercicio 01 · Sesión A</div><div class="t"><span class="exname">Press banca</span><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg></div></div></div>
+          <div class="back" data-act="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>Torso pesado</span></div>
+          <div class="ok" data-act="save"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
+        </div>
+        <div class="nbr"><div class="pv"><svg width="7" height="11" viewBox="0 0 8 12" fill="none" stroke="#949494" stroke-width="2.2"><path d="M6.5 1.5L2 6l4.5 4.5"/></svg><span></span></div><div class="nx"><span></span><svg width="7" height="11" viewBox="0 0 8 12" fill="none" stroke="#949494" stroke-width="2.2"><path d="M1.5 1.5L6 6l-4.5 4.5"/></svg></div></div>
+        <div class="scroll">
+          <div class="idc">
+            <div class="eb"><span class="exnum">Ejercicio 01</span> · Sesión A</div>
+            <div class="nmrow"><div class="nm exname">Press banca</div></div>
+            <div class="lst" data-drop title="Ir a otro ejercicio"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="2.6" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="#aae216"/><circle cx="4.5" cy="12" r="1.2" fill="#aae216"/><circle cx="4.5" cy="18" r="1.2" fill="#aae216"/></svg><span class="cnt">1/6</span></div>
+            <div class="nums"><span><b>C×2</b>calent.</span><span><b class="vSets">4</b>× <b style="margin-left:3px">6–8</b>reps</span><span><b class="vRest">120</b>s descanso</span></div>
+            <div class="rule">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/></svg>
+              <div>Sube <b>2,5 kg</b> cuando todas las series lleguen a 8</div>
+            </div>
+            <div class="link">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e6e6e6" stroke-width="2.6" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
+              Vinculado con la sesión C<span>· cambia en las dos</span>
+            </div>
+          </div>
+
+          <div class="sec">Volumen</div>
+          <div class="segc"><div class="on">REPS</div><div>TIEMPO</div></div>
+          <div class="segc"><div class="on">Rango</div><div>Reps fijas</div></div>
+          <div class="grid">
+            <div class="step"><div class="l">Series</div><div class="c"><i data-step="vSets" data-d="-1">−</i><b class="vSets">4</b><i data-step="vSets" data-d="1">+</i></div></div>
+            <div class="step"><div class="l">Descanso</div><div class="c"><i data-step="vRest" data-d="-15">−</i><b class="vRest">120</b><i data-step="vRest" data-d="15">+</i></div></div>
+          </div>
+          <div class="grid">
+            <div class="step"><div class="l">Reps mín</div><div class="c"><i>−</i><b>6</b><i>+</i></div></div>
+            <div class="step"><div class="l">Reps máx</div><div class="c"><i>−</i><b>8</b><i>+</i></div></div>
+          </div>
+
+          <div class="sec">Programación</div>
+          <div class="group">
+            <div class="nav"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/></svg>
+              <div class="m"><div class="t">Progresión</div><div class="s"><b>Peso</b> · +2,5 kg al llegar a 8</div></div><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#aae216" stroke-width="2.2"><path d="M1.5 1.5L6 6l-4.5 4.5"/></svg></div>
+            <div class="nav"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="2.6" stroke-linecap="round"><path d="M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-8z"/></svg>
+              <div class="m"><div class="t">Calentamiento</div><div class="s"><b>Auto</b> · 2 series · 60s</div></div><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#aae216" stroke-width="2.2"><path d="M1.5 1.5L6 6l-4.5 4.5"/></svg></div>
+            <div class="nav"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="2.6" stroke-linecap="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 11l6-4M9 13l6 4"/></svg>
+              <div class="m"><div class="t">Variante</div><div class="s"><b>Agarre medio</b> · Agarre · anchura</div></div><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="#aae216" stroke-width="2.2"><path d="M1.5 1.5L6 6l-4.5 4.5"/></svg></div>
+          </div>
+
+          <div class="sec">Opciones</div>
+          <div class="group">
+            <div class="opt"><div class="m"><div class="t">Ejercicio principal</div><div class="h">El básico del día. Las reglas de etapa pueden tratarlo distinto de los accesorios.</div></div><div class="sw on"></div></div>
+            <div class="opt"><div class="m"><div class="t">Registrar RPE</div></div><div class="sw"></div></div>
+            <div class="opt"><div class="m"><div class="t">Dropset en la última serie</div></div><div class="sw"></div></div>
+            <div class="opt"><div class="m"><div class="t">En superserie con el siguiente</div></div><div class="sw"></div></div>
+            <div class="opt"><div class="m"><div class="t">Tempo</div></div><div style="font:700 14px Inter;color:#949494">—</div></div>
+            <div class="note2"><div class="t">Nota para el cliente</div><div class="in">Ej. codos a 45º, baja en 3 segundos…</div><div class="h">Visible en el ejercicio durante la sesión</div></div>
+          </div>
+
+          <div class="sec">Vinculación entre sesiones</div>
+          <div class="linkCard">
+            <div class="pill" data-pill="none">Ninguna</div>
+            <div class="pill on" data-pill="g1">Grupo 1 · A, C</div>
+            <div class="addg"><b>+</b> Nuevo grupo</div>
+            <div class="h">Comparte configuración e historial con el mismo ejercicio en otras sesiones. Editar uno edita todos.</div>
+          </div>
+
+          <div class="btns"><div class="sub">Sustituir</div><div class="del">Eliminar</div></div>
+        </div>
+      </div>
+      <div class="dveil" data-close></div>
+      <div class="drop" id="drop"></div>
+      <div class="exitmsg"></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>La tarjeta se come el Resumen</h3>
+    Hoy, debajo de la cabecera, está «RESUMEN DEL EJERCICIO» en tinte lima: la línea de volumen (C×2 · 4 × 6–8 · 120s descanso) y la frase de la progresión. Ahora todo eso va en la tarjeta. El volumen son las cifras, a 16 px como en la v5, y se actualizan al tocar Series o Descanso. La progresión va debajo de una línea fina, con su icono y el mismo tinte lima de hoy (accent-50). Solo dice cuándo sube, no cuándo baja: eso queda en la fila de Progresión y en su hoja. La cabecera de la pantalla ya no repite el nombre.
+    <h3>Cambiar de ejercicio</h3>
+    <b>Esquina</b>: un botón con icono de lista y «1/6», en la esquina de la tarjeta. Se lee como «ir a otro de la lista» y no como «cambiar este», que es lo que hacía el chevron pegado al nombre. Abre la lista anclada, que reutilizaremos en otros sitios.<br><br>
+    <b>Anterior / siguiente</b>: la misma fila que en Progreso › ejercicio, encima de la tarjeta, con el nombre de los vecinos, y swipe a los lados sobre el contenido (prueba a arrastrar dentro del móvil). Para repasar la sesión ejercicio a ejercicio es lo más rápido. La lista es para saltar lejos.<br><br>
+    Los dos juntos no se pisan: la fila es para ir de uno en uno y la esquina para saltar. Con el título plegado, tocarlo también abre la lista.
+    <h3>Vinculación</h3>
+    Que un ejercicio esté vinculado cambia lo que pasa al editar: tocar aquí toca también la sesión C. Hoy eso solo se ve al final del todo. Ahora sale además en la tarjeta, como un aviso fijo. El selector de grupos sigue abajo, donde está. Cambia de grupo a «Ninguna» y el aviso desaparece.
+    <h3>Sin lápiz</h3>
+    Un ejercicio no se renombra desde aquí: cambiarlo es <b>Sustituir</b>. Por eso la esquina de la tarjeta queda libre. Si se quiere, Sustituir podría subir a ese hueco, pero lo dejo abajo, como hoy.
+  </div>
+</div>
+
+<script>
+  const ph = document.getElementById('ph');
+  const EX = ['Press banca', 'Remo con barra', 'Press militar', 'Dominadas', 'Fondos', 'Curl martillo'];
+  let cur = 0;
+  const drop = document.getElementById('drop');
+  function show(i, dir) {
+    if (i < 0 || i >= EX.length || i === cur) return;
+    const sc = ph.querySelector('.scroll');
+    sc.classList.add('slide');
+    sc.style.transform = `translateX(${dir > 0 ? -40 : 40}px)`; sc.style.opacity = '0';
+    setTimeout(() => {
+      cur = i;
+      document.querySelectorAll('.exname').forEach((e) => e.textContent = EX[cur]);
+      document.querySelector('.exnum').textContent = `Ejercicio 0${cur + 1}`;
+      document.querySelector('.mid .e').textContent = `Ejercicio 0${cur + 1} · Sesión A`;
+      document.querySelector('.cnt').textContent = `${cur + 1}/${EX.length}`;
+      nbr();
+      sc.scrollTop = 0; sc.dispatchEvent(new Event('scroll'));
+      sc.classList.remove('slide'); sc.style.transform = `translateX(${dir > 0 ? 40 : -40}px)`;
+      requestAnimationFrame(() => { sc.classList.add('slide'); sc.style.transform = ''; sc.style.opacity = ''; });
+    }, 160);
+  }
+  function nbr() {
+    const pv = ph.querySelector('.nbr .pv'), nx = ph.querySelector('.nbr .nx');
+    pv.classList.toggle('off', cur === 0); nx.classList.toggle('off', cur === EX.length - 1);
+    pv.querySelector('span').textContent = EX[cur - 1] ?? ''; nx.querySelector('span').textContent = EX[cur + 1] ?? '';
+  }
+  ph.querySelector('.nbr .pv').onclick = () => show(cur - 1, -1);
+  ph.querySelector('.nbr .nx').onclick = () => show(cur + 1, 1);
+  function renderDrop() {
+    drop.innerHTML = EX.map((n, i) => `<div class="${i === cur ? 'on' : ''}" data-i="${i}"><i>0${i + 1}</i>${n}</div>`).join('');
+    drop.querySelectorAll('[data-i]').forEach((d) => d.onclick = () => {
+      ph.classList.remove('dropOpen');
+      show(+d.dataset.i, +d.dataset.i > cur ? 1 : -1);
+    });
+  }
+  function openDrop(fromHeader) {
+    renderDrop();
+    const card = ph.querySelector('.idc'), page = ph.querySelector('.page'), nb = ph.querySelector('.nbr');
+    const off = page.offsetTop + 56 + (nb.offsetHeight || 0);
+    const phr = ph.getBoundingClientRect();
+    drop.style.top = `${fromHeader ? page.offsetTop + 60 : card.getBoundingClientRect().bottom - phr.top - 8 + 6}px`;
+    ph.classList.add('dropOpen');
+  }
+  ph.querySelector('.lst').onclick = () => openDrop(false);
+  ph.querySelector('.mid .f').onclick = () => openDrop(true);
+  // swipe horizontal sobre el contenido
+  (() => {
+    const sc = ph.querySelector('.scroll'); let x0 = null, y0 = 0, dx = 0, horiz = false;
+    sc.addEventListener('pointerdown', (e) => { if (!ph.classList.contains('withNbr')) return; x0 = e.clientX; y0 = e.clientY; dx = 0; horiz = false; });
+    window.addEventListener('pointermove', (e) => {
+      if (x0 == null) return;
+      dx = e.clientX - x0;
+      if (!horiz && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(e.clientY - y0)) horiz = true;
+      if (horiz) { const edge = (dx > 0 && cur === 0) || (dx < 0 && cur === EX.length - 1); sc.classList.remove('slide'); sc.style.transform = `translateX(${dx * (edge ? .2 : 1)}px)`; }
+    });
+    window.addEventListener('pointerup', () => {
+      if (x0 == null) return; x0 = null;
+      if (horiz && Math.abs(dx) > 60) show(cur + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+      if (sc.style.transform && !(horiz && Math.abs(dx) > 60 && cur + (dx < 0 ? 1 : -1) >= 0 && cur + (dx < 0 ? 1 : -1) < EX.length)) { sc.classList.add('slide'); sc.style.transform = ''; }
+    });
+  })();
+  document.querySelectorAll('[data-nv]').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('[data-nv]').forEach((x) => x.classList.toggle('on', x === b));
+    ph.classList.toggle('noCorner', b.dataset.nv === 'nbr');
+    ph.classList.toggle('withNbr', b.dataset.nv !== 'corner');
+  });
+  ph.classList.add('withNbr');
+  nbr();
+  ph.querySelector('[data-close]').onclick = () => ph.classList.remove('dropOpen');
+
+  const sc = ph.querySelector('.scroll'), hdr = ph.querySelector('.hdr'), card = ph.querySelector('.idc');
+  sc.addEventListener('scroll', () => hdr.classList.toggle('folded', sc.scrollTop > card.offsetTop + card.offsetHeight - 20));
+
+  document.querySelectorAll('[data-step]').forEach((b) => b.onclick = () => {
+    const cls = b.dataset.step;
+    document.querySelectorAll('.' + cls).forEach((e) => { e.textContent = Math.max(1, +e.textContent + +b.dataset.d); e.classList.add('ch'); });
+  });
+  document.querySelectorAll('.sw').forEach((s) => s.onclick = () => s.classList.toggle('on'));
+  function setLinked(v) {
+    ph.classList.toggle('linked', v);
+    document.querySelectorAll('[data-pill]').forEach((p) => p.classList.toggle('on', (p.dataset.pill === 'g1') === v));
+    document.querySelectorAll('[data-l]').forEach((x) => x.classList.toggle('on', !!x.dataset.l === v));
+  }
+  document.querySelectorAll('[data-pill]').forEach((p) => p.onclick = () => setLinked(p.dataset.pill === 'g1'));
+  document.querySelectorAll('[data-l]').forEach((b) => b.onclick = () => setLinked(!!b.dataset.l));
+  document.querySelectorAll('[data-pr]').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('[data-pr]').forEach((x) => x.classList.toggle('on', x === b));
+    ph.classList.remove('pSheet', 'pFull'); ph.classList.add(b.dataset.pr);
+  });
+  const exit = (m) => { const e = ph.querySelector('.exitmsg'); e.textContent = m; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 1800); };
+  ph.querySelector('[data-act=back]').onclick = () => exit('Vuelve a «Torso pesado», en el mismo borrador.');
+  ph.querySelector('[data-act=save]').onclick = () => exit('Guarda el programa y cierra el editor entero.');
+</script>
+</body>
+</html>

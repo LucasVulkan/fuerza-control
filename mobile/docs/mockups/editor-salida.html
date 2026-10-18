@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salida del editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070707; color: #e6e6e6; font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: #949494; font: 500 14px/1.5 Inter; max-width: 860px; margin-bottom: 18px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: #585858; width: 90px; }
+  .ctl button { background: #272727; color: #e6e6e6; border: 1px solid #3a3a3a; border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: #aae216; color: #aae216; }
+  .wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin-top: 14px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .col > .cap { font: 800 12px Inter; letter-spacing: 1.6px; color: #949494; text-transform: uppercase; }
+  .note { max-width: 420px; color: #949494; font: 500 13px/1.55 Inter; }
+  .note h3 { font: 800 14px Inter; color: #e6e6e6; margin: 18px 0 6px; } .note h3:first-child { margin-top: 0; }
+  .note b { color: #e6e6e6; }
+  .note code { font: 700 12px Inter; color: #aae216; }
+
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000; --blue: #4c85ff; --red: #ff5e58;
+    --out: cubic-bezier(.33, 1, .68, 1);
+    width: 375px; height: 760px; background: var(--bg); border-radius: 34px; border: 8px solid #1b1b1b;
+    position: relative; overflow: hidden; flex: none;
+  }
+  .scroll { position: absolute; top: 56px; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 4px 15px 60px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  /* cabecera: una fila, izquierda · título plegado · Guardar */
+  .hdr { position: absolute; top: 0; left: 0; right: 0; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 15px;
+    background: var(--bg); z-index: 3; border-bottom: 1px solid transparent; }
+  .hdr .left { font: 900 14px Inter; color: var(--mutedLight); cursor: pointer; min-width: 64px; }
+  .hdr .chev { width: 32px; height: 32px; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .hdr .mid { flex: 1; text-align: center; font: 700 14px Inter; opacity: 0; }
+  .save { min-width: 64px; height: 32px; padding: 0 14px; border-radius: 999px; font: 900 14px Inter; display: flex; align-items: center; justify-content: center;
+    background: var(--surface2); color: var(--mutedLight); cursor: pointer; transition: background .25s, color .25s; }
+  .dirty .save { background: var(--accent); color: var(--onAccent); }
+
+  /* tarjeta de identidad */
+  .idc { background: var(--surface); border-radius: 16px; padding: 15px 15px 15px 20px; position: relative; }
+  .idc .eb { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--accent); text-transform: uppercase; }
+  .idc .nm { font: 800 28px/1.05 'Barlow Condensed'; margin: 6px 44px 10px 0; }
+  .idc .meta { font: 500 12px Inter; color: var(--mutedLight); }
+  .idc .pen { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 10px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center; }
+
+  .caps { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--mutedLight); margin: 22px 0 10px; }
+  .card { background: var(--surface); border-radius: 16px; padding: 13px 15px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .card .lt { font: italic 800 26px/1 'Barlow Condensed'; color: var(--accent); width: 20px; }
+  .card .t { font: 700 14px Inter; } .card .m { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .card .chg { margin-left: auto; font: 800 12px Inter; color: var(--accent); }
+  .add { text-align: center; padding: 10px; font: 900 14px Inter; color: #c9ea72; }
+  .seg { display: flex; background: var(--surface); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
+  .seg div { flex: 1; text-align: center; padding: 7px 0; border-radius: 8px; font: 800 14px Inter; color: var(--mutedLight); }
+  .seg .on { background: var(--surface2); color: var(--text); }
+  .ex { background: var(--surface); border-radius: 16px; padding: 12px 15px; margin-bottom: 8px; display: flex; gap: 12px; align-items: center; }
+  .ex .n { font: italic 800 20px 'Barlow Condensed'; color: var(--muted); }
+  .ex .t { font: 700 14px Inter; } .ex .m { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .ex .m.ch { color: var(--accent); }
+
+  /* velo + diálogo */
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); z-index: 5; display: none; align-items: center; justify-content: center; padding: 0 28px; }
+  .veil.show { display: flex; }
+  .dlg { background: var(--surface); border-radius: 16px; padding: 20px; width: 100%; }
+  .dlg .t { font: 800 18px Inter; letter-spacing: -.2px; }
+  .dlg .s { font: 800 12px Inter; color: var(--accent); margin-top: 6px; }
+  .dlg .b { font: 500 14px/21px Inter; color: var(--mutedLight); margin: 10px 0 18px; }
+  .dlg .p { background: var(--accent); color: var(--onAccent); border-radius: 10px; text-align: center; padding: 14px; font: 900 14px Inter; cursor: pointer; }
+  .dlg .d { text-align: center; padding: 14px 0 2px; font: 800 12px Inter; letter-spacing: 1.6px; color: var(--red); text-transform: uppercase; cursor: pointer; }
+
+  /* toast */
+  .toast { position: absolute; left: 50%; bottom: 80px; transform: translate(-50%, 10px); opacity: 0; transition: .2s; z-index: 6;
+    background: #132d1e; color: #4ade80; border: 1px solid rgba(74,222,128,.28); border-radius: 999px; padding: 8px 20px; font: 500 14px Inter; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .exitmsg { position: absolute; inset: 56px 0 0; background: var(--bg); z-index: 4; display: none; align-items: center; justify-content: center;
+    text-align: center; color: var(--mutedLight); font: 500 14px/1.5 Inter; padding: 40px; }
+  .exitmsg.show { display: flex; }
+</style>
+</head>
+<body>
+<h1>Salida del editor — borrador, Cancelar y un solo Guardar</h1>
+<p class="lead">Al entrar al editor se hace una copia. Todo lo que tocas va contra esa copia hasta que pulsas <b>Guardar</b>. Hay <b>un único Guardar</b>, siempre en la misma esquina y con el mismo efecto en todos los niveles: guarda y sale del editor entero. Lo único que cambia entre niveles es el botón de la izquierda. Pulsa los botones de los móviles, que funcionan.</p>
+
+<div class="ctl"><span>Estado</span>
+  <button data-st="clean" class="on">Sin cambios</button>
+  <button data-st="dirty">Con cambios</button>
+</div>
+<div class="ctl"><span>Probar</span>
+  <button data-do="cancel">Cancelar (programa)</button>
+  <button data-do="swipe">Deslizar atrás (programa)</button>
+  <button data-do="save">Guardar</button>
+  <button data-do="reset">Reiniciar</button>
+</div>
+
+<div class="wrap">
+  <div class="col">
+    <div class="cap">Nivel 1 · Editor de programa</div>
+    <div class="phone" id="p1">
+      <div class="hdr">
+        <div class="left" data-act="cancel">Cancelar</div>
+        <div class="mid">Fuerza 4 días</div>
+        <div class="save" data-act="save">Guardar</div>
+      </div>
+      <div class="scroll">
+        <div class="idc">
+          <div class="eb">Programa · 3 etapas</div>
+          <div class="nm">Fuerza 4 días</div>
+          <div class="meta">12 semanas · 4 sesiones/semana</div>
+          <div class="pen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#949494" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div>
+        </div>
+        <div class="caps">Sesiones de la etapa</div>
+        <div class="card"><div class="lt">A</div><div><div class="t">Torso pesado</div><div class="m">6 ejercicios · 18 series · 55 min</div></div><div class="chg dirtyonly">editada</div></div>
+        <div class="card"><div class="lt">B</div><div><div class="t">Pierna</div><div class="m">5 ejercicios · 16 series · 50 min</div></div></div>
+        <div class="card"><div class="lt">C</div><div><div class="t">Torso volumen</div><div class="m">7 ejercicios · 21 series · 60 min</div></div></div>
+        <div class="card"><div class="lt">D</div><div><div class="t">Pierna y core</div><div class="m">6 ejercicios · 17 series · 50 min</div></div></div>
+        <div class="add">+ Añadir sesión</div>
+      </div>
+      <div class="exitmsg"></div>
+      <div class="veil">
+        <div class="dlg">
+          <div class="t">¿Descartar los cambios?</div>
+          <div class="s">Fuerza 4 días</div>
+          <div class="b">El programa vuelve a como estaba al entrar en el editor.</div>
+          <div class="p" data-act="keep">Seguir editando</div>
+          <div class="d" data-act="discard">Descartar cambios</div>
+        </div>
+      </div>
+      <div class="toast">Programa guardado</div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">Nivel 2 · Editor de sesión</div>
+    <div class="phone" id="p2">
+      <div class="hdr">
+        <div class="chev" data-act="back"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+        <div class="mid">Torso pesado</div>
+        <div class="save" data-act="save">Guardar</div>
+      </div>
+      <div class="scroll">
+        <div class="seg"><div class="on">A</div><div>B</div><div>C</div><div>D</div></div>
+        <div class="idc">
+          <div class="eb">Sesión A</div>
+          <div class="nm">Torso pesado</div>
+          <div class="meta">6 ejercicios · 18 series · 55 min</div>
+          <div class="pen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#949494" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div>
+        </div>
+        <div class="caps">Ejercicios (6)</div>
+        <div class="ex"><div class="n">01</div><div><div class="t">Press banca</div><div class="m ch dirtyonly-m">4×5 · 3 min</div></div></div>
+        <div class="ex"><div class="n">02</div><div><div class="t">Remo con barra</div><div class="m">4×6 · 2 min</div></div></div>
+        <div class="ex"><div class="n">03</div><div><div class="t">Press militar</div><div class="m">3×8 · 2 min</div></div></div>
+        <div class="ex"><div class="n">04</div><div><div class="t">Dominadas</div><div class="m">3×máx · 2 min</div></div></div>
+        <div class="ex"><div class="n">05</div><div><div class="t">Fondos</div><div class="m">3×10 · 90 s</div></div></div>
+        <div class="ex"><div class="n">06</div><div><div class="t">Curl martillo</div><div class="m">2×12 · 60 s</div></div></div>
+      </div>
+      <div class="exitmsg"></div>
+      <div class="toast">Programa guardado</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Un solo Guardar</h3>
+    Cada pantalla tiene una cabecera, y en todas <b>Guardar</b> está en el mismo sitio. Desde el editor de una sesión, de un ejercicio o de un bloque guarda el programa entero y te deja donde abriste el editor, igual que el check de hoy.
+    <h3>La izquierda dice dónde estás</h3>
+    <b>Arriba del todo</b> pone <code>Cancelar</code> en texto, porque ahí salir sin guardar es justo eso. <b>Dentro</b> es el chevron, que solo sube un nivel y <b>no pierde nada</b>: sigues en el mismo borrador. Ya no hay un par «‹ / ✓» que parezca «cancelar / aceptar».
+    <h3>Sin cambios / con cambios</h3>
+    Sin cambios, Guardar sale en gris y Cancelar sale sin preguntar. En cuanto tocas algo, Guardar se enciende en lima, aunque estés tres niveles más abajo. Es la señal de que hay algo pendiente. Las sesiones que has tocado llevan «editada».
+    <h3>Descartar</h3>
+    Solo pregunta si hay algo que perder. Lo mismo pasa con el gesto de volver de iOS y con el botón atrás de Android en el nivel de arriba. La acción segura, <b>Seguir editando</b>, es la grande; descartar va en rojo y pequeño.
+    <h3>Qué no cambia</h3>
+    El toast «Programa guardado» y el aviso a los clientes («↑ Enviar») salen solo al pulsar Guardar. Cancelar no avisa a nadie.
+  </div>
+</div>
+
+<script>
+  const phones = [...document.querySelectorAll('.phone')];
+  let state = 'clean';
+  function setState(s) {
+    state = s;
+    document.querySelectorAll('[data-st]').forEach((b) => b.classList.toggle('on', b.dataset.st === s));
+    phones.forEach((p) => p.classList.toggle('dirty', s === 'dirty'));
+    document.querySelectorAll('.dirtyonly').forEach((e) => e.style.display = s === 'dirty' ? '' : 'none');
+    document.querySelectorAll('.dirtyonly-m').forEach((e) => { e.classList.toggle('ch', s === 'dirty'); e.textContent = s === 'dirty' ? '5×5 · 3 min' : '4×5 · 3 min'; });
+  }
+  function exit(p, msg) { const e = p.querySelector('.exitmsg'); e.textContent = msg; e.classList.add('show'); }
+  function toast(p) { const t = p.querySelector('.toast'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+  function reset() { phones.forEach((p) => { p.querySelector('.exitmsg').classList.remove('show'); p.querySelector('.veil')?.classList.remove('show'); }); }
+  function act(p, a) {
+    const veil = p.querySelector('.veil');
+    if (a === 'cancel' || a === 'swipe') {
+      reset();
+      if (state === 'dirty') veil.classList.add('show');
+      else exit(p, 'Sale del editor sin preguntar: no había nada que perder.');
+    }
+    if (a === 'keep') veil.classList.remove('show');
+    if (a === 'discard') { veil.classList.remove('show'); setState('clean'); exit(p, 'Sale del editor. El programa queda como estaba al entrar.'); }
+    if (a === 'save') {
+      reset();
+      if (state === 'dirty') { toast(p); exit(p, 'Guardado. Vuelves a la pestaña desde la que abriste el editor.'); setState('clean'); }
+      else exit(p, 'Sin cambios: Guardar solo cierra el editor, sin toast.');
+    }
+    if (a === 'back') { reset(); exit(p, 'Sube al editor de programa. Sigues en el mismo borrador: no se pierde nada ni se guarda todavía.'); }
+  }
+  document.querySelectorAll('[data-st]').forEach((b) => b.onclick = () => { reset(); setState(b.dataset.st); });
+  document.querySelectorAll('[data-do]').forEach((b) => b.onclick = () => {
+    if (b.dataset.do === 'reset') { reset(); setState('clean'); return; }
+    act(document.getElementById('p1'), b.dataset.do);
+  });
+  phones.forEach((p) => p.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => act(p, el.dataset.act)));
+  setState('clean');
+</script>
+</body>
+</html>

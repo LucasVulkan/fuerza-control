@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarjeta de identidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070707; color: #e6e6e6; font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: #949494; font: 500 14px/1.5 Inter; max-width: 860px; margin-bottom: 18px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: #585858; width: 90px; }
+  .ctl button { background: #272727; color: #e6e6e6; border: 1px solid #3a3a3a; border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: #aae216; color: #aae216; }
+  .wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin-top: 14px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .col > .cap { font: 800 12px Inter; letter-spacing: 1.6px; color: #949494; text-transform: uppercase; }
+  .note { max-width: 420px; color: #949494; font: 500 13px/1.55 Inter; }
+  .note h3 { font: 800 14px Inter; color: #e6e6e6; margin: 18px 0 6px; } .note h3:first-child { margin-top: 0; }
+  .note b { color: #e6e6e6; }
+
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000; --blue: #4c85ff; --red: #ff5e58;
+    width: 375px; height: 760px; background: var(--bg); border-radius: 34px; border: 8px solid #1b1b1b;
+    position: relative; overflow: hidden; flex: none;
+  }
+  .scroll { position: absolute; top: 56px; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 4px 15px 120px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .hdr { position: absolute; top: 0; left: 0; right: 0; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 15px;
+    background: var(--bg); z-index: 3; border-bottom: 1px solid transparent; transition: border-color .2s; }
+  .hdr.folded { border-bottom-color: #272727; }
+  .hdr .left { font: 900 14px Inter; color: var(--mutedLight); min-width: 64px; }
+  .hdr .chev { width: 32px; height: 32px; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center; }
+  .hdr .mid { flex: 1; text-align: center; opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; min-width: 0; }
+  .hdr.folded .mid { opacity: 1; transform: none; }
+  .hdr .mid .e { font: 800 10px Inter; letter-spacing: 1.4px; color: var(--accent); text-transform: uppercase; }
+  .hdr .mid .t { font: 700 14px Inter; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .save { min-width: 64px; height: 32px; padding: 0 14px; border-radius: 999px; font: 900 14px Inter; display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: var(--onAccent); }
+
+  /* ── tarjeta de identidad ── */
+  .idc { background: var(--surface); border-radius: 16px; padding: 15px 15px 15px 20px; position: relative; overflow: hidden; }
+  .idc .eb { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--accent); text-transform: uppercase; }
+  .idc .eb i { font-style: normal; color: var(--blue); }
+  .idc .nm { font: 800 28px/1.05 'Barlow Condensed'; margin: 6px 44px 0 0; }
+  .idc .meta { font: 500 12px Inter; color: var(--mutedLight); margin-top: 10px; }
+  .idc .vol { font: 500 12px Inter; color: #c9ea72; margin-top: 4px; }
+  .idc .pen { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 10px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  /* variante «cifras» */
+  .idc .nums { display: none; margin-top: 14px; border-top: 1px solid #2c2c2c; padding-top: 12px; }
+  .idc .nums div { flex: 1; } .idc .nums div + div { border-left: 1px solid #2c2c2c; padding-left: 14px; }
+  .idc .nums b { display: block; font: italic 800 26px/1 'Barlow Condensed'; color: var(--text); }
+  .idc .nums span { font: 500 12px Inter; color: var(--mutedLight); }
+  .v-nums .idc .nums { display: flex; }
+  .v-nums .idc .meta { display: none; }
+  /* variante «filo» — regla lima a la izquierda */
+  .v-edge .idc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); }
+
+  .caps { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--mutedLight); margin: 22px 0 10px; }
+  .card { background: var(--surface); border-radius: 16px; padding: 13px 15px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+    transition: opacity .25s, transform .25s, max-height .3s, margin .3s, padding .3s; max-height: 80px; }
+  .card.gone { opacity: 0; transform: translateX(-30px); max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+  .card .lt { font: italic 800 26px/1 'Barlow Condensed'; color: var(--accent); width: 20px; }
+  .card .t { font: 700 14px Inter; } .card .m { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .card .x { margin-left: auto; font: 800 12px Inter; letter-spacing: 1.2px; color: var(--red); text-transform: uppercase; cursor: pointer; padding: 6px; }
+  .add { text-align: center; padding: 10px; font: 900 14px Inter; color: #c9ea72; }
+  .seg { display: flex; background: var(--surface); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
+  .seg div { flex: 1; text-align: center; padding: 7px 0; border-radius: 8px; font: 800 14px Inter; color: var(--mutedLight); }
+  .seg .on { background: var(--surface2); color: var(--text); }
+  .ex { background: var(--surface); border-radius: 16px; padding: 12px 15px; margin-bottom: 8px; display: flex; gap: 12px; align-items: center;
+    transition: opacity .25s, transform .25s, max-height .3s, margin .3s, padding .3s; max-height: 80px; }
+  .ex.gone { opacity: 0; transform: translateX(-30px); max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+  .ex .n { font: italic 800 20px 'Barlow Condensed'; color: var(--muted); }
+  .ex .t { font: 700 14px Inter; } .ex .m { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .ex .x { margin-left: auto; font: 800 12px Inter; letter-spacing: 1.2px; color: var(--red); text-transform: uppercase; cursor: pointer; padding: 6px; }
+
+  /* toast con deshacer */
+  .utoast { position: absolute; left: 15px; right: 15px; bottom: 28px; z-index: 6; background: var(--text); color: var(--bg); border-radius: 16px;
+    padding: 12px 8px 12px 18px; display: flex; align-items: center; gap: 10px; overflow: hidden;
+    opacity: 0; transform: translateY(12px); transition: .22s; pointer-events: none; }
+  .utoast.show { opacity: 1; transform: none; pointer-events: auto; }
+  .utoast .msg { flex: 1; font: 500 14px Inter; min-width: 0; }
+  .utoast .msg b { font-weight: 700; }
+  .utoast .undo { font: 900 14px Inter; color: #4e7a00; padding: 8px 12px; cursor: pointer; border-radius: 10px; }
+  .utoast .bar { position: absolute; left: 0; bottom: 0; height: 3px; background: #4e7a00; width: 100%; transform-origin: left; }
+  .utoast.run .bar { animation: drain 5s linear forwards; }
+  @keyframes drain { to { transform: scaleX(0); } }
+
+  /* hoja de renombrar */
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); z-index: 5; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .veil.show { opacity: 1; pointer-events: auto; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px 15px 26px; z-index: 6;
+    transform: translateY(105%); transition: transform .26s cubic-bezier(.33,1,.68,1); }
+  .sheet.show { transform: none; }
+  .sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: #3a3a3a; margin: 0 auto 16px; }
+  .sheet .st { font: 900 22px Inter; letter-spacing: -.5px; margin-bottom: 14px; }
+  .sheet label { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--mutedLight); text-transform: uppercase; display: block; margin-bottom: 6px; }
+  .sheet input, .sheet textarea { width: 100%; background: var(--bg); border: 1px solid #2c2c2c; border-radius: 10px; color: var(--text); padding: 12px; font: 700 14px Inter; margin-bottom: 14px; outline: none; }
+  .sheet input:focus { border-color: var(--accent); }
+  .sheet textarea { font: 500 14px/21px Inter; resize: none; height: 66px; }
+  .sheet .cnt { float: right; font: 500 12px Inter; color: var(--muted); letter-spacing: 0; text-transform: none; }
+  .sheet .p { background: var(--accent); color: var(--onAccent); border-radius: 10px; text-align: center; padding: 14px; font: 900 14px Inter; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Tarjeta de identidad en los editores, y Deshacer al borrar</h1>
+<p class="lead">El «Resumen» tintado de lima pasa a ser la tarjeta que dice <b>qué es esto</b>: tipo, nombre grande y sus datos, con el lápiz a la derecha. La cabecera se queda solo con navegar y Guardar. Al hacer scroll y perder de vista la tarjeta, el nombre sube a la cabecera (desplázate dentro de los móviles). El lápiz abre la hoja de renombrar. Borrar una sesión o un ejercicio ya no pregunta: lo quita y ofrece <b>Deshacer</b>.</p>
+
+<div class="ctl"><span>Tarjeta</span>
+  <button data-v="v-line" class="on">Datos en línea</button>
+  <button data-v="v-nums">Cifras</button>
+  <button data-v="v-edge">Filo lima</button>
+</div>
+<div class="ctl"><span>Origen</span>
+  <button data-o="mine" class="on">Programa propio</button>
+  <button data-o="trainer">Del entrenador</button>
+</div>
+
+<div class="wrap" id="wrap">
+  <div class="col">
+    <div class="cap">Editor de programa</div>
+    <div class="phone" id="p1">
+      <div class="hdr">
+        <div class="left">Cancelar</div>
+        <div class="mid"><div class="e">Programa</div><div class="t pname">Fuerza 4 días</div></div>
+        <div class="save">Guardar</div>
+      </div>
+      <div class="scroll">
+        <div class="idc">
+          <div class="eb">Programa<span class="by"></span></div>
+          <div class="nm pname">Fuerza 4 días</div>
+          <div class="meta">3 etapas · 12 semanas · 4 sesiones/semana</div>
+          <div class="nums"><div><b>3</b><span>etapas</span></div><div><b>12</b><span>semanas</span></div><div><b>4</b><span>sesiones/sem</span></div></div>
+          <div class="pen" data-rename="Programa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#949494" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div>
+        </div>
+        <div class="caps">Sesiones de la etapa</div>
+        <div class="card"><div class="lt">A</div><div><div class="t">Torso pesado</div><div class="m">6 ejercicios · 18 series · 55 min</div></div><div class="x" data-del="Sesión A">Eliminar</div></div>
+        <div class="card"><div class="lt">B</div><div><div class="t">Pierna</div><div class="m">5 ejercicios · 16 series · 50 min</div></div><div class="x" data-del="Sesión B">Eliminar</div></div>
+        <div class="card"><div class="lt">C</div><div><div class="t">Torso volumen</div><div class="m">7 ejercicios · 21 series · 60 min</div></div><div class="x" data-del="Sesión C">Eliminar</div></div>
+        <div class="card"><div class="lt">D</div><div><div class="t">Pierna y core</div><div class="m">6 ejercicios · 17 series · 50 min</div></div><div class="x" data-del="Sesión D">Eliminar</div></div>
+        <div class="add">+ Añadir sesión</div>
+        <div class="caps">Ajustes</div>
+        <div class="card"><div><div class="t">Orden de las sesiones</div><div class="m">Rotación A → D</div></div></div>
+        <div class="card"><div><div class="t">Plan de etapas</div><div class="m">3 etapas · la 1 en curso</div></div></div>
+      </div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="st">Programa</div>
+        <label>Nombre <span class="cnt">13/43</span></label>
+        <input value="Fuerza 4 días" maxlength="43">
+        <label>Objetivo (opcional)</label>
+        <textarea placeholder="Para qué es este programa"></textarea>
+        <div class="p" data-close>Hecho</div>
+      </div>
+      <div class="utoast"><div class="msg"></div><div class="undo">Deshacer</div><div class="bar"></div></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">Editor de sesión</div>
+    <div class="phone" id="p2">
+      <div class="hdr">
+        <div class="chev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+        <div class="mid"><div class="e">Sesión A</div><div class="t sname">Torso pesado</div></div>
+        <div class="save">Guardar</div>
+      </div>
+      <div class="scroll">
+        <div class="seg"><div class="on">A</div><div>B</div><div>C</div><div>D</div></div>
+        <div class="idc">
+          <div class="eb">Sesión A<span class="by"></span></div>
+          <div class="nm sname">Torso pesado</div>
+          <div class="meta">6 ejercicios · 18 series · 55 min</div>
+          <div class="vol">Pecho 8 · Espalda 7 · Hombro 3 series</div>
+          <div class="nums"><div><b>6</b><span>ejercicios</span></div><div><b>18</b><span>series</span></div><div><b>55</b><span>min</span></div></div>
+          <div class="pen" data-rename="Sesión A"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#949494" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div>
+        </div>
+        <div class="caps">Ejercicios (6)</div>
+        <div class="ex"><div class="n">01</div><div><div class="t">Press banca</div><div class="m">4×5 · 3 min</div></div><div class="x" data-del="Press banca">Quitar</div></div>
+        <div class="ex"><div class="n">02</div><div><div class="t">Remo con barra</div><div class="m">4×6 · 2 min</div></div><div class="x" data-del="Remo con barra">Quitar</div></div>
+        <div class="ex"><div class="n">03</div><div><div class="t">Press militar</div><div class="m">3×8 · 2 min</div></div><div class="x" data-del="Press militar">Quitar</div></div>
+        <div class="ex"><div class="n">04</div><div><div class="t">Dominadas</div><div class="m">3×máx · 2 min</div></div><div class="x" data-del="Dominadas">Quitar</div></div>
+        <div class="ex"><div class="n">05</div><div><div class="t">Fondos</div><div class="m">3×10 · 90 s</div></div><div class="x" data-del="Fondos">Quitar</div></div>
+        <div class="ex"><div class="n">06</div><div><div class="t">Curl martillo</div><div class="m">2×12 · 60 s</div></div><div class="x" data-del="Curl martillo">Quitar</div></div>
+        <div class="add">+ Añadir ejercicio</div>
+      </div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="st">Sesión A</div>
+        <label>Nombre <span class="cnt">12/43</span></label>
+        <input value="Torso pesado" maxlength="43">
+        <div class="p" data-close>Hecho</div>
+      </div>
+      <div class="utoast"><div class="msg"></div><div class="undo">Deshacer</div><div class="bar"></div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Qué cambia respecto a hoy</h3>
+    Hoy el nombre vive en la cabecera y se renombra tocándolo, sin nada que lo indique. Ahora la cabecera no tiene texto propio hasta que haces scroll, y el nombre es lo más grande de la pantalla, en la condensada de la marca (<b>heroName</b>, la misma de la tarjeta de hoy en Inicio).
+    <h3>El lápiz</h3>
+    Es el único sitio para renombrar y abre una hoja, no un campo en línea: así cabe el contador de caracteres y, en el programa, un objetivo opcional si algún día lo quieres. «Hecho» no guarda, solo cierra la hoja: el nombre nuevo entra en el borrador y se guarda con el Guardar de arriba.
+    <h3>Tres versiones de la tarjeta</h3>
+    <b>Datos en línea</b> es la más sobria y la que mejor aguanta nombres largos. <b>Cifras</b> se parece más a un panel y da más sensación de «producto». <b>Filo lima</b> añade una marca de identidad sin teñir el fondo entero como el Resumen de hoy.
+    <h3>Del entrenador</h3>
+    Con «Del entrenador», la ceja añade «· por Marta» en azul, el color de cliente que ya usa la app, y el lápiz desaparece si no se puede editar.
+    <h3>Deshacer</h3>
+    Pulsa <b>Eliminar</b> o <b>Quitar</b>: la fila se va al momento y el toast da 5 segundos, con la barra vaciándose, para deshacerlo. Es más alto y ancho que el toast de hoy para que «Deshacer» se pueda pulsar bien, y va abajo, donde está el pulgar. Borrar otra cosa con el toast fuera cierra el anterior y abre uno nuevo.
+  </div>
+</div>
+
+<script>
+  const wrap = document.getElementById('wrap');
+  document.querySelectorAll('[data-v]').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('[data-v]').forEach((x) => x.classList.toggle('on', x === b));
+    wrap.className = 'wrap ' + b.dataset.v;
+  });
+  document.querySelectorAll('[data-o]').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('[data-o]').forEach((x) => x.classList.toggle('on', x === b));
+    const tr = b.dataset.o === 'trainer';
+    document.querySelectorAll('.by').forEach((e) => e.innerHTML = tr ? ' <i>· por Marta</i>' : '');
+    document.querySelectorAll('.pen').forEach((e) => e.style.display = tr ? 'none' : '');
+  });
+
+  document.querySelectorAll('.phone').forEach((p) => {
+    const sc = p.querySelector('.scroll'), hdr = p.querySelector('.hdr'), card = p.querySelector('.idc');
+    sc.addEventListener('scroll', () => hdr.classList.toggle('folded', sc.scrollTop > card.offsetTop + card.offsetHeight - 30));
+
+    const veil = p.querySelector('.veil'), sheet = p.querySelector('.sheet');
+    const open = (v) => { veil.classList.toggle('show', v); sheet.classList.toggle('show', v); };
+    p.querySelector('.pen').onclick = () => open(true);
+    veil.onclick = () => open(false);
+    const input = sheet.querySelector('input'), cnt = sheet.querySelector('.cnt');
+    input.oninput = () => cnt.textContent = `${input.value.length}/43`;
+    sheet.querySelector('[data-close]').onclick = () => {
+      const cls = p.id === 'p1' ? '.pname' : '.sname';
+      if (input.value.trim()) p.querySelectorAll(cls).forEach((e) => e.textContent = input.value.trim());
+      open(false);
+    };
+
+    const toast = p.querySelector('.utoast'), msg = toast.querySelector('.msg');
+    let last = null, timer = null;
+    p.querySelectorAll('[data-del]').forEach((x) => x.onclick = () => {
+      const row = x.closest('.card, .ex');
+      row.classList.add('gone');
+      last = row;
+      msg.innerHTML = `<b>${x.dataset.del}</b> ${row.classList.contains('card') ? 'eliminada' : 'quitado'}`;
+      toast.classList.remove('run'); void toast.offsetWidth;
+      toast.classList.add('show', 'run');
+      clearTimeout(timer);
+      timer = setTimeout(() => toast.classList.remove('show', 'run'), 5000);
+    });
+    toast.querySelector('.undo').onclick = () => {
+      last?.classList.remove('gone');
+      clearTimeout(timer); toast.classList.remove('show', 'run');
+    };
+  });
+</script>
+</body>
+</html>

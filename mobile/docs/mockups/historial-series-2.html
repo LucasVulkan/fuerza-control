@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Series del historial v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap">
+<style>
+/* Tokens del tema formaFit (mobile/src/themes.js) y escala de mobile/src/theme.js */
+:root{
+  color-scheme:dark;
+  --bg:#0f0f0f; --surface:#1f1f1f; --surface2:#272727; --surface3:#333; --text:#e6e6e6;
+  --mutedLight:#949494; --muted:#585858; --border:#3a3a3a;
+  --accent:#aae216; --onAccent:#000; --accent10:rgba(184,255,0,.1); --accent15:rgba(184,255,0,.15); --accent50:rgba(184,255,0,.5);
+  --orange:#fb923c; --orange15:rgba(251,146,60,.15); --orange20:rgba(251,146,60,.2);
+  --xs:2px; --sm:6px; --sm2:8px; --md:10px; --lg:15px; --xl:20px;
+  --r-xs:4px; --r-sm:6px; --r-md:10px;
+  --page:#080808; --ink-dim:#8a8a8a;
+  --inter:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--page); color:var(--text); font-family:var(--inter); -webkit-font-smoothing:antialiased; padding:40px 16px 90px}
+.wrap{max-width:1000px; margin:0 auto}
+h1{font:900 30px/1.15 var(--inter); letter-spacing:-.6px; margin:0 0 10px}
+h3{font:900 20px/1.2 var(--inter); margin:46px 0 6px}
+.lead{font:500 14px/1.65 var(--inter); color:var(--ink-dim); max-width:80ch; margin:0}
+.lead b{color:var(--text); font-weight:800}
+
+/* ── barra de controles ── */
+.ctl{position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; background:#121212; border-radius:14px; padding:12px 16px; margin:22px 0 0}
+.ctl .lbl{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.seg{display:flex; background:var(--surface2); border-radius:999px; padding:3px}
+.seg button{all:unset; cursor:pointer; padding:6px 14px; border-radius:999px; font:800 13px var(--inter); color:var(--mutedLight)}
+.seg button.on{background:var(--accent); color:var(--onAccent)}
+.ctl .hint{font:500 12.5px var(--inter); color:var(--ink-dim)}
+
+.common{background:#121212; border-radius:14px; padding:16px 20px; margin:14px 0 10px}
+.common p{margin:0; font:500 13px/1.6 var(--inter); color:var(--ink-dim)}
+.common p + p{margin-top:8px}
+.common b{color:var(--text)}
+
+.rail{display:flex; gap:34px; overflow-x:auto; padding:14px 0; align-items:flex-start}
+.col{flex:0 0 375px; width:375px; max-width:100%}
+.tag{font:800 12px var(--inter); letter-spacing:1.2px; text-transform:uppercase; color:var(--accent)}
+.col h2{font:900 18px/1.2 var(--inter); margin:6px 0 6px}
+.col .why{font:500 13px/1.55 var(--inter); color:var(--ink-dim); margin:0 0 14px; min-height:100px}
+.pro,.con{font:500 12.5px/1.5 var(--inter); color:var(--ink-dim); margin:10px 0 0; padding-left:14px; position:relative}
+.pro::before,.con::before{content:''; position:absolute; left:0; top:7px; width:6px; height:6px; border-radius:1px; background:var(--accent)}
+.con::before{background:var(--orange)}
+.pro b,.con b{color:var(--text)}
+
+/* ── teléfono ── */
+.phone{background:var(--bg); border-radius:24px; border:1px solid #232323; overflow:hidden; height:780px; display:flex; flex-direction:column}
+.scroll{flex:1; overflow-y:auto; scrollbar-width:none; padding-bottom:20px}
+.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex; justify-content:space-between; padding:12px 22px 4px; font:800 11px var(--inter); color:var(--mutedLight)}
+.hdr{display:flex; flex-direction:column; align-items:center; padding:var(--md) var(--lg)}
+.eyebrow{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--accent)}
+.htitle{font:800 18px/1.25 var(--inter); margin-top:2px}
+
+.group{display:grid; gap:var(--xs); padding:var(--sm) var(--lg) 0}
+.group > *{background:var(--surface); border-radius:2px}
+.group > :first-child{border-top-left-radius:var(--r-md); border-top-right-radius:var(--r-md)}
+.group > :last-child{border-bottom-left-radius:var(--r-md); border-bottom-right-radius:var(--r-md)}
+.group > .open{border-radius:var(--r-md); margin:4px 0}
+
+.ch{display:flex; align-items:center; gap:var(--md); padding:var(--md) var(--lg)}
+.ch .let{font:900 16px var(--inter); color:var(--accent); min-width:16px; text-align:center}
+.ch .tx{flex:1; min-width:0; display:grid; gap:3px}
+.ch .n{font:700 14px/1.35 var(--inter)}
+.ch .m{font:500 12px/1.35 var(--inter); color:var(--mutedLight); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ch .m .up{color:var(--accent)}
+.ch .d{font:500 12px var(--inter); color:var(--mutedLight)}
+
+/* ── resumen del entreno (sin cambios desde v1) ── */
+.sum{padding:0 var(--lg) var(--md); display:grid; gap:var(--md)}
+.tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--xs)}
+.tile{background:var(--surface2); padding:8px 6px 7px; text-align:center}
+.tile:first-child{border-radius:var(--r-sm) 2px 2px var(--r-sm)}
+.tile:last-child{border-radius:2px var(--r-sm) var(--r-sm) 2px}
+.tile b{display:block; font:800 15px/1.2 var(--inter); font-variant-numeric:tabular-nums; white-space:nowrap}
+.tile b small{font:700 11px var(--inter); color:var(--mutedLight)}
+.tile span{display:block; font:800 10px var(--inter); letter-spacing:1px; text-transform:uppercase; color:var(--mutedLight); margin-top:2px}
+.up{color:var(--accent)}
+.strip{display:flex; gap:5px; height:6px}
+.strip .ex{display:flex; gap:2px; flex:var(--n)}
+.strip i{flex:1; border-radius:2px; background:var(--accent)}
+.strip i.low{background:var(--orange)}
+.strip i.miss{background:none; box-shadow:inset 0 0 0 1px var(--muted)}
+.strip.thin{height:3px; gap:3px}
+.strip.thin .ex{gap:1px}
+.legend{display:flex; gap:14px; font:500 12px var(--inter); color:var(--mutedLight)}
+.legend em{font-style:normal; display:inline-flex; align-items:center; gap:5px}
+.legend em::before{content:''; width:8px; height:8px; border-radius:2px; background:var(--accent)}
+.legend em.low::before{background:var(--orange)}
+.legend em.miss::before{background:none; box-shadow:inset 0 0 0 1px var(--mutedLight)}
+.legend b{color:var(--text); font-weight:700}
+
+/* ── lista de ejercicios + separación conmutable ── */
+.exs{display:grid; padding:6px var(--lg) 6px}
+.exi{display:flex; gap:10px; padding:9px 0}
+.exi .idx{display:none; width:20px; height:20px; flex-shrink:0; border-radius:10px; background:var(--surface2); font:800 11px/20px var(--inter); text-align:center; color:var(--mutedLight); margin-top:1px}
+.exi .body{flex:1; min-width:0}
+body.sep-num .exi .idx{display:block}
+body.sep-line .exi + .exi{border-top:1px solid var(--surface2)}
+body.sep-both .exi .idx{display:block}
+body.sep-both .exi + .exi{border-top:1px solid var(--surface2)}
+.exh{display:flex; align-items:baseline; gap:8px; margin-bottom:7px}
+.exh .n{font:700 14px/1.35 var(--inter); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.exh .tg{font:500 12px var(--inter); color:var(--mutedLight); white-space:nowrap; font-variant-numeric:tabular-nums}
+.del{padding:6px var(--lg) 12px; font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:#ff5e58}
+.badge{font:800 10px var(--inter); letter-spacing:1px; padding:2px 6px; border-radius:var(--r-xs); background:var(--accent10); color:var(--accent)}
+
+/* chip de reps común (B, E): 24 de alto, tinte por estado */
+.r{min-width:24px; height:24px; padding:0 5px; border-radius:var(--r-xs); display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; background:var(--accent10); color:var(--accent); font:800 13px var(--inter); font-variant-numeric:tabular-nums}
+.r small{font:700 9px var(--inter); opacity:.55; margin-left:1px}
+.r.low{background:var(--orange15); color:var(--orange)}
+.r.miss{background:none; box-shadow:inset 0 0 0 1px var(--surface3); color:var(--muted)}
+.r.over::after{content:'↑'; font:900 10px var(--inter); margin-left:1px}
+.neutral .r{background:var(--surface2); color:var(--text)} .neutral .r.over::after{content:none}
+
+/* A · celdas finas */
+.A{display:flex; gap:3px; flex-wrap:wrap}
+.A .c{min-width:40px; padding:3px 5px 4px; border-radius:var(--r-xs); background:var(--accent10); text-align:center}
+.A .c i{display:block; font:500 10px/1.25 var(--inter); font-style:normal; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+.A .c i.chg{color:var(--mutedLight); font-weight:700}
+.A .c b{display:block; font:800 14px/1.2 var(--inter); color:var(--accent); font-variant-numeric:tabular-nums; white-space:nowrap}
+.A .c b small{font:700 9px var(--inter); opacity:.55; margin-left:1px}
+.A .c.low{background:var(--orange15)} .A .c.low b{color:var(--orange)}
+.A .c.miss{background:none; box-shadow:inset 0 0 0 1px var(--surface3)} .A .c.miss b{color:var(--muted)}
+.A .c.over b::after{content:'↑'; font:900 10px var(--inter); vertical-align:3px; margin-left:1px}
+.A.neutral .c{background:var(--surface2)} .A.neutral .c b{color:var(--text)} .A.neutral .c.over b::after{content:none}
+
+/* B · grupos con raya: peso en texto, chips, raya vertical entre pesos; sin cápsula de fondo */
+.B{display:flex; align-items:center; flex-wrap:wrap; row-gap:6px}
+.B .g{display:flex; align-items:center; gap:3px}
+.B .g + .g{margin-left:9px; padding-left:9px; border-left:1px solid var(--surface3)}
+.B .w{font:700 13px var(--inter); color:var(--text); margin-right:5px; white-space:nowrap; font-variant-numeric:tabular-nums}
+.B .w small{font:500 11px var(--inter); color:var(--mutedLight); margin-left:1px}
+
+/* E · corchete de peso: el peso encima, con una raya que abarca sus series */
+.E{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end}
+.E .g{display:flex; flex-direction:column; gap:3px}
+/* la etiqueta no ensancha el grupo: manda el ancho de los chips */
+.E .wl{width:0; min-width:100%; overflow:visible; white-space:nowrap; font:700 11px var(--inter); color:var(--text); font-variant-numeric:tabular-nums; padding-left:1px}
+.E .rs{display:flex; gap:3px; position:relative; padding-top:5px; border-top:1px solid var(--surface3)}
+.E .rs::before,.E .rs::after{content:''; position:absolute; top:-1px; width:1px; height:4px; background:var(--surface3)}
+.E .rs::before{left:0} .E .rs::after{right:0}
+.E .g.miss .rs{border-top-color:transparent} .E .g.miss .rs::before,.E .g.miss .rs::after{content:none}
+
+/* F · una fila por ejercicio: nombre a la izquierda, series a la derecha en columnas fijas */
+.F .exi{padding:8px 0}
+.F .fr{display:grid; grid-template-columns:112px 1fr; gap:10px; align-items:center}
+.F .fn{min-width:0}
+.F .fn .n{display:block; font:700 13px/1.3 var(--inter)}
+.F .fn .tg{display:block; font:500 11px/1.3 var(--inter); color:var(--mutedLight); margin-top:1px}
+.F .A .c{min-width:36px; padding:2px 4px 3px}
+.F .A .c b{font-size:13px}
+
+/* ficha de ejercicio */
+.ses{padding:var(--md) var(--lg) 12px; display:grid; gap:8px}
+.ses .top{display:flex; align-items:center; gap:8px}
+.ses .top .dt{flex:1; font:700 13px var(--inter)}
+.ses .top .dl{font:700 12px var(--inter); color:var(--accent)}
+.ses .top .dl.dn{color:var(--orange)}
+.pr{font:900 10px var(--inter); padding:2px 6px; border-radius:var(--r-xs); background:var(--accent); color:var(--onAccent)}
+.chart{margin:4px var(--lg) 10px; height:150px; border-radius:var(--r-md); background:var(--surface); display:grid; place-items:center; font:500 12px var(--inter); color:var(--muted)}
+.caps{font:800 12px var(--inter); letter-spacing:1.6px; text-transform:uppercase; color:var(--mutedLight); padding:6px var(--lg) 0}
+.lt{background:var(--surface); border-radius:var(--r-md); padding:12px var(--lg); display:grid; gap:8px}
+.lt .caps{padding:0}
+</style>
+</head>
+<body class="sep-line">
+<div class="wrap">
+  <h1>Series del historial · v2</h1>
+  <p class="lead">Sigue de la v1 (<b>historial-series.html</b>). <b>A</b> adelgazada, <b>B</b> sin cápsulas y con jerarquía, y dos alternativas nuevas en lugar de la frase y las barras: <b>E</b>, que mezcla las dos que gustaron, y <b>F</b>, una fila por ejercicio. Mismos datos que la v1.</p>
+
+  <div class="ctl">
+    <span class="lbl">Entre ejercicios</span>
+    <div class="seg" id="sepSeg">
+      <button data-v="sep-none">Nada</button>
+      <button data-v="sep-num">Número</button>
+      <button data-v="sep-line" class="on">Separador</button>
+      <button data-v="sep-both">Los dos</button>
+    </div>
+    <span class="hint">Cambia todos los teléfonos del historial a la vez.</span>
+  </div>
+
+  <div class="common">
+    <p><b>Menos ruido en todas</b>: el tinte de «en objetivo» baja (de 20 % a 10 %) para que el nombre del ejercicio mande; el color fuerte queda para el número. El peso repetido se apaga, y solo se lee el que cambia. El RPE va pegado y al 55 %: está, pero no compite.</p>
+    <p><b>Jerarquía de tres niveles</b>: nombre (14 Bold, blanco) › peso (13 Bold, blanco; o gris en las celdas) › reps (color de estado). Antes el peso iba en lima y competía con las reps.</p>
+  </div>
+
+  <h3>En el historial</h3>
+  <div class="rail" id="railHist"></div>
+
+  <h3>En la ficha de ejercicio</h3>
+  <p class="lead">Progreso › Ejercicios › Press banca.</p>
+  <div class="rail" id="railFicha"></div>
+
+  <h3>La última vez, durante el entreno</h3>
+  <p class="lead">Versión neutra.</p>
+  <div class="rail" id="railLast"></div>
+</div>
+
+<script>
+// [peso, reps, rpe?] · null = serie planificada sin hacer · peso 0 = peso corporal
+const SESSION = [
+  { n:'Press banca',              t:[4,6,8],   s:[[80,8],[80,8,8],[85,6,9],[85,5,9]] },
+  { n:'Remo con barra',           t:[4,8,10],  s:[[60,10],[65,10],[70,8],[70,8,9]] },
+  { n:'Press militar',            t:[3,8,10],  s:[[40,11],[42.5,9],[45,7]] },
+  { n:'Fondos',                   t:[3,10,12], s:[[0,12],[0,11],[0,9]] },
+  { n:'Aperturas con mancuernas', t:[4,12,15], s:[[14,15],[14,14],[16,12],null] },
+  { n:'Plancha',                  t:[3,30,45], s:[[0,45],[0,40],null], time:true },
+];
+const FICHA = [
+  { d:'Hoy · 16 oct', dl:'+5 kg', pr:true, s:[[80,8],[80,8,8],[85,6,9],[85,5,9]] },
+  { d:'13 oct', dl:'+2,5 kg', s:[[77.5,8],[80,7],[80,6],[80,6]] },
+  { d:'9 oct', dl:'−2,5 kg', dn:true, s:[[77.5,8],[77.5,8],[77.5,7],null] },
+  { d:'6 oct', dl:'', s:[[80,6],[80,5],[75,8],[75,8]] },
+];
+const BENCH_T = [4,6,8];
+
+const fmtW = (w) => String(w).replace('.', ',');
+const state = (set, [, min, max]) => !set ? 'miss' : set[1] < min ? 'low' : set[1] > max ? 'ok over' : 'ok';
+const repTxt = (set, ex) => set[1] + (ex.time ? 's' : '');
+const target = (ex) => `${ex.t[0]} × ${ex.t[1]}–${ex.t[2]}${ex.time ? ' s' : ''}`;
+const padded = (ex) => Array.from({ length: Math.max(ex.t[0], ex.s.length) }, (_, i) => ex.s[i] ?? null);
+const rpe = (set) => set[2] ? `<small>@${set[2]}</small>` : '';
+const chip = (set, ex, neutral) => !set ? `<span class="r miss">—</span>` : `<span class="r ${neutral ? '' : state(set, ex.t)}">${repTxt(set, ex)}${rpe(set)}</span>`;
+// series consecutivas con el mismo peso; las no hechas van en su propio grupo
+function groups(ex) {
+  const out = [];
+  padded(ex).forEach((set) => {
+    const key = set ? set[0] : 'miss';
+    const last = out[out.length - 1];
+    if (last && last.key === key) last.sets.push(set); else out.push({ key, sets: [set] });
+  });
+  return out;
+}
+
+// ── A · celdas finas ──
+function A(ex, neutral) {
+  let prev;
+  return `<div class="A ${neutral ? 'neutral' : ''}">` + padded(ex).map((set) => {
+    if (!set) return `<div class="c miss"><i>&nbsp;</i><b>—</b></div>`;
+    const chg = set[0] !== prev; prev = set[0];
+    const w = set[0] === 0 ? (ex.time ? '&nbsp;' : 'PC') : fmtW(set[0]);
+    return `<div class="c ${neutral ? '' : state(set, ex.t)}"><i class="${chg ? 'chg' : ''}">${w}</i><b>${repTxt(set, ex)}${rpe(set)}</b></div>`;
+  }).join('') + `</div>`;
+}
+
+// ── B · grupos con raya ──
+function B(ex, neutral) {
+  return `<div class="B ${neutral ? 'neutral' : ''}">` + groups(ex).map((g) => {
+    const w = g.key === 'miss' ? '' : g.key === 0 ? (ex.time ? '' : '<span class="w">PC</span>') : `<span class="w">${fmtW(g.key)}<small>kg</small></span>`;
+    return `<span class="g">${w}${g.sets.map((s) => chip(s, ex, neutral)).join('')}</span>`;
+  }).join('') + `</div>`;
+}
+
+// ── E · corchete de peso ──
+function E(ex, neutral) {
+  return `<div class="E ${neutral ? 'neutral' : ''}">` + groups(ex).map((g) => {
+    const w = g.key === 'miss' || (g.key === 0 && ex.time) ? '&nbsp;' : g.key === 0 ? 'PC' : fmtW(g.key);
+    return `<div class="g ${g.key === 'miss' || (g.key === 0 && ex.time) ? 'miss' : ''}"><span class="wl">${w}</span><div class="rs">${g.sets.map((s) => chip(s, ex, neutral)).join('')}</div></div>`;
+  }).join('') + `</div>`;
+}
+
+// ── piezas comunes ──
+function strip(exs, thin) {
+  return `<div class="strip ${thin ? 'thin' : ''}">` + exs.map((ex) =>
+    `<div class="ex" style="--n:${padded(ex).length}">` + padded(ex).map((s) => `<i class="${state(s, ex.t).split(' ')[0]}"></i>`).join('') + `</div>`
+  ).join('') + `</div>`;
+}
+function summary() {
+  const c = { ok: 0, low: 0, miss: 0 };
+  SESSION.forEach((ex) => padded(ex).forEach((s) => c[state(s, ex.t).split(' ')[0]]++));
+  return `<div class="sum">
+    <div class="tiles">
+      <div class="tile"><b>58<small> min</small></b><span>Duración</span></div>
+      <div class="tile"><b>${c.ok + c.low}<small>/${c.ok + c.low + c.miss}</small></b><span>Series</span></div>
+      <div class="tile"><b>8.420<small> kg</small></b><span>Vol. <em class="up" style="font-style:normal">+6%</em></span></div>
+      <div class="tile"><b>8</b><span>RPE</span></div>
+    </div>
+    ${strip(SESSION)}
+    <div class="legend"><em><b>${c.ok}</b> en objetivo</em><em class="low"><b>${c.low}</b> por debajo</em><em class="miss"><b>${c.miss}</b> sin hacer</em></div>
+  </div>`;
+}
+const head = (l, n, m, d, exs) => `<div class="ch"><span class="let">${l}</span><div class="tx"><span class="n">${n}</span><span class="m">${m}</span>${exs ? strip(exs, true) : ''}</div><span class="d">${d}</span></div>`;
+const LEG = [{ t:[4,5,6], s:[[100,6],[100,6],[105,5],[105,5]] }, { t:[3,8,10], s:[[80,10],[80,9],[80,8]] }, { t:[3,10,12], s:[[160,12],[160,12],[180,10]] }, { t:[3,12,15], s:[[60,15],[60,15],[60,14]] }];
+const PULL = [{ t:[4,6,8], s:[[0,8],[0,7],[0,5],null] }, { t:[3,8,10], s:[[30,10],[30,9],null] }, { t:[3,10,12], s:[[14,12],[14,10],[14,8]] }];
+
+// un ejercicio: nombre + objetivo arriba y las series debajo; F los pone en la misma fila
+function exItem(ex, i, p) {
+  const idx = `<span class="idx">${i + 1}</span>`;
+  if (p.row) return `<div class="exi">${idx}<div class="body fr"><div class="fn"><span class="n">${ex.n}</span><span class="tg">${target(ex)}</span></div>${p.f(ex)}</div></div>`;
+  return `<div class="exi">${idx}<div class="body"><div class="exh"><span class="n">${ex.n}</span><span class="tg">${target(ex)}</span></div>${p.f(ex)}</div></div>`;
+}
+function phoneHist(p) {
+  return `<div class="phone"><div class="sb"><span>9:41</span><span>●●● 5G</span></div>
+    <div class="hdr"><span class="eyebrow">Progreso</span><span class="htitle">Historial</span></div>
+    <div class="scroll"><div class="group">
+      <div class="open">
+        ${head('B', 'Empuje', '19/21 series · RPE 8 · <span class="up">+6%</span>', 'Hoy')}
+        ${summary()}
+        <div class="exs ${p.row ? 'F' : ''}">
+          ${SESSION.map((ex, i) => exItem(ex, i, p)).join('')}
+          <div class="exi"><span class="idx">7</span><div class="body"><div class="exh" style="margin-bottom:4px"><span class="badge">AMRAP</span><span class="n">Finisher</span></div><div style="font:500 13px var(--inter); color:var(--text)">5 rondas + 7 reps · 10 min</div></div></div>
+        </div>
+        <div class="del">Borrar sesión</div>
+      </div>
+      ${head('A', 'Pierna', '13/13 series · RPE 9 · <span class="up">+3%</span>', '14 oct', LEG)}
+      ${head('C', 'Tirón', '8/10 series · RPE 7', '12 oct', PULL)}
+    </div></div></div>`;
+}
+function phoneFicha(p) {
+  return `<div class="phone"><div class="sb"><span>9:41</span><span>●●● 5G</span></div>
+    <div class="hdr"><span class="eyebrow">Ejercicio</span><span class="htitle">Press banca</span></div>
+    <div class="scroll"><div class="chart">gráfica (sin cambios)</div><div class="caps">Sesiones · objetivo ${target({ t: BENCH_T })}</div>
+    <div class="group">${FICHA.map((f) => `<div class="ses"><div class="top"><span class="dt">${f.d}</span>${f.pr ? '<span class="pr">PR</span>' : ''}${f.dl ? `<span class="dl ${f.dn ? 'dn' : ''}">${f.dl}</span>` : ''}</div>${p.f({ t: BENCH_T, s: f.s })}</div>`).join('')}</div>
+    </div></div>`;
+}
+const lastTime = (p) => `<div class="lt"><div class="caps">La última vez · 13 oct</div>${p.f({ t: BENCH_T, s: FICHA[1].s }, true)}</div>`;
+
+const PROPS = [
+  { k:'A', f:A, title:'Celdas finas',
+    why:'Las celdas de la v1 a dos tercios: 40 de ancho y 32 de alto (antes 50 × 44), reps a 14 en vez de 17, esquinas de 4. El peso arriba en 10, gris, y solo se aviva cuando cambia.',
+    pro:'Sigue siendo <b>una fila por ejercicio</b> y la que mejor se cuenta: una caja, una serie.',
+    con:'Con todo el peso igual, <b>se repite el número</b> en cada celda (apagado, pero está).' },
+  { k:'B', f:B, title:'Grupos con raya',
+    why:'Fuera las cápsulas grises: el peso es texto blanco y una raya vertical fina separa un peso del siguiente. Los chips bajan a 24 de alto y a la mitad de tinte. Menos cajas dentro de cajas.',
+    pro:'<b>El peso solo se escribe una vez</b>; la raya marca el cambio sin añadir fondo.',
+    con:'Con un peso por serie la fila es «peso chip | peso chip | peso chip»: <b>se alarga</b>.' },
+  { k:'E', f:E, title:'Corchete de peso', rec:true,
+    why:'Mezcla de A y B. El peso va encima (solo el número, como en A), con un corchete que abarca justo las series que se hicieron con él; debajo, los chips. Se lee como una partitura: arriba el peso, abajo lo que salió.',
+    pro:'<b>El grupo se ve por la raya</b>, no por un fondo, y el peso no se repite. Los chips quedan alineados en una sola línea.',
+    con:'Dos líneas por ejercicio (como A) y <b>la raya pide al menos dos series</b> para lucir; con una sola es casi un punto.' },
+  { k:'F', f:A, row:true, title:'Una fila por ejercicio',
+    why:'El nombre deja de ir encima: columna fija de 112 a la izquierda (nombre y objetivo) y las celdas finas a la derecha. Todas las series empiezan a la misma altura, como una tabla.',
+    pro:'<b>La más corta</b>: el historial abierto mide casi la mitad, y se compara de un ejercicio a otro de un vistazo.',
+    con:'Nombres largos <b>se parten en dos líneas</b>, y con 6 series las celdas saltan de línea.' },
+];
+
+const col = (p, body, intro) => `<div class="col">${intro
+  ? `<span class="tag">${p.k}${p.rec ? ' · recomendada' : ''}</span><h2>${p.title}</h2><p class="why">${p.why}</p>`
+  : `<span class="tag">${p.k} · ${p.title}</span><div style="height:10px"></div>`}${body}${intro ? `<p class="pro">${p.pro}</p><p class="con">${p.con}</p>` : ''}</div>`;
+railHist.innerHTML  = PROPS.map((p) => col(p, phoneHist(p), true)).join('');
+railFicha.innerHTML = PROPS.filter((p) => !p.row).map((p) => col(p, phoneFicha(p))).join('');
+railLast.innerHTML  = PROPS.filter((p) => !p.row).map((p) => col(p, lastTime(p))).join('');
+
+sepSeg.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  sepSeg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+  document.body.className = b.dataset.v;
+});
+</script>
+</body>
+</html>

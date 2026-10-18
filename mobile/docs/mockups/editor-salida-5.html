@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salida del editor v5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070707; color: #e6e6e6; font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: #949494; font: 500 14px/1.5 Inter; max-width: 900px; margin-bottom: 18px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: #585858; width: 90px; }
+  .ctl button { background: #272727; color: #e6e6e6; border: 1px solid #3a3a3a; border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: #aae216; color: #aae216; }
+  .wrap { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-top: 14px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .col > .cap { font: 800 12px Inter; letter-spacing: 1.6px; color: #949494; text-transform: uppercase; }
+  .note { max-width: 900px; color: #949494; font: 500 13px/1.55 Inter; margin-top: 26px; columns: 2 380px; column-gap: 32px; }
+  .note h3 { font: 800 14px Inter; color: #e6e6e6; margin: 0 0 6px; break-after: avoid; }
+  .note p { margin-bottom: 16px; break-inside: avoid; }
+  .note b { color: #e6e6e6; }
+
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000; --red: #ff5e58;
+    width: 360px; height: 740px; background: #000; border-radius: 34px; border: 8px solid #1b1b1b;
+    position: relative; overflow: hidden; flex: none;
+  }
+  /* lo que asoma detrás cuando el editor es una hoja */
+  .under { position: absolute; left: 14px; right: 14px; top: 14px; height: 60px; border-radius: 14px 14px 0 0; background: #191919; display: none;
+    padding: 12px 14px; font: 800 12px Inter; letter-spacing: 1.6px; color: #4a4a4a; }
+  .page { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; }
+  .pSheet .under { display: block; }
+  .pSheet .page { top: 26px; border-radius: 16px 16px 0 0; }
+
+  .hdr { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 15px; flex: none; }
+  .cancel { font: 900 14px Inter; color: var(--mutedLight); cursor: pointer; flex: 1; }
+  .back { flex: 1; display: flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; }
+  .back svg { flex: none; }
+  .back span { font: 700 14px Inter; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ok { width: 40px; height: 32px; display: flex; align-items: center; justify-content: flex-end; cursor: pointer; flex: none; }
+  .okTxt { display: none; min-width: 72px; height: 32px; padding: 0 14px; border-radius: 999px; font: 900 14px Inter; align-items: center; justify-content: center;
+    background: var(--surface2); color: var(--mutedLight); cursor: pointer; flex: none; }
+  .dirty .okTxt { background: var(--accent); color: #000; }
+  .cTxt .ok { display: none; } .cTxt .okTxt { display: flex; }
+
+  /* título que aparece al hacer scroll, centrado; «EDITANDO» en la base a pantalla completa */
+  .hdr { position: relative; border-bottom: 1px solid transparent; transition: border-color .2s; }
+  .hdr.folded { border-bottom-color: #262626; }
+  .mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 180px; text-align: center; pointer-events: none; }
+  .mid .e { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--accent); text-transform: uppercase; white-space: nowrap; }
+  .mid .t { font: 700 14px Inter; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mid .f { opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; }
+  .mid .base { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); opacity: 0; transition: opacity .2s; }
+  .pFull .mid .base { opacity: 1; }
+  .hdr.folded .mid .f { opacity: 1; transform: none; }
+  .hdr.folded .mid .base { opacity: 0; }
+  /* plegada, el destino del ‹ se recoge al chevron solo, como en iOS cuando no cabe */
+  .back span { transition: opacity .15s; }
+  .hdr.folded .back span { opacity: 0; }
+  .scroll { flex: 1; overflow-y: auto; padding: 4px 15px 320px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  /* tarjeta gris */
+  .idc { position: relative; background: var(--surface2); border-radius: 16px; padding: 13px 15px 13px 18px; }
+  .idc .eb { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--accent); text-transform: uppercase; }
+  .idc .nm { font: 800 24px/1.05 'Barlow Condensed'; margin: 4px 44px 0 0; }
+  .idc .nums { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin-top: 3px; }
+  .idc .nums span { font: 500 12px Inter; color: var(--mutedLight); }
+  .idc .nums b { font: italic 800 16px/1 'Barlow Condensed'; color: var(--text); margin-right: 3px; }
+  .idc .pen { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 10px; background: var(--surface);
+    display: flex; align-items: center; justify-content: center; }
+
+  .caps { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--mutedLight); }
+  .lbl { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 0 10px; }
+  .lbl a { font: 800 14px Inter; color: var(--accent); }
+  .tiles { display: flex; gap: 8px; }
+  .tile { flex: 0 0 78px; height: 60px; border-radius: 14px; background: var(--surface); padding: 8px 10px; display: flex; flex-direction: column; justify-content: space-between; }
+  .tile b { font: italic 800 24px/1 'Barlow Condensed'; } .tile span { font: 500 12px Inter; color: var(--mutedLight); }
+  .tile.on { background: var(--accent); } .tile.on b, .tile.on span { color: #000; }
+  .tile.add { border: 1.5px dashed var(--muted); background: none; align-items: center; justify-content: center; color: var(--accent); font: 900 20px Inter; flex-basis: 50px; }
+  .shead { margin: 16px 0 4px; }
+  .shead .br { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--accent); }
+  .shead .tt { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; }
+  .shead .tt b { font: italic 800 26px/1 'Barlow Condensed'; color: var(--accent); }
+  .shead .tt span { font: 800 18px Inter; letter-spacing: -.2px; }
+  .shead .m { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .card { background: var(--surface); border-radius: 16px; padding: 13px 15px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; cursor: pointer; }
+  .card .lt { font: italic 800 26px/1 'Barlow Condensed'; color: var(--accent); width: 20px; }
+  .card .t { font: 700 14px Inter; } .card .m { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .card .chg { margin-left: auto; font: 800 12px Inter; color: var(--accent); }
+  .seg { display: flex; background: var(--surface); border-radius: 10px; padding: 3px; margin: 12px 0; }
+  .seg div { flex: 1; text-align: center; padding: 7px 0; border-radius: 8px; font: 800 14px Inter; color: var(--mutedLight); }
+  .seg .on { background: var(--surface2); color: var(--text); }
+  .ex { background: var(--surface); border-radius: 16px; padding: 12px 15px; margin-bottom: 8px; display: flex; gap: 12px; align-items: center; cursor: pointer; }
+  .ex .n { font: italic 800 20px 'Barlow Condensed'; color: var(--muted); }
+  .ex .t { font: 700 14px Inter; } .ex .m { font: 500 12px Inter; color: var(--mutedLight); margin-top: 3px; }
+  .ex .m.ch { color: var(--accent); }
+  .setrow { display: flex; gap: 8px; margin-bottom: 8px; }
+  .setrow div { flex: 1; background: var(--surface); border-radius: 10px; padding: 10px 12px; }
+  .setrow small { display: block; font: 500 12px Inter; color: var(--mutedLight); }
+  .setrow b { font: 800 16px Inter; }
+  .setrow b.ch { color: var(--accent); }
+
+  .veil { position: absolute; inset: 0; background: rgba(0,0,0,.6); z-index: 5; display: none; align-items: center; justify-content: center; padding: 0 26px; }
+  .veil.show { display: flex; }
+  .dlg { background: var(--surface); border-radius: 16px; padding: 20px; width: 100%; }
+  .dlg .t { font: 800 18px Inter; letter-spacing: -.2px; }
+  .dlg .s { font: 800 12px Inter; color: var(--accent); margin-top: 6px; }
+  .dlg .b { font: 500 14px/21px Inter; color: var(--mutedLight); margin: 10px 0 18px; }
+  .dlg .p { background: var(--accent); color: #000; border-radius: 10px; text-align: center; padding: 14px; font: 900 14px Inter; cursor: pointer; }
+  .dlg .d { text-align: center; padding: 14px 0 2px; font: 800 12px Inter; letter-spacing: 1.6px; color: var(--red); text-transform: uppercase; cursor: pointer; }
+  .exitmsg { position: absolute; inset: 0; background: var(--bg); z-index: 4; display: none; align-items: center; justify-content: center;
+    text-align: center; color: var(--mutedLight); font: 500 14px/1.5 Inter; padding: 40px; }
+  .exitmsg.show { display: flex; }
+</style>
+</head>
+<body>
+<h1>Editor v5 — Cancelar en la base, ‹ con destino dentro</h1>
+<p class="lead">El sistema de hoy, con el chevron y el check, cambiando solo el botón de la izquierda. En la base del editor es <b>Cancelar</b>; dentro es <b>‹ y el nombre del nivel al que vuelves</b>. El check está en todos los niveles y siempre guarda y sale. Con «Hoja», el editor se presenta como una hoja que sube desde abajo, con la pantalla de antes asomando: así se ve desde fuera que estás en un modo.</p>
+
+<div class="ctl"><span>Presentación</span>
+  <button data-pr="pSheet" class="on">Hoja</button>
+  <button data-pr="pFull">Pantalla completa</button>
+</div>
+<div class="ctl"><span>Confirmar</span>
+  <button data-cf="cIcon" class="on">Check</button>
+  <button data-cf="cTxt">«Guardar»</button>
+</div>
+<div class="ctl"><span>Estado</span>
+  <button data-st="clean" class="on">Sin cambios</button>
+  <button data-st="dirty">Con cambios</button>
+  <button data-reset>Reiniciar</button>
+</div>
+
+<div class="wrap">
+  <div class="col">
+    <div class="cap">1 · Programa (base)</div>
+    <div class="phone" id="p1">
+      <div class="under">PROGRAMA</div>
+      <div class="page">
+        <div class="hdr">
+          <div class="mid"><div class="base e">Editando</div><div class="f"><div class="e">Programa</div><div class="t">Fuerza 4 días</div></div></div>
+          <div class="cancel" data-act="cancel">Cancelar</div>
+          <div class="ok" data-act="save"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
+          <div class="okTxt" data-act="save">Guardar</div>
+        </div>
+        <div class="scroll">
+          <div class="idc">
+            <div class="eb">Programa</div>
+            <div class="nm">Fuerza 4 días</div>
+            <div class="nums"><span><b>12</b>semanas</span><span><b>4</b>sesiones/sem</span><span><b>3</b>etapas</span></div>
+            <div class="pen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div>
+          </div>
+          <div class="lbl"><span class="caps">Etapas</span><a>Ver plan</a></div>
+          <div class="tiles">
+            <div class="tile on"><b>1</b><span>sem 1-4</span></div>
+            <div class="tile"><b>2</b><span>sem 5-8</span></div>
+            <div class="tile"><b>3</b><span>sem 9-12</span></div>
+            <div class="tile add">+</div>
+          </div>
+          <div class="shead"><div class="br">EN CURSO · SEMANA 3</div><div class="tt"><b>1</b><span>Base de fuerza</span></div><div class="m">4 semanas · 4 sesiones/semana</div></div>
+          <div class="lbl"><span class="caps">Sesiones de la etapa</span></div>
+          <div class="card"><div class="lt">A</div><div><div class="t">Torso pesado</div><div class="m">6 ejercicios · 18 series · 55 min</div></div><div class="chg dirtyonly">editada</div></div>
+          <div class="card"><div class="lt">B</div><div><div class="t">Pierna</div><div class="m">5 ejercicios · 16 series · 50 min</div></div></div>
+          <div class="card"><div class="lt">C</div><div><div class="t">Torso volumen</div><div class="m">7 ejercicios · 21 series · 60 min</div></div></div>
+        </div>
+      </div>
+      <div class="exitmsg"></div>
+      <div class="veil">
+        <div class="dlg">
+          <div class="t">¿Descartar los cambios?</div>
+          <div class="s">Fuerza 4 días</div>
+          <div class="b">El programa vuelve a como estaba al entrar en el editor.</div>
+          <div class="p" data-act="keep">Seguir editando</div>
+          <div class="d" data-act="discard">Descartar cambios</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">2 · Sesión</div>
+    <div class="phone" id="p2">
+      <div class="under">PROGRAMA</div>
+      <div class="page">
+        <div class="hdr">
+          <div class="mid"><div class="f"><div class="e">Sesión A · Etapa 1</div><div class="t">Torso pesado</div></div></div>
+          <div class="back" data-act="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>Fuerza 4 días</span></div>
+          <div class="ok" data-act="save"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
+          <div class="okTxt" data-act="save">Guardar</div>
+        </div>
+        <div class="scroll">
+          <div class="idc">
+            <div class="eb">Sesión A · Etapa 1</div>
+            <div class="nm">Torso pesado</div>
+            <div class="nums"><span><b>6</b>ejercicios</span><span><b>18</b>series</span><span><b>55</b>min</span></div>
+            <div class="pen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div>
+          </div>
+          <div class="seg"><div class="on">A</div><div>B</div><div>C</div><div>D</div></div>
+          <div class="lbl" style="margin-top:8px"><span class="caps">Ejercicios (6)</span></div>
+          <div class="ex"><div class="n">01</div><div><div class="t">Press banca</div><div class="m dirtyonly-m">4×5 · 3 min</div></div></div>
+          <div class="ex"><div class="n">02</div><div><div class="t">Remo con barra</div><div class="m">4×6 · 2 min</div></div></div>
+          <div class="ex"><div class="n">03</div><div><div class="t">Press militar</div><div class="m">3×8 · 2 min</div></div></div>
+          <div class="ex"><div class="n">04</div><div><div class="t">Dominadas</div><div class="m">3×máx · 2 min</div></div></div>
+          <div class="ex"><div class="n">05</div><div><div class="t">Fondos</div><div class="m">3×10 · 90 s</div></div></div>
+        </div>
+      </div>
+      <div class="exitmsg"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">3 · Ejercicio</div>
+    <div class="phone" id="p3">
+      <div class="under">PROGRAMA</div>
+      <div class="page">
+        <div class="hdr">
+          <div class="mid"><div class="f"><div class="e">Ejercicio 01</div><div class="t">Press banca</div></div></div>
+          <div class="back" data-act="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>Torso pesado</span></div>
+          <div class="ok" data-act="save"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aae216" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
+          <div class="okTxt" data-act="save">Guardar</div>
+        </div>
+        <div class="scroll">
+          <div class="idc">
+            <div class="eb">Ejercicio 01 · Sesión A</div>
+            <div class="nm">Press banca</div>
+            <div class="nums"><span><b class="dirtyonly-n">4</b>series</span><span><b>5</b>reps</span><span><b>3</b>min descanso</span></div>
+          </div>
+          <div class="lbl"><span class="caps">Series</span></div>
+          <div class="setrow"><div><small>Series</small><b class="dirtyonly-b">4</b></div><div><small>Reps</small><b>5</b></div><div><small>Descanso</small><b>3:00</b></div></div>
+          <div class="lbl"><span class="caps">Progresión</span></div>
+          <div class="card"><div><div class="t">Doble progresión</div><div class="m">+2,5 kg al llegar a 5 reps en todas</div></div></div>
+          <div class="lbl"><span class="caps">Variante</span></div>
+          <div class="card"><div><div class="t">Barra · banco plano</div><div class="m">Cambiar variante</div></div></div>
+        </div>
+      </div>
+      <div class="exitmsg"></div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <h3>El estándar</h3>
+  <p>Es como funciona editar dentro de un modal en iOS (Contactos, Calendario, Ajustes) y en las apps que lo copian. En la base hay <b>Cancelar</b> y confirmar; al entrar a un nivel, la izquierda pasa a <b>‹ título del anterior</b>, y confirmar se queda en su sitio. El nombre junto al chevron es lo que dice «estás dentro, y esto es a dónde vuelves». Cancelar, por eliminación, dice «estás en la base».</p>
+  <h3>¿Se confundirá el ‹ con el contrario del check?</h3>
+  <p>Menos que con el chevron solo. «‹ Fuerza 4 días» es un sitio y no una acción, y en iOS la gente lo tiene aprendido como «volver». Cancelar solo aparece en la base, así que los dos patrones no se mezclan. Y aunque alguien lo pulse pensando que cancela, no pierde nada: sube un nivel y ve Cancelar arriba.</p>
+  <h3>La hoja</h3>
+  <p>El editor entra <b>desde abajo</b> y queda como una hoja con la pantalla de antes asomando arriba; los niveles de dentro entran <b>desde la derecha</b>, dentro de la hoja. Vertical es «he entrado en un modo», horizontal es «he bajado un nivel». En React Navigation es la presentación de modal del stack nativo: en iOS se ve así de serie, y en Android se puede imitar con la animación desde abajo. Lo que asoma detrás es la pista más clara de que esto no es una pantalla más de la app.</p>
+  <h3>Check o «Guardar»</h3>
+  <p>El check es lo que hay hoy y ocupa poco. «Guardar» en texto se apaga sin cambios y se enciende al tocar algo, así que dice además si hay algo pendiente. El check no puede, salvo cambiando de color. Las dos cosas funcionan con el resto de la propuesta.</p>
+  <h3>Tarjeta</h3>
+  <p>Gris lisa (surface2). Las cifras bajan a 16 px y quedan a 3 px del nombre, con el texto a 12 como estaba. La ceja dice dónde estás dentro del programa (Sesión A · Etapa 1, Ejercicio 01 · Sesión A), así que la cabecera no tiene que repetirlo.</p>
+</div>
+
+<script>
+  const phones = [...document.querySelectorAll('.phone')];
+  let pr = 'pSheet', cf = 'cIcon', state = 'clean';
+  function apply() {
+    phones.forEach((p) => p.className = `phone ${pr} ${cf} ${state === 'dirty' ? 'dirty' : ''}`);
+    const d = state === 'dirty';
+    document.querySelectorAll('.dirtyonly').forEach((e) => e.style.display = d ? '' : 'none');
+    document.querySelectorAll('.dirtyonly-m').forEach((e) => { e.classList.toggle('ch', d); e.textContent = d ? '5×5 · 3 min' : '4×5 · 3 min'; });
+    document.querySelectorAll('.dirtyonly-n, .dirtyonly-b').forEach((e) => { e.textContent = d ? '5' : '4'; });
+    document.querySelectorAll('.dirtyonly-b').forEach((e) => e.classList.toggle('ch', d));
+  }
+  function reset() { phones.forEach((p) => { p.querySelector('.exitmsg').classList.remove('show'); p.querySelector('.veil')?.classList.remove('show'); }); }
+  function group(attr, set) {
+    document.querySelectorAll(`[data-${attr}]`).forEach((b) => b.onclick = () => {
+      document.querySelectorAll(`[data-${attr}]`).forEach((x) => x.classList.toggle('on', x === b));
+      set(b.dataset[attr]); reset(); apply();
+    });
+  }
+  group('pr', (v) => pr = v); group('cf', (v) => cf = v); group('st', (v) => state = v);
+  document.querySelector('[data-reset]').onclick = () => { state = 'clean'; document.querySelectorAll('[data-st]').forEach((x) => x.classList.toggle('on', x.dataset.st === 'clean')); reset(); apply(); };
+  function exit(p, msg) { const e = p.querySelector('.exitmsg'); e.textContent = msg; e.classList.add('show'); }
+  phones.forEach((p) => p.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => {
+    const a = el.dataset.act, veil = p.querySelector('.veil');
+    if (a === 'cancel') { reset(); state === 'dirty' ? veil.classList.add('show') : exit(p, 'Cierra el editor sin preguntar: no había nada que perder.'); }
+    if (a === 'keep') veil.classList.remove('show');
+    if (a === 'discard') { state = 'clean'; apply(); exit(p, 'Cierra el editor. El programa queda como estaba al entrar.'); }
+    if (a === 'save') { reset(); exit(p, state === 'dirty' ? 'Guarda, toast «Programa guardado» y la hoja baja: vuelves a donde la abriste.' : 'Sin cambios: cierra el editor.'); state = 'clean'; apply(); }
+    if (a === 'back') { reset(); exit(p, `Vuelve a «${el.querySelector('span').textContent}», en el mismo borrador. No se guarda ni se pierde nada.`); }
+  }));
+  phones.forEach((p) => {
+    const sc = p.querySelector('.scroll'), hdr = p.querySelector('.hdr'), card = p.querySelector('.idc');
+    sc.addEventListener('scroll', () => hdr.classList.toggle('folded', sc.scrollTop > card.offsetTop + card.offsetHeight - 20));
+  });
+  apply();
+</script>
+</body>
+</html>
