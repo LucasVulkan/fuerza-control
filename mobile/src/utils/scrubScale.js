@@ -14,6 +14,9 @@
  * ── LOS MANDOS ───────────────────────────────────────────────────────────────
  * Pasos a lo ancho, marcas y separación mínima de los números se afinan AQUÍ y
  * en ningún otro sitio (D1). `SCRUB_PAD` es el margen de la regla a cada lado.
+ *
+ * Las funciones marcadas con 'worklet' las llama también el gesto de SetRow
+ * desde el hilo de la interfaz: solo pueden usar otras funciones worklet.
  */
 
 export const SCRUB_PAD = 16;
@@ -52,8 +55,8 @@ export const SCRUB_CANCEL_DY   = 48;
 // «100» ~23. Con tres cifras la escala ya se abre (steps3) para que quepan.
 export const MIN_NUMBER_GAP = { two: 20, three: 32 };
 
-const round2 = (n) => Math.round(n * 100) / 100;
-const clamp  = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+const round2 = (n) => { 'worklet'; return Math.round(n * 100) / 100; };
+const clamp  = (n, lo, hi) => { 'worklet'; return Math.max(lo, Math.min(hi, n)); };
 const num    = (n) => (Number.isFinite(n) ? n : 0);
 const EPS    = 1e-9;
 
@@ -66,7 +69,7 @@ function numberEveryFor(labelEvery, step, px, gap) {
 }
 
 /** x (en el sistema de la fila) de un valor. */
-export const scrubXOf = (r, v) => r.originX + ((v - r.originValue) / r.step) * r.px;
+export const scrubXOf = (r, v) => { 'worklet'; return r.originX + ((v - r.originValue) / r.step) * r.px; };
 
 /**
  * Valor en una x: el múltiplo de `step` más cercano (rejilla ABSOLUTA: con 55,9
@@ -75,6 +78,7 @@ export const scrubXOf = (r, v) => r.originX + ((v - r.originValue) / r.step) * r
  * puede no estar en la rejilla: sin mover el dedo, el valor no cambia.
  */
 export function scrubValueAt(r, x) {
+  'worklet';
   if (!(r.px > 0) || Math.abs(x - r.originX) < r.px / 2 - EPS) return r.originValue;
   const v = r.originValue + ((x - r.originX) / r.px) * r.step;
   return clamp(round2(Math.round(v / r.step) * r.step), r.min, r.max);
@@ -171,13 +175,14 @@ export function scrubDiffText(value, initial) {
 }
 
 /** Distancia del dedo al borde más cercano de la fila y de qué lado cae (−1 izq, 1 der). */
-const edgeOf = (x, rowWidth) => (x <= rowWidth - x ? { d: x, side: -1 } : { d: rowWidth - x, side: 1 });
+const edgeOf = (x, rowWidth) => { 'worklet'; return x <= rowWidth - x ? { d: x, side: -1 } : { d: rowWidth - x, side: 1 }; };
 
 /**
  * Intensidad del indicador de borde, −1..1 (negativa = borde izquierdo),
  * cuantizada a décimas para no re-renderizar en cada píxel.
  */
 export function scrubEdge(x, rowWidth) {
+  'worklet';
   const { d, side } = edgeOf(x, rowWidth);
   const k = clamp((SCRUB_EDGE_FAR - d) / (SCRUB_EDGE_FAR - SCRUB_EDGE_NEAR), 0, 1);
   return side * Math.round(k * 10) / 10 + 0;
@@ -185,6 +190,7 @@ export function scrubEdge(x, rowWidth) {
 
 /** Hacia dónde avanza la regla: −1, 1, o 0 si el dedo no está a menos de NEAR del borde. */
 export function scrubPanDir(x, rowWidth) {
+  'worklet';
   const { d, side } = edgeOf(x, rowWidth);
   return d <= SCRUB_EDGE_NEAR + EPS ? side : 0;
 }

@@ -15,7 +15,8 @@
  *    blanco); indicadores lima de borde (peso y reps); en modo cancelar la capa
  *    baja a 0,4 y la burbuja enseña «Cancelar» (U10-10).
  *  - La marca y la burbuja no saltan de paso en paso: se deslizan hasta el valor
- *    nuevo en 70 ms (SNAP; el valor sí va por pasos).
+ *    nuevo en 70 ms (SCRUB_SNAP_MS; el valor sí va por pasos). En el entreno la
+ *    mueve el gesto desde el hilo de UI (`markX`); en ScrubDemo, la propia regla.
  *  - Las rayas van en `Ticks` con memo: solo se repintan cuando cambia la regla
  *    (al avanzar por un borde), no en cada paso. El número que ES el valor se
  *    pinta en lima ENCIMA del gris, en la misma x.
@@ -45,7 +46,8 @@ const TIMING = { duration: SCRUB_MS, easing: EASE };
 // de la casilla se ve en cuanto empieza a encoger, no cuando termina.
 const FADE_OUT = { duration: 120, easing: EASE };
 // Lo que tardan marca y burbuja en llegar al valor nuevo: se nota el paso sin el salto seco.
-const SNAP = { duration: 70, easing: Easing.out(Easing.quad) };
+export const SCRUB_SNAP_MS = 70;
+const SNAP = { duration: SCRUB_SNAP_MS, easing: Easing.out(Easing.quad) };
 
 // Burbuja: itemTitle (16/900), como la maqueta. Los anchos salen del cuerpo en em
 // (cifra tabular ≈ .66, punto/espacio ≈ .3, letra ≈ .7, VERSAL ≈ .76) con holgura;
@@ -125,6 +127,7 @@ export default function ScrubRuler({
   prevSource,   // 'coach' → objetivo en azul
   edge = 0,     // −1..1: intensidad del indicador de borde (negativa = izquierdo)
   cancel = false,
+  markX,        // shared value con la x de la marca, que mueve el gesto desde el hilo de UI (opcional)
 }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -144,8 +147,10 @@ export default function ScrubRuler({
 
   // La marca se pinta en la x del valor (ajustada al paso): o sea, sobre el dedo.
   const markerX = scrubXOf(ruler, value);
-  const markX   = useSharedValue(markerX);
-  useEffect(() => { markX.value = withTiming(markerX, SNAP); }, [markerX, markX]);
+  // Sin `markX` (ScrubDemo), la marca se anima aquí hacia el valor.
+  const ownX    = useSharedValue(markerX);
+  const mx      = markX ?? ownX;
+  useEffect(() => { if (!markX) ownX.value = withTiming(markerX, SNAP); }, [markerX, markX, ownX]);
   // Solo se ilumina el número que ES el valor, nunca el más cercano.
   const nearNum = scrubTicks(ruler).find((tk) => tk.numbered && Math.abs(tk.value - value) < 1e-6);
 
@@ -196,9 +201,9 @@ export default function ScrubRuler({
   }));
   const bubbleStyle = useAnimatedStyle(() => ({
     opacity: prog.value,
-    left: Math.max(0, Math.min(rowWidth - bubbleW, markX.value - bubbleW / 2)),
+    left: Math.max(0, Math.min(rowWidth - bubbleW, mx.value - bubbleW / 2)),
   }));
-  const markStyle = useAnimatedStyle(() => ({ transform: [{ translateX: markX.value }] }));
+  const markStyle = useAnimatedStyle(() => ({ transform: [{ translateX: mx.value }] }));
 
   return (
     <View pointerEvents="none" style={styles.root}>
