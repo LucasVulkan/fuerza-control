@@ -18,7 +18,7 @@
       "backgroundColor": "#0a0a0a"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.formastudio.formafit",
       "usesAppleSignIn": true,
       "infoPlist": {
