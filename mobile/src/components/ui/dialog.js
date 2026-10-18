@@ -16,9 +16,19 @@
  * Lo pinta `DialogHost`, montado una vez en la raíz (RootNavigator).
  */
 let listener = null;
+// Hasta cuándo hay una hoja (`DragSheet`) yéndose. En iOS un Modal no se
+// presenta mientras otro se va: el aviso que sale de una `SheetRow` (que cierra
+// la hoja y lanza la acción a la vez) no aparecía y su velo invisible dejaba la
+// pantalla sin responder. Así esperan todos los avisos, no cada llamador.
+let sheetGoneAt = 0;
 
 export function setDialogListener(fn) { listener = fn; }
 
+export function noteSheetClosing() { sheetGoneAt = Date.now() + 350; }
+
 export function showDialog(title, message, buttons, options) {
-  listener?.({ title, message, buttons, items: options?.items, subtitle: options?.subtitle });
+  const dialog = { title, message, buttons, items: options?.items, subtitle: options?.subtitle };
+  const wait   = sheetGoneAt - Date.now();
+  if (wait > 0) setTimeout(() => listener?.(dialog), wait);
+  else listener?.(dialog);
 }

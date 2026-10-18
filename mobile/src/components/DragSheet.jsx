@@ -23,6 +23,7 @@ import { spacing, borders, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { ArrowIcon } from './ui/EditorIcons';
 import { SheetContext } from './ui/sheetContext';
+import { noteSheetClosing } from './ui/dialog';
 import NavScrim from './ui/NavScrim';
 import Reanimated, {
   useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, interpolate, Extrapolation,
@@ -131,6 +132,7 @@ export default function DragSheet({ visible, onClose, title, action, doneLabel, 
   }, []);
 
   const close = () => {
+    noteSheetClosing();
     Animated.timing(translateY, {
       toValue: 900, duration: 240, useNativeDriver: true,
     }).start(() => { if (mounted.current) onCloseRef.current(); });
