@@ -27,6 +27,8 @@ import { recentExerciseRefs } from '../utils/exerciseLinks';
 import { isExerciseDone } from '../utils/exerciseStatus';
 import { sessionSlots } from '../utils/sessionSlots';
 import { useElapsedText } from '../components/ui/useElapsedText';
+import { activeSessionProgress } from '../utils/activeSession';
+import { confirmDiscardActive } from '../components/ui/confirmDiscard';
 import AdHocTargetSheet from '../components/workout/AdHocTargetSheet';
 import { backToMain } from '../navigation/navigationRef';
 import Reanimated, { SlideInRight, Easing } from 'react-native-reanimated';
@@ -217,6 +219,21 @@ function RestTimerFloat({ timer, onStop, bottomOffset }) {
 }
 
 
+// ── Minutos de la sesión ──────────────────────────────────────────────────────
+// Los minutos enteros desde `startedAt`. Repinta cada 15 s y solo este texto,
+// no la pantalla (como `useElapsedText`, que va al segundo).
+function ElapsedMinutes({ startedAt, style, suffix }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!startedAt) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  if (!startedAt) return null;
+  const min = Math.max(0, Math.floor((now - startedAt) / 60000));
+  return <Text style={style}>{suffix ? `${min} ${suffix}` : min}</Text>;
+}
+
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 export default function WorkoutScreen() {
@@ -231,6 +248,9 @@ export default function WorkoutScreen() {
   const [addSheetOpen, setAddSheetOpen]   = useState(false);
   // Ejercicio ad-hoc cuya línea de objetivo se ha pulsado.
   const [editingAdHoc, setEditingAdHoc]   = useState(null);
+  // Hoja «Terminar sesión», solo a medias (T09 §4).
+  const [finishOpen, setFinishOpen]       = useState(false);
+  const weightUnit = useWeightUnit();
 
   // Store state
   const activeSession      = useStore((s) => s.activeSession);
@@ -480,6 +500,22 @@ export default function WorkoutScreen() {
     : (isFreeTpl ? (template.name || t('freeSession.templateUnnamed')) : (template?.name ?? ''));
   const hasSessionNotes = (activeSession.notes?.trim().length ?? 0) > 0;
 
+  // Cierre: series (o bloques, si la sesión solo tiene bloques) y lo que queda.
+  const progress   = activeSessionProgress({ activeSession, sessionTemplates });
+  const byBlocks   = !!progress && progress.setsTotal === 0 && progress.blocksTotal > 0;
+  const closeRatio = !progress ? 0
+    : byBlocks ? progress.blocksDone / progress.blocksTotal
+      : progress.setsTotal ? progress.setsDone / progress.setsTotal : 0;
+  const blockById  = new Map([...(template?.blocks ?? []), ...freeBlocks].map((b) => [b.id, b]));
+  const pendingName = (item) => {
+    if (item.kind === 'block') {
+      const b = blockById.get(item.id);
+      return b?.name ?? (b ? t(`blocks.formats.${b.format}`) : item.id);
+    }
+    const def = allExercises[item.id];
+    return def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : item.id;
+  };
+
   function handleGoBack() {
     // When the app is killed mid-workout and relaunched, Workout is set as the
     // initial route (no back stack). goBack() would fail silently in that case.
@@ -502,6 +538,13 @@ export default function WorkoutScreen() {
 
   function handleDiscard() {
     discardSession(); // stops timer, resets session, navigates home via store ref
+  }
+
+  // Con todo hecho no hay nada que avisar: directo al resumen. A medias, la
+  // hoja dice qué se guarda y qué se queda sin hacer (T09 §4).
+  function handleFinish() {
+    if (progress?.allDone) handleSave();
+    else setFinishOpen(true);
   }
 
   if (!template && !isFree) {
@@ -680,9 +723,11 @@ export default function WorkoutScreen() {
 
           {/* Añadir — en la libre abre la hoja (ejercicio o bloque), porque no
               pasa por el editor de sesión; en una de plantilla va directa al
-              selector, que es lo único que se puede añadir sobre la marcha. */}
+              selector, que es lo único que se puede añadir sobre la marcha.
+              Es una tarjeta punteada DENTRO de la lista: el hueco para el
+              siguiente ejercicio, no un botón más del pie (T09 §3.1). */}
           <TouchableOpacity
-            style={styles.addBtn}
+            style={styles.addCard}
             onPress={() => (isFree ? setAddSheetOpen(true) : handleAddExercise())}
             activeOpacity={0.7}
           >
@@ -692,19 +737,46 @@ export default function WorkoutScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Save button */}
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={handleSave}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.saveBtnText}>{t('workout.saveSession').toUpperCase()}</Text>
-          </TouchableOpacity>
-
-          {/* Discard */}
-          <TouchableOpacity style={styles.discardBtn} onPress={handleDiscard}>
-            <Text style={styles.discardText}>{t('workout.discardSession')}</Text>
-          </TouchableOpacity>
+          {/* Cierre (T09 §3.2): cuánto llevas, Terminar y la papelera. Terminar
+              va en gris hasta que está todo hecho: acabar antes no parece la
+              acción esperada, pero no se esconde. Descartar siempre pregunta. */}
+          {progress && (
+            <View style={styles.closeCard}>
+              <View style={styles.closeTop}>
+                <Text style={styles.closeNum}>{byBlocks ? progress.blocksDone : progress.setsDone}</Text>
+                <Text style={styles.closeOf}>
+                  {t(byBlocks ? 'workout.closeOfBlocks' : 'workout.closeOfSets', { count: byBlocks ? progress.blocksTotal : progress.setsTotal })}
+                </Text>
+                {!activeSession.logOnly && (
+                  <ElapsedMinutes startedAt={activeSession.startedAt} style={styles.closeMin} suffix={t('workout.closeMinSuffix')} />
+                )}
+              </View>
+              <View style={styles.closeBar}>
+                <View style={[styles.closeBarFill, { width: `${Math.round(closeRatio * 100)}%` }]} />
+              </View>
+              <View style={styles.closeBtns}>
+                <TouchableOpacity
+                  style={[styles.finishBtn, progress.allDone && styles.finishBtnDone]}
+                  onPress={handleFinish}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.finishText, progress.allDone && styles.finishTextDone]}>{t('workout.finish')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.trashBtn}
+                  onPress={() => confirmDiscardActive(t, handleDiscard)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('workout.discardSession')}
+                >
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={th.colors.redText} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    {ROW_ICON.trash}
+                  </Svg>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -728,6 +800,60 @@ export default function WorkoutScreen() {
           <SheetRow icon={ROW_ICON.exercise} label={t('editor.addExerciseOption')} onPress={() => { setAddSheetOpen(false); handleAddExercise(); }} />
           <SheetRow icon={ROW_ICON.block}    label={t('editor.addBlockOption')}    onPress={() => { setAddSheetOpen(false); handleAddBlock(); }} />
         </Section>
+      </DragSheet>
+
+      {/* Terminar a medias (T09 §4): qué se guarda y qué se queda sin hacer.
+          Se cierra arriba, con el «Cerrar» de todas las hojas; dentro hay una
+          sola acción. Descartar no está aquí: vive en la papelera. */}
+      <DragSheet visible={finishOpen} onClose={() => setFinishOpen(false)} title={t('workout.finishTitle')}>
+        {progress && (
+          <View style={styles.finishBody}>
+            <Text style={styles.finishHint}>{t('workout.finishHint')}</Text>
+            <View style={styles.finishStats}>
+              <View style={styles.finishStat}>
+                <Text style={styles.finishStatNum}>{byBlocks ? progress.blocksDone : progress.setsDone}</Text>
+                <Text style={styles.finishStatLbl}>{t(byBlocks ? 'workout.finishStatBlocks' : 'workout.finishStatSets')}</Text>
+              </View>
+              {!activeSession.logOnly && (
+                <View style={[styles.finishStat, styles.finishStatSep]}>
+                  <ElapsedMinutes startedAt={activeSession.startedAt} style={styles.finishStatNum} />
+                  <Text style={styles.finishStatLbl}>{t('workout.finishStatMin')}</Text>
+                </View>
+              )}
+              {progress.volumeKg > 0 && (
+                <View style={[styles.finishStat, styles.finishStatSep]}>
+                  <Text style={styles.finishStatNum}>
+                    {Math.round(weightUnit.toDisplay(progress.volumeKg)).toLocaleString(i18n.language)}
+                  </Text>
+                  <Text style={styles.finishStatLbl}>{weightUnit.label}</Text>
+                </View>
+              )}
+            </View>
+            {progress.pending.length > 0 && (
+              <View>
+                <Text style={styles.finishPendingCap}>{t('workout.finishPending').toUpperCase()}</Text>
+                {progress.pending.map((item) => (
+                  <View key={`${item.kind}:${item.id}`} style={styles.finishRow}>
+                    <Text style={styles.finishRowName} numberOfLines={1}>{pendingName(item)}</Text>
+                    <Text style={[styles.finishRowMeta, !item.done && styles.finishRowZero]}>
+                      {item.done
+                        ? t('workout.finishCount', { done: item.done, total: item.total })
+                        : t('workout.finishNotStarted')}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.finishSave}
+              onPress={() => { setFinishOpen(false); handleSave(); }}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Text style={styles.finishSaveText}>{t('workout.finishSave')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </DragSheet>
 
       {/* Objetivo de un ejercicio añadido sobre la marcha. Se cierra solo si el
@@ -903,30 +1029,95 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // Añadir — mismo botón que el editor de sesión (210:2784)
-  addBtn:     { alignItems: 'center', paddingVertical: spacing.md },
   addBtnText: { ...textStyles.button, color: th.tint.accent50 },
   addBtnPlus: { color: th.colors.accent },
 
   // Hoja de "añadir" de la sesión libre
   sheetSection: { marginBottom: spacing.sm },
 
-  // Save / discard
-  saveBtn: {
-    borderRadius:    th.radius.md,
-    paddingVertical: spacing.md + 4,
+  // Añadir — tarjeta punteada al final de la lista (T09 §3.1)
+  addCard: {
     alignItems:      'center',
-    marginTop:       spacing.sm,
+    paddingVertical: spacing.lg - 1,
+    borderRadius:    th.radius.lg,
+    borderWidth:     1.5,
+    borderStyle:     'dashed',
+    borderColor:     withOpacity(th.colors.text, 0.18),
+  },
+
+  // Tarjeta de cierre (T09 §3.2)
+  closeCard: {
+    marginTop:         spacing.sm2,
+    backgroundColor:   th.colors.surface,
+    borderRadius:      th.radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.lg - 1,
+    paddingBottom:     spacing.lg,
+  },
+  closeTop:     { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  closeNum:     { ...textStyles.heroName, color: th.colors.text },
+  closeOf:      { ...textStyles.body, color: th.colors.mutedLight },
+  closeMin:     { ...textStyles.label, color: th.colors.mutedLight, marginLeft: 'auto' },
+  closeBar: {
+    height:          5,
+    borderRadius:    3,
+    backgroundColor: th.colors.surface2,
+    overflow:        'hidden',
+    marginTop:       spacing.md,
+    marginBottom:    spacing.md + 2,
+  },
+  closeBarFill: { height: '100%', borderRadius: 3, backgroundColor: th.colors.accent },
+  closeBtns:    { flexDirection: 'row', gap: spacing.sm2 },
+  finishBtn: {
+    flex:            1,
+    alignItems:      'center',
+    paddingVertical: spacing.md + 4,
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.surface2,
+  },
+  finishBtnDone:  { backgroundColor: th.colors.accent },
+  finishText:     { ...textStyles.button, color: th.colors.text },
+  finishTextDone: { color: th.colors.onAccent },
+  trashBtn: {
+    width:           48,
+    alignItems:      'center',
+    justifyContent:  'center',
+    borderRadius:    th.radius.md,
+    backgroundColor: th.colors.surface2,
+  },
+
+  // Hoja «Terminar sesión» (T09 §4)
+  finishBody:    { paddingHorizontal: spacing.lg, gap: spacing.md },
+  finishHint:    { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize) },
+  finishStats: {
+    flexDirection:   'row',
+    backgroundColor: th.colors.bg,
+    borderRadius:    th.radius.md,
+    paddingVertical: spacing.md + 2,
+  },
+  finishStat:    { flex: 1, alignItems: 'center', gap: spacing.xs },
+  finishStatSep: { borderLeftWidth: 1, borderLeftColor: th.colors.surface2 },
+  finishStatNum: { ...textStyles.heroName, color: th.colors.text },
+  finishStatLbl: { ...textStyles.label, color: th.colors.mutedLight },
+  finishPendingCap: { ...textStyles.caps, color: th.colors.mutedLight, marginBottom: spacing.xs },
+  finishRow: {
+    flexDirection:     'row',
+    justifyContent:    'space-between',
+    alignItems:        'center',
+    gap:               spacing.md,
+    paddingVertical:   spacing.sm2,
+    borderBottomWidth: 1,
+    borderBottomColor: th.colors.surface2,
+  },
+  finishRowName: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
+  finishRowMeta: { ...textStyles.label, color: th.colors.mutedLight },
+  finishRowZero: { color: th.colors.redText },
+  finishSave: {
+    marginTop:       spacing.xs2,
+    alignItems:      'center',
+    paddingVertical: spacing.md + 4,
+    borderRadius:    th.radius.md,
     backgroundColor: th.colors.accent,
   },
-  saveBtnText: { ...textStyles.button, color: th.colors.onAccent },
-  discardBtn: {
-    alignItems:      'center',
-    paddingVertical: spacing.md,
-  },
-  // Tertiary buttom (235:4760) — solo texto, `caps`, uppercase, rojo (acción destructiva)
-  discardText: {
-    ...textStyles.caps,
-    color:         th.tint.red50,
-    textTransform: 'uppercase',
-  },
+  finishSaveText: { ...textStyles.button, color: th.colors.onAccent },
 });

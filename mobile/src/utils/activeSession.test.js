@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { activeSessionSummary, activeSessionLine } from './activeSession';
+import { activeSessionSummary, activeSessionLine, activeSessionProgress } from './activeSession';
 
 const t = (k, p) => (p ? `${k}:${JSON.stringify(p)}` : k);
 const done = [{ done: true }], open = [{ done: false }];
@@ -47,5 +47,62 @@ describe('activeSessionSummary', () => {
 
   it('la línea omite la cuenta sin ejercicios', () => {
     expect(activeSessionLine({ name: 'X', done: 0, total: 0 }, t)).toBe('X');
+  });
+});
+
+describe('activeSessionProgress', () => {
+  it('sin sesión a medias, null', () => {
+    expect(activeSessionProgress({ activeSession: { templateId: null } })).toBeNull();
+  });
+
+  it('cuenta series, ejercicios, volumen y lo que queda', () => {
+    const p = activeSessionProgress({
+      activeSession: {
+        templateId: 'a',
+        setsState: {
+          x: [{ done: true, weight: '100', reps: '5' }, { done: true, weight: '100', reps: '5' }],
+          y: [{ done: true, weight: '', reps: '10' }, { done: false }, { done: false }],
+        },
+        adHocExercises: [{ exerciseId: 'z', setsState: [{ done: false }] }],
+      },
+      sessionTemplates: { a: { exercises: [{ exerciseId: 'x' }, { exerciseId: 'y' }] } },
+    });
+    expect([p.setsDone, p.setsTotal]).toEqual([3, 6]);
+    expect([p.exercisesDone, p.exercisesTotal]).toEqual([1, 3]);
+    expect(p.volumeKg).toBe(1000);
+    expect(p.pending).toEqual([
+      { kind: 'ex', id: 'y', done: 1, total: 3 },
+      { kind: 'ex', id: 'z', done: 0, total: 1 },
+    ]);
+    expect(p.allDone).toBe(false);
+  });
+
+  it('el dropset sin sus drops no está hecho aunque las series sí', () => {
+    const p = activeSessionProgress({
+      activeSession:    { templateId: 'a', setsState: { x: [{ done: true, drops: [{ done: false }] }] } },
+      sessionTemplates: { a: { exercises: [{ exerciseId: 'x', dropset: true }] } },
+    });
+    expect(p.setsDone).toBe(p.setsTotal);
+    expect(p.allDone).toBe(false);
+  });
+
+  it('los bloques cuentan aparte, también los de la sesión libre', () => {
+    const p = activeSessionProgress({
+      activeSession: {
+        templateId: '__free__',
+        freeBlocks: [{ id: 'b1' }, { id: 'b2' }],
+        blockState: { b1: { finishedAt: 1 } },
+      },
+    });
+    expect([p.blocksDone, p.blocksTotal, p.setsTotal]).toEqual([1, 2, 0]);
+    expect(p.pending).toEqual([{ kind: 'block', id: 'b2' }]);
+  });
+
+  it('todo hecho', () => {
+    const p = activeSessionProgress({
+      activeSession:    { templateId: 'a', setsState: { x: [{ done: true }] }, blockState: { b: { finishedAt: 2 } } },
+      sessionTemplates: { a: { exercises: [{ exerciseId: 'x' }], blocks: [{ id: 'b' }] } },
+    });
+    expect(p.allDone).toBe(true);
   });
 });
