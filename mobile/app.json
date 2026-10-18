@@ -47,7 +47,8 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a0a0a"
+        "backgroundImage": "./assets/adaptive-icon-bg.png",
+        "backgroundColor": "#B6E512"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.formastudio.formafit",
