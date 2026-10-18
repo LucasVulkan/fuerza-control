@@ -21,8 +21,9 @@
  *    pinta en lima ENCIMA del gris, en la misma x.
  *  - Burbuja: ancho FIJO por campo (la forma más larga: «999.5 kg»). La cifra de
  *    las unidades queda siempre en la misma x: la parte entera va en una caja de
- *    ancho fijo alineada a la derecha (crece hacia la izquierda) y el decimal con
- *    la unidad cuelgan de una caja de ancho fijo alineada a la izquierda.
+ *    ancho fijo alineada a la derecha (crece hacia la izquierda), y el decimal y
+ *    la unidad, cada uno en su caja de ancho fijo a la izquierda (la unidad
+ *    tampoco se mueve cuando no hay decimal).
  */
 
 import { Fragment, memo, useEffect } from 'react';
@@ -172,10 +173,11 @@ export default function ScrubRuler({
   const hasDecSlot = field === 'weight';
   // RPE no pasa de 10: dos cifras; reservar tres lo descentraba.
   const leftW  = em((field === 'rpe' ? 2 : 3) * EM.digit);
-  const rightW = em(
-    (hasDecSlot ? EM.dot + EM.digit : 0)
-    + EM.space + unit.length * (field === 'rpe' ? EM.caps : EM.letter),
-  );
+  // El decimal y la unidad, cada uno en su caja de ancho fijo: con o sin «.5» la
+  // unidad no se mueve (14 kg · 14.5 kg).
+  const decW   = hasDecSlot ? em(EM.dot + EM.digit) : 0;
+  const unitW  = em(EM.space + unit.length * (field === 'rpe' ? EM.caps : EM.letter));
+  const rightW = decW + unitW;
   const bubbleW = leftW + rightW + 2 * BUBBLE_PAD;
   // Segunda línea: diferencia con la partida («+2.5», «−1»), pivotando en las
   // unidades como el valor; en modo cancelar, «Cancelar». Con 0 va vacía pero
@@ -242,8 +244,13 @@ export default function ScrubRuler({
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleLeftText, { width: leftW }]}>
             {intStr}
           </Text>
-          <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: rightW }]}>
-            {`${decStr} ${unit}`}
+          {decW ? (
+            <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: decW }]}>
+              {decStr}
+            </Text>
+          ) : null}
+          <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: unitW }]}>
+            {` ${unit}`}
           </Text>
         </View>
         <View style={styles.bubbleLine2}>
@@ -256,8 +263,13 @@ export default function ScrubRuler({
               <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleDiff, styles.bubbleLeftText, { width: leftW }]}>
                 {dInt}
               </Text>
-              <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleDiff, styles.bubbleRightText, { width: rightW }]}>
-                {dInt ? dDec + diffUnit : ''}
+              {decW ? (
+                <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleDiff, styles.bubbleRightText, { width: decW }]}>
+                  {dDec}
+                </Text>
+              ) : null}
+              <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleDiff, styles.bubbleRightText, { width: unitW }]}>
+                {dInt ? diffUnit : ''}
               </Text>
             </>
           )}
