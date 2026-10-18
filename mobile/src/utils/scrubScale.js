@@ -24,18 +24,16 @@ export const SCRUB_PAD = 16;
 // el peso son 16 kg (32 de 0,5) o 55 lb (55 de 1). `steps3` = la escala cuando
 // la regla llega a 100 (números de tres cifras): menos números y más separados.
 // En kg es la misma: es una herramienta de ajuste fino, con un dedo, entrenando.
-// strongEvery = cada cuánto vibra «redondo» (impacto Light) en vez del tic fino
-// (selection): 1 kg, 5 lb. Reps y RPE: ninguno, cada paso ya es una unidad (U10-10 §2.6.1).
 const WEIGHT = {
-  kg: { step: 0.5, tickEvery: 1, labelEvery: 2, steps: 32, steps3: 32, strongEvery: 1 },
-  lb: { step: 1,   tickEvery: 1, labelEvery: 5, steps: 55, steps3: 36, strongEvery: 5 },
+  kg: { step: 0.5, tickEvery: 1, labelEvery: 2, steps: 32, steps3: 32 },
+  lb: { step: 1,   tickEvery: 1, labelEvery: 5, steps: 55, steps3: 36 },
 };
 // Reps y segundos: anclados al dedo como el peso, todos los números a la vista
 // (numberEvery fijo). Segundos de 5 en 5, 50 s a lo ancho: ~28 dp por paso, y
 // «120» cabe (los números alternan blanco y gris, 30 blanco · 35 gris).
 const FIELDS = {
-  reps: { step: 1, tickEvery: 1, labelEvery: 1, numberEvery: 1, strongEvery: 0, steps: 12 },
-  time: { step: 5, tickEvery: 5, labelEvery: 5, numberEvery: 5, strongEvery: 0, steps: 10 },
+  reps: { step: 1, tickEvery: 1, labelEvery: 1, numberEvery: 1, steps: 12 },
+  time: { step: 5, tickEvery: 5, labelEvery: 5, numberEvery: 5, steps: 10 },
 };
 const RPE_STEPS  = 9;
 const RPE = { min: 1, max: 10 };
@@ -50,10 +48,6 @@ export const SCRUB_PAN_SLOW_MS = 180;
 export const SCRUB_PAN_FAST_MS = 60;
 // Dedo más de CANCEL_DY dp por encima de donde empezó (gs.dy < −CANCEL_DY) → cancelar.
 export const SCRUB_CANCEL_DY   = 48;
-// Vibrar solo al ir despacio: por encima de esta velocidad del dedo (gs.vx, en
-// px/ms; 0,15 = 150 dp/s, unos 17 medios kilos por segundo) los pasos no vibran.
-// Al recorrer la regla deprisa sobra; al afinar es cuando ayuda.
-export const SCRUB_HAPTIC_MAX_VX = 0.15;
 // Separación mínima en dp entre dos números en labelStrong: «60» ocupa ~16 dp y
 // «100» ~23. Con tres cifras la escala ya se abre (steps3) para que quepan.
 export const MIN_NUMBER_GAP = { two: 20, three: 32 };
@@ -93,7 +87,7 @@ export function scrubValueAt(r, x) {
  * @param {number} fingerX    x del dedo en la fila al activarse el gesto
  * @param {number} rowWidth   ancho de la fila
  * @param {{ unit?: 'kg'|'lb' }} [opts]
- * @returns {{ min, max, step, px, originX, originValue, tickEvery, labelEvery, numberEvery, strongEvery, start }}
+ * @returns {{ min, max, step, px, originX, originValue, tickEvery, labelEvery, numberEvery, start }}
  *   `start` = valor con el que arranca el gesto: el de partida, o el de bajo el dedo
  *   en las reglas absolutas (RPE, y peso/reps cuando el 0 caería dentro de la fila).
  */
@@ -110,13 +104,13 @@ function rulerFor(field, start, fingerX, rowWidth, steps, wt, threeDigits = fals
   if (field === 'rpe') {
     const r = {
       min: RPE.min, max: RPE.max, step: 1, px, originX: SCRUB_PAD, originValue: RPE.min,
-      tickEvery: 1, labelEvery: 1, numberEvery: 1, strongEvery: 0,
+      tickEvery: 1, labelEvery: 1, numberEvery: 1,
     };
     return { ...r, start: scrubValueAt(r, fingerX) };
   }
 
   const f = FIELDS[field] ?? wt;
-  const { step, tickEvery, labelEvery, strongEvery } = f;
+  const { step, tickEvery, labelEvery } = f;
   const numberEvery = f.numberEvery
     ?? numberEveryFor(labelEvery, step, px, threeDigits ? MIN_NUMBER_GAP.three : MIN_NUMBER_GAP.two);
   const s   = field === 'reps' ? Math.max(0, Math.round(num(start))) : Math.max(0, round2(num(start)));
@@ -127,7 +121,7 @@ function rulerFor(field, start, fingerX, rowWidth, steps, wt, threeDigits = fals
   if (px > 0 && s / step + EPS < (fx0 - SCRUB_PAD) / px) {
     const r = {
       min: 0, max: round2(steps * step), step, px, originX: SCRUB_PAD, originValue: 0,
-      tickEvery, labelEvery, numberEvery, strongEvery,
+      tickEvery, labelEvery, numberEvery,
     };
     return { ...r, start: scrubValueAt(r, fingerX) };
   }
@@ -138,7 +132,7 @@ function rulerFor(field, start, fingerX, rowWidth, steps, wt, threeDigits = fals
     min: Math.max(0, round2(Math.ceil(lo / step - EPS) * step)),
     max: round2(Math.floor(hi / step + EPS) * step), step, px,
     originX: fx0, originValue: s,
-    tickEvery, labelEvery, numberEvery, strongEvery,
+    tickEvery, labelEvery, numberEvery,
     start: s,
   };
 }
@@ -165,11 +159,6 @@ export function scrubTicks(r) {
   }
   return out;
 }
-
-const isMultOf = (v, every) => { const q = v / every; return Math.abs(q - Math.round(q)) < 1e-6; };
-
-/** ¿Paso «redondo» (vibra más fuerte)? Múltiplo de `strongEvery`; sin él, ninguno. */
-export const scrubIsStrong = (r, v) => !!r.strongEvery && isMultOf(v, r.strongEvery);
 
 /**
  * Diferencia con la partida para la segunda línea de la burbuja: «+2.5», «−1»

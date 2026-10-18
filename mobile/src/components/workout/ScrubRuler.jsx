@@ -1,8 +1,8 @@
 /**
- * ScrubRuler — la capa que cubre la fila mientras se arrastra una casilla de KG,
- * reps o RPE (U10-01, docs/specs/U10-todo-pesa.md §2.2): crece de la casilla a la
- * fila, enseña la regla con su marca lima y, por encima de la fila, la burbuja
- * con el valor.
+ * ScrubRuler — la capa que sale mientras se arrastra una casilla de KG, reps o
+ * RPE (U10-01, docs/specs/U10-todo-pesa.md §2.2): crece de la casilla a la fila
+ * y sale POR ENCIMA de ella (que el dedo no la tape), enseña la regla con su
+ * marca lima y, encima, la burbuja con el valor.
  *
  * Sin estado propio de gesto: `SetRow` le pasa el valor que va tomando (`value`)
  * y `closing` cuando se ha soltado; ella solo anima y pinta.
@@ -14,13 +14,18 @@
  *  - Rayas cortas y anchas de partida (lima) y objetivo (azul del entrenador /
  *    blanco); indicadores lima de borde (peso y reps); en modo cancelar la capa
  *    baja a 0,4 y la burbuja enseña «Cancelar» (U10-10).
+ *  - La marca y la burbuja no saltan de paso en paso: se deslizan hasta el valor
+ *    nuevo en 70 ms (SNAP; el valor sí va por pasos).
+ *  - Las rayas van en `Ticks` con memo: solo se repintan cuando cambia la regla
+ *    (al avanzar por un borde), no en cada paso. El número que ES el valor se
+ *    pinta en lima ENCIMA del gris, en la misma x.
  *  - Burbuja: ancho FIJO por campo (la forma más larga: «999.5 kg»). La cifra de
  *    las unidades queda siempre en la misma x: la parte entera va en una caja de
  *    ancho fijo alineada a la derecha (crece hacia la izquierda) y el decimal con
  *    la unidad cuelgan de una caja de ancho fijo alineada a la izquierda.
  */
 
-import { Fragment, useEffect } from 'react';
+import { Fragment, memo, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +44,8 @@ const TIMING = { duration: SCRUB_MS, easing: EASE };
 // Al soltar, la capa se desvanece más deprisa de lo que encoge: el número nuevo
 // de la casilla se ve en cuanto empieza a encoger, no cuando termina.
 const FADE_OUT = { duration: 120, easing: EASE };
+// Lo que tardan marca y burbuja en llegar al valor nuevo: se nota el paso sin el salto seco.
+const SNAP = { duration: 70, easing: Easing.out(Easing.quad) };
 
 // Burbuja: itemTitle (16/900), como la maqueta. Los anchos salen del cuerpo en em
 // (cifra tabular ≈ .66, punto/espacio ≈ .3, letra ≈ .7, VERSAL ≈ .76) con holgura;
@@ -52,6 +59,8 @@ const LINE1_H    = 20;
 const LINE2_H    = 14;
 const BUBBLE_PAD = 12;
 const BUBBLE_GAP = 6;
+// Cuánto sube la regla: la casilla entera y un respiro, para verla sobre el dedo.
+export const SCRUB_RAISE = GRID.CELL_H + 6;
 const EM = { digit: 0.66, dot: 0.3, space: 0.3, letter: 0.7, caps: 0.76 };
 const em = (n) => Math.ceil(n * BUBBLE_FS) + 4;   // holgura: si se queda corto, el número se corta con «…»
 
@@ -80,6 +89,34 @@ function splitValue(value) {
   return i < 0 ? [s, ''] : [s.slice(0, i), DEC_SEP + s.slice(i + 1)];
 }
 
+// Rayas y números de la regla: solo dependen de la regla (y del tema).
+const Ticks = memo(function Ticks({ ruler, styles }) {
+  return scrubTicks(ruler).map((tk) => {
+    const x = scrubXOf(ruler, tk.value);
+    const m = tk.major ? MARK_MAJOR : tk.dot ? MARK_DOT : MARK_MINOR;
+    return (
+      <Fragment key={tk.value}>
+        <View
+          style={[
+            styles.mark,
+            { left: x - m.width / 2, top: m.top, height: m.height, width: m.width },
+            tk.dot && styles.markDot,
+          ]}
+        />
+        {tk.numbered ? (
+          <Text
+            allowFontScaling={false}
+            numberOfLines={1}
+            style={[styles.num, tk.bright && styles.numBright, { left: x - LABEL_W / 2 }]}
+          >
+            {String(tk.value)}
+          </Text>
+        ) : null}
+      </Fragment>
+    );
+  });
+});
+
 export default function ScrubRuler({
   field, ruler, value, cell, rowWidth, closing,
   initial,      // valor de la casilla al empezar: la partida
@@ -105,9 +142,12 @@ export default function ScrubRuler({
     dim.value = withTiming(cancel ? CANCEL_DIM : 1, FADE_OUT);
   }, [cancel, dim]);
 
-  // La marca se pinta en la x del valor (ajustada al paso): o sea, bajo el dedo.
+  // La marca se pinta en la x del valor (ajustada al paso): o sea, sobre el dedo.
   const markerX = scrubXOf(ruler, value);
-  const ticks   = scrubTicks(ruler);
+  const markX   = useSharedValue(markerX);
+  useEffect(() => { markX.value = withTiming(markerX, SNAP); }, [markerX, markX]);
+  // Solo se ilumina el número que ES el valor, nunca el más cercano.
+  const nearNum = scrubTicks(ruler).find((tk) => tk.numbered && Math.abs(tk.value - value) < 1e-6);
 
   // Partida y objetivo: si caen fuera de la regla, pegadas al borde por el que quedan.
   const flagAt = (v) => {
@@ -142,7 +182,6 @@ export default function ScrubRuler({
   // la burbuja reserva su alto.
   const [dInt, dDec] = splitValue(scrubDiffText(value, initial));
   const diffUnit = ` ${unit}`;
-  const bubbleLeft = Math.max(0, Math.min(rowWidth - bubbleW, markerX - bubbleW / 2));
 
   const cx = cell.x;
   const cw = cell.width;
@@ -155,49 +194,33 @@ export default function ScrubRuler({
   const innerStyle = useAnimatedStyle(() => ({
     left: -(cx * (1 - prog.value)) - borders.thin,
   }));
-  const bubbleStyle = useAnimatedStyle(() => ({ opacity: prog.value }));
+  const bubbleStyle = useAnimatedStyle(() => ({
+    opacity: prog.value,
+    left: Math.max(0, Math.min(rowWidth - bubbleW, markX.value - bubbleW / 2)),
+  }));
+  const markStyle = useAnimatedStyle(() => ({ transform: [{ translateX: markX.value }] }));
 
   return (
     <View pointerEvents="none" style={styles.root}>
       <Animated.View style={[styles.layer, layerStyle]}>
         <Animated.View style={[styles.inner, { width: rowWidth }, innerStyle]}>
-          {ticks.map((tk) => {
-            const x = scrubXOf(ruler, tk.value);
-            const m = tk.major ? MARK_MAJOR : tk.dot ? MARK_DOT : MARK_MINOR;
-            return (
-              <Fragment key={tk.value}>
-                <View
-                  style={[
-                    styles.mark,
-                    { left: x - m.width / 2, top: m.top, height: m.height, width: m.width },
-                    tk.dot && styles.markDot,
-                  ]}
-                />
-                {tk.numbered ? (
-                  <Text
-                    allowFontScaling={false}
-                    numberOfLines={1}
-                    style={[
-                      styles.num,
-                      tk.bright && styles.numBright,
-                      { left: x - LABEL_W / 2 },
-                      // Solo se ilumina el número que ES el valor, nunca el más cercano.
-                      Math.abs(tk.value - value) < 1e-6 && styles.numNear,
-                    ]}
-                  >
-                    {String(tk.value)}
-                  </Text>
-                ) : null}
-              </Fragment>
-            );
-          })}
+          <Ticks ruler={ruler} styles={styles} />
+          {nearNum ? (
+            <Text
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={[styles.num, styles.numNear, { left: scrubXOf(ruler, nearNum.value) - LABEL_W / 2 }]}
+            >
+              {String(nearNum.value)}
+            </Text>
+          ) : null}
           {showStart ? (
             <View style={[styles.flag, { left: flagAt(initial).x - FLAG.width / 2, backgroundColor: th.colors.accent }, flagAt(initial).off && styles.flagOff]} />
           ) : null}
           {showTarget ? (
             <View style={[styles.flag, { left: flagAt(prevValue).x - FLAG.width / 2, backgroundColor: targetColor }, flagAt(prevValue).off && styles.flagOff]} />
           ) : null}
-          <View style={[styles.marker, { left: markerX - 1 }]} />
+          <Animated.View style={[styles.marker, { left: -1 }, markStyle]} />
           {/* Bordes que desplazan (peso y reps): aparecen según se acerca el dedo. */}
           {edge < 0 ? (
             <View style={[styles.edge, { left: CHEVRON_INSET, opacity: -edge }]}>
@@ -213,7 +236,7 @@ export default function ScrubRuler({
       </Animated.View>
 
       <Animated.View
-        style={[styles.bubble, { width: bubbleW, left: bubbleLeft }, bubbleStyle]}
+        style={[styles.bubble, { width: bubbleW }, bubbleStyle]}
       >
         <View style={styles.bubbleLine1}>
           <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleLeftText, { width: leftW }]}>
@@ -255,7 +278,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   layer: {
     position:        'absolute',
-    top: 0,
+    top:             -SCRUB_RAISE,
     height:          GRID.CELL_H,
     overflow:        'hidden',
     backgroundColor: th.colors.bg,
@@ -300,7 +323,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   bubble: {
     position:        'absolute',
-    top:             -(BUBBLE_H + BUBBLE_GAP),
+    top:             -(SCRUB_RAISE + BUBBLE_H + BUBBLE_GAP),
     height:          BUBBLE_H,
     alignItems:      'center',
     justifyContent:  'center',
