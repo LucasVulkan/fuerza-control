@@ -17,23 +17,19 @@ import { View, TouchableOpacity, StyleSheet, PanResponder, Keyboard, Pressable, 
 import { Text, TextInput } from '../ui/Text';
 import Chevron from './Chevron';
 import Svg, { Path, Rect } from 'react-native-svg';
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useSharedValue, withTiming, runOnJS, Easing } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { spacing, borders, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import {
-  scrubRuler, scrubValueAt, scrubXOf, scrubEdge, scrubPan, scrubPanDir, scrubPanMs,
+  scrubRuler, scrubValueAt, scrubEdge, scrubPan, scrubPanDir, scrubPanMs,
   SCRUB_CANCEL_DY,
 } from '../../utils/scrubScale';
 import { GRID } from './grid';
-import ScrubRuler, { SCRUB_MS, SCRUB_SNAP_MS } from './ScrubRuler';
+import ScrubRuler, { SCRUB_MS } from './ScrubRuler';
 
 const STEP_PX  = 8;
-// Marca de la regla: se desliza al valor nuevo como en ScrubRuler.
-const SNAP = { duration: SCRUB_SNAP_MS, easing: Easing.out(Easing.quad) };
 const H_THRESH = 12;
 
 // El chevron (siempre en tint/accent-50 en la casilla activa) vive en ./Chevron.
@@ -103,13 +99,6 @@ function TimerButton({ onTime }) {
 //  · con él ('weight' | 'reps' | 'rpe' | 'time', preferencia «Regla al deslizar», U10-01):
 //    la casilla NO cambia durante el gesto. Avisa a SetRow (que pinta la regla y
 //    la burbuja) y al soltar guarda el valor, sin animación.
-//
-// La regla va con `Gesture.Pan` y su worklet corre en el hilo de la interfaz: x
-// del dedo, valor bajo él, cancelar, bordes y la marca (`markX`) se calculan ahí,
-// a la par del dedo aunque JS vaya cargado. A JS solo llega lo que cambia (el
-// valor para la burbuja, cancelar, el borde), además de medir la fila al empezar,
-// el avance por los bordes y guardar al soltar. El gesto de siempre sigue con
-// PanResponder.
 
 function InputCell({
   value,
@@ -127,7 +116,6 @@ function InputCell({
   onScrubStart,         // ({ field, ruler, value, cell, initial, hasValue, prevValue, prevSource }) al activarse, con la medida ya hecha
   onScrubMove,          // ({ value?, ruler?, edge?, cancel? }) solo lo que cambia
   onScrubEnd,           // () al soltar o al cancelarse
-  markX,                // shared value de SetRow: x de la marca de la regla
 }) {
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
@@ -149,22 +137,10 @@ function InputCell({
   const lastDxRef     = useRef(0);
   const liveRef       = useRef({});      // props que lee el gesto (creado una sola vez)
   const cellRect      = useRef({ x: 0, width: 0 });
-  // Mientras dura la regla, en JS: { pending, ruler, value, initial, edge, dir,
-  // cancel, panTimer, pans }. `pending` = gesto ya activo pero aún sin la medida
-  // de la fila.
+  // Mientras dura la regla: { pending, ruler, value, initial, rowPageX, fingerX, edge,
+  // cancel, panTimer }. `pending` = gesto ya reclamado pero aún sin la medida de la
+  // fila (se ignoran los moves).
   const scrubRef      = useRef(null);
-  // Lo que lee el worklet. `sRuler` null = sin regla (aún sin medida, o terminada):
-  // el worklet no hace nada.
-  const sRuler   = useSharedValue(null);
-  const sPageX   = useSharedValue(0);
-  const sRowW    = useSharedValue(0);
-  const sFinger  = useSharedValue(0);
-  const sInitial = useSharedValue(0);
-  const sValue   = useSharedValue(0);
-  const sCancel  = useSharedValue(false);
-  const sEdge    = useSharedValue(0);
-  const sDir     = useSharedValue(0);
-  const sPans    = useSharedValue(true);
   // Animated value for the accent overlay — fades in when scroll starts, out when it ends
   const accentAnim    = useRef(new Animated.Value(0)).current;
 
@@ -180,7 +156,7 @@ function InputCell({
   useEffect(() => { scrollStepRef.current = scrollStep;   }, [scrollStep]);
   useEffect(() => {
     liveRef.current = {
-      scrubField, scrubUnit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd, markX,
+      scrubField, scrubUnit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd,
       prevValue, prevSource, hasValue: value !== null && value !== undefined && value !== '',
     };
   });
@@ -205,31 +181,34 @@ function InputCell({
     Animated.timing(accentAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
   }, []);
 
+  // Valor bajo el dedo con la regla y la x actuales: lo cambia y avisa a SetRow.
+  const retarget = useCallback((sc, extra) => {
+    const v = scrubValueAt(sc.ruler, sc.fingerX);
+    const patch = { ...extra };
+    if (v !== sc.value) { sc.value = v; patch.value = v; }
+    return patch;
+  }, []);
+
   const stopPan = useCallback((sc) => {
     if (sc) { clearTimeout(sc.panTimer); sc.panTimer = null; }
   }, []);
 
   // Un paso de regla cada cierto tiempo mientras el dedo siga a menos de 24 dp del
-  // borde (peso y reps); más deprisa cuanto más cerca. El RPE no llega aquí. La
-  // regla nueva se le pasa al worklet, y el valor bajo el dedo con ella.
+  // borde (peso y reps); más deprisa cuanto más cerca. El RPE no llega aquí.
   const panTickRef = useRef(null);
   useEffect(() => {
     panTickRef.current = (sc) => {
       sc.panTimer = null;
-      if (scrubRef.current !== sc || sc.cancel || !sc.dir) return;
-      const fx = sFinger.get();
-      const next = scrubPan(sc.ruler, sc.dir);
+      if (scrubRef.current !== sc || sc.cancel) return;
+      const rowW = liveRef.current.rowWidth;
+      const dir = scrubPanDir(sc.fingerX, rowW);
+      if (!dir) return;
+      const next = scrubPan(sc.ruler, dir);
       if (next !== sc.ruler) {
         sc.ruler = next;
-        sRuler.set(next);
-        const v = scrubValueAt(next, fx);
-        const patch = { ruler: next };
-        if (v !== sc.value) { sc.value = v; patch.value = v; }
-        sValue.set(v);
-        if (markX) markX.set(withTiming(scrubXOf(next, v), SNAP));
-        liveRef.current.onScrubMove?.(patch);
+        liveRef.current.onScrubMove?.(retarget(sc, { ruler: next }));
       }
-      sc.panTimer = setTimeout(() => panTickRef.current?.(sc), scrubPanMs(fx, sRowW.get()));
+      sc.panTimer = setTimeout(() => panTickRef.current?.(sc), scrubPanMs(sc.fingerX, rowW));
     };
   });
   const panTick = useCallback((sc) => panTickRef.current?.(sc), []);
@@ -240,7 +219,6 @@ function InputCell({
   const finishScrub = useCallback(() => {
     const sc = scrubRef.current;
     scrubRef.current  = null;
-    sRuler.set(null);
     isSwiping.current = false;
     stopPan(sc);
     if (!sc || sc.pending) return;      // la medida no llegó: la capa nunca se abrió
@@ -252,104 +230,7 @@ function InputCell({
     // (el efecto de `value` lo confirmará cuando el padre devuelva el valor guardado).
     setLocalValue(String(val));
     requestAnimationFrame(() => { onChangeRef.current(String(val)); });
-  }, [stopPan, sRuler]);
-
-  // ── Regla: el lado JS del gesto ──
-  // Al activarse: mide la fila (la marca sale bajo el dedo: hace falta su x en
-  // ella), arma la regla y se la pasa al worklet.
-  const scrubStart = useCallback((absX) => {
-    const live = liveRef.current;
-    if (!live.scrubField || !live.measureRow) return;
-    Keyboard.dismiss();
-    isSwiping.current = true;
-    const field = live.scrubField;
-    const sc = {
-      pending: true, ruler: null, value: 0, initial: localValueRef.current,
-      edge: 0, dir: 0, cancel: false, panTimer: null, pans: field !== 'rpe',
-    };
-    scrubRef.current = sc;
-    live.measureRow((_x, _y, w, _h, pageX) => {
-      if (scrubRef.current !== sc) return;   // se soltó antes de que llegara la medida
-      const lv = liveRef.current;
-      const rowW = w || lv.rowWidth;
-      const ruler = scrubRuler(field, sc.initial, absX - pageX, rowW, { unit: lv.scrubUnit });
-      sc.pending = false;
-      sc.ruler = ruler;
-      sc.value = ruler.start;
-      sPageX.set(pageX);
-      sRowW.set(rowW);
-      sFinger.set(absX - pageX);
-      sInitial.set(sc.initial);
-      sValue.set(ruler.start);
-      sCancel.set(false);
-      sEdge.set(0);
-      sDir.set(0);
-      sPans.set(sc.pans);
-      if (lv.markX) lv.markX.set(scrubXOf(ruler, ruler.start));
-      // Lo último, la regla: con ella el worklet empieza a trabajar.
-      sRuler.set(ruler);
-      const prevNum = parseFloat(lv.prevValue);
-      lv.onScrubStart?.({
-        field, ruler, value: ruler.start, cell: { ...cellRect.current },
-        initial: sc.initial, hasValue: lv.hasValue,
-        prevValue: Number.isFinite(prevNum) ? prevNum : null, prevSource: lv.prevSource,
-      });
-    });
-  }, [sPageX, sRowW, sFinger, sInitial, sValue, sCancel, sEdge, sDir, sPans, sRuler]);
-
-  // El worklet avisa cuando cambia algo de lo que pinta JS (en modo cancelar el
-  // valor ya llega como la partida). En los bordes arranca el avance.
-  const scrubUpdate = useCallback((v, cancel, edge, dir) => {
-    const sc = scrubRef.current;
-    if (!sc || sc.pending) return;
-    const patch = {};
-    if (v !== sc.value)       { sc.value = v;       patch.value = v; }
-    if (cancel !== sc.cancel) { sc.cancel = cancel; patch.cancel = cancel; }
-    if (edge !== sc.edge)     { sc.edge = edge;     patch.edge = edge; }
-    sc.dir = dir;
-    if (Object.keys(patch).length) liveRef.current.onScrubMove?.(patch);
-    if (dir) {
-      if (!sc.panTimer) sc.panTimer = setTimeout(() => panTick(sc), scrubPanMs(sFinger.get(), sRowW.get()));
-    } else {
-      stopPan(sc);
-    }
-  }, [panTick, stopPan, sFinger, sRowW]);
-
-  // Se activa como el de siempre: 12 dp en horizontal antes que 12 en vertical
-  // (si no, es scroll). Los callbacks leen refs al moverse, no al pintar: el lint
-  // no lo distingue (mismo caso que SessionTabsCard).
-  /* eslint-disable react-hooks/refs */
-  const scrubGesture = useMemo(() => Gesture.Pan()
-    .enabled(!!scrubField && !!markX)
-    .activeOffsetX([-H_THRESH, H_THRESH])
-    .failOffsetY([-H_THRESH, H_THRESH])
-    .onStart((e) => {
-      runOnJS(scrubStart)(e.absoluteX);
-    })
-    .onUpdate((e) => {
-      const r = sRuler.get();
-      if (!r) return;
-      const fx = e.absoluteX - sPageX.get();
-      sFinger.set(fx);
-      const cancel = e.translationY < -SCRUB_CANCEL_DY;
-      const v = cancel ? sInitial.get() : scrubValueAt(r, fx);
-      const pans = !cancel && sPans.get();
-      const edge = pans ? scrubEdge(fx, sRowW.get()) : 0;
-      const dir  = pans ? scrubPanDir(fx, sRowW.get()) : 0;
-      if (v !== sValue.get() || cancel !== sCancel.get()) {
-        markX.set(withTiming(scrubXOf(r, v), SNAP));
-      }
-      if (v !== sValue.get() || cancel !== sCancel.get() || edge !== sEdge.get() || dir !== sDir.get()) {
-        sValue.set(v); sCancel.set(cancel); sEdge.set(edge); sDir.set(dir);
-        runOnJS(scrubUpdate)(v, cancel, edge, dir);
-      }
-    })
-    .onFinalize(() => {
-      runOnJS(finishScrub)();
-    }),
-  [scrubField, markX, scrubStart, scrubUpdate, finishScrub,
-    sRuler, sPageX, sFinger, sInitial, sValue, sCancel, sEdge, sDir, sPans, sRowW]);
-  /* eslint-enable react-hooks/refs */
+  }, [stopPan]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -359,14 +240,86 @@ function InputCell({
         !editingRef.current
         && Math.abs(gs.dx) > H_THRESH
         && Math.abs(gs.dx) > Math.abs(gs.dy) * 2,
-      onPanResponderGrant: () => {
+      // En modo regla el ScrollView no puede robar el gesto a media regla.
+      onPanResponderTerminationRequest: () => !scrubRef.current,
+      onPanResponderGrant: (e, gs) => {
         Keyboard.dismiss();
         isSwiping.current = true;
         lastDxRef.current = 0;
+        const live = liveRef.current;
+        if (live.scrubField && live.measureRow) {
+          // La marca sale bajo el dedo: hace falta su x dentro de la fila. Hasta que
+          // llega la medida el gesto ya es nuestro (pending → no se puede robar).
+          const field  = live.scrubField;
+          const sc     = {
+            pending: true, ruler: null, value: 0, initial: localValueRef.current, rowPageX: 0,
+            fingerX: 0, edge: 0, cancel: false, panTimer: null, pans: field !== 'rpe',
+          };
+          const fingerPageX = gs.moveX || e.nativeEvent.pageX;
+          scrubRef.current = sc;
+          live.measureRow((_x, _y, w, _h, pageX) => {
+            if (scrubRef.current !== sc) return;   // se soltó antes de que llegara la medida
+            const lv = liveRef.current;
+            const ruler = scrubRuler(field, sc.initial, fingerPageX - pageX, w || lv.rowWidth, { unit: lv.scrubUnit });
+            sc.pending = false;
+            sc.rowPageX = pageX;
+            sc.ruler = ruler;
+            sc.value = ruler.start;
+            sc.fingerX = fingerPageX - pageX;
+            const prevNum = parseFloat(lv.prevValue);
+            lv.onScrubStart?.({
+              field, ruler, value: ruler.start, cell: { ...cellRect.current },
+              initial: sc.initial, hasValue: lv.hasValue,
+              prevValue: Number.isFinite(prevNum) ? prevNum : null, prevSource: lv.prevSource,
+            });
+          });
+          return;
+        }
         setScrollActive(true);
         fadeIn();
       },
       onPanResponderMove: (_, gs) => {
+        const sc = scrubRef.current;
+        if (sc) {
+          if (sc.pending) return;
+          const lv = liveRef.current;
+          sc.fingerX = gs.moveX - sc.rowPageX;
+          const cancel = gs.dy < -SCRUB_CANCEL_DY;
+          if (cancel !== sc.cancel) {
+            sc.cancel = cancel;
+            if (cancel) {
+              // Modo cancelar: la marca vuelve a la partida y la regla se apaga; no se
+              // avanza por los bordes.
+              stopPan(sc);
+              sc.edge = 0;
+              lv.onScrubMove?.({ cancel: true, value: sc.initial, edge: 0 });
+              return;
+            }
+            // Volver a bajar retoma el valor bajo el dedo.
+            const patch = { cancel: false };
+            const v = scrubValueAt(sc.ruler, sc.fingerX);
+            sc.value = v;
+            patch.value = v;
+            const edge = sc.pans ? scrubEdge(sc.fingerX, lv.rowWidth) : 0;
+            sc.edge = edge;
+            patch.edge = edge;
+            lv.onScrubMove?.(patch);
+          } else if (!cancel) {
+            const patch = retarget(sc, {});
+            const edge = sc.pans ? scrubEdge(sc.fingerX, lv.rowWidth) : 0;
+            if (edge !== sc.edge) { sc.edge = edge; patch.edge = edge; }
+            if (Object.keys(patch).length) lv.onScrubMove?.(patch);
+          } else {
+            return;
+          }
+          // Avance por los bordes: arranca al entrar en la zona y se limpia al salir.
+          if (!sc.cancel && sc.pans && scrubPanDir(sc.fingerX, lv.rowWidth)) {
+            if (!sc.panTimer) sc.panTimer = setTimeout(() => panTick(sc), scrubPanMs(sc.fingerX, lv.rowWidth));
+          } else {
+            stopPan(sc);
+          }
+          return;
+        }
         const currSteps = Math.trunc(gs.dx / STEP_PX);
         const lastSteps = Math.trunc(lastDxRef.current / STEP_PX);
         const delta     = currSteps - lastSteps;
@@ -381,6 +334,7 @@ function InputCell({
         }
       },
       onPanResponderRelease: () => {
+        if (scrubRef.current) { finishScrub(); return; }
         isSwiping.current = false;
         setScrollActive(false);
         lastDxRef.current = 0;
@@ -389,6 +343,7 @@ function InputCell({
         fadeOut();
       },
       onPanResponderTerminate: () => {
+        if (scrubRef.current) { finishScrub(); return; }
         isSwiping.current = false;
         setScrollActive(false);
         lastDxRef.current = 0;
@@ -438,16 +393,14 @@ function InputCell({
   // chevrones) — excepción explícita a la regla "sin bordes" del spec.
   const isCurrent = showHint;
 
-  // Modo regla: Gesture.Pan; si no, el PanResponder de siempre.
   return (
-    <GestureDetector gesture={scrubGesture}>
     <View
       style={styles.inputCell}
       onLayout={(e) => {
         const { x, width } = e.nativeEvent.layout;
         cellRect.current = { x, width };
       }}
-      {...(scrubField ? null : panResponder.panHandlers)}
+      {...panResponder.panHandlers}
     >
       <Pressable
         onPress={openEditor}
@@ -489,7 +442,6 @@ function InputCell({
         </View>
       )}
     </View>
-    </GestureDetector>
   );
 }
 
@@ -533,7 +485,6 @@ export default function SetRow({
   const measureRow = useCallback((cb) => rowRef.current?.measure(cb), []);
   // { id, field, ruler, value, cell, closing, initial, hasValue, prevValue, prevSource, edge, cancel }
   const [scrub, setScrub] = useState(null);
-  const markX      = useSharedValue(0);
   const scrubId    = useRef(0);
   const closeTimer = useRef(null);
   useEffect(() => () => clearTimeout(closeTimer.current), []);
@@ -554,7 +505,7 @@ export default function SetRow({
   }, []);
   // Peso, reps, RPE y segundos (U10-12); apagada la preferencia, el gesto de siempre.
   const scrubProps = (field) => (ruler ? {
-    scrubField: field, scrubUnit: unit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd, markX,
+    scrubField: field, scrubUnit: unit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd,
   } : null);
 
   return (
@@ -706,7 +657,6 @@ export default function SetRow({
           prevSource={scrub.prevSource}
           edge={scrub.edge}
           cancel={scrub.cancel}
-          markX={markX}
         />
       ) : null}
     </View>
