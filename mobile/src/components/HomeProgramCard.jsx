@@ -36,7 +36,7 @@ const pad2 = (n) => String(n).padStart(2, '0');
  * fila de arriba (solo ella: lo desplegado debajo no navega) y `openHint` dice
  * adónde lleva: al tab Programa desde Inicio, y de vuelta a Sesión desde Programa.
  */
-export default function HomeProgramCard({ program, progress, eyebrow, onOpen, openHint, onWeekInfo, children }) {
+export default function HomeProgramCard({ program, progress, eyebrow, onOpen, openHint, onWeekInfo, trainerName, children }) {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
 
@@ -81,6 +81,17 @@ export default function HomeProgramCard({ program, progress, eyebrow, onOpen, op
             {[eyebrow ?? t('home.yourProgram'), multi && (stageName || stageLabel)].filter(Boolean).join(' · ').toUpperCase()}
           </Text>
           <Text style={styles.name} numberOfLines={2}>{program.name}</Text>
+          {/* Azul = entrenador, sin excepciones. Sin entrenador detrás la línea no
+              existe: no se rellena con «creado por ti». Dentro de la fila, pegada
+              al nombre, para que el corte en diagonal la abarque. */}
+          {!!trainerName && (
+            <View style={styles.by}>
+              <View style={styles.byDot} />
+              <Text style={styles.byText} numberOfLines={1}>
+                {t('home.bannerBy')} <Text style={styles.byName}>{trainerName}</Text>
+              </Text>
+            </View>
+          )}
 
           {/* Pegada al margen de abajo, por si la otra columna sale más alta. */}
           {showBar && (
@@ -133,6 +144,11 @@ const makeStyles = (th) => StyleSheet.create({
   // Interlineado apretado en ceja y nombre: con el de la fuente quedaban sueltos.
   eyebrow: { lineHeight: lh(textStyles.caps.fontSize, LINE.tight) },
   name: { ...textStyles.heading, color: th.colors.accent, lineHeight: lh(textStyles.heading.fontSize, LINE.tight), marginTop: spacing.xs2 },
+
+  by:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs2 },
+  byDot:  { width: 5, height: 5, borderRadius: 2.5, backgroundColor: th.colors.blue },
+  byText: { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 1 },
+  byName: { ...textStyles.labelStrong, color: th.colors.blue },
 
   foot: { marginTop: 'auto', paddingTop: spacing.sm },
 

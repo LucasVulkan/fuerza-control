@@ -1,7 +1,7 @@
 /**
  * ProgramCardDetail — lo que la tarjeta del programa (`HomeProgramCard`) lleva
  * debajo de su fila cuando no está en Inicio (docs/specs/U14-pantalla-programa.md §4.2):
- * quién lo hizo, «Esta etapa» y las tres cifras, separados por cortes del color
+ * «Esta etapa» y las tres cifras, separados por cortes del color
  * del fondo como la diagonal de arriba.
  *
  * Lo pintan el tab Programa (desplegándolo) y la ficha de cliente del entrenador
@@ -64,7 +64,7 @@ const FIT = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.
  * ser null: sale «—». `note`: una línea bajo la etapa (p. ej. «terminó la etapa
  * y sigue en ella», en la ficha de cliente).
  */
-export default function ProgramCardDetail({ program, status, trainerName, adherence, pace, loadPct, note }) {
+export default function ProgramCardDetail({ program, status, adherence, pace, loadPct, note }) {
   const { t, i18n } = useTranslation();
   const styles = useThemedStyles(makeStyles);
 
@@ -88,16 +88,6 @@ export default function ProgramCardDetail({ program, status, trainerName, adhere
 
   return (
     <>
-      {/* Azul = entrenador, sin excepciones. Sin entrenador detrás la línea no
-          existe: no se rellena con «creado por ti». */}
-      {!!trainerName && (
-        <View style={styles.by}>
-          <View style={styles.byDot} />
-          <Text style={styles.byText} numberOfLines={1}>
-            {t('home.bannerBy')} <Text style={styles.byName}>{trainerName}</Text>
-          </Text>
-        </View>
-      )}
       <View style={styles.cut} />
       <View style={styles.body}>
         {showStage && <ThisStage status={status} note={note} />}
@@ -121,11 +111,6 @@ export default function ProgramCardDetail({ program, status, trainerName, adhere
 const makeStyles = (th) => StyleSheet.create({
   caps: { ...textStyles.caps, color: th.colors.mutedLight },
 
-  // La autoría, encima de lo de debajo: es del programa, no de la etapa.
-  by:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  byDot:  { width: 5, height: 5, borderRadius: 2.5, backgroundColor: th.colors.blue },
-  byText: { ...textStyles.label, color: th.colors.mutedLight, flexShrink: 1 },
-  byName: { ...textStyles.labelStrong, color: th.colors.blue },
 
   // 4 dp, el ancho de la diagonal: las tres líneas del fondo se leen como una.
   cut:    { height: spacing.xs2, backgroundColor: th.colors.bg },

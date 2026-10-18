@@ -209,12 +209,12 @@ export default function MyProgramScreen() {
               onOpen={() => navigation.navigate('Home')}
               openHint={t('myProgram.backToSessions')}
               onWeekInfo={() => setWeekDoc(true)}
+              trainerName={trainerName}
             >
               <Unfold>
                 <ProgramCardDetail
                   program={activeProgram}
                   status={status}
-                  trainerName={trainerName}
                   adherence={adherence4w}
                   pace={pace}
                   loadPct={loadPct}
