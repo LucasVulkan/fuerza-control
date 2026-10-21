@@ -494,12 +494,12 @@ const bloqueIdeas = () => `<section class="bloque b-ideas">
     <h2><span class="punto"></span>Ideas<span class="n">${ideas.length}</span>
       <button class="irlinea solo-edicion" data-accion="nueva-idea">+ Idea</button></h2>
     <p class="sub">Lo apuntas tú en <code>mobile/docs/ideas.md</code>; «vamos con P17» y Claude la pasa a spec.</p>
-    <form class="nueva-idea" hidden>
+    <form class="formu nueva-idea" hidden>
       <select name="codigo">${temasLibres.map((t) => `<option value="${t.codigo}">${esc(t.nombre)} · ${t.codigo}</option>`).join('')}
         <option value="">Sin tema (sin código)</option></select>
       <input name="titulo" placeholder="Título de la idea" required autocomplete="off">
       <textarea name="cuerpo" rows="4" placeholder="Notas, dudas, lo que quieras (opcional)"></textarea>
-      <div class="botones"><button type="submit" class="guardar">Guardar idea</button><button type="button" data-accion="cancelar-idea">Cancelar</button></div>
+      <div class="botones"><button type="submit" class="guardar">Guardar idea</button><button type="button" data-accion="cancelar-form">Cancelar</button></div>
     </form>
     <div class="lista-probar">${ideas.map((x) => `<details class="idea">
       <summary>${x.codigo ? `<span class="cod">${esc(x.codigo)}</span>` : ''}<span class="pt">${md(x.titulo)}</span></summary>
@@ -553,7 +553,11 @@ const bloquePlan = () => {
   return `<section class="bloque b-plan">
     <h2><span class="punto"></span>Plan<span class="n">${plural(versiones.length, 'versión', 'versiones')}</span>
       <button class="irlinea solo-edicion" data-accion="nueva-version">+ Versión</button></h2>
-    <p class="sub">Cada versión, lo que entra; dentro, el orden. <span class="sin-edicion">Para arrastrar, ábrela con <code>npm run plan</code>.</span></p>
+    <form class="formu nueva-version" hidden>
+      <input name="nombre" placeholder="Nombre de la versión (p. ej. 1.2)" required autocomplete="off">
+      <div class="botones"><button type="submit" class="guardar">Crear</button><button type="button" data-accion="cancelar-form">Cancelar</button></div>
+    </form>
+    <p class="sub">Cada versión, lo que entra; dentro, el orden. Pulsa su nombre para cambiarlo. <span class="sin-edicion">Para arrastrar, ábrela con <code>npm run plan</code>.</span></p>
     ${sig ? `<button class="siguiente" data-abre="${esc(abre(sig.c))}"><span class="etq">Lo siguiente · ${esc(sig.v.nombre)}</span>
       <span class="cod">${esc(sig.c)}</span><span class="pt">${md(titulo(sig.c))}</span></button>` : ''}
     <div class="versiones">${versiones.map(version).join('')}</div>
@@ -852,14 +856,18 @@ const html = `<!doctype html>
   .editable .vnombre{cursor:text}
   .editable .pruebas .caja{cursor:pointer}
   .sortable-ghost{opacity:.35}
-  .nueva-idea{display:flex;flex-direction:column;gap:8px;margin-top:14px;background:var(--card);border:1px solid var(--bd);
+  .nueva-version{flex-direction:row!important;flex-wrap:wrap;align-items:center} .nueva-version input{flex:1;min-width:200px}
+  .formu{display:flex;flex-direction:column;gap:8px;margin-top:14px;background:var(--card);border:1px solid var(--bd);
               border-radius:12px;padding:14px}
-  .nueva-idea select,.nueva-idea input,.nueva-idea textarea{font:inherit;font-size:14px;color:var(--tx);background:#0b0c0e;
+  .formu select,.formu input,.formu textarea{font:inherit;font-size:14px;color:var(--tx);background:#0b0c0e;
               border:1px solid var(--bd);border-radius:8px;padding:9px 11px;resize:vertical}
-  .nueva-idea :focus{outline:none;border-color:var(--acc)}
-  .nueva-idea .botones{display:flex;gap:8px}
-  .nueva-idea .botones button{font-size:13px;padding:8px 14px;border:1px solid var(--bd);border-radius:20px;color:var(--mut)}
-  .nueva-idea .guardar{background:var(--acc);color:#111!important;border-color:var(--acc)!important;font-weight:600}
+  .formu :focus{outline:none;border-color:var(--acc)}
+  .formu .botones{display:flex;gap:8px}
+  .formu .botones button{font-size:13px;padding:8px 14px;border:1px solid var(--bd);border-radius:20px;color:var(--mut)}
+  .vnombre[contenteditable=true]{outline:1px solid var(--acc);border-radius:4px;padding:2px 6px;cursor:text}
+  .aviso{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:20;max-width:min(560px,calc(100% - 32px));
+         background:#3a1d1d;border:1px solid #a33;color:#fdd;border-radius:12px;padding:12px 16px;font-size:13.5px;cursor:pointer}
+  .formu .guardar{background:var(--acc);color:#111!important;border-color:var(--acc)!important;font-weight:600}
   .antes{font-size:10.5px;color:var(--mut2);font-family:ui-monospace,monospace}
   .irlinea{margin-left:auto;font:500 12px Inter,sans-serif;text-transform:none;letter-spacing:0;color:var(--acc);
            border:1px solid var(--accbg);background:var(--accbg);border-radius:20px;padding:6px 12px}
@@ -1033,6 +1041,7 @@ const html = `<!doctype html>
     </table></div>
   </section>
 
+  <div class="aviso" role="alert" hidden></div>
   <footer>${esc(commit[0] ?? '')} · ${esc(commit[1] ?? '')} · ${esc((commit[2] ?? '').slice(0, 90))}</footer>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
@@ -1124,7 +1133,14 @@ const html = `<!doctype html>
   const enviar = (ruta, datos) => fetch(ruta, { method: 'POST', body: JSON.stringify(datos) })
     .then((r) => (r.ok ? r.text() : r.text().then((t) => Promise.reject(t))))
     .then(() => { try { sessionStorage.setItem('estado.y', String(scrollY)); } catch {} location.reload(); })
-    .catch((err) => { alert('No se ha guardado:\\n' + err); location.reload(); });
+    // Sin alert() ni prompt(): hay navegadores (el panel de la app de Claude,
+    // entre ellos) que los bloquean sin avisar. El aviso se cierra recargando.
+    .catch((err) => {
+      const a = document.querySelector('.aviso');
+      a.textContent = 'No se ha guardado: ' + err + ' (pulsa para recargar)';
+      a.hidden = false;
+      a.onclick = () => location.reload();
+    });
   try {
     const y = sessionStorage.getItem('estado.y');
     if (y) { sessionStorage.removeItem('estado.y'); requestAnimationFrame(() => scrollTo(0, +y)); }
@@ -1150,31 +1166,52 @@ const html = `<!doctype html>
 
     document.addEventListener('click', (e) => {
       if (e.target.closest('[data-accion="nueva-version"]')) {
-        const nombre = prompt('Nombre de la versión (p. ej. 1.1)');
-        if (!nombre || !nombre.trim()) return;
-        const v = document.createElement('div');
-        v.className = 'version';
-        v.dataset.version = nombre.trim();
-        v.innerHTML = '<div class="vlista"></div>';
-        document.querySelector('.versiones').append(v);
-        guardarPlan();
+        const f = document.querySelector('.nueva-version');
+        f.hidden = false;
+        f.nombre.focus();
       } else if (e.target.closest('.vborrar')) {
         e.target.closest('.version').remove();
         guardarPlan();
-      } else if (e.target.closest('.vnombre')) {
-        const v = e.target.closest('.version');
-        const nombre = prompt('Nuevo nombre', v.dataset.version);
-        if (nombre && nombre.trim() && nombre.trim() !== v.dataset.version) { v.dataset.version = nombre.trim(); guardarPlan(); }
+      } else if (e.target.closest('.vnombre') && !e.target.isContentEditable) {
+        const n = e.target.closest('.vnombre');
+        n.contentEditable = 'true';
+        n.focus();
+        getSelection().selectAllChildren(n);
       } else if (e.target.closest('[data-accion="nueva-idea"]')) {
         const f = document.querySelector('.nueva-idea');
         f.hidden = false;
         f.titulo.focus();
-      } else if (e.target.closest('[data-accion="cancelar-idea"]')) {
-        document.querySelector('.nueva-idea').hidden = true;
+      } else if (e.target.closest('[data-accion="cancelar-form"]')) {
+        e.target.closest('form').hidden = true;
       } else if (e.target.closest('.pruebas .caja')) {
         const [archivo, codigo, i] = e.target.closest('li').dataset.casilla.split('|');
         enviar('/api/casilla', { archivo, codigo, i: +i });
       }
+    });
+    // Renombrar: Intro o salir del campo guarda; Esc deja el nombre como estaba.
+    const terminarNombre = (n, guardar) => {
+      n.contentEditable = 'false';
+      const v = n.closest('.version');
+      const nombre = n.textContent.replace(/\\s+/g, ' ').trim();
+      if (guardar && nombre && nombre !== v.dataset.version) { v.dataset.version = nombre; guardarPlan(); } else n.textContent = v.dataset.version;
+    };
+    document.addEventListener('keydown', (e) => {
+      const n = e.target.closest?.('.vnombre[contenteditable=true]');
+      if (!n) return;
+      if (e.key === 'Enter') { e.preventDefault(); n.blur(); }
+      if (e.key === 'Escape') { e.stopPropagation(); terminarNombre(n, false); }
+    }, true);
+    document.addEventListener('focusout', (e) => {
+      if (e.target.matches?.('.vnombre[contenteditable=true]')) terminarNombre(e.target, true);
+    });
+    document.querySelector('.nueva-version').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = document.createElement('div');
+      v.className = 'version';
+      v.dataset.version = e.target.nombre.value.trim();
+      v.innerHTML = '<div class="vlista"></div>';
+      document.querySelector('.versiones').append(v);
+      guardarPlan();
     });
     document.querySelector('.nueva-idea').addEventListener('submit', (e) => {
       e.preventDefault();
