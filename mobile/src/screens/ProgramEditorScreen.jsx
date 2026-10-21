@@ -3,7 +3,7 @@ import { View, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-n
 import { Text, TextInput } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, {
-  useAnimatedRef, useSharedValue, useAnimatedStyle, withTiming, runOnJS, LayoutAnimationConfig,
+  useAnimatedRef, useSharedValue, useAnimatedStyle, withTiming, withDelay, runOnJS, runOnUI, LayoutAnimationConfig,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Sortable from 'react-native-sortables';
@@ -36,8 +36,11 @@ import { showDialog } from '../components/ui/dialog';
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
 const CARD_GAP = spacing.sm;
+// La curva del cambio de página (`useSlidePages`): la vuelta de la capa del
+// arrastre va con ella. Fuera del componente: un worklet no puede capturar
+// `SegmentedControl` entero.
+const SLIDE = SegmentedControl.TIMING;
 // Lo que tarda en irse la página soltada deslizando, desde donde esté.
-const DRAG_OUT = { duration: 220 };
 
 // ─── Tarjeta de sesión ────────────────────────────────────────────────────────
 // Sesion Card / "Sesion card editor de programa" (210:3152) con dos cambios
@@ -132,34 +135,38 @@ export default function ProgramEditorScreen({ navigation }) {
   // recolocan en cuanto se cambia, sin esperar a que React repinte la etapa.
   const page = useSharedValue(selectedStageIdx);
 
-  // Deslizar la cabecera desplaza la página con el dedo y la apaga al final del
-  // recorrido, solo como respuesta visual: la etapa cambia al soltar, como
-  // siempre. `dragStage` es la etapa arrastrada (-1 si el último cambio no fue
-  // deslizando): la página nueva no hereda el desplazamiento de la vieja.
+  // La capa que sigue al dedo al deslizar la cabecera (ver `headSwipe`).
+  // `dragOut` marca que la página vieja está saliendo con ella.
   const { width: screenW } = useWindowDimensions();
   const dragX     = useSharedValue(0);
-  const dragStage = useSharedValue(-1);
-  // Opaca hasta un tercio del ancho; apagada del todo a los nueve décimos.
-  const fadeAt = (x) => {
+  const dragOut   = useSharedValue(false);
+  const dragIn    = useSharedValue(false);
+  const dragStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.get() }] }));
+  // La nueva, tras un arrastre, no se ve los dos primeros fotogramas: la capa
+  // aún puede estar fuera, con la vieja, y la nueva asomaba un fotograma
+  // ocupándolo todo. Como entra desde fuera de la pantalla, no se nota.
+  const enterPage = () => {
     'worklet';
-    return 1 - Math.min(Math.max((Math.abs(x) / screenW - 0.33) / 0.57, 0), 1);
+    const a = pageEntering();
+    if (!dragIn.value) return a;
+    dragIn.set(false);
+    return {
+      initialValues: { ...a.initialValues, opacity: 0 },
+      animations:    { ...a.animations, opacity: withDelay(32, withTiming(1, { duration: 0 })) },
+    };
   };
-  const dragStyle = useAnimatedStyle(() => {
-    const x = dragStage.get() === selectedStageIdx ? dragX.get() : 0;
-    return { opacity: fadeAt(x), transform: [{ translateX: x }] };
-  });
-  // La página que se deja deslizando sigue su camino desde donde la llevaba el
-  // dedo; cambiando de otra forma, la salida de siempre.
+  // Cuando React pinta la etapa nueva, la vieja deja la capa y sigue saliendo
+  // por su cuenta desde donde iba; la capa vuelve a su sitio de golpe para que
+  // la nueva entre desde fuera, como con la ficha.
   const exitPage = () => {
     'worklet';
-    if (dragStage.value < 0) return pageExiting();
+    if (!dragOut.value) return pageExiting();
     const x = dragX.value;
+    dragOut.set(false);
+    dragX.set(0);
     return {
-      initialValues: { opacity: fadeAt(x), transform: [{ translateX: x }] },
-      animations:    {
-        opacity:   withTiming(0, DRAG_OUT),
-        transform: [{ translateX: withTiming((x < 0 ? -1 : 1) * screenW, DRAG_OUT) }],
-      },
+      initialValues: { transform: [{ translateX: x }] },
+      animations:    { transform: [{ translateX: withTiming((x < 0 ? -1 : 1) * screenW, SLIDE) }] },
     };
   };
 
@@ -274,7 +281,6 @@ export default function ProgramEditorScreen({ navigation }) {
             setStageSheetOpen(false);
             setOpenRowId(null);
             removeStageFromProgram(editingId, selectedStageIdx);
-            dragStage.set(-1);
             slide(-1);
             holdPage();
             page.set(Math.max(0, selectedStageIdx - 1));
@@ -342,14 +348,20 @@ export default function ProgramEditorScreen({ navigation }) {
     now:      idx === activeStageIdx,
   }));
 
-  function selectStage(idx, swiped = false) {
+  function selectStage(idx) {
     if (idx < 0 || idx >= stages.length || idx === selectedStageIdx) return;
-    page.set(idx);
-    if (!swiped) dragStage.set(-1);
-    slide(idx > selectedStageIdx ? 1 : -1);
+    const dir = idx > selectedStageIdx ? 1 : -1;
     holdPage();
     setOpenRowId(null);
-    setSelectedStageIdx(idx);
+    // Los valores compartidos se escriben en el hilo de UI y la etapa cambia
+    // DESPUÉS: escritos desde JS llegaban tarde en la build de release, y la
+    // página nueva entraba con la dirección del cambio anterior (de la 3 a la
+    // 1 tras avanzar, por la derecha).
+    runOnUI(() => {
+      page.set(idx);
+      slide(dir);
+      runOnJS(setSelectedStageIdx)(idx);
+    })();
   }
 
   // «Nueva etapa» (el «+» de las fichas y la hoja de Ajustes): hasta que exista
@@ -374,32 +386,33 @@ export default function ProgramEditorScreen({ navigation }) {
     ? `${selectedStage.durationWeeks == null ? t('home.stageOpen') : t('editor.weeksShort', { count: selectedStage.durationWeeks })} · ${t('home.stageSessionsPerWeek', { count: editorDays.length })}`
     : '';
 
-  // Deslizar la cabecera a los lados cambia de etapa. Solo en horizontal, para
-  // no robarle el scroll vertical a la pantalla; y fuera del engranaje, que
-  // queda fuera del detector. Las sesiones no cambian de etapa: deslizarlas es
-  // de `SwipeRow` (§4.2). Mientras se arrastra, la página va con el dedo (a un
-  // quinto si no hay etapa hacia ese lado). Al soltar pasados 60 dp sigue
-  // saliendo en el hilo de UI, sin esperar a que React pinte la etapa nueva, y
-  // cambia de etapa; si no, vuelve a su sitio.
-  const cur  = selectedStageIdx;
-  const last = stages.length - 1;
+  // Deslizar la cabecera a los lados cambia de etapa, igual que tocar su ficha.
+  // Lo que sigue al dedo es una capa FIJA alrededor de la página, no la página:
+  // la página se desmonta al cambiar de etapa y, si llevaba ella el
+  // desplazamiento, lo perdía o lo heredaba la nueva (fotogramas sueltos). Al
+  // soltar pasados 60 dp, la capa sigue saliendo con la página vieja dentro y
+  // la etapa cambia en ese momento, como con la ficha: la nueva se va cargando
+  // mientras la vieja sale (ver `exitPage`). Si no, la capa vuelve sin más. Hacia un lado sin
+  // etapa, la capa va a un quinto del dedo.
+  // Solo en horizontal, para no robarle el scroll vertical a la pantalla. Toda
+  // la tarjeta, bordes y engranaje incluidos: es desde el lateral desde donde
+  // se arrastra (tocar el engranaje sigue abriendo sus ajustes). Las sesiones
+  // no cambian de etapa: deslizarlas es de `SwipeRow` (§4.2).
   const headSwipe = Gesture.Pan()
     .enabled(!single)
     .activeOffsetX([-20, 20])
     .failOffsetY([-10, 10])
-    .onStart(() => {
-      dragX.set(0);
-      dragStage.set(cur);
-    })
     .onUpdate((e) => {
-      const edge = e.translationX < 0 ? cur >= last : cur <= 0;
+      const edge = e.translationX < 0 ? selectedStageIdx >= stages.length - 1 : selectedStageIdx <= 0;
       dragX.set(e.translationX * (edge ? 0.2 : 1));
     })
     .onEnd((e) => {
-      const to = e.translationX < -60 ? cur + 1 : e.translationX > 60 ? cur - 1 : cur;
-      if (to !== cur && to >= 0 && to <= last) {
-        dragX.set(withTiming((to > cur ? -1 : 1) * screenW, DRAG_OUT));
-        runOnJS(selectStage)(to, true);
+      const to = selectedStageIdx + (e.translationX < -60 ? 1 : e.translationX > 60 ? -1 : 0);
+      if (to !== selectedStageIdx && to >= 0 && to < stages.length) {
+        dragX.set(withTiming((to > selectedStageIdx ? -1 : 1) * screenW, SLIDE));
+        dragOut.set(true);
+        dragIn.set(true);
+        runOnJS(selectStage)(to);
       } else {
         dragX.set(withTiming(0, { duration: 200 }));
       }
@@ -462,18 +475,20 @@ export default function ProgramEditorScreen({ navigation }) {
         </View>
 
         {/* ── La etapa elegida: cabecera y sesiones, que entran juntas ── */}
+        {/* La capa fija del arrastre: no cambia con la etapa (ver `headSwipe`). */}
+        <Reanimated.View style={dragStyle}>
         <Reanimated.View
           key={stageCards[selectedStageIdx]?.id ?? selectedStageIdx}
-          style={[styles.page, { minHeight: holdH }, dragStyle]}
-          entering={pageEntering}
+          style={[styles.page, { minHeight: holdH }]}
+          entering={enterPage}
           exiting={exitPage}
           onLayout={(e) => pageH.set(e.nativeEvent.layout.height)}
         >
           {/* Lo de dentro no hace su propio fundido al montarse o desmontarse con
               la página; lo que se añada o quite después, sí. */}
           <LayoutAnimationConfig skipEntering skipExiting>
-            <View style={styles.stageHead}>
-              <GestureDetector gesture={headSwipe}>
+            <GestureDetector gesture={headSwipe}>
+              <View style={styles.stageHead}>
                 <View style={styles.stageHeadText}>
                   <View style={styles.browRow}>
                     <Text style={[styles.brow, { color: brow.color }]}>{brow.text.toUpperCase()}</Text>
@@ -499,17 +514,17 @@ export default function ProgramEditorScreen({ navigation }) {
                   </View>
                   <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
                 </View>
-              </GestureDetector>
-              <TouchableOpacity
-                style={styles.headBtn}
-                onPress={() => setStageSheetOpen(true)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={t('editor.stageSettingsA11y')}
-              >
-                <GearIcon color={th.colors.mutedLight} />
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.headBtn}
+                  onPress={() => setStageSheetOpen(true)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('editor.stageSettingsA11y')}
+                >
+                  <GearIcon color={th.colors.mutedLight} />
+                </TouchableOpacity>
+              </View>
+            </GestureDetector>
 
             <Text style={styles.sessionsTitle}>{t(single ? 'editor.sectionSessions' : 'editor.sessionsOfStage').toUpperCase()}</Text>
 
@@ -569,6 +584,7 @@ export default function ProgramEditorScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
           </LayoutAnimationConfig>
+        </Reanimated.View>
         </Reanimated.View>
 
         {/* ── Qué sesión toca (U13 §8-9) ── */}
@@ -733,7 +749,6 @@ export default function ProgramEditorScreen({ navigation }) {
                     // que el planificador.
                     durationWeeks:  selectedStage.durationWeeks ?? 4,
                   });
-                  dragStage.set(-1);
                   slide(1);
                   holdPage();
                   page.set(newIdx);

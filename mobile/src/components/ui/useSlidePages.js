@@ -37,6 +37,7 @@ export function useSlidePages() {
       animations:    { transform: [{ translateX: withTiming(-slideDir.value * screenW, SLIDE) }] },
     };
   };
-  const slide = (dir) => { slideDir.value = dir; };
+  // Worklet: se puede llamar también desde el hilo de UI.
+  const slide = (dir) => { 'worklet'; slideDir.value = dir; };
   return { slide, pageEntering, pageExiting };
 }
