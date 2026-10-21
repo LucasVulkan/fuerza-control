@@ -28,17 +28,25 @@
           {
             "CFBundleTypeName": "Forma Fit",
             "LSHandlerRank": "Owner",
-            "LSItemContentTypes": ["com.formastudio.formafit.fitdata"]
+            "LSItemContentTypes": [
+              "com.formastudio.formafit.fitdata"
+            ]
           }
         ],
         "UTExportedTypeDeclarations": [
           {
             "UTTypeIdentifier": "com.formastudio.formafit.fitdata",
             "UTTypeDescription": "Forma Fit",
-            "UTTypeConformsTo": ["public.json"],
+            "UTTypeConformsTo": [
+              "public.json"
+            ],
             "UTTypeTagSpecification": {
-              "public.filename-extension": ["fitdata"],
-              "public.mime-type": ["application/x-fitdata"]
+              "public.filename-extension": [
+                "fitdata"
+              ],
+              "public.mime-type": [
+                "application/x-fitdata"
+              ]
             }
           }
         ]
@@ -52,25 +60,47 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.formastudio.formafit",
-      "permissions": ["com.android.vending.BILLING"],
+      "permissions": [
+        "com.android.vending.BILLING"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": false,
           "data": [
-            { "scheme": "content", "mimeType": "application/x-fitdata" },
-            { "scheme": "file",    "mimeType": "application/x-fitdata" }
+            {
+              "scheme": "content",
+              "mimeType": "application/x-fitdata"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "application/x-fitdata"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
           "autoVerify": false,
           "data": [
-            { "scheme": "content", "mimeType": "*/*", "pathPattern": ".*\\.fitdata" },
-            { "scheme": "file",    "mimeType": "*/*", "pathPattern": ".*\\.fitdata" }
+            {
+              "scheme": "content",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\.fitdata"
+            },
+            {
+              "scheme": "file",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\.fitdata"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -94,7 +124,16 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-notifications",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
