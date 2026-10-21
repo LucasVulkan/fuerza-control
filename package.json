@@ -9,7 +9,8 @@
     "test:watch": "vitest",
     "panel": "node devpanel.mjs",
     "seed": "node seed-load-data.mjs",
-    "estado": "node scripts/estado.mjs"
+    "estado": "node scripts/estado.mjs",
+    "plan": "node scripts/plan.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

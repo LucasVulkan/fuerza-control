@@ -41,9 +41,26 @@ cliente); `E14` es el fallo 14 de la auditoría. Los comentarios de `src/` y los
 commits anteriores al 3-oct-2026 usan los códigos viejos por tema (`C19`):
 `npm run estado C19` los traduce.
 
+**Todo commit de código lleva el código de su tarea** en el mensaje
+(`feat(workout): … (T09-01)`; si toca la spec entera, `T09`). De ahí saca
+`estado.html` si una tarea hecha está en `main` o solo en `develop`: sin código,
+la tarea sale como si ya estuviera en `main`. Los commits `docs` no cuentan.
+
 `npm run estado` regenera `docs/estado.html` —la foto de qué falta y qué
 está hecho— leyéndolo todo de las specs, y **falla** si la cabecera de alguna no
 cuadra. Ejecútalo después de tocar cualquier documento de `docs/specs/`.
+
+`docs/ideas.md` lo escribe **el usuario** a mano (ideas y pendientes, con código
+opcional `## P17 · Título`). No lo edites salvo para quitar una idea cuando pase a
+spec; «vamos con P17» = léela de ahí y conviértela. Sale en el bloque «Ideas» de
+`estado.html` y reserva sus códigos en «Siguiente spec libre».
+
+`docs/plan.md` es **del usuario**: qué entra en cada versión (`## 1.1`) y en qué
+orden (un código de spec, tarea o idea por línea). Lo ordena arrastrando en
+`npm run plan` (http://localhost:8769), que además deja marcar casillas de prueba
+y apuntar ideas («+ Idea», con el siguiente código libre del tema).
+«Lo siguiente» de la página es la primera cosa del plan sin terminar. No lo
+reordenes tú salvo que te lo pida.
 
 **Al cerrar una fase con pruebas a mano** va a `hecho` con su lista `**Probar
 <código>**` de casillas; si no hay nada que probar, a `terminado`. Cuando el

@@ -288,6 +288,39 @@ for (const s of specs) {
   if (vistos.has(s.codigo)) throw new Error(`Código de spec ${s.codigo} repetido: ${vistos.get(s.codigo)} y ${s.archivo}`);
   vistos.set(s.codigo, s.archivo);
 }
+// ── Ideas ─────────────────────────────────────────────────────────────────────
+// `mobile/docs/ideas.md` lo escribe el usuario a mano: cada `## ` es una idea,
+// con código opcional (`## P17 · Título`, `## P16-06 · Título`). Un código ya
+// usado por una spec o tarea FALLA: la idea se convirtió y hay que borrarla.
+const ideas = readFileSync(join(RAIZ, 'mobile', 'docs', 'ideas.md'), 'utf8').replace(/\r/g, '')
+  .split(/^## /m).slice(1)
+  .map((trozo) => {
+    const [cab, ...resto] = trozo.split('\n');
+    const m = cab.match(/^([A-Z]\d{2}(?:-\d{2})?)\s*·\s*(.+)$/);
+    const idea = { codigo: m?.[1] ?? '', titulo: (m?.[2] ?? cab).trim(), cuerpo: resto.join('\n').trim() };
+    const c = idea.codigo;
+    if (c) {
+      const donde = `ideas.md: la idea ${c}`;
+      if (!TEMAS.some(([, , l]) => l === c[0])) throw new Error(`${donde} empieza por "${c[0]}", que no es la letra de ningún tema`);
+      const spec = specs.find((s) => s.codigo === c.slice(0, 3));
+      if (c.length === 3 && spec) throw new Error(`${donde} ya es la spec ${spec.archivo}. Bórrala de ideas.md o cámbiale el código`);
+      if (c.length > 3 && !spec) throw new Error(`${donde} es una tarea de la spec ${c.slice(0, 3)}, que no existe`);
+      if (c.length > 3 && spec.fases.some((x) => x.codigo === c)) throw new Error(`${donde} ya es una tarea de ${spec.archivo}. Bórrala de ideas.md o cámbiale el código`);
+    }
+    return idea;
+  });
+const repeIdea = ideas.find((x, i) => x.codigo && ideas.findIndex((y) => y.codigo === x.codigo) !== i);
+if (repeIdea) throw new Error(`ideas.md: el código ${repeIdea.codigo} aparece dos veces`);
+
+// Buscar a mano el siguiente numero libre es justo como se acaba reutilizando
+// uno: se calcula aquí, para la consola y para el «+ Idea» de la página.
+const temasLibres = TEMAS.filter(([t]) => t !== 'errores').map(([, nombre, l]) => {
+  const usados = [...specs.map((s) => s.codigo), ...ideas.map((x) => x.codigo.slice(0, 3))]
+    .filter((c) => c[0] === l).map((c) => Number(c.slice(1)));
+  return { nombre, codigo: `${l}${String(Math.max(0, ...usados) + 1).padStart(2, '0')}` };
+});
+const libres = temasLibres.map((t) => t.codigo);
+
 const viejos = new Map(); // 'C19' → { s, x }
 for (const s of specs) for (const x of s.fases) if (x.antes) viejos.set(x.antes, { s, x });
 
@@ -307,7 +340,9 @@ if (consulta) {
   }
   const fase = specs.flatMap((s) => s.fases.map((x) => ({ s, x }))).find(({ x }) => x.codigo === consulta);
   if (fase) lecturas.push(`TAREA → ${tarea(fase)}`);
-  if (!lecturas.length) { console.error(`${consulta}: ni spec, ni tarea, ni código antiguo.`); process.exit(1); }
+  const idea = ideas.find((x) => x.codigo === consulta);
+  if (idea) lecturas.push(`IDEA (ideas.md) → ${idea.codigo} · ${idea.titulo}${idea.cuerpo ? `\n${idea.cuerpo.replace(/^/gm, '    ')}` : ''}`);
+  if (!lecturas.length) { console.error(`${consulta}: ni spec, ni tarea, ni idea, ni código antiguo.`); process.exit(1); }
   console.log(lecturas.join('\n'));
   process.exit(0);
 }
@@ -329,6 +364,56 @@ const criticos   = fallos.filter((f) => f.sev.includes('🔴'));
 // el separador `|` del formato se interpreta como una tuberia.
 const commit = execFileSync('git', ['log', '-1', '--format=%h|%ad|%s', '--date=short'],
                             { cwd: RAIZ }).toString().trim().split('|');
+
+// Rama de cada tarea hecha: «develop» si la nombra (`T09-01`, o la spec entera
+// `T09`) algún commit de develop o de la rama actual que aún no esté en main; si
+// no, «main». Los `docs` no cuentan: anotar una spec o marcar una casilla no
+// lleva código a ninguna rama. ponytail: un commit sin código deja su tarea en
+// «main»; por eso los commits llevan el código de la tarea (AGENTS.md).
+const enDevelop = new Set(execFileSync('git', ['log', 'develop', 'HEAD', '^main', '--format=%x00%s%n%b'], { cwd: RAIZ })
+  .toString().split('\0').filter((c) => c && !/^docs\b/.test(c))
+  .flatMap((c) => [...c.matchAll(/\b[A-Z]\d{2}(?:-\d{2})?\b/g)].map((m) => m[0])));
+for (const s of specs) {
+  for (const x of s.fases) {
+    const hecha = x.situacion === 'probar' || x.situacion === 'terminada';
+    x.rama = !hecha ? '' : enDevelop.has(x.codigo) || enDevelop.has(s.codigo) ? 'develop' : 'main';
+  }
+}
+const chipRama = (x) => (x.rama ? `<span class="chip rama-${x.rama}">${x.rama}</span>` : '');
+
+// ── Plan ──────────────────────────────────────────────────────────────────────
+// `mobile/docs/plan.md`: cada `## ` es una versión, en orden de salida; debajo,
+// un código por línea en el orden en que se hará. Un código de spec (`T08`)
+// mete todas sus tareas salvo las que estén puestas sueltas (`T08-03`) en otro
+// sitio; también vale el código de una idea (`P17`). Lo reescribe el servidor
+// de `npm run plan` al arrastrar; a mano también vale.
+const PLAN = join(RAIZ, 'mobile', 'docs', 'plan.md');
+const versiones = [];
+try {
+  for (const l of readFileSync(PLAN, 'utf8').replace(/\r/g, '').split('\n')) {
+    if (l.startsWith('## ')) versiones.push({ nombre: l.slice(3).trim(), items: [] });
+    else if (/^[A-Z]\d{2}(-\d{2})?\s*$/.test(l) && versiones.length) versiones.at(-1).items.push(l.trim());
+  }
+} catch (e) { if (e.code !== 'ENOENT') throw e; }
+const specDe = new Map(specs.map((s) => [s.codigo, s]));
+const faseDe = new Map(specs.flatMap((s) => s.fases.map((x) => [x.codigo, { s, x }])));
+const ideaDe = new Map(ideas.filter((x) => x.codigo).map((x) => [x.codigo, x]));
+const enPlan = new Set();
+for (const v of versiones) {
+  for (const c of v.items) {
+    if (!specDe.has(c) && !faseDe.has(c) && !ideaDe.has(c)) throw new Error(`plan.md: «${c}» (en ${v.nombre}) no es ninguna spec, tarea ni idea`);
+    if (enPlan.has(c)) throw new Error(`plan.md: «${c}» aparece dos veces`);
+    enPlan.add(c);
+  }
+}
+const viva = (x) => x.situacion === 'hacer' || x.situacion === 'probar';
+/** Las tareas que trae una spec puesta en el plan: las que no están sueltas en otro sitio. */
+const tareasDeSpec = (s) => s.fases.filter((x) => !enPlan.has(x.codigo) && x.situacion !== 'aparcada');
+/** Specs con alguna tarea por hacer que el plan no cubre, e ideas con código fuera del plan. */
+const sinPlanificar = [
+  ...specs.filter((s) => !enPlan.has(s.codigo) && s.fases.some((x) => x.situacion === 'hacer' && !enPlan.has(x.codigo))).map((s) => s.codigo),
+  ...[...ideaDe.keys()].filter((c) => !enPlan.has(c)),
+];
 
 /** El bloque del tablero en el que cae una spec: manda lo más urgente que tenga. */
 for (const s of specs) {
@@ -404,15 +489,89 @@ const tarjetaTema = ([tema, nombre, l]) => {
 </button>`;
 };
 
+/** Lo apuntado a mano en ideas.md, antes de ser spec. */
+const bloqueIdeas = () => `<section class="bloque b-ideas">
+    <h2><span class="punto"></span>Ideas<span class="n">${ideas.length}</span>
+      <button class="irlinea solo-edicion" data-accion="nueva-idea">+ Idea</button></h2>
+    <p class="sub">Lo apuntas tú en <code>mobile/docs/ideas.md</code>; «vamos con P17» y Claude la pasa a spec.</p>
+    <form class="nueva-idea" hidden>
+      <select name="codigo">${temasLibres.map((t) => `<option value="${t.codigo}">${esc(t.nombre)} · ${t.codigo}</option>`).join('')}
+        <option value="">Sin tema (sin código)</option></select>
+      <input name="titulo" placeholder="Título de la idea" required autocomplete="off">
+      <textarea name="cuerpo" rows="4" placeholder="Notas, dudas, lo que quieras (opcional)"></textarea>
+      <div class="botones"><button type="submit" class="guardar">Guardar idea</button><button type="button" data-accion="cancelar-idea">Cancelar</button></div>
+    </form>
+    <div class="lista-probar">${ideas.map((x) => `<details class="idea">
+      <summary>${x.codigo ? `<span class="cod">${esc(x.codigo)}</span>` : ''}<span class="pt">${md(x.titulo)}</span></summary>
+      ${x.cuerpo ? `<pre>${esc(x.cuerpo)}</pre>` : ''}</details>`).join('')}</div>
+  </section>`;
+
+// ── Plan (vista) ──────────────────────────────────────────────────────────────
+// Tarjetas que se arrastran por el asa (`npm run plan`). Una spec lleva dentro
+// sus tareas vivas, y cada una se puede sacar a otra versión por separado.
+const NOMBRE_SIT = { hacer: 'por hacer', probar: 'por probar', terminada: 'terminada', aparcada: 'aparcada' };
+const CHIP_SIT = { hacer: 'h', probar: 'p', terminada: 't', aparcada: '' };
+const cartaTarea = (x, s, suelta) => `<div class="pc tarea ${x.situacion}" data-codigo="${x.codigo}" data-spec="${s.codigo}">
+  <span class="asa" title="Arrastrar">⠿</span>${suelta ? '<span class="orden-n"></span>' : ''}<span class="cod">${esc(x.codigo)}</span>
+  <button class="pt" data-abre="${esc(s.id)}">${md(x.titulo)}${suelta ? ` <span class="de">· ${esc(s.titulo)}</span>` : ''}</button>
+  <span class="chip ${CHIP_SIT[x.situacion]}">${NOMBRE_SIT[x.situacion]}</span></div>`;
+
+const cartaPlan = (c) => {
+  if (ideaDe.has(c)) {
+    return `<div class="pc idea-pc" data-codigo="${c}"><span class="asa" title="Arrastrar">⠿</span><span class="orden-n"></span>
+      <span class="cod">${esc(c)}</span><span class="pt">${md(ideaDe.get(c).titulo)}</span><span class="chip">idea</span></div>`;
+  }
+  if (faseDe.has(c)) { const { s, x } = faseDe.get(c); return cartaTarea(x, s, true); }
+  const s = specDe.get(c);
+  const ts = tareasDeSpec(s);
+  const vivas = ts.filter(viva);
+  return `<div class="pc spec ${vivas.length ? '' : 'hecha'}" data-codigo="${c}">
+  <div class="pcab"><span class="asa" title="Arrastrar">⠿</span><span class="orden-n"></span>${letra(s)}
+    <button class="pt" data-abre="${esc(s.id)}">${esc(s.titulo)}</button>
+    <span class="chips">${chips(cuenta(ts))}</span>
+    ${vivas.length ? `<button class="desplegar" aria-expanded="false">${plural(vivas.length, 'tarea', 'tareas')} ▸</button>` : ''}</div>
+  <div class="ptareas" data-spec="${c}" hidden>${vivas.map((x) => cartaTarea(x, s, false)).join('')}</div>
+</div>`;
+};
+
+/** Las tareas que cubre una versión, para su barra. */
+const tareasDeVersion = (v) => v.items.flatMap((c) => (specDe.has(c) ? tareasDeSpec(specDe.get(c)) : faseDe.has(c) ? [faseDe.get(c).x] : []));
+const pendienteItem = (c) => ideaDe.has(c) || (faseDe.has(c) ? viva(faseDe.get(c).x) : tareasDeSpec(specDe.get(c)).some(viva));
+
+const bloquePlan = () => {
+  const sig = versiones.flatMap((v) => v.items.map((c) => ({ v, c }))).find(({ c }) => pendienteItem(c));
+  const titulo = (c) => ideaDe.get(c)?.titulo ?? faseDe.get(c)?.x.titulo ?? specDe.get(c).titulo;
+  const abre = (c) => specDe.get(c)?.id ?? faseDe.get(c)?.s.id ?? '';
+  const version = (v) => {
+    const c = cuenta(tareasDeVersion(v));
+    return `<div class="version" data-version="${esc(v.nombre)}">
+    <div class="vcab"><span class="asa vasa" title="Mover la versión">⠿</span><b class="vnombre">${esc(v.nombre)}</b><span class="n">${v.items.length}</span>
+      ${barra(c)}<span class="vcuenta">${c.terminada}/${c.terminada + c.probar + c.hacer}</span>
+      <button class="vborrar solo-edicion" title="Borrar la versión vacía" ${v.items.length ? 'hidden' : ''}>×</button></div>
+    <div class="vlista">${v.items.map(cartaPlan).join('')}</div></div>`;
+  };
+  return `<section class="bloque b-plan">
+    <h2><span class="punto"></span>Plan<span class="n">${plural(versiones.length, 'versión', 'versiones')}</span>
+      <button class="irlinea solo-edicion" data-accion="nueva-version">+ Versión</button></h2>
+    <p class="sub">Cada versión, lo que entra; dentro, el orden. <span class="sin-edicion">Para arrastrar, ábrela con <code>npm run plan</code>.</span></p>
+    ${sig ? `<button class="siguiente" data-abre="${esc(abre(sig.c))}"><span class="etq">Lo siguiente · ${esc(sig.v.nombre)}</span>
+      <span class="cod">${esc(sig.c)}</span><span class="pt">${md(titulo(sig.c))}</span></button>` : ''}
+    <div class="versiones">${versiones.map(version).join('')}</div>
+    <details class="version sinplan" open><summary class="vcab"><b>Sin planificar</b><span class="n">${sinPlanificar.length}</span>
+      <span class="sub">Specs con tareas por hacer e ideas que no están en ninguna versión.</span></summary>
+      <div class="vlista">${sinPlanificar.map(cartaPlan).join('')}</div></details>
+  </section>`;
+};
+
 /** Franja que cruza los temas: lo único que el usuario tiene que accionar. */
 const franjaProbar = () => {
   const xs = specs.flatMap((s) => s.fases.filter((x) => x.situacion === 'probar').map((x) => ({ s, x })));
   if (xs.length === 0) return '';
-  return `<section class="bloque b-probar">
+  return `<section class="bloque b-probar" data-filtrable>
     <h2><span class="punto"></span>Por probar<span class="n">${xs.length}</span></h2>
     <p class="sub">Programado; falta que lo compruebes en el móvil.</p>
-    <div class="lista-probar">${xs.map(({ s, x }) => `<button class="pp" data-abre="${esc(s.id)}">
-      <span class="cod">${esc(x.codigo)}</span>${antes(x)}<span class="pt">${md(x.titulo)}</span>
+    <div class="lista-probar">${xs.map(({ s, x }) => `<button class="pp" data-abre="${esc(s.id)}" data-rama="${x.rama}">
+      <span class="cod">${esc(x.codigo)}</span>${antes(x)}<span class="pt">${md(x.titulo)}</span>${chipRama(x)}
       <span class="chip p">${plural(x.pruebas.filter((p) => !p.hecha).length, 'prueba', 'pruebas')}</span></button>`).join('')}</div>
   </section>`;
 };
@@ -520,25 +679,25 @@ const verDoc = (x, archivo) => `<details class="doc"><summary>Ver ${esc(x.ref)} 
 
 const antes = (x) => (x.antes ? `<span class="antes">antes ${esc(x.antes)}</span>` : '');
 
-const casillas = (x) => `<ol class="pruebas">${x.pruebas.map((p, i) => `<li class="${p.hecha ? 'ok' : ''}">
+const casillas = (x, s) => `<ol class="pruebas">${x.pruebas.map((p, i) => `<li class="${p.hecha ? 'ok' : ''}" data-casilla="${esc(s.archivo)}|${x.codigo}|${i}">
   <span class="caja">${p.hecha ? '✓' : ''}</span><span class="n">${x.codigo}.${i + 1}</span><span>${md(p.texto)}</span></li>`).join('')}</ol>`;
 
 const fase = {
-  probar: (x, s) => `<div class="fase probar">
-    <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<b>${md(x.titulo)}</b>
+  probar: (x, s) => `<div class="fase probar" data-rama="${x.rama}">
+    <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<b>${md(x.titulo)}</b>${chipRama(x)}
       <span class="chip p">${x.pruebas.filter((p) => p.hecha).length}/${x.pruebas.length}</span></div>
-    ${casillas(x)}
+    ${casillas(x, s)}
     <div class="pista-uso">Cuando lo pruebes, dile a Claude «<b>${esc(x.codigo)} probada</b>» o «<b>${esc(x.codigo)}.1 falla: …</b>».</div>
     ${verDoc(x, s.archivo)}
   </div>`,
-  hacer: (x, s) => `<div class="fase hacer ${x.situacion}">
+  hacer: (x, s) => `<div class="fase hacer ${x.situacion}" data-rama="">
     <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<b>${md(x.titulo)}</b>
       ${x.situacion === 'aparcada' ? '<span class="chip">aparcada</span>' : ''}
       ${x.pruebas.length ? `<span class="chip">${plural(x.pruebas.length, 'prueba preparada', 'pruebas preparadas')}</span>` : ''}</div>
     ${verDoc(x, s.archivo)}
   </div>`,
-  terminada: (x) => `<div class="fase terminada">
-    <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<span>${md(x.titulo)}</span>
+  terminada: (x) => `<div class="fase terminada" data-rama="${x.rama}">
+    <div class="fcab"><span class="cod">${esc(x.codigo)}</span>${antes(x)}<span>${md(x.titulo)}</span>${chipRama(x)}
       ${x.pruebas.length ? `<span class="chip t">✓ ${plural(x.pruebas.length, 'probada', 'probadas')}</span>` : ''}</div>
   </div>`,
 };
@@ -555,9 +714,10 @@ const detalle = (s) => `<section class="detalle" data-vista="${esc(s.id)}" data-
   </div>
   ${SECCIONES.map(([k, e]) => {
     const fs = s.fases.filter((x) => x.situacion === k || (k === 'hacer' && x.situacion === 'aparcada'));
-    return fs.length ? `<div class="dsec s-${k}"><h3><span class="punto"></span>${e}<span class="n">${fs.length}</span></h3>
+    return fs.length ? `<div class="dsec s-${k}" data-filtrable><h3><span class="punto"></span>${e}<span class="n">${fs.length}</span></h3>
       <div class="lista">${fs.map((x) => fase[k](x, s)).join('')}</div></div>` : '';
   }).join('')}
+  <p class="sub sin-rama" hidden>Ninguna tarea hecha de esta spec en esta rama.</p>
 </section>`;
 
 const filaFallo = (f) => `<tr class="${f.hecho ? 'ok' : 'pend'}">
@@ -609,6 +769,18 @@ const html = `<!doctype html>
   .barra{flex:1;display:flex;height:8px;background:var(--pista);border-radius:4px;overflow:hidden}
   .barra .t{background:var(--acc)} .barra .p{background:var(--pend)}
 
+  /* ── barra fija: pestañas y rama ── */
+  .fija{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px -16px 0;
+        padding:10px 16px;background:rgba(15,17,19,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--bd)}
+  .pestanas{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0}
+  .pestanas button{display:flex;align-items:center;gap:7px;white-space:nowrap;font:700 15px/1 var(--num);text-transform:uppercase;
+        letter-spacing:.04em;color:var(--mut);padding:9px 12px;border-radius:10px}
+  .pestanas button:hover{color:var(--tx);background:var(--card)}
+  .pestanas button[aria-current=true]{color:var(--tx);background:var(--card2);box-shadow:inset 0 -2px 0 var(--acc)}
+  .pestanas .n{font:600 11px/1 Inter,sans-serif;color:var(--mut);background:var(--pista);border-radius:20px;padding:3px 7px;text-transform:none}
+  .fuera{display:none!important}
+  .vacio{margin-top:36px}
+  #tablero .resumen{margin-top:18px}
   /* ── bloques del tablero ── */
   .bloque{margin-top:36px}
   h2{display:flex;align-items:center;gap:10px;font:700 22px/1.1 var(--num);text-transform:uppercase;letter-spacing:.03em;margin:0 0 4px}
@@ -636,6 +808,58 @@ const html = `<!doctype html>
       border-radius:10px;padding:10px 14px;font-size:14px}
   .pp:hover{border-color:var(--pend)} .pp .pt{flex:1;line-height:1.35}
   .pp .cod{background:var(--pendbg);color:var(--pend)}
+  .idea{background:var(--card);border:1px solid var(--bd);border-left:3px solid var(--mut2);border-radius:10px;padding:10px 14px;font-size:14px}
+  .idea summary{display:flex;gap:10px;align-items:center;cursor:pointer;list-style:none} .idea summary::-webkit-details-marker{display:none}
+  .idea .pt{flex:1;line-height:1.35}
+  .idea pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.6 Inter,sans-serif;color:var(--mut)}
+  .chip.rama-develop{background:#1d2a3a;color:#8ab8ff} .chip.rama-main{background:var(--pista);color:var(--mut)}
+  .filtro-rama{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut)}
+  .filtro-rama button{font-size:12.5px;color:var(--mut);padding:6px 12px;border:1px solid var(--bd);border-radius:20px}
+  .filtro-rama button[aria-pressed=true]{background:var(--accbg);color:var(--acc);border-color:var(--acc)}
+  .b-plan .punto{background:var(--acc)}
+  .siguiente{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;width:100%;background:var(--accbg);
+             border:1px solid var(--acc);border-radius:12px;padding:12px 16px;font-size:15px}
+  .siguiente .etq{width:100%;font:700 12px/1 var(--num);text-transform:uppercase;letter-spacing:.06em;color:var(--acc)}
+  .siguiente .cod{background:var(--acc);color:#111}
+  .versiones{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+  .version{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px}
+  .sinplan{margin-top:14px;border-style:dashed}
+  .vcab{display:flex;align-items:center;gap:10px;font-size:14px;list-style:none}
+  .vcab::-webkit-details-marker{display:none} summary.vcab{cursor:pointer;flex-wrap:wrap}
+  .vcab b{font:700 18px/1 var(--num);text-transform:uppercase;letter-spacing:.03em}
+  .vcab .n{font:600 12px/1 Inter,sans-serif;color:var(--mut);background:var(--card2);border-radius:20px;padding:4px 8px}
+  .vcab .barra{max-width:220px} .vcuenta{font-size:12px;color:var(--mut)}
+  .vborrar{margin-left:auto;color:var(--mut);font-size:18px;padding:0 6px}
+  .vlista{display:flex;flex-direction:column;gap:6px;margin-top:10px;min-height:44px;counter-reset:n;border-radius:10px}
+  .vlista:empty{border:1px dashed var(--bd)}
+  .vlista>.pc{counter-increment:n}
+  .vlista>.pc .orden-n::before{content:counter(n)}
+  .orden-n{font:600 11px/1 ui-monospace,monospace;color:var(--mut2);min-width:14px;text-align:right}
+  .pc{background:var(--card2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font-size:14px}
+  .pc.tarea,.pc.idea-pc{display:flex;gap:9px;align-items:center}
+  .pcab{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .pc .pt{flex:1;min-width:40%;line-height:1.35} .pc button.pt:hover{color:var(--acc)}
+  .pc .de{color:var(--mut);font-size:12.5px}
+  .pc.hecha,.pc.terminada{opacity:.6}
+  .pc .chips{margin:0}
+  .desplegar{font-size:12px;color:var(--mut);padding:3px 8px;border:1px solid var(--bd);border-radius:20px}
+  .ptareas{display:flex;flex-direction:column;gap:6px;margin:8px 0 0 22px}
+  .ptareas .pc{background:var(--card)}
+  .asa{color:var(--mut2);cursor:grab;user-select:none;display:none;font-size:15px;line-height:1}
+  .editable .asa{display:inline}
+  .solo-edicion{display:none} .editable .solo-edicion:not([hidden]){display:inline-block}
+  .editable .sin-edicion{display:none}
+  .editable .vnombre{cursor:text}
+  .editable .pruebas .caja{cursor:pointer}
+  .sortable-ghost{opacity:.35}
+  .nueva-idea{display:flex;flex-direction:column;gap:8px;margin-top:14px;background:var(--card);border:1px solid var(--bd);
+              border-radius:12px;padding:14px}
+  .nueva-idea select,.nueva-idea input,.nueva-idea textarea{font:inherit;font-size:14px;color:var(--tx);background:#0b0c0e;
+              border:1px solid var(--bd);border-radius:8px;padding:9px 11px;resize:vertical}
+  .nueva-idea :focus{outline:none;border-color:var(--acc)}
+  .nueva-idea .botones{display:flex;gap:8px}
+  .nueva-idea .botones button{font-size:13px;padding:8px 14px;border:1px solid var(--bd);border-radius:20px;color:var(--mut)}
+  .nueva-idea .guardar{background:var(--acc);color:#111!important;border-color:var(--acc)!important;font-weight:600}
   .antes{font-size:10.5px;color:var(--mut2);font-family:ui-monospace,monospace}
   .irlinea{margin-left:auto;font:500 12px Inter,sans-serif;text-transform:none;letter-spacing:0;color:var(--acc);
            border:1px solid var(--accbg);background:var(--accbg);border-radius:20px;padding:6px 12px}
@@ -741,6 +965,8 @@ const html = `<!doctype html>
 
   @media (max-width:600px){
     .tl{--etq:150px}
+    .fija{gap:6px} .pestanas{flex-basis:100%} .pestanas button{padding:8px 9px;font-size:14px}
+    .pp{flex-wrap:wrap} .pp .pt{flex-basis:calc(100% - 80px)}
     h1{font-size:28px}
     .resumen{gap:6px} .cifra{padding:10px 12px} .cifra b{font-size:34px} .cifra span{font-size:11.5px}
     .tiles{grid-template-columns:1fr}
@@ -754,6 +980,17 @@ const html = `<!doctype html>
     <span class="gen">Generado con <code>npm run estado</code> · ${esc(commit[1] ?? '')}</span>
   </div>
 
+  <div class="fija">
+    <nav class="pestanas" aria-label="Secciones">
+      <button data-abre="" data-pestana="plan">Plan<span class="n">${plural(versiones.length, 'versión', 'versiones')}</span></button>
+      <button data-abre="" data-pestana="probar">Por probar<span class="n" id="n-probar">${total.probar}</span></button>
+      <button data-abre="" data-pestana="ideas">Ideas<span class="n">${ideas.length}</span></button>
+      <button data-abre="" data-pestana="temas">Temas<span class="n">${TEMAS.length}</span></button>
+    </nav>
+    <div class="filtro-rama" role="group" aria-label="Rama">Rama
+      <button data-filtro="">Todo</button><button data-filtro="main">main</button><button data-filtro="develop">develop</button></div>
+  </div>
+
   <div id="tablero">
     <div class="resumen">
       ${cifra('probar', total.probar, `tareas por probar · ${plural(total.casillas, 'prueba', 'pruebas')}`)}
@@ -762,9 +999,11 @@ const html = `<!doctype html>
     </div>
     <div class="global">${barra(total)}<span>${total.terminada}/${total.terminada + total.probar + total.hacer} tareas</span></div>
 
-    ${franjaProbar()}
+    <div data-de="plan">${bloquePlan()}</div>
+    <div data-de="probar">${franjaProbar() || '<p class="sub vacio">Nada por probar.</p>'}</div>
+    <div data-de="ideas">${bloqueIdeas()}</div>
 
-    <section class="bloque">
+    <section class="bloque" data-de="temas">
       <h2><span class="punto"></span>Temas<span class="n">${TEMAS.length}</span>
         <button class="irlinea" data-abre="linea">Línea de tiempo →</button></h2>
       <p class="sub">Tema › spec › tarea: <code>C05-02</code> es la tarea 2 de la spec 5 de Entrenador ↔ cliente.</p>
@@ -796,6 +1035,7 @@ const html = `<!doctype html>
 
   <footer>${esc(commit[0] ?? '')} · ${esc(commit[1] ?? '')} · ${esc((commit[2] ?? '').slice(0, 90))}</footer>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
   // Vistas por JS y no anclas de hash: la página se abre también como data:
   // URL, y ahí una navegación por #ancla no hace nada. localStorage puede no
@@ -806,8 +1046,14 @@ const html = `<!doctype html>
   try { abierta = localStorage.getItem('estado.spec') || ''; } catch {}
   if (abierta && !document.querySelector('[data-vista="' + abierta + '"]')) abierta = '';
 
+  // Pestañas de la portada: se ve un bloque cada vez. Se recuerda la última.
+  let pestana = 'plan';
+  try { pestana = localStorage.getItem('estado.pestana') || 'plan'; } catch {}
   const pintar = () => {
     tablero.hidden = !!abierta;
+    document.querySelectorAll('[data-de]').forEach((b) => b.classList.toggle('fuera', b.dataset.de !== pestana));
+    document.querySelectorAll('[data-pestana]').forEach((b) => b.setAttribute('aria-current', String(!abierta && b.dataset.pestana === pestana)));
+    try { localStorage.setItem('estado.pestana', pestana); } catch {}
     vistas.forEach((v) => { v.hidden = v.dataset.vista !== abierta; });
     try { localStorage.setItem('estado.spec', abierta); } catch {}
     // En el móvil la línea no cabe: se abre mirando a hoy, que es el extremo derecho.
@@ -818,6 +1064,7 @@ const html = `<!doctype html>
     const b = e.target.closest('[data-abre]');
     if (!b) return;
     abierta = b.dataset.abre;
+    if (b.dataset.pestana) pestana = b.dataset.pestana;
     pintar();
     window.scrollTo(0, 0);
   });
@@ -836,6 +1083,108 @@ const html = `<!doctype html>
     if (b && b.tagName === 'BUTTON') { orden = b.dataset.orden; pintarOrden(); }
   });
   pintarOrden();
+  // Filtro por rama: con él solo quedan las tareas hechas de esa rama (las por
+  // hacer no son de ninguna). Las secciones que se vacían se esconden y cuentan
+  // solo lo que se ve. Los anillos y cifras siguen contando todo.
+  let filtro = '';
+  try { filtro = localStorage.getItem('estado.rama') || ''; } catch {}
+  const pintarFiltro = () => {
+    const pasa = (el) => !filtro || el.dataset.rama === filtro;
+    document.querySelectorAll('[data-rama]').forEach((el) => { el.hidden = !pasa(el); });
+    document.querySelectorAll('[data-filtrable]').forEach((sec) => {
+      const n = [...sec.querySelectorAll('[data-rama]')].filter(pasa).length;
+      sec.hidden = n === 0;
+      sec.querySelector('.n').textContent = n;
+      if (sec.classList.contains('b-probar')) document.getElementById('n-probar').textContent = n;
+    });
+    document.querySelectorAll('.sin-rama').forEach((p) => {
+      p.hidden = !filtro || !!p.parentElement.querySelector('[data-filtrable]:not([hidden])');
+    });
+    document.querySelectorAll('[data-filtro]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filtro === filtro)));
+    try { localStorage.setItem('estado.rama', filtro); } catch {}
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-filtro]');
+    if (b) { filtro = b.dataset.filtro; pintarFiltro(); }
+  });
+  pintarFiltro();
+
+  // Desplegar las tareas de una spec del plan (también sin servidor).
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.desplegar');
+    if (!b) return;
+    const abierto = b.getAttribute('aria-expanded') === 'true';
+    b.setAttribute('aria-expanded', String(!abierto));
+    b.closest('.pc').querySelector('.ptareas').hidden = abierto;
+  });
+
+  // Edición: solo con el servidor de \`npm run plan\`, que guarda y regenera.
+  // Cada cambio se escribe en el .md y se recarga: la página nueva ya sale del
+  // archivo, así que nunca enseña algo distinto de lo guardado.
+  const enviar = (ruta, datos) => fetch(ruta, { method: 'POST', body: JSON.stringify(datos) })
+    .then((r) => (r.ok ? r.text() : r.text().then((t) => Promise.reject(t))))
+    .then(() => { try { sessionStorage.setItem('estado.y', String(scrollY)); } catch {} location.reload(); })
+    .catch((err) => { alert('No se ha guardado:\\n' + err); location.reload(); });
+  try {
+    const y = sessionStorage.getItem('estado.y');
+    if (y) { sessionStorage.removeItem('estado.y'); requestAnimationFrame(() => scrollTo(0, +y)); }
+  } catch {}
+
+  const guardarPlan = () => enviar('/api/plan', {
+    versiones: [...document.querySelectorAll('.version[data-version]')].map((v) => ({
+      nombre: v.dataset.version,
+      items: [...v.querySelector('.vlista').children].map((c) => c.dataset.codigo),
+    })),
+  });
+
+  const activarEdicion = () => {
+    document.body.classList.add('editable');
+    // forceFallback: arrastre con eventos de ratón, no el nativo de HTML5, que
+    // pinta un fantasma traslúcido y no deja desplazar la página mientras.
+    const comun = { handle: '.asa', animation: 150, forceFallback: true, onEnd: (e) => { if (e.from !== e.to || e.oldIndex !== e.newIndex) guardarPlan(); } };
+    document.querySelectorAll('.vlista').forEach((el) => Sortable.create(el, { ...comun, group: 'plan', handle: '.vlista > .pc > .asa, .vlista > .pc > .pcab > .asa' }));
+    // A la lista de una spec solo vuelven sus propias tareas.
+    document.querySelectorAll('.ptareas').forEach((el) => Sortable.create(el, { ...comun, sort: false, handle: '.ptareas > .pc > .asa',
+      group: { name: 'plan', pull: true, put: (to, from, drag) => drag.dataset.spec === to.el.dataset.spec } }));
+    Sortable.create(document.querySelector('.versiones'), { ...comun, handle: '.vasa' });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-accion="nueva-version"]')) {
+        const nombre = prompt('Nombre de la versión (p. ej. 1.1)');
+        if (!nombre || !nombre.trim()) return;
+        const v = document.createElement('div');
+        v.className = 'version';
+        v.dataset.version = nombre.trim();
+        v.innerHTML = '<div class="vlista"></div>';
+        document.querySelector('.versiones').append(v);
+        guardarPlan();
+      } else if (e.target.closest('.vborrar')) {
+        e.target.closest('.version').remove();
+        guardarPlan();
+      } else if (e.target.closest('.vnombre')) {
+        const v = e.target.closest('.version');
+        const nombre = prompt('Nuevo nombre', v.dataset.version);
+        if (nombre && nombre.trim() && nombre.trim() !== v.dataset.version) { v.dataset.version = nombre.trim(); guardarPlan(); }
+      } else if (e.target.closest('[data-accion="nueva-idea"]')) {
+        const f = document.querySelector('.nueva-idea');
+        f.hidden = false;
+        f.titulo.focus();
+      } else if (e.target.closest('[data-accion="cancelar-idea"]')) {
+        document.querySelector('.nueva-idea').hidden = true;
+      } else if (e.target.closest('.pruebas .caja')) {
+        const [archivo, codigo, i] = e.target.closest('li').dataset.casilla.split('|');
+        enviar('/api/casilla', { archivo, codigo, i: +i });
+      }
+    });
+    document.querySelector('.nueva-idea').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const f = e.target;
+      enviar('/api/idea', { codigo: f.codigo.value, titulo: f.titulo.value, cuerpo: f.cuerpo.value });
+    });
+  };
+  if (location.protocol.startsWith('http') && window.Sortable) {
+    fetch('/api/ok').then((r) => { if (r.ok) activarEdicion(); }).catch(() => {});
+  }
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !abierta) return;
     abierta = document.querySelector('[data-vista="' + abierta + '"]').dataset.padre;
@@ -846,12 +1195,6 @@ const html = `<!doctype html>
 </body></html>`;
 
 writeFileSync(SALIDA, html, 'utf8');
-// Buscar a mano el siguiente numero libre es justo como se acaba reutilizando
-// uno: se imprime, y quien anada una fase copia de aqui.
-const libres = TEMAS.filter(([t]) => t !== 'errores').map(([, , l]) => {
-  const usados = specs.filter((s) => s.codigo[0] === l).map((s) => Number(s.codigo.slice(1)));
-  return `${l}${String(Math.max(0, ...usados) + 1).padStart(2, '0')}`;
-});
 console.log(`Siguiente spec libre: ${libres.join(' · ')}  (la tarea nueva de una spec es su última + 1)`);
 
 const porProbar = todasFases.filter((x) => x.situacion === 'probar').map((x) => x.codigo);
