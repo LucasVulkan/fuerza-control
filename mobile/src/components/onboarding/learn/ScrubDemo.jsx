@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Text } from '../../ui/Text';
 import Chevron from '../../workout/Chevron';
-import ScrubRuler, { SCRUB_MS } from '../../workout/ScrubRuler';
+import ScrubRuler, { SCRUB_MS, SCRUB_RAISE } from '../../workout/ScrubRuler';
 import { GRID } from '../../workout/grid';
 import { scrubRuler, scrubValueAt } from '../../../utils/scrubScale';
 import { useWeightUnit } from '../../../hooks/useWeightUnit';
@@ -111,7 +111,6 @@ function Cell({ value, field, step, useRuler, unit, rowWidth, measureRow, onStar
         if (v !== sc.value) {
           sc.value = v;
           live.current.onMove({ value: v });
-          Haptics.selectionAsync().catch(() => {});
         }
         return;
       }
@@ -241,7 +240,7 @@ const makeStyles = (th) => StyleSheet.create({
   demo: {
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.lg,
-    paddingTop:      spacing.xxl + spacing.xxl,
+    paddingTop:      spacing.xxl + spacing.xxl + SCRUB_RAISE,
     paddingBottom:   spacing.lg,
     paddingHorizontal: spacing.md + 4,
     marginBottom:    spacing.lg,

@@ -14,7 +14,6 @@
  */
 
 import { View, TouchableOpacity, StyleSheet, PanResponder, Keyboard, Pressable, Animated } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { Text, TextInput } from '../ui/Text';
 import Chevron from './Chevron';
 import Svg, { Path, Rect } from 'react-native-svg';
@@ -24,8 +23,8 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import {
-  scrubRuler, scrubValueAt, scrubIsStrong, scrubEdge, scrubPan, scrubPanDir, scrubPanMs,
-  SCRUB_CANCEL_DY, SCRUB_HAPTIC_MAX_VX,
+  scrubRuler, scrubValueAt, scrubEdge, scrubPan, scrubPanDir, scrubPanMs,
+  SCRUB_CANCEL_DY,
 } from '../../utils/scrubScale';
 import { GRID } from './grid';
 import ScrubRuler, { SCRUB_MS } from './ScrubRuler';
@@ -182,22 +181,13 @@ function InputCell({
     Animated.timing(accentAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
   }, []);
 
-  // Cada cambio de valor vibra: «redondo» (1 kg, 5 lb) con Light, el resto con el
-  // tic fino (U10-10 §2.6.1).
-  const buzz = useCallback((ruler, v) => {
-    (scrubIsStrong(ruler, v)
-      ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-      : Haptics.selectionAsync()
-    ).catch(() => {});
-  }, []);
-
   // Valor bajo el dedo con la regla y la x actuales: lo cambia y avisa a SetRow.
   const retarget = useCallback((sc, extra) => {
     const v = scrubValueAt(sc.ruler, sc.fingerX);
     const patch = { ...extra };
-    if (v !== sc.value) { sc.value = v; patch.value = v; if (!sc.fast) buzz(sc.ruler, v); }
+    if (v !== sc.value) { sc.value = v; patch.value = v; }
     return patch;
-  }, [buzz]);
+  }, []);
 
   const stopPan = useCallback((sc) => {
     if (sc) { clearTimeout(sc.panTimer); sc.panTimer = null; }
@@ -216,7 +206,6 @@ function InputCell({
       const next = scrubPan(sc.ruler, dir);
       if (next !== sc.ruler) {
         sc.ruler = next;
-        sc.fast = false;   // el dedo está quieto en el borde: el avance sí vibra
         liveRef.current.onScrubMove?.(retarget(sc, { ruler: next }));
       }
       sc.panTimer = setTimeout(() => panTickRef.current?.(sc), scrubPanMs(sc.fingerX, rowW));
@@ -283,8 +272,6 @@ function InputCell({
               initial: sc.initial, hasValue: lv.hasValue,
               prevValue: Number.isFinite(prevNum) ? prevNum : null, prevSource: lv.prevSource,
             });
-            // RPE y reglas absolutas: el valor bajo el dedo puede no ser el de la casilla; ya cuenta como cambio.
-            if (ruler.start !== sc.initial) buzz(ruler, ruler.start);
           });
           return;
         }
@@ -297,7 +284,6 @@ function InputCell({
           if (sc.pending) return;
           const lv = liveRef.current;
           sc.fingerX = gs.moveX - sc.rowPageX;
-          sc.fast = Math.abs(gs.vx) > SCRUB_HAPTIC_MAX_VX;
           const cancel = gs.dy < -SCRUB_CANCEL_DY;
           if (cancel !== sc.cancel) {
             sc.cancel = cancel;
@@ -306,7 +292,6 @@ function InputCell({
               // avanza por los bordes.
               stopPan(sc);
               sc.edge = 0;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               lv.onScrubMove?.({ cancel: true, value: sc.initial, edge: 0 });
               return;
             }

@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   scrubRuler, scrubXOf, scrubValueAt, scrubTicks, SCRUB_PAD, MIN_NUMBER_GAP,
-  scrubIsStrong, scrubDiffText, scrubEdge, scrubPanDir, scrubPanMs, scrubPan,
+  scrubDiffText, scrubEdge, scrubPanDir, scrubPanMs, scrubPan,
   SCRUB_EDGE_FAR, SCRUB_EDGE_NEAR, SCRUB_PAN_SLOW_MS, SCRUB_PAN_FAST_MS,
 } from './scrubScale';
 
@@ -217,32 +217,6 @@ describe('scrubTicks', () => {
 });
 
 // ── U10-10 ───────────────────────────────────────────────────────────────────
-
-describe('scrubIsStrong · vibración por escalones', () => {
-  test('kg: cada kilo entero es redondo, los medios kilos son finos', () => {
-    const r = scrubRuler('weight', 60, MID, W);
-    expect(r.strongEvery).toBe(1);
-    expect(scrubIsStrong(r, 60)).toBe(true);
-    expect(scrubIsStrong(r, 60.5)).toBe(false);
-    expect(scrubIsStrong(r, 61)).toBe(true);
-    expect(scrubIsStrong(r, 55.9)).toBe(false);
-  });
-
-  test('lb: redondo cada 5 lb', () => {
-    const r = scrubRuler('weight', 225, MID, W, { unit: 'lb' });
-    expect(r.strongEvery).toBe(5);
-    expect(scrubIsStrong(r, 225)).toBe(true);
-    expect(scrubIsStrong(r, 226)).toBe(false);
-    expect(scrubIsStrong(r, 230)).toBe(true);
-  });
-
-  test('reps y RPE: todos finos', () => {
-    for (const r of [scrubRuler('reps', 8, MID, W), scrubRuler('rpe', 8, MID, W)]) {
-      expect(scrubIsStrong(r, 5)).toBe(false);
-      expect(scrubIsStrong(r, 10)).toBe(false);
-    }
-  });
-});
 
 describe('scrubDiffText', () => {
   test('signo explícito, menos tipográfico, 2 decimales sin ruido', () => {
