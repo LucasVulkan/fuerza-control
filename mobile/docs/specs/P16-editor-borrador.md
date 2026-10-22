@@ -5,7 +5,7 @@
 > Inicio: 2026-10-22
 > Fase P16-01 · hecho · Borrador: Cancelar descarta, el check guarda · §3
 > Fase P16-02 · hecho · Cabecera del editor por niveles · §4
-> Fase P16-03 · pendiente · Tarjeta de identidad · §5
+> Fase P16-03 · hecho · Tarjeta de identidad · §5
 > Fase P16-04 · pendiente · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
 > Fase P16-05 · pendiente · Marcas «editada» en lo que se ha tocado · §7
 > Fase P16-06 · pendiente · Letras y números en Barlow en las filas · §8
@@ -214,14 +214,19 @@ componente nuevo, `EditorIdentityCard`.
 - **Una etapa**: desaparece la cabecera de la etapa, que hoy repite el nombre
   del programa (`single` en `ProgramEditorScreen`): la tarjeta ya lo dice.
 
+*Como quedó (22-oct):* `components/editor/EditorIdentityCard` (props: `eyebrow`, `clientName`, `name`/`emptyName`, `stats` o `line`, `onRename`+`renameTitle` para el lápiz, **`corner`**, `onLayout`, `children`). **`corner` es el hueco de P16-04**: un `View` absoluto en la esquina (top 12 / right 12, 30 de alto, el nombre deja 70 a la derecha) donde va el botón «n/N»; `ExerciseEditorScreen` y `BlockEditorScreen` tienen un comentario `// P16-04:` donde pasarlo, y `ExerciseEditorInline`/`BlockEditorInline` lo reenvían. Rol nuevo `textStyles.statGlyph` (Barlow 16, ya en la escala). El nombre usa `heroName` (28, a dos líneas como mucho), sin rol más pequeño: la escala no tiene 24. La tarjeta del ejercicio y la del bloque viven dentro de los `*Inline` (el volumen y el nombre del bloque salen de su estado local, así que cambian al momento); la ceja («Ejercicio 01 · Sesión A», con el número de la lista de la sesión, `slotNumber`) la arma la pantalla y también va a la cabecera plegada. `useEditorFold()` ya no recibe umbral: devuelve `onCardLayout` y pliega al pasar el alto medido menos 20. Se quita de `ScreenHeader` el renombrado entero (`renaming`, `draft`, `onDraftChange`, `onRename*`, `placeholder`, velo y contador) y «···» › Editar nombre de la sesión (redundante con el lápiz); `menu` sigue hasta P16-04. Desvíos: (1) la regla usa `progressionRule(…, { parts: true })` y pone en negrita lima toda la acción («Sube 2,5 kg»), no solo el valor; (2) el bloque lleva su resumen en dos partes (línea + frase bajo la línea fina); (3) **con una sola etapa se quita el título repetido de la cabecera de la etapa, pero se queda la cabecera (ceja «En curso» + semanas/sesiones + engranaje)**: el engranaje es el único acceso a los ajustes de la etapa; (4) en la ficha de un programa de cliente, la ceja de la cabecera plegada es «Programa · Marta» (sin el azul); (5) las cifras de sesiones/sem son las de la etapa en curso; (6) se borran las claves de i18n que dejan de usarse (`titleEdit*`, `summarySession`, `summaryBlock`, `volume*`, `stagesLabel*` salvo `stagesLabelNone`, `exerciseEyebrow`, `blockEyebrow`, `programNamePlaceholder`).
+
 **Probar P16-03**
 
 - [ ] Editor de programa con 3 etapas → tarjeta gris «PROGRAMA / nombre / 12 semanas · 4 sesiones/sem · 3 etapas»; el rótulo de las fichas dice «ETAPAS»
-- [ ] Programa de una sola etapa → no hay cabecera de etapa repitiendo el nombre
+- [ ] Programa de una sola etapa → la cabecera de la etapa ya no repite el nombre del programa (sigue el engranaje)
 - [ ] Lápiz → hoja con el nombre → cambiarlo → Hecho → la tarjeta lo enseña; Cancelar el editor → Descartar → vuelve el nombre de antes
 - [ ] Programa de un cliente → la ceja dice «PROGRAMA · <nombre del cliente>» en azul
 - [ ] Editor de ejercicio → la tarjeta lleva el volumen, la regla (solo cuándo sube) y, si está vinculado, «Vinculado con la sesión X»; cambiar el grupo a «Ninguna» quita esa línea
 - [ ] Cambiar las series en el editor de ejercicio → la cifra de la tarjeta cambia al momento
+- [ ] Editor de sesión → tarjeta gris con «SESIÓN A · ETAPA 1» (sin etapa si solo hay una), nombre, ejercicios · series · min y lápiz; «···» ya no trae Editar nombre
+- [ ] Editor de bloque → tarjeta con «BLOQUE 04 · SESIÓN A», el nombre del bloque (cambia al escribirlo en Opciones) y el resumen
+- [ ] Scroll en cualquier editor → la cabecera se pliega (ceja + nombre) cuando la tarjeta sale de pantalla, no antes
 
 ## 6. P16-04 — Cambiar de ejercicio o bloque
 
@@ -359,7 +364,7 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 |---|---|---|---|---|
 | P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ `212f79f` — `useEditorDraft` + `utils/editorDraft` |
 | P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | ✅ `f154e43` — modo `editor` de `ScreenHeader` + `useEditorFold` |
-| P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | pendiente |
+| P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | ✅ `HASH` — `EditorIdentityCard` + `statGlyph` |
 | P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | pendiente |
 | P16-05 | Marcas «editada» | P16-01 | 🟢 | pendiente |
 | P16-06 | Letras y números en Barlow | — | 🟢 | pendiente |

@@ -25,6 +25,8 @@ import { CheckIcon } from '../components/ui/EditorIcons';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorFold } from '../hooks/useEditorFold';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
+import { sessionTag } from '../utils/editorIdentity';
+import { slotNumber } from '../utils/sessionSlots';
 
 export default function BlockEditorScreen({ navigation, route }) {
   const { templateId, blockId: initialBlockId } = route.params ?? {};
@@ -32,7 +34,7 @@ export default function BlockEditorScreen({ navigation, route }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { done } = useEditorExit(navigation, templateId);
-  const { folded, onScroll } = useEditorFold();
+  const { folded, onScroll, onCardLayout } = useEditorFold();
 
   const [blockId, setBlockId] = useState(initialBlockId);
   // Mismo contador de saltos que en `ExerciseEditorScreen`: sube en cada
@@ -67,13 +69,17 @@ export default function BlockEditorScreen({ navigation, route }) {
   // que el modal, que se desmontaba en seco.
   if (!block) return null;
 
+  // «Bloque 04 · Sesión A». La sesión libre del Workout no tiene plantilla ni número.
+  const num     = slotNumber(template, { blockId });
+  const eyebrow = num ? t('editor.idBlock', { n: num, where: sessionTag(template, t) }) : t('editor.idBlockFree');
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <ScreenHeader
         onBack={() => navigation.goBack()}
         // La sesión libre del Workout no es el editor: sigue con su cabecera.
         editor={isFree ? undefined : { backLabel: template?.name || t('freeSession.templateUnnamed'), folded }}
-        eyebrow={t('editor.blockEyebrow')}
+        eyebrow={eyebrow}
         title={blockName(block)}
         menu={blocks.length > 1 ? {
           items: blocks.map((b) => ({ id: b.id, label: blockName(b) })),
@@ -104,6 +110,9 @@ export default function BlockEditorScreen({ navigation, route }) {
             <BlockEditorInline
               templateId={templateId}
               block={block}
+              eyebrow={eyebrow}
+              onCardLayout={onCardLayout}
+              // P16-04: aquí va `corner`, el botón de lista «n/N» de la esquina de la tarjeta.
               allExercises={allExercises}
               onClose={() => navigation.goBack()}
               navigation={navigation}

@@ -2,7 +2,7 @@
  * BlockEditorInline — editor de un bloque de acondicionamiento, rediseño
  * FormaFit (Figma `190:1661` "Bloques: AMRAP" y `192:1897` "Bloques: EMOM").
  *
- * Estructura del mock: RESUMEN → `1. FORMATO` (segmentado + descripción y, en
+ * Estructura del mock: TARJETA DE IDENTIDAD (antes RESUMEN) → `1. FORMATO` (segmentado + descripción y, en
  * EMOM, el segmentado "Tipo de EMOM") → los parámetros del formato →
  * `N. MOVIMIENTOS` (lista agrupada) → `OPCIONES` (nombre + nota) → Guardar
  * preset / Eliminar bloque.
@@ -33,6 +33,7 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
+import EditorIdentityCard from './EditorIdentityCard';
 import StepField from '../ui/StepField';
 import { DragIcon } from '../ui/EditorIcons';
 import { SORTABLE_PROPS } from '../ui/sortable';
@@ -189,7 +190,12 @@ const INTERVAL_PRESETS = [30, 45, 60, 90];
 
 // `scrollableRef` es el del ScrollView de la pantalla que contiene el editor:
 // lo necesita la lista reordenable para autoscroll al arrastrar cerca del borde.
-export default function BlockEditorInline({ templateId, block, allExercises, onClose, navigation, scrollableRef }) {
+// `eyebrow`, `corner` y `onCardLayout` son de la tarjeta de identidad (P16-03):
+// la ceja que arma la pantalla, el hueco de la esquina para el botón de lista
+// de P16-04 y la medida que pliega la cabecera.
+export default function BlockEditorInline({
+  templateId, block, allExercises, onClose, navigation, scrollableRef, eyebrow, corner, onCardLayout,
+}) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
@@ -390,12 +396,16 @@ export default function BlockEditorInline({ templateId, block, allExercises, onC
   return (
     <View style={styles.container}>
 
-      {/* ══ RESUMEN ══════════════════════════════════════════════════════════ */}
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryTag}>{t('editor.summaryBlock')}</Text>
-        <Text style={styles.summaryMain}>{summaryMain}</Text>
+      {/* ══ TARJETA DE IDENTIDAD (P16-03) ════════════════════════════════════ */}
+      <EditorIdentityCard
+        eyebrow={eyebrow}
+        name={name.trim() || t(`blocks.formats.${format}`)}
+        line={summaryMain}
+        corner={corner}
+        onLayout={onCardLayout}
+      >
         <Text style={styles.summarySub}>{summarySub}</Text>
-      </View>
+      </EditorIdentityCard>
 
       {/* ══ 1. FORMATO ═══════════════════════════════════════════════════════ */}
       <View style={styles.block}>
@@ -592,17 +602,8 @@ const makeStyles = (th) => StyleSheet.create({
   },
   block: { gap: spacing.md },
 
-  // ── Resumen (misma anatomía que el editor de ejercicio) ───────────────────
-  summaryCard: {
-    backgroundColor:   th.tint.accent10,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    gap:               spacing.sm,
-  },
-  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
-  summarySub:  { ...textStyles.label,       color: th.tint.accent50 },
+  // ── Tarjeta de identidad: la frase de debajo (P16-03) ──────────────────────
+  summarySub:  { ...textStyles.label, color: th.tint.accent50 },
 
   // ── Etiquetas ─────────────────────────────────────────────────────────────
   secLabel: { ...textStyles.caps, color: th.colors.mutedLight, paddingTop: spacing.md },

@@ -30,15 +30,14 @@
  *   porque es lo primero que hay que leer y en gris se leía lo último.
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
-import Reanimated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { useState, useEffect } from 'react';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
-import { Text, TextInput } from './Text';
+import { Text } from './Text';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
-import { NAME_MAX } from '../../utils/names';
 import { ArrowIcon } from './EditorIcons';
 
 // Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
@@ -49,15 +48,6 @@ export const HEADER_RULE_H = 3;
 // Lado del botón de volver. Es también el ancho del hueco que ocupa cuando no
 // hay atrás, para que el título no salte entre pasos del onboarding.
 const BACK_BTN = 32;
-// Espera antes de pedir el foco del nombre. Renombrar se puede lanzar desde el
-// menú "···", y ese menú es un `Modal` de `DragSheet`: en Android el Modal es
-// OTRA ventana, y mientras se desmonta el IME sigue atado a ella — pedir el
-// foco antes deja el cursor puesto y el teclado sin salir. `InteractionManager`
-// no sirve de guía porque el desmontaje es nativo y no registra ninguna
-// interacción con la que sincronizarse, así que es un tiempo y tiene que cubrir
-// los 240ms que tarda `DragSheet` en cerrarse. Es el botón de calibrado de
-// esto: si algún dispositivo lento se queda sin teclado, súbelo.
-const FOCUS_DELAY = 300;
 
 /**
  * La regla que cierra la cabecera. Con `progress` —un booleano por unidad— sale
@@ -99,46 +89,29 @@ export default function ScreenHeader({
   right,
   // Un booleano por unidad para la regla segmentada (ver `HeaderRule`).
   progress,
-  // Título editable: con `onRenameStart` el nombre es pulsable y se renombra
-  // ahí mismo. No hay lápiz ni botón de confirmar — el hueco de acciones es del
-  // check de "listo", y dos confirmaciones idénticas en la misma esquina no se
-  // distinguen. Renombrando, la cabecera se queda SOLA: el resto se apaga tras
-  // un velo y tocar en cualquier sitio confirma. Lo que recuerda que se puede
-  // renombrar es "Editar nombre" en el menú de la pantalla.
   // Desplegable de título: `{ items: [{ id, label }], currentId, onSelect }`.
   // Con él el nombre lleva un chevron y abre la lista de hermanos anclada bajo
   // la cabecera — es como se salta de ejercicio o de bloque sin volver a la
-  // sesión. Excluyente con el título editable: el toque solo puede hacer una
-  // cosa, y ni el ejercicio ni el bloque se renombran desde aquí.
+  // sesión. (Provisional: P16-04 lo saca a la tarjeta de identidad.)
   menu,
   // Título que abre algo de quien llama (una hoja para elegir otro): el mismo
   // chevron que `menu`, sin la lista anclada. Para listas largas, que el
   // desplegable no deja desplazar.
   onTitlePress,
-  renaming = false,
-  draft = '',
-  onDraftChange,
-  onRenameStart,
-  onRenameCommit,
-  placeholder,
   // Modo del editor (P16-02): `{ base, backLabel, onCancel, folded }`. Solo lo
   // pasan las pantallas del editor. `base`: la primera del editor, con
   // «Cancelar» (`onCancel`) y «EDITANDO» en el centro; si no, «‹ backLabel»
   // (`onBack` hace la subida). `folded`: la tarjeta de identidad ha salido de
   // pantalla — el centro enseña ceja + nombre, la regla fina aparece y el texto
-  // del «‹» se apaga. Renombrando se pinta la cabecera de siempre.
+  // del «‹» se apaga. El nombre se cambia con el lápiz de la tarjeta, no aquí.
   editor,
 }) {
   const { t }    = useTranslation();
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
-  const editable = typeof onRenameStart === 'function';
-  const draftLen = (draft ?? '').length;
   const [menuOpen, setMenuOpen] = useState(false);
-  const inputRef = useRef(null);
-  const { height: winH } = useWindowDimensions();
 
-  const ed     = editor && !renaming ? editor : null;
+  const ed     = editor ?? null;
   const folded = !!editor?.folded;
   const fold   = useSharedValue(0);
   useEffect(() => { fold.set(withTiming(folded ? 1 : 0, { duration: 200 })); }, [folded, fold]);
@@ -149,18 +122,9 @@ export default function ScreenHeader({
   }));
   const ruleStyle     = useAnimatedStyle(() => ({ opacity: fold.get() }));
   const toggleMenu    = () => setMenuOpen((o) => !o);
-  // Qué hace tocar el centro mientras no haya tarjeta con lápiz (P16-03) ni
-  // lista anclada (P16-04): renombrar, abrir el desplegable o `onTitlePress`.
-  const midPress = editable ? onRenameStart : menu ? toggleMenu : onTitlePress;
-
-  // El foco se pide UNA vez y siempre por aquí (ver `FOCUS_DELAY`). Nada de
-  // `autoFocus` además de esto: si el input ya se cree enfocado, `focus()`
-  // vuelve sin hacer nada y el teclado no sale — que era exactamente el fallo.
-  useEffect(() => {
-    if (!renaming) return undefined;
-    const id = setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY);
-    return () => clearTimeout(id);
-  }, [renaming]);
+  // Qué hace tocar el centro mientras no haya lista anclada (P16-04): abrir el
+  // desplegable o `onTitlePress`.
+  const midPress = menu ? toggleMenu : onTitlePress;
   // La tinta de las acciones que pinta el llamante. Gris: el acento del cromo
   // es la ceja, el chevron y el check de "listo" — un "···" lima al lado sería
   // el cuarto y ninguno mandaría.
@@ -214,10 +178,7 @@ export default function ScreenHeader({
         </View>
       ) : (
       <View style={styles.header}>
-        {/* Renombrando no hay atrás: el velo cubre todo lo demás y el único
-            gesto posible es confirmar. Un chevron vivo aquí se llevaría el
-            nombre a medio escribir a otra pantalla. */}
-        {onBack && !renaming
+        {onBack
           ? (
             <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={10} activeOpacity={0.7}>
               <ArrowIcon size={15} color={th.colors.accent} back />
@@ -228,94 +189,42 @@ export default function ScreenHeader({
         <View style={styles.mid}>
           {eyebrow ? <Text style={styles.eyebrow} numberOfLines={1}>{eyebrow}</Text> : null}
 
-          {renaming ? (
-            <TextInput
-              ref={inputRef}
-              style={styles.titleInput}
-              value={draft}
-              onChangeText={onDraftChange}
-              onBlur={onRenameCommit}
-              onSubmitEditing={onRenameCommit}
-              placeholder={placeholder}
-              placeholderTextColor={withOpacity(th.colors.mutedLight, 0.6)}
-              returnKeyType="done"
-              // Ver `utils/names.js`: el máximo se abre a lo que ya hay para no
-              // recortar en Android un nombre largo de antes del límite.
-              maxLength={Math.max(NAME_MAX, draftLen)}
-            />
-          ) : (
-            <View style={styles.titleRow}>
-              <Text
-                style={styles.title}
-                // Una línea: a 16px caben ~32 caracteres. Escribir está
-                // limitado a `NAME_MAX` (25), pero lo guardado de antes puede ser
-                // más largo y trunca a propósito: partirlo en dos haría que la
-                // barra cambiase de alto según el programa que abras.
-                numberOfLines={1}
-                onPress={editable ? onRenameStart : (menu ? () => setMenuOpen((o) => !o) : onTitlePress)}
-                suppressHighlighting
+          <View style={styles.titleRow}>
+            <Text
+              style={styles.title}
+              // Una línea: a 16px caben ~32 caracteres. Lo guardado puede ser más
+              // largo que lo que se deja escribir (`NAME_MAX`) y trunca a
+              // propósito: partirlo en dos haría que la barra cambiase de alto
+              // según el programa que abras.
+              numberOfLines={1}
+              onPress={midPress}
+              suppressHighlighting
+            >
+              {title ?? ''}
+            </Text>
+            {(menu || onTitlePress) && (
+              <TouchableOpacity
+                onPress={midPress}
+                hitSlop={12}
+                style={[styles.titleChevron, menuOpen && styles.titleChevronOpen]}
               >
-                {title ?? ''}
-              </Text>
-              {(menu || onTitlePress) && (
-                <TouchableOpacity
-                  onPress={menu ? () => setMenuOpen((o) => !o) : onTitlePress}
-                  hitSlop={12}
-                  style={[styles.titleChevron, menuOpen && styles.titleChevronOpen]}
-                >
-                  <ArrowIcon size={7.69} color={th.colors.mutedLight} />
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+                <ArrowIcon size={7.69} color={th.colors.mutedLight} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* Renombrando, el hueco es SOLO del check que cierra el nombre: si a su
-            lado siguiera el de "listo", dos checks idénticos a 20px harían que
-            confirmar un nombre y salir del editor fuesen el mismo gesto. */}
-        {(right && !renaming) ? (
+        {right ? (
           <View style={styles.actions}>
             {typeof right === 'function' ? right(ink) : right}
           </View>
         ) : <View style={styles.backSpacer} />}
-
-        {/* El contador va FUERA del flujo: en el hueco de acciones ensanchaba el
-            lado derecho y descentraba el título justo mientras escribes, que es
-            cuando más se nota. Cae sobre el final del input, que con el texto
-            centrado está vacío. Sólo mientras renombras. */}
-        {editable && renaming && (
-          <View style={styles.countWrap} pointerEvents="none">
-            <Text style={[styles.count, draftLen > NAME_MAX && styles.countOver]}>
-              {draftLen}/{NAME_MAX}
-            </Text>
-          </View>
-        )}
       </View>
       )}
 
       {ed
         ? <View style={styles.edRuleSlot}><Reanimated.View style={[styles.edRule, ruleStyle]} /></View>
         : <HeaderRule progress={progress} />}
-
-      {/* El velo. Cuelga del borde inferior de la cabecera y mide la pantalla
-          entera: apaga el cuerpo para que el nombre sea lo único encendido, y
-          es además el "tocar en cualquier parte para confirmar". Entra y sale
-          con un fundido — a pelo, el cuerpo daba un salto de color que parecía
-          un cambio de pantalla. Los 120ms de entrada son para relevar al
-          backdrop de `DragSheet` cuando se renombra desde el "···": ése se
-          apaga hacia los 95ms de su cierre, y si el velo tardara más se vería
-          el cuerpo encenderse en medio. El `Pressable` va dentro y no en la vista
-          animada porque el `exiting` de Reanimated necesita mandar sobre el
-          desmontaje de la vista que anima. */}
-      {renaming && (
-        <Reanimated.View
-          entering={FadeIn.duration(120)}
-          exiting={FadeOut.duration(120)}
-          style={[styles.scrim, { height: winH }]}
-        >
-          <Pressable style={StyleSheet.absoluteFill} onPress={onRenameCommit} />
-        </Reanimated.View>
-      )}
 
       {menu && menuOpen && (
         <View style={styles.menuList}>
@@ -435,16 +344,6 @@ const makeStyles = (th) => StyleSheet.create({
   titleChevron:     { transform: [{ rotate: '90deg'  }] },
   titleChevronOpen: { transform: [{ rotate: '270deg' }] },
 
-  // Mismo negro que el backdrop de `DragSheet`: apagar el fondo ya tiene un
-  // material en la app y no hacía falta otro.
-  scrim: {
-    position:        'absolute',
-    top:             '100%',
-    left:            0,
-    right:           0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-
   // Cuelga del borde inferior de la cabecera —regla incluida— a todo el ancho.
   menuList: {
     position:          'absolute',
@@ -466,30 +365,6 @@ const makeStyles = (th) => StyleSheet.create({
   menuText:    { ...textStyles.body, color: th.colors.mutedLight },
   menuTextSel: { color: th.colors.text },
 
-  // El input no tiene ancho propio: centrado por `alignItems` mediría cero, así
-  // que ocupa todo `mid` y lo que se centra es su texto.
-  titleInput: {
-    ...textStyles.heading,
-    color:     th.colors.text,
-    marginTop: spacing.xs,
-    padding:   0,
-    alignSelf: 'stretch',
-    textAlign: 'center',
-  },
-  // Pegado al hueco de acciones por la derecha y centrado en el alto de la barra.
-  countWrap: {
-    position:       'absolute',
-    right:          spacing.lg + BACK_BTN + spacing.md,
-    top:            0,
-    bottom:         0,
-    justifyContent: 'center',
-  },
-  count: {
-    ...textStyles.caps,
-    color:       th.colors.mutedLight,
-    fontVariant: ['tabular-nums'],
-  },
-  countOver: { color: th.colors.red },
   hairline: { height: 1, backgroundColor: th.colors.border },
   ruleRow:  { height: HEADER_RULE_H, flexDirection: 'row', gap: 2 },
   ruleSeg:  { flex: 1, height: HEADER_RULE_H },

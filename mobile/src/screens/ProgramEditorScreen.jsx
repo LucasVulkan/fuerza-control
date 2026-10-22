@@ -19,6 +19,7 @@ import { Section, SectionLabel, MenuRow, Status, RowIcon } from '../components/u
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { Switch } from '../components/ui/EditorRows';
 import StageCards from '../components/ui/StageCards';
+import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { useSlidePages } from '../components/ui/useSlidePages';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SwipeRow from '../components/ui/SwipeRow';
@@ -28,7 +29,7 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
-import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
+import { athleteProgress, stageStatus, stageWeekLabel, programTotals, weeklySessions } from '../utils/stageProgress';
 import { stageWeekRanges, stageRangeLabel, isDeload } from '../utils/stageStats';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorBase } from '../hooks/useEditorDraft';
@@ -111,17 +112,14 @@ export default function ProgramEditorScreen({ navigation }) {
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
   // Siempre es la base del editor: se abre desde fuera por `navigate('programEditor')`.
   const { cancel }    = useEditorBase(navigation, true, editingId ? { kind: 'program', id: editingId } : null);
-  const { folded, onScroll } = useEditorFold();
+  const { folded, onScroll, onCardLayout } = useEditorFold();
   const activeProgram = programs[editingId];
-  const isFromClients = !!ui._editingProgramId;
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
     [exerciseLibrary, customExercises],
   );
 
-  const [nameValue, setNameValue]               = useState(activeProgram?.name ?? '');
-  const [editingName, setEditingName]           = useState(false);
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
   const [openRowId, setOpenRowId]               = useState(null); // tarjeta con el panel de acciones abierto
@@ -261,13 +259,6 @@ export default function ProgramEditorScreen({ navigation }) {
     }
   }
 
-  function commitName() {
-    setEditingName(false);
-    const trimmed = nameValue.trim();
-    if (trimmed && trimmed !== activeProgram.name) renameProgram(editingId, trimmed);
-    else setNameValue(activeProgram.name ?? '');
-  }
-
   function commitStageName() {
     const trimmed = stageName.trim();
     if (trimmed && trimmed !== selectedStage?.name) updateStage(editingId, selectedStageIdx, { name: trimmed });
@@ -301,7 +292,6 @@ export default function ProgramEditorScreen({ navigation }) {
   // sale del modo edición. El chevron es Cancelar (P16-01): lo escrito a medias
   // no cuenta, y si hay cambios en el borrador pregunta antes de descartar.
   function handleDone() {
-    commitName();
     commitStageName();
     done();
   }
@@ -423,14 +413,8 @@ export default function ProgramEditorScreen({ navigation }) {
       {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
       <ScreenHeader
         editor={{ base: true, onCancel: cancel, folded }}
-        eyebrow={isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
+        eyebrow={[t('editor.idProgram'), editedClient?.name].filter(Boolean).join(' · ')}
         title={activeProgram.name ?? ''}
-        placeholder={t('editor.programNamePlaceholder')}
-        renaming={editingName}
-        draft={nameValue}
-        onDraftChange={setNameValue}
-        onRenameStart={() => { setNameValue(activeProgram.name ?? ''); setEditingName(true); }}
-        onRenameCommit={commitName}
         right={() => (
           <TouchableOpacity onPress={handleDone} hitSlop={12} accessibilityRole="button">
             <CheckIcon size={20} color={th.colors.accent} />
@@ -447,16 +431,29 @@ export default function ProgramEditorScreen({ navigation }) {
         onScroll={onScroll}
         scrollEventThrottle={16}
       >
+        {/* ── Tarjeta de identidad (P16-03). Sin lápiz si el programa es del
+            entrenador: el cliente no lo renombra. ── */}
+        <EditorIdentityCard
+          eyebrow={t('editor.idProgram')}
+          clientName={editedClient?.name}
+          name={activeProgram.name ?? ''}
+          stats={[
+            totals.weeks > 0 && { n: `${totals.weeks}${totals.open ? '+' : ''}`, label: t('editor.idWeeks', { count: totals.weeks }) },
+            { n: weeklySessions(stages[activeStageIdx]), label: t('editor.idSessionsWeek', { count: weeklySessions(stages[activeStageIdx]) }) },
+            !single && { n: stages.length, label: t('editor.idStages', { count: stages.length }) },
+          ].filter(Boolean)}
+          onRename={fromTrainer ? undefined : (name) => renameProgram(editingId, name)}
+          renameTitle={t('editor.idProgram')}
+          onLayout={onCardLayout}
+        />
+
         {/* ── Rótulo y tarjetas de etapa (P14 §3.2-3.3) ── */}
         <View style={styles.stagesBlock}>
           <View style={styles.stagesLabelRow}>
             {single ? (
               <Text style={styles.stagesLabel}>{t('editor.stagesLabelNone').toUpperCase()}</Text>
             ) : (
-              <Text style={styles.stagesLabel}>
-                <Text style={styles.stagesLabelNum}>{stages.length}</Text>
-                {` ${t(totals.open ? 'editor.stagesLabelOpen' : 'editor.stagesLabel', { count: stages.length, weeks: totals.weeks })}`.toUpperCase()}
-              </Text>
+              <Text style={styles.stagesLabel}>{t('editor.stagesTitle').toUpperCase()}</Text>
             )}
             <TouchableOpacity onPress={() => navigation.navigate('StagePlanner', { programId: editingId, fromEditor: true })} hitSlop={8} accessibilityRole="button">
               <Text style={styles.viewPlan}>{t('editor.viewPlan')}</Text>
@@ -501,16 +498,18 @@ export default function ProgramEditorScreen({ navigation }) {
                       </>
                     )}
                   </View>
-                  <View style={styles.stageTitleRow}>
-                    {!single && (
+                  {/* Con una sola etapa el nombre sería el del programa, que ya dice
+                      la tarjeta de arriba (P16-03 §5.1). */}
+                  {!single && (
+                    <View style={styles.stageTitleRow}>
                       <Text style={[styles.stageTitle, { color: isDeload(selectedStage) ? th.colors.blue : th.colors.accent }]}>
                         {selectedStageIdx + 1}
                       </Text>
-                    )}
-                    <Text style={styles.stageTitleName} numberOfLines={1}>
-                      {(single ? activeProgram.name : selectedStage?.name) ?? ''}
-                    </Text>
-                  </View>
+                      <Text style={styles.stageTitleName} numberOfLines={1}>
+                        {selectedStage?.name ?? ''}
+                      </Text>
+                    </View>
+                  )}
                   <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
                 </View>
                 <TouchableOpacity
@@ -792,10 +791,10 @@ const makeStyles = (th) => StyleSheet.create({
   stageHint: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Rótulo de las etapas ── pegado a las tarjetas (P14 §3.2)
-  stagesBlock:    { gap: spacing.sm2 },
+  // 20 bajo la tarjeta de identidad: el gap de la página (10) más este margen.
+  stagesBlock:    { gap: spacing.sm2, marginTop: spacing.md },
   stagesLabelRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   stagesLabel:    { ...textStyles.caps, color: th.colors.mutedLight, flexShrink: 1 },
-  stagesLabelNum: { color: th.colors.text },
   viewPlan:       { ...textStyles.button, color: th.colors.accent },
 
   // ── Cabecera de la etapa ── (P14 §3.4). 12 bajo las tarjetas: el gap de la

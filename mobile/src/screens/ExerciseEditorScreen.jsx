@@ -20,6 +20,8 @@ import { CheckIcon } from '../components/ui/EditorIcons';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorFold } from '../hooks/useEditorFold';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
+import { sessionTag } from '../utils/editorIdentity';
+import { slotNumber } from '../utils/sessionSlots';
 
 export default function ExerciseEditorScreen({ navigation, route }) {
   const { templateId, exerciseId: initialExerciseId } = route.params ?? {};
@@ -27,7 +29,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { done } = useEditorExit(navigation, templateId);
-  const { folded, onScroll } = useEditorFold();
+  const { folded, onScroll, onCardLayout } = useEditorFold();
 
   // El ejercicio abierto es estado local (no parámetro de ruta) para que el
   // desplegable de la cabecera salte a otro sin apilar pantallas.
@@ -66,13 +68,15 @@ export default function ExerciseEditorScreen({ navigation, route }) {
 
   const def     = allExercises[exerciseId];
   const hasNext = index < exercises.length - 1;
+  // «Ejercicio 01 · Sesión A»: el número es el que lleva en la lista de la sesión.
+  const eyebrow = t('editor.idExercise', { n: slotNumber(template, { exerciseId }) ?? '', where: sessionTag(template, t) });
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <ScreenHeader
         onBack={() => navigation.goBack()}
         editor={{ backLabel: template?.name || t('freeSession.templateUnnamed'), folded }}
-        eyebrow={t('editor.exerciseEyebrow')}
+        eyebrow={eyebrow}
         title={def?.name ?? exerciseId}
         menu={exercises.length > 1 ? {
           items: exercises.map((ex) => ({
@@ -106,6 +110,9 @@ export default function ExerciseEditorScreen({ navigation, route }) {
               exConfig={exConfig}
               def={def}
               hasNextExercise={hasNext}
+              eyebrow={eyebrow}
+              onCardLayout={onCardLayout}
+              // P16-04: aquí va `corner`, el botón de lista «n/N» de la esquina de la tarjeta.
               // `replace` y no `navigate`: al elegir el sustituto el selector hace
               // `goBack`, y volver a un editor cuyo ejercicio ya no existe no
               // tiene sentido — se sale a la sesión, igual que hacía el modal.

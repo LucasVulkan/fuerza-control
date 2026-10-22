@@ -94,6 +94,11 @@ describe('escala tipográfica', () => {
     }
   });
 
+  it('statGlyph es la Barlow a 16 (cifras de la tarjeta de identidad, P16-03)', () => {
+    expect(textStyles.statGlyph.fontFamily).toBe(textStyles.heroName.fontFamily);
+    expect(textStyles.statGlyph.fontSize).toBe(16);
+  });
+
   it('ningún papel declara fontWeight — el peso va en la familia', () => {
     for (const [name, s] of roles) {
       expect(s.fontWeight, `${name} volvería a caer en Roboto en Android`).toBeUndefined();

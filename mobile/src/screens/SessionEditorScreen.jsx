@@ -2,7 +2,7 @@
  * SessionEditorScreen — editor de una sesión, rediseño FormaFit (Figma 208:1932).
  *
  * Estructura igual que el editor de programa: cabecera accent con el nombre
- * editable, segmented de sesiones hermanas, tarjeta Resumen y una única lista.
+ * editable, segmented de sesiones hermanas, tarjeta de identidad (P16-03) y una única lista.
  *
  * La lista mezcla ejercicios y bloques de acondicionamiento en el mismo tipo de
  * fila (Figma no dibuja una fila distinta para bloques), numerados 01, 02… Una
@@ -34,6 +34,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import SwipeRow from '../components/ui/SwipeRow';
 import { MenuIcon, DragIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -45,6 +46,8 @@ import { useEditorBase, clearEditorDraft } from '../hooks/useEditorDraft';
 import { useEditorFold } from '../hooks/useEditorFold';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
+import { sessionTag } from '../utils/editorIdentity';
+import { isTrainerProgram } from '../utils/stageLocks';
 import { variantLabel, displayVariant } from '../utils/variants';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { DEFAULT_TARGET } from '../utils/progression';
@@ -89,21 +92,6 @@ function blockMeta(block, t) {
     return t('blocks.meta.emom', { count, n: block.rounds ?? 10, interval: `${mm}:${String(ss).padStart(2, '0')}` });
   }
   return t('blocks.meta.forTime', { count, rounds: block.rounds ?? 3 });
-}
-
-// "Volumen: 10 series de tracción, 3 de pierna, 1 bloque" — sustituye a las
-// pills por patrón muscular que había antes.
-function volumeLine(patternSets, blockCount, t) {
-  const entries = Object.entries(patternSets).sort((a, b) => b[1] - a[1]);
-  const parts = entries.map(([pattern, sets], i) => {
-    const name = t(`exerciseSelector.patterns.${pattern}`, pattern).toLowerCase();
-    return i === 0
-      ? t('editor.volumeFirst', { count: sets, pattern: name })
-      : t('editor.volumeRest',  { count: sets, pattern: name });
-  });
-  if (blockCount > 0) parts.push(t('editor.volumeBlocks', { count: blockCount }));
-  if (parts.length === 0) return null;
-  return t('editor.volumeLine', { parts: parts.join(', ') });
 }
 
 // ─── Fila ─────────────────────────────────────────────────────────────────────
@@ -193,6 +181,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
   const deleteFreeTemplate    = useStore((s) => s.deleteFreeTemplate);
   const activeTemplateId      = useStore((s) => s.activeSession.templateId);
+  const clientSync            = useStore((s) => s.clientSync);
   const { done }              = useEditorExit(navigation, templateId);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
@@ -204,7 +193,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   const baseTpl = sessionTemplates[initialTemplateId];
   const { cancel } = useEditorBase(navigation, editorBase, !baseTpl ? null
     : baseTpl.programId ? { kind: 'program', id: baseTpl.programId } : { kind: 'template', id: initialTemplateId });
-  const { folded, onScroll } = useEditorFold();
+  const { folded, onScroll, onCardLayout } = useEditorFold();
 
   const program    = programs[programId];
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
@@ -214,8 +203,6 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   // Sesión libre (T06-free-sessions.md §5): sin programa, sin hermanas A/B/C.
   const isFree = !!template && !template.programId;
-  // Plantilla de sesión (C06-group-classes.md §4.6): lo dice la ceja.
-  const isTpl  = isFree && template.kind === 'template';
 
   // «Crear» da de alta la sesión antes de abrir el editor: si se sale sin
   // añadir nada, no puede quedar una sesión vacía en Inicio. Solo al desmontar
@@ -232,8 +219,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen]     = useState(false);
   const [menuOpen, setMenuOpen]             = useState(false);
-  const [editingName, setEditingName]       = useState(false);
-  const [nameValue, setNameValue]           = useState('');
 
   // El ScrollView de la lista de huecos: `Sortable` lo necesita para hacer
   // autoscroll al arrastrar cerca del borde.
@@ -245,7 +230,6 @@ export default function SessionEditorScreen({ navigation, route }) {
     // duplicar): entra por la derecha.
     const to = sessionIds.indexOf(id);
     slide(to < 0 || to > sessionIds.indexOf(templateId) ? 1 : -1);
-    setEditingName(false);
     setOpenRowId(null);
     setTemplateId(id);
   }
@@ -253,7 +237,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   if (!template) return null;
 
   const stats = sessionStats(template, allExercises);
-  const volume = volumeLine(stats.patternSets, template.blocks?.length ?? 0, t);
 
   // ── Huecos: una superserie es UN hueco con varias filas, y los bloques se
   // mezclan con los ejercicios en el mismo orden que verá la pantalla de
@@ -391,16 +374,13 @@ export default function SessionEditorScreen({ navigation, route }) {
     );
   }
 
-  function commitName() {
-    setEditingName(false);
-    const trimmed = nameValue.trim();
-    if (trimmed && trimmed !== template.name) renameSession(templateId, trimmed);
-  }
-
-  function startEditName() {
-    setNameValue(template.name ?? '');
-    setEditingName(true);
-  }
+  // La ceja de la tarjeta (y de la cabecera plegada): «Sesión A · Etapa 1», con
+  // la etapa solo si el programa tiene más de una.
+  const eyebrow = program?.stages?.length > 1 && stageIdx != null
+    ? t('editor.idSessionStage', { label: template.label ?? '', n: stageIdx + 1 })
+    : sessionTag(template, t);
+  // El cliente con un programa del entrenador no lo renombra.
+  const canRename = !isTrainerProgram(program, clientSync);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -410,13 +390,8 @@ export default function SessionEditorScreen({ navigation, route }) {
         onBack={() => navigation.goBack()}
         // Dentro, vuelves al programa (la etapa ya la dice la ceja); la base se cancela.
         editor={{ base: editorBase, onCancel: cancel, backLabel: program?.name, folded }}
-        eyebrow={isTpl ? t('templates.sessionEyebrow') : isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
+        eyebrow={eyebrow}
         title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
-        renaming={editingName}
-        draft={nameValue}
-        onDraftChange={setNameValue}
-        onRenameStart={startEditName}
-        onRenameCommit={commitName}
         // El check va el último: es la acción principal de la barra y cae bajo
         // el pulgar en el mismo sitio en las cuatro pantallas del editor.
         right={(ink) => (
@@ -452,18 +427,20 @@ export default function SessionEditorScreen({ navigation, route }) {
           {/* Lo de dentro no hace su propio fundido al montarse o desmontarse con
               la página; lo que se añada o quite después, sí. */}
           <LayoutAnimationConfig skipEntering skipExiting>
-            {/* ── Resumen (208:1936) ── */}
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTag}>
-                {isFree ? t('freeSession.badge') : t('editor.summarySession', { label: template.label ?? '' })}
-              </Text>
-              <Text style={styles.summaryMain}>
-                {stats.minutes > 0
-                  ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
-                  : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
-              </Text>
-              {volume && <Text style={styles.summaryVolume}>{volume}</Text>}
-            </View>
+            {/* ── Tarjeta de identidad (P16-03) ── */}
+            <EditorIdentityCard
+              eyebrow={eyebrow}
+              name={template.name ?? ''}
+              emptyName={isFree ? t('freeSession.templateUnnamed') : undefined}
+              stats={[
+                { n: stats.exercises, label: t('editor.idExercises', { count: stats.exercises }) },
+                { n: stats.sets,      label: t('editor.idSets',      { count: stats.sets }) },
+                stats.minutes > 0 && { n: stats.minutes, label: t('editor.idMin') },
+              ].filter(Boolean)}
+              onRename={canRename ? (name) => renameSession(templateId, name) : undefined}
+              renameTitle={sessionTag(template, t)}
+              onLayout={onCardLayout}
+            />
 
             {/* ── Lista ── */}
             <View style={styles.section}>
@@ -534,13 +511,6 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── Menú "···" ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.sessionMenuTitle')}>
         <Section style={styles.sheetSection}>
-          {/* Sin lápiz en la cabecera, esto es lo que recuerda que el nombre se
-              puede cambiar; el toque sobre el propio nombre sigue valiendo. */}
-          <SheetRow
-            icon={ROW_ICON.rename}
-            label={t('editor.renameOption')}
-            onPress={startEditName}
-          />
           {/* Sin pesos: aquí no se sabe para quién es (C05-trainer-logging.md §5). */}
           <SheetRow
             icon={ROW_ICON.text}
@@ -722,18 +692,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.mutedLight,
     paddingTop: spacing.md,
   },
-
-  // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
-  summaryCard: {
-    backgroundColor:   th.tint.accent10,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    gap:               spacing.sm,
-  },
-  summaryTag:    { ...textStyles.caps, color: th.colors.accent },
-  summaryMain:   { ...textStyles.bodyStrong, color: th.colors.text },
-  summaryVolume: { ...textStyles.label, color: th.tint.accent50 },
 
   // ── Fila ── (la tarjeta, el gesto y el panel de acciones viven en `ui/SwipeRow`)
   rowNumber: { ...textStyles.labelStrong, color: th.colors.accent },

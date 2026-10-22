@@ -58,3 +58,20 @@ export function slotsToArrays(slots) {
     .filter(Boolean);
   return { exercises, blocks };
 }
+
+/**
+ * El número con que el editor de sesión rotula un ejercicio o un bloque:
+ * «03», o «03A» dentro de una superserie. `null` si no está en la sesión.
+ */
+export function slotNumber(template, { exerciseId, blockId }) {
+  const slots = sessionSlots(template);
+  const i = slots.findIndex((s) => (blockId
+    ? s.id === blockId
+    : s.kind === 'ex' && s.members.some((m) => m.exerciseId === exerciseId)));
+  if (i < 0) return null;
+  const pad = String(i + 1).padStart(2, '0');
+  const members = slots[i].members;
+  return members?.length > 1
+    ? `${pad}${String.fromCharCode(65 + members.findIndex((m) => m.exerciseId === exerciseId))}`
+    : pad;
+}

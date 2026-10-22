@@ -94,6 +94,16 @@ export function ProgressionIcon({ size = 15, color }) {
   );
 }
 
+// Eslabón de «vinculado con otra sesión» (tarjeta de identidad, P16-03).
+export function LinkIcon({ size = 13, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
+      <Path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 16, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
