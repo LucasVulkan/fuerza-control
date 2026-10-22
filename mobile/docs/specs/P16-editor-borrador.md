@@ -373,6 +373,8 @@ plantillas libres siguen con diálogo.
 - Cabecera del editor a **56 de alto fijos** (con una sola línea quedaba en ~40,
   pegada a la barra de estado) y el centro («EDITANDO» / título plegado) ocupa
   la barra entera, sin depender del ancho de «Cancelar» y del check.
+- La letra de sesión de `SessionCard` (ficha de cliente en Clientes) también en
+  `indexGlyph`, decidido por el usuario; la ★ de la sesión libre sigue en Inter.
 - Medidas sueltas de la maqueta pasadas a tokens del tema: relleno de la tarjeta
   (`spacing.lg`), esquina (`spacing.md`), líneas finas (`colors.border`), filas
   de la lista anclada (`radius.sm`, `spacing.md`).
