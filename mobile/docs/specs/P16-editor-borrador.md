@@ -368,6 +368,15 @@ plantillas libres siguen con diálogo.
 - [ ] Borrar una etapa → toast → Deshacer → vuelve la etapa con sus sesiones
 - [ ] Borrar dos sesiones seguidas → el toast es el de la segunda; Deshacer solo recupera la segunda
 
+## Revisión final (22-oct-2026)
+
+- Cabecera del editor a **56 de alto fijos** (con una sola línea quedaba en ~40,
+  pegada a la barra de estado) y el centro («EDITANDO» / título plegado) ocupa
+  la barra entera, sin depender del ancho de «Cancelar» y del check.
+- Medidas sueltas de la maqueta pasadas a tokens del tema: relleno de la tarjeta
+  (`spacing.lg`), esquina (`spacing.md`), líneas finas (`colors.border`), filas
+  de la lista anclada (`radius.sm`, `spacing.md`).
+
 ## 10. Historia del diseño
 
 - v1 `editor-salida.html`: «Cancelar / Guardar» arriba con un solo Guardar. El

@@ -83,8 +83,8 @@ const makeStyles = (th) => StyleSheet.create({
     shadowRadius:    15,
     elevation:       12,
   },
-  // 10/12 y radio 8 de la maqueta (`editor-ejercicio.html`): ni uno ni otro están en la escala.
-  row:   { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: 12, borderRadius: 8 },
+  // Radio de la caja (md) menos su relleno (xs2) = sm: las filas siguen la curva.
+  row:   { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderRadius: th.radius.sm },
   rowOn: { backgroundColor: th.colors.surface },
   num:   { ...textStyles.statGlyph, color: th.colors.muted, minWidth: 24 },
   name:  { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
@@ -93,7 +93,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Caja de 30 de alto, `surface`, radio 10: el hueco `corner` de `EditorIdentityCard`.
   btn: {
     height:            30,
-    paddingHorizontal: 9,
+    paddingHorizontal: spacing.md,
     borderRadius:      th.radius.md,
     backgroundColor:   th.colors.surface,
     flexDirection:     'row',

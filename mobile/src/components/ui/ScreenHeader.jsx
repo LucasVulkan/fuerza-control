@@ -126,7 +126,7 @@ export default function ScreenHeader({
     // es su hermano posterior.
     <View style={styles.wrap}>
       {ed ? (
-        <View style={styles.header}>
+        <View style={[styles.header, styles.edHeader]}>
           <View style={styles.edLeft}>
             {ed.base ? (
               <TouchableOpacity onPress={ed.onCancel} hitSlop={10} activeOpacity={0.7}>
@@ -252,14 +252,20 @@ const makeStyles = (th) => StyleSheet.create({
   edBack:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
   edBackLabel: { flexShrink: 1 },
   backLabel:   { ...textStyles.bodyStrong, color: th.colors.accent },
-  edMid:   { position: 'absolute', left: '50%', width: 180, marginLeft: -90, top: 0, bottom: 0 },
+  // 56 fijos, como la maqueta y como la cabecera de dos líneas: con una sola
+  // línea («Cancelar», «‹ destino») el relleno solo daba ~40 y la barra quedaba
+  // pegada a la barra de estado.
+  edHeader: { height: 56, paddingVertical: 0 },
+  // El centro ocupa la barra entera y centra dentro: no depende de cuánto midan
+  // «Cancelar» y el check. El margen lateral le deja sitio a los dos.
+  edMid:   { ...StyleSheet.absoluteFillObject, marginHorizontal: 90 },
   edLayer: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   edFoldBox:      { alignItems: 'center', maxWidth: '100%' },
   edFoldTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
   foldTitle:      { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   // 1 px reservado siempre (sin salto de layout); la línea aparece al plegar.
   edRuleSlot: { height: 1 },
-  edRule:     { height: 1, backgroundColor: '#262626' },
+  edRule:     { height: 1, backgroundColor: th.colors.border },
   // Centrado: el bloque ceja+nombre se centra dentro de `mid`, y para que ese
   // centro sea el de la BARRA los dos huecos laterales miden lo mismo — de ahí
   // el `minWidth` de las acciones y el hueco que se pinta cuando no hay ninguna.

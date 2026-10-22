@@ -126,14 +126,10 @@ export default function EditorIdentityCard({
 }
 
 const makeStyles = (th) => StyleSheet.create({
-  // Padding 13/15/13/18 de la maqueta: la barra de la izquierda pide 3 más.
   card: {
     backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.lg,
-    paddingTop:      13,
-    paddingRight:    spacing.lg,
-    paddingBottom:   13,
-    paddingLeft:     18,
+    padding:         spacing.lg,
   },
   eyebrow: { ...textStyles.caps, color: th.colors.accent, textTransform: 'uppercase' },
   client:  { color: th.colors.blue },
@@ -144,18 +140,18 @@ const makeStyles = (th) => StyleSheet.create({
     color:              th.colors.text,
     marginTop:          spacing.xs2,
   },
-  stats: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, alignItems: 'baseline', marginTop: 3 },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, alignItems: 'baseline', marginTop: spacing.xs2 },
   stat:    { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 20 },
   statNum: { ...textStyles.statGlyph, color: th.colors.text },
-  line:    { ...textStyles.label, color: th.colors.mutedLight, marginTop: 3 },
+  line:    { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs2 },
   extra: {
     marginTop:      spacing.md,
     paddingTop:     spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: th.colors.border,
     gap:            spacing.sm2,
   },
-  corner: { position: 'absolute', top: 12, right: 12 },
+  corner: { position: 'absolute', top: spacing.md, right: spacing.md },
   pencil: {
     width:           30,
     height:          30,
