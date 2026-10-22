@@ -30,7 +30,6 @@ import {
   requestNotificationPermissions,
 } from './src/services/timerNotification';
 import { StatusBar } from 'expo-status-bar';
-import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
@@ -133,14 +132,6 @@ export default function App() {
     setForegroundNotificationHandler();
     setupNotificationChannels().catch(() => {});
     requestNotificationPermissions().catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    // setBackgroundColorAsync no está soportado con edge-to-edge activado.
-    // setButtonStyleAsync('light') sí funciona: pone los iconos del sistema en blanco
-    // para que sean visibles sobre el fondo oscuro que pinta TabBarBackground.
-    NavigationBar.setButtonStyleAsync('light').catch(() => {});
   }, []);
 
   // Register background Drive backup task (safe to call on every launch; ignored if already registered)
