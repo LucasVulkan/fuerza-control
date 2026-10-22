@@ -367,7 +367,7 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 | P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ `212f79f` — `useEditorDraft` + `utils/editorDraft` |
 | P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | ✅ `f154e43` — modo `editor` de `ScreenHeader` + `useEditorFold` |
 | P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | ✅ `41dc974` — `EditorIdentityCard` + `statGlyph` |
-| P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | ✅ `HASH` — `AnchoredList` + `useSiblingSwipe` + `SiblingNav` |
+| P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | ✅ `dc9c672` — `AnchoredList` + `useSiblingSwipe` + `SiblingNav` |
 | P16-05 | Marcas «editada» | P16-01 | 🟢 | pendiente |
 | P16-06 | Letras y números en Barlow | — | 🟢 | pendiente |
 | P16-07 | Toast con Deshacer | — (independiente del borrador) | 🟡 | pendiente |
