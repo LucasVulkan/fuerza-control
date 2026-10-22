@@ -355,7 +355,7 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
-| P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ COMMIT — `useEditorDraft` + `utils/editorDraft` |
+| P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ `212f79f` — `useEditorDraft` + `utils/editorDraft` |
 | P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | pendiente |
 | P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | pendiente |
 | P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | pendiente |
