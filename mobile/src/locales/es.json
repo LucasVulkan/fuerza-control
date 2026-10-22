@@ -1440,6 +1440,7 @@
     "discardBodySession": "La sesión vuelve a como estaba al entrar en el editor.",
     "keepEditing": "Seguir editando",
     "editingTag": "EDITANDO",
+    "editedTag": "editada",
     "discardConfirm": "Descartar cambios",
     "renameOption": "Editar nombre",
     "stagesTitle": "Etapas",

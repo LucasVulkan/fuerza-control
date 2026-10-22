@@ -43,6 +43,7 @@ import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorBase, clearEditorDraft } from '../hooks/useEditorDraft';
+import { rowEdited } from '../utils/editorDraft';
 import { useEditorFold } from '../hooks/useEditorFold';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
@@ -101,7 +102,7 @@ function blockMeta(block, t) {
 // ahí, así que no compite con este swipe horizontal ni con el ScrollView.
 
 function EditorRow({
-  number, name, variant, meta, pill, radii, onPress,
+  number, name, variant, meta, edited, pill, radii, onPress,
   isOpen, onOpenChange, onSwipeDelete, onSubstitute,
 }) {
   const { t }  = useTranslation();
@@ -134,7 +135,7 @@ function EditorRow({
           {name}
           {variant ? <Text style={styles.rowVariant}>{` · ${variant}`}</Text> : null}
         </Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
+        <Text style={[styles.rowMeta, edited && styles.rowMetaEdited]} numberOfLines={1}>{meta}</Text>
       </View>
       {pill ? (
         <View style={styles.pill}><Text style={styles.pillText}>{pill}</Text></View>
@@ -168,6 +169,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
   const customExercises  = useStore((s) => s.customExercises);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
+  const draft            = useStore((s) => s.ui._editorDraft);
   const removeExercise   = useStore((s) => s.removeExercise);
   const reorderExercise  = useStore((s) => s.reorderExercise);
   const renameSession    = useStore((s) => s.renameSession);
@@ -463,6 +465,8 @@ export default function SessionEditorScreen({ navigation, route }) {
                     metaFor={metaFor}
                     allExercises={allExercises}
                     t={t}
+                    draft={draft}
+                    templateId={templateId}
                     onOpenExercise={openExercise}
                     onOpenBlock={openBlock}
                     onRemoveExercise={handleRemoveExercise}
@@ -599,7 +603,7 @@ export default function SessionEditorScreen({ navigation, route }) {
 
 function Slot({
   slot, number,
-  openRowId, setOpenRowId, metaFor, allExercises, t,
+  openRowId, setOpenRowId, metaFor, allExercises, t, draft, templateId,
   onOpenExercise, onOpenBlock, onRemoveExercise, onRemoveBlock, onSubstitute,
 }) {
   const styles = useThemedStyles(makeStyles);
@@ -612,6 +616,7 @@ function Slot({
         number: pad,
         name:   slot.block.name ?? t(`blocks.formats.${slot.block.format}`),
         meta:   blockMeta(slot.block, t),
+        edited: rowEdited(draft, templateId, slot.block),
         pill:   t(`blocks.formats.${slot.block.format}`).toUpperCase(),
         onPress:    () => onOpenBlock(slot.block.id),
         onDelete:   () => onRemoveBlock(slot.block),
@@ -625,6 +630,7 @@ function Slot({
         name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
         variant: variantLabel(displayVariant(ex.variant, allExercises[ex.exerciseId]), t),
         meta:   metaFor(ex),
+        edited: rowEdited(draft, templateId, ex),
         // "Principal" va en el subtítulo (`rowMeta`), no como pill: la única
         // pill que queda es la de formato de bloque, y "Principal" no cabe.
         pill:   null,
@@ -644,6 +650,7 @@ function Slot({
           name={row.name}
           variant={row.variant}
           meta={row.meta}
+          edited={row.edited}
           pill={row.pill}
           radii={isGroup ? groupRadii(i, rows.length) : null}
           onPress={row.onPress}
@@ -694,12 +701,13 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Fila ── (la tarjeta, el gesto y el panel de acciones viven en `ui/SwipeRow`)
-  rowNumber: { ...textStyles.labelStrong, color: th.colors.accent },
+  rowNumber: { ...textStyles.indexGlyphSm, color: th.colors.muted },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
   rowVariant: { ...textStyles.body, color: th.colors.mutedLight },
   // Sin `marginTop`: el hueco nombre→meta lo pone el interlineado y nada más,
   // igual que en las tarjetas de sesión del editor de programa (`sesMeta`).
   rowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
+  rowMetaEdited: { color: th.colors.accent },
   // El asa se agarra en toda la esquina derecha de la fila: el padding agranda la
   // zona de toque hasta los bordes de la tarjeta y los márgenes negativos lo
   // compensan, así que el icono no se mueve (QA P49: había que ser muy preciso).

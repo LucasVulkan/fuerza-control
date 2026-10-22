@@ -7,8 +7,8 @@
 > Fase P16-02 · hecho · Cabecera del editor por niveles · §4
 > Fase P16-03 · hecho · Tarjeta de identidad · §5
 > Fase P16-04 · hecho · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
-> Fase P16-05 · pendiente · Marcas «editada» en lo que se ha tocado · §7
-> Fase P16-06 · pendiente · Letras y números en Barlow en las filas · §8
+> Fase P16-05 · hecho · Marcas «editada» en lo que se ha tocado · §7
+> Fase P16-06 · hecho · Letras y números en Barlow en las filas · §8
 > Fase P16-07 · pendiente · Toast con Deshacer al borrar · §9
 >
 > Estado: **spec escrita, sin implementar** (18-oct-2026). Sale del análisis
@@ -285,6 +285,8 @@ copia:
   editados.
 - Al guardar o descartar, desaparecen (la copia se borra).
 
+*Como quedó (22-oct):* helpers puros en `utils/editorDraft`: `templateEdited(draft, id, tpl)` (tarjeta de sesión) y `rowEdited(draft, templateId, row)` (ejercicio por `exerciseId` o bloque por `id`, que no esté en la copia = nuevo); mover una fila (`order`) no la marca. Sin `ui._editorDraft` no hay marcas. «editada» (`editor.editedTag`) es `labelStrong` `accent` a la derecha de la tarjeta; la meta de la fila pasa a `accent`. Como solo hay marca mientras existe la copia, el check y descartar la quitan solos.
+
 **Probar P16-05**
 
 - [ ] Cambiar las series de un ejercicio de la sesión A → en el editor de sesión, su meta sale en lima; en el de programa, la sesión A lleva «editada»
@@ -306,6 +308,10 @@ escala de U06 y en `theme.test.js`, y no tamaños sueltos. El mismo rol en los
 números de la lista anclada (§6.1). El implementador revisa si la tarjeta de
 sesión de Vista del programa y el onboarding usan el mismo `sesLetter` y, si
 sí, pregunta antes de cambiarlos.
+
+*Como quedó (22-oct):* dos roles Barlow en `textStyles`, no uno, porque los tamaños son dos: `indexGlyph` (26, la letra de sesión: `accent`, columna `minWidth: 20`) e `indexGlyphSm` (20, el número del ejercicio: `muted`). Son los únicos cuerpos fuera de la escala de ocho (20 y 26, solo para la Barlow); `theme.test.js` lo permite solo a esa fuente y comprueba los valores. La lista anclada sigue con `statGlyph` (16), como se decidió en §6.
+
+**Pregunta para el usuario:** `components/SessionCard.jsx` (tarjeta de sesión de la ficha de cliente, `ClientsScreen`) tiene su propia `cardSesLetter` idéntica a la vieja `sesLetter` (`itemTitle` 16, `accent`, `minWidth: 16`). No se ha tocado; ¿quieres la misma letra Barlow ahí? Vista del programa (`ProgramDetailScreen`, `title` con el color de la sesión) y el onboarding usan otras letras y tampoco se han tocado.
 
 **Probar P16-06**
 

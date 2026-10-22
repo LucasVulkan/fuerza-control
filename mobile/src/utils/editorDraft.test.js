@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeEditorDraft, restoreEditorDraft, selectEditorDirty } from './editorDraft';
+import { makeEditorDraft, restoreEditorDraft, selectEditorDirty, templateEdited, rowEdited } from './editorDraft';
 
 const tpl = (id, programId, extra = {}) => ({ id, programId, name: id, exercises: [{ exerciseId: 'sq', sets: 3 }], ...extra });
 
@@ -43,5 +43,29 @@ describe('borrador del editor (P16-01)', () => {
     expect(back.sessionTemplates.free.name).toBe('free');
     expect(back.sessionTemplates.a.name).toBe('ajena');
     expect(back.programs).toBe(s1.programs);
+  });
+});
+
+describe('marcas «editada» (P16-05)', () => {
+  const d = makeEditorDraft(base(), 'program', 'p1');
+  const a = d.snapshot.templates.a;
+
+  it('sin borrador no hay marcas', () => {
+    expect(templateEdited(null, 'a', a)).toBe(false);
+    expect(rowEdited(null, 'a', a.exercises[0])).toBe(false);
+  });
+
+  it('igual que la copia no marca; tocado o nuevo, sí', () => {
+    expect(templateEdited(d, 'a', a)).toBe(false);
+    expect(templateEdited(d, 'a', { ...a, name: 'x' })).toBe(true);
+    expect(templateEdited(d, 'nueva', tpl('nueva', 'p1'))).toBe(true);
+    expect(rowEdited(d, 'a', a.exercises[0])).toBe(false);
+    expect(rowEdited(d, 'a', { ...a.exercises[0], sets: 4 })).toBe(true);
+    expect(rowEdited(d, 'a', { exerciseId: 'dl', sets: 3 })).toBe(true);
+    expect(rowEdited(d, 'a', { id: 'blk', format: 'amrap' })).toBe(true);
+  });
+
+  it('mover una fila (order) no la marca', () => {
+    expect(rowEdited(d, 'a', { ...a.exercises[0], order: 5 })).toBe(false);
   });
 });

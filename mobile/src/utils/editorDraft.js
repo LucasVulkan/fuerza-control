@@ -56,3 +56,23 @@ export const selectEditorDirty = (state) => {
   const d = state.ui?._editorDraft;
   return !!d && !deepEqual(d.snapshot, captureEditable(state, d.kind, d.id));
 };
+
+// ── Marcas «editada» (P16-05) ────────────────────────────────────────────────
+// Comparan lo de ahora con la copia: lo que no está en ella (nuevo) cuenta como
+// editado. Sin copia no hay marcas. `draft` = `ui._editorDraft`.
+
+// ¿Se ha tocado esta plantilla de sesión?
+export const templateEdited = (draft, id, tpl) =>
+  !!draft && !deepEqual(draft.snapshot.templates[id], tpl);
+
+// ¿Se ha tocado este ejercicio (`exerciseId`) o bloque (`id`) de la plantilla?
+// `order` no cuenta: mover una fila no es editarla.
+const noOrder = ({ order, ...rest }) => rest; // eslint-disable-line no-unused-vars
+export function rowEdited(draft, templateId, row) {
+  const tpl = draft?.snapshot.templates[templateId];
+  if (!draft) return false;
+  const was = row.exerciseId != null
+    ? tpl?.exercises?.find((e) => e.exerciseId === row.exerciseId)
+    : tpl?.blocks?.find((b) => b.id === row.id);
+  return !was || !deepEqual(noOrder(was), noOrder(row));
+}

@@ -145,6 +145,11 @@ export const textStyles = {
   // El número de las cifras de la tarjeta de identidad del editor (P16-03): la
   // misma Barlow a 16, pegada a su unidad en `label`.
   statGlyph: { fontFamily: BARLOW, fontSize: 16, letterSpacing: 0 },
+  // La letra de la sesión (A, B, C…) y el número del ejercicio (01, 03A) en las
+  // filas de los editores (P16-06): la misma Barlow, a 26 y a 20. Son los dos
+  // únicos cuerpos fuera de la escala de ocho y sólo valen para esta fuente.
+  indexGlyph:   { fontFamily: BARLOW, fontSize: 26, letterSpacing: 0 },
+  indexGlyphSm: { fontFamily: BARLOW, fontSize: 20, letterSpacing: 0 },
 
   // ── Titulares ───────────────────────────────────────────────────────────────
   // `title` es el escalón grande de dentro de pantalla: cifras de las tarjetas de

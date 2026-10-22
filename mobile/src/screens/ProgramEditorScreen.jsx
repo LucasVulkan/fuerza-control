@@ -33,6 +33,7 @@ import { athleteProgress, stageStatus, stageWeekLabel, programTotals, weeklySess
 import { stageWeekRanges, stageRangeLabel, isDeload } from '../utils/stageStats';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorBase } from '../hooks/useEditorDraft';
+import { templateEdited } from '../utils/editorDraft';
 import { useEditorFold } from '../hooks/useEditorFold';
 
 import { showDialog } from '../components/ui/dialog';
@@ -56,7 +57,8 @@ const SLIDE = SegmentedControl.TIMING;
 // El reordenado lo lleva `react-native-sortables` (ver la lista más abajo): el
 // asa solo tiene que envolverse en `Sortable.Handle`.
 
-function SessionCard({ label, name, meta, actions, isOpen, onOpenChange, onPress }) {
+function SessionCard({ label, name, meta, edited, actions, isOpen, onOpenChange, onPress }) {
+  const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -78,6 +80,7 @@ function SessionCard({ label, name, meta, actions, isOpen, onOpenChange, onPress
         <Text style={styles.sesName} numberOfLines={1}>{name}</Text>
         <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
       </View>
+      {edited ? <Text style={styles.sesEdited}>{t('editor.editedTag')}</Text> : null}
     </SwipeRow>
   );
 }
@@ -554,6 +557,7 @@ export default function ProgramEditorScreen({ navigation }) {
                     isOpen={openRowId === id}
                     onOpenChange={(open) => setOpenRowId(open ? id : null)}
                     name={template.name ?? ''}
+                    edited={templateEdited(ui._editorDraft, id, template)}
                     meta={stats.minutes > 0
                       ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
                       : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
@@ -869,10 +873,11 @@ const makeStyles = (th) => StyleSheet.create({
     marginVertical:  -spacing.md,
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
-  // minWidth 16 = el ancho de la flecha ‹ que la sustituye al abrir la tarjeta.
-  sesLetter: { ...textStyles.itemTitle, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  // minWidth 20 = la columna de la letra (P16-06); la flecha ‹ que la sustituye al abrir es más estrecha.
+  sesLetter: { ...textStyles.indexGlyph, color: th.colors.accent, textAlign: 'center', minWidth: 20 },
   sesName:   { ...textStyles.bodyStrong, color: th.colors.text },
   sesMeta:   { ...textStyles.label, color: th.colors.mutedLight },
+  sesEdited: { ...textStyles.labelStrong, color: th.colors.accent },
 
   // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el
   // botón outline de Figma).
