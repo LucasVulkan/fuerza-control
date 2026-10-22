@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing por flujo 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Caveat:wght@600&family=Inter:wght@500;600;700;800;900&display=swap">
+<style>
+/* Maqueta v3: mezcla de landing-2 y landing-flujo.
+   El flujo de la app va en horizontal (un carrusel por camino, con la barra
+   de pasos y las transiciones de la v2). La página sigue bajando en vertical
+   con el resto: más funciones, la carta y la descarga. */
+:root {
+  --lime: #aae216; --ink: #000; --green: #3f6212;
+  --card: #222; --text: #e6e6e6; --muted: #949494; --dark: #121212;
+  --max: 1080px; --ease: cubic-bezier(.2, .8, .2, 1);
+  --pad: max(16px, (100vw - var(--max)) / 2 + 16px);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body { margin: 0; background: var(--lime); color: var(--ink); font: 500 16px/1.55 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+.wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 16px; }
+.disp { font-family: "Barlow Condensed", sans-serif; font-style: italic; font-weight: 800; line-height: .95; text-transform: uppercase; }
+em { font-style: normal; }
+.note { border: 1.5px dashed #000; background: rgba(255,255,255,.35); border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.45; margin: 0 0 16px; }
+.tag { display: inline-block; font: 900 11px/1 Inter; letter-spacing: .08em; padding: 6px 8px; border-radius: 6px; background: var(--lime); color: #000; }
+
+.top { display: flex; justify-content: space-between; align-items: center; padding: 22px 0 18px; }
+.logo { font: italic 900 28px/1 Inter; letter-spacing: -.06em; text-decoration: none; }
+
+/* Modo Gratis / PRO, como la web publicada: #pro en la URL.
+   Cambia el hero, la cabecera del flujo y el camino que sale primero. */
+.switch { display: flex; padding: 4px; border: 0; border-radius: 999px; background: #000; cursor: pointer; font: 900 12px/1 Inter; letter-spacing: .08em; }
+.switch span { padding: 9px 12px; border-radius: 999px; color: #8a8a8a; transition: background .25s, color .25s; }
+body:not(.is-pro) .switch .s-free, .is-pro .switch .s-pro { background: var(--lime); color: #000; }
+.is-pro [data-m="free"], body:not(.is-pro) [data-m="pro"] { display: none; }
+
+/* ── Hero: el de la web publicada ── */
+.hero { position: relative; background: var(--card); color: var(--text); border-radius: 32px; padding: 26px 22px 70px; display: grid; gap: 22px; }
+.hero h1 { font-size: clamp(42px, 12vw, 68px); margin: 0; color: #e6e6e6; }
+.hero h1 em { color: var(--lime); }
+.claim { font: 800 13px/1.4 Inter; letter-spacing: .14em; text-transform: uppercase; margin: 14px 0 8px; color: var(--text); }
+.lead { margin: 0; color: #cfcfcf; font-size: 15px; max-width: 46ch; }
+.hl { color: var(--lime); font-weight: 800; }
+
+/* Insignias de las tiendas */
+.badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.badge { display: inline-flex; align-items: center; gap: 9px; height: 48px; padding: 0 14px 0 12px; border-radius: 10px; background: #000; color: #fff; text-decoration: none; box-shadow: inset 0 0 0 1px #6a6a6a; }
+.badge.light { background: #fff; color: #000; box-shadow: none; }
+.badge svg { width: 24px; height: 24px; flex: none; }
+.badge span { font: 700 9px/1.1 Inter; letter-spacing: .02em; text-transform: uppercase; }
+.badge span b { display: block; font: 700 18px/1.05 Inter; letter-spacing: -.02em; text-transform: none; }
+.badge[aria-disabled="true"] { opacity: .55; pointer-events: none; }
+
+/* Descarga: en escritorio un QR; en el móvil, el botón a la tienda de ese sistema
+   (sin saber el sistema, las dos insignias) */
+.dl { position: relative; background: var(--lime); color: #000; border-radius: 26px; padding: 22px; }
+.dl-desk { display: none; }
+.dl-mob { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
+.icon { width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(150deg, #c4f23a, #7fb20e); overflow: hidden; box-shadow: 0 0 0 1.5px rgba(0,0,0,.15); }
+.icon img { width: 100%; height: auto; display: block; mix-blend-mode: multiply; }
+.dl-mob b { font: 900 18px/1.2 Inter; display: block; }
+.dl-mob small { font: 700 13px/1.3 Inter; opacity: .7; }
+.go { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 10px; height: 54px; border-radius: 14px; background: #000; color: var(--lime); text-decoration: none; font: italic 800 22px/1 "Barlow Condensed"; text-transform: uppercase; letter-spacing: .02em; }
+.go svg { width: 22px; height: 22px; }
+.go[aria-disabled="true"] { opacity: .6; pointer-events: none; }
+.other { grid-column: 1 / -1; text-align: center; font: 700 13px/1.3 Inter; margin: -4px 0 0; }
+.other a { font-weight: 800; }
+body:not([data-os]) .go, body:not([data-os]) .other { display: none; }
+body[data-os] .both { display: none; }
+.both { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.both .badge { justify-content: center; padding: 0 8px; }
+
+/* Muesca con dos flechas; encima, «Descubre cómo funciona» */
+.notch { position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%); width: 60px; height: 60px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 8px var(--card); display: grid; place-items: center; z-index: 2; }
+.notch svg { width: 26px; height: 26px; stroke: #000; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; animation: bob 2s ease-in-out infinite; }
+.notch-t { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); white-space: nowrap; color: var(--lime); font: 800 13px/1 Inter; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; }
+@keyframes bob { 50% { transform: translateY(3px); } }
+.pro-tag { font: 900 10px/1 Inter; letter-spacing: .08em; background: var(--lime); color: #000; padding: 4px 6px; border-radius: 5px; vertical-align: 3px; margin-left: 6px; font-style: normal; }
+.arr svg { width: 20px; height: 20px; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (max-width: 859px) { .desk-only { display: none; } }
+@media (min-width: 860px) {
+  .hero { grid-template-columns: 1fr 320px; padding: 44px 18px 18px 48px; border-radius: 40px; margin-bottom: 40px; }
+  .hero > .txt { padding-bottom: 22px; align-self: center; }
+  .dl { border-radius: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding-bottom: 64px; }
+  .dl-mob { display: none; }
+  .dl-desk { display: contents; }
+  .qr { display: grid; justify-items: center; gap: 10px; background: #000; color: var(--lime); border-radius: 18px; padding: 14px 14px 12px; }
+  .qr .code { position: relative; background: var(--lime); padding: 8px; border-radius: 10px; line-height: 0; }
+  .qr .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 9px; background: var(--lime); box-shadow: 0 0 0 4px var(--lime); }
+  .qr .center img { width: 100%; height: auto; mix-blend-mode: multiply; }
+  .qr .code > img, .qr .code > canvas { width: 196px !important; height: 196px !important; }
+  .qr b { font: italic 800 22px/1 "Barlow Condensed"; text-transform: uppercase; }
+  .notch, .notch-t { left: calc(100% - 178px); }
+  .notch-t { bottom: 42px; color: #000; }
+}
+
+/* Barra fija (móvil) cuando no se ve otro botón de descarga */
+.sticky { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 18px; background: #000; color: #fff; transform: translateY(140%); transition: transform .3s; }
+.sticky.on { transform: none; }
+.sticky .icon { width: 44px; height: 44px; border-radius: 11px; }
+.sticky b { flex: 1; min-width: 0; font: 800 14px/1.2 Inter; }
+.sticky b span { display: block; font-weight: 600; font-size: 12px; color: #9a9a9a; }
+.sticky .cta { flex: none; display: inline-flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 14px; background: var(--lime); color: #000; text-decoration: none; font: italic 800 18px/1 "Barlow Condensed"; text-transform: uppercase; }
+@media (min-width: 860px) { .sticky { display: none; } }
+
+/* Elegir camino: tres tarjetas que hacen de pestañas */
+.picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 20px; scroll-margin-top: 12px; }
+.pick { display: grid; gap: 4px; align-content: center; justify-items: center; text-align: center; border: 0; border-radius: 16px; padding: 12px; cursor: pointer; background: rgba(0,0,0,.08); box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.18); transition: background .25s, box-shadow .25s, transform .3s var(--ease); }
+.pick:hover { transform: translateY(-2px); }
+.pick b { font: italic 800 19px/1 "Barlow Condensed"; text-transform: uppercase; }
+.pick span { display: none; font-size: 14px; line-height: 1.35; color: rgba(0,0,0,.6); }
+.pick[aria-selected="true"] { background: #000; box-shadow: none; }
+.pick[aria-selected="true"] b { color: var(--lime); }
+.pick[aria-selected="true"] span { color: #bdbdbd; }
+.is-pro .pick[data-go="coach"] { order: -1; }
+@media (max-width: 859px) { .pick { min-width: 0; padding: 10px; } .pick b { font-size: 16px; overflow-wrap: anywhere; } }
+@media (min-width: 860px) { .picks { max-width: 760px; gap: 10px; } .pick { padding: 16px 18px; } .pick b { font-size: 26px; } .pick span { display: block; } }
+
+/* ── Cómo funciona: un carrusel horizontal por camino ── */
+.how { padding-top: 64px; scroll-margin-top: 0; }
+.how-head h2 { font-size: clamp(44px, 12vw, 76px); margin: 0; }
+.how-head p { margin: 8px 0 0; font: 700 16px/1.45 Inter; max-width: 50ch; }
+
+/* Barra de pasos tipo «historias» + flechas */
+.ctrl { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.segs { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.segs button { width: 100%; border: 0; background: none; padding: 4px 0; text-align: left; cursor: pointer; display: grid; gap: 7px; font: 700 11.5px/1.15 Inter; color: rgba(0,0,0,.42); transition: color .3s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.segs li { min-width: 0; }
+.segs i { display: block; height: 4px; border-radius: 2px; background: rgba(0,0,0,.16); overflow: hidden; }
+.segs i b { display: block; height: 100%; background: #000; transform-origin: left; transform: scaleX(var(--f, 0)); }
+.segs li.on button, .segs li.done button { color: #000; }
+.arr { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #000; display: grid; place-items: center; cursor: pointer; transition: opacity .2s, transform .2s var(--ease); }
+.arr svg { stroke: var(--lime); }
+.arr:hover { transform: scale(1.06); }
+.arr:disabled { opacity: .25; cursor: default; transform: none; }
+.arrs { display: none; gap: 8px; }
+@media (min-width: 860px) { .arrs { display: flex; } }
+
+.track { --cw: calc(100vw - 48px); display: grid; grid-auto-flow: column; grid-auto-columns: var(--cw); gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 18px var(--pad) 8px; padding-right: calc(100vw - var(--cw) - var(--pad)); scroll-padding-inline: var(--pad); overscroll-behavior-x: contain; }
+.track::-webkit-scrollbar { display: none; }
+@media (min-width: 860px) { .track { --cw: min(900px, 100vw - 180px); gap: 18px; } }
+
+/* Tarjeta de paso: oscura, el móvil asoma desde abajo (como landing-2) */
+.card { scroll-snap-align: start; position: relative; background: var(--card); color: var(--text); border-radius: 30px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; height: min(600px, 100svh - 200px); min-height: 520px; transition: opacity .5s, transform .6s var(--ease); }
+.card:not(.on) { opacity: .55; transform: scale(.975); }
+.copy { position: relative; padding: 26px 24px 0; }
+.ghost { position: absolute; right: 16px; top: 8px; font: italic 800 120px/.8 "Barlow Condensed"; color: transparent; -webkit-text-stroke: 2px rgba(255,255,255,.14); pointer-events: none; transition: transform .8s var(--ease), opacity .6s; }
+.card:not(.on) .ghost { transform: translateY(30px); opacity: 0; }
+.who { display: inline-flex; align-items: center; gap: 6px; font: 800 11px/1 Inter; letter-spacing: .1em; text-transform: uppercase; background: var(--lime); color: #000; padding: 6px 9px; border-radius: 6px; }
+.who.them { background: #fff; }
+.who svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 3; fill: none; }
+.card h3 { font-size: clamp(36px, 9.5vw, 56px); margin: 14px 0 0; color: #fff; }
+.card p { margin: 12px 0 0; color: #d2d2d2; max-width: 44ch; font-size: 15.5px; line-height: 1.5; }
+.card ul { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; color: #bdbdbd; font-size: 14.5px; }
+.card li { display: grid; grid-template-columns: 18px 1fr; line-height: 1.4; }
+.card li::before { content: "›"; color: var(--lime); font: 900 19px/1.05 Inter; }
+/* Última tarjeta de cada camino: el CTA, grande y sin imagen.
+   Descarga como en el hero: botón a la tienda del móvil, o las dos insignias. */
+.card.end { grid-template-columns: 1fr; grid-template-rows: 1fr; background: #000; }
+.card.end .copy { align-self: center; padding: 32px 26px; }
+.card.end h3 { font-size: clamp(56px, 16vw, 104px); color: var(--lime); }
+.card.end p { font: 700 18px/1.45 Inter; color: #fff; }
+.getapp { margin-top: 24px; display: grid; gap: 12px; max-width: 360px; }
+.card.end .go { background: var(--lime); color: #000; height: 60px; font-size: 26px; }
+.card.end .other { color: #bdbdbd; margin: 0; }
+.card.end .badge { box-shadow: inset 0 0 0 1px #6a6a6a; }
+.other-path { margin-top: 26px; border: 0; background: none; padding: 0; color: #bdbdbd; font: 700 14px/1 Inter; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@media (min-width: 860px) { .card.end .copy { padding: 48px 56px; } }
+
+/* Entrada palabra a palabra al llegar a la tarjeta */
+.w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .1em .06em 0; margin-bottom: -.06em; }
+.w > span { display: inline-block; transition: transform .7s var(--ease); transition-delay: calc(var(--d) * 50ms + .05s); }
+.card:not(.on) .w > span { transform: translateY(130%); transition-delay: 0s; }
+.fade { transition: opacity .5s .3s, transform .6s var(--ease) .3s; }
+.card:not(.on) .fade { opacity: 0; transform: translateY(12px); transition-delay: 0s; }
+
+.shot { position: relative; display: flex; justify-content: center; align-items: flex-start; padding-top: 22px; min-height: 0; overflow: hidden; }
+.phone { width: 220px; border-radius: 32px; padding: 6px; background: #0b0b0b; box-shadow: 0 0 0 1.5px #3a3a3a, 0 -10px 40px rgba(0,0,0,.25); transition: transform .8s var(--ease); align-self: flex-start; }
+.card:not(.on) .phone { transform: translateY(40px); }
+.scr { position: relative; aspect-ratio: 923 / 2000; border-radius: 26px; overflow: hidden; background: var(--dark); color: #fff; }
+.scr > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.pend { position: absolute; top: 10px; right: 10px; z-index: 2; font: 700 10px/1 Inter; color: #e8c65a; border: 1px dashed #c9a227; border-radius: 6px; padding: 4px 6px; }
+
+@media (min-width: 860px) {
+  .card { grid-template-columns: 1.1fr .9fr; grid-template-rows: none; min-height: 0; height: 520px; }
+  .copy { padding: 52px 20px 44px 48px; align-self: center; }
+  .ghost { font-size: 260px; left: 20px; right: auto; top: -30px; }
+  .card p { font-size: 17px; }
+  .shot { padding-top: 46px; }
+  .phone { width: 270px; }
+}
+
+/* Pantallas dibujadas (sin captura todavía) */
+.mock { padding: 44px 14px 14px; display: grid; gap: 12px; align-content: start; font: 600 12.5px/1.4 Inter; height: 100%; }
+.mock h4 { margin: 0; font: italic 800 24px/1 "Barlow Condensed"; text-transform: uppercase; }
+.mock small { color: var(--muted); }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 800 13px Inter; background: #333; color: #fff; }
+.av.t { background: var(--lime); color: #000; }
+.pair { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.pair .line { width: 40px; border-top: 2px dashed var(--lime); }
+.codebox { justify-self: center; font: 800 22px/1 Inter; letter-spacing: .1em; color: var(--lime); background: #1e1e1e; padding: 12px 14px; border-radius: 10px; }
+.okpill { justify-self: center; background: var(--lime); color: #000; font: 800 12px/1 Inter; border-radius: 999px; padding: 8px 12px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #1e1e1e; border-radius: 12px; padding: 9px; font: 800 12px/1.2 Inter; }
+.row p { margin: 0; color: #fff; font-size: 12px; }
+.row small { display: block; font-weight: 600; font-size: 11px; }
+.row span { font: 900 10px/1 Inter; letter-spacing: .06em; background: var(--lime); color: #000; padding: 7px 8px; border-radius: 7px; }
+.chat { display: grid; gap: 8px; }
+.chat div { max-width: 90%; padding: 8px 10px; border-radius: 14px; font-size: 11.5px; }
+.chat .out { justify-self: end; background: #1f5135; color: #e8f5ec; border-bottom-right-radius: 4px; }
+.chat .in { background: #333; border-bottom-left-radius: 4px; }
+.chat .ok { justify-self: center; background: var(--lime); color: #000; font-weight: 800; border-radius: 999px; }
+.live { display: grid; gap: 8px; }
+.live div { display: flex; gap: 8px; align-items: center; background: #1e1e1e; border-radius: 12px; padding: 9px 10px; font: 700 11.5px/1.3 Inter; }
+.live .av { width: 28px; height: 28px; font-size: 10px; flex: none; }
+/* Lo que se mueve dentro del móvil vuelve a empezar al llegar a la tarjeta */
+.card.on .live div { animation: pop .5s var(--ease) both; }
+.card.on .live div:nth-child(2) { animation-delay: .45s; }
+.card.on .live div:nth-child(3) { animation-delay: .9s; }
+@keyframes pop { from { opacity: 0; transform: translateY(10px); } }
+
+.swipe { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 0 0; font: 700 13px/1 Inter; transition: opacity .4s; }
+.swipe svg { width: 16px; height: 16px; stroke: #000; stroke-width: 3; fill: none; animation: nudge 1.6s ease-in-out infinite; }
+.swipe.off { opacity: 0; }
+@keyframes nudge { 50% { transform: translateX(4px); } }
+
+/* ── Y además: una función por fila, texto y móvil alternando lados ── */
+.more { padding: 72px 0 0; }
+.more > .wrap > h2 { font-size: clamp(44px, 12vw, 72px); margin: 0 0 8px; }
+.feats { display: grid; gap: 56px; margin-top: 32px; }
+.feat-row { display: grid; gap: 20px; align-items: center; }
+.ftxt h3 { font: italic 800 clamp(36px, 9vw, 54px)/.95 "Barlow Condensed"; text-transform: uppercase; margin: 0 0 10px; }
+.ftxt p { margin: 0; font: 600 17px/1.5 Inter; max-width: 40ch; }
+/* El móvil asoma desde abajo de un panel oscuro; --y = qué parte de la captura se ve */
+.fvis { position: relative; height: 320px; border-radius: 28px; background: var(--card); overflow: hidden; display: flex; justify-content: center; padding-top: 30px; }
+.fvis .phone { width: 240px; height: calc(100% + 40px); }
+.fvis .scr { height: 100%; aspect-ratio: auto; }
+.fvis .scr > img { height: auto; transform: translateY(var(--y, 0%)); }
+.fvis .scr > .mock { padding-top: 40px; }
+.fvis.solo { align-items: center; padding: 0; }
+.big { font: italic 800 120px/.85 "Barlow Condensed"; color: var(--lime); text-align: center; }
+.big small { display: block; font: 700 14px/1.3 Inter; color: var(--muted); font-style: normal; margin-top: 10px; }
+.newex { display: grid; gap: 8px; font: 600 12px/1.3 Inter; }
+.newex small { color: var(--muted); }
+.newex .field { background: #1e1e1e; border-radius: 10px; padding: 11px 12px; font: 700 13px/1.25 Inter; color: #fff; }
+.newex .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.newex .chips span { background: #1e1e1e; border-radius: 999px; padding: 6px 10px; font-weight: 800; color: #ddd; }
+.newex .okpill { justify-self: start; margin-top: 4px; }
+/* Entrada al bajar: el texto y el móvil llegan cada uno desde su lado */
+.feat-row > * { opacity: 0; transition: opacity .6s, transform .8s var(--ease); }
+.feat-row .ftxt { transform: translateY(24px); }
+.feat-row .fvis { transform: translateY(40px); transition-delay: .1s; }
+@media (min-width: 760px) {
+  .feats { gap: 72px; }
+  .feat-row { grid-template-columns: 1fr 1fr; gap: 56px; }
+  .feat-row:nth-child(even) .ftxt { order: 2; }
+  .feat-row .ftxt { transform: translateX(-30px); }
+  .feat-row:nth-child(even) .ftxt { transform: translateX(30px); }
+  /* A dos columnas, sin panel: el móvil suelto, fundido por abajo */
+  .fvis { height: 480px; background: none; border-radius: 0; padding-top: 44px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+  .fvis .phone { width: 260px; }
+  /* Detrás del texto, el número de la función en contorno, como los de las tarjetas del flujo */
+  .feats { counter-reset: f; }
+  .ftxt { position: relative; isolation: isolate; counter-increment: f; }
+  .ftxt::before { content: "0" counter(f); position: absolute; z-index: -1; left: -10px; top: -0.62em; font: italic 800 200px/1 "Barlow Condensed"; color: transparent; -webkit-text-stroke: 1.5px rgba(0,0,0,.13); pointer-events: none; }
+  .feat-row:has(.solo) .ftxt::before { display: none; }
+  /* A dos columnas el móvil se ve casi entero: la pantalla desde arriba, sin recortar */
+  .fvis .scr > img { transform: none; }
+  .fvis.solo { -webkit-mask-image: none; mask-image: none; height: auto; }
+  .fvis.solo .big { color: #000; font-size: 180px; }
+  .fvis.solo .big small { color: rgba(0,0,0,.6); }
+}
+/* Después de las reglas de entrada (y más fuerte que :nth-child), para que el texto vuelva a su sitio */
+.feats .feat-row.in:nth-child(n) > * { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before { transition-duration: 0s !important; animation: none !important; } .feat-row > * { opacity: 1; transform: none; } }
+
+/* ── Banda oscura: carta y hoja de ruta (de landing-2) ── */
+.dark { background: var(--dark); color: var(--text); margin-top: 72px; border-radius: 40px 40px 0 0; padding: 70px 0; }
+.letter { max-width: 640px; margin: 0 auto; }
+.caps { font: 800 12px/1.4 Inter; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+.letter h2 { font-size: 46px; margin: 0 0 20px; color: #fff; }
+.letter h2 em, .road h2 em { color: var(--lime); }
+.letter p { font-size: 18px; line-height: 1.7; color: #d4d4d4; margin: 0 0 16px; }
+.sign { font: 600 46px/1 Caveat, cursive; color: var(--lime); display: inline-block; transform: rotate(-4deg); }
+.road { max-width: 640px; margin: 64px auto 0; display: grid; gap: 12px; }
+.road h2 { font-size: 46px; margin: 0; color: #fff; }
+.road ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.road li { background: #1d1d1d; border-radius: 16px; padding: 16px 18px 16px 44px; font: 800 17px/1.35 Inter; position: relative; }
+.road li::before { content: ""; position: absolute; left: 18px; top: 22px; width: 10px; height: 10px; border-radius: 50%; background: #f5a524; }
+.road li span { display: block; color: var(--muted); font: 600 14px/1.4 Inter; margin-top: 3px; }
+
+.final { padding: 70px 0 120px; text-align: center; }
+.final h2 { font-size: clamp(48px, 13vw, 84px); margin: 0 0 12px; }
+.final p { font: 700 17px/1.5 Inter; margin: 0 auto 24px; max-width: 40ch; }
+.final .badges { justify-content: center; }
+footer { background: #000; color: var(--muted); font-size: 14px; padding: 20px 0 30px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="gp" viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 2.2 13.4 12l-9.8 9.8c-.4-.2-.6-.6-.6-1.1V3.3c0-.5.2-.9.6-1.1Z"/><path fill="#ffce00" d="m18.5 8.6 2.6 1.5c.8.5.8 1.3 0 1.8l-2.6 1.5-3-3 3-1.8Z"/><path fill="#ff3a44" d="m14.6 10.8 2.7 2.7-11.8 6.7 9.1-9.4Z"/><path fill="#00f076" d="M5.5 3.8l11.8 6.7-2.7 2.7-9.1-9.4Z"/></symbol>
+  <symbol id="ap" viewBox="0 0 24 24"><path fill="currentColor" d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1ZM13.9 4.9c.7-.9 1.2-2 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.1.1 2.3-.6 3-1.5Z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="top"><a class="logo" href="#">FormaFIT</a>
+    <button class="switch" id="mode" type="button" role="switch" aria-checked="false" aria-label="Forma Fit Pro"><span class="s-free">GRATIS</span><span class="s-pro">PRO</span></button></div>
+  <p class="note">Maqueta v3: mezcla de la web publicada y landing-flujo. Interruptor GRATIS/PRO como en la web (<b>#pro</b> en la URL): en PRO sale primero el camino del entrenador. El flujo va <b>en horizontal</b>; la página sigue <b>en vertical</b>. Textos de la web publicada salvo los pasos que no existían.</p>
+
+  <header class="hero" id="hero">
+    <div class="txt">
+      <h1 class="disp" data-m="free">Entrena. Registra.<br><em>Progresa.</em></h1>
+      <h1 class="disp" data-m="pro">Tú programas,<br><em>ellos entrenan</em></h1>
+      <p class="claim" data-m="free">Gratis. Sin anuncios ni tonterías.</p>
+      <p class="claim" data-m="pro">Para entrenadores/as.</p>
+      <p class="lead" data-m="free">Forma Fit es una app pensada para la <strong class="hl">gente que entrena</strong>. Crea o elige un programa, registra tus entrenos y mide tu progreso.</p>
+      <p class="lead" data-m="pro">Pensada para que entrenes a tus clientes de la misma forma que entrenas tú, sin salir de la app.</p>
+      <div class="badges desk-only">
+        <a class="badge" data-store="play" href="#"><svg aria-hidden="true"><use href="#gp"/></svg><span>Disponible en<b>Google Play</b></span></a>
+        <a class="badge light" data-store="ios" href="#"><svg aria-hidden="true"><use href="#ap"/></svg><span>Consíguelo en el<b>App Store</b></span></a>
+      </div>
+    </div>
+    <div class="dl">
+      <div class="dl-desk">
+        <div class="qr"><div class="code" id="qr"></div><b>Escanea y descarga</b></div>
+      </div>
+      <div class="dl-mob">
+        <div class="icon"><img src="landing-img/ff.png" alt=""></div>
+        <div><b>Forma Fit</b><small>Gratis · sin anuncios</small></div>
+        <a class="go" href="#"><svg aria-hidden="true"><use href="#gp"/></svg><span>Descargar gratis</span></a>
+        <p class="other"></p>
+        <div class="both">
+          <a class="badge" data-store="play" href="#"><svg aria-hidden="true"><use href="#gp"/></svg><span>En<b>Google Play</b></span></a>
+          <a class="badge light" data-store="ios" href="#"><svg aria-hidden="true"><use href="#ap"/></svg><span>En el<b>App Store</b></span></a>
+        </div>
+      </div>
+    </div>
+    <a class="notch-t" href="#how">Descubre cómo funciona</a>
+    <a class="notch" href="#how" aria-label="Descubre cómo funciona"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 7 6 6 6-6"/><path d="m6 13 6 6 6-6"/></svg></a>
+  </header>
+</div>
+
+<section class="how" id="how">
+  <div class="wrap how-head">
+    <h2 class="disp" data-m="free">Pensada para entrenar, sin distracciones</h2>
+    <h2 class="disp" data-m="pro">Una app para entrenarlos a todos</h2>
+    <p>¿Cómo entrenas? Elige tu caso y desliza.</p>
+    <div class="picks" role="tablist" id="tabs">
+      <button class="pick" type="button" role="tab" data-go="solo"><b>Por mi cuenta</b><span>Sigo mi propio programa.</span></button>
+      <button class="pick" type="button" role="tab" data-go="client"><b>Con entrenador/a</b><span>Alguien me prepara el programa.</span></button>
+      <button class="pick" type="button" role="tab" data-go="coach"><b>Soy entrenador/a</b><span>Preparo el programa a mis clientes.</span></button>
+    </div>
+    <div class="ctrl">
+      <ol class="segs" id="segs"></ol>
+      <div class="arrs">
+        <button class="arr" type="button" id="prev" aria-label="Paso anterior"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+        <button class="arr" type="button" id="nextb" aria-label="Paso siguiente"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="track" id="track" tabindex="0" aria-label="Pasos"></div>
+  <p class="swipe" id="swipe">Desliza para ver el siguiente paso <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></p>
+</section>
+
+<!-- ── El resto de funciones, en vertical ── -->
+<section class="more" id="more">
+  <div class="wrap">
+    <h2 class="disp">Y además</h2>
+    <div class="feats">
+      <article class="feat-row"><div class="ftxt"><h3>Programa por etapas</h3><p>Divide tu programa en etapas: acumulación, intensificación, descarga…</p></div><div class="fvis"><div class="phone"><div class="scr"><img src="landing-img/programa.jpg" alt="Programa dividido en etapas" style="--y:-30%"></div></div></div></article>
+      <article class="feat-row"><div class="ftxt"><h3>Tu carga, semana a semana</h3><p>Forma Fit mide tu entrenamiento, para que puedas tomar mejores decisiones.</p></div><div class="fvis"><div class="phone"><div class="scr"><img src="landing-img/carga.jpg" alt="Carga de entrenamiento" style="--y:0%"></div></div></div></article>
+      <article class="feat-row"><div class="ftxt"><h3>Si no encuentras tu ejercicio, créalo</h3><p>Puedes crear y añadir tus propios ejercicios, como si fuesen de la app.</p></div><div class="fvis"><div class="phone"><span class="pend">captura pendiente</span><div class="scr"><div class="mock"><h4>Nuevo<br>ejercicio</h4><div class="newex"><small>Nombre</small><div class="field">Remo en polea baja, agarre neutro</div><small>Grupo y material</small><div class="chips"><span>Espalda</span><span>Polea</span></div><small>Qué apuntas</small><div class="chips"><span>kg · reps</span></div><div class="okpill">+ Añadir a mis ejercicios</div></div></div></div></div></div></article>
+      <article class="feat-row"><div class="ftxt"><h3>Crea sesiones libres</h3><p>Para entrenamientos improvisados o fuera del programa, siempre a mano.</p></div><div class="fvis"><div class="phone"><div class="scr"><img src="landing-img/entreno.jpg" alt="Sesiones libres en la pantalla Entreno" style="--y:-30%"></div></div></div></article>
+      <article class="feat-row"><div class="ftxt"><h3>Plantillas</h3><p>Crea un programa o una sesión una vez y asígnalo a quien quieras en dos toques.</p></div><div class="fvis"><div class="phone"><span class="pend">captura pendiente</span><div class="scr"><div class="mock"><h4>Plantillas</h4><small>Tus programas y sesiones</small><div class="row"><p>Fuerza 3 días<small>Programa · 4 etapas</small></p><span>ASIGNAR</span></div><div class="row"><p>Hipertrofia PPL<small>Programa · 3 etapas</small></p><span>ASIGNAR</span></div><div class="row"><p>Core 20 min<small>Sesión</small></p><span>ASIGNAR</span></div></div></div></div></div></article>
+      <article class="feat-row"><div class="ftxt"><h3>Sin anuncios ni tonterías</h3><p>Tu vida, tu ritmo. Sin notificaciones con una carita triste para que vuelvas.</p></div><div class="fvis solo"><div class="big">0<small>anuncios · ahora y siempre</small></div></div></article>
+    </div>
+  </div>
+</section>
+
+<section class="dark" id="carta">
+  <div class="wrap">
+    <div class="letter">
+      <p class="caps">Una nota antes de que la descargues</p>
+      <h2 class="disp">Hola, <em>soy Lucas</em></h2>
+      <p>Forma Fit empezó porque yo mismo necesitaba una app para registrar mi entrenamiento y centrarme en eso: entrenar. Me molestaban las apps que pedían a cambio mi atención, mis datos o tener un anuncio acechando en algún lugar. Tampoco quería medallas ni trofeos por completar o no la sesión. Solo entrenar y llevar un registro de lo que había hecho.</p>
+      <p>Todavía tengo la primera versión instalada en el móvil, por nostalgia. Pero después de muchas (muuuchas) versiones, cambios e iteraciones, puedo decir que por fin cumple con lo que me propuse: una app fácil y cómoda de usar, pensada únicamente para las personas que entrenamos.</p>
+      <p>Estoy trabajando en nuevas ideas y mejoras (una vez que empiezas, nunca es suficiente), pero, ahora que ya no es solo mía, sino de todos, me gustaría saber qué piensas de la app, cómo puede mejorar para hacer tu entreno más cómodo y qué te gustaría ver en el futuro.</p>
+      <p>He invertido en ella tiempo y le he puesto todo el cuidado que he sabido. Si algo falla, recuerda que detrás hay una persona que solo quería entrenar y registrar sus marcas. Espero tu feedback constructivo para poder mejorarla.</p>
+      <p>Ojalá disfrutes usándola tanto como yo creándola.</p>
+      <span class="sign">Lucas</span>
+    </div>
+    <div class="road">
+      <h2 class="disp">En <em>camino</em></h2>
+      <ul>
+        <li>Imágenes para los ejercicios<span>Ya lo sé, ¡estoy en ello!</span></li>
+        <li>Un sistema de etapas más flexible, por objetivos</li>
+        <li>Más y mejores plantillas de entrenamiento, para distintas disciplinas deportivas</li>
+        <li>Un buscador de ejercicios moderno<span>No más listas con 37 variantes.</span></li>
+        <li>Más herramientas para gestionar clientes</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="final">
+  <div class="wrap">
+    <h2 class="disp">Pruébala.<br>Es gratis.</h2>
+    <p>Sin anuncios y sin tonterías. Y si entrenas a otros, prueba Pro con hasta 3 clientes.</p>
+    <div class="badges">
+        <a class="badge" data-store="play" href="#"><svg aria-hidden="true"><use href="#gp"/></svg><span>Disponible en<b>Google Play</b></span></a>
+        <a class="badge light" data-store="ios" href="#"><svg aria-hidden="true"><use href="#ap"/></svg><span>Consíguelo en el<b>App Store</b></span></a>
+    </div>
+  </div>
+</section>
+<footer><div class="wrap">© 2026 Forma Fit · hecha por Lucas</div></footer>
+<div class="sticky" id="sticky"><div class="icon"><img src="landing-img/ff.png" alt=""></div><b>Forma Fit<span>Gratis · sin anuncios</span></b><a class="cta" href="#final">Descargar</a></div>
+
+<script>
+const img = (src, alt) => `<img src="landing-img/${src}" alt="${alt}">`;
+const arrow = '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+// Quién hace cada paso: deja claro en qué dirección va todo
+const WHO = { me: ['me', 'Tú'],
+  coach2me: ['them', `Tu entrenador/a ${arrow} tú`], me2coach: ['me', `Tú ${arrow} tu entrenador/a`],
+  me2client: ['me', `Tú ${arrow} tu cliente`], client2me: ['them', `Tu cliente ${arrow} tú`] };
+
+const MOCK = {
+  code: `<div class="mock"><h4>Conectar con<br>tu entrenador</h4><small>Escribe el código que te ha pasado.</small>
+    <div class="codebox">K7F·29Q</div><div class="pair"><span class="av t">TÚ</span><span class="line"></span><span class="av">AC</span></div>
+    <div class="okpill">✓ Conectado con Ana</div></div>`,
+  codeCoach: `<div class="mock"><h4>Conectar<br>con Ana</h4><small>Pásale este código. Al escribirlo en su app, quedáis conectados.</small>
+    <div class="codebox">K7F·29Q</div><div class="pair"><span class="av t">TÚ</span><span class="line"></span><span class="av">AC</span></div>
+    <div class="okpill">✓ Ana se ha conectado</div></div>`,
+  tpl: `<div class="mock"><h4>Asignar a Sara</h4><small>Tus plantillas</small>
+    <div class="row"><p>Fuerza 3 días<small>Programa · 4 etapas</small></p><span>ASIGNAR</span></div>
+    <div class="row"><p>Hipertrofia PPL<small>Programa · 3 etapas</small></p><span>ASIGNAR</span></div>
+    <div class="row"><p>Core 20 min<small>Sesión</small></p><span>ASIGNAR</span></div>
+    <small>o crea uno desde cero, o copia el de otro cliente</small></div>`,
+  live: `<div class="mock"><h4>Te llega<br>al momento</h4><small>Lo que apuntan tus clientes</small>
+    <div class="live"><div><span class="av">AC</span>Ana · Press banca 60 kg × 8</div><div><span class="av">VM</span>Vidal · Sesión B terminada</div><div><span class="av">S</span>Sara · Sentadilla 80 kg × 5 · PR</div></div>
+    <small>¿Sin la app? Por WhatsApp:</small>
+    <div class="chat"><div class="out">Press banca 4×8:</div><div class="in">Press banca 4×8: 60x8 60x8 60x7</div><div class="ok">✓ Pegado en su historial</div></div></div>`,
+};
+
+// Textos de la web publicada y del usuario (22-oct).
+// Sin «who» no sale la etiqueta: en «Por mi cuenta» todo lo haces tú.
+const PATHS = {
+  solo: {
+    steps: [
+      { k: 'Programa', t: 'Crea tu programa', p: 'Crea, modifica y adapta tu programa de entrenamiento para cualquier disciplina.',
+        li: ['Añade sesiones y ejercicios totalmente personalizables', 'Divide el programa en etapas para que progrese contigo'], vis: img('editor.jpg', 'Editor de programa') },
+      { k: 'Entreno', t: 'Abre la app y entrena', p: 'Directo a lo que importa. La sesión de hoy, lista para empezar.',
+        li: ['Decide el orden de tus sesiones y cómo avanzan', 'Todas tus sesiones siempre disponibles'], vis: img('entreno.jpg', 'Pantalla Entreno') },
+      { k: 'Registro', t: 'Apunta sin perder el ritmo', p: 'Introduce tu entrenamiento de forma rápida y ágil.',
+        li: ['Desliza para introducir datos o usa el teclado numérico', 'Añade series y ejercicios si lo necesitas'], vis: img('registro-regla.jpg', 'Registro de series') },
+      { k: 'Progreso', t: 'Mide tu progreso', p: 'Cada ejercicio con su gráfica, tus marcas y lo que has mejorado.',
+        li: ['Peso, reps, volumen y 1RM estimado', 'Carga de entrenamiento semana a semana'], vis: img('progresion.jpg', 'Gráfica de progreso') },
+    ],
+    end: { k: '¡Pruébala!', t: 'Pruébala. Es gratis.', p: 'Sin anuncios y sin tonterías.' },
+  },
+  client: {
+    steps: [
+      { k: 'Conectar', who: 'me', t: 'Conecta con tu entrenador/a', p: 'Si tienes un entrenador/a, conecta y recibe su programa en tu app.',
+        li: ['Te pasa un código y quedáis conectados', '¿No tiene Forma Fit? Invítale'], vis: MOCK.code, pend: true },
+      { k: 'Programa', who: 'coach2me', t: 'Recibe su programa', p: 'Tu entrenador/a crea tu programa y te aparece en la app, listo para entrenar.',
+        li: ['Programa e historial siempre sincronizados'], vis: img('programa.jpg', 'Programa del entrenador') },
+      { k: 'Entreno', who: 'me', t: 'Abre la app y entrena', p: 'Sin adivinar lo que tienes que hacer. La sesión de hoy, lista para empezar.',
+        li: ['Podrás ver las notas de tu entrenador/a y apuntar las tuyas', 'Entrena, registra y listo'], vis: img('registro.jpg', 'Registro de series') },
+      { k: 'Progreso', who: 'me2coach', t: 'Tu progreso', p: 'Tu entrenador/a verá tu progreso en tiempo real. Y tú, cada ejercicio con sus gráficas, tus marcas y lo que has mejorado.',
+        li: [], vis: img('progresion.jpg', 'Gráfica de progreso') },
+    ],
+    end: { k: '¡Pruébala!', t: 'Pruébala. Es gratis.', p: 'Sin anuncios y sin tonterías.' },
+  },
+  coach: {
+    steps: [
+      { k: 'Conectar', who: 'me2client', t: 'Conecta con tus clientes', p: 'Tan fácil como enviarle un código para sincronizar su app con la tuya.',
+        li: ['Programa e historial sincronizados', 'Si no tiene la app, envía y recibe el programa por texto, en un clic'], vis: MOCK.codeCoach, pend: true },
+      { k: 'Programa', who: 'me2client', t: 'Asigna un programa a tu cliente', p: 'Crea un programa desde cero, parte de una de tus plantillas o del programa de otro cliente, y asígnalo a quien quieras para que empiece.',
+        li: ['Edita el programa en cualquier momento o haz ajustes puntuales de un día', 'Añade notas a los ejercicios y las sesiones para que las vean'], vis: MOCK.tpl, pend: true },
+      { k: 'Entreno', who: 'client2me', t: 'Ellos entrenan', p: 'Cada serie que apunta te llega sola. O, si entrena contigo, apunta su entrenamiento directamente en la app.',
+        li: ['¿No tiene la app? Mándale la sesión por WhatsApp, te la devuelve rellena y la pegas', 'Verás las notas que pongan durante la sesión'], vis: MOCK.live, pend: true },
+      { k: 'Clientes', who: 'me', t: 'Todos tus clientes', p: 'Revisa quién entrena y quién lleva días sin aparecer de un vistazo, así como su progreso, en un solo sitio.',
+        li: ['Cada cliente tiene su ficha, donde verás su programa, su historial y su progreso'], vis: img('clientes.jpg', 'Lista de clientes') },
+    ],
+    end: { k: '¡Pruébalo!', t: '¡Empieza ahora!', p: 'Descarga Forma Fit y pruébalo gratis con hasta 3 clientes.' },
+  },
+};
+const LABEL = { solo: 'Por mi cuenta', client: 'Con entrenador/a', coach: 'Soy entrenador/a' };
+const NEXT = { solo: 'client', client: 'coach', coach: 'solo' };
+const STORE = `<a class="badge" data-store="play" href="#"><svg aria-hidden="true"><use href="#gp"/></svg><span>En<b>Google Play</b></span></a>
+  <a class="badge light" data-store="ios" href="#"><svg aria-hidden="true"><use href="#ap"/></svg><span>En el<b>App Store</b></span></a>`;
+
+const $ = (id) => document.getElementById(id);
+const track = $('track');
+const words = (t) => t.split(' ').map((w, i) => `<span class="w"><span style="--d:${i}">${w}</span></span>`).join(' ');
+let cur, N = 0, idx = 0;
+
+function render(key) {
+  cur = key;
+  const P = PATHS[key];
+  const states = [...P.steps.map((s, i) => ({ ...s, n: i + 1 })), { ...P.end, end: true }];
+  N = states.length;
+  [...$('tabs').children].forEach((b) => b.setAttribute('aria-selected', String(b.dataset.go === key)));
+  $('segs').innerHTML = states.map((s, i) => `<li><button type="button" data-step="${i}" aria-label="${s.end ? s.k : `Paso ${i + 1}: ${s.k}`}">
+    <i><b></b></i>${s.end ? s.k : `${i + 1} · ${s.k}`}</button></li>`).join('');
+  track.innerHTML = states.map((s, i) => {
+    // Última tarjeta: solo el CTA, sin móvil
+    if (s.end) return `<article class="card end" data-i="${i}"><div class="copy">
+      <h3 class="disp">${words(s.t)}</h3><p class="fade">${s.p}</p>
+      <div class="getapp fade"><a class="go" href="#"><svg aria-hidden="true"><use href="#gp"/></svg><span>Descargar</span></a><p class="other"></p>
+        <div class="both">${STORE}</div></div>
+      <button class="other-path fade" type="button" data-go="${NEXT[key]}">Ver «${LABEL[NEXT[key]]}» →</button></div></article>`;
+    const who = s.who ? `<span class="who fade ${WHO[s.who][0]}">${WHO[s.who][1]}</span>` : '';
+    const ul = s.li.length ? `<ul class="fade">${s.li.map((l) => `<li>${l}</li>`).join('')}</ul>` : '';
+    return `<article class="card" data-i="${i}">
+      <div class="copy"><span class="ghost">${String(s.n).padStart(2, '0')}</span>
+        ${who}<h3 class="disp">${words(s.t)}</h3><p class="fade">${s.p}</p>${ul}</div>
+      <div class="shot"><div class="phone">${s.pend ? '<span class="pend">captura pendiente</span>' : ''}<div class="scr">${s.vis}</div></div></div>
+    </article>`;
+  }).join('');
+  stores(track);
+  track.scrollLeft = 0;
+  idx = -1;
+  update();
+}
+
+// Posición del carrusel → paso activo y barras llenándose mientras deslizas
+function update() {
+  const cards = track.children;
+  const step = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : 1;
+  const pos = Math.min(N - 1, Math.max(0, track.scrollLeft / step));
+  const i = Math.round(pos);
+  [...$('segs').children].forEach((li, j) => {
+    li.style.setProperty('--f', Math.min(1, Math.max(0, pos - j + 1)));
+    li.classList.toggle('on', j === i); li.classList.toggle('done', j < i);
+  });
+  if (i !== idx) {
+    idx = i;
+    [...cards].forEach((c, j) => { c.classList.toggle('on', j === i); c.inert = j !== i; });
+    $('prev').disabled = i === 0;
+    $('nextb').disabled = i === N - 1;
+  }
+  $('swipe').classList.toggle('off', pos > .3);
+}
+let ticking = false;
+track.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { update(); ticking = false; }); } }, { passive: true });
+addEventListener('resize', update);
+
+const goStep = (i) => { const c = track.children[Math.max(0, Math.min(N - 1, i))]; track.scrollTo({ left: c.offsetLeft - track.children[0].offsetLeft, behavior: 'smooth' }); };
+$('prev').onclick = () => goStep(idx - 1);
+$('nextb').onclick = () => goStep(idx + 1);
+track.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') { e.preventDefault(); goStep(idx + 1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); goStep(idx - 1); }
+});
+
+document.addEventListener('click', (e) => {
+  const g = e.target.closest('[data-go]');
+  // Elegir camino: el selector sube arriba y debajo queda su carrusel
+  if (g) { render(g.dataset.go); $('tabs').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const s = e.target.closest('[data-step]');
+  if (s) goStep(+s.dataset.step);
+});
+
+// «Y además»: cada fila entra al aparecer
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .2 });
+document.querySelectorAll('.feat-row').forEach((t) => io.observe(t));
+
+// ── Tiendas, como en la web: sin ficha de iOS, el App Store sale como «próximamente».
+// ?os=ios|android manda (para la maqueta); si no, el navegador.
+const PLAY = 'https://play.google.com/store/apps/details?id=com.formastudio.formafit';
+const APP_STORE = null;
+// Beta: la app aún no está publicada, así que los CTA llevan a la página de la beta.
+// Al publicar: BETA = false (y beta.html sobra).
+const BETA_PAGE = 'beta.html';
+const BETA = true;
+const ua = navigator.userAgent;
+const os = new URLSearchParams(location.search).get('os')
+  || (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : /Android/.test(ua) ? 'android' : null);
+if (os) document.body.dataset.os = os;
+function stores(root) {
+  root.querySelectorAll('[data-store="play"]').forEach((a) => {
+    a.href = BETA ? BETA_PAGE : PLAY;
+    if (BETA) a.querySelector('span').firstChild.textContent = 'Beta en';
+  });
+  root.querySelectorAll('[data-store="ios"]').forEach((a) => {
+    if (BETA) { a.href = BETA_PAGE; a.querySelector('span').firstChild.textContent = 'Beta en el'; return; }
+    if (APP_STORE) { a.href = APP_STORE; return; }
+    a.removeAttribute('href');
+    a.setAttribute('aria-disabled', 'true');
+    a.querySelector('span').firstChild.textContent = a.closest('.both') ? 'Pronto en el' : 'Próximamente en el';
+  });
+  // En beta el botón grande lleva a los pasos, sea cual sea el móvil
+  if (BETA) {
+    root.querySelectorAll('.go').forEach((go) => { go.href = BETA_PAGE; go.querySelector('span').textContent = 'Probar la beta'; });
+    root.querySelectorAll('.other').forEach((o) => { o.textContent = ''; });
+    root.querySelectorAll('.sticky .cta').forEach((a) => { a.href = BETA_PAGE; a.textContent = 'Probar beta'; });
+    return;
+  }
+  if (!os) return;
+  const ios = os === 'ios';
+  root.querySelectorAll('.go').forEach((go) => {
+    go.querySelector('use').setAttribute('href', ios ? '#ap' : '#gp');
+    if (ios && !APP_STORE) {
+      go.removeAttribute('href');
+      go.setAttribute('aria-disabled', 'true');
+      go.querySelector('span').textContent = 'Pronto en el App Store';
+    } else go.href = ios ? APP_STORE : PLAY;
+  });
+  root.querySelectorAll('.other').forEach((o) => {
+    o.innerHTML = ios ? `¿Tienes Android? <a href="${PLAY}">Google Play</a>`
+      : '¿Tienes iPhone? ' + (APP_STORE ? `<a href="${APP_STORE}">App Store</a>` : 'App Store, próximamente');
+  });
+}
+stores(document);
+
+// QR a la web: en el móvil, el botón ya lleva a su tienda
+addEventListener('DOMContentLoaded', () => {
+  if (!window.QRCode) return;
+  const qr = $('qr');
+  new QRCode(qr, { text: 'https://formafit-pro.github.io/', width: 392, height: 392, colorDark: '#000', colorLight: '#aae216', correctLevel: QRCode.CorrectLevel.H });
+  qr.insertAdjacentHTML('beforeend', '<span class="center"><img src="landing-img/ff.png" alt=""></span>');
+});
+
+// Barra fija: solo cuando no se ve otro botón de descarga
+const bar = $('sticky'), seen = new Map();
+const seenIo = new IntersectionObserver((es) => {
+  es.forEach((e) => seen.set(e.target, e.isIntersecting));
+  bar.classList.toggle('on', ![...seen.values()].some(Boolean));
+});
+['hero', 'final'].forEach((id) => seenIo.observe($(id)));
+
+// Modo Gratis / PRO: el de PRO abre con el camino del entrenador
+const sw = $('mode');
+function setMode(pro) {
+  document.body.classList.toggle('is-pro', pro);
+  sw.setAttribute('aria-checked', String(pro));
+  history.replaceState(null, '', pro ? '#pro' : location.pathname + location.search);
+  render(pro ? 'coach' : 'solo');
+}
+sw.onclick = () => setMode(!document.body.classList.contains('is-pro'));
+setMode(location.hash === '#pro');
+</script>
+</body>
+</html>

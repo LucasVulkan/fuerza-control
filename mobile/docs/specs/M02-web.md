@@ -343,7 +343,7 @@ Rama `feat/invitacion`, con M01-04.
 
 **Probar M02-06**
 
-- [ ] Paso de confirmar del código: la segunda viñeta habla de las sesiones
+- [x] Paso de confirmar del código: la segunda viñeta habla de las sesiones
   libres y del peso, y «Privacidad» abre la política.
 
 ---

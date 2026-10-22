@@ -63,13 +63,13 @@ semana, que no cambia. Sin programa activo no sale.
 
 **Probar U12-01**
 
-- [ ] Con programa: arriba de Inicio sale la tarjeta con la semana del programa, la etapa, el nombre y la barra; la semana (L M X…) sigue debajo, suelta, como antes.
-- [ ] La semana y la etapa coinciden con lo que dice el tab Programa.
-- [ ] La barra llena la etapa en curso según la semana de la etapa; las anteriores en lima apagado.
-- [ ] Tocar la tarjeta abre el tab Programa.
-- [ ] Con un programa de nombre largo, el nombre rompe a dos líneas.
-- [ ] Con una sesión a medias, el banner «En curso» sale encima de la tarjeta y la empuja.
-- [ ] Sin programa activo no sale la tarjeta.
+- [x] Con programa: arriba de Inicio sale la tarjeta con la semana del programa, la etapa, el nombre y la barra; la semana (L M X…) sigue debajo, suelta, como antes.
+- [x] La semana y la etapa coinciden con lo que dice el tab Programa.
+- [x] La barra llena la etapa en curso según la semana de la etapa; las anteriores en lima apagado.
+- [x] Tocar la tarjeta abre el tab Programa.
+- [x] Con un programa de nombre largo, el nombre rompe a dos líneas.
+- [x] Con una sesión a medias, el banner «En curso» sale encima de la tarjeta y la empuja.
+- [x] Sin programa activo no sale la tarjeta.
 
 ## 3. U12-02 — Reparto entre Inicio y Programa
 

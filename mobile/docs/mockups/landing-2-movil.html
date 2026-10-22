@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing en el móvil</title>
+<style>
+  body { margin: 0; background: #0d0d0d; color: #ccc; font: 500 14px/1.5 Inter, system-ui, sans-serif; }
+  .row { display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; padding: 30px 16px; }
+  figure { margin: 0; text-align: center; }
+  iframe { width: 390px; height: 844px; border: 0; border-radius: 44px; box-shadow: 0 0 0 10px #222, 0 0 0 11px #3a3a3a; background: #aae216; }
+  figcaption { margin-top: 20px; }
+  a { color: #aae216; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <figure><iframe src="landing-2.html?os=android" title="Android"></iframe><figcaption>Android (390 px)</figcaption></figure>
+    <figure><iframe src="landing-2.html?os=ios" title="iPhone"></iframe><figcaption>iPhone (390 px)</figcaption></figure>
+    <figure><iframe src="landing-2.html?os=ios#pro" title="Modo PRO"></iframe><figcaption>Modo PRO (iPhone)</figcaption></figure>
+  </div>
+  <script>
+    // Abierta como fichero, los iframes salen vacíos: avisa y da el enlace bueno.
+    if (location.protocol === 'file:') document.querySelector('.row').innerHTML =
+      '<p style="font-size:16px;text-align:center">Abierta como fichero los móviles salen vacíos.<br>Ábrela desde el servidor: <a href="http://localhost:8767/landing-2-movil.html">localhost:8767/landing-2-movil.html</a></p>';
+  </script>
+  <p style="text-align:center">Escritorio: <a href="landing-2.html">landing-2.html</a></p>
+</body>
+</html>

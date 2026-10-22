@@ -31,3 +31,11 @@ Hay que solucionar del onboarding el tema de crear o seleccionar un programa.
 ## U16 · Textos
 
 Revisar todos los textos
+
+## T10 · Copiar sesiones ya hechas como texto
+
+En el historial de sesiones, poder copiar una sesión como texto, con el mismo formato que ya tenemos. Para poder pasarla por whatsapp o lo que sea.
+
+## P17 · Etapas con objetivos de rendimiento
+
+explorar si es posible que una etapa dure hasta que consigas X objetivos de rendimeinto. % de mejora, de reps, de un ejercicio o del global, volumen, carga determinada.

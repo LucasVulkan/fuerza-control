@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing por flujo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;600;700;800;900&display=swap">
+<style>
+/* Maqueta v2: la landing contada como el flujo de la app.
+   Eliges cómo entrenas y el flujo se queda fijo en pantalla: al hacer scroll
+   no se desplaza la página, avanza el paso. El texto entra palabra a palabra
+   y el móvil cambia de pantalla como si navegaras por la app. */
+:root {
+  --lime: #aae216; --ink: #000; --green: #3f6212;
+  --card: #222; --text: #e6e6e6; --muted: #949494; --dark: #121212;
+  --max: 1080px; --ease: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-snap-type: y proximity; }
+body { margin: 0; background: var(--lime); color: var(--ink); font: 500 16px/1.55 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+.wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 16px; }
+.disp { font-family: "Barlow Condensed", sans-serif; font-style: italic; font-weight: 800; line-height: .95; text-transform: uppercase; }
+em { font-style: normal; }
+.note { border: 1.5px dashed #000; background: rgba(255,255,255,.35); border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.45; margin: 0 0 16px; }
+
+.top { display: flex; justify-content: center; padding: 22px 0 18px; }
+.logo { font: italic 900 28px/1 Inter; letter-spacing: -.06em; text-decoration: none; }
+
+/* ── Hero: qué es + elige tu camino ── */
+.hero { background: var(--card); color: var(--text); border-radius: 32px; padding: 28px 22px 22px; }
+.hero h1 { font-size: clamp(42px, 11vw, 72px); margin: 0; }
+.hero h1 em { color: var(--lime); }
+.hero .lead { color: #cfcfcf; font-size: 16px; max-width: 52ch; margin: 14px 0 0; }
+.loop3 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 18px 0 0; padding: 0; list-style: none; font: 800 13px/1 Inter; letter-spacing: .08em; text-transform: uppercase; }
+.loop3 li { background: #000; padding: 9px 11px; border-radius: 999px; }
+.loop3 li.arr { background: none; padding: 0; color: var(--lime); }
+.ask { margin: 28px 0 12px; font: 800 13px/1.3 Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--lime); }
+.choose { display: grid; gap: 10px; }
+.pick { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; text-align: left; background: #2c2c2c; border: 0; border-radius: 18px; padding: 16px 18px; cursor: pointer; box-shadow: inset 0 0 0 1.5px #3a3a3a; transition: background .2s, box-shadow .2s; }
+.pick:hover, .pick:focus-visible { background: #333; box-shadow: inset 0 0 0 2px var(--lime); outline: none; }
+.pick b { font: italic 800 26px/1 "Barlow Condensed"; text-transform: uppercase; color: #fff; }
+.pick span { grid-column: 1; font-size: 14px; color: #b5b5b5; line-height: 1.35; }
+.pick i { grid-row: 1 / 3; grid-column: 2; width: 40px; height: 40px; border-radius: 50%; background: var(--lime); display: grid; place-items: center; transition: transform .3s var(--ease); }
+.pick:hover i { transform: translateY(3px); }
+.pick i svg { width: 20px; height: 20px; stroke: #000; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.pro-tag { font: 900 10px/1 Inter; letter-spacing: .08em; background: var(--lime); color: #000; padding: 4px 6px; border-radius: 5px; vertical-align: 4px; margin-left: 6px; font-style: normal; }
+@media (min-width: 860px) {
+  .hero { padding: 44px 44px 40px; border-radius: 40px; }
+  .choose { grid-template-columns: repeat(3, 1fr); }
+  .pick { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; padding: 20px; min-height: 170px; align-items: start; }
+  .pick i { grid-row: 3; grid-column: 1; }
+}
+
+/* ── El flujo: una sección alta con un panel fijo dentro ── */
+.story { position: relative; margin-top: 40px; }
+.snap { position: absolute; left: 0; width: 1px; height: 1px; scroll-snap-align: start; }
+.pin { position: sticky; top: 0; height: 100vh; height: 100svh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Barra: camino + progreso por pasos */
+.pbar { padding: 12px 0 0; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: #000; border-radius: 999px; padding: 4px; gap: 2px; }
+.tabs button { border: 0; background: none; color: #9a9a9a; border-radius: 999px; padding: 10px 4px; font: 800 13px/1 Inter; cursor: pointer; white-space: nowrap; transition: background .25s, color .25s; }
+.tabs button[aria-selected="true"] { background: var(--lime); color: #000; }
+.segs { display: grid; grid-template-columns: repeat(4, 1fr) 30px; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.segs button { width: 100%; border: 0; background: none; padding: 4px 0; text-align: left; cursor: pointer; display: grid; gap: 7px; font: 700 11.5px/1.15 Inter; color: rgba(0,0,0,.42); transition: color .3s; }
+.segs i { display: block; height: 4px; border-radius: 2px; background: rgba(0,0,0,.16); overflow: hidden; }
+.segs i b { display: block; height: 100%; width: 100%; background: #000; transform-origin: left; transform: scaleX(var(--f, 0)); }
+.segs li.on button, .segs li.done button { color: #000; }
+.segs .lp button { text-align: center; }
+
+/* Cuerpo: texto + móvil */
+.pbody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.texts { display: grid; position: relative; padding: 18px 0 14px; }
+.txt { grid-area: 1 / 1; position: relative; }
+.txt[data-s="past"], .txt[data-s="next"] { pointer-events: none; }
+.ghost { position: absolute; right: -6px; top: -14px; font: italic 800 150px/.8 "Barlow Condensed"; color: transparent; -webkit-text-stroke: 2px rgba(0,0,0,.12); z-index: -1; transition: transform .8s var(--ease), opacity .6s; }
+.who { display: inline-flex; align-items: center; gap: 6px; font: 800 11px/1 Inter; letter-spacing: .1em; text-transform: uppercase; background: #000; color: #fff; padding: 6px 9px; border-radius: 6px; }
+.who.them { background: #fff; color: #000; }
+.who svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 3; fill: none; }
+.txt h2 { font-size: clamp(36px, 10vw, 64px); margin: 12px 0 0; }
+.txt p { margin: 10px 0 0; max-width: 44ch; font-size: 15px; line-height: 1.5; }
+.txt ul { display: none; }
+.txt .back { margin-top: 12px; border: 0; background: #000; color: var(--lime); border-radius: 999px; padding: 10px 16px; font: 800 13px/1 Inter; cursor: pointer; }
+
+/* Entrada palabra a palabra; lo que sale se va hacia arriba */
+.w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .1em .06em 0; margin-bottom: -.06em; }
+.w > span { display: inline-block; transition: transform .7s var(--ease); transition-delay: calc(var(--d) * 50ms); }
+.fade { transition: opacity .5s, transform .6s var(--ease); }
+.txt[data-s="next"] .w > span { transform: translateY(130%); transition-delay: 0s; }
+.txt[data-s="past"] .w > span { transform: translateY(-130%); transition-delay: 0s; }
+.txt[data-s="next"] .fade { opacity: 0; transform: translateY(14px); transition-delay: 0s; }
+.txt[data-s="past"] .fade { opacity: 0; transform: translateY(-14px); transition-delay: 0s; }
+.txt[data-s="on"] .fade { transition-delay: .25s; }
+.txt[data-s="on"] p.fade { transition-delay: .35s; }
+.txt[data-s="on"] ul.fade, .txt[data-s="on"] .back.fade { transition-delay: .45s; }
+.txt[data-s="next"] .ghost { transform: translateY(40px); opacity: 0; }
+.txt[data-s="past"] .ghost { transform: translateY(-40px); opacity: 0; }
+
+/* El móvil: un solo marco, las pantallas se empujan como en la app */
+.stage { flex: 1; min-height: 0; display: flex; justify-content: center; padding-bottom: 20px; }
+.phone { position: relative; height: 100%; aspect-ratio: 935 / 2012; max-width: 100%; border-radius: 34px; padding: 6px; background: #0b0b0b; box-shadow: 0 0 0 1.5px #3a3a3a, 0 30px 60px -24px rgba(0,0,0,.55); }
+.scr { position: relative; height: 100%; border-radius: 28px; overflow: hidden; background: var(--dark); color: #fff; isolation: isolate; }
+.screen { position: absolute; inset: 0; background: var(--dark); transition: transform .65s var(--ease), filter .65s; will-change: transform; }
+.screen[data-s="next"] { transform: translateX(102%); }
+.screen[data-s="past"] { transform: translateX(-30%); filter: brightness(.35); }
+.screen > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.mock { padding: 44px 14px 14px; display: grid; gap: 12px; align-content: start; font: 600 12.5px/1.4 Inter; }
+.mock h4 { margin: 0; font: italic 800 24px/1 "Barlow Condensed"; text-transform: uppercase; }
+.mock small { color: var(--muted); }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 800 13px Inter; background: #333; color: #fff; }
+.av.t { background: var(--lime); color: #000; }
+.pair { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.pair .line { width: 40px; border-top: 2px dashed var(--lime); }
+.codebox { justify-self: center; font: 800 22px/1 Inter; letter-spacing: .1em; color: var(--lime); background: #1e1e1e; padding: 12px 14px; border-radius: 10px; }
+.okpill { justify-self: center; background: var(--lime); color: #000; font: 800 12px/1 Inter; border-radius: 999px; padding: 8px 12px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #1e1e1e; border-radius: 12px; padding: 9px; font: 800 12px/1.2 Inter; }
+.row p { margin: 0; }
+.row small { display: block; font-weight: 600; font-size: 11px; }
+.row span { font: 900 10px/1 Inter; letter-spacing: .06em; background: var(--lime); color: #000; padding: 7px 8px; border-radius: 7px; }
+.chat { display: grid; gap: 8px; }
+.chat div { max-width: 90%; padding: 8px 10px; border-radius: 14px; font-size: 11.5px; }
+.chat .out { justify-self: end; background: #1f5135; color: #e8f5ec; border-bottom-right-radius: 4px; }
+.chat .in { background: #333; border-bottom-left-radius: 4px; }
+.chat .ok { justify-self: center; background: var(--lime); color: #000; font-weight: 800; border-radius: 999px; }
+.live { display: grid; gap: 8px; }
+.live div { display: flex; gap: 8px; align-items: center; background: #1e1e1e; border-radius: 12px; padding: 9px 10px; font: 700 11.5px/1.3 Inter; }
+.live .av { width: 28px; height: 28px; font-size: 10px; flex: none; }
+/* Las notificaciones llegan cada vez que entras en la pantalla */
+.screen[data-s="on"] .live div { animation: pop .5s var(--ease) both; }
+.screen[data-s="on"] .live div:nth-child(2) { animation-delay: .5s; }
+.screen[data-s="on"] .live div:nth-child(3) { animation-delay: 1s; }
+@keyframes pop { from { opacity: 0; transform: translateY(10px); } }
+.cyc { display: grid; gap: 8px; margin-top: 8px; }
+.cyc div { display: flex; align-items: center; gap: 10px; background: #1e1e1e; border-radius: 12px; padding: 10px; font: 800 14px/1 Inter; }
+.cyc b { width: 26px; height: 26px; border-radius: 50%; background: var(--lime); color: #000; display: grid; place-items: center; font: italic 800 17px/1 "Barlow Condensed"; }
+.cyc .again { justify-content: center; background: var(--lime); color: #000; }
+.screen[data-s="on"] .cyc div { animation: pop .45s var(--ease) both; }
+.screen[data-s="on"] .cyc div:nth-child(2) { animation-delay: .12s; }
+.screen[data-s="on"] .cyc div:nth-child(3) { animation-delay: .24s; }
+.screen[data-s="on"] .cyc div:nth-child(4) { animation-delay: .5s; }
+
+/* Pista de scroll: solo al entrar en el flujo */
+.hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: #000; color: #fff; font: 700 12px/1 Inter; padding: 9px 13px; border-radius: 999px; transition: opacity .4s, transform .4s var(--ease); z-index: 3; }
+.hint svg { width: 14px; height: 14px; stroke: var(--lime); stroke-width: 3; fill: none; animation: bob 1.6s ease-in-out infinite; }
+.hint.off { opacity: 0; transform: translate(-50%, 10px); pointer-events: none; }
+@keyframes bob { 50% { transform: translateY(3px); } }
+
+@media (min-width: 860px) {
+  .pbar { padding-top: 18px; }
+  .pbar .wrap { display: grid; grid-template-columns: 420px 1fr; gap: 36px; align-items: center; }
+  .segs { margin: 0; }
+  .pbody { display: grid; grid-template-columns: 1fr 360px; grid-template-rows: minmax(0, 1fr); gap: 56px; align-items: center; padding-bottom: 28px; }
+  .texts { padding: 0; }
+  .ghost { font-size: 300px; right: auto; left: -14px; top: -150px; }
+  .txt p { font-size: 17px; }
+  .txt ul { display: grid; margin: 16px 0 0; padding: 0; list-style: none; gap: 7px; }
+  .txt li { position: relative; padding-left: 22px; font: 700 14.5px/1.4 Inter; }
+  .txt li::before { content: ""; position: absolute; left: 2px; top: 6px; width: 9px; height: 9px; border-radius: 2px; background: #000; transform: rotate(45deg); }
+  .stage { height: 100%; max-height: 680px; padding: 24px 0; align-items: center; }
+}
+@media (max-width: 380px) { .txt h2 { font-size: 34px; } .txt p { font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before { transition-duration: 0s !important; animation: none !important; } html { scroll-snap-type: none; } }
+
+/* ── Después del flujo ── */
+.next { padding: 30px 0 60px; display: grid; gap: 12px; }
+.next h3 { margin: 0 0 4px; font: 800 13px/1 Inter; letter-spacing: .14em; text-transform: uppercase; }
+.other { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left; border: 0; background: #000; color: #fff; border-radius: 18px; padding: 16px 18px; cursor: pointer; transition: transform .3s var(--ease); }
+.other:hover { transform: translateY(-2px); }
+.other b { display: block; font: italic 800 24px/1 "Barlow Condensed"; text-transform: uppercase; color: var(--lime); }
+.other span { font-size: 14px; color: #bdbdbd; }
+.other svg { flex: none; width: 22px; height: 22px; stroke: var(--lime); stroke-width: 3; fill: none; }
+@media (min-width: 860px) { .next { grid-template-columns: 1fr 1fr; max-width: 640px; } .next h3 { grid-column: 1 / -1; } }
+
+.final { background: #000; color: #fff; padding: 56px 0 64px; }
+.final h2 { font-size: clamp(52px, 13vw, 96px); margin: 0; color: var(--lime); }
+.final p { color: #cfcfcf; max-width: 46ch; }
+.badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.badge { display: inline-flex; align-items: center; height: 48px; padding: 0 16px; border-radius: 10px; background: #fff; color: #000; text-decoration: none; font: 800 15px/1 Inter; }
+.badge.dk { background: #000; color: #fff; box-shadow: inset 0 0 0 1px #6a6a6a; }
+footer { background: #000; color: var(--muted); font-size: 14px; padding: 0 0 30px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top"><a class="logo" href="#">FormaFIT</a></div>
+  <p class="note">Maqueta «landing por flujo» v2. Al llegar al flujo, la pantalla se queda fija y cada gesto de scroll avanza un paso: el texto cambia y el móvil pasa a la siguiente pantalla. La carta y la hoja de ruta de landing-2 irían después, sin cambios.</p>
+
+  <header class="hero">
+    <h1 class="disp">Entrena, registra,<br><em>progresa</em></h1>
+    <p class="lead">Forma Fit es una app para llevar tu entrenamiento: tienes un programa, apuntas lo que haces cada día y ves cómo mejoras. Gratis y sin anuncios.</p>
+    <ul class="loop3" aria-label="El ciclo de la app">
+      <li>Programa</li><li class="arr">→</li><li>Entreno</li><li class="arr">→</li><li>Registro</li><li class="arr">→</li><li>Progreso</li><li class="arr">↻</li>
+    </ul>
+    <p class="ask">¿Cómo entrenas? Te enseñamos cómo funciona</p>
+    <div class="choose">
+      <button class="pick" type="button" data-go="solo"><b>Por mi cuenta</b><span>Sigo mi propio programa.</span><i><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg></i></button>
+      <button class="pick" type="button" data-go="client"><b>Con entrenador</b><span>Alguien me prepara el programa.</span><i><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg></i></button>
+      <button class="pick" type="button" data-go="coach"><b>Soy entrenador<em class="pro-tag">PRO</em></b><span>Preparo el programa a mis clientes.</span><i><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg></i></button>
+    </div>
+  </header>
+</div>
+
+<section class="story" id="story">
+  <div id="snaps"></div>
+  <div class="pin">
+    <div class="pbar"><div class="wrap">
+      <div class="tabs" role="tablist" id="tabs">
+        <button type="button" role="tab" data-go="solo">Por mi cuenta</button>
+        <button type="button" role="tab" data-go="client">Con entrenador</button>
+        <button type="button" role="tab" data-go="coach">Entrenador</button>
+      </div>
+      <ol class="segs" id="segs"></ol>
+    </div></div>
+    <div class="pbody wrap">
+      <div class="texts" id="texts"></div>
+      <div class="stage" aria-hidden="true"><div class="phone"><div class="scr" id="scr"></div></div></div>
+    </div>
+    <div class="hint" id="hint"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg>Sigue bajando</div>
+  </div>
+</section>
+
+<div class="wrap"><div class="next" id="next"></div></div>
+
+<section class="final" id="final">
+  <div class="wrap">
+    <h2 class="disp">Pruébala.<br>Es gratis.</h2>
+    <p>Sin anuncios y sin tonterías. Y si entrenas a otros, Pro es gratis hasta 3 clientes.</p>
+    <div class="badges"><a class="badge dk" href="#">Google Play</a><a class="badge" href="#">App Store</a></div>
+  </div>
+</section>
+<footer><div class="wrap">© 2026 Forma Fit · hecha por Lucas</div></footer>
+
+<script>
+const img = (src, alt) => `<img src="landing-img/${src}" alt="${alt}">`;
+const arrow = '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+// Quién hace cada paso: deja claro en qué dirección va todo
+const WHO = { me: ['me', 'Tú'],
+  coach2me: ['them', `Tu entrenador ${arrow} tú`], me2coach: ['me', `Tú ${arrow} tu entrenador`],
+  me2client: ['me', `Tú ${arrow} tu cliente`], client2me: ['them', `Tu cliente ${arrow} tú`] };
+
+const MOCK = {
+  code: `<div class="mock"><h4>Conectar con<br>tu entrenador</h4><small>Escribe el código que te ha pasado.</small>
+    <div class="codebox">K7F·29Q</div><div class="pair"><span class="av t">TÚ</span><span class="line"></span><span class="av">AC</span></div>
+    <div class="okpill">✓ Conectado con Ana</div></div>`,
+  tpl: `<div class="mock"><h4>Asignar a Sara</h4><small>Tus plantillas</small>
+    <div class="row"><p>Fuerza 3 días<small>Programa · 4 etapas</small></p><span>ASIGNAR</span></div>
+    <div class="row"><p>Hipertrofia PPL<small>Programa · 3 etapas</small></p><span>ASIGNAR</span></div>
+    <div class="row"><p>Core 20 min<small>Sesión</small></p><span>ASIGNAR</span></div>
+    <small>o crea uno desde cero</small></div>`,
+  live: `<div class="mock"><h4>Te llega<br>al momento</h4><small>Lo que apuntan tus clientes</small>
+    <div class="live"><div><span class="av">AC</span>Ana · Press banca 60 kg × 8</div><div><span class="av">VM</span>Vidal · Sesión B terminada</div><div><span class="av">S</span>Sara · Sentadilla 80 kg × 5 · PR</div></div>
+    <small>¿Sin la app? Por WhatsApp:</small>
+    <div class="chat"><div class="out">Press banca 4×8:</div><div class="in">Press banca 4×8: 60x8 60x8 60x7</div><div class="ok">✓ Pegado en su historial</div></div></div>`,
+};
+
+const PATHS = {
+  solo: {
+    steps: [
+      { k: 'Programa', who: 'me', t: 'Elige o crea tu programa', p: 'Parte de una plantilla o hazlo a tu medida, para cualquier disciplina. Se divide en etapas que avanzan contigo.',
+        li: ['Cada etapa dice cuántas sesiones tocan a la semana', 'Cámbialo cuando quieras'], vis: img('editor.jpg', 'Editor de programa') },
+      { k: 'Entreno', who: 'me', t: 'Abre la app: hoy toca esto', p: 'La pantalla Entreno te dice qué sesión toca hoy. Un toque y empiezas.',
+        li: ['Rotación, orden fijo o libre, como diga tu programa', 'Sesiones sueltas para días especiales'], vis: img('entreno.jpg', 'Pantalla Entreno') },
+      { k: 'Registro', who: 'me', t: 'Apunta cada serie', p: 'Desliza para poner kilos y repeticiones, marca la serie y a por la siguiente. Sin teclear.',
+        li: ['Ves lo que toca en cada ejercicio', '¿Un ejercicio de más? Añádelo sobre la marcha'], vis: img('registro-regla.jpg', 'Registro de series') },
+      { k: 'Progreso', who: 'me', t: 'Mira cómo mejoras', p: 'Cada ejercicio tiene su gráfica y tus marcas. Y tu carga de entrenamiento, semana a semana.',
+        li: ['Peso, reps, volumen y 1RM estimado', 'Tus récords, marcados'], vis: img('progresion.jpg', 'Gráfica de progreso') },
+    ],
+    loop: { to: 2, t: 'Y mañana, otra vez', p: 'Vuelves al paso 2. Cuando terminas una etapa, el programa pasa a la siguiente solo.' },
+  },
+  client: {
+    steps: [
+      { k: 'Conectar', who: 'me', t: 'Conecta con tu entrenador', p: 'Te pasa un código, lo escribes en la app y quedáis conectados.',
+        li: ['¿Tu entrenador no usa Forma Fit? Invítale', 'Puedes desconectar cuando quieras'], vis: MOCK.code },
+      { k: 'Programa', who: 'coach2me', t: 'Recibe tu programa', p: 'Tu entrenador lo crea y aparece en tu app. Si lo ajusta, lo ves al momento.',
+        li: ['Siempre sincronizado', 'Tú solo tienes que entrenar'], vis: img('programa.jpg', 'Programa del entrenador') },
+      { k: 'Entreno', who: 'me', t: 'Entrena y apunta', p: 'Abres la app, haces la sesión de hoy y apuntas cada serie, igual que siempre.',
+        li: ['La sesión que toca, lista para empezar', 'Desliza para apuntar, sin teclear'], vis: img('registro.jpg', 'Registro de series') },
+      { k: 'Progreso', who: 'me2coach', t: 'Tu entrenador ve cómo vas', p: 'Cada serie que apuntas le llega. Ve tu progreso y ajusta tus próximos entrenos.',
+        li: ['Tú también ves tus gráficas y marcas', 'Sin hojas de cálculo ni mensajes sueltos'], vis: img('progresion.jpg', 'Gráfica de progreso') },
+    ],
+    loop: { to: 3, t: 'Y a por la siguiente', p: 'Vuelves al paso 3. Tu entrenador va ajustando el programa a cómo respondes.' },
+  },
+  coach: {
+    steps: [
+      { k: 'Clientes', who: 'me2client', t: 'Añade a tu cliente', p: 'Lo das de alta y le pasas su código. Si tiene la app, quedáis conectados.',
+        li: ['Quién entrena y quién lleva días sin aparecer', 'Sin la app también funciona'], vis: img('clientes.jpg', 'Lista de clientes') },
+      { k: 'Programa', who: 'me2client', t: 'Prepara su programa', p: 'Desde cero o desde una plantilla. Lo asignas en dos toques y le aparece en su app.',
+        li: ['Crea una plantilla una vez, úsala con todos', 'Programas por etapas o sesiones sueltas'], vis: MOCK.tpl },
+      { k: 'Entreno', who: 'client2me', t: 'Tu cliente entrena', p: 'Cada serie que apunta te llega sola. ¿No tiene la app? Te devuelve la sesión por WhatsApp y la pegas.',
+        li: ['Con app o sin ella, todo acaba en su historial'], vis: MOCK.live },
+      { k: 'Ajustes', who: 'me', t: 'Revisa y ajusta', p: 'Adherencia, ritmo y marcas de cada cliente. Cambia sus próximos entrenos sin tocar el resto.',
+        li: ['Ajustes puntuales, no rehacer', 'Su progreso, ejercicio a ejercicio'], vis: img('programa.jpg', 'Programa de un cliente') },
+    ],
+    loop: { to: 3, t: 'Y así cada semana', p: 'Vuelves al paso 3 con cada cliente. Tú programas, ellos entrenan, tú ves el resultado.' },
+  },
+};
+const LABEL = { solo: 'Por mi cuenta', client: 'Con entrenador', coach: 'Soy entrenador' };
+const SUB = { solo: 'Si sigues tu propio programa', client: 'Si alguien te prepara el programa', coach: 'Si preparas programas a otros' };
+const NEXT = { solo: ['client', 'coach'], client: ['coach', 'solo'], coach: ['client', 'solo'] };
+const loopIcon = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;stroke-width:3;fill:none;stroke-linecap:round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5"/></svg>';
+
+const $ = (id) => document.getElementById(id);
+const story = $('story');
+const words = (t) => t.split(' ').map((w, i) => `<span class="w"><span style="--d:${i}">${w}</span></span>`).join(' ');
+let N = 0, idx = -1;
+
+function render(key) {
+  const P = PATHS[key];
+  // Los 4 pasos y la vuelta: 5 estados del panel
+  const states = [...P.steps.map((s, i) => ({ ...s, n: i + 1 })), {
+    k: '', loop: true, t: P.loop.t, p: P.loop.p,
+    vis: `<div class="mock"><h4>Y vuelta<br>a empezar</h4><small>Cada semana, el mismo ciclo</small><div class="cyc">${
+      P.steps.slice(P.loop.to - 1).map((s, i) => `<div><b>${P.loop.to + i}</b>${s.k}</div>`).join('')}<div class="again">${loopIcon}&nbsp;Otra vez</div></div></div>` }];
+  N = states.length; idx = -1;
+  [...$('tabs').children].forEach((b) => b.setAttribute('aria-selected', String(b.dataset.go === key)));
+  $('segs').innerHTML = states.map((s, i) => `<li class="${s.loop ? 'lp' : ''}"><button type="button" data-step="${i}" aria-label="${s.loop ? 'Vuelta' : `Paso ${i + 1}: ${s.k}`}">
+    <i><b></b></i>${s.loop ? '↻' : `${i + 1} · ${s.k}`}</button></li>`).join('');
+  $('texts').innerHTML = states.map((s, i) => {
+    const [cls, who] = s.loop ? ['me', `${loopIcon} Vuelta al paso ${P.loop.to}`] : WHO[s.who];
+    return `<article class="txt" data-i="${i}">
+      <span class="ghost">${s.loop ? '↻' : String(s.n).padStart(2, '0')}</span>
+      <span class="who fade ${cls}">${who}</span>
+      <h2 class="disp">${words(s.t)}</h2>
+      <p class="fade">${s.p}</p>
+      ${s.loop ? `<button class="back fade" type="button" data-step="${P.loop.to - 1}">Volver al paso ${P.loop.to}</button>`
+        : `<ul class="fade">${s.li.map((l) => `<li>${l}</li>`).join('')}</ul>`}
+    </article>`;
+  }).join('');
+  $('scr').innerHTML = states.map((s, i) => `<div class="screen" data-i="${i}">${s.vis}</div>`).join('');
+  $('next').innerHTML = `<h3>¿Lo tuyo es otro camino?</h3>` + NEXT[key].map((k) =>
+    `<button class="other" type="button" data-go="${k}"><div><b>${LABEL[k]}</b><span>${SUB[k]}</span></div>${arrow}</button>`).join('');
+  // Alto de la sección: una pantalla de scroll por estado
+  story.style.height = `calc(100vh + ${N} * 85vh)`;
+  update();
+}
+
+// Cuánto scroll vale un paso, y dónde se «asienta» cada uno
+const unit = () => (story.offsetHeight - innerHeight) / N;
+function placeSnaps() {
+  $('snaps').innerHTML = Array.from({ length: N }, (_, i) => `<i class="snap" style="top:${Math.round(i * unit())}px"></i>`).join('');
+}
+
+function update() {
+  const u = unit();
+  const raw = Math.max(0, -story.getBoundingClientRect().top) / u;
+  const i = Math.min(N - 1, Math.floor(raw + .02));
+  const local = Math.min(1, Math.max(0, raw - i));
+  if (i !== idx) {
+    idx = i;
+    document.querySelectorAll('.txt, .screen').forEach((el) => {
+      const j = +el.dataset.i;
+      el.dataset.s = j < i ? 'past' : j > i ? 'next' : 'on';
+      if (el.classList.contains('txt')) el.inert = j !== i;
+    });
+    [...$('segs').children].forEach((li, j) => { li.classList.toggle('on', j === i); li.classList.toggle('done', j < i); });
+  }
+  // La barra del paso actual se llena mientras bajas
+  [...$('segs').children].forEach((li, j) => li.style.setProperty('--f', j < i ? 1 : j > i ? 0 : Math.max(.15, local)));
+  $('hint').classList.toggle('off', raw > .15 || story.getBoundingClientRect().top > 40);
+}
+
+let ticking = false;
+addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { update(); ticking = false; }); } }, { passive: true });
+addEventListener('resize', () => { placeSnaps(); update(); });
+
+function jump(i) {
+  scrollTo({ top: story.offsetTop + i * unit(), behavior: 'smooth' });
+}
+
+function go(key) {
+  render(key);
+  placeSnaps();
+  history.replaceState(null, '', '#' + key);
+  jump(0);
+}
+
+document.addEventListener('click', (e) => {
+  const g = e.target.closest('[data-go]');
+  if (g) return go(g.dataset.go);
+  const s = e.target.closest('[data-step]');
+  if (s) jump(+s.dataset.step);
+});
+
+render(PATHS[location.hash.slice(1)] ? location.hash.slice(1) : 'solo');
+placeSnaps();
+</script>
+</body>
+</html>

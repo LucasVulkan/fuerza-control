@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beta de Forma Fit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:wght@500;600;700;800;900&display=swap">
+<style>
+/* Página de la beta: a ella llevan los CTA de la landing mientras la app no
+   está publicada. Al publicar, los CTA vuelven a las tiendas y esta página sobra.
+   Mismo sistema que landing-flujo-3 (lima, tarjetas #222, Barlow + Inter). */
+:root { --lime: #aae216; --card: #222; --text: #e6e6e6; --muted: #949494; --max: 1080px; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--lime); color: #000; font: 500 16px/1.55 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 16px; }
+.disp { font-family: "Barlow Condensed", sans-serif; font-style: italic; font-weight: 800; line-height: .95; text-transform: uppercase; }
+
+.top { display: flex; justify-content: space-between; align-items: center; padding: 22px 0 18px; }
+.logo { font: italic 900 28px/1 Inter; letter-spacing: -.06em; text-decoration: none; }
+.back { font: 800 14px/1 Inter; text-decoration: none; }
+
+h1 { font-size: clamp(56px, 16vw, 104px); margin: 24px 0 0; }
+.lead { margin: 12px 0 0; font: 700 18px/1.5 Inter; max-width: 52ch; }
+
+.plats { display: grid; gap: 14px; margin-top: 32px; }
+.plat { background: var(--card); color: var(--text); border-radius: 28px; padding: 24px 22px; }
+.plat-h { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; color: #fff; font: italic 800 30px/1 "Barlow Condensed"; text-transform: uppercase; }
+.plat-h svg { width: 26px; height: 26px; }
+.plat.pro { background: #000; }
+.plat.pro .plat-h { color: var(--lime); }
+.pro-lead { margin: -6px 0 22px; color: #e6e6e6; font: 600 16px/1.5 Inter; max-width: 60ch; }
+.pro-lead b { color: var(--lime); }
+.ico { width: 1.1em; height: 1.1em; vertical-align: -3px; fill: var(--lime); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; counter-reset: s; }
+.steps li { display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px; counter-increment: s; }
+.steps li::before { content: counter(s); grid-row: span 3; font: italic 800 44px/.9 "Barlow Condensed"; color: var(--lime); }
+.steps b { color: #fff; font: 800 16px/1.3 Inter; }
+.steps p { margin: 0; color: #bdbdbd; font-size: 14.5px; line-height: 1.45; }
+.steps i { color: #fff; font-style: normal; font-weight: 700; }
+.btn { justify-self: start; margin-top: 8px; display: inline-flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 12px; background: var(--lime); color: #000; text-decoration: none; font: italic 800 19px/1 "Barlow Condensed"; text-transform: uppercase; }
+.warn { margin: 20px 0 0; padding: 12px 14px; border-radius: 14px; background: #1a1a1a; color: #cfcfcf; font: 600 13.5px/1.45 Inter; }
+.warn b { color: var(--lime); }
+@media (min-width: 860px) {
+  .plats { grid-template-columns: 1.2fr 1fr; align-items: start; }
+  .plat { padding: 32px; }
+  .plat.pro { grid-column: 1 / -1; }
+  .plat.pro .steps { grid-template-columns: repeat(3, 1fr); }
+}
+
+footer { margin-top: 72px; background: #000; color: var(--muted); font-size: 14px; padding: 20px 0 30px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="gp" viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 2.2 13.4 12l-9.8 9.8c-.4-.2-.6-.6-.6-1.1V3.3c0-.5.2-.9.6-1.1Z"/><path fill="#ffce00" d="m18.5 8.6 2.6 1.5c.8.5.8 1.3 0 1.8l-2.6 1.5-3-3 3-1.8Z"/><path fill="#ff3a44" d="m14.6 10.8 2.7 2.7-11.8 6.7 9.1-9.4Z"/><path fill="#00f076" d="M5.5 3.8l11.8 6.7-2.7 2.7-9.1-9.4Z"/></symbol>
+  <symbol id="ap" viewBox="0 0 24 24"><path fill="currentColor" d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1ZM13.9 4.9c.7-.9 1.2-2 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.1.1 2.3-.6 3-1.5Z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="top"><a class="logo" href="landing-flujo-3.html">FormaFIT</a><a class="back" href="landing-flujo-3.html">← Volver</a></div>
+
+  <h1 class="disp">Prueba<br>la beta</h1>
+  <p class="lead">Forma Fit está en pruebas antes de salir en las tiendas. Entra, entrena con ella y cuéntame qué mejorarías.</p>
+
+  <div class="plats">
+    <section class="plat">
+      <h2 class="plat-h"><svg aria-hidden="true"><use href="#gp"/></svg>Android</h2>
+      <ol class="steps">
+        <li><b>Únete al grupo de testers</b><p>Con la cuenta de Google que usas en el Play Store del móvil.</p><a class="btn" href="https://groups.google.com/g/formafit-beta">Unirme al grupo</a></li>
+        <li><b>Activa la prueba</b><p>Pulsa «Convertirse en tester». Si te sale «no disponible», espera un rato: puede tardar unas horas.</p><a class="btn" href="https://play.google.com/apps/testing/com.formastudio.formafit">Activar la prueba</a></li>
+        <li><b>Instálala desde Google Play</b><p>Desde el enlace que aparece en esa misma página. Las actualizaciones te llegan solas.</p></li>
+      </ol>
+    </section>
+
+    <section class="plat">
+      <h2 class="plat-h"><svg aria-hidden="true"><use href="#ap"/></svg>iPhone</h2>
+      <ol class="steps">
+        <li><b>Abre la invitación</b><p>Te pedirá instalar TestFlight, la app de Apple para probar apps.</p><a class="btn" href="https://testflight.apple.com/join/rZQrqPW6">Abrir en TestFlight</a></li>
+        <li><b>Instálala desde TestFlight</b><p>Pulsa «Aceptar» e «Instalar». Se abre como cualquier otra app.</p></li>
+      </ol>
+    </section>
+
+    <section class="plat pro">
+      <h2 class="plat-h">¿Eres entrenador/a?</h2>
+      <p class="pro-lead">Si quieres trabajar con más de 3 clientes, escríbeme y te activo <b>PRO durante 6 meses</b>, con clientes y plantillas ilimitados.</p>
+      <ol class="steps">
+        <li><b>Crea tu cuenta de entrenador/a en la app</b><p>Con Google, Apple o código. Así el PRO va con tu cuenta y no se pierde al cambiar de móvil.</p></li>
+        <li><b>Copia tu ID</b><p>En la app, ve a <i>Menú</i> <svg class="ico" viewBox="0 0 26 26" aria-label="icono del menú"><path d="M10 4.5H24.5V7.5H8Z M6 11.1H24.5V14.1H4Z M2.4 17.7H24.5V20.7H.4Z"/></svg> → <i>Mi cuenta</i> → <i>ID de usuario</i> y pulsa copiar.</p></li>
+        <li><b>Publícalo en el grupo</b><p>Abre una conversación nueva y pega tu ID. Solo lo veo yo. En iPhone, únete primero al grupo.</p><a class="btn" href="https://groups.google.com/g/formafit-beta">Ir al grupo</a></li>
+      </ol>
+      <p class="warn"><b>En iPhone, durante la prueba las compras son gratis,</b> pero el plan PRO se pierde cuando termina el periodo de pruebas. Si quieres conservarlo 6 meses, escríbeme siguiendo los pasos de arriba.</p>
+    </section>
+  </div>
+</div>
+
+<footer><div class="wrap">© 2026 Forma Fit · hecha por Lucas</div></footer>
+</body>
+</html>
