@@ -3096,9 +3096,10 @@ export const useStore = create(
       // TOAST
       // ══════════════════════════════════════════════════════════════════════
 
-      showToast: (msg, duration = 2200, type = 'success') => {
+      // `action` = { label, onPress } → toast con botón (Deshacer, P16-07): recibe toques.
+      showToast: (msg, duration = 2200, type = 'success', action) => {
         const id = generateId('toast');
-        set((s) => ({ ui: { ...s.ui, toast: { msg, id, type } } }));
+        set((s) => ({ ui: { ...s.ui, toast: { msg, id, type, duration, ...(action ? { action } : {}) } } }));
         setTimeout(() => {
           const { ui } = get();
           if (ui.toast?.id === id) {
@@ -3106,6 +3107,8 @@ export const useStore = create(
           }
         }, duration);
       },
+
+      hideToast: () => set((s) => ({ ui: { ...s.ui, toast: null } })),
 
       // ── External file import (intent / share) ─────────────────────────────────
       // App.js calls setPendingExternalImport when the OS opens a .fitdata file.

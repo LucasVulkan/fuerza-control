@@ -19,6 +19,21 @@ export const clearEditorDraft = () => {
   if (useStore.getState().ui._editorDraft) setDraft(null);
 };
 
+// Borrar sin diálogo con Deshacer (P16-07). Mismo mecanismo que el borrador, a
+// escala pequeña: copia de lo que toca el borrado (`kind`/`id` como en
+// `makeEditorDraft`), se borra y el toast de 5 s lo escribe de vuelta.
+// `msg` lleva el nombre entre <b></b>. ponytail: solo vale lo último; si se edita
+// otra cosa del mismo programa en esos 5 s, Deshacer también la revierte.
+export function deleteWithUndo({ kind, id, msg, label, remove }) {
+  const snap = makeEditorDraft(useStore.getState(), kind, id);
+  remove();
+  if (!snap) return;
+  useStore.getState().showToast(msg, 5000, 'neutral', {
+    label,
+    onPress: () => useStore.setState((s) => restoreEditorDraft(s, snap)),
+  });
+}
+
 // `target`: { kind: 'program' | 'template', id } o null si aún no se sabe.
 export function useEditorBase(navigation, isBase, target) {
   const { t } = useTranslation();
@@ -52,7 +67,11 @@ export function useEditorBase(navigation, isBase, target) {
             onPress: () => {
               const draft = useStore.getState().ui._editorDraft;
               if (draft) {
-                useStore.setState((s) => ({ ...restoreEditorDraft(s, draft), ui: { ...s.ui, _editorDraft: null } }));
+                // El toast Deshacer de un borrado caduca con el descarte: ya no hay nada que deshacer.
+                useStore.setState((s) => ({
+                  ...restoreEditorDraft(s, draft),
+                  ui: { ...s.ui, _editorDraft: null, toast: s.ui.toast?.action ? null : s.ui.toast },
+                }));
               }
               navigation.dispatch(e.data.action);
             },

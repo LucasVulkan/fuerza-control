@@ -69,3 +69,27 @@ describe('marcas «editada» (P16-05)', () => {
     expect(rowEdited(d, 'a', { ...a.exercises[0], order: 5 })).toBe(false);
   });
 });
+
+describe('borrar con Deshacer (P16-07)', () => {
+  it('deshacer un borrado deja el estado y el borrador como antes', () => {
+    const s0 = withDraft(base(), 'program', 'p1');
+    const undo = makeEditorDraft(s0, 'program', 'p1'); // la copia que toma deleteWithUndo
+    const rest = { ...s0.sessionTemplates };
+    delete rest.b;
+    const s1 = { ...s0, sessionTemplates: rest };
+    expect(selectEditorDirty(s1)).toBe(true);
+    const back = { ...s1, ...restoreEditorDraft(s1, undo) };
+    expect(back.sessionTemplates).toEqual(s0.sessionTemplates);
+    expect(selectEditorDirty(back)).toBe(false);
+  });
+
+  it('un ejercicio quitado vuelve en su sitio con su configuración', () => {
+    const s0 = base();
+    s0.sessionTemplates.a.exercises = [{ exerciseId: 'sq', sets: 3 }, { exerciseId: 'bp', sets: 5 }];
+    const undo = makeEditorDraft(s0, 'template', 'a');
+    const s1 = { ...s0, sessionTemplates: { ...s0.sessionTemplates, a: { ...s0.sessionTemplates.a, exercises: [{ exerciseId: 'bp', sets: 5 }] } } };
+    const back = { ...s1, ...restoreEditorDraft(s1, undo) };
+    expect(back.sessionTemplates.a.exercises).toEqual(s0.sessionTemplates.a.exercises);
+    expect(back.sessionTemplates.b).toBe(s1.sessionTemplates.b);
+  });
+});

@@ -22,6 +22,7 @@ import AnchoredList, { ListButton } from '../components/ui/AnchoredList';
 import { CheckIcon } from '../components/ui/EditorIcons';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorFold } from '../hooks/useEditorFold';
+import { deleteWithUndo } from '../hooks/useEditorDraft';
 import { useSiblingSwipe, SwipeLockContext } from '../hooks/useSiblingSwipe';
 import { useAnchoredList } from '../hooks/useAnchoredList';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
@@ -62,7 +63,6 @@ export default function ExerciseEditorScreen({ navigation, route }) {
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
   const removeExercise  = useStore((s) => s.removeExercise);
-  const showToast       = useStore((s) => s.showToast);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const exercises    = template?.exercises ?? [];
@@ -148,8 +148,11 @@ export default function ExerciseEditorScreen({ navigation, route }) {
                       onIdentityChange={setExerciseId}
                       onDelete={() => {
                         navigation.goBack();
-                        removeExercise(templateId, exerciseId);
-                        showToast(t('editor.toastExDeleted'), 2200, 'neutral');
+                        deleteWithUndo({
+                          kind: 'template', id: templateId, label: t('editor.toastUndo'),
+                          msg: t('editor.toastExDeleted', { name: nameOf(exerciseId) }),
+                          remove: () => removeExercise(templateId, exerciseId),
+                        });
                       }}
                     />
                   </View>

@@ -1471,7 +1471,7 @@
     "goToExercise": "Ir a otro ejercicio",
     "goToBlock": "Ir a otro bloque",
     "toastStageAdded": "Etapa añadida",
-    "toastStageDeleted": "Etapa eliminada",
+    "toastStageDeleted": "<b>{{name}}</b> eliminada",
     "toastStageActivated": "{{name}} activada",
     "deleteStageConfirm": "¿Eliminar \"{{name}}\"? Las sesiones de esta etapa se perderán.",
     "saveChanges": "GUARDAR CAMBIOS",
@@ -1490,7 +1490,7 @@
     "restore": "↩ Restaurar",
     "resetConfirm": "¿Restaurar este día a los valores originales?",
     "toastReset": "Día restaurado",
-    "toastExDeleted": "Ejercicio eliminado",
+    "toastExDeleted": "<b>{{name}}</b> quitado",
     "toastExAdded": "Ejercicio añadido",
     "sessionMeta": "{{ex}} ejercicios · {{sets}} series · ~{{min}} min",
     "sessionMetaNoTime": "{{ex}} ejercicios · {{sets}} series",
@@ -1559,6 +1559,8 @@
     "sessionDeleteBtn": "Eliminar sesión",
     "sessionDuplicateBtn": "Duplicar sesión",
     "toastSessionDuplicated": "Sesión duplicada",
+    "toastSessionDeleted": "<b>{{name}}</b> eliminada",
+    "toastUndo": "Deshacer",
     "badges": {
       "auto": "AUTO",
       "fixed": "FIJA"

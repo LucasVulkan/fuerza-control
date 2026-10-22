@@ -32,11 +32,10 @@ import { describeRx } from '../utils/stageRx';
 import { athleteProgress, stageStatus, stageWeekLabel, programTotals, weeklySessions } from '../utils/stageProgress';
 import { stageWeekRanges, stageRangeLabel, isDeload } from '../utils/stageStats';
 import { useEditorExit } from '../hooks/useEditorExit';
-import { useEditorBase } from '../hooks/useEditorDraft';
+import { useEditorBase, deleteWithUndo } from '../hooks/useEditorDraft';
 import { templateEdited } from '../utils/editorDraft';
 import { useEditorFold } from '../hooks/useEditorFold';
 
-import { showDialog } from '../components/ui/dialog';
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
 const CARD_GAP = spacing.sm;
@@ -243,17 +242,11 @@ export default function ProgramEditorScreen({ navigation }) {
   }
 
   function handleDeleteSession({ id, template }) {
-    showDialog(
-      t('editor.sessionDeleteBtn'),
-      t('editor.sessionDeleteConfirm', { name: template.name }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('editor.sessionDeleteBtn'), style: 'destructive',
-          onPress: () => removeSessionFromProgram(editingId, id),
-        },
-      ]
-    );
+    deleteWithUndo({
+      kind: 'program', id: editingId, label: t('editor.toastUndo'),
+      msg: t('editor.toastSessionDeleted', { name: template.name }),
+      remove: () => removeSessionFromProgram(editingId, id),
+    });
   }
 
   function handleDuplicateSession(id) {
@@ -269,26 +262,17 @@ export default function ProgramEditorScreen({ navigation }) {
   }
 
   function handleDeleteStage() {
-    showDialog(
-      t('planner.deleteTitle'),
-      t('planner.deleteBody', { name: selectedStage?.name ?? '' }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'), style: 'destructive',
-          onPress: () => {
-            setStageSheetOpen(false);
-            setOpenRowId(null);
-            removeStageFromProgram(editingId, selectedStageIdx);
-            slide(-1);
-            holdPage();
-            page.set(Math.max(0, selectedStageIdx - 1));
-            setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
-            showToast(t('editor.toastStageDeleted'), 2200, 'neutral');
-          },
-        },
-      ]
-    );
+    setStageSheetOpen(false);
+    setOpenRowId(null);
+    deleteWithUndo({
+      kind: 'program', id: editingId, label: t('editor.toastUndo'),
+      msg: t('editor.toastStageDeleted', { name: selectedStage?.name ?? '' }),
+      remove: () => removeStageFromProgram(editingId, selectedStageIdx),
+    });
+    slide(-1);
+    holdPage();
+    page.set(Math.max(0, selectedStageIdx - 1));
+    setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
   }
 
   // El check escribe lo que hubiera a medias en los campos de texto, guarda y

@@ -42,7 +42,7 @@ import { Section } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
-import { useEditorBase, clearEditorDraft } from '../hooks/useEditorDraft';
+import { useEditorBase, clearEditorDraft, deleteWithUndo } from '../hooks/useEditorDraft';
 import { rowEdited } from '../utils/editorDraft';
 import { useEditorFold } from '../hooks/useEditorFold';
 import { defaultBlock } from '../utils/conditioningBlocks';
@@ -285,8 +285,11 @@ export default function SessionEditorScreen({ navigation, route }) {
   // ── Acciones ──────────────────────────────────────────────────────────────
 
   function handleRemoveExercise(exerciseId) {
-    removeExercise(templateId, exerciseId);
-    showToast(t('editor.toastExDeleted'), 2200, 'neutral');
+    deleteWithUndo({
+      kind: 'template', id: templateId, label: t('editor.toastUndo'),
+      msg: t('editor.toastExDeleted', { name: allExercises[exerciseId]?.name ?? exerciseId }),
+      remove: () => removeExercise(templateId, exerciseId),
+    });
   }
 
   function openExercise(exerciseId) {
