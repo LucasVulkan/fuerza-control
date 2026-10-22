@@ -23,6 +23,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { CheckIcon } from '../components/ui/EditorIcons';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { useEditorFold } from '../hooks/useEditorFold';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
 
 export default function BlockEditorScreen({ navigation, route }) {
@@ -31,6 +32,7 @@ export default function BlockEditorScreen({ navigation, route }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { done } = useEditorExit(navigation, templateId);
+  const { folded, onScroll } = useEditorFold();
 
   const [blockId, setBlockId] = useState(initialBlockId);
   // Mismo contador de saltos que en `ExerciseEditorScreen`: sube en cada
@@ -69,6 +71,8 @@ export default function BlockEditorScreen({ navigation, route }) {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <ScreenHeader
         onBack={() => navigation.goBack()}
+        // La sesión libre del Workout no es el editor: sigue con su cabecera.
+        editor={isFree ? undefined : { backLabel: template?.name || t('freeSession.templateUnnamed'), folded }}
         eyebrow={t('editor.blockEyebrow')}
         title={blockName(block)}
         menu={blocks.length > 1 ? {
@@ -90,6 +94,8 @@ export default function BlockEditorScreen({ navigation, route }) {
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         >
           {/* Mismo motivo que en el editor de ejercicio: saltar a otro bloque
               desde el desplegable lo remonta, y ese remonte dispara la entrada

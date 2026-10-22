@@ -18,6 +18,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { CheckIcon } from '../components/ui/EditorIcons';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { useEditorFold } from '../hooks/useEditorFold';
 import ExerciseEditorInline from '../components/editor/ExerciseEditorInline';
 
 export default function ExerciseEditorScreen({ navigation, route }) {
@@ -26,6 +27,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { done } = useEditorExit(navigation, templateId);
+  const { folded, onScroll } = useEditorFold();
 
   // El ejercicio abierto es estado local (no parámetro de ruta) para que el
   // desplegable de la cabecera salte a otro sin apilar pantallas.
@@ -69,6 +71,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <ScreenHeader
         onBack={() => navigation.goBack()}
+        editor={{ backLabel: template?.name || t('freeSession.templateUnnamed'), folded }}
         eyebrow={t('editor.exerciseEyebrow')}
         title={def?.name ?? exerciseId}
         menu={exercises.length > 1 ? {
@@ -89,7 +92,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" onScroll={onScroll} scrollEventThrottle={16}>
           {/* `key`: el editor carga toda su configuración en el montaje
               (`computeInitial`), así que saltar a otro ejercicio desde el
               desplegable tiene que REMONTARLO — si no, cambia el título pero se

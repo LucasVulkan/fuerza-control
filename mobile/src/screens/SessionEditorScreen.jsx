@@ -42,6 +42,7 @@ import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorBase, clearEditorDraft } from '../hooks/useEditorDraft';
+import { useEditorFold } from '../hooks/useEditorFold';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
 import { variantLabel, displayVariant } from '../utils/variants';
@@ -201,8 +202,9 @@ export default function SessionEditorScreen({ navigation, route }) {
   // `editorBase`. Una sesión de programa copia el programa entero; una libre o
   // una plantilla, solo ella. Su chevron y el atrás ya cancelan por `beforeRemove`.
   const baseTpl = sessionTemplates[initialTemplateId];
-  useEditorBase(navigation, editorBase, !baseTpl ? null
+  const { cancel } = useEditorBase(navigation, editorBase, !baseTpl ? null
     : baseTpl.programId ? { kind: 'program', id: baseTpl.programId } : { kind: 'template', id: initialTemplateId });
+  const { folded, onScroll } = useEditorFold();
 
   const program    = programs[programId];
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
@@ -406,6 +408,8 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── SesionHeader (208:2072) ── */}
       <ScreenHeader
         onBack={() => navigation.goBack()}
+        // Dentro, vuelves al programa (la etapa ya la dice la ceja); la base se cancela.
+        editor={{ base: editorBase, onCancel: cancel, backLabel: program?.name, folded }}
         eyebrow={isTpl ? t('templates.sessionEyebrow') : isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
         title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
         renaming={editingName}
@@ -432,6 +436,8 @@ export default function SessionEditorScreen({ navigation, route }) {
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {/* ── Segmented de sesiones hermanas (210:2624) ── */}
         {sessionIds.length > 1 && (

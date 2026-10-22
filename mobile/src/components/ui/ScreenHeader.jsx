@@ -32,7 +32,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
-import Reanimated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Reanimated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { Text, TextInput } from './Text';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
@@ -120,7 +121,15 @@ export default function ScreenHeader({
   onRenameStart,
   onRenameCommit,
   placeholder,
+  // Modo del editor (P16-02): `{ base, backLabel, onCancel, folded }`. Solo lo
+  // pasan las pantallas del editor. `base`: la primera del editor, con
+  // «Cancelar» (`onCancel`) y «EDITANDO» en el centro; si no, «‹ backLabel»
+  // (`onBack` hace la subida). `folded`: la tarjeta de identidad ha salido de
+  // pantalla — el centro enseña ceja + nombre, la regla fina aparece y el texto
+  // del «‹» se apaga. Renombrando se pinta la cabecera de siempre.
+  editor,
 }) {
+  const { t }    = useTranslation();
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
   const editable = typeof onRenameStart === 'function';
@@ -128,6 +137,21 @@ export default function ScreenHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef(null);
   const { height: winH } = useWindowDimensions();
+
+  const ed     = editor && !renaming ? editor : null;
+  const folded = !!editor?.folded;
+  const fold   = useSharedValue(0);
+  useEffect(() => { fold.set(withTiming(folded ? 1 : 0, { duration: 200 })); }, [folded, fold]);
+  const unfoldedStyle = useAnimatedStyle(() => ({ opacity: 1 - fold.get() }));
+  const foldedStyle   = useAnimatedStyle(() => ({
+    opacity:   fold.get(),
+    transform: [{ translateY: 6 * (1 - fold.get()) }],
+  }));
+  const ruleStyle     = useAnimatedStyle(() => ({ opacity: fold.get() }));
+  const toggleMenu    = () => setMenuOpen((o) => !o);
+  // Qué hace tocar el centro mientras no haya tarjeta con lápiz (P16-03) ni
+  // lista anclada (P16-04): renombrar, abrir el desplegable o `onTitlePress`.
+  const midPress = editable ? onRenameStart : menu ? toggleMenu : onTitlePress;
 
   // El foco se pide UNA vez y siempre por aquí (ver `FOCUS_DELAY`). Nada de
   // `autoFocus` además de esto: si el input ya se cree enfocado, `focus()`
@@ -146,6 +170,49 @@ export default function ScreenHeader({
     // El envoltorio es el ancla del desplegable, y lleva el `zIndex` para pintar
     // por encima del contenido de la pantalla, que es su hermano posterior.
     <View style={styles.wrap}>
+      {ed ? (
+        <View style={styles.header}>
+          <View style={styles.edLeft}>
+            {ed.base ? (
+              <TouchableOpacity onPress={ed.onCancel} hitSlop={10} activeOpacity={0.7}>
+                <Text style={styles.cancel}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+            ) : onBack ? (
+              <TouchableOpacity onPress={onBack} style={styles.edBack} hitSlop={10} activeOpacity={0.7}>
+                <ArrowIcon size={15} color={th.colors.accent} back />
+                <Reanimated.View style={[styles.edBackLabel, unfoldedStyle]}>
+                  <Text style={styles.backLabel} numberOfLines={1}>{ed.backLabel ?? ''}</Text>
+                </Reanimated.View>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* El centro va fuera del flujo, centrado en la BARRA: «Cancelar» y el
+              check no miden lo mismo. Cada capa solo recibe toques en su estado. */}
+          <View style={styles.edMid} pointerEvents="box-none">
+            {ed.base && (
+              <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents={folded ? 'none' : 'box-none'}>
+                <Pressable onPress={midPress} disabled={!midPress}>
+                  <Text style={styles.eyebrow} numberOfLines={1}>{t('editor.editingTag')}</Text>
+                </Pressable>
+              </Reanimated.View>
+            )}
+            <Reanimated.View style={[styles.edLayer, foldedStyle]} pointerEvents={folded ? 'box-none' : 'none'}>
+              <Pressable onPress={midPress} disabled={!midPress} style={styles.edFoldBox}>
+                {eyebrow ? <Text style={styles.eyebrow} numberOfLines={1}>{eyebrow}</Text> : null}
+                <View style={styles.edFoldTitleRow}>
+                  <Text style={styles.foldTitle} numberOfLines={1}>{title ?? ''}</Text>
+                  {menu && <ArrowIcon size={7.69} color={th.colors.mutedLight} />}
+                </View>
+              </Pressable>
+            </Reanimated.View>
+          </View>
+
+          <View style={styles.actions}>
+            {right ? (typeof right === 'function' ? right(ink) : right) : <View style={styles.backSpacer} />}
+          </View>
+        </View>
+      ) : (
       <View style={styles.header}>
         {/* Renombrando no hay atrás: el velo cubre todo lo demás y el único
             gesto posible es confirmar. Un chevron vivo aquí se llevaría el
@@ -224,8 +291,11 @@ export default function ScreenHeader({
           </View>
         )}
       </View>
+      )}
 
-      <HeaderRule progress={progress} />
+      {ed
+        ? <View style={styles.edRuleSlot}><Reanimated.View style={[styles.edRule, ruleStyle]} /></View>
+        : <HeaderRule progress={progress} />}
 
       {/* El velo. Cuelga del borde inferior de la cabecera y mide la pantalla
           entera: apaga el cuerpo para que el nombre sea lo único encendido, y
@@ -297,6 +367,21 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   backSpacer: { width: BACK_BTN },
+  // Modo editor (P16-02). Izquierda flexible para que un destino largo recorte
+  // con puntos suspensivos sin empujar al check; el centro, absoluto.
+  edLeft:  { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
+  cancel:  { ...textStyles.button, color: th.colors.mutedLight },
+  edBack:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
+  edBackLabel: { flexShrink: 1 },
+  backLabel:   { ...textStyles.bodyStrong, color: th.colors.accent },
+  edMid:   { position: 'absolute', left: '50%', width: 180, marginLeft: -90, top: 0, bottom: 0 },
+  edLayer: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  edFoldBox:      { alignItems: 'center', maxWidth: '100%' },
+  edFoldTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
+  foldTitle:      { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
+  // 1 px reservado siempre (sin salto de layout); la línea aparece al plegar.
+  edRuleSlot: { height: 1 },
+  edRule:     { height: 1, backgroundColor: '#262626' },
   // Centrado: el bloque ceja+nombre se centra dentro de `mid`, y para que ese
   // centro sea el de la BARRA los dos huecos laterales miden lo mismo — de ahí
   // el `minWidth` de las acciones y el hueco que se pinta cuando no hay ninguna.

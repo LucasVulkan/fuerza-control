@@ -32,6 +32,7 @@ import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../
 import { stageWeekRanges, stageRangeLabel, isDeload } from '../utils/stageStats';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorBase } from '../hooks/useEditorDraft';
+import { useEditorFold } from '../hooks/useEditorFold';
 
 import { showDialog } from '../components/ui/dialog';
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
@@ -110,6 +111,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
   // Siempre es la base del editor: se abre desde fuera por `navigate('programEditor')`.
   const { cancel }    = useEditorBase(navigation, true, editingId ? { kind: 'program', id: editingId } : null);
+  const { folded, onScroll } = useEditorFold();
   const activeProgram = programs[editingId];
   const isFromClients = !!ui._editingProgramId;
 
@@ -364,7 +366,7 @@ export default function ProgramEditorScreen({ navigation }) {
   // esta etapa como base; al aplicar vuelve aquí (P14 §5.5).
   function newStage() {
     commitStageName();
-    navigation.navigate('StagePlanner', { programId: editingId, addFrom: selectedStageIdx });
+    navigation.navigate('StagePlanner', { programId: editingId, addFrom: selectedStageIdx, fromEditor: true });
   }
 
   // ── Cabecera de la etapa (P14 §3.4) ─────────────────────────────────────────
@@ -420,7 +422,7 @@ export default function ProgramEditorScreen({ navigation }) {
     <SafeAreaView edges={['top']} style={styles.container}>
       {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
       <ScreenHeader
-        onBack={cancel}
+        editor={{ base: true, onCancel: cancel, folded }}
         eyebrow={isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
         title={activeProgram.name ?? ''}
         placeholder={t('editor.programNamePlaceholder')}
@@ -442,6 +444,8 @@ export default function ProgramEditorScreen({ navigation }) {
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {/* ── Rótulo y tarjetas de etapa (P14 §3.2-3.3) ── */}
         <View style={styles.stagesBlock}>
@@ -454,7 +458,7 @@ export default function ProgramEditorScreen({ navigation }) {
                 {` ${t(totals.open ? 'editor.stagesLabelOpen' : 'editor.stagesLabel', { count: stages.length, weeks: totals.weeks })}`.toUpperCase()}
               </Text>
             )}
-            <TouchableOpacity onPress={() => navigation.navigate('StagePlanner', { programId: editingId })} hitSlop={8} accessibilityRole="button">
+            <TouchableOpacity onPress={() => navigation.navigate('StagePlanner', { programId: editingId, fromEditor: true })} hitSlop={8} accessibilityRole="button">
               <Text style={styles.viewPlan}>{t('editor.viewPlan')}</Text>
             </TouchableOpacity>
           </View>

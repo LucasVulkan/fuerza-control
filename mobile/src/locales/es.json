@@ -1441,6 +1441,7 @@
     "discardBody": "El programa vuelve a como estaba al entrar en el editor.",
     "discardBodySession": "La sesión vuelve a como estaba al entrar en el editor.",
     "keepEditing": "Seguir editando",
+    "editingTag": "EDITANDO",
     "discardConfirm": "Descartar cambios",
     "renameOption": "Editar nombre",
     "toastStageAdded": "Etapa añadida",

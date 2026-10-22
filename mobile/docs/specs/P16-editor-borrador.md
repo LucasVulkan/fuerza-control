@@ -4,7 +4,7 @@
 > En corto: El editor de programa pasa a trabajar sobre un borrador que se puede cancelar; la cabecera dice si estás en la base (Cancelar) o dentro (‹ y a dónde vuelves); el nombre y las cifras de lo que editas van en una tarjeta gris con lápiz; borrar una sesión, un ejercicio o una etapa ofrece Deshacer.
 > Inicio: 2026-10-22
 > Fase P16-01 · hecho · Borrador: Cancelar descarta, el check guarda · §3
-> Fase P16-02 · pendiente · Cabecera del editor por niveles · §4
+> Fase P16-02 · hecho · Cabecera del editor por niveles · §4
 > Fase P16-03 · pendiente · Tarjeta de identidad · §5
 > Fase P16-04 · pendiente · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
 > Fase P16-05 · pendiente · Marcas «editada» en lo que se ha tocado · §7
@@ -159,11 +159,13 @@ puntos de entrada con `grep -rn "navigate('\(Program\|Session\|Exercise\|Block\)
 - El desplegable de título (`menu`) en ejercicio y bloque: pasa a la tarjeta
   (§6). `onTitlePress` sigue: lo usa Detalle de ejercicio.
 
+*Como quedó (22-oct):* `ScreenHeader` recibe `editor={{ base, onCancel, backLabel, folded }}` (renombrando vuelve a pintarse la cabecera de siempre); `folded` sale de `useEditorFold(threshold = 60)` (`onScroll` + `scrollEventThrottle={16}`). **Sin tarjeta aún (P16-03)** el plegado es un scroll de 60 px: P16-03 solo cambia el umbral por el alto medido de la tarjeta (`// P16-03:` en `hooks/useEditorFold.js`). Para no dejar al usuario sin renombrar ni cambiar de ejercicio hasta entonces, **siguen vivos `renaming`/`onRename*` y `menu`**, y el centro es pulsable (renombra, abre el desplegable u `onTitlePress`): en el programa, tocando «EDITANDO»; en la sesión, también por «···» › Editar nombre; en ejercicio y bloque, tocando el título plegado (con la cabecera sin plegar no hay acceso al desplegable hasta P16-04). **P16-03 quita `renaming`/`draft`/`onRename*`/velo; P16-04 quita `menu`.** `StagePlanner` solo usa el modo si se abre desde el editor (`fromEditor: true`; desde Clientes no) y la sesión libre del Workout (`BlockEditor` con `__free__`) no es editor. Destino de «‹» en ejercicio y bloque: el nombre de la sesión; en sesión: el del programa.
+
 **Probar P16-02**
 
 - [ ] Editar programa → arriba «Cancelar · EDITANDO · ✓»
 - [ ] Abrir una sesión → «‹ Fuerza 4 días» y ✓; abrir un ejercicio → «‹ Torso pesado» y ✓
-- [ ] Hacer scroll en una sesión larga → al salir la tarjeta, aparecen arriba la ceja y el nombre centrados y el «‹» se queda sin texto; al volver arriba, se invierte
+- [ ] Hacer scroll en una sesión larga (aún sin tarjeta: pasados ~60 px) → aparecen arriba la ceja y el nombre centrados, sale la línea fina y el «‹» se queda sin texto; al volver arriba, se invierte
 - [ ] Editar una plantilla de sesión desde Plantillas → la sesión es la base: «Cancelar», no «‹»
 - [ ] Mi cuenta, Vista del programa y Detalle de ejercicio siguen con su cabecera de siempre
 
@@ -356,7 +358,7 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
 | P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ `212f79f` — `useEditorDraft` + `utils/editorDraft` |
-| P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | pendiente |
+| P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | ✅ `56a0934` — modo `editor` de `ScreenHeader` + `useEditorFold` |
 | P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | pendiente |
 | P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | pendiente |
 | P16-05 | Marcas «editada» | P16-01 | 🟢 | pendiente |

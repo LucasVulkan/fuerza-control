@@ -67,6 +67,7 @@ import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../
 import { stageVolume } from '../utils/stageStats';
 
 import { showDialog } from '../components/ui/dialog';
+import { useEditorFold } from '../hooks/useEditorFold';
 const CHIP = 21;   // marcador de la línea de tiempo
 // Alto de la cabecera de una tarjeta: el mismo 52 que la sección de Info de la
 // ficha de cliente. Es lo que hace que el marcador caiga centrado sin medir
@@ -360,6 +361,7 @@ export default function StagePlannerScreen({ navigation, route }) {
   const { t }  = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const { folded, onScroll } = useEditorFold();
 
   const programs        = useStore((s) => s.programs);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
@@ -516,6 +518,8 @@ export default function StagePlannerScreen({ navigation, route }) {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader
         onBack={() => navigation.goBack()}
+        // Solo es un nivel del editor si se abrió desde él; desde Clientes, no.
+        editor={route?.params?.fromEditor ? { backLabel: program.name, folded } : undefined}
         eyebrow={t('planner.eyebrow')}
         title={program.name ?? ''}
       />
@@ -524,6 +528,8 @@ export default function StagePlannerScreen({ navigation, route }) {
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTag}>{t('planner.summaryTag')}</Text>
