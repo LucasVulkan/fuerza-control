@@ -23,5 +23,6 @@ export function useEditorFold() {
     const threshold = cardH.current > 0 ? cardH.current - LEAD : DEFAULT_THRESHOLD;
     setFolded(e.nativeEvent.contentOffset.y > threshold);
   }, []);
-  return { folded, onScroll, onCardLayout };
+  // `cardH` (el ref, en px) también lo usa la lista anclada (P16-04) para saber dónde acaba la tarjeta.
+  return { folded, onScroll, onCardLayout, cardH };
 }

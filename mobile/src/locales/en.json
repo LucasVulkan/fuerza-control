@@ -1467,6 +1467,8 @@
     "idAnd": " and ",
     "idNameLabel": "Name",
     "idNameDone": "Done",
+    "goToExercise": "Go to another exercise",
+    "goToBlock": "Go to another block",
     "toastStageAdded": "Stage added",
     "toastStageDeleted": "Stage deleted",
     "toastStageActivated": "{{name}} activated",

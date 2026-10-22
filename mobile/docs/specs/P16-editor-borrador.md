@@ -6,7 +6,7 @@
 > Fase P16-01 · hecho · Borrador: Cancelar descarta, el check guarda · §3
 > Fase P16-02 · hecho · Cabecera del editor por niveles · §4
 > Fase P16-03 · hecho · Tarjeta de identidad · §5
-> Fase P16-04 · pendiente · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
+> Fase P16-04 · hecho · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
 > Fase P16-05 · pendiente · Marcas «editada» en lo que se ha tocado · §7
 > Fase P16-06 · pendiente · Letras y números en Barlow en las filas · §8
 > Fase P16-07 · pendiente · Toast con Deshacer al borrar · §9
@@ -261,6 +261,8 @@ Sale del desplegable de `ScreenHeader` (`menu`) a un componente propio,
   nombre (`bodyStrong`). La fila actual: fondo `surface`, número y nombre en
   `accent`.
 
+*Como quedó (22-oct):* `components/ui/AnchoredList` (props `top` —null = cerrada—, `items: [{ id, num, label }]`, `currentId`, `onSelect(id)`, `onClose`; exporta también `ListButton`, el botón «n/N» de 30 de alto que va en el `corner`) y `hooks/useAnchoredList(rootRef)` (`open(anchorRef, offset)` mide el ancla y el contenedor con `measureInWindow`; devuelve `top`, `open`, `close`). La lista es hija de la pantalla, absoluta y con `zIndex` por encima de la cabecera; cuelga a `cardH - 12 + 6` px del botón (= justo bajo la tarjeta, con la medida que ya guarda `useEditorFold`, que ahora devuelve también `cardH`) y, con la cabecera plegada, a 4 px del hueco bajo ella (`onTitlePress` de `ScreenHeader`, que ya no tiene `menu`). Si no cabe, se desplaza dentro de la caja. El número es `slotNumber` (el de la lista de la sesión; en la sesión libre, la posición). La mecánica del swipe sale de `ExerciseDetail` a `hooks/useSiblingSwipe` y la fila a `components/ui/SiblingNav`, y Progreso › ejercicio usa las dos (mismo comportamiento); el cambio es el de allí: el contenido sale, `onChange` remonta el editor con la `key` y entra desde el otro lado (se quita el `FadeInDown`; la lista también desliza, hacia donde está el elegido). **Controles que no arrastran**: `StepField` y `SegmentedControl` ponen el bloqueo del swipe con `onTouchStart/End` si cuelgan de `SwipeLockContext` (lo provee cada pantalla); las filas de movimientos del bloque ya reclaman el swipe a la derecha. Desvíos: (1) **no se crea `indexGlyph`**: el número de la lista es la Barlow a 16 de la maqueta, que es `statGlyph`; P16-06 necesita 26 y 20, otros tamaños, así que crea su rol con esos y no hay nada que reutilizar; (2) la fila anterior/siguiente va fuera del scroll (como en la maqueta), no se mueve con él; (3) la sesión libre del Workout (sin cabecera de editor) también tiene lista, fila y swipe entre sus bloques.
+
 **Probar P16-04**
 
 - [ ] Editor de ejercicio → botón «1/6» en la esquina → lista bajo la tarjeta con el actual resaltado → elegir otro → cambia, con deslizamiento
@@ -365,7 +367,7 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 | P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ `212f79f` — `useEditorDraft` + `utils/editorDraft` |
 | P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | ✅ `f154e43` — modo `editor` de `ScreenHeader` + `useEditorFold` |
 | P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | ✅ `41dc974` — `EditorIdentityCard` + `statGlyph` |
-| P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | pendiente |
+| P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | ✅ `HASH` — `AnchoredList` + `useSiblingSwipe` + `SiblingNav` |
 | P16-05 | Marcas «editada» | P16-01 | 🟢 | pendiente |
 | P16-06 | Letras y números en Barlow | — | 🟢 | pendiente |
 | P16-07 | Toast con Deshacer | — (independiente del borrador) | 🟡 | pendiente |

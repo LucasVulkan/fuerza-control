@@ -11,6 +11,7 @@ import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { Text, TextInput } from './Text';
 import { spacing, textStyles } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
+import { useSwipeLock } from '../../hooks/useSiblingSwipe';
 
 // ─── StepField (Exercice editor elements / Caja `142:1119` + Horizontal `160:1198`)
 //
@@ -65,6 +66,7 @@ const VALUE_R   = 8;
 
 export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
   const sf = useThemedStyles(makeSf);
+  const swipeLock = useSwipeLock();   // un deslizamiento que empieza aquí no cambia de ejercicio (P16-04)
   const [draft, setDraft] = useState(String(value));
   // Ancho real del número, medido con un clon invisible: el TextInput no crece
   // con su contenido, así que con `width` fijo el número se centraba en SU caja
@@ -132,7 +134,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
   );
 
   return (
-    <View style={[horizontal ? sf.cardHorizontal : sf.card, flat && (horizontal ? sf.flatHorizontal : sf.flat)]}>
+    <View {...swipeLock} style={[horizontal ? sf.cardHorizontal : sf.card, flat && (horizontal ? sf.flatHorizontal : sf.flat)]}>
       <Text style={horizontal ? sf.labelHorizontal : sf.label} numberOfLines={1}>{label}</Text>
       {controls}
     </View>

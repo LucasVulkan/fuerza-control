@@ -30,7 +30,7 @@
  *   porque es lo primero que hay que leer y en gris se leía lo último.
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import Reanimated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -89,14 +89,9 @@ export default function ScreenHeader({
   right,
   // Un booleano por unidad para la regla segmentada (ver `HeaderRule`).
   progress,
-  // Desplegable de título: `{ items: [{ id, label }], currentId, onSelect }`.
-  // Con él el nombre lleva un chevron y abre la lista de hermanos anclada bajo
-  // la cabecera — es como se salta de ejercicio o de bloque sin volver a la
-  // sesión. (Provisional: P16-04 lo saca a la tarjeta de identidad.)
-  menu,
-  // Título que abre algo de quien llama (una hoja para elegir otro): el mismo
-  // chevron que `menu`, sin la lista anclada. Para listas largas, que el
-  // desplegable no deja desplazar.
+  // Título que abre algo de quien llama: una hoja para elegir otro (Detalle de
+  // ejercicio) o la lista anclada de hermanos (editor de ejercicio y de bloque,
+  // P16-04: con la cabecera plegada). El nombre lleva un chevron.
   onTitlePress,
   // Modo del editor (P16-02): `{ base, backLabel, onCancel, folded }`. Solo lo
   // pasan las pantallas del editor. `base`: la primera del editor, con
@@ -109,7 +104,6 @@ export default function ScreenHeader({
   const { t }    = useTranslation();
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const ed     = editor ?? null;
   const folded = !!editor?.folded;
@@ -121,18 +115,15 @@ export default function ScreenHeader({
     transform: [{ translateY: 6 * (1 - fold.get()) }],
   }));
   const ruleStyle     = useAnimatedStyle(() => ({ opacity: fold.get() }));
-  const toggleMenu    = () => setMenuOpen((o) => !o);
-  // Qué hace tocar el centro mientras no haya lista anclada (P16-04): abrir el
-  // desplegable o `onTitlePress`.
-  const midPress = menu ? toggleMenu : onTitlePress;
+  const midPress      = onTitlePress;
   // La tinta de las acciones que pinta el llamante. Gris: el acento del cromo
   // es la ceja, el chevron y el check de "listo" — un "···" lima al lado sería
   // el cuarto y ninguno mandaría.
   const ink      = th.colors.mutedLight;
 
   return (
-    // El envoltorio es el ancla del desplegable, y lleva el `zIndex` para pintar
-    // por encima del contenido de la pantalla, que es su hermano posterior.
+    // El `zIndex` pinta la cabecera por encima del contenido de la pantalla, que
+    // es su hermano posterior.
     <View style={styles.wrap}>
       {ed ? (
         <View style={styles.header}>
@@ -156,9 +147,7 @@ export default function ScreenHeader({
           <View style={styles.edMid} pointerEvents="box-none">
             {ed.base && (
               <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents={folded ? 'none' : 'box-none'}>
-                <Pressable onPress={midPress} disabled={!midPress}>
-                  <Text style={styles.eyebrow} numberOfLines={1}>{t('editor.editingTag')}</Text>
-                </Pressable>
+                <Text style={styles.eyebrow} numberOfLines={1}>{t('editor.editingTag')}</Text>
               </Reanimated.View>
             )}
             <Reanimated.View style={[styles.edLayer, foldedStyle]} pointerEvents={folded ? 'box-none' : 'none'}>
@@ -166,7 +155,7 @@ export default function ScreenHeader({
                 {eyebrow ? <Text style={styles.eyebrow} numberOfLines={1}>{eyebrow}</Text> : null}
                 <View style={styles.edFoldTitleRow}>
                   <Text style={styles.foldTitle} numberOfLines={1}>{title ?? ''}</Text>
-                  {menu && <ArrowIcon size={7.69} color={th.colors.mutedLight} />}
+                  {onTitlePress && <ArrowIcon size={7.69} color={th.colors.mutedLight} />}
                 </View>
               </Pressable>
             </Reanimated.View>
@@ -202,11 +191,11 @@ export default function ScreenHeader({
             >
               {title ?? ''}
             </Text>
-            {(menu || onTitlePress) && (
+            {onTitlePress && (
               <TouchableOpacity
                 onPress={midPress}
                 hitSlop={12}
-                style={[styles.titleChevron, menuOpen && styles.titleChevronOpen]}
+                style={styles.titleChevron}
               >
                 <ArrowIcon size={7.69} color={th.colors.mutedLight} />
               </TouchableOpacity>
@@ -225,26 +214,6 @@ export default function ScreenHeader({
       {ed
         ? <View style={styles.edRuleSlot}><Reanimated.View style={[styles.edRule, ruleStyle]} /></View>
         : <HeaderRule progress={progress} />}
-
-      {menu && menuOpen && (
-        <View style={styles.menuList}>
-          {menu.items.map((item) => {
-            const isCurrent = item.id === menu.currentId;
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.menuItem, isCurrent && styles.menuItemSel]}
-                onPress={() => { setMenuOpen(false); menu.onSelect(item.id); }}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.menuText, isCurrent && styles.menuTextSel]} numberOfLines={1}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
     </View>
   );
 }
@@ -342,28 +311,6 @@ const makeStyles = (th) => StyleSheet.create({
     marginTop:     spacing.xs,
   },
   titleChevron:     { transform: [{ rotate: '90deg'  }] },
-  titleChevronOpen: { transform: [{ rotate: '270deg' }] },
-
-  // Cuelga del borde inferior de la cabecera —regla incluida— a todo el ancho.
-  menuList: {
-    position:          'absolute',
-    top:               '100%',
-    left:              0,
-    right:             0,
-    backgroundColor:   th.colors.surface2,
-    borderBottomLeftRadius:  th.radius.sm,
-    borderBottomRightRadius: th.radius.sm,
-    overflow:          'hidden',
-    shadowColor:   '#000',
-    shadowOffset:  { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius:  10,
-    elevation:     12,
-  },
-  menuItem:    { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  menuItemSel: { backgroundColor: th.tint.accent10 },
-  menuText:    { ...textStyles.body, color: th.colors.mutedLight },
-  menuTextSel: { color: th.colors.text },
 
   hairline: { height: 1, backgroundColor: th.colors.border },
   ruleRow:  { height: HEADER_RULE_H, flexDirection: 'row', gap: 2 },
