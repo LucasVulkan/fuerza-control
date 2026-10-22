@@ -339,6 +339,8 @@ const INITIAL_UI = {
   toast: null,
   restTimer: { active: false, remaining: 0, total: 0, exerciseName: '', endAt: 0 },
   _editingProgramId: null,
+  // P16-01: copia del editor al entrar en su base. Fuera del partialize.
+  _editorDraft: null,
   _viewingProgramId: null,
   _blockPickerResult: null,
   homeTab: 'session',

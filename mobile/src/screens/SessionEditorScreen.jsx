@@ -41,6 +41,7 @@ import { Section } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { useEditorBase, clearEditorDraft } from '../hooks/useEditorDraft';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
 import { variantLabel, displayVariant } from '../utils/variants';
@@ -156,7 +157,7 @@ function EditorRow({
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
 export default function SessionEditorScreen({ navigation, route }) {
-  const { templateId: initialTemplateId, programId, stageIdx = null } = route.params ?? {};
+  const { templateId: initialTemplateId, programId, stageIdx = null, editorBase = false } = route.params ?? {};
   const { t, i18n } = useTranslation();
   const { fmt: fmtWeight } = useWeightUnit();
   const th     = useTheme();
@@ -195,6 +196,13 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const template = sessionTemplates[templateId];
+
+  // Base del editor (P16-01): quien abre esta pantalla desde fuera pasa
+  // `editorBase`. Una sesión de programa copia el programa entero; una libre o
+  // una plantilla, solo ella. Su chevron y el atrás ya cancelan por `beforeRemove`.
+  const baseTpl = sessionTemplates[initialTemplateId];
+  useEditorBase(navigation, editorBase, !baseTpl ? null
+    : baseTpl.programId ? { kind: 'program', id: baseTpl.programId } : { kind: 'template', id: initialTemplateId });
 
   const program    = programs[programId];
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
@@ -372,6 +380,7 @@ export default function SessionEditorScreen({ navigation, route }) {
         {
           text: t('freeSession.delete'), style: 'destructive',
           onPress: () => {
+            clearEditorDraft(); // ya confirmado: borrar no es un cambio que Cancelar deba preguntar
             navigation.goBack();
             deleteFreeTemplate(templateId);
           },

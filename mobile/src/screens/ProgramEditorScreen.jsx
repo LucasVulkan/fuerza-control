@@ -31,6 +31,7 @@ import { describeRx } from '../utils/stageRx';
 import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
 import { stageWeekRanges, stageRangeLabel, isDeload } from '../utils/stageStats';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { useEditorBase } from '../hooks/useEditorDraft';
 
 import { showDialog } from '../components/ui/dialog';
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
@@ -104,9 +105,11 @@ export default function ProgramEditorScreen({ navigation }) {
   const duplicateSessionInProgram = useStore((s) => s.duplicateSessionInProgram);
   const removeSessionFromProgram  = useStore((s) => s.removeSessionFromProgram);
   const showToast             = useStore((s) => s.showToast);
-  const { commit, done }      = useEditorExit(navigation);
+  const { done }              = useEditorExit(navigation);
 
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
+  // Siempre es la base del editor: se abre desde fuera por `navigate('programEditor')`.
+  const { cancel }    = useEditorBase(navigation, true, editingId ? { kind: 'program', id: editingId } : null);
   const activeProgram = programs[editingId];
   const isFromClients = !!ui._editingProgramId;
 
@@ -292,17 +295,9 @@ export default function ProgramEditorScreen({ navigation }) {
     );
   }
 
-  // Los dos salen escribiendo lo que hubiera a medias en los campos de texto y
-  // marcando a los clientes; lo que cambia es el destino. El chevron sube un
-  // nivel —a la vista del programa— sin decir nada, y el check cierra el modo
-  // edición entero y se va a Home.
-  function handleBack() {
-    commitName();
-    commitStageName();
-    commit();
-    navigation.goBack();
-  }
-
+  // El check escribe lo que hubiera a medias en los campos de texto, guarda y
+  // sale del modo edición. El chevron es Cancelar (P16-01): lo escrito a medias
+  // no cuenta, y si hay cambios en el borrador pregunta antes de descartar.
   function handleDone() {
     commitName();
     commitStageName();
@@ -425,7 +420,7 @@ export default function ProgramEditorScreen({ navigation }) {
     <SafeAreaView edges={['top']} style={styles.container}>
       {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
       <ScreenHeader
-        onBack={handleBack}
+        onBack={cancel}
         eyebrow={isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
         title={activeProgram.name ?? ''}
         placeholder={t('editor.programNamePlaceholder')}

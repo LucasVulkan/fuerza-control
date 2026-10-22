@@ -363,7 +363,7 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
   const library = all.filter((tpl) => tpl.kind === 'template')
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const nameOf  = (tpl) => tpl.name || t('freeSession.templateUnnamed');
-  const edit    = (templateId) => navigation.navigate('SessionEditor', { templateId });
+  const edit    = (templateId) => navigation.navigate('SessionEditor', { templateId, editorBase: true });
   const metaOf  = (tpl) => [
     t('freeSession.templateExercises', { count: tpl.exercises?.length ?? 0 }),
     (tpl.blocks?.length ?? 0) > 0 ? t('freeSession.templateBlocks', { count: tpl.blocks.length }) : null,

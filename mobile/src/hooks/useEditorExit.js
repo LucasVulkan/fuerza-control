@@ -5,20 +5,17 @@
  * editar el programa. El chevron navega dentro de ese modo —un nivel arriba— y
  * el check lo cierra desde donde estés, sin tener que subir escalón a escalón.
  *
- * No hay nada que "guardar": `programs` y `sessionTemplates` están en el
- * `partialize` del store, así que cada edición se escribe en AsyncStorage en el
- * momento. Lo único que hacía el viejo botón "Guardar programa" —y lo único que
- * hace `commit` aquí— es marcar a los clientes que tengan este programa para
- * que el entrenador vuelva a subírselo.
- *
- * El toast va en `commit` y no en `done`: salir por el chevron desde el editor
- * de programa también es salir del modo edición, y el toast es lo único que
- * dice que lo que tocaste ha quedado hecho.
+ * Los cambios se escriben en el store al momento, pero la base del editor
+ * guarda una copia (P16-01, `useEditorDraft`): el check la borra y marca a los
+ * clientes que tengan este programa para que el entrenador vuelva a subírselo;
+ * Cancelar, en la base, la escribe de vuelta. Subir con el chevron desde un
+ * nivel de dentro no guarda ni descarta nada.
  */
 import { Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { backToMain } from '../navigation/navigationRef';
+import { clearEditorDraft } from './useEditorDraft';
 
 // `templateId`: la sesión que se edita, si la hay. Una sesión libre no es de
 // ningún programa, así que salir de ella no puede marcar el activo como
@@ -52,9 +49,10 @@ export function useEditorExit(navigation, templateId = null) {
   // entero. Sin params, Main conserva la pestaña desde la que se abrió el
   // editor (Clientes, Plantillas, Programa o Home).
   function done() {
+    clearEditorDraft(); // antes de salir: sin copia, `beforeRemove` de la base no pregunta
     commit();
     backToMain(navigation);
   }
 
-  return { commit, done };
+  return { done };
 }

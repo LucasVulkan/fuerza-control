@@ -2,7 +2,8 @@
 
 > Tema: programas
 > En corto: El editor de programa pasa a trabajar sobre un borrador que se puede cancelar; la cabecera dice si estás en la base (Cancelar) o dentro (‹ y a dónde vuelves); el nombre y las cifras de lo que editas van en una tarjeta gris con lápiz; borrar una sesión, un ejercicio o una etapa ofrece Deshacer.
-> Fase P16-01 · pendiente · Borrador: Cancelar descarta, el check guarda · §3
+> Inicio: 2026-10-22
+> Fase P16-01 · hecho · Borrador: Cancelar descarta, el check guarda · §3
 > Fase P16-02 · pendiente · Cabecera del editor por niveles · §4
 > Fase P16-03 · pendiente · Tarjeta de identidad · §5
 > Fase P16-04 · pendiente · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
@@ -98,6 +99,8 @@ muere a mitad, al volver se queda lo escrito, como hoy.
 - La comparación «hay cambios» es una igualdad profunda entre la copia y lo
   actual (los mismos campos que se copian). Se expone como selector
   `selectEditorDirty` para el aviso, para el check (§4) y para las marcas (§7).
+
+*Como quedó (22-oct):* `ProgramEditor` es siempre la base (sin parámetro: solo se abre por `navigate('programEditor')`) y `SessionEditor` lo es con `editorBase: true` (Plantillas, Inicio, Programa, ficha de cliente); Cancelar = `goBack()` y `beforeRemove` decide si pregunta (`cancel` de `useEditorBase`, para P16-02); el toast «Programa editado» pasa a «Programa guardado»; para plantilla/sesión libre el cuerpo del aviso dice «La sesión vuelve…».
 
 **Probar P16-01**
 
@@ -352,7 +355,7 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
-| P16-01 | Borrador, Cancelar y aviso | — | 🟡 | pendiente |
+| P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ COMMIT — `useEditorDraft` + `utils/editorDraft` |
 | P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | pendiente |
 | P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | pendiente |
 | P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | pendiente |

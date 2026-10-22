@@ -452,7 +452,7 @@ export default function ProgramScreen() {
   // para entrenarla, se la asigna uno a sí mismo.
   function handleCreateSession() {
     const id = createFreeTemplate(null, 'me', { asTemplate: true });
-    if (id) navigation.navigate('SessionEditor', { templateId: id });
+    if (id) navigation.navigate('SessionEditor', { templateId: id, editorBase: true });
   }
 
   function handleCreate(name, numSessions, durationWeeks) {
@@ -656,7 +656,7 @@ export default function ProgramScreen() {
           <SheetRow
             icon={ROW_ICON.edit}
             label={t('templates.actionEdit')}
-            onPress={() => { const id = sesMenu; setSesMenu(null); navigation.navigate('SessionEditor', { templateId: id }); }}
+            onPress={() => { const id = sesMenu; setSesMenu(null); navigation.navigate('SessionEditor', { templateId: id, editorBase: true }); }}
           />
           <SheetRow
             icon={ROW_ICON.duplicate}
