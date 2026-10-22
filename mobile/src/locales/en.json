@@ -510,6 +510,8 @@
     "create": "Create account",
     "haveAccount": "Sign in",
     "sectionPlan": "PLAN",
+    "sectionUserId": "USER ID",
+    "userIdWhy": "Copy it and send it to us if we ask, to turn on PRO or look into a problem.",
     "freeNoExpiry": "No expiry",
     "meter": { "clients": "Clients", "connected": "Connected", "programs": "Programs", "sessions": "Sessions" },
     "goPro": "Go PRO",

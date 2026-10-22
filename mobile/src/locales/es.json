@@ -510,6 +510,8 @@
     "create": "Crear cuenta",
     "haveAccount": "Ya tengo cuenta",
     "sectionPlan": "PLAN",
+    "sectionUserId": "ID DE USUARIO",
+    "userIdWhy": "Cópialo y envíanoslo si te lo pedimos para activar PRO o revisar un problema.",
     "freeNoExpiry": "Sin caducidad",
     "meter": { "clients": "Clientes", "connected": "Conectados", "programs": "Programas", "sessions": "Sesiones" },
     "goPro": "Pasar a PRO",

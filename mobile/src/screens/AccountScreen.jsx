@@ -168,7 +168,8 @@ export default function AccountScreen() {
   const [syncModal,   setSyncModal]   = useState(null); // 'select' | 'recovery'
   const [showDelete,  setShowDelete]  = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [copied,      setCopied]      = useState(false);
+  const [copied,      setCopied]      = useState(null); // 'code' | 'id'
+  const [userId,      setUserId]      = useState(null);
   const [sessionEmail, setSessionEmail] = useState(null);
   const needsLogin = useStore((s) => s.trainerLoginNeeded);
   const [pro,         setPro]         = useState(null);
@@ -195,11 +196,31 @@ export default function AccountScreen() {
   }, [isPro]);
   const proDetails = isPro ? pro : null;
 
-  async function copyCode() {
-    await Clipboard.setStringAsync(trainerSync.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), COPIED_MS);
+  // El App User ID de RevenueCat: con él se regala PRO desde su panel. Sin
+  // RevenueCat (Expo Go, build `preview`) no hay ID y el bloque no sale.
+  useEffect(() => {
+    let alive = true;
+    const RC = useStore.getState()._getRC();
+    RC?.isConfigured()
+      .then((ok) => (ok ? RC.getAppUserID() : null))
+      .then((id) => { if (alive) setUserId(id); }, () => {});
+    return () => { alive = false; };
+  }, [trainerSync?.userId]);
+
+  async function copy(text, which) {
+    await Clipboard.setStringAsync(text);
+    setCopied(which);
+    setTimeout(() => setCopied(null), COPIED_MS);
   }
+
+  /** Botón de copiar que pasa a ✓ un momento. */
+  const copyBtn = (text, which) => (
+    <Press style={[styles.iconBtn, copied === which && styles.iconBtnDone]} onPress={() => copy(text, which)}>
+      <Reanimated.View key={copied === which ? 'ok' : 'copy'} entering={FadeIn.duration(150)}>
+        {copied === which ? <CheckIcon color={th.colors.accent} /> : <CopyIcon color={th.colors.text} />}
+      </Reanimated.View>
+    </Press>
+  );
 
   // ── Acciones de las hojas ───────────────────────────────────────────────────
 
@@ -288,14 +309,7 @@ export default function AccountScreen() {
           <>
             <View style={styles.haveRow}>
               <Text style={[styles.have, styles.haveCode]} numberOfLines={1}>{trainerSync.code}</Text>
-              <Press
-                style={[styles.iconBtn, copied && styles.iconBtnDone]}
-                onPress={copyCode}
-              >
-                <Reanimated.View key={copied ? 'ok' : 'copy'} entering={FadeIn.duration(150)}>
-                  {copied ? <CheckIcon color={th.colors.accent} /> : <CopyIcon color={th.colors.text} />}
-                </Reanimated.View>
-              </Press>
+              {copyBtn(trainerSync.code, 'code')}
             </View>
             <Explain>
               {t('account.codeWhy', { social: t(APPLE_AUTH_AVAILABLE ? 'account.socialIos' : 'account.socialAndroid') })}
@@ -425,6 +439,18 @@ export default function AccountScreen() {
             <Text style={[styles.sec, styles.secNext]}>{t('account.sectionPlan')}</Text>
             {planBlock}
           </Rise>
+          {!!userId && (
+            <Rise index={2}>
+              <Text style={[styles.sec, styles.secNext]}>{t('account.sectionUserId')}</Text>
+              <View style={styles.card}>
+                <View style={[styles.haveRow, styles.idRow]}>
+                  <Text style={styles.userId} selectable>{userId}</Text>
+                  {copyBtn(userId, 'id')}
+                </View>
+                <Explain>{t('account.userIdWhy')}</Explain>
+              </View>
+            </Rise>
+          )}
         </ScrollView>
       </EnterClock.Provider>
 
@@ -469,6 +495,9 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   iconBtnDone: { backgroundColor: th.tint.accent10 },
+  idRow:   { marginTop: 0 },
+  // El anónimo de RevenueCat es largo (`$RCAnonymousID:` + 32 hex): parte en dos líneas.
+  userId:  { ...textStyles.label, color: th.colors.text, flexShrink: 1 },
 
   // Filas de botones (`Btn`, `Explain`: components/ui/CardKit)
   acts:    { flexDirection: 'row', gap: spacing.sm2, marginTop: spacing.lg },
