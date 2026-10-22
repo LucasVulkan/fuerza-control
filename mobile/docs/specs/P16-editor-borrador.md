@@ -3,13 +3,14 @@
 > Tema: programas
 > En corto: El editor de programa pasa a trabajar sobre un borrador que se puede cancelar; la cabecera dice si estás en la base (Cancelar) o dentro (‹ y a dónde vuelves); el nombre y las cifras de lo que editas van en una tarjeta gris con lápiz; borrar una sesión, un ejercicio o una etapa ofrece Deshacer.
 > Inicio: 2026-10-22
+> Fin: 2026-10-22
 > Fase P16-01 · hecho · Borrador: Cancelar descarta, el check guarda · §3
 > Fase P16-02 · hecho · Cabecera del editor por niveles · §4
 > Fase P16-03 · hecho · Tarjeta de identidad · §5
 > Fase P16-04 · hecho · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
 > Fase P16-05 · hecho · Marcas «editada» en lo que se ha tocado · §7
 > Fase P16-06 · hecho · Letras y números en Barlow en las filas · §8
-> Fase P16-07 · pendiente · Toast con Deshacer al borrar · §9
+> Fase P16-07 · hecho · Toast con Deshacer al borrar · §9
 >
 > Estado: **spec escrita, sin implementar** (18-oct-2026). Sale del análisis
 > «qué hace que la app se sienta premium» (estados que la IA se salta: saber qué
@@ -343,6 +344,21 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
   Mismo mecanismo que el descarte de §3, a escala pequeña.
 - Sigue valiendo la regla de hoy: la última sesión de una etapa no se borra.
 
+**Como quedó**: `showToast(msg, duration, type, action?)` guarda `{ msg, id, type, duration, action }`
+y el store gana `hideToast`. `Toast.jsx` pinta el de siempre (`PlainToast`, sin
+cambios) o `ActionToast` si hay `action`: ancho completo menos `spacing.lg`,
+`bottom = inset + spacing.xxl`, radio `radius.lg` del tema (18 en FormaFit; la maqueta
+dice 16), barra de 3 px con Reanimated, entra/sale con `FadeInDown`/`FadeOut`. El nombre
+va en negrita con `<b>…</b>` dentro de la cadena i18n (`editor.toastSessionDeleted`,
+`toastStageDeleted`, `toastExDeleted`, `toastUndo`). El borrado pasa por
+`deleteWithUndo` (`hooks/useEditorDraft.js`): copia con `makeEditorDraft` (`program`
+para sesión y etapa, `template` para ejercicio), borra y Deshacer escribe la copia con
+`restoreEditorDraft`; así `selectEditorDirty` vuelve a lo de antes. Descartar con
+Cancelar quita el toast con acción (ya no hay nada que deshacer). Solo se puede deshacer
+lo último: si se edita otra cosa del mismo programa en esos 5 s, Deshacer también la
+revierte. Sin tocar: borrar la sesión desde dentro de su editor, quitar un bloque y borrar
+plantillas libres siguen con diálogo.
+
 **Probar P16-07**
 
 - [ ] Borrar la sesión B → desaparece sin preguntar y sale «Sesión B eliminada · Deshacer» con la barra → Deshacer → vuelve en su sitio, con sus ejercicios
@@ -376,4 +392,4 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 | P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | ✅ `dc9c672` — `AnchoredList` + `useSiblingSwipe` + `SiblingNav` |
 | P16-05 | Marcas «editada» | P16-01 | 🟢 | ✅ `48f76eb` — `templateEdited` + `rowEdited` |
 | P16-06 | Letras y números en Barlow | — | 🟢 | ✅ `48f76eb` — `indexGlyph` + `indexGlyphSm` |
-| P16-07 | Toast con Deshacer | — (independiente del borrador) | 🟡 | pendiente |
+| P16-07 | Toast con Deshacer | — (independiente del borrador) | 🟡 | ✅ `03af98b` — `deleteWithUndo` + variante con acción de `Toast` |
