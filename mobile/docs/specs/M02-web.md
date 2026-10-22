@@ -5,7 +5,7 @@
 > Inicio: 2026-10-08
 > Fase M02-01 · hecho · Sitio en GitHub Pages + `/privacidad` · §3
 > Fase M02-02 · hecho · Página de invitación `/join` · §4
-> Fase M02-03 · pendiente · Landing + soporte · §5
+> Fase M02-03 · terminado · Landing + soporte · §5
 > Fase M02-04 · aparcado · Dominio propio · §6
 > Fase M02-05 · aparcado · Enlaces directos a la app (App Links / Universal Links) · §7
 > Fase M02-06 · hecho · Consentimiento al conectar, en la app · §10
@@ -259,6 +259,11 @@ provisional `formastudio.main@gmail.com` para la revisión (se cambia al de
 dominio en M02-07; la URL de soporte de App Store Connect no cambia) y 14
 preguntas con la ruta exacta en la app, sacada del código. Enlace «Soporte» en
 el pie de todas las páginas.
+
+**Dada por terminada el 22-oct-2026** (decisión del usuario): la landing «por
+flujo» (maqueta `mobile/docs/mockups/landing-flujo-3.html`) se publicó ese día
+en el repo de la web (`086c407`, ES/EN) junto con `/soporte`. Los retoques que
+queden (capturas reales, insignias de store) se tratan como cambios sueltos.
 
 ---
 
