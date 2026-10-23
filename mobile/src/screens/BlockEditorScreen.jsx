@@ -90,27 +90,22 @@ export default function BlockEditorScreen({ navigation, route }) {
       <ScreenHeader
         onBack={() => navigation.goBack()}
         // La sesión libre del Workout no es el editor: sigue con su cabecera.
-        editor={isFree ? undefined : { backLabel: template?.name || t('freeSession.templateUnnamed'), folded }}
+        editor={isFree ? undefined : { backLabel: sessionTag(template, t), onSave: done, folded }}
         eyebrow={eyebrow}
         title={blockName(block)}
         onTitlePress={many ? () => list.open(belowRef, 4) : undefined}
-        right={() => (
-          <TouchableOpacity onPress={isFree ? () => navigation.goBack() : done} hitSlop={12} accessibilityRole="button">
+        // El bloque de la sesión libre del Workout no es del editor: sigue con su check.
+        right={isFree ? () => (
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button">
             <CheckIcon size={20} color={th.colors.accent} />
           </TouchableOpacity>
-        )}
+        ) : undefined}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View ref={belowRef} collapsable={false} style={styles.flex}>
-          {/* El anterior y el siguiente, como en el editor de ejercicio. */}
-          <SiblingNav
-            prev={blocks[index - 1] && blockName(blocks[index - 1])} next={blocks[index + 1] && blockName(blocks[index + 1])}
-            onPrev={() => sw.go(-1)} onNext={() => sw.go(1)}
-            style={styles.nbr}
-          />
           <View style={styles.flex} {...sw.panHandlers}>
             <Reanimated.View style={[styles.flex, sw.slideStyle]}>
               <Reanimated.ScrollView
@@ -120,6 +115,13 @@ export default function BlockEditorScreen({ navigation, route }) {
                 onScroll={onScroll}
                 scrollEventThrottle={16}
               >
+                {/* El anterior y el siguiente, como en el editor de ejercicio:
+                    pegados a la tarjeta y con el scroll. */}
+                <SiblingNav
+                  prev={blocks[index - 1] && blockName(blocks[index - 1])} next={blocks[index + 1] && blockName(blocks[index + 1])}
+                  onPrev={() => sw.go(-1)} onNext={() => sw.go(1)}
+                  style={styles.nbr}
+                />
                 {/* Saltar a otro bloque lo remonta (la `key`). */}
                 <SwipeLockContext.Provider value={sw.lockRef}>
                   <View key={swap}>
@@ -171,5 +173,6 @@ export default function BlockEditorScreen({ navigation, route }) {
 const makeStyles = (th) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: th.colors.bg },
   flex: { flex: 1 },
-  nbr:  { paddingBottom: spacing.sm2 },
+  // Ver `ExerciseEditorScreen`: la fila queda a un paso de la tarjeta.
+  nbr:  { paddingTop: spacing.xs2, marginBottom: -spacing.sm2 },
 });

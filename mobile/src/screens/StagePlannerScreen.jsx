@@ -519,7 +519,7 @@ export default function StagePlannerScreen({ navigation, route }) {
       <ScreenHeader
         onBack={() => navigation.goBack()}
         // Solo es un nivel del editor si se abrió desde él; desde Clientes, no.
-        editor={route?.params?.fromEditor ? { backLabel: program.name, folded } : undefined}
+        editor={route?.params?.fromEditor ? { backLabel: t('editor.idProgram'), folded } : undefined}
         eyebrow={t('planner.eyebrow')}
         title={program.name ?? ''}
       />

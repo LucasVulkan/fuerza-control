@@ -108,9 +108,9 @@ muere a mitad, al volver se queda lo escrito, como hoy.
 - [ ] Editar programa → cambiar las series de un ejercicio → volver con ‹ hasta la base → Cancelar → sale el diálogo; «Seguir editando» lo cierra y sigues en el editor
 - [ ] Mismo caso → «Descartar cambios» → el ejercicio vuelve a tener las series de antes, en el editor y en Inicio; no sale ningún toast
 - [ ] Entrar al editor y salir con Cancelar sin tocar nada → sale sin diálogo
-- [ ] Cambiar algo dentro de una sesión y pulsar el check desde ahí → guarda, toast «Programa guardado», vuelves a la pestaña desde la que abriste el editor
+- [ ] Cambiar algo dentro de una sesión y pulsar «Guardar» desde ahí → guarda, toast «Programa guardado», vuelves a la pestaña desde la que abriste el editor
 - [ ] Añadir una sesión y borrar otra → Cancelar → Descartar → la añadida desaparece y la borrada vuelve
-- [ ] Programa de un cliente: cambiar algo → Cancelar → Descartar → el cliente no queda marcado para «↑ Enviar»; con el check, sí
+- [ ] Programa de un cliente: cambiar algo → Cancelar → Descartar → el cliente no queda marcado para «↑ Enviar»; con «Guardar», sí
 - [ ] En la base, gesto de volver (iOS) o botón atrás (Android) con cambios → mismo diálogo
 - [ ] Editar una plantilla de sesión desde Plantillas → Cancelar con cambios → Descartar → la plantilla queda como estaba
 
@@ -164,8 +164,8 @@ puntos de entrada con `grep -rn "navigate('\(Program\|Session\|Exercise\|Block\)
 
 **Probar P16-02**
 
-- [ ] Editar programa → arriba «Cancelar · EDITANDO · ✓»
-- [ ] Abrir una sesión → «‹ Fuerza 4 días» y ✓; abrir un ejercicio → «‹ Torso pesado» y ✓
+- [ ] Editar programa → arriba «Cancelar · EDITANDO · Guardar», con la barra a la altura de las demás cabeceras y «EDITANDO» centrado; «Guardar» gris sin cambios y lima en cuanto cambias algo
+- [ ] Abrir una sesión → «‹ Programa» y «Guardar»; abrir un ejercicio → «‹ Sesión A» y «Guardar» (en una sesión libre, «‹ Sesión libre»)
 - [ ] Hacer scroll en una sesión larga (aún sin tarjeta: pasados ~60 px) → aparecen arriba la ceja y el nombre centrados, sale la línea fina y el «‹» se queda sin texto; al volver arriba, se invierte
 - [ ] Editar una plantilla de sesión desde Plantillas → la sesión es la base: «Cancelar», no «‹»
 - [ ] Mi cuenta, Vista del programa y Detalle de ejercicio siguen con su cabecera de siempre
@@ -219,13 +219,13 @@ componente nuevo, `EditorIdentityCard`.
 
 **Probar P16-03**
 
-- [ ] Editor de programa con 3 etapas → tarjeta gris «PROGRAMA / nombre / 12 semanas · 4 sesiones/sem · 3 etapas»; el rótulo de las fichas dice «ETAPAS»
+- [ ] Editor de programa con 3 etapas → tarjeta como la del tab Programa (ceja gris, nombre en lima, radio de las fichas de etapa) «PROGRAMA / nombre / 12 semanas · 4 sesiones/sem · 3 etapas»; el rótulo de las fichas dice «ETAPAS»
 - [ ] Programa de una sola etapa → la cabecera de la etapa ya no repite el nombre del programa (sigue el engranaje)
 - [ ] Lápiz → hoja con el nombre → cambiarlo → Hecho → la tarjeta lo enseña; Cancelar el editor → Descartar → vuelve el nombre de antes
 - [ ] Programa de un cliente → la ceja dice «PROGRAMA · <nombre del cliente>» en azul
 - [ ] Editor de ejercicio → la tarjeta lleva el volumen, la regla (solo cuándo sube) y, si está vinculado, «Vinculado con la sesión X»; cambiar el grupo a «Ninguna» quita esa línea
 - [ ] Cambiar las series en el editor de ejercicio → la cifra de la tarjeta cambia al momento
-- [ ] Editor de sesión → tarjeta gris con «SESIÓN A · ETAPA 1» (sin etapa si solo hay una), nombre, ejercicios · series · min y lápiz; «···» ya no trae Editar nombre
+- [ ] Editor de sesión → tarjeta con «SESIÓN A · ETAPA 1» (sin etapa si solo hay una), nombre, ejercicios · series · min y lápiz; «···» ya no trae Editar nombre
 - [ ] Editor de bloque → tarjeta con «BLOQUE 04 · SESIÓN A», el nombre del bloque (cambia al escribirlo en Opciones) y el resumen
 - [ ] Scroll en cualquier editor → la cabecera se pliega (ceja + nombre) cuando la tarjeta sale de pantalla, no antes
 
@@ -267,7 +267,7 @@ Sale del desplegable de `ScreenHeader` (`menu`) a un componente propio,
 **Probar P16-04**
 
 - [ ] Editor de ejercicio → botón «1/6» en la esquina → lista bajo la tarjeta con el actual resaltado → elegir otro → cambia, con deslizamiento
-- [ ] Fila de arriba «‹ anterior · siguiente ›» → tocar «siguiente» → cambia; en el primero no hay «anterior»
+- [ ] Fila «‹ anterior · siguiente ›» pegada encima de la tarjeta → tocar «siguiente» → cambia; en el primero no hay «anterior»; al hacer scroll se va con el contenido
 - [ ] Deslizar el contenido a la izquierda → siguiente ejercicio; en el último, el contenido se resiste y vuelve
 - [ ] Deslizar en horizontal sobre un campo con − / + no cambia de ejercicio
 - [ ] Con la tarjeta fuera de pantalla, tocar el título plegado → abre la lista
@@ -291,7 +291,7 @@ copia:
 **Probar P16-05**
 
 - [ ] Cambiar las series de un ejercicio de la sesión A → en el editor de sesión, su meta sale en lima; en el de programa, la sesión A lleva «editada»
-- [ ] Guardar con el check y volver a entrar → ya no hay marcas
+- [ ] Guardar con «Guardar» y volver a entrar → ya no hay marcas
 - [ ] Añadir una sesión → sale con «editada»
 
 ## 8. P16-06 — Letras y números en Barlow
@@ -378,6 +378,32 @@ plantillas libres siguen con diálogo.
 - Medidas sueltas de la maqueta pasadas a tokens del tema: relleno de la tarjeta
   (`spacing.lg`), esquina (`spacing.md`), líneas finas (`colors.border`), filas
   de la lista anclada (`radius.sm`, `spacing.md`).
+
+## Ajustes tras la primera prueba (23-oct-2026)
+
+Pedidos por el usuario al probar en el móvil:
+
+- **«Guardar» en vez del check** (el check se veía poco): píldora de 32 al final
+  de la cabecera, como el `okTxt` de `editor-salida-5.html`; gris (`surface2`)
+  sin cambios y lima con cambios en el borrador (`selectEditorDirty`). Va por
+  `editor.onSave` de `ScreenHeader`. El bloque de la sesión libre del Workout,
+  que no es del editor, sigue con su check. El centro de la cabecera deja a cada
+  lado el ancho medido de las acciones, para no pisar «··· Guardar».
+- **«‹ destino» genérico**: el nombre de la pantalla a la que vuelves, no el de
+  la cosa: «‹ Programa» desde una sesión o el planificador, «‹ Sesión A» (o
+  «Sesión libre», «Plantilla de sesión») desde un ejercicio o un bloque.
+- **La tarjeta de identidad es la tarjeta del programa del tab Programa**
+  (`HomeProgramCard`): `surface`, radio `md` (el de las fichas de etapa), ceja
+  `caps` gris, nombre `heading` en lima, sin el corte diagonal de la semana. Lo
+  de debajo (regla de progresión, vinculado) va tras el corte de 4 dp del color
+  del fondo de `ProgramCardDetail`, no tras una línea fina. Lápiz y botón «n/N»
+  a 36 de lado sobre `surface2`, como el engranaje de la etapa.
+- **Programa sin etapas: una sola tarjeta.** Arriba el programa (ceja, nombre,
+  cifras, lápiz); tras el corte, la etapa (su ceja «En curso · semana N», su meta
+  y el engranaje) y la fila «Programa sin etapas · Ver plan». Fuera de la
+  tarjeta ya no hay rótulo ni cabecera de etapa.
+- **Ejercicio y bloque: «‹ anterior · siguiente ›» pegado a la tarjeta y dentro
+  del scroll** (se va al bajar; plegada, la lista sale del título de la cabecera).
 
 ## 10. Historia del diseño
 

@@ -30,11 +30,13 @@
  *   porque es lo primero que hay que leer y en gris se leía lo último.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import Reanimated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { Text } from './Text';
+import { useStore } from '../../../store/useStore';
+import { selectEditorDirty } from '../../utils/editorDraft';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -93,12 +95,14 @@ export default function ScreenHeader({
   // ejercicio) o la lista anclada de hermanos (editor de ejercicio y de bloque,
   // P16-04: con la cabecera plegada). El nombre lleva un chevron.
   onTitlePress,
-  // Modo del editor (P16-02): `{ base, backLabel, onCancel, folded }`. Solo lo
+  // Modo del editor (P16-02): `{ base, backLabel, onCancel, onSave, folded }`. Solo lo
   // pasan las pantallas del editor. `base`: la primera del editor, con
   // «Cancelar» (`onCancel`) y «EDITANDO» en el centro; si no, «‹ backLabel»
   // (`onBack` hace la subida). `folded`: la tarjeta de identidad ha salido de
   // pantalla — el centro enseña ceja + nombre, la regla fina aparece y el texto
   // del «‹» se apaga. El nombre se cambia con el lápiz de la tarjeta, no aquí.
+  // `onSave`: el botón «Guardar» al final de la barra (sustituye al check, que
+  // se veía poco): gris sin cambios, lima con cambios en el borrador.
   editor,
 }) {
   const { t }    = useTranslation();
@@ -106,6 +110,10 @@ export default function ScreenHeader({
   const styles   = useThemedStyles(makeStyles);
 
   const ed     = editor ?? null;
+  const dirty  = useStore((s) => !!ed?.onSave && selectEditorDirty(s));
+  // El centro deja a cada lado lo que ocupe el lado más ancho (casi siempre las
+  // acciones: «···» + «Guardar»), para quedar centrado en la barra sin pisarlo.
+  const [sideW, setSideW] = useState(BACK_BTN);
   const folded = !!editor?.folded;
   const fold   = useSharedValue(0);
   useEffect(() => { fold.set(withTiming(folded ? 1 : 0, { duration: 200 })); }, [folded, fold]);
@@ -144,7 +152,7 @@ export default function ScreenHeader({
 
           {/* El centro va fuera del flujo, centrado en la BARRA: «Cancelar» y el
               check no miden lo mismo. Cada capa solo recibe toques en su estado. */}
-          <View style={styles.edMid} pointerEvents="box-none">
+          <View style={[styles.edMid, { marginHorizontal: sideW + spacing.lg + spacing.sm }]} pointerEvents="box-none">
             {ed.base && (
               <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents={folded ? 'none' : 'box-none'}>
                 <Text style={styles.eyebrow} numberOfLines={1}>{t('editor.editingTag')}</Text>
@@ -161,8 +169,20 @@ export default function ScreenHeader({
             </Reanimated.View>
           </View>
 
-          <View style={styles.actions}>
-            {right ? (typeof right === 'function' ? right(ink) : right) : <View style={styles.backSpacer} />}
+          <View style={styles.actions} onLayout={(e) => setSideW(Math.max(BACK_BTN, e.nativeEvent.layout.width))}>
+            {right ? (typeof right === 'function' ? right(ink) : right) : null}
+            {ed.onSave ? (
+              <TouchableOpacity
+                onPress={ed.onSave}
+                style={[styles.save, dirty && styles.saveOn]}
+                hitSlop={8}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.saveText, dirty && styles.saveTextOn]}>{t('common.save')}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {!right && !ed.onSave ? <View style={styles.backSpacer} /> : null}
           </View>
         </View>
       ) : (
@@ -257,8 +277,21 @@ const makeStyles = (th) => StyleSheet.create({
   // pegada a la barra de estado.
   edHeader: { height: 56, paddingVertical: 0 },
   // El centro ocupa la barra entera y centra dentro: no depende de cuánto midan
-  // «Cancelar» y el check. El margen lateral le deja sitio a los dos.
-  edMid:   { ...StyleSheet.absoluteFillObject, marginHorizontal: 90 },
+  // «Cancelar» y las acciones. El margen lateral (medido) le deja sitio a los dos.
+  edMid:   { ...StyleSheet.absoluteFillObject },
+  // «Guardar»: píldora de 32 como el botón de la maqueta (`okTxt`, editor-salida-5).
+  save: {
+    height:            32,
+    minWidth:          72,
+    paddingHorizontal: spacing.lg,
+    borderRadius:      th.radius.full,
+    backgroundColor:   th.colors.surface2,
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  saveOn:     { backgroundColor: th.colors.accent },
+  saveText:   { ...textStyles.button, color: th.colors.mutedLight },
+  saveTextOn: { color: th.colors.onAccent },
   edLayer: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   edFoldBox:      { alignItems: 'center', maxWidth: '100%' },
   edFoldTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },

@@ -32,7 +32,7 @@ import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SwipeRow from '../components/ui/SwipeRow';
-import { MenuIcon, DragIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
+import { MenuIcon, DragIcon, CloseIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
@@ -394,20 +394,15 @@ export default function SessionEditorScreen({ navigation, route }) {
       <ScreenHeader
         onBack={() => navigation.goBack()}
         // Dentro, vuelves al programa (la etapa ya la dice la ceja); la base se cancela.
-        editor={{ base: editorBase, onCancel: cancel, backLabel: program?.name, folded }}
+        editor={{ base: editorBase, onCancel: cancel, onSave: done, backLabel: t('editor.idProgram'), folded }}
         eyebrow={eyebrow}
         title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
-        // El check va el último: es la acción principal de la barra y cae bajo
-        // el pulgar en el mismo sitio en las cuatro pantallas del editor.
+        // «Guardar» (`onSave`) va el último: es la acción principal de la barra
+        // y cae en el mismo sitio en las cuatro pantallas del editor.
         right={(ink) => (
-          <>
-            <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
-              <MenuIcon color={ink} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={done} hitSlop={12} accessibilityRole="button">
-              <CheckIcon size={20} color={th.colors.accent} />
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
+            <MenuIcon color={ink} />
+          </TouchableOpacity>
         )}
       />
 

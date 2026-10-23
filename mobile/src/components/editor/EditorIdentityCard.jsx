@@ -1,8 +1,13 @@
 /**
- * EditorIdentityCard — la tarjeta gris que abre cada pantalla del editor (P16-03):
+ * EditorIdentityCard — la tarjeta que abre cada pantalla del editor (P16-03):
  * ceja (dónde estás), nombre y cifras de lo que editas. Sustituye al Resumen
  * tintado de lima de sesión y ejercicio, y es la primera pieza de programa y
  * bloque. Maquetas: `docs/mockups/editor-salida-5.html`, `editor-ejercicio.html`.
+ *
+ * Ceja, nombre, fondo y radio son los de la tarjeta del programa del tab
+ * Programa (`HomeProgramCard`, decidido al probar P16): la misma pieza en los
+ * dos sitios. Lo de debajo (`children`) va tras el mismo corte del color del
+ * fondo que separa allí la fila del programa de su detalle.
  *
  * Props:
  *  - `eyebrow`     ceja ya traducida («Sesión A · Etapa 1»); se pinta en versales.
@@ -18,7 +23,8 @@
  *                  misma esquina que el lápiz, así que ninguna pantalla pasa los dos.
  *  - `onLayout`    para medir la tarjeta: `useEditorFold` pliega la cabecera cuando
  *                  sale de pantalla.
- *  - `children`    lo que va bajo una línea fina (regla de progresión, vinculado…).
+ *  - `children`    lo que va tras el corte (regla de progresión, vinculado; en un
+ *                  programa sin etapas, la etapa entera).
  */
 import { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
@@ -28,7 +34,7 @@ import NameField from '../ui/NameField';
 import { SectionLabel } from '../ui/MenuList';
 import { PencilIcon } from '../ui/EditorIcons';
 import DragSheet from '../DragSheet';
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 // Espera antes de pedir el foco del nombre: la hoja es un `Modal` y en Android
@@ -36,9 +42,11 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 // teclado sin salir. Es el botón de calibrado: si un dispositivo lento se queda
 // sin teclado, súbelo.
 const FOCUS_DELAY = 300;
-// Hueco que el nombre deja a la derecha para el lápiz (30) o para el botón de
-// lista de P16-04 (~70).
-const PENCIL_ROOM = 44;
+// Lado del lápiz: el del engranaje de la etapa, que puede ir en la misma tarjeta.
+const ICON_BTN = 36;
+// Hueco que el nombre deja a la derecha para el lápiz o para el botón de lista
+// de P16-04 (~70).
+const PENCIL_ROOM = ICON_BTN + spacing.md;
 const CORNER_ROOM = 70;
 
 export default function EditorIdentityCard({
@@ -66,6 +74,7 @@ export default function EditorIdentityCard({
 
   return (
     <View style={styles.card} onLayout={onLayout}>
+      <View style={styles.top}>
       <Text style={styles.eyebrow} numberOfLines={1}>
         {eyebrow ?? ''}
         {clientName ? <Text style={styles.client}>{` · ${clientName}`}</Text> : null}
@@ -88,8 +97,14 @@ export default function EditorIdentityCard({
         </View>
       )}
       {line ? <Text style={styles.line}>{line}</Text> : null}
+      </View>
 
-      {children ? <View style={styles.extra}>{children}</View> : null}
+      {children ? (
+        <>
+          <View style={styles.cut} />
+          <View style={styles.extra}>{children}</View>
+        </>
+      ) : null}
 
       {(onRename || corner) && (
         <View style={styles.corner}>
@@ -127,36 +142,33 @@ export default function EditorIdentityCard({
 
 const makeStyles = (th) => StyleSheet.create({
   card: {
-    backgroundColor: th.colors.surface2,
-    borderRadius:    th.radius.lg,
-    padding:         spacing.lg,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    overflow:        'hidden',
   },
-  eyebrow: { ...textStyles.caps, color: th.colors.accent, textTransform: 'uppercase' },
+  top:     { padding: spacing.lg },
+  // Ceja y nombre de `HomeProgramCard`: interlineado apretado, nombre en lima.
+  eyebrow: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase', lineHeight: lh(textStyles.caps.fontSize, LINE.tight) },
   client:  { color: th.colors.blue },
   name: {
-    ...textStyles.heroName,
-    lineHeight:         32,
-    includeFontPadding: false,
-    color:              th.colors.text,
-    marginTop:          spacing.xs2,
+    ...textStyles.heading,
+    lineHeight: lh(textStyles.heading.fontSize, LINE.tight),
+    color:      th.colors.accent,
+    marginTop:  spacing.xs2,
   },
   stats: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, alignItems: 'baseline', marginTop: spacing.xs2 },
   stat:    { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 20 },
   statNum: { ...textStyles.statGlyph, color: th.colors.text },
   line:    { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs2 },
-  extra: {
-    marginTop:      spacing.md,
-    paddingTop:     spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: th.colors.border,
-    gap:            spacing.sm2,
-  },
+  // El corte de `ProgramCardDetail`: 4 dp del color del fondo, de lado a lado.
+  cut:   { height: spacing.xs2, backgroundColor: th.colors.bg },
+  extra: { padding: spacing.lg, gap: spacing.sm2 },
   corner: { position: 'absolute', top: spacing.md, right: spacing.md },
   pencil: {
-    width:           30,
-    height:          30,
+    width:           ICON_BTN,
+    height:          ICON_BTN,
     borderRadius:    th.radius.md,
-    backgroundColor: th.colors.surface,
+    backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
   },

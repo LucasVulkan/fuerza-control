@@ -9,17 +9,16 @@
  * `CustomExerciseScreen`, que es el mismo editor para el alta en librería.
  */
 import { useState, useRef } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Reanimated from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
-import { useTheme, useThemedStyles } from '../useTheme';
+import { useThemedStyles } from '../useTheme';
 import { spacing } from '../theme';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import SiblingNav from '../components/ui/SiblingNav';
 import AnchoredList, { ListButton } from '../components/ui/AnchoredList';
-import { CheckIcon } from '../components/ui/EditorIcons';
 import { useEditorExit } from '../hooks/useEditorExit';
 import { useEditorFold } from '../hooks/useEditorFold';
 import { deleteWithUndo } from '../hooks/useEditorDraft';
@@ -32,7 +31,6 @@ import { slotNumber } from '../utils/sessionSlots';
 export default function ExerciseEditorScreen({ navigation, route }) {
   const { templateId, exerciseId: initialExerciseId } = route.params ?? {};
   const { t }  = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { done } = useEditorExit(navigation, templateId);
   const { folded, onScroll, onCardLayout, cardH } = useEditorFold();
@@ -88,27 +86,16 @@ export default function ExerciseEditorScreen({ navigation, route }) {
     <SafeAreaView ref={rootRef} collapsable={false} edges={['top', 'bottom']} style={styles.safe}>
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        editor={{ backLabel: template?.name || t('freeSession.templateUnnamed'), folded }}
+        editor={{ backLabel: sessionTag(template, t), onSave: done, folded }}
         eyebrow={eyebrow}
         title={def?.name ?? exerciseId}
         onTitlePress={many ? () => list.open(belowRef, 4) : undefined}
-        right={() => (
-          <TouchableOpacity onPress={done} hitSlop={12} accessibilityRole="button">
-            <CheckIcon size={20} color={th.colors.accent} />
-          </TouchableOpacity>
-        )}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View ref={belowRef} collapsable={false} style={styles.flex}>
-          {/* El anterior y el siguiente, como en Progreso › ejercicio. */}
-          <SiblingNav
-            prev={prevId && nameOf(prevId)} next={nextId && nameOf(nextId)}
-            onPrev={() => sw.go(-1)} onNext={() => sw.go(1)}
-            style={styles.nbr}
-          />
           <View style={styles.flex} {...sw.panHandlers}>
             <Reanimated.View style={[styles.flex, sw.slideStyle]}>
               <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" onScroll={onScroll} scrollEventThrottle={16}>
@@ -117,6 +104,13 @@ export default function ExerciseEditorScreen({ navigation, route }) {
                     REMONTARLO — si no, cambia el título pero se queda con las
                     series/descanso del anterior. Al desmontar se vuelca lo que
                     hubiera pendiente del viejo. */}
+                {/* El anterior y el siguiente, como en Progreso › ejercicio: pegados
+                    a la tarjeta y con el scroll (plegada, la lista sale del título). */}
+                <SiblingNav
+                  prev={prevId && nameOf(prevId)} next={nextId && nameOf(nextId)}
+                  onPrev={() => sw.go(-1)} onNext={() => sw.go(1)}
+                  style={styles.nbr}
+                />
                 <SwipeLockContext.Provider value={sw.lockRef}>
                   <View key={swap}>
                     <ExerciseEditorInline
@@ -183,5 +177,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
 const makeStyles = (th) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: th.colors.bg },
   flex: { flex: 1 },
-  nbr:  { paddingBottom: spacing.sm2 },
+  // Se come casi todo el relleno de arriba del editor (`spacing.md`): la fila
+  // queda a un paso de la tarjeta.
+  nbr:  { paddingTop: spacing.xs2, marginBottom: -spacing.sm2 },
 });

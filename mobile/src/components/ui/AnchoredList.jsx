@@ -90,12 +90,13 @@ const makeStyles = (th) => StyleSheet.create({
   name:  { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   on:    { color: th.colors.accent },
 
-  // Caja de 30 de alto, `surface`, radio 10: el hueco `corner` de `EditorIdentityCard`.
+  // Caja de 36 de alto (la del lápiz y el engranaje), radio md: el hueco `corner` de `EditorIdentityCard`.
   btn: {
-    height:            30,
+    height:            36,
     paddingHorizontal: spacing.md,
     borderRadius:      th.radius.md,
-    backgroundColor:   th.colors.surface,
+    // Sobre la tarjeta de identidad, que es `surface`.
+    backgroundColor:   th.colors.surface2,
     flexDirection:     'row',
     alignItems:        'center',
     gap:               spacing.sm,
