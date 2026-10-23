@@ -24,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { textStyles, spacing } from '../../theme';
 import { useThemedStyles, useTheme } from '../../useTheme';
+import { useSwipeLock } from '../../hooks/useSiblingSwipe';
 
 // Contenedor: space/xs2=4 (padding), space/sm=6 (gap) — ambos confirmados en
 // mobile/docs/figma-extraction/components/segmented-control.md.
@@ -39,6 +40,7 @@ const SHRINK = { duration: 160, easing: Easing.in(Easing.cubic) };
 // Una opción puede llevar `disabled`: sigue a la vista, apagada, y no se elige.
 export default function SegmentedControl({ options, value, onChange }) {
   const styles = useThemedStyles(makeStyles);
+  const swipeLock = useSwipeLock();   // un deslizamiento que empieza aquí no cambia de ejercicio (P16-04)
   const th     = useTheme();
 
   // −1 = NADA seleccionado, y es un estado legítimo: la hoja del planificador
@@ -104,7 +106,7 @@ export default function SegmentedControl({ options, value, onChange }) {
   }));
 
   return (
-    <View style={styles.container}>
+    <View {...swipeLock} style={styles.container}>
       {/* Capa del resalte: la misma fila que las opciones (flex + gap), con el
           pill como primer hijo y el resto como huecos vacíos. */}
       <View style={styles.highlightLayer} pointerEvents="none">

@@ -57,8 +57,11 @@ describe('escala tipográfica', () => {
 
   it('sólo usa los ocho pasos de la escala', () => {
     const ESCALA = [11, 12, 14, 16, 18, 22, 28, 34];
+    // La Barlow de identidad admite además 20 y 26 (letras y números de las filas, P16-06).
+    const BARLOW_EXTRA = [20, 26];
     for (const [name, s] of roles) {
-      expect(ESCALA, `${name} está fuera de la escala`).toContain(s.fontSize);
+      const ok = s.fontFamily === textStyles.heroName.fontFamily ? [...ESCALA, ...BARLOW_EXTRA] : ESCALA;
+      expect(ok, `${name} está fuera de la escala`).toContain(s.fontSize);
     }
   });
 
@@ -92,6 +95,18 @@ describe('escala tipográfica', () => {
       if (s.letterSpacing >= 0) continue;
       expect(Math.abs(s.letterSpacing) / s.fontSize, `${name} aprieta de más`).toBeLessThan(0.04);
     }
+  });
+
+  it('statGlyph es la Barlow a 16 (cifras de la tarjeta de identidad, P16-03)', () => {
+    expect(textStyles.statGlyph.fontFamily).toBe(textStyles.heroName.fontFamily);
+    expect(textStyles.statGlyph.fontSize).toBe(16);
+  });
+
+  it('indexGlyph e indexGlyphSm son la Barlow a 26 y a 20 (letras y números de las filas, P16-06)', () => {
+    expect(textStyles.indexGlyph.fontFamily).toBe(textStyles.heroName.fontFamily);
+    expect(textStyles.indexGlyph.fontSize).toBe(26);
+    expect(textStyles.indexGlyphSm.fontFamily).toBe(textStyles.heroName.fontFamily);
+    expect(textStyles.indexGlyphSm.fontSize).toBe(20);
   });
 
   it('ningún papel declara fontWeight — el peso va en la familia', () => {

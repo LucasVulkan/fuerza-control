@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity } from 'react-native';
+import Reanimated, {
+  FadeInDown, FadeOut, Easing, useSharedValue, useAnimatedStyle, withTiming,
+} from 'react-native-reanimated';
 import { Text } from './ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, selectToast } from '../../store/useStore';
@@ -9,7 +12,10 @@ import { useTheme, useThemedStyles } from '../useTheme';
 /**
  * Global toast overlay — renders ui.toast from the store.
  * Mount this once at the root level (inside RootNavigator).
- * It uses pointerEvents="none" so it never blocks touches.
+ * It uses pointerEvents="none" so it never blocks touches — except the variant
+ * with an action (P16-07, `showToast(msg, ms, type, { label, onPress })`): it sits
+ * low, full width, with a button and a bar that drains over `duration`. The
+ * message may wrap the name in <b></b> to bold it.
  *
  * Toast types:
  *   'success' — green  (default): save, connect, import OK
@@ -35,11 +41,61 @@ const toastColors = (th) => ({
   },
 });
 
+// Toast con acción (Deshacer). `key` = id: otro toast lo remonta y reinicia la barra.
+function ActionToast({ toast }) {
+  const insets = useSafeAreaInsets();
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const hideToast = useStore((s) => s.hideToast);
+  const left = useSharedValue(1);
+  useEffect(() => {
+    left.value = withTiming(0, { duration: toast.duration, easing: Easing.linear });
+  }, [left, toast.duration]);
+  const barStyle = useAnimatedStyle(() => ({ width: `${left.value * 100}%` }));
+  // Con los colores del tema, como una tarjeta: invertido (fondo claro y un
+  // verde oscuro a mano) parecía de otro tema.
+  const ink = th.colors.accent;
+
+  return (
+    <Reanimated.View
+      entering={FadeInDown.duration(220)}
+      exiting={FadeOut.duration(200)}
+      style={[styles.action, { bottom: insets.bottom + spacing.xxl }]}
+    >
+      <Text style={styles.actionMsg} numberOfLines={2}>
+        {toast.msg.split(/(<b>.*?<\/b>)/).map((part, i) => (
+          part.startsWith('<b>')
+            ? <Text key={i} style={styles.actionBold}>{part.slice(3, -4)}</Text>
+            : part
+        ))}
+      </Text>
+      <TouchableOpacity
+        accessibilityRole="button"
+        hitSlop={8}
+        style={styles.actionBtn}
+        onPress={() => { hideToast(); toast.action.onPress(); }}
+      >
+        <Text style={[styles.actionLabel, { color: ink }]}>{toast.action.label}</Text>
+      </TouchableOpacity>
+      <Reanimated.View style={[styles.bar, { backgroundColor: ink }, barStyle]} />
+    </Reanimated.View>
+  );
+}
+
 export default function Toast() {
+  const toast = useStore(selectToast);
+  return (
+    <>
+      <PlainToast toast={toast?.action ? null : toast} />
+      {toast?.action ? <ActionToast key={toast.id} toast={toast} /> : null}
+    </>
+  );
+}
+
+function PlainToast({ toast }) {
   const insets  = useSafeAreaInsets();
   const th      = useTheme();
   const styles  = useThemedStyles(makeStyles);
-  const toast   = useStore(selectToast);
   const opacity = useRef(new Animated.Value(0)).current;
 
   // useState (not useRef) so changing the displayed text triggers a re-render
@@ -109,4 +165,31 @@ const makeStyles = (th) => StyleSheet.create({
     ...textStyles.body,
     textAlign: 'center',
   },
+  action: {
+    position:          'absolute',
+    left:              spacing.lg,
+    right:             spacing.lg,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               spacing.md,
+    overflow:          'hidden',
+    backgroundColor:   th.colors.surface2,
+    borderWidth:       1,
+    borderColor:       th.colors.border,
+    borderRadius:      th.radius.lg,
+    paddingVertical:   spacing.md,
+    paddingLeft:       spacing.xl,
+    paddingRight:      spacing.sm2,
+    // Sombra como el toast de siempre: sobre el fondo oscuro, la que lo despega.
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: 4 },
+    shadowOpacity:     0.35,
+    shadowRadius:      8,
+    elevation:         8,
+  },
+  actionMsg:   { ...textStyles.body, flex: 1, color: th.colors.mutedLight },
+  actionBold:  { ...textStyles.bodyStrong, color: th.colors.text },
+  actionBtn:   { paddingVertical: spacing.sm2, paddingHorizontal: spacing.md },
+  actionLabel: { ...textStyles.button },
+  bar:         { position: 'absolute', left: 0, bottom: 0, height: 3 },
 });

@@ -19,20 +19,23 @@ import { Section, SectionLabel, MenuRow, Status, RowIcon } from '../components/u
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { Switch } from '../components/ui/EditorRows';
 import StageCards from '../components/ui/StageCards';
+import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { useSlidePages } from '../components/ui/useSlidePages';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SwipeRow from '../components/ui/SwipeRow';
 import StepField from '../components/ui/StepField';
-import { DragIcon, LockIcon, CheckIcon, GearIcon } from '../components/ui/EditorIcons';
+import { DragIcon, LockIcon, GearIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
-import { athleteProgress, stageStatus, stageWeekLabel, programTotals } from '../utils/stageProgress';
+import { athleteProgress, stageStatus, stageWeekLabel, programTotals, weeklySessions } from '../utils/stageProgress';
 import { stageWeekRanges, stageRangeLabel, isDeload } from '../utils/stageStats';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { useEditorBase, deleteWithUndo } from '../hooks/useEditorDraft';
+import { templateEdited } from '../utils/editorDraft';
+import { useEditorFold } from '../hooks/useEditorFold';
 
-import { showDialog } from '../components/ui/dialog';
 // Gap entre tarjetas de sesión (space/sm). Lo aplica `Sortable.Grid` como
 // `rowGap`: necesita conocerlo para colocar los huecos.
 const CARD_GAP = spacing.sm;
@@ -53,7 +56,8 @@ const SLIDE = SegmentedControl.TIMING;
 // El reordenado lo lleva `react-native-sortables` (ver la lista más abajo): el
 // asa solo tiene que envolverse en `Sortable.Handle`.
 
-function SessionCard({ label, name, meta, actions, isOpen, onOpenChange, onPress }) {
+function SessionCard({ label, name, meta, edited, actions, isOpen, onOpenChange, onPress }) {
+  const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -75,6 +79,7 @@ function SessionCard({ label, name, meta, actions, isOpen, onOpenChange, onPress
         <Text style={styles.sesName} numberOfLines={1}>{name}</Text>
         <Text style={styles.sesMeta} numberOfLines={1}>{meta}</Text>
       </View>
+      {edited ? <Text style={styles.sesEdited}>{t('editor.editedTag')}</Text> : null}
     </SwipeRow>
   );
 }
@@ -104,19 +109,19 @@ export default function ProgramEditorScreen({ navigation }) {
   const duplicateSessionInProgram = useStore((s) => s.duplicateSessionInProgram);
   const removeSessionFromProgram  = useStore((s) => s.removeSessionFromProgram);
   const showToast             = useStore((s) => s.showToast);
-  const { commit, done }      = useEditorExit(navigation);
+  const { done }              = useEditorExit(navigation);
 
   const editingId     = ui._editingProgramId ?? profile.activeProgramId;
+  // Siempre es la base del editor: se abre desde fuera por `navigate('programEditor')`.
+  const { cancel }    = useEditorBase(navigation, true, editingId ? { kind: 'program', id: editingId } : null);
+  const { folded, onScroll, onCardLayout } = useEditorFold();
   const activeProgram = programs[editingId];
-  const isFromClients = !!ui._editingProgramId;
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
     [exerciseLibrary, customExercises],
   );
 
-  const [nameValue, setNameValue]               = useState(activeProgram?.name ?? '');
-  const [editingName, setEditingName]           = useState(false);
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
   const [openRowId, setOpenRowId]               = useState(null); // tarjeta con el panel de acciones abierto
@@ -237,30 +242,17 @@ export default function ProgramEditorScreen({ navigation }) {
   }
 
   function handleDeleteSession({ id, template }) {
-    showDialog(
-      t('editor.sessionDeleteBtn'),
-      t('editor.sessionDeleteConfirm', { name: template.name }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('editor.sessionDeleteBtn'), style: 'destructive',
-          onPress: () => removeSessionFromProgram(editingId, id),
-        },
-      ]
-    );
+    deleteWithUndo({
+      kind: 'program', id: editingId, label: t('editor.toastUndo'),
+      msg: t('editor.toastSessionDeleted', { name: template.name }),
+      remove: () => removeSessionFromProgram(editingId, id),
+    });
   }
 
   function handleDuplicateSession(id) {
     if (duplicateSessionInProgram(editingId, id)) {
       showToast(t('editor.toastSessionDuplicated'), 2200, 'success');
     }
-  }
-
-  function commitName() {
-    setEditingName(false);
-    const trimmed = nameValue.trim();
-    if (trimmed && trimmed !== activeProgram.name) renameProgram(editingId, trimmed);
-    else setNameValue(activeProgram.name ?? '');
   }
 
   function commitStageName() {
@@ -270,41 +262,23 @@ export default function ProgramEditorScreen({ navigation }) {
   }
 
   function handleDeleteStage() {
-    showDialog(
-      t('planner.deleteTitle'),
-      t('planner.deleteBody', { name: selectedStage?.name ?? '' }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'), style: 'destructive',
-          onPress: () => {
-            setStageSheetOpen(false);
-            setOpenRowId(null);
-            removeStageFromProgram(editingId, selectedStageIdx);
-            slide(-1);
-            holdPage();
-            page.set(Math.max(0, selectedStageIdx - 1));
-            setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
-            showToast(t('editor.toastStageDeleted'), 2200, 'neutral');
-          },
-        },
-      ]
-    );
+    setStageSheetOpen(false);
+    setOpenRowId(null);
+    deleteWithUndo({
+      kind: 'program', id: editingId, label: t('editor.toastUndo'),
+      msg: t('editor.toastStageDeleted', { name: selectedStage?.name ?? '' }),
+      remove: () => removeStageFromProgram(editingId, selectedStageIdx),
+    });
+    slide(-1);
+    holdPage();
+    page.set(Math.max(0, selectedStageIdx - 1));
+    setSelectedStageIdx(Math.max(0, selectedStageIdx - 1));
   }
 
-  // Los dos salen escribiendo lo que hubiera a medias en los campos de texto y
-  // marcando a los clientes; lo que cambia es el destino. El chevron sube un
-  // nivel —a la vista del programa— sin decir nada, y el check cierra el modo
-  // edición entero y se va a Home.
-  function handleBack() {
-    commitName();
-    commitStageName();
-    commit();
-    navigation.goBack();
-  }
-
+  // El check escribe lo que hubiera a medias en los campos de texto, guarda y
+  // sale del modo edición. El chevron es Cancelar (P16-01): lo escrito a medias
+  // no cuenta, y si hay cambios en el borrador pregunta antes de descartar.
   function handleDone() {
-    commitName();
     commitStageName();
     done();
   }
@@ -369,7 +343,7 @@ export default function ProgramEditorScreen({ navigation }) {
   // esta etapa como base; al aplicar vuelve aquí (P14 §5.5).
   function newStage() {
     commitStageName();
-    navigation.navigate('StagePlanner', { programId: editingId, addFrom: selectedStageIdx });
+    navigation.navigate('StagePlanner', { programId: editingId, addFrom: selectedStageIdx, fromEditor: true });
   }
 
   // ── Cabecera de la etapa (P14 §3.4) ─────────────────────────────────────────
@@ -421,24 +395,47 @@ export default function ProgramEditorScreen({ navigation }) {
       if (!ok) dragX.set(withTiming(0, { duration: 200 }));
     });
 
+  // Ceja de la etapa (en curso / hecha / descarga / siguiente, y el candado) y
+  // su engranaje. Van en la cabecera de la etapa o, sin etapas, dentro de la
+  // tarjeta del programa.
+  const browEl = (
+    <View style={styles.browRow}>
+      <Text style={[styles.brow, { color: brow.color }]}>{brow.text.toUpperCase()}</Text>
+      {lockedAt(selectedStageIdx) && (
+        <>
+          <Text style={[styles.brow, { color: th.colors.muted }]}>·</Text>
+          <LockIcon size={10} color={th.colors.redText} solid />
+          <Text style={[styles.brow, { color: th.colors.redText }]}>
+            {t('editor.stageBrowLocked').toUpperCase()}
+          </Text>
+        </>
+      )}
+    </View>
+  );
+  const gearEl = (
+    <TouchableOpacity
+      style={styles.headBtn}
+      onPress={() => setStageSheetOpen(true)}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={t('editor.stageSettingsA11y')}
+    >
+      <GearIcon color={th.colors.mutedLight} />
+    </TouchableOpacity>
+  );
+  const viewPlanEl = (
+    <TouchableOpacity onPress={() => navigation.navigate('StagePlanner', { programId: editingId, fromEditor: true })} hitSlop={8} accessibilityRole="button">
+      <Text style={styles.viewPlan}>{t('editor.viewPlan')}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       {/* ── SesionHeader / "Editar Programa" (210:2819) ── */}
       <ScreenHeader
-        onBack={handleBack}
-        eyebrow={isFromClients ? t('editor.titleEditClient') : t('editor.titleEdit')}
+        editor={{ base: true, onCancel: cancel, onSave: handleDone, folded }}
+        eyebrow={[t('editor.idProgram'), editedClient?.name].filter(Boolean).join(' · ')}
         title={activeProgram.name ?? ''}
-        placeholder={t('editor.programNamePlaceholder')}
-        renaming={editingName}
-        draft={nameValue}
-        onDraftChange={setNameValue}
-        onRenameStart={() => { setNameValue(activeProgram.name ?? ''); setEditingName(true); }}
-        onRenameCommit={commitName}
-        right={() => (
-          <TouchableOpacity onPress={handleDone} hitSlop={12} accessibilityRole="button">
-            <CheckIcon size={20} color={th.colors.accent} />
-          </TouchableOpacity>
-        )}
       />
 
       {/* Scrollable content */}
@@ -447,23 +444,48 @@ export default function ProgramEditorScreen({ navigation }) {
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
+        {/* ── Tarjeta de identidad (P16-03). Sin lápiz si el programa es del
+            entrenador: el cliente no lo renombra. ── */}
+        <EditorIdentityCard
+          eyebrow={t('editor.idProgram')}
+          clientName={editedClient?.name}
+          name={activeProgram.name ?? ''}
+          stats={[
+            totals.weeks > 0 && { n: `${totals.weeks}${totals.open ? '+' : ''}`, label: t('editor.idWeeks', { count: totals.weeks }) },
+            { n: weeklySessions(stages[activeStageIdx]), label: t('editor.idSessionsWeek', { count: weeklySessions(stages[activeStageIdx]) }) },
+            !single && { n: stages.length, label: t('editor.idStages', { count: stages.length }) },
+          ].filter(Boolean)}
+          onRename={fromTrainer ? undefined : (name) => renameProgram(editingId, name)}
+          renameTitle={t('editor.idProgram')}
+          onLayout={onCardLayout}
+        >
+          {/* Sin etapas, la etapa va dentro de la tarjeta del programa, tras el
+              corte, como el detalle de la tarjeta del tab Programa. Una fila:
+              semanas y sesiones/sem ya las dicen las cifras de arriba, y sin
+              etapas no hay plan que ver. */}
+          {single ? (
+            <>
+              <View style={styles.stageIn}>
+                <View style={styles.stageInText}>
+                  <Text style={styles.stagesLabel} numberOfLines={1}>{t('editor.stagesLabelNone').toUpperCase()}</Text>
+                  {lockedAt(selectedStageIdx) && <LockIcon size={10} color={th.colors.redText} solid />}
+                </View>
+                {gearEl}
+              </View>
+            </>
+          ) : null}
+        </EditorIdentityCard>
+
         {/* ── Rótulo y tarjetas de etapa (P14 §3.2-3.3) ── */}
-        <View style={styles.stagesBlock}>
-          <View style={styles.stagesLabelRow}>
-            {single ? (
-              <Text style={styles.stagesLabel}>{t('editor.stagesLabelNone').toUpperCase()}</Text>
-            ) : (
-              <Text style={styles.stagesLabel}>
-                <Text style={styles.stagesLabelNum}>{stages.length}</Text>
-                {` ${t(totals.open ? 'editor.stagesLabelOpen' : 'editor.stagesLabel', { count: stages.length, weeks: totals.weeks })}`.toUpperCase()}
-              </Text>
-            )}
-            <TouchableOpacity onPress={() => navigation.navigate('StagePlanner', { programId: editingId })} hitSlop={8} accessibilityRole="button">
-              <Text style={styles.viewPlan}>{t('editor.viewPlan')}</Text>
-            </TouchableOpacity>
-          </View>
-          {!single && (
+        {!single && (
+          <View style={styles.stagesBlock}>
+            <View style={styles.stagesLabelRow}>
+              <Text style={styles.stagesLabel}>{t('editor.stagesTitle').toUpperCase()}</Text>
+              {viewPlanEl}
+            </View>
             <StageCards
               stages={stageCards}
               value={stageCards[selectedStageIdx]?.id}
@@ -471,8 +493,8 @@ export default function ProgramEditorScreen({ navigation }) {
               onChange={(id) => selectStage(stageCards.findIndex((c) => c.id === id))}
               onAdd={newStage}
             />
-          )}
-        </View>
+          </View>
+        )}
 
         {/* ── La etapa elegida: cabecera y sesiones, que entran juntas ── */}
         {/* La capa fija del arrastre: no cambia con la etapa (ver `headSwipe`). */}
@@ -487,44 +509,26 @@ export default function ProgramEditorScreen({ navigation }) {
           {/* Lo de dentro no hace su propio fundido al montarse o desmontarse con
               la página; lo que se añada o quite después, sí. */}
           <LayoutAnimationConfig skipEntering skipExiting>
-            <GestureDetector gesture={headSwipe}>
-              <View style={styles.stageHead}>
-                <View style={styles.stageHeadText}>
-                  <View style={styles.browRow}>
-                    <Text style={[styles.brow, { color: brow.color }]}>{brow.text.toUpperCase()}</Text>
-                    {lockedAt(selectedStageIdx) && (
-                      <>
-                        <Text style={[styles.brow, { color: th.colors.muted }]}>·</Text>
-                        <LockIcon size={10} color={th.colors.redText} solid />
-                        <Text style={[styles.brow, { color: th.colors.redText }]}>
-                          {t('editor.stageBrowLocked').toUpperCase()}
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                  <View style={styles.stageTitleRow}>
-                    {!single && (
+            {/* Sin etapas, la cabecera de la etapa va dentro de la tarjeta del programa. */}
+            {!single && (
+              <GestureDetector gesture={headSwipe}>
+                <View style={styles.stageHead}>
+                  <View style={styles.stageHeadText}>
+                    {browEl}
+                    <View style={styles.stageTitleRow}>
                       <Text style={[styles.stageTitle, { color: isDeload(selectedStage) ? th.colors.blue : th.colors.accent }]}>
                         {selectedStageIdx + 1}
                       </Text>
-                    )}
-                    <Text style={styles.stageTitleName} numberOfLines={1}>
-                      {(single ? activeProgram.name : selectedStage?.name) ?? ''}
-                    </Text>
+                      <Text style={styles.stageTitleName} numberOfLines={1}>
+                        {selectedStage?.name ?? ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
                   </View>
-                  <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
+                  {gearEl}
                 </View>
-                <TouchableOpacity
-                  style={styles.headBtn}
-                  onPress={() => setStageSheetOpen(true)}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('editor.stageSettingsA11y')}
-                >
-                  <GearIcon color={th.colors.mutedLight} />
-                </TouchableOpacity>
-              </View>
-            </GestureDetector>
+              </GestureDetector>
+            )}
 
             <Text style={styles.sessionsTitle}>{t(single ? 'editor.sectionSessions' : 'editor.sessionsOfStage').toUpperCase()}</Text>
 
@@ -556,6 +560,7 @@ export default function ProgramEditorScreen({ navigation }) {
                     isOpen={openRowId === id}
                     onOpenChange={(open) => setOpenRowId(open ? id : null)}
                     name={template.name ?? ''}
+                    edited={templateEdited(ui._editorDraft, id, template)}
                     meta={stats.minutes > 0
                       ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
                       : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
@@ -793,10 +798,10 @@ const makeStyles = (th) => StyleSheet.create({
   stageHint: { ...textStyles.body, color: th.colors.mutedLight },
 
   // ── Rótulo de las etapas ── pegado a las tarjetas (P14 §3.2)
-  stagesBlock:    { gap: spacing.sm2 },
+  // 20 bajo la tarjeta de identidad: el gap de la página (10) más este margen.
+  stagesBlock:    { gap: spacing.sm2, marginTop: spacing.md },
   stagesLabelRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   stagesLabel:    { ...textStyles.caps, color: th.colors.mutedLight, flexShrink: 1 },
-  stagesLabelNum: { color: th.colors.text },
   viewPlan:       { ...textStyles.button, color: th.colors.accent },
 
   // ── Cabecera de la etapa ── (P14 §3.4). 12 bajo las tarjetas: el gap de la
@@ -831,10 +836,13 @@ const makeStyles = (th) => StyleSheet.create({
   },
   // La meta, también como en Programa.
   stageMeta:      { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
+  // Dentro de la tarjeta del programa (sin etapas): la misma fila, sin caja propia.
+  stageIn:     { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  stageInText: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headBtn: {
     width:           36,
     height:          36,
-    borderRadius:    11,
+    borderRadius:    th.radius.md,
     backgroundColor: th.colors.surface2,
     alignItems:      'center',
     justifyContent:  'center',
@@ -871,10 +879,11 @@ const makeStyles = (th) => StyleSheet.create({
     marginVertical:  -spacing.md,
   },
   // Siempre `color/accent` del tema (no el color por sesión de day1…day6).
-  // minWidth 16 = el ancho de la flecha ‹ que la sustituye al abrir la tarjeta.
-  sesLetter: { ...textStyles.itemTitle, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  // minWidth 20 = la columna de la letra (P16-06); la flecha ‹ que la sustituye al abrir es más estrecha.
+  sesLetter: { ...textStyles.indexGlyph, color: th.colors.accent, textAlign: 'center', minWidth: 20 },
   sesName:   { ...textStyles.bodyStrong, color: th.colors.text },
   sesMeta:   { ...textStyles.label, color: th.colors.mutedLight },
+  sesEdited: { ...textStyles.labelStrong, color: th.colors.accent },
 
   // "+ Añadir sesión a X" — texto plano, sin caja (decisión de QA sobre el
   // botón outline de Figma).

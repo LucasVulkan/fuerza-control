@@ -94,6 +94,28 @@ export function ProgressionIcon({ size = 15, color }) {
   );
 }
 
+// Eslabón de «vinculado con otra sesión» (tarjeta de identidad, P16-03).
+export function LinkIcon({ size = 13, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
+      <Path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// Lista con viñetas del botón «n/N» de la esquina de la tarjeta (P16-04).
+export function ListIcon({ size = 15, color }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 6h11M9 12h11M9 18h11" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
+      <Circle cx={4.5} cy={6} r={1.2} fill={color} />
+      <Circle cx={4.5} cy={12} r={1.2} fill={color} />
+      <Circle cx={4.5} cy={18} r={1.2} fill={color} />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 16, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sessionSlots, slotsToArrays } from './sessionSlots';
+import { sessionSlots, slotsToArrays, slotNumber } from './sessionSlots';
 
 const ex = (id, extra = {}) => ({ exerciseId: id, ...extra });
 
@@ -65,5 +65,19 @@ describe('slotsToArrays', () => {
     });
     const after = sessionSlots(slotsToArrays(before));
     expect(after.map((s) => s.id)).toEqual(before.map((s) => s.id));
+  });
+});
+
+describe('slotNumber', () => {
+  const tpl = {
+    exercises: [ex('a'), ex('b', { supersetWithNext: true }), ex('c')],
+    blocks:    [{ id: 'blk', order: 1 }],
+  };
+  it('numera como el editor de sesión: huecos, superseries con letra y bloques mezclados', () => {
+    expect(slotNumber(tpl, { exerciseId: 'a' })).toBe('01');
+    expect(slotNumber(tpl, { blockId: 'blk' })).toBe('02');
+    expect(slotNumber(tpl, { exerciseId: 'b' })).toBe('03A');
+    expect(slotNumber(tpl, { exerciseId: 'c' })).toBe('03B');
+    expect(slotNumber(tpl, { exerciseId: 'zzz' })).toBeNull();
   });
 });

@@ -13,17 +13,25 @@
  * es la salida del modo edición sino un ‹ más (no hay programa que marcar ni
  * Main al que volver: sacaría del entreno).
  */
-import { useState } from 'react';
-import { TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Reanimated, { useAnimatedRef, FadeInDown } from 'react-native-reanimated';
+import Reanimated, { useAnimatedRef } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { useTheme, useThemedStyles } from '../useTheme';
+import { spacing } from '../theme';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import SiblingNav from '../components/ui/SiblingNav';
+import AnchoredList, { ListButton } from '../components/ui/AnchoredList';
 import { CheckIcon } from '../components/ui/EditorIcons';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { useEditorFold } from '../hooks/useEditorFold';
+import { useSiblingSwipe, SwipeLockContext } from '../hooks/useSiblingSwipe';
+import { useAnchoredList } from '../hooks/useAnchoredList';
 import BlockEditorInline from '../components/editor/BlockEditorInline';
+import { sessionTag } from '../utils/editorIdentity';
+import { slotNumber } from '../utils/sessionSlots';
 
 export default function BlockEditorScreen({ navigation, route }) {
   const { templateId, blockId: initialBlockId } = route.params ?? {};
@@ -31,12 +39,16 @@ export default function BlockEditorScreen({ navigation, route }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { done } = useEditorExit(navigation, templateId);
+  const { folded, onScroll, onCardLayout, cardH } = useEditorFold();
 
   const [blockId, setBlockId] = useState(initialBlockId);
-  // Mismo contador de saltos que en `ExerciseEditorScreen`: sube en cada
-  // elección del desplegable para que la entrada confirme el toque aunque el
-  // bloque nuevo se parezca al anterior.
+  // Mismo contador de saltos que en `ExerciseEditorScreen`: es la `key` del
+  // editor y remonta aunque el bloque nuevo se parezca al anterior.
   const [swap, setSwap] = useState(0);
+  const btnRef   = useRef(null);   // el botón «n/N»: de él cuelga la lista
+  const belowRef = useRef(null);   // el hueco bajo la cabecera: de él, con el título plegado
+  const rootRef  = useRef(null);   // el contenedor donde se pinta la lista
+  const list     = useAnchoredList(rootRef);
 
   const isFree = templateId === '__free__';
   const template        = useStore((s) => s.sessionTemplates[templateId]);
@@ -46,7 +58,8 @@ export default function BlockEditorScreen({ navigation, route }) {
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const blocks = isFree ? freeBlocks : template?.blocks ?? [];
-  const block  = blocks.find((b) => b.id === blockId) ?? null;
+  const index  = blocks.findIndex((b) => b.id === blockId);
+  const block  = blocks[index] ?? null;
 
   // El ScrollView de la pantalla: la lista de movimientos lo necesita para
   // hacer autoscroll al arrastrar cerca del borde.
@@ -57,59 +70,109 @@ export default function BlockEditorScreen({ navigation, route }) {
   function selectBlock(id) {
     setBlockId(id);
     setSwap((n) => n + 1);
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    scrollRef.current?.scrollTo({ y: 0, animated: false });   // el deslizamiento ya cubre el cambio
   }
+
+  const sw = useSiblingSwipe({ prevId: blocks[index - 1]?.id ?? null, nextId: blocks[index + 1]?.id ?? null, onChange: selectBlock, awaitLayout: true });
 
   // `BlockEditorInline` borra del store y luego llama a `onClose`, así que el
   // bloque ya no está mientras sale la pantalla: va vacía ese instante, igual
   // que el modal, que se desmontaba en seco.
   if (!block) return null;
 
+  const many    = blocks.length > 1;
+  // «Bloque 04 · Sesión A». La sesión libre del Workout no tiene plantilla ni número.
+  const num     = slotNumber(template, { blockId });
+  const eyebrow = num ? t('editor.idBlock', { n: num, where: sessionTag(template, t) }) : t('editor.idBlockFree');
+
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
+    <SafeAreaView ref={rootRef} collapsable={false} edges={['top', 'bottom']} style={styles.safe}>
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        eyebrow={t('editor.blockEyebrow')}
+        // La sesión libre del Workout no es el editor: sigue con su cabecera.
+        editor={isFree ? undefined : { backLabel: sessionTag(template, t), onSave: done, folded }}
+        eyebrow={eyebrow}
         title={blockName(block)}
-        menu={blocks.length > 1 ? {
-          items: blocks.map((b) => ({ id: b.id, label: blockName(b) })),
-          currentId: blockId,
-          onSelect:  selectBlock,
-        } : null}
-        right={() => (
-          <TouchableOpacity onPress={isFree ? () => navigation.goBack() : done} hitSlop={12} accessibilityRole="button">
+        onTitlePress={many ? () => list.open(belowRef, 4) : undefined}
+        // El bloque de la sesión libre del Workout no es del editor: sigue con su check.
+        right={isFree ? () => (
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button">
             <CheckIcon size={20} color={th.colors.accent} />
           </TouchableOpacity>
-        )}
+        ) : undefined}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Reanimated.ScrollView
-          ref={scrollRef}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Mismo motivo que en el editor de ejercicio: saltar a otro bloque
-              desde el desplegable lo remonta, y ese remonte dispara la entrada
-              (en el primer montaje no: ya entra la pantalla desde la derecha). */}
-          <Reanimated.View key={swap} entering={swap ? FadeInDown.duration(220) : undefined}>
-            <BlockEditorInline
-              templateId={templateId}
-              block={block}
-              allExercises={allExercises}
-              onClose={() => navigation.goBack()}
-              navigation={navigation}
-              scrollableRef={scrollRef}
-            />
-          </Reanimated.View>
-        </Reanimated.ScrollView>
+        <View ref={belowRef} collapsable={false} style={styles.flex}>
+          <View style={styles.flex} {...sw.panHandlers}>
+            <Reanimated.View style={[styles.flex, sw.slideStyle]}>
+              <Reanimated.ScrollView
+                ref={scrollRef}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                onScroll={onScroll}
+                scrollEventThrottle={16}
+              >
+                {/* El anterior y el siguiente, como en el editor de ejercicio:
+                    pegados a la tarjeta y con el scroll. */}
+                <SiblingNav
+                  prev={blocks[index - 1] && blockName(blocks[index - 1])} next={blocks[index + 1] && blockName(blocks[index + 1])}
+                  onPrev={() => sw.go(-1)} onNext={() => sw.go(1)}
+                  style={styles.nbr}
+                />
+                {/* Saltar a otro bloque lo remonta (la `key`). */}
+                <SwipeLockContext.Provider value={sw.lockRef}>
+                  <View key={swap} onLayout={sw.onContentLayout}>
+                    <BlockEditorInline
+                      templateId={templateId}
+                      block={block}
+                      eyebrow={eyebrow}
+                      onCardLayout={onCardLayout}
+                      // Botón de lista en la esquina de la tarjeta: la lista cuelga justo debajo.
+                      corner={many ? (
+                        <ListButton
+                          ref={btnRef}
+                          n={index + 1}
+                          total={blocks.length}
+                          label={t('editor.goToBlock')}
+                          onPress={() => list.open(btnRef, cardH.current - spacing.lg + spacing.sm)}
+                        />
+                      ) : undefined}
+                      allExercises={allExercises}
+                      onClose={() => navigation.goBack()}
+                      navigation={navigation}
+                      scrollableRef={scrollRef}
+                    />
+                  </View>
+                </SwipeLockContext.Provider>
+              </Reanimated.ScrollView>
+            </Reanimated.View>
+          </View>
+        </View>
       </KeyboardAvoidingView>
+
+      <AnchoredList
+        top={list.top}
+        items={blocks.map((b, i) => ({
+          id: b.id, num: slotNumber(template, { blockId: b.id }) ?? String(i + 1).padStart(2, '0'), label: blockName(b),
+        }))}
+        currentId={blockId}
+        onSelect={(id) => {
+          list.close();
+          const to = blocks.findIndex((b) => b.id === id);
+          if (to !== index) sw.go(to > index ? 1 : -1, id);
+        }}
+        onClose={list.close}
+      />
     </SafeAreaView>
   );
 }
 
 const makeStyles = (th) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: th.colors.bg },
+  flex: { flex: 1 },
+  // Ver `ExerciseEditorScreen`: la fila queda a un paso de la tarjeta.
+  nbr:  { paddingTop: spacing.xs2, marginBottom: -spacing.sm2 },
 });

@@ -282,7 +282,7 @@ export default function SessionCard({ session, onDelete, volumeDelta = null, sty
                   entero (nombre + datos) — igual que en el editor de programa,
                   no como prefijo del nombre. La etapa se cayó de aquí: alargaba
                   la fila sin decir nada que no dijera ya el nombre. */}
-              <Text style={styles.cardSesLetter}>{isFree ? '★' : label}</Text>
+              <Text style={isFree ? styles.cardSesStar : styles.cardSesLetter}>{isFree ? '★' : label}</Text>
               <View style={styles.cardHeaderText}>
                 <Text style={styles.cardSesName} numberOfLines={1}>{name}</Text>
 
@@ -366,7 +366,10 @@ const makeStyles = (th) => StyleSheet.create({
     color:      th.colors.text,
     flexShrink: 1,
   },
-  cardSesLetter: { ...textStyles.itemTitle, color: th.colors.accent, textAlign: 'center', minWidth: 16 },
+  // La misma letra que el editor de programa (P16-06). La estrella se queda en
+  // Inter: la Barlow no trae el glifo.
+  cardSesLetter: { ...textStyles.indexGlyph, color: th.colors.accent, textAlign: 'center', minWidth: 20 },
+  cardSesStar:   { ...textStyles.itemTitle, color: th.colors.accent, textAlign: 'center', minWidth: 20 },
 
   // ── Línea de datos ──
   cardMeta:    { ...textStyles.label, color: th.colors.mutedLight },

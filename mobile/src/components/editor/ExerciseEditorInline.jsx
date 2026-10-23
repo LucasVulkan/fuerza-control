@@ -3,7 +3,7 @@
  * `123:1511` "Exercice Editor" + componentes `Exercice editor elements`
  * `160:1197` y `Option blocks` `176:1902`/`176:1952`).
  *
- * Estructura del mock, de arriba abajo: RESUMEN (tint/accent-10, sin borde) →
+ * Estructura del mock, de arriba abajo: tarjeta de identidad (P16-03; antes RESUMEN) →
  * VOLUMEN (segmented REPS/TIME + grid 2×2 de cajas ±) → CALENTAMIENTO →
  * PROGRESIÓN → OPCIONES (lista agrupada) + Vinculación (tarjeta aparte).
  *
@@ -38,7 +38,8 @@ import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
-import { ArrowIcon, ProgressionIcon, VariantIcon, WarmupIcon, LockIcon, CloseIcon } from '../ui/EditorIcons';
+import { ArrowIcon, ProgressionIcon, VariantIcon, WarmupIcon, LockIcon, CloseIcon, LinkIcon } from '../ui/EditorIcons';
+import EditorIdentityCard from './EditorIdentityCard';
 import VariantPicker from '../ui/VariantPicker';
 import AnimatedHeight from '../ui/AnimatedHeight';
 import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
@@ -155,8 +156,12 @@ function computeInitial(exConfig, def) {
   };
 }
 
+// `eyebrow`, `corner` y `onCardLayout` son de la tarjeta de identidad (P16-03):
+// la ceja que arma la pantalla, el hueco de la esquina para el botón de lista
+// de P16-04 y la medida que pliega la cabecera.
 export default function ExerciseEditorInline({
   templateId, exConfig, def, hasNextExercise, onSubstitute, onDelete, onIdentityChange,
+  eyebrow, corner, onCardLayout,
 }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -387,13 +392,15 @@ export default function ExerciseEditorInline({
     dropset ? t('exerciseEditor.dropsetSummary') : null,
   ].filter(Boolean).join(' · ');
 
-  // La frase de la regla sale del mismo motor que decide (§5.2): el Resumen, la
+  // La frase de la regla sale del mismo motor que decide (§5.2): la tarjeta, la
   // fila y la hoja dicen lo mismo.
   // `inputType` de ahora: con otra medida elegida y sin guardar, la frase
   // seguiría hablando de reps (P61).
   const ruleCfg = { ...exConfig, sets, minReps, maxReps, minTime, maxTime, inputType: isTime ? 'weight_time' : 'weight_reps', ...buildProgression(prog, ctx) };
-  const ruleTxt = progressionRule(ruleCfg, def, t, weightLabel);
-  // La ficha de PROGRAMACIÓN tiene una línea: la frase entera ya está en el Resumen.
+  // La tarjeta dice solo cuándo sube (P16-03, D10): `parts` ya no trae la cola «baja si…».
+  const rulePieces = progressionRule(ruleCfg, def, t, weightLabel, { parts: true });
+  const ruleSep    = rulePieces.when && rulePieces.when[0] === rulePieces.when[0].toUpperCase() ? ' · ' : ' ';
+  // La ficha de PROGRAMACIÓN tiene una línea: la frase entera ya está en la tarjeta.
   const ruleShort = progressionRule(ruleCfg, def, t, weightLabel, { short: true });
   const progTitle = prog.up === 'none'
     ? t('exerciseEditor.progTitle.none')
@@ -410,6 +417,14 @@ export default function ExerciseEditorInline({
     : warmupMode === 'auto'
       ? t('exerciseEditor.warmup.rowAutoSub',   { sets: warmupSets, rest: warmupRestTxt })
       : t('exerciseEditor.warmup.rowCustomSub', { n: warmupCustomSteps.length, rest: warmupRestTxt });
+
+  // «Vinculado con la sesión C · cambia en las dos» (solo las otras sesiones del grupo).
+  const myTpl     = getTpl(templateId);
+  const linkedTo  = !currentGroup ? [] : (linkGroups.find((g) => g.id === currentGroup)?.sessions ?? [])
+    .filter((l) => l !== (myTpl?.label ?? myTpl?.name ?? '?'));
+  const linkedTxt = linkedTo.length > 1
+    ? `${linkedTo.slice(0, -1).join(', ')}${t('editor.idAnd')}${linkedTo[linkedTo.length - 1]}`
+    : linkedTo[0];
 
   // ── Qué ejercicio es: unilateral y ejercicio aparte (P09-exercise-variants.md §6) ─
   // Los dos interruptores cambian el ejercicio (otro historial); la variante de
@@ -461,12 +476,31 @@ export default function ExerciseEditorInline({
   return (
     <View style={styles.container}>
 
-      {/* ══ RESUMEN (Exercice editor elements / Resumen, 166:1245) ═══════════ */}
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryTag}>{t('exerciseEditor.summaryTitle')}</Text>
-        <Text style={styles.summaryMain}>{volumeLine}</Text>
-        <Text style={styles.summarySub}>{ruleTxt}</Text>
-      </View>
+      {/* ══ TARJETA DE IDENTIDAD (P16-03): volumen, regla que sube y vinculación ══ */}
+      <EditorIdentityCard
+        eyebrow={eyebrow}
+        name={def?.name ?? exConfig.exerciseId}
+        line={volumeLine}
+        corner={corner}
+        onLayout={onCardLayout}
+      >
+        <View style={styles.ruleRow}>
+          <View style={styles.ruleIcon}><ProgressionIcon size={13} color={th.colors.accent} /></View>
+          <Text style={styles.ruleText}>
+            <Text style={styles.ruleStrong}>{rulePieces.action}</Text>
+            {rulePieces.when ? `${ruleSep}${rulePieces.when}` : ''}
+          </Text>
+        </View>
+        {linkedTxt ? (
+          <View style={styles.linkedRow}>
+            <LinkIcon size={13} color={th.colors.text} />
+            <Text style={styles.linkedText}>
+              {t('editor.idLinked', { count: linkedTo.length, sessions: linkedTxt })}
+              <Text style={styles.linkedHint}>{` ${t('editor.idLinkedHint', { count: linkedTo.length })}`}</Text>
+            </Text>
+          </View>
+        ) : null}
+      </EditorIdentityCard>
 
       {/* ══ VOLUMEN ══════════════════════════════════════════════════════════ */}
       <View style={styles.block}>
@@ -865,17 +899,14 @@ const makeStyles = (th) => StyleSheet.create({
   // Cada "Bloque" del mock: etiqueta de sección + su contenido, gap `space/md`.
   block: { gap: spacing.md },
 
-  // ── Resumen (166:1245) — solo relleno tint/accent-10, sin borde ────────────
-  summaryCard: {
-    backgroundColor:   th.tint.accent10,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    gap:               spacing.sm,
-  },
-  summaryTag:  { ...textStyles.caps, color: th.colors.accent },
-  summaryMain: { ...textStyles.bodyStrong, color: th.colors.text },
-  summarySub:  { ...textStyles.label,       color: th.tint.accent50 },
+  // ── Tarjeta de identidad: regla de progresión y vinculado (P16-03) ────────
+  ruleRow:    { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm2 },
+  ruleIcon:   { marginTop: 3 },
+  ruleText:   { ...textStyles.label, color: th.tint.accent50, lineHeight: 17, flex: 1 },
+  ruleStrong: { ...textStyles.labelStrong, color: th.colors.accent },
+  linkedRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  linkedText: { ...textStyles.labelStrong, color: th.colors.text, flex: 1 },
+  linkedHint: { ...textStyles.label, color: th.colors.mutedLight },
 
   // Título de grupo dentro de una hoja: el mismo tratamiento que `secLabel`, sin
   // su aire de arriba (en la hoja ya lo da el gap).

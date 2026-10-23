@@ -161,7 +161,7 @@ export default function HomeScreen() {
     .filter((tpl) => !tpl.programId && tpl.kind === 'template')
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const freeName = (tpl) => tpl.name || t('freeSession.templateUnnamed');
-  const editFree = (templateId) => navigation.navigate('SessionEditor', { templateId });
+  const editFree = (templateId) => navigation.navigate('SessionEditor', { templateId, editorBase: true });
 
   // La hoja se abre siempre: además de empezar en blanco se puede crear una en
   // el editor. Solo la sobre la marcha a medias va directa a seguir con ella.

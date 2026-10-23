@@ -2,13 +2,15 @@
 
 > Tema: programas
 > En corto: El editor de programa pasa a trabajar sobre un borrador que se puede cancelar; la cabecera dice si estás en la base (Cancelar) o dentro (‹ y a dónde vuelves); el nombre y las cifras de lo que editas van en una tarjeta gris con lápiz; borrar una sesión, un ejercicio o una etapa ofrece Deshacer.
-> Fase P16-01 · pendiente · Borrador: Cancelar descarta, el check guarda · §3
-> Fase P16-02 · pendiente · Cabecera del editor por niveles · §4
-> Fase P16-03 · pendiente · Tarjeta de identidad · §5
-> Fase P16-04 · pendiente · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
-> Fase P16-05 · pendiente · Marcas «editada» en lo que se ha tocado · §7
-> Fase P16-06 · pendiente · Letras y números en Barlow en las filas · §8
-> Fase P16-07 · pendiente · Toast con Deshacer al borrar · §9
+> Inicio: 2026-10-22
+> Fin: 2026-10-22
+> Fase P16-01 · hecho · Borrador: Cancelar descarta, el check guarda · §3
+> Fase P16-02 · hecho · Cabecera del editor por niveles · §4
+> Fase P16-03 · hecho · Tarjeta de identidad · §5
+> Fase P16-04 · hecho · Cambiar de ejercicio o bloque: lista anclada y anterior/siguiente · §6
+> Fase P16-05 · hecho · Marcas «editada» en lo que se ha tocado · §7
+> Fase P16-06 · hecho · Letras y números en Barlow en las filas · §8
+> Fase P16-07 · hecho · Toast con Deshacer al borrar · §9
 >
 > Estado: **spec escrita, sin implementar** (18-oct-2026). Sale del análisis
 > «qué hace que la app se sienta premium» (estados que la IA se salta: saber qué
@@ -99,14 +101,16 @@ muere a mitad, al volver se queda lo escrito, como hoy.
   actual (los mismos campos que se copian). Se expone como selector
   `selectEditorDirty` para el aviso, para el check (§4) y para las marcas (§7).
 
+*Como quedó (22-oct):* `ProgramEditor` es siempre la base (sin parámetro: solo se abre por `navigate('programEditor')`) y `SessionEditor` lo es con `editorBase: true` (Plantillas, Inicio, Programa, ficha de cliente); Cancelar = `goBack()` y `beforeRemove` decide si pregunta (`cancel` de `useEditorBase`, para P16-02); el toast «Programa editado» pasa a «Programa guardado»; para plantilla/sesión libre el cuerpo del aviso dice «La sesión vuelve…».
+
 **Probar P16-01**
 
 - [ ] Editar programa → cambiar las series de un ejercicio → volver con ‹ hasta la base → Cancelar → sale el diálogo; «Seguir editando» lo cierra y sigues en el editor
 - [ ] Mismo caso → «Descartar cambios» → el ejercicio vuelve a tener las series de antes, en el editor y en Inicio; no sale ningún toast
 - [ ] Entrar al editor y salir con Cancelar sin tocar nada → sale sin diálogo
-- [ ] Cambiar algo dentro de una sesión y pulsar el check desde ahí → guarda, toast «Programa guardado», vuelves a la pestaña desde la que abriste el editor
+- [ ] Cambiar algo dentro de una sesión y pulsar «Guardar» desde ahí → guarda, toast «Programa guardado», vuelves a la pestaña desde la que abriste el editor
 - [ ] Añadir una sesión y borrar otra → Cancelar → Descartar → la añadida desaparece y la borrada vuelve
-- [ ] Programa de un cliente: cambiar algo → Cancelar → Descartar → el cliente no queda marcado para «↑ Enviar»; con el check, sí
+- [ ] Programa de un cliente: cambiar algo → Cancelar → Descartar → el cliente no queda marcado para «↑ Enviar»; con «Guardar», sí
 - [ ] En la base, gesto de volver (iOS) o botón atrás (Android) con cambios → mismo diálogo
 - [ ] Editar una plantilla de sesión desde Plantillas → Cancelar con cambios → Descartar → la plantilla queda como estaba
 
@@ -156,11 +160,13 @@ puntos de entrada con `grep -rn "navigate('\(Program\|Session\|Exercise\|Block\)
 - El desplegable de título (`menu`) en ejercicio y bloque: pasa a la tarjeta
   (§6). `onTitlePress` sigue: lo usa Detalle de ejercicio.
 
+*Como quedó (22-oct):* `ScreenHeader` recibe `editor={{ base, onCancel, backLabel, folded }}` (renombrando vuelve a pintarse la cabecera de siempre); `folded` sale de `useEditorFold(threshold = 60)` (`onScroll` + `scrollEventThrottle={16}`). **Sin tarjeta aún (P16-03)** el plegado es un scroll de 60 px: P16-03 solo cambia el umbral por el alto medido de la tarjeta (`// P16-03:` en `hooks/useEditorFold.js`). Para no dejar al usuario sin renombrar ni cambiar de ejercicio hasta entonces, **siguen vivos `renaming`/`onRename*` y `menu`**, y el centro es pulsable (renombra, abre el desplegable u `onTitlePress`): en el programa, tocando «EDITANDO»; en la sesión, también por «···» › Editar nombre; en ejercicio y bloque, tocando el título plegado (con la cabecera sin plegar no hay acceso al desplegable hasta P16-04). **P16-03 quita `renaming`/`draft`/`onRename*`/velo; P16-04 quita `menu`.** `StagePlanner` solo usa el modo si se abre desde el editor (`fromEditor: true`; desde Clientes no) y la sesión libre del Workout (`BlockEditor` con `__free__`) no es editor. Destino de «‹» en ejercicio y bloque: el nombre de la sesión; en sesión: el del programa.
+
 **Probar P16-02**
 
-- [ ] Editar programa → arriba «Cancelar · EDITANDO · ✓»
-- [ ] Abrir una sesión → «‹ Fuerza 4 días» y ✓; abrir un ejercicio → «‹ Torso pesado» y ✓
-- [ ] Hacer scroll en una sesión larga → al salir la tarjeta, aparecen arriba la ceja y el nombre centrados y el «‹» se queda sin texto; al volver arriba, se invierte
+- [ ] Editar programa → arriba «Cancelar · EDITANDO · Guardar», con la barra a la altura de las demás cabeceras y «EDITANDO» centrado; «Guardar» gris sin cambios y lima en cuanto cambias algo
+- [ ] Abrir una sesión → «‹ Programa» y «Guardar»; abrir un ejercicio → «‹ Sesión A» y «Guardar» (en una sesión libre, «‹ Sesión libre»)
+- [ ] Hacer scroll en una sesión larga (aún sin tarjeta: pasados ~60 px) → aparecen arriba la ceja y el nombre centrados, sale la línea fina y el «‹» se queda sin texto; al volver arriba, se invierte
 - [ ] Editar una plantilla de sesión desde Plantillas → la sesión es la base: «Cancelar», no «‹»
 - [ ] Mi cuenta, Vista del programa y Detalle de ejercicio siguen con su cabecera de siempre
 
@@ -209,14 +215,19 @@ componente nuevo, `EditorIdentityCard`.
 - **Una etapa**: desaparece la cabecera de la etapa, que hoy repite el nombre
   del programa (`single` en `ProgramEditorScreen`): la tarjeta ya lo dice.
 
+*Como quedó (22-oct):* `components/editor/EditorIdentityCard` (props: `eyebrow`, `clientName`, `name`/`emptyName`, `stats` o `line`, `onRename`+`renameTitle` para el lápiz, **`corner`**, `onLayout`, `children`). **`corner` es el hueco de P16-04**: un `View` absoluto en la esquina (top 12 / right 12, 30 de alto, el nombre deja 70 a la derecha) donde va el botón «n/N»; `ExerciseEditorScreen` y `BlockEditorScreen` tienen un comentario `// P16-04:` donde pasarlo, y `ExerciseEditorInline`/`BlockEditorInline` lo reenvían. Rol nuevo `textStyles.statGlyph` (Barlow 16, ya en la escala). El nombre usa `heroName` (28, a dos líneas como mucho), sin rol más pequeño: la escala no tiene 24. La tarjeta del ejercicio y la del bloque viven dentro de los `*Inline` (el volumen y el nombre del bloque salen de su estado local, así que cambian al momento); la ceja («Ejercicio 01 · Sesión A», con el número de la lista de la sesión, `slotNumber`) la arma la pantalla y también va a la cabecera plegada. `useEditorFold()` ya no recibe umbral: devuelve `onCardLayout` y pliega al pasar el alto medido menos 20. Se quita de `ScreenHeader` el renombrado entero (`renaming`, `draft`, `onDraftChange`, `onRename*`, `placeholder`, velo y contador) y «···» › Editar nombre de la sesión (redundante con el lápiz); `menu` sigue hasta P16-04. Desvíos: (1) la regla usa `progressionRule(…, { parts: true })` y pone en negrita lima toda la acción («Sube 2,5 kg»), no solo el valor; (2) el bloque lleva su resumen en dos partes (línea + frase bajo la línea fina); (3) **con una sola etapa se quita el título repetido de la cabecera de la etapa, pero se queda la cabecera (ceja «En curso» + semanas/sesiones + engranaje)**: el engranaje es el único acceso a los ajustes de la etapa; (4) en la ficha de un programa de cliente, la ceja de la cabecera plegada es «Programa · Marta» (sin el azul); (5) las cifras de sesiones/sem son las de la etapa en curso; (6) se borran las claves de i18n que dejan de usarse (`titleEdit*`, `summarySession`, `summaryBlock`, `volume*`, `stagesLabel*` salvo `stagesLabelNone`, `exerciseEyebrow`, `blockEyebrow`, `programNamePlaceholder`).
+
 **Probar P16-03**
 
-- [ ] Editor de programa con 3 etapas → tarjeta gris «PROGRAMA / nombre / 12 semanas · 4 sesiones/sem · 3 etapas»; el rótulo de las fichas dice «ETAPAS»
-- [ ] Programa de una sola etapa → no hay cabecera de etapa repitiendo el nombre
+- [ ] Editor de programa con 3 etapas → tarjeta como la del tab Programa (ceja gris, nombre en lima, radio de las fichas de etapa) «PROGRAMA / nombre / 12 semanas · 4 sesiones/sem · 3 etapas»; el rótulo de las fichas dice «ETAPAS»
+- [ ] Programa de una sola etapa → la cabecera de la etapa ya no repite el nombre del programa (sigue el engranaje)
 - [ ] Lápiz → hoja con el nombre → cambiarlo → Hecho → la tarjeta lo enseña; Cancelar el editor → Descartar → vuelve el nombre de antes
 - [ ] Programa de un cliente → la ceja dice «PROGRAMA · <nombre del cliente>» en azul
 - [ ] Editor de ejercicio → la tarjeta lleva el volumen, la regla (solo cuándo sube) y, si está vinculado, «Vinculado con la sesión X»; cambiar el grupo a «Ninguna» quita esa línea
 - [ ] Cambiar las series en el editor de ejercicio → la cifra de la tarjeta cambia al momento
+- [ ] Editor de sesión → tarjeta con «SESIÓN A · ETAPA 1» (sin etapa si solo hay una), nombre, ejercicios · series · min y lápiz; «···» ya no trae Editar nombre
+- [ ] Editor de bloque → tarjeta con «BLOQUE 04 · SESIÓN A», el nombre del bloque (cambia al escribirlo en Opciones) y el resumen
+- [ ] Scroll en cualquier editor → la cabecera se pliega (ceja + nombre) cuando la tarjeta sale de pantalla, no antes
 
 ## 6. P16-04 — Cambiar de ejercicio o bloque
 
@@ -251,10 +262,12 @@ Sale del desplegable de `ScreenHeader` (`menu`) a un componente propio,
   nombre (`bodyStrong`). La fila actual: fondo `surface`, número y nombre en
   `accent`.
 
+*Como quedó (22-oct):* `components/ui/AnchoredList` (props `top` —null = cerrada—, `items: [{ id, num, label }]`, `currentId`, `onSelect(id)`, `onClose`; exporta también `ListButton`, el botón «n/N» de 30 de alto que va en el `corner`) y `hooks/useAnchoredList(rootRef)` (`open(anchorRef, offset)` mide el ancla y el contenedor con `measureInWindow`; devuelve `top`, `open`, `close`). La lista es hija de la pantalla, absoluta y con `zIndex` por encima de la cabecera; cuelga a `cardH - 12 + 6` px del botón (= justo bajo la tarjeta, con la medida que ya guarda `useEditorFold`, que ahora devuelve también `cardH`) y, con la cabecera plegada, a 4 px del hueco bajo ella (`onTitlePress` de `ScreenHeader`, que ya no tiene `menu`). Si no cabe, se desplaza dentro de la caja. El número es `slotNumber` (el de la lista de la sesión; en la sesión libre, la posición). La mecánica del swipe sale de `ExerciseDetail` a `hooks/useSiblingSwipe` y la fila a `components/ui/SiblingNav`, y Progreso › ejercicio usa las dos (mismo comportamiento); el cambio es el de allí: el contenido sale, `onChange` remonta el editor con la `key` y entra desde el otro lado (se quita el `FadeInDown`; la lista también desliza, hacia donde está el elegido). **Controles que no arrastran**: `StepField` y `SegmentedControl` ponen el bloqueo del swipe con `onTouchStart/End` si cuelgan de `SwipeLockContext` (lo provee cada pantalla); las filas de movimientos del bloque ya reclaman el swipe a la derecha. Desvíos: (1) **no se crea `indexGlyph`**: el número de la lista es la Barlow a 16 de la maqueta, que es `statGlyph`; P16-06 necesita 26 y 20, otros tamaños, así que crea su rol con esos y no hay nada que reutilizar; (2) la fila anterior/siguiente va fuera del scroll (como en la maqueta), no se mueve con él; (3) la sesión libre del Workout (sin cabecera de editor) también tiene lista, fila y swipe entre sus bloques.
+
 **Probar P16-04**
 
 - [ ] Editor de ejercicio → botón «1/6» en la esquina → lista bajo la tarjeta con el actual resaltado → elegir otro → cambia, con deslizamiento
-- [ ] Fila de arriba «‹ anterior · siguiente ›» → tocar «siguiente» → cambia; en el primero no hay «anterior»
+- [ ] Fila «‹ anterior · siguiente ›» pegada encima de la tarjeta → tocar «siguiente» → cambia; en el primero no hay «anterior»; al hacer scroll se va con el contenido
 - [ ] Deslizar el contenido a la izquierda → siguiente ejercicio; en el último, el contenido se resiste y vuelve
 - [ ] Deslizar en horizontal sobre un campo con − / + no cambia de ejercicio
 - [ ] Con la tarjeta fuera de pantalla, tocar el título plegado → abre la lista
@@ -273,10 +286,12 @@ copia:
   editados.
 - Al guardar o descartar, desaparecen (la copia se borra).
 
+*Como quedó (22-oct):* helpers puros en `utils/editorDraft`: `templateEdited(draft, id, tpl)` (tarjeta de sesión) y `rowEdited(draft, templateId, row)` (ejercicio por `exerciseId` o bloque por `id`, que no esté en la copia = nuevo); mover una fila (`order`) no la marca. Sin `ui._editorDraft` no hay marcas. «editada» (`editor.editedTag`) es `labelStrong` `accent` a la derecha de la tarjeta; la meta de la fila pasa a `accent`. Como solo hay marca mientras existe la copia, el check y descartar la quitan solos.
+
 **Probar P16-05**
 
 - [ ] Cambiar las series de un ejercicio de la sesión A → en el editor de sesión, su meta sale en lima; en el de programa, la sesión A lleva «editada»
-- [ ] Guardar con el check y volver a entrar → ya no hay marcas
+- [ ] Guardar con «Guardar» y volver a entrar → ya no hay marcas
 - [ ] Añadir una sesión → sale con «editada»
 
 ## 8. P16-06 — Letras y números en Barlow
@@ -294,6 +309,10 @@ escala de U06 y en `theme.test.js`, y no tamaños sueltos. El mismo rol en los
 números de la lista anclada (§6.1). El implementador revisa si la tarjeta de
 sesión de Vista del programa y el onboarding usan el mismo `sesLetter` y, si
 sí, pregunta antes de cambiarlos.
+
+*Como quedó (22-oct):* dos roles Barlow en `textStyles`, no uno, porque los tamaños son dos: `indexGlyph` (26, la letra de sesión: `accent`, columna `minWidth: 20`) e `indexGlyphSm` (20, el número del ejercicio: `muted`). Son los únicos cuerpos fuera de la escala de ocho (20 y 26, solo para la Barlow); `theme.test.js` lo permite solo a esa fuente y comprueba los valores. La lista anclada sigue con `statGlyph` (16), como se decidió en §6.
+
+**Pregunta para el usuario:** `components/SessionCard.jsx` (tarjeta de sesión de la ficha de cliente, `ClientsScreen`) tiene su propia `cardSesLetter` idéntica a la vieja `sesLetter` (`itemTitle` 16, `accent`, `minWidth: 16`). No se ha tocado; ¿quieres la misma letra Barlow ahí? Vista del programa (`ProgramDetailScreen`, `title` con el color de la sesión) y el onboarding usan otras letras y tampoco se han tocado.
 
 **Probar P16-06**
 
@@ -325,6 +344,21 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
   Mismo mecanismo que el descarte de §3, a escala pequeña.
 - Sigue valiendo la regla de hoy: la última sesión de una etapa no se borra.
 
+**Como quedó**: `showToast(msg, duration, type, action?)` guarda `{ msg, id, type, duration, action }`
+y el store gana `hideToast`. `Toast.jsx` pinta el de siempre (`PlainToast`, sin
+cambios) o `ActionToast` si hay `action`: ancho completo menos `spacing.lg`,
+`bottom = inset + spacing.xxl`, radio `radius.lg` del tema (18 en FormaFit; la maqueta
+dice 16), barra de 3 px con Reanimated, entra/sale con `FadeInDown`/`FadeOut`. El nombre
+va en negrita con `<b>…</b>` dentro de la cadena i18n (`editor.toastSessionDeleted`,
+`toastStageDeleted`, `toastExDeleted`, `toastUndo`). El borrado pasa por
+`deleteWithUndo` (`hooks/useEditorDraft.js`): copia con `makeEditorDraft` (`program`
+para sesión y etapa, `template` para ejercicio), borra y Deshacer escribe la copia con
+`restoreEditorDraft`; así `selectEditorDirty` vuelve a lo de antes. Descartar con
+Cancelar quita el toast con acción (ya no hay nada que deshacer). Solo se puede deshacer
+lo último: si se edita otra cosa del mismo programa en esos 5 s, Deshacer también la
+revierte. Sin tocar: borrar la sesión desde dentro de su editor, quitar un bloque y borrar
+plantillas libres siguen con diálogo.
+
 **Probar P16-07**
 
 - [ ] Borrar la sesión B → desaparece sin preguntar y sale «Sesión B eliminada · Deshacer» con la barra → Deshacer → vuelve en su sitio, con sus ejercicios
@@ -333,6 +367,74 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 - [ ] Eliminar desde el editor de ejercicio → vuelve a la sesión con el toast → Deshacer → el ejercicio vuelve
 - [ ] Borrar una etapa → toast → Deshacer → vuelve la etapa con sus sesiones
 - [ ] Borrar dos sesiones seguidas → el toast es el de la segunda; Deshacer solo recupera la segunda
+
+## Revisión final (22-oct-2026)
+
+- Cabecera del editor a **56 de alto fijos** (con una sola línea quedaba en ~40,
+  pegada a la barra de estado) y el centro («EDITANDO» / título plegado) ocupa
+  la barra entera, sin depender del ancho de «Cancelar» y del check.
+- La letra de sesión de `SessionCard` (ficha de cliente en Clientes) también en
+  `indexGlyph`, decidido por el usuario; la ★ de la sesión libre sigue en Inter.
+- Medidas sueltas de la maqueta pasadas a tokens del tema: relleno de la tarjeta
+  (`spacing.lg`), esquina (`spacing.md`), líneas finas (`colors.border`), filas
+  de la lista anclada (`radius.sm`, `spacing.md`).
+
+## Ajustes tras la primera prueba (23-oct-2026)
+
+Pedidos por el usuario al probar en el móvil:
+
+- **«Guardar» en vez del check** (el check se veía poco): píldora de 32 al final
+  de la cabecera, como el `okTxt` de `editor-salida-5.html`; gris (`surface2`)
+  sin cambios y lima con cambios en el borrador (`selectEditorDirty`). Va por
+  `editor.onSave` de `ScreenHeader`. El bloque de la sesión libre del Workout,
+  que no es del editor, sigue con su check. El centro de la cabecera deja a cada
+  lado el ancho medido de las acciones, para no pisar «··· Guardar».
+- **«‹ destino» genérico**: el nombre de la pantalla a la que vuelves, no el de
+  la cosa: «‹ Programa» desde una sesión o el planificador, «‹ Sesión A» (o
+  «Sesión libre», «Plantilla de sesión») desde un ejercicio o un bloque.
+- **La tarjeta de identidad es la tarjeta del programa del tab Programa**
+  (`HomeProgramCard`): `surface`, radio `md` (el de las fichas de etapa), ceja
+  `caps` gris, nombre `heading` en lima, sin el corte diagonal de la semana. Lo
+  de debajo (regla de progresión, vinculado) va tras el corte de 4 dp del color
+  del fondo de `ProgramCardDetail`, no tras una línea fina. Lápiz y botón «n/N»
+  a 36 de lado sobre `surface2`, como el engranaje de la etapa.
+- **Programa sin etapas: una sola tarjeta.** Arriba el programa (ceja, nombre,
+  cifras, lápiz); tras el corte, la etapa (su ceja «En curso · semana N», su meta
+  y el engranaje) y la fila «Programa sin etapas · Ver plan». Fuera de la
+  tarjeta ya no hay rótulo ni cabecera de etapa.
+- **Ejercicio y bloque: «‹ anterior · siguiente ›» pegado a la tarjeta y dentro
+  del scroll** (se va al bajar; plegada, la lista sale del título de la cabecera).
+
+### Segunda ronda (23-oct-2026)
+
+- **Corte bajo la cabecera, siempre**: 2 dp más oscuros que el fondo (negro en
+  los temas oscuros, `border` en los claros), como si el fondo estuviera partido.
+  Sustituye a la línea fina que solo salía al plegar.
+- **«Guardar»** con el radio de los botones (`radius.md`), no en píldora.
+- **Cabecera al estándar de iOS**: chevron de trazo redondeado (`BackChevron`),
+  8 dp hasta el texto, y «Cancelar» / «‹ Programa» en el peso del texto (`body`),
+  no en el de un botón. El texto del «‹» sigue siendo **a dónde vuelves**: es lo
+  que hace iOS (el título de la pantalla anterior); dónde estás lo dice el
+  título que aparece al plegar, como el título grande de iOS al hacer scroll.
+- **Programa sin etapas**: el segundo bloque de la tarjeta es una sola fila,
+  «PROGRAMA SIN ETAPAS · Ver plan ›» y el engranaje; fuera la ceja de la etapa y
+  la meta, que repetían las semanas y sesiones/sem de las cifras de arriba.
+
+### Tercera ronda (23-oct-2026)
+
+- «EDITANDO» en el centro **en todos los niveles**, no solo en la base; al
+  plegar sigue cambiando al título. El «‹ destino» se recorta antes de llegar a
+  él.
+- Vuelve el **chevron de la app** (`ArrowIcon`), a 12: el de trazo de iOS era
+  más alto que el texto. El peso `body` y los 8 dp hasta el texto se quedan.
+- La línea bajo la cabecera pasa a la de `border` (1 dp, siempre visible): el
+  corte negro sobre el fondo `#0a0a0a` no se veía sin el brillo al máximo, y
+  hacerlo más grueso no da contraste.
+- Programa sin etapas: fuera «Ver plan» (no hay plan que ver). El lápiz se
+  alinea con el engranaje (esquina en el borde del relleno, `spacing.lg`).
+- Hoja del nombre: el campo con `autoFocus`, como la hoja de «Nuevo cliente», en
+  vez de pedir el foco con 300 ms de retraso; el teclado salía sin que la hoja
+  subiera, o tarde. Falta confirmarlo en una build (Expo Go puede influir).
 
 ## 10. Historia del diseño
 
@@ -352,10 +454,10 @@ extenderá a clientes, plantillas y otras cosas que no son permanentes.
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
-| P16-01 | Borrador, Cancelar y aviso | — | 🟡 | pendiente |
-| P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | pendiente |
-| P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | pendiente |
-| P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | pendiente |
-| P16-05 | Marcas «editada» | P16-01 | 🟢 | pendiente |
-| P16-06 | Letras y números en Barlow | — | 🟢 | pendiente |
-| P16-07 | Toast con Deshacer | — (independiente del borrador) | 🟡 | pendiente |
+| P16-01 | Borrador, Cancelar y aviso | — | 🟡 | ✅ `212f79f` — `useEditorDraft` + `utils/editorDraft` |
+| P16-02 | Cabecera por niveles | P16-01 (Cancelar) | 🟡 | ✅ `f154e43` — modo `editor` de `ScreenHeader` + `useEditorFold` |
+| P16-03 | Tarjeta de identidad y hoja de nombre | P16-02 (quita el renombrado de la cabecera) | 🟡 | ✅ `41dc974` — `EditorIdentityCard` + `statGlyph` |
+| P16-04 | Lista anclada, anterior/siguiente y swipe | P16-03 (esquina de la tarjeta) | 🟡 | ✅ `dc9c672` — `AnchoredList` + `useSiblingSwipe` + `SiblingNav` |
+| P16-05 | Marcas «editada» | P16-01 | 🟢 | ✅ `48f76eb` — `templateEdited` + `rowEdited` |
+| P16-06 | Letras y números en Barlow | — | 🟢 | ✅ `48f76eb` — `indexGlyph` + `indexGlyphSm` |
+| P16-07 | Toast con Deshacer | — (independiente del borrador) | 🟡 | ✅ `03af98b` — `deleteWithUndo` + variante con acción de `Toast` |

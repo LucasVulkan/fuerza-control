@@ -2,7 +2,7 @@
  * SessionEditorScreen — editor de una sesión, rediseño FormaFit (Figma 208:1932).
  *
  * Estructura igual que el editor de programa: cabecera accent con el nombre
- * editable, segmented de sesiones hermanas, tarjeta Resumen y una única lista.
+ * editable, segmented de sesiones hermanas, tarjeta de identidad (P16-03) y una única lista.
  *
  * La lista mezcla ejercicios y bloques de acondicionamiento en el mismo tipo de
  * fila (Figma no dibuja una fila distinta para bloques), numerados 01, 02… Una
@@ -32,8 +32,9 @@ import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SwipeRow from '../components/ui/SwipeRow';
-import { MenuIcon, DragIcon, CheckIcon, CloseIcon } from '../components/ui/EditorIcons';
+import { MenuIcon, DragIcon, CloseIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -41,8 +42,13 @@ import { Section } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
 import { useEditorExit } from '../hooks/useEditorExit';
+import { useEditorBase, clearEditorDraft, deleteWithUndo } from '../hooks/useEditorDraft';
+import { rowEdited } from '../utils/editorDraft';
+import { useEditorFold } from '../hooks/useEditorFold';
 import { defaultBlock } from '../utils/conditioningBlocks';
 import { sessionToText } from '../utils/sessionText';
+import { sessionTag } from '../utils/editorIdentity';
+import { isTrainerProgram } from '../utils/stageLocks';
 import { variantLabel, displayVariant } from '../utils/variants';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { DEFAULT_TARGET } from '../utils/progression';
@@ -89,21 +95,6 @@ function blockMeta(block, t) {
   return t('blocks.meta.forTime', { count, rounds: block.rounds ?? 3 });
 }
 
-// "Volumen: 10 series de tracción, 3 de pierna, 1 bloque" — sustituye a las
-// pills por patrón muscular que había antes.
-function volumeLine(patternSets, blockCount, t) {
-  const entries = Object.entries(patternSets).sort((a, b) => b[1] - a[1]);
-  const parts = entries.map(([pattern, sets], i) => {
-    const name = t(`exerciseSelector.patterns.${pattern}`, pattern).toLowerCase();
-    return i === 0
-      ? t('editor.volumeFirst', { count: sets, pattern: name })
-      : t('editor.volumeRest',  { count: sets, pattern: name });
-  });
-  if (blockCount > 0) parts.push(t('editor.volumeBlocks', { count: blockCount }));
-  if (parts.length === 0) return null;
-  return t('editor.volumeLine', { parts: parts.join(', ') });
-}
-
 // ─── Fila ─────────────────────────────────────────────────────────────────────
 // Deslizar a la derecha descubre sustituir/eliminar (se conserva del diseño
 // anterior: Figma no dibuja esas acciones en ningún sitio). El asa de arrastre
@@ -111,7 +102,7 @@ function volumeLine(patternSets, blockCount, t) {
 // ahí, así que no compite con este swipe horizontal ni con el ScrollView.
 
 function EditorRow({
-  number, name, variant, meta, pill, radii, onPress,
+  number, name, variant, meta, edited, pill, radii, onPress,
   isOpen, onOpenChange, onSwipeDelete, onSubstitute,
 }) {
   const { t }  = useTranslation();
@@ -144,7 +135,7 @@ function EditorRow({
           {name}
           {variant ? <Text style={styles.rowVariant}>{` · ${variant}`}</Text> : null}
         </Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
+        <Text style={[styles.rowMeta, edited && styles.rowMetaEdited]} numberOfLines={1}>{meta}</Text>
       </View>
       {pill ? (
         <View style={styles.pill}><Text style={styles.pillText}>{pill}</Text></View>
@@ -156,7 +147,7 @@ function EditorRow({
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
 export default function SessionEditorScreen({ navigation, route }) {
-  const { templateId: initialTemplateId, programId, stageIdx = null } = route.params ?? {};
+  const { templateId: initialTemplateId, programId, stageIdx = null, editorBase = false } = route.params ?? {};
   const { t, i18n } = useTranslation();
   const { fmt: fmtWeight } = useWeightUnit();
   const th     = useTheme();
@@ -178,6 +169,7 @@ export default function SessionEditorScreen({ navigation, route }) {
   const exerciseLibrary  = useStore((s) => s.exerciseLibrary);
   const customExercises  = useStore((s) => s.customExercises);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
+  const draft            = useStore((s) => s.ui._editorDraft);
   const removeExercise   = useStore((s) => s.removeExercise);
   const reorderExercise  = useStore((s) => s.reorderExercise);
   const renameSession    = useStore((s) => s.renameSession);
@@ -191,10 +183,19 @@ export default function SessionEditorScreen({ navigation, route }) {
   const deleteBlockPreset     = useStore((s) => s.deleteBlockPreset);
   const deleteFreeTemplate    = useStore((s) => s.deleteFreeTemplate);
   const activeTemplateId      = useStore((s) => s.activeSession.templateId);
+  const clientSync            = useStore((s) => s.clientSync);
   const { done }              = useEditorExit(navigation, templateId);
 
   const allExercises = { ...exerciseLibrary, ...customExercises };
   const template = sessionTemplates[templateId];
+
+  // Base del editor (P16-01): quien abre esta pantalla desde fuera pasa
+  // `editorBase`. Una sesión de programa copia el programa entero; una libre o
+  // una plantilla, solo ella. Su chevron y el atrás ya cancelan por `beforeRemove`.
+  const baseTpl = sessionTemplates[initialTemplateId];
+  const { cancel } = useEditorBase(navigation, editorBase, !baseTpl ? null
+    : baseTpl.programId ? { kind: 'program', id: baseTpl.programId } : { kind: 'template', id: initialTemplateId });
+  const { folded, onScroll, onCardLayout } = useEditorFold();
 
   const program    = programs[programId];
   const stage      = stageIdx != null ? program?.stages?.[stageIdx] : null;
@@ -204,8 +205,6 @@ export default function SessionEditorScreen({ navigation, route }) {
 
   // Sesión libre (T06-free-sessions.md §5): sin programa, sin hermanas A/B/C.
   const isFree = !!template && !template.programId;
-  // Plantilla de sesión (C06-group-classes.md §4.6): lo dice la ceja.
-  const isTpl  = isFree && template.kind === 'template';
 
   // «Crear» da de alta la sesión antes de abrir el editor: si se sale sin
   // añadir nada, no puede quedar una sesión vacía en Inicio. Solo al desmontar
@@ -222,8 +221,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen]     = useState(false);
   const [menuOpen, setMenuOpen]             = useState(false);
-  const [editingName, setEditingName]       = useState(false);
-  const [nameValue, setNameValue]           = useState('');
 
   // El ScrollView de la lista de huecos: `Sortable` lo necesita para hacer
   // autoscroll al arrastrar cerca del borde.
@@ -235,7 +232,6 @@ export default function SessionEditorScreen({ navigation, route }) {
     // duplicar): entra por la derecha.
     const to = sessionIds.indexOf(id);
     slide(to < 0 || to > sessionIds.indexOf(templateId) ? 1 : -1);
-    setEditingName(false);
     setOpenRowId(null);
     setTemplateId(id);
   }
@@ -243,7 +239,6 @@ export default function SessionEditorScreen({ navigation, route }) {
   if (!template) return null;
 
   const stats = sessionStats(template, allExercises);
-  const volume = volumeLine(stats.patternSets, template.blocks?.length ?? 0, t);
 
   // ── Huecos: una superserie es UN hueco con varias filas, y los bloques se
   // mezclan con los ejercicios en el mismo orden que verá la pantalla de
@@ -290,8 +285,11 @@ export default function SessionEditorScreen({ navigation, route }) {
   // ── Acciones ──────────────────────────────────────────────────────────────
 
   function handleRemoveExercise(exerciseId) {
-    removeExercise(templateId, exerciseId);
-    showToast(t('editor.toastExDeleted'), 2200, 'neutral');
+    deleteWithUndo({
+      kind: 'template', id: templateId, label: t('editor.toastUndo'),
+      msg: t('editor.toastExDeleted', { name: allExercises[exerciseId]?.name ?? exerciseId }),
+      remove: () => removeExercise(templateId, exerciseId),
+    });
   }
 
   function openExercise(exerciseId) {
@@ -372,6 +370,7 @@ export default function SessionEditorScreen({ navigation, route }) {
         {
           text: t('freeSession.delete'), style: 'destructive',
           onPress: () => {
+            clearEditorDraft(); // ya confirmado: borrar no es un cambio que Cancelar deba preguntar
             navigation.goBack();
             deleteFreeTemplate(templateId);
           },
@@ -380,16 +379,13 @@ export default function SessionEditorScreen({ navigation, route }) {
     );
   }
 
-  function commitName() {
-    setEditingName(false);
-    const trimmed = nameValue.trim();
-    if (trimmed && trimmed !== template.name) renameSession(templateId, trimmed);
-  }
-
-  function startEditName() {
-    setNameValue(template.name ?? '');
-    setEditingName(true);
-  }
+  // La ceja de la tarjeta (y de la cabecera plegada): «Sesión A · Etapa 1», con
+  // la etapa solo si el programa tiene más de una.
+  const eyebrow = program?.stages?.length > 1 && stageIdx != null
+    ? t('editor.idSessionStage', { label: template.label ?? '', n: stageIdx + 1 })
+    : sessionTag(template, t);
+  // El cliente con un programa del entrenador no lo renombra.
+  const canRename = !isTrainerProgram(program, clientSync);
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -397,24 +393,16 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── SesionHeader (208:2072) ── */}
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        eyebrow={isTpl ? t('templates.sessionEyebrow') : isFree ? t('freeSession.badge') : t('editor.sessionEyebrow', { label: template.label ?? '' })}
+        // Dentro, vuelves al programa (la etapa ya la dice la ceja); la base se cancela.
+        editor={{ base: editorBase, onCancel: cancel, onSave: done, backLabel: t('editor.idProgram'), folded }}
+        eyebrow={eyebrow}
         title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
-        renaming={editingName}
-        draft={nameValue}
-        onDraftChange={setNameValue}
-        onRenameStart={startEditName}
-        onRenameCommit={commitName}
-        // El check va el último: es la acción principal de la barra y cae bajo
-        // el pulgar en el mismo sitio en las cuatro pantallas del editor.
+        // «Guardar» (`onSave`) va el último: es la acción principal de la barra
+        // y cae en el mismo sitio en las cuatro pantallas del editor.
         right={(ink) => (
-          <>
-            <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
-              <MenuIcon color={ink} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={done} hitSlop={12} accessibilityRole="button">
-              <CheckIcon size={20} color={th.colors.accent} />
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={12}>
+            <MenuIcon color={ink} />
+          </TouchableOpacity>
         )}
       />
 
@@ -423,6 +411,8 @@ export default function SessionEditorScreen({ navigation, route }) {
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {/* ── Segmented de sesiones hermanas (210:2624) ── */}
         {sessionIds.length > 1 && (
@@ -437,18 +427,20 @@ export default function SessionEditorScreen({ navigation, route }) {
           {/* Lo de dentro no hace su propio fundido al montarse o desmontarse con
               la página; lo que se añada o quite después, sí. */}
           <LayoutAnimationConfig skipEntering skipExiting>
-            {/* ── Resumen (208:1936) ── */}
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTag}>
-                {isFree ? t('freeSession.badge') : t('editor.summarySession', { label: template.label ?? '' })}
-              </Text>
-              <Text style={styles.summaryMain}>
-                {stats.minutes > 0
-                  ? t('editor.sessionMeta',       { ex: stats.exercises, sets: stats.sets, min: stats.minutes })
-                  : t('editor.sessionMetaNoTime', { ex: stats.exercises, sets: stats.sets })}
-              </Text>
-              {volume && <Text style={styles.summaryVolume}>{volume}</Text>}
-            </View>
+            {/* ── Tarjeta de identidad (P16-03) ── */}
+            <EditorIdentityCard
+              eyebrow={eyebrow}
+              name={template.name ?? ''}
+              emptyName={isFree ? t('freeSession.templateUnnamed') : undefined}
+              stats={[
+                { n: stats.exercises, label: t('editor.idExercises', { count: stats.exercises }) },
+                { n: stats.sets,      label: t('editor.idSets',      { count: stats.sets }) },
+                stats.minutes > 0 && { n: stats.minutes, label: t('editor.idMin') },
+              ].filter(Boolean)}
+              onRename={canRename ? (name) => renameSession(templateId, name) : undefined}
+              renameTitle={sessionTag(template, t)}
+              onLayout={onCardLayout}
+            />
 
             {/* ── Lista ── */}
             <View style={styles.section}>
@@ -471,6 +463,8 @@ export default function SessionEditorScreen({ navigation, route }) {
                     metaFor={metaFor}
                     allExercises={allExercises}
                     t={t}
+                    draft={draft}
+                    templateId={templateId}
                     onOpenExercise={openExercise}
                     onOpenBlock={openBlock}
                     onRemoveExercise={handleRemoveExercise}
@@ -519,13 +513,6 @@ export default function SessionEditorScreen({ navigation, route }) {
       {/* ── Menú "···" ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('editor.sessionMenuTitle')}>
         <Section style={styles.sheetSection}>
-          {/* Sin lápiz en la cabecera, esto es lo que recuerda que el nombre se
-              puede cambiar; el toque sobre el propio nombre sigue valiendo. */}
-          <SheetRow
-            icon={ROW_ICON.rename}
-            label={t('editor.renameOption')}
-            onPress={startEditName}
-          />
           {/* Sin pesos: aquí no se sabe para quién es (C05-trainer-logging.md §5). */}
           <SheetRow
             icon={ROW_ICON.text}
@@ -614,7 +601,7 @@ export default function SessionEditorScreen({ navigation, route }) {
 
 function Slot({
   slot, number,
-  openRowId, setOpenRowId, metaFor, allExercises, t,
+  openRowId, setOpenRowId, metaFor, allExercises, t, draft, templateId,
   onOpenExercise, onOpenBlock, onRemoveExercise, onRemoveBlock, onSubstitute,
 }) {
   const styles = useThemedStyles(makeStyles);
@@ -627,6 +614,7 @@ function Slot({
         number: pad,
         name:   slot.block.name ?? t(`blocks.formats.${slot.block.format}`),
         meta:   blockMeta(slot.block, t),
+        edited: rowEdited(draft, templateId, slot.block),
         pill:   t(`blocks.formats.${slot.block.format}`).toUpperCase(),
         onPress:    () => onOpenBlock(slot.block.id),
         onDelete:   () => onRemoveBlock(slot.block),
@@ -640,6 +628,7 @@ function Slot({
         name:   allExercises[ex.exerciseId]?.name ?? ex.exerciseId,
         variant: variantLabel(displayVariant(ex.variant, allExercises[ex.exerciseId]), t),
         meta:   metaFor(ex),
+        edited: rowEdited(draft, templateId, ex),
         // "Principal" va en el subtítulo (`rowMeta`), no como pill: la única
         // pill que queda es la de formato de bloque, y "Principal" no cabe.
         pill:   null,
@@ -659,6 +648,7 @@ function Slot({
           name={row.name}
           variant={row.variant}
           meta={row.meta}
+          edited={row.edited}
           pill={row.pill}
           radii={isGroup ? groupRadii(i, rows.length) : null}
           onPress={row.onPress}
@@ -708,25 +698,14 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop: spacing.md,
   },
 
-  // ── Resumen ── (sin borde: en Figma es solo relleno tint/accent-10)
-  summaryCard: {
-    backgroundColor:   th.tint.accent10,
-    borderRadius:      th.radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.md,
-    gap:               spacing.sm,
-  },
-  summaryTag:    { ...textStyles.caps, color: th.colors.accent },
-  summaryMain:   { ...textStyles.bodyStrong, color: th.colors.text },
-  summaryVolume: { ...textStyles.label, color: th.tint.accent50 },
-
   // ── Fila ── (la tarjeta, el gesto y el panel de acciones viven en `ui/SwipeRow`)
-  rowNumber: { ...textStyles.labelStrong, color: th.colors.accent },
+  rowNumber: { ...textStyles.indexGlyphSm, color: th.colors.muted },
   rowName:   { ...textStyles.bodyStrong, color: th.colors.text },
   rowVariant: { ...textStyles.body, color: th.colors.mutedLight },
   // Sin `marginTop`: el hueco nombre→meta lo pone el interlineado y nada más,
   // igual que en las tarjetas de sesión del editor de programa (`sesMeta`).
   rowMeta:   { ...textStyles.label, color: th.colors.mutedLight },
+  rowMetaEdited: { color: th.colors.accent },
   // El asa se agarra en toda la esquina derecha de la fila: el padding agranda la
   // zona de toque hasta los bordes de la tarjeta y los márgenes negativos lo
   // compensan, así que el icono no se mueve (QA P49: había que ser muy preciso).

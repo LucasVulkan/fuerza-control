@@ -19,24 +19,25 @@
  *   baseLog     los registros del sujeto (el usuario, o el cliente)
  *   onChange    (id) al cambiar de ejercicio
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Modal, PanResponder, StyleSheet, useWindowDimensions } from 'react-native';
-import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, interpolate } from 'react-native-reanimated';
+import { useMemo, useState } from 'react';
+import { View, ScrollView, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 
 import { Text, TextInput } from '../ui/Text';
 import ScreenHeader from '../ui/ScreenHeader';
+import SiblingNav from '../ui/SiblingNav';
 import SegmentedControl from '../ui/SegmentedControl';
 import RoundCheck from '../ui/RoundCheck';
 import { MetricInfoSheet } from '../ui/MetricInfo';
-import { ArrowIcon, CloseIcon } from '../ui/EditorIcons';
+import { CloseIcon } from '../ui/EditorIcons';
 import DragSheet from '../DragSheet';
 import ProgressChart from './ProgressChart';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
+import { useSiblingSwipe } from '../../hooks/useSiblingSwipe';
 import { spacing, textStyles, borders, withOpacity, getCardRadii } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { formatDate } from '../../utils/formatters';
@@ -167,7 +168,6 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
   const { label: weightLabel, toDisplay: wDisplay, fmt: fmtWeight, unit, isLb } = useWeightUnit();
   const unitLabel = unit.charAt(0).toUpperCase() + unit.slice(1);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
-  const { width: winW } = useWindowDimensions();
 
   const [now]        = useState(() => Date.now());
   const [info,        setInfo]        = useState(null);
@@ -194,46 +194,11 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
   const prevId = idx > 0 ? order[idx - 1] : null;
   const nextId = idx >= 0 && idx < order.length - 1 ? order[idx + 1] : null;
 
-  const tx      = useSharedValue(0);
-  const lockRef = useRef(false);   // la gráfica lo pone a true mientras se toca
-  const live    = useRef({});
-  useEffect(() => { live.current = { prevId, nextId, onChange, winW }; });
-
-  // Los gestos leen `live` al tocar, no al pintar: el lint no lo distingue.
-  /* eslint-disable react-hooks/refs */
-  const go = (dir) => {
-    const target = dir > 0 ? live.current.nextId : live.current.prevId;
-    if (!target) { tx.set(withTiming(0, { duration: 200 })); return; }
-    const w = live.current.winW;
-    Haptics.selectionAsync().catch(() => {});
-    tx.set(withTiming(-dir * w, { duration: 160 }));
-    setTimeout(() => {
-      setScrub(null);
-      live.current.onChange?.(target);
-      tx.set(withSequence(withTiming(dir * w * 0.4, { duration: 0 }), withTiming(0, { duration: 220 })));
-    }, 160);
-  };
-  const [swipe] = useState(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gs) =>
-      !lockRef.current && Math.abs(gs.dx) > 16 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
-    onPanResponderMove: (_, gs) => {
-      // En el primero y el último, el contenido se resiste: no hay a dónde ir.
-      const edge = (gs.dx > 0 && !live.current.prevId) || (gs.dx < 0 && !live.current.nextId);
-      tx.set(edge ? gs.dx / 4 : gs.dx);
-    },
-    onPanResponderTerminationRequest: () => false,
-    onPanResponderRelease: (_, gs) => {
-      if (gs.dx < -70 || (gs.dx < -30 && gs.vx < -0.5)) go(1);
-      else if (gs.dx > 70 || (gs.dx > 30 && gs.vx > 0.5)) go(-1);
-      else tx.set(withTiming(0, { duration: 200 }));
-    },
-    onPanResponderTerminate: () => tx.set(withTiming(0, { duration: 200 })),
-  }));
-  /* eslint-enable react-hooks/refs */
-  const slideStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.get() }],
-    opacity: interpolate(Math.abs(tx.get()), [0, winW], [1, 0.3]),
-  }));
+  // La gráfica pone `lockRef` a true mientras se toca, para no deslizar la página.
+  const { go, panHandlers, slideStyle, lockRef } = useSiblingSwipe({
+    prevId, nextId,
+    onChange: (target) => { setScrub(null); onChange?.(target); },
+  });
 
   // ── Datos ──────────────────────────────────────────────────────────────────
   const rawLogs = useMemo(() => getExerciseLogsFrom(id, baseLog), [id, baseLog]);
@@ -325,26 +290,12 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
       />
 
       {/* El anterior y el siguiente: dicen que hay más, y se pulsan. */}
-      {(prevId || nextId) && (
-        <View style={styles.nbr}>
-          {/* El chevron va fuera del texto: un nombre largo se recorta, pero la
-              flecha que dice «se pulsa» sigue ahí. */}
-          {prevId ? (
-            <TouchableOpacity style={styles.nbrBtn} onPress={() => go(-1)} hitSlop={8} activeOpacity={0.6}>
-              <ArrowIcon size={10} color={th.colors.mutedLight} back />
-              <Text style={styles.nbrText} numberOfLines={1}>{nameOf(prevId)}</Text>
-            </TouchableOpacity>
-          ) : <View />}
-          {nextId ? (
-            <TouchableOpacity style={styles.nbrBtn} onPress={() => go(1)} hitSlop={8} activeOpacity={0.6}>
-              <Text style={styles.nbrText} numberOfLines={1}>{nameOf(nextId)}</Text>
-              <ArrowIcon size={10} color={th.colors.mutedLight} />
-            </TouchableOpacity>
-          ) : <View />}
-        </View>
-      )}
+      <SiblingNav
+        prev={prevId && nameOf(prevId)} next={nextId && nameOf(nextId)}
+        onPrev={() => go(-1)} onNext={() => go(1)}
+      />
 
-      <View style={styles.flex} {...swipe.panHandlers}>
+      <View style={styles.flex} {...panHandlers}>
         <Reanimated.View style={[styles.flex, slideStyle]}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}>
             {/* Período + programa actual */}
@@ -580,15 +531,6 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
 const makeStyles = (th) => StyleSheet.create({
   container: { flex: 1, backgroundColor: th.colors.bg },
   flex:      { flex: 1 },
-
-  // Vecinos: gris y pequeños, bajo la cabecera.
-  nbr: {
-    flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.sm2,
-  },
-  // Cada uno se queda en su mitad, con aire antes del centro.
-  nbrBtn:  { maxWidth: '42%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs2 },
-  nbrText: { ...textStyles.labelStrong, color: th.colors.mutedLight, flexShrink: 1 },
 
   periodRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
