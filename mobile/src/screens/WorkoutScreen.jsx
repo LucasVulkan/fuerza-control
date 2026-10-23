@@ -16,7 +16,7 @@ import NotesModal from '../components/workout/NotesModal';
 import DragSheet from '../components/DragSheet';
 import NavScrim from '../components/ui/NavScrim';
 import SheetRow from '../components/ui/SheetRow';
-import { Section } from '../components/ui/MenuList';
+import { Section, RowIcon } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { spacing, textStyles, borders, withOpacity, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -592,10 +592,7 @@ export default function WorkoutScreen() {
           </View>
 
           <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={12} style={styles.headerAction}>
-            <NoteIcon
-              size={22}
-              color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
-            />
+            <NoteIcon size={22} active={hasSessionNotes} />
           </TouchableOpacity>
         </View>
 
@@ -770,9 +767,7 @@ export default function WorkoutScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={t('workout.discardSession')}
                 >
-                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={th.colors.redText} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                    {ROW_ICON.trash}
-                  </Svg>
+                  <RowIcon color={th.colors.redText}>{ROW_ICON.trash}</RowIcon>
                 </TouchableOpacity>
               </View>
             </View>

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barra de pestañas</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --surface: #141414; --surface2: #1a1a1a; --border: #2a2a2a; --borderCard: #1f1f1f;
+    --text: #f0f0f0; --mutedLight: #9a9a9a; --muted: #777; --accent: #e8ff47; --icoAccent: #cddc64;
+    --onAccent: #0a0a0a; --blue: #57a8ff;
+    --t: 1; --sw: 1.7px; --gap: 1.5px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050505; color: var(--text); font: 14px/1.4 Inter, system-ui, sans-serif; padding: 24px 16px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.lead { color: var(--mutedLight); margin: 0 0 16px; max-width: 720px; }
+  .controls { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; color: var(--mutedLight); font-size: 13px; margin-bottom: 20px; }
+  .controls label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 22px; }
+  .opt h2 { font-size: 15px; margin: 0 0 2px; }
+  .opt h2 b { color: var(--accent); margin-right: 6px; }
+  .opt p { margin: 0 0 10px; color: var(--mutedLight); font-size: 12.5px; min-height: 36px; }
+
+  /* Móvil: solo el tercio de abajo */
+  .phone { position: relative; height: 250px; max-width: 380px; background: var(--bg); border-radius: 26px; overflow: hidden; border: 1px solid #1c1c1c; display: flex; flex-direction: column; }
+  .content { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .fake { flex-shrink: 0; background: var(--surface); border-radius: 14px; height: 54px; display: flex; align-items: center; padding: 0 14px; gap: 10px; }
+  .fake i { display: block; height: 8px; border-radius: 4px; background: #2a2a2a; }
+  .fake .dot { width: 26px; height: 26px; border-radius: 8px; background: #222; }
+  .home-ind { height: 18px; display: flex; justify-content: center; align-items: center; }
+  .home-ind::after { content: ''; width: 110px; height: 4px; border-radius: 2px; background: #3a3a3a; }
+
+  /* Barra común */
+  .bar { --i: 0; --n: 5; position: relative; display: flex; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 6px; background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; z-index: 1; }
+  .tab .lbl { font-size: 10.5px; font-weight: 500; letter-spacing: .01em; transition: color calc(var(--t) * 200ms); }
+  .tab.on .lbl { color: var(--accent); }
+  .tab .ico { position: relative; display: grid; place-items: center; transition: transform calc(var(--t) * 120ms) ease-out; }
+  .tab:active .ico { transform: scale(.88); }
+  .badge-dot { position: absolute; top: -1px; right: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
+  .badge-n { position: absolute; top: -5px; right: -9px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--blue); color: var(--onAccent); font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--bg); }
+  .ind { position: absolute; left: calc((var(--i) + .5) * (100% / var(--n))); transform: translateX(-50%); pointer-events: none;
+         transition: left calc(var(--t) * 380ms) cubic-bezier(.34, 1.4, .64, 1); }
+
+  /* Colores del icono (dos tonos con hueco, como en iconos-dos-colores.html) */
+  svg { display: block; overflow: visible; }
+  svg * { stroke-width: var(--sw); transition: stroke calc(var(--t) * 200ms), fill calc(var(--t) * 200ms); }
+  .tab .g, .tab .a { stroke: var(--muted); }
+  .tab .gf, .tab .af { fill: var(--muted); }
+  .tab.on .g { stroke: var(--mutedLight); }
+  .tab.on .gf { fill: var(--mutedLight); }
+  .tab.on .a { stroke: var(--accent); }
+  .tab.on .af { fill: var(--accent); }
+  body.full .tab.on .g { stroke: var(--accent); }
+  body.full .tab.on .gf { fill: var(--accent); }
+  .knock, .knock * { stroke: #000; fill: none; stroke-width: calc(var(--sw) + 2 * var(--gap)); }
+
+  /* A · Actual (con los iconos nuevos) */
+  .vA .bar { border-top: 1px solid var(--border); background: var(--bg); }
+
+  /* B · Píldora: el fondo lima tenue crece desde el centro */
+  .vB .bar { border-top: 1px solid var(--borderCard); background: var(--bg); padding-top: 4px; }
+  .vB .ico::before { content: ''; position: absolute; inset: -5px -16px; border-radius: 999px; background: rgba(232, 255, 71, .13);
+                     transform: scaleX(.3); opacity: 0; transition: transform calc(var(--t) * 320ms) cubic-bezier(.34, 1.4, .64, 1), opacity calc(var(--t) * 180ms); }
+  .vB .tab.on .ico::before { transform: scaleX(1); opacity: 1; }
+  .vB .tab .ico svg { position: relative; }
+
+  /* C · Flotante: isla redondeada, punto lima que viaja, etiqueta solo en la activa */
+  .vC .home-ind { background: transparent; }
+  .vC .bar { margin: 0 12px 6px; border-radius: 24px; background: rgba(26, 26, 26, .92); border: 1px solid #262626; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 2px 4px; }
+  .vC .tab { padding: 11px 0 12px; }
+  .vC .tab .lbl { position: absolute; bottom: 2px; opacity: 0; transform: translateY(3px); transition: opacity calc(var(--t) * 200ms), transform calc(var(--t) * 200ms); font-size: 9.5px; }
+  .vC .tab.on .lbl { opacity: 1; transform: none; }
+  .vC .tab.on .ico { transform: translateY(-5px); }
+  .vC .tab .ico { transition: transform calc(var(--t) * 300ms) cubic-bezier(.34, 1.4, .64, 1); }
+  .vC .tab:active .ico { transform: translateY(-5px) scale(.88); }
+
+  /* D · Línea: un trazo lima en el borde de arriba que se desliza; el icono hace «pop» */
+  .vD .bar { border-top: 1px solid var(--border); background: var(--bg); }
+  .vD .ind { top: -1px; width: 28px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+
+  /* E · Bloque lima: un cuadro lima que viaja y el icono activo va en negro */
+  .vE .bar { border-top: 1px solid var(--borderCard); background: var(--bg); padding-top: 5px; }
+  .vE .ind { top: 6px; width: 50px; height: 30px; border-radius: 10px; background: var(--accent); }
+  .vE .tab { padding-top: 8px; }
+  .vE .tab .ico { height: 22px; }
+  .vE .tab.on .g, .vE .tab.on .a { stroke: var(--onAccent); }
+  .vE .tab.on .gf, .vE .tab.on .af { fill: var(--onAccent); }
+  .vE .tab.on .lbl { color: var(--text); }
+  .vE .badge-dot, .vE .badge-n { box-shadow: 0 0 0 2px var(--bg); }
+
+  /* F · Superficie: barra gris de tarjeta, la activa sube a surface2 con tinte */
+  .vF .bar { background: var(--surface); border-radius: 20px 20px 0 0; padding: 6px 6px 0; gap: 4px; }
+  .vF .tab { border-radius: 14px; transition: background calc(var(--t) * 250ms); padding: 7px 0 6px; }
+  .vF .tab.on { background: #1f1f1f; }
+  .vF .home-wrap { background: var(--surface); }
+
+
+  /* G · Flotante + línea: el contenido sigue por debajo */
+  .vG .home-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding-top: 28px;
+                   background: linear-gradient(rgba(10,10,10,0), rgba(10,10,10,.92) 55%); pointer-events: none; }
+  .vG .home-wrap > * { pointer-events: auto; }
+  .vG .content { padding-bottom: 100px; }
+  .vG .bar { margin: 0 12px 6px; border-radius: 22px; background: #1a1a1a; border: 1px solid #262626; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 2px 4px; overflow: hidden; }
+  .vG .tab { padding: 10px 0 8px; }
+  .vG .ind { top: 0; width: 26px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+  .vG .badge-dot, .vG .badge-n { box-shadow: 0 0 0 2px #1a1a1a; }
+
+  /* H · Esquinas redondas + línea: pegada abajo, sin nada por debajo */
+  .vH .home-wrap { background: var(--surface); border-radius: 22px 22px 0 0; border-top: 1px solid #262626; }
+  .vH .bar { padding: 2px 4px 0; }
+  .vH .tab { padding: 10px 0 6px; }
+  .vH .ind { top: -1px; width: 26px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+  .vH .badge-dot, .vH .badge-n { box-shadow: 0 0 0 2px var(--surface); }
+  .badges-off .badge-dot, .badges-off .badge-n { display: none; }
+
+  /* Animación de la parte lima al activar */
+  .ico.pop { animation: pop calc(var(--t) * 380ms) ease-out; }
+  @keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(.8); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  .vC .ico.pop { animation: none; }
+  .anim [data-k] { transform-box: fill-box; }
+  .go[data-k="barbell"] { transform-origin: center; animation: lift calc(var(--t) * 420ms) cubic-bezier(.34, 1.6, .64, 1); }
+  @keyframes lift { 0% { transform: scaleY(.35); } 100% { transform: scaleY(1); } }
+  .go[data-k="layers"] { animation: drop calc(var(--t) * 420ms) cubic-bezier(.34, 1.6, .64, 1); }
+  @keyframes drop { 0% { transform: translateY(-5px); opacity: .3; } 100% { transform: none; opacity: 1; } }
+  .go[data-k="progress"] { transform-origin: bottom; animation: grow calc(var(--t) * 480ms) cubic-bezier(.34, 1.4, .64, 1); }
+  @keyframes grow { 0% { transform: scaleY(0); } 100% { transform: scaleY(1); } }
+  .go[data-k="users"] { animation: join calc(var(--t) * 420ms) cubic-bezier(.34, 1.6, .64, 1); }
+  @keyframes join { 0% { transform: translateX(-5px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  .go[data-k="templates"] { animation: deal calc(var(--t) * 420ms) cubic-bezier(.34, 1.6, .64, 1); }
+  @keyframes deal { 0% { transform: translateY(6px); } 100% { transform: none; } }
+</style>
+</head>
+<body>
+<h1>Barra de pestañas</h1>
+<p class="lead">G y H son las nuevas: mezclan lo que te gustó de C, F y D. Debajo siguen las seis primeras. Propuestas con los iconos a dos colores. Pulsa las pestañas de cada móvil para ver la animación. En todas, las pestañas en reposo van en gris y la activa se pinta en lima. La parte lima del icono es la que se anima: los discos de la barra suben, la capa de arriba cae, la barra de progreso crece, el segundo cliente entra y la plantilla se reparte.</p>
+<div class="controls">
+  <label><input type="checkbox" id="slow"> Cámara lenta (×4)</label>
+  <label><input type="checkbox" id="full"> Icono activo todo en lima</label>
+  <label><input type="checkbox" id="anim" checked> Animar la parte lima del icono</label>
+  <label><input type="checkbox" id="pop" checked> «Pop» del icono al pulsar</label>
+  <label><input type="checkbox" id="badges" checked> Ver avisos (punto de Programa, número de Clientes)</label>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const TABS = [
+  ['barbell', 'Entreno'],
+  ['layers', 'Programa', 'dot'],
+  ['progress', 'Progresión'],
+  ['users', 'Clientes', 2],
+  ['templates', 'Plantillas'],
+];
+// g/gf = gris, a/af = la parte que se pinta en lima y se anima.
+const ICONS = {
+  barbell:   { g: '<path d="M6.5 12h11M2.5 10v4M21.5 10v4"/>', a: '<rect x="4.5" y="6.5" width="3" height="11" rx="1"/><rect x="16.5" y="6.5" width="3" height="11" rx="1"/>' },
+  layers:    { g: '<path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/>', a: '<path d="M12 2.5l9 5-9 5-9-5z"/>' },
+  progress:  { g: '<path d="M5 20v-6M12 20v-9"/>', a: '<path d="M19 20V5"/>' },
+  users:     { g: '<circle cx="9" cy="8" r="3.2"/><path d="M2.5 19a6.5 6.5 0 0 1 13 0"/>', a: '<path d="M16 4.8a3.2 3.2 0 0 1 0 6.4M18 13.6a6.5 6.5 0 0 1 3.5 5.4"/>' },
+  templates: { g: '<rect x="4" y="14" width="16" height="6" rx="2"/>', a: '<rect x="4" y="4" width="16" height="6" rx="2"/>' },
+};
+const VARIANTS = [
+  ['G', 'Flotante + línea', 'La isla de C con los nombres siempre visibles y la raya de D arriba. El contenido pasa por debajo: haz scroll en el móvil para verlo. Un fundido oscuro tapa lo que queda detrás.'],
+  ['H', 'Esquinas redondas + línea', 'Pegada abajo como ahora, pero en tarjeta con las esquinas de arriba redondas, los nombres siempre y la raya de D. El contenido no pasa por debajo.'],
+  ['A', 'Como ahora', 'La barra de hoy con los iconos nuevos: borde arriba, etiquetas siempre y la activa en lima. Sirve de referencia.'],
+  ['B', 'Píldora', 'Detrás del icono activo crece una píldora lima muy tenue, desde el centro hacia los lados. Es lo más claro de leer.'],
+  ['C', 'Flotante', 'Una isla redondeada separada del borde. El icono activo sube y aparece su nombre; las demás van sin texto.'],
+  ['D', 'Línea', 'Una raya lima en el borde de arriba que se desliza hasta la pestaña pulsada. El icono hace un pequeño «pop».'],
+  ['E', 'Bloque lima', 'Un cuadro lima viaja de una pestaña a otra y el icono activo va en negro encima, como los botones de la app.'],
+  ['F', 'Superficie', 'La barra es una tarjeta gris con las esquinas de arriba redondas. La activa se ilumina con un fondo un punto más claro.'],
+];
+
+let maskN = 0;
+const NS = 'http://www.w3.org/2000/svg';
+function iconSvg(k) {
+  const { g, a } = ICONS[k];
+  const id = `m${maskN++}`;
+  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <mask id="${id}" maskUnits="userSpaceOnUse" x="-4" y="-4" width="32" height="32">
+      <rect x="-4" y="-4" width="32" height="32" fill="#fff"/><g class="knock">${a}</g></mask>
+    <g mask="url(#${id})" class="g">${g}</g>
+    <g class="a" data-k="${k}">${a}</g></svg>`;
+}
+
+document.getElementById('grid').innerHTML = VARIANTS.map(([v, name, desc]) => `
+  <div class="opt v${v}">
+    <h2><b>${v}</b>${name}</h2>
+    <p>${desc}</p>
+    <div class="phone">
+      <div class="content">
+        <div class="fake"><span class="dot"></span><i style="width:45%"></i></div>
+        <div class="fake"><span class="dot"></span><i style="width:60%"></i></div>
+        <div class="fake"><span class="dot"></span><i style="width:35%"></i></div>
+        ${[50, 70, 40, 55, 65].map((w) => `<div class="fake"><span class="dot"></span><i style="width:${w}%"></i></div>`).join('')}
+      </div>
+      <div class="home-wrap">
+        <div class="bar">
+          ${['D', 'E', 'G', 'H'].includes(v) ? '<span class="ind"></span>' : ''}
+          ${TABS.map(([k, label, badge], i) => `
+            <button class="tab${i === 0 ? ' on' : ''}" data-i="${i}">
+              <span class="ico">${iconSvg(k)}${badge === 'dot' ? '<span class="badge-dot"></span>' : badge ? `<span class="badge-n">${badge}</span>` : ''}</span>
+              <span class="lbl">${label}</span>
+            </button>`).join('')}
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </div>
+  </div>`).join('');
+
+const restart = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
+document.getElementById('grid').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  const bar = tab.parentElement;
+  bar.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t === tab));
+  bar.style.setProperty('--i', tab.dataset.i);
+  if (document.getElementById('pop').checked) restart(tab.querySelector('.ico'), 'pop');
+  if (document.getElementById('anim').checked) restart(tab.querySelector('[data-k]'), 'go');
+});
+
+document.getElementById('slow').onchange = (e) => document.documentElement.style.setProperty('--t', e.target.checked ? 4 : 1);
+document.getElementById('full').onchange = (e) => document.body.classList.toggle('full', e.target.checked);
+document.getElementById('badges').onchange = (e) => document.body.classList.toggle('badges-off', !e.target.checked);
+document.body.classList.add('anim');
+</script>
+</body>
+</html>

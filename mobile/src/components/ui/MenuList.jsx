@@ -10,7 +10,7 @@
  * `space/xs` y radios asimétricos por posición (`getCardRadii`). Los iconos van
  * en gris: son decoración funcional, el lima queda para lo que informa.
  */
-import { Children, cloneElement, useContext, useRef, useState } from 'react';
+import { Children, cloneElement, isValidElement, useContext, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, useWindowDimensions } from 'react-native';
 import { Text } from './Text';
 import Svg from 'react-native-svg';
@@ -19,6 +19,8 @@ import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { spacing, textStyles, getCardRadii, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { ArrowIcon } from './EditorIcons';
+import { TwoTone } from './TwoTone';
+import { iconTones, strokeFor } from './iconTones';
 import { SheetContext } from './sheetContext';
 
 // Chevron de fila navegable: la caja de Figma mide 14 pero el glifo real son
@@ -26,16 +28,22 @@ import { SheetContext } from './sheetContext';
 export const ROW_CHEVRON = 10.77;
 
 // `size`/`strokeWidth` solo los cambia `EmptyState` (32 con trazo 1.8, para que
-// no engorde al escalar); en las filas y hojas son siempre 18 y 2.4.
-export function RowIcon({ children, color, size = 18, strokeWidth = 2.4 }) {
+// no engorde al escalar); los trazos sueltos van a 18 y 2.4.
+// Los de `ROW_ICON` son `<TwoTone>`: reciben aquí sus dos tonos y el trazo fino
+// (el `strokeWidth` de arriba solo vale para trazos sueltos de una pantalla).
+// Van a 22 y no a 18: con el trazo fino a 18 se leían más pequeños que los de
+// antes. Desbordan 1 px por lado el hueco de 20 de la fila, sin mover el texto.
+export function RowIcon({ children, color, size: sizeProp, strokeWidth = 2.4 }) {
   const th = useTheme();
+  const twoTone = isValidElement(children) && children.type === TwoTone;
+  const size = sizeProp ?? (twoTone ? 22 : 18);
   return (
     <Svg
       width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color ?? th.colors.mutedLight} strokeWidth={strokeWidth}
       strokeLinecap="round" strokeLinejoin="round"
     >
-      {children}
+      {twoTone ? cloneElement(children, { ...iconTones(th, color), sw: strokeFor(size) }) : children}
     </Svg>
   );
 }

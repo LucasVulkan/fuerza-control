@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iconos a dos colores</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --surface: #141414; --surface2: #1a1a1a; --line: #262626;
+    --text: #f2f2f2; --muted: #9a9a9a; --g: #9a9a9a; --a: #e8ff47;
+    --sw: 1.7px; --gap: 1.2px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; padding: 24px 16px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 36px 0 12px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; max-width: 640px; }
+  .controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+  .controls label { display: flex; gap: 8px; align-items: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .card { background: var(--surface); border-radius: 14px; padding: 14px 12px 10px; }
+  .pair { display: flex; justify-content: space-around; align-items: center; height: 52px; }
+  .pair .old { opacity: .9; }
+  .pair .arrow { color: #444; font-size: 12px; }
+  .card .name { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+  .card .name b { color: var(--text); font-weight: 500; }
+  svg { display: block; overflow: visible; }
+  .old * { stroke: var(--g); }
+  .old .f { fill: var(--g); stroke: none; }
+  .neu * { stroke-width: var(--sw); }
+  .neu .g { stroke: var(--g); }
+  .neu .a { stroke: var(--a); }
+  .neu .gf { fill: var(--g); stroke: none; }
+  .neu .af { fill: var(--a); stroke: none; }
+  body.mono .neu .a, .tab:not(.on) .neu .a, .neu.rest .a { stroke: var(--g); }
+  body.mono .neu .af, .tab:not(.on) .neu .af, .neu.rest .af { fill: var(--g); }
+  .neu.full .g { stroke: var(--a); }
+  .neu.full .gf { fill: var(--a); }
+  /* Máscara del hueco: la forma lima, engordada, recorta el gris que tiene debajo */
+  .neu .knock { stroke: #000; fill: none; stroke-width: calc(var(--sw) + 2 * var(--gap)); }
+  .neu .knock.kf { fill: #000; stroke-width: calc(2 * var(--gap)); }
+  .card.st { grid-column: span 2; cursor: pointer; }
+  .card.st:hover { background: var(--surface2); }
+  .pair .lbl { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: #666; }
+  .swatches { display: flex; gap: 6px; }
+  .swatches button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+  .swatches button.on { border-color: var(--text); }
+  .states { background: var(--surface); border-radius: 22px; padding: 6px 0; width: 360px; max-width: 100%; }
+  .states .row { justify-content: space-between; }
+  .states .row div { display: flex; gap: 18px; align-items: center; }
+  .tab.on .neu .g { stroke: var(--a); }
+  .tab.on .neu .gf { fill: var(--a); }
+  /* Contexto: una hoja de opciones */
+  .phone { width: 360px; max-width: 100%; background: var(--surface); border-radius: 22px; padding: 10px 0; }
+  .row { display: flex; align-items: center; gap: 14px; padding: 12px 18px; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row span { font-size: 15px; }
+  .row.danger span { color: #ff6b6b; }
+  .ctx { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .tabs { display: flex; justify-content: space-around; background: var(--surface); border-radius: 22px; padding: 14px 6px 10px; width: 360px; max-width: 100%; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .tab.on { color: var(--a); }
+</style>
+</head>
+<body>
+<h1>Iconos a dos colores</h1>
+<p class="lead">Izquierda: el icono actual (gris, trazo 2.4 de <code>RowIcon</code>). Derecha: la propuesta. Regla: <b>el contorno va en gris y en lima solo la parte que dice qué hace el icono</b> (la flecha, el +, la aguja, la pieza que cambia). Trazo más fino y todos en la caja de 24.</p>
+<div class="controls">
+  <label>Trazo <input id="sw" type="range" min="1.2" max="2.4" step="0.1" value="1.7"> <output id="swv">1.7</output></label>
+  <label>Tamaño <input id="sz" type="range" min="16" max="40" step="2" value="26"> <output id="szv">26</output></label>
+  <label><input id="mono" type="checkbox"> Ver la propuesta toda en gris</label>
+  <label>Lima <input id="lime" type="range" min="0" max="100" step="5" value="100"> <output id="limev">100% · #e8ff47</output></label>
+  <span class="swatches" id="sw-lime"></span>
+  <label>Hueco en los cruces <input id="gap" type="range" min="0" max="2.5" step="0.1" value="1.2"> <output id="gapv">1.2</output></label>
+</div>
+<p class="lead" style="margin-top:12px">Donde una línea lima pisa una gris, la gris se corta y deja un hueco alrededor de la lima: así no se suman los dos colores en el cruce (mira Guardar, Saltar, Vinculado o Variante). Con el hueco a 0 se ve como antes. Las tarjetas con estado se pueden pulsar para pasar el activo de «acentos en lima» a «todo en lima».</p>
+<p class="lead" style="margin-top:12px">El deslizador de lima lo mezcla con el gris del icono: al 100% es el lima de la app, al 0% el icono queda todo gris. Los botones son cuatro puntos fijos para comparar.</p>
+
+<h2>Menús y hojas de opciones (rowIcons)</h2>
+<div class="grid" id="g-row"></div>
+<h2>Editores (EditorIcons) y cuenta</h2>
+<div class="grid" id="g-ed"></div>
+
+<h2>En contexto</h2>
+<div class="ctx">
+  <div class="phone" id="sheet"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="states" id="states"></div>
+</div>
+
+<script>
+// [clave, nombre, actual, propuesta]. Actual = los paths de rowIcons/EditorIcons tal cual.
+// En la propuesta: g = trazo gris, a = trazo lima, gf/af = relleno.
+const ROW = [
+  ['new', 'Nuevo',
+   '<path d="M12 5v14M5 12h14"/>',
+   '<rect class="g" x="3.5" y="3.5" width="17" height="17" rx="4"/><path class="a" d="M12 8v8M8 12h8"/>'],
+  ['archived', 'Archivados',
+   '<path d="M4 7h16M4 12h16M4 17h10"/>',
+   '<rect class="g" x="3.5" y="4" width="17" height="5" rx="1.5"/><path class="g" d="M5 9v9.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V9"/><path class="a" d="M10 13.5h4"/>'],
+  ['user', 'Usuario',
+   '<circle cx="12" cy="8" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/>',
+   '<path class="g" d="M5.5 19.5a6.5 6.5 0 0 1 13 0"/><circle class="a" cx="12" cy="8" r="3.4"/>'],
+  ['cloud', 'Nube',
+   '<path d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z"/>',
+   '<path class="g" d="M6 18a4 4 0 0 1 .6-8 6 6 0 0 1 11.5 2A3.5 3.5 0 0 1 17.5 18z"/><path class="a" d="M9.5 14l2 2 3.5-3.5"/>'],
+  ['sync', 'Sincronizar',
+   '<path d="M20.5 12a8.5 8.5 0 0 1-14 6.4"/><path d="M3.5 12a8.5 8.5 0 0 1 14-6.4"/><path d="M17 2.5v3.2h-3.2M7 21.5v-3.2h3.2"/>',
+   '<path class="g" d="M3.5 12a8.5 8.5 0 0 1 14-6.4M17 2.5v3.2h-3.2"/><path class="a" d="M20.5 12a8.5 8.5 0 0 1-14 6.4M7 21.5v-3.2h3.2"/>'],
+  ['export', 'Exportar',
+   '<path d="M12 19V5M6 11l6-6 6 6"/>',
+   '<path class="g" d="M4 14v4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V14"/><path class="a" d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/>'],
+  ['import', 'Importar',
+   '<path d="M12 5v14M6 13l6 6 6-6"/>',
+   '<path class="g" d="M4 14v4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V14"/><path class="a" d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/>'],
+  ['plan', 'Plan / PRO',
+   '<path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z"/>',
+   '<path class="g" d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9z"/><path class="af" d="m12 8.6 1.2 2.5 2.7.4-2 1.9.5 2.7-2.4-1.3-2.4 1.3.5-2.7-2-1.9 2.7-.4z"/>'],
+  ['docs', 'Información',
+   '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+   '<circle class="g" cx="12" cy="12" r="9"/><path class="a" d="M12 16.5v-5"/><circle class="af" cx="12" cy="7.8" r="1.2"/>'],
+  ['trash', 'Borrar',
+   '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+   '<path class="a" d="M4 6.5h16M9.5 6.5V4h5v2.5"/><path class="g" d="M6 9.5l.9 10.5h10.2L18 9.5M10 12v5M14 12v5"/>'],
+  ['logout', 'Desconectar',
+   '<path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+   '<path class="g" d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path class="a" d="M16 16.5l4.5-4.5L16 7.5M20.5 12H9.5"/>'],
+  ['view', 'Ver',
+   '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+   '<path class="g" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle class="af" cx="12" cy="12" r="3.2"/>'],
+  ['edit', 'Editar',
+   '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+   '<path class="a" d="M13 20h7"/><path class="g" d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>'],
+  ['duplicate', 'Duplicar',
+   '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+   '<path class="g" d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/><rect class="a" x="9" y="9" width="12" height="12" rx="2.5"/>'],
+  ['share', 'Compartir',
+   '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
+   '<path class="g" d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/><circle class="g" cx="18" cy="5" r="2.5"/><circle class="g" cx="18" cy="19" r="2.5"/><circle class="af" cx="6" cy="12" r="2.9"/>'],
+  ['send', 'Enviar al cliente',
+   '<path d="M7 18a4 4 0 0 1-.5-7.97A6 6 0 0 1 18 9.5a3.5 3.5 0 0 1-.5 8.5"/><path d="M12 21v-9M9 14.5l3-3 3 3"/>',
+   '<path class="g" d="M7 18a4 4 0 0 1-.5-7.97A6 6 0 0 1 18 9.5a3.5 3.5 0 0 1-.5 8.5"/><path class="a" d="M12 21v-9M9 14.5l3-3 3 3"/>'],
+  ['unassign', 'Quitar cliente',
+   '<circle cx="9" cy="8" r="3.2"/><path d="M2.5 19a6.5 6.5 0 0 1 13 0M16 11h6"/>',
+   '<circle class="g" cx="9" cy="8" r="3.2"/><path class="g" d="M2.5 19a6.5 6.5 0 0 1 13 0"/><path class="a" d="M16 11h6"/>'],
+  ['exercise', 'Ejercicio',
+   '<path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/>',
+   '<path class="g" d="M6.5 12h11"/><rect class="a" x="4.5" y="6.5" width="3" height="11" rx="1"/><rect class="a" x="16.5" y="6.5" width="3" height="11" rx="1"/><path class="g" d="M2.5 10v4M21.5 10v4"/>'],
+  ['block', 'Bloque / tiempo',
+   '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+   '<circle class="g" cx="12" cy="13" r="8"/><path class="g" d="M9.5 2h5"/><path class="a" d="M12 9v4l2.5 2.5"/>'],
+  ['preset', 'Plantilla',
+   '<path d="M6 3h12v18l-6-4-6 4z"/>',
+   '<path class="g" d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4z"/><path class="a" d="M9.5 8h5"/>'],
+  ['rename', 'Renombrar',
+   '<path d="M4 7V5h16v2M12 5v14M9 19h6"/>',
+   '<path class="g" d="M4 7V5h12v2M10 5v14M7.5 19h5"/><path class="a" d="M19 9v10M17.5 9h3M17.5 19h3"/>'],
+  ['text', 'Notas',
+   '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+   '<path class="g" d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8zM14 3v5h5"/><path class="a" d="M9 13h6M9 17h4"/>'],
+  ['start', 'Empezar',
+   '<path d="M7 4.5v15l12-7.5z"/>',
+   '<path class="af" d="M8 5.2v13.6a1 1 0 0 0 1.5.85l10.9-6.8a1 1 0 0 0 0-1.7L9.5 4.35A1 1 0 0 0 8 5.2z"/>'],
+  ['progress', 'Progreso',
+   '<path d="M5 20v-6M12 20V6M19 20V10"/>',
+   '<path class="g" d="M5 20v-6M12 20v-9"/><path class="a" d="M19 20V5"/>'],
+  ['target', 'Objetivo',
+   '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+   '<circle class="g" cx="12" cy="12" r="9"/><circle class="g" cx="12" cy="12" r="5"/><circle class="af" cx="12" cy="12" r="2"/>'],
+  ['save', 'Guardar',
+   '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>',
+   '<path class="g" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM7 3v5h8"/><path class="a" d="M17 21v-7H7v7"/>'],
+  ['history', 'Historial',
+   '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+   '<path class="g" d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/><path class="a" d="M12 7.5V12l3 2"/>'],
+  ['skip', 'Saltar',
+   '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+   '<circle class="g" cx="12" cy="12" r="9"/><path class="a" d="M5.6 5.6l12.8 12.8"/>'],
+  ['phone', 'Móvil',
+   '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18h2"/>',
+   '<rect class="g" x="6" y="2.5" width="12" height="19" rx="2.5"/><path class="a" d="M10.5 18h3"/>'],
+  ['users', 'Clientes',
+   '<circle cx="9" cy="8" r="3.2"/><path d="M2.5 19a6.5 6.5 0 0 1 13 0M16 4.8a3.2 3.2 0 0 1 0 6.4M18 13.6a6.5 6.5 0 0 1 3.5 5.4"/>',
+   '<circle class="g" cx="9" cy="8" r="3.2"/><path class="g" d="M2.5 19a6.5 6.5 0 0 1 13 0"/><path class="a" d="M16 4.8a3.2 3.2 0 0 1 0 6.4M18 13.6a6.5 6.5 0 0 1 3.5 5.4"/>'],
+  ['templates', 'Plantillas',
+   '<rect x="4" y="4" width="16" height="6" rx="2"/><rect x="4" y="14" width="16" height="6" rx="2"/>',
+   '<rect class="a" x="4" y="4" width="16" height="6" rx="2"/><rect class="g" x="4" y="14" width="16" height="6" rx="2"/>'],
+];
+
+const ED = [
+  ['gear', 'Ajustes',
+   '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+   '<path class="g" d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/><circle class="a" cx="12" cy="12" r="3"/>'],
+  ['lock', 'Etapa bloqueada',
+   '<path d="M7 10V7a5 5 0 0110 0v3"/><path d="M5 10h14v10H5z"/>',
+   '<path class="g" d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3"/><rect class="af" x="4.5" y="10" width="15" height="10.5" rx="2.5"/>'],
+  ['link', 'Vinculado',
+   '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+   '<path class="g" d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path class="a" d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/>'],
+  ['list', 'Lista n/N',
+   '<path d="M9 6h11M9 12h11M9 18h11"/><circle class="f" cx="4.5" cy="6" r="1.2"/><circle class="f" cx="4.5" cy="12" r="1.2"/><circle class="f" cx="4.5" cy="18" r="1.2"/>',
+   '<path class="g" d="M9 6h11M9 12h11M9 18h11"/><circle class="af" cx="4.5" cy="6" r="1.4"/><circle class="gf" cx="4.5" cy="12" r="1.4"/><circle class="gf" cx="4.5" cy="18" r="1.4"/>'],
+  ['progression', 'Progresión',
+   '<path class="f" d="M5.8 8.5v12.1H2.6v-9.7zM12.9 4.5v16.1H9.7V7zM20 1.3v19.3h-3.2V3.8z"/>',
+   '<path class="gf" d="M5.8 8.5v12.1H2.6v-9.7zM12.9 4.5v16.1H9.7V7z"/><path class="af" d="M20 1.3v19.3h-3.2V3.8z"/>'],
+  ['variant', 'Variante',
+   '<path d="M3.4 6.9h17.2M3.4 17.1h17.2"/><circle class="f" cx="8.6" cy="6.9" r="3.1"/><circle class="f" cx="15.4" cy="17.1" r="3.1"/>',
+   '<path class="g" d="M3.5 7h17M3.5 17h17"/><circle class="af" cx="8.5" cy="7" r="2.6"/><circle class="gf" cx="15.5" cy="17" r="2.6"/>'],
+  ['warmup', 'Calentamiento',
+   '<path d="M3.4 18.9h4.3v-4.3H12v-4.3h4.3V6H20.6"/>',
+   '<path class="g" d="M3.5 19h4.3v-4.3H12v-4.3h4.3V6"/><path class="a" d="M16.3 6h4.2"/>'],
+  ['reset', 'Volver al programa',
+   '<path d="M4 12a8 8 0 1 0 2.35-5.65"/><path d="M4 3.5v5h5"/>',
+   '<path class="g" d="M4 12a8 8 0 1 0 2.35-5.65"/><path class="a" d="M4 3.5v5h5"/>'],
+  ['pencil', 'Lápiz',
+   '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+   '<path class="g" d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/><path class="a" d="M14.5 5.5l3 3"/>'],
+  ['info', 'Info de métrica',
+   '<path d="M12 3a9 9 0 100 18 9 9 0 000-18z"/><path d="M12 11v5M12 7.6v.2"/>',
+   '<circle class="g" cx="12" cy="12" r="9"/><path class="a" d="M12 16.5v-5"/><circle class="af" cx="12" cy="7.8" r="1.2"/>'],
+  ['key', 'Código (entrar)',
+   '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/>',
+   '<circle class="a" cx="8" cy="15" r="4"/><path class="g" d="M11 12l9-9M17 6l3 3M14 9l2 2"/>'],
+  ['check', 'Hecho',
+   '<path d="M20 6L9 17l-5-5"/>',
+   '<circle class="g" cx="12" cy="12" r="9"/><path class="a" d="M8 12.3l2.7 2.7L16 9.5"/>'],
+];
+
+const svg = (inner, cls, size, sw) =>
+  `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const byKey = Object.fromEntries([...ROW, ...ED].map((i) => [i[0], i]));
+
+// Iconos con estado: en reposo todo gris, el lima solo cuando el estado está activo
+// (hay notas, está vinculado, bloqueada, hecho…). Clave → [reposo, activo].
+const STATES = {
+  text:        ['Sin notas', 'Con notas'],
+  link:        ['Sin vincular', 'Vinculado'],
+  lock:        ['Abierta', 'Bloqueada'],
+  check:       ['Pendiente', 'Hecho'],
+  cloud:       ['Sin copia', 'Copia al día'],
+  variant:     ['Sin variante', 'Con variante'],
+  warmup:      ['Sin calentar', 'Calentamiento'],
+  progression: ['Sin progresión', 'Con progresión'],
+  preset:      ['Normal', 'Es plantilla'],
+  plan:        ['Gratis', 'PRO'],
+  list:        ['Cerrada', 'Abierta'],
+  target:      ['Sin objetivo', 'Con objetivo'],
+};
+// Estados cuyo activo va entero en lima (se cambia pulsando la tarjeta).
+const FULL = new Set(['progression', 'warmup', 'list']);
+const active = (k) => (FULL.has(k) ? 'neu full' : 'neu');
+
+function render() {
+  const sz = +document.getElementById('sz').value;
+  for (const [id, list] of [['g-row', ROW], ['g-ed', ED]]) {
+    document.getElementById(id).innerHTML = list.map(([k, name, oldI, newI]) => {
+      const st = STATES[k];
+      const neu = st
+        ? `<span class="lbl">${svg(newI, 'neu rest', sz)}${st[0]}</span><span class="lbl">${svg(newI, active(k), sz)}${st[1]}${FULL.has(k) ? ' · todo lima' : ''}</span>`
+        : svg(newI, 'neu', sz);
+      return `
+      <div class="card${st ? ' st' : ''}" data-k="${k}">
+        <div class="pair">${st ? `<span class="lbl">${svg(oldI, 'old', sz, 2.4)}Actual</span>` : svg(oldI, 'old', sz, 2.4)}<span class="arrow">→</span>${neu}</div>
+        <div class="name"><b>${name}</b> · ${k}${st ? ' · <i>con estado</i>' : ''}</div>
+      </div>`;
+    }).join('');
+  }
+  // Fila de ejercicio: los mismos iconos con estado, en reposo y activos.
+  const pairRow = (label, k) =>
+    `<div class="row"><span>${label}</span><div>${svg(byKey[k][3], 'neu rest', 22)}${svg(byKey[k][3], active(k), 22)}</div></div>`;
+  document.getElementById('states').innerHTML =
+    pairRow('Notas', 'text') + pairRow('Vincular', 'link') + pairRow('Variante', 'variant') +
+    pairRow('Calentamiento', 'warmup') + pairRow('Progresión', 'progression') + pairRow('Etapa', 'lock') +
+    pairRow('Serie', 'check');
+  const row = (k, label, danger) =>
+    `<div class="row${danger ? ' danger' : ''}">${svg(byKey[k][3], 'neu', 22)}<span>${label}</span></div>`;
+  document.getElementById('sheet').innerHTML =
+    row('edit', 'Editar programa') + row('duplicate', 'Duplicar') + row('send', 'Enviar a un cliente') +
+    row('share', 'Compartir') + row('export', 'Exportar') + row('trash', 'Borrar', true);
+  const tab = (k, label, on) =>
+    `<div class="tab${on ? ' on' : ''}">${svg(byKey[k][3], 'neu', 24)}<span>${label}</span></div>`;
+  document.getElementById('tabs').innerHTML =
+    tab('start', 'Entreno', true) + tab('progress', 'Progreso') + tab('history', 'Historial') + tab('users', 'Clientes');
+  document.querySelectorAll('svg.neu').forEach(knock);
+}
+
+// Mete el gris en una máscara que lo recorta allí donde pasa la parte lima.
+// ponytail: máscara por icono en la maqueta; en la app el hueco irá dibujado en el path.
+let maskN = 0;
+function knock(el) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const accents = [...el.querySelectorAll('.a, .af')];
+  const grays = [...el.querySelectorAll('.g, .gf')];
+  if (!accents.length || !grays.length) return;
+  const id = `k${maskN++}`;
+  const mask = document.createElementNS(NS, 'mask');
+  mask.id = id;
+  mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  mask.innerHTML = '<rect x="-4" y="-4" width="32" height="32" fill="#fff"/>';
+  for (const a of accents) {
+    const c = a.cloneNode();
+    c.setAttribute('class', a.classList.contains('af') ? 'knock kf' : 'knock');
+    mask.appendChild(c);
+  }
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('mask', `url(#${id})`);
+  grays.forEach((x) => g.appendChild(x));
+  el.prepend(mask);
+  el.insertBefore(g, mask.nextSibling);
+}
+
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.card.st');
+  if (!card) return;
+  const k = card.dataset.k;
+  FULL.has(k) ? FULL.delete(k) : FULL.add(k);
+  render();
+});
+
+const sw = document.getElementById('sw');
+sw.oninput = () => { document.documentElement.style.setProperty('--sw', sw.value + 'px'); document.getElementById('swv').textContent = sw.value; };
+const gap = document.getElementById('gap');
+gap.oninput = () => { document.documentElement.style.setProperty('--gap', gap.value + 'px'); document.getElementById('gapv').textContent = gap.value; };
+document.getElementById('sz').oninput = (e) => { document.getElementById('szv').textContent = e.target.value; render(); };
+document.getElementById('mono').onchange = (e) => document.body.classList.toggle('mono', e.target.checked);
+
+// Lima mezclado con el gris del icono (#9a9a9a): p = % de lima.
+const LIME = [0xe8, 0xff, 0x47], GRAY = [0x9a, 0x9a, 0x9a];
+const mix = (p) => '#' + LIME.map((c, i) => Math.round(GRAY[i] + (c - GRAY[i]) * p / 100).toString(16).padStart(2, '0')).join('');
+const lime = document.getElementById('lime');
+function setLime(p) {
+  lime.value = p;
+  const hex = mix(p);
+  document.documentElement.style.setProperty('--a', hex);
+  document.getElementById('limev').textContent = `${p}% · ${hex}`;
+  document.querySelectorAll('#sw-lime button').forEach((b) => b.classList.toggle('on', +b.dataset.p === +p));
+}
+document.getElementById('sw-lime').innerHTML = [100, 80, 65, 50]
+  .map((p) => `<button data-p="${p}" title="${p}%" style="background:${mix(p)}"></button>`).join('');
+document.getElementById('sw-lime').onclick = (e) => e.target.dataset.p && setLime(+e.target.dataset.p);
+lime.oninput = () => setLime(+lime.value);
+render();
+setLime(100);
+</script>
+</body>
+</html>

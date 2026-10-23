@@ -50,6 +50,7 @@ import { spacing, textStyles, withOpacity, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 import { CloseIcon } from '../ui/EditorIcons';
+import { TwoToneIcon } from '../ui/TwoTone';
 import { RowIcon } from '../ui/MenuList';
 import { ROW_ICON } from '../ui/rowIcons';
 
@@ -74,33 +75,24 @@ const FIRST_TODAY = {
   bodyweight: 'workout.progSheet.firstBodyweight', time: 'workout.progSheet.firstTime',
 };
 
-// ── NoteIcon — icono file-text del spec §3 (stroke 2.2, round) ────────────────
-// Icono de notas ÚNICO de la app: lo usan tanto el botón de notas de la card
-// como la cabecera de sesión (WorkoutScreen). Puramente presentacional — quien
-// llama decide tamaño y color, porque sobre la banda lima del header hace falta
-// la paleta onAccent en vez de accent.
+// ── NoteIcon — el icono de notas de la card y de la cabecera de sesión ───────
+// Icono de notas ÚNICO de la app (WorkoutScreen lo importa). Tiene estado: sin
+// notas va todo gris; con notas (o el campo abierto) el folio sigue gris y las
+// líneas pasan a lima — iconos a dos colores, docs/mockups/iconos-dos-colores.html.
 //
 // El spec lo fija en 17×17; subido a 21 a petición del usuario (se quedaba
 // pequeño dentro del botón de 32).
 
-export function NoteIcon({ size = 21, color }) {
+export function NoteIcon({ size = 21, active = false }) {
+  const th = useTheme();
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"
-        stroke={color}
-        strokeWidth={2.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M14 3v6h6"
-        stroke={color}
-        strokeWidth={2.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
+    <TwoToneIcon
+      size={size}
+      color={active ? th.colors.mutedLight : th.colors.muted}
+      rest={!active}
+      g={<Path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8zM14 3v5h5" />}
+      a={<Path d="M9 13h6M9 17h4" />}
+    />
   );
 }
 
@@ -576,7 +568,7 @@ export default function ExerciseCard({
       hitSlop={8}
       activeOpacity={0.7}
     >
-      <NoteIcon color={hasClientNote || noteInputOpen ? th.colors.accent : th.colors.muted} />
+      <NoteIcon active={hasClientNote || noteInputOpen} />
       {hasClientNote ? <View style={styles.noteDot} /> : null}
     </TouchableOpacity>
   ) : null;
