@@ -1,7 +1,8 @@
 /**
- * Barra de pestañas propia (maqueta docs/mockups/tab-bar.html, opción H):
- * tarjeta pegada abajo con las esquinas de arriba redondas, una raya lima en el
- * borde que se desliza hasta la pestaña activa y los nombres siempre visibles.
+ * Barra de pestañas propia (maqueta docs/mockups/tab-bar.html, opción H, luego
+ * flotante a la vista): tarjeta redonda encima del borde de abajo, una raya
+ * lima arriba que se desliza hasta la pestaña activa y los nombres siempre
+ * visibles.
  *
  * Los iconos van a dos colores (`TwoTone`): en reposo todo gris; la activa con
  * la parte lima animada (los discos suben, la capa cae, la barra crece…) y un
@@ -12,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withSpring, withSequence, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withSpring, withSequence, withTiming,
 } from 'react-native-reanimated';
 
 import { Text } from './Text';
@@ -55,6 +56,7 @@ const TAB_ICONS = {
 
 // Rebote corto: se nota que la pieza llega, sin bailar.
 const SPRING = { damping: 16, stiffness: 190 };
+const LINE_SPRING = { damping: 22, stiffness: 220 };
 
 function TabIcon({ route, focused, burst }) {
   const th = useTheme();
@@ -149,17 +151,18 @@ export default function BottomTabBar({ state, descriptors, navigation, insets })
   useEffect(() => {
     if (!width) return;
     const to = (state.index + 0.5) * (width / n) - LINE_W / 2;
-    // Sin muelle: con inercia se pasaba de largo y de Plantillas a Entreno
-    // salía de la pantalla. La primera vez se coloca sin viajar.
-    lineX.set(placed.current ? withTiming(to, { duration: 240, easing: Easing.out(Easing.cubic) }) : to);
+    // Muelle casi amortiguado: se pasa de largo un pelo y vuelve. Con más
+    // rebote, de Plantillas a Entreno salía de la pantalla. La primera vez se
+    // coloca sin viajar.
+    lineX.set(placed.current ? withSpring(to, LINE_SPRING) : to);
     placed.current = true;
   }, [state.index, width, n, lineX]);
 
   const lineStyle = useAnimatedStyle(() => ({ transform: [{ translateX: lineX.get() }] }));
 
   return (
-    <View style={styles.wrap}>
-      <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
+    <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.xs2 }]}>
+      <View style={styles.bar}>
         <View style={styles.row} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
           {width > 0 && <Reanimated.View style={[styles.line, lineStyle]} />}
           {state.routes.map((route, i) => {
@@ -181,17 +184,18 @@ export default function BottomTabBar({ state, descriptors, navigation, insets })
 }
 
 const makeStyles = (th) => StyleSheet.create({
-  // Tan oscura como el fondo: la forma la dan el borde y las esquinas.
-  wrap: { backgroundColor: th.colors.bg },
+  // Flotante solo a la vista: la página se corta encima de `wrap` (la barra
+  // sigue ocupando su sitio), pero la tarjeta, redonda entera y con menos
+  // margen lateral que el contenido (sm2 frente a lg), parece que el scroll
+  // se mete por detrás.
+  wrap: { backgroundColor: th.colors.bg, paddingHorizontal: spacing.sm2 },
   bar: {
-    backgroundColor:      th.colors.bg,
-    borderTopLeftRadius:  th.radius.lg,
-    borderTopRightRadius: th.radius.lg,
-    borderTopWidth:   borders.thin,
-    borderLeftWidth:  borders.thin,
-    borderRightWidth: borders.thin,
-    borderColor:      th.colors.border,
+    backgroundColor:   th.colors.bg,
+    borderRadius:      th.radius.lg,
+    borderWidth:       borders.thin,
+    borderColor:       th.colors.borderCard,
     paddingHorizontal: spacing.xs,
+    paddingBottom:     spacing.xs2,
   },
   row: { flexDirection: 'row' },
   // La raya cubre el borde de arriba (top −1).
