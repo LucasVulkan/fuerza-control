@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
-import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withSpring, withSequence, withTiming,
 } from 'react-native-reanimated';
@@ -19,11 +19,14 @@ import Reanimated, {
 import { Text } from './Text';
 import { TwoTone } from './TwoTone';
 import { strokeFor } from './iconTones';
-import { spacing, textStyles, borders } from '../../theme';
+import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
 const ICON = 24;
 const LINE_W = 26;
+// Alto del fundido que tapa el corte recto de la página junto a las esquinas.
+const FADE = 24;
+const HAIRLINE = StyleSheet.hairlineWidth;
 
 // g/gf = gris; a/af = la parte lima, que es la que se anima (`anim`).
 const TAB_ICONS = {
@@ -142,6 +145,7 @@ function Tab({ route, options, focused, onPress, onLongPress }) {
 }
 
 export default function BottomTabBar({ state, descriptors, navigation, insets }) {
+  const th = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [width, setWidth] = useState(0);
   const n = state.routes.length;
@@ -162,6 +166,20 @@ export default function BottomTabBar({ state, descriptors, navigation, insets })
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.xs2 }]}>
+      {/* La página se corta recto encima de la barra, y junto a las esquinas
+          redondas se veía el tajo. Este fundido, que sobresale hacia arriba,
+          lo disuelve en el fondo. No recibe toques. */}
+      <View style={styles.fade} pointerEvents="none">
+        <Svg width="100%" height={FADE}>
+          <Defs>
+            <LinearGradient id="tabFade" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={th.colors.bg} stopOpacity={0} />
+              <Stop offset="1" stopColor={th.colors.bg} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height={FADE} fill="url(#tabFade)" />
+        </Svg>
+      </View>
       <View style={styles.bar}>
         <View style={styles.row} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
           {width > 0 && <Reanimated.View style={[styles.line, lineStyle]} />}
@@ -189,10 +207,13 @@ const makeStyles = (th) => StyleSheet.create({
   // margen lateral que el contenido (sm2 frente a lg), parece que el scroll
   // se mete por detrás.
   wrap: { backgroundColor: th.colors.bg, paddingHorizontal: spacing.sm2 },
+  fade: { position: 'absolute', top: -FADE, left: 0, right: 0, height: FADE },
+  // Un punto más gris que el fondo (surface al 60 % sobre bg) y borde de un
+  // pelo: con el de 1 px había demasiado contraste.
   bar: {
-    backgroundColor:   th.colors.bg,
+    backgroundColor:   withOpacity(th.colors.surface, 0.6),
     borderRadius:      th.radius.lg,
-    borderWidth:       borders.thin,
+    borderWidth:       HAIRLINE,
     borderColor:       th.colors.borderCard,
     paddingHorizontal: spacing.xs,
     paddingBottom:     spacing.xs2,
@@ -200,7 +221,7 @@ const makeStyles = (th) => StyleSheet.create({
   row: { flexDirection: 'row' },
   // La raya cubre el borde de arriba (top −1).
   line: {
-    position: 'absolute', top: -borders.thin, left: 0,
+    position: 'absolute', top: -HAIRLINE, left: 0,
     width: LINE_W, height: 2, borderBottomLeftRadius: 2, borderBottomRightRadius: 2,
     backgroundColor: th.colors.accent,
   },
