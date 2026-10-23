@@ -147,7 +147,7 @@ export default function ScreenHeader({
           <View style={styles.edLeft}>
             {ed.base ? (
               <TouchableOpacity onPress={ed.onCancel} hitSlop={10} activeOpacity={0.7}>
-                <Text style={styles.cancel}>{t('common.cancel')}</Text>
+                <Text style={[styles.cancel, styles.edLine]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             ) : onBack ? (
               // El tope va en el botón y no en `edLeft`, que tiene que seguir
@@ -160,7 +160,7 @@ export default function ScreenHeader({
               >
                 <ArrowIcon size={12} color={th.colors.accent} back />
                 <Reanimated.View style={[styles.edBackLabel, unfoldedStyle]}>
-                  <Text style={styles.backLabel} numberOfLines={1}>{ed.backLabel ?? ''}</Text>
+                  <Text style={[styles.backLabel, styles.edLine]} numberOfLines={1}>{ed.backLabel ?? ''}</Text>
                 </Reanimated.View>
               </TouchableOpacity>
             ) : null}
@@ -174,7 +174,7 @@ export default function ScreenHeader({
                 Se pinta aunque no quepa (invisible) para poder medirlo. */}
             <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents="none">
               <Text
-                style={[styles.eyebrow, !editingFits && styles.hidden]}
+                style={[styles.eyebrow, styles.edLine, !editingFits && styles.hidden]}
                 numberOfLines={1}
                 onLayout={(e) => setEditW(e.nativeEvent.layout.width)}
               >
@@ -207,7 +207,7 @@ export default function ScreenHeader({
                 activeOpacity={0.7}
                 accessibilityRole="button"
               >
-                <Text style={[styles.saveText, dirty && styles.saveTextOn]}>{t('common.save')}</Text>
+                <Text style={[styles.saveText, styles.edLine, dirty && styles.saveTextOn]}>{t('common.save')}</Text>
               </TouchableOpacity>
             ) : null}
             {!right && !ed.onSave ? <View style={styles.backSpacer} /> : null}
@@ -310,6 +310,11 @@ const makeStyles = (th) => StyleSheet.create({
   // «Cancelar» y las acciones. El margen lateral (medido) le deja sitio a los dos.
   edMid:   { ...StyleSheet.absoluteFillObject },
   hidden:  { opacity: 0 },
+  // Las cuatro palabras de la fila («Cancelar» / «‹ Programa», «EDITANDO»,
+  // «Guardar») miden 12 y 14: con el interlineado y el relleno de fuente de
+  // cada tamaño, sus cajas centradas dejaban las letras a alturas distintas. Una
+  // línea igual para todas, sin relleno, y el centro de la caja es el del texto.
+  edLine:  { lineHeight: 18, includeFontPadding: false, textAlignVertical: 'center' },
   // «Guardar»: botón de 32 de alto, con el radio de los botones de la app.
   save: {
     height:            32,
@@ -331,9 +336,10 @@ const makeStyles = (th) => StyleSheet.create({
   edFoldTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
   foldTitle:      { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   // 1 px reservado siempre (sin salto de layout); la línea aparece al plegar.
-  // La barra se separa del contenido siempre, con la línea de `border`: el corte
-  // negro sobre el fondo casi negro solo se veía con el brillo al máximo.
-  edRule:     { height: 1, backgroundColor: th.colors.border },
+  // La barra se separa del contenido siempre: 2 dp (el grosor de los cortes de
+  // la app) en `borderCard`, un paso más oscuro que `border`. El negro sobre el
+  // fondo casi negro solo se veía con el brillo al máximo.
+  edRule:     { height: 2, backgroundColor: th.colors.borderCard },
   // Centrado: el bloque ceja+nombre se centra dentro de `mid`, y para que ese
   // centro sea el de la BARRA los dos huecos laterales miden lo mismo — de ahí
   // el `minWidth` de las acciones y el hueco que se pinta cuando no hay ninguna.
