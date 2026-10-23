@@ -7,6 +7,7 @@
 import Svg, { Path, Circle } from 'react-native-svg';
 
 import { useTheme } from '../../useTheme';
+import { TwoToneIcon } from './TwoTone';
 
 export const ICON_SIZE = 20;
 
@@ -33,13 +34,11 @@ export function AppleIcon({ size = ICON_SIZE, color }) {
 export function KeyIcon({ size = ICON_SIZE, color }) {
   const th = useTheme();
   return (
-    <Svg
-      width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color ?? th.colors.text} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"
-    >
-      <Circle cx="8" cy="15" r="4" />
-      <Path d="M11 12l9-9M17 6l3 3M14 9l2 2" />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color ?? th.colors.text}
+      g={<Path d="M11 12l9-9M17 6l3 3M14 9l2 2" />}
+      a={<Circle cx="8" cy="15" r="4" />}
+    />
   );
 }
 

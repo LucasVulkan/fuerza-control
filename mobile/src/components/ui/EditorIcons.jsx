@@ -1,11 +1,16 @@
 /**
  * Iconos compartidos por los editores de programa y de sesión.
  *
+ * Los de varias piezas (lápiz, candado, eslabón, engranaje…) van a dos colores
+ * con `TwoToneIcon` — maqueta docs/mockups/iconos-dos-colores.html.
+ *
  * Todos salen del componente `Icons` de Figma (`98:138`). Las coordenadas y
  * radios son los del asset real descargado, no los de la caja del icono — ver
  * la regla 4 de `docs/UI-MIGRATION.md`.
  */
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, G, Rect } from 'react-native-svg';
+
+import { TwoToneIcon } from './TwoTone';
 
 // Flecha sólida (asset `119:783`): apunta a la derecha; la de "volver" es la
 // misma rotada 180°. La misma que usa HomeView para la sesión futura.
@@ -71,11 +76,11 @@ export function DragIcon({ size = 26, color }) {
 
 export function PencilIcon({ size = 15, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 20h9" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
-            stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />}
+      a={<Path d="M14.5 5.5l3 3" />}
+    />
   );
 }
 
@@ -86,33 +91,34 @@ export function PencilIcon({ size = 15, color }) {
 // ~0.1px, por debajo de lo perceptible).
 export function ProgressionIcon({ size = 15, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 15 15" fill="none">
-      <Path d="M3.6 5.3L3.6 12.85L1.62 12.85L1.62 6.82Z"      fill={color} />
-      <Path d="M8.05 2.82L8.05 12.84L6.07 12.84L6.07 4.37Z"    fill={color} />
-      <Path d="M12.51 0.84L12.51 12.84L10.53 12.84L10.53 2.37Z" fill={color} />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      gf={<Path d="M5.8 8.5v12.1H2.6v-9.7zM12.9 4.5v16.1H9.7V7z" />}
+      af={<Path d="M20 1.3v19.3h-3.2V3.8z" />}
+    />
   );
 }
 
 // Eslabón de «vinculado con otra sesión» (tarjeta de identidad, P16-03).
 export function LinkIcon({ size = 13, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
-      <Path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />}
+      a={<Path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />}
+    />
   );
 }
 
 // Lista con viñetas del botón «n/N» de la esquina de la tarjeta (P16-04).
 export function ListIcon({ size = 15, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M9 6h11M9 12h11M9 18h11" stroke={color} strokeWidth={2.6} strokeLinecap="round" />
-      <Circle cx={4.5} cy={6} r={1.2} fill={color} />
-      <Circle cx={4.5} cy={12} r={1.2} fill={color} />
-      <Circle cx={4.5} cy={18} r={1.2} fill={color} />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M9 6h11M9 12h11M9 18h11" />}
+      gf={<G><Circle cx={4.5} cy={12} r={1.4} /><Circle cx={4.5} cy={18} r={1.4} /></G>}
+      af={<Circle cx={4.5} cy={6} r={1.4} />}
+    />
   );
 }
 
@@ -141,13 +147,13 @@ export function CloseIcon({ size = 14, color }) {
 // candado macizo dice "bloqueada" sin necesidad de una etiqueta al lado.
 export function LockIcon({ size = 14, color, solid = false }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M7 10V7a5 5 0 0110 0v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <Path
-        d="M5 10h14v10H5z" stroke={color} strokeWidth={2} fill={solid ? color : 'none'}
-        strokeLinejoin="round" strokeLinecap="round"
-      />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3" />}
+      {...(solid
+        ? { af: <Rect x="4.5" y="10" width="15" height="10.5" rx="2.5" /> }
+        : { a: <Rect x="5" y="10.5" width="14" height="9.5" rx="2.5" /> })}
+    />
   );
 }
 
@@ -157,11 +163,12 @@ export function LockIcon({ size = 14, color, solid = false }) {
 // el número al que acompaña.
 export function InfoIcon({ size = 12, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 3a9 9 0 100 18 9 9 0 000-18z" stroke={color} strokeWidth={2} />
-      <Path d="M12 11v5" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
-      <Path d="M12 7.6v.2" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Circle cx="12" cy="12" r="9" />}
+      a={<Path d="M12 16.5v-5" />}
+      af={<Circle cx="12" cy="7.8" r="1.2" />}
+    />
   );
 }
 
@@ -171,11 +178,12 @@ export function InfoIcon({ size = 12, color }) {
 // Fila VARIANTE del editor: dos deslizadores.
 export function VariantIcon({ size = 15, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
-      <Path d="M2 4h10M2 10h10" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
-      <Circle cx={5} cy={4} r={1.8} fill={color} />
-      <Circle cx={9} cy={10} r={1.8} fill={color} />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M3.5 7h17M3.5 17h17" />}
+      gf={<Circle cx="15.5" cy="17" r="2.6" />}
+      af={<Circle cx="8.5" cy="7" r="2.6" />}
+    />
   );
 }
 
@@ -183,19 +191,22 @@ export function VariantIcon({ size = 15, color }) {
 // Tampoco sale de Figma; mismo tamaño y trazo que VariantIcon.
 export function WarmupIcon({ size = 15, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
-      <Path d="M2 11h2.5V8.5H7V6h2.5V3.5H12" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M3.5 19h4.3v-4.3H12v-4.3h4.3V6" />}
+      a={<Path d="M16.3 6h4.2" />}
+    />
   );
 }
 
 // Volver a la del programa (hoja «solo hoy» del Workout): flecha en círculo.
 export function ResetIcon({ size = 18, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M4 12a8 8 0 1 0 2.35-5.65" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
-      <Path d="M4 3.5v5h5" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M4 12a8 8 0 1 0 2.35-5.65" />}
+      a={<Path d="M4 3.5v5h5" />}
+    />
   );
 }
 
@@ -203,12 +214,10 @@ export function ResetIcon({ size = 18, color }) {
 // la maqueta `stages-editor-5.html`.
 export function GearIcon({ size = 17, color }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={3} stroke={color} strokeWidth={2.2} />
-      <Path
-        d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
-        stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"
-      />
-    </Svg>
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />}
+      a={<Circle cx={12} cy={12} r={3} />}
+    />
   );
 }
