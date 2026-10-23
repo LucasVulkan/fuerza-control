@@ -57,7 +57,7 @@ const TAB_ICONS = {
 };
 
 // Rebote corto: se nota que la pieza llega, sin bailar.
-const SPRING = { damping: 16, stiffness: 190 };
+const SPRING = { damping: 24, stiffness: 380 };
 const LINE_OVER = 4;
 
 function TabIcon({ route, focused, burst }) {
@@ -73,7 +73,7 @@ function TabIcon({ route, focused, burst }) {
   // por código ni al volver a montarse la barra.
   useEffect(() => {
     if (!burst) return;
-    pop.set(withSequence(withTiming(0.85, { duration: 120 }), withTiming(1.05, { duration: 120 }), withTiming(1, { duration: 110 })));
+    pop.set(withSequence(withTiming(0.85, { duration: 90 }), withTiming(1.05, { duration: 90 }), withTiming(1, { duration: 80 })));
     p.set(0);
     p.set(withSpring(1, SPRING));
   }, [burst, pop, p]);
