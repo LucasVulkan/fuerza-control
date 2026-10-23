@@ -31,7 +31,8 @@ import { useSwipeLock } from '../../hooks/useSiblingSwipe';
 //    eso es lo que dice "esto se escribe". Los ± van sin caja, sostenidos por el
 //    acento pleno. Antes era al revés (± en `surface2`, valor transparente) y
 //    con ocho ajustes seguidos en la hoja del planificador el resultado eran
-//    veinticuatro rectángulos idénticos.
+//    veinticuatro rectángulos idénticos. (Excepción en prueba, 23-oct-2026: en
+//    la Caja el − y el + son franjas de todo el alto, pegadas a los bordes.)
 // 2. **La celda del valor SIEMPRE cae sobre `surface`**, o desaparece. De ahí
 //    `flat`: sin él la caja del control es `surface` y la celda contrasta; con
 //    él la caja no se pinta y el contenedor es quien pone el `surface` (una
@@ -72,26 +73,31 @@ const NUM_OUT_MS = 90;
 const NUM_IN_MS  = 160;
 const NUM_SHIFT  = 6;
 
+// Ancho de las franjas ± de la Caja: el área táctil de siempre y un poco más.
+const STRIP_W = 40;
+
 /**
  * Un ± que se nota al pulsar: un círculo lima tenue aparece de golpe bajo el
  * glifo y se apaga al soltar, y el glifo se encoge un poco. Sin caja en reposo
- * (regla 1).
+ * (regla 1). Con `side` es una FRANJA de todo el alto de la Caja, pegada a su
+ * borde (`left` / `right`), y al pulsar se ilumina la franja entera.
  */
-function StepButton({ onPress, plus, sf }) {
+function StepButton({ onPress, plus, sf, side }) {
   const p = useSharedValue(0);
   const ring  = useAnimatedStyle(() => ({ opacity: p.get(), transform: [{ scale: 0.7 + 0.3 * p.get() }] }));
   const glyph = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.18 * p.get() }] }));
+  const fill  = useAnimatedStyle(() => ({ opacity: p.get() }));
   return (
     <Pressable
-      style={sf.stepBtn}
+      style={side ? [sf.strip, side === 'left' ? sf.stripLeft : sf.stripRight] : sf.stepBtn}
       onPress={onPress}
       onPressIn={() => p.set(1)}
       onPressOut={() => p.set(withTiming(0, { duration: 260 }))}
-      hitSlop={4}
+      hitSlop={side ? 0 : 4}
       accessibilityRole="button"
     >
-      <Reanimated.View style={[sf.stepRing, ring]} />
-      <Reanimated.View style={[StyleSheet.absoluteFill, glyph]}>
+      <Reanimated.View style={[side ? sf.stripPress : sf.stepRing, side ? fill : ring]} />
+      <Reanimated.View style={[sf.glyphBox, glyph]}>
         <View style={sf.glyphBar} />
         {plus && <View style={[sf.glyphBar, sf.glyphBarV]} />}
       </Reanimated.View>
@@ -158,9 +164,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
     else setDraft(String(value));
   }
 
-  const controls = (
-    <View style={horizontal ? sf.controlsHorizontal : sf.controls}>
-      <StepButton sf={sf} onPress={() => stepBy(-1)} />
+  const valueCell = (
       <Pressable style={sf.valueWrap} onPress={() => inputRef.current?.focus()}>
         <Reanimated.View style={[sf.valueRow, numStyle]}>
         {!!unit && (
@@ -185,14 +189,32 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
         {!!unit && <Text style={sf.unit}>{unit}</Text>}
         </Reanimated.View>
       </Pressable>
-      <StepButton sf={sf} plus onPress={() => stepBy(1)} />
-    </View>
   );
 
+  if (horizontal) {
+    return (
+      <View {...swipeLock} style={[sf.cardHorizontal, flat && sf.flatHorizontal]}>
+        <Text style={sf.labelHorizontal} numberOfLines={1}>{label}</Text>
+        <View style={sf.controlsHorizontal}>
+          <StepButton sf={sf} onPress={() => stepBy(-1)} />
+          {valueCell}
+          <StepButton sf={sf} plus onPress={() => stepBy(1)} />
+        </View>
+      </View>
+    );
+  }
+
+  // Caja: rótulo y cifra en el centro; el − y el + son franjas de todo el alto
+  // pegadas a los bordes (prueba del 23-oct-2026).
   return (
-    <View {...swipeLock} style={[horizontal ? sf.cardHorizontal : sf.card, flat && (horizontal ? sf.flatHorizontal : sf.flat)]}>
-      <Text style={horizontal ? sf.labelHorizontal : sf.label} numberOfLines={1}>{label}</Text>
-      {controls}
+    <View {...swipeLock} style={[sf.card, flat && sf.flat]}>
+      <StepButton sf={sf} side="left" onPress={() => stepBy(-1)} />
+      {/* ponytail: con las franjas el centro mide ~80 dp en un móvil de 360; un
+          rótulo largo («Tiempo de inicio») encoge hasta un 75 %. Si no basta,
+          franjas más estrechas o el rótulo en dos líneas con la caja más alta. */}
+      <Text style={[sf.label, sf.labelBox]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
+      {valueCell}
+      <StepButton sf={sf} side="right" plus onPress={() => stepBy(1)} />
     </View>
   );
 }
@@ -204,6 +226,9 @@ const makeSf = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.sm,
     padding:         spacing.md,
+    // Las franjas ± van fuera del flujo: el centro deja su ancho a cada lado.
+    paddingHorizontal: STRIP_W,
+    alignItems:      'center',
     justifyContent:  'space-between',
     overflow:        'hidden',
   },
@@ -234,8 +259,9 @@ const makeSf = (th) => StyleSheet.create({
   // no una tarjeta, y a 16 el rótulo pesaba más que el número que hay debajo.
   label:           { ...textStyles.bodyStrong, color: th.colors.text, textAlign: 'center' },
   labelHorizontal: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
+  // En la Caja el rótulo puede asomar un poco sobre las franjas.
+  labelBox:        { alignSelf: 'stretch', marginHorizontal: -spacing.sm },
 
-  controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },
 
   // Sin fondo (regla 1) pero conservando los 34×34 de área táctil.
@@ -259,6 +285,24 @@ const makeSf = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
   },
   glyphBarV: { transform: [{ rotate: '90deg' }] },
+  // Franjas ± de la Caja: todo el alto, pegadas al borde; la tarjeta (con
+  // `overflow: hidden`) les redondea las esquinas de fuera.
+  strip: {
+    position:        'absolute',
+    top:             0,
+    bottom:          0,
+    width:           STRIP_W,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  stripLeft:  { left: 0 },
+  stripRight: { right: 0 },
+  // La franja entera se ilumina al pulsar.
+  stripPress: { ...StyleSheet.absoluteFillObject, backgroundColor: withOpacity(th.colors.accent, 0.14) },
+  // La caja de 34 donde van dibujados el − y el + (sus barras se colocan a mano
+  // dentro de ella).
+  glyphBox: { width: STEP_BTN, height: STEP_BTN },
   // El círculo de la pulsación: solo existe mientras se pulsa.
   stepRing: {
     position:        'absolute',
