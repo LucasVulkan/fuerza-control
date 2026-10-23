@@ -91,8 +91,8 @@ export const ROW_ICON = {
   // Barras macizas y no rayas: con el trazo fino las rayas pesaban menos que
   // el resto de iconos.
   progress: <TwoTone
-    gf={<G><Rect x="3" y="13" width="4.5" height="8" rx="1.6" /><Rect x="9.75" y="9" width="4.5" height="12" rx="1.6" /></G>}
-    af={<Rect x="16.5" y="3.5" width="4.5" height="17.5" rx="1.6" />} />,
+    gf={<G><Rect x="3.5" y="13" width="3.5" height="8" rx="1.3" /><Rect x="10.25" y="9" width="3.5" height="12" rx="1.3" /></G>}
+    af={<Rect x="17" y="3.5" width="3.5" height="17.5" rx="1.3" />} />,
   target: <TwoTone
     g={<G><Circle cx="12" cy="12" r="9" /><Circle cx="12" cy="12" r="5" /></G>}
     af={<Circle cx="12" cy="12" r="2" />} />,
