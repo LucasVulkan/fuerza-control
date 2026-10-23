@@ -1,14 +1,17 @@
 # Spec — Cabecera de Inicio
 
 > Tema: ui
-> En corto: Arriba de Inicio, una tarjeta que dice en qué programa estás y por qué semana vas, y lleva al tab Programa. Cómo se reparten Inicio y Programa está por diseñar.
+> En corto: Arriba de Inicio, una tarjeta que dice en qué programa estás y por qué semana vas, y lleva al tab Programa. Cómo editar el programa desde Inicio queda para el futuro.
 > Inicio: 2026-10-05
+> Fin: 2026-10-05
 > Fase U12-01 · hecho · Tarjeta de programa que lleva al tab Programa · §2
-> Fase U12-02 · pendiente · Diseño: reparto entre Inicio y Programa · §3
+> Fase U12-02 · aparcado · Diseño: editar el programa desde Inicio · §3
 >
 > Estado: **U12-01 hecha el 5-oct-2026**, por probar en el móvil, y
 > **provisional**: el mismo día se sacaron de la tarjeta la semana y el lápiz de
-> editar, a la espera de U12-02. U12-02 es diseño, no implementación.
+> editar, a la espera de U12-02. U12-02 es diseño, no implementación, y queda
+> **aparcada** desde el 23-oct-2026 (decisión del usuario), reducida a una sola
+> pregunta: cómo editar el programa desde Inicio.
 
 ## 1. Por qué
 
@@ -71,9 +74,20 @@ semana, que no cambia. Sin programa activo no sale.
 - [x] Con una sesión a medias, el banner «En curso» sale encima de la tarjeta y la empuja.
 - [x] Sin programa activo no sale la tarjeta.
 
-## 3. U12-02 — Reparto entre Inicio y Programa
+## 3. U12-02 — Editar el programa desde Inicio
 
-**Pendiente de diseño; no se implementa nada hasta cerrarlo.**
+**Aparcada (23-oct-2026), para el futuro. Diseño; no se implementa nada hasta cerrarlo.**
+
+**Alcance, único y exclusivo:** cómo se entra a editar el programa desde
+Inicio. El usuario quiere poder hacerlo desde ahí; se probó un lápiz en la
+tarjeta y se quitó el 5-oct. Hoy se edita desde el tab Programa (botón Editar,
+U14) o tocando la tarjeta para ir allí.
+
+Fuera de alcance (antes era parte de esta tarea, «Reparto entre Inicio y
+Programa»): qué dice cada tarjeta, dónde va la semana (L M X…), y la
+convivencia con el banner de sesión en curso. Lo de abajo queda como historia.
+
+### Historia: el reparto entre Inicio y Programa (hasta el 23-oct-2026)
 
 *(13-oct-2026)* La parte del tab Programa ya está diseñada en
 [U14](U14-pantalla-programa.md): Programa usa esta misma tarjeta, en el mismo sitio, y
