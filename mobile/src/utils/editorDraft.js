@@ -11,13 +11,19 @@
 
 const clone = (x) => (x == null ? x : JSON.parse(JSON.stringify(x)));
 
+// Una clave con `undefined` cuenta como ausente: es lo que queda al devolver un
+// campo a «sin valor» (`{ ...ex, tempo: undefined }`), y la copia, que pasa por
+// JSON, ni la tiene.
+const definedKeys = (o) => Object.keys(o).filter((k) => o[k] !== undefined);
+
 export function deepEqual(a, b) {
   if (a === b) return true;
   if (a == null || b == null || typeof a !== 'object' || typeof b !== 'object') return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
-  const ka = Object.keys(a);
-  if (ka.length !== Object.keys(b).length) return false;
-  return ka.every((k) => k in b && deepEqual(a[k], b[k]));
+  if (Array.isArray(a)) return a.length === b.length && a.every((x, i) => deepEqual(x, b[i]));
+  const ka = definedKeys(a);
+  if (ka.length !== definedKeys(b).length) return false;
+  return ka.every((k) => deepEqual(a[k], b[k]));
 }
 
 // Lo editable ahora mismo: { program, templates }. Sin copiar.

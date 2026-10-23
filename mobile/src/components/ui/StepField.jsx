@@ -7,9 +7,11 @@
  * de programa.
  */
 import { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Text, TextInput } from './Text';
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, withOpacity } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 import { useSwipeLock } from '../../hooks/useSiblingSwipe';
 
@@ -29,7 +31,8 @@ import { useSwipeLock } from '../../hooks/useSiblingSwipe';
 //    eso es lo que dice "esto se escribe". Los ± van sin caja, sostenidos por el
 //    acento pleno. Antes era al revés (± en `surface2`, valor transparente) y
 //    con ocho ajustes seguidos en la hoja del planificador el resultado eran
-//    veinticuatro rectángulos idénticos.
+//    veinticuatro rectángulos idénticos. (Excepción en prueba, 23-oct-2026: en
+//    la Caja el − y el + son franjas de todo el alto, pegadas a los bordes.)
 // 2. **La celda del valor SIEMPRE cae sobre `surface`**, o desaparece. De ahí
 //    `flat`: sin él la caja del control es `surface` y la celda contrasta; con
 //    él la caja no se pinta y el contenedor es quien pone el `surface` (una
@@ -63,6 +66,44 @@ const MEASURE_SLACK = 6;
 // proporción sale en 8. No es `radius.sm` a propósito: la celda tiene que
 // leerse como la del entreno, no como una caja más de la hoja.
 const VALUE_R   = 8;
+// El cambio de cifra con ±: la vieja sale (fundido + 6 dp hacia donde va el
+// número) y la nueva entra desde el otro lado. Pulsar seguido acumula y solo
+// se escribe la última.
+const NUM_OUT_MS = 90;
+const NUM_IN_MS  = 160;
+const NUM_SHIFT  = 6;
+
+// Ancho de las franjas ± de la Caja: el área táctil de siempre y un poco más.
+const STRIP_W = 40;
+
+/**
+ * Un ± que se nota al pulsar: un círculo lima tenue aparece de golpe bajo el
+ * glifo y se apaga al soltar, y el glifo se encoge un poco. Sin caja en reposo
+ * (regla 1). Con `side` es una FRANJA de todo el alto de la Caja, pegada a su
+ * borde (`left` / `right`), y al pulsar se ilumina la franja entera.
+ */
+function StepButton({ onPress, plus, sf, side }) {
+  const p = useSharedValue(0);
+  const ring  = useAnimatedStyle(() => ({ opacity: p.get(), transform: [{ scale: 0.7 + 0.3 * p.get() }] }));
+  const glyph = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.18 * p.get() }] }));
+  const fill  = useAnimatedStyle(() => ({ opacity: p.get() }));
+  return (
+    <Pressable
+      style={side ? [sf.strip, side === 'left' ? sf.stripLeft : sf.stripRight] : sf.stepBtn}
+      onPress={onPress}
+      onPressIn={() => p.set(1)}
+      onPressOut={() => p.set(withTiming(0, { duration: 260 }))}
+      hitSlop={side ? 0 : 4}
+      accessibilityRole="button"
+    >
+      <Reanimated.View style={[side ? sf.stripPress : sf.stepRing, side ? fill : ring]} />
+      <Reanimated.View style={[sf.glyphBox, glyph]}>
+        <View style={sf.glyphBar} />
+        {plus && <View style={[sf.glyphBar, sf.glyphBarV]} />}
+      </Reanimated.View>
+    </Pressable>
+  );
+}
 
 export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
   const sf = useThemedStyles(makeSf);
@@ -83,7 +124,31 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
 
   // Redondeo a 2 decimales: sumar 0.25 repetidamente arrastra error binario.
   const round  = (n) => Math.round(n * 100) / 100;
-  const commit = (n) => onChange(round(Math.min(max, Math.max(min, n))));
+
+  const numOp = useSharedValue(1);
+  const numY  = useSharedValue(0);
+  const numStyle = useAnimatedStyle(() => ({ opacity: numOp.get(), transform: [{ translateY: numY.get() }] }));
+  const pendingRef = useRef(null);   // la cifra que se va a escribir mientras sale la vieja
+  const stepTimer  = useRef(null);
+  useEffect(() => () => clearTimeout(stepTimer.current), []);
+
+  function stepBy(dir) {
+    const from = pendingRef.current ?? numVal;
+    const to   = round(Math.min(max, Math.max(min, from + dir * step)));
+    if (to === from) return;   // en el tope no pasa nada: ni vibra ni se mueve
+    Haptics.selectionAsync().catch(() => {});
+    pendingRef.current = to;
+    numOp.set(withTiming(0, { duration: NUM_OUT_MS }));
+    numY.set(withTiming(-dir * NUM_SHIFT, { duration: NUM_OUT_MS }));
+    clearTimeout(stepTimer.current);
+    stepTimer.current = setTimeout(() => {
+      pendingRef.current = null;
+      setDraft(String(to));
+      onChange(to);
+      numOp.set(withTiming(1, { duration: NUM_IN_MS }));
+      numY.set(withSequence(withTiming(dir * NUM_SHIFT, { duration: 0 }), withTiming(0, { duration: NUM_IN_MS })));
+    }, NUM_OUT_MS);
+  }
 
   // Los campos con mínimo negativo (los deltas del planificador: −3 reps,
   // −1 serie) admiten el signo, y solo al principio. Sin esto el teclado dejaba
@@ -99,12 +164,9 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
     else setDraft(String(value));
   }
 
-  const controls = (
-    <View style={horizontal ? sf.controlsHorizontal : sf.controls}>
-      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
-        <View style={sf.glyphBar} />
-      </TouchableOpacity>
+  const valueCell = (
       <Pressable style={sf.valueWrap} onPress={() => inputRef.current?.focus()}>
+        <Reanimated.View style={[sf.valueRow, numStyle]}>
         {!!unit && (
           <Text
             style={[sf.valueText, sf.valueMirror]}
@@ -125,18 +187,34 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
           selectTextOnFocus
         />
         {!!unit && <Text style={sf.unit}>{unit}</Text>}
+        </Reanimated.View>
       </Pressable>
-      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
-        <View style={sf.glyphBar} />
-        <View style={[sf.glyphBar, sf.glyphBarV]} />
-      </TouchableOpacity>
-    </View>
   );
 
+  if (horizontal) {
+    return (
+      <View {...swipeLock} style={[sf.cardHorizontal, flat && sf.flatHorizontal]}>
+        <Text style={sf.labelHorizontal} numberOfLines={1}>{label}</Text>
+        <View style={sf.controlsHorizontal}>
+          <StepButton sf={sf} onPress={() => stepBy(-1)} />
+          {valueCell}
+          <StepButton sf={sf} plus onPress={() => stepBy(1)} />
+        </View>
+      </View>
+    );
+  }
+
+  // Caja: rótulo y cifra en el centro; el − y el + son franjas de todo el alto
+  // pegadas a los bordes (prueba del 23-oct-2026).
   return (
-    <View {...swipeLock} style={[horizontal ? sf.cardHorizontal : sf.card, flat && (horizontal ? sf.flatHorizontal : sf.flat)]}>
-      <Text style={horizontal ? sf.labelHorizontal : sf.label} numberOfLines={1}>{label}</Text>
-      {controls}
+    <View {...swipeLock} style={[sf.card, flat && sf.flat]}>
+      <StepButton sf={sf} side="left" onPress={() => stepBy(-1)} />
+      {/* ponytail: con las franjas el centro mide ~80 dp en un móvil de 360; un
+          rótulo largo («Tiempo de inicio») encoge hasta un 75 %. Si no basta,
+          franjas más estrechas o el rótulo en dos líneas con la caja más alta. */}
+      <Text style={[sf.label, sf.labelBox]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
+      {valueCell}
+      <StepButton sf={sf} side="right" plus onPress={() => stepBy(1)} />
     </View>
   );
 }
@@ -148,6 +226,9 @@ const makeSf = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface,
     borderRadius:    th.radius.sm,
     padding:         spacing.md,
+    // Las franjas ± van fuera del flujo: el centro deja su ancho a cada lado.
+    paddingHorizontal: STRIP_W,
+    alignItems:      'center',
     justifyContent:  'space-between',
     overflow:        'hidden',
   },
@@ -178,8 +259,9 @@ const makeSf = (th) => StyleSheet.create({
   // no una tarjeta, y a 16 el rótulo pesaba más que el número que hay debajo.
   label:           { ...textStyles.bodyStrong, color: th.colors.text, textAlign: 'center' },
   labelHorizontal: { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
+  // En la Caja el rótulo puede asomar un poco sobre las franjas.
+  labelBox:        { alignSelf: 'stretch', marginHorizontal: -spacing.sm },
 
-  controls:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   controlsHorizontal: { flexDirection: 'row', alignItems: 'center', gap: STEP_GAP },
 
   // Sin fondo (regla 1) pero conservando los 34×34 de área táctil.
@@ -203,6 +285,32 @@ const makeSf = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
   },
   glyphBarV: { transform: [{ rotate: '90deg' }] },
+  // Franjas ± de la Caja: todo el alto, pegadas al borde; la tarjeta (con
+  // `overflow: hidden`) les redondea las esquinas de fuera.
+  strip: {
+    position:        'absolute',
+    top:             0,
+    bottom:          0,
+    width:           STRIP_W,
+    backgroundColor: th.colors.surface2,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  stripLeft:  { left: 0 },
+  stripRight: { right: 0 },
+  // La franja entera se ilumina al pulsar.
+  stripPress: { ...StyleSheet.absoluteFillObject, backgroundColor: withOpacity(th.colors.accent, 0.14) },
+  // La caja de 34 donde van dibujados el − y el + (sus barras se colocan a mano
+  // dentro de ella).
+  glyphBox: { width: STEP_BTN, height: STEP_BTN },
+  // El círculo de la pulsación: solo existe mientras se pulsa.
+  stepRing: {
+    position:        'absolute',
+    width:           STEP_BTN,
+    height:          STEP_BTN,
+    borderRadius:    STEP_BTN / 2,
+    backgroundColor: withOpacity(th.colors.accent, 0.18),
+  },
 
   valueWrap: {
     width:           VALUE_W,
@@ -210,13 +318,14 @@ const makeSf = (th) => StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     justifyContent:  'center',
-    // La separación que se VE entre el número y la unidad es este gap más medio
-    // `MEASURE_SLACK`: la holgura del input va centrada, así que se reparte a los
-    // dos lados. A 4 quedaba suelta; con 2 sale en los ~5 del diseño.
-    gap:             spacing.xs,
     backgroundColor: th.colors.bg,
     borderRadius:    VALUE_R,
   },
+  // Número + unidad, lo que se mueve al cambiar de cifra (la celda se queda).
+  // La separación que se VE entre el número y la unidad es este gap más medio
+  // `MEASURE_SLACK`: la holgura del input va centrada, así que se reparte a los
+  // dos lados. A 4 quedaba suelta; con 2 sale en los ~5 del diseño.
+  valueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
   // La tipografía va aparte porque la comparten el input y el clon que lo mide:
   // si divergen, el ancho medido no es el que se pinta.
   valueText: {
