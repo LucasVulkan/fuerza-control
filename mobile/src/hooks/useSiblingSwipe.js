@@ -20,7 +20,8 @@
  * Con `awaitLayout`, el nuevo no entra hasta que la pantalla llama a
  * `onContentLayout` (el `onLayout` de lo que se remonta) y pasan dos fotogramas:
  * los editores de ejercicio y de bloque tardan en montarse y en calcular sus
- * textos, y entrar a la vez daba trompicones al final. Mientras, espera fuera.
+ * textos, y entrar a la vez daba trompicones al final. Mientras, espera
+ * invisible y entra con un fundido y un deslizamiento corto.
  */
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { PanResponder, useWindowDimensions } from 'react-native';
@@ -43,6 +44,7 @@ const LAYOUT_TIMEOUT = 500;
 export function useSiblingSwipe({ prevId, nextId, onChange, awaitLayout = false }) {
   const { width: winW } = useWindowDimensions();
   const tx      = useSharedValue(0);
+  const fade    = useSharedValue(1);   // solo con `awaitLayout`: el fundido de entrada
   const lockRef = useRef(false);
   const live    = useRef({});
   const pending = useRef(null);   // { dir, timer } mientras el nuevo espera fuera
@@ -53,6 +55,12 @@ export function useSiblingSwipe({ prevId, nextId, onChange, awaitLayout = false 
   /* eslint-disable react-hooks/refs */
   const enter = (dir) => {
     const w = live.current.winW;
+    if (awaitLayout) {
+      // Ya está en su sitio de salida (invisible, a un 15 % del ancho): funde y llega.
+      fade.set(withTiming(1, { duration: 220 }));
+      tx.set(withTiming(0, { duration: 220 }));
+      return;
+    }
     tx.set(withSequence(withTiming(dir * w * 0.4, { duration: 0 }), withTiming(0, { duration: 220 })));
   };
   // Lo nuevo ya está maquetado; dos fotogramas más para los textos que se
@@ -77,7 +85,9 @@ export function useSiblingSwipe({ prevId, nextId, onChange, awaitLayout = false 
         return;
       }
       clearTimeout(pending.current?.timer);
-      tx.set(dir * w); // fuera, al otro lado, mientras se monta
+      // Invisible y casi en su sitio mientras se monta.
+      fade.set(0);
+      tx.set(dir * w * 0.15);
       pending.current = { dir, timer: setTimeout(onContentLayout, LAYOUT_TIMEOUT) };
       live.current.onChange?.(target);
     }, 160);
@@ -102,7 +112,7 @@ export function useSiblingSwipe({ prevId, nextId, onChange, awaitLayout = false 
   /* eslint-enable react-hooks/refs */
   const slideStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.get() }],
-    opacity: interpolate(Math.abs(tx.get()), [0, winW], [1, 0.3]),
+    opacity: fade.get() * interpolate(Math.abs(tx.get()), [0, winW], [1, 0.3]),
   }));
 
   return { go, panHandlers, slideStyle, lockRef, onContentLayout };
