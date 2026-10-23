@@ -50,8 +50,8 @@ export const HEADER_RULE_H = 3;
 // Lado del botón de volver. Es también el ancho del hueco que ocupa cuando no
 // hay atrás, para que el título no salte entre pasos del onboarding.
 const BACK_BTN = 32;
-// Medio ancho de «EDITANDO» con su aire: hasta ahí llega el «‹ destino».
-const EDITING_HALF = 50;
+// Aire entre «EDITANDO» y lo que tenga a los lados.
+const EDITING_GAP = spacing.sm2;
 
 /**
  * La regla que cierra la cabecera. Con `progress` —un booleano por unidad— sale
@@ -118,6 +118,12 @@ export default function ScreenHeader({
   const [sideW, setSideW] = useState(BACK_BTN);
   // «‹ destino» se recorta antes de llegar a «EDITANDO», que está en el centro.
   const [barW, setBarW]   = useState(0);
+  // En un móvil muy estrecho «··· Guardar» puede llegar al centro: antes que
+  // pisarse, «EDITANDO» no sale.
+  // Ancho medido de «EDITANDO» (cambia con el idioma).
+  const [editW, setEditW] = useState(80);
+  const editHalf    = editW / 2 + EDITING_GAP;
+  const editingFits = barW === 0 || barW / 2 - editHalf >= sideW + spacing.lg;
   const folded = !!editor?.folded;
   const fold   = useSharedValue(0);
   useEffect(() => { fold.set(withTiming(folded ? 1 : 0, { duration: 200 })); }, [folded, fold]);
@@ -138,13 +144,20 @@ export default function ScreenHeader({
     <View style={styles.wrap}>
       {ed ? (
         <View style={[styles.header, styles.edHeader]} onLayout={(e) => setBarW(e.nativeEvent.layout.width)}>
-          <View style={[styles.edLeft, barW > 0 && { maxWidth: barW / 2 - EDITING_HALF - spacing.lg }]}>
+          <View style={styles.edLeft}>
             {ed.base ? (
               <TouchableOpacity onPress={ed.onCancel} hitSlop={10} activeOpacity={0.7}>
                 <Text style={styles.cancel}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             ) : onBack ? (
-              <TouchableOpacity onPress={onBack} style={styles.edBack} hitSlop={10} activeOpacity={0.7}>
+              // El tope va en el botón y no en `edLeft`, que tiene que seguir
+              // ocupando todo el sobrante para empujar las acciones a la derecha.
+              <TouchableOpacity
+                onPress={onBack}
+                style={[styles.edBack, barW > 0 && { maxWidth: barW / 2 - editHalf - spacing.lg }]}
+                hitSlop={10}
+                activeOpacity={0.7}
+              >
                 <ArrowIcon size={12} color={th.colors.accent} back />
                 <Reanimated.View style={[styles.edBackLabel, unfoldedStyle]}>
                   <Text style={styles.backLabel} numberOfLines={1}>{ed.backLabel ?? ''}</Text>
@@ -155,12 +168,25 @@ export default function ScreenHeader({
 
           {/* El centro va fuera del flujo, centrado en la BARRA: «Cancelar» y el
               check no miden lo mismo. Cada capa solo recibe toques en su estado. */}
-          <View style={[styles.edMid, { marginHorizontal: sideW + spacing.lg + spacing.sm }]} pointerEvents="box-none">
-            {/* «EDITANDO» en todos los niveles: dice el modo; dónde estás, la tarjeta. */}
-            <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents={folded ? 'none' : 'box-none'}>
-              <Text style={styles.eyebrow} numberOfLines={1}>{t('editor.editingTag')}</Text>
+          <View style={styles.edMid} pointerEvents="box-none">
+            {/* «EDITANDO» en todos los niveles: dice el modo; dónde estás, la
+                tarjeta. Ocupa la barra entera: es corto y va en el centro exacto.
+                Se pinta aunque no quepa (invisible) para poder medirlo. */}
+            <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents="none">
+              <Text
+                style={[styles.eyebrow, !editingFits && styles.hidden]}
+                numberOfLines={1}
+                onLayout={(e) => setEditW(e.nativeEvent.layout.width)}
+              >
+                {t('editor.editingTag')}
+              </Text>
             </Reanimated.View>
-            <Reanimated.View style={[styles.edLayer, foldedStyle]} pointerEvents={folded ? 'box-none' : 'none'}>
+            {/* El título plegado, en cambio, puede ser largo: deja a cada lado el
+                ancho de las acciones para no pisarlas. */}
+            <Reanimated.View
+              style={[styles.edLayer, { marginHorizontal: sideW + spacing.lg + spacing.sm }, foldedStyle]}
+              pointerEvents={folded ? 'box-none' : 'none'}
+            >
               <Pressable onPress={midPress} disabled={!midPress} style={styles.edFoldBox}>
                 {eyebrow ? <Text style={styles.eyebrow} numberOfLines={1}>{eyebrow}</Text> : null}
                 <View style={styles.edFoldTitleRow}>
@@ -171,7 +197,7 @@ export default function ScreenHeader({
             </Reanimated.View>
           </View>
 
-          <View style={styles.actions} onLayout={(e) => setSideW(Math.max(BACK_BTN, e.nativeEvent.layout.width))}>
+          <View style={[styles.actions, styles.edActions]} onLayout={(e) => setSideW(Math.max(BACK_BTN, e.nativeEvent.layout.width))}>
             {right ? (typeof right === 'function' ? right(ink) : right) : null}
             {ed.onSave ? (
               <TouchableOpacity
@@ -283,17 +309,21 @@ const makeStyles = (th) => StyleSheet.create({
   // El centro ocupa la barra entera y centra dentro: no depende de cuánto midan
   // «Cancelar» y las acciones. El margen lateral (medido) le deja sitio a los dos.
   edMid:   { ...StyleSheet.absoluteFillObject },
+  hidden:  { opacity: 0 },
   // «Guardar»: botón de 32 de alto, con el radio de los botones de la app.
   save: {
     height:            32,
-    minWidth:          72,
-    paddingHorizontal: spacing.lg,
+    minWidth:          64,
+    paddingHorizontal: spacing.md,
     borderRadius:      th.radius.md,
     backgroundColor:   th.colors.surface2,
     alignItems:        'center',
     justifyContent:    'center',
   },
   saveOn:     { backgroundColor: th.colors.accent },
+  // Más juntas que en las demás cabeceras: «··· Guardar» tiene que dejar sitio
+  // a «EDITANDO» en un móvil de 360.
+  edActions:  { gap: spacing.md },
   saveText:   { ...textStyles.button, color: th.colors.mutedLight },
   saveTextOn: { color: th.colors.onAccent },
   edLayer: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
