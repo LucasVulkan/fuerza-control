@@ -73,7 +73,7 @@ function TabIcon({ route, focused, burst }) {
   // por código ni al volver a montarse la barra.
   useEffect(() => {
     if (!burst) return;
-    pop.set(withSequence(withTiming(0.85, { duration: 90 }), withTiming(1.05, { duration: 90 }), withTiming(1, { duration: 80 })));
+    pop.set(withSequence(withTiming(0.85, { duration: 120 }), withTiming(1.05, { duration: 120 }), withTiming(1, { duration: 110 })));
     p.set(0);
     p.set(withSpring(1, SPRING));
   }, [burst, pop, p]);
