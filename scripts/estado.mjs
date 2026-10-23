@@ -514,7 +514,7 @@ const CHIP_SIT = { hacer: 'h', probar: 'p', terminada: 't', aparcada: '' };
 const cartaTarea = (x, s, suelta) => `<div class="pc tarea ${x.situacion}" data-codigo="${x.codigo}" data-spec="${s.codigo}">
   <span class="asa" title="Arrastrar">⠿</span>${suelta ? '<span class="orden-n"></span>' : ''}<span class="cod">${esc(x.codigo)}</span>
   <button class="pt" data-abre="${esc(s.id)}">${md(x.titulo)}${suelta ? ` <span class="de">· ${esc(s.titulo)}</span>` : ''}</button>
-  <span class="chip ${CHIP_SIT[x.situacion]}">${NOMBRE_SIT[x.situacion]}</span></div>`;
+  <span class="chip ${CHIP_SIT[x.situacion]}">${x.situacion === 'terminada' ? '✓ ' : ''}${NOMBRE_SIT[x.situacion]}</span></div>`;
 
 const cartaPlan = (c) => {
   if (ideaDe.has(c)) {
@@ -545,7 +545,7 @@ const bloquePlan = () => {
   const version = (v) => {
     const c = cuenta(tareasDeVersion(v));
     return `<div class="version" data-version="${esc(v.nombre)}">
-    <div class="vcab"><span class="asa vasa" title="Mover la versión">⠿</span><b class="vnombre">${esc(v.nombre)}</b><span class="n">${v.items.length}</span>
+    <div class="vcab"><span class="asa vasa" title="Mover la versión">⠿</span><button class="vplegar" aria-expanded="true" title="Plegar o desplegar">▾</button><b class="vnombre">${esc(v.nombre)}</b><span class="n">${v.items.length}</span>
       ${barra(c)}<span class="vcuenta">${c.terminada}/${c.terminada + c.probar + c.hacer}</span>
       <button class="vborrar solo-edicion" title="Borrar la versión vacía" ${v.items.length ? 'hidden' : ''}>×</button></div>
     <div class="vlista">${v.items.map(cartaPlan).join('')}</div></div>`;
@@ -844,7 +844,15 @@ const html = `<!doctype html>
   .pcab{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
   .pc .pt{flex:1;min-width:40%;line-height:1.35} .pc button.pt:hover{color:var(--acc)}
   .pc .de{color:var(--mut);font-size:12.5px}
-  .pc.hecha,.pc.terminada{opacity:.6}
+  /* Terminada: franja lima, ✓ en lugar del número y título tachado. */
+  .pc.hecha,.pc.terminada{border-left:3px solid var(--acc);background:#161a14}
+  .pc.hecha .pt,.pc.terminada .pt{color:var(--mut);text-decoration:line-through;text-decoration-color:var(--mut2)}
+  .vlista>.pc.hecha .orden-n::before,.vlista>.pc.terminada .orden-n::before{content:'✓';color:var(--acc);font-weight:700}
+  .vplegar{color:var(--mut);font-size:13px;width:18px;text-align:center;transition:transform .15s}
+  .vplegar:hover{color:var(--tx)}
+  .version.plegada .vplegar{transform:rotate(-90deg)}
+  .version.plegada .vlista,.version.plegada .vcab .n{display:none}
+  .version.plegada .vcab .barra{max-width:none}
   .pc .chips{margin:0}
   .desplegar{font-size:12px;color:var(--mut);padding:3px 8px;border:1px solid var(--bd);border-radius:20px}
   .ptareas{display:flex;flex-direction:column;gap:6px;margin:8px 0 0 22px}
@@ -1117,6 +1125,24 @@ const html = `<!doctype html>
     if (b) { filtro = b.dataset.filtro; pintarFiltro(); }
   });
   pintarFiltro();
+
+  // Plegar una versión a una línea (nombre y barra). Se recuerda por nombre.
+  let plegadas = [];
+  try { plegadas = JSON.parse(localStorage.getItem('estado.plegadas') || '[]'); } catch {}
+  const pintarPlegadas = () => document.querySelectorAll('.version[data-version]').forEach((v) => {
+    const p = plegadas.includes(v.dataset.version);
+    v.classList.toggle('plegada', p);
+    v.querySelector('.vplegar').setAttribute('aria-expanded', String(!p));
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.vplegar');
+    if (!b) return;
+    const n = b.closest('.version').dataset.version;
+    plegadas = plegadas.includes(n) ? plegadas.filter((x) => x !== n) : [...plegadas, n];
+    try { localStorage.setItem('estado.plegadas', JSON.stringify(plegadas)); } catch {}
+    pintarPlegadas();
+  });
+  pintarPlegadas();
 
   // Desplegar las tareas de una spec del plan (también sin servidor).
   document.addEventListener('click', (e) => {
