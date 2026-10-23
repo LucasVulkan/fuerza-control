@@ -24,8 +24,8 @@
 
   /* Móvil: solo el tercio de abajo */
   .phone { position: relative; height: 250px; max-width: 380px; background: var(--bg); border-radius: 26px; overflow: hidden; border: 1px solid #1c1c1c; display: flex; flex-direction: column; }
-  .content { flex: 1; padding: 14px 16px 0; display: flex; flex-direction: column; gap: 8px; }
-  .fake { background: var(--surface); border-radius: 14px; height: 54px; display: flex; align-items: center; padding: 0 14px; gap: 10px; }
+  .content { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .fake { flex-shrink: 0; background: var(--surface); border-radius: 14px; height: 54px; display: flex; align-items: center; padding: 0 14px; gap: 10px; }
   .fake i { display: block; height: 8px; border-radius: 4px; background: #2a2a2a; }
   .fake .dot { width: 26px; height: 26px; border-radius: 8px; background: #222; }
   .home-ind { height: 18px; display: flex; justify-content: center; align-items: center; }
@@ -96,6 +96,25 @@
   .vF .tab.on { background: #1f1f1f; }
   .vF .home-wrap { background: var(--surface); }
 
+
+  /* G · Flotante + línea: el contenido sigue por debajo */
+  .vG .home-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding-top: 28px;
+                   background: linear-gradient(rgba(10,10,10,0), rgba(10,10,10,.92) 55%); pointer-events: none; }
+  .vG .home-wrap > * { pointer-events: auto; }
+  .vG .content { padding-bottom: 100px; }
+  .vG .bar { margin: 0 12px 6px; border-radius: 22px; background: #1a1a1a; border: 1px solid #262626; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 2px 4px; overflow: hidden; }
+  .vG .tab { padding: 10px 0 8px; }
+  .vG .ind { top: 0; width: 26px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+  .vG .badge-dot, .vG .badge-n { box-shadow: 0 0 0 2px #1a1a1a; }
+
+  /* H · Esquinas redondas + línea: pegada abajo, sin nada por debajo */
+  .vH .home-wrap { background: var(--surface); border-radius: 22px 22px 0 0; border-top: 1px solid #262626; }
+  .vH .bar { padding: 2px 4px 0; }
+  .vH .tab { padding: 10px 0 6px; }
+  .vH .ind { top: -1px; width: 26px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+  .vH .badge-dot, .vH .badge-n { box-shadow: 0 0 0 2px var(--surface); }
+  .badges-off .badge-dot, .badges-off .badge-n { display: none; }
+
   /* Animación de la parte lima al activar */
   .ico.pop { animation: pop calc(var(--t) * 380ms) ease-out; }
   @keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(.8); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
@@ -115,12 +134,13 @@
 </head>
 <body>
 <h1>Barra de pestañas</h1>
-<p class="lead">Seis propuestas con los iconos a dos colores. Pulsa las pestañas de cada móvil para ver la animación. En todas, las pestañas en reposo van en gris y la activa se pinta en lima. La parte lima del icono es la que se anima: los discos de la barra suben, la capa de arriba cae, la barra de progreso crece, el segundo cliente entra y la plantilla se reparte.</p>
+<p class="lead">G y H son las nuevas: mezclan lo que te gustó de C, F y D. Debajo siguen las seis primeras. Propuestas con los iconos a dos colores. Pulsa las pestañas de cada móvil para ver la animación. En todas, las pestañas en reposo van en gris y la activa se pinta en lima. La parte lima del icono es la que se anima: los discos de la barra suben, la capa de arriba cae, la barra de progreso crece, el segundo cliente entra y la plantilla se reparte.</p>
 <div class="controls">
   <label><input type="checkbox" id="slow"> Cámara lenta (×4)</label>
   <label><input type="checkbox" id="full"> Icono activo todo en lima</label>
   <label><input type="checkbox" id="anim" checked> Animar la parte lima del icono</label>
   <label><input type="checkbox" id="pop" checked> «Pop» del icono al pulsar</label>
+  <label><input type="checkbox" id="badges" checked> Ver avisos (punto de Programa, número de Clientes)</label>
 </div>
 <div class="grid" id="grid"></div>
 
@@ -141,6 +161,8 @@ const ICONS = {
   templates: { g: '<rect x="4" y="14" width="16" height="6" rx="2"/>', a: '<rect x="4" y="4" width="16" height="6" rx="2"/>' },
 };
 const VARIANTS = [
+  ['G', 'Flotante + línea', 'La isla de C con los nombres siempre visibles y la raya de D arriba. El contenido pasa por debajo: haz scroll en el móvil para verlo. Un fundido oscuro tapa lo que queda detrás.'],
+  ['H', 'Esquinas redondas + línea', 'Pegada abajo como ahora, pero en tarjeta con las esquinas de arriba redondas, los nombres siempre y la raya de D. El contenido no pasa por debajo.'],
   ['A', 'Como ahora', 'La barra de hoy con los iconos nuevos: borde arriba, etiquetas siempre y la activa en lima. Sirve de referencia.'],
   ['B', 'Píldora', 'Detrás del icono activo crece una píldora lima muy tenue, desde el centro hacia los lados. Es lo más claro de leer.'],
   ['C', 'Flotante', 'Una isla redondeada separada del borde. El icono activo sube y aparece su nombre; las demás van sin texto.'],
@@ -170,10 +192,11 @@ document.getElementById('grid').innerHTML = VARIANTS.map(([v, name, desc]) => `
         <div class="fake"><span class="dot"></span><i style="width:45%"></i></div>
         <div class="fake"><span class="dot"></span><i style="width:60%"></i></div>
         <div class="fake"><span class="dot"></span><i style="width:35%"></i></div>
+        ${[50, 70, 40, 55, 65].map((w) => `<div class="fake"><span class="dot"></span><i style="width:${w}%"></i></div>`).join('')}
       </div>
       <div class="home-wrap">
         <div class="bar">
-          ${['D', 'E'].includes(v) ? '<span class="ind"></span>' : ''}
+          ${['D', 'E', 'G', 'H'].includes(v) ? '<span class="ind"></span>' : ''}
           ${TABS.map(([k, label, badge], i) => `
             <button class="tab${i === 0 ? ' on' : ''}" data-i="${i}">
               <span class="ico">${iconSvg(k)}${badge === 'dot' ? '<span class="badge-dot"></span>' : badge ? `<span class="badge-n">${badge}</span>` : ''}</span>
@@ -198,6 +221,7 @@ document.getElementById('grid').addEventListener('click', (e) => {
 
 document.getElementById('slow').onchange = (e) => document.documentElement.style.setProperty('--t', e.target.checked ? 4 : 1);
 document.getElementById('full').onchange = (e) => document.body.classList.toggle('full', e.target.checked);
+document.getElementById('badges').onchange = (e) => document.body.classList.toggle('badges-off', !e.target.checked);
 document.body.classList.add('anim');
 </script>
 </body>
