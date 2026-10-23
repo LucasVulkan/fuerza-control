@@ -105,14 +105,14 @@ muere a mitad, al volver se queda lo escrito, como hoy.
 
 **Probar P16-01**
 
-- [ ] Editar programa → cambiar las series de un ejercicio → volver con ‹ hasta la base → Cancelar → sale el diálogo; «Seguir editando» lo cierra y sigues en el editor
-- [ ] Mismo caso → «Descartar cambios» → el ejercicio vuelve a tener las series de antes, en el editor y en Inicio; no sale ningún toast
-- [ ] Entrar al editor y salir con Cancelar sin tocar nada → sale sin diálogo
-- [ ] Cambiar algo dentro de una sesión y pulsar «Guardar» desde ahí → guarda, toast «Programa guardado», vuelves a la pestaña desde la que abriste el editor
-- [ ] Añadir una sesión y borrar otra → Cancelar → Descartar → la añadida desaparece y la borrada vuelve
-- [ ] Programa de un cliente: cambiar algo → Cancelar → Descartar → el cliente no queda marcado para «↑ Enviar»; con «Guardar», sí
-- [ ] En la base, gesto de volver (iOS) o botón atrás (Android) con cambios → mismo diálogo
-- [ ] Editar una plantilla de sesión desde Plantillas → Cancelar con cambios → Descartar → la plantilla queda como estaba
+- [x] Editar programa → cambiar las series de un ejercicio → volver con ‹ hasta la base → Cancelar → sale el diálogo; «Seguir editando» lo cierra y sigues en el editor
+- [x] Mismo caso → «Descartar cambios» → el ejercicio vuelve a tener las series de antes, en el editor y en Inicio; no sale ningún toast
+- [x] Entrar al editor y salir con Cancelar sin tocar nada → sale sin diálogo
+- [x] Cambiar algo dentro de una sesión y pulsar «Guardar» desde ahí → guarda, toast «Programa guardado», vuelves a la pestaña desde la que abriste el editor
+- [x] Añadir una sesión y borrar otra → Cancelar → Descartar → la añadida desaparece y la borrada vuelve
+- [x] Programa de un cliente: cambiar algo → Cancelar → Descartar → el cliente no queda marcado para «↑ Enviar»; con «Guardar», sí
+- [x] En la base, gesto de volver (iOS) o botón atrás (Android) con cambios → mismo diálogo
+- [x] Editar una plantilla de sesión desde Plantillas → Cancelar con cambios → Descartar → la plantilla queda como estaba
 
 ## 4. P16-02 — Cabecera del editor por niveles
 
@@ -164,11 +164,11 @@ puntos de entrada con `grep -rn "navigate('\(Program\|Session\|Exercise\|Block\)
 
 **Probar P16-02**
 
-- [ ] Editar programa → arriba «Cancelar · EDITANDO · Guardar», con la barra a la altura de las demás cabeceras y «EDITANDO» centrado; «Guardar» gris sin cambios y lima en cuanto cambias algo
-- [ ] Abrir una sesión → «‹ Programa» y «Guardar»; abrir un ejercicio → «‹ Sesión A» y «Guardar» (en una sesión libre, «‹ Sesión libre»)
-- [ ] Hacer scroll en una sesión larga (aún sin tarjeta: pasados ~60 px) → aparecen arriba la ceja y el nombre centrados, sale la línea fina y el «‹» se queda sin texto; al volver arriba, se invierte
-- [ ] Editar una plantilla de sesión desde Plantillas → la sesión es la base: «Cancelar», no «‹»
-- [ ] Mi cuenta, Vista del programa y Detalle de ejercicio siguen con su cabecera de siempre
+- [x] Editar programa → arriba «Cancelar · EDITANDO · Guardar», con la barra a la altura de las demás cabeceras y «EDITANDO» centrado; «Guardar» gris sin cambios y lima en cuanto cambias algo
+- [x] Abrir una sesión → «‹ Programa» y «Guardar»; abrir un ejercicio → «‹ Sesión A» y «Guardar» (en una sesión libre, «‹ Sesión libre»)
+- [x] Hacer scroll en una sesión larga (aún sin tarjeta: pasados ~60 px) → aparecen arriba la ceja y el nombre centrados, sale la línea fina y el «‹» se queda sin texto; al volver arriba, se invierte
+- [x] Editar una plantilla de sesión desde Plantillas → la sesión es la base: «Cancelar», no «‹»
+- [x] Mi cuenta, Vista del programa y Detalle de ejercicio siguen con su cabecera de siempre
 
 ## 5. P16-03 — Tarjeta de identidad
 
@@ -219,15 +219,15 @@ componente nuevo, `EditorIdentityCard`.
 
 **Probar P16-03**
 
-- [ ] Editor de programa con 3 etapas → tarjeta como la del tab Programa (ceja gris, nombre en lima, radio de las fichas de etapa) «PROGRAMA / nombre / 12 semanas · 4 sesiones/sem · 3 etapas»; el rótulo de las fichas dice «ETAPAS»
-- [ ] Programa de una sola etapa → la cabecera de la etapa ya no repite el nombre del programa (sigue el engranaje)
-- [ ] Lápiz → hoja con el nombre → cambiarlo → Hecho → la tarjeta lo enseña; Cancelar el editor → Descartar → vuelve el nombre de antes
-- [ ] Programa de un cliente → la ceja dice «PROGRAMA · <nombre del cliente>» en azul
-- [ ] Editor de ejercicio → la tarjeta lleva el volumen, la regla (solo cuándo sube) y, si está vinculado, «Vinculado con la sesión X»; cambiar el grupo a «Ninguna» quita esa línea
-- [ ] Cambiar las series en el editor de ejercicio → la cifra de la tarjeta cambia al momento
-- [ ] Editor de sesión → tarjeta con «SESIÓN A · ETAPA 1» (sin etapa si solo hay una), nombre, ejercicios · series · min y lápiz; «···» ya no trae Editar nombre
-- [ ] Editor de bloque → tarjeta con «BLOQUE 04 · SESIÓN A», el nombre del bloque (cambia al escribirlo en Opciones) y el resumen
-- [ ] Scroll en cualquier editor → la cabecera se pliega (ceja + nombre) cuando la tarjeta sale de pantalla, no antes
+- [x] Editor de programa con 3 etapas → tarjeta como la del tab Programa (ceja gris, nombre en lima, radio de las fichas de etapa) «PROGRAMA / nombre / 12 semanas · 4 sesiones/sem · 3 etapas»; el rótulo de las fichas dice «ETAPAS»
+- [x] Programa de una sola etapa → la cabecera de la etapa ya no repite el nombre del programa (sigue el engranaje)
+- [x] Lápiz → hoja con el nombre → cambiarlo → Hecho → la tarjeta lo enseña; Cancelar el editor → Descartar → vuelve el nombre de antes
+- [x] Programa de un cliente → la ceja dice «PROGRAMA · <nombre del cliente>» en azul
+- [x] Editor de ejercicio → la tarjeta lleva el volumen, la regla (solo cuándo sube) y, si está vinculado, «Vinculado con la sesión X»; cambiar el grupo a «Ninguna» quita esa línea
+- [x] Cambiar las series en el editor de ejercicio → la cifra de la tarjeta cambia al momento
+- [x] Editor de sesión → tarjeta con «SESIÓN A · ETAPA 1» (sin etapa si solo hay una), nombre, ejercicios · series · min y lápiz; «···» ya no trae Editar nombre
+- [x] Editor de bloque → tarjeta con «BLOQUE 04 · SESIÓN A», el nombre del bloque (cambia al escribirlo en Opciones) y el resumen
+- [x] Scroll en cualquier editor → la cabecera se pliega (ceja + nombre) cuando la tarjeta sale de pantalla, no antes
 
 ## 6. P16-04 — Cambiar de ejercicio o bloque
 
@@ -266,12 +266,12 @@ Sale del desplegable de `ScreenHeader` (`menu`) a un componente propio,
 
 **Probar P16-04**
 
-- [ ] Editor de ejercicio → botón «1/6» en la esquina → lista bajo la tarjeta con el actual resaltado → elegir otro → cambia, con deslizamiento
-- [ ] Fila «‹ anterior · siguiente ›» pegada encima de la tarjeta → tocar «siguiente» → cambia; en el primero no hay «anterior»; al hacer scroll se va con el contenido
-- [ ] Deslizar el contenido a la izquierda → siguiente ejercicio; en el último, el contenido se resiste y vuelve
-- [ ] Deslizar en horizontal sobre un campo con − / + no cambia de ejercicio
-- [ ] Con la tarjeta fuera de pantalla, tocar el título plegado → abre la lista
-- [ ] Editor de bloque → lo mismo entre bloques
+- [x] Editor de ejercicio → botón «1/6» en la esquina → lista bajo la tarjeta con el actual resaltado → elegir otro → cambia, con deslizamiento
+- [x] Fila «‹ anterior · siguiente ›» pegada encima de la tarjeta → tocar «siguiente» → cambia; en el primero no hay «anterior»; al hacer scroll se va con el contenido
+- [x] Deslizar el contenido a la izquierda → siguiente ejercicio; en el último, el contenido se resiste y vuelve
+- [x] Deslizar en horizontal sobre un campo con − / + no cambia de ejercicio
+- [x] Con la tarjeta fuera de pantalla, tocar el título plegado → abre la lista
+- [x] Editor de bloque → lo mismo entre bloques
 
 ## 7. P16-05 — Marcas «editada»
 
@@ -290,9 +290,9 @@ copia:
 
 **Probar P16-05**
 
-- [ ] Cambiar las series de un ejercicio de la sesión A → en el editor de sesión, su meta sale en lima; en el de programa, la sesión A lleva «editada»
-- [ ] Guardar con «Guardar» y volver a entrar → ya no hay marcas
-- [ ] Añadir una sesión → sale con «editada»
+- [x] Cambiar las series de un ejercicio de la sesión A → en el editor de sesión, su meta sale en lima; en el de programa, la sesión A lleva «editada»
+- [x] Guardar con «Guardar» y volver a entrar → ya no hay marcas
+- [x] Añadir una sesión → sale con «editada»
 
 ## 8. P16-06 — Letras y números en Barlow
 
@@ -316,8 +316,8 @@ sí, pregunta antes de cambiarlos.
 
 **Probar P16-06**
 
-- [ ] Editor de programa → las letras A, B, C de las tarjetas en Barlow cursiva, más grandes, y el nombre no se desplaza
-- [ ] Editor de sesión → «01», «02», «03A» en Barlow cursiva gris
+- [x] Editor de programa → las letras A, B, C de las tarjetas en Barlow cursiva, más grandes, y el nombre no se desplaza
+- [x] Editor de sesión → «01», «02», «03A» en Barlow cursiva gris
 
 ## 9. P16-07 — Toast con Deshacer al borrar
 
@@ -361,12 +361,12 @@ plantillas libres siguen con diálogo.
 
 **Probar P16-07**
 
-- [ ] Borrar la sesión B → desaparece sin preguntar y sale «Sesión B eliminada · Deshacer» con la barra → Deshacer → vuelve en su sitio, con sus ejercicios
-- [ ] Borrar una sesión y esperar 5 s → el toast se va y la sesión sigue borrada
-- [ ] Quitar un ejercicio en el editor de sesión → toast → Deshacer → vuelve en su posición, con su configuración
-- [ ] Eliminar desde el editor de ejercicio → vuelve a la sesión con el toast → Deshacer → el ejercicio vuelve
-- [ ] Borrar una etapa → toast → Deshacer → vuelve la etapa con sus sesiones
-- [ ] Borrar dos sesiones seguidas → el toast es el de la segunda; Deshacer solo recupera la segunda
+- [x] Borrar la sesión B → desaparece sin preguntar y sale «Sesión B eliminada · Deshacer» con la barra → Deshacer → vuelve en su sitio, con sus ejercicios
+- [x] Borrar una sesión y esperar 5 s → el toast se va y la sesión sigue borrada
+- [x] Quitar un ejercicio en el editor de sesión → toast → Deshacer → vuelve en su posición, con su configuración
+- [x] Eliminar desde el editor de ejercicio → vuelve a la sesión con el toast → Deshacer → el ejercicio vuelve
+- [x] Borrar una etapa → toast → Deshacer → vuelve la etapa con sus sesiones
+- [x] Borrar dos sesiones seguidas → el toast es el de la segunda; Deshacer solo recupera la segunda
 
 ## Revisión final (22-oct-2026)
 
