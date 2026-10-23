@@ -137,7 +137,7 @@ export default function BlockEditorScreen({ navigation, route }) {
                           n={index + 1}
                           total={blocks.length}
                           label={t('editor.goToBlock')}
-                          onPress={() => list.open(btnRef, cardH.current - spacing.md + spacing.sm)}
+                          onPress={() => list.open(btnRef, cardH.current - spacing.lg + spacing.sm)}
                         />
                       ) : undefined}
                       allExercises={allExercises}

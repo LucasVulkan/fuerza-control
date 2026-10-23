@@ -420,6 +420,22 @@ Pedidos por el usuario al probar en el móvil:
   «PROGRAMA SIN ETAPAS · Ver plan ›» y el engranaje; fuera la ceja de la etapa y
   la meta, que repetían las semanas y sesiones/sem de las cifras de arriba.
 
+### Tercera ronda (23-oct-2026)
+
+- «EDITANDO» en el centro **en todos los niveles**, no solo en la base; al
+  plegar sigue cambiando al título. El «‹ destino» se recorta antes de llegar a
+  él.
+- Vuelve el **chevron de la app** (`ArrowIcon`), a 12: el de trazo de iOS era
+  más alto que el texto. El peso `body` y los 8 dp hasta el texto se quedan.
+- La línea bajo la cabecera pasa a la de `border` (1 dp, siempre visible): el
+  corte negro sobre el fondo `#0a0a0a` no se veía sin el brillo al máximo, y
+  hacerlo más grueso no da contraste.
+- Programa sin etapas: fuera «Ver plan» (no hay plan que ver). El lápiz se
+  alinea con el engranaje (esquina en el borde del relleno, `spacing.lg`).
+- Hoja del nombre: el campo con `autoFocus`, como la hoja de «Nuevo cliente», en
+  vez de pedir el foco con 300 ms de retraso; el teclado salía sin que la hoja
+  subiera, o tarde. Falta confirmarlo en una build (Expo Go puede influir).
+
 ## 10. Historia del diseño
 
 - v1 `editor-salida.html`: «Cancelar / Guardar» arriba con un solo Guardar. El

@@ -127,7 +127,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
                           n={index + 1}
                           total={exercises.length}
                           label={t('editor.goToExercise')}
-                          onPress={() => list.open(btnRef, cardH.current - spacing.md + spacing.sm)}
+                          onPress={() => list.open(btnRef, cardH.current - spacing.lg + spacing.sm)}
                         />
                       ) : undefined}
                       // `replace` y no `navigate`: al elegir el sustituto el selector hace

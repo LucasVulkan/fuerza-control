@@ -26,7 +26,7 @@
  *  - `children`    lo que va tras el corte (regla de progresión, vinculado; en un
  *                  programa sin etapas, la etapa entera).
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Text } from '../ui/Text';
@@ -37,11 +37,6 @@ import DragSheet from '../DragSheet';
 import { spacing, textStyles, lh, LINE } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 
-// Espera antes de pedir el foco del nombre: la hoja es un `Modal` y en Android
-// otra ventana; pedirlo antes de que termine de entrar deja el cursor puesto y el
-// teclado sin salir. Es el botón de calibrado: si un dispositivo lento se queda
-// sin teclado, súbelo.
-const FOCUS_DELAY = 300;
 // Lado del lápiz: el del engranaje de la etapa, que puede ir en la misma tarjeta.
 const ICON_BTN = 36;
 // Hueco que el nombre deja a la derecha para el lápiz o para el botón de lista
@@ -57,13 +52,6 @@ export default function EditorIdentityCard({
   const styles = useThemedStyles(makeStyles);
   const [open, setOpen]   = useState(false);
   const [draft, setDraft] = useState('');
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const id = setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY);
-    return () => clearTimeout(id);
-  }, [open]);
 
   function openSheet() { setDraft(name ?? ''); setOpen(true); }
   function commit() {
@@ -126,8 +114,11 @@ export default function EditorIdentityCard({
       {onRename && (
         <DragSheet visible={open} onClose={commit} title={renameTitle} doneLabel={t('editor.idNameDone')}>
           <SectionLabel>{t('editor.idNameLabel')}</SectionLabel>
+          {/* `autoFocus`, como la hoja de «Nuevo cliente» (Clientes): el campo
+              se monta al abrirse el Modal. Pedir el foco con un retraso a mano
+              hacía que el teclado saliera sin que la hoja subiera, o tarde. */}
           <NameField
-            ref={inputRef}
+            autoFocus
             style={styles.sheetInput}
             value={draft}
             onChangeText={setDraft}
@@ -163,7 +154,8 @@ const makeStyles = (th) => StyleSheet.create({
   // El corte de `ProgramCardDetail`: 4 dp del color del fondo, de lado a lado.
   cut:   { height: spacing.xs2, backgroundColor: th.colors.bg },
   extra: { padding: spacing.lg, gap: spacing.sm2 },
-  corner: { position: 'absolute', top: spacing.md, right: spacing.md },
+  // En el borde del relleno: el engranaje de la etapa, debajo, cae en la misma vertical.
+  corner: { position: 'absolute', top: spacing.lg, right: spacing.lg },
   pencil: {
     width:           ICON_BTN,
     height:          ICON_BTN,

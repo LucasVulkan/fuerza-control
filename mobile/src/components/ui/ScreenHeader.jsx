@@ -40,7 +40,7 @@ import { selectEditorDirty } from '../../utils/editorDraft';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
-import { ArrowIcon, BackChevron } from './EditorIcons';
+import { ArrowIcon } from './EditorIcons';
 
 // Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
 // un grosor óptico, no un hueco. Se exporta porque la cabecera de WorkoutScreen
@@ -50,6 +50,8 @@ export const HEADER_RULE_H = 3;
 // Lado del botón de volver. Es también el ancho del hueco que ocupa cuando no
 // hay atrás, para que el título no salte entre pasos del onboarding.
 const BACK_BTN = 32;
+// Medio ancho de «EDITANDO» con su aire: hasta ahí llega el «‹ destino».
+const EDITING_HALF = 50;
 
 /**
  * La regla que cierra la cabecera. Con `progress` —un booleano por unidad— sale
@@ -114,6 +116,8 @@ export default function ScreenHeader({
   // El centro deja a cada lado lo que ocupe el lado más ancho (casi siempre las
   // acciones: «···» + «Guardar»), para quedar centrado en la barra sin pisarlo.
   const [sideW, setSideW] = useState(BACK_BTN);
+  // «‹ destino» se recorta antes de llegar a «EDITANDO», que está en el centro.
+  const [barW, setBarW]   = useState(0);
   const folded = !!editor?.folded;
   const fold   = useSharedValue(0);
   useEffect(() => { fold.set(withTiming(folded ? 1 : 0, { duration: 200 })); }, [folded, fold]);
@@ -133,15 +137,15 @@ export default function ScreenHeader({
     // es su hermano posterior.
     <View style={styles.wrap}>
       {ed ? (
-        <View style={[styles.header, styles.edHeader]}>
-          <View style={styles.edLeft}>
+        <View style={[styles.header, styles.edHeader]} onLayout={(e) => setBarW(e.nativeEvent.layout.width)}>
+          <View style={[styles.edLeft, barW > 0 && { maxWidth: barW / 2 - EDITING_HALF - spacing.lg }]}>
             {ed.base ? (
               <TouchableOpacity onPress={ed.onCancel} hitSlop={10} activeOpacity={0.7}>
                 <Text style={styles.cancel}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             ) : onBack ? (
               <TouchableOpacity onPress={onBack} style={styles.edBack} hitSlop={10} activeOpacity={0.7}>
-                <BackChevron color={th.colors.accent} />
+                <ArrowIcon size={12} color={th.colors.accent} back />
                 <Reanimated.View style={[styles.edBackLabel, unfoldedStyle]}>
                   <Text style={styles.backLabel} numberOfLines={1}>{ed.backLabel ?? ''}</Text>
                 </Reanimated.View>
@@ -152,11 +156,10 @@ export default function ScreenHeader({
           {/* El centro va fuera del flujo, centrado en la BARRA: «Cancelar» y el
               check no miden lo mismo. Cada capa solo recibe toques en su estado. */}
           <View style={[styles.edMid, { marginHorizontal: sideW + spacing.lg + spacing.sm }]} pointerEvents="box-none">
-            {ed.base && (
-              <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents={folded ? 'none' : 'box-none'}>
-                <Text style={styles.eyebrow} numberOfLines={1}>{t('editor.editingTag')}</Text>
-              </Reanimated.View>
-            )}
+            {/* «EDITANDO» en todos los niveles: dice el modo; dónde estás, la tarjeta. */}
+            <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents={folded ? 'none' : 'box-none'}>
+              <Text style={styles.eyebrow} numberOfLines={1}>{t('editor.editingTag')}</Text>
+            </Reanimated.View>
             <Reanimated.View style={[styles.edLayer, foldedStyle]} pointerEvents={folded ? 'box-none' : 'none'}>
               <Pressable onPress={midPress} disabled={!midPress} style={styles.edFoldBox}>
                 {eyebrow ? <Text style={styles.eyebrow} numberOfLines={1}>{eyebrow}</Text> : null}
@@ -231,7 +234,7 @@ export default function ScreenHeader({
       )}
 
       {ed
-        ? <View style={[styles.edRule, { backgroundColor: th.scheme === 'dark' ? '#000' : th.colors.border }]} />
+        ? <View style={styles.edRule} />
         : <HeaderRule progress={progress} />}
     </View>
   );
@@ -298,9 +301,9 @@ const makeStyles = (th) => StyleSheet.create({
   edFoldTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
   foldTitle:      { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   // 1 px reservado siempre (sin salto de layout); la línea aparece al plegar.
-  // La barra se separa del contenido con un corte más oscuro que el fondo (negro
-  // en los temas oscuros), siempre: como si el fondo estuviera partido en dos.
-  edRule:     { height: 2 },
+  // La barra se separa del contenido siempre, con la línea de `border`: el corte
+  // negro sobre el fondo casi negro solo se veía con el brillo al máximo.
+  edRule:     { height: 1, backgroundColor: th.colors.border },
   // Centrado: el bloque ceja+nombre se centra dentro de `mid`, y para que ese
   // centro sea el de la BARRA los dos huecos laterales miden lo mismo — de ahí
   // el `minWidth` de las acciones y el hueco que se pinta cuando no hay ninguna.

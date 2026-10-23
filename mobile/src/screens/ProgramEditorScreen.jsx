@@ -464,7 +464,8 @@ export default function ProgramEditorScreen({ navigation }) {
         >
           {/* Sin etapas, la etapa va dentro de la tarjeta del programa, tras el
               corte, como el detalle de la tarjeta del tab Programa. Una fila:
-              semanas y sesiones/sem ya las dicen las cifras de arriba. */}
+              semanas y sesiones/sem ya las dicen las cifras de arriba, y sin
+              etapas no hay plan que ver. */}
           {single ? (
             <>
               <View style={styles.stageIn}>
@@ -472,7 +473,6 @@ export default function ProgramEditorScreen({ navigation }) {
                   <Text style={styles.stagesLabel} numberOfLines={1}>{t('editor.stagesLabelNone').toUpperCase()}</Text>
                   {lockedAt(selectedStageIdx) && <LockIcon size={10} color={th.colors.redText} solid />}
                 </View>
-                {viewPlanEl}
                 {gearEl}
               </View>
             </>
