@@ -88,9 +88,11 @@ export const ROW_ICON = {
     a={<Path d="M9 13h6M9 17h4" />} />,
   start: <TwoTone
     af={<Path d="M8 5.2v13.6a1 1 0 0 0 1.5.85l10.9-6.8a1 1 0 0 0 0-1.7L9.5 4.35A1 1 0 0 0 8 5.2z" />} />,
+  // Barras macizas y no rayas: con el trazo fino las rayas pesaban menos que
+  // el resto de iconos.
   progress: <TwoTone
-    g={<Path d="M5 20v-6M12 20v-9" />}
-    a={<Path d="M19 20V5" />} />,
+    gf={<G><Rect x="3" y="13" width="4.5" height="8" rx="1.6" /><Rect x="9.75" y="9" width="4.5" height="12" rx="1.6" /></G>}
+    af={<Rect x="16.5" y="3.5" width="4.5" height="17.5" rx="1.6" />} />,
   target: <TwoTone
     g={<G><Circle cx="12" cy="12" r="9" /><Circle cx="12" cy="12" r="5" /></G>}
     af={<Circle cx="12" cy="12" r="2" />} />,

@@ -2,15 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }        from '../../store/useStore';
 import { entryTab }        from '../utils/onboardingFlow';
 import { athleteProgress, stageBannerDue } from '../utils/stageProgress';
 import { navigationRef }   from './navigationRef';
-import { borders, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import HomeScreen       from '../screens/HomeScreen';
 import MyProgramScreen  from '../screens/MyProgramScreen';
@@ -35,6 +32,7 @@ import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import AccountScreen            from '../screens/AccountScreen';
 import DocsScreen               from '../screens/DocsScreen';
 import Toast                 from '../components/Toast';
+import BottomTabBar          from '../components/ui/BottomTabBar';
 import DialogHost            from '../components/ui/DialogHost';
 import PaywallModal          from '../components/PaywallModal';
 import ExternalImportModal   from '../components/ExternalImportModal';
@@ -43,26 +41,8 @@ import { clientLink } from '../utils/clientLink';
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// ── Tab icon factory ───────────────────────────────────────────────────────────
-function tabIcon(name) {
-  return ({ focused, color, size }) => (
-    <Ionicons
-      name={focused ? name : `${name}-outline`}
-      size={size}
-      color={color}
-    />
-  );
-}
-
-// Fondo sólido que se extiende detrás de la barra del sistema (edge-to-edge fix)
-function TabBarBackground() {
-  const styles = useThemedStyles(makeStyles);
-  return <View style={[StyleSheet.absoluteFillObject, styles.tabBarBg]} />;
-}
-
 // ── Bottom tab navigator ───────────────────────────────────────────────────────
 function MainTabs() {
-  const insets         = useSafeAreaInsets();
   const { t }          = useTranslation();
   const th             = useTheme();
   const styles         = useThemedStyles(makeStyles);
@@ -85,29 +65,18 @@ function MainTabs() {
   return (
     <Tab.Navigator
       initialRouteName={firstTab}
+      // Barra propia (maqueta docs/mockups/tab-bar.html, opción H): los iconos
+      // a dos colores y sus animaciones salen de la ruta, no de `tabBarIcon`.
+      tabBar={(props) => <BottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarBackground: () => <TabBarBackground />,
-        tabBarStyle: [
-          styles.tabBar,
-          {
-            paddingBottom: insets.bottom + 4,
-            height:        56 + insets.bottom,
-          },
-        ],
-        tabBarActiveTintColor:   th.colors.accent,
-        tabBarInactiveTintColor: th.colors.muted,
-        tabBarLabelStyle: styles.tabLabel,
-        // La etiqueta la pinta react-navigation con su propio Text, fuera del
-        // wrapper de src/components/ui/Text: aquí se le repite el trato.
-        tabBarAllowFontScaling: false,
         sceneStyle: styles.scene,
       }}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ tabBarLabel: t('tabs.session'),   tabBarIcon: tabIcon('barbell') }}
+        options={{ tabBarLabel: t('tabs.session') }}
       />
       {/* El programa vive aquí y no al final del scroll de Sesiones. El punto
           avisa de que hay una etapa terminada esperando — el aviso completo se
@@ -118,15 +87,13 @@ function MainTabs() {
         component={MyProgramScreen}
         options={{
           tabBarLabel: t('tabs.program'),
-          tabBarIcon:  tabIcon('layers'),
           tabBarBadge: stageBannerNow ? '' : undefined,
-          tabBarBadgeStyle: { backgroundColor: th.colors.accent, minWidth: 8, maxHeight: 8, borderRadius: 4 },
         }}
       />
       <Tab.Screen
         name="Stats"
         component={StatsScreen}
-        options={{ tabBarLabel: t('tabs.progress'),  tabBarIcon: tabIcon('stats-chart') }}
+        options={{ tabBarLabel: t('tabs.progress') }}
       />
       {showProTabs && (
         <Tab.Screen
@@ -134,9 +101,8 @@ function MainTabs() {
           component={ClientsScreen}
           options={{
             tabBarLabel: t('tabs.clients'),
-            tabBarIcon:  tabIcon('people'),
             tabBarBadge: pendingClients > 0 ? pendingClients : undefined,
-            tabBarBadgeStyle: { backgroundColor: th.colors.blue, color: th.colors.onAccent, fontSize: 11 },
+            tabBarBadgeStyle: { backgroundColor: th.colors.blue },
           }}
         />
       )}
@@ -144,7 +110,7 @@ function MainTabs() {
         <Tab.Screen
           name="Program"
           component={ProgramScreen}
-          options={{ tabBarLabel: t('tabs.templates'), tabBarIcon: tabIcon('copy') }}
+          options={{ tabBarLabel: t('tabs.templates') }}
         />
       )}
     </Tab.Navigator>
@@ -350,18 +316,6 @@ const makeStyles = (th) => StyleSheet.create({
   hydrating: {
     flex: 1,
     backgroundColor: th.colors.bg,
-  },
-  tabBar: {
-    backgroundColor: 'transparent', // el background lo pone TabBarBackground
-    borderTopColor:  th.colors.border,
-    borderTopWidth:  borders.thin,
-    elevation:       0,             // quita la sombra de Android
-  },
-  tabBarBg: {
-    backgroundColor: th.colors.bg, // tan oscuro como el fondo de la app
-  },
-  tabLabel: {
-    ...textStyles.micro,
   },
   scene: {
     backgroundColor: th.colors.bg,
