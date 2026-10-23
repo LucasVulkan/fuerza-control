@@ -3,7 +3,9 @@
 > Tema: errores
 > En corto: Barrido de corrección sobre toda la app móvil: 26 fallos, cada uno con la condición exacta que lo dispara y el arreglo verificado contra el código.
 >
-> Estado: **✅ CERRADO. Los 26 fallos resueltos** (sep 2026) — las seis tandas,
+> Estado: **Reabierto el 23-oct-2026 con 11 fallos nuevos, E27-E37**, de la
+> auditoría de servidor [I02-02](I02-conexion-pagos-pro.md), todos confirmados
+> por test en el banco y sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
@@ -127,6 +129,17 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [24](#24) | 🟢 Baja | ✅ Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
 | [25](#25) | 🟡 Media | ✅ El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
 | [26](#26) | 🔴 **Crítica** | ✅ `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
+| [27](#27) | 🟠 Alta | Soltar un asiento vacía el historial y los ajustes del hueco | `supabase/schema.sql:466-530` |
+| [28](#28) | 🟠 Alta | La subida del cliente reemplaza el historial entero | `supabase/schema.sql:507` |
+| [29](#29) | 🟠 Alta | Los traspasos meten huecos y asientos en cuentas ajenas | `supabase/schema.sql:384-558` |
+| [30](#30) | 🟡 Media | `get_slot_by_code` enseña de más a quien tiene el código | `supabase/schema.sql:408` |
+| [31](#31) | 🟡 Media | `audit.sql` sale vacío con derivas graves | `supabase/audit.sql` |
+| [32](#32) | 🟡 Media | «Vincular Google» del cliente sin asiento, y su reintento | `supabase/schema.sql:539` |
+| [33](#33) | 🟡 Media | «Eliminar cuenta» no termina con el mismo Google en los dos papeles | `store/useStore.js:4873` |
+| [34](#34) | 🟢 Baja | El motivo de perder el asiento sale cambiado | `supabase/schema.sql:493` |
+| [35](#35) | 🟢 Baja | Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
+| [36](#36) | 🟢 Baja | Usuario cliente borrado desde el panel: el entrenador lo ve invitado | `supabase/schema.sql:157` |
+| [37](#37) | 🟢 Baja | Una subida que llega tarde cae en el hueco del entrenador nuevo | `supabase/schema.sql:499` |
 
 Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
 se hizo y en qué se equivocaba el diagnóstico si se equivocaba.
@@ -1691,7 +1704,7 @@ N". Con la lista ya filtrada no hay nada que explicarle al usuario — el
 duplicado no se puede ni elegir.
 
 Sigue fuera de alcance el `instanceId`, como decía el apartado y repite el
-§28.3: esto impide crear duplicados desde la app, no soporta los que puedan
+§«Lo que NO entra», punto 3: esto impide crear duplicados desde la app, no soporta los que puedan
 llegar en un `.fitdata`.
 
 **Tests.** `store/useStore.test.js`: añadir dos veces el mismo ejercicio no lo
@@ -2285,7 +2298,274 @@ sistema podía ser completo. Todo el backend pasa a estar en `supabase/`.
 
 ---
 
-## 27. Orden de trabajo sugerido
+## 27. Soltar un asiento vacía el historial y los ajustes del hueco 🟠 {#27}
+
+> En corto: Si el cliente se desconecta o se va con otro entrenador, el servidor borra lo que había subido y los ajustes del entrenador: las sesiones que el entrenador no había descargado se pierden.
+
+Encontrado en [I02-02](I02-conexion-pagos-pro.md) (23-oct-2026); viola R-B6 y R-C4.
+
+**Cuándo.** El cliente sube sesiones y, antes de que el entrenador las descargue:
+
+- se desconecta: `release_client_slot` (`schema.sql:526-530`);
+- entra con el código de otro entrenador: `link_client_to_slot` suelta el asiento viejo (`:466-470`);
+
+Los dos ponen `history_json`, `overrides_json` (las prescripciones **del
+entrenador**) y `sessions_count` a cero. El programa, el nombre y el código se
+conservan.
+
+**Confirmado por:** `server.hostile.sim.test.js` › H6 (los dos caminos, en
+crudo) y `connection.audit.sim.test.js` › H6: el entrenador descarga y recibe `[]`.
+
+**Arreglo previsto.** No tocar `history_json`, `overrides_json` ni
+`sessions_count` al soltar el asiento: solo `client_id = null` y
+`disconnected_at = now()`. Hay que invertir dos tests de
+`connection.sim.test.js` que hoy fijan el fallo (líneas ~489 y ~638). Al arreglarlo:
+
+- **Borrar la cuenta no es fallo** (decidido el 23-oct-2026, excepción de
+  R-C4): `delete-account` (`supabase/functions/delete-account/index.ts:71-83`)
+  vacía el historial del hueco que el cliente ocupa en ese momento, y eso es lo
+  que se quiere. Pero también vacía `overrides_json`, que son ajustes del
+  entrenador y no datos del cliente. Eso sí se corrige con este fallo.
+- Cuando se arregle, `trainer_upload_log` (`:323-325`) puede escribir en un
+  hueco libre que ya tiene historial, y lo pisaría. Hoy la app solo lo usa con
+  huecos recién creados (`useStore.js:3905-3916`), pero el arreglo debe
+  cerrarlo.
+
+## 28. La subida del cliente reemplaza el historial entero 🟠 {#28}
+
+> En corto: Cada subida del cliente sustituye todo lo que había en el servidor, así que dos móviles con la misma cuenta, o reinstalar sin juntar el historial, pisan sesiones que el entrenador no había descargado.
+
+Encontrado en I02-02; viola R-C2 y R-C4.
+
+**Cuándo.** `client_upload_history` hace `set history_json = p_history`
+(`schema.sql:507-508`), y el cliente sube su log local filtrado
+(`useStore.js:4686-4709`). Lo que no esté en ese móvil desaparece del servidor:
+
+- el mismo Google en dos móviles: el móvil 1 sube a1, el 2 sube b1 y el
+  entrenador recibe solo b1;
+- entrena s1, reinstala, entra sin juntar el historial y entrena s2: el
+  entrenador recibe solo s2.
+
+**Confirmado por:** `server.hostile.sim.test.js` › H8 y `connection.audit.sim.test.js` › H8a, H8b.
+
+**Arreglo a estudiar.** Que el servidor **sume** a lo que ya hay
+(`mergeClientLog` por id, append-only) en vez de reemplazar, o que el cliente
+descargue y junte antes de subir. Lo primero es más robusto, porque no depende
+de que todos los móviles estén al día.
+
+## 29. Los traspasos meten huecos y asientos en cuentas ajenas 🟠 {#29}
+
+> En corto: Cualquiera con una cuenta propia puede regalar huecos a otro entrenador, o su asiento a otra cuenta, sin que el otro lo acepte; a un entrenador gratis le congela los clientes y le obliga a elegir para siempre.
+
+Encontrado en I02-02 por las dos pasadas.
+
+**Cuándo.**
+
+- `transfer_my_slots_to` (`schema.sql:384-399`) y `transfer_my_seat_to`
+  (`:539-558`) solo comprueban que la cuenta destino exista y no sea anónima
+  (`_check_target`, `:247-261`), no que quien llama la controle.
+- El id del entrenador lo puede leer cualquiera de sus clientes en su propia
+  fila (la RLS es por filas y `grant select` da todas las columnas,
+  `:184-188`).
+
+**Efecto.**
+
+- Al refrescar, la víctima ve fichas que no ha creado, con el nombre y el
+  programa que puso el atacante (`useStore.js:4254-4270`).
+- Si es un entrenador gratis, se le congelan los clientes y la elección es
+  para siempre (`freePlan.js`, R-E4).
+- Lo que la víctima envíe a esas fichas le llega al atacante.
+- Las respuestas de la función (`BAD_TARGET` / `SEAT_TAKEN` / `0`) revelan si
+  un uuid existe, es anónimo o está sentado.
+
+**Confirmado por:** `server.hostile.sim.test.js` › H10, H11 y
+`connection.audit.sim.test.js` › H10: la víctima acaba con `['Ana', 'SPAM']`.
+
+**Arreglo a estudiar.** Que el traspaso pruebe que quien llama controla las dos
+cuentas. Por ejemplo: la cuenta vieja deja una marca de un solo uso
+(`transfer_offer(new_id)`) y la nueva la recoge con **su** sesión
+(`transfer_accept()`). Es la misma forma que ya usa la app, que tiene las dos
+sesiones a la vez durante el traspaso (C09 §2.1). Así deja de servir el id
+ajeno a secas.
+
+## 30. `get_slot_by_code` enseña de más a quien tiene el código 🟡 {#30}
+
+> En corto: Con solo teclear un código, sin entrar, se ve el id del hueco, si el cliente está conectado y a qué hora subió su último entreno.
+
+Encontrado en I02-02; viola R-A5 (solo los tres nombres).
+
+**Cuándo.** La función devuelve 9 campos (`schema.sql:408-427`).
+`history_updated_at` deja vigilar cuándo entrena el cliente sin que él lo
+note, y el comentario de `:404-405` dice «ni ids» pero devuelve `id`.
+
+**Lo que usa la app** (`useStore.js:4379-4387`, `useClientCode.js:89`): `id`,
+`program_name`, `trainer_name`, `is_linked`, `is_mine`, `locked_by` y
+`history_updated_at` (este solo como sí/no). No usa `program_updated_at` ni
+`client_name`.
+
+**Confirmado por:** `server.hostile.sim.test.js` › H2.
+
+**Arreglo a estudiar.** Cambiar `history_updated_at` por un booleano
+(`has_history`) y quitar `program_updated_at`. Hay que decidir si R-A5 se
+amplía a los campos que la pantalla de confirmar necesita de verdad (está
+conectado, es el mío, está protegido) y si `id` hace falta antes de entrar.
+
+## 31. `audit.sql` sale vacío con derivas graves 🟡 {#31}
+
+> En corto: La consulta que comprueba que producción está bien no detecta, entre otras cosas, que se apaguen los permisos por filas; que salga vacía no demuestra nada.
+
+Encontrado en I02-02; viola R-A9.
+
+**Cuándo.** Diez derivas aplicadas una a una sobre el SQL limpio y `audit.sql`
+devuelve `[]` en todas:
+
+- RLS desactivada en `trainer_clients` o en `profiles`;
+- política SELECT `using (true)`;
+- `EXECUTE` a anon o a PUBLIC;
+- sin el índice `trainer_clients_one_seat`;
+- sin la FK `trainer_clients_client_fk`;
+- `UPDATE` a PUBLIC o por columna;
+- `link_client_to_slot` redefinida sin `SEAT_LOCKED`.
+
+Tampoco mira `profiles`, que no tiene FK a `auth.users`: borrar un usuario
+desde el panel deja su fila huérfana (`schema.sql:44-47`).
+
+**Confirmado por:** `server.hostile.sim.test.js` › H3 (10 casos) y H16.
+
+**Arreglo previsto.** Ampliar `audit.sql` con:
+
+- `relrowsecurity` en las dos tablas;
+- políticas SELECT con `qual = 'true'`;
+- `has_function_privilege` para anon y PUBLIC;
+- la existencia del índice y de las FK;
+- permisos por columna;
+- una huella (`md5(prosrc)`) de cada función, comparada con la del repositorio;
+- filas de `profiles` sin usuario.
+
+Los diez tests de H3 pasan a esperar al menos una fila.
+
+## 32. «Vincular Google» del cliente sin asiento, y su reintento 🟡 {#32}
+
+> En corto: Si al cliente le han quitado el asiento, vincular Google sale como hecho; y si la red se corta en mitad, el reintento falla con un error.
+
+Encontrado en I02-02; viola R-C1 y R-C7.
+
+**Cuándo.**
+
+1. El cliente ya no tiene asiento (otro entró con su código) y pulsa
+   «Vincular Google». `transfer_my_seat_to` devuelve 0 sin error
+   (`schema.sql:554-556`) y la app, que no mira ese número
+   (`useStore.js:4824`), guarda `googleLinked: true`. Después le dice «te
+   desconectó tu entrenador» (`gone`) en vez de «alguien entró con tu
+   código».
+2. El traspaso del asiento llega al servidor pero falla la instalación de la
+   sesión. Al reintentar, la app se salta el `release` y el servidor responde
+   `SEAT_TAKEN`, porque el Google ya ocupa ese asiento (`:551-553`).
+
+**Confirmado por:** `server.hostile.sim.test.js` › H7 y
+`connection.audit.sim.test.js` › H7, H9.
+
+**Arreglo a estudiar.**
+
+- Que `transfer_my_seat_to` lance `NO_SEAT` si no mueve nada.
+- Que dé por bueno, sin error, el caso «el destino ya está en mi asiento».
+
+## 33. «Eliminar cuenta» no termina si entrenador y cliente usan el mismo Google 🟡 {#33}
+
+> En corto: Con el mismo Google como entrenador y como cliente en el mismo móvil, borrar la cuenta borra todo en el servidor pero la app da error y se queda con la sesión puesta.
+
+Encontrado en I02-02; viola R-D4.
+
+**Cuándo.**
+
+- Las dos sesiones quedan con el mismo usuario (`useStore.js:4815-4825`).
+- `deleteAccount` llama a `delete-account` dos veces (`:4873-4874`). La
+  primera lo borra todo y la segunda da 401 (`index.ts:56-57`).
+- La acción lanza antes de cerrar las sesiones, salir de RevenueCat y limpiar
+  el estado.
+
+**Confirmado por:** `connection.audit.sim.test.js` › H12. El texto del error
+es el de la copia del banco; en producción sería otro, pero el fallo es el
+mismo.
+
+**Arreglo previsto.** Llamar a `delete-account` una vez por usuario distinto, y
+tomar un 401 de la segunda llamada como «ya borrado».
+
+## 34. El motivo de perder el asiento sale cambiado 🟢 {#34}
+
+> En corto: A veces al cliente se le dice «alguien entró con tu código» cuando en realidad le desconectó el entrenador, y al revés.
+
+Encontrado en I02-02; viola R-B3.
+
+**Cuándo.** `client_lost_reason` (`schema.sql:493-495`) mira la marca
+`displaced_client_id`. Esa marca no se limpia al entrar en otro hueco
+(`:466-470`) y se pisa en el siguiente desplazamiento (`:475`). Dos casos:
+
+- **Sale «taken» en vez de «gone».** A X lo echaron una vez de S1, después se
+  fue a S2 y su nuevo entrenador lo borra.
+- **Sale «gone» en vez de «taken».** Y echa a X y, antes de que X abra la app,
+  Z echa a Y.
+
+**Confirmado por:** `server.hostile.sim.test.js` › H5 y `connection.audit.sim.test.js` › H5a, H5b.
+
+**Arreglo a estudiar.** Guardar el motivo por usuario y no por hueco: una
+tabla pequeña `seat_losses(client_id, reason, at)` que escriben `link`,
+`delete`, `reissue` y `release`. Así lo lee el que lo perdió sin depender de lo
+que pase después en ese hueco.
+
+## 35. Crear un cliente no aguanta un reintento 🟢 {#35}
+
+> En corto: Si al crear un cliente con app se pierde la respuesta del servidor y la app reintenta, el entrenador acaba con el cliente repetido, y el repetido cuenta para el plan gratis.
+
+Encontrado en I02-02.
+
+**Cuándo.** `trainer_create_slot` (`schema.sql:266-282`) siempre inserta. El
+store reintenta (`useStore.js:3886`) y el primer hueco reaparece como ficha al
+refrescar (`:4254-4270`).
+
+**Confirmado por:** `connection.audit.sim.test.js` › H13. La respuesta
+perdida se imita con una llamada en crudo, porque `server.failOnce` corta antes
+de llegar al servidor.
+
+**Arreglo previsto.** Que la app mande un id propio de la ficha
+(`p_local_id`), que el servidor lo guarde con un índice único por entrenador, y
+que un segundo intento devuelva el mismo hueco.
+
+## 36. Usuario cliente borrado desde el panel: el entrenador lo ve invitado 🟢 {#36}
+
+> En corto: Si se borra la cuenta de un cliente desde el panel de Supabase (no desde la app), el entrenador ve ese cliente como pendiente de entrar, no como que se fue.
+
+Encontrado en I02-02; viola R-B6.
+
+**Cuándo.** La FK `on delete set null` suelta `client_id`, pero
+`disconnected_at` se queda en null (`schema.sql:157-160`;
+`useStore.js:4285-4287`).
+
+**Confirmado por:** `server.hostile.sim.test.js` › H15.
+
+**Arreglo previsto.** Un trigger `before update` que ponga `disconnected_at =
+now()` cuando `client_id` pasa de un valor a null y nadie lo ha puesto ya.
+
+## 37. Una subida que llega tarde cae en el hueco del entrenador nuevo 🟢 {#37}
+
+> En corto: Si el cliente cambia de entrenador mientras una subida va de camino, esas sesiones llegan al entrenador nuevo y no al anterior.
+
+Encontrado en I02-02. **Confirmado en el SQL; sin confirmar en la app.**
+
+**Cuándo.** `client_upload_history` no dice a qué asiento sube: usa el que el
+cliente tenga en ese momento (`schema.sql:499-510`). En el servidor es seguro
+que pasa. Lo que no se sabe es si la app llega a tener las dos peticiones en
+vuelo, porque `useStore.js:4566` lanza la subida sin esperar. Queda para el
+dispositivo (I02-06).
+
+**Confirmado por:** `server.hostile.sim.test.js` › H14 (solo la parte del SQL).
+
+**Arreglo a estudiar.** Que la subida lleve el `slot_id` que cree tener y que
+el servidor la rechace si no coincide. Encaja con el arreglo de [§27](#27).
+
+---
+
+## Orden de trabajo sugerido
 
 Agrupado por lo que se toca, no por severidad, para que cada tanda sea un PR
 verificable:
@@ -2303,7 +2583,7 @@ Cerradas las seis. La tanda A era la que había que hacer antes de publicar:
 [1](#1) dejaba la app inservible y [2](#2) destruía datos del entrenador en la
 operación que precisamente existe para no perderlos.
 
-## 28. Lo que NO entra en esta spec
+## Lo que NO entra en esta spec
 
 Cosas que aparecieron en la auditoría y se dejan fuera a propósito:
 
