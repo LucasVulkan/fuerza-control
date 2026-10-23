@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeEditorDraft, restoreEditorDraft, selectEditorDirty, templateEdited, rowEdited } from './editorDraft';
+import { makeEditorDraft, restoreEditorDraft, selectEditorDirty, templateEdited, rowEdited, deepEqual } from './editorDraft';
 
 const tpl = (id, programId, extra = {}) => ({ id, programId, name: id, exercises: [{ exerciseId: 'sq', sets: 3 }], ...extra });
 
@@ -91,5 +91,13 @@ describe('borrar con Deshacer (P16-07)', () => {
     const back = { ...s1, ...restoreEditorDraft(s1, undo) };
     expect(back.sessionTemplates.a.exercises).toEqual(s0.sessionTemplates.a.exercises);
     expect(back.sessionTemplates.b).toBe(s1.sessionTemplates.b);
+  });
+});
+
+describe('deepEqual', () => {
+  it('una clave en undefined cuenta como ausente (devolver un campo a «sin valor» no es un cambio)', () => {
+    expect(deepEqual({ sets: 3 }, { sets: 3, tempo: undefined })).toBe(true);
+    expect(deepEqual({ sets: 3 }, { sets: 3, tempo: null })).toBe(false);
+    expect(deepEqual([1, { a: 1 }], [1, { a: 1, b: undefined }])).toBe(true);
   });
 });

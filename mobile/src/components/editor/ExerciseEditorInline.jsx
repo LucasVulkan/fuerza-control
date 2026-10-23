@@ -40,6 +40,7 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import { ArrowIcon, ProgressionIcon, VariantIcon, WarmupIcon, LockIcon, CloseIcon, LinkIcon } from '../ui/EditorIcons';
 import EditorIdentityCard from './EditorIdentityCard';
+import { deepEqual } from '../../utils/editorDraft';
 import VariantPicker from '../ui/VariantPicker';
 import AnimatedHeight from '../ui/AnimatedHeight';
 import { variantLabel, cleanVariant, variantDims } from '../../utils/variants';
@@ -221,7 +222,9 @@ export default function ExerciseEditorInline({
   };
 
   const stageHold = exConfig.progression?.hold ?? null;
-  const commitValues = useCallback((s) => {
+  // Lo que se escribe en el store a partir del estado del editor: la
+  // configuración entera y normalizada (`hold`: el de la etapa, ver abajo).
+  const buildUpdates = useCallback((s, hold) => {
     const isTimeMode = s.metric === 'time';
     const inputType  = s.metric === 'time' ? 'weight_time' : 'weight_reps';
     const pctx = { def, sets: s.sets, metric: s.metric, range: s.repsMode === 'range' };
@@ -248,7 +251,7 @@ export default function ExerciseEditorInline({
       progressionModel,
       // `hold` lo escribe la etapa (applyRx), no la hoja: sin él, tocar un
       // ejercicio de una etapa de descarga cancelaba la descarga.
-      progression: stageHold ? { ...progression, hold: stageHold } : progression,
+      progression: hold ? { ...progression, hold } : progression,
       // Solo si difiere del escalón de la librería (§5.5); null lo deja a ella.
       weightStep,
     };
@@ -262,9 +265,21 @@ export default function ExerciseEditorInline({
     } else {
       updates.minReps = s.minReps; updates.maxReps = oneReps ? s.minReps : s.maxReps;
     }
+    return updates;
+  }, [def]);
 
+  const commitValues = useCallback((s) => {
+    const updates = buildUpdates(s, stageHold);
+    // De vuelta a como estaba al entrar en el editor (P16-01): se escribe lo
+    // original tal cual, no su versión normalizada (`tempo: null`, `inputType`…
+    // que antes no estaban), para que el borrador no cuente como cambiado.
+    const orig = useStore.getState().ui._editorDraft?.snapshot.templates[templateId]
+      ?.exercises?.find((e) => e.exerciseId === exConfig.exerciseId);
+    if (orig && deepEqual(updates, buildUpdates(computeInitial(orig, def), orig.progression?.hold ?? null))) {
+      for (const k of Object.keys(updates)) updates[k] = orig[k];
+    }
     updateRef.current(templateId, exConfig.exerciseId, updates);
-  }, [templateId, exConfig.exerciseId, stageHold, def]);
+  }, [templateId, exConfig.exerciseId, stageHold, def, buildUpdates]);
 
   const isFirstRender = useRef(true);
   useEffect(() => {
