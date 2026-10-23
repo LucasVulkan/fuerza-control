@@ -52,8 +52,9 @@ function ActionToast({ toast }) {
     left.value = withTiming(0, { duration: toast.duration, easing: Easing.linear });
   }, [left, toast.duration]);
   const barStyle = useAnimatedStyle(() => ({ width: `${left.value * 100}%` }));
-  // Verde oscuro sobre el fondo claro del toast (en los temas claros el toast es oscuro: acento).
-  const ink = th.scheme === 'dark' ? '#4e7a00' : th.colors.accent;
+  // Con los colores del tema, como una tarjeta: invertido (fondo claro y un
+  // verde oscuro a mano) parecía de otro tema.
+  const ink = th.colors.accent;
 
   return (
     <Reanimated.View
@@ -172,15 +173,22 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     gap:               spacing.md,
     overflow:          'hidden',
-    backgroundColor:   th.colors.text,
+    backgroundColor:   th.colors.surface2,
+    borderWidth:       1,
+    borderColor:       th.colors.border,
     borderRadius:      th.radius.lg,
     paddingVertical:   spacing.md,
     paddingLeft:       spacing.xl,
     paddingRight:      spacing.sm2,
+    // Sombra como el toast de siempre: sobre el fondo oscuro, la que lo despega.
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: 4 },
+    shadowOpacity:     0.35,
+    shadowRadius:      8,
     elevation:         8,
   },
-  actionMsg:   { ...textStyles.body, flex: 1, color: th.colors.bg },
-  actionBold:  { ...textStyles.bodyStrong, color: th.colors.bg },
+  actionMsg:   { ...textStyles.body, flex: 1, color: th.colors.mutedLight },
+  actionBold:  { ...textStyles.bodyStrong, color: th.colors.text },
   actionBtn:   { paddingVertical: spacing.sm2, paddingHorizontal: spacing.md },
   actionLabel: { ...textStyles.button },
   bar:         { position: 'absolute', left: 0, bottom: 0, height: 3 },
