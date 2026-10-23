@@ -7,9 +7,11 @@
  * de programa.
  */
 import { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Text, TextInput } from './Text';
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, withOpacity } from '../../theme';
 import { useThemedStyles } from '../../useTheme';
 import { useSwipeLock } from '../../hooks/useSiblingSwipe';
 
@@ -63,6 +65,39 @@ const MEASURE_SLACK = 6;
 // proporción sale en 8. No es `radius.sm` a propósito: la celda tiene que
 // leerse como la del entreno, no como una caja más de la hoja.
 const VALUE_R   = 8;
+// El cambio de cifra con ±: la vieja sale (fundido + 6 dp hacia donde va el
+// número) y la nueva entra desde el otro lado. Pulsar seguido acumula y solo
+// se escribe la última.
+const NUM_OUT_MS = 90;
+const NUM_IN_MS  = 160;
+const NUM_SHIFT  = 6;
+
+/**
+ * Un ± que se nota al pulsar: un círculo lima tenue aparece de golpe bajo el
+ * glifo y se apaga al soltar, y el glifo se encoge un poco. Sin caja en reposo
+ * (regla 1).
+ */
+function StepButton({ onPress, plus, sf }) {
+  const p = useSharedValue(0);
+  const ring  = useAnimatedStyle(() => ({ opacity: p.get(), transform: [{ scale: 0.7 + 0.3 * p.get() }] }));
+  const glyph = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.18 * p.get() }] }));
+  return (
+    <Pressable
+      style={sf.stepBtn}
+      onPress={onPress}
+      onPressIn={() => p.set(1)}
+      onPressOut={() => p.set(withTiming(0, { duration: 260 }))}
+      hitSlop={4}
+      accessibilityRole="button"
+    >
+      <Reanimated.View style={[sf.stepRing, ring]} />
+      <Reanimated.View style={[StyleSheet.absoluteFill, glyph]}>
+        <View style={sf.glyphBar} />
+        {plus && <View style={[sf.glyphBar, sf.glyphBarV]} />}
+      </Reanimated.View>
+    </Pressable>
+  );
+}
 
 export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
   const sf = useThemedStyles(makeSf);
@@ -83,7 +118,31 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
 
   // Redondeo a 2 decimales: sumar 0.25 repetidamente arrastra error binario.
   const round  = (n) => Math.round(n * 100) / 100;
-  const commit = (n) => onChange(round(Math.min(max, Math.max(min, n))));
+
+  const numOp = useSharedValue(1);
+  const numY  = useSharedValue(0);
+  const numStyle = useAnimatedStyle(() => ({ opacity: numOp.get(), transform: [{ translateY: numY.get() }] }));
+  const pendingRef = useRef(null);   // la cifra que se va a escribir mientras sale la vieja
+  const stepTimer  = useRef(null);
+  useEffect(() => () => clearTimeout(stepTimer.current), []);
+
+  function stepBy(dir) {
+    const from = pendingRef.current ?? numVal;
+    const to   = round(Math.min(max, Math.max(min, from + dir * step)));
+    if (to === from) return;   // en el tope no pasa nada: ni vibra ni se mueve
+    Haptics.selectionAsync().catch(() => {});
+    pendingRef.current = to;
+    numOp.set(withTiming(0, { duration: NUM_OUT_MS }));
+    numY.set(withTiming(-dir * NUM_SHIFT, { duration: NUM_OUT_MS }));
+    clearTimeout(stepTimer.current);
+    stepTimer.current = setTimeout(() => {
+      pendingRef.current = null;
+      setDraft(String(to));
+      onChange(to);
+      numOp.set(withTiming(1, { duration: NUM_IN_MS }));
+      numY.set(withSequence(withTiming(dir * NUM_SHIFT, { duration: 0 }), withTiming(0, { duration: NUM_IN_MS })));
+    }, NUM_OUT_MS);
+  }
 
   // Los campos con mínimo negativo (los deltas del planificador: −3 reps,
   // −1 serie) admiten el signo, y solo al principio. Sin esto el teclado dejaba
@@ -101,10 +160,9 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
 
   const controls = (
     <View style={horizontal ? sf.controlsHorizontal : sf.controls}>
-      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal - step)} activeOpacity={0.6}>
-        <View style={sf.glyphBar} />
-      </TouchableOpacity>
+      <StepButton sf={sf} onPress={() => stepBy(-1)} />
       <Pressable style={sf.valueWrap} onPress={() => inputRef.current?.focus()}>
+        <Reanimated.View style={[sf.valueRow, numStyle]}>
         {!!unit && (
           <Text
             style={[sf.valueText, sf.valueMirror]}
@@ -125,11 +183,9 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
           selectTextOnFocus
         />
         {!!unit && <Text style={sf.unit}>{unit}</Text>}
+        </Reanimated.View>
       </Pressable>
-      <TouchableOpacity style={sf.stepBtn} onPress={() => commit(numVal + step)} activeOpacity={0.6}>
-        <View style={sf.glyphBar} />
-        <View style={[sf.glyphBar, sf.glyphBarV]} />
-      </TouchableOpacity>
+      <StepButton sf={sf} plus onPress={() => stepBy(1)} />
     </View>
   );
 
@@ -203,6 +259,14 @@ const makeSf = (th) => StyleSheet.create({
     backgroundColor: th.colors.accent,
   },
   glyphBarV: { transform: [{ rotate: '90deg' }] },
+  // El círculo de la pulsación: solo existe mientras se pulsa.
+  stepRing: {
+    position:        'absolute',
+    width:           STEP_BTN,
+    height:          STEP_BTN,
+    borderRadius:    STEP_BTN / 2,
+    backgroundColor: withOpacity(th.colors.accent, 0.18),
+  },
 
   valueWrap: {
     width:           VALUE_W,
@@ -210,13 +274,14 @@ const makeSf = (th) => StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     justifyContent:  'center',
-    // La separación que se VE entre el número y la unidad es este gap más medio
-    // `MEASURE_SLACK`: la holgura del input va centrada, así que se reparte a los
-    // dos lados. A 4 quedaba suelta; con 2 sale en los ~5 del diseño.
-    gap:             spacing.xs,
     backgroundColor: th.colors.bg,
     borderRadius:    VALUE_R,
   },
+  // Número + unidad, lo que se mueve al cambiar de cifra (la celda se queda).
+  // La separación que se VE entre el número y la unidad es este gap más medio
+  // `MEASURE_SLACK`: la holgura del input va centrada, así que se reparte a los
+  // dos lados. A 4 quedaba suelta; con 2 sale en los ~5 del diseño.
+  valueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
   // La tipografía va aparte porque la comparten el input y el clon que lo mide:
   // si divergen, el ancho medido no es el que se pinta.
   valueText: {
