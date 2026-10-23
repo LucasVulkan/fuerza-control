@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Rect, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withSpring, withSequence, withTiming,
+  useSharedValue, useAnimatedStyle, withSpring, withSequence, withTiming, Easing,
 } from 'react-native-reanimated';
 
 import { Text } from './Text';
@@ -58,7 +58,7 @@ const TAB_ICONS = {
 
 // Rebote corto: se nota que la pieza llega, sin bailar.
 const SPRING = { damping: 16, stiffness: 190 };
-const LINE_SPRING = { damping: 22, stiffness: 220 };
+const LINE_OVER = 4;
 
 function TabIcon({ route, focused, burst }) {
   const th = useTheme();
@@ -154,10 +154,16 @@ export default function BottomTabBar({ state, descriptors, navigation, insets })
   useEffect(() => {
     if (!width) return;
     const to = (state.index + 0.5) * (width / n) - LINE_W / 2;
-    // Muelle casi amortiguado: se pasa de largo un pelo y vuelve. Con más
-    // rebote, de Plantillas a Entreno salía de la pantalla. La primera vez se
-    // coloca sin viajar.
-    lineX.set(placed.current ? withSpring(to, LINE_SPRING) : to);
+    // Se pasa siempre LINE_OVER px y vuelve, venga de donde venga: con un
+    // muelle el rebote crecía con la distancia (de Plantillas a Entreno salía
+    // de la pantalla). La primera vez se coloca sin viajar.
+    const dir = Math.sign(to - lineX.get());
+    lineX.set(placed.current
+      ? withSequence(
+        withTiming(to + dir * LINE_OVER, { duration: 230, easing: Easing.out(Easing.cubic) }),
+        withTiming(to, { duration: 150, easing: Easing.inOut(Easing.quad) }),
+      )
+      : to);
     placed.current = true;
   }, [state.index, width, n, lineX]);
 
