@@ -592,10 +592,7 @@ export default function WorkoutScreen() {
           </View>
 
           <TouchableOpacity onPress={() => setNotesOpen(true)} hitSlop={12} style={styles.headerAction}>
-            <NoteIcon
-              size={22}
-              color={hasSessionNotes ? th.colors.accent : th.colors.mutedLight}
-            />
+            <NoteIcon size={22} active={hasSessionNotes} />
           </TouchableOpacity>
         </View>
 

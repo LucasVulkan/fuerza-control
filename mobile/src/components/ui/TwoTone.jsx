@@ -15,12 +15,16 @@ import Svg, { Defs, G, Mask, Rect } from 'react-native-svg';
 import { useTheme } from '../../useTheme';
 import { ICON_STROKE, ICON_GAP, iconTones, strokeFor } from './iconTones';
 
-/** Un icono suelto de caja 24: `<TwoToneIcon size color g a … />`. */
-export function TwoToneIcon({ size, color, ...parts }) {
+/**
+ * Un icono suelto de caja 24: `<TwoToneIcon size color g a … />`. `rest` lo
+ * pinta todo en `color`: el estado en reposo de un icono con estado.
+ */
+export function TwoToneIcon({ size, color, rest = false, ...parts }) {
   const th = useTheme();
+  const tones = rest ? { gray: color, accent: color } : iconTones(th, color);
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <TwoTone {...parts} {...iconTones(th, color)} sw={strokeFor(size)} />
+      <TwoTone {...parts} {...tones} sw={strokeFor(size)} />
     </Svg>
   );
 }
