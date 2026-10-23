@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withSpring, withSequence, withTiming,
+  useSharedValue, useAnimatedStyle, withSpring, withSequence, withTiming, Easing,
 } from 'react-native-reanimated';
 
 import { Text } from './Text';
@@ -53,9 +53,10 @@ const TAB_ICONS = {
   },
 };
 
-const SPRING = { damping: 11, stiffness: 170 };
+// Rebote corto: se nota que la pieza llega, sin bailar.
+const SPRING = { damping: 16, stiffness: 190 };
 
-function TabIcon({ route, focused }) {
+function TabIcon({ route, focused, burst }) {
   const th = useTheme();
   const { g, gf, a, af, anim } = TAB_ICONS[route] ?? TAB_ICONS.Home;
   const gray   = focused ? th.colors.mutedLight : th.colors.muted;
@@ -64,14 +65,14 @@ function TabIcon({ route, focused }) {
 
   const pop = useSharedValue(1);
   const p   = useSharedValue(1);
-  const mounted = useRef(false);
+  // Solo al pulsar (`burst` cuenta las pulsaciones), no al cambiar de pestaña
+  // por código ni al volver a montarse la barra.
   useEffect(() => {
-    if (!mounted.current) { mounted.current = true; return; }
-    if (!focused) return;
-    pop.set(withSequence(withTiming(0.8, { duration: 130 }), withTiming(1.12, { duration: 130 }), withTiming(1, { duration: 120 })));
+    if (!burst) return;
+    pop.set(withSequence(withTiming(0.85, { duration: 120 }), withTiming(1.05, { duration: 120 }), withTiming(1, { duration: 110 })));
     p.set(0);
     p.set(withSpring(1, SPRING));
-  }, [focused, pop, p]);
+  }, [burst, pop, p]);
 
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.get() }] }));
   const accentStyle = useAnimatedStyle(() => {
@@ -105,6 +106,7 @@ function Tab({ route, options, focused, onPress, onLongPress }) {
   const th = useTheme();
   const styles = useThemedStyles(makeStyles);
   const press = useSharedValue(1);
+  const [burst, setBurst] = useState(0);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.get() }] }));
   const label = options.tabBarLabel ?? options.title ?? route.name;
   const badge = options.tabBarBadge;
@@ -112,7 +114,7 @@ function Tab({ route, options, focused, onPress, onLongPress }) {
   return (
     <Pressable
       style={styles.tab}
-      onPress={onPress}
+      onPress={() => { setBurst((b) => b + 1); onPress(); }}
       onLongPress={onLongPress}
       onPressIn={() => { press.set(withTiming(0.88, { duration: 80 })); }}
       onPressOut={() => { press.set(withTiming(1, { duration: 120 })); }}
@@ -121,7 +123,7 @@ function Tab({ route, options, focused, onPress, onLongPress }) {
       accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
     >
       <Reanimated.View style={pressStyle}>
-        <TabIcon route={route.name} focused={focused} />
+        <TabIcon route={route.name} focused={focused} burst={burst} />
         {badge === '' ? (
           <View style={styles.badgeDot} />
         ) : badge != null ? (
@@ -147,8 +149,9 @@ export default function BottomTabBar({ state, descriptors, navigation, insets })
   useEffect(() => {
     if (!width) return;
     const to = (state.index + 0.5) * (width / n) - LINE_W / 2;
-    // La primera vez se coloca sin viajar desde la izquierda.
-    lineX.set(placed.current ? withSpring(to, { damping: 15, stiffness: 170 }) : to);
+    // Sin muelle: con inercia se pasaba de largo y de Plantillas a Entreno
+    // salía de la pantalla. La primera vez se coloca sin viajar.
+    lineX.set(placed.current ? withTiming(to, { duration: 240, easing: Easing.out(Easing.cubic) }) : to);
     placed.current = true;
   }, [state.index, width, n, lineX]);
 
@@ -178,10 +181,10 @@ export default function BottomTabBar({ state, descriptors, navigation, insets })
 }
 
 const makeStyles = (th) => StyleSheet.create({
-  // Lo que asoma por las esquinas redondas es el fondo de la app.
+  // Tan oscura como el fondo: la forma la dan el borde y las esquinas.
   wrap: { backgroundColor: th.colors.bg },
   bar: {
-    backgroundColor:      th.colors.surface,
+    backgroundColor:      th.colors.bg,
     borderTopLeftRadius:  th.radius.lg,
     borderTopRightRadius: th.radius.lg,
     borderTopWidth:   borders.thin,
@@ -201,12 +204,12 @@ const makeStyles = (th) => StyleSheet.create({
   label: { ...textStyles.micro },
   badgeDot: {
     position: 'absolute', top: -1, right: -3, width: 7, height: 7, borderRadius: 4,
-    backgroundColor: th.colors.accent, borderWidth: 1.5, borderColor: th.colors.surface,
+    backgroundColor: th.colors.accent, borderWidth: 1.5, borderColor: th.colors.bg,
   },
   badgeNum: {
     position: 'absolute', top: -5, right: -9, minWidth: 16, height: 16, paddingHorizontal: 4,
     borderRadius: 8, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: th.colors.surface,
+    borderWidth: 1.5, borderColor: th.colors.bg,
   },
   badgeText: { ...textStyles.micro, color: th.colors.onAccent },
 });
