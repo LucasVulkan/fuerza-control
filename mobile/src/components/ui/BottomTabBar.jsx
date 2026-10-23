@@ -26,7 +26,6 @@ const ICON = 24;
 const LINE_W = 26;
 // Alto del fundido que tapa el corte recto de la página junto a las esquinas.
 const FADE = 24;
-const HAIRLINE = StyleSheet.hairlineWidth;
 
 // g/gf = gris; a/af = la parte lima, que es la que se anima (`anim`).
 const TAB_ICONS = {
@@ -208,20 +207,18 @@ const makeStyles = (th) => StyleSheet.create({
   // se mete por detrás.
   wrap: { backgroundColor: th.colors.bg, paddingHorizontal: spacing.sm2 },
   fade: { position: 'absolute', top: -FADE, left: 0, right: 0, height: FADE },
-  // Un punto más gris que el fondo (surface al 60 % sobre bg) y borde de un
-  // pelo: con el de 1 px había demasiado contraste.
+  // Un punto más gris que el fondo (surface al 60 % sobre bg). Sin borde: con
+  // el fundido de encima ya se lee la forma.
   bar: {
     backgroundColor:   withOpacity(th.colors.surface, 0.6),
     borderRadius:      th.radius.lg,
-    borderWidth:       HAIRLINE,
-    borderColor:       th.colors.borderCard,
     paddingHorizontal: spacing.xs,
     paddingBottom:     spacing.xs2,
   },
   row: { flexDirection: 'row' },
-  // La raya cubre el borde de arriba (top −1).
+  // La raya va pegada al filo de arriba de la tarjeta.
   line: {
-    position: 'absolute', top: -HAIRLINE, left: 0,
+    position: 'absolute', top: 0, left: 0,
     width: LINE_W, height: 2, borderBottomLeftRadius: 2, borderBottomRightRadius: 2,
     backgroundColor: th.colors.accent,
   },
