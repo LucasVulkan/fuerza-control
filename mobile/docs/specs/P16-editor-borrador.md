@@ -405,6 +405,21 @@ Pedidos por el usuario al probar en el móvil:
 - **Ejercicio y bloque: «‹ anterior · siguiente ›» pegado a la tarjeta y dentro
   del scroll** (se va al bajar; plegada, la lista sale del título de la cabecera).
 
+### Segunda ronda (23-oct-2026)
+
+- **Corte bajo la cabecera, siempre**: 2 dp más oscuros que el fondo (negro en
+  los temas oscuros, `border` en los claros), como si el fondo estuviera partido.
+  Sustituye a la línea fina que solo salía al plegar.
+- **«Guardar»** con el radio de los botones (`radius.md`), no en píldora.
+- **Cabecera al estándar de iOS**: chevron de trazo redondeado (`BackChevron`),
+  8 dp hasta el texto, y «Cancelar» / «‹ Programa» en el peso del texto (`body`),
+  no en el de un botón. El texto del «‹» sigue siendo **a dónde vuelves**: es lo
+  que hace iOS (el título de la pantalla anterior); dónde estás lo dice el
+  título que aparece al plegar, como el título grande de iOS al hacer scroll.
+- **Programa sin etapas**: el segundo bloque de la tarjeta es una sola fila,
+  «PROGRAMA SIN ETAPAS · Ver plan ›» y el engranaje; fuera la ceja de la etapa y
+  la meta, que repetían las semanas y sesiones/sem de las cifras de arriba.
+
 ## 10. Historia del diseño
 
 - v1 `editor-salida.html`: «Cancelar / Guardar» arriba con un solo Guardar. El

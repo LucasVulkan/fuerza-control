@@ -40,7 +40,7 @@ import { selectEditorDirty } from '../../utils/editorDraft';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
-import { ArrowIcon } from './EditorIcons';
+import { ArrowIcon, BackChevron } from './EditorIcons';
 
 // Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
 // un grosor óptico, no un hueco. Se exporta porque la cabecera de WorkoutScreen
@@ -122,7 +122,6 @@ export default function ScreenHeader({
     opacity:   fold.get(),
     transform: [{ translateY: 6 * (1 - fold.get()) }],
   }));
-  const ruleStyle     = useAnimatedStyle(() => ({ opacity: fold.get() }));
   const midPress      = onTitlePress;
   // La tinta de las acciones que pinta el llamante. Gris: el acento del cromo
   // es la ceja, el chevron y el check de "listo" — un "···" lima al lado sería
@@ -142,7 +141,7 @@ export default function ScreenHeader({
               </TouchableOpacity>
             ) : onBack ? (
               <TouchableOpacity onPress={onBack} style={styles.edBack} hitSlop={10} activeOpacity={0.7}>
-                <ArrowIcon size={15} color={th.colors.accent} back />
+                <BackChevron color={th.colors.accent} />
                 <Reanimated.View style={[styles.edBackLabel, unfoldedStyle]}>
                   <Text style={styles.backLabel} numberOfLines={1}>{ed.backLabel ?? ''}</Text>
                 </Reanimated.View>
@@ -232,7 +231,7 @@ export default function ScreenHeader({
       )}
 
       {ed
-        ? <View style={styles.edRuleSlot}><Reanimated.View style={[styles.edRule, ruleStyle]} /></View>
+        ? <View style={[styles.edRule, { backgroundColor: th.scheme === 'dark' ? '#000' : th.colors.border }]} />
         : <HeaderRule progress={progress} />}
     </View>
   );
@@ -268,10 +267,12 @@ const makeStyles = (th) => StyleSheet.create({
   // Modo editor (P16-02). Izquierda flexible para que un destino largo recorte
   // con puntos suspensivos sin empujar al check; el centro, absoluto.
   edLeft:  { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
-  cancel:  { ...textStyles.button, color: th.colors.mutedLight },
-  edBack:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
+  // Como la barra de navegación de iOS: «Cancelar» y «‹ Programa» en el peso del
+  // texto, no en el de un botón; la acción con peso es la de la derecha.
+  cancel:  { ...textStyles.body, color: th.colors.mutedLight },
+  edBack:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2, maxWidth: '100%' },
   edBackLabel: { flexShrink: 1 },
-  backLabel:   { ...textStyles.bodyStrong, color: th.colors.accent },
+  backLabel:   { ...textStyles.body, color: th.colors.accent },
   // 56 fijos, como la maqueta y como la cabecera de dos líneas: con una sola
   // línea («Cancelar», «‹ destino») el relleno solo daba ~40 y la barra quedaba
   // pegada a la barra de estado.
@@ -279,12 +280,12 @@ const makeStyles = (th) => StyleSheet.create({
   // El centro ocupa la barra entera y centra dentro: no depende de cuánto midan
   // «Cancelar» y las acciones. El margen lateral (medido) le deja sitio a los dos.
   edMid:   { ...StyleSheet.absoluteFillObject },
-  // «Guardar»: píldora de 32 como el botón de la maqueta (`okTxt`, editor-salida-5).
+  // «Guardar»: botón de 32 de alto, con el radio de los botones de la app.
   save: {
     height:            32,
     minWidth:          72,
     paddingHorizontal: spacing.lg,
-    borderRadius:      th.radius.full,
+    borderRadius:      th.radius.md,
     backgroundColor:   th.colors.surface2,
     alignItems:        'center',
     justifyContent:    'center',
@@ -297,8 +298,9 @@ const makeStyles = (th) => StyleSheet.create({
   edFoldTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, maxWidth: '100%' },
   foldTitle:      { ...textStyles.bodyStrong, color: th.colors.text, flexShrink: 1 },
   // 1 px reservado siempre (sin salto de layout); la línea aparece al plegar.
-  edRuleSlot: { height: 1 },
-  edRule:     { height: 1, backgroundColor: th.colors.border },
+  // La barra se separa del contenido con un corte más oscuro que el fondo (negro
+  // en los temas oscuros), siempre: como si el fondo estuviera partido en dos.
+  edRule:     { height: 2 },
   // Centrado: el bloque ceja+nombre se centra dentro de `mid`, y para que ese
   // centro sea el de la BARRA los dos huecos laterales miden lo mismo — de ahí
   // el `minWidth` de las acciones y el hueco que se pinta cuando no hay ninguna.

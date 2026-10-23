@@ -20,6 +20,16 @@ export function ArrowIcon({ size = 18, color, back = false }) {
   );
 }
 
+// Chevron de volver de la cabecera del editor: trazo redondeado, como el de la
+// barra de navegación de iOS, y no la flecha maciza de la marca.
+export function BackChevron({ color, size = 20 }) {
+  return (
+    <Svg width={size * 0.6} height={size} viewBox="0 0 12 20" fill="none">
+      <Path d="M10 2 L2.5 10 L10 18" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // Chevron fino hacia abajo (barras de los desplegables). Se rota 180º vía un
 // wrapper animado cuando el menú está abierto, para que apunte arriba.
 export function ChevronDown({ size = 12, color }) {

@@ -463,20 +463,17 @@ export default function ProgramEditorScreen({ navigation }) {
           onLayout={onCardLayout}
         >
           {/* Sin etapas, la etapa va dentro de la tarjeta del programa, tras el
-              corte, como el detalle de la tarjeta del tab Programa: su ceja, su
-              meta y el engranaje, y debajo «Programa sin etapas · Ver plan». */}
+              corte, como el detalle de la tarjeta del tab Programa. Una fila:
+              semanas y sesiones/sem ya las dicen las cifras de arriba. */}
           {single ? (
             <>
               <View style={styles.stageIn}>
-                <View style={styles.stageHeadText}>
-                  {browEl}
-                  <Text style={styles.stageMeta} numberOfLines={1}>{stageMeta}</Text>
+                <View style={styles.stageInText}>
+                  <Text style={styles.stagesLabel} numberOfLines={1}>{t('editor.stagesLabelNone').toUpperCase()}</Text>
+                  {lockedAt(selectedStageIdx) && <LockIcon size={10} color={th.colors.redText} solid />}
                 </View>
-                {gearEl}
-              </View>
-              <View style={styles.stagesLabelRow}>
-                <Text style={styles.stagesLabel}>{t('editor.stagesLabelNone').toUpperCase()}</Text>
                 {viewPlanEl}
+                {gearEl}
               </View>
             </>
           ) : null}
@@ -840,7 +837,8 @@ const makeStyles = (th) => StyleSheet.create({
   // La meta, también como en Programa.
   stageMeta:      { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.xs },
   // Dentro de la tarjeta del programa (sin etapas): la misma fila, sin caja propia.
-  stageIn: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  stageIn:     { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  stageInText: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headBtn: {
     width:           36,
     height:          36,
