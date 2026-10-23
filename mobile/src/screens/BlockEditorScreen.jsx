@@ -73,7 +73,7 @@ export default function BlockEditorScreen({ navigation, route }) {
     scrollRef.current?.scrollTo({ y: 0, animated: false });   // el deslizamiento ya cubre el cambio
   }
 
-  const sw = useSiblingSwipe({ prevId: blocks[index - 1]?.id ?? null, nextId: blocks[index + 1]?.id ?? null, onChange: selectBlock });
+  const sw = useSiblingSwipe({ prevId: blocks[index - 1]?.id ?? null, nextId: blocks[index + 1]?.id ?? null, onChange: selectBlock, awaitLayout: true });
 
   // `BlockEditorInline` borra del store y luego llama a `onClose`, así que el
   // bloque ya no está mientras sale la pantalla: va vacía ese instante, igual
@@ -124,7 +124,7 @@ export default function BlockEditorScreen({ navigation, route }) {
                 />
                 {/* Saltar a otro bloque lo remonta (la `key`). */}
                 <SwipeLockContext.Provider value={sw.lockRef}>
-                  <View key={swap}>
+                  <View key={swap} onLayout={sw.onContentLayout}>
                     <BlockEditorInline
                       templateId={templateId}
                       block={block}

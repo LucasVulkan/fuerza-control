@@ -174,7 +174,7 @@ export default function ScreenHeader({
                 Se pinta aunque no quepa (invisible) para poder medirlo. */}
             <Reanimated.View style={[styles.edLayer, unfoldedStyle]} pointerEvents="none">
               <Text
-                style={[styles.eyebrow, styles.edLine, !editingFits && styles.hidden]}
+                style={[styles.eyebrow, styles.edLine, styles.editNudge, !editingFits && styles.hidden]}
                 numberOfLines={1}
                 onLayout={(e) => setEditW(e.nativeEvent.layout.width)}
               >
@@ -315,6 +315,8 @@ const makeStyles = (th) => StyleSheet.create({
   // cada tamaño, sus cajas centradas dejaban las letras a alturas distintas. Una
   // línea igual para todas, sin relleno, y el centro de la caja es el del texto.
   edLine:  { lineHeight: 18, includeFontPadding: false, textAlignVertical: 'center' },
+  // Todo mayúsculas se lee más alto que las palabras de al lado: 1 dp abajo.
+  editNudge: { transform: [{ translateY: 1 }] },
   // «Guardar»: botón de 32 de alto, con el radio de los botones de la app.
   save: {
     height:            32,

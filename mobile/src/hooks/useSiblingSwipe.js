@@ -16,6 +16,11 @@
  * `onChange(id)` se llama a mitad de camino, con el contenido ya fuera de
  * pantalla: ahí se cambia el id (y se remonta lo que haga falta) y el nuevo
  * contenido entra desde el lado contrario.
+ *
+ * Con `awaitLayout`, el nuevo no entra hasta que la pantalla llama a
+ * `onContentLayout` (el `onLayout` de lo que se remonta) y pasan dos fotogramas:
+ * los editores de ejercicio y de bloque tardan en montarse y en calcular sus
+ * textos, y entrar a la vez daba trompicones al final. Mientras, espera fuera.
  */
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { PanResponder, useWindowDimensions } from 'react-native';
@@ -32,15 +37,33 @@ export function useSwipeLock() {
   return { onTouchStart: () => { lockRef.current = true; }, onTouchEnd: release, onTouchCancel: release };
 }
 
-export function useSiblingSwipe({ prevId, nextId, onChange }) {
+// Si el `onLayout` no llega (no se remontó nada), entra igual pasado este tiempo.
+const LAYOUT_TIMEOUT = 500;
+
+export function useSiblingSwipe({ prevId, nextId, onChange, awaitLayout = false }) {
   const { width: winW } = useWindowDimensions();
   const tx      = useSharedValue(0);
   const lockRef = useRef(false);
   const live    = useRef({});
+  const pending = useRef(null);   // { dir, timer } mientras el nuevo espera fuera
+  useEffect(() => () => clearTimeout(pending.current?.timer), []);
   useEffect(() => { live.current = { prevId, nextId, onChange, winW }; });
 
   // Los gestos leen `live` al tocar, no al pintar: el lint no lo distingue.
   /* eslint-disable react-hooks/refs */
+  const enter = (dir) => {
+    const w = live.current.winW;
+    tx.set(withSequence(withTiming(dir * w * 0.4, { duration: 0 }), withTiming(0, { duration: 220 })));
+  };
+  // Lo nuevo ya está maquetado; dos fotogramas más para los textos que se
+  // recalculan en sus efectos, y entra.
+  const onContentLayout = () => {
+    const p = pending.current;
+    if (!p) return;
+    pending.current = null;
+    clearTimeout(p.timer);
+    requestAnimationFrame(() => requestAnimationFrame(() => enter(p.dir)));
+  };
   const go = (dir, id) => {
     const target = id ?? (dir > 0 ? live.current.nextId : live.current.prevId);
     if (!target) { tx.set(withTiming(0, { duration: 200 })); return; }
@@ -48,8 +71,15 @@ export function useSiblingSwipe({ prevId, nextId, onChange }) {
     Haptics.selectionAsync().catch(() => {});
     tx.set(withTiming(-dir * w, { duration: 160 }));
     setTimeout(() => {
+      if (!awaitLayout) {
+        live.current.onChange?.(target);
+        enter(dir);
+        return;
+      }
+      clearTimeout(pending.current?.timer);
+      tx.set(dir * w); // fuera, al otro lado, mientras se monta
+      pending.current = { dir, timer: setTimeout(onContentLayout, LAYOUT_TIMEOUT) };
       live.current.onChange?.(target);
-      tx.set(withSequence(withTiming(dir * w * 0.4, { duration: 0 }), withTiming(0, { duration: 220 })));
     }, 160);
   };
   const [swipe] = useState(() => PanResponder.create({
@@ -75,5 +105,5 @@ export function useSiblingSwipe({ prevId, nextId, onChange }) {
     opacity: interpolate(Math.abs(tx.get()), [0, winW], [1, 0.3]),
   }));
 
-  return { go, panHandlers, slideStyle, lockRef };
+  return { go, panHandlers, slideStyle, lockRef, onContentLayout };
 }

@@ -69,7 +69,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
   const nameOf       = (id) => allExercises[id]?.name ?? id;
   const prevId       = exercises[index - 1]?.exerciseId ?? null;
   const nextId       = exercises[index + 1]?.exerciseId ?? null;
-  const sw           = useSiblingSwipe({ prevId, nextId, onChange: selectExercise });
+  const sw           = useSiblingSwipe({ prevId, nextId, onChange: selectExercise, awaitLayout: true });
 
   // Al borrar, el ejercicio se va del store antes de que acabe la animación de
   // salida: durante ese instante la pantalla que se aleja va vacía. Lo mismo
@@ -112,7 +112,7 @@ export default function ExerciseEditorScreen({ navigation, route }) {
                   style={styles.nbr}
                 />
                 <SwipeLockContext.Provider value={sw.lockRef}>
-                  <View key={swap}>
+                  <View key={swap} onLayout={sw.onContentLayout}>
                     <ExerciseEditorInline
                       templateId={templateId}
                       exConfig={exConfig}
