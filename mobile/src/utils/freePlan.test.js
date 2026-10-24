@@ -55,8 +55,11 @@ describe('congelado al caducar', () => {
     expect(isClientFrozen(st, 'b')).toBe(true);
   });
 
-  test('una elección que no cabe (2 con app) no vale', () => {
-    expect(needsClientChoice({ isPro: false, clients, freeClientIds: ['a', 'b'] })).toBe(true);
+  test('R-E4: una elección que no cabe (2 con app) sigue por orden hasta el tope y congela solo lo que sobra', () => {
+    const st = { isPro: false, clients, freeClientIds: ['a', 'b'] };
+    expect(needsClientChoice(st)).toBe(false);
+    expect(isClientFrozen(st, 'a')).toBe(false);
+    expect(isClientFrozen(st, 'b')).toBe(true);
   });
 
   test('ids de clientes borrados no cuentan', () => {
@@ -94,6 +97,17 @@ describe('freeGates — lo que las pantallas marcan con PRO', () => {
     expect(g.newClient).toBe('clients');
     expect(g.connect('b')).toBe('connected');
     expect(g.newProgramTemplate).toBe(null);
+  });
+  test('E41: con congelados, «1 con app» se mira solo sobre los activos; un congelado no se conecta', () => {
+    const clients = byId(manual('a'), manual('b'), manual('c'), conn('d'), manual('e'));
+    const g = freeGates({ isPro: false, clients, freeClientIds: ['a', 'b', 'c'], programs: {}, sessionTemplates: {} });
+    expect(g.connect('a')).toBe(null);       // d (con app) está congelado: no ocupa la plaza
+    expect(g.connect('d')).toBe('frozen');
+    expect(g.newClient).toBe('clients');     // crear sigue contando a todos
+  });
+  test('E42: una alta en vuelo (syncPending) ocupa la plaza', () => {
+    const g = freeGates({ isPro: false, clients: byId({ id: 'a', syncSlotId: null, syncPending: true }, manual('b')), freeClientIds: [], programs: {}, sessionTemplates: {} });
+    expect(g.connect('b')).toBe('connected');
   });
   test('con Pro, todo abierto', () => {
     const g = freeGates({ isPro: true });

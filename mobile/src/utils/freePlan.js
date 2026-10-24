@@ -12,7 +12,10 @@ export const FREE = { clients: 3, connected: 1, programTemplates: 1, sessionTemp
 
 /** Con app = tiene hueco en el servidor: invitado (código sin canjear) o vinculado. */
 // Uno «de otra cuenta» (C09 §3.4) no está conectado en esta: no ocupa plaza.
-export const isConnected = (client) => !!client?.syncSlotId && !client.syncOrphan;
+// `syncPending` = el alta/conexión está en vuelo (E42): la plaza ya está
+// reservada, así que una segunda pulsación la ve ocupada. Cuenta aunque sea un
+// «de otra cuenta» al que se le está dando hueco nuevo.
+export const isConnected = (client) => !!client?.syncPending || (!!client?.syncSlotId && !client.syncOrphan);
 
 /**
  * ¿Cabe este conjunto de clientes en el plan gratis? Dos comprobaciones, no
@@ -32,6 +35,20 @@ export function clientLimitReason(clients) {
   return null;
 }
 
+/**
+ * Por qué no se puede pasar `id` a la app, o null (E41). Con congelados la puerta
+ * de «1 con app» se mira solo sobre los activos más el que se conecta: lo
+ * congelado no se puede usar, no debe ocupar la plaza. Un congelado: 'frozen'.
+ * Crear uno nuevo, en cambio, sigue contando a todos.
+ */
+export function connectReason(clients, freeClientIds, id) {
+  const all = Object.values(clients ?? {});
+  const active = activeClientIds(clients, freeClientIds);
+  if (active !== null && !active.has(id)) return 'frozen';
+  const base = active === null ? all : all.filter((c) => active.has(c.id));
+  return clientLimitReason(base.map((c) => (c.id === id ? { ...c, syncSlotId: 'nuevo', syncOrphan: false } : c)));
+}
+
 /** Plantillas de sesión = las de la pestaña Plantillas; las libres de Inicio no cuentan. */
 export const sessionTemplatesOf = (sessionTemplates) =>
   Object.values(sessionTemplates ?? {}).filter((tpl) => !tpl.programId && tpl.kind === 'template');
@@ -43,15 +60,25 @@ export const templateCounts = ({ programs, sessionTemplates }) => ({
 
 /**
  * Los clientes que siguen activos sin Pro, o null si todos (caben). Si no
- * caben, solo los elegidos en `freeClientIds`, y solo si la elección es válida
- * —existen, no está vacía y juntos caben—. Si no, ninguno: congelado por
- * defecto mientras no elija, en vez de silenciosamente equivocado (§4.6).
+ * caben, los elegidos en `freeClientIds` que aún existen. La elección persiste
+ * (R-E4, 24-oct-2026): si lo elegido ya no cabe por sí mismo (dos con app tras
+ * un backup viejo), siguen activos los elegidos que caben, recorridos en el orden de
+ * elección, y se congela solo lo que sobra. Solo si no queda nadie elegido
+ * —lista vacía— salen todos congelados: sin elegir, en vez de silenciosamente
+ * equivocado (§4.6).
  */
 export function activeClientIds(clients, freeClientIds) {
   const all = Object.values(clients ?? {});
   if (fitsFree(all)) return null;
-  const chosen = all.filter((c) => (freeClientIds ?? []).includes(c.id));
-  return chosen.length > 0 && fitsFree(chosen) ? new Set(chosen.map((c) => c.id)) : new Set();
+  const byId = new Map(all.map((c) => [c.id, c]));
+  const kept = [];
+  for (const id of freeClientIds ?? []) {
+    const c = byId.get(id);
+    if (!c || kept.includes(c)) continue;
+    if (!fitsFree([...kept, c])) continue;   // el que ya no cabe se salta: se congela solo él (R-E4)
+    kept.push(c);
+  }
+  return new Set(kept.map((c) => c.id));
 }
 
 /**
@@ -104,7 +131,7 @@ export function freeGates({ isPro, clients, freeClientIds, programs, sessionTemp
     isPro: false,
     newClient:          clientLimitReason([...all, { syncSlotId: null }]),
     newConnectedClient: clientLimitReason([...all, { syncSlotId: 'nuevo' }]),
-    connect:   (id) => (frozen(id) ? 'frozen' : clientLimitReason(all.map((c) => (c.id === id ? { ...c, syncSlotId: 'nuevo' } : c)))),
+    connect:   (id) => connectReason(clients, freeClientIds, id),
     client:    (id) => (frozen(id) ? 'frozen' : null),
     newProgramTemplate:    counts.programTemplates >= FREE.programTemplates ? 'programTemplates' : null,
     newSessionTemplate:    counts.sessionTemplates >= FREE.sessionTemplates ? 'sessionTemplates' : null,

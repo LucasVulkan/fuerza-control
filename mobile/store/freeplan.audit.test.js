@@ -39,8 +39,8 @@ vi.mock('../src/config/supabase', () => ({ migrateLegacySession: async () => {} 
 const { useStore } = await import('./useStore.js');
 const S = () => useStore.getState();
 
-// Secciones fijas que manda DriveBackupScreen.jsx (sin `templates`).
-const DRIVE_SECTIONS = { program: true, log: true, settings: true, customExercises: true, clients: true };
+// Secciones fijas que manda DriveBackupScreen.jsx.
+const DRIVE_SECTIONS = { program: true, log: true, templates: true, customExercises: true, clients: true };
 
 const mk = (id, extra = {}) => ({ id, name: id, status: 'active', syncSlotId: null, activeProgramId: null, ...extra });
 const mkClients = (ids, over = {}) => Object.fromEntries(ids.map((id) => [id, mk(id, over[id])]));
@@ -105,11 +105,11 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     expect(S().ui.paywallReason).toBe(null);
   });
 
-  it('P3 hoy: restaurar de Drive pierde las plantillas de programa del backup (se descartan, no se limitan)', () => {
+  it('P3 arreglado (E38): restaurar de Drive devuelve las plantillas de programa del backup', () => {
     const backup = { version: '4', exportType: 'full_backup', programs: { pt: prog('pt') } };
     S().importData(backup, DRIVE_SECTIONS, { silent: true });
-    expect(S().ui.paywallReason).toBe(null);          // montaje: el import corrió sin error
-    expect(S().programs.pt).toBeUndefined();          // regla: ≤1 debería volver al menos una
+    expect(S().ui.paywallReason).toBe(null);
+    expect(S().programs.pt).toBeTruthy();
   });
 
   it('P4 aceptado (24-oct, decisión 1): importForClient de un fichero con plantillas de sesión las mete todas (mergeFileSessions) (regla R-E1: ≤1)', () => {
@@ -134,17 +134,30 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(true);
   });
 
-  it('P22 hoy: importar 2 clientes con 3 activos congela a los 5; rotando la elección y borrando se sale de la trampa (honrado/tramposo)', () => {
+  it('P22 arreglado (E40, R-E4): importar 2 clientes con 3 activos congela solo a los 2 nuevos; no se puede rotar la elección', () => {
     free({ clients: mkClients(['a', 'b', 'c']) });
     expect(['a', 'b', 'c'].some((id) => S().isClientFrozen(id))).toBe(false);   // montaje: caben
     S().importData({ version: '4', exportType: 'full_backup', clients: mkClients(['d', 'e']) }, { clients: true }, { silent: true });
-    expect(['a', 'b', 'c', 'd', 'e'].every((id) => S().isClientFrozen(id))).toBe(true);   // honrado: pierde acceso a los 3 suyos
+    expect(['a', 'b', 'c'].some((id) => S().isClientFrozen(id))).toBe(false);   // los suyos siguen
+    expect(['d', 'e'].every((id) => S().isClientFrozen(id))).toBe(true);        // solo se congela lo nuevo
     S().setFreeClientIds(['c', 'd', 'e']);
-    expect(S().isClientFrozen('d')).toBe(false);
-    expect(S().isClientFrozen('a')).toBe(true);
-    S().deleteClient('c'); S().deleteClient('d'); S().deleteClient('e');
-    expect(Object.keys(S().clients).sort()).toEqual(['a', 'b']);
-    expect(S().isClientFrozen('a')).toBe(false);   // borrando lo importado vuelven a estar activos
+    expect(S().isClientFrozen('d')).toBe(true);    // lo elegido queda fijo
+    expect(S().isClientFrozen('a')).toBe(false);
+    S().deleteClient('c');
+    expect(S().isClientFrozen('d')).toBe(true);    // el hueco liberado no se ocupa solo
+    S().setFreeClientIds(['d']);
+    expect(S().isClientFrozen('d')).toBe(false);   // pero se puede ocupar
+  });
+
+  it('E40 regla R-E4: una elección vieja que ya no hace falta no congela a nadie que estaba activo', () => {
+    free({ clients: mkClients(['a', 'b', 'c', 'd']) });
+    S().setFreeClientIds(['a', 'b', 'c']);
+    S().deleteClient('c');                                                       // a, b, d caben: todos activos
+    expect(['a', 'b', 'd'].some((id) => S().isClientFrozen(id))).toBe(false);   // montaje
+    expect(S().profile.freeClientIds.length).toBeGreaterThan(0);                // queda una lista vieja
+    S().importData({ version: '4', exportType: 'full_backup', clients: mkClients(['e']) }, { clients: true }, { silent: true });
+    expect(['a', 'b', 'd'].map((id) => S().isClientFrozen(id))).toEqual([false, false, false]);
+    expect(S().isClientFrozen('e')).toBe(true);                                 // solo el nuevo
   });
 
   it('P23 aceptado (24-oct, decisión 1: asignar lo que tienes): la biblioteca de programas propios archivados es una bolsa de plantillas sin límite (regla R-E1: ≤1 plantilla)', () => {
@@ -177,37 +190,53 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
 describe('R-E1 — carreras al crear/conectar con app', () => {
   const slow = () => syncMock.createClientSlot.mockImplementation(() => new Promise((r) => setTimeout(() => { slotN += 1; r({ slotId: `S${slotN}`, clientCode: `C${slotN}` }); }, 20)));
 
-  it('P16 hoy: dos createClient «con app» solapados (red lenta, doble toque) pasan los dos la puerta (regla R-E1: ≤1 con app)', async () => {
+  it('P16 arreglado (E42): dos createClient «con app» solapados (red lenta, doble toque) → solo el primero entra; el segundo abre el paywall', async () => {
     slow();
     const [x, y] = await Promise.all([S().createClient('A', { withApp: true }), S().createClient('B', { withApp: true })]);
-    expect(x && y).toBeTruthy();                                                  // montaje: los dos se crearon
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(2);   // regla: 1
-    expect(clientLimitReason(Object.values(S().clients))).toBe('connected');
-    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(true);
+    expect(x).toBeTruthy();
+    expect(y).toBe(null);
+    expect(S().ui.paywallReason).toBe('connected');
+    expect(Object.values(S().clients)).toHaveLength(1);
+    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
+    expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);   // la marca se quita al terminar
+    expect(clientLimitReason(Object.values(S().clients))).toBe(null);
   });
 
-  it('P17 hoy: dos connectClientToCloud solapados sobre clientes distintos pasan los dos (regla R-E1: ≤1 con app)', async () => {
+  it('P17 arreglado (E42): dos connectClientToCloud solapados sobre clientes distintos → [true, false]', async () => {
     free({ clients: mkClients(['a', 'b']) });
     slow();
     const r = await Promise.all([S().connectClientToCloud('a'), S().connectClientToCloud('b')]);
-    expect(r).toEqual([true, true]);                                              // regla: [true, false]
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(2);
-    expect(clientLimitReason(Object.values(S().clients))).toBe('connected');
+    expect(r).toEqual([true, false]);
+    expect(S().ui.paywallReason).toBe('connected');
+    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
+    expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);
+    expect(clientLimitReason(Object.values(S().clients))).toBe(null);
   });
 
-  it('P18 hoy: un refresco que cruza con createClient(withApp) duplica el cliente con el mismo hueco (regla R-E1: un hueco = una ficha)', async () => {
+  it('E42: si el servidor falla, la marca se quita y la plaza queda libre; pulsar dos veces el mismo cliente no abre dos altas', async () => {
+    free({ clients: mkClients(['a']) });
+    syncMock.createClientSlot.mockRejectedValueOnce(new Error('red'));
+    await expect(S().connectClientToCloud('a')).rejects.toThrow();
+    expect(S().clients.a.syncPending).toBeUndefined();
+    slow();
+    const r = await Promise.all([S().connectClientToCloud('a'), S().connectClientToCloud('a')]);
+    expect(r).toEqual([true, false]);
+    expect(syncMock.createClientSlot).toHaveBeenCalledTimes(2);   // el que falló + el único bueno
+  });
+
+  it('P18 arreglado (E42): un refresco que cruza con createClient(withApp) no recrea el hueco; un hueco = una ficha', async () => {
     let resolveSlot;
     syncMock.createClientSlot.mockReturnValueOnce(new Promise((r) => { resolveSlot = r; }));
     const p = S().createClient('Ana', { withApp: true });
     syncMock.getTrainerSlots.mockResolvedValueOnce([{ id: 'S1', client_name: 'Ana', client_code: 'CODE1', sessions_count: 0 }]);
     await S().refreshTrainerSlots();
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId === 'S1')).toHaveLength(1);   // montaje: el refresco ya creó una ficha con S1 (la local aún sin hueco)
+    expect(Object.values(S().clients)).toHaveLength(1);   // el refresco no creó la ficha «recuperada»
     resolveSlot({ slotId: 'S1', clientCode: 'CODE1' });
     await p;
     const list = Object.values(S().clients);
-    expect(list).toHaveLength(2);                                      // regla: 1
-    expect(list.filter((c) => c.syncSlotId === 'S1')).toHaveLength(2);
-    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(true);   // y congela a todos
+    expect(list).toHaveLength(1);
+    expect(list.filter((c) => c.syncSlotId === 'S1')).toHaveLength(1);
+    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(false);
   });
 });
 
@@ -286,7 +315,10 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     S().startSession('t1', { forClient: 'd' });
     useStore.setState((s) => ({ activeSession: { ...s.activeSession, setsState: { ex1: [{ weight: '50', reps: '5', time: '', done: true }] } } }));
     expect(S().activeSession.forClient).toBe('d');
-    useStore.setState((s) => ({ clients: { ...s.clients, ...mkClients(['e', 'f', 'g']) } }));
+    useStore.setState((s) => ({
+      clients: { ...s.clients, ...mkClients(['e', 'f', 'g']) },
+      profile: { ...s.profile, freeClientIds: ['e', 'f', 'g'] },   // R-E4: lo elegido sigue, así que se elige a los otros tres
+    }));
     expect(S().isClientFrozen('d')).toBe(true);   // montaje: se congeló con el entreno abierto
     S().saveSession();
     expect((S().clientLogs.d ?? []).length).toBe(1);   // regla: 0
@@ -313,19 +345,37 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
 });
 
 describe('R-E3 — al volver a pagar se recupera todo', () => {
-  it('P12 hoy: reinstalar sin Pro con 3 huecos con app → ningún programa vuelve, ni tras elegir ni tras pagar (regla R-E3: vuelve al pagar)', async () => {
+  it('P12 arreglado (E39): reinstalar sin Pro con 3 huecos con app → los 3 recuperan su programa aunque nazcan congelados (R-E3)', async () => {
     syncMock.getTrainerSlots.mockResolvedValue(['1', '2', '3'].map((n) => slot(n)));
     syncMock.downloadSlotProgram.mockResolvedValue({ program: prog('p_srv', 'program') });
     await S().refreshTrainerSlots();
     expect(Object.keys(S().clients)).toHaveLength(3);
-    expect(syncMock.downloadSlotProgram).not.toHaveBeenCalled();   // todos congelados al recuperarlos
+    expect(syncMock.downloadSlotProgram).toHaveBeenCalledTimes(3);
+    expect(Object.values(S().clients).every((c) => !!c.activeProgramId && !c.programMissing)).toBe(true);
     const first = Object.keys(S().clients)[0];
     S().setFreeClientIds([first]);
-    expect(S().isClientFrozen(first)).toBe(false);                  // montaje: elegido
+    expect(S().isClientFrozen(first)).toBe(false);
     useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
     await S().refreshTrainerSlots();
-    expect(syncMock.downloadSlotProgram).not.toHaveBeenCalled();   // regla: 3 llamadas
-    expect(Object.values(S().clients).every((c) => !c.activeProgramId)).toBe(true);
+    expect(syncMock.downloadSlotProgram).toHaveBeenCalledTimes(3);   // ya no hay nada que reintentar
+  });
+
+  it('E39: una bajada que falla se reintenta en el siguiente refresco; sin la marca no se reintenta (programa quitado a propósito)', async () => {
+    syncMock.getTrainerSlots.mockResolvedValue([slot('1')]);
+    syncMock.downloadSlotProgram.mockRejectedValueOnce(new Error('red'));
+    await S().refreshTrainerSlots();
+    const id = Object.keys(S().clients)[0];
+    expect(S().clients[id].programMissing).toBe(true);
+    expect(S().clients[id].activeProgramId).toBe(null);
+    syncMock.downloadSlotProgram.mockResolvedValue({ program: prog('p_srv', 'program') });
+    await S().refreshTrainerSlots();
+    expect(S().clients[id].activeProgramId).toBeTruthy();
+    expect(S().clients[id].programMissing).toBeUndefined();
+    // el entrenador le quita el programa: sin marca, el refresco no lo vuelve a bajar
+    useStore.setState((st) => ({ clients: { ...st.clients, [id]: { ...st.clients[id], activeProgramId: null } } }));
+    syncMock.downloadSlotProgram.mockClear();
+    await S().refreshTrainerSlots();
+    expect(syncMock.downloadSlotProgram).not.toHaveBeenCalled();
   });
 });
 
@@ -340,7 +390,7 @@ describe('R-E4 — la elección no se rehace', () => {
     expect(S().isClientFrozen('c')).toBe(true);
   });
 
-  it('P14 hoy: salir de la cuenta y crear otra → los de con app pasan a «de otra cuenta», nada congelado, y se conecta al que no se eligió (regla R-E4)', async () => {
+  it('P14 aceptado (24-oct, los de otra cuenta no ocupan plaza en esta, C09 §3.4): salir de la cuenta y crear otra → los de con app pasan a «de otra cuenta», nada congelado, y se conecta al que no se eligió (regla R-E4)', async () => {
     free({
       clients: { a: mk('a', { syncSlotId: 's_a', syncLinked: true }), b: mk('b', { syncSlotId: 's_b', syncLinked: true }), c: mk('c') },
     });
@@ -361,7 +411,7 @@ describe('R-E4 — la elección no se rehace', () => {
     } finally { S().syncPurchaserId = orig; }
   });
 
-  it('P15 hoy: restaurar un backup viejo donde un elegido tenía hueco invalida la elección y reabre la hoja entera (regla R-E4)', () => {
+  it('P15 arreglado (E40, R-E4): restaurar un backup viejo donde dos elegidos tenían hueco mantiene lo elegido por orden hasta el tope y congela el resto, sin reabrir la hoja', () => {
     free({ clients: mkClients(['a', 'b', 'c', 'd', 'e']) });
     S().setFreeClientIds(['a', 'b', 'c']);
     expect(S().isClientFrozen('d')).toBe(true);   // montaje
@@ -369,11 +419,11 @@ describe('R-E4 — la elección no se rehace', () => {
       b: { id: 'b', name: 'b', syncSlotId: 'sb', status: 'active' },
       c: { id: 'c', name: 'c', syncSlotId: 'sc', status: 'active' },
     } }, { clients: true }, { silent: true });
-    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: S().profile.freeClientIds })).toBe(true);   // regla: false
+    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: S().profile.freeClientIds })).toBe(false);
+    expect(['a', 'b'].map((id) => S().isClientFrozen(id))).toEqual([false, false]);   // a y b caben (1 con app)
+    expect(['c', 'd', 'e'].map((id) => S().isClientFrozen(id))).toEqual([true, true, true]);   // c sobra (2º con app)
     S().setFreeClientIds(['d', 'e', 'a']);
-    expect(S().isClientFrozen('d')).toBe(false);
-    expect(S().isClientFrozen('e')).toBe(false);
-    expect(S().isClientFrozen('b')).toBe(true);   // cambiaron los elegidos
+    expect(S().isClientFrozen('d')).toBe(true);   // no se rota
   });
 
   it('R-E4 cumple: setFreeClientIds no suelta lo elegido; importData no escribe freeClientIds', () => {
@@ -407,15 +457,23 @@ describe('R-E4 — la elección no se rehace', () => {
 });
 
 describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta mal', () => {
-  it('P19 hoy: tras caducar con 5 clientes (3 elegidos sin app) no se puede pasar ninguno a la app aunque el plan da 1 con app (honrado)', async () => {
+  it('P19 arreglado (E41): tras caducar con 5 clientes (3 elegidos sin app) se puede pasar uno activo a la app (1 con app), y un congelado no', async () => {
     free({ clients: mkClients(['a', 'b', 'c', 'd', 'e']) });
     S().setFreeClientIds(['a', 'b', 'c']);
     syncMock.createClientSlot.mockResolvedValue({ slotId: 'S9', clientCode: 'C9' });
     expect(S().isClientFrozen('a')).toBe(false);   // montaje: a es elegido y activo
     const g = freeGates({ isPro: false, clients: S().clients, freeClientIds: S().profile.freeClientIds, programs: {}, sessionTemplates: {} });
     expect(g.client('a')).toBe(null);
-    expect(g.connect('a')).toBe('clients');                   // regla: null
-    expect(await S().connectClientToCloud('a')).toBe(false);   // regla: true
+    expect(g.connect('a')).toBe(null);
+    expect(g.connect('d')).toBe('frozen');
+    expect(await S().connectClientToCloud('a')).toBe(true);
+    expect(S().ui.paywallReason).toBe(null);
+    expect(S().clients.a.syncSlotId).toBe('S9');
+    expect(await S().connectClientToCloud('b')).toBe(false);   // ya hay 1 con app entre los activos
+    expect(S().ui.paywallReason).toBe('connected');
+    expect(await S().connectClientToCloud('d')).toBe(false);
+    expect(S().ui.paywallReason).toBe('frozen');
+    expect(await S().createClient('nuevo')).toBe(null);   // crear sigue contando a todos
     expect(S().ui.paywallReason).toBe('clients');
   });
 
@@ -426,7 +484,7 @@ describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta ma
     expect(S().ui.paywallReason).toBe('clients');
   });
 
-  it('P21 hoy: un huérfano (otra cuenta) vuelve a contar como con app al volver y congela a todos (honrado)', async () => {
+  it('P21 arreglado (E40, R-E4): un huérfano (otra cuenta) vuelve a contar como con app; a sigue activo y se congelan los que ya no caben', async () => {
     free({ clients: mkClients(['a', 'b', 'c'], { a: { syncSlotId: 'sa' }, b: { syncSlotId: 'sb', syncOrphan: true } }) });
     expect(S().isClientFrozen('a')).toBe(false);   // montaje: con el huérfano fuera caben
     syncMock.getTrainerSlots.mockResolvedValueOnce([
@@ -434,6 +492,6 @@ describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta ma
       { id: 'sb', client_name: 'b', client_code: 'B', sessions_count: 0 },
     ]);
     await S().refreshTrainerSlots();
-    expect(['a', 'b', 'c'].map((id) => S().isClientFrozen(id))).toEqual([true, true, true]);   // regla: a no se congela
+    expect(['a', 'b', 'c'].map((id) => S().isClientFrozen(id))).toEqual([false, true, false]);   // a sigue, b (el que vuelve) ya no cabe y se congela solo él, c sigue
   });
 });

@@ -215,7 +215,7 @@ export default function DriveBackupScreen() {
             setMsg(t('drive.loadingRestore'));
             try {
               const data = await downloadDriveBackup(file.id);
-              importData(data, { program: true, log: true, settings: true, customExercises: true, clients: true }, { silent: true });
+              importData(data, { program: true, log: true, templates: true, customExercises: true, clients: true }, { silent: true });
               showToast(t('drive.toastRestored'), 2200, 'success');
               navigation.goBack();
             } catch {

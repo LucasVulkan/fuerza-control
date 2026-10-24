@@ -49,7 +49,7 @@ import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
 import { clientLink } from '../src/utils/clientLink';
-import { FREE, fitsFree, clientLimitReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds } from '../src/utils/freePlan';
+import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds } from '../src/utils/freePlan';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -141,6 +141,12 @@ function trainerLoginNeeded(mode) {
   const how = i18n.t(`account.short.${mode === 'apple' ? 'apple' : 'google'}`);
   return Object.assign(new Error(i18n.t('account.loginNeededError', { how })), { code: 'TRAINER_LOGIN_NEEDED' });
 }
+
+// Quita la marca de «alta en vuelo» (E42) de una ficha, venga bien o mal.
+const _clearPending = (s, id) => {
+  if (!s.clients[id]) return {};
+  return { clients: { ...s.clients, [id]: { ...s.clients[id], syncPending: undefined } } };
+};
 
 async function _ensureTrainerSession(trainerSync) {
   if (!trainerSync.userId) throw Object.assign(new Error(i18n.t('account.noAccountError')), { code: 'NO_TRAINER_ACCOUNT' });
@@ -794,8 +800,12 @@ export const useStore = create(
           if (reason) return get()._paywall(reason);
         }
         const id = generateId('client');
+        const { trainerSync } = get();
+        const cloud = withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && !!trainerSync.userId;
         const clientBase = {
           id, name: name.trim(),
+          // E42: la plaza se reserva en el mismo `set` que crea la ficha, antes del await.
+          ...(cloud ? { syncPending: true } : {}),
           createdAt: new Date().toISOString().split('T')[0],
           activeProgramId: null,
           fullName: '', phone: '', email: '', notes: '',
@@ -810,8 +820,7 @@ export const useStore = create(
         set((s) => ({ clients: { ...s.clients, [id]: clientBase } }));
 
         // Solo con app, y solo si el entrenador está en la nube.
-        const { trainerSync } = get();
-        if (withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
+        if (cloud) {
           try {
             await _ensureTrainerSession(trainerSync);
             const { slotId, clientCode } = await createClientSlot(name.trim());
@@ -826,6 +835,8 @@ export const useStore = create(
             // código que no existe: «Pasar a la app» lo genera después.
             console.warn('[createClient] Supabase slot creation failed:', err.message);
             get().showToast(i18n.t('clients.slotCreateError'), 3000, 'error');
+          } finally {
+            set((s) => _clearPending(s, id));
           }
         }
 
@@ -1081,8 +1092,10 @@ export const useStore = create(
       },
 
       // Mobile: receives parsedData (already parsed JSON) + mode string
-      importForClient: (clientId, parsedData, mode) => {
-        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
+      // `restore`: solo lo usa `_recoverSlotProgram`. Bajar del hueco el programa
+      // que ya era del entrenador no es «recibir» de un congelado (E39).
+      importForClient: (clientId, parsedData, mode, { restore = false } = {}) => {
+        if (!restore && get().isClientFrozen(clientId)) return get()._paywall('frozen');
         let data = parsedData;
         // Un fichero de una versión anterior trae los ids de antes de juntar
         // los ejercicios repetidos (P09-exercise-variants.md §3.3).
@@ -3880,26 +3893,33 @@ export const useStore = create(
         // Uno «de otra cuenta» sí: pasarlo a la app en ESTA cuenta le da hueco nuevo.
         if (client.syncSlotId && !client.syncOrphan) throw new Error('Este cliente ya está conectado a la nube.');
         if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
+        if (client.syncPending) return false;   // doble pulsación: ya hay una conexión en vuelo
         if (!get().profile.isPro) {
-          const reason = clientLimitReason(Object.values(clients).map((c) => (c.id === clientId ? { ...c, syncSlotId: 'nuevo' } : c)));
+          const reason = connectReason(clients, get().profile.freeClientIds, clientId);
           if (reason) { get()._paywall(reason); return false; }
         }
+        // E42: sin ningún await entre la comprobación y la marca.
+        set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncPending: true } } }));
 
-        // Ensure auth session is active — may have expired after app restart
-        await _ensureTrainerSession(trainerSync);
+        try {
+          // Ensure auth session is active — may have expired after app restart
+          await _ensureTrainerSession(trainerSync);
 
-        const { slotId, clientCode } = await createClientSlot(client.name);
+          const { slotId, clientCode } = await createClientSlot(client.name);
 
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode,
-              syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
+          set((s) => ({
+            clients: {
+              ...s.clients,
+              [clientId]: {
+                ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode,
+                syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
+              },
             },
-          },
-        }));
-        return true;
+          }));
+          return true;
+        } finally {
+          set((s) => _clearPending(s, clientId));
+        }
       },
 
       /**
@@ -4255,9 +4275,13 @@ export const useStore = create(
             const deleted = new Set(s.trainerSync.deletedSlotIds ?? []);
             const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
             const known = new Set(Object.values(next).map((c) => c.syncSlotId).filter(Boolean));
+            // ponytail: con un alta en vuelo (`syncPending`) el hueco que aún no
+            // conocemos puede ser el suyo; recrearlo duplicaría la ficha (E42).
+            // Si era de verdad uno nuevo, se recupera en el siguiente refresco.
+            const creating = Object.values(next).some((c) => c.syncPending);
 
             for (const slot of slots) {
-              if (known.has(slot.id) || deleted.has(slot.id)) continue;
+              if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
               const id = generateId('client');
               next[id] = {
                 id,
@@ -4267,6 +4291,8 @@ export const useStore = create(
                 fullName: '', phone: '', email: '', notes: '',
                 bodyWeight: [], billing: [], status: 'active',
                 syncSlotId:  slot.id,
+                // Aún sin su programa: si la bajada falla, el próximo refresco lo reintenta (E39).
+                programMissing: true,
                 color:       nextIdentityColor(Object.values(next)),
               };
               known.add(slot.id);
@@ -4299,7 +4325,18 @@ export const useStore = create(
             return { clients: next };
           });
 
-          for (const clientId of recovered) await get()._recoverSlotProgram(clientId);
+          // Los de refrescos anteriores que se quedaron sin programa (bajada fallida).
+          // Si ya tienen programa, la marca sobra. `programMissing` solo la ponen las
+          // fichas recuperadas: "sin programa" a secas no distingue de un
+          // programa que el entrenador quitó a propósito.
+          const retry = [];
+          for (const c of Object.values(get().clients)) {
+            if (!c.programMissing || recovered.includes(c.id)) continue;
+            if (c.activeProgramId) {
+              set((s) => ({ clients: { ...s.clients, [c.id]: { ...s.clients[c.id], programMissing: undefined } } }));
+            } else if (c.syncSlotId && !c.syncOrphan) retry.push(c.id);
+          }
+          for (const clientId of [...recovered, ...retry]) await get()._recoverSlotProgram(clientId);
         } finally {
           set({ _refreshingSlots: null });
         }
@@ -4309,15 +4346,24 @@ export const useStore = create(
        * Al recuperar un cliente del servidor, su programa vuelve con él: el
        * que hay en el hueco es el último que se le mandó. Se marca como ya
        * enviado, para que no salga «Cambios sin enviar» de algo que es idéntico.
-       * Sin programa, o con el cliente congelado por el plan, no hace nada.
+       * Sin programa en el hueco, no hace nada. Con el cliente congelado SÍ
+       * recupera: bajarlo es devolverle al entrenador lo que ya era suyo, no
+       * recibir del cliente (R-E3, E39). Quita `programMissing` al terminar bien.
        */
       _recoverSlotProgram: async (clientId) => {
         const client = get().clients[clientId];
-        if (!client?.syncSlotId || get().isClientFrozen(clientId)) return;
+        if (!client?.syncSlotId) return;
         try {
           const file = await downloadSlotProgram(client.syncSlotId);
-          if (!file?.program) return;
-          get().importForClient(clientId, file, 'replace');
+          // Mientras bajaba, el entrenador le asignó otro: ese manda, no se pisa.
+          const assigned = !!get().clients[clientId]?.activeProgramId;
+          if (file?.program && !assigned) get().importForClient(clientId, file, 'replace', { restore: true });
+          // Sin programa en el hueco no hay nada que reintentar: se limpia también.
+          set((s) => {
+            if (!s.clients[clientId]) return {};
+            return { clients: { ...s.clients, [clientId]: { ...s.clients[clientId], programMissing: undefined } } };
+          });
+          if (!file?.program || assigned) return;
           const programId = get().clients[clientId]?.activeProgramId;
           const built = programId && get()._buildProgramJson(programId, false);
           if (built) {
@@ -5414,6 +5460,30 @@ useStore.subscribe((s, prev) => {
   if (s.profile.isPro && !prev.profile.isPro && s.profile.freeClientIds?.length) {
     useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: [] } }));
   }
+});
+
+// R-E4 (E40): la elección persiste. Sin Pro y sin elección hecha, si lo que había
+// cabía y con lo que entra ya no, lo que había queda elegido y se congela solo lo
+// nuevo. Sin lista anterior (reinstalar, rehidratar) no hay nada que guardar y
+// sale la hoja. Venir de Pro es la primera caducidad: la decide la hoja (M01 §4.6).
+useStore.subscribe((s, prev) => {
+  if (s.clients === prev.clients || s.profile.isPro || prev.profile.isPro) return;
+  // Una lista vieja no cuenta: si lo de antes cabía, todos estaban activos. Solo
+  // manda una elección hecha en este mismo cambio.
+  if (s.profile.freeClientIds !== prev.profile.freeClientIds) return;
+  if (!fitsFree(Object.values(prev.clients)) || fitsFree(Object.values(s.clients))) return;
+  const kept = Object.keys(prev.clients).filter((id) => s.clients[id]);
+  if (kept.length) useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: kept } }));
+});
+
+// `syncPending` (E42) se persiste con `clients`: si la app murió en mitad de un
+// alta, la marca no puede quedarse contando como plaza ocupada para siempre.
+useStore.subscribe((s, prev) => {
+  if (!s._hasHydrated || prev._hasHydrated) return;
+  if (!Object.values(s.clients).some((c) => c.syncPending)) return;
+  useStore.setState((st) => ({
+    clients: Object.fromEntries(Object.entries(st.clients).map(([id, c]) => [id, { ...c, syncPending: undefined }])),
+  }));
 });
 
 const INVITED_DEBOUNCE_MS = 1500;
