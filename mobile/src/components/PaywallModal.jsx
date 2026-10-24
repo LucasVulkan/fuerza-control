@@ -254,7 +254,6 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount, onSignIn }) {
   const insets = useSafeAreaInsets();
   const purchasePackage  = useStore((s) => s.purchasePackage);
   const restorePurchases = useStore((s) => s.restorePurchases);
-  const checkProStatus   = useStore((s) => s.checkProStatus);
   const showToast        = useStore((s) => s.showToast);
   const hasAccount       = useStore((s) => !!s.trainerSync.userId);
 
@@ -279,17 +278,11 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount, onSignIn }) {
     try {
       const result = await purchasePackage(selectedPkg);
       if (result.ok) {
-        if (!result.isPro) {
-          // Purchase went through but entitlement not yet reflected — poll RC
-          showToast(t('paywall.processing'), 2200, 'neutral');
-          const synced = await checkProStatus().catch(() => false);
-          if (!synced) {
-            // Last resort: try restore
-            await restorePurchases().catch(() => {});
-          }
-        }
         if (!useStore.getState().trainerSync.userId) onNeedsAccount();
         else onClose();
+      } else if (result.pending) {
+        showToast(t('paywall.pending'), 4000, 'neutral');
+        onClose();
       } else if (!result.cancelled) {
         showDialog(t('paywall.errTitle'), result.error ?? t('drive.errBackupBody'));
       }

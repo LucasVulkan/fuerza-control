@@ -5053,22 +5053,19 @@ export const useStore = create(
         }
       },
 
-      /** Purchases a RevenueCat Package. Returns { ok, isPro } or { ok: false, cancelled, error }. */
+      /** Purchases a RevenueCat Package. Returns { ok, isPro }, { ok: false, pending } or { ok: false, cancelled, error }. */
       purchasePackage: async (pkg) => {
         const RC = get()._getRC();
         if (!RC) return { ok: false, error: i18n.t('paywall.errUnavailable') };
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
-          let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
-          // Entitlement may take a moment to propagate — re-check once after a short delay
-          if (!isPro) {
-            await new Promise((r) => setTimeout(r, 2000));
-            isPro = await get().checkProStatus();
-          }
-          set((s) => ({ profile: { ...s.profile, isPro } }));
-          return { ok: true, isPro };
+          // Sin PRO en la respuesta, no se dice «hecho»: lo pondrá el listener de App.js cuando llegue
+          if (!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT]) return { ok: false, pending: true };
+          set((s) => ({ profile: { ...s.profile, isPro: true } }));
+          return { ok: true, isPro: true };
         } catch (e) {
           if (e?.userCancelled) return { ok: false, cancelled: true };
+          if (e?.code === RC.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) return { ok: false, pending: true };
           // Already purchased — restore entitlements instead of showing error
           if (e?.code === RC.PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR
               && await get().restorePurchases()) return { ok: true, isPro: true };

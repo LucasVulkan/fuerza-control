@@ -127,32 +127,26 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(isPro()).toBe(false);
   });
 
-  it('F1 (cumple R-F1): la confirmación que llega a los 2 s deja el móvil en PRO', async () => {
-    vi.useFakeTimers();
+  it('F1 (cumple R-F1): la compra confirmada con PRO en la respuesta deja el móvil en PRO', async () => {
     useRC();
-    RC.purchasePackage.mockResolvedValueOnce({ customerInfo: info() });   // la tienda cobró; RevenueCat aún no lo refleja
-    RC.getCustomerInfo.mockResolvedValueOnce(info({ pro: true }));        // a los 2 s ya sí
-    const p = useStore.getState().purchasePackage({ identifier: '$rc_annual' });
-    await vi.advanceTimersByTimeAsync(2000);
-    expect(await p).toEqual({ ok: true, isPro: true });
+    RC.purchasePackage.mockResolvedValueOnce({ customerInfo: info({ pro: true }) });
+    expect(await useStore.getState().purchasePackage({ identifier: '$rc_annual' })).toEqual({ ok: true, isPro: true });
     expect(isPro()).toBe(true);
   });
 
-  it('F1b hoy: cobrada y la segunda mirada falla (sin red) devuelve {ok:true,isPro:false} y no reintenta (regla: no dar la compra por hecha sin PRO, reintentar/restaurar)', async () => {
-    vi.useFakeTimers();
+  it('F1b arreglado (E47, R-F1): cobrada y sin PRO en la respuesta devuelve {ok:false,pending:true}, sin segunda mirada ni «hecho»', async () => {
     useRC();
     RC.purchasePackage.mockResolvedValueOnce({ customerInfo: info() });
-    RC.getCustomerInfo.mockRejectedValueOnce(rcError('10', 'Error performing request.'));
-    const p = useStore.getState().purchasePackage({ identifier: '$rc_annual' });
-    await vi.advanceTimersByTimeAsync(2000);
-    const r = await p;
-    // montaje: la compra se hizo (resolvió) y se miró una vez más tras los 2 s
-    expect(RC.purchasePackage).toHaveBeenCalledTimes(1);
-    expect(RC.getCustomerInfo).toHaveBeenCalledTimes(1);
-    // hoy: «ok» sin PRO, un solo intento, sin restore
-    expect(r).toEqual({ ok: true, isPro: false });
+    expect(await useStore.getState().purchasePackage({ identifier: '$rc_annual' })).toEqual({ ok: false, pending: true });
+    expect(RC.getCustomerInfo).not.toHaveBeenCalled();
     expect(isPro()).toBe(false);
-    expect(RC.restorePurchases).not.toHaveBeenCalled();
+  });
+
+  it('F1c (E47): PAYMENT_PENDING_ERROR (code "20") devuelve {ok:false,pending:true}', async () => {
+    useRC();
+    RC.purchasePackage.mockRejectedValueOnce(rcError('20', 'Payment is pending.'));
+    expect(await useStore.getState().purchasePackage({ identifier: '$rc_annual' })).toEqual({ ok: false, pending: true });
+    expect(isPro()).toBe(false);
   });
 
   // ── D2: cambiar de forma de entrar ──
