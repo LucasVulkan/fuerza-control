@@ -158,7 +158,7 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
     const { clientId } = await newClientWithProgram(t);
     await join(c, codeOf(t, clientId));
 
-    server.failOnce('rpc:transfer_my_slots_to');
+    server.failOnce('rpc:accept_transfer');
     await expect(t.s.enterTrainerAccount(google('g1'))).rejects.toThrow();
     // Sigue exactamente donde estaba: misma cuenta, mismo código, envía igual.
     expect(t.s.trainerSync).toMatchObject({ mode: 'code', code });

@@ -25,8 +25,8 @@ import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
   createClientSlot, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
-  updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, transferMySlotsTo,
-  getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, transferMySeatTo, clientLostReason,
+  updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
+  getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
 import {
   showCountdownNotification,
@@ -3752,16 +3752,18 @@ export const useStore = create(
        * Instala una cuenta candidata como la cuenta de entrenador del móvil, con
        * sus clientes. En este orden, y es lo que la hace a prueba de cortes:
        *
-       *   1. La cuenta vieja CEDE sus huecos a la nueva, con su propia sesión
-       *      (solo se regala lo propio). Si falla, se lanza y no ha cambiado
-       *      nada: el móvil sigue en la vieja, con su código.
+       *   1. La cuenta vieja OFRECE sus huecos a la nueva con su sesión, y la
+       *      nueva los ACEPTA con la suya (E29: sin las dos, nada se mueve).
+       *      Si falla, se lanza y no ha cambiado nada: el móvil sigue en la
+       *      vieja, con su código.
        *   2. Se instala la sesión nueva.
        *   3. Solo entonces se apunta la cuenta nueva en `trainerSync`.
        *
        * Si la app muere entre 1 y 3, los huecos ya son de la nueva y el móvil
        * cree estar en la vieja: sus clientes salen «de otra cuenta» (no se
        * borra nada) y volver a entrar en la nueva lo deja todo en su sitio,
-       * porque ceder otra vez desde la vieja no mueve nada.
+       * porque ofrecer y aceptar otra vez no mueve nada (la oferta se renueva
+       * desde la vieja y aceptarla sobre huecos ya movidos da 0).
        */
       _enterCandidate: async (candidate, mode, { fullName } = {}) => {
         const prev = get().trainerSync;
@@ -3778,7 +3780,10 @@ export const useStore = create(
             else if (err.code === 'TRAINER_LOGIN_NEEDED' && !hasCloudClients(get().clients)) oldSession = false;
             else throw err;
           }
-          if (oldSession) await transferMySlotsTo(candidate.userId);
+          if (oldSession) {
+            await offerTransfer('slots', candidate.userId);
+            await acceptTransfer('slots', prev.userId, candidate.db);
+          }
         }
 
         await adoptTrainer(candidate);
@@ -4808,9 +4813,10 @@ export const useStore = create(
        * Vincula Google/Apple al cliente conectado: su asiento pasa de la
        * identidad anónima a esa cuenta, y así sobrevive a reinstalar.
        *
-       * Con dos pruebas, una por cuenta: la sesión anónima (la viva) CEDE su
-       * asiento, y si la cuenta de Google ocupaba otro (de antes), lo suelta ella
-       * misma con su sesión (la candidata). Solo al final se instala la nueva.
+       * Con dos pruebas, una por cuenta: la sesión anónima (la viva) OFRECE su
+       * asiento y la de Google lo ACEPTA (E29), y si esa cuenta ocupaba otro (de
+       * antes), lo suelta ella misma con su sesión (la candidata) antes. Solo al
+       * final se instala la nueva.
        */
       linkGoogleForClient: async ({ provider = 'google', idToken, accessToken }) => {
         const { clientSync } = get();
@@ -4821,7 +4827,8 @@ export const useStore = create(
         if (current !== candidate.userId) {
           const old = await seatOf(candidate.db);
           if (old && old.slotId !== clientSync.slotId) await releaseClientSlot(candidate.db);
-          await transferMySeatTo(candidate.userId);
+          await offerTransfer('seat', candidate.userId);
+          await acceptTransfer('seat', current, candidate.db);
         }
         await adoptClient(candidate);
 

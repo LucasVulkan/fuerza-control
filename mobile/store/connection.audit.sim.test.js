@@ -141,21 +141,21 @@ describe('H6 — desconectarse / borrar la cuenta pierde lo no descargado', () =
 });
 
 describe('H7 — vincular Google sin asiento se da por hecho', () => {
-  it('H7 hoy: echado por otro, «Vincular Google» resuelve con googleLinked y sin asiento; luego dice «gone» (regla R-C1: NO_SEAT; R-B3: «taken»)', async () => {
+  it('H7 regla R-C1 (E29/E32): echado por otro, «Vincular Google» falla con NO_SEAT, sigue anónimo y luego dice «taken»', async () => {
     const { t, c, clientId } = await trainerAndClient();
     const intruso = await phone('intruso');
     await join(intruso, codeOf(t, clientId));
     const slotId = slotIdOf(t, clientId);
     expect((await slotOf(slotId)).client_id).toBe(intruso.s.clientSync.supabaseUserId);
 
-    await c.s.linkGoogleForClient(google('cli'));
-    expect(c.s.clientSync.googleLinked).toBe(true);
-    const googleId = c.s.clientSync.supabaseUserId;
-    expect((await server.slots()).filter((r) => r.client_id === googleId)).toEqual([]);   // sin asiento
+    const anonId = c.s.clientSync.supabaseUserId;
+    await expect(c.s.linkGoogleForClient(google('cli'))).rejects.toMatchObject({ code: 'NO_SEAT' });
+    expect(c.s.clientSync.googleLinked).toBeFalsy();
+    expect(c.s.clientSync.supabaseUserId).toBe(anonId);
     expect((await slotOf(slotId)).client_id).toBe(intruso.s.clientSync.supabaseUserId);
 
     await c.s.checkAndPullProgramUpdates();
-    expect(c.s.clientSync).toMatchObject({ lostAt: expect.any(String), lostReason: 'gone' });
+    expect(c.s.clientSync).toMatchObject({ lostAt: expect.any(String), lostReason: 'taken' });
   });
 });
 
@@ -188,7 +188,7 @@ describe('H8 — la subida reemplaza: se pisan sesiones no descargadas', () => {
 });
 
 describe('H9 — reintentar «Vincular Google» tras un corte', () => {
-  it('H9 hoy: el corte llega tras ceder el asiento; el reintento da SEAT_TAKEN (regla R-C7: el reintento resuelve)', async () => {
+  it('H9 regla R-C7 (E29/E32): el corte llega tras pasar el asiento; el reintento lo resuelve', async () => {
     const { t, c, clientId } = await trainerAndClient();
     const anonId = c.s.clientSync.supabaseUserId;
 
@@ -198,12 +198,15 @@ describe('H9 — reintentar «Vincular Google» tras un corte', () => {
     expect(seatedNow).not.toBe(anonId);                           // el asiento ya es del Google
     expect(c.s.clientSync.googleLinked).toBeFalsy();
 
-    await expect(c.s.linkGoogleForClient(google('cli'))).rejects.toMatchObject({ code: 'SEAT_TAKEN' });
+    await c.s.linkGoogleForClient(google('cli'));
+    expect(c.s.clientSync.googleLinked).toBe(true);
+    expect(c.s.clientSync.supabaseUserId).not.toBe(anonId);
+    expect((await slotOf(slotIdOf(t, clientId))).client_id).toBe(c.s.clientSync.supabaseUserId);
   });
 });
 
 describe('H10 — huecos regalados a otro entrenador', () => {
-  it('H10 hoy: el atacante cede «SPAM» al id que lee un cliente de la víctima, y la víctima lo ve como cliente suyo al refrescar', async () => {
+  it('H10 regla E29: el atacante ofrece «SPAM» al id que lee un cliente de la víctima, y la víctima no lo ve como cliente suyo', async () => {
     const { t, c } = await trainerAndClient();
     const raw = createSimClient(c.device, { storageKey: 'sb-client' });
     const { data: seen } = await raw.from('trainer_clients').select('trainer_id');
@@ -215,10 +218,10 @@ describe('H10 — huecos regalados a otro entrenador', () => {
     expect((await atk.auth.signInWithPassword({ email: 'trainer-wxyzwxyzwxyz@noreply.fuerzacontrol.com', password: code })).error).toBeNull();
     const { data: [row] } = await atk.rpc('trainer_create_slot', { p_client_name: 'SPAM' });
     expect(row.slot_id).toBeTruthy();
-    expect(await atk.rpc('transfer_my_slots_to', { p_new_trainer_id: seen[0].trainer_id })).toEqual({ data: 1, error: null });
+    expect(await atk.rpc('offer_transfer', { p_kind: 'slots', p_to: seen[0].trainer_id })).toEqual({ data: null, error: null });
 
     await t.s.refreshTrainerSlots();
-    expect(Object.values(t.s.clients).map((x) => x.name).sort()).toEqual(['Ana', 'SPAM']);
+    expect(Object.values(t.s.clients).map((x) => x.name)).toEqual(['Ana']);
   });
 });
 

@@ -19,7 +19,7 @@ import { trainerSupabase, clientSupabase, sessionsReady } from '../config/supaba
 
 const RPC_CODES = [
   'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'SEAT_LOCKED', 'BAD_TARGET',
-  'NOT_A_TRAINER', 'NOT_AUTHENTICATED', 'CODE_GENERATION_FAILED',
+  'NOT_A_TRAINER', 'NOT_AUTHENTICATED', 'NO_OFFER', 'CODE_GENERATION_FAILED',
 ];
 
 // Lo que dice supabase-js (fetch de RN y de Node) cuando no hay red.
@@ -84,11 +84,6 @@ export function deleteClientSlot(slotId) {
 /** Código nuevo y asiento libre, sin tocar el historial. Devuelve el código. */
 export function reissueClientCode(slotId) {
   return rpc(trainerSupabase, 'trainer_reissue_client_code', { p_slot_id: slotId });
-}
-
-/** Cede todos los huecos de la sesión de entrenador a otra cuenta. */
-export async function transferMySlotsTo(newTrainerId) {
-  return (await rpc(trainerSupabase, 'transfer_my_slots_to', { p_new_trainer_id: newTrainerId })) ?? 0;
 }
 
 /** Todos los huecos del entrenador, ligeros: sin programa ni historial. */
@@ -195,7 +190,23 @@ export async function releaseClientSlot(db = clientSupabase) {
   return (await rpc(db, 'release_client_slot', {})) ?? 0;
 }
 
-/** Pasa el asiento de la sesión de cliente a otra cuenta (su Google/Apple). */
-export function transferMySeatTo(newClientId) {
-  return rpc(clientSupabase, 'transfer_my_seat_to', { p_new_client_id: newClientId });
+// ═══ Traspasos (E29) ══════════════════════════════════════════════════════════
+// Dos pasos, cada uno con la sesión de su cuenta: la que cede OFRECE y la que
+// recibe ACEPTA. Nadie planta nada en una cuenta que no lo acepta.
+
+/**
+ * La cuenta que cede ofrece sus huecos ('slots') o su asiento ('seat') a `toId`.
+ * `db` es la sesión de quien cede (por omisión la del papel que corresponde).
+ */
+export function offerTransfer(kind, toId, db = kind === 'slots' ? trainerSupabase : clientSupabase) {
+  return rpc(db, 'offer_transfer', { p_kind: kind, p_to: toId });
+}
+
+/**
+ * La cuenta que recibe acepta lo que `fromId` le ofreció hace menos de 10
+ * minutos (NO_OFFER si no hay). Devuelve las filas movidas; repetirlo tras un
+ * corte devuelve 0, no falla. `db` es la sesión de quien recibe.
+ */
+export async function acceptTransfer(kind, fromId, db) {
+  return (await rpc(db, 'accept_transfer', { p_kind: kind, p_from: fromId })) ?? 0;
 }

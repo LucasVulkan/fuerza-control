@@ -56,7 +56,7 @@ union all
 -- Funciones que ya no deben existir.
 select 'función retirada sigue viva', proname
   from pg_proc
- where proname in ('claim_trainer_slots', 'transfer_client_slot')
+ where proname in ('claim_trainer_slots', 'transfer_client_slot', 'transfer_my_slots_to', 'transfer_my_seat_to')
 
 union all
 -- Funciones de la conexión que deben ser security definer.
@@ -65,16 +65,16 @@ select 'función sin security definer', proname
  where pronamespace = 'public'::regnamespace and not prosecdef
    and proname in ('trainer_create_slot', 'trainer_upload_program', 'trainer_upload_overrides',
                    'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
-                   'trainer_reissue_client_code', 'transfer_my_slots_to', 'get_slot_by_code',
+                   'trainer_reissue_client_code', 'get_slot_by_code',
                    'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                   'transfer_my_seat_to', 'client_lost_reason')
+                   'offer_transfer', 'accept_transfer', 'client_lost_reason')
 
 union all
 -- Y que estén todas.
 select 'falta la función', f
   from unnest(array['trainer_create_slot', 'trainer_upload_program', 'trainer_upload_overrides',
                     'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
-                    'trainer_reissue_client_code', 'transfer_my_slots_to', 'get_slot_by_code',
+                    'trainer_reissue_client_code', 'get_slot_by_code',
                     'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                    'transfer_my_seat_to', 'client_lost_reason']) as f
+                    'offer_transfer', 'accept_transfer', 'client_lost_reason']) as f
  where not exists (select 1 from pg_proc where proname = f and pronamespace = 'public'::regnamespace);

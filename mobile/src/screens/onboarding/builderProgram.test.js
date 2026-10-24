@@ -14,7 +14,7 @@ vi.mock('../../services/supabaseSync', () => ({
   uploadHistory: vi.fn(), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(),
   getClientSlotByUserId: vi.fn(), transferClientSlot: vi.fn(),
   updateTrainerNameForSlots: vi.fn(), releaseClientSlot: vi.fn(),
-  reissueClientCode: vi.fn(), transferMySlotsTo: vi.fn(),
+  reissueClientCode: vi.fn(), offerTransfer: vi.fn(), acceptTransfer: vi.fn(),
 }));
 vi.mock('../../services/supabaseAuth', () => ({
   signInAnonymously: vi.fn(async () => ({ userId: 'anon_1' })),

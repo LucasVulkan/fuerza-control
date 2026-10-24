@@ -19,7 +19,7 @@
  *    misma lógica que `supabase/functions/*`.
  *
  * Fallos: `server.offline = true` corta la red a todos; `device.offline` a un
- * móvil; `server.failOnce('rpc:transfer_my_slots_to')` hace fallar una vez la
+ * móvil; `server.failOnce('rpc:accept_transfer')` hace fallar una vez la
  * próxima llamada que case (rpc:<nombre>, from:<tabla>, auth:<método>, fn:<nombre>).
  */
 
