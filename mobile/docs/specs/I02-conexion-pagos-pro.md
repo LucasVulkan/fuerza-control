@@ -21,7 +21,8 @@
 > **I02-04 e I02-05 terminadas** (24-oct-2026): pasada por reglas con Opus alto
 > (la de I02-05 con máximo) y adversaria con Sonnet; 60 tests en
 > `freeplan.audit.test.js` y `purchases.audit.test.js`. Salen los fallos E38 a E48.
-> **E27, E28, E29, E32 y E38-E42 arreglados** y fusionados en develop (24-oct-2026). Falta
+> **E27-E29, E32, E33 y E38-E48 arreglados** y fusionados en develop (24-oct-2026);
+> E45-d (compra de otra plataforma o regalada) queda abierto. Falta
 > volver a ejecutar `schema.sql` en Supabase y redesplegar `delete-account`. Sale de la conversación
 > del 23-oct: ¿un modelo con más esfuerzo encontraría más fallos en conexión,
 > pagos y PRO? Respuesta: algo más sí, pero lo que más cuenta es el método.

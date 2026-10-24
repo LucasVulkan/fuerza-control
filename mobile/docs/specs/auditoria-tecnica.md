@@ -5,7 +5,7 @@
 >
 > Estado: **Reabierto el 23-oct-2026 con 22 fallos nuevos, E27-E48**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
-> por test. **E27-E29, E32 y E38-E42 resueltos** el 24-oct-2026; el resto, sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
+> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto); el resto, sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
@@ -135,7 +135,7 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [30](#30) | 🟡 Media | `get_slot_by_code` enseña de más a quien tiene el código | `supabase/schema.sql:408` |
 | [31](#31) | 🟡 Media | `audit.sql` sale vacío con derivas graves | `supabase/audit.sql` |
 | [32](#32) | 🟡 Media | ✅ «Vincular Google» del cliente sin asiento, y su reintento | `supabase/schema.sql:539` |
-| [33](#33) | 🟡 Media | «Eliminar cuenta» no termina con el mismo Google en los dos papeles | `store/useStore.js:4873` |
+| [33](#33) | 🟡 Media | ✅ «Eliminar cuenta» no termina con el mismo Google en los dos papeles | `store/useStore.js:4873` |
 | [34](#34) | 🟢 Baja | El motivo de perder el asiento sale cambiado | `supabase/schema.sql:493` |
 | [35](#35) | 🟢 Baja | Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
 | [36](#36) | 🟢 Baja | Usuario cliente borrado desde el panel: el entrenador lo ve invitado | `supabase/schema.sql:157` |
@@ -145,12 +145,12 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [40](#40) | 🟡 Media | ✅ Cuando la elección deja de valer, se congela todo | `src/utils/freePlan.js:50` |
 | [41](#41) | 🟡 Media | ✅ Con congelados no se puede pasar a la app a uno activo | `store/useStore.js:3879` |
 | [42](#42) | 🟢 Baja | ✅ Pulsando rápido: dos clientes con app o la ficha duplicada | `store/useStore.js:791` |
-| [43](#43) | 🟢 Baja | El store deja escribir sobre un cliente congelado | `store/useStore.js:835` |
-| [44](#44) | 🟡 Media | «Ya comprado» nunca restaura | `store/useStore.js:5020` |
-| [45](#45) | 🟠 Alta | Cambiar de forma de entrar puede perder el PRO pagado | `store/useStore.js:4920` |
-| [46](#46) | 🟡 Media | Sin red, el PRO no caduca nunca | `store/useStore.js:4955` |
-| [47](#47) | 🟡 Media | Cobrado y sin red: «compra hecha» pero sin PRO | `store/useStore.js:5009` |
-| [48](#48) | 🟢 Baja | Borrar la cuenta puede dejar el PRO de la cuenta borrada | `store/useStore.js:4944` |
+| [43](#43) | 🟢 Baja | ✅ El store deja escribir sobre un cliente congelado | `store/useStore.js:835` |
+| [44](#44) | 🟡 Media | ✅ «Ya comprado» nunca restaura | `store/useStore.js:5020` |
+| [45](#45) | 🟠 Alta | ✅ Cambiar de forma de entrar puede perder el PRO pagado | `store/useStore.js:4920` |
+| [46](#46) | 🟡 Media | ✅ Sin red, el PRO no caduca nunca | `store/useStore.js:4955` |
+| [47](#47) | 🟡 Media | ✅ Cobrado y sin red: «compra hecha» pero sin PRO | `store/useStore.js:5009` |
+| [48](#48) | 🟢 Baja | ✅ Borrar la cuenta puede dejar el PRO de la cuenta borrada | `store/useStore.js:4944` |
 
 Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
 se hizo y en qué se equivocaba el diagnóstico si se equivocaba.
@@ -2497,7 +2497,7 @@ Encontrado en I02-02; viola R-C1 y R-C7.
 
 Hecho con E29 (`3dc1a86`). Sin asiento, aceptar da `NO_SEAT` y la app no marca Google como vinculado: el cliente sigue con su sesión de código y ve «alguien entró con tu código». El reintento tras un corte da 0 sin error. **Matiz:** el servidor no sabe qué asiento tenía el origen, así que «origen sin asiento y destino sentado» siempre da 0; es seguro porque la app suelta antes cualquier otro asiento del destino.
 
-## 33. «Eliminar cuenta» no termina si entrenador y cliente usan el mismo Google 🟡 {#33}
+## 33. «Eliminar cuenta» no termina si entrenador y cliente usan el mismo Google 🟡 ✅ {#33}
 
 > En corto: Con el mismo Google como entrenador y como cliente en el mismo móvil, borrar la cuenta borra todo en el servidor pero la app da error y se queda con la sesión puesta.
 
@@ -2517,6 +2517,10 @@ mismo.
 
 **Arreglo previsto.** Llamar a `delete-account` una vez por usuario distinto, y
 tomar un 401 de la segunda llamada como «ya borrado».
+
+### ✅ Resuelto (24-oct-2026)
+
+Hecho en `fix/i02-pagos` (`a74f28b`). Con el mismo usuario en los dos papeles, `delete-account` se llama una sola vez.
 
 ## 34. El motivo de perder el asiento sale cambiado 🟢 {#34}
 
@@ -2699,7 +2703,7 @@ Encontrado en I02-04, por las dos pasadas.
 
 Hecho (`79888bb`). La plaza se reserva con `syncPending` antes del `await`, sin nada en medio, y se suelta en un `finally`. `isConnected` la cuenta y el refresco no crea fichas recuperadas mientras haya una en vuelo. Al rehidratar se limpian las marcas que dejó una app cerrada a mitad. **Queda:** si el servidor creó el hueco y la app murió, el siguiente refresco lo recupera como ficha aparte; ya pasaba antes, y encaja con [E35](#35).
 
-## 43. El store deja escribir sobre un cliente congelado 🟢 {#43}
+## 43. El store deja escribir sobre un cliente congelado 🟢 ✅ {#43}
 
 > En corto: Un cliente congelado debería ser solo lectura, pero se le puede cambiar la ficha, las facturas y el peso, y por otras vías también el programa, las prescripciones o el log.
 
@@ -2724,7 +2728,11 @@ entrenador, y M01 §4.5 dice que no se tocan. Lo probable es que sigan
 editables. Hay que poner puerta a lo de entreno: programa, prescripciones,
 importar encima, log y etapa.
 
-## 44. «Ya comprado» nunca restaura 🟡 {#44}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`20995cd`, `3ee584e`). Decisión del usuario (24-oct-2026): ficha, facturas, notas y peso se siguen editando. Lo de entreno se bloquea en el store con un `if` al principio de cada acción, como en `setEditingProgram`: programa, sesiones, etapas, ejercicios y prescripciones. `importData` actualiza la ficha de un congelado pero conserva su programa, sus prescripciones y su etapa; su log **sí** se añade, porque solo suma. El refresco no le cambia la etapa. Un entreno ya empezado se guarda. **La revisión corrigió:** el primer filtro del log perdía entrenos sin proteger nada, y un programa huérfano contaba como congelado.
+
+## 44. «Ya comprado» nunca restaura 🟡 ✅ {#44}
 
 > En corto: Si la tienda responde que el producto ya está comprado, la app enseña el error de la tienda en inglés en vez de restaurar la compra.
 
@@ -2740,7 +2748,11 @@ pero el SDK manda `code: '6'`.
 encuentra nada, que no devuelva `{ok:true}` (`:5021-5022`): el paywall lo
 tomaría como una compra hecha. Los textos van en M04-03.
 
-## 45. Cambiar de forma de entrar puede perder el PRO pagado 🟠 {#45}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`46e40f3`). Compara con `PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR` (`'6'`), y si al restaurar no aparece el PRO devuelve error, no «hecho».
+
+## 45. Cambiar de forma de entrar puede perder el PRO pagado 🟠 ✅ {#45}
 
 > En corto: Al pasar de una cuenta a otra (por ejemplo de código a Apple), el PRO se mueve con un solo intento de restaurar; si falla, se cancela, la red cae o la compra es de otra plataforma o regalada, el PRO se queda en la cuenta vieja.
 
@@ -2764,7 +2776,11 @@ viejas de `checkProStatus`. D2-d no lo arregla restaurar: para eso hace falta
 que el PRO viva en una cuenta que no cambie (I02 §7, `linkIdentity`) o mover
 el entitlement en RevenueCat.
 
-## 46. Sin red, el PRO no caduca nunca 🟡 {#46}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho a, b y c (`23f4730`, `3ee584e`). Si un cambio de cuenta no mueve el PRO, quedan 2 reintentos silenciosos de restaurar al arrancar (en iOS puede pedir la contraseña: por eso hay tope). La respuesta vieja del arranque ya no pisa a la nueva gracias a la regla del `requestDate` de E46, sin código aparte. **No resuelto (d):** una compra de otra plataforma o un PRO regalado no se mueven restaurando; necesita que la cuenta no cambie de id (I02 §7, `linkIdentity`).
+
+## 46. Sin red, el PRO no caduca nunca 🟡 ✅ {#46}
 
 > En corto: Sin conexión la app se fía para siempre del PRO guardado, y una copia de seguridad de Android al reinstalar devuelve el PRO aunque haya caducado.
 
@@ -2791,7 +2807,11 @@ Encontrado en I02-05; viola R-E5 (revisada el 24-oct-2026: periodo pagado más 2
   viene de la caché.
 - Invertir `useStore.test.js:749-758`.
 
-## 47. Cobrado y sin red: «compra hecha» pero sin PRO 🟡 {#47}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`3bc95c2`, `3abac2e`, `3ee584e`). Un solo punto aplica la información de RevenueCat (`_applyCustomerInfo`): si su `requestDate` es más nuevo que el guardado se confía en ella; si no, es caché y el PRO solo se mantiene con `proStillValid` (caducidad + 20 días; pago único siempre; reloj por debajo de la última confirmación, con un día de margen, = gastado). Se comprueba también al volver a primer plano. Un PRO antiguo sin fecha empieza a contar al hidratar. Las versiones de prueba quedan fuera. **La revisión corrigió:** con RevenueCat sin configurar (preview) se aplicaba el plazo.
+
+## 47. Cobrado y sin red: «compra hecha» pero sin PRO 🟡 ✅ {#47}
 
 > En corto: Si la tienda cobra y justo después falla la red, la app responde que la compra ha ido bien pero deja el móvil en gratis, y no lo vuelve a intentar.
 
@@ -2807,7 +2827,11 @@ el listener de `App.js` podría arreglarlo después.
 el estado «compra pendiente de confirmar» (textos de M04-03). Que nunca diga
 «hecho» sin PRO.
 
-## 48. Borrar la cuenta puede dejar el PRO de la cuenta borrada 🟢 {#48}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`02ee70d`). Sin PRO en la respuesta de la compra, o con `PAYMENT_PENDING_ERROR`, devuelve `pending` y el paywall avisa (`paywall.pending`). El PRO lo pone después el listener de `App.js`, como documenta RevenueCat. Se quitó la segunda mirada a los 2 s.
+
+## 48. Borrar la cuenta puede dejar el PRO de la cuenta borrada 🟢 ✅ {#48}
 
 > En corto: Si al borrar la cuenta falla la red al salir de RevenueCat, o el borrado se queda a medias, el móvil sigue con el PRO de una cuenta que ya no existe.
 
@@ -2827,6 +2851,10 @@ Encontrado en I02-05.
 - Tragar solo el error de «ya era anónimo».
 - Salir de RevenueCat y bajar `isPro` en un `finally`, aunque falle el resto.
 - Encaja con [E33](#33).
+
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`a74f28b`, `3abac2e`). `_purchasesLogOut` solo traga `LOG_OUT_ANONYMOUS_USER_ERROR`; con otro error baja el PRO igualmente. `deleteAccount` sale de RevenueCat y limpia al entrenador justo tras borrarlo, antes de la parte de cliente, y limpia el traspaso pendiente.
 
 ---
 
