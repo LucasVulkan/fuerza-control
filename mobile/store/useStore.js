@@ -5442,6 +5442,18 @@ useStore.subscribe((s, prev) => {
   }
 });
 
+// R-E4 (E40): la elección persiste. Sin Pro y sin elección hecha, si lo que había
+// cabía y con lo que entra ya no, lo que había queda elegido y se congela solo lo
+// nuevo. Sin lista anterior (reinstalar, rehidratar) no hay nada que guardar y
+// sale la hoja. Venir de Pro es la primera caducidad: la decide la hoja (M01 §4.6).
+useStore.subscribe((s, prev) => {
+  if (s.clients === prev.clients || s.profile.isPro || prev.profile.isPro) return;
+  if (s.profile.freeClientIds?.length) return;
+  if (!fitsFree(Object.values(prev.clients)) || fitsFree(Object.values(s.clients))) return;
+  const kept = Object.keys(prev.clients).filter((id) => s.clients[id]);
+  if (kept.length) useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: kept } }));
+});
+
 const INVITED_DEBOUNCE_MS = 1500;
 const invitedTimers = {};
 const invitedInFlight = new Set();

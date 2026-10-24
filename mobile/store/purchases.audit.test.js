@@ -396,7 +396,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       expect(freeGates({ isPro: false, clients: st.clients, programs: st.programs, sessionTemplates: st.sessionTemplates }).newSessionTemplate).toBe('sessionTemplates');
     });
 
-    it('X3 hoy: importar clientes con plan gratis hasta pasar de 3 congela TAMBIÉN a los que ya tenías hasta elegir (sin choice, todos congelados; por diseño M01 §4.6)', () => {
+    it('X3 arreglado (E40, R-E4): importar clientes con plan gratis hasta pasar de 3 deja activos a los que ya tenías y congela solo los nuevos', () => {
       const mk = (id) => ({ id, name: id, status: 'active', syncSlotId: null });
       useStore.setState((s) => ({
         clients: { a: mk('a'), b: mk('b') }, programs: {}, sessionTemplates: {},
@@ -405,8 +405,9 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       useStore.getState().importData({ version: '4', clients: { c: mk('c'), d: mk('d'), e: mk('e') } }, { clients: true }, { silent: true });
       const st = useStore.getState();
       expect(Object.keys(st.clients).sort()).toEqual(['a', 'b', 'c', 'd', 'e']);   // montaje: entraron
-      expect(needsClientChoice({ isPro: false, clients: st.clients, freeClientIds: st.profile.freeClientIds })).toBe(true);
-      expect(st.isClientFrozen('a')).toBe(true);                                 // hoy: el que ya era suyo
+      expect(needsClientChoice({ isPro: false, clients: st.clients, freeClientIds: st.profile.freeClientIds })).toBe(false);
+      expect(st.isClientFrozen('a')).toBe(false);                                // el que ya era suyo sigue
+      expect(st.isClientFrozen('c')).toBe(true);                                 // el que entra, congelado
     });
 
     // ── X4: el PRO persistido (reinstalar con copia de Android, allowBackup=true) ──
