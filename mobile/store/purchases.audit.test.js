@@ -247,7 +247,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(isPro()).toBe(false);
   });
 
-  it('D3-b hoy: borrar la cuenta con logOut caído por red se lo traga y el móvil sigue PRO con la cuenta borrada (regla R-D3: gratis)', async () => {
+  it('D3-b arreglado (E48, R-D3): borrar la cuenta con logOut caído por red deja el móvil en gratis aunque RevenueCat siga en la cuenta', async () => {
     deleteSetup();
     RC.logOut.mockRejectedValueOnce(rcError('10', 'Error performing request.'));
     const r = await useStore.getState().deleteAccount();
@@ -255,10 +255,9 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(authMock.deleteTrainerUser).toHaveBeenCalledTimes(1);
     expect(RC.logOut).toHaveBeenCalledTimes(1);
     expect(useStore.getState().trainerSync.userId).toBeNull();
-    // hoy
     expect(r).toEqual({ ok: true });
     expect(RC.user).toBe('uuid-A');
-    expect(isPro()).toBe(true);
+    expect(isPro()).toBe(false);
   });
 
   // ── E5: días sin red ──
@@ -452,17 +451,24 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     });
 
     // ── X5: borrar la cuenta a medias ──
-    it('D3-c hoy: borrar la cuenta con deleteClientUser caído tras borrar la del entrenador deja userId, PRO y RevenueCat de la cuenta ya borrada y lanza (regla R-D3: gratis)', async () => {
+    it('D3-c arreglado (E48, R-D3): borrar la cuenta con deleteClientUser caído tras borrar la del entrenador sale de RevenueCat, limpia el entrenador y lanza', async () => {
       deleteSetup();
       authMock.deleteClientUser.mockRejectedValueOnce(new Error('network'));
       await expect(useStore.getState().deleteAccount()).rejects.toThrow('network');
       // montaje: la cuenta de entrenador SÍ se borró en el servidor
       expect(authMock.deleteTrainerUser).toHaveBeenCalledTimes(1);
       expect(authMock.deleteClientUser).toHaveBeenCalledTimes(1);
-      // hoy: ni se salió de RevenueCat ni se limpió el móvil
-      expect(RC.logOut).not.toHaveBeenCalled();
-      expect(useStore.getState().trainerSync.userId).toBe('uuid-A');
-      expect(isPro()).toBe(true);
+      expect(RC.logOut).toHaveBeenCalledTimes(1);
+      expect(useStore.getState().trainerSync.userId).toBeNull();
+      expect(isPro()).toBe(false);
+    });
+
+    it('E33 (cumple R-D4): con el mismo usuario en los dos papeles delete-account se llama una sola vez', async () => {
+      deleteSetup();
+      authMock.clientSessionUserId.mockResolvedValueOnce('uuid-A');
+      expect(await useStore.getState().deleteAccount()).toEqual({ ok: true });
+      expect(authMock.deleteTrainerUser).toHaveBeenCalledTimes(1);
+      expect(authMock.deleteClientUser).not.toHaveBeenCalled();
     });
 
     // ── X6: restaurar a mano revoca ──

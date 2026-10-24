@@ -4924,11 +4924,8 @@ export const useStore = create(
         if (trainerSync.userId) await _ensureTrainerSession(trainerSync);
 
         if (trainerSync.userId) await deleteTrainerUser();
-        if (await clientSessionUserId()) await deleteClientUser();
         await signOutTrainer().catch(() => {});
-        await signOutClient().catch(() => {});
         await get()._purchasesLogOut();
-
         set((s) => ({
           trainerLoginNeeded: false,
           trainerSync: {
@@ -4936,12 +4933,17 @@ export const useStore = create(
             mode: 'offline', code: null, userId: null, email: null,
             trainerName: null, lastSeenSessionsCount: {}, deletedSlotIds: [],
           },
-          clientSync: { ...EMPTY_CLIENT_SYNC },
           clients: Object.fromEntries(Object.entries(s.clients).map(([id, c]) => [id, c.syncSlotId ? {
             ...c, syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false, syncLeftAt: null,
             programDirty: false, overridesDirty: false, programUploadedSig: null,
           } : c])),
         }));
+
+        // Con el mismo usuario en los dos papeles la primera llamada ya lo borró (E33)
+        const clientId = await clientSessionUserId();
+        if (clientId && clientId !== trainerSync.userId) await deleteClientUser();
+        await signOutClient().catch(() => {});
+        set({ clientSync: { ...EMPTY_CLIENT_SYNC } });
 
         return { ok: true };
       },
@@ -4995,7 +4997,13 @@ export const useStore = create(
         try {
           if (!(await RC.isConfigured())) return;
           await RC.logOut();
-        } catch { /* ya era anónimo */ }
+        } catch (e) {
+          if (e?.code !== RC.PURCHASES_ERROR_CODE.LOG_OUT_ANONYMOUS_USER_ERROR) {
+            // La cuenta se va a borrar: el PRO vuelve con Restaurar
+            set((s) => ({ profile: { ...s.profile, isPro: false } }));
+            return;
+          }
+        }
         await get().checkProStatus();
       },
 
