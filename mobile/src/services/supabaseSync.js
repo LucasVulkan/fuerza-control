@@ -64,7 +64,7 @@ export function updateTrainerNameForSlots(trainerName) {
   return rpc(trainerSupabase, 'trainer_set_name', { p_trainer_name: trainerName ?? null });
 }
 
-/** Lo que el entrenador apuntó a un invitado (C20). SLOT_OCCUPIED si ya entró. */
+/** Lo que el entrenador apuntó a un invitado (C20); suma a lo que hay. SLOT_OCCUPIED si ya entró. */
 export function uploadTrainerLog(slotId, entries, customExercises = {}, progress = null) {
   return rpc(trainerSupabase, 'trainer_upload_log', {
     p_slot_id: slotId, p_history: { entries, customExercises, progress }, p_sessions: entries.length,
@@ -183,7 +183,7 @@ export function clientLostReason() {
   return rpc(clientSupabase, 'client_lost_reason', {});
 }
 
-/** El cliente sube lo suyo a su asiento. NO_SEAT si ya no tiene. */
+/** El cliente sube lo suyo a su asiento; el servidor SUMA a lo que hay (E28). NO_SEAT si ya no tiene. */
 export function uploadHistory(entries, customExercises = {}, progress = null) {
   return rpc(clientSupabase, 'client_upload_history', {
     p_history: { entries, customExercises, progress }, p_sessions: entries.length,

@@ -307,8 +307,8 @@ describe('H7 — transfer_my_seat_to sin asiento no falla', () => {
   });
 });
 
-describe('H8 — client_upload_history reemplaza el historial entero', () => {
-  it('H8 hoy: dos subidas con listas distintas → queda solo la última (regla R-C2: llegan las dos)', async () => {
+describe('H8 — client_upload_history suma, no reemplaza', () => {
+  it('H8 regla R-C2 (E28): dos subidas con listas distintas → llegan las dos', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const x = await anon('x');
@@ -316,7 +316,48 @@ describe('H8 — client_upload_history reemplaza el historial entero', () => {
     await upload(x, ['a1']);
     expect(historyIds(await slotOf(S))).toEqual(['a1']);
     await upload(x, ['b1']);
-    expect(historyIds(await slotOf(S))).toEqual(['b1']);
+    expect(historyIds(await slotOf(S))).toEqual(['a1', 'b1']);
+    expect((await slotOf(S)).sessions_count).toBe(2);
+  });
+
+  it('H8 regla R-C2 (E28): el contador sale de lo fusionado, no de p_sessions; trainer_upload_log también suma', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S } = await slotWithProgram(t);
+    const log = (ids, sessions) => ok(t.db, 'trainer_upload_log', { p_slot_id: S, p_history: { entries: ids.map((id) => ({ id })) }, p_sessions: sessions });
+    await log(['a'], 1);
+    await log(['b'], 99);
+    expect(historyIds(await slotOf(S))).toEqual(['a', 'b']);
+    expect((await slotOf(S)).sessions_count).toBe(2);
+  });
+});
+
+describe('E28 — _merge_history', () => {
+  const merge = async (o, n) => (await server.admin('select public._merge_history($1::jsonb, $2::jsonb) as m', [o === null ? null : JSON.stringify(o), JSON.stringify(n)]))[0].m;
+  const E = (...ids) => ids.map((id) => (typeof id === 'string' ? { id } : id));
+
+  it('sin historial previo devuelve lo nuevo tal cual', async () => {
+    const n = { entries: E('a'), progress: { x: 1 } };
+    expect(await merge(null, n)).toEqual(n);
+  });
+
+  it('entries: las viejas que no vienen se conservan y, con el mismo id, gana la nueva', async () => {
+    const m = await merge({ entries: E('a', { id: 'b', v: 'vieja' }) }, { entries: E({ id: 'b', v: 'nueva' }, 'c') });
+    expect(m.entries).toEqual([{ id: 'a' }, { id: 'b', v: 'nueva' }, { id: 'c' }]);
+  });
+
+  it('entradas sin id: se conservan las dos, sin deduplicar', async () => {
+    const m = await merge({ entries: [{ v: 1 }, { id: 'a' }] }, { entries: [{ v: 1 }, { id: 'a' }] });
+    expect(m.entries).toEqual([{ v: 1 }, { v: 1 }, { id: 'a' }]);   // la vieja con id se sustituye; las dos sin id se quedan
+  });
+
+  it('customExercises se funde (gana la nueva) y progress es el nuevo si lo hay, si no el viejo', async () => {
+    const m = await merge(
+      { entries: [], customExercises: { a: 1, b: 1 }, progress: { v: 'viejo' } },
+      { entries: [], customExercises: { b: 2, c: 2 }, progress: { v: 'nuevo' } });
+    expect(m).toMatchObject({ customExercises: { a: 1, b: 2, c: 2 }, progress: { v: 'nuevo' } });
+    const k = await merge({ entries: [], progress: { v: 'viejo' } }, { entries: E('z') });
+    expect(k).toMatchObject({ customExercises: {}, progress: { v: 'viejo' } });
+    expect(k.entries).toEqual([{ id: 'z' }]);
   });
 });
 
@@ -558,6 +599,6 @@ describe('Descartados: quedan fijados', () => {
     await upload(c, ['s1']);
 
     expect((await bad(t.db, 'trainer_upload_log', { p_slot_id: S, p_history: { entries: [{ id: 'pisado' }] }, p_sessions: 1 })).message).toBe('SLOT_OCCUPIED');
-    expect(historyIds(await slotOf(S))).toEqual(['s1']);
+    expect(historyIds(await slotOf(S))).toEqual(['antes', 's1']);   // la subida del cliente suma a lo anotado antes (E28); 'pisado' no entró
   });
 });

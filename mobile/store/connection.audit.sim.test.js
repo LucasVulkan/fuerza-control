@@ -160,7 +160,7 @@ describe('H7 — vincular Google sin asiento se da por hecho', () => {
 });
 
 describe('H8 — la subida reemplaza: se pisan sesiones no descargadas', () => {
-  it('H8a hoy: dos móviles con el mismo Google entrenan a1 y b1; el entrenador solo recibe b1 (regla R-C2: las dos)', async () => {
+  it('H8a regla R-C2 (E28): dos móviles con el mismo Google entrenan a1 y b1; el entrenador recibe las dos', async () => {
     const { t, c: c1, clientId } = await trainerAndClient();
     await c1.s.linkGoogleForClient(google('cli'));
     const c2 = await phone('cliente 2');
@@ -172,10 +172,10 @@ describe('H8 — la subida reemplaza: se pisan sesiones no descargadas', () => {
     await trainOnce(c1, 'a1');
     expect(historyIds(await slotOf(slotIdOf(t, clientId)))).toEqual(['a1']);   // a1 llegó
     await trainOnce(c2, 'b1');
-    expect(await trainerSees(t, clientId)).toEqual(['b1']);
+    expect(await trainerSees(t, clientId)).toEqual(['a1', 'b1']);
   });
 
-  it('H8b hoy: entrena s1, reinstala, entra sin fusionar y entrena s2; el entrenador solo recibe s2 (regla R-C2: s1 y s2)', async () => {
+  it('H8b regla R-C2 (E28): entrena s1, reinstala, entra sin fusionar y entrena s2; el entrenador recibe s1 y s2', async () => {
     let { t, c, clientId } = await trainerAndClient();
     await trainOnce(c, 's1');
     expect(historyIds(await slotOf(slotIdOf(t, clientId)))).toEqual(['s1']);
@@ -183,7 +183,7 @@ describe('H8 — la subida reemplaza: se pisan sesiones no descargadas', () => {
     c = await reinstall(c);
     await c.s.linkToTrainer(codeOf(t, clientId), { mergeHistory: false });
     await trainOnce(c, 's2');
-    expect(await trainerSees(t, clientId)).toEqual(['s2']);
+    expect(await trainerSees(t, clientId)).toEqual(['s1', 's2']);
   });
 });
 
