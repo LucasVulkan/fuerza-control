@@ -120,14 +120,14 @@ describe('H5 — el motivo de perder el asiento, en la app', () => {
 });
 
 describe('H6 — desconectarse / borrar la cuenta pierde lo no descargado', () => {
-  it('H6 hoy: el cliente entrena s1 y se desconecta; el entrenador descarga y no recibe nada (regla R-C4: s1 llega)', async () => {
+  it('H6 regla R-B6 (E27): el cliente entrena s1 y se desconecta; el entrenador descarga y recibe s1', async () => {
     const { t, c, clientId } = await trainerAndClient();
     await trainOnce(c, 's1');
     expect(historyIds(await slotOf(slotIdOf(t, clientId)))).toEqual(['s1']);
 
     await c.s.unlinkFromTrainer();
     expect((await slotOf(slotIdOf(t, clientId))).client_id).toBeNull();
-    expect(await trainerSees(t, clientId)).toEqual([]);
+    expect(await trainerSees(t, clientId)).toEqual(['s1']);
   });
 
   it('H6 regla R-C4 (decidido 23-oct): el cliente entrena s1 y borra su cuenta; el entrenador no recibe nada', async () => {

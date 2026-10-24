@@ -307,8 +307,7 @@ const EDGE_FUNCTIONS = {
     await server.admin('delete from public.trainer_clients where trainer_id = $1', [uid]);
     await server.admin(`update public.trainer_clients
                            set client_id = null, disconnected_at = now(), history_json = null,
-                               history_updated_at = null, sessions_count = 0,
-                               overrides_json = null, overrides_updated_at = null
+                               history_updated_at = null, sessions_count = 0
                          where client_id = $1`, [uid]);
     await server.admin('delete from public.profiles where id = $1', [uid]);
     await server.deleteUser(uid);

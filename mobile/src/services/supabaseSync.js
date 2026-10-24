@@ -190,7 +190,7 @@ export function uploadHistory(entries, customExercises = {}, progress = null) {
   });
 }
 
-/** Suelta el asiento y borra lo suyo de él. Devuelve cuántos (0 no es error). */
+/** Suelta el asiento; el historial y lo demás se quedan en el hueco (R-B6). Devuelve cuántos (0 no es error). */
 export async function releaseClientSlot(db = clientSupabase) {
   return (await rpc(db, 'release_client_slot', {})) ?? 0;
 }

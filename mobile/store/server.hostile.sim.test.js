@@ -245,7 +245,7 @@ describe('H5 — client_lost_reason da el motivo equivocado', () => {
 });
 
 describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían el hueco', () => {
-  it('H6 hoy: release_client_slot borra history_json, sessions_count y overrides_json (regla R-B6/R-C4: debe conservarlos)', async () => {
+  it('H6 regla R-B6 (E27): release_client_slot solo suelta el asiento; historial, sesiones y prescripciones se quedan', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     await ok(t.db, 'trainer_upload_overrides', { p_slot_id: S, p_overrides: { tpl: { reps: 5 } } });
@@ -258,11 +258,13 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     expect(await ok(x.db, 'release_client_slot')).toBe(1);
     const row = await slotOf(S);
     expect(row.disconnected_at).toBeTruthy();
-    expect(row).toMatchObject({ client_id: null, history_json: null, history_updated_at: null, sessions_count: 0, overrides_json: null });
+    expect(row).toMatchObject({ client_id: null, sessions_count: 1, overrides_json: { tpl: { reps: 5 } } });
+    expect(historyIds(row)).toEqual(['s1']);
+    expect(row.history_updated_at).toBeTruthy();
     expect(row.program_json).toEqual({ program: { name: 'Fuerza' } });   // el programa sí se queda
   });
 
-  it('H6 hoy: entrar en otro hueco vacía el historial del anterior (regla R-C4: debe conservarlo)', async () => {
+  it('H6 regla R-B6 (E27): entrar en otro hueco suelta el anterior sin vaciarle el historial', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');
     const A = await slotWithProgram(a);
@@ -273,12 +275,14 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     expect(historyIds(await slotOf(A.S))).toEqual(['de-A']);
 
     await link(x, B.K, B.S);
-    expect(await slotOf(A.S)).toMatchObject({ client_id: null, history_json: null, sessions_count: 0 });
+    expect(await slotOf(A.S)).toMatchObject({ client_id: null, sessions_count: 1 });
+    expect(historyIds(await slotOf(A.S))).toEqual(['de-A']);
   });
 
   it('H6 regla R-C4 (decidido 23-oct): borrar la cuenta vacía el historial del hueco que ocupa ahora', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
+    await ok(t.db, 'trainer_upload_overrides', { p_slot_id: S, p_overrides: { tpl: { reps: 5 } } });
     const x = await anon('x');
     await link(x, K, S);
     await upload(x, ['s1']);
@@ -287,7 +291,8 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     const { data, error } = await x.db.functions.invoke('delete-account');
     expect(error).toBeNull();
     expect(data).toEqual({ ok: true });
-    expect(await slotOf(S)).toMatchObject({ client_id: null, history_json: null, sessions_count: 0 });
+    // El historial es del cliente y se va con su cuenta; las prescripciones son del entrenador.
+    expect(await slotOf(S)).toMatchObject({ client_id: null, history_json: null, sessions_count: 0, overrides_json: { tpl: { reps: 5 } } });
   });
 });
 

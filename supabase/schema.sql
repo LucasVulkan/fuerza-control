@@ -120,9 +120,7 @@ with ranked as (
    where client_id is not null
 )
 update public.trainer_clients t
-   set client_id = null, disconnected_at = now(),
-       history_json = null, history_updated_at = null, sessions_count = 0,
-       overrides_json = null, overrides_updated_at = null
+   set client_id = null, disconnected_at = now()
   from ranked r
  where t.id = r.id and r.rn > 1;
 
@@ -463,10 +461,10 @@ begin
     raise exception 'SEAT_LOCKED';
   end if;
 
+  -- Soltar el asiento viejo no borra nada del hueco (R-B6): el historial y las
+  -- prescripciones se quedan donde estaban, para el entrenador.
   update public.trainer_clients
-     set client_id = null, disconnected_at = now(),
-         history_json = null, history_updated_at = null, sessions_count = 0,
-         overrides_json = null, overrides_updated_at = null
+     set client_id = null, disconnected_at = now()
    where client_id = v_me and id <> v_slot;
 
   update public.trainer_clients
@@ -513,8 +511,10 @@ begin
 end;
 $$;
 
--- Se desconecta él: suelta el asiento y borra lo suyo (el entrenador puede dar
--- ese código a otra persona). Deja programa, nombre y código, que son del dueño.
+-- Se desconecta él: suelta el asiento y nada más (R-B6). El historial, las
+-- prescripciones, el programa, el nombre y el código se quedan en el hueco: son
+-- del entrenador, que decide qué hacer con ellos. Solo borrar la cuenta vacía
+-- el historial del cliente (`delete-account`, excepción de R-C4).
 create or replace function public.release_client_slot()
 returns integer
 language plpgsql
@@ -524,9 +524,7 @@ as $$
 declare v_count integer;
 begin
   update public.trainer_clients
-     set client_id = null, disconnected_at = now(),
-         history_json = null, history_updated_at = null, sessions_count = 0,
-         overrides_json = null, overrides_updated_at = null
+     set client_id = null, disconnected_at = now()
    where client_id = public._caller();
   get diagnostics v_count = row_count;
   return v_count;
