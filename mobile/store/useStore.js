@@ -49,7 +49,7 @@ import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
 import { clientLink } from '../src/utils/clientLink';
-import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds } from '../src/utils/freePlan';
+import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -289,6 +289,11 @@ const INITIAL_PROFILE = {
   // explicitas: EXPO_PUBLIC_FORCE_PRO=true y el interruptor PRO/FREE del menu,
   // que solo existe bajo __DEV__.
   isPro: false,
+  // De la última información de RevenueCat aplicada (E46): fin del periodo, si
+  // es pago único y su fecha. Sin red, `proStillValid` decide con ellos.
+  proExpiresAt: null,
+  proLifetime: false,
+  proCheckedAt: null,
   // Con quién sigue sin Pro, si tiene más clientes de los que caben (M01 §4.6).
   // Solo se consulta en ese caso: el valor por defecto no necesita migración.
   freeClientIds: [],
@@ -4979,12 +4984,8 @@ export const useStore = create(
           if (!(await RC.isConfigured())) return; // sin clave o build preview
           const wasPro = get().profile.isPro;
           const { customerInfo } = await RC.logIn(userId);
-          let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
-          if (switched && wasPro && !isPro) {
-            const info = await RC.restorePurchases();
-            isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
-          }
-          set((s) => ({ profile: { ...s.profile, isPro } }));
+          if (get()._applyCustomerInfo(customerInfo) || !(switched && wasPro)) return;
+          get()._applyCustomerInfo(await RC.restorePurchases());
         } catch (err) {
           console.warn('[RevenueCat] logIn:', err?.message);
         }
@@ -5008,19 +5009,38 @@ export const useStore = create(
       },
 
       /**
+       * Único punto que vuelca un customerInfo en el perfil (E46). Una respuesta
+       * más nueva (`requestDate`) que la última aplicada manda. Si no lo es —la
+       * caché del SDK, o ningún `info` por falta de red— solo puede mantener el
+       * PRO mientras `proStillValid` lo diga (R-E5); y una respuesta vieja que
+       * llega tarde no pisa a una nueva (E45-c). Devuelve el `isPro` resultante.
+       */
+      _applyCustomerInfo: (info) => {
+        const p = get().profile;
+        const at = Date.parse(info?.requestDate);
+        const ent = info?.entitlements.active[RC_PRO_ENTITLEMENT];
+        const patch = at > (p.proCheckedAt ?? 0)
+          ? {
+            isPro: !!ent, proCheckedAt: at,
+            proExpiresAt: ent?.expirationDate ? Date.parse(ent.expirationDate) : null,
+            proLifetime: !!ent && !ent.expirationDate,
+          }
+          : { isPro: !!p.isPro && proStillValid(p, Date.now()) };
+        set((s) => ({ profile: { ...s.profile, ...patch } }));
+        return patch.isPro;
+      },
+
+      /**
        * Fetches the current entitlements from RevenueCat and syncs isPro.
-       * Call on app launch (after RC is configured) and after purchase/restore.
+       * Call on app launch (after RC is configured), on foreground and after purchase/restore.
        */
       checkProStatus: async () => {
         const RC = get()._getRC();
         if (!RC) return get().profile.isPro;
         try {
-          const info = await RC.getCustomerInfo();
-          const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
-          set((s) => ({ profile: { ...s.profile, isPro } }));
-          return isPro;
+          return get()._applyCustomerInfo(await RC.getCustomerInfo());
         } catch {
-          return get().profile.isPro;
+          return get()._applyCustomerInfo(null);
         }
       },
 
@@ -5068,9 +5088,7 @@ export const useStore = create(
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
           // Sin PRO en la respuesta, no se dice «hecho»: lo pondrá el listener de App.js cuando llegue
-          if (!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT]) return { ok: false, pending: true };
-          set((s) => ({ profile: { ...s.profile, isPro: true } }));
-          return { ok: true, isPro: true };
+          return get()._applyCustomerInfo(customerInfo) ? { ok: true, isPro: true } : { ok: false, pending: true };
         } catch (e) {
           if (e?.userCancelled) return { ok: false, cancelled: true };
           if (e?.code === RC.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) return { ok: false, pending: true };
@@ -5086,9 +5104,7 @@ export const useStore = create(
         const RC = get()._getRC();
         if (!RC) return false;
         try {
-          const info = await RC.restorePurchases();
-          const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
-          set((s) => ({ profile: { ...s.profile, isPro } }));
+          const isPro = get()._applyCustomerInfo(await RC.restorePurchases());
           get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
           return isPro;
         } catch {
@@ -5182,6 +5198,10 @@ export const useStore = create(
           // «Nuevo programa» desde la app no se retoma (O03 §25.4.7): lo ya
           // creado sigue en Programa. Sin esto arrancaría en el recorrido.
           if (state.onboardingFlow?.entry === 'newProgram') state.onboardingFlow = null;
+
+          // Un PRO guardado sin fecha empieza a contar sus 20 días sin red ahora (R-E5)
+          const pro = state.profile;
+          if (pro?.isPro && pro.proExpiresAt == null && !pro.proLifetime) pro.proExpiresAt = Date.now();
 
           // Apply language from persisted profile
           if (state.profile?.language) {

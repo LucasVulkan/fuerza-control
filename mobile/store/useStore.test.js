@@ -746,15 +746,26 @@ describe('isPro — fallo 9', () => {
     expect(useStore.getState().profile.isPro).toBe(false);
   });
 
-  it('si la comprobación no puede ejecutarse, no concede ni revoca', async () => {
-    // `checkProStatus` conserva el valor a propósito: revocar por un fallo de
-    // red dejaría sin funciones a un cliente de pago que está sin cobertura.
-    // Con el default en false, conservar ya no significa regalar.
+  it('si la comprobación no puede ejecutarse, dentro del plazo no concede ni revoca', async () => {
+    // Sin módulo nativo se conserva el valor a propósito (las versiones de
+    // prueba quedan fuera de R-E5); sin red, `checkProStatus` lo conserva
+    // mientras `proStillValid` lo diga: revocar al primer fallo dejaría sin
+    // funciones a un cliente de pago sin cobertura.
     useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
     expect(await useStore.getState().checkProStatus()).toBe(true);
 
     useStore.setState((s) => ({ profile: { ...s.profile, isPro: false } }));
     expect(await useStore.getState().checkProStatus()).toBe(false);
+
+    const getRC = useStore.getState()._getRC;
+    useStore.setState((s) => ({
+      _getRC: () => ({ getCustomerInfo: async () => { throw new Error('sin red'); } }),
+      profile: { ...s.profile, isPro: true, proLifetime: false, proExpiresAt: Date.now() },
+    }));
+    expect(await useStore.getState().checkProStatus()).toBe(true);
+    useStore.setState((s) => ({ profile: { ...s.profile, proExpiresAt: Date.now() - 21 * 86_400_000 } }));
+    expect(await useStore.getState().checkProStatus()).toBe(false);
+    useStore.setState({ _getRC: getRC });
   });
 });
 
@@ -814,8 +825,9 @@ describe('plan gratis — M01-02, la puerta va en la acción', () => {
   });
 });
 
+let infoTick = 0;   // cada respuesta de RevenueCat trae un requestDate más nuevo (E46)
 describe('syncPurchaserId — M01-01, el Pro sigue a la cuenta', () => {
-  const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} } });
+  const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} }, requestDate: new Date(Date.now() + ++infoTick).toISOString() });
   let RC, getRC;
   beforeEach(() => {
     RC = {
@@ -898,7 +910,7 @@ describe('getProDetails — M03-02, el plan para «Mi cuenta»', () => {
 });
 
 describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
-  const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} } });
+  const info = (pro) => ({ entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {} } : {} }, requestDate: new Date(Date.now() + ++infoTick).toISOString() });
   const ts = () => useStore.getState().trainerSync;
   let RC, getRC;
   beforeEach(() => {

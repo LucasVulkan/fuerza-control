@@ -144,3 +144,16 @@ const OPEN = {
   connect: () => null, client: () => null,
   newProgramTemplate: null, newSessionTemplate: null,
 };
+
+const GRACE_MS = 20 * 86_400_000;
+
+/**
+ * ¿Sigue valiendo el PRO guardado sin red? (R-E5, E46) Hasta el final del
+ * periodo de la última confirmación más 20 días; el pago único no caduca; con el
+ * reloj por debajo de esa confirmación el plazo se da por gastado.
+ */
+export function proStillValid({ proLifetime, proExpiresAt, proCheckedAt }, nowMs) {
+  if (proLifetime) return true;
+  if (nowMs < (proCheckedAt ?? 0)) return false;
+  return nowMs <= proExpiresAt + GRACE_MS;
+}

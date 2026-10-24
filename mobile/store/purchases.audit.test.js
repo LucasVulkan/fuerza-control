@@ -45,10 +45,10 @@ const AsyncStorage = (await import('@react-native-async-storage/async-storage'))
 const DAY = 86_400_000;
 const T0  = Date.parse('2026-10-01T10:00:00Z');
 
-const info = ({ pro = false, lifetime = false, store = 'PLAY_STORE', at = Date.now() } = {}) => ({
+const info = ({ pro = false, lifetime = false, store = 'PLAY_STORE', at = Date.now(), expiresIn = 365 } = {}) => ({
   entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {
     identifier: RC_PRO_ENTITLEMENT, isActive: true, store,
-    expirationDate: lifetime ? null : new Date(at + 365 * DAY).toISOString(),
+    expirationDate: lifetime ? null : new Date(at + expiresIn * DAY).toISOString(),
   } } : {} },
   requestDate: new Date(at).toISOString(), managementURL: null,
 });
@@ -59,7 +59,10 @@ const rcError = (code, message) => Object.assign(new Error(message), { code, use
 /** Compras por usuario de RevenueCat y un recibo de la tienda que «restaurar» mueve. */
 function makeRC({ user = '$RCAnonymousID:1', owners = {}, receipt = null } = {}) {
   const rc = { user, owners, receipt };
-  const of = (id) => rc.owners[id] ?? info();
+  // Cada respuesta del servidor trae un requestDate nuevo (E46: manda la más nueva); `tick` evita empates en el
+  // mismo ms y los 10 s de margen, que el reloj del móvil no quede por debajo de la confirmación
+  let tick = 0;
+  const of = (id) => ({ ...(rc.owners[id] ?? info()), requestDate: new Date(Date.now() - 10_000 + ++tick).toISOString() });
   return Object.assign(rc, {
     PURCHASES_ERROR_CODE: { PRODUCT_ALREADY_PURCHASED_ERROR: '6', PAYMENT_PENDING_ERROR: '20', LOG_OUT_ANONYMOUS_USER_ERROR: '22' },
     isConfigured:     vi.fn(async () => true),
@@ -190,7 +193,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(isPro()).toBe(false);
   });
 
-  it('D2-c hoy: el checkProStatus del arranque que resuelve tarde pisa el true del logIn con false (regla R-D2: no pisa)', async () => {
+  it('D2-c arreglado (E45-c, R-D2): el checkProStatus del arranque que resuelve tarde no pisa el true del logIn', async () => {
     useRC({ owners: { 'uuid-A': info({ pro: true }) } });   // arranca anónimo (instalación limpia)
     let late;
     RC.getCustomerInfo.mockImplementationOnce(() => new Promise((r) => { late = r; }));
@@ -200,13 +203,12 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(RC.logIn).toHaveBeenCalledWith('uuid-A');
     expect(late).toBeTypeOf('function');
     expect(isPro()).toBe(true);
-    late(info());                                           // llega la respuesta del anónimo
+    late(info({ at: Date.now() - 60_000 }));                // llega la respuesta del anónimo, de antes del logIn
     await boot;
-    // hoy
-    expect(isPro()).toBe(false);
+    expect(isPro()).toBe(true);                             // E45-c: la respuesta vieja no pisa a la nueva
   });
 
-  it('D2-d hoy: PRO regalado (PROMOTIONAL) en A → B se pierde: restore no mueve regalos (regla R-D2: no se pierde)', async () => {
+  it('D2-d conocido (E45-d): PRO regalado (PROMOTIONAL) en A → B se pierde: restore no mueve regalos (regla R-D2: no se pierde)', async () => {
     useRC({ user: 'uuid-A', owners: { 'uuid-A': info({ pro: true, store: 'PROMOTIONAL' }) }, receipt: null });
     setPro(true);
     await useStore.getState().syncPurchaserId('uuid-B', { switched: true });
@@ -214,7 +216,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(RC.logIn).toHaveBeenCalledWith('uuid-B');
     expect(RC.restorePurchases).toHaveBeenCalledTimes(1);
     expect(RC.owners['uuid-A']).toBeTruthy();
-    // hoy
+    // conocido (E45-d): restaurar no lo arregla, hace falta que la cuenta no cambie de id (I02 §7)
     expect(RC.owners['uuid-B']).toBeUndefined();
     expect(isPro()).toBe(false);
   });
@@ -262,9 +264,10 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
 
   // ── E5: días sin red ──
   describe('E5 — días sin red', () => {
+    // La suscripción de estos casos acaba en la confirmación (expiresIn: 0): sin red cuentan los 20 días de margen
     const confirmAt = async (t, opts) => {
       vi.useFakeTimers(); vi.setSystemTime(t);
-      RC.getCustomerInfo.mockResolvedValueOnce(info({ pro: true, at: t, ...opts }));
+      RC.getCustomerInfo.mockResolvedValueOnce(info({ pro: true, at: t, expiresIn: 0, ...opts }));
       expect(await useStore.getState().checkProStatus()).toBe(true);
     };
     const offlineAt = async (t) => {
@@ -278,36 +281,49 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       await confirmAt(T0);
       expect(await offlineAt(T0 + 19 * DAY)).toBe(true);
     });
-    it('E5 hoy: a los 21 días sin red SIGUE PRO, no hay plazo (regla R-E5: pasa a gratis)', async () => {
+    it('E5 arreglado (E46, R-E5): a los 21 días sin red pasa a gratis', async () => {
       await confirmAt(T0);
       const r = await offlineAt(T0 + 21 * DAY);
       expect(RC.getCustomerInfo).toHaveBeenCalledTimes(2);   // montaje: el segundo intento falló de verdad
-      expect(r).toBe(true);
-      expect(isPro()).toBe(true);
+      expect(r).toBe(false);
+      expect(isPro()).toBe(false);
     });
-    it('E5 hoy: 400 días sin red (suscripción) SIGUE PRO (regla R-E5: gratis)', async () => {
+    it('E5 arreglado (E46): 400 días sin red (suscripción) pasa a gratis', async () => {
       await confirmAt(T0);
-      expect(await offlineAt(T0 + 400 * DAY)).toBe(true);
+      expect(await offlineAt(T0 + 400 * DAY)).toBe(false);
     });
-    it('E5 hoy: la caché del SDK con info de hace 21 días escribe true y no se mira requestDate (regla R-E5: gratis)', async () => {
+    it('E5 (E46): dentro del periodo pagado (un año) sigue PRO a los 300 días sin red, y 21 días después de acabar ya no', async () => {
+      await confirmAt(T0, { expiresIn: 365 });
+      expect(await offlineAt(T0 + 300 * DAY)).toBe(true);
+      expect(await offlineAt(T0 + 386 * DAY)).toBe(false);
+    });
+    it('E5 arreglado (E46): la caché del SDK con info de hace 21 días no mantiene el PRO (se mira requestDate)', async () => {
       await confirmAt(T0);
       vi.setSystemTime(T0 + 21 * DAY);
       RC.getCustomerInfo.mockResolvedValueOnce(info({ pro: true, at: T0 }));
       const stale = RC.getCustomerInfo.mock.calls.length;
-      expect(await useStore.getState().checkProStatus()).toBe(true);
+      expect(await useStore.getState().checkProStatus()).toBe(false);
       expect(RC.getCustomerInfo.mock.calls.length).toBe(stale + 1);   // montaje: se leyó la caché
-      expect(isPro()).toBe(true);
+      expect(isPro()).toBe(false);
     });
-    it('E5 hoy: reloj atrasado por debajo de la última confirmación NO gasta el plazo, sigue PRO (regla R-E5: gratis)', async () => {
+    it('E5 arreglado (E46): reloj atrasado por debajo de la última confirmación da el plazo por gastado', async () => {
       await confirmAt(T0);
-      expect(await offlineAt(T0 - DAY)).toBe(true);
+      expect(await offlineAt(T0 - DAY)).toBe(false);
     });
-    it('E5 hoy: sin RevenueCat (Expo Go, preview) a los 21 días SIGUE PRO (regla R-E5: gratis)', async () => {
+    it('E5 aceptado (E46): sin RevenueCat (Expo Go, preview) a los 21 días sigue PRO: las versiones de prueba quedan fuera', async () => {
       await confirmAt(T0);
       useStore.setState({ _getRC: () => null });
       vi.setSystemTime(T0 + 21 * DAY);
       expect(await useStore.getState().checkProStatus()).toBe(true);
       expect(isPro()).toBe(true);
+    });
+    it('E46: una confirmación tardía (listener de App.js) pone el PRO, y una más vieja no lo quita', async () => {
+      useStore.getState()._applyCustomerInfo(info({ pro: true, at: T0 }));
+      expect(isPro()).toBe(true);
+      useStore.getState()._applyCustomerInfo(info({ pro: false, at: T0 - 1000 }));   // llega tarde, es anterior
+      expect(isPro()).toBe(true);
+      useStore.getState()._applyCustomerInfo(info({ pro: false, at: T0 + 1000 }));   // más nueva: manda
+      expect(isPro()).toBe(false);
     });
     it('E5 (cumple): el pago único no caduca sin red', async () => {
       await confirmAt(T0, { lifetime: true });
@@ -417,19 +433,21 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       });
       const stubStorage = (isProValue) => vi.spyOn(AsyncStorage, 'getItem').mockImplementation(async (k) => (k === BACKUP_STORAGE_KEY ? blob(isProValue) : null));
 
-      it('X4 hoy: un perfil restaurado del backup del SO con isPro=true arranca PRO y sin red SIGUE PRO sin haberlo confirmado nunca en este móvil (regla R-E5: sin confirmación reciente = gratis)', async () => {
+      it('X4 arreglado (E46, R-E5): un PRO restaurado del backup del SO sin fecha empieza a contar 20 días al abrir la versión nueva y sin red pasa a gratis', async () => {
         useRC({ user: 'uuid-A' });                       // en la instalación nueva, sin red
+        vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(T0);
         stubStorage(true);
         await useStore.persist.rehydrate();
         // montaje: lo persistido llegó al store
         expect(AsyncStorage.getItem).toHaveBeenCalledWith(BACKUP_STORAGE_KEY);
         expect(isPro()).toBe(true);
-        RC.getCustomerInfo.mockRejectedValueOnce(rcError('10', 'Error performing request.'));
-        const r = await useStore.getState().checkProStatus();
-        expect(RC.getCustomerInfo).toHaveBeenCalledTimes(1);
-        // hoy
-        expect(r).toBe(true);
-        expect(isPro()).toBe(true);
+        expect(useStore.getState().profile.proExpiresAt).toBe(T0);
+        RC.getCustomerInfo.mockRejectedValue(rcError('10', 'Error performing request.'));
+        vi.setSystemTime(T0 + 19 * DAY);
+        expect(await useStore.getState().checkProStatus()).toBe(true);
+        vi.setSystemTime(T0 + 21 * DAY);
+        expect(await useStore.getState().checkProStatus()).toBe(false);
+        expect(isPro()).toBe(false);
       });
 
       it('X4b (cumple): con red el mismo perfil restaurado se corrige a gratis (RevenueCat manda)', async () => {
@@ -441,7 +459,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
         expect(isPro()).toBe(false);
       });
 
-      it('X4c hoy: con perfil restaurado isPro=true y sin módulo nativo (_getRC=null, Expo Go / build sin clave) sigue PRO indefinidamente (regla R-E5)', async () => {
+      it('X4c aceptado (E46): con perfil restaurado isPro=true y sin módulo nativo (_getRC=null, Expo Go / build sin clave) sigue PRO: las versiones de prueba quedan fuera de R-E5', async () => {
         useStore.setState({ _getRC: () => null });
         stubStorage(true);
         await useStore.persist.rehydrate();
