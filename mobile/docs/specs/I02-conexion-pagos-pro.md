@@ -6,8 +6,8 @@
 > Fase I02-01 · terminado · Revisar y firmar las reglas · §3
 > Fase I02-02 · terminado · Servidor: el SQL y las Edge Functions contra un cliente hostil · §5.1
 > Fase I02-03 · pendiente · App: conexión y sincronización · §5.2
-> Fase I02-04 · pendiente · App: PRO, límites y congelado · §5.3
-> Fase I02-05 · pendiente · App: compra, restauración e identidad en RevenueCat · §5.4
+> Fase I02-04 · terminado · App: PRO, límites y congelado · §5.3
+> Fase I02-05 · terminado · App: compra, restauración e identidad en RevenueCat · §5.4
 > Fase I02-06 · pendiente · Pruebas en dispositivo de lo que el banco no ve · §5.5
 >
 > Estado: **spec escrita, sin empezar** (23-oct-2026). **I02-01 terminada**: reglas
@@ -17,7 +17,11 @@
 > con esfuerzo máximo) y 48 tests nuevos en el banco
 > (`mobile/store/server.hostile.sim.test.js`, `connection.audit.sim.test.js`).
 > Salen 11 fallos confirmados, de E27 a E37 en `auditoria-tecnica.md`. Ninguno
-> está arreglado. Sale de la conversación
+> está arreglado.
+> **I02-04 e I02-05 terminadas** (24-oct-2026): pasada por reglas con Opus alto
+> (la de I02-05 con máximo) y adversaria con Sonnet; 60 tests en
+> `freeplan.audit.test.js` y `purchases.audit.test.js`. Salen los fallos E38 a E48.
+> **E27, E28, E29 y E32 arreglados** en `fix/i02-servidor`. Sale de la conversación
 > del 23-oct: ¿un modelo con más esfuerzo encontraría más fallos en conexión,
 > pagos y PRO? Respuesta: algo más sí, pero lo que más cuenta es el método.
 > Hacen falta reglas escritas, cada una con su forma de comprobarla, y
@@ -160,8 +164,8 @@ Tres palabras que salen mucho:
 | R-E1 | Sin PRO: como mucho 3 clientes (1 conectado), 1 plantilla de programa y 1 de sesión. **Todos** los caminos que crean uno pasan por la misma puerta del store: pantallas, onboarding, importar, duplicar, invitación, "Enviar todo". | L · U |
 | R-E2 | Un cliente congelado es solo lectura y no sincroniza en ninguna dirección, por ningún camino (tabla de M01 §4.5), salvo el contador de `refreshTrainerSlots`. | L · U |
 | R-E3 | Al caducar el PRO, lo que necesita PRO deja de funcionar, pero no se borra ni se oculta ningún dato. Al volver a pagar se recupera todo. | U |
-| R-E4 | La elección de qué clientes siguen activos es para siempre (M01 §4.11) y no se puede rehacer cambiando de cuenta, reinstalando ni importando. | U |
-| R-E5 | **Sin red, el PRO guardado dura 20 días** desde la última vez que la tienda lo confirmó. Pasado ese plazo, el móvil pasa a gratis hasta que vuelva a haber conexión y la tienda lo confirme. Al volver la red, si la suscripción caducó, pasa a gratis en ese momento. El pago único no caduca. Para que sea fiable, si el reloj del móvil marca una fecha **anterior** a la última confirmación, el plazo se da por gastado (que no sirva atrasar la hora). | U |
+| R-E4 | La elección de qué clientes siguen activos es para siempre (M01 §4.11) y **persiste**: si entra un cliente que no cabe (vuelve de otra cuenta, se importa, se recupera del servidor), se congela **solo el nuevo** y la elección sigue igual (24-oct-2026). Reinstalar o restaurar un backup sí deja volver a elegir: se acepta, porque es mucha fricción para saltarse el PRO y sin servidor no se puede impedir (R-E7). | U |
+| R-E5 | **Sin red, el PRO dura hasta el final del periodo pagado y 20 días más** (revisado el 24-oct-2026). El final del periodo es la fecha de caducidad que la tienda dio en la última confirmación. Si llevas sin red desde antes de que caduque, cuenta igual: el periodo que pagaste más 20 días. Pasado ese plazo, el móvil pasa a gratis hasta que la tienda lo vuelva a confirmar. Al volver la red, si la suscripción caducó, pasa a gratis en ese momento. **El pago único no caduca nunca**: garantiza la app de por vida. Las versiones de prueba (Expo Go, preview) quedan fuera. Para un PRO que ya existía sin fecha guardada, el plazo empieza al abrir la versión nueva. Si el reloj del móvil marca una fecha anterior a la última confirmación, el plazo se da por gastado. | U |
 | R-E6 | Ningún build que llegue a la tienda trae `EXPO_PUBLIC_FORCE_PRO` ni el interruptor de desarrollo activo (`eas.json`: hoy solo el perfil `preview`). | L |
 | R-E7 | **Decidido (23-oct-2026): por ahora, los límites solo en la app.** Se sabe lo que eso expone: con un APK modificado, un entrenador gratis tendría más de 1 cliente **conectado** usando el servidor. Lo que vive en el móvil (clientes manuales, plantillas) no importa: es suyo. **Si la app crece, se parchea:** que el servidor sepa quién es PRO por una tabla que el usuario no pueda escribir (la rellena RevenueCat con un webhook) y que `trainer_create_slot` y `link_client_to_slot` se nieguen a pasar del límite sin PRO. Señal para hacerlo: una consulta en Supabase que cuente entrenadores con más de un hueco ocupado y sin PRO (§7). | L |
 
@@ -361,7 +365,19 @@ y aquí solo se enlazan.
 | Subida en vuelo al cambiar de entrenador | I02-02 | Confirmado en el SQL; en la app, sospecha | — | H14 | [E37](auditoria-tecnica.md#37) |
 | Endurecimiento: límite de ritmo, tamaño de datos, error interno de `delete-account`, el banco no imita los permisos por defecto de Supabase | I02-02 | Sospecha | — | Solo lectura | — |
 | R-A7 | — | Descartado | — | `profiles.role` solo lo lee `isTrainer` (`supabaseAuth.js:80`) para elegir pantalla; ninguna función SQL lo mira | — |
-| R-E5 | I02-05 | Probable | Store | `checkProStatus` devuelve el `isPro` guardado si falla, sin plazo | — |
+| R-E1 | I02-04 | Confirmado (en parte aceptado) | Store | Importar y restaurar meten plantillas y clientes por encima del límite: **aceptado** (decisión 1, como al caducar). Pulsar rápido: 2 con app (P16-P18) | [E42](auditoria-tecnica.md#42) |
+| R-E2 | I02-04 | Confirmado | Pantalla | El store deja escribir sobre un congelado: ficha, programa, prescripciones, importar, entreno en curso, etapa que llega del servidor (P7-P11) | [E43](auditoria-tecnica.md#43) |
+| R-E3 | I02-04 | Confirmado | Store | Drive pierde las plantillas de programa (P3); reinstalar sin PRO deja los clientes recuperados sin programa para siempre (P12) | [E38](auditoria-tecnica.md#38), [E39](auditoria-tecnica.md#39) |
+| R-E4 | I02-04 | Confirmado | Store | Cuando la elección deja de valer se congela todo y se vuelve a elegir (P14, P15, P21, P22). Reinstalar (P13) aceptado | [E40](auditoria-tecnica.md#40) |
+| Honrado: conectar un activo | I02-04 | Confirmado | Store | Con congelados no se puede pasar a la app un activo, porque cuentan todos (P19) | [E41](auditoria-tecnica.md#41) |
+| R-E6 · R-E7 | I02-04 | Descartado | — | Producción sin `FORCE_PRO`; interruptor solo con `__DEV__`. Ojo: `FORCE_PRO` no fuerza PRO, solo se salta RevenueCat | — |
+| R-F3 | I02-05 | Confirmado | Store | «Ya comprado» espera un código que el SDK no manda (`'6'`) | [E44](auditoria-tecnica.md#44) |
+| R-D2 | I02-05 | Confirmado | Ninguna | Cuatro caminos pierden el PRO al cambiar de cuenta (D2-a…d) | [E45](auditoria-tecnica.md#45) |
+| R-E5 | I02-05 | Confirmado | Store | Sin plazo; la caché del SDK sin red escribe PRO; un backup de Android al reinstalar devuelve PRO (X4) | [E46](auditoria-tecnica.md#46) |
+| R-F1 | I02-05 | Confirmado (un caso) | Store | Cobrado y la segunda mirada sin red: «compra hecha» sin PRO (F1b) | [E47](auditoria-tecnica.md#47) |
+| R-D4 / R-D3 | I02-05 | Confirmado | Store | Borrar la cuenta con `logOut` caído, o a medias, deja el PRO de la cuenta borrada (D3-b, D3-c) | [E48](auditoria-tecnica.md#48) |
+| R-F2 · R-F4 · R-D3 · importar `isPro` | I02-05 | Descartado (fijado) | Store | `purchases.audit.test.js`: cancelar, restaurar, cerrar sesión; `importData` ignora `isPro` y `freeClientIds` | — |
+| R-F5 | I02-05 | Sin camino | — | Con PRO el paywall no se abre: no hay forma de pasar de anual a pago único. Idea, no fallo (§7) | — |
 | R-D3 | — | Descartado | Store | `RC.logOut` solo en `deleteAccount` (M01 §3.6) | — |
 
 ## 7. Decisiones
@@ -401,6 +417,21 @@ cuando crezca), R-D1 (se queda el traspaso de hoy).
      cliente vincule Google o Apple al entrar con el código. Con eso el código
      ya no puede echarle y, al reinstalar, entra sin pedir nada. Va a una spec
      `C` (o a `docs/ideas.md`, que escribe el usuario).
-4. **¿Quién hace las pasadas?** Recomendado: el modelo más fuerte con esfuerzo
+4. **Cerradas tras I02-04 e I02-05** (24-oct-2026):
+   - Importar o restaurar por encima del límite gratis se acepta (como al
+     caducar: lo que tienes se queda).
+   - Rehacer la elección reinstalando o con un backup se acepta (R-E4, R-E7).
+   - La elección persiste: lo nuevo que no cabe se congela solo (R-E4).
+   - Los clientes inactivos cuentan para el límite.
+   - R-E5 reescrita: periodo pagado + 20 días; el pago único no caduca.
+   - **Sale una idea, sin prisa:** pasar de anual a pago único (R-F5), como
+     recordatorio cuando quede un mes para renovar. Es conversión.
+   - **Sale otra idea, más grande:** clientes de otra cuenta y copia en la
+     nube del trabajo del entrenador. Va a una spec `C` propia.
+4. **¿Quién hace las pasadas?** *Revisado el 23-oct-2026 por coste:* una
+   pasada de Opus con esfuerzo máximo agotó el uso. A partir de ahora, Opus
+   con esfuerzo alto solo para la pasada por reglas de cada zona, y la
+   adversaria y los tests con Sonnet (alto). Nunca varias pasadas máximas a la
+   vez. Antes decía: Recomendado: el modelo más fuerte con esfuerzo
    alto para las pasadas (§4.2), y Sonnet en subagentes para escribir los
    tests que confirman.

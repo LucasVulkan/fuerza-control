@@ -3,8 +3,8 @@
 > Tema: errores
 > En corto: Barrido de corrección sobre toda la app móvil: 26 fallos, cada uno con la condición exacta que lo dispara y el arreglo verificado contra el código.
 >
-> Estado: **Reabierto el 23-oct-2026 con 11 fallos nuevos, E27-E37**, de la
-> auditoría de servidor [I02-02](I02-conexion-pagos-pro.md), todos confirmados
+> Estado: **Reabierto el 23-oct-2026 con 22 fallos nuevos, E27-E48**, de la
+> auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
 > por test en el banco y sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
@@ -140,6 +140,17 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [35](#35) | 🟢 Baja | Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
 | [36](#36) | 🟢 Baja | Usuario cliente borrado desde el panel: el entrenador lo ve invitado | `supabase/schema.sql:157` |
 | [37](#37) | 🟢 Baja | Una subida que llega tarde cae en el hueco del entrenador nuevo | `supabase/schema.sql:499` |
+| [38](#38) | 🟠 Alta | Restaurar desde Drive pierde las plantillas de programa | `src/screens/DriveBackupScreen.jsx:218` |
+| [39](#39) | 🟠 Alta | Reinstalar sin PRO deja a los clientes recuperados sin programa | `store/useStore.js:4311` |
+| [40](#40) | 🟡 Media | Cuando la elección deja de valer, se congela todo | `src/utils/freePlan.js:50` |
+| [41](#41) | 🟡 Media | Con congelados no se puede pasar a la app a uno activo | `store/useStore.js:3879` |
+| [42](#42) | 🟢 Baja | Pulsando rápido: dos clientes con app o la ficha duplicada | `store/useStore.js:791` |
+| [43](#43) | 🟢 Baja | El store deja escribir sobre un cliente congelado | `store/useStore.js:835` |
+| [44](#44) | 🟡 Media | «Ya comprado» nunca restaura | `store/useStore.js:5020` |
+| [45](#45) | 🟠 Alta | Cambiar de forma de entrar puede perder el PRO pagado | `store/useStore.js:4920` |
+| [46](#46) | 🟡 Media | Sin red, el PRO no caduca nunca | `store/useStore.js:4955` |
+| [47](#47) | 🟡 Media | Cobrado y sin red: «compra hecha» pero sin PRO | `store/useStore.js:5009` |
+| [48](#48) | 🟢 Baja | Borrar la cuenta puede dejar el PRO de la cuenta borrada | `store/useStore.js:4944` |
 
 Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
 se hizo y en qué se equivocaba el diagnóstico si se equivocaba.
@@ -2562,6 +2573,224 @@ dispositivo (I02-06).
 
 **Arreglo a estudiar.** Que la subida lleve el `slot_id` que cree tener y que
 el servidor la rechace si no coincide. Encaja con el arreglo de [§27](#27).
+
+## 38. Restaurar desde Drive pierde las plantillas de programa 🟠 {#38}
+
+> En corto: Al restaurar una copia de Drive, las plantillas de programa no vuelven; solo vuelven sueltas las sesiones que tenían dentro.
+
+Encontrado en [I02-04](I02-conexion-pagos-pro.md) (24-oct-2026), por las dos pasadas.
+
+**Cuándo.** `DriveBackupScreen.jsx:218` llama a `importData` con las secciones
+fijas y sin `templates`. Además le pasa una opción `settings` que `importData`
+no conoce.
+
+**Confirmado por:** `freeplan.audit.test.js` › P3 (`programs.pt` queda `undefined`).
+
+**Arreglo previsto.** Que Drive restaure las mismas secciones que el backup
+completo, `templates` incluida.
+
+## 39. Reinstalar sin PRO deja a los clientes recuperados sin programa para siempre 🟠 {#39}
+
+> En corto: Si reinstalas sin PRO y tenías más clientes con app de los que caben, los clientes vuelven sin su programa, y ni eligiéndolos ni volviendo a pagar lo recuperan.
+
+Encontrado en I02-04, por las dos pasadas.
+
+**Cuándo.** `refreshTrainerSlots` crea las fichas que no conoce
+(`useStore.js:4254-4270`) y todas nacen congeladas. `_recoverSlotProgram` sale
+temprano con un congelado (`:4311`) y solo se intenta con huecos nuevos, así
+que no se reintenta nunca.
+
+**Confirmado por:** `freeplan.audit.test.js` › P12 (`downloadSlotProgram`: 0 llamadas).
+
+**Arreglo previsto.** Recuperar el programa del hueco aunque el cliente esté
+congelado. Bajar no es «recibir»: es devolver lo que ya era del entrenador.
+Otra opción es reintentar al descongelarse. R-E3 dice que al caducar no se
+pierde nada.
+
+## 40. Cuando la elección de clientes deja de valer, se congela todo 🟡 {#40}
+
+> En corto: Si entra un cliente que no cabe en el plan gratis (vuelve de otra cuenta, llega en un backup), la app congela a todos y obliga a elegir de nuevo, en vez de congelar solo al nuevo.
+
+Encontrado en I02-04; viola R-E4 (la elección persiste, 24-oct-2026).
+
+**Cuándo.** `activeClientIds` devuelve un conjunto vacío si lo elegido ya no
+cabe (`freePlan.js:50-55`). Le pasa:
+
+- a un cliente «de otra cuenta» que vuelve (`useStore.js:4281`);
+- a los clientes que llegan importados;
+- con un backup viejo con dos elegidos que ya tenían hueco;
+- al salir de la cuenta y crear otra, que deja a los conectados como «de otra
+  cuenta» y descongela al resto.
+
+**Confirmado por:** `freeplan.audit.test.js` › P14, P15, P21, P22.
+
+**Arreglo previsto.** Que lo elegido siga activo y se congele solo lo que no
+cabe. Si lo elegido ya no cabe por sí mismo (dos con app), se mantienen por
+orden de elección hasta el tope.
+
+## 41. Con clientes congelados no se puede pasar a la app a uno activo 🟡 {#41}
+
+> En corto: Tras caducar el PRO, un entrenador que elige tres clientes sin app no puede pasar a ninguno a la app, aunque el plan gratis le deja tener uno.
+
+Encontrado en I02-04 por la pasada adversaria.
+
+**Cuándo.** `connectClientToCloud` (`useStore.js:3879`) y `freeGates`
+(`freePlan.js:107`) cuentan también a los congelados.
+
+**Confirmado por:** `freeplan.audit.test.js` › P19.
+
+**Arreglo previsto.** Contar solo los activos para la puerta de «1 con app».
+
+## 42. Pulsando rápido: dos clientes con app o la misma ficha dos veces 🟢 {#42}
+
+> En corto: Dos altas o conexiones seguidas pasan las dos el límite de 1 cliente con app, y un refresco que llega en mitad de un alta duplica la ficha.
+
+Encontrado en I02-04, por las dos pasadas.
+
+**Cuándo.**
+
+- `createClient` y `connectClientToCloud` miran el límite antes del `await`
+  (`useStore.js:791-830`, `:3871-3898`), y el cliente no tiene hueco hasta que
+  vuelve la respuesta.
+- Si `refreshTrainerSlots` termina antes que `createClientSlot`, crea una ficha
+  «recuperada» con el mismo hueco (`:4252-4269`).
+
+**Confirmado por:** `freeplan.audit.test.js` › P16, P17, P18.
+
+**Arreglo previsto.**
+
+- Reservar la plaza en el estado (marca «conectando») antes del `await`.
+- Que el refresco no recree un hueco que hay un alta en vuelo.
+- Encaja con [E35](#35).
+
+## 43. El store deja escribir sobre un cliente congelado 🟢 {#43}
+
+> En corto: Un cliente congelado debería ser solo lectura, pero se le puede cambiar la ficha, las facturas y el peso, y por otras vías también el programa, las prescripciones o el log.
+
+Encontrado en I02-04, por las dos pasadas; viola R-E2.
+
+**Cuándo.** Hay puerta en `setEditingProgram`, `importForClient`,
+`createProgramForClient` y las cuatro acciones de red, pero no en:
+
+- `updateClientInfo`, `renameClient`, facturación y peso
+  (`useStore.js:835-1081`). Estos sí se alcanzan desde la pestaña Info.
+- `setOverrideTarget`, `clearOverride`, `renameProgram`, `updateStage`,
+  `addExercise`.
+- `importData` sobre un cliente que ya existe (`:3478-3525`).
+- `saveSession` de un entreno empezado antes de congelarse.
+- `refreshTrainerSlots`, que además del contador copia la etapa (`progress`)
+  del servidor (`:4290`).
+
+**Confirmado por:** `freeplan.audit.test.js` › P7 a P11.
+
+**Arreglo a decidir con el usuario.** Facturas, notas y peso son registros del
+entrenador, y M01 §4.5 dice que no se tocan. Lo probable es que sigan
+editables. Hay que poner puerta a lo de entreno: programa, prescripciones,
+importar encima, log y etapa.
+
+## 44. «Ya comprado» nunca restaura 🟡 {#44}
+
+> En corto: Si la tienda responde que el producto ya está comprado, la app enseña el error de la tienda en inglés en vez de restaurar la compra.
+
+Encontrado en [I02-05](I02-conexion-pagos-pro.md); viola R-F3.
+
+**Cuándo.** `useStore.js:5020` compara `e.code === 'PRODUCT_ALREADY_PURCHASED'`,
+pero el SDK manda `code: '6'`.
+
+**Confirmado por:** `purchases.audit.test.js` › F3.
+
+**Arreglo previsto.** Comparar con
+`RC.PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR`. Si restaurar no
+encuentra nada, que no devuelva `{ok:true}` (`:5021-5022`): el paywall lo
+tomaría como una compra hecha. Los textos van en M04-03.
+
+## 45. Cambiar de forma de entrar puede perder el PRO pagado 🟠 {#45}
+
+> En corto: Al pasar de una cuenta a otra (por ejemplo de código a Apple), el PRO se mueve con un solo intento de restaurar; si falla, se cancela, la red cae o la compra es de otra plataforma o regalada, el PRO se queda en la cuenta vieja.
+
+Encontrado en I02-05; viola R-D2.
+
+**Cuándo.** `syncPurchaserId` (`useStore.js:4920-4936`) intenta restaurar una
+sola vez y no guarda que falta traspasar. Cuatro caminos:
+
+- **D2-a.** Restaurar falla o el usuario lo cancela. En iPhone pide la
+  contraseña.
+- **D2-b.** `logIn` falla o la app muere entre `:3785` y `:3802`.
+- **D2-c.** El `checkProStatus` del arranque resuelve tarde y pisa el resultado.
+- **D2-d.** La compra no la ve la tienda de este móvil: otra plataforma o un
+  regalo.
+
+**Confirmado por:** `purchases.audit.test.js` › D2-a…d.
+
+**Arreglo a estudiar.** Una marca persistente «PRO por traspasar desde A» que
+se reintenta en cada arranque hasta conseguirlo, y descartar las respuestas
+viejas de `checkProStatus`. D2-d no lo arregla restaurar: para eso hace falta
+que el PRO viva en una cuenta que no cambie (I02 §7, `linkIdentity`) o mover
+el entitlement en RevenueCat.
+
+## 46. Sin red, el PRO no caduca nunca 🟡 {#46}
+
+> En corto: Sin conexión la app se fía para siempre del PRO guardado, y una copia de seguridad de Android al reinstalar devuelve el PRO aunque haya caducado.
+
+Encontrado en I02-05; viola R-E5 (revisada el 24-oct-2026: periodo pagado más 20 días).
+
+**Cuándo.**
+
+- `profile.isPro` se guarda sin fecha. `checkProStatus` mantiene el valor si
+  falla (`useStore.js:4955`, `:4961-4963`).
+- Sin red, el SDK devuelve su caché sin error, y la app escribe PRO con una
+  información vieja sin mirar `requestDate`.
+- La copia de seguridad de Android (`allowBackup`) restaura `isPro` al
+  reinstalar.
+
+**Confirmado por:** `purchases.audit.test.js` › E5 (siete casos), X4 y X4c.
+
+**Arreglo previsto.**
+
+- Guardar en el perfil la fecha de caducidad de la última confirmación y si es
+  pago único.
+- Una función pura en `freePlan.js` que diga si el PRO guardado sigue valiendo:
+  caducidad más 20 días, pago único siempre, reloj atrasado = gastado.
+- Aplicarla al arrancar, al volver a primer plano y cuando la información
+  viene de la caché.
+- Invertir `useStore.test.js:749-758`.
+
+## 47. Cobrado y sin red: «compra hecha» pero sin PRO 🟡 {#47}
+
+> En corto: Si la tienda cobra y justo después falla la red, la app responde que la compra ha ido bien pero deja el móvil en gratis, y no lo vuelve a intentar.
+
+Encontrado en I02-05 por la pasada adversaria; viola R-F1.
+
+**Cuándo.** `purchasePackage` (`useStore.js:5009-5016`) hace una segunda
+mirada a los 2 segundos. Si falla, devuelve `{ok:true, isPro:false}` y solo
+el listener de `App.js` podría arreglarlo después.
+
+**Confirmado por:** `purchases.audit.test.js` › F1b.
+
+**Arreglo previsto.** Reintentar con espera creciente y, mientras tanto, dejar
+el estado «compra pendiente de confirmar» (textos de M04-03). Que nunca diga
+«hecho» sin PRO.
+
+## 48. Borrar la cuenta puede dejar el PRO de la cuenta borrada 🟢 {#48}
+
+> En corto: Si al borrar la cuenta falla la red al salir de RevenueCat, o el borrado se queda a medias, el móvil sigue con el PRO de una cuenta que ya no existe.
+
+Encontrado en I02-05.
+
+**Cuándo.**
+
+- `_purchasesLogOut` (`useStore.js:4944-4945`) se traga cualquier error, no
+  solo el de «ya era anónimo».
+- Si `deleteClientUser` falla después de borrar la cuenta de entrenador, la
+  acción lanza antes de salir de RevenueCat.
+
+**Confirmado por:** `purchases.audit.test.js` › D3-b, D3-c.
+
+**Arreglo previsto.**
+
+- Tragar solo el error de «ya era anónimo».
+- Salir de RevenueCat y bajar `isPro` en un `finally`, aunque falle el resto.
+- Encaja con [E33](#33).
 
 ---
 
