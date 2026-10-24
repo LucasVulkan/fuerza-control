@@ -66,6 +66,7 @@ function makeRC({ user = '$RCAnonymousID:1', owners = {}, receipt = null } = {})
   return Object.assign(rc, {
     PURCHASES_ERROR_CODE: { PRODUCT_ALREADY_PURCHASED_ERROR: '6', PAYMENT_PENDING_ERROR: '20', LOG_OUT_ANONYMOUS_USER_ERROR: '22' },
     isConfigured:     vi.fn(async () => true),
+    getAppUserID:     vi.fn(async () => rc.user),
     getCustomerInfo:  vi.fn(async () => of(rc.user)),
     logIn:            vi.fn(async (id) => { rc.user = id; return { customerInfo: of(id), created: !rc.owners[id] }; }),
     logOut:           vi.fn(async () => {
@@ -153,7 +154,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
   });
 
   // ── D2: cambiar de forma de entrar ──
-  it('D2-a hoy: A→B con restore que falla deja isPro=false en B y no apunta «falta traspasar» (regla R-D2: el siguiente arranque reintenta)', async () => {
+  it('D2-a arreglado (E45-a, R-D2): A→B con restore que falla deja la marca «PRO por traspasar» y el siguiente arranque reintenta en silencio', async () => {
     useRC({ user: 'uuid-A', owners: { 'uuid-A': info({ pro: true }) }, receipt: 'uuid-A' });
     setPro(true);
     RC.restorePurchases.mockRejectedValueOnce(rcError('10', 'Error performing request.'));
@@ -165,16 +166,19 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(RC.user).toBe('uuid-B');
     expect(RC.owners['uuid-A']).toBeTruthy();
     expect(RC.receipt).toBe('uuid-A');
-    // el arranque siguiente (App.js: configure con B + checkProStatus)
-    const afterBoot = await useStore.getState().checkProStatus();
-    // hoy
-    expect(RC.restorePurchases).toHaveBeenCalledTimes(1);   // nadie reintentó
-    expect(RC.owners['uuid-B']).toBeUndefined();
-    expect(afterBoot).toBe(false);
-    expect(isPro()).toBe(false);
+    expect(useStore.getState().profile).toMatchObject({ proTransferFrom: 'uuid-A', proTransferTries: 1 });
+    // el arranque siguiente (App.js: configure con B + checkProStatus + reintento silencioso)
+    expect(await useStore.getState().checkProStatus()).toBe(false);
+    expect(useStore.getState().profile.proTransferFrom).toBe('uuid-A');   // sigue pendiente
+    const toast = vi.spyOn(useStore.getState(), 'showToast');
+    expect(await useStore.getState().restorePurchases({ silent: true })).toBe(true);
+    expect(toast).not.toHaveBeenCalled();
+    expect(RC.owners['uuid-B']).toBeTruthy();
+    expect(isPro()).toBe(true);
+    expect(useStore.getState().profile).toMatchObject({ proTransferFrom: null, proTransferTries: 0 });
   });
 
-  it('D2-b hoy: A→B con logIn que falla deja trainerSync en B y isPro=true hasta que el arranque lo baja a false sin restaurar (regla R-D2: no se pierde)', async () => {
+  it('D2-b arreglado (E45-b, R-D2): A→B con logIn que falla deja la marca antes del logIn y el arranque siguiente recupera el PRO restaurando', async () => {
     useRC({ user: 'uuid-A', owners: { 'uuid-A': info({ pro: true }) }, receipt: 'uuid-A' });
     setPro(true);
     RC.logIn.mockRejectedValueOnce(rcError('10', 'Error performing request.'));
@@ -185,12 +189,12 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(RC.user).toBe('uuid-A');
     expect(RC.restorePurchases).not.toHaveBeenCalled();
     expect(isPro()).toBe(true);
+    expect(useStore.getState().profile.proTransferFrom).toBe('uuid-A');
     RC.user = 'uuid-B';                                     // App.js:185-186 configura ya con trainerSync.userId = B
-    const afterBoot = await useStore.getState().checkProStatus();
-    // hoy
-    expect(RC.restorePurchases).not.toHaveBeenCalled();
-    expect(afterBoot).toBe(false);
-    expect(isPro()).toBe(false);
+    expect(await useStore.getState().checkProStatus()).toBe(false);
+    expect(await useStore.getState().restorePurchases({ silent: true })).toBe(true);
+    expect(isPro()).toBe(true);
+    expect(useStore.getState().profile.proTransferFrom).toBeNull();
   });
 
   it('D2-c arreglado (E45-c, R-D2): el checkProStatus del arranque que resuelve tarde no pisa el true del logIn', async () => {

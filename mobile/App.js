@@ -186,7 +186,13 @@ export default function App() {
       }
       const appUserID = useStore.getState().trainerSync.userId ?? undefined;
       Purchases.configure({ apiKey, appUserID });
-      checkProStatus();
+      checkProStatus().then(() => {
+        // Un cambio de cuenta que no llegó a mover el PRO se reintenta, en silencio, como mucho 3 veces (E45)
+        const { proTransferFrom, proTransferTries: tries = 0 } = useStore.getState().profile;
+        if (!proTransferFrom) return;
+        useStore.setState((s) => ({ profile: { ...s.profile, proTransferTries: tries + 1, ...(tries + 1 >= 3 && { proTransferFrom: null }) } }));
+        useStore.getState().restorePurchases({ silent: true });
+      });
       // Sin esto `isPro` solo se miraba al arrancar en frío y al cambiar de
       // cuenta: una concesión, una revocación o una caducidad con la app
       // suspendida no se veía hasta cerrarla del todo. El SDK refresca solo al

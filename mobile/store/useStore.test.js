@@ -832,6 +832,7 @@ describe('syncPurchaserId — M01-01, el Pro sigue a la cuenta', () => {
   beforeEach(() => {
     RC = {
       isConfigured:     vi.fn(async () => true),
+      getAppUserID:     vi.fn(async () => 'uuid-A'),
       logIn:            vi.fn(async () => ({ customerInfo: info(false) })),
       restorePurchases: vi.fn(async () => info(true)),
     };
@@ -917,6 +918,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     vi.clearAllMocks();
     RC = {
       isConfigured:     vi.fn(async () => true),
+      getAppUserID:     vi.fn(async () => 'uuid-A'),
       logIn:            vi.fn(async () => ({ customerInfo: info(false) })),
       logOut:           vi.fn(),
       restorePurchases: vi.fn(async () => info(true)),

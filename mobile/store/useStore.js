@@ -294,6 +294,10 @@ const INITIAL_PROFILE = {
   proExpiresAt: null,
   proLifetime: false,
   proCheckedAt: null,
+  // PRO por traspasar desde esta cuenta de RevenueCat (E45): se reintenta al
+  // arrancar, con `proTransferTries` intentos como mucho en total.
+  proTransferFrom: null,
+  proTransferTries: 0,
   // Con quién sigue sin Pro, si tiene más clientes de los que caben (M01 §4.6).
   // Solo se consulta en ese caso: el valor por defecto no necesita migración.
   freeClientIds: [],
@@ -4983,6 +4987,11 @@ export const useStore = create(
         try {
           if (!(await RC.isConfigured())) return; // sin clave o build preview
           const wasPro = get().profile.isPro;
+          // «PRO por traspasar»: si logIn o restaurar fallan, App.js reintenta al arrancar (E45)
+          if (switched && wasPro) {
+            const proTransferFrom = await RC.getAppUserID();
+            set((s) => ({ profile: { ...s.profile, proTransferFrom, proTransferTries: 1 } }));
+          }
           const { customerInfo } = await RC.logIn(userId);
           if (get()._applyCustomerInfo(customerInfo) || !(switched && wasPro)) return;
           get()._applyCustomerInfo(await RC.restorePurchases());
@@ -5024,6 +5033,7 @@ export const useStore = create(
             isPro: !!ent, proCheckedAt: at,
             proExpiresAt: ent?.expirationDate ? Date.parse(ent.expirationDate) : null,
             proLifetime: !!ent && !ent.expirationDate,
+            ...(ent ? { proTransferFrom: null, proTransferTries: 0 } : {}),
           }
           : { isPro: !!p.isPro && proStillValid(p, Date.now()) };
         set((s) => ({ profile: { ...s.profile, ...patch } }));
@@ -5099,16 +5109,16 @@ export const useStore = create(
         }
       },
 
-      /** Restores previous purchases and syncs isPro. */
-      restorePurchases: async () => {
+      /** Restores previous purchases and syncs isPro. `silent`: sin avisos (el reintento de arranque, E45). */
+      restorePurchases: async ({ silent = false } = {}) => {
         const RC = get()._getRC();
         if (!RC) return false;
         try {
           const isPro = get()._applyCustomerInfo(await RC.restorePurchases());
-          get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
+          if (!silent) get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
           return isPro;
         } catch {
-          get().showToast(i18n.t('paywall.restoreError'), 2200, 'error');
+          if (!silent) get().showToast(i18n.t('paywall.restoreError'), 2200, 'error');
           return false;
         }
       },
