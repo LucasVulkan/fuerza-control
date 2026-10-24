@@ -4355,13 +4355,15 @@ export const useStore = create(
         if (!client?.syncSlotId) return;
         try {
           const file = await downloadSlotProgram(client.syncSlotId);
-          if (file?.program) get().importForClient(clientId, file, 'replace', { restore: true });
+          // Mientras bajaba, el entrenador le asignó otro: ese manda, no se pisa.
+          const assigned = !!get().clients[clientId]?.activeProgramId;
+          if (file?.program && !assigned) get().importForClient(clientId, file, 'replace', { restore: true });
           // Sin programa en el hueco no hay nada que reintentar: se limpia también.
           set((s) => {
             if (!s.clients[clientId]) return {};
             return { clients: { ...s.clients, [clientId]: { ...s.clients[clientId], programMissing: undefined } } };
           });
-          if (!file?.program) return;
+          if (!file?.program || assigned) return;
           const programId = get().clients[clientId]?.activeProgramId;
           const built = programId && get()._buildProgramJson(programId, false);
           if (built) {
@@ -5466,7 +5468,9 @@ useStore.subscribe((s, prev) => {
 // sale la hoja. Venir de Pro es la primera caducidad: la decide la hoja (M01 §4.6).
 useStore.subscribe((s, prev) => {
   if (s.clients === prev.clients || s.profile.isPro || prev.profile.isPro) return;
-  if (s.profile.freeClientIds?.length) return;
+  // Una lista vieja no cuenta: si lo de antes cabía, todos estaban activos. Solo
+  // manda una elección hecha en este mismo cambio.
+  if (s.profile.freeClientIds !== prev.profile.freeClientIds) return;
   if (!fitsFree(Object.values(prev.clients)) || fitsFree(Object.values(s.clients))) return;
   const kept = Object.keys(prev.clients).filter((id) => s.clients[id]);
   if (kept.length) useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: kept } }));

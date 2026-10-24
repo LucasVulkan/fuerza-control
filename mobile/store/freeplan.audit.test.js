@@ -149,6 +149,17 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     expect(S().isClientFrozen('d')).toBe(false);   // pero se puede ocupar
   });
 
+  it('E40 regla R-E4: una elección vieja que ya no hace falta no congela a nadie que estaba activo', () => {
+    free({ clients: mkClients(['a', 'b', 'c', 'd']) });
+    S().setFreeClientIds(['a', 'b', 'c']);
+    S().deleteClient('c');                                                       // a, b, d caben: todos activos
+    expect(['a', 'b', 'd'].some((id) => S().isClientFrozen(id))).toBe(false);   // montaje
+    expect(S().profile.freeClientIds.length).toBeGreaterThan(0);                // queda una lista vieja
+    S().importData({ version: '4', exportType: 'full_backup', clients: mkClients(['e']) }, { clients: true }, { silent: true });
+    expect(['a', 'b', 'd'].map((id) => S().isClientFrozen(id))).toEqual([false, false, false]);
+    expect(S().isClientFrozen('e')).toBe(true);                                 // solo el nuevo
+  });
+
   it('P23 aceptado (24-oct, decisión 1: asignar lo que tienes): la biblioteca de programas propios archivados es una bolsa de plantillas sin límite (regla R-E1: ≤1 plantilla)', () => {
     free({ clients: { cx: mk('cx') } });
     for (let i = 0; i < 5; i++) expect(S().createEmptyProgram(2, `Lib${i}`, 'program')).toBeTruthy();   // montaje
