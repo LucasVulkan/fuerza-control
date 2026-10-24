@@ -62,7 +62,7 @@ export const templateCounts = ({ programs, sessionTemplates }) => ({
  * Los clientes que siguen activos sin Pro, o null si todos (caben). Si no
  * caben, los elegidos en `freeClientIds` que aún existen. La elección persiste
  * (R-E4, 24-oct-2026): si lo elegido ya no cabe por sí mismo (dos con app tras
- * un backup viejo), sigue activo el prefijo más largo que cabe, en el orden de
+ * un backup viejo), siguen activos los elegidos que caben, recorridos en el orden de
  * elección, y se congela solo lo que sobra. Solo si no queda nadie elegido
  * —lista vacía— salen todos congelados: sin elegir, en vez de silenciosamente
  * equivocado (§4.6).
@@ -71,14 +71,14 @@ export function activeClientIds(clients, freeClientIds) {
   const all = Object.values(clients ?? {});
   if (fitsFree(all)) return null;
   const byId = new Map(all.map((c) => [c.id, c]));
-  const prefix = [];
+  const kept = [];
   for (const id of freeClientIds ?? []) {
     const c = byId.get(id);
-    if (!c || prefix.includes(c)) continue;
-    if (!fitsFree([...prefix, c])) break;
-    prefix.push(c);
+    if (!c || kept.includes(c)) continue;
+    if (!fitsFree([...kept, c])) continue;   // el que ya no cabe se salta: se congela solo él (R-E4)
+    kept.push(c);
   }
-  return new Set(prefix.map((c) => c.id));
+  return new Set(kept.map((c) => c.id));
 }
 
 /**

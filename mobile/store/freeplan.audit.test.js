@@ -379,7 +379,7 @@ describe('R-E4 — la elección no se rehace', () => {
     expect(S().isClientFrozen('c')).toBe(true);
   });
 
-  it('P14 hoy: salir de la cuenta y crear otra → los de con app pasan a «de otra cuenta», nada congelado, y se conecta al que no se eligió (regla R-E4)', async () => {
+  it('P14 aceptado (24-oct, los de otra cuenta no ocupan plaza en esta, C09 §3.4): salir de la cuenta y crear otra → los de con app pasan a «de otra cuenta», nada congelado, y se conecta al que no se eligió (regla R-E4)', async () => {
     free({
       clients: { a: mk('a', { syncSlotId: 's_a', syncLinked: true }), b: mk('b', { syncSlotId: 's_b', syncLinked: true }), c: mk('c') },
     });
@@ -481,6 +481,6 @@ describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta ma
       { id: 'sb', client_name: 'b', client_code: 'B', sessions_count: 0 },
     ]);
     await S().refreshTrainerSlots();
-    expect(['a', 'b', 'c'].map((id) => S().isClientFrozen(id))).toEqual([false, true, true]);   // prefijo por orden: a cabe, b ya no, y c queda tras el corte
+    expect(['a', 'b', 'c'].map((id) => S().isClientFrozen(id))).toEqual([false, true, false]);   // a sigue, b (el que vuelve) ya no cabe y se congela solo él, c sigue
   });
 });
