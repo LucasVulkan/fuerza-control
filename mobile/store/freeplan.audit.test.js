@@ -302,26 +302,33 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     expect(S().clients.d.progress.currentStageIndex).toBe(0);    // la etapa no cambia
   });
 
-  it('P10 arreglado (E43, R-E2): importData actualiza la ficha de un congelado pero no le pisa programa ni log', () => {
+  it('P10 arreglado (E43, R-E2): importData actualiza la ficha de un congelado pero no le pisa lo de entreno (programa, etapa, ajustes) y el log solo se añade', () => {
     free({
       clients: mkClients(['a', 'b', 'c', 'd', 'e']),
       programs: { pd: prog('pd', 'program', 'd') },
     });
-    useStore.setState((s) => ({ clients: { ...s.clients, d: { ...s.clients.d, activeProgramId: 'pd' } } }));
+    useStore.setState((s) => ({ clients: { ...s.clients, d: { ...s.clients.d, activeProgramId: 'pd', nextOverrides: { o: 1 }, overridesDirty: false, progress: { currentStageIndex: 0 } } },
+      clientLogs: { d: [{ id: 'l0', timestamp: 0, sessionTemplateId: 't', exercises: [] }] },
+    }));
     S().setFreeClientIds(['a', 'b', 'c']);
     expect(S().isClientFrozen('d')).toBe(true);   // montaje
     expect(S().importForClient('d', { version: '4', program: prog('px', 'program') }, 'replace')).toBe(null);   // importForClient sí lo rechaza
     S().importData({
       version: '4', exportType: 'full_backup',
-      clients: { d: { id: 'd', name: 'D-EDITADO', notes: 'inyectado', activeProgramId: 'pd2', status: 'active' } },
+      clients: { d: { id: 'd', name: 'D-EDITADO', notes: 'inyectado', activeProgramId: 'pd2', status: 'active',
+        nextOverrides: { o: 2 }, overridesDirty: true, progress: { currentStageIndex: 3 } } },
       programs: { pd2: prog('pd2', 'program', 'd') },
-      clientLogs: { d: [{ id: 'l1', timestamp: 1, sessionTemplateId: 't', exercises: [] }] },
+      sessionTemplates: { s_nuevo: { id: 's_nuevo', name: 'S', programId: 'pd', owner: 'd', exercises: [] } },
+      clientLogs: { d: [{ id: 'l0', timestamp: 0, sessionTemplateId: 'pisado', exercises: [] }, { id: 'l1', timestamp: 1, sessionTemplateId: 't', exercises: [] }] },
     }, { clients: true }, { silent: true });
     expect(S().isClientFrozen('d')).toBe(true);
     expect(S().clients.d.name).toBe('D-EDITADO');            // la ficha sí, como a mano
     expect(S().clients.d.activeProgramId).toBe('pd');
     expect(S().programs.pd2).toBeUndefined();
-    expect(S().clientLogs.d ?? []).toHaveLength(0);
+    expect(S().clients.d).toMatchObject({ nextOverrides: { o: 1 }, overridesDirty: false, progress: { currentStageIndex: 0 } });
+    expect(S().sessionTemplates.s_nuevo).toBeUndefined();   // sesión nueva de un programa congelado
+    expect(S().clientLogs.d.map((e) => e.id).sort()).toEqual(['l0', 'l1']);   // el log se añade, no se pisa
+    expect(S().clientLogs.d.find((e) => e.id === 'l0').sessionTemplateId).toBe('t');
   });
 
   it('P11 aceptado (E43): un entreno en curso de un cliente que luego se congela se guarda en su log (regla R-E2)', () => {

@@ -295,9 +295,8 @@ const INITIAL_PROFILE = {
   proLifetime: false,
   proCheckedAt: null,
   // PRO por traspasar desde esta cuenta de RevenueCat (E45): se reintenta al
-  // arrancar, con `proTransferTries` intentos como mucho en total.
-  proTransferFrom: null,
-  proTransferTries: 0,
+  // arrancar: aquí quedan los intentos de arranque que le quedan.
+  proTransferLeft: 0,
   // Con quién sigue sin Pro, si tiene más clientes de los que caben (M01 §4.6).
   // Solo se consulta en ese caso: el valor por defecto no necesita migración.
   freeClientIds: [],
@@ -867,7 +866,7 @@ export const useStore = create(
       /** Sin Pro y fuera de los que caben (§4.5). */
       isClientFrozen: (clientId) => {
         const { profile, clients } = get();
-        return isClientFrozenRule({ isPro: profile.isPro, clients, freeClientIds: profile.freeClientIds }, clientId);
+        return !!clients[clientId] && isClientFrozenRule({ isPro: profile.isPro, clients, freeClientIds: profile.freeClientIds }, clientId);
       },
 
       _assertNotFrozen: (clientId) => {
@@ -3333,9 +3332,9 @@ export const useStore = create(
         migrateExerciseRefs(data, get().getEffectiveLibrary());
         // Un cliente que ya existe y está congelado no se pisa: ni su programa ni su
         // log. La ficha sí, como a mano (E43, R-E2).
-        const frozen = (id) => !!get().clients[id] && get().isClientFrozen(id);
+        const frozen = (id) => get().isClientFrozen(id);
         if (data.sessionTemplates) {
-          data = { ...data, sessionTemplates: Object.fromEntries(Object.entries(data.sessionTemplates).filter(([id]) => !get()._isFrozenOwned(id))) };
+          data = { ...data, sessionTemplates: Object.fromEntries(Object.entries(data.sessionTemplates).filter(([id, t]) => !get()._isFrozenOwned(id) && !get()._isFrozenOwned(t.programId))) };
         }
         // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
         // de OTRO dueño, esto es una copia, no una actualización. Sin esto,
@@ -3524,7 +3523,10 @@ export const useStore = create(
               Object.entries(data.clients ?? {}).map(([id, c]) => {
                 const rest = { ...c };
                 delete rest.programIds;
-                if (frozen(id)) rest.activeProgramId = s.clients[id].activeProgramId;   // apunta a un programa que no entra
+                if (frozen(id)) {   // lo de entreno no se pisa: apunta a un programa que no entra
+                  const { activeProgramId, nextOverrides, overridesDirty, progress } = s.clients[id];
+                  Object.assign(rest, { activeProgramId, nextOverrides, overridesDirty, progress });
+                }
                 return [id, rest];
               }),
             );
@@ -3560,7 +3562,7 @@ export const useStore = create(
             // Restore per-client histories from backups that include them
             if (data.clientLogs && Object.keys(data.clientLogs).length) {
               const mergedLogs = { ...s.clientLogs };
-              Object.entries(data.clientLogs).filter(([cid]) => !frozen(cid)).forEach(([cid, entries]) => {
+              Object.entries(data.clientLogs).forEach(([cid, entries]) => {
                 mergedLogs[cid] = mergeClientLog(mergedLogs[cid], entries);
               });
               updates.clientLogs = mergedLogs;
@@ -3575,7 +3577,7 @@ export const useStore = create(
             if (Object.keys(clientEntries).length) {
               updates.workoutLog = personalLog;
               const mergedLogs = { ...(updates.clientLogs ?? s.clientLogs) };
-              Object.entries(clientEntries).filter(([cid]) => !frozen(cid)).forEach(([cid, entries]) => {
+              Object.entries(clientEntries).forEach(([cid, entries]) => {
                 mergedLogs[cid] = mergeClientLog(mergedLogs[cid], entries);
               });
               updates.clientLogs = mergedLogs;
@@ -4351,7 +4353,7 @@ export const useStore = create(
                 // La etapa que pinta la lista sigue al cliente sin abrir su
                 // ficha (C04-qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
                 // A un congelado solo se le actualiza el contador (E43, R-E2).
-                progress:            s.clients[clientId] && get().isClientFrozen(clientId) ? c.progress : (slot.progress ?? c.progress),
+                progress:            get().isClientFrozen(clientId) ? c.progress : (slot.progress ?? c.progress),
               };
             }
 
@@ -4961,7 +4963,7 @@ export const useStore = create(
         await get()._purchasesLogOut();
         set((s) => ({
           trainerLoginNeeded: false,
-          profile: { ...s.profile, proTransferFrom: null, proTransferTries: 0 },
+          profile: { ...s.profile, proTransferLeft: 0 },
           trainerSync: {
             ...s.trainerSync,
             mode: 'offline', code: null, userId: null, email: null,
@@ -5014,8 +5016,7 @@ export const useStore = create(
           const wasPro = get().profile.isPro;
           // «PRO por traspasar»: si logIn o restaurar fallan, App.js reintenta al arrancar (E45)
           if (switched && wasPro) {
-            const proTransferFrom = await RC.getAppUserID();
-            set((s) => ({ profile: { ...s.profile, proTransferFrom, proTransferTries: 1 } }));
+            set((s) => ({ profile: { ...s.profile, proTransferLeft: 2 } }));
           }
           const { customerInfo } = await RC.logIn(userId);
           if (get()._applyCustomerInfo(customerInfo) || !(switched && wasPro)) return;
@@ -5056,9 +5057,9 @@ export const useStore = create(
         const patch = at > (p.proCheckedAt ?? 0)
           ? {
             isPro: !!ent, proCheckedAt: at,
-            proExpiresAt: ent?.expirationDate ? Date.parse(ent.expirationDate) : null,
-            proLifetime: !!ent && !ent.expirationDate,
-            ...(ent ? { proTransferFrom: null, proTransferTries: 0 } : {}),
+            proExpiresAt: ent?.expirationDateMillis ?? null,
+            proLifetime: !!ent && ent.expirationDateMillis == null,
+            ...(ent ? { proTransferLeft: 0 } : {}),
           }
           : { isPro: !!p.isPro && proStillValid(p, Date.now()) };
         set((s) => ({ profile: { ...s.profile, ...patch } }));
@@ -5071,7 +5072,7 @@ export const useStore = create(
        */
       checkProStatus: async () => {
         const RC = get()._getRC();
-        if (!RC) return get().profile.isPro;
+        if (!RC || !(await RC.isConfigured())) return get().profile.isPro;
         try {
           return get()._applyCustomerInfo(await RC.getCustomerInfo());
         } catch {

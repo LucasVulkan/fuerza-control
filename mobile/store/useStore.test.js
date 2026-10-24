@@ -759,7 +759,7 @@ describe('isPro — fallo 9', () => {
 
     const getRC = useStore.getState()._getRC;
     useStore.setState((s) => ({
-      _getRC: () => ({ getCustomerInfo: async () => { throw new Error('sin red'); } }),
+      _getRC: () => ({ isConfigured: async () => true, getCustomerInfo: async () => { throw new Error('sin red'); } }),
       profile: { ...s.profile, isPro: true, proLifetime: false, proExpiresAt: Date.now() },
     }));
     expect(await useStore.getState().checkProStatus()).toBe(true);
@@ -832,7 +832,6 @@ describe('syncPurchaserId — M01-01, el Pro sigue a la cuenta', () => {
   beforeEach(() => {
     RC = {
       isConfigured:     vi.fn(async () => true),
-      getAppUserID:     vi.fn(async () => 'uuid-A'),
       logIn:            vi.fn(async () => ({ customerInfo: info(false) })),
       restorePurchases: vi.fn(async () => info(true)),
     };
@@ -918,7 +917,6 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     vi.clearAllMocks();
     RC = {
       isConfigured:     vi.fn(async () => true),
-      getAppUserID:     vi.fn(async () => 'uuid-A'),
       logIn:            vi.fn(async () => ({ customerInfo: info(false) })),
       logOut:           vi.fn(),
       restorePurchases: vi.fn(async () => info(true)),

@@ -48,7 +48,7 @@ const T0  = Date.parse('2026-10-01T10:00:00Z');
 const info = ({ pro = false, lifetime = false, store = 'PLAY_STORE', at = Date.now(), expiresIn = 365 } = {}) => ({
   entitlements: { active: pro ? { [RC_PRO_ENTITLEMENT]: {
     identifier: RC_PRO_ENTITLEMENT, isActive: true, store,
-    expirationDate: lifetime ? null : new Date(at + expiresIn * DAY).toISOString(),
+    expirationDateMillis: lifetime ? null : at + expiresIn * DAY,
   } } : {} },
   requestDate: new Date(at).toISOString(), managementURL: null,
 });
@@ -66,7 +66,6 @@ function makeRC({ user = '$RCAnonymousID:1', owners = {}, receipt = null } = {})
   return Object.assign(rc, {
     PURCHASES_ERROR_CODE: { PRODUCT_ALREADY_PURCHASED_ERROR: '6', PAYMENT_PENDING_ERROR: '20', LOG_OUT_ANONYMOUS_USER_ERROR: '22' },
     isConfigured:     vi.fn(async () => true),
-    getAppUserID:     vi.fn(async () => rc.user),
     getCustomerInfo:  vi.fn(async () => of(rc.user)),
     logIn:            vi.fn(async (id) => { rc.user = id; return { customerInfo: of(id), created: !rc.owners[id] }; }),
     logOut:           vi.fn(async () => {
@@ -166,16 +165,16 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(RC.user).toBe('uuid-B');
     expect(RC.owners['uuid-A']).toBeTruthy();
     expect(RC.receipt).toBe('uuid-A');
-    expect(useStore.getState().profile).toMatchObject({ proTransferFrom: 'uuid-A', proTransferTries: 1 });
+    expect(useStore.getState().profile).toMatchObject({ proTransferLeft: 2 });
     // el arranque siguiente (App.js: configure con B + checkProStatus + reintento silencioso)
     expect(await useStore.getState().checkProStatus()).toBe(false);
-    expect(useStore.getState().profile.proTransferFrom).toBe('uuid-A');   // sigue pendiente
+    expect(useStore.getState().profile.proTransferLeft).toBe(2);   // sigue pendiente
     const toast = vi.spyOn(useStore.getState(), 'showToast');
     expect(await useStore.getState().restorePurchases({ silent: true })).toBe(true);
     expect(toast).not.toHaveBeenCalled();
     expect(RC.owners['uuid-B']).toBeTruthy();
     expect(isPro()).toBe(true);
-    expect(useStore.getState().profile).toMatchObject({ proTransferFrom: null, proTransferTries: 0 });
+    expect(useStore.getState().profile).toMatchObject({ proTransferLeft: 0 });
   });
 
   it('D2-b arreglado (E45-b, R-D2): A→B con logIn que falla deja la marca antes del logIn y el arranque siguiente recupera el PRO restaurando', async () => {
@@ -189,12 +188,12 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(RC.user).toBe('uuid-A');
     expect(RC.restorePurchases).not.toHaveBeenCalled();
     expect(isPro()).toBe(true);
-    expect(useStore.getState().profile.proTransferFrom).toBe('uuid-A');
+    expect(useStore.getState().profile.proTransferLeft).toBe(2);
     RC.user = 'uuid-B';                                     // App.js:185-186 configura ya con trainerSync.userId = B
     expect(await useStore.getState().checkProStatus()).toBe(false);
     expect(await useStore.getState().restorePurchases({ silent: true })).toBe(true);
     expect(isPro()).toBe(true);
-    expect(useStore.getState().profile.proTransferFrom).toBeNull();
+    expect(useStore.getState().profile.proTransferLeft).toBe(0);
   });
 
   it('D2-c arreglado (E45-c, R-D2): el checkProStatus del arranque que resuelve tarde no pisa el true del logIn', async () => {
@@ -320,6 +319,13 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       vi.setSystemTime(T0 + 21 * DAY);
       expect(await useStore.getState().checkProStatus()).toBe(true);
       expect(isPro()).toBe(true);
+    });
+    it('E5 (E46): con el módulo cargado pero RevenueCat sin configurar (preview, sin clave) a los 21 días sigue PRO', async () => {
+      await confirmAt(T0);
+      RC.isConfigured.mockResolvedValue(false);
+      vi.setSystemTime(T0 + 21 * DAY);
+      expect(await useStore.getState().checkProStatus()).toBe(true);
+      expect(RC.getCustomerInfo).toHaveBeenCalledTimes(1);   // solo la de confirmAt
     });
     it('E46: una confirmación tardía (listener de App.js) pone el PRO, y una más vieja no lo quita', async () => {
       useStore.getState()._applyCustomerInfo(info({ pro: true, at: T0 }));

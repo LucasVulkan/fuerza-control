@@ -188,9 +188,9 @@ export default function App() {
       Purchases.configure({ apiKey, appUserID });
       checkProStatus().then(() => {
         // Un cambio de cuenta que no llegó a mover el PRO se reintenta, en silencio, como mucho 3 veces (E45)
-        const { proTransferFrom, proTransferTries: tries = 0 } = useStore.getState().profile;
-        if (!proTransferFrom) return;
-        useStore.setState((s) => ({ profile: { ...s.profile, proTransferTries: tries + 1, ...(tries + 1 >= 3 && { proTransferFrom: null }) } }));
+        const left = useStore.getState().profile.proTransferLeft;
+        if (!left) return;
+        useStore.setState((s) => ({ profile: { ...s.profile, proTransferLeft: left - 1 } }));
         useStore.getState().restorePurchases({ silent: true });
       });
       // Sin esto `isPro` solo se miraba al arrancar en frío y al cambiar de
