@@ -5,7 +5,7 @@
 >
 > Estado: **Reabierto el 23-oct-2026 con 22 fallos nuevos, E27-E48**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
-> por test en el banco y sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
+> por test. **E27, E28, E29 y E32 resueltos** el 24-oct-2026; el resto, sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
@@ -129,12 +129,12 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [24](#24) | 🟢 Baja | ✅ Semana de calendario con milisegundos fijos | `src/utils/weekProgress.js:20` |
 | [25](#25) | 🟡 Media | ✅ El backup no lleva `tagRegistry` ni `blockPresets` | `src/utils/backupPayload.js` |
 | [26](#26) | 🔴 **Crítica** | ✅ `claim_trainer_slots` regala la cuenta a cualquiera | `supabase/` (no estaba en el repo) |
-| [27](#27) | 🟠 Alta | Soltar un asiento vacía el historial y los ajustes del hueco | `supabase/schema.sql:466-530` |
-| [28](#28) | 🟠 Alta | La subida del cliente reemplaza el historial entero | `supabase/schema.sql:507` |
-| [29](#29) | 🟠 Alta | Los traspasos meten huecos y asientos en cuentas ajenas | `supabase/schema.sql:384-558` |
+| [27](#27) | 🟠 Alta | ✅ Soltar un asiento vacía el historial y los ajustes del hueco | `supabase/schema.sql:466-530` |
+| [28](#28) | 🟠 Alta | ✅ La subida del cliente reemplaza el historial entero | `supabase/schema.sql:507` |
+| [29](#29) | 🟠 Alta | ✅ Los traspasos meten huecos y asientos en cuentas ajenas | `supabase/schema.sql:384-558` |
 | [30](#30) | 🟡 Media | `get_slot_by_code` enseña de más a quien tiene el código | `supabase/schema.sql:408` |
 | [31](#31) | 🟡 Media | `audit.sql` sale vacío con derivas graves | `supabase/audit.sql` |
-| [32](#32) | 🟡 Media | «Vincular Google» del cliente sin asiento, y su reintento | `supabase/schema.sql:539` |
+| [32](#32) | 🟡 Media | ✅ «Vincular Google» del cliente sin asiento, y su reintento | `supabase/schema.sql:539` |
 | [33](#33) | 🟡 Media | «Eliminar cuenta» no termina con el mismo Google en los dos papeles | `store/useStore.js:4873` |
 | [34](#34) | 🟢 Baja | El motivo de perder el asiento sale cambiado | `supabase/schema.sql:493` |
 | [35](#35) | 🟢 Baja | Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
@@ -2309,7 +2309,7 @@ sistema podía ser completo. Todo el backend pasa a estar en `supabase/`.
 
 ---
 
-## 27. Soltar un asiento vacía el historial y los ajustes del hueco 🟠 {#27}
+## 27. Soltar un asiento vacía el historial y los ajustes del hueco 🟠 ✅ {#27}
 
 > En corto: Si el cliente se desconecta o se va con otro entrenador, el servidor borra lo que había subido y los ajustes del entrenador: las sesiones que el entrenador no había descargado se pierden.
 
@@ -2342,7 +2342,11 @@ crudo) y `connection.audit.sim.test.js` › H6: el entrenador descarga y recibe 
   huecos recién creados (`useStore.js:3905-3916`), pero el arreglo debe
   cerrarlo.
 
-## 28. La subida del cliente reemplaza el historial entero 🟠 {#28}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho en `fix/i02-servidor` (`9169140`), fusionado en develop. Soltar el asiento solo pone `client_id = null` y `disconnected_at`; borrar la cuenta vacía el historial del hueco actual y conserva `overrides_json`. **Además del diagnóstico:** la limpieza de una vez de «cliente en varios asientos» (`schema.sql` §3) también vaciaba el historial; se quitó por la misma regla. Hay que volver a ejecutar `schema.sql` y redesplegar `delete-account`.
+
+## 28. La subida del cliente reemplaza el historial entero 🟠 ✅ {#28}
 
 > En corto: Cada subida del cliente sustituye todo lo que había en el servidor, así que dos móviles con la misma cuenta, o reinstalar sin juntar el historial, pisan sesiones que el entrenador no había descargado.
 
@@ -2364,7 +2368,11 @@ Encontrado en I02-02; viola R-C2 y R-C4.
 descargue y junte antes de subir. Lo primero es más robusto, porque no depende
 de que todos los móviles estén al día.
 
-## 29. Los traspasos meten huecos y asientos en cuentas ajenas 🟠 {#29}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`c1b4afb`, `6fb75f6`). `_merge_history` suma por id (la nueva gana), conserva las entradas sin id, y `sessions_count` sale de lo fusionado. También `trainer_upload_log` suma. **En qué se equivocaba el arreglo:** la revisión encontró que la app manda `progress: null` cuando no hay programa activo; es null de JSON, no de SQL, y el `coalesce` lo dejaba pasar y borraba el progreso. Corregido con `nullif(..., 'null'::jsonb)` y su test. Borrar una sesión en el móvil ya no la borra del servidor (append-only, R-C3).
+
+## 29. Los traspasos meten huecos y asientos en cuentas ajenas 🟠 ✅ {#29}
 
 > En corto: Cualquiera con una cuenta propia puede regalar huecos a otro entrenador, o su asiento a otra cuenta, sin que el otro lo acepte; a un entrenador gratis le congela los clientes y le obliga a elegir para siempre.
 
@@ -2398,6 +2406,10 @@ cuentas. Por ejemplo: la cuenta vieja deja una marca de un solo uso
 (`transfer_accept()`). Es la misma forma que ya usa la app, que tiene las dos
 sesiones a la vez durante el traspaso (C09 §2.1). Así deja de servir el id
 ajeno a secas.
+
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`3dc1a86`, `6fb75f6`). `transfer_my_slots_to` y `transfer_my_seat_to` desaparecen; ahora la cuenta vieja ofrece (`offer_transfer`) y la nueva acepta con su propia sesión (`accept_transfer`), con caducidad de 10 minutos y una sola vez. Ofrecer no valida el destino, así que ya no sirve de oráculo. La tabla `transfer_offers` no se lee ni se escribe desde fuera, y `audit.sql` lo vigila.
 
 ## 30. `get_slot_by_code` enseña de más a quien tiene el código 🟡 {#30}
 
@@ -2455,7 +2467,7 @@ desde el panel deja su fila huérfana (`schema.sql:44-47`).
 
 Los diez tests de H3 pasan a esperar al menos una fila.
 
-## 32. «Vincular Google» del cliente sin asiento, y su reintento 🟡 {#32}
+## 32. «Vincular Google» del cliente sin asiento, y su reintento 🟡 ✅ {#32}
 
 > En corto: Si al cliente le han quitado el asiento, vincular Google sale como hecho; y si la red se corta en mitad, el reintento falla con un error.
 
@@ -2480,6 +2492,10 @@ Encontrado en I02-02; viola R-C1 y R-C7.
 
 - Que `transfer_my_seat_to` lance `NO_SEAT` si no mueve nada.
 - Que dé por bueno, sin error, el caso «el destino ya está en mi asiento».
+
+### ✅ Resuelto (24-oct-2026)
+
+Hecho con E29 (`3dc1a86`). Sin asiento, aceptar da `NO_SEAT` y la app no marca Google como vinculado: el cliente sigue con su sesión de código y ve «alguien entró con tu código». El reintento tras un corte da 0 sin error. **Matiz:** el servidor no sabe qué asiento tenía el origen, así que «origen sin asiento y destino sentado» siempre da 0; es seguro porque la app suelta antes cualquier otro asiento del destino.
 
 ## 33. «Eliminar cuenta» no termina si entrenador y cliente usan el mismo Google 🟡 {#33}
 
