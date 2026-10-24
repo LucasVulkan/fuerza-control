@@ -310,9 +310,9 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       expect(RC.getCustomerInfo.mock.calls.length).toBe(stale + 1);   // montaje: se leyó la caché
       expect(isPro()).toBe(false);
     });
-    it('E5 arreglado (E46): reloj atrasado por debajo de la última confirmación da el plazo por gastado', async () => {
+    it('E5 arreglado (E46): reloj atrasado por debajo de la última confirmación (más de un día de margen) da el plazo por gastado', async () => {
       await confirmAt(T0);
-      expect(await offlineAt(T0 - DAY)).toBe(false);
+      expect(await offlineAt(T0 - 2 * DAY)).toBe(false);
     });
     it('E5 aceptado (E46): sin RevenueCat (Expo Go, preview) a los 21 días sigue PRO: las versiones de prueba quedan fuera', async () => {
       await confirmAt(T0);

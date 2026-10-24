@@ -125,7 +125,8 @@ describe('proStillValid — PRO sin red, periodo pagado + 20 días (R-E5)', () =
     ['dentro del periodo', sub, T - DAY, true],
     ['19 días tras caducar', sub, T + 19 * DAY, true],
     ['21 días tras caducar', sub, T + 21 * DAY, false],
-    ['reloj por debajo de la última confirmación', sub, T - 11 * DAY, false],
+    ['reloj por debajo de la última confirmación', sub, T - 12 * DAY, false],
+    ['reloj unas horas por detrás del servidor', sub, T - 10 * DAY - 3_600_000, true],
     ['sin fecha', {}, T, false],
   ])('%s', (_, profile, now, expected) => {
     expect(proStillValid(profile, now)).toBe(expected);

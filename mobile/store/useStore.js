@@ -4961,6 +4961,7 @@ export const useStore = create(
         await get()._purchasesLogOut();
         set((s) => ({
           trainerLoginNeeded: false,
+          profile: { ...s.profile, proTransferFrom: null, proTransferTries: 0 },
           trainerSync: {
             ...s.trainerSync,
             mode: 'offline', code: null, userId: null, email: null,
