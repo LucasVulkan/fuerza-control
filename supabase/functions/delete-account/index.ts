@@ -17,10 +17,11 @@
  *               programa lo escribió él y se va con él.
  *
  *  Cliente    → NO borra la fila, la suelta: es del entrenador (programa,
- *               nombre y código son suyos). Se va solo lo del cliente, y el
- *               historial se limpia porque el entrenador puede darle ese mismo
- *               código a otra persona. Mismo criterio que
- *               `release_client_slot()` en supabase/schema.sql.
+ *               nombre y código son suyos). Se va el historial del cliente (es
+ *               suyo y se borra con su cuenta: excepción de R-C4), pero se
+ *               quedan las prescripciones (`overrides_json`), que son del
+ *               entrenador. `release_client_slot()` en supabase/schema.sql,
+ *               en cambio, no borra nada (R-B6).
  *
  * Al final, `profiles` y el usuario de auth.
  *
@@ -76,8 +77,6 @@ Deno.serve(async (req) => {
         history_json:         null,
         history_updated_at:   null,
         sessions_count:       0,
-        overrides_json:       null,
-        overrides_updated_at: null,
       })
       .eq('client_id', user.id);
     if (releaseError) throw releaseError;

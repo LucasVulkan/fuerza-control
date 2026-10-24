@@ -245,7 +245,7 @@ describe('H5 — client_lost_reason da el motivo equivocado', () => {
 });
 
 describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían el hueco', () => {
-  it('H6 hoy: release_client_slot borra history_json, sessions_count y overrides_json (regla R-B6/R-C4: debe conservarlos)', async () => {
+  it('H6 regla R-B6 (E27): release_client_slot solo suelta el asiento; historial, sesiones y prescripciones se quedan', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     await ok(t.db, 'trainer_upload_overrides', { p_slot_id: S, p_overrides: { tpl: { reps: 5 } } });
@@ -258,11 +258,13 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     expect(await ok(x.db, 'release_client_slot')).toBe(1);
     const row = await slotOf(S);
     expect(row.disconnected_at).toBeTruthy();
-    expect(row).toMatchObject({ client_id: null, history_json: null, history_updated_at: null, sessions_count: 0, overrides_json: null });
+    expect(row).toMatchObject({ client_id: null, sessions_count: 1, overrides_json: { tpl: { reps: 5 } } });
+    expect(historyIds(row)).toEqual(['s1']);
+    expect(row.history_updated_at).toBeTruthy();
     expect(row.program_json).toEqual({ program: { name: 'Fuerza' } });   // el programa sí se queda
   });
 
-  it('H6 hoy: entrar en otro hueco vacía el historial del anterior (regla R-C4: debe conservarlo)', async () => {
+  it('H6 regla R-B6 (E27): entrar en otro hueco suelta el anterior sin vaciarle el historial', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');
     const A = await slotWithProgram(a);
@@ -273,12 +275,14 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     expect(historyIds(await slotOf(A.S))).toEqual(['de-A']);
 
     await link(x, B.K, B.S);
-    expect(await slotOf(A.S)).toMatchObject({ client_id: null, history_json: null, sessions_count: 0 });
+    expect(await slotOf(A.S)).toMatchObject({ client_id: null, sessions_count: 1 });
+    expect(historyIds(await slotOf(A.S))).toEqual(['de-A']);
   });
 
   it('H6 regla R-C4 (decidido 23-oct): borrar la cuenta vacía el historial del hueco que ocupa ahora', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
+    await ok(t.db, 'trainer_upload_overrides', { p_slot_id: S, p_overrides: { tpl: { reps: 5 } } });
     const x = await anon('x');
     await link(x, K, S);
     await upload(x, ['s1']);
@@ -287,23 +291,48 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     const { data, error } = await x.db.functions.invoke('delete-account');
     expect(error).toBeNull();
     expect(data).toEqual({ ok: true });
-    expect(await slotOf(S)).toMatchObject({ client_id: null, history_json: null, sessions_count: 0 });
+    // El historial es del cliente y se va con su cuenta; las prescripciones son del entrenador.
+    expect(await slotOf(S)).toMatchObject({ client_id: null, history_json: null, sessions_count: 0, overrides_json: { tpl: { reps: 5 } } });
   });
 });
 
-describe('H7 — transfer_my_seat_to sin asiento no falla', () => {
-  it('H7 hoy: sin asiento, transfer_my_seat_to devuelve 0 sin error (regla R-C1: debe fallar NO_SEAT)', async () => {
+describe('H7 — pasar un asiento que no se tiene falla', () => {
+  it('H7 regla R-C1 (E29/E32): sin asiento, aceptar el traspaso da NO_SEAT', async () => {
     const x = await anon('x');                                    // sin asiento
     const g = await gugl('g', 'cli');
     const { data } = await x.db.from('trainer_clients').select('id');
     expect(data).toEqual([]);
 
-    expect(await x.db.rpc('transfer_my_seat_to', { p_new_client_id: g.id })).toEqual({ data: 0, error: null });
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect((await bad(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).message).toBe('NO_SEAT');
+  });
+
+  it('E32 decisión: origen sin asiento y destino sentado da 0 y no mueve nada (reintento)', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const g = await gugl('g', 'cli');
+    await link(g, K, S);
+    const x = await anon('x');                                    // sin asiento
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect(await ok(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).toBe(0);
+    expect((await slotOf(S)).client_id).toBe(g.id);
   });
 });
 
-describe('H8 — client_upload_history reemplaza el historial entero', () => {
-  it('H8 hoy: dos subidas con listas distintas → queda solo la última (regla R-C2: llegan las dos)', async () => {
+describe('E29 — transfer_offers no se toca desde fuera', () => {
+  it('nadie lee ni escribe ofertas directamente (una oferta falsa robaría huecos)', async () => {
+    const atk = await account('atk', 'WXYZ-WXYZ-WXYZ');
+    const v = await account('v', 'ABCD-EFGH-JKLM');
+    const ins = await atk.db.from('transfer_offers').insert({ from_id: v.id, to_id: atk.id, kind: 'slots' });
+    expect(ins.error).toBeTruthy();
+    const sel = await atk.db.from('transfer_offers').select('*');
+    expect(sel.error).toBeTruthy();                               // 42501: sin permiso, ni para leer
+    expect((await bad(atk.db, 'accept_transfer', { p_kind: 'slots', p_from: v.id })).message).toBe('NO_OFFER');
+  });
+});
+
+describe('H8 — client_upload_history suma, no reemplaza', () => {
+  it('H8 regla R-C2 (E28): dos subidas con listas distintas → llegan las dos', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const x = await anon('x');
@@ -311,12 +340,58 @@ describe('H8 — client_upload_history reemplaza el historial entero', () => {
     await upload(x, ['a1']);
     expect(historyIds(await slotOf(S))).toEqual(['a1']);
     await upload(x, ['b1']);
-    expect(historyIds(await slotOf(S))).toEqual(['b1']);
+    expect(historyIds(await slotOf(S))).toEqual(['a1', 'b1']);
+    expect((await slotOf(S)).sessions_count).toBe(2);
+  });
+
+  it('H8 regla R-C2 (E28): el contador sale de lo fusionado, no de p_sessions; trainer_upload_log también suma', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S } = await slotWithProgram(t);
+    const log = (ids, sessions) => ok(t.db, 'trainer_upload_log', { p_slot_id: S, p_history: { entries: ids.map((id) => ({ id })) }, p_sessions: sessions });
+    await log(['a'], 1);
+    await log(['b'], 99);
+    expect(historyIds(await slotOf(S))).toEqual(['a', 'b']);
+    expect((await slotOf(S)).sessions_count).toBe(2);
   });
 });
 
-describe('H10 — transfer_my_slots_to mete huecos en la cuenta de otro', () => {
-  it('H10 hoy: un entrenador regala su hueco «SPAM» a la víctima, cuyo id lee un cliente suyo (regla: solo se cede a una cuenta propia)', async () => {
+describe('E28 — _merge_history', () => {
+  const merge = async (o, n) => (await server.admin('select public._merge_history($1::jsonb, $2::jsonb) as m', [o === null ? null : JSON.stringify(o), JSON.stringify(n)]))[0].m;
+  const E = (...ids) => ids.map((id) => (typeof id === 'string' ? { id } : id));
+
+  it('sin historial previo devuelve lo nuevo tal cual', async () => {
+    const n = { entries: E('a'), progress: { x: 1 } };
+    expect(await merge(null, n)).toEqual(n);
+  });
+
+  it('entries: las viejas que no vienen se conservan y, con el mismo id, gana la nueva', async () => {
+    const m = await merge({ entries: E('a', { id: 'b', v: 'vieja' }) }, { entries: E({ id: 'b', v: 'nueva' }, 'c') });
+    expect(m.entries).toEqual([{ id: 'a' }, { id: 'b', v: 'nueva' }, { id: 'c' }]);
+  });
+
+  it('entradas sin id: se conservan las dos, sin deduplicar', async () => {
+    const m = await merge({ entries: [{ v: 1 }, { id: 'a' }] }, { entries: [{ v: 1 }, { id: 'a' }] });
+    expect(m.entries).toEqual([{ v: 1 }, { v: 1 }, { id: 'a' }]);   // la vieja con id se sustituye; las dos sin id se quedan
+  });
+
+  it('customExercises se funde (gana la nueva) y progress es el nuevo si lo hay, si no el viejo', async () => {
+    const m = await merge(
+      { entries: [], customExercises: { a: 1, b: 1 }, progress: { v: 'viejo' } },
+      { entries: [], customExercises: { b: 2, c: 2 }, progress: { v: 'nuevo' } });
+    expect(m).toMatchObject({ customExercises: { a: 1, b: 2, c: 2 }, progress: { v: 'nuevo' } });
+    const k = await merge({ entries: [], progress: { v: 'viejo' } }, { entries: E('z') });
+    expect(k).toMatchObject({ customExercises: {}, progress: { v: 'viejo' } });
+    expect(k.entries).toEqual([{ id: 'z' }]);
+  });
+
+  it('progress: null (sin programa activo) no borra el progreso que había', async () => {
+    const m = await merge({ entries: [], customExercises: { a: 1 }, progress: { v: 'viejo' } }, { entries: [], customExercises: null, progress: null });
+    expect(m).toMatchObject({ customExercises: { a: 1 }, progress: { v: 'viejo' } });
+  });
+});
+
+describe('H10 — nadie planta huecos en la cuenta de otro', () => {
+  it('H10 regla E29: el atacante ofrece «SPAM» al id que lee un cliente de la víctima, y como nadie acepta no pasa nada', async () => {
     const v = await account('v', 'ABCD-EFGH-JKLM');
     const own = await slotWithProgram(v, 'Cliente de V');
     const c = await anon('c');
@@ -327,42 +402,96 @@ describe('H10 — transfer_my_slots_to mete huecos en la cuenta de otro', () => 
 
     const atk = await account('atk', 'WXYZ-WXYZ-WXYZ');
     const spam = await slotWithProgram(atk, 'SPAM');
-    expect(await ok(atk.db, 'transfer_my_slots_to', { p_new_trainer_id: seen[0].trainer_id })).toBe(1);
+    await ok(atk.db, 'offer_transfer', { p_kind: 'slots', p_to: seen[0].trainer_id });
 
-    expect((await slotOf(spam.S)).trainer_id).toBe(v.id);
+    expect((await slotOf(spam.S)).trainer_id).toBe(atk.id);
     const { data: victimSees } = await v.db.from('trainer_clients').select('client_name');
-    expect(victimSees.map((r) => r.client_name).sort()).toEqual(['Cliente de V', 'SPAM']);
+    expect(victimSees.map((r) => r.client_name)).toEqual(['Cliente de V']);
+  });
+
+  it('E29: quien no es el destino no puede aceptar una oferta ajena (NO_OFFER), ni de otro tipo', async () => {
+    const atk = await account('atk', 'WXYZ-WXYZ-WXYZ');
+    const spam = await slotWithProgram(atk, 'SPAM');
+    const v = await account('v', 'ABCD-EFGH-JKLM');
+    const other = await account('other', 'BCDE-FGHJ-KLMN');
+    await ok(atk.db, 'offer_transfer', { p_kind: 'slots', p_to: v.id });
+
+    expect((await bad(other.db, 'accept_transfer', { p_kind: 'slots', p_from: atk.id })).message).toBe('NO_OFFER');
+    expect((await bad(v.db, 'accept_transfer', { p_kind: 'seat', p_from: atk.id })).message).toBe('NO_OFFER');
+    expect((await slotOf(spam.S)).trainer_id).toBe(atk.id);
+  });
+
+  it('E29: una oferta de más de 10 minutos caduca (NO_OFFER) y se puede renovar; repetir tras un corte mueve 0', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const A = await slotWithProgram(a, 'Ana');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    await ok(a.db, 'offer_transfer', { p_kind: 'slots', p_to: b.id });
+    await server.admin("update public.transfer_offers set created_at = now() - interval '11 minutes'");
+
+    expect((await bad(b.db, 'accept_transfer', { p_kind: 'slots', p_from: a.id })).message).toBe('NO_OFFER');
+    expect((await slotOf(A.S)).trainer_id).toBe(a.id);
+
+    await ok(a.db, 'offer_transfer', { p_kind: 'slots', p_to: b.id });
+    expect(await ok(b.db, 'accept_transfer', { p_kind: 'slots', p_from: a.id })).toBe(1);
+    expect((await slotOf(A.S)).trainer_id).toBe(b.id);
+    expect((await bad(b.db, 'accept_transfer', { p_kind: 'slots', p_from: a.id })).message).toBe('NO_OFFER');   // una oferta, una vez
+    await ok(a.db, 'offer_transfer', { p_kind: 'slots', p_to: b.id });
+    expect(await ok(b.db, 'accept_transfer', { p_kind: 'slots', p_from: a.id })).toBe(0);
   });
 });
 
-describe('H11 — transfer_my_seat_to planta un asiento en una cuenta ajena', () => {
-  it('H11 hoy: un anónimo sentado pasa su asiento a un Google ajeno sin su consentimiento', async () => {
+describe('H11 — nadie planta un asiento en una cuenta ajena', () => {
+  it('H11 regla E29: un anónimo sentado ofrece su asiento a un Google ajeno y, sin que lo acepte, no se mueve', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const x = await anon('x');
     await link(x, K, S);
     const victim = await gugl('g', 'victima');
 
-    expect(await ok(x.db, 'transfer_my_seat_to', { p_new_client_id: victim.id })).toBe(1);
-    expect((await slotOf(S)).client_id).toBe(victim.id);
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: victim.id });
+    expect((await slotOf(S)).client_id).toBe(x.id);
     const { data } = await victim.db.from('trainer_clients').select('id');
-    expect(data).toEqual([{ id: S }]);                           // la víctima ya «es» cliente de t
+    expect(data).toEqual([]);                                    // la víctima no «es» cliente de t
   });
 
-  it('H11 hoy (oráculo): las respuestas dicen si un uuid existe, es anónimo o está sentado', async () => {
+  it('H11 regla E29 (sin oráculo): ofrecer a un uuid inexistente, anónimo, sentado o libre responde igual', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const seated = await gugl('g1', 'sentado');
     await link(seated, K, S);
     const free = await gugl('g2', 'libre');
     const someAnon = await anon('a');
-    const probe = await anon('probe');                           // sin asiento: no cede nada
+    const probe = await anon('probe');
 
-    const ask = (id) => probe.db.rpc('transfer_my_seat_to', { p_new_client_id: id });
-    expect((await ask('00000000-0000-4000-8000-000000000000')).error.message).toBe('BAD_TARGET');   // no existe
-    expect((await ask(someAnon.id)).error.message).toBe('BAD_TARGET');                               // anónimo
-    expect((await ask(seated.id)).error.message).toBe('SEAT_TAKEN');                                 // sentado
-    expect(await ask(free.id)).toEqual({ data: 0, error: null });                                    // cuenta libre
+    for (const id of ['00000000-0000-4000-8000-000000000000', someAnon.id, seated.id, free.id]) {
+      expect(await probe.db.rpc('offer_transfer', { p_kind: 'seat', p_to: id })).toEqual({ data: null, error: null });
+    }
+  });
+
+  it('E29: un anónimo no puede aceptar un traspaso (BAD_TARGET)', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const x = await anon('x');
+    await link(x, K, S);
+    const other = await anon('other');
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: other.id });
+    expect((await bad(other.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).message).toBe('BAD_TARGET');
+    expect((await slotOf(S)).client_id).toBe(x.id);
+  });
+
+  it('E29/E32: con las dos sesiones el asiento pasa; repetirlo tras un corte devuelve 0 en vez de fallar', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const x = await anon('x');
+    await link(x, K, S);
+    const g = await gugl('g', 'cli');
+
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect(await ok(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).toBe(1);
+    expect((await slotOf(S)).client_id).toBe(g.id);
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect(await ok(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).toBe(0);
+    expect((await slotOf(S)).client_id).toBe(g.id);
   });
 });
 
@@ -487,10 +616,11 @@ describe('Descartados: quedan fijados', () => {
     const before = await server.slots();
 
     expect((await bad(x.db, 'trainer_create_slot', { p_client_name: 'x' })).message).toBe('NOT_A_TRAINER');
-    expect((await bad(x.db, 'transfer_my_slots_to', { p_new_trainer_id: t.id })).message).toBe('NOT_A_TRAINER');
+    expect((await bad(x.db, 'offer_transfer', { p_kind: 'slots', p_to: t.id })).message).toBe('NOT_A_TRAINER');
     expect((await bad(x.db, 'trainer_upload_program', { p_slot_id: S, p_program: { x: 1 }, p_trainer_name: 'x' })).message).toBe('NOT_A_TRAINER');
     expect((await bad(x.db, 'trainer_reissue_client_code', { p_slot_id: S })).message).toBe('NOT_A_TRAINER');
-    expect((await bad(t.db, 'transfer_my_slots_to', { p_new_trainer_id: x.id })).message).toBe('BAD_TARGET');
+    await ok(t.db, 'offer_transfer', { p_kind: 'slots', p_to: x.id });
+    expect((await bad(x.db, 'accept_transfer', { p_kind: 'slots', p_from: t.id })).message).toBe('BAD_TARGET');
     expect(await server.slots()).toEqual(before);
   });
 
@@ -524,7 +654,8 @@ describe('Descartados: quedan fijados', () => {
     const x = await anon('x');
     await link(x, two.K, two.S);
 
-    expect((await bad(x.db, 'transfer_my_seat_to', { p_new_client_id: g.id })).message).toBe('SEAT_TAKEN');
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect((await bad(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).message).toBe('SEAT_TAKEN');
     expect((await slotOf(one.S)).client_id).toBe(g.id);
     expect((await slotOf(two.S)).client_id).toBe(x.id);
     const dup = await server.admin('select client_id from public.trainer_clients where client_id is not null group by client_id having count(*) > 1');
@@ -553,6 +684,6 @@ describe('Descartados: quedan fijados', () => {
     await upload(c, ['s1']);
 
     expect((await bad(t.db, 'trainer_upload_log', { p_slot_id: S, p_history: { entries: [{ id: 'pisado' }] }, p_sessions: 1 })).message).toBe('SLOT_OCCUPIED');
-    expect(historyIds(await slotOf(S))).toEqual(['s1']);
+    expect(historyIds(await slotOf(S))).toEqual(['antes', 's1']);   // la subida del cliente suma a lo anotado antes (E28); 'pisado' no entró
   });
 });

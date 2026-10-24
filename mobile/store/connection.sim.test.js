@@ -158,7 +158,7 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
     const { clientId } = await newClientWithProgram(t);
     await join(c, codeOf(t, clientId));
 
-    server.failOnce('rpc:transfer_my_slots_to');
+    server.failOnce('rpc:accept_transfer');
     await expect(t.s.enterTrainerAccount(google('g1'))).rejects.toThrow();
     // Sigue exactamente donde estaba: misma cuenta, mismo código, envía igual.
     expect(t.s.trainerSync).toMatchObject({ mode: 'code', code });
@@ -473,7 +473,7 @@ describe('cliente: cambiar de entrenador, desconectarse, vincular Google', () =>
     expect((await slotOf(c.s.clientSync.slotId)).sessions_count).toBe(1);
   });
 
-  it('cambiar de entrenador suelta el hueco del anterior (y borra lo suyo de allí)', async () => {
+  it('cambiar de entrenador suelta el hueco del anterior (y deja allí su historial)', async () => {
     const a = await phone('entrenador A');
     const b = await phone('entrenador B');
     const c = await phone('cliente');
@@ -486,7 +486,8 @@ describe('cliente: cambiar de entrenador, desconectarse, vincular Google', () =>
     await join(c, codeOf(b, cb.clientId));
 
     const old = await slotOf(a.s.clients[ca.clientId].syncSlotId);
-    expect(old).toMatchObject({ client_id: null, history_json: null });
+    expect(old).toMatchObject({ client_id: null, sessions_count: 1 });
+    expect(old.history_json).not.toBeNull();
     await a.s.refreshTrainerSlots();
     expect(a.s.clients[ca.clientId]).toMatchObject({ syncLinked: false, syncLeftAt: expect.any(String) });
     expect(await programReaches(b, c, cb.clientId, 'de B')).toBe(true);

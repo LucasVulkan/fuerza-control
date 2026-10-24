@@ -43,20 +43,24 @@ union all
 -- Política de escritura en la tabla: no debe haber ninguna (todo va por funciones).
 select 'política de escritura', policyname
   from pg_policies
- where schemaname = 'public' and tablename = 'trainer_clients' and cmd <> 'SELECT'
+ where schemaname = 'public'
+   and (   (tablename = 'trainer_clients' and cmd <> 'SELECT')
+        or tablename = 'transfer_offers')   -- ni leer: una oferta falsa robaría huecos
 
 union all
 -- Permiso de escritura directo sobre la tabla.
 select 'permiso de escritura directo', grantee || ' ' || privilege_type
   from information_schema.role_table_grants
- where table_schema = 'public' and table_name = 'trainer_clients'
-   and grantee in ('anon', 'authenticated') and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+ where table_schema = 'public'
+   and grantee in ('anon', 'authenticated')
+   and (   (table_name = 'trainer_clients' and privilege_type in ('INSERT', 'UPDATE', 'DELETE'))
+        or table_name = 'transfer_offers')
 
 union all
 -- Funciones que ya no deben existir.
 select 'función retirada sigue viva', proname
   from pg_proc
- where proname in ('claim_trainer_slots', 'transfer_client_slot')
+ where proname in ('claim_trainer_slots', 'transfer_client_slot', 'transfer_my_slots_to', 'transfer_my_seat_to')
 
 union all
 -- Funciones de la conexión que deben ser security definer.
@@ -65,16 +69,16 @@ select 'función sin security definer', proname
  where pronamespace = 'public'::regnamespace and not prosecdef
    and proname in ('trainer_create_slot', 'trainer_upload_program', 'trainer_upload_overrides',
                    'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
-                   'trainer_reissue_client_code', 'transfer_my_slots_to', 'get_slot_by_code',
+                   'trainer_reissue_client_code', 'get_slot_by_code',
                    'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                   'transfer_my_seat_to', 'client_lost_reason')
+                   'offer_transfer', 'accept_transfer', 'client_lost_reason')
 
 union all
 -- Y que estén todas.
 select 'falta la función', f
   from unnest(array['trainer_create_slot', 'trainer_upload_program', 'trainer_upload_overrides',
                     'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
-                    'trainer_reissue_client_code', 'transfer_my_slots_to', 'get_slot_by_code',
+                    'trainer_reissue_client_code', 'get_slot_by_code',
                     'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                    'transfer_my_seat_to', 'client_lost_reason']) as f
+                    'offer_transfer', 'accept_transfer', 'client_lost_reason']) as f
  where not exists (select 1 from pg_proc where proname = f and pronamespace = 'public'::regnamespace);

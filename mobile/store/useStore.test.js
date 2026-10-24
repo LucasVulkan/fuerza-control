@@ -20,9 +20,9 @@ const syncMock = {
   getTrainerSlots: vi.fn(async () => []),
   createClientSlot: vi.fn(), uploadProgram: vi.fn(), uploadTrainerLog: vi.fn(), downloadHistory: vi.fn(),
   downloadSlotProgram: vi.fn(async () => null), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(async () => true),
-  updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), transferMySlotsTo: vi.fn(async () => 0),
+  updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), offerTransfer: vi.fn(async () => {}), acceptTransfer: vi.fn(async () => 0),
   getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(), seatOf: vi.fn(), uploadHistory: vi.fn(),
-  releaseClientSlot: vi.fn(async () => 0), transferMySeatTo: vi.fn(),
+  releaseClientSlot: vi.fn(async () => 0),
 };
 vi.mock('../src/services/supabaseSync', () => syncMock);
 
@@ -933,10 +933,12 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     expect(ts().trainerName).toBe('Lucas G');
   });
 
-  it('código → Google: la cuenta vieja cede sus huecos ANTES de instalar la nueva', async () => {
+  it('código → Google: la cuenta vieja ofrece y la nueva acepta los huecos ANTES de instalar la nueva', async () => {
     await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
-    expect(syncMock.transferMySlotsTo).toHaveBeenCalledWith('uuid-G');
-    expect(syncMock.transferMySlotsTo.mock.invocationCallOrder[0]).toBeLessThan(authMock.adoptTrainer.mock.invocationCallOrder[0]);
+    expect(syncMock.offerTransfer).toHaveBeenCalledWith('slots', 'uuid-G');
+    expect(syncMock.acceptTransfer).toHaveBeenCalledWith('slots', 'uuid-A', undefined);   // la nueva acepta con su sesión (candidate.db)
+    expect(syncMock.offerTransfer.mock.invocationCallOrder[0]).toBeLessThan(syncMock.acceptTransfer.mock.invocationCallOrder[0]);
+    expect(syncMock.acceptTransfer.mock.invocationCallOrder[0]).toBeLessThan(authMock.adoptTrainer.mock.invocationCallOrder[0]);
     expect(ts()).toMatchObject({ mode: 'google', code: null, userId: 'uuid-G', trainerName: 'Ana' });
     expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
     expect(RC.restorePurchases).toHaveBeenCalled();
@@ -945,7 +947,8 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   it('crear código traspasa desde el anterior y entra en RevenueCat', async () => {
     const res = await useStore.getState().createTrainerCodeAccount();
     expect(res).toEqual({ code: 'CCCC-CCCC-CCCC', userId: 'uuid-C' });
-    expect(syncMock.transferMySlotsTo).toHaveBeenCalledWith('uuid-C');
+    expect(syncMock.offerTransfer).toHaveBeenCalledWith('slots', 'uuid-C');
+    expect(syncMock.acceptTransfer).toHaveBeenCalledWith('slots', 'uuid-A', undefined);
     expect(RC.logIn).toHaveBeenCalledWith('uuid-C');
   });
 
@@ -992,7 +995,8 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     expect(ts()).toEqual(antes);
     expect(RC.logIn).not.toHaveBeenCalled();
     expect(authMock.adoptTrainer).not.toHaveBeenCalled();
-    expect(syncMock.transferMySlotsTo).not.toHaveBeenCalled();
+    expect(syncMock.offerTransfer).not.toHaveBeenCalled();
+    expect(syncMock.acceptTransfer).not.toHaveBeenCalled();
   });
 
   it('mustExist con cuenta de entrenador entra como siempre', async () => {
@@ -1010,7 +1014,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   });
 
   it('si el traspaso falla, no cambia nada: sigue en la cuenta vieja, con su código', async () => {
-    syncMock.transferMySlotsTo.mockRejectedValueOnce(Object.assign(new Error('Failed to fetch'), { code: 'NETWORK' }));
+    syncMock.acceptTransfer.mockRejectedValueOnce(Object.assign(new Error('Failed to fetch'), { code: 'NETWORK' }));
     const antes = ts();
     await expect(useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' })).rejects.toThrow();
     expect(ts()).toEqual(antes);

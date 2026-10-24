@@ -30,12 +30,14 @@
 --     comprueba de quién es la fila y FALLA con un código si no la encuentra.
 --     Antes un `update` filtrado por RLS daba 0 filas y ningún error, y la app
 --     daba por enviado lo que no había llegado.     → sin políticas de escritura
---  4. Solo se cede lo propio, y solo a una cuenta que existe y no es anónima.
---                                                    → transfer_my_*
+--  4. Un traspaso (de huecos o de asiento) necesita las DOS sesiones: la que
+--     cede hace una oferta y la que recibe la acepta, en menos de 10 minutos.
+--     Nadie planta nada en una cuenta que no lo acepta.
+--                                                    → offer_transfer + accept_transfer
 --
 -- Códigos de error (la app ramifica por ellos, `supabaseSync.js`):
 --   NOT_AUTHENTICATED  NOT_A_TRAINER  CODE_NOT_FOUND  SEAT_LOCKED  SLOT_OCCUPIED (C20)  SLOT_GONE
---   NO_SEAT  SEAT_TAKEN  BAD_TARGET  CODE_GENERATION_FAILED
+--   NO_SEAT  SEAT_TAKEN  BAD_TARGET  NO_OFFER  CODE_GENERATION_FAILED
 -- ============================================================================
 
 
@@ -120,9 +122,7 @@ with ranked as (
    where client_id is not null
 )
 update public.trainer_clients t
-   set client_id = null, disconnected_at = now(),
-       history_json = null, history_updated_at = null, sessions_count = 0,
-       overrides_json = null, overrides_updated_at = null
+   set client_id = null, disconnected_at = now()
   from ranked r
  where t.id = r.id and r.rn > 1;
 
@@ -192,6 +192,19 @@ create policy own_profile on public.profiles
 revoke all on public.profiles from anon, authenticated;
 grant  select, insert, update on public.profiles to authenticated;
 
+-- Ofertas de traspaso (E29): quien cede deja aquí «te doy mis huecos / mi
+-- asiento» y quien recibe la acepta con SU sesión. Una por cedente y tipo. Sin
+-- políticas ni permisos, como `trainer_clients`: solo las funciones la tocan.
+create table if not exists public.transfer_offers (
+  from_id    uuid not null,
+  to_id      uuid not null,
+  kind       text not null check (kind in ('slots', 'seat')),
+  created_at timestamptz not null default now(),
+  primary key (from_id, kind)
+);
+alter table public.transfer_offers enable row level security;
+revoke all on public.transfer_offers from anon, authenticated;
+
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
 
@@ -260,6 +273,31 @@ begin
 end;
 $$;
 
+-- Suma lo que sube el cliente (o el entrenador, C20) a lo que ya hay (R-C2,
+-- R-C3: el historial solo crece). `entries` por `id`: las viejas que la subida
+-- no trae se conservan, y si el id se repite gana la nueva; las que no tienen
+-- `id` se conservan todas. `customExercises` se funde (gana la nueva) y
+-- `progress` es el nuevo si lo hay. Interna: nadie la llama desde fuera.
+create or replace function public._merge_history(p_old jsonb, p_new jsonb)
+returns jsonb
+language sql
+immutable
+as $$
+  select case when p_old is null then p_new else jsonb_build_object(
+    'entries', coalesce((
+        select jsonb_agg(e order by o)
+          from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
+         where (e->>'id') is null
+            or (e->>'id') not in (select n->>'id' from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
+                                   where n->>'id' is not null)
+      ), '[]'::jsonb) || coalesce(p_new->'entries', '[]'::jsonb),
+    'customExercises', coalesce(nullif(p_old->'customExercises', 'null'::jsonb), '{}'::jsonb)
+                    || coalesce(nullif(p_new->'customExercises', 'null'::jsonb), '{}'::jsonb),
+    -- `progress: null` llega de verdad (sin programa activo): es null de JSON, no de SQL.
+    'progress', coalesce(nullif(p_new->'progress', 'null'::jsonb), p_old->'progress')
+  ) end;
+$$;
+
 
 -- ── 7. Entrenador ───────────────────────────────────────────────────────────
 
@@ -310,7 +348,7 @@ end;
 $$;
 
 -- Lo que el entrenador apuntó a un cliente que aún no ha entrado (C20). Solo
--- con el asiento vacío, y comprobado en la MISMA sentencia que escribe: antes se
+-- con el asiento vacío (y suma, como `client_upload_history`), y comprobado en la MISMA sentencia que escribe: antes se
 -- leía, se esperaba y se escribía, y en medio podía entrar el cliente.
 create or replace function public.trainer_upload_log(p_slot_id uuid, p_history jsonb, p_sessions integer)
 returns void
@@ -321,7 +359,8 @@ as $$
 declare v_me uuid := public._trainer();
 begin
   update public.trainer_clients
-     set history_json = p_history, history_updated_at = now(), sessions_count = coalesce(p_sessions, 0)
+     set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
+         sessions_count = jsonb_array_length(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb))
    where id = p_slot_id and trainer_id = v_me and client_id is null;
   if found then return; end if;
   if exists (select 1 from public.trainer_clients where id = p_slot_id and trainer_id = v_me) then
@@ -376,25 +415,6 @@ begin
    where id = p_slot_id and trainer_id = public._trainer();
   if not found then raise exception 'SLOT_GONE'; end if;
   return v_code;
-end;
-$$;
-
--- El entrenador cede TODOS sus huecos a su cuenta nueva al cambiar de forma de
--- entrar. Se llama con la sesión de la cuenta VIEJA: solo regalas lo tuyo.
-create or replace function public.transfer_my_slots_to(p_new_trainer_id uuid)
-returns integer
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_me    uuid := public._trainer();
-  v_count integer;
-begin
-  perform public._check_target(p_new_trainer_id);
-  update public.trainer_clients set trainer_id = p_new_trainer_id where trainer_id = v_me;
-  get diagnostics v_count = row_count;
-  return v_count;
 end;
 $$;
 
@@ -463,10 +483,10 @@ begin
     raise exception 'SEAT_LOCKED';
   end if;
 
+  -- Soltar el asiento viejo no borra nada del hueco (R-B6): el historial y las
+  -- prescripciones se quedan donde estaban, para el entrenador.
   update public.trainer_clients
-     set client_id = null, disconnected_at = now(),
-         history_json = null, history_updated_at = null, sessions_count = 0,
-         overrides_json = null, overrides_updated_at = null
+     set client_id = null, disconnected_at = now()
    where client_id = v_me and id <> v_slot;
 
   update public.trainer_clients
@@ -496,6 +516,9 @@ as $$
 $$;
 
 -- El cliente sube lo suyo a SU asiento: no hace falta decir cuál, es el suyo.
+-- SUMA al historial del hueco (E28, R-C2): dos móviles o una reinstalación ya
+-- no se pisan. `p_sessions` se ignora (el contador sale de lo fusionado); sigue
+-- en la firma por compatibilidad.
 create or replace function public.client_upload_history(p_history jsonb, p_sessions integer)
 returns uuid
 language plpgsql
@@ -505,7 +528,8 @@ as $$
 declare v_slot uuid;
 begin
   update public.trainer_clients
-     set history_json = p_history, history_updated_at = now(), sessions_count = coalesce(p_sessions, 0)
+     set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
+         sessions_count = jsonb_array_length(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb))
    where client_id = public._caller()
   returning id into v_slot;
   if v_slot is null then raise exception 'NO_SEAT'; end if;
@@ -513,8 +537,10 @@ begin
 end;
 $$;
 
--- Se desconecta él: suelta el asiento y borra lo suyo (el entrenador puede dar
--- ese código a otra persona). Deja programa, nombre y código, que son del dueño.
+-- Se desconecta él: suelta el asiento y nada más (R-B6). El historial, las
+-- prescripciones, el programa, el nombre y el código se quedan en el hueco: son
+-- del entrenador, que decide qué hacer con ellos. Solo borrar la cuenta vacía
+-- el historial del cliente (`delete-account`, excepción de R-C4).
 create or replace function public.release_client_slot()
 returns integer
 language plpgsql
@@ -524,35 +550,76 @@ as $$
 declare v_count integer;
 begin
   update public.trainer_clients
-     set client_id = null, disconnected_at = now(),
-         history_json = null, history_updated_at = null, sessions_count = 0,
-         overrides_json = null, overrides_updated_at = null
+     set client_id = null, disconnected_at = now()
    where client_id = public._caller();
   get diagnostics v_count = row_count;
   return v_count;
 end;
 $$;
 
--- El cliente pasa su asiento a su cuenta de Google/Apple. Con la sesión VIEJA
--- (la anónima): solo regalas lo tuyo. Si esa cuenta ya ocupa otro asiento, la
--- app lo suelta antes con la sesión de esa cuenta (prueba de que es suya).
-create or replace function public.transfer_my_seat_to(p_new_client_id uuid)
+
+-- ── 8b. Traspasos: oferta y aceptación ──────────────────────────────────────
+-- Cambiar de forma de entrar (entrenador) o vincular Google/Apple (cliente)
+-- mueve cosas de una cuenta a otra. Antes lo hacía una sola llamada de la
+-- cuenta vieja a cualquier uuid, y servía para plantar huecos o un asiento en
+-- una cuenta ajena. Ahora son dos pasos, cada uno con su sesión:
+--   offer_transfer  la cuenta que cede (vieja) anota «esto es para <to>».
+--                   No comprueba a quién: así no sirve de oráculo de uuids.
+--   accept_transfer la cuenta que recibe (nueva) lo acepta; solo vale una
+--                   oferta dirigida a ella y de menos de 10 minutos.
+-- Repetir los dos pasos tras un corte es seguro: lo ya movido no se mueve otra vez.
+-- ponytail: las ofertas viejas no se barren (una fila por cedente y tipo, se pisa
+-- sola); barrerlas si algún día molestan.
+create or replace function public.offer_transfer(p_kind text, p_to uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_me uuid := case when p_kind = 'slots' then public._trainer() else public._caller() end;
+begin
+  insert into public.transfer_offers (from_id, to_id, kind, created_at)
+  values (v_me, p_to, p_kind, now())
+  on conflict (from_id, kind) do update set to_id = excluded.to_id, created_at = now();
+end;
+$$;
+
+-- Devuelve las filas movidas. 'slots': todos los huecos de p_from pasan al que
+-- llama. 'seat': el asiento de p_from pasa al que llama. SEAT_TAKEN si los dos
+-- tienen asiento; NO_SEAT si ninguno lo tiene; 0 si solo lo tiene el destino:
+-- es el reintento tras un corte (la app suelta antes cualquier otro asiento
+-- suyo, así que el que tiene es el que se le pasó).
+create or replace function public.accept_transfer(p_kind text, p_from uuid)
 returns integer
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_me    uuid := public._caller();
-  v_count integer;
+  v_me      uuid := auth.uid();
+  v_count   integer := 0;
+  v_to_seat boolean;
+  v_from_seat boolean;
 begin
-  if p_new_client_id = v_me then return 0; end if;
-  perform public._check_target(p_new_client_id);
-  if exists (select 1 from public.trainer_clients where client_id = p_new_client_id) then
-    raise exception 'SEAT_TAKEN';
+  perform public._check_target(v_me);
+  delete from public.transfer_offers
+   where from_id = p_from and kind = p_kind and to_id = v_me
+     and created_at > now() - interval '10 minutes';
+  if not found then raise exception 'NO_OFFER'; end if;
+
+  if p_kind = 'slots' then
+    update public.trainer_clients set trainer_id = v_me where trainer_id = p_from;
+    get diagnostics v_count = row_count;
+  else
+    v_to_seat   := exists (select 1 from public.trainer_clients where client_id = v_me);
+    v_from_seat := exists (select 1 from public.trainer_clients where client_id = p_from);
+    if v_from_seat and v_to_seat then raise exception 'SEAT_TAKEN'; end if;
+    if not v_from_seat and not v_to_seat then raise exception 'NO_SEAT'; end if;
+    if v_from_seat then
+      update public.trainer_clients set client_id = v_me where client_id = p_from;
+      get diagnostics v_count = row_count;
+    end if;
   end if;
-  update public.trainer_clients set client_id = p_new_client_id where client_id = v_me;
-  get diagnostics v_count = row_count;
   return v_count;
 end;
 $$;
@@ -560,9 +627,12 @@ $$;
 
 -- ── 9. Lo que ya no existe ──────────────────────────────────────────────────
 -- `claim_trainer_slots` dejaba a cualquiera apropiarse de huecos ajenos;
--- `transfer_client_slot` se sustituye por `transfer_my_seat_to`.
+-- `transfer_client_slot` y los `transfer_my_*` (que cedían a cualquier uuid sin
+-- que el destino lo supiera) se sustituyen por offer_transfer + accept_transfer.
 drop function if exists public.claim_trainer_slots(uuid[]);
 drop function if exists public.transfer_client_slot(uuid, uuid, uuid);
+drop function if exists public.transfer_my_slots_to(uuid);
+drop function if exists public.transfer_my_seat_to(uuid);
 
 
 -- ── 10. Quién puede llamar a qué ────────────────────────────────────────────
@@ -572,12 +642,13 @@ declare f text;
 begin
   foreach f in array array[
     'new_client_code()', '_caller()', '_trainer()', '_check_target(uuid)', '_locked_by(uuid)',
+    '_merge_history(jsonb, jsonb)',
     'trainer_create_slot(text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
-    'transfer_my_slots_to(uuid)', 'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()', 'transfer_my_seat_to(uuid)',
-    'client_lost_reason()'
+    'get_slot_by_code(text)', 'link_client_to_slot(text)',
+    'client_upload_history(jsonb, integer)', 'release_client_slot()',
+    'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
   end loop;
@@ -586,9 +657,9 @@ begin
     'trainer_create_slot(text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
-    'transfer_my_slots_to(uuid)', 'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()', 'transfer_my_seat_to(uuid)',
-    'client_lost_reason()'
+    'get_slot_by_code(text)', 'link_client_to_slot(text)',
+    'client_upload_history(jsonb, integer)', 'release_client_slot()',
+    'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('grant execute on function public.%s to authenticated', f);
   end loop;
