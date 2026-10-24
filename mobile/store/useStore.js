@@ -874,6 +874,13 @@ export const useStore = create(
         if (get().isClientFrozen(clientId)) throw new Error(i18n.t('paywall.frozenError'));
       },
 
+      /** ¿El programa o la sesión `id` es de un cliente congelado? Lo de entreno no se escribe (E43, R-E2). */
+      _isFrozenOwned: (id) => {
+        const { programs, sessionTemplates } = get();
+        const owner = (programs[id] ?? sessionTemplates[id])?.owner ?? programs[sessionTemplates[id]?.programId]?.owner;
+        return !!owner && owner !== 'me' && get().isClientFrozen(owner);
+      },
+
       /** Ya tiene las que da el plan: no puede crear otra. */
       _templateLimitReached: (kind) => !get().profile.isPro && templateCounts(get())[kind] >= FREE[kind],
 
@@ -1258,6 +1265,7 @@ export const useStore = create(
       },
 
       updateExerciseParams: (templateId, exerciseId, updates) => {
+        if (get()._isFrozenOwned(templateId)) return get()._paywall('frozen');
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const current = template.exercises.find((ex) => ex.exerciseId === exerciseId);
@@ -1684,6 +1692,7 @@ export const useStore = create(
       },
 
       addExercise: (templateId, exerciseId) => {
+        if (get()._isFrozenOwned(templateId)) return get()._paywall('frozen');
         const template = get().getEffectiveTemplate(templateId);
         const { exerciseLibrary, customExercises } = get();
         const exDef = exerciseLibrary[exerciseId] ?? customExercises[exerciseId];
@@ -1710,6 +1719,7 @@ export const useStore = create(
       },
 
       renameProgram: (programId, newName) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         set((s) => ({
           programs: {
             ...s.programs,
@@ -1731,6 +1741,7 @@ export const useStore = create(
       },
 
       renameSession: (templateId, newName) => {
+        if (get()._isFrozenOwned(templateId)) return get()._paywall('frozen');
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         set((s) => ({
@@ -1779,6 +1790,7 @@ export const useStore = create(
       },
 
       addSessionToProgram: (programId, stageIndex = null) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         const { programs } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
@@ -1925,6 +1937,7 @@ export const useStore = create(
       // hay que pasar SIEMPRE el índice de la etapa base: los peldaños derivan
       // de la base, no del anterior (spec §2.4).
       addStageToProgram: (programId, { rx = null, sourceStageIdx = null, name = null, durationWeeks = 4 } = {}) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         const { programs, sessionTemplates, clients, exerciseLibrary, customExercises } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
@@ -2050,6 +2063,7 @@ export const useStore = create(
       },
 
       updateStage: (programId, stageIndex, updates) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         const { programs } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
@@ -3317,6 +3331,12 @@ export const useStore = create(
         // Ids de antes de juntar los ejercicios repetidos (P09-exercise-variants.md
         // §3.3): un backup viejo, o el programa de un entrenador sin actualizar.
         migrateExerciseRefs(data, get().getEffectiveLibrary());
+        // Un cliente que ya existe y está congelado no se pisa: ni su programa ni su
+        // log. La ficha sí, como a mano (E43, R-E2).
+        const frozen = (id) => !!get().clients[id] && get().isClientFrozen(id);
+        if (data.sessionTemplates) {
+          data = { ...data, sessionTemplates: Object.fromEntries(Object.entries(data.sessionTemplates).filter(([id]) => !get()._isFrozenOwned(id))) };
+        }
         // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
         // de OTRO dueño, esto es una copia, no una actualización. Sin esto,
         // importar como propio el programa de un cliente se lo quita — su ficha
@@ -3504,6 +3524,7 @@ export const useStore = create(
               Object.entries(data.clients ?? {}).map(([id, c]) => {
                 const rest = { ...c };
                 delete rest.programIds;
+                if (frozen(id)) rest.activeProgramId = s.clients[id].activeProgramId;   // apunta a un programa que no entra
                 return [id, rest];
               }),
             );
@@ -3532,14 +3553,14 @@ export const useStore = create(
             // apunta a un programa que no existe. `needsTemplateData` ya
             // incluye esta sección, así que sus sessionTemplates entran.
             const owned = Object.fromEntries(
-              Object.entries(allFilePrograms).filter(([, p]) => isClients(p)),
+              Object.entries(allFilePrograms).filter(([, p]) => isClients(p) && !frozen(p.owner)),
             );
             updates.programs = { ...(updates.programs ?? basePrograms), ...owned };
 
             // Restore per-client histories from backups that include them
             if (data.clientLogs && Object.keys(data.clientLogs).length) {
               const mergedLogs = { ...s.clientLogs };
-              Object.entries(data.clientLogs).forEach(([cid, entries]) => {
+              Object.entries(data.clientLogs).filter(([cid]) => !frozen(cid)).forEach(([cid, entries]) => {
                 mergedLogs[cid] = mergeClientLog(mergedLogs[cid], entries);
               });
               updates.clientLogs = mergedLogs;
@@ -3554,7 +3575,7 @@ export const useStore = create(
             if (Object.keys(clientEntries).length) {
               updates.workoutLog = personalLog;
               const mergedLogs = { ...(updates.clientLogs ?? s.clientLogs) };
-              Object.entries(clientEntries).forEach(([cid, entries]) => {
+              Object.entries(clientEntries).filter(([cid]) => !frozen(cid)).forEach(([cid, entries]) => {
                 mergedLogs[cid] = mergeClientLog(mergedLogs[cid], entries);
               });
               updates.clientLogs = mergedLogs;
@@ -4075,6 +4096,7 @@ export const useStore = create(
       // A one-off prescription for the NEXT occurrence of a client's session.
       // Stored on the client; delivered to the client and consumed there later.
       setOverrideTarget: (clientId, templateId, exerciseId, patch) => {
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         set((s) => {
           const client = s.clients[clientId];
           if (!client) return {};
@@ -4100,6 +4122,7 @@ export const useStore = create(
       },
 
       clearOverride: (clientId, templateId) => {
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         set((s) => {
           const client = s.clients[clientId];
           if (!client) return {};
@@ -4327,7 +4350,8 @@ export const useStore = create(
                 syncLeftAt:          !slot.client_id && slot.disconnected_at ? slot.disconnected_at : null,
                 // La etapa que pinta la lista sigue al cliente sin abrir su
                 // ficha (C04-qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
-                progress:            slot.progress ?? c.progress,
+                // A un congelado solo se le actualiza el contador (E43, R-E2).
+                progress:            s.clients[clientId] && get().isClientFrozen(clientId) ? c.progress : (slot.progress ?? c.progress),
               };
             }
 

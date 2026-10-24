@@ -251,45 +251,58 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     expect(S().isClientFrozen('d')).toBe(true);   // montaje
   };
 
-  it('P7 hoy: las acciones de escritura del store sobre el programa/sesión de un congelado no tienen guard (la protección es solo de pantalla) (regla R-E2)', () => {
+  it('P7 arreglado (E43, R-E2): las acciones de programa y prescripciones sobre un congelado no escriben y abren el paywall «frozen»', () => {
     setup();
+    const before = { clients: S().clients, programs: S().programs };
+    const exId = Object.keys(S().exerciseLibrary)[0];
     S().setOverrideTarget('d', 'tpl_x', 'squat', { minReps: 5 });
+    S().clearOverride('d', 'tpl_x');
     S().updateStage('p_d', 0, { name: 'Cambiada' });
     S().addStageToProgram('p_d', { name: 'E2' });
     S().renameProgram('p_d', 'Editado');
-    S().addExercise('free_d', Object.keys(S().exerciseLibrary)[0]);
-    expect(S().isClientFrozen('d')).toBe(true);   // sigue congelado tras editar
-    expect(S().clients.d.overridesDirty).toBe(true);             // regla: sin cambios
-    expect(S().programs.p_d.stages[0].name).toBe('Cambiada');
-    expect(S().programs.p_d.stages).toHaveLength(2);
-    expect(S().programs.p_d.name).toBe('Editado');
-    expect(S().sessionTemplates.free_d.exercises).toHaveLength(1);
-    expect(S().ui.paywallReason).toBe(null);                     // regla: 'frozen'
+    S().addSessionToProgram('p_d');
+    S().renameSession('free_d', 'Otro');
+    S().addExercise('free_d', exId);
+    S().updateExerciseParams('free_d', exId, { sets: 9 });
+    expect(S().isClientFrozen('d')).toBe(true);
+    expect(S().clients).toBe(before.clients);                    // nada se escribió
+    expect(S().programs).toBe(before.programs);
+    expect(S().sessionTemplates.free_d.name).toBe('L');
+    expect(S().sessionTemplates.free_d.exercises).toHaveLength(0);
+    expect(S().ui.paywallReason).toBe('frozen');
   });
 
-  it('P8 hoy: los setters de ficha (info, nombre, cobros, peso) no tienen guard para el congelado (regla R-E2)', () => {
+  it('P7b (E43): sobre lo mío y sobre un cliente activo las mismas acciones siguen escribiendo', () => {
+    setup();
+    useStore.setState((s) => ({ programs: { ...s.programs, p_me: prog('p_me', 'program', 'me'), p_a: prog('p_a', 'program', 'a') } }));
+    S().renameProgram('p_me', 'Mío');
+    S().renameProgram('p_a', 'De a');
+    expect(S().programs.p_me.name).toBe('Mío');
+    expect(S().programs.p_a.name).toBe('De a');
+    expect(S().ui.paywallReason).toBe(null);
+  });
+
+  it('P8 aceptado, decisión E43: ficha, nombre, facturas y peso de un congelado se siguen editando (son registros del entrenador)', () => {
     frozenD();
     S().updateClientInfo('d', { notes: 'x', status: 'inactive' });
     S().renameClient('d', 'Renombrado');
     S().addClientBilling('d', { amount: 10 });
     S().addClientBodyWeight('d', '2026-10-01', 70);
-    S().setOverrideTarget('d', 'tplX', 'ex1', { sets: 5 });
     expect(S().isClientFrozen('d')).toBe(true);
-    expect(S().clients.d.name).toBe('Renombrado');         // regla: 'd'
-    expect(S().clients.d.billing).toHaveLength(1);         // regla: 0
-    expect(S().clients.d.overridesDirty).toBe(true);
-    expect(S().ui.paywallReason).toBe(null);               // regla: 'frozen'
+    expect(S().clients.d.name).toBe('Renombrado');
+    expect(S().clients.d.billing).toHaveLength(1);
+    expect(S().ui.paywallReason).toBe(null);
   });
 
-  it('P9 hoy: refreshTrainerSlots trae del servidor la etapa (`progress`) del congelado, no solo el contador (regla R-E2: solo contador)', async () => {
+  it('P9 arreglado (E43, R-E2): refreshTrainerSlots solo actualiza el contador del congelado, no su etapa (`progress`)', async () => {
     setup();
     syncMock.getTrainerSlots.mockResolvedValueOnce([{ id: 's_d', client_name: 'd', client_code: 'C', sessions_count: 7, client_id: 'u', progress: { currentStageIndex: 3 } }]);
     await S().refreshTrainerSlots();
     expect(S().clients.d.remoteSessionsCount).toBe(7);           // el contador: permitido
-    expect(S().clients.d.progress.currentStageIndex).toBe(3);    // regla: 0
+    expect(S().clients.d.progress.currentStageIndex).toBe(0);    // la etapa no cambia
   });
 
-  it('P10 hoy: importData (backup) reescribe ficha, programa y log de un congelado (regla R-E2)', () => {
+  it('P10 arreglado (E43, R-E2): importData actualiza la ficha de un congelado pero no le pisa programa ni log', () => {
     free({
       clients: mkClients(['a', 'b', 'c', 'd', 'e']),
       programs: { pd: prog('pd', 'program', 'd') },
@@ -305,12 +318,13 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
       clientLogs: { d: [{ id: 'l1', timestamp: 1, sessionTemplateId: 't', exercises: [] }] },
     }, { clients: true }, { silent: true });
     expect(S().isClientFrozen('d')).toBe(true);
-    expect(S().clients.d.name).toBe('D-EDITADO');            // regla: 'd'
-    expect(S().clients.d.activeProgramId).toBe('pd2');       // regla: 'pd'
-    expect(S().clientLogs.d).toHaveLength(1);                // regla: 0
+    expect(S().clients.d.name).toBe('D-EDITADO');            // la ficha sí, como a mano
+    expect(S().clients.d.activeProgramId).toBe('pd');
+    expect(S().programs.pd2).toBeUndefined();
+    expect(S().clientLogs.d ?? []).toHaveLength(0);
   });
 
-  it('P11 hoy: un entreno en curso de un cliente que luego se congela se guarda en su log (regla R-E2)', () => {
+  it('P11 aceptado (E43): un entreno en curso de un cliente que luego se congela se guarda en su log (regla R-E2)', () => {
     free({ clients: mkClients(['d']), sessionTemplates: { t1: { id: 't1', name: 'S', programId: null, owner: 'd', exercises: [{ exerciseId: 'ex1', sets: 1, minReps: 5, maxReps: 5 }] } } });
     S().startSession('t1', { forClient: 'd' });
     useStore.setState((s) => ({ activeSession: { ...s.activeSession, setsState: { ex1: [{ weight: '50', reps: '5', time: '', done: true }] } } }));
@@ -321,7 +335,7 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     }));
     expect(S().isClientFrozen('d')).toBe(true);   // montaje: se congeló con el entreno abierto
     S().saveSession();
-    expect((S().clientLogs.d ?? []).length).toBe(1);   // regla: 0
+    expect((S().clientLogs.d ?? []).length).toBe(1);   // perder un entreno es peor
   });
 
   it('R-E2 cumple: las cuatro de red lanzan y no llaman al servidor', async () => {
