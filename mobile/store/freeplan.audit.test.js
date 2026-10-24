@@ -179,37 +179,53 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
 describe('R-E1 — carreras al crear/conectar con app', () => {
   const slow = () => syncMock.createClientSlot.mockImplementation(() => new Promise((r) => setTimeout(() => { slotN += 1; r({ slotId: `S${slotN}`, clientCode: `C${slotN}` }); }, 20)));
 
-  it('P16 hoy: dos createClient «con app» solapados (red lenta, doble toque) pasan los dos la puerta (regla R-E1: ≤1 con app)', async () => {
+  it('P16 arreglado (E42): dos createClient «con app» solapados (red lenta, doble toque) → solo el primero entra; el segundo abre el paywall', async () => {
     slow();
     const [x, y] = await Promise.all([S().createClient('A', { withApp: true }), S().createClient('B', { withApp: true })]);
-    expect(x && y).toBeTruthy();                                                  // montaje: los dos se crearon
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(2);   // regla: 1
-    expect(clientLimitReason(Object.values(S().clients))).toBe('connected');
-    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(true);
+    expect(x).toBeTruthy();
+    expect(y).toBe(null);
+    expect(S().ui.paywallReason).toBe('connected');
+    expect(Object.values(S().clients)).toHaveLength(1);
+    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
+    expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);   // la marca se quita al terminar
+    expect(clientLimitReason(Object.values(S().clients))).toBe(null);
   });
 
-  it('P17 hoy: dos connectClientToCloud solapados sobre clientes distintos pasan los dos (regla R-E1: ≤1 con app)', async () => {
+  it('P17 arreglado (E42): dos connectClientToCloud solapados sobre clientes distintos → [true, false]', async () => {
     free({ clients: mkClients(['a', 'b']) });
     slow();
     const r = await Promise.all([S().connectClientToCloud('a'), S().connectClientToCloud('b')]);
-    expect(r).toEqual([true, true]);                                              // regla: [true, false]
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(2);
-    expect(clientLimitReason(Object.values(S().clients))).toBe('connected');
+    expect(r).toEqual([true, false]);
+    expect(S().ui.paywallReason).toBe('connected');
+    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
+    expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);
+    expect(clientLimitReason(Object.values(S().clients))).toBe(null);
   });
 
-  it('P18 hoy: un refresco que cruza con createClient(withApp) duplica el cliente con el mismo hueco (regla R-E1: un hueco = una ficha)', async () => {
+  it('E42: si el servidor falla, la marca se quita y la plaza queda libre; pulsar dos veces el mismo cliente no abre dos altas', async () => {
+    free({ clients: mkClients(['a']) });
+    syncMock.createClientSlot.mockRejectedValueOnce(new Error('red'));
+    await expect(S().connectClientToCloud('a')).rejects.toThrow();
+    expect(S().clients.a.syncPending).toBeUndefined();
+    slow();
+    const r = await Promise.all([S().connectClientToCloud('a'), S().connectClientToCloud('a')]);
+    expect(r).toEqual([true, false]);
+    expect(syncMock.createClientSlot).toHaveBeenCalledTimes(2);   // el que falló + el único bueno
+  });
+
+  it('P18 arreglado (E42): un refresco que cruza con createClient(withApp) no recrea el hueco; un hueco = una ficha', async () => {
     let resolveSlot;
     syncMock.createClientSlot.mockReturnValueOnce(new Promise((r) => { resolveSlot = r; }));
     const p = S().createClient('Ana', { withApp: true });
     syncMock.getTrainerSlots.mockResolvedValueOnce([{ id: 'S1', client_name: 'Ana', client_code: 'CODE1', sessions_count: 0 }]);
     await S().refreshTrainerSlots();
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId === 'S1')).toHaveLength(1);   // montaje: el refresco ya creó una ficha con S1 (la local aún sin hueco)
+    expect(Object.values(S().clients)).toHaveLength(1);   // el refresco no creó la ficha «recuperada»
     resolveSlot({ slotId: 'S1', clientCode: 'CODE1' });
     await p;
     const list = Object.values(S().clients);
-    expect(list).toHaveLength(2);                                      // regla: 1
-    expect(list.filter((c) => c.syncSlotId === 'S1')).toHaveLength(2);
-    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(true);   // y congela a todos
+    expect(list).toHaveLength(1);
+    expect(list.filter((c) => c.syncSlotId === 'S1')).toHaveLength(1);
+    expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(false);
   });
 });
 
@@ -430,15 +446,23 @@ describe('R-E4 — la elección no se rehace', () => {
 });
 
 describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta mal', () => {
-  it('P19 hoy: tras caducar con 5 clientes (3 elegidos sin app) no se puede pasar ninguno a la app aunque el plan da 1 con app (honrado)', async () => {
+  it('P19 arreglado (E41): tras caducar con 5 clientes (3 elegidos sin app) se puede pasar uno activo a la app (1 con app), y un congelado no', async () => {
     free({ clients: mkClients(['a', 'b', 'c', 'd', 'e']) });
     S().setFreeClientIds(['a', 'b', 'c']);
     syncMock.createClientSlot.mockResolvedValue({ slotId: 'S9', clientCode: 'C9' });
     expect(S().isClientFrozen('a')).toBe(false);   // montaje: a es elegido y activo
     const g = freeGates({ isPro: false, clients: S().clients, freeClientIds: S().profile.freeClientIds, programs: {}, sessionTemplates: {} });
     expect(g.client('a')).toBe(null);
-    expect(g.connect('a')).toBe('clients');                   // regla: null
-    expect(await S().connectClientToCloud('a')).toBe(false);   // regla: true
+    expect(g.connect('a')).toBe(null);
+    expect(g.connect('d')).toBe('frozen');
+    expect(await S().connectClientToCloud('a')).toBe(true);
+    expect(S().ui.paywallReason).toBe(null);
+    expect(S().clients.a.syncSlotId).toBe('S9');
+    expect(await S().connectClientToCloud('b')).toBe(false);   // ya hay 1 con app entre los activos
+    expect(S().ui.paywallReason).toBe('connected');
+    expect(await S().connectClientToCloud('d')).toBe(false);
+    expect(S().ui.paywallReason).toBe('frozen');
+    expect(await S().createClient('nuevo')).toBe(null);   // crear sigue contando a todos
     expect(S().ui.paywallReason).toBe('clients');
   });
 

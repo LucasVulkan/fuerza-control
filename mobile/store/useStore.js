@@ -49,7 +49,7 @@ import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
 import { clientLink } from '../src/utils/clientLink';
-import { FREE, fitsFree, clientLimitReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds } from '../src/utils/freePlan';
+import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds } from '../src/utils/freePlan';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -141,6 +141,12 @@ function trainerLoginNeeded(mode) {
   const how = i18n.t(`account.short.${mode === 'apple' ? 'apple' : 'google'}`);
   return Object.assign(new Error(i18n.t('account.loginNeededError', { how })), { code: 'TRAINER_LOGIN_NEEDED' });
 }
+
+// Quita la marca de «alta en vuelo» (E42) de una ficha, venga bien o mal.
+const _clearPending = (s, id) => {
+  if (!s.clients[id]) return {};
+  return { clients: { ...s.clients, [id]: { ...s.clients[id], syncPending: undefined } } };
+};
 
 async function _ensureTrainerSession(trainerSync) {
   if (!trainerSync.userId) throw Object.assign(new Error(i18n.t('account.noAccountError')), { code: 'NO_TRAINER_ACCOUNT' });
@@ -794,8 +800,12 @@ export const useStore = create(
           if (reason) return get()._paywall(reason);
         }
         const id = generateId('client');
+        const { trainerSync } = get();
+        const cloud = withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && !!trainerSync.userId;
         const clientBase = {
           id, name: name.trim(),
+          // E42: la plaza se reserva en el mismo `set` que crea la ficha, antes del await.
+          ...(cloud ? { syncPending: true } : {}),
           createdAt: new Date().toISOString().split('T')[0],
           activeProgramId: null,
           fullName: '', phone: '', email: '', notes: '',
@@ -810,8 +820,7 @@ export const useStore = create(
         set((s) => ({ clients: { ...s.clients, [id]: clientBase } }));
 
         // Solo con app, y solo si el entrenador está en la nube.
-        const { trainerSync } = get();
-        if (withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && trainerSync.userId) {
+        if (cloud) {
           try {
             await _ensureTrainerSession(trainerSync);
             const { slotId, clientCode } = await createClientSlot(name.trim());
@@ -826,6 +835,8 @@ export const useStore = create(
             // código que no existe: «Pasar a la app» lo genera después.
             console.warn('[createClient] Supabase slot creation failed:', err.message);
             get().showToast(i18n.t('clients.slotCreateError'), 3000, 'error');
+          } finally {
+            set((s) => _clearPending(s, id));
           }
         }
 
@@ -3882,26 +3893,33 @@ export const useStore = create(
         // Uno «de otra cuenta» sí: pasarlo a la app en ESTA cuenta le da hueco nuevo.
         if (client.syncSlotId && !client.syncOrphan) throw new Error('Este cliente ya está conectado a la nube.');
         if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
+        if (client.syncPending) return false;   // doble pulsación: ya hay una conexión en vuelo
         if (!get().profile.isPro) {
-          const reason = clientLimitReason(Object.values(clients).map((c) => (c.id === clientId ? { ...c, syncSlotId: 'nuevo' } : c)));
+          const reason = connectReason(clients, get().profile.freeClientIds, clientId);
           if (reason) { get()._paywall(reason); return false; }
         }
+        // E42: sin ningún await entre la comprobación y la marca.
+        set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncPending: true } } }));
 
-        // Ensure auth session is active — may have expired after app restart
-        await _ensureTrainerSession(trainerSync);
+        try {
+          // Ensure auth session is active — may have expired after app restart
+          await _ensureTrainerSession(trainerSync);
 
-        const { slotId, clientCode } = await createClientSlot(client.name);
+          const { slotId, clientCode } = await createClientSlot(client.name);
 
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode,
-              syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
+          set((s) => ({
+            clients: {
+              ...s.clients,
+              [clientId]: {
+                ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode,
+                syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
+              },
             },
-          },
-        }));
-        return true;
+          }));
+          return true;
+        } finally {
+          set((s) => _clearPending(s, clientId));
+        }
       },
 
       /**
@@ -4257,9 +4275,13 @@ export const useStore = create(
             const deleted = new Set(s.trainerSync.deletedSlotIds ?? []);
             const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
             const known = new Set(Object.values(next).map((c) => c.syncSlotId).filter(Boolean));
+            // ponytail: con un alta en vuelo (`syncPending`) el hueco que aún no
+            // conocemos puede ser el suyo; recrearlo duplicaría la ficha (E42).
+            // Si era de verdad uno nuevo, se recupera en el siguiente refresco.
+            const creating = Object.values(next).some((c) => c.syncPending);
 
             for (const slot of slots) {
-              if (known.has(slot.id) || deleted.has(slot.id)) continue;
+              if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
               const id = generateId('client');
               next[id] = {
                 id,
@@ -4311,10 +4333,7 @@ export const useStore = create(
           for (const c of Object.values(get().clients)) {
             if (!c.programMissing || recovered.includes(c.id)) continue;
             if (c.activeProgramId) {
-              set((s) => {
-                const { programMissing: _quitada, ...rest } = s.clients[c.id];
-                return { clients: { ...s.clients, [c.id]: rest } };
-              });
+              set((s) => ({ clients: { ...s.clients, [c.id]: { ...s.clients[c.id], programMissing: undefined } } }));
             } else if (c.syncSlotId && !c.syncOrphan) retry.push(c.id);
           }
           for (const clientId of [...recovered, ...retry]) await get()._recoverSlotProgram(clientId);
@@ -4340,8 +4359,7 @@ export const useStore = create(
           // Sin programa en el hueco no hay nada que reintentar: se limpia también.
           set((s) => {
             if (!s.clients[clientId]) return {};
-            const { programMissing: _quitada, ...rest } = s.clients[clientId];
-            return { clients: { ...s.clients, [clientId]: rest } };
+            return { clients: { ...s.clients, [clientId]: { ...s.clients[clientId], programMissing: undefined } } };
           });
           if (!file?.program) return;
           const programId = get().clients[clientId]?.activeProgramId;
@@ -5452,6 +5470,16 @@ useStore.subscribe((s, prev) => {
   if (!fitsFree(Object.values(prev.clients)) || fitsFree(Object.values(s.clients))) return;
   const kept = Object.keys(prev.clients).filter((id) => s.clients[id]);
   if (kept.length) useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: kept } }));
+});
+
+// `syncPending` (E42) se persiste con `clients`: si la app murió en mitad de un
+// alta, la marca no puede quedarse contando como plaza ocupada para siempre.
+useStore.subscribe((s, prev) => {
+  if (!s._hasHydrated || prev._hasHydrated) return;
+  if (!Object.values(s.clients).some((c) => c.syncPending)) return;
+  useStore.setState((st) => ({
+    clients: Object.fromEntries(Object.entries(st.clients).map(([id, c]) => [id, { ...c, syncPending: undefined }])),
+  }));
 });
 
 const INVITED_DEBOUNCE_MS = 1500;

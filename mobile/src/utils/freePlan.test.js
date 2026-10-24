@@ -98,6 +98,17 @@ describe('freeGates — lo que las pantallas marcan con PRO', () => {
     expect(g.connect('b')).toBe('connected');
     expect(g.newProgramTemplate).toBe(null);
   });
+  test('E41: con congelados, «1 con app» se mira solo sobre los activos; un congelado no se conecta', () => {
+    const clients = byId(manual('a'), manual('b'), manual('c'), conn('d'), manual('e'));
+    const g = freeGates({ isPro: false, clients, freeClientIds: ['a', 'b', 'c'], programs: {}, sessionTemplates: {} });
+    expect(g.connect('a')).toBe(null);       // d (con app) está congelado: no ocupa la plaza
+    expect(g.connect('d')).toBe('frozen');
+    expect(g.newClient).toBe('clients');     // crear sigue contando a todos
+  });
+  test('E42: una alta en vuelo (syncPending) ocupa la plaza', () => {
+    const g = freeGates({ isPro: false, clients: byId({ id: 'a', syncSlotId: null, syncPending: true }, manual('b')), freeClientIds: [], programs: {}, sessionTemplates: {} });
+    expect(g.connect('b')).toBe('connected');
+  });
   test('con Pro, todo abierto', () => {
     const g = freeGates({ isPro: true });
     expect(g.client('x')).toBe(null);

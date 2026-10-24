@@ -12,7 +12,10 @@ export const FREE = { clients: 3, connected: 1, programTemplates: 1, sessionTemp
 
 /** Con app = tiene hueco en el servidor: invitado (código sin canjear) o vinculado. */
 // Uno «de otra cuenta» (C09 §3.4) no está conectado en esta: no ocupa plaza.
-export const isConnected = (client) => !!client?.syncSlotId && !client.syncOrphan;
+// `syncPending` = el alta/conexión está en vuelo (E42): la plaza ya está
+// reservada, así que una segunda pulsación la ve ocupada. Cuenta aunque sea un
+// «de otra cuenta» al que se le está dando hueco nuevo.
+export const isConnected = (client) => !!client?.syncPending || (!!client?.syncSlotId && !client.syncOrphan);
 
 /**
  * ¿Cabe este conjunto de clientes en el plan gratis? Dos comprobaciones, no
@@ -30,6 +33,20 @@ export function clientLimitReason(clients) {
   if (clients.length > FREE.clients) return 'clients';
   if (clients.filter(isConnected).length > FREE.connected) return 'connected';
   return null;
+}
+
+/**
+ * Por qué no se puede pasar `id` a la app, o null (E41). Con congelados la puerta
+ * de «1 con app» se mira solo sobre los activos más el que se conecta: lo
+ * congelado no se puede usar, no debe ocupar la plaza. Un congelado: 'frozen'.
+ * Crear uno nuevo, en cambio, sigue contando a todos.
+ */
+export function connectReason(clients, freeClientIds, id) {
+  const all = Object.values(clients ?? {});
+  const active = activeClientIds(clients, freeClientIds);
+  if (active !== null && !active.has(id)) return 'frozen';
+  const base = active === null ? all : all.filter((c) => active.has(c.id));
+  return clientLimitReason(base.map((c) => (c.id === id ? { ...c, syncSlotId: 'nuevo', syncOrphan: false } : c)));
 }
 
 /** Plantillas de sesión = las de la pestaña Plantillas; las libres de Inicio no cuentan. */
@@ -114,7 +131,7 @@ export function freeGates({ isPro, clients, freeClientIds, programs, sessionTemp
     isPro: false,
     newClient:          clientLimitReason([...all, { syncSlotId: null }]),
     newConnectedClient: clientLimitReason([...all, { syncSlotId: 'nuevo' }]),
-    connect:   (id) => (frozen(id) ? 'frozen' : clientLimitReason(all.map((c) => (c.id === id ? { ...c, syncSlotId: 'nuevo' } : c)))),
+    connect:   (id) => connectReason(clients, freeClientIds, id),
     client:    (id) => (frozen(id) ? 'frozen' : null),
     newProgramTemplate:    counts.programTemplates >= FREE.programTemplates ? 'programTemplates' : null,
     newSessionTemplate:    counts.sessionTemplates >= FREE.sessionTemplates ? 'sessionTemplates' : null,
