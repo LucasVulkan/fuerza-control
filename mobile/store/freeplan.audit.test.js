@@ -39,8 +39,8 @@ vi.mock('../src/config/supabase', () => ({ migrateLegacySession: async () => {} 
 const { useStore } = await import('./useStore.js');
 const S = () => useStore.getState();
 
-// Secciones fijas que manda DriveBackupScreen.jsx (sin `templates`).
-const DRIVE_SECTIONS = { program: true, log: true, settings: true, customExercises: true, clients: true };
+// Secciones fijas que manda DriveBackupScreen.jsx.
+const DRIVE_SECTIONS = { program: true, log: true, templates: true, customExercises: true, clients: true };
 
 const mk = (id, extra = {}) => ({ id, name: id, status: 'active', syncSlotId: null, activeProgramId: null, ...extra });
 const mkClients = (ids, over = {}) => Object.fromEntries(ids.map((id) => [id, mk(id, over[id])]));
@@ -105,11 +105,11 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     expect(S().ui.paywallReason).toBe(null);
   });
 
-  it('P3 hoy: restaurar de Drive pierde las plantillas de programa del backup (se descartan, no se limitan)', () => {
+  it('P3 arreglado (E38): restaurar de Drive devuelve las plantillas de programa del backup', () => {
     const backup = { version: '4', exportType: 'full_backup', programs: { pt: prog('pt') } };
     S().importData(backup, DRIVE_SECTIONS, { silent: true });
-    expect(S().ui.paywallReason).toBe(null);          // montaje: el import corrió sin error
-    expect(S().programs.pt).toBeUndefined();          // regla: ≤1 debería volver al menos una
+    expect(S().ui.paywallReason).toBe(null);
+    expect(S().programs.pt).toBeTruthy();
   });
 
   it('P4 aceptado (24-oct, decisión 1): importForClient de un fichero con plantillas de sesión las mete todas (mergeFileSessions) (regla R-E1: ≤1)', () => {
