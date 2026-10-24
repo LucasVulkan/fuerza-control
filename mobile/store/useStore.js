@@ -5070,10 +5070,8 @@ export const useStore = create(
         } catch (e) {
           if (e?.userCancelled) return { ok: false, cancelled: true };
           // Already purchased — restore entitlements instead of showing error
-          if (e?.code === 'PRODUCT_ALREADY_PURCHASED') {
-            const isPro = await get().restorePurchases().catch(() => false);
-            return { ok: true, isPro };
-          }
+          if (e?.code === RC.PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR
+              && await get().restorePurchases()) return { ok: true, isPro: true };
           return { ok: false, error: e?.message ?? i18n.t('paywall.errPurchase') };
         }
       },

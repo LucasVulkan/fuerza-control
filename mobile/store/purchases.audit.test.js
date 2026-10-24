@@ -61,6 +61,7 @@ function makeRC({ user = '$RCAnonymousID:1', owners = {}, receipt = null } = {})
   const rc = { user, owners, receipt };
   const of = (id) => rc.owners[id] ?? info();
   return Object.assign(rc, {
+    PURCHASES_ERROR_CODE: { PRODUCT_ALREADY_PURCHASED_ERROR: '6', PAYMENT_PENDING_ERROR: '20', LOG_OUT_ANONYMOUS_USER_ERROR: '22' },
     isConfigured:     vi.fn(async () => true),
     getCustomerInfo:  vi.fn(async () => of(rc.user)),
     logIn:            vi.fn(async (id) => { rc.user = id; return { customerInfo: of(id), created: !rc.owners[id] }; }),
@@ -107,17 +108,22 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     expect(RC.restorePurchases).not.toHaveBeenCalled();
   });
 
-  it('F3 hoy: «ya comprado» (code "6") devuelve {ok:false, error} y no restaura (regla R-F3: restaura y devuelve {ok:true,isPro:true})', async () => {
+  it('F3 arreglado (E44, R-F3): «ya comprado» (code "6") restaura y devuelve {ok:true,isPro:true}', async () => {
     useRC({ owners: { '$RCAnonymousID:viejo': info({ pro: true, lifetime: true }) }, receipt: '$RCAnonymousID:viejo' });
     RC.purchasePackage.mockRejectedValueOnce(rcError('6', 'This product is already active for the user.'));
     const r = await useStore.getState().purchasePackage({ identifier: '$rc_lifetime' });
-    // montaje: la compra se intentó, el error llegó con la forma real del SDK y había algo que restaurar
     expect(RC.purchasePackage).toHaveBeenCalledTimes(1);
-    expect(RC.receipt).toBe('$RCAnonymousID:viejo');
-    expect(RC.owners['$RCAnonymousID:viejo']).toBeTruthy();
-    // hoy
+    expect(RC.restorePurchases).toHaveBeenCalledTimes(1);
+    expect(r).toEqual({ ok: true, isPro: true });
+    expect(isPro()).toBe(true);
+  });
+
+  it('F3b (E44): «ya comprado» y al restaurar no aparece el PRO devuelve {ok:false,error}, nunca ok:true', async () => {
+    useRC();
+    RC.purchasePackage.mockRejectedValueOnce(rcError('6', 'This product is already active for the user.'));
+    const r = await useStore.getState().purchasePackage({ identifier: '$rc_lifetime' });
+    expect(RC.restorePurchases).toHaveBeenCalledTimes(1);
     expect(r).toEqual({ ok: false, error: 'This product is already active for the user.' });
-    expect(RC.restorePurchases).not.toHaveBeenCalled();
     expect(isPro()).toBe(false);
   });
 
