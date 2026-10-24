@@ -313,19 +313,37 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
 });
 
 describe('R-E3 — al volver a pagar se recupera todo', () => {
-  it('P12 hoy: reinstalar sin Pro con 3 huecos con app → ningún programa vuelve, ni tras elegir ni tras pagar (regla R-E3: vuelve al pagar)', async () => {
+  it('P12 arreglado (E39): reinstalar sin Pro con 3 huecos con app → los 3 recuperan su programa aunque nazcan congelados (R-E3)', async () => {
     syncMock.getTrainerSlots.mockResolvedValue(['1', '2', '3'].map((n) => slot(n)));
     syncMock.downloadSlotProgram.mockResolvedValue({ program: prog('p_srv', 'program') });
     await S().refreshTrainerSlots();
     expect(Object.keys(S().clients)).toHaveLength(3);
-    expect(syncMock.downloadSlotProgram).not.toHaveBeenCalled();   // todos congelados al recuperarlos
+    expect(syncMock.downloadSlotProgram).toHaveBeenCalledTimes(3);
+    expect(Object.values(S().clients).every((c) => !!c.activeProgramId && !c.programMissing)).toBe(true);
     const first = Object.keys(S().clients)[0];
     S().setFreeClientIds([first]);
-    expect(S().isClientFrozen(first)).toBe(false);                  // montaje: elegido
+    expect(S().isClientFrozen(first)).toBe(false);
     useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
     await S().refreshTrainerSlots();
-    expect(syncMock.downloadSlotProgram).not.toHaveBeenCalled();   // regla: 3 llamadas
-    expect(Object.values(S().clients).every((c) => !c.activeProgramId)).toBe(true);
+    expect(syncMock.downloadSlotProgram).toHaveBeenCalledTimes(3);   // ya no hay nada que reintentar
+  });
+
+  it('E39: una bajada que falla se reintenta en el siguiente refresco; sin la marca no se reintenta (programa quitado a propósito)', async () => {
+    syncMock.getTrainerSlots.mockResolvedValue([slot('1')]);
+    syncMock.downloadSlotProgram.mockRejectedValueOnce(new Error('red'));
+    await S().refreshTrainerSlots();
+    const id = Object.keys(S().clients)[0];
+    expect(S().clients[id].programMissing).toBe(true);
+    expect(S().clients[id].activeProgramId).toBe(null);
+    syncMock.downloadSlotProgram.mockResolvedValue({ program: prog('p_srv', 'program') });
+    await S().refreshTrainerSlots();
+    expect(S().clients[id].activeProgramId).toBeTruthy();
+    expect(S().clients[id].programMissing).toBeUndefined();
+    // el entrenador le quita el programa: sin marca, el refresco no lo vuelve a bajar
+    useStore.setState((st) => ({ clients: { ...st.clients, [id]: { ...st.clients[id], activeProgramId: null } } }));
+    syncMock.downloadSlotProgram.mockClear();
+    await S().refreshTrainerSlots();
+    expect(syncMock.downloadSlotProgram).not.toHaveBeenCalled();
   });
 });
 

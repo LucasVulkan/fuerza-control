@@ -1081,8 +1081,10 @@ export const useStore = create(
       },
 
       // Mobile: receives parsedData (already parsed JSON) + mode string
-      importForClient: (clientId, parsedData, mode) => {
-        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
+      // `restore`: solo lo usa `_recoverSlotProgram`. Bajar del hueco el programa
+      // que ya era del entrenador no es «recibir» de un congelado (E39).
+      importForClient: (clientId, parsedData, mode, { restore = false } = {}) => {
+        if (!restore && get().isClientFrozen(clientId)) return get()._paywall('frozen');
         let data = parsedData;
         // Un fichero de una versión anterior trae los ids de antes de juntar
         // los ejercicios repetidos (P09-exercise-variants.md §3.3).
@@ -4267,6 +4269,8 @@ export const useStore = create(
                 fullName: '', phone: '', email: '', notes: '',
                 bodyWeight: [], billing: [], status: 'active',
                 syncSlotId:  slot.id,
+                // Aún sin su programa: si la bajada falla, el próximo refresco lo reintenta (E39).
+                programMissing: true,
                 color:       nextIdentityColor(Object.values(next)),
               };
               known.add(slot.id);
@@ -4299,7 +4303,21 @@ export const useStore = create(
             return { clients: next };
           });
 
-          for (const clientId of recovered) await get()._recoverSlotProgram(clientId);
+          // Los de refrescos anteriores que se quedaron sin programa (bajada fallida).
+          // Si ya tienen programa, la marca sobra. `programMissing` solo la ponen las
+          // fichas recuperadas: "sin programa" a secas no distingue de un
+          // programa que el entrenador quitó a propósito.
+          const retry = [];
+          for (const c of Object.values(get().clients)) {
+            if (!c.programMissing || recovered.includes(c.id)) continue;
+            if (c.activeProgramId) {
+              set((s) => {
+                const { programMissing: _quitada, ...rest } = s.clients[c.id];
+                return { clients: { ...s.clients, [c.id]: rest } };
+              });
+            } else if (c.syncSlotId && !c.syncOrphan) retry.push(c.id);
+          }
+          for (const clientId of [...recovered, ...retry]) await get()._recoverSlotProgram(clientId);
         } finally {
           set({ _refreshingSlots: null });
         }
@@ -4309,15 +4327,23 @@ export const useStore = create(
        * Al recuperar un cliente del servidor, su programa vuelve con él: el
        * que hay en el hueco es el último que se le mandó. Se marca como ya
        * enviado, para que no salga «Cambios sin enviar» de algo que es idéntico.
-       * Sin programa, o con el cliente congelado por el plan, no hace nada.
+       * Sin programa en el hueco, no hace nada. Con el cliente congelado SÍ
+       * recupera: bajarlo es devolverle al entrenador lo que ya era suyo, no
+       * recibir del cliente (R-E3, E39). Quita `programMissing` al terminar bien.
        */
       _recoverSlotProgram: async (clientId) => {
         const client = get().clients[clientId];
-        if (!client?.syncSlotId || get().isClientFrozen(clientId)) return;
+        if (!client?.syncSlotId) return;
         try {
           const file = await downloadSlotProgram(client.syncSlotId);
+          if (file?.program) get().importForClient(clientId, file, 'replace', { restore: true });
+          // Sin programa en el hueco no hay nada que reintentar: se limpia también.
+          set((s) => {
+            if (!s.clients[clientId]) return {};
+            const { programMissing: _quitada, ...rest } = s.clients[clientId];
+            return { clients: { ...s.clients, [clientId]: rest } };
+          });
           if (!file?.program) return;
-          get().importForClient(clientId, file, 'replace');
           const programId = get().clients[clientId]?.activeProgramId;
           const built = programId && get()._buildProgramJson(programId, false);
           if (built) {
