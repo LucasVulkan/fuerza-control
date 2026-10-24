@@ -5,7 +5,7 @@
 >
 > Estado: **Reabierto el 23-oct-2026 con 22 fallos nuevos, E27-E48**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
-> por test. **E27, E28, E29 y E32 resueltos** el 24-oct-2026; el resto, sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
+> por test. **E27-E29, E32 y E38-E42 resueltos** el 24-oct-2026; el resto, sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
@@ -140,11 +140,11 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [35](#35) | 🟢 Baja | Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
 | [36](#36) | 🟢 Baja | Usuario cliente borrado desde el panel: el entrenador lo ve invitado | `supabase/schema.sql:157` |
 | [37](#37) | 🟢 Baja | Una subida que llega tarde cae en el hueco del entrenador nuevo | `supabase/schema.sql:499` |
-| [38](#38) | 🟠 Alta | Restaurar desde Drive pierde las plantillas de programa | `src/screens/DriveBackupScreen.jsx:218` |
-| [39](#39) | 🟠 Alta | Reinstalar sin PRO deja a los clientes recuperados sin programa | `store/useStore.js:4311` |
-| [40](#40) | 🟡 Media | Cuando la elección deja de valer, se congela todo | `src/utils/freePlan.js:50` |
-| [41](#41) | 🟡 Media | Con congelados no se puede pasar a la app a uno activo | `store/useStore.js:3879` |
-| [42](#42) | 🟢 Baja | Pulsando rápido: dos clientes con app o la ficha duplicada | `store/useStore.js:791` |
+| [38](#38) | 🟠 Alta | ✅ Restaurar desde Drive pierde las plantillas de programa | `src/screens/DriveBackupScreen.jsx:218` |
+| [39](#39) | 🟠 Alta | ✅ Reinstalar sin PRO deja a los clientes recuperados sin programa | `store/useStore.js:4311` |
+| [40](#40) | 🟡 Media | ✅ Cuando la elección deja de valer, se congela todo | `src/utils/freePlan.js:50` |
+| [41](#41) | 🟡 Media | ✅ Con congelados no se puede pasar a la app a uno activo | `store/useStore.js:3879` |
+| [42](#42) | 🟢 Baja | ✅ Pulsando rápido: dos clientes con app o la ficha duplicada | `store/useStore.js:791` |
 | [43](#43) | 🟢 Baja | El store deja escribir sobre un cliente congelado | `store/useStore.js:835` |
 | [44](#44) | 🟡 Media | «Ya comprado» nunca restaura | `store/useStore.js:5020` |
 | [45](#45) | 🟠 Alta | Cambiar de forma de entrar puede perder el PRO pagado | `store/useStore.js:4920` |
@@ -2590,7 +2590,7 @@ dispositivo (I02-06).
 **Arreglo a estudiar.** Que la subida lleve el `slot_id` que cree tener y que
 el servidor la rechace si no coincide. Encaja con el arreglo de [§27](#27).
 
-## 38. Restaurar desde Drive pierde las plantillas de programa 🟠 {#38}
+## 38. Restaurar desde Drive pierde las plantillas de programa 🟠 ✅ {#38}
 
 > En corto: Al restaurar una copia de Drive, las plantillas de programa no vuelven; solo vuelven sueltas las sesiones que tenían dentro.
 
@@ -2605,7 +2605,11 @@ no conoce.
 **Arreglo previsto.** Que Drive restaure las mismas secciones que el backup
 completo, `templates` incluida.
 
-## 39. Reinstalar sin PRO deja a los clientes recuperados sin programa para siempre 🟠 {#39}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho en `fix/i02-plan-gratis` (`80dc2d2`). Drive pasa `templates: true` y deja de pasar `settings`, que no existía.
+
+## 39. Reinstalar sin PRO deja a los clientes recuperados sin programa para siempre 🟠 ✅ {#39}
 
 > En corto: Si reinstalas sin PRO y tenías más clientes con app de los que caben, los clientes vuelven sin su programa, y ni eligiéndolos ni volviendo a pagar lo recuperan.
 
@@ -2623,7 +2627,11 @@ congelado. Bajar no es «recibir»: es devolver lo que ya era del entrenador.
 Otra opción es reintentar al descongelarse. R-E3 dice que al caducar no se
 pierde nada.
 
-## 40. Cuando la elección de clientes deja de valer, se congela todo 🟡 {#40}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`a7dcd21`, `19c0d55`). `_recoverSlotProgram` baja el programa aunque el cliente esté congelado, con una opción interna `{ restore }` de `importForClient` que solo usa él: el guard sigue para el resto de caminos. Las fichas que crea el refresco llevan `programMissing` y se reintentan en cada refresco hasta recuperarlo. **Límite:** los clientes que ya se quedaron sin programa antes del arreglo no llevan la marca y no se reintentan, porque no se distinguen de uno al que se le quitó a propósito. **La revisión añadió:** si el entrenador asigna otro programa mientras se descarga, ese manda.
+
+## 40. Cuando la elección de clientes deja de valer, se congela todo 🟡 ✅ {#40}
 
 > En corto: Si entra un cliente que no cabe en el plan gratis (vuelve de otra cuenta, llega en un backup), la app congela a todos y obliga a elegir de nuevo, en vez de congelar solo al nuevo.
 
@@ -2644,7 +2652,11 @@ cabe (`freePlan.js:50-55`). Le pasa:
 cabe. Si lo elegido ya no cabe por sí mismo (dos con app), se mantienen por
 orden de elección hasta el tope.
 
-## 41. Con clientes congelados no se puede pasar a la app a uno activo 🟡 {#41}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`93256d6`, `361cb5b`, `19c0d55`). `activeClientIds` recorre lo elegido en orden y **salta** al que ya no cabe, así que se congela solo él. Un suscriptor guarda como elección lo que había cuando, sin PRO, se deja de caber. No actúa en la primera caducidad ni al rehidratar. **En qué se equivocaba el encargo:** pedía actuar solo «con `freeClientIds` vacío», pero una elección vieja (borrar a un elegido y que todo vuelva a caber) lo frenaba y congelaba a un cliente que estaba activo. Lo encontró la revisión y se corrigió con test. P14 (salir de la cuenta y crear otra) se acepta: los de otra cuenta no ocupan plaza en esta.
+
+## 41. Con clientes congelados no se puede pasar a la app a uno activo 🟡 ✅ {#41}
 
 > En corto: Tras caducar el PRO, un entrenador que elige tres clientes sin app no puede pasar a ninguno a la app, aunque el plan gratis le deja tener uno.
 
@@ -2657,7 +2669,11 @@ Encontrado en I02-04 por la pasada adversaria.
 
 **Arreglo previsto.** Contar solo los activos para la puerta de «1 con app».
 
-## 42. Pulsando rápido: dos clientes con app o la misma ficha dos veces 🟢 {#42}
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`79888bb`). La puerta de «1 con app» cuenta solo los activos más el que se conecta (`connectReason`, en `freeGates` y en el store). Un congelado sigue sin poder conectarse.
+
+## 42. Pulsando rápido: dos clientes con app o la misma ficha dos veces 🟢 ✅ {#42}
 
 > En corto: Dos altas o conexiones seguidas pasan las dos el límite de 1 cliente con app, y un refresco que llega en mitad de un alta duplica la ficha.
 
@@ -2678,6 +2694,10 @@ Encontrado en I02-04, por las dos pasadas.
 - Reservar la plaza en el estado (marca «conectando») antes del `await`.
 - Que el refresco no recree un hueco que hay un alta en vuelo.
 - Encaja con [E35](#35).
+
+### ✅ Resuelto (24-oct-2026)
+
+Hecho (`79888bb`). La plaza se reserva con `syncPending` antes del `await`, sin nada en medio, y se suelta en un `finally`. `isConnected` la cuenta y el refresco no crea fichas recuperadas mientras haya una en vuelo. Al rehidratar se limpian las marcas que dejó una app cerrada a mitad. **Queda:** si el servidor creó el hueco y la app murió, el siguiente refresco lo recupera como ficha aparte; ya pasaba antes, y encaja con [E35](#35).
 
 ## 43. El store deja escribir sobre un cliente congelado 🟢 {#43}
 
