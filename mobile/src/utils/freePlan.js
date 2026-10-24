@@ -144,3 +144,19 @@ const OPEN = {
   connect: () => null, client: () => null,
   newProgramTemplate: null, newSessionTemplate: null,
 };
+
+const GRACE_MS = 20 * 86_400_000;
+// `proCheckedAt` es hora del servidor y `nowMs` la del móvil: un día de margen
+// para que un reloj que va un poco atrasado no se tome por uno trucado.
+const CLOCK_SKEW_MS = 86_400_000;
+
+/**
+ * ¿Sigue valiendo el PRO guardado sin red? (R-E5, E46) Hasta el final del
+ * periodo de la última confirmación más 20 días; el pago único no caduca; con el
+ * reloj por debajo de esa confirmación el plazo se da por gastado.
+ */
+export function proStillValid({ proLifetime, proExpiresAt, proCheckedAt }, nowMs) {
+  if (proLifetime) return true;
+  if (nowMs < (proCheckedAt ?? 0) - CLOCK_SKEW_MS) return false;
+  return nowMs <= proExpiresAt + GRACE_MS;
+}

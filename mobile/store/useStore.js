@@ -49,7 +49,7 @@ import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
 import { clientLink } from '../src/utils/clientLink';
-import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds } from '../src/utils/freePlan';
+import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -289,6 +289,14 @@ const INITIAL_PROFILE = {
   // explicitas: EXPO_PUBLIC_FORCE_PRO=true y el interruptor PRO/FREE del menu,
   // que solo existe bajo __DEV__.
   isPro: false,
+  // De la última información de RevenueCat aplicada (E46): fin del periodo, si
+  // es pago único y su fecha. Sin red, `proStillValid` decide con ellos.
+  proExpiresAt: null,
+  proLifetime: false,
+  proCheckedAt: null,
+  // PRO por traspasar desde esta cuenta de RevenueCat (E45): se reintenta al
+  // arrancar: aquí quedan los intentos de arranque que le quedan.
+  proTransferLeft: 0,
   // Con quién sigue sin Pro, si tiene más clientes de los que caben (M01 §4.6).
   // Solo se consulta en ese caso: el valor por defecto no necesita migración.
   freeClientIds: [],
@@ -858,11 +866,18 @@ export const useStore = create(
       /** Sin Pro y fuera de los que caben (§4.5). */
       isClientFrozen: (clientId) => {
         const { profile, clients } = get();
-        return isClientFrozenRule({ isPro: profile.isPro, clients, freeClientIds: profile.freeClientIds }, clientId);
+        return !!clients[clientId] && isClientFrozenRule({ isPro: profile.isPro, clients, freeClientIds: profile.freeClientIds }, clientId);
       },
 
       _assertNotFrozen: (clientId) => {
         if (get().isClientFrozen(clientId)) throw new Error(i18n.t('paywall.frozenError'));
+      },
+
+      /** ¿El programa o la sesión `id` es de un cliente congelado? Lo de entreno no se escribe (E43, R-E2). */
+      _isFrozenOwned: (id) => {
+        const { programs, sessionTemplates } = get();
+        const owner = (programs[id] ?? sessionTemplates[id])?.owner ?? programs[sessionTemplates[id]?.programId]?.owner;
+        return !!owner && owner !== 'me' && get().isClientFrozen(owner);
       },
 
       /** Ya tiene las que da el plan: no puede crear otra. */
@@ -1249,6 +1264,7 @@ export const useStore = create(
       },
 
       updateExerciseParams: (templateId, exerciseId, updates) => {
+        if (get()._isFrozenOwned(templateId)) return get()._paywall('frozen');
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const current = template.exercises.find((ex) => ex.exerciseId === exerciseId);
@@ -1675,6 +1691,7 @@ export const useStore = create(
       },
 
       addExercise: (templateId, exerciseId) => {
+        if (get()._isFrozenOwned(templateId)) return get()._paywall('frozen');
         const template = get().getEffectiveTemplate(templateId);
         const { exerciseLibrary, customExercises } = get();
         const exDef = exerciseLibrary[exerciseId] ?? customExercises[exerciseId];
@@ -1701,6 +1718,7 @@ export const useStore = create(
       },
 
       renameProgram: (programId, newName) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         set((s) => ({
           programs: {
             ...s.programs,
@@ -1722,6 +1740,7 @@ export const useStore = create(
       },
 
       renameSession: (templateId, newName) => {
+        if (get()._isFrozenOwned(templateId)) return get()._paywall('frozen');
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         set((s) => ({
@@ -1770,6 +1789,7 @@ export const useStore = create(
       },
 
       addSessionToProgram: (programId, stageIndex = null) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         const { programs } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
@@ -1916,6 +1936,7 @@ export const useStore = create(
       // hay que pasar SIEMPRE el índice de la etapa base: los peldaños derivan
       // de la base, no del anterior (spec §2.4).
       addStageToProgram: (programId, { rx = null, sourceStageIdx = null, name = null, durationWeeks = 4 } = {}) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         const { programs, sessionTemplates, clients, exerciseLibrary, customExercises } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
@@ -2041,6 +2062,7 @@ export const useStore = create(
       },
 
       updateStage: (programId, stageIndex, updates) => {
+        if (get()._isFrozenOwned(programId)) return get()._paywall('frozen');
         const { programs } = get();
         const program = ensureStages(programs[programId]);
         if (!program) return;
@@ -3308,6 +3330,12 @@ export const useStore = create(
         // Ids de antes de juntar los ejercicios repetidos (P09-exercise-variants.md
         // §3.3): un backup viejo, o el programa de un entrenador sin actualizar.
         migrateExerciseRefs(data, get().getEffectiveLibrary());
+        // Un cliente que ya existe y está congelado no se pisa: ni su programa ni su
+        // log. La ficha sí, como a mano (E43, R-E2).
+        const frozen = (id) => get().isClientFrozen(id);
+        if (data.sessionTemplates) {
+          data = { ...data, sessionTemplates: Object.fromEntries(Object.entries(data.sessionTemplates).filter(([id, t]) => !get()._isFrozenOwned(id) && !get()._isFrozenOwned(t.programId))) };
+        }
         // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
         // de OTRO dueño, esto es una copia, no una actualización. Sin esto,
         // importar como propio el programa de un cliente se lo quita — su ficha
@@ -3495,6 +3523,10 @@ export const useStore = create(
               Object.entries(data.clients ?? {}).map(([id, c]) => {
                 const rest = { ...c };
                 delete rest.programIds;
+                if (frozen(id)) {   // lo de entreno no se pisa: apunta a un programa que no entra
+                  const { activeProgramId, nextOverrides, overridesDirty, progress } = s.clients[id];
+                  Object.assign(rest, { activeProgramId, nextOverrides, overridesDirty, progress });
+                }
                 return [id, rest];
               }),
             );
@@ -3523,7 +3555,7 @@ export const useStore = create(
             // apunta a un programa que no existe. `needsTemplateData` ya
             // incluye esta sección, así que sus sessionTemplates entran.
             const owned = Object.fromEntries(
-              Object.entries(allFilePrograms).filter(([, p]) => isClients(p)),
+              Object.entries(allFilePrograms).filter(([, p]) => isClients(p) && !frozen(p.owner)),
             );
             updates.programs = { ...(updates.programs ?? basePrograms), ...owned };
 
@@ -4066,6 +4098,7 @@ export const useStore = create(
       // A one-off prescription for the NEXT occurrence of a client's session.
       // Stored on the client; delivered to the client and consumed there later.
       setOverrideTarget: (clientId, templateId, exerciseId, patch) => {
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         set((s) => {
           const client = s.clients[clientId];
           if (!client) return {};
@@ -4091,6 +4124,7 @@ export const useStore = create(
       },
 
       clearOverride: (clientId, templateId) => {
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
         set((s) => {
           const client = s.clients[clientId];
           if (!client) return {};
@@ -4318,7 +4352,8 @@ export const useStore = create(
                 syncLeftAt:          !slot.client_id && slot.disconnected_at ? slot.disconnected_at : null,
                 // La etapa que pinta la lista sigue al cliente sin abrir su
                 // ficha (C04-qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
-                progress:            slot.progress ?? c.progress,
+                // A un congelado solo se le actualiza el contador (E43, R-E2).
+                progress:            get().isClientFrozen(clientId) ? c.progress : (slot.progress ?? c.progress),
               };
             }
 
@@ -4924,24 +4959,27 @@ export const useStore = create(
         if (trainerSync.userId) await _ensureTrainerSession(trainerSync);
 
         if (trainerSync.userId) await deleteTrainerUser();
-        if (await clientSessionUserId()) await deleteClientUser();
         await signOutTrainer().catch(() => {});
-        await signOutClient().catch(() => {});
         await get()._purchasesLogOut();
-
         set((s) => ({
           trainerLoginNeeded: false,
+          profile: { ...s.profile, proTransferLeft: 0 },
           trainerSync: {
             ...s.trainerSync,
             mode: 'offline', code: null, userId: null, email: null,
             trainerName: null, lastSeenSessionsCount: {}, deletedSlotIds: [],
           },
-          clientSync: { ...EMPTY_CLIENT_SYNC },
           clients: Object.fromEntries(Object.entries(s.clients).map(([id, c]) => [id, c.syncSlotId ? {
             ...c, syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false, syncLeftAt: null,
             programDirty: false, overridesDirty: false, programUploadedSig: null,
           } : c])),
         }));
+
+        // Con el mismo usuario en los dos papeles la primera llamada ya lo borró (E33)
+        const clientId = await clientSessionUserId();
+        if (clientId && clientId !== trainerSync.userId) await deleteClientUser();
+        await signOutClient().catch(() => {});
+        set({ clientSync: { ...EMPTY_CLIENT_SYNC } });
 
         return { ok: true };
       },
@@ -4976,13 +5014,13 @@ export const useStore = create(
         try {
           if (!(await RC.isConfigured())) return; // sin clave o build preview
           const wasPro = get().profile.isPro;
-          const { customerInfo } = await RC.logIn(userId);
-          let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
-          if (switched && wasPro && !isPro) {
-            const info = await RC.restorePurchases();
-            isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
+          // «PRO por traspasar»: si logIn o restaurar fallan, App.js reintenta al arrancar (E45)
+          if (switched && wasPro) {
+            set((s) => ({ profile: { ...s.profile, proTransferLeft: 2 } }));
           }
-          set((s) => ({ profile: { ...s.profile, isPro } }));
+          const { customerInfo } = await RC.logIn(userId);
+          if (get()._applyCustomerInfo(customerInfo) || !(switched && wasPro)) return;
+          get()._applyCustomerInfo(await RC.restorePurchases());
         } catch (err) {
           console.warn('[RevenueCat] logIn:', err?.message);
         }
@@ -4995,24 +5033,50 @@ export const useStore = create(
         try {
           if (!(await RC.isConfigured())) return;
           await RC.logOut();
-        } catch { /* ya era anónimo */ }
+        } catch (e) {
+          if (e?.code !== RC.PURCHASES_ERROR_CODE.LOG_OUT_ANONYMOUS_USER_ERROR) {
+            // La cuenta se va a borrar: el PRO vuelve con Restaurar
+            set((s) => ({ profile: { ...s.profile, isPro: false } }));
+            return;
+          }
+        }
         await get().checkProStatus();
       },
 
       /**
+       * Único punto que vuelca un customerInfo en el perfil (E46). Una respuesta
+       * más nueva (`requestDate`) que la última aplicada manda. Si no lo es —la
+       * caché del SDK, o ningún `info` por falta de red— solo puede mantener el
+       * PRO mientras `proStillValid` lo diga (R-E5); y una respuesta vieja que
+       * llega tarde no pisa a una nueva (E45-c). Devuelve el `isPro` resultante.
+       */
+      _applyCustomerInfo: (info) => {
+        const p = get().profile;
+        const at = Date.parse(info?.requestDate);
+        const ent = info?.entitlements.active[RC_PRO_ENTITLEMENT];
+        const patch = at > (p.proCheckedAt ?? 0)
+          ? {
+            isPro: !!ent, proCheckedAt: at,
+            proExpiresAt: ent?.expirationDateMillis ?? null,
+            proLifetime: !!ent && ent.expirationDateMillis == null,
+            ...(ent ? { proTransferLeft: 0 } : {}),
+          }
+          : { isPro: !!p.isPro && proStillValid(p, Date.now()) };
+        set((s) => ({ profile: { ...s.profile, ...patch } }));
+        return patch.isPro;
+      },
+
+      /**
        * Fetches the current entitlements from RevenueCat and syncs isPro.
-       * Call on app launch (after RC is configured) and after purchase/restore.
+       * Call on app launch (after RC is configured), on foreground and after purchase/restore.
        */
       checkProStatus: async () => {
         const RC = get()._getRC();
-        if (!RC) return get().profile.isPro;
+        if (!RC || !(await RC.isConfigured())) return get().profile.isPro;
         try {
-          const info = await RC.getCustomerInfo();
-          const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
-          set((s) => ({ profile: { ...s.profile, isPro } }));
-          return isPro;
+          return get()._applyCustomerInfo(await RC.getCustomerInfo());
         } catch {
-          return get().profile.isPro;
+          return get()._applyCustomerInfo(null);
         }
       },
 
@@ -5053,43 +5117,34 @@ export const useStore = create(
         }
       },
 
-      /** Purchases a RevenueCat Package. Returns { ok, isPro } or { ok: false, cancelled, error }. */
+      /** Purchases a RevenueCat Package. Returns { ok, isPro }, { ok: false, pending } or { ok: false, cancelled, error }. */
       purchasePackage: async (pkg) => {
         const RC = get()._getRC();
         if (!RC) return { ok: false, error: i18n.t('paywall.errUnavailable') };
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
-          let isPro = !!customerInfo.entitlements.active[RC_PRO_ENTITLEMENT];
-          // Entitlement may take a moment to propagate — re-check once after a short delay
-          if (!isPro) {
-            await new Promise((r) => setTimeout(r, 2000));
-            isPro = await get().checkProStatus();
-          }
-          set((s) => ({ profile: { ...s.profile, isPro } }));
-          return { ok: true, isPro };
+          // Sin PRO en la respuesta, no se dice «hecho»: lo pondrá el listener de App.js cuando llegue
+          return get()._applyCustomerInfo(customerInfo) ? { ok: true, isPro: true } : { ok: false, pending: true };
         } catch (e) {
           if (e?.userCancelled) return { ok: false, cancelled: true };
+          if (e?.code === RC.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) return { ok: false, pending: true };
           // Already purchased — restore entitlements instead of showing error
-          if (e?.code === 'PRODUCT_ALREADY_PURCHASED') {
-            const isPro = await get().restorePurchases().catch(() => false);
-            return { ok: true, isPro };
-          }
+          if (e?.code === RC.PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR
+              && await get().restorePurchases()) return { ok: true, isPro: true };
           return { ok: false, error: e?.message ?? i18n.t('paywall.errPurchase') };
         }
       },
 
-      /** Restores previous purchases and syncs isPro. */
-      restorePurchases: async () => {
+      /** Restores previous purchases and syncs isPro. `silent`: sin avisos (el reintento de arranque, E45). */
+      restorePurchases: async ({ silent = false } = {}) => {
         const RC = get()._getRC();
         if (!RC) return false;
         try {
-          const info = await RC.restorePurchases();
-          const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
-          set((s) => ({ profile: { ...s.profile, isPro } }));
-          get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
+          const isPro = get()._applyCustomerInfo(await RC.restorePurchases());
+          if (!silent) get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
           return isPro;
         } catch {
-          get().showToast(i18n.t('paywall.restoreError'), 2200, 'error');
+          if (!silent) get().showToast(i18n.t('paywall.restoreError'), 2200, 'error');
           return false;
         }
       },
@@ -5179,6 +5234,10 @@ export const useStore = create(
           // «Nuevo programa» desde la app no se retoma (O03 §25.4.7): lo ya
           // creado sigue en Programa. Sin esto arrancaría en el recorrido.
           if (state.onboardingFlow?.entry === 'newProgram') state.onboardingFlow = null;
+
+          // Un PRO guardado sin fecha empieza a contar sus 20 días sin red ahora (R-E5)
+          const pro = state.profile;
+          if (pro?.isPro && pro.proExpiresAt == null && !pro.proLifetime) pro.proExpiresAt = Date.now();
 
           // Apply language from persisted profile
           if (state.profile?.language) {

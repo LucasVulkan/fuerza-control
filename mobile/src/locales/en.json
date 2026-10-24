@@ -1096,6 +1096,7 @@
     "restore": "Restore purchase",
     "signIn": "I have an account",
     "processing": "Purchase processed, syncing…",
+    "pending": "Your payment is pending confirmation. You'll get PRO as soon as the store confirms it.",
     "errTitle": "Couldn't complete the purchase",
     "errPurchase": "Couldn't process the purchase",
     "errUnavailable": "Purchases aren't available here",

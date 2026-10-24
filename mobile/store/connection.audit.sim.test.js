@@ -226,7 +226,7 @@ describe('H10 — huecos regalados a otro entrenador', () => {
 });
 
 describe('H12 — borrar la cuenta con el mismo Google en los dos papeles', () => {
-  it('H12 hoy: deleteAccount lanza «Sesión no válida» y no limpia el estado (regla R-D4: termina con {ok:true})', async () => {
+  it('H12 arreglado (E33, R-D4): deleteAccount termina con {ok:true} y deja el móvil sin cuenta', async () => {
     const x = await phone('mixto');
     const coach = await phone('su entrenador');
     await x.s.enterTrainerAccount(google('x'));
@@ -236,13 +236,13 @@ describe('H12 — borrar la cuenta con el mismo Google en los dos papeles', () =
     await x.s.linkGoogleForClient(google('x'));
     expect(x.s.clientSync.supabaseUserId).toBe(x.s.trainerSync.userId);   // mismo uid en los dos papeles
 
-    await expect(x.s.deleteAccount()).rejects.toThrow('Sesión no válida');
-    // En el servidor ya se borró todo en la primera llamada…
-    expect(await server.admin('select id from auth.users where id = $1', [x.s.trainerSync.userId])).toEqual([]);
-    expect((await slotOf(slotIdOf(coach, me.clientId))).client_id).toBeNull();
-    // …pero el móvil sigue como si tuviera cuenta.
-    expect(x.s.trainerSync.mode).toBe('google');
-    expect(x.s.clientSync.slotId).toBeTruthy();
+    const uid = x.s.trainerSync.userId;
+    const slotId = slotIdOf(coach, me.clientId);
+    expect(await x.s.deleteAccount()).toEqual({ ok: true });
+    expect(await server.admin('select id from auth.users where id = $1', [uid])).toEqual([]);
+    expect((await slotOf(slotId)).client_id).toBeNull();
+    expect(x.s.trainerSync.mode).toBe('offline');
+    expect(x.s.clientSync.slotId).toBeFalsy();
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { fitsFree, clientLimitReason, templateCounts, activeClientIds, needsClientChoice, isClientFrozen, lockedClientIds, canChooseMore, freeGates } from './freePlan';
+import { fitsFree, clientLimitReason, templateCounts, activeClientIds, needsClientChoice, isClientFrozen, lockedClientIds, canChooseMore, freeGates, proStillValid } from './freePlan';
 
 const manual = (id) => ({ id, syncSlotId: null });
 const conn   = (id) => ({ id, syncSlotId: `slot_${id}` });
@@ -113,5 +113,22 @@ describe('freeGates — lo que las pantallas marcan con PRO', () => {
     const g = freeGates({ isPro: true });
     expect(g.client('x')).toBe(null);
     expect(g.newClient).toBe(null);
+  });
+});
+
+describe('proStillValid — PRO sin red, periodo pagado + 20 días (R-E5)', () => {
+  const DAY = 86_400_000;
+  const T = Date.parse('2026-10-01T10:00:00Z');
+  const sub = { proExpiresAt: T, proCheckedAt: T - 10 * DAY };
+  test.each([
+    ['pago único, años después', { proLifetime: true }, T + 900 * DAY, true],
+    ['dentro del periodo', sub, T - DAY, true],
+    ['19 días tras caducar', sub, T + 19 * DAY, true],
+    ['21 días tras caducar', sub, T + 21 * DAY, false],
+    ['reloj por debajo de la última confirmación', sub, T - 12 * DAY, false],
+    ['reloj unas horas por detrás del servidor', sub, T - 10 * DAY - 3_600_000, true],
+    ['sin fecha', {}, T, false],
+  ])('%s', (_, profile, now, expected) => {
+    expect(proStillValid(profile, now)).toBe(expected);
   });
 });

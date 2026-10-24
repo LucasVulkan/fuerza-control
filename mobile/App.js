@@ -39,7 +39,7 @@ import { parseInviteUrl } from './src/config/web';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
 import { registerBackupTask } from './src/tasks/driveBackupTask';
-import { RC_ANDROID_API_KEY, RC_IOS_API_KEY, RC_PRO_ENTITLEMENT } from './src/config/revenuecat';
+import { RC_ANDROID_API_KEY, RC_IOS_API_KEY } from './src/config/revenuecat';
 import { useStore } from './store/useStore';
 
 // Ventana mínima entre dos comprobaciones de programa. Cambiar de app y volver
@@ -154,10 +154,12 @@ export default function App() {
     };
     pull();
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') pull();
+      if (next !== 'active') return;
+      pull();
+      checkProStatus();   // sin red el PRO guardado caduca (R-E5)
     });
     return () => sub.remove();
-  }, [checkAndPullProgramUpdates]);
+  }, [checkAndPullProgramUpdates, checkProStatus]);
 
   // Initialise RevenueCat then sync pro status (native module — silently skipped in Expo Go)
   // EXPO_PUBLIC_FORCE_PRO=true skips the RC check (used in preview builds for testing)
@@ -184,15 +186,18 @@ export default function App() {
       }
       const appUserID = useStore.getState().trainerSync.userId ?? undefined;
       Purchases.configure({ apiKey, appUserID });
-      checkProStatus();
+      checkProStatus().then(() => {
+        // Un cambio de cuenta que no llegó a mover el PRO se reintenta, en silencio, como mucho 3 veces (E45)
+        const left = useStore.getState().profile.proTransferLeft;
+        if (!left) return;
+        useStore.setState((s) => ({ profile: { ...s.profile, proTransferLeft: left - 1 } }));
+        useStore.getState().restorePurchases({ silent: true });
+      });
       // Sin esto `isPro` solo se miraba al arrancar en frío y al cambiar de
       // cuenta: una concesión, una revocación o una caducidad con la app
       // suspendida no se veía hasta cerrarla del todo. El SDK refresca solo al
       // volver a primer plano y avisa aquí de cada cambio.
-      const onInfo = (info) => {
-        const isPro = !!info.entitlements.active[RC_PRO_ENTITLEMENT];
-        useStore.setState((s) => ({ profile: { ...s.profile, isPro } }));
-      };
+      const onInfo = (info) => useStore.getState()._applyCustomerInfo(info);
       Purchases.addCustomerInfoUpdateListener(onInfo);
       return () => Purchases.removeCustomerInfoUpdateListener(onInfo);
     } catch {
