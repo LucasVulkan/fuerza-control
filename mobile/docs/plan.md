@@ -6,12 +6,12 @@
 M02
 P16
 U12
-T08
-M05
 
 ## Versión publica 1.0.0
 M02-07
 A01
+M05
+T08
 I01
 U15
 M04

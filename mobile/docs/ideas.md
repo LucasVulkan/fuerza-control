@@ -39,3 +39,7 @@ En el historial de sesiones, poder copiar una sesión como texto, con el mismo f
 ## P17 · Etapas con objetivos de rendimiento
 
 explorar si es posible que una etapa dure hasta que consigas X objetivos de rendimeinto. % de mejora, de reps, de un ejercicio o del global, volumen, carga determinada.
+
+## Backup en la Landing
+
+Hablar del backup con drive y del backup y sistema de archivos en la landing.
