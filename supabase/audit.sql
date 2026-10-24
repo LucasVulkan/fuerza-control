@@ -43,14 +43,18 @@ union all
 -- Política de escritura en la tabla: no debe haber ninguna (todo va por funciones).
 select 'política de escritura', policyname
   from pg_policies
- where schemaname = 'public' and tablename = 'trainer_clients' and cmd <> 'SELECT'
+ where schemaname = 'public'
+   and (   (tablename = 'trainer_clients' and cmd <> 'SELECT')
+        or tablename = 'transfer_offers')   -- ni leer: una oferta falsa robaría huecos
 
 union all
 -- Permiso de escritura directo sobre la tabla.
 select 'permiso de escritura directo', grantee || ' ' || privilege_type
   from information_schema.role_table_grants
- where table_schema = 'public' and table_name = 'trainer_clients'
-   and grantee in ('anon', 'authenticated') and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+ where table_schema = 'public'
+   and grantee in ('anon', 'authenticated')
+   and (   (table_name = 'trainer_clients' and privilege_type in ('INSERT', 'UPDATE', 'DELETE'))
+        or table_name = 'transfer_offers')
 
 union all
 -- Funciones que ya no deben existir.

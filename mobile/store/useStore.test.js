@@ -948,6 +948,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     const res = await useStore.getState().createTrainerCodeAccount();
     expect(res).toEqual({ code: 'CCCC-CCCC-CCCC', userId: 'uuid-C' });
     expect(syncMock.offerTransfer).toHaveBeenCalledWith('slots', 'uuid-C');
+    expect(syncMock.acceptTransfer).toHaveBeenCalledWith('slots', 'uuid-A', undefined);
     expect(RC.logIn).toHaveBeenCalledWith('uuid-C');
   });
 

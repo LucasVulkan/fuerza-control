@@ -306,6 +306,29 @@ describe('H7 — pasar un asiento que no se tiene falla', () => {
     await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
     expect((await bad(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).message).toBe('NO_SEAT');
   });
+
+  it('E32 decisión: origen sin asiento y destino sentado da 0 y no mueve nada (reintento)', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const g = await gugl('g', 'cli');
+    await link(g, K, S);
+    const x = await anon('x');                                    // sin asiento
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect(await ok(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).toBe(0);
+    expect((await slotOf(S)).client_id).toBe(g.id);
+  });
+});
+
+describe('E29 — transfer_offers no se toca desde fuera', () => {
+  it('nadie lee ni escribe ofertas directamente (una oferta falsa robaría huecos)', async () => {
+    const atk = await account('atk', 'WXYZ-WXYZ-WXYZ');
+    const v = await account('v', 'ABCD-EFGH-JKLM');
+    const ins = await atk.db.from('transfer_offers').insert({ from_id: v.id, to_id: atk.id, kind: 'slots' });
+    expect(ins.error).toBeTruthy();
+    const sel = await atk.db.from('transfer_offers').select('*');
+    expect(sel.error).toBeTruthy();                               // 42501: sin permiso, ni para leer
+    expect((await bad(atk.db, 'accept_transfer', { p_kind: 'slots', p_from: v.id })).message).toBe('NO_OFFER');
+  });
 });
 
 describe('H8 — client_upload_history suma, no reemplaza', () => {
@@ -359,6 +382,11 @@ describe('E28 — _merge_history', () => {
     const k = await merge({ entries: [], progress: { v: 'viejo' } }, { entries: E('z') });
     expect(k).toMatchObject({ customExercises: {}, progress: { v: 'viejo' } });
     expect(k.entries).toEqual([{ id: 'z' }]);
+  });
+
+  it('progress: null (sin programa activo) no borra el progreso que había', async () => {
+    const m = await merge({ entries: [], customExercises: { a: 1 }, progress: { v: 'viejo' } }, { entries: [], customExercises: null, progress: null });
+    expect(m).toMatchObject({ customExercises: { a: 1 }, progress: { v: 'viejo' } });
   });
 });
 

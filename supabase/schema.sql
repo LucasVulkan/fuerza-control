@@ -291,8 +291,10 @@ as $$
             or (e->>'id') not in (select n->>'id' from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
                                    where n->>'id' is not null)
       ), '[]'::jsonb) || coalesce(p_new->'entries', '[]'::jsonb),
-    'customExercises', coalesce(p_old->'customExercises', '{}'::jsonb) || coalesce(p_new->'customExercises', '{}'::jsonb),
-    'progress', coalesce(p_new->'progress', p_old->'progress')
+    'customExercises', coalesce(nullif(p_old->'customExercises', 'null'::jsonb), '{}'::jsonb)
+                    || coalesce(nullif(p_new->'customExercises', 'null'::jsonb), '{}'::jsonb),
+    -- `progress: null` llega de verdad (sin programa activo): es null de JSON, no de SQL.
+    'progress', coalesce(nullif(p_new->'progress', 'null'::jsonb), p_old->'progress')
   ) end;
 $$;
 
@@ -583,9 +585,10 @@ end;
 $$;
 
 -- Devuelve las filas movidas. 'slots': todos los huecos de p_from pasan al que
--- llama. 'seat': el asiento de p_from pasa al que llama (SEAT_TAKEN si ya
--- ocupa otro; NO_SEAT si no hay asiento que pasar; 0 si ya lo ocupa, que es el
--- reintento tras un corte).
+-- llama. 'seat': el asiento de p_from pasa al que llama. SEAT_TAKEN si los dos
+-- tienen asiento; NO_SEAT si ninguno lo tiene; 0 si solo lo tiene el destino:
+-- es el reintento tras un corte (la app suelta antes cualquier otro asiento
+-- suyo, así que el que tiene es el que se le pasó).
 create or replace function public.accept_transfer(p_kind text, p_from uuid)
 returns integer
 language plpgsql
