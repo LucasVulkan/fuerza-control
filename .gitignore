@@ -35,3 +35,7 @@ mobile/docs/estado.html
 
 # Scratch del CLI de Supabase (cache de la version descargada), no del proyecto
 supabase/.temp/
+
+# Mutación (I01-01): informe y copias temporales de Stryker
+reports/
+.stryker-tmp/
