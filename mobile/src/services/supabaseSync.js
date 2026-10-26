@@ -197,9 +197,13 @@ export function uploadHistory(entries, customExercises = {}, progress = null, sl
   });
 }
 
-/** Suelta el asiento; el historial y lo demás se quedan en el hueco (R-B6). Devuelve cuántos (0 no es error). */
-export async function releaseClientSlot(db = clientSupabase) {
-  return (await rpc(db, 'release_client_slot', {})) ?? 0;
+/**
+ * Suelta el asiento; el historial y lo demás se quedan en el hueco (R-B6).
+ * Con `slotId`, solo ese: si el cliente ya está en otro, SLOT_CHANGED (E66).
+ * Devuelve cuántos (0 no es error).
+ */
+export async function releaseClientSlot(db = clientSupabase, slotId = null) {
+  return (await rpc(db, 'release_client_slot', { p_slot_id: slotId })) ?? 0;
 }
 
 // ═══ Traspasos (E29) ══════════════════════════════════════════════════════════

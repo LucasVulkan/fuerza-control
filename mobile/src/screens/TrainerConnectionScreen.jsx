@@ -118,10 +118,11 @@ export default function TrainerConnectionScreen() {
   }
 
   // Si hay entrenos que no llegan, el store no desconecta y dice cuántos (E51).
-  // Sin el servidor no se desconecta (E52).
+  // Sin red se desconecta igual y el servidor se entera después (E52); si el
+  // asiento cambió en otro móvil, no se desconecta (E66).
   async function disconnect(force) {
     try {
-      const { unsent } = await disconnectFromTrainer({ force });
+      const { unsent, offline, changed } = await disconnectFromTrainer({ force });
       if (unsent) {
         showDialog(t('trainer.unsentTitle'), t('trainer.unsentBody', { count: unsent }), [
           { text: t('common.cancel'), style: 'cancel' },
@@ -129,9 +130,14 @@ export default function TrainerConnectionScreen() {
         ]);
         return;
       }
+      if (changed) {
+        showDialog(t('trainer.disconnectTitle'), t('trainer.seatChanged', { trainer: useStore.getState().clientSync.trainerName || t('trainer.unnamedTrainer') }));
+        return;
+      }
+      if (offline) showToast(t('trainer.disconnectedOffline'), 3200);
       navigation.goBack();
     } catch {
-      showDialog(t('trainer.disconnectTitle'), t('trainer.disconnectOffline'));
+      showToast(t('header.toastSyncFailed'), 2200, 'error');
     }
   }
 

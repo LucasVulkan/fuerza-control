@@ -317,6 +317,21 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     expect(row.program_json).toEqual({ program: { name: 'Fuerza' } });   // el programa sí se queda
   });
 
+  it('E66: release_client_slot con el id suelta solo ese asiento; si el cliente está en otro, SLOT_CHANGED y no toca nada', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    const A = await slotWithProgram(a);
+    const B = await slotWithProgram(b);
+    const x = await anon('x');
+    await link(x, B.K, B.S);
+
+    expect((await bad(x.db, 'release_client_slot', { p_slot_id: A.S })).message).toBe('SLOT_CHANGED');
+    expect((await slotOf(B.S)).client_id).toBe(x.id);
+    expect(await ok(x.db, 'release_client_slot', { p_slot_id: B.S })).toBe(1);
+    expect((await slotOf(B.S)).client_id).toBeNull();
+    expect(await ok(x.db, 'release_client_slot', { p_slot_id: B.S })).toBe(0);   // sin asiento, soltar no es un error
+  });
+
   it('H6 regla R-B6 (E27): entrar en otro hueco suelta el anterior sin vaciarle el historial', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');

@@ -689,7 +689,12 @@ $$;
 -- prescripciones, el programa, el nombre y el código se quedan en el hueco: son
 -- del entrenador, que decide qué hacer con ellos. Solo borrar la cuenta vacía
 -- el historial del cliente (`delete-account`, excepción de R-C4).
-create or replace function public.release_client_slot()
+-- `p_slot_id` dice qué asiento cree soltar el móvil (E66): un móvil solo suelta
+-- el asiento que tiene. Si el cliente ya está en otro (lo cambió otro móvil con
+-- la misma cuenta), SLOT_CHANGED y no se toca nada. Sin él (móviles con la
+-- versión vieja), el asiento que tenga.
+drop function if exists public.release_client_slot();
+create or replace function public.release_client_slot(p_slot_id uuid default null)
 returns integer
 language plpgsql
 security definer
@@ -699,8 +704,12 @@ declare v_count integer;
 begin
   update public.trainer_clients
      set client_id = null, disconnected_at = now()
-   where client_id = public._caller();
+   where client_id = public._caller() and (p_slot_id is null or id = p_slot_id);
   get diagnostics v_count = row_count;
+  if v_count = 0 and p_slot_id is not null
+     and exists (select 1 from public.trainer_clients where client_id = public._caller()) then
+    raise exception 'SLOT_CHANGED';
+  end if;
   return v_count;
 end;
 $$;
@@ -797,7 +806,7 @@ begin
     'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
     'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot(uuid)',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
@@ -809,7 +818,7 @@ begin
     'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
     'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot(uuid)',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('grant execute on function public.%s to authenticated', f);

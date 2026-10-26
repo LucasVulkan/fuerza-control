@@ -125,6 +125,7 @@ const EMPTY_CLIENT_SYNC = {
   trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
   linkedAt:              null,  // ISO — when the client connected (free sessions before this stay private)
   pendingOverrides:      {},    // { [templateId]: override } — trainer's next-session prescriptions, consumed on save
+  releaseDue:            null,  // slotId que se soltó aquí pero no en el servidor (sin red); `_flushRelease` lo reintenta (E52)
 };
 
 // La cuenta de Google/Apple con la que un cliente busca su asiento en otro
@@ -4679,6 +4680,7 @@ export const useStore = create(
             trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),
             pendingOverrides:       {},
+            releaseDue:             null,   // entrar en un asiento suelta el anterior en el servidor
           },
         }));
         if (carry) await get().uploadHistoryToTrainer();
@@ -4710,6 +4712,7 @@ export const useStore = create(
        */
       checkAndPullProgramUpdates: async () => {
         const { clientSync } = get();
+        if (clientSync.releaseDue) await get()._flushRelease();
         if (!clientSync.slotId || clientSync.lostAt) return;
 
         try {
@@ -4891,6 +4894,13 @@ export const useStore = create(
        * Disconnects the client from their trainer. Antes de soltar el asiento
        * intenta subir lo pendiente; si no puede, NO desconecta y devuelve
        * `{ unsent }` para que la pantalla pregunte (E51). `force` salta eso.
+       *
+       * Desconectarse se hace en el móvil al momento; el servidor se entera en
+       * cuanto hay red (E52): sin red se desconecta igual, devuelve
+       * `{ offline: true }` y `releaseDue` guarda el asiento por soltar. Un móvil
+       * solo suelta el asiento que tiene (E66): si el servidor dice que el
+       * cliente ya está en otro, se adopta ese, NO se desconecta y devuelve
+       * `{ changed: true }`.
        */
       unlinkFromTrainer: async ({ keepProgram = false, force = false } = {}) => {
         const { clientSync } = get();
@@ -4901,9 +4911,19 @@ export const useStore = create(
 
         // Soltar el hueco en el servidor ANTES de limpiar el estado local: hace
         // falta la sesión del cliente para que la RPC sepa qué fila es suya.
-        // Si el servidor no confirma, LANZA y no se toca nada: desconectarse
-        // solo en local dejaba al entrenador viendo al cliente dentro (E52, R-B6).
-        if (clientSync.slotId && !clientSync.lostAt) await releaseClientSlot();
+        let releaseDue = null;
+        if (clientSync.slotId && !clientSync.lostAt) {
+          try {
+            await releaseClientSlot(undefined, clientSync.slotId);
+          } catch (err) {
+            if (err.code === 'SLOT_CHANGED') {
+              await get()._adoptSeat({ userId: await clientSessionUserId() });
+              return { unsent: 0, changed: true };
+            }
+            if (err.code !== 'NETWORK') throw err;
+            releaseDue = clientSync.slotId;
+          }
+        }
 
         // Restore previous activeProgramId if we saved one on link.
         // Skip when keepProgram=true — e.g. the user just created a new program
@@ -4915,9 +4935,26 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { ...EMPTY_CLIENT_SYNC },
+          clientSync: { ...EMPTY_CLIENT_SYNC, releaseDue },
         }));
-        return { unsent: 0 };
+        return { unsent: 0, offline: !!releaseDue };
+      },
+
+      /**
+       * Suelta en el servidor el asiento que `unlinkFromTrainer` soltó sin red.
+       * Con éxito, o con cualquier respuesta del servidor (ya no es suyo, otro
+       * asiento), no queda nada por soltar; sin red se queda para la próxima.
+       * Entrar en un asiento (`_adoptSeat`) vacía `clientSync`, y con él esto.
+       */
+      _flushRelease: async () => {
+        const slotId = get().clientSync.releaseDue;
+        if (!slotId) return;
+        try {
+          await releaseClientSlot(undefined, slotId);
+        } catch (err) {
+          if (err.code === 'NETWORK') return;
+        }
+        set((s) => (s.clientSync.releaseDue === slotId ? { clientSync: { ...s.clientSync, releaseDue: null } } : {}));
       },
 
       // ══════════════════════════════════════════════════════════════════════
