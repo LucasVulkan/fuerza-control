@@ -67,9 +67,9 @@ alter table public.trainer_clients add column if not exists sessions_count      
 alter table public.trainer_clients add column if not exists overrides_json       jsonb;
 alter table public.trainer_clients add column if not exists overrides_updated_at timestamptz;
 alter table public.trainer_clients add column if not exists disconnected_at      timestamptz;
--- Quién estaba dentro cuando otro entró con el código, para decírselo (§8).
-alter table public.trainer_clients add column if not exists displaced_client_id  uuid;
-alter table public.trainer_clients add column if not exists displaced_at         timestamptz;
+-- Antes guardaban aquí quién desalojó a quién; ahora es `seat_losses`, por usuario.
+alter table public.trainer_clients drop column if exists displaced_client_id;
+alter table public.trainer_clients drop column if exists displaced_at;
 
 
 -- ── 2. Códigos de cliente ───────────────────────────────────────────────────
@@ -204,6 +204,17 @@ create table if not exists public.transfer_offers (
 );
 alter table public.transfer_offers enable row level security;
 revoke all on public.transfer_offers from anon, authenticated;
+
+-- Por qué perdió el asiento cada cliente (E34), para decírselo. Una fila por
+-- usuario: 'taken' (alguien entró con su código) o 'gone' (el entrenador lo
+-- quitó). Sin fila, 'gone'. Sin políticas ni permisos, como `transfer_offers`.
+create table if not exists public.seat_losses (
+  client_id uuid primary key references auth.users on delete cascade,
+  reason    text not null,
+  at        timestamptz not null default now()
+);
+alter table public.seat_losses enable row level security;
+revoke all on public.seat_losses from anon, authenticated;
 
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
@@ -399,9 +410,16 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare v_client uuid;
 begin
-  delete from public.trainer_clients where id = p_slot_id and trainer_id = public._trainer();
-  return found;
+  delete from public.trainer_clients where id = p_slot_id and trainer_id = public._trainer()
+  returning client_id into v_client;
+  if not found then return false; end if;
+  if v_client is not null then
+    insert into public.seat_losses (client_id, reason) values (v_client, 'gone')
+    on conflict (client_id) do update set reason = 'gone', at = now();
+  end if;
+  return true;
 end;
 $$;
 
@@ -415,13 +433,20 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare v_code text := public.new_client_code();
+declare
+  v_code   text := public.new_client_code();
+  v_client uuid;
 begin
-  update public.trainer_clients
-     set client_code = v_code, client_id = null, disconnected_at = null,
-         displaced_client_id = null, displaced_at = null
-   where id = p_slot_id and trainer_id = public._trainer();
+  select client_id into v_client from public.trainer_clients
+   where id = p_slot_id and trainer_id = public._trainer() for update;
   if not found then raise exception 'SLOT_GONE'; end if;
+  update public.trainer_clients
+     set client_code = v_code, client_id = null, disconnected_at = null
+   where id = p_slot_id;
+  if v_client is not null then
+    insert into public.seat_losses (client_id, reason) values (v_client, 'gone')
+    on conflict (client_id) do update set reason = 'gone', at = now();
+  end if;
   return v_code;
 end;
 $$;
@@ -496,11 +521,15 @@ begin
    where client_id = v_me and id <> v_slot;
 
   update public.trainer_clients
-     set client_id       = v_me,
-         disconnected_at = null,
-         displaced_client_id = case when v_prev is not null and v_prev <> v_me then v_prev else displaced_client_id end,
-         displaced_at        = case when v_prev is not null and v_prev <> v_me then now()  else displaced_at end
+     set client_id = v_me, disconnected_at = null
    where id = v_slot;
+
+  -- Al que sale se le dice por qué (`client_lost_reason`); el que entra vuelve a tener asiento.
+  if v_prev is not null and v_prev <> v_me then
+    insert into public.seat_losses (client_id, reason) values (v_prev, 'taken')
+    on conflict (client_id) do update set reason = 'taken', at = now();
+  end if;
+  delete from public.seat_losses where client_id = v_me;
 
   return v_slot;
 end;
@@ -508,7 +537,8 @@ $$;
 
 -- ¿Por qué ya no tengo asiento? 'taken': alguien entró con mi código (si no
 -- fui yo en otro móvil, que me reemitan uno). 'gone': me desconectó el
--- entrenador (borrado, código reemitido o cuenta borrada).
+-- entrenador (borrado, código reemitido o cuenta borrada). Es el último motivo
+-- que anotaron las funciones en `seat_losses`; sin fila, 'gone'.
 create or replace function public.client_lost_reason()
 returns text
 language sql
@@ -516,9 +546,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select case when exists (
-    select 1 from public.trainer_clients where displaced_client_id = auth.uid()
-  ) then 'taken' else 'gone' end;
+  select coalesce((select reason from public.seat_losses where client_id = auth.uid()), 'gone');
 $$;
 
 -- El cliente sube lo suyo a SU asiento. SUMA al historial del hueco (E28, R-C2):

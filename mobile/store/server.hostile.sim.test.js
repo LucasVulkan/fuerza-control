@@ -211,7 +211,7 @@ describe('H4 — el candado salta con cualquier cuenta no anónima', () => {
 });
 
 describe('H5 — client_lost_reason da el motivo equivocado', () => {
-  it('H5a hoy: echado una vez, entra en otro hueco y ese entrenador lo borra → «taken» (regla R-B3: «gone»)', async () => {
+  it('H5a arreglado (E34): echado una vez, entra en otro hueco y ese entrenador lo borra → «gone» (R-B3)', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');
     const A = await slotWithProgram(a);
@@ -219,26 +219,42 @@ describe('H5 — client_lost_reason da el motivo equivocado', () => {
     const c = await anon('c');
     const otro = await anon('otro');
     await link(c, A.K, A.S);
-    await link(otro, A.K, A.S);                                  // c sale de A: displaced_client_id = c
+    await link(otro, A.K, A.S);                                  // c sale de A: motivo «taken»
     await link(c, B.K, B.S);
     expect((await slotOf(B.S)).client_id).toBe(c.id);
     expect(await ok(b.db, 'trainer_delete_slot', { p_slot_id: B.S })).toBe(true);
     const { data } = await c.db.from('trainer_clients').select('id');
     expect(data).toEqual([]);                                    // c ya no tiene asiento
 
-    expect(await ok(c.db, 'client_lost_reason')).toBe('taken');
+    expect(await ok(c.db, 'client_lost_reason')).toBe('gone');
   });
 
-  it('H5b hoy: c echado por y, y echado por z → c recibe «gone» (regla R-B3: «taken»)', async () => {
+  it('H5b arreglado (E34): c echado por y, y echado por z → c recibe «taken» (R-B3)', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const [c, y, z] = [await anon('c'), await anon('y'), await anon('z')];
     await link(c, K, S);
     await link(y, K, S);
     await link(z, K, S);
-    expect(await slotOf(S)).toMatchObject({ client_id: z.id, displaced_client_id: y.id });
+    expect((await slotOf(S)).client_id).toBe(z.id);
 
+    expect(await ok(c.db, 'client_lost_reason')).toBe('taken');
+    expect(await ok(y.db, 'client_lost_reason')).toBe('taken');
+  });
+
+  it('E34: reemitir el código lo deja en «gone» aunque antes lo echaran; volver a entrar borra el motivo', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const [c, y] = [await anon('c'), await anon('y')];
+    await link(c, K, S);
+    await link(y, K, S);                                         // c: «taken»
+    expect(await ok(c.db, 'client_lost_reason')).toBe('taken');
+    await link(c, K, S);                                         // c vuelve (y: «taken»)
+    expect(await server.admin('select client_id from public.seat_losses')).toEqual([{ client_id: y.id }]);
+
+    const fresh = await ok(t.db, 'trainer_reissue_client_code', { p_slot_id: S });
     expect(await ok(c.db, 'client_lost_reason')).toBe('gone');
+    expect(fresh).not.toBe(K);
   });
 });
 

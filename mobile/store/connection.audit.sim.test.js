@@ -84,7 +84,7 @@ async function trainerAndClient() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('H5 — el motivo de perder el asiento, en la app', () => {
-  it('H5a hoy: echado de A, entra en B, B lo borra → la app dice «taken» (regla R-B3: «gone»)', async () => {
+  it('H5a arreglado (E34): echado de A, entra en B, B lo borra → la app dice «gone» (R-B3)', async () => {
     const a = await phone('entrenador A');
     const b = await phone('entrenador B');
     const c = await phone('cliente');
@@ -102,10 +102,10 @@ describe('H5 — el motivo de perder el asiento, en la app', () => {
     expect(await slotOf(slotIdOf(a, ca.clientId))).toBeTruthy();
     await c.s.checkAndPullProgramUpdates();
     expect(c.s.clientSync.lostAt).toBeTruthy();
-    expect(c.s.clientSync.lostReason).toBe('taken');
+    expect(c.s.clientSync.lostReason).toBe('gone');
   });
 
-  it('H5b hoy: c echado por y, y echado por z → la app de c dice «gone» (regla R-B3: «taken»)', async () => {
+  it('H5b arreglado (E34): c echado por y, y echado por z → la app de c dice «taken» (R-B3)', async () => {
     const { t, c, clientId } = await trainerAndClient();
     const y = await phone('y');
     const z = await phone('z');
@@ -115,7 +115,7 @@ describe('H5 — el motivo de perder el asiento, en la app', () => {
 
     await c.s.checkAndPullProgramUpdates();
     expect(c.s.clientSync.lostAt).toBeTruthy();
-    expect(c.s.clientSync.lostReason).toBe('gone');
+    expect(c.s.clientSync.lostReason).toBe('taken');
   });
 });
 
