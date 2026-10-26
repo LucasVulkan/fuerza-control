@@ -5,7 +5,7 @@
 >
 > Estado: **Reabierto el 23-oct-2026 con 34 fallos nuevos, E27-E60**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
-> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto), y **E30, E31, E34-E37 y E49-E60** el 26-oct-2026. Solo queda abierto E45-d. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
+> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto), y **E30, E31, E34-E37 y E49-E60** el 26-oct-2026. Solo queda abierto E45-d, **aparcado** el 26-oct-2026 hasta que haya un caso real (mientras, se da el PRO a mano en el panel de RevenueCat a la cuenta nueva). Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
