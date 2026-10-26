@@ -188,7 +188,7 @@ describe('S3 el móvil del cliente conserva un slotId que el servidor ya liberó
 });
 
 describe('S4 vincular Google del cliente cortado en setSession', () => {
-  it('S4 hoy: la app mira el asiento (arranque/primer plano) antes del reintento y marca «perdido» aunque su Google está sentado; vincular otra vez no lo quita y no sube (regla R-C7: se sale solo al reintentar; R-B3)', async () => {
+  it('S4 arreglado (E54): la app marca «perdido» antes del reintento, pero vincular otra vez lo quita y vuelve a subir (regla R-C7: se sale solo al reintentar; R-B3)', async () => {
     const t = await phone('entrenador');
     let c = await phone('cliente');
     await t.s.createTrainerCodeAccount();
@@ -201,15 +201,12 @@ describe('S4 vincular Google del cliente cortado en setSession', () => {
     expect(c.s.clientSync.lostAt).toBeTruthy();
     // El código ya no le vale (asiento bloqueado por su Google)
     await expect(c.s.linkToTrainer(c.s.clientSync.clientCode)).rejects.toMatchObject({ code: 'SEAT_LOCKED' });
-    await c.s.linkGoogleForClient(google('cli'));                 // reintento: la pantalla lo oculta en «perdido»
+    await c.s.linkGoogleForClient(google('cli'));                 // reintento
     expect(c.s.clientSync.googleLinked).toBe(true);
-    expect(c.s.clientSync.lostAt).toBeTruthy();
-    await trainOnce(c, 's1');
-    expect(c.s.clientSync.lastSyncedAt).toBeNull();               // no sube
-    // Salida real: entrar con Google desde la hoja
-    const found = await c.s.validateGoogleClient(google('cli'));
-    await c.s.confirmGoogleReconnect({ googleUserId: found.userId, provider: 'google' });
     expect(c.s.clientSync.lostAt).toBeNull();
+    await trainOnce(c, 's1');
+    expect(c.s.clientSync.lastSyncedAt).not.toBeNull();           // sube
+    expect(historyIds(await slotOf(c.s.clientSync.slotId))).toEqual(['s1']);
   });
 });
 
@@ -453,7 +450,7 @@ describe('S14 abrir sin cobertura con el token caducado', () => {
 });
 
 describe('S15 vincular Google estando desplazado', () => {
-  it('S15 hoy: vincular falla con NO_SEAT pero ya soltó el asiento real que su Google tenía en otro entrenador (regla R-B1: un asiento en todo momento; R-C7)', async () => {
+  it('S15 arreglado (E54): vincular falla con NO_SEAT sin soltar el asiento real que su Google tenía en otro entrenador (regla R-B1: un asiento en todo momento; R-C7)', async () => {
     const x = await phone('X');
     const y = await phone('Y');
     await x.s.createTrainerCodeAccount();
@@ -470,7 +467,7 @@ describe('S15 vincular Google estando desplazado', () => {
     const intruso = await phone('intruso');
     await join(intruso, codeOf(x, cx.clientId));                   // le quitan el asiento (aún no lo sabe)
     await expect(c2.s.linkGoogleForClient(google('gC'))).rejects.toMatchObject({ code: 'NO_SEAT' });
-    expect((await slotOf(ySlot)).client_id).toBeNull();
+    expect((await slotOf(ySlot)).client_id).toBe(c1.s.clientSync.supabaseUserId);   // sigue sentado
   });
 });
 

@@ -4926,9 +4926,14 @@ export const useStore = create(
 
         if (current !== candidate.userId) {
           const old = await seatOf(candidate.db);
-          if (old && old.slotId !== clientSync.slotId) await releaseClientSlot(candidate.db);
-          await offerTransfer('seat', candidate.userId);
-          await acceptTransfer('seat', current, candidate.db);
+          // Si el asiento ya es de esa cuenta, el traspaso se hizo y se cortó después: se sigue (E54, R-C7).
+          if (old?.slotId !== clientSync.slotId) {
+            // Antes de soltar nada, ¿tiene este móvil asiento que traspasar? (E54, R-B1)
+            if (!(await seatOf())) throw Object.assign(new Error(i18n.t('trainer.lostTitle')), { code: 'NO_SEAT' });
+            if (old) await releaseClientSlot(candidate.db);
+            await offerTransfer('seat', candidate.userId);
+            await acceptTransfer('seat', current, candidate.db);
+          }
         }
         await adoptClient(candidate);
 
@@ -4938,8 +4943,10 @@ export const useStore = create(
             supabaseUserId: candidate.userId,
             googleLinked:   true,
             linkedProvider: provider,
+            lostAt:         null,
           },
         }));
+        if (clientSync.pendingUpload || clientSync.uploadDue) await get().uploadHistoryToTrainer();
       },
 
       // ══════════════════════════════════════════════════════════════════════
