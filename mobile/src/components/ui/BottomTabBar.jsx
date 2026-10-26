@@ -63,8 +63,8 @@ const LINE_OVER = 4;
 function TabIcon({ route, focused, burst }) {
   const th = useTheme();
   const { g, gf, a, af, anim } = TAB_ICONS[route] ?? TAB_ICONS.Home;
-  const gray   = focused ? th.colors.mutedLight : th.colors.muted;
-  const accent = focused ? th.colors.accent : th.colors.muted;
+  const gray   = focused ? th.colors.text : th.colors.mutedLight;
+  const accent = focused ? th.colors.accent : th.colors.mutedLight;
   const sw = strokeFor(ICON);
 
   const pop = useSharedValue(1);
@@ -136,7 +136,7 @@ function Tab({ route, options, focused, onPress, onLongPress }) {
           </View>
         ) : null}
       </Reanimated.View>
-      <Text style={[styles.label, { color: focused ? th.colors.accent : th.colors.muted }]} allowFontScaling={false} numberOfLines={1}>
+      <Text style={[styles.label, { color: focused ? th.colors.accent : th.colors.mutedLight }]} allowFontScaling={false} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
