@@ -20,7 +20,7 @@ import { userIdOf as myId } from './supabaseAuth';
 
 const RPC_CODES = [
   'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'SEAT_LOCKED', 'BAD_TARGET',
-  'NOT_A_TRAINER', 'NOT_AUTHENTICATED', 'NO_OFFER', 'CODE_GENERATION_FAILED',
+  'NOT_A_TRAINER', 'NOT_AUTHENTICATED', 'NO_OFFER', 'CODE_GENERATION_FAILED', 'SLOT_CHANGED',
 ];
 
 // Lo que dice supabase-js (fetch de RN y de Node) cuando no hay red.
@@ -173,10 +173,13 @@ export function clientLostReason() {
   return rpc(clientSupabase, 'client_lost_reason', {});
 }
 
-/** El cliente sube lo suyo a su asiento; el servidor SUMA a lo que hay (E28). NO_SEAT si ya no tiene. */
-export function uploadHistory(entries, customExercises = {}, progress = null) {
+/**
+ * El cliente sube lo suyo al asiento `slotId`; el servidor SUMA a lo que hay (E28).
+ * NO_SEAT si ya no tiene asiento; SLOT_CHANGED si ahora tiene otro (E37).
+ */
+export function uploadHistory(entries, customExercises = {}, progress = null, slotId = null) {
   return rpc(clientSupabase, 'client_upload_history', {
-    p_history: { entries, customExercises, progress }, p_sessions: entries.length,
+    p_history: { entries, customExercises, progress }, p_sessions: entries.length, p_slot_id: slotId,
   });
 }
 

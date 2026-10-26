@@ -110,24 +110,29 @@ export function scopeFilterForUpload({
  * Merges incoming entries into a client log — deduped by id, sorted by timestamp.
  *
  * `update: true` (the trainer's download from the slot) also lets an incoming
- * copy REPLACE the entry with its id when the content differs: the client
+ * copy REPLACE the entry with its id when the content differs and it is not
+ * older (`updatedAt`, last edit wins: E58): the client
  * patches entries after saving them (the recap's RPE and body weight), and
  * without this the trainer kept the first copy forever. Entries absent from
  * `incoming` are kept either way. File imports leave it off so they never
  * overwrite the trainer's copy (docs/specs/C04-qa-sep-conexion.md §3.2 d).
  *
+ * A tombstone (`deletedAt`) never adds or replaces anything, and neither does
+ * an id in `deleted` (the trainer's `deletedLogIds`): what the trainer deleted
+ * stays deleted (E59).
+ *
  * Returns `existing` itself when nothing is added or replaced (no re-render).
  */
-export function mergeClientLog(existing, incoming, { update = false } = {}) {
+export function mergeClientLog(existing, incoming, { update = false, deleted = {} } = {}) {
   const base = existing ?? [];
   const byId = new Map(base.map((e) => [e.id, e]));
   const fresh = [];
   const replaced = new Map();
   for (const e of incoming ?? []) {
-    if (!e.id) continue;
+    if (!e.id || e.deletedAt || deleted[e.id]) continue;
     const old = byId.get(e.id);
     if (!old) fresh.push(e);
-    else if (update && JSON.stringify(old) !== JSON.stringify(e)) replaced.set(e.id, e);
+    else if (update && (e.updatedAt ?? 0) >= (old.updatedAt ?? 0) && JSON.stringify(old) !== JSON.stringify(e)) replaced.set(e.id, e);
   }
   if (!fresh.length && !replaced.size) return base;
   return [...base.map((e) => replaced.get(e.id) ?? e), ...fresh]

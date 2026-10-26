@@ -275,8 +275,10 @@ $$;
 
 -- Suma lo que sube el cliente (o el entrenador, C20) a lo que ya hay (R-C2,
 -- R-C3: el historial solo crece). `entries` por `id`: las viejas que la subida
--- no trae se conservan, y si el id se repite gana la nueva; las que no tienen
--- `id` se conservan todas. `customExercises` se funde (gana la nueva) y
+-- no trae se conservan, y si el id se repite gana la de mayor `updatedAt` (ms;
+-- sin él, 0; empate, la que llega: E58); las que no tienen `id` se conservan
+-- todas. Lo borrado viaja como lápida `{ id, deletedAt, updatedAt }` y gana por
+-- esa misma regla (E59). `customExercises` se funde (gana la nueva) y
 -- `progress` es el nuevo si lo hay. Interna: nadie la llama desde fuera.
 create or replace function public._merge_history(p_old jsonb, p_new jsonb)
 returns jsonb
@@ -287,10 +289,16 @@ as $$
     'entries', coalesce((
         select jsonb_agg(e order by o)
           from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
-         where (e->>'id') is null
-            or (e->>'id') not in (select n->>'id' from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
-                                   where n->>'id' is not null)
-      ), '[]'::jsonb) || coalesce(p_new->'entries', '[]'::jsonb),
+         where not exists (select 1 from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
+                            where n->>'id' = e->>'id'
+                              and (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end) >= (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end))
+      ), '[]'::jsonb) || coalesce((
+        select jsonb_agg(n order by o)
+          from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) with ordinality as t(n, o)
+         where not exists (select 1 from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) e
+                            where e->>'id' = n->>'id'
+                              and (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end) > (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end))
+      ), '[]'::jsonb),
     'customExercises', coalesce(nullif(p_old->'customExercises', 'null'::jsonb), '{}'::jsonb)
                     || coalesce(nullif(p_new->'customExercises', 'null'::jsonb), '{}'::jsonb),
     -- `progress: null` llega de verdad (sin programa activo): es null de JSON, no de SQL.
@@ -360,7 +368,7 @@ declare v_me uuid := public._trainer();
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = jsonb_array_length(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb))
+         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
    where id = p_slot_id and trainer_id = v_me and client_id is null;
   if found then return; end if;
   if exists (select 1 from public.trainer_clients where id = p_slot_id and trainer_id = v_me) then
@@ -515,11 +523,14 @@ as $$
   ) then 'taken' else 'gone' end;
 $$;
 
--- El cliente sube lo suyo a SU asiento: no hace falta decir cuál, es el suyo.
--- SUMA al historial del hueco (E28, R-C2): dos móviles o una reinstalación ya
--- no se pisan. `p_sessions` se ignora (el contador sale de lo fusionado); sigue
--- en la firma por compatibilidad.
-create or replace function public.client_upload_history(p_history jsonb, p_sessions integer)
+-- El cliente sube lo suyo a SU asiento. SUMA al historial del hueco (E28, R-C2):
+-- dos móviles o una reinstalación ya no se pisan. `p_sessions` se ignora (el
+-- contador sale de lo fusionado, sin lápidas); sigue en la firma por
+-- compatibilidad. `p_slot_id` dice a qué asiento iba la subida (E37): si el
+-- cliente ya está en otro, SLOT_CHANGED y no se escribe nada. Sin él (móviles
+-- con la versión vieja), el asiento que tenga.
+drop function if exists public.client_upload_history(jsonb, integer);
+create or replace function public.client_upload_history(p_history jsonb, p_sessions integer, p_slot_id uuid default null)
 returns uuid
 language plpgsql
 security definer
@@ -529,10 +540,15 @@ declare v_slot uuid;
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = jsonb_array_length(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb))
-   where client_id = public._caller()
+         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
+   where client_id = public._caller() and (p_slot_id is null or id = p_slot_id)
   returning id into v_slot;
-  if v_slot is null then raise exception 'NO_SEAT'; end if;
+  if v_slot is null then
+    if p_slot_id is not null and exists (select 1 from public.trainer_clients where client_id = public._caller()) then
+      raise exception 'SLOT_CHANGED';
+    end if;
+    raise exception 'NO_SEAT';
+  end if;
   return v_slot;
 end;
 $$;
@@ -647,7 +663,7 @@ begin
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
@@ -658,7 +674,7 @@ begin
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('grant execute on function public.%s to authenticated', f);

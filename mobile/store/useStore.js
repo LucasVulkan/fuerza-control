@@ -171,6 +171,12 @@ function seatLockedError() {
   return Object.assign(new Error(i18n.t('trainer.errSeatLocked')), { code: 'SEAT_LOCKED' });
 }
 
+// El programa del entrenador de este cliente: el activo si es suyo, si no el último que
+// llegó. Su progreso es lo que se sube y lo que se conserva al aplicar un programa nuevo (E57).
+const trainerProgramOf = (clientSync, activeId) => {
+  const ids = clientSync.trainerProgramIds ?? [];
+  return !ids.length || ids.includes(activeId) ? activeId : ids[ids.length - 1];
+};
 /** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
 const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
 
@@ -504,6 +510,11 @@ export const useStore = create(
       // entries here — it's the trainer's professional record of the client.
       // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
       clientLogs: {},
+      // Ids de entradas borradas (de `workoutLog` o de `clientLogs`) y cuándo,
+      // `{ [id]: deletedAt }`. El cliente las sube como lápidas para que el
+      // servidor no las resucite; el entrenador las usa para no volver a bajarlas.
+      // Nunca se podan (E59). Las lápidas no entran en `workoutLog` ni `clientLogs`.
+      deletedLogIds: {},
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
@@ -1556,7 +1567,7 @@ export const useStore = create(
         const id = get().createFreeTemplate(presetFromEntry(entry));
         set((s) => ({
           workoutLog: s.workoutLog.map((e) => (
-            e.id === entryId ? { ...e, sessionTemplateId: id, free: true } : e
+            e.id === entryId ? { ...e, sessionTemplateId: id, free: true, updatedAt: Date.now() } : e
           )),
         }));
         return id;
@@ -1613,7 +1624,7 @@ export const useStore = create(
           programs,
           workoutLog: s.workoutLog.map((e) => {
             if (e.id !== entryId) return e;
-            const next = { ...e };
+            const next = { ...e, updatedAt: Date.now() };
             if (templateId) next.countsAs = templateId; else delete next.countsAs;
             return next;
           }),
@@ -2909,7 +2920,10 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       deleteLogEntry: (logId) =>
-        set((state) => ({ workoutLog: state.workoutLog.filter((e) => e.id !== logId) })),
+        set((state) => ({
+          workoutLog: state.workoutLog.filter((e) => e.id !== logId),
+          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
+        })),
 
       /**
        * Post-session feedback captured in the recap (the entry is already saved
@@ -2929,6 +2943,7 @@ export const useStore = create(
           const patch = (e) => (
             e.id !== logId ? e : {
               ...e,
+              updatedAt: Date.now(),
               ...(sessionRpe  !== undefined ? { sessionRpe }  : {}),
               ...(bodyWeight  !== undefined ? { bodyWeight }  : {}),
               // La nota del entreno se corrige en el recap (U09-pulido-ui.md §2).
@@ -2978,7 +2993,13 @@ export const useStore = create(
           keep = workoutLog.filter((e) => ids.has(programTemplateOf(e)));
         }
         const removed = workoutLog.length - keep.length;
-        if (removed > 0) set({ workoutLog: keep });
+        if (removed > 0) {
+          const kept = new Set(keep);
+          set((s) => ({
+            workoutLog: keep,
+            deletedLogIds: { ...s.deletedLogIds, ...Object.fromEntries(workoutLog.filter((e) => !kept.has(e)).map((e) => [e.id, Date.now()])) },
+          }));
+        }
         return removed;
       },
 
@@ -2989,6 +3010,7 @@ export const useStore = create(
             ...state.clientLogs,
             [clientId]: (state.clientLogs[clientId] ?? []).filter((e) => e.id !== logId),
           },
+          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
         })),
 
       getLastSession: (templateId) => {
@@ -4082,13 +4104,15 @@ export const useStore = create(
         }
         await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null)
           .catch((err) => { throw get()._slotError(clientId, err); });
-        // Clear pending-upload flag after successful push
+        // Solo se limpia el aviso si el programa no cambió mientras viajaba la subida (E55).
+        const nowJson = get()._buildProgramJson(programId, false)?.json;
+        const unchanged = !!nowJson && programSignature(JSON.parse(nowJson)) === uploadedSig;
         set((s) => ({
           clients: {
             ...s.clients,
             [clientId]: {
               ...s.clients[clientId],
-              programDirty:       false,
+              ...(unchanged ? { programDirty: false } : {}),
               programUploadedAt:  new Date().toISOString(),
               programUploadedSig: uploadedSig,
             },
@@ -4155,10 +4179,16 @@ export const useStore = create(
           Object.entries(client.nextOverrides ?? {}).map(([tid, ov]) => [tid, { ...ov, createdAt: now }]),
         );
         await uploadOverrides(client.syncSlotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
+        // Si se editó mientras viajaba el envío, no se toca lo editado ni su marca (E55).
         set((s) => ({
           clients: {
             ...s.clients,
-            [clientId]: { ...s.clients[clientId], nextOverrides: stamped, overridesSentAt: now, overridesDirty: false },
+            [clientId]: {
+              ...s.clients[clientId],
+              overridesSentAt: now,
+              ...(s.clients[clientId]?.nextOverrides === client.nextOverrides
+                ? { nextOverrides: stamped, overridesDirty: false } : {}),
+            },
           },
         }));
       },
@@ -4182,6 +4212,7 @@ export const useStore = create(
           const { progress, updatedAt } = downloaded;
           const history      = downloaded.history ? incoming.workoutLog : downloaded.history;
           const clientCustom = incoming.customExercises;
+          const live         = history?.filter((e) => !e.deletedAt);   // sin lápidas (E59)
           // Mirror the client's counters verbatim — never recompute them here
           // (spec §3.1). Kept even when there is no new history to merge.
           // The session count comes fresh with them: it is the same number the
@@ -4193,12 +4224,12 @@ export const useStore = create(
               ...s.clients,
               [clientId]: {
                 ...s.clients[clientId],
-                remoteSessionsCount: history?.length ?? 0,
+                remoteSessionsCount: live?.length ?? 0,
                 ...(progress ? { progress } : {}),
               },
             },
           }));
-          if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
+          if (!live?.length && !Object.keys(clientCustom ?? {}).length) {
             return { merged: 0 };
           }
 
@@ -4214,7 +4245,7 @@ export const useStore = create(
           // deleted them, or reinstalled) are kept — this is the trainer's record.
           // A changed copy of a known entry (RPE added in the recap) replaces it.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history, { update: true });
+          const merged    = mergeClientLog(existing, history, { update: true, deleted: get().deletedLogIds });
           const newCount  = merged.length - existing.length;
 
           set((s) => ({
@@ -4528,7 +4559,8 @@ export const useStore = create(
           if (!mergeHistory) return;
 
           const localIds   = new Set((get().workoutLog ?? []).map((e) => e.id));
-          const newEntries = (remoteEntries ?? []).filter((e) => e.id && !localIds.has(e.id));
+          const deleted    = get().deletedLogIds ?? {};
+          const newEntries = (remoteEntries ?? []).filter((e) => e.id && !e.deletedAt && !deleted[e.id] && !localIds.has(e.id));
           if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
             set((s) => ({
               workoutLog: [...s.workoutLog, ...newEntries].sort(
@@ -4727,7 +4759,7 @@ export const useStore = create(
         const pending = clientSync.pendingProgramUpdate;
         if (!pending) return;
 
-        const mine       = progressBlob(programs[profile.activeProgramId]);
+        const mine       = progressBlob(programs[trainerProgramOf(clientSync, profile.activeProgramId)]);
         const activation = pending.programJson?.program?.stageActivatedAt ?? null;
 
         get().importData(pending.programJson, { program: true, log: false }, { silent: true });
@@ -4774,7 +4806,7 @@ export const useStore = create(
        * quedan sin enviar.
        */
       uploadHistoryToTrainer: async () => {
-        const { clientSync, workoutLog, customExercises, programs, profile } = get();
+        const { clientSync, workoutLog, customExercises, programs, profile, deletedLogIds } = get();
         if (!clientSync.slotId || clientSync.lostAt) return; // sin entrenador, o ya lo sabe
 
         // Privacy-scoped slice: only trainer-program sessions + post-link free
@@ -4798,12 +4830,14 @@ export const useStore = create(
         // can be overwritten by a local stage switch, while clientSync only
         // moves when an import actually applies an activation.
         const progress = progressBlob(
-          programs[profile.activeProgramId],
+          programs[trainerProgramOf(clientSync, profile.activeProgramId)],
           clientSync.lastAppliedStageActivation ?? null,
         );
 
         try {
-          await uploadHistory(entries, relevantCustom, progress);
+          // ponytail: las lápidas no se podan nunca; son ids, crecen poco.
+          const tombstones = Object.entries(deletedLogIds ?? {}).map(([id, at]) => ({ id, deletedAt: at, updatedAt: at }));
+          await uploadHistory([...entries, ...tombstones], relevantCustom, progress, clientSync.slotId);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -4816,6 +4850,7 @@ export const useStore = create(
           }));
         } catch (err) {
           if (err.code === 'NO_SEAT') { await get()._markClientLost(); return; }
+          if (err.code === 'SLOT_CHANGED') return; // subida vieja: el asiento actual no ha fallado (E37)
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -5229,6 +5264,7 @@ export const useStore = create(
         profile: state.profile,
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
+        deletedLogIds: state.deletedLogIds,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
         stageBannerSnooze: state.stageBannerSnooze,
