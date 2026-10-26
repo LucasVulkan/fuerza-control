@@ -17,18 +17,19 @@ import { ROW_ICON } from './rowIcons';
 import { useStore } from '../../../store/useStore';
 import { spacing } from '../../theme';
 import { startNewProgram } from '../../utils/startNewProgram';
+import { useDisconnectFromTrainer } from '../../hooks/useDisconnectFromTrainer';
 
 export default function NoProgram() {
   const { t }      = useTranslation();
   const navigate   = useStore((s) => s.navigate);
-  const clientSync = useStore((s) => s.clientSync);
+  const { guardProgramChange } = useDisconnectFromTrainer();
 
   return (
     <EmptyState
       style={styles.wrap}
       icon={ROW_ICON.exercise}
       text={t('home.noActiveProgram')}
-      action={{ label: t('home.newProgram'), onPress: () => startNewProgram(t, clientSync, navigate) }}
+      action={{ label: t('home.newProgram'), onPress: () => startNewProgram(guardProgramChange, navigate) }}
     />
   );
 }

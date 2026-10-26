@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { parseImportFile } from '../utils/importFile';
 import ImportModal from './ImportModal';
+import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 
 import { showDialog } from './ui/dialog';
 export default function ExternalImportModal() {
@@ -34,9 +35,7 @@ export default function ExternalImportModal() {
   const importData                 = useStore((s) => s.importData);
   const showToast                  = useStore((s) => s.showToast);
   const navigate                   = useStore((s) => s.navigate);
-  const onboardingCompleted        = useStore((s) => s.profile?.onboardingCompleted);
-  const clientSlotId               = useStore((s) => s.clientSync?.slotId);
-  const unlinkFromTrainer          = useStore((s) => s.unlinkFromTrainer);
+  const { guardProgramChange }     = useDisconnectFromTrainer();
 
   const [importState, setImportState] = useState(null);
 
@@ -54,20 +53,14 @@ export default function ExternalImportModal() {
 
   function handleImport(parsedData, sections) {
     setImportState(null);
-    importData(parsedData, sections, { silent: true });   // el toast lo damos aquí
-    showToast(t('header.toastImported'), 2200, 'success');
-
-    // Qué pasa después lo decide el ESTADO, no qué pantalla montó el modal —
-    // que es lo que antes obligaba a tener dos copias del manejador.
-    //
-    // Sin onboarding terminado, importar un programa es exactamente lo que el
-    // onboarding venía a hacer: se cierra. Y si además había un entrenador
-    // vinculado, se suelta conservando el programa recién importado, igual que
-    // hacía el `finish()` de `OnboardingScreen`.
-    if (sections.program && !onboardingCompleted && clientSlotId) {
-      unlinkFromTrainer({ keepProgram: true }).catch(() => {});
-    }
-    if (sections.program) navigate('home');
+    const run = () => {
+      importData(parsedData, sections, { silent: true });   // el toast lo damos aquí
+      showToast(t('header.toastImported'), 2200, 'success');
+      if (sections.program) navigate('home');
+    };
+    // Importar un programa es usar otro: con entrenador, antes se pregunta (R1,
+    // E67). Nada se desconecta en silencio.
+    if (sections.program) guardProgramChange(parsedData.program?.id, run); else run();
   }
 
   if (!importState) return null;

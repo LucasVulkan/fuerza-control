@@ -659,16 +659,12 @@ export const useStore = create(
       // «Ir a la app» y cualquier salida temprana: marca el onboarding como hecho
       // (sin esto, quien acaba sin programa volvería a él en cada arranque), cierra
       // el recorrido y va a Main. Desde la app («Nuevo programa», §25.4.6) no toca
-      // esas marcas y, si se creó o importó algo propio, suelta el entrenador como
-      // hacía el selector viejo. `back`: cierra con la flecha, a la pestaña de donde vino.
+      // esas marcas y no desconecta a nadie: quien tenía entrenador ya decidió
+      // desconectarse antes de empezar (R1, E67). `back`: cierra con la flecha, a
+      // la pestaña de donde vino.
       finishOnboardingFlow: ({ back = false } = {}) => {
         const f = get().onboardingFlow;
         if (f?.entry === 'newProgram') {
-          const a = f.answers;
-          // keepProgram: el programa nuevo no se pisa con el previo a la conexión.
-          if (get().clientSync?.slotId && (a.programId || a.programSource === 'import') && a.programSource !== 'coach') {
-            get().unlinkFromTrainer({ keepProgram: true }).catch(() => {});
-          }
           set({ onboardingFlow: null });
         } else {
           set((s) => ({

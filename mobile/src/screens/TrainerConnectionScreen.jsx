@@ -39,7 +39,7 @@ import { Rise }                   from '../components/ui/Rise';
 import { formatWhen }             from '../utils/formatWhen';
 import { spacing, textStyles }    from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { showDialog }             from '../components/ui/dialog';
+import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 import ScreenHeader               from '../components/ui/ScreenHeader';
 
 // Los tres pasos de «sin entrenador»: código → programa → sesiones.
@@ -78,9 +78,9 @@ export default function TrainerConnectionScreen() {
   const pendingInvite         = useStore((s) => s.pendingInviteCode);
   const programs              = useStore((s) => s.programs);
   const profile               = useStore((s) => s.profile);
-  const disconnectFromTrainer = useStore((s) => s.unlinkFromTrainer);
   const uploadHistory         = useStore((s) => s.uploadHistoryToTrainer);
   const showToast             = useStore((s) => s.showToast);
+  const { disconnect }        = useDisconnectFromTrainer();
 
   // La hoja del código: { reconnect?, social?, provider? } o null.
   const [codeSheet,       setCodeSheet]       = useState(null);
@@ -117,36 +117,7 @@ export default function TrainerConnectionScreen() {
     }
   }
 
-  // Si hay entrenos que no llegan, el store no desconecta y dice cuántos (E51).
-  // Sin red se desconecta igual y el servidor se entera después (E52); si el
-  // asiento cambió en otro móvil, no se desconecta (E66).
-  async function disconnect(force) {
-    try {
-      const { unsent, offline, changed } = await disconnectFromTrainer({ force });
-      if (unsent) {
-        showDialog(t('trainer.unsentTitle'), t('trainer.unsentBody', { count: unsent }), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('trainer.unsentConfirm'), style: 'destructive', onPress: () => disconnect(true) },
-        ]);
-        return;
-      }
-      if (changed) {
-        showDialog(t('trainer.disconnectTitle'), t('trainer.seatChanged', { trainer: useStore.getState().clientSync.trainerName || t('trainer.unnamedTrainer') }));
-        return;
-      }
-      if (offline) showToast(t('trainer.disconnectedOffline'), 3200);
-      navigation.goBack();
-    } catch {
-      showToast(t('header.toastSyncFailed'), 2200, 'error');
-    }
-  }
-
-  function handleDisconnect() {
-    showDialog(t('trainer.disconnectTitle'), t('trainer.disconnectBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('trainer.disconnectConfirm'), style: 'destructive', onPress: () => disconnect(false) },
-    ]);
-  }
+  const handleDisconnect = () => disconnect({ onDone: navigation.goBack });
 
   function invite() {
     Share.share({ message: t('onboardingFlow.coached.noapp.inviteMessage', { url: WEB_URL }) }).catch(() => {});
