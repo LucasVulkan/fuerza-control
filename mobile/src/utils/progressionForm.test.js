@@ -134,3 +134,86 @@ describe('P55 — leer y guardar (§5.5)', () => {
     expect(init({ minTime: 30, maxTime: 60 }, c)).toMatchObject({ up: 'time', incValue: 5 });
   });
 });
+
+describe('I01-01 — huecos de mutación', () => {
+  const press = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
+
+  // P12 §5.5 y casilla P12-04 «Guardar, salir y volver a entrar: la hoja recupera todo lo elegido»
+  // mata progressionForm.js:103:15, 103:26, 103:35, 103:45, 103:56 (up de Nada y de Reps)
+  it('una progresión guardada como Nada o como Reps se abre igual', () => {
+    expect(init({ progression: { type: 'none' } }).up).toBe('none');
+    expect(init({ progression: { type: 'reps' } }).up).toBe('reps');
+  });
+
+  // P12 §5.5 y casilla P12-04: la hoja recupera Por esfuerzo
+  // mata progressionForm.js:104:15, 104:26, 104:37 (how de Por esfuerzo)
+  it('una progresión guardada como Por esfuerzo se abre como Peso · Por esfuerzo', () => {
+    const f = init({ progression: { type: 'effort' } }, ctx({ range: false }));
+    expect(f.up).toBe('weight');
+    expect(f.how).toBe('effort');
+    // y una Doble guardada con Reps fijas sigue abriéndose Por reglas
+    expect(init({ progression: { type: 'double' } }, ctx({ range: false })).how).toBe('rules');
+  });
+
+  // P12 §5.5 y casilla P12-04: la hoja recupera «Nunca» en Cuándo baja
+  // mata progressionForm.js:111:15, 111:26, 111:36 (down de Nunca)
+  it('una progresión guardada con down never se abre como Nunca', () => {
+    expect(init({ progression: { type: 'double', down: 'never' } }).down).toBe('never');
+  });
+
+  // P12 §5.3 «Cuánto sube»: en Peso, Fijo o Porcentaje (se conserva el %)
+  // mata progressionForm.js:75:7, 75:16, 75:38 (`n.up !== 'weight'` en el guardado a 'fixed')
+  it('el Porcentaje guardado en Peso se conserva al abrir', () => {
+    expect(init({ progression: { type: 'double', increment: { type: 'pct', pct: 5 } } }).incType).toBe('pct');
+  });
+
+  // P12 §5.3 «Cuánto sube»: Reps: entero; Tiempo: entero en pasos de 5 s (no hay porcentaje)
+  // mata progressionForm.js:75:7, 75:16, 75:38 (`n.up !== 'weight'` en el guardado a 'fixed')
+  it('en Reps el salto no puede ser un porcentaje: vuelve a Fijo', () => {
+    expect(normalizeProgForm({ ...init(), up: 'reps', incType: 'pct' }, ctx()).incType).toBe('fixed');
+  });
+
+  // P12 §4.1 («salto por defecto de Peso = escalón resuelto») y §3.1.12 («el escalón es por ejercicio»)
+  // mata progressionForm.js:92:7 (`next.step ?? libraryStep(...)` → `&&`)
+  it('al pasar a Peso el salto por defecto es el escalón propio del ejercicio', () => {
+    const f = patchProgForm({ ...init(), up: 'reps', step: 1.25 }, { up: 'weight' }, ctx());
+    expect(f.incValue).toBe(1.25);
+  });
+
+  // P12 §4.4: el tope de 2,5 del escalón de la librería es solo de Por esfuerzo
+  // mata progressionForm.js:92:41 (`libraryStep(ctx.def, false)` → `true`)
+  it('al pasar a Peso sin escalón propio el salto es el escalón de la librería, sin tope', () => {
+    const c = ctx({ def: { ...BB, weightStep: 5 } });
+    const f = patchProgForm({ ...init({}, c), up: 'reps', step: null }, { up: 'weight' }, c);
+    expect(f.incValue).toBe(5);
+  });
+
+  // P12 §5.3, tabla: «Cómo… carga externa, no asistido» (una asistida con máquina tampoco)
+  // mata progressionForm.js:29:18, 29:27 y 29:57 (`isAssist`)
+  it('Cómo no se ofrece a una asistida aunque tenga carga externa', () => {
+    const asistida = { equipment: ['machines'], progressionDirection: 'decrease' };
+    expect(showHow({ up: 'weight' }, { def: asistida, metric: 'reps' })).toBe(false);
+  });
+
+  // P12 §5.3: «Parcial: de 1 a M−1» (solo Parcial necesita al menos 2 series)
+  // mata progressionForm.js:77:7 (`n.when === 'part'` → true)
+  it('con una sola serie, Cuándo sube = RPE máx. se queda como está', () => {
+    expect(normalizeProgForm({ ...init(), when: 'rpe' }, ctx({ sets: 1 })).when).toBe('rpe');
+  });
+
+  // P12 §5.3: «Parcial: de 1 a M−1» (con M = 2, 1 de 2 es válido)
+  // mata progressionForm.js:77:28 (`ctx.sets < 2` → `<= 2`)
+  it('Parcial con 2 series se queda en Parcial 1 de 2', () => {
+    const f = normalizeProgForm({ ...init(), when: 'part' }, ctx({ sets: 2 }));
+    expect(f.when).toBe('part');
+    expect(f.need).toBe(1);
+  });
+
+  // P12 §5.5: «`targetRpe` + `effortWhen` en Por esfuerzo» (solo ahí)
+  // mata progressionForm.js:134:7 (`if (effort)` → true)
+  it('Peso por reglas no guarda targetRpe ni effortWhen', () => {
+    const { progression } = buildProgression(init(press), ctx());
+    expect(progression).not.toHaveProperty('targetRpe');
+    expect(progression).not.toHaveProperty('effortWhen');
+  });
+});

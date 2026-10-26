@@ -1,5 +1,5 @@
 import { describe, it, test, expect } from 'vitest';
-import { getProgression, resolveProgressionConfig, progressionRule, progressionHistory, isTimed } from './progression';
+import { getProgression, resolveProgressionConfig, progressionRule, progressionHistory, isTimed, LEGACY_TYPE_MAP } from './progression';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 
 // getProgression builds an i18n message via t(); we only assert chip.type,
@@ -841,5 +841,149 @@ describe('P61 — la frase de la regla en palabras (es y en)', async () => {
     expect(progressionRule({ sets: 3, minReps: 6, progression: { type: 'reps' } }, BB, t, 'kg', { parts: true }).when)
       .toBe('cuando todas las series pasen de 6 reps');
     expect(progressionRule({ progression: { type: 'none' } }, BB, t, 'kg', { parts: true })).toEqual({ action: 'El peso lo cambias tú' });
+  });
+});
+
+describe('I01-01 — huecos de mutación', () => {
+  const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
+  const cfg3 = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double' } };
+  const rows = (n, row) => Array.from({ length: n }, () => ({ ...row }));
+
+  // P12 §4.2: «alMeta = series con reps ≥ G (o marcadas sin reps)»
+  // mata progression.js:247:12, 247:13, 245:24, 245:9 (series ✓ sin reps) y 498:43 (el filtro de doneSets)
+  test('series marcadas ✓ sin reps cuentan como alcanzadas: sube', () => {
+    expect(getProgression(cfg3, BB, rows(3, { weight: '60', reps: '', done: true }), tk))
+      .toMatchObject({ type: 'up', suggestedWeight: 62.5 });
+  });
+
+  // P12 §4.2: «alMeta = series con reps ≥ G (o marcadas sin reps)» (sin marcar y sin reps no cuenta)
+  // mata progression.js:247:12 / 247:13 (`!!s.done` → true)
+  test('series sin ✓ y sin reps no cuentan como alcanzadas: no sube', () => {
+    const chip = getProgression(cfg3, BB, rows(3, { weight: '60', reps: '', done: false }), tk);
+    expect(chip.type).not.toBe('up');
+  });
+
+  // P12 §4.2 y §8.2 (mismo `verdict` en segundos): serie ✓ sin tiempo alcanza la meta
+  // mata progression.js:244:9 (`&&` → `||`) y 244:24 (`time > 0` → true / `>= 0`)
+  test('Tiempo + Peso: series ✓ sin tiempo cuentan como alcanzadas: sube', () => {
+    const c = { sets: 3, minTime: 30, maxTime: 60, inputType: 'weight_time', progression: { type: 'double' } };
+    expect(getProgression(c, BB, rows(3, { weight: '5', done: true }), tk))
+      .toMatchObject({ type: 'up', suggestedWeight: 7.5 });
+  });
+
+  // P12 §4.2: «n = series de la plantilla»; §4.3: «con la n de la sesión»
+  // mata progression.js:509:21 (`exConfig?.sets ?? def?.sets ?? …` → `&&`)
+  test('n son las series de la plantilla, no las apuntadas: 4 de 5 a la meta mantiene', () => {
+    const c = { ...cfg3, sets: 5 };
+    expect(getProgression(c, BB, rows(4, { weight: '60', reps: '12', done: true }), tk))
+      .toMatchObject({ type: 'hold', suggestedWeight: 60 });
+  });
+
+  // P12 §4.2: «sube = todas a la meta»; `chipDoubleDecrease` es «su espejo con la misma lógica»
+  // mata progression.js:455:7 (`v.up && assistance === 0` → `v.up || assistance === 0`)
+  test('asistido sin ayuda que no llega a la meta no sube: baja y pone ayuda', () => {
+    const assisted = { progressionDirection: 'decrease', weightStep: 2.5 };
+    const chip = getProgression(cfg3, assisted, [7, 7, 7].map((r) => ({ weight: '0', reps: String(r), done: true })), tk);
+    expect(chip).toMatchObject({ type: 'down', suggestedWeight: 2.5 });
+  });
+
+  // P12 §4.2: «RPE medio ≤ maxRpe» (un RPE medio igual al tope sube)
+  // mata progression.js:280:34 (`rpe > maxRpe` → `>=`)
+  test('RPE máx.: con RPE medio igual al tope sube', () => {
+    const c = { ...cfg3, progression: { type: 'double', evaluation: { mode: 'rpe', maxRpe: 8 } } };
+    expect(getProgression(c, BB, rows(3, { weight: '60', reps: '12', rpe: '8', done: true }), tk).type).toBe('up');
+  });
+
+  // P12 §4.4: «con las series ≥ inicio» (una serie justo en el inicio cuenta)
+  // mata progression.js:321:34 (`x >= start` → `x > start`)
+  test('Tiempo: tiempos iguales al inicio suben 5 s desde ese inicio', () => {
+    const c = { sets: 3, minTime: 30, maxTime: 30, inputType: 'time', progression: { type: 'time' } };
+    expect(getProgression(c, BB, rows(3, { time: '30', done: true }), tk))
+      .toMatchObject({ type: 'up', suggestedTime: 35, from: 30 });
+  });
+
+  // P12 §5.3-bis: «(los asistidos no cambian)» — una asistida sin escalón sigue siendo Doble y baja
+  // mata progression.js:174:34 (`direction === 'increase'` → true)
+  test('asistida de la librería sin escalón: sigue en Doble y la dirección es bajar', () => {
+    expect(resolveProgressionConfig({}, LIB.pistol_squat_assisted)).toMatchObject({ type: 'double', direction: 'decrease' });
+  });
+
+  // P10 §3.1: «LEGACY_REVERSE_MAP gana `fixed:'none'` y conserva `submax:'none'`»
+  // mata progression.js:88:23 (`fixed: 'none'` → "") y 89:23 (`submax: 'none'` → "")
+  test.each(['fixed', 'submax'])("progressionModel '%s' es Nada y no da chip", (progressionModel) => {
+    const d = { progressionModel };
+    expect(resolveProgressionConfig({}, d).type).toBe('none');
+    expect(getProgression({}, d, rows(3, { weight: '60', reps: '10', done: true }), tk)).toBeNull();
+  });
+
+  // P12 §3.1.4 (mantener = lo de la última vez) y §4.2 (espejo con la misma lógica)
+  // mata progression.js:462:186 (`assistance || null` → true / false / `&&`)
+  test('asistido que mantiene: el número es la ayuda de la última vez', () => {
+    const assisted = { progressionDirection: 'decrease', weightStep: 2.5 };
+    const r = [12, 10, 9].map((x) => ({ weight: '20', reps: String(x), done: true }));
+    expect(getProgression(cfg3, assisted, r, tk)).toMatchObject({ type: 'hold', suggestedWeight: 20, assist: true });
+  });
+
+  // P12 §5.4-bis: «Exacto: se guarda `weightStep:'exact'`»; §12.2 (`def.progression` como valor por defecto)
+  // mata progression.js:192:77 (`d.weightStep === 'exact'` → true)
+  test('ejercicio propio en Por esfuerzo con escalón numérico no es Exacto', () => {
+    expect(resolveProgressionConfig({}, { weightStep: 5, progression: { type: 'effort' } }).exact).toBe(false);
+  });
+
+  // P12 §4.5: «chip.effort → peso = suggestedWeight; reps = minReps»; P10 §5.2
+  // mata progression.js:436:13 (`effort: true` → false) y 401:13 (idem, en `keep`)
+  test('Por esfuerzo marca el chip como effort, también sin RPE', () => {
+    const c = { sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } };
+    const at = (rpe) => rows(3, { weight: '80', reps: '5', rpe, done: true });
+    expect(getProgression(c, { weightStep: 2.5 }, at('7'), tk).effort).toBe(true);
+    expect(getProgression(c, { weightStep: 2.5 }, at(''), tk).effort).toBe(true);
+  });
+
+  // P10 §2.1 («LEGACY_TYPE_MAP.effort = double_progression»), §3.3 (Fija = 'fixed'); P12 §12.2
+  // mata progression.js:74:32 y 76-80 (valores de LEGACY_TYPE_MAP)
+  test('LEGACY_TYPE_MAP: de tipo de progresión a progressionModel', () => {
+    expect(LEGACY_TYPE_MAP).toEqual({
+      double: 'double_progression',
+      weight: 'double_progression',
+      reps: 'double_progression',
+      time: 'time_progression',
+      effort: 'double_progression',
+      none: 'fixed',
+    });
+  });
+
+  // P12 §4.2: `why_rpeAbove` = «llegó a la meta pero con RPE medio > maxRpe»
+  // mata progression.js:283:14 (`reached && rpeOver` → `||`)
+  test('RPE máx.: sin llegar a la meta no se dice que el RPE se pasó', () => {
+    const c = { ...cfg3, progression: { type: 'double', evaluation: { mode: 'rpe', maxRpe: 8 } } };
+    const r = [12, 10, 9].map((x) => ({ weight: '60', reps: String(x), rpe: '10', done: true }));
+    expect(getProgression(c, BB, r, tk)).toMatchObject({ type: 'hold', why: 'progression.why_holdReps{}' });
+  });
+
+  // P12 §5.2: «Sube 2.5 kg cuando todas las series lleguen a 12» (12 = el `maxReps`, aquí 10)
+  // mata progression.js:579:19 (`exConfig?.maxReps ?? def?.maxReps` → `&&`)
+  test('progressionRule: la meta es el maxReps del ejercicio', () => {
+    const c = { sets: 3, minReps: 6, maxReps: 10, progression: { type: 'double' } };
+    expect(progressionRule(c, BB, tk)).toBe(
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":10}progression.rule.weightDown{"fails":2,"n":3}');
+  });
+
+  // P12 §5.2 / §4.3: la cola de bajar usa ⌊n·0,4⌋+1 de n, con n = las series de la plantilla (5 → 3 de 5)
+  // mata progression.js:582:19 (`exConfig?.sets ?? def?.sets ?? 3` → `&&`)
+  test('progressionRule: la cola de bajar usa las series del ejercicio', () => {
+    const c = { sets: 5, minReps: 8, maxReps: 12, progression: { type: 'double' } };
+    expect(progressionRule(c, BB, tk)).toBe(
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":12}progression.rule.weightDown{"fails":3,"n":5}');
+  });
+
+  // P12 §4.1 («type 'weight' → double con meta = minReps»); §8.4 («la meta es el mínimo de tiempo»)
+  // mata progression.js:618:18 y 618:50 (`legacy = type === 'weight'` → false / "")
+  test("progressionRule: el 'weight' antiguo dice el mínimo como meta, en reps y en tiempo", () => {
+    const reps = { sets: 3, minReps: 4, maxReps: 6, progression: { type: 'weight' } };
+    expect(progressionRule(reps, BB, tk)).toBe(
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":4}progression.rule.weightDown{"fails":2,"n":3}');
+    const time = { sets: 3, minTime: 20, maxTime: 40, inputType: 'weight_time', progression: { type: 'weight' } };
+    expect(progressionRule(time, BB, tk)).toBe(
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"20 s"}progression.rule.weightDown{"fails":2,"n":3}');
   });
 });

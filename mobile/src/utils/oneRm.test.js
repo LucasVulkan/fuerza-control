@@ -110,3 +110,87 @@ describe('e1rmAtLeast (cota baja para Por esfuerzo)', () => {
     expect(e1rmAtLeast(50, 5, '')).toBeNull();
   });
 });
+
+describe('I01-01 — huecos de mutación', () => {
+  // P10 §2.2: «las que den `null` no cuentan» (sin peso válido no hay e1RM)
+  // mata oneRm.js:23 (`w <= 0` → false)
+  test('epley1RM: peso negativo → null', () => {
+    expect(epley1RM(-100, 5)).toBeNull();
+  });
+
+  // P10 §2.2: «las que den `null` no cuentan» (sin reps válidas no hay e1RM)
+  // mata oneRm.js:23:29 (`!r` → false)
+  test('epley1RM: reps vacías → null', () => {
+    expect(epley1RM(100, '')).toBeNull();
+  });
+
+  // P10 §2.2: suma la recámara con RPE 5-10 (RPE 5 = 5 en recámara → 10RM)
+  // mata oneRm.js:25:7 (`rpeNum >= 5` → `> 5`)
+  test('epley1RM: RPE 5 en el límite suma 5 reps de recámara', () => {
+    expect(epley1RM(100, 5, 5)).toBeCloseTo(133.33, 2);
+  });
+
+  // P10 §2.2: «fuera de ahí la serie cuenta como hecha al fallo» (RPE 11 no suma recámara)
+  // mata oneRm.js:25:22 (`rpeNum <= 10` → true)
+  test('epley1RM: RPE 11 fuera de rango cuenta como al fallo', () => {
+    expect(epley1RM(100, 5, 11)).toBeCloseTo(116.67, 2);
+  });
+
+  // P10 §2.2: devuelve `null` por encima de `MAX_RELIABLE_REPS = 12`; 12 todavía vale
+  // mata oneRm.js:28 (`r > 12` → `r >= 12`)
+  test('epley1RM: 12 reps todavía valen', () => {
+    expect(epley1RM(100, 12)).toBeCloseTo(140, 6);
+  });
+
+  // P10 §2.2 paso 1 (series con peso, reps y RPE) + cota baja «RPE < 5 cuenta como 5»
+  // mata oneRm.js:45:9 (`w > 0` → `w >= 0`)
+  test('e1rmAtLeast: peso 0 → null', () => {
+    expect(e1rmAtLeast(0, 5, 8)).toBeNull();
+  });
+
+  // P10 §2.2: 1 rep con RPE 8 = 1 + 2 en recámara = 3RM → 100 × (1 + 3/30)
+  // mata oneRm.js:45:21 (`r >= 1` → `r > 1`)
+  test('e1rmAtLeast: 1 rep con RPE 8 es una 3RM', () => {
+    expect(e1rmAtLeast(100, 1, 8)).toBeCloseTo(110, 6);
+  });
+
+  // P10 §2.2 paso 1: sin RPE la serie no cuenta (RPE 0 = no apuntado)
+  // mata oneRm.js:45:34 (`p > 0` → `p >= 0`)
+  test('e1rmAtLeast: RPE 0 → null', () => {
+    expect(e1rmAtLeast(100, 5, 0)).toBeNull();
+  });
+
+  // P10 §2.2: «r === 1 → e1rm» (una rep al fallo es el propio peso)
+  // mata oneRm.js:47 (`eq === 1` → false)
+  test('e1rmAtLeast: 1 rep a RPE 10 es el propio peso', () => {
+    expect(e1rmAtLeast(100, 1, 10)).toBe(100);
+  });
+
+  // T02 tabla `e1rm`: «mejor e1RM» (ni la primera ni la última serie: la mejor)
+  // mata oneRm.js:68:24 (`best === null || v > best` → `&&` / `false`: gana la primera)
+  //  y oneRm.js:68 (→ true: gana la última)
+  test('bestSetE1RM: devuelve la mejor serie, esté donde esté', () => {
+    const sets = [
+      { weight: '80',  reps: '5', rpe: '8', done: true },
+      { weight: '100', reps: '5', rpe: '8', done: true },
+      { weight: '60',  reps: '5', rpe: '8', done: true },
+    ];
+    expect(bestSetE1RM(sets)).toBeCloseTo(123.33, 2);
+  });
+
+  // T02: docstring «best e1RM over the last weeks» (el mejor de la ventana, no el primero ni el más reciente)
+  // mata oneRm.js:88:24 (`best === null || v >= best` → `&&` / `false`: gana el primero)
+  //  y oneRm.js:88 (→ true: gana el último)
+  test('recentE1RM: el mejor de la ventana, con el timestamp de su sesión', () => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const logs = [
+      { timestamp: now - 20 * day, exercise: { sets: [{ weight: '80',  reps: '5', rpe: '8', done: true }] } },
+      { timestamp: now - 10 * day, exercise: { sets: [{ weight: '100', reps: '5', rpe: '8', done: true }] } },
+      { timestamp: now - 2 * day,  exercise: { sets: [{ weight: '60',  reps: '5', rpe: '8', done: true }] } },
+    ];
+    const r = recentE1RM(logs);
+    expect(r.value).toBeCloseTo(123.33, 2);
+    expect(r.timestamp).toBe(now - 10 * day);
+  });
+});

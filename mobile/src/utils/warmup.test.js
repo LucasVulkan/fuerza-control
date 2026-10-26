@@ -106,3 +106,17 @@ describe('resolveWorkWeight', () => {
     expect(resolveWorkWeight(null, null, 65, { suggestedWeight: 0 })).toBe(65);
   });
 });
+
+describe('I01-01 — huecos de mutación', () => {
+  // T05 §2: «Peso del top set de la última sesión» (el mayor, esté donde esté, ignorando el 0)
+  // mata warmup.js:62:9 y warmup.js:62:22 (un 0 no puede ser el top set)
+  it('el top set de la última sesión ignora las series a 0', () => {
+    const lastExercise = {
+      sets: [
+        { weight: '60', reps: '8', time: '', done: true },
+        { weight: '0',  reps: '8', time: '', done: true },
+      ],
+    };
+    expect(resolveWorkWeight(null, lastExercise, '50')).toBe(60);
+  });
+});

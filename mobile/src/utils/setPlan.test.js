@@ -155,3 +155,39 @@ describe('planSet — Tiempo + Peso vuelve al mínimo (P61 §8.2)', () => {
     expect(p.time).toEqual({ value: '40', source: 'coach' });
   });
 });
+
+describe('I01-01 — huecos de mutación', () => {
+  const chipUp = { type: 'up', suggestedWeight: 62.5 };
+  const base = { exConfig: { minReps: 8, maxReps: 12 }, def: null, chip: chipUp, lastSets: last3('60', [12, 11, 10]), index: 0 };
+
+  // P12 §4.5: «Por campo, el primero que tenga valor» (un null del entrenador no es valor)
+  // mata setPlan.js:15:33 (`v != null` → `v !== ''`)
+  it('un objetivo del entrenador null no cuenta: gana el plan', () => {
+    const p = planSet({ ...base, overrideEx: { weight: null } });
+    expect(p.weight).toEqual({ value: '62.5', source: 'plan' });
+  });
+
+  // P12 §4.5: «Por campo, el primero que tenga valor» (un texto vacío del entrenador no es valor)
+  // mata setPlan.js:15:39 (`v !== ''` → true / texto)
+  it('un objetivo del entrenador vacío no cuenta: gana el plan', () => {
+    const p = planSet({ ...base, overrideEx: { weight: '' } });
+    expect(p.weight).toEqual({ value: '62.5', source: 'plan' });
+  });
+
+  // P12 §4.5: «En mantener, el gris es lo que hiciste (decisión 4), no el inicio»
+  // mata setPlan.js:58:7 (`plan.reps == null` → true)
+  it('en mantener, las reps grises son las de la última vez, no las sugeridas', () => {
+    const chip = { type: 'hold', suggestedWeight: 60, suggestedReps: 9 };
+    const p = planSet({ ...base, chip, lastSets: [{ weight: '60', reps: '10', done: true }] });
+    expect(p.reps).toEqual({ value: '10', source: 'last' });
+  });
+
+  // P12 §4.5: «chip.effort → peso = chip.suggestedWeight; reps = minReps»
+  // mata setPlan.js:58:7 (`plan.reps == null` → true: pisaría el minReps con suggestedReps)
+  it('en Por esfuerzo las reps del plan son el mínimo, no las del chip', () => {
+    const chip = { effort: true, type: 'up', suggestedWeight: 80, suggestedReps: 7 };
+    const p = planSet({ exConfig: { minReps: 5, maxReps: 8 }, def: null, chip, lastSets: [], index: 0 });
+    expect(p.weight).toEqual({ value: '80', source: 'plan' });
+    expect(p.reps).toEqual({ value: '5', source: 'plan' });
+  });
+});

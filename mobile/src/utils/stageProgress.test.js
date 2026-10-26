@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, clientStageIndex,
   withStages, ensureStages, closeOpenStage, stageDays, stageDaysAt, allProgramDays,
-  applyProgress, normalizeProgress, stageBannerDue, athleteProgress, stageStatus,
+  applyProgress, normalizeProgress, stageBannerDue, athleteProgress, stageStatus, fromLegacyProgress,
 } from './stageProgress';
 
 // El modelo de semanas en sí (fechas, stageStatus, recordSession…) se prueba en
@@ -376,5 +376,70 @@ describe('ensureStages — la invariante de `days` (fallo 16)', () => {
     const sano = { id: 'p1', stages: [{ id: 's1', days: [] }] };
 
     expect(ensureStages(sano)).toBe(sano);
+  });
+});
+
+describe('I01-01 — huecos de mutación', () => {
+  const days = [{ sessionTemplateId: 'tpl_a' }, { sessionTemplateId: 'tpl_b' }];
+  const stages3 = [1, 2, 3].map((n) => ({ id: `st${n}`, durationWeeks: 2, days: [] }));
+
+  // C04-qa-sep-conexion.md §3.2 a: el cliente sube cuando algo de lo que viaja en el blob cambia (el programa también)
+  // mata stageProgress.js:412 (`a?.id !== b?.id` → false)
+  it('progressChanged: otro programa con el mismo progreso → true', () => {
+    expect(progressChanged({ id: 'p1', ...MINE }, { id: 'p2', ...MINE })).toBe(true);
+  });
+
+  // P08 §5.0: «Con salto → stageReset(etapaEntrante) y, si el programa es otro, además programStartedOn: null»
+  // (la copia de progreso que trae el programa del entrenador «nunca cuenta»)
+  // mata stageProgress.js:440:22 y 440:30 (`blob.programId === program?.id` → true)
+  it('mergeProgressOnImport: un programa distinto no hereda ni el progreso del blob ni el de su propia copia', () => {
+    const otro = {
+      id: 'prog_2', stages: stages3, currentStageIndex: 1,
+      stageSessionsDone: 5, stageStartedOn: '2026-09-14', stageExtraWeeks: 2, programStartedOn: '2026-08-03',
+    };
+    const r = mergeProgressOnImport({ blob: { programId: 'prog_1', ...MINE }, program: otro, lastActivation: null });
+    expect(r).toEqual({
+      currentStageIndex: 1, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
+    });
+  });
+
+  // P08 §5.0: sin blob del cliente, «stageReset(etapaEntrante)»; el progreso de la copia del entrenador no cuenta
+  // mata stageProgress.js:440:22 (`blob && …` → true)
+  it('mergeProgressOnImport: sin blob, el progreso de la copia del entrenador no cuenta', () => {
+    const conProgreso = {
+      id: 'prog_1', stages: stages3, currentStageIndex: 1,
+      stageSessionsDone: 5, stageStartedOn: '2026-09-14', stageExtraWeeks: 2, programStartedOn: '2026-08-03',
+    };
+    const r = mergeProgressOnImport({ blob: null, program: conProgreso, lastActivation: null });
+    expect(r).toEqual({
+      currentStageIndex: 1, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0, programStartedOn: null,
+    });
+  });
+
+  // P08 §5.4: «programStartedOn = (totalWeeksCompleted ?? 0) > 0 || stageSessionsDone > 0 ? today − 7 × total : null»
+  // (desde el lunes de esta semana, §4: viernes 25-sep → lunes 21-sep − 21 días)
+  // mata stageProgress.js:487:36 (`total > 0` → false)
+  it('fromLegacyProgress: con semanas totales y sin sesiones, programStartedOn sale igual', () => {
+    const r = fromLegacyProgress({ totalWeeksCompleted: 3 }, 3, '2026-09-25');
+    expect(r.stageSessionsDone).toBe(0);
+    expect(r.stageStartedOn).toBeNull();
+    expect(r.programStartedOn).toBe('2026-08-31');
+  });
+
+  // P06 §2: «Todo programa es un programa por etapas» (una lista de etapas vacía no cuenta como tener etapas)
+  // mata stageProgress.js:86 (`stages?.length > 0` → `>= 0`) y 78:51 (nombre por defecto → "")
+  it('ensureStages: un programa con stages [] y días recibe una etapa «Etapa 1» con esos días', () => {
+    const p = ensureStages({ id: 'p1', stages: [], days });
+    expect(p.stages).toHaveLength(1);
+    expect(p.stages[0].name).toBe('Etapa 1');
+    expect(p.stages[0].durationWeeks).toBeNull();
+    expect(p.stages[0].days).toEqual(days);
+  });
+
+  // ensureStages (fallo 16): «Una etapa SIEMPRE tiene `days`, aunque sea vacío»
+  // mata stageProgress.js:91:89 (`st?.days ?? []` → ["Stryker was here"])
+  it('ensureStages: la etapa sin `days` recibe una lista vacía', () => {
+    const out = ensureStages({ id: 'p1', stages: [{ id: 's1', name: 'Etapa 1' }] });
+    expect(out.stages[0].days).toEqual([]);
   });
 });
