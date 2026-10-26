@@ -516,7 +516,7 @@ describe('S15 vincular Google estando desplazado', () => {
 });
 
 describe('S16 el progreso del espejo sigue al programa personal', () => {
-  it('S16 hoy: con un programa propio activo, el progreso que se sube al entrenador pasa a ser el de ese programa (regla R-B7: cada papel con lo suyo)', async () => {
+  it('S16 arreglado (E57): con un programa propio activo, el progreso que se sube al entrenador sigue siendo el de su programa (regla R-B7: cada papel con lo suyo)', async () => {
     const { c } = await trainerAndClient();
     await trainOnce(c, 's1');
     const trainerProg = c.s.clientSync.trainerProgramIds[0];
@@ -526,7 +526,7 @@ describe('S16 el progreso del espejo sigue al programa personal', () => {
       profile: { ...s.profile, activeProgramId: 'mine' },
     }));
     await c.s.uploadHistoryToTrainer();
-    expect((await slotOf(c.s.clientSync.slotId)).history_json.progress.programId).toBe('mine');
+    expect((await slotOf(c.s.clientSync.slotId)).history_json.progress.programId).toBe(trainerProg);
   });
 });
 
@@ -568,8 +568,8 @@ describe('S18 programa nuevo del entrenador con un programa propio activo', () =
   it('R-C5 cumple: con el programa del entrenador activo, aplicar el nuevo conserva el progreso de etapa', async () => {
     expect(await updateTrainerProgram(false)).toEqual({ name: 'Fuerza v2', done: 5, started: '2026-10-01' });
   });
-  it('S18 hoy: con un programa propio activo, aplicar el programa nuevo del entrenador borra el progreso del programa del entrenador (regla R-C5: llega sin pisar lo que el cliente ha entrenado)', async () => {
-    expect(await updateTrainerProgram(true)).toEqual({ name: 'Fuerza v2', done: 0, started: null });
+  it('S18 arreglado (E57): con un programa propio activo, aplicar el programa nuevo del entrenador conserva el progreso del programa del entrenador (regla R-C5: llega sin pisar lo que el cliente ha entrenado)', async () => {
+    expect(await updateTrainerProgram(true)).toEqual({ name: 'Fuerza v2', done: 5, started: '2026-10-01' });
   });
 });
 

@@ -172,6 +172,12 @@ function seatLockedError() {
 }
 
 /** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
+// El programa del entrenador de este cliente: el activo si es suyo, si no el último que
+// llegó. Su progreso es lo que se sube y lo que se conserva al aplicar un programa nuevo (E57).
+const trainerProgramOf = (clientSync, activeId) => {
+  const ids = clientSync.trainerProgramIds ?? [];
+  return !ids.length || ids.includes(activeId) ? activeId : ids[ids.length - 1];
+};
 const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
 
 // Dropset actions all touch the `drops` array of the LAST work set only
@@ -4735,7 +4741,7 @@ export const useStore = create(
         const pending = clientSync.pendingProgramUpdate;
         if (!pending) return;
 
-        const mine       = progressBlob(programs[profile.activeProgramId]);
+        const mine       = progressBlob(programs[trainerProgramOf(clientSync, profile.activeProgramId)]);
         const activation = pending.programJson?.program?.stageActivatedAt ?? null;
 
         get().importData(pending.programJson, { program: true, log: false }, { silent: true });
@@ -4806,7 +4812,7 @@ export const useStore = create(
         // can be overwritten by a local stage switch, while clientSync only
         // moves when an import actually applies an activation.
         const progress = progressBlob(
-          programs[profile.activeProgramId],
+          programs[trainerProgramOf(clientSync, profile.activeProgramId)],
           clientSync.lastAppliedStageActivation ?? null,
         );
 
