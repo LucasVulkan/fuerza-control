@@ -50,7 +50,9 @@ export function useDisconnectFromTrainer() {
     }
   }
 
-  function disconnect({ forProgram = false, onDone, keepProgram = false } = {}) {
+  // R1 (`forProgram`) conserva el programa: el que va a usar se elige después, y
+  // sin esto volvería el previo a la conexión (el propio archivado sin desarchivar).
+  function disconnect({ forProgram = false, onDone, keepProgram = forProgram } = {}) {
     showDialog(
       t('trainer.disconnectTitle'),
       forProgram ? t('trainer.changeProgramBody', { trainer: trainerName() }) : t('trainer.disconnectBody'),

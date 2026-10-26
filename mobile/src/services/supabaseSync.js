@@ -118,7 +118,7 @@ export async function downloadSlotProgram(slotId) {
   return (await trainerSlot(slotId, 'program_json')).program_json ?? null;
 }
 
-/** Historial del cliente (formato nuevo `{ entries, deleted, customExercises, progress }` o lista vieja). */
+/** Historial del cliente (formato nuevo `{ entries, customExercises, progress }` o lista vieja). */
 export async function downloadHistory(slotId) {
   const data = await trainerSlot(slotId, 'history_json, history_updated_at');
   return { ...parseHistory(data.history_json), updatedAt: data.history_updated_at };
@@ -128,7 +128,6 @@ function parseHistory(raw) {
   const isNewFormat = raw && !Array.isArray(raw) && raw.entries !== undefined;
   return {
     history:         isNewFormat ? (raw.entries ?? []) : (raw ?? []),
-    deleted:         isNewFormat ? (raw.deleted ?? {}) : {},   // { [id]: deletedAt }: lo borrado, aparte de `entries` (E64)
     customExercises: isNewFormat ? (raw.customExercises ?? {}) : {},
     progress:        isNewFormat ? (raw.progress ?? null) : null,
   };

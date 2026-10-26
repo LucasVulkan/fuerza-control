@@ -132,6 +132,9 @@ const EMPTY_CLIENT_SYNC = {
 // móvil, entre «buscar» y «confirmar». En memoria y nada más: es una sesión.
 let _clientCandidate = null;
 
+// La suelta del asiento (`_flushRelease`) en vuelo: entrar en un asiento espera a que acabe.
+let _releasing = null;
+
 
 // ── Sesión de entrenador ───────────────────────────────────────────────────────
 // Antes de hablar con el servidor como entrenador, la sesión de entrenador
@@ -180,7 +183,7 @@ const trainerProgramOf = (clientSync, activeId) => {
 };
 // Lo que pasa a una ficha cuando se cancela su invitación, aquí o en otro móvil: vuelve a «sin app».
 const UNINVITED = {
-  syncSlotId: null, syncCode: null, syncLinked: false,
+  syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false,
   programDirty: false, overridesDirty: false, programUploadedSig: null,
   remoteSessionsCount: 0,
 };
@@ -4264,7 +4267,7 @@ export const useStore = create(
           // deleted them, or reinstalled) are kept — this is the trainer's record.
           // A changed copy of a known entry (RPE added in the recap) replaces it.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history, { update: true, deleted: { ...downloaded.deleted, ...get().deletedClientLogIds } });
+          const merged    = mergeClientLog(existing, history, { update: true, deleted: get().deletedClientLogIds });
           const newCount  = merged.length - existing.length;
 
           set((s) => ({
@@ -4385,8 +4388,9 @@ export const useStore = create(
               if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
               // El alta llegó pero su respuesta no (E63): el hueco es de la ficha que lo pidió.
               const own = slot.local_id && next[slot.local_id];
-              if (own && !own.syncSlotId) {
-                next[own.id] = { ...own, syncSlotId: slot.id };
+              if (own && (!own.syncSlotId || own.syncOrphan)) {
+                // Con su programa por subir, que el invitado lo mande solo.
+                next[own.id] = { ...own, syncSlotId: slot.id, programDirty: !!own.activeProgramId };
                 known.add(slot.id);
                 continue;
               }
@@ -4605,7 +4609,7 @@ export const useStore = create(
           if (!mergeHistory) return;
 
           const localIds   = new Set((get().workoutLog ?? []).map((e) => e.id));
-          const deleted    = { ...downloaded.deleted, ...get().deletedLogIds };
+          const deleted    = get().deletedLogIds ?? {};
           const newEntries = (remoteEntries ?? []).filter((e) => e.id && !e.deletedAt && !deleted[e.id] && !localIds.has(e.id));
           if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
             set((s) => ({
@@ -4636,6 +4640,7 @@ export const useStore = create(
        * @param {boolean} [opts.mergeHistory] Fusionar el historial del hueco con el local.
        */
       linkToTrainer: async (code, { mergeHistory = false } = {}) => {
+        await get()._flushRelease();
         const userId = await ensureClientSession();
         const slot = await getSlotByClientCode(code);
         if (!slot) throw Object.assign(new Error(i18n.t('trainer.errCodeNotFound')), { code: 'CODE_NOT_FOUND' });
@@ -4959,19 +4964,26 @@ export const useStore = create(
 
       /**
        * Suelta en el servidor el asiento que `unlinkFromTrainer` soltó sin red.
-       * Con éxito, o con cualquier respuesta del servidor (ya no es suyo, otro
-       * asiento), no queda nada por soltar; sin red se queda para la próxima.
-       * Entrar en un asiento (`_adoptSeat`) vacía `clientSync`, y con él esto.
+       * Solo se da por soltado con éxito o con SLOT_CHANGED (el cliente ya está
+       * en otro); cualquier otro error (red, 5xx, sesión…) lo deja para la
+       * próxima. Una sola a la vez, y entrar en un asiento la espera (si no, la
+       * suelta tardía soltaría el asiento recién ocupado): quien entra hace
+       * `await get()._flushRelease()` antes. `_adoptSeat` vacía `clientSync`, y
+       * con él `releaseDue`.
        */
-      _flushRelease: async () => {
+      _flushRelease: () => {
+        if (_releasing) return _releasing;
         const slotId = get().clientSync.releaseDue;
-        if (!slotId) return;
-        try {
-          await releaseClientSlot(undefined, slotId);
-        } catch (err) {
-          if (err.code === 'NETWORK') return;
-        }
-        set((s) => (s.clientSync.releaseDue === slotId ? { clientSync: { ...s.clientSync, releaseDue: null } } : {}));
+        if (!slotId) return Promise.resolve();
+        _releasing = (async () => {
+          try {
+            await releaseClientSlot(undefined, slotId);
+          } catch (err) {
+            if (err.code !== 'SLOT_CHANGED') return;
+          }
+          set((s) => (s.clientSync.releaseDue === slotId ? { clientSync: { ...s.clientSync, releaseDue: null } } : {}));
+        })().finally(() => { _releasing = null; });
+        return _releasing;
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -4992,6 +5004,7 @@ export const useStore = create(
        * Devuelve `{ found: true, slotId, userId, programName, hasRemoteHistory }`.
        */
       validateGoogleClient: async ({ provider = 'google', idToken, accessToken }) => {
+        await get()._flushRelease();
         const candidate = await clientCandidateFromIdToken({ provider, idToken, accessToken });
         const seat = await seatOf(candidate.db);
         if (!seat) return { found: false };
@@ -5012,6 +5025,7 @@ export const useStore = create(
        * anterior, se suelta (un cliente, un asiento).
        */
       confirmGoogleReconnect: async ({ googleUserId, provider = 'google', mergeHistory = false }) => {
+        await get()._flushRelease();
         const candidate = _clientCandidate;
         if (candidate?.userId !== googleUserId) throw new Error(i18n.t('trainer.errGoogle'));
         const current = await clientSessionUserId();

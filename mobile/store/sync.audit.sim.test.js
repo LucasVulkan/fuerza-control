@@ -287,7 +287,7 @@ describe('S5 desconectarse sin red', () => {
   });
 
   it('E52: si antes del reintento entra con otro código, no queda nada por soltar y el asiento nuevo no se toca', async () => {
-    const { c, clientId: _a } = await trainerAndClient();
+    const { c } = await trainerAndClient();
     const old = c.s.clientSync.slotId;
     const t2 = await phone('entrenador 2');
     await t2.s.createTrainerCodeAccount();
@@ -301,7 +301,48 @@ describe('S5 desconectarse sin red', () => {
     await c.s.checkAndPullProgramUpdates();
     expect((await slotOf(slotB)).client_id).toBe(c.s.clientSync.supabaseUserId);
     expect((await slotOf(old)).client_id).toBeNull();
-    expect(_a).toBeTruthy();
+  });
+});
+
+describe('E52 entrar en un asiento espera a que acabe de soltarse el anterior', () => {
+  it('E52: desconexión sin red; el reintento queda retenido y se vuelve a entrar en el MISMO hueco → al soltar el retén, el hueco sigue ocupado y la app conectada', async () => {
+    const { t, c: c0, clientId } = await trainerAndClient();
+    const c = await phone('cliente', { device: c0.device, from: c0, wrap: gateRpc('release_client_slot') });
+    const slotId = c.s.clientSync.slotId;
+    c.device.offline = true;
+    await c.s.unlinkFromTrainer();
+    c.device.offline = false;
+    expect(c.s.clientSync.releaseDue).toBe(slotId);
+
+    c.device.hold = true;
+    const pull = c.s.checkAndPullProgramUpdates();                      // al volver a primer plano: suelta, retenido en la red
+    await new Promise((r) => setTimeout(r, 50));
+    const joining = join(c, codeOf(t, clientId));                       // y a la vez entra de nuevo con el mismo código
+    await new Promise((r) => setTimeout(r, 50));
+    c.device.release();
+    await pull; await joining;
+
+    expect(c.s.clientSync).toMatchObject({ slotId, releaseDue: null });
+    expect((await slotOf(slotId)).client_id).toBe(c.s.clientSync.supabaseUserId);
+  });
+
+  it('E52: un error que no es de red ni SLOT_CHANGED (un 5xx) tampoco vacía la cola', async () => {
+    let wrapped;
+    const failing = (cfg) => {
+      wrapped = cfg;
+      const real = cfg.clientSupabase.rpc.bind(cfg.clientSupabase);
+      cfg.clientSupabase.rpc = async (n, args) => (n === 'release_client_slot' && cfg.fail ? { data: null, error: { message: 'internal error 500' } } : real(n, args));
+      return cfg;
+    };
+    const { c: c0 } = await trainerAndClient();
+    const c = await phone('cliente', { device: c0.device, from: c0, wrap: failing });
+    const slotId = c.s.clientSync.slotId;
+    c.device.offline = true;
+    await c.s.unlinkFromTrainer();
+    c.device.offline = false;
+    wrapped.fail = true;
+    await c.s.checkAndPullProgramUpdates();
+    expect(c.s.clientSync.releaseDue).toBe(slotId);
   });
 });
 
@@ -735,14 +776,33 @@ describe('S17 dos móviles del mismo entrenador', () => {
     await t2.s.recoverTrainerAccount(code);
     const id2 = Object.keys(t2.s.clients)[0];
     t2.s.renameClient(id2, 'Ana Gómez');
-    expect(t2.s.clients[id2].syncSlotId).toBeTruthy();
+    const slotId = t2.s.clients[id2].syncSlotId;
+    expect(slotId).toBeTruthy();
 
     await t1.s.cancelClientInvitation(clientId);
     await t2.s.refreshTrainerSlots();
     expect(Object.keys(t2.s.clients)).toEqual([id2]);
     expect(t2.s.clients[id2]).toMatchObject({ name: 'Ana Gómez', syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false });
     expect(t2.s.trainerSync.deletedSlotIds).toEqual([]);
-    expect(t2.s.clients[id2].syncSlotId).toBe(t1.s.clients[clientId].syncSlotId);   // los dos móviles ven lo mismo
+    expect(t1.s.clients[clientId]).toMatchObject({ syncSlotId: null, syncCode: null });   // los dos móviles ven lo mismo
+    expect(await server.admin('select kind from public.deleted_slots where slot_id = $1', [slotId])).toEqual([{ kind: 'cancelled' }]);
+  });
+
+  it('E62: si el refresco no pudo preguntar (queda «de otra cuenta»), el siguiente aplica la cancelación y deja de serlo', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    const clientId = await t1.s.createClient('Ana', { withApp: true });
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    const id2 = Object.keys(t2.s.clients)[0];
+
+    await t1.s.cancelClientInvitation(clientId);
+    server.failOnce('rpc:trainer_deleted_slots');
+    await t2.s.refreshTrainerSlots();
+    expect(t2.s.clients[id2]).toMatchObject({ syncOrphan: true });
+    await t2.s.refreshTrainerSlots();
+    expect(t2.s.clients[id2]).toMatchObject({ syncSlotId: null, syncCode: null, syncOrphan: false });
   });
 
   it('E63: el alta llega pero se pierde la respuesta y un refresco recupera el hueco → es la ficha que lo pidió, no una segunda; borrarla borra el hueco', async () => {
@@ -756,8 +816,27 @@ describe('S17 dos móviles del mismo entrenador', () => {
     await t.s.refreshTrainerSlots();
     expect(Object.keys(t.s.clients)).toEqual([a]);
     expect(t.s.clients[a]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncCode: lost.data[0].code });
+    // «Pasar a la app» en esa ficha devuelve el mismo hueco, no otro
+    const again = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: a });
+    expect(again.data).toEqual(lost.data);
     await t.s.deleteClient(a);
     expect(await server.slots()).toEqual([]);
+  });
+
+  it('E63: la ficha recupera su hueco aunque estuviera «de otra cuenta», y con programa lo deja por subir', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const a = await t.s.createClient('Ana');
+    const programId = t.s.createProgramForClient(a, 2, 'Fuerza', null, { openEditor: false });
+    t.s.setClientActiveProgram(a, programId);
+    t.store.setState((s) => ({ clients: { ...s.clients, [a]: { ...s.clients[a], syncSlotId: 'hueco-de-la-otra-cuenta', syncOrphan: true } } }));
+    const lost = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: a });
+
+    await t.s.refreshTrainerSlots();
+    expect(Object.keys(t.s.clients)).toEqual([a]);
+    expect(t.s.clients[a]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncOrphan: false, activeProgramId: programId, programDirty: true });   // el invitado lo sube solo
   });
 
   it('E60: si el hueco se pasó a otra cuenta, el otro móvil lo sigue viendo «de otra cuenta» y no lo borra', async () => {

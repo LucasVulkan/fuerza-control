@@ -257,6 +257,7 @@ create table if not exists public.deleted_slots (
 );
 alter table public.deleted_slots enable row level security;
 revoke all on public.deleted_slots from anon, authenticated;
+create index if not exists deleted_slots_trainer_id on public.deleted_slots (trainer_id);
 
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
@@ -380,6 +381,10 @@ as $$
     'progress', coalesce(nullif(p_new->'progress', 'null'::jsonb), p_old->'progress')
   );
 $$;
+
+-- Las lápidas que la tanda B dejó dentro de `entries` pasan a `deleted` (E64).
+update public.trainer_clients set history_json = public._merge_history(history_json, '{}'::jsonb)
+ where history_json @? '$.entries[*] ? (exists(@.deletedAt))';
 
 
 -- ── 7. Entrenador ───────────────────────────────────────────────────────────

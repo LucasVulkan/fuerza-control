@@ -463,6 +463,19 @@ describe('E28 — _merge_history', () => {
     expect(m).toMatchObject({ entries: [], deleted: { x: 200 } });
   });
 
+  it('E64: volver a ejecutar schema.sql normaliza el historial que ya tenía lápidas dentro de entries, y repetirlo no cambia nada', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S } = await slotWithProgram(t);
+    await server.admin('update public.trainer_clients set history_json = $1::jsonb where id = $2',
+      [JSON.stringify({ entries: [{ id: 'a' }, { id: 'b', deletedAt: 90, updatedAt: 90 }], customExercises: {}, progress: null }), S]);
+    const schema = readFileSync(fileURLToPath(new URL('../../supabase/schema.sql', import.meta.url)), 'utf8');
+    await server.db.exec(schema);
+    const once = (await slotOf(S)).history_json;
+    expect(once).toMatchObject({ entries: [{ id: 'a' }], deleted: { b: 90 } });
+    await server.db.exec(schema);
+    expect((await slotOf(S)).history_json).toEqual(once);
+  });
+
   it('E64: las lápidas que las versiones anteriores metieron dentro de entries se pasan a deleted', async () => {
     const m = await merge({ entries: E('a', { id: 'b', deletedAt: 90, updatedAt: 90 }) }, { entries: E({ id: 'a', deletedAt: 95, updatedAt: 95 }, 'c') });
     expect(m.entries).toEqual([{ id: 'c' }]);
