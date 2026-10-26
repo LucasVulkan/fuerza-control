@@ -123,7 +123,7 @@ Tres palabras que salen mucho:
 | R-A2 | Nadie escribe en la tabla directamente: todo cambio pasa por las funciones de `schema.sql` §7-8, que comprueban quién eres antes de escribir. *En llano:* la alternativa sería dejar que la app escriba la fila con unas reglas de permiso, que es como estaba antes y dejaba a un cliente cambiarse de entrenador o reescribir su programa (`schema.sql` §5). No hay nada que decidir: la regla es que siga así y que nadie lo deshaga. | B · S |
 | R-A3 | Cada función que escribe comprueba que quien llama es el dueño (entrenador del hueco o cliente sentado) **en la misma operación** que escribe, y falla si no lo es. Es la protección contra un tercero que intente tocar lo que no es suyo, incluso con una app modificada. | L · B |
 | R-A4 | Un anónimo nunca actúa como entrenador. | B |
-| R-A5 | Al escribir un código, la pantalla de confirmar recibe solo el nombre del cliente, el del entrenador y el del programa: ni el programa entero ni el historial. *En llano:* teclear un código para «ver qué hay» no enseña los datos; para verlos hay que entrar de verdad (y eso ya lo cubre R-B2). | L · B |
+| R-A5 | Al escribir un código, la pantalla de confirmar recibe solo el nombre del cliente, el del entrenador y el del programa, y cuatro sí/no: si ya está dentro alguien, si soy yo, si está protegido con Google/Apple y si hay historial. Ni ids, ni horas, ni el programa entero ni el historial. *(Ampliada el 26-oct-2026, E30.)* *En llano:* teclear un código para «ver qué hay» no enseña los datos; para verlos hay que entrar de verdad (y eso ya lo cubre R-B2). | L · B |
 | R-A6 | Adivinar un código no es viable: 32⁸ ≈ 1,1·10¹² combinaciones. Si la app pasa a pedir menos caracteres, esta regla se revisa. | L |
 | R-A7 | `profiles` es una tabla pequeña del servidor con una sola cosa por usuario: si es entrenador. Cada uno puede escribir la suya, así que no puede servir para dar permisos. Hoy solo la usa la app para saber si una cuenta de Google ya era de entrenador (`supabaseAuth.js:80`). La regla es que nada dé acceso ni PRO por lo que diga esa tabla. | L |
 | R-A8 | Las dos funciones del servidor que crean y borran cuentas (`create-trainer-account`, `delete-account`) solo actúan sobre la cuenta que las llama, la de su pase (JWT), nunca sobre una que venga escrita en la petición. | L · B |
@@ -442,6 +442,12 @@ cuando crezca), R-D1 (se queda el traspaso de hoy).
      puede, la app avisa de cuántos entrenos no llegarán y el usuario decide.
    - R-D1: se quita el paso de Google o Apple a código (E49 deja de tener
      camino).
+6. **Cerradas en la tanda C** (26-oct-2026):
+   - R-A5 se amplía a los tres nombres y cuatro sí/no (E30).
+   - E60: si el entrenador borra un cliente en un móvil, el otro móvil también
+     lo borra (R-B6). Si el hueco pasó a otra cuenta, sigue «de otra cuenta».
+   - E31: `audit.sql` guarda una huella de cada función; al cambiar una en
+     `schema.sql` se actualiza su huella (lo avisa «H3 montaje»).
 4. **¿Quién hace las pasadas?** *Revisado el 23-oct-2026 por coste:* una
    pasada de Opus con esfuerzo máximo agotó el uso. A partir de ahora, Opus
    con esfuerzo alto solo para la pasada por reglas de cada zona, y la

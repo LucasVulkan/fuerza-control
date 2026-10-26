@@ -5,7 +5,7 @@
 >
 > Estado: **Reabierto el 23-oct-2026 con 34 fallos nuevos, E27-E60**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
-> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto), y **E37 y E49-E59** el 26-oct-2026; el resto (E30, E31, E34-E36, E60), sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
+> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto), y **E30, E31, E34-E37 y E49-E60** el 26-oct-2026. Solo queda abierto E45-d. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
@@ -132,13 +132,13 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [27](#27) | 🟠 Alta | ✅ Soltar un asiento vacía el historial y los ajustes del hueco | `supabase/schema.sql:466-530` |
 | [28](#28) | 🟠 Alta | ✅ La subida del cliente reemplaza el historial entero | `supabase/schema.sql:507` |
 | [29](#29) | 🟠 Alta | ✅ Los traspasos meten huecos y asientos en cuentas ajenas | `supabase/schema.sql:384-558` |
-| [30](#30) | 🟡 Media | `get_slot_by_code` enseña de más a quien tiene el código | `supabase/schema.sql:408` |
-| [31](#31) | 🟡 Media | `audit.sql` sale vacío con derivas graves | `supabase/audit.sql` |
+| [30](#30) | 🟡 Media | ✅ `get_slot_by_code` enseña de más a quien tiene el código | `supabase/schema.sql:408` |
+| [31](#31) | 🟡 Media | ✅ `audit.sql` sale vacío con derivas graves | `supabase/audit.sql` |
 | [32](#32) | 🟡 Media | ✅ «Vincular Google» del cliente sin asiento, y su reintento | `supabase/schema.sql:539` |
 | [33](#33) | 🟡 Media | ✅ «Eliminar cuenta» no termina con el mismo Google en los dos papeles | `store/useStore.js:4873` |
-| [34](#34) | 🟢 Baja | El motivo de perder el asiento sale cambiado | `supabase/schema.sql:493` |
-| [35](#35) | 🟢 Baja | Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
-| [36](#36) | 🟢 Baja | Usuario cliente borrado desde el panel: el entrenador lo ve invitado | `supabase/schema.sql:157` |
+| [34](#34) | 🟢 Baja | ✅ El motivo de perder el asiento sale cambiado | `supabase/schema.sql:493` |
+| [35](#35) | 🟢 Baja | ✅ Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
+| [36](#36) | 🟢 Baja | ✅ Usuario cliente borrado desde el panel: el entrenador lo ve invitado | `supabase/schema.sql:157` |
 | [37](#37) | 🟢 Baja | ✅ Una subida que llega tarde cae en el hueco del entrenador nuevo | `supabase/schema.sql:499` |
 | [38](#38) | 🟠 Alta | ✅ Restaurar desde Drive pierde las plantillas de programa | `src/screens/DriveBackupScreen.jsx:218` |
 | [39](#39) | 🟠 Alta | ✅ Reinstalar sin PRO deja a los clientes recuperados sin programa | `store/useStore.js:4311` |
@@ -162,7 +162,7 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [57](#57) | 🟡 Media | ✅ Con un programa propio activo, el progreso del entrenador se cruza | `store/useStore.js:4789` |
 | [58](#58) | 🟢 Baja | ✅ Una copia vieja de un entreno puede pisar una edición | `supabase/schema.sql:286` |
 | [59](#59) | 🟢 Baja | ✅ Lo que se borra del historial vuelve | `store/useStore.js:2985` |
-| [60](#60) | 🟢 Baja | Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» | `store/useStore.js:4340` |
+| [60](#60) | 🟢 Baja | ✅ Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» | `store/useStore.js:4340` |
 
 Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
 se hizo y en qué se equivocaba el diagnóstico si se equivocaba.
@@ -2423,7 +2423,7 @@ ajeno a secas.
 
 Hecho (`3dc1a86`, `6fb75f6`). `transfer_my_slots_to` y `transfer_my_seat_to` desaparecen; ahora la cuenta vieja ofrece (`offer_transfer`) y la nueva acepta con su propia sesión (`accept_transfer`), con caducidad de 10 minutos y una sola vez. Ofrecer no valida el destino, así que ya no sirve de oráculo. La tabla `transfer_offers` no se lee ni se escribe desde fuera, y `audit.sql` lo vigila.
 
-## 30. `get_slot_by_code` enseña de más a quien tiene el código 🟡 {#30}
+## 30. `get_slot_by_code` enseña de más a quien tiene el código 🟡 ✅ {#30}
 
 > En corto: Con solo teclear un código, sin entrar, se ve el id del hueco, si el cliente está conectado y a qué hora subió su último entreno.
 
@@ -2445,7 +2445,11 @@ note, y el comentario de `:404-405` dice «ni ids» pero devuelve `id`.
 amplía a los campos que la pantalla de confirmar necesita de verdad (está
 conectado, es el mío, está protegido) y si `id` hace falta antes de entrar.
 
-## 31. `audit.sql` sale vacío con derivas graves 🟡 {#31}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`9fba19b`). Devuelve los tres nombres y cuatro sí/no (`is_linked`, `is_mine`, `locked_by`, `has_history`); fuera `id`, `program_updated_at` y `history_updated_at`. R-A5 se amplió a eso (I02 §7, punto 6). `validateClientCode` ya no devuelve `slotId`, que nadie usaba. H2 invertido. **Ojo:** una build anterior lee `history_updated_at` para ofrecer fusionar; con el schema nuevo deja de ofrecerlo y entra sin fusionar.
+
+## 31. `audit.sql` sale vacío con derivas graves 🟡 ✅ {#31}
 
 > En corto: La consulta que comprueba que producción está bien no detecta, entre otras cosas, que se apaguen los permisos por filas; que salga vacía no demuestra nada.
 
@@ -2478,6 +2482,10 @@ desde el panel deja su fila huérfana (`schema.sql:44-47`).
 - filas de `profiles` sin usuario.
 
 Los diez tests de H3 pasan a esperar al menos una fila.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`af80e81`, `984edf6`). `audit.sql` mira RLS en las cuatro tablas, políticas abiertas (también `ALL`), `EXECUTE` de anon en cualquier función y de authenticated en las internas, índices y FK, permisos de tabla y de columna (también SELECT en `transfer_offers` y `seat_losses`), perfiles sin usuario y una huella md5 de cada función (con los espacios normalizados, para que el fin de línea no cuente). Una función que no es de `schema.sql`, como una firma vieja viva, también sale. `profiles` gana su FK a `auth.users` (`not valid`: las huérfanas que ya hubiera las señala la auditoría). Los diez casos de H3, más tres nuevos, y H16 invertidos. **Al cambiar una función en `schema.sql`, actualizar su huella en `audit.sql`:** «H3 montaje» lo avisa. La revisión encontró que la primera versión había dejado de vigilar SELECT en las tablas internas y no veía firmas viejas.
 
 ## 32. «Vincular Google» del cliente sin asiento, y su reintento 🟡 ✅ {#32}
 
@@ -2534,7 +2542,7 @@ tomar un 401 de la segunda llamada como «ya borrado».
 
 Hecho en `fix/i02-pagos` (`a74f28b`). Con el mismo usuario en los dos papeles, `delete-account` se llama una sola vez.
 
-## 34. El motivo de perder el asiento sale cambiado 🟢 {#34}
+## 34. El motivo de perder el asiento sale cambiado 🟢 ✅ {#34}
 
 > En corto: A veces al cliente se le dice «alguien entró con tu código» cuando en realidad le desconectó el entrenador, y al revés.
 
@@ -2556,7 +2564,11 @@ tabla pequeña `seat_losses(client_id, reason, at)` que escriben `link`,
 `delete`, `reissue` y `release`. Así lo lee el que lo perdió sin depender de lo
 que pase después en ese hueco.
 
-## 35. Crear un cliente no aguanta un reintento 🟢 {#35}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`0fde920`, `984edf6`). El motivo vive por usuario en `seat_losses`: lo escriben `link_client_to_slot` («taken» al echado), `trainer_delete_slot` y `trainer_reissue_client_code` («gone»); entrar en un asiento o aceptarlo en un traspaso borra la fila; sin fila es «gone». Fuera `displaced_client_id` y `displaced_at`. H5, H5a y H5b invertidos. **Ojo:** al desplegar se pierden las marcas viejas; quien estuviera desalojado en ese momento verá «gone» en vez de «taken».
+
+## 35. Crear un cliente no aguanta un reintento 🟢 ✅ {#35}
 
 > En corto: Si al crear un cliente con app se pierde la respuesta del servidor y la app reintenta, el entrenador acaba con el cliente repetido, y el repetido cuenta para el plan gratis.
 
@@ -2574,7 +2586,11 @@ de llegar al servidor.
 (`p_local_id`), que el servidor lo guarde con un índice único por entrenador, y
 que un segundo intento devuelva el mismo hueco.
 
-## 36. Usuario cliente borrado desde el panel: el entrenador lo ve invitado 🟢 {#36}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`a729386`, `984edf6`). La app manda el id de la ficha (`p_local_id`) desde `createClient` y desde `connectClientToCloud`; `trainer_create_slot` lo guarda con índice único por entrenador y un segundo intento devuelve el mismo hueco. Al traspasar huecos se borra `local_id`, para que no choque en la cuenta destino. H13 invertido. La revisión encontró que el alta desde `createClient`, el camino del diagnóstico, no lo mandaba.
+
+## 36. Usuario cliente borrado desde el panel: el entrenador lo ve invitado 🟢 ✅ {#36}
 
 > En corto: Si se borra la cuenta de un cliente desde el panel de Supabase (no desde la app), el entrenador ve ese cliente como pendiente de entrar, no como que se fue.
 
@@ -2588,6 +2604,10 @@ Encontrado en I02-02; viola R-B6.
 
 **Arreglo previsto.** Un trigger `before update` que ponga `disconnected_at =
 now()` cuando `client_id` pasa de un valor a null y nadie lo ha puesto ya.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`3fac7d6`). **En qué se equivocaba el diagnóstico:** un trigger en `trainer_clients` cuando `client_id` pasa a null rompía reemitir el código, que lo hace a propósito con `disconnected_at` null (vuelve a invitado). Es un trigger `before delete on auth.users` (security definer) el que suelta el asiento con `disconnected_at = now()`. H15 invertido.
 
 ## 37. Una subida que llega tarde cae en el hueco del entrenador nuevo 🟢 ✅ {#37}
 
@@ -3115,7 +3135,7 @@ entrada con `deletedAt` en vez de quitarla, y la fusión respeta esa marca.
 
 Hecho (`34b7656`, `8000c03`). En el servidor, lo borrado queda como lápida `{ id, deletedAt, updatedAt }` y la regla de E58 la hace ganar a las copias anteriores; `sessions_count` no cuenta lápidas. **En qué se desvía de lo previsto:** en el móvil las lápidas no se quedan dentro de `workoutLog`/`clientLogs` (cada pantalla tendría que filtrarlas) sino en un mapa persistido aparte, `deletedLogIds`, que rellenan `deleteLogEntry`, `deleteClientLogEntry` y `clearWorkoutLog`. La subida manda una lápida por cada id; la descarga del entrenador y la fusión del cliente no añaden lápidas ni ids enterrados. La copia del entrenador sigue siendo su registro: una lápida del cliente no le quita la que ya tenía. S12 y S13 invertidos. **Queda:** los borrados en bloque de programas con su historial y `importData` no dejan ni respetan lápidas; y se suben también lápidas de entrenos privados (solo id y fecha). **Hay que volver a ejecutar `schema.sql`.**
 
-## 60. Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» 🟢 {#60}
+## 60. Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» 🟢 ✅ {#60}
 
 > En corto: Si el entrenador usa dos móviles y borra un cliente en uno, en el otro ese cliente aparece como «de otra cuenta» en vez de desaparecer.
 
@@ -3131,6 +3151,10 @@ distinguirlo hace falta saber en el servidor que el hueco se borró. Lo dejo
 para cuando se toque E36.
 
 ---
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`e0b5b7c`, `984edf6`). Decisión del usuario: el otro móvil lo borra también (R-B6). `refreshTrainerSlots` pregunta a `trainer_slots_alive` por los huecos que faltan: los que no existen en ninguna cuenta se borran con `deleteClient(id, { slotGone: true })`; los que existen en otra siguen «de otra cuenta»; si no se puede preguntar o se cambió de cuenta durante el refresco, no se borra nada. S17 invertido. **La revisión encontró un fallo grave:** con la cuenta de entrenador borrada y el JWT del otro móvil aún válido, todos los huecos salían «no existen» y ese móvil borraba todos sus clientes; `trainer_slots_alive` ahora exige que la cuenta exista.
 
 ## Orden de trabajo sugerido
 
