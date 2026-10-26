@@ -8,7 +8,7 @@
 > Fase I02-03 · terminado · App: conexión y sincronización · §5.2
 > Fase I02-04 · terminado · App: PRO, límites y congelado · §5.3
 > Fase I02-05 · terminado · App: compra, restauración e identidad en RevenueCat · §5.4
-> Fase I02-06 · pendiente · Pruebas en dispositivo de lo que el banco no ve · §5.5
+> Fase I02-06 · hecho · Pruebas en dispositivo de lo que el banco no ve · §5.5
 >
 > Estado: **spec escrita, sin empezar** (23-oct-2026). **I02-01 terminada**: reglas
 > revisadas y firmadas por el usuario el mismo día, decisiones en §7. Ya se sabe
@@ -333,19 +333,30 @@ Reglas D2-D3 y F.
 
 ### 5.5 I02-06 — Dispositivo y tienda
 
-Casillas para lo que §4.4 deja fuera. Las escribe la fase que encuentre cada
-hueco y se juntan aquí. Como mínimo:
+Lo que el banco no ve: red real, tienda real y dos móviles de verdad. Solo el
+uso normal de la app (26-oct-2026: los casos raros ya los fijan los tests).
+Antes: `schema.sql` ejecutado en Supabase y una build desde `develop`. Hacen
+falta dos móviles; el 10 necesita además la build publicada.
 
 **Probar I02-06**
 
-- [ ] I02-06.1 — Dos móviles entran con el mismo código a la vez: se queda uno, el otro ve `taken`.
-- [ ] I02-06.2 — Cliente con Google: otro móvil con su código ve el aviso de asiento protegido y no entra.
-- [ ] I02-06.3 — Compra anual en sandbox: PRO al momento; caduca a los minutos y al abrir la app vuelve a gratis sin perder nada.
-- [ ] I02-06.4 — Restaurar en un segundo móvil con la misma cuenta: PRO.
-- [ ] I02-06.5 — Entrenador cambia de código a Google con PRO: sigue PRO y con todos sus clientes.
-- [ ] I02-06.6 — Build de producción: sin interruptor PRO/FREE y sin PRO forzado.
-- [ ] I02-06.7 — Suscripción de prueba, modo avión y reloj adelantado 21 días: pasa a gratis sin perder datos; al quitar el modo avión con la suscripción activa, vuelve a PRO.
-- [ ] I02-06.8 — Cliente se desconecta con sesiones sin descargar: el entrenador ve el hueco libre y descarga esas sesiones; el cliente vuelve a entrar con el mismo código.
+- [ ] I02-06.1 — Cliente. Entrar con el código de un cliente nuevo: llega el programa; entrenar una sesión y el entrenador la ve al refrescar su ficha.
+- [ ] I02-06.2 — Cliente. Corregir en el resumen el RPE o la nota de un entreno ya enviado: el entrenador ve el cambio.
+- [ ] I02-06.3 — Cliente. Borrar un entreno en el cliente: no vuelve al reabrir la app ni tras un rato.
+- [ ] I02-06.4 — Cliente. Entrenar en modo avión y guardar: al quitarlo y abrir la app, el entrenador recibe la sesión.
+- [ ] I02-06.5 — Cliente. El entrenador cambia el programa y lo envía: al cliente le sale el aviso, lo aplica y sigue en la etapa y sesión donde iba.
+- [ ] I02-06.6 — Cliente. El entrenador prescribe pesos para la próxima sesión: el cliente los ve al empezarla.
+- [ ] I02-06.7 — Cliente. Estando conectado, «Nuevo programa» (o importar uno): sale el aviso de que hay que desconectarse; «Desconectarme» y se crea el programa. El entrenador lo ve como «se fue».
+- [ ] I02-06.8 — Cliente. Desconectarse en modo avión: la app queda desconectada al momento; al quitar el modo avión y abrir la app, el entrenador lo ve como «se fue».
+- [ ] I02-06.9 — Cliente. Cambiar de móvil: con Google en el móvil nuevo vuelve a su entrenador con su historial; sin Google, con el código y «traer el historial».
+- [ ] I02-06.10 — Cliente. Con la build publicada (anterior a hoy), entrar con un código que tiene historial sigue ofreciendo traerlo.
+- [ ] I02-06.11 — Entrenador. Crear un cliente con app y mandarle el código: entra y aparece como conectado.
+- [ ] I02-06.12 — Entrenador. Cambiar de móvil: recuperar la cuenta en el móvil nuevo y aparecen todos los clientes con su programa.
+- [ ] I02-06.13 — Entrenador. Con la cuenta en dos móviles: borrar un cliente en uno y en el otro desaparece al refrescar; cancelar una invitación y en el otro queda «sin app».
+- [ ] I02-06.14 — Entrenador. Pasar de código a Google con PRO: sigue PRO y con todos sus clientes.
+- [ ] I02-06.15 — Pagos. Compra anual en sandbox: PRO al momento; al caducar (minutos en sandbox), al abrir vuelve a gratis sin perder nada.
+- [ ] I02-06.16 — Pagos. Restaurar la compra en un segundo móvil con la misma cuenta: PRO.
+- [ ] I02-06.17 — Pagos. Build de producción: sin interruptor PRO/FREE y sin PRO forzado.
 
 ---
 
