@@ -286,7 +286,8 @@ export function createSimClient(device, { storageKey = 'sb-default', persistSess
 }
 
 function toParam(v) {
-  return v !== null && typeof v === 'object' ? JSON.stringify(v) : v;
+  // Un array va tal cual (uuid[]); un objeto, como JSON (jsonb).
+  return v !== null && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : v;
 }
 
 // ─── Las Edge Functions, con la lógica de supabase/functions/* ────────────────

@@ -67,9 +67,11 @@ alter table public.trainer_clients add column if not exists sessions_count      
 alter table public.trainer_clients add column if not exists overrides_json       jsonb;
 alter table public.trainer_clients add column if not exists overrides_updated_at timestamptz;
 alter table public.trainer_clients add column if not exists disconnected_at      timestamptz;
--- Quién estaba dentro cuando otro entró con el código, para decírselo (§8).
-alter table public.trainer_clients add column if not exists displaced_client_id  uuid;
-alter table public.trainer_clients add column if not exists displaced_at         timestamptz;
+-- El id con que el entrenador conoce al cliente en su móvil: hace repetible el alta (E35).
+alter table public.trainer_clients add column if not exists local_id             text;
+-- Antes guardaban aquí quién desalojó a quién; ahora es `seat_losses`, por usuario.
+alter table public.trainer_clients drop column if exists displaced_client_id;
+alter table public.trainer_clients drop column if exists displaced_at;
 
 
 -- ── 2. Códigos de cliente ───────────────────────────────────────────────────
@@ -144,9 +146,12 @@ alter table public.trainer_clients alter column client_code set not null;
 create unique index if not exists trainer_clients_code_key on public.trainer_clients (client_code);
 create unique index if not exists trainer_clients_one_seat on public.trainer_clients (client_id) where client_id is not null;
 create index        if not exists trainer_clients_trainer  on public.trainer_clients (trainer_id);
+create unique index if not exists trainer_clients_local_id on public.trainer_clients (trainer_id, local_id) where local_id is not null;
 
 -- Borrar un usuario (aunque sea desde el panel de Supabase) se lleva sus huecos
--- de entrenador y suelta su asiento de cliente. Nada queda apuntando a nadie.
+-- de entrenador y su perfil, y suelta su asiento de cliente. Nada queda
+-- apuntando a nadie. La de `profiles` va `not valid`: no falla si ya hay
+-- perfiles huérfanos (los señala `audit.sql`), pero los nuevos sí se comprueban.
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'trainer_clients_trainer_fk') then
@@ -159,7 +164,31 @@ begin
       add constraint trainer_clients_client_fk foreign key (client_id)
       references auth.users (id) on delete set null;
   end if;
+  if not exists (select 1 from pg_constraint where conname = 'profiles_id_fk') then
+    alter table public.profiles
+      add constraint profiles_id_fk foreign key (id)
+      references auth.users (id) on delete cascade not valid;
+  end if;
 end $$;
+
+-- Borrar al cliente desde el panel de Supabase lo deja «se fue», no invitado:
+-- la FK sola suelta el asiento sin `disconnected_at` (E36). No es un trigger de
+-- `trainer_clients` porque `trainer_reissue_client_code` suelta el asiento sin
+-- fecha a propósito (vuelve a invitado).
+create or replace function public._release_seat_of_deleted_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.trainer_clients set client_id = null, disconnected_at = now() where client_id = old.id;
+  return old;
+end;
+$$;
+drop trigger if exists release_seat_of_deleted_user on auth.users;
+create trigger release_seat_of_deleted_user before delete on auth.users
+  for each row execute function public._release_seat_of_deleted_user();
 
 
 -- ── 5. Permisos de la tabla: solo leer lo tuyo ──────────────────────────────
@@ -204,6 +233,17 @@ create table if not exists public.transfer_offers (
 );
 alter table public.transfer_offers enable row level security;
 revoke all on public.transfer_offers from anon, authenticated;
+
+-- Por qué perdió el asiento cada cliente (E34), para decírselo. Una fila por
+-- usuario: 'taken' (alguien entró con su código) o 'gone' (el entrenador lo
+-- quitó). Sin fila, 'gone'. Sin políticas ni permisos, como `transfer_offers`.
+create table if not exists public.seat_losses (
+  client_id uuid primary key references auth.users on delete cascade,
+  reason    text not null,
+  at        timestamptz not null default now()
+);
+alter table public.seat_losses enable row level security;
+revoke all on public.seat_losses from anon, authenticated;
 
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
@@ -309,7 +349,10 @@ $$;
 
 -- ── 7. Entrenador ───────────────────────────────────────────────────────────
 
-create or replace function public.trainer_create_slot(p_client_name text)
+-- Con `p_local_id`, repetir el alta (la respuesta se perdió) devuelve el mismo
+-- hueco en vez de crear otro; dos a la vez también dan el mismo (E35).
+drop function if exists public.trainer_create_slot(text);
+create or replace function public.trainer_create_slot(p_client_name text, p_local_id text default null)
 returns table (slot_id uuid, code text)
 language plpgsql
 security definer
@@ -320,9 +363,14 @@ declare
   v_code text := public.new_client_code();
   v_id   uuid;
 begin
-  insert into public.trainer_clients (trainer_id, client_name, client_code)
-  values (v_me, p_client_name, v_code)
+  insert into public.trainer_clients (trainer_id, client_name, client_code, local_id)
+  values (v_me, p_client_name, v_code, p_local_id)
+  on conflict (trainer_id, local_id) where local_id is not null do nothing
   returning id into v_id;
+  if v_id is null then
+    select t.id, t.client_code into v_id, v_code
+      from public.trainer_clients t where t.trainer_id = v_me and t.local_id = p_local_id;
+  end if;
   return query select v_id, v_code;
 end;
 $$;
@@ -392,6 +440,24 @@ begin
 end;
 $$;
 
+-- De estos ids, los que existen en cualquier cuenta (E60): el otro móvil del
+-- entrenador borró el cliente, o su hueco se pasó a otra cuenta. Solo devuelve
+-- ids que quien llama ya conoce, y sin decir de quién son.
+create or replace function public.trainer_slots_alive(p_ids uuid[])
+returns table (slot_id uuid)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Con la cuenta ya borrada y el JWT aún válido, todos los huecos saldrían «no existen».
+  if not exists (select 1 from auth.users where id = public._trainer()) then
+    raise exception 'NOT_AUTHENTICATED';
+  end if;
+  return query select t.id from public.trainer_clients t where t.id = any(p_ids);
+end;
+$$;
+
 -- Borrar un hueco que ya no está no es un error: devuelve false.
 create or replace function public.trainer_delete_slot(p_slot_id uuid)
 returns boolean
@@ -399,9 +465,16 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare v_client uuid;
 begin
-  delete from public.trainer_clients where id = p_slot_id and trainer_id = public._trainer();
-  return found;
+  delete from public.trainer_clients where id = p_slot_id and trainer_id = public._trainer()
+  returning client_id into v_client;
+  if not found then return false; end if;
+  if v_client is not null then
+    insert into public.seat_losses (client_id, reason) values (v_client, 'gone')
+    on conflict (client_id) do update set reason = 'gone', at = now();
+  end if;
+  return true;
 end;
 $$;
 
@@ -415,13 +488,20 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare v_code text := public.new_client_code();
+declare
+  v_code   text := public.new_client_code();
+  v_client uuid;
 begin
-  update public.trainer_clients
-     set client_code = v_code, client_id = null, disconnected_at = null,
-         displaced_client_id = null, displaced_at = null
-   where id = p_slot_id and trainer_id = public._trainer();
+  select client_id into v_client from public.trainer_clients
+   where id = p_slot_id and trainer_id = public._trainer() for update;
   if not found then raise exception 'SLOT_GONE'; end if;
+  update public.trainer_clients
+     set client_code = v_code, client_id = null, disconnected_at = null
+   where id = p_slot_id;
+  if v_client is not null then
+    insert into public.seat_losses (client_id, reason) values (v_client, 'gone')
+    on conflict (client_id) do update set reason = 'gone', at = now();
+  end if;
   return v_code;
 end;
 $$;
@@ -429,30 +509,28 @@ $$;
 
 -- ── 8. Cliente ──────────────────────────────────────────────────────────────
 
--- Lo justo para la pantalla de confirmar. Ni el programa ni ids: un código
--- filtrado no vale como llave de lectura.
+-- Lo justo para la pantalla de confirmar: tres nombres y cuatro sí/no. Ni el
+-- programa, ni ids, ni horas: un código filtrado no vale como llave de lectura.
 drop function if exists public.get_slot_by_code(text);
 create function public.get_slot_by_code(p_code text)
 returns table (
-  id                 uuid,
   client_name        text,
   program_name       text,
-  program_updated_at timestamptz,
+  trainer_name       text,
   is_linked          boolean,
   is_mine            boolean,
   locked_by          text,
-  history_updated_at timestamptz,
-  trainer_name       text
+  has_history        boolean
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select t.id, t.client_name, t.program_json -> 'program' ->> 'name', t.program_updated_at,
+  select t.client_name, t.program_json -> 'program' ->> 'name', t.trainer_name,
          t.client_id is not null, coalesce(t.client_id = auth.uid(), false),
          case when t.client_id <> coalesce(auth.uid(), t.client_id) or auth.uid() is null
               then public._locked_by(t.client_id) end,
-         t.history_updated_at, t.trainer_name
+         t.history_updated_at is not null
     from public.trainer_clients t
    where t.client_code = upper(trim(p_code))
    limit 1;
@@ -498,11 +576,15 @@ begin
    where client_id = v_me and id <> v_slot;
 
   update public.trainer_clients
-     set client_id       = v_me,
-         disconnected_at = null,
-         displaced_client_id = case when v_prev is not null and v_prev <> v_me then v_prev else displaced_client_id end,
-         displaced_at        = case when v_prev is not null and v_prev <> v_me then now()  else displaced_at end
+     set client_id = v_me, disconnected_at = null
    where id = v_slot;
+
+  -- Al que sale se le dice por qué (`client_lost_reason`); el que entra vuelve a tener asiento.
+  if v_prev is not null and v_prev <> v_me then
+    insert into public.seat_losses (client_id, reason) values (v_prev, 'taken')
+    on conflict (client_id) do update set reason = 'taken', at = now();
+  end if;
+  delete from public.seat_losses where client_id = v_me;
 
   return v_slot;
 end;
@@ -510,7 +592,8 @@ $$;
 
 -- ¿Por qué ya no tengo asiento? 'taken': alguien entró con mi código (si no
 -- fui yo en otro móvil, que me reemitan uno). 'gone': me desconectó el
--- entrenador (borrado, código reemitido o cuenta borrada).
+-- entrenador (borrado, código reemitido o cuenta borrada). Es el último motivo
+-- que anotaron las funciones en `seat_losses`; sin fila, 'gone'.
 create or replace function public.client_lost_reason()
 returns text
 language sql
@@ -518,9 +601,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select case when exists (
-    select 1 from public.trainer_clients where displaced_client_id = auth.uid()
-  ) then 'taken' else 'gone' end;
+  select coalesce((select reason from public.seat_losses where client_id = auth.uid()), 'gone');
 $$;
 
 -- El cliente sube lo suyo a SU asiento. SUMA al historial del hueco (E28, R-C2):
@@ -624,7 +705,7 @@ begin
   if not found then raise exception 'NO_OFFER'; end if;
 
   if p_kind = 'slots' then
-    update public.trainer_clients set trainer_id = v_me where trainer_id = p_from;
+    update public.trainer_clients set trainer_id = v_me, local_id = null where trainer_id = p_from;
     get diagnostics v_count = row_count;
   else
     v_to_seat   := exists (select 1 from public.trainer_clients where client_id = v_me);
@@ -634,6 +715,7 @@ begin
     if v_from_seat then
       update public.trainer_clients set client_id = v_me where client_id = p_from;
       get diagnostics v_count = row_count;
+      delete from public.seat_losses where client_id = v_me;   -- vuelve a tener asiento
     end if;
   end if;
   return v_count;
@@ -658,10 +740,11 @@ declare f text;
 begin
   foreach f in array array[
     'new_client_code()', '_caller()', '_trainer()', '_check_target(uuid)', '_locked_by(uuid)',
-    '_merge_history(jsonb, jsonb)',
-    'trainer_create_slot(text)', 'trainer_upload_program(uuid, jsonb, text)',
+    '_merge_history(jsonb, jsonb)', '_release_seat_of_deleted_user()',
+    'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
+    'trainer_slots_alive(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
@@ -670,9 +753,10 @@ begin
   end loop;
 
   foreach f in array array[
-    'trainer_create_slot(text)', 'trainer_upload_program(uuid, jsonb, text)',
+    'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
+    'trainer_slots_alive(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'

@@ -42,9 +42,12 @@ async function rpc(db, name, args) {
 
 // ═══ Entrenador ═══════════════════════════════════════════════════════════════
 
-/** Hueco nuevo; el código lo genera el servidor, que sabe cuáles existen. */
-export async function createClientSlot(clientName) {
-  const [row] = await rpc(trainerSupabase, 'trainer_create_slot', { p_client_name: clientName });
+/**
+ * Hueco nuevo; el código lo genera el servidor, que sabe cuáles existen. Con
+ * `localId` (el id de la ficha) repetir el alta devuelve el mismo hueco.
+ */
+export async function createClientSlot(clientName, localId = null) {
+  const [row] = await rpc(trainerSupabase, 'trainer_create_slot', { p_client_name: clientName, p_local_id: localId });
   return { slotId: row.slot_id, clientCode: row.code };
 }
 
@@ -74,6 +77,11 @@ export function uploadOverrides(slotId, overrides) {
 /** Devuelve si existía. Uno que ya no está no es un error. */
 export function deleteClientSlot(slotId) {
   return rpc(trainerSupabase, 'trainer_delete_slot', { p_slot_id: slotId });
+}
+
+/** De estos huecos, los que siguen existiendo en cualquier cuenta (aunque ya no sean tuyos). */
+export async function existingSlotIds(slotIds) {
+  return (await rpc(trainerSupabase, 'trainer_slots_alive', { p_ids: slotIds })).map((r) => r.slot_id);
 }
 
 /** Código nuevo y asiento libre, sin tocar el historial. Devuelve el código. */
@@ -125,8 +133,8 @@ function parseHistory(raw) {
 
 /**
  * Lo justo para confirmar un código, sin vincularse:
- * `{ id, client_name, program_name, program_updated_at, is_linked, is_mine,
- *    history_updated_at, trainer_name }`.
+ * `{ client_name, program_name, trainer_name, is_linked, is_mine, locked_by,
+ *    has_history }`.
  */
 export async function getSlotByClientCode(clientCode) {
   return (await rpc(clientSupabase, 'get_slot_by_code', { p_code: clientCode }))?.[0] ?? null;

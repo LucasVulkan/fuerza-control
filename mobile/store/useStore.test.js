@@ -695,13 +695,14 @@ describe('validateClientCode — sin programa ni client_id publicados', () => {
 
   it('lee is_linked y program_name, que es todo lo que el servidor publica', async () => {
     syncMock.getSlotByClientCode.mockResolvedValue({
-      id: 'slot_1', program_name: 'Fuerza 3d', is_linked: true, is_mine: false,
-      history_updated_at: '2026-08-01', trainer_name: 'Lucas',
+      program_name: 'Fuerza 3d', is_linked: true, is_mine: false,
+      has_history: true, trainer_name: 'Lucas',
     });
 
     const info = await useStore.getState().validateClientCode('ABCD-1234');
 
-    expect(info).toMatchObject({ slotId: 'slot_1', programName: 'Fuerza 3d', alreadyLinked: true });
+    expect(info).toMatchObject({ programName: 'Fuerza 3d', alreadyLinked: true, hasRemoteHistory: true });
+    expect(info).not.toHaveProperty('slotId');
   });
 
   it('sin programa subido no deja seguir', async () => {

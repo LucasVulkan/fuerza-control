@@ -84,7 +84,7 @@ async function trainerAndClient() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('H5 — el motivo de perder el asiento, en la app', () => {
-  it('H5a hoy: echado de A, entra en B, B lo borra → la app dice «taken» (regla R-B3: «gone»)', async () => {
+  it('H5a arreglado (E34): echado de A, entra en B, B lo borra → la app dice «gone» (R-B3)', async () => {
     const a = await phone('entrenador A');
     const b = await phone('entrenador B');
     const c = await phone('cliente');
@@ -102,10 +102,10 @@ describe('H5 — el motivo de perder el asiento, en la app', () => {
     expect(await slotOf(slotIdOf(a, ca.clientId))).toBeTruthy();
     await c.s.checkAndPullProgramUpdates();
     expect(c.s.clientSync.lostAt).toBeTruthy();
-    expect(c.s.clientSync.lostReason).toBe('taken');
+    expect(c.s.clientSync.lostReason).toBe('gone');
   });
 
-  it('H5b hoy: c echado por y, y echado por z → la app de c dice «gone» (regla R-B3: «taken»)', async () => {
+  it('H5b arreglado (E34): c echado por y, y echado por z → la app de c dice «taken» (R-B3)', async () => {
     const { t, c, clientId } = await trainerAndClient();
     const y = await phone('y');
     const z = await phone('z');
@@ -115,7 +115,7 @@ describe('H5 — el motivo de perder el asiento, en la app', () => {
 
     await c.s.checkAndPullProgramUpdates();
     expect(c.s.clientSync.lostAt).toBeTruthy();
-    expect(c.s.clientSync.lostReason).toBe('gone');
+    expect(c.s.clientSync.lostReason).toBe('taken');
   });
 });
 
@@ -247,17 +247,33 @@ describe('H12 — borrar la cuenta con el mismo Google en los dos papeles', () =
 });
 
 describe('H13 — crear hueco no es idempotente', () => {
-  it('H13 hoy: la primera creación llega pero su respuesta se pierde; el reintento crea otra y al refrescar hay dos «Ana»', async () => {
+  it('H13 arreglado (E35): la primera creación llega pero su respuesta se pierde; el reintento devuelve el mismo hueco y al refrescar hay una sola «Ana»', async () => {
     const t = await phone('entrenador');
     await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana');                    // ficha sin app: aún sin hueco
     const raw = createSimClient(t.device, { storageKey: 'sb-trainer' });
-    const lost = await raw.rpc('trainer_create_slot', { p_client_name: 'Ana' });   // la respuesta que no llegó
+    const lost = await raw.rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: id });   // la respuesta que no llegó
     expect(lost.error).toBeNull();
 
-    const id = await t.s.createClient('Ana', { withApp: true });
-    expect(t.s.clients[id].syncSlotId).toBeTruthy();
+    await t.s.connectClientToCloud(id);                          // el reintento de la app
+    expect(t.s.clients[id]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncCode: lost.data[0].code });
     await t.s.refreshTrainerSlots();
-    expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(2);
-    expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(2);
+    expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(1);
+    expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(1);
+  });
+
+  it('H13 arreglado (E35): crear el cliente con app guarda el id de su ficha, y repetir el alta devuelve el mismo hueco y no crea otro', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana', { withApp: true });
+    const { syncSlotId, syncCode } = t.s.clients[id];
+    expect((await slotOf(syncSlotId)).local_id).toBe(id);
+
+    const raw = createSimClient(t.device, { storageKey: 'sb-trainer' });
+    const again = await raw.rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: id });   // el reintento tras perder la respuesta
+    expect(again.data).toEqual([{ slot_id: syncSlotId, code: syncCode }]);
+    await t.s.refreshTrainerSlots();
+    expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(1);
+    expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(1);
   });
 });

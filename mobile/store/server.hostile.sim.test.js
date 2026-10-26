@@ -126,23 +126,21 @@ describe('H1 — entrar con el código hereda el historial del hueco', () => {
 });
 
 describe('H2 — get_slot_by_code devuelve de más', () => {
-  it('H2 hoy: get_slot_by_code devuelve 9 campos, con id y la hora de la última subida (regla R-A5: solo 3 nombres)', async () => {
+  it('H2 arreglado (E30): get_slot_by_code devuelve solo tres nombres y cuatro sí/no, sin id ni horas (R-A5)', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const c = await anon('c');
     await link(c, K, S);
     await upload(c, ['s1']);
-    const uploadedAt = (await slotOf(S)).history_updated_at;
-    expect(uploadedAt).toBeTruthy();
+    expect((await slotOf(S)).history_updated_at).toBeTruthy();
 
     const z = await anon('z');                                   // no entra: solo teclea el código
     const rows = await ok(z.db, 'get_slot_by_code', { p_code: K });
     expect(rows).toHaveLength(1);
     expect(Object.keys(rows[0]).sort()).toEqual([
-      'client_name', 'history_updated_at', 'id', 'is_linked', 'is_mine', 'locked_by',
-      'program_name', 'program_updated_at', 'trainer_name',
+      'client_name', 'has_history', 'is_linked', 'is_mine', 'locked_by', 'program_name', 'trainer_name',
     ]);
-    expect(rows[0]).toMatchObject({ id: S, is_linked: true, is_mine: false, history_updated_at: uploadedAt });
+    expect(rows[0]).toMatchObject({ is_linked: true, is_mine: false, has_history: true });
     expect((await slotOf(S)).client_id).toBe(c.id);              // z no ha entrado
   });
 });
@@ -155,45 +153,55 @@ describe('H3 — audit.sql no ve derivas graves', () => {
   const drifts = [
     ['RLS desactivada en trainer_clients',
       'alter table public.trainer_clients disable row level security',
-      `select not relrowsecurity as ok from pg_class where oid = 'public.trainer_clients'::regclass`],
+      `select not relrowsecurity as ok from pg_class where oid = 'public.trainer_clients'::regclass`, 'RLS desactivada'],
     ['política SELECT using(true)',
       'create policy p on public.trainer_clients for select to authenticated using (true)',
-      `select count(*) = 1 as ok from pg_policies where tablename = 'trainer_clients' and policyname = 'p'`],
+      `select count(*) = 1 as ok from pg_policies where tablename = 'trainer_clients' and policyname = 'p'`, 'política de lectura abierta'],
     ['EXECUTE a anon en get_slot_by_code',
       'grant execute on function public.get_slot_by_code(text) to anon',
-      `select has_function_privilege('anon', 'public.get_slot_by_code(text)', 'execute') as ok`],
+      `select has_function_privilege('anon', 'public.get_slot_by_code(text)', 'execute') as ok`, 'función ejecutable por anon'],
     ['EXECUTE a PUBLIC en link_client_to_slot',
       'grant execute on function public.link_client_to_slot(text) to public',
-      `select has_function_privilege('anon', 'public.link_client_to_slot(text)', 'execute') as ok`],
+      `select has_function_privilege('anon', 'public.link_client_to_slot(text)', 'execute') as ok`, 'función ejecutable por anon'],
     ['sin el índice de un asiento por cliente',
       'drop index public.trainer_clients_one_seat',
-      `select to_regclass('public.trainer_clients_one_seat') is null as ok`],
+      `select to_regclass('public.trainer_clients_one_seat') is null as ok`, 'falta el índice'],
     ['sin la FK del cliente',
       'alter table public.trainer_clients drop constraint trainer_clients_client_fk',
-      `select not exists (select 1 from pg_constraint where conname = 'trainer_clients_client_fk') as ok`],
+      `select not exists (select 1 from pg_constraint where conname = 'trainer_clients_client_fk') as ok`, 'falta la clave ajena'],
     ['UPDATE a PUBLIC sobre la tabla',
       'grant update on public.trainer_clients to public',
-      `select has_table_privilege('anon', 'public.trainer_clients', 'update') as ok`],
+      `select has_table_privilege('anon', 'public.trainer_clients', 'update') as ok`, 'permiso de escritura directo'],
     ['UPDATE por columna (trainer_id) a authenticated',
       'grant update (trainer_id) on public.trainer_clients to authenticated',
-      `select has_column_privilege('authenticated', 'public.trainer_clients', 'trainer_id', 'update') as ok`],
+      `select has_column_privilege('authenticated', 'public.trainer_clients', 'trainer_id', 'update') as ok`, 'permiso de escritura por columna'],
     ['link_client_to_slot con un cuerpo viejo (sin SEAT_LOCKED)',
       `create or replace function public.link_client_to_slot(p_code text) returns uuid
          language plpgsql security definer set search_path = public as $$
          declare v uuid; begin
            update public.trainer_clients set client_id = auth.uid() where client_code = upper(trim(p_code)) returning id into v;
            return v; end; $$`,
-      `select prosrc not like '%SEAT_LOCKED%' as ok from pg_proc where proname = 'link_client_to_slot'`],
+      `select prosrc not like '%SEAT_LOCKED%' as ok from pg_proc where proname = 'link_client_to_slot'`, 'función distinta de schema.sql'],
     ['RLS desactivada en profiles',
       'alter table public.profiles disable row level security',
-      `select not relrowsecurity as ok from pg_class where oid = 'public.profiles'::regclass`],
+      `select not relrowsecurity as ok from pg_class where oid = 'public.profiles'::regclass`, 'RLS desactivada'],
+    ['SELECT en seat_losses a authenticated',
+      'grant select on public.seat_losses to authenticated',
+      `select has_table_privilege('authenticated', 'public.seat_losses', 'select') as ok`, 'permiso de escritura directo'],
+    ['una firma vieja sigue viva (trainer_create_slot(text))',
+      `create function public.trainer_create_slot(p_client_name text) returns table (slot_id uuid, code text)
+         language sql as $$ select null::uuid, null::text $$`,
+      `select count(*) = 2 as ok from pg_proc where proname = 'trainer_create_slot'`, 'función que no es de schema.sql'],
+    ['función interna ejecutable por authenticated',
+      'grant execute on function public._caller() to authenticated',
+      `select has_function_privilege('authenticated', 'public._caller()', 'execute') as ok`, 'función interna ejecutable por authenticated'],
   ];
 
-  for (const [what, drift, applied] of drifts) {
-    it(`H3 hoy: «${what}» y audit.sql sale vacío (regla R-A9: ≥1 fila)`, async () => {
+  for (const [what, drift, applied, problema] of drifts) {
+    it(`H3 arreglado (E31): «${what}» y audit.sql da al menos una fila («${problema}») (R-A9)`, async () => {
       await server.admin(drift);
       expect((await server.admin(applied))[0].ok).toBe(true);
-      expect(await audit()).toEqual([]);
+      expect((await audit()).map((r) => r.problema)).toContain(problema);
     });
   }
 });
@@ -213,7 +221,7 @@ describe('H4 — el candado salta con cualquier cuenta no anónima', () => {
 });
 
 describe('H5 — client_lost_reason da el motivo equivocado', () => {
-  it('H5a hoy: echado una vez, entra en otro hueco y ese entrenador lo borra → «taken» (regla R-B3: «gone»)', async () => {
+  it('H5a arreglado (E34): echado una vez, entra en otro hueco y ese entrenador lo borra → «gone» (R-B3)', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');
     const A = await slotWithProgram(a);
@@ -221,26 +229,60 @@ describe('H5 — client_lost_reason da el motivo equivocado', () => {
     const c = await anon('c');
     const otro = await anon('otro');
     await link(c, A.K, A.S);
-    await link(otro, A.K, A.S);                                  // c sale de A: displaced_client_id = c
+    await link(otro, A.K, A.S);                                  // c sale de A: motivo «taken»
     await link(c, B.K, B.S);
     expect((await slotOf(B.S)).client_id).toBe(c.id);
     expect(await ok(b.db, 'trainer_delete_slot', { p_slot_id: B.S })).toBe(true);
     const { data } = await c.db.from('trainer_clients').select('id');
     expect(data).toEqual([]);                                    // c ya no tiene asiento
 
-    expect(await ok(c.db, 'client_lost_reason')).toBe('taken');
+    expect(await server.admin('select client_id, reason from public.seat_losses')).toEqual([{ client_id: c.id, reason: 'gone' }]);
+    expect(await ok(c.db, 'client_lost_reason')).toBe('gone');
   });
 
-  it('H5b hoy: c echado por y, y echado por z → c recibe «gone» (regla R-B3: «taken»)', async () => {
+  it('H5b arreglado (E34): c echado por y, y echado por z → c recibe «taken» (R-B3)', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const [c, y, z] = [await anon('c'), await anon('y'), await anon('z')];
     await link(c, K, S);
     await link(y, K, S);
     await link(z, K, S);
-    expect(await slotOf(S)).toMatchObject({ client_id: z.id, displaced_client_id: y.id });
+    expect((await slotOf(S)).client_id).toBe(z.id);
 
+    expect(await ok(c.db, 'client_lost_reason')).toBe('taken');
+    expect(await ok(y.db, 'client_lost_reason')).toBe('taken');
+  });
+
+  it('E34: reemitir el código lo deja en «gone» aunque antes lo echaran; volver a entrar borra el motivo', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const [c, y] = [await anon('c'), await anon('y')];
+    await link(c, K, S);
+    await link(y, K, S);                                         // c: «taken»
+    expect(await ok(c.db, 'client_lost_reason')).toBe('taken');
+    await link(c, K, S);                                         // c vuelve (y: «taken»)
+    expect(await server.admin('select client_id from public.seat_losses')).toEqual([{ client_id: y.id }]);
+
+    const fresh = await ok(t.db, 'trainer_reissue_client_code', { p_slot_id: S });
+    expect(fresh).not.toBe(K);
+    const rows = await server.admin('select client_id, reason from public.seat_losses order by reason');
+    expect(rows).toEqual([{ client_id: c.id, reason: 'gone' }, { client_id: y.id, reason: 'taken' }]);
     expect(await ok(c.db, 'client_lost_reason')).toBe('gone');
+  });
+
+  it('E34: aceptar un traspaso de asiento borra el motivo de quien vuelve a tener asiento', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const g = await gugl('g', 'cli');
+    await link(g, K, S);
+    const fresh = await ok(t.db, 'trainer_reissue_client_code', { p_slot_id: S });   // g: «gone»
+    expect(await server.admin('select client_id from public.seat_losses')).toEqual([{ client_id: g.id }]);
+    const x = await anon('x');
+    await link(x, fresh, S);
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect(await ok(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).toBe(1);
+
+    expect(await server.admin('select client_id from public.seat_losses')).toEqual([]);
   });
 });
 
@@ -495,6 +537,58 @@ describe('H11 — nadie planta un asiento en una cuenta ajena', () => {
   });
 });
 
+describe('E35 — trainer_create_slot con p_local_id', () => {
+  it('repetir con el mismo p_local_id devuelve el mismo hueco; sin él (build vieja) crea uno cada vez; el de otro entrenador es aparte', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    const create = (who, args) => ok(who.db, 'trainer_create_slot', { p_client_name: 'Ana', ...args });
+    const [a1] = await create(t, { p_local_id: 'client_1' });
+    const [a2] = await create(t, { p_local_id: 'client_1' });
+    expect(a2).toEqual(a1);
+    const [o] = await create(b, { p_local_id: 'client_1' });
+    expect(o.slot_id).not.toBe(a1.slot_id);
+    const [n1] = await create(t, {});
+    const [n2] = await create(t, {});
+    expect(n1.slot_id).not.toBe(n2.slot_id);
+    expect((await server.slots()).filter((r) => r.trainer_id === t.id)).toHaveLength(3);
+  });
+
+  it('pasar los huecos a otra cuenta que tiene el mismo p_local_id no choca', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    await ok(a.db, 'trainer_create_slot', { p_client_name: 'Ana', p_local_id: 'client_1' });
+    await ok(b.db, 'trainer_create_slot', { p_client_name: 'Ana', p_local_id: 'client_1' });
+    await ok(a.db, 'offer_transfer', { p_kind: 'slots', p_to: b.id });
+    expect(await ok(b.db, 'accept_transfer', { p_kind: 'slots', p_from: a.id })).toBe(1);
+    expect((await server.slots()).filter((r) => r.trainer_id === b.id)).toHaveLength(2);
+  });
+});
+
+describe('E60 — trainer_slots_alive', () => {
+  it('devuelve de los ids que le pasan los que existen en cualquier cuenta; un anónimo no puede preguntar', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    const mine = await slotWithProgram(a, 'Mío');
+    const theirs = await slotWithProgram(b, 'Ajeno');
+    const gone = await slotWithProgram(a, 'Borrado');
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S });
+    const x = await anon('x');
+
+    const ids = [mine.S, theirs.S, gone.S, '00000000-0000-4000-8000-000000000000'];
+    expect((await ok(a.db, 'trainer_slots_alive', { p_ids: ids })).map((r) => r.slot_id).sort()).toEqual([mine.S, theirs.S].sort());
+    expect((await bad(x.db, 'trainer_slots_alive', { p_ids: ids })).message).toBe('NOT_A_TRAINER');
+  });
+});
+
+describe('E60b — cuenta de entrenador borrada con otro móvil aún con sesión', () => {
+  it('trainer_slots_alive da NOT_AUTHENTICATED si el usuario ya no existe en auth.users', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const { S } = await slotWithProgram(a);
+    await server.admin('delete from auth.users where id = $1', [a.id]);
+    expect((await bad(a.db, 'trainer_slots_alive', { p_ids: [S] })).message).toBe('NOT_AUTHENTICATED');
+  });
+});
+
 describe('H14 — subida en vuelo durante un cambio de entrenador', () => {
   it('H14 arreglado (E37) (SQL): la subida con el asiento de A que llega después de entrar con el código de B se rechaza con SLOT_CHANGED y B no recibe nada', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
@@ -515,7 +609,7 @@ describe('H14 — subida en vuelo durante un cambio de entrenador', () => {
 });
 
 describe('H15 — borrar un usuario cliente fuera de delete-account', () => {
-  it('H15 hoy: la FK suelta el asiento pero deja disconnected_at null: el entrenador lo ve invitado (regla R-B6: «se fue»)', async () => {
+  it('H15 arreglado (E36): borrar al usuario cliente suelta el asiento con disconnected_at: el entrenador lo ve «se fue» (R-B6)', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const c = await anon('c');
@@ -523,19 +617,38 @@ describe('H15 — borrar un usuario cliente fuera de delete-account', () => {
     expect((await slotOf(S)).client_id).toBe(c.id);
 
     await server.deleteUser(c.id);
+    const row = await slotOf(S);
+    expect(row.client_id).toBeNull();
+    expect(row.disconnected_at).toBeTruthy();
+  });
+
+  it('E36: reemitir el código sigue dejando al hueco como invitado (sin disconnected_at)', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const c = await anon('c');
+    await link(c, K, S);
+    await ok(t.db, 'trainer_reissue_client_code', { p_slot_id: S });
     expect(await slotOf(S)).toMatchObject({ client_id: null, disconnected_at: null });
   });
 });
 
-describe('H16 — profiles sin FK a auth.users', () => {
-  it('H16 hoy: borrar el usuario deja su fila de profiles huérfana, y audit.sql no lo ve', async () => {
+describe('H16 — profiles con FK a auth.users', () => {
+  it('H16 arreglado (E31): borrar el usuario borra su perfil', async () => {
     const u = await server.createUser({ email: 'u@test' });
     await server.admin(`insert into public.profiles (id, role) values ($1, 'trainer')`, [u.id]);
     await server.deleteUser(u.id);
     expect(await server.admin('select id from auth.users where id = $1', [u.id])).toEqual([]);
 
-    expect(await server.admin('select id, role from public.profiles where id = $1', [u.id])).toEqual([{ id: u.id, role: 'trainer' }]);
-    expect(await audit()).toEqual([]);
+    expect(await server.admin('select id from public.profiles where id = $1', [u.id])).toEqual([]);
+  });
+
+  it('H16 arreglado (E31): un perfil huérfano de antes de la FK (`not valid`) sale en audit.sql', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    await server.admin('alter table public.profiles drop constraint profiles_id_fk');
+    await server.admin(`insert into public.profiles (id, role) values ($1, 'trainer')`, [id]);
+    await server.admin('alter table public.profiles add constraint profiles_id_fk foreign key (id) references auth.users (id) on delete cascade not valid');
+
+    expect(await audit()).toEqual([{ problema: 'perfil sin usuario', detalle: id }]);
   });
 });
 
@@ -607,7 +720,7 @@ describe('Descartados: quedan fijados', () => {
 
     const messy = `  ${K.toLowerCase()} `;
     const c = await anon('c');
-    expect((await ok(c.db, 'get_slot_by_code', { p_code: messy }))[0].id).toBe(S);
+    expect((await ok(c.db, 'get_slot_by_code', { p_code: messy }))[0].client_name).toBe('Ana');
     expect(await ok(c.db, 'link_client_to_slot', { p_code: messy })).toBe(S);
   });
 

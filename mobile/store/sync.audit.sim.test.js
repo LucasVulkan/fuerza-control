@@ -534,7 +534,7 @@ describe('S16 el progreso del espejo sigue al programa personal', () => {
 });
 
 describe('S17 dos móviles del mismo entrenador', () => {
-  it('S17 hoy: borrar un cliente en un móvil deja al otro un cliente «de otra cuenta» (syncOrphan) en vez de quitarlo (regla R-B6: borrar un cliente lo borra entero)', async () => {
+  it('S17 arreglado (E60): borrar un cliente en un móvil lo quita también del otro, sin dejar nada pendiente de borrar (R-B6)', async () => {
     const t1 = await phone('t1');
     await t1.s.createTrainerCodeAccount();
     const code = t1.s.trainerSync.code;
@@ -544,7 +544,42 @@ describe('S17 dos móviles del mismo entrenador', () => {
     expect(Object.keys(t2.s.clients)).toHaveLength(1);
     await t1.s.deleteClient(clientId);
     await t2.s.refreshTrainerSlots();
-    expect(Object.values(t2.s.clients)[0].syncOrphan).toBe(true);
+    expect(Object.keys(t2.s.clients)).toHaveLength(0);
+    expect(t2.s.trainerSync.deletedSlotIds).toEqual([]);
+  });
+
+  it('E60: con la cuenta del entrenador borrada y el otro móvil aún con sesión, el refresco no borra ningún cliente', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    const { clientId } = await newClientWithProgram(t1);
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    expect(Object.keys(t2.s.clients)).toHaveLength(1);
+
+    await server.admin('delete from auth.users where id = $1', [t1.s.trainerSync.userId]);   // cuenta borrada; t2 conserva su JWT
+    expect(await server.slots()).toEqual([]);
+    const before = server.calls.length;
+    await t2.s.refreshTrainerSlots();
+    expect(server.calls.slice(before).some((c) => JSON.stringify(c).includes('trainer_slots_alive'))).toBe(true);   // llegó a preguntar
+    expect(Object.keys(t2.s.clients)).toHaveLength(1);
+    expect(t2.s.clients[Object.keys(t2.s.clients)[0]].syncOrphan).toBe(true);
+    expect(clientId).toBeTruthy();
+  });
+
+  it('E60: si el hueco se pasó a otra cuenta, el otro móvil lo sigue viendo «de otra cuenta» y no lo borra', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const { clientId } = await newClientWithProgram(t1);
+    const slotId = t1.s.clients[clientId].syncSlotId;
+    const other = createSimClient(createDevice(server, 'otra cuenta'));
+    const { data } = await other.auth.signInWithIdToken({ provider: 'google', token: 'google:dueño' });
+    await createSimClient(t1.device, { storageKey: 'sb-trainer' }).rpc('offer_transfer', { p_kind: 'slots', p_to: data.user.id });
+    expect((await other.rpc('accept_transfer', { p_kind: 'slots', p_from: t1.s.trainerSync.userId })).data).toBe(1);
+
+    await t1.s.refreshTrainerSlots();
+    expect(t1.s.clients[clientId].syncOrphan).toBe(true);
+    expect((await slotOf(slotId)).trainer_id).toBe(data.user.id);
   });
 });
 
