@@ -16,6 +16,7 @@
  */
 
 import { trainerSupabase, clientSupabase, sessionsReady } from '../config/supabase';
+import { userIdOf as myId } from './supabaseAuth';
 
 const RPC_CODES = [
   'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'SEAT_LOCKED', 'BAD_TARGET',
@@ -37,12 +38,6 @@ async function rpc(db, name, args) {
   const { data, error } = await db.rpc(name, args);
   if (error) throw syncError(error);
   return data;
-}
-
-async function myId(db) {
-  await sessionsReady();
-  const { data } = await db.auth.getSession();
-  return data.session?.user?.id ?? null;
 }
 
 // ═══ Entrenador ═══════════════════════════════════════════════════════════════

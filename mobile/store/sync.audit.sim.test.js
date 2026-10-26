@@ -382,7 +382,7 @@ describe('S14 abrir sin cobertura con el token caducado', () => {
     };
     return cfg;
   };
-  it('S14 hoy: abrir sin red tras >1 h marca al cliente como desconectado (lostAt) y sigue así al volver la red (regla R-C1: un fallo de red no cambia el estado de la conexión; R-B3)', async () => {
+  it('S14 arreglado (E50): abrir sin red tras >1 h no marca lostAt, y con red vuelve a subir (regla R-C1: un fallo de red no cambia el estado de la conexión; R-B3)', async () => {
     const t = await phone('entrenador');
     let c = await phone('cliente', { wrap: expiredWhenOffline });
     await t.s.createTrainerCodeAccount();
@@ -394,10 +394,12 @@ describe('S14 abrir sin cobertura con el token caducado', () => {
     logSession(c, 's2');
     c = await restart(c);
     await c.s.checkAndPullProgramUpdates();
+    expect(c.s.clientSync.lostAt).toBeFalsy();
     c.device.offline = false; c.device.tokenExpired = false;
     await c.s.checkAndPullProgramUpdates();
     await c.s.uploadHistoryToTrainer();
-    expect(c.s.clientSync.lostAt).toBeTruthy();
+    expect(c.s.clientSync.lostAt).toBeFalsy();
+    expect(historyIds(await slotOf(c.s.clientSync.slotId))).toContain('s2');
   });
 });
 
