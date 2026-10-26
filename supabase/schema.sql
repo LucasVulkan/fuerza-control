@@ -67,6 +67,8 @@ alter table public.trainer_clients add column if not exists sessions_count      
 alter table public.trainer_clients add column if not exists overrides_json       jsonb;
 alter table public.trainer_clients add column if not exists overrides_updated_at timestamptz;
 alter table public.trainer_clients add column if not exists disconnected_at      timestamptz;
+-- El id con que el entrenador conoce al cliente en su móvil: hace repetible el alta (E35).
+alter table public.trainer_clients add column if not exists local_id             text;
 -- Antes guardaban aquí quién desalojó a quién; ahora es `seat_losses`, por usuario.
 alter table public.trainer_clients drop column if exists displaced_client_id;
 alter table public.trainer_clients drop column if exists displaced_at;
@@ -144,6 +146,7 @@ alter table public.trainer_clients alter column client_code set not null;
 create unique index if not exists trainer_clients_code_key on public.trainer_clients (client_code);
 create unique index if not exists trainer_clients_one_seat on public.trainer_clients (client_id) where client_id is not null;
 create index        if not exists trainer_clients_trainer  on public.trainer_clients (trainer_id);
+create unique index if not exists trainer_clients_local_id on public.trainer_clients (trainer_id, local_id) where local_id is not null;
 
 -- Borrar un usuario (aunque sea desde el panel de Supabase) se lleva sus huecos
 -- de entrenador y suelta su asiento de cliente. Nada queda apuntando a nadie.
@@ -320,7 +323,10 @@ $$;
 
 -- ── 7. Entrenador ───────────────────────────────────────────────────────────
 
-create or replace function public.trainer_create_slot(p_client_name text)
+-- Con `p_local_id`, repetir el alta (la respuesta se perdió) devuelve el mismo
+-- hueco en vez de crear otro; dos a la vez también dan el mismo (E35).
+drop function if exists public.trainer_create_slot(text);
+create or replace function public.trainer_create_slot(p_client_name text, p_local_id text default null)
 returns table (slot_id uuid, code text)
 language plpgsql
 security definer
@@ -331,9 +337,14 @@ declare
   v_code text := public.new_client_code();
   v_id   uuid;
 begin
-  insert into public.trainer_clients (trainer_id, client_name, client_code)
-  values (v_me, p_client_name, v_code)
+  insert into public.trainer_clients (trainer_id, client_name, client_code, local_id)
+  values (v_me, p_client_name, v_code, p_local_id)
+  on conflict (trainer_id, local_id) where local_id is not null do nothing
   returning id into v_id;
+  if v_id is null then
+    select t.id, t.client_code into v_id, v_code
+      from public.trainer_clients t where t.trainer_id = v_me and t.local_id = p_local_id;
+  end if;
   return query select v_id, v_code;
 end;
 $$;
@@ -650,7 +661,7 @@ begin
   if not found then raise exception 'NO_OFFER'; end if;
 
   if p_kind = 'slots' then
-    update public.trainer_clients set trainer_id = v_me where trainer_id = p_from;
+    update public.trainer_clients set trainer_id = v_me, local_id = null where trainer_id = p_from;
     get diagnostics v_count = row_count;
   else
     v_to_seat   := exists (select 1 from public.trainer_clients where client_id = v_me);
@@ -685,7 +696,7 @@ begin
   foreach f in array array[
     'new_client_code()', '_caller()', '_trainer()', '_check_target(uuid)', '_locked_by(uuid)',
     '_merge_history(jsonb, jsonb)',
-    'trainer_create_slot(text)', 'trainer_upload_program(uuid, jsonb, text)',
+    'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
@@ -696,7 +707,7 @@ begin
   end loop;
 
   foreach f in array array[
-    'trainer_create_slot(text)', 'trainer_upload_program(uuid, jsonb, text)',
+    'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',

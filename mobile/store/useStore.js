@@ -3961,7 +3961,7 @@ export const useStore = create(
           // Ensure auth session is active — may have expired after app restart
           await _ensureTrainerSession(trainerSync);
 
-          const { slotId, clientCode } = await createClientSlot(client.name);
+          const { slotId, clientCode } = await createClientSlot(client.name, clientId);
 
           set((s) => ({
             clients: {

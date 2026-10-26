@@ -42,9 +42,12 @@ async function rpc(db, name, args) {
 
 // ═══ Entrenador ═══════════════════════════════════════════════════════════════
 
-/** Hueco nuevo; el código lo genera el servidor, que sabe cuáles existen. */
-export async function createClientSlot(clientName) {
-  const [row] = await rpc(trainerSupabase, 'trainer_create_slot', { p_client_name: clientName });
+/**
+ * Hueco nuevo; el código lo genera el servidor, que sabe cuáles existen. Con
+ * `localId` (el id de la ficha) repetir el alta devuelve el mismo hueco.
+ */
+export async function createClientSlot(clientName, localId = null) {
+  const [row] = await rpc(trainerSupabase, 'trainer_create_slot', { p_client_name: clientName, p_local_id: localId });
   return { slotId: row.slot_id, clientCode: row.code };
 }
 

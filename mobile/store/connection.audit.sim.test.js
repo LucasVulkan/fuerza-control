@@ -247,17 +247,18 @@ describe('H12 — borrar la cuenta con el mismo Google en los dos papeles', () =
 });
 
 describe('H13 — crear hueco no es idempotente', () => {
-  it('H13 hoy: la primera creación llega pero su respuesta se pierde; el reintento crea otra y al refrescar hay dos «Ana»', async () => {
+  it('H13 arreglado (E35): la primera creación llega pero su respuesta se pierde; el reintento devuelve el mismo hueco y al refrescar hay una sola «Ana»', async () => {
     const t = await phone('entrenador');
     await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana');                    // ficha sin app: aún sin hueco
     const raw = createSimClient(t.device, { storageKey: 'sb-trainer' });
-    const lost = await raw.rpc('trainer_create_slot', { p_client_name: 'Ana' });   // la respuesta que no llegó
+    const lost = await raw.rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: id });   // la respuesta que no llegó
     expect(lost.error).toBeNull();
 
-    const id = await t.s.createClient('Ana', { withApp: true });
-    expect(t.s.clients[id].syncSlotId).toBeTruthy();
+    await t.s.connectClientToCloud(id);                          // el reintento de la app
+    expect(t.s.clients[id]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncCode: lost.data[0].code });
     await t.s.refreshTrainerSlots();
-    expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(2);
-    expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(2);
+    expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(1);
+    expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(1);
   });
 });

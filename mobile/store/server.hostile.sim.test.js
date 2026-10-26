@@ -509,6 +509,33 @@ describe('H11 — nadie planta un asiento en una cuenta ajena', () => {
   });
 });
 
+describe('E35 — trainer_create_slot con p_local_id', () => {
+  it('repetir con el mismo p_local_id devuelve el mismo hueco; sin él (build vieja) crea uno cada vez; el de otro entrenador es aparte', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    const create = (who, args) => ok(who.db, 'trainer_create_slot', { p_client_name: 'Ana', ...args });
+    const [a1] = await create(t, { p_local_id: 'client_1' });
+    const [a2] = await create(t, { p_local_id: 'client_1' });
+    expect(a2).toEqual(a1);
+    const [o] = await create(b, { p_local_id: 'client_1' });
+    expect(o.slot_id).not.toBe(a1.slot_id);
+    const [n1] = await create(t, {});
+    const [n2] = await create(t, {});
+    expect(n1.slot_id).not.toBe(n2.slot_id);
+    expect((await server.slots()).filter((r) => r.trainer_id === t.id)).toHaveLength(3);
+  });
+
+  it('pasar los huecos a otra cuenta que tiene el mismo p_local_id no choca', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    await ok(a.db, 'trainer_create_slot', { p_client_name: 'Ana', p_local_id: 'client_1' });
+    await ok(b.db, 'trainer_create_slot', { p_client_name: 'Ana', p_local_id: 'client_1' });
+    await ok(a.db, 'offer_transfer', { p_kind: 'slots', p_to: b.id });
+    expect(await ok(b.db, 'accept_transfer', { p_kind: 'slots', p_from: a.id })).toBe(1);
+    expect((await server.slots()).filter((r) => r.trainer_id === b.id)).toHaveLength(2);
+  });
+});
+
 describe('H14 — subida en vuelo durante un cambio de entrenador', () => {
   it('H14 arreglado (E37) (SQL): la subida con el asiento de A que llega después de entrar con el código de B se rechaza con SLOT_CHANGED y B no recibe nada', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
