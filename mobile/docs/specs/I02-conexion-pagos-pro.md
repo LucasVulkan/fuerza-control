@@ -140,6 +140,9 @@ Tres palabras que salen mucho:
 | R-B5 | Reemitir el código deja fuera al de dentro y el código viejo deja de valer. | B |
 | R-B6 | **Borrar un cliente** (el entrenador) lo borra entero, en el servidor y en el móvil del entrenador, como si nunca hubiera existido. **Desconectarse** (el cliente) deja el hueco libre, el entrenador lo ve libre y **no se pierde nada** de lo que había en él: programa, nombre, código e historial. El mismo código vuelve a servir para entrar. No queda ningún fantasma. | B · S |
 | R-B7 | Un móvil que es entrenador y cliente a la vez no mezcla sesiones: cada papel con la suya (C09 §2.1). | B |
+| R-B8 | Un cliente conectado sigue el programa de su entrenador. Para usar otro (crear, importar, restaurar o reactivar uno propio) la app avisa antes y le ofrece desconectarse; no hay desconexiones implícitas. *(26-oct-2026, E67.)* | B |
+| R-B9 | Desconectarse se hace en el móvil al momento, también sin red; el servidor se entera en cuanto hay red. Un móvil solo puede soltar el asiento que tiene. *(26-oct-2026, E52, E66.)* | B · S |
+| R-B10 | Lo que el entrenador borra o cancela en un móvil se refleja en sus otros móviles de la misma cuenta; nada más se borra solo. No hay sincronización de programas ni registros entre móviles del entrenador (irá en una spec aparte). *(26-oct-2026, E60-E63.)* | B · S |
 
 ### C. Sincronización: no perder ni duplicar
 
@@ -448,6 +451,10 @@ cuando crezca), R-D1 (se queda el traspaso de hoy).
      lo borra (R-B6). Si el hueco pasó a otra cuenta, sigue «de otra cuenta».
    - E31: `audit.sql` guarda una huella de cada función; al cambiar una en
      `schema.sql` se actualiza su huella (lo avisa «H3 montaje»).
+7. **Cerradas en la tanda D** (26-oct-2026): R-B8, R-B9 y R-B10 nuevas;
+   E52 cambia (desconectarse sin red se permite, con cola). Regla de
+   compatibilidad: lo que lee una build publicada no se cambia; lo nuevo va en
+   campos nuevos. E45-d aparcado.
 4. **¿Quién hace las pasadas?** *Revisado el 23-oct-2026 por coste:* una
    pasada de Opus con esfuerzo máximo agotó el uso. A partir de ahora, Opus
    con esfuerzo alto solo para la pasada por reglas de cada zona, y la

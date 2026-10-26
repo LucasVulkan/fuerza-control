@@ -5,7 +5,7 @@
 >
 > Estado: **Reabierto el 23-oct-2026 con 34 fallos nuevos, E27-E60**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
-> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto), y **E30, E31, E34-E37 y E49-E60** el 26-oct-2026. Solo queda abierto E45-d, **aparcado** el 26-oct-2026 hasta que haya un caso real (mientras, se da el PRO a mano en el panel de RevenueCat a la cuenta nueva). Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
+> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto), y **E30, E31, E34-E37 y E49-E71** el 26-oct-2026 (E61-E71 salieron de una pasada conjunta sobre las tres tandas). Solo queda abierto E45-d, **aparcado** el 26-oct-2026 hasta que haya un caso real (mientras, se da el PRO a mano en el panel de RevenueCat a la cuenta nueva). Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
@@ -163,6 +163,17 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [58](#58) | 🟢 Baja | ✅ Una copia vieja de un entreno puede pisar una edición | `supabase/schema.sql:286` |
 | [59](#59) | 🟢 Baja | ✅ Lo que se borra del historial vuelve | `store/useStore.js:2985` |
 | [60](#60) | 🟢 Baja | ✅ Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» | `store/useStore.js:4340` |
+| [61](#61) | 🟠 Alta | ✅ Borrar una cuenta de entrenador vacía su otro móvil al entrar en otra cuenta | `store/useStore.js:4342` |
+| [62](#62) | 🟠 Alta | ✅ Cancelar una invitación en un móvil borra la ficha entera en el otro | `store/useStore.js:4006` |
+| [63](#63) | 🟡 Media | ✅ Con la respuesta del alta perdida, dos fichas en un hueco; borrar una borra la otra | `store/useStore.js:4368` |
+| [64](#64) | 🟠 Alta | ✅ Las lápidas rompen a los entrenadores con la build publicada | `supabase/schema.sql:281` |
+| [65](#65) | 🟠 Alta | ✅ Con la build publicada, entrar con código no ofrece traer el historial | `supabase/schema.sql:515` |
+| [66](#66) | 🟡 Media | ✅ Desconectarse con el asiento desactualizado suelta el asiento del otro móvil | `supabase/schema.sql:641` |
+| [67](#67) | 🟡 Media | ✅ Desconexiones implícitas que fallan sin que nadie se entere | `store/useStore.js:663` |
+| [68](#68) | 🟢 Baja | ✅ Las lápidas mezclan papeles y sacan ids personales del móvil | `store/useStore.js:4860` |
+| [69](#69) | 🟢 Baja | ✅ Un id como entreno y como lápida queda duplicado en el servidor | `supabase/schema.sql:323` |
+| [70](#70) | 🟢 Baja | ✅ `audit.sql` no vigila las piezas nuevas | `supabase/audit.sql:155` |
+| [71](#71) | 🟢 Baja | ✅ Al teclear un código se ve con qué cuenta entra el cliente | `supabase/schema.sql:515` |
 
 Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
 se hizo y en qué se equivocaba el diagnóstico si se equivocaba.
@@ -2986,6 +2997,8 @@ regla de C09: nada se da por hecho sin el servidor.
 
 Hecho (`1cafbe5`). Si el servidor no confirma la desconexión, no se desconecta en local y la pantalla dice que hace falta conexión. Las llamadas internas (`ExternalImportModal`, fin del onboarding) se tragan el error: el cliente sigue conectado, coherente con el servidor.
 
+**Cambio de regla (26-oct-2026, `1751cd7`, `8a3d77a`).** Decisión del usuario: desconectarse sin red tiene que poder hacerse (R-B9). Ahora se desconecta en el móvil al momento y el aviso al servidor queda en cola (`clientSync.releaseDue`), que se reintenta al abrir la app hasta que llega; solo se vacía con éxito o `SLOT_CHANGED`. Entrar en un asiento espera a que termine de soltarse el anterior (la revisión encontró que, si no, reconectar con Google podía soltar el asiento recién ocupado). Mientras no llega, el entrenador lo ve dentro.
+
 ## 53. Con el asiento desactualizado, las sesiones van al entrenador equivocado 🟡 ✅ {#53}
 
 > En corto: Si el móvil del cliente cree seguir con un entrenador cuando ya está con otro, ofrece el programa del nuevo como actualización y sube allí las sesiones del anterior.
@@ -3149,6 +3162,138 @@ ya no está (`useStore.js:4340`), sin distinguir uno borrado.
 **Arreglo a estudiar.** No se pierde nada: es el mensaje el que está mal. Para
 distinguirlo hace falta saber en el servidor que el hueco se borró. Lo dejo
 para cuando se toque E36.
+
+## 61. Borrar una cuenta de entrenador vacía su otro móvil al entrar en otra cuenta 🟠 ✅ {#61}
+
+> En corto: Si una cuenta de entrenador deja de existir y su otro móvil entra en otra cuenta, ese móvil borra todos los clientes de la vieja, con su historial.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** E60 borraba todo hueco que «no existe en ninguna cuenta», sin mirar de quién era. Con la cuenta X ya borrada (o un backup de antes), entrar con Y en el otro móvil preguntaba por los huecos de X y los borraba todos.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`54d866d`, `8a3d77a`). R-B10: el servidor guarda en `deleted_slots` lo que cada cuenta borra y con qué intención; el otro móvil solo aplica lo de **su misma cuenta**. Lo demás que falte sigue «de otra cuenta». `trainer_slots_alive` desaparece; `trainer_deleted_slots` exige que la cuenta exista.
+
+## 62. Cancelar una invitación en un móvil borra la ficha entera en el otro 🟠 ✅ {#62}
+
+> En corto: Cancelar la invitación de un cliente en un móvil del entrenador le borraba la ficha, con sus datos, en el otro.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** `cancelClientInvitation` y borrar el cliente usan la misma `trainer_delete_slot`; E60 no las distinguía.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`54d866d`, `8a3d77a`). `trainer_delete_slot` apunta `deleted` o `cancelled`; el otro móvil deja la ficha «sin app», con los mismos campos que el primero (`UNINVITED`). Una build vieja que cancela queda como `deleted` (aceptado).
+
+## 63. Con la respuesta del alta perdida, dos fichas en un hueco; borrar una borra la otra 🟡 ✅ {#63}
+
+> En corto: Si se perdía la respuesta al crear un cliente con app, un refresco creaba una segunda ficha del mismo hueco, y borrar esa borraba también la original.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** El refresco recuperaba el hueco como ficha nueva sin mirar `local_id` (E35), y «Pasar a la app» en la original devolvía el mismo hueco.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`54d866d`, `8a3d77a`). El refresco lee `local_id` y asigna el hueco a su ficha (también si estaba «de otra cuenta»), marcando el programa por subir. La revisión encontró que sin esa marca el programa no llegaba nunca al hueco.
+
+## 64. Las lápidas rompen a los entrenadores con la build publicada 🟠 ✅ {#64}
+
+> En corto: Un entrenador con la build publicada perdía entrenos ya descargados y veía entradas vacías cuando su cliente borraba algo con la build nueva.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** Las lápidas de E59 iban dentro de `entries`, que la build vieja lee y fusiona como entrenos.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`3f24e76`, `8a3d77a`). Las lápidas van en `history_json.deleted` (`{ id: deletedAt }`); `entries` nunca las lleva. `_merge_history` une las lápidas y quita de `entries` lo borrado (gana la última edición). Al ejecutar el schema, las que ya hubiera dentro de `entries` se mueven a su sitio.
+
+## 65. Con la build publicada, entrar con código no ofrece traer el historial 🟠 ✅ {#65}
+
+> En corto: Desde la tanda C, la build publicada nunca ofrecía traer el historial del hueco al entrar con un código. Pasaba ya en producción.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** E30 quitó `history_updated_at`, que la build vieja lee para decidirlo.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`b279844`). Vuelve `history_updated_at`, pero sin hora (la época si hay historial, null si no), para builds anteriores a la tanda C; se quita cuando no queden. Regla: lo que lee una build publicada no se cambia; lo nuevo va en campos nuevos.
+
+## 66. Desconectarse con el asiento desactualizado suelta el asiento del otro móvil 🟡 ✅ {#66}
+
+> En corto: Con el mismo Google en dos móviles, desconectarse en el que tenía el asiento desactualizado soltaba el asiento nuevo del otro.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** `release_client_slot` soltaba el asiento que tuviera el usuario, sin saber cuál creía tener el móvil.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`1751cd7`). `release_client_slot(p_slot_id)` solo suelta ese; si el cliente está en otro, `SLOT_CHANGED` y la app adopta el asiento del servidor y lo dice. Regla R-B9: un móvil solo puede soltar el asiento que tiene.
+
+## 67. Desconexiones implícitas que fallan sin que nadie se entere 🟡 ✅ {#67}
+
+> En corto: Crear o importar un programa estando conectado desconectaba en silencio; sin red o con entrenos sin enviar no desconectaba y nadie lo sabía.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** Dos llamadas a `unlinkFromTrainer` con `.catch(() => {})`.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`1b1ca92`, `8a3d77a`). R-B8: un cliente conectado sigue el programa de su entrenador. Crear, importar (también por archivo o restaurando una copia de Drive) o reactivar un programa propio avisa antes y ofrece «Desconectarme», con el mismo flujo que la pantalla de Entrenador (hook `useDisconnectFromTrainer`). Ya no hay desconexiones implícitas. Cambiar entre programas del entrenador no avisa.
+
+## 68. Las lápidas mezclan papeles y sacan ids personales del móvil 🟢 ✅ {#68}
+
+> En corto: Las lápidas de entrenos personales y las del papel de entrenador subían al hueco del entrenador del cliente.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** Un solo `deletedLogIds` para los dos papeles, y se subía entero.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`776cf2a`). El cliente solo apunta lápida al borrar estando conectado y si el entreno estaba en el alcance de la subida; se vacía al desconectarse, al cambiar de asiento y al borrar la cuenta. El entrenador usa su propio mapa (`deletedClientLogIds`), que no se sube.
+
+## 69. Un id como entreno y como lápida queda duplicado en el servidor 🟢 ✅ {#69}
+
+> En corto: Un entreno borrado y vuelto a importar con la misma id quedaba dos veces en el hueco.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** `_merge_history` no deduplicaba lo que llegaba.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`3f24e76`) con E64: al ir las lápidas aparte, un id no puede estar a la vez en `entries` y en `deleted`.
+
+## 70. `audit.sql` no vigila las piezas nuevas 🟢 ✅ {#70}
+
+> En corto: `audit.sql` no veía si faltaba el índice de `local_id`, el trigger de E36 o la tabla de borrados.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** La huella de una función no prueba que su trigger esté puesto.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`fc90488`). Vigila el índice, el trigger en `pg_trigger` y `deleted_slots` (RLS, permisos, políticas).
+
+## 71. Al teclear un código se ve con qué cuenta entra el cliente 🟢 ✅ {#71}
+
+> En corto: `get_slot_by_code` decía si el cliente entra con Google o con Apple, y R-A5 dice un sí/no.
+
+Encontrado el 26-oct-2026 en la pasada conjunta sobre las tandas A, B y C (Opus, esfuerzo alto).
+
+**Cuándo.** `locked_by` devolvía el proveedor.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`b279844`). `locked_by` es booleano; sirve igual para las dos builds.
 
 ---
 
