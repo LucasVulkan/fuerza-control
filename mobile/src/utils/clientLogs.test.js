@@ -68,6 +68,14 @@ describe('mergeClientLog', () => {
     const existing = [{ id: 'e1', timestamp: 100, sessionRpe: 8 }];
     expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 8 }], { update: true })).toBe(existing);
   });
+
+  test('update: a copy with an older updatedAt does not replace (last edit wins)', () => {
+    const existing = [{ id: 'e1', timestamp: 100, sessionRpe: 9, updatedAt: 500 }];
+    expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 7 }], { update: true })).toBe(existing);
+    expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 7, updatedAt: 400 }], { update: true })).toBe(existing);
+    const newer = mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 6, updatedAt: 600 }], { update: true });
+    expect(newer[0].sessionRpe).toBe(6);
+  });
 });
 
 describe('reidProgramFile', () => {

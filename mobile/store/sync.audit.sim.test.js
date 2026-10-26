@@ -405,7 +405,7 @@ describe('S8-S9 «enviado» sin que el servidor lo confirme (carreras)', () => {
 });
 
 describe('S10-S13 el historial del hueco y el del móvil se pisan', () => {
-  it('S10 hoy: dos móviles con el mismo Google; el 1 edita el RPE de s1 y el 2 sube su copia vieja → el servidor vuelve a la vieja (regla R-C3: mezclar solo añade; R-C2)', async () => {
+  it('S10 arreglado (E58): dos móviles con el mismo Google; el 1 edita el RPE de s1 y el 2 sube su copia vieja → el servidor conserva la edición (regla R-C3: gana la última edición; R-C2)', async () => {
     const { c: c1 } = await trainerAndClient();
     await c1.s.linkGoogleForClient(google('cli'));
     await trainOnce(c1, 's1');
@@ -413,25 +413,25 @@ describe('S10-S13 el historial del hueco y el del móvil se pisan', () => {
     const found = await c2.s.validateGoogleClient(google('cli'));
     await c2.s.confirmGoogleReconnect({ googleUserId: found.userId, provider: 'google', mergeHistory: true });
     expect(c2.s.workoutLog.map((e) => e.id)).toContain('s1');
-    c1.store.setState((s) => ({ workoutLog: s.workoutLog.map((e) => (e.id === 's1' ? { ...e, rpe: 9 } : e)) }));
+    c1.s.setSessionFeedback('s1', { sessionRpe: 9 });
     await c1.s.uploadHistoryToTrainer();
     const slotId = c1.s.clientSync.slotId;
-    expect((await slotOf(slotId)).history_json.entries[0].rpe).toBe(9);
+    expect((await slotOf(slotId)).history_json.entries[0].sessionRpe).toBe(9);
     await trainOnce(c2, 's2');
-    expect((await slotOf(slotId)).history_json.entries.find((e) => e.id === 's1').rpe).toBeUndefined();
+    expect((await slotOf(slotId)).history_json.entries.find((e) => e.id === 's1').sessionRpe).toBe(9);
   });
-  it('S11 hoy: dos subidas del mismo móvil llegan en orden inverso; la vieja pisa a la nueva y se pierde el RPE (regla R-C3: conmutativa e idempotente; R-C2)', async () => {
+  it('S11 arreglado (E58): dos subidas del mismo móvil llegan en orden inverso; la vieja no pisa a la nueva y se conserva el RPE (regla R-C3: conmutativa e idempotente; R-C2)', async () => {
     const { c: c0 } = await trainerAndClient();
     const c = await phone('cliente', { device: c0.device, from: c0, wrap: gateRpc('client_upload_history') });
     await trainOnce(c, 's1');
     c.device.hold = true;
     const old = c.s.uploadHistoryToTrainer();                       // v1 (sin RPE) retenida
     await new Promise((r) => setTimeout(r, 50));
-    c.store.setState((s) => ({ workoutLog: s.workoutLog.map((e) => (e.id === 's1' ? { ...e, rpe: 9 } : e)) }));
+    c.s.setSessionFeedback('s1', { sessionRpe: 9 });
     await c.s.uploadHistoryToTrainer();                             // v2 llega
-    expect((await slotOf(c.s.clientSync.slotId)).history_json.entries[0].rpe).toBe(9);
+    expect((await slotOf(c.s.clientSync.slotId)).history_json.entries[0].sessionRpe).toBe(9);
     c.device.release(); await old;                                  // v1 llega después
-    expect((await slotOf(c.s.clientSync.slotId)).history_json.entries[0].rpe).toBeUndefined();
+    expect((await slotOf(c.s.clientSync.slotId)).history_json.entries[0].sessionRpe).toBe(9);
   });
   it('S12 hoy: lo que el entrenador borra de un cliente con app vuelve en la siguiente descarga (regla R-C3: mezclar solo añade; R-C4)', async () => {
     const { t, c, clientId } = await trainerAndClient();

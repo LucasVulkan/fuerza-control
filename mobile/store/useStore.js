@@ -1562,7 +1562,7 @@ export const useStore = create(
         const id = get().createFreeTemplate(presetFromEntry(entry));
         set((s) => ({
           workoutLog: s.workoutLog.map((e) => (
-            e.id === entryId ? { ...e, sessionTemplateId: id, free: true } : e
+            e.id === entryId ? { ...e, sessionTemplateId: id, free: true, updatedAt: Date.now() } : e
           )),
         }));
         return id;
@@ -1619,7 +1619,7 @@ export const useStore = create(
           programs,
           workoutLog: s.workoutLog.map((e) => {
             if (e.id !== entryId) return e;
-            const next = { ...e };
+            const next = { ...e, updatedAt: Date.now() };
             if (templateId) next.countsAs = templateId; else delete next.countsAs;
             return next;
           }),
@@ -2935,6 +2935,7 @@ export const useStore = create(
           const patch = (e) => (
             e.id !== logId ? e : {
               ...e,
+              updatedAt: Date.now(),
               ...(sessionRpe  !== undefined ? { sessionRpe }  : {}),
               ...(bodyWeight  !== undefined ? { bodyWeight }  : {}),
               // La nota del entreno se corrige en el recap (U09-pulido-ui.md §2).

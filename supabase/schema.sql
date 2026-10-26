@@ -275,8 +275,9 @@ $$;
 
 -- Suma lo que sube el cliente (o el entrenador, C20) a lo que ya hay (R-C2,
 -- R-C3: el historial solo crece). `entries` por `id`: las viejas que la subida
--- no trae se conservan, y si el id se repite gana la nueva; las que no tienen
--- `id` se conservan todas. `customExercises` se funde (gana la nueva) y
+-- no trae se conservan, y si el id se repite gana la de mayor `updatedAt` (ms;
+-- sin él, 0; empate, la que llega: E58); las que no tienen `id` se conservan
+-- todas. `customExercises` se funde (gana la nueva) y
 -- `progress` es el nuevo si lo hay. Interna: nadie la llama desde fuera.
 create or replace function public._merge_history(p_old jsonb, p_new jsonb)
 returns jsonb
@@ -287,10 +288,16 @@ as $$
     'entries', coalesce((
         select jsonb_agg(e order by o)
           from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
-         where (e->>'id') is null
-            or (e->>'id') not in (select n->>'id' from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
-                                   where n->>'id' is not null)
-      ), '[]'::jsonb) || coalesce(p_new->'entries', '[]'::jsonb),
+         where not exists (select 1 from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
+                            where n->>'id' = e->>'id'
+                              and coalesce((n->>'updatedAt')::numeric, 0) >= coalesce((e->>'updatedAt')::numeric, 0))
+      ), '[]'::jsonb) || coalesce((
+        select jsonb_agg(n order by o)
+          from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) with ordinality as t(n, o)
+         where not exists (select 1 from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) e
+                            where e->>'id' = n->>'id'
+                              and coalesce((e->>'updatedAt')::numeric, 0) > coalesce((n->>'updatedAt')::numeric, 0))
+      ), '[]'::jsonb),
     'customExercises', coalesce(nullif(p_old->'customExercises', 'null'::jsonb), '{}'::jsonb)
                     || coalesce(nullif(p_new->'customExercises', 'null'::jsonb), '{}'::jsonb),
     -- `progress: null` llega de verdad (sin programa activo): es null de JSON, no de SQL.
