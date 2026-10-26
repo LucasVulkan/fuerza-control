@@ -371,7 +371,7 @@ describe('S7 la app muere en la espera de 2 s antes de subir', () => {
 });
 
 describe('S8-S9 «enviado» sin que el servidor lo confirme (carreras)', () => {
-  it('S8 hoy: una prescripción cambiada mientras se envían las anteriores se pierde en local y queda «enviado» (regla R-C1: nada se da por enviado sin confirmar)', async () => {
+  it('S8 arreglado (E55): una prescripción cambiada mientras se envían las anteriores sigue en local y sin enviar (regla R-C1: nada se da por enviado sin confirmar)', async () => {
     const { t, clientId, programId } = await trainerAndClient();
     const tpl = t.s.programs[programId].stages[0].days[0].sessionTemplateId;
     t.s.setOverrideTarget(clientId, tpl, 'ex1', { weight: 50 });
@@ -379,10 +379,10 @@ describe('S8-S9 «enviado» sin que el servidor lo confirme (carreras)', () => {
     t.s.setOverrideTarget(clientId, tpl, 'ex2', { weight: 80 });
     expect(t.s.clients[clientId].nextOverrides[tpl].exercises.ex2).toBeDefined();   // montaje: la segunda edición entró
     await sending;
-    expect(t.s.clients[clientId].nextOverrides[tpl].exercises.ex2).toBeUndefined();
-    expect(t.s.clients[clientId].overridesDirty).toBe(false);
+    expect(t.s.clients[clientId].nextOverrides[tpl].exercises.ex2).toBeDefined();
+    expect(t.s.clients[clientId].overridesDirty).toBe(true);
   });
-  it('S9 hoy: un cambio del programa hecho mientras viaja la subida queda como enviado sin haberlo enviado (regla R-C1)', async () => {
+  it('S9 arreglado (E55): un cambio del programa hecho mientras viaja la subida sigue pendiente de enviar (regla R-C1)', async () => {
     const t = await phone('entrenador');
     await t.s.createTrainerCodeAccount();
     const { clientId, programId } = await newClientWithProgram(t);
@@ -400,7 +400,7 @@ describe('S8-S9 «enviado» sin que el servidor lo confirme (carreras)', () => {
     await t.s.uploadProgramToClient(clientId, programId);
     expect(t.s.programs[programId].name).toBe('Cambiado');          // montaje: el cambio local existe
     expect((await slotOf(t.s.clients[clientId].syncSlotId)).program_json.program.name).not.toBe('Cambiado');
-    expect(t.s.clients[clientId].programDirty).toBe(false);
+    expect(t.s.clients[clientId].programDirty).toBe(true);
   });
 });
 

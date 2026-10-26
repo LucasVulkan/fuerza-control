@@ -4082,13 +4082,15 @@ export const useStore = create(
         }
         await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null)
           .catch((err) => { throw get()._slotError(clientId, err); });
-        // Clear pending-upload flag after successful push
+        // Solo se limpia el aviso si el programa no cambió mientras viajaba la subida (E55).
+        const nowJson = get()._buildProgramJson(programId, false)?.json;
+        const unchanged = !!nowJson && programSignature(JSON.parse(nowJson)) === uploadedSig;
         set((s) => ({
           clients: {
             ...s.clients,
             [clientId]: {
               ...s.clients[clientId],
-              programDirty:       false,
+              ...(unchanged ? { programDirty: false } : {}),
               programUploadedAt:  new Date().toISOString(),
               programUploadedSig: uploadedSig,
             },
@@ -4155,10 +4157,16 @@ export const useStore = create(
           Object.entries(client.nextOverrides ?? {}).map(([tid, ov]) => [tid, { ...ov, createdAt: now }]),
         );
         await uploadOverrides(client.syncSlotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
+        // Si se editó mientras viajaba el envío, no se toca lo editado ni su marca (E55).
         set((s) => ({
           clients: {
             ...s.clients,
-            [clientId]: { ...s.clients[clientId], nextOverrides: stamped, overridesSentAt: now, overridesDirty: false },
+            [clientId]: {
+              ...s.clients[clientId],
+              overridesSentAt: now,
+              ...(s.clients[clientId].nextOverrides === client.nextOverrides
+                ? { nextOverrides: stamped, overridesDirty: false } : {}),
+            },
           },
         }));
       },
