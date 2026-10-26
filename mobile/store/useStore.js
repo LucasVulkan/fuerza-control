@@ -4978,13 +4978,19 @@ export const useStore = create(
        * Si la sesión de entrenador no se puede rehacer (Google/Apple caducado)
        * lanza TRAINER_LOGIN_NEEDED antes de borrar nada: borrar a medias dejaría
        * la cuenta viva en el servidor creyendo que ya no existe.
-       * ponytail: sin reintento. Si falla entre las dos, volver a pulsar sigue.
+       * Si falla entre las dos, volver a pulsar sigue: una cuenta de entrenador que ya no existe se salta (E56).
        */
       deleteAccount: async () => {
         const { trainerSync } = get();
-        if (trainerSync.userId) await _ensureTrainerSession(trainerSync);
-
-        if (trainerSync.userId) await deleteTrainerUser();
+        if (trainerSync.userId) {
+          try {
+            await _ensureTrainerSession(trainerSync);
+            await deleteTrainerUser();
+          } catch (err) {
+            // La cuenta ya no existe (un intento anterior la borró y se cortó): se sigue con la de cliente (E56).
+            if (err?.code !== 'TRAINER_CODE_NOT_FOUND' && err?.context?.status !== 401) throw err;
+          }
+        }
         await signOutTrainer().catch(() => {});
         await get()._purchasesLogOut();
         set((s) => ({

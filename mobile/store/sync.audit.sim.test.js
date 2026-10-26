@@ -120,7 +120,7 @@ describe('S1 de Google a código', () => {
 
 describe('S2 borrar la cuenta muere entre las dos llamadas', () => {
   it.each([['code'], ['google']])(
-    'S2 hoy (%s): el usuario entrenador ya se borró en el servidor y pulsar otra vez da «Sesión no válida»; el asiento de su cliente sigue ocupado (regla R-D4: borrar la cuenta borra sus huecos y su usuario, y sus clientes ven que los desconectaron)',
+    'S2 arreglado (E56, %s): el usuario entrenador ya se borró en el servidor y pulsar otra vez termina con la parte de cliente; su asiento queda libre (regla R-D4: borrar la cuenta borra sus huecos y su usuario, y sus clientes ven que los desconectaron)',
     async (way) => {
       const x = await phone('mixto');
       const coach = await phone('coach');
@@ -134,9 +134,9 @@ describe('S2 borrar la cuenta muere entre las dos llamadas', () => {
       const raw = createSimClient(x.device, { storageKey: 'sb-trainer' });
       expect((await raw.functions.invoke('delete-account')).data).toEqual({ ok: true });
       const x2 = await restart(x);
-      const res = await x2.s.deleteAccount().then((r) => r, (e) => ({ err: e.code ?? e.message }));
-      expect(res.err).toBeTruthy();
-      expect((await slotOf(seat)).client_id).not.toBeNull();
+      await expect(x2.s.deleteAccount()).resolves.toEqual({ ok: true });
+      expect(x2.s.trainerSync.userId).toBeNull();
+      expect((await slotOf(seat)).client_id).toBeNull();
     },
   );
 });

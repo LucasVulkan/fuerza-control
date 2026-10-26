@@ -303,7 +303,8 @@ const EDGE_FUNCTIONS = {
   },
 
   'delete-account': async (server, { uid }) => {
-    if (!uid || !server.users.has(uid)) return { error: 'Sesión no válida' };
+    // El 401 real llega como FunctionsHttpError con la respuesta en `context`.
+    if (!uid || !server.users.has(uid)) throw Object.assign(new Error('Edge Function returned a non-2xx status code'), { name: 'FunctionsHttpError', context: { status: 401 } });
     await server.admin('delete from public.trainer_clients where trainer_id = $1', [uid]);
     await server.admin(`update public.trainer_clients
                            set client_id = null, disconnected_at = now(), history_json = null,
