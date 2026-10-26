@@ -149,7 +149,9 @@ create index        if not exists trainer_clients_trainer  on public.trainer_cli
 create unique index if not exists trainer_clients_local_id on public.trainer_clients (trainer_id, local_id) where local_id is not null;
 
 -- Borrar un usuario (aunque sea desde el panel de Supabase) se lleva sus huecos
--- de entrenador y suelta su asiento de cliente. Nada queda apuntando a nadie.
+-- de entrenador y su perfil, y suelta su asiento de cliente. Nada queda
+-- apuntando a nadie. La de `profiles` va `not valid`: no falla si ya hay
+-- perfiles huérfanos (los señala `audit.sql`), pero los nuevos sí se comprueban.
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'trainer_clients_trainer_fk') then
@@ -161,6 +163,11 @@ begin
     alter table public.trainer_clients
       add constraint trainer_clients_client_fk foreign key (client_id)
       references auth.users (id) on delete set null;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'profiles_id_fk') then
+    alter table public.profiles
+      add constraint profiles_id_fk foreign key (id)
+      references auth.users (id) on delete cascade not valid;
   end if;
 end $$;
 
