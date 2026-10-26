@@ -5,7 +5,7 @@
 >
 > Estado: **Reabierto el 23-oct-2026 con 34 fallos nuevos, E27-E60**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
-> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto); el resto, sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
+> por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto), y **E37 y E49-E59** el 26-oct-2026; el resto (E30, E31, E34-E36, E60), sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
 > código de sep-2026 antes de tocarlos, y **en tres el arreglo propuesto estaba
 > mal o incompleto**: ver el §12 (no arreglaba su propio caso), el §15 (contaba
@@ -139,7 +139,7 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [34](#34) | 🟢 Baja | El motivo de perder el asiento sale cambiado | `supabase/schema.sql:493` |
 | [35](#35) | 🟢 Baja | Crear un cliente no aguanta un reintento | `supabase/schema.sql:266` |
 | [36](#36) | 🟢 Baja | Usuario cliente borrado desde el panel: el entrenador lo ve invitado | `supabase/schema.sql:157` |
-| [37](#37) | 🟢 Baja | Una subida que llega tarde cae en el hueco del entrenador nuevo | `supabase/schema.sql:499` |
+| [37](#37) | 🟢 Baja | ✅ Una subida que llega tarde cae en el hueco del entrenador nuevo | `supabase/schema.sql:499` |
 | [38](#38) | 🟠 Alta | ✅ Restaurar desde Drive pierde las plantillas de programa | `src/screens/DriveBackupScreen.jsx:218` |
 | [39](#39) | 🟠 Alta | ✅ Reinstalar sin PRO deja a los clientes recuperados sin programa | `store/useStore.js:4311` |
 | [40](#40) | 🟡 Media | ✅ Cuando la elección deja de valer, se congela todo | `src/utils/freePlan.js:50` |
@@ -157,11 +157,11 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [52](#52) | 🟡 Media | ✅ Desconectarse sin red deja al cliente «dentro» para el entrenador | `store/useStore.js:4826` |
 | [53](#53) | 🟡 Media | ✅ Con el asiento desactualizado, las sesiones van al entrenador equivocado | `store/useStore.js:4655` |
 | [54](#54) | 🟡 Media | ✅ «Vincular Google» del cliente: estado pegado y asiento ajeno suelto | `store/useStore.js:4902` |
-| [55](#55) | 🟡 Media | Lo que se edita mientras se envía queda como enviado | `store/useStore.js:4151` |
+| [55](#55) | 🟡 Media | ✅ Lo que se edita mientras se envía queda como enviado | `store/useStore.js:4151` |
 | [56](#56) | 🟡 Media | ✅ «Eliminar cuenta» se atasca si la app muere a mitad | `store/useStore.js:4959` |
-| [57](#57) | 🟡 Media | Con un programa propio activo, el progreso del entrenador se cruza | `store/useStore.js:4789` |
-| [58](#58) | 🟢 Baja | Una copia vieja de un entreno puede pisar una edición | `supabase/schema.sql:286` |
-| [59](#59) | 🟢 Baja | Lo que se borra del historial vuelve | `store/useStore.js:2985` |
+| [57](#57) | 🟡 Media | ✅ Con un programa propio activo, el progreso del entrenador se cruza | `store/useStore.js:4789` |
+| [58](#58) | 🟢 Baja | ✅ Una copia vieja de un entreno puede pisar una edición | `supabase/schema.sql:286` |
+| [59](#59) | 🟢 Baja | ✅ Lo que se borra del historial vuelve | `store/useStore.js:2985` |
 | [60](#60) | 🟢 Baja | Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» | `store/useStore.js:4340` |
 
 Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
@@ -2589,7 +2589,7 @@ Encontrado en I02-02; viola R-B6.
 **Arreglo previsto.** Un trigger `before update` que ponga `disconnected_at =
 now()` cuando `client_id` pasa de un valor a null y nadie lo ha puesto ya.
 
-## 37. Una subida que llega tarde cae en el hueco del entrenador nuevo 🟢 {#37}
+## 37. Una subida que llega tarde cae en el hueco del entrenador nuevo 🟢 ✅ {#37}
 
 > En corto: Si el cliente cambia de entrenador mientras una subida va de camino, esas sesiones llegan al entrenador nuevo y no al anterior.
 
@@ -2605,6 +2605,10 @@ dispositivo (I02-06).
 
 **Arreglo a estudiar.** Que la subida lleve el `slot_id` que cree tener y que
 el servidor la rechace si no coincide. Encaja con el arreglo de [§27](#27).
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`0b51b63`, `8000c03`). `client_upload_history` recibe el asiento que el móvil cree tener (`p_slot_id`, opcional para los móviles con la versión vieja) y, si el cliente ya está en otro, rechaza con `SLOT_CHANGED` sin escribir nada; el móvil lo ignora. **En qué se quedaba corto el diagnóstico:** rechazar con `NO_SEAT` habría marcado como perdido el asiento nuevo, que está bien; hacía falta un código propio. Y cambiar la firma exige `drop` de la vieja y `create or replace` de la nueva, o el `schema.sql` deja de poder ejecutarse dos veces (lo encontró la revisión). H14 invertido. **Hay que volver a ejecutar `schema.sql`.**
 
 ## 38. Restaurar desde Drive pierde las plantillas de programa 🟠 ✅ {#38}
 
@@ -3010,7 +3014,7 @@ nada, y al vincular limpiar `lostAt` como hace `_adoptSeat`.
 
 Hecho (`479e226`). Vincular Google mira primero el asiento propio y no suelta nada si no lo hay. Si el Google ya está en el asiento del móvil (reintento tras un corte), se salta el traspaso. Al terminar limpia `lostAt` y sube lo pendiente.
 
-## 55. Lo que se edita mientras se envía queda como enviado 🟡 {#55}
+## 55. Lo que se edita mientras se envía queda como enviado 🟡 ✅ {#55}
 
 > En corto: Si el entrenador cambia el programa o una prescripción mientras se está enviando, la app marca como enviado lo que no se envió; con las prescripciones, además, el cambio se pierde.
 
@@ -3028,6 +3032,10 @@ Encontrado en I02-03 por las dos pasadas; viola R-C1.
 **Arreglo previsto.** Al terminar, limpiar la marca solo si lo que hay ahora es
 lo que se envió (misma firma; para las prescripciones, el mismo objeto). Y no
 sobrescribir `nextOverrides` con la copia enviada.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`c570099`, `8000c03`). `sendOverrides` solo da por enviado si `nextOverrides` sigue siendo el mismo objeto que se envió; si no, deja la marca y no lo sobrescribe. `uploadProgramToClient` recalcula la firma del programa al terminar y solo limpia `programDirty` si coincide con la enviada. S8 y S9 invertidos.
 
 ## 56. «Eliminar cuenta» se atasca si la app muere a mitad 🟡 ✅ {#56}
 
@@ -3048,7 +3056,7 @@ Es la misma idea que en E33.
 
 Hecho (`220bb93`, `a97c5a6`). Se salta la parte de entrenador solo si la cuenta está confirmada como inexistente: código no encontrado, o un 401 de `delete-account` y GoTrue responde `user_not_found`. **En qué se equivocaba la primera versión:** tomaba cualquier 401 como «ya borrada», y una sesión caducada de una cuenta viva habría dejado la cuenta en el servidor creyéndola borrada (App Store 5.1.1(v)). Lo encontró la revisión.
 
-## 57. Con un programa propio activo, el progreso del entrenador se cruza 🟡 {#57}
+## 57. Con un programa propio activo, el progreso del entrenador se cruza 🟡 ✅ {#57}
 
 > En corto: Si un cliente conectado activa un programa suyo, el entrenador ve en su ficha el progreso de ese programa, y al llegar un programa nuevo del entrenador se pierde el progreso que llevaba en el suyo.
 
@@ -3065,7 +3073,11 @@ Encontrado en I02-03, pasada adversaria; viola R-B7 y R-C5.
 **Arreglo previsto.** En los dos sitios, usar el programa del entrenador
 (`trainerProgramIds`), no el activo.
 
-## 58. Una copia vieja de un entreno puede pisar una edición 🟢 {#58}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`edf3afd`). `trainerProgramOf` elige el programa del entrenador (el activo si es suyo; si no, el último de `trainerProgramIds`) para el progreso que se sube y para `mine` al aplicar una actualización. S16 y S18 invertidos.
+
+## 58. Una copia vieja de un entreno puede pisar una edición 🟢 ✅ {#58}
 
 > En corto: Si un entreno se edita (por ejemplo el RPE) y después llega una copia anterior desde otro móvil o una subida retrasada, gana la copia vieja.
 
@@ -3081,7 +3093,11 @@ cuándo se editó cada entrada.
 fecha de edición en cada entrada (`updatedAt`) que comparan el servidor y la
 fusión local.
 
-## 59. Lo que se borra del historial vuelve 🟢 {#59}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`894192b`, `8000c03`). Las acciones que editan una entrada guardada (`setSessionFeedback`, `setEntryCountsAs`, `saveEntryAsFreeTemplate`) sellan `updatedAt` (ms). `_merge_history` y `mergeClientLog` se quedan con la de `updatedAt` mayor; sin él cuenta 0 y en empate gana la que llega, así que lo de antes se comporta igual. La revisión añadió que un `updatedAt` que no es número cuenta 0 en vez de romper la fusión del hueco. S10 y S11 invertidos. **Queda:** el reloj es el del móvil; uno con la hora muy desajustada gana. **Hay que volver a ejecutar `schema.sql`.**
+
+## 59. Lo que se borra del historial vuelve 🟢 ✅ {#59}
 
 > En corto: Un entreno que borra el entrenador reaparece en la siguiente descarga, y uno que borra el cliente vuelve al reinstalar y juntar el historial.
 
@@ -3094,6 +3110,10 @@ no esté (`useStore.js:2985-2991`, `:4528-4537`).
 
 **Arreglo a decidir (§7).** Lo estándar es una «lápida»: borrar marca la
 entrada con `deletedAt` en vez de quitarla, y la fusión respeta esa marca.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`34b7656`, `8000c03`). En el servidor, lo borrado queda como lápida `{ id, deletedAt, updatedAt }` y la regla de E58 la hace ganar a las copias anteriores; `sessions_count` no cuenta lápidas. **En qué se desvía de lo previsto:** en el móvil las lápidas no se quedan dentro de `workoutLog`/`clientLogs` (cada pantalla tendría que filtrarlas) sino en un mapa persistido aparte, `deletedLogIds`, que rellenan `deleteLogEntry`, `deleteClientLogEntry` y `clearWorkoutLog`. La subida manda una lápida por cada id; la descarga del entrenador y la fusión del cliente no añaden lápidas ni ids enterrados. La copia del entrenador sigue siendo su registro: una lápida del cliente no le quita la que ya tenía. S12 y S13 invertidos. **Queda:** los borrados en bloque de programas con su historial y `importData` no dejan ni respetan lápidas; y se suben también lápidas de entrenos privados (solo id y fecha). **Hay que volver a ejecutar `schema.sql`.**
 
 ## 60. Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» 🟢 {#60}
 
