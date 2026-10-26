@@ -138,10 +138,21 @@ describe('H2 — get_slot_by_code devuelve de más', () => {
     const rows = await ok(z.db, 'get_slot_by_code', { p_code: K });
     expect(rows).toHaveLength(1);
     expect(Object.keys(rows[0]).sort()).toEqual([
-      'client_name', 'has_history', 'is_linked', 'is_mine', 'locked_by', 'program_name', 'trainer_name',
+      'client_name', 'has_history', 'history_updated_at', 'is_linked', 'is_mine', 'locked_by', 'program_name', 'trainer_name',
     ]);
-    expect(rows[0]).toMatchObject({ is_linked: true, is_mine: false, has_history: true });
+    expect(rows[0]).toMatchObject({ is_linked: true, is_mine: false, has_history: true, locked_by: false });
     expect((await slotOf(S)).client_id).toBe(c.id);              // z no ha entrado
+  });
+
+  it('E65: history_updated_at sigue ahí para la build publicada, pero sin hora real: la época con historial, null sin él', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const c = await anon('c');
+    await link(c, K, S);
+    expect((await ok(c.db, 'get_slot_by_code', { p_code: K }))[0].history_updated_at).toBeNull();
+    await upload(c, ['s1']);
+    const when = (await ok(c.db, 'get_slot_by_code', { p_code: K }))[0].history_updated_at;
+    expect(new Date(when).getTime()).toBe(0);
   });
 });
 
@@ -214,7 +225,7 @@ describe('H4 — el candado salta con cualquier cuenta no anónima', () => {
     await link(e, K, S);
 
     const y = await anon('y');
-    expect((await ok(y.db, 'get_slot_by_code', { p_code: K }))[0].locked_by).toBe('account');
+    expect((await ok(y.db, 'get_slot_by_code', { p_code: K }))[0].locked_by).toBe(true);
     expect((await bad(y.db, 'link_client_to_slot', { p_code: K })).message).toBe('SEAT_LOCKED');
     expect((await slotOf(S)).client_id).toBe(e.id);
   });

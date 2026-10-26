@@ -20,7 +20,7 @@ with huellas(n, h) as (values
   ('accept_transfer', '31b0e2f1b43c82681fbbfb965495cf4e'),
   ('client_lost_reason', 'c1aa16132493e01048a8445e9774cac4'),
   ('client_upload_history', '97fcd9452929940f17484b160a622b47'),
-  ('get_slot_by_code', '1ec9eb35eb1399c71eefa1e0d6ca6794'),
+  ('get_slot_by_code', 'b89205af993f617a19afcf6303803c62'),
   ('link_client_to_slot', '2f25fec0ab28035d66d5c6cc82c45ab2'),
   ('new_client_code', '4cd8993cec4d23f569beb2ac28032293'),
   ('offer_transfer', '84e4a6eb787f9e1fa26afbe657cb9e04'),

@@ -556,6 +556,10 @@ $$;
 
 -- Lo justo para la pantalla de confirmar: tres nombres y cuatro sí/no. Ni el
 -- programa, ni ids, ni horas: un código filtrado no vale como llave de lectura.
+-- `locked_by` es un sí/no (E71): dice que lo protege una cuenta, no cuál.
+-- `history_updated_at` es solo para las versiones anteriores a la tanda C, que
+-- lo leen para ofrecer «traer el historial»: sin hora real (la de la época si
+-- hay historial, null si no). Quitarla cuando no quede ninguna (E65).
 drop function if exists public.get_slot_by_code(text);
 create function public.get_slot_by_code(p_code text)
 returns table (
@@ -564,8 +568,9 @@ returns table (
   trainer_name       text,
   is_linked          boolean,
   is_mine            boolean,
-  locked_by          text,
-  has_history        boolean
+  locked_by          boolean,
+  has_history        boolean,
+  history_updated_at timestamptz
 )
 language sql
 security definer
@@ -573,9 +578,10 @@ set search_path = public
 as $$
   select t.client_name, t.program_json -> 'program' ->> 'name', t.trainer_name,
          t.client_id is not null, coalesce(t.client_id = auth.uid(), false),
-         case when t.client_id <> coalesce(auth.uid(), t.client_id) or auth.uid() is null
-              then public._locked_by(t.client_id) end,
-         t.history_updated_at is not null
+         coalesce(case when t.client_id <> coalesce(auth.uid(), t.client_id) or auth.uid() is null
+                       then public._locked_by(t.client_id) is not null end, false),
+         t.history_updated_at is not null,
+         case when t.history_updated_at is not null then 'epoch'::timestamptz end
     from public.trainer_clients t
    where t.client_code = upper(trim(p_code))
    limit 1;
