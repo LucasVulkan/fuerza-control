@@ -56,7 +56,7 @@ function coded(code, message) {
  * para renovarlo, LANZA: «sin red» no es «sin sesión», y confundirlos pediría
  * volver a entrar con Google a quien solo está en un ascensor.
  */
-async function userIdOf(db) {
+export async function userIdOf(db) {
   await sessionsReady();   // la sesión de la versión anterior aún se está traspasando
   const { data, error } = await db.auth.getSession();
   if (error?.name === 'AuthRetryableFetchError') throw error;
@@ -214,3 +214,6 @@ async function deleteUserOf(db) {
 
 export const deleteTrainerUser = () => deleteUserOf(trainerSupabase);
 export const deleteClientUser  = () => deleteUserOf(clientSupabase);
+
+/** El servidor dice que el usuario de la sesión de entrenador ya no existe (un 401 solo no lo prueba). */
+export const trainerUserGone = async () => (await trainerSupabase.auth.getUser()).error?.code === 'user_not_found';

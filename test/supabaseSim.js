@@ -237,7 +237,8 @@ export function createSimClient(device, { storageKey = 'sb-default', persistSess
     getUser: () => authResult('getUser', async () => {
       const id = uid();
       const user = id && server.users.get(id);
-      if (!user) return { data: { user: null }, error: new Error('User not found') };
+      // Como GoTrue: token válido de un usuario borrado = user_not_found; token que no se reconoce, otro error.
+      if (!user) return { data: { user: null }, error: Object.assign(new Error('User not found'), { code: id ? 'user_not_found' : 'bad_jwt' }) };
       return { data: { user: publicUser(user) }, error: null };
     }),
 
@@ -303,7 +304,8 @@ const EDGE_FUNCTIONS = {
   },
 
   'delete-account': async (server, { uid }) => {
-    if (!uid || !server.users.has(uid)) return { error: 'Sesión no válida' };
+    // El 401 real llega como FunctionsHttpError con la respuesta en `context`.
+    if (!uid || !server.users.has(uid)) throw Object.assign(new Error('Edge Function returned a non-2xx status code'), { name: 'FunctionsHttpError', context: { status: 401 } });
     await server.admin('delete from public.trainer_clients where trainer_id = $1', [uid]);
     await server.admin(`update public.trainer_clients
                            set client_id = null, disconnected_at = now(), history_json = null,

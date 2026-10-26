@@ -43,7 +43,6 @@ import AppleSignInButton from '../components/ui/AppleSignInButton';
 import GoogleSignInButton from '../components/ui/GoogleSignInButton';
 import { showDialog } from '../components/ui/dialog';
 import DragSheet from '../components/DragSheet';
-import CodeReveal from '../components/CodeReveal';
 import TrainerSyncModal from '../components/TrainerSyncModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import TrainerRelogin from '../components/TrainerRelogin';
@@ -55,7 +54,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 const COPIED_MS = 2000;
 // Las formas de entrar que se recomiendan (D4): Apple solo existe en iPhone.
 const SOCIAL = APPLE_AUTH_AVAILABLE ? ['apple', 'google'] : ['google'];
-const USE_KEY = { google: 'account.useGoogle', apple: 'account.useApple', code: 'account.useCode' };
+const USE_KEY = { google: 'account.useGoogle', apple: 'account.useApple' };
 
 // ── Piezas sueltas ────────────────────────────────────────────────────────────
 
@@ -164,7 +163,7 @@ export default function AccountScreen() {
   const mode       = trainerSync?.mode ?? null;
   const hasAccount = !!mode && mode !== 'offline';
 
-  const [sheet,       setSheet]       = useState(null); // { kind: 'switch', to } | { kind: 'reveal', code }
+  const [sheet,       setSheet]       = useState(null); // { kind: 'switch', to }
   const [syncModal,   setSyncModal]   = useState(null); // 'select' | 'recovery'
   const [showDelete,  setShowDelete]  = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -226,18 +225,13 @@ export default function AccountScreen() {
 
   async function doSwitch(to) {
     try {
-      if (to === 'code') {
-        const { code } = await acct.createCode();
-        setSheet({ kind: 'reveal', code });
-        return;
-      }
       await (to === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)();
       setSheet(null);
     } catch (err) {
       if (err?.cancelled) return;
       showDialog(
-        t(to === 'apple' ? 'sync.errAppleTitle' : to === 'code' ? 'sync.errAccountTitle' : 'sync.errGoogleTitle'),
-        err?.message ?? t(to === 'code' ? 'sync.errAccountBody' : 'sync.errGoogleBody'),
+        t(to === 'apple' ? 'sync.errAppleTitle' : 'sync.errGoogleTitle'),
+        err?.message ?? t('sync.errGoogleBody'),
       );
     }
   }
@@ -325,12 +319,12 @@ export default function AccountScreen() {
       <NameField />
 
       <Section title={t('account.sectionSwitch')} style={styles.subSection}>
-        {[...SOCIAL, 'code'].filter((m) => m !== mode).map((m) => (
+        {SOCIAL.filter((m) => m !== mode).map((m) => (
           <MenuRow
             key={m}
             icon={<ModeIcon mode={m} size={18} color={th.colors.mutedLight} />}
             label={t(`account.how.${m}`)}
-            badge={m === 'code' ? null : t('sync.recommended')}
+            badge={t('sync.recommended')}
             onPress={() => setSheet({ kind: 'switch', to: m })}
           />
         ))}
@@ -400,7 +394,7 @@ export default function AccountScreen() {
       <>
         <Text style={styles.sheetTitle}>{t(USE_KEY[to])}</Text>
         <Explain>
-          {to === 'code' ? t('account.switchCodeWhy') : t('account.switchSocialWhy', { how: t(`account.short.${to}`) })}
+          {t('account.switchSocialWhy', { how: t(`account.short.${to}`) })}
         </Explain>
         {to === 'google' && acct.isExpoGo && <Explain>{t('sync.onlyInstalled')}</Explain>}
         <View style={styles.actsCol}>
@@ -409,18 +403,8 @@ export default function AccountScreen() {
           {to === 'google' && (
             <GoogleSignInButton onPress={() => doSwitch('google')} busy={acct.loading} disabled={acct.isExpoGo} />
           )}
-          {to === 'code' && (
-            <Btn tone="acc" label={t('account.createCodeCta')} loading={acct.loading} onPress={() => doSwitch('code')} />
-          )}
           <Btn tone="ghost" label={t('common.cancel')} disabled={acct.loading} onPress={() => setSheet(null)} />
         </View>
-      </>
-    );
-  } else if (sheet?.kind === 'reveal') {
-    sheetBody = (
-      <>
-        <Text style={styles.sheetTitle}>{t('sync.revealTitle')}</Text>
-        <CodeReveal code={sheet.code} onDone={() => setSheet(null)} />
       </>
     );
   }

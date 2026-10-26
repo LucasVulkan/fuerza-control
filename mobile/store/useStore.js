@@ -64,7 +64,7 @@ import {
   trainerCandidateFromIdToken, trainerCandidateFromCode, trainerCandidateNewCode, adoptTrainer,
   trainerSessionUserId, signInTrainerWithCode, signOutTrainer,
   ensureClientSession, clientSessionUserId, clientProvider, clientCandidateFromIdToken, adoptClient, signOutClient,
-  deleteTrainerUser, deleteClientUser,
+  deleteTrainerUser, deleteClientUser, trainerUserGone,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes, ARCHETYPES } from '../src/data/archetypes';
@@ -113,6 +113,7 @@ const EMPTY_CLIENT_SYNC = {
   linkedProvider:        null,  // 'google' | 'apple' — cuál. null en los vinculados antes de que hubiera Apple (siempre Google)
   trainerName:           null,  // trainer's display name (read from trainer_name column)
   pendingUpload:         false, // true when last sessions upload failed
+  uploadDue:             false, // hay algo por subir (programado o fallido); aparte de pendingUpload, que enciende el aviso de error
   lastSyncedAt:          null,  // ISO — timestamp of last successful upload to trainer
   lastProgramImportedAt: null,  // ISO — timestamp of last program import (used to detect trainer updates)
   lastAppliedStageActivation: null, // `stageActivatedAt` already applied — a new one means the trainer moved this client
@@ -3866,8 +3867,9 @@ export const useStore = create(
         return enter();
       },
 
-      /** Crear una cuenta nueva con código personal. */
+      /** Crear una cuenta nueva con código personal. Solo la primera: de Google/Apple a código no se cambia (E49, R-D1). */
       createTrainerCodeAccount: async () => {
+        if (get().trainerSync.userId) throw Object.assign(new Error(i18n.t('account.errAccountExists')), { code: 'ACCOUNT_EXISTS' });
         const candidate = await trainerCandidateNewCode();
         await get()._enterCandidate(candidate, 'code');
         return { code: candidate.code, userId: candidate.userId };
@@ -4564,6 +4566,9 @@ export const useStore = create(
         // El código entra aunque haya otro dentro, que sale (C09 §4.6) — salvo
         // que haya entrado con Google/Apple: a ese no lo echa un código (§4.7).
         if (slot.locked_by) throw seatLockedError();
+        // Lo pendiente del asiento actual, antes de soltarlo. Si no sube, no bloquea: sigue en el log (E51).
+        const { pendingUpload, uploadDue } = get().clientSync;
+        if (pendingUpload || uploadDue) await get().uploadHistoryToTrainer();
         await linkClientToSlot(code).catch((err) => {
           throw err.code === 'SEAT_LOCKED' ? seatLockedError() : err;
         });
@@ -4587,6 +4592,8 @@ export const useStore = create(
         // Para volver a él al desconectarse. Si ya estaba conectado (cambia de
         // entrenador), el de antes de todo, no el del entrenador anterior.
         const prev = get().clientSync;
+        // Lo pendiente sigue pendiente solo si vuelve al mismo asiento (E51, E53).
+        const carry = prev.slotId === seat.slotId && !!(prev.pendingUpload || prev.uploadDue);
         const previousActiveProgramId = prev.slotId ? prev.previousActiveProgramId : (get().profile.activeProgramId ?? null);
 
         get().importData(programJson, { program: true, log: false }, { silent: true });
@@ -4602,6 +4609,7 @@ export const useStore = create(
             linkedProvider:         provider,
             trainerName:            seat.trainerName,
             pendingUpload:          false,
+            uploadDue:              carry,
             lastSyncedAt:           null,
             syncErrorAt:            null,
             lostAt:                 null,
@@ -4617,6 +4625,7 @@ export const useStore = create(
             pendingOverrides:       {},
           },
         }));
+        if (carry) await get().uploadHistoryToTrainer();
       },
 
       /**
@@ -4647,14 +4656,15 @@ export const useStore = create(
         const { clientSync } = get();
         if (!clientSync.slotId || clientSync.lostAt) return;
 
-        // Corre al arrancar y al volver a primer plano: buen momento para
-        // reintentar una subida que falló, sin esperar al botón del aviso.
-        if (clientSync.pendingUpload) get().uploadHistoryToTrainer().catch(() => {});
-
         try {
           const seat = await seatOf();
           // Respuesta del servidor, no fallo de red: ya no tiene asiento.
           if (!seat) { await get()._markClientLost(); return; }
+          // Otro asiento: ha cambiado de entrenador (aquí o en otro móvil), no es una actualización (E53).
+          if (seat.slotId !== clientSync.slotId) { await get()._adoptSeat({ userId: await clientSessionUserId() }); return; }
+          // Corre al arrancar y al volver a primer plano: buen momento para
+          // reintentar una subida que falló, sin esperar al botón del aviso.
+          if (clientSync.pendingUpload || clientSync.uploadDue) get().uploadHistoryToTrainer().catch(() => {});
           const { programJson, updatedAt, trainerName, overrides } = seat;
           // Un entrenador con la versión vieja manda los ids de antes de juntar
           // los ejercicios repetidos (P09-exercise-variants.md §3.3). Antes del
@@ -4760,7 +4770,8 @@ export const useStore = create(
        * plus free sessions logged after connecting. The rest of the client's
        * personal history never leaves the device.
        * Called whenever history or progress changes (subscriber at the end of
-       * this file). Sets pendingUpload on failure.
+       * this file). Sets pendingUpload on failure y devuelve cuántos entrenos
+       * quedan sin enviar.
        */
       uploadHistoryToTrainer: async () => {
         const { clientSync, workoutLog, customExercises, programs, profile } = get();
@@ -4797,6 +4808,8 @@ export const useStore = create(
             clientSync: {
               ...s.clientSync,
               pendingUpload: false,
+              // ponytail: un entreno guardado durante esta subida y con la app muerta en los 2 s siguientes no se reintenta hasta el siguiente cambio.
+              uploadDue:     false,
               lastSyncedAt:  new Date().toISOString(),
               syncErrorAt:   null,
             },
@@ -4810,24 +4823,29 @@ export const useStore = create(
               syncErrorAt:   new Date().toISOString(),
             },
           }));
+          // Cuántos entrenos no han llegado (E51): los de después de la última subida buena.
+          const since = Date.parse(clientSync.lastSyncedAt ?? clientSync.linkedAt) || 0;
+          return entries.filter((e) => e.timestamp >= since).length;
         }
       },
 
-      /** Disconnects the client from their trainer. */
-      unlinkFromTrainer: async ({ keepProgram = false } = {}) => {
+      /**
+       * Disconnects the client from their trainer. Antes de soltar el asiento
+       * intenta subir lo pendiente; si no puede, NO desconecta y devuelve
+       * `{ unsent }` para que la pantalla pregunte (E51). `force` salta eso.
+       */
+      unlinkFromTrainer: async ({ keepProgram = false, force = false } = {}) => {
         const { clientSync } = get();
+        if (!force && (clientSync.pendingUpload || clientSync.uploadDue)) {
+          const unsent = await get().uploadHistoryToTrainer();
+          if (unsent) return { unsent };
+        }
 
         // Soltar el hueco en el servidor ANTES de limpiar el estado local: hace
         // falta la sesión del cliente para que la RPC sepa qué fila es suya.
-        // Sin esto el hueco se quedaba ocupado y con el historial dentro, y el
-        // entrenador seguía viendo al cliente como conectado.
-        // No es fatal: desconectarse en local tiene que funcionar aunque no
-        // haya red.
-        if (clientSync.slotId && !clientSync.lostAt) {
-          await releaseClientSlot().catch((err) => {
-            console.error('[unlinkFromTrainer] releaseClientSlot failed:', err.message);
-          });
-        }
+        // Si el servidor no confirma, LANZA y no se toca nada: desconectarse
+        // solo en local dejaba al entrenador viendo al cliente dentro (E52, R-B6).
+        if (clientSync.slotId && !clientSync.lostAt) await releaseClientSlot();
 
         // Restore previous activeProgramId if we saved one on link.
         // Skip when keepProgram=true — e.g. the user just created a new program
@@ -4841,6 +4859,7 @@ export const useStore = create(
         set(() => ({
           clientSync: { ...EMPTY_CLIENT_SYNC },
         }));
+        return { unsent: 0 };
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -4907,9 +4926,14 @@ export const useStore = create(
 
         if (current !== candidate.userId) {
           const old = await seatOf(candidate.db);
-          if (old && old.slotId !== clientSync.slotId) await releaseClientSlot(candidate.db);
-          await offerTransfer('seat', candidate.userId);
-          await acceptTransfer('seat', current, candidate.db);
+          // Si el asiento ya es de esa cuenta, el traspaso se hizo y se cortó después: se sigue (E54, R-C7).
+          if (old?.slotId !== clientSync.slotId) {
+            // Antes de soltar nada, ¿tiene este móvil asiento que traspasar? (E54, R-B1)
+            if (!(await seatOf())) throw Object.assign(new Error(i18n.t('trainer.lostTitle')), { code: 'NO_SEAT' });
+            if (old) await releaseClientSlot(candidate.db);
+            await offerTransfer('seat', candidate.userId);
+            await acceptTransfer('seat', current, candidate.db);
+          }
         }
         await adoptClient(candidate);
 
@@ -4919,8 +4943,10 @@ export const useStore = create(
             supabaseUserId: candidate.userId,
             googleLinked:   true,
             linkedProvider: provider,
+            lostAt:         null,
           },
         }));
+        if (clientSync.pendingUpload || clientSync.uploadDue) await get().uploadHistoryToTrainer();
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -4952,13 +4978,20 @@ export const useStore = create(
        * Si la sesión de entrenador no se puede rehacer (Google/Apple caducado)
        * lanza TRAINER_LOGIN_NEEDED antes de borrar nada: borrar a medias dejaría
        * la cuenta viva en el servidor creyendo que ya no existe.
-       * ponytail: sin reintento. Si falla entre las dos, volver a pulsar sigue.
+       * Si falla entre las dos, volver a pulsar sigue: una cuenta de entrenador que ya no existe se salta (E56).
        */
       deleteAccount: async () => {
         const { trainerSync } = get();
-        if (trainerSync.userId) await _ensureTrainerSession(trainerSync);
-
-        if (trainerSync.userId) await deleteTrainerUser();
+        if (trainerSync.userId) {
+          try {
+            await _ensureTrainerSession(trainerSync);
+            await deleteTrainerUser();
+          } catch (err) {
+            // La cuenta ya no existe (un intento anterior la borró y se cortó): se sigue con la de cliente (E56).
+            const gone = err?.code === 'TRAINER_CODE_NOT_FOUND' || (err?.context?.status === 401 && await trainerUserGone());
+            if (!gone) throw err;
+          }
+        }
         await signOutTrainer().catch(() => {});
         await get()._purchasesLogOut();
         set((s) => ({
@@ -5483,9 +5516,9 @@ useStore.subscribe((s, prev) => {
 // CAMBIA, no solo al guardar una sesión: el RPE del recap, avanzar de etapa o
 // aplicar un programa también cuentan (docs/specs/C04-qa-sep-conexion.md §3).
 // En el móvil del entrenador `slotId` es null y no hace nada.
-// ponytail: si la app muere dentro de la espera, lo cubre el siguiente cambio,
-// que sube el log entero. Marcar `pendingUpload` al programar la subida lo
-// cerraría, pero hoy ese flag enciende el aviso de error de AppHeader.
+// `uploadDue` (persistido) se marca al programar: si la app muere dentro de la
+// espera, el reintento de `checkAndPullProgramUpdates` sube (E51). No es
+// `pendingUpload`: ese enciende el aviso de error de AppHeader.
 const UPLOAD_DEBOUNCE_MS = 2000;
 let uploadTimer = null;
 useStore.subscribe((s, prev) => {
@@ -5501,6 +5534,7 @@ useStore.subscribe((s, prev) => {
     || s.clientSync.lastAppliedStageActivation !== prev.clientSync.lastAppliedStageActivation
     || progressChanged(s.programs?.[pid], prev.programs?.[pid]);
   if (!changed) return;
+  if (!s.clientSync.uploadDue) useStore.setState((st) => ({ clientSync: { ...st.clientSync, uploadDue: true } }));
   clearTimeout(uploadTimer);
   uploadTimer = setTimeout(() => {
     useStore.getState().uploadHistoryToTrainer().catch(() => {});
