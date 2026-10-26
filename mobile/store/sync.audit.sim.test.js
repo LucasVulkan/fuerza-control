@@ -211,17 +211,21 @@ describe('S4 vincular Google del cliente cortado en setSession', () => {
 });
 
 describe('S5 desconectarse sin red', () => {
-  it('S5 hoy: sin red la app se desconecta aquí, el asiento sigue ocupado en el servidor, el entrenador lo ve dentro y nada lo reintenta (regla R-B6: desconectarse deja el hueco libre y el entrenador lo ve libre; R-C1)', async () => {
+  it('S5 arreglado (E52): sin red no se desconecta en local; el asiento y la app dicen lo mismo, y con red se suelta (regla R-B6: desconectarse deja el hueco libre y el entrenador lo ve libre; R-C1)', async () => {
     const { t, c, clientId } = await trainerAndClient();
     const slotId = c.s.clientSync.slotId;
     c.device.offline = true;
-    await c.s.unlinkFromTrainer();
+    await expect(c.s.unlinkFromTrainer()).rejects.toBeTruthy();
     c.device.offline = false;
-    expect(c.s.clientSync.slotId).toBeNull();
-    await c.s.checkAndPullProgramUpdates();
+    expect(c.s.clientSync.slotId).toBe(slotId);
     await t.s.refreshTrainerSlots();
     expect((await slotOf(slotId)).client_id).not.toBeNull();
     expect(t.s.clients[clientId].syncLinked).toBe(true);
+    await c.s.unlinkFromTrainer();
+    expect(c.s.clientSync.slotId).toBeNull();
+    await t.s.refreshTrainerSlots();
+    expect((await slotOf(slotId)).client_id).toBeNull();
+    expect(t.s.clients[clientId].syncLinked).toBe(false);
   });
 });
 

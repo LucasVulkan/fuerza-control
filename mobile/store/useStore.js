@@ -4841,15 +4841,9 @@ export const useStore = create(
 
         // Soltar el hueco en el servidor ANTES de limpiar el estado local: hace
         // falta la sesión del cliente para que la RPC sepa qué fila es suya.
-        // Sin esto el hueco se quedaba ocupado y con el historial dentro, y el
-        // entrenador seguía viendo al cliente como conectado.
-        // No es fatal: desconectarse en local tiene que funcionar aunque no
-        // haya red.
-        if (clientSync.slotId && !clientSync.lostAt) {
-          await releaseClientSlot().catch((err) => {
-            console.error('[unlinkFromTrainer] releaseClientSlot failed:', err.message);
-          });
-        }
+        // Si el servidor no confirma, LANZA y no se toca nada: desconectarse
+        // solo en local dejaba al entrenador viendo al cliente dentro (E52, R-B6).
+        if (clientSync.slotId && !clientSync.lostAt) await releaseClientSlot();
 
         // Restore previous activeProgramId if we saved one on link.
         // Skip when keepProgram=true — e.g. the user just created a new program
