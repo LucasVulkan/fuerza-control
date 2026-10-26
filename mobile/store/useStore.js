@@ -24,7 +24,7 @@ import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
-  createClientSlot, existingSlotIds, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
+  createClientSlot, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
   getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
@@ -125,11 +125,15 @@ const EMPTY_CLIENT_SYNC = {
   trainerProgramIds:     [],    // program ids imported from the trainer — scope of history uploads
   linkedAt:              null,  // ISO — when the client connected (free sessions before this stay private)
   pendingOverrides:      {},    // { [templateId]: override } — trainer's next-session prescriptions, consumed on save
+  releaseDue:            null,  // slotId que se soltó aquí pero no en el servidor (sin red); `_flushRelease` lo reintenta (E52)
 };
 
 // La cuenta de Google/Apple con la que un cliente busca su asiento en otro
 // móvil, entre «buscar» y «confirmar». En memoria y nada más: es una sesión.
 let _clientCandidate = null;
+
+// La suelta del asiento (`_flushRelease`) en vuelo: entrar en un asiento espera a que acabe.
+let _releasing = null;
 
 
 // ── Sesión de entrenador ───────────────────────────────────────────────────────
@@ -176,6 +180,31 @@ function seatLockedError() {
 const trainerProgramOf = (clientSync, activeId) => {
   const ids = clientSync.trainerProgramIds ?? [];
   return !ids.length || ids.includes(activeId) ? activeId : ids[ids.length - 1];
+};
+// Lo que pasa a una ficha cuando se cancela su invitación, aquí o en otro móvil: vuelve a «sin app».
+const UNINVITED = {
+  syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false,
+  programDirty: false, overridesDirty: false, programUploadedSig: null,
+  remoteSessionsCount: 0,
+};
+// Lo que de `workoutLog` sale hacia el entrenador (solo sus programas y las libres
+// posteriores a conectarse). Lo comparten la subida y las lápidas (E68).
+const uploadScope = (s, workoutLog, customExercises) => scopeFilterForUpload({
+  workoutLog,
+  programs: s.programs,
+  customExercises,
+  trainerProgramIds:     s.clientSync.trainerProgramIds,
+  fallbackProgramId:     s.profile.activeProgramId,
+  linkedAt:              s.clientSync.linkedAt,
+  lastProgramImportedAt: s.clientSync.lastProgramImportedAt,
+});
+// La lápida de lo que se borra de `workoutLog`: solo conectado y si la entrada
+// estaba en el alcance de la subida (E68).
+const tombstonesFor = (s, removed) => {
+  if (!s.clientSync.slotId || !removed.length) return {};
+  const inScope = new Set(uploadScope(s, removed, {}).entries);
+  const now = Date.now();
+  return Object.fromEntries(removed.filter((e) => inScope.has(e)).map((e) => [e.id, now]));
 };
 /** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
 const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
@@ -510,11 +539,17 @@ export const useStore = create(
       // entries here — it's the trainer's professional record of the client.
       // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
       clientLogs: {},
-      // Ids de entradas borradas (de `workoutLog` o de `clientLogs`) y cuándo,
-      // `{ [id]: deletedAt }`. El cliente las sube como lápidas para que el
-      // servidor no las resucite; el entrenador las usa para no volver a bajarlas.
-      // Nunca se podan (E59). Las lápidas no entran en `workoutLog` ni `clientLogs`.
+      // Lo borrado del historial y cuándo, `{ [id]: deletedAt }`. Nunca se podan
+      // (E59), y las lápidas no entran en `workoutLog` ni `clientLogs`. Dos mapas,
+      // uno por papel (E68):
+      //  · `deletedLogIds` (cliente): entradas de `workoutLog` borradas ESTANDO
+      //    conectado y dentro de lo que se sube al entrenador. Se sube en
+      //    `deleted` para que el servidor no las resucite; al desconectarse se
+      //    vacía. Lo personal que nunca salió del móvil no deja rastro.
+      //  · `deletedClientLogIds` (entrenador): entradas de `clientLogs` borradas,
+      //    solo para no volver a bajarlas. No se sube.
       deletedLogIds: {},
+      deletedClientLogIds: {},
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
@@ -652,16 +687,12 @@ export const useStore = create(
       // «Ir a la app» y cualquier salida temprana: marca el onboarding como hecho
       // (sin esto, quien acaba sin programa volvería a él en cada arranque), cierra
       // el recorrido y va a Main. Desde la app («Nuevo programa», §25.4.6) no toca
-      // esas marcas y, si se creó o importó algo propio, suelta el entrenador como
-      // hacía el selector viejo. `back`: cierra con la flecha, a la pestaña de donde vino.
+      // esas marcas y no desconecta a nadie: quien tenía entrenador ya decidió
+      // desconectarse antes de empezar (R1, E67). `back`: cierra con la flecha, a
+      // la pestaña de donde vino.
       finishOnboardingFlow: ({ back = false } = {}) => {
         const f = get().onboardingFlow;
         if (f?.entry === 'newProgram') {
-          const a = f.answers;
-          // keepProgram: el programa nuevo no se pisa con el previo a la conexión.
-          if (get().clientSync?.slotId && (a.programId || a.programSource === 'import') && a.programSource !== 'coach') {
-            get().unlinkFromTrainer({ keepProgram: true }).catch(() => {});
-          }
           set({ onboardingFlow: null });
         } else {
           set((s) => ({
@@ -2924,7 +2955,7 @@ export const useStore = create(
       deleteLogEntry: (logId) =>
         set((state) => ({
           workoutLog: state.workoutLog.filter((e) => e.id !== logId),
-          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
+          deletedLogIds: { ...state.deletedLogIds, ...tombstonesFor(state, state.workoutLog.filter((e) => e.id === logId)) },
         })),
 
       /**
@@ -2999,7 +3030,7 @@ export const useStore = create(
           const kept = new Set(keep);
           set((s) => ({
             workoutLog: keep,
-            deletedLogIds: { ...s.deletedLogIds, ...Object.fromEntries(workoutLog.filter((e) => !kept.has(e)).map((e) => [e.id, Date.now()])) },
+            deletedLogIds: { ...s.deletedLogIds, ...tombstonesFor(s, workoutLog.filter((e) => !kept.has(e))) },
           }));
         }
         return removed;
@@ -3012,7 +3043,7 @@ export const useStore = create(
             ...state.clientLogs,
             [clientId]: (state.clientLogs[clientId] ?? []).filter((e) => e.id !== logId),
           },
-          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
+          deletedClientLogIds: { ...state.deletedClientLogIds, [logId]: Date.now() },
         })),
 
       getLastSession: (templateId) => {
@@ -4007,18 +4038,8 @@ export const useStore = create(
         const client = get().clients[clientId];
         if (!client?.syncSlotId || client.syncLinked) return;
         await _ensureTrainerSession(get().trainerSync);
-        await deleteClientSlot(client.syncSlotId);
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              syncSlotId: null, syncCode: null, syncLinked: false,
-              programDirty: false, overridesDirty: false, programUploadedSig: null,
-              remoteSessionsCount: 0,
-            },
-          },
-        }));
+        await deleteClientSlot(client.syncSlotId, 'cancelled');
+        set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...UNINVITED } } }));
       },
 
       /**
@@ -4214,7 +4235,6 @@ export const useStore = create(
           const { progress, updatedAt } = downloaded;
           const history      = downloaded.history ? incoming.workoutLog : downloaded.history;
           const clientCustom = incoming.customExercises;
-          const live         = history?.filter((e) => !e.deletedAt);   // sin lápidas (E59)
           // Mirror the client's counters verbatim — never recompute them here
           // (spec §3.1). Kept even when there is no new history to merge.
           // The session count comes fresh with them: it is the same number the
@@ -4226,12 +4246,12 @@ export const useStore = create(
               ...s.clients,
               [clientId]: {
                 ...s.clients[clientId],
-                remoteSessionsCount: live?.length ?? 0,
+                remoteSessionsCount: history?.length ?? 0,
                 ...(progress ? { progress } : {}),
               },
             },
           }));
-          if (!live?.length && !Object.keys(clientCustom ?? {}).length) {
+          if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
             return { merged: 0 };
           }
 
@@ -4247,7 +4267,7 @@ export const useStore = create(
           // deleted them, or reinstalled) are kept — this is the trainer's record.
           // A changed copy of a known entry (RPE added in the recap) replaces it.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history, { update: true, deleted: get().deletedLogIds });
+          const merged    = mergeClientLog(existing, history, { update: true, deleted: get().deletedClientLogIds });
           const newCount  = merged.length - existing.length;
 
           set((s) => ({
@@ -4310,9 +4330,9 @@ export const useStore = create(
        *    «de otra cuenta» (`syncOrphan`): no se le manda nada, y si se vuelve
        *    a la cuenta buena se recupera solo. Borrarlo sería perder clientes
        *    por un error de cuenta.
-       *  - Cliente cuyo hueco no existe en ninguna cuenta (lo borró el otro móvil
-       *    del entrenador, R-B6) → se borra aquí también. Si no se puede
-       *    preguntar, se queda «de otra cuenta».
+       *  - Cliente cuyo hueco borró ESTA cuenta desde otro móvil (R-B6) → se
+       *    borra aquí también; si solo canceló su invitación, queda «sin app».
+       *    Si no se puede preguntar, se queda «de otra cuenta».
        *  - Huecos de clientes borrados aquí → se borran allí (`_flushDeletedSlots`).
        *
        * Ligero: del historial solo lee `progress`, nunca las entradas.
@@ -4341,11 +4361,10 @@ export const useStore = create(
 
           const inSlots = new Set(slots.map((slot) => slot.id));
           const missing = [...askedFor].filter((id) => !inSlots.has(id));
-          let gone = new Set();
+          let gone = new Map();   // hueco → 'deleted' | 'cancelled', los que ESTA cuenta borró
           if (missing.length) {
             try {
-              const alive = new Set(await existingSlotIds(missing));
-              gone = new Set(missing.filter((id) => !alive.has(id)));
+              gone = new Map((await deletedSlots(missing)).map((r) => [r.slot_id, r.kind]));
             } catch (err) {
               console.warn('[refreshTrainerSlots] huecos ausentes sin comprobar:', err.message);
             }
@@ -4367,6 +4386,14 @@ export const useStore = create(
 
             for (const slot of slots) {
               if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
+              // El alta llegó pero su respuesta no (E63): el hueco es de la ficha que lo pidió.
+              const own = slot.local_id && next[slot.local_id];
+              if (own && (!own.syncSlotId || own.syncOrphan)) {
+                // Con su programa por subir, que el invitado lo mande solo.
+                next[own.id] = { ...own, syncSlotId: slot.id, programDirty: !!own.activeProgramId };
+                known.add(slot.id);
+                continue;
+              }
               const id = generateId('client');
               next[id] = {
                 id,
@@ -4388,7 +4415,9 @@ export const useStore = create(
               const c = next[clientId];
               const slot = bySlot.get(c.syncSlotId);
               if (!slot) {
-                if (askedFor.has(c.syncSlotId) && !gone.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
+                if (!askedFor.has(c.syncSlotId)) continue;
+                if (gone.get(c.syncSlotId) === 'cancelled') next[clientId] = { ...c, ...UNINVITED };
+                else if (!gone.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
                 continue;
               }
               next[clientId] = {
@@ -4412,7 +4441,7 @@ export const useStore = create(
           });
 
           if (gone.size && get().trainerSync.userId === trainerSync.userId) {
-            for (const c of Object.values(get().clients)) if (gone.has(c.syncSlotId)) get().deleteClient(c.id, { slotGone: true });
+            for (const c of Object.values(get().clients)) if (gone.get(c.syncSlotId) === 'deleted') get().deleteClient(c.id, { slotGone: true });
           }
 
           // Los de refrescos anteriores que se quedaron sin programa (bajada fallida).
@@ -4611,6 +4640,7 @@ export const useStore = create(
        * @param {boolean} [opts.mergeHistory] Fusionar el historial del hueco con el local.
        */
       linkToTrainer: async (code, { mergeHistory = false } = {}) => {
+        await get()._flushRelease();
         const userId = await ensureClientSession();
         const slot = await getSlotByClientCode(code);
         if (!slot) throw Object.assign(new Error(i18n.t('trainer.errCodeNotFound')), { code: 'CODE_NOT_FOUND' });
@@ -4654,6 +4684,8 @@ export const useStore = create(
         await get()._restoreFromSlot(seat, programJson?.program?.id, mergeHistory);
 
         set(() => ({
+          // Las lápidas son del asiento en que se hicieron (E68).
+          ...(prev.slotId === seat.slotId ? {} : { deletedLogIds: {} }),
           clientSync: {
             slotId:                 seat.slotId,
             clientCode:             code ? code.trim().toUpperCase() : null,
@@ -4676,6 +4708,7 @@ export const useStore = create(
             trainerProgramIds:      [programJson?.program?.id].filter(Boolean),
             linkedAt:               new Date().toISOString(),
             pendingOverrides:       {},
+            releaseDue:             null,   // entrar en un asiento suelta el anterior en el servidor
           },
         }));
         if (carry) await get().uploadHistoryToTrainer();
@@ -4707,6 +4740,7 @@ export const useStore = create(
        */
       checkAndPullProgramUpdates: async () => {
         const { clientSync } = get();
+        if (clientSync.releaseDue) await get()._flushRelease();
         if (!clientSync.slotId || clientSync.lostAt) return;
 
         try {
@@ -4827,22 +4861,15 @@ export const useStore = create(
        * quedan sin enviar.
        */
       uploadHistoryToTrainer: async () => {
-        const { clientSync, workoutLog, customExercises, programs, profile, deletedLogIds } = get();
+        const s = get();
+        const { clientSync, workoutLog, customExercises, programs, profile, deletedLogIds } = s;
         if (!clientSync.slotId || clientSync.lostAt) return; // sin entrenador, o ya lo sabe
 
         // Privacy-scoped slice: only trainer-program sessions + post-link free
         // sessions leave the device. Links created before trainerProgramIds
         // existed fall back to the active program (the trainer's, in the
         // standard linked flow).
-        const { entries, customExercises: relevantCustom } = scopeFilterForUpload({
-          workoutLog,
-          programs,
-          customExercises,
-          trainerProgramIds:     clientSync.trainerProgramIds,
-          fallbackProgramId:     profile.activeProgramId,
-          linkedAt:              clientSync.linkedAt,
-          lastProgramImportedAt: clientSync.lastProgramImportedAt,
-        });
+        const { entries, customExercises: relevantCustom } = uploadScope(s, workoutLog, customExercises);
 
         // The trainer mirrors these counters instead of recomputing them from
         // `entries` — that is what keeps both sides from ever drifting, and what
@@ -4857,8 +4884,7 @@ export const useStore = create(
 
         try {
           // ponytail: las lápidas no se podan nunca; son ids, crecen poco.
-          const tombstones = Object.entries(deletedLogIds ?? {}).map(([id, at]) => ({ id, deletedAt: at, updatedAt: at }));
-          await uploadHistory([...entries, ...tombstones], relevantCustom, progress, clientSync.slotId);
+          await uploadHistory(entries, relevantCustom, progress, clientSync.slotId, deletedLogIds);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -4889,6 +4915,13 @@ export const useStore = create(
        * Disconnects the client from their trainer. Antes de soltar el asiento
        * intenta subir lo pendiente; si no puede, NO desconecta y devuelve
        * `{ unsent }` para que la pantalla pregunte (E51). `force` salta eso.
+       *
+       * Desconectarse se hace en el móvil al momento; el servidor se entera en
+       * cuanto hay red (E52): sin red se desconecta igual, devuelve
+       * `{ offline: true }` y `releaseDue` guarda el asiento por soltar. Un móvil
+       * solo suelta el asiento que tiene (E66): si el servidor dice que el
+       * cliente ya está en otro, se adopta ese, NO se desconecta y devuelve
+       * `{ changed: true }`.
        */
       unlinkFromTrainer: async ({ keepProgram = false, force = false } = {}) => {
         const { clientSync } = get();
@@ -4899,9 +4932,19 @@ export const useStore = create(
 
         // Soltar el hueco en el servidor ANTES de limpiar el estado local: hace
         // falta la sesión del cliente para que la RPC sepa qué fila es suya.
-        // Si el servidor no confirma, LANZA y no se toca nada: desconectarse
-        // solo en local dejaba al entrenador viendo al cliente dentro (E52, R-B6).
-        if (clientSync.slotId && !clientSync.lostAt) await releaseClientSlot();
+        let releaseDue = null;
+        if (clientSync.slotId && !clientSync.lostAt) {
+          try {
+            await releaseClientSlot(undefined, clientSync.slotId);
+          } catch (err) {
+            if (err.code === 'SLOT_CHANGED') {
+              await get()._adoptSeat({ userId: await clientSessionUserId() });
+              return { unsent: 0, changed: true };
+            }
+            if (err.code !== 'NETWORK') throw err;
+            releaseDue = clientSync.slotId;
+          }
+        }
 
         // Restore previous activeProgramId if we saved one on link.
         // Skip when keepProgram=true — e.g. the user just created a new program
@@ -4913,9 +4956,34 @@ export const useStore = create(
         }
 
         set(() => ({
-          clientSync: { ...EMPTY_CLIENT_SYNC },
+          clientSync: { ...EMPTY_CLIENT_SYNC, releaseDue },
+          deletedLogIds: {},   // las lápidas eran de este asiento (E68)
         }));
-        return { unsent: 0 };
+        return { unsent: 0, offline: !!releaseDue };
+      },
+
+      /**
+       * Suelta en el servidor el asiento que `unlinkFromTrainer` soltó sin red.
+       * Solo se da por soltado con éxito o con SLOT_CHANGED (el cliente ya está
+       * en otro); cualquier otro error (red, 5xx, sesión…) lo deja para la
+       * próxima. Una sola a la vez, y entrar en un asiento la espera (si no, la
+       * suelta tardía soltaría el asiento recién ocupado): quien entra hace
+       * `await get()._flushRelease()` antes. `_adoptSeat` vacía `clientSync`, y
+       * con él `releaseDue`.
+       */
+      _flushRelease: () => {
+        if (_releasing) return _releasing;
+        const slotId = get().clientSync.releaseDue;
+        if (!slotId) return Promise.resolve();
+        _releasing = (async () => {
+          try {
+            await releaseClientSlot(undefined, slotId);
+          } catch (err) {
+            if (err.code !== 'SLOT_CHANGED') return;
+          }
+          set((s) => (s.clientSync.releaseDue === slotId ? { clientSync: { ...s.clientSync, releaseDue: null } } : {}));
+        })().finally(() => { _releasing = null; });
+        return _releasing;
       },
 
       // ══════════════════════════════════════════════════════════════════════
@@ -4936,6 +5004,7 @@ export const useStore = create(
        * Devuelve `{ found: true, slotId, userId, programName, hasRemoteHistory }`.
        */
       validateGoogleClient: async ({ provider = 'google', idToken, accessToken }) => {
+        await get()._flushRelease();
         const candidate = await clientCandidateFromIdToken({ provider, idToken, accessToken });
         const seat = await seatOf(candidate.db);
         if (!seat) return { found: false };
@@ -4956,6 +5025,7 @@ export const useStore = create(
        * anterior, se suelta (un cliente, un asiento).
        */
       confirmGoogleReconnect: async ({ googleUserId, provider = 'google', mergeHistory = false }) => {
+        await get()._flushRelease();
         const candidate = _clientCandidate;
         if (candidate?.userId !== googleUserId) throw new Error(i18n.t('trainer.errGoogle'));
         const current = await clientSessionUserId();
@@ -5068,7 +5138,7 @@ export const useStore = create(
         const clientId = await clientSessionUserId();
         if (clientId && clientId !== trainerSync.userId) await deleteClientUser();
         await signOutClient().catch(() => {});
-        set({ clientSync: { ...EMPTY_CLIENT_SYNC } });
+        set({ clientSync: { ...EMPTY_CLIENT_SYNC }, deletedLogIds: {} });
 
         return { ok: true };
       },
@@ -5286,6 +5356,7 @@ export const useStore = create(
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
         deletedLogIds: state.deletedLogIds,
+        deletedClientLogIds: state.deletedClientLogIds,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
         stageBannerSnooze: state.stageBannerSnooze,

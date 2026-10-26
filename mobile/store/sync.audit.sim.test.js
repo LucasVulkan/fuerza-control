@@ -255,21 +255,120 @@ describe('S4 vincular Google del cliente cortado en setSession', () => {
 });
 
 describe('S5 desconectarse sin red', () => {
-  it('S5 arreglado (E52): sin red no se desconecta en local; el asiento y la app dicen lo mismo, y con red se suelta (regla R-B6: desconectarse deja el hueco libre y el entrenador lo ve libre; R-C1)', async () => {
+  it('S5 cambia de regla (E52): desconectarse se hace en el móvil al momento y el servidor se entera en cuanto hay red (regla R-B6: desconectarse deja el hueco libre y el entrenador lo ve libre; R-C1)', async () => {
     const { t, c, clientId } = await trainerAndClient();
     const slotId = c.s.clientSync.slotId;
     c.device.offline = true;
-    await expect(c.s.unlinkFromTrainer()).rejects.toBeTruthy();
+    await expect(c.s.unlinkFromTrainer()).resolves.toEqual({ unsent: 0, offline: true });
+    expect(c.s.clientSync).toMatchObject({ slotId: null, releaseDue: slotId });   // desconectado aquí, con el aviso guardado
     c.device.offline = false;
-    expect(c.s.clientSync.slotId).toBe(slotId);
     await t.s.refreshTrainerSlots();
-    expect((await slotOf(slotId)).client_id).not.toBeNull();
+    expect((await slotOf(slotId)).client_id).not.toBeNull();                        // el servidor aún no lo sabe
     expect(t.s.clients[clientId].syncLinked).toBe(true);
-    await c.s.unlinkFromTrainer();
-    expect(c.s.clientSync.slotId).toBeNull();
+
+    await c.s.checkAndPullProgramUpdates();                                         // vuelve la red: el reintento
+    expect(c.s.clientSync.releaseDue).toBeNull();
     await t.s.refreshTrainerSlots();
     expect((await slotOf(slotId)).client_id).toBeNull();
     expect(t.s.clients[clientId].syncLinked).toBe(false);
+  });
+
+  it('E52: con el reintento todavía sin red, el aviso se queda guardado para la próxima', async () => {
+    const { c } = await trainerAndClient();
+    const slotId = c.s.clientSync.slotId;
+    c.device.offline = true;
+    await c.s.unlinkFromTrainer();
+    await c.s.checkAndPullProgramUpdates();
+    expect(c.s.clientSync.releaseDue).toBe(slotId);
+    c.device.offline = false;
+    await c.s.checkAndPullProgramUpdates();
+    expect(c.s.clientSync.releaseDue).toBeNull();
+    expect((await slotOf(slotId)).client_id).toBeNull();
+  });
+
+  it('E52: si antes del reintento entra con otro código, no queda nada por soltar y el asiento nuevo no se toca', async () => {
+    const { c } = await trainerAndClient();
+    const old = c.s.clientSync.slotId;
+    const t2 = await phone('entrenador 2');
+    await t2.s.createTrainerCodeAccount();
+    const other = await newClientWithProgram(t2, 'Berta');
+    c.device.offline = true;
+    await c.s.unlinkFromTrainer();
+    c.device.offline = false;
+    await join(c, codeOf(t2, other.clientId));
+    const slotB = t2.s.clients[other.clientId].syncSlotId;
+    expect(c.s.clientSync).toMatchObject({ slotId: slotB, releaseDue: null });
+    await c.s.checkAndPullProgramUpdates();
+    expect((await slotOf(slotB)).client_id).toBe(c.s.clientSync.supabaseUserId);
+    expect((await slotOf(old)).client_id).toBeNull();
+  });
+});
+
+describe('E52 entrar en un asiento espera a que acabe de soltarse el anterior', () => {
+  it('E52: desconexión sin red; el reintento queda retenido y se vuelve a entrar en el MISMO hueco → al soltar el retén, el hueco sigue ocupado y la app conectada', async () => {
+    const { t, c: c0, clientId } = await trainerAndClient();
+    const c = await phone('cliente', { device: c0.device, from: c0, wrap: gateRpc('release_client_slot') });
+    const slotId = c.s.clientSync.slotId;
+    c.device.offline = true;
+    await c.s.unlinkFromTrainer();
+    c.device.offline = false;
+    expect(c.s.clientSync.releaseDue).toBe(slotId);
+
+    c.device.hold = true;
+    const pull = c.s.checkAndPullProgramUpdates();                      // al volver a primer plano: suelta, retenido en la red
+    await new Promise((r) => setTimeout(r, 50));
+    const joining = join(c, codeOf(t, clientId));                       // y a la vez entra de nuevo con el mismo código
+    await new Promise((r) => setTimeout(r, 50));
+    c.device.release();
+    await pull; await joining;
+
+    expect(c.s.clientSync).toMatchObject({ slotId, releaseDue: null });
+    expect((await slotOf(slotId)).client_id).toBe(c.s.clientSync.supabaseUserId);
+  });
+
+  it('E52: un error que no es de red ni SLOT_CHANGED (un 5xx) tampoco vacía la cola', async () => {
+    let wrapped;
+    const failing = (cfg) => {
+      wrapped = cfg;
+      const real = cfg.clientSupabase.rpc.bind(cfg.clientSupabase);
+      cfg.clientSupabase.rpc = async (n, args) => (n === 'release_client_slot' && cfg.fail ? { data: null, error: { message: 'internal error 500' } } : real(n, args));
+      return cfg;
+    };
+    const { c: c0 } = await trainerAndClient();
+    const c = await phone('cliente', { device: c0.device, from: c0, wrap: failing });
+    const slotId = c.s.clientSync.slotId;
+    c.device.offline = true;
+    await c.s.unlinkFromTrainer();
+    c.device.offline = false;
+    wrapped.fail = true;
+    await c.s.checkAndPullProgramUpdates();
+    expect(c.s.clientSync.releaseDue).toBe(slotId);
+  });
+});
+
+describe('E66 desconectarse suelta solo el asiento que el móvil cree tener', () => {
+  it('E66: mismo Google en dos móviles; el 2 entra en B y el 1, que cree seguir en A, se desconecta → el asiento B no se suelta y el 1 lo adopta', async () => {
+    const a = await phone('entrenador A');
+    const b = await phone('entrenador B');
+    await a.s.createTrainerCodeAccount();
+    await b.s.createTrainerCodeAccount();
+    const ca = await newClientWithProgram(a, 'Ana');
+    const cb = await newClientWithProgram(b, 'Berta');
+    const c1 = await phone('cliente 1');
+    await join(c1, codeOf(a, ca.clientId));
+    await c1.s.linkGoogleForClient(google('gC'));
+    const c2 = await phone('cliente 2');
+    const found = await c2.s.validateGoogleClient(google('gC'));
+    await c2.s.confirmGoogleReconnect({ googleUserId: found.userId, provider: 'google', mergeHistory: false });
+    await join(c2, codeOf(b, cb.clientId));                                    // el 2 pasa a B
+    const slotA = a.s.clients[ca.clientId].syncSlotId;
+    const slotB = b.s.clients[cb.clientId].syncSlotId;
+    expect(c1.s.clientSync.slotId).toBe(slotA);                                // el 1 aún cree estar en A
+    expect((await slotOf(slotB)).client_id).toBe(found.userId);
+
+    await expect(c1.s.unlinkFromTrainer()).resolves.toMatchObject({ changed: true });
+    expect((await slotOf(slotB)).client_id).toBe(found.userId);                // B sigue ocupado
+    expect(c1.s.clientSync).toMatchObject({ slotId: slotB, releaseDue: null });
   });
 });
 
@@ -281,7 +380,7 @@ describe('S6 una subida pendiente no se tira al dejar el asiento', () => {
     await trainOnce(c, 's2');
     expect(c.s.clientSync.pendingUpload).toBe(true);
     c.device.offline = false;
-    await expect(c.s.unlinkFromTrainer()).resolves.toEqual({ unsent: 0 });
+    await expect(c.s.unlinkFromTrainer()).resolves.toEqual({ unsent: 0, offline: false });
     expect(c.s.clientSync.slotId).toBeNull();
     expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId)).sort()).toEqual(['s1', 's2']);
   });
@@ -294,7 +393,7 @@ describe('S6 una subida pendiente no se tira al dejar el asiento', () => {
     failNth('rpc:client_upload_history', 1);
     await expect(c.s.unlinkFromTrainer()).resolves.toEqual({ unsent: 1 });
     expect(c.s.clientSync.slotId).not.toBeNull();
-    await expect(c.s.unlinkFromTrainer({ force: true })).resolves.toEqual({ unsent: 0 });
+    await expect(c.s.unlinkFromTrainer({ force: true })).resolves.toEqual({ unsent: 0, offline: false });
     expect(c.s.clientSync.slotId).toBeNull();
     expect(c.s.workoutLog.map((e) => e.id)).toContain('s2');                   // sigue en el log local
     expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId))).toEqual(['s1']);
@@ -460,6 +559,87 @@ describe('S10-S13 el historial del hueco y el del móvil se pisan', () => {
   });
 });
 
+// La fusión del entrenador en la build publicada (5d5c24e), tal cual: no conoce `deleted`.
+function oldMergeClientLog(existing, incoming, { update = false } = {}) {
+  const base = existing ?? [];
+  const byId = new Map(base.map((e) => [e.id, e]));
+  const fresh = [];
+  const replaced = new Map();
+  for (const e of incoming ?? []) {
+    if (!e.id) continue;
+    const old = byId.get(e.id);
+    if (!old) fresh.push(e);
+    else if (update && JSON.stringify(old) !== JSON.stringify(e)) replaced.set(e.id, e);
+  }
+  if (!fresh.length && !replaced.size) return base;
+  return [...base.map((e) => replaced.get(e.id) ?? e), ...fresh].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+}
+
+describe('E64/E69 las lápidas van aparte de las entradas', () => {
+  it('E64: el cliente borra un entreno; un entrenador con la build publicada descarga y ni pierde su copia ni ve una entrada vacía', async () => {
+    const { c, clientId, t } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    await trainOnce(c, 's2');
+    await t.s.downloadClientHistory(clientId);
+    const trainerLog = t.s.clientLogs[clientId];
+    expect(trainerLog.map((e) => e.id)).toEqual(['s1', 's2']);
+
+    c.s.deleteLogEntry('s1');
+    await c.s.uploadHistoryToTrainer();
+    const row = await slotOf(c.s.clientSync.slotId);
+    expect(row.history_json.entries.map((e) => e.id)).toEqual(['s2']);      // sin lápidas entre las entradas
+    expect(row.history_json.deleted).toMatchObject({ s1: expect.any(Number) });
+    expect(row.sessions_count).toBe(1);
+
+    const viejo = oldMergeClientLog(trainerLog, row.history_json.entries, { update: true });
+    expect(viejo.map((e) => e.id)).toEqual(['s1', 's2']);
+    expect(viejo.every((e) => e.exercises)).toBe(true);
+    await t.s.downloadClientHistory(clientId);                              // la build nueva: lo mismo, y cuenta 1
+    expect(t.s.clientLogs[clientId].map((e) => e.id)).toEqual(['s1', 's2']);
+    expect(t.s.clients[clientId].remoteSessionsCount).toBe(1);
+  });
+
+  it('E68: borrar un entreno personal (fuera de lo que se envía) no deja lápida ni sube nada; uno enviado sí, y al desconectarse se vacían', async () => {
+    const { c } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    c.store.setState((s) => ({ workoutLog: [...s.workoutLog, { id: 'mio', programId: 'mine', sessionTemplateId: 'mi_plantilla', timestamp: Date.now(), exercises: [] }] }));
+    c.s.deleteLogEntry('mio');
+    expect(c.s.deletedLogIds).toEqual({});
+    c.s.deleteLogEntry('s1');
+    expect(Object.keys(c.s.deletedLogIds)).toEqual(['s1']);
+    await c.s.uploadHistoryToTrainer();
+    expect(Object.keys((await slotOf(c.s.clientSync.slotId)).history_json.deleted)).toEqual(['s1']);
+
+    await c.s.unlinkFromTrainer();
+    expect(c.s.deletedLogIds).toEqual({});
+  });
+
+  it('E68: lo que borra el entrenador de un cliente va a su propio mapa y no se sube; el del cliente no se mezcla', async () => {
+    const { t, c, clientId } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    await t.s.downloadClientHistory(clientId);
+    t.s.deleteClientLogEntry(clientId, 's1');
+    expect(t.s.deletedClientLogIds).toMatchObject({ s1: expect.any(Number) });
+    expect(t.s.deletedLogIds).toEqual({});
+    expect(await trainerSees(t, clientId)).toEqual([]);
+  });
+
+  it('E69: la misma subida con un id como entreno y como lápida no lo deja duplicado en el servidor', async () => {
+    const { c } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    const raw = createSimClient(c.device, { storageKey: 'sb-client' });
+    const up = (history) => raw.rpc('client_upload_history', { p_history: history, p_sessions: 0, p_slot_id: c.s.clientSync.slotId });
+    expect((await up({ entries: [{ id: 'x', updatedAt: 100 }], deleted: { x: 200 }, customExercises: {}, progress: null })).error).toBeNull();
+    let h = (await slotOf(c.s.clientSync.slotId)).history_json;
+    expect(h.entries.map((e) => e.id)).toEqual(['s1']);
+    expect(h.deleted).toMatchObject({ x: 200 });
+    expect((await up({ entries: [{ id: 'x', updatedAt: 300 }], deleted: {}, customExercises: {}, progress: null })).error).toBeNull();
+    h = (await slotOf(c.s.clientSync.slotId)).history_json;
+    expect(h.entries.map((e) => e.id)).toEqual(['s1', 'x']);                // editado después de borrarse: vuelve
+    expect(h.deleted.x).toBeUndefined();
+  });
+});
+
 describe('S14 abrir sin cobertura con el token caducado', () => {
   // Parche: supabase-js real, con el token caducado y sin red, devuelve
   // getSession → {session:null, error:AuthRetryableFetchError}; el sim devuelve
@@ -561,10 +741,102 @@ describe('S17 dos móviles del mismo entrenador', () => {
     expect(await server.slots()).toEqual([]);
     const before = server.calls.length;
     await t2.s.refreshTrainerSlots();
-    expect(server.calls.slice(before).some((c) => JSON.stringify(c).includes('trainer_slots_alive'))).toBe(true);   // llegó a preguntar
+    expect(server.calls.slice(before).some((c) => JSON.stringify(c).includes('trainer_deleted_slots'))).toBe(true);   // llegó a preguntar
     expect(Object.keys(t2.s.clients)).toHaveLength(1);
     expect(t2.s.clients[Object.keys(t2.s.clients)[0]].syncOrphan).toBe(true);
     expect(clientId).toBeTruthy();
+  });
+
+  it('E61: se borra la cuenta X y el otro móvil entra en la cuenta Y → los clientes de X quedan «de otra cuenta», ninguno se borra', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    await newClientWithProgram(t1, 'Ana');
+    await newClientWithProgram(t1, 'Berta');
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    expect(Object.keys(t2.s.clients)).toHaveLength(2);
+
+    await server.admin('delete from auth.users where id = $1', [t1.s.trainerSync.userId]);   // la cuenta X ya no existe
+    await t2.s.leaveTrainerAccount();
+    await t2.s.createTrainerCodeAccount();                                                  // t2 entra en la cuenta Y
+    await t2.s.refreshTrainerSlots();
+    const clients = Object.values(t2.s.clients);
+    expect(clients).toHaveLength(2);
+    expect(clients.every((c) => c.syncOrphan)).toBe(true);
+  });
+
+  it('E62: cancelar la invitación en un móvil deja al cliente «sin app» en el otro, con sus datos, y no lo borra', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    const clientId = await t1.s.createClient('Ana', { withApp: true });
+    t1.s.createProgramForClient(clientId, 2, 'Fuerza', null, { openEditor: false });
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    const id2 = Object.keys(t2.s.clients)[0];
+    t2.s.renameClient(id2, 'Ana Gómez');
+    const slotId = t2.s.clients[id2].syncSlotId;
+    expect(slotId).toBeTruthy();
+
+    await t1.s.cancelClientInvitation(clientId);
+    await t2.s.refreshTrainerSlots();
+    expect(Object.keys(t2.s.clients)).toEqual([id2]);
+    expect(t2.s.clients[id2]).toMatchObject({ name: 'Ana Gómez', syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false });
+    expect(t2.s.trainerSync.deletedSlotIds).toEqual([]);
+    expect(t1.s.clients[clientId]).toMatchObject({ syncSlotId: null, syncCode: null });   // los dos móviles ven lo mismo
+    expect(await server.admin('select kind from public.deleted_slots where slot_id = $1', [slotId])).toEqual([{ kind: 'cancelled' }]);
+  });
+
+  it('E62: si el refresco no pudo preguntar (queda «de otra cuenta»), el siguiente aplica la cancelación y deja de serlo', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    const clientId = await t1.s.createClient('Ana', { withApp: true });
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    const id2 = Object.keys(t2.s.clients)[0];
+
+    await t1.s.cancelClientInvitation(clientId);
+    server.failOnce('rpc:trainer_deleted_slots');
+    await t2.s.refreshTrainerSlots();
+    expect(t2.s.clients[id2]).toMatchObject({ syncOrphan: true });
+    await t2.s.refreshTrainerSlots();
+    expect(t2.s.clients[id2]).toMatchObject({ syncSlotId: null, syncCode: null, syncOrphan: false });
+  });
+
+  it('E63: el alta llega pero se pierde la respuesta y un refresco recupera el hueco → es la ficha que lo pidió, no una segunda; borrarla borra el hueco', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const a = await t.s.createClient('Ana');                       // ficha sin app
+    const lost = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: a });   // la respuesta que no llegó
+    expect(lost.error).toBeNull();
+
+    await t.s.refreshTrainerSlots();
+    expect(Object.keys(t.s.clients)).toEqual([a]);
+    expect(t.s.clients[a]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncCode: lost.data[0].code });
+    // «Pasar a la app» en esa ficha devuelve el mismo hueco, no otro
+    const again = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: a });
+    expect(again.data).toEqual(lost.data);
+    await t.s.deleteClient(a);
+    expect(await server.slots()).toEqual([]);
+  });
+
+  it('E63: la ficha recupera su hueco aunque estuviera «de otra cuenta», y con programa lo deja por subir', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const a = await t.s.createClient('Ana');
+    const programId = t.s.createProgramForClient(a, 2, 'Fuerza', null, { openEditor: false });
+    t.s.setClientActiveProgram(a, programId);
+    t.store.setState((s) => ({ clients: { ...s.clients, [a]: { ...s.clients[a], syncSlotId: 'hueco-de-la-otra-cuenta', syncOrphan: true } } }));
+    const lost = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: a });
+
+    await t.s.refreshTrainerSlots();
+    expect(Object.keys(t.s.clients)).toEqual([a]);
+    expect(t.s.clients[a]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncOrphan: false, activeProgramId: programId, programDirty: true });   // el invitado lo sube solo
   });
 
   it('E60: si el hueco se pasó a otra cuenta, el otro móvil lo sigue viendo «de otra cuenta» y no lo borra', async () => {

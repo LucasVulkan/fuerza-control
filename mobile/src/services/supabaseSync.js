@@ -74,14 +74,18 @@ export function uploadOverrides(slotId, overrides) {
   return rpc(trainerSupabase, 'trainer_upload_overrides', { p_slot_id: slotId, p_overrides: overrides ?? {} });
 }
 
-/** Devuelve si existía. Uno que ya no está no es un error. */
-export function deleteClientSlot(slotId) {
-  return rpc(trainerSupabase, 'trainer_delete_slot', { p_slot_id: slotId });
+/**
+ * Devuelve si existía. Uno que ya no está no es un error. `kind` queda apuntado
+ * para los otros móviles del entrenador: 'deleted' (borró al cliente) o
+ * 'cancelled' (canceló su invitación).
+ */
+export function deleteClientSlot(slotId, kind = 'deleted') {
+  return rpc(trainerSupabase, 'trainer_delete_slot', { p_slot_id: slotId, p_kind: kind });
 }
 
-/** De estos huecos, los que siguen existiendo en cualquier cuenta (aunque ya no sean tuyos). */
-export async function existingSlotIds(slotIds) {
-  return (await rpc(trainerSupabase, 'trainer_slots_alive', { p_ids: slotIds })).map((r) => r.slot_id);
+/** De estos huecos, los que ESTA cuenta borró o canceló: `[{ slot_id, kind }]`. */
+export function deletedSlots(slotIds) {
+  return rpc(trainerSupabase, 'trainer_deleted_slots', { p_ids: slotIds });
 }
 
 /** Código nuevo y asiento libre, sin tocar el historial. Devuelve el código. */
@@ -93,7 +97,7 @@ export function reissueClientCode(slotId) {
 export async function getTrainerSlots() {
   const { data, error } = await trainerSupabase
     .from('trainer_clients')
-    .select('id, client_name, client_code, client_id, history_updated_at, disconnected_at, sessions_count, progress:history_json->progress')
+    .select('id, local_id, client_name, client_code, client_id, history_updated_at, disconnected_at, sessions_count, progress:history_json->progress')
     .eq('trainer_id', await myId(trainerSupabase))
     .order('created_at', { ascending: true });
   if (error) throw syncError(error);
@@ -183,17 +187,22 @@ export function clientLostReason() {
 
 /**
  * El cliente sube lo suyo al asiento `slotId`; el servidor SUMA a lo que hay (E28).
+ * Lo borrado va en `deleted` (`{ [id]: deletedAt }`), nunca dentro de `entries`.
  * NO_SEAT si ya no tiene asiento; SLOT_CHANGED si ahora tiene otro (E37).
  */
-export function uploadHistory(entries, customExercises = {}, progress = null, slotId = null) {
+export function uploadHistory(entries, customExercises = {}, progress = null, slotId = null, deleted = {}) {
   return rpc(clientSupabase, 'client_upload_history', {
-    p_history: { entries, customExercises, progress }, p_sessions: entries.length, p_slot_id: slotId,
+    p_history: { entries, deleted, customExercises, progress }, p_sessions: entries.length, p_slot_id: slotId,
   });
 }
 
-/** Suelta el asiento; el historial y lo demás se quedan en el hueco (R-B6). Devuelve cuántos (0 no es error). */
-export async function releaseClientSlot(db = clientSupabase) {
-  return (await rpc(db, 'release_client_slot', {})) ?? 0;
+/**
+ * Suelta el asiento; el historial y lo demás se quedan en el hueco (R-B6).
+ * Con `slotId`, solo ese: si el cliente ya está en otro, SLOT_CHANGED (E66).
+ * Devuelve cuántos (0 no es error).
+ */
+export async function releaseClientSlot(db = clientSupabase, slotId = null) {
+  return (await rpc(db, 'release_client_slot', { p_slot_id: slotId })) ?? 0;
 }
 
 // ═══ Traspasos (E29) ══════════════════════════════════════════════════════════

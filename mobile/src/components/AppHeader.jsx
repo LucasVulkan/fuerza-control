@@ -35,6 +35,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from './ui/dialog';
 import { startNewProgram } from '../utils/startNewProgram';
+import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 import { useFreeGates } from '../useFreeGates';
 // ── Clock formatter ───────────────────────────────────────────────────────────
 
@@ -164,13 +165,13 @@ function MyArchivedPrograms({ onClose }) {
   const workoutLog      = useStore((s) => s.workoutLog);
   const proTabsHidden   = useStore((s) => s.profile?.proTabsHidden ?? false);
   const { gates, gate } = useFreeGates();
-  const activeProgramId = useStore((s) => s.profile?.activeProgramId);
   const restoreProgram            = useStore((s) => s.restoreProgram);
   const deleteProgram             = useStore((s) => s.deleteProgram);
   const exportSpecificProgram     = useStore((s) => s.exportSpecificProgram);
   const cloneProgramFromTemplate  = useStore((s) => s.cloneProgramFromTemplate);
   const setPrintingProgram        = useStore((s) => s.setPrintingProgram);
   const showToast                 = useStore((s) => s.showToast);
+  const { guardProgramChange }    = useDisconnectFromTrainer();
 
   // `programsOf` excluye las plantillas: sin eso, una plantilla archivada
   // pasaría por `restoreProgram` y se convertiría en el programa activo.
@@ -179,10 +180,10 @@ function MyArchivedPrograms({ onClose }) {
     [programs],
   );
 
-  const reactivate = (program) => {
+  const reactivate = (program) => guardProgramChange(program.id, () => {
     const run = () => { restoreProgram(program.id); showToast(t('header.toastRestored'), 2200, 'success'); };
     // Con otro programa activo, el cambio lo archiva: se avisa antes.
-    if (!activeProgramId) { run(); return; }
+    if (!useStore.getState().profile?.activeProgramId) { run(); return; }
     showDialog(
       t('clients.reactivateTitle'),
       t('clients.reactivateConfirm', { name: program.name }),
@@ -191,7 +192,7 @@ function MyArchivedPrograms({ onClose }) {
         { text: t('clients.menuReactivate'), onPress: run },
       ],
     );
-  };
+  });
 
   const confirmDelete = (program) => showDialog(
     t('clients.deleteProgramTitle'),
@@ -326,6 +327,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   const navigate    = useStore((s) => s.navigate);
   const clientSync  = useStore((s) => s.clientSync);
   const driveBackup = useStore((s) => s.driveBackup);
+  const { guardProgramChange } = useDisconnectFromTrainer();
   const archivedCount = useStore((s) => programsOf(s.programs, 'me')
     .filter((p) => p.status === 'archived').length);
 
@@ -365,7 +367,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         <MenuRow
           icon={<RowIcon>{ROW_ICON.new}</RowIcon>}
           label={t('header.newProgramItem')}
-          onPress={() => startNewProgram(t, clientSync, navigate, onClose)}
+          onPress={() => startNewProgram(guardProgramChange, navigate, onClose)}
         />
         <MenuRow
           icon={<RowIcon>{ROW_ICON.archived}</RowIcon>}
@@ -527,6 +529,7 @@ export default function AppHeader() {
   const trainerLost               = useStore((s) => !!s.clientSync?.slotId && !!s.clientSync.lostAt);
   const uploadHistoryToTrainer    = useStore((s) => s.uploadHistoryToTrainer);
   const headerNavigation          = useNavigation();
+  const { guardProgramChange }    = useDisconnectFromTrainer();
 
   const [retrying, setRetrying] = useState(false);
 
@@ -581,10 +584,14 @@ export default function AppHeader() {
 
   function handleImport(parsedData, sections) {
     setImportState(null);
-    importData(parsedData, sections, { silent: true }); // caller shows its own toast below
-    showToast(t('header.toastImported'), 2200, 'success');
-    // If a program was imported, navigate to home so the new program is visible.
-    if (sections.program) navigate('home');
+    const run = () => {
+      importData(parsedData, sections, { silent: true }); // caller shows its own toast below
+      showToast(t('header.toastImported'), 2200, 'success');
+      // If a program was imported, navigate to home so the new program is visible.
+      if (sections.program) navigate('home');
+    };
+    // Importar un programa es usar otro: con entrenador, antes se pregunta (R1).
+    if (sections.program) guardProgramChange(parsedData.program?.id, run); else run();
   }
 
   return (

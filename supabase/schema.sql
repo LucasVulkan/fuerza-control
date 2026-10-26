@@ -245,6 +245,20 @@ create table if not exists public.seat_losses (
 alter table public.seat_losses enable row level security;
 revoke all on public.seat_losses from anon, authenticated;
 
+-- Qué huecos borró cada entrenador y con qué intención (E61-E63), para que sus
+-- otros móviles lo apliquen: 'deleted' (borró al cliente) o 'cancelled'
+-- (canceló su invitación). Sin políticas ni permisos, como `seat_losses`.
+-- ponytail: no se poda; son ids.
+create table if not exists public.deleted_slots (
+  slot_id    uuid primary key,
+  trainer_id uuid not null references auth.users on delete cascade,
+  kind       text not null check (kind in ('deleted', 'cancelled')),
+  at         timestamptz not null default now()
+);
+alter table public.deleted_slots enable row level security;
+revoke all on public.deleted_slots from anon, authenticated;
+create index if not exists deleted_slots_trainer_id on public.deleted_slots (trainer_id);
+
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
 
@@ -317,34 +331,60 @@ $$;
 -- R-C3: el historial solo crece). `entries` por `id`: las viejas que la subida
 -- no trae se conservan, y si el id se repite gana la de mayor `updatedAt` (ms;
 -- sin él, 0; empate, la que llega: E58); las que no tienen `id` se conservan
--- todas. Lo borrado viaja como lápida `{ id, deletedAt, updatedAt }` y gana por
--- esa misma regla (E59). `customExercises` se funde (gana la nueva) y
--- `progress` es el nuevo si lo hay. Interna: nadie la llama desde fuera.
+-- todas. Lo borrado viaja APARTE, en `deleted`: `{ [id]: deletedAt }` (E59,
+-- E64). Se unen los de las dos partes (el mayor por id) y una lápida gana a
+-- las entradas con ese id que no se editaron después de borrarse: `entries`
+-- nunca la lleva ni queda un id en las dos (E69). Las lápidas que las
+-- versiones anteriores metían dentro de `entries` se mueven a `deleted`.
+-- `customExercises` se funde (gana la nueva) y `progress` es el nuevo si lo
+-- hay. Interna: nadie la llama desde fuera.
 create or replace function public._merge_history(p_old jsonb, p_new jsonb)
 returns jsonb
 language sql
 immutable
 as $$
-  select case when p_old is null then p_new else jsonb_build_object(
+  with
+  raw(w, o, e, u) as (
+    select w, o, e, case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end
+      from (select 1 as w, o, e from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
+            union all
+            select 2, o, e from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) with ordinality as t(e, o)) s
+  ),
+  tomb(id, at) as (
+    select id, max(at) from (
+      select d.key, case jsonb_typeof(d.value) when 'number' then (d.value #>> '{}')::numeric else 0 end
+        from jsonb_each(coalesce(nullif(p_old->'deleted', 'null'::jsonb), '{}'::jsonb)) d
+      union all
+      select d.key, case jsonb_typeof(d.value) when 'number' then (d.value #>> '{}')::numeric else 0 end
+        from jsonb_each(coalesce(nullif(p_new->'deleted', 'null'::jsonb), '{}'::jsonb)) d
+      union all
+      select e->>'id', case jsonb_typeof(e->'deletedAt') when 'number' then (e->>'deletedAt')::numeric else 0 end
+        from raw where e->>'deletedAt' is not null and e->>'id' is not null
+    ) s(id, at) group by id
+  )
+  select jsonb_build_object(
     'entries', coalesce((
-        select jsonb_agg(e order by o)
-          from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
-         where not exists (select 1 from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
-                            where n->>'id' = e->>'id'
-                              and (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end) >= (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end))
-      ), '[]'::jsonb) || coalesce((
-        select jsonb_agg(n order by o)
-          from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) with ordinality as t(n, o)
-         where not exists (select 1 from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) e
-                            where e->>'id' = n->>'id'
-                              and (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end) > (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end))
+        select jsonb_agg(r.e order by r.w, r.o) from raw r
+         where r.e->>'deletedAt' is null
+           and not exists (select 1 from tomb t where t.id = r.e->>'id' and t.at >= r.u)
+           and not exists (select 1 from raw x
+                            where x.e->>'deletedAt' is null and x.e->>'id' = r.e->>'id' and x.w <> r.w
+                              and (x.u > r.u or (x.u = r.u and x.w > r.w)))
       ), '[]'::jsonb),
+    'deleted', coalesce((
+        select jsonb_object_agg(t.id, t.at) from tomb t
+         where not exists (select 1 from raw x where x.e->>'deletedAt' is null and x.e->>'id' = t.id and x.u > t.at)
+      ), '{}'::jsonb),
     'customExercises', coalesce(nullif(p_old->'customExercises', 'null'::jsonb), '{}'::jsonb)
                     || coalesce(nullif(p_new->'customExercises', 'null'::jsonb), '{}'::jsonb),
     -- `progress: null` llega de verdad (sin programa activo): es null de JSON, no de SQL.
     'progress', coalesce(nullif(p_new->'progress', 'null'::jsonb), p_old->'progress')
-  ) end;
+  );
 $$;
+
+-- Las lápidas que la tanda B dejó dentro de `entries` pasan a `deleted` (E64).
+update public.trainer_clients set history_json = public._merge_history(history_json, '{}'::jsonb)
+ where history_json @? '$.entries[*] ? (exists(@.deletedAt))';
 
 
 -- ── 7. Entrenador ───────────────────────────────────────────────────────────
@@ -416,7 +456,7 @@ declare v_me uuid := public._trainer();
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
+         sessions_count = jsonb_array_length(public._merge_history(history_json, p_history)->'entries')
    where id = p_slot_id and trainer_id = v_me and client_id is null;
   if found then return; end if;
   if exists (select 1 from public.trainer_clients where id = p_slot_id and trainer_id = v_me) then
@@ -440,36 +480,46 @@ begin
 end;
 $$;
 
--- De estos ids, los que existen en cualquier cuenta (E60): el otro móvil del
--- entrenador borró el cliente, o su hueco se pasó a otra cuenta. Solo devuelve
--- ids que quien llama ya conoce, y sin decir de quién son.
-create or replace function public.trainer_slots_alive(p_ids uuid[])
-returns table (slot_id uuid)
+-- De estos ids, los que ESTA cuenta borró o canceló (E60-E62): así su otro móvil
+-- sabe qué hacer con un hueco que ya no está. Los que faltan sin estar aquí son
+-- de otra cuenta. Solo devuelve ids que quien llama ya conoce.
+drop function if exists public.trainer_slots_alive(uuid[]);
+create or replace function public.trainer_deleted_slots(p_ids uuid[])
+returns table (slot_id uuid, kind text)
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare v_me uuid := public._trainer();
 begin
-  -- Con la cuenta ya borrada y el JWT aún válido, todos los huecos saldrían «no existen».
-  if not exists (select 1 from auth.users where id = public._trainer()) then
+  -- Con la cuenta ya borrada y el JWT aún válido, la respuesta vacía no vale como «no los borraste».
+  if not exists (select 1 from auth.users where id = v_me) then
     raise exception 'NOT_AUTHENTICATED';
   end if;
-  return query select t.id from public.trainer_clients t where t.id = any(p_ids);
+  return query select d.slot_id, d.kind from public.deleted_slots d
+   where d.slot_id = any(p_ids) and d.trainer_id = v_me;
 end;
 $$;
 
--- Borrar un hueco que ya no está no es un error: devuelve false.
-create or replace function public.trainer_delete_slot(p_slot_id uuid)
+-- Borrar un hueco que ya no está no es un error: devuelve false. Anota el
+-- borrado en `deleted_slots`, con `p_kind` ('deleted' por omisión: las
+-- versiones anteriores, que cancelan sin decirlo, quedan como borrado).
+drop function if exists public.trainer_delete_slot(uuid);
+create or replace function public.trainer_delete_slot(p_slot_id uuid, p_kind text default 'deleted')
 returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare v_client uuid;
+declare
+  v_me     uuid := public._trainer();
+  v_client uuid;
 begin
-  delete from public.trainer_clients where id = p_slot_id and trainer_id = public._trainer()
+  delete from public.trainer_clients where id = p_slot_id and trainer_id = v_me
   returning client_id into v_client;
   if not found then return false; end if;
+  insert into public.deleted_slots (slot_id, trainer_id, kind) values (p_slot_id, v_me, p_kind)
+  on conflict do nothing;
   if v_client is not null then
     insert into public.seat_losses (client_id, reason) values (v_client, 'gone')
     on conflict (client_id) do update set reason = 'gone', at = now();
@@ -511,6 +561,10 @@ $$;
 
 -- Lo justo para la pantalla de confirmar: tres nombres y cuatro sí/no. Ni el
 -- programa, ni ids, ni horas: un código filtrado no vale como llave de lectura.
+-- `locked_by` es un sí/no (E71): dice que lo protege una cuenta, no cuál.
+-- `history_updated_at` es solo para las versiones anteriores a la tanda C, que
+-- lo leen para ofrecer «traer el historial»: sin hora real (la de la época si
+-- hay historial, null si no). Quitarla cuando no quede ninguna (E65).
 drop function if exists public.get_slot_by_code(text);
 create function public.get_slot_by_code(p_code text)
 returns table (
@@ -519,8 +573,9 @@ returns table (
   trainer_name       text,
   is_linked          boolean,
   is_mine            boolean,
-  locked_by          text,
-  has_history        boolean
+  locked_by          boolean,
+  has_history        boolean,
+  history_updated_at timestamptz
 )
 language sql
 security definer
@@ -528,9 +583,10 @@ set search_path = public
 as $$
   select t.client_name, t.program_json -> 'program' ->> 'name', t.trainer_name,
          t.client_id is not null, coalesce(t.client_id = auth.uid(), false),
-         case when t.client_id <> coalesce(auth.uid(), t.client_id) or auth.uid() is null
-              then public._locked_by(t.client_id) end,
-         t.history_updated_at is not null
+         coalesce(case when t.client_id <> coalesce(auth.uid(), t.client_id) or auth.uid() is null
+                       then public._locked_by(t.client_id) is not null end, false),
+         t.history_updated_at is not null,
+         case when t.history_updated_at is not null then 'epoch'::timestamptz end
     from public.trainer_clients t
    where t.client_code = upper(trim(p_code))
    limit 1;
@@ -606,7 +662,7 @@ $$;
 
 -- El cliente sube lo suyo a SU asiento. SUMA al historial del hueco (E28, R-C2):
 -- dos móviles o una reinstalación ya no se pisan. `p_sessions` se ignora (el
--- contador sale de lo fusionado, sin lápidas); sigue en la firma por
+-- contador sale de lo fusionado); sigue en la firma por
 -- compatibilidad. `p_slot_id` dice a qué asiento iba la subida (E37): si el
 -- cliente ya está en otro, SLOT_CHANGED y no se escribe nada. Sin él (móviles
 -- con la versión vieja), el asiento que tenga.
@@ -621,7 +677,7 @@ declare v_slot uuid;
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
+         sessions_count = jsonb_array_length(public._merge_history(history_json, p_history)->'entries')
    where client_id = public._caller() and (p_slot_id is null or id = p_slot_id)
   returning id into v_slot;
   if v_slot is null then
@@ -638,7 +694,12 @@ $$;
 -- prescripciones, el programa, el nombre y el código se quedan en el hueco: son
 -- del entrenador, que decide qué hacer con ellos. Solo borrar la cuenta vacía
 -- el historial del cliente (`delete-account`, excepción de R-C4).
-create or replace function public.release_client_slot()
+-- `p_slot_id` dice qué asiento cree soltar el móvil (E66): un móvil solo suelta
+-- el asiento que tiene. Si el cliente ya está en otro (lo cambió otro móvil con
+-- la misma cuenta), SLOT_CHANGED y no se toca nada. Sin él (móviles con la
+-- versión vieja), el asiento que tenga.
+drop function if exists public.release_client_slot();
+create or replace function public.release_client_slot(p_slot_id uuid default null)
 returns integer
 language plpgsql
 security definer
@@ -648,8 +709,12 @@ declare v_count integer;
 begin
   update public.trainer_clients
      set client_id = null, disconnected_at = now()
-   where client_id = public._caller();
+   where client_id = public._caller() and (p_slot_id is null or id = p_slot_id);
   get diagnostics v_count = row_count;
+  if v_count = 0 and p_slot_id is not null
+     and exists (select 1 from public.trainer_clients where client_id = public._caller()) then
+    raise exception 'SLOT_CHANGED';
+  end if;
   return v_count;
 end;
 $$;
@@ -743,10 +808,10 @@ begin
     '_merge_history(jsonb, jsonb)', '_release_seat_of_deleted_user()',
     'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
-    'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
-    'trainer_slots_alive(uuid[])',
+    'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
+    'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot(uuid)',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
@@ -755,10 +820,10 @@ begin
   foreach f in array array[
     'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
-    'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
-    'trainer_slots_alive(uuid[])',
+    'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
+    'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot(uuid)',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('grant execute on function public.%s to authenticated', f);

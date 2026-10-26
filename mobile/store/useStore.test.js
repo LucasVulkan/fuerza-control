@@ -113,33 +113,17 @@ describe('recorrido de entrada — acciones (O03 §16.2)', () => {
       expect(useStore.getState().profile).toMatchObject({ onboardingCompleted: false, setupComplete: false });
     });
 
-    it('desconecta del entrenador si se creó algo propio o se importó', () => {
-      useStore.getState().flowAnswer({ programId: 'prog_1', programSource: 'builder' });
-      useStore.getState().finishOnboardingFlow({ back: true });
-      expect(unlink).toHaveBeenCalledWith({ keepProgram: true });
-      expect(flow()).toBe(null);
-
-      useStore.getState().startOnboardingFlow({ entry: 'newProgram' });
-      useStore.getState().flowAnswer({ programSource: 'import' });
-      useStore.getState().finishOnboardingFlow();
-      expect(unlink).toHaveBeenCalledTimes(2);
-    });
-
-    it('no desconecta si no se creó nada, o si se conectó a otro entrenador', () => {
-      useStore.getState().finishOnboardingFlow({ back: true });
+    // E67 (R1): ya no hay desconexiones implícitas. Quien tenía entrenador decidió
+    // desconectarse antes de empezar, con el aviso; terminar el recorrido no toca nada.
+    it('no desconecta del entrenador, se haya creado, importado o conectado lo que sea', () => {
+      for (const answers of [{ programId: 'prog_1', programSource: 'builder' }, { programSource: 'import' }, { programId: 'prog_1', programSource: 'coach' }, {}]) {
+        useStore.getState().startOnboardingFlow({ entry: 'newProgram' });
+        useStore.getState().flowAnswer(answers);
+        useStore.getState().finishOnboardingFlow({ back: true });
+        expect(flow()).toBe(null);
+      }
       expect(unlink).not.toHaveBeenCalled();
-
-      useStore.getState().startOnboardingFlow({ entry: 'newProgram' });
-      useStore.getState().flowAnswer({ programId: 'prog_1', programSource: 'coach' });
-      useStore.getState().finishOnboardingFlow();
-      expect(unlink).not.toHaveBeenCalled();
-    });
-
-    it('sin entrenador conectado no hay nada que soltar', () => {
-      useStore.setState({ clientSync: { ...useStore.getState().clientSync, slotId: null } });
-      useStore.getState().flowAnswer({ programId: 'prog_1', programSource: 'builder' });
-      useStore.getState().finishOnboardingFlow();
-      expect(unlink).not.toHaveBeenCalled();
+      expect(useStore.getState().clientSync.slotId).toBe('slot_1');
     });
   });
 });
@@ -2687,7 +2671,7 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
     await useStore.getState().cancelClientInvitation(id);
 
-    expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1');
+    expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1', 'cancelled');
     expect(cli(id)).toMatchObject({ syncSlotId: null, syncCode: null, syncLinked: false });
   });
 

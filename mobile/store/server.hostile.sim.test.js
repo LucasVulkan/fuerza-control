@@ -138,10 +138,21 @@ describe('H2 — get_slot_by_code devuelve de más', () => {
     const rows = await ok(z.db, 'get_slot_by_code', { p_code: K });
     expect(rows).toHaveLength(1);
     expect(Object.keys(rows[0]).sort()).toEqual([
-      'client_name', 'has_history', 'is_linked', 'is_mine', 'locked_by', 'program_name', 'trainer_name',
+      'client_name', 'has_history', 'history_updated_at', 'is_linked', 'is_mine', 'locked_by', 'program_name', 'trainer_name',
     ]);
-    expect(rows[0]).toMatchObject({ is_linked: true, is_mine: false, has_history: true });
+    expect(rows[0]).toMatchObject({ is_linked: true, is_mine: false, has_history: true, locked_by: false });
     expect((await slotOf(S)).client_id).toBe(c.id);              // z no ha entrado
+  });
+
+  it('E65: history_updated_at sigue ahí para la build publicada, pero sin hora real: la época con historial, null sin él', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const c = await anon('c');
+    await link(c, K, S);
+    expect((await ok(c.db, 'get_slot_by_code', { p_code: K }))[0].history_updated_at).toBeNull();
+    await upload(c, ['s1']);
+    const when = (await ok(c.db, 'get_slot_by_code', { p_code: K }))[0].history_updated_at;
+    expect(new Date(when).getTime()).toBe(0);
   });
 });
 
@@ -166,6 +177,24 @@ describe('H3 — audit.sql no ve derivas graves', () => {
     ['sin el índice de un asiento por cliente',
       'drop index public.trainer_clients_one_seat',
       `select to_regclass('public.trainer_clients_one_seat') is null as ok`, 'falta el índice'],
+    ['sin el índice del alta repetible (local_id)',
+      'drop index public.trainer_clients_local_id',
+      `select to_regclass('public.trainer_clients_local_id') is null as ok`, 'falta el índice'],
+    ['sin el trigger que suelta el asiento del usuario borrado (E36)',
+      'drop trigger release_seat_of_deleted_user on auth.users',
+      `select not exists (select 1 from pg_trigger where tgname = 'release_seat_of_deleted_user') as ok`, 'falta el trigger'],
+    ['sin la tabla deleted_slots',
+      'drop table public.deleted_slots',
+      `select to_regclass('public.deleted_slots') is null as ok`, 'falta la tabla'],
+    ['RLS desactivada en deleted_slots',
+      'alter table public.deleted_slots disable row level security',
+      `select not relrowsecurity as ok from pg_class where oid = 'public.deleted_slots'::regclass`, 'RLS desactivada'],
+    ['SELECT en deleted_slots a authenticated',
+      'grant select on public.deleted_slots to authenticated',
+      `select has_table_privilege('authenticated', 'public.deleted_slots', 'select') as ok`, 'permiso de escritura directo'],
+    ['una política en deleted_slots',
+      `create policy p on public.deleted_slots for select to authenticated using (trainer_id = auth.uid())`,
+      `select count(*) = 1 as ok from pg_policies where tablename = 'deleted_slots' and policyname = 'p'`, 'política de escritura'],
     ['sin la FK del cliente',
       'alter table public.trainer_clients drop constraint trainer_clients_client_fk',
       `select not exists (select 1 from pg_constraint where conname = 'trainer_clients_client_fk') as ok`, 'falta la clave ajena'],
@@ -214,7 +243,7 @@ describe('H4 — el candado salta con cualquier cuenta no anónima', () => {
     await link(e, K, S);
 
     const y = await anon('y');
-    expect((await ok(y.db, 'get_slot_by_code', { p_code: K }))[0].locked_by).toBe('account');
+    expect((await ok(y.db, 'get_slot_by_code', { p_code: K }))[0].locked_by).toBe(true);
     expect((await bad(y.db, 'link_client_to_slot', { p_code: K })).message).toBe('SEAT_LOCKED');
     expect((await slotOf(S)).client_id).toBe(e.id);
   });
@@ -304,6 +333,21 @@ describe('H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían e
     expect(historyIds(row)).toEqual(['s1']);
     expect(row.history_updated_at).toBeTruthy();
     expect(row.program_json).toEqual({ program: { name: 'Fuerza' } });   // el programa sí se queda
+  });
+
+  it('E66: release_client_slot con el id suelta solo ese asiento; si el cliente está en otro, SLOT_CHANGED y no toca nada', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    const A = await slotWithProgram(a);
+    const B = await slotWithProgram(b);
+    const x = await anon('x');
+    await link(x, B.K, B.S);
+
+    expect((await bad(x.db, 'release_client_slot', { p_slot_id: A.S })).message).toBe('SLOT_CHANGED');
+    expect((await slotOf(B.S)).client_id).toBe(x.id);
+    expect(await ok(x.db, 'release_client_slot', { p_slot_id: B.S })).toBe(1);
+    expect((await slotOf(B.S)).client_id).toBeNull();
+    expect(await ok(x.db, 'release_client_slot', { p_slot_id: B.S })).toBe(0);   // sin asiento, soltar no es un error
   });
 
   it('H6 regla R-B6 (E27): entrar en otro hueco suelta el anterior sin vaciarle el historial', async () => {
@@ -401,9 +445,47 @@ describe('E28 — _merge_history', () => {
   const merge = async (o, n) => (await server.admin('select public._merge_history($1::jsonb, $2::jsonb) as m', [o === null ? null : JSON.stringify(o), JSON.stringify(n)]))[0].m;
   const E = (...ids) => ids.map((id) => (typeof id === 'string' ? { id } : id));
 
-  it('sin historial previo devuelve lo nuevo tal cual', async () => {
+  it('sin historial previo devuelve lo nuevo, con la forma de siempre (entries, deleted, customExercises, progress)', async () => {
     const n = { entries: E('a'), progress: { x: 1 } };
-    expect(await merge(null, n)).toEqual(n);
+    expect(await merge(null, n)).toEqual({ entries: E('a'), deleted: {}, customExercises: {}, progress: { x: 1 } });
+  });
+
+  it('E64/E69: deleted se une (el mayor por id) y una lápida quita las entradas con ese id que no se editaron después; ningún id queda en las dos', async () => {
+    const m = await merge(
+      { entries: E({ id: 'a', updatedAt: 100 }, { id: 'b', updatedAt: 100 }, 'c'), deleted: { a: 150, z: 10 } },
+      { entries: E({ id: 'b', updatedAt: 100 }, { id: 'd', updatedAt: 500 }), deleted: { a: 120, b: 100, d: 400 } });
+    expect(m.entries).toEqual([{ id: 'c' }, { id: 'd', updatedAt: 500 }]);   // a y b borradas (b: empate, gana la lápida); d se editó después
+    expect(m.deleted).toEqual({ a: 150, b: 100, z: 10 });                      // la de d ya no vale
+  });
+
+  it('E69: el mismo id como entrada y como lápida en la misma subida no se duplica', async () => {
+    const m = await merge(null, { entries: E({ id: 'x', updatedAt: 100 }), deleted: { x: 200 } });
+    expect(m).toMatchObject({ entries: [], deleted: { x: 200 } });
+  });
+
+  it('E64: volver a ejecutar schema.sql normaliza el historial que ya tenía lápidas dentro de entries, y repetirlo no cambia nada', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S } = await slotWithProgram(t);
+    await server.admin('update public.trainer_clients set history_json = $1::jsonb where id = $2',
+      [JSON.stringify({ entries: [{ id: 'a' }, { id: 'b', deletedAt: 90, updatedAt: 90 }], customExercises: {}, progress: null }), S]);
+    const schema = readFileSync(fileURLToPath(new URL('../../supabase/schema.sql', import.meta.url)), 'utf8');
+    await server.db.exec(schema);
+    const once = (await slotOf(S)).history_json;
+    expect(once).toMatchObject({ entries: [{ id: 'a' }], deleted: { b: 90 } });
+    await server.db.exec(schema);
+    expect((await slotOf(S)).history_json).toEqual(once);
+  });
+
+  it('E64: las lápidas que las versiones anteriores metieron dentro de entries se pasan a deleted', async () => {
+    const m = await merge({ entries: E('a', { id: 'b', deletedAt: 90, updatedAt: 90 }) }, { entries: E({ id: 'a', deletedAt: 95, updatedAt: 95 }, 'c') });
+    expect(m.entries).toEqual([{ id: 'c' }]);
+    expect(m.deleted).toEqual({ a: 95, b: 90 });
+  });
+
+  it('fusionar dos veces lo mismo da lo mismo', async () => {
+    const x = { entries: E({ id: 'a', updatedAt: 5 }, 'b'), deleted: { c: 7 }, customExercises: { e: 1 }, progress: { p: 1 } };
+    const once = await merge(null, x);
+    expect(await merge(once, x)).toEqual(once);
   });
 
   it('entries: las viejas que no vienen se conservan y, con el mismo id, gana la nueva', async () => {
@@ -564,28 +646,38 @@ describe('E35 — trainer_create_slot con p_local_id', () => {
   });
 });
 
-describe('E60 — trainer_slots_alive', () => {
-  it('devuelve de los ids que le pasan los que existen en cualquier cuenta; un anónimo no puede preguntar', async () => {
+describe('E60-E62 — trainer_deleted_slots', () => {
+  it('devuelve de los ids que le pasan solo los que ESTA cuenta borró o canceló, con su intención; un anónimo no puede preguntar', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');
     const mine = await slotWithProgram(a, 'Mío');
     const theirs = await slotWithProgram(b, 'Ajeno');
     const gone = await slotWithProgram(a, 'Borrado');
-    await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S });
+    const cancelled = await slotWithProgram(a, 'Cancelado');
+    const old = await slotWithProgram(a, 'Borrado por una versión anterior');
+    const alien = await slotWithProgram(b, 'Borrado por otra cuenta');
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S, p_kind: 'deleted' });
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: cancelled.S, p_kind: 'cancelled' });
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: old.S });   // sin p_kind: como las versiones anteriores
+    await ok(b.db, 'trainer_delete_slot', { p_slot_id: alien.S });
+    expect(await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S })).toBe(false);   // repetir no es un error
     const x = await anon('x');
 
-    const ids = [mine.S, theirs.S, gone.S, '00000000-0000-4000-8000-000000000000'];
-    expect((await ok(a.db, 'trainer_slots_alive', { p_ids: ids })).map((r) => r.slot_id).sort()).toEqual([mine.S, theirs.S].sort());
-    expect((await bad(x.db, 'trainer_slots_alive', { p_ids: ids })).message).toBe('NOT_A_TRAINER');
+    const ids = [mine.S, theirs.S, gone.S, cancelled.S, old.S, alien.S, '00000000-0000-4000-8000-000000000000'];
+    const rows = await ok(a.db, 'trainer_deleted_slots', { p_ids: ids });
+    expect(Object.fromEntries(rows.map((r) => [r.slot_id, r.kind]))).toEqual({
+      [gone.S]: 'deleted', [cancelled.S]: 'cancelled', [old.S]: 'deleted',
+    });
+    expect((await bad(x.db, 'trainer_deleted_slots', { p_ids: ids })).message).toBe('NOT_A_TRAINER');
   });
-});
 
-describe('E60b — cuenta de entrenador borrada con otro móvil aún con sesión', () => {
-  it('trainer_slots_alive da NOT_AUTHENTICATED si el usuario ya no existe en auth.users', async () => {
+  it('borrar al entrenador se lleva su registro de borrados; con la cuenta ya borrada y el JWT vivo, NOT_AUTHENTICATED', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const { S } = await slotWithProgram(a);
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: S });
     await server.admin('delete from auth.users where id = $1', [a.id]);
-    expect((await bad(a.db, 'trainer_slots_alive', { p_ids: [S] })).message).toBe('NOT_AUTHENTICATED');
+    expect(await server.admin('select 1 from public.deleted_slots')).toEqual([]);
+    expect((await bad(a.db, 'trainer_deleted_slots', { p_ids: [S] })).message).toBe('NOT_AUTHENTICATED');
   });
 });
 

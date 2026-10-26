@@ -118,7 +118,7 @@ export function scopeFilterForUpload({
  * overwrite the trainer's copy (docs/specs/C04-qa-sep-conexion.md §3.2 d).
  *
  * A tombstone (`deletedAt`) never adds or replaces anything, and neither does
- * an id in `deleted` (the trainer's `deletedLogIds`): what the trainer deleted
+ * an id in `deleted` (the trainer's `deletedClientLogIds`): what the trainer deleted
  * stays deleted (E59).
  *
  * Returns `existing` itself when nothing is added or replaced (no re-render).

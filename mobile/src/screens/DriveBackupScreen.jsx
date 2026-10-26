@@ -38,6 +38,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 
 import { showDialog } from '../components/ui/dialog';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 WebBrowser.maybeCompleteAuthSession();
 
 const DISCOVERY = {
@@ -66,6 +67,7 @@ export default function DriveBackupScreen() {
   const navigation = useNavigation();
 
   const driveBackup        = useStore((s) => s.driveBackup);
+  const { guardProgramChange } = useDisconnectFromTrainer();
   const connectDrive       = useStore((s) => s.connectDrive);
   const disconnectDrive    = useStore((s) => s.disconnectDrive);
   const setDriveFrequency  = useStore((s) => s.setDriveFrequency);
@@ -215,9 +217,13 @@ export default function DriveBackupScreen() {
             setMsg(t('drive.loadingRestore'));
             try {
               const data = await downloadDriveBackup(file.id);
-              importData(data, { program: true, log: true, templates: true, customExercises: true, clients: true }, { silent: true });
-              showToast(t('drive.toastRestored'), 2200, 'success');
-              navigation.goBack();
+              const run = () => {
+                importData(data, { program: true, log: true, templates: true, customExercises: true, clients: true }, { silent: true });
+                showToast(t('drive.toastRestored'), 2200, 'success');
+                navigation.goBack();
+              };
+              // Restaurar con un programa activo es usar otro: con entrenador, antes se pregunta (R1).
+              if (data.profile?.activeProgramId) guardProgramChange(data.profile.activeProgramId, run); else run();
             } catch {
               showToast(t('drive.errRestoreTitle'), 3000, 'error');
             } finally {

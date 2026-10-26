@@ -30,6 +30,7 @@ import { pickImportFile } from '../utils/pickImportFile';
 import { isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
 import { startNewProgram } from '../utils/startNewProgram';
+import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 import { Text } from '../components/ui/Text';
 import { Section } from '../components/ui/MenuList';
 import SheetRow from '../components/ui/SheetRow';
@@ -79,6 +80,7 @@ export default function MyProgramScreen() {
   const navigate           = useStore((s) => s.navigate);
   const clients            = useStore((s) => s.clients);
   const clientSync         = useStore((s) => s.clientSync);
+  const { guardProgramChange } = useDisconnectFromTrainer();
   const cloneProgramFromTemplate = useStore((s) => s.cloneProgramFromTemplate);
   const showToast          = useStore((s) => s.showToast);
   const importData         = useStore((s) => s.importData);
@@ -256,7 +258,7 @@ export default function MyProgramScreen() {
       {menuOpen && (
         <DragSheet visible onClose={() => setMenuOpen(false)} title={t('home.moreOptions')}>
           <Section style={styles.sheetSection}>
-            {!isTrainers && <SheetRow icon={ROW_ICON.new} label={t('header.newProgramItem')} onPress={() => startNewProgram(t, clientSync, navigate)} />}
+            {!isTrainers && <SheetRow icon={ROW_ICON.new} label={t('header.newProgramItem')} onPress={() => startNewProgram(guardProgramChange, navigate)} />}
             {!isTrainers && <SheetRow icon={ROW_ICON.share} label={t('clients.menuShare')} onPress={() => shareSpecificProgram(activeProgram.id, true)} />}
             {!isTrainers && <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={() => exportSpecificProgram(activeProgram.id, true)} />}
             <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={() => setTimeout(handleImportHistory, 250)} />
