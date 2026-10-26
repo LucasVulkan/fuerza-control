@@ -544,9 +544,27 @@ describe('S17 dos móviles del mismo entrenador', () => {
     expect(Object.keys(t2.s.clients)).toHaveLength(1);
     await t1.s.deleteClient(clientId);
     await t2.s.refreshTrainerSlots();
-    expect(t2.s.clients[clientId]).toBeUndefined();
     expect(Object.keys(t2.s.clients)).toHaveLength(0);
     expect(t2.s.trainerSync.deletedSlotIds).toEqual([]);
+  });
+
+  it('E60: con la cuenta del entrenador borrada y el otro móvil aún con sesión, el refresco no borra ningún cliente', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    const { clientId } = await newClientWithProgram(t1);
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    expect(Object.keys(t2.s.clients)).toHaveLength(1);
+
+    await server.admin('delete from auth.users where id = $1', [t1.s.trainerSync.userId]);   // cuenta borrada; t2 conserva su JWT
+    expect(await server.slots()).toEqual([]);
+    const before = server.calls.length;
+    await t2.s.refreshTrainerSlots();
+    expect(server.calls.slice(before).some((c) => JSON.stringify(c).includes('trainer_slots_alive'))).toBe(true);   // llegó a preguntar
+    expect(Object.keys(t2.s.clients)).toHaveLength(1);
+    expect(t2.s.clients[Object.keys(t2.s.clients)[0]].syncOrphan).toBe(true);
+    expect(clientId).toBeTruthy();
   });
 
   it('E60: si el hueco se pasó a otra cuenta, el otro móvil lo sigue viendo «de otra cuenta» y no lo borra', async () => {

@@ -185,6 +185,13 @@ describe('H3 — audit.sql no ve derivas graves', () => {
     ['RLS desactivada en profiles',
       'alter table public.profiles disable row level security',
       `select not relrowsecurity as ok from pg_class where oid = 'public.profiles'::regclass`, 'RLS desactivada'],
+    ['SELECT en seat_losses a authenticated',
+      'grant select on public.seat_losses to authenticated',
+      `select has_table_privilege('authenticated', 'public.seat_losses', 'select') as ok`, 'permiso de escritura directo'],
+    ['una firma vieja sigue viva (trainer_create_slot(text))',
+      `create function public.trainer_create_slot(p_client_name text) returns table (slot_id uuid, code text)
+         language sql as $$ select null::uuid, null::text $$`,
+      `select count(*) = 2 as ok from pg_proc where proname = 'trainer_create_slot'`, 'función que no es de schema.sql'],
     ['función interna ejecutable por authenticated',
       'grant execute on function public._caller() to authenticated',
       `select has_function_privilege('authenticated', 'public._caller()', 'execute') as ok`, 'función interna ejecutable por authenticated'],
@@ -229,6 +236,7 @@ describe('H5 — client_lost_reason da el motivo equivocado', () => {
     const { data } = await c.db.from('trainer_clients').select('id');
     expect(data).toEqual([]);                                    // c ya no tiene asiento
 
+    expect(await server.admin('select client_id, reason from public.seat_losses')).toEqual([{ client_id: c.id, reason: 'gone' }]);
     expect(await ok(c.db, 'client_lost_reason')).toBe('gone');
   });
 
@@ -256,8 +264,25 @@ describe('H5 — client_lost_reason da el motivo equivocado', () => {
     expect(await server.admin('select client_id from public.seat_losses')).toEqual([{ client_id: y.id }]);
 
     const fresh = await ok(t.db, 'trainer_reissue_client_code', { p_slot_id: S });
-    expect(await ok(c.db, 'client_lost_reason')).toBe('gone');
     expect(fresh).not.toBe(K);
+    const rows = await server.admin('select client_id, reason from public.seat_losses order by reason');
+    expect(rows).toEqual([{ client_id: c.id, reason: 'gone' }, { client_id: y.id, reason: 'taken' }]);
+    expect(await ok(c.db, 'client_lost_reason')).toBe('gone');
+  });
+
+  it('E34: aceptar un traspaso de asiento borra el motivo de quien vuelve a tener asiento', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const g = await gugl('g', 'cli');
+    await link(g, K, S);
+    const fresh = await ok(t.db, 'trainer_reissue_client_code', { p_slot_id: S });   // g: «gone»
+    expect(await server.admin('select client_id from public.seat_losses')).toEqual([{ client_id: g.id }]);
+    const x = await anon('x');
+    await link(x, fresh, S);
+    await ok(x.db, 'offer_transfer', { p_kind: 'seat', p_to: g.id });
+    expect(await ok(g.db, 'accept_transfer', { p_kind: 'seat', p_from: x.id })).toBe(1);
+
+    expect(await server.admin('select client_id from public.seat_losses')).toEqual([]);
   });
 });
 
@@ -552,6 +577,15 @@ describe('E60 — trainer_slots_alive', () => {
     const ids = [mine.S, theirs.S, gone.S, '00000000-0000-4000-8000-000000000000'];
     expect((await ok(a.db, 'trainer_slots_alive', { p_ids: ids })).map((r) => r.slot_id).sort()).toEqual([mine.S, theirs.S].sort());
     expect((await bad(x.db, 'trainer_slots_alive', { p_ids: ids })).message).toBe('NOT_A_TRAINER');
+  });
+});
+
+describe('E60b — cuenta de entrenador borrada con otro móvil aún con sesión', () => {
+  it('trainer_slots_alive da NOT_AUTHENTICATED si el usuario ya no existe en auth.users', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const { S } = await slotWithProgram(a);
+    await server.admin('delete from auth.users where id = $1', [a.id]);
+    expect((await bad(a.db, 'trainer_slots_alive', { p_ids: [S] })).message).toBe('NOT_AUTHENTICATED');
   });
 });
 

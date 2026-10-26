@@ -261,4 +261,19 @@ describe('H13 — crear hueco no es idempotente', () => {
     expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(1);
     expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(1);
   });
+
+  it('H13 arreglado (E35): crear el cliente con app guarda el id de su ficha, y repetir el alta devuelve el mismo hueco y no crea otro', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana', { withApp: true });
+    const { syncSlotId, syncCode } = t.s.clients[id];
+    expect((await slotOf(syncSlotId)).local_id).toBe(id);
+
+    const raw = createSimClient(t.device, { storageKey: 'sb-trainer' });
+    const again = await raw.rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: id });   // el reintento tras perder la respuesta
+    expect(again.data).toEqual([{ slot_id: syncSlotId, code: syncCode }]);
+    await t.s.refreshTrainerSlots();
+    expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(1);
+    expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(1);
+  });
 });

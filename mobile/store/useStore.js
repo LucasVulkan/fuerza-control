@@ -843,7 +843,7 @@ export const useStore = create(
         if (cloud) {
           try {
             await _ensureTrainerSession(trainerSync);
-            const { slotId, clientCode } = await createClientSlot(name.trim());
+            const { slotId, clientCode } = await createClientSlot(name.trim(), id);
             set((s) => ({
               clients: {
                 ...s.clients,

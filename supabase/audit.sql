@@ -7,6 +7,34 @@
 -- impiden la mayoría, esto confirma que el servidor desplegado es ese.
 -- ============================================================================
 
+-- Huella de cada función: lo desplegado es el cuerpo de schema.sql. Si cambias una
+-- función en schema.sql, actualiza aquí su huella (el test «H3 montaje» avisa):
+--   md5(regexp_replace(prosrc, '\s+', ' ', 'g')), sin importar espacios ni saltos de línea.
+with huellas(n, h) as (values
+  ('_caller', 'ccb3b2dbc7c047aa132b7ffec5a1712f'),
+  ('_check_target', 'f71e53d03ed1d01772cf59a66f30f127'),
+  ('_locked_by', '4e4ae7904b2fe14831d60ea1ca55ba96'),
+  ('_merge_history', 'b0c31b3f3daa967577e6ab10ba666299'),
+  ('_release_seat_of_deleted_user', 'f01a7c7c858c1fea61a83445aad2642e'),
+  ('_trainer', '895184881412f231e1d94aef8009eed3'),
+  ('accept_transfer', '31b0e2f1b43c82681fbbfb965495cf4e'),
+  ('client_lost_reason', 'c1aa16132493e01048a8445e9774cac4'),
+  ('client_upload_history', '512c26d1cf3b95bab07ef0c8dc2029f6'),
+  ('get_slot_by_code', '1ec9eb35eb1399c71eefa1e0d6ca6794'),
+  ('link_client_to_slot', '2f25fec0ab28035d66d5c6cc82c45ab2'),
+  ('new_client_code', '4cd8993cec4d23f569beb2ac28032293'),
+  ('offer_transfer', '84e4a6eb787f9e1fa26afbe657cb9e04'),
+  ('release_client_slot', '4d0b1d80e8268c8caae12ee72392c426'),
+  ('trainer_create_slot', 'cd90e36296965cdc88e7c3753072d606'),
+  ('trainer_delete_slot', 'fc7451ecd9a0feab88cef6ab582c2297'),
+  ('trainer_reissue_client_code', '57d59eac2dd5d143f96f6be992754e6a'),
+  ('trainer_set_name', '991c28decba6b250c7ed31efd8b90860'),
+  ('trainer_slots_alive', '3eadf8235cc0d9127da7ea5c3f2992cc'),
+  ('trainer_upload_log', '9614f076054c51c988e213ceab15a451'),
+  ('trainer_upload_overrides', '3bfd01ad1de6c34087b084bcbbd0f010'),
+  ('trainer_upload_program', '5830cbff51deabbe74860ed3f9204105')
+)
+
 -- Huecos de un entrenador que no existe.
 select 'hueco sin entrenador' as problema, t.id::text as detalle
   from public.trainer_clients t
@@ -48,13 +76,14 @@ select 'política de escritura', policyname
         or tablename = 'transfer_offers')   -- ni leer: una oferta falsa robaría huecos
 
 union all
--- Permiso que no sea leer sobre la tabla, el que sea (también el que llega de PUBLIC).
+-- Permiso sobre la tabla, el que sea (también el que llega de PUBLIC); leer solo vale en trainer_clients.
 select 'permiso de escritura directo', r || ' ' || p || ' ' || c.relname
   from pg_class c,
        unnest(array['anon', 'authenticated']) r,
-       unnest(array['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) p
+       unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) p
  where c.relnamespace = 'public'::regnamespace
    and c.relname in ('trainer_clients', 'transfer_offers', 'seat_losses')
+   and not (p = 'SELECT' and c.relname = 'trainer_clients')
    and has_table_privilege(r, c.oid, p)
 
 union all
@@ -139,34 +168,17 @@ select 'perfil sin usuario', p.id::text
  where not exists (select 1 from auth.users u where u.id = p.id)
 
 union all
--- Huella de cada función: lo desplegado es el cuerpo de schema.sql. Si cambias una
--- función en schema.sql, actualiza aquí su huella (el test «H3 montaje» avisa):
---   md5(regexp_replace(prosrc, '\s+', ' ', 'g')), sin importar espacios ni saltos de línea.
+-- Las de la lista que faltan o tienen otro cuerpo.
 select 'función distinta de schema.sql', f.n
-  from (values
-    ('_caller', 'ccb3b2dbc7c047aa132b7ffec5a1712f'),
-    ('_check_target', 'f71e53d03ed1d01772cf59a66f30f127'),
-    ('_locked_by', '4e4ae7904b2fe14831d60ea1ca55ba96'),
-    ('_merge_history', 'b0c31b3f3daa967577e6ab10ba666299'),
-    ('_release_seat_of_deleted_user', 'f01a7c7c858c1fea61a83445aad2642e'),
-    ('_trainer', '895184881412f231e1d94aef8009eed3'),
-    ('accept_transfer', '90fd3ad0acd1411166e7c356810c791a'),
-    ('client_lost_reason', 'c1aa16132493e01048a8445e9774cac4'),
-    ('client_upload_history', '512c26d1cf3b95bab07ef0c8dc2029f6'),
-    ('get_slot_by_code', '1ec9eb35eb1399c71eefa1e0d6ca6794'),
-    ('link_client_to_slot', '2f25fec0ab28035d66d5c6cc82c45ab2'),
-    ('new_client_code', '4cd8993cec4d23f569beb2ac28032293'),
-    ('offer_transfer', '84e4a6eb787f9e1fa26afbe657cb9e04'),
-    ('release_client_slot', '4d0b1d80e8268c8caae12ee72392c426'),
-    ('trainer_create_slot', 'cd90e36296965cdc88e7c3753072d606'),
-    ('trainer_delete_slot', 'fc7451ecd9a0feab88cef6ab582c2297'),
-    ('trainer_reissue_client_code', '57d59eac2dd5d143f96f6be992754e6a'),
-    ('trainer_set_name', '991c28decba6b250c7ed31efd8b90860'),
-    ('trainer_slots_alive', 'a0c60bddf278f5280174be41a7bc79b2'),
-    ('trainer_upload_log', '9614f076054c51c988e213ceab15a451'),
-    ('trainer_upload_overrides', '3bfd01ad1de6c34087b084bcbbd0f010'),
-    ('trainer_upload_program', '5830cbff51deabbe74860ed3f9204105')
-  ) as f(n, h)
+  from huellas f
  where not exists (select 1 from pg_proc p
                     where p.pronamespace = 'public'::regnamespace and p.proname = f.n
-                      and md5(regexp_replace(p.prosrc, '\s+', ' ', 'g')) = f.h);
+                      and md5(regexp_replace(p.prosrc, '\s+', ' ', 'g')) = f.h)
+
+union all
+-- Y las que no están en la lista (una firma vieja que siga viva).
+select 'función que no es de schema.sql', p.oid::regprocedure::text
+  from pg_proc p
+ where p.pronamespace = 'public'::regnamespace
+   and not exists (select 1 from huellas f
+                    where f.n = p.proname and f.h = md5(regexp_replace(p.prosrc, '\s+', ' ', 'g')));

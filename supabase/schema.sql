@@ -450,7 +450,10 @@ security definer
 set search_path = public
 as $$
 begin
-  perform public._trainer();
+  -- Con la cuenta ya borrada y el JWT aún válido, todos los huecos saldrían «no existen».
+  if not exists (select 1 from auth.users where id = public._trainer()) then
+    raise exception 'NOT_AUTHENTICATED';
+  end if;
   return query select t.id from public.trainer_clients t where t.id = any(p_ids);
 end;
 $$;
@@ -712,6 +715,7 @@ begin
     if v_from_seat then
       update public.trainer_clients set client_id = v_me where client_id = p_from;
       get diagnostics v_count = row_count;
+      delete from public.seat_losses where client_id = v_me;   -- vuelve a tener asiento
     end if;
   end if;
   return v_count;
