@@ -225,19 +225,33 @@ describe('S5 desconectarse sin red', () => {
   });
 });
 
-describe('S6 una subida pendiente se tira al dejar el asiento', () => {
-  it('S6 hoy: desconectarse con una sesión sin subir la descarta; el entrenador nunca la recibe (regla R-C4: el entrenador recibe todas las sesiones subidas; R-C1: lo pendiente no se pierde)', async () => {
+describe('S6 una subida pendiente no se tira al dejar el asiento', () => {
+  it('S6 arreglado (E51): desconectarse con una sesión sin subir la sube antes de soltar el asiento (regla R-C4: el entrenador recibe todas las sesiones subidas; R-C1)', async () => {
     const { t, c, clientId } = await trainerAndClient();
     await trainOnce(c, 's1');
     c.device.offline = true;
     await trainOnce(c, 's2');
     expect(c.s.clientSync.pendingUpload).toBe(true);
     c.device.offline = false;
-    await c.s.unlinkFromTrainer();
-    expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId))).toEqual(['s1']);
-    expect(await trainerSees(t, clientId)).not.toContain('s2');
+    await expect(c.s.unlinkFromTrainer()).resolves.toEqual({ unsent: 0 });
+    expect(c.s.clientSync.slotId).toBeNull();
+    expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId)).sort()).toEqual(['s1', 's2']);
   });
-  it('S6 hoy: cambiar de entrenador con una sesión sin subir la descarta; ni A ni B la reciben (regla R-C4)', async () => {
+  it('S6 arreglado (E51): si no puede subir, no desconecta y dice cuántos entrenos no llegan; «igualmente» suelta el asiento', async () => {
+    const { t, c, clientId } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    c.device.offline = true;
+    await trainOnce(c, 's2');
+    c.device.offline = false;
+    failNth('rpc:client_upload_history', 1);
+    await expect(c.s.unlinkFromTrainer()).resolves.toEqual({ unsent: 1 });
+    expect(c.s.clientSync.slotId).not.toBeNull();
+    await expect(c.s.unlinkFromTrainer({ force: true })).resolves.toEqual({ unsent: 0 });
+    expect(c.s.clientSync.slotId).toBeNull();
+    expect(c.s.workoutLog.map((e) => e.id)).toContain('s2');                   // sigue en el log local
+    expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId))).toEqual(['s1']);
+  });
+  it('S6 arreglado (E51): cambiar de entrenador con una sesión sin subir la sube antes al asiento actual; B no recibe nada de A (regla R-C4)', async () => {
     const a = await phone('A');
     const b = await phone('B');
     const c = await phone('cliente');
@@ -252,10 +266,28 @@ describe('S6 una subida pendiente se tira al dejar el asiento', () => {
     expect(c.s.clientSync.pendingUpload).toBe(true);
     await join(c, codeOf(b, cb.clientId));
     expect(c.s.clientSync.pendingUpload).toBe(false);
-    expect(historyIds(await slotOf(a.s.clients[ca.clientId].syncSlotId))).toBeNull();
+    expect(historyIds(await slotOf(a.s.clients[ca.clientId].syncSlotId))).toEqual(['pend']);
     expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId))).toBeNull();
   });
-  it('S6 hoy: volver a entrar con el código del mismo entrenador también descarta la subida pendiente (regla R-C4)', async () => {
+  it('S6 arreglado (E51): si la subida a A falla, cambiar a B no se bloquea y lo entrenado sigue en el log local', async () => {
+    const a = await phone('A');
+    const b = await phone('B');
+    const c = await phone('cliente');
+    await a.s.createTrainerCodeAccount();
+    await b.s.createTrainerCodeAccount();
+    const ca = await newClientWithProgram(a);
+    const cb = await newClientWithProgram(b);
+    await join(c, codeOf(a, ca.clientId));
+    c.device.offline = true;
+    await trainOnce(c, 'pend');
+    c.device.offline = false;
+    failNth('rpc:client_upload_history', 1);
+    await join(c, codeOf(b, cb.clientId));
+    expect(c.s.clientSync.slotId).toBe(b.s.clients[cb.clientId].syncSlotId);
+    expect(c.s.workoutLog.map((e) => e.id)).toContain('pend');
+    expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId))).toBeNull();
+  });
+  it('S6 arreglado (E51): volver a entrar con el código del mismo entrenador sube lo pendiente (regla R-C4)', async () => {
     const { t, c, clientId } = await trainerAndClient();
     c.device.offline = true;
     await trainOnce(c, 's2');
@@ -263,20 +295,30 @@ describe('S6 una subida pendiente se tira al dejar el asiento', () => {
     expect(c.s.clientSync.pendingUpload).toBe(true);
     await c.s.linkToTrainer(codeOf(t, clientId));
     expect(c.s.clientSync.pendingUpload).toBe(false);
-    expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId))).toBeNull();
+    expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId))).toEqual(['s2']);
+  });
+  it('S6 arreglado (E51): si la subida previa falla, al reentrar en el mismo asiento se sube tras adoptarlo', async () => {
+    const { t, c, clientId } = await trainerAndClient();
+    c.device.offline = true;
+    await trainOnce(c, 's2');
+    c.device.offline = false;
+    failNth('rpc:client_upload_history', 1);
+    await c.s.linkToTrainer(codeOf(t, clientId));
+    expect(c.s.clientSync.pendingUpload).toBe(false);
+    expect(historyIds(await slotOf(t.s.clients[clientId].syncSlotId))).toEqual(['s2']);
   });
 });
 
 describe('S7 la app muere en la espera de 2 s antes de subir', () => {
-  it('S7 hoy: entreno guardado, la app muere antes de subir; al abrir no se sube ni se marca pendiente (regla R-C2: una sesión entrenada llega al entrenador, no se pierde)', async () => {
+  it('S7 arreglado (E51): el entreno marca la subida como debida al guardarse; al abrir, el reintento de siempre lo sube (regla R-C2: una sesión entrenada llega al entrenador)', async () => {
     const { t, c, clientId } = await trainerAndClient();
-    const snap = plain(c.store.getState());
-    snap.workoutLog = [...snap.workoutLog, entry(c, 'muerta')];
-    const c2 = await phone('cliente', { device: c.device, state: snap });
-    expect(c2.s.workoutLog.map((e) => e.id)).toEqual(['muerta']);
-    for (let i = 0; i < 3; i++) await c2.s.checkAndPullProgramUpdates();
-    expect(c2.s.clientSync.pendingUpload).toBe(false);
-    expect(await trainerSees(t, clientId)).not.toContain('muerta');
+    logSession(c, 'muerta');
+    expect(c.s.clientSync.uploadDue).toBe(true);
+    expect(c.s.clientSync.pendingUpload).toBe(false);          // el aviso de error no se enciende
+    const c2 = await phone('cliente', { device: c.device, state: plain(c.store.getState()) });
+    await c2.s.checkAndPullProgramUpdates();
+    await vi.waitFor(async () => expect(await trainerSees(t, clientId)).toContain('muerta'));
+    expect(c2.s.clientSync.uploadDue).toBe(false);
   });
 });
 

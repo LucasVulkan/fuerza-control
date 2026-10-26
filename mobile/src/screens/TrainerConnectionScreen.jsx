@@ -117,16 +117,23 @@ export default function TrainerConnectionScreen() {
     }
   }
 
+  // Si hay entrenos que no llegan, el store no desconecta y dice cuántos (E51).
+  async function disconnect(force) {
+    const { unsent } = await disconnectFromTrainer({ force });
+    if (unsent) {
+      showDialog(t('trainer.unsentTitle'), t('trainer.unsentBody', { count: unsent }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('trainer.unsentConfirm'), style: 'destructive', onPress: () => disconnect(true) },
+      ]);
+      return;
+    }
+    navigation.goBack();
+  }
+
   function handleDisconnect() {
     showDialog(t('trainer.disconnectTitle'), t('trainer.disconnectBody'), [
       { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('trainer.disconnectConfirm'), style: 'destructive',
-        onPress: async () => {
-          await disconnectFromTrainer();
-          navigation.goBack();
-        },
-      },
+      { text: t('trainer.disconnectConfirm'), style: 'destructive', onPress: () => disconnect(false) },
     ]);
   }
 
