@@ -102,30 +102,20 @@ const gateRpc = (name) => (cfg, dev) => {
 // HALLAZGOS
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('S1 traspaso a cuenta de código cortado tras aceptar', () => {
-  it.each([['auth:setSession'], ['from:profiles']])(
-    'S1 hoy: %s falla tras el traspaso; reintentar crea OTRA cuenta y los clientes quedan en una que nadie conoce (regla R-C7: un corte a mitad de traspaso se arregla solo al reintentar)',
-    async (key) => {
-      const t = await phone('entrenador');
-      const c = await phone('cliente');
-      await t.s.enterTrainerAccount(google('g1'));
-      const { clientId } = await newClientWithProgram(t);
-      await join(c, codeOf(t, clientId));
-      const slotId = t.s.clients[clientId].syncSlotId;
-      failNth(key, 1);
-      await expect(t.s.createTrainerCodeAccount()).rejects.toBeTruthy();
-      const lostOwner = (await slotOf(slotId)).trainer_id;
-      expect(lostOwner).not.toBe(t.s.trainerSync.userId);           // ya no es de google g1
-      await t.s.createTrainerCodeAccount();                          // reintento
-      expect(t.s.trainerSync.mode).toBe('code');
-      await t.s.refreshTrainerSlots();
-      expect(t.s.clients[clientId].syncOrphan).toBe(true);
-      expect((await slotOf(slotId)).trainer_id).toBe(lostOwner);     // sigue en la cuenta perdida
-      expect((await slotOf(slotId)).trainer_id).not.toBe(t.s.trainerSync.userId);
-      await t.s.enterTrainerAccount(google('g1'));                   // y volver a google tampoco
-      expect((await slotOf(slotId)).trainer_id).toBe(lostOwner);
-    },
-  );
+describe('S1 de Google a código', () => {
+  it('S1 arreglado (E49): con cuenta de Google crear un código rechaza y no mueve los huecos (regla R-D1: solo se cambia hacia una forma mejor)', async () => {
+    const t = await phone('entrenador');
+    const c = await phone('cliente');
+    await t.s.enterTrainerAccount(google('g1'));
+    const { clientId } = await newClientWithProgram(t);
+    await join(c, codeOf(t, clientId));
+    const slotId = t.s.clients[clientId].syncSlotId;
+    const userId = t.s.trainerSync.userId;
+    await expect(t.s.createTrainerCodeAccount()).rejects.toMatchObject({ code: 'ACCOUNT_EXISTS' });
+    expect(t.s.trainerSync.mode).toBe('google');
+    expect(t.s.trainerSync.userId).toBe(userId);
+    expect((await slotOf(slotId)).trainer_id).toBe(userId);
+  });
 });
 
 describe('S2 borrar la cuenta muere entre las dos llamadas', () => {

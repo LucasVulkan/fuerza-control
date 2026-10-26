@@ -3866,8 +3866,9 @@ export const useStore = create(
         return enter();
       },
 
-      /** Crear una cuenta nueva con código personal. */
+      /** Crear una cuenta nueva con código personal. Solo la primera: de Google/Apple a código no se cambia (E49, R-D1). */
       createTrainerCodeAccount: async () => {
+        if (get().trainerSync.userId) throw Object.assign(new Error('ACCOUNT_EXISTS'), { code: 'ACCOUNT_EXISTS' });
         const candidate = await trainerCandidateNewCode();
         await get()._enterCandidate(candidate, 'code');
         return { code: candidate.code, userId: candidate.userId };

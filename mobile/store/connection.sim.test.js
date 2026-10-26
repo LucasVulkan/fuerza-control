@@ -121,7 +121,7 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
     google: (t) => t.s.enterTrainerAccount(google('g1')),
     apple:  (t) => t.s.enterTrainerAccount(apple('a1')),
   };
-  const pairs = [['code', 'google'], ['code', 'apple'], ['google', 'apple'], ['apple', 'google'], ['google', 'code'], ['apple', 'code']];
+  const pairs = [['code', 'google'], ['code', 'apple'], ['google', 'apple'], ['apple', 'google']];   // hacia el código no se cambia (E49)
 
   for (const [from, to] of pairs) {
     it(`${from} → ${to}`, async () => {
@@ -139,13 +139,13 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
     });
   }
 
-  it('ida y vuelta (Google → código → Google): nada se pierde', async () => {
+  it('ida y vuelta (Google → Apple → Google): nada se pierde', async () => {
     const t = await phone('entrenador');
     const c = await phone('cliente');
     await t.s.enterTrainerAccount(google('g1'));
     const { clientId } = await newClientWithProgram(t);
     await join(c, codeOf(t, clientId));
-    await t.s.createTrainerCodeAccount();
+    await t.s.enterTrainerAccount(apple('a1'));
     await t.s.enterTrainerAccount(google('g1'));
     expect(await programReaches(t, c, clientId, 'vuelta')).toBe(true);
   });

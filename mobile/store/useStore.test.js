@@ -956,11 +956,16 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     expect(RC.restorePurchases).toHaveBeenCalled();
   });
 
-  it('crear código traspasa desde el anterior y entra en RevenueCat', async () => {
+  it('crear código con una cuenta ya puesta rechaza y no traspasa (E49)', async () => {
+    await expect(useStore.getState().createTrainerCodeAccount()).rejects.toMatchObject({ code: 'ACCOUNT_EXISTS' });
+    expect(syncMock.offerTransfer).not.toHaveBeenCalled();
+    expect(ts().userId).toBe('uuid-A');
+  });
+
+  it('crear código sin cuenta previa entra en RevenueCat', async () => {
+    useStore.setState((s) => ({ trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null } }));
     const res = await useStore.getState().createTrainerCodeAccount();
     expect(res).toEqual({ code: 'CCCC-CCCC-CCCC', userId: 'uuid-C' });
-    expect(syncMock.offerTransfer).toHaveBeenCalledWith('slots', 'uuid-C');
-    expect(syncMock.acceptTransfer).toHaveBeenCalledWith('slots', 'uuid-A', undefined);
     expect(RC.logIn).toHaveBeenCalledWith('uuid-C');
   });
 
