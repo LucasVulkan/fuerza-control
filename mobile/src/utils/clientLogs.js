@@ -117,15 +117,19 @@ export function scopeFilterForUpload({
  * `incoming` are kept either way. File imports leave it off so they never
  * overwrite the trainer's copy (docs/specs/C04-qa-sep-conexion.md §3.2 d).
  *
+ * A tombstone (`deletedAt`) never adds or replaces anything, and neither does
+ * an id in `deleted` (the trainer's `deletedLogIds`): what the trainer deleted
+ * stays deleted (E59).
+ *
  * Returns `existing` itself when nothing is added or replaced (no re-render).
  */
-export function mergeClientLog(existing, incoming, { update = false } = {}) {
+export function mergeClientLog(existing, incoming, { update = false, deleted = {} } = {}) {
   const base = existing ?? [];
   const byId = new Map(base.map((e) => [e.id, e]));
   const fresh = [];
   const replaced = new Map();
   for (const e of incoming ?? []) {
-    if (!e.id) continue;
+    if (!e.id || e.deletedAt || deleted[e.id]) continue;
     const old = byId.get(e.id);
     if (!old) fresh.push(e);
     else if (update && (e.updatedAt ?? 0) >= (old.updatedAt ?? 0) && JSON.stringify(old) !== JSON.stringify(e)) replaced.set(e.id, e);

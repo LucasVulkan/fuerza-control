@@ -69,6 +69,14 @@ describe('mergeClientLog', () => {
     expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 8 }], { update: true })).toBe(existing);
   });
 
+  test('a tombstone (deletedAt) or an id in `deleted` neither adds nor removes anything', () => {
+    const existing = [{ id: 'e1', timestamp: 100 }];
+    const tomb = { id: 'e1', deletedAt: 900, updatedAt: 900 };
+    expect(mergeClientLog(existing, [tomb, { id: 'e2', deletedAt: 900, updatedAt: 900 }], { update: true })).toBe(existing);
+    expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 7, updatedAt: 5 }, { id: 'e3', timestamp: 300 }],
+      { update: true, deleted: { e1: 1, e3: 1 } })).toBe(existing);
+  });
+
   test('update: a copy with an older updatedAt does not replace (last edit wins)', () => {
     const existing = [{ id: 'e1', timestamp: 100, sessionRpe: 9, updatedAt: 500 }];
     expect(mergeClientLog(existing, [{ id: 'e1', timestamp: 100, sessionRpe: 7 }], { update: true })).toBe(existing);

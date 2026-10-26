@@ -277,7 +277,8 @@ $$;
 -- R-C3: el historial solo crece). `entries` por `id`: las viejas que la subida
 -- no trae se conservan, y si el id se repite gana la de mayor `updatedAt` (ms;
 -- sin él, 0; empate, la que llega: E58); las que no tienen `id` se conservan
--- todas. `customExercises` se funde (gana la nueva) y
+-- todas. Lo borrado viaja como lápida `{ id, deletedAt, updatedAt }` y gana por
+-- esa misma regla (E59). `customExercises` se funde (gana la nueva) y
 -- `progress` es el nuevo si lo hay. Interna: nadie la llama desde fuera.
 create or replace function public._merge_history(p_old jsonb, p_new jsonb)
 returns jsonb
@@ -367,7 +368,7 @@ declare v_me uuid := public._trainer();
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = jsonb_array_length(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb))
+         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
    where id = p_slot_id and trainer_id = v_me and client_id is null;
   if found then return; end if;
   if exists (select 1 from public.trainer_clients where id = p_slot_id and trainer_id = v_me) then
@@ -524,8 +525,8 @@ $$;
 
 -- El cliente sube lo suyo a SU asiento: no hace falta decir cuál, es el suyo.
 -- SUMA al historial del hueco (E28, R-C2): dos móviles o una reinstalación ya
--- no se pisan. `p_sessions` se ignora (el contador sale de lo fusionado); sigue
--- en la firma por compatibilidad.
+-- no se pisan. `p_sessions` se ignora (el contador sale de lo fusionado, sin
+-- lápidas); sigue en la firma por compatibilidad.
 create or replace function public.client_upload_history(p_history jsonb, p_sessions integer)
 returns uuid
 language plpgsql
@@ -536,7 +537,7 @@ declare v_slot uuid;
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = jsonb_array_length(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb))
+         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
    where client_id = public._caller()
   returning id into v_slot;
   if v_slot is null then raise exception 'NO_SEAT'; end if;

@@ -178,6 +178,8 @@ const trainerProgramOf = (clientSync, activeId) => {
   const ids = clientSync.trainerProgramIds ?? [];
   return !ids.length || ids.includes(activeId) ? activeId : ids[ids.length - 1];
 };
+// Lápidas de lo borrado, `{ [id]: deletedAt }` (E59).
+const buried = (ids) => Object.fromEntries(ids.map((id) => [id, Date.now()]));
 const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
 
 // Dropset actions all touch the `drops` array of the LAST work set only
@@ -510,6 +512,11 @@ export const useStore = create(
       // entries here — it's the trainer's professional record of the client.
       // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
       clientLogs: {},
+      // Ids de entradas borradas (de `workoutLog` o de `clientLogs`) y cuándo,
+      // `{ [id]: deletedAt }`. El cliente las sube como lápidas para que el
+      // servidor no las resucite; el entrenador las usa para no volver a bajarlas.
+      // Nunca se podan (E59). Las lápidas no entran en `workoutLog` ni `clientLogs`.
+      deletedLogIds: {},
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
@@ -2915,7 +2922,10 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       deleteLogEntry: (logId) =>
-        set((state) => ({ workoutLog: state.workoutLog.filter((e) => e.id !== logId) })),
+        set((state) => ({
+          workoutLog: state.workoutLog.filter((e) => e.id !== logId),
+          deletedLogIds: { ...state.deletedLogIds, ...buried([logId]) },
+        })),
 
       /**
        * Post-session feedback captured in the recap (the entry is already saved
@@ -2985,7 +2995,13 @@ export const useStore = create(
           keep = workoutLog.filter((e) => ids.has(programTemplateOf(e)));
         }
         const removed = workoutLog.length - keep.length;
-        if (removed > 0) set({ workoutLog: keep });
+        if (removed > 0) {
+          const kept = new Set(keep);
+          set((s) => ({
+            workoutLog: keep,
+            deletedLogIds: { ...s.deletedLogIds, ...buried(workoutLog.filter((e) => !kept.has(e)).map((e) => e.id)) },
+          }));
+        }
         return removed;
       },
 
@@ -2996,6 +3012,7 @@ export const useStore = create(
             ...state.clientLogs,
             [clientId]: (state.clientLogs[clientId] ?? []).filter((e) => e.id !== logId),
           },
+          deletedLogIds: { ...state.deletedLogIds, ...buried([logId]) },
         })),
 
       getLastSession: (templateId) => {
@@ -4197,6 +4214,7 @@ export const useStore = create(
           const { progress, updatedAt } = downloaded;
           const history      = downloaded.history ? incoming.workoutLog : downloaded.history;
           const clientCustom = incoming.customExercises;
+          const live         = history?.filter((e) => !e.deletedAt);   // sin lápidas (E59)
           // Mirror the client's counters verbatim — never recompute them here
           // (spec §3.1). Kept even when there is no new history to merge.
           // The session count comes fresh with them: it is the same number the
@@ -4208,12 +4226,12 @@ export const useStore = create(
               ...s.clients,
               [clientId]: {
                 ...s.clients[clientId],
-                remoteSessionsCount: history?.length ?? 0,
+                remoteSessionsCount: live?.length ?? 0,
                 ...(progress ? { progress } : {}),
               },
             },
           }));
-          if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
+          if (!live?.length && !Object.keys(clientCustom ?? {}).length) {
             return { merged: 0 };
           }
 
@@ -4229,7 +4247,7 @@ export const useStore = create(
           // deleted them, or reinstalled) are kept — this is the trainer's record.
           // A changed copy of a known entry (RPE added in the recap) replaces it.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history, { update: true });
+          const merged    = mergeClientLog(existing, history, { update: true, deleted: get().deletedLogIds });
           const newCount  = merged.length - existing.length;
 
           set((s) => ({
@@ -4543,7 +4561,8 @@ export const useStore = create(
           if (!mergeHistory) return;
 
           const localIds   = new Set((get().workoutLog ?? []).map((e) => e.id));
-          const newEntries = (remoteEntries ?? []).filter((e) => e.id && !localIds.has(e.id));
+          const deleted    = get().deletedLogIds ?? {};
+          const newEntries = (remoteEntries ?? []).filter((e) => e.id && !e.deletedAt && !deleted[e.id] && !localIds.has(e.id));
           if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
             set((s) => ({
               workoutLog: [...s.workoutLog, ...newEntries].sort(
@@ -4789,7 +4808,7 @@ export const useStore = create(
        * quedan sin enviar.
        */
       uploadHistoryToTrainer: async () => {
-        const { clientSync, workoutLog, customExercises, programs, profile } = get();
+        const { clientSync, workoutLog, customExercises, programs, profile, deletedLogIds } = get();
         if (!clientSync.slotId || clientSync.lostAt) return; // sin entrenador, o ya lo sabe
 
         // Privacy-scoped slice: only trainer-program sessions + post-link free
@@ -4818,7 +4837,9 @@ export const useStore = create(
         );
 
         try {
-          await uploadHistory(entries, relevantCustom, progress);
+          // ponytail: las lápidas no se podan nunca; son ids, crecen poco.
+          const tombstones = Object.entries(deletedLogIds ?? {}).map(([id, at]) => ({ id, deletedAt: at, updatedAt: at }));
+          await uploadHistory([...entries, ...tombstones], relevantCustom, progress);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -5244,6 +5265,7 @@ export const useStore = create(
         profile: state.profile,
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
+        deletedLogIds: state.deletedLogIds,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
         stageBannerSnooze: state.stageBannerSnooze,

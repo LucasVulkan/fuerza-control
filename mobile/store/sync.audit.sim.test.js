@@ -433,27 +433,30 @@ describe('S10-S13 el historial del hueco y el del móvil se pisan', () => {
     c.device.release(); await old;                                  // v1 llega después
     expect((await slotOf(c.s.clientSync.slotId)).history_json.entries[0].sessionRpe).toBe(9);
   });
-  it('S12 hoy: lo que el entrenador borra de un cliente con app vuelve en la siguiente descarga (regla R-C3: mezclar solo añade; R-C4)', async () => {
+  it('S12 arreglado (E59): lo que el entrenador borra de un cliente con app no vuelve en la siguiente descarga (regla R-C3: lo borrado no vuelve; R-C4)', async () => {
     const { t, c, clientId } = await trainerAndClient();
     await trainOnce(c, 's1');
     expect(await trainerSees(t, clientId)).toEqual(['s1']);
     t.s.deleteClientLogEntry(clientId, 's1');
     expect(t.s.clientLogs[clientId]).toHaveLength(0);
-    c.store.setState({ workoutLog: [] });                           // y el cliente también lo borró
+    expect(await trainerSees(t, clientId)).toEqual([]);             // el cliente aún lo tiene en el hueco
+    c.s.deleteLogEntry('s1');                                       // y el cliente también lo borra
     await c.s.uploadHistoryToTrainer();
-    expect(await trainerSees(t, clientId)).toEqual(['s1']);
+    expect(await trainerSees(t, clientId)).toEqual([]);
+    expect(t.s.clients[clientId].remoteSessionsCount).toBe(0);
   });
-  it('S13 hoy: el cliente borra s1, reinstala y fusiona → s1 vuelve a su historial (regla R-C3: mezclar solo añade)', async () => {
+  it('S13 arreglado (E59): el cliente borra s1, reinstala y fusiona → s1 no vuelve a su historial (regla R-C3: lo borrado no vuelve)', async () => {
     const { t, clientId, c: c0 } = await trainerAndClient();
     let c = c0;
     await trainOnce(c, 's1');
     await trainOnce(c, 's2');
-    c.store.setState((s) => ({ workoutLog: s.workoutLog.filter((e) => e.id !== 's1') }));
+    c.s.deleteLogEntry('s1');
     await c.s.uploadHistoryToTrainer();
     expect(c.s.workoutLog.map((e) => e.id)).toEqual(['s2']);
+    expect((await slotOf(c.s.clientSync.slotId)).sessions_count).toBe(1);
     c = await reinstall(c);
     await c.s.linkToTrainer(codeOf(t, clientId), { mergeHistory: true });
-    expect(c.s.workoutLog.map((e) => e.id).sort()).toEqual(['s1', 's2']);
+    expect(c.s.workoutLog.map((e) => e.id)).toEqual(['s2']);
   });
 });
 
