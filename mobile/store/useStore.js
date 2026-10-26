@@ -4664,6 +4664,8 @@ export const useStore = create(
           const seat = await seatOf();
           // Respuesta del servidor, no fallo de red: ya no tiene asiento.
           if (!seat) { await get()._markClientLost(); return; }
+          // Otro asiento: ha cambiado de entrenador (aquí o en otro móvil), no es una actualización (E53).
+          if (seat.slotId !== clientSync.slotId) { await get()._adoptSeat({ userId: await clientSessionUserId() }); return; }
           const { programJson, updatedAt, trainerName, overrides } = seat;
           // Un entrenador con la versión vieja manda los ids de antes de juntar
           // los ejercicios repetidos (P09-exercise-variants.md §3.3). Antes del

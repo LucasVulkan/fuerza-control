@@ -142,7 +142,7 @@ describe('S2 borrar la cuenta muere entre las dos llamadas', () => {
 });
 
 describe('S3 el móvil del cliente conserva un slotId que el servidor ya liberó', () => {
-  it('S3 hoy: cambiar A → B falla al bajar el asiento (tras ocuparlo); el móvil sigue «con A», el siguiente pull ofrece el programa de B y las sesiones de A se suben a B (regla R-B1/R-C7: un asiento, y un corte se arregla solo)', async () => {
+  it('S3 arreglado (E53): cambiar A → B falla al bajar el asiento (tras ocuparlo); el siguiente pull adopta B como cambio de entrenador y nada de A llega a B (regla R-B1/R-C7: un asiento, y un corte se arregla solo)', async () => {
     const a = await phone('A');
     const b = await phone('B');
     const c = await phone('cliente');
@@ -158,12 +158,13 @@ describe('S3 el móvil del cliente conserva un slotId que el servidor ya liberó
     expect((await slotOf(c.s.clientSync.slotId)).client_id).toBeNull();          // pero A ya está libre
     await c.s.checkAndPullProgramUpdates();
     expect(c.s.clientSync.lostAt).toBeFalsy();
-    expect(c.s.clientSync.pendingProgramUpdate?.programJson?.program?.name).toBe('De B');
-    c.s.applyPendingProgramUpdate();
+    expect(c.s.clientSync.slotId).toBe(b.s.clients[cb.clientId].syncSlotId);
+    expect(c.s.clientSync.pendingProgramUpdate).toBeFalsy();
+    expect(c.s.clientSync.trainerProgramIds.map((id) => c.s.programs[id].name)).toEqual(['De B']);
     await c.s.uploadHistoryToTrainer();
-    expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId))).toContain('de-A');   // fuga a B
+    expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId)) ?? []).not.toContain('de-A');
   });
-  it('S3 hoy: con el mismo Google en dos móviles, uno cambia de entrenador; el otro sigue en el asiento viejo (sin «perdido») y sube sus sesiones al entrenador nuevo (regla R-B1: un cliente, un asiento)', async () => {
+  it('S3 arreglado (E53): con el mismo Google en dos móviles, uno cambia de entrenador; el otro adopta el asiento nuevo y no le sube sesiones del viejo (regla R-B1: un cliente, un asiento)', async () => {
     const a = await phone('A');
     const b = await phone('B');
     await a.s.createTrainerCodeAccount();
@@ -177,10 +178,12 @@ describe('S3 el móvil del cliente conserva un slotId que el servidor ya liberó
     const found = await c2.s.validateGoogleClient(google('gC'));
     await c2.s.confirmGoogleReconnect({ googleUserId: found.userId, provider: 'google', mergeHistory: true });
     await join(c1, codeOf(b, cb.clientId));                       // móvil 1 pasa a B
+    const aEntry = entry(c2, 'a-session');                        // entrenado con el programa de A
     await c2.s.checkAndPullProgramUpdates();
-    expect(c2.s.clientSync.slotId).toBe(a.s.clients[ca.clientId].syncSlotId);   // móvil 2 sigue «en A»
-    await trainOnce(c2, 'a-session');
-    expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId))).toEqual(['a-session']);
+    expect(c2.s.clientSync.slotId).toBe(b.s.clients[cb.clientId].syncSlotId);   // móvil 2 pasa a B
+    c2.store.setState((s) => ({ workoutLog: [...s.workoutLog, aEntry] }));
+    await c2.s.uploadHistoryToTrainer();
+    expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId)) ?? []).not.toContain('a-session');
   });
 });
 
