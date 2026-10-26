@@ -73,7 +73,7 @@ select 'política de escritura', policyname
   from pg_policies
  where schemaname = 'public'
    and (   (tablename = 'trainer_clients' and cmd <> 'SELECT')
-        or tablename = 'transfer_offers')   -- ni leer: una oferta falsa robaría huecos
+        or tablename in ('transfer_offers', 'deleted_slots'))   -- ni leer: una oferta falsa robaría huecos
 
 union all
 -- Permiso sobre la tabla, el que sea (también el que llega de PUBLIC); leer solo vale en trainer_clients.
@@ -82,7 +82,7 @@ select 'permiso de escritura directo', r || ' ' || p || ' ' || c.relname
        unnest(array['anon', 'authenticated']) r,
        unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) p
  where c.relnamespace = 'public'::regnamespace
-   and c.relname in ('trainer_clients', 'transfer_offers', 'seat_losses')
+   and c.relname in ('trainer_clients', 'transfer_offers', 'seat_losses', 'deleted_slots')
    and not (p = 'SELECT' and c.relname = 'trainer_clients')
    and has_table_privilege(r, c.oid, p)
 
@@ -128,7 +128,7 @@ union all
 select 'RLS desactivada', c.relname::text
   from pg_class c
  where c.relnamespace = 'public'::regnamespace and not c.relrowsecurity
-   and c.relname in ('trainer_clients', 'profiles', 'transfer_offers', 'seat_losses')
+   and c.relname in ('trainer_clients', 'profiles', 'transfer_offers', 'seat_losses', 'deleted_slots')
 
 union all
 -- Política de lectura que deja ver todas las filas.
@@ -153,8 +153,19 @@ select 'función interna ejecutable por authenticated', p.oid::regprocedure::tex
 union all
 -- Índices y claves ajenas que sostienen las reglas.
 select 'falta el índice', i
-  from unnest(array['trainer_clients_one_seat', 'trainer_clients_code_key']) i
+  from unnest(array['trainer_clients_one_seat', 'trainer_clients_code_key', 'trainer_clients_local_id']) i
  where to_regclass('public.' || i) is null
+
+union all
+-- Las tablas auxiliares, y el trigger que suelta el asiento de un usuario borrado (E36).
+select 'falta la tabla', t
+  from unnest(array['transfer_offers', 'seat_losses', 'deleted_slots']) t
+ where to_regclass('public.' || t) is null
+
+union all
+select 'falta el trigger', 'release_seat_of_deleted_user'
+ where not exists (select 1 from pg_trigger
+                    where tgname = 'release_seat_of_deleted_user' and tgrelid = 'auth.users'::regclass and not tgisinternal)
 
 union all
 select 'falta la clave ajena', f
