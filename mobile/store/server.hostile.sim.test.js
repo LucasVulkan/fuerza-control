@@ -556,7 +556,7 @@ describe('H14 — subida en vuelo durante un cambio de entrenador', () => {
 });
 
 describe('H15 — borrar un usuario cliente fuera de delete-account', () => {
-  it('H15 hoy: la FK suelta el asiento pero deja disconnected_at null: el entrenador lo ve invitado (regla R-B6: «se fue»)', async () => {
+  it('H15 arreglado (E36): borrar al usuario cliente suelta el asiento con disconnected_at: el entrenador lo ve «se fue» (R-B6)', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const c = await anon('c');
@@ -564,6 +564,17 @@ describe('H15 — borrar un usuario cliente fuera de delete-account', () => {
     expect((await slotOf(S)).client_id).toBe(c.id);
 
     await server.deleteUser(c.id);
+    const row = await slotOf(S);
+    expect(row.client_id).toBeNull();
+    expect(row.disconnected_at).toBeTruthy();
+  });
+
+  it('E36: reemitir el código sigue dejando al hueco como invitado (sin disconnected_at)', async () => {
+    const t = await account('t', 'ABCD-EFGH-JKLM');
+    const { S, K } = await slotWithProgram(t);
+    const c = await anon('c');
+    await link(c, K, S);
+    await ok(t.db, 'trainer_reissue_client_code', { p_slot_id: S });
     expect(await slotOf(S)).toMatchObject({ client_id: null, disconnected_at: null });
   });
 });

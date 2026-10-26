@@ -164,6 +164,25 @@ begin
   end if;
 end $$;
 
+-- Borrar al cliente desde el panel de Supabase lo deja «se fue», no invitado:
+-- la FK sola suelta el asiento sin `disconnected_at` (E36). No es un trigger de
+-- `trainer_clients` porque `trainer_reissue_client_code` suelta el asiento sin
+-- fecha a propósito (vuelve a invitado).
+create or replace function public._release_seat_of_deleted_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.trainer_clients set client_id = null, disconnected_at = now() where client_id = old.id;
+  return old;
+end;
+$$;
+drop trigger if exists release_seat_of_deleted_user on auth.users;
+create trigger release_seat_of_deleted_user before delete on auth.users
+  for each row execute function public._release_seat_of_deleted_user();
+
 
 -- ── 5. Permisos de la tabla: solo leer lo tuyo ──────────────────────────────
 
@@ -695,7 +714,7 @@ declare f text;
 begin
   foreach f in array array[
     'new_client_code()', '_caller()', '_trainer()', '_check_target(uuid)', '_locked_by(uuid)',
-    '_merge_history(jsonb, jsonb)',
+    '_merge_history(jsonb, jsonb)', '_release_seat_of_deleted_user()',
     'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
