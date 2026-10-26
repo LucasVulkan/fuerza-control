@@ -104,7 +104,15 @@ export default function App() {
     if (!isFileIntent) return;
 
     try {
-      const rawContent = await FileSystem.readAsStringAsync(url, {
+      // readAsStringAsync (legacy) solo lee content:// de SAF; el de WhatsApp
+      // (com.whatsapp.provider.media) da «Unsupported scheme». copyAsync sí
+      // abre cualquier content://, así que se copia a la caché y se lee de ahí.
+      let readUri = url;
+      if (url.startsWith('content://')) {
+        readUri = FileSystem.cacheDirectory + 'incoming.fitdata';
+        await FileSystem.copyAsync({ from: url, to: readUri });
+      }
+      const rawContent = await FileSystem.readAsStringAsync(readUri, {
         encoding: FileSystem.EncodingType.UTF8,
       });
       // Extract a human-readable filename (best-effort from the URI)
