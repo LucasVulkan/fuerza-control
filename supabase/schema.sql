@@ -429,30 +429,28 @@ $$;
 
 -- ── 8. Cliente ──────────────────────────────────────────────────────────────
 
--- Lo justo para la pantalla de confirmar. Ni el programa ni ids: un código
--- filtrado no vale como llave de lectura.
+-- Lo justo para la pantalla de confirmar: tres nombres y cuatro sí/no. Ni el
+-- programa, ni ids, ni horas: un código filtrado no vale como llave de lectura.
 drop function if exists public.get_slot_by_code(text);
 create function public.get_slot_by_code(p_code text)
 returns table (
-  id                 uuid,
   client_name        text,
   program_name       text,
-  program_updated_at timestamptz,
+  trainer_name       text,
   is_linked          boolean,
   is_mine            boolean,
   locked_by          text,
-  history_updated_at timestamptz,
-  trainer_name       text
+  has_history        boolean
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select t.id, t.client_name, t.program_json -> 'program' ->> 'name', t.program_updated_at,
+  select t.client_name, t.program_json -> 'program' ->> 'name', t.trainer_name,
          t.client_id is not null, coalesce(t.client_id = auth.uid(), false),
          case when t.client_id <> coalesce(auth.uid(), t.client_id) or auth.uid() is null
               then public._locked_by(t.client_id) end,
-         t.history_updated_at, t.trainer_name
+         t.history_updated_at is not null
     from public.trainer_clients t
    where t.client_code = upper(trim(p_code))
    limit 1;

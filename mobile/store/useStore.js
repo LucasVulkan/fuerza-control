@@ -4497,12 +4497,11 @@ export const useStore = create(
         if (!slot.program_name) throw new Error(i18n.t('trainer.errNoProgramYet'));
         if (slot.locked_by) throw seatLockedError();
         return {
-          slotId:           slot.id,
           programName:      slot.program_name,
           // Lo usa OTRO móvil: entrar lo desconecta (C09 §4.6). La hoja lo
           // avisa antes de pulsar. Ocupado por mí no cuenta.
           alreadyLinked:    !!slot.is_linked && !slot.is_mine,
-          hasRemoteHistory: !!slot.history_updated_at,
+          hasRemoteHistory: !!slot.has_history,
           trainerName:      slot.trainer_name ?? null,
         };
       },

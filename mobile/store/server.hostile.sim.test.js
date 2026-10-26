@@ -126,23 +126,21 @@ describe('H1 — entrar con el código hereda el historial del hueco', () => {
 });
 
 describe('H2 — get_slot_by_code devuelve de más', () => {
-  it('H2 hoy: get_slot_by_code devuelve 9 campos, con id y la hora de la última subida (regla R-A5: solo 3 nombres)', async () => {
+  it('H2 arreglado (E30): get_slot_by_code devuelve solo tres nombres y cuatro sí/no, sin id ni horas (R-A5)', async () => {
     const t = await account('t', 'ABCD-EFGH-JKLM');
     const { S, K } = await slotWithProgram(t);
     const c = await anon('c');
     await link(c, K, S);
     await upload(c, ['s1']);
-    const uploadedAt = (await slotOf(S)).history_updated_at;
-    expect(uploadedAt).toBeTruthy();
+    expect((await slotOf(S)).history_updated_at).toBeTruthy();
 
     const z = await anon('z');                                   // no entra: solo teclea el código
     const rows = await ok(z.db, 'get_slot_by_code', { p_code: K });
     expect(rows).toHaveLength(1);
     expect(Object.keys(rows[0]).sort()).toEqual([
-      'client_name', 'history_updated_at', 'id', 'is_linked', 'is_mine', 'locked_by',
-      'program_name', 'program_updated_at', 'trainer_name',
+      'client_name', 'has_history', 'is_linked', 'is_mine', 'locked_by', 'program_name', 'trainer_name',
     ]);
-    expect(rows[0]).toMatchObject({ id: S, is_linked: true, is_mine: false, history_updated_at: uploadedAt });
+    expect(rows[0]).toMatchObject({ is_linked: true, is_mine: false, has_history: true });
     expect((await slotOf(S)).client_id).toBe(c.id);              // z no ha entrado
   });
 });
@@ -607,7 +605,7 @@ describe('Descartados: quedan fijados', () => {
 
     const messy = `  ${K.toLowerCase()} `;
     const c = await anon('c');
-    expect((await ok(c.db, 'get_slot_by_code', { p_code: messy }))[0].id).toBe(S);
+    expect((await ok(c.db, 'get_slot_by_code', { p_code: messy }))[0].client_name).toBe('Ana');
     expect(await ok(c.db, 'link_client_to_slot', { p_code: messy })).toBe(S);
   });
 

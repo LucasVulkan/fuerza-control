@@ -125,8 +125,8 @@ function parseHistory(raw) {
 
 /**
  * Lo justo para confirmar un código, sin vincularse:
- * `{ id, client_name, program_name, program_updated_at, is_linked, is_mine,
- *    history_updated_at, trainer_name }`.
+ * `{ client_name, program_name, trainer_name, is_linked, is_mine, locked_by,
+ *    has_history }`.
  */
 export async function getSlotByClientCode(clientCode) {
   return (await rpc(clientSupabase, 'get_slot_by_code', { p_code: clientCode }))?.[0] ?? null;
