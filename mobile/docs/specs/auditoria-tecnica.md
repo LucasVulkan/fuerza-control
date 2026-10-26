@@ -151,14 +151,14 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [46](#46) | 🟡 Media | ✅ Sin red, el PRO no caduca nunca | `store/useStore.js:4955` |
 | [47](#47) | 🟡 Media | ✅ Cobrado y sin red: «compra hecha» pero sin PRO | `store/useStore.js:5009` |
 | [48](#48) | 🟢 Baja | ✅ Borrar la cuenta puede dejar el PRO de la cuenta borrada | `store/useStore.js:4944` |
-| [49](#49) | 🟠 Alta | Pasar a un código nuevo con un corte deja los clientes en una cuenta perdida | `store/useStore.js:3829` |
-| [50](#50) | 🟠 Alta | Sin cobertura y con la sesión caducada, el cliente se cree desconectado | `src/services/supabaseSync.js:38` |
-| [51](#51) | 🟠 Alta | Las sesiones sin subir se pierden al dejar el asiento o si la app se cierra | `store/useStore.js:4604` |
-| [52](#52) | 🟡 Media | Desconectarse sin red deja al cliente «dentro» para el entrenador | `store/useStore.js:4826` |
-| [53](#53) | 🟡 Media | Con el asiento desactualizado, las sesiones van al entrenador equivocado | `store/useStore.js:4655` |
-| [54](#54) | 🟡 Media | «Vincular Google» del cliente: estado pegado y asiento ajeno suelto | `store/useStore.js:4902` |
+| [49](#49) | 🟠 Alta | ✅ Pasar a un código nuevo con un corte deja los clientes en una cuenta perdida | `store/useStore.js:3829` |
+| [50](#50) | 🟠 Alta | ✅ Sin cobertura y con la sesión caducada, el cliente se cree desconectado | `src/services/supabaseSync.js:38` |
+| [51](#51) | 🟠 Alta | ✅ Las sesiones sin subir se pierden al dejar el asiento o si la app se cierra | `store/useStore.js:4604` |
+| [52](#52) | 🟡 Media | ✅ Desconectarse sin red deja al cliente «dentro» para el entrenador | `store/useStore.js:4826` |
+| [53](#53) | 🟡 Media | ✅ Con el asiento desactualizado, las sesiones van al entrenador equivocado | `store/useStore.js:4655` |
+| [54](#54) | 🟡 Media | ✅ «Vincular Google» del cliente: estado pegado y asiento ajeno suelto | `store/useStore.js:4902` |
 | [55](#55) | 🟡 Media | Lo que se edita mientras se envía queda como enviado | `store/useStore.js:4151` |
-| [56](#56) | 🟡 Media | «Eliminar cuenta» se atasca si la app muere a mitad | `store/useStore.js:4959` |
+| [56](#56) | 🟡 Media | ✅ «Eliminar cuenta» se atasca si la app muere a mitad | `store/useStore.js:4959` |
 | [57](#57) | 🟡 Media | Con un programa propio activo, el progreso del entrenador se cruza | `store/useStore.js:4789` |
 | [58](#58) | 🟢 Baja | Una copia vieja de un entreno puede pisar una edición | `supabase/schema.sql:286` |
 | [59](#59) | 🟢 Baja | Lo que se borra del historial vuelve | `store/useStore.js:2985` |
@@ -2868,7 +2868,7 @@ Encontrado en I02-05.
 
 Hecho (`a74f28b`, `3abac2e`). `_purchasesLogOut` solo traga `LOG_OUT_ANONYMOUS_USER_ERROR`; con otro error baja el PRO igualmente. `deleteAccount` sale de RevenueCat y limpia al entrenador justo tras borrarlo, antes de la parte de cliente, y limpia el traspaso pendiente.
 
-## 49. Pasar a un código nuevo con un corte deja los clientes en una cuenta perdida 🟠 {#49}
+## 49. Pasar a un código nuevo con un corte deja los clientes en una cuenta perdida 🟠 ✅ {#49}
 
 > En corto: Si el entrenador pasa de Google o Apple a un código nuevo y la red se corta justo después del traspaso, sus clientes quedan en una cuenta cuyo código nunca vio; reintentar crea otra cuenta y ya no hay forma de recuperarlos.
 
@@ -2889,7 +2889,11 @@ Apple ya pasa así, porque el destino es siempre el mismo. I02 §7.2 dice que un
 fallo del traspaso obliga a reconsiderar `linkIdentity`, pero este arreglo es
 más corto y cierra el caso.
 
-## 50. Sin cobertura y con la sesión caducada, el cliente se cree desconectado 🟠 {#50}
+### ✅ Resuelto (26-oct-2026)
+
+Resuelto quitando el camino (decisión del usuario, 26-oct-2026, R-D1): Mi cuenta ya no ofrece pasar de Google o Apple a código, y `createTrainerCodeAccount` rechaza con `ACCOUNT_EXISTS` (texto traducido) si ya hay cuenta. Sigue sirviendo para la primera cuenta. `db1d44d`, `a97c5a6`.
+
+## 50. Sin cobertura y con la sesión caducada, el cliente se cree desconectado 🟠 ✅ {#50}
 
 > En corto: Si el cliente abre la app sin cobertura después de una hora sin usarla, la app cree que su entrenador lo ha desconectado; no se recupera al volver la red y lo que entrena no llega.
 
@@ -2908,7 +2912,11 @@ así que el test imita el comportamiento de la librería.
 **Arreglo previsto.** Que `myId` haga lo mismo que `userIdOf`: un error de red
 **no** es «no tengo sesión». Así, sin red, no se marca nada.
 
-## 51. Las sesiones sin subir se pierden al dejar el asiento o si la app se cierra 🟠 {#51}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`2728cd9`). `myId` es ahora `userIdOf`, que con `AuthRetryableFetchError` lanza en vez de devolver null. `checkAndPullProgramUpdates` lo trata como «sin red» y no marca nada.
+
+## 51. Las sesiones sin subir se pierden al dejar el asiento o si la app se cierra 🟠 ✅ {#51}
 
 > En corto: Un entreno que aún no se había subido se tira si el cliente se desconecta, cambia de entrenador o vuelve a meter su código, y no se sube si la app se cierra en los dos segundos siguientes a guardarlo.
 
@@ -2931,7 +2939,11 @@ Encontrado en I02-03 por las dos pasadas; viola R-C4 y R-C1.
 - Antes de soltar el asiento, intentar subir lo pendiente. Si falla, decidir
   con el usuario (§7).
 
-## 52. Desconectarse sin red deja al cliente «dentro» para el entrenador 🟡 {#52}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`537b58c`, `a97c5a6`). Una marca persistida `uploadDue` se pone al programar la subida y la recoge el reintento de siempre. Desconectarse intenta subir antes; si no puede, la pantalla avisa de cuántos entrenos no llegarán (contando desde la última subida o desde que se conectó) y el usuario decide. Cambiar de entrenador sube antes al asiento actual, y volver al mismo asiento sube tras adoptarlo. **Queda:** si se guarda un entreno durante una subida en vuelo y la app muere en los 2 s siguientes, no se reintenta hasta el siguiente cambio (marcado con `ponytail:`).
+
+## 52. Desconectarse sin red deja al cliente «dentro» para el entrenador 🟡 ✅ {#52}
 
 > En corto: Si el cliente se desconecta sin cobertura, su app queda desconectada pero el servidor no se entera: el entrenador lo sigue viendo conectado y nadie lo vuelve a intentar.
 
@@ -2946,7 +2958,11 @@ Encontrado en I02-03 por las dos pasadas; viola R-B6 y R-C1.
 avisar de que hace falta conexión, igual que otras acciones de cuenta. Es la
 regla de C09: nada se da por hecho sin el servidor.
 
-## 53. Con el asiento desactualizado, las sesiones van al entrenador equivocado 🟡 {#53}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`1cafbe5`). Si el servidor no confirma la desconexión, no se desconecta en local y la pantalla dice que hace falta conexión. Las llamadas internas (`ExternalImportModal`, fin del onboarding) se tragan el error: el cliente sigue conectado, coherente con el servidor.
+
+## 53. Con el asiento desactualizado, las sesiones van al entrenador equivocado 🟡 ✅ {#53}
 
 > En corto: Si el móvil del cliente cree seguir con un entrenador cuando ya está con otro, ofrece el programa del nuevo como actualización y sube allí las sesiones del anterior.
 
@@ -2967,7 +2983,11 @@ servidor (E37).
 como actualización sino como cambio de entrenador. Se adopta el asiento nuevo
 con `_adoptSeat`, sin subir lo del anterior.
 
-## 54. «Vincular Google» del cliente: estado pegado y asiento ajeno suelto 🟡 {#54}
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`fd85356`, `a97c5a6`). Si el asiento del servidor no es el del móvil, `checkAndPullProgramUpdates` lo adopta como cambio de entrenador y no lo ofrece como actualización. **La revisión encontró** que la subida pendiente salía antes de esa comprobación y podía llevar entrenos de A a B; se movió detrás, con test. **Queda:** una subida retrasada de 2 s podría llegar a B antes de cualquier comprobación; solo se cierra en el servidor, con el asiento en `client_upload_history` (ver [E37](#37)).
+
+## 54. «Vincular Google» del cliente: estado pegado y asiento ajeno suelto 🟡 ✅ {#54}
 
 > En corto: Un corte al vincular Google puede dejar al cliente marcado como desconectado aunque esté dentro, y vincular desde un asiento ya perdido suelta el asiento que ese Google tenía con otro entrenador.
 
@@ -2985,6 +3005,10 @@ Encontrado en I02-03 por las dos pasadas; viola R-C7, R-B3 y R-B1.
 
 **Arreglo previsto.** Comprobar el asiento propio (`seatOf`) antes de soltar
 nada, y al vincular limpiar `lostAt` como hace `_adoptSeat`.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`479e226`). Vincular Google mira primero el asiento propio y no suelta nada si no lo hay. Si el Google ya está en el asiento del móvil (reintento tras un corte), se salta el traspaso. Al terminar limpia `lostAt` y sube lo pendiente.
 
 ## 55. Lo que se edita mientras se envía queda como enviado 🟡 {#55}
 
@@ -3005,7 +3029,7 @@ Encontrado en I02-03 por las dos pasadas; viola R-C1.
 lo que se envió (misma firma; para las prescripciones, el mismo objeto). Y no
 sobrescribir `nextOverrides` con la copia enviada.
 
-## 56. «Eliminar cuenta» se atasca si la app muere a mitad 🟡 {#56}
+## 56. «Eliminar cuenta» se atasca si la app muere a mitad 🟡 ✅ {#56}
 
 > En corto: Si la app se cierra después de borrar la cuenta de entrenador en el servidor pero antes de terminar, cada nuevo intento da «Sesión no válida» y la parte de cliente no se borra.
 
@@ -3019,6 +3043,10 @@ Encontrado en I02-03, pasada por reglas; viola R-D4 y R-C7.
 **Arreglo previsto.** Si la sesión de entrenador ya no es válida porque la
 cuenta no existe, saltarse la parte de entrenador y seguir con la de cliente.
 Es la misma idea que en E33.
+
+### ✅ Resuelto (26-oct-2026)
+
+Hecho (`220bb93`, `a97c5a6`). Se salta la parte de entrenador solo si la cuenta está confirmada como inexistente: código no encontrado, o un 401 de `delete-account` y GoTrue responde `user_not_found`. **En qué se equivocaba la primera versión:** tomaba cualquier 401 como «ya borrada», y una sesión caducada de una cuenta viva habría dejado la cuenta en el servidor creyéndola borrada (App Store 5.1.1(v)). Lo encontró la revisión.
 
 ## 57. Con un programa propio activo, el progreso del entrenador se cruza 🟡 {#57}
 

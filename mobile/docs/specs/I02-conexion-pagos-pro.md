@@ -157,7 +157,7 @@ Tres palabras que salen mucho:
 
 | Código | Regla | Cómo |
 |---|---|---|
-| R-D1 | Cambiar de forma de entrar (código, Google, Apple) en cualquier dirección se lleva todos los clientes y no deja ninguno en la cuenta vieja. Hoy no se crean huecos nuevos: los mismos huecos cambian de dueño a la cuenta nueva (`transfer_my_slots_to`). Lo que sí es nuevo es la **cuenta** de Supabase. La alternativa estándar (`linkIdentity`, la misma cuenta con otra forma de entrar) queda descartada mientras el traspaso de hoy funcione sin problemas (23-oct-2026). Si esta auditoría encuentra fallos en el traspaso, se reconsidera. | B |
+| R-D1 | Cambiar de forma de entrar se lleva todos los clientes y no deja ninguno en la cuenta vieja. **Solo hacia una forma mejor** (26-oct-2026): de código a Google o Apple, y entre Google y Apple. De Google o Apple a código **no se ofrece**: lo que se quiere es empujar del código a una cuenta, y volver atrás no tiene sentido. Hoy los huecos cambian de dueño a la cuenta nueva (`offer_transfer`/`accept_transfer`); `linkIdentity` solo se reconsidera si el traspaso falla. | B |
 | R-D2 | Cambiar de forma de entrar no pierde el PRO (M01 §3.4, trampa 3). | U · T |
 | R-D3 | **Cerrar sesión no quita el PRO.** La compra va con la cuenta de la tienda (Google Play / App Store), no con la de la app: el PRO sigue en el móvil y Restaurar lo recupera en cualquier caso. Solo borrar la cuenta sale de RevenueCat (M01 §3.6). | U · D |
 | R-D4 | Borrar la cuenta borra sus huecos y su usuario en el servidor; sus clientes ven que el entrenador los desconectó; no queda nada que se pueda leer. | B · D |
@@ -433,6 +433,15 @@ cuando crezca), R-D1 (se queda el traspaso de hoy).
      recordatorio cuando quede un mes para renovar. Es conversión.
    - **Sale otra idea, más grande:** clientes de otra cuenta y copia en la
      nube del trabajo del entrenador. Va a una spec `C` propia.
+5. **Cerradas tras I02-03** (26-oct-2026):
+   - E58: gana la última edición. Cada entreno lleva su fecha de edición
+     (`updatedAt`).
+   - E59: lo que se borra se marca (`deletedAt`) en vez de quitarse, y la
+     fusión respeta la marca.
+   - E51: antes de soltar el asiento se intenta subir lo pendiente. Si no se
+     puede, la app avisa de cuántos entrenos no llegarán y el usuario decide.
+   - R-D1: se quita el paso de Google o Apple a código (E49 deja de tener
+     camino).
 4. **¿Quién hace las pasadas?** *Revisado el 23-oct-2026 por coste:* una
    pasada de Opus con esfuerzo máximo agotó el uso. A partir de ahora, Opus
    con esfuerzo alto solo para la pasada por reglas de cada zona, y la
