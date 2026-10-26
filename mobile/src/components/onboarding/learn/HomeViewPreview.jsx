@@ -267,8 +267,8 @@ const makeStyles = (th) => StyleSheet.create({
     flexDirection:     'row',
     gap:               spacing.sm,
     paddingTop:        11,
-    paddingHorizontal: spacing.sm,
-    paddingBottom:     spacing.sm,
+    paddingHorizontal: 14,
+    paddingBottom:     14,
   },
 
   // Las demás

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tema Oscuro · opciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=Barlow+Condensed:ital,wght@1,800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #2b2b2b; color: #eee; font-family: Inter, system-ui, sans-serif; padding: 24px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 40px 0 6px; }
+  p.note { color: #aaa; font-size: 13px; max-width: 760px; line-height: 1.5; margin: 0 0 14px; }
+  .row { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .tag { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; color: #999; }
+
+  /* ── Teléfono: todo sale de las variables del tema ── */
+  .phone { width: 300px; height: 600px; border-radius: 34px; overflow: hidden; background: var(--bg);
+           border: 6px solid #111; display: flex; flex-direction: column; font-family: Inter, sans-serif; color: var(--text); }
+  .hdr { background: var(--headerBg); display: flex; align-items: center; padding: 14px 16px 10px; gap: 8px; }
+  .logo { font-weight: 900; font-size: 16px; color: var(--hdrText, var(--text)); }
+  .logo b { font-family: 'Barlow Condensed'; font-style: italic; color: var(--accentText, var(--accent)); }
+  .clock { margin-left: auto; font-size: 12px; color: var(--hdrMeta, var(--mutedLight)); }
+  .menu { width: 18px; height: 12px; border-top: 2px solid var(--hdrText, var(--text)); border-bottom: 2px solid var(--hdrText, var(--text)); position: relative; margin-left: 10px; }
+  .menu::after { content: ''; position: absolute; left: 0; right: 0; top: 3px; border-top: 2px solid var(--hdrText, var(--text)); }
+  .body { flex: 1; padding: 6px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs span { flex: 1; text-align: center; font-size: 12px; font-weight: 800; padding: 7px 0; border-radius: var(--rsm);
+               background: var(--surface3); color: var(--mutedLight); }
+  .tabs span.on { background: var(--surface); color: var(--text); }
+  .card { background: var(--surface); border-radius: var(--rlg); padding: 14px; border: 1px solid var(--borderCard); }
+  .caps { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; color: var(--mutedLight); }
+  .hero { display: flex; gap: 10px; align-items: center; margin: 8px 0 4px; }
+  .glyph { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-size: 34px; color: var(--day1); line-height: 1; }
+  .name { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-size: 26px; line-height: 1; }
+  .meta { font-size: 12px; color: var(--mutedLight); }
+  .btns { display: flex; gap: 6px; margin-top: 12px; }
+  .cta { flex: 1; background: var(--accent); color: var(--onAccent); font-weight: 900; font-size: 13px; text-align: center; padding: 10px 0; border-radius: var(--rmd); }
+  .sec { background: var(--surface3); color: var(--text); font-weight: 900; font-size: 13px; padding: 10px 12px; border-radius: var(--rmd); }
+  .ex { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 10px 12px; border-radius: var(--rsm); border: 1px solid var(--borderCard); }
+  .ex .t { font-size: 14px; font-weight: 700; }
+  .chk { width: 22px; height: 22px; border-radius: 50%; background: var(--btnFill); margin-left: auto; flex: none; }
+  .chk.on { background: var(--accent); }
+  .seg { display: flex; background: var(--surface2); border-radius: var(--rsm); padding: 3px; gap: 3px; }
+  .seg span { flex: 1; font-size: 12px; font-weight: 700; text-align: center; padding: 5px 0; color: var(--mutedLight); border-radius: var(--rxs); }
+  .seg span.on { background: var(--surface); color: var(--text); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chips i { font-style: normal; font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 99px; }
+  .warn { font-size: 12px; color: var(--redText); font-weight: 700; }
+  .link { font-size: 13px; font-weight: 900; color: var(--accentText, var(--accent)); }
+  .tabbar { display: flex; justify-content: space-around; padding: 10px 0 16px; border-top: 1px solid var(--border); background: var(--bg); }
+  .tabbar span { font-size: 11px; color: var(--mutedLight); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tabbar span::before { content: ''; width: 18px; height: 18px; border-radius: 5px; border: 1.7px solid currentColor; }
+  .tabbar span.on { color: var(--text); }
+
+  table { border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+  td, th { padding: 4px 10px; border-bottom: 1px solid #3a3a3a; text-align: left; }
+  td.bad { color: #ff7a72; font-weight: 800; } td.ok { color: #8fe08a; }
+  .sw { display: flex; gap: 4px; flex-wrap: wrap; max-width: 300px; }
+  .sw span { font-size: 9px; padding: 14px 4px 3px; min-width: 44px; border-radius: 4px; color: #000; background: var(--c); text-shadow: 0 0 3px #fff8; }
+</style>
+</head>
+<body>
+<h1>Oscuro · tres salidas</h1>
+<p class="note">«Oscuro» hoy es FormaFit con otro amarillo. Tres caminos que hablan el idioma de la app (deporte, Barlow en cursiva, un solo acento que manda) sin repetirla. A la izquierda, el actual y FormaFit para comparar.</p>
+<div class="row">
+  <div class="col"><span class="tag">OSCURO ACTUAL</span>
+    <div class="phone" style="--bg:#0a0a0a;--surface:#141414;--surface2:#1a1a1a;--surface3:#1a1a1a;--text:#f0f0f0;--mutedLight:#9a9a9a;--accent:#e8ff47;--onAccent:#0a0a0a;--headerBg:#0a0a0a;--border:#2a2a2a;--borderCard:#1f1f1f;--btnFill:#2a2a2a;--redText:#f87171;--day1:#e8ff47;--day2:#ff6b35;--day3:#7eb8ff;--day4:#a78bfa;--day5:#34d399;--rxs:4px;--rsm:6px;--rmd:10px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">FORMAFIT</span>
+    <div class="phone" style="--bg:#0f0f0f;--surface:#1f1f1f;--surface2:#272727;--surface3:#333;--text:#e6e6e6;--mutedLight:#949494;--accent:#aae216;--onAccent:#000;--headerBg:#0f0f0f;--border:#3a3a3a;--borderCard:#1f1f1f;--btnFill:#3a3a3a;--redText:#ff5e58;--day1:#aae216;--day2:#ff6b35;--day3:#4c85ff;--day4:#a78bfa;--day5:#66fa39;--rxs:2px;--rsm:6px;--rmd:10px;--rlg:18px"></div>
+  </div>
+</div>
+
+<h2>A · Tiza (claro)</h2>
+<p class="note">El «FormaFit de día»: la misma lima de la marca, pero como relleno sobre blanco tiza, con texto negro encima (14:1). Es el más «de la app» de los tres. Pega: la lima como TEXTO sobre blanco no se lee (1.3:1), así que logo y enlaces van en un verde lima oscuro (#4a6600). Hace falta separar acento de relleno y acento de texto (<code>accent</code> / <code>accentText</code>), igual que <code>red</code> / <code>redText</code>.</p>
+<div class="row">
+  <div class="phone" style="--bg:#efeee8;--surface:#fff;--surface2:#f3f2ed;--surface3:#e6e5de;--text:#141414;--mutedLight:#5a5a52;--accent:#c4f230;--accentText:#4a6600;--onAccent:#111;--headerBg:#efeee8;--border:#dcdbd3;--borderCard:#e4e3dc;--btnFill:#dcdbd3;--redText:#c42b1c;--day1:#4a6600;--day2:#c4471a;--day3:#2a5bd7;--day4:#7a45c9;--day5:#117559;--rxs:2px;--rsm:6px;--rmd:10px;--rlg:18px"></div>
+  <table>
+    <tr><td>texto / tarjeta</td><td class="ok">18.4</td></tr>
+    <tr><td>negro / lima (botón)</td><td class="ok">14.5</td></tr>
+    <tr><td>lima / blanco (texto)</td><td class="bad">1.3 → usa #4a6600: 6.6</td></tr>
+    <tr><td>meta / tarjeta</td><td class="ok">7.0</td></tr>
+  </table>
+</div>
+
+<h2>B · Grafito (oscuro cálido, naranja)</h2>
+<p class="note">Negro carbón con un punto cálido y acento naranja deportivo (el <code>day2</code> que ya usa FormaFit, subido de tono). Se aleja del lima sin dejar de ser oscuro y energético. No necesita tokens nuevos.</p>
+<div class="row">
+  <div class="phone" style="--bg:#151311;--surface:#211e1b;--surface2:#2a2622;--surface3:#34302b;--text:#ede7de;--mutedLight:#a59c90;--accent:#ff7a3d;--onAccent:#151311;--headerBg:#151311;--border:#3a352f;--borderCard:#211e1b;--btnFill:#3a352f;--redText:#ff6b6b;--day1:#ff7a3d;--day2:#e8c55a;--day3:#6fa8ff;--day4:#c49bf2;--day5:#7fd67a;--rxs:2px;--rsm:6px;--rmd:10px;--rlg:18px"></div>
+  <table>
+    <tr><td>texto / tarjeta</td><td class="ok">13.5</td></tr>
+    <tr><td>fondo / naranja (botón)</td><td class="ok">7.2</td></tr>
+    <tr><td>naranja / tarjeta (texto)</td><td class="ok">6.4</td></tr>
+    <tr><td>meta / tarjeta</td><td class="ok">6.1</td></tr>
+  </table>
+</div>
+
+<h2>C · Pista (verde profundo, ámbar)</h2>
+<p class="note">Verde muy oscuro, casi negro (pista de atletismo de noche, banquillo), con acento ámbar. Es el más distinto y el más «con carácter»; se diferencia también de Midnight y de Earthy. No necesita tokens nuevos.</p>
+<div class="row">
+  <div class="phone" style="--bg:#0b1310;--surface:#13201a;--surface2:#1a2a22;--surface3:#22352b;--text:#e5ece7;--mutedLight:#96aa9e;--accent:#f2b544;--onAccent:#0b1310;--headerBg:#0b1310;--border:#26382f;--borderCard:#13201a;--btnFill:#2a3d33;--redText:#ff7b6e;--day1:#f2b544;--day2:#ff8a5c;--day3:#6fc3ff;--day4:#c49bf2;--day5:#8ee08a;--rxs:2px;--rsm:6px;--rmd:10px;--rlg:18px"></div>
+  <table>
+    <tr><td>texto / tarjeta</td><td class="ok">14.0</td></tr>
+    <tr><td>fondo / ámbar (botón)</td><td class="ok">10.3</td></tr>
+    <tr><td>ámbar / tarjeta (texto)</td><td class="ok">9.2</td></tr>
+    <tr><td>meta / tarjeta</td><td class="ok">6.8</td></tr>
+  </table>
+</div>
+<template id="screen">
+  <div class="hdr"><span class="logo">Forma<b>FIT</b></span><span class="clock">lun 26 · 18:42</span><span class="menu"></span></div>
+  <div class="body">
+    <div class="tabs"><span class="on">HOY</span><span>SEMANA</span><span>PROGRAMA</span></div>
+    <div class="card">
+      <div class="caps">ETAPA 2 · SEMANA 3</div>
+      <div class="hero"><span class="glyph">A</span><span class="name">Empuje pesado</span></div>
+      <div class="meta">5 ejercicios · 55 min · hace 3 días</div>
+      <div class="btns"><span class="cta">EMPEZAR</span><span class="sec">EDITAR</span></div>
+    </div>
+    <div class="ex"><span class="t">Press banca</span><span class="meta">4×6 · 100 kg</span><span class="chk on"></span></div>
+    <div class="ex"><span class="t">Fondos</span><span class="meta">3×10</span><span class="chk"></span></div>
+    <div class="seg"><span class="on">Peso</span><span>Reps</span><span>RPE</span></div>
+    <div class="chips">
+      <i style="background:color-mix(in srgb,var(--day1) 18%,transparent);color:var(--day1)">A</i>
+      <i style="background:color-mix(in srgb,var(--day2) 18%,transparent);color:var(--day2)">B</i>
+      <i style="background:color-mix(in srgb,var(--day3) 18%,transparent);color:var(--day3)">C</i>
+      <i style="background:color-mix(in srgb,var(--day4) 18%,transparent);color:var(--day4)">D</i>
+      <i style="background:color-mix(in srgb,var(--day5) 18%,transparent);color:var(--day5)">E</i>
+    </div>
+    <div class="warn">Te faltan 2 series de ayer</div>
+    <div class="link">+ Añadir ejercicio</div>
+  </div>
+  <div class="tabbar"><span class="on">Entreno</span><span>Progreso</span><span>Historial</span><span>Cuenta</span></div>
+</template>
+<script>
+  const tpl = document.getElementById('screen').innerHTML;
+  document.querySelectorAll('.phone').forEach(p => p.innerHTML = tpl);
+</script>
+</body>
+</html>

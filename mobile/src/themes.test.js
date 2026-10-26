@@ -8,10 +8,8 @@ import { THEMES } from './themes';
 // sin nada de verde, a ojo casi ilegible. `redText` (#ff5e58, el mismo del que
 // Figma deriva `tint/red-50`) es el tono legible.
 //
-// Se vigila formaFit porque es el tema por defecto y el del rediseño. Los otros
-// cuatro no entran: en `earthy` el rojo da 3.9:1 sobre su fondo claro, pero eso
-// es el mismo problema de paleta que ya tiene su accent (2.4:1) y se arregla
-// con la paleta, no aquí.
+// Aquí sólo formaFit, que es el único con dos tonos de rojo distintos; los
+// mínimos de los demás temas van en «mínimos de contraste», más abajo.
 
 const lin = (c) => {
   const v = c / 255;
@@ -47,6 +45,29 @@ describe('formaFit — rojo legible', () => {
 
   it('y el rojo de relleno NO llegaba — por eso hay dos tonos', () => {
     expect(contrast(c.red, c.surface)).toBeLessThan(4.5);
+  });
+});
+
+// ── Mínimos de todos los temas ────────────────────────────────────────────────
+// Lo que fallaba en earthy (texto sobre la cabecera a 1.7:1, blanco sobre el
+// acento a 3.5:1) no lo vigilaba nadie porque el test sólo miraba formaFit.
+describe.each(Object.keys(THEMES))('%s — mínimos de contraste', (id) => {
+  const c = THEMES[id].colors;
+
+  it('texto, meta y acento llegan a AA donde se pintan', () => {
+    expect(contrast(c.text, c.headerBg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(c.onAccent, c.accent)).toBeGreaterThanOrEqual(4.5);
+    for (const s of [c.bg, c.surface]) {
+      expect(contrast(c.mutedLight, s), `mutedLight sobre ${s}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.redText, s), `redText sobre ${s}`).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(c.mutedLight, c.surface2)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // El control segmentado y los buscadores van en `surface2` directamente sobre
+  // el fondo: en los temas claros salía casi del mismo color (1.03:1) y no se veía.
+  it('surface2 se despega del fondo', () => {
+    expect(contrast(c.surface2, c.bg)).toBeGreaterThanOrEqual(1.1);
   });
 });
 

@@ -359,15 +359,18 @@ export function getCardRadii(th, isFirst, isLast) {
       borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
     };
   }
+  // Las esquinas de dentro, todas a `xxs` como las de las filas intermedias: con
+  // `xs` abajo en la primera (y arriba a la derecha en la última) no casaban
+  // con la fila vecina y se veía el escalón (QA 26-oct).
   if (isFirst) {
     return {
       borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md,
-      borderBottomLeftRadius: th.radius.xs, borderBottomRightRadius: th.radius.xs,
+      borderBottomLeftRadius: xxs, borderBottomRightRadius: xxs,
     };
   }
   if (isLast) {
     return {
-      borderTopLeftRadius: xxs, borderTopRightRadius: th.radius.xs,
+      borderTopLeftRadius: xxs, borderTopRightRadius: xxs,
       borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md,
     };
   }

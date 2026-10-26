@@ -1345,8 +1345,9 @@ listas ni controles nuevos.
 ## 9. Patrones visuales reutilizables
 
 - **Lista agrupada** (`GroupedListRow`): fondo por item, gap `space/xs` (2) y radios
-  asimétricos — primero: superiores `md` / inferiores `xs`; intermedios: `xxs` en las 4;
-  último: al revés que el primero. Implementado como helper `getCardRadii(th, isFirst, isLast)`
+  asimétricos — primero: superiores `md` / inferiores `xxs`; intermedios: `xxs` en las 4;
+  último: al revés que el primero. (Figma ponía `xs` en las interiores de los extremos;
+  el QA del 26-oct lo bajó a `xxs` porque no casaba con la fila vecina.) Implementado como helper `getCardRadii(th, isFirst, isLast)`
   en `ProgressTab.jsx`. Se usa en listas densas de datos/config, **no** en listas de
   navegación (Clientes, History y HomeView usan tarjetas independientes con radio completo).
 - **Tarjeta plegable** (Home y ficha de cliente): `Reanimated.View` con

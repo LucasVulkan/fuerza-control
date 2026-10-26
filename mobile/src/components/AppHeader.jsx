@@ -117,7 +117,8 @@ function AccountRow({ onPress }) {
 
 // ── Selector de tema con muestras ─────────────────────────────────────────────
 // Un selector de temas debe enseñar los temas: cada muestra usa el `surface` y
-// el `accent` de SU tema, y el activo se marca con un anillo lima.
+// el `accent` de SU tema, y el activo se marca con un anillo del acento. Las
+// muestras van sin nombre —seis no cabían—: el del activo va bajo «Tema».
 
 function ThemeSwatches() {
   const th       = useTheme();
@@ -132,9 +133,12 @@ function ThemeSwatches() {
         return (
           <TouchableOpacity
             key={item.id}
-            style={styles.theme}
             onPress={() => { if (!active) setTheme(item.id); }}
             activeOpacity={0.8}
+            hitSlop={4}
+            accessibilityRole="button"
+            accessibilityLabel={item.name}
+            accessibilityState={{ selected: active }}
           >
             <View
               style={[
@@ -145,9 +149,6 @@ function ThemeSwatches() {
             >
               <View style={[styles.chipStripe, { backgroundColor: item.colors.accent }]} />
             </View>
-            <Text style={[styles.themeName, active && styles.themeNameActive]} numberOfLines={1}>
-              {item.name}
-            </Text>
           </TouchableOpacity>
         );
       })}
@@ -320,6 +321,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
   const styles     = useThemedStyles(makeStyles);
   const { t }      = useTranslation();
   const navigation = useNavigation();
+  const themeName  = useTheme().name;
 
   const profile     = useStore((s) => s.profile);
   const setProfile  = useStore((s) => s.setProfile);
@@ -453,7 +455,8 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
         />
         <MenuRow
           label={t('header.theme')}
-          minHeight={86}
+          value={themeName}
+          valueBelow
           control={<ThemeSwatches />}
         />
         <MenuRow
@@ -761,17 +764,14 @@ const makeStyles = (th) => StyleSheet.create({
   bwUnit:  { ...textStyles.labelStrong, color: th.colors.mutedLight },
 
   // Muestras de tema
-  themes:    { flexDirection: 'row', gap: spacing.md, flexShrink: 0 },
-  theme:     { alignItems: 'center', gap: spacing.sm },
+  themes:    { flexDirection: 'row', gap: spacing.sm2, flexShrink: 0 },
   chip: {
-    width:        38,
-    height:       38,
-    borderRadius: 12,
+    width:        32,
+    height:       32,
+    borderRadius: 10,
     overflow:     'hidden',
     borderWidth:  borders.medium,
     borderColor:  'transparent',
   },
-  chipStripe: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 13 },
-  themeName:  { ...textStyles.label, color: th.colors.muted },
-  themeNameActive: { fontFamily: 'Inter_900Black', color: th.colors.accent },
+  chipStripe: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 11 },
 });

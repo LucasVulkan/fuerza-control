@@ -488,16 +488,19 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor:   th.colors.bg,
     borderRadius:      th.radius.sm,
     overflow:          'hidden',
-    marginHorizontal:  spacing.sm,
+    // A 14, cuadrada con el botón de `todayFoot`.
+    marginHorizontal:  14,
     paddingHorizontal: 12,
     paddingVertical:   9,
   },
+  // El mismo aire que el botón de una sesión normal (`sesBody`): a 6 iba pegado
+  // al borde de la tarjeta.
   todayFoot: {
     flexDirection:     'row',
     gap:               spacing.sm,
     paddingTop:        11,
-    paddingHorizontal: spacing.sm,
-    paddingBottom:     spacing.sm,
+    paddingHorizontal: 14,
+    paddingBottom:     14,
   },
   todayBtn: {
     flex:            1,

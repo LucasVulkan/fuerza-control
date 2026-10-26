@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Temas · propuesta</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=Barlow+Condensed:ital,wght@1,800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #2b2b2b; color: #eee; font-family: Inter, system-ui, sans-serif; padding: 24px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 40px 0 6px; }
+  p.note { color: #aaa; font-size: 13px; max-width: 760px; line-height: 1.5; margin: 0 0 14px; }
+  .row { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .tag { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; color: #999; }
+
+  /* ── Teléfono: todo sale de las variables del tema ── */
+  .phone { width: 300px; height: 600px; border-radius: 34px; overflow: hidden; background: var(--bg);
+           border: 6px solid #111; display: flex; flex-direction: column; font-family: Inter, sans-serif; color: var(--text); }
+  .hdr { background: var(--headerBg); display: flex; align-items: center; padding: 14px 16px 10px; gap: 8px; }
+  .logo { font-weight: 900; font-size: 16px; color: var(--hdrText, var(--text)); }
+  .logo b { font-family: 'Barlow Condensed'; font-style: italic; color: var(--accentText, var(--accent)); }
+  .clock { margin-left: auto; font-size: 12px; color: var(--hdrMeta, var(--mutedLight)); }
+  .menu { width: 18px; height: 12px; border-top: 2px solid var(--hdrText, var(--text)); border-bottom: 2px solid var(--hdrText, var(--text)); position: relative; margin-left: 10px; }
+  .menu::after { content: ''; position: absolute; left: 0; right: 0; top: 3px; border-top: 2px solid var(--hdrText, var(--text)); }
+  .body { flex: 1; padding: 6px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs span { flex: 1; text-align: center; font-size: 12px; font-weight: 800; padding: 7px 0; border-radius: var(--rsm);
+               background: var(--surface3); color: var(--mutedLight); }
+  .tabs span.on { background: var(--surface); color: var(--text); }
+  .card { background: var(--surface); border-radius: var(--rlg); padding: 14px; border: 1px solid var(--borderCard); }
+  .caps { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; color: var(--mutedLight); }
+  .hero { display: flex; gap: 10px; align-items: center; margin: 8px 0 4px; }
+  .glyph { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-size: 34px; color: var(--day1); line-height: 1; }
+  .name { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-size: 26px; line-height: 1; }
+  .meta { font-size: 12px; color: var(--mutedLight); }
+  .btns { display: flex; gap: 6px; margin-top: 12px; }
+  .cta { flex: 1; background: var(--accent); color: var(--onAccent); font-weight: 900; font-size: 13px; text-align: center; padding: 10px 0; border-radius: var(--rmd); }
+  .sec { background: var(--surface3); color: var(--text); font-weight: 900; font-size: 13px; padding: 10px 12px; border-radius: var(--rmd); }
+  .ex { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 10px 12px; border-radius: var(--rsm); border: 1px solid var(--borderCard); }
+  .ex .t { font-size: 14px; font-weight: 700; }
+  .chk { width: 22px; height: 22px; border-radius: 50%; background: var(--btnFill); margin-left: auto; flex: none; }
+  .chk.on { background: var(--accent); }
+  .seg { display: flex; background: var(--surface2); border-radius: var(--rsm); padding: 3px; gap: 3px; }
+  .seg span { flex: 1; font-size: 12px; font-weight: 700; text-align: center; padding: 5px 0; color: var(--mutedLight); border-radius: var(--rxs); }
+  .seg span.on { background: var(--surface); color: var(--text); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chips i { font-style: normal; font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 99px; }
+  .warn { font-size: 12px; color: var(--redText); font-weight: 700; }
+  .link { font-size: 13px; font-weight: 900; color: var(--accentText, var(--accent)); }
+  .tabbar { display: flex; justify-content: space-around; padding: 10px 0 16px; border-top: 1px solid var(--border); background: var(--bg); }
+  .tabbar span { font-size: 11px; color: var(--mutedLight); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tabbar span::before { content: ''; width: 18px; height: 18px; border-radius: 5px; border: 1.7px solid currentColor; }
+  .tabbar span.on { color: var(--text); }
+
+  table { border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+  td, th { padding: 4px 10px; border-bottom: 1px solid #3a3a3a; text-align: left; }
+  td.bad { color: #ff7a72; font-weight: 800; } td.ok { color: #8fe08a; }
+  .sw { display: flex; gap: 4px; flex-wrap: wrap; max-width: 300px; }
+  .sw span { font-size: 9px; padding: 14px 4px 3px; min-width: 44px; border-radius: 4px; color: #000; background: var(--c); text-shadow: 0 0 3px #fff8; }
+</style>
+</head>
+<body>
+<h1>Temas · actual vs propuesta</h1>
+<p class="note">Mismo trozo de Inicio en cada tema: cabecera, pestañas, tarjeta de hoy, ejercicios con ✓, control segmentado, colores de sesión, aviso en rojo, enlace de acento y barra de pestañas. Debajo de cada par, los contrastes que fallaban.</p>
+
+<!-- ═══════════ EARTHY ═══════════ -->
+<h2>Earthy</h2>
+<p class="note">El fallo grande era la cabecera: <b>#4c453a</b> marrón con el texto oscuro del tema encima (1.7:1, ilegible). Ahora va del color del fondo. Además el verde de acento con texto blanco daba 3.5:1 y como texto 2.4:1. Propuesta sacada de la foto: fondo <i>Sandy Beige</i>, tarjetas <i>Off-White</i>, acento <i>Olive Green</i>, y <i>Terracotta</i> como primer color de sesión y naranja.</p>
+<div class="row">
+  <div class="col"><span class="tag">ACTUAL</span>
+    <div class="phone" style="--bg:#dbd5c8;--surface:#e6e0d4;--surface2:#cfc9bc;--surface3:#cfc9bc;--text:#26200f;--mutedLight:#4a4336;--accent:#6a9458;--onAccent:#fff;--headerBg:#4c453a;--border:#b5afa2;--borderCard:#b5afa2;--btnFill:#b5afa2;--redText:#b83838;--day1:#9e5838;--day2:#527848;--day3:#486888;--day4:#8c5858;--day5:#786830;--rxs:4px;--rsm:6px;--rmd:10px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">PROPUESTA</span>
+    <div class="phone" style="--bg:#e3dccf;--surface:#f5f1e9;--surface2:#e9e2d5;--surface3:#dcd3c2;--text:#2a2318;--mutedLight:#5e5444;--accent:#55613a;--onAccent:#fff;--headerBg:#e3dccf;--border:#d0c6b3;--borderCard:#e0d8c9;--btnFill:#d0c6b3;--redText:#a3302a;--day1:#a9532d;--day2:#55613a;--day3:#4a6580;--day4:#8f5050;--day5:#8a6d2a;--rxs:4px;--rsm:6px;--rmd:10px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">PALETA</span>
+    <div class="sw">
+      <span style="--c:#e3dccf">bg e3dccf</span><span style="--c:#f5f1e9">surface f5f1e9</span><span style="--c:#e9e2d5">surface2 e9e2d5</span><span style="--c:#dcd3c2">surface3 dcd3c2</span>
+      <span style="--c:#d0c6b3">border d0c6b3</span><span style="--c:#55613a;color:#fff">accent 55613a</span><span style="--c:#a9532d;color:#fff">terracota a9532d</span><span style="--c:#a3302a;color:#fff">red a3302a</span>
+    </div>
+    <table>
+      <tr><th></th><th>actual</th><th>propuesta</th></tr>
+      <tr><td>texto / cabecera</td><td class="bad">1.7</td><td class="ok">11.4</td></tr>
+      <tr><td>blanco / acento</td><td class="bad">3.5</td><td class="ok">6.6</td></tr>
+      <tr><td>acento / fondo</td><td class="bad">2.4</td><td class="ok">4.9</td></tr>
+      <tr><td>tarjeta / fondo</td><td class="bad">1.11</td><td class="ok">1.22</td></tr>
+      <tr><td>meta / tarjeta</td><td class="ok">7.4</td><td class="ok">6.6</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ SPACE ═══════════ -->
+<h2>Space</h2>
+<p class="note">Se lee blanco y negro porque TODO es gris neutro y el acento es negro: no hay ni un color que haga de «pulsa aquí». Dos cambios: grises un pelín fríos (azulados, casi imperceptibles) y acento <b>azul cobalto</b>. El negro se queda en el texto. Las tarjetas blancas sobre fondo más gris-azulado se separan mejor, y los controles dentro de tarjeta ya no son el #d6d6d6 pesado.</p>
+<div class="row">
+  <div class="col"><span class="tag">ACTUAL</span>
+    <div class="phone" style="--bg:#efefef;--surface:#fff;--surface2:#d6d6d6;--surface3:#d6d6d6;--text:#0a0a0a;--mutedLight:#444;--accent:#111;--onAccent:#fff;--headerBg:#e6e6e6;--border:#cecece;--borderCard:#c0c0c0;--btnFill:#cecece;--redText:#a02020;--day1:#111;--day2:#335599;--day3:#226644;--day4:#774499;--day5:#aa5500;--rxs:4px;--rsm:8px;--rmd:12px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">PROPUESTA · AZUL</span>
+    <div class="phone" style="--bg:#e9ecf1;--surface:#fff;--surface2:#eef1f5;--surface3:#e2e6ed;--text:#11151c;--mutedLight:#505968;--accent:#2b55e0;--onAccent:#fff;--headerBg:#e9ecf1;--border:#d5dae3;--borderCard:#dde1e8;--btnFill:#d5dae3;--redText:#c0322b;--day1:#2b55e0;--day2:#bf4a16;--day3:#117559;--day4:#7a45c9;--day5:#94620f;--rxs:4px;--rsm:8px;--rmd:12px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">ALTERNATIVA · NEGRO CON CHISPA</span>
+    <div class="phone" style="--bg:#e9ecf1;--surface:#fff;--surface2:#eef1f5;--surface3:#e2e6ed;--text:#11151c;--mutedLight:#505968;--accent:#11151c;--accentText:#2b55e0;--onAccent:#fff;--headerBg:#e9ecf1;--border:#d5dae3;--borderCard:#dde1e8;--btnFill:#d5dae3;--redText:#c0322b;--day1:#2b55e0;--day2:#bf4a16;--day3:#117559;--day4:#7a45c9;--day5:#94620f;--rxs:4px;--rsm:8px;--rmd:12px;--rlg:16px"></div>
+    <p class="note" style="max-width:300px">Botón negro, pero enlaces, logo y primera sesión en azul. Pide separar «acento de relleno» y «acento de texto» (como ya pasa con <code>red</code>/<code>redText</code>).</p>
+  </div>
+</div>
+<table>
+  <tr><th></th><th>actual</th><th>propuesta</th></tr>
+  <tr><td>blanco / acento</td><td class="ok">18.9</td><td class="ok">6.0</td></tr>
+  <tr><td>acento / fondo</td><td class="ok">16.4</td><td class="ok">5.1</td></tr>
+  <tr><td>tarjeta / fondo</td><td>1.15</td><td class="ok">1.18 + borde</td></tr>
+  <tr><td>meta / control (surface2)</td><td class="ok">6.7</td><td class="ok">6.3</td></tr>
+</table>
+
+<!-- ═══════════ MIDNIGHT ═══════════ -->
+<h2>Midnight</h2>
+<p class="note">Lo que cansa: azul saturado de fondo (#04091a → #111e45), texto blanco-hielo (#d8eeff) que vibra sobre él y bordes cian al 40-55 % en cada tarjeta, que es lo que lo hace «neón». Propuesta: azul pizarra casi neutro (azul solo en la temperatura, no en el color), texto blanco roto, sin bordes de color (la jerarquía con rellenos, como FormaFit) y acento azul pervinca suave en vez de cian eléctrico.</p>
+<div class="row">
+  <div class="col"><span class="tag">ACTUAL</span>
+    <div class="phone" style="--bg:#04091a;--surface:#0c1535;--surface2:#111e45;--surface3:#111e45;--text:#d8eeff;--mutedLight:#7fa8cc;--accent:#00c8f0;--onAccent:#04091a;--headerBg:#04091a;--border:rgba(0,200,240,.55);--borderCard:rgba(0,200,240,.4);--btnFill:#6f6f6f;--redText:#f87171;--day1:#00c8f0;--day2:#9b74f7;--day3:#00e8a0;--day4:#f472b6;--day5:#fbbf24;--rxs:4px;--rsm:6px;--rmd:10px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">PROPUESTA</span>
+    <div class="phone" style="--bg:#0a0d13;--surface:#151a23;--surface2:#1c222d;--surface3:#252c39;--text:#e4e7ec;--mutedLight:#9aa3b2;--accent:#8fb3ff;--onAccent:#0a0d13;--headerBg:#0a0d13;--border:#2a3240;--borderCard:#151a23;--btnFill:#2f3747;--redText:#f2787a;--day1:#8fb3ff;--day2:#c9a0f5;--day3:#5fd4b0;--day4:#f09ab8;--day5:#e8c278;--rxs:4px;--rsm:6px;--rmd:10px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">PALETA</span>
+    <div class="sw">
+      <span style="--c:#0a0d13;color:#ccc">bg 0a0d13</span><span style="--c:#151a23;color:#ccc">surface 151a23</span><span style="--c:#1c222d;color:#ccc">surface2 1c222d</span><span style="--c:#252c39;color:#ccc">surface3 252c39</span>
+      <span style="--c:#e4e7ec">text e4e7ec</span><span style="--c:#9aa3b2">meta 9aa3b2</span><span style="--c:#8fb3ff">accent 8fb3ff</span><span style="--c:#5fd4b0">green 5fd4b0</span>
+    </div>
+    <table>
+      <tr><th></th><th>actual</th><th>propuesta</th></tr>
+      <tr><td>texto / tarjeta</td><td>15.0 (vibra)</td><td class="ok">14.0</td></tr>
+      <tr><td>meta / tarjeta</td><td class="ok">7.1</td><td class="ok">6.8</td></tr>
+      <tr><td>bordes de color</td><td class="bad">cian 40-55 %</td><td class="ok">ninguno</td></tr>
+      <tr><td>saturación del fondo</td><td class="bad">alta</td><td class="ok">casi neutra</td></tr>
+    </table>
+  </div>
+</div>
+
+<template id="screen">
+  <div class="hdr"><span class="logo">Forma<b>FIT</b></span><span class="clock">lun 26 · 18:42</span><span class="menu"></span></div>
+  <div class="body">
+    <div class="tabs"><span class="on">HOY</span><span>SEMANA</span><span>PROGRAMA</span></div>
+    <div class="card">
+      <div class="caps">ETAPA 2 · SEMANA 3</div>
+      <div class="hero"><span class="glyph">A</span><span class="name">Empuje pesado</span></div>
+      <div class="meta">5 ejercicios · 55 min · hace 3 días</div>
+      <div class="btns"><span class="cta">EMPEZAR</span><span class="sec">EDITAR</span></div>
+    </div>
+    <div class="ex"><span class="t">Press banca</span><span class="meta">4×6 · 100 kg</span><span class="chk on"></span></div>
+    <div class="ex"><span class="t">Fondos</span><span class="meta">3×10</span><span class="chk"></span></div>
+    <div class="seg"><span class="on">Peso</span><span>Reps</span><span>RPE</span></div>
+    <div class="chips">
+      <i style="background:color-mix(in srgb,var(--day1) 18%,transparent);color:var(--day1)">A</i>
+      <i style="background:color-mix(in srgb,var(--day2) 18%,transparent);color:var(--day2)">B</i>
+      <i style="background:color-mix(in srgb,var(--day3) 18%,transparent);color:var(--day3)">C</i>
+      <i style="background:color-mix(in srgb,var(--day4) 18%,transparent);color:var(--day4)">D</i>
+      <i style="background:color-mix(in srgb,var(--day5) 18%,transparent);color:var(--day5)">E</i>
+    </div>
+    <div class="warn">Te faltan 2 series de ayer</div>
+    <div class="link">+ Añadir ejercicio</div>
+  </div>
+  <div class="tabbar"><span class="on">Entreno</span><span>Progreso</span><span>Historial</span><span>Cuenta</span></div>
+</template>
+<script>
+  const tpl = document.getElementById('screen').innerHTML;
+  document.querySelectorAll('.phone').forEach(p => p.innerHTML = tpl);
+</script>
+</body>
+</html>

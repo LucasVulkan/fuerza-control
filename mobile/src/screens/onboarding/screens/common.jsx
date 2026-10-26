@@ -165,7 +165,7 @@ function Units({ goTo }) {
 
 // ── Tema (§5.4) ───────────────────────────────────────────────────────────────
 
-const THEME_ORDER = ['formaFit', 'dark', 'midnight', 'earthy', 'space'];
+const THEME_ORDER = ['formaFit', 'dark', 'steel', 'midnight', 'earthy', 'space'];
 
 /** Una muestra: el fondo, la superficie y el acento del tema, con su nombre. La elegida se eleva. */
 function Swatch({ id, active, onPress }) {
@@ -332,8 +332,9 @@ const makeStyles = (th) => StyleSheet.create({
   opts:  { gap: spacing.md },
 
   // Tema
-  swatches:    { flexDirection: 'row', gap: spacing.sm2, marginBottom: spacing.lg },
-  swatchCell:  { flex: 1 },
+  // Seis temas no caben en una fila sin cortar los nombres: dos filas de tres.
+  swatches:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm2, marginBottom: spacing.lg },
+  swatchCell:  { flexBasis: '30%', flexGrow: 1 },
   swatch: {
     height:         92,
     borderRadius:   th.radius.lg,

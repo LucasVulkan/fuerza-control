@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Space azul hielo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=Barlow+Condensed:ital,wght@1,800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #2b2b2b; color: #eee; font-family: Inter, system-ui, sans-serif; padding: 24px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 40px 0 6px; }
+  p.note { color: #aaa; font-size: 13px; max-width: 760px; line-height: 1.5; margin: 0 0 14px; }
+  .row { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .tag { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; color: #999; }
+
+  /* ── Teléfono: todo sale de las variables del tema ── */
+  .phone { width: 300px; height: 600px; border-radius: 34px; overflow: hidden; background: var(--bg);
+           border: 6px solid #111; display: flex; flex-direction: column; font-family: Inter, sans-serif; color: var(--text); }
+  .hdr { background: var(--headerBg); display: flex; align-items: center; padding: 14px 16px 10px; gap: 8px; }
+  .logo { font-weight: 900; font-size: 16px; color: var(--hdrText, var(--text)); }
+  .logo b { font-family: 'Barlow Condensed'; font-style: italic; color: var(--accentText, var(--accent)); }
+  .clock { margin-left: auto; font-size: 12px; color: var(--hdrMeta, var(--mutedLight)); }
+  .menu { width: 18px; height: 12px; border-top: 2px solid var(--hdrText, var(--text)); border-bottom: 2px solid var(--hdrText, var(--text)); position: relative; margin-left: 10px; }
+  .menu::after { content: ''; position: absolute; left: 0; right: 0; top: 3px; border-top: 2px solid var(--hdrText, var(--text)); }
+  .body { flex: 1; padding: 6px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs span { flex: 1; text-align: center; font-size: 12px; font-weight: 800; padding: 7px 0; border-radius: var(--rsm);
+               background: var(--surface3); color: var(--mutedLight); }
+  .tabs span.on { background: var(--surface); color: var(--text); }
+  .card { background: var(--surface); border-radius: var(--rlg); padding: 14px; border: 1px solid var(--borderCard); }
+  .caps { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; color: var(--mutedLight); }
+  .hero { display: flex; gap: 10px; align-items: center; margin: 8px 0 4px; }
+  .glyph { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-size: 34px; color: var(--day1); line-height: 1; }
+  .name { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-size: 26px; line-height: 1; }
+  .meta { font-size: 12px; color: var(--mutedLight); }
+  .btns { display: flex; gap: 6px; margin-top: 12px; }
+  .cta { flex: 1; background: var(--accent); color: var(--onAccent); font-weight: 900; font-size: 13px; text-align: center; padding: 10px 0; border-radius: var(--rmd); }
+  .sec { background: var(--surface3); color: var(--text); font-weight: 900; font-size: 13px; padding: 10px 12px; border-radius: var(--rmd); }
+  .ex { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 10px 12px; border-radius: var(--rsm); border: 1px solid var(--borderCard); }
+  .ex .t { font-size: 14px; font-weight: 700; }
+  .chk { width: 22px; height: 22px; border-radius: 50%; background: var(--btnFill); margin-left: auto; flex: none; }
+  .chk.on { background: var(--accent); }
+  .seg { display: flex; background: var(--surface2); border-radius: var(--rsm); padding: 3px; gap: 3px; }
+  .seg span { flex: 1; font-size: 12px; font-weight: 700; text-align: center; padding: 5px 0; color: var(--mutedLight); border-radius: var(--rxs); }
+  .seg span.on { background: var(--surface); color: var(--text); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chips i { font-style: normal; font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 99px; }
+  .warn { font-size: 12px; color: var(--redText); font-weight: 700; }
+  .link { font-size: 13px; font-weight: 900; color: var(--accentText, var(--accent)); }
+  .tabbar { display: flex; justify-content: space-around; padding: 10px 0 16px; border-top: 1px solid var(--border); background: var(--bg); }
+  .tabbar span { font-size: 11px; color: var(--mutedLight); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tabbar span::before { content: ''; width: 18px; height: 18px; border-radius: 5px; border: 1.7px solid currentColor; }
+  .tabbar span.on { color: var(--text); }
+
+  table { border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+  td, th { padding: 4px 10px; border-bottom: 1px solid #3a3a3a; text-align: left; }
+  td.bad { color: #ff7a72; font-weight: 800; } td.ok { color: #8fe08a; }
+  .sw { display: flex; gap: 4px; flex-wrap: wrap; max-width: 300px; }
+  .sw span { font-size: 9px; padding: 14px 4px 3px; min-width: 44px; border-radius: 4px; color: #000; background: var(--c); text-shadow: 0 0 3px #fff8; }
+</style>
+</head>
+<body>
+<style>
+  .grad { background: linear-gradient(170deg, #f6f9fe 0%, #e6eefb 55%, #dde8fa 100%) !important; }
+  .grad .hdr, .grad .tabbar { background: transparent; }
+  .grad .card, .grad .ex { background: rgba(255,255,255,.72); border-color: rgba(255,255,255,.9); box-shadow: 0 4px 18px rgba(58,98,200,.08); }
+  .grad .cta { background: linear-gradient(90deg, #2b55e0, #6e8ff5); }
+  .grad .chk.on { background: linear-gradient(135deg, #2b55e0, #7aa0f7); }
+</style>
+<h1>Space · azul hielo</h1>
+<p class="note">Botones secundarios (EDITAR, pestañas sin abrir, controles) en azul pálido en vez de gris, y el resto del tema arrastrado un paso hacia el «cristal» de la referencia: fondo hielo, bordes azulados, grises fríos. El acento cobalto no cambia.</p>
+<div class="row">
+  <div class="col"><span class="tag">SPACE EN EL CÓDIGO HOY</span>
+    <div class="phone" style="--bg:#e9ecf1;--surface:#fff;--surface2:#eef1f5;--surface3:#e2e6ed;--text:#11151c;--mutedLight:#505968;--accent:#2b55e0;--onAccent:#fff;--headerBg:#e9ecf1;--border:#d5dae3;--borderCard:#dde1e8;--btnFill:#d5dae3;--redText:#c0322b;--day1:#2b55e0;--day2:#bf4a16;--day3:#117559;--day4:#7a45c9;--day5:#94620f;--rxs:4px;--rsm:8px;--rmd:12px;--rlg:16px"></div>
+  </div>
+  <div class="col"><span class="tag">AZUL HIELO · SOLO COLOR</span>
+    <div class="phone" style="--bg:#edf2f9;--surface:#fff;--surface2:#f1f5fc;--surface3:#dbe5fb;--text:#121826;--mutedLight:#4f5b70;--accent:#2b55e0;--onAccent:#fff;--headerBg:#edf2f9;--border:#d3ddee;--borderCard:#e2e9f5;--btnFill:#d3ddee;--redText:#c0322b;--day1:#2b55e0;--day2:#bf4a16;--day3:#117559;--day4:#7a45c9;--day5:#94620f;--rxs:4px;--rsm:8px;--rmd:12px;--rlg:16px"></div>
+    <p class="note" style="max-width:300px">Lo que entra ya, sólo tocando la paleta. Texto oscuro sobre el botón azul pálido: 14:1.</p>
+  </div>
+  <div class="col"><span class="tag">+ DEGRADADOS Y CRISTAL</span>
+    <div class="phone grad" style="--bg:#edf2f9;--surface:#fff;--surface2:#f1f5fc;--surface3:#dbe5fb;--text:#121826;--mutedLight:#4f5b70;--accent:#2b55e0;--onAccent:#fff;--headerBg:#edf2f9;--border:#d3ddee;--borderCard:#e2e9f5;--btnFill:#d3ddee;--redText:#c0322b;--day1:#2b55e0;--day2:#bf4a16;--day3:#117559;--day4:#7a45c9;--day5:#94620f;--rxs:4px;--rsm:8px;--rmd:12px;--rlg:16px"></div>
+    <p class="note" style="max-width:300px">Más cerca de la referencia: fondo en degradado, tarjetas translúcidas con borde blanco y sombra azul, botón principal en degradado. <b>No es sólo paleta:</b> pide <code>expo-linear-gradient</code> (no está instalado) y que el tema pueda decir «esta pantalla lleva degradado».</p>
+  </div>
+</div>
+<template id="screen">
+  <div class="hdr"><span class="logo">Forma<b>FIT</b></span><span class="clock">lun 26 · 18:42</span><span class="menu"></span></div>
+  <div class="body">
+    <div class="tabs"><span class="on">HOY</span><span>SEMANA</span><span>PROGRAMA</span></div>
+    <div class="card">
+      <div class="caps">ETAPA 2 · SEMANA 3</div>
+      <div class="hero"><span class="glyph">A</span><span class="name">Empuje pesado</span></div>
+      <div class="meta">5 ejercicios · 55 min · hace 3 días</div>
+      <div class="btns"><span class="cta">EMPEZAR</span><span class="sec">EDITAR</span></div>
+    </div>
+    <div class="ex"><span class="t">Press banca</span><span class="meta">4×6 · 100 kg</span><span class="chk on"></span></div>
+    <div class="ex"><span class="t">Fondos</span><span class="meta">3×10</span><span class="chk"></span></div>
+    <div class="seg"><span class="on">Peso</span><span>Reps</span><span>RPE</span></div>
+    <div class="chips">
+      <i style="background:color-mix(in srgb,var(--day1) 18%,transparent);color:var(--day1)">A</i>
+      <i style="background:color-mix(in srgb,var(--day2) 18%,transparent);color:var(--day2)">B</i>
+      <i style="background:color-mix(in srgb,var(--day3) 18%,transparent);color:var(--day3)">C</i>
+      <i style="background:color-mix(in srgb,var(--day4) 18%,transparent);color:var(--day4)">D</i>
+      <i style="background:color-mix(in srgb,var(--day5) 18%,transparent);color:var(--day5)">E</i>
+    </div>
+    <div class="warn">Te faltan 2 series de ayer</div>
+    <div class="link">+ Añadir ejercicio</div>
+  </div>
+  <div class="tabbar"><span class="on">Entreno</span><span>Progreso</span><span>Historial</span><span>Cuenta</span></div>
+</template>
+<script>
+  const tpl = document.getElementById('screen').innerHTML;
+  document.querySelectorAll('.phone').forEach(p => p.innerHTML = tpl);
+</script>
+</body>
+</html>
