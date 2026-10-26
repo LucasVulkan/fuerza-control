@@ -83,8 +83,8 @@ async function link(who, K, expectedSlot) {
   return slot;
 }
 
-async function upload(who, ids) {
-  return ok(who.db, 'client_upload_history', { p_history: { entries: ids.map((id) => ({ id })) }, p_sessions: ids.length });
+async function upload(who, ids, slot = null) {
+  return ok(who.db, 'client_upload_history', { p_history: { entries: ids.map((id) => ({ id })) }, p_sessions: ids.length, p_slot_id: slot });
 }
 
 const slotOf = async (id) => (await server.slots()).find((r) => r.id === id);
@@ -496,7 +496,7 @@ describe('H11 — nadie planta un asiento en una cuenta ajena', () => {
 });
 
 describe('H14 — subida en vuelo durante un cambio de entrenador', () => {
-  it('H14 hoy (SQL): la subida que llega después de entrar con el código de B cae en el hueco de B', async () => {
+  it('H14 arreglado (E37) (SQL): la subida con el asiento de A que llega después de entrar con el código de B se rechaza con SLOT_CHANGED y B no recibe nada', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');
     const A = await slotWithProgram(a);
@@ -505,9 +505,12 @@ describe('H14 — subida en vuelo durante un cambio de entrenador', () => {
     await link(x, A.K, A.S);
     await link(x, B.K, B.S);
 
-    expect(await upload(x, ['de-A'])).toBe(B.S);
-    expect(historyIds(await slotOf(B.S))).toEqual(['de-A']);
+    expect((await bad(x.db, 'client_upload_history', { p_history: { entries: [{ id: 'de-A' }] }, p_sessions: 1, p_slot_id: A.S })).message).toBe('SLOT_CHANGED');
+    expect((await slotOf(B.S)).history_json).toBeNull();
     expect((await slotOf(A.S)).history_json).toBeNull();
+    expect(await upload(x, ['de-B'], B.S)).toBe(B.S);               // con el asiento actual, sube
+    expect(await upload(x, ['viejo'])).toBe(B.S);                   // sin asiento (móvil viejo): como antes
+    expect(historyIds(await slotOf(B.S))).toEqual(['de-B', 'viejo']);
   });
 });
 

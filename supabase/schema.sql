@@ -523,11 +523,14 @@ as $$
   ) then 'taken' else 'gone' end;
 $$;
 
--- El cliente sube lo suyo a SU asiento: no hace falta decir cuál, es el suyo.
--- SUMA al historial del hueco (E28, R-C2): dos móviles o una reinstalación ya
--- no se pisan. `p_sessions` se ignora (el contador sale de lo fusionado, sin
--- lápidas); sigue en la firma por compatibilidad.
-create or replace function public.client_upload_history(p_history jsonb, p_sessions integer)
+-- El cliente sube lo suyo a SU asiento. SUMA al historial del hueco (E28, R-C2):
+-- dos móviles o una reinstalación ya no se pisan. `p_sessions` se ignora (el
+-- contador sale de lo fusionado, sin lápidas); sigue en la firma por
+-- compatibilidad. `p_slot_id` dice a qué asiento iba la subida (E37): si el
+-- cliente ya está en otro, SLOT_CHANGED y no se escribe nada. Sin él (móviles
+-- con la versión vieja), el asiento que tenga.
+drop function if exists public.client_upload_history(jsonb, integer);
+create function public.client_upload_history(p_history jsonb, p_sessions integer, p_slot_id uuid default null)
 returns uuid
 language plpgsql
 security definer
@@ -538,9 +541,14 @@ begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
          sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
-   where client_id = public._caller()
+   where client_id = public._caller() and (p_slot_id is null or id = p_slot_id)
   returning id into v_slot;
-  if v_slot is null then raise exception 'NO_SEAT'; end if;
+  if v_slot is null then
+    if p_slot_id is not null and exists (select 1 from public.trainer_clients where client_id = public._caller()) then
+      raise exception 'SLOT_CHANGED';
+    end if;
+    raise exception 'NO_SEAT';
+  end if;
   return v_slot;
 end;
 $$;
@@ -655,7 +663,7 @@ begin
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
@@ -666,7 +674,7 @@ begin
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
-    'client_upload_history(jsonb, integer)', 'release_client_slot()',
+    'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
   ] loop
     execute format('grant execute on function public.%s to authenticated', f);

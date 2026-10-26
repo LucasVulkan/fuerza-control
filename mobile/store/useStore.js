@@ -4839,7 +4839,7 @@ export const useStore = create(
         try {
           // ponytail: las lápidas no se podan nunca; son ids, crecen poco.
           const tombstones = Object.entries(deletedLogIds ?? {}).map(([id, at]) => ({ id, deletedAt: at, updatedAt: at }));
-          await uploadHistory([...entries, ...tombstones], relevantCustom, progress);
+          await uploadHistory([...entries, ...tombstones], relevantCustom, progress, clientSync.slotId);
           set((s) => ({
             clientSync: {
               ...s.clientSync,
@@ -4852,6 +4852,7 @@ export const useStore = create(
           }));
         } catch (err) {
           if (err.code === 'NO_SEAT') { await get()._markClientLost(); return; }
+          if (err.code === 'SLOT_CHANGED') return; // subida vieja: el asiento actual no ha fallado (E37)
           set((s) => ({
             clientSync: {
               ...s.clientSync,
