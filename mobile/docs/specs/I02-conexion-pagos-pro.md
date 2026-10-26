@@ -3,6 +3,7 @@
 > Tema: integridad
 > En corto: Escribir lo que la conexión entrenador ↔ cliente, los pagos y el plan PRO tienen que cumplir siempre, comprobarlo regla a regla contra el servidor y la app, y decir de cada hallazgo cuánto de seguro es, en vez de pedir "busca fallos".
 > Inicio: 2026-10-23
+> Fin: 2026-10-26
 > Fase I02-01 · terminado · Revisar y firmar las reglas · §3
 > Fase I02-02 · terminado · Servidor: el SQL y las Edge Functions contra un cliente hostil · §5.1
 > Fase I02-03 · terminado · App: conexión y sincronización · §5.2
