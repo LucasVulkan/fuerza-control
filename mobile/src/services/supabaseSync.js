@@ -79,6 +79,11 @@ export function deleteClientSlot(slotId) {
   return rpc(trainerSupabase, 'trainer_delete_slot', { p_slot_id: slotId });
 }
 
+/** De estos huecos, los que siguen existiendo en cualquier cuenta (aunque ya no sean tuyos). */
+export async function existingSlotIds(slotIds) {
+  return (await rpc(trainerSupabase, 'trainer_slots_alive', { p_ids: slotIds })).map((r) => r.slot_id);
+}
+
 /** Código nuevo y asiento libre, sin tocar el historial. Devuelve el código. */
 export function reissueClientCode(slotId) {
   return rpc(trainerSupabase, 'trainer_reissue_client_code', { p_slot_id: slotId });

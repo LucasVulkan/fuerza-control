@@ -24,7 +24,7 @@ import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
-  createClientSlot, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
+  createClientSlot, existingSlotIds, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
   getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
@@ -946,11 +946,13 @@ export const useStore = create(
        * pueda (C09 §3.5). El hueco queda apuntado en `trainerSync.deletedSlotIds`
        * hasta que el servidor confirma el borrado: antes, sin red, el borrado
        * se perdía y el siguiente refresco lo resucitaba como cliente nuevo, con
-       * el código aún válido. Devuelve la promesa del intento (no lanza).
+       * el código aún válido. Con `slotGone` el hueco ya no existe (lo borró el
+       * otro móvil del entrenador): no se apunta, no hay nada que borrar allí.
+       * Devuelve la promesa del intento (no lanza).
        */
-      deleteClient: (clientId) => {
+      deleteClient: (clientId, { slotGone = false } = {}) => {
         const client = get().clients[clientId];
-        if (client?.syncSlotId) {
+        if (client?.syncSlotId && !slotGone) {
           set((s) => ({
             trainerSync: {
               ...s.trainerSync,
@@ -4297,16 +4299,20 @@ export const useStore = create(
 
       /**
        * Pone la lista de clientes al día con los huecos del servidor (C09 §3.3).
-       * El servidor manda; aquí se refleja, sin borrar nada:
+       * El servidor manda; aquí se refleja:
        *
        *  - Hueco que falta en local (reinstalar, otro móvil) → ficha nueva, con
        *    el programa que hay en el hueco. TODOS: también el invitado, el
        *    reemitido y el que se fue, que siguen siendo clientes de esta cuenta.
        *  - Hueco conocido → contadores, «¿ha entrado?», «¿se fue?» y su código
        *    (pudo reemitirse desde otro móvil).
-       *  - Cliente cuyo hueco ya no está en esta cuenta → «de otra cuenta»
-       *    (`syncOrphan`): no se le manda nada, y si se vuelve a la cuenta buena
-       *    se recupera solo. Borrarlo sería perder clientes por un error de cuenta.
+       *  - Cliente cuyo hueco ya no está en esta cuenta pero existe en otra →
+       *    «de otra cuenta» (`syncOrphan`): no se le manda nada, y si se vuelve
+       *    a la cuenta buena se recupera solo. Borrarlo sería perder clientes
+       *    por un error de cuenta.
+       *  - Cliente cuyo hueco no existe en ninguna cuenta (lo borró el otro móvil
+       *    del entrenador, R-B6) → se borra aquí también. Si no se puede
+       *    preguntar, se queda «de otra cuenta».
        *  - Huecos de clientes borrados aquí → se borran allí (`_flushDeletedSlots`).
        *
        * Ligero: del historial solo lee `progress`, nunca las entradas.
@@ -4332,6 +4338,18 @@ export const useStore = create(
           const askedFor = new Set(Object.values(get().clients).map((c) => c.syncSlotId).filter(Boolean));
           const slots = await getTrainerSlots();
           const recovered = [];
+
+          const inSlots = new Set(slots.map((slot) => slot.id));
+          const missing = [...askedFor].filter((id) => !inSlots.has(id));
+          let gone = new Set();
+          if (missing.length) {
+            try {
+              const alive = new Set(await existingSlotIds(missing));
+              gone = new Set(missing.filter((id) => !alive.has(id)));
+            } catch (err) {
+              console.warn('[refreshTrainerSlots] huecos ausentes sin comprobar:', err.message);
+            }
+          }
 
           // Un solo `set`, y `clients` leído DENTRO del updater: dos refrescos
           // solapados no pueden crear dos fichas para el mismo hueco.
@@ -4370,7 +4388,7 @@ export const useStore = create(
               const c = next[clientId];
               const slot = bySlot.get(c.syncSlotId);
               if (!slot) {
-                if (askedFor.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
+                if (askedFor.has(c.syncSlotId) && !gone.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
                 continue;
               }
               next[clientId] = {
@@ -4392,6 +4410,10 @@ export const useStore = create(
 
             return { clients: next };
           });
+
+          if (gone.size && get().trainerSync.userId === trainerSync.userId) {
+            for (const c of Object.values(get().clients)) if (gone.has(c.syncSlotId)) get().deleteClient(c.id, { slotGone: true });
+          }
 
           // Los de refrescos anteriores que se quedaron sin programa (bajada fallida).
           // Si ya tienen programa, la marca sobra. `programMissing` solo la ponen las

@@ -433,6 +433,21 @@ begin
 end;
 $$;
 
+-- De estos ids, los que existen en cualquier cuenta (E60): el otro móvil del
+-- entrenador borró el cliente, o su hueco se pasó a otra cuenta. Solo devuelve
+-- ids que quien llama ya conoce, y sin decir de quién son.
+create or replace function public.trainer_slots_alive(p_ids uuid[])
+returns table (slot_id uuid)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public._trainer();
+  return query select t.id from public.trainer_clients t where t.id = any(p_ids);
+end;
+$$;
+
 -- Borrar un hueco que ya no está no es un error: devuelve false.
 create or replace function public.trainer_delete_slot(p_slot_id uuid)
 returns boolean
@@ -718,6 +733,7 @@ begin
     'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
+    'trainer_slots_alive(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
@@ -729,6 +745,7 @@ begin
     'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
+    'trainer_slots_alive(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'

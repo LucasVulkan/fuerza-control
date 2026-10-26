@@ -536,6 +536,22 @@ describe('E35 — trainer_create_slot con p_local_id', () => {
   });
 });
 
+describe('E60 — trainer_slots_alive', () => {
+  it('devuelve de los ids que le pasan los que existen en cualquier cuenta; un anónimo no puede preguntar', async () => {
+    const a = await account('a', 'ABCD-EFGH-JKLM');
+    const b = await account('b', 'BCDE-FGHJ-KLMN');
+    const mine = await slotWithProgram(a, 'Mío');
+    const theirs = await slotWithProgram(b, 'Ajeno');
+    const gone = await slotWithProgram(a, 'Borrado');
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S });
+    const x = await anon('x');
+
+    const ids = [mine.S, theirs.S, gone.S, '00000000-0000-4000-8000-000000000000'];
+    expect((await ok(a.db, 'trainer_slots_alive', { p_ids: ids })).map((r) => r.slot_id).sort()).toEqual([mine.S, theirs.S].sort());
+    expect((await bad(x.db, 'trainer_slots_alive', { p_ids: ids })).message).toBe('NOT_A_TRAINER');
+  });
+});
+
 describe('H14 — subida en vuelo durante un cambio de entrenador', () => {
   it('H14 arreglado (E37) (SQL): la subida con el asiento de A que llega después de entrar con el código de B se rechaza con SLOT_CHANGED y B no recibe nada', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
