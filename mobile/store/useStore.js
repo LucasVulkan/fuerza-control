@@ -517,7 +517,7 @@ export const useStore = create(
       // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
       clientLogs: {},
       // Ids de entradas borradas (de `workoutLog` o de `clientLogs`) y cuándo,
-      // `{ [id]: deletedAt }`. El cliente las sube como lápidas para que el
+      // `{ [id]: deletedAt }`. El cliente las sube en `deleted` para que el
       // servidor no las resucite; el entrenador las usa para no volver a bajarlas.
       // Nunca se podan (E59). Las lápidas no entran en `workoutLog` ni `clientLogs`.
       deletedLogIds: {},
@@ -4210,7 +4210,6 @@ export const useStore = create(
           const { progress, updatedAt } = downloaded;
           const history      = downloaded.history ? incoming.workoutLog : downloaded.history;
           const clientCustom = incoming.customExercises;
-          const live         = history?.filter((e) => !e.deletedAt);   // sin lápidas (E59)
           // Mirror the client's counters verbatim — never recompute them here
           // (spec §3.1). Kept even when there is no new history to merge.
           // The session count comes fresh with them: it is the same number the
@@ -4222,12 +4221,12 @@ export const useStore = create(
               ...s.clients,
               [clientId]: {
                 ...s.clients[clientId],
-                remoteSessionsCount: live?.length ?? 0,
+                remoteSessionsCount: history?.length ?? 0,
                 ...(progress ? { progress } : {}),
               },
             },
           }));
-          if (!live?.length && !Object.keys(clientCustom ?? {}).length) {
+          if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
             return { merged: 0 };
           }
 
@@ -4243,7 +4242,7 @@ export const useStore = create(
           // deleted them, or reinstalled) are kept — this is the trainer's record.
           // A changed copy of a known entry (RPE added in the recap) replaces it.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history, { update: true, deleted: get().deletedLogIds });
+          const merged    = mergeClientLog(existing, history, { update: true, deleted: { ...downloaded.deleted, ...get().deletedLogIds } });
           const newCount  = merged.length - existing.length;
 
           set((s) => ({
@@ -4584,7 +4583,7 @@ export const useStore = create(
           if (!mergeHistory) return;
 
           const localIds   = new Set((get().workoutLog ?? []).map((e) => e.id));
-          const deleted    = get().deletedLogIds ?? {};
+          const deleted    = { ...downloaded.deleted, ...get().deletedLogIds };
           const newEntries = (remoteEntries ?? []).filter((e) => e.id && !e.deletedAt && !deleted[e.id] && !localIds.has(e.id));
           if (newEntries.length > 0 || Object.keys(remoteCustom ?? {}).length > 0) {
             set((s) => ({
@@ -4861,8 +4860,7 @@ export const useStore = create(
 
         try {
           // ponytail: las lápidas no se podan nunca; son ids, crecen poco.
-          const tombstones = Object.entries(deletedLogIds ?? {}).map(([id, at]) => ({ id, deletedAt: at, updatedAt: at }));
-          await uploadHistory([...entries, ...tombstones], relevantCustom, progress, clientSync.slotId);
+          await uploadHistory(entries, relevantCustom, progress, clientSync.slotId, deletedLogIds);
           set((s) => ({
             clientSync: {
               ...s.clientSync,

@@ -14,12 +14,12 @@ with huellas(n, h) as (values
   ('_caller', 'ccb3b2dbc7c047aa132b7ffec5a1712f'),
   ('_check_target', 'f71e53d03ed1d01772cf59a66f30f127'),
   ('_locked_by', '4e4ae7904b2fe14831d60ea1ca55ba96'),
-  ('_merge_history', 'b0c31b3f3daa967577e6ab10ba666299'),
+  ('_merge_history', '5f2193d3ab9170930a6e3cc249d9a03a'),
   ('_release_seat_of_deleted_user', 'f01a7c7c858c1fea61a83445aad2642e'),
   ('_trainer', '895184881412f231e1d94aef8009eed3'),
   ('accept_transfer', '31b0e2f1b43c82681fbbfb965495cf4e'),
   ('client_lost_reason', 'c1aa16132493e01048a8445e9774cac4'),
-  ('client_upload_history', '512c26d1cf3b95bab07ef0c8dc2029f6'),
+  ('client_upload_history', '97fcd9452929940f17484b160a622b47'),
   ('get_slot_by_code', '1ec9eb35eb1399c71eefa1e0d6ca6794'),
   ('link_client_to_slot', '2f25fec0ab28035d66d5c6cc82c45ab2'),
   ('new_client_code', '4cd8993cec4d23f569beb2ac28032293'),
@@ -30,7 +30,7 @@ with huellas(n, h) as (values
   ('trainer_deleted_slots', 'b5bcca029f771b99c9bd7f687d6df20e'),
   ('trainer_reissue_client_code', '57d59eac2dd5d143f96f6be992754e6a'),
   ('trainer_set_name', '991c28decba6b250c7ed31efd8b90860'),
-  ('trainer_upload_log', '9614f076054c51c988e213ceab15a451'),
+  ('trainer_upload_log', '9c3ee43d389084ef89143fd452fcfce0'),
   ('trainer_upload_overrides', '3bfd01ad1de6c34087b084bcbbd0f010'),
   ('trainer_upload_program', '5830cbff51deabbe74860ed3f9204105')
 )

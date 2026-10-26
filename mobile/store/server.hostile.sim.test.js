@@ -401,9 +401,34 @@ describe('E28 — _merge_history', () => {
   const merge = async (o, n) => (await server.admin('select public._merge_history($1::jsonb, $2::jsonb) as m', [o === null ? null : JSON.stringify(o), JSON.stringify(n)]))[0].m;
   const E = (...ids) => ids.map((id) => (typeof id === 'string' ? { id } : id));
 
-  it('sin historial previo devuelve lo nuevo tal cual', async () => {
+  it('sin historial previo devuelve lo nuevo, con la forma de siempre (entries, deleted, customExercises, progress)', async () => {
     const n = { entries: E('a'), progress: { x: 1 } };
-    expect(await merge(null, n)).toEqual(n);
+    expect(await merge(null, n)).toEqual({ entries: E('a'), deleted: {}, customExercises: {}, progress: { x: 1 } });
+  });
+
+  it('E64/E69: deleted se une (el mayor por id) y una lápida quita las entradas con ese id que no se editaron después; ningún id queda en las dos', async () => {
+    const m = await merge(
+      { entries: E({ id: 'a', updatedAt: 100 }, { id: 'b', updatedAt: 100 }, 'c'), deleted: { a: 150, z: 10 } },
+      { entries: E({ id: 'b', updatedAt: 100 }, { id: 'd', updatedAt: 500 }), deleted: { a: 120, b: 100, d: 400 } });
+    expect(m.entries).toEqual([{ id: 'c' }, { id: 'd', updatedAt: 500 }]);   // a y b borradas (b: empate, gana la lápida); d se editó después
+    expect(m.deleted).toEqual({ a: 150, b: 100, z: 10 });                      // la de d ya no vale
+  });
+
+  it('E69: el mismo id como entrada y como lápida en la misma subida no se duplica', async () => {
+    const m = await merge(null, { entries: E({ id: 'x', updatedAt: 100 }), deleted: { x: 200 } });
+    expect(m).toMatchObject({ entries: [], deleted: { x: 200 } });
+  });
+
+  it('E64: las lápidas que las versiones anteriores metieron dentro de entries se pasan a deleted', async () => {
+    const m = await merge({ entries: E('a', { id: 'b', deletedAt: 90, updatedAt: 90 }) }, { entries: E({ id: 'a', deletedAt: 95, updatedAt: 95 }, 'c') });
+    expect(m.entries).toEqual([{ id: 'c' }]);
+    expect(m.deleted).toEqual({ a: 95, b: 90 });
+  });
+
+  it('fusionar dos veces lo mismo da lo mismo', async () => {
+    const x = { entries: E({ id: 'a', updatedAt: 5 }, 'b'), deleted: { c: 7 }, customExercises: { e: 1 }, progress: { p: 1 } };
+    const once = await merge(null, x);
+    expect(await merge(once, x)).toEqual(once);
   });
 
   it('entries: las viejas que no vienen se conservan y, con el mismo id, gana la nueva', async () => {

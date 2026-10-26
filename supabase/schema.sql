@@ -330,33 +330,55 @@ $$;
 -- R-C3: el historial solo crece). `entries` por `id`: las viejas que la subida
 -- no trae se conservan, y si el id se repite gana la de mayor `updatedAt` (ms;
 -- sin él, 0; empate, la que llega: E58); las que no tienen `id` se conservan
--- todas. Lo borrado viaja como lápida `{ id, deletedAt, updatedAt }` y gana por
--- esa misma regla (E59). `customExercises` se funde (gana la nueva) y
--- `progress` es el nuevo si lo hay. Interna: nadie la llama desde fuera.
+-- todas. Lo borrado viaja APARTE, en `deleted`: `{ [id]: deletedAt }` (E59,
+-- E64). Se unen los de las dos partes (el mayor por id) y una lápida gana a
+-- las entradas con ese id que no se editaron después de borrarse: `entries`
+-- nunca la lleva ni queda un id en las dos (E69). Las lápidas que las
+-- versiones anteriores metían dentro de `entries` se mueven a `deleted`.
+-- `customExercises` se funde (gana la nueva) y `progress` es el nuevo si lo
+-- hay. Interna: nadie la llama desde fuera.
 create or replace function public._merge_history(p_old jsonb, p_new jsonb)
 returns jsonb
 language sql
 immutable
 as $$
-  select case when p_old is null then p_new else jsonb_build_object(
+  with
+  raw(w, o, e, u) as (
+    select w, o, e, case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end
+      from (select 1 as w, o, e from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
+            union all
+            select 2, o, e from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) with ordinality as t(e, o)) s
+  ),
+  tomb(id, at) as (
+    select id, max(at) from (
+      select d.key, case jsonb_typeof(d.value) when 'number' then (d.value #>> '{}')::numeric else 0 end
+        from jsonb_each(coalesce(nullif(p_old->'deleted', 'null'::jsonb), '{}'::jsonb)) d
+      union all
+      select d.key, case jsonb_typeof(d.value) when 'number' then (d.value #>> '{}')::numeric else 0 end
+        from jsonb_each(coalesce(nullif(p_new->'deleted', 'null'::jsonb), '{}'::jsonb)) d
+      union all
+      select e->>'id', case jsonb_typeof(e->'deletedAt') when 'number' then (e->>'deletedAt')::numeric else 0 end
+        from raw where e->>'deletedAt' is not null and e->>'id' is not null
+    ) s(id, at) group by id
+  )
+  select jsonb_build_object(
     'entries', coalesce((
-        select jsonb_agg(e order by o)
-          from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
-         where not exists (select 1 from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
-                            where n->>'id' = e->>'id'
-                              and (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end) >= (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end))
-      ), '[]'::jsonb) || coalesce((
-        select jsonb_agg(n order by o)
-          from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) with ordinality as t(n, o)
-         where not exists (select 1 from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) e
-                            where e->>'id' = n->>'id'
-                              and (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end) > (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end))
+        select jsonb_agg(r.e order by r.w, r.o) from raw r
+         where r.e->>'deletedAt' is null
+           and not exists (select 1 from tomb t where t.id = r.e->>'id' and t.at >= r.u)
+           and not exists (select 1 from raw x
+                            where x.e->>'deletedAt' is null and x.e->>'id' = r.e->>'id' and x.w <> r.w
+                              and (x.u > r.u or (x.u = r.u and x.w > r.w)))
       ), '[]'::jsonb),
+    'deleted', coalesce((
+        select jsonb_object_agg(t.id, t.at) from tomb t
+         where not exists (select 1 from raw x where x.e->>'deletedAt' is null and x.e->>'id' = t.id and x.u > t.at)
+      ), '{}'::jsonb),
     'customExercises', coalesce(nullif(p_old->'customExercises', 'null'::jsonb), '{}'::jsonb)
                     || coalesce(nullif(p_new->'customExercises', 'null'::jsonb), '{}'::jsonb),
     -- `progress: null` llega de verdad (sin programa activo): es null de JSON, no de SQL.
     'progress', coalesce(nullif(p_new->'progress', 'null'::jsonb), p_old->'progress')
-  ) end;
+  );
 $$;
 
 
@@ -429,7 +451,7 @@ declare v_me uuid := public._trainer();
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
+         sessions_count = jsonb_array_length(public._merge_history(history_json, p_history)->'entries')
    where id = p_slot_id and trainer_id = v_me and client_id is null;
   if found then return; end if;
   if exists (select 1 from public.trainer_clients where id = p_slot_id and trainer_id = v_me) then
@@ -629,7 +651,7 @@ $$;
 
 -- El cliente sube lo suyo a SU asiento. SUMA al historial del hueco (E28, R-C2):
 -- dos móviles o una reinstalación ya no se pisan. `p_sessions` se ignora (el
--- contador sale de lo fusionado, sin lápidas); sigue en la firma por
+-- contador sale de lo fusionado); sigue en la firma por
 -- compatibilidad. `p_slot_id` dice a qué asiento iba la subida (E37): si el
 -- cliente ya está en otro, SLOT_CHANGED y no se escribe nada. Sin él (móviles
 -- con la versión vieja), el asiento que tenga.
@@ -644,7 +666,7 @@ declare v_slot uuid;
 begin
   update public.trainer_clients
      set history_json = public._merge_history(history_json, p_history), history_updated_at = now(),
-         sessions_count = (select count(*) from jsonb_array_elements(coalesce(public._merge_history(history_json, p_history)->'entries', '[]'::jsonb)) e where e->>'deletedAt' is null)
+         sessions_count = jsonb_array_length(public._merge_history(history_json, p_history)->'entries')
    where client_id = public._caller() and (p_slot_id is null or id = p_slot_id)
   returning id into v_slot;
   if v_slot is null then

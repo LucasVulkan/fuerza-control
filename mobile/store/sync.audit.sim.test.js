@@ -460,6 +460,62 @@ describe('S10-S13 el historial del hueco y el del móvil se pisan', () => {
   });
 });
 
+// La fusión del entrenador en la build publicada (5d5c24e), tal cual: no conoce `deleted`.
+function oldMergeClientLog(existing, incoming, { update = false } = {}) {
+  const base = existing ?? [];
+  const byId = new Map(base.map((e) => [e.id, e]));
+  const fresh = [];
+  const replaced = new Map();
+  for (const e of incoming ?? []) {
+    if (!e.id) continue;
+    const old = byId.get(e.id);
+    if (!old) fresh.push(e);
+    else if (update && JSON.stringify(old) !== JSON.stringify(e)) replaced.set(e.id, e);
+  }
+  if (!fresh.length && !replaced.size) return base;
+  return [...base.map((e) => replaced.get(e.id) ?? e), ...fresh].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+}
+
+describe('E64/E69 las lápidas van aparte de las entradas', () => {
+  it('E64: el cliente borra un entreno; un entrenador con la build publicada descarga y ni pierde su copia ni ve una entrada vacía', async () => {
+    const { c, clientId, t } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    await trainOnce(c, 's2');
+    await t.s.downloadClientHistory(clientId);
+    const trainerLog = t.s.clientLogs[clientId];
+    expect(trainerLog.map((e) => e.id)).toEqual(['s1', 's2']);
+
+    c.s.deleteLogEntry('s1');
+    await c.s.uploadHistoryToTrainer();
+    const row = await slotOf(c.s.clientSync.slotId);
+    expect(row.history_json.entries.map((e) => e.id)).toEqual(['s2']);      // sin lápidas entre las entradas
+    expect(row.history_json.deleted).toMatchObject({ s1: expect.any(Number) });
+    expect(row.sessions_count).toBe(1);
+
+    const viejo = oldMergeClientLog(trainerLog, row.history_json.entries, { update: true });
+    expect(viejo.map((e) => e.id)).toEqual(['s1', 's2']);
+    expect(viejo.every((e) => e.exercises)).toBe(true);
+    await t.s.downloadClientHistory(clientId);                              // la build nueva: lo mismo, y cuenta 1
+    expect(t.s.clientLogs[clientId].map((e) => e.id)).toEqual(['s1', 's2']);
+    expect(t.s.clients[clientId].remoteSessionsCount).toBe(1);
+  });
+
+  it('E69: la misma subida con un id como entreno y como lápida no lo deja duplicado en el servidor', async () => {
+    const { c } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    const raw = createSimClient(c.device, { storageKey: 'sb-client' });
+    const up = (history) => raw.rpc('client_upload_history', { p_history: history, p_sessions: 0, p_slot_id: c.s.clientSync.slotId });
+    expect((await up({ entries: [{ id: 'x', updatedAt: 100 }], deleted: { x: 200 }, customExercises: {}, progress: null })).error).toBeNull();
+    let h = (await slotOf(c.s.clientSync.slotId)).history_json;
+    expect(h.entries.map((e) => e.id)).toEqual(['s1']);
+    expect(h.deleted).toMatchObject({ x: 200 });
+    expect((await up({ entries: [{ id: 'x', updatedAt: 300 }], deleted: {}, customExercises: {}, progress: null })).error).toBeNull();
+    h = (await slotOf(c.s.clientSync.slotId)).history_json;
+    expect(h.entries.map((e) => e.id)).toEqual(['s1', 'x']);                // editado después de borrarse: vuelve
+    expect(h.deleted.x).toBeUndefined();
+  });
+});
+
 describe('S14 abrir sin cobertura con el token caducado', () => {
   // Parche: supabase-js real, con el token caducado y sin red, devuelve
   // getSession → {session:null, error:AuthRetryableFetchError}; el sim devuelve

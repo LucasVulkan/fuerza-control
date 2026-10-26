@@ -118,7 +118,7 @@ export async function downloadSlotProgram(slotId) {
   return (await trainerSlot(slotId, 'program_json')).program_json ?? null;
 }
 
-/** Historial del cliente (formato nuevo `{ entries, customExercises, progress }` o lista vieja). */
+/** Historial del cliente (formato nuevo `{ entries, deleted, customExercises, progress }` o lista vieja). */
 export async function downloadHistory(slotId) {
   const data = await trainerSlot(slotId, 'history_json, history_updated_at');
   return { ...parseHistory(data.history_json), updatedAt: data.history_updated_at };
@@ -128,6 +128,7 @@ function parseHistory(raw) {
   const isNewFormat = raw && !Array.isArray(raw) && raw.entries !== undefined;
   return {
     history:         isNewFormat ? (raw.entries ?? []) : (raw ?? []),
+    deleted:         isNewFormat ? (raw.deleted ?? {}) : {},   // { [id]: deletedAt }: lo borrado, aparte de `entries` (E64)
     customExercises: isNewFormat ? (raw.customExercises ?? {}) : {},
     progress:        isNewFormat ? (raw.progress ?? null) : null,
   };
@@ -187,11 +188,12 @@ export function clientLostReason() {
 
 /**
  * El cliente sube lo suyo al asiento `slotId`; el servidor SUMA a lo que hay (E28).
+ * Lo borrado va en `deleted` (`{ [id]: deletedAt }`), nunca dentro de `entries`.
  * NO_SEAT si ya no tiene asiento; SLOT_CHANGED si ahora tiene otro (E37).
  */
-export function uploadHistory(entries, customExercises = {}, progress = null, slotId = null) {
+export function uploadHistory(entries, customExercises = {}, progress = null, slotId = null, deleted = {}) {
   return rpc(clientSupabase, 'client_upload_history', {
-    p_history: { entries, customExercises, progress }, p_sessions: entries.length, p_slot_id: slotId,
+    p_history: { entries, deleted, customExercises, progress }, p_sessions: entries.length, p_slot_id: slotId,
   });
 }
 
