@@ -184,6 +184,25 @@ const UNINVITED = {
   programDirty: false, overridesDirty: false, programUploadedSig: null,
   remoteSessionsCount: 0,
 };
+// Lo que de `workoutLog` sale hacia el entrenador (solo sus programas y las libres
+// posteriores a conectarse). Lo comparten la subida y las lápidas (E68).
+const uploadScope = (s, workoutLog, customExercises) => scopeFilterForUpload({
+  workoutLog,
+  programs: s.programs,
+  customExercises,
+  trainerProgramIds:     s.clientSync.trainerProgramIds,
+  fallbackProgramId:     s.profile.activeProgramId,
+  linkedAt:              s.clientSync.linkedAt,
+  lastProgramImportedAt: s.clientSync.lastProgramImportedAt,
+});
+// La lápida de lo que se borra de `workoutLog`: solo conectado y si la entrada
+// estaba en el alcance de la subida (E68).
+const tombstonesFor = (s, removed) => {
+  if (!s.clientSync.slotId || !removed.length) return {};
+  const inScope = new Set(uploadScope(s, removed, {}).entries);
+  const now = Date.now();
+  return Object.fromEntries(removed.filter((e) => inScope.has(e)).map((e) => [e.id, now]));
+};
 /** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
 const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
 
@@ -517,11 +536,17 @@ export const useStore = create(
       // entries here — it's the trainer's professional record of the client.
       // Shape: { [clientId]: WorkoutEntry[] } — sorted by timestamp asc.
       clientLogs: {},
-      // Ids de entradas borradas (de `workoutLog` o de `clientLogs`) y cuándo,
-      // `{ [id]: deletedAt }`. El cliente las sube en `deleted` para que el
-      // servidor no las resucite; el entrenador las usa para no volver a bajarlas.
-      // Nunca se podan (E59). Las lápidas no entran en `workoutLog` ni `clientLogs`.
+      // Lo borrado del historial y cuándo, `{ [id]: deletedAt }`. Nunca se podan
+      // (E59), y las lápidas no entran en `workoutLog` ni `clientLogs`. Dos mapas,
+      // uno por papel (E68):
+      //  · `deletedLogIds` (cliente): entradas de `workoutLog` borradas ESTANDO
+      //    conectado y dentro de lo que se sube al entrenador. Se sube en
+      //    `deleted` para que el servidor no las resucite; al desconectarse se
+      //    vacía. Lo personal que nunca salió del móvil no deja rastro.
+      //  · `deletedClientLogIds` (entrenador): entradas de `clientLogs` borradas,
+      //    solo para no volver a bajarlas. No se sube.
       deletedLogIds: {},
+      deletedClientLogIds: {},
       activeSession: INITIAL_ACTIVE_SESSION,
       ui: INITIAL_UI,
 
@@ -2927,7 +2952,7 @@ export const useStore = create(
       deleteLogEntry: (logId) =>
         set((state) => ({
           workoutLog: state.workoutLog.filter((e) => e.id !== logId),
-          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
+          deletedLogIds: { ...state.deletedLogIds, ...tombstonesFor(state, state.workoutLog.filter((e) => e.id === logId)) },
         })),
 
       /**
@@ -3002,7 +3027,7 @@ export const useStore = create(
           const kept = new Set(keep);
           set((s) => ({
             workoutLog: keep,
-            deletedLogIds: { ...s.deletedLogIds, ...Object.fromEntries(workoutLog.filter((e) => !kept.has(e)).map((e) => [e.id, Date.now()])) },
+            deletedLogIds: { ...s.deletedLogIds, ...tombstonesFor(s, workoutLog.filter((e) => !kept.has(e))) },
           }));
         }
         return removed;
@@ -3015,7 +3040,7 @@ export const useStore = create(
             ...state.clientLogs,
             [clientId]: (state.clientLogs[clientId] ?? []).filter((e) => e.id !== logId),
           },
-          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
+          deletedClientLogIds: { ...state.deletedClientLogIds, [logId]: Date.now() },
         })),
 
       getLastSession: (templateId) => {
@@ -4239,7 +4264,7 @@ export const useStore = create(
           // deleted them, or reinstalled) are kept — this is the trainer's record.
           // A changed copy of a known entry (RPE added in the recap) replaces it.
           const existing  = get().clientLogs[clientId] ?? [];
-          const merged    = mergeClientLog(existing, history, { update: true, deleted: { ...downloaded.deleted, ...get().deletedLogIds } });
+          const merged    = mergeClientLog(existing, history, { update: true, deleted: { ...downloaded.deleted, ...get().deletedClientLogIds } });
           const newCount  = merged.length - existing.length;
 
           set((s) => ({
@@ -4654,6 +4679,8 @@ export const useStore = create(
         await get()._restoreFromSlot(seat, programJson?.program?.id, mergeHistory);
 
         set(() => ({
+          // Las lápidas son del asiento en que se hicieron (E68).
+          ...(prev.slotId === seat.slotId ? {} : { deletedLogIds: {} }),
           clientSync: {
             slotId:                 seat.slotId,
             clientCode:             code ? code.trim().toUpperCase() : null,
@@ -4829,22 +4856,15 @@ export const useStore = create(
        * quedan sin enviar.
        */
       uploadHistoryToTrainer: async () => {
-        const { clientSync, workoutLog, customExercises, programs, profile, deletedLogIds } = get();
+        const s = get();
+        const { clientSync, workoutLog, customExercises, programs, profile, deletedLogIds } = s;
         if (!clientSync.slotId || clientSync.lostAt) return; // sin entrenador, o ya lo sabe
 
         // Privacy-scoped slice: only trainer-program sessions + post-link free
         // sessions leave the device. Links created before trainerProgramIds
         // existed fall back to the active program (the trainer's, in the
         // standard linked flow).
-        const { entries, customExercises: relevantCustom } = scopeFilterForUpload({
-          workoutLog,
-          programs,
-          customExercises,
-          trainerProgramIds:     clientSync.trainerProgramIds,
-          fallbackProgramId:     profile.activeProgramId,
-          linkedAt:              clientSync.linkedAt,
-          lastProgramImportedAt: clientSync.lastProgramImportedAt,
-        });
+        const { entries, customExercises: relevantCustom } = uploadScope(s, workoutLog, customExercises);
 
         // The trainer mirrors these counters instead of recomputing them from
         // `entries` — that is what keeps both sides from ever drifting, and what
@@ -4932,6 +4952,7 @@ export const useStore = create(
 
         set(() => ({
           clientSync: { ...EMPTY_CLIENT_SYNC, releaseDue },
+          deletedLogIds: {},   // las lápidas eran de este asiento (E68)
         }));
         return { unsent: 0, offline: !!releaseDue };
       },
@@ -5103,7 +5124,7 @@ export const useStore = create(
         const clientId = await clientSessionUserId();
         if (clientId && clientId !== trainerSync.userId) await deleteClientUser();
         await signOutClient().catch(() => {});
-        set({ clientSync: { ...EMPTY_CLIENT_SYNC } });
+        set({ clientSync: { ...EMPTY_CLIENT_SYNC }, deletedLogIds: {} });
 
         return { ok: true };
       },
@@ -5321,6 +5342,7 @@ export const useStore = create(
         workoutLog: state.workoutLog,
         clientLogs: state.clientLogs,
         deletedLogIds: state.deletedLogIds,
+        deletedClientLogIds: state.deletedClientLogIds,
         customExercises: state.customExercises,
         blockPresets: state.blockPresets,
         stageBannerSnooze: state.stageBannerSnooze,

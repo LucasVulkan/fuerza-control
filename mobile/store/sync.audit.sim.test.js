@@ -558,6 +558,31 @@ describe('E64/E69 las lápidas van aparte de las entradas', () => {
     expect(t.s.clients[clientId].remoteSessionsCount).toBe(1);
   });
 
+  it('E68: borrar un entreno personal (fuera de lo que se envía) no deja lápida ni sube nada; uno enviado sí, y al desconectarse se vacían', async () => {
+    const { c } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    c.store.setState((s) => ({ workoutLog: [...s.workoutLog, { id: 'mio', programId: 'mine', sessionTemplateId: 'mi_plantilla', timestamp: Date.now(), exercises: [] }] }));
+    c.s.deleteLogEntry('mio');
+    expect(c.s.deletedLogIds).toEqual({});
+    c.s.deleteLogEntry('s1');
+    expect(Object.keys(c.s.deletedLogIds)).toEqual(['s1']);
+    await c.s.uploadHistoryToTrainer();
+    expect(Object.keys((await slotOf(c.s.clientSync.slotId)).history_json.deleted)).toEqual(['s1']);
+
+    await c.s.unlinkFromTrainer();
+    expect(c.s.deletedLogIds).toEqual({});
+  });
+
+  it('E68: lo que borra el entrenador de un cliente va a su propio mapa y no se sube; el del cliente no se mezcla', async () => {
+    const { t, c, clientId } = await trainerAndClient();
+    await trainOnce(c, 's1');
+    await t.s.downloadClientHistory(clientId);
+    t.s.deleteClientLogEntry(clientId, 's1');
+    expect(t.s.deletedClientLogIds).toMatchObject({ s1: expect.any(Number) });
+    expect(t.s.deletedLogIds).toEqual({});
+    expect(await trainerSees(t, clientId)).toEqual([]);
+  });
+
   it('E69: la misma subida con un id como entreno y como lápida no lo deja duplicado en el servidor', async () => {
     const { c } = await trainerAndClient();
     await trainOnce(c, 's1');
