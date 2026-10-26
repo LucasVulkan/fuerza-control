@@ -561,10 +561,64 @@ describe('S17 dos móviles del mismo entrenador', () => {
     expect(await server.slots()).toEqual([]);
     const before = server.calls.length;
     await t2.s.refreshTrainerSlots();
-    expect(server.calls.slice(before).some((c) => JSON.stringify(c).includes('trainer_slots_alive'))).toBe(true);   // llegó a preguntar
+    expect(server.calls.slice(before).some((c) => JSON.stringify(c).includes('trainer_deleted_slots'))).toBe(true);   // llegó a preguntar
     expect(Object.keys(t2.s.clients)).toHaveLength(1);
     expect(t2.s.clients[Object.keys(t2.s.clients)[0]].syncOrphan).toBe(true);
     expect(clientId).toBeTruthy();
+  });
+
+  it('E61: se borra la cuenta X y el otro móvil entra en la cuenta Y → los clientes de X quedan «de otra cuenta», ninguno se borra', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    await newClientWithProgram(t1, 'Ana');
+    await newClientWithProgram(t1, 'Berta');
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    expect(Object.keys(t2.s.clients)).toHaveLength(2);
+
+    await server.admin('delete from auth.users where id = $1', [t1.s.trainerSync.userId]);   // la cuenta X ya no existe
+    await t2.s.leaveTrainerAccount();
+    await t2.s.createTrainerCodeAccount();                                                  // t2 entra en la cuenta Y
+    await t2.s.refreshTrainerSlots();
+    const clients = Object.values(t2.s.clients);
+    expect(clients).toHaveLength(2);
+    expect(clients.every((c) => c.syncOrphan)).toBe(true);
+  });
+
+  it('E62: cancelar la invitación en un móvil deja al cliente «sin app» en el otro, con sus datos, y no lo borra', async () => {
+    const t1 = await phone('t1');
+    await t1.s.createTrainerCodeAccount();
+    const code = t1.s.trainerSync.code;
+    const clientId = await t1.s.createClient('Ana', { withApp: true });
+    t1.s.createProgramForClient(clientId, 2, 'Fuerza', null, { openEditor: false });
+    const t2 = await phone('t2');
+    await t2.s.recoverTrainerAccount(code);
+    const id2 = Object.keys(t2.s.clients)[0];
+    t2.s.renameClient(id2, 'Ana Gómez');
+    expect(t2.s.clients[id2].syncSlotId).toBeTruthy();
+
+    await t1.s.cancelClientInvitation(clientId);
+    await t2.s.refreshTrainerSlots();
+    expect(Object.keys(t2.s.clients)).toEqual([id2]);
+    expect(t2.s.clients[id2]).toMatchObject({ name: 'Ana Gómez', syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false });
+    expect(t2.s.trainerSync.deletedSlotIds).toEqual([]);
+    expect(t2.s.clients[id2].syncSlotId).toBe(t1.s.clients[clientId].syncSlotId);   // los dos móviles ven lo mismo
+  });
+
+  it('E63: el alta llega pero se pierde la respuesta y un refresco recupera el hueco → es la ficha que lo pidió, no una segunda; borrarla borra el hueco', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const a = await t.s.createClient('Ana');                       // ficha sin app
+    const lost = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: a });   // la respuesta que no llegó
+    expect(lost.error).toBeNull();
+
+    await t.s.refreshTrainerSlots();
+    expect(Object.keys(t.s.clients)).toEqual([a]);
+    expect(t.s.clients[a]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncCode: lost.data[0].code });
+    await t.s.deleteClient(a);
+    expect(await server.slots()).toEqual([]);
   });
 
   it('E60: si el hueco se pasó a otra cuenta, el otro móvil lo sigue viendo «de otra cuenta» y no lo borra', async () => {

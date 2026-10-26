@@ -564,28 +564,38 @@ describe('E35 — trainer_create_slot con p_local_id', () => {
   });
 });
 
-describe('E60 — trainer_slots_alive', () => {
-  it('devuelve de los ids que le pasan los que existen en cualquier cuenta; un anónimo no puede preguntar', async () => {
+describe('E60-E62 — trainer_deleted_slots', () => {
+  it('devuelve de los ids que le pasan solo los que ESTA cuenta borró o canceló, con su intención; un anónimo no puede preguntar', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const b = await account('b', 'BCDE-FGHJ-KLMN');
     const mine = await slotWithProgram(a, 'Mío');
     const theirs = await slotWithProgram(b, 'Ajeno');
     const gone = await slotWithProgram(a, 'Borrado');
-    await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S });
+    const cancelled = await slotWithProgram(a, 'Cancelado');
+    const old = await slotWithProgram(a, 'Borrado por una versión anterior');
+    const alien = await slotWithProgram(b, 'Borrado por otra cuenta');
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S, p_kind: 'deleted' });
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: cancelled.S, p_kind: 'cancelled' });
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: old.S });   // sin p_kind: como las versiones anteriores
+    await ok(b.db, 'trainer_delete_slot', { p_slot_id: alien.S });
+    expect(await ok(a.db, 'trainer_delete_slot', { p_slot_id: gone.S })).toBe(false);   // repetir no es un error
     const x = await anon('x');
 
-    const ids = [mine.S, theirs.S, gone.S, '00000000-0000-4000-8000-000000000000'];
-    expect((await ok(a.db, 'trainer_slots_alive', { p_ids: ids })).map((r) => r.slot_id).sort()).toEqual([mine.S, theirs.S].sort());
-    expect((await bad(x.db, 'trainer_slots_alive', { p_ids: ids })).message).toBe('NOT_A_TRAINER');
+    const ids = [mine.S, theirs.S, gone.S, cancelled.S, old.S, alien.S, '00000000-0000-4000-8000-000000000000'];
+    const rows = await ok(a.db, 'trainer_deleted_slots', { p_ids: ids });
+    expect(Object.fromEntries(rows.map((r) => [r.slot_id, r.kind]))).toEqual({
+      [gone.S]: 'deleted', [cancelled.S]: 'cancelled', [old.S]: 'deleted',
+    });
+    expect((await bad(x.db, 'trainer_deleted_slots', { p_ids: ids })).message).toBe('NOT_A_TRAINER');
   });
-});
 
-describe('E60b — cuenta de entrenador borrada con otro móvil aún con sesión', () => {
-  it('trainer_slots_alive da NOT_AUTHENTICATED si el usuario ya no existe en auth.users', async () => {
+  it('borrar al entrenador se lleva su registro de borrados; con la cuenta ya borrada y el JWT vivo, NOT_AUTHENTICATED', async () => {
     const a = await account('a', 'ABCD-EFGH-JKLM');
     const { S } = await slotWithProgram(a);
+    await ok(a.db, 'trainer_delete_slot', { p_slot_id: S });
     await server.admin('delete from auth.users where id = $1', [a.id]);
-    expect((await bad(a.db, 'trainer_slots_alive', { p_ids: [S] })).message).toBe('NOT_AUTHENTICATED');
+    expect(await server.admin('select 1 from public.deleted_slots')).toEqual([]);
+    expect((await bad(a.db, 'trainer_deleted_slots', { p_ids: [S] })).message).toBe('NOT_AUTHENTICATED');
   });
 });
 

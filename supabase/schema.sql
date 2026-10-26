@@ -245,6 +245,19 @@ create table if not exists public.seat_losses (
 alter table public.seat_losses enable row level security;
 revoke all on public.seat_losses from anon, authenticated;
 
+-- Qué huecos borró cada entrenador y con qué intención (E61-E63), para que sus
+-- otros móviles lo apliquen: 'deleted' (borró al cliente) o 'cancelled'
+-- (canceló su invitación). Sin políticas ni permisos, como `seat_losses`.
+-- ponytail: no se poda; son ids.
+create table if not exists public.deleted_slots (
+  slot_id    uuid primary key,
+  trainer_id uuid not null references auth.users on delete cascade,
+  kind       text not null check (kind in ('deleted', 'cancelled')),
+  at         timestamptz not null default now()
+);
+alter table public.deleted_slots enable row level security;
+revoke all on public.deleted_slots from anon, authenticated;
+
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
 
@@ -440,36 +453,46 @@ begin
 end;
 $$;
 
--- De estos ids, los que existen en cualquier cuenta (E60): el otro móvil del
--- entrenador borró el cliente, o su hueco se pasó a otra cuenta. Solo devuelve
--- ids que quien llama ya conoce, y sin decir de quién son.
-create or replace function public.trainer_slots_alive(p_ids uuid[])
-returns table (slot_id uuid)
+-- De estos ids, los que ESTA cuenta borró o canceló (E60-E62): así su otro móvil
+-- sabe qué hacer con un hueco que ya no está. Los que faltan sin estar aquí son
+-- de otra cuenta. Solo devuelve ids que quien llama ya conoce.
+drop function if exists public.trainer_slots_alive(uuid[]);
+create or replace function public.trainer_deleted_slots(p_ids uuid[])
+returns table (slot_id uuid, kind text)
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare v_me uuid := public._trainer();
 begin
-  -- Con la cuenta ya borrada y el JWT aún válido, todos los huecos saldrían «no existen».
-  if not exists (select 1 from auth.users where id = public._trainer()) then
+  -- Con la cuenta ya borrada y el JWT aún válido, la respuesta vacía no vale como «no los borraste».
+  if not exists (select 1 from auth.users where id = v_me) then
     raise exception 'NOT_AUTHENTICATED';
   end if;
-  return query select t.id from public.trainer_clients t where t.id = any(p_ids);
+  return query select d.slot_id, d.kind from public.deleted_slots d
+   where d.slot_id = any(p_ids) and d.trainer_id = v_me;
 end;
 $$;
 
--- Borrar un hueco que ya no está no es un error: devuelve false.
-create or replace function public.trainer_delete_slot(p_slot_id uuid)
+-- Borrar un hueco que ya no está no es un error: devuelve false. Anota el
+-- borrado en `deleted_slots`, con `p_kind` ('deleted' por omisión: las
+-- versiones anteriores, que cancelan sin decirlo, quedan como borrado).
+drop function if exists public.trainer_delete_slot(uuid);
+create or replace function public.trainer_delete_slot(p_slot_id uuid, p_kind text default 'deleted')
 returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare v_client uuid;
+declare
+  v_me     uuid := public._trainer();
+  v_client uuid;
 begin
-  delete from public.trainer_clients where id = p_slot_id and trainer_id = public._trainer()
+  delete from public.trainer_clients where id = p_slot_id and trainer_id = v_me
   returning client_id into v_client;
   if not found then return false; end if;
+  insert into public.deleted_slots (slot_id, trainer_id, kind) values (p_slot_id, v_me, p_kind)
+  on conflict do nothing;
   if v_client is not null then
     insert into public.seat_losses (client_id, reason) values (v_client, 'gone')
     on conflict (client_id) do update set reason = 'gone', at = now();
@@ -743,8 +766,8 @@ begin
     '_merge_history(jsonb, jsonb)', '_release_seat_of_deleted_user()',
     'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
-    'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
-    'trainer_slots_alive(uuid[])',
+    'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
+    'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'
@@ -755,8 +778,8 @@ begin
   foreach f in array array[
     'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
-    'trainer_set_name(text)', 'trainer_delete_slot(uuid)', 'trainer_reissue_client_code(uuid)',
-    'trainer_slots_alive(uuid[])',
+    'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
+    'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot()',
     'offer_transfer(text, uuid)', 'accept_transfer(text, uuid)', 'client_lost_reason()'

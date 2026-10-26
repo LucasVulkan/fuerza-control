@@ -26,10 +26,10 @@ with huellas(n, h) as (values
   ('offer_transfer', '84e4a6eb787f9e1fa26afbe657cb9e04'),
   ('release_client_slot', '4d0b1d80e8268c8caae12ee72392c426'),
   ('trainer_create_slot', 'cd90e36296965cdc88e7c3753072d606'),
-  ('trainer_delete_slot', 'fc7451ecd9a0feab88cef6ab582c2297'),
+  ('trainer_delete_slot', '90e07540aea6c0d1379d3f33430917cd'),
+  ('trainer_deleted_slots', 'b5bcca029f771b99c9bd7f687d6df20e'),
   ('trainer_reissue_client_code', '57d59eac2dd5d143f96f6be992754e6a'),
   ('trainer_set_name', '991c28decba6b250c7ed31efd8b90860'),
-  ('trainer_slots_alive', '3eadf8235cc0d9127da7ea5c3f2992cc'),
   ('trainer_upload_log', '9614f076054c51c988e213ceab15a451'),
   ('trainer_upload_overrides', '3bfd01ad1de6c34087b084bcbbd0f010'),
   ('trainer_upload_program', '5830cbff51deabbe74860ed3f9204105')
@@ -109,7 +109,7 @@ select 'función sin security definer', proname
  where pronamespace = 'public'::regnamespace and not prosecdef
    and proname in ('trainer_create_slot', 'trainer_upload_program', 'trainer_upload_overrides',
                    'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
-                   'trainer_reissue_client_code', 'get_slot_by_code',
+                   'trainer_deleted_slots', 'trainer_reissue_client_code', 'get_slot_by_code',
                    'link_client_to_slot', 'client_upload_history', 'release_client_slot',
                    'offer_transfer', 'accept_transfer', 'client_lost_reason')
 
@@ -118,7 +118,7 @@ union all
 select 'falta la función', f
   from unnest(array['trainer_create_slot', 'trainer_upload_program', 'trainer_upload_overrides',
                     'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
-                    'trainer_reissue_client_code', 'get_slot_by_code',
+                    'trainer_deleted_slots', 'trainer_reissue_client_code', 'get_slot_by_code',
                     'link_client_to_slot', 'client_upload_history', 'release_client_slot',
                     'offer_transfer', 'accept_transfer', 'client_lost_reason']) as f
  where not exists (select 1 from pg_proc where proname = f and pronamespace = 'public'::regnamespace)

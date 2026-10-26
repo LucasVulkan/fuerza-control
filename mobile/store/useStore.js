@@ -24,7 +24,7 @@ import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
-  createClientSlot, existingSlotIds, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
+  createClientSlot, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
   getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
@@ -176,6 +176,12 @@ function seatLockedError() {
 const trainerProgramOf = (clientSync, activeId) => {
   const ids = clientSync.trainerProgramIds ?? [];
   return !ids.length || ids.includes(activeId) ? activeId : ids[ids.length - 1];
+};
+// Lo que pasa a una ficha cuando se cancela su invitación, aquí o en otro móvil: vuelve a «sin app».
+const UNINVITED = {
+  syncSlotId: null, syncCode: null, syncLinked: false,
+  programDirty: false, overridesDirty: false, programUploadedSig: null,
+  remoteSessionsCount: 0,
 };
 /** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
 const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
@@ -4007,18 +4013,8 @@ export const useStore = create(
         const client = get().clients[clientId];
         if (!client?.syncSlotId || client.syncLinked) return;
         await _ensureTrainerSession(get().trainerSync);
-        await deleteClientSlot(client.syncSlotId);
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              syncSlotId: null, syncCode: null, syncLinked: false,
-              programDirty: false, overridesDirty: false, programUploadedSig: null,
-              remoteSessionsCount: 0,
-            },
-          },
-        }));
+        await deleteClientSlot(client.syncSlotId, 'cancelled');
+        set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...UNINVITED } } }));
       },
 
       /**
@@ -4310,9 +4306,9 @@ export const useStore = create(
        *    «de otra cuenta» (`syncOrphan`): no se le manda nada, y si se vuelve
        *    a la cuenta buena se recupera solo. Borrarlo sería perder clientes
        *    por un error de cuenta.
-       *  - Cliente cuyo hueco no existe en ninguna cuenta (lo borró el otro móvil
-       *    del entrenador, R-B6) → se borra aquí también. Si no se puede
-       *    preguntar, se queda «de otra cuenta».
+       *  - Cliente cuyo hueco borró ESTA cuenta desde otro móvil (R-B6) → se
+       *    borra aquí también; si solo canceló su invitación, queda «sin app».
+       *    Si no se puede preguntar, se queda «de otra cuenta».
        *  - Huecos de clientes borrados aquí → se borran allí (`_flushDeletedSlots`).
        *
        * Ligero: del historial solo lee `progress`, nunca las entradas.
@@ -4341,11 +4337,10 @@ export const useStore = create(
 
           const inSlots = new Set(slots.map((slot) => slot.id));
           const missing = [...askedFor].filter((id) => !inSlots.has(id));
-          let gone = new Set();
+          let gone = new Map();   // hueco → 'deleted' | 'cancelled', los que ESTA cuenta borró
           if (missing.length) {
             try {
-              const alive = new Set(await existingSlotIds(missing));
-              gone = new Set(missing.filter((id) => !alive.has(id)));
+              gone = new Map((await deletedSlots(missing)).map((r) => [r.slot_id, r.kind]));
             } catch (err) {
               console.warn('[refreshTrainerSlots] huecos ausentes sin comprobar:', err.message);
             }
@@ -4367,6 +4362,13 @@ export const useStore = create(
 
             for (const slot of slots) {
               if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
+              // El alta llegó pero su respuesta no (E63): el hueco es de la ficha que lo pidió.
+              const own = slot.local_id && next[slot.local_id];
+              if (own && !own.syncSlotId) {
+                next[own.id] = { ...own, syncSlotId: slot.id };
+                known.add(slot.id);
+                continue;
+              }
               const id = generateId('client');
               next[id] = {
                 id,
@@ -4388,7 +4390,9 @@ export const useStore = create(
               const c = next[clientId];
               const slot = bySlot.get(c.syncSlotId);
               if (!slot) {
-                if (askedFor.has(c.syncSlotId) && !gone.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
+                if (!askedFor.has(c.syncSlotId)) continue;
+                if (gone.get(c.syncSlotId) === 'cancelled') next[clientId] = { ...c, ...UNINVITED };
+                else if (!gone.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
                 continue;
               }
               next[clientId] = {
@@ -4412,7 +4416,7 @@ export const useStore = create(
           });
 
           if (gone.size && get().trainerSync.userId === trainerSync.userId) {
-            for (const c of Object.values(get().clients)) if (gone.has(c.syncSlotId)) get().deleteClient(c.id, { slotGone: true });
+            for (const c of Object.values(get().clients)) if (gone.get(c.syncSlotId) === 'deleted') get().deleteClient(c.id, { slotGone: true });
           }
 
           // Los de refrescos anteriores que se quedaron sin programa (bajada fallida).

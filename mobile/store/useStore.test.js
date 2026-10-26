@@ -2687,7 +2687,7 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
     await useStore.getState().cancelClientInvitation(id);
 
-    expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1');
+    expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1', 'cancelled');
     expect(cli(id)).toMatchObject({ syncSlotId: null, syncCode: null, syncLinked: false });
   });
 
