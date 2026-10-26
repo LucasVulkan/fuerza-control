@@ -489,6 +489,7 @@
     "linkErrBody": "Couldn't link the account. Try again."
   },
   "account": {
+    "errAccountExists": "You already have a trainer account on this phone.",
     "eyebrow": "SETTINGS",
     "title": "My account",
     "rowTitleNone": "My account",

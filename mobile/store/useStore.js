@@ -64,7 +64,7 @@ import {
   trainerCandidateFromIdToken, trainerCandidateFromCode, trainerCandidateNewCode, adoptTrainer,
   trainerSessionUserId, signInTrainerWithCode, signOutTrainer,
   ensureClientSession, clientSessionUserId, clientProvider, clientCandidateFromIdToken, adoptClient, signOutClient,
-  deleteTrainerUser, deleteClientUser,
+  deleteTrainerUser, deleteClientUser, trainerUserGone,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes, ARCHETYPES } from '../src/data/archetypes';
@@ -3869,7 +3869,7 @@ export const useStore = create(
 
       /** Crear una cuenta nueva con código personal. Solo la primera: de Google/Apple a código no se cambia (E49, R-D1). */
       createTrainerCodeAccount: async () => {
-        if (get().trainerSync.userId) throw Object.assign(new Error('ACCOUNT_EXISTS'), { code: 'ACCOUNT_EXISTS' });
+        if (get().trainerSync.userId) throw Object.assign(new Error(i18n.t('account.errAccountExists')), { code: 'ACCOUNT_EXISTS' });
         const candidate = await trainerCandidateNewCode();
         await get()._enterCandidate(candidate, 'code');
         return { code: candidate.code, userId: candidate.userId };
@@ -4567,8 +4567,8 @@ export const useStore = create(
         // que haya entrado con Google/Apple: a ese no lo echa un código (§4.7).
         if (slot.locked_by) throw seatLockedError();
         // Lo pendiente del asiento actual, antes de soltarlo. Si no sube, no bloquea: sigue en el log (E51).
-        const cs = get().clientSync;
-        if (cs.slotId && !cs.lostAt && (cs.pendingUpload || cs.uploadDue)) await get().uploadHistoryToTrainer();
+        const { pendingUpload, uploadDue } = get().clientSync;
+        if (pendingUpload || uploadDue) await get().uploadHistoryToTrainer();
         await linkClientToSlot(code).catch((err) => {
           throw err.code === 'SEAT_LOCKED' ? seatLockedError() : err;
         });
@@ -4656,16 +4656,15 @@ export const useStore = create(
         const { clientSync } = get();
         if (!clientSync.slotId || clientSync.lostAt) return;
 
-        // Corre al arrancar y al volver a primer plano: buen momento para
-        // reintentar una subida que falló, sin esperar al botón del aviso.
-        if (clientSync.pendingUpload || clientSync.uploadDue) get().uploadHistoryToTrainer().catch(() => {});
-
         try {
           const seat = await seatOf();
           // Respuesta del servidor, no fallo de red: ya no tiene asiento.
           if (!seat) { await get()._markClientLost(); return; }
           // Otro asiento: ha cambiado de entrenador (aquí o en otro móvil), no es una actualización (E53).
           if (seat.slotId !== clientSync.slotId) { await get()._adoptSeat({ userId: await clientSessionUserId() }); return; }
+          // Corre al arrancar y al volver a primer plano: buen momento para
+          // reintentar una subida que falló, sin esperar al botón del aviso.
+          if (clientSync.pendingUpload || clientSync.uploadDue) get().uploadHistoryToTrainer().catch(() => {});
           const { programJson, updatedAt, trainerName, overrides } = seat;
           // Un entrenador con la versión vieja manda los ids de antes de juntar
           // los ejercicios repetidos (P09-exercise-variants.md §3.3). Antes del
@@ -4809,6 +4808,7 @@ export const useStore = create(
             clientSync: {
               ...s.clientSync,
               pendingUpload: false,
+              // ponytail: un entreno guardado durante esta subida y con la app muerta en los 2 s siguientes no se reintenta hasta el siguiente cambio.
               uploadDue:     false,
               lastSyncedAt:  new Date().toISOString(),
               syncErrorAt:   null,
@@ -4824,7 +4824,7 @@ export const useStore = create(
             },
           }));
           // Cuántos entrenos no han llegado (E51): los de después de la última subida buena.
-          const since = clientSync.lastSyncedAt ? Date.parse(clientSync.lastSyncedAt) : 0;
+          const since = Date.parse(clientSync.lastSyncedAt ?? clientSync.linkedAt) || 0;
           return entries.filter((e) => e.timestamp >= since).length;
         }
       },
@@ -4836,7 +4836,7 @@ export const useStore = create(
        */
       unlinkFromTrainer: async ({ keepProgram = false, force = false } = {}) => {
         const { clientSync } = get();
-        if (!force && clientSync.slotId && !clientSync.lostAt && (clientSync.pendingUpload || clientSync.uploadDue)) {
+        if (!force && (clientSync.pendingUpload || clientSync.uploadDue)) {
           const unsent = await get().uploadHistoryToTrainer();
           if (unsent) return { unsent };
         }
@@ -4988,7 +4988,8 @@ export const useStore = create(
             await deleteTrainerUser();
           } catch (err) {
             // La cuenta ya no existe (un intento anterior la borró y se cortó): se sigue con la de cliente (E56).
-            if (err?.code !== 'TRAINER_CODE_NOT_FOUND' && err?.context?.status !== 401) throw err;
+            const gone = err?.code === 'TRAINER_CODE_NOT_FOUND' || (err?.context?.status === 401 && await trainerUserGone());
+            if (!gone) throw err;
           }
         }
         await signOutTrainer().catch(() => {});

@@ -237,7 +237,8 @@ export function createSimClient(device, { storageKey = 'sb-default', persistSess
     getUser: () => authResult('getUser', async () => {
       const id = uid();
       const user = id && server.users.get(id);
-      if (!user) return { data: { user: null }, error: new Error('User not found') };
+      // Como GoTrue: token válido de un usuario borrado = user_not_found; token que no se reconoce, otro error.
+      if (!user) return { data: { user: null }, error: Object.assign(new Error('User not found'), { code: id ? 'user_not_found' : 'bad_jwt' }) };
       return { data: { user: publicUser(user) }, error: null };
     }),
 

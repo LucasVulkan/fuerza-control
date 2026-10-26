@@ -139,6 +139,27 @@ describe('S2 borrar la cuenta muere entre las dos llamadas', () => {
       expect((await slotOf(seat)).client_id).toBeNull();
     },
   );
+  it('S2 arreglado (E56): un 401 con la cuenta de entrenador viva no se salta la parte de entrenador; lanza y la cuenta sigue', async () => {
+    const x = await phone('entrenador', { wrap: (cfg) => {
+      const fns = cfg.trainerSupabase.functions;
+      const real = fns.invoke.bind(fns);
+      let first = true;
+      fns.invoke = async (name, opts) => {
+        if (name === 'delete-account' && first) {
+          first = false;
+          throw Object.assign(new Error('Edge Function returned a non-2xx status code'), { name: 'FunctionsHttpError', context: { status: 401 } });
+        }
+        return real(name, opts);
+      };
+      return cfg;
+    } });
+    await x.s.createTrainerCodeAccount();
+    const userId = x.s.trainerSync.userId;
+    await expect(x.s.deleteAccount()).rejects.toMatchObject({ context: { status: 401 } });
+    expect(x.s.trainerSync.userId).toBe(userId);
+    expect(x.s.trainerSync.mode).toBe('code');
+    expect(await x.s.deleteAccount()).toEqual({ ok: true });
+  });
 });
 
 describe('S3 el móvil del cliente conserva un slotId que el servidor ya liberó', () => {
@@ -184,6 +205,29 @@ describe('S3 el móvil del cliente conserva un slotId que el servidor ya liberó
     c2.store.setState((s) => ({ workoutLog: [...s.workoutLog, aEntry] }));
     await c2.s.uploadHistoryToTrainer();
     expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId)) ?? []).not.toContain('a-session');
+  });
+  it('S3 arreglado (E53): con el mismo Google en dos móviles, un entreno guardado sin red antes de comprobar el asiento no se sube al entrenador nuevo (regla R-B1)', async () => {
+    const a = await phone('A');
+    const b = await phone('B');
+    await a.s.createTrainerCodeAccount();
+    await b.s.createTrainerCodeAccount();
+    const ca = await newClientWithProgram(a, 'Ana', 'Prog A');
+    const cb = await newClientWithProgram(b, 'Ana', 'Prog B');
+    const c1 = await phone('movil1');
+    await join(c1, codeOf(a, ca.clientId));
+    await c1.s.linkGoogleForClient(google('gD'));
+    const c2 = await phone('movil2');
+    const found = await c2.s.validateGoogleClient(google('gD'));
+    await c2.s.confirmGoogleReconnect({ googleUserId: found.userId, provider: 'google', mergeHistory: true });
+    await join(c1, codeOf(b, cb.clientId));                       // móvil 1 pasa a B
+    c2.store.setState((s) => ({                                   // móvil 2 guarda un entreno de A sin red
+      workoutLog: [...s.workoutLog, entry(c2, 'a-offline')],
+      clientSync: { ...s.clientSync, uploadDue: true },
+    }));
+    await c2.s.checkAndPullProgramUpdates();
+    expect(c2.s.clientSync.slotId).toBe(b.s.clients[cb.clientId].syncSlotId);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(historyIds(await slotOf(b.s.clients[cb.clientId].syncSlotId)) ?? []).not.toContain('a-offline');
   });
 });
 

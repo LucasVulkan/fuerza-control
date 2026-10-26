@@ -489,6 +489,7 @@
     "linkErrBody": "No se pudo vincular la cuenta. Inténtalo otra vez."
   },
   "account": {
+    "errAccountExists": "Ya tienes una cuenta de entrenador en este móvil.",
     "eyebrow": "AJUSTES",
     "title": "Mi cuenta",
     "rowTitleNone": "Mi cuenta",

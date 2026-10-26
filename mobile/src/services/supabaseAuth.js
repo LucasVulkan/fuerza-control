@@ -214,3 +214,6 @@ async function deleteUserOf(db) {
 
 export const deleteTrainerUser = () => deleteUserOf(trainerSupabase);
 export const deleteClientUser  = () => deleteUserOf(clientSupabase);
+
+/** El servidor dice que el usuario de la sesión de entrenador ya no existe (un 401 solo no lo prueba). */
+export const trainerUserGone = async () => (await trainerSupabase.auth.getUser()).error?.code === 'user_not_found';
