@@ -171,15 +171,13 @@ function seatLockedError() {
   return Object.assign(new Error(i18n.t('trainer.errSeatLocked')), { code: 'SEAT_LOCKED' });
 }
 
-/** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
 // El programa del entrenador de este cliente: el activo si es suyo, si no el último que
 // llegó. Su progreso es lo que se sube y lo que se conserva al aplicar un programa nuevo (E57).
 const trainerProgramOf = (clientSync, activeId) => {
   const ids = clientSync.trainerProgramIds ?? [];
   return !ids.length || ids.includes(activeId) ? activeId : ids[ids.length - 1];
 };
-// Lápidas de lo borrado, `{ [id]: deletedAt }` (E59).
-const buried = (ids) => Object.fromEntries(ids.map((id) => [id, Date.now()]));
+/** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
 const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
 
 // Dropset actions all touch the `drops` array of the LAST work set only
@@ -2924,7 +2922,7 @@ export const useStore = create(
       deleteLogEntry: (logId) =>
         set((state) => ({
           workoutLog: state.workoutLog.filter((e) => e.id !== logId),
-          deletedLogIds: { ...state.deletedLogIds, ...buried([logId]) },
+          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
         })),
 
       /**
@@ -2999,7 +2997,7 @@ export const useStore = create(
           const kept = new Set(keep);
           set((s) => ({
             workoutLog: keep,
-            deletedLogIds: { ...s.deletedLogIds, ...buried(workoutLog.filter((e) => !kept.has(e)).map((e) => e.id)) },
+            deletedLogIds: { ...s.deletedLogIds, ...Object.fromEntries(workoutLog.filter((e) => !kept.has(e)).map((e) => [e.id, Date.now()])) },
           }));
         }
         return removed;
@@ -3012,7 +3010,7 @@ export const useStore = create(
             ...state.clientLogs,
             [clientId]: (state.clientLogs[clientId] ?? []).filter((e) => e.id !== logId),
           },
-          deletedLogIds: { ...state.deletedLogIds, ...buried([logId]) },
+          deletedLogIds: { ...state.deletedLogIds, [logId]: Date.now() },
         })),
 
       getLastSession: (templateId) => {
@@ -4188,7 +4186,7 @@ export const useStore = create(
             [clientId]: {
               ...s.clients[clientId],
               overridesSentAt: now,
-              ...(s.clients[clientId].nextOverrides === client.nextOverrides
+              ...(s.clients[clientId]?.nextOverrides === client.nextOverrides
                 ? { nextOverrides: stamped, overridesDirty: false } : {}),
             },
           },

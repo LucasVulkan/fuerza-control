@@ -291,13 +291,13 @@ as $$
           from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) with ordinality as t(e, o)
          where not exists (select 1 from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) n
                             where n->>'id' = e->>'id'
-                              and coalesce((n->>'updatedAt')::numeric, 0) >= coalesce((e->>'updatedAt')::numeric, 0))
+                              and (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end) >= (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end))
       ), '[]'::jsonb) || coalesce((
         select jsonb_agg(n order by o)
           from jsonb_array_elements(coalesce(p_new->'entries', '[]'::jsonb)) with ordinality as t(n, o)
          where not exists (select 1 from jsonb_array_elements(coalesce(p_old->'entries', '[]'::jsonb)) e
                             where e->>'id' = n->>'id'
-                              and coalesce((e->>'updatedAt')::numeric, 0) > coalesce((n->>'updatedAt')::numeric, 0))
+                              and (case jsonb_typeof(e->'updatedAt') when 'number' then (e->>'updatedAt')::numeric else 0 end) > (case jsonb_typeof(n->'updatedAt') when 'number' then (n->>'updatedAt')::numeric else 0 end))
       ), '[]'::jsonb),
     'customExercises', coalesce(nullif(p_old->'customExercises', 'null'::jsonb), '{}'::jsonb)
                     || coalesce(nullif(p_new->'customExercises', 'null'::jsonb), '{}'::jsonb),
@@ -530,7 +530,7 @@ $$;
 -- cliente ya está en otro, SLOT_CHANGED y no se escribe nada. Sin él (móviles
 -- con la versión vieja), el asiento que tenga.
 drop function if exists public.client_upload_history(jsonb, integer);
-create function public.client_upload_history(p_history jsonb, p_sessions integer, p_slot_id uuid default null)
+create or replace function public.client_upload_history(p_history jsonb, p_sessions integer, p_slot_id uuid default null)
 returns uuid
 language plpgsql
 security definer
