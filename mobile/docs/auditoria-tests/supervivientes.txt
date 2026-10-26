@@ -1,0 +1,960 @@
+adherence:97:44 NOCOV BlockStatement | export function adherenceColor(th, status) { => {}
+adherence:100:7 NOCOV ConditionalExpression | if (status === STATUS.AT_RISK)  return th.colors.redText ?? th.colors.red; => true
+adherence:100:7 NOCOV ConditionalExpression | if (status === STATUS.AT_RISK)  return th.colors.redText ?? th.colors.red; => false
+adherence:100:7 NOCOV EqualityOperator | if (status === STATUS.AT_RISK)  return th.colors.redText ?? th.colors.red; => status !== STATUS.AT_RISK
+adherence:100:42 NOCOV LogicalOperator | if (status === STATUS.AT_RISK)  return th.colors.redText ?? th.colors.red; => th.colors.redText && th.colors.red
+adherence:101:7 NOCOV ConditionalExpression | if (status === STATUS.SLIPPING) return th.colors.orange; => true
+adherence:101:7 NOCOV ConditionalExpression | if (status === STATUS.SLIPPING) return th.colors.orange; => false
+adherence:101:7 NOCOV EqualityOperator | if (status === STATUS.SLIPPING) return th.colors.orange; => status !== STATUS.SLIPPING
+adherence:102:7 NOCOV ConditionalExpression | if (status === STATUS.ON_TRACK) return th.colors.green; => true
+adherence:102:7 NOCOV ConditionalExpression | if (status === STATUS.ON_TRACK) return th.colors.green; => false
+adherence:102:7 NOCOV EqualityOperator | if (status === STATUS.ON_TRACK) return th.colors.green; => status !== STATUS.ON_TRACK
+adherence:121:14 NOCOV ArrayDeclaration | sessions = [], => ["Stryker was here"]
+adherence:161:14 NOCOV ArrayDeclaration | sessions = [], => ["Stryker was here"]
+adherence:18:3 SURV MethodExpression | d.setHours(0, 0, 0, 0); => d.setMinutes(0, 0, 0, 0)
+adherence:43:7 SURV ConditionalExpression | if ((counts.get(ws) ?? 0) < target) ws = startOfWeek(ws - DAY); => false
+adherence:43:56 SURV ArithmeticOperator | if ((counts.get(ws) ?? 0) < target) ws = startOfWeek(ws - DAY); => ws + DAY
+adherence:62:7 SURV ConditionalExpression | if (!timestamps.length) return 0; => false
+adherence:68:10 SURV ConditionalExpression | while (weeks < window && ws >= firstWs) { => true
+adherence:68:10 SURV EqualityOperator | while (weeks < window && ws >= firstWs) { => weeks <= window
+adherence:68:28 SURV EqualityOperator | while (weeks < window && ws >= firstWs) { => ws > firstWs
+adherence:71:22 SURV ArithmeticOperator | ws = startOfWeek(ws - DAY); => ws + DAY
+adherence:127:18 SURV MethodExpression | const stamps = sessions => sessions.map(s => s?.timestamp)
+adherence:128:17 SURV OptionalChaining | .map((s) => s?.timestamp) => s.timestamp
+adherence:129:21 SURV ConditionalExpression | .filter((ts) => typeof ts === 'number' && ts <= now); => true
+adherence:129:21 SURV LogicalOperator | .filter((ts) => typeof ts === 'number' && ts <= now); => typeof ts === 'number' || ts <= now
+adherence:129:21 SURV ConditionalExpression | .filter((ts) => typeof ts === 'number' && ts <= now); => true
+adherence:129:47 SURV ConditionalExpression | .filter((ts) => typeof ts === 'number' && ts <= now); => true
+adherence:132:45 SURV EqualityOperator | const first    = stamps.reduce((a, b) => (b < a ? b : a)); => b <= a
+adherence:163:18 SURV StringLiteral | manualStatus = 'active', => ""
+adherence:167:18 SURV MethodExpression | const stamps = sessions => sessions.map(s => s?.timestamp)
+adherence:168:17 SURV OptionalChaining | .map((s) => s?.timestamp) => s.timestamp
+adherence:169:21 SURV ConditionalExpression | .filter((ts) => typeof ts === 'number') => true
+adherence:172:44 SURV EqualityOperator | const weekDone   = stamps.filter((ts) => ts >= startOfWeek(now)).length; => ts > startOfWeek(now)
+adherence:189:19 SURV EqualityOperator | const status  = ratio <= 2 ? STATUS.ON_TRACK => ratio < 2
+adherence:190:19 SURV EqualityOperator | : ratio <= 4 ? STATUS.SLIPPING => ratio < 4
+adherence:81:13 SURV StringLiteral | SLIPPING: 'slipping', => ""
+adherence:80:13 SURV StringLiteral | ON_TRACK: 'on_track', => ""
+adherence:82:13 SURV StringLiteral | AT_RISK:  'at_risk', => ""
+adherence:83:13 SURV StringLiteral | NO_DATA:  'no_data', => ""
+adherence:84:13 SURV StringLiteral | MUTED:    'muted', => ""
+clientLogs:16:48 NOCOV ArrayDeclaration | program.stages.forEach((st) => (st.days ?? []).forEach((d) => ids.add(d.sessionTemplateId))); => ["Stryker was here"]
+clientLogs:18:23 NOCOV ArrayDeclaration | (program?.days ?? []).forEach((d) => ids.add(d.sessionTemplateId)); => ["Stryker was here"]
+clientLogs:83:7 NOCOV MethodExpression | : [fallbackProgramId].filter(Boolean); => [fallbackProgramId]
+clientLogs:83:7 NOCOV ArrayDeclaration | : [fallbackProgramId].filter(Boolean); => []
+clientLogs:92:34 NOCOV ArrayDeclaration | const entries = (workoutLog ?? []).filter((e) => => ["Stryker was here"]
+clientLogs:154:14 NOCOV ArrayDeclaration | (days ?? []).map((d) => ({ ...d, sessionTemplateId: mapTpl(d.sessionTemplateId) })); => ["Stryker was here"]
+clientLogs:184:37 NOCOV ArrayDeclaration | workoutLog: (data.workoutLog ?? []).map((e) => => ["Stryker was here"]
+clientLogs:15:7 SURV EqualityOperator | if (program?.stages?.length > 0) { => program?.stages?.length >= 0
+clientLogs:15:7 SURV OptionalChaining | if (program?.stages?.length > 0) { => program.stages
+clientLogs:18:6 SURV OptionalChaining | (program?.days ?? []).forEach((d) => ids.add(d.sessionTemplateId)); => program.days
+clientLogs:38:32 SURV ArrayDeclaration | (templateOwners[tid] ??= []).push(p.owner); => ["Stryker was here"]
+clientLogs:81:19 SURV OptionalChaining | const progIds = trainerProgramIds?.length => trainerProgramIds.length
+clientLogs:86:47 SURV OptionalChaining | progIds.forEach((pid) => programTemplateIds(programs?.[pid]).forEach((t) => tplIds.add(t))); => programs[pid]
+clientLogs:94:24 SURV EqualityOperator | (isFreeEntry(e) && (e.timestamp ?? 0) >= linkedTs) => (e.timestamp ?? 0) > linkedTs
+clientLogs:99:44 SURV ArrayDeclaration | entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)) => ["Stryker was here"]
+clientLogs:131:31 SURV ArrayDeclaration | for (const e of incoming ?? []) { => ["Stryker was here"]
+clientLogs:150:35 SURV StringLiteral | const newProgramId = generateId('prog'); => ""
+clientLogs:152:54 SURV StringLiteral | const mapTpl = (tid) => (idMap[tid] ??= generateId('tpl')); => ""
+improvement:44:44 NOCOV StringLiteral | if (model === 'time_progression') return 'time'; => ""
+improvement:45:30 NOCOV ArrayDeclaration | const hasWeight = (logs ?? []).some(({ exercise }) => => ["Stryker was here"]
+improvement:52:42 NOCOV ArrayDeclaration | const done = sets?.filter(isLogged) ?? []; => ["Stryker was here"]
+improvement:54:26 NOCOV BlockStatement | if (metric === 'time') { => {}
+improvement:55:16 NOCOV MethodExpression | const ts = done.map((s) => parseFloat(s.time) || 0).filter(Boolean); => done.map(s => parseFloat(s.time) || 0)
+improvement:55:25 NOCOV ArrowFunction | const ts = done.map((s) => parseFloat(s.time) || 0).filter(Boolean); => () => undefined
+improvement:55:32 NOCOV ConditionalExpression | const ts = done.map((s) => parseFloat(s.time) || 0).filter(Boolean); => true
+improvement:55:32 NOCOV ConditionalExpression | const ts = done.map((s) => parseFloat(s.time) || 0).filter(Boolean); => false
+improvement:55:32 NOCOV LogicalOperator | const ts = done.map((s) => parseFloat(s.time) || 0).filter(Boolean); => parseFloat(s.time) && 0
+improvement:56:24 NOCOV MethodExpression | return ts.length ? Math.max(...ts) : null; => Math.min(...ts)
+improvement:72:7 NOCOV ConditionalExpression | if (metric === 'vol') { => true
+improvement:72:7 NOCOV ConditionalExpression | if (metric === 'vol') { => false
+improvement:72:7 NOCOV EqualityOperator | if (metric === 'vol') { => metric !== 'vol'
+improvement:72:18 NOCOV StringLiteral | if (metric === 'vol') { => ""
+improvement:72:25 NOCOV BlockStatement | if (metric === 'vol') { => {}
+improvement:73:27 NOCOV ArrowFunction | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => () => undefined
+improvement:73:37 NOCOV ArithmeticOperator | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => a - (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)
+improvement:73:41 NOCOV ArithmeticOperator | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => (parseFloat(s.weight) || 0) / (parseInt(s.reps) || 0)
+improvement:73:42 NOCOV ConditionalExpression | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => true
+improvement:73:42 NOCOV ConditionalExpression | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => false
+improvement:73:42 NOCOV LogicalOperator | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => parseFloat(s.weight) && 0
+improvement:73:72 NOCOV ConditionalExpression | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => true
+improvement:73:72 NOCOV ConditionalExpression | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => false
+improvement:73:72 NOCOV LogicalOperator | const v = done.reduce((a, s) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0); => parseInt(s.reps) && 0
+improvement:74:12 NOCOV ConditionalExpression | return v > 0 ? Math.round(v) : null; => true
+improvement:74:12 NOCOV ConditionalExpression | return v > 0 ? Math.round(v) : null; => false
+improvement:74:12 NOCOV EqualityOperator | return v > 0 ? Math.round(v) : null; => v >= 0
+improvement:74:12 NOCOV EqualityOperator | return v > 0 ? Math.round(v) : null; => v <= 0
+improvement:76:7 NOCOV ConditionalExpression | if (metric === 'e1rm') { => true
+improvement:76:7 NOCOV ConditionalExpression | if (metric === 'e1rm') { => false
+improvement:76:7 NOCOV EqualityOperator | if (metric === 'e1rm') { => metric !== 'e1rm'
+improvement:76:18 NOCOV StringLiteral | if (metric === 'e1rm') { => ""
+improvement:76:26 NOCOV BlockStatement | if (metric === 'e1rm') { => {}
+improvement:78:12 NOCOV ConditionalExpression | return v !== null ? Math.round(v * 10) / 10 : null; => true
+improvement:78:12 NOCOV ConditionalExpression | return v !== null ? Math.round(v * 10) / 10 : null; => false
+improvement:78:12 NOCOV EqualityOperator | return v !== null ? Math.round(v * 10) / 10 : null; => v === null
+improvement:78:25 NOCOV ArithmeticOperator | return v !== null ? Math.round(v * 10) / 10 : null; => Math.round(v * 10) * 10
+improvement:78:36 NOCOV ArithmeticOperator | return v !== null ? Math.round(v * 10) / 10 : null; => v / 10
+improvement:26:25 SURV ConditionalExpression | const isLogged = (s) => s.done || s.weight || s.reps || s.time; => true
+improvement:26:25 SURV LogicalOperator | const isLogged = (s) => s.done || s.weight || s.reps || s.time; => (s.done || s.weight) && s.reps
+improvement:26:25 SURV ConditionalExpression | const isLogged = (s) => s.done || s.weight || s.reps || s.time; => false
+improvement:26:25 SURV LogicalOperator | const isLogged = (s) => s.done || s.weight || s.reps || s.time; => s.done && s.weight
+improvement:30:10 SURV MethodExpression | return sourceLog => sourceLog.filter(log => log.exercises.some(e => e.exerciseId === exerciseId && e.sets.some
+improvement:30:10 SURV MethodExpression | return sourceLog => sourceLog
+improvement:32:33 SURV ConditionalExpression | log.exercises.some((e) => e.exerciseId === exerciseId && e.sets.some(isLogged))) => true
+improvement:32:33 SURV LogicalOperator | log.exercises.some((e) => e.exerciseId === exerciseId && e.sets.some(isLogged))) => e.exerciseId === exerciseId || e.sets.some(isLogged)
+improvement:32:33 SURV ConditionalExpression | log.exercises.some((e) => e.exerciseId === exerciseId && e.sets.some(isLogged))) => true
+improvement:32:33 SURV EqualityOperator | log.exercises.some((e) => e.exerciseId === exerciseId && e.sets.some(isLogged))) => e.exerciseId !== exerciseId
+improvement:32:64 SURV MethodExpression | log.exercises.some((e) => e.exerciseId === exerciseId && e.sets.some(isLogged))) => e.sets.every(isLogged)
+improvement:33:11 SURV ArrowFunction | .sort((a, b) => a.timestamp - b.timestamp) => () => undefined
+improvement:33:21 SURV ArithmeticOperator | .sort((a, b) => a.timestamp - b.timestamp) => a.timestamp + b.timestamp
+improvement:37:52 SURV EqualityOperator | exercise:          log.exercises.find((e) => e.exerciseId === exerciseId), => e.exerciseId !== exerciseId
+improvement:43:17 SURV OptionalChaining | const model = def?.progressionModel; => def.progressionModel
+improvement:44:7 SURV ConditionalExpression | if (model === 'time_progression') return 'time'; => false
+improvement:44:17 SURV StringLiteral | if (model === 'time_progression') return 'time'; => ""
+improvement:46:5 SURV MethodExpression | exercise?.sets?.some((s) => parseFloat(s.weight) > 0)); => exercise?.sets?.every(s => parseFloat(s.weight) > 0)
+improvement:46:5 SURV OptionalChaining | exercise?.sets?.some((s) => parseFloat(s.weight) > 0)); => exercise?.sets.some
+improvement:46:5 SURV OptionalChaining | exercise?.sets?.some((s) => parseFloat(s.weight) > 0)); => exercise.sets
+improvement:52:16 SURV MethodExpression | const done = sets?.filter(isLogged) ?? []; => sets
+improvement:52:16 SURV OptionalChaining | const done = sets?.filter(isLogged) ?? []; => sets.filter
+improvement:53:7 SURV ConditionalExpression | if (!done.length) return null; => false
+improvement:54:7 SURV ConditionalExpression | if (metric === 'time') { => false
+improvement:54:18 SURV StringLiteral | if (metric === 'time') { => ""
+improvement:59:15 SURV MethodExpression | const v = Math.max(...done.map((s) => parseFloat(s.weight) || 0)); => Math.min(...done.map(s => parseFloat(s.weight) || 0))
+improvement:64:12 SURV ConditionalExpression | return v > 0 ? v : null; => true
+improvement:64:12 SURV EqualityOperator | return v > 0 ? v : null; => v >= 0
+improvement:68:7 SURV ConditionalExpression | if (metric === 'repsMax') { => true
+improvement:70:12 SURV ConditionalExpression | return v > 0 ? v : null; => true
+improvement:70:12 SURV EqualityOperator | return v > 0 ? v : null; => v >= 0
+improvement:85:7 SURV ConditionalExpression | if (!logs || logs.length < 2) return null; => false
+improvement:85:7 SURV LogicalOperator | if (!logs || logs.length < 2) return null; => !logs && logs.length < 2
+improvement:85:16 SURV ConditionalExpression | if (!logs || logs.length < 2) return null; => false
+improvement:88:27 SURV OptionalChaining | const v = metricValue(exercise?.sets, metric, def); => exercise.sets
+improvement:89:9 SURV ConditionalExpression | if (v !== null) pts.push({ x: i, y: v }); => true
+improvement:91:7 SURV ConditionalExpression | if (pts.length < 2) return null; => false
+improvement:97:17 SURV ArithmeticOperator | const denom = N * sumX2 - sumX * sumX; => N / sumX2
+improvement:97:29 SURV ArithmeticOperator | const denom = N * sumX2 - sumX * sumX; => sumX / sumX
+improvement:98:7 SURV ConditionalExpression | if (denom === 0) return 0; => false
+improvement:99:21 SURV ArithmeticOperator | const slope     = (N * sumXY - sumX * sumY) / denom; => (N * sumXY - sumX * sumY) * denom
+improvement:100:29 SURV ArithmeticOperator | const intercept = (sumY - slope * sumX) / N; => slope / sumX
+improvement:102:33 SURV ArithmeticOperator | const lastEst   = intercept + slope * pts[pts.length - 1].x; => slope / pts[pts.length - 1].x
+improvement:103:7 SURV LogicalOperator | if (!firstEst || firstEst <= 0) return null; => !firstEst && firstEst <= 0
+improvement:103:20 SURV ConditionalExpression | if (!firstEst || firstEst <= 0) return null; => false
+improvement:103:20 SURV EqualityOperator | if (!firstEst || firstEst <= 0) return null; => firstEst < 0
+improvement:111:5 SURV MethodExpression | l.exercises.filter((e) => e.sets.some(isLogged)).map((e) => e.exerciseId)))]; => l.exercises
+improvement:111:31 SURV MethodExpression | l.exercises.filter((e) => e.sets.some(isLogged)).map((e) => e.exerciseId)))]; => e.sets.every(isLogged)
+improvement:117:7 SURV ConditionalExpression | if (!improvements.length) return null; => false
+improvement:118:21 SURV ArithmeticOperator | return Math.round(improvements.reduce((a, b) => a + b, 0) / improvements.length); => improvements.reduce((a, b) => a + b, 0) * improvements.length
+improvement:123:7 SURV ConditionalExpression | if (workoutLog.length < 2) return null; => false
+improvement:124:18 SURV MethodExpression | const sorted = [...workoutLog].sort((a, b) => a.timestamp - b.timestamp); => [...workoutLog]
+improvement:124:49 SURV ArithmeticOperator | const sorted = [...workoutLog].sort((a, b) => a.timestamp - b.timestamp); => a.timestamp + b.timestamp
+improvement:124:39 SURV ArrowFunction | const sorted = [...workoutLog].sort((a, b) => a.timestamp - b.timestamp); => () => undefined
+improvement:130:9 SURV ConditionalExpression | if (!prevEx) continue; => false
+improvement:132:35 SURV ObjectLiteral | const metric  = seriesMetric([{ exercise: prevEx }, { exercise: lastEx }], def); => {}
+improvement:135:9 SURV ConditionalExpression | if (lastVal === null || !prevVal) continue; => false
+improvement:138:7 SURV ConditionalExpression | if (!improvements.length) return null; => false
+improvement:139:21 SURV ArithmeticOperator | return Math.round(improvements.reduce((a, b) => a + b, 0) / improvements.length); => improvements.reduce((a, b) => a + b, 0) * improvements.length
+improvement:147:27 SURV OptionalChaining | const v = metricValue(exercise?.sets, metric, def); => exercise.sets
+improvement:148:9 SURV ConditionalExpression | if (v !== null && (best === null || v >= best.value)) best = { value: v, timestamp, metric }; => true
+improvement:148:9 SURV LogicalOperator | if (v !== null && (best === null || v >= best.value)) best = { value: v, timestamp, metric }; => v !== null || best === null || v >= best.value
+improvement:148:9 SURV ConditionalExpression | if (v !== null && (best === null || v >= best.value)) best = { value: v, timestamp, metric }; => true
+improvement:148:24 SURV ConditionalExpression | if (v !== null && (best === null || v >= best.value)) best = { value: v, timestamp, metric }; => true
+improvement:148:41 SURV EqualityOperator | if (v !== null && (best === null || v >= best.value)) best = { value: v, timestamp, metric }; => v > best.value
+improvement:159:31 SURV OptionalChaining | const val   = metricValue(exercise?.sets, metric, def); => exercise.sets
+improvement:160:36 SURV ConditionalExpression | const delta = prev !== null && val !== null ? val - prev : null; => true
+improvement:161:19 SURV ConditionalExpression | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => true
+improvement:161:19 SURV ConditionalExpression | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => false
+improvement:161:19 SURV ConditionalExpression | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => true
+improvement:161:19 SURV LogicalOperator | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => val !== null && bestSoFar !== null || val > bestSoFar
+improvement:161:19 SURV LogicalOperator | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => val !== null || bestSoFar !== null
+improvement:161:19 SURV ConditionalExpression | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => true
+improvement:161:19 SURV EqualityOperator | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => val === null
+improvement:161:35 SURV ConditionalExpression | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => true
+improvement:161:35 SURV EqualityOperator | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => bestSoFar === null
+improvement:161:57 SURV ConditionalExpression | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => true
+improvement:161:57 SURV EqualityOperator | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => val >= bestSoFar
+improvement:161:57 SURV EqualityOperator | const isPR  = val !== null && bestSoFar !== null && val > bestSoFar; => val <= bestSoFar
+improvement:162:9 SURV ConditionalExpression | if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val); => true
+improvement:162:9 SURV ConditionalExpression | if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val); => false
+improvement:162:9 SURV EqualityOperator | if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val); => val === null
+improvement:162:35 SURV ConditionalExpression | if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val); => true
+improvement:162:35 SURV ConditionalExpression | if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val); => false
+improvement:162:35 SURV EqualityOperator | if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val); => bestSoFar !== null
+improvement:162:62 SURV MethodExpression | if (val !== null) bestSoFar = bestSoFar === null ? val : Math.max(bestSoFar, val); => Math.min(bestSoFar, val)
+improvement:170:7 SURV ConditionalExpression | if (!logs || logs.length < 2) return null; => false
+improvement:170:7 SURV LogicalOperator | if (!logs || logs.length < 2) return null; => !logs && logs.length < 2
+improvement:170:16 SURV ConditionalExpression | if (!logs || logs.length < 2) return null; => false
+improvement:171:28 SURV OptionalChaining | const last = metricValue(logs[logs.length - 1].exercise?.sets, metric, def); => logs[logs.length - 1].exercise.sets
+improvement:172:28 SURV OptionalChaining | const prev = metricValue(logs[logs.length - 2].exercise?.sets, metric, def); => logs[logs.length - 2].exercise.sets
+improvement:173:10 SURV ConditionalExpression | return last !== null && prev !== null ? last - prev : null; => true
+improvement:173:43 SURV ArithmeticOperator | return last !== null && prev !== null ? last - prev : null; => last + prev
+oneRm:85:49 NOCOV ArrayDeclaration | for (const { timestamp, exercise } of logs ?? []) { => ["Stryker was here"]
+oneRm:23:7 SURV LogicalOperator | if (!w || w <= 0 || !r || r < 1) return null; => !w && w <= 0
+oneRm:23:13 SURV ConditionalExpression | if (!w || w <= 0 || !r || r < 1) return null; => false
+oneRm:23:13 SURV EqualityOperator | if (!w || w <= 0 || !r || r < 1) return null; => w < 0
+oneRm:23:29 SURV ConditionalExpression | if (!w || w <= 0 || !r || r < 1) return null; => false
+oneRm:25:7 SURV EqualityOperator | if (rpeNum >= 5 && rpeNum <= 10) { => rpeNum > 5
+oneRm:25:22 SURV ConditionalExpression | if (rpeNum >= 5 && rpeNum <= 10) { => true
+oneRm:25:22 SURV EqualityOperator | if (rpeNum >= 5 && rpeNum <= 10) { => rpeNum < 10
+oneRm:28:7 SURV EqualityOperator | if (r > MAX_RELIABLE_REPS) return null; => r >= MAX_RELIABLE_REPS
+oneRm:45:9 SURV EqualityOperator | if (!(w > 0) || !(r >= 1) || !(p > 0)) return null; => w >= 0
+oneRm:45:21 SURV EqualityOperator | if (!(w > 0) || !(r >= 1) || !(p > 0)) return null; => r > 1
+oneRm:45:34 SURV EqualityOperator | if (!(w > 0) || !(r >= 1) || !(p > 0)) return null; => p >= 0
+oneRm:47:10 SURV ConditionalExpression | return eq === 1 ? w : w * (1 + eq / 30); => false
+oneRm:58:22 SURV ConditionalExpression | if (!(e1rm > 0) || r < 1 || r > MAX_RELIABLE_REPS) return null; => false
+oneRm:65:27 SURV ArrayDeclaration | for (const s of sets ?? []) { => ["Stryker was here"]
+oneRm:66:9 SURV ConditionalExpression | if (!(s.done || s.weight || s.reps)) continue; => false
+oneRm:66:11 SURV ConditionalExpression | if (!(s.done || s.weight || s.reps)) continue; => true
+oneRm:66:11 SURV LogicalOperator | if (!(s.done || s.weight || s.reps)) continue; => (s.done || s.weight) && s.reps
+oneRm:66:11 SURV ConditionalExpression | if (!(s.done || s.weight || s.reps)) continue; => false
+oneRm:66:11 SURV LogicalOperator | if (!(s.done || s.weight || s.reps)) continue; => s.done && s.weight
+oneRm:68:9 SURV ConditionalExpression | if (v !== null && (best === null || v > best)) best = v; => true
+oneRm:68:24 SURV LogicalOperator | if (v !== null && (best === null || v > best)) best = v; => best === null && v > best
+oneRm:68:24 SURV ConditionalExpression | if (v !== null && (best === null || v > best)) best = v; => false
+oneRm:68:41 SURV ConditionalExpression | if (v !== null && (best === null || v > best)) best = v; => false
+oneRm:68:41 SURV EqualityOperator | if (v !== null && (best === null || v > best)) best = v; => v >= best
+oneRm:86:9 SURV EqualityOperator | if (timestamp < cutoff) continue; => timestamp <= cutoff
+oneRm:87:27 SURV OptionalChaining | const v = bestSetE1RM(exercise?.sets); => exercise.sets
+oneRm:88:9 SURV ConditionalExpression | if (v !== null && (best === null || v >= best)) { => true
+oneRm:88:24 SURV LogicalOperator | if (v !== null && (best === null || v >= best)) { => best === null && v >= best
+oneRm:88:24 SURV ConditionalExpression | if (v !== null && (best === null || v >= best)) { => false
+oneRm:88:41 SURV ConditionalExpression | if (v !== null && (best === null || v >= best)) { => false
+oneRm:88:41 SURV EqualityOperator | if (v !== null && (best === null || v >= best)) { => v > best
+prescription:88:109 NOCOV StringLiteral | const inputType = exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'tim => ""
+prescription:95:76 NOCOV StringLiteral | const v = prog.type === 'time' ? `${minTime}+` : minTime === maxTime ? `${minTime}` : `${minTime}–${maxTime}`; => ``
+prescription:39:117 SURV StringLiteral | const inputType  = exConfig.inputType ?? def.inputType ?? (def.progressionModel === 'time_progression' ? 'time => ""
+prescription:46:22 SURV LogicalOperator | const maxTime    = exConfig.maxTime ?? def.maxTime ?? DEFAULT_TARGET.maxTime; => exConfig.maxTime && def.maxTime
+prescription:50:13 SURV StringLiteral | ? ` ${t('workout.perSide', 'por lado')}` => ""
+prescription:56:31 SURV ConditionalExpression | if (inputType === 'time' || inputType === 'weight_time') { => false
+prescription:56:45 SURV StringLiteral | if (inputType === 'time' || inputType === 'weight_time') { => ""
+prescription:88:43 SURV OptionalChaining | const inputType = exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'tim => def.inputType
+prescription:88:62 SURV ConditionalExpression | const inputType = exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'tim => false
+prescription:88:62 SURV OptionalChaining | const inputType = exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'tim => def.progressionModel
+prescription:88:88 SURV StringLiteral | const inputType = exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'tim => ""
+prescription:88:118 SURV StringLiteral | const inputType = exConfig.inputType ?? def?.inputType ?? (def?.progressionModel === 'time_progression' ? 'tim => ""
+prescription:89:39 SURV OptionalChaining | const minReps = exConfig.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps; => def.minReps
+prescription:90:39 SURV OptionalChaining | const maxReps = exConfig.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps; => def.maxReps
+prescription:91:39 SURV OptionalChaining | const minTime = exConfig.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime; => def.minTime
+prescription:92:39 SURV OptionalChaining | const maxTime = exConfig.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime; => def.maxTime
+prescription:94:31 SURV ConditionalExpression | if (inputType === 'time' || inputType === 'weight_time') { => false
+prescription:94:45 SURV StringLiteral | if (inputType === 'time' || inputType === 'weight_time') { => ""
+prescription:95:54 SURV ConditionalExpression | const v = prog.type === 'time' ? `${minTime}+` : minTime === maxTime ? `${minTime}` : `${minTime}–${maxTime}`; => false
+prescription:114:7 SURV ConditionalExpression | if (!def) return fallbackId; => false
+prescription:115:10 SURV MethodExpression | return language?.startsWith('en') ? (def.nameEn ?? def.name) : def.name; => language?.endsWith('en')
+prescription:115:10 SURV OptionalChaining | return language?.startsWith('en') ? (def.nameEn ?? def.name) : def.name; => language.startsWith
+programOwnership:20:37 NOCOV StringLiteral | .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')); => "Stryker was here!"
+programOwnership:20:70 NOCOV StringLiteral | .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')); => "Stryker was here!"
+programOwnership:27:22 NOCOV LogicalOperator | .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); => a.name && ''
+programOwnership:27:32 NOCOV StringLiteral | .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); => "Stryker was here!"
+programOwnership:27:50 NOCOV LogicalOperator | .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); => b.name && ''
+programOwnership:27:60 NOCOV StringLiteral | .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); => "Stryker was here!"
+programOwnership:46:47 NOCOV BlockStatement | export function ownerClient(clients, program) { => {}
+programOwnership:47:17 NOCOV OptionalChaining | const owner = program?.owner; => program.owner
+programOwnership:48:10 NOCOV ConditionalExpression | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => true
+programOwnership:48:10 NOCOV ConditionalExpression | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => false
+programOwnership:48:10 NOCOV LogicalOperator | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => owner || owner !== 'me'
+programOwnership:48:19 NOCOV ConditionalExpression | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => true
+programOwnership:48:19 NOCOV EqualityOperator | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => owner === 'me'
+programOwnership:48:29 NOCOV StringLiteral | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => ""
+programOwnership:48:37 NOCOV LogicalOperator | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => clients?.[owner] && null
+programOwnership:48:37 NOCOV OptionalChaining | return owner && owner !== 'me' ? (clients?.[owner] ?? null) : null; => clients[owner]
+programOwnership:76:43 NOCOV StringLiteral | .map(([id, c]) => group(id, c.name ?? '', c.activeProgramId)) => "Stryker was here!"
+programOwnership:25:10 SURV MethodExpression | return Object.values(programs ?? {}) => Object.values(programs ?? {}).filter(p => p.kind === 'template')
+programOwnership:27:11 SURV ArrowFunction | .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); => () => undefined
+programOwnership:66:18 SURV OptionalChaining | const skipId = clients?.[clientId]?.activeProgramId; => clients?.[clientId].activeProgramId
+programOwnership:66:18 SURV OptionalChaining | const skipId = clients?.[clientId]?.activeProgramId; => clients[clientId]
+progression:101:19 NOCOV ConditionalExpression | return step ?? (def?.weightStep > 0 ? def.weightStep : 2.5); => true
+progression:101:19 NOCOV ConditionalExpression | return step ?? (def?.weightStep > 0 ? def.weightStep : 2.5); => false
+progression:101:19 NOCOV EqualityOperator | return step ?? (def?.weightStep > 0 ? def.weightStep : 2.5); => def?.weightStep >= 0
+progression:101:19 NOCOV EqualityOperator | return step ?? (def?.weightStep > 0 ? def.weightStep : 2.5); => def?.weightStep <= 0
+progression:101:19 NOCOV OptionalChaining | return step ?? (def?.weightStep > 0 ? def.weightStep : 2.5); => def.weightStep
+progression:168:97 NOCOV StringLiteral | : (LEGACY_REVERSE_MAP[ec.progressionModel ?? d.progressionModel ?? 'double_progression'] ?? 'double'); => ""
+progression:247:12 NOCOV BooleanLiteral | return !!s.done; => !s.done
+progression:247:13 NOCOV BooleanLiteral | return !!s.done; => s.done
+progression:293:42 NOCOV BooleanLiteral | function whyUp(prog, v, goal, t, timed = false) { => true
+progression:353:70 NOCOV BooleanLiteral | function chipDouble(prog, doneSets, n, maxW, floor, goal, t, timed = false) { => true
+progression:380:39 NOCOV ArrayDeclaration | const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time); => ["Stryker was here"]
+progression:398:67 NOCOV ArrayDeclaration | function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload = false } = {}) { => ["Stryker was here"]
+progression:398:84 NOCOV BooleanLiteral | function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload = false } = {}) { => true
+progression:444:84 NOCOV BooleanLiteral | function chipDoubleDecrease(prog, doneSets, n, assistance, floor, goal, t, timed = false) { => true
+progression:451:11 NOCOV StringLiteral | ? t('progression.decrease_lastAssist', { assist: assistance }) => ""
+progression:451:46 NOCOV ObjectLiteral | ? t('progression.decrease_lastAssist', { assist: assistance }) => {}
+progression:462:142 NOCOV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => ""
+progression:477:37 NOCOV ArrayDeclaration | const [last, ...rest] = recent ?? []; => ["Stryker was here"]
+progression:509:43 NOCOV OptionalChaining | const totalSets = exConfig?.sets     ?? def?.sets     ?? doneSets.length; => def.sets
+progression:517:80 NOCOV StringLiteral | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => ""
+progression:585:25 NOCOV StringLiteral | if (short) return t('progression.rule.effortShort', { reps: minReps, rpe: prog.targetRpe }); => ""
+progression:585:57 NOCOV ObjectLiteral | if (short) return t('progression.rule.effortShort', { reps: minReps, rpe: prog.targetRpe }); => {}
+progression:587:23 NOCOV ObjectLiteral | if (parts) return { => {}
+progression:588:17 NOCOV StringLiteral | action: t('progression.rule.effortAction', { reps: minReps, rpe: prog.targetRpe }), => ""
+progression:588:50 NOCOV ObjectLiteral | action: t('progression.rule.effortAction', { reps: minReps, rpe: prog.targetRpe }), => {}
+progression:589:25 NOCOV StringLiteral | when:   t(reach ? 'progression.rule.effortWhenReach' : 'progression.rule.effortWhenBeat'), => ""
+progression:589:62 NOCOV StringLiteral | when:   t(reach ? 'progression.rule.effortWhenReach' : 'progression.rule.effortWhenBeat'), => ""
+progression:605:40 NOCOV StringLiteral | const text  = inc.type === 'pct' ? `${inc.pct} %` => ``
+progression:607:25 NOCOV StringLiteral | if (short) return t('progression.rule.weakestShort', { inc: text }); => ""
+progression:607:58 NOCOV ObjectLiteral | if (short) return t('progression.rule.weakestShort', { inc: text }); => {}
+progression:610:25 NOCOV StringLiteral | when:   t(timed ? 'progression.rule.whenTime' : 'progression.rule.whenReps', { when, floor: timed ? minTime :  => ""
+progression:630:24 NOCOV StringLiteral | action: t(assist ? 'progression.rule.assistAction' : 'progression.rule.weightAction', { inc: text }), => ""
+progression:633:20 NOCOV StringLiteral | : t(assist ? 'progression.rule.assistDownLine' : 'progression.rule.weightDownLine', { fails, n }), => ""
+progression:647:90 NOCOV BlockStatement | export function summarizeSets(exConfigOrDef, defOrDoneSets, doneSetsOrFmt, weightFmtArg) { => {}
+progression:652:21 NOCOV LogicalOperator | const weightFmt = (isLegacy ? doneSetsOrFmt : weightFmtArg) ?? ((kg) => `${kg}kg`); => (isLegacy ? doneSetsOrFmt : weightFmtArg) && (kg => `${kg}kg`)
+progression:652:67 NOCOV ArrowFunction | const weightFmt = (isLegacy ? doneSetsOrFmt : weightFmtArg) ?? ((kg) => `${kg}kg`); => () => undefined
+progression:652:75 NOCOV StringLiteral | const weightFmt = (isLegacy ? doneSetsOrFmt : weightFmtArg) ?? ((kg) => `${kg}kg`); => ``
+progression:654:7 NOCOV BooleanLiteral | if (!doneSets?.length) return '—'; => doneSets?.length
+progression:654:7 NOCOV ConditionalExpression | if (!doneSets?.length) return '—'; => true
+progression:654:7 NOCOV ConditionalExpression | if (!doneSets?.length) return '—'; => false
+progression:654:8 NOCOV OptionalChaining | if (!doneSets?.length) return '—'; => doneSets.length
+progression:654:33 NOCOV StringLiteral | if (!doneSets?.length) return '—'; => ""
+progression:658:7 NOCOV ConditionalExpression | if (prog.type === 'time') { => true
+progression:658:7 NOCOV ConditionalExpression | if (prog.type === 'time') { => false
+progression:658:7 NOCOV EqualityOperator | if (prog.type === 'time') { => prog.type !== 'time'
+progression:658:21 NOCOV StringLiteral | if (prog.type === 'time') { => ""
+progression:658:29 NOCOV BlockStatement | if (prog.type === 'time') { => {}
+progression:659:19 NOCOV MethodExpression | const times = doneSets.map((s) => s.time).filter(Boolean); => doneSets.map(s => s.time)
+progression:659:32 NOCOV ArrowFunction | const times = doneSets.map((s) => s.time).filter(Boolean); => () => undefined
+progression:660:38 NOCOV StringLiteral | return times.length ? times.join('/') + 's' : '—'; => ""
+progression:660:45 NOCOV StringLiteral | return times.length ? times.join('/') + 's' : '—'; => ""
+progression:660:51 NOCOV StringLiteral | return times.length ? times.join('/') + 's' : '—'; => ""
+progression:662:7 NOCOV ConditionalExpression | if (prog.type === 'none') { => true
+progression:662:7 NOCOV ConditionalExpression | if (prog.type === 'none') { => false
+progression:662:7 NOCOV EqualityOperator | if (prog.type === 'none') { => prog.type !== 'none'
+progression:662:21 NOCOV StringLiteral | if (prog.type === 'none') { => ""
+progression:662:29 NOCOV BlockStatement | if (prog.type === 'none') { => {}
+progression:663:35 NOCOV ArrowFunction | const total = doneSets.reduce((acc, s) => acc + (parseInt(s.reps) || 0), 0); => () => undefined
+progression:663:47 NOCOV ArithmeticOperator | const total = doneSets.reduce((acc, s) => acc + (parseInt(s.reps) || 0), 0); => acc - (parseInt(s.reps) || 0)
+progression:663:54 NOCOV ConditionalExpression | const total = doneSets.reduce((acc, s) => acc + (parseInt(s.reps) || 0), 0); => true
+progression:663:54 NOCOV ConditionalExpression | const total = doneSets.reduce((acc, s) => acc + (parseInt(s.reps) || 0), 0); => false
+progression:663:54 NOCOV LogicalOperator | const total = doneSets.reduce((acc, s) => acc + (parseInt(s.reps) || 0), 0); => parseInt(s.reps) && 0
+progression:664:19 NOCOV MethodExpression | const maxW  = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => Math.min(0, ...doneSets.map(s => parseFloat(s.weight) || 0))
+progression:664:47 NOCOV ArrowFunction | const maxW  = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => () => undefined
+progression:664:54 NOCOV ConditionalExpression | const maxW  = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => true
+progression:664:54 NOCOV ConditionalExpression | const maxW  = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => false
+progression:664:54 NOCOV LogicalOperator | const maxW  = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => parseFloat(s.weight) && 0
+progression:665:9 NOCOV BooleanLiteral | if (!total) return '—'; => total
+progression:665:9 NOCOV ConditionalExpression | if (!total) return '—'; => true
+progression:665:9 NOCOV ConditionalExpression | if (!total) return '—'; => false
+progression:665:24 NOCOV StringLiteral | if (!total) return '—'; => ""
+progression:666:12 NOCOV ConditionalExpression | return maxW > 0 ? `${total} reps · ${weightFmt(maxW)}` : `${total} reps tot.`; => true
+progression:666:12 NOCOV ConditionalExpression | return maxW > 0 ? `${total} reps · ${weightFmt(maxW)}` : `${total} reps tot.`; => false
+progression:666:12 NOCOV EqualityOperator | return maxW > 0 ? `${total} reps · ${weightFmt(maxW)}` : `${total} reps tot.`; => maxW >= 0
+progression:666:12 NOCOV EqualityOperator | return maxW > 0 ? `${total} reps · ${weightFmt(maxW)}` : `${total} reps tot.`; => maxW <= 0
+progression:666:23 NOCOV StringLiteral | return maxW > 0 ? `${total} reps · ${weightFmt(maxW)}` : `${total} reps tot.`; => ``
+progression:666:62 NOCOV StringLiteral | return maxW > 0 ? `${total} reps · ${weightFmt(maxW)}` : `${total} reps tot.`; => ``
+progression:669:20 NOCOV MethodExpression | const maxW     = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => Math.min(0, ...doneSets.map(s => parseFloat(s.weight) || 0))
+progression:669:48 NOCOV ArrowFunction | const maxW     = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => () => undefined
+progression:669:55 NOCOV ConditionalExpression | const maxW     = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => true
+progression:669:55 NOCOV ConditionalExpression | const maxW     = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => false
+progression:669:55 NOCOV LogicalOperator | const maxW     = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0)); => parseFloat(s.weight) && 0
+progression:670:20 NOCOV MethodExpression | const repsList = doneSets.map((s) => s.reps).filter(Boolean).join('/'); => doneSets.map(s => s.reps)
+progression:670:33 NOCOV ArrowFunction | const repsList = doneSets.map((s) => s.reps).filter(Boolean).join('/'); => () => undefined
+progression:670:69 NOCOV StringLiteral | const repsList = doneSets.map((s) => s.reps).filter(Boolean).join('/'); => ""
+progression:671:7 NOCOV ConditionalExpression | if (maxW > 0) return `${weightFmt(maxW)} · ${repsList}`; => true
+progression:671:7 NOCOV ConditionalExpression | if (maxW > 0) return `${weightFmt(maxW)} · ${repsList}`; => false
+progression:671:7 NOCOV EqualityOperator | if (maxW > 0) return `${weightFmt(maxW)} · ${repsList}`; => maxW >= 0
+progression:671:7 NOCOV EqualityOperator | if (maxW > 0) return `${weightFmt(maxW)} · ${repsList}`; => maxW <= 0
+progression:671:24 NOCOV StringLiteral | if (maxW > 0) return `${weightFmt(maxW)} · ${repsList}`; => ``
+progression:672:7 NOCOV ConditionalExpression | if (repsList) return `${repsList} reps`; => true
+progression:672:7 NOCOV ConditionalExpression | if (repsList) return `${repsList} reps`; => false
+progression:672:24 NOCOV StringLiteral | if (repsList) return `${repsList} reps`; => ``
+progression:673:10 NOCOV StringLiteral | return '—'; => ""
+progression:120:17 SURV OptionalChaining | const input = exConfig?.inputType => exConfig.inputType
+progression:122:10 SURV OptionalChaining | ?? ((exConfig?.progressionModel ?? def?.progressionModel) === 'time_progression' ? 'time' : 'weight_reps'); => exConfig.progressionModel
+progression:122:97 SURV StringLiteral | ?? ((exConfig?.progressionModel ?? def?.progressionModel) === 'time_progression' ? 'time' : 'weight_reps'); => ""
+progression:165:63 SURV StringLiteral | const direction = d.progressionDirection ?? p?.direction ?? 'increase'; => ""
+progression:168:72 SURV StringLiteral | : (LEGACY_REVERSE_MAP[ec.progressionModel ?? d.progressionModel ?? 'double_progression'] ?? 'double'); => ""
+progression:174:34 SURV ConditionalExpression | if (!p && type === 'double' && direction === 'increase' && typicallyReps(def)) type = 'reps'; => true
+progression:192:77 SURV ConditionalExpression | exact: type === 'effort' && (ec.weightStep === 'exact' || (!!defProg && d.weightStep === 'exact')), => true
+progression:196:40 SURV OptionalChaining | value: (inc.type === 'stepped' ? inc.steps?.[0]?.value : undefined) ?? inc.value ?? defaultIncrement(type, d,  => inc.steps?.[0].value
+progression:196:40 SURV OptionalChaining | value: (inc.type === 'stepped' ? inc.steps?.[0]?.value : undefined) ?? inc.value ?? defaultIncrement(type, d,  => inc.steps[0]
+progression:196:15 SURV ConditionalExpression | value: (inc.type === 'stepped' ? inc.steps?.[0]?.value : undefined) ?? inc.value ?? defaultIncrement(type, d,  => true
+progression:244:9 SURV LogicalOperator | if (minTime > 0 && time > 0) return time >= minTime; => minTime > 0 || time > 0
+progression:244:9 SURV ConditionalExpression | if (minTime > 0 && time > 0) return time >= minTime; => true
+progression:244:9 SURV EqualityOperator | if (minTime > 0 && time > 0) return time >= minTime; => minTime >= 0
+progression:244:24 SURV ConditionalExpression | if (minTime > 0 && time > 0) return time >= minTime; => true
+progression:244:24 SURV EqualityOperator | if (minTime > 0 && time > 0) return time >= minTime; => time >= 0
+progression:245:9 SURV ConditionalExpression | if (minReps > 0 && reps > 0) return reps >= minReps; => true
+progression:245:9 SURV LogicalOperator | if (minReps > 0 && reps > 0) return reps >= minReps; => minReps > 0 || reps > 0
+progression:245:9 SURV ConditionalExpression | if (minReps > 0 && reps > 0) return reps >= minReps; => true
+progression:245:9 SURV EqualityOperator | if (minReps > 0 && reps > 0) return reps >= minReps; => minReps >= 0
+progression:245:24 SURV ConditionalExpression | if (minReps > 0 && reps > 0) return reps >= minReps; => true
+progression:245:24 SURV EqualityOperator | if (minReps > 0 && reps > 0) return reps >= minReps; => reps >= 0
+progression:252:16 SURV MethodExpression | const rpes = doneSets.map((s) => parseFloat(s.rpe)).filter((v) => v > 0); => doneSets.map(s => parseFloat(s.rpe))
+progression:252:69 SURV ConditionalExpression | const rpes = doneSets.map((s) => parseFloat(s.rpe)).filter((v) => v > 0); => true
+progression:252:69 SURV EqualityOperator | const rpes = doneSets.map((s) => parseFloat(s.rpe)).filter((v) => v > 0); => v >= 0
+progression:280:34 SURV EqualityOperator | const rpeOver = rpe != null && rpe > ev.maxRpe; => rpe >= ev.maxRpe
+progression:280:19 SURV ConditionalExpression | const rpeOver = rpe != null && rpe > ev.maxRpe; => true
+progression:283:14 SURV LogicalOperator | rpeOver: reached && rpeOver, => reached || rpeOver
+progression:294:10 SURV ConditionalExpression | return prog.evaluation.mode === 'part' && v.hitGoal < v.n => true
+progression:317:17 SURV MethodExpression | const times = doneSets.map((s) => parseFloat(s.time) || 0).filter((v) => v > 0); => doneSets.map(s => parseFloat(s.time) || 0)
+progression:317:76 SURV ConditionalExpression | const times = doneSets.map((s) => parseFloat(s.time) || 0).filter((v) => v > 0); => true
+progression:317:76 SURV EqualityOperator | const times = doneSets.map((s) => parseFloat(s.time) || 0).filter((v) => v > 0); => v >= 0
+progression:318:7 SURV ConditionalExpression | if (!times.length) return null; => false
+progression:321:34 SURV EqualityOperator | const ok = times.filter((x) => x >= start); => x > start
+progression:325:32 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAl => ""
+progression:325:44 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAl => ""
+progression:325:74 SURV ObjectLiteral | return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAl => {}
+progression:325:92 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAl => ""
+progression:325:122 SURV ObjectLiteral | return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAl => {}
+progression:331:32 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: start, max: maxTime }), why: whyHold( => ""
+progression:331:44 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: start, max: maxTime }), why: whyHold( => ""
+progression:331:69 SURV ObjectLiteral | return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: start, max: maxTime }), why: whyHold( => {}
+progression:331:122 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: start, max: maxTime }), why: whyHold( => ""
+progression:331:150 SURV ObjectLiteral | return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: start, max: maxTime }), why: whyHold( => {}
+progression:337:71 SURV ConditionalExpression | const ok = doneSets.map((s) => parseInt(s.reps) || 0).filter((r) => r > 0 && r >= start); => true
+progression:337:71 SURV EqualityOperator | const ok = doneSets.map((s) => parseInt(s.reps) || 0).filter((r) => r > 0 && r >= start); => r >= 0
+progression:341:32 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next }), why: t('progression.why_repsUp', => ""
+progression:341:44 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next }), why: t('progression.why_repsUp', => ""
+progression:341:90 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next }), why: t('progression.why_repsUp', => ""
+progression:341:116 SURV ObjectLiteral | return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next }), why: t('progression.why_repsUp', => {}
+progression:344:32 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), why: whyHold(prog, v, 'progression.why_reps => ""
+progression:344:44 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), why: whyHold(prog, v, 'progression.why_reps => ""
+progression:344:92 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), why: whyHold(prog, v, 'progression.why_reps => ""
+progression:344:120 SURV ObjectLiteral | return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), why: whyHold(prog, v, 'progression.why_reps => {}
+progression:355:21 SURV ConditionalExpression | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => true
+progression:355:21 SURV ConditionalExpression | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => false
+progression:355:21 SURV EqualityOperator | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => maxW >= 0
+progression:355:21 SURV EqualityOperator | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => maxW <= 0
+progression:355:78 SURV StringLiteral | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => ""
+progression:355:34 SURV StringLiteral | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => ""
+progression:355:60 SURV ObjectLiteral | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => {}
+progression:360:32 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: whyUp(prog, v, goal, t, ti => ""
+progression:360:44 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: whyUp(prog, v, goal, t, ti => ""
+progression:360:73 SURV ObjectLiteral | return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: whyUp(prog, v, goal, t, ti => {}
+progression:364:34 SURV StringLiteral | return { type: 'down', icon: '⬇', msg: t(`progression.normal_struggling${sfx}`, { next }), why: t(`progression => ""
+progression:364:46 SURV StringLiteral | return { type: 'down', icon: '⬇', msg: t(`progression.normal_struggling${sfx}`, { next }), why: t(`progression => ``
+progression:364:85 SURV ObjectLiteral | return { type: 'down', icon: '⬇', msg: t(`progression.normal_struggling${sfx}`, { next }), why: t(`progression => {}
+progression:366:32 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: whyHold(prog, v, `pro => ""
+progression:366:44 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: whyHold(prog, v, `pro => ""
+progression:366:71 SURV ObjectLiteral | return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: whyHold(prog, v, `pro => {}
+progression:366:149 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: whyHold(prog, v, `pro => ""
+progression:380:30 SURV MethodExpression | const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time); => sets ?? []
+progression:380:57 SURV ConditionalExpression | const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time); => true
+progression:380:57 SURV LogicalOperator | const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time); => (s.done || s.weight) && s.reps
+progression:380:57 SURV ConditionalExpression | const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time); => false
+progression:380:57 SURV LogicalOperator | const loggedSets = (sets) => (sets ?? []).filter((s) => s.done || s.weight || s.reps || s.time); => s.done && s.weight
+progression:401:13 SURV BooleanLiteral | effort: true, type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why), => false
+progression:401:39 SURV StringLiteral | effort: true, type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why), => ""
+progression:401:51 SURV StringLiteral | effort: true, type: 'hold', icon: '→', msg: t('progression.effort_noWeight'), why: t(why), => ""
+progression:427:39 SURV StringLiteral | effort: true, type: 'up', icon: '⬆', => ""
+progression:428:14 SURV StringLiteral | msg: t('progression.effort_noWeight'), why: t('progression.why_effortReached'), => ""
+progression:436:13 SURV BooleanLiteral | effort: true, => false
+progression:437:17 SURV ObjectLiteral | type, icon: { up: '⬆', down: '⬇', hold: '→' }[type], => {}
+progression:437:23 SURV StringLiteral | type, icon: { up: '⬆', down: '⬇', hold: '→' }[type], => ""
+progression:437:34 SURV StringLiteral | type, icon: { up: '⬆', down: '⬇', hold: '→' }[type], => ""
+progression:437:45 SURV StringLiteral | type, icon: { up: '⬆', down: '⬇', hold: '→' }[type], => ""
+progression:438:12 SURV StringLiteral | msg: t('progression.effort_noWeight'), why: t(`progression.${why}`), => ""
+progression:446:21 SURV ConditionalExpression | const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist') => true
+progression:446:21 SURV ConditionalExpression | const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist') => false
+progression:446:21 SURV EqualityOperator | const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist') => assistance >= 0
+progression:446:21 SURV EqualityOperator | const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist') => assistance <= 0
+progression:446:40 SURV StringLiteral | const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist') => ""
+progression:446:66 SURV ObjectLiteral | const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist') => {}
+progression:446:90 SURV StringLiteral | const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist') => ""
+progression:448:15 SURV ConditionalExpression | if (v.up && assistance > 0) { => true
+progression:448:15 SURV EqualityOperator | if (v.up && assistance > 0) { => assistance >= 0
+progression:450:18 SURV ConditionalExpression | const msg  = next === 0 => true
+progression:450:18 SURV ConditionalExpression | const msg  = next === 0 => false
+progression:450:18 SURV EqualityOperator | const msg  = next === 0 => next !== 0
+progression:452:11 SURV StringLiteral | : t('progression.decrease_allHit', { next }); => ""
+progression:452:42 SURV ObjectLiteral | : t('progression.decrease_allHit', { next }); => {}
+progression:453:32 SURV StringLiteral | return { type: 'up', icon: '⬆', msg, why: whyUp(prog, v, goal, t, timed), suggestedWeight: next, suggestedTime => ""
+progression:455:7 SURV LogicalOperator | if (v.up && assistance === 0) { => v.up || assistance === 0
+progression:455:15 SURV ConditionalExpression | if (v.up && assistance === 0) { => true
+progression:456:32 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: whyUp(prog, v, goal, t, timed), sugg => ""
+progression:456:44 SURV StringLiteral | return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: whyUp(prog, v, goal, t, timed), sugg => ""
+progression:458:17 SURV ConditionalExpression | if (v.down && assistance < 999) { => true
+progression:458:17 SURV EqualityOperator | if (v.down && assistance < 999) { => assistance <= 999
+progression:460:34 SURV StringLiteral | return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why => ""
+progression:460:46 SURV StringLiteral | return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why => ""
+progression:460:81 SURV ObjectLiteral | return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why => {}
+progression:460:99 SURV StringLiteral | return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why => ``
+progression:460:134 SURV StringLiteral | return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why => ""
+progression:460:143 SURV StringLiteral | return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why => "Stryker was here!"
+progression:462:32 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => ""
+progression:462:44 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => ""
+progression:462:73 SURV ObjectLiteral | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => {}
+progression:462:111 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => ``
+progression:462:151 SURV StringLiteral | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => ""
+progression:462:186 SURV ConditionalExpression | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => true
+progression:462:186 SURV ConditionalExpression | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => false
+progression:462:186 SURV LogicalOperator | return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `p => assistance && null
+progression:496:7 SURV ConditionalExpression | if (!lastSets?.length) return null; => false
+progression:496:8 SURV OptionalChaining | if (!lastSets?.length) return null; => lastSets.length
+progression:498:20 SURV MethodExpression | const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time); => lastSets
+progression:498:43 SURV ConditionalExpression | const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time); => true
+progression:498:43 SURV LogicalOperator | const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time); => (s.done || s.weight) && s.reps
+progression:498:43 SURV ConditionalExpression | const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time); => false
+progression:498:43 SURV LogicalOperator | const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time); => s.done && s.weight
+progression:499:7 SURV ConditionalExpression | if (!doneSets.length) return null; => false
+progression:505:43 SURV OptionalChaining | const minReps   = exConfig?.minReps  ?? def?.minReps  ?? DEFAULT_TARGET.minReps; => def.minReps
+progression:505:21 SURV OptionalChaining | const minReps   = exConfig?.minReps  ?? def?.minReps  ?? DEFAULT_TARGET.minReps; => exConfig.minReps
+progression:506:43 SURV OptionalChaining | const maxReps   = exConfig?.maxReps  ?? def?.maxReps  ?? DEFAULT_TARGET.maxReps; => def.maxReps
+progression:506:21 SURV OptionalChaining | const maxReps   = exConfig?.maxReps  ?? def?.maxReps  ?? DEFAULT_TARGET.maxReps; => exConfig.maxReps
+progression:507:21 SURV OptionalChaining | const minTime   = exConfig?.minTime  ?? def?.minTime  ?? DEFAULT_TARGET.minTime; => exConfig.minTime
+progression:508:21 SURV OptionalChaining | const maxTime   = exConfig?.maxTime  ?? def?.maxTime  ?? DEFAULT_TARGET.maxTime; => exConfig.maxTime
+progression:509:21 SURV LogicalOperator | const totalSets = exConfig?.sets     ?? def?.sets     ?? doneSets.length; => (exConfig?.sets ?? def?.sets) && doneSets.length
+progression:509:21 SURV LogicalOperator | const totalSets = exConfig?.sets     ?? def?.sets     ?? doneSets.length; => exConfig?.sets && def?.sets
+progression:509:21 SURV OptionalChaining | const totalSets = exConfig?.sets     ?? def?.sets     ?? doneSets.length; => exConfig.sets
+progression:517:23 SURV ConditionalExpression | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => true
+progression:517:23 SURV EqualityOperator | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => maxW >= 0
+progression:517:23 SURV ConditionalExpression | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => false
+progression:517:23 SURV EqualityOperator | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => maxW <= 0
+progression:517:36 SURV StringLiteral | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => ""
+progression:517:62 SURV ObjectLiteral | const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight'); => {}
+progression:519:45 SURV StringLiteral | type: 'hold', reason: 'deload', icon: '→', => ""
+progression:520:41 SURV ObjectLiteral | msg: t('progression.deload_hold', { weightStr }), why: t('progression.why_deload'), => {}
+progression:520:64 SURV StringLiteral | msg: t('progression.deload_hold', { weightStr }), why: t('progression.why_deload'), => ""
+progression:543:17 SURV OptionalChaining | const goal  = exConfig?.progression?.type === 'weight' ? floor : (timed ? maxTime : maxReps); => exConfig.progression
+progression:578:40 SURV OptionalChaining | const minReps = exConfig?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps; => def.minReps
+progression:578:19 SURV OptionalChaining | const minReps = exConfig?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps; => exConfig.minReps
+progression:579:19 SURV LogicalOperator | const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps; => (exConfig?.maxReps ?? def?.maxReps) && DEFAULT_TARGET.maxReps
+progression:579:19 SURV LogicalOperator | const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps; => exConfig?.maxReps && def?.maxReps
+progression:579:40 SURV OptionalChaining | const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps; => def.maxReps
+progression:579:19 SURV OptionalChaining | const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps; => exConfig.maxReps
+progression:580:19 SURV OptionalChaining | const minTime = exConfig?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime; => exConfig.minTime
+progression:580:40 SURV OptionalChaining | const minTime = exConfig?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime; => def.minTime
+progression:581:19 SURV OptionalChaining | const maxTime = exConfig?.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime; => exConfig.maxTime
+progression:581:40 SURV OptionalChaining | const maxTime = exConfig?.maxTime ?? def?.maxTime ?? DEFAULT_TARGET.maxTime; => def.maxTime
+progression:582:19 SURV LogicalOperator | const n       = exConfig?.sets ?? def?.sets ?? 3; => (exConfig?.sets ?? def?.sets) && 3
+progression:582:19 SURV LogicalOperator | const n       = exConfig?.sets ?? def?.sets ?? 3; => exConfig?.sets && def?.sets
+progression:582:37 SURV OptionalChaining | const n       = exConfig?.sets ?? def?.sets ?? 3; => def.sets
+progression:582:19 SURV OptionalChaining | const n       = exConfig?.sets ?? def?.sets ?? 3; => exConfig.sets
+progression:585:9 SURV ConditionalExpression | if (short) return t('progression.rule.effortShort', { reps: minReps, rpe: prog.targetRpe }); => false
+progression:587:9 SURV ConditionalExpression | if (parts) return { => false
+progression:599:39 SURV ObjectLiteral | ? t('progression.rule.whenRpe', { rpe: ev.maxRpe }) => {}
+progression:605:19 SURV ConditionalExpression | const text  = inc.type === 'pct' ? `${inc.pct} %` => false
+progression:605:32 SURV StringLiteral | const text  = inc.type === 'pct' ? `${inc.pct} %` => ""
+progression:606:66 SURV ObjectLiteral | : timed ? `${inc.value} s` : t('progression.rule.incReps', { count: inc.value }); => {}
+progression:607:9 SURV ConditionalExpression | if (short) return t('progression.rule.weakestShort', { inc: text }); => false
+progression:609:17 SURV StringLiteral | action: t('progression.rule.weakestShort', { inc: text }), => ""
+progression:609:50 SURV ObjectLiteral | action: t('progression.rule.weakestShort', { inc: text }), => {}
+progression:618:18 SURV ConditionalExpression | const legacy = exConfig?.progression?.type === 'weight'; => false
+progression:618:18 SURV OptionalChaining | const legacy = exConfig?.progression?.type === 'weight'; => exConfig.progression
+progression:618:50 SURV StringLiteral | const legacy = exConfig?.progression?.type === 'weight'; => ""
+progression:60:35 SURV ArrayDeclaration | export const PROGRESSION_TYPES  = ['double', 'reps', 'time', 'effort', 'none']; => []
+progression:60:36 SURV StringLiteral | export const PROGRESSION_TYPES  = ['double', 'reps', 'time', 'effort', 'none']; => ""
+progression:60:46 SURV StringLiteral | export const PROGRESSION_TYPES  = ['double', 'reps', 'time', 'effort', 'none']; => ""
+progression:60:54 SURV StringLiteral | export const PROGRESSION_TYPES  = ['double', 'reps', 'time', 'effort', 'none']; => ""
+progression:60:62 SURV StringLiteral | export const PROGRESSION_TYPES  = ['double', 'reps', 'time', 'effort', 'none']; => ""
+progression:60:72 SURV StringLiteral | export const PROGRESSION_TYPES  = ['double', 'reps', 'time', 'effort', 'none']; => ""
+progression:61:36 SURV StringLiteral | export const EVALUATION_MODES   = ['all_complete', 'part', 'rpe']; => ""
+progression:62:35 SURV ArrayDeclaration | export const INCREMENT_TYPES    = ['fixed', 'pct']; => []
+progression:62:36 SURV StringLiteral | export const INCREMENT_TYPES    = ['fixed', 'pct']; => ""
+progression:62:45 SURV StringLiteral | export const INCREMENT_TYPES    = ['fixed', 'pct']; => ""
+progression:74:32 SURV ObjectLiteral | export const LEGACY_TYPE_MAP = { => {}
+progression:76:11 SURV StringLiteral | weight: 'double_progression', => ""
+progression:77:11 SURV StringLiteral | reps:   'double_progression', => ""
+progression:78:11 SURV StringLiteral | time:   'time_progression', => ""
+progression:79:11 SURV StringLiteral | effort: 'double_progression', => ""
+progression:80:11 SURV StringLiteral | none:   'fixed', => ""
+progression:88:23 SURV StringLiteral | fixed:              'none', => ""
+progression:89:23 SURV StringLiteral | submax:             'none', => ""
+progressionForm:91:61 NOCOV StringLiteral | next.incValue = defaultIncrement(next.up === 'weight' ? 'double' : next.up, ctx.def, => ""
+progressionForm:103:35 NOCOV StringLiteral | up:       p.type === 'none' ? 'none' : (p.type === 'reps' || p.type === 'time') ? p.type : 'weight', => ""
+progressionForm:111:36 NOCOV StringLiteral | down:     p.down === 'never' ? 'never' : 'fail', => ""
+progressionForm:29:27 SURV ConditionalExpression | const isAssist = (def) => def?.progressionDirection === 'decrease'; => false
+progressionForm:29:27 SURV OptionalChaining | const isAssist = (def) => def?.progressionDirection === 'decrease'; => def.progressionDirection
+progressionForm:29:57 SURV StringLiteral | const isAssist = (def) => def?.progressionDirection === 'decrease'; => ""
+progressionForm:33:71 SURV StringLiteral | resolveProgressionConfig({ progression: { type: effort ? 'effort' : 'double' } }, def).step; => ""
+progressionForm:74:7 SURV ConditionalExpression | if (n.how === 'effort' && !(showHow(n, ctx) && !effortBlocked(ctx))) n.how = 'rules'; => true
+progressionForm:75:7 SURV ConditionalExpression | if (n.up !== 'weight') n.incType = 'fixed'; => true
+progressionForm:75:7 SURV ConditionalExpression | if (n.up !== 'weight') n.incType = 'fixed'; => false
+progressionForm:75:7 SURV EqualityOperator | if (n.up !== 'weight') n.incType = 'fixed'; => n.up === 'weight'
+progressionForm:75:38 SURV StringLiteral | if (n.up !== 'weight') n.incType = 'fixed'; => ""
+progressionForm:75:16 SURV StringLiteral | if (n.up !== 'weight') n.incType = 'fixed'; => ""
+progressionForm:77:7 SURV ConditionalExpression | if (n.when === 'part' && ctx.sets < 2) n.when = 'all_complete'; => true
+progressionForm:77:28 SURV EqualityOperator | if (n.when === 'part' && ctx.sets < 2) n.when = 'all_complete'; => ctx.sets <= 2
+progressionForm:91:38 SURV ConditionalExpression | next.incValue = defaultIncrement(next.up === 'weight' ? 'double' : next.up, ctx.def, => false
+progressionForm:91:50 SURV StringLiteral | next.incValue = defaultIncrement(next.up === 'weight' ? 'double' : next.up, ctx.def, => ""
+progressionForm:92:7 SURV LogicalOperator | next.step ?? libraryStep(ctx.def, false)); => next.step && libraryStep(ctx.def, false)
+progressionForm:92:41 SURV BooleanLiteral | next.step ?? libraryStep(ctx.def, false)); => true
+progressionForm:103:15 SURV ConditionalExpression | up:       p.type === 'none' ? 'none' : (p.type === 'reps' || p.type === 'time') ? p.type : 'weight', => false
+progressionForm:103:26 SURV StringLiteral | up:       p.type === 'none' ? 'none' : (p.type === 'reps' || p.type === 'time') ? p.type : 'weight', => ""
+progressionForm:103:45 SURV ConditionalExpression | up:       p.type === 'none' ? 'none' : (p.type === 'reps' || p.type === 'time') ? p.type : 'weight', => false
+progressionForm:103:56 SURV StringLiteral | up:       p.type === 'none' ? 'none' : (p.type === 'reps' || p.type === 'time') ? p.type : 'weight', => ""
+progressionForm:104:15 SURV ConditionalExpression | how:      p.type === 'effort' ? 'effort' : 'rules', => true
+progressionForm:104:15 SURV ConditionalExpression | how:      p.type === 'effort' ? 'effort' : 'rules', => false
+progressionForm:104:15 SURV EqualityOperator | how:      p.type === 'effort' ? 'effort' : 'rules', => p.type !== 'effort'
+progressionForm:104:26 SURV StringLiteral | how:      p.type === 'effort' ? 'effort' : 'rules', => ""
+progressionForm:104:37 SURV StringLiteral | how:      p.type === 'effort' ? 'effort' : 'rules', => ""
+progressionForm:111:15 SURV ConditionalExpression | down:     p.down === 'never' ? 'never' : 'fail', => false
+progressionForm:111:26 SURV StringLiteral | down:     p.down === 'never' ? 'never' : 'fail', => ""
+progressionForm:115:15 SURV EqualityOperator | step:     exConfig?.weightStep > 0 ? exConfig.weightStep : null, => exConfig?.weightStep >= 0
+progressionForm:115:15 SURV OptionalChaining | step:     exConfig?.weightStep > 0 ? exConfig.weightStep : null, => exConfig.weightStep
+progressionForm:134:7 SURV ConditionalExpression | if (effort) { => true
+progressionForm:142:12 SURV ConditionalExpression | else if (f.step != null && f.step !== libraryStep(ctx.def, effort)) weightStep = f.step; => true
+progressionForm:29:18 SURV ArrowFunction | const isAssist = (def) => def?.progressionDirection === 'decrease'; => () => undefined
+sessionPlan:40:38 NOCOV ArrayDeclaration | export function sessionPlan({ days = [], log = [], now = Date.now(), t, order = 'rotation' }) { => ["Stryker was here"]
+sessionPlan:76:30 NOCOV StringLiteral | marker:     d.label ?? '', => "Stryker was here!"
+sessionPlan:40:48 SURV ArrayDeclaration | export function sessionPlan({ days = [], log = [], now = Date.now(), t, order = 'rotation' }) { => ["Stryker was here"]
+sessionPlan:40:81 SURV StringLiteral | export function sessionPlan({ days = [], log = [], now = Date.now(), t, order = 'rotation' }) { => ""
+sessionPlan:51:9 SURV ConditionalExpression | if (typeof ts !== 'number') return; => false
+sessionPlan:52:30 SURV EqualityOperator | if (!ids.has(tid)) { if (ts >= weekStart) weekOutside += 1; return; } => ts > weekStart
+sessionPlan:53:9 SURV ConditionalExpression | if (!(lastDone[tid] >= ts)) lastDone[tid] = ts; => true
+sessionPlan:53:11 SURV ConditionalExpression | if (!(lastDone[tid] >= ts)) lastDone[tid] = ts; => false
+sessionPlan:53:11 SURV EqualityOperator | if (!(lastDone[tid] >= ts)) lastDone[tid] = ts; => lastDone[tid] > ts
+sessionPlan:54:9 SURV EqualityOperator | if (ts >= weekStart) weekDone += 1; => ts > weekStart
+sessionPlan:64:47 SURV EqualityOperator | : (order === 'weekly' && days.find((d) => lastOf(d) < weekStart)) => lastOf(d) <= weekStart
+sessionPlan:78:19 SURV EqualityOperator | isDone:     (lastDone[d.templateId] ?? -Infinity) >= weekStart, => (lastDone[d.templateId] ?? -Infinity) > weekStart
+stageProgress:115:37 NOCOV ArrayDeclaration | const stages = program?.stages ?? []; => ["Stryker was here"]
+stageProgress:284:39 NOCOV ArrayDeclaration | const stages   = program?.stages ?? []; => ["Stryker was here"]
+stageProgress:44:36 SURV OptionalChaining | const raw = currentStageIndex ?? program?.currentStageIndex ?? 0; => program.currentStageIndex
+stageProgress:62:23 SURV ArrayDeclaration | (program?.stages ?? []).flatMap((st) => st.days ?? []); => ["Stryker was here"]
+stageProgress:78:51 SURV StringLiteral | export function ensureStages(program, stageName = 'Etapa 1') { => ""
+stageProgress:79:7 SURV ConditionalExpression | if (!program) return program; => false
+stageProgress:86:7 SURV EqualityOperator | if (program.stages?.length > 0) { => program.stages?.length >= 0
+stageProgress:90:52 SURV OptionalChaining | if (program.stages.every((st) => Array.isArray(st?.days))) return program; => st.days
+stageProgress:91:77 SURV OptionalChaining | return { ...program, stages: program.stages.map((st) => ({ ...st, days: st?.days ?? [] })) }; => st.days
+stageProgress:91:89 SURV ArrayDeclaration | return { ...program, stages: program.stages.map((st) => ({ ...st, days: st?.days ?? [] })) }; => ["Stryker was here"]
+stageProgress:97:23 SURV StringLiteral | [{ id: generateId('stage'), name: stageName, durationWeeks: null, days }], => ""
+stageProgress:107:54 SURV OptionalChaining | export const weeklySessions = (stage) => Math.max(1, stage?.days?.length ?? 0); => stage?.days.length
+stageProgress:115:18 SURV OptionalChaining | const stages = program?.stages ?? []; => program.stages
+stageProgress:197:43 SURV OptionalChaining | const raw  = blob && blob.programId === program?.id ? blob : (program ?? {}); => program.id
+stageProgress:200:16 SURV OptionalChaining | const n    = program?.stages?.length ?? 0; => program.stages
+stageProgress:232:25 SURV OptionalChaining | stageSessionsDone: (progress?.stageSessionsDone ?? 0) + 1, => progress.stageSessionsDone
+stageProgress:233:24 SURV OptionalChaining | stageStartedOn:    progress?.stageStartedOn   ?? today, => progress.stageStartedOn
+stageProgress:234:24 SURV OptionalChaining | programStartedOn:  progress?.programStartedOn ?? today, => progress.programStartedOn
+stageProgress:255:44 SURV OptionalChaining | return { stageSessionsDone: Math.max(0, (progress?.stageSessionsDone ?? 0) - 1) }; => progress.stageSessionsDone
+stageProgress:284:20 SURV OptionalChaining | const stages   = program?.stages ?? []; => program.stages
+stageProgress:286:41 SURV OptionalChaining | const stageIdx = Math.max(0, Math.min(progress?.currentStageIndex ?? 0, last)); => progress.currentStageIndex
+stageProgress:290:23 SURV OptionalChaining | const startedOn   = progress?.stageStartedOn ?? null; => progress.stageStartedOn
+stageProgress:294:23 SURV OptionalChaining | const duration    = stage?.durationWeeks ?? null; => stage.durationWeeks
+stageProgress:295:61 SURV OptionalChaining | const lengthWeeks = duration == null ? null : duration + (progress?.stageExtraWeeks ?? 0); => progress.stageExtraWeeks
+stageProgress:297:23 SURV OptionalChaining | const done        = progress?.stageSessionsDone ?? 0; => progress.stageSessionsDone
+stageProgress:298:23 SURV ConditionalExpression | const missing     = expected == null ? 0 : Math.max(0, expected - done); => false
+stageProgress:301:18 SURV ConditionalExpression | const ended  = endsOn != null && today >= endsOn;   // 'YYYY-MM-DD' ordena como fecha => true
+stageProgress:314:19 SURV ConditionalExpression | earlyReady:   !ended && started && lengthWeeks != null => true
+stageProgress:314:19 SURV LogicalOperator | earlyReady:   !ended && started && lengthWeeks != null => !ended && started || lengthWeeks != null
+stageProgress:314:19 SURV ConditionalExpression | earlyReady:   !ended && started && lengthWeeks != null => true
+stageProgress:314:19 SURV LogicalOperator | earlyReady:   !ended && started && lengthWeeks != null => !ended || started
+stageProgress:314:40 SURV ConditionalExpression | earlyReady:   !ended && started && lengthWeeks != null => true
+stageProgress:318:19 SURV OptionalChaining | programWeek:  progress?.programStartedOn ? weekNumber(progress.programStartedOn, today) : null, => progress.programStartedOn
+stageProgress:333:39 SURV OptionalChaining | const extra = status.lengthWeeks - (status.stage?.durationWeeks ?? status.lengthWeeks); => status.stage.durationWeeks
+stageProgress:376:17 SURV OptionalChaining | const stage = stages?.[stageIndex]; => stages[stageIndex]
+stageProgress:378:48 SURV ObjectLiteral | const { started, weekInStage } = stageStatus({ stages }, { ...progress, currentStageIndex: stageIndex }, today => {}
+stageProgress:412:10 SURV ConditionalExpression | return a?.id !== b?.id || PROGRESS_KEYS.some((k) => a?.[k] !== b?.[k]); => false
+stageProgress:440:22 SURV ConditionalExpression | const kept       = blob && blob.programId === program?.id ? athleteProgress(program, { progress: blob }, today => true
+stageProgress:440:30 SURV ConditionalExpression | const kept       = blob && blob.programId === program?.id ? athleteProgress(program, { progress: blob }, today => true
+stageProgress:440:49 SURV OptionalChaining | const kept       = blob && blob.programId === program?.id ? athleteProgress(program, { progress: blob }, today => program.id
+stageProgress:441:22 SURV OptionalChaining | const activation = program?.stageActivatedAt ?? null; => program.stageActivatedAt
+stageProgress:445:15 SURV OptionalChaining | const n   = program?.stages?.length ?? 0; => program.stages
+stageProgress:446:27 SURV OptionalChaining | const idx = Math.max(0, program?.currentStageIndex ?? 0); => program.currentStageIndex
+stageProgress:477:43 SURV OptionalChaining | const done  = weeks * stageDaysCount + (p.cycleCompletedIds?.length ?? 0); => p.cycleCompletedIds.length
+stageProgress:487:36 SURV ConditionalExpression | programStartedOn:  done > 0 || total > 0 ? addDays(monday, -7 * total) : null, => false
+stageRx:156:79 NOCOV StringLiteral | if (r.setsDelta !== 0)       parts.push(scoped(r.setsDelta > 0 ? 'setsUp' : 'setsDown', { n: Math.abs(r.setsDe => ""
+stageRx:157:68 NOCOV StringLiteral | if (r.repsShift !== 0)       parts.push(scoped(r.repsShift > 0 ? 'repsUp' : 'repsDown', { n: Math.abs(r.repsSh => ""
+stageRx:158:91 NOCOV StringLiteral | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => ""
+stageRx:88:18 SURV ConditionalExpression | const suffix = field.scoped && scope && scope !== 'all' ? `_${scope}` : ''; => false
+stageRx:88:61 SURV StringLiteral | const suffix = field.scoped && scope && scope !== 'all' ? `_${scope}` : ''; => ``
+stageRx:111:38 SURV ConditionalExpression | kind: 'work', durationWeeks: i === 0 ? 4 : 3, => true
+stageRx:111:38 SURV ConditionalExpression | kind: 'work', durationWeeks: i === 0 ? 4 : 3, => false
+stageRx:111:38 SURV EqualityOperator | kind: 'work', durationWeeks: i === 0 ? 4 : 3, => i !== 0
+stageRx:114:22 SURV ArithmeticOperator | repsShift: -3 - 2 * i, => -3 + 2 * i
+stageRx:114:27 SURV ArithmeticOperator | repsShift: -3 - 2 * i, => 2 / i
+stageRx:115:22 SURV ArithmeticOperator | restPct:   25 + 25 * i, => 25 - 25 * i
+stageRx:115:27 SURV ArithmeticOperator | restPct:   25 + 25 * i, => 25 / i
+stageRx:118:15 SURV ConditionalExpression | ...(i > 0 ? { incrementScale: 0.5 } : {}), => true
+stageRx:118:15 SURV ConditionalExpression | ...(i > 0 ? { incrementScale: 0.5 } : {}), => false
+stageRx:118:15 SURV EqualityOperator | ...(i > 0 ? { incrementScale: 0.5 } : {}), => i >= 0
+stageRx:118:15 SURV EqualityOperator | ...(i > 0 ? { incrementScale: 0.5 } : {}), => i <= 0
+stageRx:118:23 SURV ObjectLiteral | ...(i > 0 ? { incrementScale: 0.5 } : {}), => {}
+stageRx:122:9 SURV ConditionalExpression | if (ladderId === 'volume') { => true
+stageRx:149:7 SURV ConditionalExpression | if (isNoopRx(rx)) return []; => false
+stageRx:152:5 SURV ConditionalExpression | r.scope === 'all' ? `planner.rxParts.${key}` : `planner.rxParts.${key}_${r.scope}`, => false
+stageRx:152:17 SURV StringLiteral | r.scope === 'all' ? `planner.rxParts.${key}` : `planner.rxParts.${key}_${r.scope}`, => ""
+stageRx:156:50 SURV ConditionalExpression | if (r.setsDelta !== 0)       parts.push(scoped(r.setsDelta > 0 ? 'setsUp' : 'setsDown', { n: Math.abs(r.setsDe => true
+stageRx:156:50 SURV EqualityOperator | if (r.setsDelta !== 0)       parts.push(scoped(r.setsDelta > 0 ? 'setsUp' : 'setsDown', { n: Math.abs(r.setsDe => r.setsDelta >= 0
+stageRx:156:91 SURV ObjectLiteral | if (r.setsDelta !== 0)       parts.push(scoped(r.setsDelta > 0 ? 'setsUp' : 'setsDown', { n: Math.abs(r.setsDe => {}
+stageRx:157:50 SURV ConditionalExpression | if (r.repsShift !== 0)       parts.push(scoped(r.repsShift > 0 ? 'repsUp' : 'repsDown', { n: Math.abs(r.repsSh => false
+stageRx:157:50 SURV EqualityOperator | if (r.repsShift !== 0)       parts.push(scoped(r.repsShift > 0 ? 'repsUp' : 'repsDown', { n: Math.abs(r.repsSh => r.repsShift >= 0
+stageRx:157:91 SURV ObjectLiteral | if (r.repsShift !== 0)       parts.push(scoped(r.repsShift > 0 ? 'repsUp' : 'repsDown', { n: Math.abs(r.repsSh => {}
+stageRx:158:45 SURV StringLiteral | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => ``
+stageRx:158:64 SURV ConditionalExpression | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => true
+stageRx:158:64 SURV ConditionalExpression | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => false
+stageRx:158:64 SURV EqualityOperator | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => r.restPct >= 0
+stageRx:158:64 SURV EqualityOperator | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => r.restPct <= 0
+stageRx:158:80 SURV StringLiteral | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => ""
+stageRx:158:105 SURV ObjectLiteral | if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Mat => {}
+stageRx:159:45 SURV StringLiteral | if (r.incrementScale !== 1)  parts.push(t('planner.rxParts.incrementHalf')); => ""
+stageRx:172:7 SURV ConditionalExpression | if (!rx) return true; => false
+stageRx:195:7 SURV ConditionalExpression | if (factor === 1) return increment; => false
+stageRx:218:8 SURV OptionalChaining | if (!exercises?.length || isNoopRx(rx)) return exercises; => exercises.length
+stageRx:225:9 SURV ConditionalExpression | if (r.setsDelta !== 0 && next.sets != null) { => true
+stageRx:225:9 SURV LogicalOperator | if (r.setsDelta !== 0 && next.sets != null) { => r.setsDelta !== 0 || next.sets != null
+stageRx:225:9 SURV ConditionalExpression | if (r.setsDelta !== 0 && next.sets != null) { => true
+stageRx:225:30 SURV ConditionalExpression | if (r.setsDelta !== 0 && next.sets != null) { => true
+stageRx:232:9 SURV LogicalOperator | if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) { => r.repsShift !== 0 && next.minReps != null || next.maxReps != null
+stageRx:232:9 SURV ConditionalExpression | if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) { => true
+stageRx:232:9 SURV LogicalOperator | if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) { => r.repsShift !== 0 || next.minReps != null
+stageRx:232:9 SURV ConditionalExpression | if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) { => true
+stageRx:232:30 SURV ConditionalExpression | if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) { => true
+stageRx:232:54 SURV ConditionalExpression | if (r.repsShift !== 0 && next.minReps != null && next.maxReps != null) { => true
+stageRx:237:9 SURV ConditionalExpression | if (r.restPct !== 0 && next.restSec != null) { => true
+stageRx:237:9 SURV LogicalOperator | if (r.restPct !== 0 && next.restSec != null) { => r.restPct !== 0 || next.restSec != null
+stageRx:237:9 SURV ConditionalExpression | if (r.restPct !== 0 && next.restSec != null) { => true
+stageRx:237:28 SURV ConditionalExpression | if (r.restPct !== 0 && next.restSec != null) { => true
+stageRx:250:48 SURV ConditionalExpression | const weighted = prog.type !== 'reps' && prog.type !== 'time'; => true
+stageRx:250:62 SURV StringLiteral | const weighted = prog.type !== 'reps' && prog.type !== 'time'; => ""
+stageRx:32:20 SURV StringLiteral | scope:           'all',   // 'all' | 'keys' | 'accessories' => ""
+stageRx:57:27 SURV ArrayDeclaration | export const LADDER_IDS = ['linear', 'intensification', 'volume']; => []
+stageRx:57:28 SURV StringLiteral | export const LADDER_IDS = ['linear', 'intensification', 'volume']; => ""
+stageRx:57:38 SURV StringLiteral | export const LADDER_IDS = ['linear', 'intensification', 'volume']; => ""
+stageRx:57:57 SURV StringLiteral | export const LADDER_IDS = ['linear', 'intensification', 'volume']; => ""
+stageRx:71:60 SURV BooleanLiteral | { key: 'setsDelta', min: -3,  max: 3,   step: 1, scoped: true }, => false
+stageRx:72:60 SURV BooleanLiteral | { key: 'repsShift', min: -6,  max: 6,   step: 1, scoped: true }, => false
+stageRx:80:23 SURV ArrayDeclaration | export const SCOPES = ['all', 'keys', 'accessories']; => []
+trainingLoad:89:29 NOCOV ArrayDeclaration | const sets = ex.sets ?? []; => ["Stryker was here"]
+trainingLoad:184:41 NOCOV ArrayDeclaration | for (const ex of entry.exercises ?? []) { => ["Stryker was here"]
+trainingLoad:188:34 NOCOV ArrayDeclaration | for (const s of ex.sets ?? []) { => ["Stryker was here"]
+trainingLoad:191:29 NOCOV ConditionalExpression | if (maxW == null || w > maxW) maxW = w; => false
+trainingLoad:191:29 NOCOV EqualityOperator | if (maxW == null || w > maxW) maxW = w; => w >= maxW
+trainingLoad:191:29 NOCOV EqualityOperator | if (maxW == null || w > maxW) maxW = w; => w <= maxW
+trainingLoad:193:43 NOCOV ConditionalExpression | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => false
+trainingLoad:193:43 NOCOV EqualityOperator | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => v >= e1rm
+trainingLoad:193:43 NOCOV EqualityOperator | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => v <= e1rm
+trainingLoad:230:32 NOCOV ConditionalExpression | if (ownE1rm == null || r.e1rm > ownE1rm) ownE1rm = r.e1rm; => false
+trainingLoad:230:32 NOCOV EqualityOperator | if (ownE1rm == null || r.e1rm > ownE1rm) ownE1rm = r.e1rm; => r.e1rm >= ownE1rm
+trainingLoad:230:32 NOCOV EqualityOperator | if (ownE1rm == null || r.e1rm > ownE1rm) ownE1rm = r.e1rm; => r.e1rm <= ownE1rm
+trainingLoad:246:39 NOCOV ArrayDeclaration | for (const ex of entry.exercises ?? []) { => ["Stryker was here"]
+trainingLoad:249:32 NOCOV ArrayDeclaration | for (const s of ex.sets ?? []) { => ["Stryker was here"]
+trainingLoad:287:30 NOCOV ArrayDeclaration | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => ["Stryker was here"]
+trainingLoad:372:21 NOCOV ArrayDeclaration | return (values ?? []).map((_, i) => { => ["Stryker was here"]
+trainingLoad:388:24 NOCOV ArrayDeclaration | const v = (values ?? []).filter((x) => x != null); => ["Stryker was here"]
+trainingLoad:400:26 NOCOV ArrayDeclaration | const sum = (values ?? []).filter((x) => x != null).reduce((a, b) => a + b, 0); => ["Stryker was here"]
+trainingLoad:451:27 NOCOV ArrayDeclaration | const base = (values ?? []).find((v) => v != null && v > 0); => ["Stryker was here"]
+trainingLoad:452:39 NOCOV ArrayDeclaration | if (base == null) return (values ?? []).map(() => null); => ["Stryker was here"]
+trainingLoad:560:30 NOCOV ArrayDeclaration | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => ["Stryker was here"]
+trainingLoad:636:30 NOCOV ArrayDeclaration | for (const entry of log ?? []) { => ["Stryker was here"]
+trainingLoad:639:41 NOCOV ArrayDeclaration | for (const ex of entry.exercises ?? []) { => ["Stryker was here"]
+trainingLoad:668:28 NOCOV OptionalChaining | return exConfig?.sets ?? def?.sets ?? 3; => def.sets
+trainingLoad:673:34 NOCOV ArrayDeclaration | for (const tpl of templates ?? []) { => ["Stryker was here"]
+trainingLoad:674:40 NOCOV ArrayDeclaration | for (const ex of tpl?.exercises ?? []) { => ["Stryker was here"]
+trainingLoad:67:7 SURV ConditionalExpression | if (!block) return 0; => false
+trainingLoad:68:7 SURV LogicalOperator | if (block.format === 'for_time' && block.result?.timeSec != null) { => block.format === 'for_time' || block.result?.timeSec != null
+trainingLoad:68:7 SURV ConditionalExpression | if (block.format === 'for_time' && block.result?.timeSec != null) { => true
+trainingLoad:68:38 SURV ConditionalExpression | if (block.format === 'for_time' && block.result?.timeSec != null) { => true
+trainingLoad:68:38 SURV OptionalChaining | if (block.format === 'for_time' && block.result?.timeSec != null) { => block.result.timeSec
+trainingLoad:88:20 SURV OptionalChaining | for (const ex of entry?.exercises ?? []) { => entry.exercises
+trainingLoad:88:40 SURV ArrayDeclaration | for (const ex of entry?.exercises ?? []) { => ["Stryker was here"]
+trainingLoad:94:15 SURV EqualityOperator | sec += (timed > 0 ? timed : WORK_SEC) + rest; => timed >= 0
+trainingLoad:99:19 SURV OptionalChaining | for (const b of entry?.blocks ?? []) { => entry.blocks
+trainingLoad:118:7 SURV ConditionalExpression | if (modelMin <= 0) return 0; => false
+trainingLoad:118:7 SURV EqualityOperator | if (modelMin <= 0) return 0; => modelMin < 0
+trainingLoad:119:20 SURV OptionalChaining | const wallMin = (entry?.duration ?? 0) / 60000; => entry.duration
+trainingLoad:127:15 SURV OptionalChaining | const rpe = entry?.sessionRpe; => entry.sessionRpe
+trainingLoad:130:10 SURV ConditionalExpression | return min > 0 ? rpe * min : null; => true
+trainingLoad:130:10 SURV EqualityOperator | return min > 0 ? rpe * min : null; => min >= 0
+trainingLoad:157:28 SURV OptionalChaining | const raw   = parseFloat(set?.weight); => set.weight
+trainingLoad:143:29 SURV ArrayDeclaration | return !(def.equipment ?? []).some((e) => LOAD_BEARING_EQUIPMENT.has(e)); => ["Stryker was here"]
+trainingLoad:160:7 SURV LogicalOperator | if (bodyWeight == null || bodyWeight <= 0) return null; => bodyWeight == null && bodyWeight <= 0
+trainingLoad:160:7 SURV ConditionalExpression | if (bodyWeight == null || bodyWeight <= 0) return null; => false
+trainingLoad:160:29 SURV ConditionalExpression | if (bodyWeight == null || bodyWeight <= 0) return null; => false
+trainingLoad:160:29 SURV EqualityOperator | if (bodyWeight == null || bodyWeight <= 0) return null; => bodyWeight < 0
+trainingLoad:161:7 SURV OptionalChaining | if (def?.progressionDirection === 'decrease') return Math.max(0, bodyWeight - added); => def.progressionDirection
+trainingLoad:167:43 SURV OptionalChaining | const bodyWeightOf = (entry, fallback) => entry?.bodyWeight ?? fallback ?? null; => entry.bodyWeight
+trainingLoad:185:19 SURV OptionalChaining | const def = allExercises?.[ex.exerciseId]; => allExercises[ex.exerciseId]
+trainingLoad:190:13 SURV ConditionalExpression | if (w == null || w <= 0) continue; => false
+trainingLoad:190:13 SURV LogicalOperator | if (w == null || w <= 0) continue; => w == null && w <= 0
+trainingLoad:190:13 SURV ConditionalExpression | if (w == null || w <= 0) continue; => false
+trainingLoad:190:26 SURV ConditionalExpression | if (w == null || w <= 0) continue; => false
+trainingLoad:190:26 SURV EqualityOperator | if (w == null || w <= 0) continue; => w < 0
+trainingLoad:191:13 SURV ConditionalExpression | if (maxW == null || w > maxW) maxW = w; => true
+trainingLoad:191:13 SURV LogicalOperator | if (maxW == null || w > maxW) maxW = w; => maxW == null && w > maxW
+trainingLoad:191:13 SURV ConditionalExpression | if (maxW == null || w > maxW) maxW = w; => false
+trainingLoad:191:13 SURV EqualityOperator | if (maxW == null || w > maxW) maxW = w; => maxW != null
+trainingLoad:193:13 SURV ConditionalExpression | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => true
+trainingLoad:193:13 SURV LogicalOperator | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => v != null || e1rm == null || v > e1rm
+trainingLoad:193:13 SURV ConditionalExpression | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => true
+trainingLoad:193:27 SURV ConditionalExpression | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => true
+trainingLoad:193:27 SURV LogicalOperator | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => e1rm == null && v > e1rm
+trainingLoad:193:27 SURV ConditionalExpression | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => false
+trainingLoad:193:27 SURV EqualityOperator | if (v != null && (e1rm == null || v > e1rm)) e1rm = v; => e1rm != null
+trainingLoad:195:11 SURV ConditionalExpression | if (e1rm == null && maxW == null) continue; => false
+trainingLoad:195:11 SURV ConditionalExpression | if (e1rm == null && maxW == null) continue; => true
+trainingLoad:195:11 SURV EqualityOperator | if (e1rm == null && maxW == null) continue; => e1rm != null
+trainingLoad:196:59 SURV ArrayDeclaration | if (!idx.has(ex.exerciseId)) idx.set(ex.exerciseId, []); => ["Stryker was here"]
+trainingLoad:225:22 SURV EqualityOperator | const isPast = r.ts < entry.timestamp && !isOwn; => r.ts <= entry.timestamp
+trainingLoad:227:11 SURV ConditionalExpression | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => true
+trainingLoad:227:11 SURV LogicalOperator | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => r.maxW != null || maxW == null || r.maxW > maxW
+trainingLoad:227:11 SURV ConditionalExpression | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => true
+trainingLoad:227:30 SURV ConditionalExpression | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => true
+trainingLoad:227:30 SURV LogicalOperator | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => maxW == null && r.maxW > maxW
+trainingLoad:227:30 SURV ConditionalExpression | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => false
+trainingLoad:227:30 SURV EqualityOperator | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => maxW != null
+trainingLoad:227:46 SURV EqualityOperator | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => r.maxW >= maxW
+trainingLoad:227:46 SURV ConditionalExpression | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => false
+trainingLoad:227:46 SURV EqualityOperator | if (r.maxW != null && (maxW == null || r.maxW > maxW)) maxW = r.maxW; => r.maxW <= maxW
+trainingLoad:228:11 SURV ConditionalExpression | if (r.e1rm == null) continue; => false
+trainingLoad:229:11 SURV ConditionalExpression | if (isOwn) { => false
+trainingLoad:230:13 SURV ConditionalExpression | if (ownE1rm == null || r.e1rm > ownE1rm) ownE1rm = r.e1rm; => true
+trainingLoad:230:13 SURV LogicalOperator | if (ownE1rm == null || r.e1rm > ownE1rm) ownE1rm = r.e1rm; => ownE1rm == null && r.e1rm > ownE1rm
+trainingLoad:230:13 SURV EqualityOperator | if (ownE1rm == null || r.e1rm > ownE1rm) ownE1rm = r.e1rm; => ownE1rm != null
+trainingLoad:230:13 SURV ConditionalExpression | if (ownE1rm == null || r.e1rm > ownE1rm) ownE1rm = r.e1rm; => false
+trainingLoad:231:18 SURV EqualityOperator | } else if (r.ts >= from && (windowE1rm == null || r.e1rm > windowE1rm)) { => r.ts > from
+trainingLoad:231:35 SURV LogicalOperator | } else if (r.ts >= from && (windowE1rm == null || r.e1rm > windowE1rm)) { => windowE1rm == null && r.e1rm > windowE1rm
+trainingLoad:231:35 SURV ConditionalExpression | } else if (r.ts >= from && (windowE1rm == null || r.e1rm > windowE1rm)) { => false
+trainingLoad:231:57 SURV ConditionalExpression | } else if (r.ts >= from && (windowE1rm == null || r.e1rm > windowE1rm)) { => false
+trainingLoad:231:57 SURV EqualityOperator | } else if (r.ts >= from && (windowE1rm == null || r.e1rm > windowE1rm)) { => r.e1rm >= windowE1rm
+trainingLoad:247:17 SURV OptionalChaining | const def = allExercises?.[ex.exerciseId]; => allExercises[ex.exerciseId]
+trainingLoad:251:46 SURV ArrayDeclaration | for (const piece of [s, ...(s.drops ?? [])]) { => ["Stryker was here"]
+trainingLoad:255:15 SURV EqualityOperator | if (!(reps > 0)) continue; => reps >= 0
+trainingLoad:257:13 SURV LogicalOperator | if (w == null || w <= 0 || !ref) { partial = true; continue; } => (w == null || w <= 0) && !ref
+trainingLoad:257:13 SURV ConditionalExpression | if (w == null || w <= 0 || !ref) { partial = true; continue; } => false
+trainingLoad:257:13 SURV LogicalOperator | if (w == null || w <= 0 || !ref) { partial = true; continue; } => w == null && w <= 0
+trainingLoad:257:13 SURV ConditionalExpression | if (w == null || w <= 0 || !ref) { partial = true; continue; } => false
+trainingLoad:257:26 SURV ConditionalExpression | if (w == null || w <= 0 || !ref) { partial = true; continue; } => false
+trainingLoad:257:26 SURV EqualityOperator | if (w == null || w <= 0 || !ref) { partial = true; continue; } => w < 0
+trainingLoad:287:18 SURV MethodExpression | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => [...(log ?? [])]
+trainingLoad:287:40 SURV ArrowFunction | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => () => undefined
+trainingLoad:287:50 SURV ArithmeticOperator | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => a.timestamp + b.timestamp
+trainingLoad:324:8 SURV OptionalChaining | if (!loads?.length) return []; => loads.length
+trainingLoad:331:9 SURV ConditionalExpression | if (l.external != null) cur.external = (cur.external ?? 0) + l.external; => true
+trainingLoad:331:45 SURV LogicalOperator | if (l.external != null) cur.external = (cur.external ?? 0) + l.external; => cur.external && 0
+trainingLoad:389:7 SURV ConditionalExpression | if (v.length < 2) return null; => false
+trainingLoad:389:7 SURV EqualityOperator | if (v.length < 2) return null; => v.length <= 2
+trainingLoad:391:26 SURV ArithmeticOperator | const sd   = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length); => v.reduce((a, b) => a + (b - mean) ** 2, 0) * v.length
+trainingLoad:400:15 SURV MethodExpression | const sum = (values ?? []).filter((x) => x != null).reduce((a, b) => a + b, 0); => values ?? []
+trainingLoad:400:44 SURV ConditionalExpression | const sum = (values ?? []).filter((x) => x != null).reduce((a, b) => a + b, 0); => true
+trainingLoad:409:3 SURV MethodExpression | d.setHours(0, 0, 0, 0); => d.setMinutes(0, 0, 0, 0)
+trainingLoad:425:7 SURV ConditionalExpression | if (!days?.length) return []; => false
+trainingLoad:425:8 SURV OptionalChaining | if (!days?.length) return []; => days.length
+trainingLoad:431:9 SURV ConditionalExpression | if (d.external != null) cur.external = (cur.external ?? 0) + d.external; => true
+trainingLoad:435:10 SURV MethodExpression | return [...byWeek.values()].sort((a, b) => a.weekStart - b.weekStart); => [...byWeek.values()]
+trainingLoad:435:36 SURV ArrowFunction | return [...byWeek.values()].sort((a, b) => a.weekStart - b.weekStart); => () => undefined
+trainingLoad:435:46 SURV ArithmeticOperator | return [...byWeek.values()].sort((a, b) => a.weekStart - b.weekStart); => a.weekStart + b.weekStart
+trainingLoad:451:43 SURV ConditionalExpression | const base = (values ?? []).find((v) => v != null && v > 0); => true
+trainingLoad:469:13 SURV MethodExpression | const n = Math.min(external?.length ?? 0, internal?.length ?? 0); => Math.max(external?.length ?? 0, internal?.length ?? 0)
+trainingLoad:469:22 SURV OptionalChaining | const n = Math.min(external?.length ?? 0, internal?.length ?? 0); => external.length
+trainingLoad:469:45 SURV OptionalChaining | const n = Math.min(external?.length ?? 0, internal?.length ?? 0); => internal.length
+trainingLoad:470:7 SURV ConditionalExpression | if (n < 2) return null; => false
+trainingLoad:470:7 SURV EqualityOperator | if (n < 2) return null; => n <= 2
+trainingLoad:484:21 SURV ConditionalExpression | if (e0 == null || e1 == null || i0 == null || i1 == null) return null; => false
+trainingLoad:484:35 SURV ConditionalExpression | if (e0 == null || e1 == null || i0 == null || i1 == null) return null; => false
+trainingLoad:484:49 SURV ConditionalExpression | if (e0 == null || e1 == null || i0 == null || i1 == null) return null; => false
+trainingLoad:486:26 SURV EqualityOperator | const dir = (a, b) => (b - a > flat ? 1 : b - a < -flat ? -1 : 0); => b - a >= flat
+trainingLoad:486:45 SURV EqualityOperator | const dir = (a, b) => (b - a > flat ? 1 : b - a < -flat ? -1 : 0); => b - a <= -flat
+trainingLoad:495:7 SURV LogicalOperator | if (de > 0 && di > 0)  return 'hard'; => de > 0 || di > 0
+trainingLoad:495:7 SURV ConditionalExpression | if (de > 0 && di > 0)  return 'hard'; => true
+trainingLoad:495:7 SURV EqualityOperator | if (de > 0 && di > 0)  return 'hard'; => de >= 0
+trainingLoad:495:17 SURV ConditionalExpression | if (de > 0 && di > 0)  return 'hard'; => true
+trainingLoad:495:17 SURV EqualityOperator | if (de > 0 && di > 0)  return 'hard'; => di >= 0
+trainingLoad:496:7 SURV ConditionalExpression | if (de < 0 && di < 0)  return 'deload'; => true
+trainingLoad:496:7 SURV EqualityOperator | if (de < 0 && di < 0)  return 'deload'; => de <= 0
+trainingLoad:515:7 SURV ConditionalExpression | if (!days?.length) return []; => false
+trainingLoad:515:8 SURV OptionalChaining | if (!days?.length) return []; => days.length
+trainingLoad:560:18 SURV MethodExpression | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => [...(log ?? [])]
+trainingLoad:560:40 SURV ArrowFunction | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => () => undefined
+trainingLoad:560:50 SURV ArithmeticOperator | const sorted = [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp); => a.timestamp + b.timestamp
+trainingLoad:568:11 SURV ConditionalExpression | if (r.e1rm == null) continue; => false
+trainingLoad:570:28 SURV ConditionalExpression | if (!weeks.has(w) || r.e1rm > weeks.get(w)) weeks.set(w, r.e1rm); => false
+trainingLoad:570:28 SURV EqualityOperator | if (!weeks.has(w) || r.e1rm > weeks.get(w)) weeks.set(w, r.e1rm); => r.e1rm >= weeks.get(w)
+trainingLoad:574:7 SURV ConditionalExpression | if (!perExercise.size) return []; => false
+trainingLoad:576:20 SURV MethodExpression | const allWeeks = [...new Set([...perExercise.values()].flatMap((w) => [...w.keys()]))].sort(); => [...new Set([...perExercise.values()].flatMap(w => [...w.keys()]))]
+trainingLoad:579:21 SURV MethodExpression | const first = [...weeks.keys()].sort()[0]; => [...weeks.keys()]
+trainingLoad:584:19 SURV ArithmeticOperator | const WEEK_MS = 7 * 86400000; => 7 / 86400000
+trainingLoad:586:25 SURV ArithmeticOperator | const from = week - (windowWeeks - 1) * WEEK_MS; => (windowWeeks - 1) / WEEK_MS
+trainingLoad:586:26 SURV ArithmeticOperator | const from = week - (windowWeeks - 1) * WEEK_MS; => windowWeeks + 1
+trainingLoad:592:13 SURV ConditionalExpression | if (w < from || w > week) continue; => false
+trainingLoad:592:13 SURV EqualityOperator | if (w < from || w > week) continue; => w <= from
+trainingLoad:593:13 SURV ConditionalExpression | if (best == null || v > best) best = v; => true
+trainingLoad:593:13 SURV ConditionalExpression | if (best == null || v > best) best = v; => false
+trainingLoad:593:13 SURV EqualityOperator | if (best == null || v > best) best = v; => best != null
+trainingLoad:593:29 SURV EqualityOperator | if (best == null || v > best) best = v; => v >= best
+trainingLoad:596:11 SURV ConditionalExpression | if (best != null && base > 0) ratios.push((best / base) * 100); => true
+trainingLoad:596:11 SURV LogicalOperator | if (best != null && base > 0) ratios.push((best / base) * 100); => best != null || base > 0
+trainingLoad:596:11 SURV ConditionalExpression | if (best != null && base > 0) ratios.push((best / base) * 100); => true
+trainingLoad:596:27 SURV ConditionalExpression | if (best != null && base > 0) ratios.push((best / base) * 100); => true
+trainingLoad:596:27 SURV EqualityOperator | if (best != null && base > 0) ratios.push((best / base) * 100); => base >= 0
+trainingLoad:637:9 SURV ConditionalExpression | if (from != null && entry.timestamp < from) continue; => true
+trainingLoad:637:25 SURV EqualityOperator | if (from != null && entry.timestamp < from) continue; => entry.timestamp <= from
+trainingLoad:638:9 SURV ConditionalExpression | if (entry.timestamp > to) continue; => false
+trainingLoad:638:9 SURV EqualityOperator | if (entry.timestamp > to) continue; => entry.timestamp >= to
+trainingLoad:642:35 SURV OptionalChaining | const group = muscleGroupOf(allExercises?.[ex.exerciseId]); => allExercises[ex.exerciseId]
+trainingLoad:646:10 SURV MethodExpression | return [...counts.entries()] => [...counts.entries()].map(([group, sets]) => ({ group, sets }))
+trainingLoad:648:11 SURV ArrowFunction | .sort((a, b) => b.sets - a.sets); => () => undefined
+trainingLoad:648:21 SURV ArithmeticOperator | .sort((a, b) => b.sets - a.sets); => b.sets + a.sets
+trainingLoad:668:10 SURV OptionalChaining | return exConfig?.sets ?? def?.sets ?? 3; => exConfig.sets
+trainingLoad:674:22 SURV OptionalChaining | for (const ex of tpl?.exercises ?? []) { => tpl.exercises
+trainingLoad:675:33 SURV OptionalChaining | const n = plannedSets(ex, allExercises?.[ex.exerciseId]); => allExercises[ex.exerciseId]
+trainingLoad:677:35 SURV OptionalChaining | const group = muscleGroupOf(allExercises?.[ex.exerciseId]); => allExercises[ex.exerciseId]
+trainingLoad:681:10 SURV MethodExpression | return [...counts.entries()] => [...counts.entries()].map(([group, sets]) => ({ group, sets }))
+trainingLoad:683:11 SURV ArrowFunction | .sort((a, b) => b.sets - a.sets); => () => undefined
+trainingLoad:683:21 SURV ArithmeticOperator | .sort((a, b) => b.sets - a.sets); => b.sets + a.sets
+trainingLoad:694:24 SURV ConditionalExpression | if (mean7 == null || mean28 == null || mean28 <= 0) return null; => false
+trainingLoad:696:7 SURV EqualityOperator | if (ratio < 0.8) return 'unloading'; => ratio <= 0.8
+trainingLoad:60:14 SURV StringLiteral | 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell', 'sled', 'medicine_ball', => ""
+trainingLoad:60:27 SURV StringLiteral | 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell', 'sled', 'medicine_ball', => ""
+trainingLoad:60:37 SURV StringLiteral | 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell', 'sled', 'medicine_ball', => ""
+trainingLoad:60:49 SURV StringLiteral | 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell', 'sled', 'medicine_ball', => ""
+trainingLoad:60:63 SURV StringLiteral | 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell', 'sled', 'medicine_ball', => ""
+trainingLoad:60:71 SURV StringLiteral | 'barbell', 'dumbbells', 'cables', 'machines', 'kettlebell', 'sled', 'medicine_ball', => ""
+warmup:21:68 NOCOV ArrayDeclaration | if (warmupConfig.mode === 'custom') return warmupConfig.steps ?? []; => ["Stryker was here"]
+warmup:22:43 NOCOV ArrayDeclaration | return AUTO_RAMPS[warmupConfig.sets] ?? []; => ["Stryker was here"]
+warmup:62:9 SURV ConditionalExpression | if (!isNaN(w) && w > 0 && (best == null || w > best)) best = w; => true
+warmup:62:9 SURV LogicalOperator | if (!isNaN(w) && w > 0 && (best == null || w > best)) best = w; => !isNaN(w) || w > 0
+warmup:62:22 SURV ConditionalExpression | if (!isNaN(w) && w > 0 && (best == null || w > best)) best = w; => true
+warmup:62:22 SURV EqualityOperator | if (!isNaN(w) && w > 0 && (best == null || w > best)) best = w; => w >= 0
+warmup:62:32 SURV ConditionalExpression | if (!isNaN(w) && w > 0 && (best == null || w > best)) best = w; => false
+warmup:62:48 SURV EqualityOperator | if (!isNaN(w) && w > 0 && (best == null || w > best)) best = w; => w >= best
+weeklyVolume:109:45 NOCOV StringLiteral | export function ceilingFor(group, { level = 'intermediate', discipline = 'standard', volumeEmphasis = [] } = { => ""
+weeklyVolume:175:11 NOCOV StringLiteral | level = 'intermediate', => ""
+weeklyVolume:73:39 SURV OptionalChaining | const groupOf = (ex, allExercises) => allExercises[ex.exerciseId]?.primaryGroup; => allExercises[ex.exerciseId].primaryGroup
+weeklyVolume:109:74 SURV StringLiteral | export function ceilingFor(group, { level = 'intermediate', discipline = 'standard', volumeEmphasis = [] } = { => ""
+weeklyVolume:109:103 SURV ArrayDeclaration | export function ceilingFor(group, { level = 'intermediate', discipline = 'standard', volumeEmphasis = [] } = { => ["Stryker was here"]
+weeklyVolume:96:11 SURV ConditionalExpression | if (g) weekly[g] = (weekly[g] ?? 0) + (ex.sets ?? 0) * mult; => true
+weeklyVolume:129:37 SURV ArrowFunction | const contribution = sessions.map((session) => session.reduce( => () => undefined
+weeklyVolume:130:5 SURV ArrowFunction | (sum, ex) => sum + (groupOf(ex, allExercises) === group ? (ex.sets ?? 0) : 0), 0, => () => undefined
+weeklyVolume:130:18 SURV ArithmeticOperator | (sum, ex) => sum + (groupOf(ex, allExercises) === group ? (ex.sets ?? 0) : 0), 0, => sum - (groupOf(ex, allExercises) === group ? ex.sets ?? 0 : 0)
+weeklyVolume:130:25 SURV ConditionalExpression | (sum, ex) => sum + (groupOf(ex, allExercises) === group ? (ex.sets ?? 0) : 0), 0, => true
+weeklyVolume:130:25 SURV ConditionalExpression | (sum, ex) => sum + (groupOf(ex, allExercises) === group ? (ex.sets ?? 0) : 0), 0, => false
+weeklyVolume:130:25 SURV EqualityOperator | (sum, ex) => sum + (groupOf(ex, allExercises) === group ? (ex.sets ?? 0) : 0), 0, => groupOf(ex, allExercises) !== group
+weeklyVolume:130:64 SURV LogicalOperator | (sum, ex) => sum + (groupOf(ex, allExercises) === group ? (ex.sets ?? 0) : 0), 0, => ex.sets && 0
+weeklyVolume:139:11 SURV ConditionalExpression | if (tier !== 1 && includeTier1) return; => false
+weeklyVolume:140:38 SURV LogicalOperator | out.push({ si, ei, tier, sets: ex.sets ?? 0, contribution: contribution[si] }); => ex.sets && 0
+weeklyVolume:144:10 SURV MethodExpression | return out.sort((a, b) => => out
+weeklyVolume:144:19 SURV ArrowFunction | return out.sort((a, b) => => () => undefined
+weeklyVolume:145:5 SURV ConditionalExpression | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => true
+weeklyVolume:145:5 SURV ConditionalExpression | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => false
+weeklyVolume:145:5 SURV LogicalOperator | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => (b.tier - a.tier || b.contribution - a.contribution) && b.sets - a.sets
+weeklyVolume:145:5 SURV ConditionalExpression | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => false
+weeklyVolume:145:5 SURV LogicalOperator | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => b.tier - a.tier && b.contribution - a.contribution
+weeklyVolume:145:5 SURV ArithmeticOperator | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => b.tier + a.tier
+weeklyVolume:145:24 SURV ArithmeticOperator | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => b.contribution + a.contribution
+weeklyVolume:145:59 SURV ArithmeticOperator | b.tier - a.tier || b.contribution - a.contribution || b.sets - a.sets); => b.sets + a.sets
+weeklyVolume:160:34 SURV ConditionalExpression | return session.some((ex, i) => i !== index && groupOf(ex, allExercises) === group); => true
+weeklyVolume:160:34 SURV ConditionalExpression | return session.some((ex, i) => i !== index && groupOf(ex, allExercises) === group); => true
+weeklyVolume:160:34 SURV LogicalOperator | return session.some((ex, i) => i !== index && groupOf(ex, allExercises) === group); => i !== index || groupOf(ex, allExercises) === group
+weeklyVolume:160:34 SURV EqualityOperator | return session.some((ex, i) => i !== index && groupOf(ex, allExercises) === group); => i === index
+weeklyVolume:176:16 SURV StringLiteral | discipline = 'standard', => ""
+weeklyVolume:177:20 SURV ArrayDeclaration | volumeEmphasis = [], => ["Stryker was here"]
+weeklyVolume:160:49 SURV ConditionalExpression | return session.some((ex, i) => i !== index && groupOf(ex, allExercises) === group); => true
+weeklyVolume:160:49 SURV EqualityOperator | return session.some((ex, i) => i !== index && groupOf(ex, allExercises) === group); => groupOf(ex, allExercises) !== group
+weeklyVolume:187:20 SURV MethodExpression | const excess = CLAMPED_GROUPS => CLAMPED_GROUPS.filter(g => !givenUp.has(g) && (weekly[g] ?? 0) > ceilingFor(g, opts)).map(
+weeklyVolume:188:41 SURV EqualityOperator | .filter((g) => !givenUp.has(g) && (weekly[g] ?? 0) > ceilingFor(g, opts)) => (weekly[g] ?? 0) >= ceilingFor(g, opts)
+weeklyVolume:189:38 SURV ArithmeticOperator | .map((g) => ({ group: g, over: weekly[g] - ceilingFor(g, opts) })) => weekly[g] + ceilingFor(g, opts)
+weeklyVolume:190:23 SURV ArithmeticOperator | .sort((a, b) => b.over - a.over)[0]; => b.over + a.over
+weeklyVolume:190:13 SURV ArrowFunction | .sort((a, b) => b.over - a.over)[0]; => () => undefined
+weeklyVolume:206:36 SURV ConditionalExpression | const dejariaOtroEnElSuelo = ex.sets - 1 <= MIN_SETS_ACCESSORY => false
+weeklyVolume:206:36 SURV ConditionalExpression | const dejariaOtroEnElSuelo = ex.sets - 1 <= MIN_SETS_ACCESSORY => true
+weeklyVolume:206:36 SURV EqualityOperator | const dejariaOtroEnElSuelo = ex.sets - 1 <= MIN_SETS_ACCESSORY => ex.sets - 1 < MIN_SETS_ACCESSORY
+weeklyVolume:206:36 SURV EqualityOperator | const dejariaOtroEnElSuelo = ex.sets - 1 <= MIN_SETS_ACCESSORY => ex.sets - 1 > MIN_SETS_ACCESSORY
+weeklyVolume:206:36 SURV ArithmeticOperator | const dejariaOtroEnElSuelo = ex.sets - 1 <= MIN_SETS_ACCESSORY => ex.sets + 1
+weeklyVolume:207:12 SURV EqualityOperator | && accessoriesAtFloor(session) >= MAX_ACCESSORIES_AT_FLOOR; => accessoriesAtFloor(session) > MAX_ACCESSORIES_AT_FLOOR
+weeklyVolume:210:11 SURV LogicalOperator | if (ex.sets > MIN_SETS_ACCESSORY && !dejariaOtroEnElSuelo) { => ex.sets > MIN_SETS_ACCESSORY || !dejariaOtroEnElSuelo
+weeklyVolume:210:11 SURV ConditionalExpression | if (ex.sets > MIN_SETS_ACCESSORY && !dejariaOtroEnElSuelo) { => true
+weeklyVolume:210:11 SURV EqualityOperator | if (ex.sets > MIN_SETS_ACCESSORY && !dejariaOtroEnElSuelo) { => ex.sets >= MIN_SETS_ACCESSORY
+weeklyVolume:217:38 SURV ConditionalExpression | result = result.map((s, i) => (i === cand.si ? newSession : s)); => true
+weeklyVolume:234:40 SURV ConditionalExpression | result = result.map((s, i) => (i === cand.si => true
+weeklyVolume:39:40 SURV StringLiteral | export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_hamstrings', 'arms']; => ""
+weeklyVolume:39:49 SURV StringLiteral | export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_hamstrings', 'arms']; => ""
+weeklyVolume:39:62 SURV StringLiteral | export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_hamstrings', 'arms']; => ""
+weeklyVolume:39:71 SURV StringLiteral | export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_hamstrings', 'arms']; => ""
+weeklyVolume:39:92 SURV StringLiteral | export const CLAMPED_GROUPS = ['back', 'chest', 'shoulders', 'quads', 'glutes_hamstrings', 'arms']; => ""
+setPlan:15:33 SURV ConditionalExpression | const has = (v) => v != null && v !== ''; => true
+setPlan:15:39 SURV StringLiteral | const has = (v) => v != null && v !== ''; => "Stryker was here!"
+setPlan:37:19 SURV OptionalChaining | const minReps = exConfig?.minReps ?? def?.minReps ?? DEFAULT_TARGET.minReps; => exConfig.minReps
+setPlan:38:19 SURV OptionalChaining | const maxReps = exConfig?.maxReps ?? def?.maxReps ?? DEFAULT_TARGET.maxReps; => exConfig.maxReps
+setPlan:51:19 SURV OptionalChaining | plan.time = exConfig?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime; => exConfig.minTime
+setPlan:51:40 SURV OptionalChaining | plan.time = exConfig?.minTime ?? def?.minTime ?? DEFAULT_TARGET.minTime; => def.minTime
+setPlan:53:19 SURV OptionalChaining | plan.reps = exConfig?.progression?.type === 'weight' ? minReps : maxReps; => exConfig.progression
+setPlan:58:7 SURV ConditionalExpression | if (plan.reps == null && chip?.suggestedReps != null && chip.type === 'up') plan.reps = chip.suggestedReps; => true
+weekProgress:44:33 SURV EqualityOperator | : (trained ? 'trained' : (date > today ? 'future' : 'past')); => date >= today

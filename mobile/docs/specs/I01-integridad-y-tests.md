@@ -2,7 +2,8 @@
 
 > Tema: integridad
 > En corto: Asegurarse de que lo que la app calcula y guarda es correcto —progresiones, carga, 1RM, paso de etapas, sincronización— con tests que de verdad cazan errores en vez de pasar, un simulador que entrena meses en segundos y un verificador que audita todo el estado.
-> Fase I01-01 · pendiente · Auditar los tests que ya hay (mutaciones, historial, oráculo) · §3 · antes I01
+> Inicio: 2026-10-26
+> Fase I01-01 · hecho · Auditar los tests que ya hay (mutaciones, historial, oráculo) · §3 · antes I01
 > Fase I01-02 · pendiente · `auditState`: el verificador de integridad del estado · §4 · antes I02
 > Fase I01-03 · pendiente · El simulador de entrenos y etapas · §5 · antes I03
 > Fase I01-04 · pendiente · Propiedades e invariantes sobre entradas aleatorias · §6 · antes I04
@@ -10,7 +11,9 @@
 > Fase I01-06 · pendiente · Un solo origen de verdad y mapa de efectos · §8 · antes I06
 > Fase I01-07 · pendiente · Cobertura como mapa y reglas de proceso · §9 · antes I07
 >
-> Estado: **SIN IMPLEMENTAR — en espera deliberada** (2-oct-2026). 7 fases:
+> Estado: **I01-01 hecha el 26-oct-2026** (informe en
+> [`docs/auditoria-tests/informe.md`](../auditoria-tests/informe.md)); queda que el usuario firme
+> las tablas de casos (casillas de §3.6). El resto, en espera deliberada (2-oct-2026). 7 fases:
 > I01-01 auditoría de tests · I01-02 `auditState` · I01-03 simulador · I01-04 propiedades ·
 > I01-05 fronteras y backups · I01-06 origen único · I01-07 cobertura y proceso.
 >
@@ -201,6 +204,24 @@ Lista de patrones a buscar y qué hacer con cada uno:
 - **Meta de referencia, no de aceptación**: ≥ 80 % de mutación en
   `progression`, `setPlan`, `oneRm`, `stageProgress`. Una cifra de cobertura sin
   la de mutación no vale (§9).
+
+### 3.6 Resultado (26-oct-2026)
+
+Informe: [`docs/auditoria-tests/informe.md`](../auditoria-tests/informe.md). Mutación de los 16
+ficheros de `utils/`: 76,6 % → 78,8 % con 50 tests nuevos verificados; **ningún fallo (c)**, así que no
+hay altas en `auditoria-tecnica.md` (el siguiente libre sigue siendo E72). Historial: 45 casos, ninguno
+ajustado sin razón; 5 aserciones debilitadas y una contradicción entre C03 §9 y C03 §9.2/P08 §5.3 que
+decide el usuario. Herramienta: Stryker 10.1.1 in place, solo tests de `utils/` (§3.1 del informe).
+Las tablas de casos están escritas y **pendientes de firma**; lo que falta de §3.3 (pasos 3-5) va
+después de firmarlas.
+
+**Probar I01-01**
+
+- [ ] I01-01.1 — Firmar las tablas de casos 1A-1D (progresión) de `docs/auditoria-tests/tablas-de-casos.md`.
+- [ ] I01-01.2 — Firmar la tabla 2 (1RM) y la 3 (calentamiento).
+- [ ] I01-01.3 — Firmar las tablas 4A-4C (avance de etapa).
+- [ ] I01-01.4 — Firmar las tablas 5A-5C (prescripción de etapa) y 6A-6C (carga y volumen).
+- [ ] I01-01.5 — Decidir si activar la etapa en la que el cliente ya está le reinicia el contador (C03 §9 contra §9.2 y P08 §5.3).
 
 ---
 
@@ -589,7 +610,7 @@ sección de `docs/specs/README.md` sobre cerrar una fase menciona la regla 5.
 
 | Fase | Qué | Coste | Depende de | Estado |
 |---|---|---|---|---|
-| I01-01 | Auditar los tests (mutaciones · historial · oráculo · olores) | 🟡 | — | pendiente |
+| I01-01 | Auditar los tests (mutaciones · historial · oráculo · olores) | 🟡 | — | hecho (firma de tablas pendiente) |
 | I01-02 | `auditState` | 🟡 | — | pendiente |
 | I01-03 | Simulador | 🟡/🔴 | I01-02 | pendiente |
 | I01-04 | Propiedades y metamórficos | 🟢/🟡 | — (usa I01-02 en round-trip) | pendiente |
