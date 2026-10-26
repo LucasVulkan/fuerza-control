@@ -5,7 +5,7 @@
 > Inicio: 2026-10-23
 > Fase I02-01 · terminado · Revisar y firmar las reglas · §3
 > Fase I02-02 · terminado · Servidor: el SQL y las Edge Functions contra un cliente hostil · §5.1
-> Fase I02-03 · pendiente · App: conexión y sincronización · §5.2
+> Fase I02-03 · terminado · App: conexión y sincronización · §5.2
 > Fase I02-04 · terminado · App: PRO, límites y congelado · §5.3
 > Fase I02-05 · terminado · App: compra, restauración e identidad en RevenueCat · §5.4
 > Fase I02-06 · pendiente · Pruebas en dispositivo de lo que el banco no ve · §5.5
@@ -22,7 +22,10 @@
 > (la de I02-05 con máximo) y adversaria con Sonnet; 60 tests en
 > `freeplan.audit.test.js` y `purchases.audit.test.js`. Salen los fallos E38 a E48.
 > **E27-E29, E32, E33 y E38-E48 arreglados** y fusionados en develop (24-oct-2026);
-> E45-d (compra de otra plataforma o regalada) queda abierto. Falta
+> E45-d (compra de otra plataforma o regalada) queda abierto.
+> **I02-03 terminada** (26-oct-2026): pasada por reglas (Opus alto) y adversaria
+> (Sonnet alto) sobre el código ya arreglado; 18 hallazgos confirmados en
+> `sync.audit.sim.test.js`, que pasan a ser los fallos E49 a E60. Falta
 > volver a ejecutar `schema.sql` en Supabase y redesplegar `delete-account`. Sale de la conversación
 > del 23-oct: ¿un modelo con más esfuerzo encontraría más fallos en conexión,
 > pagos y PRO? Respuesta: algo más sí, pero lo que más cuenta es el método.

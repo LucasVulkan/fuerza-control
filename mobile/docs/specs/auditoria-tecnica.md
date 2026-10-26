@@ -3,7 +3,7 @@
 > Tema: errores
 > En corto: Barrido de corrección sobre toda la app móvil: 26 fallos, cada uno con la condición exacta que lo dispara y el arreglo verificado contra el código.
 >
-> Estado: **Reabierto el 23-oct-2026 con 22 fallos nuevos, E27-E48**, de la
+> Estado: **Reabierto el 23-oct-2026 con 34 fallos nuevos, E27-E60**, de la
 > auditoría [I02](I02-conexion-pagos-pro.md) (servidor, plan gratis y pagos), todos confirmados
 > por test. **E27-E29, E32, E33 y E38-E48 resueltos** el 24-oct-2026 (E45-d queda abierto); el resto, sin arreglar. Los 26 primeros se resolvieron en sep 2026 — las seis tandas,
 > A a F. Los últimos seis (11, 12, 14, 15, 23 y 25) se revisaron contra el
@@ -151,6 +151,18 @@ pendiente de probar a mano, y el estado de las 19 specs.
 | [46](#46) | 🟡 Media | ✅ Sin red, el PRO no caduca nunca | `store/useStore.js:4955` |
 | [47](#47) | 🟡 Media | ✅ Cobrado y sin red: «compra hecha» pero sin PRO | `store/useStore.js:5009` |
 | [48](#48) | 🟢 Baja | ✅ Borrar la cuenta puede dejar el PRO de la cuenta borrada | `store/useStore.js:4944` |
+| [49](#49) | 🟠 Alta | Pasar a un código nuevo con un corte deja los clientes en una cuenta perdida | `store/useStore.js:3829` |
+| [50](#50) | 🟠 Alta | Sin cobertura y con la sesión caducada, el cliente se cree desconectado | `src/services/supabaseSync.js:38` |
+| [51](#51) | 🟠 Alta | Las sesiones sin subir se pierden al dejar el asiento o si la app se cierra | `store/useStore.js:4604` |
+| [52](#52) | 🟡 Media | Desconectarse sin red deja al cliente «dentro» para el entrenador | `store/useStore.js:4826` |
+| [53](#53) | 🟡 Media | Con el asiento desactualizado, las sesiones van al entrenador equivocado | `store/useStore.js:4655` |
+| [54](#54) | 🟡 Media | «Vincular Google» del cliente: estado pegado y asiento ajeno suelto | `store/useStore.js:4902` |
+| [55](#55) | 🟡 Media | Lo que se edita mientras se envía queda como enviado | `store/useStore.js:4151` |
+| [56](#56) | 🟡 Media | «Eliminar cuenta» se atasca si la app muere a mitad | `store/useStore.js:4959` |
+| [57](#57) | 🟡 Media | Con un programa propio activo, el progreso del entrenador se cruza | `store/useStore.js:4789` |
+| [58](#58) | 🟢 Baja | Una copia vieja de un entreno puede pisar una edición | `supabase/schema.sql:286` |
+| [59](#59) | 🟢 Baja | Lo que se borra del historial vuelve | `store/useStore.js:2985` |
+| [60](#60) | 🟢 Baja | Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» | `store/useStore.js:4340` |
 
 Cada sección lleva al final su bloque **Implementado** / **Resuelto** con lo que
 se hizo y en qué se equivocaba el diagnóstico si se equivocaba.
@@ -2855,6 +2867,220 @@ Encontrado en I02-05.
 ### ✅ Resuelto (24-oct-2026)
 
 Hecho (`a74f28b`, `3abac2e`). `_purchasesLogOut` solo traga `LOG_OUT_ANONYMOUS_USER_ERROR`; con otro error baja el PRO igualmente. `deleteAccount` sale de RevenueCat y limpia al entrenador justo tras borrarlo, antes de la parte de cliente, y limpia el traspaso pendiente.
+
+## 49. Pasar a un código nuevo con un corte deja los clientes en una cuenta perdida 🟠 {#49}
+
+> En corto: Si el entrenador pasa de Google o Apple a un código nuevo y la red se corta justo después del traspaso, sus clientes quedan en una cuenta cuyo código nunca vio; reintentar crea otra cuenta y ya no hay forma de recuperarlos.
+
+Encontrado en [I02-03](I02-conexion-pagos-pro.md) (26-oct-2026), pasada por reglas; viola R-C7 y R-D1.
+
+**Cuándo.** `createTrainerCodeAccount` genera un código y su cuenta
+(`supabaseAuth.js:111-119`), y el traspaso mueve los huecos
+(`useStore.js:3829-3830`). Si después falla `setSession` o la marca de
+entrenador en `profiles`, la cuenta del código 1 tiene los clientes, pero ese
+código no se guardó ni se enseñó. Reintentar genera el código 2.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S1. Lo prueba con `setSession` y
+con `profiles`.
+
+**Arreglo a estudiar.** Guardar la cuenta candidata (código y sesión) en el
+estado **antes** de traspasar, para que el reintento use la misma. Con Google o
+Apple ya pasa así, porque el destino es siempre el mismo. I02 §7.2 dice que un
+fallo del traspaso obliga a reconsiderar `linkIdentity`, pero este arreglo es
+más corto y cierra el caso.
+
+## 50. Sin cobertura y con la sesión caducada, el cliente se cree desconectado 🟠 {#50}
+
+> En corto: Si el cliente abre la app sin cobertura después de una hora sin usarla, la app cree que su entrenador lo ha desconectado; no se recupera al volver la red y lo que entrena no llega.
+
+Encontrado en I02-03, pasada adversaria; viola R-C1 y R-B3.
+
+**Cuándo.** Con el token caducado y sin red, `getSession` de supabase-js
+devuelve `session: null` con un error `AuthRetryableFetchError`. `myId`
+(`supabaseSync.js:38-42`) ignora ese error, `seatOf` devuelve null y
+`checkAndPullProgramUpdates` marca `lostAt` (`useStore.js:4657`). Con `lostAt`
+puesto, ni se sube ni se vuelve a mirar. `userIdOf` (`supabaseAuth.js:54-64`)
+ya trata este caso bien.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S14. El banco no caduca tokens,
+así que el test imita el comportamiento de la librería.
+
+**Arreglo previsto.** Que `myId` haga lo mismo que `userIdOf`: un error de red
+**no** es «no tengo sesión». Así, sin red, no se marca nada.
+
+## 51. Las sesiones sin subir se pierden al dejar el asiento o si la app se cierra 🟠 {#51}
+
+> En corto: Un entreno que aún no se había subido se tira si el cliente se desconecta, cambia de entrenador o vuelve a meter su código, y no se sube si la app se cierra en los dos segundos siguientes a guardarlo.
+
+Encontrado en I02-03 por las dos pasadas; viola R-C4 y R-C1.
+
+**Cuándo.**
+
+- `unlinkFromTrainer` (`useStore.js:4826-4843`) y `_adoptSeat` (`:4604`) ponen
+  `pendingUpload: false` sin intentar subir antes.
+- La subida tras guardar espera 2 s en un temporizador que solo vive en memoria
+  (`:5486-5507`). Si la app muere antes, no queda nada pendiente.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S6, S7.
+
+**Arreglo previsto.**
+
+- Marcar `pendingUpload` al guardar, no al vencer el temporizador. El
+  temporizador solo adelanta la subida, y el reintento de siempre la recoge si
+  la app muere.
+- Antes de soltar el asiento, intentar subir lo pendiente. Si falla, decidir
+  con el usuario (§7).
+
+## 52. Desconectarse sin red deja al cliente «dentro» para el entrenador 🟡 {#52}
+
+> En corto: Si el cliente se desconecta sin cobertura, su app queda desconectada pero el servidor no se entera: el entrenador lo sigue viendo conectado y nadie lo vuelve a intentar.
+
+Encontrado en I02-03 por las dos pasadas; viola R-B6 y R-C1.
+
+**Cuándo.** `unlinkFromTrainer` se traga el fallo de `release_client_slot`
+(`useStore.js:4826-4830`) y limpia el estado local igualmente.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S5.
+
+**Arreglo previsto.** Si el servidor no confirma, no desconectar en local:
+avisar de que hace falta conexión, igual que otras acciones de cuenta. Es la
+regla de C09: nada se da por hecho sin el servidor.
+
+## 53. Con el asiento desactualizado, las sesiones van al entrenador equivocado 🟡 {#53}
+
+> En corto: Si el móvil del cliente cree seguir con un entrenador cuando ya está con otro, ofrece el programa del nuevo como actualización y sube allí las sesiones del anterior.
+
+Encontrado en I02-03 por las dos pasadas; viola R-B1 y R-C7.
+
+**Cuándo.** Pasa en dos casos:
+
+- el cambio de A a B falla al leer el asiento después de `link`;
+- otro móvil con el mismo Google cambió de entrenador.
+
+`checkAndPullProgramUpdates` no compara el asiento del servidor con
+`clientSync.slotId` (`useStore.js:4655-4696`). La subida usa el asiento del
+servidor (E37).
+
+**Confirmado por:** `sync.audit.sim.test.js` › S3 (dos tests).
+
+**Arreglo previsto.** Si `seat.slotId` no es `clientSync.slotId`, no tratarlo
+como actualización sino como cambio de entrenador. Se adopta el asiento nuevo
+con `_adoptSeat`, sin subir lo del anterior.
+
+## 54. «Vincular Google» del cliente: estado pegado y asiento ajeno suelto 🟡 {#54}
+
+> En corto: Un corte al vincular Google puede dejar al cliente marcado como desconectado aunque esté dentro, y vincular desde un asiento ya perdido suelta el asiento que ese Google tenía con otro entrenador.
+
+Encontrado en I02-03 por las dos pasadas; viola R-C7, R-B3 y R-B1.
+
+**Cuándo.**
+
+1. `linkGoogleForClient` no limpia `lostAt` ni dispara la subida al terminar
+   (`useStore.js:4902-4924`). Si antes se marcó «perdido», sigue así.
+2. Suelta el asiento viejo del Google (`:4909-4912`) **antes** de comprobar
+   que el anónimo tiene asiento. Si no lo tiene, `accept_transfer` da
+   `NO_SEAT`, pero el otro asiento ya está libre.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S4, S15.
+
+**Arreglo previsto.** Comprobar el asiento propio (`seatOf`) antes de soltar
+nada, y al vincular limpiar `lostAt` como hace `_adoptSeat`.
+
+## 55. Lo que se edita mientras se envía queda como enviado 🟡 {#55}
+
+> En corto: Si el entrenador cambia el programa o una prescripción mientras se está enviando, la app marca como enviado lo que no se envió; con las prescripciones, además, el cambio se pierde.
+
+Encontrado en I02-03 por las dos pasadas; viola R-C1.
+
+**Cuándo.**
+
+- `sendOverrides` escribe al terminar la copia que envió (`nextOverrides:
+  stamped`) y pone `overridesDirty: false` (`useStore.js:4151-4160`).
+- `uploadProgramToClient` limpia `programDirty` sin comparar con la firma del
+  programa actual (`:4084-4093`).
+
+**Confirmado por:** `sync.audit.sim.test.js` › S8, S9.
+
+**Arreglo previsto.** Al terminar, limpiar la marca solo si lo que hay ahora es
+lo que se envió (misma firma; para las prescripciones, el mismo objeto). Y no
+sobrescribir `nextOverrides` con la copia enviada.
+
+## 56. «Eliminar cuenta» se atasca si la app muere a mitad 🟡 {#56}
+
+> En corto: Si la app se cierra después de borrar la cuenta de entrenador en el servidor pero antes de terminar, cada nuevo intento da «Sesión no válida» y la parte de cliente no se borra.
+
+Encontrado en I02-03, pasada por reglas; viola R-D4 y R-C7.
+
+**Cuándo.** `deleteAccount` vuelve a pedir la sesión de entrenador
+(`useStore.js:4959-4961`) para una cuenta que ya no existe.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S2 (con código y con Google).
+
+**Arreglo previsto.** Si la sesión de entrenador ya no es válida porque la
+cuenta no existe, saltarse la parte de entrenador y seguir con la de cliente.
+Es la misma idea que en E33.
+
+## 57. Con un programa propio activo, el progreso del entrenador se cruza 🟡 {#57}
+
+> En corto: Si un cliente conectado activa un programa suyo, el entrenador ve en su ficha el progreso de ese programa, y al llegar un programa nuevo del entrenador se pierde el progreso que llevaba en el suyo.
+
+Encontrado en I02-03, pasada adversaria; viola R-B7 y R-C5.
+
+**Cuándo.**
+
+- `uploadHistoryToTrainer` toma el progreso del programa activo
+  (`useStore.js:4789-4792`) sin comprobar que sea del entrenador.
+- Al aplicar una actualización, `mine` sale también del programa activo (`:4720`).
+
+**Confirmado por:** `sync.audit.sim.test.js` › S16, S18.
+
+**Arreglo previsto.** En los dos sitios, usar el programa del entrenador
+(`trainerProgramIds`), no el activo.
+
+## 58. Una copia vieja de un entreno puede pisar una edición 🟢 {#58}
+
+> En corto: Si un entreno se edita (por ejemplo el RPE) y después llega una copia anterior desde otro móvil o una subida retrasada, gana la copia vieja.
+
+Encontrado en I02-03 por las dos pasadas; viola R-C3.
+
+**Cuándo.** `_merge_history` deja ganar a la entrada que llega
+(`schema.sql:286-293`), y `mergeClientLog` igual. No hay ninguna marca de
+cuándo se editó cada entrada.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S10, S11.
+
+**Arreglo a decidir (§7).** Lo estándar es «gana la última edición», con una
+fecha de edición en cada entrada (`updatedAt`) que comparan el servidor y la
+fusión local.
+
+## 59. Lo que se borra del historial vuelve 🟢 {#59}
+
+> En corto: Un entreno que borra el entrenador reaparece en la siguiente descarga, y uno que borra el cliente vuelve al reinstalar y juntar el historial.
+
+Encontrado en I02-03, pasada por reglas. Es efecto de E28: la subida ahora suma.
+
+**Cuándo.** No hay ninguna marca de borrado. Al fusionar se añade todo lo que
+no esté (`useStore.js:2985-2991`, `:4528-4537`).
+
+**Confirmado por:** `sync.audit.sim.test.js` › S12, S13.
+
+**Arreglo a decidir (§7).** Lo estándar es una «lápida»: borrar marca la
+entrada con `deletedAt` en vez de quitarla, y la fusión respeta esa marca.
+
+## 60. Dos móviles del mismo entrenador: un borrado sale como «de otra cuenta» 🟢 {#60}
+
+> En corto: Si el entrenador usa dos móviles y borra un cliente en uno, en el otro ese cliente aparece como «de otra cuenta» en vez de desaparecer.
+
+Encontrado en I02-03, pasada adversaria; viola R-B6.
+
+**Cuándo.** `refreshTrainerSlots` marca «de otra cuenta» a cualquier hueco que
+ya no está (`useStore.js:4340`), sin distinguir uno borrado.
+
+**Confirmado por:** `sync.audit.sim.test.js` › S17.
+
+**Arreglo a estudiar.** No se pierde nada: es el mensaje el que está mal. Para
+distinguirlo hace falta saber en el servidor que el hueco se borró. Lo dejo
+para cuando se toque E36.
 
 ---
 
