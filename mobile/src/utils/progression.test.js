@@ -219,34 +219,29 @@ describe('P52 — los cuatro fallos del motor', () => {
   const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
   const done = (rows) => rows.map(([weight, reps, time]) => ({ weight, reps, time, done: true }));
 
-  describe('Reps: sube desde lo hecho, de 1 en 1', () => {
+  describe('Reps: la meta es el total hecho + 1 por serie (P18 §4.1)', () => {
     const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'reps' } };
-    it('serie más floja 9 → apunta a 10', () => {
+    // P18 §4.1: meta = total + salto × series, repartida con el sobrante en las primeras
+    it('11/10/9 = 30 → meta 33 en total, 11/11/11', () => {
       const c = getProgression(cfg, BB, done([['', '11'], ['', '10'], ['', '9']]), tk);
-      expect(c.type).toBe('up');
-      expect(c.msg).toContain('"next":10');
+      expect(c).toMatchObject({ type: 'up', goal: { total: 33, misses: 0 }, perSet: [11, 11, 11] });
     });
-    it('una serie bajo el mínimo → mantener, no subir', () => {
-      expect(getProgression(cfg, BB, done([['', '9'], ['', '8'], ['', '6']]), tk).type).toBe('hold');
-    });
-    it('no se atasca: 13 hechas → 14, no el máximo de la plantilla + salto', () => {
-      expect(getProgression(cfg, BB, done([['', '13'], ['', '13'], ['', '13']]), tk).msg).toContain('"next":14');
+    // P18 §4.1: sin tope en el máximo de la plantilla
+    it('no se atasca: 13/13/13 = 39 → meta 42, no el máximo de la plantilla + salto', () => {
+      expect(getProgression(cfg, BB, done([['', '13'], ['', '13'], ['', '13']]), tk))
+        .toMatchObject({ goal: { total: 42, misses: 0 }, perSet: [14, 14, 14] });
     });
     it('el salto por defecto es 1 rep, no el weightStep', () => {
       expect(resolveProgressionConfig(cfg, { weightStep: 2.5 }).increment.value).toBe(1);
     });
   });
 
-  describe('Tiempo: sube desde lo hecho', () => {
+  describe('Tiempo: la meta es el total hecho + el salto (P18 §4.1)', () => {
     const cfg = { sets: 3, minTime: 20, maxTime: 40, inputType: 'time', progression: { type: 'time' } };
-    it('45 s hechos con objetivo 20–40 → 50 s, nunca menos de lo hecho', () => {
+    // P18 §4.1: Tiempo, salto por defecto 5 s por serie; 3×45 = 135 → 150
+    it('45 s ×3 con objetivo 20–40 → meta 150 s en total, 50 s por serie, nunca menos de lo hecho', () => {
       const c = getProgression(cfg, BB, done([['', '', '45'], ['', '', '45'], ['', '', '45']]), tk);
-      expect(c.type).toBe('up');
-      expect(c.suggestedTime).toBe(50);
-      expect(c.from).toBe(45);
-    });
-    it('una serie bajo el mínimo → mantener', () => {
-      expect(getProgression(cfg, BB, done([['', '', '30'], ['', '', '15'], ['', '', '30']]), tk).type).toBe('hold');
+      expect(c).toMatchObject({ type: 'up', timed: true, goal: { total: 150, misses: 0 }, perSet: [50, 50, 50] });
     });
   });
 
@@ -305,19 +300,21 @@ describe('QA P52 — los textos dicen lo que pasó', () => {
   });
 });
 
-describe('QA P52 — Reps y Tiempo llevan número, también al mantener', () => {
+describe('QA P52 — Reps y Tiempo llevan número, también al mantener (P18 §4.1)', () => {
   const done = (rows) => rows.map(([reps, time]) => ({ reps, time, done: true }));
-  it('Reps sube: cifra, desde dónde y motivo', () => {
+  it('Reps sube: la meta, lo que se hizo y el motivo', () => {
     const c = getProgression({ sets: 3, minReps: 6, maxReps: 12, progression: { type: 'reps' } }, BB, done([['9'], ['8'], ['8']]), t);
-    expect([c.type, c.suggestedReps, c.from]).toEqual(['up', 9, 8]);
+    expect([c.type, c.goal.total, c.perSet, c.lastTotal, c.reason]).toEqual(['up', 28, [10, 9, 9], 25, 'first']);
   });
-  it('Reps mantiene: la cifra es el mínimo', () => {
-    const c = getProgression({ sets: 3, minReps: 6, maxReps: 12, progression: { type: 'reps' } }, BB, done([['7'], ['6'], ['5']]), t);
-    expect([c.type, c.suggestedReps]).toEqual(['hold', 6]);
+  it('Reps mantiene con la meta fija: 28 de meta, hace 26 (antes 25) → sigue 28', () => {
+    const c = getProgression({ sets: 3, minReps: 6, maxReps: 12, progression: { type: 'reps' } }, BB, done([['9'], ['9'], ['8']]), t,
+      { earlier: [done([['9'], ['8'], ['8']])], lastGoal: { total: 28, misses: 0 } });
+    expect([c.type, c.goal.total, c.perSet, c.lastTotal]).toEqual(['hold', 28, [10, 9, 9], 26]);
   });
-  it('Tiempo mantiene: la cifra es el mínimo', () => {
-    const c = getProgression({ sets: 3, minTime: 30, maxTime: 60, inputType: 'time', progression: { type: 'time' } }, BB, done([['', '35'], ['', '25'], ['', '30']]), t);
-    expect([c.type, c.suggestedTime]).toEqual(['hold', 30]);
+  it('Tiempo mantiene con la meta fija: 100 s de meta, hace 90 (antes 85) → sigue 100', () => {
+    const c = getProgression({ sets: 3, minTime: 30, maxTime: 60, inputType: 'time', progression: { type: 'time' } }, BB, done([['', '30'], ['', '30'], ['', '30']]), t,
+      { earlier: [done([['', '30'], ['', '30'], ['', '25']])], lastGoal: { total: 100, misses: 0 } });
+    expect([c.type, c.goal.total, c.perSet, c.lastTotal]).toEqual(['hold', 100, [34, 33, 33], 90]);
   });
 });
 
@@ -537,12 +534,13 @@ describe('P54 — el escalón en pct y en Por esfuerzo (§4.4)', () => {
   it('el escalón del ejercicio manda sobre el de la librería', () => {
     expect(getProgression(pct(7, { weightStep: 1 }), { weightStep: 5 }, rows('100', [12, 12, 12]), tk).suggestedWeight).toBe(107);
   });
-  it('en Reps y Tiempo el escalón no aplica: entero, mínimo 1', () => {
+  it('en Reps y Tiempo el escalón no aplica: salto entero por serie, mínimo 1', () => {
     const reps = { sets: 3, minReps: 8, progression: { type: 'reps', increment: { type: 'pct', pct: 20 } } };
-    // 20 % de 11 = 2,2 → 2, no 5 (el escalón de la librería)
-    expect(getProgression(reps, { weightStep: 5 }, rows('', [11, 11, 11]), tk).suggestedReps).toBe(13);
+    // 20 % de 11 = 2,2 → 2 por serie, no 5 (el escalón de la librería): 33 + 3×2 = 39
+    expect(getProgression(reps, { weightStep: 5 }, rows('', [11, 11, 11]), tk).goal.total).toBe(39);
     const tiny = { ...reps, progression: { type: 'reps', increment: { type: 'pct', pct: 1 } } };
-    expect(getProgression(tiny, { weightStep: 5 }, rows('', [11, 11, 11]), tk).suggestedReps).toBe(12);
+    // 1 % → 0,11 → mínimo 1 por serie: 33 + 3 = 36
+    expect(getProgression(tiny, { weightStep: 5 }, rows('', [11, 11, 11]), tk).goal.total).toBe(36);
   });
 });
 
@@ -570,39 +568,6 @@ describe("P54 — Por esfuerzo: effortWhen 'reach' (§4.4)", () => {
   });
   it("'reach' sin RPE apuntado sigue pidiendo el RPE", () => {
     expect(getProgression(cfg({}, { effortWhen: 'reach' }), BB, at(''), tk)).toMatchObject({ type: 'hold', why: 'progression.why_effortNoRpe' });
-  });
-});
-
-describe('P54 — Reps y Tiempo: la meta es la última + el salto (§4.4)', () => {
-  const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
-  const reps = (evaluation, extra = {}) => ({ sets: 3, minReps: 6, maxReps: 6, progression: { type: 'reps', ...(evaluation ? { evaluation } : {}) }, ...extra });
-  const timed = (evaluation) => ({ sets: 3, minTime: 30, maxTime: 30, inputType: 'time', progression: { type: 'time', ...(evaluation ? { evaluation } : {}) } });
-  const r = (list, rpe = '') => list.map((x) => ({ reps: String(x), rpe, done: true }));
-  const s = (list) => list.map((x) => ({ time: String(x), done: true }));
-
-  it('sube desde la serie más floja, no desde un máximo que ya no existe', () => {
-    expect(getProgression(reps(), BB, r([9, 8, 8]), tk)).toMatchObject({ type: 'up', suggestedReps: 9, from: 8 });
-  });
-  it('si no se cumple, la meta es el inicio y mantiene', () => {
-    expect(getProgression(reps(), BB, r([8, 7, 5]), tk)).toMatchObject({ type: 'hold', suggestedReps: 6 });
-  });
-  it('con un rango antiguo, el suelo es el mínimo', () => {
-    expect(getProgression(reps(null, { minReps: 6, maxReps: 12 }), BB, r([7, 6, 6]), tk)).toMatchObject({ type: 'up', suggestedReps: 7 });
-  });
-  it('Parcial: sube con las que llegaron, desde la más floja de ellas', () => {
-    const c = reps({ mode: 'part', need: 2 });
-    expect(getProgression(c, BB, r([9, 9, 4]), tk)).toMatchObject({ type: 'up', suggestedReps: 10, from: 9 });
-    expect(getProgression(c, BB, r([9, 4, 4]), tk)).toMatchObject({ type: 'hold', suggestedReps: 6 });
-  });
-  it('RPE máx.: con el RPE pasado mantiene y lo dice', () => {
-    const c = reps({ mode: 'rpe', maxRpe: 8 });
-    expect(getProgression(c, BB, r([9, 9, 9], '7'), tk).type).toBe('up');
-    expect(getProgression(c, BB, r([9, 9, 9], '9'), tk)).toMatchObject({ type: 'hold', why: 'progression.why_rpeAbove{"maxRpe":8}' });
-  });
-  it('Tiempo: lo mismo, redondeado a segundos', () => {
-    expect(getProgression(timed(), BB, s([45, 45, 40]), tk)).toMatchObject({ type: 'up', suggestedTime: 45, from: 40 });
-    expect(getProgression(timed(), BB, s([45, 25, 40]), tk)).toMatchObject({ type: 'hold', suggestedTime: 30 });
-    expect(getProgression(timed({ mode: 'part', need: 2 }), BB, s([45, 25, 40]), tk)).toMatchObject({ type: 'up', suggestedTime: 45, from: 40 });
   });
 });
 
@@ -682,12 +647,11 @@ describe('P55 — progressionRule (§5.2)', () => {
     expect(progressionRule({ sets: 3 }, LIB.pull_up_assisted, tk)).toMatch(/^progression\.rule\.assistUp.*assistDown/);
   });
   it('Reps y Tiempo, Por esfuerzo y Nada', () => {
-    const repsRule = progressionRule({ sets: 3, minReps: 6, maxReps: 6, progression: { type: 'reps' } }, BB, tk);
-    expect(repsRule).toContain('progression.rule.repsUp');
-    expect(repsRule).toContain('incReps');
-    expect(repsRule).toContain('"floor":6');
+    // P18 §4.1: «Tu total + el salto por serie»; sin mínimos ni «cuando todas»
+    expect(progressionRule({ sets: 3, minReps: 6, maxReps: 6, progression: { type: 'reps' } }, BB, tk))
+      .toBe('progression.rule.totalUp{"inc":"progression.rule.incReps{\\"count\\":1}"}');
     expect(progressionRule({ sets: 3, minTime: 30, maxTime: 30, progression: { type: 'time' } }, BB, tk))
-      .toContain('timeUp{"inc":"5 s","when":"progression.rule.whenAll","floor":30}');
+      .toBe('progression.rule.totalUp{"inc":"5 s"}');
     expect(progressionRule({ sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } }, BB, tk))
       .toBe('progression.rule.effortBeat{"reps":5,"rpe":8}');
     expect(progressionRule({ progression: { type: 'effort', effortWhen: 'reach' }, minReps: 5 }, BB, tk)).toContain('effortReach');
@@ -749,9 +713,11 @@ describe('P56 — Por esfuerzo: el 1RM de las tres últimas sesiones (§6.5)', (
   });
   it('progressionHistory: earlier sin las de descarga y lastDeload de la primera', () => {
     const a = { sets: ['a'], deload: true }, b = { sets: ['b'] }, c = { sets: ['c'], deload: true }, d = { sets: ['d'] };
-    expect(progressionHistory([a, b, c, d])).toEqual({ earlier: [['b'], ['d']], lastDeload: true });
-    expect(progressionHistory([b])).toEqual({ earlier: [], lastDeload: false });
-    expect(progressionHistory([])).toEqual({ earlier: [], lastDeload: false });
+    expect(progressionHistory([a, b, c, d])).toEqual({ earlier: [['b'], ['d']], lastDeload: true, lastGoal: null });
+    expect(progressionHistory([b])).toEqual({ earlier: [], lastDeload: false, lastGoal: null });
+    expect(progressionHistory([])).toEqual({ earlier: [], lastDeload: false, lastGoal: null });
+    // P18 §4.2: el goal guardado en la última sesión viaja como lastGoal
+    expect(progressionHistory([{ sets: ['a'], goal: { total: 34, misses: 1 } }, b]).lastGoal).toEqual({ total: 34, misses: 1 });
   });
 });
 
@@ -819,9 +785,10 @@ describe('P61 — Tiempo + Peso: doble progresión en segundos (§8.2)', () => {
     expect(getProgression(reps, BB, [12, 12, 12].map((r) => ({ weight: '60', reps: String(r), done: true })), tk))
       .toMatchObject({ type: 'up', reason: 'up' });
   });
-  it('Tiempo + Tiempo sigue igual: sube segundos y no propone kilos', () => {
+  it('Tiempo + Tiempo: pide segundos en total y no propone kilos', () => {
     const c = { sets: 3, minTime: 30, maxTime: 30, inputType: 'weight_time', progression: { type: 'time' } };
-    expect(run(c, [45, 45, 40])).toMatchObject({ type: 'up', suggestedTime: 45, suggestedWeight: null });
+    // P18 §4.1: 130 s + 5 s × 3 = 145 s en total, repartido 49/48/48
+    expect(run(c, [45, 45, 40])).toMatchObject({ type: 'up', goal: { total: 145, misses: 0 }, perSet: [49, 48, 48], suggestedWeight: null });
   });
   it('sin inputType, el modelo de tiempo de la librería también cuenta como Tiempo', () => {
     const c = { sets: 3, minTime: 30, maxTime: 60, progression: { type: 'double' } };
@@ -857,8 +824,10 @@ describe('P61 — la frase de la regla en palabras (es y en)', async () => {
       action: 'Sube 2.5 kg', when: 'cuando todas las series lleguen a 12 reps', down: 'Baja un 10 % si fallas por mucho o dos días seguidos',
     });
     expect(progressionRule({ ...bench, progression: { ...bench.progression, down: 'never' } }, BB, t, 'kg', { parts: true }).down).toBeNull();
-    expect(progressionRule({ sets: 3, minReps: 6, progression: { type: 'reps' } }, BB, t, 'kg', { parts: true }).when)
-      .toBe('cuando todas las series pasen de 6 reps');
+    expect(progressionRule({ sets: 3, minReps: 6, progression: { type: 'reps' } }, BB, t, 'kg', { parts: true })).toEqual({
+      action: 'Tu total + 1 rep por serie',
+      when: 'Se queda fija hasta que la alcances; si dos días seguidos haces menos, se ajusta a lo que hiciste',
+    });
     expect(progressionRule({ progression: { type: 'none' } }, BB, t, 'kg', { parts: true })).toEqual({ action: 'El peso lo cambias tú' });
   });
 });
@@ -914,12 +883,11 @@ describe('I01-01 — huecos de mutación', () => {
     expect(getProgression(c, BB, rows(3, { weight: '60', reps: '12', rpe: '8', done: true }), tk).type).toBe('up');
   });
 
-  // P12 §4.4: «con las series ≥ inicio» (una serie justo en el inicio cuenta)
-  // mata progression.js:321:34 (`x >= start` → `x > start`)
-  test('Tiempo: tiempos iguales al inicio suben 5 s desde ese inicio', () => {
+  // P18 §4.1: Tiempo, meta = total + 5 s por serie (el mutante x >= start ya no existe: no hay inicio)
+  test('Tiempo: 30/30/30 = 90 s → meta 105 s en total, 35 por serie', () => {
     const c = { sets: 3, minTime: 30, maxTime: 30, inputType: 'time', progression: { type: 'time' } };
     expect(getProgression(c, BB, rows(3, { time: '30', done: true }), tk))
-      .toMatchObject({ type: 'up', suggestedTime: 35, from: 30 });
+      .toMatchObject({ type: 'up', goal: { total: 105, misses: 0 }, perSet: [35, 35, 35] });
   });
 
   // P12 §5.3-bis: «(los asistidos no cambian)» — una asistida sin escalón sigue siendo Doble y baja

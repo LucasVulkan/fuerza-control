@@ -2832,6 +2832,9 @@ export const useStore = create(
             if (validSets.length === 0) return null;
             return {
               exerciseId, sets: validSets, totalSets, minReps, maxReps, restSec, ...exNote(exerciseId),
+              // Lo que la app pedía hoy en Reps y Tiempo (P18 §4.2): la meta se
+              // queda fija hasta alcanzarla y no se puede sacar de una sola sesión.
+              ...(chip?.goal ? { goal: chip.goal } : {}),
               // Cómo se hizo: solo informa y se filtra (P09-exercise-variants.md §2.4).
               ...todayVariant(exerciseId, variant),
               // Una sesión de etapa de descarga no cuenta para la media del 1RM

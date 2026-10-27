@@ -429,23 +429,14 @@ export default function ExerciseCard({
         progDelta:  cur != null && cur !== next ? signed(Math.round((next - cur) * 100) / 100) : null,
       };
     }
-    if (progression.suggestedTime != null) {
-      // El salto se cuenta desde la serie de la que parte (la más floja), no
-      // desde la mejor: 45/45/40 → «45 s +5», no «45 s» a secas.
-      const cur  = progression.from ?? Math.max(0, ...sets.map((s) => parseFloat(s.time) || 0));
-      const next = progression.suggestedTime;
+    // Reps y Tiempo: la meta es un total (P18 §4); el salto, contra lo que
+    // hiciste la última vez.
+    if (progression.volume) {
+      const next = progression.goal.total;
       return {
-        progTarget: `${next} s`,
-        progDelta:  progression.type !== 'hold' && cur > 0 && cur !== next ? signed(next - cur) : null,
-      };
-    }
-    // Reps con número, como peso y tiempo: antes caía a la frase larga (QA P52).
-    if (progression.suggestedReps != null) {
-      const cur  = progression.from;
-      const next = progression.suggestedReps;
-      return {
-        progTarget: t('workout.progressionReps', { count: next }),
-        progDelta:  progression.type !== 'hold' && cur != null && cur !== next ? signed(next - cur) : null,
+        progTarget: progression.timed ? t('workout.progressionTotalTime', { n: next })
+          : t('workout.progressionTotalReps', { count: next }),
+        progDelta: next !== progression.lastTotal ? signed(next - progression.lastTotal) : null,
       };
     }
     return { progTarget: progression.msg, progDelta: null };
@@ -456,8 +447,7 @@ export default function ExerciseCard({
   const progKey = (() => {
     if (!progression) return null;
     const base = progression.reason === 'deload' ? 'deload' : progression.type;
-    const numeric = progression.suggestedWeight != null || progression.suggestedTime != null
-      || progression.suggestedReps != null;
+    const numeric = progression.suggestedWeight != null || !!progression.volume;
     // Por esfuerzo el número es SIEMPRE el peso de hoy, suba o no: «Peso
     // objetivo» (P10-effort-progression.md §5.2). La flecha y el delta dicen si sube.
     if (progression.effort && numeric) return 'effortTo';
@@ -467,12 +457,9 @@ export default function ExerciseCard({
     return numeric && base !== 'hold' ? `${base}To` : base;
   })();
 
-  // Con Reps o Tiempo la cabecera dice la meta de hoy («3 × 9 reps»), no el
-  // inicio (§6.3); sin chip con número, el inicio con «+».
-  const today = progression?.suggestedReps != null ? { reps: progression.suggestedReps }
-    : progression?.suggestedTime != null ? { time: progression.suggestedTime }
-    : null;
-  const targetLabel = buildTarget(def, exConfig, t, { today })
+  // Con Reps o Tiempo la meta de hoy es un total y la dice la línea de
+  // progresión (P18 §4); la cabecera se queda con el inicio.
+  const targetLabel = buildTarget(def, exConfig, t)
     + (hasWarmup ? t('workout.warmup.metaSuffix', { count: warmupStepsArr.length }) : '');
 
   // Sin historial no hay chip: la fila «Primera vez» dice qué buscar leyendo la

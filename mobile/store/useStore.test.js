@@ -3032,3 +3032,53 @@ describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => 
   });
 });
 
+// P18 §4.2: lo que la app pedía ese día viaja en el log para calcular la siguiente meta.
+describe('saveSession guarda el goal de Reps — P18-motor-progresion.md §4.2', () => {
+  // Un día distinto por sesión: el log se ordena por fecha y en el mismo ms habría empate.
+  let dia = 0;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    dia = 0;
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, workoutLog: [],
+      activeSession: { templateId: null, setsState: {}, startedAt: null },
+    });
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  function entrenarReps(templateId, reps) {
+    vi.setSystemTime(1_700_000_000_000 + dia++ * 86_400_000);
+    useStore.getState().startSession(templateId);
+    useStore.setState((s) => ({
+      activeSession: { ...s.activeSession, setsState: { squat: reps.map((r) => ({ weight: '', reps: String(r), time: '', done: true })) } },
+    }));
+    return useStore.getState().saveSession();
+  }
+
+  it('cada ejercicio de Reps se guarda con goal { total, misses } y el siguiente lo lee', () => {
+    const pid = useStore.getState().createEmptyProgram(1, 'Mío', 'program', 4);
+    useStore.setState((s) => ({
+      sessionTemplates: Object.fromEntries(Object.entries(s.sessionTemplates).map(([id, tpl]) =>
+        [id, { ...tpl, exercises: [{ exerciseId: 'squat', sets: 3, minReps: 8, maxReps: 12, progression: { type: 'reps' } }] }])),
+    }));
+    const tid = useStore.getState().programs[pid].stages[0].days[0].sessionTemplateId;
+    const goalOf = () => useStore.getState().workoutLog.at(-1).exercises[0].goal;
+
+    // La primera vez no había nada que pedir: sin goal
+    expect(entrenarReps(tid, [12, 12, 7]).ok).toBe(true);        // 31
+    expect(goalOf()).toBeUndefined();
+
+    // Lo que se guarda es lo que la app pedía ese día (P18 §8, caso 12): 31 → meta 34
+    entrenarReps(tid, [11, 11, 10]);                              // 32
+    expect(goalOf()).toEqual({ total: 34, misses: 0 });
+
+    // Meta 34 y la anterior fue 32 (más que 31, no es fallo): hoy se pide 34 otra vez
+    entrenarReps(tid, [9, 9, 9]);                                 // 27: menos que 32
+    expect(goalOf()).toEqual({ total: 34, misses: 0 });
+
+    // 27 < 32 es el primer fallo (P18 §8, caso 14): la meta sigue en 34 con un fallo
+    entrenarReps(tid, [10, 10, 10]);
+    expect(goalOf()).toEqual({ total: 34, misses: 1 });
+  });
+});

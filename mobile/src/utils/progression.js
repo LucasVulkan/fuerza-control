@@ -12,8 +12,8 @@
  *               → sube el peso; un fallo grande o el segundo seguido → baja
  *               un 10 % (P18 §3).
  *               Con medida Tiempo, lo mismo en segundos (mínimo y máximo de tiempo)
- *     reps    → la meta es la serie más floja de la última sesión + el salto
- *     time    → ídem en segundos
+ *     reps    → la meta es el total de reps + el salto por serie, fija hasta alcanzarla
+ *     time    → ídem en segundos (los dos por total, P18 §4)
  *     effort  → reps objetivo @ targetRpe; el peso sale del e1RM de la última
  *               sesión con su RPE (P10-effort-progression.md)
  *     none    → sin chip (lo decide el usuario)
@@ -258,86 +258,51 @@ function avgRpe(doneSets) {
   return rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
 }
 
-/**
- * La tabla de §4.2, para todas las progresiones por reglas. `goal` es la meta
- * (llegar a ella sube) y `floor` el suelo (quedarse por debajo es fallar); en
- * Reps y Tiempo son el mismo número, el inicio.
- *
- *   sube  = Todas: n a la meta · Parcial: `need` a la meta ·
- *           RPE máx.: n a la meta y RPE medio ≤ maxRpe (sin RPE apuntado, no pesa)
- *   baja  = `down` ≠ 'never' y las series bajo el suelo ≥ `fails`
- *
- * `rpeOver`: llegó a la meta pero el RPE medio pasó el tope; mantiene.
- * No hay bajada por RPE: bajar es solo la regla explícita.
- */
-function verdict(prog, doneSets, n, floor, goal, key = 'minReps') {
-  const ev       = prog.evaluation;
-  const hitGoal  = countQualifyingSets(doneSets, { [key]: goal });
-  const hitFloor = countQualifyingSets(doneSets, { [key]: floor });
-  // `need` y `fails` se recortan a las series de la sesión: una etapa puede
-  // cambiar `n` sin que cambie lo guardado (§4.3).
-  const need  = Math.min(Math.max(ev.need, 1), n);
-  const fails = prog.down === 'never' ? Infinity
-    : Math.min(Math.max(prog.down?.fails ?? Math.floor(n * 0.4) + 1, 1), n);
-
-  const reached = ev.mode === 'part' ? hitGoal >= need : hitGoal >= n;
-  const rpe     = ev.mode === 'rpe' ? avgRpe(doneSets) : null;
-  const rpeOver = rpe != null && rpe > ev.maxRpe;
-  return {
-    up: reached && !rpeOver,
-    rpeOver: reached && rpeOver,
-    down: n - hitFloor >= fails,
-    hitGoal, need, n,
-  };
-}
-
-/** El motivo de mantener: la meta se alcanzó pero el RPE se pasó, o no se llegó. */
-function whyHold(prog, v, holdKey, holdOpts, t) {
-  return v.rpeOver
-    ? t('progression.why_rpeAbove', { maxRpe: prog.evaluation.maxRpe })
-    : t(holdKey, holdOpts);
-}
-
 // ── Chip builders (one per progression type) ──────────────────────────────────
 
-/*
- * Reps y Tiempo (§4.4): la meta es la serie más floja de la última sesión + el
- * salto, no el objetivo guardado. El motor no tiene memoria; la última sesión
- * sí (P52): «máximo + salto» proponía lo mismo cada semana. Qué pides guarda
- * solo el inicio, que hace de suelo: si no se cumple, la meta es el inicio. La
- * serie más floja que llegó al inicio es el punto de partida: subirla es subir
- * el ejercicio entero.
+/** Un total repartido entre `n` series, con el sobrante en las primeras: 34 en 3 → 12/11/11. */
+export const splitTotal = (total, n) =>
+  Array.from({ length: n }, (_, i) => Math.floor(total / n) + (i < total % n ? 1 : 0));
+
+/**
+ * Reps y Tiempo (P18 §4): una meta por total. Meta = total + el salto por
+ * serie; se queda fija hasta alcanzarla. Hacer menos que la meta pero no menos
+ * que la sesión anterior no es fallo. Fallar = menos en total que la anterior:
+ * al primero la meta sigue; al segundo seguido, meta = total de ese día + el
+ * salto por serie.
+ *
+ * La meta depende de toda la cadena, así que viaja en el log: `lastGoal` es
+ * el `goal` que la app pedía el día de la última sesión (`{ total, misses }`),
+ * y el chip devuelve el `goal` de hoy, que `saveSession` guarda. Sin `goal`
+ * (lo anterior a P18) la última sesión cuenta como la primera.
  */
-function chipTime(prog, doneSets, n, start, maxTime, t) {
-  const times = doneSets.map((s) => parseFloat(s.time) || 0).filter((v) => v > 0);
-  if (!times.length) return null;
+function chipVolume(prog, doneSets, n, t, { timed = false, earlier = [], lastGoal = null } = {}) {
+  const key = timed ? 'time' : 'reps';
+  const sum = (sets) => loggedSets(sets).reduce((a, s) => a + (parseFloat(s[key]) || 0), 0);
+  const total = sum(doneSets);
+  if (!total) return null;
+  const add = n * Math.max(1, Math.round(computeIncrement(total / n, prog.increment, null)));
+  const prev = earlier.length ? sum(earlier[0]) : null;
+  const goal = lastGoal?.total;
 
-  const v  = verdict(prog, doneSets, n, start, start, 'minTime');
-  const ok = times.filter((x) => x >= start);
-  if (v.up && ok.length) {
-    const base = Math.min(...ok);
-    const next = Math.round(base + Math.max(1, computeIncrement(base, prog.increment, null)));
-    return { type: 'up', icon: '⬆', msg: t('progression.time_allHitMax', { next }), why: t('progression.why_timeAllHit', { n: base }), suggestedWeight: null, suggestedTime: next,
-      // `from`: la serie de la que parte el salto, para que el delta diga +5 y no nada (QA P52).
-      from: base };
-  }
-  // Mantener también lleva número (el inicio): sin él la tarjeta pintaba la
-  // frase larga en el hueco de la cifra (QA P52).
-  return { type: 'hold', icon: '→', msg: t('progression.time_keep', { min: start, max: maxTime }), why: whyHold(prog, v, 'progression.why_timeHold', { min: start }, t),
-    suggestedWeight: null, suggestedTime: start };
-}
+  let meta = goal;
+  let misses = 0;
+  let reason;
+  if (goal == null || total >= goal) { meta = total + add; reason = goal == null ? 'first' : 'reached'; }
+  else if (prev == null || total >= prev) reason = prev != null && total > prev ? 'improving' : 'same';
+  else if ((lastGoal.misses ?? 0) + 1 >= 2) { meta = total + add; reason = 'secondFail'; }
+  else { misses = (lastGoal.misses ?? 0) + 1; reason = 'fail'; }
 
-function chipReps(prog, doneSets, n, start, t) {
-  const v  = verdict(prog, doneSets, n, start, start);
-  const ok = doneSets.map((s) => parseInt(s.reps) || 0).filter((r) => r > 0 && r >= start);
-  if (v.up && ok.length) {
-    const base = Math.min(...ok);
-    const next = base + Math.max(1, Math.round(computeIncrement(base, prog.increment, null)));
-    return { type: 'up', icon: '⬆', msg: t('progression.reps_advance', { next }), why: t('progression.why_repsUp', { n: base }),
-      suggestedWeight: null, suggestedTime: null, suggestedReps: next, from: base };
-  }
-  return { type: 'hold', icon: '→', msg: t('progression.reps_hold'), why: whyHold(prog, v, 'progression.why_repsHold', { min: start }, t),
-    suggestedWeight: null, suggestedTime: null, suggestedReps: start };
+  const amount = (v) => (timed ? `${v} s` : String(v));
+  return {
+    type: goal == null || meta > goal ? 'up' : meta < goal ? 'down' : 'hold',
+    icon: '→', reason, volume: true, timed,
+    why: t(`progression.next.vol_${reason}`, { total: amount(total) }),
+    goal: { total: meta, misses },
+    perSet: splitTotal(meta, n),
+    lastTotal: total,
+    suggestedWeight: null, suggestedTime: null,
+  };
 }
 
 // Fallo grande: faltan más de este tanto de las reps del mínimo, sumando las de
@@ -537,6 +502,8 @@ export function progressionHistory(recent) {
   return {
     earlier: rest.filter((ex) => !ex.deload).map((ex) => ex.sets),
     lastDeload: !!last?.deload,
+    // Lo que la app pedía el día de la última sesión en Reps y Tiempo (P18 §4.2).
+    lastGoal: last?.goal ?? null,
   };
 }
 
@@ -547,11 +514,11 @@ export function progressionHistory(recent) {
  * @param {object}   def        Library / custom exercise definition (fallback defaults)
  * @param {array}    lastSets   Sets logged in the last session for this exercise
  * @param {function} t          i18next translate function
- * @param {object}   [opts]     `earlier` y `lastDeload` (§6.5): ver `progressionHistory`.
- *                              Los leen Por esfuerzo y Peso por reglas.
+ * @param {object}   [opts]     `earlier`, `lastDeload` (§6.5) y `lastGoal` (P18 §4.2):
+ *                              ver `progressionHistory`.
  * @returns chip object | null
  */
-export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastDeload = false } = {}) {
+export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastDeload = false, lastGoal = null } = {}) {
   if (!lastSets?.length) return null;
 
   const doneSets = lastSets.filter((s) => s.done || s.weight || s.reps || s.time);
@@ -585,12 +552,8 @@ export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastD
     return chipEffort(prog, doneSets, totalSets, minReps, t, { earlier, lastDeload });
   }
 
-  if (prog.type === 'time') {
-    return chipTime(prog, doneSets, totalSets, minTime, maxTime, t);
-  }
-
-  if (prog.type === 'reps') {
-    return chipReps(prog, doneSets, totalSets, minReps, t);
+  if (prog.type === 'reps' || prog.type === 'time') {
+    return chipVolume(prog, doneSets, totalSets, t, { timed: prog.type === 'time', earlier, lastGoal });
   }
 
   // Lo guardado como `type: 'weight'` (reps fijas, sin rango en el motor) tenía
@@ -673,13 +636,9 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false, 
     const timed = prog.type === 'time';
     const text  = inc.type === 'pct' ? `${inc.pct} %`
       : timed ? `${inc.value} s` : t('progression.rule.incReps', { count: inc.value });
-    if (short) return t('progression.rule.weakestShort', { inc: text });
-    if (parts) return {
-      action: t('progression.rule.weakestShort', { inc: text }),
-      when:   t(timed ? 'progression.rule.whenTime' : 'progression.rule.whenReps', { when, floor: timed ? minTime : minReps }),
-    };
-    return t(timed ? 'progression.rule.timeUp' : 'progression.rule.repsUp',
-      { inc: text, when, floor: timed ? minTime : minReps });
+    if (short) return t('progression.rule.totalShort', { inc: text });
+    if (parts) return { action: t('progression.rule.totalShort', { inc: text }), when: t('progression.rule.totalWhen') };
+    return t('progression.rule.totalUp', { inc: text });
   }
 
   // Tiempo + Peso (P61): la meta son los segundos.

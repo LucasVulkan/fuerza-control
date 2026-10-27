@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getProgression, progressionChip, stepDown, BIG_FAIL } from './progression';
+import { getProgression, progressionChip, stepDown, BIG_FAIL, splitTotal } from './progression';
 
 // P18-01 (docs/specs/P18-motor-progresion.md §3 y §8, casos 1-11). Cada caso lleva
 // sus literales y la cita de la spec. `t` devuelve clave + opciones: aquí solo se
@@ -184,5 +184,96 @@ describe('P18-01 — Peso por reglas: reglas sueltas (§3.2-3.4)', () => {
     const c = cfg(3, 8, 12, { evaluation: { mode: 'rpe', maxRpe: 8 } });
     expect(getProgression(c, BB, ses(60, [12, 10, 9], '10'), tk).type).toBe('hold');
     expect(getProgression(c, BB, ses(60, [12, 5, 5], '10'), tk)).toMatchObject({ type: 'down', reason: 'bigFail' });
+  });
+});
+
+// ── P18-02 — Reps y Tiempo: una meta por total (§4 y §8, casos 12-16) ───────────
+
+// Series sin peso: `key` es 'reps' o 'time'.
+const vol = (vals, key = 'reps') => vals.map((v) => ({ weight: '', reps: key === 'reps' ? String(v) : '', time: key === 'time' ? String(v) : '', rpe: '', done: true }));
+const repsCfg = (extra = {}) => ({ sets: 3, minReps: 8, maxReps: 12, progression: { type: 'reps', ...extra } });
+const timeCfg = (extra = {}) => ({ sets: 3, minTime: 20, maxTime: 40, progression: { type: 'time', ...extra } });
+// Como la app: el `goal` del chip de una sesión es el `lastGoal` de la siguiente.
+const next = (c, def, sets, earlier, lastGoal) => getProgression(c, def, sets, tk, { earlier, lastGoal });
+
+describe('P18-02 — Reps y Tiempo por total: casos de la spec (§8)', () => {
+  it('splitTotal reparte el sobrante en las primeras', () => {
+    expect(splitTotal(34, 3)).toEqual([12, 11, 11]);
+    expect(splitTotal(30, 3)).toEqual([10, 10, 10]);
+    expect(splitTotal(7, 3)).toEqual([3, 2, 2]);
+  });
+
+  // P18 §8, caso 12
+  it('caso 12: 12/12/7 = 31 reps, sin goal → meta 34 en total, 12/11/11', () => {
+    const chip = next(repsCfg(), {}, vol([12, 12, 7]), []);
+    expect(chip).toMatchObject({ type: 'up', reason: 'first', volume: true, lastTotal: 31, goal: { total: 34, misses: 0 }, perSet: [12, 11, 11] });
+  });
+
+  // P18 §8, caso 13
+  it('caso 13: meta 34, hace 32 (antes 31) y luego 33 → la meta sigue en 34', () => {
+    const c = repsCfg();
+    const before = vol([11, 10, 10]);                       // 31
+    const goal0 = { total: 34, misses: 0 };
+    const a = next(c, {}, vol([11, 11, 10]), [before], goal0);   // 32
+    expect(a).toMatchObject({ type: 'hold', reason: 'improving', goal: { total: 34, misses: 0 }, perSet: [12, 11, 11] });
+    const b = next(c, {}, vol([11, 11, 11]), [vol([11, 11, 10]), before], a.goal);   // 33
+    expect(b).toMatchObject({ type: 'hold', reason: 'improving', goal: { total: 34, misses: 0 }, perSet: [12, 11, 11] });
+  });
+
+  // P18 §8, caso 14 y 15
+  it('casos 14-15: meta 37, hace 27 (antes 34) → sigue 37 con un fallo; luego 16 → meta 19 y 7/6/6', () => {
+    const c = repsCfg();
+    const antes = vol([12, 11, 11]);                        // 34
+    const hoy = vol([9, 9, 9]);                             // 27
+    const first = next(c, {}, hoy, [antes], { total: 37, misses: 0 });
+    expect(first).toMatchObject({ type: 'hold', reason: 'fail', goal: { total: 37, misses: 1 }, perSet: [13, 12, 12] });
+    const second = next(c, {}, vol([6, 5, 5]), [hoy, antes], first.goal);   // 16
+    expect(second).toMatchObject({ type: 'down', reason: 'secondFail', goal: { total: 19, misses: 0 }, perSet: [7, 6, 6] });
+  });
+
+  // P18 §8, caso 16
+  it('caso 16: Tiempo, salto 5 s, 45/40/30 = 115 s → meta 130 s, 44/43/43', () => {
+    const chip = next(timeCfg({ increment: { value: 5 } }), {}, vol([45, 40, 30], 'time'), []);
+    expect(chip).toMatchObject({ type: 'up', timed: true, lastTotal: 115, goal: { total: 130, misses: 0 }, perSet: [44, 43, 43] });
+  });
+
+  // P18 §4.1: Tiempo sin salto elegido usa 5 s por serie
+  it('Tiempo sin salto: 5 s por serie por defecto', () => {
+    expect(next(timeCfg(), {}, vol([45, 40, 30], 'time'), []).goal.total).toBe(130);
+  });
+
+  // P18 §4.1: el salto es de la hoja
+  it('salto +2 reps por serie: 12/12/7 → 31 + 6 = 37', () => {
+    const chip = next(repsCfg({ increment: { value: 2 } }), {}, vol([12, 12, 7]), []);
+    expect(chip).toMatchObject({ goal: { total: 37, misses: 0 }, perSet: [13, 12, 12] });
+  });
+
+  // P18 §4.1: al alcanzar la meta se calcula la siguiente
+  it('alcanzar la meta (total ≥ meta) pide una nueva: 34 hechas con meta 34 → 37', () => {
+    const chip = next(repsCfg(), {}, vol([12, 11, 11]), [vol([11, 11, 10])], { total: 34, misses: 0 });
+    expect(chip).toMatchObject({ type: 'up', reason: 'reached', goal: { total: 37, misses: 0 } });
+  });
+
+  // P18 §4.2: lo antiguo sin goal cuenta como la primera sesión
+  it('una sesión sin goal (log antiguo) se trata como la primera: meta = su total + 1 por serie', () => {
+    const viejo = [{ sets: vol([12, 12, 7]) }, { sets: vol([10, 10, 10]) }];   // sin goal
+    const chip = progressionChip(repsCfg(), {}, viejo, tk);
+    expect(chip).toMatchObject({ type: 'up', reason: 'first', goal: { total: 34, misses: 0 }, perSet: [12, 11, 11] });
+  });
+
+  // P18 §4.2: la cadena entera por el camino de la tarjeta (el log guarda el goal)
+  it('por progressionChip: el goal guardado en el log se lee como lastGoal', () => {
+    const c = repsCfg();
+    const log = [{ sets: vol([9, 9, 9]), goal: { total: 37, misses: 0 } }, { sets: vol([12, 11, 11]) }];
+    expect(progressionChip(c, {}, log, tk))
+      .toMatchObject({ reason: 'fail', goal: { total: 37, misses: 1 } });
+  });
+
+  // P18 §4.1: la evaluación (Todas/Parcial/RPE) no afecta a Reps y Tiempo
+  it('Parcial y RPE no cambian nada en Reps', () => {
+    const base = next(repsCfg(), {}, vol([12, 12, 7]), []);
+    const part = next(repsCfg({ evaluation: { mode: 'part', need: 2 } }), {}, vol([12, 12, 7]), []);
+    const rpe = next(repsCfg({ evaluation: { mode: 'rpe', maxRpe: 6 } }), {}, vol([12, 12, 7]), []);
+    expect([part.goal, rpe.goal]).toEqual([base.goal, base.goal]);
   });
 });

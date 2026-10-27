@@ -3,7 +3,7 @@
 > Tema: programas
 > En corto: La progresión deja de bajar el peso por un mal día y de pedir reps según tu peor serie; el gris de cada serie vuelve a ser lo que hiciste la última vez y la meta la dice el mensaje del ejercicio, en una frase que se entiende sin saber cómo funciona el motor.
 > Fase P18-01 · hecho · Peso por reglas: cuándo mantener y cuándo bajar · §3
-> Fase P18-02 · pendiente · Reps y Tiempo: una meta por total · §4
+> Fase P18-02 · hecho · Reps y Tiempo: una meta por total · §4
 > Fase P18-03 · pendiente · El gris es la última vez; el check guarda la casilla · §5
 > Fase P18-04 · pendiente · Mensajes del chip · §6
 > Fase P18-05 · pendiente · Hoja de Progresión por niveles · §7
@@ -165,6 +165,17 @@ un hecho («qué te pedía la app ese día»), y de paso le sirve al entrenador.
 
 Lectura de lo antiguo, sin migrar: una sesión sin `goal` se trata como la primera
 (meta = su total + 1 por serie, sin fallos).
+
+**Probar P18-02**
+
+- [ ] Dominadas en «Reps» con 12/12/7 la última vez → la tarjeta dice «Sube a
+  34 reps en total» con «+3», y debajo «La última vez hiciste 31».
+- [ ] Haz 32 (sin llegar a 34) y vuelve otro día → sigue pidiendo 34 en total.
+- [ ] Haz dos días seguidos menos que el anterior → al segundo la meta baja a
+  lo que hiciste ese día + 1 por serie.
+- [ ] Plancha en «Tiempo» con salto de 5 s: 45/40/30 → «130 s en total».
+- [ ] En el editor, el resumen de la progresión de un ejercicio por Reps dice
+  «Tu total + 1 rep por serie», no «sobre la serie más floja».
 
 ## 5. P18-03 — El gris es la última vez; el check guarda la casilla
 

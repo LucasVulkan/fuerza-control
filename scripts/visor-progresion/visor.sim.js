@@ -114,7 +114,7 @@ export function diferencias(caso) {
 }
 
 it('el motor real dice lo mismo que el prototipo', () => {
-  const tipos = (process.env.VISOR_TIPOS ?? 'double').split(',');
+  const tipos = (process.env.VISOR_TIPOS ?? 'double,reps,time').split(',');
   const difs = CASOS.filter((c) => tipos.includes(c.config.progression.type)).flatMap(diferencias);
   expect(difs).toEqual([]);
 });
