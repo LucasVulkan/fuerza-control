@@ -20,7 +20,7 @@
  * motor si la hay, y si no el último.
  */
 import { targetLabel, exerciseName } from './prescription';
-import { getProgression } from './progression';
+import { progressionChip } from './progression';
 import { sessionSlots } from './sessionSlots';
 import { variantParts, VARIANT_DIMS, displayVariant } from './variants';
 import es from '../locales/es.json';
@@ -29,12 +29,15 @@ import en from '../locales/en.json';
 /** El separador entre el nombre, la receta y el peso de una línea. */
 export const SEP = ' · ';
 
-/** Lo que toca levantar hoy, en kg, o null si no hay nada que decir. */
-export function todayWeight(exConfig, def, lastExercise, t) {
-  const sets = lastExercise?.sets ?? [];
+/**
+ * Lo que toca levantar hoy, en kg, o null si no hay nada que decir. `recent`:
+ * las últimas veces del ejercicio, la más reciente primero (el mismo chip que
+ * la tarjeta, P18 §2.6).
+ */
+export function todayWeight(exConfig, def, recent, t) {
+  const sets = recent?.[0]?.sets ?? [];
   if (!sets.length) return null;
-  let chip = null;
-  try { chip = getProgression(exConfig, def, sets, t); } catch { /* sin chip, el último */ }
+  const chip = progressionChip(exConfig, def, recent, t);
   const w = chip?.suggestedWeight ?? Math.max(0, ...sets.map((s) => parseFloat(s.weight) || 0));
   return w > 0 ? w : null;
 }
@@ -73,13 +76,14 @@ function blockLine(block, allExercises, t, language, fmtWeight) {
  * @param t             i18next
  * @param opts.language      idioma de los nombres
  * @param opts.fmtWeight     kg → texto en la unidad del usuario (`useWeightUnit().fmt`)
- * @param opts.lastExercise  (exConfig) → la última vez que lo hizo, o null. Sin
- *                           ella no salen pesos (el editor, un grupo).
+ * @param opts.recentExercises  (exConfig) → las últimas veces que lo hizo, la
+ *                           más reciente primero. Sin ella no salen pesos (el
+ *                           editor, un grupo).
  * @param opts.clientName    abre la cabecera: pegado en Clientes, el texto dice
  *                           solo de quién es (§6.4).
  */
 export function sessionToText(template, allExercises, t, {
-  language, fmtWeight = (kg) => `${kg}kg`, lastExercise, clientName,
+  language, fmtWeight = (kg) => `${kg}kg`, recentExercises, clientName,
 } = {}) {
   const label = template.label ? t('workout.sessionLabel', { label: template.label }) : null;
   const title = [
@@ -93,7 +97,7 @@ export function sessionToText(template, allExercises, t, {
     if (slot.kind === 'block') return [blockLine(slot.block, allExercises, t, language, fmtWeight)];
     return slot.members.map((ex) => {
       const def = allExercises[ex.exerciseId];
-      const kg  = lastExercise ? todayWeight(ex, def, lastExercise(ex), t) : null;
+      const kg  = recentExercises ? todayWeight(ex, def, recentExercises(ex), t) : null;
       return [
         exerciseName(def, language, ex.exerciseId),
         // La variante con el mismo « · » que en pantalla: el lector sabe

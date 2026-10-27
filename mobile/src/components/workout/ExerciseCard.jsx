@@ -37,7 +37,7 @@ import { GRID } from './grid';
 import NotesModal from './NotesModal';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
-import { getProgression, progressionHistory, progressionRule } from '../../utils/progression';
+import { progressionChip, progressionRule } from '../../utils/progression';
 import { planSet } from '../../utils/setPlan';
 import { warmupSteps, computeWarmupWeights, resolveWorkWeight } from '../../utils/warmup';
 import { targetLabel as buildTarget, firstTimeRx } from '../../utils/prescription';
@@ -158,15 +158,10 @@ export default function ExerciseCard({
   const hasTimer = inputType === 'time' || inputType === 'weight_time';
 
   // ── Chip de progresión ─────────────────────────────────────────────────────
-  // Va antes que el calentamiento: este rampa hacia el peso del plan (§6.2). Por
-  // esfuerzo lee además las sesiones anteriores (§6.5); las demás progresiones
-  // no las miran.
-  const progression = (() => {
-    if (!lastExercise?.sets?.length) return null;
-    const recent = recentSessions?.length ? recentSessions.map((r) => r.exercise) : [lastExercise];
-    try { return getProgression(exConfig, def, lastExercise.sets, t, progressionHistory(recent)); }
-    catch { return null; }
-  })();
+  // Va antes que el calentamiento: este rampa hacia el peso del plan (§6.2). El
+  // mismo que guarda `saveSession` (P18 §2.6).
+  const progression = progressionChip(exConfig, def,
+    recentSessions?.length ? recentSessions.map((r) => r.exercise) : [lastExercise], t);
 
   // ── Warmup (spec §4.3/§4.4) ───────────────────────────────────────────────
   // Informational only — NOT part of setsState, nothing is persisted. Purely

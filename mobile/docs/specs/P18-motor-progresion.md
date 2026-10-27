@@ -2,11 +2,12 @@
 
 > Tema: programas
 > En corto: La progresión deja de bajar el peso por un mal día y de pedir reps según tu peor serie; el gris de cada serie vuelve a ser lo que hiciste la última vez y la meta la dice el mensaje del ejercicio, en una frase que se entiende sin saber cómo funciona el motor.
-> Fase P18-01 · pendiente · Peso por reglas: cuándo mantener y cuándo bajar · §3
+> Fase P18-01 · hecho · Peso por reglas: cuándo mantener y cuándo bajar · §3
 > Fase P18-02 · pendiente · Reps y Tiempo: una meta por total · §4
 > Fase P18-03 · pendiente · El gris es la última vez; el check guarda la casilla · §5
 > Fase P18-04 · pendiente · Mensajes del chip · §6
 > Fase P18-05 · pendiente · Hoja de Progresión por niveles · §7
+> Inicio: 2026-10-27
 >
 > Estado: **spec escrita, sin implementar** (27-oct-2026). Sale del replanteo del
 > motor que sustituyó a firmar en abstracto la tabla 1A de
@@ -113,6 +114,25 @@ Hoy el chip de Peso solo mira la última sesión. Para «segundo fallo seguido»
 fallos se cuenta mirando hacia atrás en `earlier` hasta la primera sesión sin
 fallo, y **solo entre sesiones con el mismo peso**: tras subir o bajar, la racha
 empieza de cero (como en el prototipo).
+
+Una serie del ejercicio que no se apunta impide subir, pero no es un fallo:
+saltarse una serie por falta de tiempo no baja el peso (decidido al
+implementar, 27-oct).
+
+**Probar P18-01**
+
+- [ ] Un ejercicio de Peso 3×10-12 que acabas de subir: haz 10/9/9 → al día
+  siguiente la tarjeta dice «Mantén» con el mismo peso, no baja.
+- [ ] Repite un día flojo con el mismo peso (otra vez por debajo del mínimo y
+  sin más reps en total) → ahora dice «Baja a», un 10 % menos redondeado al
+  escalón (95 → 85 en una barra de 2,5).
+- [ ] Un día muy malo (p. ej. 5/4/4/3/3 en un 5×5) → baja de una vez, sin
+  esperar al segundo día.
+- [ ] Por debajo del mínimo pero con más reps en total que la vez anterior
+  con el mismo peso → «Mantén», sin bajar.
+- [ ] Una asistida que fallas dos días seguidos → «Más ayuda», +10 % de ayuda.
+- [ ] Compartir una sesión por WhatsApp desde Clientes: el peso de cada línea
+  es el mismo que enseña la tarjeta del Workout de ese cliente.
 
 ## 4. P18-02 — Reps y Tiempo: una meta por total
 

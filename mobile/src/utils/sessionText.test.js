@@ -49,7 +49,7 @@ describe('sessionToText', () => {
     // 4x6 a 100 completas en doble progresión con tope en 6 → toca subir.
     const last = { squat_barbell: { sets: sets(100, 6, 4) }, bulgarian_split_squat: { sets: sets(20, 7, 3) } };
     const text = sessionToText(template, LIB, t, {
-      language: 'es', fmtWeight: (kg) => `${kg}kg`, lastExercise: (ex) => last[ex.exerciseId] ?? null,
+      language: 'es', fmtWeight: (kg) => `${kg}kg`, recentExercises: (ex) => (last[ex.exerciseId] ? [last[ex.exerciseId]] : []),
     });
     const [, squat, bulg, plank] = text.split('\n');
     expect(squat).toMatch(/^Sentadilla con barra · 4x6 · 10\d(\.5)?kg:$/);
@@ -66,7 +66,7 @@ describe('sessionToText', () => {
     ] };
     // 80 × 5 a RPE 7: más fácil de lo previsto → 82.5 con paso 2.5 (P10-effort-progression.md §2.2).
     const last = { sets: [1, 2, 3].map(() => ({ weight: '80', reps: '5', rpe: '7', done: true })) };
-    const line = sessionToText(tpl, LIB, t, { language: 'es', fmtWeight: (kg) => `${kg}kg`, lastExercise: () => last })
+    const line = sessionToText(tpl, LIB, t, { language: 'es', fmtWeight: (kg) => `${kg}kg`, recentExercises: () => [last] })
       .split('\n')[1];
     expect(line).toBe(`${LIB.skull_crusher.name} · 3x5 @RPE8 · 82.5kg:`);
     expect(parseRx('3x5 @RPE8')).toEqual({ sets: 3, reps: 5 });
@@ -264,7 +264,7 @@ describe('ida y vuelta completa', () => {
     };
     const last = { squat_barbell: { sets: sets(100, 6, 4) } };
     const text = sessionToText(template, LIB, t, {
-      language: 'es', clientName: 'Ana García', lastExercise: (ex) => last[ex.exerciseId] ?? null,
+      language: 'es', clientName: 'Ana García', recentExercises: (ex) => (last[ex.exerciseId] ? [last[ex.exerciseId]] : []),
     }).split('\n').map((l) => (l.endsWith(':') ? `${l} ok` : l)).join('\n');
 
     const { header, lines } = parseSessionText(text);

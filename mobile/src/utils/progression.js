@@ -9,7 +9,8 @@
  *   type:      'double' | 'reps' | 'time' | 'effort' | 'none'
  *     double  → «Peso · por reglas» (el nombre interno se mantiene): todas las
  *               series llegan a la meta (el máximo del rango, o las reps fijas)
- *               → sube el peso; si fallan las suficientes bajo el mínimo → baja.
+ *               → sube el peso; un fallo grande o el segundo seguido → baja
+ *               un 10 % (P18 §3).
  *               Con medida Tiempo, lo mismo en segundos (mínimo y máximo de tiempo)
  *     reps    → la meta es la serie más floja de la última sesión + el salto
  *     time    → ídem en segundos
@@ -18,16 +19,16 @@
  *     none    → sin chip (lo decide el usuario)
  *
  *   evaluation: {
- *     mode:   'all_complete' | 'part' | 'rpe'    // UI: Todas · Parcial · RPE máx.
- *     need:   2      // 'part': series que tienen que llegar a la meta
+ *     mode:   'all_complete' | 'part' | 'rpe'    // UI: Todas · La mayoría · RPE máx.
+ *     need:   2      // 'part': series que tienen que llegar a la meta (ausente: la mayoría)
  *     maxRpe: 8      // 'rpe': sube solo si el RPE medio es ≤ maxRpe
  *   }
  *
  *   increment: { type: 'fixed' | 'pct', value: 2.5, pct: 5 }
  *
- *   down: 'never' | { fails: 2 }
- *     Solo 'double'. Ausente → `{ fails: floor(n·0,4)+1 }` (§4.3), que se
- *     calcula en el chip con las series de la sesión, no aquí.
+ *   down: 'never' | null
+ *     Solo 'double'. 'never' = mantener siempre. Un `{ fails }` antiguo se lee
+ *     como ausente: baja con las reglas de P18 §3.3.
  *
  *   targetRpe: 8                      // 'effort'
  *   effortWhen: 'beat' | 'reach'      // 'effort'; ausente → 'beat'
@@ -177,8 +178,12 @@ export function resolveProgressionConfig(exConfig, def) {
   const ev   = p?.evaluation ?? {};
   const mode = ev.mode === 'pct' ? 'part' : (EVALUATION_MODES.includes(ev.mode) ? ev.mode : 'all_complete');
   const sets = ec.sets ?? d.sets ?? 3;
-  // `- 1e-9`: 0,7 · 10 da 7,000…01 y el techo lo subiría a 8.
-  const need = ev.need ?? Math.max(1, Math.ceil((ev.pctThreshold ?? 0.8) * sets - 1e-9));
+  // La mayoría simple (P18 §3.1: 2 de 3, 3 de 4, 3 de 5). Un `need` o un
+  // `pctThreshold` guardados se respetan. `- 1e-9`: 0,7 · 10 da 7,000…01 y el
+  // techo lo subiría a 8.
+  const need = ev.need ?? (ev.pctThreshold != null
+    ? Math.max(1, Math.ceil(ev.pctThreshold * sets - 1e-9))
+    : Math.floor(sets / 2) + 1);
 
   const inc = p?.increment ?? {};
   return {
@@ -286,16 +291,6 @@ function verdict(prog, doneSets, n, floor, goal, key = 'minReps') {
   };
 }
 
-/**
- * El motivo de subir dice lo que pasó de verdad: con Parcial no llegaron todas.
- * `timed` (Tiempo + Peso, P61): la meta son segundos y los textos dicen tiempo.
- */
-function whyUp(prog, v, goal, t, timed = false) {
-  return prog.evaluation.mode === 'part' && v.hitGoal < v.n
-    ? t('progression.why_partHit', { hit: v.hitGoal, n: v.n, goal: timed ? `${goal} s` : goal })
-    : t(timed ? 'progression.why_allHitTime' : 'progression.why_allHit');
-}
-
 /** El motivo de mantener: la meta se alcanzó pero el RPE se pasó, o no se llegó. */
 function whyHold(prog, v, holdKey, holdOpts, t) {
   return v.rpeOver
@@ -345,26 +340,112 @@ function chipReps(prog, doneSets, n, start, t) {
     suggestedWeight: null, suggestedTime: null, suggestedReps: start };
 }
 
-/**
- * «Peso · por reglas» (§4.2): sube → baja → mantener. `goal` es la meta (el
- * máximo del rango, o las reps fijas) y `floor` el suelo (`minReps`). Con medida
- * Tiempo (`timed`, P61) son los segundos: máximo y mínimo de tiempo.
- */
-function chipDouble(prog, doneSets, n, maxW, floor, goal, t, timed = false) {
-  const v = verdict(prog, doneSets, n, floor, goal, timed ? 'minTime' : 'minReps');
-  const weightStr = maxW > 0 ? t('progression.withWeight', { kg: maxW }) : t('progression.sameWeight');
-  const sfx = timed ? 'Time' : '';
+// Fallo grande: faltan más de este tanto de las reps del mínimo, sumando las de
+// todas las series (P18 §3.2). Valor de partida del prototipo; se ajusta en el visor.
+export const BIG_FAIL = 0.15;
 
-  if (v.up) {
-    const next = maxW + computeIncrement(maxW, prog.increment, prog.step);
-    return { type: 'up', icon: '⬆', msg: t('progression.normal_allHit', { next }), why: whyUp(prog, v, goal, t, timed), suggestedWeight: next, suggestedTime: null };
-  }
-  if (v.down && maxW > 0) {
-    const next = Math.max(0, maxW - computeIncrement(maxW, prog.increment, prog.step));
-    return { type: 'down', icon: '⬇', msg: t(`progression.normal_struggling${sfx}`, { next }), why: t(`progression.why_belowMin${sfx}`), suggestedWeight: next, suggestedTime: null };
-  }
-  return { type: 'hold', icon: '→', msg: t('progression.normal_hold', { weightStr }), why: whyHold(prog, v, `progression.why_hold${timed ? 'Time' : 'Reps'}`, {}, t), suggestedWeight: maxW || null, suggestedTime: null };
+const round2 = (x) => Math.round(x * 100) / 100;
+
+/**
+ * Bajar (P18 §3.3): −10 % redondeado al escalón y como mínimo un escalón
+ * (100 → 90 · 39 → 35 · 10 → 7,5). En una asistida, +10 % de ayuda.
+ */
+export function stepDown(w, step, assist = false) {
+  const toStep = (kg) => round2(Math.round(kg / step) * step);
+  return assist ? Math.max(toStep(w * 1.1), round2(w + step))
+    : Math.max(0, Math.min(toStep(w * 0.9), round2(w - step)));
 }
+
+/**
+ * Una sesión de «Peso · por reglas» en números (P18 §3.1-3.2). Un valor por
+ * cada serie apuntada; ✓ sin número cuenta como la meta (confirmó que la
+ * hizo). Una de las `n` que no se hizo impide subir, pero no es un fallo:
+ * saltarse una serie no baja el peso.
+ */
+function judgeDouble(prog, sets, n, floor, goal, key) {
+  const logged = loggedSets(sets);
+  const vals = logged.slice(0, n).map((s) => {
+    const v = parseFloat(s[key]) || 0;
+    return v > 0 ? v : (s.done ? goal : 0);
+  });
+  const ev = prog.evaluation;
+  const atGoal = vals.filter((v) => v >= goal).length;
+  // La mayoría (§3.1): con rango, además ninguna serie bajo el mínimo.
+  const need = Math.min(Math.max(ev.need, 1), n);
+  const reached = ev.mode === 'part'
+    ? atGoal >= need && (goal === floor || vals.every((v) => v >= floor))
+    : atGoal === n;
+  const rpe = ev.mode === 'rpe' ? avgRpe(logged) : null;
+  const rpeOver = rpe != null && rpe > ev.maxRpe;
+  const missing = vals.reduce((a, v) => a + Math.max(0, floor - v), 0);
+  return {
+    w: Math.max(0, ...logged.map((s) => parseFloat(s.weight) || 0)),
+    total: vals.reduce((a, v) => a + v, 0),
+    up: reached && !rpeOver,
+    rpeOver: reached && rpeOver,
+    rpe, missing, need,
+    big: floor > 0 && missing / (floor * n) > BIG_FAIL,
+  };
+}
+
+// Mejorar no es fallar (§3.2): un fallo leve con más reps en total que la
+// anterior con el mismo peso cuenta como sesión sin fallo.
+const improved = (cur, prev) => !cur.big && prev?.w === cur.w && cur.total > prev.total;
+const failed = (cur, prev) => cur.missing > 0 && !improved(cur, prev);
+
+/**
+ * «Peso · por reglas» (P18 §3): sube → baja → mantener. `goal` es la meta (el
+ * máximo del rango, o las reps fijas) y `floor` el suelo (`minReps`). Con medida
+ * Tiempo (`timed`, P61) son los segundos. En asistidas (`assist`) el peso es la
+ * ayuda: subir es quitarla y bajar, ponerla.
+ *
+ * `earlier` (`progressionHistory`): las sesiones anteriores, para la racha de
+ * fallos y la mejora. Solo cuentan con el mismo peso: tras subir o bajar, la
+ * racha empieza de cero (§3.4).
+ */
+function chipDouble(prog, doneSets, n, floor, goal, t, { timed = false, assist = false, earlier = [] } = {}) {
+  const judge = (sets) => judgeDouble(prog, sets, n, floor, goal, timed ? 'time' : 'reps');
+  const cur = judge(doneSets);
+  const [prev, prev2] = earlier.slice(0, 2).map(judge);
+  const w = cur.w;
+  const ev = prog.evaluation;
+
+  // Los textos (§6): la meta para subir, dicha igual en todos los mensajes.
+  const unit = (v) => (timed ? `${v} s` : v);
+  const amount = (v) => (timed ? `${v} s` : t('progression.next.reps', { count: v }));
+  const part = ev.mode === 'part' && cur.need < n;
+  const goalLine = (again) => t('progression.next.goal', {
+    goal: unit(goal),
+    series: part ? t('progression.next.seriesPart', { need: cur.need, count: n }) : t('progression.next.seriesAll', { count: n }),
+    extra: part && goal !== floor ? t('progression.next.extraRange', { min: unit(floor) })
+      : ev.mode === 'rpe' ? t('progression.next.extraRpe', { max: ev.maxRpe }) : '',
+    purpose: t(`progression.next.${assist ? 'toAssist' : again ? 'toUpAgain' : 'toUp'}`),
+  });
+  const missingLine = () => t('progression.next.missing', { amount: amount(cur.missing), min: unit(floor) });
+  const base = { icon: '→', suggestedTime: null, ...(assist ? { assist: true } : {}) };
+
+  if (cur.up) {
+    const inc = computeIncrement(w, prog.increment, prog.step);
+    return { ...base, type: 'up', icon: '⬆', reason: 'up', why: cap(goalLine(true)),
+      suggestedWeight: assist ? Math.max(0, round2(w - inc)) : round2(w + inc) };
+  }
+  if (cur.missing > 0 && !improved(cur, prev)) {
+    const second = prev?.w === w && failed(prev, prev2);
+    if ((cur.big || second) && prog.down !== 'never' && w > 0) {
+      return { ...base, type: 'down', icon: '⬇', reason: cur.big ? 'bigFail' : 'secondFail', missing: cur.missing,
+        why: cur.big ? missingLine() : t('progression.next.secondFail'), suggestedWeight: stepDown(w, prog.step, assist) };
+    }
+    return { ...base, type: 'hold', reason: 'fail', missing: cur.missing, why: missingLine(), suggestedWeight: w || null };
+  }
+  if (cur.missing > 0) {
+    return { ...base, type: 'hold', reason: 'improving', suggestedWeight: w || null,
+      why: t('progression.next.improving', { total: amount(cur.total), next: goalLine(false) }) };
+  }
+  return { ...base, type: 'hold', reason: cur.rpeOver ? 'rpe' : 'range', suggestedWeight: w || null,
+    why: cur.rpeOver ? t('progression.next.rpeOver', { rpe: Math.round(cur.rpe * 10) / 10, max: ev.maxRpe }) : cap(goalLine(false)) };
+}
+
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * El 1RM de una sesión: la media de lo que dan sus series con peso, reps y RPE
@@ -440,28 +521,6 @@ function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload
   };
 }
 
-/** El espejo de `chipDouble` para asistidos: subir es quitar ayuda, bajar es ponerla. */
-function chipDoubleDecrease(prog, doneSets, n, assistance, floor, goal, t, timed = false) {
-  const v = verdict(prog, doneSets, n, floor, goal, timed ? 'minTime' : 'minReps');
-  const assistStr = assistance > 0 ? t('progression.withAssist', { kg: assistance }) : t('progression.noAssist');
-
-  if (v.up && assistance > 0) {
-    const next = Math.max(0, assistance - computeIncrement(assistance, prog.increment, prog.step));
-    const msg  = next === 0
-      ? t('progression.decrease_lastAssist', { assist: assistance })
-      : t('progression.decrease_allHit', { next });
-    return { type: 'up', icon: '⬆', msg, why: whyUp(prog, v, goal, t, timed), suggestedWeight: next, suggestedTime: null };
-  }
-  if (v.up && assistance === 0) {
-    return { type: 'up', icon: '⬆', msg: t('progression.decrease_free'), why: whyUp(prog, v, goal, t, timed), suggestedWeight: 0, suggestedTime: null };
-  }
-  if (v.down && assistance < 999) {
-    const next = assistance + computeIncrement(assistance, prog.increment, prog.step);
-    return { type: 'down', icon: '⬇', msg: t('progression.decrease_struggling', { next }), why: t(`progression.why_belowMin${timed ? 'Time' : ''}`), suggestedWeight: next, suggestedTime: null };
-  }
-  return { type: 'hold', icon: '→', msg: t('progression.decrease_hold', { assistStr }), why: whyHold(prog, v, `progression.why_hold${timed ? 'Time' : 'Reps'}`, {}, t), suggestedWeight: assistance || null, suggestedTime: null };
-}
-
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 /**
@@ -489,7 +548,7 @@ export function progressionHistory(recent) {
  * @param {array}    lastSets   Sets logged in the last session for this exercise
  * @param {function} t          i18next translate function
  * @param {object}   [opts]     `earlier` y `lastDeload` (§6.5): ver `progressionHistory`.
- *                              Solo los lee Por esfuerzo.
+ *                              Los leen Por esfuerzo y Peso por reglas.
  * @returns chip object | null
  */
 export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastDeload = false } = {}) {
@@ -534,7 +593,6 @@ export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastD
     return chipReps(prog, doneSets, totalSets, minReps, t);
   }
 
-  const maxW = Math.max(0, ...doneSets.map((s) => parseFloat(s.weight) || 0));
   // Lo guardado como `type: 'weight'` (reps fijas, sin rango en el motor) tenía
   // por meta el mínimo: leerlo con `maxReps` cambiaría cuándo sube (§4.1).
   // Tiempo + Peso (P61): la misma doble progresión sobre segundos.
@@ -542,12 +600,23 @@ export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastD
   const floor = timed ? minTime : minReps;
   const goal  = exConfig?.progression?.type === 'weight' ? floor : (timed ? maxTime : maxReps);
 
-  if (prog.direction === 'decrease') {
-    // `assist`: el número es la AYUDA; la tarjeta no puede decir «Subir a 17,5»
-    // cuando lo que toca es quitar ayuda (QA P52).
-    return { ...chipDoubleDecrease(prog, doneSets, totalSets, maxW, floor, goal, t, timed), assist: true };
-  }
-  return chipDouble(prog, doneSets, totalSets, maxW, floor, goal, t, timed);
+  // `assist`: el número es la AYUDA; la tarjeta no puede decir «Subir a 17,5»
+  // cuando lo que toca es quitar ayuda (QA P52).
+  return chipDouble(prog, doneSets, totalSets, floor, goal, t, { timed, assist: prog.direction === 'decrease', earlier });
+}
+
+/**
+ * EL chip de un ejercicio (P18 §2.6): la tarjeta del Workout, `saveSession` y
+ * el texto para WhatsApp lo sacan de aquí, para que digan lo mismo.
+ *
+ * @param {object[]} recent  las últimas veces del ejercicio, la más reciente
+ *   primero (`recentExerciseRefs(..., 3).map((r) => r.exercise)`)
+ */
+export function progressionChip(exConfig, def, recent, t) {
+  const last = recent?.[0]?.sets;
+  if (!last?.length) return null;
+  try { return getProgression(exConfig, def, last, t, progressionHistory(recent)); }
+  catch { return null; }
 }
 
 // ── progressionRule ───────────────────────────────────────────────────────────
@@ -625,16 +694,15 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false, 
       goal: timed ? goal : t('progression.rule.incReps', { count: goal }),
     });
   }
-  const fails = Math.min(Math.max(prog.down?.fails ?? Math.floor(n * 0.4) + 1, 1), n);
   if (parts) return {
     action: t(assist ? 'progression.rule.assistAction' : 'progression.rule.weightAction', { inc: text }),
     when:   t('progression.rule.whenGoal', { when, goal: timed ? goal : t('progression.rule.incReps', { count: goal }) }),
     down:   prog.down === 'never' ? null
-      : t(assist ? 'progression.rule.assistDownLine' : 'progression.rule.weightDownLine', { fails, n }),
+      : t(assist ? 'progression.rule.assistDownLine' : 'progression.rule.weightDownLine'),
   };
   const head = t(assist ? 'progression.rule.assistUp' : 'progression.rule.weightUp', { inc: text, when, goal });
   if (prog.down === 'never') return head;
-  return head + t(assist ? 'progression.rule.assistDown' : 'progression.rule.weightDown', { fails, n });
+  return head + t(assist ? 'progression.rule.assistDown' : 'progression.rule.weightDown');
 }
 
 // ── summarizeSets ─────────────────────────────────────────────────────────────

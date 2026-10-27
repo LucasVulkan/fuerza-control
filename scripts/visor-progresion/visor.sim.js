@@ -6,8 +6,9 @@
 // son las mismas.
 //   npx vitest run -c scripts/visor-progresion/vitest.config.mjs
 // Corre bajo vitest para reutilizar los alias de vite.config.js.
-import { it } from 'vitest';
+import { it, expect } from 'vitest';
 import { writeFileSync } from 'node:fs';
+import process from 'node:process';
 import { getProgression, progressionHistory } from '../../mobile/src/utils/progression';
 import { planSet } from '../../mobile/src/utils/setPlan';
 import { EXERCISE_LIBRARY } from '../../mobile/src/data/exerciseLibrary';
@@ -37,12 +38,20 @@ function motorHoy(cfg, def, caso) {
       const p = planSet({ exConfig: cfg, def, chip, lastSets: last.sets, index });
       return { peso: p.weight.value, reps: caso.tiempo ? p.time.value : p.reps.value };
     });
+    // Lo que hace el atleta en las sesiones 'gris': la meta del chip, como en el
+    // propuesto (peso del chip; reps al máximo si cambia el peso, si no las suyas).
+    const objetivo = chip && last.sets.map((s, i) => ({
+      peso: chip.suggestedWeight ?? s.weight,
+      reps: chip.perSet?.[i] ?? (chip.type === 'hold' || chip.effort ? (caso.tiempo ? s.time : s.reps) : cfg.maxReps),
+    }));
     return {
       chip: chip && {
         tipo: chip.type, why: chip.why, peso: chip.suggestedWeight ?? null, reps: chip.suggestedReps ?? null,
-        tiempo: chip.suggestedTime ?? null, e1rm: chip.e1rm ?? null, assist: !!chip.assist,
+        tiempo: chip.suggestedTime ?? null, e1rm: chip.e1rm ?? null, assist: !!chip.assist, total: chip.goal?.total ?? null,
       },
+      goal: chip?.goal,
       plan,
+      objetivo,
     };
   };
 }
@@ -83,12 +92,32 @@ function correr(caso, crear) {
       return { weight: String(weight), reps, time, rpe: String(s.rpe?.[i] ?? ''), done: true };
     });
     filas.push({ dia, ...prop, hizo: sets, nota: s.nota ?? '' });
-    recientes.unshift({ sets });
+    recientes.unshift({ sets, ...(prop.goal ? { goal: prop.goal } : {}) });
     prop = proponer(recientes);
   }
   filas.push({ dia: null, ...prop, hizo: null, nota: 'Lo que pediría en la siguiente sesión' });
   return filas;
 }
+
+// El motor real tiene que decir lo mismo que el prototipo acordado (P18):
+// mismo tipo y misma cifra (peso, o el total en Reps y Tiempo) en cada fila.
+// `VISOR_TIPOS`: los tipos ya implementados que se comparan.
+export function diferencias(caso) {
+  const hoy = correr(caso, motorHoy);
+  const nuevo = correr(caso, motorNuevo);
+  return hoy.flatMap((f, i) => {
+    const a = f.chip; const b = nuevo[i].chip;
+    if (!a && !b) return [];
+    const ok = a && b && a.tipo === b.tipo && (b.total != null ? a.total === b.total : a.peso === b.peso);
+    return ok ? [] : [`${caso.id} fila ${i + 1}: real ${JSON.stringify(a && [a.tipo, a.total ?? a.peso])} · prototipo ${JSON.stringify(b && [b.tipo, b.total ?? b.peso])}`];
+  });
+}
+
+it('el motor real dice lo mismo que el prototipo', () => {
+  const tipos = (process.env.VISOR_TIPOS ?? 'double').split(',');
+  const difs = CASOS.filter((c) => tipos.includes(c.config.progression.type)).flatMap(diferencias);
+  expect(difs).toEqual([]);
+});
 
 it('visor de progresión', () => {
   const out = process.env.VISOR_OUT ?? 'visor-progresion.json';

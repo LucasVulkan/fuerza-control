@@ -41,7 +41,7 @@ import { generateId } from '../src/utils/formatters';
 import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload, programTemplateIds } from '../src/utils/clientLogs';
 import { programsOf, ownerClient, assignActiveProgram, deassignProgram } from '../src/utils/programOwnership';
 import { linkGroupTemplateIds, recentExerciseRefs, pickLinkedConfig } from '../src/utils/exerciseLinks';
-import { getProgression, progressionHistory } from '../src/utils/progression';
+import { progressionChip } from '../src/utils/progression';
 import { planSet } from '../src/utils/setPlan';
 import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { normName } from '../src/utils/sessionText';
@@ -2822,11 +2822,7 @@ export const useStore = create(
             }, 3).map((r) => r.exercise);
             const lastSets = recent[0]?.sets ?? [];
             // El mismo chip que enseña la tarjeta (el texto no importa aquí).
-            let chip = null;
-            if (lastSets.length) {
-              try { chip = getProgression(exConfig, library[exerciseId], lastSets, () => '', progressionHistory(recent)); }
-              catch { /* sin chip: el gris es la última vez */ }
-            }
+            const chip = progressionChip(exConfig, library[exerciseId], recent, () => '');
             const plan = (i) => planSet({
               exConfig, def: library[exerciseId], chip, lastSets,
               overrideEx: sessionOverride?.exercises?.[exerciseId], index: i,

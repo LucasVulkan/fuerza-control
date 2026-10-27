@@ -30,7 +30,7 @@ import { startCta, relativeTime } from '../utils/sessionRowText';
 import { sessionPlan } from '../utils/sessionPlan';
 import { sessionStats } from '../utils/sessionStats';
 import { sessionToText } from '../utils/sessionText';
-import { lastExerciseRef } from '../utils/exerciseLinks';
+import { recentExerciseRefs } from '../utils/exerciseLinks';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { useLastDays } from '../hooks/useLastDays';
 import { spacing, textStyles } from '../theme';
@@ -91,9 +91,9 @@ function useShareSession(program, log, allExercises, clientName) {
       language: i18n.language,
       fmtWeight: fmt,
       clientName,
-      lastExercise: (exConfig) => lastExerciseRef({
+      recentExercises: (exConfig) => recentExerciseRefs({
         workoutLog: log, program, templateId, exConfig, getTemplate: getEffectiveTemplate,
-      }),
+      }, 3).map((r) => r.exercise),
     });
     Share.share({ message }).catch(() => {});
   };

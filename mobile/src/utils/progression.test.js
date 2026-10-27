@@ -118,7 +118,7 @@ describe('progression.hold = "deload"', () => {
     const normal = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
     const chip = getProgression(normal, null, perfect, t);
     expect(chip.type).toBe('up');
-    expect(chip.reason).toBeUndefined();
+    expect(chip.reason).not.toBe('deload');
   });
 
   it('resolveProgressionConfig normalizes hold to null when absent', () => {
@@ -287,11 +287,15 @@ describe('QA P52 — los textos dicen lo que pasó', () => {
   it('«% mínimo» que sube sin todas al máximo: el motivo cuenta las que llegaron', () => {
     const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', evaluation: { mode: 'pct', pctThreshold: 0.6 } } };
     const c = getProgression(cfg, BB, done([['60', '12'], ['60', '12'], ['60', '9']]), tk);
-    expect(c.why).toBe('progression.why_partHit{"hit":2,"n":3,"goal":12}');
+    // P18 §3.1/§6: la mayoría simple de 3 son 2 series; el motivo dice la meta para volver a subir
+    expect(c).toMatchObject({ type: 'up', suggestedWeight: 62.5 });
+    expect(c.why).toContain('seriesPart{\\"need\\":2,\\"count\\":3}');
   });
   it('todas al máximo: el motivo de siempre', () => {
     const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double' } };
-    expect(getProgression(cfg, BB, done([['60', '12'], ['60', '12'], ['60', '12']]), tk).why).toBe('progression.why_allHit');
+    const c = getProgression(cfg, BB, done([['60', '12'], ['60', '12'], ['60', '12']]), tk);
+    expect(c.why).toContain('seriesAll{\\"count\\":3}');
+    expect(c.why).toContain('toUpAgain');
   });
   it('asistido: el chip va marcado para que la tarjeta no diga «Subir»', () => {
     const c = getProgression({ sets: 3, minReps: 6, maxReps: 10, progression: { type: 'double' } },
@@ -332,39 +336,50 @@ describe('P54 — «Peso · por reglas» (§4.2)', () => {
 
   describe('Todas, con 3 series', () => {
     const c = cfg(3);
-    it('sube con todas a la meta', () => expect(run(c, [12, 12, 12])).toMatchObject({ type: 'up', suggestedWeight: 62.5, why: 'progression.why_allHit' }));
+    it('sube con todas a la meta', () => {
+      const chip = run(c, [12, 12, 12]);
+      expect(chip).toMatchObject({ type: 'up', suggestedWeight: 62.5 });
+      expect(chip.why).toContain('seriesAll{\\"count\\":3}');
+    });
     it('mantiene con todas en el rango', () => expect(run(c, [12, 10, 9])).toMatchObject({ type: 'hold', suggestedWeight: 60 }));
     it('mantiene con una sola bajo el suelo', () => expect(run(c, [12, 12, 7]).type).toBe('hold'));
-    it('baja con 2 de 3 bajo el suelo', () => expect(run(c, [9, 7, 7])).toMatchObject({ type: 'down', suggestedWeight: 57.5, why: 'progression.why_belowMin' }));
+    // P18 §3.3: 2 de 3 bajo el suelo ya no baja por sí solo: faltan 2 de 24 reps (8 %) = fallo leve, el primero
+    it('con 2 de 3 bajo el suelo por poco mantiene (fallo leve)', () => expect(run(c, [9, 7, 7])).toMatchObject({ type: 'hold', suggestedWeight: 60, reason: 'fail' }));
+    it('baja con un fallo grande (faltan 6 de 24 = 25 %): −10 % al escalón', () => expect(run(c, [9, 5, 5])).toMatchObject({ type: 'down', suggestedWeight: 55, reason: 'bigFail' }));
   });
 
   describe('Todas, con 5 series', () => {
     const c = cfg(5);
     it('sube con todas', () => expect(run(c, [12, 12, 12, 12, 12]).type).toBe('up'));
     it('mantiene con 2 bajo el suelo', () => expect(run(c, [12, 12, 12, 7, 7]).type).toBe('hold'));
-    it('baja con 3 bajo el suelo', () => expect(run(c, [12, 12, 7, 7, 7]).type).toBe('down'));
+    it('3 bajo el suelo por poco mantiene (faltan 3 de 40)', () => expect(run(c, [12, 12, 7, 7, 7]).type).toBe('hold'));
+    it('baja con un fallo grande (faltan 9 de 40 = 22 %)', () => expect(run(c, [12, 12, 5, 5, 5]).type).toBe('down'));
   });
 
   describe('Parcial', () => {
     it('3 series, 2 de 3: sube con 2 a la meta y el motivo cuenta', () => {
-      expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9])).toMatchObject({
-        type: 'up', suggestedWeight: 62.5, why: 'progression.why_partHit{"hit":2,"n":3,"goal":12}',
-      });
+      const chip = run(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9]);
+      expect(chip).toMatchObject({ type: 'up', suggestedWeight: 62.5 });
+      expect(chip.why).toContain('seriesPart{\\"need\\":2,\\"count\\":3}');
+      expect(chip.why).toContain('extraRange{\\"min\\":8}');
     });
     it('3 series, 2 de 3: con 1 a la meta mantiene', () => {
       expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 9, 9]).type).toBe('hold');
     });
-    it('3 series, 2 de 3: con 2 bajo el suelo baja', () => {
-      expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 7, 7]).type).toBe('down');
+    it('3 series, 2 de 3: con 2 bajo el suelo por poco mantiene; con un fallo grande baja', () => {
+      expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 7, 7]).type).toBe('hold');
+      expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 5, 5]).type).toBe('down');
     });
-    it('con todas a la meta el motivo es el de siempre', () => {
-      expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 12, 12]).why).toBe('progression.why_allHit');
+    it('con todas a la meta el motivo sigue diciendo la regla de la mayoría (§6: «como arriba»)', () => {
+      const chip = run(cfg(3, { mode: 'part', need: 2 }), [12, 12, 12]);
+      expect(chip.type).toBe('up');
+      expect(chip.why).toContain('seriesPart{\\"need\\":2,\\"count\\":3}');
     });
     it('5 series, 3 de 5', () => {
       const c = cfg(5, { mode: 'part', need: 3 });
       expect(run(c, [12, 12, 12, 9, 9]).type).toBe('up');
       expect(run(c, [12, 12, 9, 9, 9]).type).toBe('hold');
-      expect(run(c, [12, 12, 7, 7, 7]).type).toBe('down');
+      expect(run(c, [12, 12, 5, 5, 5]).type).toBe('down');
     });
     it('`need` se recorta a las series de la sesión', () => {
       expect(run(cfg(2, { mode: 'part', need: 5 }), [12, 12]).type).toBe('up');
@@ -375,11 +390,14 @@ describe('P54 — «Peso · por reglas» (§4.2)', () => {
     const c = (n = 3) => cfg(n, { mode: 'rpe', maxRpe: 8 });
     it('todas a la meta con RPE medio ≤ máx → sube', () => expect(run(c(), [12, 12, 12], '7.5').type).toBe('up'));
     it('todas a la meta con RPE medio > máx → mantiene, y dice por qué', () => {
-      expect(run(c(), [12, 12, 12], '8.5')).toMatchObject({ type: 'hold', suggestedWeight: 60, why: 'progression.why_rpeAbove{"maxRpe":8}' });
+      expect(run(c(), [12, 12, 12], '8.5')).toMatchObject({ type: 'hold', suggestedWeight: 60, reason: 'rpe', why: 'progression.next.rpeOver{"rpe":8.5,"max":8}' });
     });
     it('sin RPE apuntado → como Todas', () => expect(run(c(), [12, 12, 12], '').type).toBe('up'));
     it('series malas con RPE 10 → no baja por RPE: mantiene', () => expect(run(c(), [12, 10, 9], '10').type).toBe('hold'));
-    it('2 de 3 bajo el suelo con RPE 10 → baja por la regla, no por el RPE', () => expect(run(c(), [9, 7, 7], '10').type).toBe('down'));
+    it('fallo grande con RPE 10 → baja por la regla, no por el RPE; fallo leve con RPE 10 → mantiene', () => {
+      expect(run(c(), [9, 5, 5], '10').type).toBe('down');
+      expect(run(c(), [9, 7, 7], '10').type).toBe('hold');
+    });
     it('5 series', () => {
       expect(run(c(5), [12, 12, 12, 12, 12], '7').type).toBe('up');
       expect(run(c(5), [12, 12, 12, 12, 11], '7').type).toBe('hold');
@@ -387,27 +405,20 @@ describe('P54 — «Peso · por reglas» (§4.2)', () => {
   });
 
   describe('Cuándo baja', () => {
-    it('el valor por defecto es lo de hoy: ⌊n·0,4⌋+1 fallos (2 de 3, 2 de 4, 3 de 5)', () => {
-      for (const [n, fails] of [[3, 2], [4, 2], [5, 3]]) {
-        const bad = (k) => [...Array(n - k).fill(12), ...Array(k).fill(7)];
-        expect(run(cfg(n), bad(fails)).type, `${n}: ${fails} fallos`).toBe('down');
-        expect(run(cfg(n), bad(fails - 1)).type, `${n}: ${fails - 1} fallos`).toBe('hold');
+    it('P18 §3.3: baja el tamaño del fallo, no cuántas series fallan: leve mantiene y grande baja, con 3, 4 y 5 series', () => {
+      for (const n of [3, 4, 5]) {
+        const bad = (reps) => [...Array(n - 2).fill(12), reps, reps];
+        expect(run(cfg(n), bad(7)).type, `${n} series, leve`).toBe('hold');   // faltan 2 de 8n
+        expect(run(cfg(n), bad(2)).type, `${n} series, grande`).toBe('down'); // faltan 12 de 8n
       }
     });
     it("'never' no baja nunca", () => {
       expect(run(cfg(3, undefined, { down: 'never' }), [7, 7, 7]).type).toBe('hold');
     });
-    it('{ fails: 1 } baja con un solo fallo', () => {
-      expect(run(cfg(3, undefined, { down: { fails: 1 } }), [12, 12, 7]).type).toBe('down');
-    });
-    it('`fails` se recorta a [1, n]', () => {
-      expect(run(cfg(3, undefined, { down: { fails: 9 } }), [12, 7, 7]).type).toBe('hold');
-      expect(run(cfg(3, undefined, { down: { fails: 9 } }), [7, 7, 7]).type).toBe('down');
-      expect(run(cfg(3, undefined, { down: { fails: 0 } }), [12, 12, 7]).type).toBe('down');
-    });
-    it('el defecto sale de las series de la sesión, no de las de la etapa base', () => {
-      // Guardado sin `down` y con 5 series en la sesión: 3 fallos, no los 2 de n = 3.
-      expect(run(cfg(5), [12, 12, 12, 7, 7]).type).toBe('hold');
+    it('P18 §3.3: un `{ fails }` antiguo se ignora (baja por el tamaño del fallo)', () => {
+      expect(run(cfg(3, undefined, { down: { fails: 1 } }), [12, 12, 7]).type).toBe('hold');
+      expect(run(cfg(3, undefined, { down: { fails: 9 } }), [12, 5, 5]).type).toBe('down');
+      expect(run(cfg(3, undefined, { down: { fails: 0 } }), [12, 12, 7]).type).toBe('hold');
     });
     it('sin peso no hay nada que bajar', () => {
       const c = getProgression(cfg(3), BB, [7, 7, 7].map((r) => ({ weight: '', reps: String(r), done: true })), tk);
@@ -420,12 +431,18 @@ describe('P54 — «Peso · por reglas» (§4.2)', () => {
     const go = (c, reps, w = '20', rpe = '') => getProgression(c, assisted, reps.map((r) => ({ weight: w, reps: String(r), rpe, done: true })), tk);
     it('todas a la meta → menos ayuda', () => expect(go(cfg(3), [12, 12, 12])).toMatchObject({ type: 'up', suggestedWeight: 17.5, assist: true }));
     it('Parcial: 2 de 3 → menos ayuda, con el motivo', () => {
-      expect(go(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9])).toMatchObject({ type: 'up', suggestedWeight: 17.5, why: 'progression.why_partHit{"hit":2,"n":3,"goal":12}' });
+      const chip = go(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9]);
+      expect(chip).toMatchObject({ type: 'up', suggestedWeight: 17.5 });
+      expect(chip.why).toContain('seriesPart{\\"need\\":2,\\"count\\":3}');
+      expect(chip.why).toContain('toAssist');
     });
     it('RPE máx.: la puerta también aplica', () => {
-      expect(go(cfg(3, { mode: 'rpe', maxRpe: 8 }), [12, 12, 12], '20', '9')).toMatchObject({ type: 'hold', why: 'progression.why_rpeAbove{"maxRpe":8}' });
+      expect(go(cfg(3, { mode: 'rpe', maxRpe: 8 }), [12, 12, 12], '20', '9')).toMatchObject({ type: 'hold', reason: 'rpe', why: 'progression.next.rpeOver{"rpe":9,"max":8}' });
     });
-    it('2 de 3 bajo el suelo → más ayuda', () => expect(go(cfg(3), [9, 7, 7])).toMatchObject({ type: 'down', suggestedWeight: 22.5 }));
+    it('fallo grande → más ayuda (20 → 22,5); leve → mantiene', () => {
+      expect(go(cfg(3), [9, 5, 5])).toMatchObject({ type: 'down', suggestedWeight: 22.5 });
+      expect(go(cfg(3), [9, 7, 7]).type).toBe('hold');
+    });
     it("'never' no añade ayuda", () => expect(go(cfg(3, undefined, { down: 'never' }), [7, 7, 7]).type).toBe('hold'));
     it('sin ayuda y todas a la meta → versión lastrada', () => expect(go(cfg(3), [12, 12, 12], '0')).toMatchObject({ type: 'up', suggestedWeight: 0 }));
   });
@@ -448,9 +465,9 @@ describe('P54 — lectura de lo antiguo y escalón (§4.1)', () => {
     expect(ev(0.8, 3)).toMatchObject({ mode: 'part', need: 3 });
     expect(ev(0.7, 10)).toMatchObject({ mode: 'part', need: 7 });
   });
-  it("'part' sin need → ceil((pctThreshold ?? 0,8) · series)", () => {
+  it("'part' sin need → la mayoría simple ⌊n/2⌋+1 (P18 §3.1); un pctThreshold guardado se respeta", () => {
     const ev = (e, sets) => resolveProgressionConfig({ sets, progression: { type: 'double', evaluation: { mode: 'part', ...e } } }, null).evaluation.need;
-    expect(ev({}, 5)).toBe(4);
+    expect([ev({}, 3), ev({}, 4), ev({}, 5)]).toEqual([2, 3, 3]);
     expect(ev({ pctThreshold: 0.6 }, 5)).toBe(3);
     expect(ev({ need: 2 }, 5)).toBe(2);
   });
@@ -464,7 +481,7 @@ describe('P54 — lectura de lo antiguo y escalón (§4.1)', () => {
     } }, null);
     expect(r.increment).toEqual({ type: 'fixed', value: 5, pct: 5 });
     expect(r).not.toHaveProperty('seed');
-    expect(r.evaluation).toEqual({ mode: 'all_complete', need: 3, maxRpe: 8 });
+    expect(r.evaluation).toEqual({ mode: 'all_complete', need: 2, maxRpe: 8 });
   });
   it('step: el del ejercicio, si no el de la librería, si no 2,5; direction viene del def', () => {
     expect(resolveProgressionConfig({ weightStep: 1.25 }, { weightStep: 5 }).step).toBe(1.25);
@@ -637,9 +654,9 @@ describe('P55 — progressionRule (§5.2)', () => {
   const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
   const bench = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
 
-  it('Peso: con la cola de bajar por defecto (2 de 3)', () => {
+  it('Peso: con la cola de bajar por defecto (P18: sin números, la regla va en la clave)', () => {
     expect(progressionRule(bench, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":12}progression.rule.weightDown{"fails":2,"n":3}');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":12}progression.rule.weightDown');
   });
   it("Con down: 'never' sin la cola", () => {
     expect(progressionRule({ ...bench, progression: { ...bench.progression, down: 'never' } }, BB, tk))
@@ -752,36 +769,38 @@ describe('P61 — Tiempo + Peso: doble progresión en segundos (§8.2)', () => {
 
   it('todas al máximo: sube el peso (+2,5) y no dice nada de reps', () => {
     expect(run(plank(), [60, 60, 60])).toMatchObject({
-      type: 'up', suggestedWeight: 7.5, suggestedTime: null, why: 'progression.why_allHitTime',
+      type: 'up', suggestedWeight: 7.5, suggestedTime: null,
     });
+    // la meta se dice en segundos, no en reps
+    expect(run(plank(), [60, 60, 60]).why).toContain('"goal":"60 s"');
   });
   it('una serie por debajo del máximo mantiene el peso', () => {
-    expect(run(plank(), [60, 60, 50])).toMatchObject({ type: 'hold', suggestedWeight: 5, why: 'progression.why_holdTime{}' });
+    expect(run(plank(), [60, 60, 50])).toMatchObject({ type: 'hold', suggestedWeight: 5, reason: 'range' });
   });
   it('tiempo fijo 45–45: 45/45/45 sube; 45/40/45 mantiene', () => {
     const c = plank({}, { minTime: 45, maxTime: 45 });
     expect(run(c, [45, 45, 45]).type).toBe('up');
     expect(run(c, [45, 40, 45])).toMatchObject({ type: 'hold', suggestedWeight: 5 });
   });
-  it('baja con la regla: 2 de 3 series bajo el mínimo de tiempo → peso − salto', () => {
-    expect(run(plank(), [60, 20, 20])).toMatchObject({
-      type: 'down', suggestedWeight: 2.5, why: 'progression.why_belowMinTime',
-    });
-    // 1 de 3 bajo el mínimo no llega a «2 de 3»
+  it('baja con la regla: fallo grande de tiempo (faltan 20 s de 90) → −10 % al escalón, mínimo un escalón', () => {
+    expect(run(plank(), [60, 20, 20])).toMatchObject({ type: 'down', suggestedWeight: 2.5, reason: 'bigFail' });
+    // fallo leve (faltan 10 s de 90 = 11 %): mantiene
     expect(run(plank(), [60, 45, 20]).type).toBe('hold');
     expect(run(plank({ down: 'never' }), [20, 20, 20]).type).toBe('hold');
-    expect(run(plank({ down: { fails: 3 } }), [60, 20, 20]).type).toBe('hold');
+    // `{ fails }` antiguo se ignora (P18 §3.3)
+    expect(run(plank({ down: { fails: 3 } }), [60, 20, 20]).type).toBe('down');
   });
   it('Parcial: 2 de 3 al máximo sube, y el motivo habla de segundos', () => {
     expect(run(plank({ evaluation: { mode: 'part', need: 2 } }), [60, 60, 40])).toMatchObject({
-      type: 'up', suggestedWeight: 7.5, why: 'progression.why_partHit{"hit":2,"n":3,"goal":"60 s"}',
+      type: 'up', suggestedWeight: 7.5,
     });
+    expect(run(plank({ evaluation: { mode: 'part', need: 2 } }), [60, 60, 40]).why).toContain('"goal":"60 s"');
   });
   it('RPE máx.: con el RPE pasado mantiene', () => {
     const c = plank({ evaluation: { mode: 'rpe', maxRpe: 8 } });
     const go = (rpe) => getProgression(c, BB, [60, 60, 60].map((s) => ({ weight: '5', time: String(s), rpe, done: true })), tk);
     expect(go('7').type).toBe('up');
-    expect(go('9')).toMatchObject({ type: 'hold', why: 'progression.why_rpeAbove{"maxRpe":8}' });
+    expect(go('9')).toMatchObject({ type: 'hold', reason: 'rpe' });
   });
   it('porcentaje: redondea al escalón', () => {
     const c = plank({ increment: { type: 'pct', pct: 10 } });
@@ -798,7 +817,7 @@ describe('P61 — Tiempo + Peso: doble progresión en segundos (§8.2)', () => {
   it('el mismo ejercicio con medida Reps sigue evaluando reps', () => {
     const reps = { sets: 3, minReps: 8, maxReps: 12, inputType: 'weight_reps', progression: { type: 'double' } };
     expect(getProgression(reps, BB, [12, 12, 12].map((r) => ({ weight: '60', reps: String(r), done: true })), tk))
-      .toMatchObject({ type: 'up', why: 'progression.why_allHit' });
+      .toMatchObject({ type: 'up', reason: 'up' });
   });
   it('Tiempo + Tiempo sigue igual: sube segundos y no propone kilos', () => {
     const c = { sets: 3, minTime: 30, maxTime: 30, inputType: 'weight_time', progression: { type: 'time' } };
@@ -809,9 +828,9 @@ describe('P61 — Tiempo + Peso: doble progresión en segundos (§8.2)', () => {
     expect(run(c, [60, 60, 60], '5', { progressionModel: 'time_progression' }).type).toBe('up');
     expect(run(c, [40, 40, 40], '5', { progressionModel: 'time_progression' }).type).toBe('hold');
   });
-  it('progressionRule: «Sube 2.5 kg cuando todas las series lleguen a 60 s · baja si fallan 2 de 3»', () => {
+  it('progressionRule: «Sube 2.5 kg cuando todas las series lleguen a 60 s» + la cola de bajar sin números', () => {
     expect(progressionRule(plank({ increment: { type: 'fixed', value: 2.5 } }), BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"60 s"}progression.rule.weightDown{"fails":2,"n":3}');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"60 s"}progression.rule.weightDown');
   });
 });
 
@@ -826,16 +845,16 @@ describe('P61 — la frase de la regla en palabras (es y en)', async () => {
     return inst.t.bind(inst);
   };
   it('es', () => {
-    expect(progressionRule(cfg, BB, tIn('es', es))).toBe('Sube 2.5 kg cuando todas las series lleguen a 60 s · baja si fallan 2 de 3');
+    expect(progressionRule(cfg, BB, tIn('es', es))).toBe('Sube 2.5 kg cuando todas las series lleguen a 60 s · baja un 10 % si fallas por mucho o dos días seguidos');
   });
   it('en', () => {
-    expect(progressionRule(cfg, BB, tIn('en', en))).toBe('Adds 2.5 kg when all sets reach 60 s · drops if 2 of 3 fail');
+    expect(progressionRule(cfg, BB, tIn('en', en))).toBe('Adds 2.5 kg when all sets reach 60 s · drops 10 % if you miss by a lot or two days in a row');
   });
   it('en piezas, para la ficha del Workout (U10-04)', () => {
     const t = tIn('es', es);
     const bench = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
     expect(progressionRule(bench, BB, t, 'kg', { parts: true })).toEqual({
-      action: 'Sube 2.5 kg', when: 'cuando todas las series lleguen a 12 reps', down: 'Baja si fallan 2 de 3 series',
+      action: 'Sube 2.5 kg', when: 'cuando todas las series lleguen a 12 reps', down: 'Baja un 10 % si fallas por mucho o dos días seguidos',
     });
     expect(progressionRule({ ...bench, progression: { ...bench.progression, down: 'never' } }, BB, t, 'kg', { parts: true }).down).toBeNull();
     expect(progressionRule({ sets: 3, minReps: 6, progression: { type: 'reps' } }, BB, t, 'kg', { parts: true }).when)
@@ -881,10 +900,11 @@ describe('I01-01 — huecos de mutación', () => {
 
   // P12 §4.2: «sube = todas a la meta»; `chipDoubleDecrease` es «su espejo con la misma lógica»
   // mata progression.js:455:7 (`v.up && assistance === 0` → `v.up || assistance === 0`)
-  test('asistido sin ayuda que no llega a la meta no sube: baja y pone ayuda', () => {
+  // P18 §3.3: 7/7/7 con mínimo 8 es un fallo leve (3 de 24 reps), el primero → mantiene: ni sube ni baja
+  test('asistido sin ayuda que no llega a la meta no sube: mantiene (fallo leve, el primero)', () => {
     const assisted = { progressionDirection: 'decrease', weightStep: 2.5 };
     const chip = getProgression(cfg3, assisted, [7, 7, 7].map((r) => ({ weight: '0', reps: String(r), done: true })), tk);
-    expect(chip).toMatchObject({ type: 'down', suggestedWeight: 2.5 });
+    expect(chip.type).toBe('hold');
   });
 
   // P12 §4.2: «RPE medio ≤ maxRpe» (un RPE medio igual al tope sube)
@@ -957,7 +977,9 @@ describe('I01-01 — huecos de mutación', () => {
   test('RPE máx.: sin llegar a la meta no se dice que el RPE se pasó', () => {
     const c = { ...cfg3, progression: { type: 'double', evaluation: { mode: 'rpe', maxRpe: 8 } } };
     const r = [12, 10, 9].map((x) => ({ weight: '60', reps: String(x), rpe: '10', done: true }));
-    expect(getProgression(c, BB, r, tk)).toMatchObject({ type: 'hold', why: 'progression.why_holdReps{}' });
+    const chip = getProgression(c, BB, r, tk);
+    expect(chip).toMatchObject({ type: 'hold', reason: 'range' });
+    expect(chip.why).not.toContain('rpeOver');
   });
 
   // P12 §5.2: «Sube 2.5 kg cuando todas las series lleguen a 12» (12 = el `maxReps`, aquí 10)
@@ -965,15 +987,14 @@ describe('I01-01 — huecos de mutación', () => {
   test('progressionRule: la meta es el maxReps del ejercicio', () => {
     const c = { sets: 3, minReps: 6, maxReps: 10, progression: { type: 'double' } };
     expect(progressionRule(c, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":10}progression.rule.weightDown{"fails":2,"n":3}');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":10}progression.rule.weightDown');
   });
 
-  // P12 §5.2 / §4.3: la cola de bajar usa ⌊n·0,4⌋+1 de n, con n = las series de la plantilla (5 → 3 de 5)
+  // P12 §5.2 / P18 §3.1: n = las series de la plantilla; la mayoría simple de 5 son 3 de 5
   // mata progression.js:582:19 (`exConfig?.sets ?? def?.sets ?? 3` → `&&`)
-  test('progressionRule: la cola de bajar usa las series del ejercicio', () => {
-    const c = { sets: 5, minReps: 8, maxReps: 12, progression: { type: 'double' } };
-    expect(progressionRule(c, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":12}progression.rule.weightDown{"fails":3,"n":5}');
+  test('progressionRule: «La mayoría» usa las series del ejercicio (3 de 5)', () => {
+    const c = { sets: 5, minReps: 8, maxReps: 12, progression: { type: 'double', evaluation: { mode: 'part' } } };
+    expect(progressionRule(c, BB, tk)).toContain('whenPart{\\"need\\":3,\\"n\\":5}');
   });
 
   // P12 §4.1 («type 'weight' → double con meta = minReps»); §8.4 («la meta es el mínimo de tiempo»)
@@ -981,9 +1002,9 @@ describe('I01-01 — huecos de mutación', () => {
   test("progressionRule: el 'weight' antiguo dice el mínimo como meta, en reps y en tiempo", () => {
     const reps = { sets: 3, minReps: 4, maxReps: 6, progression: { type: 'weight' } };
     expect(progressionRule(reps, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":4}progression.rule.weightDown{"fails":2,"n":3}');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":4}progression.rule.weightDown');
     const time = { sets: 3, minTime: 20, maxTime: 40, inputType: 'weight_time', progression: { type: 'weight' } };
     expect(progressionRule(time, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"20 s"}progression.rule.weightDown{"fails":2,"n":3}');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"20 s"}progression.rule.weightDown');
   });
 });
