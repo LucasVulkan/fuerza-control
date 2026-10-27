@@ -233,9 +233,10 @@ simples y cómodas, aplicadas a los estilos de progresión:
     media de RPE pasa de 8. Nunca baja de peso al superar el RPE.» Con No: «Sube
     al completar el objetivo de reps, sin mirar el RPE.»
 - **La línea de progresión del Workout no puede quedar suelta** en medio de la
-  tarjeta (revisión del usuario). La maqueta prueba dos anclajes, por decidir:
-  **A**, dentro de la cabecera (bajo el objetivo, separada por una raya), y **B**,
-  en una franja propia con el fondo y el radio de las celdas.
+  tarjeta (revisión del usuario). Va **dentro de la cabecera** (`surface2`). La
+  maqueta prueba, por decidir: **A2**, a todo lo ancho desde el borde, bajo el
+  número, separada por una raya (la que pidió probar el usuario); **A**, alineada
+  bajo el nombre; y **B**, una franja propia con el fondo y el radio de las celdas.
 - La frase de la regla (`progressionRule`) resume lo elegido debajo del todo.
 
 ## 8. Casos
