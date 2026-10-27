@@ -2,9 +2,10 @@
 
 > Tema: monetización
 > En corto: Al topar con un límite del plan gratis ya no salta el paywall de golpe: primero una hoja dice qué límite es («3 de 3 clientes»), qué puedes hacer sin pagar y, como opción, hacerte PRO; y cuando una compra falla, la app dice si te han cobrado y qué hacer, en vez de enseñar el error de la tienda en inglés.
+> Inicio: 2026-10-27
 > Fase M04-01 · pendiente · Maqueta de la hoja de límite · §3
 > Fase M04-02 · pendiente · Hoja de límite antes del paywall · §4
-> Fase M04-03 · pendiente · Errores de compra y restauración con siguiente paso · §5
+> Fase M04-03 · hecho · Errores de compra y restauración con siguiente paso · §5
 >
 > Estado: **spec escrita, sin implementar** (18-oct-2026). Sale del análisis
 > «qué hace que la app se sienta premium»: los peores momentos (un límite, un
@@ -142,4 +143,4 @@ hacer**:
 |---|---|---|---|---|
 | M04-01 | Maqueta de la hoja de límite | — | 🟢 | pendiente |
 | M04-02 | Hoja de límite y motivo en el paywall | M04-01 | 🟡 | pendiente |
-| M04-03 | Errores de compra traducidos | — | 🟢 | pendiente |
+| M04-03 | Errores de compra traducidos | — | 🟢 | hecho |

@@ -64,7 +64,11 @@ function makeRC({ user = '$RCAnonymousID:1', owners = {}, receipt = null } = {})
   let tick = 0;
   const of = (id) => ({ ...(rc.owners[id] ?? info()), requestDate: new Date(Date.now() - 10_000 + ++tick).toISOString() });
   return Object.assign(rc, {
-    PURCHASES_ERROR_CODE: { PRODUCT_ALREADY_PURCHASED_ERROR: '6', PAYMENT_PENDING_ERROR: '20', LOG_OUT_ANONYMOUS_USER_ERROR: '22' },
+    PURCHASES_ERROR_CODE: {
+      STORE_PROBLEM_ERROR: '2', PURCHASE_NOT_ALLOWED_ERROR: '3', PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR: '5',
+      PRODUCT_ALREADY_PURCHASED_ERROR: '6', RECEIPT_ALREADY_IN_USE_ERROR: '7', NETWORK_ERROR: '10',
+      PAYMENT_PENDING_ERROR: '20', LOG_OUT_ANONYMOUS_USER_ERROR: '22',
+    },
     isConfigured:     vi.fn(async () => true),
     getCustomerInfo:  vi.fn(async () => of(rc.user)),
     logIn:            vi.fn(async (id) => { rc.user = id; return { customerInfo: of(id), created: !rc.owners[id] }; }),
@@ -94,6 +98,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     const s = useStore.getState();
     saved = { profile: s.profile, trainerSync: s.trainerSync, clients: s.clients, programs: s.programs, sessionTemplates: s.sessionTemplates, workoutLog: s.workoutLog };
     setPro(false);
+    useStore.setState({ _proPending: false });
   });
   afterEach(() => {
     useStore.setState({ _getRC: getRC, ...saved });
@@ -126,7 +131,8 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     RC.purchasePackage.mockRejectedValueOnce(rcError('6', 'This product is already active for the user.'));
     const r = await useStore.getState().purchasePackage({ identifier: '$rc_lifetime' });
     expect(RC.restorePurchases).toHaveBeenCalledTimes(1);
-    expect(r).toEqual({ ok: false, error: 'This product is already active for the user.' });
+    expect(r).toMatchObject({ ok: false, action: 'retry' });
+    expect(r.error).not.toContain('already active');
     expect(isPro()).toBe(false);
   });
 
@@ -150,6 +156,33 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     RC.purchasePackage.mockRejectedValueOnce(rcError('20', 'Payment is pending.'));
     expect(await useStore.getState().purchasePackage({ identifier: '$rc_annual' })).toEqual({ ok: false, pending: true });
     expect(isPro()).toBe(false);
+    // M04-03: al llegar el PRO después, un solo aviso «PRO activado»
+    const toast = vi.spyOn(useStore.getState(), 'showToast').mockImplementation(() => {});
+    useStore.getState()._applyCustomerInfo(info({ pro: true }));
+    useStore.getState()._applyCustomerInfo(info({ pro: true }));
+    expect(toast.mock.calls.filter((c) => c[0] === 'PRO activado')).toHaveLength(1);
+  });
+
+  it('M04-03: red → mensaje propio sin cargo y Reintentar; el texto de la tienda va al log, no a la pantalla', async () => {
+    useRC();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    RC.purchasePackage.mockRejectedValueOnce(rcError('10', 'Error performing request.'));
+    const r = await useStore.getState().purchasePackage({ identifier: '$rc_annual' });
+    expect(r).toEqual({ ok: false, error: expect.stringContaining('ningún cargo'), action: 'retry' });
+    expect(r.error).not.toContain('Error performing request');
+    expect(warn).toHaveBeenCalledWith('[purchase]', '10', 'Error performing request.');
+    warn.mockRestore();
+  });
+
+  it('M04-03: recibo en otra cuenta → Restaurar; código desconocido → genérico con Reintentar, nunca e.message', async () => {
+    useRC();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    RC.purchasePackage.mockRejectedValueOnce(rcError('7', 'Receipt in use by other subscriber.'));
+    expect((await useStore.getState().purchasePackage({ identifier: '$rc_annual' })).action).toBe('restore');
+    RC.purchasePackage.mockRejectedValueOnce(rcError('99', 'Some English store text.'));
+    const r = await useStore.getState().purchasePackage({ identifier: '$rc_annual' });
+    expect(r).toEqual({ ok: false, error: expect.stringContaining('No se pudo completar la compra'), action: 'retry' });
+    expect(r.error).not.toContain('English');
   });
 
   // ── D2: cambiar de forma de entrar ──
