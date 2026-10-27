@@ -266,7 +266,9 @@ it('visor de carga', () => {
         n: w, nota: p.notas[w - 1],
         hizo: { sesiones: d.sesiones, series: d.series, rpe: d.rpeMedio, ext: d.ext, int: d.int },
         hoy: hoyEnLaApp(log, w),
-        propuesto: { frases: est[w].frases, chips, trabajoPct: est[w].trabajoPct, costePct: est[w].costePct ?? null, fuerzaPct },
+        propuesto: { frases: est[w].frases, chips, trabajoPct: est[w].trabajoPct, costePct: est[w].costePct ?? null, fuerzaPct,
+          // Para la maqueta: series hechas y previstas por grupo en la semana natural.
+          grupos: { hecho: d.hecho, prev: d.prev } },
       });
     }
     resultado.push({ id: p.id, nombre: p.nombre, perfil: p.perfil, conRpe: p.conRpe, previstas: p.previstas, semanas });

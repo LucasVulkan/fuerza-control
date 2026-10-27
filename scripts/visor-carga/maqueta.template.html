@@ -1,0 +1,233 @@
+<title>Pantalla de Carga</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta de la vista Carga propuesta. Datos: los del visor de carga
+     (scripts/visor-carga, cálculos reales de trainingLoad.js). Tokens formaFit.
+     Generada con: node scripts/visor-carga/maqueta.mjs */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a; --btnFill: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --orange: #ff9f6b; --blue: #4c85ff; --page: #070707;
+    color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--text); font-family: Inter, system-ui, sans-serif;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.55 Inter; max-width: 72ch; margin-bottom: 20px; }
+  .lead b { color: var(--text); }
+  .ctl { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .note { color: var(--mutedLight); font: 500 13px/1.5 Inter; margin-bottom: 16px; max-width: 72ch; }
+  .note b { color: var(--text); }
+  .stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .col { display: grid; gap: 10px; min-width: 0; }
+  .col > h2 { font: 800 15px Inter; }
+  .phone { width: 375px; max-width: 100%; background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; padding: 16px; display: grid; gap: 12px; }
+
+  .week { display: flex; align-items: center; justify-content: space-between; }
+  .week b { font: 800 16px Inter; }
+  .week small { display: block; font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .week button { width: 36px; height: 36px; border-radius: 10px; border: 0; background: var(--surface2); color: var(--text); font: 900 16px Inter; cursor: pointer; }
+  .week button:disabled { opacity: .3; cursor: default; }
+
+  .card { background: var(--surface); border-radius: 16px; padding: 14px 16px; }
+  .ctitle { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .lines { display: grid; gap: 10px; }
+  .line { display: flex; gap: 10px; font: 500 14px/1.45 Inter; color: var(--mutedLight); }
+  .line i { flex: none; width: 8px; height: 8px; border-radius: 4px; margin-top: 7px; background: var(--muted); }
+  .line i.ok { background: var(--accent); }
+  .line i.warn { background: var(--orange); }
+  .line b { color: var(--text); font-weight: 800; }
+  .hintline { font: 500 12px/1.45 Inter; color: var(--muted); margin-top: 10px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { background: var(--surface); border-radius: 14px; padding: 12px; }
+  .tile span { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--muted); }
+  .tile b { display: block; font: 900 22px Inter; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .tile b small { font: 700 13px Inter; color: var(--mutedLight); }
+  .tile em { display: block; font-style: normal; font: 500 11px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .sub { background: var(--surface); border-radius: 12px; padding: 9px 14px; display: flex; justify-content: space-between; gap: 10px; font: 500 12px Inter; color: var(--mutedLight); }
+  .sub b { color: var(--text); font-weight: 800; }
+
+  .grp { display: grid; gap: 10px; }
+  .gl { display: flex; justify-content: space-between; font: 700 13px Inter; margin-bottom: 4px; }
+  .gl span:last-child { color: var(--mutedLight); font-variant-numeric: tabular-nums; }
+  .gl span.low { color: var(--orange); }
+  .gt { position: relative; height: 10px; background: var(--bg); border-radius: 5px; }
+  .gt .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--surface2); }
+  .gt .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); }
+  .gt .fill.low { background: var(--orange); }
+  .gt .mark { position: absolute; top: -4px; width: 2px; height: 18px; border-radius: 1px; background: var(--text); }
+  .gscale { display: flex; justify-content: space-between; font: 500 11px Inter; color: var(--muted); margin-top: 6px; }
+
+  .chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; margin-top: 4px; }
+  .bar { flex: 1; position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: pointer; }
+  .bar .b { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--accent50); }
+  .bar.cur .b { background: var(--accent); }
+  .bar .p { position: absolute; left: 0; right: 0; height: 2px; background: var(--mutedLight); }
+  .bar small { font: 700 10px Inter; color: var(--muted); margin-top: 4px; }
+  .bar.cur small { color: var(--text); }
+  .legend { display: flex; gap: 14px; font: 500 11px Inter; color: var(--mutedLight); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--accent50); margin-right: 5px; vertical-align: -1px; }
+  .legend i.p { height: 2px; background: var(--mutedLight); vertical-align: 3px; }
+
+  .cli { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border-radius: 14px; }
+  .av { width: 34px; height: 34px; border-radius: 17px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 13px Inter; color: var(--accent); flex: none; }
+  .cli .nm { font: 700 15px Inter; }
+  .cli .mt { font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .flag { margin-left: auto; font: 800 11px Inter; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .flag.warn { color: var(--orange); background: rgba(255,159,107,.12); }
+  .flag.ok { color: var(--mutedLight); background: var(--surface2); }
+  .cli.sel { box-shadow: inset 0 0 0 1px var(--accent50); }
+</style>
+
+<div class="wrap">
+  <h1>Pantalla de Carga</h1>
+  <p class="lead">Maqueta con los datos del visor de carga (cálculos reales de la app). <b>Primero lo que pasó esta semana, dicho con números concretos y contra lo previsto</b>; luego las cifras, las series por grupo contra el plan y la evolución. Lo que depende del esfuerzo de la sesión (sRPE) solo aparece si se apunta. A la derecha, la lista del entrenador con <b>un aviso por cliente</b>.</p>
+  <div class="ctl" id="who" role="group" aria-label="Persona"></div>
+  <p class="note" id="perfil"></p>
+
+  <div class="stage">
+    <div class="col">
+      <h2>Quien entrena · Progreso › Carga</h2>
+      <div class="phone" id="screen"></div>
+    </div>
+    <div class="col">
+      <h2>Entrenador · Clientes</h2>
+      <div class="phone" id="coach"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const GRUPO = {};
+for (const p of DATA) for (const s of p.semanas) for (const g of s.hoy.grupos ?? []) GRUPO[g.group] = g.nombre;
+const nombreGrupo = (id) => GRUPO[id] ?? id;
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const lunes = (n) => { const d = new Date(2026, 7, 31 + 7 * (n - 1)); return `${d.getDate()} ${MESES[d.getMonth()]}`; };
+const pl = (n, a, b) => `${n} ${n === 1 ? a : b}`;
+const suma = (xs) => xs.reduce((a, x) => a + x.sets, 0);
+let who = DATA[0].id, week = 6;
+
+function resumen(p, s) {
+  const pr = s.propuesto, g = pr.grupos;
+  const hechas = suma(g.hecho), previstas = suma(g.prev);
+  const L = [];
+  // Sesiones
+  L.push([s.hizo.sesiones >= p.previstas ? 'ok' : 'warn',
+    s.hizo.sesiones === 0 ? '<b>No has entrenado</b> esta semana.' : `<b>${s.hizo.sesiones} de ${pl(p.previstas, 'sesión', 'sesiones')}</b> previstas.`]);
+  // Series contra lo previsto
+  if (s.hizo.sesiones > 0) {
+    const faltan = g.prev.filter((x) => (g.hecho.find((h) => h.group === x.group)?.sets ?? 0) < x.sets - 1);
+    L.push([hechas >= previstas - 1 ? 'ok' : 'warn',
+      hechas >= previstas - 1 ? `<b>${hechas} de ${previstas} series</b>: todo el volumen previsto.`
+        : `<b>${hechas} de ${previstas} series</b>. Faltan ${faltan.map((x) => `${nombreGrupo(x.group).toLowerCase()} (${g.hecho.find((h) => h.group === x.group)?.sets ?? 0} de ${x.sets})`).join(', ')}.`]);
+  }
+  // Esfuerzo (solo con sRPE)
+  if (s.hizo.rpe != null) {
+    const r = Math.round(s.hizo.rpe * 10) / 10, c = pr.costePct;
+    const txt = c == null ? `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b> de media.`
+      : c > 15 ? `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b>: te ha costado más que otras semanas con un trabajo parecido.`
+      : c < -15 ? `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b>: te ha costado menos que otras semanas con un trabajo parecido.`
+      : `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b>, como otras semanas con un trabajo parecido.`;
+    L.push([c != null && c > 15 ? 'warn' : 'ok', txt]);
+  }
+  // Fuerza
+  if (pr.fuerzaPct != null) {
+    const f = pr.fuerzaPct, x = Math.round(Math.abs(f));
+    L.push([f < -2 ? 'warn' : f > 2 ? 'ok' : '',
+      f > 2 ? `<b>Tu fuerza sube</b>: tu 1RM estimado es un ${x} % más alto que hace 4 semanas.`
+        : f < -2 ? `<b>Tu fuerza baja</b>: tu 1RM estimado es un ${x} % más bajo que hace 4 semanas.`
+        : '<b>Tu fuerza se mantiene</b>: tu 1RM estimado es el mismo que hace 4 semanas.']);
+  }
+  return L;
+}
+
+// Un aviso por cliente, el más importante.
+function aviso(chips) {
+  for (const k of ['No viene', 'Se está pasando', 'Plano']) if (chips.includes(k)) return k;
+  return chips.find((c) => c.startsWith('Le falta')) ?? null;
+}
+
+function render() {
+  const p = DATA.find((x) => x.id === who), s = p.semanas[week - 1];
+  document.getElementById('who').innerHTML = DATA.map((x) => `<button class="${x.id === who ? 'on' : ''}" data-who="${x.id}">${x.nombre.split(' · ')[0]}</button>`).join('');
+  document.getElementById('perfil').innerHTML = `<b>${p.nombre}.</b> ${p.perfil} <b>Semana ${week}:</b> ${s.nota}`;
+  const g = s.propuesto.grupos, hechas = suma(g.hecho), previstas = suma(g.prev);
+  const lines = resumen(p, s);
+  const max = Math.max(10, ...g.prev.map((x) => x.sets), ...g.hecho.map((x) => x.sets));
+  const top = Math.ceil(max / 10) * 10;
+  const grupos = [...g.prev.map((x) => x.group), ...g.hecho.map((x) => x.group).filter((id) => !g.prev.some((y) => y.group === id))];
+  const serieMax = Math.max(...p.semanas.map((w) => Math.max(w.hizo.series, suma(w.propuesto.grupos.prev))), 1);
+  const rpeVis = p.conRpe && s.hizo.rpe != null;
+  document.getElementById('screen').innerHTML = `
+    <div class="week">
+      <button data-w="-1" ${week === 1 ? 'disabled' : ''} aria-label="Semana anterior">‹</button>
+      <div style="text-align:center"><b>Semana del ${lunes(week)}</b><small>Lunes a domingo</small></div>
+      <button data-w="1" ${week === p.semanas.length ? 'disabled' : ''} aria-label="Semana siguiente">›</button>
+    </div>
+    <div class="card">
+      <div class="ctitle">Tu semana</div>
+      <div class="lines">${lines.map(([k, t]) => `<div class="line"><i class="${k}"></i><span>${t}</span></div>`).join('')}</div>
+      ${!p.conRpe ? '<div class="hintline">Apunta el esfuerzo al acabar cada sesión (de 1 a 10) y aquí verás también cuánto te cuesta.</div>' : ''}
+    </div>
+    <div class="tiles">
+      <div class="tile"><span>SESIONES</span><b>${s.hizo.sesiones}<small> / ${p.previstas}</small></b><em>previstas</em></div>
+      <div class="tile"><span>SERIES</span><b>${hechas}<small> / ${previstas}</small></b><em>previstas</em></div>
+      <div class="tile"><span>ESFUERZO</span><b>${rpeVis ? String(Math.round(s.hizo.rpe * 10) / 10).replace('.', ',') : '—'}<small>${rpeVis ? ' / 10' : ''}</small></b><em>${rpeVis ? 'media (sRPE)' : 'sin apuntar'}</em></div>
+    </div>
+    ${rpeVis && s.hoy.mono != null ? `<div class="sub"><span>Días ${s.hoy.monoEtiqueta === 'repetitiva' ? '<b>muy parecidos</b>' : s.hoy.monoEtiqueta === 'variada' ? '<b>variados</b>' : '<b>algo parecidos</b>'}</span><span>${s.hoy.strainPct != null ? `Estrés <b>${s.hoy.strainPct > 0 ? '+' : ''}${s.hoy.strainPct} %</b> sobre tu mes` : ''}</span></div>` : ''}
+    <div class="card">
+      <div class="ctitle">Series por grupo</div>
+      <div class="grp">${grupos.map((id) => {
+        const h = g.hecho.find((x) => x.group === id)?.sets ?? 0, pv = g.prev.find((x) => x.group === id)?.sets ?? 0;
+        const low = pv > 0 && h < pv - 1;
+        return `<div><div class="gl"><span>${nombreGrupo(id)}</span><span class="${low ? 'low' : ''}">${h} de ${pv}</span></div>
+          <div class="gt">${Array.from({ length: top / 10 - 1 }, (_, k) => `<span class="grid" style="left:${(k + 1) * 10 / top * 100}%"></span>`).join('')}
+            <span class="fill ${low ? 'low' : ''}" style="width:${Math.min(100, h / top * 100)}%"></span>
+            ${pv ? `<span class="mark" style="left:calc(${pv / top * 100}% - 1px)"></span>` : ''}</div></div>`;
+      }).join('')}</div>
+      <div class="gscale">${Array.from({ length: top / 10 + 1 }, (_, k) => `<span>${k * 10}</span>`).join('')}</div>
+      <div class="legend"><span><i></i>hechas</span><span><i class="p" style="width:2px;height:10px;vertical-align:-1px;background:var(--text)"></i> previstas</span></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Series cada semana</div>
+      <div class="chart">${p.semanas.map((w) => {
+        const pv = suma(w.propuesto.grupos.prev);
+        return `<div class="bar ${w.n === week ? 'cur' : ''}" data-go="${w.n}" title="Semana ${w.n}: ${w.hizo.series} de ${pv}">
+          <div class="b" style="height:${w.hizo.series / serieMax * 92}%"></div>
+          <div class="p" style="bottom:calc(${pv / serieMax * 92}% + 14px)"></div>
+          <small>${w.n}</small></div>`;
+      }).join('')}</div>
+      <div class="legend"><span><i></i>series hechas</span><span><i class="p"></i>previstas</span></div>
+    </div>`;
+
+  document.getElementById('coach').innerHTML = `
+    <div class="week"><div><b>Clientes</b><small>Semana del ${lunes(week)}</small></div></div>
+    ${DATA.map((x) => {
+      const w = x.semanas[week - 1], a = aviso(w.propuesto.chips);
+      return `<div class="cli ${x.id === who ? 'sel' : ''}" data-who="${x.id}" style="cursor:pointer">
+        <div class="av">${x.nombre[0]}</div>
+        <div><div class="nm">${x.nombre.split(' · ')[0]}</div><div class="mt">${w.hizo.sesiones} de ${pl(x.previstas, 'sesión', 'sesiones')}</div></div>
+        <span class="flag ${a ? 'warn' : 'ok'}">${a ?? 'Al día'}</span></div>`;
+    }).join('')}`;
+}
+
+document.addEventListener('click', (ev) => {
+  const t = ev.target.closest('[data-who],[data-w],[data-go]');
+  if (!t) return;
+  if (t.dataset.who) who = t.dataset.who;
+  if (t.dataset.w) week = Math.min(10, Math.max(1, week + Number(t.dataset.w)));
+  if (t.dataset.go) week = Number(t.dataset.go);
+  render();
+});
+render();
+</script>

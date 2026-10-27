@@ -1,0 +1,5338 @@
+<title>Pantalla de Carga</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta de la vista Carga propuesta. Datos: los del visor de carga
+     (scripts/visor-carga, cálculos reales de trainingLoad.js). Tokens formaFit.
+     Generada con: node scripts/visor-carga/maqueta.mjs */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a; --btnFill: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --orange: #ff9f6b; --blue: #4c85ff; --page: #070707;
+    color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--text); font-family: Inter, system-ui, sans-serif;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.55 Inter; max-width: 72ch; margin-bottom: 20px; }
+  .lead b { color: var(--text); }
+  .ctl { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .note { color: var(--mutedLight); font: 500 13px/1.5 Inter; margin-bottom: 16px; max-width: 72ch; }
+  .note b { color: var(--text); }
+  .stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .col { display: grid; gap: 10px; min-width: 0; }
+  .col > h2 { font: 800 15px Inter; }
+  .phone { width: 375px; max-width: 100%; background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; padding: 16px; display: grid; gap: 12px; }
+
+  .week { display: flex; align-items: center; justify-content: space-between; }
+  .week b { font: 800 16px Inter; }
+  .week small { display: block; font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .week button { width: 36px; height: 36px; border-radius: 10px; border: 0; background: var(--surface2); color: var(--text); font: 900 16px Inter; cursor: pointer; }
+  .week button:disabled { opacity: .3; cursor: default; }
+
+  .card { background: var(--surface); border-radius: 16px; padding: 14px 16px; }
+  .ctitle { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .lines { display: grid; gap: 10px; }
+  .line { display: flex; gap: 10px; font: 500 14px/1.45 Inter; color: var(--mutedLight); }
+  .line i { flex: none; width: 8px; height: 8px; border-radius: 4px; margin-top: 7px; background: var(--muted); }
+  .line i.ok { background: var(--accent); }
+  .line i.warn { background: var(--orange); }
+  .line b { color: var(--text); font-weight: 800; }
+  .hintline { font: 500 12px/1.45 Inter; color: var(--muted); margin-top: 10px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { background: var(--surface); border-radius: 14px; padding: 12px; }
+  .tile span { display: block; font: 800 11px Inter; letter-spacing: 1.4px; color: var(--muted); }
+  .tile b { display: block; font: 900 22px Inter; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .tile b small { font: 700 13px Inter; color: var(--mutedLight); }
+  .tile em { display: block; font-style: normal; font: 500 11px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .sub { background: var(--surface); border-radius: 12px; padding: 9px 14px; display: flex; justify-content: space-between; gap: 10px; font: 500 12px Inter; color: var(--mutedLight); }
+  .sub b { color: var(--text); font-weight: 800; }
+
+  .grp { display: grid; gap: 10px; }
+  .gl { display: flex; justify-content: space-between; font: 700 13px Inter; margin-bottom: 4px; }
+  .gl span:last-child { color: var(--mutedLight); font-variant-numeric: tabular-nums; }
+  .gl span.low { color: var(--orange); }
+  .gt { position: relative; height: 10px; background: var(--bg); border-radius: 5px; }
+  .gt .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--surface2); }
+  .gt .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); }
+  .gt .fill.low { background: var(--orange); }
+  .gt .mark { position: absolute; top: -4px; width: 2px; height: 18px; border-radius: 1px; background: var(--text); }
+  .gscale { display: flex; justify-content: space-between; font: 500 11px Inter; color: var(--muted); margin-top: 6px; }
+
+  .chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; margin-top: 4px; }
+  .bar { flex: 1; position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: pointer; }
+  .bar .b { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--accent50); }
+  .bar.cur .b { background: var(--accent); }
+  .bar .p { position: absolute; left: 0; right: 0; height: 2px; background: var(--mutedLight); }
+  .bar small { font: 700 10px Inter; color: var(--muted); margin-top: 4px; }
+  .bar.cur small { color: var(--text); }
+  .legend { display: flex; gap: 14px; font: 500 11px Inter; color: var(--mutedLight); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--accent50); margin-right: 5px; vertical-align: -1px; }
+  .legend i.p { height: 2px; background: var(--mutedLight); vertical-align: 3px; }
+
+  .cli { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border-radius: 14px; }
+  .av { width: 34px; height: 34px; border-radius: 17px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 13px Inter; color: var(--accent); flex: none; }
+  .cli .nm { font: 700 15px Inter; }
+  .cli .mt { font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .flag { margin-left: auto; font: 800 11px Inter; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .flag.warn { color: var(--orange); background: rgba(255,159,107,.12); }
+  .flag.ok { color: var(--mutedLight); background: var(--surface2); }
+  .cli.sel { box-shadow: inset 0 0 0 1px var(--accent50); }
+</style>
+
+<div class="wrap">
+  <h1>Pantalla de Carga</h1>
+  <p class="lead">Maqueta con los datos del visor de carga (cálculos reales de la app). <b>Primero lo que pasó esta semana, dicho con números concretos y contra lo previsto</b>; luego las cifras, las series por grupo contra el plan y la evolución. Lo que depende del esfuerzo de la sesión (sRPE) solo aparece si se apunta. A la derecha, la lista del entrenador con <b>un aviso por cliente</b>.</p>
+  <div class="ctl" id="who" role="group" aria-label="Persona"></div>
+  <p class="note" id="perfil"></p>
+
+  <div class="stage">
+    <div class="col">
+      <h2>Quien entrena · Progreso › Carga</h2>
+      <div class="phone" id="screen"></div>
+    </div>
+    <div class="col">
+      <h2>Entrenador · Clientes</h2>
+      <div class="phone" id="coach"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = [
+ {
+  "id": "ana",
+  "nombre": "Ana · principiante, dos días, sin sRPE",
+  "perfil": "Lunes y jueves, máquinas, una sola sesión: pecho, pierna y hombro, 3×10-12. Sube 2,5 kg cada dos semanas. No apunta el esfuerzo.",
+  "conRpe": false,
+  "previstas": 2,
+  "semanas": [
+   {
+    "n": 1,
+    "nota": "Primera semana: 30/60/20 kg, 10 reps en todo.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 135,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": null,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": null,
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 2,
+    "nota": "Mismo peso, sube a 12/11/11.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 149.3571428571429,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 2,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 5,
+      "semanas": 2,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 3,
+    "nota": "Peso nuevo (+2,5 kg): vuelve a 10/10/9.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 132.39880952380952,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 2,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 9,
+      "semanas": 3,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": -6.878506237963677,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 4,
+    "nota": "Mismo peso, 12/11/11.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 149.15476190476193,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 2,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 14,
+      "semanas": 4,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": 7.36842105263158,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 5,
+    "nota": "Solo va el lunes. Peso nuevo.",
+    "hizo": {
+     "sesiones": 1,
+     "series": 9,
+     "rpe": null,
+     "ext": 66.86642246642246,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 1,
+     "mediaSesiones": 2,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 17,
+      "semanas": 5,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 3
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 3
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "1 sesión de 2 previstas.",
+      "trabajo": "Un 53 % menos de trabajo que tu media.",
+      "grupos": "Te faltan: pecho (3 de 6), cuádriceps (3 de 6), hombro (3 de 6).",
+      "fuerza": "Tu fuerza sube (+17 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -52.73712210886803,
+     "costePct": null,
+     "fuerzaPct": 17.01388888888886,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 3
+       },
+       {
+        "group": "quads",
+        "sets": 3
+       },
+       {
+        "group": "shoulders",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 6,
+    "nota": "Vuelve a los dos días; mismo peso que la anterior.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 149.11428571428573,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 1.75,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 23,
+      "semanas": 6,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Un 20 % más de trabajo que tu media.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+17 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 19.824133898327844,
+     "costePct": null,
+     "fuerzaPct": 16.666666666666675,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 7,
+    "nota": "Peso nuevo (+2,5 kg).",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 131.50156985871268,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 1.75,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 25,
+      "semanas": 7,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+15 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 5.72262073036065,
+     "costePct": null,
+     "fuerzaPct": 15.473145780051167,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 8,
+    "nota": "Mismo peso, 12/11/11.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 149.0769230769231,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 1.75,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 31,
+      "semanas": 8,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Un 20 % más de trabajo que tu media.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+15 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 20.069113728350096,
+     "costePct": null,
+     "fuerzaPct": 15.384615384615374,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 9,
+    "nota": "Peso nuevo.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 131.15560365560364,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 1.75,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 34,
+      "semanas": 9,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+14 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 5.651534286945048,
+     "costePct": null,
+     "fuerzaPct": 14.362017804154338,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 10,
+    "nota": "Mismo peso, 12/11/11.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 149.04232804232805,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 2,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 40,
+      "semanas": 10,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+14 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 6.29776798474313,
+     "costePct": null,
+     "fuerzaPct": 14.28571428571428,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "luis",
+  "nombre": "Luis · entrena cuando puede, sin sRPE",
+  "perfil": "Programa de martes y viernes (misma sesión que Ana). Semanas 1-4 va uno o dos días, 5-8 desaparece, vuelve en la 9 con menos peso.",
+  "conRpe": false,
+  "previstas": 2,
+  "semanas": [
+   {
+    "n": 1,
+    "nota": "Va martes y viernes.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 141.42857142857142,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": null,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": null,
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 2,
+    "nota": "Solo va el martes.",
+    "hizo": {
+     "sesiones": 1,
+     "series": 9,
+     "rpe": null,
+     "ext": 70.71428571428571,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 1,
+     "mediaSesiones": null,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 0,
+      "semanas": 2,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 3
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 3
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "1 sesión de 2 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Te faltan: pecho (3 de 6), cuádriceps (3 de 6), hombro (3 de 6)."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 3
+       },
+       {
+        "group": "quads",
+        "sets": 3
+       },
+       {
+        "group": "shoulders",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 3,
+    "nota": "Va los dos días; sube peso.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 149.39795918367344,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 1,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 11,
+      "semanas": 3,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Un 41 % más de trabajo que tu media.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": 40.84656084656084,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 4,
+    "nota": "Solo el viernes.",
+    "hizo": {
+     "sesiones": 1,
+     "series": 9,
+     "rpe": null,
+     "ext": 70.71428571428571,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 1,
+     "mediaSesiones": 1.5,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 11,
+      "semanas": 4,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 3
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 3
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "1 sesión de 2 previstas.",
+      "trabajo": "Un 41 % menos de trabajo que tu media.",
+      "grupos": "Te faltan: pecho (3 de 6), cuádriceps (3 de 6), hombro (3 de 6)."
+     },
+     "chips": [],
+     "trabajoPct": -41.32257063023906,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 3
+       },
+       {
+        "group": "quads",
+        "sets": 3
+       },
+       {
+        "group": "shoulders",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 5,
+    "nota": "No entrena.",
+    "hizo": {
+     "sesiones": 0,
+     "series": 0,
+     "rpe": null,
+     "ext": null,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 0,
+     "mediaSesiones": 1.3333333333333333,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 11,
+      "semanas": 4,
+      "actual": false
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 0
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 0
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 0
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "0 sesiones de 2 previstas.",
+      "trabajo": "Semana sin entrenar.",
+      "grupos": "Te faltan: pecho (0 de 6), cuádriceps (0 de 6), hombro (0 de 6)."
+     },
+     "chips": [
+      "No viene"
+     ],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 6,
+    "nota": "No entrena.",
+    "hizo": {
+     "sesiones": 0,
+     "series": 0,
+     "rpe": null,
+     "ext": null,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 0,
+     "mediaSesiones": 1,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 11,
+      "semanas": 4,
+      "actual": false
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 0
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 0
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 0
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "0 sesiones de 2 previstas.",
+      "trabajo": "Semana sin entrenar.",
+      "grupos": "Te faltan: pecho (0 de 6), cuádriceps (0 de 6), hombro (0 de 6)."
+     },
+     "chips": [
+      "No viene",
+      "Le falta pecho",
+      "Le falta cuádriceps",
+      "Le falta hombro"
+     ],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 7,
+    "nota": "No entrena.",
+    "hizo": {
+     "sesiones": 0,
+     "series": 0,
+     "rpe": null,
+     "ext": null,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 0,
+     "mediaSesiones": 0.75,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 11,
+      "semanas": 4,
+      "actual": false
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 0
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 0
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 0
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "0 sesiones de 2 previstas.",
+      "trabajo": "Semana sin entrenar.",
+      "grupos": "Te faltan: pecho (0 de 6), cuádriceps (0 de 6), hombro (0 de 6)."
+     },
+     "chips": [
+      "No viene",
+      "Le falta pecho",
+      "Le falta cuádriceps",
+      "Le falta hombro"
+     ],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 8,
+    "nota": "No entrena.",
+    "hizo": {
+     "sesiones": 0,
+     "series": 0,
+     "rpe": null,
+     "ext": null,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 0,
+     "mediaSesiones": 0.25,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": 11,
+      "semanas": 4,
+      "actual": false
+     },
+     "grupos": []
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "0 sesiones de 2 previstas.",
+      "trabajo": "Semana sin entrenar.",
+      "grupos": "Te faltan: pecho (0 de 6), cuádriceps (0 de 6), hombro (0 de 6)."
+     },
+     "chips": [
+      "No viene",
+      "Le falta pecho",
+      "Le falta cuádriceps",
+      "Le falta hombro"
+     ],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 9,
+    "nota": "Vuelve los dos días con ~10 % menos de peso.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 18,
+     "rpe": null,
+     "ext": 110.4582560296846,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 2,
+     "mediaSesiones": 0,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": -6,
+      "semanas": 5,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 2 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 10,
+    "nota": "Solo el martes, ya con las reps de siempre.",
+    "hizo": {
+     "sesiones": 1,
+     "series": 9,
+     "rpe": null,
+     "ext": 62.84693877551021,
+     "int": null
+    },
+    "hoy": {
+     "vacia": "sin sRPE",
+     "carga": "0",
+     "cargaEs": "esta semana",
+     "estado": null,
+     "sesiones7d": 1,
+     "mediaSesiones": 0.5,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": {
+      "pct": -1,
+      "semanas": 6,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 3
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 3
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "1 sesión de 2 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Te faltan: pecho (3 de 6), cuádriceps (3 de 6), hombro (3 de 6)."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "chest",
+        "sets": 3
+       },
+       {
+        "group": "quads",
+        "sets": 3
+       },
+       {
+        "group": "shoulders",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       }
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "marta",
+  "nombre": "Marta · hipertrofia, cuatro días, con sRPE",
+  "perfil": "Torso/pierna dos veces (lun, mar, jue, vie), sRPE 7. Acumulación +1 serie por ejercicio y semana, descarga (−40 % de series, sRPE 5) en las semanas 4 y 8. La fuerza sube poco a poco.",
+  "conRpe": true,
+  "previstas": 4,
+  "semanas": [
+   {
+    "n": 1,
+    "nota": "Acumulación: 3 series por ejercicio.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 39,
+     "rpe": 7,
+     "ext": 313.64661654135335,
+     "int": 1092.5774999999999
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "0%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": null,
+     "mono": 1.135294179567879,
+     "monoEtiqueta": "variada",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": null,
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 2,
+    "nota": "Acumulación: 4 series.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 52,
+     "rpe": 7,
+     "ext": 418.1954887218045,
+     "int": 1264.5500000000002
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+7%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1450641706340656,
+     "monoEtiqueta": "variada",
+     "strainPct": 17,
+     "tendencia": "hard",
+     "rend": {
+      "pct": 0,
+      "semanas": 2,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 16
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 8
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 8
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 8
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 3,
+    "nota": "Acumulación: 5 series; sube peso en los básicos.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 65,
+     "rpe": 7,
+     "ext": 528.3308270676692,
+     "int": 1417.1033333333335
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+13%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1456898004716478,
+     "monoEtiqueta": "variada",
+     "strainPct": 21,
+     "tendencia": "hard",
+     "rend": {
+      "pct": 4,
+      "semanas": 3,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 20
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 10
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 10
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 10
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 10
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 5
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 44 % más de trabajo que tu media.",
+      "coste": "Te costó menos de lo normal.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": 44.38382904402323,
+     "costePct": -17.56240873468471,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 20
+       },
+       {
+        "group": "chest",
+        "sets": 10
+       },
+       {
+        "group": "back",
+        "sets": 10
+       },
+       {
+        "group": "shoulders",
+        "sets": 10
+       },
+       {
+        "group": "quads",
+        "sets": 10
+       },
+       {
+        "group": "arms",
+        "sets": 5
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 20
+       },
+       {
+        "group": "chest",
+        "sets": 10
+       },
+       {
+        "group": "back",
+        "sets": 10
+       },
+       {
+        "group": "shoulders",
+        "sets": 10
+       },
+       {
+        "group": "quads",
+        "sets": 10
+       },
+       {
+        "group": "arms",
+        "sets": 5
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 4,
+    "nota": "Descarga: 3 series, sRPE 5.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 39,
+     "rpe": 5,
+     "ext": 313.64661654135335,
+     "int": 753.2625
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-33%",
+     "cargaEs": "vs media 28d",
+     "estado": "unloading",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1442255277429798,
+     "monoEtiqueta": "variada",
+     "strainPct": -40,
+     "tendencia": "adaptation",
+     "rend": {
+      "pct": 4,
+      "semanas": 4,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 25 % menos de trabajo que tu media.",
+      "coste": "Te costó menos de lo normal.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": -25.332482115475273,
+     "costePct": -21.59672179760779,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 5,
+    "nota": "Segundo bloque, otra vez 3 series.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 39,
+     "rpe": 7,
+     "ext": 313.64661654135335,
+     "int": 1079.68
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-4%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1413417161471469,
+     "monoEtiqueta": "variada",
+     "strainPct": -5,
+     "tendencia": "deload",
+     "rend": {
+      "pct": 4,
+      "semanas": 5,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 20 % menos de trabajo que tu media.",
+      "coste": "Te costó más de lo normal para ese trabajo.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+4 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -20.283969844924965,
+     "costePct": 18.792229224287517,
+     "fuerzaPct": 3.9989177489177408,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 6,
+    "nota": "Acumulación: 4 series.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 52,
+     "rpe": 7,
+     "ext": 430.2329836583524,
+     "int": 1287.5333333333333
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+13%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1464796905730505,
+     "monoEtiqueta": "variada",
+     "strainPct": 14,
+     "tendencia": "deload",
+     "rend": {
+      "pct": 8,
+      "semanas": 6,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 16
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 8
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 8
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 8
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+8 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 9.34747480209226,
+     "costePct": 3.641053287848095,
+     "fuerzaPct": 7.997835497835504,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 7,
+    "nota": "Acumulación: 5 series; sube peso.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 65,
+     "rpe": 7,
+     "ext": 512.7293233082708,
+     "int": 1447.7983333333334
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+27%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1378296421731144,
+     "monoEtiqueta": "variada",
+     "strainPct": 27,
+     "tendencia": "fatigue",
+     "rend": {
+      "pct": 8,
+      "semanas": 7,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 20
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 10
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 10
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 10
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 10
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 5
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 29 % más de trabajo que tu media.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+4 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 29.325483733857062,
+     "costePct": -1.94470341058115,
+     "fuerzaPct": 3.845153233779075,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 20
+       },
+       {
+        "group": "chest",
+        "sets": 10
+       },
+       {
+        "group": "back",
+        "sets": 10
+       },
+       {
+        "group": "shoulders",
+        "sets": 10
+       },
+       {
+        "group": "quads",
+        "sets": 10
+       },
+       {
+        "group": "arms",
+        "sets": 5
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 20
+       },
+       {
+        "group": "chest",
+        "sets": 10
+       },
+       {
+        "group": "back",
+        "sets": 10
+       },
+       {
+        "group": "shoulders",
+        "sets": 10
+       },
+       {
+        "group": "quads",
+        "sets": 10
+       },
+       {
+        "group": "arms",
+        "sets": 5
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 8,
+    "nota": "Descarga: 3 series, sRPE 5.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 39,
+     "rpe": 5,
+     "ext": 313.64661654135335,
+     "int": 743.85
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-35%",
+     "cargaEs": "vs media 28d",
+     "estado": "unloading",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1507089160949178,
+     "monoEtiqueta": "variada",
+     "strainPct": -34,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 8,
+      "semanas": 8,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 6
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 6
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 6
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 20 % menos de trabajo que tu media.",
+      "coste": "Te costó menos de lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+4 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -20.103038380237116,
+     "costePct": -18.643151174627405,
+     "fuerzaPct": 3.845153233779075,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "chest",
+        "sets": 6
+       },
+       {
+        "group": "back",
+        "sets": 6
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 6
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 9,
+    "nota": "Semana normal: 4 series; sube peso.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 52,
+     "rpe": 7,
+     "ext": 429.6012408643988,
+     "int": 1263.1733333333332
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+7%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.134925816674284,
+     "monoEtiqueta": "variada",
+     "strainPct": 10,
+     "tendencia": "adaptation",
+     "rend": {
+      "pct": 12,
+      "semanas": 9,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 16
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 8
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 8
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 8
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+8 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 9.434733368532576,
+     "costePct": 1.126727577485176,
+     "fuerzaPct": 7.69030646755815,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 10,
+    "nota": "Semana normal: 4 series.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 52,
+     "rpe": 7,
+     "ext": 418.1954887218045,
+     "int": 1268.68
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+7%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1522293515426865,
+     "monoEtiqueta": "variada",
+     "strainPct": 8,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 12,
+      "semanas": 10,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 16
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 8
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 8
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 8
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+4 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -0.7963544384252508,
+     "costePct": 9.044457659503902,
+     "fuerzaPct": 3.7027758292414115,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 16
+       },
+       {
+        "group": "chest",
+        "sets": 8
+       },
+       {
+        "group": "back",
+        "sets": 8
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "quads",
+        "sets": 8
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "javi",
+  "nombre": "Javi · fuerza, cuatro días, con sRPE",
+  "perfil": "Lun, mié, vie y sáb. Semanas 1-4 normales (sRPE 7); 5-7 bloque duro (+35 % de trabajo, sRPE 8); la 8 repite el trabajo de la 7 con sRPE 9 y reps peores; la 9 descarga (−40 %, sRPE 5); la 10 vuelve y la fuerza sube.",
+  "conRpe": true,
+  "previstas": 4,
+  "semanas": [
+   {
+    "n": 1,
+    "nota": "Semana normal.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 36,
+     "rpe": 7,
+     "ext": 209.69924812030075,
+     "int": 1087.8816666666667
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "0%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": null,
+     "mono": 1.1360538296683096,
+     "monoEtiqueta": "variada",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": null,
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 9
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 7
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 7
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 4
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 2,
+    "nota": "Semana normal.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 36,
+     "rpe": 7,
+     "ext": 209.69924812030075,
+     "int": 1046.0974999999999
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-2%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1205939620056127,
+     "monoEtiqueta": "variada",
+     "strainPct": -5,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 0,
+      "semanas": 2,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 9
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 7
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 7
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 4
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 3,
+    "nota": "Sube 2,5 kg en los básicos.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 36,
+     "rpe": 7,
+     "ext": 211.84125492302184,
+     "int": 1081.5816666666667
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+1%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.13861731079176,
+     "monoEtiqueta": "variada",
+     "strainPct": 2,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 1,
+      "semanas": 3,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 9
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 7
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 7
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 4
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": 1.021466133961657,
+     "costePct": 0.34262783359986226,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 4,
+    "nota": "Semana normal.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 36,
+     "rpe": 7,
+     "ext": 209.69924812030075,
+     "int": 1067.6225
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "0%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1209103021693494,
+     "monoEtiqueta": "variada",
+     "strainPct": -1,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 1,
+      "semanas": 4,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 9
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 7
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 7
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 4
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": -0.33933331967331837,
+     "costePct": -0.054828678520402185,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 5,
+    "nota": "Empieza el bloque duro: +35 % de series, sube 2,5 kg más.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 47,
+     "rpe": 8,
+     "ext": 294.3271214071292,
+     "int": 1449.2866666666666
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+25%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1485481495780032,
+     "monoEtiqueta": "variada",
+     "strainPct": 38,
+     "tendencia": "hard",
+     "rend": {
+      "pct": 8,
+      "semanas": 5,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 9
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 9
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 5
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 40 % más de trabajo que tu media.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+8 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 39.999273030626206,
+     "costePct": -3.3226985352230565,
+     "fuerzaPct": 7.924783549783565,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 6,
+    "nota": "Bloque duro.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 47,
+     "rpe": 8,
+     "ext": 272.5275689223057,
+     "int": 1426.4133333333332
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+14%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1112331098227965,
+     "monoEtiqueta": "variada",
+     "strainPct": 20,
+     "tendencia": "hard",
+     "rend": {
+      "pct": 8,
+      "semanas": 6,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 9
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 9
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 5
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 18 % más de trabajo que tu media.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+8 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 17.777581285018606,
+     "costePct": 4.110498672168572,
+     "fuerzaPct": 7.924783549783565,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 7,
+    "nota": "Bloque duro; sube otros 2,5 kg.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 47,
+     "rpe": 8,
+     "ext": 274.9754234487317,
+     "int": 1432.5533333333333
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+7%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1358178315598162,
+     "monoEtiqueta": "variada",
+     "strainPct": 15,
+     "tendencia": "hard",
+     "rend": {
+      "pct": 9,
+      "semanas": 7,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 9
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 9
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 5
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 11 % más de trabajo que tu media.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+8 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": 11.281570486160453,
+     "costePct": 2.378235651944527,
+     "fuerzaPct": 7.836998983250387,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 8,
+    "nota": "Mismo trabajo que la 7, sRPE 9 y una rep menos en cada serie: fatiga.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 47,
+     "rpe": 9,
+     "ext": 234.69674185463657,
+     "int": 1592.8050000000003
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+8%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1070222174166404,
+     "monoEtiqueta": "variada",
+     "strainPct": 16,
+     "tendencia": "hard",
+     "rend": {
+      "pct": 9,
+      "semanas": 8,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 12
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 9
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 9
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 8
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 5
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 4
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 11 % menos de trabajo que tu media.",
+      "coste": "Te costó más de lo normal para ese trabajo.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+8 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -10.721754290947437,
+     "costePct": 32.68757855743143,
+     "fuerzaPct": 7.836998983250387,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 12
+       },
+       {
+        "group": "quads",
+        "sets": 9
+       },
+       {
+        "group": "back",
+        "sets": 9
+       },
+       {
+        "group": "shoulders",
+        "sets": 8
+       },
+       {
+        "group": "chest",
+        "sets": 5
+       },
+       {
+        "group": "arms",
+        "sets": 4
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 9,
+    "nota": "Descarga: −40 % de series, sRPE 5.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 22,
+     "rpe": 5,
+     "ext": 130.75187969924812,
+     "int": 607.4166666666666
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-52%",
+     "cargaEs": "vs media 28d",
+     "estado": "unloading",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1463570695199317,
+     "monoEtiqueta": "variada",
+     "strainPct": -58,
+     "tendencia": "fatigue",
+     "rend": {
+      "pct": 9,
+      "semanas": 9,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 6
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 4
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 4
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 4
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 2
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 2
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Un 51 % menos de trabajo que tu media.",
+      "coste": "Te costó menos de lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza se mantiene."
+     },
+     "chips": [],
+     "trabajoPct": -51.41714151761141,
+     "costePct": -16.124116821278967,
+     "fuerzaPct": 1.0378801173255736,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 4
+       },
+       {
+        "group": "back",
+        "sets": 4
+       },
+       {
+        "group": "shoulders",
+        "sets": 4
+       },
+       {
+        "group": "chest",
+        "sets": 2
+       },
+       {
+        "group": "arms",
+        "sets": 2
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 6
+       },
+       {
+        "group": "quads",
+        "sets": 4
+       },
+       {
+        "group": "back",
+        "sets": 4
+       },
+       {
+        "group": "shoulders",
+        "sets": 4
+       },
+       {
+        "group": "chest",
+        "sets": 2
+       },
+       {
+        "group": "arms",
+        "sets": 2
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 10,
+    "nota": "Vuelve a lo normal y gana 2,5 kg más.",
+    "hizo": {
+     "sesiones": 4,
+     "series": 36,
+     "rpe": 7,
+     "ext": 223.76630946135163,
+     "int": 1031.0416666666667
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-12%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 4,
+     "mediaSesiones": 4,
+     "mono": 1.1387308715105307,
+     "monoEtiqueta": "variada",
+     "strainPct": -17,
+     "tendencia": "deload",
+     "rend": {
+      "pct": 16,
+      "semanas": 10,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "glutes_hamstrings",
+       "nombre": "Glúteo e isquios",
+       "sets": 9
+      },
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 7
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 7
+      },
+      {
+       "group": "shoulders",
+       "nombre": "Hombro",
+       "sets": 6
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 4
+      },
+      {
+       "group": "arms",
+       "nombre": "Brazos",
+       "sets": 3
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "4 sesiones de 4 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó menos de lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+7 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -1.9591811665263692,
+     "costePct": -15.749224228363424,
+     "fuerzaPct": 7.342876482238192,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ],
+      "prev": [
+       {
+        "group": "glutes_hamstrings",
+        "sets": 9
+       },
+       {
+        "group": "quads",
+        "sets": 7
+       },
+       {
+        "group": "back",
+        "sets": 7
+       },
+       {
+        "group": "shoulders",
+        "sets": 6
+       },
+       {
+        "group": "chest",
+        "sets": 4
+       },
+       {
+        "group": "arms",
+        "sets": 3
+       }
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "carlos",
+  "nombre": "Carlos · 5×5, tres días, con sRPE",
+  "perfil": "Lun, mié y vie: sentadilla, press banca y remo 5×5 cada día. Semanas 1-3 sube 2,5 kg por sesión; desde la 4 se estanca (mismos pesos, series a 4 reps). En la 7 falta un día.",
+  "conRpe": true,
+  "previstas": 3,
+  "semanas": [
+   {
+    "n": 1,
+    "nota": "Sube 2,5 kg en cada sesión.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 7,
+     "ext": 199.0172753311851,
+     "int": 1481.025
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "0%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": null,
+     "mono": 0.864829328688854,
+     "monoEtiqueta": "variada",
+     "strainPct": null,
+     "tendencia": null,
+     "rend": null,
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 2,
+    "nota": "Sigue subiendo 2,5 kg por sesión.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 7,
+     "ext": 201.104698441655,
+     "int": 1380.6975
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-4%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 3,
+     "mono": 0.8643788555976655,
+     "monoEtiqueta": "variada",
+     "strainPct": -7,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 13,
+      "semanas": 2,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Primeras semanas: aún no hay una media con la que comparar.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": null,
+     "costePct": null,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 3,
+    "nota": "Última semana de subidas: 20 kg más que al empezar.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 7,
+     "ext": 200.15823556082057,
+     "int": 1438.0275000000001
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "0%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 3,
+     "mono": 0.8645071866841928,
+     "monoEtiqueta": "variada",
+     "strainPct": 0,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 27,
+      "semanas": 3,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": 0.04860951448557582,
+     "costePct": 0.430902836881919,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 4,
+    "nota": "Se estanca: mismos pesos y una serie a 4 reps en la sentadilla.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 8,
+     "ext": 190.28571428571425,
+     "int": 1610.7
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+9%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 3,
+     "mono": 0.8644449713261773,
+     "monoEtiqueta": "variada",
+     "strainPct": 12,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 27,
+      "semanas": 4,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó más de lo normal para ese trabajo.",
+      "grupos": "Has completado el volumen previsto."
+     },
+     "chips": [],
+     "trabajoPct": -4.901555310174044,
+     "costePct": 18.156812124627074,
+     "fuerzaPct": null,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 5,
+    "nota": "Dos series a 4 en la sentadilla, una en el press.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 8,
+     "ext": 185.1428571428571,
+     "int": 1643.46
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+8%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 3,
+     "mono": 0.8623190609816777,
+     "monoEtiqueta": "variada",
+     "strainPct": 11,
+     "tendencia": "fatigue",
+     "rend": {
+      "pct": 27,
+      "semanas": 5,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó más de lo normal para ese trabajo.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+27 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -6.323886921290667,
+     "costePct": 18.52863505957496,
+     "fuerzaPct": 26.78321678321678,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 6,
+    "nota": "Una serie a 4 en la sentadilla.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 8,
+     "ext": 190.28571428571425,
+     "int": 1648.92
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+4%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 3,
+     "mono": 0.864765261232835,
+     "monoEtiqueta": "variada",
+     "strainPct": 9,
+     "tendencia": "fatigue",
+     "rend": {
+      "pct": 27,
+      "semanas": 6,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza sube (+12 % en 4 semanas)."
+     },
+     "chips": [],
+     "trabajoPct": -2.00190785910046,
+     "costePct": 10.418819881559727,
+     "fuerzaPct": 11.810052420598227,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 7,
+    "nota": "Falta el viernes. Mismos pesos.",
+    "hizo": {
+     "sesiones": 2,
+     "series": 30,
+     "rpe": 7,
+     "ext": 123.42857142857142,
+     "int": 941.1675
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "-36%",
+     "cargaEs": "vs media 28d",
+     "estado": "unloading",
+     "sesiones7d": 2,
+     "mediaSesiones": 3,
+     "mono": null,
+     "monoEtiqueta": "pocas sesiones",
+     "strainPct": null,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 27,
+      "semanas": 7,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 10
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 10
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 10
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "2 sesiones de 3 previstas.",
+      "trabajo": "Un 36 % menos de trabajo que tu media.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Te faltan: cuádriceps (10 de 15), pecho (10 de 15), espalda (10 de 15).",
+      "fuerza": "Tu fuerza se mantiene."
+     },
+     "chips": [],
+     "trabajoPct": -35.53570966454084,
+     "costePct": -8.106047946401596,
+     "fuerzaPct": 0,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 10
+       },
+       {
+        "group": "chest",
+        "sets": 10
+       },
+       {
+        "group": "back",
+        "sets": 10
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 8,
+    "nota": "Tres series a 4 reps en la sentadilla y dos en el press.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 8,
+     "ext": 177.42857142857142,
+     "int": 1621.62
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+11%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 2.75,
+     "mono": 0.8622870471797104,
+     "monoEtiqueta": "variada",
+     "strainPct": 16,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 27,
+      "semanas": 8,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza se mantiene."
+     },
+     "chips": [],
+     "trabajoPct": 2.9850746268656803,
+     "costePct": 8.700668898797947,
+     "fuerzaPct": 0,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 9,
+    "nota": "Dos series a 4 reps.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 8,
+     "ext": 185.1428571428571,
+     "int": 1659.8400000000001
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+13%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 2.75,
+     "mono": 0.8647817519321189,
+     "monoEtiqueta": "variada",
+     "strainPct": 19,
+     "tendencia": "mixed",
+     "rend": {
+      "pct": 27,
+      "semanas": 9,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza se mantiene."
+     },
+     "chips": [],
+     "trabajoPct": 9.505703422053212,
+     "costePct": 4.529013379378077,
+     "fuerzaPct": 0,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   },
+   {
+    "n": 10,
+    "nota": "Tres series a 4 reps en la sentadilla.",
+    "hizo": {
+     "sesiones": 3,
+     "series": 45,
+     "rpe": 8,
+     "ext": 177.42857142857142,
+     "int": 1572.48
+    },
+    "hoy": {
+     "vacia": null,
+     "carga": "+9%",
+     "cargaEs": "vs media 28d",
+     "estado": "steady",
+     "sesiones7d": 3,
+     "mediaSesiones": 2.75,
+     "mono": 0.8653136780312972,
+     "monoEtiqueta": "variada",
+     "strainPct": 12,
+     "tendencia": "deload",
+     "rend": {
+      "pct": 27,
+      "semanas": 10,
+      "actual": true
+     },
+     "grupos": [
+      {
+       "group": "quads",
+       "nombre": "Cuádriceps",
+       "sets": 15
+      },
+      {
+       "group": "chest",
+       "nombre": "Pecho",
+       "sets": 15
+      },
+      {
+       "group": "back",
+       "nombre": "Espalda",
+       "sets": 15
+      }
+     ]
+    },
+    "propuesto": {
+     "frases": {
+      "sesiones": "3 sesiones de 3 previstas.",
+      "trabajo": "Lo normal para ti.",
+      "coste": "Te costó lo normal.",
+      "grupos": "Has completado el volumen previsto.",
+      "fuerza": "Tu fuerza se mantiene."
+     },
+     "chips": [
+      "Plano"
+     ],
+     "trabajoPct": 4.94296577946769,
+     "costePct": 3.067235254153755,
+     "fuerzaPct": 0,
+     "grupos": {
+      "hecho": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ],
+      "prev": [
+       {
+        "group": "quads",
+        "sets": 15
+       },
+       {
+        "group": "chest",
+        "sets": 15
+       },
+       {
+        "group": "back",
+        "sets": 15
+       }
+      ]
+     }
+    }
+   }
+  ]
+ }
+];
+const GRUPO = {};
+for (const p of DATA) for (const s of p.semanas) for (const g of s.hoy.grupos ?? []) GRUPO[g.group] = g.nombre;
+const nombreGrupo = (id) => GRUPO[id] ?? id;
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const lunes = (n) => { const d = new Date(2026, 7, 31 + 7 * (n - 1)); return `${d.getDate()} ${MESES[d.getMonth()]}`; };
+const pl = (n, a, b) => `${n} ${n === 1 ? a : b}`;
+const suma = (xs) => xs.reduce((a, x) => a + x.sets, 0);
+let who = DATA[0].id, week = 6;
+
+function resumen(p, s) {
+  const pr = s.propuesto, g = pr.grupos;
+  const hechas = suma(g.hecho), previstas = suma(g.prev);
+  const L = [];
+  // Sesiones
+  L.push([s.hizo.sesiones >= p.previstas ? 'ok' : 'warn',
+    s.hizo.sesiones === 0 ? '<b>No has entrenado</b> esta semana.' : `<b>${s.hizo.sesiones} de ${pl(p.previstas, 'sesión', 'sesiones')}</b> previstas.`]);
+  // Series contra lo previsto
+  if (s.hizo.sesiones > 0) {
+    const faltan = g.prev.filter((x) => (g.hecho.find((h) => h.group === x.group)?.sets ?? 0) < x.sets - 1);
+    L.push([hechas >= previstas - 1 ? 'ok' : 'warn',
+      hechas >= previstas - 1 ? `<b>${hechas} de ${previstas} series</b>: todo el volumen previsto.`
+        : `<b>${hechas} de ${previstas} series</b>. Faltan ${faltan.map((x) => `${nombreGrupo(x.group).toLowerCase()} (${g.hecho.find((h) => h.group === x.group)?.sets ?? 0} de ${x.sets})`).join(', ')}.`]);
+  }
+  // Esfuerzo (solo con sRPE)
+  if (s.hizo.rpe != null) {
+    const r = Math.round(s.hizo.rpe * 10) / 10, c = pr.costePct;
+    const txt = c == null ? `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b> de media.`
+      : c > 15 ? `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b>: te ha costado más que otras semanas con un trabajo parecido.`
+      : c < -15 ? `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b>: te ha costado menos que otras semanas con un trabajo parecido.`
+      : `<b>Esfuerzo ${String(r).replace('.', ',')} de 10</b>, como otras semanas con un trabajo parecido.`;
+    L.push([c != null && c > 15 ? 'warn' : 'ok', txt]);
+  }
+  // Fuerza
+  if (pr.fuerzaPct != null) {
+    const f = pr.fuerzaPct, x = Math.round(Math.abs(f));
+    L.push([f < -2 ? 'warn' : f > 2 ? 'ok' : '',
+      f > 2 ? `<b>Tu fuerza sube</b>: tu 1RM estimado es un ${x} % más alto que hace 4 semanas.`
+        : f < -2 ? `<b>Tu fuerza baja</b>: tu 1RM estimado es un ${x} % más bajo que hace 4 semanas.`
+        : '<b>Tu fuerza se mantiene</b>: tu 1RM estimado es el mismo que hace 4 semanas.']);
+  }
+  return L;
+}
+
+// Un aviso por cliente, el más importante.
+function aviso(chips) {
+  for (const k of ['No viene', 'Se está pasando', 'Plano']) if (chips.includes(k)) return k;
+  return chips.find((c) => c.startsWith('Le falta')) ?? null;
+}
+
+function render() {
+  const p = DATA.find((x) => x.id === who), s = p.semanas[week - 1];
+  document.getElementById('who').innerHTML = DATA.map((x) => `<button class="${x.id === who ? 'on' : ''}" data-who="${x.id}">${x.nombre.split(' · ')[0]}</button>`).join('');
+  document.getElementById('perfil').innerHTML = `<b>${p.nombre}.</b> ${p.perfil} <b>Semana ${week}:</b> ${s.nota}`;
+  const g = s.propuesto.grupos, hechas = suma(g.hecho), previstas = suma(g.prev);
+  const lines = resumen(p, s);
+  const max = Math.max(10, ...g.prev.map((x) => x.sets), ...g.hecho.map((x) => x.sets));
+  const top = Math.ceil(max / 10) * 10;
+  const grupos = [...g.prev.map((x) => x.group), ...g.hecho.map((x) => x.group).filter((id) => !g.prev.some((y) => y.group === id))];
+  const serieMax = Math.max(...p.semanas.map((w) => Math.max(w.hizo.series, suma(w.propuesto.grupos.prev))), 1);
+  const rpeVis = p.conRpe && s.hizo.rpe != null;
+  document.getElementById('screen').innerHTML = `
+    <div class="week">
+      <button data-w="-1" ${week === 1 ? 'disabled' : ''} aria-label="Semana anterior">‹</button>
+      <div style="text-align:center"><b>Semana del ${lunes(week)}</b><small>Lunes a domingo</small></div>
+      <button data-w="1" ${week === p.semanas.length ? 'disabled' : ''} aria-label="Semana siguiente">›</button>
+    </div>
+    <div class="card">
+      <div class="ctitle">Tu semana</div>
+      <div class="lines">${lines.map(([k, t]) => `<div class="line"><i class="${k}"></i><span>${t}</span></div>`).join('')}</div>
+      ${!p.conRpe ? '<div class="hintline">Apunta el esfuerzo al acabar cada sesión (de 1 a 10) y aquí verás también cuánto te cuesta.</div>' : ''}
+    </div>
+    <div class="tiles">
+      <div class="tile"><span>SESIONES</span><b>${s.hizo.sesiones}<small> / ${p.previstas}</small></b><em>previstas</em></div>
+      <div class="tile"><span>SERIES</span><b>${hechas}<small> / ${previstas}</small></b><em>previstas</em></div>
+      <div class="tile"><span>ESFUERZO</span><b>${rpeVis ? String(Math.round(s.hizo.rpe * 10) / 10).replace('.', ',') : '—'}<small>${rpeVis ? ' / 10' : ''}</small></b><em>${rpeVis ? 'media (sRPE)' : 'sin apuntar'}</em></div>
+    </div>
+    ${rpeVis && s.hoy.mono != null ? `<div class="sub"><span>Días ${s.hoy.monoEtiqueta === 'repetitiva' ? '<b>muy parecidos</b>' : s.hoy.monoEtiqueta === 'variada' ? '<b>variados</b>' : '<b>algo parecidos</b>'}</span><span>${s.hoy.strainPct != null ? `Estrés <b>${s.hoy.strainPct > 0 ? '+' : ''}${s.hoy.strainPct} %</b> sobre tu mes` : ''}</span></div>` : ''}
+    <div class="card">
+      <div class="ctitle">Series por grupo</div>
+      <div class="grp">${grupos.map((id) => {
+        const h = g.hecho.find((x) => x.group === id)?.sets ?? 0, pv = g.prev.find((x) => x.group === id)?.sets ?? 0;
+        const low = pv > 0 && h < pv - 1;
+        return `<div><div class="gl"><span>${nombreGrupo(id)}</span><span class="${low ? 'low' : ''}">${h} de ${pv}</span></div>
+          <div class="gt">${Array.from({ length: top / 10 - 1 }, (_, k) => `<span class="grid" style="left:${(k + 1) * 10 / top * 100}%"></span>`).join('')}
+            <span class="fill ${low ? 'low' : ''}" style="width:${Math.min(100, h / top * 100)}%"></span>
+            ${pv ? `<span class="mark" style="left:calc(${pv / top * 100}% - 1px)"></span>` : ''}</div></div>`;
+      }).join('')}</div>
+      <div class="gscale">${Array.from({ length: top / 10 + 1 }, (_, k) => `<span>${k * 10}</span>`).join('')}</div>
+      <div class="legend"><span><i></i>hechas</span><span><i class="p" style="width:2px;height:10px;vertical-align:-1px;background:var(--text)"></i> previstas</span></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Series cada semana</div>
+      <div class="chart">${p.semanas.map((w) => {
+        const pv = suma(w.propuesto.grupos.prev);
+        return `<div class="bar ${w.n === week ? 'cur' : ''}" data-go="${w.n}" title="Semana ${w.n}: ${w.hizo.series} de ${pv}">
+          <div class="b" style="height:${w.hizo.series / serieMax * 92}%"></div>
+          <div class="p" style="bottom:calc(${pv / serieMax * 92}% + 14px)"></div>
+          <small>${w.n}</small></div>`;
+      }).join('')}</div>
+      <div class="legend"><span><i></i>series hechas</span><span><i class="p"></i>previstas</span></div>
+    </div>`;
+
+  document.getElementById('coach').innerHTML = `
+    <div class="week"><div><b>Clientes</b><small>Semana del ${lunes(week)}</small></div></div>
+    ${DATA.map((x) => {
+      const w = x.semanas[week - 1], a = aviso(w.propuesto.chips);
+      return `<div class="cli ${x.id === who ? 'sel' : ''}" data-who="${x.id}" style="cursor:pointer">
+        <div class="av">${x.nombre[0]}</div>
+        <div><div class="nm">${x.nombre.split(' · ')[0]}</div><div class="mt">${w.hizo.sesiones} de ${pl(x.previstas, 'sesión', 'sesiones')}</div></div>
+        <span class="flag ${a ? 'warn' : 'ok'}">${a ?? 'Al día'}</span></div>`;
+    }).join('')}`;
+}
+
+document.addEventListener('click', (ev) => {
+  const t = ev.target.closest('[data-who],[data-w],[data-go]');
+  if (!t) return;
+  if (t.dataset.who) who = t.dataset.who;
+  if (t.dataset.w) week = Math.min(10, Math.max(1, week + Number(t.dataset.w)));
+  if (t.dataset.go) week = Number(t.dataset.go);
+  render();
+});
+render();
+</script>
