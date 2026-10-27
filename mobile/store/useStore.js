@@ -417,7 +417,7 @@ const DAY_COLORS = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 
  * en el idioma de la app cuando se abre (U34). `stageN`/`sessionN` son el
  * número de etapa o sesión cuando no tienen nombre.
  */
-function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
+export function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
   const { programs, profile, sessionTemplates } = storeState;
   const oldProg = programs[profile.activeProgramId];
   if (!oldProg) return [{ k: 'newProgram' }];
@@ -439,8 +439,16 @@ function buildProgramDiff(storeState, newProgramJson, lastActivation = null) {
   // gordo que puede traer una actualización y hasta ahora pasaba en silencio.
   const activation = newProg?.stageActivatedAt ?? null;
   if (activation && activation !== lastActivation) {
-    const moved = newStages[newProg?.currentStageIndex ?? 0];
-    if (moved) lines.push(moved.name ? { k: 'movedTo', p: { name: moved.name } } : { k: 'movedToUnnamed' });
+    const idx   = newProg?.currentStageIndex ?? 0;
+    const moved = newStages[idx];
+    if (moved) {
+      // Mismo índice que el del cliente: el entrenador reinició esa etapa, no lo movió.
+      // Con una sola etapa no tiene nombre visible: se usa el del programa.
+      const restarted = idx === (oldProg.currentStageIndex ?? 0);
+      const name = newStages.length === 1 ? newProg.name : moved.name;
+      if (restarted) lines.push(name ? { k: 'stageRestarted', p: { name } } : { k: 'stageRestartedUnnamed' });
+      else lines.push(moved.name ? { k: 'movedTo', p: { name: moved.name } } : { k: 'movedToUnnamed' });
+    }
   }
 
   const stageDiff = newStages.length - oldStages.length;

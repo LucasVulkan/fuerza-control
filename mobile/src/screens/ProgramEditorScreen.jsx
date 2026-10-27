@@ -17,6 +17,7 @@ import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
 import { Section, SectionLabel, MenuRow, Status, RowIcon } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
+import { showDialog } from '../components/ui/dialog';
 import { Switch } from '../components/ui/EditorRows';
 import StageCards from '../components/ui/StageCards';
 import EditorIdentityCard from '../components/editor/EditorIdentityCard';
@@ -680,14 +681,41 @@ export default function ProgramEditorScreen({ navigation }) {
               )}
             </Section>
 
-            {/* Con una sola etapa siempre es la de ahora: no hay estado que
-                decidir. */}
-            {!single && (
+            {/* Con una sola etapa siempre es la de ahora: solo se puede reiniciar. */}
+            {(!single || isStageActive) && (
               <Section title={t('editor.stageStateLabel')}>
-                {isStageActive ? (
+                {isStageActive && !single && (
                   <MenuRow
                     label={t('editor.stageStateNow')}
                     status={<Status tone="on" label={stageWeekLabel(status, t)} />}
+                  />
+                )}
+                {isStageActive ? (
+                  <MenuRow
+                    icon={<RowIcon>{ROW_ICON.sync}</RowIcon>}
+                    label={t('editor.stageRestart')}
+                    sub={t('editor.stageRestartSub')}
+                    onPress={() => {
+                      // Con una sola etapa no tiene nombre visible: vale el del programa.
+                      const name = single ? activeProgram.name : selectedStage.name;
+                      showDialog(
+                        t('editor.stageRestartTitle', { name }),
+                        editedClient
+                          ? t('editor.stageRestartBodyClient', { client: editedClient.name, name })
+                          : t('editor.stageRestartBody'),
+                        [
+                          { text: t('common.cancel'), style: 'cancel' },
+                          {
+                            text: t('editor.stageRestartConfirm'),
+                            style: 'destructive',
+                            onPress: () => {
+                              setCurrentStage(editingId, activeStageIdx);
+                              showToast(t('editor.toastStageRestarted', { name }), 2200, 'success');
+                            },
+                          },
+                        ],
+                      );
+                    }}
                   />
                 ) : selectedStageLocked ? (
                   // Bloqueada por el entrenador: `setCurrentStage` lo rechazaría,

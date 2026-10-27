@@ -16,7 +16,7 @@
  * (logs cruzados, subida filtrada, programas compartidos).
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import {
   scopeFilterForUpload,
   mergeClientLog,
@@ -28,6 +28,13 @@ import { assignActiveProgram } from './programOwnership';
 import {
   progressBlob, mergeProgressOnImport, applyProgress, athleteProgress, recordSession, ensureStages, localDay, stageStatus,
 } from './stageProgress';
+
+// El store importa el servicio de sincronización y la autenticación enteros:
+// los mismos dobles que `builderProgram.test.js`. Solo se usa `buildProgramDiff`.
+vi.mock('../services/supabaseSync', () => ({}));
+vi.mock('../services/supabaseAuth', () => ({}));
+vi.mock('../config/supabase', () => ({ migrateLegacySession: async () => {} }));
+const { buildProgramDiff } = await import('../../store/useStore.js');
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -510,6 +517,59 @@ describe('progresión espejada — cliente y entrenador nunca divergen', () => {
     expect(enCliente(nuevo, 'prog_trainer')).toEqual({
       currentStageIndex: 1, stageStartedOn: null, stageSessionsDone: 0, stageExtraWeeks: 0,
       programStartedOn: localDay(LINK_TS + DAY),
+    });
+  });
+
+  // P14-09: el sello nuevo con el MISMO índice es un reinicio; con otro, un movimiento.
+  describe('el entrenador reinicia o mueve la etapa del cliente', () => {
+    const stamp = '2026-02-01T10:00:00.000Z';
+    function enviar(trainer, db, index) {
+      const file = programFile('prog_trainer', ['tplA', 'tplB']);
+      file.program.stages = [
+        { id: 'st1', name: 'Base', durationWeeks: 2, days: file.program.days },
+        { id: 'st2', name: 'Fuerza', durationWeeks: 2, days: file.program.days },
+      ];
+      file.program.currentStageIndex = index;
+      file.program.stageActivatedAt  = stamp;
+      trainer.pushProgram('ana', file);
+      return db.downloadProgram(db.rows[0].id).programJson;
+    }
+    const stateOf = (client) => ({
+      programs: client.state.programs,
+      profile: { activeProgramId: client.state.activeProgramId },
+      sessionTemplates: client.state.sessionTemplates,
+    });
+
+    test('misma etapa: contador a 0 y línea stageRestarted', () => {
+      const { db, trainer, client } = linkedSetup();
+      client.state.programs.prog_trainer = ensureStages({
+        ...client.state.programs.prog_trainer,
+        stages: [
+          { id: 'st1', name: 'Base', durationWeeks: 2, days: client.state.programs.prog_trainer.days },
+          { id: 'st2', name: 'Fuerza', durationWeeks: 2, days: client.state.programs.prog_trainer.days },
+        ],
+        currentStageIndex: 0,
+      });
+      client.logSession(session('s1', 'tplA', LINK_TS + DAY));
+      expect(enCliente(client, 'prog_trainer').stageSessionsDone).toBe(1);
+
+      const json = enviar(trainer, db, 0);
+      const diff = buildProgramDiff(stateOf(client), json, client.state.clientSync.lastAppliedStageActivation);
+      expect(diff).toEqual([{ k: 'stageRestarted', p: { name: 'Base' } }]);
+
+      const mine = progressBlob(client.state.programs.prog_trainer);
+      client.state.programs.prog_trainer = applyProgress(json.program, mergeProgressOnImport({
+        blob: mine, program: json.program, lastActivation: client.state.clientSync.lastAppliedStageActivation,
+      }));
+      expect(enCliente(client, 'prog_trainer')).toMatchObject({ currentStageIndex: 0, stageSessionsDone: 0, stageStartedOn: null });
+    });
+
+    test('otra etapa: sigue siendo movedTo', () => {
+      const { db, trainer, client } = linkedSetup();
+      const json = enviar(trainer, db, 1);
+      const diff = buildProgramDiff(stateOf(client), json, client.state.clientSync.lastAppliedStageActivation);
+      expect(diff).toContainEqual({ k: 'movedTo', p: { name: 'Fuerza' } });
+      expect(diff.some((l) => l.k === 'stageRestarted')).toBe(false);
     });
   });
 

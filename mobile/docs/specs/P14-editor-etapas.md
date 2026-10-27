@@ -3,7 +3,7 @@
 > Tema: programas
 > En corto: En Editar programa, las etapas dejan de ser un segmentado con una segunda pulsación escondida y pasan a ser una fila de tarjetas («Etapa 2 · Acumulación · sem 5-8») que se desplaza con el dedo; debajo, la cabecera de la etapa elegida y sus sesiones sueltas, como en el editor de sesión, que siguen deslizándose, reordenándose y abriéndose como hoy.
 > Inicio: 2026-10-09
-> Fin: 2026-10-15
+> Fin: 2026-10-27
 > Fase P14-01 · terminado · Diseño del editor en cinco rondas con el usuario · §8
 > Fase P14-02 · terminado · Cifras de una etapa: funciones puras y tests · §5.1
 > Fase P14-03 · hecho · Tarjetas de etapa y rótulo · §5.2
@@ -12,8 +12,9 @@
 > Fase P14-06 · hecho · Hoja «Ajustes de etapa» y «nueva etapa» · §5.5
 > Fase P14-07 · hecho · Programa de una sola etapa · §5.6
 > Fase P14-08 · aparcado · Que asome la etapa de al lado al deslizar · §5.7
+> Fase P14-09 · hecho · Reiniciar la etapa en curso · §5.8
 >
-> Estado: **cerrada; P14-03, 04, 06 y 07 por probar** (03-04 el 13-oct, 06-07
+> Estado: **P14-09 (reiniciar la etapa en curso) hecha el 27-oct, por probar; P14-03, 04, 06 y 07 por probar** (03-04 el 13-oct, 06-07
 > el 15-oct). **P14-05** (panel de cifras y barra de grupos) y **P14-08** (que
 > asome la etapa de al lado) quedan **aparcadas** (15-oct, decisión del usuario).
 > El 15-oct el usuario rehízo P14-07 (§5.6) y pidió una hoja de ajustes nueva
@@ -477,7 +478,7 @@ diseño anterior):
 - [ ] Programa de una etapa: sin fichas, «PROGRAMA SIN ETAPAS», ceja «EN CURSO ·
   SEMANA N DE M» (o «SEMANA N» sin límite), título = nombre del programa, sin número.
 - [ ] Deslizar la cabecera no hace nada; «SESIONES» y «+ Añadir sesión».
-- [ ] La hoja de ajustes no enseña Nombre, Estado ni Eliminar.
+- [ ] La hoja de ajustes no enseña Nombre ni Eliminar; de Estado, solo «Reiniciar etapa» (P14-09).
 - [ ] Crear una etapa desde el engranaje: al aplicar vuelve al editor con dos fichas
   y sus tramos.
 - [ ] Borrar etapas hasta dejar una: vuelve la vista de una sola.
@@ -495,6 +496,57 @@ al soltar, pero la de al lado no asoma detrás. Que asome sería solo estético,
 Si se retoma: una sola fuente de la etapa elegida, nada que se monte en el gesto,
 ningún efecto que mueva una cosa en respuesta a otra, y medir antes en el móvil
 (abrir el editor y cambiar de etapa no pueden ir más lentos que hoy).
+
+### 5.8 P14-09 — Reiniciar la etapa en curso
+
+> Decisión del usuario (27-oct-2026). Cierra la duda I01-01.5 (C03 §9 frente a
+> P08 §5.3): **activar la etapa en la que ya estás la reinicia**, y para que no
+> sea ambiguo, en la etapa en curso el botón se llama «Reiniciar etapa».
+
+Hoy la sección **ESTADO** de la hoja de ajustes solo informa en la etapa en curso
+(«En curso» con su semana); las demás tienen «Pasar a esta etapa», sin aviso. Cambia:
+
+- **Etapa en curso**: debajo de la fila «En curso · semana N de M», una fila de
+  acción **«Reiniciar etapa»** («Vuelves a la semana 1»).
+- **Con aviso** (`showDialog`, botón destructivo): «¿Reiniciar {{name}}?» —
+  «Vuelves a la semana 1 y lo que llevas de esta etapa deja de contar. Los entrenos
+  guardados no se borran.» En el programa de un cliente: «{{client}} vuelve a la
+  semana 1 de {{name}} cuando reciba la actualización. Los entrenos guardados no se
+  borran.» Botones «Cancelar» / «Reiniciar».
+- Al confirmar: `setCurrentStage(programId, mismoÍndice)` —ya pone el sello del
+  autor y `stageReset`; no hace falta acción nueva— y toast «{{name}} reiniciada».
+- **El cliente** lo recibe en la actualización de programa: en `buildProgramDiff`
+  (`useStore.js`), si hay sello nuevo y el índice que llega es **el mismo que el
+  del cliente**, la línea es «Tu entrenador reinicia {{name}}: vuelves a la semana
+  1» (`programUpdate.diff.stageRestarted`, y `…Unnamed` sin nombre) en vez de
+  «Tu entrenador te pasa a…».
+- De paso: el subtítulo del aviso («Sigues en tu etapa y tu semana»,
+  `programUpdate.applySub`) es falso cuando la actualización trae un cambio o un
+  reinicio de etapa. Con esa línea en el diff, otro subtítulo: «Al actualizar
+  cambia tu etapa» (`programUpdate.applySubStage`).
+- **Programa de una sola etapa** (decisión del usuario, 27-oct): también lleva
+  «Reiniciar etapa». La sección ESTADO aparece con una sola etapa, pero solo con
+  esa fila (no hay «Pasar a esta etapa»). Como ahí la etapa no tiene nombre
+  visible (P14-07), los textos (aviso, toast y línea del cliente) usan **el nombre
+  del programa** en lugar del de la etapa.
+
+Test (en `clientSync.sim.test.js`, que ya simula entrenador ↔ cliente): el
+entrenador reinicia la etapa en la que está el cliente → al aplicar, el cliente
+vuelve a la semana 1 con el contador a 0, sigue en la misma etapa, y el diff trae
+`stageRestarted`, no `movedTo`.
+
+**Probar P14-09**
+
+- [ ] Editor de mi programa, etapa en curso: aparece «Reiniciar etapa»; al
+  pulsarla sale el aviso; «Cancelar» no cambia nada.
+- [ ] Al confirmar: toast, la ceja vuelve a «semana 1» (o «sin empezar» hasta la
+  primera sesión), los entrenos del historial siguen ahí.
+- [ ] Entrenador, programa de un cliente: reiniciar su etapa en curso → en el
+  móvil del cliente llega la actualización con «Tu entrenador reinicia…» y el
+  subtítulo «Al actualizar cambia tu etapa».
+- [ ] El cliente pulsa «Actualizar»: vuelve a la semana 1 de la misma etapa.
+- [ ] «Pasar a esta etapa» en otra etapa sigue igual, y en el cliente dice
+  «Tu entrenador te pasa a…».
 
 ## 6. i18n
 

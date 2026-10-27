@@ -39,7 +39,8 @@ export default function ProgramUpdateModal() {
 
   useEffect(() => {
     if (!pending) return;
-    showDialog(t('programUpdate.title'), t('programUpdate.applySub'), [
+    const changesStage = (pending.diff ?? []).some((l) => ['movedTo', 'movedToUnnamed', 'stageRestarted', 'stageRestartedUnnamed'].includes(l.k));
+    showDialog(t('programUpdate.title'), t(changesStage ? 'programUpdate.applySubStage' : 'programUpdate.applySub'), [
       { text: t('programUpdate.later'), style: 'cancel', onPress: dismissPendingProgramUpdate },
       { text: t('programUpdate.apply'), onPress: applyPendingProgramUpdate },
     ], { items: (pending.diff ?? []).map((line) => diffLine(line, t)) });
