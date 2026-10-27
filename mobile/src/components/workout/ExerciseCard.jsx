@@ -1213,9 +1213,10 @@ const makeStyles = (th) => StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: th.colors.border,
   },
-  // Fila 2: el porqué, en `label` apagado (P18 §6).
+  // Fila 2: el porqué, apagado (P18 §6). En `body`: a 12 se leía mal entre serie
+  // y serie.
   progWhy: {
-    ...textStyles.label,
+    ...textStyles.body,
     color:     th.colors.mutedLight,
     marginTop: 4,
   },

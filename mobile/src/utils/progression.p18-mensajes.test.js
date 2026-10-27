@@ -1,5 +1,6 @@
 // P18-04: la línea del porqué de cada chip, con los textos de verdad (es/en),
-// contra la tabla de formatos aprobados de P18 §6. La fila 1 (verbo + cifra)
+// contra la tabla de formatos aprobados de P18 §6 (con la unidad tras cada
+// cifra, pedido del usuario el 27-oct). La fila 1 (verbo + cifra)
 // la compone la tarjeta; aquí se comprueba la fila 2.
 import { describe, it, expect } from 'vitest';
 import { getProgression } from './progression';
@@ -25,10 +26,10 @@ const why = (cfg, def, sets, opts, tt = t) => getProgression(cfg, def, sets, tt,
 
 describe('P18 §6 — la línea del porqué (es)', () => {
   it('Sube', () => {
-    expect(why(dbl(3, 10, 12), BB, ses(30, [12, 12, 12]))).toBe('Llega a 12 en las 3 series para volver a subir');
+    expect(why(dbl(3, 10, 12), BB, ses(30, [12, 12, 12]))).toBe('Llega a 12 reps en las 3 series para volver a subir');
   });
   it('Mantener, dentro del rango', () => {
-    expect(why(dbl(3, 10, 12), BB, ses(32.5, [12, 11, 10]))).toBe('Llega a 12 en las 3 series para subir');
+    expect(why(dbl(3, 10, 12), BB, ses(32.5, [12, 11, 10]))).toBe('Llega a 12 reps en las 3 series para subir');
   });
   // P18 §8, caso 1
   it('Mantener, fallo leve', () => {
@@ -41,7 +42,7 @@ describe('P18 §6 — la línea del porqué (es)', () => {
   // P18 §8, caso 3
   it('Mantener, mejora', () => {
     expect(why(dbl(5, 5, 5), BB, ses(95, [5, 5, 5, 5, 4]), { earlier: [ses(95, [5, 5, 5, 4, 4])] }))
-      .toBe('Vas mejorando (24 reps); llega a 5 en las 5 series para subir');
+      .toBe('Vas mejorando (24 reps); llega a 5 reps en las 5 series para subir');
   });
   // P18 §8, caso 8 (el decimal sale con punto, como el resto de cifras de la app)
   it('Mantener, freno de RPE', () => {
@@ -62,10 +63,10 @@ describe('P18 §6 — la línea del porqué (es)', () => {
     expect(why(dbl(3, 12, 15, { evaluation: { mode: 'part', need: 2 } }), BB, ses(8, [15, 15, 11])))
       .toBe('Te faltó 1 rep para el mínimo (12)');
     expect(why(dbl(3, 12, 15, { evaluation: { mode: 'part', need: 2 } }), BB, ses(8, [15, 14, 13])))
-      .toBe('Llega a 15 en 2 de 3 series (y el resto a 12 o más) para subir');
+      .toBe('Llega a 15 reps en 2 de 3 series (y el resto a 12 reps o más) para subir');
   });
   it('Asistida: para quitar ayuda', () => {
-    expect(why(dbl(3, 5, 8), ASSISTED, ses(30, [8, 7, 6]))).toBe('Llega a 8 en las 3 series para quitar ayuda');
+    expect(why(dbl(3, 5, 8), ASSISTED, ses(30, [8, 7, 6]))).toBe('Llega a 8 reps en las 3 series para quitar ayuda');
   });
   // P18 §8, caso 12
   it('Reps', () => {
@@ -91,6 +92,6 @@ describe('P18 §6 — en inglés', () => {
   const tEn = makeT(en);
   it('fallo leve y meta', () => {
     expect(why(dbl(3, 10, 12), BB, ses(32.5, [10, 9, 9]), {}, tEn)).toBe('You were 2 reps short of the minimum (10)');
-    expect(why(dbl(3, 10, 12), BB, ses(32.5, [12, 11, 10]), {}, tEn)).toBe('Hit 12 on all 3 sets to go up');
+    expect(why(dbl(3, 10, 12), BB, ses(32.5, [12, 11, 10]), {}, tEn)).toBe('Hit 12 reps on all 3 sets to go up');
   });
 });

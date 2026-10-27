@@ -358,7 +358,7 @@ describe('P54 — «Peso · por reglas» (§4.2)', () => {
       const chip = run(cfg(3, { mode: 'part', need: 2 }), [12, 12, 9]);
       expect(chip).toMatchObject({ type: 'up', suggestedWeight: 62.5 });
       expect(chip.why).toContain('seriesPart{\\"need\\":2,\\"count\\":3}');
-      expect(chip.why).toContain('extraRange{\\"min\\":8}');
+      expect(chip.why).toMatch(/extraRange.*reps.*count.*8/);
     });
     it('3 series, 2 de 3: con 1 a la meta mantiene', () => {
       expect(run(cfg(3, { mode: 'part', need: 2 }), [12, 9, 9]).type).toBe('hold');

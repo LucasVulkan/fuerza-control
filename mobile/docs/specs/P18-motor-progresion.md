@@ -248,6 +248,9 @@ Al implementar (27-oct): la línea va ya en la cabecera, a todo lo ancho (A2,
 §7), y se oculta al plegar la tarjeta; el 1RM de Por esfuerzo pasa a la fila 2.
 Los decimales salen con punto («RPE medio 8.8»), como el resto de cifras de la
 tarjeta.
+Tras verlo en el móvil (27-oct): cada cifra lleva su unidad («Llega a 15 reps en
+las 3 series para subir»; «y el resto a 12 reps o más») y la fila 2 pasa a
+`body` (14), porque a 12 se leía mal.
 
 **Probar P18-04**
 

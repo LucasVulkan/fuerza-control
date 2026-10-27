@@ -379,10 +379,11 @@ function chipDouble(prog, doneSets, n, floor, goal, t, { timed = false, assist =
   const unit = (v) => (timed ? `${v} s` : v);
   const amount = (v) => (timed ? `${v} s` : t('progression.next.reps', { count: v }));
   const part = ev.mode === 'part' && cur.need < n;
+  // Las cifras llevan su unidad («Llega a 15 reps»): un número suelto no se entiende.
   const goalLine = (again) => t('progression.next.goal', {
-    goal: unit(goal),
+    goal: amount(goal),
     series: part ? t('progression.next.seriesPart', { need: cur.need, count: n }) : t('progression.next.seriesAll', { count: n }),
-    extra: part && goal !== floor ? t('progression.next.extraRange', { min: unit(floor) })
+    extra: part && goal !== floor ? t('progression.next.extraRange', { min: amount(floor) })
       : ev.mode === 'rpe' ? t('progression.next.extraRpe', { max: ev.maxRpe }) : '',
     purpose: t(`progression.next.${assist ? 'toAssist' : again ? 'toUpAgain' : 'toUp'}`),
   });
