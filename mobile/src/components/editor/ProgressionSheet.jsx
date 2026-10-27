@@ -46,13 +46,15 @@ const TILE_ICON = {
   </>),
   // Ayuda: la barra de dominadas y la flecha que baja la ayuda.
   assist: (c) => <Path d="M4 5h16M12 8.5v11M7.5 15l4.5 4.5 4.5-4.5" {...line(c)} />,
-  // Reps: «×10», como en una tipografía: la × pequeña apoyada en la línea de
-  // base (y = 17) y los números de caja alta, el 1 recto con su asta y el 0 de
-  // lados rectos.
+  // Reps: «×10», como en una tipografía: la × pequeña y los números de caja alta,
+  // el 1 recto con su asta y el 0 de lados rectos. Todo apoyado en la misma línea
+  // de base contando el grueso del trazo: los bordes de abajo caen en y = 18 y
+  // los de arriba del 1 y el 0 en y = 6. El 1 acaba en corte recto, así que su
+  // trazo llega hasta 18; los demás, redondeados o cerrados, se quedan en 17.
   reps: (c) => (<>
-    <Path d="M2.5 13l4 4M6.5 13l-4 4" {...line(c)} />
-    <Path d="M10 9l2.8-2v10" {...line(c, { strokeLinecap: 'butt', strokeLinejoin: 'miter' })} />
-    <Rect x={15.5} y={7} width={6} height={10} rx={3} {...line(c)} />
+    <Path d="M2.5 13.5l3.5 3.5M6 13.5l-3.5 3.5" {...line(c)} />
+    <Path d="M9 8l2.6-2v12" {...line(c, { strokeLinecap: 'butt', strokeLinejoin: 'miter' })} />
+    <Rect x={15} y={7} width={6} height={10} rx={3} {...line(c)} />
   </>),
   // Tiempo: cronómetro con su corona.
   time: (c) => (<>
