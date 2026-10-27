@@ -97,9 +97,10 @@ export default function PasteWorkoutScreen({ navigation, route }) {
   const [dayIdx,     setDayIdx]     = useState(0);
   const days = useLastDays();
 
-  // Lo normal es venir de WhatsApp con el texto copiado: se pega solo.
+  // Lo normal es venir de WhatsApp con el texto copiado: se pega solo. Con un
+  // enlace no: es la invitación que se acaba de copiar en Clientes, no un entreno.
   useEffect(() => {
-    Clipboard.getStringAsync().then((s) => { if (s?.trim()) setText((cur) => cur || s); }).catch(() => {});
+    Clipboard.getStringAsync().then((s) => { if (s?.trim() && !/https?:\/\//i.test(s)) setText((cur) => cur || s); }).catch(() => {});
   }, []);
   const pasteNow = () => Clipboard.getStringAsync().then((s) => { if (s?.trim()) setText(s); }).catch(() => {});
 
