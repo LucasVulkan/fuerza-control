@@ -45,6 +45,8 @@ import {
   ensureBuilderProgram, defaultProgramName, syncBuilderDone, sendBuilderProgram, builderExitNow, leaveBuilder,
 } from '../builderProgram';
 
+import { isNetworkError } from '../../../utils/networkError';
+
 const K = 'onboardingFlow.builder';
 
 // Tras el ejercicio viene el volumen, y de ahí «ya tiene forma».
@@ -382,10 +384,14 @@ function Done({ goTo }) {
     if (programId && wanted && wanted !== programName) renameProgram(programId, wanted);
     try {
       await sendBuilderProgram();
-    } catch {
-      showToast(t(`${K}.done.sendFailed`), 3500, 'error');
-      setBusy(false);
-      return;
+    } catch (err) {
+      // Sin conexión no es un fallo: el programa queda pendiente y sale solo (U15-01).
+      if (!isNetworkError(err)) {
+        showToast(t(`${K}.done.sendFailed`), 3500, 'error');
+        setBusy(false);
+        return;
+      }
+      showToast(t('sync.offlineQueued'), 3500, 'neutral');
     }
     syncBuilderDone(t);
     if (useStore.getState().onboardingFlow?.screen === 'b_done') goTo(builderExitNow());

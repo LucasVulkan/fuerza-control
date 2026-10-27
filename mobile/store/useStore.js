@@ -387,6 +387,7 @@ function activeSessionBlocks(state) {
 const INITIAL_UI = {
   view: 'home',
   toast: null,
+  online: true,   // U15-01: NetInfo (App.js). Fuera del partialize.
   restTimer: { active: false, remaining: 0, total: 0, exerciseName: '', endAt: 0 },
   _editingProgramId: null,
   // P16-01: copia del editor al entrar en su base. Fuera del partialize.
@@ -4105,6 +4106,11 @@ export const useStore = create(
         return err;
       },
 
+      /** Sin conexión no se intenta: el cliente sigue marcado como pendiente (U15-01). */
+      _assertOnline: () => {
+        if (get().ui.online === false) throw Object.assign(new Error('Network request failed'), { code: 'NETWORK' });
+      },
+
       /** Lanza si al cliente no se le puede mandar nada desde esta cuenta. */
       _assertCloudClient: (clientId) => {
         const client = get().clients[clientId];
@@ -4113,10 +4119,27 @@ export const useStore = create(
         return client;
       },
 
+      /** Reintenta lo pendiente del entrenador (programa y prescripciones). Nunca lanza. */
+      sendPendingPrograms: async () => {
+        const { trainerSync, clients, ui } = get();
+        if (ui.online === false || !trainerSync.mode || trainerSync.mode === 'offline') return { ok: 0, fail: 0 };
+        let ok = 0, fail = 0;
+        for (const c of Object.values(clients)) {
+          if (clientLink(c, trainerSync) !== 'linked' || !(c.programDirty || c.overridesDirty) || get().isClientFrozen(c.id)) continue;
+          try {
+            if (c.programDirty && c.activeProgramId) await get().uploadProgramToClient(c.id, c.activeProgramId);
+            if (c.overridesDirty) await get().sendOverrides(c.id);
+            ok += 1;
+          } catch (err) { fail += 1; console.warn('[sendPendingPrograms]', c.id, err?.message); }
+        }
+        return { ok, fail };
+      },
+
       uploadProgramToClient: async (clientId, programId) => {
         get()._assertNotFrozen(clientId);
         const { trainerSync } = get();
         const client = get()._assertCloudClient(clientId);
+        get()._assertOnline();
 
         // Ensure auth session is active
         await _ensureTrainerSession(trainerSync);
@@ -4201,6 +4224,7 @@ export const useStore = create(
         get()._assertNotFrozen(clientId);
         const { trainerSync } = get();
         const client = get()._assertCloudClient(clientId);
+        get()._assertOnline();
         await _ensureTrainerSession(trainerSync);
 
         const now = new Date().toISOString();

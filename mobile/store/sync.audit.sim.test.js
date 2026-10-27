@@ -1004,6 +1004,20 @@ describe('R-C1 / R-C2 cumple: enviar y subir', () => {
     expect(t.s.clients[clientId][dirty]).toBe(true);
   });
 
+  it('U15-01: sin conexión «Enviar» lanza NETWORK, queda sucio y sendPendingPrograms lo envía al volver', async () => {
+    const { t, clientId, programId } = await trainerAndClient();
+    t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], activeProgramId: programId } } }));
+    t.store.setState((s) => ({ programs: { ...s.programs, [programId]: { ...s.programs[programId], name: 'Z' } } }));
+    t.s.markProgramDirtyForClients(programId);
+    t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } }, ui: { ...s.ui, online: false } }));
+    await expect(t.s.uploadProgramToClient(clientId, programId)).rejects.toMatchObject({ code: 'NETWORK' });
+    expect(t.s.clients[clientId].programDirty).toBe(true);
+    expect(await t.s.sendPendingPrograms()).toEqual({ ok: 0, fail: 0 });
+    t.store.setState((s) => ({ ui: { ...s.ui, online: true } }));
+    expect(await t.s.sendPendingPrograms()).toEqual({ ok: 1, fail: 0 });
+    expect(t.s.clients[clientId].programDirty).toBe(false);
+  });
+
   it('R-C1 cumple: descargar sin red lanza, marca error y no toca el historial', async () => {
     const { t, c, clientId } = await trainerAndClient();
     await trainOnce(c, 's1');

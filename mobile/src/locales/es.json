@@ -81,7 +81,7 @@
     "docsRow": "Documentación",
     "exporting": "Exportando…",
     "lostBanner": "Has perdido la conexión con tu entrenador · Toca para ver qué hacer",
-    "pendingBanner": "⚠️ Última sesión no enviada al entrenador · Toca para reintentar",
+    "pendingBanner": "⚠️ Última sesión no enviada al entrenador · Toca para reintentar · se enviará solo",
     "pendingBannerSyncing": "Sincronizando…",
     "toastRestored": "Programa restaurado",
     "toastSynced": "Historial sincronizado",
@@ -543,6 +543,9 @@
   },
   "sync": {
     "purchaseTitle": "Guarda tu compra",
+    "offlineQueued": "Sin conexión. Se enviará cuando vuelva.",
+    "serverError": "No hemos podido hablar con el servidor. Lo reintentamos solos.",
+    "offlineBanner": "Sin conexión · los cambios se envían al volver",
     "purchaseLead": "Vincúlala a una cuenta para recuperarla en cualquier móvil, aunque cambies de Android a iPhone.",
     "onlyInstalled": "Solo en la app instalada, no en Expo Go.",
     "namePlaceholder": "Ej. Lucas García",
@@ -2141,6 +2144,7 @@
     "menuArchived": "Programas archivados",
     "noArchivedPrograms": "Este cliente no tiene programas archivados.",
     "changesPendingTag": "CAMBIOS SIN ENVIAR",
+    "changesPendingOffline": "PENDIENTE DE ENVIAR · SIN CONEXIÓN",
     "changesPendingText": "Has editado el programa y el cliente todavía tiene la versión anterior.",
     "codeCard": {
       "title": "CÓDIGO DE CONEXIÓN",

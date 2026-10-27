@@ -21,6 +21,8 @@ import Reanimated, {
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
+import OfflineBanner from '../components/OfflineBanner';
+import { sendFailure } from '../utils/networkError';
 import ClientAvatar from '../components/ClientAvatar';
 import ClientRow, { CtaIcon } from '../components/ClientRow';
 import { makeRowStyles } from '../components/clientRowStyles';
@@ -225,6 +227,7 @@ function AssignedProgramCard({
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const offline = useStore((s) => s.ui.online === false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   // ── Dónde va el cliente ──
@@ -279,7 +282,7 @@ function AssignedProgramCard({
         <View style={styles.lockBox}>
           <View style={styles.lockHeader}>
             <UploadIcon size={13} color={th.colors.orange} />
-            <Text style={styles.lockTag}>{t('clients.changesPendingTag')}</Text>
+            <Text style={styles.lockTag}>{t(offline ? 'clients.changesPendingOffline' : 'clients.changesPendingTag')}</Text>
           </View>
           <Text style={styles.lockText}>{t('clients.changesPendingText')}</Text>
           <TouchableOpacity style={[styles.lockBtn, locked && styles.lockBtnPro]} onPress={onUpload} activeOpacity={0.85}>
@@ -1626,6 +1629,7 @@ export default function ClientsScreen() {
   const deleteClientLogEntry     = useStore((s) => s.deleteClientLogEntry);
   const showToast                = useStore((s) => s.showToast);
   const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
+  const sendPendingPrograms      = useStore((s) => s.sendPendingPrograms);
   const updateStage              = useStore((s) => s.updateStage);
   const sendOverrides            = useStore((s) => s.sendOverrides);
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
@@ -1866,15 +1870,10 @@ export default function ClientsScreen() {
   async function sendAllPending() {
     if (sendingAll || !pendingClients.length) return;
     setSendingAll(true);
-    let ok = 0, fail = 0;
-    for (const c of pendingClients) {
-      try {
-        if (c.programDirty && c.activeProgramId) await uploadProgramToClient(c.id, c.activeProgramId);
-        if (c.overridesDirty) await sendOverrides(c.id);
-        ok += 1;
-      } catch { fail += 1; }
-    }
+    const offline = useStore.getState().ui.online === false;
+    const { ok, fail } = await sendPendingPrograms();
     setSendingAll(false);
+    if (offline) return showToast(t('sync.offlineQueued'), 2400, 'neutral');
     showToast(
       fail === 0 ? t('clients.sendAllDone') : t('clients.sendAllPartial', { ok, fail }),
       2400, fail === 0 ? 'success' : 'error',
@@ -2234,7 +2233,8 @@ export default function ClientsScreen() {
       // bloqueada, y dejarla abierta aquí borraría el aviso que recuerda que ese
       // cliente está parado.
       updateStage(programId, stageIdx, { locked: true });
-      showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
+      const f = sendFailure(err, t, 'clients.programUploadError');
+      showToast(f.msg, 3000, f.type);
     }
   }
 
@@ -2405,6 +2405,7 @@ export default function ClientsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <AppHeader />
+        <OfflineBanner />
 
         {/* Sin banda: cabecera, pestañas y contenido van los tres sobre `bg`.
             Lo que distingue estas pestañas de los controles segmentados que
@@ -2444,7 +2445,8 @@ export default function ClientsScreen() {
               await uploadProgramToClient(selectedClientId, programId);
               showToast(t('clients.programSent'), 2200, 'success');
             } catch (err) {
-              showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
+              const f = sendFailure(err, t, 'clients.programUploadError');
+              showToast(f.msg, 3000, f.type);
             }
           };
           // Abrir la etapa y enviarla en un solo toque: un desbloqueo que se
@@ -3011,6 +3013,7 @@ export default function ClientsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader />
+      <OfflineBanner />
 
       <EnterClock.Provider value={enterClock}>
       {/* ── List header ── */}
@@ -3346,7 +3349,8 @@ export default function ClientsScreen() {
                       await uploadProgramToClient(client.id, client.activeProgramId);
                       showToast(t('clients.programSent'), 2200, 'success');
                     } catch (err) {
-                      showToast(err.message ?? t('clients.programUploadError'), 3000, 'error');
+                      const f = sendFailure(err, t, 'clients.programUploadError');
+                      showToast(f.msg, 3000, f.type);
                     }
                   }}
                   onOpenActions={() => setActionsClientId(client.id)}
@@ -3355,7 +3359,8 @@ export default function ClientsScreen() {
                       await sendOverrides(client.id);
                       showToast(t('clients.overrideSent'), 2200, 'success');
                     } catch (err) {
-                      showToast(err.message ?? t('clients.overrideSendFailed'), 3000, 'error');
+                      const f = sendFailure(err, t, 'clients.overrideSendFailed');
+                      showToast(f.msg, 3000, f.type);
                     }
                   }}
                   onUnlockStage={(stageIdx) => unlockClientStage(client.id, stageIdx)}

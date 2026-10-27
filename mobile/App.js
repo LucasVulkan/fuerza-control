@@ -13,6 +13,7 @@ SplashScreen.preventAutoHideAsync();
 
 import { useEffect, useCallback, useRef } from 'react';
 import { AppState, Platform, StyleSheet } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { useFonts } from 'expo-font';
 import {
   Inter_500Medium,
@@ -168,6 +169,21 @@ export default function App() {
     });
     return () => sub.remove();
   }, [checkAndPullProgramUpdates, checkProStatus]);
+
+  // U15-01: conexión en el store y cola del entrenador. null cuenta como online
+  // (aún no se sabe) para no dar falsos «sin conexión». Un solo listener.
+  useEffect(() => {
+    const flush = () => useStore.getState().sendPendingPrograms().catch(() => {});
+    const unsub = NetInfo.addEventListener((st) => {
+      const online = st.isConnected !== false;
+      const was = useStore.getState().ui.online;
+      if (was === online) return;
+      useStore.setState((s) => ({ ui: { ...s.ui, online } }));
+      if (online) flush();
+    });
+    const sub = AppState.addEventListener('change', (next) => { if (next === 'active') flush(); });
+    return () => { unsub(); sub.remove(); };
+  }, []);
 
   // Initialise RevenueCat then sync pro status (native module — silently skipped in Expo Go)
   // EXPO_PUBLIC_FORCE_PRO=true skips the RC check (used in preview builds for testing)

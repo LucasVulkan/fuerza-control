@@ -81,7 +81,7 @@
     "docsRow": "Documentation",
     "exporting": "Exporting…",
     "lostBanner": "You've lost the connection with your trainer · Tap to see what to do",
-    "pendingBanner": "⚠️ Last session not sent to trainer · Tap to retry",
+    "pendingBanner": "⚠️ Last session not sent to trainer · Tap to retry · it will be sent on its own",
     "pendingBannerSyncing": "Syncing…",
     "toastRestored": "Program restored",
     "toastSynced": "History synced",
@@ -543,6 +543,9 @@
   },
   "sync": {
     "purchaseTitle": "Keep your purchase",
+    "offlineQueued": "No connection. It will be sent when you are back online.",
+    "serverError": "We could not reach the server. We will try again automatically.",
+    "offlineBanner": "No connection · changes are sent when you are back",
     "purchaseLead": "Link it to an account to get it back on any phone, even if you switch between Android and iPhone.",
     "onlyInstalled": "Installed app only, not Expo Go.",
     "namePlaceholder": "e.g. Lucas García",
@@ -2141,6 +2144,7 @@
     "menuArchived": "Archived programs",
     "noArchivedPrograms": "This client has no archived programs.",
     "changesPendingTag": "UNSENT CHANGES",
+    "changesPendingOffline": "PENDING TO SEND · NO CONNECTION",
     "changesPendingText": "You edited the program and the client still has the previous version.",
     "codeCard": {
       "title": "CONNECTION CODE",

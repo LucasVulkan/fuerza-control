@@ -37,6 +37,8 @@ import {
 import { afterProgram, learnStart } from '../../../utils/onboardingFlow';
 import { startBuilder } from '../startBuilder';
 
+import { isNetworkError } from '../../../utils/networkError';
+
 const K = 'onboardingFlow.trainer';
 
 // Constante y no `{}` en el selector: zustand 5 repinta sin fin si devuelve un objeto nuevo cada vez.
@@ -496,9 +498,10 @@ function Assign({ goTo }) {
       try {
         await s.uploadProgramToClient(client.id, id);
         sent = true;
-      } catch {
+      } catch (err) {
         // Sin red: queda en su ficha como «cambios sin enviar», y sin invitación.
-        s.showToast(t(`${K}.assign.sendFailed`), 3500, 'error');
+        const net = isNetworkError(err);
+        s.showToast(t(net ? 'sync.offlineQueued' : `${K}.assign.sendFailed`), 3500, net ? 'neutral' : 'error');
       }
     }
     s.flowAnswer({ programId: id, programSource: 'catalog', assignedFrom: archetype.id, sent });
