@@ -13,7 +13,7 @@
  * metric, range }; el resto son los valores de Volumen que se recuerdan bajo el
  * nombre (series y reps no se tocan aquí: siguen en Volumen).
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, startTransition } from 'react';
 import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor,
@@ -46,8 +46,14 @@ const TILE_ICON = {
   </>),
   // Ayuda: la barra de dominadas y la flecha que baja la ayuda.
   assist: (c) => <Path d="M4 5h16M12 8.5v11M7.5 15l4.5 4.5 4.5-4.5" {...line(c)} />,
-  // Reps: marcas de recuento, cuatro palotes tachados por el quinto.
-  reps: (c) => <Path d="M6 6.5v11M10 6.5v11M14 6.5v11M18 6.5v11M3.5 15.5l17-7" {...line(c)} />,
+  // Reps: dos flechas en círculo, las de la maqueta (dibujadas en 22, centradas en 24).
+  reps: (c) => (
+    <Path
+      transform="translate(1 1)"
+      d="M4.5 10a6.5 6.5 0 0 1 11.6-3.6M17.5 12a6.5 6.5 0 0 1-11.6 3.6M16.8 3.4v3.4h-3.4M5.2 18.6v-3.4h3.4"
+      {...line(c)}
+    />
+  ),
   // Tiempo: cronómetro con su corona.
   time: (c) => (<>
     <Circle cx={12} cy={13.2} r={7.3} {...line(c)} />
@@ -172,10 +178,16 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   const effortTile = showHow({ ...prog, up: 'weight' }, ctx);
   const tiles = TILE_ORDER.filter((id) => (id === 'effort' ? effortTile : offered.includes(id)));
   const tile = effort ? 'effort' : prog.up;
+  // La tarjeta tocada se rellena al momento: el cambio del formulario repinta
+  // todo el editor y va en una transición, sin frenar el toque ni la animación.
+  const [picked, setPicked] = useState(tile);
+  const [seen, setSeen]     = useState(tile);
+  if (seen !== tile) { setSeen(tile); setPicked(tile); }
   const pickTile = (id) => {
     if (id === 'effort' && effortBlocked(ctx)) { setEffortWhy(true); return; }
     setEffortWhy(false);
-    onPatch(id === 'effort' ? { up: 'weight', how: 'effort' } : { up: id, how: 'rules' });
+    setPicked(id);
+    startTransition(() => onPatch(id === 'effort' ? { up: 'weight', how: 'effort' } : { up: id, how: 'rules' }));
   };
   const sayKey = tile === 'weight'
     ? (assist ? 'assist' : isTime ? 'weightTime' : repsFixed ? 'weightFixed' : 'weight')
@@ -263,7 +275,7 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
               return (
                 <FillButton
                   key={id}
-                  on={id === tile}
+                  on={id === picked}
                   disabled={id === 'effort' && effortBlocked(ctx)}
                   onPress={() => pickTile(id)}
                   style={styles.tile}
