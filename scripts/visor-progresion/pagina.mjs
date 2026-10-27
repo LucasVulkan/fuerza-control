@@ -10,16 +10,16 @@ const n = (v) => (v == null || v === '' ? '' : String(v).replace('.', ','));
 
 // Lectura de las trazas (27-oct-2026): qué cambia con el motor propuesto.
 const HALLAZGOS = [
-  ['ana', 7, 'Ana falla por poco con el peso nuevo: hoy baja a 30 kg; el propuesto <b>mantiene 32,5</b> y acaba subiendo a 35.'],
+  ['ana', 6, 'En el propuesto <b>el gris es siempre lo que hiciste la última vez</b> (30×12) y la meta va en el mensaje («Sube a 32,5 kg · llega a 12 en las 3 series…»). El ✓ guarda lo que haya en la casilla.'],
+  ['ana', 7, 'Ana falla por poco con el peso nuevo: hoy baja a 30 kg; el propuesto <b>mantiene 32,5</b> («te faltaron 2 reps para el mínimo») y acaba subiendo a 35.'],
   ['marta-parcial', 5, 'Parcial 2 de 3 con 15/15/11: hoy sube; el propuesto <b>no sube</b> porque la tercera serie queda por debajo del rango.'],
-  ['marta', 9, 'Día malo de Marta (10/9/9): los dos bajan. En el propuesto es «fallo grande» (falta un 22 % de las reps).'],
+  ['marta', 9, 'Día malo de Marta (10/9/9): los dos bajan. En el propuesto es fallo grande: le faltaron 8 reps para el mínimo.'],
   ['carlos', 6, 'Carlos hace 5/5/5/4/4 y luego 5/5/5/5/4: no completa, pero mejora, así que no cuenta como fallo y mantiene 95 kg.'],
   ['carlos', 8, 'Fallo grande (5/4/4/3/3): −10 %, de 95 a 85 kg de una vez. Hoy bajaba de 5 en 5.'],
   ['pilar', 6, 'Pilar repite dos días flojos con la ayuda nueva: el propuesto le devuelve ayuda (+10 %, a 30 kg) al segundo; hoy ya lo hacía al primero.'],
-  ['sergio', 3, 'Sergio, 12/12/7 = 31: hoy pide 8 en todas; el propuesto pide <b>12/11/11</b> (34 en total).'],
+  ['sergio', 3, 'Sergio, 12/12/7 = 31: hoy pide 8 en todas; el propuesto dice <b>«34 reps en total»</b> y el gris le enseña su 12/12/7.'],
   ['sergio', 5, 'Sergio baja a 27: primer fallo, el propuesto mantiene la meta de 37. Al segundo (16) la baja a 19.'],
-  ['pilar-plancha', 4, 'Plancha: hoy la frase y el gris se contradicen (30 s contra 60/45/25); el propuesto pide 145 s en total, repartidos 49/48/48.'],
-  ['marta', 9, 'Tras bajar a 8 kg, el gris de los dos le pide 15 reps (el máximo del rango) en cada serie. Sin decidir.'],
+  ['pilar-plancha', 4, 'Plancha: hoy la frase y el gris se contradicen (30 s contra 60/45/25); el propuesto dice «145 s en total» y el gris es lo que hizo.'],
 ];
 
 const TIPO = { up: 'Subir', hold: 'Mantener', down: 'Bajar' };
@@ -38,6 +38,7 @@ function propuesta(f, c, motor) {
   if (!f.chip) return '<span class="pill none">Sin propuesta</span><div class="why">Primera sesión: busca su peso</div>';
   const ch = f.chip;
   const vol = motor === 'propuesto' && esVolumen(c);
+  if (ch.titulo) return `<span class="pill ${ch.tipo}">${esc(ch.titulo)}</span><div class="why">${esc(ch.why)}</div>`;
   const label = vol ? TIPO_VOL[ch.tipo] : (ch.assist ? TIPO_ASIST : TIPO)[ch.tipo];
   const cifra = vol && ch.total != null ? ` · ${ch.total}${c.tiempo ? ' s' : ' reps'}`
     : ch.peso != null && c.pesoInicial ? ` ${n(ch.peso)} kg`
@@ -59,7 +60,7 @@ function series(lista, c, hizo) {
 }
 
 function celda(f, c, motor) {
-  const pide = f.plan ? `<div class="linea"><span class="lab">Pide</span>${series(f.plan, c, false)}</div>` : '';
+  const pide = f.plan ? `<div class="linea"><span class="lab">Gris</span>${series(f.plan, c, false)}</div>` : '';
   const hizo = f.hizo ? `<div class="linea"><span class="lab">Hizo</span>${series(f.hizo, c, true)}</div>` : '';
   return `${propuesta(f, c, motor)}${pide}${hizo}`;
 }
@@ -80,7 +81,7 @@ function caso(c) {
   const filas = c.hoy.map((h, i) => {
     const p = c.propuesto[i];
     const ultima = h.hizo == null;
-    const firma = (f) => JSON.stringify([f.chip?.tipo, f.plan?.map((x) => `${Number(x.peso) || 0}x${Number(x.reps)}`)]);
+    const firma = (f) => JSON.stringify([f.chip?.tipo, (f.objetivo ?? f.plan)?.map((x) => `${Number(x.peso) || 0}x${Number(x.reps)}`)]);
     const cambia = firma(h) !== firma(p);
     return `<tr id="${c.id}-${i + 1}" class="${ultima ? 'next' : ''}">
       <td class="num">${ultima ? '→' : i + 1}<div class="dia">${ultima ? '' : `día ${h.dia}`}</div></td>

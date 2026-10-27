@@ -24,6 +24,11 @@ export function crearMotorPropuesto(cfg, def, t) {
   let previa = null; // { w, total } de la sesión anterior
   const vol = { meta: null, anterior: null, fallos: 0 }; // Reps y Tiempo
 
+  const kg = (v) => `${String(v).replace('.', ',')} kg`;
+  const series = (k) => (k === n ? `las ${n} series` : `${k} de ${n} series`);
+  const repsTxt = (k) => `${k} ${k === 1 ? 'rep' : 'reps'}`;
+  const may = (txt) => txt.charAt(0).toUpperCase() + txt.slice(1);
+
   function doble(sets) {
     const reps = sets.map((s) => Number(s.reps));
     const w = Math.max(0, ...sets.map((s) => Number(s.weight) || 0));
@@ -33,41 +38,52 @@ export function crearMotorPropuesto(cfg, def, t) {
     const rpes = sets.map((s) => s.rpe).filter((v) => v !== '' && v != null).map(Number);
     const rpeMedio = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
     const ev = prog.evaluation;
+    const frena = ev.mode === 'rpe' && rpeMedio != null && rpeMedio > ev.maxRpe;
     const sube = ev.mode === 'part'
       ? arriba >= ev.need && (!conRango || reps.every((r) => r >= min))
-      : arriba === n && !(ev.mode === 'rpe' && rpeMedio != null && rpeMedio > ev.maxRpe);
-    const faltan = reps.reduce((a, r) => a + Math.max(0, min - r), 0) / (min * n);
+      : arriba === n && !frena;
+    const faltanReps = reps.reduce((a, r) => a + Math.max(0, min - r), 0);
+    const faltan = faltanReps / (min * n);
     const asist = prog.direction === 'decrease';
     const inc = prog.increment.type === 'pct'
       ? Math.max(prog.step, redondear(w * prog.increment.pct / 100, prog.step)) : prog.increment.value;
+    // Lo que hay que hacer para subir, dicho igual en todos los mensajes.
+    const meta = ev.mode === 'part' && conRango
+      ? `llega a ${max} en ${series(ev.need)} (y el resto a ${min} o más) ${asist ? 'para quitar ayuda' : 'para subir'}`
+      : `llega a ${max} en ${series(ev.mode === 'part' ? ev.need : n)}${ev.mode === 'rpe' ? ` con RPE medio de ${ev.maxRpe} o menos` : ''} ${asist ? 'para quitar ayuda' : 'para subir'}`;
+    const titulo = (tipo, peso) => (asist
+      ? { up: `Quita ayuda: ${kg(peso)}`, hold: `Mantén ${kg(peso)} de ayuda`, down: `Añade ayuda: ${kg(peso)}` }
+      : { up: `Sube a ${kg(peso)}`, hold: `Mantén ${kg(peso)}`, down: `Baja a ${kg(peso)}` })[tipo];
 
-    if (sube) {
-      fallosPeso = 0;
-      const peso = asist ? Math.max(0, w - inc) : w + inc;
-      return { tipo: 'up', peso, reps: Array(n).fill(max), why: 'Llegaste arriba del rango' };
-    }
     const total = reps.reduce((a, r) => a + r, 0);
     const mejora = previa && previa.w === w && total > previa.total;
     previa = { w, total };
+    if (sube) {
+      fallosPeso = 0;
+      const peso = asist ? Math.max(0, w - inc) : w + inc;
+      return { tipo: 'up', peso, reps: Array(n).fill(max), titulo: titulo('up', peso), why: may(meta.replace('para subir', 'para volver a subir')) };
+    }
     if (faltan > 0) {
       const grande = faltan > FALLO_GRANDE;
       if (mejora && !grande) {
         fallosPeso = 0;
-        return { tipo: 'hold', peso: w, reps, why: `Aún sin completar, pero mejoras (${total} reps): mantener` };
+        return { tipo: 'hold', peso: w, reps, titulo: titulo('hold', w), why: `Vas mejorando (${total} reps); ${meta}` };
       }
       fallosPeso += 1;
       if ((grande || fallosPeso >= 2) && prog.down !== 'never' && w > 0) {
         fallosPeso = 0;
         const peso = asist ? Math.max(redondear(w * 1.1, prog.step), w + prog.step)
           : Math.max(0, Math.min(redondear(w * 0.9, prog.step), w - prog.step));
-        const motivo = grande ? `Fallo grande: faltó un ${Math.round(faltan * 100)} % de las reps` : 'Segundo fallo seguido';
-        return { tipo: 'down', peso, reps: Array(n).fill(max), why: `${motivo} → −10 %` };
+        const motivo = grande ? `Te faltaron ${repsTxt(faltanReps)} para el mínimo (${min})` : 'Segundo día seguido sin llegar al mínimo';
+        return { tipo: 'down', peso, reps: Array(n).fill(max), titulo: titulo('down', peso), why: motivo };
       }
-      return { tipo: 'hold', peso: w, reps, why: `Fallo leve (faltó un ${Math.round(faltan * 100)} %): mantener` };
+      return { tipo: 'hold', peso: w, reps, titulo: titulo('hold', w), why: `Te faltaron ${repsTxt(faltanReps)} para el mínimo (${min})` };
     }
     fallosPeso = 0;
-    const freno = ev.mode === 'rpe' && arriba === n ? `RPE medio por encima de ${ev.maxRpe}: no sube` : 'Dentro del rango: mantener';
-    return { tipo: 'hold', peso: w, reps, why: freno };
+    const why = frena && arriba === n
+      ? `Llegaste arriba, pero con RPE medio ${String(Math.round(rpeMedio * 10) / 10).replace('.', ',')} (máx. ${ev.maxRpe})`
+      : may(meta);
+    return { tipo: 'hold', peso: w, reps, titulo: titulo('hold', w), why };
   }
 
   function volumen(sets, campo, porSerie, u) {
@@ -75,19 +91,20 @@ export function crearMotorPropuesto(cfg, def, t) {
     const antes = vol.meta;
     let why;
     if (vol.meta == null) {
-      vol.meta = total + n * porSerie; why = `Primera vez: ${total}${u} → meta ${vol.meta}${u}`;
+      vol.meta = total + n * porSerie; why = `La última vez hiciste ${total}${u}`;
     } else if (total >= vol.meta) {
-      vol.meta = total + n * porSerie; vol.fallos = 0; why = `Llegaste a la meta (${total}${u}): nueva meta ${vol.meta}${u}`;
+      vol.meta = total + n * porSerie; vol.fallos = 0; why = `Llegaste a la meta: la última vez hiciste ${total}${u}`;
     } else if (total >= vol.anterior) {
-      vol.fallos = 0; why = `Mejoras (${total}${u} de ${vol.meta}${u}): sigue la meta`;
+      vol.fallos = 0; why = `${total > vol.anterior ? 'Vas mejorando' : 'Igual que el día anterior'}: la última vez hiciste ${total}${u}`;
     } else if (++vol.fallos >= 2) {
-      vol.meta = total + n * porSerie; vol.fallos = 0; why = `Segundo fallo seguido (${total}${u}): meta ${vol.meta}${u}`;
+      vol.meta = total + n * porSerie; vol.fallos = 0; why = `Dos días por debajo: la última vez hiciste ${total}${u}`;
     } else {
-      why = `Fallo (${total}${u}, menos que la vez anterior): sigue la meta`;
+      why = `La última vez hiciste ${total}${u}, menos que el día anterior`;
     }
     vol.anterior = total;
     const tipo = antes == null || vol.meta > antes ? 'up' : vol.meta < antes ? 'down' : 'hold';
-    return { tipo, peso: null, reps: repartir(vol.meta, n), why, total: vol.meta };
+    const titulo = `${vol.meta}${u || ' reps'} en total`;
+    return { tipo, peso: null, reps: repartir(vol.meta, n), titulo, why, total: vol.meta };
   }
 
   return function siguiente(recientes) {

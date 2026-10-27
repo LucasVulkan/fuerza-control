@@ -54,9 +54,13 @@ function motorNuevo(cfg, def, caso) {
     const p = siguiente(recientes);
     if (!p) return { chip: null, plan: null };
     const total = p.total != null ? p.total : null;
+    // El gris es SIEMPRE lo que hizo la última vez; la meta va en el mensaje.
+    // `objetivo` es lo que hace el atleta en las sesiones marcadas 'gris'.
+    const last = recientes[0].sets;
     return {
-      chip: { tipo: p.tipo, why: p.why, peso: p.peso, e1rm: p.e1rm ?? null, assist, total },
-      plan: p.reps.map((r) => ({ peso: p.peso ?? recientes[0].sets[0].weight, reps: r })),
+      chip: { tipo: p.tipo, titulo: p.titulo, why: p.why, peso: p.peso, e1rm: p.e1rm ?? null, assist, total },
+      plan: last.map((s) => ({ peso: s.weight, reps: caso.tiempo ? s.time : s.reps })),
+      objetivo: p.reps.map((r) => ({ peso: p.peso ?? last[0].weight, reps: r })),
     };
   };
 }
@@ -72,7 +76,7 @@ function correr(caso, crear) {
   for (const s of caso.sesiones) {
     dia += s.dias ?? 3;
     const sets = Array.from({ length: cfg.sets }, (_, i) => {
-      const gris = prop.plan?.[i];
+      const gris = (prop.objetivo ?? prop.plan)?.[i];
       const weight = s.peso ?? num(gris?.peso) ?? caso.pesoInicial ?? 0;
       const reps = caso.tiempo ? '' : String(s.reps === 'gris' ? gris?.reps : s.reps[i]);
       const time = caso.tiempo ? String(s.tiempos === 'gris' ? gris?.reps : s.tiempos[i]) : '';
