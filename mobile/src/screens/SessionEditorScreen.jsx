@@ -38,6 +38,7 @@ import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
+import { EmptySlot } from '../components/ui/EmptyState';
 import { Section } from '../components/ui/MenuList';
 import { ROW_ICON } from '../components/ui/rowIcons';
 import { generateId } from '../utils/formatters';
@@ -447,6 +448,13 @@ export default function SessionEditorScreen({ navigation, route }) {
               <Text style={styles.secTitle}>
                 {t('editor.sectionExercises', { n: slots.length }).toUpperCase()}
               </Text>
+              {slots.length === 0 && (
+                <EmptySlot
+                  title={t('empty.sessionSlotTitle')}
+                  subtitle={t('empty.sessionSlotSub')}
+                  onPress={handleAddExercise}
+                />
+              )}
               <Sortable.Grid
                 {...SORTABLE_PROPS}
                 data={slots}

@@ -15,6 +15,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
+import EmptyState from '../components/ui/EmptyState';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useTranslation } from 'react-i18next';
@@ -270,7 +271,13 @@ export default function PasteWorkoutScreen({ navigation, route }) {
         {/* ── Lo que se ha entendido ── */}
         <Text style={styles.label}>{t('paste.review').toUpperCase()}</Text>
         {rows.length === 0 ? (
-          <Text style={styles.hint}>{t('paste.empty')}</Text>
+          <EmptyState
+            ghost="text"
+            ghostText={t('empty.pasteExample')}
+            title={t('empty.pasteTitle')}
+            text={t('empty.pasteText')}
+            action={{ label: t('empty.pasteCta'), onPress: pasteNow }}
+          />
         ) : (
           <View style={styles.rows}>
             {rows.map((r) => {

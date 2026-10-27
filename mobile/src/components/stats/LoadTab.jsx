@@ -21,6 +21,7 @@ import { Text } from '../ui/Text';
 import Svg, { Rect, Polyline, Line, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { useStore } from '../../../store/useStore';
 
 import {
   sessionLoads, dailySeries, rollingMean, monotony, strain, loadState, setsByMuscleGroup,
@@ -212,6 +213,7 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
+  const navigate = useStore((s) => s.navigate);
 
   const [info, setInfo] = useState(null);
   const [period, setPeriod] = useState('3m');
@@ -390,11 +392,17 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
 
   if (!hasSessions || !hasRpe) {
     return scroll(
-      <EmptyState
-        style={styles.emptyState}
-        icon={ROW_ICON.progress}
-        text={!hasSessions ? t('load.emptyNoSessions') : t('load.emptyNoRpe')}
-      />,
+      !hasSessions ? (
+        <EmptyState
+          style={styles.emptyState}
+          ghost="bars"
+          title={t('empty.loadTitle')}
+          text={t('empty.loadText')}
+          action={{ label: t('empty.startTraining'), onPress: () => navigate('home') }}
+        />
+      ) : (
+        <EmptyState style={styles.emptyState} icon={ROW_ICON.progress} text={t('load.emptyNoRpe')} />
+      ),
     );
   }
 

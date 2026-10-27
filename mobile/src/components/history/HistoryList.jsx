@@ -50,6 +50,7 @@ export default function HistoryList() {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
+  const navigate        = useStore((s) => s.navigate);
   const workoutLog      = useStore((s) => s.workoutLog);
   const deleteLogEntry  = useStore((s) => s.deleteLogEntry);
   const clearWorkoutLog = useStore((s) => s.clearWorkoutLog);
@@ -259,13 +260,17 @@ export default function HistoryList() {
           />
         ))}
         ListEmptyComponent={
-          <EmptyState
-            style={styles.emptyState}
-            icon={ROW_ICON.history}
-            text={(scope === 'program' || letter)
-              ? t('history.noSessionsProgram')
-              : t('history.noSessionsEmpty')}
-          />
+          (scope === 'program' || letter) ? (
+            <EmptyState style={styles.emptyState} icon={ROW_ICON.history} text={t('history.noSessionsProgram')} />
+          ) : (
+            <EmptyState
+              style={styles.emptyState}
+              ghost="plain"
+              title={t('empty.historyTitle')}
+              text={t('empty.historyText')}
+              action={{ label: t('empty.startTraining'), onPress: () => navigate('home') }}
+            />
+          )
         }
       />
 

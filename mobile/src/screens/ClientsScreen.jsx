@@ -3270,11 +3270,17 @@ export default function ClientsScreen() {
           />
         </Reanimated.ScrollView>
       ) : clientList.length === 0 ? (
-        <EmptyState
-          style={styles.emptyState}
-          icon={ROW_ICON.user}
-          text={search ? t('clients.noResults') : t('clients.noClientsEmpty')}
-        />
+        search ? (
+          <EmptyState style={styles.emptyState} icon={ROW_ICON.user} text={t('clients.noResults')} />
+        ) : (
+          <EmptyState
+            style={styles.emptyState}
+            ghost="cards"
+            title={t('empty.clientsTitle')}
+            text={t('empty.clientsText')}
+            action={{ label: t('empty.clientsCta'), onPress: gate(gates.newClient, () => setShowNewClient(true)) }}
+          />
+        )
       ) : (
         <FlatList
           data={listData}

@@ -35,6 +35,7 @@ import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
 import EditorIdentityCard from './EditorIdentityCard';
 import StepField from '../ui/StepField';
+import { EmptySlot } from '../ui/EmptyState';
 import { DragIcon } from '../ui/EditorIcons';
 import { SORTABLE_PROPS } from '../ui/sortable';
 
@@ -548,11 +549,19 @@ export default function BlockEditorInline({
           />
         )}
 
-        <TouchableOpacity style={styles.addMovementBtn} onPress={handleAddMovement} activeOpacity={0.75}>
-          <Text style={styles.addMovementText}>
-            <Text style={styles.addPlus}>+</Text>{` ${t('blocks.addMovement')}`}
-          </Text>
-        </TouchableOpacity>
+        {movements.length === 0 ? (
+          <EmptySlot
+            title={t('empty.circuitSlotTitle')}
+            subtitle={t('empty.circuitSlotSub')}
+            onPress={handleAddMovement}
+          />
+        ) : (
+          <TouchableOpacity style={styles.addMovementBtn} onPress={handleAddMovement} activeOpacity={0.75}>
+            <Text style={styles.addMovementText}>
+              <Text style={styles.addPlus}>+</Text>{` ${t('blocks.addMovement')}`}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ══ OPCIONES ═════════════════════════════════════════════════════════ */}

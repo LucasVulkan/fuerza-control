@@ -28,6 +28,7 @@ import { Section, MenuRow, RowIcon } from './ui/MenuList';
 import AnimatedHeight from './ui/AnimatedHeight';
 import { useSlidePages } from './ui/useSlidePages';
 import SheetRow from './ui/SheetRow';
+import EmptyState from './ui/EmptyState';
 import { ROW_ICON } from './ui/rowIcons';
 import DragSheet from './DragSheet';
 import { allProgramDays } from '../utils/stageProgress';
@@ -112,7 +113,16 @@ export default function ArchivedProgramsSheet({
               <SheetRow icon={ROW_ICON.trash} label={t('archived.delete')} onPress={() => onDelete(selected)} danger />
             </Section>
           ) : sorted.length === 0 ? (
-            <Text style={styles.empty}>{emptyText ?? t('archived.empty')}</Text>
+            emptyText ? (
+              <Text style={styles.empty}>{emptyText}</Text>
+            ) : (
+              <EmptyState
+                style={styles.emptyState}
+                ghost="plain"
+                title={t('empty.archivedTitle')}
+                text={t('empty.archivedText')}
+              />
+            )
           ) : (
             <Section style={styles.section}>
               {sorted.map((p) => (
@@ -128,6 +138,7 @@ export default function ArchivedProgramsSheet({
 
 const makeStyles = (th) => StyleSheet.create({
   section: { marginBottom: spacing.sm },
+  emptyState: { paddingVertical: spacing.md },
   empty: {
     ...textStyles.label,
     color:           th.colors.mutedLight,

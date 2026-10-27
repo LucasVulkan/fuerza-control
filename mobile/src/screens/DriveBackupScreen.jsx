@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { Text, TextInput } from '../components/ui/Text';
+import EmptyState from '../components/ui/EmptyState';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -542,7 +543,12 @@ export default function DriveBackupScreen() {
               {driveBackup.needsReconnect ? t('drive.backupsNeedReconnect') : t('drive.backupsLoadFailed')}
             </Text>
           ) : !files || files.length === 0 ? (
-            <Text style={styles.hint}>{t('drive.backupsEmpty')}</Text>
+            <EmptyState
+              ghost="plain"
+              title={t('empty.driveTitle')}
+              text={t('empty.driveText')}
+              action={{ label: t('empty.driveCta'), onPress: handleBackupNow }}
+            />
           ) : (
             <>
               <Text style={styles.listHint}>{t('drive.backupsHint')}</Text>
