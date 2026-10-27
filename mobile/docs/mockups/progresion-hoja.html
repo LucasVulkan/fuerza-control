@@ -154,9 +154,9 @@
         <button data-sit="reps">Por reps</button>
       </div>
       <div class="ctl" role="group" aria-label="Dónde va la progresión">
-        <button class="on" data-var="looseCenter">C · Como hoy, centrada</button>
+        <button data-var="looseCenter">C · Como hoy, centrada</button>
         <button data-var="center">A3 · Cabecera, centrada</button>
-        <button data-var="wide">A2 · Cabecera, a todo lo ancho</button>
+        <button class="on" data-var="wide">A2 · Elegida</button>
         <button data-var="head">A · Cabecera, bajo el nombre</button>
         <button data-var="band">B · Franja propia</button>
         <button data-var="loose">Hoy</button>
@@ -288,7 +288,7 @@ const SIT = {
   down: { n: '1', ex: 'Press de banca con barra', tg: '3 × 8–12 reps', dir: ['up', '↓', 'Baja a'], det: '55 kg', delta: '−5', why: 'Segundo día seguido sin llegar al mínimo', kg: '60', reps: [7, 6, 6] },
   reps: { n: '2', ex: 'Dominadas', tg: '3 series · desde 6 reps', dir: ['up', '↑', 'Sube a'], det: '34 reps en total', delta: '+3', why: 'La última vez hiciste 31', kg: null, reps: [12, 12, 7] },
 };
-let sit = 'up', done = [false, false, false], variant = 'looseCenter';
+let sit = 'up', done = [false, false, false], variant = 'wide';
 
 function wk() {
   const s = SIT[sit];

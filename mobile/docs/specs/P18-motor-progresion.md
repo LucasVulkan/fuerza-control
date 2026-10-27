@@ -232,12 +232,13 @@ simples y cómodas, aplicadas a los estilos de progresión:
     explicación se adapta: «Aunque completes el objetivo de reps, no sube si la
     media de RPE pasa de 8. Nunca baja de peso al superar el RPE.» Con No: «Sube
     al completar el objetivo de reps, sin mirar el RPE.»
-- **La línea de progresión del Workout no puede quedar suelta** en medio de la
-  tarjeta (revisión del usuario). Va **dentro de la cabecera** (`surface2`). La
-  maqueta prueba, por decidir: **C**, donde está hoy (entre cabecera y series) pero con las líneas centradas; **A3**, como A2 pero con las dos líneas centradas; **A2**, a todo lo ancho desde el borde, bajo el
-  número, separada por una raya (la que pidió probar el usuario); **A**, alineada
-  bajo el nombre; y **B**, una franja propia con el fondo y el radio de las celdas.
-- La frase de la regla (`progressionRule`) resume lo elegido debajo del todo.
+- **La línea de progresión del Workout va en la cabecera, a todo lo ancho (A2)**
+  (decisión del usuario, 27-oct): dentro de la banda `surface2`, desde el borde
+  izquierdo bajo el número (no alineada con el nombre), separada del nombre por una
+  raya fina (`border`), con las dos filas de §6 alineadas a la izquierda. Al
+  **plegar** la tarjeta, la cabecera se pliega hasta el nombre: **la progresión se
+  oculta** y se ve de nuevo al desplegar. Descartadas en la maqueta: bajo el nombre
+  (A), centrada (A3, C), franja propia (B) y el sitio de hoy.
 
 ## 8. Casos
 
