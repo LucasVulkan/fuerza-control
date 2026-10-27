@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estados vacíos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=Barlow:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta U15-03: estados vacíos que enseñan qué saldrá ahí (silueta gris de
+     la tarjeta o la gráfica real), para qué sirve y un botón directo a la acción
+     que lo llena. Valores de src/themes.js (formaFit, radius md 10). Tema oscuro. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a; --ghost: #2a2a2a; --ghost2: #333;
+    --accent: #aae216; --onAccent: #000; --page: #070707; color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--text); font-family: Inter, system-ui, sans-serif;
+    padding: 32px max(16px, env(safe-area-inset-left, 0px)) 80px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.55 Inter; max-width: 72ch; margin-bottom: 20px; }
+  .lead b { color: var(--text); }
+  .ctl { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ctl span { font: 800 12px Inter; color: var(--muted); align-self: center; margin-right: 4px; letter-spacing: 1px; text-transform: uppercase; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; margin-top: 20px; }
+  .note { max-width: 380px; color: var(--mutedLight); font: 500 13px/1.55 Inter; display: grid; gap: 10px; }
+  .note b { color: var(--text); }
+  .note .old { background: var(--surface); border-radius: 10px; padding: 10px 12px; font: 500 13px/1.45 Inter; white-space: pre-line; }
+  .note .old em { display: block; font: 800 11px Inter; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); font-style: normal; margin-bottom: 4px; }
+
+  .phone { width: 375px; max-width: 100%; min-height: 640px; background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; padding: 20px 16px 24px; }
+  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .top b { font: 800 22px Inter; }
+  .top i { font: 700 15px Inter; font-style: normal; color: var(--accent); }
+
+  /* siluetas: la forma real de lo que saldrá, en gris y sin texto */
+  .ghosts { display: grid; gap: 8px; position: relative; }
+  .ghosts::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 30%, var(--bg)); pointer-events: none; }
+  .gcard { background: var(--surface); border-radius: 10px; padding: 12px; display: flex; gap: 10px; align-items: center; }
+  .gcard .av { width: 36px; height: 36px; border-radius: 18px; background: var(--ghost2); flex: none; }
+  .gl { height: 10px; border-radius: 5px; background: var(--ghost2); }
+  .gl.s { height: 8px; background: var(--ghost); margin-top: 7px; }
+  .gcol { flex: 1; }
+  .gchart { background: var(--surface); border-radius: 10px; padding: 14px 12px 10px; }
+  .gchart svg { display: block; width: 100%; height: 120px; }
+  .gbars { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
+  .gbars i { flex: 1; background: var(--ghost2); border-radius: 4px 4px 0 0; }
+  .gsets { display: grid; gap: 6px; margin-top: 10px; }
+  .gsets div { height: 34px; border-radius: 8px; background: var(--ghost); }
+  .gtext { background: var(--surface); border-radius: 10px; padding: 12px; font: 500 13px/1.6 ui-monospace, monospace; color: var(--muted); }
+
+  .msg { text-align: center; margin-top: 18px; padding: 0 8px; }
+  .msg b { display: block; font: 800 17px Inter; }
+  .msg p { font: 500 14px/1.5 Inter; color: var(--mutedLight); margin-top: 6px; }
+  .cta { display: block; margin: 18px auto 0; background: var(--accent); color: var(--onAccent); border: 0; border-radius: 10px; padding: 13px 18px; font: 800 15px Inter; cursor: pointer; min-width: 200px; }
+  .cta2 { display: block; margin: 6px auto 0; background: none; border: 0; color: var(--mutedLight); font: 700 14px Inter; padding: 10px; cursor: pointer; }
+  /* vacíos de dentro (sesión, circuito): sin pantalla entera, en línea */
+  .inline { background: var(--surface); border-radius: 10px; padding: 14px 12px; }
+  .inline .hd { font: 800 15px Inter; margin-bottom: 10px; }
+  .slot { border: 1.5px dashed var(--border); border-radius: 10px; padding: 14px; display: flex; gap: 10px; align-items: center; cursor: pointer; }
+  .slot .plus { width: 32px; height: 32px; border-radius: 8px; background: var(--surface2); display: grid; place-items: center; color: var(--accent); font: 800 18px Inter; flex: none; }
+  .slot b { display: block; font: 700 15px Inter; }
+  .slot small { display: block; font: 500 13px Inter; color: var(--mutedLight); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>U15-03 · Estados vacíos</h1>
+  <p class="lead">Un vacío bueno enseña <b>qué saldrá ahí</b> (la silueta gris de la tarjeta o la gráfica real, no un dibujo genérico),
+    dice <b>para qué sirve</b> en una frase y lleva <b>un botón directo</b> a la acción que lo llena.
+    Los vacíos de dentro de una tarjeta (sesión sin ejercicios, circuito sin movimientos) van en línea, sin pantalla entera.</p>
+  <div class="ctl" id="pick"><span>Pantalla</span></div>
+  <div class="stage">
+    <div class="phone" id="phone"></div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+
+<script>
+const card = (n) => Array.from({ length: n }, (_, i) =>
+  `<div class="gcard"><div class="av"></div><div class="gcol"><div class="gl" style="width:${55 - i * 8}%"></div><div class="gl s" style="width:${75 - i * 6}%"></div></div></div>`).join('');
+const plain = (n) => Array.from({ length: n }, (_, i) =>
+  `<div class="gcard"><div class="gcol"><div class="gl" style="width:${60 - i * 9}%"></div><div class="gl s" style="width:${40 + i * 7}%"></div></div></div>`).join('');
+const line = `<div class="gchart"><div class="gl" style="width:40%"></div><svg viewBox="0 0 300 120" preserveAspectRatio="none">
+  <path d="M0 100 L40 92 L80 95 L120 74 L160 70 L200 52 L240 48 L300 28" fill="none" stroke="#3a3a3a" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="#3a3a3a"><circle cx="40" cy="92" r="4"/><circle cx="120" cy="74" r="4"/><circle cx="200" cy="52" r="4"/><circle cx="300" cy="28" r="4"/></g></svg></div>`;
+const bars = `<div class="gchart"><div class="gl" style="width:35%;margin-bottom:12px"></div><div class="gbars">${[40, 62, 55, 80, 70, 92, 66].map((h) => `<i style="height:${h}%"></i>`).join('')}</div></div>`;
+
+const S = {
+  clients: { label: 'Clientes', title: 'Clientes', act: '＋ Nuevo',
+    ghost: card(3), head: 'Aquí verás a tus clientes', say: 'Su programa, cuándo entrenaron por última vez y si les falta algo por recibir.',
+    cta: 'Crear mi primer cliente',
+    old: 'Sin clientes. Pulsa ＋ Nuevo para añadir uno.' },
+  progTpl: { label: 'Plantillas de programa', title: 'Plantillas', act: '＋',
+    ghost: plain(3), head: 'Programas listos para asignar', say: 'Guarda un programa como plantilla y dáselo a cualquier cliente en un toque.',
+    cta: 'Crear una plantilla', cta2: 'Guardar un programa que ya tengo',
+    old: 'Sin plantillas todavía.\nCrea plantillas para asignarlas\nrápidamente a tus clientes.' },
+  sessTpl: { label: 'Plantillas de sesión', title: 'Plantillas', act: '＋',
+    ghost: plain(3), head: 'Sesiones para reutilizar', say: 'Una sesión que usas a menudo, lista para meterla en cualquier programa.',
+    cta: 'Crear una plantilla de sesión',
+    old: 'Sin plantillas todavía.' },
+  history: { label: 'Historial', title: 'Historial',
+    ghost: plain(4), head: 'Tus entrenos, uno a uno', say: 'Cada sesión que termines queda aquí, con sus series y sus pesos.',
+    cta: 'Empezar a entrenar', cta2: 'Importar entrenos de un archivo',
+    old: 'Completa tu primera sesión para verla aquí.' },
+  progress: { label: 'Progreso', title: 'Progreso',
+    ghost: line + plain(1), head: 'Cómo suben tus marcas', say: 'Tu 1RM estimado y el peso de cada ejercicio, semana a semana.',
+    cta: 'Empezar a entrenar',
+    old: 'Completa tu primera sesión para ver el progreso aquí.' },
+  load: { label: 'Carga', title: 'Carga',
+    ghost: bars, head: 'Cuánto entrenas cada semana', say: 'La carga sale de lo dura que fue cada sesión y de cuánto duró.',
+    cta: 'Empezar a entrenar',
+    old: 'Completa tu primera sesión para ver la carga aquí.' },
+  archived: { label: 'Archivados', title: 'Archivados',
+    ghost: plain(2), head: 'Programas que ya no usas', say: 'Al archivar un programa se guarda aquí con su historial. Puedes recuperarlo cuando quieras.',
+    old: 'No hay programas archivados.', note: 'Sin botón: aquí no se crea nada; se llena archivando desde la pantalla Programa.' },
+  drive: { label: 'Copias de Drive', title: 'Copias en Drive',
+    ghost: plain(3), head: 'Tus copias de seguridad', say: 'Cada copia guarda programas e historial. Si cambias de móvil, la restauras desde aquí.',
+    cta: 'Hacer una copia ahora',
+    old: '(lista vacía sin texto propio)' },
+  paste: { label: 'Pegar entreno', title: 'Pegar entreno',
+    ghost: `<div class="gtext">Press banca 4x8 60kg<br>Remo con barra 3x10 50kg<br>Sentadilla 5x5 80kg</div>`,
+    head: 'Pega el texto de un entreno', say: 'Una línea por ejercicio, con series, reps y peso. Lo que se entienda saldrá aquí debajo.',
+    cta: 'Pegar del portapapeles',
+    old: 'Pega un texto para ver lo que se entiende.', note: 'La silueta aquí es un ejemplo de texto que sí se entiende.' },
+  session: { label: 'Sesión sin ejercicios', inline: true, title: 'Sesión A',
+    body: `<div class="inline"><div class="hd">Sesión A</div><div class="slot"><div class="plus">＋</div><div><b>Añadir el primer ejercicio</b><small>Elige de la lista o crea uno nuevo.</small></div></div></div>`,
+    old: 'Sin ejercicios' },
+  circuit: { label: 'Circuito sin movimientos', inline: true, title: 'Circuito',
+    body: `<div class="inline"><div class="hd">Circuito · 4 rondas</div><div class="slot"><div class="plus">＋</div><div><b>Añadir un movimiento</b><small>Se hacen seguidos, ronda a ronda.</small></div></div></div>`,
+    old: 'Añade movimientos para definir el circuito' },
+};
+let cur = 'clients';
+function render() {
+  const s = S[cur];
+  const top = `<div class="top"><b>${s.title}</b>${s.act ? `<i>${s.act}</i>` : ''}</div>`;
+  const main = s.inline ? s.body : `<div class="ghosts">${s.ghost}</div><div class="msg"><b>${s.head}</b><p>${s.say}</p></div>
+    ${s.cta ? `<button class="cta">${s.cta}</button>` : ''}${s.cta2 ? `<button class="cta2">${s.cta2}</button>` : ''}`;
+  document.getElementById('phone').innerHTML = top + main;
+  document.getElementById('note').innerHTML = `<div class="old"><em>Hoy</em>${s.old}</div>` + (s.note ? `<p>${s.note}</p>` : '') +
+    (s.inline ? '<p>Vacío en línea: el hueco con borde discontinuo es donde irá el primer elemento, y pulsarlo lo añade.</p>'
+              : '<p>Silueta = la tarjeta o gráfica real en gris, fundida hacia abajo. Título (qué verás), una frase (para qué sirve) y un botón lima a la acción que lo llena.</p>');
+  for (const b of document.querySelectorAll('#pick button')) b.classList.toggle('on', b.dataset.k === cur);
+}
+const pick = document.getElementById('pick');
+for (const [k, v] of Object.entries(S)) {
+  const b = document.createElement('button'); b.textContent = v.label; b.dataset.k = k;
+  b.onclick = () => { cur = k; render(); }; pick.appendChild(b);
+}
+render();
+</script>
+</body>
+</html>
