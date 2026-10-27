@@ -1,10 +1,11 @@
 # Spec — Límites que se explican y fallos de pago con salida
 
 > Tema: monetización
-> En corto: Al topar con un límite del plan gratis ya no salta el paywall de golpe: primero una hoja dice qué límite es («3 de 3 clientes»), qué puedes hacer sin pagar y, como opción, hacerte PRO; y cuando una compra falla, la app dice si te han cobrado y qué hacer, en vez de enseñar el error de la tienda en inglés.
-> Fase M04-01 · pendiente · Maqueta de la hoja de límite · §3
+> En corto: Al topar con un límite del plan gratis ya no salta el paywall de golpe: primero una hoja dice qué límite has alcanzado («3/3 clientes») y qué da PRO, con «Ahora no» y «Hazte PRO»; y cuando una compra falla, la app dice si te han cobrado y qué hacer, en vez de enseñar el error de la tienda en inglés.
+> Inicio: 2026-10-27
+> Fase M04-01 · terminado · Maqueta de la hoja de límite · §3
 > Fase M04-02 · pendiente · Hoja de límite antes del paywall · §4
-> Fase M04-03 · pendiente · Errores de compra y restauración con siguiente paso · §5
+> Fase M04-03 · hecho · Errores de compra y restauración con siguiente paso · §5
 >
 > Estado: **spec escrita, sin implementar** (18-oct-2026). Sale del análisis
 > «qué hace que la app se sienta premium»: los peores momentos (un límite, un
@@ -57,25 +58,33 @@ RevenueCat o de la tienda, normalmente en inglés y técnico, en un diálogo
 
 ## 3. M04-01 — Maqueta de la hoja de límite
 
-Una maqueta en `docs/mockups/limite-plan.html` con los cinco motivos de §1.1.
-Lo que tiene que resolver, como punto de partida:
+Maqueta en `docs/mockups/limite-plan.html` (v3), cerrada con el usuario el
+27-oct-2026. Lo decidido:
 
-- **Contador grande**: «3 de 3» en Barlow con una barra o casillas llenas
-  (como los medidores de Mi cuenta: `Meter` de `AccountScreen.jsx`).
-- **Qué significa**, en una frase y en positivo: «El plan gratis incluye 3
-  clientes. Ya los tienes.»
-- **Qué puedes hacer sin pagar**, cuando lo hay. Es lo que convierte el muro en
-  ayuda:
-  - `clients`: archivar o borrar un cliente que ya no entrenas;
-  - `connected`: elegir qué cliente va con la app (`FreeClientsSheet`);
-  - plantillas: reutilizar o editar la que ya tienes;
-  - `frozen`: elegir qué clientes siguen activos (`FreeClientsSheet`).
-- **CTA principal**: «Hazte PRO» con lo que da para este motivo («Clientes
-  ilimitados»), que abre el paywall **ya con el motivo** (§4).
-- **Secundario**: «Ahora no».
-
-Ronda de diseño con el usuario; al cerrarla se apunta aquí lo decidido y se
-pasa a M04-02.
+- **Hoja alta y centrada**, casi a pantalla completa (a partir de una
+  referencia del usuario). En el centro, un bloque: círculo con tinte lima
+  (`accent10`) y el icono del motivo a dos colores → etiqueta pastilla en
+  Barlow mayúsculas con el contador («3/3 CLIENTES», «1/1 CON LA APP»,
+  «1/1 PLANTILLAS», «EN PAUSA») → título → texto. Abajo, los botones.
+- **Espacios por niveles**, no todo a la misma distancia: icono → pastilla 24,
+  pastilla → título 12, título → texto 8; el bloque se centra en el hueco que
+  dejan los botones. En la app, con el `spacing` del tema más cercano.
+- **Título** «Límite de … alcanzado», sin «plan gratis»: «Límite de clientes
+  alcanzado», «Límite de clientes con la app alcanzado», «Límite de plantillas
+  alcanzado». `frozen` usa el de clientes.
+- **Texto** «Has alcanzado el límite de **3 clientes** del plan gratis. Hazte
+  PRO para añadir más.» (y equivalentes); `frozen`: «**Ana** está fuera de tus 3
+  clientes activos. Puedes ver su historial, pero no cambiar nada.»
+- **Botones**: «Ahora no» (texto) encima y «Hazte PRO» al fondo, a todo el
+  ancho, con la línea de lo que desbloquea **dentro del botón**, debajo
+  («Clientes ilimitados», «Todos tus clientes con la app», «Plantillas
+  ilimitadas», «Todos tus clientes activos»).
+- **Sin acciones secundarias** («Editar mi plantilla» y similares, fuera). Las
+  salidas gratis que se pensaron no existen: archivar no libera hueco y la
+  elección de clientes activos —y con ella quién va con la app— es fija
+  (`lockedClientIds` en `freePlan.js`).
+- **Sin degradado** arriba (la referencia lo lleva; en la app se descartó por
+  «etéreo», P16 §2).
 
 ## 4. M04-02 — Hoja de límite antes del paywall
 
@@ -93,11 +102,11 @@ pasa a M04-02.
 
 **Probar M04-02**
 
-- [ ] Plan gratis con 3 clientes → Nuevo cliente → sale la hoja «3 de 3 clientes» con lo que puedes hacer; «Ahora no» la cierra y no se crea nada
+- [ ] Plan gratis con 3 clientes → Nuevo cliente → sale la hoja «Límite de clientes alcanzado» con «3/3 clientes»; «Ahora no» la cierra y no se crea nada
 - [ ] En la hoja → «Hazte PRO» → paywall con «Sin límite de clientes» la primera
-- [ ] Conectar un segundo cliente con la app → hoja «1 de 1 con la app» con la opción de elegir cuál
+- [ ] Conectar un segundo cliente con la app → hoja «Límite de clientes con la app alcanzado» con «1/1 con la app»
 - [ ] Crear una segunda plantilla de programa → hoja de plantillas
-- [ ] Tocar un cliente congelado → hoja con la opción de elegir clientes activos
+- [ ] Tocar un cliente congelado → hoja con «Ana está fuera de tus 3 clientes activos»
 - [ ] «Hazte PRO» desde Mi cuenta → va directo al paywall, sin hoja
 
 ## 5. M04-03 — Errores de compra y restauración con siguiente paso
@@ -140,6 +149,6 @@ hacer**:
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
-| M04-01 | Maqueta de la hoja de límite | — | 🟢 | pendiente |
+| M04-01 | Maqueta de la hoja de límite | — | 🟢 | terminado |
 | M04-02 | Hoja de límite y motivo en el paywall | M04-01 | 🟡 | pendiente |
-| M04-03 | Errores de compra traducidos | — | 🟢 | pendiente |
+| M04-03 | Errores de compra traducidos | — | 🟢 | hecho |

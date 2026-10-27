@@ -284,7 +284,13 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount, onSignIn }) {
         showToast(t('paywall.pending'), 4000, 'neutral');
         onClose();
       } else if (!result.cancelled) {
-        showDialog(t('paywall.errTitle'), result.error ?? t('drive.errBackupBody'));
+        // M04-03: los botones los fija la acción (retry · restore · ok = «Entendido» por defecto)
+        const buttons = result.action === 'retry'
+          ? [{ text: t('common.cancel'), style: 'cancel' }, { text: t('paywall.retry'), onPress: handlePurchase }]
+          : result.action === 'restore'
+            ? [{ text: t('common.cancel'), style: 'cancel' }, { text: t('paywall.restore'), onPress: handleRestore }]
+            : undefined;
+        showDialog(t('paywall.errTitle'), result.error, buttons);
       }
     } finally {
       setPurchasing(false);

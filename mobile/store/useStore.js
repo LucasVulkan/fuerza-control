@@ -138,6 +138,21 @@ let _releasing = null;
 let _sendingPending = null;
 
 
+// M04-03: código de RevenueCat → clave i18n y acción del diálogo (retry · ok · restore). «Sin cargo» solo
+// en los fallos previos al cobro. Sin «Contactar» hasta que exista el correo de soporte (M02-07).
+const PURCHASE_ERRORS = {
+  NETWORK_ERROR:                            { key: 'errNetwork',     action: 'retry' },
+  STORE_PROBLEM_ERROR:                      { key: 'errStore',       action: 'retry' },
+  PURCHASE_NOT_ALLOWED_ERROR:               { key: 'errNotAllowed',  action: 'ok' },
+  PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR: { key: 'errNoProduct',   action: 'ok' },
+  RECEIPT_ALREADY_IN_USE_ERROR:             { key: 'errReceiptUsed', action: 'restore' },
+};
+const storeName = () => (Platform.OS === 'ios' ? 'App Store' : 'Google Play');
+function explainPurchaseError(RC, e) {
+  const hit = Object.entries(PURCHASE_ERRORS).find(([name]) => e?.code != null && e.code === RC.PURCHASES_ERROR_CODE?.[name]);
+  const { key, action } = hit?.[1] ?? { key: 'errPurchaseFail', action: 'retry' };
+  return { error: i18n.t(`paywall.${key}`, { store: storeName() }), action };
+}
 // ── Sesión de entrenador ───────────────────────────────────────────────────────
 // Antes de hablar con el servidor como entrenador, la sesión de entrenador
 // tiene que ser la de `trainerSync.userId` (C09 §3). Con código se rehace sola
@@ -5262,6 +5277,10 @@ export const useStore = create(
           }
           : { isPro: !!p.isPro && proStillValid(p, Date.now()) };
         set((s) => ({ profile: { ...s.profile, ...patch } }));
+        if (get()._proPending && patch.isPro) {
+          set({ _proPending: false });
+          get().showToast(i18n.t('paywall.proActivated'), 3000, 'success');
+        }
         return patch.isPro;
       },
 
@@ -5316,21 +5335,24 @@ export const useStore = create(
         }
       },
 
-      /** Purchases a RevenueCat Package. Returns { ok, isPro }, { ok: false, pending } or { ok: false, cancelled, error }. */
+      /** Purchases a RevenueCat Package. Returns { ok, isPro }, { ok: false, pending } or { ok: false, cancelled } / { ok: false, error, action } (M04-03: texto propio, nunca el de la tienda). */
       purchasePackage: async (pkg) => {
         const RC = get()._getRC();
-        if (!RC) return { ok: false, error: i18n.t('paywall.errUnavailable') };
+        if (!RC) return { ok: false, error: i18n.t('paywall.errUnavailable'), action: 'ok' };
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
           // Sin PRO en la respuesta, no se dice «hecho»: lo pondrá el listener de App.js cuando llegue
-          return get()._applyCustomerInfo(customerInfo) ? { ok: true, isPro: true } : { ok: false, pending: true };
+          if (get()._applyCustomerInfo(customerInfo)) return { ok: true, isPro: true };
+          set({ _proPending: true });
+          return { ok: false, pending: true };
         } catch (e) {
           if (e?.userCancelled) return { ok: false, cancelled: true };
-          if (e?.code === RC.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) return { ok: false, pending: true };
+          if (e?.code === RC.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) { set({ _proPending: true }); return { ok: false, pending: true }; }
           // Already purchased — restore entitlements instead of showing error
           if (e?.code === RC.PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR
               && await get().restorePurchases()) return { ok: true, isPro: true };
-          return { ok: false, error: e?.message ?? i18n.t('paywall.errPurchase') };
+          console.warn('[purchase]', e?.code, e?.message);
+          return { ok: false, ...explainPurchaseError(RC, e) };
         }
       },
 
@@ -5340,10 +5362,17 @@ export const useStore = create(
         if (!RC) return false;
         try {
           const isPro = get()._applyCustomerInfo(await RC.restorePurchases());
-          if (!silent) get().showToast(i18n.t(isPro ? 'paywall.restored' : 'paywall.restoreNone'), 2200, isPro ? 'success' : 'neutral');
+          if (!silent) {
+            const none = i18n.t('paywall.restoreNone') + ' ' + i18n.t('paywall.restoreNoneHint', { store: storeName() });
+            get().showToast(isPro ? i18n.t('paywall.restored') : none, isPro ? 2200 : 4000, isPro ? 'success' : 'neutral');
+          }
           return isPro;
-        } catch {
-          if (!silent) get().showToast(i18n.t('paywall.restoreError'), 2200, 'error');
+        } catch (e) {
+          console.warn('[restore]', e?.code, e?.message);
+          if (!silent) {
+            const net = e?.code === RC.PURCHASES_ERROR_CODE.NETWORK_ERROR;
+            get().showToast(i18n.t(net ? 'paywall.restoreErrorNetwork' : 'paywall.restoreError'), 2600, 'error');
+          }
           return false;
         }
       },
