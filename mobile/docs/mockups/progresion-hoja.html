@@ -49,7 +49,8 @@
   .tile.on { background: var(--accent); }
   .tile.on svg, .tile.on span { color: var(--onAccent); }
   .tile.none:not(.on) svg { color: var(--mutedLight); }
-  .say { font: 500 14px/1.5 Inter; color: var(--text); margin-top: 12px; }
+  .say { font: 500 14px/1.5 Inter; color: var(--mutedLight); margin-top: 12px; }
+  .say b { color: var(--text); font-weight: 800; }
 
   .rcards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .rcard { background: var(--bg); border-radius: 14px; padding: 12px; cursor: pointer; border: 1px solid transparent; }
@@ -94,6 +95,10 @@
   .ctarget { font: 700 14px Inter; color: var(--mutedLight); margin-top: 3px; font-variant-numeric: tabular-nums; }
   .cbody { padding: 12px 16px 14px; }
   .prog { padding-bottom: 12px; cursor: pointer; }
+  /* A: la progresión forma parte de la cabecera (lo que toca hoy en este ejercicio). */
+  .prog-head { padding: 10px 0 0; margin-top: 10px; border-top: 1px solid var(--border); }
+  /* B: franja propia, con el fondo y el radio de las celdas, alineada con la rejilla. */
+  .prog-band { background: var(--bg); border-radius: 11px; padding: 10px 12px; margin-bottom: 12px; }
   .pline { display: flex; align-items: baseline; gap: 8px; padding-top: 2px; flex-wrap: wrap; }
   .pdir { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent); margin-left: -2px; }
   .pdir .ar { font-size: 14px; }
@@ -116,7 +121,7 @@
 
 <div class="wrap">
   <h1>Hoja de Progresión</h1>
-  <p class="lead">Maqueta de P18 (v3). A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, cuándo y cuánto sube, y lo avanzado plegado. Series y reps se siguen cambiando en Volumen; aquí solo se recuerdan bajo el nombre. A la derecha, la tarjeta del Workout con los valores de la app: <b>el gris es lo que hiciste la última vez</b> y la línea de progresión dice lo que toca hoy, en dos filas.</p>
+  <p class="lead">Maqueta de P18 (v3). A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, cuándo y cuánto sube, y lo avanzado plegado. Series y reps se siguen cambiando en Volumen; aquí solo se recuerdan bajo el nombre. A la derecha, la tarjeta del Workout con los valores de la app: <b>el gris es lo que hiciste la última vez</b> y la línea de progresión dice lo que toca hoy, en dos filas. Para que no quede suelta, dos formas de anclarla: <b>A</b>, dentro de la cabecera; <b>B</b>, en una franja propia. «Hoy» es como está en la app.</p>
 
   <div class="stage">
     <div class="col">
@@ -136,6 +141,11 @@
         <button data-sit="leve">Fallo leve</button>
         <button data-sit="down">Toca bajar</button>
         <button data-sit="reps">Por reps</button>
+      </div>
+      <div class="ctl" role="group" aria-label="Dónde va la progresión">
+        <button class="on" data-var="head">A · En la cabecera</button>
+        <button data-var="band">B · Franja propia</button>
+        <button data-var="loose">Hoy</button>
       </div>
       <div class="phone"><div class="wk" id="wk"></div></div>
       <p>Toca ✓: sin escribir, se guarda lo que hay en la casilla (lo de la última vez).</p>
@@ -163,15 +173,15 @@ const EX = {
 };
 const LABEL = { weight: 'Peso', assist: 'Ayuda', reps: 'Reps', time: 'Tiempo', effort: 'Esfuerzo', none: 'Nada' };
 const SAY = {
-  weight: 'Sube el peso al completar el número máximo de reps del rango.',
-  assist: 'Quita ayuda al completar el número máximo de reps del rango.',
-  reps: 'Sube las repeticiones al superar el objetivo de reps.',
-  time: 'Aguanta más segundos que la vez anterior, al completar el objetivo.',
-  effort: 'El peso sube o baja en función del esfuerzo, medido con el RPE.',
-  none: 'No cambia nada solo. Verás lo que hiciste la última vez.',
+  weight: '<b>Sube el peso</b> al completar el número máximo de reps del rango.',
+  assist: '<b>Quita ayuda</b> al completar el número máximo de reps del rango.',
+  reps: '<b>Sube las repeticiones</b> al superar el objetivo de reps.',
+  time: '<b>Aguanta más segundos</b> que la vez anterior, al completar el objetivo.',
+  effort: 'El peso <b>sube o baja en función del esfuerzo</b>, medido con el RPE.',
+  none: '<b>No se sugieren cambios.</b> Verás lo que hiciste la última vez y tú decides.',
 };
 let ex = 'bench';
-const st = { when: 'all', inc: '2,5', reps: '1', secs: '5', rpe: 8, down: 'def', brake: false };
+const st = { when: 'all', inc: '2,5', reps: '1', secs: '5', rpe: 8, down: 'def', brake: false, brakeRpe: 8 };
 
 function meta(e) {
   const s = e.style;
@@ -218,8 +228,11 @@ function sheet() {
       <summary>Avanzado <em>›</em></summary>
       <div class="in">
         <div><div class="lbl">Freno de RPE</div>
-          <div class="sg"><b class="${!st.brake ? 'on' : ''}" data-k="brake" data-v="0" role="button" tabindex="0">No</b><b class="${st.brake ? 'on' : ''}" data-k="brake" data-v="1" role="button" tabindex="0">Hasta RPE 8</b></div>
-          <div class="hint">Aunque llegues arriba, no sube si la media de RPE pasa de 8. Un día duro nunca baja el peso: solo frena.</div></div>
+          <div class="sg"><b class="${!st.brake ? 'on' : ''}" data-k="brake" data-v="0" role="button" tabindex="0">No</b><b class="${st.brake ? 'on' : ''}" data-k="brake" data-v="1" role="button" tabindex="0">RPE</b></div>
+          ${st.brake ? `<div class="row" style="background:var(--surface2);margin-top:8px"><span>RPE máximo</span><div class="step"><i data-k="brakeRpe" data-v="-0.5" role="button" tabindex="0">−</i><b>${String(st.brakeRpe).replace('.', ',')}</b><i data-k="brakeRpe" data-v="0.5" role="button" tabindex="0">+</i></div></div>` : ''}
+          <div class="hint">${st.brake
+            ? `Aunque completes el objetivo de reps, no sube si la media de RPE pasa de ${String(st.brakeRpe).replace('.', ',')}. Nunca baja de peso al superar el RPE.`
+            : 'Sube al completar el objetivo de reps, sin mirar el RPE.'}</div></div>
         <div><div class="lbl">Cuándo baja</div>
           <div class="sg"><b class="${st.down === 'def' ? 'on' : ''}" data-k="down" data-v="def" role="button" tabindex="0">Si fallas</b><b class="${st.down === 'never' ? 'on' : ''}" data-k="down" data-v="never" role="button" tabindex="0">Nunca</b></div>
           <div class="hint">${st.down === 'def' ? 'Si te quedas un poco por debajo del mínimo, se mantiene. Si te quedas lejos, o dos días seguidos, ' + (s === 'assist' ? 'añade un 10 % de ayuda.' : 'baja un 10 %.') : 'Si no llegas al mínimo, se mantiene. Nunca propone bajar.'}</div></div>
@@ -247,12 +260,12 @@ function rule(e) {
     : `cuando las ${e.sets} series lleguen a ${e.max} reps`;
   const down = st.down === 'never' ? ' Si no llegas al mínimo, se mantiene.'
     : ' Si te quedas un poco por debajo del mínimo, se mantiene; si te quedas lejos, o dos días seguidos, baja un 10 %.';
-  if (s === 'weight') return `Sube ${inc} ${goal}${st.brake ? ' y la media de RPE no pase de 8' : ''}.${down}`;
+  if (s === 'weight') return `Sube ${inc} ${goal}${st.brake ? ` y la media de RPE no pase de ${String(st.brakeRpe).replace('.', ',')}` : ''}.${down}`;
   if (s === 'assist') return `Quita ${inc} de ayuda ${goal}.${down.replace('baja un 10 %', 'añade un 10 % de ayuda')}`;
   if (s === 'reps') return `Cuando superas el objetivo, el siguiente es tu total + ${st.reps} ${st.reps === '1' ? 'rep' : 'reps'} por serie. Si dos días seguidos haces menos que el anterior, se ajusta a lo que hiciste.`;
   if (s === 'time') return `Cuando completas el objetivo, el siguiente es tu total + ${st.secs} s por serie. Si dos días seguidos aguantas menos, se ajusta a lo que hiciste.`;
   if (s === 'effort') return `El peso de cada día sale de tu 1RM estimado (la media de tus tres últimas sesiones) para hacer tus reps a RPE ${st.rpe}.`;
-  return 'Sin cambios automáticos.';
+  return 'Sin sugerencia de progreso.';
 }
 
 const SIT = {
@@ -261,23 +274,25 @@ const SIT = {
   down: { n: '1', ex: 'Press de banca con barra', tg: '3 × 8–12 reps', dir: ['up', '↓', 'Baja a'], det: '55 kg', delta: '−5', why: 'Segundo día seguido sin llegar al mínimo', kg: '60', reps: [7, 6, 6] },
   reps: { n: '2', ex: 'Dominadas', tg: '3 series · desde 6 reps', dir: ['up', '↑', 'Sube a'], det: '34 reps en total', delta: '+3', why: 'La última vez hiciste 31', kg: null, reps: [12, 12, 7] },
 };
-let sit = 'up', done = [false, false, false];
+let sit = 'up', done = [false, false, false], variant = 'head';
 
 function wk() {
   const s = SIT[sit];
   const next = done.indexOf(false);
-  document.getElementById('wk').innerHTML = `
-    <div class="card">
-      <div class="chead"><span class="cnum">${s.n}</span><div><div class="cname">${s.ex}</div><div class="ctarget">${s.tg}</div></div></div>
-      <div class="cbody">
-        <div class="prog">
+  const prog = `
+        <div class="prog prog-${variant}">
           <div class="pline">
             <span class="pdir ${s.dir[0]}"><span class="ar">${s.dir[1]}</span> ${s.dir[2]}</span>
             <span class="pdet">${s.det}</span>
             ${s.delta ? `<span class="pdelta">${s.delta}</span>` : ''}
           </div>
           <div class="pwhy">${s.why}</div>
-        </div>
+        </div>`;
+  document.getElementById('wk').innerHTML = `
+    <div class="card">
+      <div class="chead"><span class="cnum">${s.n}</span><div style="flex:1;min-width:0"><div class="cname">${s.ex}</div><div class="ctarget">${s.tg}</div>${variant === 'head' ? prog : ''}</div></div>
+      <div class="cbody">
+        ${variant !== 'head' ? prog : ''}
         <div class="colh"><span style="flex:none;width:26px"></span>${s.kg ? '<span>KG</span>' : ''}<span>REPS</span><span style="flex:none;width:42px"></span></div>
         <div class="setl">${s.reps.map((r, i) => `
           <div class="srow">
@@ -291,17 +306,19 @@ function wk() {
 }
 
 document.addEventListener('click', (ev) => {
-  const t = ev.target.closest('[data-ex],[data-k],[data-sit],[data-chk]');
+  const t = ev.target.closest('[data-ex],[data-k],[data-sit],[data-chk],[data-var]');
   if (!t) return;
   const d = t.dataset;
   if (d.ex) { ex = d.ex; document.querySelectorAll('[data-ex]').forEach((b) => b.classList.toggle('on', b === t)); }
   if (d.k === 'style') EX[ex].style = d.v;
   else if (d.k === 'rpe') st.rpe = Math.min(10, Math.max(6, st.rpe + Number(d.v)));
   else if (d.k === 'brake') st.brake = d.v === '1';
+  else if (d.k === 'brakeRpe') st.brakeRpe = Math.min(10, Math.max(6, st.brakeRpe + Number(d.v)));
   else if (d.k) st[d.k] = d.v;
   if (d.sit) { sit = d.sit; done = [false, false, false]; document.querySelectorAll('[data-sit]').forEach((b) => b.classList.toggle('on', b === t)); }
   if (d.chk) done[+d.chk] = !done[+d.chk];
-  if (d.sit || d.chk) { wk(); return; }
+  if (d.var) { variant = d.var; document.querySelectorAll('[data-var]').forEach((b) => b.classList.toggle('on', b === t)); }
+  if (d.sit || d.chk || d.var) { wk(); return; }
   const open = document.querySelector('.adv')?.open;
   sheet();
   if (open && document.querySelector('.adv')) document.querySelector('.adv').open = true;

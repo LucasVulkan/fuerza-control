@@ -208,13 +208,14 @@ simples y cómodas, aplicadas a los estilos de progresión:
 - **Qué sube**, en tarjetas pequeñas con icono: Peso (kettlebell) · Reps · Tiempo ·
   Esfuerzo · Nada (en asistidas, Ayuda en lugar de Peso). La elegida **se rellena
   de lima con el texto en negro**, como todo lo pulsado en la app. Debajo, su
-  frase (textos del usuario, 27-oct):
-  - Peso: «Sube el peso al completar el número máximo de reps del rango.»
-  - Ayuda: «Quita ayuda al completar el número máximo de reps del rango.»
-  - Reps: «Sube las repeticiones al superar el objetivo de reps.»
-  - Tiempo: «Aguanta más segundos que la vez anterior, al completar el objetivo.»
-  - Esfuerzo: «El peso sube o baja en función del esfuerzo, medido con el RPE.»
-  - Nada: «No cambia nada solo. Verás lo que hiciste la última vez.»
+  frase, con la parte que importa en negrita (textos del usuario, 27-oct):
+  - Peso: «**Sube el peso** al completar el número máximo de reps del rango.»
+  - Ayuda: «**Quita ayuda** al completar el número máximo de reps del rango.»
+  - Reps: «**Sube las repeticiones** al superar el objetivo de reps.»
+  - Tiempo: «**Aguanta más segundos** que la vez anterior, al completar el objetivo.»
+  - Esfuerzo: «El peso **sube o baja en función del esfuerzo**, medido con el RPE.»
+  - Nada: «**No se sugieren cambios.** Verás lo que hiciste la última vez y tú
+    decides.» Su regla al pie: «Sin sugerencia de progreso.»
   El icono de Reps está por decidir (la maqueta prueba unas flechas en círculo).
 - **Cuándo sube** (Peso y Ayuda), en dos tarjetas grandes **con borde** (no
   rellenas) y un cuadradito por serie (tantos como series tenga el ejercicio),
@@ -227,6 +228,14 @@ simples y cómodas, aplicadas a los estilos de progresión:
   recámara»).
 - **Plegado, «Avanzado»**: freno de RPE, cuándo baja (Si fallas / Nunca) y
   escalón. El RPE no aparece fuera de Avanzado salvo en Esfuerzo.
+  - **Freno de RPE**: No / RPE. Con RPE aparece el RPE máximo (stepper) y la
+    explicación se adapta: «Aunque completes el objetivo de reps, no sube si la
+    media de RPE pasa de 8. Nunca baja de peso al superar el RPE.» Con No: «Sube
+    al completar el objetivo de reps, sin mirar el RPE.»
+- **La línea de progresión del Workout no puede quedar suelta** en medio de la
+  tarjeta (revisión del usuario). La maqueta prueba dos anclajes, por decidir:
+  **A**, dentro de la cabecera (bajo el objetivo, separada por una raya), y **B**,
+  en una franja propia con el fondo y el radio de las celdas.
 - La frase de la regla (`progressionRule`) resume lo elegido debajo del todo.
 
 ## 8. Casos
