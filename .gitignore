@@ -41,3 +41,6 @@ reports/
 .stryker-tmp/
 stryker-setup-*.js
 scripts/visor-progresion/visor.html
+scripts/visor-carga/visor.html
+scripts/visor-carga/visor-carga.json
+visor-progresion.json
