@@ -18,7 +18,6 @@ const HALLAZGOS = [
   ['elena', 5, 'Con el RPE apuntado en una sola serie, la app decide solo con esa serie y sube.'],
   ['sergio', 3, 'Con 12/12/7 pide <b>8 en todas</b>: la peor serie manda.'],
   ['sergio', 6, 'Tras el día malo, la frase dice «meta 6» pero el gris pide 7/5/4 (lo de la última vez). Dos mensajes distintos en la misma tarjeta.'],
-  ['sergio', 8, 'Con 15/14/13 sigue pidiendo reps; nunca sugiere lastrarse.'],
   ['ana', 7, 'Tras bajar, el gris pide 30×<b>12</b>: después de fallar, te pide el máximo del rango.'],
   ['pilar-plancha', 4, 'En la plancha pasa lo mismo que con Sergio: la frase dice 30 s y el gris pide 60/45/25.'],
 ];
@@ -38,7 +37,8 @@ function propuesta(f, c) {
   const label = asist ? { up: 'Menos ayuda', down: 'Más ayuda', hold: 'Mantener' }[ch.tipo] : TIPO[ch.tipo];
   const cifra = ch.peso != null && c.pesoInicial ? ` ${n(ch.peso)} kg`
     : ch.reps != null ? ` ${ch.reps} reps` : ch.tiempo != null ? ` ${ch.tiempo} s` : '';
-  return `<span class="pill ${ch.tipo}">${label}${cifra}</span><div class="why">${esc(ch.why)}</div>`;
+  const e1rm = ch.e1rm ? `<div class="why">1RM estimado: ${n(Math.round(ch.e1rm * 10) / 10)} kg</div>` : '';
+  return `<span class="pill ${ch.tipo}">${label}${cifra}</span><div class="why">${esc(ch.why)}</div>${e1rm}`;
 }
 
 function series(sets, c, campo) {
@@ -156,7 +156,7 @@ tr:target td { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 <main>
   <header class="intro">
     <h1>Visor de progresión</h1>
-    <p>Nueve personas pasadas por el motor de progresión real de la app, sesión a sesión. En cada fila: lo que la app propone antes de entrenar, el gris que ve en cada serie, lo que hizo de verdad y qué pasa ese día. La última fila de cada caso es lo que pediría en la siguiente sesión. Si no se dice otra cosa, el atleta usa el peso que le propone la app.</p>
+    <p>Nueve personas pasadas por el motor de progresión <b>tal como funciona hoy</b> en la app, sesión a sesión. Nada de lo acordado en el replanteo está aplicado todavía. En cada fila: lo que la app propone antes de entrenar, el gris que ve en cada serie, lo que hizo de verdad y qué pasa ese día. La última fila de cada caso es lo que pediría en la siguiente sesión. Si no se dice otra cosa, el atleta usa el peso que le propone la app.</p>
     <div class="leyenda">
       <span><span class="set bajo">7</span> por debajo del mínimo</span>
       <span><span class="set tope">12</span> arriba del rango</span>
