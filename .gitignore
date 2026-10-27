@@ -40,3 +40,4 @@ supabase/.temp/
 reports/
 .stryker-tmp/
 stryker-setup-*.js
+scripts/visor-progresion/visor.html
