@@ -105,6 +105,10 @@
   .prog-center { margin: 0 12px 0 16px; padding: 10px 0 14px; border-top: 1px solid var(--border); text-align: center; }
   .prog-center .pline { justify-content: center; }
   .prog-center .pdir { margin-left: 0; }
+  /* C: donde está hoy (entre la cabecera y las series), con las líneas centradas. */
+  .prog-looseCenter { text-align: center; }
+  .prog-looseCenter .pline { justify-content: center; }
+  .prog-looseCenter .pdir { margin-left: 0; }
   .prog-band { background: var(--bg); border-radius: 11px; padding: 10px 12px; margin-bottom: 12px; }
   .pline { display: flex; align-items: baseline; gap: 8px; padding-top: 2px; flex-wrap: wrap; }
   .pdir { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent); margin-left: -2px; }
@@ -128,7 +132,7 @@
 
 <div class="wrap">
   <h1>Hoja de Progresión</h1>
-  <p class="lead">Maqueta de P18 (v3). A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, cuándo y cuánto sube, y lo avanzado plegado. Series y reps se siguen cambiando en Volumen; aquí solo se recuerdan bajo el nombre. A la derecha, la tarjeta del Workout con los valores de la app: <b>el gris es lo que hiciste la última vez</b> y la línea de progresión dice lo que toca hoy, en dos filas. Para que no quede suelta, formas de anclarla: <b>A3</b>, en la cabecera con las líneas centradas; <b>A2</b>, en la cabecera a todo lo ancho; <b>A</b>, en la cabecera bajo el nombre; <b>B</b>, en una franja propia. «Hoy» es como está en la app.</p>
+  <p class="lead">Maqueta de P18 (v3). A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, cuándo y cuánto sube, y lo avanzado plegado. Series y reps se siguen cambiando en Volumen; aquí solo se recuerdan bajo el nombre. A la derecha, la tarjeta del Workout con los valores de la app: <b>el gris es lo que hiciste la última vez</b> y la línea de progresión dice lo que toca hoy, en dos filas. Para que no quede suelta, formas de anclarla: <b>C</b>, donde está hoy pero centrada; <b>A3</b>, en la cabecera con las líneas centradas; <b>A2</b>, en la cabecera a todo lo ancho; <b>A</b>, en la cabecera bajo el nombre; <b>B</b>, en una franja propia. «Hoy» es como está en la app.</p>
 
   <div class="stage">
     <div class="col">
@@ -150,7 +154,8 @@
         <button data-sit="reps">Por reps</button>
       </div>
       <div class="ctl" role="group" aria-label="Dónde va la progresión">
-        <button class="on" data-var="center">A3 · Cabecera, centrada</button>
+        <button class="on" data-var="looseCenter">C · Como hoy, centrada</button>
+        <button data-var="center">A3 · Cabecera, centrada</button>
         <button data-var="wide">A2 · Cabecera, a todo lo ancho</button>
         <button data-var="head">A · Cabecera, bajo el nombre</button>
         <button data-var="band">B · Franja propia</button>
@@ -283,7 +288,7 @@ const SIT = {
   down: { n: '1', ex: 'Press de banca con barra', tg: '3 × 8–12 reps', dir: ['up', '↓', 'Baja a'], det: '55 kg', delta: '−5', why: 'Segundo día seguido sin llegar al mínimo', kg: '60', reps: [7, 6, 6] },
   reps: { n: '2', ex: 'Dominadas', tg: '3 series · desde 6 reps', dir: ['up', '↑', 'Sube a'], det: '34 reps en total', delta: '+3', why: 'La última vez hiciste 31', kg: null, reps: [12, 12, 7] },
 };
-let sit = 'up', done = [false, false, false], variant = 'center';
+let sit = 'up', done = [false, false, false], variant = 'looseCenter';
 
 function wk() {
   const s = SIT[sit];
@@ -304,7 +309,7 @@ function wk() {
         ${variant === 'wide' || variant === 'center' ? prog : ''}
       </div>
       <div class="cbody">
-        ${variant === 'band' || variant === 'loose' ? prog : ''}
+        ${variant === 'band' || variant === 'loose' || variant === 'looseCenter' ? prog : ''}
         <div class="colh"><span style="flex:none;width:26px"></span>${s.kg ? '<span>KG</span>' : ''}<span>REPS</span><span style="flex:none;width:42px"></span></div>
         <div class="setl">${s.reps.map((r, i) => `
           <div class="srow">
