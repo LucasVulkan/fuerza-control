@@ -406,7 +406,6 @@ const INITIAL_UI = {
   _editingProgramId: null,
   // P16-01: copia del editor al entrar en su base. Fuera del partialize.
   _editorDraft: null,
-  _proPending: false,   // M04-03: pago pendiente; al llegar el PRO sale «PRO activado» (fuera del partialize)
   _viewingProgramId: null,
   _blockPickerResult: null,
   homeTab: 'session',
