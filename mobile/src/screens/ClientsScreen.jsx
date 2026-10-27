@@ -1219,7 +1219,8 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
       onClose();
       if (connected) showToast(t('clients.clientConnected'), 2200, 'success');
     } catch (err) {
-      showDialog(t('common.error'), err.message ?? t('clients.keyTab.connectError'));
+      console.warn('[connectCloud]', err);
+      showDialog(t('common.error'), t('clients.keyTab.connectError'));
     } finally {
       setLoading(false);
     }

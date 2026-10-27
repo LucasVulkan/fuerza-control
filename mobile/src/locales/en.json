@@ -454,7 +454,7 @@
     "codeAlreadyLinked": "You're already connected to a trainer. Continuing disconnects you from them and connects you to this one.",
     "codeSlotOccupied": "This code is already in use on another phone. If you connect here, that phone gets disconnected.",
     "errSeatLocked": "This code is linked to an account. If it's yours, sign in again with it.",
-    "errCodeNotFound": "Code not found. Check that you typed it correctly.",
+    "errCodeNotFound": "Code not found. Check it is typed correctly or ask your trainer for a new one.",
     "errNoProgramYet": "Your trainer hasn't uploaded a program yet. Try again later.",
     "errNotConnected": "You're not connected to any trainer.",
     "connectedToast": "Connected to your trainer",
@@ -2192,7 +2192,7 @@
       "copied": "Code copied",
       "noSlot": "This client is not connected to the cloud yet.",
       "connect": "Connect to the cloud",
-      "connectError": "Couldn't connect with that code. Check it is typed correctly or ask your trainer for a new one.",
+      "connectError": "Couldn't connect the client. Check your connection and try again.",
       "connecting": "Connecting…",
       "connectedNoCode": "Connected · no local code"
     },

@@ -454,7 +454,7 @@
     "codeAlreadyLinked": "Ya estás conectado con un entrenador. Al continuar dejas de estarlo y pasas a este.",
     "codeSlotOccupied": "Este código ya se está usando en otro móvil. Si conectas aquí, ese móvil se desconecta.",
     "errSeatLocked": "Este código está vinculado a una cuenta. Si es la tuya, vuelve a entrar con ella.",
-    "errCodeNotFound": "Código no encontrado. Comprueba que lo has escrito bien.",
+    "errCodeNotFound": "Código no encontrado. Revisa que esté bien escrito o pide uno nuevo a tu entrenador.",
     "errNoProgramYet": "Tu entrenador aún no ha subido ningún programa. Vuelve a intentarlo más tarde.",
     "errNotConnected": "No estás conectado a ningún entrenador.",
     "connectedToast": "Conectado con el entrenador",
@@ -2192,7 +2192,7 @@
       "copied": "Código copiado",
       "noSlot": "Este cliente aún no está conectado a la nube.",
       "connect": "Conectar a la nube",
-      "connectError": "No se pudo conectar con ese código. Revisa que esté bien escrito o pide uno nuevo a tu entrenador.",
+      "connectError": "No se pudo conectar al cliente. Comprueba la conexión y vuelve a probar.",
       "connecting": "Conectando…",
       "connectedNoCode": "Conectado · sin código local"
     },
