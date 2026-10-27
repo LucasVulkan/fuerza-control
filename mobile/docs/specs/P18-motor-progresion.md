@@ -169,14 +169,16 @@ Lectura de lo antiguo, sin migrar: una sesión sin `goal` se trata como la prime
 
 **Probar P18-02**
 
-- [ ] Dominadas en «Reps» con 12/12/7 la última vez → la tarjeta dice «Sube a
-  34 reps en total» con «+3», y debajo «La última vez hiciste 31».
+- [ ] Dominadas en «Reps» con 12/12/7 la última vez → la tarjeta dice «↑ SUBE
+  A 12 · 11 · 11 reps» y debajo «34 reps en total · La última vez hiciste 31».
 - [ ] Haz 32 (sin llegar a 34) y vuelve otro día → sigue pidiendo 34 en total.
 - [ ] Haz dos días seguidos menos que el anterior → al segundo la meta baja a
   lo que hiciste ese día + 1 por serie.
-- [ ] Plancha en «Tiempo» con salto de 5 s: 45/40/30 → «130 s en total».
-- [ ] En el editor, el resumen de la progresión de un ejercicio por Reps dice
-  «Tu total + 1 rep por serie», no «sobre la serie más floja».
+- [ ] Plancha en «Tiempo» con salto de 5 s: 45/40/30 → «44 · 43 · 43 s» y
+  debajo «130 s en total · …».
+- [ ] En el editor, la tarjeta del nombre de un ejercicio por Reps dice «+1 rep
+  por serie al completar el objetivo» (corto); la explicación entera va al pie
+  de la hoja de Progresión.
 
 ## 5. P18-03 — El gris es la última vez; el check guarda la casilla
 
@@ -257,7 +259,8 @@ las 3 series para subir»; «y el resto a 12 reps o más») y la fila 2 pasa a
 - [ ] La línea de progresión va dentro de la banda gris de la cabecera, bajo
   el nombre y separada por una raya fina, empezando en el borde izquierdo
   (bajo el número), en dos filas: «↑ SUBE A 62.5 kg (+2.5)» y debajo el
-  porqué en gris.
+  porqué en gris, a tamaño de texto normal y con la unidad tras cada cifra
+  («Llega a 12 reps en las 3 series para volver a subir»).
 - [ ] Al plegar la tarjeta (completar las series) la línea desaparece; al
   desplegarla vuelve.
 - [ ] Tocar la línea abre la ficha de la recomendación, como antes.
@@ -336,23 +339,32 @@ serie…»; y bajar dice el umbral («si faltan más del 15 % de las repeticione
 
 **Probar P18-05**
 
-- [ ] Editor de un press de banca 3×8-12 → Progresión: bajo el nombre «3 ×
-  8–12 reps» en gris; «Qué sube» en tarjetas con icono (Peso · Reps · Esfuerzo ·
-  Nada) y la elegida rellena de lima con el texto en negro; debajo su frase con
-  la parte que importa en negrita.
-- [ ] Toca cada tarjeta: la frase cambia y aparecen solo los bloques que
-  tocan (Cuándo sube y Avanzado solo en Peso; Esfuerzo objetivo solo en
-  Esfuerzo; nada más en Nada).
+- [ ] Editor de un press de banca 3×8-12 → Progresión: la hoja se abre alta y
+  no cambia de tamaño ni salta al elegir nada; botón «Aceptar» arriba. Bajo el
+  nombre «3 × 8–12 reps» en gris (también con Nada).
+- [ ] «Qué sube» en tarjetas con icono (mancuerna · flechas en círculo ·
+  medidor · raya), sobre gris, con los iconos centrados. La tocada se rellena
+  de lima desde la esquina en el momento, sin esperar; debajo su frase con la
+  parte que importa en negrita.
+- [ ] Toca cada tarjeta: aparecen solo los bloques que tocan (Cuándo sube y
+  Avanzado en Peso; Esfuerzo objetivo y Avanzado en Esfuerzo; nada más en Nada).
 - [ ] Esfuerzo con Rango en Volumen: la tarjeta sale apagada y al tocarla dice
   que necesita reps fijas.
-- [ ] Cuándo sube: dos tarjetas con borde y un cuadradito por serie; «La
-  mayoría» dice «2 de 3 series llegan a 12 reps y ninguna baja de 8 reps».
-- [ ] Cuánto sube: chips 1.25 · 2.5 · 5 kg · 5 %; en Reps +1 / +2 / +3 reps;
-  en Tiempo +5 / +10 / +15 s. Lo elegido se guarda al salir y vuelve igual.
+- [ ] Cuándo sube: dos tarjetas con borde que se enciende al elegir y un
+  cuadradito por serie; «La mayoría» dice «2 de 3 series llegan a 12 reps y
+  ninguna baja de 8 reps».
+- [ ] «Cuánto sube cada vez» con cuatro botones grandes (1.25 · 2.5 · 5 kg ·
+  5 %) que se rellenan al elegir; en Reps y Tiempo «Cuánto sube por serie»
+  (+1 / +2 / +3 reps, +5 / +10 / +15 s). Lo elegido se guarda y vuelve igual.
+- [ ] Elige «%»: salen Porcentaje (1-50) y Escalón del ejercicio, con la
+  explicación del redondeo; el botón muestra el % que pongas.
 - [ ] Avanzado plegado; al abrirlo: Freno de RPE (No / RPE, con RPE máximo y su
-  explicación), Cuándo baja (Si fallas / Nunca) y Escalón del ejercicio.
-- [ ] Una dominada asistida: la tarjeta dice «Ayuda» y la frase «Quita ayuda…».
-- [ ] La frase de la regla al pie, con la raya lima, cambia con lo que eliges.
+  explicación), Cuándo baja (Si fallas / Nunca, con el 15 % explicado) y el
+  Escalón con su explicación (sin «%»).
+- [ ] Una dominada asistida: la tarjeta dice «Ayuda», la frase «Quita ayuda…» y
+  el título «Cuánta ayuda quita cada vez».
+- [ ] La regla al pie, con la raya lima, explica qué se mide y qué pasa, y
+  cambia con lo que eliges.
 - [ ] El alta de un ejercicio propio abre la misma hoja con el nombre escrito.
 
 ## 8. Casos
