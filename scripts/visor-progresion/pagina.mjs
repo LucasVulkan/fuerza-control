@@ -13,14 +13,13 @@ const HALLAZGOS = [
   ['ana', 7, 'Ana falla por poco con el peso nuevo: hoy baja a 30 kg; el propuesto <b>mantiene 32,5</b> y acaba subiendo a 35.'],
   ['marta-parcial', 5, 'Parcial 2 de 3 con 15/15/11: hoy sube; el propuesto <b>no sube</b> porque la tercera serie queda por debajo del rango.'],
   ['marta', 9, 'Día malo de Marta (10/9/9): los dos bajan. En el propuesto es «fallo grande» (falta un 22 % de las reps).'],
-  ['carlos', 6, '<b>Duda nueva.</b> Carlos hace 5/5/5/4/4 y luego 5/5/5/5/4: mejora, pero sigue sin completar. El propuesto lo cuenta como segundo fallo y baja un 10 %. En reps, mejorar no es fallo. ¿Debería valer lo mismo para el peso?'],
-  ['carlos', 8, 'Con −10 % y escalón de 5 kg, Carlos baja de 85 a 75 y luego a 70: más que hoy (de 5 en 5).'],
+  ['carlos', 6, 'Carlos hace 5/5/5/4/4 y luego 5/5/5/5/4: no completa, pero mejora, así que no cuenta como fallo y mantiene 95 kg.'],
+  ['carlos', 8, 'Fallo grande (5/4/4/3/3): −10 %, de 95 a 85 kg de una vez. Hoy bajaba de 5 en 5.'],
   ['pilar', 6, 'Pilar repite dos días flojos con la ayuda nueva: el propuesto le devuelve ayuda (+10 %, a 30 kg) al segundo; hoy ya lo hacía al primero.'],
   ['sergio', 3, 'Sergio, 12/12/7 = 31: hoy pide 8 en todas; el propuesto pide <b>12/11/11</b> (34 en total).'],
   ['sergio', 5, 'Sergio baja a 27: primer fallo, el propuesto mantiene la meta de 37. Al segundo (16) la baja a 19.'],
   ['pilar-plancha', 4, 'Plancha: hoy la frase y el gris se contradicen (30 s contra 60/45/25); el propuesto pide 145 s en total, repartidos 49/48/48.'],
-  ['luis', 5, 'Luis tras un mes sin entrenar: los dos le piden subir. Lo del tiempo sin entrenar sigue sin decidir.'],
-  ['marta', 9, 'Tras bajar, los dos piden el máximo del rango (8×15). Sin decidir.'],
+  ['marta', 9, 'Tras bajar a 8 kg, el gris de los dos le pide 15 reps (el máximo del rango) en cada serie. Sin decidir.'],
 ];
 
 const TIPO = { up: 'Subir', hold: 'Mantener', down: 'Bajar' };

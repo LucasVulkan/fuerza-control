@@ -2,7 +2,8 @@
 // Vive aquí, fuera de la app, solo para compararlo en el visor con el de hoy.
 // Lo acordado con el usuario:
 //   Peso (Doble): fallo leve → mantener; fallo grande o segundo fallo seguido
-//     → −10 % redondeado al escalón (mínimo un escalón). «Parcial N de M» con
+//     → −10 % redondeado al escalón (mínimo un escalón). Un fallo leve que mejora
+//     (más reps en total que la sesión anterior con el mismo peso) no cuenta. «Parcial N de M» con
 //     rango: N arriba y el resto dentro del rango. «RPE máx.» solo frena.
 //   Reps y Tiempo: meta = total + 1 por serie (en Tiempo, + el salto en
 //     segundos), fija hasta alcanzarla; mejorar sin llegar no es fallo; fallar =
@@ -20,6 +21,7 @@ export function crearMotorPropuesto(cfg, def, t) {
   const prog = resolveProgressionConfig(cfg, def);
   const n = cfg.sets;
   let fallosPeso = 0;
+  let previa = null; // { w, total } de la sesión anterior
   const vol = { meta: null, anterior: null, fallos: 0 }; // Reps y Tiempo
 
   function doble(sets) {
@@ -44,9 +46,16 @@ export function crearMotorPropuesto(cfg, def, t) {
       const peso = asist ? Math.max(0, w - inc) : w + inc;
       return { tipo: 'up', peso, reps: Array(n).fill(max), why: 'Llegaste arriba del rango' };
     }
+    const total = reps.reduce((a, r) => a + r, 0);
+    const mejora = previa && previa.w === w && total > previa.total;
+    previa = { w, total };
     if (faltan > 0) {
-      fallosPeso += 1;
       const grande = faltan > FALLO_GRANDE;
+      if (mejora && !grande) {
+        fallosPeso = 0;
+        return { tipo: 'hold', peso: w, reps, why: `Aún sin completar, pero mejoras (${total} reps): mantener` };
+      }
+      fallosPeso += 1;
       if ((grande || fallosPeso >= 2) && prog.down !== 'never' && w > 0) {
         fallosPeso = 0;
         const peso = asist ? Math.max(redondear(w * 1.1, prog.step), w + prog.step)
