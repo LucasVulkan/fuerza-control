@@ -2981,11 +2981,12 @@ describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => 
   const withProgression = (progression, extra = {}) => free({ progression, minReps: 8, maxReps: 12, weightStep: 2.5, ...extra });
   const DOUBLE = { type: 'double', increment: { type: 'fixed', value: 2.5 } };
 
-  it('P56: ✓ sin escribir guarda el peso del plan (62.5), no el de la última vez (60)', () => {
+  // P18 §8, caso 18: el check sin escribir guarda lo de la última vez, aunque toque subir.
+  it('P18 §5: ✓ sin escribir guarda lo de la última vez (60), aunque el chip pida 62.5', () => {
     const id = withProgression(DOUBLE);
     train(id, (i) => { f(i, 'weight', '60'); f(i, 'reps', '12'); }, 1_700_000_000_000);
     const sets = train(id, (i) => { f(i, 'done', true); }, 1_700_100_000_000);
-    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '62.5', reps: '12', done: true })));
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '60', reps: '12', done: true })));
   });
 
   it('P56: si no se cumplió, el gris es lo que hiciste (mantener)', () => {
@@ -3009,16 +3010,15 @@ describe('saveSession — lo que se ve en gris se da por hecho (QA P48)', () => 
     expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '70', reps: '12' })));
   });
 
-  it('P56: Por esfuerzo guarda el peso del plan calculado con las tres últimas sesiones', () => {
-    // 5 reps @8 = 7RM: 57 / 60 / 63 kg → 1RM 70.3 / 74 / 77.7 (media 74). A 5 @8
-    // el peso del plan es 60 con la media y 63 solo con la última.
+  // P18 §8, caso 18: también en Por esfuerzo el gris (y el ✓) es lo de la última vez.
+  it('P18 §5: en Por esfuerzo, ✓ sin escribir guarda lo de la última vez (63), no el peso calculado', () => {
     const id = withProgression({ type: 'effort', targetRpe: 8 }, { minReps: 5, maxReps: 5 });
     const eff = (w) => (i) => { f(i, 'weight', w); f(i, 'reps', '5'); f(i, 'rpe', '8'); };
     train(id, eff('57'), 1_700_000_000_000);
     train(id, eff('60'), 1_700_100_000_000);
     train(id, eff('63'), 1_700_200_000_000);
     const sets = train(id, (i) => { f(i, 'done', true); }, 1_700_300_000_000);
-    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '60', reps: '5' })));
+    expect(sets).toEqual([0, 1].map(() => expect.objectContaining({ weight: '63', reps: '5' })));
   });
 
   it('P56 §6.5: el log de una etapa de descarga lleva deload: true; el de una normal, no', () => {

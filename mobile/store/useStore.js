@@ -2780,10 +2780,10 @@ export const useStore = create(
         const template = getEffectiveTemplate(activeSession.templateId);
         if (!template) return { ok: false, error: 'Template no encontrado' };
 
-        // Lo que la tarjeta pinta en gris (el objetivo del entrenador, el plan de la
-        // progresión o la última sesión) es lo que se da por hecho en un campo
-        // vacío: el mismo relleno que hace ✓ en `ExerciseCard`, y por eso sale de
-        // la misma `planSet` (progresion-clara §6.1). Sin él, una serie con peso y
+        // Lo que la tarjeta pinta en gris (el objetivo del entrenador o la última
+        // sesión, P18 §5) es lo que se da por hecho en un campo vacío: el mismo
+        // relleno que hace ✓ en `ExerciseCard`, y por eso sale de la misma
+        // `planSet`. Sin él, una serie con peso y
         // RPE escritos y las reps en gris se guardaba SIN reps, y la progresión
         // por esfuerzo no podía calcular nada (QA P48). El RPE y el resto se
         // conservan.
@@ -2824,8 +2824,7 @@ export const useStore = create(
             // El mismo chip que enseña la tarjeta (el texto no importa aquí).
             const chip = progressionChip(exConfig, library[exerciseId], recent, () => '');
             const plan = (i) => planSet({
-              exConfig, def: library[exerciseId], chip, lastSets,
-              overrideEx: sessionOverride?.exercises?.[exerciseId], index: i,
+              lastSets, overrideEx: sessionOverride?.exercises?.[exerciseId], index: i,
             });
             const resolved = setsData.map((s, i) => resolveSet(s, plan(i)));
             const validSets = resolved.filter((s) => s.weight !== '' || s.reps !== '' || s.time !== '' || s.done);

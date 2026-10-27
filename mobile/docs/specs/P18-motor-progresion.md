@@ -4,7 +4,7 @@
 > En corto: La progresión deja de bajar el peso por un mal día y de pedir reps según tu peor serie; el gris de cada serie vuelve a ser lo que hiciste la última vez y la meta la dice el mensaje del ejercicio, en una frase que se entiende sin saber cómo funciona el motor.
 > Fase P18-01 · hecho · Peso por reglas: cuándo mantener y cuándo bajar · §3
 > Fase P18-02 · hecho · Reps y Tiempo: una meta por total · §4
-> Fase P18-03 · pendiente · El gris es la última vez; el check guarda la casilla · §5
+> Fase P18-03 · hecho · El gris es la última vez; el check guarda la casilla · §5
 > Fase P18-04 · pendiente · Mensajes del chip · §6
 > Fase P18-05 · pendiente · Hoja de Progresión por niveles · §7
 > Inicio: 2026-10-27
@@ -192,6 +192,22 @@ que hiciste es información útil y estaba escondida; la meta ya la dice el chip
 
 Consecuencia que se acepta: si toca subir y marcas sin escribir, se guarda el
 peso de la última vez. Por eso el chip tiene que decir la meta con claridad (§6).
+
+**Probar P18-03**
+
+- [ ] Un ejercicio de Peso al que toca subir: el gris de cada serie es el peso
+  y las reps de la última vez (no el peso nuevo), y la línea de progresión dice
+  el peso nuevo.
+- [ ] Marca ✓ sin escribir nada → se guarda lo de la última vez (míralo en el
+  historial al terminar).
+- [ ] Escribe el peso nuevo en la primera serie y marca ✓ las demás sin
+  escribir → las demás guardan su gris (lo de la última vez), la primera lo
+  escrito.
+- [ ] Por esfuerzo y por Reps: el gris también es lo de la última vez.
+- [ ] Con un objetivo del entrenador para la sesión, sus valores siguen en
+  azul y el ✓ los guarda.
+- [ ] El calentamiento sigue rampando hacia el peso que pide la línea de
+  progresión, no hacia el gris.
 
 ## 6. P18-04 — Mensajes del chip
 

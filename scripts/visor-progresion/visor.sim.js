@@ -35,7 +35,7 @@ function motorHoy(cfg, def, caso) {
     const last = recientes[0];
     const chip = getProgression(cfg, def, last.sets, t, progressionHistory(recientes));
     const plan = Array.from({ length: cfg.sets }, (_, index) => {
-      const p = planSet({ exConfig: cfg, def, chip, lastSets: last.sets, index });
+      const p = planSet({ lastSets: last.sets, index });
       return { peso: p.weight.value, reps: caso.tiempo ? p.time.value : p.reps.value };
     });
     // Lo que hace el atleta en las sesiones 'gris': la meta del chip, como en el

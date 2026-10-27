@@ -854,12 +854,10 @@ export default function ExerciseCard({
           <View style={styles.setList}>
             {setsState.map((set, realIndex) => {
               const wi = realIndex;
-              // El gris es el plan (§6.1, `planSet`): lo del entrenador (azul), si no
-              // lo que la progresión pide hoy, si no lo de la última vez. ✓ rellena
-              // con lo mismo que se ve, y `saveSession` usa la misma función.
-              const plan = planSet({
-                exConfig, def, chip: progression, lastSets: lastExercise?.sets, overrideEx, index: wi,
-              });
+              // El gris es lo de la última vez (P18 §5, `planSet`), o lo del
+              // entrenador en azul. ✓ guarda lo que se ve, y `saveSession` usa la
+              // misma función.
+              const plan = planSet({ lastSets: lastExercise?.sets, overrideEx, index: wi });
               // `planSet` devuelve kg; la pantalla pinta en la unidad del usuario.
               const weightRef = plan.weight.value !== ''
                 ? { ...plan.weight, value: String(toDisplay(plan.weight.value)) } : plan.weight;
@@ -910,7 +908,7 @@ export default function ExerciseCard({
                       const needsReps   = inputType === 'weight_reps' || inputType === 'reps';
                       const needsTime   = inputType === 'time'        || inputType === 'weight_time';
                       // Lo mismo que se ve en gris (`plan`, en kg): el objetivo del
-                      // entrenador, el plan o la última vez.
+                      // entrenador o la última vez.
                       if (needsWeight && (set.weight === '' || set.weight == null) && plan.weight.value !== '') {
                         onFieldChange(realIndex, 'weight', plan.weight.value);
                       }
