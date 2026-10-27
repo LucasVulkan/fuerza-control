@@ -881,6 +881,8 @@ export default function ExerciseEditorInline({
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title={t('exerciseEditor.sectionProgression')}
+        // Alto fijo: elegir «Qué sube» abre y cierra bloques y la hoja no debe saltar.
+        tall
       >
         <ProgressionSheet
           name={def?.name ?? exConfig.exerciseId}

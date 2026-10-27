@@ -825,8 +825,8 @@ describe('P61 — la frase de la regla en palabras (es y en)', async () => {
     });
     expect(progressionRule({ ...bench, progression: { ...bench.progression, down: 'never' } }, BB, t, 'kg', { parts: true }).down).toBeNull();
     expect(progressionRule({ sets: 3, minReps: 6, progression: { type: 'reps' } }, BB, t, 'kg', { parts: true })).toEqual({
-      action: 'Total de repeticiones de la última sesión + 1 rep por serie',
-      when: 'Se mantiene igual hasta que lo consigas. Si dos sesiones seguidas haces menos repeticiones que en la anterior, el objetivo pasa a ser el total de la última sesión más 1 rep por serie',
+      action: '+1 rep por serie',
+      when: 'al completar el objetivo',
     });
     expect(progressionRule({ progression: { type: 'none' } }, BB, t, 'kg', { parts: true })).toEqual({ action: 'Sin sugerencia de progreso' }); // P18 §7: la regla de Nada
   });

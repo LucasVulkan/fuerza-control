@@ -475,6 +475,8 @@ export default function CustomExerciseScreen({ navigation, route }) {
         visible={progSheetOpen}
         onClose={() => setProgSheetOpen(false)}
         title={t('exerciseEditor.sectionProgression')}
+        // Alto fijo: elegir «Qué sube» abre y cierra bloques y la hoja no debe saltar.
+        tall
       >
         <ProgressionSheet
           name={name.trim()}

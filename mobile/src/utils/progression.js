@@ -638,8 +638,10 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false, 
     const text  = inc.type === 'pct' ? `${inc.pct} %`
       : timed ? `${inc.value} s` : t('progression.rule.incReps', { count: inc.value });
     const what = t(timed ? 'progression.rule.whatTime' : 'progression.rule.whatReps');
-    if (short) return t('progression.rule.totalShort', { inc: text, what });
-    if (parts) return { action: t('progression.rule.totalShort', { inc: text, what }), when: t('progression.rule.totalWhen', { inc: text, what }) };
+    if (short) return t('progression.rule.totalShort', { inc: text });
+    // En la tarjeta y la ficha, corto: qué sube y cuándo. La explicación entera
+    // (`totalUp`) va al pie de la hoja de Progresión.
+    if (parts) return { action: t('progression.rule.totalAction', { inc: text }), when: t('progression.rule.totalWhen') };
     return t('progression.rule.totalUp', { inc: text, what });
   }
 

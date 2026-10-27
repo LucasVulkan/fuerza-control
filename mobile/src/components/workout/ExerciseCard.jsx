@@ -430,14 +430,13 @@ export default function ExerciseCard({
         progDelta:  cur != null && cur !== next ? signed(Math.round((next - cur) * 100) / 100) : null,
       };
     }
-    // Reps y Tiempo: la meta es un total (P18 §4); el salto, contra lo que
-    // hiciste la última vez.
+    // Reps y Tiempo (P18 §4): lo principal es la meta serie a serie
+    // («12 · 11 · 11 reps»); el total va en la segunda fila (`progWhy`).
     if (progression.volume) {
-      const next = progression.goal.total;
+      const perSet = progression.perSet.join(' · ');
       return {
-        progTarget: progression.timed ? t('workout.progressionTotalTime', { n: next })
-          : t('workout.progressionTotalReps', { count: next }),
-        progDelta: next !== progression.lastTotal ? signed(next - progression.lastTotal) : null,
+        progTarget: progression.timed ? `${perSet} s` : t('workout.progressionPerSetReps', { sets: perSet }),
+        progDelta: null,
       };
     }
     return { progTarget: progression.msg, progDelta: null };
@@ -587,6 +586,8 @@ export default function ExerciseCard({
   // que al plegar la tarjeta se oculta. La fila entera abre la ficha (§6.3).
   // Por esfuerzo, el 1RM estimado va en la línea del porqué (§6).
   const progWhy = progression && [
+    progression.volume ? (progression.timed ? t('workout.progressionTotalTime', { n: progression.goal.total })
+      : t('workout.progressionTotalReps', { count: progression.goal.total })) : null,
     progression.why,
     e1rmShown != null ? `${t('workout.e1rmShort')} ${e1rmShown} ${weightLabel}` : null,
   ].filter(Boolean).join(' · ');
