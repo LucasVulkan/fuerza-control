@@ -540,9 +540,10 @@ export default function ProgramScreen() {
             <Rise index={2} style={styles.emptyState}>
               <EmptyState
                 style={styles.emptyState}
-                icon={ROW_ICON.preset}
-                text={t('templates.sessionsEmpty')}
-                action={{ label: t('templates.newModal.createBtn'), onPress: handleCreateSession }}
+                ghost="plain"
+                title={t('empty.sessTplTitle')}
+                text={t('empty.sessTplText')}
+                action={{ label: t('empty.sessTplCta'), onPress: handleCreateSession }}
               />
             </Rise>
           ) : (
@@ -563,9 +564,10 @@ export default function ProgramScreen() {
           <Rise index={2} style={styles.emptyState}>
             <EmptyState
               style={styles.emptyState}
-              icon={ROW_ICON.preset}
-              text={t('templates.empty')}
-              action={{ label: t('templates.newModal.createBtn'), onPress: () => setShowCreate(true) }}
+              ghost="plain"
+              title={t('empty.progTplTitle')}
+              text={t('empty.progTplText')}
+              action={{ label: t('empty.progTplCta'), onPress: () => setShowCreate(true) }}
             />
           </Rise>
         ) : (

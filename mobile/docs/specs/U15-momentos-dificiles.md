@@ -1,12 +1,13 @@
-# Spec — Momentos difíciles: sin conexión, errores con salida y estados vacíos
+﻿# Spec — Momentos difíciles: sin conexión, errores con salida y estados vacíos
 
 > Tema: ui
 > En corto: Cuando algo sale mal o no hay nada que enseñar, la app tiene que decir qué ha pasado y qué hacer: que no hay conexión y que se enviará luego, errores que nombran el siguiente paso y no solo «Error», todos los textos traducidos, y listas vacías que enseñan qué saldrá ahí y cómo empezar.
 > Inicio: 2026-10-27
+> Fin: 2026-10-27
 > Fase U15-01 · hecho · Saber si hay conexión y dejar envíos en cola · §3
 > Fase U15-02 · hecho · Errores con siguiente paso y textos sin traducir · §4
 > Fase U15-03 · terminado · Maqueta de los estados vacíos · §5
-> Fase U15-04 · pendiente · Estados vacíos según la maqueta · §5
+> Fase U15-04 · hecho · Estados vacíos según la maqueta · §5
 >
 > Estado: **spec escrita, sin implementar** (18-oct-2026). Sale del análisis
 > «qué hace que la app se sienta premium»: los peores momentos, bien
@@ -130,6 +131,21 @@ movimientos) van en línea, con un hueco de borde discontinuo. En Clientes vací
 solo «Crear mi primer cliente» (sin «Tengo un código»: sin clientes no hay
 código). La implementación es U15-04.
 
+**Probar U15-04**
+
+- [ ] Clientes sin ningún cliente → silueta de tarjetas con avatar, «Aquí verás a tus clientes» y solo «Crear mi primer cliente» (abre el alta); con búsqueda sin resultados sigue el aviso de siempre
+- [ ] Programa › Plantillas (programas) vacío → «Programas listos para asignar» y «Crear una plantilla» abre el alta (sin «Guardar un programa que ya tengo»: no hay esa acción)
+- [ ] Programa › Plantillas de sesión vacío → «Sesiones para reutilizar» y «Crear una plantilla de sesión»
+- [ ] Historial sin entrenos → «Tus entrenos, uno a uno» y «Empezar a entrenar» lleva a Entreno; con un filtro sin sesiones sigue el aviso de siempre
+- [ ] Progreso sin entrenos → silueta de gráfica y «Empezar a entrenar»; con entrenos pero sin coincidencias en la búsqueda no cambia
+- [ ] Carga sin entrenos → silueta de barras y «Empezar a entrenar»; con entrenos sin esfuerzo apuntado sigue el aviso de siempre
+- [ ] Programas archivados propios (hoja de Mi cuenta) sin ninguno → «Programas que ya no usas», sin botón; la ficha de un cliente sin archivados conserva su frase
+- [ ] Copias de Drive conectado y sin copias → «Tus copias de seguridad» y «Hacer una copia ahora» hace la copia
+- [ ] Pegar entreno sin texto → ejemplo gris, «Pega el texto de un entreno» y «Pegar del portapapeles» rellena el cuadro
+- [ ] Editor de sesión sin ejercicios → hueco discontinuo «Añadir el primer ejercicio» que abre el selector
+- [ ] Editor de circuito sin movimientos → hueco discontinuo «Añadir un movimiento»; con movimientos vuelve el «+ Añadir ejercicio» de siempre
+- [ ] En claro y en oscuro, y en inglés, textos y silueta se ven bien y la silueta se funde hacia el fondo
+
 ## Fases
 
 | Fase | Qué | Depende de | Coste | Estado |
@@ -137,4 +153,4 @@ código). La implementación es U15-04.
 | U15-01 | NetInfo, cola de envíos del entrenador, aviso en Clientes | — | 🟡 | hecho |
 | U15-02 | Errores con siguiente paso, textos traducidos | — | 🟢 | hecho |
 | U15-03 | Maqueta de estados vacíos | — | 🟢 | terminado |
-| U15-04 | Estados vacíos según la maqueta | U15-03 | 🟡 | pendiente |
+| U15-04 | Estados vacíos según la maqueta | U15-03 | 🟡 | hecho |

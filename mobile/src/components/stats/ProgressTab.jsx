@@ -156,6 +156,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const periods = useMemo(() => periodOptions(t), [t]);
   const { toDisplay: wDisplay, label: weightLabel } = useWeightUnit();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
+  const navigate = useStore((s) => s.navigate);
 
   const [info, setInfo] = useState(null);
 
@@ -440,15 +441,21 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       {/* Lista de ejercicios (siempre visible) */}
       {displayedExercises.length === 0 ? (
         <Rise index={5}>
-        <EmptyState
-          style={styles.emptyState}
-          icon={ROW_ICON.progress}
-          text={baseLog.length === 0
-            ? t('stats.emptyFirstSession')
-            : search.trim()
-              ? t('stats.emptyNoMatch')
-              : t('stats.noData')}
-        />
+        baseLog.length === 0 ? (
+          <EmptyState
+            style={styles.emptyState}
+            ghost="line"
+            title={t('empty.progressTitle')}
+            text={t('empty.progressText')}
+            action={{ label: t('empty.startTraining'), onPress: () => navigate('home') }}
+          />
+        ) : (
+          <EmptyState
+            style={styles.emptyState}
+            icon={ROW_ICON.progress}
+            text={search.trim() ? t('stats.emptyNoMatch') : t('stats.noData')}
+          />
+        )
         </Rise>
       ) : (
         <Reanimated.View style={styles.exerciseList} layout={LinearTransition.duration(200)}>
