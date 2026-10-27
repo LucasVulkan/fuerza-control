@@ -188,7 +188,7 @@ dejan de usarse se borran.
 
 ## 7. P18-05 — Hoja de Progresión por niveles
 
-**Pendiente de maqueta.** Dirección: las **tarjetas de carácter** de
+**Maqueta v1:** [`progresion-hoja.html`](../mockups/progresion-hoja.html) (27-oct, pendiente de revisar con el usuario). Dirección: las **tarjetas de carácter** de
 [`stages-v2.html`](../mockups/stages-v2.html) (P15 §3.2: icono, nombre y una
 línea, «Volumen · Intensidad · Igual · Descarga»), que al usuario le gustaron por
 simples y cómodas, aplicadas a los estilos de progresión:
