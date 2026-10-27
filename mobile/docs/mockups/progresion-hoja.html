@@ -3,16 +3,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
 <style>
-  /* Maqueta P18-05 (y P18-03/04): hoja de Progresión con tarjetas de estilo, y la
-     tarjeta del Workout con el gris de la última vez y el mensaje. Tokens formaFit
-     (src/themes.js), mismo lenguaje que stages-v2.html. Tema único oscuro, como la app. */
+  /* Maqueta P18-05 (y P18-03/04): hoja de Progresión con el estilo en tarjetas, y la
+     tarjeta del Workout con el gris de la última vez y la línea de progresión.
+     Valores de la app: src/themes.js (formaFit), src/theme.js (textStyles),
+     components/workout/ExerciseCard.jsx, SetRow.jsx y grid.js. Tema único oscuro. */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
-    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
-    --accent: #aae216; --onAccent: #000; --blue: #4c85ff; --blueTint: rgba(76,133,255,.18);
-    --red50: #ff5e58; --redTint: rgba(255,94,88,.14);
-    --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --mutedLight: #949494; --muted: #585858; --muted2: #4d4d4d; --border: #3a3a3a; --btnFill: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
     --page: #070707;
     color-scheme: dark;
   }
@@ -23,98 +22,101 @@
   .lead { color: var(--mutedLight); font: 500 14px/1.55 Inter; max-width: 70ch; margin-bottom: 24px; }
   .lead b { color: var(--text); }
   .stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
-  .col { display: grid; gap: 10px; }
+  .col { display: grid; gap: 10px; min-width: 0; }
   .col > h2 { font: 800 15px Inter; }
   .col > p { color: var(--mutedLight); font: 500 13px/1.5 Inter; max-width: 375px; }
   .ctl { display: flex; gap: 6px; flex-wrap: wrap; }
   .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; font: 800 12px Inter; cursor: pointer; }
   .ctl button.on { border-color: var(--accent); color: var(--accent); }
-  button:focus-visible, .tile:focus-visible, .rcard:focus-visible, .adv summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:focus-visible, [role=button]:focus-visible, .adv summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .phone { width: 375px; max-width: 100%; background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; }
+
+  /* ── hoja ── */
   .sheet { background: var(--surface); border-radius: 22px 22px 0 0; margin-top: 56px; padding: 10px 16px 24px; }
   .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--muted); margin: 0 auto 14px; }
   .shead { display: flex; justify-content: space-between; align-items: baseline; }
-  .stitle { font: 800 17px Inter; }
-  .ok { font: 900 13px Inter; color: var(--accent); }
-  .sub { font: 700 12px Inter; color: var(--mutedLight); margin-top: 3px; }
-  .caps { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; }
+  .stitle { font: 800 18px Inter; letter-spacing: -.2px; }
+  .ok { font: 900 14px Inter; color: var(--accent); }
+  .exn { font: 700 14px Inter; margin-top: 4px; }
+  .exm { font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .caps { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; }
 
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-  .tile { background: var(--bg); border-radius: 12px; padding: 10px 2px 8px; text-align: center; cursor: pointer; border: 1px solid transparent; }
+  .tile { background: var(--bg); border-radius: 12px; padding: 10px 2px 8px; text-align: center; cursor: pointer; }
   .tile svg { display: block; margin: 0 auto 5px; color: var(--accent); }
-  .tile span { font: 800 10.5px Inter; color: var(--mutedLight); }
-  .tile.on { border-color: var(--accent); background: var(--accent10); }
-  .tile.on span { color: var(--text); }
-  .tile.none svg { color: var(--mutedLight); }
-  .tile.none.on { border-color: var(--mutedLight); background: var(--surface2); }
-  .say { font: 600 13px/1.45 Inter; color: var(--mutedLight); margin-top: 10px; }
-  .say b { color: var(--text); }
+  .tile span { font: 800 11px Inter; color: var(--mutedLight); }
+  .tile.on { background: var(--accent); }
+  .tile.on svg, .tile.on span { color: var(--onAccent); }
+  .tile.none:not(.on) svg { color: var(--mutedLight); }
+  .say { font: 500 14px/1.5 Inter; color: var(--text); margin-top: 12px; }
 
   .rcards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .rcard { background: var(--bg); border-radius: 14px; padding: 12px; cursor: pointer; border: 1px solid transparent; }
   .rcard.on { border-color: var(--accent); }
-  .sq { display: flex; gap: 4px; align-items: flex-end; margin-bottom: 10px; }
-  .sq i { width: 20px; height: 20px; border-radius: 5px; background: var(--muted); }
+  .sq { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+  .sq i { width: 18px; height: 18px; border-radius: 5px; }
   .sq i.hit { background: var(--accent); }
-  .sq i.mid { background: var(--muted); outline: 1px dashed var(--mutedLight); outline-offset: -1px; }
+  .sq i.mid { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--mutedLight); }
   .rcard b { display: block; font: 800 14px Inter; }
-  .rcard small { display: block; font: 600 12px/1.4 Inter; color: var(--mutedLight); margin-top: 4px; }
+  .rcard small { display: block; font: 500 12px/1.4 Inter; color: var(--mutedLight); margin-top: 4px; }
 
   .rows { display: grid; gap: 8px; }
-  .row { display: flex; align-items: center; justify-content: space-between; background: var(--bg); border-radius: 12px; padding: 8px 8px 8px 12px; }
-  .row > span { font: 700 13px Inter; color: var(--mutedLight); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg); border-radius: 12px; padding: 8px 8px 8px 12px; }
+  .row > span { font: 700 14px Inter; color: var(--mutedLight); }
+  .row > span small { display: block; font: 500 12px Inter; color: var(--muted); margin-top: 2px; }
   .step { display: flex; align-items: center; gap: 4px; }
-  .step i { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 15px Inter; font-style: normal; color: var(--text); }
-  .step b { min-width: 54px; text-align: center; font: 800 14px Inter; }
-  .chips { display: flex; gap: 4px; }
-  .chips b { font: 800 12px Inter; padding: 7px 10px; border-radius: 8px; background: var(--surface2); color: var(--mutedLight); }
-  .chips b.on { background: var(--accent10); color: var(--accent); }
+  .step i { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font: 900 15px Inter; font-style: normal; color: var(--text); cursor: pointer; }
+  .step b { min-width: 60px; text-align: center; font: 800 14px Inter; }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .chips b { font: 800 12px Inter; padding: 7px 10px; border-radius: 8px; background: var(--surface2); color: var(--mutedLight); cursor: pointer; }
+  .chips b.on { background: var(--accent); color: var(--onAccent); }
 
   .adv { margin-top: 16px; background: var(--bg); border-radius: 14px; }
-  .adv summary { list-style: none; cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; font: 800 13px Inter; }
+  .adv summary { list-style: none; cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; font: 800 14px Inter; }
   .adv summary::-webkit-details-marker { display: none; }
-  .adv summary em { font-style: normal; color: var(--muted); font-weight: 700; }
-  .adv[open] summary em { transform: rotate(90deg); }
-  .adv .in { padding: 0 14px 14px; display: grid; gap: 12px; }
+  .adv summary em { font-style: normal; color: var(--muted); }
+  .adv .in { padding: 0 14px 14px; display: grid; gap: 14px; }
   .adv .lbl { font: 800 12px Inter; }
-  .adv .hint { font: 600 12px/1.45 Inter; color: var(--mutedLight); margin-top: 4px; }
+  .adv .hint { font: 500 12px/1.45 Inter; color: var(--mutedLight); margin-top: 6px; }
   .sg { display: flex; background: var(--surface2); border-radius: 10px; padding: 3px; margin-top: 6px; }
-  .sg b { flex: 1; text-align: center; font: 800 12px Inter; padding: 7px 0; border-radius: 8px; color: var(--mutedLight); }
-  .sg b.on { background: var(--border); color: var(--text); }
+  .sg b { flex: 1; text-align: center; font: 800 12px Inter; padding: 7px 0; border-radius: 8px; color: var(--mutedLight); cursor: pointer; }
+  .sg b.on { background: var(--accent); color: var(--onAccent); }
 
-  .volref { margin-top: 14px; font: 600 12px Inter; color: var(--mutedLight); }
-  .volref b { color: var(--text); }
-  .rule { margin-top: 16px; border-left: 2px solid var(--accent); padding: 2px 0 2px 12px; font: 600 13px/1.5 Inter; color: var(--text); }
+  .rule { margin-top: 18px; border-left: 2px solid var(--accent); padding: 2px 0 2px 12px; font: 500 14px/1.5 Inter; color: var(--text); }
 
-  /* ── tarjeta del Workout ── */
+  /* ── tarjeta del Workout (ExerciseCard + SetRow) ── */
   .wk { padding: 16px; }
-  .wkhead { font: 800 10px Inter; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-  .excard { background: var(--surface); border-radius: 16px; padding: 14px; margin-top: 10px; }
-  .exname { font: 800 17px Inter; }
-  .exrx { font: 700 12px Inter; color: var(--mutedLight); margin-top: 2px; }
-  .msg { margin-top: 12px; display: grid; gap: 4px; }
-  .pill { justify-self: start; font: 900 13px Inter; padding: 5px 10px; border-radius: 8px; }
-  .pill.up { background: var(--accent); color: #000; }
-  .pill.hold { background: var(--surface2); color: var(--text); }
-  .pill.down { background: var(--redTint); color: var(--red50); }
-  .msg p { font: 600 13px/1.4 Inter; color: var(--mutedLight); }
-  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-  th { font: 800 10px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: center; padding-bottom: 6px; }
-  th:first-child { text-align: left; }
-  td { padding: 4px 3px; text-align: center; }
-  td:first-child { text-align: left; font: 800 13px Inter; color: var(--mutedLight); width: 34px; }
-  .in-box { background: var(--bg); border-radius: 10px; height: 40px; display: flex; align-items: center; justify-content: center; font: 800 16px Inter; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .in-box.typed { color: var(--text); }
-  .chk { width: 40px; height: 40px; border-radius: 20px; border: 2px solid var(--border); margin: 0 auto; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .chk.on { background: var(--accent); border-color: var(--accent); }
-  .chk.on::after { content: ''; width: 12px; height: 7px; border: solid #000; border-width: 0 0 3px 3px; transform: rotate(-45deg) translateY(-2px); }
-  .legend { font: 600 12px/1.45 Inter; color: var(--mutedLight); margin-top: 12px; }
+  .card { background: var(--surface); border-radius: 16px; overflow: hidden; }
+  .chead { display: flex; gap: 10px; background: var(--surface2); padding: 14px 12px 14px 16px; }
+  .cnum { font: 900 16px/22px Inter; color: var(--accent); min-width: 22px; letter-spacing: -.2px; }
+  .cname { font: 700 16px/22px Inter; letter-spacing: -.2px; }
+  .ctarget { font: 700 14px Inter; color: var(--mutedLight); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .cbody { padding: 12px 16px 14px; }
+  .prog { padding-bottom: 12px; cursor: pointer; }
+  .pline { display: flex; align-items: baseline; gap: 8px; padding-top: 2px; flex-wrap: wrap; }
+  .pdir { font: 800 12px Inter; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent); margin-left: -2px; }
+  .pdir .ar { font-size: 14px; }
+  .pdir.hold { color: var(--mutedLight); }
+  .pdet { font: 800 12px Inter; color: var(--text); font-variant-numeric: tabular-nums; }
+  .pdelta { font: 800 12px Inter; color: var(--text); background: var(--btnFill); border-radius: 999px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+  .pwhy { font: 500 12px/1.45 Inter; color: var(--mutedLight); margin-top: 4px; }
+  .colh { display: flex; gap: 10px; margin-bottom: 8px; }
+  .colh span { flex: 1; text-align: center; font: 800 12px Inter; letter-spacing: 1.6px; color: var(--muted); }
+  .setl { display: grid; gap: 8px; }
+  .srow { display: flex; align-items: center; gap: 10px; }
+  .sn { width: 26px; font: 800 12px Inter; color: var(--mutedLight); font-variant-numeric: tabular-nums; }
+  .sn.done { color: var(--accent); }
+  .cell { flex: 1; height: 44px; border-radius: 11px; background: var(--bg); display: flex; align-items: center; justify-content: center; font: 700 16px Inter; letter-spacing: -.2px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+  .cell.done { background: var(--accent10); color: var(--accent); font-weight: 800; }
+  .chk { width: 42px; height: 44px; border-radius: 11px; background: var(--btnFill); display: flex; align-items: center; justify-content: center; font: 900 16px Inter; color: var(--mutedLight); cursor: pointer; flex: none; }
+  .chk.done { background: var(--accent); color: var(--onAccent); }
+  .chk.next { color: var(--accent50); }
 </style>
 
 <div class="wrap">
   <h1>Hoja de Progresión</h1>
-  <p class="lead">Maqueta de P18. A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, cuándo y cuánto sube, y lo avanzado plegado (aquí vive el RPE). Series y reps no se tocan aquí: siguen en Volumen. A la derecha, cómo se ve en el Workout: <b>el gris es lo que hiciste la última vez</b> y lo que toca hoy lo dice el mensaje. Toca las tarjetas y los botones.</p>
+  <p class="lead">Maqueta de P18 (v3). A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, cuándo y cuánto sube, y lo avanzado plegado. Series y reps se siguen cambiando en Volumen; aquí solo se recuerdan bajo el nombre. A la derecha, la tarjeta del Workout con los valores de la app: <b>el gris es lo que hiciste la última vez</b> y la línea de progresión dice lo que toca hoy, en dos filas.</p>
 
   <div class="stage">
     <div class="col">
@@ -136,16 +138,18 @@
         <button data-sit="reps">Por reps</button>
       </div>
       <div class="phone"><div class="wk" id="wk"></div></div>
-      <p>Al marcar ✓ sin escribir se guarda lo que haya en la casilla: el gris es «hice lo mismo que la última vez».</p>
+      <p>Toca ✓: sin escribir, se guarda lo que hay en la casilla (lo de la última vez).</p>
     </div>
   </div>
 </div>
 
 <script>
 const ICON = {
-  weight: '<path d="M2 11h2.5M17.5 11H20M4.5 6.5v9M17.5 6.5v9M7.5 8.5v5M14.5 8.5v5M7.5 11h7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  // Kettlebell: asa y cuerpo.
+  weight: '<path d="M7.5 9V7.5a3.5 3.5 0 0 1 7 0V9" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/><circle cx="11" cy="14" r="5.2" stroke="currentColor" stroke-width="2.2" fill="none"/>',
   assist: '<path d="M11 4v12M6 11l5 5 5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
-  reps: '<text x="11" y="15.5" text-anchor="middle" font-family="Inter" font-weight="900" font-size="12" fill="currentColor">+1</text>',
+  // Reps: repetir (dos flechas en círculo).
+  reps: '<path d="M4.5 10a6.5 6.5 0 0 1 11.6-3.6M17.5 12a6.5 6.5 0 0 1-11.6 3.6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M16.8 3.4v3.4h-3.4M5.2 18.6v-3.4h3.4" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
   time: '<circle cx="11" cy="12" r="7.5" stroke="currentColor" stroke-width="2.2" fill="none"/><path d="M11 8v4l2.5 2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/>',
   effort: '<path d="M4 15a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M11 15l4-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
   none: '<path d="M5 11h12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
@@ -153,120 +157,148 @@ const ICON = {
 const svg = (k) => `<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">${ICON[k]}</svg>`;
 
 const EX = {
-  bench:  { name: 'Press de banca con barra', styles: ['weight', 'reps', 'time', 'effort', 'none'], style: 'weight' },
-  assist: { name: 'Dominadas asistidas', styles: ['assist', 'reps', 'time', 'effort', 'none'], style: 'assist' },
-  pull:   { name: 'Dominadas', styles: ['weight', 'reps', 'time', 'effort', 'none'], style: 'reps' },
+  bench:  { name: 'Press de banca con barra', styles: ['weight', 'reps', 'time', 'effort', 'none'], style: 'weight', sets: 3, min: 8, max: 12 },
+  assist: { name: 'Dominadas asistidas', styles: ['assist', 'reps', 'time', 'effort', 'none'], style: 'assist', sets: 3, min: 5, max: 8 },
+  pull:   { name: 'Dominadas', styles: ['weight', 'reps', 'time', 'effort', 'none'], style: 'reps', sets: 3, min: 6, max: 6 },
 };
 const LABEL = { weight: 'Peso', assist: 'Ayuda', reps: 'Reps', time: 'Tiempo', effort: 'Esfuerzo', none: 'Nada' };
 const SAY = {
-  weight: 'Cuando llegas arriba del rango, la próxima vez <b>sube el peso</b>.',
-  assist: 'Cuando llegas arriba del rango, la próxima vez <b>quita ayuda</b>.',
-  reps: 'Cada sesión te propone <b>una repetición más por serie</b> que la vez anterior, contando todas juntas.',
-  time: 'Cada sesión te propone <b>aguantar más segundos</b> que la vez anterior, contando todas las series juntas.',
-  effort: 'El peso <b>se ajusta a lo duro que te resulte</b>: lo apuntas con el RPE en cada serie.',
-  none: '<b>No cambia nada solo.</b> Verás lo que hiciste la última vez.',
+  weight: 'Sube el peso al completar el número máximo de reps del rango.',
+  assist: 'Quita ayuda al completar el número máximo de reps del rango.',
+  reps: 'Sube las repeticiones al superar el objetivo de reps.',
+  time: 'Aguanta más segundos que la vez anterior, al completar el objetivo.',
+  effort: 'El peso sube o baja en función del esfuerzo, medido con el RPE.',
+  none: 'No cambia nada solo. Verás lo que hiciste la última vez.',
 };
-// Volumen (series y rango) es de la sección Volumen del ejercicio, no de esta hoja.
-const VOL = { bench: { sets: 3, min: 8, max: 12 }, assist: { sets: 3, min: 5, max: 8 }, pull: { sets: 3, min: 6, max: 6 } };
-let ex = 'bench', st = { when: 'all', inc: '2,5', down: 'def', rpe: false };
+let ex = 'bench';
+const st = { when: 'all', inc: '2,5', reps: '1', secs: '5', rpe: 8, down: 'def', brake: false };
+
+function meta(e) {
+  const s = e.style;
+  if (s === 'reps') return `${e.sets} series · desde ${e.min} reps`;
+  if (s === 'time') return `${e.sets} series · desde 30 s`;
+  if (s === 'effort') return `${e.sets} × 5 reps`;
+  return `${e.sets} × ${e.min === e.max ? e.min : e.min + '–' + e.max} reps`;
+}
 
 function sheet() {
   const e = EX[ex], s = e.style;
   const isW = s === 'weight' || s === 'assist';
-  const v = VOL[ex], may = Math.floor(v.sets / 2) + 1;
-  const sq = (k) => Array.from({ length: v.sets }, (_, i) => `<i class="${i < k ? 'hit' : 'mid'}"></i>`).join('');
+  const may = Math.floor(e.sets / 2) + 1;
+  const sq = (k) => Array.from({ length: e.sets }, (_, i) => `<i class="${i < k ? 'hit' : 'mid'}"></i>`).join('');
+  const chips = (key, vals, fmt) => `<div class="chips">${vals.map((v) => `<b class="${st[key] === v ? 'on' : ''}" data-k="${key}" data-v="${v}" role="button" tabindex="0">${fmt(v)}</b>`).join('')}</div>`;
+
   const when = !isW ? '' : `
     <div class="caps">Cuándo sube</div>
     <div class="rcards">
-      <div class="rcard ${st.when === 'all' ? 'on' : ''}" data-when="all" tabindex="0" role="button">
-        <div class="sq">${sq(v.sets)}</div>
-        <b>Todas las series</b><small>Las ${v.sets} llegan a ${v.max}</small>
+      <div class="rcard ${st.when === 'all' ? 'on' : ''}" data-k="when" data-v="all" tabindex="0" role="button">
+        <div class="sq">${sq(e.sets)}</div>
+        <b>Todas las series</b><small>Las ${e.sets} series llegan a ${e.max} reps</small>
       </div>
-      <div class="rcard ${st.when === 'part' ? 'on' : ''}" data-when="part" tabindex="0" role="button">
+      <div class="rcard ${st.when === 'part' ? 'on' : ''}" data-k="when" data-v="part" tabindex="0" role="button">
         <div class="sq">${sq(may)}</div>
-        <b>La mayoría</b><small>${may} de ${v.sets} llegan a ${v.max} y ninguna baja de ${v.min}</small>
+        <b>La mayoría</b><small>${may} de ${e.sets} series llegan a ${e.max} reps y ninguna baja de ${e.min} reps</small>
       </div>
     </div>`;
-  const inc = (vals, unit) => `<div class="chips">${vals.map((x) => `<b class="${st.inc === x ? 'on' : ''}" data-inc="${x}">${x === '%' ? '5 %' : x + ' ' + unit}</b>`).join('')}</div>`;
-  const ask = s === 'none' || s === 'reps' ? '' : `
-    <div class="caps">${s === 'effort' ? 'Cómo de duro' : s === 'assist' ? 'Cuánta ayuda quita' : 'Cuánto sube'}</div>
-    <div class="rows">
-      ${s === 'time' ? `<div class="row"><span>Por serie</span>${inc(['5', '10'], 's')}</div>`
-        : s === 'effort' ? '<div class="row"><span>RPE al que apuntas</span><div class="step"><i>−</i><b>8</b><i>+</i></div></div>'
-        : `<div class="row"><span>Cada vez</span>${inc(['1,25', '2,5', '5', '%'], 'kg')}</div>`}
-    </div>`;
-  const vol = s === 'none' ? '' : `<div class="volref">Series y reps: <b>${v.sets} × ${v.min === v.max ? v.min : v.min + '–' + v.max}</b>, en Volumen</div>`;
+
+  const how = s === 'none' ? ''
+    : s === 'effort' ? `
+    <div class="caps">Esfuerzo objetivo</div>
+    <div class="rows"><div class="row"><span>RPE<small>Te quedan ${10 - st.rpe} ${10 - st.rpe === 1 ? 'rep' : 'reps'} en recámara</small></span>
+      <div class="step"><i data-k="rpe" data-v="-1" role="button" tabindex="0">−</i><b>${st.rpe}</b><i data-k="rpe" data-v="1" role="button" tabindex="0">+</i></div></div></div>`
+    : `
+    <div class="caps">${s === 'assist' ? 'Cuánta ayuda quita' : 'Cuánto sube'}</div>
+    <div class="rows"><div class="row"><span>${s === 'reps' || s === 'time' ? 'Por serie' : 'Cada vez'}</span>${
+      s === 'reps' ? chips('reps', ['1', '2', '3'], (v) => `+${v} ${v === '1' ? 'rep' : 'reps'}`)
+      : s === 'time' ? chips('secs', ['5', '10', '15'], (v) => `+${v} s`)
+      : chips('inc', ['1,25', '2,5', '5', '%'], (v) => (v === '%' ? '5 %' : `${v} kg`))}</div></div>`;
+
   const adv = !isW ? '' : `
     <details class="adv">
       <summary>Avanzado <em>›</em></summary>
       <div class="in">
         <div><div class="lbl">Freno de RPE</div>
-          <div class="sg"><b class="${!st.rpe ? 'on' : ''}" data-rpe="0">No</b><b class="${st.rpe ? 'on' : ''}" data-rpe="1">RPE máx. 8</b></div>
+          <div class="sg"><b class="${!st.brake ? 'on' : ''}" data-k="brake" data-v="0" role="button" tabindex="0">No</b><b class="${st.brake ? 'on' : ''}" data-k="brake" data-v="1" role="button" tabindex="0">Hasta RPE 8</b></div>
           <div class="hint">Aunque llegues arriba, no sube si la media de RPE pasa de 8. Un día duro nunca baja el peso: solo frena.</div></div>
         <div><div class="lbl">Cuándo baja</div>
-          <div class="sg"><b class="${st.down === 'def' ? 'on' : ''}" data-down="def">Si fallas</b><b class="${st.down === 'never' ? 'on' : ''}" data-down="never">Nunca</b></div>
+          <div class="sg"><b class="${st.down === 'def' ? 'on' : ''}" data-k="down" data-v="def" role="button" tabindex="0">Si fallas</b><b class="${st.down === 'never' ? 'on' : ''}" data-k="down" data-v="never" role="button" tabindex="0">Nunca</b></div>
           <div class="hint">${st.down === 'def' ? 'Si te quedas un poco por debajo del mínimo, se mantiene. Si te quedas lejos, o dos días seguidos, ' + (s === 'assist' ? 'añade un 10 % de ayuda.' : 'baja un 10 %.') : 'Si no llegas al mínimo, se mantiene. Nunca propone bajar.'}</div></div>
         <div class="row" style="background:var(--surface2)"><span>Escalón del ejercicio</span><div class="step"><i>−</i><b>2,5 kg</b><i>+</i></div></div>
       </div>
     </details>`;
+
   document.getElementById('sheet').innerHTML = `
     <div class="grab"></div>
     <div class="shead"><span class="stitle">Progresión</span><span class="ok">OK</span></div>
-    <div class="sub">${e.name}</div>
+    <div class="exn">${e.name}</div>
+    <div class="exm">${s === 'none' ? '' : meta(e)}</div>
     <div class="caps">Qué sube</div>
-    <div class="tiles">${e.styles.map((k) => `<div class="tile ${k === 'none' ? 'none' : ''} ${k === s ? 'on' : ''}" data-st="${k}" tabindex="0" role="button" aria-pressed="${k === s}">${svg(k)}<span>${LABEL[k]}</span></div>`).join('')}</div>
+    <div class="tiles">${e.styles.map((k) => `<div class="tile ${k === 'none' ? 'none' : ''} ${k === s ? 'on' : ''}" data-k="style" data-v="${k}" tabindex="0" role="button" aria-pressed="${k === s}">${svg(k)}<span>${LABEL[k]}</span></div>`).join('')}</div>
     <p class="say">${SAY[s]}</p>
-    ${vol}${when}${ask}${adv}
-    <p class="rule">${rule(s)}</p>`;
+    ${when}${how}${adv}
+    <p class="rule">${rule(e)}</p>`;
 }
 
-function rule(s) {
-  const v = VOL[ex], may = Math.floor(v.sets / 2) + 1;
+function rule(e) {
+  const s = e.style, may = Math.floor(e.sets / 2) + 1;
   const inc = st.inc === '%' ? 'un 5 %' : `${st.inc} kg`;
-  const goal = st.when === 'part' ? `cuando ${may} de ${v.sets} series lleguen a ${v.max} y ninguna baje de ${v.min}` : `cuando las ${v.sets} series lleguen a ${v.max}`;
-  const down = st.down === 'never' ? ' Si no llegas al mínimo, se mantiene.' : ' Si te quedas un poco por debajo del mínimo, se mantiene; si te quedas lejos, o dos días seguidos, baja un 10 %.';
-  if (s === 'weight') return `Sube ${inc} ${goal}${st.rpe ? ' con una media de RPE de 8 o menos' : ''}.${down}`;
+  const goal = st.when === 'part'
+    ? `cuando ${may} de ${e.sets} series lleguen a ${e.max} reps y ninguna baje de ${e.min}`
+    : `cuando las ${e.sets} series lleguen a ${e.max} reps`;
+  const down = st.down === 'never' ? ' Si no llegas al mínimo, se mantiene.'
+    : ' Si te quedas un poco por debajo del mínimo, se mantiene; si te quedas lejos, o dos días seguidos, baja un 10 %.';
+  if (s === 'weight') return `Sube ${inc} ${goal}${st.brake ? ' y la media de RPE no pase de 8' : ''}.${down}`;
   if (s === 'assist') return `Quita ${inc} de ayuda ${goal}.${down.replace('baja un 10 %', 'añade un 10 % de ayuda')}`;
-  if (s === 'reps') return 'Cada vez que lo consigues, te propone una repetición más por serie. Si dos días seguidos haces menos que el anterior, se ajusta a lo que hiciste.';
-  if (s === 'time') return 'Cada vez que lo consigues, te propone 5 segundos más por serie. Si dos días seguidos aguantas menos, se ajusta a lo que hiciste.';
-  if (s === 'effort') return 'El peso de cada día sale de tu 1RM estimado (la media de tus tres últimas sesiones) para hacer tus reps a RPE 8.';
+  if (s === 'reps') return `Cuando superas el objetivo, el siguiente es tu total + ${st.reps} ${st.reps === '1' ? 'rep' : 'reps'} por serie. Si dos días seguidos haces menos que el anterior, se ajusta a lo que hiciste.`;
+  if (s === 'time') return `Cuando completas el objetivo, el siguiente es tu total + ${st.secs} s por serie. Si dos días seguidos aguantas menos, se ajusta a lo que hiciste.`;
+  if (s === 'effort') return `El peso de cada día sale de tu 1RM estimado (la media de tus tres últimas sesiones) para hacer tus reps a RPE ${st.rpe}.`;
   return 'Sin cambios automáticos.';
 }
 
 const SIT = {
-  up:   { ex: 'Press de banca con barra', rx: '3 × 8–12 · sube 2,5 kg', pill: ['up', 'Sube a 62,5 kg'], why: 'Llega a 12 en las 3 series para volver a subir', kg: ['60', '60', '60'], reps: ['12', '12', '12'] },
-  leve: { ex: 'Press de banca con barra', rx: '3 × 8–12 · sube 2,5 kg', pill: ['hold', 'Mantén 62,5 kg'], why: 'Te faltaron 2 reps para el mínimo (8)', kg: ['62,5', '62,5', '62,5'], reps: ['8', '7', '7'] },
-  down: { ex: 'Press de banca con barra', rx: '3 × 8–12 · sube 2,5 kg', pill: ['down', 'Baja a 55 kg'], why: 'Segundo día seguido sin llegar al mínimo', kg: ['60', '60', '60'], reps: ['7', '6', '6'] },
-  reps: { ex: 'Dominadas', rx: '3 series · reps, desde 6', pill: ['up', '34 reps en total'], why: 'La última vez hiciste 31', kg: null, reps: ['12', '12', '7'] },
+  up:   { n: '1', ex: 'Press de banca con barra', tg: '3 × 8–12 reps', dir: ['up', '↑', 'Sube a'], det: '62,5 kg', delta: '+2,5', why: 'Llega a 12 reps en las 3 series para volver a subir', kg: '60', reps: [12, 12, 12] },
+  leve: { n: '1', ex: 'Press de banca con barra', tg: '3 × 8–12 reps', dir: ['hold', '→', 'Mantén'], det: '62,5 kg', delta: null, why: 'Te faltaron 2 reps para el mínimo (8)', kg: '62,5', reps: [8, 7, 7] },
+  down: { n: '1', ex: 'Press de banca con barra', tg: '3 × 8–12 reps', dir: ['up', '↓', 'Baja a'], det: '55 kg', delta: '−5', why: 'Segundo día seguido sin llegar al mínimo', kg: '60', reps: [7, 6, 6] },
+  reps: { n: '2', ex: 'Dominadas', tg: '3 series · desde 6 reps', dir: ['up', '↑', 'Sube a'], det: '34 reps en total', delta: '+3', why: 'La última vez hiciste 31', kg: null, reps: [12, 12, 7] },
 };
 let sit = 'up', done = [false, false, false];
 
 function wk() {
   const s = SIT[sit];
+  const next = done.indexOf(false);
   document.getElementById('wk').innerHTML = `
-    <div class="wkhead">Sesión A · Torso</div>
-    <div class="excard">
-      <div class="exname">${s.ex}</div>
-      <div class="exrx">${s.rx}</div>
-      <div class="msg"><span class="pill ${s.pill[0]}">${s.pill[1]}</span><p>${s.why}</p></div>
-      <table>
-        <thead><tr><th>Serie</th>${s.kg ? '<th>Kg</th>' : ''}<th>Reps</th><th>✓</th></tr></thead>
-        <tbody>${s.reps.map((r, i) => `<tr><td>${i + 1}</td>${s.kg ? `<td><div class="in-box ${done[i] ? 'typed' : ''}">${s.kg[i]}</div></td>` : ''}<td><div class="in-box ${done[i] ? 'typed' : ''}">${r}</div></td><td><div class="chk ${done[i] ? 'on' : ''}" data-chk="${i}" role="button" tabindex="0" aria-pressed="${done[i]}"></div></td></tr>`).join('')}</tbody>
-      </table>
-      <p class="legend">En gris, lo que hiciste la última vez. Escribe encima lo de hoy, o marca ✓ si fue lo mismo.</p>
+    <div class="card">
+      <div class="chead"><span class="cnum">${s.n}</span><div><div class="cname">${s.ex}</div><div class="ctarget">${s.tg}</div></div></div>
+      <div class="cbody">
+        <div class="prog">
+          <div class="pline">
+            <span class="pdir ${s.dir[0]}"><span class="ar">${s.dir[1]}</span> ${s.dir[2]}</span>
+            <span class="pdet">${s.det}</span>
+            ${s.delta ? `<span class="pdelta">${s.delta}</span>` : ''}
+          </div>
+          <div class="pwhy">${s.why}</div>
+        </div>
+        <div class="colh"><span style="flex:none;width:26px"></span>${s.kg ? '<span>KG</span>' : ''}<span>REPS</span><span style="flex:none;width:42px"></span></div>
+        <div class="setl">${s.reps.map((r, i) => `
+          <div class="srow">
+            <span class="sn ${done[i] ? 'done' : ''}">S${i + 1}</span>
+            ${s.kg ? `<span class="cell ${done[i] ? 'done' : ''}">${s.kg}</span>` : ''}
+            <span class="cell ${done[i] ? 'done' : ''}">${r}</span>
+            <span class="chk ${done[i] ? 'done' : i === next ? 'next' : ''}" data-chk="${i}" role="button" tabindex="0" aria-pressed="${done[i]}">✓</span>
+          </div>`).join('')}</div>
+      </div>
     </div>`;
 }
 
 document.addEventListener('click', (ev) => {
-  const t = ev.target.closest('[data-ex],[data-st],[data-when],[data-inc],[data-down],[data-rpe],[data-sit],[data-chk]');
+  const t = ev.target.closest('[data-ex],[data-k],[data-sit],[data-chk]');
   if (!t) return;
   const d = t.dataset;
   if (d.ex) { ex = d.ex; document.querySelectorAll('[data-ex]').forEach((b) => b.classList.toggle('on', b === t)); }
-  if (d.st) EX[ex].style = d.st;
-  if (d.when) st.when = d.when;
-  if (d.inc) st.inc = d.inc;
-  if (d.down) st.down = d.down;
-  if (d.rpe) st.rpe = d.rpe === '1';
+  if (d.k === 'style') EX[ex].style = d.v;
+  else if (d.k === 'rpe') st.rpe = Math.min(10, Math.max(6, st.rpe + Number(d.v)));
+  else if (d.k === 'brake') st.brake = d.v === '1';
+  else if (d.k) st[d.k] = d.v;
   if (d.sit) { sit = d.sit; done = [false, false, false]; document.querySelectorAll('[data-sit]').forEach((b) => b.classList.toggle('on', b === t)); }
   if (d.chk) done[+d.chk] = !done[+d.chk];
   if (d.sit || d.chk) { wk(); return; }

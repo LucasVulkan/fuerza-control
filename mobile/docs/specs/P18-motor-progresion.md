@@ -121,9 +121,10 @@ en todas.
 
 ### 4.1 La regla
 
-- **Meta = total de reps (o segundos) + 1 rep por serie** (en Tiempo, + el salto
-  en segundos por serie, `increment.value`), repartida entre las series con el
-  sobrante en las primeras: 31 reps en 3 series → meta 34 → 12/11/11.
+- **Meta = total de reps (o segundos) + el salto por serie**, repartida entre las
+  series con el sobrante en las primeras: 31 reps en 3 series, +1 → meta 34 →
+  12/11/11. El salto se elige en la hoja: Reps +1 / +2 / +3 reps por serie (por
+  defecto +1); Tiempo +5 / +10 / +15 s por serie (`increment.value`).
 - **La meta se queda fija hasta alcanzarla.** Solo al llegar (total ≥ meta) se
   calcula la siguiente.
 - Hacer **menos que la meta pero igual o más que la sesión anterior** no es
@@ -163,8 +164,15 @@ peso de la última vez. Por eso el chip tiene que decir la meta con claridad (§
 
 ## 6. P18-04 — Mensajes del chip
 
-Dos piezas: **qué hacer** (en la pastilla) y **por qué / qué falta** (la línea de
-debajo). Formatos aprobados por el usuario en el visor (27-oct):
+Dos filas, con la anatomía que ya tiene la línea de progresión de la tarjeta
+(`progLine` de `ExerciseCard`, sin pastilla nueva ni fondo):
+
+1. **Qué hacer**: flecha + verbo en mayúsculas de 12 px (`caps`, lima; gris en
+   mantener) + la cifra (`labelStrong`) + la pastilla del salto (`progDeltaPill`):
+   «↑ SUBE A 62,5 kg (+2,5)».
+2. **Por qué / qué falta**: una línea `label` en `mutedLight` debajo.
+
+Formatos aprobados por el usuario (27-oct); la columna «Pastilla» es la fila 1:
 
 | Situación | Pastilla | Línea |
 |---|---|---|
@@ -190,24 +198,33 @@ dejan de usarse se borran.
 
 ## 7. P18-05 — Hoja de Progresión por niveles
 
-**Maqueta v1:** [`progresion-hoja.html`](../mockups/progresion-hoja.html) (27-oct, v2 tras la primera revisión del usuario). Dirección: las **tarjetas de carácter** de
+**Maqueta v1:** [`progresion-hoja.html`](../mockups/progresion-hoja.html) (27-oct, v3 tras dos revisiones del usuario). Dirección: las **tarjetas de carácter** de
 [`stages-v2.html`](../mockups/stages-v2.html) (P15 §3.2: icono, nombre y una
 línea, «Volumen · Intensidad · Igual · Descarga»), que al usuario le gustaron por
 simples y cómodas, aplicadas a los estilos de progresión:
 
-- **Qué sube**, en tarjetas pequeñas con icono: Peso · Reps · Tiempo · Esfuerzo ·
-  Nada (en asistidas, Ayuda en lugar de Peso). Debajo, una frase que lo explica en
-  palabras de quien entrena («Cuando llegas arriba del rango, la próxima vez sube
-  el peso»). Nada de «meta» ni de jerga en los textos de la interfaz.
-- **Series y reps no están en esta hoja**: siguen en la sección Volumen del
-  ejercicio. La hoja solo las recuerda en una línea («Series y reps: 3 × 8–12, en
-  Volumen»).
-- **Cuándo sube** (Peso y Ayuda), en dos tarjetas grandes con un cuadradito por
-  serie (tantos como series tenga el ejercicio): **Todas las series** · **La
-  mayoría** (§3.1).
-- **Cuánto sube**: chips del salto (1,25 / 2,5 / 5 kg / 5 %; en Tiempo, segundos
-  por serie). En Esfuerzo, «Cómo de duro»: el RPE al que apuntas. Reps no tiene
-  nada que elegir (+1 por serie).
+- **Bajo el nombre del ejercicio, su volumen como meta** («3 × 8–12 reps»), en
+  gris. Series y reps no se tocan en esta hoja: siguen en Volumen.
+- **Qué sube**, en tarjetas pequeñas con icono: Peso (kettlebell) · Reps · Tiempo ·
+  Esfuerzo · Nada (en asistidas, Ayuda en lugar de Peso). La elegida **se rellena
+  de lima con el texto en negro**, como todo lo pulsado en la app. Debajo, su
+  frase (textos del usuario, 27-oct):
+  - Peso: «Sube el peso al completar el número máximo de reps del rango.»
+  - Ayuda: «Quita ayuda al completar el número máximo de reps del rango.»
+  - Reps: «Sube las repeticiones al superar el objetivo de reps.»
+  - Tiempo: «Aguanta más segundos que la vez anterior, al completar el objetivo.»
+  - Esfuerzo: «El peso sube o baja en función del esfuerzo, medido con el RPE.»
+  - Nada: «No cambia nada solo. Verás lo que hiciste la última vez.»
+  El icono de Reps está por decidir (la maqueta prueba unas flechas en círculo).
+- **Cuándo sube** (Peso y Ayuda), en dos tarjetas grandes **con borde** (no
+  rellenas) y un cuadradito por serie (tantos como series tenga el ejercicio),
+  hablando de series: **Todas las series** · «Las 3 series llegan a 12 reps» ·
+  **La mayoría** · «2 de 3 series llegan a 12 reps y ninguna baja de 8 reps»
+  (§3.1).
+- **Cuánto sube**: chips del salto (1,25 / 2,5 / 5 kg / 5 %; Reps +1 / +2 / +3 por
+  serie; Tiempo +5 / +10 / +15 s por serie). En Esfuerzo, **Esfuerzo objetivo**:
+  el RPE, con las reps en recámara que significa («RPE 8 · te quedan 2 reps en
+  recámara»).
 - **Plegado, «Avanzado»**: freno de RPE, cuándo baja (Si fallas / Nunca) y
   escalón. El RPE no aparece fuera de Avanzado salvo en Esfuerzo.
 - La frase de la regla (`progressionRule`) resume lo elegido debajo del todo.
