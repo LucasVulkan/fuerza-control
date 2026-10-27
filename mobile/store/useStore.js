@@ -134,6 +134,8 @@ let _clientCandidate = null;
 
 // La suelta del asiento (`_flushRelease`) en vuelo: entrar en un asiento espera a que acabe.
 let _releasing = null;
+// `sendPendingPrograms` en vuelo: NetInfo, primer plano y «Enviar todo» llegan a la vez (U15-01).
+let _sendingPending = null;
 
 
 // ── Sesión de entrenador ───────────────────────────────────────────────────────
@@ -4119,20 +4121,28 @@ export const useStore = create(
         return client;
       },
 
-      /** Reintenta lo pendiente del entrenador (programa y prescripciones). Nunca lanza. */
-      sendPendingPrograms: async () => {
-        const { trainerSync, clients, ui } = get();
-        if (ui.online === false || !trainerSync.mode || trainerSync.mode === 'offline') return { ok: 0, fail: 0 };
-        let ok = 0, fail = 0;
-        for (const c of Object.values(clients)) {
-          if (clientLink(c, trainerSync) !== 'linked' || !(c.programDirty || c.overridesDirty) || get().isClientFrozen(c.id)) continue;
-          try {
-            if (c.programDirty && c.activeProgramId) await get().uploadProgramToClient(c.id, c.activeProgramId);
-            if (c.overridesDirty) await get().sendOverrides(c.id);
-            ok += 1;
-          } catch (err) { fail += 1; console.warn('[sendPendingPrograms]', c.id, err?.message); }
-        }
-        return { ok, fail };
+      /**
+       * Reintenta lo pendiente del entrenador (programa y prescripciones), también
+       * de los invitados: su subida silenciosa solo salta con el siguiente cambio.
+       * Una sola a la vez: la segunda llamada recibe la que está en vuelo. Nunca lanza.
+       */
+      sendPendingPrograms: () => {
+        if (_sendingPending) return _sendingPending;
+        const { trainerSync, ui } = get();
+        if (ui.online === false || !trainerSync.mode || trainerSync.mode === 'offline') return Promise.resolve({ ok: 0, fail: 0 });
+        _sendingPending = (async () => {
+          let ok = 0, fail = 0;
+          for (const c of Object.values(get().clients)) {
+            if (clientLink(c, trainerSync) === 'none' || !(c.programDirty || c.overridesDirty) || get().isClientFrozen(c.id)) continue;
+            try {
+              if (c.programDirty && c.activeProgramId) await get().uploadProgramToClient(c.id, c.activeProgramId);
+              if (c.overridesDirty) await get().sendOverrides(c.id);
+              ok += 1;
+            } catch (err) { fail += 1; console.warn('[sendPendingPrograms]', c.id, err?.message); }
+          }
+          return { ok, fail };
+        })().finally(() => { _sendingPending = null; });
+        return _sendingPending;
       },
 
       uploadProgramToClient: async (clientId, programId) => {

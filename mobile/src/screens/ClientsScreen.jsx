@@ -22,7 +22,7 @@ import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
 import OfflineBanner from '../components/OfflineBanner';
-import { sendFailure } from '../utils/networkError';
+import { sendFailure, isNetworkError } from '../utils/networkError';
 import ClientAvatar from '../components/ClientAvatar';
 import ClientRow, { CtaIcon } from '../components/ClientRow';
 import { makeRowStyles } from '../components/clientRowStyles';
@@ -2229,10 +2229,11 @@ export default function ClientsScreen() {
       await uploadProgramToClient(clientId, programId);
       showToast(t('clients.toastStageUnlocked', { name: stage.name }), 2600, 'success');
     } catch (err) {
-      // Si el envío falla hay que volver a cerrarla: el cliente sigue viéndola
+      // Sin conexión queda abierta y en cola: sale sola al volver (U15-01).
+      // Cualquier otro fallo la vuelve a cerrar: el cliente sigue viéndola
       // bloqueada, y dejarla abierta aquí borraría el aviso que recuerda que ese
       // cliente está parado.
-      updateStage(programId, stageIdx, { locked: true });
+      if (!isNetworkError(err)) updateStage(programId, stageIdx, { locked: true });
       const f = sendFailure(err, t, 'clients.programUploadError');
       showToast(f.msg, 3000, f.type);
     }

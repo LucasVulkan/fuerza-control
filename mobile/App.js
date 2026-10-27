@@ -192,6 +192,10 @@ export default function App() {
   // (M01-01). Configurar anónimo y hacer `logIn` después dejaba una carrera: el
   // `checkProStatus` del anónimo podía resolver tarde y pisar el Pro de la cuenta.
   const hasHydrated = useStore((s) => s._hasHydrated);
+  // U15-01: lo que quedó en cola al cerrar la app sale al arrancar (arrancar no es un «change» de AppState).
+  useEffect(() => {
+    if (hasHydrated) useStore.getState().sendPendingPrograms().catch(() => {});
+  }, [hasHydrated]);
   useEffect(() => {
     if (!hasHydrated) return;
     if (process.env.EXPO_PUBLIC_FORCE_PRO === 'true') return; // preview build → keep isPro as-is
