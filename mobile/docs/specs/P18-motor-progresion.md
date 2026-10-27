@@ -5,7 +5,7 @@
 > Fase P18-01 · hecho · Peso por reglas: cuándo mantener y cuándo bajar · §3
 > Fase P18-02 · hecho · Reps y Tiempo: una meta por total · §4
 > Fase P18-03 · hecho · El gris es la última vez; el check guarda la casilla · §5
-> Fase P18-04 · pendiente · Mensajes del chip · §6
+> Fase P18-04 · hecho · Mensajes del chip · §6
 > Fase P18-05 · pendiente · Hoja de Progresión por niveles · §7
 > Inicio: 2026-10-27
 >
@@ -242,6 +242,30 @@ objetivo 140 kg», línea con el motivo de hoy y el 1RM estimado.
 
 Textos en `es.json` y `en.json`, con plurales (`rep`/`reps`). Los de hoy que
 dejan de usarse se borran.
+
+Al implementar (27-oct): la línea va ya en la cabecera, a todo lo ancho (A2,
+§7), y se oculta al plegar la tarjeta; el 1RM de Por esfuerzo pasa a la fila 2.
+Los decimales salen con punto («RPE medio 8.8»), como el resto de cifras de la
+tarjeta.
+
+**Probar P18-04**
+
+- [ ] La línea de progresión va dentro de la banda gris de la cabecera, bajo
+  el nombre y separada por una raya fina, empezando en el borde izquierdo
+  (bajo el número), en dos filas: «↑ SUBE A 62.5 kg (+2.5)» y debajo el
+  porqué en gris.
+- [ ] Al plegar la tarjeta (completar las series) la línea desaparece; al
+  desplegarla vuelve.
+- [ ] Tocar la línea abre la ficha de la recomendación, como antes.
+- [ ] Mantener por fallo leve: «→ MANTÉN 32.5 kg» en gris y «Te faltaron 2 reps
+  para el mínimo (10)»; con una sola rep, «Te faltó 1 rep…».
+- [ ] Asistida: «QUITA AYUDA: 27.5 kg», «AÑADE AYUDA: 30 kg» y «MANTÉN 30 kg de
+  ayuda».
+- [ ] Por esfuerzo: «PESO OBJETIVO 140 kg» y debajo el motivo con el 1RM
+  estimado («… · 1RM 158 kg»).
+- [ ] Objetivo del entrenador: «◎ OBJETIVO DE TU ENTRENADOR» en azul en la misma
+  banda; primera vez: «◇ BUSCA TU PESO» en la banda.
+- [ ] Con el móvil en inglés, los mismos mensajes salen traducidos.
 
 ## 7. P18-05 — Hoja de Progresión por niveles
 

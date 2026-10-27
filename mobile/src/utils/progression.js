@@ -386,7 +386,7 @@ function chipDouble(prog, doneSets, n, floor, goal, t, { timed = false, assist =
       : ev.mode === 'rpe' ? t('progression.next.extraRpe', { max: ev.maxRpe }) : '',
     purpose: t(`progression.next.${assist ? 'toAssist' : again ? 'toUpAgain' : 'toUp'}`),
   });
-  const missingLine = () => t('progression.next.missing', { amount: amount(cur.missing), min: unit(floor) });
+  const missingLine = () => t('progression.next.missing', { count: cur.missing, amount: amount(cur.missing), min: unit(floor) });
   const base = { icon: '→', suggestedTime: null, ...(assist ? { assist: true } : {}) };
 
   if (cur.up) {

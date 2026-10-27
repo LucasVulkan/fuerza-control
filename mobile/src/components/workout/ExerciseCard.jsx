@@ -413,9 +413,8 @@ export default function ExerciseCard({
   // Se parte en dos: `target` es el peso al que vas (la instrucción) y `delta` es
   // el salto respecto a la última sesión, en pastilla aparte y en gris para que no
   // pelee con el acento. Sin sugerencia numérica cae al mensaje largo, y ahí el
-  // label pierde la preposición ("Subir", no "Subir a"). El porqué ya no va en
-  // una frase debajo (rompía la rejilla de la tarjeta): está en la ficha que abre
-  // la línea entera (§6.3).
+  // label pierde la preposición ("Subir", no "Subir a"). El porqué va en una
+  // segunda fila, en la banda de la cabecera (P18 §6, `progHead`).
   const { progTarget, progDelta } = (() => {
     if (!progression) return {};
     const sets = lastExercise?.sets ?? [];
@@ -425,7 +424,9 @@ export default function ExerciseCard({
       const cur   = curKg > 0 ? toDisplay(curKg) : null;
       const next  = toDisplay(progression.suggestedWeight);
       return {
-        progTarget: `${next} ${weightLabel}`,
+        // Asistida que se mantiene: «Mantén 30 kg de ayuda» (P18 §6).
+        progTarget: progression.assist && progression.type === 'hold'
+          ? t('workout.progression.assistKg', { kg: `${next} ${weightLabel}` }) : `${next} ${weightLabel}`,
         progDelta:  cur != null && cur !== next ? signed(Math.round((next - cur) * 100) / 100) : null,
       };
     }
@@ -580,6 +581,61 @@ export default function ExerciseCard({
     </View>
   );
 
+  // La línea de progresión (P18 §6-7, variante A2): dentro de la banda de la
+  // cabecera, a todo lo ancho y separada del nombre por una raya. Dos filas:
+  // qué hacer (flecha, verbo, cifra y salto) y por qué. Va con el cuerpo, así
+  // que al plegar la tarjeta se oculta. La fila entera abre la ficha (§6.3).
+  // Por esfuerzo, el 1RM estimado va en la línea del porqué (§6).
+  const progWhy = progression && [
+    progression.why,
+    e1rmShown != null ? `${t('workout.e1rmShort')} ${e1rmShown} ${weightLabel}` : null,
+  ].filter(Boolean).join(' · ');
+  const progHead = hasCoachTarget ? (
+    <View style={styles.progHeadWrap}>
+      <View style={styles.progHead}>
+        <Text style={styles.progDirCoach}>{`◎ ${t('workout.coachTarget')}`}</Text>
+      </View>
+    </View>
+  ) : progression || firstTime ? (
+    <Pressable
+      style={({ pressed }) => [styles.progHeadWrap, pressed && styles.progLinePressed]}
+      onPress={() => setProgSheetOpen(true)}
+    >
+      <View style={styles.progHead}>
+      {progression ? (
+        <View style={styles.progLine}>
+          <Text style={[
+            styles.progDir,
+            progression.type === 'hold' && styles.progDirHold,
+            // La descarga no es un mantenimiento más: es una instrucción del
+            // bloque. Azul, nunca rojo (UI-MIGRATION §4.9).
+            progression.reason === 'deload' && styles.progDirDeload,
+          ]}>
+            <Text style={styles.progArrow}>{PROG_ARROW[progression.type] ?? '→'}</Text>
+            {` ${t(`workout.progression.${progKey}`, '')}`}
+          </Text>
+          {progTarget ? <Text style={styles.progDetail}>{progTarget}</Text> : null}
+          {progDelta ? (
+            <View style={styles.progDeltaPill}>
+              <Text style={styles.progDeltaText}>{progDelta}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        // Primera vez (§6.3) — misma anatomía, en `text`: qué buscar.
+        <View style={styles.progLine}>
+          <Text style={[styles.progDir, styles.progDirFirst]}>
+            <Text style={styles.progArrow}>◇</Text>
+            {` ${t(FIRST_LABEL[firstTime.kind])}`}
+          </Text>
+          <Text style={styles.progDetail}>{firstTime.value}</Text>
+        </View>
+      )}
+      {progWhy ? <Text style={styles.progWhy}>{progWhy}</Text> : null}
+      </View>
+    </Pressable>
+  ) : null;
+
   // Contenido del measurer (oculto): layout colapsado COMPLETO (header estático
   // + pills), así collapsedH ya cuenta con el header definitivo.
   const measurerContent = (
@@ -642,7 +698,9 @@ export default function ExerciseCard({
 
       ) : (
 
-        /* ── Expanded view — Body (spec §4), padding 12 16 14 ── */
+        <>
+        {progHead}
+        {/* ── Expanded view — Body (spec §4), padding 12 16 14 ── */}
         <View style={styles.body}>
 
           {/* Trainer note — 1-line clamp, tap to expand */}
@@ -758,65 +816,6 @@ export default function ExerciseCard({
             </View>
           ) : null}
           </AnimatedHeight>
-          ) : null}
-
-          {/* U10-04: la línea de objetivo va entre el calentamiento y las series. */}
-          {/* ProgressionLine (§4.1) — oculta si el entrenador fijó un objetivo.
-              La fila entera abre la ficha (§6.3): regla, la última vez y hoy. */}
-          {!hasCoachTarget && progression ? (
-            <View style={styles.progBlock}>
-              <Pressable
-                style={({ pressed }) => [styles.progLine, pressed && styles.progLinePressed]}
-                onPress={() => setProgSheetOpen(true)}
-              >
-                <Text style={[
-                  styles.progDir,
-                  progression.type === 'hold' && styles.progDirHold,
-                  // La descarga no es un mantenimiento más: es una instrucción
-                  // del bloque, y se lee antes si no comparte color con el gris
-                  // de "sin novedad". Azul, nunca rojo (UI-MIGRATION §4.9).
-                  progression.reason === 'deload' && styles.progDirDeload,
-                ]}>
-                  <Text style={styles.progArrow}>{PROG_ARROW[progression.type] ?? '→'}</Text>
-                  {` ${t(`workout.progression.${progKey}`, '')}`}
-                </Text>
-                {progTarget ? <Text style={styles.progDetail}>{progTarget}</Text> : null}
-                {progDelta ? (
-                  <View style={styles.progDeltaPill}>
-                    <Text style={styles.progDeltaText}>{progDelta}</Text>
-                  </View>
-                ) : null}
-                {/* Por esfuerzo: el 1RM al final de la línea (§6.3). */}
-                {e1rmShown != null ? (
-                  <Text style={styles.progE1rm}>{`${t('workout.e1rmShort')} ${e1rmShown}`}</Text>
-                ) : progression.effort && progression.noRpe ? (
-                  <Text style={styles.progE1rm}>{t('workout.e1rmNoRpe')}</Text>
-                ) : null}
-              </Pressable>
-            </View>
-          ) : null}
-
-          {/* Primera vez (§6.3) — misma anatomía, en `text`: qué buscar. */}
-          {!hasCoachTarget && !progression && firstTime ? (
-            <View style={styles.progBlock}>
-              <Pressable
-                style={({ pressed }) => [styles.progLine, pressed && styles.progLinePressed]}
-                onPress={() => setProgSheetOpen(true)}
-              >
-                <Text style={[styles.progDir, styles.progDirFirst]}>
-                  <Text style={styles.progArrow}>◇</Text>
-                  {` ${t(FIRST_LABEL[firstTime.kind])}`}
-                </Text>
-                <Text style={styles.progDetail}>{firstTime.value}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {/* Coach target (next-session prescription) — misma anatomía, en azul */}
-          {hasCoachTarget ? (
-            <View style={styles.progLine}>
-              <Text style={styles.progDirCoach}>{`◎ ${t('workout.coachTarget')}`}</Text>
-            </View>
           ) : null}
 
           {/* SectionLabel "SERIES" — solo si hay sección de aproximación (§2) */}
@@ -977,6 +976,7 @@ export default function ExerciseCard({
           )}
 
         </View>
+        </>
 
       )}
 
@@ -1199,9 +1199,25 @@ const makeStyles = (th) => StyleSheet.create({
     paddingHorizontal: 16,
   },
 
-  // §4.1 ProgressionLine — solo tipografía, sin fondo ni chip.
-  progBlock: {
-    paddingBottom: 12,
+  // §4.1 ProgressionLine — solo tipografía, sin fondo ni chip. P18 §7 (A2): en
+  // la banda `surface2` de la cabecera, desde el borde bajo el número, con una
+  // raya fina que la separa del nombre (margen 0 12 0 16 como el header).
+  progHeadWrap: {
+    backgroundColor: th.colors.surface2,
+  },
+  progHead: {
+    marginLeft:     16,
+    marginRight:    12,
+    paddingTop:     10,
+    paddingBottom:  14,
+    borderTopWidth: 1,
+    borderTopColor: th.colors.border,
+  },
+  // Fila 2: el porqué, en `label` apagado (P18 §6).
+  progWhy: {
+    ...textStyles.label,
+    color:     th.colors.mutedLight,
+    marginTop: 4,
   },
   progLine: {
     flexDirection: 'row',
@@ -1237,14 +1253,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   progLinePressed: {
     opacity: 0.7,
-  },
-  // El 1RM de Por esfuerzo, al final de la línea y apagado (§6.3).
-  progE1rm: {
-    ...textStyles.label,
-    marginLeft:  'auto',
-    flexShrink:  0,
-    color:       th.colors.muted,
-    fontVariant: ['tabular-nums'],
   },
   // La ficha de la recomendación: tres bloques, título pequeño + contenido.
   // Ficha de la recomendación (U10-04): cada sección es una caja `surface`
