@@ -229,7 +229,7 @@ function DetailBody({ id, order = [], baseLog = [], allExercises = {}, programTe
   }, [filteredLogs]);
   const prData        = useMemo(() => computeExPR(effectiveLogs, def), [effectiveLogs, def]);
   const sessionDeltas = useMemo(() => computeExSessionDeltas(filteredLogs, def, activeMetric), [filteredLogs, def, activeMetric]);
-  // Lo que puedes hoy: el mejor e1RM de las últimas 6 semanas (del alcance, no
+  // Lo que puedes hoy: el mejor e1RM de las últimas 4 semanas (del alcance, no
   // del periodo, para que un periodo corto no deje la tarjeta vacía).
   const e1rmData = useMemo(() => recentE1RM(effectiveLogs), [effectiveLogs]);
 

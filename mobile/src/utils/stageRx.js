@@ -20,9 +20,8 @@
  *
  * Los peldaños de una escalera derivan de la etapa BASE, no del anterior: los
  * deltas son absolutos contra la base ("+1 serie", "+2 series"), nunca
- * acumulativos. Así, editar el peldaño 2 no descoloca el 3, y un
- * `incrementScale: 0.5` de descarga no deja el incremento a la mitad para
- * siempre.
+ * acumulativos. Así, editar el peldaño 2 no descoloca el 3, y una descarga
+ * no deja la progresión en pausa para siempre.
  */
 
 import { resolveProgressionConfig } from './progression';
@@ -33,7 +32,6 @@ export const DEFAULT_RX = {
   setsDelta:        0,      // −3..+3 series por ejercicio
   repsShift:        0,      // −6..+6, desplaza min Y max juntos
   restPct:          0,      // −50..+100 %
-  incrementScale:   1,      // 1 | 0.5 — escala el incremento de la progresión
   progressionHold:  null,   // null | 'deload'
 };
 
@@ -113,9 +111,6 @@ export function buildRungs(ladderId) {
           scope: 'keys',
           repsShift: -3 - 2 * i,
           restPct:   25 + 25 * i,
-          // A partir del segundo peldaño el margen se estrecha: subir a saltos
-          // enteros deja de tener sentido.
-          ...(i > 0 ? { incrementScale: 0.5 } : {}),
         },
       };
     }
@@ -156,7 +151,6 @@ export function describeRx(rx, t) {
   if (r.setsDelta !== 0)       parts.push(scoped(r.setsDelta > 0 ? 'setsUp' : 'setsDown', { n: Math.abs(r.setsDelta) }));
   if (r.repsShift !== 0)       parts.push(scoped(r.repsShift > 0 ? 'repsUp' : 'repsDown', { n: Math.abs(r.repsShift) }));
   if (r.restPct !== 0)         parts.push(t(`planner.rxParts.${r.restPct > 0 ? 'restUp' : 'restDown'}`, { n: Math.abs(r.restPct) }));
-  if (r.incrementScale !== 1)  parts.push(t('planner.rxParts.incrementHalf'));
   if (r.progressionHold)       parts.push(t('planner.rxParts.deload'));
   return parts;
 }
@@ -172,7 +166,7 @@ export function isNoopRx(rx) {
   if (!rx) return true;
   const r = { ...DEFAULT_RX, ...rx };
   return r.setsDelta === 0 && r.repsShift === 0 && r.restPct === 0
-    && r.incrementScale === 1 && r.progressionHold == null;
+    && r.progressionHold == null;
 }
 
 /** ¿Este ejercicio entra en el alcance de la regla? */
@@ -180,25 +174,6 @@ function inScope(exConfig, scope) {
   if (scope === 'keys')        return !!exConfig.isKey;
   if (scope === 'accessories') return !exConfig.isKey;
   return true;
-}
-
-/**
- * Escala el incremento de la progresión.
- *
- * Se aplica sobre el valor de la etapa BASE (ver cabecera), y respeta la forma
- * de cada tipo de `increment`: 'fixed' escala `value` y 'pct' escala `pct`. El
- * valor se redondea al `step` resuelto del ejercicio (P12-progresion-clara.md §4.1),
- * sin bajar de él: un escalón de 5 kg no puede quedarse en 2,5. Reps y Tiempo
- * no tienen escalón de kilos (`step` null): entero, mínimo 1 (§4.4).
- */
-function scaleIncrement(increment, factor, step) {
-  if (factor === 1) return increment;
-  const round = (v) => (step ? Math.max(step, Math.round(v / step) * step) : Math.max(1, Math.round(v)));
-  return {
-    ...increment,
-    value: round((increment.value ?? step ?? 1) * factor),
-    pct:   Math.max(0.5, (increment.pct ?? 5) * factor),
-  };
 }
 
 /**
@@ -238,23 +213,25 @@ export function applyRx(exercises, rx, allExercises = {}) {
       next.restSec = Math.max(MIN_REST, Math.round(next.restSec * (1 + r.restPct / 100)));
     }
 
-    if (r.incrementScale !== 1 || r.progressionHold !== null) {
+    // Una etapa no toca la progresión salvo la descarga (decisión del usuario,
+    // 27-oct-2026: el «incremento a la mitad» de Intensificación se quitó; un
+    // `incrementScale` guardado de antes se ignora).
+    if (r.progressionHold !== null) {
       // Materializar la progresión resuelta: un ejercicio sin `progression`
       // explícita hereda la del `def`, y si escribiéramos solo `hold` encima
       // perderíamos el resto al no existir el objeto. `step`, `direction` y `exact` son
       // del ejercicio y se resuelven siempre: no se escriben. `down` solo si
       // venía guardado — su defecto depende de las series de la sesión (§4.1).
-      const { step, down, ...prog } = resolveProgressionConfig(ex, allExercises[ex.exerciseId]);
+      const { down, ...prog } = resolveProgressionConfig(ex, allExercises[ex.exerciseId]);
+      delete prog.step;
       delete prog.direction;
       delete prog.exact;
-      const weighted = prog.type !== 'reps' && prog.type !== 'time';
       next.progression = {
         ...prog,
         // 'weight' se lee como 'double' pero con meta = minReps: reescribirlo
         // cambiaría cuándo sube (P12-progresion-clara.md §4.1).
         ...(ex.progression?.type === 'weight' ? { type: 'weight' } : {}),
         ...(down != null ? { down } : {}),
-        increment: scaleIncrement(prog.increment, r.incrementScale, weighted ? step : null),
         hold: r.progressionHold,
       };
     }

@@ -95,40 +95,11 @@ describe('applyRx — alcance', () => {
 });
 
 describe('applyRx — progresión', () => {
-  it('halves a fixed increment that sits above the step', () => {
+  it('a stage never touches the increment: a saved incrementScale is ignored (decisión del usuario, 27-oct-2026)', () => {
     const ex = { ...curl, progression: { type: 'double', increment: { type: 'fixed', value: 5 } } };
-    const [c] = applyRx([ex], { incrementScale: 0.5 }, LIB);
-    expect(c.progression.increment.value).toBe(2.5);
-  });
-
-  it('rounds to the resolved step and never goes below it (the library step 5 → stays 5)', () => {
-    // El salto por defecto es el escalón (5); la mitad (2,5) no es un escalón.
-    const [s] = applyRx(SESSION, { incrementScale: 0.5 }, LIB);
-    expect(s.progression.increment.value).toBe(5);
-  });
-
-  it("the exercise's own weightStep wins over the library's", () => {
-    const [s] = applyRx([{ ...squat, weightStep: 1.25 }], { incrementScale: 0.5 }, LIB);
-    expect(s.progression.increment.value).toBe(1.25);   // su salto por defecto es su escalón, y no baja de él
-    const ex = { ...squat, weightStep: 2.5, progression: { type: 'double', increment: { type: 'fixed', value: 5 } } };
-    expect(applyRx([ex], { incrementScale: 0.5 }, LIB)[0].progression.increment.value).toBe(2.5);
-  });
-
-  it('scales pct; a legacy stepped increment is read as fixed from its first step', () => {
-    const pct = { ...curl, progression: { type: 'double', increment: { type: 'pct', pct: 10 } } };
-    const [p] = applyRx([pct], { incrementScale: 0.5 }, LIB);
-    expect(p.progression.increment.pct).toBe(5);
-
-    const stepped = { ...curl, progression: { type: 'double', increment: { type: 'stepped', steps: [{ untilSession: 4, value: 10 }, { value: 2.5 }] } } };
-    const [st] = applyRx([stepped], { incrementScale: 0.5 }, LIB);
-    expect(st.progression.increment).toEqual({ type: 'fixed', value: 5, pct: 2.5 });
-  });
-
-  it('Reps and Time have no weight step: integer, at least 1', () => {
-    const reps = { ...curl, progression: { type: 'reps', increment: { type: 'fixed', value: 4 } } };
-    expect(applyRx([reps], { incrementScale: 0.5 }, LIB)[0].progression.increment.value).toBe(2);
-    const one = { ...curl, progression: { type: 'reps' } };
-    expect(applyRx([one], { incrementScale: 0.5 }, LIB)[0].progression.increment.value).toBe(1);
+    expect(applyRx([ex], { incrementScale: 0.5 }, LIB)[0]).toBe(ex);
+    const [d] = applyRx([ex], { incrementScale: 0.5, progressionHold: 'deload' }, LIB);
+    expect(d.progression.increment.value).toBe(5);
   });
 
   it('does not write step or direction, and writes down only when it was saved', () => {
@@ -166,7 +137,7 @@ describe('applyRx — lo que NUNCA puede tocar', () => {
       ...squat, linkGroup: 'lnk_1', supersetWithNext: true, dropset: { drops: 2 },
       warmup: { mode: 'auto', sets: 2 }, trainerNote: 'ojo con la rodilla', limitationNote: 'x',
     }];
-    const [s] = applyRx(rich, { setsDelta: 1, repsShift: -2, restPct: 50, incrementScale: 0.5 }, LIB);
+    const [s] = applyRx(rich, { setsDelta: 1, repsShift: -2, restPct: 50, progressionHold: 'deload' }, LIB);
     expect(s.exerciseId).toBe('squat_barbell');
     expect(s.order).toBe(1);
     expect(s.linkGroup).toBe('lnk_1');
@@ -184,21 +155,12 @@ describe('applyRx — lo que NUNCA puede tocar', () => {
 });
 
 describe('applyRx — los peldaños derivan de la BASE, no del anterior', () => {
-  // La regla que evita que un +1 se convierta en +3 sin querer y que una
-  // descarga deje el incremento a la mitad para siempre.
+  // La regla que evita que un +1 se convierta en +3 sin querer.
   it('two rungs from the same base give absolute deltas', () => {
     const rung2 = applyRx(SESSION, { setsDelta: 1 }, LIB);
     const rung3 = applyRx(SESSION, { setsDelta: 2 }, LIB);
     expect(rung2[0].sets).toBe(5);
     expect(rung3[0].sets).toBe(6);
-  });
-
-  it('a deload rung does not inherit the halved increment of another rung', () => {
-    const base    = [{ ...squat, weightStep: 2.5, progression: { type: 'double', increment: { type: 'fixed', value: 5 } } }];
-    const intense = applyRx(base, { incrementScale: 0.5 }, LIB);
-    const deload  = applyRx(base, { setsDelta: -1, progressionHold: 'deload' }, LIB);
-    expect(intense[0].progression.increment.value).toBe(2.5);
-    expect(deload[0].progression.increment.value).toBe(5);   // desde la base
   });
 });
 
@@ -343,7 +305,7 @@ describe('describeRx', () => {
   });
 
   it('lists every part of a compound rule', () => {
-    const parts = describeRx({ scope: 'keys', repsShift: -5, restPct: 50, incrementScale: 0.5 }, t);
+    const parts = describeRx({ scope: 'keys', repsShift: -5, restPct: 50, progressionHold: 'deload' }, t);
     expect(parts).toHaveLength(3);
   });
 

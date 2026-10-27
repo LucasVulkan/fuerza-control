@@ -99,13 +99,43 @@ describe('resolveWorkWeight', () => {
     expect(resolveWorkWeight({ weight: 90 }, lastExercise, 50, { suggestedWeight: 62.5 })).toBe(90);
   });
 
-  it('P56: en asistidos el número del plan es la ayuda, no entra; sin número, tampoco', () => {
+  it('I01 §13.3: en asistidos la base es la ayuda que propone la progresión; sin número, la cascada', () => {
     const lastExercise = { sets: [{ weight: '20', reps: '8', done: true }] };
-    expect(resolveWorkWeight(null, lastExercise, null, { assist: true, suggestedWeight: 17.5 })).toBe(20);
+    expect(resolveWorkWeight(null, lastExercise, null, { assist: true, suggestedWeight: 17.5 })).toBe(17.5);
     expect(resolveWorkWeight(null, lastExercise, null, { suggestedWeight: null })).toBe(20);
     expect(resolveWorkWeight(null, null, 65, { suggestedWeight: 0 })).toBe(65);
   });
 });
+
+describe('I01 §13 — calentamiento', () => {
+  const lastExercise = { sets: [{ weight: '60', reps: '8', done: true }] };
+
+  it('I01 §13.1: sin calentamiento marcado, lo escrito en la 1.ª serie manda sobre plan y última vez', () => {
+    expect(resolveWorkWeight(null, lastExercise, 70, { suggestedWeight: 62.5 }, { warmupStarted: false })).toBe(70);
+  });
+
+  it('I01 §13.1: con una serie del calentamiento marcada, vuelve la cascada', () => {
+    expect(resolveWorkWeight(null, lastExercise, 70, { suggestedWeight: 62.5 }, { warmupStarted: true })).toBe(62.5);
+  });
+
+  it('I01 §13.1: sin nada escrito sigue la cascada, y el entrenador manda siempre', () => {
+    expect(resolveWorkWeight(null, lastExercise, undefined, { suggestedWeight: 62.5 }, { warmupStarted: false })).toBe(62.5);
+    expect(resolveWorkWeight({ weight: 90 }, lastExercise, 70, null, { warmupStarted: false })).toBe(90);
+  });
+
+  it('I01 §13.2: en lb cada peso es múltiplo de 5 lb tras toDisplay (redondeo a 0,5 lb de useWeightUnit)', () => {
+    const toDisplay = (kg) => Math.round(kg * 2.2046 * 2) / 2;
+    const out = computeWarmupWeights(AUTO3, 83, { lb: true }); // 83 kg = 183 lb → 40/60/80 % = 73,2 · 109,8 · 146,4 lb
+    expect(out.map((s) => toDisplay(s.weightKg))).toEqual([75, 110, 145]);
+  });
+
+  it('I01 §13.3: asistida 30 kg con rampa 40/60/80 → 48 · 42 · 36 sin redondear; con el paso de 2,5 kg, 47,5 · 42,5 · 35', () => {
+    const out = computeWarmupWeights(AUTO3, 30, { assist: true });
+    expect(out.map((s) => s.weightKg)).toEqual([47.5, 42.5, 35]);
+  });
+});
+
+const AUTO3 = [{ pct: 40, reps: 10 }, { pct: 60, reps: 6 }, { pct: 80, reps: 3 }];
 
 describe('I01-01 — huecos de mutación', () => {
   // T05 §2: «Peso del top set de la última sesión» (el mayor, esté donde esté, ignorando el 0)

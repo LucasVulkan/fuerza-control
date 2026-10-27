@@ -78,7 +78,7 @@ export function bestSetE1RM(sets) {
  * @param {Array<{timestamp: number, exercise: object}>} logs
  * @returns {{ value: number, timestamp: number } | null}
  */
-export function recentE1RM(logs, weeks = 6) {
+export function recentE1RM(logs, weeks = 4) { // I01 §13.5: igual que performanceWeekly
   const cutoff = Date.now() - weeks * 7 * 24 * 60 * 60 * 1000;
   let best = null;
   let ts   = null;

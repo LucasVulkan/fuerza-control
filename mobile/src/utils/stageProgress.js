@@ -330,9 +330,11 @@ export function stageStatus(program, progress, today = localDay()) {
 export function stageWeekLabel(status, t) {
   if (!status.started) return t('programCard.stageNotStarted');
   if (status.lengthWeeks == null) return t('programCard.stageWeekOpen', { week: status.weekInStage });
-  const extra = status.lengthWeeks - (status.stage?.durationWeeks ?? status.lengthWeeks);
+  const original = status.stage?.durationWeeks ?? status.lengthWeeks;
+  const extra = status.lengthWeeks - original;
+  // I01 §13.4: «Semana 5 de 4+1»; el total es la duración original, el +N va aparte.
   return extra > 0
-    ? t('programCard.stageWeekExtra', { week: status.weekInStage, total: status.lengthWeeks, extra })
+    ? t('programCard.stageWeekExtra', { week: status.weekInStage, total: original, extra })
     : t('programCard.stageWeek', { week: status.weekInStage, total: status.lengthWeeks });
 }
 

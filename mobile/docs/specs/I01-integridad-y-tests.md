@@ -10,6 +10,7 @@
 > Fase I01-05 · pendiente · Fronteras de datos y backups dorados · §7 · antes I05
 > Fase I01-06 · pendiente · Un solo origen de verdad y mapa de efectos · §8 · antes I06
 > Fase I01-07 · pendiente · Cobertura como mapa y reglas de proceso · §9 · antes I07
+> Fase I01-08 · hecho · Cambios que salen de firmar las tablas (calentamiento, semanas añadidas, ventana del 1RM) · §13
 >
 > Estado: **I01-01 hecha el 26-oct-2026** (informe en
 > [`docs/auditoria-tests/informe.md`](../auditoria-tests/informe.md)); queda que el usuario firme
@@ -221,7 +222,11 @@ después de firmarlas.
 - [ ] I01-01.2 — Firmar la tabla 2 (1RM) y la 3 (calentamiento).
 - [ ] I01-01.3 — Firmar las tablas 4A-4C (avance de etapa).
 - [ ] I01-01.4 — Firmar las tablas 5A-5C (prescripción de etapa) y 6A-6C (carga y volumen).
-- [ ] I01-01.5 — Decidir si activar la etapa en la que el cliente ya está le reinicia el contador (C03 §9 contra §9.2 y P08 §5.3).
+- [x] I01-01.5 — Decidir si activar la etapa en la que el cliente ya está le reinicia el contador (C03 §9 contra §9.2 y P08 §5.3). **Decidido 27-oct: la reinicia**, con un botón propio «Reiniciar etapa» con aviso, y el cliente lo recibe como «etapa reiniciada»: [P14-09](P14-editor-etapas.md) §5.8. LK-13 de la tabla 4B queda respondida.
+- [ ] I01-01.6 — Revisar las tablas tras P18 (27-oct): 1A la sustituyen los casos de P18 §8; 1C y parte de 1D hay que reescribirlas; el resto sigue en pie. Detalle al principio de `tablas-de-casos.md`.
+
+> Nota (27-oct): §8.1 de I01-06 («una sola función para el chip») ya la hizo
+> P18-01 (`progressionChip`, ddd2f41). I01-05 sigue esperando (decisión del usuario).
 
 ---
 
@@ -617,6 +622,7 @@ sección de `docs/specs/README.md` sobre cerrar una fase menciona la regla 5.
 | I01-05 | Fronteras y backups dorados | 🟡 | I01-02 | pendiente |
 | I01-06 | Origen único y mapa de efectos | 🟡 | I01-02 (§8.3: I01-03) | pendiente |
 | I01-07 | Cobertura y reglas de proceso | 🟢 | — | pendiente |
+| I01-08 | Cambios de la firma de tablas | 🟢 | — | hecho (27-oct, por probar) |
 
 **Orden recomendado**: I01-01 → I01-02 → I01-03 → I01-04 → I01-05 → I01-06 → I01-07. I01-01 va primero
 porque es lectura y porque dice dónde están los huecos reales antes de gastar
@@ -660,3 +666,71 @@ pasa a `terminado` al cerrarse, salvo la parte de I01-02 que se vea en pantalla
    exporte uno de cada versión que tenga a mano y diga qué es sensible.
 5. **Umbral de "salto absurdo"** del 1RM y la carga en los invariantes de §5.4:
    se fija mirando las trazas de los primeros escenarios.
+
+## 13. Fase I01-08 — Cambios que salen de firmar las tablas
+
+Decisiones del usuario del 27-oct-2026 al responder las preguntas de las tablas
+1B, 2, 3, 4 y 5 (`docs/auditoria-tests/tablas-de-casos.md`, cabecera). Lo que ya
+coincidía con el código no aparece aquí. Coste 🟢.
+
+### 13.1 Calentamiento: qué peso lo marca (T05)
+
+Lo marca **el peso objetivo**, es decir, el que propone la progresión. La cascada de
+`resolveWorkWeight` (`src/utils/warmup.js`) se queda como está: prescripción del
+entrenador, después el peso de la progresión, después la serie más pesada de la
+última vez, y por último lo escrito. **Una excepción:** si escribes un peso en la
+primera serie de trabajo **antes de marcar ninguna serie del calentamiento**, el
+calentamiento se recalcula con ese peso. En cuanto marcas una serie del
+calentamiento, lo escrito vuelve a ser lo último que se mira, y la rampa ya no se
+mueve por lo que escribas.
+
+### 13.2 Calentamiento en libras
+
+Con la unidad en lb, cada peso del calentamiento se redondea a **5 lb**: el disco
+más pequeño habitual es de 2,5 lb y va uno a cada lado. Hoy se redondea a 2,5 kg y
+luego se convierte, y salen cifras como 82,7 lb.
+
+### 13.3 Calentamiento en asistidas (fallo)
+
+En una asistida el número es la ayuda, y el calentamiento va **de más ayuda a
+menos** hasta llegar a la de trabajo. Hoy se aplican los mismos porcentajes a la
+ayuda: el 40 % de 30 kg da 12 kg, que es menos ayuda, así que el calentamiento sale
+más difícil que el trabajo. **Regla:** el porcentaje se invierte alrededor de la
+ayuda de trabajo: `ayuda × (2 − pct/100)`, redondeada igual que el resto (2,5 kg,
+o 5 lb). Con 30 kg y la rampa de 3 (40/60/80 %) da 48 · 42 · 36, que redondeado
+queda **47,5 · 42,5 · 35 kg**, y luego las de trabajo a 30 kg. La base es la ayuda que propone la progresión, si la hay, con la misma
+cascada de §13.1.
+
+### 13.4 Semanas añadidas: «Semana 5 de 4+1»
+
+El «+1» no se suma al total: `stageWeekLabel` (`src/utils/stageProgress.js`)
+dice «Semana {{week}} de {{total}}+{{extra}}», con `total` igual a la duración
+original de la etapa. Hoy dice «Semana 5 de 5 (+1)».
+
+### 13.5 Ventana del 1RM reciente: 4 semanas
+
+`recentE1RM` (`src/utils/oneRm.js`, el 1RM de Progreso) pasa de 6 a **4
+semanas**, igual que el índice de rendimiento (`performanceWeekly`). Así no hay
+dos cifras distintas para lo mismo. Respaldo: tras ~4 semanas sin entrenar, la
+fuerza máxima apenas cambia (Bosquet et al. 2013, metaanálisis), y 4 semanas
+cubren un mesociclo con su descarga. La referencia de la carga externa
+(`REF_WEEKS = 6`, `trainingLoad.js`) es otra cosa y **no** se toca.
+
+### 13.6 Las etapas no tocan la progresión (salvo la descarga)
+
+El segundo peldaño de Intensificación llevaba `incrementScale: 0.5` («incremento a
+la mitad»), que con un escalón de 2,5 no cambiaba nada. Decisión del usuario: **por
+ahora una etapa no toca la progresión, salvo la descarga**. Se quita del preset,
+`applyRx` y `describeRx` ignoran un `incrementScale` guardado y desaparece
+`planner.rxParts.incrementHalf`. Esto deja sin efecto P06 §2 y su tabla de campos en
+lo que dicen de `incrementScale`.
+
+**Probar I01-08**
+
+- [ ] Ejercicio con calentamiento y progresión que sube: la rampa sale del peso nuevo, no del de la última vez.
+- [ ] Sin marcar el calentamiento, escribo otro peso en la 1.ª serie: la rampa se recalcula. Marco una serie del calentamiento y cambio el peso: la rampa ya no se mueve.
+- [ ] Con la unidad en lb, todos los pesos del calentamiento son múltiplos de 5.
+- [ ] Dominada asistida con calentamiento: la ayuda baja de una serie a la siguiente hasta la de trabajo.
+- [ ] Etapa alargada 1 semana: «Semana 5 de 4+1».
+- [ ] Detalle de un ejercicio en Progreso: el 1RM es el mejor de las últimas 4 semanas.
+- [ ] Planificador, preset Intensificación: ninguna etapa dice «incremento a la mitad».

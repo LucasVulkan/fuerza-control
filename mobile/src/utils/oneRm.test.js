@@ -60,7 +60,16 @@ describe('bestSetE1RM', () => {
 describe('recentE1RM', () => {
   const day = 24 * 60 * 60 * 1000;
 
-  test('best e1RM within the 6-week window, ignoring older sessions', () => {
+  test('I01 §13.5: la ventana por defecto son 4 semanas (una sesión de hace 5 no cuenta)', () => {
+    const now = Date.now();
+    const logs = [
+      { timestamp: now - 35 * day, exercise: { sets: [{ weight: 120, reps: 3, done: true }] } },
+      { timestamp: now - 2  * day, exercise: { sets: [{ weight: 90,  reps: 8, done: true }] } }, // 114
+    ];
+    expect(recentE1RM(logs).value).toBeCloseTo(114, 1);
+  });
+
+  test('best e1RM within the window, ignoring older sessions', () => {
     const now = Date.now();
     const logs = [
       { timestamp: now - 100 * day, exercise: { sets: [{ weight: 120, reps: 3, done: true }] } }, // out of window

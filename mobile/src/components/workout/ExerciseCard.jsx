@@ -136,7 +136,7 @@ export default function ExerciseCard({
   const { t, i18n } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { label: weightLabel, toDisplay, toKg, scrollStep: weightScrollStep } = useWeightUnit();
+  const { label: weightLabel, isLb, toDisplay, toKg, scrollStep: weightScrollStep } = useWeightUnit();
 
   // Trainer note (instructions written in the program editor)
   const trainerNote = exConfig.trainerNote?.trim() || null;
@@ -173,14 +173,17 @@ export default function ExerciseCard({
   const [warmupDone, setWarmupDone] = useState(() => new Set());
   // Reabrir a mano la sección colapsada (§4.4: el chevron reexpande).
   const [warmupReopened, setWarmupReopened] = useState(false);
+  // I01 §13.1: al marcar la primera serie del calentamiento la base se congela;
+  // ni lo que escribas después ni el plan la mueven. Se suelta al desmarcarlas todas.
+  const [warmupBase, setWarmupBase] = useState(null);
 
   const firstWorkWeight = setsState[0]?.weight;
   const typedFirstWorkWeight = firstWorkWeight !== '' && firstWorkWeight != null
     ? parseFloat(firstWorkWeight) : undefined;
-  const workWeightKg = hasWarmup
-    ? resolveWorkWeight(overrideEx, lastExercise, typedFirstWorkWeight, progression)
-    : null;
-  const warmupComputed = computeWarmupWeights(warmupStepsArr, workWeightKg);
+  const workWeightKg = !hasWarmup ? null
+    : warmupDone.size > 0 && warmupBase != null ? warmupBase
+    : resolveWorkWeight(overrideEx, lastExercise, typedFirstWorkWeight, progression, { warmupStarted: warmupDone.size > 0 });
+  const warmupComputed = computeWarmupWeights(warmupStepsArr, workWeightKg, { lb: isLb, assist: !!progression?.assist });
   const warmupNoReference = hasWarmup && workWeightKg == null;
   const warmupRestSec = exConfig.warmup?.restSec ?? 60;
   const warmupAllDone = hasWarmup && warmupDone.size >= warmupStepsArr.length;
@@ -188,6 +191,8 @@ export default function ExerciseCard({
   const warmupNext = warmupStepsArr.findIndex((_, i) => !warmupDone.has(i));
 
   function toggleWarmupRow(i) {
+    if (warmupDone.size === 0) setWarmupBase(workWeightKg);
+    else if (warmupDone.size === 1 && warmupDone.has(i)) setWarmupBase(null);
     setWarmupDone((prev) => {
       const next = new Set(prev);
       if (next.has(i)) {

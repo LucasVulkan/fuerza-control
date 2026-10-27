@@ -275,9 +275,9 @@ describe('stageWeekLabel', () => {
     expect(label({ stageStartedOn: '2026-09-21' }, '2026-09-29')).toBe('programCard.stageWeek:{"week":2,"total":4}');
   });
 
-  it('alargada: el total incluye las añadidas y se dicen aparte', () => {
+  it('alargada: el total es la duración original y el +N va aparte (I01 §13.4: «Semana 5 de 4+1»)', () => {
     expect(label({ stageStartedOn: '2026-09-21', stageExtraWeeks: 1 }, '2026-10-19'))
-      .toBe('programCard.stageWeekExtra:{"week":5,"total":5,"extra":1}');
+      .toBe('programCard.stageWeekExtra:{"week":5,"total":4,"extra":1}');
   });
 
   it('sin límite, sin total', () => {

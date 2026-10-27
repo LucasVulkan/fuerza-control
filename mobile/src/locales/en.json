@@ -1939,7 +1939,7 @@
     "statLoad": "Load",
     "sessionsPerWeek": "ses/wk",
     "stageWeek": "Week {{week}} of {{total}}",
-    "stageWeekExtra": "Week {{week}} of {{total}} (+{{extra}})",
+    "stageWeekExtra": "Week {{week}} of {{total}}+{{extra}}",
     "stageWeekOpen": "Week {{week}}",
     "stageSessions": "{{done}} of {{expected}} sessions",
     "stageNotStarted": "Not started",
@@ -2577,7 +2577,6 @@
       "repsDown_accessories": "−{{n}} reps on accessories",
       "restUp": "+{{n}}% rest",
       "restDown": "−{{n}}% rest",
-      "incrementHalf": "half increment",
       "deload": "no progression"
     },
     "addStagesTitle": "Add stages",

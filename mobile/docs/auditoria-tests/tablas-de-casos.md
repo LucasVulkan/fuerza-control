@@ -12,6 +12,33 @@
 > - [ ] 4A Semanas · - [ ] 4B Bloqueos · - [ ] 4C Sesión que toca
 > - [ ] 5A applyRx · - [ ] 5B Planificador · - [ ] 5C Propuesta (aparcada)
 > - [ ] 6A Carga · - [ ] 6B Agregados · - [ ] 6C Series por grupo
+>
+> **Revisión del 27-oct, tras P18 (motor de progresión nuevo):**
+>
+> | Subtabla | Estado | Por qué |
+> |---|---|---|
+> | 1A Motor | **Sustituida** | La reemplazan los 18 casos de P18 §8, revisados con el usuario en el visor y ya convertidos en tests. No se firma. |
+> | 1B Por esfuerzo | En pie, por firmar | P18 dice que Por esfuerzo conserva su lógica. Sus 4 preguntas siguen abiertas. |
+> | 1C setPlan | **Hay que reescribirla** | P18-03: el gris pasa a ser lo de la última vez (SP-01, 03, 04, 06, 08, 10, 11 y 17 ya no valen) y P18-04 cambia los textos del chip (SP-18 a 23). Quedan SP-02, 05, 09, 12-16. |
+> | 1D progressionForm | **Parcial** | P18-01/05: «Parcial N de M» pasa a «La mayoría» por mayoría simple y la bajada va por reglas (CF-01, 02, 13, 14, 22-24 cambian). La lectura de lo guardado antiguo (CF-09 a 18) sigue. |
+> | 2 1RM · 3 Calentamiento | En pie, por firmar | Su código no ha cambiado desde la tabla. |
+> | 4A-4C Etapas | En pie, por firmar | LK-13 respondida: activar la etapa en la que ya estás la **reinicia** (P14-09). Sigue abierta la pregunta 1 de 4A. |
+> | 5A-5C Prescripción | En pie (5C aparcada) | Sin cambios. |
+> | 6A-6C Carga y volumen | **Esperar** | P18 anuncia que la carga semanal se revisa aparte, con el visor, en su propia spec. Firmarla antes es firmar algo que va a cambiar. |
+>
+> **Respuestas del usuario (27-oct), contrastadas con el código:**
+>
+> - **1B.1** 1RM con la media de las series: **ya es así** (`sessionE1rm` promedia las series y `chipEffort` las tres últimas sesiones). PE-18 sigue igual: el peso calculado se compara con el más alto de la última vez.
+> - **1B.2** Escalón en Por esfuerzo: **gana el que elijas**, y Exacto da el valor exacto. Es lo que hace `resolveStep`: el tope de 2,5 solo se aplica al de la librería cuando no has elegido ninguno. PE-11, 12 y 13 quedan firmadas.
+> - **2.3** Ventana del «mejor 1RM reciente»: **4 semanas en los dos sitios** (decidido tras revisar la literatura; I01-08 §13.5, hecho).
+> - **3.1** Calentamiento: base = el peso objetivo; **si no has marcado ninguna serie de calentamiento y escribes un peso en la primera serie de trabajo, se recalcula con ese**. ⚠ Hoy no es así: lo escrito es lo último de la cascada (`resolveWorkWeight`). **Hecho en I01-08.**
+> - **3.2** En lb: redondear a 5 lb, como se hace habitualmente. ⚠ Hoy redondea a 2,5 kg y convierte, y salen cifras raras. **Hecho en I01-08.**
+> - **3.5** Asistidas: rampa de **más ayuda a menos**, hasta la ayuda de trabajo. ⚠ Hoy calcula porcentajes de la ayuda: el 40 % de la ayuda es *menos* ayuda, o sea más difícil que el trabajo. **Fallo; arreglado en I01-08** (con 30 kg: 47,5 · 42,5 · 35).
+> - **4A.1** Fin de etapa: son semanas. La excepción es `earlyReady`, que en la última semana ofrece avanzar si ya están todas las sesiones previstas, aunque sean la misma repetida. **Se queda** (usuario, 27-oct).
+> - **4A.2** Alargar = sesiones que faltan ÷ sesiones por semana, redondeado (3→1, 4→1, 5→2, 6→2 con 3/semana). **Ya es así** (`Math.round`; con media semana justa se redondea hacia arriba).
+> - **4C.1** El «+1» **no se suma al total**: «Semana 5 de 4+1». ⚠ Hoy dice «Semana 5 de 5 (+1)». **Hecho en I01-08.**
+> - **5.1** El usuario no sabía que un preset tocara el salto. ⚠ Sí lo hace: el 2.º peldaño de Intensificación lleva `incrementScale: 0.5`, que con escalón de 2,5 no cambia nada (se redondea otra vez a 2,5). **Quitado** (usuario, 27-oct: por ahora las etapas no tocan la progresión salvo la descarga; I01 §13.6).
+> - **5.3** Rangos de series y reps: **sin límites**. `applyRx` ya no recorta (solo suelos: mínimo 1 serie y 1 rep); quien limita es el planificador (±3 series, ±6 reps en `RX_FIELDS`).
 
 Fuente única: las nueve specs P12, P10, T02, T05, P08, C03, P06, P07, T04 (carpeta `mobile/docs/specs`). No se ha leído código.
 Confianza: **alta** = la spec da número o regla explícita; **media** = se deduce directamente de una regla; **baja** = la spec no lo fija (hay pregunta).
