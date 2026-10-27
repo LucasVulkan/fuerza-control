@@ -6,8 +6,9 @@
 > Fase P18-02 · hecho · Reps y Tiempo: una meta por total · §4
 > Fase P18-03 · hecho · El gris es la última vez; el check guarda la casilla · §5
 > Fase P18-04 · hecho · Mensajes del chip · §6
-> Fase P18-05 · pendiente · Hoja de Progresión por niveles · §7
+> Fase P18-05 · hecho · Hoja de Progresión por niveles · §7
 > Inicio: 2026-10-27
+> Fin: 2026-10-27
 >
 > Estado: **spec escrita, sin implementar** (27-oct-2026). Sale del replanteo del
 > motor que sustituyó a firmar en abstracto la tabla 1A de
@@ -309,7 +310,37 @@ simples y cómodas, aplicadas a los estilos de progresión:
   raya fina (`border`), con las dos filas de §6 alineadas a la izquierda. Al
   **plegar** la tarjeta, la cabecera se pliega hasta el nombre: **la progresión se
   oculta** y se ve de nuevo al desplegar. Descartadas en la maqueta: bajo el nombre
-  (A), centrada (A3, C), franja propia (B) y el sitio de hoy.
+  (A), centrada (A3, C), franja propia (B) y el sitio de hoy. (Hecho en P18-04.)
+
+Al implementar (27-oct): las tarjetas de «Qué sube» son solo las que valen para
+la medida de Volumen (con medida Tiempo: Peso · Tiempo · Nada; Esfuerzo solo con
+carga externa y sin asistir, y apagado con Rango: al tocarlo explica que necesita
+reps fijas). El freno de RPE es «Todas» con RPE máximo: si se enciende con «La
+mayoría» elegida, pasa a «Todas». Por esfuerzo conserva el escalón (o Exacto) y
+«Al superarlo / Al llegar» dentro de Avanzado. «Si fallas» ya no guarda número de
+fallos, y «La mayoría» se guarda sin `need`. La regla de Nada pasa a «Sin
+sugerencia de progreso».
+
+**Probar P18-05**
+
+- [ ] Editor de un press de banca 3×8-12 → Progresión: bajo el nombre «3 ×
+  8–12 reps» en gris; «Qué sube» en tarjetas con icono (Peso · Reps · Esfuerzo ·
+  Nada) y la elegida rellena de lima con el texto en negro; debajo su frase con
+  la parte que importa en negrita.
+- [ ] Toca cada tarjeta: la frase cambia y aparecen solo los bloques que
+  tocan (Cuándo sube y Avanzado solo en Peso; Esfuerzo objetivo solo en
+  Esfuerzo; nada más en Nada).
+- [ ] Esfuerzo con Rango en Volumen: la tarjeta sale apagada y al tocarla dice
+  que necesita reps fijas.
+- [ ] Cuándo sube: dos tarjetas con borde y un cuadradito por serie; «La
+  mayoría» dice «2 de 3 series llegan a 12 reps y ninguna baja de 8 reps».
+- [ ] Cuánto sube: chips 1.25 · 2.5 · 5 kg · 5 %; en Reps +1 / +2 / +3 reps;
+  en Tiempo +5 / +10 / +15 s. Lo elegido se guarda al salir y vuelve igual.
+- [ ] Avanzado plegado; al abrirlo: Freno de RPE (No / RPE, con RPE máximo y su
+  explicación), Cuándo baja (Si fallas / Nunca) y Escalón del ejercicio.
+- [ ] Una dominada asistida: la tarjeta dice «Ayuda» y la frase «Quita ayuda…».
+- [ ] La frase de la regla al pie, con la raya lima, cambia con lo que eliges.
+- [ ] El alta de un ejercicio propio abre la misma hoja con el nombre escrito.
 
 ## 8. Casos
 

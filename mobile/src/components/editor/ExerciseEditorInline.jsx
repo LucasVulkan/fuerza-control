@@ -883,6 +883,7 @@ export default function ExerciseEditorInline({
         title={t('exerciseEditor.sectionProgression')}
       >
         <ProgressionSheet
+          name={def?.name ?? exConfig.exerciseId}
           prog={prog}
           ctx={ctx}
           minReps={minReps}

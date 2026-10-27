@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  upOptions, showHow, needsRpe, minFails, normalizeProgForm, patchProgForm, initProgForm, buildProgression, defaultFails,
+  upOptions, showHow, needsRpe, normalizeProgForm, patchProgForm, initProgForm, buildProgression,
 } from './progressionForm';
 import { resolveProgressionConfig } from './progression';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
@@ -35,18 +35,6 @@ describe('P55 — coherencia (normalize)', () => {
     expect(normalizeProgForm(f, ctx({ range: true })).how).toBe('rules');
     expect(normalizeProgForm(f, ctx({ range: false })).how).toBe('effort');
   });
-  it('Parcial 2 de 3: bajar no baja de 2; con Parcial 1 de 3, no de 3', () => {
-    expect(minFails({ when: 'part', need: 2 }, { sets: 3 })).toBe(2);
-    expect(minFails({ when: 'part', need: 1 }, { sets: 3 })).toBe(3);
-    expect(minFails({ when: 'all_complete', need: 2 }, { sets: 3 })).toBe(1);
-    const f = normalizeProgForm({ ...init(), when: 'part', need: 1, fails: 1 }, ctx());
-    expect(f.fails).toBe(3);
-  });
-  it('need y fails se recortan al cambiar las series', () => {
-    const f = normalizeProgForm({ ...init(), when: 'part', need: 4, fails: 5 }, ctx({ sets: 3 }));
-    expect(f.need).toBe(2);
-    expect(f.fails).toBe(3);
-  });
   it('Parcial no existe con una sola serie', () => {
     expect(normalizeProgForm({ ...init(), when: 'part' }, ctx({ sets: 1 })).when).toBe('all_complete');
   });
@@ -75,23 +63,24 @@ describe('P55 — Registrar RPE bloqueado (§5.4)', () => {
 describe('P55 — leer y guardar (§5.5)', () => {
   const press = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
 
-  it('lo que se guarda se lee igual', () => {
+  // P18 §7: el editor solo ofrece «La mayoría», sin elegir N; el motor la
+  // calcula con las series de cada momento (P18 §3.1).
+  it('lo que se guarda se lee igual; La mayoría se guarda sin need', () => {
     const c = ctx();
-    const f = { ...init(press, c), when: 'part', need: 2, down: 'fail', fails: 2, incValue: 5 };
+    const f = { ...init(press, c), when: 'part', down: 'fail', incValue: 5 };
     const { progression, weightStep } = buildProgression(f, c);
     expect(weightStep).toBeNull();
+    expect(progression.evaluation).not.toHaveProperty('need');
     const back = initProgForm({ sets: 3, progression }, c.def, c);
-    expect(back).toMatchObject({ up: 'weight', how: 'rules', when: 'part', need: 2, down: 'fail', fails: 2, incValue: 5 });
-    expect(resolveProgressionConfig({ sets: 3, progression }, c.def).evaluation).toMatchObject({ mode: 'part', need: 2 });
+    expect(back).toMatchObject({ up: 'weight', how: 'rules', when: 'part', down: 'fail', incValue: 5 });
+    expect(resolveProgressionConfig({ sets: 5, progression }, c.def).evaluation).toMatchObject({ mode: 'part', need: 3 });
   });
-  it('Peso por reglas guarda double con down explícito; Nunca → never', () => {
+  // P18 §3.3: cuándo baja ya no tiene número de fallos; Si fallas = las reglas.
+  it('Peso por reglas: Si fallas no guarda down; Nunca → never', () => {
     const c = ctx();
     expect(buildProgression({ ...init(press, c), down: 'never' }, c).progression).toMatchObject({ type: 'double', down: 'never' });
-    expect(buildProgression({ ...init(press, c), fails: 2 }, c).progression.down).toEqual({ fails: 2 });
-  });
-  it('el defecto de fails es lo de hoy: 2 de 3, 2 de 4, 3 de 5', () => {
-    expect([3, 4, 5].map(defaultFails)).toEqual([2, 2, 3]);
-    expect(init(press).fails).toBe(2);
+    expect(buildProgression({ ...init(press, c), down: 'fail' }, c).progression).not.toHaveProperty('down');
+    expect(init({ ...press, progression: { type: 'double', down: { fails: 1 } } }).down).toBe('fail');
   });
   it('Reps y Tiempo no guardan down; Nada guarda none', () => {
     const c = ctx();
@@ -127,7 +116,7 @@ describe('P55 — leer y guardar (§5.5)', () => {
     const f = init({ minTime: 30, maxTime: 60, progression: { type: 'double' } }, c);
     expect(f).toMatchObject({ up: 'weight', how: 'rules', incValue: 2.5 });
     expect(showHow(f, c)).toBe(false);
-    expect(buildProgression(f, c)).toMatchObject({ progression: { type: 'double', down: { fails: 2 } }, progressionModel: 'double_progression' });
+    expect(buildProgression(f, c)).toMatchObject({ progression: { type: 'double' }, progressionModel: 'double_progression' });
   });
   it('plancha de la librería (modelo de tiempo) se abre como Tiempo, con su salto', () => {
     const c = ctx({ metric: 'time', def: LIB.plank });
@@ -201,12 +190,10 @@ describe('I01-01 — huecos de mutación', () => {
     expect(normalizeProgForm({ ...init(), when: 'rpe' }, ctx({ sets: 1 })).when).toBe('rpe');
   });
 
-  // P12 §5.3: «Parcial: de 1 a M−1» (con M = 2, 1 de 2 es válido)
-  // mata progressionForm.js:77:28 (`ctx.sets < 2` → `<= 2`)
-  it('Parcial con 2 series se queda en Parcial 1 de 2', () => {
-    const f = normalizeProgForm({ ...init(), when: 'part' }, ctx({ sets: 2 }));
-    expect(f.when).toBe('part');
-    expect(f.need).toBe(1);
+  // P18 §7: La mayoría con 2 series sigue siendo La mayoría (las 2)
+  // mata progressionForm.js (`ctx.sets < 2` → `<= 2`)
+  it('La mayoría con 2 series se queda en La mayoría', () => {
+    expect(normalizeProgForm({ ...init(), when: 'part' }, ctx({ sets: 2 })).when).toBe('part');
   });
 
   // P12 §5.5: «`targetRpe` + `effortWhen` en Por esfuerzo» (solo ahí)

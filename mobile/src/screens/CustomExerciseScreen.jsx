@@ -477,6 +477,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
         title={t('exerciseEditor.sectionProgression')}
       >
         <ProgressionSheet
+          name={name.trim()}
           prog={prog}
           ctx={ctx}
           minReps={minReps}

@@ -828,7 +828,7 @@ describe('P61 — la frase de la regla en palabras (es y en)', async () => {
       action: 'Tu total + 1 rep por serie',
       when: 'Se queda fija hasta que la alcances; si dos días seguidos haces menos, se ajusta a lo que hiciste',
     });
-    expect(progressionRule({ progression: { type: 'none' } }, BB, t, 'kg', { parts: true })).toEqual({ action: 'El peso lo cambias tú' });
+    expect(progressionRule({ progression: { type: 'none' } }, BB, t, 'kg', { parts: true })).toEqual({ action: 'Sin sugerencia de progreso' }); // P18 §7: la regla de Nada
   });
 });
 
