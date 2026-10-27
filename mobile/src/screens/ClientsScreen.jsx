@@ -447,7 +447,8 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
               await reissueClientCode(client.id);
               showToast(t('clients.codeCard.reissueDone'), 2200, 'success');
             } catch (err) {
-              showDialog(t('clients.codeCard.reissueError'), err?.message ?? '');
+              console.warn('[reissueClientCode]', err);
+              showDialog(t('clients.codeCard.reissueError'), t('errors.retryHint'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.retry'), onPress: handleReissue }]);
             } finally {
               setReissuing(false);
             }
@@ -471,7 +472,8 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
               await cancelClientInvitation(client.id);
               showToast(t('clients.codeCard.cancelDone'), 2200, 'neutral');
             } catch (err) {
-              showDialog(t('common.error'), err?.message ?? '');
+              console.warn('[cancelClientInvitation]', err);
+              showDialog(t('common.error'), t('clients.codeCard.cancelError'));
             }
           },
         },
@@ -614,7 +616,8 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
       onClose();
       if (moved) showToast(t('clients.moveToApp.done'), 2200, 'success');
     } catch (err) {
-      showDialog(t('common.error'), err?.message ?? t('clients.keyTab.connectError'));
+      console.warn('[moveClientToApp]', err);
+      showDialog(t('common.error'), t('clients.keyTab.connectError'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.retry'), onPress: handleGo }]);
     } finally {
       setBusy(false);
     }
@@ -1219,7 +1222,8 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
       onClose();
       if (connected) showToast(t('clients.clientConnected'), 2200, 'success');
     } catch (err) {
-      showDialog(t('common.error'), err.message ?? t('clients.keyTab.connectError'));
+      console.warn('[connectCloud]', err);
+      showDialog(t('common.error'), t('clients.keyTab.connectError'));
     } finally {
       setLoading(false);
     }
@@ -2341,9 +2345,10 @@ export default function ClientsScreen() {
     try {
       const { merged } = await downloadClientHistory(selectedClientId);
       markHistoryViewed(selectedClientId);
-      showToast(merged > 0 ? `${merged} sesión${merged !== 1 ? 'es' : ''} nueva${merged !== 1 ? 's' : ''}` : 'Historial al día', 2200, 'success');
+      showToast(merged > 0 ? t('clients.historyNew', { count: merged }) : t('clients.historyUpToDate'), 2200, 'success');
     } catch (err) {
-      showToast(err?.message ?? t('clients.errorUpdateHistory'), 2200, 'error');
+      console.warn('[downloadClientHistory]', err);
+      showToast(t('clients.errorUpdateHistory'), 2200, 'error');
     } finally {
       setRefreshingHistory(false);
     }

@@ -23,6 +23,7 @@
     "understood": "Entendido",
     "close": "Cerrar",
     "error": "Error",
+    "retry": "Reintentar",
     "paste": "PEGAR",
     "pasted": "✓ PEGADO"
   },
@@ -453,7 +454,7 @@
     "codeAlreadyLinked": "Ya estás conectado con un entrenador. Al continuar dejas de estarlo y pasas a este.",
     "codeSlotOccupied": "Este código ya se está usando en otro móvil. Si conectas aquí, ese móvil se desconecta.",
     "errSeatLocked": "Este código está vinculado a una cuenta. Si es la tuya, vuelve a entrar con ella.",
-    "errCodeNotFound": "Código no encontrado. Comprueba que lo has escrito bien.",
+    "errCodeNotFound": "Código no encontrado. Revisa que esté bien escrito o pide uno nuevo a tu entrenador.",
     "errNoProgramYet": "Tu entrenador aún no ha subido ningún programa. Vuelve a intentarlo más tarde.",
     "errNotConnected": "No estás conectado a ningún entrenador.",
     "connectedToast": "Conectado con el entrenador",
@@ -1417,7 +1418,21 @@
     "noHistoryInFile": "El archivo no contiene ningún entreno",
     "importNoVersion": "El archivo no tiene campo \"version\".",
     "importBadVersion": "Versión {{version}} no compatible.",
-    "importBadJson": "El archivo no es un JSON válido."
+    "importBadJson": "El archivo no es un JSON válido.",
+    "exportFailed": "No se pudo crear el archivo. Comprueba que queda espacio en el móvil y vuelve a probar.",
+    "shareFailed": "No se pudo abrir el menú de compartir. Vuelve a probar.",
+    "shareUnavailable": "Este móvil no puede compartir archivos. Guarda el archivo y envíalo desde otra app.",
+    "noProgramToExport": "Primero elige un programa en la pestaña Programa.",
+    "retryHint": "Comprueba la conexión y vuelve a probar."
+  },
+  "storeToasts": {
+    "fileExported": "Archivo exportado",
+    "importedOk": "Importado correctamente",
+    "programUpdated": "Programa actualizado",
+    "programLogUpdated": "Programa e historial actualizados",
+    "sessionsImported_one": "{{count}} sesión importada",
+    "sessionsImported_other": "{{count}} sesiones importadas",
+    "nextSet": "¡Siguiente serie!"
   },
   "nextSession": {
     "title": "Próxima sesión",
@@ -1985,7 +2000,10 @@
     "toastDownloaded": "↓ Programa descargado",
     "sessionFallback": "Sesión",
     "deleteClientTitle": "Eliminar cliente",
-    "errorUpdateHistory": "Error al actualizar historial",
+    "errorUpdateHistory": "No se pudo actualizar el historial. Comprueba la conexión y vuelve a probar.",
+    "historyNew_one": "{{count}} sesión nueva",
+    "historyNew_other": "{{count}} sesiones nuevas",
+    "historyUpToDate": "Historial al día",
     "connectCloud": "☁️ Conectar a la nube",
     "connecting": "Conectando…",
     "btnUploadChanges": "Subir cambios",
@@ -2168,7 +2186,8 @@
       "reissueConfirmBody": "El código actual dejará de funcionar y {{name}} tendrá que introducir el nuevo. Su historial y su programa se conservan.\n\nÚsalo si ha reinstalado la app, ha perdido el código, o el código se le ha filtrado a alguien.",
       "reissueConfirmCta": "Generar",
       "reissueDone": "Código nuevo generado",
-      "reissueError": "No se pudo generar el código nuevo"
+      "reissueError": "No se pudo generar el código nuevo",
+      "cancelError": "No se pudo cancelar la invitación. Comprueba la conexión y vuelve a probar."
     },
     "keyTab": {
       "title": "CLAVE DE CLIENTE",
@@ -2177,7 +2196,7 @@
       "copied": "Código copiado",
       "noSlot": "Este cliente aún no está conectado a la nube.",
       "connect": "Conectar a la nube",
-      "connectError": "No se pudo conectar.",
+      "connectError": "No se pudo conectar al cliente. Comprueba la conexión y vuelve a probar.",
       "connecting": "Conectando…",
       "connectedNoCode": "Conectado · sin código local"
     },

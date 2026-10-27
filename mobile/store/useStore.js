@@ -1189,7 +1189,7 @@ export const useStore = create(
         //                 Works even when the incoming id differs from the active.
         // 'replace_log' → same, plus merges the file's sessions into the log.
         if (mode === 'replace' || mode === 'replace_log') {
-          if (!data.program) { get().showToast('El archivo no contiene ningún programa', 2200, 'error'); return; }
+          if (!data.program) { get().showToast(i18n.t('clients.assign.noProgramInFile'), 2200, 'error'); return; }
           const programId = data.program.id;
           set((s) => ({
             programs: {
@@ -1212,7 +1212,7 @@ export const useStore = create(
               },
             }));
           }
-          get().showToast(mode === 'replace_log' ? 'Programa e historial actualizados' : 'Programa actualizado');
+          get().showToast(i18n.t(mode === 'replace_log' ? 'storeToasts.programLogUpdated' : 'storeToasts.programUpdated'));
         } else if (mode === 'merge_log') {
           const existing   = get().clientLogs[clientId] ?? [];
           const merged     = mergeClientLog(existing, data.workoutLog);
@@ -1221,7 +1221,7 @@ export const useStore = create(
             clientLogs: { ...s.clientLogs, [clientId]: merged },
             sessionTemplates: mergeFileSessions(s.sessionTemplates, data),
           }));
-          get().showToast(`${newCount} sesión${newCount !== 1 ? 'es' : ''} importada${newCount !== 1 ? 's' : ''}`);
+          get().showToast(i18n.t('storeToasts.sessionsImported', { count: newCount }));
         }
       },
 
@@ -3107,7 +3107,7 @@ export const useStore = create(
           cancelScheduledDoneNotification().catch(() => {}); // cancel OS notification (timer ended in foreground)
           dismissCountdownNotification().catch(() => {});
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          get().showToast('¡Siguiente serie!', 2200, 'neutral');
+          get().showToast(i18n.t('storeToasts.nextSet'), 2200, 'neutral');
         }
 
         // AppState listener: re-sync when the app comes back to the foreground.
@@ -3244,10 +3244,10 @@ export const useStore = create(
             const fileUri = FileSystem.documentDirectory + fileName;
             await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
           }
-          get().showToast('Archivo exportado');
+          get().showToast(i18n.t('storeToasts.fileExported'));
         } catch (e) {
           if (!e?.message?.includes('cancel') && !e?.message?.includes('Cancel')) {
-            get().showToast('Error al exportar', 2200, 'error');
+            get().showToast(i18n.t('errors.exportFailed'), 2200, 'error');
           }
         }
       },
@@ -3257,7 +3257,7 @@ export const useStore = create(
       exportProgramWithLog: async () => {
         const { profile, programs } = get();
         if (!programs[profile.activeProgramId]) {
-          get().showToast('Sin programa activo', 2200, 'error');
+          get().showToast(i18n.t('errors.noProgramToExport'), 2200, 'error');
           return;
         }
         await get().exportSpecificProgram(profile.activeProgramId, true);
@@ -3359,11 +3359,11 @@ export const useStore = create(
               encoding: FileSystem.EncodingType.UTF8,
             });
           }
-          get().showToast('Archivo exportado');
+          get().showToast(i18n.t('storeToasts.fileExported'));
         } catch (e) {
           // ignore user-cancel from the directory picker
           if (!e?.message?.includes('cancel') && !e?.message?.includes('Cancel')) {
-            get().showToast('Error al guardar', 2200, 'error');
+            get().showToast(i18n.t('errors.exportFailed'), 2200, 'error');
           }
         }
       },
@@ -3382,10 +3382,10 @@ export const useStore = create(
               dialogTitle: payload.programName + (withLog ? ' + historial' : ''),
             });
           } else {
-            get().showToast('Compartir no disponible', 2200, 'neutral');
+            get().showToast(i18n.t('errors.shareUnavailable'), 2200, 'neutral');
           }
         } catch {
-          get().showToast('Error al compartir', 2200, 'error');
+          get().showToast(i18n.t('errors.shareFailed'), 2200, 'error');
         }
       },
 
@@ -3651,7 +3651,7 @@ export const useStore = create(
           return updates;
         });
 
-        if (!silent) get().showToast('Importado correctamente');
+        if (!silent) get().showToast(i18n.t('storeToasts.importedOk'));
         return { ok: true };
       },
 

@@ -23,6 +23,7 @@
     "understood": "Got it",
     "close": "Close",
     "error": "Error",
+    "retry": "Retry",
     "paste": "PASTE",
     "pasted": "✓ PASTED"
   },
@@ -453,7 +454,7 @@
     "codeAlreadyLinked": "You're already connected to a trainer. Continuing disconnects you from them and connects you to this one.",
     "codeSlotOccupied": "This code is already in use on another phone. If you connect here, that phone gets disconnected.",
     "errSeatLocked": "This code is linked to an account. If it's yours, sign in again with it.",
-    "errCodeNotFound": "Code not found. Check that you typed it correctly.",
+    "errCodeNotFound": "Code not found. Check it is typed correctly or ask your trainer for a new one.",
     "errNoProgramYet": "Your trainer hasn't uploaded a program yet. Try again later.",
     "errNotConnected": "You're not connected to any trainer.",
     "connectedToast": "Connected to your trainer",
@@ -1417,7 +1418,21 @@
     "noHistoryInFile": "The file contains no workouts",
     "importNoVersion": "The file has no \"version\" field.",
     "importBadVersion": "Version {{version}} is not supported.",
-    "importBadJson": "The file is not valid JSON."
+    "importBadJson": "The file is not valid JSON.",
+    "exportFailed": "Couldn't create the file. Check that your phone has free space and try again.",
+    "shareFailed": "Couldn't open the share menu. Try again.",
+    "shareUnavailable": "This phone can't share files. Save the file and send it from another app.",
+    "noProgramToExport": "First pick a program in the Program tab.",
+    "retryHint": "Check your connection and try again."
+  },
+  "storeToasts": {
+    "fileExported": "File exported",
+    "importedOk": "Imported successfully",
+    "programUpdated": "Program updated",
+    "programLogUpdated": "Program and history updated",
+    "sessionsImported_one": "{{count}} session imported",
+    "sessionsImported_other": "{{count}} sessions imported",
+    "nextSet": "Next set!"
   },
   "nextSession": {
     "title": "Next session",
@@ -1985,7 +2000,10 @@
     "toastDownloaded": "↓ Program downloaded",
     "sessionFallback": "Session",
     "deleteClientTitle": "Delete client",
-    "errorUpdateHistory": "Error updating history",
+    "errorUpdateHistory": "Couldn't update the history. Check your connection and try again.",
+    "historyNew_one": "{{count}} new session",
+    "historyNew_other": "{{count}} new sessions",
+    "historyUpToDate": "History up to date",
     "connectCloud": "☁️ Connect to cloud",
     "connecting": "Connecting…",
     "btnUploadChanges": "Upload changes",
@@ -2168,7 +2186,8 @@
       "reissueConfirmBody": "The current code will stop working and {{name}} will have to enter the new one. Their history and program are kept.\n\nUse this if they reinstalled the app, lost the code, or the code leaked.",
       "reissueConfirmCta": "Issue",
       "reissueDone": "New code issued",
-      "reissueError": "Couldn't issue a new code"
+      "reissueError": "Couldn't issue a new code",
+      "cancelError": "Couldn't cancel the invitation. Check your connection and try again."
     },
     "keyTab": {
       "title": "CLIENT KEY",
@@ -2177,7 +2196,7 @@
       "copied": "Code copied",
       "noSlot": "This client is not connected to the cloud yet.",
       "connect": "Connect to the cloud",
-      "connectError": "Could not connect.",
+      "connectError": "Couldn't connect the client. Check your connection and try again.",
       "connecting": "Connecting…",
       "connectedNoCode": "Connected · no local code"
     },
