@@ -83,6 +83,8 @@
   .sg b { flex: 1; text-align: center; font: 800 12px Inter; padding: 7px 0; border-radius: 8px; color: var(--mutedLight); }
   .sg b.on { background: var(--border); color: var(--text); }
 
+  .volref { margin-top: 14px; font: 600 12px Inter; color: var(--mutedLight); }
+  .volref b { color: var(--text); }
   .rule { margin-top: 16px; border-left: 2px solid var(--accent); padding: 2px 0 2px 12px; font: 600 13px/1.5 Inter; color: var(--text); }
 
   /* ── tarjeta del Workout ── */
@@ -112,7 +114,7 @@
 
 <div class="wrap">
   <h1>Hoja de Progresión</h1>
-  <p class="lead">Maqueta de P18. A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, lo básico de ese estilo, y lo avanzado plegado (aquí vive el RPE). A la derecha, cómo se ve en el Workout: <b>el gris es lo que hiciste la última vez</b> y la meta la dice el mensaje. Toca las tarjetas y los botones.</p>
+  <p class="lead">Maqueta de P18. A la izquierda, la hoja de Progresión de un ejercicio: <b>el estilo en tarjetas</b>, como las de «¿Qué añades?» del planificador; debajo, cuándo y cuánto sube, y lo avanzado plegado (aquí vive el RPE). Series y reps no se tocan aquí: siguen en Volumen. A la derecha, cómo se ve en el Workout: <b>el gris es lo que hiciste la última vez</b> y lo que toca hoy lo dice el mensaje. Toca las tarjetas y los botones.</p>
 
   <div class="stage">
     <div class="col">
@@ -157,50 +159,53 @@ const EX = {
 };
 const LABEL = { weight: 'Peso', assist: 'Ayuda', reps: 'Reps', time: 'Tiempo', effort: 'Esfuerzo', none: 'Nada' };
 const SAY = {
-  weight: '<b>Sube el peso</b> cuando completes el rango. Las reps de cada serie son las tuyas.',
-  assist: '<b>Quita ayuda</b> cuando completes el rango. Si no llegas, mantiene o añade ayuda.',
-  reps: '<b>Suma reps</b> entre todas las series: la meta es tu total de la última vez + 1 por serie.',
-  time: '<b>Suma segundos</b> entre todas las series: la meta es tu total + el salto por serie.',
-  effort: '<b>El peso sale de tu RPE</b>: si te cuesta menos de lo previsto, sube; si más, baja.',
-  none: '<b>Sin progresión</b>: la app no propone cambios. Ves lo que hiciste la última vez.',
+  weight: 'Cuando llegas arriba del rango, la próxima vez <b>sube el peso</b>.',
+  assist: 'Cuando llegas arriba del rango, la próxima vez <b>quita ayuda</b>.',
+  reps: 'Cada sesión te propone <b>una repetición más por serie</b> que la vez anterior, contando todas juntas.',
+  time: 'Cada sesión te propone <b>aguantar más segundos</b> que la vez anterior, contando todas las series juntas.',
+  effort: 'El peso <b>se ajusta a lo duro que te resulte</b>: lo apuntas con el RPE en cada serie.',
+  none: '<b>No cambia nada solo.</b> Verás lo que hiciste la última vez.',
 };
+// Volumen (series y rango) es de la sección Volumen del ejercicio, no de esta hoja.
+const VOL = { bench: { sets: 3, min: 8, max: 12 }, assist: { sets: 3, min: 5, max: 8 }, pull: { sets: 3, min: 6, max: 6 } };
 let ex = 'bench', st = { when: 'all', inc: '2,5', down: 'def', rpe: false };
 
 function sheet() {
   const e = EX[ex], s = e.style;
   const isW = s === 'weight' || s === 'assist';
+  const v = VOL[ex], may = Math.floor(v.sets / 2) + 1;
+  const sq = (k) => Array.from({ length: v.sets }, (_, i) => `<i class="${i < k ? 'hit' : 'mid'}"></i>`).join('');
   const when = !isW ? '' : `
     <div class="caps">Cuándo sube</div>
     <div class="rcards">
       <div class="rcard ${st.when === 'all' ? 'on' : ''}" data-when="all" tabindex="0" role="button">
-        <div class="sq"><i class="hit"></i><i class="hit"></i><i class="hit"></i></div>
-        <b>Todas arriba</b><small>Las 3 series llegan a 12</small>
+        <div class="sq">${sq(v.sets)}</div>
+        <b>Todas las series</b><small>Las ${v.sets} llegan a ${v.max}</small>
       </div>
       <div class="rcard ${st.when === 'part' ? 'on' : ''}" data-when="part" tabindex="0" role="button">
-        <div class="sq"><i class="hit"></i><i class="hit"></i><i class="mid"></i></div>
-        <b>La mayoría</b><small>2 llegan a 12 y la otra se queda en el rango</small>
+        <div class="sq">${sq(may)}</div>
+        <b>La mayoría</b><small>${may} de ${v.sets} llegan a ${v.max} y ninguna baja de ${v.min}</small>
       </div>
     </div>`;
-  const ask = s === 'none' ? '' : `
-    <div class="caps">Qué pides</div>
+  const inc = (vals, unit) => `<div class="chips">${vals.map((x) => `<b class="${st.inc === x ? 'on' : ''}" data-inc="${x}">${x === '%' ? '5 %' : x + ' ' + unit}</b>`).join('')}</div>`;
+  const ask = s === 'none' || s === 'reps' ? '' : `
+    <div class="caps">${s === 'effort' ? 'Cómo de duro' : s === 'assist' ? 'Cuánta ayuda quita' : 'Cuánto sube'}</div>
     <div class="rows">
-      <div class="row"><span>Series</span><div class="step"><i>−</i><b>3</b><i>+</i></div></div>
-      ${s === 'reps' ? '<div class="row"><span>Empieza en</span><div class="step"><i>−</i><b>6 reps</b><i>+</i></div></div>'
-        : s === 'time' ? '<div class="row"><span>Empieza en</span><div class="step"><i>−</i><b>30 s</b><i>+</i></div></div>'
-        : s === 'effort' ? '<div class="row"><span>Reps</span><div class="step"><i>−</i><b>5</b><i>+</i></div></div><div class="row"><span>RPE objetivo</span><div class="step"><i>−</i><b>8</b><i>+</i></div></div>'
-        : `<div class="row"><span>Rango</span><div class="step"><i>−</i><b>${s === 'assist' ? '5–8' : '8–12'}</b><i>+</i></div></div>
-           <div class="row"><span>${s === 'assist' ? 'Quita' : 'Sube'}</span><div class="chips">${['1,25', '2,5', '5', '%'].map((v) => `<b class="${st.inc === v ? 'on' : ''}" data-inc="${v}">${v === '%' ? '%' : v + ' kg'}</b>`).join('')}</div></div>`}
+      ${s === 'time' ? `<div class="row"><span>Por serie</span>${inc(['5', '10'], 's')}</div>`
+        : s === 'effort' ? '<div class="row"><span>RPE al que apuntas</span><div class="step"><i>−</i><b>8</b><i>+</i></div></div>'
+        : `<div class="row"><span>Cada vez</span>${inc(['1,25', '2,5', '5', '%'], 'kg')}</div>`}
     </div>`;
+  const vol = s === 'none' ? '' : `<div class="volref">Series y reps: <b>${v.sets} × ${v.min === v.max ? v.min : v.min + '–' + v.max}</b>, en Volumen</div>`;
   const adv = !isW ? '' : `
     <details class="adv">
       <summary>Avanzado <em>›</em></summary>
       <div class="in">
         <div><div class="lbl">Freno de RPE</div>
           <div class="sg"><b class="${!st.rpe ? 'on' : ''}" data-rpe="0">No</b><b class="${st.rpe ? 'on' : ''}" data-rpe="1">RPE máx. 8</b></div>
-          <div class="hint">Con freno, aunque completes, no sube si el RPE medio pasa de 8. Un día duro nunca baja el peso.</div></div>
+          <div class="hint">Aunque llegues arriba, no sube si la media de RPE pasa de 8. Un día duro nunca baja el peso: solo frena.</div></div>
         <div><div class="lbl">Cuándo baja</div>
           <div class="sg"><b class="${st.down === 'def' ? 'on' : ''}" data-down="def">Si fallas</b><b class="${st.down === 'never' ? 'on' : ''}" data-down="never">Nunca</b></div>
-          <div class="hint">${st.down === 'def' ? 'Si fallas por poco, mantiene. Si fallas mucho o dos días seguidos, ' + (s === 'assist' ? 'añade un 10 % de ayuda.' : 'baja un 10 %.') : 'Si no llegas, mantiene. Nunca propone bajar.'}</div></div>
+          <div class="hint">${st.down === 'def' ? 'Si te quedas un poco por debajo del mínimo, se mantiene. Si te quedas lejos, o dos días seguidos, ' + (s === 'assist' ? 'añade un 10 % de ayuda.' : 'baja un 10 %.') : 'Si no llegas al mínimo, se mantiene. Nunca propone bajar.'}</div></div>
         <div class="row" style="background:var(--surface2)"><span>Escalón del ejercicio</span><div class="step"><i>−</i><b>2,5 kg</b><i>+</i></div></div>
       </div>
     </details>`;
@@ -211,19 +216,20 @@ function sheet() {
     <div class="caps">Qué sube</div>
     <div class="tiles">${e.styles.map((k) => `<div class="tile ${k === 'none' ? 'none' : ''} ${k === s ? 'on' : ''}" data-st="${k}" tabindex="0" role="button" aria-pressed="${k === s}">${svg(k)}<span>${LABEL[k]}</span></div>`).join('')}</div>
     <p class="say">${SAY[s]}</p>
-    ${when}${ask}${adv}
+    ${vol}${when}${ask}${adv}
     <p class="rule">${rule(s)}</p>`;
 }
 
 function rule(s) {
+  const v = VOL[ex], may = Math.floor(v.sets / 2) + 1;
   const inc = st.inc === '%' ? 'un 5 %' : `${st.inc} kg`;
-  const goal = st.when === 'part' ? 'cuando 2 de 3 series lleguen a 12 y la otra se quede en el rango' : 'cuando completes 12 reps en las 3 series';
-  const down = st.down === 'never' ? ' Si no llegas, mantiene.' : ' Si fallas por poco, mantiene; si fallas mucho o dos días seguidos, baja un 10 %.';
-  if (s === 'weight') return `Sube ${inc} ${goal}${st.rpe ? ' con RPE medio de 8 o menos' : ''}.${down}`;
-  if (s === 'assist') return `Quita ${inc} de ayuda cuando completes 8 reps en las 3 series.${down.replace('baja un 10 %', 'añade un 10 % de ayuda')}`;
-  if (s === 'reps') return 'Cada vez que llegues a la meta, +1 rep por serie sobre tu total. Si haces menos que el día anterior dos veces seguidas, la meta se ajusta a lo que hiciste.';
-  if (s === 'time') return 'Cada vez que llegues a la meta, +5 s por serie sobre tu total.';
-  if (s === 'effort') return 'El peso de cada día sale de tu 1RM estimado (media de las tres últimas sesiones) para hacer 5 reps a RPE 8.';
+  const goal = st.when === 'part' ? `cuando ${may} de ${v.sets} series lleguen a ${v.max} y ninguna baje de ${v.min}` : `cuando las ${v.sets} series lleguen a ${v.max}`;
+  const down = st.down === 'never' ? ' Si no llegas al mínimo, se mantiene.' : ' Si te quedas un poco por debajo del mínimo, se mantiene; si te quedas lejos, o dos días seguidos, baja un 10 %.';
+  if (s === 'weight') return `Sube ${inc} ${goal}${st.rpe ? ' con una media de RPE de 8 o menos' : ''}.${down}`;
+  if (s === 'assist') return `Quita ${inc} de ayuda ${goal}.${down.replace('baja un 10 %', 'añade un 10 % de ayuda')}`;
+  if (s === 'reps') return 'Cada vez que lo consigues, te propone una repetición más por serie. Si dos días seguidos haces menos que el anterior, se ajusta a lo que hiciste.';
+  if (s === 'time') return 'Cada vez que lo consigues, te propone 5 segundos más por serie. Si dos días seguidos aguantas menos, se ajusta a lo que hiciste.';
+  if (s === 'effort') return 'El peso de cada día sale de tu 1RM estimado (la media de tus tres últimas sesiones) para hacer tus reps a RPE 8.';
   return 'Sin cambios automáticos.';
 }
 

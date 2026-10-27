@@ -65,9 +65,11 @@ Aplica a `type: 'double'` (Peso por reglas, con o sin rango) y a las asistidas
 ### 3.1 Cuándo sube (sin cambios salvo Parcial)
 
 - **Todas**: todas las series llegan al máximo del rango (o a las reps fijas).
-- **Parcial N de M** — *cambia*: con rango, sube si **N series llegan arriba y el
-  resto queda dentro del rango** (≥ mínimo). Sin rango (mín = máx), sube al
-  cumplir las N, sin más condición.
+- **La mayoría** (antes «Parcial N de M») — *cambia*: **mayoría simple** de las
+  series (2 de 3, 3 de 4, 3 de 5), sin elegir N (decisión del usuario, 27-oct).
+  Con rango, sube si esa mayoría llega arriba **y ninguna serie baja del mínimo**.
+  Sin rango (mín = máx), sube al cumplir la mayoría, sin más condición. Un `need`
+  ya guardado se sigue respetando al leer; el editor solo ofrece la mayoría.
 - **RPE máx.**: como Todas, y además la media de RPE de las series que lo tienen
   ≤ máximo. **El RPE solo frena**: un día duro nunca baja el peso; solo bajan las
   reps que faltan (decisión del usuario, 27-oct).
@@ -188,18 +190,26 @@ dejan de usarse se borran.
 
 ## 7. P18-05 — Hoja de Progresión por niveles
 
-**Maqueta v1:** [`progresion-hoja.html`](../mockups/progresion-hoja.html) (27-oct, pendiente de revisar con el usuario). Dirección: las **tarjetas de carácter** de
+**Maqueta v1:** [`progresion-hoja.html`](../mockups/progresion-hoja.html) (27-oct, v2 tras la primera revisión del usuario). Dirección: las **tarjetas de carácter** de
 [`stages-v2.html`](../mockups/stages-v2.html) (P15 §3.2: icono, nombre y una
 línea, «Volumen · Intensidad · Igual · Descarga»), que al usuario le gustaron por
 simples y cómodas, aplicadas a los estilos de progresión:
 
-- **Arriba, el estilo en tarjetas**: Sube el peso · Sube las reps · Sube el tiempo
-  · Por esfuerzo (RPE) · Sin progresión (y Quita ayuda en asistidas). Cada una con
-  su frase («Cuando completes el rango, más peso»).
-- **Debajo, lo básico del estilo elegido**: rango o reps, salto.
-- **Plegado, «Avanzado»**: Todas / Parcial / RPE máx., cuándo baja (Por defecto /
-  Nunca), escalón, RPE objetivo. El RPE no aparece fuera de Avanzado salvo en Por
-  esfuerzo.
+- **Qué sube**, en tarjetas pequeñas con icono: Peso · Reps · Tiempo · Esfuerzo ·
+  Nada (en asistidas, Ayuda en lugar de Peso). Debajo, una frase que lo explica en
+  palabras de quien entrena («Cuando llegas arriba del rango, la próxima vez sube
+  el peso»). Nada de «meta» ni de jerga en los textos de la interfaz.
+- **Series y reps no están en esta hoja**: siguen en la sección Volumen del
+  ejercicio. La hoja solo las recuerda en una línea («Series y reps: 3 × 8–12, en
+  Volumen»).
+- **Cuándo sube** (Peso y Ayuda), en dos tarjetas grandes con un cuadradito por
+  serie (tantos como series tenga el ejercicio): **Todas las series** · **La
+  mayoría** (§3.1).
+- **Cuánto sube**: chips del salto (1,25 / 2,5 / 5 kg / 5 %; en Tiempo, segundos
+  por serie). En Esfuerzo, «Cómo de duro»: el RPE al que apuntas. Reps no tiene
+  nada que elegir (+1 por serie).
+- **Plegado, «Avanzado»**: freno de RPE, cuándo baja (Si fallas / Nunca) y
+  escalón. El RPE no aparece fuera de Avanzado salvo en Esfuerzo.
 - La frase de la regla (`progressionRule`) resume lo elegido debajo del todo.
 
 ## 8. Casos
