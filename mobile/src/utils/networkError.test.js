@@ -20,7 +20,8 @@ describe('sendFailure', () => {
   it('distingue red, servidor y mensaje propio', () => {
     expect(sendFailure(new TypeError('Network request failed'), t, 'k').msg).toBe('sync.offlineQueued');
     expect(sendFailure(Object.assign(new Error('x'), { code: 'SERVER' }), t, 'k').msg).toBe('sync.serverError');
-    expect(sendFailure(new Error('Hueco borrado'), t, 'k').msg).toBe('Hueco borrado');
+    expect(sendFailure(Object.assign(new Error('Hueco borrado'), { code: 'SLOT_GONE' }), t, 'k').msg).toBe('Hueco borrado');
+    expect(sendFailure(new Error('Programa no encontrado.'), t, 'k').msg).toBe('k');   // nunca el mensaje crudo
     expect(sendFailure({}, t, 'k').msg).toBe('k');
   });
 });

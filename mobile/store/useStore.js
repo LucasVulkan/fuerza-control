@@ -939,7 +939,7 @@ export const useStore = create(
       },
 
       _assertNotFrozen: (clientId) => {
-        if (get().isClientFrozen(clientId)) throw new Error(i18n.t('paywall.frozenError'));
+        if (get().isClientFrozen(clientId)) throw Object.assign(new Error(i18n.t('paywall.frozenError')), { code: 'FROZEN' });
       },
 
       /** ¿El programa o la sesión `id` es de un cliente congelado? Lo de entreno no se escribe (E43, R-E2). */

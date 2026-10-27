@@ -179,7 +179,10 @@ export default function App() {
       const was = useStore.getState().ui.online;
       if (was === online) return;
       useStore.setState((s) => ({ ui: { ...s.ui, online } }));
-      if (online) flush();
+      if (!online) return;
+      flush();
+      // El cliente también: su subida pendiente sale al volver la red, sin esperar a primer plano.
+      useStore.getState().checkAndPullProgramUpdates().catch(() => {});
     });
     const sub = AppState.addEventListener('change', (next) => { if (next === 'active') flush(); });
     return () => { unsub(); sub.remove(); };
