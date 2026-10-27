@@ -17,19 +17,17 @@
 
 import { trainerSupabase, clientSupabase, sessionsReady } from '../config/supabase';
 import { userIdOf as myId } from './supabaseAuth';
+import { NETWORK_RE } from '../utils/networkError';
 
 const RPC_CODES = [
   'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'SEAT_LOCKED', 'BAD_TARGET',
   'NOT_A_TRAINER', 'NOT_AUTHENTICATED', 'NO_OFFER', 'CODE_GENERATION_FAILED', 'SLOT_CHANGED',
 ];
 
-// Lo que dice supabase-js (fetch de RN y de Node) cuando no hay red.
-const NETWORK_RE = /Failed to fetch|Network request failed|fetch failed|NetworkError/i;
-
 export function syncError(error) {
   const msg = error?.message ?? 'Error de sincronización';
   const err = new Error(msg);
-  err.code = RPC_CODES.find((c) => msg.includes(c)) ?? (NETWORK_RE.test(msg) ? 'NETWORK' : null);
+  err.code = RPC_CODES.find((c) => msg.includes(c)) ?? (NETWORK_RE.test(msg) ? 'NETWORK' : 'SERVER');
   return err;
 }
 

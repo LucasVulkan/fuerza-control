@@ -2,7 +2,8 @@
 
 > Tema: ui
 > En corto: Cuando algo sale mal o no hay nada que enseñar, la app tiene que decir qué ha pasado y qué hacer: que no hay conexión y que se enviará luego, errores que nombran el siguiente paso y no solo «Error», todos los textos traducidos, y listas vacías que enseñan qué saldrá ahí y cómo empezar.
-> Fase U15-01 · pendiente · Saber si hay conexión y dejar envíos en cola · §3
+> Inicio: 2026-10-27
+> Fase U15-01 · hecho · Saber si hay conexión y dejar envíos en cola · §3
 > Fase U15-02 · pendiente · Errores con siguiente paso y textos sin traducir · §4
 > Fase U15-03 · pendiente · Maqueta de los estados vacíos · §5
 >
@@ -56,7 +57,7 @@
 ## 3. U15-01 — Saber si hay conexión y dejar envíos en cola
 
 - Añadir `@react-native-community/netinfo` (está en el SDK de Expo; versión la
-  que diga `npx expo install`). Un hook `useOnline()` y un valor en el store
+  que diga `npx expo install`). Sin hook propio: un valor en el store
   (`ui.online`) que se actualiza con el listener.
 - **«↑ Enviar» del entrenador sin conexión**: no falla. El cliente queda
   marcado como pendiente (ya existe el marcado para «↑ Enviar»), y sale el
@@ -127,6 +128,6 @@ abren las tareas de implementación.
 
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
-| U15-01 | NetInfo, cola de envíos del entrenador, aviso en Clientes | — | 🟡 | pendiente |
+| U15-01 | NetInfo, cola de envíos del entrenador, aviso en Clientes | — | 🟡 | hecho |
 | U15-02 | Errores con siguiente paso, textos traducidos | — | 🟢 | pendiente |
 | U15-03 | Maqueta de estados vacíos | — | 🟢 | pendiente |

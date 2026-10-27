@@ -41,6 +41,7 @@ import { spacing, textStyles }    from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 import ScreenHeader               from '../components/ui/ScreenHeader';
+import OfflineBanner              from '../components/OfflineBanner';
 
 // Los tres pasos de «sin entrenador»: código → programa → sesiones.
 const STEP_PATHS = [
@@ -261,6 +262,7 @@ export default function TrainerConnectionScreen() {
       {/* Se entra deslizando desde la derecha: se sale con ‹ (U36). */}
       <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('header.sectionConnections')} title={t('trainer.title')} />
 
+      <OfflineBanner />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Rise index={0}>{body}</Rise>
       </ScrollView>
