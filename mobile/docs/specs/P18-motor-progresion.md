@@ -10,7 +10,7 @@
 > Inicio: 2026-10-27
 > Fin: 2026-10-27
 >
-> Estado: **spec escrita, sin implementar** (27-oct-2026). Sale del replanteo del
+> Estado: **implementada, por probar en el móvil** (27-oct-2026; escrita el mismo día). Sale del replanteo del
 > motor que sustituyó a firmar en abstracto la tabla 1A de
 > [I01](I01-integridad-y-tests.md) (`docs/auditoria-tests/tablas-de-casos.md`):
 > en vez de preguntas sueltas, nueve personas pasadas por el motor real sesión a
@@ -389,11 +389,11 @@ de rendimiento** de `ideas.md`):
 
 | Fase | Qué | Toca | Coste |
 |---|---|---|---|
-| P18-01 | Peso por reglas: fallo leve/grande, mejora, −10 %, Parcial con rango | `progression.js` (+ una sola función para los tres sitios) | 🟡 |
-| P18-02 | Reps y Tiempo por total, meta en el log | `progression.js`, `saveSession` | 🟡 |
-| P18-03 | Gris = última vez, check guarda la casilla | `setPlan.js`, `ExerciseCard`, `saveSession` | 🟢 |
-| P18-04 | Mensajes del chip, es/en | `progression.js`, locales, tarjeta | 🟢 |
-| P18-05 | Hoja por niveles | editor de ejercicio, tras maqueta | 🟡 |
+| P18-01 | Peso por reglas: fallo leve/grande, mejora, −10 %, Parcial con rango | `progression.js` (+ una sola función para los tres sitios) | 🟡 ✅ ddd2f41 — `progressionChip` para tarjeta, guardado y WhatsApp; una serie sin hacer no es fallo |
+| P18-02 | Reps y Tiempo por total, meta en el log | `progression.js`, `saveSession` | 🟡 ✅ 7917e27 |
+| P18-03 | Gris = última vez, check guarda la casilla | `setPlan.js`, `ExerciseCard`, `saveSession` | 🟢 ✅ da1f42c |
+| P18-04 | Mensajes del chip, es/en | `progression.js`, locales, tarjeta | 🟢 ✅ 964c2c4 — con la línea ya en la cabecera (A2) |
+| P18-05 | Hoja por niveles | editor de ejercicio, tras maqueta | 🟡 ✅ 26bffb9 |
 
 Cada fase de motor cierra con los casos de §8 como tests (literal + cita) y el
 visor regenerado con el motor real en lugar del prototipo.
