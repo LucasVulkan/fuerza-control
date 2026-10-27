@@ -54,7 +54,7 @@ const slot = (n, extra = {}) => ({ id: `slot_${n}`, client_name: n, client_code:
 const free = (extra = {}) => useStore.setState((s) => ({
   clients: {}, programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [], activeSession: null, _refreshingSlots: null,
   profile: { ...s.profile, isPro: false, freeClientIds: [] },
-  ui: { ...s.ui, paywallReason: null },
+  ui: { ...s.ui, limitReason: null },
   trainerSync: { ...s.trainerSync, userId: 'trainer_1', mode: 'code', code: 'X', deletedSlotIds: [], lastSeenSessionsCount: {} },
   ...extra,
 }));
@@ -89,7 +89,7 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     const c = templateCounts(S());
     expect(c.programTemplates).toBe(5);                  // regla: ≤ 1
     expect(c.sessionTemplates).toBe(5);                  // regla: ≤ 1
-    expect(S().ui.paywallReason).toBe(null);             // regla: 'templates'
+    expect(S().ui.limitReason).toBe(null);             // regla: 'templates'
     expect(S().createEmptyProgram(2, 'X', 'template')).toBe(null);   // y crear una más sí se frena
   });
 
@@ -102,13 +102,13 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     S().importData(backup, DRIVE_SECTIONS, { silent: true });
     expect(Object.keys(S().sessionTemplates)).toHaveLength(3);   // montaje
     expect(templateCounts(S()).sessionTemplates).toBe(3);        // regla: ≤ 1
-    expect(S().ui.paywallReason).toBe(null);
+    expect(S().ui.limitReason).toBe(null);
   });
 
   it('P3 arreglado (E38): restaurar de Drive devuelve las plantillas de programa del backup', () => {
     const backup = { version: '4', exportType: 'full_backup', programs: { pt: prog('pt') } };
     S().importData(backup, DRIVE_SECTIONS, { silent: true });
-    expect(S().ui.paywallReason).toBe(null);
+    expect(S().ui.limitReason).toBe(null);
     expect(S().programs.pt).toBeTruthy();
   });
 
@@ -123,14 +123,14 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
   it('P5 aceptado (24-oct, decisión 1): importData (clients) mete 5 clientes sin paywall con plan gratis (regla R-E1: ≤3)', () => {
     S().importData({ version: '4', clients: mkClients(['a', 'b', 'c', 'd', 'e']) }, { clients: true }, { silent: true });
     expect(Object.keys(S().clients)).toHaveLength(5);   // regla: ≤ 3
-    expect(S().ui.paywallReason).toBe(null);
+    expect(S().ui.limitReason).toBe(null);
   });
 
   it('P6 aceptado (24-oct, restaurar, no crear): refreshTrainerSlots crea 3 fichas CON APP sin puerta; no caben y quedan todas congeladas (regla R-E1: ≤1 con app)', async () => {
     syncMock.getTrainerSlots.mockResolvedValueOnce(['1', '2', '3'].map((n) => slot(n)));
     await S().refreshTrainerSlots();
     expect(Object.keys(S().clients)).toHaveLength(3);   // regla: ≤ 1 con app
-    expect(S().ui.paywallReason).toBe(null);
+    expect(S().ui.limitReason).toBe(null);
     expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(true);
   });
 
@@ -171,7 +171,7 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
   it('R-E1 cumple: createClient y connectClientToCloud se paran en el store con 1 con app', async () => {
     free({ clients: { a: mk('a', { syncSlotId: 's_a' }), b: mk('b') } });
     expect(await S().connectClientToCloud('b')).toBe(false);
-    expect(S().ui.paywallReason).toBe('connected');
+    expect(S().ui.limitReason).toBe('connected');
     expect(await S().createClient('x', { withApp: true })).toBe(null);
   });
 
@@ -195,7 +195,7 @@ describe('R-E1 — carreras al crear/conectar con app', () => {
     const [x, y] = await Promise.all([S().createClient('A', { withApp: true }), S().createClient('B', { withApp: true })]);
     expect(x).toBeTruthy();
     expect(y).toBe(null);
-    expect(S().ui.paywallReason).toBe('connected');
+    expect(S().ui.limitReason).toBe('connected');
     expect(Object.values(S().clients)).toHaveLength(1);
     expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
     expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);   // la marca se quita al terminar
@@ -207,7 +207,7 @@ describe('R-E1 — carreras al crear/conectar con app', () => {
     slow();
     const r = await Promise.all([S().connectClientToCloud('a'), S().connectClientToCloud('b')]);
     expect(r).toEqual([true, false]);
-    expect(S().ui.paywallReason).toBe('connected');
+    expect(S().ui.limitReason).toBe('connected');
     expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
     expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);
     expect(clientLimitReason(Object.values(S().clients))).toBe(null);
@@ -269,7 +269,7 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     expect(S().programs).toBe(before.programs);
     expect(S().sessionTemplates.free_d.name).toBe('L');
     expect(S().sessionTemplates.free_d.exercises).toHaveLength(0);
-    expect(S().ui.paywallReason).toBe('frozen');
+    expect(S().ui.limitReason).toBe('frozen');
   });
 
   it('P7b (E43): sobre lo mío y sobre un cliente activo las mismas acciones siguen escribiendo', () => {
@@ -279,7 +279,7 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     S().renameProgram('p_a', 'De a');
     expect(S().programs.p_me.name).toBe('Mío');
     expect(S().programs.p_a.name).toBe('De a');
-    expect(S().ui.paywallReason).toBe(null);
+    expect(S().ui.limitReason).toBe(null);
   });
 
   it('P8 aceptado, decisión E43: ficha, nombre, facturas y peso de un congelado se siguen editando (son registros del entrenador)', () => {
@@ -291,7 +291,7 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     expect(S().isClientFrozen('d')).toBe(true);
     expect(S().clients.d.name).toBe('Renombrado');
     expect(S().clients.d.billing).toHaveLength(1);
-    expect(S().ui.paywallReason).toBe(null);
+    expect(S().ui.limitReason).toBe(null);
   });
 
   it('P9 arreglado (E43, R-E2): refreshTrainerSlots solo actualiza el contador del congelado, no su etapa (`progress`)', async () => {
@@ -361,7 +361,7 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     frozenD();
     expect(S().createFreeTemplate(null, 'd')).toBe(null);
     expect(S().createProgramForClient('d', 2, 'x')).toBe(null);
-    expect(S().ui.paywallReason).toBe('frozen');
+    expect(S().ui.limitReason).toBe('frozen');
   });
 });
 
@@ -488,21 +488,21 @@ describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta ma
     expect(g.connect('a')).toBe(null);
     expect(g.connect('d')).toBe('frozen');
     expect(await S().connectClientToCloud('a')).toBe(true);
-    expect(S().ui.paywallReason).toBe(null);
+    expect(S().ui.limitReason).toBe(null);
     expect(S().clients.a.syncSlotId).toBe('S9');
     expect(await S().connectClientToCloud('b')).toBe(false);   // ya hay 1 con app entre los activos
-    expect(S().ui.paywallReason).toBe('connected');
+    expect(S().ui.limitReason).toBe('connected');
     expect(await S().connectClientToCloud('d')).toBe(false);
-    expect(S().ui.paywallReason).toBe('frozen');
+    expect(S().ui.limitReason).toBe('frozen');
     expect(await S().createClient('nuevo')).toBe(null);   // crear sigue contando a todos
-    expect(S().ui.paywallReason).toBe('clients');
+    expect(S().ui.limitReason).toBe('clients');
   });
 
   it('P20 aceptado (24-oct, decisión 4: los inactivos cuentan): los clientes inactivos ocupan plaza: 3 inactivos y no se puede crear uno nuevo (honrado)', async () => {
     free({ clients: mkClients(['a', 'b', 'c'], { a: { status: 'inactive' }, b: { status: 'inactive' }, c: { status: 'inactive' } }) });
     expect(Object.values(S().clients).every((c) => c.status === 'inactive')).toBe(true);   // montaje
     expect(await S().createClient('Nuevo')).toBe(null);   // regla: id (si los inactivos no cuentan)
-    expect(S().ui.paywallReason).toBe('clients');
+    expect(S().ui.limitReason).toBe('clients');
   });
 
   it('P21 arreglado (E40, R-E4): un huérfano (otra cuenta) vuelve a contar como con app; a sigue activo y se congelan los que ya no caben', async () => {

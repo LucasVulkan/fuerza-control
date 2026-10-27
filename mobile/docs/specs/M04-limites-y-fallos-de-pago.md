@@ -3,11 +3,12 @@
 > Tema: monetización
 > En corto: Al topar con un límite del plan gratis ya no salta el paywall de golpe: primero una hoja dice qué límite has alcanzado («3/3 clientes») y qué da PRO, con «Ahora no» y «Hazte PRO»; y cuando una compra falla, la app dice si te han cobrado y qué hacer, en vez de enseñar el error de la tienda en inglés.
 > Inicio: 2026-10-27
+> Fin: 2026-10-27
 > Fase M04-01 · terminado · Maqueta de la hoja de límite · §3
-> Fase M04-02 · pendiente · Hoja de límite antes del paywall · §4
+> Fase M04-02 · hecho · Hoja de límite antes del paywall · §4
 > Fase M04-03 · hecho · Errores de compra y restauración con siguiente paso · §5
 >
-> Estado: **spec escrita, sin implementar** (18-oct-2026). Sale del análisis
+> Estado: **implementada, por probar** (27-oct-2026; spec escrita el 18-oct-2026). Sale del análisis
 > «qué hace que la app se sienta premium»: los peores momentos (un límite, un
 > pago que falla) son donde más confianza se gana o se pierde. M04-01 es
 > diseño: la hoja se maqueta antes de implementarla.
@@ -106,7 +107,7 @@ Maqueta en `docs/mockups/limite-plan.html` (v3), cerrada con el usuario el
 - [ ] En la hoja → «Hazte PRO» → paywall con «Sin límite de clientes» la primera
 - [ ] Conectar un segundo cliente con la app → hoja «Límite de clientes con la app alcanzado» con «1/1 con la app»
 - [ ] Crear una segunda plantilla de programa → hoja de plantillas
-- [ ] Tocar un cliente congelado → hoja con «Ana está fuera de tus 3 clientes activos»
+- [ ] Tocar un cliente congelado → hoja «fuera de tus 3 clientes activos» (con el nombre cuando la acción pasa por el store; desde un botón con candado, sin nombre)
 - [ ] «Hazte PRO» desde Mi cuenta → va directo al paywall, sin hoja
 
 ## 5. M04-03 — Errores de compra y restauración con siguiente paso
@@ -150,5 +151,5 @@ hacer**:
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
 | M04-01 | Maqueta de la hoja de límite | — | 🟢 | terminado |
-| M04-02 | Hoja de límite y motivo en el paywall | M04-01 | 🟡 | pendiente |
+| M04-02 | Hoja de límite y motivo en el paywall | M04-01 | 🟡 | hecho |
 | M04-03 | Errores de compra traducidos | — | 🟢 | hecho |

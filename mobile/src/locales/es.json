@@ -1046,6 +1046,39 @@
       "withHistoryDesc": "Se elimina también el historial. No hay vuelta atrás."
     }
   },
+  "limit": {
+    "later": "Ahora no",
+    "goPro": "Hazte PRO",
+    "pill": {
+      "clients": "{{n}}/{{max}} clientes",
+      "connected": "{{n}}/{{max}} con la app",
+      "templates": "{{n}}/{{max}} plantillas",
+      "frozen": "En pausa"
+    },
+    "title": {
+      "clients": "Límite de clientes alcanzado",
+      "connected": "Límite de clientes con la app alcanzado",
+      "templates": "Límite de plantillas alcanzado"
+    },
+    "say": {
+      "clients_one": "Has alcanzado el límite de *{{count}} cliente* del plan gratis. Hazte PRO para añadir más.",
+      "clients_other": "Has alcanzado el límite de *{{count}} clientes* del plan gratis. Hazte PRO para añadir más.",
+      "connected_one": "Has alcanzado el límite de *{{count}} cliente con la app*. Al resto les apuntas tú los entrenos.",
+      "connected_other": "Has alcanzado el límite de *{{count}} clientes con la app*. Al resto les apuntas tú los entrenos.",
+      "programTemplates_one": "Has alcanzado el límite de *{{count}} plantilla de programa*.",
+      "programTemplates_other": "Has alcanzado el límite de *{{count}} plantillas de programa*.",
+      "sessionTemplates_one": "Has alcanzado el límite de *{{count}} plantilla de sesión*.",
+      "sessionTemplates_other": "Has alcanzado el límite de *{{count}} plantillas de sesión*.",
+      "frozen": "*{{name}}* está fuera de tus {{max}} clientes activos. Puedes ver su historial, pero no cambiar nada.",
+      "frozenNoName": "Este cliente está fuera de tus {{max}} clientes activos. Puedes ver su historial, pero no cambiar nada."
+    },
+    "pro": {
+      "clients": "Clientes ilimitados",
+      "connected": "Todos tus clientes con la app",
+      "templates": "Plantillas ilimitadas",
+      "frozen": "Todos tus clientes activos"
+    }
+  },
   "freePlan": {
     "frozenLabel": "Fuera de plan",
     "outOfPlan": "Fuera de plan",

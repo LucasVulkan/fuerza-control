@@ -106,6 +106,11 @@ export const ROW_ICON = {
     g={<Circle cx="12" cy="12" r="9" />}
     a={<Path d="M5.6 5.6l12.8 12.8" />} />,
 
+  // La hoja de límite (M04-02): cliente en pausa.
+  pause: <TwoTone
+    g={<Circle cx="12" cy="12" r="9" />}
+    a={<Path d="M10 9v6M14 9v6" />} />,
+
   // Las ventajas del paywall (M01-06).
   phone: <TwoTone
     g={<Rect x="6" y="2.5" width="12" height="19" rx="2.5" />}

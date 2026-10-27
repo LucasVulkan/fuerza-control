@@ -29,7 +29,7 @@ export default function FreeClientsSheet({ onClose }) {
   const clients         = useStore((s) => s.clients);
   const freeClientIds   = useStore((s) => s.profile.freeClientIds);
   const setFreeClientIds = useStore((s) => s.setFreeClientIds);
-  const openPaywall     = useStore((s) => s._paywall);
+  const openPaywall     = useStore((s) => s.openPaywall);
 
   const clientList = useMemo(
     () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),

@@ -1046,6 +1046,39 @@
       "withHistoryDesc": "Session history will also be deleted. No going back."
     }
   },
+  "limit": {
+    "later": "Not now",
+    "goPro": "Go PRO",
+    "pill": {
+      "clients": "{{n}}/{{max}} clients",
+      "connected": "{{n}}/{{max}} on the app",
+      "templates": "{{n}}/{{max}} templates",
+      "frozen": "Paused"
+    },
+    "title": {
+      "clients": "Client limit reached",
+      "connected": "App client limit reached",
+      "templates": "Template limit reached"
+    },
+    "say": {
+      "clients_one": "You have reached the free plan limit of *{{count}} client*. Go PRO to add more.",
+      "clients_other": "You have reached the free plan limit of *{{count}} clients*. Go PRO to add more.",
+      "connected_one": "You have reached the limit of *{{count}} client on the app*. You log the workouts of the rest yourself.",
+      "connected_other": "You have reached the limit of *{{count}} clients on the app*. You log the workouts of the rest yourself.",
+      "programTemplates_one": "You have reached the limit of *{{count}} program template*.",
+      "programTemplates_other": "You have reached the limit of *{{count}} program templates*.",
+      "sessionTemplates_one": "You have reached the limit of *{{count}} session template*.",
+      "sessionTemplates_other": "You have reached the limit of *{{count}} session templates*.",
+      "frozen": "*{{name}}* is outside your {{max}} active clients. You can see their history, but not change anything.",
+      "frozenNoName": "This client is outside your {{max}} active clients. You can see their history, but not change anything."
+    },
+    "pro": {
+      "clients": "Unlimited clients",
+      "connected": "All your clients on the app",
+      "templates": "Unlimited templates",
+      "frozen": "All your active clients"
+    }
+  },
   "freePlan": {
     "frozenLabel": "Out of plan",
     "outOfPlan": "Out of plan",

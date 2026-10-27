@@ -41,11 +41,17 @@ import { TERMS_URL, PRIVACY_URL } from '../config/legal';
 
 // Lo que Pro añade al plan gratis (M01 §4.1). La conexión, primero: es lo que
 // tiene que entenderse.
+// M04-02: la ventaja del límite que se tocó va la primera (`FEATURE_OF_REASON`).
 const PRO_FEATURES = [
   { icon: ROW_ICON.phone,     key: 'connected' },
   { icon: ROW_ICON.users,     key: 'clients' },
   { icon: ROW_ICON.templates, key: 'templates' },
 ];
+
+const FEATURE_OF_REASON = {
+  clients: 'clients', frozen: 'clients', connected: 'connected',
+  programTemplates: 'templates', sessionTemplates: 'templates',
+};
 
 // Anual primero y preseleccionada: el pago único es la opción de quien ya está
 // convencido (M01 §5). Lo que no sea ninguno de los dos va detrás.
@@ -198,7 +204,7 @@ function SameHeight({ index, children }) {
 
 // ── Pantalla ──────────────────────────────────────────────────────────────────
 
-export default function PaywallModal({ onClose }) {
+export default function PaywallModal({ onClose, reason }) {
   const getOffering      = useStore((s) => s.getOffering);
   const [offering, setOffering] = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -237,6 +243,7 @@ export default function PaywallModal({ onClose }) {
         <PaywallBody
           packages={[...(offering?.availablePackages ?? [])].sort(byPlan)}
           loading={loading}
+          reason={reason}
           onClose={onClose}
           onNeedsAccount={() => setAskAccount(true)}
           onSignIn={() => { usedSignIn.current = true; setSignIn(true); }}
@@ -246,7 +253,7 @@ export default function PaywallModal({ onClose }) {
   );
 }
 
-function PaywallBody({ packages, loading, onClose, onNeedsAccount, onSignIn }) {
+function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSignIn }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const C      = th.colors;
@@ -350,7 +357,7 @@ function PaywallBody({ packages, loading, onClose, onNeedsAccount, onSignIn }) {
         </View>
 
         <View style={styles.features}>
-          {PRO_FEATURES.map((f) => (
+          {[...PRO_FEATURES].sort((a, b) => (b.key === FEATURE_OF_REASON[reason]) - (a.key === FEATURE_OF_REASON[reason])).map((f) => (
             <View key={f.key} style={styles.featRow}>
               <View style={styles.featIcon}><RowIcon color={C.accent} size={18} strokeWidth={2}>{f.icon}</RowIcon></View>
               <View style={styles.featText}>

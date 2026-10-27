@@ -759,7 +759,7 @@ describe('plan gratis — M01-02, la puerta va en la acción', () => {
     useStore.setState((s) => ({
       clients: {}, programs: {}, sessionTemplates: {},
       profile: { ...s.profile, isPro: false, freeClientIds: [] },
-      ui: { ...s.ui, paywallReason: null },
+      ui: { ...s.ui, limitReason: null, paywallReason: null },
     }));
   });
 
@@ -767,13 +767,24 @@ describe('plan gratis — M01-02, la puerta va en la acción', () => {
     for (const n of ['A', 'B', 'C']) expect(await useStore.getState().createClient(n)).toBeTruthy();
     expect(await useStore.getState().createClient('D')).toBe(null);
     expect(Object.keys(useStore.getState().clients)).toHaveLength(3);
-    expect(useStore.getState().ui.paywallReason).toBe('clients');
+    expect(useStore.getState().ui.limitReason).toBe('clients');
+  });
+
+  it('«Hazte PRO» de la hoja de límite cierra la hoja y pasa el motivo al paywall (M04-02)', () => {
+    useStore.getState()._paywall('connected');
+    expect(useStore.getState().ui.paywallReason).toBe(null);
+    useStore.getState().limitToPaywall();
+    expect(useStore.getState().ui.limitReason).toBe(null);
+    expect(useStore.getState().ui.paywallReason).toBe('connected');
+    useStore.getState().closePaywall();
+    useStore.getState().openPaywall('clients');   // Mi cuenta, menú: directo, sin hoja
+    expect(useStore.getState().ui).toMatchObject({ limitReason: null, paywallReason: 'clients' });
   });
 
   it('la segunda plantilla de programa no se crea; con Pro, sí', () => {
     expect(useStore.getState().createEmptyProgram(3, 'T1', 'template')).toBeTruthy();
     expect(useStore.getState().createEmptyProgram(3, 'T2', 'template')).toBe(null);
-    expect(useStore.getState().ui.paywallReason).toBe('programTemplates');
+    expect(useStore.getState().ui.limitReason).toBe('programTemplates');
     useStore.setState((s) => ({ profile: { ...s.profile, isPro: true } }));
     expect(useStore.getState().createEmptyProgram(3, 'T2', 'template')).toBeTruthy();
   });
@@ -792,7 +803,7 @@ describe('plan gratis — M01-02, la puerta va en la acción', () => {
     useStore.setState({ clients });
     await expect(useStore.getState().downloadClientHistory('a')).rejects.toThrow();
     expect(useStore.getState().startSession('tpl', { forClient: 'a' })).toBe(null);
-    expect(useStore.getState().ui.paywallReason).toBe('frozen');
+    expect(useStore.getState().ui.limitReason).toBe('frozen');
     useStore.getState().setFreeClientIds(['a']);
     expect(useStore.getState().isClientFrozen('a')).toBe(false);
     expect(useStore.getState().isClientFrozen('b')).toBe(true);

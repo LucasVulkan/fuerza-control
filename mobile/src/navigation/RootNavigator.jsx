@@ -35,6 +35,7 @@ import Toast                 from '../components/Toast';
 import BottomTabBar          from '../components/ui/BottomTabBar';
 import DialogHost            from '../components/ui/DialogHost';
 import PaywallModal          from '../components/PaywallModal';
+import LimitSheet            from '../components/LimitSheet';
 import ExternalImportModal   from '../components/ExternalImportModal';
 import { clientLink } from '../utils/clientLink';
 
@@ -285,6 +286,7 @@ export default function RootNavigator() {
       {/* Confirmaciones y avisos (`showDialog`), en vez del Alert nativo. */}
       <DialogHost />
       {/* El que abre una acción que choca con el plan gratis (M01 §4.2). */}
+      <GlobalLimit />
       <GlobalPaywall />
     </View>
   );
@@ -305,7 +307,22 @@ function GlobalPaywall() {
     return () => clearTimeout(timer);
   }, [reason]);
   const close = () => { setShown(null); closePaywall(); };
-  return reason && shown === reason ? <PaywallModal onClose={close} /> : null;
+  return reason && shown === reason ? <PaywallModal reason={reason} onClose={close} /> : null;
+}
+
+/** La hoja de límite (M04-02), con el mismo retraso y el mismo motivo que `GlobalPaywall`. */
+function GlobalLimit() {
+  const reason        = useStore((s) => s.ui.limitReason);
+  const closeLimit    = useStore((s) => s.closeLimit);
+  const limitToPaywall = useStore((s) => s.limitToPaywall);
+  const [shown, setShown] = useState(null);
+  useEffect(() => {
+    if (!reason) return undefined;
+    const timer = setTimeout(() => setShown(reason), 250);
+    return () => clearTimeout(timer);
+  }, [reason]);
+  const close = (toPro) => { setShown(null); if (toPro) limitToPaywall(); else closeLimit(); };
+  return reason && shown === reason ? <LimitSheet reason={reason} onClose={close} /> : null;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────

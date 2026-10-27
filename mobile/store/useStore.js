@@ -412,7 +412,9 @@ const INITIAL_UI = {
   _viewingProgramId: null,
   _blockPickerResult: null,
   homeTab: 'session',
-  paywallReason: null,  // M01 §4.2: lo pone una acción que choca con el plan gratis
+  paywallReason: null,  // M01 §4.2: el paywall abierto; lo pone «Hazte PRO» de la hoja de límite o quien lo abre a propósito
+  limitReason: null,    // M04-02: la hoja de límite; lo pone una acción que choca con el plan gratis
+  limitClientId: null,  // el cliente que se tocó, para el motivo `frozen`
 };
 
 /** Una copia del objeto sin esa clave. */
@@ -789,7 +791,7 @@ export const useStore = create(
        * `setClientActiveProgram`. Devuelve el id, o null (cliente congelado).
        */
       generateProgramForClient: (clientId, archetypeId) => {
-        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         const archetype = ARCHETYPES.find((a) => a.id === archetypeId);
         if (!archetype) return null;
         const answers = normalizeOnboardingAnswers({
@@ -952,11 +954,21 @@ export const useStore = create(
       /** Ya tiene las que da el plan: no puede crear otra. */
       _templateLimitReached: (kind) => !get().profile.isPro && templateCounts(get())[kind] >= FREE[kind],
 
-      /** Abre el paywall global con su motivo; devuelve null para que la acción salga con él. */
-      _paywall: (reason) => {
-        set((s) => ({ ui: { ...s.ui, paywallReason: reason } }));
+      /** Abre la hoja de límite con su motivo (M04-02); devuelve null para que la acción salga con él. */
+      _paywall: (reason, clientId = null) => {
+        set((s) => ({ ui: { ...s.ui, limitReason: reason, limitClientId: clientId } }));
         return null;
       },
+
+      closeLimit: () => set((s) => ({ ui: { ...s.ui, limitReason: null, limitClientId: null } })),
+
+      /** «Hazte PRO» de la hoja de límite: la cierra y abre el paywall con el mismo motivo. */
+      limitToPaywall: () => set((s) => ({
+        ui: { ...s.ui, limitReason: null, limitClientId: null, paywallReason: s.ui.limitReason },
+      })),
+
+      /** Abre el paywall directo, a propósito, sin hoja de límite. */
+      openPaywall: (reason) => set((s) => ({ ui: { ...s.ui, paywallReason: reason } })),
 
       closePaywall: () => set((s) => ({ ui: { ...s.ui, paywallReason: null } })),
 
@@ -1074,7 +1086,7 @@ export const useStore = create(
       },
 
       setClientActiveProgram: (clientId, programId) => {
-        if (programId !== null && get().isClientFrozen(clientId)) return get()._paywall('frozen');
+        if (programId !== null && get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         // Assigning makes the program active (archiving the previous one) and
         // marks it dirty so the trainer pushes it. Deassigning clears both.
         set((s) => ({
@@ -1181,7 +1193,7 @@ export const useStore = create(
       // `restore`: solo lo usa `_recoverSlotProgram`. Bajar del hueco el programa
       // que ya era del entrenador no es «recibir» de un congelado (E39).
       importForClient: (clientId, parsedData, mode, { restore = false } = {}) => {
-        if (!restore && get().isClientFrozen(clientId)) return get()._paywall('frozen');
+        if (!restore && get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         let data = parsedData;
         // Un fichero de una versión anterior trae los ids de antes de juntar
         // los ejercicios repetidos (P09-exercise-variants.md §3.3).
@@ -1243,7 +1255,7 @@ export const useStore = create(
       // `openEditor: false`: crea el programa sin abrir el editor (lo usa el
       // constructor guiado del recorrido de entrada, O03-02, que sigue en su pantalla).
       createProgramForClient: (clientId, numSessions, programName, durationWeeks = null, { openEditor = true } = {}) => {
-        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         const programId = generateId('prog');
         const labels    = ['A', 'B', 'C', 'D', 'E', 'F'];
         const colorList = ['var(--day1)', 'var(--day2)', 'var(--day3)', 'var(--day4)', 'var(--day5)', 'var(--day6)'];
@@ -1604,7 +1616,7 @@ export const useStore = create(
        */
       createFreeTemplate: (plan = null, owner = 'me', { asTemplate = false } = {}) => {
         if (asTemplate && get()._templateLimitReached('sessionTemplates')) return get()._paywall('sessionTemplates');
-        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
+        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen', owner);
         const id = generateId('tpl');
         const base = freeTemplateFromPreset(plan, {
           id, owner, newBlockId: () => generateId('blk'), lib: get().getEffectiveLibrary(),
@@ -1701,7 +1713,7 @@ export const useStore = create(
         const src = get().sessionTemplates[templateId];
         if (!src || src.programId) return null;
         if (asTemplate && get()._templateLimitReached('sessionTemplates')) return get()._paywall('sessionTemplates');
-        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
+        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen', owner);
         const id   = generateId('tpl');
         const copy = JSON.parse(JSON.stringify(src));
         delete copy.fromTrainer;
@@ -2233,7 +2245,7 @@ export const useStore = create(
       setEditingProgram: (programId) => {
         // El programa de un cliente congelado se ve, no se edita (M01 §4.5).
         const owner = get().programs[programId]?.owner;
-        if (owner && owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
+        if (owner && owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen', owner);
         set((s) => ({ ui: { ...s.ui, _editingProgramId: programId } }));
         get().navigate('programEditor');
       },
@@ -2248,7 +2260,7 @@ export const useStore = create(
         const srcProgram = programs[sourceProgramId];
         if (!srcProgram) return null;
         if (kind === 'template' && get()._templateLimitReached('programTemplates')) return get()._paywall('programTemplates');
-        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen');
+        if (owner !== 'me' && get().isClientFrozen(owner)) return get()._paywall('frozen', owner);
 
         const newProgramId = generateId('prog');
         const newTemplates = {};
@@ -2335,7 +2347,7 @@ export const useStore = create(
        * ejercicios añadidos.
        */
       startSession: (templateId, { forClient = null, loggedAt = null, logOnly = false, prefill = null } = {}) => {
-        if (forClient && get().isClientFrozen(forClient)) return get()._paywall('frozen');
+        if (forClient && get().isClientFrozen(forClient)) return get()._paywall('frozen', forClient);
         const template = get().getEffectiveTemplate(templateId);
         if (!template) return;
         const emptySet = () => ({ weight: '', reps: '', time: '', done: false });
@@ -4009,7 +4021,7 @@ export const useStore = create(
         if (client.syncPending) return false;   // doble pulsación: ya hay una conexión en vuelo
         if (!get().profile.isPro) {
           const reason = connectReason(clients, get().profile.freeClientIds, clientId);
-          if (reason) { get()._paywall(reason); return false; }
+          if (reason) { get()._paywall(reason, clientId); return false; }
         }
         // E42: sin ningún await entre la comprobación y la marca.
         set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncPending: true } } }));
@@ -4201,7 +4213,7 @@ export const useStore = create(
       // A one-off prescription for the NEXT occurrence of a client's session.
       // Stored on the client; delivered to the client and consumed there later.
       setOverrideTarget: (clientId, templateId, exerciseId, patch) => {
-        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         set((s) => {
           const client = s.clients[clientId];
           if (!client) return {};
@@ -4227,7 +4239,7 @@ export const useStore = create(
       },
 
       clearOverride: (clientId, templateId) => {
-        if (get().isClientFrozen(clientId)) return get()._paywall('frozen');
+        if (get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         set((s) => {
           const client = s.clients[clientId];
           if (!client) return {};
