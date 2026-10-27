@@ -234,7 +234,7 @@ simples y cómodas, aplicadas a los estilos de progresión:
     al completar el objetivo de reps, sin mirar el RPE.»
 - **La línea de progresión del Workout no puede quedar suelta** en medio de la
   tarjeta (revisión del usuario). Va **dentro de la cabecera** (`surface2`). La
-  maqueta prueba, por decidir: **A2**, a todo lo ancho desde el borde, bajo el
+  maqueta prueba, por decidir: **A3**, como A2 pero con las dos líneas centradas; **A2**, a todo lo ancho desde el borde, bajo el
   número, separada por una raya (la que pidió probar el usuario); **A**, alineada
   bajo el nombre; y **B**, una franja propia con el fondo y el radio de las celdas.
 - La frase de la regla (`progressionRule`) resume lo elegido debajo del todo.
