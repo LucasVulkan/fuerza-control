@@ -324,6 +324,16 @@ mayoría» elegida, pasa a «Todas». Por esfuerzo conserva el escalón (o Exact
 fallos, y «La mayoría» se guarda sin `need`. La regla de Nada pasa a «Sin
 sugerencia de progreso».
 
+Tras verla en el móvil (27-oct): todo lo de dentro va sobre `surface` (la hoja
+es `bg`, y nada dentro de una hoja va en `bg`), los títulos en `mutedLight`, lo
+elegido se rellena de lima desde la esquina como las fichas de etapa y el borde
+de «Cuándo sube» se enciende con transición. Iconos nuevos con un segundo tono:
+mancuerna (Peso), «×10» (Reps), cronómetro (Tiempo), cuentarrevoluciones con
+marcas y zona alta (Esfuerzo), «=» (Nada). Las frases de la regla dicen qué se
+mide y qué pasa, sin «tu total» ni «se ajusta»: «El objetivo es el total de
+repeticiones de la última sesión, sumando todas las series, más 1 rep por
+serie…»; y bajar dice el umbral («si faltan más del 15 % de las repeticiones»).
+
 **Probar P18-05**
 
 - [ ] Editor de un press de banca 3×8-12 → Progresión: bajo el nombre «3 ×

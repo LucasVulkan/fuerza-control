@@ -637,9 +637,10 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false, 
     const timed = prog.type === 'time';
     const text  = inc.type === 'pct' ? `${inc.pct} %`
       : timed ? `${inc.value} s` : t('progression.rule.incReps', { count: inc.value });
-    if (short) return t('progression.rule.totalShort', { inc: text });
-    if (parts) return { action: t('progression.rule.totalShort', { inc: text }), when: t('progression.rule.totalWhen') };
-    return t('progression.rule.totalUp', { inc: text });
+    const what = t(timed ? 'progression.rule.whatTime' : 'progression.rule.whatReps');
+    if (short) return t('progression.rule.totalShort', { inc: text, what });
+    if (parts) return { action: t('progression.rule.totalShort', { inc: text, what }), when: t('progression.rule.totalWhen', { inc: text, what }) };
+    return t('progression.rule.totalUp', { inc: text, what });
   }
 
   // Tiempo + Peso (P61): la meta son los segundos.
@@ -660,7 +661,8 @@ export function progressionRule(exConfig, def, t, unit = 'kg', { short = false, 
     down:   prog.down === 'never' ? null
       : t(assist ? 'progression.rule.assistDownLine' : 'progression.rule.weightDownLine'),
   };
-  const head = t(assist ? 'progression.rule.assistUp' : 'progression.rule.weightUp', { inc: text, when, goal });
+  const head = t(assist ? 'progression.rule.assistUp' : 'progression.rule.weightUp',
+    { inc: text, when, goal: timed ? goal : t('progression.rule.incReps', { count: goal }) });
   if (prog.down === 'never') return head;
   return head + t(assist ? 'progression.rule.assistDown' : 'progression.rule.weightDown');
 }

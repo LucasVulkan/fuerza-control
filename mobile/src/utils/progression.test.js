@@ -621,11 +621,11 @@ describe('P55 — progressionRule (§5.2)', () => {
 
   it('Peso: con la cola de bajar por defecto (P18: sin números, la regla va en la clave)', () => {
     expect(progressionRule(bench, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":12}progression.rule.weightDown');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"progression.rule.incReps{\\"count\\":12}"}progression.rule.weightDown');
   });
   it("Con down: 'never' sin la cola", () => {
     expect(progressionRule({ ...bench, progression: { ...bench.progression, down: 'never' } }, BB, tk))
-      .toBe('progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":12}');
+      .toBe('progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"progression.rule.incReps{\\"count\\":12}"}');
   });
   it('Parcial, RPE y porcentaje; la unidad es la que se pasa', () => {
     const part = { ...bench, progression: { ...bench.progression, evaluation: { mode: 'part', need: 2 }, down: 'never' } };
@@ -649,9 +649,9 @@ describe('P55 — progressionRule (§5.2)', () => {
   it('Reps y Tiempo, Por esfuerzo y Nada', () => {
     // P18 §4.1: «Tu total + el salto por serie»; sin mínimos ni «cuando todas»
     expect(progressionRule({ sets: 3, minReps: 6, maxReps: 6, progression: { type: 'reps' } }, BB, tk))
-      .toBe('progression.rule.totalUp{"inc":"progression.rule.incReps{\\"count\\":1}"}');
+      .toBe('progression.rule.totalUp{"inc":"progression.rule.incReps{\\"count\\":1}","what":"progression.rule.whatReps"}');
     expect(progressionRule({ sets: 3, minTime: 30, maxTime: 30, progression: { type: 'time' } }, BB, tk))
-      .toBe('progression.rule.totalUp{"inc":"5 s"}');
+      .toBe('progression.rule.totalUp{"inc":"5 s","what":"progression.rule.whatTime"}');
     expect(progressionRule({ sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } }, BB, tk))
       .toBe('progression.rule.effortBeat{"reps":5,"rpe":8}');
     expect(progressionRule({ progression: { type: 'effort', effortWhen: 'reach' }, minReps: 5 }, BB, tk)).toContain('effortReach');
@@ -812,21 +812,21 @@ describe('P61 — la frase de la regla en palabras (es y en)', async () => {
     return inst.t.bind(inst);
   };
   it('es', () => {
-    expect(progressionRule(cfg, BB, tIn('es', es))).toBe('Sube 2.5 kg cuando todas las series lleguen a 60 s · baja un 10 % si fallas por mucho o dos días seguidos');
+    expect(progressionRule(cfg, BB, tIn('es', es))).toBe('Sube 2.5 kg cuando todas las series lleguen a 60 s. Si alguna serie no llega al mínimo, el peso se mantiene; baja un 10 % si faltan más del 15 % de las repeticiones o si no llegas al mínimo dos sesiones seguidas');
   });
   it('en', () => {
-    expect(progressionRule(cfg, BB, tIn('en', en))).toBe('Adds 2.5 kg when all sets reach 60 s · drops 10 % if you miss by a lot or two days in a row');
+    expect(progressionRule(cfg, BB, tIn('en', en))).toBe('Adds 2.5 kg when all sets reach 60 s. If a set falls below the minimum, the weight stays; it drops 10 % if more than 15 % of the reps are missing or if you miss the minimum two sessions in a row');
   });
   it('en piezas, para la ficha del Workout (U10-04)', () => {
     const t = tIn('es', es);
     const bench = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', increment: { type: 'fixed', value: 2.5 } } };
     expect(progressionRule(bench, BB, t, 'kg', { parts: true })).toEqual({
-      action: 'Sube 2.5 kg', when: 'cuando todas las series lleguen a 12 reps', down: 'Baja un 10 % si fallas por mucho o dos días seguidos',
+      action: 'Sube 2.5 kg', when: 'cuando todas las series lleguen a 12 reps', down: 'Si alguna serie no llega al mínimo, el peso se mantiene. Baja un 10 % si faltan más del 15 % de las repeticiones o si no llegas al mínimo dos sesiones seguidas',
     });
     expect(progressionRule({ ...bench, progression: { ...bench.progression, down: 'never' } }, BB, t, 'kg', { parts: true }).down).toBeNull();
     expect(progressionRule({ sets: 3, minReps: 6, progression: { type: 'reps' } }, BB, t, 'kg', { parts: true })).toEqual({
-      action: 'Tu total + 1 rep por serie',
-      when: 'Se queda fija hasta que la alcances; si dos días seguidos haces menos, se ajusta a lo que hiciste',
+      action: 'Total de repeticiones de la última sesión + 1 rep por serie',
+      when: 'Se mantiene igual hasta que lo consigas. Si dos sesiones seguidas haces menos repeticiones que en la anterior, el objetivo pasa a ser el total de la última sesión más 1 rep por serie',
     });
     expect(progressionRule({ progression: { type: 'none' } }, BB, t, 'kg', { parts: true })).toEqual({ action: 'Sin sugerencia de progreso' }); // P18 §7: la regla de Nada
   });
@@ -955,7 +955,7 @@ describe('I01-01 — huecos de mutación', () => {
   test('progressionRule: la meta es el maxReps del ejercicio', () => {
     const c = { sets: 3, minReps: 6, maxReps: 10, progression: { type: 'double' } };
     expect(progressionRule(c, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":10}progression.rule.weightDown');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"progression.rule.incReps{\\"count\\":10}"}progression.rule.weightDown');
   });
 
   // P12 §5.2 / P18 §3.1: n = las series de la plantilla; la mayoría simple de 5 son 3 de 5
@@ -970,7 +970,7 @@ describe('I01-01 — huecos de mutación', () => {
   test("progressionRule: el 'weight' antiguo dice el mínimo como meta, en reps y en tiempo", () => {
     const reps = { sets: 3, minReps: 4, maxReps: 6, progression: { type: 'weight' } };
     expect(progressionRule(reps, BB, tk)).toBe(
-      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":4}progression.rule.weightDown');
+      'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"progression.rule.incReps{\\"count\\":4}"}progression.rule.weightDown');
     const time = { sets: 3, minTime: 20, maxTime: 40, inputType: 'weight_time', progression: { type: 'weight' } };
     expect(progressionRule(time, BB, tk)).toBe(
       'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"20 s"}progression.rule.weightDown');

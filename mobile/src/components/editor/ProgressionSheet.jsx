@@ -13,9 +13,12 @@
  * metric, range }; el resto son los valores de Volumen que se recuerdan bajo el
  * nombre (series y reps no se tocan aquí: siguen en Volumen).
  */
-import { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import { useState, useEffect } from 'react';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor,
+} from 'react-native-reanimated';
+import Svg, { Path, Circle, Rect, Ellipse } from 'react-native-svg';
 import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { MAX_RELIABLE_REPS } from '../../utils/oneRm';
@@ -30,21 +33,131 @@ import SegmentedControl from '../ui/SegmentedControl';
 import StepField from '../ui/StepField';
 import AnimatedHeight from '../ui/AnimatedHeight';
 
-// Los iconos de las tarjetas de «Qué sube», trazados como en la maqueta (22×22).
-// El de Reps (dos flechas en círculo) está por decidir (P18 §7).
+// Los iconos de las tarjetas de «Qué sube» (24×24): trazo, con las piezas que
+// dicen qué es en un segundo tono (el mismo color, más tenue).
+const SW = 1.8;
 const TILE_ICON = {
-  weight: (c) => (<><Path d="M7.5 9V7.5a3.5 3.5 0 0 1 7 0V9" stroke={c} strokeWidth={2.2} fill="none" strokeLinecap="round" /><Circle cx={11} cy={14} r={5.2} stroke={c} strokeWidth={2.2} fill="none" /></>),
-  assist: (c) => <Path d="M11 4v12M6 11l5 5 5-5" stroke={c} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  reps:   (c) => (<><Path d="M4.5 10a6.5 6.5 0 0 1 11.6-3.6M17.5 12a6.5 6.5 0 0 1-11.6 3.6" stroke={c} strokeWidth={2.2} fill="none" strokeLinecap="round" /><Path d="M16.8 3.4v3.4h-3.4M5.2 18.6v-3.4h3.4" stroke={c} strokeWidth={2.2} fill="none" strokeLinecap="round" strokeLinejoin="round" /></>),
-  time:   (c) => (<><Circle cx={11} cy={12} r={7.5} stroke={c} strokeWidth={2.2} fill="none" /><Path d="M11 8v4l2.5 2" stroke={c} strokeWidth={2.2} strokeLinecap="round" fill="none" /></>),
-  effort: (c) => (<><Path d="M4 15a7 7 0 0 1 14 0" stroke={c} strokeWidth={2.2} strokeLinecap="round" fill="none" /><Path d="M11 15l4-5" stroke={c} strokeWidth={2.2} strokeLinecap="round" /></>),
-  none:   (c) => <Path d="M5 11h12" stroke={c} strokeWidth={2.6} strokeLinecap="round" />,
+  // Mancuerna: barra, un disco grande y un tope por lado.
+  weight: (c) => (<>
+    <Path d="M8.5 12h7" stroke={c} strokeWidth={SW} strokeLinecap="round" />
+    <Rect x={5} y={6.5} width={3.5} height={11} rx={1.2} stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.3} />
+    <Rect x={15.5} y={6.5} width={3.5} height={11} rx={1.2} stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.3} />
+    <Path d="M2.5 9.5v5M21.5 9.5v5" stroke={c} strokeWidth={SW} strokeLinecap="round" />
+  </>),
+  // Ayuda: la barra de dominadas, el contrapeso y la flecha que baja la ayuda.
+  assist: (c) => (<>
+    <Path d="M3 4.5h18" stroke={c} strokeWidth={SW} strokeLinecap="round" />
+    <Rect x={9} y={7.5} width={6} height={4} rx={1.2} fill={c} fillOpacity={0.3} stroke={c} strokeWidth={SW} />
+    <Path d="M12 11.5v8M8.5 16l3.5 3.5 3.5-3.5" stroke={c} strokeWidth={SW} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  </>),
+  // Reps: «×10».
+  reps: (c) => (<>
+    <Path d="M2.5 9.5l5 5M7.5 9.5l-5 5" stroke={c} strokeWidth={SW} strokeLinecap="round" />
+    <Path d="M10.5 8.6l2.3-1.6v10" stroke={c} strokeWidth={SW} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <Ellipse cx={18} cy={12} rx={3} ry={5} stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.3} />
+  </>),
+  // Tiempo: cronómetro con su corona y el botón lateral.
+  time: (c) => (<>
+    <Circle cx={12} cy={13.5} r={7.5} stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.15} />
+    <Path d="M10 3h4M12 3v3M18.2 6.8l1.4-1.4" stroke={c} strokeWidth={SW} strokeLinecap="round" />
+    <Path d="M12 9.5v4l2.6 1.6" stroke={c} strokeWidth={SW} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  </>),
+  // Esfuerzo: un cuentarrevoluciones, con marcas, la zona alta y la aguja.
+  effort: (c) => (<>
+    <Path d="M3.5 16.5a8.5 8.5 0 0 1 17 0" stroke={c} strokeWidth={SW} strokeLinecap="round" fill="none" />
+    <Path d="M16.3 9.1a8.5 8.5 0 0 1 4.2 7.4" stroke={c} strokeWidth={3.6} strokeOpacity={0.35} fill="none" />
+    <Path d="M6 16.5h1.2M7.8 10.6l.8.8M12 8.2v1.2" stroke={c} strokeWidth={SW} strokeLinecap="round" />
+    <Path d="M12 16.5l4.2-5" stroke={c} strokeWidth={SW} strokeLinecap="round" />
+    <Circle cx={12} cy={16.5} r={1.9} fill={c} />
+    <Path d="M5 20h14" stroke={c} strokeWidth={SW} strokeLinecap="round" strokeOpacity={0.35} />
+  </>),
+  // Nada: «=», todo igual que la última vez.
+  none: (c) => <Path d="M6 9.5h12M6 14.5h12" stroke={c} strokeWidth={2.2} strokeLinecap="round" />,
 };
 const TILE_ORDER = ['weight', 'reps', 'time', 'effort', 'none'];
 const WEIGHT_CHIPS = [1.25, 2.5, 5];
 const PCT_CHIP = 5;
 const REPS_CHIPS = [1, 2, 3];
 const SECS_CHIPS = [5, 10, 15];
+
+// El relleno de lo elegido, como las fichas de etapa (StageCards) y las pestañas
+// de Inicio: se llena de lima desde la esquina de arriba a la derecha.
+const FILL_MS  = 450;
+const EMPTY_MS = 200;
+
+function useFill(on) {
+  const p = useSharedValue(on ? 1 : 0);
+  useEffect(() => {
+    p.set(withTiming(on ? 1 : 0, { duration: on ? FILL_MS : EMPTY_MS, easing: Easing.out(Easing.cubic) }));
+  }, [on, p]);
+  return p;
+}
+
+/**
+ * Un botón que se rellena al elegirlo. `face(on)` pinta su contenido con los
+ * colores de cada estado; las dos caras se funden mientras entra el lima.
+ * `faceStyle` lleva el relleno y el fondo de reposo.
+ */
+function FillButton({ on, disabled, onPress, style, faceStyle, face, a11yLabel }) {
+  const th = useTheme();
+  const p  = useFill(on);
+  const [r, setR] = useState(0);
+  const circle = useAnimatedStyle(() => ({ transform: [{ scale: p.get() }] }));
+  const offS   = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0, 0.6], [1, 0], 'clamp') }));
+  const onS    = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0.4, 1], [0, 1], 'clamp') }));
+  return (
+    <Pressable
+      onPress={onPress}
+      style={style}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityState={{ selected: on, disabled }}
+    >
+      {({ pressed }) => (
+        <View
+          style={[fillStyles.box, pressed && fillStyles.pressed, disabled && fillStyles.off]}
+          onLayout={(e) => setR(Math.ceil(Math.hypot(e.nativeEvent.layout.width, e.nativeEvent.layout.height)))}
+        >
+          <View style={faceStyle}>
+            <Reanimated.View style={offS}>{face(false)}</Reanimated.View>
+          </View>
+          <Reanimated.View
+            pointerEvents="none"
+            style={[fillStyles.circle, { width: r * 2, height: r * 2, borderRadius: r, right: -r, top: -r, backgroundColor: th.colors.accent }, circle]}
+          />
+          <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, faceStyle, fillStyles.clear, onS]}>{face(true)}</Reanimated.View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+const fillStyles = StyleSheet.create({
+  box:     { overflow: 'hidden', flexGrow: 1 },
+  circle:  { position: 'absolute' },
+  clear:   { backgroundColor: 'transparent' },
+  pressed: { transform: [{ scale: 0.96 }] },
+  off:     { opacity: 0.4 },
+});
+
+/** Las tarjetas de «Cuándo sube» van con borde (no rellenas): el borde se enciende. */
+function WhenCard({ on, disabled, onPress, children }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const p      = useFill(on);
+  const border = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(p.get(), [0, 1], [th.colors.surface, th.colors.accent]),
+  }));
+  return (
+    <Pressable onPress={onPress} disabled={disabled} style={styles.cardSlot} accessibilityRole="button" accessibilityState={{ selected: on, disabled }}>
+      {({ pressed }) => (
+        <Reanimated.View style={[styles.card, border, pressed && fillStyles.pressed, disabled && fillStyles.off]}>
+          {children}
+        </Reanimated.View>
+      )}
+    </Pressable>
+  );
+}
 
 /** «**negrita** y el resto»: la parte que importa de cada frase va en negrita. */
 function Bold({ text, style, boldStyle }) {
@@ -102,14 +215,16 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   const hint = (txt) => <Text style={styles.hint}>{txt}</Text>;
   const chips = (values, isOn, label, onPick) => (
     <View style={styles.chips}>
-      {values.map((v) => {
-        const on = isOn(v);
-        return (
-          <TouchableOpacity key={String(v)} style={[styles.chip, on && styles.chipOn]} onPress={() => onPick(v)} activeOpacity={0.7}>
-            <Text style={[styles.chipText, on && styles.chipTextOn]}>{label(v)}</Text>
-          </TouchableOpacity>
-        );
-      })}
+      {values.map((v) => (
+        <FillButton
+          key={String(v)}
+          on={isOn(v)}
+          onPress={() => onPick(v)}
+          style={styles.chip}
+          faceStyle={styles.chipFace}
+          face={(on) => <Text style={[styles.chipText, on && styles.chipTextOn]}>{label(v)}</Text>}
+        />
+      ))}
     </View>
   );
   const row = (label, control) => (
@@ -125,21 +240,17 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
       ))}
     </View>
   );
-  const whenCard = (id, hit, title, sub, disabled) => {
-    const on = id === 'part' ? prog.when === 'part' : prog.when !== 'part';
-    return (
-      <TouchableOpacity
-        style={[styles.card, on && styles.cardOn, disabled && styles.off]}
-        disabled={disabled}
-        onPress={() => onPatch({ when: id === 'part' ? 'part' : prog.when === 'rpe' ? 'rpe' : 'all_complete' })}
-        activeOpacity={0.7}
-      >
-        {squares(hit)}
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.cardSub}>{sub}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const whenCard = (id, hit, title, sub, disabled) => (
+    <WhenCard
+      on={id === 'part' ? prog.when === 'part' : prog.when !== 'part'}
+      disabled={disabled}
+      onPress={() => onPatch({ when: id === 'part' ? 'part' : prog.when === 'rpe' ? 'rpe' : 'all_complete' })}
+    >
+      {squares(hit)}
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardSub}>{sub}</Text>
+    </WhenCard>
+  );
 
   const effortRir = 10 - prog.targetRpe;
   // Misma regla que el motor: pasado MAX_RELIABLE_REPS no calcula (§2.3).
@@ -162,24 +273,27 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
           {caps(t('exerciseEditor.sheet.up'))}
           <View style={styles.tiles}>
             {tiles.map((id) => {
-              const on = id === tile;
-              const blocked = id === 'effort' && effortBlocked(ctx);
-              const color = on ? th.colors.onAccent : id === 'none' ? th.colors.mutedLight : th.colors.accent;
               const icon = id === 'weight' && assist ? 'assist' : id;
               return (
-                <TouchableOpacity
+                <FillButton
                   key={id}
-                  style={[styles.tile, on && styles.tileOn, blocked && styles.off]}
+                  on={id === tile}
+                  disabled={id === 'effort' && effortBlocked(ctx)}
                   onPress={() => pickTile(id)}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on, disabled: blocked }}
-                >
-                  <Svg width={22} height={22} viewBox="0 0 22 22">{TILE_ICON[icon](color)}</Svg>
-                  <Text style={[styles.tileText, on && styles.tileTextOn]} numberOfLines={1}>
-                    {t(`exerciseEditor.sheet.tiles.${icon}`)}
-                  </Text>
-                </TouchableOpacity>
+                  style={styles.tile}
+                  faceStyle={styles.tileFace}
+                  a11yLabel={t(`exerciseEditor.sheet.tiles.${icon}`)}
+                  face={(on) => (
+                    <>
+                      <Svg width={24} height={24} viewBox="0 0 24 24">
+                        {TILE_ICON[icon](on ? th.colors.onAccent : id === 'none' ? th.colors.mutedLight : th.colors.accent)}
+                      </Svg>
+                      <Text style={[styles.tileText, on && styles.tileTextOn]} numberOfLines={1}>
+                        {t(`exerciseEditor.sheet.tiles.${icon}`)}
+                      </Text>
+                    </>
+                  )}
+                />
               );
             })}
           </View>
@@ -321,21 +435,21 @@ const makeStyles = (th) => StyleSheet.create({
   name: { ...textStyles.bodyStrong, color: th.colors.text },
   meta: { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs, fontVariant: ['tabular-nums'] },
   // Misma tipografía que las etiquetas de sección del editor (`secLabel`).
-  caps: { ...textStyles.caps, color: th.colors.muted, marginBottom: spacing.sm2 },
+  caps: { ...textStyles.caps, color: th.colors.mutedLight, marginBottom: spacing.sm2 },
   hint: { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm, lineHeight: lh(textStyles.label.fontSize, LINE.row) },
   // Aviso: el naranja de `optRowWarn` (EditorRows).
   warn: { color: th.colors.orange },
   off: { opacity: 0.4 },
   gap: { marginTop: spacing.sm2 },
 
-  // Tarjetas de carácter: la elegida se rellena de lima con el texto en negro.
+  // Tarjetas de carácter sobre la hoja (`surface`; nada va en `bg` dentro de una
+  // hoja, DragSheet): la elegida se rellena de lima con el texto en negro.
   tiles: { flexDirection: 'row', gap: spacing.sm },
-  tile: {
-    flex: 1, alignItems: 'center', gap: spacing.xs2,
-    backgroundColor: th.colors.bg, borderRadius: th.radius.md,
+  tile: { flex: 1, borderRadius: th.radius.md, overflow: 'hidden' },
+  tileFace: {
+    alignItems: 'center', justifyContent: 'center', gap: spacing.xs2, backgroundColor: th.colors.surface,
     paddingTop: spacing.md, paddingBottom: spacing.sm2, paddingHorizontal: spacing.xs,
   },
-  tileOn: { backgroundColor: th.colors.accent },
   tileText: { ...textStyles.labelStrong, color: th.colors.mutedLight },
   tileTextOn: { color: th.colors.onAccent },
   say: { ...textStyles.body, color: th.colors.mutedLight, marginTop: spacing.md, lineHeight: lh(textStyles.body.fontSize, LINE.row) },
@@ -343,11 +457,11 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Cuándo sube: tarjetas grandes con borde (no rellenas), un cuadradito por serie.
   cards: { flexDirection: 'row', gap: spacing.sm2 },
+  cardSlot: { flex: 1 },
   card: {
-    flex: 1, backgroundColor: th.colors.bg, borderRadius: th.radius.md,
-    padding: spacing.md, borderWidth: 1, borderColor: 'transparent',
+    flex: 1, backgroundColor: th.colors.surface, borderRadius: th.radius.md,
+    padding: spacing.md, borderWidth: 1.5,
   },
-  cardOn: { borderColor: th.colors.accent },
   squares: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs2, marginBottom: spacing.md },
   square: { width: 18, height: 18, borderRadius: th.radius.xs },
   squareHit: { backgroundColor: th.colors.accent },
@@ -358,18 +472,19 @@ const makeStyles = (th) => StyleSheet.create({
   // Cuánto sube: una fila con los chips del salto.
   row: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm2,
-    backgroundColor: th.colors.bg, borderRadius: th.radius.md,
+    backgroundColor: th.colors.surface, borderRadius: th.radius.md,
     paddingVertical: spacing.sm2, paddingRight: spacing.sm2, paddingLeft: spacing.md,
   },
   rowLabel: { ...textStyles.bodyStrong, color: th.colors.mutedLight, flexShrink: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing.xs2 },
-  chip: { backgroundColor: th.colors.surface2, borderRadius: th.radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  chipOn: { backgroundColor: th.colors.accent },
+  // Los chips son botones secundarios: `surface2` sobre la fila `surface`.
+  chip: { borderRadius: th.radius.sm, overflow: 'hidden' },
+  chipFace: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, alignItems: 'center', backgroundColor: th.colors.surface2 },
   chipText: { ...textStyles.labelStrong, color: th.colors.mutedLight },
   chipTextOn: { color: th.colors.onAccent },
 
   // Avanzado, plegado.
-  adv: { backgroundColor: th.colors.bg, borderRadius: th.radius.md },
+  adv: { backgroundColor: th.colors.surface, borderRadius: th.radius.md },
   advHead: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.md, paddingHorizontal: spacing.md },
   advTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   advChevron: { ...textStyles.bodyStrong, color: th.colors.muted },
