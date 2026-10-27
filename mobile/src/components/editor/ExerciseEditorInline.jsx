@@ -883,6 +883,7 @@ export default function ExerciseEditorInline({
         title={t('exerciseEditor.sectionProgression')}
         // Alto fijo: elegir «Qué sube» abre y cierra bloques y la hoja no debe saltar.
         tall
+        doneLabel={t('common.accept')}
       >
         <ProgressionSheet
           name={def?.name ?? exConfig.exerciseId}

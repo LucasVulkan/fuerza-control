@@ -18,7 +18,7 @@ import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor,
 } from 'react-native-reanimated';
-import Svg, { Path, Circle, Rect, Ellipse } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { MAX_RELIABLE_REPS } from '../../utils/oneRm';
@@ -46,10 +46,13 @@ const TILE_ICON = {
   </>),
   // Ayuda: la barra de dominadas y la flecha que baja la ayuda.
   assist: (c) => <Path d="M4 5h16M12 8.5v11M7.5 15l4.5 4.5 4.5-4.5" {...line(c)} />,
-  // Reps: «×10».
+  // Reps: «×10», como en una tipografía: la × pequeña apoyada en la línea de
+  // base (y = 17) y los números de caja alta, el 1 recto con su asta y el 0 de
+  // lados rectos.
   reps: (c) => (<>
-    <Path d="M3 9.5l5 5M8 9.5l-5 5M11 9l2.5-2v10" {...line(c)} />
-    <Ellipse cx={18.2} cy={12} rx={2.8} ry={5} {...line(c)} />
+    <Path d="M2.5 13l4 4M6.5 13l-4 4" {...line(c)} />
+    <Path d="M10 9l2.8-2v10" {...line(c, { strokeLinecap: 'butt', strokeLinejoin: 'miter' })} />
+    <Rect x={15.5} y={7} width={6} height={10} rx={3} {...line(c)} />
   </>),
   // Tiempo: cronómetro con su corona.
   time: (c) => (<>
@@ -198,6 +201,12 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   const floorTxt = isTime ? `${minTime} s` : repsTxt(minReps);
   const majority = Math.floor(sets / 2) + 1;
 
+  // El escalón del ejercicio: el salto más pequeño que permite su material. A él
+  // se redondea el peso cuando sube un % y cuando baja un 10 %.
+  const stepField = (
+    <StepField horizontal label={t('exerciseEditor.sheet.step')} unit={weightLabel}
+      value={prog.step ?? libStep} onChange={(v) => onPatch({ step: v })} min={0.25} max={10} step={0.25} />
+  );
   const caps = (txt) => <Text style={styles.caps}>{txt.toUpperCase()}</Text>;
   const hint = (txt) => <Text style={styles.hint}>{txt}</Text>;
   // Cuánto sube: las opciones como botones en fila, sin tarjeta alrededor.
@@ -302,9 +311,18 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
             {caps(t(assist ? 'exerciseEditor.sheet.howMuchAssist' : 'exerciseEditor.sheet.howMuchEach'))}
             {options(
               [...WEIGHT_CHIPS, 'pct'],
-              (v) => (v === 'pct' ? prog.incType === 'pct' && prog.incPct === PCT_CHIP : prog.incType === 'fixed' && prog.incValue === v),
-              (v) => (v === 'pct' ? `${PCT_CHIP} %` : `${v} ${weightLabel}`),
-              (v) => onPatch(v === 'pct' ? { incType: 'pct', incPct: PCT_CHIP } : { incType: 'fixed', incValue: v }),
+              (v) => (v === 'pct' ? prog.incType === 'pct' : prog.incType === 'fixed' && prog.incValue === v),
+              (v) => (v === 'pct' ? `${prog.incType === 'pct' ? prog.incPct : PCT_CHIP} %` : `${v} ${weightLabel}`),
+              (v) => onPatch(v === 'pct' ? { incType: 'pct', incPct: prog.incType === 'pct' ? prog.incPct : PCT_CHIP } : { incType: 'fixed', incValue: v }),
+            )}
+            {/* Con porcentaje: cuánto, y a qué se redondea el peso que sale. */}
+            {prog.incType === 'pct' && (
+              <View style={styles.pctBox}>
+                <StepField horizontal unit="%" label={t('exerciseEditor.sheet.pctLabel')}
+                  value={prog.incPct} onChange={(v) => onPatch({ incPct: v })} min={1} max={50} />
+                {stepField}
+                {hint(t('exerciseEditor.sheet.pctHint', { pct: prog.incPct, step: prog.step ?? libStep, unit: weightLabel }))}
+              </View>
             )}
           </View>
         )}
@@ -367,8 +385,13 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
                       {hint(t(prog.down === 'never' ? 'exerciseEditor.sheet.downNeverHint'
                         : assist ? 'exerciseEditor.sheet.downFailHintAssist' : 'exerciseEditor.sheet.downFailHint'))}
                     </View>
-                    <StepField horizontal label={t('exerciseEditor.sheet.step')} unit={weightLabel}
-                      value={prog.step ?? libStep} onChange={(v) => onPatch({ step: v })} min={0.25} max={10} step={0.25} />
+                    {/* Con porcentaje el escalón ya está arriba, junto al %. */}
+                    {prog.incType !== 'pct' && (
+                      <View>
+                        {stepField}
+                        {hint(t('exerciseEditor.sheet.stepHint', { step: prog.step ?? libStep, unit: weightLabel }))}
+                      </View>
+                    )}
                   </>
                 ) : (
                   // Por esfuerzo: el escalón (o Exacto) y cuándo sube, que antes eran pasos.
@@ -459,6 +482,8 @@ const makeStyles = (th) => StyleSheet.create({
   optionFace: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.lg, paddingHorizontal: spacing.xs },
   optionText: { ...textStyles.bodyStrong, color: th.colors.text },
   optionTextOn: { color: th.colors.onAccent },
+
+  pctBox: { marginTop: spacing.sm2, gap: spacing.sm2 },
 
   // Avanzado, plegado.
   adv: { backgroundColor: th.colors.surface, borderRadius: th.radius.md },

@@ -477,6 +477,7 @@ export default function CustomExerciseScreen({ navigation, route }) {
         title={t('exerciseEditor.sectionProgression')}
         // Alto fijo: elegir «Qué sube» abre y cierra bloques y la hoja no debe saltar.
         tall
+        doneLabel={t('common.accept')}
       >
         <ProgressionSheet
           name={name.trim()}
