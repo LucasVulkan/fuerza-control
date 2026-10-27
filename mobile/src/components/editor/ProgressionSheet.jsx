@@ -184,10 +184,10 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
     ? (assist ? 'assist' : isTime ? 'weightTime' : repsFixed ? 'weightFixed' : 'weight')
     : tile;
 
-  // Bajo el nombre, su volumen como meta (en gris; se cambia en Volumen).
+  // Bajo el nombre, su volumen como meta (en gris; se cambia en Volumen). Siempre,
+  // también en Nada: si la línea desapareciera, todo lo de debajo daría un salto.
   const meta = prog.up === 'reps' ? t('exerciseEditor.sheet.metaReps', { sets, reps: minReps })
     : prog.up === 'time' ? t('exerciseEditor.sheet.metaSecs', { sets, secs: minTime })
-    : prog.up === 'none' ? ''
     : isTime ? t('exerciseEditor.sheet.metaTime', { sets, min: minTime, max: maxTime })
     : repsFixed || effort ? t('exerciseEditor.sheet.metaFixed', { sets, reps: minReps })
     : t('exerciseEditor.sheet.metaRange', { sets, min: minReps, max: maxReps });
