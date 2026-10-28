@@ -390,7 +390,17 @@ siguen siendo solo del envío.
 están guardados en tu cuenta» o, si queda algo pendiente sin red, «Hay cambios
 de N clientes por guardar; se guardarán al volver la conexión».
 
-**Cuándo se guarda — DECIDIR (D1, §11):**
+**Cuando no se puede guardar** (decidido por el usuario el 28-oct-2026). Lo
+que falla al guardar (sin red, servidor caído, error) **no se pierde ni se
+olvida: queda en la cola de cosas por subir** y se reintenta solo hasta que
+entre: al volver la red, al volver a primer plano, al arrancar y con espera
+creciente (como la cola de I04-03). La «cola» es la firma: un cliente está en
+ella mientras `saveSig !== savedSig`, así que sobrevive a cerrar la app y no se
+puede desincronizar. Si un error no es de red y se repite, se registra para
+«Enviar informe» (N-16) y se sigue reintentando con espera; nunca se descarta
+en silencio. Se ve en Mi cuenta con la línea de arriba.
+
+**Cuándo se guarda — decidido (D1, §11): A, continuo.**
 
 - **A · Continuo (recomendada).** Un suscriptor del store, como el del envío
   silencioso de hoy: tras un cambio en `clients`, `programs`, `sessionTemplates`
@@ -821,9 +831,13 @@ C10-01, pero de una en una con las demás.
 - [ ] En el segundo móvil, borrar un cliente sin app y no deshacer; abrir la app
   en el primero: también ha desaparecido.
 
-## 11. Decisiones abiertas
+## 11. Decisiones
 
-Solo dos, y las dos con la recomendada primero.
+**Cerradas el 28-oct-2026 por el usuario:** D1 = **A, continuo** («los cambios
+han de subirse»), y lo que no se pueda subir va a la cola de cosas por subir
+(§6, «Cuando no se puede guardar»). D2 = **A, no se traen**: se quedan como «de
+otra cuenta», solo lectura. Las reglas N-18…N-20 pasan al mapa al aprobar la
+spec. Abajo, las opciones tal como se plantearon.
 
 **D1 · Cuándo se guarda en la cuenta** (§6).
 - **A · Continuo, a los pocos segundos de cada cambio (recomendada).** Gana: la
