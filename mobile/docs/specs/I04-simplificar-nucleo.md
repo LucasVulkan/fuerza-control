@@ -13,7 +13,7 @@
 > Fase I04-09 · pendiente · El programa del cliente conectado se aplica solo · §11
 > Fase I04-10 · pendiente · Deshacer al borrar un cliente · §11
 > Fase I04-11 · pendiente · Acciones de cuenta y conexión desactivadas sin red · §11
-> Fase I04-12 · pendiente · «Volver a sincronizar» y registro de errores · §11
+> Fase I04-12 · pendiente · «Enviar informe»: errores guardados y nota, a Supabase · §11
 >
 > Estado: **spec escrita, sin empezar** (28-oct-2026). Sale de una pregunta del
 > usuario tras la revisión I03: cada pasada de búsqueda encuentra fallos nuevos,
@@ -86,7 +86,7 @@ estaban aquí (D1-D8) y de las fases que las implementan:
 | D5 cuenta sin red | N-03 (lo que cambia quién es quién necesita red) | I04-11 |
 | D6 varios móviles | N-10 (un móvil de trabajo) | I04-03 |
 | D7 estado de la ficha | N-15 (después de la release) | I04-08 |
-| D8 uso real | N-16 («Volver a sincronizar» + registro de errores) | I04-12 |
+| D8 uso real | N-16 («Enviar informe») | I04-12 |
 | — | N-07 (el programa del entrenador se aplica solo) | I04-09 |
 | — | N-08 (un hueco, una ficha; el servidor no crea fichas) | I04-02, I04-04 |
 | — | N-12 (congelado, también para la cola) | I04-03 |
@@ -223,9 +223,11 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
   entrar, recuperar, pasar a Google o Apple, borrar la cuenta, invitar,
   reemitir, cancelar la invitación, canjear un código y pasar a la app se
   desactivan con «Necesitas conexión para esto».
-- **I04-12 · N-16.** «Volver a sincronizar» en Mi cuenta: refresco de huecos,
-  PRO a la tienda y, en el lado cliente, programa desde el hueco. Sin borrar
-  nada. Y el registro de errores de la beta, si se decide la dependencia.
+- **I04-12 · N-16.** «Enviar informe»: un registro de errores en el móvil que
+  sobrevive a cerrar la app (tamaño fijo), una pantalla con nota y vista previa
+  de lo que se envía, y una tabla `bug_reports` en Supabase que solo admite
+  insertar (con tamaño máximo), también sin cuenta. Sin datos personales.
+  «Volver a sincronizar» queda descartado (ver el mapa, N-16).
 
 ## Fases
 
@@ -242,9 +244,12 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
 | I04-09 | Programa del entrenador se aplica solo (N-07) | I04-01 | 🟡 | pendiente |
 | I04-10 | Deshacer al borrar (N-13) | I04-01 | 🟢 | pendiente |
 | I04-11 | Cuenta y conexión sin red, desactivadas (N-03) | I04-01 | 🟢 | pendiente |
-| I04-12 | «Volver a sincronizar» y registro de errores (N-16) | I04-01 | 🟡 | pendiente |
+| I04-12 | «Enviar informe» (N-16) | — | 🟡 | pendiente |
 
-Orden: I04-01 primero. Después, de una en una por tocar el núcleo: I04-04 (la
-más pequeña), I04-03, I04-02, I04-05; I04-06 puede ir en paralelo porque es de
-pantallas. Al cerrar cada una, sus fallos E-xx se dan de alta como resueltos en
+Orden (28-oct-2026): N-15 y N-17 (clientes de la cuenta, estado en un valor) van
+**antes de la release** en una spec propia que se planifica primero, y
+absorben I04-02 (restaurar) e I04-08 (estado de la ficha). Lo que no depende del
+modelo de cliente va antes, de una en una por tocar el núcleo: I04-04 (la más
+pequeña), I04-05 (pagos), I04-03 (cola). I04-06 e I04-12 pueden ir en paralelo
+porque son de pantallas y de una tabla nueva. Al cerrar cada una, sus fallos E-xx se dan de alta como resueltos en
 [auditoria-tecnica.md](auditoria-tecnica.md).

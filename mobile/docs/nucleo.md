@@ -196,9 +196,15 @@ general el 28-oct-2026; el detalle de clientes depende de N-17.)*
   plantillas · mi historial · ejercicios y ajustes · clientes.
 - **Cada parte reemplaza** lo que hay de esa parte. No hay mezclas. Lo que se
   hizo después se pierde, y se avisa antes.
-- **El historial es la única excepción: se suma.** Nunca quita, no duplica y
-  respeta lo borrado después. Es seguro por construcción: cada entreno tiene su
-  id y no cambia (R-C3). Si un día da problemas, pasa a reemplazar como el resto.
+- **Dos excepciones que se suman**, porque cada elemento tiene su id y sumar
+  no puede pisar nada:
+  - **El historial.** Nunca quita, no duplica y respeta lo borrado después
+    (R-C3).
+  - **Las plantillas.** Se traen las de la copia sin borrar las propias; si una
+    plantilla con el mismo id está en los dos sitios, gana la del móvil. Pasarse
+    del límite gratis al traerlas se acepta, como al caducar el PRO (R-E1).
+
+  Si un día una de las dos da problemas, pasa a reemplazar como el resto.
 - **Nunca viaja en una copia:** estado de conexión, envíos en cola, avisos de
   «sin enviar», PRO, pago pendiente ni elección de clientes activos.
 - **Clientes, sin cuenta:** la copia es la única forma de salvarlos, así que la
@@ -272,6 +278,13 @@ sus clientes**, con app o sin ella, viven en la cuenta: recuperar la cuenta en
 un móvil nuevo los trae todos, con su ficha, su programa y su historial. La
 cuenta es la copia definitiva de los clientes; la copia de Drive solo los salva
 cuando no hay cuenta. Para que eso sea verdad:
+- **Cada cliente tiene un id para siempre.** Hoy cada ficha tiene su id desde
+  que se crea (`client_…`, `useStore.js` `createClient`), pero al recuperar
+  clientes del servidor se les da **uno nuevo** (`refreshTrainerSlots`), aunque
+  el hueco guarda el original (`local_id`, E35). Por eso una copia vieja no
+  reconoce a su propio cliente (E78). Con N-17, el id de la ficha es el mismo en
+  el móvil, en el hueco y en las copias, y recuperar usa ese. El nombre nunca
+  identifica a nadie.
 - **Cada cliente tiene su hueco desde que se crea.** «Sin app» pasa a ser un
   hueco sin código; invitar es darle un código; conectado, con alguien sentado.
   Ficha y hueco van siempre uno a uno, lo que simplifica §4.1.
@@ -287,9 +300,11 @@ cuando no hay cuenta. Para que eso sea verdad:
   puede leer su fila entera de `trainer_clients`.
 - **El plan gratis cuenta «con app» por el código**, no por tener hueco: hoy
   `isConnected` mira `syncSlotId`, y con N-17 todos lo tendrían.
-- **DECIDIR:** si se hace antes o después de la primera release, y si «guardar
-  en la cuenta» es continuo (en cola, como un envío) o en los mismos momentos que
-  la copia de Drive.
+- **Antes de la primera release, junto con N-15** (decidido el 28-oct-2026: la
+  release de Android espera al periodo de prueba externa). Es un cambio grande:
+  se planifica en una spec propia antes de tocar código.
+- **DECIDIR en esa spec:** si «guardar en la cuenta» es continuo (en cola, como
+  un envío) o en los mismos momentos que la copia de Drive.
 
 **N-12 · Congelado es solo lectura, también para la cola.** Antes de enviar nada
 se mira si el cliente está congelado, y al arrancar se confirma el PRO antes de
@@ -307,12 +322,25 @@ el resto dice el texto de la pantalla. `err.message` va solo al registro.
 
 **N-15 · El estado de la ficha es un solo valor** (§4.1), con los cambios
 permitidos escritos en un solo sitio. *Quita:* las cien combinaciones. Es la
-que más simplifica a la larga y la más grande. **DECIDIR** cuándo.
-- *Recomendada:* después de la primera release.
+que más simplifica a la larga y la más grande. **Antes de la primera release,
+junto con N-17** (28-oct-2026): las dos reescriben los estados del cliente.
 
-**N-16 · Lo que no se puede prevenir se puede reparar.** «Volver a sincronizar»
-en Mi cuenta aplica N-05 a mano sin perder nada; y un registro de errores en la
-beta cerrada (Sentry o similar, dependencia nueva). **DECIDIR** (recomendada).
+**N-16 · Lo que no se puede prevenir se puede contar.** *(Revisada el
+28-oct-2026.)* Sin botón «Volver a sincronizar»: lo que haría ya ocurre solo al
+abrir la app y al abrir Clientes, y el PRO ya tiene «Restaurar compras». En su
+lugar, **«Enviar informe»**:
+- La app guarda en el móvil los últimos errores (los de red, servidor, tienda y
+  los fallos de pantalla), **también de sesiones anteriores**: sobreviven a
+  cerrar la app. Tamaño fijo; los más viejos salen.
+- «Enviar informe» (en Mi cuenta y en Ajustes) deja escribir una nota con lo
+  que ha pasado, enseña qué se va a enviar, y lo sube a una tabla propia de
+  Supabase con la versión de la app y el móvil. Sin cuenta, también.
+- Nada personal en el informe: ni nombres de clientes ni contenido de
+  programas; solo códigos de error, pantallas y momentos.
+- Es nuestra base de datos de fallos. No ve los cierres de la parte nativa (eso
+  sería Sentry); se añade si hace falta.
+
+**Firme** en el qué; el detalle va en su spec.
 
 ## 8. Lo que la app no hace, a propósito
 
