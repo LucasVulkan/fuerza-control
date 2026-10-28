@@ -22,7 +22,7 @@
 > los trece desaparecen por diseño (§2) y el resto se arregla dentro de estas
 > fases. **I04-01 va primero y es del usuario**: el resto depende de lo que
 > decida. Las decisiones viven en el mapa del núcleo,
-> [`docs/nucleo.md`](../nucleo.md) (reglas N-01…N-16), que manda sobre esta
+> [`docs/nucleo.md`](../nucleo.md) (reglas N-01…N-17), que manda sobre esta
 > spec. El informe y los tests de I03 están en las ramas
 > `claude/serene-mahavira-ac8868` (59f4262) y `claude/adversaria-i03-ebe0b7`,
 > sin fusionar.
@@ -73,7 +73,7 @@ sitios que se crean la verdad**. Lo que no puede pasar no hace falta probarlo.
 ## 3. I04-01 — Decisiones del usuario
 
 Las decisiones ya no se plantean aquí: están en el **mapa del núcleo**,
-[`docs/nucleo.md`](../nucleo.md) §7, como reglas N-01…N-16 (las marcadas
+[`docs/nucleo.md`](../nucleo.md) §7, como reglas N-01…N-17 (las marcadas
 DECIDIR esperan al usuario). Este es el reparto de las decisiones que antes
 estaban aquí (D1-D8) y de las fases que las implementan:
 
@@ -185,7 +185,7 @@ grep en el test de integridad: ningún `err.message` / `err?.message` dentro de
 ## 9. I04-07 — Cada regla de I02 con su test de escenario
 
 El contrato ya existe: la tabla de reglas de
-[I02](I02-conexion-pagos-pro.md) (R-A…R-F) y las reglas N-01…N-16 del
+[I02](I02-conexion-pagos-pro.md) (R-A…R-F) y las reglas N-01…N-17 del
 [mapa del núcleo](../nucleo.md). Esta fase:
 
 - Añade a la tabla una columna **Test**: el test de escenario (en los

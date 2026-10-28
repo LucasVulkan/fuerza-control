@@ -188,19 +188,30 @@ la invitación, canjear un código y pasar a la app: **sin red, el botón está
 desactivado** y dice «Necesitas conexión para esto». Lo que es del móvil
 funciona sin red y el servidor se entera después: entrenar, editar, borrar un
 cliente, desconectarse (R-B9) y enviar (queda en cola). *Quita:* los estados a
-medias de cuenta y conexión, y media E77. **DECIDIR** (recomendada).
+medias de cuenta y conexión, y media E77. **Decidido el 28-oct-2026.**
 
-**N-04 · Restaurar reemplaza, nunca mezcla.** Restaurar una copia completa (de
-Drive o de archivo) deja el móvil **exactamente como en la copia**. Lo que se
-hizo después se pierde, y se avisa antes con lo que se va a perder (envíos en
-cola, entrenos posteriores). Después se aplica N-05 en el acto, así que con
-clientes con app necesita red. Importar **un programa** sigue siendo contenido y
-se puede siempre. *Quita:* E73, E78 y E79, y todos los cruces futuros de
-restaurar con cualquier cosa, porque no hay nada con que cruzarse.
-**DECIDIR.**
-- *Recomendada:* reemplazar.
-- *Alternativa:* mezclar, con las reglas de emparejar por hueco de I04 §4. Es
-  más flexible y mantiene vivo el cruce.
+**N-04 · Restaurar: lo que viene en la copia es lo que hay.** *(Decidido en lo
+general el 28-oct-2026; el detalle de clientes depende de N-17.)*
+- **Por partes.** Al restaurar se eligen las partes: mis programas y
+  plantillas · mi historial · ejercicios y ajustes · clientes.
+- **Cada parte reemplaza** lo que hay de esa parte. No hay mezclas. Lo que se
+  hizo después se pierde, y se avisa antes.
+- **El historial es la única excepción: se suma.** Nunca quita, no duplica y
+  respeta lo borrado después. Es seguro por construcción: cada entreno tiene su
+  id y no cambia (R-C3). Si un día da problemas, pasa a reemplazar como el resto.
+- **Nunca viaja en una copia:** estado de conexión, envíos en cola, avisos de
+  «sin enviar», PRO, pago pendiente ni elección de clientes activos.
+- **Clientes, sin cuenta:** la copia es la única forma de salvarlos, así que la
+  parte de clientes **reemplaza** a los del móvil, con sus programas e
+  historial.
+- **Clientes, con cuenta:** **la cuenta manda** (N-17). La copia **solo añade**
+  los clientes que la cuenta no ha conocido nunca, que al entrar se suben a la
+  cuenta. Los que la cuenta conoce (vivos o borrados) no se tocan.
+
+Después se aplica N-05 en el acto, así que con cuenta necesita red. Importar
+**un programa** suelto sigue siendo contenido y se puede siempre. *Quita:* E73,
+E78 y E79 y los cruces futuros de restaurar, porque no hay nada con que
+mezclarse. **Firme.**
 
 **N-05 · Tras restaurar, entrar o reinstalar, se vuelve a preguntar a los
 dueños.** Los enlaces de los clientes, al servidor (refresco); el PRO, a la
@@ -212,21 +223,21 @@ E79 y el cruce 3. **Firme.**
 únicamente lo que el entrenador envió: «↑ Enviar», «Enviar todo», abrir una
 etapa, y el programa de entrada de un invitado. Si falla por red, entra en la
 **cola** (un dato propio, guardado) y se reintenta solo, también con espera por
-si la red no avisa. «Cambios sin enviar» es un **aviso**, no una cola. Todo
-envío pasa por **un solo camino**. *Quita:* E72, E80, E83, E84 y el móvil viejo
-que envía lo suyo. **DECIDIR.**
-- *Recomendada:* lo de arriba.
-- *Alternativa:* que todo cambio salga solo; entonces sobran el botón y el
-  aviso, y un programa a medias puede llegar al cliente.
+si la red no avisa. Todo envío pasa por **un solo camino**. Son dos cosas
+distintas y se ven distintas:
+- **Pendiente de decidir** («Cambios sin enviar»): esto se modificó o se creó y
+  espera a que el entrenador decida enviarlo. Es un aviso; no sale solo nunca.
+- **En cola** («Se enviará al volver la conexión»): el entrenador ya decidió
+  enviarlo y no pudo salir. Sale solo.
 
-**N-07 · El programa del cliente conectado es el que manda su entrenador.** Un
-programa nuevo se aplica solo al empezar la siguiente sesión (nunca a mitad de
-un entreno), respetando su progreso (R-C5), y se le avisa de qué ha cambiado. No
-hay «descartar». *Quita:* el cruce 15 y el estado «programa por aplicar».
-**DECIDIR.**
-- *Recomendada:* aplicar solo.
-- *Alternativa:* mantener «aplicar», pero sin «descartar»: el aviso vuelve hasta
-  que lo aplique, y el entrenador ve si ya lo aplicó.
+*Quita:* E72, E80, E83, E84 y el móvil viejo que envía lo suyo. **Decidido el
+28-oct-2026.**
+
+**N-07 · El programa del cliente conectado es el que manda su entrenador.** El
+cliente recibe el aviso y los cambios, sin opción de descartarlos. Si llega a
+mitad de un entreno, se aplica al terminarlo, nunca en medio. Se respeta su
+progreso (R-C5). *Quita:* el cruce 15 y el estado «programa por aplicar».
+**Decidido el 28-oct-2026.**
 
 **N-08 · Un hueco, una persona, una ficha.** Nunca hay dos fichas con el mismo
 hueco, venga de donde venga. Lo que vuelve del servidor solo **actualiza**
@@ -238,19 +249,47 @@ refresco que recupera clientes del servidor. Una sola función lo garantiza.
 entrar. Al salir se vacía lo que es de esa cuenta: la cola, el pago pendiente y
 la sesión. Las fichas con app quedan **de otra cuenta**: se ven y no se envían, y
 vuelven si se vuelve a esa cuenta. No se borra nada del móvil. *Quita:* E82 y
-lo de una cuenta ejecutado con otra. **Firme.**
+lo de una cuenta ejecutado con otra. **Firme** (aceptado el 28-oct-2026; con
+N-17, también los clientes sin app de esa cuenta pasan a «de otra cuenta»).
 
 **N-10 · Un móvil de trabajo por entrenador.** Los demás móviles de la misma
 cuenta solo reciben borrados (R-B10) y, con N-06, no envían nada solo. Lo que el
 entrenador haga en dos móviles a la vez no se junta, y se dice en la ayuda.
-**Firme.**
+Varios móviles sirven para **cambiar de móvil y recuperar lo que tenías**, no
+para usarlos a la vez. **Firme** (confirmado el 28-oct-2026).
 
 **N-11 · Un pago a la vez.** Con un pago pendiente, el paywall no ofrece comprar:
 dice «Tu pago está pendiente de confirmar; no hace falta volver a pagar» y
 ofrece «Restaurar compras». El pendiente es de una cuenta, se guarda, y se borra
 al llegar el PRO, al salir de la cuenta o al restaurar sin encontrar nada.
 «Comprado en otra cuenta de la tienda» se dice así, con «Entendido». *Quita:*
-E75, E81 y E82; el cobro doble desde la app. **Firme.**
+E75, E81 y E82; el cobro doble desde la app. **Firme** (confirmado el
+28-oct-2026: en pagos, todo lo que quite variantes).
+
+**N-17 · Con cuenta, los clientes son de la cuenta.** *(Propuesta del usuario,
+28-oct-2026; el cómo está por decidir.)* Si el entrenador tiene cuenta, **todos
+sus clientes**, con app o sin ella, viven en la cuenta: recuperar la cuenta en
+un móvil nuevo los trae todos, con su ficha, su programa y su historial. La
+cuenta es la copia definitiva de los clientes; la copia de Drive solo los salva
+cuando no hay cuenta. Para que eso sea verdad:
+- **Cada cliente tiene su hueco desde que se crea.** «Sin app» pasa a ser un
+  hueco sin código; invitar es darle un código; conectado, con alguien sentado.
+  Ficha y hueco van siempre uno a uno, lo que simplifica §4.1.
+- **Los clientes de antes de la cuenta** suben a la cuenta al crearla (o al
+  entrar en ella desde un móvil con clientes sueltos), con su programa e
+  historial. Es un paso visible: «Subiendo tus N clientes a tu cuenta».
+- **Guardar no es enviar.** Para un cliente sin app, guardar su ficha, su
+  programa y lo que el entrenador le apunta en la cuenta es copia de seguridad:
+  sale solo, porque nadie lo recibe. Para uno con app, el programa sigue la
+  regla N-06: solo llega al cliente lo que el entrenador envía.
+- **Lo privado del entrenador no lo puede leer el cliente.** Notas, cobros,
+  peso y etiquetas van en una tabla aparte, solo del entrenador: hoy el cliente
+  puede leer su fila entera de `trainer_clients`.
+- **El plan gratis cuenta «con app» por el código**, no por tener hueco: hoy
+  `isConnected` mira `syncSlotId`, y con N-17 todos lo tendrían.
+- **DECIDIR:** si se hace antes o después de la primera release, y si «guardar
+  en la cuenta» es continuo (en cola, como un envío) o en los mismos momentos que
+  la copia de Drive.
 
 **N-12 · Congelado es solo lectura, también para la cola.** Antes de enviar nada
 se mira si el cliente está congelado, y al arrancar se confirma el PRO antes de
