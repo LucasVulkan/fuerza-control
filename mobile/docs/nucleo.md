@@ -305,6 +305,8 @@ cuando no hay cuenta. Para que eso sea verdad:
   se planifica en una spec propia antes de tocar código.
 - **DECIDIR en esa spec:** si «guardar en la cuenta» es continuo (en cola, como
   un envío) o en los mismos momentos que la copia de Drive.
+- **Planificada en [C10](specs/C10-clientes-de-la-cuenta.md)** (28-oct-2026, por
+  aprobar), junto con N-15.
 
 **N-12 · Congelado es solo lectura, también para la cola.** Antes de enviar nada
 se mira si el cliente está congelado, y al arrancar se confirma el PRO antes de
@@ -324,6 +326,7 @@ el resto dice el texto de la pantalla. `err.message` va solo al registro.
 permitidos escritos en un solo sitio. *Quita:* las cien combinaciones. Es la
 que más simplifica a la larga y la más grande. **Antes de la primera release,
 junto con N-17** (28-oct-2026): las dos reescriben los estados del cliente.
+Planificada en [C10](specs/C10-clientes-de-la-cuenta.md) (por aprobar).
 
 **N-16 · Lo que no se puede prevenir se puede contar.** *(Revisada el
 28-oct-2026.)* Sin botón «Volver a sincronizar»: lo que haría ya ocurre solo al

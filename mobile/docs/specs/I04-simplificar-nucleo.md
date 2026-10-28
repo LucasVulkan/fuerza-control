@@ -248,7 +248,10 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
 
 Orden (28-oct-2026): N-15 y N-17 (clientes de la cuenta, estado en un valor) van
 **antes de la release** en una spec propia que se planifica primero, y
-absorben I04-02 (restaurar) e I04-08 (estado de la ficha). Lo que no depende del
+absorben I04-02 (restaurar) e I04-08 (estado de la ficha). Esa spec es
+[C10](C10-clientes-de-la-cuenta.md) (28-oct-2026, por aprobar): I04-02 pasa a
+C10-06, I04-08 a C10-01 y C10-04, e I04-10 (deshacer al borrar) a C10-07, y
+pide I04-03 e I04-04 hechas antes de empezar. Lo que no depende del
 modelo de cliente va antes, de una en una por tocar el núcleo: I04-04 (la más
 pequeña), I04-05 (pagos), I04-03 (cola). I04-06 e I04-12 pueden ir en paralelo
 porque son de pantallas y de una tabla nueva. Al cerrar cada una, sus fallos E-xx se dan de alta como resueltos en
