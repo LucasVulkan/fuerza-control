@@ -313,7 +313,7 @@ vaciar la cola. *Quita:* el cruce 12. **Firme** (amplía R-E2).
 **N-13 · Borrar se deshace en el momento, no restaurando.** Al borrar un cliente
 sale «Deshacer» unos segundos (como en el editor, P16-07), y el servidor solo se
 entera pasado ese rato. Restaurar no es la herramienta para deshacer. *Quita:*
-el cruce 17, sin depender de copias. **DECIDIR** (recomendada).
+el cruce 17, sin depender de copias. **Decidido el 28-oct-2026.**
 
 **N-14 · Ningún texto técnico en pantalla.** Todo error pasa por un solo
 traductor: los códigos propios enseñan su mensaje, la red dice «Sin conexión» y
