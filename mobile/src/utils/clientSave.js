@@ -43,6 +43,10 @@ export function buildClientCard(state, id) {
     activeProgramId: c.activeProgramId ?? null,
     nextOverrides:   c.nextOverrides,
     tags:            (c.tags ?? []).map((tid) => ({ id: tid, name: names.get(tid) ?? null })),
+    // «Cambios sin enviar» sobrevive a perder el móvil (N-06). Una marca y no la firma de lo enviado:
+    // el servidor guarda jsonb, que reordena las claves, y la firma del programa recuperado no casaría.
+    programDirty:    !!c.programDirty,
+    overridesDirty:  !!c.overridesDirty,
   };
 }
 

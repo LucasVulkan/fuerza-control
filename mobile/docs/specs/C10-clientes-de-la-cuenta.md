@@ -206,7 +206,12 @@ solo con `code`; `leftAt` solo sin `seated`.
   `history_json` del hueco con `trainer_upload_log`, que ya suma y respeta lo
   borrado. Es donde lo encuentra el cliente si un día entra (R-C6).
 
-Nada de esto contiene el estado de conexión, el envío ni `savedSig`.
+Nada de esto contiene el estado de conexión, la cola de envíos ni `savedSig`.
+La ficha sí lleva `programDirty` y `overridesDirty` (añadido al implementar
+C10-05, 29-oct-2026): sin ellas, un programa editado y sin enviar en el móvil
+perdido llegaría al nuevo como si ya estuviera enviado (N-06). Va la marca y no
+la firma de lo enviado porque el servidor guarda `jsonb`, que reordena las
+claves, y la firma del programa recuperado nunca casaría.
 
 ## 3. Estados (N-15)
 

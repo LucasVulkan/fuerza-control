@@ -922,3 +922,30 @@ describe('C10-05 · guardar en la cuenta y recuperar con la ficha', () => {
     } finally { vi.useRealTimers(); }
   });
 });
+
+describe('C10-05 · «Cambios sin enviar» sobrevive a perder el móvil (N-06)', () => {
+  it('lo editado sin enviar sale como pendiente en el móvil nuevo; lo enviado, no', async () => {
+    const t = await phone('viejo');
+    const c1 = await phone('cliente1');
+    const c2 = await phone('cliente2');
+    await t.s.createTrainerCodeAccount();
+    const ana = await newClient(t, 'Ana');
+    const berta = await newClient(t, 'Berta');
+    await join(c1, t.s.clients[ana].code);
+    await join(c2, t.s.clients[berta].code);
+    await t.s.refreshTrainerSlots();
+    // A Ana se le edita el programa y no se le envía.
+    const pid = t.s.clients[ana].activeProgramId;
+    t.store.setState((s) => ({ programs: { ...s.programs, [pid]: { ...s.programs[pid], name: 'Fuerza v2' } } }));
+    t.s.markProgramDirtyForClients(pid);
+    expect(t.s.clients[ana].programDirty).toBe(true);
+    await t.s.saveClients();
+    expect(t.s.pendingSaveCount()).toBe(0);
+
+    const n = await phone('nuevo');
+    await n.s.recoverTrainerAccount(t.s.trainerSync.code);
+    expect(n.s.programs[n.s.clients[ana].activeProgramId].name).toBe('Fuerza v2');
+    expect(n.s.clients[ana].programDirty).toBe(true);
+    expect(n.s.clients[berta].programDirty).toBe(false);
+  });
+});

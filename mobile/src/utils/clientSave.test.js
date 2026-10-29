@@ -37,12 +37,13 @@ function state() {
 const edit = (s, id, patch) => ({ ...s, clients: { ...s.clients, [id]: { ...s.clients[id], ...patch } } });
 
 describe('buildClientCard', () => {
-  it('lleva la ficha con las etiquetas por nombre, y nada de conexión, envío ni savedSig', () => {
+  it('lleva la ficha con las etiquetas por nombre y sus «cambios sin enviar», y nada de conexión, cola ni savedSig', () => {
     const card = buildClientCard(state(), 'ana');
     expect(card).toEqual({
       name: 'Ana', fullName: '', phone: '600', email: '', notes: 'rodilla', billing: [{ id: 'b1', amount: 40 }],
       bodyWeight: [{ date: '2026-10-01', kg: 60 }], status: 'active', color: '#abc', createdAt: '2026-09-01',
       activeProgramId: 'p2', nextOverrides: { t2: { templateId: 't2' } }, tags: [{ id: 'tag_1', name: 'Rehab' }],
+      programDirty: true, overridesDirty: false,   // «Cambios sin enviar» sí viaja (N-06)
     });
     expect(Object.keys(card)).not.toContain('slotId');
     expect(Object.keys(card)).not.toContain('savedSig');
@@ -72,11 +73,15 @@ describe('saveSig', () => {
     const reordered = { ...s, clients: { ana: Object.fromEntries(Object.entries(s.clients.ana).reverse()), berta: s.clients.berta } };
     expect(saveSig(reordered, 'ana')).toBe(saveSig(s, 'ana'));
   });
-  it('no cambia con lo que no se guarda: conexión, envío ni lo de otro cliente', () => {
+  it('no cambia con lo que no se guarda: conexión, cola de envíos ni lo de otro cliente', () => {
     const s = state();
     const sig = saveSig(s, 'ana');
-    expect(saveSig(edit(s, 'ana', { savedSig: 'x', programDirty: false, sendPending: undefined, code: 'ABCD', remoteSessionsCount: 3 }), 'ana')).toBe(sig);
+    expect(saveSig(edit(s, 'ana', { savedSig: 'x', sendPending: undefined, code: 'ABCD', remoteSessionsCount: 3 }), 'ana')).toBe(sig);
     expect(saveSig(edit(s, 'berta', { notes: 'otra' }), 'ana')).toBe(sig);
+  });
+  it('cambia con «cambios sin enviar» (N-06)', () => {
+    const s = state();
+    expect(saveSig(edit(s, 'ana', { programDirty: false }), 'ana')).not.toBe(saveSig(s, 'ana'));
   });
   it('cambia con una nota', () => {
     const s = state();

@@ -4886,7 +4886,11 @@ export const useStore = create(
           next.clients[clientId].savedSig = saveSig(next, clientId);
           return { tagRegistry: next.tagRegistry, programs: next.programs, sessionTemplates: next.sessionTemplates, customExercises: next.customExercises, clientLogs: next.clientLogs, clients: next.clients };
         });
-        if (!assigned) get()._markProgramSent(clientId);
+        if (assigned) return;
+        // «Cambios sin enviar» como estaba en el móvil perdido (N-06; la marca viene en la ficha). Con
+        // cambios, sin firma de lo enviado: sigue pendiente hasta enviarlo. Sin ellos, lo activo es lo enviado.
+        if (row.card_json?.programDirty) set((s) => patchClient(s, clientId, { programUploadedSig: null }));
+        else get()._markProgramSent(clientId);
       },
 
       /**
