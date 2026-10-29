@@ -4,7 +4,7 @@
 > En corto: Con cuenta de entrenador, todos los clientes (con app o sin ella) viven en la cuenta con un id para siempre, y recuperar la cuenta en un móvil nuevo los trae todos con su ficha, su programa y su historial. De paso, el estado de cada ficha deja de ser siete banderas sueltas y pasa a ser un solo valor con sus cambios escritos en un sitio.
 > Inicio: 2026-10-29
 > Fase C10-01 · hecho · El estado de la ficha en un solo valor, solo en el móvil · §10.1
-> Fase C10-02 · pendiente · Servidor: hueco sin código, tabla privada, ids que no se pierden · §10.2
+> Fase C10-02 · hecho · Servidor: hueco sin código, tabla privada, ids que no se pierden · §10.2
 > Fase C10-03 · pendiente · Un id para siempre: recuperar usa el de la ficha · §10.3
 > Fase C10-04 · pendiente · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
 > Fase C10-05 · pendiente · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
@@ -95,7 +95,7 @@ que escriben, R-A3, y se añaden a la lista de §10 de `schema.sql`):
 
 | Función | Qué hace | Error |
 |---|---|---|
-| `trainer_create_slot(name, local_id, p_with_code boolean default true)` | Como hoy; con `p_with_code = false` el hueco nace **sin código**. Con el mismo `local_id` devuelve el mismo hueco (E35). La app de hoy la sigue llamando con dos argumentos y le sale con código. | — |
+| `trainer_create_slot(name, local_id, p_with_code boolean default true)` | Como hoy; con `p_with_code = false` el hueco nace **sin código**. Con el mismo `local_id` devuelve el mismo hueco (E35). La app de hoy la sigue llamando con dos argumentos y le sale con código. **Se retira antes la firma de dos argumentos** (`drop function if exists public.trainer_create_slot(text, text)`): añadir un parámetro con `create or replace` crea una segunda función, y llamar con dos argumentos daría «function is not unique». | — |
 | `trainer_reissue_client_code(slot)` | **Sin cambios.** Sobre un hueco sin código es **invitar**: código nuevo, asiento vacío, `disconnected_at` null. | `SLOT_GONE` |
 | `trainer_clear_code(slot)` *(nueva)* | **Cancelar la invitación**: quita el código y lo enviado (`program_json`, `overrides_json` y sus fechas). El hueco, su historial y lo privado se quedan. Solo con el asiento vacío. | `SLOT_OCCUPIED`, `SLOT_GONE` |
 | `trainer_save_client(slot, card, programs)` *(nueva)* | **Guardar en la cuenta**: inserta o pisa la fila privada y pone `client_name = card->>'name'` (es lo único de la ficha que ve el cliente: la pantalla de confirmar el código). | `SLOT_GONE` |
@@ -143,9 +143,17 @@ vacío, que es justo el caso «sin app»), `_merge_history` (ya suma y respeta
 lápidas) y la RLS de `trainer_clients`. El cliente sigue pudiendo leer su fila
 entera, y ya no hay nada privado en ella.
 
-`audit.sql` añade dos comprobaciones: filas privadas cuyo hueco es de otro
-entrenador (no puede pasar por la FK, pero se mira) y huecos de una cuenta con el
-mismo `local_id` (el índice lo impide; se mira por si alguien lo quita).
+`audit.sql` añade dos comprobaciones: filas privadas sin hueco o con un hueco sin
+entrenador (la fila no lleva dueño propio, es el de su hueco; no puede pasar por
+la FK, pero se mira) y huecos de una cuenta con el mismo `local_id` (el índice lo
+impide; se mira por si alguien lo quita). Y cambia dos que ya tenía: «código
+repetido o vacío» pasa a **«código repetido»** (un hueco sin código ya no es un
+problema, los null no cuentan como repetidos) y `trainer_client_private` entra en
+las de permisos, RLS, tabla y funciones.
+
+**El tamaño de lo que se guarda no se limita.** Ninguna función de subida de hoy
+(`trainer_upload_program`, `trainer_upload_log`…) pone tope al json, así que
+`trainer_save_client` tampoco: no se inventa uno aquí.
 
 ### 2.2 La ficha en el móvil
 
@@ -633,7 +641,7 @@ real con PGlite, varios móviles), y los de la función pura en
 | Fase | Qué | Depende de | Coste | Reglas | Estado |
 |---|---|---|---|---|---|
 | C10-01 | Estado en un valor, solo móvil | I04-03, I04-04 | 🔴 | N-15 | hecho 29-oct — por probar; tests en `src/utils/clientLink.test.js` y `store/connection.sim.test.js` |
-| C10-02 | Servidor | C10-01 | 🟡 | N-17, R-A1…A3, R-A9, R-D1 | pendiente |
+| C10-02 | Servidor | C10-01 | 🟡 | N-17, R-A1…A3, R-A9, R-D1 | hecho 29-oct (0d52c5c) — por probar; tests en `store/server.private.sim.test.js` y `store/server.compat.sim.test.js` |
 | C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | pendiente |
 | C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | pendiente |
 | C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | pendiente |
@@ -704,6 +712,26 @@ C10-03: la app publicada en pruebas sigue funcionando sobre él.
 - Compatibilidad: cargar el `schema.sql` de hoy, crear huecos y asientos con la
   app de hoy, cargar encima el nuevo, y el recorrido básico de
   `connection.sim.test.js` sigue en verde.
+
+**Hecho (29-oct).** Todo §2.1 en `schema.sql`, con tres correcciones a la spec:
+(1) `trainer_create_slot` con tres argumentos retira antes la de dos (si no, una
+sobrecarga) y las dos listas de `grant`/`revoke` llevan la firma nueva;
+(2) `audit.sql` solo marca códigos repetidos, no los null; (3) el tamaño de los
+json no se limita, porque las funciones de subida de hoy tampoco. Y una cuarta,
+que la spec no veía: `schema.sql` §3 y §4 daban un código nuevo a todo hueco sin
+él y volvían a poner `client_code` como `not null` cada vez que se ejecutaba, lo
+que habría deshecho los huecos sin código en el siguiente despliegue; ahora solo
+renueva los repetidos y el código es opcional. `trainer_known_clients` solo
+devuelve huecos y borrados con `local_id`, y como `trainer_deleted_slots` no
+contesta vacío si la cuenta ya no existe (`NOT_AUTHENTICATED`). `audit.sql`
+ya no deja pasar `SELECT` a `anon` en `trainer_clients` ni en la privada (solo
+vale para `authenticated`). `supabaseSync.js` gana `clearClientCode`,
+`saveClientPrivate`, `setSlotLocalId`, `knownClients`, `getClientPrivates` y el
+tercer argumento de `createClientSlot`, que solo viaja cuando es `false`: la
+llamada de hoy es idéntica y vale también contra un servidor sin C10. La
+compatibilidad se prueba con `test/schema-antes-c10.sql`, una copia congelada del
+esquema anterior. **Falta desplegar `schema.sql` en Supabase** (al cerrar la fase,
+antes de la app de C10-03).
 
 **Probar C10-02**
 
