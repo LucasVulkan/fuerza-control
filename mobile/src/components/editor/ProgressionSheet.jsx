@@ -16,7 +16,7 @@
 import { useState, useEffect, useId, startTransition } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor, FadeIn,
+  useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor, FadeIn, LinearTransition,
 } from 'react-native-reanimated';
 import Svg, { Path, Circle, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Text } from '../ui/Text';
@@ -95,6 +95,8 @@ const ROW_ICON = {
   round: 'M4 18h16M7 18V9M12 18V5M17 18v-6',
 };
 const CHEVRON_MS = 200;
+// El mismo ritmo que AnimatedHeight (220 ms, out cubic): todo lo que se mueve va a la vez.
+const SLIDE = LinearTransition.duration(220).easing(Easing.out(Easing.cubic));
 
 // El relleno de lo elegido, como las fichas de etapa (StageCards) y las pestañas
 // de Inicio: se llena de lima desde la esquina de arriba a la derecha.
@@ -184,8 +186,10 @@ function SettingRow({ icon, title, sub, value, open, onToggle, children }) {
     p.set(withTiming(open ? 1 : 0, { duration: CHEVRON_MS, easing: Easing.out(Easing.cubic) }));
   }, [open, p]);
   const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${p.get() * 90}deg` }] }));
+  // `layout`: al abrir o cerrar una fila, las de debajo se deslizan al ritmo de
+  // AnimatedHeight en vez de saltar (él solo anima el borde de abajo de la hoja).
   return (
-    <>
+    <Reanimated.View layout={SLIDE}>
       <Pressable
         onPress={onToggle}
         style={({ pressed }) => [styles.row, open && styles.rowOpen, pressed && styles.rowPressed]}
@@ -207,7 +211,7 @@ function SettingRow({ icon, title, sub, value, open, onToggle, children }) {
       {/* Solo entra con un fundido: un `exiting` retrasaría el alto de la hoja y
           abrir una fila cerrando otra sumaría dos animaciones en vez de una. */}
       {open && <Reanimated.View entering={FadeIn.duration(180)} style={styles.rowBody}>{children}</Reanimated.View>}
-    </>
+    </Reanimated.View>
   );
 }
 
@@ -515,8 +519,9 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
           {nextCard.foot ? <Text style={styles.nextFoot}>{nextCard.foot}</Text> : null}
         </View>
 
+        {/* Si la tarjeta de arriba cambia de alto (otro «Qué sube»), la lista se desliza. */}
         {rows.length > 0 && (
-          <View>
+          <Reanimated.View layout={SLIDE}>
             {caps(t('exerciseEditor.sheet.progresses'))}
             <View style={styles.group}>
               {rows.map((r) => (
@@ -533,7 +538,7 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
                 </SettingRow>
               ))}
             </View>
-          </View>
+          </Reanimated.View>
         )}
       </View>
     </AnimatedHeight>
@@ -588,7 +593,7 @@ const makeStyles = (th) => StyleSheet.create({
   cards: { flexDirection: 'row', gap: spacing.sm2 },
   cardSlot: { flex: 1 },
   card: {
-    flex: 1, backgroundColor: th.colors.surface, borderRadius: th.radius.md,
+    flex: 1, backgroundColor: th.colors.surface2, borderRadius: th.radius.md,
     padding: spacing.md, borderWidth: 1.5,
   },
   squares: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs2, marginBottom: spacing.md },
@@ -618,7 +623,7 @@ const makeStyles = (th) => StyleSheet.create({
   rowSub: { ...textStyles.label, color: th.colors.mutedLight },
   rowValue: { ...textStyles.labelStrong, color: th.colors.accent, fontVariant: ['tabular-nums'], flexShrink: 0 },
   rowBody: {
-    backgroundColor: th.colors.surface, borderRadius: th.radius.xxs, marginTop: -spacing.xs,
+    backgroundColor: th.colors.surface, borderRadius: th.radius.xxs,
     paddingTop: spacing.xs2, paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.md,
   },
 });
