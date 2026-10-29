@@ -642,7 +642,7 @@ real con PGlite, varios móviles), y los de la función pura en
 |---|---|---|---|---|---|
 | C10-01 | Estado en un valor, solo móvil | I04-03, I04-04 | 🔴 | N-15 | hecho 29-oct — por probar; tests en `src/utils/clientLink.test.js` y `store/connection.sim.test.js` |
 | C10-02 | Servidor | C10-01 | 🟡 | N-17, R-A1…A3, R-A9, R-D1 | hecho 29-oct (0d52c5c) — por probar; tests en `store/server.private.sim.test.js` y `store/server.compat.sim.test.js` |
-| C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | hecho 29-oct — por probar; tests en `store/account.clients.sim.test.js` |
+| C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | hecho 29-oct (2eee3c1) — por probar; tests en `store/account.clients.sim.test.js` |
 | C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | pendiente |
 | C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | pendiente |
 | C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | pendiente |
