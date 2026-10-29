@@ -79,6 +79,18 @@ const oldCancel = async (t, clientId) => {
   expect(error).toBeNull();
 };
 const slotOf = async (slotId) => (await slots()).find((r) => r.id === slotId);
+/**
+ * Crea clientes con la cuenta puesta pero sin red: `createClient` lanza una subida en silencio (§5) y estos
+ * tests quieren decidir ellos cuándo vuelve la red. Al volver, siguen `local`.
+ */
+async function createOffline(t, ...names) {
+  t.device.offline = true;
+  const ids = [];
+  for (const n of names) ids.push(await t.s.createClient(n));
+  await t.s.uploadLocalClients();          // si la de `createClient` sigue en vuelo, devuelve la misma
+  t.device.offline = false;
+  return ids;
+}
 const idsOf = (p) => Object.keys(p.s.clients).sort();
 const setLocalId = (slotId, localId) => server.admin('update public.trainer_clients set local_id = $2 where id = $1', [slotId, localId]);
 
@@ -278,7 +290,7 @@ describe('C10-04 · subir los clientes a la cuenta (§5)', () => {
   it('un corte de red a mitad: los subidos quedan, los otros `local`; al volver la red el refresco termina sin duplicar (R-C7)', async () => {
     const t = await phone('entrenador');
     await t.s.createTrainerCodeAccount();
-    const ids = [await t.s.createClient('Ana'), await t.s.createClient('Berta'), await t.s.createClient('Carla')];
+    const ids = await createOffline(t, 'Ana', 'Berta', 'Carla');
     expect(t.s.localClientCount()).toBe(3);
 
     failNth('rpc:trainer_create_slot', 2);
@@ -310,7 +322,7 @@ describe('C10-04 · subir los clientes a la cuenta (§5)', () => {
   it('un fallo que no es de red salta esa ficha y sigue con las demás; se reintenta en el siguiente recorrido', async () => {
     const t = await phone('entrenador');
     await t.s.createTrainerCodeAccount();
-    const ids = [await t.s.createClient('Ana'), await t.s.createClient('Berta')];
+    const ids = await createOffline(t, 'Ana', 'Berta');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const real = t.s._uploadClient;
     let first = true;
@@ -345,6 +357,16 @@ describe('C10-04 · subir los clientes a la cuenta (§5)', () => {
     expect(linkNow(t, ana)).toBe('none');
     expect(linkNow(t, beto)).toBe('none');
     expect(t.s.localClientCount()).toBe(0);
+  });
+
+  it('crear un cliente con cuenta y con red lo sube solo, sin esperar a ningún refresco: acaba `none` (§5)', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const ana = await t.s.createClient('Ana');
+    await vi.waitFor(() => expect(linkNow(t, ana)).toBe('none'));
+    expect(await slots()).toHaveLength(1);
+    expect(t.s.localClientCount()).toBe(0);
+    assertFacts(t.s.clients[ana]);
   });
 
   it('con red, crear un cliente con app lo deja invitado en la misma llamada (hueco sin código, luego código)', async () => {
@@ -439,7 +461,7 @@ describe('C10-04 · invitar y cancelar (§3.3)', () => {
     const t = await phone('entrenador');
     t.store.setState((st) => ({ profile: { ...st.profile, isPro: false } }));
     await t.s.createTrainerCodeAccount();
-    const [a, b, c3] = [await t.s.createClient('A'), await t.s.createClient('B'), await t.s.createClient('C')];
+    const [a, b, c3] = await createOffline(t, 'A', 'B', 'C');
     await t.s.refreshTrainerSlots();
     expect([a, b, c3].map((id) => linkNow(t, id))).toEqual(['none', 'none', 'none']);
     const plan = () => Object.values(forPlan(t.s.clients, t.s.trainerSync.userId, t.s.ui.linking));

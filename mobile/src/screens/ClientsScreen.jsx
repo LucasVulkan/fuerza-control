@@ -39,7 +39,7 @@ import { ROW_ICON } from '../components/ui/rowIcons';
 import { ToggleRow, Switch } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ClientSessions, { ClientFreeSessions } from '../components/ClientSessions';
-import { clientLink, linkOf } from '../utils/clientLink';
+import { clientLink, linkOf, isReadOnly } from '../utils/clientLink';
 import { computeOverallImprovement } from '../utils/improvement';
 import { lastSeenLabel } from '../utils/lastSeen';
 import { orderClients, DEFAULT_CLIENTS_ORDER } from '../utils/orderClients';
@@ -222,7 +222,7 @@ function AssignedProgramCard({
   dirty, client, link, log, archivedCount,
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImportHistory, onSaveTemplate, onAssign,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived, fold,
-  locked = false, templateLocked = false,
+  locked = false, templateLocked = false, readOnly = false,
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -293,7 +293,7 @@ function AssignedProgramCard({
       )}
 
       {/* Etapa bloqueada: el cliente está parado esperándote. */}
-      {nextLocked && (
+      {nextLocked && !readOnly && (
         <View style={styles.lockBox}>
           <View style={styles.lockHeader}>
             <LockIcon size={13} color={th.colors.orange} />
@@ -314,7 +314,7 @@ function AssignedProgramCard({
 
       {/* Bloque terminado y sin siguiente: avisar sin dar el siguiente paso
           deja el trabajo a medias, así que el botón va al planificador. */}
-      {blockDone && (
+      {blockDone && !readOnly && (
         <View style={styles.lockBox}>
           <View style={styles.lockHeader}>
             <CheckIcon size={13} color={th.colors.orange} />
@@ -353,7 +353,8 @@ function AssignedProgramCard({
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
           hace de su app (C05-trainer-logging.md §3.1). Preparar no aplica: manda
           ajustes a un móvil que aquí no hay. ── */}
-      {link === 'none' ? (
+      {/* De otra cuenta (N-19): ni se empieza ni se prepara nada desde aquí. */}
+      {readOnly ? null : link === 'none' ? (
         <ClientSessions client={client} program={program} days={currentDays} log={log} fold={fold} />
       ) : (<>
       {/* ── Próxima sesión — sección propia ── */}
@@ -382,11 +383,11 @@ function AssignedProgramCard({
       {/* ── ⋯ todo lo demás ── */}
       <DragSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('clients.programMenuTitle')}>
         <Section style={styles.sheetSection}>
-          <SheetRow icon={ROW_ICON.new}    label={t('clients.assignProgram')} onPress={onAssign} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />
+          {!readOnly && <SheetRow icon={ROW_ICON.new}    label={t('clients.assignProgram')} onPress={onAssign} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />}
           {onUpload && <SheetRow icon={ROW_ICON.send} label={t('clients.menuUpload')} onPress={onUpload} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />}
           <SheetRow icon={ROW_ICON.share}  label={t('clients.menuShare')}  onPress={onShare} />
           <SheetRow icon={ROW_ICON.export} label={t('clients.menuExport')} onPress={onExport} />
-          <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={onImportHistory} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />
+          {!readOnly && <SheetRow icon={ROW_ICON.import} label={t('clients.menuImportHistory')} onPress={onImportHistory} labelColor={locked ? th.colors.mutedLight : undefined} badge={locked ? 'PRO' : undefined} />}
           <SheetRow icon={ROW_ICON.preset} label={t('clients.menuSaveTemplate')} onPress={onSaveTemplate} labelColor={templateLocked ? th.colors.mutedLight : undefined} badge={templateLocked ? 'PRO' : undefined} />
           {archivedCount > 0 && (
             <SheetRow
@@ -397,7 +398,7 @@ function AssignedProgramCard({
             />
           )}
           {onDeassign && <SheetRow icon={ROW_ICON.archived} label={t('clients.menuDeassign')} onPress={onDeassign} />}
-          <SheetRow icon={ROW_ICON.trash} label={t('clients.menuDelete')} onPress={onDelete} danger />
+          {!readOnly && <SheetRow icon={ROW_ICON.trash} label={t('clients.menuDelete')} onPress={onDelete} danger />}
         </Section>
       </DragSheet>
     </>
@@ -617,7 +618,9 @@ function MoveToAppSheet({ client, loggedCount, onClose }) {
       if (moved) showToast(t('clients.moveToApp.done'), 2200, 'success');
     } catch (err) {
       console.warn('[moveClientToApp]', err);
-      showDialog(t('common.error'), t('clients.keyTab.connectError'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.retry'), onPress: handleGo }]);
+      // Una ficha de otra cuenta no se invita (N-19): su mensaje, y sin «Reintentar», que no cambiaría nada.
+      if (err?.code === 'OTHER_ACCOUNT') showDialog(t('common.error'), err.message);
+      else showDialog(t('common.error'), t('clients.keyTab.connectError'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.retry'), onPress: handleGo }]);
     } finally {
       setBusy(false);
     }
@@ -1325,13 +1328,15 @@ function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart,
             onPress={run(onNextSession)}
           />
         )}
-        <SheetRow
-          icon={ROW_ICON.edit}
-          label={t('clients.actEditProgram')}
-          labelColor={locked ? th.colors.mutedLight : undefined}
-          badge={locked ? 'PRO' : undefined}
-          onPress={run(onEditProgram)}
-        />
+        {onEditProgram && (
+          <SheetRow
+            icon={ROW_ICON.edit}
+            label={t('clients.actEditProgram')}
+            labelColor={locked ? th.colors.mutedLight : undefined}
+            badge={locked ? 'PRO' : undefined}
+            onPress={run(onEditProgram)}
+          />
+        )}
         <SheetRow icon={ROW_ICON.user} label={t('clients.actInfo')}        onPress={run(onInfo)} />
       </Section>
     </DragSheet>
@@ -1352,7 +1357,8 @@ function ClientActionsSheet({ client, newSessionsCount = 0, startLabel, onStart,
  * Con un entreno a medias no hay aviso de adherencia: ese entreno es justo lo
  * que lo resuelve, solo que aún no está guardado.
  */
-function clientAvisos({ client, program, linked, inProgress, adherence }) {
+function clientAvisos({ client, program, linked, inProgress, adherence, readOnly = false }) {
+  if (readOnly) return [];   // de otra cuenta (N-19): no hay nada que hacer desde aquí
   const status = program ? stageStatus(program, athleteProgress(program, client)) : null;
   const next   = program?.stages?.[(status?.stageIdx ?? 0) + 1];
   const ended  = !!status?.ended;
@@ -1477,7 +1483,7 @@ function ClientListCard({
   adherence, onPress, onOpenEditor, onUploadProgram, onViewUnreviewed, onOpenActions,
   onSendOverrides, onUnlockStage, onPlanStages, newSessionsCount = 0,
   inProgress = false, onContinue, invited = false, linked = false, frozen = false,
-  dimmed = false, radii, lens = null, improvement = null, flash = 0,
+  dimmed = false, radii, lens = null, improvement = null, flash = 0, readOnly = false,
 }) {
   const { t, i18n } = useTranslation();
   const th     = useTheme();
@@ -1515,7 +1521,7 @@ function ClientListCard({
     slip:       { text: t('clients.slowingDown'), color: C.orange },
   };
   const avisos = frozen || dimmed ? []
-    : clientAvisos({ client, program: activeProgram, linked: isConnected, inProgress, adherence }).map((k) => AVISO[k]);
+    : clientAvisos({ client, program: activeProgram, linked: isConnected, inProgress, adherence, readOnly }).map((k) => AVISO[k]);
   const aviso = avisos[0];
 
   // Al pulsar «Pendientes» (§5.2) los que tienen algo se iluminan de lima un
@@ -1538,6 +1544,7 @@ function ClientListCard({
   // «última semana» en blanco: aviso previo sin alarma).
   const manualStatus = client.status ?? 'active';
   const outLabel = frozen                      ? t('freePlan.frozenLabel')
+                 : readOnly                    ? t('clients.info.link_orphan')
                  : manualStatus === 'paused'   ? t('clients.statusPaused')
                  : manualStatus === 'inactive' ? t('clients.statusInactive')
                  : invited                     ? t('clients.statusInvited')
@@ -1654,6 +1661,8 @@ export default function ClientsScreen() {
   const cloudOn      = !!trainerSync.mode && trainerSync.mode !== 'offline' && !loginNeeded;
   // Con app o sin app, en un solo sitio (C28): lista, aviso, ficha y hojas.
   const linkFor = useCallback((c) => clientLink(c, trainerSync), [trainerSync]);
+  // «De otra cuenta» (N-19): se ve y se borra, no se edita, no se envía y no se pasa a la app.
+  const readOnlyOf = useCallback((c) => isReadOnly(linkOf(c, trainerSync.userId)), [trainerSync.userId]);
 
   // Memoizado porque ahora alimenta los memos de carga: un objeto nuevo en cada
   // render recalculaba `sessionLoads` sobre todo el historial del cliente.
@@ -1833,7 +1842,7 @@ export default function ClientsScreen() {
   // «Empezar sesión B» de la pulsación larga: la que toca, contra SU historial.
   const actionsStart = (() => {
     const c       = actionsClientId ? clients[actionsClientId] : null;
-    const program = c && linkFor(c) === 'none' ? programs[c.activeProgramId] : null;
+    const program = c && linkFor(c) === 'none' && !readOnlyOf(c) ? programs[c.activeProgramId] : null;
     if (!program) return null;
     const days   = stageDaysAt(program, stageStatus(program, athleteProgress(program, c)).stageIdx);
     const heroId = sessionPlan({
@@ -1923,14 +1932,14 @@ export default function ClientsScreen() {
     return {
       needs: parts.main.filter((c) => clientAvisos({
         client: c, program: programs[c.activeProgramId], linked: linkFor(c) === 'linked',
-        inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id],
+        inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id], readOnly: readOnlyOf(c),
       }).length > 0).length,
       adh: avg(withProgram
         .filter((c) => adherenceByClient[c.id]?.status !== STATUS.MUTED && adherenceByClient[c.id]?.pct != null)
         .map((c) => adherenceByClient[c.id].pct)),
       imp: avg(withProgram.map((c) => improvementByClient[c.id]).filter((v) => v != null)),
     };
-  }, [parts, programs, linkFor, activeForClient, adherenceByClient, improvementByClient]);
+  }, [parts, programs, linkFor, readOnlyOf, activeForClient, adherenceByClient, improvementByClient]);
 
   const listData = useMemo(() => {
     // Orden (§6.2): la lista principal con la lente y «Lo pendiente, arriba»; los
@@ -1943,7 +1952,7 @@ export default function ClientsScreen() {
       const linked = linkFor(c) === 'linked';
       const first  = clientAvisos({
         client: c, program: programs[c.activeProgramId], linked,
-        inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id],
+        inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id], readOnly: readOnlyOf(c),
       })[0];
       if (first) return AVISO_RANK.indexOf(first);
       return linked && (unreviewedByClient[c.id] ?? 0) > 0 ? 50 : 99;
@@ -1963,7 +1972,7 @@ export default function ClientsScreen() {
     }
     return items;
   }, [parts, foldOpen, lens, order, programs, adherenceByClient, improvementByClient, lastTsByClient,
-      linkFor, activeForClient, unreviewedByClient]);
+      linkFor, readOnlyOf, activeForClient, unreviewedByClient]);
 
   // Reordenar a mano: se parte del orden a mano puro de la lista principal.
   function startReorder() {
@@ -2404,6 +2413,9 @@ export default function ClientsScreen() {
       : d === 0 ? t('dayCard.today')
       : d === 1 ? t('dayCard.yesterday')
       : t('dayCard.daysAgo', { count: d });
+    // De otra cuenta (N-19): lo editable se ve pero no responde (y el store tampoco lo guarda).
+    const readOnly = readOnlyOf(selectedClient);
+    const lockIf   = { pointerEvents: readOnly ? 'none' : 'auto', style: readOnly ? styles.readOnlyDim : null };
     const PERIOD_OPTIONS = [
       { id: '7d',  label: t('clients.period.7d') },
       { id: '30d', label: t('clients.period.30d') },
@@ -2428,6 +2440,7 @@ export default function ClientsScreen() {
           <Text style={styles.detailName} numberOfLines={1}>{selectedClient.name}</Text>
           {detailLastStr && <Text style={styles.detailLast}>{detailLastStr}</Text>}
         </View>
+        {readOnly && <Text style={[styles.codeExplain, styles.readOnlyNote]}>{t('clients.otherAccountNote')}</Text>}
 
         <View style={styles.detailTabs}>
           <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
@@ -2513,8 +2526,9 @@ export default function ClientsScreen() {
                   link={linkFor(selectedClient)}
                   log={clientBaseLog}
                   archivedCount={previousPrograms.length}
+                  readOnly={readOnly}
                   onView={() => setPrintingProgram(activeProgram.id)}
-                  onEdit={gate(detailLock, () => setEditingProgram(activeProgram.id))}
+                  onEdit={readOnly ? undefined : gate(detailLock, () => setEditingProgram(activeProgram.id))}
                   // Solo con app: al invitado se le sube solo, y durante esa
                   // subida el aviso naranja asomaba (C28 §4.0.4).
                   onUpload={syncEnabled && linkFor(selectedClient) === 'linked' ? gate(detailLock, () => uploadProgram(activeProgram.id)) : undefined}
@@ -2522,11 +2536,11 @@ export default function ClientsScreen() {
                   onShare={() => shareSpecificProgram(activeProgram.id, true)}
                   onExport={() => exportSpecificProgram(activeProgram.id, true)}
                   // Como `onShowArchived`: el segundo `Modal` espera a que se cierre el menú.
-                  onImportHistory={gate(detailLock, () => setTimeout(handleImportHistory, 250))}
+                  onImportHistory={readOnly ? undefined : gate(detailLock, () => setTimeout(handleImportHistory, 250))}
                   onSaveTemplate={gate(gates.newProgramTemplate, () => saveAsTemplate(activeProgram))}
-                  onAssign={gate(detailLock, () => setTimeout(() => setShowAssign(true), 250))}
+                  onAssign={readOnly ? undefined : gate(detailLock, () => setTimeout(() => setShowAssign(true), 250))}
                   // Archivar deja al cliente sin programa: se avisa antes, como al reactivar.
-                  onDeassign={() => showDialog(
+                  onDeassign={readOnly ? undefined : () => showDialog(
                     t('clients.archiveTitle'),
                     t('clients.archiveConfirm', { name: activeProgram.name }),
                     [
@@ -2535,8 +2549,8 @@ export default function ClientsScreen() {
                     ],
                   )}
                   onDelete={() => confirmDelete(activeProgram)}
-                  onUnlock={gate(detailLock, unlockStage)}
-                  onPlanStages={gate(detailLock, () => navigation.navigate('StagePlanner', { programId: activeProgram.id }))}
+                  onUnlock={readOnly ? undefined : gate(detailLock, unlockStage)}
+                  onPlanStages={readOnly ? undefined : gate(detailLock, () => navigation.navigate('StagePlanner', { programId: activeProgram.id }))}
                   // Dos `Modal` de RN no se relevan bien en el mismo tick: el
                   // segundo se monta mientras el primero aún se está cerrando y
                   // en Android se queda sin presentar. Se abre al terminar.
@@ -2548,16 +2562,18 @@ export default function ClientsScreen() {
                 // repetía lo mismo que el título y que el botón.
                 <View style={styles.noActiveBox}>
                   <Text style={styles.noActiveTitle}>{t('clients.noActiveProgram')}</Text>
-                  <TouchableOpacity style={[styles.noActiveBtn, detailLock && styles.noActiveBtnPro]} onPress={gate(detailLock, () => setShowAssign(true))} activeOpacity={0.85}>
-                    <Text style={[styles.noActiveBtnText, detailLock && { color: th.colors.text }]}>{t('clients.assignProgram')}</Text>
-                    {!!detailLock && <ProBadge />}
-                  </TouchableOpacity>
+                  {!readOnly && (
+                    <TouchableOpacity style={[styles.noActiveBtn, detailLock && styles.noActiveBtnPro]} onPress={gate(detailLock, () => setShowAssign(true))} activeOpacity={0.85}>
+                      <Text style={[styles.noActiveBtnText, detailLock && { color: th.colors.text }]}>{t('clients.assignProgram')}</Text>
+                      {!!detailLock && <ProBadge />}
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
               {/* Sus sesiones libres, con y sin programa: una rutina suelta no
                   necesita uno (C06-group-classes.md §4.1, C24). */}
-              <ClientFreeSessions client={selectedClient} canStart={linkFor(selectedClient) === 'none'} log={clientBaseLog} fold={fold} />
+              <ClientFreeSessions client={selectedClient} canStart={linkFor(selectedClient) === 'none' && !readOnly} readOnly={readOnly} log={clientBaseLog} fold={fold} />
 
               {/* Programas archivados — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}
@@ -2569,11 +2585,11 @@ export default function ClientsScreen() {
                 emptyText={t('clients.noArchivedPrograms')}
                 reactivateLocked={!!detailLock}
                 saveTemplateLocked={!!gates.newProgramTemplate}
-                onReactivate={gate(detailLock, reactivate)}
+                onReactivate={readOnly ? undefined : gate(detailLock, reactivate)}
                 onView={(p) => setPrintingProgram(p.id)}
                 onExport={(p) => exportSpecificProgram(p.id, true)}
                 onSaveTemplate={gate(gates.newProgramTemplate, saveAsTemplate)}
-                onDelete={confirmDelete}
+                onDelete={readOnly ? undefined : confirmDelete}
               />
               <View style={{ height: fold.pad }} />
             </ScrollView>
@@ -2651,6 +2667,7 @@ export default function ClientsScreen() {
                 open={openSections.status}
                 onToggle={() => setOpenSections((s) => ({ ...s, status: !s.status }))}
               >
+                <View {...lockIf}>
                 <View style={styles.stRow}>
                   {[
                     // El activo se tiñe con el 10% de su propio color, no con un
@@ -2726,6 +2743,7 @@ export default function ClientsScreen() {
                   )}
                   <Text style={styles.infoHint}>{t('clients.info.tagsHint')}</Text>
                 </View>
+                </View>
               </InfoSection>
 
               {/* ── Datos personales ── */}
@@ -2735,6 +2753,7 @@ export default function ClientsScreen() {
                 open={openSections.personal}
                 onToggle={() => setOpenSections((s) => ({ ...s, personal: !s.personal }))}
               >
+                <View {...lockIf}>
                 <View style={styles.group}>
                   {[
                     { key: 'name',     label: t('clients.fieldNameAlias'), placeholder: 'Lucas' },
@@ -2768,6 +2787,7 @@ export default function ClientsScreen() {
                   />
                   <Text style={styles.infoHint}>{t('clients.notesSavedHint')}</Text>
                 </View>
+                </View>
               </InfoSection>
 
               {/* ── Peso corporal ── */}
@@ -2777,6 +2797,7 @@ export default function ClientsScreen() {
                 open={openSections.weight}
                 onToggle={() => setOpenSections((s) => ({ ...s, weight: !s.weight }))}
               >
+                <View {...lockIf}>
                 <View style={styles.addRow}>
                   {/* La fecha abre el calendario que ya usa el alta de cobro, no
                       un teclado para escribir AAAA-MM-DD a mano. */}
@@ -2825,6 +2846,7 @@ export default function ClientsScreen() {
                     ))}
                   </View>
                 )}
+                </View>
               </InfoSection>
 
               {/* ── Facturación ── */}
@@ -2835,6 +2857,7 @@ export default function ClientsScreen() {
                 open={openSections.billing}
                 onToggle={() => setOpenSections((s) => ({ ...s, billing: !s.billing }))}
               >
+                <View {...lockIf}>
                 {(selectedClient.billing ?? []).length > 0 && (() => {
                   const bills = selectedClient.billing ?? [];
                   const total = bills.reduce((a, b) => a + (b.amount ?? 0), 0);
@@ -2920,6 +2943,7 @@ export default function ClientsScreen() {
                     <Text style={styles.infoHint}>{t('clients.info.billHint')}</Text>
                   </>
                 )}
+                </View>
               </InfoSection>
 
               {/* ── Conexión ── */}
@@ -2930,7 +2954,9 @@ export default function ClientsScreen() {
                 open={openSections.connection}
                 onToggle={() => setOpenSections((s) => ({ ...s, connection: !s.connection }))}
               >
-                {linkFor(selectedClient) === 'none' ? (
+                {readOnly ? (
+                  <Text style={styles.codeExplain}>{t('clients.otherAccountNote')}</Text>
+                ) : linkFor(selectedClient) === 'none' ? (
                   <>
                     <Text style={styles.codeExplain}>{t('clients.info.noAppLine')}</Text>
                     <TouchableOpacity
@@ -3348,6 +3374,7 @@ export default function ClientsScreen() {
                   isConnected={isConnected}
                   invited={link === 'invited'}
                   linked={link === 'linked'}
+                  readOnly={readOnlyOf(client)}
                   frozen={isFrozen(client.id)}
                   adherence={adherenceByClient[client.id]}
                   newSessionsCount={getNewSessionsCount(client.id)}
@@ -3411,7 +3438,7 @@ export default function ClientsScreen() {
           onNextSession={linkFor(clients[actionsClientId]) !== 'none'
             ? gate(gates.client(actionsClientId), () => navigation.navigate('NextSession', { clientId: actionsClientId }))
             : undefined}
-          onEditProgram={() => {
+          onEditProgram={readOnlyOf(clients[actionsClientId]) ? undefined : () => {
             const c = clients[actionsClientId];
             if (c?.activeProgramId && gates.client(actionsClientId)) gate('frozen')();
             else if (c?.activeProgramId) setEditingProgram(c.activeProgramId);
@@ -4279,6 +4306,9 @@ const makeStyles = (th) => StyleSheet.create({
   // Dentro de la sección Conexión de Info ya hay una `surface`: solo el hueco
   // entre piezas, que lo demás lo pone la sección.
   codeFlat: { gap: spacing.sm2 },
+  // De otra cuenta (N-19): la línea bajo la cabecera y lo editable, apagado.
+  readOnlyNote: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  readOnlyDim:  { opacity: 0.6 },
   codeExplain: {
     ...textStyles.body,
     color:      th.colors.mutedLight,

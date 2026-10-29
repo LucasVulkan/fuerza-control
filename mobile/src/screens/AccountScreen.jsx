@@ -160,6 +160,8 @@ export default function AccountScreen() {
   const programs         = useStore((s) => s.programs);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const hasRemoteAccount = useStore((s) => s.hasRemoteAccount());
+  // Fichas que aún no están en la cuenta (C10-04 §5): se actualiza sola al subirlas.
+  const localCount       = useStore((s) => s.localClientCount());
 
   const mode       = trainerSync?.mode ?? null;
   const hasAccount = !!mode && mode !== 'offline';
@@ -242,7 +244,11 @@ export default function AccountScreen() {
     const back = mode === 'code'
       ? t('account.leaveBackCode')
       : t('account.leaveBackSocial', { how: t(`account.short.${mode}`) });
-    showDialog(t('account.leaveTitle'), t('account.leaveWhy', { back }), [
+    // Con clientes sin subir, el aviso va antes (C10 §3.2): si sale igual, se suben a la próxima cuenta en la que entre.
+    const local = useStore.getState().localClientCount();
+    const why   = t('account.leaveWhy', { back });
+    const body  = local > 0 ? [t('account.leaveLocal', { count: local }), why].join('\n\n') : why;
+    showDialog(t('account.leaveTitle'), body, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('account.leaveCta'),
@@ -316,6 +322,7 @@ export default function AccountScreen() {
         )}
         {/* Dentro de la misma tarjeta: es el estado de esta cuenta, no otra cosa. */}
         {needsLogin && mode !== 'code' && <TrainerRelogin />}
+        {localCount > 0 && <Explain>{t('account.localClients', { count: localCount })}</Explain>}
       </View>
 
       <NameField />

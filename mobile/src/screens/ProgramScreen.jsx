@@ -49,7 +49,7 @@ import { sessionStats } from '../utils/sessionStats';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 import { templatesOf } from '../utils/programOwnership';
-import { clientLink } from '../utils/clientLink';
+import { clientLink, linkOf, isReadOnly } from '../utils/clientLink';
 import { programTotals } from '../utils/stageProgress';
 
 import { showDialog } from '../components/ui/dialog';
@@ -198,9 +198,11 @@ function AssignSheet({ visible, program, clients, programs, onAssign, onClose })
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
 
+  // Las de otra cuenta son de solo lectura (C10 N-19): no se les asigna nada.
+  const ownerId = useStore((s) => s.trainerSync.userId);
   const clientList = useMemo(
-    () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
-    [clients]
+    () => Object.values(clients ?? {}).filter((c) => !isReadOnly(linkOf(c, ownerId))).sort((a, b) => a.name.localeCompare(b.name)),
+    [clients, ownerId]
   );
   const [clientId,   setClientId]   = useState('');
   const [customName, setCustomName] = useState('');
@@ -300,9 +302,11 @@ function AssignSessionSheet({ template, clients, onAssign, onClose }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  // Las de otra cuenta son de solo lectura (C10 N-19): no se les asigna nada.
+  const ownerId = useStore((s) => s.trainerSync.userId);
   const clientList = useMemo(
-    () => Object.values(clients ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
-    [clients]
+    () => Object.values(clients ?? {}).filter((c) => !isReadOnly(linkOf(c, ownerId))).sort((a, b) => a.name.localeCompare(b.name)),
+    [clients, ownerId]
   );
   const trainerSync = useStore((s) => s.trainerSync);
   const { gates } = useFreeGates();

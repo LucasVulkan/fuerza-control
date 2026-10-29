@@ -99,7 +99,7 @@ export default function ArchivedProgramsSheet({
         <Reanimated.View key={selected ? 'options' : 'list'} entering={pageEntering} exiting={pageExiting}>
           {selected ? (
             <Section style={styles.section}>
-              <SheetRow icon={ROW_ICON.sync} label={t('archived.reactivate')} onPress={() => onReactivate(selected)} {...pro(reactivateLocked)} />
+              {onReactivate && <SheetRow icon={ROW_ICON.sync} label={t('archived.reactivate')} onPress={() => onReactivate(selected)} {...pro(reactivateLocked)} />}
               <SheetRow icon={ROW_ICON.view} label={t('archived.view')}       onPress={() => onView(selected)} />
               {/* `MenuRow` y no `SheetRow`: no cierra la hoja. */}
               <MenuRow
@@ -110,7 +110,7 @@ export default function ArchivedProgramsSheet({
               {onSaveTemplate && (
                 <SheetRow icon={ROW_ICON.preset} label={t('archived.saveTemplate')} onPress={() => onSaveTemplate(selected)} {...pro(saveTemplateLocked)} />
               )}
-              <SheetRow icon={ROW_ICON.trash} label={t('archived.delete')} onPress={() => onDelete(selected)} danger />
+              {onDelete && <SheetRow icon={ROW_ICON.trash} label={t('archived.delete')} onPress={() => onDelete(selected)} danger />}
             </Section>
           ) : sorted.length === 0 ? (
             emptyText ? (
