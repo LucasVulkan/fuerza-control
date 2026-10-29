@@ -298,6 +298,19 @@ pantalla ya separa los dos caminos, pero `_enterCandidate` no lo sabe. En
 C10-04 recibe `{ upgrade: true }` desde «Cambiar a Google / Apple» y solo
 entonces traspasa.
 
+Tres casos más, decididos por el usuario el 29-oct-2026:
+- **Mejorar hacia una cuenta que ya tiene clientes: no se deja.** Si la cuenta
+  de Google o Apple ya existe y tiene algún hueco, no se traspasa nada ni se
+  cambia de cuenta: «Esa cuenta de Google ya tiene clientes. Para usarla, sal
+  de esta y entra en ella». Nunca se juntan dos cuentas sin querer. Si existe
+  pero está vacía, se mejora como siempre.
+- **De Google a Apple (y al revés) también es mejorar** (R-D1), con la misma
+  regla.
+- **Salir con clientes aún sin subir** (`local` con la cuenta puesta): el
+  diálogo de «Salir» avisa antes: «Hay N clientes que aún no están en tu
+  cuenta. Conéctate antes de salir para no perderlos de esta cuenta». Si sale
+  igual, se suben a la próxima cuenta en la que entre (§5).
+
 Borrar no es un estado: la ficha deja de existir (§8.3). Que otro móvil de la
 cuenta la borrara (`kind = 'deleted'`) también la quita aquí (R-B10).
 
