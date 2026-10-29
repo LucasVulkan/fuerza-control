@@ -4,7 +4,7 @@
 > En corto: En vez de parchear uno a uno los fallos de conexión, cuentas y pagos que siguen apareciendo, quitar las situaciones que los provocan: decidir qué no se permite, que cada dato tenga un solo dueño, que restaurar una copia no traiga estado de conexión, que la cola solo reintente lo que el entrenador envió, y que cada regla de la app tenga su test.
 > Inicio: 2026-10-29
 > Fase I04-01 · pendiente · Decisiones del usuario: qué se permite y qué no · §3
-> Fase I04-02 · pendiente · Restaurar una copia trae contenido, nunca estado de conexión · §4
+> Fase I04-02 · aparcado · Restaurar una copia trae contenido, nunca estado de conexión: sustituida por C10-06 · §4
 > Fase I04-03 · hecho · La cola solo reintenta lo que se envió y falló · §5
 > Fase I04-04 · terminado · Escribir en una ficha solo si sigue existiendo · §6
 > Fase I04-05 · pendiente · Pago pendiente: no se compra otra vez y no cruza cuentas · §7
@@ -274,7 +274,7 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
 | Fase | Qué | Depende de | Coste | Estado |
 |---|---|---|---|---|
 | I04-01 | Decidir las reglas DECIDIR del mapa del núcleo | — | 🟢 | pendiente |
-| I04-02 | Restaurar sin estado de conexión (E73, E78, E79) | I04-01 | 🟡 | pendiente |
+| I04-02 | Restaurar sin estado de conexión (E73, E78, E79) | I04-01 | 🟡 | sustituida por [C10-06](C10-clientes-de-la-cuenta.md) (hecha 29-oct) |
 | I04-03 | Cola propia (E72, E80, E83, E84) | I04-01 | 🟡 | hecho 29-oct — un solo camino `_send`, `sendAll` y `retrySendQueue` separados, reintento con espera; tests en `store/sendQueue.sim.test.js`; casillas por probar |
 | I04-04 | `patchClient` (E74 + A1) | — | 🟢 | terminado 29-oct — todos los `set` sobre una ficha pasan por `patchClient`; tests en `store/patchClient.sim.test.js` (sin nada que probar a mano) |
 | I04-05 | Pago pendiente (E75, E81, E82) | I04-01 | 🟡 | pendiente |
