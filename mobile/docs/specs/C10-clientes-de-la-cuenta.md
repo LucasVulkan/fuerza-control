@@ -11,7 +11,7 @@
 > Fase C10-07 · pendiente · Deshacer al borrar un cliente · §10.7
 > Fase C10-08 · pendiente · De punta a punta: móvil nuevo, reglas con su test y prueba en dispositivo · §10.8
 >
-> Estado: **planificación para revisar, sin código** (28-oct-2026). Implementa
+> Estado: **aprobada, en implementación** (29-oct-2026; §3.2 cambiada ese día: hechos guardados, estado calculado). Implementa
 > las reglas N-15 y N-17 del [mapa del núcleo](../nucleo.md), que manda sobre
 > esta spec, y absorbe tres fases de [I04](I04-simplificar-nucleo.md): I04-02
 > (restaurar) pasa a C10-06, I04-08 (estado de la ficha) a C10-01 y C10-04, e
@@ -40,8 +40,10 @@ Con esta spec:
 3. **La cuenta guarda la ficha, los programas y lo apuntado** en una tabla que
    el cliente no puede leer. Guardar no es enviar: lo que ve el cliente sigue
    siendo solo lo que el entrenador envía (N-06).
-4. **El estado de la ficha es un solo campo**, `link`, con seis valores, y una
-   función pura dice qué cambios se permiten.
+4. **El estado de la ficha se calcula, no se guarda.** La ficha guarda lo que
+   el servidor dijo de su hueco (cinco hechos) y una función pura saca de ahí
+   uno de seis valores. No hay un estado guardado que pueda contradecir a los
+   hechos (§3).
 5. **Sin cuenta, nada cambia**: los clientes viven en el móvil y la copia de
    Drive es su única copia.
 
@@ -149,10 +151,12 @@ mismo `local_id` (el índice lo impide; se mira por si alguien lo quita).
 ```js
 clients[id] = {
   id: 'client_…',       // para siempre: móvil, hueco (local_id), copias
-  link:   'local' | 'none' | 'invited' | 'linked' | 'left' | 'otherAccount',  // §3
-  slotId: uuid | null,  // null ⇔ link === 'local'
-  code:   string | null,// solo con invited · linked · left
-  leftAt: ISO | null,   // solo con left
+  // Lo que el servidor dijo de su hueco la última vez (§3.2). El estado se calcula de aquí.
+  slotId:    uuid | null,   // el hueco; null = sin hueco
+  slotOwner: uuid | null,   // la cuenta (user id) donde estaba; null = ya no está en ninguna que conozcamos
+  code:      string | null, // client_code
+  seated:    boolean,       // client_id no es null: hay alguien dentro
+  leftAt:    ISO | null,    // disconnected_at, solo con el asiento vacío
   savedSig: string | null, // firma de lo último guardado en la cuenta (§6); nunca viaja en copias
   // la ficha (§2.3), igual que hoy
   // el envío (I04-03), igual que hoy: programDirty, overridesDirty, programUploadedSig, programUploadedAt
@@ -164,15 +168,18 @@ clients[id] = {
 |---|---|
 | `syncSlotId` | `slotId` |
 | `syncCode` | `code` |
-| `syncLinked`, `syncOrphan`, `syncLeftAt` (como estado) | `link` |
-| `syncLeftAt` (la fecha) | `leftAt` |
+| `syncLinked` | `seated` |
+| `syncOrphan` | `slotOwner = null` |
+| `syncLeftAt` | `leftAt` |
 | `syncPending` (alta en vuelo, persistida) | `ui.linking[clientId]`, **sin persistir**: es una reserva de segundos, y hoy hay un suscriptor solo para limpiarla al arrancar |
 | `programMissing` | `recoverMissing`: lo mismo, ahora para ficha y programas (§8.2) |
 | `syncErrorAt` | es del lado del cliente (`clientSync`), no de la ficha: no se toca |
 
-Invariantes, comprobadas por una función `assertLink(c)` que usan los tests:
-`slotId` es null si y solo si `link === 'local'`; `code` no es null solo en
-`invited`, `linked` o `left`; `leftAt` solo en `left`.
+Los cinco hechos solo se escriben con las funciones de §3.2 (`slotFacts`,
+`NO_SLOT`, `codeGiven`, `CODE_CLEARED`), nunca campo a campo; una regla de grep
+lo comprueba. Así se cumple siempre lo que una función de test, `assertFacts(c)`,
+mira en los escenarios largos: sin `slotId`, los otros cuatro vacíos; `seated`
+solo con `code`; `leftAt` solo sin `seated`.
 
 ### 2.3 Qué es «la ficha» y qué son «sus programas»
 
@@ -192,11 +199,11 @@ Invariantes, comprobadas por una función `assertLink(c)` que usan los tests:
 
 Nada de esto contiene el estado de conexión, el envío ni `savedSig`.
 
-## 3. Estados y transiciones (N-15)
+## 3. Estados (N-15)
 
-### 3.1 Los seis valores de `link`
+### 3.1 Los seis valores del estado (`linkOf`)
 
-| `link` | Qué es | Hueco | Código | Se le envía | Se guarda en la cuenta | Cuenta como «con app» |
+| Estado | Qué es | Hueco | Código | Se le envía | Se guarda en la cuenta | Cuenta como «con app» |
 |---|---|---|---|---|---|---|
 | `local` | Sin hueco: entrenador sin cuenta, o con cuenta y aún por subir (§5) | no | — | no | no (está por subir) | no |
 | `none` | **Sin app**, guardado en la cuenta | sí | no | no | sí | no |
@@ -211,61 +218,94 @@ cosas distintas: una está a salvo en la cuenta y la otra no), y desaparece
 está en su cuenta sin que él lo borrara es `otherAccount`, y la salida es la
 misma (volver a la cuenta que lo tiene).
 
-### 3.2 La función pura
+### 3.2 Hechos guardados, estado calculado
 
-Un archivo, `src/utils/clientLink.js` reescrito, sin imports del store:
+*(Cambiado el 29-oct-2026, a propuesta de la revisión antes de implementar: la
+versión anterior guardaba `link` y lo movía con `nextLink(link, evento)` y una
+tabla de cambios prohibidos. Casi todo `link` es una copia de lo que dice el
+servidor, así que guardar el valor y además los hechos abría la puerta a que se
+contradijeran. Ahora solo se guardan los hechos.)*
 
-- `linkFromSlot(slot)` → lo que dice una fila del servidor: sin código `none`;
-  con `client_id` `linked`; con `disconnected_at` `left`; si no, `invited`.
-- `nextLink(link, event)` → el valor nuevo, o **el mismo** si el cambio no está
-  permitido (y lo deja en el registro). Nunca lanza: quien llama ya ha hablado
-  con el servidor y no se puede deshacer eso.
-- Lecturas, para que nadie compare cadenas sueltas: `hasSlot`, `withApp`
-  (invited · linked · left), `canSend` (= `withApp`), `canSave` (none · invited
-  · linked · left), `isReadOnly` (`otherAccount`).
-- `clientLink(c)` se queda como lectura para las pantallas de hoy
-  (`'none' | 'invited' | 'linked'`), calculada de `link`, para no tocar todas las
-  pantallas en C10-01.
+Un archivo, `src/utils/clientLink.js` reescrito, sin imports del store.
 
-| Evento | Desde | A | Quién lo lanza |
-|---|---|---|---|
-| `uploaded` | local | none | subir a la cuenta (§5) |
-| `codeGiven` | none · invited · linked · left | invited | invitar, reemitir, pasar a la app |
-| `codeCleared` | invited · left | none | cancelar la invitación |
-| `server(slot)` | none · invited · linked · left · otherAccount | `linkFromSlot(slot)` | refresco: el hueco está en esta cuenta |
-| `slotMissing` | none · invited · linked · left | otherAccount | refresco: el hueco no está y esta cuenta no lo borró; o un envío recibe `SLOT_GONE` |
-| `accountLeft` | none · invited · linked · left | otherAccount | salir de la cuenta (N-09) |
-| `slotCancelled` | none · invited · linked · left · otherAccount | local | refresco: un móvil con la versión de hoy **canceló** su invitación borrando el hueco (`deleted_slots.kind = 'cancelled'`) |
-| `accountDeleted` | todos | local | borrar la cuenta |
+**El estado** se calcula siempre, nunca se guarda:
+
+```js
+linkOf(c, userId) =
+  !c.slotId                          ? 'local'
+  : !userId || c.slotOwner !== userId ? 'otherAccount'
+  : !c.code                          ? 'none'
+  : c.seated                         ? 'linked'
+  : c.leftAt                         ? 'left'
+  :                                    'invited'
+```
+
+`userId` es `trainerSync.userId`. Lecturas sobre el resultado, para que nadie
+compare cadenas sueltas: `withApp` (invited · linked · left), `canSend`
+(= `withApp`), `canSave` (none · invited · linked · left), `isReadOnly`
+(`otherAccount`). `clientLink(c, userId)` se queda como lectura para las
+pantallas de hoy (`'none' | 'invited' | 'linked'`), calculada con `linkOf`, para
+no tocar todas las pantallas en C10-01.
+
+**Los hechos** se escriben solo con estas cuatro, todas puras:
+
+| Función | Devuelve | Quién la usa |
+|---|---|---|
+| `slotFacts(slot, owner)` | Copia de una fila del servidor: `slotId`, `slotOwner = owner`, `code = client_code`, `seated = !!client_id`, `leftAt = disconnected_at` si nadie está dentro | refresco (el hueco está en esta cuenta), subir a la cuenta (§5), recuperar (§8.2) |
+| `codeGiven(code)` | `code`, `seated = false`, `leftAt = null` | invitar, reemitir, pasar a la app (la función del servidor solo devuelve el código, y por definición deja el asiento vacío) |
+| `CODE_CLEARED` | `code = null`, `seated = false`, `leftAt = null` | cancelar la invitación |
+| `NO_SLOT` | los cinco vacíos | refresco: un móvil con la versión de hoy **canceló** su invitación borrando el hueco (`deleted_slots.kind = 'cancelled'`); borrar la cuenta |
+
+Y un caso suelto: el refresco no encuentra el hueco y esta cuenta no lo borró
+(o un envío recibe `SLOT_GONE`) → `slotOwner = null`. Es lo único que sabemos:
+ya no está en esta cuenta.
+
+**Qué no escribe nada:**
+- **Salir de la cuenta** (no necesita red): con `userId` null, toda ficha con
+  hueco se lee `otherAccount`. Las `local` siguen `local`.
+- **Volver a entrar en la misma cuenta**: en cuanto `trainerSync.userId` vuelve a
+  ser el suyo, las fichas vuelven a leerse como antes, sin esperar a que el
+  refresco salga bien (entrar sí necesita red; lo que ya no hace falta es un
+  segundo viaje para corregir las fichas).
+- **Entrar en otra cuenta**: sus fichas se leen `otherAccount` y el refresco de
+  la cuenta nueva no las toca (sus huecos no están en ella).
+
+**Pasar a Google o Apple** (la cuenta cambia de `userId` y se lleva los huecos):
+en el mismo `set` que apunta el `userId` nuevo, las fichas con `slotOwner` igual
+al viejo pasan al nuevo. Solo si el traspaso se hizo; si la app muere entre el
+traspaso y ese `set`, las fichas se leen `otherAccount` hasta volver a entrar,
+como hoy.
 
 Borrar no es un estado: la ficha deja de existir (§8.3). Que otro móvil de la
 cuenta la borrara (`kind = 'deleted'`) también la quita aquí (R-B10).
 
-Un test por fila y uno por cada pareja **no** permitida (p. ej. `codeGiven`
-desde `local` o desde `otherAccount` devuelve lo mismo).
+**Tests**: `linkOf` con una ficha de cada valor y con cada combinación de cuenta
+(misma, otra, ninguna); cada función de escribir seguida de `assertFacts`; y en
+el store, salir y volver a entrar en la misma cuenta con el refresco fallando:
+las fichas se leen igual que antes de salir.
 
 ### 3.3 Cada operación del mapa §5 en este modelo
 
-| Operación | Red | Qué hace ahora | Evento |
+| Operación | Red | Qué hace ahora | Escribe en la ficha |
 |---|---|---|---|
 | **Crear un cliente** *(no estaba en el mapa)* | no | Ficha `local`. Con cuenta, la subida (§5) le crea el hueco sin código en cuanto hay red. Sin cuenta se queda `local`. | — |
-| Invitar | sí (N-03) | Si es `local`, primero se sube; luego `trainer_reissue_client_code`. Envía el programa de entrada (N-06, I04-03). | `uploaded`, `codeGiven` |
+| Invitar | sí (N-03) | Si es `local`, primero se sube; luego `trainer_reissue_client_code`. Envía el programa de entrada (N-06, I04-03). | `slotFacts` al subir, `codeGiven` |
 | Reemitir el código | sí | Igual que hoy. | `codeGiven` |
-| Cancelar la invitación | sí | `trainer_clear_code`. Ya no borra el hueco: lo apuntado y lo privado se quedan. | `codeCleared` |
-| Canjear el código (cliente) | sí | Sin cambios. El entrenador lo ve al refrescar. | `server` |
-| Desconectarse (cliente) | cola | Sin cambios (R-B9). El entrenador lo ve al refrescar. | `server` |
+| Cancelar la invitación | sí | `trainer_clear_code`. Ya no borra el hueco: lo apuntado y lo privado se quedan. | `CODE_CLEARED` |
+| Canjear el código (cliente) | sí | Sin cambios. El entrenador lo ve al refrescar. | `slotFacts` |
+| Desconectarse (cliente) | cola | Sin cambios (R-B9). El entrenador lo ve al refrescar. | `slotFacts` |
 | Borrar un cliente | cola | Deshacer unos segundos y luego como hoy (§8.3). | — |
 | Pasar a la app | sí | Es **invitar**: lo apuntado ya está en el hueco (§6), así que desaparece `pushTrainerLogToSlot` como paso aparte. | `codeGiven` |
 | Enviar programa o prescripciones | cola | Sin cambios (I04-03), solo si `canSend`. | — |
 | Subir / bajar el historial | cola / sí | Sin cambios. | — |
-| Refrescar los huecos | sí | Sube los `local` (§5), borra los pendientes, lee los huecos, aplica `server`/`slotMissing`/`slotCancelled`, recupera los que faltan **por su id** con su ficha (§8.2), fija ids que no cuadran (§4.2) y guarda lo pendiente (§6). | varios |
+| Refrescar los huecos | sí | Sube los `local` (§5), borra los pendientes, lee los huecos, aplica `slotFacts` a los que están, `slotOwner = null` a los que faltan y `NO_SLOT` a los cancelados por un móvil viejo, recupera los que faltan **por su id** con su ficha (§8.2), fija ids que no cuadran (§4.2) y guarda lo pendiente (§6). | varios |
 | Crear cuenta o entrar | sí | Como hoy (`_enterCandidate`) y, al final, el refresco, que sube los clientes de antes con su hoja (§5). | — |
 | Recuperar la cuenta | sí | Igual: el refresco trae todos los huecos con su ficha, sus programas y su historial. | — |
-| Pasar a Google o Apple | sí | Como hoy; el traspaso conserva los ids (§2.1). Los `link` no cambian. | — |
-| Salir | no | Como hoy. Las fichas con hueco pasan a `otherAccount`; las `local` se quedan. | `accountLeft` |
-| Borrar la cuenta | sí | Como hoy (R-D4). El servidor se lleva huecos y fichas privadas en cascada; en el móvil todas pasan a `local` con todo lo suyo. | `accountDeleted` |
+| Pasar a Google o Apple | sí | Como hoy; el traspaso conserva los ids (§2.1). Las fichas de la cuenta vieja pasan a la nueva en el mismo `set` (§3.2). | `slotOwner` |
+| Salir | no | Como hoy. Con `userId` null, las fichas con hueco se leen `otherAccount`; las `local`, `local`. | nada |
+| Borrar la cuenta | sí | Como hoy (R-D4). El servidor se lleva huecos y fichas privadas en cascada; en el móvil todas pasan a `local` con todo lo suyo. | `NO_SLOT` |
 | Copia en Drive | sí | Sin estado (§8.1). | — |
-| Restaurar / importar copia | sí con cuenta | §8.1. | `uploaded` para los añadidos |
+| Restaurar / importar copia | sí con cuenta | §8.1. | nada: entran `local` y la subida hace el resto |
 | Comprar, restaurar compras, caducar, elegir activos | — | Sin cambios; los límites cuentan con `withApp` (§7). | — |
 
 ## 4. Migración
@@ -274,21 +314,22 @@ desde `local` o desde `otherAccount` devuelve lo mismo).
 
 En `onRehydrateStorage`, como las otras migraciones previas a publicar, una
 función pura `migrateClientLinks(clients, trainerSync)` en `clientLink.js`. Es
-idempotente: una ficha que ya tiene `link` no se toca.
+idempotente: una ficha que ya tiene `seated` no se toca.
 
-| Ficha de hoy | `link` |
-|---|---|
-| sin `syncSlotId` | `local` |
-| con `syncSlotId` y la cuenta sin `userId` (salió de la cuenta) | `otherAccount` |
-| `syncOrphan` | `otherAccount` |
-| `syncLinked` | `linked` |
-| `syncLeftAt` | `left` (y `leftAt`) |
-| con `syncSlotId`, nada de lo anterior | `invited` |
+| Ficha de hoy | Hechos | Se lee |
+|---|---|---|
+| sin `syncSlotId` | `NO_SLOT` | `local` |
+| con `syncSlotId`, la cuenta sin `userId` (salió) | `slotOwner = null` | `otherAccount` |
+| `syncOrphan` | `slotOwner = null` | `otherAccount` |
+| con `syncSlotId`, lo demás | `slotOwner = trainerSync.userId` | según lo de abajo |
 
-`syncSlotId` → `slotId`, `syncCode` → `code`; las banderas viejas y `syncPending`
-se borran; `savedSig` nace null. Nada más cambia en la ficha. El test lleva una
-ficha de cada fila, guardada como la guarda la versión de hoy (sacada de los
-`*.sim.test.js`), y comprueba `assertLink` sobre el resultado.
+`syncSlotId` → `slotId`, `syncCode` → `code`, `syncLinked` → `seated`,
+`syncLeftAt` → `leftAt`; las banderas viejas y `syncPending` se borran;
+`savedSig` nace null. Nada más cambia en la ficha. Una ficha `slotOwner = null`
+que vuelva a aparecer en la cuenta la arregla el refresco con `slotFacts`. El
+test lleva una ficha de cada caso, guardada como la guarda la versión de hoy
+(sacada de los `*.sim.test.js`), y comprueba `assertFacts` y que `linkOf` da lo
+mismo que la versión de hoy enseñaba.
 
 ### 4.2 Lo que se arregla en el primer refresco con red
 
@@ -338,11 +379,11 @@ comparan por id con lo que la cuenta conoce; sin cuenta, entran `local`.
 entrar o recuperarla, al abrir Clientes y al volver a primer plano. Cualquier
 ficha `local` con la cuenta puesta se sube. Eso cubre los clientes de antes de
 la cuenta, los creados sin red, los añadidos al restaurar (§8.1) y los de
-fichas cuya invitación canceló un móvil viejo (`slotCancelled`).
+fichas cuya invitación canceló un móvil viejo (`NO_SLOT`).
 
 **Cómo**, por cliente y en orden: `trainer_create_slot(name, id, false)` →
 `trainer_save_client` (§6) → `trainer_upload_log` si tiene algo apuntado →
-`uploaded`. Repetirlo no duplica nada: el hueco es el mismo por `local_id`
+`slotFacts(hueco, userId)`. Repetirlo no duplica nada: el hueco es el mismo por `local_id`
 (E35), guardar pisa la misma fila y el historial suma (R-C3).
 
 **Cómo se ve.** Si hay **más de uno** por subir y es justo después de crear la
@@ -426,7 +467,7 @@ barato.
 
 `FREE` no cambia: 3 clientes, 1 con app. Lo que cambia es **qué es «con app»**:
 
-- `isConnected(c)` pasa a `withApp(c.link) || ui.linking[c.id]`: tiene código
+- `isConnected(c)` pasa a `withApp(linkOf(c, userId)) || ui.linking[c.id]`: tiene código
   (invitado, dentro o se fue) o se le está dando ahora. **Tener hueco ya no
   cuenta**, porque con cuenta lo tienen todos. `none` y `local` son «sin app»;
   `otherAccount` sigue sin ocupar plaza con app (C09 §3.4) y sí cuenta en los 3.
@@ -436,7 +477,7 @@ barato.
   límite se acepta, como hoy (I02 decisión 1).
 - **R-E2.** Un congelado es solo lectura: como no cambia, no hay nada que
   guardar, y la firma lo garantiza sin una comprobación más. El refresco le
-  sigue actualizando `link`, el contador y nada más; la ficha recuperada de un
+  sigue actualizando los hechos del hueco, el contador y nada más; la ficha recuperada de un
   congelado sí baja (es devolverle al entrenador lo suyo, como E39). Enviar a un
   congelado sigue prohibido (N-12, I04-03).
 - **R-E3.** No se borra ni se oculta nada: los congelados siguen guardados en la
@@ -453,10 +494,10 @@ barato.
 ### 8.1 Restaurar una copia (absorbe I04-02; N-04, N-05, N-08)
 
 **La copia deja de llevar estado.** `buildBackupPayload` quita de cada ficha
-`link`, `slotId`, `code`, `leftAt`, `savedSig`, `programDirty`,
+`slotId`, `slotOwner`, `code`, `seated`, `leftAt`, `savedSig`, `programDirty`,
 `overridesDirty`, `programUploadedSig`, `programUploadedAt` y
-`remoteSessionsCount`, y no lleva `freeClientIds` (dentro de `profile`) ni la
-cola de I04-03. Al restaurar se quitan otra vez (las copias viejas los traen) y
+`remoteSessionsCount` y `sendPending` (la cola de I04-03), y no lleva
+`freeClientIds` (dentro de `profile`). Al restaurar se quitan otra vez (las copias viejas los traen) y
 se quitan también las banderas `sync*`.
 
 **Por partes** (N-04): mis programas y plantillas · mi historial · ejercicios y
@@ -494,7 +535,7 @@ El refresco recupera **todo hueco de la cuenta que no tenga ficha aquí**:
 
 1. La ficha nace con **`id = slot.local_id`** (si un hueco no tiene, que solo
    puede ser de datos viejos, uno nuevo que se fija con `trainer_set_local_id`),
-   `link = linkFromSlot(slot)`, su `slotId`, su `code` y `recoverMissing: true`.
+   los hechos de `slotFacts(slot, userId)` y `recoverMissing: true`.
 2. Se bajan las filas privadas de los recuperados (una consulta, `in(slot_id)`).
    Con fila: la ficha sale de `card_json` (con sus etiquetas, que se suman al
    registro por id), sus programas de `programs_json` con `importForClient` y
@@ -598,19 +639,19 @@ real con PGlite, varios móviles), y los de la función pura en
 
 **Qué.** `clientLink.js` reescrito (§3.2), la migración de §4.1 en
 `onRehydrateStorage`, y todo el código que hoy lee o escribe `sync*` en una
-ficha pasa a `link`/`slotId`/`code`/`leftAt` (57 usos en `useStore.js`, 17 en
+ficha pasa a los hechos (`slotId`/`slotOwner`/`code`/`seated`/`leftAt`) y se lee con `linkOf` (57 usos en `useStore.js`, 17 en
 `ClientsScreen.jsx`, y `freePlan.js`, onboarding y `NextSessionScreen`). Ningún
-`set` escribe `link` a mano: siempre `nextLink`. `syncPending` pasa a
+`set` escribe los hechos campo a campo: siempre con las funciones de §3.2. `syncPending` pasa a
 `ui.linking`. **El comportamiento no cambia**: ni el servidor, ni lo que ve el
 usuario. Con cuenta, los «sin app» de hoy salen `local` (aún no hay subida), y
 `invited`/`linked`/`left`/`otherAccount` como hoy.
 
 Regla de grep en el test de integridad: ningún `syncSlotId`, `syncLinked`,
 `syncOrphan`, `syncPending`, `syncLeftAt` ni `syncCode` en `src/` ni en `store/`
-fuera de `migrateClientLinks`.
+fuera de `migrateClientLinks`; y ningún `seated:` ni `slotOwner:` fuera de
+`clientLink.js` (los hechos solo se escriben con sus funciones).
 
-**Tests.** Uno por transición y por pareja prohibida; migración con una ficha de
-cada fila de §4.1; todos los `*.sim.test.js` de hoy en verde sin cambiar lo que
+**Tests.** Los de §3.2; migración con una ficha de cada fila de §4.1; todos los `*.sim.test.js` de hoy en verde sin cambiar lo que
 comprueban (solo los nombres de campos).
 
 **Probar C10-01**
@@ -815,7 +856,7 @@ C10-01, pero de una en una con las demás.
 - El escenario largo, de un solo usuario: empieza sin cuenta con clientes, crea
   la cuenta, invita a uno, pasa a Google, pierde el móvil, recupera en otro,
   restaura una copia vieja, borra y deshace, y comprueba en cada paso
-  `assertLink` sobre todas las fichas y que nada se perdió.
+  `assertFacts` sobre todas las fichas y que nada se perdió.
 - Las reglas N-15, N-17…N-20 y las R-xx de la tabla de §10 con su test en la
   columna **Test** de I02 (I04-07).
 - Las reglas N-18…N-20 pasan al mapa del núcleo con su fecha, y N-15 y N-17 se

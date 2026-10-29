@@ -127,20 +127,24 @@ verde, más uno de «restaurar dos veces la misma copia no cambia nada».
 Según N-06 del mapa. Hoy `sendPendingPrograms` recorre `programDirty`/`overridesDirty`, que
 significan «difiere de lo enviado», no «se pulsó Enviar» (E80).
 
-- **Una lista propia**: `outbox` en el store (guardada en disco), con una
-  entrada por cliente y tipo (`program` · `overrides`). Solo la añade un envío
+- **Una marca propia en la ficha**: `sendPending: { program?: true,
+  overrides?: true }` (guardada en disco con la ficha). Solo la pone un envío
   que falla **por red** (`uploadProgramToClient`, `sendOverrides`); la quita el
-  envío que acaba bien. `programDirty` vuelve a ser solo el aviso.
+  envío que acaba bien. `programDirty` vuelve a ser solo el aviso. *(Cambiado el
+  29-oct-2026: antes era una lista aparte, `outbox`. En la ficha, borrar el
+  cliente se lleva su cola con él y nunca queda una entrada que apunte a una
+  ficha que ya no existe.)*
 - **Un solo camino**: la cola, el envío a mano y la subida del invitado pasan
   por la misma función con el mismo cerrojo (E84).
 - **Al reintentar se manda lo de ahora**, no lo de cuando falló: el programa
-  actual de ese cliente. Si entretanto se borró el cliente o se congeló, la
-  entrada se descarta.
+  actual de ese cliente. Si entretanto se congeló, la marca se quita; si se
+  borró, ya no hay marca.
 - **Reintentos**: al volver la red (NetInfo), al volver a primer plano, al
   arrancar, y además un reintento con espera (30 s, 2 min, 10 min) mientras
   quede algo, para cuando NetInfo no ve el corte (E83). Sin red según NetInfo no
   se intenta solo; a mano, sí.
-- Cambiar o salir de cuenta vacía la `outbox` (N-09).
+- Cambiar o salir de cuenta quita `sendPending` de todas las fichas (N-09).
+- Las copias de Drive no llevan `sendPending` (I04-02, C10 §8.1).
 
 Tests: E72, E80 (A3), E73 y E84 en verde, más «dos llamadas a la vez suben una
 vez» (ya existe) y «sin pulsar Enviar, volver a primer plano no envía nada».
