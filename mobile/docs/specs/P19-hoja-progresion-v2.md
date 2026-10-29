@@ -2,12 +2,14 @@
 
 > Tema: programas
 > En corto: La hoja de Progresión deja de parecer un esqueleto: arriba, el ejercicio en su ficha; en el centro, una tarjeta que dice cuánto se recomendará subir y qué hay que hacer para conseguirlo; abajo, los ajustes en una lista plegada con su valor a la vista.
-> Fase P19-01 · pendiente · Cabecera y ficha del ejercicio · §3
-> Fase P19-02 · pendiente · Tarjeta «En la próxima sesión» · §4
-> Fase P19-03 · pendiente · «Cómo progresa»: los ajustes en lista plegada · §5
-> Fase P19-04 · pendiente · Iconos nuevos de Peso y Esfuerzo · §6
+> Fase P19-01 · hecho · Cabecera y ficha del ejercicio · §3
+> Fase P19-02 · hecho · Tarjeta «En la próxima sesión» · §4
+> Fase P19-03 · hecho · «Cómo progresa»: los ajustes en lista plegada · §5
+> Fase P19-04 · hecho · Iconos nuevos de Peso y Esfuerzo · §6
+> Inicio: 2026-10-29
+> Fin: 2026-10-29
 >
-> Estado: **escrita el 29-oct-2026, sin empezar.** Sale de rediseñar la hoja de
+> Estado: **implementada el 29-oct-2026, por probar en el móvil** (rama `feat/p19-hoja-progresion`, sin subir). Sale de rediseñar la hoja de
 > [P18-05](P18-motor-progresion.md) («§7. P18-05 — Hoja de Progresión por niveles»),
 > que el usuario veía floja: títulos en mayúsculas que no decían nada, bloques
 > flotando sobre el fondo, un párrafo al pie que había que leer dos veces y poco
@@ -251,10 +253,10 @@ maqueta v3.
 
 | Fase | Qué | Toca | Coste |
 |---|---|---|---|
-| P19-01 | Cabecera con icono y ficha del ejercicio | `ProgressionSheet`, `DragSheet` (prop opcional) | 🟢 |
-| P19-02 | Tarjeta «En la próxima sesión» | `ProgressionSheet`, locales | 🟢 |
-| P19-03 | Lista plegada «Cómo progresa» | `ProgressionSheet`, locales | 🟡 |
-| P19-04 | Iconos de Peso y Esfuerzo | `ProgressionSheet` (`TILE_ICON`), SVG en `mockups/iconos/` | 🟢 |
+| P19-01 | Cabecera con icono y ficha del ejercicio | `ProgressionSheet`, `DragSheet` (prop opcional) | 🟢 ✅ 1d49dda |
+| P19-02 | Tarjeta «En la próxima sesión» | `ProgressionSheet`, locales | 🟢 ✅ 8003730 |
+| P19-03 | Lista plegada «Cómo progresa» | `ProgressionSheet`, locales, `StepField` (prop `decimal`) | 🟡 ✅ f0d9041 |
+| P19-04 | Iconos de Peso y Esfuerzo | `ProgressionSheet` (`TILE_ICON`), SVG en `mockups/iconos/` | 🟢 ✅ d19bc3e |
 
 Las cuatro fases son independientes, pero todas tocan `ProgressionSheet`: van una
 detrás de otra, no en paralelo.
