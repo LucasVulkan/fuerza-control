@@ -1,0 +1,432 @@
+<title>Hoja de Progresión v2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta: rediseño de la hoja de Progresión (tres caminos para darle cohesión).
+     Valores de la app: src/themes.js (formaFit). Tema único oscuro, como la app.
+     Layout: tres móviles en fila (se apilan en pantalla estrecha), cada uno con su idea. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --page: #070707; --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --accent10: rgba(170,226,22,.1); --accent20: rgba(170,226,22,.2);
+    --warn: #ffb547; --down: #ff7a6b;
+    --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--text); font-family: var(--font);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  h1 { font: 900 22px var(--font); margin-bottom: 6px; text-wrap: balance; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.55 var(--font); max-width: 72ch; margin-bottom: 28px; }
+  .lead b { color: var(--text); }
+  .stage { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; justify-content: center; }
+  .col { display: grid; gap: 10px; width: 375px; max-width: 100%; min-width: 0; }
+  .col > h2 { font: 800 16px var(--font); }
+  .col > h2 em { font-style: normal; color: var(--accent); margin-right: 6px; }
+  .col > ul { color: var(--mutedLight); font: 500 13px/1.5 var(--font); padding-left: 18px; display: grid; gap: 3px; }
+  .col > ul b { color: var(--text); }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  [data-act]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [data-act] { cursor: pointer; }
+
+  .phone { background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; }
+  .sheet { background: var(--surface); border-radius: 22px 22px 0 0; margin-top: 40px; padding: 10px 16px 28px; display: grid; gap: 20px; }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--muted); margin: 0 auto -8px; }
+  svg { display: block; flex: none; }
+
+  /* ── cabecera ── */
+  .sh { display: flex; justify-content: space-between; align-items: center; }
+  .sh-t { display: flex; align-items: center; gap: 10px; font: 800 19px var(--font); letter-spacing: -.2px; }
+  .badge { width: 30px; height: 30px; border-radius: 9px; background: var(--accent20); color: var(--accent); display: grid; place-items: center; }
+  .ok { font: 900 15px var(--font); color: var(--accent); }
+  .ex { display: flex; gap: 12px; align-items: center; background: var(--bg); border-radius: 14px; padding: 12px; margin-top: -6px; }
+  .ex-ic { width: 40px; height: 40px; border-radius: 11px; background: var(--surface2); color: var(--mutedLight); display: grid; place-items: center; }
+  .ex b { font: 700 15px var(--font); display: block; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font: 500 12px var(--font); color: var(--mutedLight); font-variant-numeric: tabular-nums; }
+  .tags span + span::before { content: "·"; margin-right: 10px; color: var(--muted); }
+  .eyebrow { display: flex; align-items: center; gap: 6px; font: 800 12px var(--font); letter-spacing: 1.4px; color: var(--accent); }
+  .exbig { font: 800 21px/1.2 var(--font); letter-spacing: -.3px; margin-top: -10px; }
+  .exm { font: 500 13px var(--font); color: var(--mutedLight); margin-top: -16px; }
+
+  /* ── tarjetas de qué sube ── */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .tile { background: var(--surface); border-radius: 12px; padding: 12px 2px 9px; text-align: center; display: grid; justify-items: center; gap: 6px; font: 800 12px var(--font); color: var(--mutedLight); }
+  .on-bg .tile { background: var(--surface2); }
+  .tile svg { color: var(--accent); }
+  .tile.none svg { color: var(--mutedLight); }
+  .tile.on { background: var(--accent) !important; color: var(--onAccent); }
+  .tile.on svg { color: var(--onAccent); }
+  .tile.off { opacity: .4; }
+  .say { font: 500 14px/1.5 var(--font); color: var(--mutedLight); }
+  .say b { color: var(--text); font-weight: 800; }
+  .why { font: 500 12px/1.45 var(--font); color: var(--warn); }
+
+  /* ── A: pasos ── */
+  .step { background: var(--bg); border-radius: 16px; padding: 14px; display: grid; gap: 12px; }
+  .step > header { display: flex; align-items: center; gap: 10px; }
+  .num { width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); color: var(--text); font: 800 12px var(--font); display: grid; place-items: center; font-style: normal; flex: none; }
+  .q { font: 800 15px var(--font); flex: 1; }
+  .ans { font: 700 13px var(--font); color: var(--accent); }
+
+  .when { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .wc { background: var(--surface); border-radius: 12px; padding: 11px; border: 1.5px solid transparent; display: grid; gap: 4px; align-content: start; }
+  .wc.on { border-color: var(--accent); }
+  .wc b { font: 800 14px var(--font); }
+  .wc small { font: 500 12px/1.4 var(--font); color: var(--mutedLight); }
+  .sq { display: flex; gap: 3px; margin-bottom: 6px; }
+  .sq i { width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px var(--muted); }
+  .sq i.hit { background: var(--accent); box-shadow: none; }
+
+  .seg { display: flex; background: var(--surface); border-radius: 10px; padding: 3px; }
+  .seg b { flex: 1; text-align: center; font: 800 13px var(--font); padding: 8px 0; border-radius: 8px; color: var(--mutedLight); }
+  .seg b.on { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+  .stepper { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-radius: 14px; padding: 8px; }
+  .stepper button { width: 46px; height: 46px; border-radius: 11px; background: var(--surface2); font: 700 22px var(--font); color: var(--text); }
+  .val { text-align: center; font-variant-numeric: tabular-nums; }
+  .val b { font: 900 30px var(--font); letter-spacing: -.5px; }
+  .val small { font: 700 15px var(--font); color: var(--mutedLight); margin-left: 4px; }
+  .quick { display: flex; gap: 6px; }
+  .quick b { flex: 1; text-align: center; font: 800 13px var(--font); padding: 9px 0; border-radius: 10px; background: var(--surface); color: var(--mutedLight); font-variant-numeric: tabular-nums; }
+  .quick b.on { background: var(--accent); color: var(--onAccent); }
+  .hint { font: 500 12px/1.45 var(--font); color: var(--mutedLight); }
+  .hint b { color: var(--text); }
+  .hint u { text-decoration: none; color: var(--accent); font-weight: 700; }
+
+  .out { border-radius: 16px; border: 1px solid var(--border); padding: 14px; display: grid; gap: 10px; }
+  .out h4 { font: 800 12px var(--font); letter-spacing: 1.4px; color: var(--mutedLight); text-transform: uppercase; }
+  .ln { display: flex; gap: 10px; align-items: flex-start; font: 500 13px/1.45 var(--font); color: var(--mutedLight); }
+  .ln b { color: var(--text); font-weight: 800; white-space: nowrap; }
+  .ln i { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; font: 900 13px var(--font); font-style: normal; }
+  .ln.up i { background: var(--accent20); color: var(--accent); }
+  .ln.eq i { background: var(--surface2); color: var(--mutedLight); }
+  .ln.dn i { background: rgba(255,122,107,.15); color: var(--down); }
+
+  details.fine { background: var(--bg); border-radius: 14px; }
+  details.fine summary { list-style: none; cursor: pointer; padding: 13px 14px; display: flex; justify-content: space-between; align-items: center; font: 800 14px var(--font); }
+  details.fine summary small { font: 500 12px var(--font); color: var(--mutedLight); }
+  details.fine summary::-webkit-details-marker { display: none; }
+  details.fine .in { padding: 0 14px 14px; display: grid; gap: 14px; }
+  .lbl { font: 800 13px var(--font); margin-bottom: 6px; }
+
+  /* ── B: la frase ── */
+  .sentence { background: var(--bg); border-radius: 16px; padding: 16px; font: 600 19px/1.6 var(--font); letter-spacing: -.2px; color: var(--text); }
+  .sentence + .sentence { margin-top: -12px; font-size: 15px; color: var(--mutedLight); font-weight: 500; }
+  .tok { color: var(--accent); border-bottom: 2px dashed var(--accent); padding: 0 1px; white-space: nowrap; }
+  .tok.open { background: var(--accent); color: var(--onAccent); border-bottom-color: transparent; border-radius: 6px; padding: 0 5px; }
+  .fix { color: var(--text); font-weight: 800; white-space: nowrap; }
+  .panel { background: var(--bg); border-radius: 16px; padding: 14px; display: grid; gap: 10px; margin-top: -12px; border: 1px solid var(--accent20); }
+  .panel .lbl { margin: 0; color: var(--mutedLight); font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; }
+  .tap { font: 500 12px var(--font); color: var(--muted); text-align: center; margin-top: -12px; }
+
+  /* ── C: lista ── */
+  .next { background: var(--bg); border-radius: 16px; padding: 16px; display: grid; gap: 8px; }
+  .next h4 { font: 800 12px var(--font); letter-spacing: 1.4px; color: var(--mutedLight); text-transform: uppercase; }
+  .jump { display: flex; align-items: baseline; gap: 10px; font-variant-numeric: tabular-nums; }
+  .jump s { text-decoration: none; font: 800 20px var(--font); color: var(--mutedLight); }
+  .jump em { font-style: normal; color: var(--muted); font-size: 18px; }
+  .jump b { font: 900 30px var(--font); color: var(--accent); letter-spacing: -.5px; }
+  .next p { font: 500 13px/1.45 var(--font); color: var(--mutedLight); }
+  .next p b { color: var(--text); }
+  .group { background: var(--bg); border-radius: 16px; overflow: hidden; }
+  .gtitle { font: 800 12px var(--font); letter-spacing: 1.4px; color: var(--mutedLight); text-transform: uppercase; margin: 0 0 -12px 4px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 13px 14px; }
+  .row + .row, .row + .rbody, .rbody + .row { border-top: 1px solid var(--surface2); }
+  .row .ri { width: 30px; height: 30px; border-radius: 9px; background: var(--surface2); color: var(--accent); display: grid; place-items: center; flex: none; }
+  .row .rl { flex: 1; min-width: 0; }
+  .row .rl b { font: 700 14px var(--font); display: block; }
+  .row .rl small { font: 500 12px var(--font); color: var(--mutedLight); }
+  .row .rv { font: 700 13px var(--font); color: var(--accent); white-space: nowrap; }
+  .row .chev { color: var(--muted); transition: transform .2s; }
+  .row.open .chev { transform: rotate(90deg); }
+  .rbody { padding: 4px 14px 14px; display: grid; gap: 10px; }
+  /* ── C v2: como el resto de la app, fondo oscuro y tarjetas claras ── */
+  .sheet.inv { background: var(--bg); }
+  .inv .ex, .inv .next, .inv .group { background: var(--surface); }
+  .inv .row + .row, .inv .row + .rbody, .inv .rbody + .row { border-top-color: #2c2c2c; }
+  .inv .wc, .inv .quick b, .inv .stepper, .inv .ex-ic, .inv .ri { background: var(--surface2); }
+  .inv .stepper button { background: var(--border); }
+  .inv .seg { background: none; padding: 0; gap: 6px; }
+  .inv .seg b { background: var(--surface2); padding: 9px 0; }
+  .inv .seg b.on { background: var(--accent); color: var(--onAccent); box-shadow: none; }
+  .inv .quick b.on { background: var(--accent); }
+
+  .next { gap: 0; padding: 14px 14px 4px; }
+  .next h4 { margin-bottom: 4px; }
+  .nx { display: flex; align-items: center; gap: 10px; padding: 10px 0; font: 500 13px/1.4 var(--font); color: var(--mutedLight); }
+  .nx + .nx { border-top: 1px solid #2c2c2c; }
+  .nx > span { flex: 1; min-width: 0; }
+  .nx > span b { color: var(--text); font-weight: 700; }
+  .nx .w { font: 800 16px var(--font); color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .nx.up .w { color: var(--accent); }
+  .nx.dn .w { color: var(--down); }
+  .nx i.mk { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; font: 900 13px var(--font); font-style: normal; }
+  .nx.up i.mk { background: var(--accent20); color: var(--accent); }
+  .nx.eq i.mk { background: var(--surface2); color: var(--mutedLight); }
+  .nx.dn i.mk { background: rgba(255,122,107,.15); color: var(--down); }
+  .boxes { display: flex; gap: 3px; margin-top: 5px; }
+  .boxes i { font: 800 10px/20px var(--font); font-style: normal; width: 24px; text-align: center; border-radius: 5px; background: var(--accent); color: var(--onAccent); font-variant-numeric: tabular-nums; }
+  .boxes i.mid { background: none; box-shadow: inset 0 0 0 1.5px var(--muted); color: var(--mutedLight); }
+
+  .next { padding: 14px; gap: 6px; }
+  .inv .jump b { font-size: 22px; }
+  .inv .jump s { font-size: 17px; }
+  .next .boxes { margin-top: 2px; }
+  .next p.else { border-top: 1px solid #2c2c2c; padding-top: 10px; margin-top: 6px; font-size: 12px; }
+  .sec .row { padding-bottom: 6px; }
+  .gt-row { display: flex; justify-content: space-between; align-items: baseline; margin-right: 4px; }
+  .gt-row a { font: 700 13px var(--font); letter-spacing: 0; text-transform: none; color: var(--accent); cursor: pointer; }
+  .tpls { display: grid; gap: 6px; margin-top: -10px; }
+  .tpls b { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border-radius: 12px; padding: 12px 14px; font: 700 14px var(--font); border: 1.5px solid transparent; }
+  .tpls b.on { border-color: var(--accent); }
+  .tpls b small { font: 500 12px var(--font); color: var(--mutedLight); }
+  .save { display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; border: 1.5px dashed var(--border); padding: 13px; font: 800 14px var(--font); color: var(--text); }
+  .save svg { color: var(--accent); }
+  .idea { font: 700 10px var(--font); letter-spacing: 1px; color: var(--warn); border: 1px solid var(--warn); border-radius: 5px; padding: 1px 5px; margin-left: 6px; vertical-align: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>Hoja de Progresión: tres caminos</h1>
+  <p class="lead">Lo que falla hoy: los títulos en mayúsculas no dicen nada («Cuándo sube»), cada bloque flota suelto sobre el fondo y la regla de abajo es un párrafo que hay que leer dos veces. Las tres ideas comparten cabecera nueva (icono + ejercicio en una ficha) y sustituyen el párrafo por <b>números reales del ejercicio</b>: «40 kg → 42,5 kg». Todo es tocable; las tres comparten el estado, así que lo que cambies en una se ve en las demás.</p>
+  <div class="stage">
+    <div class="col">
+      <h2><em>A</em>Pasos con respuesta</h2>
+      <ul>
+        <li>Cada pregunta es una <b>tarjeta numerada</b> con la respuesta elegida a la derecha.</li>
+        <li>Cuánto sube: <b>kilos o %</b>, botones − / + y atajos (1,25 · 2,5 · 5 · 10).</li>
+        <li>Al pie, «Así irá la próxima sesión» con ↑ = ↓ y los kilos de verdad.</li>
+      </ul>
+      <div class="phone"><div class="sheet" id="A"></div></div>
+    </div>
+    <div class="col">
+      <h2><em>B</em>La frase manda</h2>
+      <ul>
+        <li>La regla <b>es</b> la interfaz: cada parte subrayada se toca y abre sus opciones justo debajo.</li>
+        <li>Lo avanzado deja de esconderse: «si fallas…» y el freno de RPE son otra frase.</li>
+        <li>La más corta de las tres.</li>
+      </ul>
+      <div class="phone"><div class="sheet" id="B"></div></div>
+    </div>
+    <div class="col">
+      <h2><em>C</em>Próxima sesión + ajustes</h2>
+      <ul>
+        <li><b>v2:</b> fondo oscuro y tarjetas claras, como el resto de la app; cada opción tiene su fondo.</li>
+        <li><b>v3:</b> vuelve la próxima sesión de la v1 (salto de peso más pequeño), con las casillas de las series y qué pasa si no llegas.</li>
+        <li><b>Cuánto</b> y <b>cuándo sube</b>, siempre a la vista; fallo, freno y discos se despliegan.</li>
+        <li><b>Idea:</b> plantillas de progresión: elegir una arriba a la derecha y guardar la tuya al pie.</li>
+      </ul>
+      <div class="phone"><div class="sheet inv" id="C"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const EX = { name: 'Press militar con barra', sets: 6, min: 10, max: 12, last: 40 };
+const S = { up: 'weight', when: 'all', incType: 'kg', inc: 2.5, pct: 5, step: 1.25, down: 'fail', brake: false, rpe: 8, reps: 1, why: false, tok: 'inc', row: null, tpls: false };
+// Plantillas de ejemplo (idea): las de la app y las que guarde el usuario.
+const TPL = [
+  ['Lineal', { incType: 'kg', inc: 2.5, when: 'all', down: 'fail', brake: false }],
+  ['Hipertrofia', { incType: 'kg', inc: 1.25, when: 'most', down: 'fail', brake: true }],
+  ['Mi press', { incType: 'pct', pct: 5, when: 'all', down: 'never', brake: false }],
+];
+
+const f = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+const toStep = (x) => Math.max(S.step, Math.round(x / S.step) * S.step);
+const add = () => (S.incType === 'kg' ? S.inc : toStep(EX.last * S.pct / 100));
+const most = Math.floor(EX.sets / 2) + 1;
+const next = () => EX.last + add();
+const lower = () => EX.last - toStep(EX.last * 0.1);
+const incLabel = () => (S.incType === 'kg' ? `${f(S.inc)} kg` : `${f(S.pct)} %`);
+
+const ln = (fill, d) => `<path d="${d}" stroke="currentColor" stroke-width="${fill || 2}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+const ic = (body, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24">${body}</svg>`;
+const I = {
+  weight: ln(0, 'M7 12h10M2.5 10v4M21.5 10v4') + '<rect x="4.5" y="7" width="2.5" height="10" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="17" y="7" width="2.5" height="10" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>',
+  reps: `<g transform="translate(1 1)">${ln(0, 'M4.5 10a6.5 6.5 0 0 1 11.6-3.6M17.5 12a6.5 6.5 0 0 1-11.6 3.6M16.8 3.4v3.4h-3.4M5.2 18.6v-3.4h3.4')}</g>`,
+  effort: ln(0, 'M4 15.5a8 8 0 0 1 16 0M12 15.5l4.3-4.8') + '<circle cx="12" cy="15.5" r="1.8" fill="currentColor"/>',
+  none: ln(2.4, 'M6 12h12'),
+  trend: ln(0, 'M3 17l6-6 4 4 8-8M15 7h6v6'),
+  when: ln(0, 'M4 6h16M4 12h16M4 18h10') ,
+  plus: ln(0, 'M12 5v14M5 12h14'),
+  down: ln(0, 'M12 5v14M6 13l6 6 6-6'),
+  gauge: ln(0, 'M4 15.5a8 8 0 0 1 16 0M12 15.5l4.3-4.8'),
+  round: ln(0, 'M4 18h16M7 18V9M12 18V5M17 18v-6'),
+  chev: ln(0, 'M9 6l6 6-6 6'),
+};
+const TILES = [['weight', 'Peso'], ['reps', 'Reps'], ['effort', 'Esfuerzo'], ['none', 'Nada']];
+
+// ── piezas comunes ──
+const header = (big) => big
+  ? `<div class="grab"></div>
+     <div class="sh"><span class="eyebrow">${ic(I.trend, 16)}PROGRESIÓN</span><a class="ok">Aceptar</a></div>
+     <div class="exbig">${EX.name}</div>
+     <div class="exm">${EX.sets} × ${EX.min}–${EX.max} reps · la última vez ${EX.last} kg</div>`
+  : `<div class="grab"></div>
+     <div class="sh"><span class="sh-t"><span class="badge">${ic(I.trend, 18)}</span>Progresión</span><a class="ok">Aceptar</a></div>
+     <div class="ex"><span class="ex-ic">${ic(I.weight, 22)}</span><div><b>${EX.name}</b>
+       <div class="tags"><span>${EX.sets} series</span><span>${EX.min}–${EX.max} reps</span><span>Última vez ${EX.last} kg</span></div></div></div>`;
+
+const tiles = (onBg) => `<div class="tiles ${onBg ? 'on-bg' : ''}">${TILES.map(([id, l]) =>
+  `<button class="tile ${id} ${S.up === id ? 'on' : ''} ${id === 'effort' ? 'off' : ''}" data-act="${id === 'effort' ? 'why' : 'up:' + id}">${ic(I[id], 24)}${l}</button>`).join('')}</div>`;
+const SAY = {
+  weight: `<b>Sube el peso</b> y las reps vuelven al mínimo del rango.`,
+  reps: `<b>Sube las reps</b>; el peso se queda igual.`,
+  none: `<b>Nada sube solo.</b> Cada día eliges tú el peso.`,
+};
+const say = () => `<p class="say">${SAY[S.up]}</p>${S.why ? `<p class="why">Para progresar por esfuerzo, el ejercicio necesita reps fijas (se cambia en Volumen).</p>` : ''}`;
+
+const sq = (hit) => `<div class="sq">${Array.from({ length: EX.sets }, (_, i) => `<i class="${i < hit ? 'hit' : ''}"></i>`).join('')}</div>`;
+const whenCards = () => `<div class="when">
+  <button class="wc ${S.when === 'all' ? 'on' : ''}" data-act="when:all">${sq(EX.sets)}<b>Todas</b><small>Las ${EX.sets} series llegan a ${EX.max}</small></button>
+  <button class="wc ${S.when === 'most' ? 'on' : ''}" data-act="when:most">${sq(most)}<b>La mayoría</b><small>${most} de ${EX.sets} llegan a ${EX.max}, ninguna baja de ${EX.min}</small></button></div>`;
+
+const howMuch = () => {
+  const kg = S.incType === 'kg';
+  const quick = kg ? [1.25, 2.5, 5, 10] : [2.5, 5, 10];
+  const cur = kg ? S.inc : S.pct;
+  return `<div class="seg"><b class="${kg ? 'on' : ''}" data-act="incType:kg">Kilos</b><b class="${kg ? '' : 'on'}" data-act="incType:pct">Porcentaje</b></div>
+    <div class="stepper"><button data-act="dec" aria-label="Menos">−</button>
+      <div class="val"><b>+${f(cur)}</b><small>${kg ? 'kg' : '%'}</small></div>
+      <button data-act="inc" aria-label="Más">+</button></div>
+    <div class="quick">${quick.map((v) => `<b class="${v === cur ? 'on' : ''}" data-act="${kg ? 'inc' : 'pct'}:${v}">${f(v)}${kg ? '' : ' %'}</b>`).join('')}</div>
+    <p class="hint">${EX.last} kg → <b>${f(next())} kg</b>${kg ? '' : ` (${f(S.pct)} % redondeado)`} · discos de <u data-act="stepc">${f(S.step)} kg</u></p>`;
+};
+const repsMuch = () => `<div class="quick">${[1, 2, 3].map((v) => `<b class="${S.reps === v ? 'on' : ''}" data-act="reps:${v}">+${v} rep${v > 1 ? 's' : ''}</b>`).join('')}</div>
+  <p class="hint">Por serie: ${EX.min} → <b>${EX.min + S.reps}</b> la próxima vez.</p>`;
+
+const brakeTxt = () => (S.brake ? ` y el RPE no pasa de ${S.rpe}` : '');
+const upCond = () => (S.when === 'all' ? `Las ${EX.sets} series a ${EX.max}` : `${most} de ${EX.sets} series a ${EX.max}`);
+const outcome = (title = 'Así irá la próxima sesión') => {
+  if (S.up === 'none') return `<div class="out"><h4>${title}</h4><div class="ln eq"><i>=</i><span>Sin sugerencia: <b>apuntas lo que hagas</b></span></div></div>`;
+  if (S.up === 'reps') return `<div class="out"><h4>${title}</h4>
+    <div class="ln up"><i>↑</i><span>Igualas lo de la última vez → <b>+${S.reps} por serie</b></span></div>
+    <div class="ln eq"><i>=</i><span>Te quedas corto → <b>repites el objetivo</b></span></div></div>`;
+  return `<div class="out"><h4>${title}</h4>
+    <div class="ln up"><i>↑</i><span>${upCond()}${brakeTxt()} → <b>${f(next())} kg</b></span></div>
+    <div class="ln eq"><i>=</i><span>Alguna serie entre ${EX.min} y ${EX.max - 1} → <b>repites ${EX.last} kg</b></span></div>
+    <div class="ln ${S.down === 'fail' ? 'dn' : 'eq'}"><i>${S.down === 'fail' ? '↓' : '='}</i><span>${S.down === 'fail'
+      ? `Te faltan muchas reps, o no llegas a ${EX.min} dos veces seguidas → <b>${f(lower())} kg</b>`
+      : `Aunque no llegues a ${EX.min} → <b>nunca baja solo</b>`}</span></div></div>`;
+};
+const seg2 = (key, opts) => `<div class="seg">${opts.map(([v, l]) => `<b class="${String(S[key]) === String(v) ? 'on' : ''}" data-act="${key}:${v}">${l}</b>`).join('')}</div>`;
+const brakeCtl = () => seg2('brake', [[false, 'Sin freno'], [true, 'Con RPE']]) + (S.brake
+  ? `<div class="quick">${[7, 8, 9].map((v) => `<b class="${S.rpe === v ? 'on' : ''}" data-act="rpe:${v}">RPE ${v}</b>`).join('')}</div><p class="hint">No sube si alguna serie pasa de RPE ${S.rpe}.</p>`
+  : `<p class="hint">Sube solo con las reps, sin mirar el esfuerzo.</p>`);
+const downCtl = () => seg2('down', [['fail', 'Baja un 10 %'], ['never', 'Nunca baja']]) +
+  `<p class="hint">${S.down === 'fail' ? `Si fallas mucho, ${EX.last} → ${f(lower())} kg (redondeado a discos de ${f(S.step)} kg).` : 'El peso solo se mantiene o sube.'}</p>`;
+const stepCtl = () => `<div class="quick">${[0.5, 1.25, 2.5].map((v) => `<b class="${S.step === v ? 'on' : ''}" data-act="step:${v}">${f(v)} kg</b>`).join('')}</div><p class="hint">El salto más pequeño que permiten tus discos. A él se redondea todo.</p>`;
+
+// ── A: pasos ──
+function renderA() {
+  let n = 0;
+  const step = (q, ans, body) => `<section class="step"><header><i class="num">${++n}</i><span class="q">${q}</span><span class="ans">${ans}</span></header>${body}</section>`;
+  let h = header(false);
+  h += step('¿Qué quieres que suba?', TILES.find((t) => t[0] === S.up)[1], tiles() + say());
+  if (S.up === 'weight') {
+    h += step('¿Cuándo sube?', S.when === 'all' ? 'Todas' : 'La mayoría', whenCards());
+    h += step('¿Cuánto sube cada vez?', '+' + incLabel(), howMuch());
+  }
+  if (S.up === 'reps') h += step('¿Cuántas reps más?', `+${S.reps}`, repsMuch());
+  h += outcome();
+  if (S.up === 'weight') h += `<details class="fine"><summary><span>Ajustes finos<br><small>Freno por esfuerzo · bajar el peso</small></span>${ic(I.chev, 18)}</summary>
+    <div class="in"><div><div class="lbl">Freno por esfuerzo</div>${brakeCtl()}</div><div><div class="lbl">Si fallas</div>${downCtl()}</div></div></details>`;
+  return h;
+}
+
+// ── B: la frase ──
+function renderB() {
+  const tok = (id, txt) => `<span class="tok ${S.tok === id ? 'open' : ''}" data-act="tok:${id}" role="button" tabindex="0">${txt}</span>`;
+  let h = header(true) + tiles();
+  if (S.up === 'none') return h + say() + outcome('Qué pasará');
+  if (S.up === 'reps') {
+    h += `<div class="sentence">Suma ${tok('reps', `${S.reps} rep${S.reps > 1 ? 's' : ''} por serie`)} cada vez que iguales lo de la última sesión.</div>`;
+    if (S.tok === 'reps') h += `<div class="panel"><div class="lbl">Reps de más por serie</div>${repsMuch()}</div>`;
+    return h;
+  }
+  h += `<div class="sentence">Sube ${tok('inc', incLabel())} cuando ${tok('when', S.when === 'all' ? `las ${EX.sets} series` : `${most} de ${EX.sets} series`)} lleguen a <span class="fix">${EX.max} reps</span>.</div>`;
+  const panels = {
+    inc: ['Cuánto sube cada vez', howMuch()],
+    when: ['Cuántas series tienen que llegar', whenCards()],
+    down: ['Si no llegas al mínimo', downCtl()],
+    brake: ['Freno por esfuerzo', brakeCtl()],
+  };
+  const panel = (id) => (S.tok === id ? `<div class="panel"><div class="lbl">${panels[id][0]}</div>${panels[id][1]}</div>` : '');
+  h += panel('inc') + panel('when');
+  h += `<div class="sentence">Si fallas, ${tok('down', S.down === 'fail' ? 'baja un 10 %' : 'nunca baja')}. ${tok('brake', S.brake ? `Frena con RPE ${S.rpe}` : 'Sin freno por RPE')}.</div>`;
+  h += panel('down') + panel('brake');
+  h += `<p class="tap">Toca lo subrayado para cambiarlo · ${EX.max} reps se cambia en Volumen</p>`;
+  return h + outcome('Con 40 kg hoy');
+}
+
+// ── C: próxima sesión + ajustes ──
+function renderC() {
+  let h = header(false) + tiles() + say();
+  if (S.up === 'weight') {
+    const hit = S.when === 'all' ? EX.sets : most;
+    const boxes = Array.from({ length: EX.sets }, (_, i) => (i < hit ? `<i>${EX.max}</i>` : `<i class="mid">${EX.min}+</i>`)).join('');
+    // La próxima sesión (la de la v1, afinada): el salto, la condición con sus
+    // casillas, y en una línea gris qué pasa si no.
+    h += `<div class="next"><h4>La próxima sesión</h4>
+      <div class="jump"><s>${EX.last} kg</s><em>→</em><b>${f(next())} kg</b></div>
+      <p>si haces <b>${S.when === 'all' ? `${EX.max} reps en las ${EX.sets} series` : `${EX.max} reps en ${most} de ${EX.sets} series`}</b>${brakeTxt()}</p>
+      <div class="boxes">${boxes}</div>
+      <p class="else">Si no llegas, repites ${EX.last} kg.${S.down === 'fail' ? ` Si fallas mucho, bajas a ${f(lower())} kg.` : ''}</p></div>`;
+    // Cuánto y cuándo, siempre a la vista; lo demás, en filas que se despliegan.
+    const sec = (icon, l, v, body) => `<div class="sec"><div class="row"><span class="ri">${ic(icon, 18)}</span>
+      <span class="rl"><b>${l}</b></span><span class="rv">${v}</span></div><div class="rbody">${body}</div></div>`;
+    const rows = [
+      ['down', I.down, 'Si fallas', 'Fallo grande o dos seguidos', S.down === 'fail' ? '−10 %' : 'No baja', downCtl()],
+      ['brake', I.gauge, 'Freno por esfuerzo', 'No sube si cuesta demasiado', S.brake ? `RPE ${S.rpe}` : 'No', brakeCtl()],
+      ['stepc', I.round, 'Discos', 'Redondeo del peso', `${f(S.step)} kg`, stepCtl()],
+    ];
+    const tpl = TPL.find(([, c]) => Object.entries(c).every(([k, v]) => S[k] === v));
+    h += `<div class="gtitle gt-row"><span>Cómo progresa</span><a data-act="tpls">${tpl ? tpl[0] : 'Plantillas'} ${S.tpls ? '⌃' : '›'}</a></div>`;
+    if (S.tpls) h += `<div class="tpls">${TPL.map(([n, c]) => `<b class="${tpl && tpl[0] === n ? 'on' : ''}" data-act="tpl:${n}">${n}<small>${c.incType === 'kg' ? '+' + f(c.inc) + ' kg' : '+' + f(c.pct) + ' %'} · ${c.when === 'all' ? 'todas' : 'la mayoría'}</small></b>`).join('')}</div>`;
+    h += `<div class="group">${sec(I.plus, 'Cuánto sube', '+' + incLabel(), howMuch())}</div>
+      <div class="group">${sec(I.when, 'Cuándo sube', S.when === 'all' ? 'Todas las series' : 'La mayoría', whenCards())}</div>
+      <div class="group">${rows.map(([id, icon, l, sub, v, body]) =>
+      `<div class="row ${S.row === id ? 'open' : ''}" data-act="row:${id}" role="button" tabindex="0"><span class="ri">${ic(icon, 18)}</span>
+        <span class="rl"><b>${l}</b><small>${sub}</small></span><span class="rv">${v}</span><span class="chev">${ic(I.chev, 16)}</span></div>
+       ${S.row === id ? `<div class="rbody">${body}</div>` : ''}`).join('')}</div>
+      <div class="save" data-act="noop">${ic(I.plus, 16)}Guardar como plantilla <span class="idea">IDEA</span></div>`;
+  } else if (S.up === 'reps') {
+    h += `<div class="next"><h4>La próxima sesión</h4><div class="jump"><s>${EX.min} reps</s><em>→</em><b>${EX.min + S.reps} reps</b></div><p>en cada serie, con el mismo peso.</p></div>
+      <div class="group"><div class="row open"><span class="ri">${ic(I.plus, 18)}</span><span class="rl"><b>Cuántas más</b><small>Por serie</small></span><span class="rv">+${S.reps}</span></div><div class="rbody">${repsMuch()}</div></div>`;
+  }
+  return h;
+}
+
+function render() {
+  document.getElementById('A').innerHTML = renderA();
+  document.getElementById('B').innerHTML = renderB();
+  document.getElementById('C').innerHTML = renderC();
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const [k, v] = el.dataset.act.split(':');
+  const kg = S.incType === 'kg';
+  if (k === 'noop') return;
+  if (k === 'tpls') S.tpls = !S.tpls;
+  else if (k === 'tpl') { Object.assign(S, TPL.find(([n]) => n === v)[1]); S.tpls = false; }
+  else if (k === 'why') S.why = !S.why;
+  else if (k === 'dec' || k === 'inc' && v === undefined) {
+    const d = k === 'inc' ? 1 : -1;
+    if (kg) S.inc = Math.min(20, Math.max(S.step, S.inc + d * S.step));
+    else S.pct = Math.min(20, Math.max(0.5, S.pct + d * 0.5));
+  } else if (k === 'tok') S.tok = S.tok === v ? null : v;
+  else if (k === 'row') S.row = S.row === v ? null : v;
+  else if (k === 'stepc') { S.row = 'stepc'; }
+  else if (['inc', 'pct', 'rpe', 'reps', 'step'].includes(k)) S[k] = Number(v);
+  else if (k === 'brake') S.brake = v === 'true';
+  else { S[k] = v; if (k === 'up') S.why = false; }
+  render();
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role=button][data-act]')) { e.preventDefault(); e.target.click(); }
+});
+render();
+</script>

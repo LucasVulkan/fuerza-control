@@ -1,0 +1,310 @@
+<title>Hoja de Progresión v3</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta: hoja de Progresión, camino C afinado con los tokens de la app.
+     Colores: src/themes.js (formaFit). Espaciado y textos: src/theme.js (spacing, textStyles).
+     Piezas que ya existen: DragSheet (fondo bg), optGroup/optRow (EditorRows), StepField
+     horizontal, SegmentedControl, píldora del delta (ExerciseCard progDeltaPill).
+     Layout: notas a la izquierda, el móvil a la derecha (se apilan en pantalla estrecha). */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* colores formaFit */
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --surface3: #333333; --btnFill: #3a3a3a;
+    --text: #e6e6e6; --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --accent10: rgba(184,255,0,.1); --redText: #ff5e58; --orange: #fb923c;
+    --page: #070707;
+    /* spacing */
+    --xs: 2px; --xs2: 4px; --sm: 6px; --sm2: 8px; --md: 10px; --lg: 15px; --xl: 20px; --xxl: 28px;
+    /* radius formaFit */
+    --r-xxs: 2px; --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+    color-scheme: dark;
+  }
+  /* textStyles (tamaño / peso / tracking) */
+  .t-heading { font: 800 18px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.2px; }
+  .t-itemTitle { font: 900 16px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.2px; }
+  .t-body { font: 500 14px/1.2 Inter, system-ui, sans-serif; }
+  .t-bodyStrong { font: 700 14px/1.2 Inter, system-ui, sans-serif; }
+  .t-button { font: 900 14px/1.2 Inter, system-ui, sans-serif; }
+  .t-label { font: 500 12px/1.2 Inter, system-ui, sans-serif; }
+  .t-labelStrong { font: 800 12px/1.2 Inter, system-ui, sans-serif; }
+  .t-caps { font: 800 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: 1.6px; text-transform: uppercase; }
+
+  body { background: var(--page); color: var(--text); font-family: Inter, system-ui, sans-serif;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; }
+  [data-act] { cursor: pointer; }
+  [data-act]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  svg { display: block; flex: none; }
+  .wrap { max-width: 900px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; }
+  .notes { flex: 1 1 320px; max-width: 440px; min-width: 0; display: grid; gap: 14px; color: var(--mutedLight); font: 500 14px/1.55 Inter, sans-serif; }
+  .notes h1 { color: var(--text); font: 900 22px/1.2 Inter, sans-serif; letter-spacing: -.5px; }
+  .notes h2 { color: var(--text); font: 800 14px Inter, sans-serif; margin-top: 6px; }
+  .notes ul { padding-left: 18px; display: grid; gap: 4px; }
+  .notes b { color: var(--text); }
+  .notes code { font: 700 12px ui-monospace, monospace; color: var(--accent); }
+
+  .phone { width: 375px; max-width: 100%; background: #000; border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; flex: none; }
+  /* DragSheet: fondo bg, radio lg arriba, borde fino borderCard, padding 15 / 6 */
+  .sheet { background: var(--bg); border: 1px solid var(--border); border-bottom: 0; border-radius: var(--r-lg) var(--r-lg) 0 0;
+    margin-top: 48px; padding: var(--sm) var(--lg) var(--xxl); display: grid; gap: var(--xl); }
+  .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto calc(var(--xl) * -1 + var(--sm)); }
+  .head { display: flex; align-items: center; justify-content: space-between; }
+  .head-t { display: flex; align-items: center; gap: var(--sm2); }
+  .badge { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--accent10); color: var(--accent); display: grid; place-items: center; }
+  .accept { color: var(--accent); }
+  .muted { color: var(--mutedLight); }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* tarjeta suelta (surface, md) */
+  .card { background: var(--surface); border-radius: var(--r-md); padding: var(--md) var(--lg); display: grid; gap: var(--xs2); }
+  .exercise { margin-top: calc(var(--sm2) - var(--xl)); }
+
+  /* Qué sube: las tarjetas de carácter que ya hay (surface, md) */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sm); }
+  .tile { background: var(--surface); border-radius: var(--r-md); padding: var(--md) var(--xs) var(--sm2); display: grid; justify-items: center; gap: var(--xs2); color: var(--mutedLight); }
+  .tile svg { color: var(--accent); }
+  .tile.none svg { color: var(--mutedLight); }
+  .tile.on { background: var(--accent); color: var(--onAccent); }
+  .tile.on svg { color: var(--onAccent); }
+  .tile.off { opacity: .4; }
+  .say { color: var(--mutedLight); line-height: 1.2; margin-top: calc(var(--md) - var(--xl)); }
+  .say b { color: var(--text); font-weight: 800; }
+  .warn { color: var(--orange); margin-top: calc(var(--sm) - var(--xl)); }
+
+  /* La próxima sesión */
+  .next { gap: var(--sm2); padding: var(--lg); }
+  .next .lead { color: var(--mutedLight); line-height: 1.5; }
+  .next .lead b { color: var(--text); font-weight: 700; }
+  .squares { display: flex; gap: var(--xs2); }
+  .squares i { width: 18px; height: 18px; border-radius: var(--r-xs); background: var(--accent); }
+  .squares i.mid { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--mutedLight); }
+  .target { display: flex; align-items: center; gap: var(--sm2); }
+  .target .from { color: var(--mutedLight); }
+  .target .arrow { color: var(--muted); }
+  .target .to { color: var(--accent); }
+  .next .goal { color: var(--mutedLight); line-height: 1.5; }
+  .next .goal b { color: var(--text); font-weight: 700; }
+  .pill { background: var(--btnFill); border-radius: 999px; padding: 2px var(--sm2); }
+  .else { border-top: 1px solid var(--border); padding-top: var(--sm2); margin-top: var(--xs); color: var(--mutedLight); line-height: 1.5; }
+
+  /* optGroup + optRow (EditorRows): filas surface radio xxs, separadas 2 px, el grupo recorta a md */
+  .sec { display: grid; gap: var(--sm2); }
+  .sec > .t-caps { color: var(--mutedLight); }
+  .group { border-radius: var(--r-md); overflow: hidden; display: grid; gap: var(--xs); }
+  /* Alto y padding de navRowGrouped (58, 6/15), como los ajustes de la v2 */
+  .row { display: flex; align-items: center; gap: var(--md); min-height: 58px; background: var(--surface); border-radius: var(--r-xxs);
+    padding: var(--sm) var(--lg); width: 100%; }
+  .row .ri { width: 30px; height: 30px; border-radius: var(--r-md); background: var(--surface2); color: var(--accent); display: grid; place-items: center; flex: none; }
+  .row .meta { flex: 1; min-width: 0; display: grid; gap: var(--xs); }
+  .row .meta small { color: var(--mutedLight); }
+  .row .val { color: var(--accent); white-space: nowrap; }
+  .row .chev { color: var(--muted); transition: transform .2s; }
+  .row.open .chev { transform: rotate(90deg); }
+  .row.open { padding-bottom: var(--xs2); }
+  .row .check { color: var(--accent); }
+  .row.save { color: var(--accent); }
+  .body { background: var(--surface); border-radius: var(--r-xxs); padding: var(--xs2) var(--lg) var(--lg); display: grid; gap: var(--md); margin-top: calc(var(--xs) * -1); }
+  .hint { color: var(--mutedLight); line-height: 1.2; }
+  .hint b { color: var(--text); font-weight: 800; }
+
+  /* SegmentedControl: surface2, radio full, pad 4, gap 6, la elegida en lima */
+  .seg { display: flex; background: var(--surface2); border-radius: 999px; padding: var(--xs2); gap: var(--sm); }
+  .seg b { flex: 1; text-align: center; padding: var(--sm2) 0; border-radius: 999px; color: var(--text); }
+  .seg b.on { background: var(--accent); color: var(--onAccent); }
+
+  /* StepField horizontal (flat dentro de la fila): − / celda bg 76×34 radio 8 / +, sin fondo en los botones */
+  .step { display: flex; align-items: center; justify-content: space-between; gap: var(--md); }
+  .step .ctl { display: flex; align-items: center; gap: var(--xs2); }
+  .step .pm { width: 34px; height: 34px; position: relative; border-radius: 50%; }
+  .step .pm::before, .step .pm.plus::after { content: ""; position: absolute; width: 13px; height: 2px; left: 10.5px; top: 16px; border-radius: 1px; background: var(--accent); }
+  .step .pm.plus::after { transform: rotate(90deg); }
+  .step .pm:active { background: rgba(170,226,22,.18); }
+  .step .cell { width: 76px; height: 34px; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: var(--xs); }
+
+  /* Cuándo sube: tarjetas con borde, sobre la fila van en surface2 */
+  .when { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sm2); }
+  .wc { background: var(--surface2); border-radius: var(--r-md); padding: var(--md); border: 1.5px solid transparent; display: grid; gap: var(--xs2); align-content: start; }
+  .wc.on { border-color: var(--accent); }
+  .wc .squares { margin-bottom: var(--sm); flex-wrap: wrap; }
+  .wc small { color: var(--mutedLight); line-height: 1.3; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <div class="notes">
+    <h1>Hoja de Progresión v3</h1>
+    <p>Es el camino C con los tokens de la app: colores de <code>themes.js</code>, espacios y tamaños de texto de <code>theme.js</code>. Solo usa piezas que ya existen.</p>
+    <h2>Qué cambia</h2>
+    <ul>
+      <li><b>Plantilla</b> arriba del todo. Incluye <b>qué sube</b>: al elegirla cambian las tarjetas y los ajustes. En la misma lista está «Guardar como plantilla».</li>
+      <li><b>En la próxima sesión</b>, sin historial: «Se recomendará subir · +2,5 kg · al completar…». Bajo la raya: mantener si no llegas, bajar un 10 % si fallas por mucho o varias veces seguidas.</li><li>Iconos nuevos de <b>Peso</b> y <b>Esfuerzo</b> (los SVG del usuario, en <code>mockups/iconos/</code>).</li>
+      <li><b>Cómo progresa</b> plegado, con los iconos de la v2, el valor en lima y el chevron fino. Filas de 58 de alto (las de <code>navRowGrouped</code>).</li>
+      <li>El − / + es el <b>StepField</b> horizontal de la app (el de Volumen), sin pieza nueva. Kilos o % con el <b>SegmentedControl</b>.</li>
+    </ul>
+    <h2>Piezas</h2>
+    <ul>
+      <li>Hoja: <code>DragSheet</code>, fondo <code>bg</code>; tarjetas y filas en <code>surface</code>; lo que va dentro de una fila, en <code>surface2</code>.</li>
+      <li>Filas: <code>optGroup</code> + <code>optRow</code> (EditorRows), radio md fuera y 2 px entre filas.</li>
+      <li>Textos: heading, itemTitle, bodyStrong, body, labelStrong, label, caps.</li>
+      <li>Única pieza nueva: el icono delante de «Progresión» (cuadro de 28, <code>accent10</code>).</li>
+    </ul>
+  </div>
+  <div class="phone"><div class="sheet" id="sheet"></div></div>
+</div>
+
+<script>
+const EX = { name: 'Press militar con barra', sets: 6, min: 10, max: 12, last: 40 };
+const S = { up: 'weight', when: 'all', incType: 'kg', inc: 2.5, pct: 5, step: 1.25, down: 'fail', brake: false, rpe: 8, reps: 1, open: null, why: false };
+// Plantillas: guardan también qué sube. Las tres primeras vienen con la app; «Mi press» la guardó el usuario.
+const TPL = [
+  ['Lineal', 'Peso · +2,5 kg · todas las series', { up: 'weight', incType: 'kg', inc: 2.5, when: 'all', down: 'fail', brake: false }],
+  ['Hipertrofia', 'Peso · +1,25 kg · la mayoría · RPE 9', { up: 'weight', incType: 'kg', inc: 1.25, when: 'most', down: 'fail', brake: true, rpe: 9 }],
+  ['Peso corporal', 'Reps · +1 por serie', { up: 'reps', reps: 1 }],
+  ['Mi press', 'Peso · +5 % · nunca baja', { up: 'weight', incType: 'pct', pct: 5, when: 'all', down: 'never', brake: false }],
+];
+
+const f = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+const toStep = (x) => Math.max(S.step, Math.round(x / S.step) * S.step);
+const most = Math.floor(EX.sets / 2) + 1;
+const add = () => (S.incType === 'kg' ? S.inc : toStep(EX.last * S.pct / 100));
+const lower = () => EX.last - toStep(EX.last * 0.1);
+const incLabel = () => (S.incType === 'kg' ? `+${f(S.inc)} kg` : `+${f(S.pct)} %`);
+
+const ln = (d, w = 2) => `<path d="${d}" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+const ic = (body, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24">${body}</svg>`;
+// Peso y Esfuerzo: los SVG del usuario (iconos/peso.svg, iconos/esfuerzo.svg), en 54×54
+// y con relleno; el color sale de currentColor (lima, o negro al elegir) y el segundo
+// tono es ese mismo color al 50 %.
+const I54 = {
+  weight: '<path d="M17.5625 25.375H35.4375V28.625H17.5625V25.375Z" fill="currentColor"/><rect x="37.0625" y="14" width="6.5" height="26" rx="1.625" fill="currentColor"/><rect x="45.1875" y="20.5" width="4.875" height="13" rx="1.625" fill="currentColor"/><rect x="2.9375" y="20.5" width="4.875" height="13" rx="1.625" fill="currentColor"/><rect x="9.4375" y="14" width="6.5" height="26" rx="1.625" fill="currentColor"/>',
+  effort: '<path d="M18.8289 28.0218L17.3267 37.0703H15.1441L16.3105 30.063H16.2575L14.0263 31.3001L14.3356 29.4091L16.8009 28.0218H18.8289Z" fill="currentColor" fill-opacity="0.5"/><path d="M19.3447 37.0703L20.8469 28.0218H24.5848C25.2622 28.0218 25.8277 28.144 26.2814 28.3885C26.735 28.63 27.0575 28.9776 27.2489 29.4312C27.4404 29.8818 27.4846 30.4165 27.3815 31.035C27.2813 31.6595 27.0575 32.1911 26.7099 32.63C26.3653 33.0659 25.9205 33.3988 25.3756 33.6285C24.8336 33.8583 24.218 33.9731 23.5288 33.9731H21.165L21.4566 32.25H23.4139C23.7409 32.25 24.0236 32.2073 24.2622 32.1219C24.5008 32.0335 24.6908 31.901 24.8322 31.7243C24.9765 31.5446 25.0722 31.3148 25.1194 31.035C25.1635 30.7552 25.1429 30.524 25.0575 30.3413C24.975 30.1558 24.8292 30.0173 24.6201 29.926C24.4139 29.8318 24.1488 29.7846 23.8248 29.7846H22.7468L21.5318 37.0703H19.3447ZM25.1238 32.9348L26.6922 37.0703H24.3064L22.7865 32.9348H25.1238ZM29.1819 28.0218H31.8903L33.26 33.6241H33.366L36.5913 28.0218H39.2997L37.7975 37.0703H35.6679L36.5913 31.5122H36.5162L33.4323 37.0129H32.0759L30.8211 31.4812H30.746L29.8093 37.0703H27.6797L29.1819 28.0218Z" fill="currentColor"/><path d="M26.1045 13.4062C29.3486 13.2771 32.5644 13.8851 35.5625 15.083L33.5898 18.374C31.2438 17.394 28.7105 16.8402 26.1045 16.8281C15.9611 16.384 6.064 24.3311 4.36621 34.6895C4.16188 35.8226 4.04639 36.9751 4.02051 38.1348C4.01507 38.3767 3.91197 38.6092 3.7373 38.7803C3.56225 38.9515 3.32905 39.0478 3.08691 39.0479C2.84479 39.0479 2.61159 38.9514 2.43652 38.7803C2.26186 38.6092 2.15876 38.3767 2.15332 38.1348C2.12736 36.8794 2.19861 35.6218 2.36816 34.376C3.71232 23.0058 14.2979 13.4282 26.1045 13.4062ZM50.374 30.6748C50.7438 31.8043 51.031 32.9675 51.2227 34.1582C51.4196 35.2695 51.5404 36.3954 51.5889 37.5264L46.6367 37.5166C46.632 36.6434 46.5746 35.7719 46.46 34.9072C46.3502 33.9459 46.1616 32.9988 45.9033 32.0723L50.374 30.6748ZM37.4111 15.9092C42.6323 18.5002 47.0155 22.9099 49.4482 28.291L45.0557 29.6631C43.2072 25.3445 39.8083 21.6555 35.625 19.3555L37.4111 15.9092Z" fill="url(#effGrad)"/><defs><linearGradient id="effGrad" x1="44.215" y1="18.8489" x2="21.1664" y2="26.3368" gradientUnits="userSpaceOnUse"><stop stop-color="currentColor"/><stop offset="0.5" stop-color="currentColor" stop-opacity="0.5"/></linearGradient></defs>',
+};
+const I = {
+  reps: `<g transform="translate(1 1)">${ln('M4.5 10a6.5 6.5 0 0 1 11.6-3.6M17.5 12a6.5 6.5 0 0 1-11.6 3.6M16.8 3.4v3.4h-3.4M5.2 18.6v-3.4h3.4')}</g>`,
+  none: ln('M6 12h12', 2.4),
+  trend: ln('M3 17l6-6 4 4 8-8M15 7h6v6'),
+  check: ln('M5 12.5l4.5 4.5L19 7.5', 2.4),
+};
+// El chevron fino de la v2, en muted: gira hacia abajo al abrir.
+const chev = `<svg class="chev" width="16" height="16" viewBox="0 0 24 24">${ln('M9 6l6 6-6 6')}</svg>`;
+// Iconos de las filas (los de la v2)
+Object.assign(I, {
+  plus: ln('M12 5v14M5 12h14'),
+  when: ln('M4 6h16M4 12h16M4 18h10'),
+  down: ln('M12 5v14M6 13l6 6 6-6'),
+  gauge: ln('M4 15.5a8 8 0 0 1 16 0M12 15.5l4.3-4.8'),
+  round: ln('M4 18h16M7 18V9M12 18V5M17 18v-6'),
+  tpl: ln('M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5'),
+});
+const ri = (icon) => `<span class="ri">${ic(I[icon], 18)}</span>`;
+const TILES = [['weight', 'Peso'], ['reps', 'Reps'], ['effort', 'Esfuerzo'], ['none', 'Nada']];
+const SAY = {
+  weight: '<b>Sube el peso</b> al llegar arriba del rango; las reps vuelven al mínimo.',
+  reps: '<b>Sube las reps</b>; el peso se queda igual.',
+  effort: 'El peso <b>sube o baja en función del esfuerzo</b>, medido con el RPE.',
+  none: '<b>Sin sugerencia de progreso.</b> Cada día apuntas lo que hagas.',
+};
+
+const squares = (hit) => `<div class="squares">${Array.from({ length: EX.sets }, (_, i) => `<i class="${i < hit ? '' : 'mid'}"></i>`).join('')}</div>`;
+const seg = (key, opts) => `<div class="seg">${opts.map(([v, l]) => `<b class="t-bodyStrong ${String(S[key]) === String(v) ? 'on' : ''}" data-act="${key}:${v}">${l}</b>`).join('')}</div>`;
+const stepField = (label, value, unit, act) => `<div class="step"><span class="t-bodyStrong">${label}</span><span class="ctl">
+  <button class="pm" data-act="${act}:-1" aria-label="Menos"></button>
+  <span class="cell tnum"><span class="t-itemTitle">${value}</span>${unit ? `<span class="t-label muted">${unit}</span>` : ''}</span>
+  <button class="pm plus" data-act="${act}:1" aria-label="Más"></button></span></div>`;
+const hint = (h) => `<p class="t-label hint">${h}</p>`;
+
+// ── las filas de «Cómo progresa» ──
+function rows() {
+  if (S.up === 'reps') return [
+    ['inc', 'Cuánto sube', 'Reps de más en cada serie', `+${S.reps}`,
+      stepField('Cada subida', `+${S.reps}`, 'reps', 'reps') + hint(`Por serie: ${EX.min} → <b>${EX.min + S.reps}</b> reps.`)],
+  ];
+  if (S.up !== 'weight') return [];
+  const kg = S.incType === 'kg';
+  return [
+    ['inc', 'Cuánto sube', kg ? 'Kilos fijos cada vez' : 'Porcentaje del peso', incLabel(),
+      seg('incType', [['kg', 'Kilos'], ['pct', 'Porcentaje']]) +
+      (kg ? stepField('Cada subida', f(S.inc), 'kg', 'inc') : stepField('Cada subida', f(S.pct), '%', 'pct')) +
+      hint(`${EX.last} kg → <b>${f(EX.last + add())} kg</b>${kg ? '' : `, redondeado a ${f(S.step)} kg`}`)],
+    ['when', 'Cuándo sube', 'Series que llegan arriba', S.when === 'all' ? 'Todas' : 'La mayoría',
+      `<div class="when">
+        <button class="wc ${S.when === 'all' ? 'on' : ''}" data-act="when:all">${squares(EX.sets)}<b class="t-bodyStrong">Todas</b><small class="t-label">Las ${EX.sets} series llegan a ${EX.max} reps</small></button>
+        <button class="wc ${S.when === 'most' ? 'on' : ''}" data-act="when:most">${squares(most)}<b class="t-bodyStrong">La mayoría</b><small class="t-label">${most} de ${EX.sets} llegan a ${EX.max} y ninguna baja de ${EX.min}</small></button></div>`],
+    ['down', 'Si fallas', 'Fallo grande o dos seguidos', S.down === 'fail' ? '−10 %' : 'No baja',
+      seg('down', [['fail', 'Baja un 10 %'], ['never', 'Nunca baja']]) +
+      hint(S.down === 'fail' ? `${EX.last} kg → <b>${f(lower())} kg</b>, redondeado a ${f(S.step)} kg.` : 'El peso solo se mantiene o sube.')],
+    ['brake', 'Freno por esfuerzo', 'No sube si cuesta demasiado', S.brake ? `RPE ${S.rpe}` : 'No',
+      seg('brake', [[false, 'No'], [true, 'RPE']]) +
+      (S.brake ? stepField('RPE máximo', S.rpe, '', 'rpe') + hint(`No sube si alguna serie pasa de RPE ${S.rpe}.`) : hint('Sube solo con las reps, sin mirar el esfuerzo.'))],
+    ['stepc', 'Escalón', 'Redondeo del peso', `${f(S.step)} kg`,
+      stepField('Escalón', f(S.step), 'kg', 'step') + hint('A él se redondea el peso cuando sube un % o cuando baja.')],
+  ];
+}
+
+// Sin historial: solo el salto. En la próxima sesión · Se recomendará subir · +2,5 kg ·
+// al completar… · raya · qué pasa si no.
+const nextBody = (delta, goal, elseTxt) => `<div class="card next"><span class="t-caps muted">En la próxima sesión</span>
+  <p class="t-body lead">Se recomendará subir</p>
+  <div class="target tnum"><span class="t-itemTitle to">${delta}</span></div>
+  <p class="t-body goal">al completar ${goal}.</p>
+  <p class="t-label else">${elseTxt}</p></div>`;
+
+function nextCard() {
+  if (S.up === 'none') return `<div class="card next"><span class="t-caps muted">En la próxima sesión</span>
+    <p class="t-body lead">No se recomendará ningún cambio: verás lo que hiciste la última vez y tú decides.</p></div>`;
+  if (S.up === 'effort') return `<div class="card next"><span class="t-caps muted">En la próxima sesión</span>
+    <p class="t-body goal">Se recomendará el peso con el que <b>tus reps cuesten RPE 8</b>.</p>
+    <p class="t-label else">Se calcula con la media de tus tres últimas sesiones.</p></div>`;
+  if (S.up === 'reps') return nextBody(`+${S.reps} rep${S.reps > 1 ? 's' : ''} por serie`,
+    '<b>el total de reps de la última vez</b>', 'Si no llegas, se recomendará mantener las mismas reps.');
+  const goal = S.when === 'all' ? `<b>${EX.max} reps en todas las series</b>` : `<b>${EX.max} reps en ${most} de ${EX.sets} series</b> sin bajar de ${EX.min}`;
+  return nextBody(incLabel(), goal + (S.brake ? ` y sin pasar de <b>RPE ${S.rpe}</b>` : ''),
+    `Si no llegas, se recomendará mantener el mismo peso.${S.down === 'fail' ? ' Si fallas por mucho o varias veces seguidas, se recomendará bajar un 10 %.' : ''}`);
+}
+
+function render() {
+  const tpl = TPL.find(([, , c]) => Object.entries(c).every(([k, v]) => S[k] === v));
+  let h = `<div class="handle"></div>
+    <div class="head"><span class="head-t"><span class="badge">${ic(I.trend, 16)}</span><span class="t-heading">Progresión</span></span><span class="t-button accept">Aceptar</span></div>
+    <div class="card exercise"><span class="t-bodyStrong">${EX.name}</span><span class="t-label muted tnum">${EX.sets} × ${EX.min}–${EX.max} reps</span></div>`;
+
+  // Plantilla: elige también qué sube.
+  h += `<div class="group">
+    <button class="row ${S.open === 'tpl' ? 'open' : ''}" data-act="open:tpl">${ri('tpl')}<span class="meta"><b class="t-bodyStrong">Plantilla</b></span><span class="val t-labelStrong">${tpl ? tpl[0] : 'Personalizada'}</span>${chev}</button>
+    ${S.open === 'tpl' ? TPL.map(([n, sub]) => `<button class="row" data-act="tpl:${n}"><span class="meta"><b class="t-bodyStrong">${n}</b><small class="t-label">${sub}</small></span>${tpl && tpl[0] === n ? `<span class="check">${ic(I.check, 18)}</span>` : ''}</button>`).join('')
+      + `<button class="row save" data-act="noop"><span class="meta"><b class="t-bodyStrong">Guardar como plantilla</b></span></button>` : ''}
+  </div>`;
+
+  h += `<div class="tiles">${TILES.map(([id, l]) => `<button class="tile ${id} ${S.up === id ? 'on' : ''} " data-act="up:${id}">${I54[id] ? `<svg width="${id === 'effort' ? 43 : 32}" height="24" viewBox="${id === 'effort' ? '1 11.5 52 29' : '0 7 54 40'}">${I54[id]}</svg>` : ic(I[id])}<span class="t-labelStrong">${l}</span></button>`).join('')}</div>
+    <p class="t-body say">${SAY[S.up]}</p>`;
+  if (S.why) h += `<p class="t-label warn">Para progresar por esfuerzo, el ejercicio necesita reps fijas (se cambia en Volumen).</p>`;
+
+  h += nextCard();
+
+  const rs = rows();
+  if (rs.length) h += `<div class="sec"><span class="t-caps">Cómo progresa</span><div class="group">${rs.map(([id, l, sub, v, body]) =>
+    `<button class="row ${S.open === id ? 'open' : ''}" data-act="open:${id}">${ri({ inc: 'plus', when: 'when', down: 'down', brake: 'gauge', stepc: 'round' }[id])}<span class="meta"><b class="t-bodyStrong">${l}</b><small class="t-label">${sub}</small></span><span class="val t-labelStrong">${v}</span>${chev}</button>
+     ${S.open === id ? `<div class="body">${body}</div>` : ''}`).join('')}</div></div>`;
+  document.getElementById('sheet').innerHTML = h;
+}
+
+const LIM = { inc: [1.25, 20], pct: [0.5, 20], reps: [1, 5], rpe: [6, 10], step: [0.25, 10] };
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const [k, v] = el.dataset.act.split(':');
+  if (k === 'noop') return;
+  if (k === 'why') S.why = !S.why;
+  else if (k === 'open') S.open = S.open === v ? null : v;
+  else if (k === 'tpl') { Object.assign(S, TPL.find(([n]) => n === v)[2]); S.open = null; S.why = false; }
+  else if (k in LIM) {
+    const d = { inc: S.step, pct: 0.5, reps: 1, rpe: 0.5, step: 0.25 }[k];
+    S[k] = Math.min(LIM[k][1], Math.max(LIM[k][0], Math.round((S[k] + Number(v) * d) * 100) / 100));
+  } else if (k === 'brake') S.brake = v === 'true';
+  else { S[k] = v; if (k === 'up') { S.why = false; S.open = null; } }
+  render();
+});
+render();
+</script>

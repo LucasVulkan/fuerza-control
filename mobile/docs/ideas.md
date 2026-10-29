@@ -43,3 +43,11 @@ explorar si es posible que una etapa dure hasta que consigas X objetivos de rend
 ## Backup en la Landing
 
 Hablar del backup con drive y del backup y sistema de archivos en la landing.
+
+## P20 · Plantillas de progresión
+
+Elegir una plantilla arriba de la hoja de Progresión y guardar la propia («Guardar como plantilla»). La plantilla incluye también **qué sube** (Peso, Reps…), no solo cuánto y cuándo: al elegirla cambian las tarjetas y los ajustes. Unas vienen con la app (Lineal, Hipertrofia, Peso corporal) y otras las guarda el usuario. Si lo que tienes no coincide con ninguna: «Personalizada». Está como idea en la maqueta `mockups/progresion-hoja-3.html` (versión 1) y sale de P19.
+
+## P21 · Peso objetivo: hasta dónde llega
+
+«Quiero llegar a 60 kg»: con la progresión elegida, cuántas subidas y cuántas semanas harían falta (un rango entre «si todo sale a la primera» y «con calma», 2-3 sesiones por subida), en una gráfica en escalones. Y poder guardarlo como objetivo. Avisar de que es el mejor caso: cuanto más pesado, más cuesta. Encaja con las marcas de la progresión por intención (meta visible con tendencia real, sin dictar el peso de cada sesión). Está en la maqueta `mockups/progresion-hoja-2.html` (versión 2, camino C).
