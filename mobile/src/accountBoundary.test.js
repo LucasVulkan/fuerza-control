@@ -31,7 +31,7 @@ describe('cuenta de entrenador — una sola puerta', () => {
   // C10-01: los hechos de conexión de la ficha solo los escribe `clientLink.js`.
   it('ninguna bandera sync* de antes de C10-01 fuera de migrateClientLinks', () => {
     const OLD = /\b(syncSlotId|syncLinked|syncOrphan|syncPending|syncLeftAt|syncCode)\b/;
-    const migrate = readFileSync(CLIENT_LINK, 'utf8').match(/export function migrateClientLinks[\s\S]*?\n}\n/)?.[0] ?? '';
+    const migrate = readFileSync(CLIENT_LINK, 'utf8').match(/export function migrateClientLinks[\s\S]*?\r?\n}\r?\n/)?.[0] ?? '';
     expect(migrate).toContain('syncSlotId');   // la regla busca donde debe
     const offenders = [...sources(SRC), ...sources(STORE)].filter((p) => {
       const text = readFileSync(p, 'utf8');
