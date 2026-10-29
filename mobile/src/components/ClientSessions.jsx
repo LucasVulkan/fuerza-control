@@ -334,7 +334,7 @@ export default function ClientSessions({ client, program, days, log, fold }) {
  * creaste o le asignaste desde Plantillas. Sin app, se entrenan desde aquí;
  * con app le llegan con su programa y aquí solo se consultan y se editan.
  */
-export function ClientFreeSessions({ client, canStart, log, fold }) {
+export function ClientFreeSessions({ client, canStart, readOnly = false, log, fold }) {
   const { t }      = useTranslation();
   const th         = useTheme();
   const styles     = useThemedStyles(makeStyles);
@@ -393,7 +393,7 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
                   // Solo sin app se empieza desde aquí: con código, la
                   // entrena él (C05-trainer-logging.md §4.0.2).
                   onStart={canStart ? gate(lock, () => start(tpl.id)) : undefined}
-                  onEdit={gate(lock, () => edit(tpl.id))}
+                  onEdit={readOnly ? undefined : gate(lock, () => edit(tpl.id))}
                   locked={!!lock}
                   onShare={() => share(tpl.id)}
                   a11yLabel={`${t('freeSession.badge')}, ${nameOf(tpl)}`}
@@ -406,7 +406,8 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
         </>
       )}
 
-      <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+      {/* De otra cuenta (N-19): se consultan, no se crean ni se editan. */}
+      {!readOnly && <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
         {lock ? (
           // Bloqueado pierde el contorno lima de «crear» (M01 §4.11).
           <TouchableOpacity style={[styles.freeBtn, styles.freeBtnLocked]} onPress={gate(lock)} activeOpacity={0.75} accessibilityRole="button">
@@ -418,7 +419,7 @@ export function ClientFreeSessions({ client, canStart, log, fold }) {
             <Text style={styles.freeBtnText}>{t('freeSession.btn')}</Text>
           </TouchableOpacity>
         )}
-      </Reanimated.View>
+      </Reanimated.View>}
 
       {sheet === 'menu' && (
         <DragSheet visible onClose={() => setSheet(null)} title={t('clients.freeSheet.title', { name: client.name })}>

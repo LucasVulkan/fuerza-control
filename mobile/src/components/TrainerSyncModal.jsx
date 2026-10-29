@@ -6,13 +6,18 @@
  * al conectar un cliente sin cuenta, desde el paywall y desde «Mi cuenta». Ver
  * el código, cambiar de forma o desconectarse está en la página «Mi cuenta» (M03).
  *
- * Tres pantallas dentro de la misma hoja:
+ * Tres pantallas dentro de la misma hoja (y, encima de ellas, la de la subida):
  *   • select      → para qué sirve la cuenta (una línea), y cómo crearla: los
  *                   botones de Apple (oficial, solo iOS) y Google, y debajo, como
  *                   alternativa, el código personal. Enlace «Ya tengo cuenta».
  *   • recovery    → «Ya tengo cuenta»: Google, Apple o el código. Aquí Google y
  *                   Apple solo CONECTAN: si no hay cuenta avisan (M03-03 §7.4)
  *   • code_reveal → el código recién creado, para guardarlo
+ *
+ * Subir los clientes (C10-04 §5): si al crear la cuenta o entrar hay más de un
+ * cliente sin subir, la hoja pasa a «Subiendo tus N clientes a tu cuenta» (sin
+ * botón de cancelar) mientras `_enterCandidate` los sube, y acaba diciendo cómo
+ * quedó. Con 0 o 1 no se enseña nada.
  *
  * El nombre que ven los clientes ya no se pide aquí: sale de Google o Apple y
  * se cambia en «Mi cuenta». Arriba de todo, antes de elegir nada, despistaba.
@@ -30,11 +35,14 @@ import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-nat
 import { Text } from './ui/Text';
 import { useTranslation } from 'react-i18next';
 
+import { useStore } from '../../store/useStore';
+import { linkOf } from '../utils/clientLink';
 import { APPLE_AUTH_AVAILABLE } from '../services/appleAuth';
 import useTrainerAccount, { askCreateInstead } from '../hooks/useTrainerAccount';
 import DragSheet from './DragSheet';
 import CodeField from './ui/CodeField';
 import { Section, SectionLabel, MenuRow } from './ui/MenuList';
+import { Btn } from './ui/CardKit';
 import { KeyIcon } from './ui/AccountIcons';
 import AppleSignInButton from './ui/AppleSignInButton';
 import GoogleSignInButton from './ui/GoogleSignInButton';
@@ -58,12 +66,19 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
   const [recoverCode,  setRecoverCode]  = useState('');
   const [recoverError, setRecoverError] = useState(null);
 
+  // Subida de los clientes sin subir (§5): `{ n, started, left }`; `left` es null hasta que acaba.
+  const uploading = useStore((s) => s.ui.uploadingClients);
+  const [upload, setUpload] = useState(null);
+  useEffect(() => { if (uploading) setUpload((u) => (u && !u.started ? { ...u, started: true } : u)); }, [uploading]);
+  const showUpload = !!upload && (upload.started || upload.left != null);
+
   // La hoja sigue montada al cerrarse: al volver a abrirla empieza de cero.
   useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
     if (visible) {
       setScreen(initialScreen);
       setRecoverCode('');
       setRecoverError(null);
+      setUpload(null);
     }
   }, [visible]);
 
@@ -81,14 +96,39 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
    * Google o Apple: cerrar al conectar; cancelar no es un error. Con `mustExist`
    * («Ya tengo cuenta») solo conecta: si no hay cuenta, pregunta (§7.4).
    */
+  /**
+   * Corre `run` (crear la cuenta o entrar). Con más de un cliente sin subir enseña la subida mientras dura.
+   * Devuelve `{ res, held }`: `held` = la hoja se queda en el resultado de la subida hasta «Entendido».
+   */
+  async function withUpload(run) {
+    const n = Object.values(useStore.getState().clients).filter((c) => linkOf(c, null) === 'local').length;
+    if (n < 2) return { res: await run(), held: false };
+    setUpload({ n, started: false, left: null });
+    try {
+      const res = await run();
+      setUpload({ n, started: true, left: useStore.getState().localClientCount() });
+      return { res, held: true };
+    } catch (err) {
+      setUpload(null);
+      throw err;
+    }
+  }
+
+  /** «Entendido»: cierra la subida; si se estaba creando un código, sigue con él. */
+  function finishUpload() {
+    setUpload(null);
+    if (screen !== 'code_reveal') { setScreen('select'); onClose(); }
+  }
+
   async function social(provider, mustExist = false) {
     setPending(provider);
     try {
-      await (provider === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)({ mustExist });
-      onClose();
+      const { held } = await withUpload(() => (provider === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)({ mustExist }));
+      if (!held) onClose();
     } catch (err) {
       if (err?.notFound) {
-        askCreateInstead(t, err, { onDone: () => onClose(), onError: (e) => showSocialError(provider, e) });
+        const createInstead = async () => ({ held: (await withUpload(err.createInstead)).held });
+        askCreateInstead(t, { ...err, createInstead }, { onDone: (r) => { if (!r?.held) onClose(); }, onError: (e) => showSocialError(provider, e) });
       } else if (!err?.cancelled) {
         showSocialError(provider, err);
       }
@@ -100,9 +140,9 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
   async function createCode() {
     setPending('code');
     try {
-      const { code } = await acct.createCode();
-      setNewCode(code);
-      setScreen('code_reveal');
+      const { res } = await withUpload(() => acct.createCode());
+      setNewCode(res.code);
+      setScreen('code_reveal');   // con la subida a medias queda debajo, hasta «Entendido»
     } catch (err) {
       showDialog(t('sync.errAccountTitle'), err?.message ?? t('sync.errAccountBody'));
     } finally {
@@ -114,14 +154,16 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
     if (!recoverCode.trim() || pending) return;
     setRecoverError(null);
     setPending('recover');
+    let held;
     try {
-      await acct.recover(recoverCode);
+      ({ held } = await withUpload(() => acct.recover(recoverCode)));
     } catch (err) {
       setRecoverError(err?.message ?? t('sync.errReconnectBody'));
       return;
     } finally {
       setPending(null);
     }
+    if (held) return;
     setScreen('select');
     onClose();
   }
@@ -168,19 +210,39 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
     </View>
   );
 
+  // La subida (§5): sin título ni botón de cancelar mientras sube (lo subido es copia, no hay nada que deshacer).
+  const uploadDone = showUpload && upload.left != null;
+  const uploadBody = showUpload && (
+    <View style={styles.block}>
+      <Text style={styles.upTitle}>
+        {!uploadDone ? t('sync.uploadTitle', { count: upload.n })
+          : upload.left === 0 ? t('sync.uploadDone', { count: upload.n })
+          : t('sync.uploadLeft', { count: upload.left })}
+      </Text>
+      {!uploadDone && (
+        <View style={styles.upProgress}>
+          <ActivityIndicator color={th.colors.accent} size="small" />
+          <Text style={styles.upProgressText}>{t('sync.uploadProgress', { done: uploading?.done ?? 0, total: uploading?.total ?? upload.n })}</Text>
+        </View>
+      )}
+      {uploadDone && <Btn tone="acc" label={t('common.understood')} onPress={finishUpload} />}
+    </View>
+  );
+
   return (
     <DragSheet
       visible={visible}
       onClose={onClose}
-      title={titles[screen]}
+      title={showUpload ? null : titles[screen]}
       action={action}
     >
-      {screen === 'code_reveal' && newCode && (
+      {uploadBody}
+      {!showUpload && screen === 'code_reveal' && newCode && (
         <CodeReveal code={newCode} purchase={forPurchase} onDone={() => { setScreen('select'); onClose(); }} />
       )}
 
       {/* ── «Ya tengo cuenta»: Google, Apple (solo conectan) o el código ── */}
-      {screen === 'recovery' && (
+      {!showUpload && screen === 'recovery' && (
         <View style={styles.block}>
           <Text style={styles.why}>{t('sync.recoveryLead')}</Text>
 
@@ -215,7 +277,7 @@ export default function TrainerSyncModal({ visible, onClose, isFirstTime = true,
       )}
 
       {/* ── Crear la cuenta ── */}
-      {screen === 'select' && (
+      {!showUpload && screen === 'select' && (
         <View style={styles.block}>
           <Text style={styles.why}>{t(forPurchase ? 'sync.purchaseLead' : 'sync.createLead')}</Text>
 
@@ -260,6 +322,10 @@ const makeStyles = (th) => StyleSheet.create({
   },
   hint: { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
   link: { ...textStyles.button, color: th.colors.accent, textAlign: 'center' },
+
+  upTitle: { ...textStyles.heading, color: th.colors.text },
+  upProgress: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
+  upProgressText: { ...textStyles.body, color: th.colors.mutedLight },
 
   socials: { gap: spacing.sm2 },
   lastSection: { marginBottom: 0 },

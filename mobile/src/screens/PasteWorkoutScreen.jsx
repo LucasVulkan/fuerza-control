@@ -27,7 +27,7 @@ import { useLastDays } from '../hooks/useLastDays';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { parseSessionText, readAnswer, exerciseIndex, normName, resolveName } from '../utils/sessionText';
 import { exerciseName } from '../utils/prescription';
-import { clientLink } from '../utils/clientLink';
+import { clientLink, linkOf, isReadOnly } from '../utils/clientLink';
 import { sessionPlan } from '../utils/sessionPlan';
 import { athleteProgress, stageStatus, stageDaysAt } from '../utils/stageProgress';
 import { spacing, textStyles } from '../theme';
@@ -110,10 +110,10 @@ export default function PasteWorkoutScreen({ navigation, route }) {
 
   // ── Quién ── Solo clientes sin app: los conectados apuntan ellos (§2.1).
   const offline = useMemo(() => Object.values(clients)
-    .filter((c) => clientLink(c, trainerSync) === 'none')
+    .filter((c) => clientLink(c, trainerSync) === 'none' && !isReadOnly(linkOf(c, trainerSync.userId)))   // de otra cuenta: solo lectura (N-19)
     .sort((a, b) => a.name.localeCompare(b.name)), [clients, trainerSync]);
   const named = Object.values(clients).find((c) => headerKeys.has(normName(c.name))) ?? null;
-  const namedOnline = named && clientLink(named, trainerSync) !== 'none' ? named : null;
+  const namedOnline = named && (clientLink(named, trainerSync) !== 'none' || isReadOnly(linkOf(named, trainerSync.userId))) ? named : null;
   const clientId = lockedClientId ?? pickedId ?? (named && !namedOnline ? named.id : null);
   const client   = clients[clientId] ?? null;
 

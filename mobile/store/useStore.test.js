@@ -2668,10 +2668,12 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
   const cli = (id) => useStore.getState().clients[id];
 
-  it('crear un cliente nace sin hueco (`local`), también con la app: ahí se crea y se invita', async () => {
+  it('crear un cliente nace sin hueco (`local`) y, con cuenta, la subida se lo crea sola sin que nadie espere (C10-04 §5); con la app se crea y se invita', async () => {
     const sinApp = await useStore.getState().createClient('Carmen');
-    expect(syncMock.createClientSlot).not.toHaveBeenCalled();
-    expect(cli(sinApp).slotId).toBeNull();
+    expect(cli(sinApp).slotId).toBeNull();                                            // nace `local`
+    await vi.waitFor(() => expect(cli(sinApp).slotId).toBe('slot_1'));                // y sube en silencio
+    expect(syncMock.createClientSlot).toHaveBeenCalledWith('Carmen', sinApp, false);
+    syncMock.createClientSlot.mockClear();
 
     const conApp = await useStore.getState().createClient('Marta', { withApp: true });
     expect(syncMock.createClientSlot).toHaveBeenCalledWith('Marta', conApp, false);   // hueco sin código…
@@ -2753,6 +2755,69 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
     expect(syncMock.uploadProgram).not.toHaveBeenCalled();
     expect(cli(id).programDirty).toBe(true);
+  });
+});
+
+describe('ficha «de otra cuenta» — solo lectura (C10-04, N-19)', () => {
+  const U = 'trainer_1';
+  const base = { name: 'Ana', fullName: '', phone: '', email: '', notes: '', status: 'active', tags: [], bodyWeight: [{ date: '2026-10-01', weight: 70 }], billing: [{ id: 'b1', concept: 'x', amount: 10, status: 'pending' }], activeProgramId: null, code: null, seated: false, leftAt: null };
+  const propia = { ...base, id: 'propia', slotId: 'slot_p', slotOwner: U };
+  const ajena  = { ...base, id: 'ajena',  slotId: 'slot_a', slotOwner: 'trainer_2' };
+  const s = () => useStore.getState();
+
+  beforeEach(() => {
+    useStore.setState({
+      programs: {}, sessionTemplates: {}, clientLogs: {}, workoutLog: [],
+      clients: { propia: structuredClone(propia), ajena: structuredClone(ajena) },
+      trainerSync: { ...useStore.getState().trainerSync, userId: U, mode: 'code', code: null },
+      profile: { ...useStore.getState().profile, isPro: true },
+      _hasHydrated: true,
+    });
+  });
+
+  it('`_isReadOnlyClient`: solo la ficha cuyo hueco es de otra cuenta; sin cuenta puesta, las que tienen hueco', () => {
+    expect(s()._isReadOnlyClient('ajena')).toBe(true);
+    expect(s()._isReadOnlyClient('propia')).toBe(false);
+    expect(s()._isReadOnlyClient('no-existe')).toBe(false);
+    useStore.setState((st) => ({ clients: { ...st.clients, local: { ...base, id: 'local', slotId: null, slotOwner: null } } }));
+    expect(s()._isReadOnlyClient('local')).toBe(false);
+    useStore.setState((st) => ({ trainerSync: { ...st.trainerSync, userId: null } }));
+    expect(s()._isReadOnlyClient('propia')).toBe(true);
+    expect(s()._isReadOnlyClient('local')).toBe(false);
+  });
+
+  const noCambia = (nombre, accion) => it(`${nombre} no hace nada con una ficha de otra cuenta, y sí con una propia`, () => {
+    const antes = structuredClone(s().clients.ajena);
+    accion('ajena');
+    expect(s().clients.ajena).toEqual(antes);
+    const propiaAntes = structuredClone(s().clients.propia);
+    accion('propia');
+    expect(s().clients.propia).not.toEqual(propiaAntes);
+  });
+
+  noCambia('updateClientInfo', (id) => s().updateClientInfo(id, { notes: 'nuevo' }));
+  noCambia('addClientBilling', (id) => s().addClientBilling(id, { concept: 'y', amount: 5 }));
+  noCambia('updateClientBillingStatus', (id) => s().updateClientBillingStatus(id, 'b1', 'paid'));
+  noCambia('removeClientBilling', (id) => s().removeClientBilling(id, 'b1'));
+  noCambia('addClientBodyWeight', (id) => s().addClientBodyWeight(id, '2026-10-02', '71'));
+  noCambia('removeClientBodyWeight', (id) => s().removeClientBodyWeight(id, '2026-10-01'));
+  noCambia('setOverrideTarget', (id) => s().setOverrideTarget(id, 'tpl', 'ex', { sets: 3 }));
+  noCambia('setClientActiveProgram', (id) => {
+    const pid = s().createProgramForClient('propia', 1, 'Base', 4, { openEditor: false });
+    s().setClientActiveProgram(id, pid);
+  });
+
+  it('clearOverride no hace nada con una ficha de otra cuenta', () => {
+    const nextOverrides = { tpl: { templateId: 'tpl', exercises: { ex: { sets: 3 } } } };
+    useStore.setState((st) => ({ clients: { ...st.clients, ajena: { ...st.clients.ajena, nextOverrides } } }));
+    s().clearOverride('ajena', 'tpl');
+    expect(s().clients.ajena.nextOverrides).toEqual(nextOverrides);
+    expect(s().clients.ajena.overridesDirty).toBeUndefined();
+  });
+
+  it('borrar la ficha sí se puede: es del móvil', () => {
+    s().deleteClient('ajena');
+    expect(s().clients.ajena).toBeUndefined();
   });
 });
 

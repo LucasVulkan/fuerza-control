@@ -48,7 +48,7 @@ import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
-import { clientLink, linkOf, withApp as isWithApp, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, NO_SLOT, SLOT_LOST, CODE_CLEARED } from '../src/utils/clientLink';
+import { clientLink, linkOf, isReadOnly, withApp as isWithApp, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, NO_SLOT, SLOT_LOST, CODE_CLEARED } from '../src/utils/clientLink';
 import { isNetworkError } from '../src/utils/networkError';
 import { FREE, NEW_WITH_APP, forPlan, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
 import {
@@ -956,6 +956,9 @@ export const useStore = create(
           ...(cloud ? { ui: { ...s.ui, linking: { ...s.ui.linking, [id]: true } } } : {}),
         }));
 
+        // Con cuenta y sin app, sube en silencio en cuanto hay red (§5). Sin esperar: el cliente ya existe.
+        if (!cloud && trainerSync.userId) get().uploadLocalClients();
+
         // Solo con app, y solo si el entrenador está en la nube.
         if (cloud) {
           try {
@@ -974,6 +977,7 @@ export const useStore = create(
       },
 
       updateClientInfo: (clientId, fields) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         set((s) => patchClient(s, clientId, fields));
       },
 
@@ -1134,6 +1138,7 @@ export const useStore = create(
       },
 
       setClientActiveProgram: (clientId, programId) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         if (programId !== null && get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         // Assigning makes the program active (archiving the previous one) and
         // marks it dirty so the trainer pushes it. Deassigning clears both.
@@ -1166,6 +1171,7 @@ export const useStore = create(
       },
 
       addClientBilling: (clientId, entry) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         const id = generateId('bill');
         set((s) => patchClient(s, clientId, (c) => ({
           billing: [{ id, ...entry, status: entry.status ?? 'pending' }, ...(c.billing ?? [])],
@@ -1173,18 +1179,21 @@ export const useStore = create(
       },
 
       updateClientBillingStatus: (clientId, billingId, status) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         set((s) => patchClient(s, clientId, (c) => ({
           billing: (c.billing ?? []).map((b) => (b.id === billingId ? { ...b, status } : b)),
         })));
       },
 
       removeClientBilling: (clientId, billingId) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         set((s) => patchClient(s, clientId, (c) => ({
           billing: (c.billing ?? []).filter((b) => b.id !== billingId),
         })));
       },
 
       addClientBodyWeight: (clientId, date, weight) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         const client = get().clients[clientId];
         if (!client) return;
         const existing = (client.bodyWeight ?? []).filter((e) => e.date !== date);
@@ -1194,6 +1203,7 @@ export const useStore = create(
       },
 
       removeClientBodyWeight: (clientId, date) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         const client = get().clients[clientId];
         if (!client) return;
         set((s) => patchClient(s, clientId, (c) => ({
@@ -4227,6 +4237,12 @@ export const useStore = create(
         return _uploadingLocal;
       },
 
+      /** Una ficha «de otra cuenta» es de solo lectura (N-19): se ve y se borra, nada más. */
+      _isReadOnlyClient: (clientId) => {
+        const c = get().clients[clientId];
+        return !!c && isReadOnly(linkOf(c, get().trainerSync.userId));
+      },
+
       /** Cuántas fichas siguen `local` con la cuenta puesta: aún no están en ella (Mi cuenta, el aviso de Salir). */
       localClientCount: () => {
         const { clients, trainerSync } = get();
@@ -4386,6 +4402,7 @@ export const useStore = create(
       // A one-off prescription for the NEXT occurrence of a client's session.
       // Stored on the client; delivered to the client and consumed there later.
       setOverrideTarget: (clientId, templateId, exerciseId, patch) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         if (get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         set((s) => {
           const client = s.clients[clientId];
@@ -4412,6 +4429,7 @@ export const useStore = create(
       },
 
       clearOverride: (clientId, templateId) => {
+        if (get()._isReadOnlyClient(clientId)) return;
         if (get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         set((s) => {
           const client = s.clients[clientId];

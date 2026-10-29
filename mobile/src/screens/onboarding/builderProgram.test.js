@@ -107,7 +107,11 @@ describe('constructor guiado — por mi cuenta (self/copy)', () => {
 
 describe('constructor guiado — el programa del cliente (trainer)', () => {
   beforeEach(() => {
-    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana', slotId: 'slot_1' } } });
+    // Con hueco en la cuenta puesta: una ficha «de otra cuenta» es de solo lectura (C10 N-19) y no aceptaría el programa.
+    useStore.setState((s) => ({
+      trainerSync: { ...s.trainerSync, userId: 'trainer_1' },
+      clients: { cli_1: { id: 'cli_1', name: 'Ana', slotId: 'slot_1', slotOwner: 'trainer_1' } },
+    }));
     useStore.getState().flowAnswer({ builderCtx: 'trainer', clientId: 'cli_1', clientMode: 'app' });
   });
 
