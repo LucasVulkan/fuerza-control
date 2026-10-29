@@ -735,8 +735,8 @@ antes de la app de C10-03).
 
 **Probar C10-02**
 
-- [ ] Ejecutar `schema.sql` en el editor SQL de Supabase: sin errores.
-- [ ] Ejecutar `audit.sql`: sale vacío.
+- [x] Ejecutar `schema.sql` en el editor SQL de Supabase: sin errores. *(29-oct-2026, desplegado por Claude con el conector de Supabase; los 19 huecos de antes, sin cambios)*
+- [x] Ejecutar `audit.sql`: sale vacío. *(29-oct-2026)*
 - [ ] Con la app de la fase anterior: crear un cliente con app, que lo canjee y
   que el entrenador le envíe el programa. Todo funciona como antes.
 
