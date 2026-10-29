@@ -6,7 +6,7 @@
 > Fase C10-01 · hecho · El estado de la ficha en un solo valor, solo en el móvil · §10.1
 > Fase C10-02 · hecho · Servidor: hueco sin código, tabla privada, ids que no se pierden · §10.2
 > Fase C10-03 · hecho · Un id para siempre: recuperar usa el de la ficha · §10.3
-> Fase C10-04 · pendiente · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
+> Fase C10-04 · hecho · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
 > Fase C10-05 · pendiente · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
 > Fase C10-06 · pendiente · Restaurar una copia con este modelo · §10.6
 > Fase C10-07 · pendiente · Deshacer al borrar un cliente · §10.7
@@ -665,7 +665,7 @@ real con PGlite, varios móviles), y los de la función pura en
 | C10-01 | Estado en un valor, solo móvil | I04-03, I04-04 | 🔴 | N-15 | hecho 29-oct — por probar; tests en `src/utils/clientLink.test.js` y `store/connection.sim.test.js` |
 | C10-02 | Servidor | C10-01 | 🟡 | N-17, R-A1…A3, R-A9, R-D1 | hecho 29-oct (0d52c5c) — por probar; tests en `store/server.private.sim.test.js` y `store/server.compat.sim.test.js` |
 | C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | hecho 29-oct (2eee3c1) — por probar; tests en `store/account.clients.sim.test.js` |
-| C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | pendiente |
+| C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | hecho 29-oct (926f514) — por probar; tests en `store/account.clients.sim.test.js` (banco) y `store/useStore.test.js` (guardas de solo lectura) |
 | C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | pendiente |
 | C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | pendiente |
 | C10-07 | Deshacer al borrar | C10-01 | 🟢 | N-13, R-B6, R-B10 | pendiente |
@@ -852,8 +852,22 @@ C10-05).
   apuntado sigue en la ficha, y el código ya no sirve.
 - [ ] Sin PRO: con 3 clientes sin app, invitar a uno funciona; invitar a un
   segundo saca la hoja de límite.
+- [ ] Ficha de otra cuenta, solo lectura: con un cliente subido a la cuenta A,
+  salir y entrar en otra cuenta B. En Clientes ese cliente dice «En otra cuenta
+  tuya», sin avisos ni botones en su fila; al abrirlo hay una línea bajo el
+  nombre («Este cliente está en otra cuenta tuya…»), no se pueden editar sus
+  datos, estado, cobros ni peso, no hay editar, asignar, enviar, «Preparar»,
+  «Pasar a la app» ni «Empezar», y no sale al pegar un entreno ni al asignar
+  un programa desde Programas. Borrarlo sí se puede.
+- [ ] Aviso de Salir: con la cuenta puesta y sin red, crear un cliente. En Mi
+  cuenta, «Salir» avisa antes de que hay 1 cliente que aún no está en la
+  cuenta; con red y ya subido, el aviso no sale. Si sale igual, al entrar en
+  otra cuenta ese cliente se sube a ella.
+- [ ] «Cambiar a Google / Apple» hacia una cuenta que ya tiene clientes: sale
+  «Esa cuenta de Google ya tiene clientes…», no un texto genérico.
 
-**Parte del store hecha (29-oct-2026).** Crear un cliente nace siempre `local`; `uploadLocalClients()` (con `ui.uploadingClients = { done, total }` y `localClientCount()`) los sube en cada refresco; `connectClientToCloud` / `moveClientToApp` invitan (suben si hace falta, dan código y envían el programa; `OTHER_ACCOUNT` para una ficha de otra cuenta) y `cancelClientInvitation` solo quita el código. `_enterCandidate` traspasa solo con `upgrade` y rechaza con `UPGRADE_TARGET_HAS_CLIENTS` si la cuenta de destino tiene huecos que este móvil no conoce; `freePlan.js` cuenta «con app» por el código. Dos matices que la spec no decía: invitar a un `none` también manda lo apuntado desde que se subió (hasta C10-05 no hay otro camino), y un hueco que ya trae código (alta de una versión de antes cuya respuesta se perdió) conserva el suyo. **Faltan las pantallas:** la hoja «Subiendo tus N clientes» y «Faltan N por subir», la línea de Mi cuenta, el aviso de Salir con clientes `local`, el mensaje de `UPGRADE_TARGET_HAS_CLIENTS` en la hoja «Cambiar a Google / Apple», `otherAccount` de solo lectura en la ficha y llamar a la subida tras crear un cliente suelto con cuenta.
+**Hecho (29-oct).** *Store:* crear un cliente nace siempre `local`; `uploadLocalClients()` (con `ui.uploadingClients = { done, total }` y `localClientCount()`) los sube en cada refresco; `connectClientToCloud` / `moveClientToApp` invitan (suben si hace falta, dan código y envían el programa; `OTHER_ACCOUNT` para una ficha de otra cuenta) y `cancelClientInvitation` solo quita el código. `_enterCandidate` traspasa solo con `upgrade` y rechaza con `UPGRADE_TARGET_HAS_CLIENTS` si la cuenta de destino tiene huecos que este móvil no conoce; `freePlan.js` cuenta «con app» por el código. Dos matices que la spec no decía: invitar a un `none` también manda lo apuntado desde que se subió (hasta C10-05 no hay otro camino), y un hueco que ya trae código (alta de una versión de antes cuya respuesta se perdió) conserva el suyo.
+*Pantallas:* `TrainerSyncModal` enseña la subida dentro de su misma hoja (sin título ni botón mientras sube, «3 de 8» de `ui.uploadingClients`, y al acabar «Tus N clientes están en tu cuenta» o «Faltan N por subir», con «Entendido»); solo con más de un cliente sin subir y al crear la cuenta o entrar (también en «Ya tengo cuenta» y «Crear una nueva»). Como `_enterCandidate` ya sube dentro del refresco, la hoja cuenta los `local` antes de entrar y se muestra en cuanto empieza `uploadingClients`. Mi cuenta dice «N clientes aún no están en tu cuenta. Se subirán solos.» (con `localClientCount()`), y el diálogo de Salir lo avisa antes con los clientes sin subir. `createClient` lanza `uploadLocalClients()` sin esperar cuando no invita. Las fichas `otherAccount` son de solo lectura (N-19): `_isReadOnlyClient` en el store frena `updateClientInfo`, `setClientActiveProgram`, cobros, peso y prescripciones; en pantalla, la ficha lleva una línea bajo el nombre, lo editable de Info no responde (apagado al 60 %), no hay editar, asignar, archivar, importar historial, desbloquear etapa, planificar, «Preparar», «Pasar a la app» ni «Empezar», la fila de la lista dice «En otra cuenta tuya» sin avisos ni botones y no cuenta en «Necesitan algo», y se quitan de «Pegar un entreno» y de los selectores de asignar de Programas. `OTHER_ACCOUNT` al pasar a la app enseña su mensaje; `UPGRADE_TARGET_HAS_CLIENTS` ya llegaba a la hoja de «Cambiar a Google / Apple» por `err.message`. Dos cosas que quedan: borrar entrenos del historial de una ficha de otra cuenta sigue permitido (no estaba en la lista), y quien cierra la hoja de subida arrastrándola la oculta sin pararla (el resultado se pierde, Mi cuenta sigue contando lo que falta).
 
 ### 10.5 C10-05 — Guardar en la cuenta: ficha, programas y lo apuntado
 
