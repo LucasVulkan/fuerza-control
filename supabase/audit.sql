@@ -17,7 +17,7 @@ with huellas(n, h) as (values
   ('_merge_history', '5f2193d3ab9170930a6e3cc249d9a03a'),
   ('_release_seat_of_deleted_user', 'f01a7c7c858c1fea61a83445aad2642e'),
   ('_trainer', '895184881412f231e1d94aef8009eed3'),
-  ('accept_transfer', '31b0e2f1b43c82681fbbfb965495cf4e'),
+  ('accept_transfer', '63b6fd48e530aad0de499900a8fdbbea'),
   ('client_lost_reason', 'c1aa16132493e01048a8445e9774cac4'),
   ('client_upload_history', '97fcd9452929940f17484b160a622b47'),
   ('get_slot_by_code', 'b89205af993f617a19afcf6303803c62'),
@@ -25,10 +25,14 @@ with huellas(n, h) as (values
   ('new_client_code', '4cd8993cec4d23f569beb2ac28032293'),
   ('offer_transfer', '84e4a6eb787f9e1fa26afbe657cb9e04'),
   ('release_client_slot', '834f954b53cc2f3cd419ab4d130b4976'),
-  ('trainer_create_slot', 'cd90e36296965cdc88e7c3753072d606'),
-  ('trainer_delete_slot', '90e07540aea6c0d1379d3f33430917cd'),
+  ('trainer_clear_code', '7b21be6e9b62a1b6bb57d51acff03836'),
+  ('trainer_create_slot', '46a1328999fdd5f871f629f492a19c78'),
+  ('trainer_delete_slot', '2ef58afa4223f2a78c30782848e92fc6'),
   ('trainer_deleted_slots', 'b5bcca029f771b99c9bd7f687d6df20e'),
+  ('trainer_known_clients', '42008361be7e64a71208b41bea36d71a'),
   ('trainer_reissue_client_code', '57d59eac2dd5d143f96f6be992754e6a'),
+  ('trainer_save_client', 'ef1bb0fd77e8fff525dedf668b073f2b'),
+  ('trainer_set_local_id', '0fdda5fdffc9b7bb670f9be7bd6dde2c'),
   ('trainer_set_name', '991c28decba6b250c7ed31efd8b90860'),
   ('trainer_upload_log', '9c3ee43d389084ef89143fd452fcfce0'),
   ('trainer_upload_overrides', '3bfd01ad1de6c34087b084bcbbd0f010'),
@@ -55,10 +59,32 @@ select 'cliente en varios asientos', t.client_id::text
  group by t.client_id having count(*) > 1
 
 union all
--- Código repetido o vacío.
-select 'código repetido o vacío', coalesce(t.client_code, '(null)')
+-- Código repetido. Sin código es válido (C10: «sin app»): los null no cuentan.
+select 'código repetido', t.client_code
   from public.trainer_clients t
- group by t.client_code having count(*) > 1 or t.client_code is null
+ where t.client_code is not null
+ group by t.client_code having count(*) > 1
+
+union all
+-- Dos huecos de la misma cuenta para el mismo cliente (C10, N-08). El índice lo
+-- impide; se mira por si alguien lo quita.
+select 'huecos de una cuenta con el mismo local_id', t.trainer_id::text || ' ' || t.local_id
+  from public.trainer_clients t
+ where t.local_id is not null
+ group by t.trainer_id, t.local_id having count(*) > 1
+
+union all
+-- Ficha privada sin hueco, o con un hueco sin entrenador (C10). La FK lo impide;
+-- la fila no lleva dueño propio: el suyo es el de su hueco. Va por query_to_xml
+-- para que, si la tabla falta, salga «falta la tabla» en vez de romper la auditoría.
+select 'ficha privada sin hueco ni entrenador', x.slot
+  from xmltable('/table/row' passing (
+         select case when to_regclass('public.trainer_client_private') is not null
+                     then query_to_xml('select slot_id from public.trainer_client_private p
+                                         where not exists (select 1 from public.trainer_clients t
+                                                            join auth.users u on u.id = t.trainer_id
+                                                           where t.id = p.slot_id)', false, false, '') end)
+         columns slot text path 'slot_id') x
 
 union all
 -- Un anónimo como entrenador (los entrenadores tienen cuenta de verdad).
@@ -72,18 +98,19 @@ union all
 select 'política de escritura', policyname
   from pg_policies
  where schemaname = 'public'
-   and (   (tablename = 'trainer_clients' and cmd <> 'SELECT')
+   and (   (tablename in ('trainer_clients', 'trainer_client_private') and cmd <> 'SELECT')
         or tablename in ('transfer_offers', 'deleted_slots'))   -- ni leer: una oferta falsa robaría huecos
 
 union all
--- Permiso sobre la tabla, el que sea (también el que llega de PUBLIC); leer solo vale en trainer_clients.
+-- Permiso sobre la tabla, el que sea (también el que llega de PUBLIC); leer vale en
+-- trainer_clients y trainer_client_private, solo a authenticated (la política filtra las filas).
 select 'permiso de escritura directo', r || ' ' || p || ' ' || c.relname
   from pg_class c,
        unnest(array['anon', 'authenticated']) r,
        unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) p
  where c.relnamespace = 'public'::regnamespace
-   and c.relname in ('trainer_clients', 'transfer_offers', 'seat_losses', 'deleted_slots')
-   and not (p = 'SELECT' and c.relname = 'trainer_clients')
+   and c.relname in ('trainer_clients', 'trainer_client_private', 'transfer_offers', 'seat_losses', 'deleted_slots')
+   and not (p = 'SELECT' and r = 'authenticated' and c.relname in ('trainer_clients', 'trainer_client_private'))
    and has_table_privilege(r, c.oid, p)
 
 union all
@@ -92,7 +119,8 @@ select 'permiso de escritura por columna', r || ' ' || p || ' ' || a.attname
   from pg_attribute a,
        unnest(array['anon', 'authenticated']) r,
        unnest(array['INSERT', 'UPDATE', 'REFERENCES']) p
- where a.attrelid = to_regclass('public.trainer_clients') and a.attnum > 0 and not a.attisdropped
+ where a.attrelid in (to_regclass('public.trainer_clients'), to_regclass('public.trainer_client_private'))
+   and a.attnum > 0 and not a.attisdropped
    and has_column_privilege(r, a.attrelid, a.attnum, p)
    and not has_table_privilege(r, a.attrelid, p)
 
@@ -111,7 +139,8 @@ select 'función sin security definer', proname
                    'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
                    'trainer_deleted_slots', 'trainer_reissue_client_code', 'get_slot_by_code',
                    'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                   'offer_transfer', 'accept_transfer', 'client_lost_reason')
+                   'offer_transfer', 'accept_transfer', 'client_lost_reason',
+                   'trainer_clear_code', 'trainer_save_client', 'trainer_set_local_id', 'trainer_known_clients')
 
 union all
 -- Y que estén todas.
@@ -120,7 +149,9 @@ select 'falta la función', f
                     'trainer_upload_log', 'trainer_set_name', 'trainer_delete_slot',
                     'trainer_deleted_slots', 'trainer_reissue_client_code', 'get_slot_by_code',
                     'link_client_to_slot', 'client_upload_history', 'release_client_slot',
-                    'offer_transfer', 'accept_transfer', 'client_lost_reason']) as f
+                    'offer_transfer', 'accept_transfer', 'client_lost_reason',
+                    'trainer_clear_code', 'trainer_save_client', 'trainer_set_local_id',
+                    'trainer_known_clients']) as f
  where not exists (select 1 from pg_proc where proname = f and pronamespace = 'public'::regnamespace)
 
 union all
@@ -128,7 +159,7 @@ union all
 select 'RLS desactivada', c.relname::text
   from pg_class c
  where c.relnamespace = 'public'::regnamespace and not c.relrowsecurity
-   and c.relname in ('trainer_clients', 'profiles', 'transfer_offers', 'seat_losses', 'deleted_slots')
+   and c.relname in ('trainer_clients', 'trainer_client_private', 'profiles', 'transfer_offers', 'seat_losses', 'deleted_slots')
 
 union all
 -- Política de lectura que deja ver todas las filas.
@@ -159,7 +190,7 @@ select 'falta el índice', i
 union all
 -- Las tablas auxiliares, y el trigger que suelta el asiento de un usuario borrado (E36).
 select 'falta la tabla', t
-  from unnest(array['transfer_offers', 'seat_losses', 'deleted_slots']) t
+  from unnest(array['transfer_offers', 'seat_losses', 'deleted_slots', 'trainer_client_private']) t
  where to_regclass('public.' || t) is null
 
 union all

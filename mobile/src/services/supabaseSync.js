@@ -22,6 +22,7 @@ import { NETWORK_RE } from '../utils/networkError';
 const RPC_CODES = [
   'SLOT_OCCUPIED', 'CODE_NOT_FOUND', 'SLOT_GONE', 'NO_SEAT', 'SEAT_TAKEN', 'SEAT_LOCKED', 'BAD_TARGET',
   'NOT_A_TRAINER', 'NOT_AUTHENTICATED', 'NO_OFFER', 'CODE_GENERATION_FAILED', 'SLOT_CHANGED',
+  'DUPLICATE_CLIENT',
 ];
 
 export function syncError(error) {
@@ -42,11 +43,46 @@ async function rpc(db, name, args) {
 
 /**
  * Hueco nuevo; el código lo genera el servidor, que sabe cuáles existen. Con
- * `localId` (el id de la ficha) repetir el alta devuelve el mismo hueco.
+ * `localId` (el id de la ficha) repetir el alta devuelve el mismo hueco. Con
+ * `withCode = false` nace sin código (cliente «sin app», C10): `clientCode` null.
  */
-export async function createClientSlot(clientName, localId = null) {
-  const [row] = await rpc(trainerSupabase, 'trainer_create_slot', { p_client_name: clientName, p_local_id: localId });
+export async function createClientSlot(clientName, localId = null, withCode = true) {
+  // Sin el tercer argumento cuando hay código: la llamada es la de siempre y vale también contra un servidor sin C10.
+  const args = { p_client_name: clientName, p_local_id: localId };
+  if (!withCode) args.p_with_code = false;
+  const [row] = await rpc(trainerSupabase, 'trainer_create_slot', args);
   return { slotId: row.slot_id, clientCode: row.code };
+}
+
+/** Cancelar la invitación (C10): quita el código y lo enviado. SLOT_OCCUPIED si ya hay alguien dentro. */
+export function clearClientCode(slotId) {
+  return rpc(trainerSupabase, 'trainer_clear_code', { p_slot_id: slotId });
+}
+
+/** Guardar en la cuenta (C10): la ficha y los programas, en la fila privada del hueco. */
+export function saveClientPrivate(slotId, card, programs = null) {
+  return rpc(trainerSupabase, 'trainer_save_client', { p_slot_id: slotId, p_card: card, p_programs: programs });
+}
+
+/** Fija el id de cliente de un hueco. DUPLICATE_CLIENT si otro hueco de la cuenta ya lo tiene. */
+export function setSlotLocalId(slotId, localId) {
+  return rpc(trainerSupabase, 'trainer_set_local_id', { p_slot_id: slotId, p_local_id: localId });
+}
+
+/** Los ids de cliente que la cuenta conoce: `[{ local_id, alive }]` (vivos y borrados). */
+export function knownClients() {
+  return rpc(trainerSupabase, 'trainer_known_clients', {});
+}
+
+/** Las filas privadas de estos huecos: `[{ slot_id, card_json, programs_json, saved_at }]`. */
+export async function getClientPrivates(slotIds) {
+  if (!slotIds.length) return [];
+  const { data, error } = await trainerSupabase
+    .from('trainer_client_private')
+    .select('slot_id, card_json, programs_json, saved_at')
+    .in('slot_id', slotIds);
+  if (error) throw syncError(error);
+  return data ?? [];
 }
 
 export function uploadProgram(slotId, programJson, trainerName) {

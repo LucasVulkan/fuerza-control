@@ -19,6 +19,8 @@
 -- Estados:   INVITADO  client_id null, disconnected_at null
 --            CONECTADO client_id no null
 --            SE FUE    client_id null, disconnected_at fecha (se desconectó él)
+--            SIN APP   client_code null (C10): nadie puede canjearlo; el entrenador
+--                      lo lleva igual (historial, ficha privada). Invitar le da código.
 --
 -- ── Las reglas, y dónde se hacen cumplir ────────────────────────────────────
 --  1. El código es la llave del cliente: con él se entra, y quien estuviera
@@ -37,7 +39,7 @@
 --
 -- Códigos de error (la app ramifica por ellos, `supabaseSync.js`):
 --   NOT_AUTHENTICATED  NOT_A_TRAINER  CODE_NOT_FOUND  SEAT_LOCKED  SLOT_OCCUPIED (C20)  SLOT_GONE
---   NO_SEAT  SEAT_TAKEN  BAD_TARGET  NO_OFFER  CODE_GENERATION_FAILED
+--   NO_SEAT  SEAT_TAKEN  BAD_TARGET  NO_OFFER  CODE_GENERATION_FAILED  DUPLICATE_CLIENT (C10)
 -- ============================================================================
 
 
@@ -128,20 +130,23 @@ update public.trainer_clients t
   from ranked r
  where t.id = r.id and r.rn > 1;
 
--- Códigos repetidos o vacíos: código nuevo.
+-- Códigos repetidos: código nuevo. Sin código es válido (C10: «sin app»), no se toca.
 with ranked as (
   select id, row_number() over (partition by client_code order by created_at) as rn
     from public.trainer_clients
+   where client_code is not null
 )
 update public.trainer_clients t
    set client_code = public.new_client_code()
   from ranked r
- where t.id = r.id and (r.rn > 1 or t.client_code is null);
+ where t.id = r.id and r.rn > 1;
 
 
 -- ── 4. Restricciones: las reglas que no dependen de que la app lo haga bien ──
 
-alter table public.trainer_clients alter column client_code set not null;
+-- El código es opcional (C10): «sin app» = hueco sin código. El índice único
+-- admite varios null.
+alter table public.trainer_clients alter column client_code drop not null;
 
 create unique index if not exists trainer_clients_code_key on public.trainer_clients (client_code);
 create unique index if not exists trainer_clients_one_seat on public.trainer_clients (client_id) where client_id is not null;
@@ -202,7 +207,7 @@ do $$
 declare p record;
 begin
   for p in select policyname, tablename from pg_policies
-            where schemaname = 'public' and tablename in ('trainer_clients', 'profiles')
+            where schemaname = 'public' and tablename in ('trainer_clients', 'profiles', 'trainer_client_private')
   loop
     execute format('drop policy %I on public.%I', p.policyname, p.tablename);
   end loop;
@@ -258,6 +263,27 @@ create table if not exists public.deleted_slots (
 alter table public.deleted_slots enable row level security;
 revoke all on public.deleted_slots from anon, authenticated;
 create index if not exists deleted_slots_trainer_id on public.deleted_slots (trainer_id);
+-- El id de cliente del móvil del hueco borrado (C10, N-04): así la cuenta reconoce
+-- a sus borrados al restaurar una copia. Null en los borrados de antes.
+alter table public.deleted_slots add column if not exists local_id text;
+
+-- Lo privado del entrenador (C10, N-17): la ficha y los programas de cada cliente.
+-- Una fila por hueco; cuelga de él, así que el traspaso de cuenta y borrar la
+-- cuenta (cascada) la arrastran sin tocarla. El cliente, aunque esté sentado en
+-- el hueco, NO la lee: la política exige ser el entrenador. Nadie escribe directo.
+create table if not exists public.trainer_client_private (
+  slot_id       uuid primary key references public.trainer_clients(id) on delete cascade,
+  card_json     jsonb not null,
+  programs_json jsonb,
+  saved_at      timestamptz not null default now()
+);
+alter table public.trainer_client_private enable row level security;
+create policy trainer_reads_own_private on public.trainer_client_private
+  for select to authenticated
+  using (exists (select 1 from public.trainer_clients t
+                  where t.id = slot_id and t.trainer_id = auth.uid()));
+revoke all    on public.trainer_client_private from anon, authenticated;
+grant  select on public.trainer_client_private to authenticated;
 
 
 -- ── 6. Quién llama ──────────────────────────────────────────────────────────
@@ -390,9 +416,14 @@ update public.trainer_clients set history_json = public._merge_history(history_j
 -- ── 7. Entrenador ───────────────────────────────────────────────────────────
 
 -- Con `p_local_id`, repetir el alta (la respuesta se perdió) devuelve el mismo
--- hueco en vez de crear otro; dos a la vez también dan el mismo (E35).
+-- hueco en vez de crear otro; dos a la vez también dan el mismo (E35). Con
+-- `p_with_code = false` el hueco nace sin código (cliente «sin app», C10); las
+-- versiones que la llaman con dos argumentos lo siguen creando con código.
+-- Añadir un argumento con `create or replace` dejaría viva la firma vieja
+-- (sobrecarga: «function is not unique»), así que se retira antes.
 drop function if exists public.trainer_create_slot(text);
-create or replace function public.trainer_create_slot(p_client_name text, p_local_id text default null)
+drop function if exists public.trainer_create_slot(text, text);
+create or replace function public.trainer_create_slot(p_client_name text, p_local_id text default null, p_with_code boolean default true)
 returns table (slot_id uuid, code text)
 language plpgsql
 security definer
@@ -400,7 +431,7 @@ set search_path = public
 as $$
 declare
   v_me   uuid := public._trainer();
-  v_code text := public.new_client_code();
+  v_code text := case when p_with_code then public.new_client_code() end;
   v_id   uuid;
 begin
   insert into public.trainer_clients (trainer_id, client_name, client_code, local_id)
@@ -502,7 +533,7 @@ end;
 $$;
 
 -- Borrar un hueco que ya no está no es un error: devuelve false. Anota el
--- borrado en `deleted_slots`, con `p_kind` ('deleted' por omisión: las
+-- borrado en `deleted_slots` (con el `local_id` del cliente, C10), con `p_kind` ('deleted' por omisión: las
 -- versiones anteriores, que cancelan sin decirlo, quedan como borrado).
 drop function if exists public.trainer_delete_slot(uuid);
 create or replace function public.trainer_delete_slot(p_slot_id uuid, p_kind text default 'deleted')
@@ -514,11 +545,12 @@ as $$
 declare
   v_me     uuid := public._trainer();
   v_client uuid;
+  v_local  text;
 begin
   delete from public.trainer_clients where id = p_slot_id and trainer_id = v_me
-  returning client_id into v_client;
+  returning client_id, local_id into v_client, v_local;
   if not found then return false; end if;
-  insert into public.deleted_slots (slot_id, trainer_id, kind) values (p_slot_id, v_me, p_kind)
+  insert into public.deleted_slots (slot_id, trainer_id, kind, local_id) values (p_slot_id, v_me, p_kind, v_local)
   on conflict do nothing;
   if v_client is not null then
     insert into public.seat_losses (client_id, reason) values (v_client, 'gone')
@@ -553,6 +585,91 @@ begin
     on conflict (client_id) do update set reason = 'gone', at = now();
   end if;
   return v_code;
+end;
+$$;
+
+-- Cancelar la invitación (C10): quita el código y lo enviado; el hueco, su
+-- historial y lo privado se quedan. Solo con el asiento vacío, comprobado en la
+-- MISMA sentencia que escribe.
+create or replace function public.trainer_clear_code(p_slot_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_me uuid := public._trainer();
+begin
+  update public.trainer_clients
+     set client_code = null, disconnected_at = null,
+         program_json = null, program_updated_at = null,
+         overrides_json = null, overrides_updated_at = null
+   where id = p_slot_id and trainer_id = v_me and client_id is null;
+  if found then return; end if;
+  if exists (select 1 from public.trainer_clients where id = p_slot_id and trainer_id = v_me) then
+    raise exception 'SLOT_OCCUPIED';
+  end if;
+  raise exception 'SLOT_GONE';
+end;
+$$;
+
+-- Guardar en la cuenta (C10): la ficha y los programas del cliente, en la fila
+-- privada del hueco. `client_name` es lo único de la ficha que ve el cliente (la
+-- pantalla de confirmar el código).
+create or replace function public.trainer_save_client(p_slot_id uuid, p_card jsonb, p_programs jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.trainer_clients set client_name = p_card->>'name'
+   where id = p_slot_id and trainer_id = public._trainer();
+  if not found then raise exception 'SLOT_GONE'; end if;
+  insert into public.trainer_client_private (slot_id, card_json, programs_json, saved_at)
+  values (p_slot_id, p_card, p_programs, now())
+  on conflict (slot_id) do update
+    set card_json = excluded.card_json, programs_json = excluded.programs_json, saved_at = now();
+end;
+$$;
+
+-- Fija el id de cliente de un hueco (migración, C10 §4.2). Dos huecos de la
+-- cuenta para la misma ficha no caben: DUPLICATE_CLIENT (el índice lo impide).
+create or replace function public.trainer_set_local_id(p_slot_id uuid, p_local_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.trainer_clients set local_id = p_local_id
+   where id = p_slot_id and trainer_id = public._trainer();
+  if not found then raise exception 'SLOT_GONE'; end if;
+exception when unique_violation then
+  raise exception 'DUPLICATE_CLIENT';
+end;
+$$;
+
+-- Los ids de cliente que esta cuenta conoce (C10, para restaurar): los de sus
+-- huecos (alive) y los de los que borró (not alive). Solo los que tienen id.
+create or replace function public.trainer_known_clients()
+returns table (local_id text, alive boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+#variable_conflict use_column
+declare v_me uuid := public._trainer();
+begin
+  -- Con la cuenta ya borrada y el JWT aún válido, la respuesta vacía no vale como «no conoces a nadie».
+  if not exists (select 1 from auth.users where id = v_me) then
+    raise exception 'NOT_AUTHENTICATED';
+  end if;
+  return query
+    select t.local_id, true from public.trainer_clients t
+     where t.trainer_id = v_me and t.local_id is not null
+    union all
+    select d.local_id, false from public.deleted_slots d
+     where d.trainer_id = v_me and d.local_id is not null;
 end;
 $$;
 
@@ -770,8 +887,17 @@ begin
   if not found then raise exception 'NO_OFFER'; end if;
 
   if p_kind = 'slots' then
-    update public.trainer_clients set trainer_id = v_me, local_id = null where trainer_id = p_from;
+    -- Conserva el `local_id` (C10); si la cuenta nueva ya tiene un hueco con ese id,
+    -- el que llega se queda sin él y la app lo vuelve a fijar. Lo privado cuelga del
+    -- hueco y viaja solo; lo borrado se mueve aparte.
+    update public.trainer_clients t
+       set trainer_id = v_me,
+           local_id = case when exists (select 1 from public.trainer_clients d
+                                         where d.trainer_id = v_me and d.local_id = t.local_id)
+                           then null else t.local_id end
+     where t.trainer_id = p_from;
     get diagnostics v_count = row_count;
+    update public.deleted_slots set trainer_id = v_me where trainer_id = p_from;
   else
     v_to_seat   := exists (select 1 from public.trainer_clients where client_id = v_me);
     v_from_seat := exists (select 1 from public.trainer_clients where client_id = p_from);
@@ -806,9 +932,11 @@ begin
   foreach f in array array[
     'new_client_code()', '_caller()', '_trainer()', '_check_target(uuid)', '_locked_by(uuid)',
     '_merge_history(jsonb, jsonb)', '_release_seat_of_deleted_user()',
-    'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
+    'trainer_create_slot(text, text, boolean)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
+    'trainer_clear_code(uuid)', 'trainer_save_client(uuid, jsonb, jsonb)',
+    'trainer_set_local_id(uuid, text)', 'trainer_known_clients()',
     'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot(uuid)',
@@ -818,9 +946,11 @@ begin
   end loop;
 
   foreach f in array array[
-    'trainer_create_slot(text, text)', 'trainer_upload_program(uuid, jsonb, text)',
+    'trainer_create_slot(text, text, boolean)', 'trainer_upload_program(uuid, jsonb, text)',
     'trainer_upload_overrides(uuid, jsonb)', 'trainer_upload_log(uuid, jsonb, integer)',
     'trainer_set_name(text)', 'trainer_delete_slot(uuid, text)', 'trainer_reissue_client_code(uuid)',
+    'trainer_clear_code(uuid)', 'trainer_save_client(uuid, jsonb, jsonb)',
+    'trainer_set_local_id(uuid, text)', 'trainer_known_clients()',
     'trainer_deleted_slots(uuid[])',
     'get_slot_by_code(text)', 'link_client_to_slot(text)',
     'client_upload_history(jsonb, integer, uuid)', 'release_client_slot(uuid)',
