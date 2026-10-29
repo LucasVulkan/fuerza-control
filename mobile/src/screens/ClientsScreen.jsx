@@ -2291,7 +2291,7 @@ export default function ClientsScreen() {
       [
         { text: t('common.cancel'), style: 'cancel' },
         { text: t('common.delete'), style: 'destructive', onPress: () => {
-          deleteClient(clientId);
+          deleteClient(clientId, { undo: true });
           if (selectedClientId === clientId) { setSelectedClientId(null); setView('list'); }
         }},
       ]

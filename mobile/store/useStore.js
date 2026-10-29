@@ -409,6 +409,12 @@ function purgeProgram(s, programId, { deleteHistory = false } = {}) {
   };
 }
 
+// Borrados de cliente que aún se pueden deshacer (C10-07): clientId → foto en memoria.
+// Nunca se persiste: si la app se cierra durante el toast, el servidor no se enteró y
+// el siguiente refresco recupera al cliente (el lado seguro).
+const UNDO_DELETE_MS = 5000;
+const _undoableDeletes = new Map();
+
 const INITIAL_PROFILE = {
   name: 'Usuario',
   activeProgramId: null,
@@ -1101,11 +1107,16 @@ export const useStore = create(
        * se perdía y el siguiente refresco lo resucitaba como cliente nuevo, con
        * el código aún válido. Con `slotGone` el hueco ya no existe (lo borró el
        * otro móvil del entrenador): no se apunta, no hay nada que borrar allí.
+       * Con `undo` (C10-07, la pantalla de Clientes) el borrado se puede deshacer
+       * 5 s: se guarda una foto en memoria, sale el toast «Deshacer» y el hueco
+       * solo se apunta al irse el toast (`_commitClientDeletion`). Sin `undo`
+       * (el refresco que borra lo de otro móvil) es el de siempre.
        * Devuelve la promesa del intento (no lanza).
        */
-      deleteClient: (clientId, { slotGone = false } = {}) => {
-        const client = get().clients[clientId];
-        if (client?.slotId && !slotGone) {
+      deleteClient: (clientId, { slotGone = false, undo = false } = {}) => {
+        const before = get();
+        const client = before.clients[clientId];
+        if (client?.slotId && !slotGone && !undo) {
           set((s) => ({
             trainerSync: {
               ...s.trainerSync,
@@ -1134,6 +1145,57 @@ export const useStore = create(
             clients, clientLogs,
           };
         });
+        if (undo && client) {
+          const after = get();
+          // Lo que el borrado quitó, entrada a entrada: Deshacer no pisa lo que se cambie en esos segundos.
+          const lost = (a, b) => Object.fromEntries(Object.entries(a).filter(([k]) => !(k in b)));
+          _undoableDeletes.set(clientId, {
+            client,
+            log:       before.clientLogs[clientId],
+            programs:  lost(before.programs, after.programs),
+            templates: lost(before.sessionTemplates, after.sessionTemplates),
+            free:      (before.profile.freeClientIds ?? []).indexOf(clientId),
+            timer:     setTimeout(() => get()._commitClientDeletion(clientId), UNDO_DELETE_MS),
+          });
+          get().showToast(i18n.t('clients.toastClientDeleted', { name: client.name }), UNDO_DELETE_MS, 'neutral', {
+            label: i18n.t('editor.toastUndo'),
+            onPress: () => get()._undoClientDeletion(clientId),
+          });
+          return Promise.resolve();
+        }
+        return get()._flushDeletedSlots();
+      },
+
+      /** Deshacer (C10-07): devuelve la foto tal cual. El servidor no se enteró: nada más que hacer. */
+      _undoClientDeletion: (clientId) => {
+        const snap = _undoableDeletes.get(clientId);
+        if (!snap) return;
+        clearTimeout(snap.timer);
+        _undoableDeletes.delete(clientId);
+        set((s) => {
+          const free = s.profile.freeClientIds ?? [];
+          return {
+            clients:          { ...s.clients, [clientId]: snap.client },
+            programs:         { ...s.programs, ...snap.programs },
+            sessionTemplates: { ...s.sessionTemplates, ...snap.templates },
+            ...(snap.log ? { clientLogs: { ...s.clientLogs, [clientId]: snap.log } } : {}),
+            ...(snap.free >= 0 && !free.includes(clientId)
+              ? { profile: { ...s.profile, freeClientIds: [...free.slice(0, snap.free), clientId, ...free.slice(snap.free)] } }
+              : {}),
+          };
+        });
+      },
+
+      /** Se fue el toast (C10-07): ahora sí, el hueco (si lo tenía) se apunta y se borra en el servidor. */
+      _commitClientDeletion: (clientId) => {
+        const snap = _undoableDeletes.get(clientId);
+        if (!snap) return;
+        _undoableDeletes.delete(clientId);
+        const slotId = snap.client.slotId;
+        if (!slotId) return;     // ficha `local`: no hay nada en el servidor
+        set((s) => ({
+          trainerSync: { ...s.trainerSync, deletedSlotIds: [...new Set([...(s.trainerSync.deletedSlotIds ?? []), slotId])] },
+        }));
         return get()._flushDeletedSlots();
       },
 
@@ -4747,7 +4809,8 @@ export const useStore = create(
             // Mientras se preguntaba se cambió de cuenta: esta respuesta es de la vieja.
             if (s.trainerSync.userId !== trainerSync.userId) return {};
             const next = { ...s.clients };
-            const deleted = new Set(s.trainerSync.deletedSlotIds ?? []);
+            // Con foto (C10-07) el borrado aún se puede deshacer: ni su hueco ni su id se recuperan.
+            const deleted = new Set([...(s.trainerSync.deletedSlotIds ?? []), ...[..._undoableDeletes.values()].map((d) => d.client.slotId).filter(Boolean)]);
             const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
             const known = new Set(Object.values(next).map((c) => c.slotId).filter(Boolean));
             // ponytail: con un alta en vuelo (`ui.linking`) el hueco que aún no
@@ -4756,7 +4819,7 @@ export const useStore = create(
             const creating = Object.values(s.ui.linking ?? {}).some(Boolean);
 
             for (const slot of slots) {
-              if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
+              if (creating || known.has(slot.id) || deleted.has(slot.id) || _undoableDeletes.has(slot.local_id)) continue;
               // El hueco nombra a una ficha de este móvil (N-08): el alta llegó pero su
               // respuesta no (E63), o es una ficha `local` / de otra cuenta que ya existía.
               const own = slot.local_id && next[slot.local_id];
