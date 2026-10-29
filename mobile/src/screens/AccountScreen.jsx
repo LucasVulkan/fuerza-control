@@ -226,7 +226,8 @@ export default function AccountScreen() {
 
   async function doSwitch(to) {
     try {
-      await (to === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)();
+      // Cambiar a Google / Apple es MEJORAR la cuenta: traspasa los clientes (C10 §3.2).
+      await (to === 'apple' ? acct.signInWithApple : acct.signInWithGoogle)({ upgrade: true });
       setSheet(null);
     } catch (err) {
       if (err?.cancelled) return;

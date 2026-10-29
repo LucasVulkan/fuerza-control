@@ -337,7 +337,7 @@ function selectList(cols) {
 
 class Query {
   constructor(ctx, table) {
-    Object.assign(this, { ctx, table, op: 'select', cols: '*', filters: [], orderBy: null, mode: 'many', values: null, returning: false });
+    Object.assign(this, { ctx, table, op: 'select', cols: '*', filters: [], orderBy: null, max: null, mode: 'many', values: null, returning: false });
   }
   select(cols = '*') { if (this.op === 'select') this.cols = cols; else { this.returning = true; this.cols = cols; } return this; }
   insert(values) { this.op = 'insert'; this.values = values; return this; }
@@ -347,6 +347,7 @@ class Query {
   eq(col, val) { this.filters.push([col, val]); return this; }
   in(col, vals) { this.filters.push([col, vals, 'in']); return this; }
   order(col, { ascending = true } = {}) { this.orderBy = `${ident(col)} ${ascending ? 'asc' : 'desc'}`; return this; }
+  limit(n) { this.max = n; return this; }
   single() { this.mode = 'single'; return this; }
   maybeSingle() { this.mode = 'maybe'; return this; }
 
@@ -363,7 +364,7 @@ class Query {
       const t = `public.${ident(this.table)}`;
       let sql;
       if (this.op === 'select') {
-        sql = `select ${ret} from ${t}${where}${this.orderBy ? ` order by ${this.orderBy}` : ''}`;
+        sql = `select ${ret} from ${t}${where}${this.orderBy ? ` order by ${this.orderBy}` : ''}${this.max != null ? ` limit ${Number(this.max)}` : ''}`;
       } else if (this.op === 'insert' || this.op === 'upsert') {
         const cols = Object.keys(this.values);
         sql = `insert into ${t} (${cols.map(ident).join(', ')}) values (${cols.map((c) => p(this.values[c])).join(', ')})`;

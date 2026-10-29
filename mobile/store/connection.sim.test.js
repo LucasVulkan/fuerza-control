@@ -119,8 +119,9 @@ describe('entrenador: el recorrido básico', () => {
 describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () => {
   const ways = {
     code:   (t) => t.s.createTrainerCodeAccount(),
-    google: (t) => t.s.enterTrainerAccount(google('g1')),
-    apple:  (t) => t.s.enterTrainerAccount(apple('a1')),
+    // `upgrade`: cambiar de forma de entrar desde una cuenta que ya hay es MEJORAR la cuenta (C10 §3.2), y solo así se traspasa.
+    google: (t, upgrade = false) => t.s.enterTrainerAccount({ ...google('g1'), upgrade }),
+    apple:  (t, upgrade = false) => t.s.enterTrainerAccount({ ...apple('a1'), upgrade }),
   };
   const pairs = [['code', 'google'], ['code', 'apple'], ['google', 'apple'], ['apple', 'google']];   // hacia el código no se cambia (E49)
 
@@ -133,7 +134,7 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
       const { clientId } = await newClientWithProgram(t);
       await join(c, codeOf(t, clientId));
 
-      await ways[to](t);
+      await ways[to](t, true);
       expect(t.s.trainerSync.userId).not.toBe(before);
       expect((await slotOf(t.s.clients[clientId].slotId)).trainer_id).toBe(t.s.trainerSync.userId);
       expect(await programReaches(t, c, clientId, `tras ${to}`)).toBe(true);
@@ -146,8 +147,8 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
     await t.s.enterTrainerAccount(google('g1'));
     const { clientId } = await newClientWithProgram(t);
     await join(c, codeOf(t, clientId));
-    await t.s.enterTrainerAccount(apple('a1'));
-    await t.s.enterTrainerAccount(google('g1'));
+    await t.s.enterTrainerAccount({ ...apple('a1'), upgrade: true });
+    await t.s.enterTrainerAccount({ ...google('g1'), upgrade: true });
     expect(await programReaches(t, c, clientId, 'vuelta')).toBe(true);
   });
 
@@ -160,12 +161,12 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
     await join(c, codeOf(t, clientId));
 
     server.failOnce('rpc:accept_transfer');
-    await expect(t.s.enterTrainerAccount(google('g1'))).rejects.toThrow();
+    await expect(t.s.enterTrainerAccount({ ...google('g1'), upgrade: true })).rejects.toThrow();
     // Sigue exactamente donde estaba: misma cuenta, mismo código, envía igual.
     expect(t.s.trainerSync).toMatchObject({ mode: 'code', code });
     expect(await programReaches(t, c, clientId, 'sin cambiar')).toBe(true);
 
-    await t.s.enterTrainerAccount(google('g1'));
+    await t.s.enterTrainerAccount({ ...google('g1'), upgrade: true });
     expect(t.s.trainerSync.mode).toBe('google');
     expect(await programReaches(t, c, clientId, 'cambiado')).toBe(true);
   });
@@ -179,13 +180,14 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
 
     // El traspaso llega al servidor, pero el móvil no se entera (muere).
     server.failOnce('auth:setSession');
-    await expect(t.s.enterTrainerAccount(apple('a1'))).rejects.toThrow();
+    await expect(t.s.enterTrainerAccount({ ...apple('a1'), upgrade: true })).rejects.toThrow();
     const t2 = await restart(t);
     // En la cuenta vieja ya no hay clientes: se marcan, no se borran.
     await t2.s.refreshTrainerSlots();
     expect(t2.s.clients[clientId].slotId).toBeTruthy();
 
-    await t2.s.enterTrainerAccount(apple('a1'));
+    // Los clientes de la cuenta de Apple son los de este móvil, traspasados: reintentar la mejora vale.
+    await t2.s.enterTrainerAccount({ ...apple('a1'), upgrade: true });
     expect(await programReaches(t2, c, clientId, 'recuperado')).toBe(true);
   });
 });
@@ -261,11 +263,11 @@ describe('entrenador: la sesión de Google/Apple se pierde', () => {
 
   it('cambiar a Apple sin poder ceder no se hace (perdería los clientes): primero hay que volver a entrar', async () => {
     const { t, c, clientId } = await setup();
-    await expect(t.s.enterTrainerAccount(apple('a1'))).rejects.toMatchObject({ code: 'TRAINER_LOGIN_NEEDED' });
+    await expect(t.s.enterTrainerAccount({ ...apple('a1'), upgrade: true })).rejects.toMatchObject({ code: 'TRAINER_LOGIN_NEEDED' });
     expect(t.s.trainerSync.mode).toBe('google');
 
     await t.s.enterTrainerAccount({ ...google('g1'), mustExist: true });
-    await t.s.enterTrainerAccount(apple('a1'));
+    await t.s.enterTrainerAccount({ ...apple('a1'), upgrade: true });
     expect(await programReaches(t, c, clientId, 'en Apple')).toBe(true);
   });
 });
@@ -313,10 +315,11 @@ describe('entrenador: desconectar y volver', () => {
     await t.s.refreshTrainerSlots();
     const leer = (userId) => Object.fromEntries([invitado, conectado, sinApp].map((id) => [id, linkOf(t.s.clients[id], userId)]));
     const antes = leer(t.s.trainerSync.userId);
-    expect(antes).toEqual({ [invitado]: 'invited', [conectado]: 'linked', [sinApp]: 'local' });
+    // El refresco de arriba subió a Carmen (C10-04): sin app, pero ya en la cuenta.
+    expect(antes).toEqual({ [invitado]: 'invited', [conectado]: 'linked', [sinApp]: 'none' });
 
     await t.s.leaveTrainerAccount();
-    expect(leer(t.s.trainerSync.userId)).toEqual({ [invitado]: 'otherAccount', [conectado]: 'otherAccount', [sinApp]: 'local' });
+    expect(leer(t.s.trainerSync.userId)).toEqual({ [invitado]: 'otherAccount', [conectado]: 'otherAccount', [sinApp]: 'otherAccount' });
     Object.values(t.s.clients).forEach(assertFacts);
 
     server.failOnce('from:trainer_clients');   // el refresco de después de entrar no puede preguntar
@@ -336,8 +339,11 @@ describe('entrenador: desconectar y volver', () => {
     const viejo = t.s.trainerSync.userId;
     expect(linkOf(t.s.clients[invitado], viejo)).toBe('invited');
 
-    server.failOnce('from:trainer_clients');
-    await t.s.enterTrainerAccount(google('g1'));
+    // La consulta de si Google ya tiene clientes es la primera; el refresco de después, la segunda: esa falla.
+    let seen = 0;
+    const orig = server._shouldFail.bind(server);
+    server._shouldFail = (k, dev) => (k === 'from:trainer_clients' && ++seen === 2) || orig(k, dev);
+    await t.s.enterTrainerAccount({ ...google('g1'), upgrade: true });
     const nuevo = t.s.trainerSync.userId;
     expect(nuevo).not.toBe(viejo);
     expect(linkOf(t.s.clients[invitado], nuevo)).toBe('invited');
@@ -347,20 +353,18 @@ describe('entrenador: desconectar y volver', () => {
     Object.values(t.s.clients).forEach(assertFacts);
   });
 
-  it('uno «de otra cuenta» se puede pasar a la app en esta: hueco nuevo, código nuevo', async () => {
+  it('uno «de otra cuenta» NO se puede pasar a la app en esta (N-19, D2): OTHER_ACCOUNT y no se crea nada', async () => {
     const t = await phone('entrenador');
-    const c = await phone('cliente');
     await t.s.enterTrainerAccount(google('g1'));
-    const { clientId, programId } = await newClientWithProgram(t);
+    const { clientId } = await newClientWithProgram(t);
     await t.s.leaveTrainerAccount();
     await t.s.enterTrainerAccount(google('otra'));
     expect(linkOf(t.s.clients[clientId], t.s.trainerSync.userId)).toBe('otherAccount');
+    const before = await server.slots();
 
-    await t.s.moveClientToApp(clientId);
-    expect(linkOf(t.s.clients[clientId], t.s.trainerSync.userId)).not.toBe('otherAccount');
-    await t.s.uploadProgramToClient(clientId, programId);
-    await join(c, codeOf(t, clientId));
-    expect(await programReaches(t, c, clientId, 'en la nueva')).toBe(true);
+    await expect(t.s.moveClientToApp(clientId)).rejects.toMatchObject({ code: 'OTHER_ACCOUNT' });
+    expect(linkOf(t.s.clients[clientId], t.s.trainerSync.userId)).toBe('otherAccount');
+    expect(await server.slots()).toEqual(before);
   });
 });
 

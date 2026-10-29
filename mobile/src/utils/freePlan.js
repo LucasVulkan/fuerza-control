@@ -11,12 +11,12 @@ import { hasSlot, linkOf, slotFacts, NO_SLOT, SLOT_LOST } from './clientLink';
 
 export const FREE = { clients: 3, connected: 1, programTemplates: 1, sessionTemplates: 1 };
 
-/** Con app = tiene hueco en el servidor: invitado (código sin canjear) o vinculado. */
+/** Con app = tiene código (C10 §7): invitado, dentro o se fue. Tener hueco no cuenta: con cuenta lo tienen todos. */
 // Uno «de otra cuenta» (C09 §3.4) no está conectado en esta: no ocupa plaza.
 // `linking` = el alta/conexión está en vuelo (E42, `ui.linking`): la plaza ya
 // está reservada, así que una segunda pulsación la ve ocupada.
 // Ni lo uno ni lo otro es de la ficha: `forPlan` los pone en una copia.
-export const isConnected = (client) => !!client?.linking || hasSlot(client);
+export const isConnected = (client) => !!client?.linking || (hasSlot(client) && !!client.code);   // = withApp(linkOf(c, userId)) sobre `forPlan`
 
 /**
  * Los clientes tal como los cuenta el plan en la cuenta `userId`: los de otra

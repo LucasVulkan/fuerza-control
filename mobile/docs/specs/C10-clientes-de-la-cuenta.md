@@ -853,6 +853,8 @@ C10-05).
 - [ ] Sin PRO: con 3 clientes sin app, invitar a uno funciona; invitar a un
   segundo saca la hoja de límite.
 
+**Parte del store hecha (29-oct-2026).** Crear un cliente nace siempre `local`; `uploadLocalClients()` (con `ui.uploadingClients = { done, total }` y `localClientCount()`) los sube en cada refresco; `connectClientToCloud` / `moveClientToApp` invitan (suben si hace falta, dan código y envían el programa; `OTHER_ACCOUNT` para una ficha de otra cuenta) y `cancelClientInvitation` solo quita el código. `_enterCandidate` traspasa solo con `upgrade` y rechaza con `UPGRADE_TARGET_HAS_CLIENTS` si la cuenta de destino tiene huecos que este móvil no conoce; `freePlan.js` cuenta «con app» por el código. Dos matices que la spec no decía: invitar a un `none` también manda lo apuntado desde que se subió (hasta C10-05 no hay otro camino), y un hueco que ya trae código (alta de una versión de antes cuya respuesta se perdió) conserva el suyo. **Faltan las pantallas:** la hoja «Subiendo tus N clientes» y «Faltan N por subir», la línea de Mi cuenta, el aviso de Salir con clientes `local`, el mensaje de `UPGRADE_TARGET_HAS_CLIENTS` en la hoja «Cambiar a Google / Apple», `otherAccount` de solo lectura en la ficha y llamar a la subida tras crear un cliente suelto con cuenta.
+
 ### 10.5 C10-05 — Guardar en la cuenta: ficha, programas y lo apuntado
 
 **Qué.** §6 entero, con el disparador que decida D1; `saveSig` como función

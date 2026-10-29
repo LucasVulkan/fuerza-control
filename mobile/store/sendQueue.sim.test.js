@@ -229,7 +229,7 @@ describe('N-09 · salir de la cuenta vacía la cola', () => {
     rename(t, a.programId, 'En cola');
     await expect(t.s.uploadProgramToClient(a.clientId, a.programId)).rejects.toMatchObject({ code: 'NETWORK' });
     setOnline(t, true);
-    await t.s.enterTrainerAccount({ provider: 'google', idToken: 'google:otra' });
+    await t.s.enterTrainerAccount({ provider: 'google', idToken: 'google:otra', upgrade: true });
     expect(t.s.clients[a.clientId].sendPending).toEqual({ program: true });
     await t.s.retrySendQueue();
     expect(t.s.clients[a.clientId].sendPending).toBeUndefined();

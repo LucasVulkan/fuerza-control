@@ -490,6 +490,7 @@
     "linkErrBody": "Couldn't link the account. Try again."
   },
   "account": {
+    "errUpgradeTargetHasClients": "That {{how}} account already has clients. To use it, sign out of this one and sign in to it.",
     "errAccountExists": "You already have a trainer account on this phone.",
     "eyebrow": "SETTINGS",
     "title": "My account",
@@ -2194,7 +2195,8 @@
     "programSent": "Program sent",
     "programUploadError": "Couldn't upload the program.",
     "slotCreateError": "Couldn't generate their code. Move them to the app from their profile once you're online.",
-    "slotGoneError": "This client is in another of your accounts. Sign in with it to send them things, or move them to the app in this one.",
+    "slotGoneError": "This client is in another of your accounts. Sign in with it to send them things.",
+    "otherAccountError": "This client is in another of your accounts. Sign in with it to move them to the app.",
     "deleteProgramTitle": "Delete program",
     "deleteProgramConfirm": "Delete \"{{name}}\"?",
     "reactivateTitle": "Reactivate program",

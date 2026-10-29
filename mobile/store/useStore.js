@@ -24,7 +24,7 @@ import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
-  createClientSlot, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot, setSlotLocalId,
+  createClientSlot, clearClientCode, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot, setSlotLocalId,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
   getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
@@ -48,7 +48,7 @@ import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
-import { clientLink, linkOf, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, NO_SLOT, SLOT_LOST, SEATED } from '../src/utils/clientLink';
+import { clientLink, linkOf, withApp as isWithApp, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, NO_SLOT, SLOT_LOST, CODE_CLEARED } from '../src/utils/clientLink';
 import { isNetworkError } from '../src/utils/networkError';
 import { FREE, NEW_WITH_APP, forPlan, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
 import {
@@ -65,7 +65,7 @@ import {
   trainerCandidateFromIdToken, trainerCandidateFromCode, trainerCandidateNewCode, adoptTrainer,
   trainerSessionUserId, signInTrainerWithCode, signOutTrainer,
   ensureClientSession, clientSessionUserId, clientProvider, clientCandidateFromIdToken, adoptClient, signOutClient,
-  deleteTrainerUser, deleteClientUser, trainerUserGone,
+  deleteTrainerUser, deleteClientUser, trainerUserGone, candidateHasClients,
 } from '../src/services/supabaseAuth';
 // Program generation — static imports (Metro no soporta dynamic import() de forma fiable)
 import { rankArchetypes, ARCHETYPES } from '../src/data/archetypes';
@@ -137,6 +137,8 @@ let _clientCandidate = null;
 let _releasing = null;
 // `retrySendQueue` en vuelo: NetInfo, primer plano y el arranque llegan a la vez (U15-01).
 let _sendingPending = null;
+// C10-04: `uploadLocalClients` en vuelo: el refresco, crear la cuenta y volver a primer plano llegan a la vez.
+let _uploadingLocal = null;
 // I04-03: un envío por cliente a la vez (cadena de promesas por `clientId`).
 const _sendChain = {};
 // Reintento con espera mientras quede algo en cola, por si NetInfo no ve el corte (E83).
@@ -468,6 +470,7 @@ const INITIAL_UI = {
   limitReason: null,    // M04-02: la hoja de límite; lo pone una acción que choca con el plan gratis
   limitClientId: null,  // el cliente que se tocó, para el motivo `frozen`
   linking: {},          // C10-01: altas en vuelo `{ [clientId]: true }` (E42); la plaza ya está reservada. Fuera del partialize.
+  uploadingClients: null, // C10-04: `{ done, total }` mientras se suben las fichas `local` a la cuenta (§5); null el resto del tiempo
 };
 
 /** Una copia del objeto sin esa clave. */
@@ -921,10 +924,11 @@ export const useStore = create(
       // ══════════════════════════════════════════════════════════════════════
 
       /**
-       * `withApp`: el cliente va a entrenar con la app, así que se le crea el
-       * código. Sin él no se crea nada en el servidor: le apuntas tú, y un
-       * cliente sin código no se queda «pendiente de enviar» para siempre
-       * (C05-trainer-logging.md §4.0).
+       * Un cliente nace SIEMPRE `local` (sin hueco), con o sin cuenta y con o sin
+       * red; la subida (`uploadLocalClients`, §5) le crea el hueco sin código.
+       * `withApp`: va a entrenar con la app, así que, creado, se le invita
+       * (hueco + código) en la misma llamada, con la plaza reservada (E42) hasta
+       * el final. Si invitar falla, el cliente queda creado y se avisa.
        */
       createClient: async (name, { withApp = false } = {}) => {
         if (!get().profile.isPro) {
@@ -940,7 +944,7 @@ export const useStore = create(
           activeProgramId: null,
           fullName: '', phone: '', email: '', notes: '',
           bodyWeight: [], billing: [], status: 'active',
-          ...NO_SLOT,       // sin hueco todavía (C10-01)
+          ...NO_SLOT,       // `local`: sin hueco todavía (C10-01)
           // Color de identidad: el menos usado (C08 §3.3). Se guarda para que
           // borrar a otro no se lo cambie.
           color: nextIdentityColor(Object.values(get().clients)),
@@ -955,13 +959,11 @@ export const useStore = create(
         // Solo con app, y solo si el entrenador está en la nube.
         if (cloud) {
           try {
-            await _ensureTrainerSession(trainerSync);
-            const { slotId, clientCode } = await createClientSlot(name.trim(), id);
-            set((s) => patchClient(s, id, slotFacts({ id: slotId, client_code: clientCode }, trainerSync.userId)));
+            await get()._inviteClient(id);
           } catch (err) {
-            // El cliente queda creado, sin app. Se dice, para que no espere un
-            // código que no existe: «Pasar a la app» lo genera después.
-            console.warn('[createClient] Supabase slot creation failed:', err.message);
+            // El cliente queda creado (`local` o `none`), sin código. Se dice, para que no
+            // espere uno que no existe: «Pasar a la app» lo genera después.
+            console.warn('[createClient] invitation failed:', err.message);
             get().showToast(i18n.t('clients.slotCreateError'), 3000, 'error');
           } finally {
             set((s) => _clearLinking(s, id));
@@ -3916,11 +3918,20 @@ export const useStore = create(
        * porque ofrecer y aceptar otra vez no mueve nada (la oferta se renueva
        * desde la vieja y aceptarla sobre huecos ya movidos da 0).
        */
-      _enterCandidate: async (candidate, mode, { fullName } = {}) => {
+      _enterCandidate: async (candidate, mode, { fullName, upgrade = false } = {}) => {
         const prev = get().trainerSync;
         let moved = false;   // los huecos (y con ellos la cola) pasan a la cuenta nueva
 
-        if (prev.userId && prev.userId !== candidate.userId) {
+        // Solo MEJORAR la cuenta (código → Google/Apple, o entre ellos) traspasa (C10 §3.2). Entrar en
+        // otra no: cada cliente se queda en la suya y aquí se lee `otherAccount` (N-09, N-19).
+        if (upgrade && prev.userId && prev.userId !== candidate.userId) {
+          // Nunca se juntan dos cuentas sin querer: antes de mover nada, la de destino tiene que estar vacía.
+          // Los huecos que este móvil ya conoce no cuentan: pueden ser los de una mejora anterior que se cortó (R-D1).
+          const own = new Set(Object.values(get().clients).map((c) => c.slotId).filter(Boolean));
+          if (await candidateHasClients(candidate, own)) {
+            const how = i18n.t(`account.short.${mode === 'apple' ? 'apple' : 'google'}`);
+            throw Object.assign(new Error(i18n.t('account.errUpgradeTargetHasClients', { how })), { code: 'UPGRADE_TARGET_HAS_CLIENTS' });
+          }
           let oldSession = true;
           try {
             await _ensureTrainerSession(prev);
@@ -3971,9 +3982,9 @@ export const useStore = create(
        * entrenador rechaza con `{ notFound: true, createInstead }` sin haber
        * tocado NINGUNA sesión; `createInstead()` la crea con la misma candidata.
        */
-      enterTrainerAccount: async ({ provider, idToken, accessToken, fullName, mustExist }) => {
+      enterTrainerAccount: async ({ provider, idToken, accessToken, fullName, mustExist, upgrade = false }) => {
         const candidate = await trainerCandidateFromIdToken({ provider, idToken, accessToken });
-        const enter = () => get()._enterCandidate(candidate, provider, { fullName });
+        const enter = () => get()._enterCandidate(candidate, provider, { fullName, upgrade });
         if (mustExist && !candidate.existed) throw { notFound: true, createInstead: enter };
         return enter();
       },
@@ -4025,20 +4036,20 @@ export const useStore = create(
       },
 
       /**
-       * Uploads a program to the client's Supabase slot.
-       * Uses the same JSON format as the existing file export.
-       */
-      /**
-       * Creates a Supabase slot for an existing client that was created before
-       * the sync system. Writes the slot facts (`slotFacts`) onto the client object.
+       * Invitar / «Pasar a la app» (C10 §3.3): si la ficha es `local`, primero se sube
+       * (solo esa); luego se le da código y se le envía el programa de entrada (N-06).
+       * Necesita red (N-03). Devuelve false si no se hizo (límite del plan gratis, doble
+       * pulsación, o el cliente ya entró por otro lado).
+       * Una ficha `otherAccount` no se puede invitar (N-19): `OTHER_ACCOUNT`.
        */
       connectClientToCloud: async (clientId) => {
         const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client) throw new Error('Cliente no encontrado.');
-        // Uno «de otra cuenta» sí: pasarlo a la app en ESTA cuenta le da hueco nuevo.
-        if (canSave(linkOf(client, trainerSync.userId))) throw new Error('Este cliente ya está conectado a la nube.');
+        const link = linkOf(client, trainerSync.userId);
+        if (isWithApp(link)) throw new Error('Este cliente ya está conectado a la nube.');
         if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
+        if (link === 'otherAccount') throw Object.assign(new Error(i18n.t('clients.otherAccountError')), { code: 'OTHER_ACCOUNT' });
         if (get().ui.linking?.[clientId]) return false;   // doble pulsación: ya hay una conexión en vuelo
         if (!get().profile.isPro) {
           const reason = connectReason(_planClients(get()), get().profile.freeClientIds, clientId);
@@ -4048,94 +4059,178 @@ export const useStore = create(
         set((s) => ({ ui: { ...s.ui, linking: { ...s.ui.linking, [clientId]: true } } }));
 
         try {
-          // Ensure auth session is active — may have expired after app restart
-          await _ensureTrainerSession(trainerSync);
-
-          const { slotId, clientCode } = await createClientSlot(client.name, clientId);
-
-          set((s) => patchClient(s, clientId, {
-            ...slotFacts({ id: slotId, client_code: clientCode }, trainerSync.userId),
-            programUploadedSig: null,
-          }));
-          return true;
+          return await get()._inviteClient(clientId);
         } finally {
           set((s) => _clearLinking(s, clientId));
         }
       },
 
       /**
-       * «Pasar a la app» (C28 §4.0.5): se genera el código, se sube lo que se le
-       * apuntó (C20) y su programa, para que el código funcione en cuanto lo
-       * canjee. Desde aquí es invitado: EMPEZAR desaparece de su ficha.
+       * Lo que hay detrás de invitar, con la plaza ya reservada por quien llama
+       * (`connectClientToCloud` o `createClient`): sube la ficha si es `local`, le da
+       * código y le envía su programa. Si el envío falla no se deshace nada: el código
+       * ya vale y el programa queda en la cola (N-06).
        */
-      moveClientToApp: async (clientId) => {
-        if (!(await get().connectClientToCloud(clientId))) return false;
-        // Lo de después es de lo que ya tiene código: si falla, la subida
-        // silenciosa del invitado lo reintenta.
-        try {
-          await get().pushTrainerLogToSlot(clientId);
-          const programId = get().clients[clientId]?.activeProgramId;
-          if (programId) await get().uploadProgramToClient(clientId, programId);
-        } catch (err) {
-          console.warn('[moveClientToApp]', err.message);
+      _inviteClient: async (clientId) => {
+        // La sesión puede haber caducado al reiniciar la app.
+        await _ensureTrainerSession(get().trainerSync);
+
+        // `force`: también lo apuntado de un `none` (le llega al cliente cuando canjee, R-C6).
+        if (!(await get()._uploadClient(clientId, { force: true }))) {
+          // El cliente ya está dentro (otro móvil lo invitó): no se le reemite el código.
+          await get().refreshTrainerSlots().catch((err) => console.warn('[inviteClient] refresco:', err.message));
+          return false;
+        }
+        const { slotId, code: existing } = get().clients[clientId] ?? {};
+        if (!slotId) return false;   // lo borraron mientras tanto
+        // Un hueco que ya traía código (el alta de una versión de antes, cuya respuesta se perdió) conserva el suyo: nadie lo ha visto.
+        const code = existing ?? await reissueClientCodeRpc(slotId).catch((err) => { throw get()._slotError(clientId, err); });
+        set((s) => patchClient(s, clientId, { ...codeGiven(code), programUploadedSig: null }));
+
+        // Lo de después es de lo que ya tiene código: si falla, la cola lo reintenta.
+        const programId = get().clients[clientId]?.activeProgramId;
+        if (programId) {
+          try {
+            await get()._send(clientId, 'program', programId);
+          } catch (err) {
+            console.warn('[inviteClient] programa:', err?.message);
+          }
         }
         return true;
       },
 
+      /** «Pasar a la app» (C28 §4.0.5): es invitar. Desde aquí es invitado: EMPEZAR desaparece de su ficha. */
+      moveClientToApp: (clientId) => get().connectClientToCloud(clientId),
+
       /**
-       * «Cancelar invitación» (C28 §4.0.5): el código deja de valer y el
-       * cliente vuelve a «sin app». Lo que haya en el hueco se va con él.
+       * «Cancelar invitación» (C10 §3.3): el código deja de valer y el cliente vuelve a
+       * «sin app» (`none`). El hueco, su historial y todo lo demás se quedan. Si el
+       * cliente acaba de entrar, no cambia nada y se refresca.
        */
       cancelClientInvitation: async (clientId) => {
         const client = get().clients[clientId];
-        if (!client?.slotId || client.seated) return;
+        if (!client?.slotId || client.seated || !isWithApp(linkOf(client, get().trainerSync.userId))) return;
         await _ensureTrainerSession(get().trainerSync);
-        await deleteClientSlot(client.slotId, 'cancelled');
-        set((s) => patchClient(s, clientId, UNINVITED));
+        try {
+          await clearClientCode(client.slotId);
+        } catch (err) {
+          if (err.code !== 'SLOT_OCCUPIED') throw get()._slotError(clientId, err);
+          await get().refreshTrainerSlots().catch((e) => console.warn('[cancelClientInvitation] refresco:', e.message));
+          return;
+        }
+        // Sin código no hay nada que enviar: se va lo enviado y lo pendiente de enviar.
+        set((s) => patchClient(s, clientId, { ...CODE_CLEARED, programDirty: false, overridesDirty: false, programUploadedSig: null, sendPending: undefined }));
+        _syncRetryTimer();
       },
 
       /**
-       * C20: sube al hueco lo que el entrenador le apuntó (historial, ejercicios
-       * propios y progreso de etapa), en el mismo formato que sube un cliente.
-       * Al canjear el código, la hoja preselecciona fusionarlo.
+       * Sube UNA ficha a la cuenta (C10 §5): si es `local`, le crea el hueco sin código
+       * (idempotente por `local_id`, E35); y manda al hueco lo apuntado (historial,
+       * ejercicios propios y progreso de etapa), en el formato de un cliente. Con
+       * `force` lo manda aunque no haya entrenos apuntados, si hay programa (el progreso va igual).
        *
-       * Guarda contra pisar al cliente: antes se relee el hueco, y si ya lo ha
-       * canjeado no se sube nada (lo que manda desde entonces es su móvil).
-       * Queda una ventana de segundos entre leer y escribir, en la que el
-       * cliente aún no ha podido entrenar con la app.
+       * Los hechos de la ficha se escriben DESPUÉS de lo apuntado: si algo falla
+       * antes, sigue `local` y el siguiente intento lo repite entero. Guarda contra
+       * pisar al cliente: el servidor solo escribe con el asiento vacío; si ya entró
+       * (`SLOT_OCCUPIED`) no se toca nada y devuelve false (el refresco lo ve).
        */
-      pushTrainerLogToSlot: async (clientId) => {
-        const { clients, trainerSync, clientLogs, customExercises, programs } = get();
-        const client = clients[clientId];
-        if (!canSend(linkOf(client, trainerSync.userId)) || client.seated) return false;
-        await _ensureTrainerSession(trainerSync);
+      _uploadClient: async (clientId, { force = false } = {}) => {
+        const { trainerSync, clientLogs, customExercises, programs } = get();
+        const client = get().clients[clientId];
+        if (!client) return false;
+        const local = linkOf(client, trainerSync.userId) === 'local';
+        const slot = local
+          ? await createClientSlot(client.name, clientId, false)
+          : { slotId: client.slotId, clientCode: client.code };
+
         const entries = clientLogs[clientId] ?? [];
-        const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
-        const custom = Object.fromEntries(Object.entries(customExercises ?? {}).filter(([id]) => used.has(id)));
         const program = programs[client.activeProgramId];
-        // El sello de activación es el del propio programa: así, al restaurar,
-        // `mergeProgressOnImport` da por buena esta posición.
-        const progress = program ? progressBlob(program, program.stageActivatedAt ?? null) : null;
-        // El servidor solo escribe si el asiento sigue vacío, en la misma
-        // sentencia: si el cliente ya entró, SLOT_OCCUPIED y no se pisa nada.
-        try {
-          await uploadTrainerLog(client.slotId, entries, custom, progress);
-        } catch (err) {
-          if (err.code === 'SLOT_OCCUPIED') {
-            set((s) => patchClient(s, clientId, SEATED));
-            return false;
+        // Sin entrenos ni programa no hay nada que contar: un historial vacío solo haría decir al cliente que «hay historial».
+        if (entries.length || (force && program)) {
+          const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
+          const custom = Object.fromEntries(Object.entries(customExercises ?? {}).filter(([id]) => used.has(id)));
+          // El sello de activación es el del propio programa: así, al restaurar,
+          // `mergeProgressOnImport` da por buena esta posición.
+          const progress = program ? progressBlob(program, program.stageActivatedAt ?? null) : null;
+          try {
+            await uploadTrainerLog(slot.slotId, entries, custom, progress);
+          } catch (err) {
+            if (err.code === 'SLOT_OCCUPIED') return false;
+            throw get()._slotError(clientId, err);
           }
-          throw get()._slotError(clientId, err);
+          // Son mis propios entrenos: no cuentan como «sin revisar».
+          set((s) => (!s.clients[clientId] ? {} : {
+            ...patchClient(s, clientId, { remoteSessionsCount: entries.length }),
+            trainerSync: {
+              ...s.trainerSync,
+              lastSeenSessionsCount: { ...s.trainerSync.lastSeenSessionsCount, [clientId]: entries.length },
+            },
+          }));
         }
-        // Son mis propios entrenos: no cuentan como «sin revisar».
-        set((s) => (!s.clients[clientId] ? {} : {
-          ...patchClient(s, clientId, { remoteSessionsCount: entries.length }),
-          trainerSync: {
-            ...s.trainerSync,
-            lastSeenSessionsCount: { ...s.trainerSync.lastSeenSessionsCount, [clientId]: entries.length },
-          },
-        }));
+        if (local && !get().clients[clientId]) {
+          // La borraron mientras subía: el hueco recién creado no puede quedarse huérfano ni resucitarla.
+          await deleteClientSlot(slot.slotId).catch((err) => console.warn('[uploadClient] hueco huérfano:', err.message));
+          return false;
+        }
+        // Si mientras tanto la ficha ya tiene hueco (otra subida, una invitación) o se cambió de cuenta, no se pisa.
+        if (local) {
+          set((s) => (s.trainerSync.userId !== trainerSync.userId ? {}
+            : patchClient(s, clientId, (c) => (c.slotId ? {} : slotFacts({ id: slot.slotId, client_code: slot.clientCode }, trainerSync.userId)))));
+        }
         return true;
+      },
+
+      /**
+       * Sube a la cuenta las fichas `local` (C10 §5): el entrenador con cuenta tiene
+       * todos sus clientes en ella. UNA DETRÁS DE OTRA, y un solo recorrido a la vez.
+       * Idempotente: repetirlo no duplica nada. Si falla por red, para y deja el resto
+       * `local`; por otra cosa, avisa en el registro y sigue con la siguiente (se
+       * reintenta en el próximo refresco). No mira el plan gratis: no crea clientes,
+       * los guarda. Nunca lanza. Progreso en `ui.uploadingClients`.
+       * Devuelve `{ uploaded, left }`: subidas ahora y las que siguen `local`.
+       */
+      uploadLocalClients: () => {
+        if (_uploadingLocal) return _uploadingLocal;
+        _uploadingLocal = (async () => {
+          const { trainerSync } = get();
+          const pending = () => Object.values(get().clients).filter((c) => linkOf(c, trainerSync.userId) === 'local' && !get().ui.linking?.[c.id]);
+          const todo = pending();
+          let uploaded = 0;
+          if (!trainerSync.userId || trainerSync.mode === 'offline' || get().ui.online === false || !todo.length) return { uploaded, left: todo.length };
+          try {
+            await _ensureTrainerSession(trainerSync);
+          } catch (err) {
+            console.warn('[uploadLocalClients] sin sesión:', err.message);
+            return { uploaded, left: todo.length };
+          }
+          const total = todo.length;
+          set((s) => ({ ui: { ...s.ui, uploadingClients: { done: 0, total } } }));
+          try {
+            for (const { id } of todo) {
+              // Pudo borrarse, subirse o invitarse mientras tanto; o cambiarse de cuenta.
+              const c = get().clients[id];
+              if (get().trainerSync.userId !== trainerSync.userId) break;
+              if (!c || linkOf(c, trainerSync.userId) !== 'local' || get().ui.linking?.[id]) continue;
+              try {
+                if (await get()._uploadClient(id)) uploaded += 1;
+              } catch (err) {
+                if (isNetworkError(err)) break;
+                console.warn(`[uploadLocalClients] ${id} no subido (${err.code ?? 'ERR'}):`, err.message);
+              }
+              set((s) => ({ ui: { ...s.ui, uploadingClients: { done: (s.ui.uploadingClients?.done ?? 0) + 1, total } } }));
+            }
+          } finally {
+            set((s) => ({ ui: { ...s.ui, uploadingClients: null } }));
+          }
+          return { uploaded, left: pending().length };
+        })().finally(() => { _uploadingLocal = null; });
+        return _uploadingLocal;
+      },
+
+      /** Cuántas fichas siguen `local` con la cuenta puesta: aún no están en ella (Mi cuenta, el aviso de Salir). */
+      localClientCount: () => {
+        const { clients, trainerSync } = get();
+        return trainerSync.userId ? Object.values(clients).filter((c) => linkOf(c, trainerSync.userId) === 'local').length : 0;
       },
 
       /**
@@ -4427,7 +4522,9 @@ export const useStore = create(
        *    a la cuenta buena se recupera solo. Borrarlo sería perder clientes
        *    por un error de cuenta.
        *  - Cliente cuyo hueco borró ESTA cuenta desde otro móvil (R-B6) → se
-       *    borra aquí también; si solo canceló su invitación, queda «sin app».
+       *    borra aquí también; si lo borró un móvil de antes de C10 para cancelar su
+       *    invitación, queda `local` y la siguiente subida le crea otro hueco.
+       *  - Antes de todo, las fichas `local` suben a la cuenta (`uploadLocalClients`).
        *    Si no se puede preguntar, se queda «de otra cuenta».
        *  - Huecos de clientes borrados aquí → se borran allí (`_flushDeletedSlots`).
        *
@@ -4448,6 +4545,9 @@ export const useStore = create(
         try {
           await _ensureTrainerSession(trainerSync);
           await get()._flushDeletedSlots();
+          // Las fichas `local` suben primero (C10 §5): así salen en la lista de huecos de abajo.
+          // Nunca lanza; lo que falle se reintenta en el siguiente refresco.
+          await get().uploadLocalClients();
 
           // Qué huecos creía tener ANTES de preguntar: un cliente creado
           // mientras tanto no está en la respuesta y no es «de otra cuenta».
@@ -4486,8 +4586,8 @@ export const useStore = create(
               // respuesta no (E63), o es una ficha `local` / de otra cuenta que ya existía.
               const own = slot.local_id && next[slot.local_id];
               if (own && !canSave(linkOf(own, trainerSync.userId))) {
-                // Con su programa por subir, que el invitado lo mande solo.
-                next[own.id] = { ...own, ...slotFacts(slot, trainerSync.userId), programDirty: !!own.activeProgramId };
+                // Con su programa por subir, que el invitado lo mande solo (sin código no hay a quién).
+                next[own.id] = { ...own, ...slotFacts(slot, trainerSync.userId), programDirty: !!own.activeProgramId && !!slot.client_code };
                 known.add(slot.id);
                 continue;
               }

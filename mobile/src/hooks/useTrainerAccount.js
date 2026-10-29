@@ -13,10 +13,14 @@
  * hay cuenta de entrenador rechazan con `{ notFound: true, provider, createInstead }`;
  * `createInstead()` crea la cuenta con los mismos tokens, sin reabrir Google ni Apple.
  *
+ * `upgrade` (C10 §3.2, «Cambiar a Google / Apple»): MEJORAR la cuenta, no entrar en otra.
+ * Solo así se traspasan los clientes; hacia una cuenta que ya tiene clientes rechaza
+ * con `{ code: 'UPGRADE_TARGET_HAS_CLIENTS' }` sin haber cambiado nada.
+ *
  *   · `isExpoGo`            — en Expo Go Google no puede (no hay URI registrable)
  *   · `loading`             — hay una operación en curso
- *   · `signInWithGoogle({ mustExist })` — Promise<{ userId }>
- *   · `signInWithApple({ mustExist })`   — Promise<{ userId }>
+ *   · `signInWithGoogle({ mustExist, upgrade })` — Promise<{ userId }>
+ *   · `signInWithApple({ mustExist, upgrade })`   — Promise<{ userId }>
  *   · `createCode()`        — Promise<{ code, userId }>
  *   · `recover(code)`       — Promise<{ userId }>
  *   · `leave()`             — Promise<void>
@@ -91,9 +95,9 @@ export default function useTrainerAccount() {
    * para crearla con la misma cuenta ya abierta (el store no ha tocado ninguna
    * sesión todavía).
    */
-  async function enter(provider, args, mustExist) {
+  async function enter(provider, args, mustExist, upgrade) {
     try {
-      return await useStore.getState().enterTrainerAccount({ provider, ...args, mustExist });
+      return await useStore.getState().enterTrainerAccount({ provider, ...args, mustExist, upgrade });
     } catch (err) {
       if (!err?.notFound) throw err;
       throw { notFound: true, provider, createInstead: run(err.createInstead) };
@@ -102,7 +106,7 @@ export default function useTrainerAccount() {
 
   // `promptAsync` ya devuelve la respuesta del navegador: no hace falta
   // observar `response` en un efecto.
-  const signInWithGoogle = run(async ({ mustExist = false } = {}) => {
+  const signInWithGoogle = run(async ({ mustExist = false, upgrade = false } = {}) => {
     const res = await googlePromptAsync();
     if (res?.type !== 'success') throw CANCELLED;
     const tokens = await exchangeCodeForTokens({
@@ -112,16 +116,16 @@ export default function useTrainerAccount() {
       clientId:     GOOGLE_CLIENT_ID,
     });
     if (!tokens.id_token) throw new Error(t('sync.errNoIdToken'));
-    return enter('google', { idToken: tokens.id_token, accessToken: tokens.access_token }, mustExist);
+    return enter('google', { idToken: tokens.id_token, accessToken: tokens.access_token }, mustExist, upgrade);
   });
 
   // Apple no necesita el ida y vuelta del navegador: la hoja nativa devuelve
   // el id_token en la misma llamada.
-  const signInWithApple = run(async ({ mustExist = false } = {}) => {
+  const signInWithApple = run(async ({ mustExist = false, upgrade = false } = {}) => {
     const credential = await appleSheet();
     if (!credential) throw CANCELLED;
     if (!credential.idToken) throw new Error(t('sync.errNoIdToken'));
-    return enter('apple', { idToken: credential.idToken, fullName: credential.fullName }, mustExist);
+    return enter('apple', { idToken: credential.idToken, fullName: credential.fullName }, mustExist, upgrade);
   });
 
   const createCode = run(() => useStore.getState().createTrainerCodeAccount());

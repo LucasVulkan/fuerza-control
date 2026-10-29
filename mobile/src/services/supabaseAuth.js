@@ -24,6 +24,7 @@
 
 import i18n from '../i18n';
 import { trainerSupabase, clientSupabase, createTempSupabase, sessionsReady } from '../config/supabase';
+import { NETWORK_RE } from '../utils/networkError';
 
 // Dominio de los correos sintéticos de las cuentas por código: no existe, así
 // que Supabase nunca manda correo de verdad.
@@ -80,6 +81,18 @@ async function isTrainer(db, userId) {
   const { data, error } = await db.from('profiles').select('role').eq('id', userId).maybeSingle();
   if (error) throw error;
   return data?.role === 'trainer';
+}
+
+/**
+ * ¿La cuenta candidata ya tiene clientes que no son los de este móvil? Para no juntar
+ * dos cuentas al mejorar (C10 §3.2). `own` = los huecos que este móvil ya conoce: si
+ * una mejora anterior los movió y la app murió antes de apuntarlo, reintentar tiene que
+ * poder. La RLS deja al entrenador leer los suyos; se piden como mucho `own.size + 1`.
+ */
+export async function candidateHasClients({ db, userId }, own = new Set()) {
+  const { data, error } = await db.from('trainer_clients').select('id').eq('trainer_id', userId).limit(own.size + 1);
+  if (error) throw Object.assign(new Error(error.message), { code: NETWORK_RE.test(error.message ?? '') ? 'NETWORK' : 'SERVER' });
+  return (data ?? []).some((r) => !own.has(r.id));
 }
 
 /** Candidata con Google o Apple. `name`: el de la cuenta de Google (Apple lo da aparte). */
