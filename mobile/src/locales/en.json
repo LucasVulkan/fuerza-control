@@ -2093,6 +2093,7 @@
     "overrideSent": "Prescription sent",
     "overrideSendFailed": "Couldn't send the prescription.",
     "pendingTitle": "Unsent changes",
+    "queuedTitle": "Queued · will send when you're back online",
     "sendAll": "Send all",
     "sending": "Sending…",
     "sendAllDone": "All sent",
@@ -2237,6 +2238,7 @@
     "noArchivedPrograms": "This client has no archived programs.",
     "changesPendingTag": "UNSENT CHANGES",
     "changesPendingOffline": "PENDING TO SEND · NO CONNECTION",
+    "changesQueuedTag": "QUEUED · WILL SEND WHEN YOU'RE BACK ONLINE",
     "changesPendingText": "You edited the program and the client still has the previous version.",
     "codeCard": {
       "title": "CONNECTION CODE",

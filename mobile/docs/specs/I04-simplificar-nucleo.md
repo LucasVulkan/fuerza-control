@@ -5,7 +5,7 @@
 > Inicio: 2026-10-29
 > Fase I04-01 · pendiente · Decisiones del usuario: qué se permite y qué no · §3
 > Fase I04-02 · pendiente · Restaurar una copia trae contenido, nunca estado de conexión · §4
-> Fase I04-03 · pendiente · La cola solo reintenta lo que se envió y falló · §5
+> Fase I04-03 · hecho · La cola solo reintenta lo que se envió y falló · §5
 > Fase I04-04 · terminado · Escribir en una ficha solo si sigue existiendo · §6
 > Fase I04-05 · pendiente · Pago pendiente: no se compra otra vez y no cruza cuentas · §7
 > Fase I04-06 · pendiente · Un solo traductor de errores para envíos y cuentas · §8
@@ -150,6 +150,32 @@ significan «difiere de lo enviado», no «se pulsó Enviar» (E80).
 Tests: E72, E80 (A3), E73 y E84 en verde, más «dos llamadas a la vez suben una
 vez» (ya existe) y «sin pulsar Enviar, volver a primer plano no envía nada».
 
+**Hecho (29-oct).** `_send(clientId, kind, programId?)` (`useStore.js`) es lo
+único que sube programa o prescripciones a un hueco; `uploadProgramToClient` y
+`sendOverrides` son su API pública. Va en cadena por cliente (nunca dos a la vez)
+y marca/desmarca `sendPending[kind]`: la pone si falla por red y arma el
+temporizador, la quita si acaba bien o falla por otra cosa. `sendPendingPrograms`
+se parte en `sendAll()` («Enviar todo», acción del usuario: sin red todo queda
+en cola) y `retrySendQueue()` (automática: NetInfo, primer plano, arranque y el
+temporizador; solo fichas con `sendPending`, manda lo de ahora, quita la marca si
+la ficha ya no admite envíos, una sola en vuelo, nunca lanza). El temporizador es
+uno solo: 30 s, 2 min y luego cada 10 min mientras quede algo en cola. El
+suscriptor del invitado pasa por `_send` (sin `invitedInFlight`). Salir o cambiar
+de cuenta vacía la cola; las copias no la guardan ni la restauran. Las fichas
+enseñan «En cola · se enviará al volver la conexión» en vez de «Cambios sin
+enviar» (lista y ficha). «Enviar todo» y la insignia siguen contando las fichas
+con cambios sin enviar, y las que están en cola cuentan también (siguen con
+cambios): pulsarlo las reenvía al momento. Tests: `store/sendQueue.sim.test.js`.
+
+**Probar I04-03**
+
+- [ ] Sin red, abrir una etapa a un cliente con app: dice «Sin conexión. Se enviará cuando vuelva» y su ficha (lista y detalle) dice «En cola · se enviará al volver la conexión». Al volver la red, el cliente la ve abierta y la ficha ya no dice «En cola».
+- [ ] Con red, editar el programa de un cliente con app sin pulsar «↑ Enviar», irse a otra app y volver (y cerrar y abrir la app): la ficha sigue en «Cambios sin enviar» y el cliente no recibe nada.
+- [ ] «Enviar todo» en modo avión con dos o más clientes con cambios: todos quedan «En cola». Al quitar el modo avión, llegan a todos sin tocar nada.
+- [ ] Con datos y mala cobertura (o desconectando el router con el wifi puesto), «↑ Enviar» falla: al volver la conexión llega solo en menos de un minuto.
+- [ ] Un cliente en cola al que se le quita el programa o se congela (plan gratis): deja de decir «En cola» y no se le envía nada.
+- [ ] Salir de la cuenta de entrenador con algo en cola y volver a entrar: ninguna ficha dice «En cola».
+
 ## 6. I04-04 — Escribir en una ficha solo si sigue existiendo
 
 E74 y los tres sitios de A1: después de un `await`, el `set` hace
@@ -249,7 +275,7 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
 |---|---|---|---|---|
 | I04-01 | Decidir las reglas DECIDIR del mapa del núcleo | — | 🟢 | pendiente |
 | I04-02 | Restaurar sin estado de conexión (E73, E78, E79) | I04-01 | 🟡 | pendiente |
-| I04-03 | Cola propia (E72, E80, E83, E84) | I04-01 | 🟡 | pendiente |
+| I04-03 | Cola propia (E72, E80, E83, E84) | I04-01 | 🟡 | hecho 29-oct — un solo camino `_send`, `sendAll` y `retrySendQueue` separados, reintento con espera; tests en `store/sendQueue.sim.test.js`; casillas por probar |
 | I04-04 | `patchClient` (E74 + A1) | — | 🟢 | terminado 29-oct — todos los `set` sobre una ficha pasan por `patchClient`; tests en `store/patchClient.sim.test.js` (sin nada que probar a mano) |
 | I04-05 | Pago pendiente (E75, E81, E82) | I04-01 | 🟡 | pendiente |
 | I04-06 | Traductor de errores (E76, E77) | — | 🟢 | pendiente |

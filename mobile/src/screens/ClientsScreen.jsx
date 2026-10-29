@@ -282,7 +282,7 @@ function AssignedProgramCard({
         <View style={styles.lockBox}>
           <View style={styles.lockHeader}>
             <UploadIcon size={13} color={th.colors.orange} />
-            <Text style={styles.lockTag}>{t(offline ? 'clients.changesPendingOffline' : 'clients.changesPendingTag')}</Text>
+            <Text style={styles.lockTag}>{t(client.sendPending ? 'clients.changesQueuedTag' : offline ? 'clients.changesPendingOffline' : 'clients.changesPendingTag')}</Text>
           </View>
           <Text style={styles.lockText}>{t('clients.changesPendingText')}</Text>
           <TouchableOpacity style={[styles.lockBtn, locked && styles.lockBtnPro]} onPress={onUpload} activeOpacity={0.85}>
@@ -1503,13 +1503,13 @@ function ClientListCard({
                   cta: { label: t('clients.btnContinue'), icon: 'play', onPress: onContinue } },
     noprog:     { text: t('clients.noActiveProgram'), color: C.text,
                   cta: { label: t('clients.btnProgram'), icon: 'add', onPress: onOpenEditor } },
-    dirty:      { text: t('clients.pendingTitle'), color: C.blue,
+    dirty:      { text: t(client.sendPending ? 'clients.queuedTitle' : 'clients.pendingTitle'), color: C.blue,
                   cta: { label: t('clients.btnSendOverride'), icon: 'send', onPress: onUploadProgram } },
     stageStuck: { text: t('clients.stageLockedShort'), color: C.orange,
                   cta: { label: t('clients.stageUnlockShort'), icon: 'unlock', onPress: () => onUnlockStage(stageIdx + 1) } },
     blockStuck: { text: t('clients.blockDoneShort'), color: C.orange,
                   cta: { label: t('clients.blockPlanShort'), icon: 'plan', onPress: onPlanStages } },
-    overrides:  { text: t('clients.pendingTitle'), color: C.blue,
+    overrides:  { text: t(client.sendPending ? 'clients.queuedTitle' : 'clients.pendingTitle'), color: C.blue,
                   cta: { label: t('clients.btnSendOverride'), icon: 'send', onPress: onSendOverrides } },
     risk:       { text: t('clients.notTraining'), color: C.redText ?? C.red },
     slip:       { text: t('clients.slowingDown'), color: C.orange },
@@ -1633,7 +1633,7 @@ export default function ClientsScreen() {
   const deleteClientLogEntry     = useStore((s) => s.deleteClientLogEntry);
   const showToast                = useStore((s) => s.showToast);
   const uploadProgramToClient    = useStore((s) => s.uploadProgramToClient);
-  const sendPendingPrograms      = useStore((s) => s.sendPendingPrograms);
+  const sendAll                  = useStore((s) => s.sendAll);
   const updateStage              = useStore((s) => s.updateStage);
   const sendOverrides            = useStore((s) => s.sendOverrides);
   const downloadClientHistory    = useStore((s) => s.downloadClientHistory);
@@ -1875,7 +1875,7 @@ export default function ClientsScreen() {
     if (sendingAll || !pendingClients.length) return;
     setSendingAll(true);
     const offline = useStore.getState().ui.online === false;
-    const { ok, fail } = await sendPendingPrograms();
+    const { ok, fail } = await sendAll();
     setSendingAll(false);
     if (offline) return showToast(t('sync.offlineQueued'), 2400, 'neutral');
     showToast(

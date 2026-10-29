@@ -2093,6 +2093,7 @@
     "overrideSent": "Prescripción enviada",
     "overrideSendFailed": "No se pudo enviar la prescripción.",
     "pendingTitle": "Cambios sin enviar",
+    "queuedTitle": "En cola · se enviará al volver la conexión",
     "sendAll": "Enviar todo",
     "sending": "Enviando…",
     "sendAllDone": "Todo enviado",
@@ -2237,6 +2238,7 @@
     "noArchivedPrograms": "Este cliente no tiene programas archivados.",
     "changesPendingTag": "CAMBIOS SIN ENVIAR",
     "changesPendingOffline": "PENDIENTE DE ENVIAR · SIN CONEXIÓN",
+    "changesQueuedTag": "EN COLA · SE ENVIARÁ AL VOLVER LA CONEXIÓN",
     "changesPendingText": "Has editado el programa y el cliente todavía tiene la versión anterior.",
     "codeCard": {
       "title": "CÓDIGO DE CONEXIÓN",
