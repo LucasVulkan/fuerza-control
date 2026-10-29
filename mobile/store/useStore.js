@@ -24,7 +24,7 @@ import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
-  createClientSlot, clearClientCode, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot, setSlotLocalId, saveClientPrivate, getClientPrivates,
+  createClientSlot, clearClientCode, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot, setSlotLocalId, saveClientPrivate, getClientPrivates, knownClients,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
   getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
@@ -49,7 +49,7 @@ import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf
 import { programSignature } from '../src/utils/programSignature';
 import { buildClientCard, buildClientPrograms, saveSig, applyClientCard, applyClientPrograms } from '../src/utils/clientSave';
 import { sessionStats } from '../src/utils/sessionStats';
-import { clientLink, linkOf, isReadOnly, withApp as isWithApp, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, NO_SLOT, SLOT_LOST, CODE_CLEARED } from '../src/utils/clientLink';
+import { clientLink, linkOf, isReadOnly, withApp as isWithApp, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, cardWithoutState, NO_SLOT, SLOT_LOST, CODE_CLEARED } from '../src/utils/clientLink';
 import { isNetworkError } from '../src/utils/networkError';
 import { FREE, NEW_WITH_APP, forPlan, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
 import {
@@ -3470,14 +3470,23 @@ export const useStore = create(
 
       // ── Import ────────────────────────────────────────────────────────────────
 
-      importData: (data, sections, { silent = false } = {}) => {
+      /**
+       * `known` (C10-06): `Map(local_id → alive)` de lo que la cuenta conoce, de `trainer_known_clients()`.
+       * Solo lo necesita la parte de clientes con la cuenta puesta, y sin él esa parte no añade nada.
+       * `restoreBackup` es quien lo pregunta; esta acción sigue siendo síncrona.
+       * Devuelve `{ ok, added, kept, replaced, account }` (clientes que entran, los de la copia que se dejaron,
+       * los del móvil que se quitaron, y si la parte de clientes se resolvió con cuenta).
+       */
+      importData: (data, sections, { silent = false, known = null } = {}) => {
         // Ids de antes de juntar los ejercicios repetidos (P09-exercise-variants.md
         // §3.3): un backup viejo, o el programa de un entrenador sin actualizar.
         migrateExerciseRefs(data, get().getEffectiveLibrary());
-        // Un cliente que ya existe y está congelado no se pisa: ni su programa ni su
-        // log. La ficha sí, como a mano (E43, R-E2).
-        const frozen = (id) => get().isClientFrozen(id);
-        if (data.sessionTemplates) {
+        // Sin cuenta, la parte de clientes reemplaza a los del móvil (C10-06): sus congelados se van con ellos.
+        const replacingClients = !!sections.clients && !get().trainerSync.userId;
+        const summary = { added: 0, kept: 0, replaced: 0, account: false };
+        // Lo de entreno de un cliente congelado no se pisa (E43, R-E2). Las fichas de clientes ya no se
+        // pisan nunca (C10-06: o se reemplazan todas, o las que están no se tocan).
+        if (data.sessionTemplates && !replacingClients) {
           data = { ...data, sessionTemplates: Object.fromEntries(Object.entries(data.sessionTemplates).filter(([id, t]) => !get()._isFrozenOwned(id) && !get()._isFrozenOwned(t.programId))) };
         }
         // §3.4 bis, regla 1: si el id del programa suelto ya existe aquí y es
@@ -3509,12 +3518,12 @@ export const useStore = create(
         // el backup dice.
         const singleId = data.program?.id ?? null;
 
-        // Tres predicados de UN campo, mutuamente excluyentes por construcción.
+        // Dos predicados de UN campo, mutuamente excluyentes por construcción. Los programas de
+        // clientes entran por la parte de clientes, por su dueño (C10-06), no por un predicado.
         // Antes cada rama reescribía el `mode` de lo que dejaba pasar para que
         // no se colara en la de al lado, y un programa podía satisfacer dos.
         const isMine     = (p) => p.owner === 'me' && p.kind !== 'template';
         const isTemplate = (p) => p.kind === 'template';
-        const isClients  = (p) => p.owner !== 'me';
 
         set((s) => {
           // La foto del editor de programa queda obsoleta en cuanto esto escribe
@@ -3661,28 +3670,48 @@ export const useStore = create(
             }
           }
           if (sections.clients) {
-            // Los clientes de un backup v1/v2 traen su `programIds`. Ya no
-            // significa nada —la lista se deriva de `owner`— así que no entra.
-            // Una copia de antes de C10-01 trae las banderas viejas: se leen como hechos.
-            const incomingClients = Object.fromEntries(
-              Object.entries(migrateClientLinks(data.clients ?? {}, s.trainerSync)).map(([id, c]) => {
-                const rest = { ...c };
-                delete rest.programIds;
-                // La cola no viaja en las copias (N-06): solo vale la de este móvil.
-                delete rest.sendPending;
-                if (s.clients[id]?.sendPending) rest.sendPending = s.clients[id].sendPending;
-                // Ni lo guardado en la cuenta (C10-05): la firma vale para lo que había en este móvil; con lo
-                // restaurado distinto, el guardado lo ve pendiente y lo sube.
-                delete rest.savedSig;
-                if (s.clients[id]?.savedSig) rest.savedSig = s.clients[id].savedSig;
-                if (frozen(id)) {   // lo de entreno no se pisa: apunta a un programa que no entra
-                  const { activeProgramId, nextOverrides, overridesDirty, progress } = s.clients[id];
-                  Object.assign(rest, { activeProgramId, nextOverrides, overridesDirty, progress });
-                }
-                return [id, rest];
-              }),
-            );
-            updates.clients = { ...s.clients, ...incomingClients };
+            // C10-06 §8.1. Sin cuenta, la copia es la única copia de los clientes y reemplaza a los del móvil.
+            // Con cuenta manda la cuenta (N-17): solo entran los que ella no ha conocido nunca (ni vivos ni
+            // borrados) y que el móvil tampoco tiene; los demás no se tocan en nada (N-04, N-13).
+            const account = !!s.trainerSync.userId;
+            summary.account = account;
+            const fileIds = Object.keys(data.clients ?? {});
+            const entering = new Set(account ? (known ? fileIds.filter((id) => !known.has(id) && !s.clients[id]) : []) : fileIds);
+            summary.added = entering.size;
+            summary.kept = account ? fileIds.length - entering.size : 0;
+            summary.replaced = account ? 0 : Object.keys(s.clients).length;
+
+            const cards = account ? { ...s.clients } : {};
+            const programs = { ...(updates.programs ?? basePrograms) };
+            const sessions = { ...(updates.sessionTemplates ?? s.sessionTemplates) };
+            const logs = account ? { ...s.clientLogs } : {};
+            if (!account) {   // fuera los del móvil: ficha, programas, sesiones e historial
+              Object.keys(s.clients).forEach((id) => {
+                const mine = buildClientPrograms(s, id);
+                Object.keys(mine.programs).forEach((k) => delete programs[k]);
+                Object.keys(mine.sessionTemplates).forEach((k) => delete sessions[k]);
+              });
+              updates.profile = { ...(updates.profile ?? s.profile), freeClientIds: [] };
+            }
+            fileIds.forEach((id) => {
+              const theirs = buildClientPrograms({ programs: allFilePrograms, sessionTemplates: data.sessionTemplates }, id);
+              if (!entering.has(id)) {   // lo que la fusión de arriba trajo de los que no entran se quita, y no pisa lo del móvil
+                Object.keys(theirs.sessionTemplates).forEach((k) => { if (s.sessionTemplates[k]) sessions[k] = s.sessionTemplates[k]; else delete sessions[k]; });
+                return;
+              }
+              // De una copia solo entra contenido: la ficha entra `local`. `programIds` ya no significa nada
+              // (la lista se deriva de `owner`).
+              const card = cardWithoutState(data.clients[id]);
+              delete card.programIds;
+              cards[id] = { ...card, id, ...NO_SLOT };
+              Object.assign(programs, theirs.programs);
+              Object.assign(sessions, theirs.sessionTemplates);
+              if (data.clientLogs?.[id]) logs[id] = mergeClientLog(logs[id], data.clientLogs[id]);
+            });
+            updates.clients = cards;
+            updates.programs = programs;
+            updates.sessionTemplates = sessions;
+            updates.clientLogs = logs;
 
             // Las etiquetas son de los clientes, así que entran con ellos. Sin
             // esto la ficha restaurada muestra `tag_a1b2c3d4` en vez del nombre.
@@ -3694,30 +3723,11 @@ export const useStore = create(
 
             const incomingTags = data.tagRegistry ?? [];
             if (incomingTags.length) {
-              const known = new Set((s.tagRegistry ?? []).map((tg) => tg.id));
+              const knownTags = new Set((s.tagRegistry ?? []).map((tg) => tg.id));
               updates.tagRegistry = [
                 ...(s.tagRegistry ?? []),
-                ...incomingTags.filter((tg) => !known.has(tg.id)),
+                ...incomingTags.filter((tg) => !knownTags.has(tg.id)),
               ];
-            }
-
-            // El programa de un cliente es suyo, igual que su historial: si el
-            // cliente entra, su programa entra con él. Las otras dos ramas lo
-            // descartan a propósito, así que sin esto la ficha restaurada
-            // apunta a un programa que no existe. `needsTemplateData` ya
-            // incluye esta sección, así que sus sessionTemplates entran.
-            const owned = Object.fromEntries(
-              Object.entries(allFilePrograms).filter(([, p]) => isClients(p) && !frozen(p.owner)),
-            );
-            updates.programs = { ...(updates.programs ?? basePrograms), ...owned };
-
-            // Restore per-client histories from backups that include them
-            if (data.clientLogs && Object.keys(data.clientLogs).length) {
-              const mergedLogs = { ...s.clientLogs };
-              Object.entries(data.clientLogs).forEach(([cid, entries]) => {
-                mergedLogs[cid] = mergeClientLog(mergedLogs[cid], entries);
-              });
-              updates.clientLogs = mergedLogs;
             }
           }
           // Legacy backups (pre-clientLogs) mixed client entries into workoutLog.
@@ -3739,7 +3749,45 @@ export const useStore = create(
         });
 
         if (!silent) get().showToast(i18n.t('storeToasts.importedOk'));
-        return { ok: true };
+        return { ok: true, ...summary };
+      },
+
+      /**
+       * Restaurar una copia (Drive y archivo), C10-06 §8.1. Con la parte de clientes y la cuenta puesta,
+       * primero pregunta qué clientes conoce la cuenta; sin red, `CLIENTS_NEED_NETWORK` y no se restaura
+       * nada. Luego `importData` y, en el acto (N-05), se vuelve a preguntar a los dueños: huecos (esto
+       * sube los añadidos), PRO, y en el móvil de un cliente conectado, el programa de su hueco.
+       * Devuelve `{ added, kept, replaced, account }` para el mensaje final.
+       */
+      restoreBackup: async (data, sections) => {
+        let known = null;
+        if (sections.clients && get().trainerSync.userId) {
+          try {
+            get()._assertOnline();
+            await _ensureTrainerSession(get().trainerSync);
+            known = new Map((await knownClients()).map((r) => [r.local_id, r.alive]));
+          } catch (err) {
+            if (err?.code === 'TRAINER_LOGIN_NEEDED') throw err;
+            console.warn('[restoreBackup] sin saber qué clientes conoce la cuenta:', err?.code, err?.message);
+            throw Object.assign(new Error(i18n.t('import.clientsNeedNetwork')), { code: 'CLIENTS_NEED_NETWORK' });
+          }
+        }
+        const { added, kept, replaced, account } = get().importData(data, sections, { silent: true, known });
+        // Un programa suelto es solo contenido (se puede siempre): lo de preguntar a los dueños es de las copias.
+        if (!/^full/.test(data.exportType ?? '')) return { added, kept, replaced, account };
+        try {
+          if (get().trainerSync.userId) await get().refreshTrainerSlots();
+          await get().checkProStatus();
+          // El cliente conectado vuelve a tener el programa de su hueco, aunque el local parezca igual o más nuevo.
+          if (sections.program && get().clientSync.slotId && !get().clientSync.lostAt) {
+            set((s) => ({ clientSync: { ...s.clientSync, lastProgramImportedAt: null } }));
+            await get().checkAndPullProgramUpdates();
+            get().applyPendingProgramUpdate();
+          }
+        } catch (err) {
+          console.warn('[restoreBackup] lo restaurado ya está; faltó preguntar a los dueños:', err?.message);
+        }
+        return { added, kept, replaced, account };
       },
 
       // ══════════════════════════════════════════════════════════════════════

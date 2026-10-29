@@ -20,6 +20,7 @@ import { parseBodyWeight } from '../utils/bodyWeight';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import { programsOf } from '../utils/programOwnership';
 import ImportModal from './ImportModal';
+import { restoredMessage, restoreErrorMessage } from '../utils/restoreSummary';
 import DragSheet   from './DragSheet';
 import ArchivedProgramsSheet from './ArchivedProgramsSheet';
 import SegmentedControl from './ui/SegmentedControl';
@@ -524,7 +525,7 @@ export default function AppHeader() {
   const [showExport,        setShowExport]         = useState(false);
   const [now,               setNow]               = useState(() => new Date());
 
-  const importData                = useStore((s) => s.importData);
+  const restoreBackup             = useStore((s) => s.restoreBackup);
   const showToast                 = useStore((s) => s.showToast);
   const navigate                  = useStore((s) => s.navigate);
   const language                  = useStore((s) => s.profile?.language ?? 'es');
@@ -587,11 +588,15 @@ export default function AppHeader() {
 
   function handleImport(parsedData, sections) {
     setImportState(null);
-    const run = () => {
-      importData(parsedData, sections, { silent: true }); // caller shows its own toast below
-      showToast(t('header.toastImported'), 2200, 'success');
-      // If a program was imported, navigate to home so the new program is visible.
-      if (sections.program) navigate('home');
+    const run = async () => {
+      try {
+        const result = await restoreBackup(parsedData, sections); // caller shows its own toast below
+        showToast(restoredMessage(t, result, t('header.toastImported')), 2200, 'success');
+        // If a program was imported, navigate to home so the new program is visible.
+        if (sections.program) navigate('home');
+      } catch (err) {
+        showToast(restoreErrorMessage(t, err), 3000, 'error');
+      }
     };
     // Importar un programa es usar otro: con entrenador, antes se pregunta (R1).
     if (sections.program) guardProgramChange(parsedData.program?.id, run); else run();

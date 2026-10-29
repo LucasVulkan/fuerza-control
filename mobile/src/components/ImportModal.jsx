@@ -34,6 +34,7 @@ import { ROW_ICON } from './ui/rowIcons';
 import { Switch } from './ui/EditorRows';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
+import { useStore } from '../../store/useStore';
 
 // ── Formas de importar un programa ────────────────────────────────────────────
 
@@ -101,7 +102,13 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   const tplCount    = Object.values(parsedData?.programs ?? {}).filter((p) => (p.kind ?? p.mode) === 'template').length;
 
   // ── Backup: interruptores y las dos elecciones (null = sin elegir) ──
-  const [on, setOn] = useState({ program: hasPrograms, customExercises: hasCustEx, clients: clientCount > 0 });
+  // Clientes (C10-06): con cuenta, la copia solo añade lo que la cuenta no conoce y hace falta red para
+  // preguntarlo; sin cuenta, reemplaza a los del móvil y se avisa de cuántos son.
+  const hasAccount   = useStore((s) => !!s.trainerSync?.userId);
+  const offline      = useStore((s) => s.ui?.online === false);
+  const phoneClients = useStore((s) => Object.keys(s.clients ?? {}).length);
+  const clientsBlocked = hasAccount && offline;
+  const [on, setOn] = useState({ program: hasPrograms, customExercises: hasCustEx, clients: clientCount > 0 && !clientsBlocked });
   const [logChoice, setLogChoice] = useState(null);
   const [tplChoice, setTplChoice] = useState(null);
   const [showMissing, setShowMissing] = useState(false);
@@ -113,8 +120,9 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
   const logMissing = isBackup && hasLog && !logChoice;
   const tplMissing = isBackup && tplCount > 0 && !tplChoice;
   const missing    = logMissing || tplMissing;
+  const clientsOn  = on.clients && !clientsBlocked;
   const nothing    = isBackup
-    && !on.program && !on.customExercises && !on.clients
+    && !on.program && !on.customExercises && !clientsOn
     && (logChoice ?? 'none') === 'none' && (tplChoice ?? 'none') === 'none';
   const ready = !missing && !nothing;
 
@@ -129,6 +137,7 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
       const tpl = (tplChoice ?? 'none') !== 'none';
       onImport(parsedData, {
         ...on,
+        clients:       clientsOn,
         log,
         logMode:       log ? logChoice : 'merge',
         templates:     tpl,
@@ -175,14 +184,17 @@ export default function ImportModal({ fileName, parsedData, onImport, onClose })
               <MenuRow
                 icon={<RowIcon>{ROW_ICON.user}</RowIcon>}
                 label={t('import.sectionClients')}
-                // Solo suma: los del archivo se añaden (o actualizan el mismo
-                // cliente) y los tuyos que no vienen se quedan.
-                sub={clientCount > 0 ? t('import.clientsDesc', { count: clientCount }) : notInFile}
-                disabled={clientCount === 0}
+                sub={clientsBlocked ? t('import.clientsNeedNetwork')
+                  : clientCount > 0 ? t(hasAccount ? 'import.clientsDescAccount' : 'import.clientsDesc', { count: clientCount })
+                  : notInFile}
+                disabled={clientCount === 0 || clientsBlocked}
                 onPress={() => toggle('clients')}
-                control={<Switch value={on.clients} />}
+                control={<Switch value={clientsOn} />}
               />
             </Section>
+            {clientsOn && !hasAccount && phoneClients > 0 && (
+              <Text style={s.warn}>{t('import.clientsReplaceWarn', { count: phoneClients, total: clientCount })}</Text>
+            )}
 
             {hasLog && (
               <ChoiceSection
@@ -242,6 +254,8 @@ const makeS = (th) => StyleSheet.create({
   fileType: { ...textStyles.caps, color: th.colors.accent, textTransform: 'uppercase', flexShrink: 0 },
   // `Section` trae su margen de separar secciones; aquí lo pone el `gap`.
   section:  { marginBottom: 0 },
+  // El aviso de que los clientes del móvil se sustituyen: bajo su fila, en rojo.
+  warn:     { ...textStyles.label, color: th.colors.redText, paddingHorizontal: spacing.xs2, marginTop: -spacing.sm2 },
   // Título de una elección con «Elige una» a la derecha, en rojo.
   choiceHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.sm2 },
   choiceTitle: { marginBottom: 0, flexShrink: 1 },

@@ -34,6 +34,8 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import { CheckIcon, ChevronDown } from '../components/ui/EditorIcons';
 import { Section, SectionLabel, MenuRow, RowIcon } from '../components/ui/MenuList';
 import { formatWhen } from '../utils/formatWhen';
+import { restoredMessage, restoreErrorMessage } from '../utils/restoreSummary';
+import ImportModal from '../components/ImportModal';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
 
@@ -77,7 +79,7 @@ export default function DriveBackupScreen() {
   const deleteDriveBackups = useStore((s) => s.deleteDriveBackups);
   const listDriveBackups   = useStore((s) => s.listDriveBackups);
   const downloadDriveBackup = useStore((s) => s.downloadDriveBackup);
-  const importData         = useStore((s) => s.importData);
+  const restoreBackup      = useStore((s) => s.restoreBackup);
   const showToast          = useStore((s) => s.showToast);
   const lang               = useStore((s) => s.profile?.language ?? 'es');
 
@@ -89,6 +91,7 @@ export default function DriveBackupScreen() {
   const [loadFailed,  setLoadFailed]  = useState(false); // ≠ "no hay copias"
   const [refreshing,  setRefreshing]  = useState(false);
   const [freqOpen,    setFreqOpen]    = useState(false);
+  const [restoreState, setRestoreState] = useState(null); // { fileName, parsedData } de la copia que se está restaurando
 
   const when = (v) => formatWhen(v, lang, t('dayCard.today'), t('dayCard.yesterday'));
 
@@ -205,36 +208,39 @@ export default function DriveBackupScreen() {
     }
   }
 
-  function handleRestoreFile(file) {
-    showDialog(
-      t('drive.restoreTitle'),
-      t('drive.restoreBody', { when: when(file.createdTime) ?? file.name }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('drive.restoreConfirm'), style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            setMsg(t('drive.loadingRestore'));
-            try {
-              const data = await downloadDriveBackup(file.id);
-              const run = () => {
-                importData(data, { program: true, log: true, templates: true, customExercises: true, clients: true }, { silent: true });
-                showToast(t('drive.toastRestored'), 2200, 'success');
-                navigation.goBack();
-              };
-              // Restaurar con un programa activo es usar otro: con entrenador, antes se pregunta (R1).
-              if (data.profile?.activeProgramId) guardProgramChange(data.profile.activeProgramId, run); else run();
-            } catch {
-              showToast(t('drive.errRestoreTitle'), 3000, 'error');
-            } finally {
-              setLoading(false);
-              setMsg('');
-            }
-          },
-        },
-      ],
-    );
+  // Tocar una copia la baja y abre la hoja de partes (la de un `.fitdata`): ahí se elige qué se restaura.
+  async function handleRestoreFile(file) {
+    setLoading(true);
+    setMsg(t('drive.loadingRestore'));
+    try {
+      const data = await downloadDriveBackup(file.id);
+      setRestoreState({ fileName: file.name, parsedData: data });
+    } catch {
+      showToast(t('drive.errRestoreTitle'), 3000, 'error');
+    } finally {
+      setLoading(false);
+      setMsg('');
+    }
+  }
+
+  async function handleRestore(data, sections) {
+    setRestoreState(null);
+    const run = async () => {
+      setLoading(true);
+      setMsg(t('drive.loadingRestore'));
+      try {
+        const result = await restoreBackup(data, sections);
+        showToast(restoredMessage(t, result, t('drive.toastRestored')), 2200, 'success');
+        navigation.goBack();
+      } catch (err) {
+        showToast(restoreErrorMessage(t, err), 3000, 'error');
+      } finally {
+        setLoading(false);
+        setMsg('');
+      }
+    };
+    // Restaurar con un programa activo es usar otro: con entrenador, antes se pregunta (R1).
+    if (sections.program && data.profile?.activeProgramId) guardProgramChange(data.profile.activeProgramId, run); else run();
   }
 
   function handleDeleteAll() {
@@ -575,6 +581,15 @@ export default function DriveBackupScreen() {
             </View>
           ) : null}
         </ScrollView>
+      )}
+
+      {restoreState && (
+        <ImportModal
+          fileName={restoreState.fileName}
+          parsedData={restoreState.parsedData}
+          onImport={handleRestore}
+          onClose={() => setRestoreState(null)}
+        />
       )}
     </SafeAreaView>
   );

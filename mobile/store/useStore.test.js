@@ -1562,6 +1562,7 @@ describe('program-model — ficheros v1/v2', () => {
       },
     };
 
+    useStore.setState((st) => ({ trainerSync: { ...st.trainerSync, userId: null } }));   // sin cuenta la copia reemplaza (C10-06)
     useStore.getState().importData(
       backup, { program: true, clients: true, templates: true }, { silent: true },
     );

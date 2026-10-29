@@ -111,6 +111,21 @@ export function migrateClientLinks(clients, trainerSync) {
   return out;
 }
 
+// ── Copias de seguridad (C10-06 §8.1) ────────────────────────────────────────
+
+/**
+ * La ficha sin nada de estado: ni conexión, ni envíos, ni lo guardado en la cuenta, ni las banderas
+ * de antes de C10-01. Lo que sale en una copia y lo que se tira al restaurar (las copias viejas lo
+ * traen). Con `NO_SLOT` después, la ficha entra `local`.
+ */
+export function cardWithoutState(c) {
+  const out = { ...c };
+  for (const k of ['slotId', 'slotOwner', 'code', 'seated', 'leftAt', 'savedSig', 'programDirty', 'overridesDirty',
+    'programUploadedSig', 'programUploadedAt', 'remoteSessionsCount', 'sendPending',
+    'syncSlotId', 'syncCode', 'syncLinked', 'syncOrphan', 'syncLeftAt', 'syncPending']) delete out[k];
+  return out;
+}
+
 /** Para los tests: lanza si los hechos de la ficha se contradicen. */
 export function assertFacts(c) {
   const bad = (msg) => { throw new Error(`ficha ${c?.id}: ${msg} ${JSON.stringify({ slotId: c.slotId, slotOwner: c.slotOwner, code: c.code, seated: c.seated, leftAt: c.leftAt })}`); };

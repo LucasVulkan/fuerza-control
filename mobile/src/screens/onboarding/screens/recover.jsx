@@ -31,6 +31,7 @@ import { FlowBody, FlowTitle, FlowOption, FlowNote, FlowFooter } from '../../../
 import ClientCodeModal from '../../../components/ClientCodeModal';
 import ImportModal from '../../../components/ImportModal';
 import { parseImportFile } from '../../../utils/importFile';
+import { restoreErrorMessage } from '../../../utils/restoreSummary';
 
 function finish(profile) {
   const { setProfile, finishOnboardingFlow } = useStore.getState();
@@ -43,7 +44,7 @@ const finishClient  = () => finish({ role: 'coached', proTabsHidden: true });
 
 function Recover({ goTo }) {
   const { t } = useTranslation();
-  const importData = useStore((s) => s.importData);
+  const restoreBackup = useStore((s) => s.restoreBackup);
   const [importState, setImportState] = useState(null);
 
   async function pickFile() {
@@ -91,7 +92,15 @@ function Recover({ goTo }) {
         <ImportModal
           fileName={importState.fileName}
           parsedData={importState.parsedData}
-          onImport={(data, sections) => { setImportState(null); importData(data, sections); finish(); }}
+          onImport={async (data, sections) => {
+            setImportState(null);
+            try {
+              await restoreBackup(data, sections);
+              finish();
+            } catch (err) {
+              showDialog(t('common.error', 'Error'), restoreErrorMessage(t, err));
+            }
+          }}
           onClose={() => setImportState(null)}
         />
       )}

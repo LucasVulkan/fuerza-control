@@ -11,10 +11,14 @@
  *
  * C10-05: la ficha, los programas y lo apuntado se guardan en la cuenta (continuo, por firma) y se
  * recuperan con ella en un móvil nuevo; el cliente no lee lo privado y guardar no es enviar (N-06).
+ *
+ * C10-06: restaurar una copia trae contenido, nunca estado; con cuenta solo añade lo que la cuenta no conoció.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { linkOf, assertFacts, NO_SLOT } from '../src/utils/clientLink';
+import { buildBackupPayload } from '../src/utils/backupPayload';
+import { programTemplateIds } from '../src/utils/clientLogs';
 import { buildBackupJson } from '../src/utils/backupPayload';
 import { forPlan, clientLimitReason } from '../src/utils/freePlan';
 import { buildClientCard, buildClientPrograms, saveSig } from '../src/utils/clientSave';
@@ -189,7 +193,7 @@ describe('C10-03 · recuperar la cuenta usa el id de la ficha', () => {
     const backup = JSON.parse(buildBackupJson(t.s));
     const n = await phone('movil-nuevo');
     await n.s.recoverTrainerAccount(code);
-    n.s.importData(backup, { program: true, log: true, templates: true, customExercises: true, clients: true }, { silent: true });
+    await n.s.restoreBackup(backup, { program: true, log: true, templates: true, customExercises: true, clients: true });   // la cuenta ya los conoce: no entra ninguno (C10-06)
 
     expect(idsOf(n)).toEqual([ana, berta].sort());
     for (const slot of await slots()) {
@@ -887,20 +891,20 @@ describe('C10-05 · guardar en la cuenta y recuperar con la ficha', () => {
     expect(n.s.pendingSaveCount()).toBe(0);
   });
 
-  it('restaurar una copia descarta el `savedSig` que traiga: lo restaurado se ve pendiente y se guarda', async () => {
+  it('restaurar una copia descarta el `savedSig` que traiga: lo que entra se ve pendiente y se guarda', async () => {
     const t = await phone('viejo');
     await t.s.createTrainerCodeAccount();
     const id = await t.s.createClient('Ana');
     await t.s.refreshTrainerSlots();
     const backup = JSON.parse(buildBackupJson(t.s));
     expect(backup.clients[id].savedSig).toBeUndefined();                    // la copia no lo lleva
-    backup.clients[id] = { ...backup.clients[id], notes: 'de la copia', savedSig: 'viejo-de-otro-movil' };   // una copia manipulada o de otro móvil
-    t.s.importData(backup, { clients: true }, { silent: true });
+    // Una copia manipulada o de otro móvil, con un cliente que la cuenta nunca conoció.
+    backup.clients.nuevo = { ...backup.clients[id], id: 'nuevo', name: 'Berta', notes: 'de la copia', savedSig: 'viejo-de-otro-movil' };
+    await t.s.restoreBackup(backup, { clients: true });
 
-    expect(t.s.clients[id].savedSig).not.toBe('viejo-de-otro-movil');
-    expect(t.s.pendingSaveCount()).toBe(1);                                  // cambió lo que hay: se guarda
-    await t.s.saveClients();
-    expect((await privateOf(t.s.clients[id].slotId)).card_json.notes).toBe('de la copia');
+    expect(t.s.clients.nuevo.savedSig).not.toBe('viejo-de-otro-movil');
+    await t.s.saveClients();                                                 // el refresco de restaurar ya lo subió; esto no cambia nada
+    expect((await privateOf(t.s.clients.nuevo.slotId)).card_json.notes).toBe('de la copia');
   });
 
   it('un solo recorrido a la vez, y el `savedSig` propio no rearma el guardado (sin bucle)', async () => {
@@ -947,5 +951,226 @@ describe('C10-05 · «Cambios sin enviar» sobrevive a perder el móvil (N-06)',
     expect(n.s.programs[n.s.clients[ana].activeProgramId].name).toBe('Fuerza v2');
     expect(n.s.clients[ana].programDirty).toBe(true);
     expect(n.s.clients[berta].programDirty).toBe(false);
+  });
+});
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('C10-06 · restaurar una copia (§8.1)', () => {
+  const ALL = { program: true, log: true, templates: true, customExercises: true, clients: true };
+  const UPLOAD_PROGRAM = 'rpc:trainer_upload_program';
+  const mark = () => server.calls.length;
+  const sentSince = (since) => server.calls.slice(since).filter((c) => c.key === UPLOAD_PROGRAM).length;
+  const copyOf = (p) => JSON.parse(JSON.stringify(buildBackupPayload(p.s)));
+  // Sin `updatedAt`: el refresco de después de restaurar vuelve a copiar la hora del servidor en `progress`.
+  const snapshot = (p) => JSON.stringify([p.s.clients, p.s.programs, p.s.sessionTemplates, p.s.clientLogs, p.s.profile.freeClientIds], (k, v) => (k === 'updatedAt' ? undefined : v));
+  const ownedPrograms = (p, id) => Object.values(p.s.programs).filter((x) => x.owner === id);
+
+  /** Un cliente sin app con programa, sesiones y entrenos apuntados (sin cuenta o con ella). */
+  async function withContent(p, name) {
+    const id = await p.s.createClient(name);
+    const pid = p.s.createProgramForClient(id, 2, `Programa ${name}`, null, { openEditor: false });
+    p.s.setClientActiveProgram(id, pid);
+    addLog(p, id, `log-${name}`);
+    return { id, pid };
+  }
+
+  it('la copia no lleva ningún campo de estado ni `freeClientIds` (§8.1)', () => {
+    const everything = {
+      slotId: 'sl', slotOwner: 'u', code: 'AAAA', seated: true, leftAt: null, savedSig: 'x', programDirty: true, overridesDirty: true,
+      programUploadedSig: 's', programUploadedAt: 1, remoteSessionsCount: 3, sendPending: { program: true },
+      syncSlotId: 'sl', syncCode: 'AAAA', syncLinked: true, syncOrphan: false, syncLeftAt: null, syncPending: false,
+    };
+    const payload = buildBackupPayload({ clients: { a: { id: 'a', name: 'Ana', notes: 'n', ...everything } }, profile: { isPro: false, freeClientIds: ['a'], language: 'es' } });
+    expect(payload.clients.a).toEqual({ id: 'a', name: 'Ana', notes: 'n' });
+    expect(payload.profile).toEqual({ isPro: false, language: 'es' });
+  });
+
+  it('E73: una copia de la versión anterior (banderas `sync*` y `programDirty`) no envía nada ni deja ninguna ficha con hueco', async () => {
+    const { t, ana } = await trainerWithClients();
+    const old = copyOf(t);
+    old.clients[ana] = { ...old.clients[ana], syncSlotId: 'hueco-viejo', syncCode: 'AAAA-AAAA-AAAA', syncLinked: true, programDirty: true, overridesDirty: true, sendPending: { program: true } };
+
+    // Sin cuenta (móvil nuevo): entra todo `local`, sin una sola bandera.
+    const n = await phone('nuevo');
+    const before = mark();
+    await n.s.restoreBackup(old, ALL);
+    await n.s.retrySendQueue();
+    expect(idsOf(n)).toEqual(idsOf(t));
+    for (const c of Object.values(n.s.clients)) {
+      assertFacts(c);
+      expect(linkOf(c, n.s.trainerSync.userId)).toBe('local');
+      expect(c).not.toHaveProperty('syncSlotId');
+      expect(c.programDirty).toBeUndefined();
+      expect(c.sendPending).toBeUndefined();
+    }
+    expect(sentSince(before)).toBe(0);
+
+    // Con cuenta (la recuperada): ya los conoce, no se toca ninguno y nada sale.
+    const r = await phone('recuperado');
+    await r.s.recoverTrainerAccount(t.s.trainerSync.code);
+    const sentBefore = mark();
+    await r.s.restoreBackup(old, ALL);
+    await r.s.retrySendQueue();
+    expect(r.s.clients[ana].programDirty).toBeFalsy();
+    expect(r.s.clients[ana].sendPending).toBeUndefined();
+    expect(sentSince(sentBefore)).toBe(0);
+  });
+
+  it('E78: recuperar la cuenta y restaurar la copia del móvil viejo deja una sola ficha por hueco', async () => {
+    const { t, ana, berta } = await trainerWithClients();
+    const backup = copyOf(t);
+    const n = await phone('movil-nuevo');
+    await n.s.recoverTrainerAccount(t.s.trainerSync.code);
+    const res = await n.s.restoreBackup(backup, ALL);
+
+    expect(res).toMatchObject({ added: 0, kept: 2, account: true });
+    expect(idsOf(n)).toEqual([ana, berta].sort());
+    for (const slot of await slots()) expect(Object.values(n.s.clients).filter((c) => c.slotId === slot.id)).toHaveLength(1);
+  });
+
+  it('E79 / A2: con cuenta, un cliente borrado después de la copia no vuelve, ni su historial (N-04, N-13)', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const ana = await withContent(t, 'Ana');
+    const berta = await withContent(t, 'Berta');
+    await t.s.refreshTrainerSlots();
+    const backup = copyOf(t);
+
+    await t.s.deleteClient(ana.id);                                   // sin querer
+    expect(t.s.clients[ana.id]).toBeUndefined();
+    const res = await t.s.restoreBackup(backup, ALL);
+
+    expect(t.s.clients[ana.id]).toBeUndefined();
+    expect(t.s.clientLogs[ana.id]).toBeUndefined();
+    expect(ownedPrograms(t, ana.id)).toHaveLength(0);
+    expect(res).toMatchObject({ added: 0, kept: 2 });                  // los dos estaban en la cuenta (uno, borrado)
+    await t.s.refreshTrainerSlots();                                   // abrir Clientes
+    expect(t.s.clients[ana.id]).toBeUndefined();
+    expect(t.s.clients[berta.id].name).toBe('Berta');
+  });
+
+  it('con cuenta, un cliente que la cuenta nunca conoció entra `local` con su programa y su historial, y el refresco lo sube', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    await withContent(t, 'Ana');
+    const o = await phone('otro-movil-sin-cuenta');
+    const carla = await withContent(o, 'Carla');
+    const res = await t.s.restoreBackup(copyOf(o), ALL);
+
+    expect(res).toMatchObject({ added: 1, kept: 0, account: true });
+    const c = t.s.clients[carla.id];
+    expect(c.name).toBe('Carla');
+    expect(ownedPrograms(t, carla.id)).toHaveLength(1);
+    expect(t.s.clientLogs[carla.id].map((e) => e.id)).toEqual(['log-Carla']);
+    // restoreBackup acaba con el refresco, que sube lo añadido (§5)
+    expect(linkNow(t, carla.id)).toBe('none');
+    const slot = await slotOf(c.slotId);
+    expect(slot.local_id).toBe(carla.id);
+    expect(historyIds(slot)).toEqual(['log-Carla']);
+  });
+
+  it('con cuenta, una copia cuyos clientes están todos en la cuenta no cambia nada de ninguno, aunque traiga otra nota', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const ana = await withContent(t, 'Ana');
+    await t.s.refreshTrainerSlots();
+    const backup = copyOf(t);
+    backup.clients[ana.id] = { ...backup.clients[ana.id], notes: 'nota de la copia', name: 'Ana (copia)' };
+    backup.clientLogs[ana.id] = [...backup.clientLogs[ana.id], { id: 'log-de-la-copia', sessionTemplateId: 'x', timestamp: 1, date: '2026-01-01', exercises: [] }];
+    t.s.updateClientInfo(ana.id, { notes: 'nota de ahora' });
+    await t.s.saveClients();                          // lo de ahora, ya guardado: lo que cambie después no será del guardado
+    const before = snapshot(t);
+
+    const res = await t.s.restoreBackup(backup, ALL);
+    expect(res).toMatchObject({ added: 0, kept: 1 });
+    expect(snapshot(t)).toBe(before);
+    expect(t.s.clients[ana.id].notes).toBe('nota de ahora');
+  });
+
+  it('sin cuenta, la parte de clientes reemplaza a los del móvil, con sus programas, sesiones e historial', async () => {
+    const p = await phone('sin-cuenta');
+    const x = await withContent(p, 'Xenia');
+    p.store.setState((st) => ({ profile: { ...st.profile, freeClientIds: [x.id] } }));
+    const q = await phone('de-la-copia');
+    const y = await withContent(q, 'Yago');
+    const sessionsOfX = [...programTemplateIds(p.s.programs[x.pid])];
+    expect(sessionsOfX.length).toBeGreaterThan(0);
+
+    const res = await p.s.restoreBackup(copyOf(q), { clients: true });
+
+    expect(res).toMatchObject({ added: 1, kept: 0, replaced: 1, account: false });
+    expect(idsOf(p)).toEqual([y.id]);
+    expect(linkNow(p, y.id)).toBe('local');
+    expect(ownedPrograms(p, x.id)).toHaveLength(0);
+    expect(ownedPrograms(p, y.id)).toHaveLength(1);
+    expect(p.s.clientLogs[x.id]).toBeUndefined();
+    expect(p.s.clientLogs[y.id].map((e) => e.id)).toEqual(['log-Yago']);
+    sessionsOfX.forEach((id) => expect(p.s.sessionTemplates[id]).toBeUndefined());
+    expect(p.s.profile.freeClientIds).toEqual([]);
+  });
+
+  it('restaurar dos veces la misma copia no cambia nada (sin cuenta y con cuenta)', async () => {
+    const q = await phone('de-la-copia');
+    await withContent(q, 'Yago');
+    await withContent(q, 'Zoe');
+    const backup = copyOf(q);
+
+    const p = await phone('sin-cuenta');
+    await p.s.restoreBackup(backup, ALL);
+    const once = snapshot(p);
+    await p.s.restoreBackup(backup, ALL);
+    expect(snapshot(p)).toBe(once);
+
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const first = await t.s.restoreBackup(backup, ALL);
+    expect(first).toMatchObject({ added: 2, kept: 0 });
+    const twice = snapshot(t);
+    const second = await t.s.restoreBackup(backup, ALL);
+    expect(second).toMatchObject({ added: 0, kept: 2 });
+    expect(snapshot(t)).toBe(twice);
+  });
+
+  it('N-05: el cliente conectado que restaura una copia vieja vuelve a tener el programa de su hueco', async () => {
+    const { t, c, berta } = await trainerWithClients();
+    const progId = t.s.clients[berta].activeProgramId;
+    await c.s.checkAndPullProgramUpdates();                       // el programa de Berta, tal y como lo mandó
+    c.s.applyPendingProgramUpdate();
+    expect(c.s.programs[progId].name).toBe('Fuerza Berta');
+    const old = copyOf(c);                                        // copia de entonces
+
+    t.s.renameProgram(progId, 'Fuerza Berta v2');
+    await t.s.uploadProgramToClient(berta, progId);
+    await c.s.checkAndPullProgramUpdates();
+    c.s.applyPendingProgramUpdate();
+    expect(c.s.programs[progId].name).toBe('Fuerza Berta v2');
+    // Con la copia vieja encima (como entra por la hoja), el programa local parece el de antes.
+    await c.s.restoreBackup(old, { program: true, log: true });
+    expect(c.s.programs[progId].name).toBe('Fuerza Berta v2');    // no el de la copia
+  });
+
+  it('con cuenta y sin red: CLIENTS_NEED_NETWORK y no se restaura nada; sin la parte de clientes sí se restaura', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const ana = await withContent(t, 'Ana');
+    await t.s.refreshTrainerSlots();
+    const backup = copyOf(t);
+    t.s.updateClientInfo(ana.id, { notes: 'nota de ahora' });
+    backup.clients.nuevo = { id: 'nuevo', name: 'Berta' };
+    backup.workoutLog = [{ id: 'w1', sessionTemplateId: 'x', timestamp: 1, date: '2026-01-01', exercises: [] }];
+    const before = snapshot(t);
+
+    t.device.offline = true;
+    await expect(t.s.restoreBackup(backup, ALL)).rejects.toMatchObject({ code: 'CLIENTS_NEED_NETWORK', message: 'Necesitas conexión para restaurar clientes' });
+    expect(snapshot(t)).toBe(before);
+    expect(t.s.workoutLog).toHaveLength(0);
+
+    // El resto de partes se restaura igual (la casilla de clientes está apagada en la hoja).
+    await t.s.restoreBackup(backup, { log: true });
+    expect(t.s.workoutLog.map((e) => e.id)).toContain('w1');
+    expect(snapshot(t)).toBe(before);
+    t.device.offline = false;
   });
 });
