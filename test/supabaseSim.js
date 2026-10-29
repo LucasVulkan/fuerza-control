@@ -345,6 +345,7 @@ class Query {
   update(values) { this.op = 'update'; this.values = values; return this; }
   delete() { this.op = 'delete'; return this; }
   eq(col, val) { this.filters.push([col, val]); return this; }
+  in(col, vals) { this.filters.push([col, vals, 'in']); return this; }
   order(col, { ascending = true } = {}) { this.orderBy = `${ident(col)} ${ascending ? 'asc' : 'desc'}`; return this; }
   single() { this.mode = 'single'; return this; }
   maybeSingle() { this.mode = 'maybe'; return this; }
@@ -357,7 +358,7 @@ class Query {
       ctx.net(`from:${this.table}`);
       const params = [];
       const p = (v) => { params.push(toParam(v)); return `$${params.length}`; };
-      const where = this.filters.length ? ` where ${this.filters.map(([c, v]) => `${ident(c)} = ${p(v)}`).join(' and ')}` : '';
+      const where = this.filters.length ? ` where ${this.filters.map(([c, v, op]) => (op === 'in' ? `${ident(c)} = any(${p(v)})` : `${ident(c)} = ${p(v)}`)).join(' and ')}` : '';
       const ret = this.returning || this.op === 'select' ? selectList(this.cols) : null;
       const t = `public.${ident(this.table)}`;
       let sql;
