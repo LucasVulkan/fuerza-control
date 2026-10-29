@@ -9,7 +9,7 @@
 > Fase C10-04 · hecho · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
 > Fase C10-05 · hecho · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
 > Fase C10-06 · hecho · Restaurar una copia con este modelo · §10.6
-> Fase C10-07 · pendiente · Deshacer al borrar un cliente · §10.7
+> Fase C10-07 · hecho · Deshacer al borrar un cliente · §10.7
 > Fase C10-08 · pendiente · De punta a punta: móvil nuevo, reglas con su test y prueba en dispositivo · §10.8
 >
 > Estado: **aprobada, en implementación** (29-oct-2026; §3.2 cambiada ese día: hechos guardados, estado calculado). Implementa
@@ -673,7 +673,7 @@ real con PGlite, varios móviles), y los de la función pura en
 | C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | hecho 29-oct (926f514) — por probar; tests en `store/account.clients.sim.test.js` (banco) y `store/useStore.test.js` (guardas de solo lectura) |
 | C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | ✅ 132b7a5 (29-oct) — por probar; tests en `src/utils/clientSave.test.js` y `store/account.clients.sim.test.js` |
 | C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | ✅ e2ab95b (29-oct) — por probar; tests en `store/account.clients.sim.test.js` |
-| C10-07 | Deshacer al borrar | C10-01 | 🟢 | N-13, R-B6, R-B10 | pendiente |
+| C10-07 | Deshacer al borrar | C10-01 | 🟢 | N-13, R-B6, R-B10 | ✅ e18e3dd (29-oct) — por probar; tests en `store/account.clients.sim.test.js` |
 | C10-08 | De punta a punta | todas | 🟡 | todas las de arriba | pendiente |
 
 ### 10.1 C10-01 — El estado de la ficha en un solo valor, solo en el móvil
@@ -954,6 +954,9 @@ C10-01, pero de una en una con las demás.
   resucita (R-B6); el otro móvil de la cuenta lo borra también (R-B10).
 - Un refresco durante el toast no recupera al cliente.
 - Cerrar la app durante el toast: al volver, el cliente está (recuperado).
+- Una ficha `local` (sin hueco) y dos borrados seguidos con un solo Deshacer.
+
+**Hecho (29-oct).** `deleteClient(id, { undo: true })` (lo usa `handleDeleteClient`, que conserva su diálogo; el refresco que borra lo de otro móvil llama sin `undo` y no lleva Deshacer). Quita todo como siempre pero **sin apuntar el hueco**, y guarda en un `Map` de módulo (`_undoableDeletes`, una foto por `clientId`, nunca persistido) la ficha, el `clientLogs` y las entradas de `programs` y `sessionTemplates` que el borrado quitó (diferencia antes/después, así Deshacer no pisa lo que se cambie en esos segundos) y el lugar en `freeClientIds`. Saca el toast de P16-07 (5 s, `clients.toastClientDeleted` con el nombre en `<b>`, botón `editor.toastUndo`) y un `setTimeout` propio de la misma duración. `_undoClientDeletion` devuelve la foto y para el temporizador; `_commitClientDeletion` (al vencer) apunta el hueco en `deletedSlotIds` y llama a `_flushDeletedSlots`; una ficha `local` no hace nada. `refreshTrainerSlots` trata como borrados los huecos de las fotos pendientes y salta los huecos cuyo `local_id` es una foto. Cerrar la app durante el toast no lleva código: la foto muere, el servidor no se enteró y el siguiente refresco recupera al cliente. Desvíos: (1) es una opción de `deleteClient`, no una acción aparte; (2) hoy `deleteClient` no quita al cliente de `freeClientIds` (la lista conserva el id), así que Deshacer solo lo reinserta si faltara; (3) la frase de la ayuda («Si cierras la app justo después de borrar, el cliente vuelve») no se ha escrito, está por hacer.
 
 **Probar C10-07**
 
@@ -961,6 +964,8 @@ C10-01, pero de una en una con las demás.
   historial.
 - [ ] Borrar un cliente con app y esperar: su móvil dice que el entrenador lo
   desconectó.
+- [ ] Borrar un cliente y cerrar la app al instante: al abrirla de nuevo, el
+  cliente vuelve tras refrescar Clientes.
 
 ### 10.8 C10-08 — De punta a punta: móvil nuevo, reglas con su test y prueba en dispositivo
 

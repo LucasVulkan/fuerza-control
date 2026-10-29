@@ -12,7 +12,7 @@
 > Fase I04-07 · pendiente · Cada regla de I02 con su test de escenario · §9
 > Fase I04-08 · pendiente · Estado de la ficha como un solo valor · §10
 > Fase I04-09 · pendiente · El programa del cliente conectado se aplica solo · §11
-> Fase I04-10 · pendiente · Deshacer al borrar un cliente · §11
+> Fase I04-10 · aparcado · Deshacer al borrar un cliente: sustituida por C10-07 · §11
 > Fase I04-11 · pendiente · Acciones de cuenta y conexión desactivadas sin red · §11
 > Fase I04-12 · pendiente · «Enviar informe»: errores guardados y nota, a Supabase · §11
 >
@@ -282,7 +282,7 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
 | I04-07 | Reglas de I02 con test | I04-02…06 | 🟡 | pendiente |
 | I04-08 | Estado de la ficha en un valor | I04-07, release | 🔴 | pendiente |
 | I04-09 | Programa del entrenador se aplica solo (N-07) | I04-01 | 🟡 | pendiente |
-| I04-10 | Deshacer al borrar (N-13) | I04-01 | 🟢 | pendiente |
+| I04-10 | Deshacer al borrar (N-13) | I04-01 | 🟢 | sustituida por [C10-07](C10-clientes-de-la-cuenta.md) (hecha 29-oct) |
 | I04-11 | Cuenta y conexión sin red, desactivadas (N-03) | I04-01 | 🟢 | pendiente |
 | I04-12 | «Enviar informe» (N-16) | — | 🟡 | pendiente |
 
