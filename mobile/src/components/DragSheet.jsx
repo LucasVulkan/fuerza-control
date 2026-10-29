@@ -99,11 +99,15 @@ function SheetCard({ style, header, footer, bodyRef, children }) {
  * `onBack`: con él, un «‹» a la izquierda del título (la caja de volver de
  * `ScreenHeader`) para las hojas de dos páginas: vuelve a la primera sin cerrar.
  *
+ * `titleIcon`: un nodo opcional delante del título (p. ej. el cuadro con icono de
+ * la hoja de Progresión). Con él, el cuerpo queda a `sm2` de la cabecera en vez de
+ * a `lg`; sin él la cabecera es la de siempre.
+ *
  * `footer`: contenido FIJO al pie, fuera del scroll y encima de la barra de
  * navegación (el CTA que no puede perderse al desplazar una lista larga). Va
  * en el `bg` de la hoja; sin él la hoja se pinta como siempre.
  */
-export default function DragSheet({ visible, onClose, title, action, doneLabel, onBack, footer, tall, children }) {
+export default function DragSheet({ visible, onClose, title, titleIcon, action, doneLabel, onBack, footer, tall, children }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t }  = useTranslation();
@@ -237,13 +241,14 @@ export default function DragSheet({ visible, onClose, title, action, doneLabel, 
               {/* Sin `title` la hoja va solo con el asa: el menú principal pone su
                   propio bloque de identidad ahí arriba y se cierra arrastrando. */}
               {title != null && (
-                <View style={styles.header}>
-                  <View style={styles.titleRow}>
+                <View style={[styles.header, titleIcon && styles.headerIcon]}>
+                  <View style={[styles.titleRow, titleIcon && styles.titleRowIcon]}>
                     {onBack && (
                       <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={8} activeOpacity={0.7}>
                         <ArrowIcon size={15} color={th.colors.accent} back />
                       </TouchableOpacity>
                     )}
+                    {titleIcon}
                     <Text style={styles.title} numberOfLines={1}>{title}</Text>
                   </View>
                   <TouchableOpacity onPress={action ? action.onPress : close} hitSlop={8}>
@@ -316,7 +321,10 @@ const makeStyles = (th) => StyleSheet.create({
     paddingTop:     spacing.md,
     paddingBottom:  spacing.lg,
   },
+  // Con `titleIcon` la ficha de debajo queda a `sm2` del título (P19-01).
+  headerIcon: { paddingBottom: spacing.sm2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
+  titleRowIcon: { gap: spacing.sm2 },
   // La misma caja que el «volver» de `ScreenHeader`.
   backBtn: {
     width:           32,

@@ -177,6 +177,19 @@ function Bold({ text, style, boldStyle }) {
   );
 }
 
+/** El cuadro con la tendencia que va delante de «Progresión» (`titleIcon` de DragSheet). */
+export function ProgressionTitleIcon() {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.titleIcon}>
+      <Svg width={16} height={16} viewBox="0 0 24 24">
+        <Path d="M3 17l6-6 4 4 8-8M15 7h6v6" {...line(th.colors.accent)} />
+      </Svg>
+    </View>
+  );
+}
+
 export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, minTime, maxTime, onPatch }) {
   const styles = useThemedStyles(makeStyles);
   const th     = useTheme();
@@ -283,7 +296,7 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
     // Lo que se elige abre y cierra bloques: la hoja sigue su alto.
     <AnimatedHeight>
       <View style={styles.body}>
-        <View>
+        <View style={styles.exercise}>
           {name ? <Text style={styles.name}>{name}</Text> : null}
           {meta ? <Text style={styles.meta}>{meta}</Text> : null}
         </View>
@@ -469,8 +482,17 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
 
 const makeStyles = (th) => StyleSheet.create({
   body: { gap: spacing.xl, paddingBottom: spacing.sm },
+  titleIcon: {
+    width: 28, height: 28, borderRadius: th.radius.sm, backgroundColor: th.tint.accent10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // La ficha del ejercicio: tarjeta `surface` con su nombre y su volumen debajo.
+  exercise: {
+    backgroundColor: th.colors.surface, borderRadius: th.radius.md,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: spacing.xs2,
+  },
   name: { ...textStyles.bodyStrong, color: th.colors.text },
-  meta: { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs, fontVariant: ['tabular-nums'] },
+  meta: { ...textStyles.label, color: th.colors.mutedLight, fontVariant: ['tabular-nums'] },
   // Misma tipografía que las etiquetas de sección del editor (`secLabel`).
   caps: { ...textStyles.caps, color: th.colors.mutedLight, marginBottom: spacing.sm2 },
   hint: { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm, lineHeight: lh(textStyles.label.fontSize, LINE.row) },

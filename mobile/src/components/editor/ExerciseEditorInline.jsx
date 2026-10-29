@@ -49,7 +49,7 @@ import StepField from '../ui/StepField';
 import { OptionRow, ToggleRow, NavRow, NoteRow, CHEVRON_GREY } from '../ui/EditorRows';
 import { GRID } from '../workout/grid';
 import DragSheet from '../DragSheet';
-import ProgressionSheet from './ProgressionSheet';
+import ProgressionSheet, { ProgressionTitleIcon } from './ProgressionSheet';
 
 // ─── WarmupStepRow ────────────────────────────────────────────────────────────
 
@@ -881,6 +881,7 @@ export default function ExerciseEditorInline({
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title={t('exerciseEditor.sectionProgression')}
+        titleIcon={<ProgressionTitleIcon />}
         // Alto fijo: elegir «Qué sube» abre y cierra bloques y la hoja no debe saltar.
         tall
         doneLabel={t('common.accept')}
