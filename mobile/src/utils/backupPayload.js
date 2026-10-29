@@ -39,10 +39,12 @@ export function buildBackupPayload(state = {}) {
     sessionTemplates: state.sessionTemplates,
     customExercises:  state.customExercises,
     blockPresets:     state.blockPresets ?? [],
-    // Sin `sendPending` (la cola de envíos, N-06): es de este móvil y de esta cuenta.
+    // Sin `sendPending` (la cola de envíos, N-06) ni `savedSig` (lo guardado en la cuenta, C10-05):
+    // son de este móvil y de esta cuenta.
     clients:          Object.fromEntries(Object.entries(state.clients ?? {}).map(([id, c]) => {
       const copy = { ...c };
       delete copy.sendPending;
+      delete copy.savedSig;
       return [id, copy];
     })),
     // Los clientes guardan IDs de etiqueta (`tag_a1b2c3d4`); el nombre vive sólo

@@ -162,6 +162,9 @@ export default function AccountScreen() {
   const hasRemoteAccount = useStore((s) => s.hasRemoteAccount());
   // Fichas que aún no están en la cuenta (C10-04 §5): se actualiza sola al subirlas.
   const localCount       = useStore((s) => s.localClientCount());
+  // Fichas con cambios sin guardar en la cuenta (C10-05); se dice solo si no hay red o el último intento falló.
+  const unsavedCount     = useStore((s) => s.pendingSaveCount());
+  const saveStuck        = useStore((s) => s.ui.online === false || s.ui.saveFailed);
 
   const mode       = trainerSync?.mode ?? null;
   const hasAccount = !!mode && mode !== 'offline';
@@ -323,6 +326,9 @@ export default function AccountScreen() {
         {/* Dentro de la misma tarjeta: es el estado de esta cuenta, no otra cosa. */}
         {needsLogin && mode !== 'code' && <TrainerRelogin />}
         {localCount > 0 && <Explain>{t('account.localClients', { count: localCount })}</Explain>}
+        {unsavedCount > 0 && saveStuck
+          ? <Explain>{t('account.clientsUnsaved', { count: unsavedCount })}</Explain>
+          : localCount === 0 && <Explain>{t('account.clientsSaved')}</Explain>}
       </View>
 
       <NameField />

@@ -7,7 +7,7 @@
 > Fase C10-02 · hecho · Servidor: hueco sin código, tabla privada, ids que no se pierden · §10.2
 > Fase C10-03 · hecho · Un id para siempre: recuperar usa el de la ficha · §10.3
 > Fase C10-04 · hecho · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
-> Fase C10-05 · pendiente · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
+> Fase C10-05 · hecho · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
 > Fase C10-06 · pendiente · Restaurar una copia con este modelo · §10.6
 > Fase C10-07 · pendiente · Deshacer al borrar un cliente · §10.7
 > Fase C10-08 · pendiente · De punta a punta: móvil nuevo, reglas con su test y prueba en dispositivo · §10.8
@@ -206,7 +206,12 @@ solo con `code`; `leftAt` solo sin `seated`.
   `history_json` del hueco con `trainer_upload_log`, que ya suma y respeta lo
   borrado. Es donde lo encuentra el cliente si un día entra (R-C6).
 
-Nada de esto contiene el estado de conexión, el envío ni `savedSig`.
+Nada de esto contiene el estado de conexión, la cola de envíos ni `savedSig`.
+La ficha sí lleva `programDirty` y `overridesDirty` (añadido al implementar
+C10-05, 29-oct-2026): sin ellas, un programa editado y sin enviar en el móvil
+perdido llegaría al nuevo como si ya estuviera enviado (N-06). Va la marca y no
+la firma de lo enviado porque el servidor guarda `jsonb`, que reordena las
+claves, y la firma del programa recuperado nunca casaría.
 
 ## 3. Estados (N-15)
 
@@ -666,7 +671,7 @@ real con PGlite, varios móviles), y los de la función pura en
 | C10-02 | Servidor | C10-01 | 🟡 | N-17, R-A1…A3, R-A9, R-D1 | hecho 29-oct (0d52c5c) — por probar; tests en `store/server.private.sim.test.js` y `store/server.compat.sim.test.js` |
 | C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | hecho 29-oct (2eee3c1) — por probar; tests en `store/account.clients.sim.test.js` |
 | C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | hecho 29-oct (926f514) — por probar; tests en `store/account.clients.sim.test.js` (banco) y `store/useStore.test.js` (guardas de solo lectura) |
-| C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | pendiente |
+| C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | ✅ 132b7a5 (29-oct) — por probar; tests en `src/utils/clientSave.test.js` y `store/account.clients.sim.test.js` |
 | C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | pendiente |
 | C10-07 | Deshacer al borrar | C10-01 | 🟢 | N-13, R-B6, R-B10 | pendiente |
 | C10-08 | De punta a punta | todas | 🟡 | todas las de arriba | pendiente |
@@ -891,6 +896,8 @@ con su `savedSig`. La línea de Mi cuenta.
 - Salir de la cuenta con cambios sin guardar y volver: se guardan al volver.
 - Un congelado no se guarda ni se envía (R-E2, N-12).
 - Recuperar no vuelve a subir nada (la firma coincide).
+
+**Hecho (29-oct).** `src/utils/clientSave.js`: `buildClientCard`, `buildClientPrograms`, `saveSig` (JSON con claves ordenadas, `programSignature`; los entrenos apuntados cuentan solo mientras nadie esté dentro, porque con alguien dentro no se suben), y `applyClientCard` / `applyClientPrograms` (los programas vuelven con su id; si ya existe en el móvil gana el del móvil). Store: `saveClients()` (un recorrido a la vez, `trainer_save_client` y, sin nadie dentro, `_pushTrainerLog`, que es lo que antes llevaba `_uploadClient` por dentro) y `pendingSaveCount()`; `savedSig` = la firma de lo que se subió, calculada antes. Disparadores: suscriptor con 5 s de espera (el `savedSig` propio lleva una marca y no lo rearma; un recorrido sin nada pendiente no escribe nada, así que no hay bucle), arranque, primer plano y vuelta de la red en `App.js`, y fin de cada refresco. Los reintentos son los de la cola de envíos (`_syncRetryTimer` ahora también mira lo pendiente de guardar). Recuperar (§8.2): las filas privadas de los recuperados y de los que quedaron a medias, en una consulta; con fila, ficha + programas + historial del hueco y `savedSig` de lo bajado; sin fila, como antes. Mi cuenta dice «guardados» o, sin red o tras un fallo, cuántos faltan. Las copias de Drive no llevan `savedSig` y al restaurar se descarta. Desvíos y matices: (1) una ficha con `programMissing` (recuperada a medias) **no se guarda**, para no pisar la buena con una ficha vacía; por eso `programMissing` también se reintenta si ya tiene programa; (2) `_uploadClient` pone `savedSig` a null al darle hueco, así el primer guardado de la cuenta nueva sube la ficha; (3) la ficha recuperada manda su `activeProgramId` guardado, salvo que el entrenador ya hubiera asignado otro; (4) el programa recuperado se marca como ya enviado (como antes), así que unas ediciones sin enviar de antes de perder el móvil no salen como «Cambios sin enviar»; (5) `customExercises` también dispara el suscriptor, porque entra en la firma; (6) el helper `newClient` del banco ahora asigna el programa (crear no asigna, y la ficha guardada lo recuerda).
 
 **Probar C10-05**
 

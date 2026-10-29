@@ -173,7 +173,11 @@ export default function App() {
   // U15-01: conexión en el store y cola del entrenador. null cuenta como online
   // (aún no se sabe) para no dar falsos «sin conexión». Un solo listener.
   useEffect(() => {
-    const flush = () => useStore.getState().retrySendQueue().catch(() => {});
+    // La cola de envíos y lo pendiente de guardar en la cuenta (C10-05): los dos salen al volver la red.
+    const flush = () => {
+      useStore.getState().retrySendQueue().catch(() => {});
+      useStore.getState().saveClients().catch(() => {});
+    };
     const unsub = NetInfo.addEventListener((st) => {
       const online = st.isConnected !== false;
       const was = useStore.getState().ui.online;
@@ -197,7 +201,9 @@ export default function App() {
   const hasHydrated = useStore((s) => s._hasHydrated);
   // U15-01 / I04-03: lo que quedó en cola al cerrar la app sale al arrancar (arrancar no es un «change» de AppState).
   useEffect(() => {
-    if (hasHydrated) useStore.getState().retrySendQueue().catch(() => {});
+    if (!hasHydrated) return;
+    useStore.getState().retrySendQueue().catch(() => {});
+    useStore.getState().saveClients().catch(() => {});   // C10-05: lo que quedó sin guardar al cerrar la app
   }, [hasHydrated]);
   useEffect(() => {
     if (!hasHydrated) return;
