@@ -13,12 +13,12 @@
  * metric, range }; el resto son los valores de Volumen que se recuerdan bajo el
  * nombre (series y reps no se tocan aquí: siguen en Volumen).
  */
-import { useState, useEffect, startTransition } from 'react';
+import { useState, useEffect, useId, startTransition } from 'react';
 import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor,
 } from 'react-native-reanimated';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { MAX_RELIABLE_REPS } from '../../utils/oneRm';
@@ -33,16 +33,27 @@ import SegmentedControl from '../ui/SegmentedControl';
 import StepField from '../ui/StepField';
 import AnimatedHeight from '../ui/AnimatedHeight';
 
-// Los iconos de las tarjetas de «Qué sube» (24×24): un solo trazo, sin rellenos,
-// y cada uno centrado en su caja (el dibujo ocupa lo mismo a cada lado del 12).
+// Los iconos de las tarjetas de «Qué sube»: un solo trazo, sin rellenos, cada uno
+// centrado en su caja de 24×24 (el dibujo ocupa lo mismo a cada lado del 12).
+// Peso y Esfuerzo son la excepción (P19-04): los dibujó el usuario, son de relleno
+// y llevan su propia caja (`TILE_BOX`) recortada para que pesen como los demás.
+// `draw(color, gradId)`: el id del degradado de Esfuerzo es único por cara (cada
+// botón pinta la cara apagada y la elegida a la vez, cada una con su color).
 const SW = 2;
 const line = (c, extra) => ({ stroke: c, strokeWidth: SW, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none', ...extra });
+const TILE_BOX = {
+  weight: { w: 32, vb: '0 7 54 40' },     // mockups/iconos/peso.svg
+  effort: { w: 43, vb: '1 11.5 52 29' },  // mockups/iconos/esfuerzo.svg
+};
+const DEFAULT_BOX = { w: 24, vb: '0 0 24 24' };
 const TILE_ICON = {
-  // Mancuerna: barra, un disco y un tope por lado.
+  // Mancuerna: la barra, un disco y un tope por lado.
   weight: (c) => (<>
-    <Path d="M7 12h10M2.5 10v4M21.5 10v4" {...line(c)} />
-    <Rect x={4.5} y={7} width={2.5} height={10} rx={1} {...line(c)} />
-    <Rect x={17} y={7} width={2.5} height={10} rx={1} {...line(c)} />
+    <Path d="M17.5625 25.375H35.4375V28.625H17.5625V25.375Z" fill={c} />
+    <Rect x={37.0625} y={14} width={6.5} height={26} rx={1.625} fill={c} />
+    <Rect x={45.1875} y={20.5} width={4.875} height={13} rx={1.625} fill={c} />
+    <Rect x={2.9375} y={20.5} width={4.875} height={13} rx={1.625} fill={c} />
+    <Rect x={9.4375} y={14} width={6.5} height={26} rx={1.625} fill={c} />
   </>),
   // Ayuda: la barra de dominadas y la flecha que baja la ayuda.
   assist: (c) => <Path d="M4 5h16M12 8.5v11M7.5 15l4.5 4.5 4.5-4.5" {...line(c)} />,
@@ -59,10 +70,18 @@ const TILE_ICON = {
     <Circle cx={12} cy={13.2} r={7.3} {...line(c)} />
     <Path d="M10 3h4M12 3v2.8M12 9.5v3.9l2.6 1.7" {...line(c)} />
   </>),
-  // Esfuerzo: un cuentarrevoluciones con la aguja.
-  effort: (c) => (<>
-    <Path d="M4 15.5a8 8 0 0 1 16 0M12 15.5l4.3-4.8" {...line(c)} />
-    <Circle cx={12} cy={15.5} r={1.8} fill={c} />
+  // Esfuerzo: un cuentarrevoluciones. El «1» a medio tono, las letras llenas y el
+  // arco con degradado de lleno a medio tono.
+  effort: (c, gradId) => (<>
+    <Path d="M18.8289 28.0218L17.3267 37.0703H15.1441L16.3105 30.063H16.2575L14.0263 31.3001L14.3356 29.4091L16.8009 28.0218H18.8289Z" fill={c} fillOpacity={0.5} />
+    <Path d="M19.3447 37.0703L20.8469 28.0218H24.5848C25.2622 28.0218 25.8277 28.144 26.2814 28.3885C26.735 28.63 27.0575 28.9776 27.2489 29.4312C27.4404 29.8818 27.4846 30.4165 27.3815 31.035C27.2813 31.6595 27.0575 32.1911 26.7099 32.63C26.3653 33.0659 25.9205 33.3988 25.3756 33.6285C24.8336 33.8583 24.218 33.9731 23.5288 33.9731H21.165L21.4566 32.25H23.4139C23.7409 32.25 24.0236 32.2073 24.2622 32.1219C24.5008 32.0335 24.6908 31.901 24.8322 31.7243C24.9765 31.5446 25.0722 31.3148 25.1194 31.035C25.1635 30.7552 25.1429 30.524 25.0575 30.3413C24.975 30.1558 24.8292 30.0173 24.6201 29.926C24.4139 29.8318 24.1488 29.7846 23.8248 29.7846H22.7468L21.5318 37.0703H19.3447ZM25.1238 32.9348L26.6922 37.0703H24.3064L22.7865 32.9348H25.1238ZM29.1819 28.0218H31.8903L33.26 33.6241H33.366L36.5913 28.0218H39.2997L37.7975 37.0703H35.6679L36.5913 31.5122H36.5162L33.4323 37.0129H32.0759L30.8211 31.4812H30.746L29.8093 37.0703H27.6797L29.1819 28.0218Z" fill={c} />
+    <Path d="M26.1045 13.4062C29.3486 13.2771 32.5644 13.8851 35.5625 15.083L33.5898 18.374C31.2438 17.394 28.7105 16.8402 26.1045 16.8281C15.9611 16.384 6.064 24.3311 4.36621 34.6895C4.16188 35.8226 4.04639 36.9751 4.02051 38.1348C4.01507 38.3767 3.91197 38.6092 3.7373 38.7803C3.56225 38.9515 3.32905 39.0478 3.08691 39.0479C2.84479 39.0479 2.61159 38.9514 2.43652 38.7803C2.26186 38.6092 2.15876 38.3767 2.15332 38.1348C2.12736 36.8794 2.19861 35.6218 2.36816 34.376C3.71232 23.0058 14.2979 13.4282 26.1045 13.4062ZM50.374 30.6748C50.7438 31.8043 51.031 32.9675 51.2227 34.1582C51.4196 35.2695 51.5404 36.3954 51.5889 37.5264L46.6367 37.5166C46.632 36.6434 46.5746 35.7719 46.46 34.9072C46.3502 33.9459 46.1616 32.9988 45.9033 32.0723L50.374 30.6748ZM37.4111 15.9092C42.6323 18.5002 47.0155 22.9099 49.4482 28.291L45.0557 29.6631C43.2072 25.3445 39.8083 21.6555 35.625 19.3555L37.4111 15.9092Z" fill={`url(#${gradId})`} />
+    <Defs>
+      <LinearGradient id={gradId} x1="44.215" y1="18.8489" x2="21.1664" y2="26.3368" gradientUnits="userSpaceOnUse">
+        <Stop stopColor={c} />
+        <Stop offset="0.5" stopColor={c} stopOpacity={0.5} />
+      </LinearGradient>
+    </Defs>
   </>),
   // Nada: una raya.
   none: (c) => <Path d="M6 12h12" {...line(c, { strokeWidth: 2.4 })} />,
@@ -165,6 +184,8 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   const { label: weightLabel } = useWeightUnit();
   const [advOpen, setAdvOpen]       = useState(false);
   const [effortWhy, setEffortWhy]   = useState(false);
+  // Id del degradado del icono de Esfuerzo (sin los «:» de useId, que url(#…) no admite en web).
+  const gradUid = `eff${useId().replace(/:/g, '')}`;
   const { def, sets } = ctx;
   const isTime    = ctx.metric === 'time';
   const repsFixed = !ctx.range;
@@ -284,8 +305,11 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
                   a11yLabel={t(`exerciseEditor.sheet.tiles.${icon}`)}
                   face={(on) => (
                     <>
-                      <Svg width={24} height={24} viewBox="0 0 24 24">
-                        {TILE_ICON[icon](on ? th.colors.onAccent : id === 'none' ? th.colors.mutedLight : th.colors.accent)}
+                      <Svg width={(TILE_BOX[icon] ?? DEFAULT_BOX).w} height={24} viewBox={(TILE_BOX[icon] ?? DEFAULT_BOX).vb}>
+                        {TILE_ICON[icon](
+                          on ? th.colors.onAccent : id === 'none' ? th.colors.mutedLight : th.colors.accent,
+                          `${gradUid}-${on ? 'on' : 'off'}`,
+                        )}
                       </Svg>
                       <Text style={[styles.tileText, on && styles.tileTextOn]} numberOfLines={1}>
                         {t(`exerciseEditor.sheet.tiles.${icon}`)}
