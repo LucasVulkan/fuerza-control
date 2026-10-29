@@ -13,9 +13,11 @@
  * recuperan con ella en un móvil nuevo; el cliente no lee lo privado y guardar no es enviar (N-06).
  *
  * C10-06: restaurar una copia trae contenido, nunca estado; con cuenta solo añade lo que la cuenta no conoció.
+ *
+ * C10-07: borrar un cliente se puede deshacer 5 s; el servidor solo se entera al irse el aviso.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { linkOf, assertFacts, NO_SLOT } from '../src/utils/clientLink';
 import { buildBackupPayload } from '../src/utils/backupPayload';
 import { programTemplateIds } from '../src/utils/clientLogs';
@@ -1172,5 +1174,132 @@ describe('C10-06 · restaurar una copia (§8.1)', () => {
     expect(t.s.workoutLog.map((e) => e.id)).toContain('w1');
     expect(snapshot(t)).toBe(before);
     t.device.offline = false;
+  });
+});
+
+describe('C10-07 · deshacer al borrar un cliente (§8.3)', () => {
+  const DELETE_SLOT = 'rpc:trainer_delete_slot';
+  const deletes = (since) => server.calls.slice(since).filter((c) => c.key === DELETE_SLOT).length;
+  const until = async (cond) => { for (let i = 0; i < 5000 && !(await cond()); i++) await new Promise((r) => globalThis.setImmediate(r)); };
+  const settle = async () => { for (let i = 0; i < 300; i++) await new Promise((r) => globalThis.setImmediate(r)); };
+  // Solo los temporizadores: el banco (PGlite) necesita el resto reales.
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }); });
+  afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
+  const state = (p) => JSON.parse(JSON.stringify([p.s.clients, p.s.programs, p.s.sessionTemplates, p.s.clientLogs, p.s.profile.freeClientIds]));
+  const gone = async (slotId) => !(await slots()).some((r) => r.id === slotId);
+
+  it('borrar y deshacer devuelve la ficha, programas, sesiones, historial y su sitio en `freeClientIds`, y el servidor no se entera', async () => {
+    const { t, ana } = await trainerWithClients();
+    addLog(t, ana);
+    t.store.setState((s) => ({ profile: { ...s.profile, freeClientIds: [ana, 'otro'] } }));
+    const slotId = t.s.clients[ana].slotId;
+    const antes = state(t);
+    const mark = server.calls.length;
+
+    t.s.deleteClient(ana, { undo: true });
+    expect(t.s.clients[ana]).toBeUndefined();
+    expect(t.s.clientLogs[ana]).toBeUndefined();
+    expect(Object.values(t.s.programs).filter((p) => p.owner === ana)).toHaveLength(0);
+    expect(t.s.ui.toast).toMatchObject({ msg: '<b>Ana</b> eliminado', duration: 5000 });
+
+    t.s.ui.toast.action.onPress();
+    expect(state(t)).toEqual(antes);
+    vi.advanceTimersByTime(6000);
+    await settle();                                                   // si algo saliera, saldría ya
+    expect(deletes(mark)).toBe(0);
+    expect(t.s.trainerSync.deletedSlotIds).toEqual([]);
+    expect(await slotOf(slotId)).toBeTruthy();
+  });
+
+  it('borrar y dejar pasar el toast: el hueco se borra, no resucita (R-B6) y el otro móvil lo borra al refrescar (R-B10)', async () => {
+    const { t, ana, berta } = await trainerWithClients();
+    const m2 = await phone('movil-2');
+    await m2.s.recoverTrainerAccount(t.s.trainerSync.code);
+    expect(m2.s.clients[ana]).toBeTruthy();
+    const slotId = t.s.clients[ana].slotId;
+
+    t.s.deleteClient(ana, { undo: true });
+    expect(t.s.trainerSync.deletedSlotIds).toEqual([]);              // aún no
+    expect(await slotOf(slotId)).toBeTruthy();
+    vi.advanceTimersByTime(5000);
+    await until(() => gone(slotId));
+    expect(await gone(slotId)).toBe(true);
+    expect(t.s.trainerSync.deletedSlotIds).toEqual([]);
+
+    await t.s.refreshTrainerSlots();
+    expect(t.s.clients[ana]).toBeUndefined();
+    expect(t.s.clients[berta]).toBeTruthy();
+    await m2.s.refreshTrainerSlots();
+    expect(m2.s.clients[ana]).toBeUndefined();
+    expect(m2.s.clients[berta]).toBeTruthy();
+  });
+
+  it('un refresco durante el toast no recupera al cliente, y Deshacer sigue valiendo después', async () => {
+    const { t, ana } = await trainerWithClients();
+    const antes = state(t);
+    t.s.deleteClient(ana, { undo: true });
+    await t.s.refreshTrainerSlots();
+    expect(t.s.clients[ana]).toBeUndefined();
+    expect(Object.keys(t.s.clients).filter((id) => t.s.clients[id].name === 'Ana')).toHaveLength(0);
+    t.s.ui.toast.action.onPress();
+    // El refresco puede haber tocado `progress` de las demás; el cliente vuelve igual que estaba.
+    expect(state(t)[0][ana]).toEqual(antes[0][ana]);
+    expect(state(t)[3]).toEqual(antes[3]);
+  });
+
+  it('cerrar la app durante el toast: el servidor no se enteró y al volver el cliente está recuperado', async () => {
+    const { t, ana } = await trainerWithClients();
+    const code = t.s.trainerSync.code;
+    const mark = server.calls.length;
+    t.s.deleteClient(ana, { undo: true });
+    vi.clearAllTimers();                                              // la app se cierra: el temporizador muere con ella
+    expect(deletes(mark)).toBe(0);
+
+    const n = await phone('al-volver');
+    await n.s.recoverTrainerAccount(code);
+    expect(n.s.clients[ana]).toBeTruthy();
+    expect(n.s.clients[ana].name).toBe('Ana');
+    expect(linkNow(n, ana)).not.toBe(NO_SLOT);
+  });
+
+  it('una ficha `local` (sin hueco): borrar, deshacer y dejar pasar el toast no llaman al servidor', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const [id] = await createOffline(t, 'Local');
+    expect(linkNow(t, id)).toBe('local');
+    const antes = state(t);
+    const mark = server.calls.length;
+
+    t.s.deleteClient(id, { undo: true });
+    expect(t.s.clients[id]).toBeUndefined();
+    t.s.ui.toast.action.onPress();
+    expect(state(t)).toEqual(antes);
+
+    t.s.deleteClient(id, { undo: true });
+    vi.advanceTimersByTime(5000);
+    await settle();
+    expect(t.s.clients[id]).toBeUndefined();
+    expect(deletes(mark)).toBe(0);
+    expect(t.s.trainerSync.deletedSlotIds).toEqual([]);
+  });
+
+  it('dos borrados seguidos y se deshace solo el primero: vuelve ese; el segundo se borra en el servidor al vencer', async () => {
+    const { t, ana, berta } = await trainerWithClients();
+    const slotAna = t.s.clients[ana].slotId;
+    const slotBerta = t.s.clients[berta].slotId;
+    const anaAntes = state(t)[0][ana];
+
+    t.s.deleteClient(ana, { undo: true });
+    const undoAna = t.s.ui.toast.action.onPress;                      // su toast se lleva el segundo, pero su foto sigue
+    t.s.deleteClient(berta, { undo: true });
+    undoAna();
+    expect(state(t)[0][ana]).toEqual(anaAntes);
+    expect(t.s.clients[berta]).toBeUndefined();
+
+    vi.advanceTimersByTime(5000);
+    await until(() => gone(slotBerta));
+    expect(await gone(slotBerta)).toBe(true);
+    expect(await gone(slotAna)).toBe(false);
+    expect(t.s.clients[ana]).toBeTruthy();
   });
 });

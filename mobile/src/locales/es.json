@@ -2084,6 +2084,7 @@
     "programCount_one": "{{count}} programa",
     "programCount_other": "{{count}} programas",
     "deleteClientConfirm": "¿Eliminar cliente y todos sus programas e historial?",
+    "toastClientDeleted": "<b>{{name}}</b> eliminado",
     "importBtn": "↓ Importar",
     "noPrograms": "Sin programas. Crea uno o importa.",
     "activeLabel": "ACTIVO",
