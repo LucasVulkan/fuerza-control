@@ -280,15 +280,23 @@ ya no está en esta cuenta.
   `otherAccount` y el refresco de la nueva no las toca (sus huecos no están en
   ella).
 
-**Entrar en otra cuenta sin salir antes** (pasar a Google o Apple, o «Ya tengo
-cuenta» estando dentro): `_enterCandidate` traspasa los huecos a la nueva
-(R-D1), así que los clientes van con ella. En el mismo `set` que apunta el
-`userId` nuevo, las fichas con `slotOwner` igual al viejo pasan al nuevo, y la
-cola de envíos se queda (I04-03). Solo si el traspaso se hizo; si la app muere
-entre el traspaso y ese `set`, las fichas se leen `otherAccount` hasta volver a
-entrar, como hoy. *(Aclarado el 29-oct-2026 al revisar I04-03: N-09 dice
-«cambiar de cuenta es salir y entrar», pero entrar estando dentro siempre ha
-sido traspasar; las dos cosas conviven.)*
+**Mejorar la cuenta no es entrar en otra** (decidido por el usuario el
+29-oct-2026). Hay dos cosas distintas:
+- **Mejorar la cuenta**: «Cambiar a Google / Apple» en Mi cuenta. Es la misma
+  cuenta con otra forma de entrar: `_enterCandidate` traspasa los huecos (R-D1)
+  y, en el mismo `set` que apunta el `userId` nuevo, las fichas con `slotOwner`
+  igual al viejo pasan al nuevo (`moveOwner`) y la cola de envíos se queda
+  (I04-03). Si la app muere entre el traspaso y ese `set`, las fichas se leen
+  `otherAccount` hasta volver a entrar, como hoy.
+- **Entrar en otra cuenta**: crear una nueva o entrar en una que ya existe, y
+  solo desde «sin cuenta» (después de «Salir»). **No traspasa nada**: cada
+  cliente se queda en la cuenta a la que se subió y aquí se lee `otherAccount`
+  (N-09, N-19).
+
+Hoy el store traspasa siempre que `prev.userId` existe y es distinto; la
+pantalla ya separa los dos caminos, pero `_enterCandidate` no lo sabe. En
+C10-04 recibe `{ upgrade: true }` desde «Cambiar a Google / Apple» y solo
+entonces traspasa.
 
 Borrar no es un estado: la ficha deja de existir (§8.3). Que otro móvil de la
 cuenta la borrara (`kind = 'deleted'`) también la quita aquí (R-B10).
@@ -315,7 +323,8 @@ las fichas se leen igual que antes de salir.
 | Refrescar los huecos | sí | Sube los `local` (§5), borra los pendientes, lee los huecos, aplica `slotFacts` a los que están, `slotOwner = null` a los que faltan y `NO_SLOT` a los cancelados por un móvil viejo, recupera los que faltan **por su id** con su ficha (§8.2), fija ids que no cuadran (§4.2) y guarda lo pendiente (§6). | varios |
 | Crear cuenta o entrar | sí | Como hoy (`_enterCandidate`) y, al final, el refresco, que sube los clientes de antes con su hoja (§5). | — |
 | Recuperar la cuenta | sí | Igual: el refresco trae todos los huecos con su ficha, sus programas y su historial. | — |
-| Pasar a Google o Apple | sí | Como hoy; el traspaso conserva los ids (§2.1). Las fichas de la cuenta vieja pasan a la nueva en el mismo `set` (§3.2). | `slotOwner` |
+| Mejorar la cuenta (código → Google o Apple) | sí | Como hoy, ahora solo con `{ upgrade: true }`: el traspaso conserva los ids (§2.1) y las fichas pasan a la cuenta nueva en el mismo `set` (§3.2). | `slotOwner` |
+| Entrar en otra cuenta (tras «Salir») | sí | Sin traspaso: los clientes de la anterior se quedan en ella y aquí se leen `otherAccount`. | nada |
 | Salir | no | Como hoy. Con `userId` null, las fichas con hueco se leen `otherAccount`; las `local`, `local`. | nada |
 | Borrar la cuenta | sí | Como hoy (R-D4). El servidor se lleva huecos y fichas privadas en cascada; en el móvil todas pasan a `local` con todo lo suyo. | `NO_SLOT` |
 | Copia en Drive | sí | Sin estado (§8.1). | — |
@@ -789,6 +798,8 @@ C10-05).
   (hasta C10-05, la subida ya manda lo apuntado una vez).
 - **Cancelar la invitación** = `trainer_clear_code` → `none`.
 - `slotCancelled` para los borrados con `kind = 'cancelled'` de móviles viejos.
+- **Mejorar ≠ entrar en otra** (§3.2): `_enterCandidate` traspasa solo con
+  `{ upgrade: true }`, que pasa la hoja «Cambiar a Google / Apple» de Mi cuenta.
 - **Plan gratis** por `withApp` (§7) en `freePlan.js` y sus puertas.
 - **`otherAccount` de solo lectura** (N-19): la ficha se ve con «En otra cuenta
   tuya», sin editar, sin enviar y sin «Pasar a la app en esta cuenta» (según D2,
