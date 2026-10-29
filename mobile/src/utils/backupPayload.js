@@ -39,7 +39,12 @@ export function buildBackupPayload(state = {}) {
     sessionTemplates: state.sessionTemplates,
     customExercises:  state.customExercises,
     blockPresets:     state.blockPresets ?? [],
-    clients:          state.clients ?? {},
+    // Sin `sendPending` (la cola de envíos, N-06): es de este móvil y de esta cuenta.
+    clients:          Object.fromEntries(Object.entries(state.clients ?? {}).map(([id, c]) => {
+      const copy = { ...c };
+      delete copy.sendPending;
+      return [id, copy];
+    })),
     // Los clientes guardan IDs de etiqueta (`tag_a1b2c3d4`); el nombre vive sólo
     // aquí. Sin el registro, un backup restaurado devuelve clientes etiquetados
     // con códigos sin nombre (fallo 25).

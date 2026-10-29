@@ -49,6 +49,7 @@ import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
 import { clientLink } from '../src/utils/clientLink';
+import { isNetworkError } from '../src/utils/networkError';
 import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
@@ -134,8 +135,14 @@ let _clientCandidate = null;
 
 // La suelta del asiento (`_flushRelease`) en vuelo: entrar en un asiento espera a que acabe.
 let _releasing = null;
-// `sendPendingPrograms` en vuelo: NetInfo, primer plano y «Enviar todo» llegan a la vez (U15-01).
+// `retrySendQueue` en vuelo: NetInfo, primer plano y el arranque llegan a la vez (U15-01).
 let _sendingPending = null;
+// I04-03: un envío por cliente a la vez (cadena de promesas por `clientId`).
+const _sendChain = {};
+// Reintento con espera mientras quede algo en cola, por si NetInfo no ve el corte (E83).
+const RETRY_MS = [30_000, 120_000, 600_000];
+let _retryTimer = null;
+let _retryStep = 0;
 
 
 // M04-03: código de RevenueCat → clave i18n y acción del diálogo (retry · ok · restore). «Sin cargo» solo
@@ -175,6 +182,41 @@ function patchClient(s, id, patch) {
 
 // Quita la marca de «alta en vuelo» (E42) de una ficha, venga bien o mal.
 const _clearPending = (s, id) => patchClient(s, id, { syncPending: undefined });
+
+// I04-03: pone o quita la marca de «en cola» de un tipo de envío en la ficha.
+// No escribe si ya está como se pide (no despierta a los suscriptores en balde).
+function _setQueued(clientId, kind, on) {
+  const cur = useStore.getState().clients[clientId]?.sendPending;
+  if (!!cur?.[kind] === on) return;
+  useStore.setState((s) => patchClient(s, clientId, (c) => {
+    const next = { ...c.sendPending, [kind]: true };
+    if (!on) delete next[kind];
+    return { sendPending: Object.keys(next).length ? next : undefined };
+  }));
+}
+
+// Cambiar o salir de cuenta vacía la cola (N-09): lo que se mandó era de la otra cuenta.
+const _withoutQueue = (clients) =>
+  Object.fromEntries(Object.entries(clients).map(([id, c]) => [id, c.sendPending ? { ...c, sendPending: undefined } : c]));
+
+// Un solo temporizador: 30 s, 2 min y luego cada 10 min mientras quede algo en
+// cola; vacía, se para y la escala vuelve a empezar. Se llama tras cualquier
+// cambio de la cola. Con `ui.online === false` sigue, pero `retrySendQueue` no intenta.
+function _syncRetryTimer() {
+  const queued = Object.values(useStore.getState().clients).some((c) => c.sendPending);
+  if (!queued) {
+    clearTimeout(_retryTimer);
+    _retryTimer = null; _retryStep = 0;
+    return;
+  }
+  if (_retryTimer) return;
+  _retryTimer = setTimeout(() => {
+    _retryTimer = null;
+    _retryStep = Math.min(_retryStep + 1, RETRY_MS.length - 1);
+    useStore.getState().retrySendQueue();
+  }, RETRY_MS[_retryStep]);
+  _retryTimer.unref?.();   // en los tests no retiene el proceso
+}
 
 async function _ensureTrainerSession(trainerSync) {
   if (!trainerSync.userId) throw Object.assign(new Error(i18n.t('account.noAccountError')), { code: 'NO_TRAINER_ACCOUNT' });
@@ -3576,6 +3618,9 @@ export const useStore = create(
               Object.entries(data.clients ?? {}).map(([id, c]) => {
                 const rest = { ...c };
                 delete rest.programIds;
+                // La cola no viaja en las copias (N-06): solo vale la de este móvil.
+                delete rest.sendPending;
+                if (s.clients[id]?.sendPending) rest.sendPending = s.clients[id].sendPending;
                 if (frozen(id)) {   // lo de entreno no se pisa: apunta a un programa que no entra
                   const { activeProgramId, nextOverrides, overridesDirty, progress } = s.clients[id];
                   Object.assign(rest, { activeProgramId, nextOverrides, overridesDirty, progress });
@@ -3887,6 +3932,7 @@ export const useStore = create(
         await adoptTrainer(candidate);
         set((s) => ({
           trainerLoginNeeded: false,
+          ...(candidate.userId !== prev.userId ? { clients: _withoutQueue(s.clients) } : {}),
           trainerSync: {
             ...s.trainerSync,
             mode,
@@ -3895,6 +3941,7 @@ export const useStore = create(
             email:  candidate.email ?? null,
           },
         }));
+        _syncRetryTimer();
 
         // El nombre que ven los clientes sale de Apple o Google (la hoja de
         // entrada ya no lo pide); si el entrenador ya tenía uno, manda el suyo.
@@ -3961,7 +4008,8 @@ export const useStore = create(
        */
       leaveTrainerAccount: async () => {
         if (get().trainerSync.userId) await signOutTrainer().catch(() => {});
-        set((s) => ({ trainerLoginNeeded: false, trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null, email: null } }));
+        set((s) => ({ trainerLoginNeeded: false, clients: _withoutQueue(s.clients), trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null, email: null } }));
+        _syncRetryTimer();
       },
 
       /**
@@ -4105,59 +4153,124 @@ export const useStore = create(
       },
 
       /**
-       * Reintenta lo pendiente del entrenador (programa y prescripciones), también
-       * de los invitados: su subida silenciosa solo salta con el siguiente cambio.
-       * Una sola a la vez: la segunda llamada recibe la que está en vuelo. Nunca lanza.
+       * «Enviar todo» (acción del usuario): sube lo que cada ficha tiene «sin
+       * enviar», también a los invitados. Sin red no sale: cada envío falla por
+       * red y queda en cola (N-06).
        */
-      sendPendingPrograms: () => {
+      sendAll: async () => {
+        const { trainerSync } = get();
+        if (!trainerSync.mode || trainerSync.mode === 'offline') return { ok: 0, fail: 0 };
+        let ok = 0, fail = 0;
+        for (const c of Object.values(get().clients)) {
+          if (clientLink(c, trainerSync) === 'none' || !(c.programDirty || c.overridesDirty) || get().isClientFrozen(c.id)) continue;
+          try {
+            if (c.programDirty && c.activeProgramId) await get().uploadProgramToClient(c.id, c.activeProgramId);
+            if (c.overridesDirty) await get().sendOverrides(c.id);
+            ok += 1;
+          } catch (err) { fail += 1; console.warn('[sendAll]', c.id, err?.message); }
+        }
+        return { ok, fail };
+      },
+
+      /**
+       * Reintenta la cola (N-06): solo fichas con `sendPending`, y manda lo de
+       * ahora (el programa activo y las prescripciones de este momento). Si la
+       * ficha ya no admite envíos, quita la marca. Una sola a la vez: la
+       * segunda llamada recibe la que está en vuelo. Nunca lanza.
+       */
+      retrySendQueue: () => {
         if (_sendingPending) return _sendingPending;
-        const { trainerSync, ui } = get();
-        if (ui.online === false || !trainerSync.mode || trainerSync.mode === 'offline') return Promise.resolve({ ok: 0, fail: 0 });
         _sendingPending = (async () => {
           let ok = 0, fail = 0;
-          for (const c of Object.values(get().clients)) {
-            if (clientLink(c, trainerSync) === 'none' || !(c.programDirty || c.overridesDirty) || get().isClientFrozen(c.id)) continue;
-            try {
-              if (c.programDirty && c.activeProgramId) await get().uploadProgramToClient(c.id, c.activeProgramId);
-              if (c.overridesDirty) await get().sendOverrides(c.id);
-              ok += 1;
-            } catch (err) { fail += 1; console.warn('[sendPendingPrograms]', c.id, err?.message); }
+          const { trainerSync, ui } = get();
+          if (ui.online === false || !trainerSync.mode || trainerSync.mode === 'offline') return { ok, fail };
+          for (const { id } of Object.values(get().clients)) {
+            for (const kind of ['program', 'overrides']) {
+              const c = get().clients[id];
+              if (!c?.sendPending?.[kind]) continue;
+              if (clientLink(c, get().trainerSync) === 'none' || get().isClientFrozen(id) || (kind === 'program' && !c.activeProgramId)) {
+                _setQueued(id, kind, false);
+                continue;
+              }
+              try {
+                await get()._send(id, kind, c.activeProgramId);
+                ok += 1;
+              } catch (err) { fail += 1; console.warn('[retrySendQueue]', id, err?.message); }
+            }
           }
           return { ok, fail };
-        })().finally(() => { _sendingPending = null; });
+        })().finally(() => { _sendingPending = null; _syncRetryTimer(); });
         return _sendingPending;
       },
 
-      uploadProgramToClient: async (clientId, programId) => {
-        get()._assertNotFrozen(clientId);
-        const { trainerSync } = get();
-        const client = get()._assertCloudClient(clientId);
-        get()._assertOnline();
+      /**
+       * El ÚNICO sitio que sube programa o prescripciones a un hueco (N-06).
+       * `kind`: 'program' | 'overrides'. Serializado por cliente (E84). Si
+       * acaba bien quita la marca de cola; si falla por red la pone y arma el
+       * reintento; si falla por otra cosa la quita. Relanza el error.
+       */
+      _send: (clientId, kind, programId) => {
+        const run = async () => {
+          try {
+            get()._assertNotFrozen(clientId);
+            const { trainerSync } = get();
+            const client = get()._assertCloudClient(clientId);
+            get()._assertOnline();
+            await _ensureTrainerSession(trainerSync);
 
-        // Ensure auth session is active
-        await _ensureTrainerSession(trainerSync);
-        const payload = get()._buildProgramJson(programId, false);
-        if (!payload) throw new Error('Programa no encontrado.');
-        const programData   = JSON.parse(payload.json);
-        // Firma ANTES de sellar trainerName: el sello no es un cambio del programa.
-        const uploadedSig   = programSignature(programData);
-        const trainerName   = get().trainerSync.trainerName;
-        if (trainerName?.trim()) {
-          // Stamp trainerName into every session template so clients see attribution
-          [...Object.values(programData.sessionTemplates ?? {}), ...Object.values(programData.freeSessions ?? {})]
-            .forEach((tpl) => { tpl.trainerName = trainerName.trim(); });
-        }
-        await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null)
-          .catch((err) => { throw get()._slotError(clientId, err); });
-        // Solo se limpia el aviso si el programa no cambió mientras viajaba la subida (E55).
-        const nowJson = get()._buildProgramJson(programId, false)?.json;
-        const unchanged = !!nowJson && programSignature(JSON.parse(nowJson)) === uploadedSig;
-        set((s) => patchClient(s, clientId, {
-          ...(unchanged ? { programDirty: false } : {}),
-          programUploadedAt:  new Date().toISOString(),
-          programUploadedSig: uploadedSig,
-        }));
+            if (kind === 'program') {
+              const payload = get()._buildProgramJson(programId, false);
+              if (!payload) throw new Error('Programa no encontrado.');
+              const programData = JSON.parse(payload.json);
+              // Firma ANTES de sellar trainerName: el sello no es un cambio del programa.
+              const uploadedSig = programSignature(programData);
+              const trainerName = get().trainerSync.trainerName;
+              if (trainerName?.trim()) {
+                // Stamp trainerName into every session template so clients see attribution
+                [...Object.values(programData.sessionTemplates ?? {}), ...Object.values(programData.freeSessions ?? {})]
+                  .forEach((tpl) => { tpl.trainerName = trainerName.trim(); });
+              }
+              await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null)
+                .catch((err) => { throw get()._slotError(clientId, err); });
+              // Solo se limpia el aviso si el programa no cambió mientras viajaba la subida (E55).
+              const nowJson = get()._buildProgramJson(programId, false)?.json;
+              const unchanged = !!nowJson && programSignature(JSON.parse(nowJson)) === uploadedSig;
+              set((s) => patchClient(s, clientId, {
+                ...(unchanged ? { programDirty: false } : {}),
+                programUploadedAt:  new Date().toISOString(),
+                programUploadedSig: uploadedSig,
+              }));
+            } else {
+              // Re-sella createdAt a «ahora»: la base para consumirla es el momento del envío
+              // (una sesión hecha antes de enviar no la consume).
+              const now = new Date().toISOString();
+              const stamped = Object.fromEntries(
+                Object.entries(client.nextOverrides ?? {}).map(([tid, ov]) => [tid, { ...ov, createdAt: now }]),
+              );
+              await uploadOverrides(client.syncSlotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
+              // Si se editó mientras viajaba el envío, no se toca lo editado ni su marca (E55).
+              set((s) => patchClient(s, clientId, (c) => ({
+                overridesSentAt: now,
+                ...(c.nextOverrides === client.nextOverrides ? { nextOverrides: stamped, overridesDirty: false } : {}),
+              })));
+            }
+            _setQueued(clientId, kind, false);
+          } catch (err) {
+            _setQueued(clientId, kind, isNetworkError(err));
+            throw err;
+          } finally {
+            _syncRetryTimer();
+          }
+        };
+        // Sin envío previo arranca ya (lo que se sube es lo que había al llamar); con uno, espera su turno.
+        const job = _sendChain[clientId] ? _sendChain[clientId].then(run, run) : run();
+        _sendChain[clientId] = job;
+        const clean = () => { if (_sendChain[clientId] === job) delete _sendChain[clientId]; };
+        job.then(clean, clean);
+        return job;
       },
+
+      uploadProgramToClient: (clientId, programId) => get()._send(clientId, 'program', programId),
 
       // ── Next-session overrides (trainer side) ──────────────────────────────
       // A one-off prescription for the NEXT occurrence of a client's session.
@@ -4202,29 +4315,8 @@ export const useStore = create(
         });
       },
 
-      /**
-       * Uploads the client's next-session overrides to their slot. Re-stamps
-       * createdAt to "now" so the consume baseline is the send moment (a session
-       * the client did before sending doesn't count as consuming it).
-       */
-      sendOverrides: async (clientId) => {
-        get()._assertNotFrozen(clientId);
-        const { trainerSync } = get();
-        const client = get()._assertCloudClient(clientId);
-        get()._assertOnline();
-        await _ensureTrainerSession(trainerSync);
-
-        const now = new Date().toISOString();
-        const stamped = Object.fromEntries(
-          Object.entries(client.nextOverrides ?? {}).map(([tid, ov]) => [tid, { ...ov, createdAt: now }]),
-        );
-        await uploadOverrides(client.syncSlotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
-        // Si se editó mientras viajaba el envío, no se toca lo editado ni su marca (E55).
-        set((s) => patchClient(s, clientId, (c) => ({
-          overridesSentAt: now,
-          ...(c.nextOverrides === client.nextOverrides ? { nextOverrides: stamped, overridesDirty: false } : {}),
-        })));
-      },
+      /** Envía las prescripciones de «próxima sesión» del cliente a su hueco (ver `_send`). */
+      sendOverrides: (clientId) => get()._send(clientId, 'overrides'),
 
       /**
        * Downloads and merges a client's workout history from Supabase.
@@ -5107,9 +5199,10 @@ export const useStore = create(
           },
           clients: Object.fromEntries(Object.entries(s.clients).map(([id, c]) => [id, c.syncSlotId ? {
             ...c, syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false, syncLeftAt: null,
-            programDirty: false, overridesDirty: false, programUploadedSig: null,
+            programDirty: false, overridesDirty: false, programUploadedSig: null, sendPending: undefined,
           } : c])),
         }));
+        _syncRetryTimer();
 
         // Con el mismo usuario en los dos papeles la primera llamada ya lo borró (E33)
         const clientId = await clientSessionUserId();
@@ -5698,28 +5791,26 @@ useStore.subscribe((s, prev) => {
   }));
 });
 
+// El «programa de entrada» del invitado (N-06): nadie está sentado aún, así que sube
+// solo, con una espera. Pasa por `_send`, igual que todo envío; si falla por red queda
+// en cola. Lo que ya está en cola lo manda la cola, no este suscriptor.
 const INVITED_DEBOUNCE_MS = 1500;
 const invitedTimers = {};
-const invitedInFlight = new Set();
 useStore.subscribe((s, prev) => {
   if (s.clients === prev.clients || !s._hasHydrated) return;
   Object.values(s.clients).forEach((c) => {
     if (clientLink(c, s.trainerSync) !== 'invited') return;
-    if (!(c.programDirty && c.activeProgramId) && !c.overridesDirty) return;
-    if (invitedInFlight.has(c.id)) return;
+    if (!(c.programDirty && c.activeProgramId && !c.sendPending?.program) && !(c.overridesDirty && !c.sendPending?.overrides)) return;
     clearTimeout(invitedTimers[c.id]);
     invitedTimers[c.id] = setTimeout(async () => {
       const st = useStore.getState();
       const cur = st.clients[c.id];
       if (!cur || clientLink(cur, st.trainerSync) !== 'invited') return;
-      invitedInFlight.add(c.id);
       try {
-        if (cur.programDirty && cur.activeProgramId) await st.uploadProgramToClient(c.id, cur.activeProgramId);
-        if (cur.overridesDirty) await st.sendOverrides(c.id);
+        if (cur.programDirty && cur.activeProgramId && !cur.sendPending?.program) await st._send(c.id, 'program', cur.activeProgramId);
+        if (cur.overridesDirty && !cur.sendPending?.overrides) await st._send(c.id, 'overrides');
       } catch {
-        // Silencioso: se reintenta con el siguiente cambio.
-      } finally {
-        invitedInFlight.delete(c.id);
+        // Silencioso: si fue por red queda en cola; si no, se reintenta con el siguiente cambio.
       }
     }, INVITED_DEBOUNCE_MS);
   });

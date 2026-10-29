@@ -173,7 +173,7 @@ export default function App() {
   // U15-01: conexión en el store y cola del entrenador. null cuenta como online
   // (aún no se sabe) para no dar falsos «sin conexión». Un solo listener.
   useEffect(() => {
-    const flush = () => useStore.getState().sendPendingPrograms().catch(() => {});
+    const flush = () => useStore.getState().retrySendQueue().catch(() => {});
     const unsub = NetInfo.addEventListener((st) => {
       const online = st.isConnected !== false;
       const was = useStore.getState().ui.online;
@@ -195,9 +195,9 @@ export default function App() {
   // (M01-01). Configurar anónimo y hacer `logIn` después dejaba una carrera: el
   // `checkProStatus` del anónimo podía resolver tarde y pisar el Pro de la cuenta.
   const hasHydrated = useStore((s) => s._hasHydrated);
-  // U15-01: lo que quedó en cola al cerrar la app sale al arrancar (arrancar no es un «change» de AppState).
+  // U15-01 / I04-03: lo que quedó en cola al cerrar la app sale al arrancar (arrancar no es un «change» de AppState).
   useEffect(() => {
-    if (hasHydrated) useStore.getState().sendPendingPrograms().catch(() => {});
+    if (hasHydrated) useStore.getState().retrySendQueue().catch(() => {});
   }, [hasHydrated]);
   useEffect(() => {
     if (!hasHydrated) return;

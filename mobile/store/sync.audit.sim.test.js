@@ -1004,7 +1004,7 @@ describe('R-C1 / R-C2 cumple: enviar y subir', () => {
     expect(t.s.clients[clientId][dirty]).toBe(true);
   });
 
-  it('U15-01: sin conexión «Enviar» lanza NETWORK, queda sucio y sendPendingPrograms lo envía al volver', async () => {
+  it('U15-01: sin conexión «Enviar» lanza NETWORK, queda sucio y en cola, y retrySendQueue lo envía al volver', async () => {
     const { t, clientId, programId } = await trainerAndClient();
     t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], activeProgramId: programId } } }));
     t.store.setState((s) => ({ programs: { ...s.programs, [programId]: { ...s.programs[programId], name: 'Z' } } }));
@@ -1012,19 +1012,21 @@ describe('R-C1 / R-C2 cumple: enviar y subir', () => {
     t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } }, ui: { ...s.ui, online: false } }));
     await expect(t.s.uploadProgramToClient(clientId, programId)).rejects.toMatchObject({ code: 'NETWORK' });
     expect(t.s.clients[clientId].programDirty).toBe(true);
-    expect(await t.s.sendPendingPrograms()).toEqual({ ok: 0, fail: 0 });
+    expect(t.s.clients[clientId].sendPending).toEqual({ program: true });
+    expect(await t.s.retrySendQueue()).toEqual({ ok: 0, fail: 0 });
     t.store.setState((s) => ({ ui: { ...s.ui, online: true } }));
-    expect(await t.s.sendPendingPrograms()).toEqual({ ok: 1, fail: 0 });
+    expect(await t.s.retrySendQueue()).toEqual({ ok: 1, fail: 0 });
     expect(t.s.clients[clientId].programDirty).toBe(false);
+    expect(t.s.clients[clientId].sendPending).toBeUndefined();
   });
 
-  it('U15-01: sendPendingPrograms a la vez (red + primer plano) sube una sola vez', async () => {
+  it('U15-01: retrySendQueue a la vez (red + primer plano) sube una sola vez', async () => {
     const { t, clientId, programId } = await trainerAndClient();
-    t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], activeProgramId: programId, syncLinked: true } } }));
+    t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], activeProgramId: programId, syncLinked: true, sendPending: { program: true } } } }));
     t.store.setState((s) => ({ programs: { ...s.programs, [programId]: { ...s.programs[programId], name: 'Z' } } }));
     t.s.markProgramDirtyForClients(programId);
     const before = server.calls.length;
-    await Promise.all([t.s.sendPendingPrograms(), t.s.sendPendingPrograms()]);
+    await Promise.all([t.s.retrySendQueue(), t.s.retrySendQueue()]);
     expect(server.calls.slice(before).filter((c) => c.key === 'rpc:trainer_upload_program')).toHaveLength(1);
   });
 
@@ -1038,7 +1040,7 @@ describe('R-C1 / R-C2 cumple: enviar y subir', () => {
     await expect(t.s.uploadProgramToClient(clientId, programId)).rejects.toMatchObject({ code: 'NETWORK' });
     expect(t.s.clients[clientId].programDirty).toBe(true);
     t.store.setState((s) => ({ ui: { ...s.ui, online: true } }));
-    expect(await t.s.sendPendingPrograms()).toEqual({ ok: 1, fail: 0 });
+    expect(await t.s.retrySendQueue()).toEqual({ ok: 1, fail: 0 });
     expect(t.s.clients[clientId].programDirty).toBe(false);
   });
 
