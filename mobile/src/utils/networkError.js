@@ -13,7 +13,7 @@ export function isNetworkError(err) {
  * solo los errores propios, ya traducidos (OWN_CODES), enseñan su mensaje; el
  * resto, el texto de `fallbackKey`: nunca `err.message` crudo en pantalla (U15-02).
  */
-const OWN_CODES = new Set(['SLOT_GONE', 'TRAINER_LOGIN_NEEDED', 'NO_TRAINER_ACCOUNT', 'FROZEN']);
+const OWN_CODES = new Set(['SLOT_GONE', 'TRAINER_LOGIN_NEEDED', 'NO_TRAINER_ACCOUNT', 'FROZEN', 'OTHER_ACCOUNT', 'UPGRADE_TARGET_HAS_CLIENTS']);
 
 export function sendFailure(err, t, fallbackKey) {
   if (isNetworkError(err)) return { msg: t('sync.offlineQueued'), type: 'neutral' };

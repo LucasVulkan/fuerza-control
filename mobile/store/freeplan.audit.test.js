@@ -19,7 +19,7 @@ const syncMock = {
   getTrainerSlots: vi.fn(async () => []),
   createClientSlot: vi.fn(), uploadProgram: vi.fn(), uploadTrainerLog: vi.fn(async () => {}), downloadHistory: vi.fn(),
   downloadSlotProgram: vi.fn(async () => null), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(async () => true),
-  updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), transferMySlotsTo: vi.fn(async () => 0),
+  updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), clearClientCode: vi.fn(async () => {}), transferMySlotsTo: vi.fn(async () => 0),
   getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(), seatOf: vi.fn(), uploadHistory: vi.fn(),
   releaseClientSlot: vi.fn(async () => 0), transferMySeatTo: vi.fn(),
 };
@@ -433,15 +433,20 @@ describe('R-E4 — la elección no se rehace', () => {
     expect(S().isClientFrozen('b')).toBe(true);    // montaje
     await S().leaveTrainerAccount();
     authMock.trainerCandidateNewCode.mockResolvedValueOnce({ userId: 'trainer_2', code: 'NEW', existed: false });
-    syncMock.getTrainerSlots.mockResolvedValueOnce([]);   // la cuenta nueva no tiene huecos
+    // La cuenta nueva no tiene huecos… salvo el que crea la subida de `c` (los `local` suben al entrar, C10 §5).
+    syncMock.getTrainerSlots.mockImplementationOnce(async () => [{ id: S().clients.c.slotId, local_id: 'c', client_name: 'c', client_code: null, client_id: null, sessions_count: 0 }]);
+    syncMock.reissueClientCode.mockResolvedValue('RC');
     const orig = useStore.getState().syncPurchaserId;
     S().syncPurchaserId = async () => {};                 // fuera del alcance (RevenueCat)
     try {
       await S().createTrainerCodeAccount();
       expect(linkOf(S().clients.b, S().trainerSync.userId)).toBe('otherAccount');
       expect(S().isClientFrozen('b')).toBe(false);          // regla: true
-      expect(await S().connectClientToCloud('b')).toBe(true);
-      expect(S().clients.b.slotId).toMatch(/^S\d+$/);
+      // N-19: uno de otra cuenta no se pasa a la app aquí; pero no ocupa la plaza con app, así que otro sí.
+      await expect(S().connectClientToCloud('b')).rejects.toMatchObject({ code: 'OTHER_ACCOUNT' });
+      expect(linkOf(S().clients.c, 'trainer_2')).toBe('none');   // ya subido, sin app
+      expect(await S().connectClientToCloud('c')).toBe(true);
+      expect(S().clients.c.slotId).toMatch(/^S\d+$/);
       expect(S().isClientFrozen('b')).toBe(false);
     } finally { S().syncPurchaserId = orig; }
   });
@@ -451,8 +456,8 @@ describe('R-E4 — la elección no se rehace', () => {
     S().setFreeClientIds(['a', 'b', 'c']);
     expect(S().isClientFrozen('d')).toBe(true);   // montaje
     S().importData({ version: '4', exportType: 'full_backup', clients: {
-      b: { id: 'b', name: 'b', syncSlotId: 'sb', status: 'active' },   // una copia de antes (banderas viejas)
-      c: { id: 'c', name: 'c', syncSlotId: 'sc', status: 'active' },
+      b: { id: 'b', name: 'b', syncSlotId: 'sb', syncCode: 'CB', status: 'active' },   // una copia de antes (banderas viejas)
+      c: { id: 'c', name: 'c', syncSlotId: 'sc', syncCode: 'CC', status: 'active' },
     } }, { clients: true }, { silent: true });
     expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: S().profile.freeClientIds })).toBe(false);
     expect(['a', 'b'].map((id) => S().isClientFrozen(id))).toEqual([false, false]);   // a y b caben (1 con app)

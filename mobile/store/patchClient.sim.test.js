@@ -106,25 +106,40 @@ describe('I04-04 · borrar un cliente con una llamada en vuelo no deja ficha fan
   });
 
   it('A1 · cancelClientInvitation', async () => {
-    const t = await trainerPhone('deleteClientSlot');
+    const t = await trainerPhone('clearClientCode');
     const { clientId } = await clientWithProgram(t);
     await deletedMidFlight(t, clientId, () => t.s.cancelClientInvitation(clientId));
     noGhosts(t);
   });
 
-  it('A1 · pushTrainerLogToSlot, subida correcta: ni ficha ni «ya visto» del borrado', async () => {
+  /** Una ficha `local` con un entreno apuntado: lo que sube `uploadLocalClients`. */
+  const localWithLog = async (t) => {
+    const { clientId } = await clientWithProgram(t, { withApp: false });
+    t.store.setState((s) => ({ clientLogs: { ...s.clientLogs, [clientId]: [{ id: 'l1', sessionTemplateId: 'x', timestamp: 1, exercises: [] }] } }));
+    return clientId;
+  };
+
+  it('A1 · uploadLocalClients, lo apuntado sube bien: ni ficha ni «ya visto» del borrado', async () => {
     const t = await trainerPhone('uploadTrainerLog');
-    const { clientId } = await clientWithProgram(t);
-    await deletedMidFlight(t, clientId, () => t.s.pushTrainerLogToSlot(clientId));
+    const clientId = await localWithLog(t);
+    await deletedMidFlight(t, clientId, () => t.s.uploadLocalClients());
     noGhosts(t);
     expect(t.s.trainerSync.lastSeenSessionsCount?.[clientId]).toBeUndefined();
   });
 
-  it('A1 · pushTrainerLogToSlot, asiento ocupado (SLOT_OCCUPIED)', async () => {
+  it('A1 · uploadLocalClients, asiento ocupado (SLOT_OCCUPIED)', async () => {
     const t = await trainerPhone('uploadTrainerLog', { error: Object.assign(new Error('ocupado'), { code: 'SLOT_OCCUPIED' }) });
-    const { clientId } = await clientWithProgram(t);
-    await deletedMidFlight(t, clientId, () => t.s.pushTrainerLogToSlot(clientId));
+    const clientId = await localWithLog(t);
+    await deletedMidFlight(t, clientId, () => t.s.uploadLocalClients());
     noGhosts(t);
+  });
+
+  it('A1 · uploadLocalClients, el hueco recién creado de una ficha borrada no se queda huérfano', async () => {
+    const t = await trainerPhone('createClientSlot');
+    const { clientId } = await clientWithProgram(t, { withApp: false });
+    await deletedMidFlight(t, clientId, () => t.s.uploadLocalClients());
+    noGhosts(t);
+    expect(await server.slots()).toEqual([]);
   });
 
   it('E74 · downloadClientHistory, bajada correcta: ni ficha ni historial del borrado', async () => {

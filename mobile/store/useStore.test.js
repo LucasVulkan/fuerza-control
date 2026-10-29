@@ -13,6 +13,7 @@ import { newFlow } from '../src/utils/onboardingFlow';
 import { localDay, addDays } from '../src/utils/stageProgress';
 import { templateChainIds } from '../src/utils/exerciseLinks';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
+import { linkOf } from '../src/utils/clientLink';
 
 // El store importa todo el servicio de sincronización de golpe, así que el
 // doble tiene que ofrecer todos los nombres o el import falla.
@@ -20,7 +21,7 @@ const syncMock = {
   getTrainerSlots: vi.fn(async () => []),
   createClientSlot: vi.fn(), uploadProgram: vi.fn(), uploadTrainerLog: vi.fn(), downloadHistory: vi.fn(),
   downloadSlotProgram: vi.fn(async () => null), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(async () => true),
-  updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), offerTransfer: vi.fn(async () => {}), acceptTransfer: vi.fn(async () => 0),
+  updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), clearClientCode: vi.fn(async () => {}), offerTransfer: vi.fn(async () => {}), acceptTransfer: vi.fn(async () => 0),
   getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(), seatOf: vi.fn(), uploadHistory: vi.fn(),
   releaseClientSlot: vi.fn(async () => 0),
 };
@@ -36,7 +37,7 @@ const authMock = {
   signInTrainerWithCode: vi.fn(), signOutTrainer: vi.fn(async () => {}),
   ensureClientSession: vi.fn(async () => 'anon_1'), clientSessionUserId: vi.fn(async () => 'anon_1'), clientProvider: vi.fn(async () => null),
   clientCandidateFromIdToken: vi.fn(), adoptClient: vi.fn(), signOutClient: vi.fn(async () => {}),
-  deleteTrainerUser: vi.fn(), deleteClientUser: vi.fn(),
+  deleteTrainerUser: vi.fn(), deleteClientUser: vi.fn(), candidateHasClients: vi.fn(async () => false),
 };
 vi.mock('../src/services/supabaseAuth', () => authMock);
 
@@ -942,7 +943,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   });
 
   it('código → Google: la cuenta vieja ofrece y la nueva acepta los huecos ANTES de instalar la nueva', async () => {
-    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
+    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok', upgrade: true });
     expect(syncMock.offerTransfer).toHaveBeenCalledWith('slots', 'uuid-G');
     expect(syncMock.acceptTransfer).toHaveBeenCalledWith('slots', 'uuid-A', undefined);   // la nueva acepta con su sesión (candidate.db)
     expect(syncMock.offerTransfer.mock.invocationCallOrder[0]).toBeLessThan(syncMock.acceptTransfer.mock.invocationCallOrder[0]);
@@ -950,6 +951,27 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     expect(ts()).toMatchObject({ mode: 'google', code: null, userId: 'uuid-G', trainerName: 'Ana' });
     expect(RC.logIn).toHaveBeenCalledWith('uuid-G');
     expect(RC.restorePurchases).toHaveBeenCalled();
+  });
+
+  it('entrar en otra cuenta (sin mejorar) no traspasa nada: los clientes se quedan en la suya (C10 §3.2)', async () => {
+    useStore.setState({ clients: { c1: { id: 'c1', name: 'Ana', slotId: 'slot_1', slotOwner: 'uuid-A', code: 'K7QM-4XPA', seated: false, leftAt: null } } });
+    await useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' });
+    expect(syncMock.offerTransfer).not.toHaveBeenCalled();
+    expect(syncMock.acceptTransfer).not.toHaveBeenCalled();
+    expect(ts()).toMatchObject({ mode: 'google', userId: 'uuid-G' });
+    expect(linkOf(useStore.getState().clients.c1, 'uuid-G')).toBe('otherAccount');
+    useStore.setState({ clients: {} });
+  });
+
+  it('mejorar hacia una cuenta que ya tiene clientes no se deja: nada cambia (C10 §3.2)', async () => {
+    authMock.candidateHasClients.mockResolvedValueOnce(true);
+    const antes = ts();
+    await expect(useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok', upgrade: true }))
+      .rejects.toMatchObject({ code: 'UPGRADE_TARGET_HAS_CLIENTS', message: expect.stringContaining('Google') });
+    expect(ts()).toEqual(antes);
+    expect(syncMock.offerTransfer).not.toHaveBeenCalled();
+    expect(authMock.adoptTrainer).not.toHaveBeenCalled();
+    expect(RC.logIn).not.toHaveBeenCalled();
   });
 
   it('crear código con una cuenta ya puesta rechaza y no traspasa (E49)', async () => {
@@ -1029,7 +1051,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   it('si el traspaso falla, no cambia nada: sigue en la cuenta vieja, con su código', async () => {
     syncMock.acceptTransfer.mockRejectedValueOnce(Object.assign(new Error('Failed to fetch'), { code: 'NETWORK' }));
     const antes = ts();
-    await expect(useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok' })).rejects.toThrow();
+    await expect(useStore.getState().enterTrainerAccount({ provider: 'google', idToken: 'tok', upgrade: true })).rejects.toThrow();
     expect(ts()).toEqual(antes);
     expect(authMock.adoptTrainer).not.toHaveBeenCalled();
     expect(RC.logIn).not.toHaveBeenCalled();
@@ -1042,7 +1064,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
     }));
     authMock.trainerSessionUserId.mockResolvedValue(null);
     authMock.trainerCandidateFromIdToken.mockResolvedValueOnce({ userId: 'uuid-X', existed: true, provider: 'apple' });
-    await expect(useStore.getState().enterTrainerAccount({ provider: 'apple', idToken: 'tok' }))
+    await expect(useStore.getState().enterTrainerAccount({ provider: 'apple', idToken: 'tok', upgrade: true }))
       .rejects.toMatchObject({ code: 'TRAINER_LOGIN_NEEDED' });
     expect(ts().userId).toBe('uuid-G');
     useStore.setState({ clients: {} });
@@ -2629,7 +2651,10 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
   beforeEach(() => {
     Object.values(syncMock).forEach((fn) => fn.mockReset?.());
-    syncMock.createClientSlot.mockResolvedValue({ slotId: 'slot_1', clientCode: 'K7QM-4XPA' });
+    // C10-04: el hueco nace sin código; el código lo da invitar.
+    syncMock.createClientSlot.mockResolvedValue({ slotId: 'slot_1', clientCode: null });
+    syncMock.reissueClientCode.mockResolvedValue('K7QM-4XPA');
+    syncMock.clearClientCode.mockResolvedValue();
     syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_id: null }]);
     syncMock.uploadProgram.mockResolvedValue();
     syncMock.uploadTrainerLog.mockResolvedValue();
@@ -2643,13 +2668,15 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
   const cli = (id) => useStore.getState().clients[id];
 
-  it('crear un cliente sin elegir la app no crea código; con la app, sí', async () => {
+  it('crear un cliente nace sin hueco (`local`), también con la app: ahí se crea y se invita', async () => {
     const sinApp = await useStore.getState().createClient('Carmen');
     expect(syncMock.createClientSlot).not.toHaveBeenCalled();
     expect(cli(sinApp).slotId).toBeNull();
 
     const conApp = await useStore.getState().createClient('Marta', { withApp: true });
-    expect(cli(conApp)).toMatchObject({ slotId: 'slot_1', code: 'K7QM-4XPA' });
+    expect(syncMock.createClientSlot).toHaveBeenCalledWith('Marta', conApp, false);   // hueco sin código…
+    expect(cli(conApp)).toMatchObject({ slotId: 'slot_1', code: 'K7QM-4XPA' });        // …y luego invitado
+    expect(useStore.getState().ui.linking).toEqual({});
   });
 
   it('pasar a la app: código, lo apuntado arriba (sin contar como «sin revisar») y su programa', async () => {
@@ -2671,22 +2698,36 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
     expect(syncMock.uploadProgram).toHaveBeenCalledWith('slot_1', expect.anything(), null);
   });
 
-  it('no pisa al cliente: si ya canjeó el código, no sube lo apuntado', async () => {
-    const id = await useStore.getState().createClient('Marta', { withApp: true });
+  it('no pisa al cliente: si ya canjeó el código, no sube lo apuntado ni le da otro código', async () => {
+    const id = await useStore.getState().createClient('Marta');
+    useStore.setState({ clientLogs: { [id]: [{ id: 'log_1', sessionTemplateId: 'x', timestamp: 1, exercises: [] }] } });
     // El servidor lo comprueba en la misma sentencia que escribiría.
     syncMock.uploadTrainerLog.mockRejectedValue(Object.assign(new Error('SLOT_OCCUPIED'), { code: 'SLOT_OCCUPIED' }));
 
-    expect(await useStore.getState().pushTrainerLogToSlot(id)).toBe(false);
-    expect(cli(id).seated).toBe(true);
+    expect(await useStore.getState().moveClientToApp(id)).toBe(false);
+    expect(syncMock.reissueClientCode).not.toHaveBeenCalled();
+    expect(cli(id).code).toBeNull();
   });
 
-  it('cancelar la invitación borra el código y lo devuelve a sin app', async () => {
+  it('cancelar la invitación quita el código y lo devuelve a sin app, con su hueco', async () => {
     const id = await useStore.getState().createClient('Marta', { withApp: true });
 
     await useStore.getState().cancelClientInvitation(id);
 
-    expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1', 'cancelled');
-    expect(cli(id)).toMatchObject({ slotId: null, code: null, seated: false });
+    expect(syncMock.clearClientCode).toHaveBeenCalledWith('slot_1');
+    expect(syncMock.deleteClientSlot).not.toHaveBeenCalled();
+    expect(cli(id)).toMatchObject({ slotId: 'slot_1', code: null, seated: false });
+    expect(linkOf(cli(id), 'trainer_1')).toBe('none');
+  });
+
+  it('cancelar con el cliente ya dentro (SLOT_OCCUPIED): no cambia nada y se refresca', async () => {
+    const id = await useStore.getState().createClient('Marta', { withApp: true });
+    syncMock.clearClientCode.mockRejectedValue(Object.assign(new Error('SLOT_OCCUPIED'), { code: 'SLOT_OCCUPIED' }));
+    syncMock.getTrainerSlots.mockResolvedValue([{ id: 'slot_1', client_code: 'K7QM-4XPA', client_id: 'u1', sessions_count: 0 }]);
+
+    await useStore.getState().cancelClientInvitation(id);
+
+    expect(cli(id)).toMatchObject({ slotId: 'slot_1', code: 'K7QM-4XPA', seated: true });
   });
 
   it('al invitado se le sube solo lo que quede pendiente', async () => {

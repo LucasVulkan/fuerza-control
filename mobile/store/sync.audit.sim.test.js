@@ -767,7 +767,14 @@ describe('S17 dos móviles del mismo entrenador', () => {
     expect(clients.every((c) => linkOf(c, t2.s.trainerSync.userId) === 'otherAccount')).toBe(true);
   });
 
-  it('E62: cancelar la invitación en un móvil deja al cliente «sin app» en el otro, con sus datos, y no lo borra', async () => {
+  // Un móvil con la versión de antes de C10 cancelaba la invitación BORRANDO el hueco (`kind = 'cancelled'`).
+  const oldCancel = async (t, clientId) => {
+    const { error } = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_delete_slot', { p_slot_id: t.s.clients[clientId].slotId, p_kind: 'cancelled' });
+    expect(error).toBeNull();
+  };
+
+  it('E62: cancelar la invitación con la versión de antes en un móvil deja al cliente sin hueco en el otro, con sus datos, y no lo borra', async () => {
     const t1 = await phone('t1');
     await t1.s.createTrainerCodeAccount();
     const code = t1.s.trainerSync.code;
@@ -780,16 +787,17 @@ describe('S17 dos móviles del mismo entrenador', () => {
     const slotId = t2.s.clients[id2].slotId;
     expect(slotId).toBeTruthy();
 
-    await t1.s.cancelClientInvitation(clientId);
+    await oldCancel(t1, clientId);
     await t2.s.refreshTrainerSlots();
     expect(Object.keys(t2.s.clients)).toEqual([id2]);
     expect(t2.s.clients[id2]).toMatchObject({ name: 'Ana Gómez', slotId: null, slotOwner: null, code: null, seated: false });
     expect(t2.s.trainerSync.deletedSlotIds).toEqual([]);
+    await t1.s.refreshTrainerSlots();
     expect(t1.s.clients[clientId]).toMatchObject({ slotId: null, code: null });   // los dos móviles ven lo mismo
     expect(await server.admin('select kind from public.deleted_slots where slot_id = $1', [slotId])).toEqual([{ kind: 'cancelled' }]);
   });
 
-  it('E62: si el refresco no pudo preguntar (queda «de otra cuenta»), el siguiente aplica la cancelación y deja de serlo', async () => {
+  it('E62: si el refresco no pudo preguntar (queda «de otra cuenta»), el siguiente aplica la cancelación de la versión de antes y deja de serlo', async () => {
     const t1 = await phone('t1');
     await t1.s.createTrainerCodeAccount();
     const code = t1.s.trainerSync.code;
@@ -798,7 +806,7 @@ describe('S17 dos móviles del mismo entrenador', () => {
     await t2.s.recoverTrainerAccount(code);
     const id2 = Object.keys(t2.s.clients)[0];
 
-    await t1.s.cancelClientInvitation(clientId);
+    await oldCancel(t1, clientId);
     server.failOnce('rpc:trainer_deleted_slots');
     await t2.s.refreshTrainerSlots();
     expect(linkOf(t2.s.clients[id2], t2.s.trainerSync.userId)).toBe('otherAccount');
@@ -903,10 +911,10 @@ describe('R-C7 / R-D1 cumple: matriz de cortes en los traspasos', () => {
       const { clientId } = await newClientWithProgram(t);
       await join(c, codeOf(t, clientId));
       failNth(key, n);
-      await expect(t.s.enterTrainerAccount(apple('a1'))).rejects.toBeTruthy();
+      await expect(t.s.enterTrainerAccount({ ...apple('a1'), upgrade: true })).rejects.toBeTruthy();
       expect(t.s.trainerSync.mode).toBe('google');
       if (die) { t = await restart(t); await t.s.refreshTrainerSlots().catch(() => {}); }
-      await t.s.enterTrainerAccount(apple('a1'));
+      await t.s.enterTrainerAccount({ ...apple('a1'), upgrade: true });
       expect(t.s.trainerSync.mode).toBe('apple');
       expect((await slotOf(t.s.clients[clientId].slotId)).trainer_id).toBe(t.s.trainerSync.userId);
       expect(await programReaches(t, c, clientId, 'ok')).toBe(true);

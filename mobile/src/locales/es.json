@@ -491,6 +491,7 @@
   },
   "account": {
     "errAccountExists": "Ya tienes una cuenta de entrenador en este móvil.",
+    "errUpgradeTargetHasClients": "Esa cuenta de {{how}} ya tiene clientes. Para usarla, sal de esta y entra en ella.",
     "eyebrow": "AJUSTES",
     "title": "Mi cuenta",
     "rowTitleNone": "Mi cuenta",
@@ -2194,7 +2195,8 @@
     "programSent": "Programa enviado",
     "programUploadError": "No se pudo subir el programa.",
     "slotCreateError": "No se pudo generar su código. Pásalo a la app desde su ficha cuando tengas conexión.",
-    "slotGoneError": "Este cliente está en otra de tus cuentas. Entra con ella para mandarle cosas, o pásalo a la app en esta.",
+    "slotGoneError": "Este cliente está en otra de tus cuentas. Entra con ella para mandarle cosas.",
+    "otherAccountError": "Este cliente está en otra de tus cuentas. Entra con ella para pasarlo a la app.",
     "deleteProgramTitle": "Eliminar programa",
     "deleteProgramConfirm": "¿Eliminar \"{{name}}\"?",
     "reactivateTitle": "Reactivar programa",

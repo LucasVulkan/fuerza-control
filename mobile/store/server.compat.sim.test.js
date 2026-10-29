@@ -12,6 +12,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createServer, createDevice, createSimClient } from '../../test/supabaseSim.js';
+import { slotFacts } from '../src/utils/clientLink';
 
 const BEFORE = fileURLToPath(new URL('../../test/schema-antes-c10.sql', import.meta.url));
 const NEW_SQL = readFileSync(fileURLToPath(new URL('../../supabase/schema.sql', import.meta.url)), 'utf8');
@@ -66,7 +67,12 @@ describe('el esquema nuevo encima del de antes', () => {
     const t = await phone('entrenador');
     const c = await phone('cliente');
     await t.s.createTrainerCodeAccount();
-    const clientId = await t.s.createClient('Ana', { withApp: true });
+    // La app de hoy da el alta con dos argumentos (el servidor viejo no conoce el tercero) y le sale con código.
+    const clientId = await t.s.createClient('Ana');
+    const old = await createSimClient(t.device, { storageKey: 'sb-trainer' })
+      .rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: clientId });
+    expect(old.error).toBeNull();
+    t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...slotFacts({ id: old.data[0].slot_id, client_code: old.data[0].code }, s.trainerSync.userId) } } }));
     const programId = t.s.createProgramForClient(clientId, 2, 'Fuerza', null, { openEditor: false });
     await t.s.uploadProgramToClient(clientId, programId);
     const code = t.s.clients[clientId].code;
