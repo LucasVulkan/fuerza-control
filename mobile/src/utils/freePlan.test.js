@@ -1,8 +1,9 @@
 import { describe, test, expect } from 'vitest';
-import { fitsFree, clientLimitReason, templateCounts, activeClientIds, needsClientChoice, isClientFrozen, lockedClientIds, canChooseMore, freeGates, proStillValid } from './freePlan';
+import { fitsFree, clientLimitReason, templateCounts, activeClientIds, needsClientChoice, isClientFrozen, lockedClientIds, canChooseMore, freeGates, forPlan, proStillValid } from './freePlan';
+import { NO_SLOT, slotFacts } from './clientLink';
 
-const manual = (id) => ({ id, syncSlotId: null });
-const conn   = (id) => ({ id, syncSlotId: `slot_${id}` });
+const manual = (id) => ({ id, ...NO_SLOT });
+const conn   = (id) => ({ id, ...slotFacts({ id: `slot_${id}`, client_code: id }, 'u1') });
 const byId   = (...cs) => Object.fromEntries(cs.map((c) => [c.id, c]));
 
 describe('fitsFree — 3 clientes, como mucho 1 con app', () => {
@@ -105,9 +106,16 @@ describe('freeGates — lo que las pantallas marcan con PRO', () => {
     expect(g.connect('d')).toBe('frozen');
     expect(g.newClient).toBe('clients');     // crear sigue contando a todos
   });
-  test('E42: una alta en vuelo (syncPending) ocupa la plaza', () => {
-    const g = freeGates({ isPro: false, clients: byId({ id: 'a', syncSlotId: null, syncPending: true }, manual('b')), freeClientIds: [], programs: {}, sessionTemplates: {} });
+  test('E42: una alta en vuelo (ui.linking) ocupa la plaza', () => {
+    const clients = forPlan(byId(manual('a'), manual('b')), 'u1', { a: true });
+    const g = freeGates({ isPro: false, clients, freeClientIds: [], programs: {}, sessionTemplates: {} });
     expect(g.connect('b')).toBe('connected');
+  });
+  test('uno de otra cuenta, o sin cuenta, no ocupa plaza (forPlan); uno de esta, sí', () => {
+    const clients = byId(conn('a'), conn('b'));
+    expect(clientLimitReason(Object.values(forPlan(clients, 'u1')))).toBe('connected');
+    expect(clientLimitReason(Object.values(forPlan(clients, 'u2')))).toBe(null);
+    expect(clientLimitReason(Object.values(forPlan(clients, null)))).toBe(null);
   });
   test('con Pro, todo abierto', () => {
     const g = freeGates({ isPro: true });

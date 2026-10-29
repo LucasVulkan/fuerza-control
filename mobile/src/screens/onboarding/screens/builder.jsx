@@ -340,7 +340,7 @@ function BuilderClientRow({ line }) {
   const th     = useTheme();
   const client = useStore((s) => s.clients[answersOf(s).clientId]);
   if (!client) return null;
-  const app = !!client.syncSlotId;
+  const app = !!client.slotId;
   return (
     <ClientRow
       client={client}
@@ -360,7 +360,7 @@ function Done({ goTo }) {
   const language   = useStore((s) => s.profile.language ?? 'es');
   const trainer    = useStore((s) => answersOf(s).builderCtx === 'trainer' && !!answersOf(s).clientId);
   const clientName = useStore((s) => (trainer ? s.clients[answersOf(s).clientId]?.name ?? '' : ''));
-  const withApp    = useStore((s) => !!(trainer && s.clients[answersOf(s).clientId]?.syncSlotId));
+  const withApp    = useStore((s) => !!(trainer && s.clients[answersOf(s).clientId]?.slotId));
   const programName = useStore((s) => { const id = answersOf(s).programId; return id ? s.programs[id]?.name ?? '' : ''; });
   const stageName   = useStore((s) => { const id = answersOf(s).programId; return id ? s.programs[id]?.stages?.[0]?.name ?? '' : ''; });
   const renameProgram = useStore((s) => s.renameProgram);

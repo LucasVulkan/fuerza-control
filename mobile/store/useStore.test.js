@@ -581,7 +581,7 @@ describe('refreshTrainerSlots — fallo 5', () => {
 
     const fichas = Object.values(useStore.getState().clients);
     expect(fichas).toHaveLength(1);
-    expect(fichas[0].syncSlotId).toBe('slot_1');
+    expect(fichas[0].slotId).toBe('slot_1');
   });
 
   it('la segunda llamada ni siquiera va al servidor', async () => {
@@ -616,7 +616,7 @@ describe('refreshTrainerSlots — fallo 5', () => {
     const fichas = Object.values(useStore.getState().clients);
     expect(fichas).toHaveLength(1);
     expect(fichas[0].remoteSessionsCount).toBe(3);
-    expect(fichas[0].syncLinked).toBe(true);
+    expect(fichas[0].seated).toBe(true);
   });
 });
 
@@ -700,7 +700,7 @@ describe('reissueClientCode — la salida de la reconexión', () => {
   beforeEach(() => {
     Object.values(syncMock).forEach((fn) => fn.mockReset?.());
     useStore.setState({
-      clients: { cli_1: { id: 'cli_1', name: 'Ana', syncSlotId: 'slot_1', syncCode: 'VIEJO-CODE', syncLinked: true } },
+      clients: { cli_1: { id: 'cli_1', name: 'Ana', slotId: 'slot_1', slotOwner: 'trainer_1', code: 'VIEJO-CODE', seated: true } },
       trainerSync: { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: null, code: null },
     });
   });
@@ -712,8 +712,8 @@ describe('reissueClientCode — la salida de la reconexión', () => {
 
     expect(code).toBe('NUEV-CODE');
     const client = useStore.getState().clients.cli_1;
-    expect(client.syncCode).toBe('NUEV-CODE');
-    expect(client.syncLinked).toBe(false);
+    expect(client.code).toBe('NUEV-CODE');
+    expect(client.seated).toBe(false);
   });
 
   it('un cliente sin hueco en el servidor no se puede reemitir', async () => {
@@ -799,8 +799,8 @@ describe('plan gratis — M01-02, la puerta va en la acción', () => {
   });
 
   it('caducado sin elegir: el cliente congelado no sincroniza ni se le apunta nada', async () => {
-    const clients = Object.fromEntries(['a', 'b', 'c', 'd'].map((id) => [id, { id, name: id, syncSlotId: `s_${id}` }]));
-    useStore.setState({ clients });
+    const clients = Object.fromEntries(['a', 'b', 'c', 'd'].map((id) => [id, { id, name: id, slotId: `s_${id}`, slotOwner: 'trainer_1', code: id }]));
+    useStore.setState((s) => ({ clients, trainerSync: { ...s.trainerSync, userId: 'trainer_1', mode: 'code' } }));
     await expect(useStore.getState().downloadClientHistory('a')).rejects.toThrow();
     expect(useStore.getState().startSession('tpl', { forClient: 'a' })).toBe(null);
     expect(useStore.getState().ui.limitReason).toBe('frozen');
@@ -810,7 +810,7 @@ describe('plan gratis — M01-02, la puerta va en la acción', () => {
   });
 
   it('lo elegido no se suelta, y volver a Pro lo olvida', () => {
-    const clients = Object.fromEntries(['a', 'b', 'c', 'd', 'e'].map((id) => [id, { id, name: id, syncSlotId: null }]));
+    const clients = Object.fromEntries(['a', 'b', 'c', 'd', 'e'].map((id) => [id, { id, name: id, slotId: null }]));
     useStore.setState({ clients });
     useStore.getState().setFreeClientIds(['a', 'b', 'c']);
     useStore.getState().setFreeClientIds(['d', 'e']);           // intento de rotar
@@ -1038,7 +1038,7 @@ describe('cuenta de entrenador — una sola puerta (M03-01)', () => {
   it('Google caducado con clientes en la nube: pide entrar antes de cambiar, sin tocar nada', async () => {
     useStore.setState((s) => ({
       trainerSync: { ...s.trainerSync, mode: 'google', code: null, userId: 'uuid-G' },
-      clients: { c1: { id: 'c1', name: 'Ana', syncSlotId: 'slot_1' } },
+      clients: { c1: { id: 'c1', name: 'Ana', slotId: 'slot_1', slotOwner: 'uuid-G' } },
     }));
     authMock.trainerSessionUserId.mockResolvedValue(null);
     authMock.trainerCandidateFromIdToken.mockResolvedValueOnce({ userId: 'uuid-X', existed: true, provider: 'apple' });
@@ -2330,9 +2330,9 @@ describe('"sin revisar" se apaga al mirar — qa-sep-conexion C16', () => {
       customExercises: {}, progress: null, updatedAt: null,
     });
     useStore.setState((s) => ({
-      clients:    { cli_c16: { id: 'cli_c16', name: 'Ana', syncSlotId: 'slot_c16', remoteSessionsCount: 3 } },
+      clients:    { cli_c16: { id: 'cli_c16', name: 'Ana', slotId: 'slot_c16', slotOwner: 'trainer_1', code: 'AB', remoteSessionsCount: 3 } },
       clientLogs: {},
-      trainerSync: { ...s.trainerSync, lastSeenSessionsCount: { cli_c16: 3 } },
+      trainerSync: { ...s.trainerSync, userId: 'trainer_1', mode: 'code', lastSeenSessionsCount: { cli_c16: 3 } },
     }));
 
     await useStore.getState().downloadClientHistory('cli_c16');
@@ -2353,7 +2353,8 @@ describe('"subir cambios" solo cuando hay cambios — qa-sep-conexion C17', () =
       sessionTemplates: {
         tpl_c17: { id: 'tpl_c17', programId: 'prog_c17', name: 'A', exercises: [{ exerciseId: 'squat', sets: 3, minReps: 5, maxReps: 5 }] },
       },
-      clients: { cli_c17: { id: 'cli_c17', name: 'Ana', activeProgramId: 'prog_c17', syncSlotId: 'slot_c17', programDirty: true } },
+      clients: { cli_c17: { id: 'cli_c17', name: 'Ana', activeProgramId: 'prog_c17', slotId: 'slot_c17', slotOwner: 'trainer_1', code: 'AB', programDirty: true } },
+      trainerSync: { ...useStore.getState().trainerSync, userId: 'trainer_1', mode: 'code' },
     });
     const st = () => useStore.getState();
 
@@ -2591,7 +2592,8 @@ describe('sesiones libres de un cliente — C06-group-classes.md C24/C27', () =>
   it('crear, asignar o borrar una suya lo deja pendiente de enviar', () => {
     const pid = useStore.getState().createProgramForClient('cli_1', 1, 'Base', 4);
     useStore.setState((s) => ({
-      clients: { cli_1: { ...s.clients.cli_1, activeProgramId: pid, syncSlotId: 'slot_1', programUploadedSig: s._programSig(pid) } },
+      clients: { cli_1: { ...s.clients.cli_1, activeProgramId: pid, slotId: 'slot_1', slotOwner: 'trainer_1', code: 'AB', programUploadedSig: s._programSig(pid) } },
+      trainerSync: { ...s.trainerSync, userId: 'trainer_1', mode: 'code' },
     }));
     useStore.getState().markClientDirty('cli_1');
     expect(useStore.getState().clients.cli_1.programDirty ?? false).toBe(false);
@@ -2644,10 +2646,10 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
   it('crear un cliente sin elegir la app no crea código; con la app, sí', async () => {
     const sinApp = await useStore.getState().createClient('Carmen');
     expect(syncMock.createClientSlot).not.toHaveBeenCalled();
-    expect(cli(sinApp).syncSlotId).toBeNull();
+    expect(cli(sinApp).slotId).toBeNull();
 
     const conApp = await useStore.getState().createClient('Marta', { withApp: true });
-    expect(cli(conApp)).toMatchObject({ syncSlotId: 'slot_1', syncCode: 'K7QM-4XPA' });
+    expect(cli(conApp)).toMatchObject({ slotId: 'slot_1', code: 'K7QM-4XPA' });
   });
 
   it('pasar a la app: código, lo apuntado arriba (sin contar como «sin revisar») y su programa', async () => {
@@ -2660,7 +2662,7 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
 
     await useStore.getState().moveClientToApp(id);
 
-    expect(cli(id).syncSlotId).toBe('slot_1');
+    expect(cli(id).slotId).toBe('slot_1');
     const [slotId, entries, , progress] = syncMock.uploadTrainerLog.mock.calls[0];
     expect(slotId).toBe('slot_1');
     expect(entries.map((e) => e.id)).toEqual(['log_1']);
@@ -2675,7 +2677,7 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
     syncMock.uploadTrainerLog.mockRejectedValue(Object.assign(new Error('SLOT_OCCUPIED'), { code: 'SLOT_OCCUPIED' }));
 
     expect(await useStore.getState().pushTrainerLogToSlot(id)).toBe(false);
-    expect(cli(id).syncLinked).toBe(true);
+    expect(cli(id).seated).toBe(true);
   });
 
   it('cancelar la invitación borra el código y lo devuelve a sin app', async () => {
@@ -2684,7 +2686,7 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
     await useStore.getState().cancelClientInvitation(id);
 
     expect(syncMock.deleteClientSlot).toHaveBeenCalledWith('slot_1', 'cancelled');
-    expect(cli(id)).toMatchObject({ syncSlotId: null, syncCode: null, syncLinked: false });
+    expect(cli(id)).toMatchObject({ slotId: null, code: null, seated: false });
   });
 
   it('al invitado se le sube solo lo que quede pendiente', async () => {
@@ -2702,7 +2704,7 @@ describe('con app o sin app — C05-trainer-logging.md C28 y C20', () => {
   it('al que tiene app, no: ahí el aviso decide', async () => {
     vi.useFakeTimers();
     const id = await useStore.getState().createClient('Pablo', { withApp: true });
-    useStore.setState((s) => ({ clients: { ...s.clients, [id]: { ...s.clients[id], syncLinked: true } } }));
+    useStore.setState((s) => ({ clients: { ...s.clients, [id]: { ...s.clients[id], seated: true } } }));
     const pid = useStore.getState().createProgramForClient(id, 1, 'Base', 4);
 
     useStore.getState().setClientActiveProgram(id, pid);

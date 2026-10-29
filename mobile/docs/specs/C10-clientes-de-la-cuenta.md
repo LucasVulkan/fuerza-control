@@ -2,7 +2,8 @@
 
 > Tema: conexión
 > En corto: Con cuenta de entrenador, todos los clientes (con app o sin ella) viven en la cuenta con un id para siempre, y recuperar la cuenta en un móvil nuevo los trae todos con su ficha, su programa y su historial. De paso, el estado de cada ficha deja de ser siete banderas sueltas y pasa a ser un solo valor con sus cambios escritos en un sitio.
-> Fase C10-01 · pendiente · El estado de la ficha en un solo valor, solo en el móvil · §10.1
+> Inicio: 2026-10-29
+> Fase C10-01 · hecho · El estado de la ficha en un solo valor, solo en el móvil · §10.1
 > Fase C10-02 · pendiente · Servidor: hueco sin código, tabla privada, ids que no se pierden · §10.2
 > Fase C10-03 · pendiente · Un id para siempre: recuperar usa el de la ficha · §10.3
 > Fase C10-04 · pendiente · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
@@ -631,7 +632,7 @@ real con PGlite, varios móviles), y los de la función pura en
 
 | Fase | Qué | Depende de | Coste | Reglas | Estado |
 |---|---|---|---|---|---|
-| C10-01 | Estado en un valor, solo móvil | I04-03, I04-04 | 🔴 | N-15 | pendiente |
+| C10-01 | Estado en un valor, solo móvil | I04-03, I04-04 | 🔴 | N-15 | hecho 29-oct — por probar; tests en `src/utils/clientLink.test.js` y `store/connection.sim.test.js` |
 | C10-02 | Servidor | C10-01 | 🟡 | N-17, R-A1…A3, R-A9, R-D1 | pendiente |
 | C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | pendiente |
 | C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | pendiente |
@@ -658,6 +659,20 @@ fuera de `migrateClientLinks`; y ningún `seated:` ni `slotOwner:` fuera de
 
 **Tests.** Los de §3.2; migración con una ficha de cada fila de §4.1; todos los `*.sim.test.js` de hoy en verde sin cambiar lo que
 comprueban (solo los nombres de campos).
+
+**Hecho (29-oct).** `src/utils/clientLink.js` reescrito: `linkOf` y sus lecturas
+(`withApp`, `canSend`, `canSave`, `isReadOnly`), `clientLink` como lectura de las
+pantallas, los escritores (`slotFacts`, `codeGiven`, `CODE_CLEARED`, `NO_SLOT`,
+`SLOT_LOST`, `SEATED`, `moveOwner`), `migrateClientLinks` y `assertFacts`. El store, `ClientsScreen`,
+onboarding y `NextSessionScreen` leen `slotId`/`code`/`seated`/`leftAt` o `linkOf`
+y escriben solo con esas funciones (lo vigila `src/accountBoundary.test.js`).
+`syncPending` es ahora `ui.linking[clientId]`, sin persistir, y el suscriptor que
+lo limpiaba al arrancar ya no existe. Para el plan gratis, `freePlan.js` cuenta
+sobre `forPlan(clients, userId, linking)`: los de otra cuenta no ocupan plaza y las
+altas en vuelo sí (`usePlanClients()` para las pantallas, `_planClients` en el
+store). Se migra en `onRehydrateStorage` y en `importData`. Única diferencia que
+se ve: tras «Salir de la cuenta» (y con una app de antes que ya estaba fuera) las
+fichas con hueco se leen «En otra cuenta tuya» (N-09).
 
 **Probar C10-01**
 

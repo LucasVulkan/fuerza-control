@@ -57,7 +57,7 @@ const done = (key, ok, label) => useStore.getState().flowDone({ key, ok, label }
 async function connectClient(t) {
   const s = useStore.getState();
   const client = clientOf(s);
-  if (!client || client.syncSlotId) return;
+  if (!client || client.slotId) return;
   try {
     await s.connectClientToCloud(client.id);
   } catch (err) {
@@ -72,7 +72,7 @@ function MyClientRow({ program }) {
   const th     = useTheme();
   const client = useStore(clientOf);
   if (!client) return null;
-  const r = newClientRow(t, th.colors, { client, program, app: !!client.syncSlotId });
+  const r = newClientRow(t, th.colors, { client, program, app: !!client.slotId });
   return (
     <View pointerEvents="none">
       <ClientRow
@@ -395,7 +395,7 @@ function Program({ goTo }) {
   const { t } = useTranslation();
   const client = useStore(clientOf);
   const name   = client?.name ?? '';
-  const app    = !!client?.syncSlotId;
+  const app    = !!client?.slotId;
 
   // Sin programa no hay invitación: queda pendiente con dónde se retoma.
   function later() {
@@ -476,7 +476,7 @@ function Assign({ goTo }) {
   const assigned = !!program && a.assignedFrom === a.catalogId;
   const [busy, setBusy] = useState(false);
   const name = client?.name ?? '';
-  const app  = !!client?.syncSlotId;
+  const app  = !!client?.slotId;
 
   useEffect(() => {
     if (!assigned || !busy) return undefined;
@@ -546,7 +546,7 @@ function Invite({ goTo }) {
   const program = useStore((s) => s.programs[clientOf(s)?.activeProgramId] ?? null);
   const [copied, setCopied] = useState(false);
   const name = client?.name ?? '';
-  const code = client?.syncCode ?? '';
+  const code = client?.code ?? '';
 
   // «Lo envío después» y compartir dejan lo suyo en «Listo»; el reloj sigue en su fila.
   function later() {

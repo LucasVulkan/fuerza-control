@@ -48,9 +48,9 @@ import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
 import { sessionStats } from '../src/utils/sessionStats';
-import { clientLink } from '../src/utils/clientLink';
+import { clientLink, linkOf, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, NO_SLOT, SLOT_LOST, SEATED } from '../src/utils/clientLink';
 import { isNetworkError } from '../src/utils/networkError';
-import { FREE, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
+import { FREE, NEW_WITH_APP, forPlan, fitsFree, clientLimitReason, connectReason, templateCounts, isClientFrozen as isClientFrozenRule, lockedClientIds, proStillValid } from '../src/utils/freePlan';
 import {
   progressBlob, progressChanged, mergeProgressOnImport, withStages, ensureStages, closeOpenStage, allProgramDays,
   athleteProgress, applyProgress, normalizeProgress, recordSession, stageReset, localDay,
@@ -180,8 +180,12 @@ function patchClient(s, id, patch) {
   return { clients: { ...s.clients, [id]: { ...c, ...(typeof patch === 'function' ? patch(c) : patch) } } };
 }
 
+// Los clientes como los cuenta el plan gratis en la cuenta puesta (freePlan.js `forPlan`).
+const _planClients = (s) => forPlan(s.clients, s.trainerSync.userId, s.ui.linking);
+
 // Quita la marca de «alta en vuelo» (E42) de una ficha, venga bien o mal.
-const _clearPending = (s, id) => patchClient(s, id, { syncPending: undefined });
+// `ui.linking` no se persiste: si la app muere en mitad de un alta, no queda reserva.
+const _clearLinking = (s, id) => ({ ui: { ...s.ui, linking: withoutKey(s.ui.linking, id) } });
 
 // I04-03: pone o quita la marca de «en cola» de un tipo de envío en la ficha.
 // No escribe si ya está como se pide (no despierta a los suscriptores en balde).
@@ -248,7 +252,7 @@ const trainerProgramOf = (clientSync, activeId) => {
 };
 // Lo que pasa a una ficha cuando se cancela su invitación, aquí o en otro móvil: vuelve a «sin app».
 const UNINVITED = {
-  syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false,
+  ...NO_SLOT,
   programDirty: false, overridesDirty: false, programUploadedSig: null,
   remoteSessionsCount: 0,
 };
@@ -271,8 +275,8 @@ const tombstonesFor = (s, removed) => {
   const now = Date.now();
   return Object.fromEntries(removed.filter((e) => inScope.has(e)).map((e) => [e.id, now]));
 };
-/** ¿Tiene clientes con hueco en la nube? Son los que un cambio de cuenta no puede perder. */
-const hasCloudClients = (clients) => Object.values(clients ?? {}).some((c) => c.syncSlotId && !c.syncOrphan);
+/** ¿Tiene la cuenta `userId` clientes con hueco? Son los que un cambio de cuenta no puede perder. */
+const hasCloudClients = (clients, userId) => Object.values(clients ?? {}).some((c) => canSave(linkOf(c, userId)));
 
 // Dropset actions all touch the `drops` array of the LAST work set only
 // (dropset is prescribed as "last set carries drops", never an arbitrary one).
@@ -463,6 +467,7 @@ const INITIAL_UI = {
   paywallReason: null,  // M01 §4.2: el paywall abierto; lo pone «Hazte PRO» de la hoja de límite o quien lo abre a propósito
   limitReason: null,    // M04-02: la hoja de límite; lo pone una acción que choca con el plan gratis
   limitClientId: null,  // el cliente que se tocó, para el motivo `frozen`
+  linking: {},          // C10-01: altas en vuelo `{ [clientId]: true }` (E42); la plaza ya está reservada. Fuera del partialize.
 };
 
 /** Una copia del objeto sin esa clave. */
@@ -923,7 +928,7 @@ export const useStore = create(
        */
       createClient: async (name, { withApp = false } = {}) => {
         if (!get().profile.isPro) {
-          const reason = clientLimitReason([...Object.values(get().clients), { syncSlotId: withApp ? 'nuevo' : null }]);
+          const reason = clientLimitReason([...Object.values(_planClients(get())), withApp ? NEW_WITH_APP : NO_SLOT]);
           if (reason) return get()._paywall(reason);
         }
         const id = generateId('client');
@@ -931,34 +936,35 @@ export const useStore = create(
         const cloud = withApp && trainerSync.mode !== 'offline' && trainerSync.mode !== null && !!trainerSync.userId;
         const clientBase = {
           id, name: name.trim(),
-          // E42: la plaza se reserva en el mismo `set` que crea la ficha, antes del await.
-          ...(cloud ? { syncPending: true } : {}),
           createdAt: new Date().toISOString().split('T')[0],
           activeProgramId: null,
           fullName: '', phone: '', email: '', notes: '',
           bodyWeight: [], billing: [], status: 'active',
-          syncCode: null,   // client_code shown to the trainer
-          syncSlotId: null, // trainer_clients row id in Supabase
+          ...NO_SLOT,       // sin hueco todavía (C10-01)
           // Color de identidad: el menos usado (C08 §3.3). Se guarda para que
           // borrar a otro no se lo cambie.
           color: nextIdentityColor(Object.values(get().clients)),
         };
 
-        set((s) => ({ clients: { ...s.clients, [id]: clientBase } }));
+        // E42: la plaza se reserva en el mismo `set` que crea la ficha, antes del await.
+        set((s) => ({
+          clients: { ...s.clients, [id]: clientBase },
+          ...(cloud ? { ui: { ...s.ui, linking: { ...s.ui.linking, [id]: true } } } : {}),
+        }));
 
         // Solo con app, y solo si el entrenador está en la nube.
         if (cloud) {
           try {
             await _ensureTrainerSession(trainerSync);
             const { slotId, clientCode } = await createClientSlot(name.trim(), id);
-            set((s) => patchClient(s, id, { syncCode: clientCode, syncSlotId: slotId }));
+            set((s) => patchClient(s, id, slotFacts({ id: slotId, client_code: clientCode }, trainerSync.userId)));
           } catch (err) {
             // El cliente queda creado, sin app. Se dice, para que no espere un
             // código que no existe: «Pasar a la app» lo genera después.
             console.warn('[createClient] Supabase slot creation failed:', err.message);
             get().showToast(i18n.t('clients.slotCreateError'), 3000, 'error');
           } finally {
-            set((s) => _clearPending(s, id));
+            set((s) => _clearLinking(s, id));
           }
         }
 
@@ -978,7 +984,7 @@ export const useStore = create(
       /** Sin Pro y fuera de los que caben (§4.5). */
       isClientFrozen: (clientId) => {
         const { profile, clients } = get();
-        return !!clients[clientId] && isClientFrozenRule({ isPro: profile.isPro, clients, freeClientIds: profile.freeClientIds }, clientId);
+        return !!clients[clientId] && isClientFrozenRule({ isPro: profile.isPro, clients: _planClients(get()), freeClientIds: profile.freeClientIds }, clientId);
       },
 
       _assertNotFrozen: (clientId) => {
@@ -1018,11 +1024,12 @@ export const useStore = create(
        * llevando a todos). Se limpia al volver a Pro, en el suscriptor de abajo.
        */
       setFreeClientIds: (ids) => set((s) => {
-        const locked = lockedClientIds(s.clients, s.profile.freeClientIds);
+        const plan = _planClients(s);
+        const locked = lockedClientIds(plan, s.profile.freeClientIds);
         const merged = [...new Set([...locked, ...ids])];
         // Lo que no cabe no se guarda: si no, la elección dejaría de ser válida
         // y todo volvería a congelarse.
-        if (!fitsFree(merged.map((id) => s.clients[id]).filter(Boolean))) return {};
+        if (!fitsFree(merged.map((id) => plan[id]).filter(Boolean))) return {};
         return { profile: { ...s.profile, freeClientIds: merged } };
       }),
 
@@ -1062,11 +1069,11 @@ export const useStore = create(
        */
       deleteClient: (clientId, { slotGone = false } = {}) => {
         const client = get().clients[clientId];
-        if (client?.syncSlotId && !slotGone) {
+        if (client?.slotId && !slotGone) {
           set((s) => ({
             trainerSync: {
               ...s.trainerSync,
-              deletedSlotIds: [...new Set([...(s.trainerSync.deletedSlotIds ?? []), client.syncSlotId])],
+              deletedSlotIds: [...new Set([...(s.trainerSync.deletedSlotIds ?? []), client.slotId])],
             },
           }));
         }
@@ -1145,7 +1152,7 @@ export const useStore = create(
         set((s) => {
           const updated = {};
           Object.entries(s.clients).forEach(([cid, c]) => {
-            if (c.activeProgramId === programId && c.syncSlotId) {
+            if (c.activeProgramId === programId && c.slotId) {
               const programDirty = sig !== c.programUploadedSig;
               if (programDirty !== !!c.programDirty) updated[cid] = { ...c, programDirty };
             }
@@ -3614,8 +3621,9 @@ export const useStore = create(
           if (sections.clients) {
             // Los clientes de un backup v1/v2 traen su `programIds`. Ya no
             // significa nada —la lista se deriva de `owner`— así que no entra.
+            // Una copia de antes de C10-01 trae las banderas viejas: se leen como hechos.
             const incomingClients = Object.fromEntries(
-              Object.entries(data.clients ?? {}).map(([id, c]) => {
+              Object.entries(migrateClientLinks(data.clients ?? {}, s.trainerSync)).map(([id, c]) => {
                 const rest = { ...c };
                 delete rest.programIds;
                 // La cola no viaja en las copias (N-06): solo vale la de este móvil.
@@ -3921,7 +3929,7 @@ export const useStore = create(
             if (err.code === 'TRAINER_CODE_NOT_FOUND') oldSession = false;
             // Sin sesión de Google/Apple no hay quien ceda. Sin clientes en la
             // nube tampoco hay nada que perder; con ellos, que entre antes.
-            else if (err.code === 'TRAINER_LOGIN_NEEDED' && !hasCloudClients(get().clients)) oldSession = false;
+            else if (err.code === 'TRAINER_LOGIN_NEEDED' && !hasCloudClients(get().clients, prev.userId)) oldSession = false;
             else throw err;
           }
           if (oldSession) {
@@ -3934,7 +3942,9 @@ export const useStore = create(
         await adoptTrainer(candidate);
         set((s) => ({
           trainerLoginNeeded: false,
-          ...(candidate.userId !== prev.userId && !moved ? { clients: _withoutQueue(s.clients) } : {}),
+          // Con traspaso los huecos y la cola van a la cuenta nueva (C10 §3.2); sin él, la cola era de la otra.
+          ...(moved ? { clients: moveOwner(s.clients, prev.userId, candidate.userId) }
+            : candidate.userId !== prev.userId ? { clients: _withoutQueue(s.clients) } : {}),
           trainerSync: {
             ...s.trainerSync,
             mode,
@@ -4020,22 +4030,22 @@ export const useStore = create(
        */
       /**
        * Creates a Supabase slot for an existing client that was created before
-       * the sync system. Assigns syncSlotId and syncCode to the client object.
+       * the sync system. Writes the slot facts (`slotFacts`) onto the client object.
        */
       connectClientToCloud: async (clientId) => {
         const { clients, trainerSync } = get();
         const client = clients[clientId];
         if (!client) throw new Error('Cliente no encontrado.');
         // Uno «de otra cuenta» sí: pasarlo a la app en ESTA cuenta le da hueco nuevo.
-        if (client.syncSlotId && !client.syncOrphan) throw new Error('Este cliente ya está conectado a la nube.');
+        if (canSave(linkOf(client, trainerSync.userId))) throw new Error('Este cliente ya está conectado a la nube.');
         if (!trainerSync.userId) throw new Error('Primero configura el modo de sincronización.');
-        if (client.syncPending) return false;   // doble pulsación: ya hay una conexión en vuelo
+        if (get().ui.linking?.[clientId]) return false;   // doble pulsación: ya hay una conexión en vuelo
         if (!get().profile.isPro) {
-          const reason = connectReason(clients, get().profile.freeClientIds, clientId);
+          const reason = connectReason(_planClients(get()), get().profile.freeClientIds, clientId);
           if (reason) { get()._paywall(reason, clientId); return false; }
         }
         // E42: sin ningún await entre la comprobación y la marca.
-        set((s) => patchClient(s, clientId, { syncPending: true }));
+        set((s) => ({ ui: { ...s.ui, linking: { ...s.ui.linking, [clientId]: true } } }));
 
         try {
           // Ensure auth session is active — may have expired after app restart
@@ -4044,12 +4054,12 @@ export const useStore = create(
           const { slotId, clientCode } = await createClientSlot(client.name, clientId);
 
           set((s) => patchClient(s, clientId, {
-            syncSlotId: slotId, syncCode: clientCode,
-            syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
+            ...slotFacts({ id: slotId, client_code: clientCode }, trainerSync.userId),
+            programUploadedSig: null,
           }));
           return true;
         } finally {
-          set((s) => _clearPending(s, clientId));
+          set((s) => _clearLinking(s, clientId));
         }
       },
 
@@ -4078,9 +4088,9 @@ export const useStore = create(
        */
       cancelClientInvitation: async (clientId) => {
         const client = get().clients[clientId];
-        if (!client?.syncSlotId || client.syncLinked) return;
+        if (!client?.slotId || client.seated) return;
         await _ensureTrainerSession(get().trainerSync);
-        await deleteClientSlot(client.syncSlotId, 'cancelled');
+        await deleteClientSlot(client.slotId, 'cancelled');
         set((s) => patchClient(s, clientId, UNINVITED));
       },
 
@@ -4097,7 +4107,7 @@ export const useStore = create(
       pushTrainerLogToSlot: async (clientId) => {
         const { clients, trainerSync, clientLogs, customExercises, programs } = get();
         const client = clients[clientId];
-        if (!client?.syncSlotId || client.syncLinked || client.syncOrphan) return false;
+        if (!canSend(linkOf(client, trainerSync.userId)) || client.seated) return false;
         await _ensureTrainerSession(trainerSync);
         const entries = clientLogs[clientId] ?? [];
         const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
@@ -4109,10 +4119,10 @@ export const useStore = create(
         // El servidor solo escribe si el asiento sigue vacío, en la misma
         // sentencia: si el cliente ya entró, SLOT_OCCUPIED y no se pisa nada.
         try {
-          await uploadTrainerLog(client.syncSlotId, entries, custom, progress);
+          await uploadTrainerLog(client.slotId, entries, custom, progress);
         } catch (err) {
           if (err.code === 'SLOT_OCCUPIED') {
-            set((s) => patchClient(s, clientId, { syncLinked: true }));
+            set((s) => patchClient(s, clientId, SEATED));
             return false;
           }
           throw get()._slotError(clientId, err);
@@ -4135,7 +4145,7 @@ export const useStore = create(
        */
       _slotError: (clientId, err) => {
         if (err?.code === 'SLOT_GONE' && get().clients[clientId]) {
-          set((s) => patchClient(s, clientId, { syncOrphan: true, syncLinked: false }));
+          set((s) => patchClient(s, clientId, SLOT_LOST));
           return Object.assign(new Error(i18n.t('clients.slotGoneError')), { code: 'SLOT_GONE' });
         }
         return err;
@@ -4149,8 +4159,10 @@ export const useStore = create(
       /** Lanza si al cliente no se le puede mandar nada desde esta cuenta. */
       _assertCloudClient: (clientId) => {
         const client = get().clients[clientId];
-        if (!client?.syncSlotId) throw new Error('Este cliente no tiene slot en Supabase.');
-        if (client.syncOrphan) throw Object.assign(new Error(i18n.t('clients.slotGoneError')), { code: 'SLOT_GONE' });
+        if (!client?.slotId) throw new Error('Este cliente no tiene slot en Supabase.');
+        const link = linkOf(client, get().trainerSync.userId);
+        if (link === 'otherAccount') throw Object.assign(new Error(i18n.t('clients.slotGoneError')), { code: 'SLOT_GONE' });
+        if (!canSend(link)) throw new Error('Este cliente no tiene slot en Supabase.');
         return client;
       },
 
@@ -4232,7 +4244,7 @@ export const useStore = create(
                 [...Object.values(programData.sessionTemplates ?? {}), ...Object.values(programData.freeSessions ?? {})]
                   .forEach((tpl) => { tpl.trainerName = trainerName.trim(); });
               }
-              await uploadProgram(client.syncSlotId, programData, trainerName?.trim() || null)
+              await uploadProgram(client.slotId, programData, trainerName?.trim() || null)
                 .catch((err) => { throw get()._slotError(clientId, err); });
               // Solo se limpia el aviso si el programa no cambió mientras viajaba la subida (E55).
               const nowJson = get()._buildProgramJson(programId, false)?.json;
@@ -4249,7 +4261,7 @@ export const useStore = create(
               const stamped = Object.fromEntries(
                 Object.entries(client.nextOverrides ?? {}).map(([tid, ov]) => [tid, { ...ov, createdAt: now }]),
               );
-              await uploadOverrides(client.syncSlotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
+              await uploadOverrides(client.slotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
               // Si se editó mientras viajaba el envío, no se toca lo editado ni su marca (E55).
               set((s) => patchClient(s, clientId, (c) => ({
                 overridesSentAt: now,
@@ -4332,7 +4344,7 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
 
         try {
-          const downloaded = await downloadHistory(client.syncSlotId).catch((err) => { throw get()._slotError(clientId, err); });
+          const downloaded = await downloadHistory(client.slotId).catch((err) => { throw get()._slotError(clientId, err); });
           // Un cliente con la versión vieja sube los ids de antes de juntar los
           // ejercicios repetidos (P09-exercise-variants.md §3.3).
           const incoming = { workoutLog: downloaded.history ?? [], customExercises: downloaded.customExercises };
@@ -4411,7 +4423,7 @@ export const useStore = create(
        *  - Hueco conocido → contadores, «¿ha entrado?», «¿se fue?» y su código
        *    (pudo reemitirse desde otro móvil).
        *  - Cliente cuyo hueco ya no está en esta cuenta pero existe en otra →
-       *    «de otra cuenta» (`syncOrphan`): no se le manda nada, y si se vuelve
+       *    «de otra cuenta» (`SLOT_LOST`): no se le manda nada, y si se vuelve
        *    a la cuenta buena se recupera solo. Borrarlo sería perder clientes
        *    por un error de cuenta.
        *  - Cliente cuyo hueco borró ESTA cuenta desde otro móvil (R-B6) → se
@@ -4439,7 +4451,7 @@ export const useStore = create(
 
           // Qué huecos creía tener ANTES de preguntar: un cliente creado
           // mientras tanto no está en la respuesta y no es «de otra cuenta».
-          const askedFor = new Set(Object.values(get().clients).map((c) => c.syncSlotId).filter(Boolean));
+          const askedFor = new Set(Object.values(get().clients).map((c) => c.slotId).filter(Boolean));
           const slots = await getTrainerSlots();
           const recovered = [];
 
@@ -4462,19 +4474,19 @@ export const useStore = create(
             const next = { ...s.clients };
             const deleted = new Set(s.trainerSync.deletedSlotIds ?? []);
             const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
-            const known = new Set(Object.values(next).map((c) => c.syncSlotId).filter(Boolean));
-            // ponytail: con un alta en vuelo (`syncPending`) el hueco que aún no
+            const known = new Set(Object.values(next).map((c) => c.slotId).filter(Boolean));
+            // ponytail: con un alta en vuelo (`ui.linking`) el hueco que aún no
             // conocemos puede ser el suyo; recrearlo duplicaría la ficha (E42).
             // Si era de verdad uno nuevo, se recupera en el siguiente refresco.
-            const creating = Object.values(next).some((c) => c.syncPending);
+            const creating = Object.values(s.ui.linking ?? {}).some(Boolean);
 
             for (const slot of slots) {
               if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
               // El alta llegó pero su respuesta no (E63): el hueco es de la ficha que lo pidió.
               const own = slot.local_id && next[slot.local_id];
-              if (own && (!own.syncSlotId || own.syncOrphan)) {
+              if (own && !canSave(linkOf(own, trainerSync.userId))) {
                 // Con su programa por subir, que el invitado lo mande solo.
-                next[own.id] = { ...own, syncSlotId: slot.id, programDirty: !!own.activeProgramId };
+                next[own.id] = { ...own, ...slotFacts(slot, trainerSync.userId), programDirty: !!own.activeProgramId };
                 known.add(slot.id);
                 continue;
               }
@@ -4486,7 +4498,7 @@ export const useStore = create(
                 activeProgramId: null,
                 fullName: '', phone: '', email: '', notes: '',
                 bodyWeight: [], billing: [], status: 'active',
-                syncSlotId:  slot.id,
+                ...slotFacts(slot, trainerSync.userId),
                 // Aún sin su programa: si la bajada falla, el próximo refresco lo reintenta (E39).
                 programMissing: true,
                 color:       nextIdentityColor(Object.values(next)),
@@ -4497,23 +4509,21 @@ export const useStore = create(
 
             for (const clientId of Object.keys(next)) {
               const c = next[clientId];
-              const slot = bySlot.get(c.syncSlotId);
+              const slot = bySlot.get(c.slotId);
               if (!slot) {
-                if (!askedFor.has(c.syncSlotId)) continue;
-                if (gone.get(c.syncSlotId) === 'cancelled') next[clientId] = { ...c, ...UNINVITED };
-                else if (!gone.has(c.syncSlotId) && !c.syncOrphan) next[clientId] = { ...c, syncOrphan: true, syncLinked: false };
+                if (!askedFor.has(c.slotId)) continue;
+                if (gone.get(c.slotId) === 'cancelled') next[clientId] = { ...c, ...UNINVITED };
+                // Solo si el hueco era de esta cuenta: el de otra no lo toca este refresco.
+                else if (!gone.has(c.slotId) && c.slotOwner === trainerSync.userId) next[clientId] = { ...c, ...SLOT_LOST };
                 continue;
               }
               next[clientId] = {
                 ...c,
-                syncCode:            slot.client_code,
-                syncOrphan:          false,
-                remoteSessionsCount: slot.sessions_count ?? 0,
                 // `client_id` es la única señal real de que ha entrado: tener
-                // hueco solo significa que TÚ lo creaste.
-                syncLinked:          !!slot.client_id,
-                // Se fue él (desconectarse): el código sigue valiendo para volver.
-                syncLeftAt:          !slot.client_id && slot.disconnected_at ? slot.disconnected_at : null,
+                // hueco solo significa que TÚ lo creaste. Si se fue él, el
+                // código sigue valiendo para volver.
+                ...slotFacts(slot, trainerSync.userId),
+                remoteSessionsCount: slot.sessions_count ?? 0,
                 // La etapa que pinta la lista sigue al cliente sin abrir su
                 // ficha (C04-qa-sep-conexion.md §3.2 e). Espejo, nunca recálculo.
                 // A un congelado solo se le actualiza el contador (E43, R-E2).
@@ -4525,7 +4535,7 @@ export const useStore = create(
           });
 
           if (gone.size && get().trainerSync.userId === trainerSync.userId) {
-            for (const c of Object.values(get().clients)) if (gone.get(c.syncSlotId) === 'deleted') get().deleteClient(c.id, { slotGone: true });
+            for (const c of Object.values(get().clients)) if (gone.get(c.slotId) === 'deleted') get().deleteClient(c.id, { slotGone: true });
           }
 
           // Los de refrescos anteriores que se quedaron sin programa (bajada fallida).
@@ -4537,7 +4547,7 @@ export const useStore = create(
             if (!c.programMissing || recovered.includes(c.id)) continue;
             if (c.activeProgramId) {
               set((s) => patchClient(s, c.id, { programMissing: undefined }));
-            } else if (c.syncSlotId && !c.syncOrphan) retry.push(c.id);
+            } else if (canSave(linkOf(c, trainerSync.userId))) retry.push(c.id);
           }
           for (const clientId of [...recovered, ...retry]) await get()._recoverSlotProgram(clientId);
         } finally {
@@ -4555,9 +4565,9 @@ export const useStore = create(
        */
       _recoverSlotProgram: async (clientId) => {
         const client = get().clients[clientId];
-        if (!client?.syncSlotId) return;
+        if (!client?.slotId) return;
         try {
-          const file = await downloadSlotProgram(client.syncSlotId);
+          const file = await downloadSlotProgram(client.slotId);
           // Mientras bajaba, el entrenador le asignó otro: ese manda, no se pisa.
           const assigned = !!get().clients[clientId]?.activeProgramId;
           if (file?.program && !assigned) get().importForClient(clientId, file, 'replace', { restore: true });
@@ -4594,15 +4604,11 @@ export const useStore = create(
         const client = get()._assertCloudClient(clientId);
 
         await _ensureTrainerSession(trainerSync);
-        const newCode = await reissueClientCodeRpc(client.syncSlotId).catch((err) => { throw get()._slotError(clientId, err); });
+        const newCode = await reissueClientCodeRpc(client.slotId).catch((err) => { throw get()._slotError(clientId, err); });
 
-        set((s) => patchClient(s, clientId, {
-          syncCode:   newCode,
-          // El asiento queda vacío: hasta que el cliente entre con el código
-          // nuevo, la ficha vuelve a enseñar la tarjeta del código.
-          syncLinked: false,
-          syncLeftAt: null,
-        }));
+        // El asiento queda vacío: hasta que el cliente entre con el código
+        // nuevo, la ficha vuelve a enseñar la tarjeta del código.
+        set((s) => patchClient(s, clientId, codeGiven(newCode)));
 
         return newCode;
       },
@@ -5200,8 +5206,8 @@ export const useStore = create(
             mode: 'offline', code: null, userId: null, email: null,
             trainerName: null, lastSeenSessionsCount: {}, deletedSlotIds: [],
           },
-          clients: Object.fromEntries(Object.entries(s.clients).map(([id, c]) => [id, c.syncSlotId ? {
-            ...c, syncSlotId: null, syncCode: null, syncLinked: false, syncOrphan: false, syncLeftAt: null,
+          clients: Object.fromEntries(Object.entries(s.clients).map(([id, c]) => [id, c.slotId ? {
+            ...c, ...NO_SLOT,
             programDirty: false, overridesDirty: false, programUploadedSig: null, sendPending: undefined,
           } : c])),
         }));
@@ -5637,6 +5643,10 @@ export const useStore = create(
           // (C08-clientes-dashboard.md §3.3). Idempotente.
           if (state.clients) state.clients = withIdentityColors(state.clients);
 
+          // Las banderas `sync*` de la ficha pasan a los cinco hechos del hueco (C10-01
+          // §4.1). Idempotente: una ficha que ya tiene `seated` no se toca.
+          if (state.clients) state.clients = migrateClientLinks(state.clients, state.trainerSync);
+
         } catch (e) {
           console.warn('[rehydrate] migration failed, booting with what loaded:', e);
         } finally {
@@ -5779,19 +5789,11 @@ useStore.subscribe((s, prev) => {
   // Una lista vieja no cuenta: si lo de antes cabía, todos estaban activos. Solo
   // manda una elección hecha en este mismo cambio.
   if (s.profile.freeClientIds !== prev.profile.freeClientIds) return;
-  if (!fitsFree(Object.values(prev.clients)) || fitsFree(Object.values(s.clients))) return;
+  // Los dos con la cuenta de ahora: entrar o salir de la cuenta cambia cómo cuentan, no lo que hay.
+  const plan = (clients) => Object.values(forPlan(clients, s.trainerSync.userId, s.ui.linking));
+  if (!fitsFree(plan(prev.clients)) || fitsFree(plan(s.clients))) return;
   const kept = Object.keys(prev.clients).filter((id) => s.clients[id]);
   if (kept.length) useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: kept } }));
-});
-
-// `syncPending` (E42) se persiste con `clients`: si la app murió en mitad de un
-// alta, la marca no puede quedarse contando como plaza ocupada para siempre.
-useStore.subscribe((s, prev) => {
-  if (!s._hasHydrated || prev._hasHydrated) return;
-  if (!Object.values(s.clients).some((c) => c.syncPending)) return;
-  useStore.setState((st) => ({
-    clients: Object.fromEntries(Object.entries(st.clients).map(([id, c]) => [id, { ...c, syncPending: undefined }])),
-  }));
 });
 
 // El «programa de entrada» del invitado (N-06): nadie está sentado aún, así que sube

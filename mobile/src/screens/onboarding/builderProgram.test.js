@@ -107,7 +107,7 @@ describe('constructor guiado — por mi cuenta (self/copy)', () => {
 
 describe('constructor guiado — el programa del cliente (trainer)', () => {
   beforeEach(() => {
-    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana', syncSlotId: 'slot_1' } } });
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana', slotId: 'slot_1' } } });
     useStore.getState().flowAnswer({ builderCtx: 'trainer', clientId: 'cli_1', clientMode: 'app' });
   });
 

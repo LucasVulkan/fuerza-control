@@ -7,15 +7,30 @@
  */
 
 import { templatesOf } from './programOwnership';
+import { hasSlot, linkOf, slotFacts, NO_SLOT, SLOT_LOST } from './clientLink';
 
 export const FREE = { clients: 3, connected: 1, programTemplates: 1, sessionTemplates: 1 };
 
 /** Con app = tiene hueco en el servidor: invitado (código sin canjear) o vinculado. */
 // Uno «de otra cuenta» (C09 §3.4) no está conectado en esta: no ocupa plaza.
-// `syncPending` = el alta/conexión está en vuelo (E42): la plaza ya está
-// reservada, así que una segunda pulsación la ve ocupada. Cuenta aunque sea un
-// «de otra cuenta» al que se le está dando hueco nuevo.
-export const isConnected = (client) => !!client?.syncPending || (!!client?.syncSlotId && !client.syncOrphan);
+// `linking` = el alta/conexión está en vuelo (E42, `ui.linking`): la plaza ya
+// está reservada, así que una segunda pulsación la ve ocupada.
+// Ni lo uno ni lo otro es de la ficha: `forPlan` los pone en una copia.
+export const isConnected = (client) => !!client?.linking || hasSlot(client);
+
+/**
+ * Los clientes tal como los cuenta el plan en la cuenta `userId`: los de otra
+ * cuenta (o sin cuenta) como sin hueco, y con `linking` los que tienen un alta en
+ * vuelo. Todo lo de este archivo cuenta sobre esto, no sobre `clients` a secas.
+ */
+export const forPlan = (clients, userId, linking) =>
+  Object.fromEntries(Object.entries(clients ?? {}).map(([id, c]) => {
+    const own = linkOf(c, userId) !== 'otherAccount';
+    return [id, own && !linking?.[id] ? c : { ...c, ...(own ? {} : SLOT_LOST), ...(linking?.[id] ? { linking: true } : {}) }];
+  }));
+
+// Un cliente que se va a conectar / un cliente sin app, para contar plazas.
+export const NEW_WITH_APP = slotFacts({ id: 'nuevo', client_code: 'nuevo' }, 'nuevo');
 
 /**
  * ¿Cabe este conjunto de clientes en el plan gratis? Dos comprobaciones, no
@@ -46,7 +61,7 @@ export function connectReason(clients, freeClientIds, id) {
   const active = activeClientIds(clients, freeClientIds);
   if (active !== null && !active.has(id)) return 'frozen';
   const base = active === null ? all : all.filter((c) => active.has(c.id));
-  return clientLimitReason(base.map((c) => (c.id === id ? { ...c, syncSlotId: 'nuevo', syncOrphan: false } : c)));
+  return clientLimitReason(base.map((c) => (c.id === id ? { ...c, ...NEW_WITH_APP } : c)));
 }
 
 /** Plantillas de sesión = las de la pestaña Plantillas; las libres de Inicio no cuentan. */
@@ -129,8 +144,8 @@ export function freeGates({ isPro, clients, freeClientIds, programs, sessionTemp
   const frozen = (id) => active !== null && !active.has(id);
   return {
     isPro: false,
-    newClient:          clientLimitReason([...all, { syncSlotId: null }]),
-    newConnectedClient: clientLimitReason([...all, { syncSlotId: 'nuevo' }]),
+    newClient:          clientLimitReason([...all, NO_SLOT]),
+    newConnectedClient: clientLimitReason([...all, NEW_WITH_APP]),
     connect:   (id) => connectReason(clients, freeClientIds, id),
     client:    (id) => (frozen(id) ? 'frozen' : null),
     newProgramTemplate:    counts.programTemplates >= FREE.programTemplates ? 'programTemplates' : null,

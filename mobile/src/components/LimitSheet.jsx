@@ -19,6 +19,7 @@ import { ROW_ICON } from './ui/rowIcons';
 import { SheetContext } from './ui/sheetContext';
 import DragSheet from './DragSheet';
 import { useStore } from '../../store/useStore';
+import { usePlanClients } from '../useFreeGates';
 import { FREE, isConnected, templateCounts } from '../utils/freePlan';
 import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -32,7 +33,7 @@ export default function LimitSheet({ reason, onClose }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { height } = useWindowDimensions();
-  const clients          = useStore((s) => s.clients);
+  const clients          = usePlanClients();
   const programs         = useStore((s) => s.programs);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const clientId         = useStore((s) => s.ui.limitClientId);

@@ -17,6 +17,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './ui/Text';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
+import { usePlanClients } from '../useFreeGates';
 import DragSheet from './DragSheet';
 import { FREE, fitsFree, isConnected, lockedClientIds } from '../utils/freePlan';
 import { spacing, textStyles } from '../theme';
@@ -26,7 +27,7 @@ export default function FreeClientsSheet({ onClose }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const clients         = useStore((s) => s.clients);
+  const clients         = usePlanClients();
   const freeClientIds   = useStore((s) => s.profile.freeClientIds);
   const setFreeClientIds = useStore((s) => s.setFreeClientIds);
   const openPaywall     = useStore((s) => s.openPaywall);

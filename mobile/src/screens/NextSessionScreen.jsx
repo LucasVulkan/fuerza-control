@@ -169,7 +169,7 @@ export default function NextSessionScreen({ navigation, route }) {
 
   async function handleSend() {
     Keyboard.dismiss();
-    if (!client.syncSlotId) {
+    if (!client.slotId) {
       showDialog(t('nextSession.notConnectedTitle'), t('nextSession.notConnectedBody'));
       return;
     }

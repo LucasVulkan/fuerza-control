@@ -89,7 +89,7 @@ export function syncBuilderDone(t) {
  */
 export async function sendBuilderProgram() {
   const { s, a, program, templates, trainer, client } = builderState();
-  if (!trainer || !program || !client?.syncSlotId) return false;
+  if (!trainer || !program || !client?.slotId) return false;
   if (!templates.some((tpl) => tpl.exercises?.length)) return false;
   await s.uploadProgramToClient(a.clientId, program.id);
   s.flowAnswer({ sent: true });

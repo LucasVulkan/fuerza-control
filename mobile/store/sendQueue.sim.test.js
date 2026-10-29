@@ -20,7 +20,7 @@ const UPLOAD_PROGRAM   = 'rpc:trainer_upload_program';
 const UPLOAD_OVERRIDES = 'rpc:trainer_upload_overrides';
 const uploads = (key, since = 0) => server.calls.slice(since).filter((c) => c.key === key).length;
 const slotOf = async (slotId) => (await server.slots()).find((r) => r.id === slotId);
-const programOnServer = async (t, clientId) => (await slotOf(t.s.clients[clientId].syncSlotId)).program_json.program;
+const programOnServer = async (t, clientId) => (await slotOf(t.s.clients[clientId].slotId)).program_json.program;
 
 /** `wrap(cfg, dev)` deja envolver el Supabase del entrenador (red lenta, contadores). */
 async function trainerPhone(wrap) {
@@ -49,7 +49,7 @@ async function linkedClient(t, name = 'Ana') {
   const programId = t.s.createProgramForClient(clientId, 2, 'Fuerza', null, { openEditor: false });
   t.s.setClientActiveProgram(clientId, programId);
   await t.s.uploadProgramToClient(clientId, programId);
-  t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } } }));
+  t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], seated: true } } }));
   return { clientId, programId };
 }
 
@@ -148,7 +148,7 @@ describe('E80 / A3 · lo que nadie envió no sale solo', () => {
     await expect(t.s.uploadProgramToClient(clientId, programId)).rejects.toMatchObject({ code: 'NETWORK' });
     expect(t.s.clients[clientId].sendPending).toEqual({ program: true });
     setOnline(t, true);
-    t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncOrphan: true } } }));
+    t.store.setState((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], slotOwner: null } } }));
     await expect(t.s.uploadProgramToClient(clientId, programId)).rejects.toMatchObject({ code: 'SLOT_GONE' });
     expect(t.s.clients[clientId].sendPending).toBeUndefined();
   });

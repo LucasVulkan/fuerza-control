@@ -46,8 +46,8 @@ async function newClientWithProgram(t, name = 'Ana', programName = 'Fuerza') {
   return { clientId, programId };
 }
 
-const codeOf = (t, clientId) => t.s.clients[clientId].syncCode;
-const slotIdOf = (t, clientId) => t.s.clients[clientId].syncSlotId;
+const codeOf = (t, clientId) => t.s.clients[clientId].code;
+const slotIdOf = (t, clientId) => t.s.clients[clientId].slotId;
 
 async function join(c, code) {
   await c.s.validateClientCode(code);
@@ -256,7 +256,7 @@ describe('H13 — crear hueco no es idempotente', () => {
     expect(lost.error).toBeNull();
 
     await t.s.connectClientToCloud(id);                          // el reintento de la app
-    expect(t.s.clients[id]).toMatchObject({ syncSlotId: lost.data[0].slot_id, syncCode: lost.data[0].code });
+    expect(t.s.clients[id]).toMatchObject({ slotId: lost.data[0].slot_id, code: lost.data[0].code });
     await t.s.refreshTrainerSlots();
     expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(1);
     expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(1);
@@ -266,12 +266,12 @@ describe('H13 — crear hueco no es idempotente', () => {
     const t = await phone('entrenador');
     await t.s.createTrainerCodeAccount();
     const id = await t.s.createClient('Ana', { withApp: true });
-    const { syncSlotId, syncCode } = t.s.clients[id];
-    expect((await slotOf(syncSlotId)).local_id).toBe(id);
+    const { slotId, code } = t.s.clients[id];
+    expect((await slotOf(slotId)).local_id).toBe(id);
 
     const raw = createSimClient(t.device, { storageKey: 'sb-trainer' });
     const again = await raw.rpc('trainer_create_slot', { p_client_name: 'Ana', p_local_id: id });   // el reintento tras perder la respuesta
-    expect(again.data).toEqual([{ slot_id: syncSlotId, code: syncCode }]);
+    expect(again.data).toEqual([{ slot_id: slotId, code: code }]);
     await t.s.refreshTrainerSlots();
     expect(Object.values(t.s.clients).filter((x) => x.name === 'Ana')).toHaveLength(1);
     expect((await server.slots()).filter((r) => r.trainer_id === t.s.trainerSync.userId)).toHaveLength(1);
