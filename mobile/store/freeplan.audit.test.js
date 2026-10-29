@@ -18,7 +18,7 @@ import { NO_SLOT, slotFacts, SLOT_LOST, linkOf } from '../src/utils/clientLink';
 const syncMock = {
   getTrainerSlots: vi.fn(async () => []),
   createClientSlot: vi.fn(), uploadProgram: vi.fn(), uploadTrainerLog: vi.fn(async () => {}), downloadHistory: vi.fn(),
-  downloadSlotProgram: vi.fn(async () => null), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(async () => true),
+  downloadSlotProgram: vi.fn(async () => null), getClientPrivates: vi.fn(async () => []), saveClientPrivate: vi.fn(), uploadOverrides: vi.fn(), deleteClientSlot: vi.fn(async () => true),
   updateTrainerNameForSlots: vi.fn(async () => 0), reissueClientCode: vi.fn(), clearClientCode: vi.fn(async () => {}), transferMySlotsTo: vi.fn(async () => 0),
   getSlotByClientCode: vi.fn(), linkClientToSlot: vi.fn(), seatOf: vi.fn(), uploadHistory: vi.fn(),
   releaseClientSlot: vi.fn(async () => 0), transferMySeatTo: vi.fn(),

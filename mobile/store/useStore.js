@@ -24,7 +24,7 @@ import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
-  createClientSlot, clearClientCode, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot, setSlotLocalId,
+  createClientSlot, clearClientCode, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot, setSlotLocalId, saveClientPrivate, getClientPrivates,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
   getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
@@ -47,6 +47,7 @@ import { forTimeElapsed, blocksLogFrom } from '../src/utils/conditioningBlocks';
 import { normName } from '../src/utils/sessionText';
 import { presetFromEntry, freeTemplateFromPreset, isFreeEntry, programTemplateOf } from '../src/utils/freeSessions';
 import { programSignature } from '../src/utils/programSignature';
+import { buildClientCard, buildClientPrograms, saveSig, applyClientCard, applyClientPrograms } from '../src/utils/clientSave';
 import { sessionStats } from '../src/utils/sessionStats';
 import { clientLink, linkOf, isReadOnly, withApp as isWithApp, canSend, canSave, slotFacts, codeGiven, moveOwner, migrateClientLinks, NO_SLOT, SLOT_LOST, CODE_CLEARED } from '../src/utils/clientLink';
 import { isNetworkError } from '../src/utils/networkError';
@@ -145,6 +146,10 @@ const _sendChain = {};
 const RETRY_MS = [30_000, 120_000, 600_000];
 let _retryTimer = null;
 let _retryStep = 0;
+// C10-05: `saveClients` en vuelo (un solo recorrido a la vez) y la marca de «este `set` es el de guardar»,
+// para que el suscriptor de abajo no se rearme por el `savedSig` que escribe el propio guardado.
+let _savingClients = null;
+let _ownSaveWrite = false;
 
 
 // M04-03: código de RevenueCat → clave i18n y acción del diálogo (retry · ok · restore). «Sin cargo» solo
@@ -205,11 +210,34 @@ function _setQueued(clientId, kind, on) {
 const _withoutQueue = (clients) =>
   Object.fromEntries(Object.entries(clients).map(([id, c]) => [id, c.sendPending ? { ...c, sendPending: undefined } : c]));
 
+// C10-05 (N-18): la firma de lo que hay por guardar de una ficha, o null si no hay nada. Por guardar =
+// puede guardarse (`canSave`), no está congelada (R-E2), ya está recuperada (`programMissing`: una ficha
+// a medias pisaría en el servidor la buena) y su firma no es la de lo último guardado.
+function _pendingSig(s, c) {
+  if (!c || c.programMissing || !canSave(linkOf(c, s.trainerSync.userId))) return null;
+  if (isClientFrozenRule({ isPro: s.profile.isPro, clients: _planClients(s), freeClientIds: s.profile.freeClientIds }, c.id)) return null;
+  const sig = saveSig(s, c.id);
+  return sig !== (c.savedSig ?? null) ? sig : null;
+}
+
+// Los ids por guardar. Memoizado por las referencias de lo que entra en la firma: el selector de Mi cuenta
+// y el temporizador lo llaman con cada cambio del store y calcular firmas de todos es lo caro.
+let _pendingMemo = null;
+function pendingSaveIds(s) {
+  const key = [s.clients, s.programs, s.sessionTemplates, s.customExercises, s.clientLogs, s.tagRegistry, s.trainerSync.userId, s.profile.isPro, s.profile.freeClientIds, s.ui.linking];
+  if (_pendingMemo && key.every((v, i) => v === _pendingMemo.key[i])) return _pendingMemo.ids;
+  const ids = Object.keys(s.clients).filter((id) => _pendingSig(s, s.clients[id]));
+  _pendingMemo = { key, ids };
+  return ids;
+}
+
 // Un solo temporizador: 30 s, 2 min y luego cada 10 min mientras quede algo en
-// cola; vacía, se para y la escala vuelve a empezar. Se llama tras cualquier
-// cambio de la cola. Con `ui.online === false` sigue, pero `retrySendQueue` no intenta.
+// cola o por guardar en la cuenta (C10-05); vacío, se para y la escala vuelve a empezar.
+// Se llama tras cualquier cambio de la cola o del guardado. Con `ui.online === false` sigue,
+// pero `retrySendQueue` y `saveClients` no intentan.
 function _syncRetryTimer() {
-  const queued = Object.values(useStore.getState().clients).some((c) => c.sendPending);
+  const s = useStore.getState();
+  const queued = Object.values(s.clients).some((c) => c.sendPending) || pendingSaveIds(s).length > 0;
   if (!queued) {
     clearTimeout(_retryTimer);
     _retryTimer = null; _retryStep = 0;
@@ -220,6 +248,7 @@ function _syncRetryTimer() {
     _retryTimer = null;
     _retryStep = Math.min(_retryStep + 1, RETRY_MS.length - 1);
     useStore.getState().retrySendQueue();
+    useStore.getState().saveClients();
   }, RETRY_MS[_retryStep]);
   _retryTimer.unref?.();   // en los tests no retiene el proceso
 }
@@ -470,6 +499,7 @@ const INITIAL_UI = {
   limitReason: null,    // M04-02: la hoja de límite; lo pone una acción que choca con el plan gratis
   limitClientId: null,  // el cliente que se tocó, para el motivo `frozen`
   linking: {},          // C10-01: altas en vuelo `{ [clientId]: true }` (E42); la plaza ya está reservada. Fuera del partialize.
+  saveFailed: false,    // C10-05: el último recorrido de guardar en la cuenta falló (red u otra cosa); Mi cuenta lo dice
   uploadingClients: null, // C10-04: `{ done, total }` mientras se suben las fichas `local` a la cuenta (§5); null el resto del tiempo
 };
 
@@ -3641,6 +3671,10 @@ export const useStore = create(
                 // La cola no viaja en las copias (N-06): solo vale la de este móvil.
                 delete rest.sendPending;
                 if (s.clients[id]?.sendPending) rest.sendPending = s.clients[id].sendPending;
+                // Ni lo guardado en la cuenta (C10-05): la firma vale para lo que había en este móvil; con lo
+                // restaurado distinto, el guardado lo ve pendiente y lo sube.
+                delete rest.savedSig;
+                if (s.clients[id]?.savedSig) rest.savedSig = s.clients[id].savedSig;
                 if (frozen(id)) {   // lo de entreno no se pisa: apunta a un programa que no entra
                   const { activeProgramId, nextOverrides, overridesDirty, progress } = s.clients[id];
                   Object.assign(rest, { activeProgramId, nextOverrides, overridesDirty, progress });
@@ -4145,7 +4179,7 @@ export const useStore = create(
        * (`SLOT_OCCUPIED`) no se toca nada y devuelve false (el refresco lo ve).
        */
       _uploadClient: async (clientId, { force = false } = {}) => {
-        const { trainerSync, clientLogs, customExercises, programs } = get();
+        const { trainerSync } = get();
         const client = get().clients[clientId];
         if (!client) return false;
         const local = linkOf(client, trainerSync.userId) === 'local';
@@ -4153,30 +4187,8 @@ export const useStore = create(
           ? await createClientSlot(client.name, clientId, false)
           : { slotId: client.slotId, clientCode: client.code };
 
-        const entries = clientLogs[clientId] ?? [];
-        const program = programs[client.activeProgramId];
-        // Sin entrenos ni programa no hay nada que contar: un historial vacío solo haría decir al cliente que «hay historial».
-        if (entries.length || (force && program)) {
-          const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
-          const custom = Object.fromEntries(Object.entries(customExercises ?? {}).filter(([id]) => used.has(id)));
-          // El sello de activación es el del propio programa: así, al restaurar,
-          // `mergeProgressOnImport` da por buena esta posición.
-          const progress = program ? progressBlob(program, program.stageActivatedAt ?? null) : null;
-          try {
-            await uploadTrainerLog(slot.slotId, entries, custom, progress);
-          } catch (err) {
-            if (err.code === 'SLOT_OCCUPIED') return false;
-            throw get()._slotError(clientId, err);
-          }
-          // Son mis propios entrenos: no cuentan como «sin revisar».
-          set((s) => (!s.clients[clientId] ? {} : {
-            ...patchClient(s, clientId, { remoteSessionsCount: entries.length }),
-            trainerSync: {
-              ...s.trainerSync,
-              lastSeenSessionsCount: { ...s.trainerSync.lastSeenSessionsCount, [clientId]: entries.length },
-            },
-          }));
-        }
+        // Con `force` también lo apuntado de un `none` sin entrenos, si hay programa (el progreso va igual).
+        if (!(await get()._pushTrainerLog(clientId, slot.slotId, { force }))) return false;
         if (local && !get().clients[clientId]) {
           // La borraron mientras subía: el hueco recién creado no puede quedarse huérfano ni resucitarla.
           await deleteClientSlot(slot.slotId).catch((err) => console.warn('[uploadClient] hueco huérfano:', err.message));
@@ -4185,10 +4197,107 @@ export const useStore = create(
         // Si mientras tanto la ficha ya tiene hueco (otra subida, una invitación) o se cambió de cuenta, no se pisa.
         if (local) {
           set((s) => (s.trainerSync.userId !== trainerSync.userId ? {}
-            : patchClient(s, clientId, (c) => (c.slotId ? {} : slotFacts({ id: slot.slotId, client_code: slot.clientCode }, trainerSync.userId)))));
+            // `savedSig` null: lo guardado era de otra cuenta (o de nada); en esta, el guardado lo sube de nuevo.
+            : patchClient(s, clientId, (c) => (c.slotId ? {} : { ...slotFacts({ id: slot.slotId, client_code: slot.clientCode }, trainerSync.userId), savedSig: null }))));
         }
         return true;
       },
+
+      /**
+       * Manda al hueco lo apuntado del cliente (historial, ejercicios propios y progreso de
+       * etapa), en el formato de un cliente; el servidor suma. Lo comparten la subida (§5) y
+       * guardar (§6). Sin entrenos no hay nada que contar (un historial vacío solo haría decir
+       * al cliente que «hay historial»), salvo con `force` y programa: el progreso va igual.
+       * Devuelve false si el cliente ya está dentro (`SLOT_OCCUPIED`): no se toca nada.
+       */
+      _pushTrainerLog: async (clientId, slotId, { force = false } = {}) => {
+        const { clientLogs, customExercises, programs, clients } = get();
+        const entries = clientLogs[clientId] ?? [];
+        const program = programs[clients[clientId]?.activeProgramId];
+        if (!entries.length && !(force && program)) return true;
+        const used = new Set(entries.flatMap((e) => (e.exercises ?? []).map((x) => x.exerciseId)));
+        const custom = Object.fromEntries(Object.entries(customExercises ?? {}).filter(([id]) => used.has(id)));
+        // El sello de activación es el del propio programa: así, al restaurar,
+        // `mergeProgressOnImport` da por buena esta posición.
+        const progress = program ? progressBlob(program, program.stageActivatedAt ?? null) : null;
+        try {
+          await uploadTrainerLog(slotId, entries, custom, progress);
+        } catch (err) {
+          if (err.code === 'SLOT_OCCUPIED') return false;
+          throw get()._slotError(clientId, err);
+        }
+        // Son mis propios entrenos: no cuentan como «sin revisar».
+        set((s) => (!s.clients[clientId] ? {} : {
+          ...patchClient(s, clientId, { remoteSessionsCount: entries.length }),
+          trainerSync: {
+            ...s.trainerSync,
+            lastSeenSessionsCount: { ...s.trainerSync.lastSeenSessionsCount, [clientId]: entries.length },
+          },
+        }));
+        return true;
+      },
+
+      /**
+       * Guarda en la cuenta (C10 §6, N-17): para cada ficha por guardar —firma distinta de la
+       * última guardada, ver `_pendingSig`—, su ficha y sus programas en la fila privada del
+       * hueco (`trainer_save_client`) y, si nadie está dentro, lo apuntado en el historial del
+       * hueco. NUNCA escribe lo que lee el cliente (`program_json`, `overrides_json`): guardar
+       * no es enviar (N-06). UNA DETRÁS DE OTRA y un solo recorrido a la vez.
+       *
+       * `savedSig` = la firma de lo que se subió, calculada ANTES de subir: si algo cambia
+       * mientras viaja, sigue pendiente y se vuelve a guardar (E55). No hay cola: lo pendiente
+       * sale de comparar firmas, y por eso sobrevive a cerrar la app y a salir y volver a la cuenta.
+       * Sin red para y deja el resto; otro error se registra y sigue con la siguiente; SLOT_GONE
+       * deja la ficha «de otra cuenta». Lo que quede pendiente se reintenta con la escala de la cola.
+       * Nunca lanza. Devuelve `{ saved, failed }`.
+       */
+      saveClients: () => {
+        if (_savingClients) return _savingClients;
+        _savingClients = (async () => {
+          const { trainerSync } = get();
+          let saved = 0, failed = false;
+          if (!trainerSync.userId || trainerSync.mode === 'offline' || get().ui.online === false) return { saved, failed };
+          const todo = pendingSaveIds(get());
+          if (!todo.length) { if (get().ui.saveFailed) set((s) => ({ ui: { ...s.ui, saveFailed: false } })); return { saved, failed }; }
+          try {
+            await _ensureTrainerSession(trainerSync);
+          } catch (err) {
+            console.warn('[saveClients] sin sesión:', err.message);
+            set((s) => ({ ui: { ...s.ui, saveFailed: true } }));
+            return { saved, failed: true };
+          }
+          for (const id of todo) {
+            const st = get();
+            if (st.trainerSync.userId !== trainerSync.userId) break;   // se cambió de cuenta
+            const c = st.clients[id];
+            const sig = _pendingSig(st, c);
+            if (!sig) continue;   // ya se guardó, se borró, se congeló…
+            const card = buildClientCard(st, id);
+            const programs = buildClientPrograms(st, id);
+            try {
+              await saveClientPrivate(c.slotId, card, programs).catch((err) => { throw get()._slotError(id, err); });
+              // Con alguien dentro, lo apuntado no se sube; si acaba de entrar, se deja (el refresco lo verá).
+              if (!c.seated) await get()._pushTrainerLog(id, c.slotId);
+              // No se rearma el suscriptor de abajo por este `set`: no cambia nada de lo que se guarda.
+              _ownSaveWrite = true;
+              try { set((s) => patchClient(s, id, (cur) => (cur.slotId === c.slotId ? { savedSig: sig } : {}))); } finally { _ownSaveWrite = false; }
+              saved += 1;
+            } catch (err) {
+              failed = true;
+              if (isNetworkError(err)) break;
+              if (err.code === 'SLOT_GONE') continue;
+              // ponytail: aquí se enchufa el registro para «Enviar informe» (N-16) cuando exista; hasta entonces, solo la consola.
+              console.warn(`[saveClients] ${id} no guardado (${err.code ?? 'ERR'}):`, err.message);
+            }
+          }
+          set((s) => (s.ui.saveFailed === failed ? {} : { ui: { ...s.ui, saveFailed: failed } }));
+          return { saved, failed };
+        })().finally(() => { _savingClients = null; _syncRetryTimer(); });
+        return _savingClients;
+      },
+
+      /** Cuántas fichas tienen cambios por guardar en la cuenta (Mi cuenta, C10-05). */
+      pendingSaveCount: () => pendingSaveIds(get()).length,
 
       /**
        * Sube a la cuenta las fichas `local` (C10 §5): el entrenador con cuenta tiene
@@ -4605,7 +4714,7 @@ export const useStore = create(
               const own = slot.local_id && next[slot.local_id];
               if (own && !canSave(linkOf(own, trainerSync.userId))) {
                 // Con su programa por subir, que el invitado lo mande solo (sin código no hay a quién).
-                next[own.id] = { ...own, ...slotFacts(slot, trainerSync.userId), programDirty: !!own.activeProgramId && !!slot.client_code };
+                next[own.id] = { ...own, ...slotFacts(slot, trainerSync.userId), savedSig: null, programDirty: !!own.activeProgramId && !!slot.client_code };
                 known.add(slot.id);
                 continue;
               }
@@ -4675,35 +4784,60 @@ export const useStore = create(
             for (const c of Object.values(get().clients)) if (gone.get(c.slotId) === 'deleted') get().deleteClient(c.id, { slotGone: true });
           }
 
-          // Los de refrescos anteriores que se quedaron sin programa (bajada fallida).
-          // Si ya tienen programa, la marca sobra. `programMissing` solo la ponen las
-          // fichas recuperadas: "sin programa" a secas no distingue de un
-          // programa que el entrenador quitó a propósito.
+          // Los de refrescos anteriores que se quedaron sin recuperar (bajada fallida).
+          // `programMissing` solo la ponen las fichas recuperadas: "sin programa" a secas
+          // no distingue de un programa que el entrenador quitó a propósito. Una que ya
+          // tiene programa también vuelve a intentarse: su ficha aún no ha bajado, y
+          // guardarla así pisaría en el servidor la buena (C10-05).
           const retry = [];
           for (const c of Object.values(get().clients)) {
             if (!c.programMissing || recovered.includes(c.id)) continue;
-            if (c.activeProgramId) {
-              set((s) => patchClient(s, c.id, { programMissing: undefined }));
-            } else if (canSave(linkOf(c, trainerSync.userId))) retry.push(c.id);
+            if (canSave(linkOf(c, trainerSync.userId))) retry.push(c.id);
+            else if (c.activeProgramId) set((s) => patchClient(s, c.id, { programMissing: undefined }));
           }
-          for (const clientId of [...recovered, ...retry]) await get()._recoverSlotProgram(clientId);
+          // Sus filas privadas (ficha y programas), en UNA consulta (§8.2). Si falla, ninguna se
+          // da por recuperada: sin la fila no se sabe si hay ficha que bajar, y el siguiente refresco lo reintenta (E39).
+          const toRecover = [...recovered, ...retry];
+          let rows = new Map();
+          if (toRecover.length) {
+            try {
+              const slotIds = toRecover.map((id) => get().clients[id]?.slotId).filter(Boolean);
+              rows = new Map((await getClientPrivates(slotIds)).map((r) => [r.slot_id, r]));
+            } catch (err) {
+              console.warn('[refreshTrainerSlots] fichas guardadas sin bajar:', err.message);
+              rows = null;
+            }
+          }
+          if (rows) for (const clientId of toRecover) await get()._recoverSlotProgram(clientId, rows.get(get().clients[clientId]?.slotId) ?? null);
+
+          // Lo que quede por guardar en la cuenta (C10-05). Nunca lanza.
+          if (get().trainerSync.userId === trainerSync.userId) await get().saveClients();
         } finally {
           set({ _refreshingSlots: null });
         }
       },
 
       /**
-       * Al recuperar un cliente del servidor, su programa vuelve con él: el
-       * que hay en el hueco es el último que se le mandó. Se marca como ya
-       * enviado, para que no salga «Cambios sin enviar» de algo que es idéntico.
-       * Sin programa en el hueco, no hace nada. Con el cliente congelado SÍ
-       * recupera: bajarlo es devolverle al entrenador lo que ya era suyo, no
-       * recibir del cliente (R-E3, E39). Quita `programMissing` al terminar bien.
+       * Al recuperar un cliente del servidor (C10 §8.2), vuelve con lo suyo. Quita
+       * `programMissing` al terminar bien; si algo falla se queda y el siguiente refresco lo
+       * reintenta (E39). Con el cliente congelado SÍ recupera: bajarlo es devolverle al
+       * entrenador lo que ya era suyo, no recibir del cliente (R-E3).
+       *
+       * `row`: su fila privada (`trainer_client_private`) o null si el hueco nunca se guardó.
+       *  - Con fila: la ficha sale de `card_json` (sus etiquetas se suman al registro), sus
+       *    programas de `programs_json` con sus ids, y su historial del hueco. `savedSig` = la
+       *    firma de lo bajado, así que no se vuelve a subir. Un programa activo que el
+       *    entrenador le asignó mientras tanto no se pisa.
+       *  - Sin fila: como siempre, el programa del hueco, que es el último que se le mandó.
+       *
+       * En los dos casos se marca el programa como ya enviado, para que no salga «Cambios sin
+       * enviar» de algo que es idéntico.
        */
-      _recoverSlotProgram: async (clientId) => {
+      _recoverSlotProgram: async (clientId, row = null) => {
         const client = get().clients[clientId];
         if (!client?.slotId) return;
         try {
+          if (row) return await get()._recoverFromPrivate(clientId, row);
           const file = await downloadSlotProgram(client.slotId);
           // Mientras bajaba, el entrenador le asignó otro: ese manda, no se pisa.
           const assigned = !!get().clients[clientId]?.activeProgramId;
@@ -4711,16 +4845,48 @@ export const useStore = create(
           // Sin programa en el hueco no hay nada que reintentar: se limpia también.
           set((s) => patchClient(s, clientId, { programMissing: undefined }));
           if (!file?.program || assigned) return;
-          const programId = get().clients[clientId]?.activeProgramId;
-          const built = programId && get()._buildProgramJson(programId, false);
-          if (built) {
-            set((s) => patchClient(s, clientId, {
-              programDirty: false, programUploadedSig: programSignature(JSON.parse(built.json)),
-            }));
-          }
+          get()._markProgramSent(clientId);
         } catch (err) {
           console.warn('[refreshTrainerSlots] programa no recuperado:', err.message);
         }
+      },
+
+      /** El programa activo del cliente cuenta como enviado: es el que hay en su hueco. */
+      _markProgramSent: (clientId) => {
+        const programId = get().clients[clientId]?.activeProgramId;
+        const built = programId && get()._buildProgramJson(programId, false);
+        if (built) {
+          set((s) => patchClient(s, clientId, {
+            programDirty: false, programUploadedSig: programSignature(JSON.parse(built.json)),
+          }));
+        }
+      },
+
+      /** La mitad de `_recoverSlotProgram` con fila privada. Lanza si algo falla. */
+      _recoverFromPrivate: async (clientId, row) => {
+        // Antes de tocar nada: si el historial no baja, no se da por recuperada.
+        const dl = await downloadHistory(get().clients[clientId].slotId);
+        const incoming = { workoutLog: dl.history ?? [], customExercises: dl.customExercises };
+        migrateExerciseRefs(incoming, get().getEffectiveLibrary());
+        let assigned = false;
+        set((s) => {
+          const cur = s.clients[clientId];
+          if (!cur) return {};   // la borraron mientras bajaba
+          assigned = !!cur.activeProgramId;
+          const card = applyClientCard(s, clientId, row.card_json);
+          const progs = applyClientPrograms(s, row.programs_json);
+          const next = {
+            ...s, ...progs,
+            tagRegistry: card.tagRegistry,
+            customExercises: { ...progs.customExercises, ...(incoming.customExercises ?? {}) },
+            clientLogs: { ...s.clientLogs, [clientId]: mergeClientLog(s.clientLogs[clientId], incoming.workoutLog, { update: true, deleted: s.deletedClientLogIds }) },
+            // El programa que se le asignó aquí mientras tanto manda sobre el de la ficha guardada.
+            clients: { ...s.clients, [clientId]: { ...card.client, ...(assigned ? { activeProgramId: cur.activeProgramId } : {}), programMissing: undefined } },
+          };
+          next.clients[clientId].savedSig = saveSig(next, clientId);
+          return { tagRegistry: next.tagRegistry, programs: next.programs, sessionTemplates: next.sessionTemplates, customExercises: next.customExercises, clientLogs: next.clientLogs, clients: next.clients };
+        });
+        if (!assigned) get()._markProgramSent(clientId);
       },
 
       /**
@@ -5958,8 +6124,24 @@ useStore.subscribe((s, prev) => {
   });
 });
 
+// C10-05 (D1 = A, continuo): lo que se guarda en la cuenta (fichas, programas, sesiones, ejercicios,
+// etiquetas y lo apuntado) se sube cuando el entrenador deja de tocar. 5 s sin cambios y `saveClients`
+// guarda lo que tenga la firma distinta. Sin bucle: el `savedSig` que escribe el propio guardado lleva
+// `_ownSaveWrite` y no rearma esto, y un recorrido que no encuentra nada pendiente no escribe nada.
+// Sin hidratar no: rehidratar cambia todo; el arranque guarda por su lado (App.js).
+const SAVE_DEBOUNCE_MS = 5000;
+let saveTimer = null;
+useStore.subscribe((s, prev) => {
+  if (_ownSaveWrite || !s._hasHydrated || !s.trainerSync.userId) return;
+  if (s.clients === prev.clients && s.programs === prev.programs && s.sessionTemplates === prev.sessionTemplates
+    && s.customExercises === prev.customExercises && s.clientLogs === prev.clientLogs && s.tagRegistry === prev.tagRegistry) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { useStore.getState().saveClients(); }, SAVE_DEBOUNCE_MS);
+  saveTimer.unref?.();   // en los tests no retiene el proceso
+});
+
 // ─── Selectors ─────────────────────────────────────────────────────────────────
-export const selectView         = (s) => s.ui.view;
+export const selectView        = (s) => s.ui.view;
 export const selectToast        = (s) => s.ui.toast;
 export const selectRestTimer    = (s) => s.ui.restTimer;
 export const selectActiveSession = (s) => s.activeSession;

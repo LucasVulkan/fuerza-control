@@ -8,12 +8,16 @@
  * C10-04: cada cliente con su hueco: nace `local`, la subida le crea el hueco sin
  * código, invitar le da código y cancelar se lo quita; mejorar la cuenta traspasa
  * y entrar en otra no.
+ *
+ * C10-05: la ficha, los programas y lo apuntado se guardan en la cuenta (continuo, por firma) y se
+ * recuperan con ella en un móvil nuevo; el cliente no lee lo privado y guardar no es enviar (N-06).
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { linkOf, assertFacts, NO_SLOT } from '../src/utils/clientLink';
 import { buildBackupJson } from '../src/utils/backupPayload';
 import { forPlan, clientLimitReason } from '../src/utils/freePlan';
+import { buildClientCard, buildClientPrograms, saveSig } from '../src/utils/clientSave';
 import { createServer, createDevice, createSimClient } from '../../test/supabaseSim.js';
 
 let server;
@@ -45,6 +49,7 @@ const google = (sub) => ({ provider: 'google', idToken: `google:${sub}` });
 async function newClient(t, name = 'Ana') {
   const clientId = await t.s.createClient(name, { withApp: true });
   const programId = t.s.createProgramForClient(clientId, 2, `Fuerza ${name}`, null, { openEditor: false });
+  t.s.setClientActiveProgram(clientId, programId);   // crear no asigna: lo hace el entrenador (la ficha guardada lo recuerda, C10-05)
   await t.s.uploadProgramToClient(clientId, programId);
   return clientId;
 }
@@ -612,5 +617,308 @@ describe('C10-04 · salir y entrar en otra cuenta no traspasa; mejorar sí (§3.
     await t.s.enterTrainerAccount(google('g1'));
     expect([ana, berta].map((id) => linkNow(t, id))).toEqual(['otherAccount', 'otherAccount']);
     for (const slot of await slots()) expect(slot.trainer_id).toBe(vieja);
+  });
+});
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('C10-05 · guardar en la cuenta y recuperar con la ficha', () => {
+  const privates = () => server.admin('select * from public.trainer_client_private order by saved_at');
+  const privateOf = async (slotId) => (await privates()).find((r) => r.slot_id === slotId);
+  const saveCalls = (name) => server.calls.filter((c) => c.device === name && c.key === 'rpc:trainer_save_client').length;
+  const timers = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  /** Cambia una nota y deja pasar el rato que espera el guardado. */
+  const noteAndWait = async (t, id, notes) => {
+    t.s.updateClientInfo(id, { notes });
+    await vi.advanceTimersByTimeAsync(5000);
+    await t.s.saveClients();   // si el temporizador ya lo lanzó, es el mismo recorrido
+  };
+
+  /** Espera (con los temporizadores falsos) a que algo asíncrono del servidor simulado acabe. */
+  const settle = async (cond) => { for (let i = 0; i < 500 && !cond(); i++) await new Promise((r) => globalThis.setImmediate(r)); expect(cond()).toBe(true); };
+
+  /** Un cliente sin app con ficha completa y un programa de dos etapas. */
+  async function fullSinApp(t, name, tagId) {
+    const id = await t.s.createClient(name);
+    t.s.updateClientInfo(id, {
+      notes: `Notas de ${name}`, phone: '600123123', email: `${name.toLowerCase()}@x.es`,
+      billing: [{ id: `b_${name}`, date: '2026-10-01', amount: 40, paid: true }],
+      bodyWeight: [{ date: '2026-10-01', kg: 71.5 }], tags: [tagId],
+    });
+    const pid = t.s.createProgramForClient(id, 2, `Programa ${name}`, null, { openEditor: false });
+    t.s.addStageToProgram(pid);
+    t.s.setClientActiveProgram(id, pid);
+    addLog(t, id, `log-${name}-1`);
+    addLog(t, id, `log-${name}-2`);
+    return id;
+  }
+
+  it('el escenario de N-17: cinco clientes en un móvil nuevo, con el mismo id, ficha, programas e historial', async () => {
+    const t = await phone('viejo');
+    const c = await phone('cliente');
+    await t.s.createTrainerCodeAccount();
+    const tag = t.s.createTag('Rehabilitación');
+    const sara = await fullSinApp(t, 'Sara', tag);
+    const tomas = await fullSinApp(t, 'Tomás', tag);
+    const ana = await newClient(t, 'Ana');                                   // invitada
+    const berta = await newClient(t, 'Berta');                               // conectada, con historial
+    await join(c, t.s.clients[berta].code);
+    const programId = c.s.clientSync.trainerProgramIds[0];
+    const sessionTemplateId = c.s.programs[programId].stages[0].days[0].sessionTemplateId;
+    c.store.setState((s) => ({ workoutLog: [...s.workoutLog, { id: 'berta-1', programId, sessionTemplateId, timestamp: Date.now(), date: '2026-10-28', exercises: [] }] }));
+    await c.s.uploadHistoryToTrainer();
+    const dani = await t.s.createClient('Dani');                             // con un programa archivado
+    const viejo = t.s.createProgramForClient(dani, 1, 'Viejo', null, { openEditor: false });
+    t.s.setClientActiveProgram(dani, viejo);
+    const nuevo = t.s.createProgramForClient(dani, 2, 'Nuevo', null, { openEditor: false });
+    t.s.setClientActiveProgram(dani, nuevo);
+    t.s.updateClientInfo(dani, { notes: 'lesión de hombro' });
+    t.store.setState((s) => ({ programs: { ...s.programs, [viejo]: { ...s.programs[viejo], status: 'archived' } } }));
+    await t.s.refreshTrainerSlots();
+    await t.s.downloadClientHistory(berta);
+    await t.s.saveClients();
+    const ids = [sara, tomas, ana, berta, dani];
+    expect(t.s.pendingSaveCount()).toBe(0);
+    expect(await privates()).toHaveLength(5);
+    // Lo apuntado de los sin app está en su hueco (R-C6).
+    expect(historyIds(await slotOf(t.s.clients[sara].slotId)).sort()).toEqual(['log-Sara-1', 'log-Sara-2']);
+
+    const n = await phone('nuevo');
+    await n.s.recoverTrainerAccount(t.s.trainerSync.code);
+
+    expect(idsOf(n)).toEqual([...ids].sort());
+    for (const id of ids) {
+      expect(buildClientCard(n.s, id)).toEqual(buildClientCard(t.s, id));
+      expect(buildClientPrograms(n.s, id)).toEqual(buildClientPrograms(t.s, id));
+      expect((n.s.clientLogs[id] ?? []).map((e) => e.id).sort()).toEqual((t.s.clientLogs[id] ?? []).map((e) => e.id).sort());
+      expect(n.s.clients[id].savedSig).toBe(saveSig(n.s, id));
+      expect(n.s.clients[id].programMissing).toBeUndefined();
+    }
+    expect(buildClientCard(n.s, sara).tags).toEqual([{ id: tag, name: 'Rehabilitación' }]);
+    expect(n.s.tagRegistry).toEqual([{ id: tag, name: 'Rehabilitación' }]);
+    expect(Object.keys(buildClientPrograms(n.s, dani).programs)).toHaveLength(2);
+    expect(n.s.programs[viejo].status).toBe('archived');
+    expect(n.s.programs[n.s.clients[sara].activeProgramId].stages).toHaveLength(2);
+    expect(n.s.clientLogs[berta].map((e) => e.id)).toEqual(['berta-1']);
+    Object.values(n.s.clients).forEach(assertFacts);
+    // Recuperar no vuelve a subir nada (la firma coincide).
+    expect(n.s.pendingSaveCount()).toBe(0);
+    await n.s.saveClients();
+    expect(saveCalls('nuevo')).toBe(0);
+  });
+
+  it('el cliente conectado no lee notas ni cobros, y su programa en el hueco no cambia porque el entrenador edite y se guarde: solo al enviar (N-06)', async () => {
+    const { t, c, berta } = await trainerWithClients();
+    t.s.updateClientInfo(berta, { notes: 'secreto', billing: [{ id: 'b1', amount: 50 }] });
+    const programId = t.s.clients[berta].activeProgramId;
+    await t.s.saveClients();
+    const slotId = t.s.clients[berta].slotId;
+    expect((await privateOf(slotId)).card_json.notes).toBe('secreto');
+
+    const asClient = createSimClient(c.device, { storageKey: 'sb-client' });
+    expect((await asClient.from('trainer_client_private').select('*')).data).toEqual([]);
+    expect((await asClient.from('trainer_client_private').select('*').eq('slot_id', slotId)).data).toEqual([]);
+
+    const sent = await slotOf(slotId);
+    t.store.setState((s) => ({ programs: { ...s.programs, [programId]: { ...s.programs[programId], name: 'Editado sin enviar' } } }));
+    t.s.updateClientInfo(berta, { notes: 'secreto 2' });
+    await t.s.saveClients();
+    const after = await slotOf(slotId);
+    expect((await privateOf(slotId)).programs_json.programs[programId].name).toBe('Editado sin enviar');
+    expect(after.program_json).toEqual(sent.program_json);
+    expect(after.overrides_json).toEqual(sent.overrides_json);
+    expect(after.program_updated_at).toEqual(sent.program_updated_at);
+
+    await t.s.uploadProgramToClient(berta, programId);
+    expect((await slotOf(slotId)).program_json.program.name).toBe('Editado sin enviar');
+  });
+
+  it('cambiar una nota y esperar: la fila privada la tiene; cambiarla mientras viaja deja la firma distinta y se vuelve a guardar (E55)', async () => {
+    const t = await phone('viejo');
+    await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana');
+    await t.s.refreshTrainerSlots();
+    timers();
+    try {
+      await noteAndWait(t, id, 'a');
+      expect((await privateOf(t.s.clients[id].slotId)).card_json.notes).toBe('a');
+      expect(t.s.pendingSaveCount()).toBe(0);
+
+      // Antes del rato no hay nada nuevo en el servidor: el guardado espera a que se deje de tocar.
+      t.s.updateClientInfo(id, { notes: 'b' });
+      await vi.advanceTimersByTimeAsync(4000);
+      expect((await privateOf(t.s.clients[id].slotId)).card_json.notes).toBe('a');
+      await vi.advanceTimersByTimeAsync(1000);
+      await t.s.saveClients();
+      expect((await privateOf(t.s.clients[id].slotId)).card_json.notes).toBe('b');
+
+      // Mientras viaja un guardado, el entrenador cambia la nota otra vez.
+      const orig = server._shouldFail.bind(server);
+      let once = true;
+      server._shouldFail = (k, dev) => {
+        if (k === 'rpc:trainer_save_client' && once) { once = false; t.s.updateClientInfo(id, { notes: 'd' }); }
+        return orig(k, dev);
+      };
+      const savedB = t.s.clients[id].savedSig;
+      t.s.updateClientInfo(id, { notes: 'c' });
+      await vi.advanceTimersByTimeAsync(5000);
+      await settle(() => t.s.clients[id].savedSig !== savedB);             // termina el guardado de 'c'
+      expect((await privateOf(t.s.clients[id].slotId)).card_json.notes).toBe('c');
+      expect(t.s.pendingSaveCount()).toBe(1);                              // la firma de 'c' no es la de 'd'
+      expect(t.s.clients[id].savedSig).not.toBe(saveSig(t.s, id));
+      await vi.advanceTimersByTimeAsync(5000);
+      await settle(() => t.s.pendingSaveCount() === 0);
+      expect((await privateOf(t.s.clients[id].slotId)).card_json.notes).toBe('d');
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('sin red, cambiar dos fichas: nada se guarda; al volver la red (y la espera de la cola), las dos', async () => {
+    const t = await phone('viejo');
+    await t.s.createTrainerCodeAccount();
+    const a = await t.s.createClient('Ana');
+    const b = await t.s.createClient('Berta');
+    await t.s.refreshTrainerSlots();
+    await t.s.refreshTrainerSlots();                                         // la subida de Berta empezó con la de Ana en vuelo
+    expect(t.s.localClientCount()).toBe(0);
+    const antes = await privates();
+    timers();
+    try {
+      t.device.offline = true;
+      t.s.updateClientInfo(a, { notes: 'nota a' });
+      t.s.updateClientInfo(b, { notes: 'nota b' });
+      await vi.advanceTimersByTimeAsync(5000);
+      await t.s.saveClients();
+      expect(await privates()).toEqual(antes);
+      expect(t.s.pendingSaveCount()).toBe(2);
+      expect(t.s.ui.saveFailed).toBe(true);
+
+      t.device.offline = false;                                            // la red vuelve sin que nadie avise: manda la escala de la cola (30 s)
+      await vi.advanceTimersByTimeAsync(30_000);
+      await t.s.saveClients();
+      expect((await privateOf(t.s.clients[a].slotId)).card_json.notes).toBe('nota a');
+      expect((await privateOf(t.s.clients[b].slotId)).card_json.notes).toBe('nota b');
+      expect(t.s.pendingSaveCount()).toBe(0);
+      expect(t.s.ui.saveFailed).toBe(false);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('salir de la cuenta con cambios sin guardar y volver: se guardan al volver (de otra cuenta no se guarda mientras tanto)', async () => {
+    const t = await phone('viejo');
+    await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana');
+    await t.s.refreshTrainerSlots();
+    const slotId = t.s.clients[id].slotId;
+    const code = t.s.trainerSync.code;
+    timers();
+    try {
+      t.s.updateClientInfo(id, { notes: 'sin guardar' });
+      await t.s.leaveTrainerAccount();                                     // antes de que pase la espera
+      await vi.advanceTimersByTimeAsync(5000);
+      await t.s.saveClients();
+      expect(linkNow(t, id)).toBe('otherAccount');
+      t.s.updateClientInfo(id, { notes: 'no debe entrar' });               // solo lectura (N-19)
+      expect(t.s.clients[id].notes).toBe('sin guardar');
+      expect((await privateOf(slotId)).card_json.notes).toBe('');
+      expect(t.s.pendingSaveCount()).toBe(0);                              // de otra cuenta no cuenta
+
+      await t.s.recoverTrainerAccount(code);
+      expect(t.s.clients[id].notes).toBe('sin guardar');
+      expect((await privateOf(slotId)).card_json.notes).toBe('sin guardar');
+      expect(t.s.pendingSaveCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('un congelado no se guarda ni se envía (R-E2, N-12)', async () => {
+    const t = await phone('viejo');
+    await t.s.createTrainerCodeAccount();
+    const libres = [await t.s.createClient('A'), await t.s.createClient('B'), await t.s.createClient('C')];
+    const frozen = await newClient(t, 'Ana');                              // invitada y con programa enviado
+    await t.s.refreshTrainerSlots();
+    const slotId = t.s.clients[frozen].slotId;
+    const programId = t.s.clients[frozen].activeProgramId;
+    const sent = await slotOf(slotId);
+    // Caduca el PRO y se quedan los otros tres: Ana queda congelada.
+    t.store.setState((s) => ({ profile: { ...s.profile, isPro: false, freeClientIds: libres } }));
+    expect(t.s.isClientFrozen(frozen)).toBe(true);
+
+    t.store.setState((s) => ({ clients: { ...s.clients, [frozen]: { ...s.clients[frozen], notes: 'cambiada' } }, programs: { ...s.programs, [programId]: { ...s.programs[programId], name: 'Cambiado' } } }));
+    expect(t.s.pendingSaveCount()).toBe(0);
+    await t.s.saveClients();
+    expect((await privateOf(slotId)).card_json.notes).toBe('');
+    await expect(t.s.uploadProgramToClient(frozen, programId)).rejects.toMatchObject({ code: 'FROZEN' });
+    expect((await slotOf(slotId)).program_json).toEqual(sent.program_json);
+    // Los demás siguen guardándose.
+    t.s.updateClientInfo(libres[0], { notes: 'libre' });
+    await t.s.saveClients();
+    expect((await privateOf(t.s.clients[libres[0]].slotId)).card_json.notes).toBe('libre');
+  });
+
+  it('una ficha recuperada a medias (la bajada falla) no se guarda por encima de la buena, y el siguiente refresco la completa', async () => {
+    const t = await phone('viejo');
+    await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana');
+    await t.s.refreshTrainerSlots();
+    t.s.updateClientInfo(id, { notes: 'lo importante' });
+    await t.s.saveClients();
+    const slotId = t.s.clients[id].slotId;
+
+    const n = await phone('nuevo');
+    failNth('from:trainer_client_private', 1);
+    await n.s.recoverTrainerAccount(t.s.trainerSync.code);
+    expect(n.s.clients[id].programMissing).toBe(true);
+    expect(n.s.pendingSaveCount()).toBe(0);
+    expect((await privateOf(slotId)).card_json.notes).toBe('lo importante');
+
+    await n.s.refreshTrainerSlots();
+    expect(n.s.clients[id].programMissing).toBeUndefined();
+    expect(n.s.clients[id].notes).toBe('lo importante');
+    expect((await privateOf(slotId)).card_json.notes).toBe('lo importante');
+  });
+
+  it('un hueco que nunca se guardó se recupera como antes (con el programa del hueco) y el primer guardado lo sube', async () => {
+    const { ana, code } = await trainerWithClients();
+    await server.admin('delete from public.trainer_client_private');          // como un hueco de antes de C10-05
+    const n = await phone('nuevo');
+    await n.s.recoverTrainerAccount(code);
+    expect(n.s.programs[n.s.clients[ana].activeProgramId]?.name).toBe('Fuerza Ana');
+    expect(n.s.clients[ana].programMissing).toBeUndefined();
+    expect(await privates()).toHaveLength(2);                                // el refresco, al acabar, los guardó
+    expect(n.s.pendingSaveCount()).toBe(0);
+  });
+
+  it('restaurar una copia descarta el `savedSig` que traiga: lo restaurado se ve pendiente y se guarda', async () => {
+    const t = await phone('viejo');
+    await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana');
+    await t.s.refreshTrainerSlots();
+    const backup = JSON.parse(buildBackupJson(t.s));
+    expect(backup.clients[id].savedSig).toBeUndefined();                    // la copia no lo lleva
+    backup.clients[id] = { ...backup.clients[id], notes: 'de la copia', savedSig: 'viejo-de-otro-movil' };   // una copia manipulada o de otro móvil
+    t.s.importData(backup, { clients: true }, { silent: true });
+
+    expect(t.s.clients[id].savedSig).not.toBe('viejo-de-otro-movil');
+    expect(t.s.pendingSaveCount()).toBe(1);                                  // cambió lo que hay: se guarda
+    await t.s.saveClients();
+    expect((await privateOf(t.s.clients[id].slotId)).card_json.notes).toBe('de la copia');
+  });
+
+  it('un solo recorrido a la vez, y el `savedSig` propio no rearma el guardado (sin bucle)', async () => {
+    const t = await phone('viejo');
+    await t.s.createTrainerCodeAccount();
+    const id = await t.s.createClient('Ana');
+    await t.s.refreshTrainerSlots();
+    timers();
+    try {
+      t.s.updateClientInfo(id, { notes: 'x' });
+      const [r1, r2] = [t.s.saveClients(), t.s.saveClients()];
+      expect(r1).toBe(r2);
+      await r1;
+      const calls = saveCalls('viejo');
+      expect(calls).toBeGreaterThan(0);
+      await vi.advanceTimersByTimeAsync(60_000);                            // ni el suscriptor ni la escala vuelven a subir lo mismo
+      await t.s.saveClients();
+      expect(saveCalls('viejo')).toBe(calls);
+    } finally { vi.useRealTimers(); }
   });
 });

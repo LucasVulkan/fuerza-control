@@ -61,6 +61,12 @@ describe('buildBackupPayload', () => {
     expect(serializado).not.toContain('ABCD-1234');
   });
 
+  it('las fichas no llevan `sendPending` ni `savedSig` (C10-05): son de este móvil y de esta cuenta', () => {
+    const payload = buildBackupPayload({ clients: { a: { id: 'a', name: 'Ana', notes: 'x', sendPending: { program: true }, savedSig: 'k3j2' } } });
+
+    expect(payload.clients.a).toEqual({ id: 'a', name: 'Ana', notes: 'x' });
+  });
+
   it('tolera el estado persistido a medias que lee la tarea de fondo', () => {
     // Instalación recién estrenada: `clientLogs` y `clients` aún no existen.
     const payload = buildBackupPayload({ profile: { name: 'Ana' }, programs: {} });
