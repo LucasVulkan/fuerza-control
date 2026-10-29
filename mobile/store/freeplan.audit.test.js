@@ -163,6 +163,17 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     expect(S().isClientFrozen('e')).toBe(true);                                 // solo el nuevo
   });
 
+  it('R-E4 cumple (C10-01): salir y volver a entrar en la cuenta no cambia la elección', () => {
+    free({ clients: { a: mk('a', inSlot('s_a', true)), b: mk('b', inSlot('s_b', true)), c: mk('c') } });
+    S().setFreeClientIds(['b']);
+    expect(S().isClientFrozen('a')).toBe(true);   // montaje
+    // Fuera de la cuenta los dos con app cuentan como «de otra cuenta»; al volver, otra vez con app.
+    useStore.setState((s) => ({ clients: { ...s.clients }, trainerSync: { ...s.trainerSync, userId: null } }));
+    useStore.setState((s) => ({ clients: { ...s.clients }, trainerSync: { ...s.trainerSync, userId: 'trainer_1' } }));
+    expect(S().profile.freeClientIds).toEqual(['b']);
+    expect(S().isClientFrozen('a')).toBe(true);
+  });
+
   it('P23 aceptado (24-oct, decisión 1: asignar lo que tienes): la biblioteca de programas propios archivados es una bolsa de plantillas sin límite (regla R-E1: ≤1 plantilla)', () => {
     free({ clients: { cx: mk('cx') } });
     for (let i = 0; i < 5; i++) expect(S().createEmptyProgram(2, `Lib${i}`, 'program')).toBeTruthy();   // montaje

@@ -5789,7 +5789,9 @@ useStore.subscribe((s, prev) => {
   // Una lista vieja no cuenta: si lo de antes cabía, todos estaban activos. Solo
   // manda una elección hecha en este mismo cambio.
   if (s.profile.freeClientIds !== prev.profile.freeClientIds) return;
-  if (!fitsFree(Object.values(_planClients(prev))) || fitsFree(Object.values(_planClients(s)))) return;
+  // Los dos con la cuenta de ahora: entrar o salir de la cuenta cambia cómo cuentan, no lo que hay.
+  const plan = (clients) => Object.values(forPlan(clients, s.trainerSync.userId, s.ui.linking));
+  if (!fitsFree(plan(prev.clients)) || fitsFree(plan(s.clients))) return;
   const kept = Object.keys(prev.clients).filter((id) => s.clients[id]);
   if (kept.length) useStore.setState((st) => ({ profile: { ...st.profile, freeClientIds: kept } }));
 });
