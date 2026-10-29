@@ -164,11 +164,17 @@ function trainerLoginNeeded(mode) {
   return Object.assign(new Error(i18n.t('account.loginNeededError', { how })), { code: 'TRAINER_LOGIN_NEEDED' });
 }
 
+// Única forma de escribir en una ficha ya existente (I04-04): si se borró
+// mientras se esperaba un `await`, no hace nada en vez de crear una fantasma.
+// `patch` es un objeto, o una función de la ficha actual que lo devuelve.
+function patchClient(s, id, patch) {
+  const c = s.clients[id];
+  if (!c) return {};
+  return { clients: { ...s.clients, [id]: { ...c, ...(typeof patch === 'function' ? patch(c) : patch) } } };
+}
+
 // Quita la marca de «alta en vuelo» (E42) de una ficha, venga bien o mal.
-const _clearPending = (s, id) => {
-  if (!s.clients[id]) return {};
-  return { clients: { ...s.clients, [id]: { ...s.clients[id], syncPending: undefined } } };
-};
+const _clearPending = (s, id) => patchClient(s, id, { syncPending: undefined });
 
 async function _ensureTrainerSession(trainerSync) {
   if (!trainerSync.userId) throw Object.assign(new Error(i18n.t('account.noAccountError')), { code: 'NO_TRAINER_ACCOUNT' });
@@ -903,12 +909,7 @@ export const useStore = create(
           try {
             await _ensureTrainerSession(trainerSync);
             const { slotId, clientCode } = await createClientSlot(name.trim(), id);
-            set((s) => ({
-              clients: {
-                ...s.clients,
-                [id]: { ...s.clients[id], syncCode: clientCode, syncSlotId: slotId },
-              },
-            }));
+            set((s) => patchClient(s, id, { syncCode: clientCode, syncSlotId: slotId }));
           } catch (err) {
             // El cliente queda creado, sin app. Se dice, para que no espere un
             // código que no existe: «Pasar a la app» lo genera después.
@@ -923,9 +924,7 @@ export const useStore = create(
       },
 
       updateClientInfo: (clientId, fields) => {
-        set((s) => ({
-          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...fields } },
-        }));
+        set((s) => patchClient(s, clientId, fields));
       },
 
       // ── Plan gratis (M01 §4) ──────────────────────────────────────────────
@@ -1080,23 +1079,16 @@ export const useStore = create(
       },
 
       renameClient: (clientId, name) => {
-        set((s) => ({
-          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], name: name.trim() } },
-        }));
+        set((s) => patchClient(s, clientId, { name: name.trim() }));
       },
 
       setClientActiveProgram: (clientId, programId) => {
         if (programId !== null && get().isClientFrozen(clientId)) return get()._paywall('frozen', clientId);
         // Assigning makes the program active (archiving the previous one) and
         // marks it dirty so the trainer pushes it. Deassigning clears both.
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: programId === null
-              ? deassignProgram(s.clients[clientId])
-              : assignActiveProgram(s.clients[clientId], programId),
-          },
-        }));
+        set((s) => patchClient(s, clientId, (c) => (
+          programId === null ? deassignProgram(c) : assignActiveProgram(c, programId)
+        )));
       },
 
       /**
@@ -1124,44 +1116,21 @@ export const useStore = create(
 
       addClientBilling: (clientId, entry) => {
         const id = generateId('bill');
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              billing: [
-                { id, ...entry, status: entry.status ?? 'pending' },
-                ...(s.clients[clientId].billing ?? []),
-              ],
-            },
-          },
-        }));
+        set((s) => patchClient(s, clientId, (c) => ({
+          billing: [{ id, ...entry, status: entry.status ?? 'pending' }, ...(c.billing ?? [])],
+        })));
       },
 
       updateClientBillingStatus: (clientId, billingId, status) => {
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              billing: (s.clients[clientId].billing ?? []).map((b) =>
-                b.id === billingId ? { ...b, status } : b
-              ),
-            },
-          },
-        }));
+        set((s) => patchClient(s, clientId, (c) => ({
+          billing: (c.billing ?? []).map((b) => (b.id === billingId ? { ...b, status } : b)),
+        })));
       },
 
       removeClientBilling: (clientId, billingId) => {
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              billing: (s.clients[clientId].billing ?? []).filter((b) => b.id !== billingId),
-            },
-          },
-        }));
+        set((s) => patchClient(s, clientId, (c) => ({
+          billing: (c.billing ?? []).filter((b) => b.id !== billingId),
+        })));
       },
 
       addClientBodyWeight: (clientId, date, weight) => {
@@ -1170,23 +1139,15 @@ export const useStore = create(
         const existing = (client.bodyWeight ?? []).filter((e) => e.date !== date);
         const sorted = [...existing, { date, weight: parseFloat(weight) }]
           .sort((a, b) => a.date.localeCompare(b.date));
-        set((s) => ({
-          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], bodyWeight: sorted } },
-        }));
+        set((s) => patchClient(s, clientId, { bodyWeight: sorted }));
       },
 
       removeClientBodyWeight: (clientId, date) => {
         const client = get().clients[clientId];
         if (!client) return;
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              bodyWeight: (s.clients[clientId].bodyWeight ?? []).filter((e) => e.date !== date),
-            },
-          },
-        }));
+        set((s) => patchClient(s, clientId, (c) => ({
+          bodyWeight: (c.bodyWeight ?? []).filter((e) => e.date !== date),
+        })));
       },
 
       // Mobile: receives parsedData (already parsed JSON) + mode string
@@ -1228,7 +1189,7 @@ export const useStore = create(
             sessionTemplates: mergeFileSessions(s.sessionTemplates, data),
             customExercises: { ...s.customExercises, ...(data.customExercises ?? {}) },
             // Incoming program becomes active; the previous active is archived.
-            clients: { ...s.clients, [clientId]: assignActiveProgram(s.clients[clientId], programId) },
+            ...patchClient(s, clientId, (c) => assignActiveProgram(c, programId)),
           }));
           // Entries from a client file belong to that client's log, not the trainer's
           if (mode === 'replace_log' && data.workoutLog?.length) {
@@ -4024,7 +3985,7 @@ export const useStore = create(
           if (reason) { get()._paywall(reason, clientId); return false; }
         }
         // E42: sin ningún await entre la comprobación y la marca.
-        set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncPending: true } } }));
+        set((s) => patchClient(s, clientId, { syncPending: true }));
 
         try {
           // Ensure auth session is active — may have expired after app restart
@@ -4032,14 +3993,9 @@ export const useStore = create(
 
           const { slotId, clientCode } = await createClientSlot(client.name, clientId);
 
-          set((s) => ({
-            clients: {
-              ...s.clients,
-              [clientId]: {
-                ...s.clients[clientId], syncSlotId: slotId, syncCode: clientCode,
-                syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
-              },
-            },
+          set((s) => patchClient(s, clientId, {
+            syncSlotId: slotId, syncCode: clientCode,
+            syncLinked: false, syncOrphan: false, syncLeftAt: null, programUploadedSig: null,
           }));
           return true;
         } finally {
@@ -4075,7 +4031,7 @@ export const useStore = create(
         if (!client?.syncSlotId || client.syncLinked) return;
         await _ensureTrainerSession(get().trainerSync);
         await deleteClientSlot(client.syncSlotId, 'cancelled');
-        set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], ...UNINVITED } } }));
+        set((s) => patchClient(s, clientId, UNINVITED));
       },
 
       /**
@@ -4106,14 +4062,14 @@ export const useStore = create(
           await uploadTrainerLog(client.syncSlotId, entries, custom, progress);
         } catch (err) {
           if (err.code === 'SLOT_OCCUPIED') {
-            set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncLinked: true } } }));
+            set((s) => patchClient(s, clientId, { syncLinked: true }));
             return false;
           }
           throw get()._slotError(clientId, err);
         }
         // Son mis propios entrenos: no cuentan como «sin revisar».
-        set((s) => ({
-          clients: { ...s.clients, [clientId]: { ...s.clients[clientId], remoteSessionsCount: entries.length } },
+        set((s) => (!s.clients[clientId] ? {} : {
+          ...patchClient(s, clientId, { remoteSessionsCount: entries.length }),
           trainerSync: {
             ...s.trainerSync,
             lastSeenSessionsCount: { ...s.trainerSync.lastSeenSessionsCount, [clientId]: entries.length },
@@ -4129,7 +4085,7 @@ export const useStore = create(
        */
       _slotError: (clientId, err) => {
         if (err?.code === 'SLOT_GONE' && get().clients[clientId]) {
-          set((s) => ({ clients: { ...s.clients, [clientId]: { ...s.clients[clientId], syncOrphan: true, syncLinked: false } } }));
+          set((s) => patchClient(s, clientId, { syncOrphan: true, syncLinked: false }));
           return Object.assign(new Error(i18n.t('clients.slotGoneError')), { code: 'SLOT_GONE' });
         }
         return err;
@@ -4196,16 +4152,10 @@ export const useStore = create(
         // Solo se limpia el aviso si el programa no cambió mientras viajaba la subida (E55).
         const nowJson = get()._buildProgramJson(programId, false)?.json;
         const unchanged = !!nowJson && programSignature(JSON.parse(nowJson)) === uploadedSig;
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              ...(unchanged ? { programDirty: false } : {}),
-              programUploadedAt:  new Date().toISOString(),
-              programUploadedSig: uploadedSig,
-            },
-          },
+        set((s) => patchClient(s, clientId, {
+          ...(unchanged ? { programDirty: false } : {}),
+          programUploadedAt:  new Date().toISOString(),
+          programUploadedSig: uploadedSig,
         }));
       },
 
@@ -4270,17 +4220,10 @@ export const useStore = create(
         );
         await uploadOverrides(client.syncSlotId, stamped).catch((err) => { throw get()._slotError(clientId, err); });
         // Si se editó mientras viajaba el envío, no se toca lo editado ni su marca (E55).
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              overridesSentAt: now,
-              ...(s.clients[clientId]?.nextOverrides === client.nextOverrides
-                ? { nextOverrides: stamped, overridesDirty: false } : {}),
-            },
-          },
-        }));
+        set((s) => patchClient(s, clientId, (c) => ({
+          overridesSentAt: now,
+          ...(c.nextOverrides === client.nextOverrides ? { nextOverrides: stamped, overridesDirty: false } : {}),
+        })));
       },
 
       /**
@@ -4308,15 +4251,9 @@ export const useStore = create(
           // server keeps in `sessions_count` (both written by `uploadHistory`
           // from one list), and `markHistoryViewed` must not mark a stale one
           // as seen (C04-qa-sep-conexion.md §4).
-          set((s) => ({
-            clients: {
-              ...s.clients,
-              [clientId]: {
-                ...s.clients[clientId],
-                remoteSessionsCount: history?.length ?? 0,
-                ...(progress ? { progress } : {}),
-              },
-            },
+          set((s) => patchClient(s, clientId, {
+            remoteSessionsCount: history?.length ?? 0,
+            ...(progress ? { progress } : {}),
           }));
           if (!history?.length && !Object.keys(clientCustom ?? {}).length) {
             return { merged: 0 };
@@ -4337,31 +4274,19 @@ export const useStore = create(
           const merged    = mergeClientLog(existing, history, { update: true, deleted: get().deletedClientLogIds });
           const newCount  = merged.length - existing.length;
 
-          set((s) => ({
+          set((s) => (!s.clients[clientId] ? {} : {
             clientLogs: { ...s.clientLogs, [clientId]: merged },
-            clients: {
-              ...s.clients,
-              [clientId]: {
-                ...s.clients[clientId],
-                lastHistorySync: updatedAt,
-                syncErrorAt:     null,
-                ...(newCount > 0 ? { historyHasNew: true } : {}),
-              },
-            },
+            ...patchClient(s, clientId, {
+              lastHistorySync: updatedAt,
+              syncErrorAt:     null,
+              ...(newCount > 0 ? { historyHasNew: true } : {}),
+            }),
           }));
 
           return { merged: newCount };
         } catch (err) {
           // Record error timestamp so ClientCard can show a visual indicator
-          set((s) => ({
-            clients: {
-              ...s.clients,
-              [clientId]: {
-                ...s.clients[clientId],
-                syncErrorAt: new Date().toISOString(),
-              },
-            },
-          }));
+          set((s) => patchClient(s, clientId, { syncErrorAt: new Date().toISOString() }));
           throw err;
         }
       },
@@ -4369,11 +4294,8 @@ export const useStore = create(
       /** Marks client history as viewed — clears badge and records current remote count as seen. */
       markHistoryViewed: (clientId) => {
         const remoteCount = get().clients[clientId]?.remoteSessionsCount ?? 0;
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: { ...s.clients[clientId], historyHasNew: false },
-          },
+        set((s) => (!s.clients[clientId] ? {} : {
+          ...patchClient(s, clientId, { historyHasNew: false }),
           trainerSync: {
             ...s.trainerSync,
             lastSeenSessionsCount: {
@@ -4519,7 +4441,7 @@ export const useStore = create(
           for (const c of Object.values(get().clients)) {
             if (!c.programMissing || recovered.includes(c.id)) continue;
             if (c.activeProgramId) {
-              set((s) => ({ clients: { ...s.clients, [c.id]: { ...s.clients[c.id], programMissing: undefined } } }));
+              set((s) => patchClient(s, c.id, { programMissing: undefined }));
             } else if (c.syncSlotId && !c.syncOrphan) retry.push(c.id);
           }
           for (const clientId of [...recovered, ...retry]) await get()._recoverSlotProgram(clientId);
@@ -4545,19 +4467,13 @@ export const useStore = create(
           const assigned = !!get().clients[clientId]?.activeProgramId;
           if (file?.program && !assigned) get().importForClient(clientId, file, 'replace', { restore: true });
           // Sin programa en el hueco no hay nada que reintentar: se limpia también.
-          set((s) => {
-            if (!s.clients[clientId]) return {};
-            return { clients: { ...s.clients, [clientId]: { ...s.clients[clientId], programMissing: undefined } } };
-          });
+          set((s) => patchClient(s, clientId, { programMissing: undefined }));
           if (!file?.program || assigned) return;
           const programId = get().clients[clientId]?.activeProgramId;
           const built = programId && get()._buildProgramJson(programId, false);
           if (built) {
-            set((s) => ({
-              clients: {
-                ...s.clients,
-                [clientId]: { ...s.clients[clientId], programDirty: false, programUploadedSig: programSignature(JSON.parse(built.json)) },
-              },
+            set((s) => patchClient(s, clientId, {
+              programDirty: false, programUploadedSig: programSignature(JSON.parse(built.json)),
             }));
           }
         } catch (err) {
@@ -4585,18 +4501,12 @@ export const useStore = create(
         await _ensureTrainerSession(trainerSync);
         const newCode = await reissueClientCodeRpc(client.syncSlotId).catch((err) => { throw get()._slotError(clientId, err); });
 
-        set((s) => ({
-          clients: {
-            ...s.clients,
-            [clientId]: {
-              ...s.clients[clientId],
-              syncCode:   newCode,
-              // El asiento queda vacío: hasta que el cliente entre con el código
-              // nuevo, la ficha vuelve a enseñar la tarjeta del código.
-              syncLinked: false,
-              syncLeftAt: null,
-            },
-          },
+        set((s) => patchClient(s, clientId, {
+          syncCode:   newCode,
+          // El asiento queda vacío: hasta que el cliente entre con el código
+          // nuevo, la ficha vuelve a enseñar la tarjeta del código.
+          syncLinked: false,
+          syncLeftAt: null,
         }));
 
         return newCode;

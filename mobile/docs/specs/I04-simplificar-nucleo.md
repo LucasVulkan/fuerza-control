@@ -2,10 +2,11 @@
 
 > Tema: integridad
 > En corto: En vez de parchear uno a uno los fallos de conexión, cuentas y pagos que siguen apareciendo, quitar las situaciones que los provocan: decidir qué no se permite, que cada dato tenga un solo dueño, que restaurar una copia no traiga estado de conexión, que la cola solo reintente lo que el entrenador envió, y que cada regla de la app tenga su test.
+> Inicio: 2026-10-29
 > Fase I04-01 · pendiente · Decisiones del usuario: qué se permite y qué no · §3
 > Fase I04-02 · pendiente · Restaurar una copia trae contenido, nunca estado de conexión · §4
 > Fase I04-03 · pendiente · La cola solo reintenta lo que se envió y falló · §5
-> Fase I04-04 · pendiente · Escribir en una ficha solo si sigue existiendo · §6
+> Fase I04-04 · terminado · Escribir en una ficha solo si sigue existiendo · §6
 > Fase I04-05 · pendiente · Pago pendiente: no se compra otra vez y no cruza cuentas · §7
 > Fase I04-06 · pendiente · Un solo traductor de errores para envíos y cuentas · §8
 > Fase I04-07 · pendiente · Cada regla de I02 con su test de escenario · §9
@@ -155,6 +156,15 @@ devuelve el estado sin cambios si la ficha no existe, y todos los `set` sobre
 una regla de grep en el test de integridad: ningún `[clientId]: { ...s.clients[`
 fuera de `patchClient`.
 
+**Hecho (29-oct).** `patchClient(s, id, patch)` vive junto a `_clearPending` en
+`useStore.js`; `patch` es un objeto o una función de la ficha actual. Por ella
+pasan todos los `set` que actualizan una ficha existente (no solo los de detrás
+de un `await`): una sola forma de escribir. Donde el `set` llevaba además otro
+trozo de estado ligado a esa ficha (`pushTrainerLogToSlot`,
+`downloadClientHistory`, `markHistoryViewed`), con la ficha borrada no se escribe
+nada, tampoco `lastSeenSessionsCount` ni su historial. Tests y regla de grep:
+`store/patchClient.sim.test.js`.
+
 ## 7. I04-05 — Pago pendiente: no se compra otra vez y no cruza cuentas
 
 Según N-11 y N-09 del mapa:
@@ -236,7 +246,7 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
 | I04-01 | Decidir las reglas DECIDIR del mapa del núcleo | — | 🟢 | pendiente |
 | I04-02 | Restaurar sin estado de conexión (E73, E78, E79) | I04-01 | 🟡 | pendiente |
 | I04-03 | Cola propia (E72, E80, E83, E84) | I04-01 | 🟡 | pendiente |
-| I04-04 | `patchClient` (E74 + A1) | — | 🟢 | pendiente |
+| I04-04 | `patchClient` (E74 + A1) | — | 🟢 | terminado 29-oct — todos los `set` sobre una ficha pasan por `patchClient`; tests en `store/patchClient.sim.test.js` (sin nada que probar a mano) |
 | I04-05 | Pago pendiente (E75, E81, E82) | I04-01 | 🟡 | pendiente |
 | I04-06 | Traductor de errores (E76, E77) | — | 🟢 | pendiente |
 | I04-07 | Reglas de I02 con test | I04-02…06 | 🟡 | pendiente |
