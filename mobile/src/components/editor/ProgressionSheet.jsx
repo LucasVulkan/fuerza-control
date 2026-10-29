@@ -14,17 +14,16 @@
  * nombre (series y reps no se tocan aquí: siguen en Volumen).
  */
 import { useState, useEffect, useId, startTransition } from 'react';
-import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import Reanimated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor,
+  useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate, interpolateColor, FadeIn,
 } from 'react-native-reanimated';
 import Svg, { Path, Circle, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Text } from '../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { MAX_RELIABLE_REPS } from '../../utils/oneRm';
-import { progressionRule } from '../../utils/progression';
 import {
-  upOptions, showHow, effortBlocked, isEffort as isEffortForm, libraryStep, buildProgression,
+  upOptions, showHow, effortBlocked, isEffort as isEffortForm, libraryStep,
 } from '../../utils/progressionForm';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, lh, LINE } from '../../theme';
@@ -87,10 +86,15 @@ const TILE_ICON = {
   none: (c) => <Path d="M6 12h12" {...line(c, { strokeWidth: 2.4 })} />,
 };
 const TILE_ORDER = ['weight', 'reps', 'time', 'effort', 'none'];
-const WEIGHT_CHIPS = [1.25, 2.5, 5];
-const PCT_CHIP = 5;
-const REPS_CHIPS = [1, 2, 3];
-const SECS_CHIPS = [5, 10, 15];
+// Los iconos de las filas de «Cómo progresa» (24×24, trazo de 2, sin relleno).
+const ROW_ICON = {
+  plus:  'M12 5v14M5 12h14',
+  when:  'M4 6h16M4 12h16M4 18h10',
+  down:  'M12 5v14M6 13l6 6 6-6',
+  gauge: 'M4 15.5a8 8 0 0 1 16 0M12 15.5l4.3-4.8',
+  round: 'M4 18h16M7 18V9M12 18V5M17 18v-6',
+};
+const CHEVRON_MS = 200;
 
 // El relleno de lo elegido, como las fichas de etapa (StageCards) y las pestañas
 // de Inicio: se llena de lima desde la esquina de arriba a la derecha.
@@ -149,13 +153,13 @@ const fillStyles = StyleSheet.create({
   off:     { opacity: 0.4 },
 });
 
-/** Las tarjetas de «Cuándo sube» van con borde (no rellenas): el borde se enciende. */
+/** Las tarjetas de «Cuándo sube» van con borde (no rellenas): el borde se enciende. Viven dentro de una fila (`surface`), así que van en `surface2`. */
 function WhenCard({ on, disabled, onPress, children }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const p      = useFill(on);
   const border = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(p.get(), [0, 1], [th.colors.surface, th.colors.accent]),
+    borderColor: interpolateColor(p.get(), [0, 1], [th.colors.surface2, th.colors.accent]),
   }));
   return (
     <Pressable onPress={onPress} disabled={disabled} style={styles.cardSlot} accessibilityRole="button" accessibilityState={{ selected: on, disabled }}>
@@ -165,6 +169,45 @@ function WhenCard({ on, disabled, onPress, children }) {
         </Reanimated.View>
       )}
     </Pressable>
+  );
+}
+
+/**
+ * Una fila de «Cómo progresa»: icono, título y subtítulo, el valor elegido y un
+ * chevron que gira al abrirla. Su cuerpo (`children`) va debajo, pegado a ella.
+ */
+function SettingRow({ icon, title, sub, value, open, onToggle, children }) {
+  const th     = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const p = useSharedValue(open ? 1 : 0);
+  useEffect(() => {
+    p.set(withTiming(open ? 1 : 0, { duration: CHEVRON_MS, easing: Easing.out(Easing.cubic) }));
+  }, [open, p]);
+  const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${p.get() * 90}deg` }] }));
+  return (
+    <>
+      <Pressable
+        onPress={onToggle}
+        style={({ pressed }) => [styles.row, open && styles.rowOpen, pressed && styles.rowPressed]}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+      >
+        <View style={styles.rowIcon}>
+          <Svg width={18} height={18} viewBox="0 0 24 24"><Path d={icon} {...line(th.colors.accent)} /></Svg>
+        </View>
+        <View style={styles.rowMeta}>
+          <Text style={styles.rowTitle} numberOfLines={1}>{title}</Text>
+          <Text style={styles.rowSub} numberOfLines={1}>{sub}</Text>
+        </View>
+        <Text style={styles.rowValue} numberOfLines={1}>{value}</Text>
+        <Reanimated.View style={chevron}>
+          <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M9 6l6 6-6 6" {...line(th.colors.muted)} /></Svg>
+        </Reanimated.View>
+      </Pressable>
+      {/* Solo entra con un fundido: un `exiting` retrasaría el alto de la hoja y
+          abrir una fila cerrando otra sumaría dos animaciones en vez de una. */}
+      {open && <Reanimated.View entering={FadeIn.duration(180)} style={styles.rowBody}>{children}</Reanimated.View>}
+    </>
   );
 }
 
@@ -195,7 +238,7 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   const th     = useTheme();
   const { t }                  = useTranslation();
   const { label: weightLabel } = useWeightUnit();
-  const [advOpen, setAdvOpen]       = useState(false);
+  const [openRow, setOpenRow]     = useState(null);   // «Cómo progresa»: una fila abierta como mucho
   const [effortWhy, setEffortWhy]   = useState(false);
   // Id del degradado del icono de Esfuerzo (sin los «:» de useId, que url(#…) no admite en web).
   const gradUid = `eff${useId().replace(/:/g, '')}`;
@@ -216,10 +259,11 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   // todo el editor y va en una transición, sin frenar el toque ni la animación.
   const [picked, setPicked] = useState(tile);
   const [seen, setSeen]     = useState(tile);
-  if (seen !== tile) { setSeen(tile); setPicked(tile); }
+  if (seen !== tile) { setSeen(tile); setPicked(tile); setOpenRow(null); }
   const pickTile = (id) => {
     if (id === 'effort' && effortBlocked(ctx)) { setEffortWhy(true); return; }
     setEffortWhy(false);
+    setOpenRow(null);
     setPicked(id);
     startTransition(() => onPatch(id === 'effort' ? { up: 'weight', how: 'effort' } : { up: id, how: 'rules' }));
   };
@@ -241,30 +285,8 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   const floorTxt = isTime ? `${minTime} s` : repsTxt(minReps);
   const majority = Math.floor(sets / 2) + 1;
 
-  // El escalón del ejercicio: el salto más pequeño que permite su material. A él
-  // se redondea el peso cuando sube un % y cuando baja un 10 %.
-  const stepField = (
-    <StepField horizontal label={t('exerciseEditor.sheet.step')} unit={weightLabel}
-      value={prog.step ?? libStep} onChange={(v) => onPatch({ step: v })} min={0.25} max={10} step={0.25} />
-  );
   const caps = (txt) => <Text style={[styles.caps, styles.capsGap]}>{txt.toUpperCase()}</Text>;
   const hint = (txt) => <Text style={styles.hint}>{txt}</Text>;
-  // Cuánto sube: las opciones como botones en fila, sin tarjeta alrededor.
-  const options = (values, isOn, label, onPick) => (
-    <View style={styles.options}>
-      {values.map((v) => (
-        <FillButton
-          key={String(v)}
-          on={isOn(v)}
-          onPress={() => onPick(v)}
-          style={styles.option}
-          bg={th.colors.surface}
-          faceStyle={styles.optionFace}
-          face={(on) => <Text style={[styles.optionText, on && styles.optionTextOn]} numberOfLines={1}>{label(v)}</Text>}
-        />
-      ))}
-    </View>
-  );
   const squares = (hit) => (
     <View style={styles.squares}>
       {Array.from({ length: Math.min(sets, 10) }, (_, i) => (
@@ -315,9 +337,130 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
   // Misma regla que el motor: pasado MAX_RELIABLE_REPS no calcula (§2.3).
   const effortUnreliable = effort && minReps + effortRir >= MAX_RELIABLE_REPS;
 
-  // La frase de la regla al pie: la misma que el motor (`progressionRule`).
-  const ruleCfg = { sets, minReps, maxReps, minTime, maxTime, inputType: isTime ? 'weight_time' : 'weight_reps', ...buildProgression(prog, ctx) };
-  const rule = progressionRule(ruleCfg, def, t, weightLabel);
+  // ── Cómo progresa (§5): cada fila con su valor a la vista y su cuerpo plegado.
+  // El escalón del ejercicio es el salto más pequeño que permite su material: a él
+  // se redondea el peso cuando sube un % y cuando baja un 10 %.
+  const step = prog.step ?? libStep;
+  const rk = (k, o) => t(`exerciseEditor.sheet.rows.${k}`, o);
+  const seg = (ids, label, value, onChange) => (
+    <SegmentedControl options={ids.map((id) => ({ id, label: label(id) }))} value={value} onChange={onChange} />
+  );
+  const stepControl = (
+    <StepField horizontal flat label={t('exerciseEditor.stepSizeLabel')} unit={weightLabel}
+      value={step} onChange={(v) => onPatch({ step: v })} min={0.25} max={10} step={0.25} />
+  );
+  const rows = [];
+  if (isWeight) {
+    const pct = prog.incType === 'pct';
+    rows.push({
+      id: 'inc', icon: ROW_ICON.plus, title: rk(assist ? 'howMuchAssist' : 'howMuch'), sub: rk(pct ? 'incPct' : 'incFixed'),
+      value: `${assist ? '' : '+'}${pct ? `${prog.incPct} %` : `${prog.incValue} ${weightLabel}`}`,
+      body: (<>
+        {seg(['fixed', 'pct'], (id) => (id === 'pct' ? rk('optPct') : rk(`opt_${weightLabel}`)), prog.incType, (id) => onPatch({ incType: id }))}
+        {pct ? (
+          <View>
+            <StepField horizontal flat unit="%" label={rk('each')} value={prog.incPct} onChange={(v) => onPatch({ incPct: v })} min={1} max={50} />
+            {hint(rk('roundTo', { step, unit: weightLabel }))}
+          </View>
+        ) : (
+          <StepField horizontal flat decimal unit={weightLabel} label={rk('each')} value={prog.incValue}
+            onChange={(v) => onPatch({ incValue: v })} min={step} max={20} step={step} />
+        )}
+      </>),
+    });
+    rows.push({
+      id: 'when', icon: ROW_ICON.when, title: t('exerciseEditor.sheet.when'), sub: rk('whenSub'),
+      value: prog.when === 'part' ? t('exerciseEditor.sheet.partTitle') : rk('whenAll'),
+      body: (
+        <View style={styles.cards}>
+          {whenCard('all', sets, t('exerciseEditor.sheet.allTitle'), t('exerciseEditor.sheet.allSub', { n: sets, goal: goalTxt }))}
+          {whenCard('part', majority, t('exerciseEditor.sheet.partTitle'),
+            t(repsFixed || isTime ? 'exerciseEditor.sheet.partSub' : 'exerciseEditor.sheet.partSubRange',
+              { need: majority, n: sets, goal: goalTxt, min: floorTxt }), sets < 2)}
+        </View>
+      ),
+    });
+    rows.push({
+      id: 'down', icon: ROW_ICON.down, title: rk('down'), sub: rk('downSub'),
+      value: prog.down === 'never' ? rk('downNever') : rk(assist ? 'downFailValAssist' : 'downFailVal'),
+      body: (
+        <View>
+          {seg(['fail', 'never'], (id) => t(`exerciseEditor.sheet.downOpt.${id === 'fail' && assist ? 'failAssist' : id}`), prog.down, (id) => onPatch({ down: id }))}
+          {hint(t(prog.down === 'never' ? 'exerciseEditor.sheet.downNeverHint'
+            : assist ? 'exerciseEditor.sheet.downFailHintAssist' : 'exerciseEditor.sheet.downFailHint'))}
+        </View>
+      ),
+    });
+    rows.push({
+      id: 'brake', icon: ROW_ICON.gauge, title: rk('brake'), sub: rk('brakeSub'),
+      value: prog.when === 'rpe' ? rk('rpeVal', { rpe: prog.maxRpe }) : t('exerciseEditor.sheet.brakeOpt.no'),
+      body: (<>
+        {seg(['no', 'rpe'], (id) => t(`exerciseEditor.sheet.brakeOpt.${id}`), prog.when === 'rpe' ? 'rpe' : 'no',
+          (id) => onPatch({ when: id === 'rpe' ? 'rpe' : 'all_complete' }))}
+        {prog.when === 'rpe' && (
+          <StepField horizontal flat label={t('exerciseEditor.sheet.brakeMax')} value={prog.maxRpe}
+            onChange={(v) => onPatch({ maxRpe: v })} min={6} max={10} />
+        )}
+        {hint(prog.when === 'rpe'
+          ? t('exerciseEditor.sheet.brakeOnHint', { rpe: prog.maxRpe })
+          : t('exerciseEditor.sheet.brakeOffHint'))}
+      </>),
+    });
+    rows.push({
+      id: 'step', icon: ROW_ICON.round, title: rk('step'), sub: rk('stepSub'), value: `${step} ${weightLabel}`,
+      body: (
+        <View>
+          {stepControl}
+          {hint(t('exerciseEditor.sheet.stepHint', { step, unit: weightLabel }))}
+        </View>
+      ),
+    });
+  } else if (prog.up === 'reps' || prog.up === 'time') {
+    const reps = prog.up === 'reps';
+    rows.push({
+      id: 'inc', icon: ROW_ICON.plus, title: rk('howMuch'), sub: rk(reps ? 'repsSub' : 'secsSub'),
+      value: reps ? `+${repsTxt(prog.incValue)}` : `+${prog.incValue} s`,
+      body: (
+        <StepField horizontal flat label={rk('each')} unit={reps ? rk('repsUnit') : 's'} value={prog.incValue}
+          onChange={(v) => onPatch({ incValue: v })} min={reps ? 1 : 5} max={reps ? 5 : 30} step={reps ? 1 : 5} />
+      ),
+    });
+  } else if (effort) {
+    rows.push({
+      id: 'target', icon: ROW_ICON.gauge, title: t('exerciseEditor.sheet.effortGoal'), sub: rk('targetSub'),
+      value: rk('rpeVal', { rpe: prog.targetRpe }),
+      body: (
+        <View>
+          <StepField horizontal flat label="RPE" value={prog.targetRpe} onChange={(v) => onPatch({ targetRpe: v })} min={6} max={10} />
+          {hint(effortRir === 0 ? t('exerciseEditor.effortFailure') : t('exerciseEditor.sheet.rir', { count: effortRir }))}
+          {effortUnreliable && <Text style={[styles.hint, styles.warn]}>{t('exerciseEditor.effortUnreliable', { max: MAX_RELIABLE_REPS })}</Text>}
+        </View>
+      ),
+    });
+    rows.push({
+      id: 'step', icon: ROW_ICON.round, title: rk('step'), sub: rk('stepSub'),
+      value: prog.exact ? t('exerciseEditor.stepSizeOpt.exact') : `${step} ${weightLabel}`,
+      body: (<>
+        {seg(['step', 'exact'], (id) => t(`exerciseEditor.stepSizeOpt.${id}`), prog.exact ? 'exact' : 'step', (id) => onPatch({ exact: id === 'exact' }))}
+        {!prog.exact && stepControl}
+        {hint(t(prog.exact ? 'exerciseEditor.stepSizeExactHint' : 'exerciseEditor.stepSizeHint'))}
+      </>),
+    });
+    // Con Exacto el peso se mueve con cualquier cambio y «Al llegar» no se daría nunca.
+    if (!prog.exact) {
+      rows.push({
+        id: 'effWhen', icon: ROW_ICON.when, title: t('exerciseEditor.sheet.when'), sub: rk('effWhenSub'),
+        value: t(`exerciseEditor.effWhen.${prog.effWhen}`),
+        body: (
+          <View>
+            {seg(['beat', 'reach'], (id) => t(`exerciseEditor.effWhen.${id}`), prog.effWhen, (id) => onPatch({ effWhen: id }))}
+            {hint(t(`exerciseEditor.effWhenHint.${prog.effWhen}`, { step, unit: weightLabel }))}
+            {hint(t('exerciseEditor.effDownHint'))}
+          </View>
+        ),
+      });
+    }
+  }
 
   return (
     // Lo que se elige abre y cierra bloques: la hoja sigue su alto.
@@ -372,144 +515,26 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
           {nextCard.foot ? <Text style={styles.nextFoot}>{nextCard.foot}</Text> : null}
         </View>
 
-        {isWeight && (
+        {rows.length > 0 && (
           <View>
-            {caps(t('exerciseEditor.sheet.when'))}
-            <View style={styles.cards}>
-              {whenCard('all', sets, t('exerciseEditor.sheet.allTitle'), t('exerciseEditor.sheet.allSub', { n: sets, goal: goalTxt }))}
-              {whenCard('part', majority, t('exerciseEditor.sheet.partTitle'),
-                t(repsFixed || isTime ? 'exerciseEditor.sheet.partSub' : 'exerciseEditor.sheet.partSubRange',
-                  { need: majority, n: sets, goal: goalTxt, min: floorTxt }), sets < 2)}
+            {caps(t('exerciseEditor.sheet.progresses'))}
+            <View style={styles.group}>
+              {rows.map((r) => (
+                <SettingRow
+                  key={r.id}
+                  icon={r.icon}
+                  title={r.title}
+                  sub={r.sub}
+                  value={r.value}
+                  open={openRow === r.id}
+                  onToggle={() => setOpenRow(openRow === r.id ? null : r.id)}
+                >
+                  {r.body}
+                </SettingRow>
+              ))}
             </View>
           </View>
         )}
-
-        {isWeight && (
-          <View>
-            {caps(t(assist ? 'exerciseEditor.sheet.howMuchAssist' : 'exerciseEditor.sheet.howMuchEach'))}
-            {options(
-              [...WEIGHT_CHIPS, 'pct'],
-              (v) => (v === 'pct' ? prog.incType === 'pct' : prog.incType === 'fixed' && prog.incValue === v),
-              (v) => (v === 'pct' ? `${prog.incType === 'pct' ? prog.incPct : PCT_CHIP} %` : `${v} ${weightLabel}`),
-              (v) => onPatch(v === 'pct' ? { incType: 'pct', incPct: prog.incType === 'pct' ? prog.incPct : PCT_CHIP } : { incType: 'fixed', incValue: v }),
-            )}
-            {/* Con porcentaje: cuánto, y a qué se redondea el peso que sale. */}
-            {prog.incType === 'pct' && (
-              <View style={styles.pctBox}>
-                <StepField horizontal unit="%" label={t('exerciseEditor.sheet.pctLabel')}
-                  value={prog.incPct} onChange={(v) => onPatch({ incPct: v })} min={1} max={50} />
-                {stepField}
-                {hint(t('exerciseEditor.sheet.pctHint', { pct: prog.incPct, step: prog.step ?? libStep, unit: weightLabel }))}
-              </View>
-            )}
-          </View>
-        )}
-
-        {(prog.up === 'reps' || prog.up === 'time') && (
-          <View>
-            {caps(t('exerciseEditor.sheet.howMuchPerSet'))}
-            {options(
-              prog.up === 'reps' ? REPS_CHIPS : SECS_CHIPS,
-              (v) => prog.incValue === v,
-              (v) => (prog.up === 'reps' ? `+${repsTxt(v)}` : `+${v} s`),
-              (v) => onPatch({ incValue: v }),
-            )}
-          </View>
-        )}
-
-        {effort && (
-          <View>
-            {caps(t('exerciseEditor.sheet.effortGoal'))}
-            <StepField horizontal label="RPE" value={prog.targetRpe} onChange={(v) => onPatch({ targetRpe: v })} min={6} max={10} />
-            {hint(effortRir === 0 ? t('exerciseEditor.effortFailure') : t('exerciseEditor.sheet.rir', { count: effortRir }))}
-            {effortUnreliable && <Text style={[styles.hint, styles.warn]}>{t('exerciseEditor.effortUnreliable', { max: MAX_RELIABLE_REPS })}</Text>}
-          </View>
-        )}
-
-        {(isWeight || effort) && (
-          <View style={styles.adv}>
-            <TouchableOpacity style={styles.advHead} onPress={() => setAdvOpen((v) => !v)} activeOpacity={0.7}>
-              <Text style={styles.advTitle}>{t('exerciseEditor.sheet.advanced')}</Text>
-              <Text style={styles.advChevron}>{advOpen ? '⌄' : '›'}</Text>
-            </TouchableOpacity>
-            {advOpen && (
-              <View style={styles.advBody}>
-                {isWeight ? (
-                  <>
-                    <View>
-                      <Text style={styles.advLabel}>{t('exerciseEditor.sheet.brake')}</Text>
-                      <SegmentedControl
-                        options={['no', 'rpe'].map((id) => ({ id, label: t(`exerciseEditor.sheet.brakeOpt.${id}`) }))}
-                        value={prog.when === 'rpe' ? 'rpe' : 'no'}
-                        onChange={(id) => onPatch({ when: id === 'rpe' ? 'rpe' : 'all_complete' })}
-                      />
-                      {prog.when === 'rpe' && (
-                        <View style={styles.gap}>
-                          <StepField horizontal label={t('exerciseEditor.sheet.brakeMax')} value={prog.maxRpe}
-                            onChange={(v) => onPatch({ maxRpe: v })} min={6} max={10} />
-                        </View>
-                      )}
-                      {hint(prog.when === 'rpe'
-                        ? t('exerciseEditor.sheet.brakeOnHint', { rpe: prog.maxRpe })
-                        : t('exerciseEditor.sheet.brakeOffHint'))}
-                    </View>
-                    <View>
-                      <Text style={styles.advLabel}>{t('exerciseEditor.sheet.down')}</Text>
-                      <SegmentedControl
-                        options={['fail', 'never'].map((id) => ({ id, label: t(`exerciseEditor.sheet.downOpt.${id}`) }))}
-                        value={prog.down}
-                        onChange={(id) => onPatch({ down: id })}
-                      />
-                      {hint(t(prog.down === 'never' ? 'exerciseEditor.sheet.downNeverHint'
-                        : assist ? 'exerciseEditor.sheet.downFailHintAssist' : 'exerciseEditor.sheet.downFailHint'))}
-                    </View>
-                    {/* Con porcentaje el escalón ya está arriba, junto al %. */}
-                    {prog.incType !== 'pct' && (
-                      <View>
-                        {stepField}
-                        {hint(t('exerciseEditor.sheet.stepHint', { step: prog.step ?? libStep, unit: weightLabel }))}
-                      </View>
-                    )}
-                  </>
-                ) : (
-                  // Por esfuerzo: el escalón (o Exacto) y cuándo sube, que antes eran pasos.
-                  <>
-                    <View>
-                      <Text style={styles.advLabel}>{t('exerciseEditor.stepSize')}</Text>
-                      <SegmentedControl
-                        options={['step', 'exact'].map((id) => ({ id, label: t(`exerciseEditor.stepSizeOpt.${id}`) }))}
-                        value={prog.exact ? 'exact' : 'step'}
-                        onChange={(id) => onPatch({ exact: id === 'exact' })}
-                      />
-                      {!prog.exact && (
-                        <View style={styles.gap}>
-                          <StepField horizontal label={t('exerciseEditor.stepSizeLabel')} unit={weightLabel}
-                            value={prog.step ?? libStep} onChange={(v) => onPatch({ step: v })} min={0.25} max={10} step={0.25} />
-                        </View>
-                      )}
-                      {hint(t(prog.exact ? 'exerciseEditor.stepSizeExactHint' : 'exerciseEditor.stepSizeHint'))}
-                    </View>
-                    {/* Con Exacto el peso se mueve con cualquier cambio y «Al llegar» no se daría nunca. */}
-                    {!prog.exact && (
-                      <View>
-                        <Text style={styles.advLabel}>{t('exerciseEditor.stepWhen')}</Text>
-                        <SegmentedControl
-                          options={['beat', 'reach'].map((id) => ({ id, label: t(`exerciseEditor.effWhen.${id}`) }))}
-                          value={prog.effWhen}
-                          onChange={(id) => onPatch({ effWhen: id })}
-                        />
-                        {hint(t(`exerciseEditor.effWhenHint.${prog.effWhen}`, { step: prog.step ?? libStep, unit: weightLabel }))}
-                        {hint(t('exerciseEditor.effDownHint'))}
-                      </View>
-                    )}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        )}
-
-        <Text style={styles.rule}>{rule}</Text>
       </View>
     </AnimatedHeight>
   );
@@ -535,7 +560,6 @@ const makeStyles = (th) => StyleSheet.create({
   // Aviso: el naranja de `optRowWarn` (EditorRows).
   warn: { color: th.colors.orange },
   off: { opacity: 0.4 },
-  gap: { marginTop: spacing.sm2 },
 
   // En la próxima sesión: tarjeta `surface`, líneas a `sm2`, el pie bajo una raya.
   next: { backgroundColor: th.colors.surface, borderRadius: th.radius.md, padding: spacing.lg, gap: spacing.sm2 },
@@ -574,26 +598,27 @@ const makeStyles = (th) => StyleSheet.create({
   cardTitle: { ...textStyles.bodyStrong, color: th.colors.text },
   cardSub: { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.xs2 },
 
-  // Cuánto sube: botones en fila, del mismo ancho.
-  options: { flexDirection: 'row', gap: spacing.sm },
-  option: { flex: 1, borderRadius: th.radius.md, overflow: 'hidden' },
-  optionFace: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.lg, paddingHorizontal: spacing.xs },
-  optionText: { ...textStyles.bodyStrong, color: th.colors.text },
-  optionTextOn: { color: th.colors.onAccent },
-
-  pctBox: { marginTop: spacing.sm2, gap: spacing.sm2 },
-
-  // Avanzado, plegado.
-  adv: { backgroundColor: th.colors.surface, borderRadius: th.radius.md },
-  advHead: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.md, paddingHorizontal: spacing.md },
-  advTitle: { ...textStyles.bodyStrong, color: th.colors.text },
-  advChevron: { ...textStyles.bodyStrong, color: th.colors.muted },
-  advBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.lg },
-  advLabel: { ...textStyles.labelStrong, color: th.colors.text, marginBottom: spacing.sm },
-
-  // La regla al pie, colgada de una raya lima.
-  rule: {
-    ...textStyles.body, color: th.colors.text, lineHeight: lh(textStyles.body.fontSize, LINE.row),
-    borderLeftWidth: 2, borderLeftColor: th.colors.accent, paddingLeft: spacing.md,
+  // Cómo progresa: la lista plegada de `optGroup` (radio md fuera, xs entre filas;
+  // el contenedor recorta) con filas del alto de `navRowGrouped`.
+  group: { borderRadius: th.radius.md, overflow: 'hidden', gap: spacing.xs },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 58,
+    backgroundColor: th.colors.surface, borderRadius: th.radius.xxs,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.lg,
+  },
+  // Abierta, la fila y su cuerpo se leen como una pieza: menos aire por debajo.
+  rowOpen: { paddingBottom: spacing.xs2 },
+  rowPressed: { opacity: 0.7 },
+  rowIcon: {
+    width: 30, height: 30, borderRadius: th.radius.md, backgroundColor: th.colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  rowMeta: { flex: 1, minWidth: 0, gap: spacing.xs },
+  rowTitle: { ...textStyles.bodyStrong, color: th.colors.text },
+  rowSub: { ...textStyles.label, color: th.colors.mutedLight },
+  rowValue: { ...textStyles.labelStrong, color: th.colors.accent, fontVariant: ['tabular-nums'], flexShrink: 0 },
+  rowBody: {
+    backgroundColor: th.colors.surface, borderRadius: th.radius.xxs, marginTop: -spacing.xs,
+    paddingTop: spacing.xs2, paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.md,
   },
 });

@@ -105,7 +105,9 @@ function StepButton({ onPress, plus, sf, side }) {
   );
 }
 
-export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat }) {
+// `decimal`: admite decimales aunque el paso no sea menor que 1 (un salto de peso
+// que sube de 2.5 en 2.5 y deja escribir 7.5).
+export default function StepField({ label, value, onChange, min, max, step = 1, unit, horizontal, flat, decimal }) {
   const sf = useThemedStyles(makeSf);
   const swipeLock = useSwipeLock();   // un deslizamiento que empieza aquí no cambia de ejercicio (P16-04)
   const [draft, setDraft] = useState(String(value));
@@ -120,7 +122,7 @@ export default function StepField({ label, value, onChange, min, max, step = 1, 
   const inputRef = useRef(null);
   useEffect(() => { setDraft(String(value)); }, [value]);
   const numVal   = Number(value);
-  const decimals = step < 1;
+  const decimals = decimal ?? step < 1;
 
   // Redondeo a 2 decimales: sumar 0.25 repetidamente arrastra error binario.
   const round  = (n) => Math.round(n * 100) / 100;
