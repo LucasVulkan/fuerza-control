@@ -24,7 +24,7 @@ import { copyName } from '../src/utils/names';
 import { RC_PRO_ENTITLEMENT } from '../src/config/revenuecat';
 import { registerBackupTask, unregisterBackupTask } from '../src/tasks/driveBackupTask';
 import {
-  createClientSlot, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot,
+  createClientSlot, deletedSlots, uploadProgram, uploadTrainerLog, downloadHistory, downloadSlotProgram, uploadOverrides, deleteClientSlot, setSlotLocalId,
   updateTrainerNameForSlots, getTrainerSlots, reissueClientCode as reissueClientCodeRpc, offerTransfer, acceptTransfer,
   getSlotByClientCode, linkClientToSlot, seatOf, uploadHistory, releaseClientSlot, clientLostReason,
 } from '../src/services/supabaseSync';
@@ -4482,7 +4482,8 @@ export const useStore = create(
 
             for (const slot of slots) {
               if (creating || known.has(slot.id) || deleted.has(slot.id)) continue;
-              // El alta llegó pero su respuesta no (E63): el hueco es de la ficha que lo pidió.
+              // El hueco nombra a una ficha de este móvil (N-08): el alta llegó pero su
+              // respuesta no (E63), o es una ficha `local` / de otra cuenta que ya existía.
               const own = slot.local_id && next[slot.local_id];
               if (own && !canSave(linkOf(own, trainerSync.userId))) {
                 // Con su programa por subir, que el invitado lo mande solo.
@@ -4490,7 +4491,10 @@ export const useStore = create(
                 known.add(slot.id);
                 continue;
               }
-              const id = generateId('client');
+              // Esa ficha ya tiene otro hueco de esta cuenta: nunca dos fichas con un id (C10-03).
+              if (own) continue;
+              // El id de la ficha vive en el hueco (N-20); solo uno sin él (datos viejos) estrena id.
+              const id = slot.local_id ?? generateId('client');
               next[id] = {
                 id,
                 name:         slot.client_name ?? 'Cliente',
@@ -4533,6 +4537,21 @@ export const useStore = create(
 
             return { clients: next };
           });
+
+          // Ids que faltan o no cuadran (C10-03, §4.2): gana el id de la ficha (N-20).
+          // Idempotente: lo que falle (red, DUPLICATE_CLIENT) se reintenta en el siguiente refresco.
+          if (get().trainerSync.userId === trainerSync.userId) {
+            const bySlot = new Map(slots.map((slot) => [slot.id, slot]));
+            for (const c of Object.values(get().clients)) {
+              const slot = c.slotOwner === trainerSync.userId ? bySlot.get(c.slotId) : null;
+              if (!slot || slot.local_id === c.id) continue;
+              try {
+                await setSlotLocalId(slot.id, c.id);
+              } catch (err) {
+                console.warn(`[refreshTrainerSlots] id de ${c.id} no fijado (${err.code ?? 'ERR'}):`, err.message);
+              }
+            }
+          }
 
           if (gone.size && get().trainerSync.userId === trainerSync.userId) {
             for (const c of Object.values(get().clients)) if (gone.get(c.slotId) === 'deleted') get().deleteClient(c.id, { slotGone: true });

@@ -5,7 +5,7 @@
 > Inicio: 2026-10-29
 > Fase C10-01 · hecho · El estado de la ficha en un solo valor, solo en el móvil · §10.1
 > Fase C10-02 · hecho · Servidor: hueco sin código, tabla privada, ids que no se pierden · §10.2
-> Fase C10-03 · pendiente · Un id para siempre: recuperar usa el de la ficha · §10.3
+> Fase C10-03 · hecho · Un id para siempre: recuperar usa el de la ficha · §10.3
 > Fase C10-04 · pendiente · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
 > Fase C10-05 · pendiente · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
 > Fase C10-06 · pendiente · Restaurar una copia con este modelo · §10.6
@@ -642,7 +642,7 @@ real con PGlite, varios móviles), y los de la función pura en
 |---|---|---|---|---|---|
 | C10-01 | Estado en un valor, solo móvil | I04-03, I04-04 | 🔴 | N-15 | hecho 29-oct — por probar; tests en `src/utils/clientLink.test.js` y `store/connection.sim.test.js` |
 | C10-02 | Servidor | C10-01 | 🟡 | N-17, R-A1…A3, R-A9, R-D1 | hecho 29-oct (0d52c5c) — por probar; tests en `store/server.private.sim.test.js` y `store/server.compat.sim.test.js` |
-| C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | pendiente |
+| C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | hecho 29-oct (2eee3c1) — por probar; tests en `store/account.clients.sim.test.js` |
 | C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | pendiente |
 | C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | pendiente |
 | C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | pendiente |
@@ -756,6 +756,21 @@ refresco fija los ids que faltan o no cuadran (§4.2) con `trainer_set_local_id`
 - Pasar de código a Google y recuperar en otro móvil: mismos ids.
 - E78: recuperar la cuenta y restaurar una copia del móvil viejo no duplica
   ningún cliente con app.
+
+**Hecho (29-oct).** `refreshTrainerSlots` recupera con `id = slot.local_id`
+(`generateId('client')` solo queda ahí cuando el hueco no lo tiene, y en crear un
+cliente) y, después de aplicar los huecos, fija con `setSlotLocalId` el id de
+cada ficha de la cuenta cuyo hueco no lo tiene o tiene otro (gana la ficha,
+N-20); `DUPLICATE_CLIENT` y los fallos de red solo se avisan con `console.warn` y
+se reintentan en el siguiente refresco. N-08 ya lo cubría el camino de E63
+(`own`) para fichas `local` y de otra cuenta; se añade la guarda que faltaba:
+si la ficha que nombra el hueco ya tiene otro hueco de esta cuenta, no se crea
+nada (antes habría pisado la ficha con el mismo id). El test de E78 pasa de
+`it.fails` (en la rama de la auditoría) a normal. Dos cosas que la spec no decía:
+el id fijado en el hueco de una ficha recién recuperada sin `local_id` sale del
+mismo bucle (no hace falta una lista aparte), y `programMissing` sigue siendo
+la marca de «recuperada sin programa» (el `recoverMissing` de §8.2 llega con
+C10-05).
 
 **Probar C10-03**
 
