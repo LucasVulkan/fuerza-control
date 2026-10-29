@@ -198,7 +198,7 @@ describe('la cola cuando la ficha cambia mientras espera', () => {
   });
 });
 
-describe('N-09 · cambiar o salir de cuenta vacía la cola', () => {
+describe('N-09 · salir de la cuenta vacía la cola', () => {
   it('salir de la cuenta quita sendPending de todas las fichas', async () => {
     const t = await trainerPhone();
     const a = await linkedClient(t);
@@ -210,7 +210,19 @@ describe('N-09 · cambiar o salir de cuenta vacía la cola', () => {
     expect(t.s.clients[a.clientId].sendPending).toBeUndefined();
   });
 
-  it('entrar en otra cuenta quita sendPending de todas las fichas', async () => {
+  it('salir y entrar en otra cuenta no trae la cola de la vieja', async () => {
+    const t = await trainerPhone();
+    const a = await linkedClient(t);
+    setOnline(t, false);
+    rename(t, a.programId, 'En cola');
+    await expect(t.s.uploadProgramToClient(a.clientId, a.programId)).rejects.toMatchObject({ code: 'NETWORK' });
+    setOnline(t, true);
+    await t.s.leaveTrainerAccount();
+    await t.s.enterTrainerAccount({ provider: 'google', idToken: 'google:otra' });
+    expect(t.s.clients[a.clientId].sendPending).toBeUndefined();
+  });
+
+  it('pasar de código a Google se lleva los huecos, y la cola con ellos (R-D1)', async () => {
     const t = await trainerPhone();
     const a = await linkedClient(t);
     setOnline(t, false);
@@ -218,7 +230,10 @@ describe('N-09 · cambiar o salir de cuenta vacía la cola', () => {
     await expect(t.s.uploadProgramToClient(a.clientId, a.programId)).rejects.toMatchObject({ code: 'NETWORK' });
     setOnline(t, true);
     await t.s.enterTrainerAccount({ provider: 'google', idToken: 'google:otra' });
+    expect(t.s.clients[a.clientId].sendPending).toEqual({ program: true });
+    await t.s.retrySendQueue();
     expect(t.s.clients[a.clientId].sendPending).toBeUndefined();
+    expect(t.s.clients[a.clientId].programDirty).toBe(false);
   });
 });
 

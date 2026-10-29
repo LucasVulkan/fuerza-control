@@ -3910,6 +3910,7 @@ export const useStore = create(
        */
       _enterCandidate: async (candidate, mode, { fullName } = {}) => {
         const prev = get().trainerSync;
+        let moved = false;   // los huecos (y con ellos la cola) pasan a la cuenta nueva
 
         if (prev.userId && prev.userId !== candidate.userId) {
           let oldSession = true;
@@ -3926,13 +3927,14 @@ export const useStore = create(
           if (oldSession) {
             await offerTransfer('slots', candidate.userId);
             await acceptTransfer('slots', prev.userId, candidate.db);
+            moved = true;
           }
         }
 
         await adoptTrainer(candidate);
         set((s) => ({
           trainerLoginNeeded: false,
-          ...(candidate.userId !== prev.userId ? { clients: _withoutQueue(s.clients) } : {}),
+          ...(candidate.userId !== prev.userId && !moved ? { clients: _withoutQueue(s.clients) } : {}),
           trainerSync: {
             ...s.trainerSync,
             mode,
@@ -4256,7 +4258,8 @@ export const useStore = create(
             }
             _setQueued(clientId, kind, false);
           } catch (err) {
-            _setQueued(clientId, kind, isNetworkError(err));
+            // Red o sesión caducada: se podrá más tarde, sigue en cola. Lo demás no.
+            _setQueued(clientId, kind, isNetworkError(err) || err?.code === 'TRAINER_LOGIN_NEEDED');
             throw err;
           } finally {
             _syncRetryTimer();
