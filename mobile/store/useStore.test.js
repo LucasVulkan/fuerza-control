@@ -1408,6 +1408,7 @@ describe('weeks-model — acciones de etapa', () => {
   });
 
   it('guardar el programa de un cliente como plantilla no toca activos ni editor', () => {
+    useStore.setState({ clients: { cli_1: { id: 'cli_1', name: 'Ana' } } });
     const st = useStore.getState();
     const pid = st.createProgramForClient('cli_1', 2, 'X');
     st.setClientActiveProgram('cli_1', pid);
