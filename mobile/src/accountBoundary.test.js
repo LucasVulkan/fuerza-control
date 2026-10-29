@@ -31,11 +31,13 @@ describe('cuenta de entrenador — una sola puerta', () => {
   // C10-01: los hechos de conexión de la ficha solo los escribe `clientLink.js`.
   it('ninguna bandera sync* de antes de C10-01 fuera de migrateClientLinks', () => {
     const OLD = /\b(syncSlotId|syncLinked|syncOrphan|syncPending|syncLeftAt|syncCode)\b/;
-    const migrate = readFileSync(CLIENT_LINK, 'utf8').match(/export function migrateClientLinks[\s\S]*?\r?\n}\r?\n/)?.[0] ?? '';
-    expect(migrate).toContain('syncSlotId');   // la regla busca donde debe
+    // Las dos funciones que nombran las banderas viejas: migrar (C10-01) y quitarlas de una copia (C10-06).
+    const funcs = ['migrateClientLinks', 'cardWithoutState'].map((name) =>
+      readFileSync(CLIENT_LINK, 'utf8').match(new RegExp(`export function ${name}[\\s\\S]*?\\r?\\n}\\r?\\n`))?.[0] ?? '');
+    funcs.forEach((f) => expect(f).toContain('syncSlotId'));   // la regla busca donde debe
     const offenders = [...sources(SRC), ...sources(STORE)].filter((p) => {
       const text = readFileSync(p, 'utf8');
-      return OLD.test(p === CLIENT_LINK ? text.replace(migrate, '') : text);
+      return OLD.test(p === CLIENT_LINK ? funcs.reduce((t, f) => t.replace(f, ''), text) : text);
     });
     expect(offenders).toEqual([]);
   });

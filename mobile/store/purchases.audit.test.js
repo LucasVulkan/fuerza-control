@@ -416,6 +416,11 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       expect(useStore.getState().profile.activeProgramId).toBe('prog_x');
       // regla
       expect(isPro()).toBe(false);
+      // Lo que no puede ser es lo del fichero. Reemplazar los clientes (sin cuenta, C10-06) vacía la elección
+      // del móvil, porque los elegidos ya no están; sin la parte de clientes se queda como estaba.
+      expect(useStore.getState().profile.freeClientIds).toEqual([]);
+      useStore.setState((s) => ({ profile: { ...s.profile, freeClientIds: ['mio'] } }));
+      useStore.getState().importData(backup, { ...everything, clients: false }, { silent: true });
       expect(useStore.getState().profile.freeClientIds).toEqual(['mio']);
     });
 
@@ -459,8 +464,9 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
       useStore.setState((s) => ({
         clients: { a: mk('a'), b: mk('b') }, programs: {}, sessionTemplates: {},
         profile: { ...s.profile, isPro: false, freeClientIds: [] },
+        trainerSync: { ...s.trainerSync, userId: 'trainer_1' },   // con cuenta solo se añaden los que no tienes (C10-06)
       }));
-      useStore.getState().importData({ version: '4', clients: { c: mk('c'), d: mk('d'), e: mk('e') } }, { clients: true }, { silent: true });
+      useStore.getState().importData({ version: '4', clients: { c: mk('c'), d: mk('d'), e: mk('e') } }, { clients: true }, { silent: true, known: new Map() });
       const st = useStore.getState();
       expect(Object.keys(st.clients).sort()).toEqual(['a', 'b', 'c', 'd', 'e']);   // montaje: entraron
       expect(needsClientChoice({ isPro: false, clients: st.clients, freeClientIds: st.profile.freeClientIds })).toBe(false);

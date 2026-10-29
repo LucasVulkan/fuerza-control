@@ -43,6 +43,8 @@ const S = () => useStore.getState();
 // Secciones fijas que manda DriveBackupScreen.jsx.
 const DRIVE_SECTIONS = { program: true, log: true, templates: true, customExercises: true, clients: true };
 
+// Lo que la cuenta conoce, para `importData` con cuenta (C10-06): aquí, nada; entran los que el móvil no tiene.
+const NOTHING_KNOWN = new Map();
 const mk = (id, extra = {}) => ({ id, name: id, status: 'active', ...NO_SLOT, activeProgramId: null, ...extra });
 /** Los hechos de un hueco de la cuenta puesta (`free()` pone `trainer_1`); `linked` = hay alguien dentro. */
 const inSlot = (slotId, linked = false) => slotFacts({ id: slotId, client_code: slotId.toUpperCase(), ...(linked ? { client_id: 'u' } : {}) }, 'trainer_1');
@@ -124,7 +126,7 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
   });
 
   it('P5 aceptado (24-oct, decisión 1): importData (clients) mete 5 clientes sin paywall con plan gratis (regla R-E1: ≤3)', () => {
-    S().importData({ version: '4', clients: mkClients(['a', 'b', 'c', 'd', 'e']) }, { clients: true }, { silent: true });
+    S().importData({ version: '4', clients: mkClients(['a', 'b', 'c', 'd', 'e']) }, { clients: true }, { silent: true, known: NOTHING_KNOWN });
     expect(Object.keys(S().clients)).toHaveLength(5);   // regla: ≤ 3
     expect(S().ui.limitReason).toBe(null);
   });
@@ -140,7 +142,7 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
   it('P22 arreglado (E40, R-E4): importar 2 clientes con 3 activos congela solo a los 2 nuevos; no se puede rotar la elección', () => {
     free({ clients: mkClients(['a', 'b', 'c']) });
     expect(['a', 'b', 'c'].some((id) => S().isClientFrozen(id))).toBe(false);   // montaje: caben
-    S().importData({ version: '4', exportType: 'full_backup', clients: mkClients(['d', 'e']) }, { clients: true }, { silent: true });
+    S().importData({ version: '4', exportType: 'full_backup', clients: mkClients(['d', 'e']) }, { clients: true }, { silent: true, known: NOTHING_KNOWN });
     expect(['a', 'b', 'c'].some((id) => S().isClientFrozen(id))).toBe(false);   // los suyos siguen
     expect(['d', 'e'].every((id) => S().isClientFrozen(id))).toBe(true);        // solo se congela lo nuevo
     S().setFreeClientIds(['c', 'd', 'e']);
@@ -158,7 +160,7 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
     S().deleteClient('c');                                                       // a, b, d caben: todos activos
     expect(['a', 'b', 'd'].some((id) => S().isClientFrozen(id))).toBe(false);   // montaje
     expect(S().profile.freeClientIds.length).toBeGreaterThan(0);                // queda una lista vieja
-    S().importData({ version: '4', exportType: 'full_backup', clients: mkClients(['e']) }, { clients: true }, { silent: true });
+    S().importData({ version: '4', exportType: 'full_backup', clients: mkClients(['e']) }, { clients: true }, { silent: true, known: NOTHING_KNOWN });
     expect(['a', 'b', 'd'].map((id) => S().isClientFrozen(id))).toEqual([false, false, false]);
     expect(S().isClientFrozen('e')).toBe(true);                                 // solo el nuevo
   });
@@ -316,7 +318,7 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
     expect(S().clients.d.progress.currentStageIndex).toBe(0);    // la etapa no cambia
   });
 
-  it('P10 arreglado (E43, R-E2): importData actualiza la ficha de un congelado pero no le pisa lo de entreno (programa, etapa, ajustes) y el log solo se añade', () => {
+  it('P10 arreglado (E43, R-E2; C10-06): importData no toca a un cliente que ya está en el móvil, congelado o no: ni ficha, ni programa, ni sesiones, ni log', () => {
     free({
       clients: mkClients(['a', 'b', 'c', 'd', 'e']),
       programs: { pd: prog('pd', 'program', 'd') },
@@ -334,15 +336,16 @@ describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', ()
       programs: { pd2: prog('pd2', 'program', 'd') },
       sessionTemplates: { s_nuevo: { id: 's_nuevo', name: 'S', programId: 'pd', owner: 'd', exercises: [] } },
       clientLogs: { d: [{ id: 'l0', timestamp: 0, sessionTemplateId: 'pisado', exercises: [] }, { id: 'l1', timestamp: 1, sessionTemplateId: 't', exercises: [] }] },
-    }, { clients: true }, { silent: true });
+    }, { clients: true }, { silent: true, known: NOTHING_KNOWN });
     expect(S().isClientFrozen('d')).toBe(true);
-    expect(S().clients.d.name).toBe('D-EDITADO');            // la ficha sí, como a mano
+    expect(S().clients.d.name).toBe('d');                    // ni la ficha (antes sí, como a mano)
+    expect(S().clients.d.notes).toBeUndefined();
     expect(S().clients.d.activeProgramId).toBe('pd');
     expect(S().programs.pd2).toBeUndefined();
     expect(S().clients.d).toMatchObject({ nextOverrides: { o: 1 }, overridesDirty: false, progress: { currentStageIndex: 0 } });
     expect(S().sessionTemplates.s_nuevo).toBeUndefined();   // sesión nueva de un programa congelado
-    expect(S().clientLogs.d.map((e) => e.id).sort()).toEqual(['l0', 'l1']);   // el log se añade, no se pisa
-    expect(S().clientLogs.d.find((e) => e.id === 'l0').sessionTemplateId).toBe('t');
+    expect(S().clientLogs.d.map((e) => e.id)).toEqual(['l0']);                // el log, tampoco (antes se añadía)
+    expect(S().clientLogs.d[0].sessionTemplateId).toBe('t');
   });
 
   it('P11 aceptado (E43): un entreno en curso de un cliente que luego se congela se guarda en su log (regla R-E2)', () => {
@@ -417,7 +420,7 @@ describe('R-E3 — al volver a pagar se recupera todo', () => {
 describe('R-E4 — la elección no se rehace', () => {
   it('P13 aceptado (24-oct, decisión 2): reinstalar + restaurar backup (o Drive) → la elección no vuelve y se puede elegir otra (regla R-E4)', () => {
     const backup = buildBackupPayload({ profile: { freeClientIds: ['a', 'b', 'c'] }, clients: mkClients(['a', 'b', 'c', 'd']), programs: {}, sessionTemplates: {} });
-    S().importData(backup, DRIVE_SECTIONS, { silent: true });   // instalación nueva: perfil por defecto
+    S().importData(backup, DRIVE_SECTIONS, { silent: true, known: NOTHING_KNOWN });   // instalación nueva: perfil por defecto
     expect(Object.keys(S().clients)).toHaveLength(4);            // montaje
     expect(S().profile.freeClientIds).toEqual([]);               // regla: ['a','b','c']
     S().setFreeClientIds(['d', 'a', 'b']);
@@ -451,17 +454,21 @@ describe('R-E4 — la elección no se rehace', () => {
     } finally { S().syncPurchaserId = orig; }
   });
 
-  it('P15 arreglado (E40, R-E4): restaurar un backup viejo donde dos elegidos tenían hueco mantiene lo elegido por orden hasta el tope y congela el resto, sin reabrir la hoja', () => {
+  it('P15 arreglado (E40, R-E4; C10-06): restaurar una copia vieja con banderas de hueco no trae huecos: los que están se quedan, los nuevos entran `local` y congelados, sin reabrir la hoja', () => {
     free({ clients: mkClients(['a', 'b', 'c', 'd', 'e']) });
     S().setFreeClientIds(['a', 'b', 'c']);
     expect(S().isClientFrozen('d')).toBe(true);   // montaje
     S().importData({ version: '4', exportType: 'full_backup', clients: {
       b: { id: 'b', name: 'b', syncSlotId: 'sb', syncCode: 'CB', status: 'active' },   // una copia de antes (banderas viejas)
       c: { id: 'c', name: 'c', syncSlotId: 'sc', syncCode: 'CC', status: 'active' },
-    } }, { clients: true }, { silent: true });
+      f: { id: 'f', name: 'f', syncSlotId: 'sf', syncCode: 'CF', status: 'active' },
+    } }, { clients: true }, { silent: true, known: NOTHING_KNOWN });
     expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: S().profile.freeClientIds })).toBe(false);
-    expect(['a', 'b'].map((id) => S().isClientFrozen(id))).toEqual([false, false]);   // a y b caben (1 con app)
-    expect(['c', 'd', 'e'].map((id) => S().isClientFrozen(id))).toEqual([true, true, true]);   // c sobra (2º con app)
+    expect(['b', 'c'].map((id) => S().clients[id].slotId)).toEqual([null, null]);   // los que había, como estaban
+    expect(S().clients.f).toMatchObject({ slotId: null, code: null, seated: false });   // el nuevo, `local`, sin banderas
+    expect(S().clients.f.syncSlotId).toBeUndefined();
+    expect(['a', 'b', 'c'].map((id) => S().isClientFrozen(id))).toEqual([false, false, false]);
+    expect(['d', 'e', 'f'].map((id) => S().isClientFrozen(id))).toEqual([true, true, true]);   // el nuevo, congelado
     S().setFreeClientIds(['d', 'e', 'a']);
     expect(S().isClientFrozen('d')).toBe(true);   // no se rota
   });
@@ -490,7 +497,7 @@ describe('R-E4 — la elección no se rehace', () => {
     S().deleteClient('c');
     S().setFreeClientIds(['d']);
     expect(S().profile.freeClientIds).toEqual(['a', 'b', 'd']);   // el id viejo se poda al guardar
-    S().importData({ version: '4', exportType: 'full_backup', clients: { c: { id: 'c', name: 'c', status: 'active' } } }, { clients: true }, { silent: true });
+    S().importData({ version: '4', exportType: 'full_backup', clients: { c: { id: 'c', name: 'c', status: 'active' } } }, { clients: true }, { silent: true, known: NOTHING_KNOWN });
     expect(S().isClientFrozen('c')).toBe(true);
     expect(S().isClientFrozen('d')).toBe(false);
   });

@@ -353,7 +353,7 @@ describe('E73 · las copias no traen estado de envío', () => {
     await t.s.uploadProgramToClient(clientId, programId);
     expect((await programOnServer(t, clientId)).name).toBe('Fuerza v2');
 
-    t.s.importData(oldBackup, { clients: true, program: true, templates: true }, { silent: true });
+    await t.s.restoreBackup(oldBackup, { clients: true, program: true, templates: true });
     await t.s.retrySendQueue();                       // primer plano
     expect((await programOnServer(t, clientId)).name).toBe('Fuerza v2');
   });
@@ -374,7 +374,7 @@ describe('E73 · las copias no traen estado de envío', () => {
     const n = await trainerPhone();
     const dirty = JSON.parse(JSON.stringify(payload));
     dirty.clients[clientId].sendPending = { program: true };
-    n.s.importData(dirty, { clients: true, program: true, templates: true }, { silent: true });
+    await n.s.restoreBackup(dirty, { clients: true, program: true, templates: true });
     expect(n.s.clients[clientId]).toBeDefined();
     expect(n.s.clients[clientId].sendPending).toBeUndefined();
   });

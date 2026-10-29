@@ -18,8 +18,17 @@
  * de sincronización. Un `.fitdata` se comparte por WhatsApp.
  */
 
+import { cardWithoutState } from './clientLink';
+
 /** Clave de zustand-persist. La tarea de fondo lee de aquí. */
 export const BACKUP_STORAGE_KEY = 'fc_tracker_v1';
+
+/** `freeClientIds` es la elección de clientes activos de este móvil (N-04): no viaja. */
+function withoutFreeClients(profile) {
+  if (!profile) return profile;
+  const { freeClientIds, ...rest } = profile;   // eslint-disable-line no-unused-vars
+  return rest;
+}
 
 /**
  * @param {object} state Estado del store, en vivo o rehidratado de AsyncStorage.
@@ -32,21 +41,16 @@ export function buildBackupPayload(state = {}) {
     exportDate: new Date().toISOString().split('T')[0],
     appName:    'Forma Fit',
 
-    profile:          state.profile,
+    profile:          withoutFreeClients(state.profile),
     workoutLog:       state.workoutLog ?? [],
     clientLogs:       state.clientLogs ?? {},
     programs:         state.programs,
     sessionTemplates: state.sessionTemplates,
     customExercises:  state.customExercises,
     blockPresets:     state.blockPresets ?? [],
-    // Sin `sendPending` (la cola de envíos, N-06) ni `savedSig` (lo guardado en la cuenta, C10-05):
-    // son de este móvil y de esta cuenta.
-    clients:          Object.fromEntries(Object.entries(state.clients ?? {}).map(([id, c]) => {
-      const copy = { ...c };
-      delete copy.sendPending;
-      delete copy.savedSig;
-      return [id, copy];
-    })),
+    // Solo contenido, nunca estado (C10-06 §8.1): ni conexión, ni la cola de envíos, ni lo guardado en la
+    // cuenta. Restaurar los tira igual (las copias viejas los traen) y la ficha entra `local`.
+    clients:          Object.fromEntries(Object.entries(state.clients ?? {}).map(([id, c]) => [id, cardWithoutState(c)])),
     // Los clientes guardan IDs de etiqueta (`tag_a1b2c3d4`); el nombre vive sólo
     // aquí. Sin el registro, un backup restaurado devuelve clientes etiquetados
     // con códigos sin nombre (fallo 25).

@@ -8,7 +8,7 @@
 > Fase C10-03 · hecho · Un id para siempre: recuperar usa el de la ficha · §10.3
 > Fase C10-04 · hecho · Cada cliente con su hueco: subir, invitar y cancelar en el modelo nuevo · §10.4
 > Fase C10-05 · hecho · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
-> Fase C10-06 · pendiente · Restaurar una copia con este modelo · §10.6
+> Fase C10-06 · hecho · Restaurar una copia con este modelo · §10.6
 > Fase C10-07 · pendiente · Deshacer al borrar un cliente · §10.7
 > Fase C10-08 · pendiente · De punta a punta: móvil nuevo, reglas con su test y prueba en dispositivo · §10.8
 >
@@ -672,7 +672,7 @@ real con PGlite, varios móviles), y los de la función pura en
 | C10-03 | Id para siempre | C10-02 | 🟡 | N-17, N-08, N-20 | hecho 29-oct (2eee3c1) — por probar; tests en `store/account.clients.sim.test.js` |
 | C10-04 | Cada cliente con hueco | C10-03 | 🔴 | N-17, N-03, N-09, N-19, R-E1, R-C7 | hecho 29-oct (926f514) — por probar; tests en `store/account.clients.sim.test.js` (banco) y `store/useStore.test.js` (guardas de solo lectura) |
 | C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | ✅ 132b7a5 (29-oct) — por probar; tests en `src/utils/clientSave.test.js` y `store/account.clients.sim.test.js` |
-| C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | pendiente |
+| C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | ✅ e2ab95b (29-oct) — por probar; tests en `store/account.clients.sim.test.js` |
 | C10-07 | Deshacer al borrar | C10-01 | 🟢 | N-13, R-B6, R-B10 | pendiente |
 | C10-08 | De punta a punta | todas | 🟡 | todas las de arriba | pendiente |
 
@@ -929,6 +929,8 @@ la rama adversaria) reescritos a la regla nueva, más:
 - Restaurar dos veces la misma copia no cambia nada.
 - Cliente conectado que restaura: su programa vuelve a ser el de su hueco
   (N-05, cruce 3).
+
+**Hecho (29-oct).** `buildBackupPayload` no lleva ningún campo de estado de la ficha ni `freeClientIds` (`cardWithoutState` en `clientLink.js`, que es también quien tira las banderas `sync*` de las copias viejas, junto a `migrateClientLinks`). Store: `restoreBackup(data, sections)` es la única puerta de las restauraciones (Drive, archivo abierto, menú de la cabecera y «Recuperar» del onboarding); con cuenta y la parte de clientes pregunta `trainer_known_clients()` (sin red o con fallo: `CLIENTS_NEED_NETWORK`, «Necesitas conexión para restaurar clientes», y no se restaura nada), llama a `importData(data, sections, { known })` (síncrona) y acaba con `refreshTrainerSlots()` si hay cuenta (sube lo añadido), `checkProStatus()` y, en el móvil de un cliente conectado, fuerza la bajada del programa de su hueco (`lastProgramImportedAt = null` + `checkAndPullProgramUpdates` + `applyPendingProgramUpdate`). Devuelve `{ added, kept, replaced, account }`. En `importData`, la parte de clientes **sin cuenta reemplaza** (fichas, programas con sus sesiones, historial y `freeClientIds` vacío) y **con cuenta solo añade** los ids que `known` no tiene y el móvil tampoco; entran `local` (`NO_SLOT`) con su ficha, programas, sesiones e historial, y a los demás no se les toca nada. Sin `known` y con cuenta no entra nadie (esa parte necesita preguntar). La lógica de `frozen` de esa rama se quitó (nunca se pisa una ficha existente); sigue en la cabecera de `importData` el filtro de sesiones de congelados para las otras partes, que **no cambian en esta fase**. Pantallas: `DriveBackupScreen` baja la copia y abre `ImportModal` (sin el diálogo de antes, la hoja es la confirmación); `ImportModal` desactiva la fila de clientes sin red con cuenta y avisa bajo la fila de cuántos clientes del móvil se sustituyen sin cuenta; el mensaje final (`src/utils/restoreSummary.js`) dice cuántos se añadieron y cuántos ya estaban. Desvíos y matices: (1) la parte de N-05 (preguntar a los dueños) solo corre en copias completas (`exportType` `full`); un programa suelto sigue siendo solo contenido; (2) el programa del cliente conectado se vuelve a bajar solo si se restaura la parte de programa; (3) el filtro de sesiones de la parte de clientes quita de la fusión de arriba las sesiones de los clientes que no entran, y no pisa las del móvil; (4) `CLIENTS_NEED_NETWORK` no está en `OWN_CODES` de `sendFailure` (eso es de envíos); lo traduce `restoreErrorMessage`; (5) los textos `drive.restoreTitle/Body/Confirm` se quitaron (ya nadie los usa) y `import.clientsDesc` ya no dice «se suma a los tuyos»; (6) tests de antes que contaban con la fusión, reescritos a la regla nueva: P5, P10, P13, P15, P22, E40 y «NO funciona…» en `freeplan.audit.test.js`, X1 y X3 en `purchases.audit.test.js`, E73 en `sendQueue.sim.test.js`, «backup v2» en `useStore.test.js`, E78 y `savedSig` en `account.clients.sim.test.js`.
 
 **Probar C10-06**
 

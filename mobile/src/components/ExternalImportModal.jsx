@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { parseImportFile } from '../utils/importFile';
 import ImportModal from './ImportModal';
+import { restoredMessage, restoreErrorMessage } from '../utils/restoreSummary';
 import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 
 import { showDialog } from './ui/dialog';
@@ -32,7 +33,7 @@ export default function ExternalImportModal() {
 
   const pendingExternalImport      = useStore((s) => s.pendingExternalImport);
   const clearPendingExternalImport = useStore((s) => s.clearPendingExternalImport);
-  const importData                 = useStore((s) => s.importData);
+  const restoreBackup              = useStore((s) => s.restoreBackup);
   const showToast                  = useStore((s) => s.showToast);
   const navigate                   = useStore((s) => s.navigate);
   const { guardProgramChange }     = useDisconnectFromTrainer();
@@ -53,10 +54,14 @@ export default function ExternalImportModal() {
 
   function handleImport(parsedData, sections) {
     setImportState(null);
-    const run = () => {
-      importData(parsedData, sections, { silent: true });   // el toast lo damos aquí
-      showToast(t('header.toastImported'), 2200, 'success');
-      if (sections.program) navigate('home');
+    const run = async () => {
+      try {
+        const result = await restoreBackup(parsedData, sections);   // el toast lo damos aquí
+        showToast(restoredMessage(t, result, t('header.toastImported')), 2200, 'success');
+        if (sections.program) navigate('home');
+      } catch (err) {
+        showToast(restoreErrorMessage(t, err), 3000, 'error');
+      }
     };
     // Importar un programa es usar otro: con entrenador, antes se pregunta (R1,
     // E67). Nada se desconecta en silencio.
