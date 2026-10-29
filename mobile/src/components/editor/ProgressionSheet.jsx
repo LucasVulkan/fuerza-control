@@ -247,7 +247,7 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
     <StepField horizontal label={t('exerciseEditor.sheet.step')} unit={weightLabel}
       value={prog.step ?? libStep} onChange={(v) => onPatch({ step: v })} min={0.25} max={10} step={0.25} />
   );
-  const caps = (txt) => <Text style={styles.caps}>{txt.toUpperCase()}</Text>;
+  const caps = (txt) => <Text style={[styles.caps, styles.capsGap]}>{txt.toUpperCase()}</Text>;
   const hint = (txt) => <Text style={styles.hint}>{txt}</Text>;
   // Cuánto sube: las opciones como botones en fila, sin tarjeta alrededor.
   const options = (values, isOn, label, onPick) => (
@@ -284,6 +284,33 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
     </WhenCard>
   );
 
+  // ── En la próxima sesión (§4): solo depende de lo elegido en la hoja, sin historial.
+  const nx = (k, o) => t(`exerciseEditor.sheet.next.${k}`, o);
+  const nextCard = { title: nx('title') };
+  if (tile === 'none') {
+    nextCard.lead = nx('none');
+  } else if (tile === 'effort') {
+    nextCard.goal = nx('effort', { rpe: prog.targetRpe });
+    nextCard.foot = nx('effortFoot');
+  } else if (tile === 'reps' || tile === 'time') {
+    nextCard.lead = nx('raise');
+    nextCard.big  = tile === 'reps' ? nx('jumpReps', { count: prog.incValue }) : nx('jumpSecs', { value: prog.incValue });
+    nextCard.goal = nx(tile === 'reps' ? 'goalReps' : 'goalSecs');
+    nextCard.foot = nx(tile === 'reps' ? 'keepReps' : 'keepSecs');
+  } else {
+    const pct = prog.incType === 'pct';
+    nextCard.lead = nx(assist ? 'remove' : 'raise');
+    nextCard.big  = pct
+      ? nx(assist ? 'assistPct' : 'jumpPct', { value: prog.incPct })
+      : nx(assist ? 'assistKg' : 'jumpKg', { value: prog.incValue, unit: weightLabel });
+    const goalKey = prog.when === 'part' ? (repsFixed || isTime ? 'goalPart' : 'goalPartRange') : 'goalAll';
+    nextCard.goal = nx(goalKey, { goal: goalTxt, need: majority, n: sets, min: minReps })
+      + (prog.when === 'rpe' ? nx('goalBrake', { rpe: prog.maxRpe }) : '');
+    nextCard.foot = nx(assist ? 'keepAssist' : 'keepWeight')
+      + (prog.down === 'fail' ? ` ${nx(assist ? 'raiseAssist' : 'dropWeight')}` : '');
+  }
+  if (nextCard.goal && !nextCard.goal.endsWith('.')) nextCard.goal += '.';   // el punto de «al completar…»
+
   const effortRir = 10 - prog.targetRpe;
   // Misma regla que el motor: pasado MAX_RELIABLE_REPS no calcula (§2.3).
   const effortUnreliable = effort && minReps + effortRir >= MAX_RELIABLE_REPS;
@@ -302,7 +329,6 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
         </View>
 
         <View>
-          {caps(t('exerciseEditor.sheet.up'))}
           <View style={styles.tiles}>
             {tiles.map((id) => {
               const icon = id === 'weight' && assist ? 'assist' : id;
@@ -335,6 +361,15 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
           </View>
           <Bold text={t(`exerciseEditor.sheet.say.${sayKey}`)} style={styles.say} boldStyle={styles.sayBold} />
           {effortWhy && <Text style={[styles.hint, styles.warn]}>{t('exerciseEditor.effortNeedsFixed')}</Text>}
+        </View>
+
+        {/* ── En la próxima sesión: lo que se recomendará con lo elegido (P19-02) ── */}
+        <View style={styles.next}>
+          <Text style={styles.caps}>{nextCard.title.toUpperCase()}</Text>
+          {nextCard.lead ? <Text style={styles.nextBody}>{nextCard.lead}</Text> : null}
+          {nextCard.big ? <Text style={styles.nextBig}>{nextCard.big}</Text> : null}
+          {nextCard.goal ? <Bold text={nextCard.goal} style={styles.nextBody} boldStyle={styles.nextBold} /> : null}
+          {nextCard.foot ? <Text style={styles.nextFoot}>{nextCard.foot}</Text> : null}
         </View>
 
         {isWeight && (
@@ -494,12 +529,23 @@ const makeStyles = (th) => StyleSheet.create({
   name: { ...textStyles.bodyStrong, color: th.colors.text },
   meta: { ...textStyles.label, color: th.colors.mutedLight, fontVariant: ['tabular-nums'] },
   // Misma tipografía que las etiquetas de sección del editor (`secLabel`).
-  caps: { ...textStyles.caps, color: th.colors.mutedLight, marginBottom: spacing.sm2 },
+  caps: { ...textStyles.caps, color: th.colors.mutedLight },
+  capsGap: { marginBottom: spacing.sm2 },
   hint: { ...textStyles.label, color: th.colors.mutedLight, marginTop: spacing.sm, lineHeight: lh(textStyles.label.fontSize, LINE.row) },
   // Aviso: el naranja de `optRowWarn` (EditorRows).
   warn: { color: th.colors.orange },
   off: { opacity: 0.4 },
   gap: { marginTop: spacing.sm2 },
+
+  // En la próxima sesión: tarjeta `surface`, líneas a `sm2`, el pie bajo una raya.
+  next: { backgroundColor: th.colors.surface, borderRadius: th.radius.md, padding: spacing.lg, gap: spacing.sm2 },
+  nextBody: { ...textStyles.body, color: th.colors.mutedLight, lineHeight: lh(textStyles.body.fontSize, LINE.body) },
+  nextBold: { fontFamily: textStyles.bodyStrong.fontFamily, color: th.colors.text },
+  nextBig: { ...textStyles.itemTitle, color: th.colors.accent, fontVariant: ['tabular-nums'] },
+  nextFoot: {
+    ...textStyles.label, color: th.colors.mutedLight, lineHeight: lh(textStyles.label.fontSize, LINE.body),
+    borderTopWidth: 1, borderTopColor: th.colors.border, paddingTop: spacing.sm2,
+  },
 
   // Tarjetas de carácter sobre la hoja (`surface`; nada va en `bg` dentro de una
   // hoja, DragSheet): la elegida se rellena de lima con el texto en negro.
