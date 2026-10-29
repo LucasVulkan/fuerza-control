@@ -40,7 +40,7 @@ import { NavRow, OptionRow, ToggleRow, NoteRow, CHEVRON_GREY } from '../componen
 import { ArrowIcon, ProgressionIcon, VariantIcon } from '../components/ui/EditorIcons';
 import VariantPicker from '../components/ui/VariantPicker';
 import AnimatedHeight from '../components/ui/AnimatedHeight';
-import ProgressionSheet, { ProgressionTitleIcon } from '../components/editor/ProgressionSheet';
+import ProgressionSheet from '../components/editor/ProgressionSheet';
 import DragSheet from '../components/DragSheet';
 import { PATTERNS, MUSCLE_GROUPS, EQUIPMENT } from '../utils/exerciseTaxonomy';
 import { VARIANT_DIMS, variantLabel, isEmptyVariant } from '../utils/variants';
@@ -475,7 +475,6 @@ export default function CustomExerciseScreen({ navigation, route }) {
         visible={progSheetOpen}
         onClose={() => setProgSheetOpen(false)}
         title={t('exerciseEditor.sectionProgression')}
-        titleIcon={<ProgressionTitleIcon />}
         // Alto fijo: elegir «Qué sube» abre y cierra bloques y la hoja no debe saltar.
         tall
         doneLabel={t('common.accept')}

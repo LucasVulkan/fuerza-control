@@ -224,12 +224,12 @@ function Bold({ text, style, boldStyle }) {
   );
 }
 
-/** El cuadro con la tendencia que va delante de «Progresión» (`titleIcon` de DragSheet). */
-export function ProgressionTitleIcon() {
+/** El cuadro con la tendencia que va a la izquierda de la ficha del ejercicio. */
+function TrendIcon() {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <View style={styles.titleIcon}>
+    <View style={styles.trendIcon}>
       <Svg width={16} height={16} viewBox="0 0 24 24">
         <Path d="M3 17l6-6 4 4 8-8M15 7h6v6" {...line(th.colors.accent)} />
       </Svg>
@@ -471,8 +471,11 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
     <AnimatedHeight>
       <View style={styles.body}>
         <View style={styles.exercise}>
-          {name ? <Text style={styles.name}>{name}</Text> : null}
-          {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+          <TrendIcon />
+          <View style={styles.exerciseMeta}>
+            {name ? <Text style={styles.name}>{name}</Text> : null}
+            {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+          </View>
         </View>
 
         <View>
@@ -547,15 +550,18 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
 
 const makeStyles = (th) => StyleSheet.create({
   body: { gap: spacing.xl, paddingBottom: spacing.sm },
-  titleIcon: {
+  trendIcon: {
     width: 28, height: 28, borderRadius: th.radius.sm, backgroundColor: th.tint.accent10,
     alignItems: 'center', justifyContent: 'center',
   },
-  // La ficha del ejercicio: tarjeta `surface` con su nombre y su volumen debajo.
+  // La ficha del ejercicio: tarjeta `surface` con el icono de tendencia y, a su
+  // lado, el nombre y su volumen debajo.
   exercise: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: th.colors.surface, borderRadius: th.radius.md,
-    paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: spacing.xs2,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
   },
+  exerciseMeta: { flex: 1, minWidth: 0, gap: spacing.xs2 },
   name: { ...textStyles.bodyStrong, color: th.colors.text },
   meta: { ...textStyles.label, color: th.colors.mutedLight, fontVariant: ['tabular-nums'] },
   // Misma tipografía que las etiquetas de sección del editor (`secLabel`).
