@@ -267,14 +267,19 @@ ya no está en esta cuenta.
   ser el suyo, las fichas vuelven a leerse como antes, sin esperar a que el
   refresco salga bien (entrar sí necesita red; lo que ya no hace falta es un
   segundo viaje para corregir las fichas).
-- **Entrar en otra cuenta**: sus fichas se leen `otherAccount` y el refresco de
-  la cuenta nueva no las toca (sus huecos no están en ella).
+- **Salir y luego entrar en otra cuenta**: las fichas de la vieja se leen
+  `otherAccount` y el refresco de la nueva no las toca (sus huecos no están en
+  ella).
 
-**Pasar a Google o Apple** (la cuenta cambia de `userId` y se lleva los huecos):
-en el mismo `set` que apunta el `userId` nuevo, las fichas con `slotOwner` igual
-al viejo pasan al nuevo. Solo si el traspaso se hizo; si la app muere entre el
-traspaso y ese `set`, las fichas se leen `otherAccount` hasta volver a entrar,
-como hoy.
+**Entrar en otra cuenta sin salir antes** (pasar a Google o Apple, o «Ya tengo
+cuenta» estando dentro): `_enterCandidate` traspasa los huecos a la nueva
+(R-D1), así que los clientes van con ella. En el mismo `set` que apunta el
+`userId` nuevo, las fichas con `slotOwner` igual al viejo pasan al nuevo, y la
+cola de envíos se queda (I04-03). Solo si el traspaso se hizo; si la app muere
+entre el traspaso y ese `set`, las fichas se leen `otherAccount` hasta volver a
+entrar, como hoy. *(Aclarado el 29-oct-2026 al revisar I04-03: N-09 dice
+«cambiar de cuenta es salir y entrar», pero entrar estando dentro siempre ha
+sido traspasar; las dos cosas conviven.)*
 
 Borrar no es un estado: la ficha deja de existir (§8.3). Que otro móvil de la
 cuenta la borrara (`kind = 'deleted'`) también la quita aquí (R-B10).
