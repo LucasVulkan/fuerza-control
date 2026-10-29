@@ -9,11 +9,19 @@
 
 import { useMemo, useCallback } from 'react';
 import { useStore } from '../store/useStore';
-import { freeGates } from './utils/freePlan';
+import { freeGates, forPlan } from './utils/freePlan';
+
+/** Los clientes como los cuenta el plan en la cuenta puesta (`forPlan`): ni los de otra cuenta ni sin reservar. */
+export function usePlanClients() {
+  const clients = useStore((s) => s.clients);
+  const userId  = useStore((s) => s.trainerSync?.userId);
+  const linking = useStore((s) => s.ui?.linking);   // altas en vuelo: la plaza ya está reservada (E42)
+  return useMemo(() => forPlan(clients, userId, linking), [clients, userId, linking]);
+}
 
 export function useFreeGates() {
   const isPro            = useStore((s) => s.profile?.isPro ?? false);
-  const clients          = useStore((s) => s.clients);
+  const clients          = usePlanClients();
   const freeClientIds    = useStore((s) => s.profile?.freeClientIds);
   const programs         = useStore((s) => s.programs);
   const sessionTemplates = useStore((s) => s.sessionTemplates);

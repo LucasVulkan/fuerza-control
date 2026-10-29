@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildBackupPayload } from '../src/utils/backupPayload';
 import { needsClientChoice, templateCounts, clientLimitReason, freeGates } from '../src/utils/freePlan';
 import { copySources } from '../src/utils/programOwnership';
+import { NO_SLOT, slotFacts, SLOT_LOST, linkOf } from '../src/utils/clientLink';
 
 const syncMock = {
   getTrainerSlots: vi.fn(async () => []),
@@ -42,7 +43,9 @@ const S = () => useStore.getState();
 // Secciones fijas que manda DriveBackupScreen.jsx.
 const DRIVE_SECTIONS = { program: true, log: true, templates: true, customExercises: true, clients: true };
 
-const mk = (id, extra = {}) => ({ id, name: id, status: 'active', syncSlotId: null, activeProgramId: null, ...extra });
+const mk = (id, extra = {}) => ({ id, name: id, status: 'active', ...NO_SLOT, activeProgramId: null, ...extra });
+/** Los hechos de un hueco de la cuenta puesta (`free()` pone `trainer_1`); `linked` = hay alguien dentro. */
+const inSlot = (slotId, linked = false) => slotFacts({ id: slotId, client_code: slotId.toUpperCase(), ...(linked ? { client_id: 'u' } : {}) }, 'trainer_1');
 const mkClients = (ids, over = {}) => Object.fromEntries(ids.map((id) => [id, mk(id, over[id])]));
 const prog = (id, kind = 'template', owner = 'me') => ({
   id, name: id, owner, kind, status: 'active',
@@ -169,7 +172,7 @@ describe('R-E1 — todos los caminos que crean pasan por la puerta (importar y r
   });
 
   it('R-E1 cumple: createClient y connectClientToCloud se paran en el store con 1 con app', async () => {
-    free({ clients: { a: mk('a', { syncSlotId: 's_a' }), b: mk('b') } });
+    free({ clients: { a: mk('a', inSlot('s_a')), b: mk('b') } });
     expect(await S().connectClientToCloud('b')).toBe(false);
     expect(S().ui.limitReason).toBe('connected');
     expect(await S().createClient('x', { withApp: true })).toBe(null);
@@ -197,8 +200,8 @@ describe('R-E1 — carreras al crear/conectar con app', () => {
     expect(y).toBe(null);
     expect(S().ui.limitReason).toBe('connected');
     expect(Object.values(S().clients)).toHaveLength(1);
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
-    expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);   // la marca se quita al terminar
+    expect(Object.values(S().clients).filter((c) => c.slotId)).toHaveLength(1);
+    expect(S().ui.linking).toEqual({});   // la marca se quita al terminar
     expect(clientLimitReason(Object.values(S().clients))).toBe(null);
   });
 
@@ -208,8 +211,8 @@ describe('R-E1 — carreras al crear/conectar con app', () => {
     const r = await Promise.all([S().connectClientToCloud('a'), S().connectClientToCloud('b')]);
     expect(r).toEqual([true, false]);
     expect(S().ui.limitReason).toBe('connected');
-    expect(Object.values(S().clients).filter((c) => c.syncSlotId)).toHaveLength(1);
-    expect(Object.values(S().clients).some((c) => c.syncPending)).toBe(false);
+    expect(Object.values(S().clients).filter((c) => c.slotId)).toHaveLength(1);
+    expect(S().ui.linking).toEqual({});
     expect(clientLimitReason(Object.values(S().clients))).toBe(null);
   });
 
@@ -217,7 +220,7 @@ describe('R-E1 — carreras al crear/conectar con app', () => {
     free({ clients: mkClients(['a']) });
     syncMock.createClientSlot.mockRejectedValueOnce(new Error('red'));
     await expect(S().connectClientToCloud('a')).rejects.toThrow();
-    expect(S().clients.a.syncPending).toBeUndefined();
+    expect(S().ui.linking.a).toBeUndefined();
     slow();
     const r = await Promise.all([S().connectClientToCloud('a'), S().connectClientToCloud('a')]);
     expect(r).toEqual([true, false]);
@@ -235,7 +238,7 @@ describe('R-E1 — carreras al crear/conectar con app', () => {
     await p;
     const list = Object.values(S().clients);
     expect(list).toHaveLength(1);
-    expect(list.filter((c) => c.syncSlotId === 'S1')).toHaveLength(1);
+    expect(list.filter((c) => c.slotId === 'S1')).toHaveLength(1);
     expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: [] })).toBe(false);
   });
 });
@@ -243,7 +246,7 @@ describe('R-E1 — carreras al crear/conectar con app', () => {
 describe('R-E2 — el congelado no se toca ni sincroniza (solo el contador)', () => {
   const setup = () => {
     free({
-      clients: mkClients(['a', 'b', 'c', 'd'], { d: { activeProgramId: 'p_d', syncSlotId: 's_d', syncLinked: true, progress: { currentStageIndex: 0 } } }),
+      clients: mkClients(['a', 'b', 'c', 'd'], { d: { activeProgramId: 'p_d', ...inSlot('s_d', true), progress: { currentStageIndex: 0 } } }),
       programs: { p_d: prog('p_d', 'program', 'd') },
       sessionTemplates: { free_d: { id: 'free_d', name: 'L', owner: 'd', programId: null, exercises: [], blocks: [] } },
     });
@@ -413,7 +416,7 @@ describe('R-E4 — la elección no se rehace', () => {
 
   it('P14 aceptado (24-oct, los de otra cuenta no ocupan plaza en esta, C09 §3.4): salir de la cuenta y crear otra → los de con app pasan a «de otra cuenta», nada congelado, y se conecta al que no se eligió (regla R-E4)', async () => {
     free({
-      clients: { a: mk('a', { syncSlotId: 's_a', syncLinked: true }), b: mk('b', { syncSlotId: 's_b', syncLinked: true }), c: mk('c') },
+      clients: { a: mk('a', inSlot('s_a', true)), b: mk('b', inSlot('s_b', true)), c: mk('c') },
     });
     S().setFreeClientIds(['a', 'c']);
     expect(S().isClientFrozen('b')).toBe(true);    // montaje
@@ -424,10 +427,10 @@ describe('R-E4 — la elección no se rehace', () => {
     S().syncPurchaserId = async () => {};                 // fuera del alcance (RevenueCat)
     try {
       await S().createTrainerCodeAccount();
-      expect(S().clients.b.syncOrphan).toBe(true);
+      expect(linkOf(S().clients.b, S().trainerSync.userId)).toBe('otherAccount');
       expect(S().isClientFrozen('b')).toBe(false);          // regla: true
       expect(await S().connectClientToCloud('b')).toBe(true);
-      expect(S().clients.b.syncSlotId).toMatch(/^S\d+$/);
+      expect(S().clients.b.slotId).toMatch(/^S\d+$/);
       expect(S().isClientFrozen('b')).toBe(false);
     } finally { S().syncPurchaserId = orig; }
   });
@@ -437,7 +440,7 @@ describe('R-E4 — la elección no se rehace', () => {
     S().setFreeClientIds(['a', 'b', 'c']);
     expect(S().isClientFrozen('d')).toBe(true);   // montaje
     S().importData({ version: '4', exportType: 'full_backup', clients: {
-      b: { id: 'b', name: 'b', syncSlotId: 'sb', status: 'active' },
+      b: { id: 'b', name: 'b', syncSlotId: 'sb', status: 'active' },   // una copia de antes (banderas viejas)
       c: { id: 'c', name: 'c', syncSlotId: 'sc', status: 'active' },
     } }, { clients: true }, { silent: true });
     expect(needsClientChoice({ isPro: false, clients: S().clients, freeClientIds: S().profile.freeClientIds })).toBe(false);
@@ -489,7 +492,7 @@ describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta ma
     expect(g.connect('d')).toBe('frozen');
     expect(await S().connectClientToCloud('a')).toBe(true);
     expect(S().ui.limitReason).toBe(null);
-    expect(S().clients.a.syncSlotId).toBe('S9');
+    expect(S().clients.a.slotId).toBe('S9');
     expect(await S().connectClientToCloud('b')).toBe(false);   // ya hay 1 con app entre los activos
     expect(S().ui.limitReason).toBe('connected');
     expect(await S().connectClientToCloud('d')).toBe(false);
@@ -506,7 +509,7 @@ describe('Usuario honrado — lo que el plan permite pero se bloquea o cuenta ma
   });
 
   it('P21 arreglado (E40, R-E4): un huérfano (otra cuenta) vuelve a contar como con app; a sigue activo y se congelan los que ya no caben', async () => {
-    free({ clients: mkClients(['a', 'b', 'c'], { a: { syncSlotId: 'sa' }, b: { syncSlotId: 'sb', syncOrphan: true } }) });
+    free({ clients: mkClients(['a', 'b', 'c'], { a: inSlot('sa'), b: { ...inSlot('sb'), ...SLOT_LOST } }) });
     expect(S().isClientFrozen('a')).toBe(false);   // montaje: con el huérfano fuera caben
     syncMock.getTrainerSlots.mockResolvedValueOnce([
       { id: 'sa', client_name: 'a', client_code: 'A', sessions_count: 0 },

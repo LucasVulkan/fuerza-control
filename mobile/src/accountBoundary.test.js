@@ -18,10 +18,31 @@ function sources(dir) {
   });
 }
 
+const STORE = join(SRC, '..', 'store');
+const CLIENT_LINK = join(SRC, 'utils', 'clientLink.js');
+
 describe('cuenta de entrenador — una sola puerta', () => {
   it('fuera del store nadie entra ni sale de la cuenta por su cuenta', () => {
     const offenders = sources(SRC)
       .filter((p) => p !== DEFINES_THEM && FORBIDDEN.test(readFileSync(p, 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  // C10-01: los hechos de conexión de la ficha solo los escribe `clientLink.js`.
+  it('ninguna bandera sync* de antes de C10-01 fuera de migrateClientLinks', () => {
+    const OLD = /\b(syncSlotId|syncLinked|syncOrphan|syncPending|syncLeftAt|syncCode)\b/;
+    const migrate = readFileSync(CLIENT_LINK, 'utf8').match(/export function migrateClientLinks[\s\S]*?\n}\n/)?.[0] ?? '';
+    expect(migrate).toContain('syncSlotId');   // la regla busca donde debe
+    const offenders = [...sources(SRC), ...sources(STORE)].filter((p) => {
+      const text = readFileSync(p, 'utf8');
+      return OLD.test(p === CLIENT_LINK ? text.replace(migrate, '') : text);
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  it('ningún `seated:` ni `slotOwner:` fuera de clientLink.js: los hechos se escriben con sus funciones', () => {
+    const offenders = [...sources(SRC), ...sources(STORE)]
+      .filter((p) => p !== CLIENT_LINK && /\b(seated|slotOwner)\s*:/.test(readFileSync(p, 'utf8')));
     expect(offenders).toEqual([]);
   });
 });

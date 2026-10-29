@@ -39,7 +39,7 @@ import { ROW_ICON } from '../components/ui/rowIcons';
 import { ToggleRow, Switch } from '../components/ui/EditorRows';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import ClientSessions, { ClientFreeSessions } from '../components/ClientSessions';
-import { clientLink } from '../utils/clientLink';
+import { clientLink, linkOf } from '../utils/clientLink';
 import { computeOverallImprovement } from '../utils/improvement';
 import { lastSeenLabel } from '../utils/lastSeen';
 import { orderClients, DEFAULT_CLIENTS_ORDER } from '../utils/orderClients';
@@ -70,7 +70,7 @@ import { filterBySearch } from '../utils/searchText';
 import { FREE, activeClientIds, canChooseMore } from '../utils/freePlan';
 import FreeClientsSheet from '../components/FreeClientsSheet';
 import ProBadge from '../components/ui/ProBadge';
-import { useFreeGates } from '../useFreeGates';
+import { useFreeGates, usePlanClients } from '../useFreeGates';
 import { LockIcon, CheckIcon, ChevronDown, CloseIcon, DragIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import { ProgramActions } from '../components/ui/ProgramCard';
@@ -485,7 +485,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   const reissueLock = gates.client(client.id);
 
   async function handleCopy() {
-    await Clipboard.setStringAsync(client.syncCode);
+    await Clipboard.setStringAsync(client.code);
     setCopied(true);
     showToast(t('clients.keyTab.copied'), 2200, 'neutral');
     setTimeout(() => setCopied(false), 1800);
@@ -495,7 +495,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   // /join de la web); el código va también escrito para quien instala desde
   // cero, porque el enlace no sobrevive a la instalación (M01 §9).
   function handleShare() {
-    const message = t('clients.codeCard.shareText', { code: client.syncCode, url: inviteUrl(client.syncCode) });
+    const message = t('clients.codeCard.shareText', { code: client.code, url: inviteUrl(client.code) });
     Share.share({ message }).catch(() => {});
   }
 
@@ -523,7 +523,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
     );
   }
 
-  if (!client.syncCode) {
+  if (!client.code) {
     return (
       <View style={flat ? styles.codeFlat : styles.codeCard}>
         <Text style={styles.codeExplain}>{t('clients.keyTab.connectedNoCode')}</Text>
@@ -534,7 +534,7 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   const codeRow = (
     <View style={styles.codeRow}>
       <View style={styles.codeBox}>
-        <Text style={styles.codeText}>{client.syncCode}</Text>
+        <Text style={styles.codeText}>{client.code}</Text>
       </View>
       <TouchableOpacity style={styles.codeCopyBtn} activeOpacity={0.75} onPress={handleCopy} accessibilityRole="button">
         <Svg viewBox="0 0 24 24" width={18} height={18} fill="none"
@@ -581,9 +581,9 @@ function ClientCodeBlock({ client, link, hasProgram, showToast, flat }) {
   return (
     <View style={styles.codeCard}>
       {/* Se fue él (se desconectó): el mismo código le sirve para volver. */}
-      <Text style={styles.codeTitle}>{t(client.syncLeftAt ? 'clients.codeCard.leftTitle' : 'clients.codeCard.waiting', { name: client.name }).toUpperCase()}</Text>
+      <Text style={styles.codeTitle}>{t(client.leftAt ? 'clients.codeCard.leftTitle' : 'clients.codeCard.waiting', { name: client.name }).toUpperCase()}</Text>
       <Text style={styles.codeExplain}>
-        {t(client.syncLeftAt ? 'clients.codeCard.leftLine' : hasProgram ? 'clients.codeCard.waitLine' : 'clients.codeCard.needProgram')}
+        {t(client.leftAt ? 'clients.codeCard.leftLine' : hasProgram ? 'clients.codeCard.waitLine' : 'clients.codeCard.needProgram')}
       </Text>
       {codeRow}
       {shareBtn}
@@ -1208,8 +1208,8 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
   const [loading, setLoading] = useState(false);
 
   async function handleCopy() {
-    if (!client.syncCode) return;
-    await Clipboard.setStringAsync(client.syncCode);
+    if (!client.code) return;
+    await Clipboard.setStringAsync(client.code);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
     showToast(t('clients.keyTab.copied'), 2200, 'neutral');
@@ -1234,12 +1234,12 @@ function ClientInfoSheet({ client, onClose, onConnectCloud }) {
     <DragSheet visible onClose={onClose} title={client.name}>
       <View style={styles.infoSheetBody}>
 
-        {client.syncSlotId ? (
-          client.syncCode ? (
+        {client.slotId ? (
+          client.code ? (
             <View style={styles.infoCodeRow}>
               <View style={styles.infoCodeBox}>
                 <Text style={styles.infoCodeLabel}>{t('clients.infoCodeLabel')}</Text>
-                <Text style={styles.infoCodeText}>{client.syncCode}</Text>
+                <Text style={styles.infoCodeText}>{client.code}</Text>
               </View>
               <TouchableOpacity style={styles.infoCopyBtn} onPress={handleCopy} activeOpacity={0.7}>
                 {copied
@@ -1653,7 +1653,7 @@ export default function ClientsScreen() {
   const loginNeeded  = useStore((s) => s.trainerLoginNeeded) && (trainerSync.mode === 'google' || trainerSync.mode === 'apple');
   const cloudOn      = !!trainerSync.mode && trainerSync.mode !== 'offline' && !loginNeeded;
   // Con app o sin app, en un solo sitio (C28): lista, aviso, ficha y hojas.
-  const linkOf = useCallback((c) => clientLink(c, trainerSync), [trainerSync]);
+  const linkFor = useCallback((c) => clientLink(c, trainerSync), [trainerSync]);
 
   // Memoizado porque ahora alimenta los memos de carga: un objeto nuevo en cada
   // render recalculaba `sessionLoads` sobre todo el historial del cliente.
@@ -1671,15 +1671,16 @@ export default function ClientsScreen() {
 
   // Plan gratis (M01 §4.5-4.6): los que siguen activos sin Pro. null = todos.
   const isPro = profile.isPro ?? false;
+  const planClients = usePlanClients();
   const freeActive = useMemo(
-    () => (isPro ? null : activeClientIds(clients, profile.freeClientIds)),
-    [isPro, clients, profile.freeClientIds],
+    () => (isPro ? null : activeClientIds(planClients, profile.freeClientIds)),
+    [isPro, planClients, profile.freeClientIds],
   );
   const isFrozen    = useCallback((id) => freeActive !== null && !freeActive.has(id), [freeActive]);
   const frozenCount = freeActive === null ? 0 : Object.keys(clients ?? {}).length - freeActive.size;
   const needsChoice = freeActive !== null && freeActive.size === 0;
   // Elegido ya, el aviso desaparece: solo vuelve si queda un hueco que ocupar.
-  const freeRoom    = !needsChoice && freeActive !== null && canChooseMore(clients, profile.freeClientIds);
+  const freeRoom    = !needsChoice && freeActive !== null && canChooseMore(planClients, profile.freeClientIds);
   const [showFreeChoice, setShowFreeChoice] = useState(false);
   // Lo mismo, acción a acción, para marcar con PRO lo que no se puede (§4.11).
   const { gates, gate } = useFreeGates();
@@ -1832,7 +1833,7 @@ export default function ClientsScreen() {
   // «Empezar sesión B» de la pulsación larga: la que toca, contra SU historial.
   const actionsStart = (() => {
     const c       = actionsClientId ? clients[actionsClientId] : null;
-    const program = c && linkOf(c) === 'none' ? programs[c.activeProgramId] : null;
+    const program = c && linkFor(c) === 'none' ? programs[c.activeProgramId] : null;
     if (!program) return null;
     const days   = stageDaysAt(program, stageStatus(program, athleteProgress(program, c)).stageIdx);
     const heroId = sessionPlan({
@@ -1866,8 +1867,8 @@ export default function ClientsScreen() {
   // Solo los que tienen app: al invitado se le sube solo y al que no tiene no
   // se le manda nada.
   const pendingClients = useMemo(
-    () => Object.values(clients ?? {}).filter((c) => linkOf(c) === 'linked' && (c.programDirty || c.overridesDirty) && !isFrozen(c.id)),
-    [clients, linkOf, isFrozen],
+    () => Object.values(clients ?? {}).filter((c) => linkFor(c) === 'linked' && (c.programDirty || c.overridesDirty) && !isFrozen(c.id)),
+    [clients, linkFor, isFrozen],
   );
   const [sendingAll, setSendingAll] = useState(false);
 
@@ -1921,7 +1922,7 @@ export default function ClientsScreen() {
     const withProgram = parts.main.filter((c) => programs[c.activeProgramId]);
     return {
       needs: parts.main.filter((c) => clientAvisos({
-        client: c, program: programs[c.activeProgramId], linked: linkOf(c) === 'linked',
+        client: c, program: programs[c.activeProgramId], linked: linkFor(c) === 'linked',
         inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id],
       }).length > 0).length,
       adh: avg(withProgram
@@ -1929,7 +1930,7 @@ export default function ClientsScreen() {
         .map((c) => adherenceByClient[c.id].pct)),
       imp: avg(withProgram.map((c) => improvementByClient[c.id]).filter((v) => v != null)),
     };
-  }, [parts, programs, linkOf, activeForClient, adherenceByClient, improvementByClient]);
+  }, [parts, programs, linkFor, activeForClient, adherenceByClient, improvementByClient]);
 
   const listData = useMemo(() => {
     // Orden (§6.2): la lista principal con la lente y «Lo pendiente, arriba»; los
@@ -1939,7 +1940,7 @@ export default function ClientsScreen() {
                    : lens === 'imp' ? (c) => (programs[c.activeProgramId] ? improvementByClient[c.id] ?? null : null)
                    : undefined;
     const rankOf = (c) => {
-      const linked = linkOf(c) === 'linked';
+      const linked = linkFor(c) === 'linked';
       const first  = clientAvisos({
         client: c, program: programs[c.activeProgramId], linked,
         inProgress: activeForClient === c.id, adherence: adherenceByClient[c.id],
@@ -1962,7 +1963,7 @@ export default function ClientsScreen() {
     }
     return items;
   }, [parts, foldOpen, lens, order, programs, adherenceByClient, improvementByClient, lastTsByClient,
-      linkOf, activeForClient, unreviewedByClient]);
+      linkFor, activeForClient, unreviewedByClient]);
 
   // Reordenar a mano: se parte del orden a mano puro de la lista principal.
   function startReorder() {
@@ -2055,6 +2056,7 @@ export default function ClientsScreen() {
       weight = [`${lastW.weight} kg`, when].filter(Boolean).join(' · ');
     }
 
+    const full = linkOf(selectedClient, trainerSync.userId);
     return {
       status: [
         t(`clients.status${status === 'paused' ? 'Paused' : status === 'inactive' ? 'Inactive' : 'Active'}`),
@@ -2068,10 +2070,10 @@ export default function ClientsScreen() {
         : t('clients.info.upToDate'),
       billingTone: pending > 0 ? 'orange' : null,
       // «De otra cuenta» y «se fue» se dicen: parecían «sin app» y «esperando» (C09 §3.4).
-      connection:     t(`clients.info.link_${selectedClient.syncOrphan ? 'orphan' : selectedClient.syncLeftAt ? 'left' : linkOf(selectedClient)}`),
-      connectionTone: selectedClient.syncOrphan || selectedClient.syncLeftAt ? 'orange' : { none: null, invited: 'orange', linked: 'green' }[linkOf(selectedClient)],
+      connection:     t(`clients.info.link_${full === 'otherAccount' ? 'orphan' : full === 'left' ? 'left' : linkFor(selectedClient)}`),
+      connectionTone: full === 'otherAccount' || full === 'left' ? 'orange' : { none: null, invited: 'orange', linked: 'green' }[linkFor(selectedClient)],
     };
-  }, [selectedClient, t, linkOf]);
+  }, [selectedClient, t, linkFor, trainerSync.userId]);
 
   const filteredLog = useMemo(() => {
     // «Programa actual»: sus sesiones y las libres que sustituyen a una
@@ -2166,7 +2168,7 @@ export default function ClientsScreen() {
 
   function handleSelectClient(clientId) {
     // ¿Ha canjeado ya el código? Se mira al abrir su ficha (C28 §4.0.4).
-    if (linkOf(clients[clientId]) === 'invited') refreshTrainerSlots().catch(() => {});
+    if (linkFor(clients[clientId]) === 'invited') refreshTrainerSlots().catch(() => {});
     setSelectedClientId(clientId);
     setActiveTab('programs');
     setScopeFilter('active');
@@ -2201,7 +2203,7 @@ export default function ClientsScreen() {
   // descarga falla, el aviso tiene que seguir ahí (C04-qa-sep-conexion.md §4).
   // ponytail: una descarga por cambio de pestaña; cachear por cliente si se nota.
   const detailSyncSlot = view === 'detail' && trainerSync.mode && trainerSync.mode !== 'offline'
-    ? clients[selectedClientId]?.syncSlotId : null;
+    ? clients[selectedClientId]?.slotId : null;
   useEffect(() => {
     if (!detailSyncSlot) return;
     let cancelled = false;
@@ -2444,7 +2446,7 @@ export default function ClientsScreen() {
         {activeTab === 'programs' && (() => {
           const activeProgram    = clientPrograms.find((p) => p.id === selectedClient.activeProgramId) ?? null;
           const previousPrograms = clientPrograms.filter((p) => p.id !== selectedClient.activeProgramId);
-          const syncEnabled      = trainerSync.mode !== 'offline' && trainerSync.mode !== null && selectedClient.syncSlotId;
+          const syncEnabled      = trainerSync.mode !== 'offline' && trainerSync.mode !== null && selectedClient.slotId;
 
           const uploadProgram = async (programId) => {
             try {
@@ -2485,7 +2487,7 @@ export default function ClientsScreen() {
             <ScrollView {...fold.scrollProps} contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
               {/* Invitado: lo primero es que canjee el código. Se retira sola
                   cuando lo hace, y el código queda en Info (C28 §4.0.6). */}
-              {linkOf(selectedClient) === 'invited' && (
+              {linkFor(selectedClient) === 'invited' && (
                 <View style={{ marginBottom: spacing.md }}>
                   <ClientCodeBlock
                     client={selectedClient}
@@ -2508,14 +2510,14 @@ export default function ClientsScreen() {
                   loadPct={clientLoadPct}
                   dirty={selectedClient.programDirty ?? false}
                   client={selectedClient}
-                  link={linkOf(selectedClient)}
+                  link={linkFor(selectedClient)}
                   log={clientBaseLog}
                   archivedCount={previousPrograms.length}
                   onView={() => setPrintingProgram(activeProgram.id)}
                   onEdit={gate(detailLock, () => setEditingProgram(activeProgram.id))}
                   // Solo con app: al invitado se le sube solo, y durante esa
                   // subida el aviso naranja asomaba (C28 §4.0.4).
-                  onUpload={syncEnabled && linkOf(selectedClient) === 'linked' ? gate(detailLock, () => uploadProgram(activeProgram.id)) : undefined}
+                  onUpload={syncEnabled && linkFor(selectedClient) === 'linked' ? gate(detailLock, () => uploadProgram(activeProgram.id)) : undefined}
                   onPrescribe={gate(detailLock, () => navigation.navigate('NextSession', { clientId: selectedClientId }))}
                   onShare={() => shareSpecificProgram(activeProgram.id, true)}
                   onExport={() => exportSpecificProgram(activeProgram.id, true)}
@@ -2555,7 +2557,7 @@ export default function ClientsScreen() {
 
               {/* Sus sesiones libres, con y sin programa: una rutina suelta no
                   necesita uno (C06-group-classes.md §4.1, C24). */}
-              <ClientFreeSessions client={selectedClient} canStart={linkOf(selectedClient) === 'none'} log={clientBaseLog} fold={fold} />
+              <ClientFreeSessions client={selectedClient} canStart={linkFor(selectedClient) === 'none'} log={clientBaseLog} fold={fold} />
 
               {/* Programas archivados — fuera de la vista, en su propia hoja:
                   se consultan de higos a brevas y aquí solo estorbaban. */}
@@ -2582,7 +2584,7 @@ export default function ClientsScreen() {
         {activeTab === 'history' && (
           <ScrollView
             contentContainerStyle={[styles.tabContent, { paddingBottom: insets.bottom + spacing.xxl }]}
-            refreshControl={selectedClient?.syncSlotId ? (
+            refreshControl={selectedClient?.slotId ? (
               <RefreshControl
                 refreshing={refreshingHistory}
                 onRefresh={handleRefreshHistory}
@@ -2625,7 +2627,7 @@ export default function ClientsScreen() {
             baseLog={clientBaseLog}
             programTemplateIds={activeClientTemplateIds}
             allExercises={allExercises}
-            onRefresh={selectedClient?.syncSlotId ? handleRefreshHistory : undefined}
+            onRefresh={selectedClient?.slotId ? handleRefreshHistory : undefined}
             refreshing={refreshingHistory}
           />
         )}
@@ -2928,7 +2930,7 @@ export default function ClientsScreen() {
                 open={openSections.connection}
                 onToggle={() => setOpenSections((s) => ({ ...s, connection: !s.connection }))}
               >
-                {linkOf(selectedClient) === 'none' ? (
+                {linkFor(selectedClient) === 'none' ? (
                   <>
                     <Text style={styles.codeExplain}>{t('clients.info.noAppLine')}</Text>
                     <TouchableOpacity
@@ -2947,7 +2949,7 @@ export default function ClientsScreen() {
                 ) : (
                   <ClientCodeBlock
                     client={selectedClient}
-                    link={linkOf(selectedClient)}
+                    link={linkFor(selectedClient)}
                     hasProgram={!!selectedClient.activeProgramId}
                     showToast={showToast}
                     flat
@@ -3324,7 +3326,7 @@ export default function ClientsScreen() {
             const client = item.client;
             const activeProgram   = programs[client.activeProgramId];
             // Solo con app hay avisos de envío; al invitado se le sube solo (C28).
-            const link            = linkOf(client);
+            const link            = linkFor(client);
             const isConnected     = link === 'linked';
             // Last activity across the client's separated history
             const clientSessions  = clientLogs[client.id] ?? [];
@@ -3406,7 +3408,7 @@ export default function ClientsScreen() {
           onStart={actionsStart && gate(gates.client(actionsClientId), actionsStart.onPress)}
           onClose={() => setActionsClientId(null)}
           onProgress={() => handleSelectClientProgress(actionsClientId)}
-          onNextSession={linkOf(clients[actionsClientId]) !== 'none'
+          onNextSession={linkFor(clients[actionsClientId]) !== 'none'
             ? gate(gates.client(actionsClientId), () => navigation.navigate('NextSession', { clientId: actionsClientId }))
             : undefined}
           onEditProgram={() => {

@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { linkOf, assertFacts } from '../src/utils/clientLink';
 import { createServer, createDevice, wipeDevice, createSimClient } from '../../test/supabaseSim.js';
 
 
@@ -68,7 +69,7 @@ async function newClientWithProgram(t, name = 'Ana', programName = 'Fuerza') {
   return { clientId, programId };
 }
 
-const codeOf = (t, clientId) => t.s.clients[clientId].syncCode;
+const codeOf = (t, clientId) => t.s.clients[clientId].code;
 
 /** El cliente mete el código y entra. */
 async function join(c, code) {
@@ -110,7 +111,7 @@ describe('entrenador: el recorrido básico', () => {
 
     await trainOnce(c);
     await t.s.refreshTrainerSlots();
-    expect(t.s.clients[clientId]).toMatchObject({ syncLinked: true, remoteSessionsCount: 1 });
+    expect(t.s.clients[clientId]).toMatchObject({ seated: true, remoteSessionsCount: 1 });
     expect(await programReaches(t, c, clientId, 'Fuerza 2')).toBe(true);
   });
 });
@@ -134,7 +135,7 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
 
       await ways[to](t);
       expect(t.s.trainerSync.userId).not.toBe(before);
-      expect((await slotOf(t.s.clients[clientId].syncSlotId)).trainer_id).toBe(t.s.trainerSync.userId);
+      expect((await slotOf(t.s.clients[clientId].slotId)).trainer_id).toBe(t.s.trainerSync.userId);
       expect(await programReaches(t, c, clientId, `tras ${to}`)).toBe(true);
     });
   }
@@ -182,7 +183,7 @@ describe('entrenador: cambiar de forma de entrar se lleva a los clientes', () =>
     const t2 = await restart(t);
     // En la cuenta vieja ya no hay clientes: se marcan, no se borran.
     await t2.s.refreshTrainerSlots();
-    expect(t2.s.clients[clientId].syncSlotId).toBeTruthy();
+    expect(t2.s.clients[clientId].slotId).toBeTruthy();
 
     await t2.s.enterTrainerAccount(apple('a1'));
     expect(await programReaches(t2, c, clientId, 'recuperado')).toBe(true);
@@ -211,7 +212,7 @@ describe('entrenador: reinstalar y «Ya tengo cuenta»', () => {
       const byName = Object.fromEntries(Object.values(t.s.clients).map((x) => [x.name, x]));
       expect(Object.keys(byName).sort()).toEqual(['Ana', 'Invitado', 'Reemitido']);
       expect(t.s.programs[byName.Ana.activeProgramId]?.name).toBe('Fuerza');
-      expect(byName.Ana.syncLinked).toBe(true);
+      expect(byName.Ana.seated).toBe(true);
       expect(await programReaches(t, c, byName.Ana.id, 'tras reinstalar')).toBe(true);
     });
   }
@@ -290,15 +291,60 @@ describe('entrenador: desconectar y volver', () => {
     await t.s.leaveTrainerAccount();
     await t.s.enterTrainerAccount(google('otra'));
 
-    expect(t.s.clients[clientId].syncOrphan).toBe(true);
+    expect(linkOf(t.s.clients[clientId], t.s.trainerSync.userId)).toBe('otherAccount');
     const programId = t.s.createProgramForClient(clientId, 1, 'no llega', null, { openEditor: false });
     await expect(t.s.uploadProgramToClient(clientId, programId)).rejects.toThrow();
 
     // Volviendo a la cuenta buena se recuperan solos.
     await t.s.leaveTrainerAccount();
     await t.s.enterTrainerAccount(google('g1'));
-    expect(t.s.clients[clientId].syncOrphan).toBeFalsy();
+    expect(linkOf(t.s.clients[clientId], t.s.trainerSync.userId)).not.toBe('otherAccount');
     expect(await programReaches(t, c, clientId, 'recuperado')).toBe(true);
+  });
+
+  it('C10-01: salir y volver a entrar en la misma cuenta con el refresco fallando: las fichas se leen igual que antes de salir', async () => {
+    const t = await phone('entrenador');
+    const c = await phone('cliente');
+    await t.s.enterTrainerAccount(google('g1'));
+    const invitado = (await newClientWithProgram(t, 'Ana')).clientId;
+    const conectado = (await newClientWithProgram(t, 'Berta')).clientId;
+    const sinApp = await t.s.createClient('Carmen');
+    await join(c, codeOf(t, conectado));
+    await t.s.refreshTrainerSlots();
+    const leer = (userId) => Object.fromEntries([invitado, conectado, sinApp].map((id) => [id, linkOf(t.s.clients[id], userId)]));
+    const antes = leer(t.s.trainerSync.userId);
+    expect(antes).toEqual({ [invitado]: 'invited', [conectado]: 'linked', [sinApp]: 'local' });
+
+    await t.s.leaveTrainerAccount();
+    expect(leer(t.s.trainerSync.userId)).toEqual({ [invitado]: 'otherAccount', [conectado]: 'otherAccount', [sinApp]: 'local' });
+    Object.values(t.s.clients).forEach(assertFacts);
+
+    server.failOnce('from:trainer_clients');   // el refresco de después de entrar no puede preguntar
+    await t.s.enterTrainerAccount({ ...google('g1'), mustExist: true });
+    expect(leer(t.s.trainerSync.userId)).toEqual(antes);
+    Object.values(t.s.clients).forEach(assertFacts);
+  });
+
+  it('C10-01: pasar de código a Google: las fichas siguen invitado/conectado sin esperar al refresco', async () => {
+    const t = await phone('entrenador');
+    const c = await phone('cliente');
+    await t.s.createTrainerCodeAccount();
+    const invitado = (await newClientWithProgram(t, 'Ana')).clientId;
+    const conectado = (await newClientWithProgram(t, 'Berta')).clientId;
+    await join(c, codeOf(t, conectado));
+    await t.s.refreshTrainerSlots();
+    const viejo = t.s.trainerSync.userId;
+    expect(linkOf(t.s.clients[invitado], viejo)).toBe('invited');
+
+    server.failOnce('from:trainer_clients');
+    await t.s.enterTrainerAccount(google('g1'));
+    const nuevo = t.s.trainerSync.userId;
+    expect(nuevo).not.toBe(viejo);
+    expect(linkOf(t.s.clients[invitado], nuevo)).toBe('invited');
+    expect(linkOf(t.s.clients[conectado], nuevo)).toBe('linked');
+    expect(linkOf(t.s.clients[invitado], viejo)).toBe('otherAccount');
+    expect((await slotOf(t.s.clients[invitado].slotId)).trainer_id).toBe(nuevo);   // el hueco se fue con ellos
+    Object.values(t.s.clients).forEach(assertFacts);
   });
 
   it('uno «de otra cuenta» se puede pasar a la app en esta: hueco nuevo, código nuevo', async () => {
@@ -308,10 +354,10 @@ describe('entrenador: desconectar y volver', () => {
     const { clientId, programId } = await newClientWithProgram(t);
     await t.s.leaveTrainerAccount();
     await t.s.enterTrainerAccount(google('otra'));
-    expect(t.s.clients[clientId].syncOrphan).toBe(true);
+    expect(linkOf(t.s.clients[clientId], t.s.trainerSync.userId)).toBe('otherAccount');
 
     await t.s.moveClientToApp(clientId);
-    expect(t.s.clients[clientId].syncOrphan).toBe(false);
+    expect(linkOf(t.s.clients[clientId], t.s.trainerSync.userId)).not.toBe('otherAccount');
     await t.s.uploadProgramToClient(clientId, programId);
     await join(c, codeOf(t, clientId));
     expect(await programReaches(t, c, clientId, 'en la nueva')).toBe(true);
@@ -332,7 +378,7 @@ describe('entrenador: nada se da por hecho sin que el servidor lo confirme', () 
     const c = await phone('cliente');
     await t.s.createTrainerCodeAccount();
     const { clientId } = await newClientWithProgram(t);
-    const slotId = t.s.clients[clientId].syncSlotId;
+    const slotId = t.s.clients[clientId].slotId;
     await join(c, codeOf(t, clientId));
 
     t.device.offline = true;
@@ -485,11 +531,11 @@ describe('cliente: cambiar de entrenador, desconectarse, vincular Google', () =>
     await trainOnce(c);
     await join(c, codeOf(b, cb.clientId));
 
-    const old = await slotOf(a.s.clients[ca.clientId].syncSlotId);
+    const old = await slotOf(a.s.clients[ca.clientId].slotId);
     expect(old).toMatchObject({ client_id: null, sessions_count: 1 });
     expect(old.history_json).not.toBeNull();
     await a.s.refreshTrainerSlots();
-    expect(a.s.clients[ca.clientId]).toMatchObject({ syncLinked: false, syncLeftAt: expect.any(String) });
+    expect(a.s.clients[ca.clientId]).toMatchObject({ seated: false, leftAt: expect.any(String) });
     expect(await programReaches(b, c, cb.clientId, 'de B')).toBe(true);
   });
 
@@ -510,7 +556,7 @@ describe('cliente: cambiar de entrenador, desconectarse, vincular Google', () =>
     expect(c.s.clientSync).toMatchObject({ googleLinked: true, linkedProvider: 'google' });
     c = await reinstall(c);                                      // y su Google lo recupera
     const found = await c.s.validateGoogleClient(google('cli'));
-    expect(found.slotId).toBe(b.s.clients[cb.clientId].syncSlotId);
+    expect(found.slotId).toBe(b.s.clients[cb.clientId].slotId);
   });
 
   it('desconectarse: el entrenador lo ve y el mismo código sirve para volver', async () => {
@@ -521,7 +567,7 @@ describe('cliente: cambiar de entrenador, desconectarse, vincular Google', () =>
     await join(c, codeOf(t, clientId));
     await c.s.unlinkFromTrainer();
     await t.s.refreshTrainerSlots();
-    expect(t.s.clients[clientId]).toMatchObject({ syncLinked: false, syncLeftAt: expect.any(String) });
+    expect(t.s.clients[clientId]).toMatchObject({ seated: false, leftAt: expect.any(String) });
     await join(c, codeOf(t, clientId));
     expect(await programReaches(t, c, clientId, 'otra vez')).toBe(true);
   });
@@ -540,7 +586,7 @@ describe('cliente: cambiar de entrenador, desconectarse, vincular Google', () =>
 
     c = await reinstall(c);
     const found = await c.s.validateGoogleClient(google('cli'));
-    expect(found.slotId).toBe(b.s.clients[cb.clientId].syncSlotId);
+    expect(found.slotId).toBe(b.s.clients[cb.clientId].slotId);
     await c.s.confirmGoogleReconnect({ slotId: found.slotId, googleUserId: found.userId, provider: 'google' });
     expect(await programReaches(b, c, cb.clientId, 'de B tras reinstalar')).toBe(true);
   });
@@ -640,7 +686,7 @@ describe('entrenador que además es cliente de otro (mismo móvil)', () => {
     const users = await server.admin('select count(*)::int as n from auth.users where not is_anonymous and email like $1', ['x@%']);
     expect(users[0].n).toBe(0);
     // Lo del móvil se queda: los dos clientes, ya sin app.
-    expect(x.s.clients[mine.clientId]).toMatchObject({ syncSlotId: null });
+    expect(x.s.clients[mine.clientId]).toMatchObject({ slotId: null });
     expect(x.s.clients[local]).toBeTruthy();
   });
 });
@@ -663,7 +709,7 @@ describe('reglas del servidor (sin app de por medio)', () => {
     await join(c1, codeOf(t, clientId));
     await join(c2, codeOf(t, clientId));
 
-    expect((await slotOf(t.s.clients[clientId].syncSlotId)).client_id).toBe(c2.s.clientSync.supabaseUserId);
+    expect((await slotOf(t.s.clients[clientId].slotId)).client_id).toBe(c2.s.clientSync.supabaseUserId);
     await c1.s.checkAndPullProgramUpdates();
     expect(c1.s.clientSync).toMatchObject({ lostAt: expect.any(String), lostReason: 'taken' });
     expect(await programReaches(t, c2, clientId, 'para el que entró')).toBe(true);

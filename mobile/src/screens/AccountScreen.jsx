@@ -28,6 +28,7 @@ import Svg, { Path, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Reanimated, { FadeIn } from 'react-native-reanimated';
 
 import { useStore } from '../../store/useStore';
+import { usePlanClients } from '../useFreeGates';
 import { trainerSupabase } from '../config/supabase';
 import { APPLE_AUTH_AVAILABLE } from '../services/appleAuth';
 import useTrainerAccount from '../hooks/useTrainerAccount';
@@ -155,7 +156,7 @@ export default function AccountScreen() {
 
   const trainerSync      = useStore((s) => s.trainerSync);
   const isPro            = useStore((s) => s.profile?.isPro ?? false);
-  const clients          = useStore((s) => s.clients);
+  const clients          = usePlanClients();
   const programs         = useStore((s) => s.programs);
   const sessionTemplates = useStore((s) => s.sessionTemplates);
   const hasRemoteAccount = useStore((s) => s.hasRemoteAccount());

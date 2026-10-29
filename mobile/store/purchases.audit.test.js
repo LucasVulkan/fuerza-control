@@ -455,7 +455,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     });
 
     it('X3 arreglado (E40, R-E4): importar clientes con plan gratis hasta pasar de 3 deja activos a los que ya tenías y congela solo los nuevos', () => {
-      const mk = (id) => ({ id, name: id, status: 'active', syncSlotId: null });
+      const mk = (id) => ({ id, name: id, status: 'active', slotId: null });
       useStore.setState((s) => ({
         clients: { a: mk('a'), b: mk('b') }, programs: {}, sessionTemplates: {},
         profile: { ...s.profile, isPro: false, freeClientIds: [] },
