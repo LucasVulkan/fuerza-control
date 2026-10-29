@@ -367,6 +367,8 @@ Lo rellena cada fase: una fila por regla y por hallazgo de la pasada
 adversaria. Es el entregable. Los fallos se describen en `auditoria-tecnica.md`
 y aquí solo se enlazan.
 
+Las reglas que implementó [C10](C10-clientes-de-la-cuenta.md) (R-A1…A3, A9, B6, B10, C7, D1, E1, E2 y las N-xx de su tabla) tienen su test en la tabla «Reglas y su test» de C10 §10.8 (I04-07).
+
 | Regla / hallazgo | Fase | Nivel | Dónde vive la protección | Prueba | Fallo |
 |---|---|---|---|---|---|
 | R-A1 · A2 · A3 · A4 · A7 · A8 · B1 · C5 · C6 | I02-02 | Descartado | Servidor | Fijados por test: `server.hostile.sim.test.js` › «Descartados» (T-A1…T-C6) | — |

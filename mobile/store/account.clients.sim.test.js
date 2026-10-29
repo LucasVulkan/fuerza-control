@@ -457,6 +457,33 @@ describe('C10-04 · invitar y cancelar (§3.3)', () => {
     expect(t.s.trainerSync.deletedSlotIds ?? []).toEqual([]);              // y no se borró nada
   });
 
+  it('N-03: invitar, reemitir y cancelar sin red fallan sin tocar la ficha ni el hueco, y con red salen', async () => {
+    const t = await phone('entrenador');
+    await t.s.createTrainerCodeAccount();
+    const ana = await t.s.createClient('Ana');
+    const berta = await t.s.createClient('Berta');
+    await t.s.refreshTrainerSlots();
+    await t.s.connectClientToCloud(berta);
+    const antesAna = { ...t.s.clients[ana] };
+    const antesBerta = { ...t.s.clients[berta] };
+    const hueco = await slots();
+
+    t.device.offline = true;
+    await expect(t.s.connectClientToCloud(ana)).rejects.toBeTruthy();       // invitar
+    await expect(t.s.reissueClientCode(berta)).rejects.toBeTruthy();        // reemitir
+    await expect(t.s.cancelClientInvitation(berta)).rejects.toBeTruthy();   // cancelar
+    expect(t.s.clients[ana]).toEqual(antesAna);
+    expect(t.s.clients[berta]).toEqual(antesBerta);
+    expect(t.s.ui.linking?.[ana]).toBeFalsy();
+    t.device.offline = false;
+    expect(await slots()).toEqual(hueco);
+    Object.values(t.s.clients).forEach(assertFacts);
+
+    expect(await t.s.connectClientToCloud(ana)).toBe(true);
+    await t.s.cancelClientInvitation(berta);
+    expect([ana, berta].map((id) => linkNow(t, id))).toEqual(['invited', 'none']);
+  });
+
   it('cancelar con el cliente ya dentro: no cambia nada y el refresco lo deja `linked`', async () => {
     const { t, c, ana } = await trainerWithClients();
     await join(c, t.s.clients[ana].code);                                  // lo canjea otro móvil y el entrenador aún no lo sabe

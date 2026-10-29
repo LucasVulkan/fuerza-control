@@ -3,6 +3,7 @@
 > Tema: conexión
 > En corto: Con cuenta de entrenador, todos los clientes (con app o sin ella) viven en la cuenta con un id para siempre, y recuperar la cuenta en un móvil nuevo los trae todos con su ficha, su programa y su historial. De paso, el estado de cada ficha deja de ser siete banderas sueltas y pasa a ser un solo valor con sus cambios escritos en un sitio.
 > Inicio: 2026-10-29
+> Fin: 2026-10-29
 > Fase C10-01 · hecho · El estado de la ficha en un solo valor, solo en el móvil · §10.1
 > Fase C10-02 · hecho · Servidor: hueco sin código, tabla privada, ids que no se pierden · §10.2
 > Fase C10-03 · hecho · Un id para siempre: recuperar usa el de la ficha · §10.3
@@ -10,15 +11,17 @@
 > Fase C10-05 · hecho · Guardar en la cuenta: ficha, programas y lo apuntado · §10.5
 > Fase C10-06 · hecho · Restaurar una copia con este modelo · §10.6
 > Fase C10-07 · hecho · Deshacer al borrar un cliente · §10.7
-> Fase C10-08 · pendiente · De punta a punta: móvil nuevo, reglas con su test y prueba en dispositivo · §10.8
+> Fase C10-08 · hecho · De punta a punta: móvil nuevo, reglas con su test y prueba en dispositivo · §10.8
 >
-> Estado: **aprobada, en implementación** (29-oct-2026; §3.2 cambiada ese día: hechos guardados, estado calculado). Implementa
+> Estado: **implementación completa (C10-01…08, 29-oct-2026), por probar en dispositivo** (§3.2 cambiada ese día:
+> hechos guardados, estado calculado). Implementa
 > las reglas N-15 y N-17 del [mapa del núcleo](../nucleo.md), que manda sobre
 > esta spec, y absorbe tres fases de [I04](I04-simplificar-nucleo.md): I04-02
 > (restaurar) pasa a C10-06, I04-08 (estado de la ficha) a C10-01 y C10-04, e
 > I04-10 (deshacer al borrar) a C10-07. Va **antes de la primera release**. Las
-> decisiones que esperan al usuario están en §11; las reglas nuevas que propone
-> (N-18…N-20, §9.2) pasan al mapa cuando se aprueben.
+> decisiones de §11 están cerradas y las reglas que propone (N-18…N-20, §9.2)
+> ya están en el mapa. Falta el `audit.sql` de producción y las casillas de
+> **Probar C10-xx**.
 
 ---
 
@@ -453,7 +456,7 @@ dentro del hueco (todo menos `linked`), lo apuntado con `trainer_upload_log`.
 Si `trainer_upload_log` responde `SLOT_OCCUPIED`, el cliente acaba de entrar:
 se deja lo apuntado y el refresco lo pondrá `linked`.
 
-**Cuándo hay algo que guardar** (regla N-18, propuesta): **por firma, no por
+**Cuándo hay algo que guardar** (regla N-18, ya en el mapa): **por firma, no por
 marca.** `saveSig(state, id)` es la firma de lo que se guardaría ahora
 (`card_json` + `programs_json` + ids y `updatedAt` de lo apuntado, con la
 `programSignature` que ya existe). Hay algo pendiente si `saveSig !== savedSig`;
@@ -674,7 +677,7 @@ real con PGlite, varios móviles), y los de la función pura en
 | C10-05 | Guardar en la cuenta | C10-04, D1 | 🟡 | N-17, N-18, N-06, R-E2 | ✅ 132b7a5 (29-oct) — por probar; tests en `src/utils/clientSave.test.js` y `store/account.clients.sim.test.js` |
 | C10-06 | Restaurar | C10-05 | 🟡 | N-04, N-05, N-08 | ✅ e2ab95b (29-oct) — por probar; tests en `store/account.clients.sim.test.js` |
 | C10-07 | Deshacer al borrar | C10-01 | 🟢 | N-13, R-B6, R-B10 | ✅ e18e3dd (29-oct) — por probar; tests en `store/account.clients.sim.test.js` |
-| C10-08 | De punta a punta | todas | 🟡 | todas las de arriba | pendiente |
+| C10-08 | De punta a punta | todas | 🟡 | todas las de arriba | ✅ (29-oct) — por probar; escenario en `store/c10.e2e.sim.test.js`, reglas con su test en §10.8 |
 
 ### 10.1 C10-01 — El estado de la ficha en un solo valor, solo en el móvil
 
@@ -979,6 +982,38 @@ C10-01, pero de una en una con las demás.
 - Las reglas N-18…N-20 pasan al mapa del núcleo con su fecha, y N-15 y N-17 se
   marcan implementadas.
 - `audit.sql` en producción, vacío.
+
+**Hecho (29-oct).**
+- **El escenario largo** es `mobile/store/c10.e2e.sim.test.js`: un solo `it`, un entrenador con dos móviles y un cliente, Postgres real. Diez pasos (sin cuenta con 3 clientes → cuenta por código → invitar a uno y que entre → mejorar a Google con un envío en cola y un guardado pendientes → editar y dejar que se guarde → copia → móvil nuevo entra con Google y recupera → restaurar la copia en él → borrar, deshacer, borrar y dejar pasar el aviso, y el móvil viejo lo borra al refrescar → el cliente sube su historial y recibe un programa del móvil nuevo). En cada paso `assertFacts` sobre las fichas de todos los móviles del entrenador y «no se ha perdido nada»: ids presentes y ficha (`buildClientCard`), programas (`buildClientPrograms`) e historial iguales a lo que el usuario dejó escrito la última vez. No destapó ningún fallo.
+- **Reglas con su test** (I04-07 para lo de C10): la tabla de abajo. La tabla de reglas de I02 no tiene columna «Test» (su §6 Registro lleva «Prueba» por hallazgo), así que la lista de las reglas de C10 vive aquí. Solo faltaba un test, el de N-03 (invitar, reemitir y cancelar sin red), y se escribió en `account.clients.sim.test.js`. Los botones desactivados sin red de N-03 son [I04-11](I04-simplificar-nucleo.md), aún pendiente.
+- **Mapa del núcleo**: N-18, N-19 y N-20 pasan a `docs/nucleo.md`; N-15 y N-17 quedan marcadas implementadas.
+
+**Reglas y su test**
+
+| Regla | Test (archivo › nombre) |
+|---|---|
+| N-03 · lo que cambia quién es quién necesita red | `store/account.clients.sim.test.js` › «N-03: invitar, reemitir y cancelar sin red fallan sin tocar la ficha ni el hueco, y con red salen» · «crear un cliente con cuenta y sin red queda `local`; con red y refresco, `none`» |
+| N-04 · restaurar: lo de la copia es lo que hay | `store/account.clients.sim.test.js` › «C10-06 · restaurar una copia (§8.1)»: «sin cuenta, la parte de clientes reemplaza a los del móvil…» · «con cuenta, una copia cuyos clientes están todos en la cuenta no cambia nada de ninguno…» · «restaurar dos veces la misma copia no cambia nada (sin cuenta y con cuenta)» |
+| N-05 · tras restaurar o entrar se pregunta a los dueños | `store/account.clients.sim.test.js` › «N-05: el cliente conectado que restaura una copia vieja vuelve a tener el programa de su hueco» · `store/c10.e2e.sim.test.js` › pasos 7 y 8 |
+| N-06 · solo sale lo que se envió | `store/sendQueue.sim.test.js` › «E80 / A3 · lo que nadie envió no sale solo» · `store/account.clients.sim.test.js` › «el cliente conectado no lee notas ni cobros, y su programa en el hueco no cambia porque el entrenador edite y se guarde: solo al enviar (N-06)» |
+| N-08 · un hueco, una ficha | `store/account.clients.sim.test.js` › «N-08: la ficha que el hueco nombra se queda con él, sin crear una segunda» · «E78: recuperar la cuenta y restaurar la copia del móvil viejo deja una sola ficha por hueco» |
+| N-09 · una cuenta a la vez | `store/sendQueue.sim.test.js` › «N-09 · salir de la cuenta vacía la cola» · `store/account.clients.sim.test.js` › «salir y entrar en otra cuenta: los `none` también pasan a `otherAccount`, nada se traspasa y no se pueden invitar» · «sin `upgrade`, entrar en Google desde una cuenta de código no traspasa» |
+| N-13 · borrar se deshace | `store/account.clients.sim.test.js` › «C10-07 · deshacer al borrar un cliente (§8.3)» |
+| N-15 · el estado de la ficha | `src/utils/clientLink.test.js` › «linkOf — el estado se calcula de los hechos (C10 §3.2)» y «escritores — cada uno deja hechos que no se contradicen» · `store/connection.sim.test.js` › «C10-01: salir y volver a entrar en la misma cuenta con el refresco fallando: las fichas se leen igual que antes de salir» |
+| N-17 · con cuenta, los clientes son de la cuenta | `store/account.clients.sim.test.js` › «el escenario de N-17: cinco clientes en un móvil nuevo, con el mismo id, ficha, programas e historial» · `store/server.private.sim.test.js` › «la ficha privada (N-17, R-A1, R-A2)» · `store/c10.e2e.sim.test.js` |
+| N-18 · guardar va por firma | `src/utils/clientSave.test.js` › «saveSig» · `store/account.clients.sim.test.js` › «cambiar una nota y esperar: la fila privada la tiene; cambiarla mientras viaja deja la firma distinta y se vuelve a guardar (E55)» · «salir de la cuenta con cambios sin guardar y volver: se guardan al volver…» |
+| N-19 · de otra cuenta es solo lectura | `store/useStore.test.js` › «ficha «de otra cuenta» — solo lectura (C10-04, N-19)» · `store/connection.sim.test.js` › «uno «de otra cuenta» NO se puede pasar a la app en esta (N-19, D2): OTHER_ACCOUNT y no se crea nada» |
+| N-20 · el id del cliente lo pone la ficha | `store/account.clients.sim.test.js` › «C10-03 · recuperar la cuenta usa el id de la ficha»: «estado de la versión de antes: una ficha con id propio y su hueco sin id → el hueco toma el de la ficha» · «pasar de código a Google y recuperar en otro móvil: mismos ids» |
+| R-A1 · lo suyo y nada más | `store/server.hostile.sim.test.js` › «T-A1 regla R-A1: sin sesión todo da 42501…» · `store/server.private.sim.test.js` › «la ficha privada (N-17, R-A1, R-A2)» |
+| R-A2 · nadie escribe directo | `store/server.hostile.sim.test.js` › «T-A2 regla R-A2: insert/upsert/update/delete directos dan 42501…» · `store/server.private.sim.test.js` › «nadie la escribe directamente (insert, update ni delete), ni anon ni authenticated» |
+| R-A3 · quien escribe es el dueño | `store/server.hostile.sim.test.js` › «T-A3 regla R-A3: con el hueco de otro entrenador…» · `store/server.private.sim.test.js` › «hueco ajeno o inexistente: SLOT_GONE y no escribe nada» |
+| R-A9 · el servidor es el del repositorio | `store/server.hostile.sim.test.js` › «H3 — audit.sql no ve derivas graves» · `store/server.private.sim.test.js` › «audit.sql con lo nuevo» (el `audit.sql` de producción lo ejecuta el usuario) |
+| R-B6 · borrar es borrar | `store/account.clients.sim.test.js` › «borrar y dejar pasar el toast: el hueco se borra, no resucita (R-B6) y el otro móvil lo borra al refrescar (R-B10)» · `store/server.hostile.sim.test.js` › «H6 — desconectarse / cambiar de entrenador / borrar cuenta vacían el hueco» |
+| R-B10 · los borrados llegan al otro móvil | `store/account.clients.sim.test.js` › el mismo «borrar y dejar pasar el toast…» · `store/sync.audit.sim.test.js` › «S17 arreglado (E60): borrar un cliente en un móvil lo quita también del otro…» · `store/c10.e2e.sim.test.js` › paso 9 |
+| R-C7 · un corte a mitad se arregla solo | `store/account.clients.sim.test.js` › «un corte de red a mitad: los subidos quedan, los otros `local`; al volver la red el refresco termina sin duplicar (R-C7)» · `store/sync.audit.sim.test.js` › «R-C7 / R-D1 cumple: matriz de cortes en los traspasos» |
+| R-D1 · cambiar de forma de entrar se lleva los clientes | `store/server.private.sim.test.js` › «traspaso de cuenta (R-D1)» · `store/account.clients.sim.test.js` › «mejorar de código a Google (cuenta nueva): los clientes van con ella, con los mismos ids» · `store/sendQueue.sim.test.js` › «pasar de código a Google se lleva los huecos, y la cola con ellos (R-D1)» |
+| R-E1 · el límite gratis, por código | `store/account.clients.sim.test.js` › «el límite del plan gratis cuenta por código: 3 `none` no ocupan la plaza con app, invitar a uno sí y a un segundo, hoja de límite (R-E1)» · `store/freeplan.audit.test.js` › «R-E1 cumple: createClient y connectClientToCloud se paran en el store con 1 con app» |
+| R-E2 · congelado es solo lectura | `store/account.clients.sim.test.js` › «un congelado no se guarda ni se envía (R-E2, N-12)» · `store/freeplan.audit.test.js` › «R-E2 — el congelado no se toca ni sincroniza (solo el contador)» |
 
 **Probar C10-08**
 

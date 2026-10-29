@@ -7,7 +7,8 @@
 > del código. Las reglas R-xx de [I02](specs/I02-conexion-pagos-pro.md) siguen
 > valiendo; aquí se añaden las **N-xx**, que son las que simplifican.
 >
-> **Estado:** borrador para decidir (28-oct-2026). Sale de que cada pasada de
+> **Estado:** borrador para decidir (28-oct-2026); N-15, N-17 y las nuevas
+> N-18…N-20 implementadas en C10 (29-oct-2026). Sale de que cada pasada de
 > búsqueda de fallos (I02, I03 y la adversaria) encontraba más, casi siempre en
 > cruces entre funciones. Las reglas marcadas **DECIDIR** esperan al usuario;
 > las **firmes** son consecuencia directa del propósito de la app o de reglas ya
@@ -258,6 +259,13 @@ vuelven si se vuelve a esa cuenta. No se borra nada del móvil. *Quita:* E82 y
 lo de una cuenta ejecutado con otra. **Firme** (aceptado el 28-oct-2026; con
 N-17, también los clientes sin app de esa cuenta pasan a «de otra cuenta»).
 
+*Aclaración (29-oct-2026, [C10](specs/C10-clientes-de-la-cuenta.md) §3.2):
+**mejorar la cuenta no es entrar en otra.** «Cambiar a Google o Apple» es la
+misma cuenta con otra forma de entrar: traspasa los huecos con sus ids (R-D1) y
+la cola se queda. «Entrar en otra cuenta» (crear una nueva o entrar en una que
+ya existe, solo tras «Salir») no traspasa nada. Mejorar hacia una cuenta de
+Google o Apple que ya tiene clientes no se deja.*
+
 **N-10 · Un móvil de trabajo por entrenador.** Los demás móviles de la misma
 cuenta solo reciben borrados (R-B10) y, con N-06, no envían nada solo. Lo que el
 entrenador haga en dos móviles a la vez no se junta, y se dice en la ayuda.
@@ -305,8 +313,8 @@ cuando no hay cuenta. Para que eso sea verdad:
   se planifica en una spec propia antes de tocar código.
 - **DECIDIR en esa spec:** si «guardar en la cuenta» es continuo (en cola, como
   un envío) o en los mismos momentos que la copia de Drive.
-- **Planificada en [C10](specs/C10-clientes-de-la-cuenta.md)** (28-oct-2026, por
-  aprobar), junto con N-15.
+- **Implementada en [C10](specs/C10-clientes-de-la-cuenta.md) (29-oct-2026)**,
+  junto con N-15. Decidido: guardar es continuo y por firma (N-18).
 
 **N-12 · Congelado es solo lectura, también para la cola.** Antes de enviar nada
 se mira si el cliente está congelado, y al arrancar se confirma el PRO antes de
@@ -326,7 +334,12 @@ el resto dice el texto de la pantalla. `err.message` va solo al registro.
 permitidos escritos en un solo sitio. *Quita:* las cien combinaciones. Es la
 que más simplifica a la larga y la más grande. **Antes de la primera release,
 junto con N-17** (28-oct-2026): las dos reescriben los estados del cliente.
-Planificada en [C10](specs/C10-clientes-de-la-cuenta.md) (por aprobar).
+**Implementada en [C10](specs/C10-clientes-de-la-cuenta.md) (29-oct-2026).** Se
+implementó como **estado calculado de cinco hechos**, no como un valor
+guardado: la ficha guarda lo que el servidor dijo de su hueco (`slotId`,
+`slotOwner`, `code`, `seated`, `leftAt`) y una función pura (`linkOf`) saca de
+ahí uno de seis valores, así que no hay un estado guardado que pueda contradecir
+a los hechos (C10 §3.2).
 
 **N-16 · Lo que no se puede prevenir se puede contar.** *(Revisada el
 28-oct-2026.)* Sin botón «Volver a sincronizar»: lo que haría ya ocurre solo al
@@ -344,6 +357,30 @@ lugar, **«Enviar informe»**:
   sería Sentry); se añade si hace falta.
 
 **Firme** en el qué; el detalle va en su spec.
+
+**N-18 · Guardar en la cuenta va por firma, no por cola.** Lo que falta por
+guardar de un cliente sale de comparar la firma de lo que se guardaría ahora con
+la de lo último guardado (`savedSig`), no de una lista de avisos que haya que
+mantener. Se guarda solo, a los pocos segundos de cada cambio (continuo); si no
+se puede (sin red, otra cuenta puesta), la diferencia sigue ahí y se guarda al
+poder, también tras salir de la cuenta y volver. La firma no viaja en copias.
+*Quita:* la cola de guardados y los guardados que se pierden al cerrar la app.
+**Decidido el 29-oct-2026** ([C10](specs/C10-clientes-de-la-cuenta.md) §6 y §9.2).
+
+**N-19 · Un cliente de otra cuenta es solo lectura.** Si el hueco de la ficha no
+es de la cuenta puesta (o no hay cuenta puesta), la ficha se ve y no se edita,
+no se envía, no se guarda ni se pasa a la app aquí. Para tocarla, volver a su
+cuenta. Nunca hay un mismo cliente en dos cuentas. *Quita:* los cambios que no
+se podrían guardar en ninguna cuenta y se pisarían al volver, y el cruce de dos
+fichas buenas para un mismo cliente. **Decidido el 29-oct-2026**
+([C10](specs/C10-clientes-de-la-cuenta.md) §9.2 y D2).
+
+**N-20 · El id del cliente lo pone la ficha.** El hueco sigue a la ficha
+(`local_id`), el traspaso de cuenta lo conserva, y si no cuadran gana el de la
+ficha: el refresco lo vuelve a fijar en el servidor. El nombre nunca identifica
+a nadie. *Quita:* que una copia no reconozca a su propio cliente (E78) y las
+fichas duplicadas al recuperar. **Decidido el 29-oct-2026**
+([C10](specs/C10-clientes-de-la-cuenta.md) §4.2 y §9.2).
 
 ## 8. Lo que la app no hace, a propósito
 
