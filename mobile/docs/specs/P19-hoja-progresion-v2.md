@@ -2,12 +2,14 @@
 
 > Tema: programas
 > En corto: La hoja de Progresión deja de parecer un esqueleto: arriba, el ejercicio en su ficha; en el centro, una tarjeta que dice cuánto se recomendará subir y qué hay que hacer para conseguirlo; abajo, los ajustes en una lista plegada con su valor a la vista.
-> Fase P19-01 · pendiente · Cabecera y ficha del ejercicio · §3
-> Fase P19-02 · pendiente · Tarjeta «En la próxima sesión» · §4
-> Fase P19-03 · pendiente · «Cómo progresa»: los ajustes en lista plegada · §5
-> Fase P19-04 · pendiente · Iconos nuevos de Peso y Esfuerzo · §6
+> Fase P19-01 · hecho · Cabecera y ficha del ejercicio · §3
+> Fase P19-02 · hecho · Tarjeta «En la próxima sesión» · §4
+> Fase P19-03 · hecho · «Cómo progresa»: los ajustes en lista plegada · §5
+> Fase P19-04 · hecho · Iconos nuevos de Peso y Esfuerzo · §6
+> Inicio: 2026-10-29
+> Fin: 2026-10-29
 >
-> Estado: **escrita el 29-oct-2026, sin empezar.** Sale de rediseñar la hoja de
+> Estado: **implementada el 29-oct-2026, por probar en el móvil** (rama `feat/p19-hoja-progresion`, sin subir). Sale de rediseñar la hoja de
 > [P18-05](P18-motor-progresion.md) («§7. P18-05 — Hoja de Progresión por niveles»),
 > que el usuario veía floja: títulos en mayúsculas que no decían nada, bloques
 > flotando sobre el fondo, un párrafo al pie que había que leer dos veces y poco
@@ -73,23 +75,22 @@ La fila «Plantilla» que sale en la maqueta es la idea P20, no entra aquí.
 
 ## 3. P19-01 — Cabecera y ficha del ejercicio
 
-- **Cabecera**: delante de «Progresión» va un cuadro de 28 × 28, radio `sm`, fondo
-  `tint.accent10`, con un icono de tendencia (línea que sube y flecha) en `accent`,
-  de 16. El título sigue en `heading` y «Aceptar» como está. Si `DragSheet` no
-  admite icono en el título, se le añade una prop opcional (`titleIcon`) y el resto
-  de hojas no cambia.
-- **Ficha del ejercicio**: una tarjeta `surface`, radio `md`, padding `md`/`lg`:
-  - Nombre en `bodyStrong`.
-  - Debajo, en `label` `mutedLight` y con cifras tabulares, el volumen (las claves
-    `metaRange`/`metaFixed`/… de hoy).
-- Separación con la cabecera: `sm2`. Entre los bloques de la hoja, `xl`, como hoy.
+- **Cabecera**: la de siempre de `DragSheet` («Progresión» en `heading` y «Aceptar»).
+  El icono de tendencia **no va en el título** (cambio del usuario, 29-oct): va en la
+  ficha del ejercicio.
+- **Ficha del ejercicio**: una tarjeta `surface`, radio `md`, padding `md`/`lg`, en fila
+  con hueco `md`:
+  - A la izquierda, un cuadro de 28 × 28, radio `sm`, fondo `tint.accent10`, con un
+    icono de tendencia (línea que sube y flecha) en `accent`, de 16.
+  - Al lado, el nombre en `bodyStrong` y debajo, en `label` `mutedLight` y con cifras
+    tabulares, el volumen (las claves `metaRange`/`metaFixed`/… de hoy).
+- Entre los bloques de la hoja, `xl`, como hoy.
 
 **Probar P19-01**
 
-- [ ] Editor de un press militar 6×10-12 → Progresión: delante de «Progresión» sale
-  el icono de tendencia en su cuadro lima suave. Debajo, el ejercicio en una
-  tarjeta: «Press militar con barra» y «6 × 10–12 reps».
-- [ ] Las otras hojas de la app (DragSheet) siguen con su cabecera de siempre.
+- [ ] Editor de un press militar 6×10-12 → Progresión: la cabecera es la de siempre.
+  Debajo, el ejercicio en una tarjeta con el icono de tendencia en su cuadro lima suave
+  a la izquierda y, a su lado, «Press militar con barra» y «6 × 10–12 reps».
 
 ## 4. P19-02 — Tarjeta «En la próxima sesión»
 
@@ -251,10 +252,10 @@ maqueta v3.
 
 | Fase | Qué | Toca | Coste |
 |---|---|---|---|
-| P19-01 | Cabecera con icono y ficha del ejercicio | `ProgressionSheet`, `DragSheet` (prop opcional) | 🟢 |
-| P19-02 | Tarjeta «En la próxima sesión» | `ProgressionSheet`, locales | 🟢 |
-| P19-03 | Lista plegada «Cómo progresa» | `ProgressionSheet`, locales | 🟡 |
-| P19-04 | Iconos de Peso y Esfuerzo | `ProgressionSheet` (`TILE_ICON`), SVG en `mockups/iconos/` | 🟢 |
+| P19-01 | Ficha del ejercicio con el icono de tendencia | `ProgressionSheet` | 🟢 ✅ 1d49dda |
+| P19-02 | Tarjeta «En la próxima sesión» | `ProgressionSheet`, locales | 🟢 ✅ 8003730 |
+| P19-03 | Lista plegada «Cómo progresa» | `ProgressionSheet`, locales, `StepField` (prop `decimal`) | 🟡 ✅ f0d9041 |
+| P19-04 | Iconos de Peso y Esfuerzo | `ProgressionSheet` (`TILE_ICON`), SVG en `mockups/iconos/` | 🟢 ✅ d19bc3e |
 
 Las cuatro fases son independientes, pero todas tocan `ProgressionSheet`: van una
 detrás de otra, no en paralelo.
