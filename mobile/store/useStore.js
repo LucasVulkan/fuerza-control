@@ -727,6 +727,9 @@ export const useStore = create(
       // Hydration gate — true once AsyncStorage has been read.
       // NOT persisted. RootNavigator waits for this before rendering.
       _hasHydrated:  false,
+
+      // I04-05: `{ userId }` de la cuenta que pagó y espera a la tienda (null: ninguno). Persistido.
+      _proPending: null,
       _initialRoute: 'Main',
 
       // Guard de reentrada de `refreshTrainerSlots`. NO persistido: si la app
@@ -4185,7 +4188,7 @@ export const useStore = create(
        */
       leaveTrainerAccount: async () => {
         if (get().trainerSync.userId) await signOutTrainer().catch(() => {});
-        set((s) => ({ trainerLoginNeeded: false, clients: _withoutQueue(s.clients), trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null, email: null } }));
+        set((s) => ({ trainerLoginNeeded: false, _proPending: null, clients: _withoutQueue(s.clients), trainerSync: { ...s.trainerSync, mode: 'offline', code: null, userId: null, email: null } }));
         _syncRetryTimer();
       },
 
@@ -5618,6 +5621,7 @@ export const useStore = create(
         await get()._purchasesLogOut();
         set((s) => ({
           trainerLoginNeeded: false,
+          _proPending: null,
           profile: { ...s.profile, proTransferLeft: 0 },
           trainerSync: {
             ...s.trainerSync,
@@ -5667,6 +5671,9 @@ export const useStore = create(
       syncPurchaserId: async (userId, { switched = false } = {}) => {
         const RC = get()._getRC();
         if (!RC || !userId) return;
+        // N-09/N-11: el pendiente es de una cuenta. De otra se borra; el de la compra anónima pasa a la cuenta (RevenueCat la funde)
+        const pend = get()._proPending;
+        if (pend && pend.userId !== userId) set({ _proPending: pend.userId == null ? { userId } : null });
         try {
           if (!(await RC.isConfigured())) return; // sin clave o build preview
           const wasPro = get().profile.isPro;
@@ -5719,9 +5726,11 @@ export const useStore = create(
           }
           : { isPro: !!p.isPro && proStillValid(p, Date.now()) };
         set((s) => ({ profile: { ...s.profile, ...patch } }));
-        if (get()._proPending && patch.isPro) {
-          set({ _proPending: false });
-          get().showToast(i18n.t('paywall.proActivated'), 3000, 'success');
+        const pend = get()._proPending;
+        if (pend && patch.isPro) {
+          set({ _proPending: null });
+          // E82: «PRO activado» solo si llega en la cuenta que pagó
+          if (pend.userId === (get().trainerSync.userId ?? null)) get().showToast(i18n.t('paywall.proActivated'), 3000, 'success');
         }
         return patch.isPro;
       },
@@ -5781,18 +5790,23 @@ export const useStore = create(
       purchasePackage: async (pkg) => {
         const RC = get()._getRC();
         if (!RC) return { ok: false, error: i18n.t('paywall.errUnavailable'), action: 'ok' };
+        if (get()._proPending) return { ok: false, pending: true }; // N-11: con un pago en camino no se vuelve a la tienda
+        const pending = () => ({ userId: get().trainerSync.userId ?? null });
         try {
           const { customerInfo } = await RC.purchasePackage(pkg);
           // Sin PRO en la respuesta, no se dice «hecho»: lo pondrá el listener de App.js cuando llegue
           if (get()._applyCustomerInfo(customerInfo)) return { ok: true, isPro: true };
-          set({ _proPending: true });
+          set({ _proPending: pending() });
           return { ok: false, pending: true };
         } catch (e) {
           if (e?.userCancelled) return { ok: false, cancelled: true };
-          if (e?.code === RC.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) { set({ _proPending: true }); return { ok: false, pending: true }; }
+          if (e?.code === RC.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) { set({ _proPending: pending() }); return { ok: false, pending: true }; }
           // Already purchased — restore entitlements instead of showing error
-          if (e?.code === RC.PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR
-              && await get().restorePurchases()) return { ok: true, isPro: true };
+          if (e?.code === RC.PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR) {
+            if (await get().restorePurchases({ silent: true })) return { ok: true, isPro: true };
+            // E81: la tienda dice que ya la tiene y aquí no hay PRO: está en otra cuenta de la tienda
+            return { ok: false, error: i18n.t('paywall.errOtherStoreAccount', { store: storeName() }), action: 'ok' };
+          }
           console.warn('[purchase]', e?.code, e?.message);
           return { ok: false, ...explainPurchaseError(RC, e) };
         }
@@ -5804,6 +5818,8 @@ export const useStore = create(
         if (!RC) return false;
         try {
           const isPro = get()._applyCustomerInfo(await RC.restorePurchases());
+          // N-11: restaurar y no encontrar nada borra el pendiente (el reintento silencioso de arranque no: la tienda aún puede confirmarlo)
+          if (!isPro && !silent) set({ _proPending: null });
           if (!silent) {
             const none = i18n.t('paywall.restoreNone') + ' ' + i18n.t('paywall.restoreNoneHint', { store: storeName() });
             get().showToast(isPro ? i18n.t('paywall.restored') : none, isPro ? 2200 : 4000, isPro ? 'success' : 'neutral');
@@ -5881,6 +5897,7 @@ export const useStore = create(
         clientSync:  state.clientSync,   // persisted so the client stays connected across restarts
         theme:       state.theme,        // active UI theme
         onboardingFlow: state.onboardingFlow,   // O03: matar la app a mitad vuelve a la misma pantalla
+        _proPending: state._proPending,         // I04-05: el pago en camino sobrevive a cerrar la app
       }),
       onRehydrateStorage: () => (state, error) => {
         // Zustand calls this with (undefined, error) when the storage read
