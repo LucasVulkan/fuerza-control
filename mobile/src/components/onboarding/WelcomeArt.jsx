@@ -6,7 +6,8 @@
  * nada de esto se anuncia.
  *
  * Cuenta una serie entera: la S1 llegó a 12 reps, así que toca subir; en la S2
- * sale la regla, el peso pasa de 45 a 47,5 y se marca el check.
+ * un dedo se posa en el peso, sale la regla, la arrastra de 45 a 47,5, suelta y
+ * pulsa el check.
  *
  * Se compone a un tamaño fijo (el de la maqueta) y se escala para caber en el
  * hueco que deja la hoja.
@@ -23,7 +24,8 @@ import { useThemedStyles } from '../../useTheme';
 import { Text, MAX_FONT_SCALE } from '../ui/Text';
 import { CheckIcon } from '../ui/EditorIcons';
 import ScrubRuler, { SCRUB_MS } from '../workout/ScrubRuler';
-import { scrubRuler } from '../../utils/scrubScale';
+import Svg, { Path } from 'react-native-svg';
+import { scrubRuler, scrubXOf } from '../../utils/scrubScale';
 
 const W = 375;               // ancho de la maqueta
 const H = 340;               // alto de la composición (con lo que asoma el PR)
@@ -31,6 +33,7 @@ const STEP_MS = 90;
 const RISE_MS = 600;
 const RISE_Y  = 26;
 const TICK_MS = 350;
+const CHECK_W = 40;   // el botón del check, el último de la fila
 const ROWS = [['S1', 45, '12', 'done'], ['S2', 45, '10', 'tick'], ['S3', 47.5, '10', 'off'], ['S4', 47.5, '9', 'off']];
 
 // La regla de la S2: cuándo sale, cada cuánto sube un paso, cuánto se queda en el
@@ -38,14 +41,47 @@ const ROWS = [['S1', 45, '12', 'done'], ['S2', 45, '10', 'tick'], ['S3', 47.5, '
 const RULER_AT   = 1300;
 const RULER_STEP = 170;
 const RULER_HOLD = 450;
-const TICK_AFTER = 250;
+const TICK_AFTER = 600;   // lo que tarda el dedo en ir de la casilla al check
 const FROM = 45;
 const TO   = 47.5;
 
 // Muy difusa: separa las piezas del lima sin ensuciarlo.
-const SHADOW = '0px 18px 44px rgba(0, 0, 0, 0.28)';
+const SHADOW = '0px 18px 44px rgba(0, 0, 0, 0.38)';
 
 const easeOut = Easing.out(Easing.cubic);
+
+// El dedo: el icono «pointer» de Lucide (ISC), en contorno. La yema está en (8.5, 2.5)
+// del viewBox 24: con ese punto se coloca sobre lo que toca.
+const FINGER = 46;
+const TIP = { x: (8.5 / 24) * FINGER, y: (2.5 / 24) * FINGER };
+const FINGER_PATHS = [
+  'M22 14a8 8 0 0 1-8 8',
+  'M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2',
+  'M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1',
+  'M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10',
+  'M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15',
+];
+const FINGER_IN = 320;   // el dedo aparece antes de que salga la regla
+const PRESS     = 0.86;  // escala al apretar
+
+/** El dedo en contorno: blanco con un relleno oscuro translúcido para leerse sobre la tarjeta. */
+function Finger({ x, y, o, s, color }) {
+  const anim = useAnimatedStyle(() => ({
+    opacity:   o.get(),
+    transform: [{ translateX: x.get() - TIP.x }, { translateY: y.get() - TIP.y }, { scale: s.get() }],
+  }));
+  return (
+    <Reanimated.View style={[fingerStyle, anim]} pointerEvents="none">
+      <Svg width={FINGER} height={FINGER} viewBox="0 0 24 24" fill="none">
+        {FINGER_PATHS.map((d) => (
+          <Path key={d} d={d} stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" fill="rgba(0,0,0,0.35)" />
+        ))}
+      </Svg>
+    </Reanimated.View>
+  );
+}
+// La escala gira sobre la yema, no sobre el centro del icono.
+const fingerStyle = { position: 'absolute', left: 0, top: 0, width: FINGER, height: FINGER, zIndex: 20, transformOrigin: [TIP.x, TIP.y, 0] };
 
 /** Una pieza que sube y aparece en su turno; el giro es suyo y fijo. */
 function Piece({ index, rotate, style, children }) {
@@ -70,23 +106,61 @@ function useScrubDemo(active, k) {
   const reduced = useReducedMotion();
   const [weight, setWeight] = useState(active && reduced ? TO : FROM);
   const [live, setLive]     = useState(null);   // { ruler, value, closing }
-  const [geo, setGeo]       = useState(null);   // { rowWidth, cell: { x, width } }
+  const [geo, setGeo]       = useState(null);   // { rowWidth, rowHeight, cell: { x, width } }
+  const fx = useSharedValue(0);
+  const fy = useSharedValue(0);
+  const fo = useSharedValue(0);
+  const fs = useSharedValue(1);
 
   useEffect(() => {
     if (!active || reduced || !geo) return undefined;
-    const ruler = scrubRuler('weight', FROM, geo.cell.x + geo.cell.width / 2, geo.rowWidth, { unit: 'kg' });
+    const startX = geo.cell.x + geo.cell.width / 2;
+    const midY   = geo.rowHeight / 2;
+    const ruler  = scrubRuler('weight', FROM, startX, geo.rowWidth, { unit: 'kg' });
     const steps = [];
     for (let v = FROM + ruler.step; v <= TO + 1e-9; v += ruler.step) steps.push(Math.round(v * 100) / 100);
-    const timers = [setTimeout(() => setLive({ ruler, value: FROM, closing: false }), RULER_AT)];
-    steps.forEach((v, i) => timers.push(setTimeout(() => setLive((l) => l && { ...l, value: v }), RULER_AT + SCRUB_MS + (i + 1) * RULER_STEP)));
     const closeAt = RULER_AT + SCRUB_MS + steps.length * RULER_STEP + RULER_HOLD;
-    timers.push(setTimeout(() => { setWeight(TO); setLive((l) => l && { ...l, closing: true }); }, closeAt));
-    timers.push(setTimeout(() => setLive(null), closeAt + SCRUB_MS));
-    timers.push(setTimeout(() => k.set(withTiming(1, { duration: TICK_MS })), closeAt + SCRUB_MS + TICK_AFTER));
-    return () => timers.forEach(clearTimeout);
-  }, [active, reduced, geo, k]);
+    const tickAt  = closeAt + SCRUB_MS + TICK_AFTER;
+    const at = (ms, fn) => setTimeout(fn, ms);
 
-  return { weight, live, geo, setGeo };
+    // El dedo llega un poco desplazado, se posa en el peso y aprieta: sale la regla.
+    fx.set(startX + 14); fy.set(midY + 22); fs.set(1);
+    const timers = [
+      at(RULER_AT - FINGER_IN, () => {
+        fo.set(withTiming(1, { duration: 200 }));
+        fx.set(withTiming(startX, { duration: FINGER_IN, easing: easeOut }));
+        fy.set(withTiming(midY, { duration: FINGER_IN, easing: easeOut }));
+      }),
+      at(RULER_AT, () => { fs.set(withTiming(PRESS, { duration: 120 })); setLive({ ruler, value: FROM, closing: false }); }),
+    ];
+    // Arrastra: en cada paso cambia la regla y el dedo va a la x de ese valor.
+    steps.forEach((v, i) => timers.push(at(RULER_AT + SCRUB_MS + (i + 1) * RULER_STEP, () => {
+      setLive((l) => l && { ...l, value: v });
+      fx.set(withTiming(scrubXOf(ruler, v), { duration: RULER_STEP, easing: Easing.linear }));
+    })));
+    // Suelta: la regla se cierra y el dedo va al check y lo pulsa.
+    timers.push(at(closeAt, () => {
+      setWeight(TO);
+      setLive((l) => l && { ...l, closing: true });
+      fs.set(withTiming(1, { duration: 120 }));
+    }));
+    timers.push(at(closeAt + SCRUB_MS, () => {
+      setLive(null);
+      fx.set(withTiming(geo.rowWidth - CHECK_W / 2, { duration: TICK_AFTER - 120, easing: Easing.inOut(Easing.cubic) }));
+    }));
+    timers.push(at(tickAt - 120, () => fs.set(withTiming(PRESS, { duration: 120 }))));
+    timers.push(at(tickAt, () => {
+      k.set(withTiming(1, { duration: TICK_MS }));
+      fs.set(withTiming(1, { duration: 160 }));
+    }));
+    timers.push(at(tickAt + 450, () => {
+      fo.set(withTiming(0, { duration: 300 }));
+      fy.set(withTiming(midY + 26, { duration: 300, easing: easeOut }));
+    }));
+    return () => timers.forEach(clearTimeout);
+  }, [active, reduced, geo, k, fx, fy, fo, fs]);
+
+  return { weight, live, geo, setGeo, finger: { x: fx, y: fy, o: fo, s: fs } };
 }
 
 /** Una serie: dos casillas y el check. `k` va de 0 (por hacer / activa) a 1 (hecha). */
@@ -118,7 +192,10 @@ function SetRow({ label, kg, reps, state }) {
   const values = [ticks ? demo.weight : kg, reps];
 
   return (
-    <View style={[styles.row, demo.live && styles.rowUp]} onLayout={(e) => measure({ rowWidth: e.nativeEvent.layout.width })}>
+    <View
+      style={[styles.row, ticks && styles.rowUp]}
+      onLayout={(e) => measure({ rowWidth: e.nativeEvent.layout.width, rowHeight: e.nativeEvent.layout.height })}
+    >
       <Text style={[styles.setNo, off && styles.setNoOff]}>{label}</Text>
       {values.map((v, i) => (
         <Reanimated.View
@@ -146,6 +223,7 @@ function SetRow({ label, kg, reps, state }) {
           prevValue={TO}
         />
       )}
+      {ticks && !reduced && <Finger {...demo.finger} color={C.text} />}
     </View>
   );
 }
@@ -223,12 +301,12 @@ const makeStyles = (th) => {
       tipVal: { color: C.text },
 
       row:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
-      rowUp:  { zIndex: 5 },   // la fila con la regla, por encima de las vecinas
+      rowUp:  { zIndex: 5 },   // la fila de la demo (regla y dedo), por encima de las vecinas
       setNo:  { ...textStyles.labelStrong, width: 26, color: C.accent },
       setNoOff: { color: C.mutedLight },
       cell:   { flex: 1, height: 38, borderRadius: th.radius.md - 1, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
       val:    { ...textStyles.itemTitle, fontVariant: ['tabular-nums'] },
-      ok:     { width: 40, height: 38, borderRadius: th.radius.md - 1, alignItems: 'center', justifyContent: 'center' },
+      ok:     { width: CHECK_W, height: 38, borderRadius: th.radius.md - 1, alignItems: 'center', justifyContent: 'center' },
       okOn:   { position: 'absolute' },
 
       pill:   { position: 'absolute', zIndex: 2, borderRadius: th.radius.md + 2, backgroundColor: C.onAccent, paddingVertical: spacing.md, paddingHorizontal: spacing.lg - 2, boxShadow: SHADOW },

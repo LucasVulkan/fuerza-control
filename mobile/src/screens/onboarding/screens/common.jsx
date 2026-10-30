@@ -121,7 +121,7 @@ function Welcome({ goTo }) {
       <View style={[styles.art, { top: insets.top + HEAD_H, bottom: sheetH }]}>
         <WelcomeArt />
       </View>
-      {/* Cabecera: el logotipo centrado y el idioma a la derecha, a la misma altura. */}
+      {/* Cabecera: el logotipo a la izquierda y el idioma a la derecha, a la misma altura. */}
       <View style={[styles.head, { top: insets.top }]}>
         <View style={styles.brand} accessible accessibilityLabel="Forma Fit">
           <Text style={styles.forma}>Forma</Text>
@@ -340,7 +340,7 @@ const makeStyles = (th) => StyleSheet.create({
   // Bienvenida: lima a sangre arriba con el logo, hoja del fondo de la app abajo.
   lime:    { flex: 1, backgroundColor: th.colors.accent },
   art:     { position: 'absolute', left: 0, right: 0 },
-  head:    { position: 'absolute', left: 0, right: 0, height: HEAD_H, alignItems: 'center', justifyContent: 'center' },
+  head:    { position: 'absolute', left: 0, right: 0, height: HEAD_H, paddingHorizontal: spacing.lg + 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   // Como en la cabecera de la app (`appNameContainer`): centrados, y `FitLogo` baja él solo a la línea base.
   brand:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
   // El logotipo de la cabecera de la app (`appNameForma`), en negro sobre el lima.
@@ -350,7 +350,7 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.onAccent,
     letterSpacing: -1.3,
   },
-  langsw:    { position: 'absolute', right: spacing.lg + 1, flexDirection: 'row', gap: spacing.xs, padding: 3, borderRadius: th.radius.md, backgroundColor: withOpacity(th.colors.onAccent, 0.12) },
+  langsw:    { flexDirection: 'row', gap: spacing.xs, padding: 3, borderRadius: th.radius.md, backgroundColor: withOpacity(th.colors.onAccent, 0.12) },
   lang:      { paddingVertical: spacing.sm2 - 1, paddingHorizontal: spacing.md, borderRadius: th.radius.sm + 2 },
   langOn:    { backgroundColor: th.colors.onAccent },
   langTxt:   { ...textStyles.labelStrong, color: withOpacity(th.colors.onAccent, 0.6) },
