@@ -63,7 +63,8 @@ const FINGER_H = 100 * FINGER_K;
 const TIP = { x: 18 * FINGER_K, y: 9 * FINGER_K };
 const FINGER_OUTLINE = 'M7 100 C7 72 8.5 42 8.5 16 A9.5 9.5 0 0 1 27.5 16 C27.5 30 28 40 28.5 46 C30 36 46 36 47 46 C49 40 62 42 62 51 C64 47 73 51 72 60 C72 75 70 90 70 100';
 const FINGER_GAPS    = 'M28.5 46 Q29.5 55 29 63 M47 46 Q47.5 55 47 64 M62 51 Q62 58 61.5 65';
-const FINGER_NAIL    = 'M13.5 19 Q13 12 18 11.5 Q23 12 22.5 19 Q18 20.5 13.5 19 Z';
+// La uña sigue la curva de la yema, cerca del borde, y cierra abajo con la cutícula.
+const FINGER_NAIL    = 'M11.5 20 V16 A6.5 6.5 0 0 1 24.5 16 V20 Q18 22.5 11.5 20 Z';
 const FINGER_CREASE  = 'M12.5 38 Q18 40 23.5 38 M13 41.5 Q18 43 23 41.5';
 const FINGER_IN = 320;   // el dedo aparece antes de que salga la regla
 const PRESS     = 0.9;   // escala al apretar
@@ -89,7 +90,7 @@ function Finger({ x, y, o, s, color }) {
         </Defs>
         <Path d={FINGER_OUTLINE} fill="url(#fingerFill)" stroke="url(#fingerStroke)" strokeWidth={1.6} strokeLinejoin="round" />
         <Path d={FINGER_GAPS} stroke="url(#fingerStroke)" strokeWidth={1.2} strokeLinecap="round" />
-        <Path d={FINGER_NAIL} stroke="url(#fingerStroke)" strokeWidth={1.1} strokeLinejoin="round" opacity={0.8} />
+        <Path d={FINGER_NAIL} stroke="url(#fingerStroke)" strokeWidth={1.1} strokeLinejoin="round" />
         <Path d={FINGER_CREASE} stroke="url(#fingerStroke)" strokeWidth={1} strokeLinecap="round" opacity={0.55} />
       </Svg>
     </Reanimated.View>
@@ -197,7 +198,7 @@ function SetRow({ label, kg, reps, state, copied, onCopy }) {
   // «S3»: al copiar, sus cifras pasan de apagadas a escritas y queda como la serie activa.
   const isCopy = state === 'copy';
   const cp = useSharedValue(isCopy && reduced ? 1 : 0);
-  useEffect(() => { if (copied) cp.set(withTiming(1, { duration: 280 })); }, [copied, cp]);
+  useEffect(() => { if (isCopy && copied) cp.set(withTiming(1, { duration: 280 })); }, [isCopy, copied, cp]);
   // La fila y la casilla del peso se miden cada una por su lado y en cualquier orden.
   const box = useRef({ rowWidth: 0, cell: null });
   const measure = (patch) => {
