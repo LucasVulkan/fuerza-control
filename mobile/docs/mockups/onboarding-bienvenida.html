@@ -1,0 +1,243 @@
+<title>Bienvenida Forma Fit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:ital,wght@0,500;0,700;0,800;0,900;1,900&display=swap">
+<style>
+  /* Maqueta O04-07 (30-oct-2026): tres propuestas de bienvenida, una al lado de otra.
+     Un solo aspecto a propósito: el tema formaFit de la app (src/themes.js), oscuro.
+     Display = Barlow Condensed 800 cursiva (la de la landing y heroGlyph); texto = Inter. */
+  :root {
+    --page: #070707; --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --border: #333;
+    --text: #e6e6e6; --mutedLight: #949494; --muted: #585858;
+    --accent: #aae216; --green: #3f6212; --onAccent: #000; --onAccentMuted: rgba(0,0,0,.6);
+    --disp: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --ui: Inter, system-ui, sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--page); color: var(--text); font: 500 14px/1.5 var(--ui);
+    padding-block: 32px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  h1 { font: 900 22px var(--ui); margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); max-width: 78ch; margin-bottom: 16px; font-size: 14px; }
+  .lead b { color: var(--text); }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+  .bar button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font: 800 12px var(--ui); cursor: pointer; }
+  .bar button:focus-visible, .phone button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 32px 28px; justify-content: center; }
+  .col { width: 375px; max-width: 100%; display: grid; gap: 12px; align-content: start; }
+  .lbl { display: flex; align-items: baseline; gap: 10px; }
+  .lbl b { font: italic 800 30px/1 var(--disp); color: var(--accent); }
+  .lbl span { font: 800 15px var(--ui); }
+  .why { color: var(--mutedLight); font-size: 13px; line-height: 1.55; }
+  .why b { color: var(--text); }
+
+  /* ── teléfono ── */
+  .phone { width: 375px; max-width: 100%; height: 780px; background: var(--bg); border-radius: 30px; border: 1px solid #1c1c1c;
+    overflow: hidden; position: relative; display: flex; flex-direction: column; isolation: isolate; }
+  .sb { flex: none; height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font: 800 13px var(--ui); position: relative; z-index: 3; }
+  .sb i { font-style: normal; letter-spacing: 1px; }
+
+  /* piezas comunes */
+  .brandrow { display: flex; align-items: center; justify-content: space-between; padding: 6px 20px 0; position: relative; z-index: 3; }
+  .wm { display: flex; align-items: flex-end; gap: 3px; }
+  .wm b { font: italic 900 26px/1 var(--ui); letter-spacing: -1.5px; }
+  .wm svg { height: 18px; width: 54px; margin-bottom: 1px; fill: var(--accent); }
+  .lang { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: var(--surface); }
+  .lang button { border: 0; background: none; color: var(--mutedLight); font: 800 12px var(--ui); padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+  .lang button.on { background: var(--surface2); color: var(--text); }
+  .cta { width: 100%; border: 0; border-radius: 10px; background: var(--accent); color: var(--onAccent); font: 900 15px var(--ui); padding: 16px; cursor: pointer; text-transform: uppercase; letter-spacing: .3px; }
+  .link { width: 100%; border: 0; background: none; color: var(--text); font: 700 14px var(--ui); padding: 14px 0 4px; cursor: pointer; }
+  .link u { text-decoration-color: var(--muted); text-underline-offset: 3px; }
+  .disp { font-family: var(--disp); font-style: italic; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: -.2px; text-wrap: balance; }
+  .disp em { font-style: inherit; color: var(--accent); }
+  .steps { display: flex; gap: 4px; }
+  .steps div { flex: 1; }
+  .steps i { display: block; height: 4px; border-radius: 2px; background: var(--surface2); }
+  .steps div:first-child i { background: var(--accent); }
+  .steps span { display: block; margin-top: 7px; font: 800 10px var(--ui); letter-spacing: 1.2px; text-transform: uppercase; color: var(--mutedLight); }
+  .time { display: inline-flex; align-items: center; gap: 6px; font: 800 11px var(--ui); letter-spacing: 1.4px; text-transform: uppercase; color: var(--mutedLight); }
+  .time svg { width: 14px; height: 14px; }
+
+  /* entrada escalonada (en la app: Rise, 45 ms) */
+  .in { opacity: 1; animation: rise .55s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms + 120ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+
+  /* ── A · Cartel ── */
+  .A .poster { position: absolute; inset: 0 0 auto; height: 61%; border-radius: 0 0 40px 40px; overflow: hidden;
+    background: linear-gradient(150deg, var(--accent) 0%, #93cc12 55%, #6f9f10 100%); z-index: 0; }
+  .A .poster .mono { position: absolute; right: -120px; bottom: -70px; width: 400px; opacity: .13; }
+  .A .poster .mono { --ff1: #000; --ff2: #000; --ff3: #000; }
+  .A .sb, .A .brandrow { color: #000; }
+  .A .wm svg { fill: #000; }
+  .A .lang { background: rgba(0,0,0,.12); }
+  .A .lang button { color: rgba(0,0,0,.55); }
+  .A .lang button.on { background: #000; color: var(--accent); }
+  .A .head { position: relative; z-index: 2; padding: 0 22px; margin-top: auto; height: calc(61% - 76px); display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 30px; color: #000; }
+  .A .kick { font: 900 12px var(--ui); letter-spacing: 1.8px; text-transform: uppercase; margin-bottom: 12px; color: var(--onAccentMuted); }
+  .A .head .disp { font-size: 64px; }
+  .A .low { position: relative; z-index: 2; flex: 1; padding: 26px 22px 26px; display: flex; flex-direction: column; gap: 18px; }
+  .A .sub { font: 700 19px/1.3 var(--ui); letter-spacing: -.2px; }
+  .A .foot { margin-top: auto; }
+
+  /* ── B · Producto ── */
+  .B .stage { position: relative; height: 368px; margin-top: 8px; }
+  .B .glow { position: absolute; left: 50%; top: 46%; width: 420px; height: 300px; transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(170,226,22,.20), rgba(170,226,22,0) 70%); }
+  .B .chart { position: absolute; left: 24px; right: 24px; top: 26px; background: var(--surface); border-radius: 18px; padding: 16px 16px 12px; transform: rotate(-2.5deg); box-shadow: 0 30px 60px rgba(0,0,0,.5); }
+  .B .chart .cap { font: 800 10px var(--ui); letter-spacing: 1.6px; color: var(--accent); text-transform: uppercase; }
+  .B .chart .nm { font: 900 17px var(--ui); letter-spacing: -.3px; margin: 2px 0 10px; }
+  .B .chart .big { display: flex; align-items: baseline; gap: 6px; }
+  .B .chart .big b { font: 900 30px/1 var(--ui); letter-spacing: -.8px; }
+  .B .chart .big small { font: 700 13px var(--ui); color: var(--mutedLight); }
+  .B .chart .big span { margin-left: 6px; font: 900 12px var(--ui); color: var(--accent); background: rgba(170,226,22,.14); padding: 4px 7px; border-radius: 6px; }
+  .B .chart svg { width: 100%; height: 120px; display: block; margin-top: 8px; }
+  .B .line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 420; stroke-dashoffset: 0; animation: draw 1.4s .5s var(--ease) both; }
+  .B .area { fill: url(#gA); opacity: 1; animation: fade .9s 1.1s both; }
+  .B .gridl { stroke: #2c2c2c; stroke-width: 1; }
+  .B .dot { fill: var(--accent); animation: pop .4s 1.75s var(--ease) both; transform-origin: 300px 18px; }
+  @keyframes draw { from { stroke-dashoffset: 420; } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes pop { from { transform: scale(0); } }
+  .B .set { position: absolute; right: 14px; top: 236px; width: 236px; background: var(--surface2); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; transform: rotate(3deg); box-shadow: 0 24px 50px rgba(0,0,0,.55); animation: slide .6s 1.2s var(--ease) both; }
+  .B .set .n { font: italic 800 26px/1 var(--disp); color: var(--mutedLight); width: 18px; }
+  .B .set .w { flex: 1; font: 900 16px var(--ui); letter-spacing: -.3px; }
+  .B .set .w small { display: block; font: 600 11px var(--ui); color: var(--mutedLight); letter-spacing: 0; }
+  .B .set .ok { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+  .B .set .ok svg { width: 16px; height: 16px; }
+  .B .pr { position: absolute; left: 30px; top: 252px; font: 900 12px var(--ui); letter-spacing: .6px; color: var(--accent); border: 1.5px solid var(--accent); border-radius: 7px; padding: 5px 8px; background: var(--bg); transform: rotate(-4deg); animation: slide .6s 1.45s var(--ease) both; }
+  @keyframes slide { from { opacity: 0; transform: translateY(18px) rotate(0); } }
+  .B .fadeout { position: absolute; inset: auto 0 0; height: 70px; background: linear-gradient(transparent, var(--bg)); }
+  .B .copy { padding: 0 22px; display: flex; flex-direction: column; gap: 12px; }
+  .B .copy .disp { font-size: 50px; }
+  .B .sub { font: 600 17px/1.35 var(--ui); color: var(--mutedLight); }
+  .B .foot { margin-top: auto; padding: 0 22px 26px; display: grid; gap: 4px; }
+
+  /* ── C · Marca ── */
+  .C .mono { position: absolute; right: -150px; top: 70px; width: 470px; z-index: 0; }
+  .C .mono { --ff1: #1c1c1c; --ff2: rgba(170,226,22,.85); --ff3: rgba(170,226,22,.4); }
+  .C .body { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; padding: 0 22px 26px; }
+  .C .copy { margin-top: auto; display: flex; flex-direction: column; gap: 14px; }
+  .C .copy .disp { font-size: 58px; }
+  .C .sub { font: 700 18px/1.3 var(--ui); }
+  .C .claim { display: grid; gap: 0; border-top: 1px solid var(--border); margin-top: 10px; }
+  .C .claim div { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .C .claim b { font: italic 800 22px/1 var(--disp); color: var(--accent); width: 22px; }
+  .C .claim span { font: 700 14px var(--ui); }
+  .C .claim small { margin-left: auto; font: 600 12px var(--ui); color: var(--mutedLight); }
+  .C .foot { margin-top: 22px; display: grid; gap: 4px; }
+
+  @media (prefers-reduced-motion: reduce) { .in, .B .line, .B .area, .B .dot, .B .set, .B .pr { animation: none; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- «FIT» del logotipo: los paths reales de src/components/ui/FitLogo.jsx -->
+    <symbol id="fit" viewBox="0 0 378 126">
+      <path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z"/>
+      <path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z"/>
+      <path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z"/>
+    </symbol>
+    <!-- Monograma FF del icono de la app, redibujado a mano para la maqueta (en la app, el asset real) -->
+    <symbol id="ff" viewBox="230 260 580 545">
+      <path fill="var(--ff1)" d="M352 275H664Q676 275 669 287L640 336Q626 360 598 360H320Q314 360 316 354L322 330Q333 275 352 275Z"/>
+      <path fill="var(--ff1)" d="M321 388H407Q415 388 413 396L362 602Q357 622 337 627L258 645Q246 648 249 636Z"/>
+      <path fill="var(--ff1)" d="M474 416H783Q796 416 789 428L760 477Q746 500 718 500H442Q436 500 438 494L444 470Q455 416 474 416Z"/>
+      <path fill="var(--ff1)" d="M439 530H523Q531 530 529 538L478 745Q473 765 453 770L374 788Q362 791 365 779Z"/>
+      <path fill="var(--ff2)" d="M566 537H714Q723 537 718 545L700 576Q687 600 660 600H553Q548 600 550 594Z"/>
+      <path fill="var(--ff3)" d="M548 622H660Q668 622 664 630L652 652Q639 678 612 678H533Q528 678 530 672Z"/>
+    </symbol>
+    <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Bienvenida · O04-07</h1>
+  <p class="lead">Tres propuestas para la primera pantalla. En las tres <b>desaparece el panel lima de abajo</b>: el botón principal pasa a ser el de toda la app y el lima se usa como marca, igual que en la landing. Textos: <b>«¡Bienvenido/a a Forma Fit!»</b> y <b>«Configura tu perfil en dos minutos»</b>. Las animaciones son las de entrada de la app (escalonadas); «Repetir» las vuelve a lanzar.</p>
+  <div class="bar"><button type="button" id="replay">Repetir animación</button></div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+  const WM = (cls = '') => `<div class="wm ${cls}"><b>Forma</b><svg aria-hidden="true"><use href="#fit"/></svg></div>`;
+  const TOP = (i = 0) => `<div class="sb"><span>9:41</span><i>●●● ▮</i></div>
+    <div class="brandrow in" style="--i:${i}">${WM()}<div class="lang" role="radiogroup" aria-label="Idioma"><button class="on" type="button">ES</button><button type="button">EN</button></div></div>`;
+  const STEPS = `<div class="steps">${['Ajustes', 'Tú', 'Configura', 'Aprende'].map((s) => `<div><i></i><span>${s}</span></div>`).join('')}</div>`;
+  const FOOT = (i) => `<div class="foot in" style="--i:${i}"><button class="cta" type="button">Empezar</button><button class="link" type="button"><u>Ya tengo cuenta</u></button></div>`;
+  const TIME = `<span class="time"><svg aria-hidden="true"><use href="#clock"/></svg>2 minutos · 4 pasos</span>`;
+
+  const A = `<div class="phone A" aria-label="Propuesta A">
+    <div class="poster"><svg class="mono" viewBox="230 260 580 545" aria-hidden="true"><use href="#ff"/></svg></div>
+    ${TOP(0)}
+    <div class="head">
+      <div class="kick in" style="--i:1">Hola</div>
+      <div class="disp in" style="--i:2">¡Bienvenido/a<br>a Forma Fit!</div>
+    </div>
+    <div class="low">
+      <div class="sub in" style="--i:3">Configura tu perfil<br>en dos minutos</div>
+      <div class="in" style="--i:4">${STEPS}</div>
+      ${FOOT(5)}
+    </div>
+  </div>`;
+
+  const B = `<div class="phone B" aria-label="Propuesta B">
+    ${TOP(0)}
+    <div class="stage" aria-hidden="true">
+      <div class="glow"></div>
+      <div class="chart in" style="--i:1">
+        <div class="cap">Progresión</div>
+        <div class="nm">Hip thrust</div>
+        <div class="big"><b>60</b><small>kg</small><span>+40 kg</span></div>
+        <svg viewBox="0 0 320 120" preserveAspectRatio="none">
+          <defs><linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#aae216" stop-opacity=".28"/><stop offset="1" stop-color="#aae216" stop-opacity="0"/></linearGradient></defs>
+          <path class="gridl" d="M0 18H320M0 64H320M0 110H320"/>
+          <path class="area" d="M10 110L70 88L135 64L195 38L250 28L300 18V120H10Z"/>
+          <path class="line" d="M10 110L70 88L135 64L195 38L250 28L300 18"/>
+          <circle class="dot" cx="300" cy="18" r="6"/>
+        </svg>
+      </div>
+      <div class="pr">PR +5 kg</div>
+      <div class="set"><span class="n">3</span><div class="w">60 kg × 12<small>Hip thrust · serie 3</small></div><span class="ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+      <div class="fadeout"></div>
+    </div>
+    <div class="copy">
+      <div class="disp in" style="--i:3">¡Bienvenido/a a <em>Forma Fit!</em></div>
+      <div class="sub in" style="--i:4">Configura tu perfil en dos minutos</div>
+      <div class="in" style="--i:5">${TIME}</div>
+    </div>
+    ${FOOT(6)}
+  </div>`;
+
+  const C = `<div class="phone C" aria-label="Propuesta C">
+    <svg class="mono in" style="--i:1" viewBox="230 260 580 545" aria-hidden="true"><use href="#ff"/></svg>
+    ${TOP(0)}
+    <div class="body">
+      <div class="copy">
+        <div class="disp in" style="--i:2">¡Bienvenido/a<br>a <em>Forma Fit!</em></div>
+        <div class="sub in" style="--i:3">Configura tu perfil en dos minutos</div>
+        <div class="claim in" style="--i:4">
+          <div><b>1</b><span>Elige o crea tu programa</span></div>
+          <div><b>2</b><span>Registra cada serie</span></div>
+          <div><b>3</b><span>Mira cómo progresas</span></div>
+        </div>
+      </div>
+      ${FOOT(5)}
+    </div>
+  </div>`;
+
+  const COLS = [
+    ['A', 'Cartel', A, '<b>Como la landing:</b> el lima arriba, a sangre, con el titular grande en negro y el monograma FF de marca de agua. Abajo, en oscuro, la línea, el recorrido de 4 pasos y los botones. El lima deja de ser un panel que «tapa» y pasa a ser la portada.'],
+    ['B', 'Producto', B, '<b>Enseña la app antes de pedir nada:</b> una tarjeta de progresión real (Hip thrust 20 → 60 kg) que se dibuja sola, una serie marcada y un PR. Es lo que hacen las apps de fuerza serias. En la app se pintaría con componentes, no con una captura, para que siga el tema y el idioma.'],
+    ['C', 'Marca', C, '<b>Sobria y tipográfica:</b> el monograma FF grande y cortado a la derecha (como el icono decorativo de «¿Cómo entrenas?»), el titular abajo y lo que hace la app en tres líneas. La secuencia 1-2-3 es real: es el orden en que se usa.'],
+  ];
+  document.getElementById('grid').innerHTML = COLS.map(([k, name, html, why]) =>
+    `<section class="col"><div class="lbl"><b>${k}</b><span>${name}</span></div>${html}<p class="why">${why}</p></section>`).join('');
+
+  document.getElementById('replay').addEventListener('click', () => {
+    const g = document.getElementById('grid');
+    const html = g.innerHTML; g.innerHTML = ''; void g.offsetWidth; g.innerHTML = html;
+  });
+</script>
