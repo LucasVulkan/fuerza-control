@@ -7,15 +7,18 @@ M02
 P16
 U12
 
-## Versión publica 1.0.0
-M02-07
-A01
-M05
-T08
+## Versión publica 1.0.1
 I01
+M02-07
+O04
 U15
 M04
+T11
+
+## Pública v1.0.2
 P15
-U11
 U16
+T08
 T10
+U11
+A01

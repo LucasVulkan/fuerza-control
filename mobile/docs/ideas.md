@@ -19,15 +19,6 @@ Lo que va antes del primer `## ` (esto) no sale en la página.
 
 Bórrala cuando apuntes la primera de verdad.
 
-## M05 · Onboarding fix
-
-Hay que solucionar del onboarding el tema de crear o seleccionar un programa.
-1. quitar del selector de días las tarjetas de sesión, parecen pulsables. 
-2. tiene que quedar mas claro si quieres una plantilla o un programa propio. 
-3. el programa propio, igual es mas facil explicar como hacerlo que llevarles por el proceso de crearlo a medias. Hay que pensarlo. 
-4. las plantillas tienen que tener las preguntas antes de seleccionar plantilla, no despues. Y quizás un editor para sacar ejercicios o sustituirlso de forma facil. Y hay que arreglar como se ven las tarjetas de las plantillas. 
-5. si seleccionas tu nivel como principiantes, un mensaje que diga que estoy trabajando en añadir imagenes a los ejercicios
-
 ## U16 · Textos
 
 Revisar todos los textos

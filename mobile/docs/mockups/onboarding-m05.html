@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding M05</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Barlow:ital,wght@0,600;0,700;0,800;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta O04 v2 (30-oct-2026). Elegidas: camino B (filas, sin número, icono
+     decorativo cortado a la derecha), plantilla o el mío B (apiladas, sin panel),
+     plantillas B (carrusel con portada / ejercicios). Seleccionar = rellenar la
+     tarjeta de accent, con el relleno circular de U13. Valores de src/themes.js
+     (formaFit); radios del tema (sm 6 · md 10 · lg 18). */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --surface3: #333; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --onAccentMuted: rgba(0,0,0,.62); --accent10: rgba(184,255,0,.1);
+    --blue: #4c85ff; --orange: #fb923c;
+    --day1: #aae216; --day2: #ff6b35; --day3: #4c85ff; --day4: #a78bfa;
+    --rsm: 6px; --rmd: 10px; --rlg: 18px; --page: #070707; color-scheme: dark;
+    --fill: cubic-bezier(.33, 1, .68, 1);
+  }
+  body { background: var(--page); color: var(--text); font-family: Inter, system-ui, sans-serif;
+    padding: 32px max(16px, env(safe-area-inset-left, 0px)) 80px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); font: 500 14px/1.55 Inter; max-width: 72ch; margin-bottom: 18px; }
+  .lead b { color: var(--text); }
+  .ctl { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ctl button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; font: 800 12px Inter; cursor: pointer; }
+  .ctl button.on { border-color: var(--accent); color: var(--accent); }
+  button { font-family: inherit; }
+  button:focus-visible, [data-pick]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .stage { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; margin-top: 18px; }
+  .note { flex: 1; min-width: 260px; max-width: 420px; color: var(--mutedLight); font: 500 13px/1.55 Inter; display: grid; gap: 10px; }
+  .note b { color: var(--text); }
+
+  /* ── teléfono ── */
+  .phone { width: 375px; max-width: 100%; height: 780px; background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a;
+    overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .top { flex: none; height: 46px; padding: 14px 16px 0; display: flex; align-items: center; gap: 12px; }
+  .back { width: 32px; height: 32px; display: grid; place-items: center; color: var(--mutedLight); font: 400 26px/1 Inter; }
+  .steps { flex: 1; display: flex; gap: 4px; }
+  .steps i { flex: 1; height: 4px; border-radius: 2px; background: var(--surface2); }
+  .steps i.on { background: var(--accent); }
+  .count { font: 700 13px Barlow; letter-spacing: 1.4px; color: var(--mutedLight); text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .body { flex: 1; overflow-y: auto; padding: 18px 16px 16px; scrollbar-width: none; }
+  .body::-webkit-scrollbar { display: none; }
+  .foot { flex: none; padding: 12px 16px 22px; }
+  .cta { width: 100%; background: var(--accent); color: var(--onAccent); border: 0; border-radius: var(--rmd); padding: 15px; font: 800 16px Inter; cursor: pointer; }
+  .ghost { width: 100%; background: none; border: 0; color: var(--mutedLight); padding: 12px 12px 0; font: 700 14px Inter; cursor: pointer; }
+
+  .kicker { font: 700 13px Barlow; letter-spacing: 1.4px; color: var(--accent); text-transform: uppercase; margin-bottom: 6px; }
+  .h { font: italic 900 34px/1 Barlow; text-transform: uppercase; letter-spacing: -.3px; text-wrap: balance; }
+  .h em { font-style: inherit; color: var(--accent); }
+  .sub { margin-top: 8px; font: 500 15px/1.45 Inter; color: var(--mutedLight); }
+
+  /* iconos a dos colores: gris + color al 65 %, trazo 1.7 */
+  svg.ic { fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  svg.ic .g { stroke: var(--mutedLight); } svg.ic .a { stroke: var(--c, var(--accent)); opacity: .65; }
+
+  /* ── selección: relleno accent que crece en círculo desde --ox --oy (U13) ── */
+  .sel { position: relative; overflow: hidden; isolation: isolate; cursor: pointer; border: 0; text-align: left; color: var(--text); }
+  .sel::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent);
+    clip-path: circle(0% at var(--ox, 100%) var(--oy, 50%)); transition: clip-path .45s var(--fill); }
+  .sel.on::before { clip-path: circle(150% at var(--ox, 100%) var(--oy, 50%)); }
+  .sel, .sel * { transition: color .3s, stroke .3s, background-color .3s, opacity .3s; }
+  .sel.on { color: var(--onAccent); }
+  .sel.on .d, .sel.on .mt { color: var(--onAccentMuted); }
+  .sel.on svg.ic .g, .sel.on svg.ic .a { stroke: var(--onAccent); }
+  .sel.on svg.ic .a { opacity: 1; }
+
+  /* ── Camino: filas, icono decorativo que asoma por la derecha ── */
+  .rows { margin-top: 22px; display: grid; gap: 10px; }
+  .rw { background: var(--surface); border-radius: var(--rlg); padding: 20px 16px 20px 22px; min-height: 124px; display: flex; align-items: center; }
+  .rw::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--c); transition: opacity .3s; }
+  .rw.on::after { opacity: 0; }
+  .rw .txt { position: relative; max-width: 62%; }
+  .rw .t { font: italic 900 28px/1 Barlow; text-transform: uppercase; }
+  .rw .d { margin-top: 6px; font: 500 13px/1.4 Inter; color: var(--mutedLight); }
+  .rw .deco { position: absolute; right: -46px; top: 50%; width: 156px; height: 156px; margin-top: -78px; border-radius: 50%;
+    background: color-mix(in srgb, var(--c) 13%, transparent); display: grid; place-items: center; }
+  .rw .deco svg { width: 104px; height: 104px; margin-right: 18px; stroke-width: 1.3; }
+  .rw.on .deco { background: rgba(0,0,0,.08); }
+
+  /* ── Plantilla o el mío: apiladas; la imagen es un hueco hundido y sin texto ── */
+  .stack { margin-top: 22px; display: grid; gap: 10px; }
+  .ch { background: var(--surface); border-radius: var(--rlg); padding: 12px 12px 12px 18px; display: grid; grid-template-columns: 1fr 112px; gap: 14px; align-items: center; }
+  .ch .t { font: italic 900 26px/1 Barlow; text-transform: uppercase; }
+  .ch .d { margin-top: 6px; font: 500 13px/1.4 Inter; color: var(--mutedLight); }
+  .ch .rec { display: inline-block; margin-bottom: 8px; background: var(--accent10); color: var(--accent); border-radius: 9999px; padding: 3px 9px; font: 800 11px Barlow; letter-spacing: 1.2px; text-transform: uppercase; }
+  .ch.on .rec { background: rgba(0,0,0,.12); color: var(--onAccent); }
+  .well { height: 112px; border-radius: var(--rmd); background: var(--bg); box-shadow: inset 0 0 0 1px var(--surface3); padding: 12px 10px; display: flex; flex-direction: column; gap: 7px; justify-content: center; }
+  .sk { display: flex; align-items: center; gap: 6px; }
+  .sk i { width: 14px; height: 14px; border-radius: 4px; flex: none; opacity: .55; }
+  .sk s { height: 5px; border-radius: 3px; background: var(--surface3); text-decoration: none; }
+  .blank { flex: 1; border: 1.5px dashed var(--surface3); border-radius: var(--rsm); display: grid; place-items: center; color: var(--muted); font: 300 30px/1 Inter; }
+
+  /* ── preguntas ── */
+  .opts { margin-top: 20px; display: grid; gap: 8px; }
+  .op { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: var(--rmd); padding: 14px 16px; }
+  .op > div:first-child { flex: 1; } .op .t { font: 700 16px Inter; } .op .d { margin-top: 2px; font: 500 13px Inter; color: var(--mutedLight); }
+  .rd { flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--border); display: grid; place-items: center; }
+  .op.on .rd { border-color: var(--onAccent); background: var(--onAccent); }
+  .op.on .rd::after { content: ''; width: 8px; height: 4px; border: solid var(--accent); border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); }
+  .grid4 { margin-top: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tile { aspect-ratio: 1; background: var(--surface); border-radius: var(--rmd); display: flex; flex-direction: column; align-items: center; justify-content: center; --ox: 50%; }
+  .tile b { font: 800 30px/1 Barlow; font-variant-numeric: tabular-nums; } .tile .d { margin-top: 2px; font: 600 11px Inter; color: var(--mutedLight); }
+  .grid2 { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  /* objetivo como la baldosa «word» de la app (FlowTile): la palabra grande, centrada */
+  .goal { background: var(--surface); border-radius: var(--rmd); padding: 14px 10px; min-height: 108px; display: grid; place-items: center; text-align: center; --ox: 50%; }
+  .goal b { font: italic 900 26px/1.1 Barlow; text-transform: uppercase; }
+
+  /* «Qué implica»: punto + texto en flex, el texto en un solo hijo */
+  .panel { margin-top: 16px; padding: 14px 16px 16px; border-radius: var(--rlg); background: var(--surface); }
+  .pt { font: 700 13px Barlow; letter-spacing: 1.4px; text-transform: uppercase; color: var(--mutedLight); }
+  .imp { margin-top: 10px; list-style: none; display: grid; gap: 8px; }
+  .imp li { display: flex; gap: 10px; align-items: flex-start; font: 500 14px/1.4 Inter; }
+  .imp li .dot { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--accent); margin-top: 7px; }
+  .imp li.w .dot { background: var(--orange); }
+  .imp li.w { color: var(--mutedLight); }
+  .imp.in { animation: fade .25s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .chips { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--surface2); border-radius: 9999px; padding: 5px 10px; font: 700 12px Inter; }
+
+  /* ── Plantillas: carrusel, portada / ejercicios ── */
+  .car { margin: 16px -16px 0; padding: 0 16px; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .car::-webkit-scrollbar { display: none; }
+  .cc { flex: none; width: 300px; height: 470px; scroll-snap-align: center; background: var(--surface); border-radius: var(--rlg); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; }
+  .cc .head { flex: none; position: relative; height: 152px; padding: 14px 16px 12px; display: flex; flex-direction: column; justify-content: flex-end; background: var(--c); color: #000; overflow: hidden; }
+  .cc .head .wm { position: absolute; right: 2px; top: -16px; font: italic 900 116px/1 Barlow; opacity: .14; }
+  .cc .head .nm { position: relative; font: italic 900 30px/.95 Barlow; text-transform: uppercase; max-width: 80%; }
+  .cc .head .fit { position: absolute; left: 16px; top: 12px; background: #000; color: var(--c); border-radius: 9999px; padding: 3px 9px; font: 800 11px Barlow; letter-spacing: 1.2px; text-transform: uppercase; }
+  /* semana sugerida, dentro del color y discreta */
+  .cc .head .wk { position: relative; margin-top: 10px; display: flex; gap: 3px; }
+  .cc .head .wk span { flex: 1; text-align: center; border-radius: 5px; padding: 3px 0; font: 800 10px Barlow; background: rgba(0,0,0,.08); color: rgba(0,0,0,.4); }
+  .cc .head .wk span.x { background: rgba(0,0,0,.24); color: rgba(0,0,0,.8); }
+  .face { flex: 1; min-height: 0; padding: 12px 16px 16px; display: flex; flex-direction: column; }
+  .cc .f-ex { display: none; } .cc.ex .f-cover { display: none; } .cc.ex .f-ex { display: flex; animation: fade .25s ease-out; }
+  .cc .sm { font: 500 13px/1.45 Inter; color: var(--mutedLight); }
+  .link { margin-top: auto; align-self: center; background: none; border: 0; padding: 10px 12px 0; color: var(--accent); font: 700 14px Inter; cursor: pointer; }
+  .sesSel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .sesSel button { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--surface2); border: 0; border-radius: var(--rmd); padding: 8px 0; color: var(--mutedLight); font: 700 13px Inter; cursor: pointer; transition: background .25s, color .25s; }
+  .sesSel button i { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font: 800 11px Barlow; font-style: normal; color: #000; }
+  .sesSel button.on { background: var(--surface3); color: var(--text); }
+  .sesName { margin-top: 12px; font: 700 15px Inter; }
+  .stats { margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .st { background: var(--surface2); border-radius: var(--rmd); padding: 8px 10px; }
+  .st b { display: block; font: 800 20px/1.1 Barlow; font-variant-numeric: tabular-nums; } .st span { font: 600 11px Inter; color: var(--mutedLight); }
+  .split { margin-top: 12px; display: grid; gap: 5px; }
+  .split .sr { display: grid; grid-template-columns: 62px 1fr 22px; align-items: center; gap: 8px; font: 600 12px Inter; color: var(--mutedLight); }
+  .split .sr s { height: 6px; border-radius: 3px; background: var(--surface3); position: relative; text-decoration: none; overflow: hidden; }
+  .split .sr s i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--c); }
+  .split .sr em { font: 700 12px Barlow; font-style: normal; color: var(--text); text-align: right; }
+  .lbl2 { margin-top: 14px; font: 700 12px Barlow; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mutedLight); }
+  .exl { margin-top: 6px; list-style: none; }
+  .exl li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; font: 500 13px/1.3 Inter; border-top: 1px solid var(--surface2); }
+  .exl li span:last-child { flex: none; font: 700 13px Barlow; color: var(--mutedLight); font-variant-numeric: tabular-nums; }
+  .dots { margin-top: 12px; display: flex; justify-content: center; gap: 6px; }
+  .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border); transition: width .25s, background .25s; } .dots i.on { width: 18px; background: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) { .sel::before, .sel, .sel *, .dots i, .sesSel button { transition: none; } .imp.in, .cc.ex .f-ex { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>O04 · Elegir programa <span style="color:var(--muted)">maqueta v3</span></h1>
+  <p class="lead">Con las variantes elegidas. <b>Seleccionar es rellenar la tarjeta de lima</b>, con el relleno en círculo de U13, en todas las pantallas.
+    Toca las opciones dentro del teléfono; en las plantillas, «Ver ejercicios» enseña los de cada sesión.</p>
+  <div class="ctl" id="screens"></div>
+  <div class="stage">
+    <div class="phone" id="phone"></div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+
+<script>
+const IC = {
+  self:    '<rect class="g" x="4.5" y="7" width="3" height="10" rx="1"/><rect class="g" x="16.5" y="7" width="3" height="10" rx="1"/><path class="g" d="M2.5 10v4M21.5 10v4"/><path class="a" stroke-linecap="butt" d="M8.35 12h7.3"/>',
+  coached: '<circle class="g" cx="6.5" cy="9.5" r="2.8"/><path class="g" d="M1.5 21c.4-3.7 2.4-5.8 5-5.8s4.6 2.1 5 5.8"/><g transform="translate(-1 0)"><path class="a" d="M15 2.5h5a1.5 1.5 0 0 1 1.5 1.5v3.5A1.5 1.5 0 0 1 20 9h-3.2L14.5 11V9A1.5 1.5 0 0 1 13.5 7.5V4A1.5 1.5 0 0 1 15 2.5z"/><path class="a" d="M15.8 5.9l1.2 1.2 2.3-2.4"/></g>',
+  trainer: '<rect class="g" x="4" y="3.5" width="16" height="17" rx="2"/><path class="g" d="M9 3.5V1h6v2.5"/><path class="a" d="M8 9h8M8 13h8M8 17h5"/>',
+  muscle:  '<path class="g" d="M5 15c0-5 3-9 7-9 3 0 4 2 4 4"/><path class="a" d="M16 10c3 0 4 2 4 4 0 3-3 5-8 5H5v-4"/>',
+  strength:'<path class="g" d="M6 7v10M18 7v10M3 9.5v5M21 9.5v5"/><path class="a" d="M6 12h12"/>',
+  glutes:  '<path class="g" d="M7 3c-1 5-2 9-1 13l1 5M17 3c1 5 2 9 1 13l-1 5"/><path class="a" d="M7 12c2 2 3 2 5 0 2 2 3 2 5 0"/>',
+  cali:    '<path class="g" d="M3 4h18M8 4v4M16 4v4"/><circle class="a" cx="12" cy="12" r="2.2"/><path class="a" d="M8 8l4 2.5L16 8M12 14.5V20M12 17l-3 3M12 17l3 3"/>',
+};
+const svg = (k) => `<svg class="ic" viewBox="0 0 24 24">${IC[k]}</svg>`;
+const ul = (xs) => `<ul class="imp in">${xs.map((x) => `<li${x.w ? ' class="w"' : ''}><span class="dot"></span><span>${x.t ?? x}</span></li>`).join('')}</ul>`;
+
+// ── datos ─────────────────────────────────────────────────────────────────────
+const ROLES = [
+  { id: 'self', c: 'var(--accent)', t: 'Por mi cuenta', d: 'Sigo un programa o creo el mío' },
+  { id: 'coached', c: 'var(--blue)', t: 'Con entrenador', d: 'Alguien me prepara el programa' },
+  { id: 'trainer', c: 'var(--orange)', t: 'Soy entrenador', d: 'Preparo programas para mis clientes' },
+];
+const W = (t) => ({ t, w: 1 });
+const Q = {
+  level: { n: 1, title: '¿Cuánto llevas entrenando <em>fuerza</em>?', opts: [
+    { id: 'beginner', t: 'Empiezo', d: 'Menos de 6 meses', imp: [ 'Ejercicios sencillos, sobre todo con máquinas', 'Menos series en cada sesión', 'El peso sube poco a poco cada semana', W('Las imágenes de los ejercicios llegarán pronto') ] },
+    { id: 'intermediate', t: 'Llevo un tiempo', d: 'De 6 meses a 2 años', imp: [ 'Ejercicios con mancuernas, poleas y máquinas', 'Más series que en el nivel inicial', 'Primero subes repeticiones, después peso' ] },
+    { id: 'advanced', t: 'Tengo experiencia', d: 'Más de 2 años', imp: [ 'Ejercicios con barra como base', 'Más series y fases de mayor intensidad', 'Se da por hecho que dominas la técnica' ] },
+  ]},
+  days: { n: 2, title: '¿Cuántos días a la <em>semana</em>?', sub: 'Los que de verdad puedes, no los que te gustaría.', tiles: [1,2,3,4,5,6,7], imp: {
+    1: [ 'Una sesión de cuerpo completo', W('Con un día se mantiene, pero se progresa poco') ],
+    2: [ 'Dos sesiones de cuerpo completo', 'Cada músculo se trabaja dos veces por semana' ],
+    3: [ 'Cuerpo completo, o empuje, tracción y pierna', 'Al menos un día de descanso entre sesiones' ],
+    4: [ 'Dos sesiones de tren superior y dos de tren inferior', 'Cada músculo se trabaja dos veces por semana' ],
+    5: [ 'Tren superior e inferior, más una sesión extra', W('Requiere buena recuperación') ],
+    6: [ 'Empuje, tracción y pierna, dos veces cada una', W('Requiere buena recuperación') ],
+    7: [ 'Empuje, tracción y pierna, sin días libres', W('Se recomienda descansar al menos un día') ],
+  }},
+  goal: { n: 3, title: '¿Qué <em>buscas</em>?', opts: [
+    { id: 'muscle', ic: 'muscle', t: 'Ganar músculo', imp: [ 'Series de 8 a 15 repeticiones', 'Descansos de 1 a 2 minutos', 'Varios ejercicios por grupo muscular' ] },
+    { id: 'strength', ic: 'strength', t: 'Ponerte fuerte', imp: [ 'Foco en ejercicios compuestos', 'Series de 5 repeticiones en los ejercicios principales', 'Descansos más largos entre series' ] },
+    { id: 'glutes', ic: 'glutes', t: 'Glúteo y pierna', imp: [ 'Glúteo e isquios en todas las sesiones', 'Tren superior con menos volumen' ] },
+    { id: 'cali', ic: 'cali', t: 'Calistenia', imp: [ 'Ejercicios con peso corporal', 'Se progresa con variantes más difíciles' ] },
+  ]},
+  time: { n: 4, title: '¿Cuánto <em>dura</em> tu sesión?', sub: 'Contando el calentamiento.', tiles: [30,45,60,90], unit: 'min', imp: {
+    30: [ 'Unos 4 ejercicios por sesión', 'Solo los ejercicios principales' ],
+    45: [ 'Unos 5 ejercicios por sesión', 'Los principales y alguno complementario' ],
+    60: [ 'Unos 6 ejercicios por sesión', 'El programa completo' ],
+    90: [ 'Unos 7 u 8 ejercicios por sesión', 'Más ejercicios complementarios y un calentamiento más largo' ],
+  }},
+};
+const S = (l, c, name, ex) => ({ l, c, name, ex: ex.split('; ').map((e) => { const m = e.match(/^(.*) (\d+x[\d-]+)$/); return [m[1], m[2].replace(/(\d+)-\1$/, '$1').replace('x', ' × ')]; }) });
+const TPL = [
+  { nm: 'Full Body · 3 días', c: 'var(--day1)', fit: 'La que mejor encaja', sm: 'Todo el cuerpo en cada sesión, tres sesiones que rotan. Cada patrón vuelve dos veces por semana.',
+    min: 60, sets: 21, wk: 'L X V', split: [['Espalda',18],['Pecho',11],['Pierna',18],['Hombro',7],['Brazo',9]], ses: [
+    S('A','var(--day1)','Tracción · cadera','Dominadas 4x6-8; Press de banca con mancuernas 4x8-10; Peso muerto rumano con mancuernas 4x8-10; Remo con mancuerna a una mano 3x10-12; Aperturas en máquina 3x12-15; Curl de bíceps con mancuernas 3x10-12'),
+    S('B','var(--day2)','Empuje · pierna','Press militar con mancuernas 4x8-10; Remo en polea 4x10-12; Hack squat 4x8-10; Elevaciones laterales con mancuernas 3x15-20; Extensión cuádriceps 3x12-15; Extensión de tríceps en polea 3x12-15'),
+    S('C','var(--day3)','Tracción · inclinado','Jalón al pecho 4x10-12; Press inclinado con mancuernas 4x10-12; Peso muerto rumano con mancuernas 4x8-10; Remo en polea 3x10-12; Sentadilla búlgara 3x8-8; Curl martillo 3x10-12') ] },
+  { nm: 'PPL · 3 días', c: 'var(--day2)', fit: 'También encaja', sm: 'Empuje, tracción y pierna, cada uno una vez por semana.',
+    min: 60, sets: 20, wk: 'L X V', split: [['Espalda',17],['Pecho',10],['Pierna',14],['Hombro',9],['Brazo',12]], ses: [
+    S('A','var(--day1)','Empuje','Press de banca con mancuernas 4x8-10; Fondos en paralelas 3x8-12; Press militar con mancuernas 3x10-12; Aperturas en máquina 3x12-15; Elevaciones laterales con mancuernas 3x12-15; Extensión de tríceps en polea 3x12-15'),
+    S('B','var(--day2)','Tracción','Jalón al pecho 4x8-10; Remo en T 4x8-10; Remo en polea 3x10-12; Face pull en polea 3x15-20; Curl de bíceps con mancuernas 3x10-12; Curl martillo 3x10-12'),
+    S('C','var(--day3)','Pierna','Hack squat 4x8-10; Peso muerto rumano con mancuernas 4x8-10; Sentadilla búlgara 3x8-10; Curl femoral tumbado 3x12-15; Elevación de gemelos en máquina 3x12-15; Crunch en polea 3x15-20') ] },
+  { nm: 'Glúteo prioritario', c: 'var(--day4)', fit: 'Con foco en glúteo', sm: 'Glúteo e isquios en el centro de las tres sesiones, con pierna anterior de apoyo.',
+    min: 55, sets: 19, wk: 'L X V', split: [['Glúteo',21],['Pierna',7],['Espalda',9],['Pecho',7],['Core',9]], ses: [
+    S('A','var(--day1)','Glúteo e isquios','Hip thrust 4x10-12; Peso muerto rumano con mancuernas 4x8-10; Jalón al pecho 3x10-12; Curl femoral tumbado 3x12-15; Abducción en máquina 3x15-20; Crunch 3x15-20'),
+    S('B','var(--day2)','Pierna y empuje','Prensa de piernas 4x10-12; Press de banca con mancuernas 4x8-10; Remo en polea 3x10-12; Sentadilla búlgara 3x8-8; Aperturas en máquina 3x12-15; Elevación de piernas tumbado 3x12-15'),
+    S('C','var(--day3)','Glúteo y hombro','Hip thrust 4x10-12; Press militar con mancuernas 4x8-10; Jalón al pecho 3x10-12; Curl femoral tumbado 3x12-15; Elevaciones laterales con mancuernas 3x15-20; Crunch 3x15-20') ] },
+];
+
+// ── estado ────────────────────────────────────────────────────────────────────
+let cur = 'role';
+const PICK = { role: null, path: null, level: 'intermediate', days: 3, goal: 'muscle', time: 60 };
+let tplIdx = 0;
+
+const topBar = (n) => `<div class="top"><div class="back">‹</div>${n ? `<div class="steps">${[1,2,3,4].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div><div class="count">${n} de 4</div>` : ''}</div>`;
+const foot = (label, ghost) => `<div class="foot"><button class="cta">${label}</button>${ghost ? `<button class="ghost">${ghost}</button>` : ''}</div>`;
+const on = (k, v) => (PICK[k] === v ? ' on' : '');
+
+function roleScreen() {
+  return `${topBar(0)}<div class="body"><div class="kicker">Empecemos</div><div class="h">¿Cómo <em>entrenas</em>?</div>
+    <p class="sub">Así te llevamos directo a lo tuyo.</p>
+    <div class="rows">${ROLES.map((r) => `<div class="sel rw${on('role', r.id)}" style="--c:${r.c}" data-pick="role" data-v="${r.id}" tabindex="0">
+      <div class="txt"><div class="t">${r.t}</div><div class="d">${r.d}</div></div><div class="deco">${svg(r.id)}</div></div>`).join('')}</div></div>
+    ${foot('Continuar')}`;
+}
+
+function pathScreen() {
+  const tplWell = `<div class="well">${['var(--day1)','var(--day2)','var(--day3)'].map((c, i) => `<div class="sk"><i style="background:${c}"></i><s style="width:${[78, 60, 70][i]}%"></s></div>`).join('')}</div>`;
+  const ownWell = `<div class="well"><div class="blank">+</div></div>`;
+  return `${topBar(0)}<div class="body"><div class="kicker">Tu programa</div><div class="h">¿Plantilla o <em>el tuyo</em>?</div>
+    <p class="sub">Los dos se editan después todo lo que quieras.</p>
+    <div class="stack">
+      <div class="sel ch${on('path', 'template')}" data-pick="path" data-v="template" tabindex="0">
+        <div><span class="rec">Recomendado</span><div class="t">Elegir plantilla</div><div class="d">Un programa ya hecho, según tu nivel, tus días y tu objetivo</div></div>${tplWell}</div>
+      <div class="sel ch${on('path', 'own')}" data-pick="path" data-v="own" tabindex="0">
+        <div><div class="t">Crear el mío</div><div class="d">Desde cero: sesiones, ejercicios y progresión</div></div>${ownWell}</div>
+    </div></div>${foot('Continuar', 'Tengo una copia de seguridad')}`;
+}
+
+function impOf(k) {
+  const q = Q[k];
+  return q.opts ? q.opts.find((o) => o.id === PICK[k]).imp : q.imp[PICK[k]];
+}
+function questionScreen(k) {
+  const q = Q[k];
+  let opts;
+  if (k === 'level') opts = `<div class="opts">${q.opts.map((o) => `<div class="sel op${on(k, o.id)}" data-pick="${k}" data-v="${o.id}" tabindex="0"><div><div class="t">${o.t}</div><div class="d">${o.d}</div></div><div class="rd"></div></div>`).join('')}</div>`;
+  else if (k === 'goal') opts = `<div class="grid2">${q.opts.map((o) => `<div class="sel goal${on(k, o.id)}" data-pick="${k}" data-v="${o.id}" tabindex="0"><b>${o.t}</b></div>`).join('')}</div>`;
+  else opts = `<div class="grid4">${q.tiles.map((n) => `<div class="sel tile${on(k, n)}" data-pick="${k}" data-v="${n}" tabindex="0"><b>${n}</b>${q.unit ? `<span class="d">${q.unit}</span>` : ''}</div>`).join('')}</div>`;
+  return `${topBar(q.n)}<div class="body"><div class="h">${q.title}</div>${q.sub ? `<p class="sub">${q.sub}</p>` : ''}
+    ${opts}<div class="panel"><div class="pt">Qué implica</div><div id="imp">${ul(impOf(k))}</div></div></div>${foot(k === 'time' ? 'Ver programas' : 'Continuar')}`;
+}
+
+const lvl = { beginner: 'Empiezo', intermediate: 'Llevo un tiempo', advanced: 'Tengo experiencia' };
+const goalT = Object.fromEntries(Q.goal.opts.map((o) => [o.id, o.t]));
+function splitBars(sp) {
+  const max = Math.max(...sp.map((s) => s[1]));
+  return `<div class="split">${sp.map(([g, n]) => `<div class="sr"><span>${g}</span><s><i style="width:${(n / max) * 100}%"></i></s><em>${n}</em></div>`).join('')}</div>`;
+}
+function tplScreen() {
+  const cards = TPL.map((t) => `<div class="cc" style="--c:${t.c}">
+    <div class="head"><span class="fit">${t.fit}</span><div class="wm">${t.ses.length}</div><div class="nm">${t.nm}</div>
+      <div class="wk" title="Semana sugerida">${'LMXJVSD'.split('').map((d) => `<span class="${t.wk.split(' ').includes(d) ? 'x' : ''}">${d}</span>`).join('')}</div></div>
+    <div class="face f-cover"><p class="sm">${t.sm}</p>
+      <div class="stats"><div class="st"><b>${t.ses.length}</b><span>sesiones</span></div><div class="st"><b>~${t.min}</b><span>min</span></div><div class="st"><b>${t.sets}</b><span>series/sesión</span></div></div>
+      <div class="lbl2">Series por semana</div>${splitBars(t.split)}
+      <button class="link" data-ex>Ver ejercicios</button></div>
+    <div class="face f-ex">
+      <div class="sesSel">${t.ses.map((s, j) => `<button class="${j === 0 ? 'on' : ''}" data-ses="${j}"><i style="background:${s.c}">${s.l}</i>Sesión</button>`).join('')}</div>
+      ${t.ses.map((s, j) => `<div class="sesBody" ${j ? 'hidden' : ''}><div class="sesName">${s.name}</div>
+        <ul class="exl">${s.ex.map(([n, sr]) => `<li><span>${n}</span><span>${sr}</span></li>`).join('')}</ul></div>`).join('')}
+      <button class="link" data-ex>‹ Volver a la portada</button></div>
+  </div>`).join('');
+  return `${topBar(4)}<div class="body"><div class="h">Tu <em>programa</em></div>
+    <div class="chips"><span class="chip">${lvl[PICK.level]}</span><span class="chip">${PICK.days} días</span><span class="chip">${goalT[PICK.goal]}</span><span class="chip">${PICK.time} min</span></div>
+    <div class="car" id="car">${cards}</div><div class="dots" id="dots">${TPL.map((_, i) => `<i class="${i === tplIdx ? 'on' : ''}"></i>`).join('')}</div>
+    </div>${foot('Empezar con esta', 'Ver todas las plantillas')}`;
+}
+
+const SCREENS = {
+  role:  { label: 'Camino', render: roleScreen, note: `<p><b>Filas grandes</b>, sin número. El icono es ahora un elemento decorativo: grande, con su círculo de color, cortado por el borde derecho.</p>
+        <p>Iconos nuevos: <b>mancuerna</b> para «por mi cuenta»; en «con entrenador», el bocadillo separado de la persona y el check centrado dentro.</p>
+        <p>Al elegir, la tarjeta se rellena de lima desde el lado del icono y la franja de color desaparece. Empieza sin nada marcado.</p>` },
+  path:  { label: 'Plantilla o propio', render: pathScreen, note: `<p><b>Apiladas</b> y sin el panel «Si eliges…».</p>
+        <p>La imagen va en un <b>hueco hundido</b> (fondo de la pantalla, más oscuro que la tarjeta), sin texto y en tonos apagados: se lee como un dibujo, no como otro título. El nombre de la opción es el texto grande de la izquierda.</p>
+        <p>Al elegir, la tarjeta se rellena de lima y el hueco sigue oscuro, como una foto dentro de la tarjeta.</p>` },
+  level: { label: '1 · Nivel', render: () => questionScreen('level'), note: `<p>Los puntos, arreglados: punto y texto alineados, sin cortes. Textos cortos y neutros, una idea por punto.</p>
+        <p>El panel se llama <b>«Qué implica»</b> y cambia al marcar otra opción. Los avisos llevan el punto naranja y el texto en gris.</p>
+        <p>Opción marcada = tarjeta en lima, y el radio pasa a negro con el check en lima (ya sin la barra que se estiraba).</p>` },
+  days:  { label: '2 · Días', render: () => questionScreen('days'), note: `<p>Baldosas de 1 a 7, sin tarjetas de sesión. La marcada se rellena de lima desde el centro.</p>` },
+  goal:  { label: '3 · Objetivo', render: () => questionScreen('goal'), note: `<p>Las baldosas como en la app hoy (la palabra grande, sin icono), más el panel «Qué implica». La marcada se rellena de lima desde el centro.</p>
+        <p>«Ponerte fuerte»: en la plantilla de fuerza los principales van a <b>5 repeticiones</b> (4×5, 3×5) y los complementarios a 6-15, así que el punto dice 5 y no 4-8.</p>` },
+  time:  { label: '4 · Tiempo', render: () => questionScreen('time'), note: `<p>Los puntos dicen cuántos ejercicios caben. En la app saldrían del recorte real por tiempo.</p>` },
+  tpl:   { label: 'Plantillas', render: tplScreen, note: `<p><b>Carrusel</b>. La semana sugerida vuelve a la zona de color, discreta: días en negro translúcido, los de entreno un poco más marcados.</p>
+        <p><b>«Ver ejercicios»</b> (texto lima) cambia la tarjeta a sus ejercicios, con un <b>selector de sesión</b> A · B · C en vez de una lista larga. «Volver a la portada» la deja como estaba. Los ejercicios son los reales de cada plantilla.</p>
+        <p>Aquí no hay relleno lima: la elegida es la que está en el centro, y «Empezar con esta» va con ella. Los puntos de abajo dicen cuál es.</p>` },
+};
+
+function pick(el) {
+  const k = el.dataset.pick, raw = el.dataset.v, v = /^\d+$/.test(raw) ? +raw : raw;
+  PICK[k] = v;
+  document.querySelectorAll(`#phone [data-pick="${k}"]`).forEach((b) => b.classList.toggle('on', b.dataset.v === raw));
+  const imp = document.getElementById('imp');
+  if (imp && Q[k]) imp.innerHTML = ul(impOf(k));
+}
+function render() {
+  const s = SCREENS[cur];
+  const phone = document.getElementById('phone');
+  phone.innerHTML = s.render();
+  document.getElementById('note').innerHTML = s.note;
+  for (const b of document.querySelectorAll('#screens button')) b.classList.toggle('on', b.dataset.k === cur);
+  phone.querySelectorAll('[data-pick]').forEach((b) => {
+    b.onclick = () => pick(b);
+    b.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(b); } };
+  });
+  phone.querySelectorAll('[data-ex]').forEach((b) => { b.onclick = () => b.closest('.cc').classList.toggle('ex'); });
+  phone.querySelectorAll('[data-ses]').forEach((b) => {
+    b.onclick = () => {
+      const card = b.closest('.cc'), j = +b.dataset.ses;
+      card.querySelectorAll('[data-ses]').forEach((x) => x.classList.toggle('on', x === b));
+      card.querySelectorAll('.sesBody').forEach((x, i) => { x.hidden = i !== j; });
+    };
+  });
+  const car = document.getElementById('car');
+  if (car) {
+    const card = car.children[tplIdx];
+    car.scrollLeft = card.offsetLeft - (car.clientWidth - card.clientWidth) / 2;
+    car.onscroll = () => {
+      const mid = car.scrollLeft + car.clientWidth / 2;
+      let best = 0;
+      [...car.children].forEach((c, i) => { if (Math.abs(c.offsetLeft + c.clientWidth / 2 - mid) < Math.abs(car.children[best].offsetLeft + car.children[best].clientWidth / 2 - mid)) best = i; });
+      if (best !== tplIdx) { tplIdx = best; document.querySelectorAll('#dots i').forEach((d, i) => d.classList.toggle('on', i === best)); }
+    };
+  }
+}
+const el = document.getElementById('screens');
+for (const [k, v] of Object.entries(SCREENS)) {
+  const b = document.createElement('button'); b.textContent = v.label; b.dataset.k = k;
+  b.onclick = () => { cur = k; render(); }; el.appendChild(b);
+}
+render();
+</script>
+</body>
+</html>
