@@ -26,7 +26,7 @@ import TemplateCarousel, { TemplateList } from '../../../components/onboarding/T
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import { showDialog } from '../../../components/ui/dialog';
 import {
-  FlowBody, FlowTitle, FlowOption, FlowTile, FlowChoice, FlowFooter, FlowSteps, FlowImplies,
+  FlowBody, FlowTitle, FlowOption, FlowTile, FlowChoice, FlowFooter, FlowImplies,
 } from '../../../components/onboarding/flow';
 import useFitdataImport from '../../../components/onboarding/useFitdataImport';
 import {
@@ -70,11 +70,12 @@ function impliesOf(t, kind, id) {
 
 function Ask({ n, kind, id, title, sub, cta, onNext, children }) {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   return (
     <FlowBody footer={(
       <FlowFooter primary={{ label: cta ?? t('onboardingFlow.common.continue'), disabled: id == null, onPress: onNext }} />
     )}>
-      <FlowSteps n={n} label={t('onboardingFlow.self.ask.step', { n })} />
+      <Rise index={0}><Text style={styles.step}>{t('onboardingFlow.self.ask.step', { n })}</Text></Rise>
       <FlowTitle text={title} sub={sub} index={1} />
       {children}
       <FlowImplies title={t('onboardingFlow.self.ask.implies')} k={id} {...impliesOf(t, kind, id)} />
@@ -283,6 +284,8 @@ function Props({ goTo }) {
   const [idx,     setIdx]     = useState(0);          // la tarjeta centrada del carrusel
   const [listId,  setListId]  = useState(null);       // la marcada en la lista del resto
   const [loading, setLoading] = useState(false);
+  const [viewH,   setViewH]   = useState(0);          // alto del scroll de la pantalla
+  const [carTop,  setCarTop]  = useState(0);          // dónde empieza el carrusel dentro de él
   const { days, ranked, answers, submitAnswers } = useProgramModel(ready);
   const top  = useMemo(() => ranked.slice(0, 3), [ranked]);
   const rest = useMemo(() => ranked.slice(3), [ranked]);
@@ -340,15 +343,18 @@ function Props({ goTo }) {
     }]
     : [];
   return (
-    <FlowBody footer={(
+    <FlowBody onViewport={setViewH} footer={(
       <FlowFooter
         primary={{ label: t('onboardingFlow.self.cards.start'), loading, onPress: confirm }}
         secondary={secondary}
       />
     )}>
       <FlowTitle text={t('onboardingFlow.self.props.title')} />
+      {/* Su `y` y el alto del scroll dicen cuánto queda para la tarjeta. */}
+      <View onLayout={(e) => setCarTop(e.nativeEvent.layout.y)}>
       <Rise index={2}>
         <TemplateCarousel
+          availableH={viewH - carTop}
           entries={top}
           answers={answers}
           days={days}
@@ -356,6 +362,7 @@ function Props({ goTo }) {
           onIndex={(i) => { setIdx(i); setListId(null); }}
         />
       </Rise>
+      </View>
       {showAll && (
         <TemplateList
           entries={rest}
@@ -378,6 +385,8 @@ const makeStyles = (th) => StyleSheet.create({
   opts:  { gap: spacing.md },
   tiles: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   gap:   { flex: 1 },
+  // «1 de 4»: texto discreto sobre el título, no otra barra.
+  step:  { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase', marginBottom: spacing.sm2 },
 
   // «Preparando»: la misma fila que las de «Listo»
   preps: { gap: spacing.sm2 },

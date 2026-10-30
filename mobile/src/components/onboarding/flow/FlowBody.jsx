@@ -15,7 +15,7 @@ import { useSharedValue, withTiming, Easing, useReducedMotion } from 'react-nati
 import { EnterClock, ENTER_MS } from '../../../hooks/useEnterClock';
 import { spacing } from '../../../theme';
 
-export default function FlowBody({ footer, children, contentStyle }) {
+export default function FlowBody({ footer, children, contentStyle, onViewport }) {
   const reduced = useReducedMotion();
   const clock   = useSharedValue(reduced ? ENTER_MS : 0);
 
@@ -28,6 +28,7 @@ export default function FlowBody({ footer, children, contentStyle }) {
       <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           style={styles.fill}
+          onLayout={onViewport && ((e) => onViewport(e.nativeEvent.layout.height))}
           contentContainerStyle={[styles.content, contentStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}

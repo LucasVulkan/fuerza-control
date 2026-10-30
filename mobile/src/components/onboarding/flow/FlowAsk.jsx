@@ -1,7 +1,6 @@
 /**
  * Las piezas de las cuatro preguntas antes de las plantillas (O04-03, spec §4):
  *
- *   FlowSteps    la barra «N de 4» de arriba de la pregunta
  *   FlowImplies  el panel «Qué implica»: los puntos de la respuesta marcada. Los
  *                avisos (`warns`) llevan el punto naranja y el texto en
  *                `mutedLight`. Cambia con un fundido corto al marcar otra opción
@@ -14,20 +13,6 @@ import { Text } from '../../ui/Text';
 import { Rise } from '../../ui/Rise';
 import { spacing, textStyles, lh } from '../../../theme';
 import { useThemedStyles } from '../../../useTheme';
-
-export function FlowSteps({ n, label, index = 0 }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <Rise index={index}>
-      <View style={styles.steps} accessible accessibilityLabel={label}>
-        <View style={styles.bar}>
-          {[1, 2, 3, 4].map((i) => <View key={i} style={[styles.seg, i <= n && styles.segOn]} />)}
-        </View>
-        <Text style={styles.count}>{label}</Text>
-      </View>
-    </Rise>
-  );
-}
 
 export function FlowImplies({ title, points = [], warns = [], k, index = 6 }) {
   const styles = useThemedStyles(makeStyles);
@@ -56,12 +41,6 @@ export function FlowImplies({ title, points = [], warns = [], k, index = 6 }) {
 }
 
 const makeStyles = (th) => StyleSheet.create({
-  steps: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg - 3, marginBottom: spacing.lg },
-  bar:   { flex: 1, flexDirection: 'row', gap: spacing.xs2 },
-  seg:   { flex: 1, height: 4, borderRadius: 2, backgroundColor: th.colors.surface2 },
-  segOn: { backgroundColor: th.colors.accent },
-  count: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
-
   panel: {
     marginTop:       spacing.lg,
     padding:         spacing.lg,
