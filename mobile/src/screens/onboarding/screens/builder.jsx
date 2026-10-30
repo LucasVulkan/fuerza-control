@@ -13,9 +13,9 @@
  * Maqueta: docs/mockups/onboarding-2.html (b_sessions, b_exercise, b_volume, b_done).
  */
 import { useEffect, useRef, useState } from 'react';
-import { View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import Reanimated, {
-  FadeInDown, FadeOut, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing,
   interpolateColor, useReducedMotion,
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ import ExerciseSearch from '../../../components/onboarding/builder/ExerciseSearc
 import {
   LETTERS, useBuilderProgram, useExerciseDef, exerciseName,
 } from '../../../components/onboarding/builder/useBuilderProgram';
-import { spacing, textStyles, withOpacity, getCardRadii } from '../../../theme';
+import { spacing, borders, textStyles, withOpacity, getCardRadii } from '../../../theme';
 import ClientRow from '../../../components/ClientRow';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { equipmentOf } from '../../../utils/exerciseTaxonomy';
@@ -63,37 +63,14 @@ const listLetters = (letters, and) => (letters.length < 2
 
 // ── 1 · Sesiones (§10.1.1) ────────────────────────────────────────────────────
 
-const GRID_GAP = spacing.sm2;
-const SIDE = spacing.lg + 1;   // el relleno lateral de FlowBody
-
-function SessionCard({ letter, index, width }) {
-  const { t }  = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <Reanimated.View
-      entering={FadeInDown.delay(index * 70).duration(400)}
-      exiting={FadeOut.duration(150)}
-      style={[styles.sess, { width }]}
-    >
-      <Text style={styles.sessLetter}>{letter}</Text>
-      <Text style={styles.sessName}>{t(`${K}.session`, { letter })}</Text>
-      <Text style={styles.sessEmpty}>{t(`${K}.empty`)}</Text>
-    </Reanimated.View>
-  );
-}
-
 function Sessions({ goTo }) {
   const { t }  = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  const { width } = useWindowDimensions();
   const trainer = useStore((s) => answersOf(s).builderCtx === 'trainer');
   const days    = useStore((s) => answersOf(s).days);
   const { count } = useBuilderProgram();
   // Con el programa ya creado (se volvió atrás) viene su número; si no, los días contestados antes.
   const [n, setN] = useState(() => count || (Number.isInteger(days) && days > 0 ? Math.min(days, SESSION_CHOICES.length) : null));
   const busy = useRef(false);
-
-  const cardW = Math.floor((width - 2 * SIDE - 2 * GRID_GAP) / 3);
 
   // El programa nace al elegir el número (y se ajusta si lo cambia), así «Saltar» en cualquier
   // momento sale con él hecho. Los días ya contestados cuentan como elegidos.
@@ -126,12 +103,8 @@ function Sessions({ goTo }) {
     >
       <Rise index={0}><BuilderBar sessions={n ?? 0} /></Rise>
       <FlowTitle text={t(`${K}.sessions.${trainer ? 'titleTrainer' : 'titleSelf'}`)} sub={t(`${K}.sessions.sub`)} index={1} />
+      {/* Sin tarjetas de sesión debajo: parecían botones y no lo son (O04-08). */}
       <Rise index={3}><NumberChips values={SESSION_CHOICES} value={n} onChange={choose} /></Rise>
-      <View style={styles.grid}>
-        {LETTERS.slice(0, n ?? 0).split('').map((letter, i) => (
-          <SessionCard key={letter} letter={letter} index={i} width={cardW} />
-        ))}
-      </View>
     </FlowBody>
   );
 }
@@ -466,11 +439,6 @@ export default { b_sessions: Sessions, b_exercise: Exercise, b_volume: Volume, b
 
 const makeStyles = (th) => StyleSheet.create({
   // Sesiones
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, marginTop: spacing.lg },
-  sess: { backgroundColor: th.colors.surface, borderRadius: th.radius.lg, padding: spacing.md + 2 },
-  sessLetter: { ...textStyles.heroGlyph, color: th.colors.accent, lineHeight: 40, paddingRight: 2, includeFontPadding: false },
-  sessName:   { ...textStyles.bodyStrong, color: th.colors.text, marginTop: spacing.xs2 },
-  sessEmpty:  { ...textStyles.label, color: th.colors.muted },
 
   // Un ejercicio
   addWrap: { marginTop: spacing.md },
@@ -498,6 +466,8 @@ const makeStyles = (th) => StyleSheet.create({
   nameInput: {
     ...textStyles.bodyStrong, color: th.colors.text,
     backgroundColor: th.colors.surface, borderRadius: th.radius.md,
+    // Borde lima: que se vea que el nombre se puede escribir.
+    borderWidth: borders.thin, borderColor: th.colors.accent,
     paddingVertical: spacing.lg - 2, paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
   },
