@@ -21,6 +21,7 @@ import { spacing, textStyles, withOpacity } from '../../../theme';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { Text, MAX_FONT_SCALE } from '../../../components/ui/Text';
 import Marked from '../../../components/ui/Marked';
+import FitLogo from '../../../components/ui/FitLogo';
 import { Rise } from '../../../components/ui/Rise';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import {
@@ -44,6 +45,7 @@ const SHEET_RADIUS = 40;     // el de FlowPanel y el paywall: no hay token tan g
 const SHEET_IN_MS  = 450;    // la hoja sube a su sitio
 const SHEET_OUT_MS = 420;    // la hoja crece hasta tapar el lima
 const LOGO_SIZE    = 180;
+const SHEET_SHARE  = 0.46;   // la hoja ocupa al menos esta parte de la pantalla
 
 function Welcome({ goTo }) {
   const { t } = useTranslation();
@@ -60,9 +62,11 @@ function Welcome({ goTo }) {
   const [trainerName, setTrainerName] = useState(null);
   const { height: winH } = useWindowDimensions();
   const [leaving, setLeaving] = useState(false);
+  const [sheetH, setSheetH]   = useState(0);         // alto de la hoja en reposo, medido
   const boxH = useSharedValue(winH);                 // alto de la pantalla, medido
+  const rest = useSharedValue(0);                    // lo mismo que `sheetH`, para la animación
   const rise = useSharedValue(reduced ? 0 : 1);      // 1 = hoja fuera por abajo, 0 = en su sitio
-  const grow = useSharedValue(0);                    // 0 = hoja normal, 1 = tapa toda la pantalla
+  const grow = useSharedValue(0);                    // 0 = hoja en reposo, 1 = tapa toda la pantalla
 
   useEffect(() => {
     if (!reduced) rise.set(withTiming(0, { duration: SHEET_IN_MS, easing: Easing.out(Easing.cubic) }));
@@ -100,11 +104,12 @@ function Welcome({ goTo }) {
     }));
   }
 
+  // La hoja va encima del lima (absoluta): al crecer lo tapa sin empujar el logo, y llega hasta arriba del todo.
   const sheetAnim = useAnimatedStyle(() => ({
-    minHeight:             grow.get() * boxH.get(),
-    borderTopLeftRadius:   SHEET_RADIUS * (1 - grow.get()),
-    borderTopRightRadius:  SHEET_RADIUS * (1 - grow.get()),
-    transform:             [{ translateY: rise.get() * boxH.get() }],
+    top:                  rest.get() ? (boxH.get() - rest.get()) * (1 - grow.get()) : boxH.get(),
+    borderTopLeftRadius:  SHEET_RADIUS * (1 - grow.get()),
+    borderTopRightRadius: SHEET_RADIUS * (1 - grow.get()),
+    transform:            [{ translateY: rise.get() * rest.get() }],
   }));
   const fadeAnim = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, grow.get() * 2) }));
 
@@ -112,8 +117,13 @@ function Welcome({ goTo }) {
     <View style={styles.lime} onLayout={(e) => boxH.set(e.nativeEvent.layout.height)}>
       {/* Sobre el lima, la barra de estado va en oscuro. */}
       <StatusBar style="dark" />
-      <View style={[styles.logoBox, { paddingTop: insets.top }]}>
-        <Image source={logoImg} style={styles.logo} accessibilityLabel="Forma Fit" />
+      {/* El logo, centrado en el lima que deja la hoja. */}
+      <View style={[styles.logoBox, { paddingTop: insets.top, bottom: sheetH }]}>
+        <Image source={logoImg} style={styles.logo} accessibilityIgnoresInvertColors />
+        <View style={styles.brand} accessible accessibilityLabel="Forma Fit">
+          <Text style={styles.forma}>Forma</Text>
+          <FitLogo height={24} color={styles.forma.color} />
+        </View>
       </View>
       <View
         style={[styles.langsw, { top: insets.top + spacing.md }]}
@@ -134,7 +144,11 @@ function Welcome({ goTo }) {
       </View>
 
       <Reanimated.View style={[styles.sheet, sheetAnim]}>
-        <Reanimated.View style={fadeAnim} pointerEvents={leaving ? 'none' : 'auto'}>
+        <Reanimated.View
+          style={[styles.sheetIn, { minHeight: Math.round(winH * SHEET_SHARE) }, fadeAnim]}
+          pointerEvents={leaving ? 'none' : 'auto'}
+          onLayout={(e) => { const h = e.nativeEvent.layout.height; setSheetH(h); rest.set(h); }}
+        >
           <View style={styles.sheetBody}>
             <Marked text={t('onboardingFlow.common.welcome.hero')} style={styles.hero} accentStyle={styles.accent} />
             <Text style={styles.tagline}>{t('onboardingFlow.common.welcome.tagline')}</Text>
@@ -322,24 +336,35 @@ export default { welcome: Welcome, units: Units, theme: Theme, role: Role, done:
 const makeStyles = (th) => StyleSheet.create({
   // Bienvenida: lima a sangre arriba con el logo, hoja del fondo de la app abajo.
   lime:    { flex: 1, backgroundColor: th.colors.accent },
-  logoBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logo:    { width: LOGO_SIZE, height: LOGO_SIZE },
+  logoBox: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
+  // El PNG del icono trae margen alrededor del monograma: el lockup se acerca con un margen negativo.
+  logo:    { width: LOGO_SIZE, height: LOGO_SIZE, marginBottom: -LOGO_SIZE * 0.16 },
+  brand:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
+  // El logotipo de la cabecera de la app (`appNameForma`), en negro sobre el lima.
+  forma: {
+    fontFamily:    'Inter_900Black_Italic',
+    fontSize:      34,
+    color:         th.colors.onAccent,
+    letterSpacing: -2,
+  },
   langsw:    { position: 'absolute', right: spacing.lg + 1, flexDirection: 'row', gap: spacing.xs, padding: 3, borderRadius: th.radius.md, backgroundColor: withOpacity(th.colors.onAccent, 0.12) },
   lang:      { paddingVertical: spacing.sm2 - 1, paddingHorizontal: spacing.md, borderRadius: th.radius.sm + 2 },
   langOn:    { backgroundColor: th.colors.onAccent },
   langTxt:   { ...textStyles.labelStrong, color: withOpacity(th.colors.onAccent, 0.6) },
   langTxtOn: { color: th.colors.accent },
-  sheet:     { backgroundColor: th.colors.bg, borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, overflow: 'hidden' },
-  sheetBody: { paddingHorizontal: spacing.lg + 1, paddingTop: spacing.xxl, paddingBottom: spacing.sm },
+  sheet:     { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: th.colors.bg, borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, overflow: 'hidden', justifyContent: 'flex-end' },
+  sheetIn:   { flexShrink: 0 },
+  sheetBody: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.lg + 1, paddingTop: spacing.xxl, paddingBottom: spacing.sm },
   hero: {
     ...textStyles.heroGlyph,
     color:              th.colors.text,
     lineHeight:         40,
     paddingRight:       2,
     includeFontPadding: false,
+    textAlign:          'center',
   },
   accent:  { color: th.colors.accent },
-  tagline: { ...textStyles.bodyStrong, color: th.colors.mutedLight, marginTop: spacing.lg },
+  tagline: { ...textStyles.bodyStrong, color: th.colors.mutedLight, marginTop: spacing.lg, textAlign: 'center' },
 
   // Unidades y bifurcación
   tiles: { flexDirection: 'row', gap: spacing.md },
