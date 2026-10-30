@@ -3,13 +3,13 @@
 > Tema: onboarding
 > En corto: El tramo del alta en el que eliges cómo entrenas y qué programa sigues: pantallas de camino y de «plantilla o el mío» más llamativas, cuatro preguntas (nivel, días, objetivo, tiempo) antes de ver ninguna plantilla con lo que implica cada respuesta, y unas tarjetas de plantilla que den ganas de empezar.
 > Inicio: 2026-10-30
-> Fin: 2026-10-30
 > Fase O04-01 · terminado · Maqueta y elección de variantes · §2
 > Fase O04-02 · hecho · Camino y «plantilla o el mío» con el diseño nuevo · §3
 > Fase O04-03 · hecho · Las cuatro preguntas antes de las plantillas · §4
 > Fase O04-04 · hecho · Tarjetas de plantillas · §5
+> Fase O04-05 · pendiente · Correcciones tras la primera prueba · §6
 >
-> Estado: **implementada** (30-oct-2026, rama `feat/o04-elegir-programa`),
+> Estado: **implementada** (30-oct-2026, en develop); O04-05 (correcciones tras probarla) pendiente;
 > por probar en dispositivo. Partió de la idea M05 «Onboarding fix» de `ideas.md` (el código
 > M05 era del tema de monetización; como spec es de onboarding y pasa a O04).
 > Maqueta: [`onboarding-m05.html`](../mockups/onboarding-m05.html), publicada en
@@ -251,3 +251,59 @@ plantillas» pasa a mostrarlas todas en el mismo carrusel.
 - [ ] «Ver todas las plantillas» enseña todas en el carrusel y el botón pasa a
   «Ver sólo las recomendadas».
 - [ ] Con textos grandes del sistema y en inglés nada se corta en las tarjetas.
+
+---
+
+## 6. O04-05 — Correcciones tras la primera prueba
+
+Lo que pidió el usuario el 30-oct tras probar O04-02..04 en el móvil:
+
+1. **Bienvenida** (`welcome`, `screens/common.jsx`): subir el panel lima con
+   «¿Empezamos?», que ahora queda muy abajo y deja un hueco vacío en medio. El
+   titular «Tu programa, tus series, tu progreso» pasa a **«¡Bienvenido/a a Forma
+   Fit!»** (en: «Welcome to Forma Fit!») y el subtítulo a **«Configura tu perfil
+   en dos minutos»** (en: «Set up your profile in two minutes»), con un rol de
+   texto mayor que el de ahora.
+2. **¿Kilos o libras?**: quitar el valor numérico de ejemplo; cada opción solo
+   dice **KG** o **LB**, en grande.
+3. **Elige tu estilo**: los estilos claros y oscuros, intercalados (claro,
+   oscuro, claro…) en vez de agrupados.
+4. **Plantilla o el mío**: el título pasa a **«Elige tu programa»** (en:
+   «Choose your program») y se quita la etiqueta «Recomendado» de «Elegir
+   plantilla».
+5. **Tiempo**: las baldosas de minutos, más cuadradas (más altas, proporción
+   cercana a 1:1).
+6. **Propuestas**:
+   - sin subtítulo y sin los chips de lo elegido: la tarjeta tiene que verse
+     entera en la pantalla;
+   - selector de sesiones: con más de 3 sesiones solo las letras (A · B · C · D…),
+     sin la palabra «Sesión», y que nunca se corte;
+   - **toda la tarjeta** se pulsa para pasar de portada a ejercicios y de vuelta
+     (el selector de sesión y el desplazamiento de la lista siguen funcionando);
+   - la cifra «series/sesión» pasa a **las semanas que dura el programa** (la
+     suma de `durationWeeks` de sus etapas en `archetypes.js`).
+7. **Ver el resto de plantillas**: en vez de meterlas en el carrusel, las demás
+   salen en una **lista** de filas (nombre y sesiones · ~min · semanas), con la
+   selección de la app (relleno de acento); «Empezar con esta» usa la marcada.
+8. **Sin «Tu programa»**: de momento se quita el paso de configurar la plantilla
+   (material y limitaciones). «Empezar con esta» genera y activa el programa
+   directamente, ajustado solo al tiempo elegido (material y limitaciones por
+   defecto). Se borra lo que quede sin uso (`TuPrograma`, `s_adjust`…).
+
+**Probar O04-05**
+
+- [ ] Bienvenida: el panel lima queda más arriba, sin hueco grande en medio;
+  titular «¡Bienvenido/a a Forma Fit!» y subtítulo más grande.
+- [ ] Unidades: solo KG y LB, grandes.
+- [ ] Estilos: claros y oscuros alternados.
+- [ ] «Elige tu programa» sin la etiqueta «Recomendado».
+- [ ] Tiempo: baldosas casi cuadradas.
+- [ ] Propuestas sin subtítulo ni chips; la tarjeta se ve entera.
+- [ ] Una plantilla de 4+ sesiones: selector con solo letras, sin cortarse.
+- [ ] Tocar la tarjeta pasa a ejercicios y otra vez a la portada; cambiar de
+  sesión y desplazar la lista no la gira.
+- [ ] La tercera cifra son las semanas del programa.
+- [ ] «Ver todas las plantillas»: el resto sale como lista; marcar una y
+  «Empezar con esta» crea esa.
+- [ ] «Empezar con esta» crea el programa sin pasar por «Tu programa», con las
+  sesiones ajustadas al tiempo elegido.
