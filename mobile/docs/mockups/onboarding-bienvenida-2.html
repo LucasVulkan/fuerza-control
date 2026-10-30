@@ -1,0 +1,220 @@
+<title>Bienvenida con la app</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800&family=Inter:ital,wght@0,500;0,700;0,800;0,900;1,900&display=swap">
+<style>
+  /* Maqueta O04-07 v2 (30-oct-2026): la bienvenida elegida (lima arriba + hoja abajo)
+     con un trozo de la app en el lima en vez del logo. Tema formaFit (src/themes.js),
+     un solo aspecto a propósito. Display = Barlow Condensed 800 cursiva; texto = Inter. */
+  :root {
+    --page: #070707; --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --surface3: #333; --border: #333;
+    --text: #e6e6e6; --mutedLight: #949494; --muted: #585858;
+    --accent: #aae216; --accentDim: rgba(170,226,22,.16); --onAccent: #000; --onAccentMuted: rgba(0,0,0,.55);
+    --disp: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --ui: Inter, system-ui, sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--page); color: var(--text); font: 500 14px/1.5 var(--ui);
+    padding-block: 32px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  h1 { font: 900 22px var(--ui); margin-bottom: 6px; }
+  .lead { color: var(--mutedLight); max-width: 78ch; margin-bottom: 16px; }
+  .lead b { color: var(--text); }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+  .bar button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font: 800 12px var(--ui); cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 32px 40px; justify-content: center; }
+  .col { width: 375px; max-width: 100%; display: grid; gap: 12px; align-content: start; }
+  .lbl { display: flex; align-items: baseline; gap: 10px; }
+  .lbl b { font: italic 800 30px/1 var(--disp); color: var(--accent); }
+  .lbl span { font: 800 15px var(--ui); }
+  .why { color: var(--mutedLight); font-size: 13px; line-height: 1.55; }
+  .why b { color: var(--text); }
+
+  /* ── teléfono: lima + hoja ── */
+  .phone { width: 375px; max-width: 100%; height: 780px; border-radius: 30px; border: 1px solid #1c1c1c; overflow: hidden; position: relative;
+    background: linear-gradient(160deg, #b4ea1c 0%, var(--accent) 45%, #8cc210 100%); isolation: isolate; }
+  .sb { position: absolute; inset: 0 0 auto; height: 40px; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font: 800 13px var(--ui); color: #000; z-index: 4; }
+  .top { position: absolute; top: 46px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: center; z-index: 4; }
+  .wm { display: flex; align-items: flex-end; gap: 3px; }
+  .wm b { font: italic 900 22px/1 var(--ui); letter-spacing: -1.3px; color: #000; }
+  .wm svg { height: 15px; width: 45px; margin-bottom: 1px; fill: #000; }
+  .lang { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: rgba(0,0,0,.12); }
+  .lang button { border: 0; background: none; color: rgba(0,0,0,.55); font: 800 12px var(--ui); padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+  .lang button.on { background: #000; color: var(--accent); }
+
+  .art { position: absolute; left: 0; right: 0; top: 92px; height: 330px; z-index: 1; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 46%; background: var(--bg); border-radius: 40px 40px 0 0; z-index: 3;
+    display: flex; flex-direction: column; padding: 34px 22px 26px; transition: height .42s var(--ease), border-radius .42s var(--ease);
+    animation: sheetIn .45s var(--ease) both; }
+  @keyframes sheetIn { from { transform: translateY(100%); } }
+  .sheet .copy { flex: 1; display: grid; place-content: center; text-align: center; gap: 12px; transition: opacity .2s; }
+  .sheet h2 { font: italic 800 38px/.95 var(--disp); text-transform: uppercase; text-wrap: balance; }
+  .sheet h2 em { font-style: inherit; color: var(--accent); }
+  .sheet p { font: 700 15px/1.4 var(--ui); color: var(--mutedLight); }
+  .sheet .foot { display: grid; gap: 4px; transition: opacity .2s; }
+  .cta { width: 100%; border: 0; border-radius: 10px; background: var(--accent); color: var(--onAccent); font: 900 15px var(--ui); padding: 16px; cursor: pointer; text-transform: uppercase; letter-spacing: .3px; }
+  .link { width: 100%; border: 0; background: none; color: var(--text); font: 700 14px var(--ui); padding: 12px 0 2px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+  .phone.go .sheet { height: 100%; border-radius: 0; }
+  .phone.go .copy, .phone.go .foot { opacity: 0; }
+  .next { position: absolute; inset: 0; z-index: 5; display: none; padding: 58px 20px; background: var(--bg); }
+  .next.on { display: block; animation: fade .25s both; }
+  .next .k { font: 800 11px var(--ui); letter-spacing: 1.6px; color: var(--mutedLight); text-transform: uppercase; }
+  .next .h { font: italic 800 34px/1 var(--disp); text-transform: uppercase; margin: 10px 0 18px; }
+  .next .tiles { display: flex; gap: 12px; }
+  .next .tiles div { flex: 1; aspect-ratio: 1; border-radius: 10px; background: var(--surface); display: grid; place-items: center; font: italic 800 40px var(--disp); }
+  .next .tiles div:first-child { background: var(--accent); color: #000; }
+  .next small { display: block; margin-top: 18px; color: var(--muted); font-size: 12px; }
+  @keyframes fade { from { opacity: 0; } }
+
+  /* entrada escalonada de las piezas (en la app: Reanimated, entering) */
+  .in { animation: rise .6s var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms + 250ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(26px) rotate(var(--r, 0deg)); } }
+
+  /* ── A · Entreno: la tarjeta de un ejercicio a medio registrar ── */
+  .ex { position: absolute; left: 34px; right: 22px; top: 18px; background: var(--surface); border-radius: 18px; overflow: hidden;
+    transform: rotate(-3deg); --r: -3deg; box-shadow: 0 28px 50px rgba(30,50,0,.45); }
+  .ex .hd { display: flex; gap: 12px; padding: 14px 16px 12px; background: var(--surface); }
+  .ex .no { font: 900 18px var(--ui); color: var(--accent); }
+  .ex .nm { font: 800 15px/1.2 var(--ui); }
+  .ex .mt { font: 700 12px var(--ui); color: var(--mutedLight); margin-top: 2px; }
+  .ex .mt b { color: var(--accent); }
+  .ex .bd { background: var(--surface2); padding: 10px 14px 14px; display: grid; gap: 8px; }
+  .ex .tip { font: 800 10px var(--ui); letter-spacing: 1.5px; color: var(--mutedLight); text-transform: uppercase; }
+  .ex .tip b { color: var(--text); letter-spacing: 0; margin-left: 4px; }
+  .row { display: grid; grid-template-columns: 26px 1fr 1fr 40px; gap: 8px; align-items: center; }
+  .row .s { font: 900 12px var(--ui); color: var(--accent); }
+  .row .s.off { color: var(--mutedLight); }
+  .row .v { height: 38px; border-radius: 9px; background: var(--bg); display: grid; place-items: center; font: 900 16px var(--ui); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row .v.done { background: rgba(170,226,22,.18); color: var(--accent); }
+  .row .v.act { background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 1.5px rgba(170,226,22,.6); }
+  .row .ok { height: 38px; border-radius: 9px; background: var(--surface3); display: grid; place-items: center; }
+  .row .ok svg { width: 15px; height: 15px; stroke: var(--mutedLight); }
+  .row .ok.on { background: var(--accent); }
+  .row .ok.on svg { stroke: #000; }
+  .row.tick .ok { animation: okOn .35s 1.6s both; }
+  .row.tick .ok svg { animation: okSvg .35s 1.6s both; }
+  .row.tick .v.act { animation: vDone .35s 1.6s both; }
+  @keyframes okOn { to { background: var(--accent); } }
+  @keyframes okSvg { to { stroke: #000; } }
+  @keyframes vDone { to { background: rgba(170,226,22,.18); color: var(--accent); box-shadow: none; } }
+  .pill { position: absolute; z-index: 2; border-radius: 12px; background: #000; color: var(--text); padding: 10px 13px; box-shadow: 0 18px 36px rgba(30,50,0,.45); }
+  .pill.pr { right: 18px; top: 250px; transform: rotate(4deg); --r: 4deg; display: flex; align-items: center; gap: 10px; }
+  .pill.pr i { font-style: normal; font: 900 11px var(--ui); letter-spacing: .6px; color: #000; background: var(--accent); border-radius: 6px; padding: 4px 6px; }
+  .pill.pr b { font: 900 16px var(--ui); }
+  .pill.pr small { display: block; font: 600 11px var(--ui); color: var(--mutedLight); }
+  .pill.up { left: 14px; top: 0; transform: rotate(-6deg); --r: -6deg; font: 900 12px var(--ui); color: var(--accent); }
+
+  /* ── B · Inicio: el programa y sus sesiones en lista ── */
+  .prog { position: absolute; left: 22px; right: 22px; top: 6px; background: var(--surface); border-radius: 18px; padding: 14px 16px; display: flex; gap: 12px; align-items: center;
+    transform: rotate(-2deg); --r: -2deg; box-shadow: 0 24px 44px rgba(30,50,0,.4); }
+  .prog .t { flex: 1; min-width: 0; }
+  .prog .k { font: 800 10px var(--ui); letter-spacing: 1.6px; color: var(--mutedLight); text-transform: uppercase; }
+  .prog .n { font: 900 19px var(--ui); color: var(--accent); letter-spacing: -.3px; margin: 2px 0 8px; }
+  .prog .segs { display: flex; gap: 3px; }
+  .prog .segs i { height: 5px; border-radius: 2px; background: var(--surface3); }
+  .prog .segs i.on { background: #5d7e10; }
+  .prog .wk { text-align: right; }
+  .prog .wk b { font: italic 800 28px/1 var(--disp); color: var(--accent); }
+  .prog .wk span { font: 800 13px var(--ui); color: var(--mutedLight); }
+  .list { position: absolute; left: 30px; right: 14px; top: 118px; display: grid; gap: 8px; transform: rotate(-2deg); }
+  .ses { display: flex; align-items: center; gap: 12px; border-radius: 14px; background: var(--surface); padding: 12px 14px; box-shadow: 0 16px 30px rgba(30,50,0,.35); }
+  .ses .l { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font: italic 800 22px var(--disp); background: var(--surface3); color: var(--text); flex: none; }
+  .ses .m { flex: 1; min-width: 0; }
+  .ses .m b { display: block; font: 800 15px var(--ui); }
+  .ses .m small { font: 700 11px var(--ui); color: var(--mutedLight); letter-spacing: .3px; }
+  .ses .st { flex: none; }
+  .ses.done .l { background: var(--accentDim); color: var(--accent); }
+  .ses.done .st { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+  .ses.done .st svg { width: 14px; height: 14px; stroke: #000; }
+  .ses.today { background: #000; transform: translateX(-10px) scale(1.04); box-shadow: 0 22px 40px rgba(30,50,0,.5); outline: 1.5px solid var(--accent); }
+  .ses.today .l { background: var(--accent); color: #000; }
+  .ses.today .st { font: 900 11px var(--ui); color: #000; background: var(--accent); border-radius: 7px; padding: 6px 8px; text-transform: uppercase; letter-spacing: .4px; }
+  .ses.later { opacity: .9; }
+  .ses.later .st { font: 700 12px var(--ui); color: var(--mutedLight); }
+
+  @media (prefers-reduced-motion: reduce) { .in, .sheet, .row.tick .ok, .row.tick .ok svg, .row.tick .v.act { animation: none; } .sheet { transition: none; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="fit" viewBox="0 0 378 126">
+      <path d="M184.827 126H163.739C162.466 126 161.512 124.836 161.762 123.589L186.155 1.62099C186.344 0.678667 187.171 0.000366211 188.132 0.000366211H209.22C210.492 0.000366211 211.447 1.16425 211.197 2.41173L186.804 124.379C186.615 125.322 185.788 126 184.827 126Z"/>
+      <path d="M375.097 0C376.369 0 377.323 1.16388 377.074 2.41136L372.84 23.5796C372.652 24.5219 371.824 25.2002 370.863 25.2002H318.729C317.768 25.2002 316.941 25.8785 316.752 26.8208L297.24 124.379C297.052 125.322 296.225 126 295.264 126H274.175C272.903 126 271.949 124.836 272.198 123.589L291.394 27.6116C291.644 26.3641 290.689 25.2002 289.417 25.2002H243.936C242.664 25.2002 241.71 24.0363 241.959 22.7888L246.193 1.62062C246.381 0.678299 247.209 0 248.17 0H375.097Z"/>
+      <path d="M23.5472 126H2.45912C1.18693 126 0.232776 124.836 0.482272 123.589L20.338 24.3097C23.165 10.1749 35.5759 0.000366211 49.9907 0.000366211H138.66C139.933 0.000366211 140.887 1.16425 140.637 2.41173L136.404 23.5797C136.215 24.522 135.388 25.2003 134.427 25.2003H53.8989C48.9714 25.2003 44.7661 28.7627 43.956 33.6231L40.7111 53.0928C40.5063 54.3216 41.4539 55.4402 42.6997 55.4402H98.2176C99.5292 55.4402 100.492 56.6727 100.173 57.9451L96.1414 74.0731C95.9171 74.9705 95.1107 75.6001 94.1856 75.6001H36.9326C35.9716 75.6001 35.1442 76.2784 34.9558 77.2207L25.524 124.379C25.3356 125.322 24.5082 126 23.5472 126Z"/>
+    </symbol>
+    <symbol id="chk" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Bienvenida con la app · O04-07</h1>
+  <p class="lead">La bienvenida que ya está en develop (lima arriba, hoja abajo), pero en el lima va <b>un trozo de la app</b> en vez del logo: piezas reales, sueltas y algo giradas, con lo importante resaltado. El logo pasa a pequeño arriba a la izquierda. Pulsa <b>Empezar</b> para ver la hoja tapar el lima.</p>
+  <div class="bar"><button type="button" id="replay">Repetir</button></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+  const CHK = '<svg aria-hidden="true"><use href="#chk"/></svg>';
+  const SHELL = (art) => `
+    <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="top"><div class="wm"><b>Forma</b><svg aria-hidden="true"><use href="#fit"/></svg></div>
+      <div class="lang" role="radiogroup" aria-label="Idioma"><button class="on" type="button">ES</button><button type="button">EN</button></div></div>
+    <div class="art" aria-hidden="true">${art}</div>
+    <div class="sheet">
+      <div class="copy"><h2>¡Bienvenido/a a <em>Forma Fit!</em></h2><p>Configura tu perfil en dos minutos</p></div>
+      <div class="foot"><button class="cta" type="button" data-go>Empezar</button><button class="link" type="button" data-go>Ya tengo cuenta</button></div>
+    </div>
+    <div class="next"><div class="k">Ajustes · 1 de 4</div><div class="h">¿Kilos o libras?</div><div class="tiles"><div>KG</div><div>LB</div></div><small>(siguiente pantalla, para ver el paso)</small></div>`;
+
+  const row = (s, kg, reps, st) => `<div class="row${st === 'tick' ? ' tick' : ''}"><span class="s${st === 'off' ? ' off' : ''}">${s}</span>
+    <span class="v${st === 'done' ? ' done' : st === 'tick' ? ' act' : ''}">${kg}</span><span class="v${st === 'done' ? ' done' : st === 'tick' ? ' act' : ''}">${reps}</span>
+    <span class="ok${st === 'done' ? ' on' : ''}">${CHK}</span></div>`;
+
+  const A = SHELL(`
+    <div class="pill up in" style="--i:0">↑ +2,5 kg esta semana</div>
+    <div class="ex in" style="--i:1">
+      <div class="hd"><span class="no">02</span><div><div class="nm">Press militar con barra</div><div class="mt"><b>Principal</b> · 4 × 8–12 reps</div></div></div>
+      <div class="bd">
+        <div class="tip">→ Subir <b>45 kg</b></div>
+        ${row('S1', '45', '12', 'done')}
+        ${row('S2', '45', '11', 'tick')}
+        ${row('S3', '45', '10', 'off')}
+        ${row('S4', '45', '9', 'off')}
+      </div>
+    </div>
+    <div class="pill pr in" style="--i:3"><i>PR</i><div><b>45 kg × 12</b><small>Mejor serie hasta hoy</small></div></div>`);
+
+  const B = SHELL(`
+    <div class="prog in" style="--i:0">
+      <div class="t"><div class="k">Tu programa · Fuerza</div><div class="n">Fuerza 10</div>
+        <div class="segs"><i class="on" style="width:22%"></i><i class="on" style="width:30%"></i><i style="width:26%"></i><i style="width:10%"></i></div></div>
+      <div class="wk"><b>04</b><span>/10</span></div>
+    </div>
+    <div class="list">
+      <div class="ses done in" style="--i:1"><span class="l">A</span><div class="m"><b>Empuje</b><small>5 EJERCICIOS · ~55 MIN</small></div><span class="st">${CHK}</span></div>
+      <div class="ses today in" style="--i:2"><span class="l">B</span><div class="m"><b style="color:var(--text)">Tirón</b><small>5 EJERCICIOS · ~50 MIN</small></div><span class="st">Hoy</span></div>
+      <div class="ses later in" style="--i:3"><span class="l">C</span><div class="m"><b>Pierna</b><small>6 EJERCICIOS · ~60 MIN</small></div><span class="st">Vie</span></div>
+    </div>`);
+
+  const COLS = [
+    ['A', 'Entreno', A, '<b>Lo que harás en el gimnasio:</b> la tarjeta de un ejercicio a medio registrar. La serie 1 ya hecha en lima; la 2 se marca sola al entrar (el check se rellena). Alrededor, dos avisos de lo que la app te dice: <b>+2,5 kg esta semana</b> y un <b>PR</b>. Enseña registro y progresión a la vez.'],
+    ['B', 'Inicio', B, '<b>Lo que verás cada día:</b> tu programa (semana 4 de 10) y las sesiones en lista, A hecha, <b>B la de hoy</b> resaltada en negro con borde lima, C para el viernes. Más tranquilo; enseña orden y plan más que registro.'],
+  ];
+  const grid = document.getElementById('grid');
+  function render() {
+    grid.innerHTML = COLS.map(([k, name, html, why]) =>
+      `<section class="col"><div class="lbl"><b>${k}</b><span>${name}</span></div><div class="phone">${html}</div><p class="why">${why}</p></section>`).join('');
+  }
+  render();
+  grid.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-go]'); if (!b) return;
+    const ph = b.closest('.phone'); if (ph.classList.contains('go')) return;
+    ph.classList.add('go');
+    setTimeout(() => ph.querySelector('.next').classList.add('on'), 430);
+  });
+  document.getElementById('replay').addEventListener('click', () => { grid.innerHTML = ''; void grid.offsetWidth; render(); });
+</script>
