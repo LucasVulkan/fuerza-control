@@ -18,6 +18,11 @@ describe('sectionOf', () => {
     expect(['units', 'theme', 'role', 't_client', 'a_cards'].map(sectionOf)).toEqual([0, 0, 1, 2, 3]);
     expect(sectionOf('s_adjust')).toBe(2);
   });
+
+  it('«plantilla o el mío» es del tramo «Tú»; las cuatro preguntas y las plantillas, de «Configura» (O04-03)', () => {
+    expect(sectionOf('s_choice')).toBe(1);
+    expect(['s_level', 's_days', 's_goal', 's_time', 's_props'].map(sectionOf)).toEqual([2, 2, 2, 2, 2]);
+  });
 });
 
 describe('rutas tras los ajustes', () => {
@@ -49,6 +54,10 @@ describe('skipTarget', () => {
     expect(skipTarget('c_code', A({ role: 'coached' }))).toBe('a_home');
     expect(skipTarget('t_client', A({ role: 'trainer' }))).toBe('a_cards');
     expect(skipTarget('t_client', A({ role: 'trainer', alsoTrains: true }))).toBe('a_home');
+  });
+
+  it('las cuatro preguntas se saltan hacia las propuestas', () => {
+    for (const id of ['s_choice', 's_level', 's_days', 's_goal', 's_time']) expect(skipTarget(id, A({ role: 'self' }))).toBe('s_props');
   });
 
   it('desde la app solo se salta dentro del constructor', () => {
@@ -127,6 +136,14 @@ describe('progreso', () => {
       expect(total, id).toBeGreaterThanOrEqual(prev);
       prev = total;
     });
+  });
+
+  it('«Configura» de la plantilla espera cinco pantallas, el constructor cuatro', () => {
+    const self = A({ role: 'self', path: 'template' });
+    expect(sectionProgress('s_time', ['s_level', 's_days', 's_goal'], self)).toBeCloseTo(4 / 5);
+    expect(sectionProgress('b_sessions', [], A({ role: 'self', path: 'own' }))).toBe(1 / 4);
+    // «Tú» en el camino por mi cuenta: bifurcación y «plantilla o el mío»
+    expect(sectionProgress('s_choice', ['role'], self)).toBe(1);
   });
 
   it('el total del tramo cambia con el camino: la barra no miente', () => {

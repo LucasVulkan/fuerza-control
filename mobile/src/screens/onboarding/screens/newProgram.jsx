@@ -4,7 +4,7 @@
  * otra puerta (`entry: 'newProgram'`): sin Ajustes, sin bifurcación y sin Aprende.
  *
  * Las cinco salidas de `n_source` llevan a pantallas que ya existen: las
- * propuestas (`s_goal`…), el constructor, `c_code`, `n_templates` y el selector
+ * propuestas (`s_days`…), el constructor, `c_code`, `n_templates` y el selector
  * de archivo `.fitdata`. Cada una es un componente que `OnboardingFlowScreen`
  * pinta por su id y recibe `goTo(id)`.
  *
@@ -64,7 +64,7 @@ function Source({ goTo }) {
           index={2}
           title={t(`${K}.source.recommended`)}
           desc={t(`${K}.source.recommendedDesc`)}
-          onPick={() => goTo(savedLevel() ? 's_goal' : 's_level')}
+          onPick={() => goTo(savedLevel() ? 's_days' : 's_level')}
         />
         <FlowOption
           chevron

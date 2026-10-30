@@ -2923,6 +2923,83 @@
         "title": "How many days a *week*?",
         "sub": "What you can really do, not what you wish."
       },
+      "time": {
+        "title": "How long is your *session*?",
+        "unit": "min",
+        "cta": "See templates"
+      },
+      "ask": {
+        "step": "{{n}} of 4",
+        "implies": "What it means",
+        "level": {
+          "beginner": {
+            "pts": ["Simple exercises, mostly on machines and with dumbbells", "Fewer sets in each session", "Weight goes up little by little"],
+            "warn": ["We are adding pictures to the exercises; meanwhile, each one comes with its explanation"]
+          },
+          "intermediate": {
+            "pts": ["Exercises with dumbbells, cables and machines", "More sets than at the starting level", "First you add reps, then weight"]
+          },
+          "advanced": {
+            "pts": ["Barbell exercises as the base", "More exercises and sets in each session", "We assume you already have the technique"]
+          }
+        },
+        "days": {
+          "1": {
+            "pts": ["One session a week: the program's sessions take turns"],
+            "warn": ["One day maintains, but you progress slowly"]
+          },
+          "2": {
+            "pts": ["Two workouts a week", "Full body in every session"]
+          },
+          "3": {
+            "pts": ["Full body, or push, pull and legs", "At least one rest day between sessions"]
+          },
+          "4": {
+            "pts": ["Upper and lower body alternating, or full body", "Each muscle is trained about twice a week"]
+          },
+          "5": {
+            "pts": ["Push, pull and legs, or upper and lower body"],
+            "warn": ["Needs good recovery"]
+          },
+          "6": {
+            "pts": ["Push, pull and legs twice a week, or full-body sessions"],
+            "warn": ["Needs good recovery"]
+          },
+          "7": {
+            "pts": ["Programs of up to six sessions a week"],
+            "warn": ["We recommend resting at least one day"]
+          }
+        },
+        "goal": {
+          "muscle": {
+            "pts": ["Sets of 6 to 15 reps, depending on the exercise", "Rests of 1 to 3 minutes", "Several exercises for each muscle group"]
+          },
+          "strength": {
+            "pts": ["Focus on compound exercises", "Sets of 5 reps on the main exercises", "Longer rests between sets"]
+          },
+          "glutes_legs": {
+            "pts": ["Glutes and hamstrings in most sessions", "Quads and upper body as support"]
+          },
+          "calisthenics": {
+            "pts": ["Bodyweight exercises as the base", "You progress with more reps and harder variations"]
+          }
+        },
+        "time": {
+          "30": {
+            "pts": ["3 to 5 exercises per session", "Only the most important ones stay"],
+            "warn": ["The general warm-up is not counted"]
+          },
+          "45": {
+            "pts": ["4 to 6 exercises per session", "The main ones and some accessories"]
+          },
+          "60": {
+            "pts": ["5 to 7 exercises per session", "Almost the whole program, warm-up included"]
+          },
+          "90": {
+            "pts": ["6 to 8 exercises per session", "The template's full program"]
+          }
+        }
+      },
       "props": {
         "searching": "Finding your *program*",
         "searchingSub": "Based on your answers:",

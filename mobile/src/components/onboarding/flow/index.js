@@ -3,6 +3,7 @@ export { default as FlowHeader } from './FlowHeader';
 export { default as FlowTitle } from './FlowTitle';
 export { default as FlowOption } from './FlowOption';
 export { default as FlowTile } from './FlowTile';
+export { FlowSteps, FlowImplies } from './FlowAsk';
 export { default as FlowRow } from './FlowRow';
 export { default as FlowChoice } from './FlowChoice';
 export { default as FlowFooter } from './FlowFooter';

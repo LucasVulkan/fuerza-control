@@ -5,7 +5,7 @@
 > Inicio: 2026-10-30
 > Fase O04-01 · terminado · Maqueta y elección de variantes · §2
 > Fase O04-02 · hecho · Camino y «plantilla o el mío» con el diseño nuevo · §3
-> Fase O04-03 · pendiente · Las cuatro preguntas antes de las plantillas · §4
+> Fase O04-03 · hecho · Las cuatro preguntas antes de las plantillas · §4
 > Fase O04-04 · pendiente · Tarjetas de plantillas · §5
 >
 > Estado: **spec escrita, maqueta v1 publicada, falta elegir variantes**
@@ -152,6 +152,54 @@ salta `s_choice`).
   `AdjustSheet`/`timeHint`) antes de pasarlos a `es.json`/`en.json`. Si un
   punto depende de la plantilla, se dice en general o se quita.
 - Tono: amigable, no coloquial; nada de «montar» ni «a tu aire».
+
+Implementado (30-oct): `FlowSteps` y `FlowImplies` (`flow/FlowAsk.jsx`), pantalla
+nueva `s_time` y `answers.sessionMinutes`, que `useProgramModel` pone antes de
+los ajustes (el tiempo sigue editable en `s_adjust`). Desde la app, el nivel ya
+guardado salta a los días (`n_source`). El panel no se pinta hasta marcar una
+respuesta (nada viene premarcado). Los puntos están en
+`onboardingFlow.self.ask.<pregunta>.<respuesta>` (`pts` y `warn`).
+
+Cifras de la maqueta que **no cuadraban** con las plantillas y se corrigieron
+(medidas con `adaptArchetype` y `rankArchetypes`):
+
+- **Días**: no hay plantilla de una sesión (con 1 día salen las de 2 o 3, que
+  se turnan) ni de «tren superior e inferior más una extra» (con 5 días manda
+  la de 6 sesiones) ni «sin días libres» con 7 (la mayor es de 6). Los puntos
+  hablan en general y dicen «o cuerpo completo» donde la plantilla cambia según
+  el objetivo.
+- **Tiempo**: a 90 min no salen 7 u 8 ejercicios en la de cuerpo completo (se
+  queda en 6; las avanzadas llegan a 8) y a 30 min no se cuenta el
+  calentamiento (`includesWarmup`). Quedan rangos: 3-5, 4-6, 5-7 y 6-8.
+- **Objetivo**: el glúteo está en 2 de las 3 sesiones, no en todas; se quita
+  «tren superior con menos volumen» (no está medido). Hipertrofia: 6-15
+  repeticiones y descansos de 1 a 3 min (el avanzado llega a 3).
+- **Nivel**: «el peso sube cada semana» pasa a «poco a poco» (la progresión es
+  doble en todos los niveles); en el avanzado se quita «fases de mayor
+  intensidad» (todas las plantillas llevan fases) y se dice que lleva más
+  ejercicios y series.
+- El sub de tiempo «Contando el calentamiento» se quita (solo es cierto desde 45).
+
+**Probar O04-03**
+
+- [ ] «Plantilla» → Continuar: Nivel con «1 de 4» arriba y tres opciones. Al
+  marcar una sale «Qué implica» con sus puntos y cambia con un fundido corto
+  al marcar otra. «Continuar» está apagado hasta marcar.
+- [ ] «Empiezo» lleva el aviso naranja de las imágenes; el radio pasa a negro
+  con el check lima al marcar y no se estira.
+- [ ] Días: baldosas 1-7 sin tarjetas de sesión debajo; «Qué implica» cambia con
+  cada día y 1, 5, 6 y 7 llevan aviso.
+- [ ] Objetivo: las cuatro baldosas con la palabra grande, «Qué implica» debajo.
+  «Ponerte fuerte» dice 5 repeticiones en los principales.
+- [ ] Tiempo: 30 · 45 · 60 · 90 min; el botón dice «Ver plantillas»; 30 avisa
+  de que no cuenta el calentamiento.
+- [ ] Las plantillas salen ya recortadas al tiempo elegido (con 30 min, 3-5
+  ejercicios por sesión) y «Tu programa» → Ajustes enseña ese tiempo marcado y
+  deja cambiarlo.
+- [ ] Atrás en cada pregunta vuelve a la anterior con su respuesta marcada.
+- [ ] Ajustes → Nuevo programa → «Programa recomendado»: con nivel guardado
+  empieza en Días; sin él, en Nivel. La barra de arriba no sale.
+- [ ] Textos en inglés (idioma del móvil en inglés) sin cortes.
 
 ## 5. O04-04 — Tarjetas de plantillas
 

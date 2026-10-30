@@ -10,6 +10,7 @@
  *   role         'self' | 'coached' | 'trainer'
  *   viaInvite    boolean — llegó por forma://join
  *   path         'own' | 'template' — «por mi cuenta»: el mío o una plantilla
+ *   sessionMinutes 30 | 45 | 60 | 90 — lo que dura la sesión (O04-03; los ajustes lo pueden cambiar)
  *   coachApp     'code' | 'nocode' | 'no'
  *   clientMode   'app' | 'self'
  *   account      'apple' | 'google' | 'code'
@@ -25,10 +26,10 @@ export const SECTIONS = ['settings', 'you', 'setup', 'learn'];
 const SECTION_OF = {
   welcome: -1, recover: -1, r_trainer: -1, r_code: -1, r_client: -1,
   units: 0, theme: 0,
-  role: 1, t_clients: 1, t_groups: 1, s_level: 1, s_choice: 1,
+  role: 1, t_clients: 1, t_groups: 1, s_choice: 1,
   t_client: 2, t_account: 2, t_code: 2, t_program: 2, t_catalog: 2, t_assign: 2, t_invite: 2, t_self: 2,
   c_code: 2, c_confirm: 2, c_linked: 2, c_ask: 2, c_wait: 2, c_copy: 2,
-  s_goal: 2, s_days: 2, s_props: 2, s_adjust: 2,
+  s_level: 2, s_days: 2, s_goal: 2, s_time: 2, s_props: 2, s_adjust: 2,
   b_sessions: 2, b_exercise: 2, b_volume: 2, b_done: 2,
   n_source: 2, n_templates: 2, n_done: 2,
   a_home: 3, a_input: 3, a_cards: 3,
@@ -44,7 +45,7 @@ export const sectionOf = (id) => SECTION_OF[id] ?? -1;
  */
 function sectionTotal(sec, a) {
   if (sec === 0) return 2;
-  if (sec === 1) return a.viaInvite ? 1 : a.role === 'coached' ? 1 : 3;
+  if (sec === 1) return a.viaInvite ? 1 : a.role === 'coached' ? 1 : a.role === 'self' ? 2 : 3;
   if (sec === 2) {
     if (a.role === 'trainer') {
       // cliente, su programa y «¿entrenas tú?»; con app, la cuenta (y el código);
@@ -54,7 +55,8 @@ function sectionTotal(sec, a) {
       const prog = built || !!a.programSource;
       return 3 + (app ? (a.account === 'code' ? 2 : 1) : 0) + (built ? 4 : prog ? 2 : 0) + (prog && app ? 1 : 0);
     }
-    if (a.role === 'self') return a.path === 'own' ? 4 : 3;
+    // El mío: las 4 del constructor. Plantilla: nivel, días, objetivo, tiempo y propuestas.
+    if (a.role === 'self') return a.path === 'own' ? 4 : 5;
     if (a.role === 'coached') {
       // El código abre el camino (14-oct): código → encontrado → conectado; o
       // código → pedirlo; o código → crear su programa → las 4 del constructor.
@@ -137,7 +139,7 @@ export function skipTarget(id, a = {}, entry = 'first') {
     case 't_invite': return 't_self';
     case 't_self': return 'a_cards';
     case 'c_code': case 'c_confirm': case 'c_ask': case 'c_wait': case 'c_copy': case 'c_linked': return 'a_home';
-    case 's_level': case 's_choice': case 's_goal': case 's_days': return 's_props';
+    case 's_level': case 's_choice': case 's_days': case 's_goal': case 's_time': return 's_props';
     case 's_props': return 'a_home';
     case 's_adjust': return null;   // se vuelve con atrás
     case 'a_home': case 'a_input': case 'a_cards': return 'done';
@@ -180,7 +182,7 @@ export function newFlow(entry = 'first') {
     entry,
     answers: {
       langTouched: false, viaInvite: false, role: null,
-      level: null, goal: null, days: null, path: null,
+      level: null, goal: null, days: null, sessionMinutes: null, path: null,
       coachApp: null, linked: null,
       clientsBand: null, groups: null,
       clientId: null, clientMode: null, account: null, codeSaved: false,
