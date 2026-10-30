@@ -2803,8 +2803,8 @@
       "next": "Next",
       "continue": "Continue",
       "welcome": {
-        "hero": "Your program,\nyour sets,\n*your progress*",
-        "tagline": "Two minutes to make it yours",
+        "hero": "Welcome to\n*Forma Fit*!",
+        "tagline": "Set up your profile in two minutes",
         "invited": "*{{trainer}}* invited you. Right after the settings we'll connect you.",
         "invitedAnon": "*Your coach* invited you. Right after the settings we'll connect you.",
         "panelTitle": "Shall we?",
@@ -2908,11 +2908,10 @@
         "advancedDesc": "Over 2 years"
       },
       "choice": {
-        "title": "Template or your *own*?",
+        "title": "Choose your *program*",
         "sub": "Both can be edited as much as you like afterwards.",
         "programs": "Pick a template",
         "programsDesc": "A ready-made program, based on your level, days and goal",
-        "recommended": "Recommended",
         "own": "Create my own",
         "ownDesc": "From scratch: sessions, exercises and progression",
         "backup": "I have a backup"
@@ -3008,14 +3007,14 @@
         "fitAlso": "Also a fit",
         "sessions": "sessions",
         "min": "min",
-        "setsSession": "sets/session",
+        "weeks": "weeks",
+        "weeksCount_one": "{{count}} week",
+        "weeksCount_other": "{{count}} weeks",
         "weekSets": "Sets per week",
         "seeExercises": "See exercises",
         "backToCover": "Back to the cover",
         "session": "Session",
-        "start": "Start with this one",
-        "chipDays_one": "{{count}} day",
-        "chipDays_other": "{{count}} days"
+        "start": "Start with this one"
       },
       "props": {
         "searching": "Finding your *program*",
@@ -3024,28 +3023,12 @@
         "days_one": "{{count}} day a week",
         "days_other": "{{count}} days a week",
         "title": "Pick your *program*",
-        "sub": "Chosen from your answers. Swipe to see more.",
         "seeAll": "See all templates",
-        "previewSub": "You can change anything later, in the editor.",
         "start": "Start with this one",
-        "other": "See other programs",
         "generating": "Building your program...",
         "sessionsCount_one": "{{count}} session",
         "sessionsCount_other": "{{count}} sessions",
-        "programSub": "{{sessions}} sessions · ~{{minutes}} min each · {{sets}} sets",
-        "sessionsTitle": "Your sessions",
-        "adjustTitle": "Settings",
         "minutes": "{{count}} min"
-      },
-      "adjust": {
-        "timeTitle": "How long is your *session*?",
-        "materialTitle": "What *equipment* do you have?",
-        "equipTitle": "Which *equipment* do you have?",
-        "equipSub": "Tick everything you have.",
-        "limitsTitle": "Any *limitations*?",
-        "limitsSub": "We swap the exercises that could bother you.",
-        "accept": "Accept",
-        "preview": "Your program with this"
       },
       "done": {
         "program": "\"{{name}}\" ready",

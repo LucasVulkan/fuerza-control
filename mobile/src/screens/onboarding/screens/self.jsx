@@ -22,7 +22,7 @@ import { spacing, textStyles } from '../../../theme';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { Text } from '../../../components/ui/Text';
 import { Rise } from '../../../components/ui/Rise';
-import TemplateCarousel from '../../../components/onboarding/TemplateCarousel';
+import TemplateCarousel, { TemplateList } from '../../../components/onboarding/TemplateCarousel';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import { showDialog } from '../../../components/ui/dialog';
 import {
@@ -34,7 +34,7 @@ import {
 } from '../../../components/onboarding/proposalData';
 import { afterProposal } from '../../../utils/onboardingFlow';
 import { startBuilder } from '../startBuilder';
-import TuPrograma, { Adjust, answersOf, levelOf, useProgramModel, TIMES } from './selfProgram';
+import { answersOf, levelOf, useProgramModel, TIMES } from './selfProgram';
 
 /** «Tengo una copia de seguridad»: importa un `.fitdata` y sigue a Aprende (§8.2, O03-12). */
 function useBackup(goTo) {
@@ -135,7 +135,6 @@ function Choice({ goTo }) {
           art="template"
           title={t('onboardingFlow.self.choice.programs')}
           desc={t('onboardingFlow.self.choice.programsDesc')}
-          tag={t('onboardingFlow.self.choice.recommended')}
           selected={path === 'template'}
           onPress={() => flowAnswer({ path: 'template' })}
         />
@@ -224,12 +223,13 @@ function Time({ goTo }) {
       id={minutes}
       title={t('onboardingFlow.self.time.title')}
       cta={t('onboardingFlow.self.time.cta')}
-      onNext={() => { flowAnswer({ chosenId: null }); goTo('s_props'); }}
+      onNext={() => goTo('s_props')}
     >
       <View style={styles.tiles}>
         {TIMES.map((min, i) => (
           <FlowTile
             key={min}
+            square
             big={String(min)}
             label={t('onboardingFlow.self.time.unit')}
             index={3 + i}
@@ -276,24 +276,25 @@ function Props({ goTo }) {
   const flowAnswer = useStore((s) => s.flowAnswer);
   const flowDone   = useStore((s) => s.flowDone);
   const generate   = useStore((s) => s.generateAndActivateProgram);
-  // Volver de una pregunta de ajuste (`s_adjust`) monta esta pantalla otra vez: sin «preparando».
-  const picked = useStore((s) => !!answersOf(s).chosenId);
 
   const [ticked,  setTicked]  = useState(0);          // casillas de «preparando» ya marcadas
-  const [ready,   setReady]   = useState(picked);      // acabó el «preparando»
+  const [ready,   setReady]   = useState(false);      // acabó el «preparando»
   const [showAll, setShowAll] = useState(false);
   const [idx,     setIdx]     = useState(0);          // la tarjeta centrada del carrusel
+  const [listId,  setListId]  = useState(null);       // la marcada en la lista del resto
   const [loading, setLoading] = useState(false);
-  const { days, chosen, ranked, answers, model, setChosenId } = useProgramModel(ready);
-  const visible = useMemo(() => (showAll ? ranked : ranked.slice(0, 3)), [showAll, ranked]);
+  const { days, ranked, answers, submitAnswers } = useProgramModel(ready);
+  const top  = useMemo(() => ranked.slice(0, 3), [ranked]);
+  const rest = useMemo(() => ranked.slice(3), [ranked]);
+  // La elegida: la de la lista si se marcó una; si no, la centrada del carrusel.
+  // Deslizar el carrusel borra la de la lista (`onIndex`), así manda siempre lo último que se tocó.
+  const chosen = (listId && rest.find((r) => r.archetype.id === listId)) || top[idx];
 
   // Las casillas se marcan una a una y luego entran las propuestas.
   useEffect(() => {
-    if (picked) return undefined;
     const timers = [0, 1, 2, 3].map((i) => setTimeout(() => setTicked(i + 1), PREP_FIRST_MS + i * PREP_STEP_MS));
     timers.push(setTimeout(() => setReady(true), PREP_FIRST_MS + 3 * PREP_STEP_MS + PREP_END_MS));
     return () => timers.forEach(clearTimeout);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar
   }, []);
 
   async function confirm() {
@@ -301,7 +302,7 @@ function Props({ goTo }) {
     try {
       // `distribution` ya no se pregunta, pero el snapshot la lleva: sale de la plantilla elegida.
       const { program } = await generate(
-        { ...model.submitAnswers, distribution: chosen.archetype.distribution ?? 'full_body' }, chosen.archetype.id,
+        { ...submitAnswers, distribution: chosen.archetype.distribution ?? 'full_body' }, chosen.archetype.id,
       );
       flowAnswer({ programSource: 'proposal', programId: program.id });
       flowDone({ key: 'program', ok: true, label: t('onboardingFlow.self.done.program', { name: program.name }) });
@@ -311,22 +312,6 @@ function Props({ goTo }) {
       showDialog(t('common.error', 'Error'), t('onboarding.generateError', 'No se pudo generar el programa. Inténtalo de nuevo.'));
       setLoading(false);
     }
-  }
-
-  // Tu programa: el elegido, todavía sin guardar.
-  if (model.tuned) {
-    return (
-      <TuPrograma
-        goTo={goTo}
-        model={model}
-        answers={answers}
-        chosen={chosen}
-        days={days}
-        loading={loading}
-        onConfirm={confirm}
-        onOther={() => { setChosenId(null); setIdx(0); }}
-      />
-    );
   }
 
   // «Buscando tu programa»: repite lo contestado.
@@ -347,47 +332,45 @@ function Props({ goTo }) {
     );
   }
 
-  // Propuestas (O04-04): un carrusel de tarjetas; la centrada es la que se confirma.
-  const secondary = ranked.length > 3
+  // Propuestas (O04-04): las tres mejores en un carrusel; el resto, en una lista debajo.
+  const secondary = rest.length > 0
     ? [{
       label: showAll ? t('onboarding.proposals.seeTop') : t('onboardingFlow.self.props.seeAll'),
-      onPress: () => { setShowAll((v) => !v); setIdx(0); },
+      onPress: () => { setShowAll((v) => !v); setListId(null); },
     }]
     : [];
-  const chips = [
-    t(`onboardingFlow.self.level.${level}`, ''),
-    t('onboardingFlow.self.cards.chipDays', { count: days ?? 0 }),
-    t(`onboarding.identity.${goal}.label`, ''),
-    t('onboardingFlow.self.props.minutes', { count: answers.sessionMinutes }),
-  ];
   return (
     <FlowBody footer={(
       <FlowFooter
-        primary={{ label: t('onboardingFlow.self.cards.start'), onPress: () => setChosenId(visible[idx].archetype.id) }}
+        primary={{ label: t('onboardingFlow.self.cards.start'), loading, onPress: confirm }}
         secondary={secondary}
       />
     )}>
-      <FlowTitle text={t('onboardingFlow.self.props.title')} sub={t('onboardingFlow.self.props.sub')} />
+      <FlowTitle text={t('onboardingFlow.self.props.title')} />
       <Rise index={2}>
-        <View style={styles.chips}>
-          {chips.map((c) => <View key={c} style={styles.chip}><Text style={styles.chipTxt}>{c}</Text></View>)}
-        </View>
-      </Rise>
-      <Rise index={3}>
         <TemplateCarousel
-          key={showAll ? 'all' : 'top'}
-          entries={visible}
+          entries={top}
           answers={answers}
           days={days}
           minutes={answers.sessionMinutes}
-          onIndex={setIdx}
+          onIndex={(i) => { setIdx(i); setListId(null); }}
         />
       </Rise>
+      {showAll && (
+        <TemplateList
+          entries={rest}
+          answers={answers}
+          days={days}
+          minutes={answers.sessionMinutes}
+          pickedId={listId}
+          onPick={setListId}
+        />
+      )}
     </FlowBody>
   );
 }
 
-export default { s_level: Level, s_choice: Choice, s_goal: Goal, s_days: Days, s_time: Time, s_props: Props, s_adjust: Adjust };
+export default { s_level: Level, s_choice: Choice, s_goal: Goal, s_days: Days, s_time: Time, s_props: Props };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -395,11 +378,6 @@ const makeStyles = (th) => StyleSheet.create({
   opts:  { gap: spacing.md },
   tiles: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   gap:   { flex: 1 },
-
-  // Las cuatro respuestas, arriba de las plantillas
-  chips:   { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip:    { borderRadius: th.radius.full, backgroundColor: th.colors.surface2, paddingVertical: spacing.xs2 + 1, paddingHorizontal: spacing.md },
-  chipTxt: { ...textStyles.labelStrong, color: th.colors.text },
 
   // «Preparando»: la misma fila que las de «Listo»
   preps: { gap: spacing.sm2 },

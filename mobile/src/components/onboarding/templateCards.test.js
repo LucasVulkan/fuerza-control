@@ -31,6 +31,12 @@ describe('cardModel', () => {
     expect(m.week).toEqual([0, 2, 4]);
   });
 
+  it('las semanas son la suma de las fases de la plantilla (0 sin fases)', () => {
+    expect(modelOf('fullbody_hypertrophy_intermediate').weeks).toBe(8);
+    const sin = { ...adaptArchetype(ARCHETYPES.find((a) => a.id === 'fullbody_hypertrophy_intermediate'), answers()), phases: null };
+    expect(cardModel(sin, { allEx: EXERCISE_LIBRARY, days: 3, minutes: 60 }).weeks).toBe(0);
+  });
+
   it('las series por semana salen de mayor a menor, máximo cinco grupos y sin «cuerpo completo»', () => {
     const { groups } = modelOf('fullbody_hypertrophy_intermediate');
     expect(groups.length).toBeLessThanOrEqual(5);

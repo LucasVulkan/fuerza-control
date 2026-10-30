@@ -8,7 +8,7 @@
  * Maqueta: docs/mockups/onboarding-2.html (welcome, units, theme, role, done).
  */
 import { useEffect, useState } from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
@@ -38,6 +38,9 @@ const answersOf = (s) => s.onboardingFlow?.answers ?? NONE;
 
 // ── Bienvenida (§5.1-5.2) ─────────────────────────────────────────────────────
 
+// El panel lima ocupa al menos esta parte de la pantalla: sin él quedaba muy abajo y con un hueco vacío en medio (O04-05).
+const PANEL_SHARE = 0.4;
+
 function Welcome({ goTo }) {
   const { t } = useTranslation();
   const th     = useTheme();
@@ -50,6 +53,7 @@ function Welcome({ goTo }) {
   const pending     = useStore((s) => s.pendingInviteCode);
   const validate    = useStore((s) => s.validateClientCode);
   const [trainerName, setTrainerName] = useState(null);
+  const { height } = useWindowDimensions();
 
   // Viene marcado el idioma del móvil, la primera vez que se pinta y si el usuario no lo ha tocado.
   useEffect(() => {
@@ -74,7 +78,7 @@ function Welcome({ goTo }) {
   }
 
   const panel = (
-    <FlowPanel title={t('onboardingFlow.common.welcome.panelTitle')}>
+    <FlowPanel title={t('onboardingFlow.common.welcome.panelTitle')} style={{ minHeight: height * PANEL_SHARE, justifyContent: 'center' }}>
       <PanelButton label={t('onboardingFlow.common.welcome.start')} onPress={() => goTo('units')} />
       <PanelButton ghost label={t('onboardingFlow.common.welcome.haveAccount')} onPress={() => goTo('recover')} />
     </FlowPanel>
@@ -104,6 +108,7 @@ function Welcome({ goTo }) {
         </View>
       </Rise>
 
+      <View style={styles.mid}>
       <Rise index={1}>
         <Marked text={t('onboardingFlow.common.welcome.hero')} style={styles.hero} accentStyle={styles.accent} />
       </Rise>
@@ -132,6 +137,7 @@ function Welcome({ goTo }) {
           ))}
         </View>
       </Rise>
+      </View>
     </FlowBody>
   );
 }
@@ -147,11 +153,10 @@ function Units({ goTo }) {
     <FlowBody>
       <FlowTitle text={t('onboardingFlow.common.units.title')} sub={t('onboardingFlow.common.units.sub')} />
       <View style={styles.tiles}>
-        {[['kg', '80'], ['lb', '175']].map(([u, n], i) => (
+        {['kg', 'lb'].map((u, i) => (
           <FlowTile
             key={u}
-            big={n}
-            label={u}
+            big={u.toUpperCase()}
             index={2 + i}
             selected={unit === u}
             onPress={() => setProfile({ weightUnit: u })}
@@ -165,7 +170,8 @@ function Units({ goTo }) {
 
 // ── Tema (§5.4) ───────────────────────────────────────────────────────────────
 
-const THEME_ORDER = ['formaFit', 'dark', 'steel', 'midnight', 'earthy', 'space'];
+// Claro y oscuro intercalados (hay 2 claros: earthy y space; el resto, oscuros).
+const THEME_ORDER = ['earthy', 'formaFit', 'space', 'dark', 'steel', 'midnight'];
 
 /** Una muestra: el fondo, la superficie y el acento del tema, con su nombre. La elegida se eleva. */
 function Swatch({ id, active, onPress }) {
@@ -315,16 +321,17 @@ const makeStyles = (th) => StyleSheet.create({
   langOn:    { backgroundColor: th.colors.surface2 },
   langTxt:   { ...textStyles.labelStrong, color: th.colors.mutedLight },
   langTxtOn: { color: th.colors.text },
+  // El titular, la línea y el recorrido, centrados en el hueco entre la marca y el panel.
+  mid: { flex: 1, justifyContent: 'center' },
   hero: {
     ...textStyles.heroGlyph,
     color:              th.colors.text,
     lineHeight:         40,
     paddingRight:       2,
     includeFontPadding: false,
-    marginTop:          spacing.xxl + spacing.xl,
   },
   accent:  { color: th.colors.accent },
-  tagline: { ...textStyles.caps, color: th.colors.mutedLight, marginTop: spacing.lg },
+  tagline: { ...textStyles.bodyStrong, color: th.colors.mutedLight, marginTop: spacing.lg },
   journey: { flexDirection: 'row', gap: spacing.xs2, marginTop: spacing.xxl },
   leg:     { flex: 1 },
   legBar:  { height: 6, borderRadius: 3, backgroundColor: th.colors.surface2 },

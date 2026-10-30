@@ -7,6 +7,7 @@
  *   big    la cifra o la palabra grande
  *   label  la etiqueta, en versales, debajo
  *   word   `big` es una palabra, no una cifra: un escalón menos y sin hueco extra
+ *   square casi cuadrada (aspectRatio 1), para las de minutos
  */
 import { View, StyleSheet } from 'react-native';
 import Reanimated from 'react-native-reanimated';
@@ -38,7 +39,7 @@ function TileBody({ p, big, label, word }) {
   );
 }
 
-export default function FlowTile({ big, label, word = false, selected = false, onPress, onPick, index = 2 }) {
+export default function FlowTile({ big, label, word = false, square = false, selected = false, onPress, onPick, index = 2 }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <Rise index={index} style={styles.cell}>
@@ -46,7 +47,7 @@ export default function FlowTile({ big, label, word = false, selected = false, o
         selected={selected}
         onPress={onPress}
         onPick={onPick}
-        style={styles.tile}
+        style={[styles.tile, square && styles.square]}
         accessibilityRole="radio"
         accessibilityLabel={[big, label].filter(Boolean).join(' ')}
       >
@@ -65,6 +66,7 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems:        'center',
     gap:               spacing.sm2,
   },
+  square: { aspectRatio: 1, paddingVertical: 0, justifyContent: 'center' },
   // Barlow cursiva: interlínea holgada (si no, se corta por abajo) y 2 px a la
   // derecha para que no se coma la última cifra.
   big:     { ...textStyles.heroGlyph, lineHeight: 40, paddingRight: 2, includeFontPadding: false },

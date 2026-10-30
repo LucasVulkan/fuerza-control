@@ -5,6 +5,7 @@
  *
  *   title / desc  el titular en Barlow y una línea debajo (opcionales)
  *   children      los botones: `PanelButton`
+ *   style         extra para el panel (la bienvenida lo sube con un alto mínimo)
  */
 import { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
@@ -18,14 +19,14 @@ import { useTheme, useThemedStyles } from '../../../useTheme';
 
 const PANEL_RADIUS = 40;   // el del paywall: no hay token tan grande
 
-export default function FlowPanel({ title, desc, children }) {
+export default function FlowPanel({ title, desc, style, children }) {
   const C      = useTheme().colors;
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const [box, setBox] = useState(null);
   return (
     <View
-      style={[styles.panel, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}
+      style={[styles.panel, { paddingBottom: Math.max(insets.bottom, spacing.lg) }, style]}
       onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
     >
       {/* Medido y no al 100 %: en Android el SVG se quedaba con el alto del primer pintado (ver PaywallModal). */}
