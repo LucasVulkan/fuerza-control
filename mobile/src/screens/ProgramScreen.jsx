@@ -541,7 +541,7 @@ export default function ProgramScreen() {
 
         {isSessions ? (
           sessionList.length === 0 ? (
-            <Rise index={2} style={styles.emptyState}>
+            <Rise index={2} style={styles.fill}>
               <EmptyState
                 style={styles.emptyState}
                 ghost="plain"
@@ -565,7 +565,7 @@ export default function ProgramScreen() {
             </ScrollView>
           )
         ) : templateList.length === 0 ? (
-          <Rise index={2} style={styles.emptyState}>
+          <Rise index={2} style={styles.fill}>
             <EmptyState
               style={styles.emptyState}
               ghost="plain"
@@ -850,5 +850,7 @@ const makeStyles = (th) => StyleSheet.create({
   ctaTextDisabled: { color: th.colors.mutedLight },
 
   // ── Estado vacío / gate PRO ──
-  emptyState: { flex: 1 },
+  // Arriba, no centrado en el hueco: centrado quedaba muy abajo, lejos de la cabecera.
+  emptyState: { flex: 1, justifyContent: 'flex-start', paddingTop: spacing.xxl },
+  fill:       { flex: 1 },
 });

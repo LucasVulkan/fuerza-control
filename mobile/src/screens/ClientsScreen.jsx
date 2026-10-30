@@ -4014,7 +4014,8 @@ const makeStyles = (th) => StyleSheet.create({
   // (old client card styles removed — replaced by cCard* styles above)
 
   // ── Empty ──
-  emptyState: { flex: 1 },
+  // Arriba, no centrado en el hueco: centrado quedaba muy abajo, lejos de la cabecera.
+  emptyState: { flex: 1, justifyContent: 'flex-start', paddingTop: spacing.xxl },
   emptyText: {
     ...textStyles.label,
     color:           th.colors.mutedLight,
