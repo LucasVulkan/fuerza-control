@@ -150,7 +150,7 @@ function Units({ goTo }) {
   const unit       = useStore((s) => s.profile.weightUnit ?? 'kg');
   const setProfile = useStore((s) => s.setProfile);
   return (
-    <FlowBody>
+    <FlowBody footer={<FlowFooter primary={{ label: t('onboardingFlow.common.next'), onPress: () => goTo('theme') }} />}>
       <FlowTitle text={t('onboardingFlow.common.units.title')} sub={t('onboardingFlow.common.units.sub')} />
       <View style={styles.tiles}>
         {['kg', 'lb'].map((u, i) => (
@@ -160,7 +160,6 @@ function Units({ goTo }) {
             index={2 + i}
             selected={unit === u}
             onPress={() => setProfile({ weightUnit: u })}
-            onPick={() => goTo('theme')}
           />
         ))}
       </View>
@@ -170,8 +169,8 @@ function Units({ goTo }) {
 
 // ── Tema (§5.4) ───────────────────────────────────────────────────────────────
 
-// Claro y oscuro intercalados (hay 2 claros: earthy y space; el resto, oscuros).
-const THEME_ORDER = ['earthy', 'formaFit', 'space', 'dark', 'steel', 'midnight'];
+// Forma Fit primero; el resto, claro y oscuro intercalados (hay 2 claros: earthy y space).
+const THEME_ORDER = ['formaFit', 'earthy', 'dark', 'space', 'steel', 'midnight'];
 
 /** Una muestra: el fondo, la superficie y el acento del tema, con su nombre. La elegida se eleva. */
 function Swatch({ id, active, onPress }) {

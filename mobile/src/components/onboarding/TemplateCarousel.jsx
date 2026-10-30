@@ -4,8 +4,8 @@
  * centrada y los puntos de debajo dicen cuál es; quien confirma («Empezar con
  * esta») es el pie de la pantalla, que recibe el índice por `onIndex`.
  *
- * Toda la tarjeta se pulsa para pasar de la portada a los ejercicios y de vuelta;
- * el selector de sesión y la lista de ejercicios capturan su toque. Debajo del
+ * Se pasa de la portada a los ejercicios y de vuelta solo con el botón de abajo de
+ * la tarjeta (O04-06); la lista de ejercicios se desplaza dentro de ella. Debajo del
  * carrusel, `TemplateList` ofrece el resto de plantillas como filas.
  *
  * Cada tarjeta tiene dos caras: la portada (zona de color con la etiqueta de
@@ -16,7 +16,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, Pressable, useWindowDimensions, StyleSheet } from 'react-native';
-import Reanimated, { FadeIn, useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Reanimated, { FadeIn, FadeInRight, useReducedMotion, useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, normalizeOnboardingAnswers } from '../../../store/useStore';
@@ -30,9 +30,8 @@ import { cardModel } from './templateCards';
 import { exerciseName } from './proposalData';
 
 const CARD_MAX_W = 300;
-const CARD_MAX_H = 520;
-const CARD_MIN_H = 460;
-const CHROME_H   = 340;   // lo que ocupan cabecera, título, puntos y pie: el resto es de la tarjeta
+const CARD_MIN_H = 460;   // por debajo, la pantalla se desplaza en vez de encoger la tarjeta
+const DOTS_H     = spacing.md + 6;   // marginTop + alto de los puntos
 const GAP        = spacing.md;
 const HEAD_H     = 152;
 const GUTTER     = spacing.lg + 1;   // el de `FlowBody`: el carrusel sale de él a sangre
@@ -48,6 +47,7 @@ function Dot({ on }) {
 }
 
 function Card({ card, index, width, height, allEx, language }) {
+  const reduced = useReducedMotion();
   const { t } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -63,7 +63,11 @@ function Card({ card, index, width, height, allEx, language }) {
   const lettersOnly = sessions.length > 3;   // con más de tres no cabe la palabra «Sesión»
 
   return (
-    <Pressable onPress={() => setEx((v) => !v)} accessibilityRole="button" style={[styles.card, { width, height }]}>
+    // Entra una vez al montar el carrusel, escalonada; cambiar de cara no la repite (esa es la `key` de dentro).
+    <Reanimated.View
+      entering={reduced ? undefined : FadeInRight.delay(index * 70).duration(400).easing(Easing.out(Easing.cubic))}
+      style={[styles.card, { width, height }]}
+    >
       <View style={[styles.head, { backgroundColor: color }]}>
         <View style={[styles.fit, { backgroundColor: ink }]}>
           <Text style={[styles.fitTxt, { color }]}>{t(`onboardingFlow.self.cards.${index === 0 ? 'fitBest' : 'fitAlso'}`)}</Text>
@@ -101,10 +105,9 @@ function Card({ card, index, width, height, allEx, language }) {
               </View>
             ))}
           </View>
-          {/* Solo una pista: el toque lo recoge toda la tarjeta. */}
-          <View style={styles.link}>
+          <Pressable onPress={() => setEx(true)} accessibilityRole="button" hitSlop={spacing.md} style={styles.link}>
             <Text style={styles.linkTxt}>{t('onboardingFlow.self.cards.seeExercises')}</Text>
-          </View>
+          </Pressable>
         </Reanimated.View>
       ) : (
         <Reanimated.View key="ex" entering={FadeIn.duration(250)} style={styles.face}>
@@ -117,30 +120,31 @@ function Card({ card, index, width, height, allEx, language }) {
                 accessibilityState={{ selected: j === ses }}
                 style={[styles.sesBtn, j === ses && styles.sesBtnOn]}
               >
-                <View style={[styles.sesLetter, { backgroundColor: resolveColor(th, s.color ?? COLORS[0]) }]}>
-                  <Text style={[styles.sesLetterTxt, { color: ink }]}>{s.label}</Text>
-                </View>
-                {!lettersOnly && <Text style={[styles.sesTxt, j === ses && styles.sesTxtOn]}>{t('onboardingFlow.self.cards.session')}</Text>}
+                <Text style={[styles.sesTxt, j === ses && styles.sesTxtOn]} numberOfLines={1}>
+                  {lettersOnly ? s.label : `${s.label} ${s.name.split(' · ')[0]}`}
+                </Text>
               </Pressable>
             ))}
           </View>
-          <Text style={styles.sesName} numberOfLines={1}>{session.name}</Text>
-          <ScrollView style={styles.exList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-            {(session.exercises ?? []).map((e, n) => (
-              <View key={n} style={styles.exRow}>
-                <Text style={styles.exName}>{exerciseName(allEx, e.exerciseId, language)}</Text>
-                <Text style={styles.exSets}>
-                  {e.minReps ? `${e.sets} × ${e.minReps === e.maxReps ? e.minReps : `${e.minReps}–${e.maxReps}`}` : t('onboarding.preview.setCount', { sets: e.sets })}
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
-          <View style={styles.link}>
-            <Text style={styles.linkTxt}>{`‹ ${t('onboardingFlow.self.cards.backToCover')}`}</Text>
+          <View style={styles.exPanel}>
+            <Text style={styles.sesName} numberOfLines={1}>{session.name}</Text>
+            <ScrollView style={styles.exList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+              {(session.exercises ?? []).map((e, n) => (
+                <View key={n} style={styles.exRow}>
+                  <Text style={styles.exName}>{exerciseName(allEx, e.exerciseId, language)}</Text>
+                  <Text style={styles.exSets}>
+                    {e.minReps ? `${e.sets} × ${e.minReps === e.maxReps ? e.minReps : `${e.minReps}–${e.maxReps}`}` : t('onboarding.preview.setCount', { sets: e.sets })}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
           </View>
+          <Pressable onPress={() => setEx(false)} accessibilityRole="button" hitSlop={spacing.md} style={styles.link}>
+            <Text style={styles.linkTxt}>{`‹ ${t('onboardingFlow.self.cards.backToCover')}`}</Text>
+          </Pressable>
         </Reanimated.View>
       )}
-    </Pressable>
+    </Reanimated.View>
   );
 }
 
@@ -184,14 +188,15 @@ export function TemplateList({ entries, answers, days, minutes, pickedId, onPick
 }
 
 /** `entries`: las plantillas de `rankArchetypes` que se enseñan. `answers`: las del motor (con los ajustes). */
-export default function TemplateCarousel({ entries, answers, days, minutes, onIndex }) {
-  const { width: screenW, height: screenH } = useWindowDimensions();
+export default function TemplateCarousel({ entries, answers, days, minutes, onIndex, availableH = 0 }) {
+  const { width: screenW } = useWindowDimensions();
   const styles   = useThemedStyles(makeStyles);
   const language = useStore((s) => s.profile?.language ?? 'es');
   const [idx, setIdx] = useState(0);
   const { cards, allEx } = useCards(entries, answers, days, minutes);
 
-  const cardH = Math.min(CARD_MAX_H, Math.max(CARD_MIN_H, screenH - CHROME_H));
+  // Lo que queda del scroll de la pantalla bajo el carrusel, menos su margen, los puntos y el relleno de abajo.
+  const cardH = Math.max(CARD_MIN_H, availableH - spacing.lg - DOTS_H - spacing.lg);
   const cardW = Math.min(CARD_MAX_W, screenW - 2 * spacing.xxl);
   const step  = cardW + GAP;
 
@@ -273,16 +278,16 @@ const makeStyles = (th) => StyleSheet.create({
   link:    { marginTop: 'auto', alignSelf: 'center', paddingTop: spacing.md, paddingHorizontal: spacing.md },
   linkTxt: { ...textStyles.button, color: th.colors.accent },
 
-  sesSel:       { flexDirection: 'row', gap: spacing.sm },
-  sesBtn:       { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: th.radius.md, paddingVertical: spacing.sm2, backgroundColor: th.colors.surface2 },
-  sesBtnOn:     { backgroundColor: th.colors.surface3 },
-  sesLetter:    { width: 18, height: 18, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  sesLetterTxt: { ...textStyles.labelStrong },
+  // Pestañas pegadas a la lista: la elegida comparte fondo con ella (surface2), las demás se quedan en el de la tarjeta.
+  sesSel:       { flexDirection: 'row', gap: spacing.xs2 },
+  sesBtn:       { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, backgroundColor: th.colors.surface },
+  sesBtnOn:     { backgroundColor: th.colors.surface2 },
   sesTxt:       { ...textStyles.bodyStrong, color: th.colors.mutedLight },
   sesTxtOn:     { color: th.colors.text },
-  sesName:      { ...textStyles.bodyStrong, color: th.colors.text, marginTop: spacing.md },
+  exPanel:      { flex: 1, backgroundColor: th.colors.surface2, borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md, paddingHorizontal: spacing.md, paddingTop: spacing.md },
+  sesName:      { ...textStyles.itemTitle, color: th.colors.text },
   exList:       { flex: 1, marginTop: spacing.sm },
-  exRow:        { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.sm2, borderTopWidth: 1, borderTopColor: th.colors.surface2 },
+  exRow:        { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.sm2, borderTopWidth: 1, borderTopColor: th.colors.surface3 },
   exName:       { ...textStyles.body, flex: 1, color: th.colors.text, lineHeight: lh(14) - 4 },
   exSets:       { ...textStyles.labelStrong, color: th.colors.mutedLight },
 });

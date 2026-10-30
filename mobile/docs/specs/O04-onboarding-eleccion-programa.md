@@ -8,7 +8,7 @@
 > Fase O04-03 · hecho · Las cuatro preguntas antes de las plantillas · §4
 > Fase O04-04 · hecho · Tarjetas de plantillas · §5
 > Fase O04-05 · hecho · Correcciones tras la primera prueba · §6
-> Fase O04-06 · pendiente · Segunda ronda: unidades, estilos, barra doble y tarjetas con pestañas · §7
+> Fase O04-06 · hecho · Segunda ronda: unidades, estilos, barra doble y tarjetas con pestañas · §7
 > Fase O04-07 · pendiente · Bienvenida nueva, con maqueta · §8
 >
 > Estado: **implementada** (30-oct-2026, en develop); O04-05 (correcciones tras probarla) hecha en la rama `feat/o04-05-correcciones`;
@@ -359,10 +359,10 @@ importante para la retención»):
 
 - [ ] Unidades: tocar KG o LB solo marca; «Siguiente» avanza.
 - [ ] Estilos: Forma Fit, el primero.
-- [ ] Nivel, días, objetivo y tiempo: una sola barra de progreso.
+- [ ] Nivel, días, objetivo y tiempo: una sola barra de progreso; el «1 de 4» queda como texto pequeño sobre el título.
 - [ ] Al llegar a las plantillas, las tarjetas entran animadas.
 - [ ] Tocar la tarjeta no la gira; solo el botón.
-- [ ] Ejercicios: la lista se desplaza y se ven todos, en Android también.
+- [ ] La tarjeta aprovecha el alto libre (sin tope de 520); en ejercicios la lista se desplaza y se ven todos, en Android también.
 - [ ] Pestañas: la elegida comparte fondo con la lista y se ve claro cuál es;
   con 4+ sesiones, solo letras y sin cortarse.
 
