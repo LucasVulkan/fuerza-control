@@ -123,7 +123,7 @@ export default function OnboardingFlowScreen() {
   else if (showBar) name = t(`onboardingFlow.common.sections.${SECTIONS[sec]}`);
 
   return (
-    <View style={[styles.root, { backgroundColor: th.colors.bg, paddingTop: insets.top }]}>
+    <View style={[styles.root, { backgroundColor: th.colors.bg, paddingTop: screen === 'welcome' ? 0 : insets.top }]}>
       <FlowHeader
         hidden={screen === 'welcome'}
         name={name}
@@ -137,7 +137,7 @@ export default function OnboardingFlowScreen() {
         onSkip={() => goTo(skip)}
         skipLabel={t('onboardingFlow.common.skip')}
       />
-      <Slide key={screen} dir={nav.dir}>
+      <Slide key={screen} dir={screen === 'welcome' ? 0 : nav.dir}>
         <Screen goTo={goTo} />
       </Slide>
     </View>
