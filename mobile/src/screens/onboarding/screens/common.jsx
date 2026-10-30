@@ -8,7 +8,7 @@
  * Maqueta: docs/mockups/onboarding-2.html (welcome, units, theme, role, done).
  */
 import { useEffect, useState } from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
@@ -38,6 +38,9 @@ const answersOf = (s) => s.onboardingFlow?.answers ?? NONE;
 
 // ── Bienvenida (§5.1-5.2) ─────────────────────────────────────────────────────
 
+// El panel lima ocupa al menos esta parte de la pantalla: sin él quedaba muy abajo y con un hueco vacío en medio (O04-05).
+const PANEL_SHARE = 0.4;
+
 function Welcome({ goTo }) {
   const { t } = useTranslation();
   const th     = useTheme();
@@ -50,6 +53,7 @@ function Welcome({ goTo }) {
   const pending     = useStore((s) => s.pendingInviteCode);
   const validate    = useStore((s) => s.validateClientCode);
   const [trainerName, setTrainerName] = useState(null);
+  const { height } = useWindowDimensions();
 
   // Viene marcado el idioma del móvil, la primera vez que se pinta y si el usuario no lo ha tocado.
   useEffect(() => {
@@ -74,7 +78,7 @@ function Welcome({ goTo }) {
   }
 
   const panel = (
-    <FlowPanel title={t('onboardingFlow.common.welcome.panelTitle')}>
+    <FlowPanel title={t('onboardingFlow.common.welcome.panelTitle')} style={{ minHeight: height * PANEL_SHARE, justifyContent: 'center' }}>
       <PanelButton label={t('onboardingFlow.common.welcome.start')} onPress={() => goTo('units')} />
       <PanelButton ghost label={t('onboardingFlow.common.welcome.haveAccount')} onPress={() => goTo('recover')} />
     </FlowPanel>
