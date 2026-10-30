@@ -394,6 +394,17 @@ pantallas de bienvenida con ilustración y hoja (referencia que pasó el usuario
   parece que la hoja se convierte en ella. Su contenido se desvanece mientras
   sube. Con «reducir movimiento», se pasa sin animar.
 
+**Prueba con la app en el lima (30-oct)**: maqueta
+[`onboarding-bienvenida-2.html`](../mockups/onboarding-bienvenida-2.html), variante **A
+· Entreno** elegida para probar. En el lima, en vez del logo grande: la tarjeta de
+un ejercicio a medio registrar (Press militar con barra, Principal · 4 × 8–12;
+«→ Subir 45 kg»; S1 hecha en lima, S2 que se marca sola al entrar, S3 y S4 por
+hacer), algo girada, con dos avisos flotando («↑ +2,5 kg esta semana» arriba a
+la izquierda y «PR · 45 kg × 12 · Mejor serie hasta hoy» abajo a la derecha). El
+logotipo «Forma FIT» pequeño arriba a la izquierda, en negro; ES/EN arriba a la
+derecha. Se pinta con vistas sencillas y textos traducidos, no con la pantalla
+real. Hoja, textos y salida, como ya están.
+
 **Probar O04-07**
 
 - [ ] Primera pantalla: lima arriba con el logo FF, hoja oscura abajo con el
@@ -405,6 +416,9 @@ pantallas de bienvenida con ilustración y hoja (referencia que pasó el usuario
   en su sitio).
 - [ ] ES/EN sobre el lima cambia el idioma.
 - [ ] Con invitación, la nota sale en la hoja.
+- [ ] En el lima: la tarjeta del ejercicio y los dos avisos entran escalonados y
+  la serie 2 se marca sola; nada se corta ni pisa la hoja en un móvil pequeño.
+- [ ] En inglés, los textos de la tarjeta y los avisos salen traducidos.
 
 ---
 
