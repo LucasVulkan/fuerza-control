@@ -34,7 +34,7 @@ export default function NoProgram() {
   );
 }
 
-// Va dentro de una lista que se desplaza, no ocupa la pantalla.
+// Va dentro de una lista que se desplaza, no ocupa la pantalla. Poco aire arriba: con más quedaba muy abajo.
 const styles = StyleSheet.create({
-  wrap: { paddingVertical: spacing.xxl * 2 },
+  wrap: { paddingTop: spacing.xxl, paddingBottom: spacing.xxl * 2 },
 });
