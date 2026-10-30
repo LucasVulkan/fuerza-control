@@ -3,12 +3,13 @@
 > Tema: onboarding
 > En corto: El tramo del alta en el que eliges cómo entrenas y qué programa sigues: pantallas de camino y de «plantilla o el mío» más llamativas, cuatro preguntas (nivel, días, objetivo, tiempo) antes de ver ninguna plantilla con lo que implica cada respuesta, y unas tarjetas de plantilla que den ganas de empezar.
 > Inicio: 2026-10-30
-> Fin: 2026-10-30
 > Fase O04-01 · terminado · Maqueta y elección de variantes · §2
 > Fase O04-02 · hecho · Camino y «plantilla o el mío» con el diseño nuevo · §3
 > Fase O04-03 · hecho · Las cuatro preguntas antes de las plantillas · §4
 > Fase O04-04 · hecho · Tarjetas de plantillas · §5
 > Fase O04-05 · hecho · Correcciones tras la primera prueba · §6
+> Fase O04-06 · pendiente · Segunda ronda: unidades, estilos, barra doble y tarjetas con pestañas · §7
+> Fase O04-07 · pendiente · Bienvenida nueva, con maqueta · §8
 >
 > Estado: **implementada** (30-oct-2026, en develop); O04-05 (correcciones tras probarla) hecha en la rama `feat/o04-05-correcciones`;
 > por probar en dispositivo. Partió de la idea M05 «Onboarding fix» de `ideas.md` (el código
@@ -322,3 +323,54 @@ Cómo quedó (O04-05):
   «Empezar con esta» crea esa.
 - [ ] «Empezar con esta» crea el programa sin pasar por «Tu programa», con las
   sesiones ajustadas al tiempo elegido.
+
+---
+
+## 7. O04-06 — Segunda ronda: unidades, estilos, barra doble y tarjetas con pestañas
+
+Lo que pidió el usuario el 30-oct tras probar O04-05 («es la parte más
+importante para la retención»):
+
+1. **¿Kilos o libras?**: viene con KG marcado pero no tiene botón «Siguiente».
+   Como en el resto del recorrido, tocar una opción solo la marca y se avanza
+   con «Siguiente» en el pie.
+2. **Elige tu estilo**: Forma Fit, el primero; el resto sigue intercalado
+   (claro, oscuro…).
+3. **Barra doble**: en las cuatro preguntas (nivel, días, objetivo, tiempo) sale
+   una segunda barra de progreso (`FlowSteps`) junto a la principal del
+   recorrido. Se quita; basta con la principal (el «1 de 4» puede quedar como
+   texto si cabe sin barra, o desaparecer).
+4. **Entrada de las plantillas**: al llegar a «Elige tu programa» las tarjetas
+   entran con una animación ligera (desplazamiento corto + fundido, escalonadas),
+   con Reanimated y respetando «reducir movimiento».
+5. **Tarjetas más largas y con scroll**: la tarjeta aprovecha el alto disponible;
+   en la cara de ejercicios la lista se desplaza dentro de la tarjeta y se ven
+   todos los ejercicios (en Android, el scroll vertical anidado dentro del
+   carrusel horizontal tiene que funcionar).
+6. **Sin pulsar la tarjeta entera**: se quita; se cambia de cara solo con el
+   botón «Ver ejercicios» / «Volver a la portada».
+7. **Sesiones en pestañas**: el selector de sesión pasa a pestañas pegadas a la
+   lista de ejercicios: la pestaña elegida comparte fondo con la lista (como
+   una carpeta), las demás llevan otro fondo. Con 3 sesiones o menos, letra y
+   nombre; con más, solo la letra. El nombre de la sesión elegida se distingue
+   claramente del de los ejercicios (otro rol de texto, encabezando la lista).
+
+**Probar O04-06**
+
+- [ ] Unidades: tocar KG o LB solo marca; «Siguiente» avanza.
+- [ ] Estilos: Forma Fit, el primero.
+- [ ] Nivel, días, objetivo y tiempo: una sola barra de progreso.
+- [ ] Al llegar a las plantillas, las tarjetas entran animadas.
+- [ ] Tocar la tarjeta no la gira; solo el botón.
+- [ ] Ejercicios: la lista se desplaza y se ven todos, en Android también.
+- [ ] Pestañas: la elegida comparte fondo con la lista y se ve claro cuál es;
+  con 4+ sesiones, solo letras y sin cortarse.
+
+---
+
+## 8. O04-07 — Bienvenida nueva, con maqueta
+
+La primera pantalla sigue pareciendo barata: no transmite una app seria ni se
+parece a la landing. Se rehace a partir de una maqueta con variantes
+(`docs/mockups/onboarding-bienvenida.html`); se implementa cuando el usuario
+elija.
