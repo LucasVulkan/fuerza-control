@@ -3,13 +3,14 @@
 > Tema: onboarding
 > En corto: El tramo del alta en el que eliges cómo entrenas y qué programa sigues: pantallas de camino y de «plantilla o el mío» más llamativas, cuatro preguntas (nivel, días, objetivo, tiempo) antes de ver ninguna plantilla con lo que implica cada respuesta, y unas tarjetas de plantilla que den ganas de empezar.
 > Inicio: 2026-10-30
+> Fin: 2026-10-30
 > Fase O04-01 · terminado · Maqueta y elección de variantes · §2
 > Fase O04-02 · hecho · Camino y «plantilla o el mío» con el diseño nuevo · §3
 > Fase O04-03 · hecho · Las cuatro preguntas antes de las plantillas · §4
-> Fase O04-04 · pendiente · Tarjetas de plantillas · §5
+> Fase O04-04 · hecho · Tarjetas de plantillas · §5
 >
-> Estado: **spec escrita, maqueta v1 publicada, falta elegir variantes**
-> (30-oct-2026). Sale de la idea M05 «Onboarding fix» de `ideas.md` (el código
+> Estado: **implementada** (30-oct-2026, rama `feat/o04-elegir-programa`),
+> por probar en dispositivo. Partió de la idea M05 «Onboarding fix» de `ideas.md` (el código
 > M05 era del tema de monetización; como spec es de onboarding y pasa a O04).
 > Maqueta: [`onboarding-m05.html`](../mockups/onboarding-m05.html), publicada en
 > https://claude.ai/artifact/NxsLtzbb2x9NYAPAeM9toU. Parte de lo que hizo
@@ -216,3 +217,37 @@ En la pantalla de propuestas (`s_props`), con la variante elegida:
 - «Empezar con esta» confirma como hoy (`generateAndActivateProgram`); «Ver
   todas las plantillas» abre la lista completa.
 - Radios y espaciados del tema, no números sueltos de la maqueta.
+
+Implementado (30-oct): `TemplateCarousel` (carrusel con snap, tarjeta de 300 como
+máximo, la centrada es la elegida, puntos debajo), `templateCards.js` (lo que
+enseña cada tarjeta, con test) y la portada/ejercicios con selector de sesión.
+La semana sugerida reparte las sesiones por los días elegidos (1 → L, 3 → L X V,
+…). El color de la zona sale de la posición (lima, naranja, violeta, azul), no de
+la plantilla, que no lleva color propio. «Empezar con esta» **no genera aún**: elige
+la plantilla y abre «Tu programa» (la pantalla de ajustes de material y
+limitaciones, que sigue siendo el único sitio donde se cambian), cuyo «Empezar
+con este» llama a `generateAndActivateProgram` como hoy. «Ver todas las
+plantillas» pasa a mostrarlas todas en el mismo carrusel.
+
+**Probar O04-04**
+
+- [ ] Tiempo → Ver plantillas: tras el «Buscando tu programa» (ahora con cuatro
+  casillas) salen los chips (nivel, días, objetivo, minutos) y el carrusel con
+  tres tarjetas; los puntos de debajo marcan la centrada.
+- [ ] Deslizar: la tarjeta se queda centrada (snap) y el punto cambia. En un
+  móvil estrecho la tarjeta no se sale de la pantalla.
+- [ ] Portada: zona de color con la etiqueta de encaje (la primera «La que mejor
+  encaja»), el número de sesiones grande y apagado, el nombre y la semana
+  sugerida L-D discreta; debajo resumen, sesiones · ~min · series/sesión y
+  «Series por semana» en barras.
+- [ ] Con 30 min las series por sesión y los minutos bajan respecto a 90 min
+  (el programa ya viene ajustado al tiempo).
+- [ ] «Ver ejercicios»: selector A · B · C con el nombre de la sesión y su lista
+  (nombre y series × repeticiones); cambiar de sesión cambia la lista; una
+  sesión larga se desplaza dentro de la tarjeta sin mover el carrusel.
+  «‹ Volver a la portada» la deja como estaba.
+- [ ] «Empezar con esta» abre «Tu programa» de la tarjeta centrada, con el tiempo
+  elegido en Ajustes; «Ver otros programas» vuelve al carrusel en la primera.
+- [ ] «Ver todas las plantillas» enseña todas en el carrusel y el botón pasa a
+  «Ver sólo las recomendadas».
+- [ ] Con textos grandes del sistema y en inglés nada se corta en las tarjetas.

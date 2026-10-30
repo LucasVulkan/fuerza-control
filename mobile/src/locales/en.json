@@ -3000,6 +3000,22 @@
           }
         }
       },
+      "cards": {
+        "weekDays": "MTWTFSS",
+        "week": "Suggested week",
+        "fitBest": "Best fit",
+        "fitAlso": "Also a fit",
+        "sessions": "sessions",
+        "min": "min",
+        "setsSession": "sets/session",
+        "weekSets": "Sets per week",
+        "seeExercises": "See exercises",
+        "backToCover": "Back to the cover",
+        "session": "Session",
+        "start": "Start with this one",
+        "chipDays_one": "{{count}} day",
+        "chipDays_other": "{{count}} days"
+      },
       "props": {
         "searching": "Finding your *program*",
         "searchingSub": "Based on your answers:",
@@ -3007,7 +3023,8 @@
         "days_one": "{{count}} day a week",
         "days_other": "{{count}} days a week",
         "title": "Pick your *program*",
-        "sub": "Chosen from your answers. Tap one to see it in full.",
+        "sub": "Chosen from your answers. Swipe to see more.",
+        "seeAll": "See all templates",
         "previewSub": "You can change anything later, in the editor.",
         "start": "Start with this one",
         "other": "See other programs",

@@ -12,7 +12,7 @@
  *
  * Maqueta: docs/mockups/onboarding-m05.html (O04); la antigua, onboarding-2.html.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ import { spacing, textStyles } from '../../../theme';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { Text } from '../../../components/ui/Text';
 import { Rise } from '../../../components/ui/Rise';
+import TemplateCarousel from '../../../components/onboarding/TemplateCarousel';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import { showDialog } from '../../../components/ui/dialog';
 import {
@@ -29,7 +30,7 @@ import {
 } from '../../../components/onboarding/flow';
 import useFitdataImport from '../../../components/onboarding/useFitdataImport';
 import {
-  LEVEL_IDS, IDENTITY_OPTIONS, SESSION_CHOICES, totalWeeksOf,
+  LEVEL_IDS, IDENTITY_OPTIONS, SESSION_CHOICES,
 } from '../../../components/onboarding/proposalData';
 import { afterProposal } from '../../../utils/onboardingFlow';
 import { startBuilder } from '../startBuilder';
@@ -281,8 +282,10 @@ function Props({ goTo }) {
   const [ticked,  setTicked]  = useState(0);          // casillas de «preparando» ya marcadas
   const [ready,   setReady]   = useState(picked);      // acabó el «preparando»
   const [showAll, setShowAll] = useState(false);
+  const [idx,     setIdx]     = useState(0);          // la tarjeta centrada del carrusel
   const [loading, setLoading] = useState(false);
   const { days, chosen, ranked, answers, model, setChosenId } = useProgramModel(ready);
+  const visible = useMemo(() => (showAll ? ranked : ranked.slice(0, 3)), [showAll, ranked]);
 
   // Las casillas se marcan una a una y luego entran las propuestas.
   useEffect(() => {
@@ -321,7 +324,7 @@ function Props({ goTo }) {
         days={days}
         loading={loading}
         onConfirm={confirm}
-        onOther={() => setChosenId(null)}
+        onOther={() => { setChosenId(null); setIdx(0); }}
       />
     );
   }
@@ -344,33 +347,42 @@ function Props({ goTo }) {
     );
   }
 
-  // Propuestas: la estructura de cada plantilla, que no depende del material.
-  const visible = showAll ? ranked : ranked.slice(0, 3);
+  // Propuestas (O04-04): un carrusel de tarjetas; la centrada es la que se confirma.
   const secondary = ranked.length > 3
-    ? [{ label: showAll ? t('onboarding.proposals.seeTop') : t('onboarding.proposals.seeAll', { total: ranked.length }), onPress: () => setShowAll((v) => !v) }]
+    ? [{
+      label: showAll ? t('onboarding.proposals.seeTop') : t('onboardingFlow.self.props.seeAll'),
+      onPress: () => { setShowAll((v) => !v); setIdx(0); },
+    }]
     : [];
+  const chips = [
+    t(`onboardingFlow.self.level.${level}`, ''),
+    t('onboardingFlow.self.cards.chipDays', { count: days ?? 0 }),
+    t(`onboarding.identity.${goal}.label`, ''),
+    t('onboardingFlow.self.props.minutes', { count: answers.sessionMinutes }),
+  ];
   return (
-    <FlowBody footer={<FlowFooter secondary={secondary} />}>
+    <FlowBody footer={(
+      <FlowFooter
+        primary={{ label: t('onboardingFlow.self.cards.start'), onPress: () => setChosenId(visible[idx].archetype.id) }}
+        secondary={secondary}
+      />
+    )}>
       <FlowTitle text={t('onboardingFlow.self.props.title')} sub={t('onboardingFlow.self.props.sub')} />
-      <View style={styles.opts}>
-        {visible.map((e, i) => {
-          const weeks = totalWeeksOf(e.archetype.phases);
-          return (
-            <FlowOption
-              chevron
-              key={e.archetype.id}
-              index={2 + i}
-              title={e.archetype.name}
-              desc={[
-                t('onboardingFlow.self.props.sessionsCount', { count: e.archetype.days.length }),
-                weeks > 0 ? t('onboarding.proposals.weeks', { weeks }) : null,
-              ].filter(Boolean).join(' · ') + '\n' + e.archetype.days.map((d) => d.label).join(' · ')}
-              tag={i === 0 ? t('onboardingFlow.self.choice.recommended') : undefined}
-              onPick={() => setChosenId(e.archetype.id)}
-            />
-          );
-        })}
-      </View>
+      <Rise index={2}>
+        <View style={styles.chips}>
+          {chips.map((c) => <View key={c} style={styles.chip}><Text style={styles.chipTxt}>{c}</Text></View>)}
+        </View>
+      </Rise>
+      <Rise index={3}>
+        <TemplateCarousel
+          key={showAll ? 'all' : 'top'}
+          entries={visible}
+          answers={answers}
+          days={days}
+          minutes={answers.sessionMinutes}
+          onIndex={setIdx}
+        />
+      </Rise>
     </FlowBody>
   );
 }
@@ -383,6 +395,11 @@ const makeStyles = (th) => StyleSheet.create({
   opts:  { gap: spacing.md },
   tiles: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   gap:   { flex: 1 },
+
+  // Las cuatro respuestas, arriba de las plantillas
+  chips:   { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip:    { borderRadius: th.radius.full, backgroundColor: th.colors.surface2, paddingVertical: spacing.xs2 + 1, paddingHorizontal: spacing.md },
+  chipTxt: { ...textStyles.labelStrong, color: th.colors.text },
 
   // «Preparando»: la misma fila que las de «Listo»
   preps: { gap: spacing.sm2 },
