@@ -98,7 +98,7 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     const s = useStore.getState();
     saved = { profile: s.profile, trainerSync: s.trainerSync, clients: s.clients, programs: s.programs, sessionTemplates: s.sessionTemplates, workoutLog: s.workoutLog };
     setPro(false);
-    useStore.setState({ _proPending: false });
+    useStore.setState({ _proPending: null });
   });
   afterEach(() => {
     useStore.setState({ _getRC: getRC, ...saved });
@@ -131,9 +131,82 @@ describe('I02-05 — compra, restauración e identidad (doble de react-native-pu
     RC.purchasePackage.mockRejectedValueOnce(rcError('6', 'This product is already active for the user.'));
     const r = await useStore.getState().purchasePackage({ identifier: '$rc_lifetime' });
     expect(RC.restorePurchases).toHaveBeenCalledTimes(1);
-    expect(r).toMatchObject({ ok: false, action: 'retry' });
+    // I04-05 (E81): se dice que la compra está en otra cuenta de la tienda, con «Entendido» (action 'ok')
+    expect(r).toEqual({ ok: false, error: expect.stringContaining('otra cuenta de'), action: 'ok' });
     expect(r.error).not.toContain('already active');
     expect(isPro()).toBe(false);
+  });
+
+  // ── I04-05: pago pendiente (N-11, N-09) ──
+  const pend = () => useStore.getState()._proPending;
+  const setAccount = (userId) => useStore.setState((s) => ({ trainerSync: { ...s.trainerSync, userId } }));
+  const buy = () => useStore.getState().purchasePackage({ identifier: '$rc_annual' });
+
+  it('E75 (N-11): con un pago pendiente no se vuelve a llamar a la tienda y se devuelve pending', async () => {
+    useRC();
+    setAccount('uuid-A');
+    RC.purchasePackage.mockRejectedValueOnce(rcError('20', 'Payment is pending.'));
+    expect(await buy()).toEqual({ ok: false, pending: true });
+    expect(pend()).toEqual({ userId: 'uuid-A' });
+    expect(await buy()).toEqual({ ok: false, pending: true });
+    expect(RC.purchasePackage).toHaveBeenCalledTimes(1);
+    setAccount(null);
+  });
+
+  it('E82 (N-09): pendiente de A, se cambia a B y llega el PRO: se borra y no hay «PRO activado» cruzado', async () => {
+    useRC();
+    setAccount('uuid-A');
+    RC.purchasePackage.mockRejectedValueOnce(rcError('20', 'Payment is pending.'));
+    await buy();
+    const toast = vi.spyOn(useStore.getState(), 'showToast').mockImplementation(() => {});
+    await useStore.getState().syncPurchaserId('uuid-B', { switched: true });
+    expect(pend()).toBeNull();
+    useStore.getState()._applyCustomerInfo(info({ pro: true }));
+    expect(toast.mock.calls.filter((c) => c[0] === 'PRO activado')).toHaveLength(0);
+    setAccount(null);
+  });
+
+  it('E82: PRO que llega en otra cuenta que la del pendiente limpia sin avisar; en la misma, avisa una vez', async () => {
+    useRC();
+    const toast = vi.spyOn(useStore.getState(), 'showToast').mockImplementation(() => {});
+    setAccount('uuid-B');
+    useStore.setState({ _proPending: { userId: 'uuid-A' } });
+    useStore.getState()._applyCustomerInfo(info({ pro: true }));
+    expect(pend()).toBeNull();
+    expect(toast).not.toHaveBeenCalledWith('PRO activado', expect.anything(), expect.anything());
+    setPro(false);
+    useStore.setState({ _proPending: { userId: 'uuid-B' } });
+    useStore.getState()._applyCustomerInfo(info({ pro: true, at: Date.now() + 1000 }));
+    expect(pend()).toBeNull();
+    expect(toast.mock.calls.filter((c) => c[0] === 'PRO activado')).toHaveLength(1);
+    setAccount(null);
+  });
+
+  it('N-09: salir de la cuenta y borrar la cuenta borran el pendiente; la compra anónima pasa a la cuenta al entrar', async () => {
+    useRC();
+    useStore.setState({ _proPending: { userId: 'uuid-A' } });
+    await useStore.getState().leaveTrainerAccount();
+    expect(pend()).toBeNull();
+    useStore.setState({ _proPending: { userId: null } });
+    await useStore.getState().syncPurchaserId('uuid-A');
+    expect(pend()).toEqual({ userId: 'uuid-A' });
+    useStore.setState({ _proPending: { userId: 'uuid-A' } });
+    await useStore.getState().deleteAccount();
+    expect(pend()).toBeNull();
+  });
+
+  it('N-11: restaurar sin encontrar nada borra el pendiente; el reintento silencioso no', async () => {
+    useRC();
+    useStore.setState({ _proPending: { userId: null } });
+    await useStore.getState().restorePurchases({ silent: true });
+    expect(pend()).toEqual({ userId: null });
+    await useStore.getState().restorePurchases();
+    expect(pend()).toBeNull();
+  });
+
+  it('N-11: el pendiente se guarda en disco (partialize)', () => {
+    const { partialize } = useStore.persist.getOptions();
+    expect(partialize({ ...useStore.getState(), _proPending: { userId: 'uuid-A' } })._proPending).toEqual({ userId: 'uuid-A' });
   });
 
   it('F1 (cumple R-F1): la compra confirmada con PRO en la respuesta deja el móvil en PRO', async () => {

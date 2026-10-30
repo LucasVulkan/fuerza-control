@@ -263,6 +263,7 @@ function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSig
   const restorePurchases = useStore((s) => s.restorePurchases);
   const showToast        = useStore((s) => s.showToast);
   const hasAccount       = useStore((s) => !!s.trainerSync.userId);
+  const payPending       = useStore((s) => !!s._proPending);   // I04-05 / N-11: no se ofrece comprar otra vez
 
   const [selected, setSelected]     = useState(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -392,6 +393,20 @@ function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSig
 
         {loading ? (
           <ActivityIndicator color={C.onAccent} style={styles.panelState} />
+        ) : payPending ? (
+          <>
+            <Text style={[styles.legal, styles.panelState]}>{t('paywall.pending')}</Text>
+            <Pressable
+              style={[styles.cta, restoring && { opacity: 0.6 }]}
+              onPress={handleRestore}
+              disabled={restoring}
+              accessibilityRole="button"
+            >
+              {restoring
+                ? <ActivityIndicator size="small" color={C.accent} />
+                : <Text style={styles.ctaTxt} numberOfLines={1}>{t('paywall.restore')}</Text>}
+            </Pressable>
+          </>
         ) : packages.length === 0 ? (
           <Text style={[styles.legal, styles.panelState]}>{t('paywall.comingSoon')}</Text>
         ) : (
@@ -436,11 +451,13 @@ function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSig
         )}
 
         <View style={styles.links}>
-          <Pressable onPress={handleRestore} disabled={restoring} hitSlop={8} accessibilityRole="button">
-            {restoring
-              ? <ActivityIndicator size="small" color={C.onAccent} />
-              : <Text style={styles.link}>{t('paywall.restore')}</Text>}
-          </Pressable>
+          {!payPending && (
+            <Pressable onPress={handleRestore} disabled={restoring} hitSlop={8} accessibilityRole="button">
+              {restoring
+                ? <ActivityIndicator size="small" color={C.onAccent} />
+                : <Text style={styles.link}>{t('paywall.restore')}</Text>}
+            </Pressable>
+          )}
           {!hasAccount && (
             <Pressable onPress={onSignIn} hitSlop={8} accessibilityRole="button">
               <Text style={styles.link}>{t('paywall.signIn')}</Text>

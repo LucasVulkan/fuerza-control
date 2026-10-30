@@ -7,7 +7,7 @@
 > Fase I04-02 · aparcado · Restaurar una copia trae contenido, nunca estado de conexión: sustituida por C10-06 · §4
 > Fase I04-03 · hecho · La cola solo reintenta lo que se envió y falló · §5
 > Fase I04-04 · terminado · Escribir en una ficha solo si sigue existiendo · §6
-> Fase I04-05 · pendiente · Pago pendiente: no se compra otra vez y no cruza cuentas · §7
+> Fase I04-05 · hecho · Pago pendiente: no se compra otra vez y no cruza cuentas · §7
 > Fase I04-06 · pendiente · Un solo traductor de errores para envíos y cuentas · §8
 > Fase I04-07 · pendiente · Cada regla de I02 con su test de escenario · §9
 > Fase I04-08 · pendiente · Estado de la ficha como un solo valor · §10
@@ -213,6 +213,23 @@ Según N-11 y N-09 del mapa:
 Tests: los de E75, A5, A6 en verde. Casilla de dispositivo: en la tienda de
 pruebas de Play, comprobar qué pasa con un segundo producto con otro pendiente.
 
+Decisión sin spec: el reintento silencioso de arranque (`restorePurchases({ silent })`)
+no borra el pendiente aunque no encuentre nada, porque la tienda aún puede
+confirmarlo; solo lo borra el «Restaurar» que pulsa el usuario. Si la compra
+se hizo sin cuenta, el pendiente (`userId: null`) pasa a la cuenta al entrar en
+ella (RevenueCat funde la compra anónima).
+
+**Probar I04-05**
+
+- [ ] Con un pago pendiente (tarjeta de pruebas «pago lento» de Play), abrir el paywall: en vez de los planes sale «Tu pago está pendiente de confirmar; no hace falta volver a pagar…» y el botón «Restaurar compra». No se puede volver a pagar.
+- [ ] Cerrar la app del todo con el pago pendiente y abrir el paywall: sigue en estado pendiente.
+- [ ] Cuando la tienda confirma el pago en la misma cuenta: aviso «PRO activado» una sola vez y el paywall vuelve a mostrar los planes.
+- [ ] Pago pendiente, Mi cuenta → Salir de la cuenta, y abrir el paywall: ya ofrece los planes (el pendiente se borró).
+- [ ] Pago pendiente, entrar en otra cuenta de entrenador: no sale «PRO activado» si el PRO llega luego, y el paywall ofrece los planes.
+- [ ] Con pendiente y sin que la tienda haya cobrado nada, «Restaurar compra»: dice que no hay compras y el paywall ofrece de nuevo los planes.
+- [ ] Comprar con una cuenta de la tienda que ya tiene el producto comprado para otra cuenta de la app: sale «La compra está en otra cuenta de Google Play/App Store…» con un único botón «Entendido».
+- [ ] En la tienda de pruebas de Play: con un pendiente de un producto, comprobar qué pasa con un segundo producto (anual y pago único); no debe dejar pagar el segundo.
+
 ## 8. I04-06 — Un solo traductor de errores
 
 `sendFailure` (`src/utils/networkError.js`) se amplía a todo error que llega a
@@ -277,7 +294,7 @@ Se detallan al decidir su regla en el [mapa](../nucleo.md) §7.
 | I04-02 | Restaurar sin estado de conexión (E73, E78, E79) | I04-01 | 🟡 | sustituida por [C10-06](C10-clientes-de-la-cuenta.md) (hecha 29-oct) |
 | I04-03 | Cola propia (E72, E80, E83, E84) | I04-01 | 🟡 | hecho 29-oct — un solo camino `_send`, `sendAll` y `retrySendQueue` separados, reintento con espera; tests en `store/sendQueue.sim.test.js`; casillas por probar |
 | I04-04 | `patchClient` (E74 + A1) | — | 🟢 | terminado 29-oct — todos los `set` sobre una ficha pasan por `patchClient`; tests en `store/patchClient.sim.test.js` (sin nada que probar a mano) |
-| I04-05 | Pago pendiente (E75, E81, E82) | I04-01 | 🟡 | pendiente |
+| I04-05 | Pago pendiente (E75, E81, E82) | I04-01 | 🟡 | hecho 30-oct — `_proPending` es `{ userId }`, se guarda en disco y se borra al salir, borrar la cuenta, cambiar de cuenta o restaurar sin nada; tests en `store/purchases.audit.test.js`; casillas por probar |
 | I04-06 | Traductor de errores (E76, E77) | — | 🟢 | pendiente |
 | I04-07 | Reglas de I02 con test | I04-02…06 | 🟡 | pendiente |
 | I04-08 | Estado de la ficha en un valor | I04-07, release | 🔴 | pendiente |
