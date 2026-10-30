@@ -10,6 +10,7 @@
 > Fase O04-05 · hecho · Correcciones tras la primera prueba · §6
 > Fase O04-06 · hecho · Segunda ronda: unidades, estilos, barra doble y tarjetas con pestañas · §7
 > Fase O04-07 · pendiente · Bienvenida nueva, con maqueta · §8
+> Fase O04-08 · pendiente · Plantillas: pestañas lima y «ver todas» en lista · §9
 >
 > Estado: **implementada** (30-oct-2026, en develop); O04-05 (correcciones tras probarla) hecha en la rama `feat/o04-05-correcciones`;
 > por probar en dispositivo. Partió de la idea M05 «Onboarding fix» de `ideas.md` (el código
@@ -374,3 +375,53 @@ La primera pantalla sigue pareciendo barata: no transmite una app seria ni se
 parece a la landing. Se rehace a partir de una maqueta con variantes
 (`docs/mockups/onboarding-bienvenida.html`); se implementa cuando el usuario
 elija.
+
+**Elegido (30-oct)**: ninguna de las tres de la maqueta, sino el patrón de las
+pantallas de bienvenida con ilustración y hoja (referencia que pasó el usuario):
+
+- **Arriba, todo lima** a sangre (también bajo la barra de estado), con el
+  **logo de la app** (el monograma FF de `assets/adaptive-icon.png`, que tiene
+  fondo transparente) grande y centrado en ese hueco. El cambio de idioma ES/EN
+  queda arriba a la derecha, sobre el lima.
+- **Abajo, una hoja** del color de fondo de la app (`bg`), con las esquinas de
+  arriba redondeadas, que sale de abajo: el titular «¡Bienvenido/a a Forma
+  Fit!», el subtítulo «Configura tu perfil en dos minutos», la nota de la
+  invitación si la hay, y en vertical «Empezar» (botón principal de la app) y
+  «Ya tengo cuenta». Sin el recorrido de cuatro tramos.
+- **Al pulsar** «Empezar» (o «Ya tengo cuenta») la hoja **sube hasta tapar el
+  lima** y entonces se pasa a la siguiente pantalla, que tiene el mismo fondo:
+  parece que la hoja se convierte en ella. Su contenido se desvanece mientras
+  sube. Con «reducir movimiento», se pasa sin animar.
+
+**Probar O04-07**
+
+- [ ] Primera pantalla: lima arriba con el logo FF, hoja oscura abajo con el
+  titular, el subtítulo y los dos botones en vertical.
+- [ ] Al entrar, la hoja sube desde abajo hasta su sitio.
+- [ ] «Empezar»: la hoja sube, tapa el lima y aparece «¿Kilos o libras?» sin
+  salto ni parpadeo. Igual con «Ya tengo cuenta».
+- [ ] Atrás desde «¿Kilos o libras?» vuelve a la bienvenida entera (lima y hoja
+  en su sitio).
+- [ ] ES/EN sobre el lima cambia el idioma.
+- [ ] Con invitación, la nota sale en la hoja.
+
+---
+
+## 9. O04-08 — Plantillas: pestañas lima y «ver todas» en lista
+
+Tras probar O04-06 (30-oct):
+
+1. **Pestañas**: siempre solo la letra, sin nombre, tenga las sesiones que
+   tenga. La elegida, con la letra en **lima**; debajo de las pestañas, el nombre
+   de la sesión, también en lima.
+2. **«Ver todas las plantillas»** cambia la vista: el carrusel se sustituye por
+   la **lista** de todas las plantillas (no se añaden debajo, que parecía que no
+   hacía nada). Desde la lista, un botón vuelve a las recomendadas (carrusel).
+   En la lista se marca una y «Empezar con esta» crea esa.
+
+**Probar O04-08**
+
+- [ ] Pestañas solo con letras; la elegida y el nombre de la sesión, en lima.
+- [ ] «Ver todas las plantillas» cambia a la lista; «Ver sólo las
+  recomendadas» vuelve al carrusel.
+- [ ] En la lista, marcar una y «Empezar con esta» crea esa plantilla.
