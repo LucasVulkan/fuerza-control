@@ -44,7 +44,8 @@ const answersOf = (s) => s.onboardingFlow?.answers ?? NONE;
 const SHEET_RADIUS = 40;     // el de FlowPanel y el paywall: no hay token tan grande
 const SHEET_IN_MS  = 450;    // la hoja sube a su sitio
 const SHEET_OUT_MS = 420;    // la hoja crece hasta tapar el lima
-const SHEET_SHARE  = 0.46;   // la hoja ocupa al menos esta parte de la pantalla
+const SHEET_SHARE  = 0.46;
+const HEAD_H       = 56;     // la franja de arriba con el logotipo y el idioma   // la hoja ocupa al menos esta parte de la pantalla
 
 function Welcome({ goTo }) {
   const { t } = useTranslation();
@@ -116,31 +117,33 @@ function Welcome({ goTo }) {
     <View style={styles.lime} onLayout={(e) => boxH.set(e.nativeEvent.layout.height)}>
       {/* Sobre el lima, la barra de estado va en oscuro. */}
       <StatusBar style="dark" />
-      {/* Arriba a la izquierda, el logotipo pequeño, a la altura del selector de idioma. */}
-      <View style={[styles.brand, { top: insets.top + spacing.md }]} accessible accessibilityLabel="Forma Fit">
-        <Text style={styles.forma}>Forma</Text>
-        <FitLogo height={15} color={styles.forma.color} />
-      </View>
       {/* La tarjeta de un ejercicio, en el lima que deja la hoja, bajo la cabecera. */}
-      <View style={[styles.art, { top: insets.top + spacing.md + 44, bottom: sheetH }]}>
+      <View style={[styles.art, { top: insets.top + HEAD_H, bottom: sheetH }]}>
         <WelcomeArt />
       </View>
-      <View
-        style={[styles.langsw, { top: insets.top + spacing.md }]}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('onboardingFlow.common.welcome.language')}
-      >
-        {['es', 'en'].map((lang) => (
-          <Pressable
-            key={lang}
-            onPress={() => chooseLanguage(lang)}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: language === lang }}
-            style={[styles.lang, language === lang && styles.langOn]}
-          >
-            <Text style={[styles.langTxt, language === lang && styles.langTxtOn]}>{lang.toUpperCase()}</Text>
-          </Pressable>
-        ))}
+      {/* Cabecera: el logotipo centrado y el idioma a la derecha, a la misma altura. */}
+      <View style={[styles.head, { top: insets.top }]}>
+        <View style={styles.brand} accessible accessibilityLabel="Forma Fit">
+          <Text style={styles.forma}>Forma</Text>
+          <FitLogo height={15} color={styles.forma.color} />
+        </View>
+        <View
+          style={styles.langsw}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('onboardingFlow.common.welcome.language')}
+        >
+          {['es', 'en'].map((lang) => (
+            <Pressable
+              key={lang}
+              onPress={() => chooseLanguage(lang)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: language === lang }}
+              style={[styles.lang, language === lang && styles.langOn]}
+            >
+              <Text style={[styles.langTxt, language === lang && styles.langTxtOn]}>{lang.toUpperCase()}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <Reanimated.View style={[styles.sheet, sheetAnim]}>
@@ -337,7 +340,9 @@ const makeStyles = (th) => StyleSheet.create({
   // Bienvenida: lima a sangre arriba con el logo, hoja del fondo de la app abajo.
   lime:    { flex: 1, backgroundColor: th.colors.accent },
   art:     { position: 'absolute', left: 0, right: 0 },
-  brand:   { position: 'absolute', left: spacing.lg + 1, flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs2 },
+  head:    { position: 'absolute', left: 0, right: 0, height: HEAD_H, alignItems: 'center', justifyContent: 'center' },
+  // Como en la cabecera de la app (`appNameContainer`): centrados, y `FitLogo` baja él solo a la línea base.
+  brand:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
   // El logotipo de la cabecera de la app (`appNameForma`), en negro sobre el lima.
   forma: {
     fontFamily:    'Inter_900Black_Italic',
