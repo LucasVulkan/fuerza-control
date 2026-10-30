@@ -4,6 +4,10 @@
  * centrada y los puntos de debajo dicen cuál es; quien confirma («Empezar con
  * esta») es el pie de la pantalla, que recibe el índice por `onIndex`.
  *
+ * Toda la tarjeta se pulsa para pasar de la portada a los ejercicios y de vuelta;
+ * el selector de sesión y la lista de ejercicios capturan su toque. Debajo del
+ * carrusel, `TemplateList` ofrece el resto de plantillas como filas.
+ *
  * Cada tarjeta tiene dos caras: la portada (zona de color con la etiqueta de
  * encaje, el número de sesiones como marca de agua, el nombre y la semana
  * sugerida; debajo el resumen, tres cifras y las series por semana por grupo) y
@@ -21,11 +25,14 @@ import { resolveColor } from '../../themes';
 import { spacing, textStyles, lh, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { Text } from '../ui/Text';
+import { FlowOption } from './flow';
 import { cardModel } from './templateCards';
 import { exerciseName } from './proposalData';
 
 const CARD_MAX_W = 300;
-const CARD_H     = 520;
+const CARD_MAX_H = 520;
+const CARD_MIN_H = 460;
+const CHROME_H   = 340;   // lo que ocupan cabecera, título, puntos y pie: el resto es de la tarjeta
 const GAP        = spacing.md;
 const HEAD_H     = 152;
 const GUTTER     = spacing.lg + 1;   // el de `FlowBody`: el carrusel sale de él a sangre
@@ -40,22 +47,23 @@ function Dot({ on }) {
   return <Reanimated.View style={[{ height: 6, borderRadius: 3, backgroundColor: on ? th.colors.accent : th.colors.surface3 }, anim]} />;
 }
 
-function Card({ card, index, width, allEx, language }) {
+function Card({ card, index, width, height, allEx, language }) {
   const { t } = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [ex, setEx]   = useState(false);
   const [ses, setSes] = useState(0);
 
-  const { entry, sessions, minutes, sets, groups, week } = card;
+  const { entry, sessions, minutes, weeks, groups, week } = card;
   const color  = resolveColor(th, COLORS[index % COLORS.length]);
   const ink    = th.colors.onAccent;
   const days   = t('onboardingFlow.self.cards.weekDays');
   const max    = Math.max(1, ...groups.map((g) => g[1]));
   const session = sessions[Math.min(ses, sessions.length - 1)];
+  const lettersOnly = sessions.length > 3;   // con más de tres no cabe la palabra «Sesión»
 
   return (
-    <View style={[styles.card, { width }]}>
+    <Pressable onPress={() => setEx((v) => !v)} accessibilityRole="button" style={[styles.card, { width, height }]}>
       <View style={[styles.head, { backgroundColor: color }]}>
         <View style={[styles.fit, { backgroundColor: ink }]}>
           <Text style={[styles.fitTxt, { color }]}>{t(`onboardingFlow.self.cards.${index === 0 ? 'fitBest' : 'fitAlso'}`)}</Text>
@@ -74,9 +82,9 @@ function Card({ card, index, width, allEx, language }) {
 
       {!ex ? (
         <Reanimated.View key="cover" entering={FadeIn.duration(250)} style={styles.face}>
-          <Text style={styles.summary}>{entry.archetype.summary}</Text>
+          <Text style={styles.summary} numberOfLines={3}>{entry.archetype.summary}</Text>
           <View style={styles.stats}>
-            {[[sessions.length, t('onboardingFlow.self.cards.sessions')], [`~${minutes}`, t('onboardingFlow.self.cards.min')], [sets, t('onboardingFlow.self.cards.setsSession')]].map(([n, label]) => (
+            {[[sessions.length, t('onboardingFlow.self.cards.sessions')], [`~${minutes}`, t('onboardingFlow.self.cards.min')], [weeks || '—', t('onboardingFlow.self.cards.weeks')]].map(([n, label]) => (
               <View key={label} style={styles.stat}>
                 <Text style={styles.statNum}>{n}</Text>
                 <Text style={styles.statLbl} numberOfLines={1}>{label}</Text>
@@ -93,9 +101,10 @@ function Card({ card, index, width, allEx, language }) {
               </View>
             ))}
           </View>
-          <Pressable onPress={() => setEx(true)} accessibilityRole="button" hitSlop={8} style={styles.link}>
+          {/* Solo una pista: el toque lo recoge toda la tarjeta. */}
+          <View style={styles.link}>
             <Text style={styles.linkTxt}>{t('onboardingFlow.self.cards.seeExercises')}</Text>
-          </Pressable>
+          </View>
         </Reanimated.View>
       ) : (
         <Reanimated.View key="ex" entering={FadeIn.duration(250)} style={styles.face}>
@@ -111,7 +120,7 @@ function Card({ card, index, width, allEx, language }) {
                 <View style={[styles.sesLetter, { backgroundColor: resolveColor(th, s.color ?? COLORS[0]) }]}>
                   <Text style={[styles.sesLetterTxt, { color: ink }]}>{s.label}</Text>
                 </View>
-                <Text style={[styles.sesTxt, j === ses && styles.sesTxtOn]}>{t('onboardingFlow.self.cards.session')}</Text>
+                {!lettersOnly && <Text style={[styles.sesTxt, j === ses && styles.sesTxtOn]}>{t('onboardingFlow.self.cards.session')}</Text>}
               </Pressable>
             ))}
           </View>
@@ -126,30 +135,63 @@ function Card({ card, index, width, allEx, language }) {
               </View>
             ))}
           </ScrollView>
-          <Pressable onPress={() => setEx(false)} accessibilityRole="button" hitSlop={8} style={styles.link}>
+          <View style={styles.link}>
             <Text style={styles.linkTxt}>{`‹ ${t('onboardingFlow.self.cards.backToCover')}`}</Text>
-          </Pressable>
+          </View>
         </Reanimated.View>
       )}
+    </Pressable>
+  );
+}
+
+/** Las tarjetas de `entries`, ya ajustadas a las respuestas. */
+function useCards(entries, answers, days, minutes) {
+  const exerciseLibrary = useStore((s) => s.exerciseLibrary);
+  const customExercises = useStore((s) => s.customExercises);
+  const allEx  = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
+  const submit = useMemo(() => normalizeOnboardingAnswers(answers), [answers]);
+  const cards  = useMemo(() => entries.map((entry) => ({
+    entry, ...cardModel(adaptArchetype(entry.archetype, submit), { allEx, days, minutes }),
+  })), [entries, submit, allEx, days, minutes]);
+  return { cards, allEx };
+}
+
+/**
+ * El resto de plantillas como filas con la selección de la app. `pickedId`: la marcada
+ * (o `null` si manda la del carrusel); `onPick(id)` la elige.
+ */
+export function TemplateList({ entries, answers, days, minutes, pickedId, onPick }) {
+  const { t } = useTranslation();
+  const { cards } = useCards(entries, answers, days, minutes);
+  return (
+    <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
+      {cards.map((c, i) => (
+        <FlowOption
+          key={c.entry.archetype.id}
+          index={i}
+          title={c.entry.archetype.name}
+          desc={[
+            t('onboardingFlow.self.props.sessionsCount', { count: c.sessions.length }),
+            `~${t('onboardingFlow.self.props.minutes', { count: c.minutes })}`,
+            c.weeks ? t('onboardingFlow.self.cards.weeksCount', { count: c.weeks }) : null,
+          ].filter(Boolean).join(' · ')}
+          selected={pickedId === c.entry.archetype.id}
+          onPress={() => onPick(c.entry.archetype.id)}
+        />
+      ))}
     </View>
   );
 }
 
 /** `entries`: las plantillas de `rankArchetypes` que se enseñan. `answers`: las del motor (con los ajustes). */
 export default function TemplateCarousel({ entries, answers, days, minutes, onIndex }) {
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const styles   = useThemedStyles(makeStyles);
-  const exerciseLibrary = useStore((s) => s.exerciseLibrary);
-  const customExercises = useStore((s) => s.customExercises);
   const language = useStore((s) => s.profile?.language ?? 'es');
   const [idx, setIdx] = useState(0);
+  const { cards, allEx } = useCards(entries, answers, days, minutes);
 
-  const allEx  = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
-  const submit = useMemo(() => normalizeOnboardingAnswers(answers), [answers]);
-  const cards  = useMemo(() => entries.map((entry) => ({
-    entry, ...cardModel(adaptArchetype(entry.archetype, submit), { allEx, days, minutes }),
-  })), [entries, submit, allEx, days, minutes]);
-
+  const cardH = Math.min(CARD_MAX_H, Math.max(CARD_MIN_H, screenH - CHROME_H));
   const cardW = Math.min(CARD_MAX_W, screenW - 2 * spacing.xxl);
   const step  = cardW + GAP;
 
@@ -170,7 +212,7 @@ export default function TemplateCarousel({ entries, answers, days, minutes, onIn
         style={styles.car}
         contentContainerStyle={{ paddingHorizontal: (screenW - cardW) / 2, gap: GAP }}
       >
-        {cards.map((c, i) => <Card key={c.entry.archetype.id} card={c} index={i} width={cardW} allEx={allEx} language={language} />)}
+        {cards.map((c, i) => <Card key={c.entry.archetype.id} card={c} index={i} width={cardW} height={cardH} allEx={allEx} language={language} />)}
       </ScrollView>
       <View style={styles.dots}>{cards.map((c, i) => <Dot key={c.entry.archetype.id} on={i === idx} />)}</View>
     </>
@@ -181,7 +223,7 @@ const makeStyles = (th) => StyleSheet.create({
   car:  { marginHorizontal: -GUTTER, marginTop: spacing.lg },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, marginTop: spacing.md },
 
-  card: { height: CARD_H, borderRadius: th.radius.lg, overflow: 'hidden', backgroundColor: th.colors.surface },
+  card: { borderRadius: th.radius.lg, overflow: 'hidden', backgroundColor: th.colors.surface },
   head: {
     height:            HEAD_H,
     paddingTop:        spacing.md,
@@ -232,7 +274,7 @@ const makeStyles = (th) => StyleSheet.create({
   linkTxt: { ...textStyles.button, color: th.colors.accent },
 
   sesSel:       { flexDirection: 'row', gap: spacing.sm },
-  sesBtn:       { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: th.radius.md, paddingVertical: spacing.sm2, backgroundColor: th.colors.surface2 },
+  sesBtn:       { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: th.radius.md, paddingVertical: spacing.sm2, backgroundColor: th.colors.surface2 },
   sesBtnOn:     { backgroundColor: th.colors.surface3 },
   sesLetter:    { width: 18, height: 18, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   sesLetterTxt: { ...textStyles.labelStrong },

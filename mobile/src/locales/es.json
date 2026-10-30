@@ -2803,8 +2803,8 @@
       "next": "Siguiente",
       "continue": "Continuar",
       "welcome": {
-        "hero": "Tu programa,\ntus series,\n*tu progreso*",
-        "tagline": "Lo dejamos a tu medida en dos minutos",
+        "hero": "¡Bienvenido/a a\n*Forma Fit*!",
+        "tagline": "Configura tu perfil en dos minutos",
         "invited": "*{{trainer}}* te ha invitado. Al final de los ajustes te conectamos.",
         "invitedAnon": "*Tu entrenador* te ha invitado. Al final de los ajustes te conectamos.",
         "panelTitle": "¿Empezamos?",
@@ -2908,11 +2908,10 @@
         "advancedDesc": "Más de 2 años"
       },
       "choice": {
-        "title": "¿Plantilla o el *tuyo*?",
+        "title": "Elige tu *programa*",
         "sub": "Los dos se editan después todo lo que quieras.",
         "programs": "Elegir plantilla",
         "programsDesc": "Un programa ya hecho, según tu nivel, tus días y tu objetivo",
-        "recommended": "Recomendado",
         "own": "Crear el mío",
         "ownDesc": "Desde cero: sesiones, ejercicios y progresión",
         "backup": "Tengo una copia de seguridad"
@@ -3008,14 +3007,14 @@
         "fitAlso": "También encaja",
         "sessions": "sesiones",
         "min": "min",
-        "setsSession": "series/sesión",
+        "weeks": "semanas",
+        "weeksCount_one": "{{count}} semana",
+        "weeksCount_other": "{{count}} semanas",
         "weekSets": "Series por semana",
         "seeExercises": "Ver ejercicios",
         "backToCover": "Volver a la portada",
         "session": "Sesión",
-        "start": "Empezar con esta",
-        "chipDays_one": "{{count}} día",
-        "chipDays_other": "{{count}} días"
+        "start": "Empezar con esta"
       },
       "props": {
         "searching": "Buscando tu *programa*",
@@ -3024,28 +3023,12 @@
         "days_one": "{{count}} día a la semana",
         "days_other": "{{count}} días a la semana",
         "title": "Elige tu *programa*",
-        "sub": "Elegidas por lo que has contestado. Desliza para ver más.",
         "seeAll": "Ver todas las plantillas",
-        "previewSub": "Puedes cambiar cualquier cosa después, en el editor.",
         "start": "Empezar con este",
-        "other": "Ver otros programas",
         "generating": "Construyendo tu programa...",
         "sessionsCount_one": "{{count}} sesión",
         "sessionsCount_other": "{{count}} sesiones",
-        "programSub": "{{sessions}} sesiones · ~{{minutes}} min por sesión · {{sets}} series",
-        "sessionsTitle": "Tus sesiones",
-        "adjustTitle": "Ajustes",
         "minutes": "{{count}} min"
-      },
-      "adjust": {
-        "timeTitle": "¿Cuánto *dura* tu sesión?",
-        "materialTitle": "¿Con qué *material* cuentas?",
-        "equipTitle": "¿Qué *material* tienes?",
-        "equipSub": "Marca todo lo que tengas.",
-        "limitsTitle": "¿Alguna *limitación*?",
-        "limitsSub": "Cambiamos los ejercicios que podrían molestarte.",
-        "accept": "Aceptar",
-        "preview": "Así queda tu programa"
       },
       "done": {
         "program": "\"{{name}}\" listo",

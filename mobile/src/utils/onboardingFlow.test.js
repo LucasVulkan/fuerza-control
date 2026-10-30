@@ -16,7 +16,6 @@ describe('sectionOf', () => {
 
   it('cada pantalla cae en su tramo', () => {
     expect(['units', 'theme', 'role', 't_client', 'a_cards'].map(sectionOf)).toEqual([0, 0, 1, 2, 3]);
-    expect(sectionOf('s_adjust')).toBe(2);
   });
 
   it('«plantilla o el mío» es del tramo «Tú»; las cuatro preguntas y las plantillas, de «Configura» (O04-03)', () => {
@@ -39,10 +38,6 @@ describe('rutas tras los ajustes', () => {
 });
 
 describe('skipTarget', () => {
-  it('las preguntas de ajuste no se saltan: se vuelve con atrás', () => {
-    expect(skipTarget('s_adjust', A({ role: 'self' }))).toBeNull();
-  });
-
   it('la bifurcación no se puede saltar, ni la cuenta del entrenador ni su código', () => {
     for (const id of ['welcome', 'recover', 'r_trainer', 'r_code', 'r_client', 'role', 't_account', 't_code', 'done']) {
       expect(skipTarget(id, A({ role: 'trainer' }))).toBeNull();

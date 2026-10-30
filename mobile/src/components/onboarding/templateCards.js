@@ -5,7 +5,7 @@
  */
 import { weeklySetsByGroup } from '../../utils/weeklyVolume';
 import { estimateSessionSec, includesWarmup } from '../../utils/sessionCompression';
-import { uniqueSessionTemplates, totalSetsOf } from './proposalData';
+import { uniqueSessionTemplates, totalSetsOf, totalWeeksOf } from './proposalData';
 
 const MAX_GROUPS = 5;
 
@@ -19,7 +19,8 @@ export const suggestedWeek = (n) => WEEK[Math.min(7, Math.max(1, n || 1))];
  * `minutes`: el tiempo de sesión elegido (decide si cuenta el calentamiento).
  * Devuelve las sesiones distintas, los minutos y las series de una sesión media,
  * las series por semana de los grupos que más trabaja (de mayor a menor) y los
- * días de la semana sugerida.
+ * días de la semana sugerida y las semanas que dura el programa (suma de
+ * `durationWeeks` de sus fases; 0 si la plantilla no declara fases).
  */
 export function cardModel(tuned, { allEx, days, minutes }) {
   const sessions = uniqueSessionTemplates(tuned.program, tuned.sessionTemplates);
@@ -41,5 +42,6 @@ export function cardModel(tuned, { allEx, days, minutes }) {
     sets:    Math.round(totalSetsOf(sessions.map((s) => s.exercises)) / n),
     groups,
     week:    suggestedWeek(perWeek),
+    weeks:   totalWeeksOf(tuned.phases),
   };
 }

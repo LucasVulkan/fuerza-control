@@ -4,35 +4,38 @@
  * pantalla; desactivada se ve gris (`surface2`/`muted`), no medio transparente.
  * Las secundarias van debajo, como texto.
  *
- *   primary    { label, onPress, disabled }
+ *   primary    { label, onPress, disabled, loading } — `loading`: ruedita en vez del texto y sin pulsar
  *   secondary  [{ label, onPress, accent }] — `accent`: en lima en vez de apagado
  *   children   para lo que no encaja (la fila Anterior/Siguiente de las tarjetas)
  */
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
 import { Text } from '../../ui/Text';
 import { spacing, textStyles } from '../../../theme';
-import { useThemedStyles } from '../../../useTheme';
+import { useTheme, useThemedStyles } from '../../../useTheme';
 
 // Los botones vibran como las opciones (que lo hacen al rellenarse): si no, «Siguiente» se siente muerto.
 const tap = (fn) => () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); fn?.(); };
 
 export default function FlowFooter({ primary, secondary = [], children }) {
   const styles = useThemedStyles(makeStyles);
+  const th     = useTheme();
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.foot, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
       {primary && (
         <Pressable
           onPress={tap(primary.onPress)}
-          disabled={primary.disabled}
+          disabled={primary.disabled || primary.loading}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !!primary.disabled }}
+          accessibilityState={{ disabled: !!primary.disabled, busy: !!primary.loading }}
           style={[styles.cta, primary.disabled && styles.ctaOff]}
         >
-          <Text style={[styles.ctaTxt, primary.disabled && styles.ctaTxtOff]}>{primary.label}</Text>
+          {primary.loading
+            ? <ActivityIndicator color={th.colors.onAccent} />
+            : <Text style={[styles.ctaTxt, primary.disabled && styles.ctaTxtOff]}>{primary.label}</Text>}
         </Pressable>
       )}
       {secondary.map((s) => (
