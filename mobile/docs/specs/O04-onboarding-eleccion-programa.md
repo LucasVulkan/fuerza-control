@@ -4,7 +4,7 @@
 > En corto: El tramo del alta en el que eliges cómo entrenas y qué programa sigues: pantallas de camino y de «plantilla o el mío» más llamativas, cuatro preguntas (nivel, días, objetivo, tiempo) antes de ver ninguna plantilla con lo que implica cada respuesta, y unas tarjetas de plantilla que den ganas de empezar.
 > Inicio: 2026-10-30
 > Fase O04-01 · terminado · Maqueta y elección de variantes · §2
-> Fase O04-02 · pendiente · Camino y «plantilla o el mío» con el diseño nuevo · §3
+> Fase O04-02 · hecho · Camino y «plantilla o el mío» con el diseño nuevo · §3
 > Fase O04-03 · pendiente · Las cuatro preguntas antes de las plantillas · §4
 > Fase O04-04 · pendiente · Tarjetas de plantillas · §5
 >
@@ -105,6 +105,29 @@ En `screens/common.jsx` (la bifurcación «¿Cómo entrenas?») y
   marcada (tres puntos, los de la maqueta). Elegir ya no navega al tocar: se
   marca, el panel cambia y «Continuar» lleva al siguiente paso.
 - «Tengo una copia de seguridad» se queda como acción secundaria.
+
+Implementado (30-oct): `FlowRow` (camino), `FlowChoice` (plantilla o el mío) y
+`fx` como función del ancho en `FlowFill` para los rellenos que salen del lado
+derecho. Sin el panel «Si eliges …» (§2). Como el nivel ya no se pregunta antes
+de «Crear el mío», el constructor no recibe `level` por este camino (solo afecta
+a la profundidad `isDeep` de `advanced`).
+
+**Probar O04-02**
+
+- [ ] Alta → «¿Cómo entrenas?»: tres filas con franja de color a la izquierda
+  (lima, azul, naranja) y el icono grande cortado por el borde derecho. Nada
+  viene marcado y «Continuar» está apagado.
+- [ ] Tocar una fila: se rellena de lima en círculo desde el icono, la franja
+  desaparece y el icono pasa a negro. Tocar otra la cambia; «Continuar» lleva a
+  su camino.
+- [ ] «Por mi cuenta» → «¿Plantilla o el tuyo?»: dos tarjetas apiladas, con
+  «Recomendado» en la plantilla y a la derecha el hueco oscuro con el dibujo
+  (tres filas de sesión / hoja vacía con «+»). Nada marcado.
+- [ ] Elegir una: se rellena de lima desde el hueco, que sigue oscuro.
+  «Continuar» → plantilla lleva al nivel; «Crear el mío» abre el constructor.
+- [ ] «Tengo una copia de seguridad» sigue abajo y abre el selector de archivo.
+- [ ] Se ve bien con el tema claro y con textos grandes del sistema (sin
+  cortes en los títulos).
 
 ## 4. O04-03 — Las cuatro preguntas antes de las plantillas
 

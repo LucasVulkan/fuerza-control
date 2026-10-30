@@ -2800,6 +2800,7 @@
       "back": "Back",
       "skip": "Skip",
       "next": "Next",
+      "continue": "Continue",
       "welcome": {
         "hero": "Your program,\nyour sets,\n*your progress*",
         "tagline": "Two minutes to make it yours",
@@ -2906,15 +2907,13 @@
         "advancedDesc": "Over 2 years"
       },
       "choice": {
-        "titleBeginner": "We suggest a ready-made *program*",
-        "titleOther": "Template or your *own*?",
-        "subBeginner": "Built to start with good form and progress every week.",
-        "subOther": "Both can be edited as much as you like.",
-        "programs": "See programs for me",
-        "programsDesc": "Based on your goal and training days",
+        "title": "Template or your *own*?",
+        "sub": "Both can be edited as much as you like afterwards.",
+        "programs": "Pick a template",
+        "programsDesc": "A ready-made program, based on your level, days and goal",
         "recommended": "Recommended",
         "own": "Create my own",
-        "ownDesc": "Set sessions, exercises and progression",
+        "ownDesc": "From scratch: sessions, exercises and progression",
         "backup": "I have a backup"
       },
       "goal": {

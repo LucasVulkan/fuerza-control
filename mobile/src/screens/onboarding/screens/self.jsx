@@ -24,7 +24,7 @@ import { Rise } from '../../../components/ui/Rise';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import { showDialog } from '../../../components/ui/dialog';
 import {
-  FlowBody, FlowTitle, FlowOption, FlowTile, FlowFooter,
+  FlowBody, FlowTitle, FlowOption, FlowTile, FlowChoice, FlowFooter,
 } from '../../../components/onboarding/flow';
 import useFitdataImport from '../../../components/onboarding/useFitdataImport';
 import {
@@ -58,7 +58,6 @@ function Level({ goTo }) {
   const level      = useStore((s) => answersOf(s).level);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const setProfile = useStore((s) => s.setProfile);
-  const entry      = useStore((s) => s.onboardingFlow?.entry);
   const backup     = useBackup(goTo);
 
   function pick(id) {
@@ -79,8 +78,7 @@ function Level({ goTo }) {
             desc={t(`onboardingFlow.self.level.${id}Desc`)}
             selected={level === id}
             onPress={() => pick(id)}
-            // Desde la app no hay «¿plantilla o el mío?»: ya eligió «Programa recomendado» (§25.4.4).
-            onPick={() => goTo(entry === 'newProgram' ? 's_goal' : 's_choice')}
+            onPick={() => goTo('s_goal')}
           />
         ))}
       </View>
@@ -94,34 +92,32 @@ function Level({ goTo }) {
 function Choice({ goTo }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
-  const beginner   = useStore((s) => levelOf(s) === 'beginner');
+  const path       = useStore((s) => answersOf(s).path);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const backup     = useBackup(goTo);
 
-  const toTemplates = () => { flowAnswer({ path: 'template' }); goTo('s_goal'); };
-  const toBuilder   = () => { flowAnswer({ path: 'own' }); startBuilder(goTo, 'self'); };
+  const next = () => (path === 'own' ? startBuilder(goTo, 'self') : goTo('s_level'));
 
   return (
-    <FlowBody footer={<FlowFooter secondary={backup.secondary} />}>
-      <FlowTitle
-        text={t(`onboardingFlow.self.choice.${beginner ? 'titleBeginner' : 'titleOther'}`)}
-        sub={t(`onboardingFlow.self.choice.${beginner ? 'subBeginner' : 'subOther'}`)}
-      />
+    <FlowBody footer={<FlowFooter primary={{ label: t('onboardingFlow.common.continue'), disabled: !path, onPress: next }} secondary={backup.secondary} />}>
+      <FlowTitle text={t('onboardingFlow.self.choice.title')} sub={t('onboardingFlow.self.choice.sub')} />
       <View style={styles.opts}>
-        <FlowOption
-          chevron
+        <FlowChoice
           index={2}
+          art="template"
           title={t('onboardingFlow.self.choice.programs')}
           desc={t('onboardingFlow.self.choice.programsDesc')}
-          tag={beginner ? t('onboardingFlow.self.choice.recommended') : undefined}
-          onPick={toTemplates}
+          tag={t('onboardingFlow.self.choice.recommended')}
+          selected={path === 'template'}
+          onPress={() => flowAnswer({ path: 'template' })}
         />
-        <FlowOption
-          chevron
+        <FlowChoice
           index={3}
+          art="own"
           title={t('onboardingFlow.self.choice.own')}
           desc={t('onboardingFlow.self.choice.ownDesc')}
-          onPick={toBuilder}
+          selected={path === 'own'}
+          onPress={() => flowAnswer({ path: 'own' })}
         />
       </View>
       {backup.modal}

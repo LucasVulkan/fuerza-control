@@ -120,7 +120,7 @@ export const coachedExit = (a, entry = 'first') => (entry === 'newProgram' ? nul
 export const learnStart = (a) => (a.role === 'trainer' && a.alsoTrains !== true ? 'a_cards' : 'a_home');
 
 /** Primera pantalla de cada camino, la que abre la bifurcación. */
-export const ROLE_START = { self: 's_level', coached: 'c_code', trainer: 't_clients' };
+export const ROLE_START = { self: 's_choice', coached: 'c_code', trainer: 't_clients' };
 
 /**
  * Adónde lleva «Saltar», o `null` si no se puede (bifurcación, cuenta del

@@ -2800,6 +2800,7 @@
       "back": "Atrás",
       "skip": "Saltar",
       "next": "Siguiente",
+      "continue": "Continuar",
       "welcome": {
         "hero": "Tu programa,\ntus series,\n*tu progreso*",
         "tagline": "Lo dejamos a tu medida en dos minutos",
@@ -2906,15 +2907,13 @@
         "advancedDesc": "Más de 2 años"
       },
       "choice": {
-        "titleBeginner": "Te proponemos un programa *hecho*",
-        "titleOther": "¿Plantilla o el *tuyo*?",
-        "subBeginner": "Diseñado para empezar con buena técnica y progresar cada semana.",
-        "subOther": "Las dos se editan después todo lo que quieras.",
-        "programs": "Ver programas para mí",
-        "programsDesc": "Según tu objetivo y tus días de entreno",
+        "title": "¿Plantilla o el *tuyo*?",
+        "sub": "Los dos se editan después todo lo que quieras.",
+        "programs": "Elegir plantilla",
+        "programsDesc": "Un programa ya hecho, según tu nivel, tus días y tu objetivo",
         "recommended": "Recomendado",
         "own": "Crear el mío",
-        "ownDesc": "Define sesiones, ejercicios y progresión",
+        "ownDesc": "Desde cero: sesiones, ejercicios y progresión",
         "backup": "Tengo una copia de seguridad"
       },
       "goal": {
