@@ -28,7 +28,7 @@ import { estimateSessionSec, includesWarmup } from '../../../utils/sessionCompre
 import { spacing, textStyles } from '../../../theme';
 import { useThemedStyles } from '../../../useTheme';
 
-const TIMES = [30, 45, 60, 90];
+export const TIMES = [30, 45, 60, 90];
 const MATERIALS = ['gym', 'home', 'bodyweight'];
 
 /** Lo que dice cada elección sobre el programa (los mismos textos de la hoja de O01). */
@@ -79,7 +79,7 @@ export const answersOf = (s) => s.onboardingFlow?.answers ?? NONE;
 
 /**
  * El nivel: el contestado en este recorrido o, si «Nuevo programa» arranca en
- * `s_goal` (O03-11), el que ya estaba guardado en el perfil.
+ * `s_days` (O03-11), el que ya estaba guardado en el perfil.
  */
 export const levelOf = (s) => answersOf(s).level ?? s.profile.onboardingAnswers?.level ?? null;
 
@@ -95,6 +95,7 @@ export function useProgramModel(ready = true, draft = NONE) {
   const level      = useStore(levelOf);
   const goal       = useStore((s) => answersOf(s).goal);
   const days       = useStore((s) => answersOf(s).days);
+  const minutes    = useStore((s) => answersOf(s).sessionMinutes ?? null);
   const chosenId   = useStore((s) => answersOf(s).chosenId ?? null);
   const tweaks     = useStore((s) => answersOf(s).tweaks ?? NONE);
   const flowAnswer = useStore((s) => s.flowAnswer);
@@ -102,8 +103,9 @@ export function useProgramModel(ready = true, draft = NONE) {
   const identity = IDENTITY_OPTIONS.find((o) => o.id === goal);
   // Lo que el motor recibe: las respuestas del recorrido más los ajustes.
   const answers = useMemo(() => ({
-    ...DEFAULT_ANSWERS, ...tweaks, ...draft, level, discipline: identity?.discipline ?? null, goal: identity?.goal ?? null, daysPerWeek: days,
-  }), [tweaks, draft, level, identity, days]);
+    ...DEFAULT_ANSWERS, ...(minutes ? { sessionMinutes: minutes } : null), ...tweaks, ...draft,
+    level, discipline: identity?.discipline ?? null, goal: identity?.goal ?? null, daysPerWeek: days,
+  }), [minutes, tweaks, draft, level, identity, days]);
 
   // SIN material a propósito (O01 §9): aún no se ha preguntado, y `equipment`
   // ausente le dice a `rankArchetypes` que no lo puntúe.

@@ -22,7 +22,7 @@ import { Rise } from '../../../components/ui/Rise';
 import FitLogo from '../../../components/ui/FitLogo';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import {
-  FlowBody, FlowTitle, FlowOption, FlowTile, FlowFooter, FlowPanel, PanelButton, FlowNote,
+  FlowBody, FlowTitle, FlowTile, FlowRow, FlowFooter, FlowPanel, PanelButton, FlowNote,
 } from '../../../components/onboarding/flow';
 import { SECTIONS, ROLE_START, afterSettings, deviceLanguage } from '../../../utils/onboardingFlow';
 
@@ -223,28 +223,31 @@ function Theme({ goTo }) {
 
 // ── Bifurcación (§6) ──────────────────────────────────────────────────────────
 
-const ROLES = ['self', 'coached', 'trainer'];
+// Cada camino lleva su color y su icono (O04-02).
+const ROLES = [['self', 'accent', 'self'], ['coached', 'blue', 'coached'], ['trainer', 'orange', 'trainer']];
 
 function Role({ goTo }) {
   const { t } = useTranslation();
-  const styles = useThemedStyles(makeStyles);
+  const C          = useTheme().colors;
+  const styles     = useThemedStyles(makeStyles);
   const role       = useStore((s) => answersOf(s).role);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const setProfile = useStore((s) => s.setProfile);
   return (
-    <FlowBody>
+    <FlowBody footer={<FlowFooter primary={{ label: t('onboardingFlow.common.continue'), disabled: !role, onPress: () => goTo(ROLE_START[role]) }} />}>
       <FlowTitle text={t('onboardingFlow.common.role.title')} sub={t('onboardingFlow.common.role.sub')} />
       <View style={styles.opts}>
-        {ROLES.map((r, i) => (
-          <FlowOption
+        {ROLES.map(([r, color, icon], i) => (
+          <FlowRow
             key={r}
             index={2 + i}
             title={t(`onboardingFlow.common.role.${r}`)}
             desc={t(`onboardingFlow.common.role.${r}Desc`)}
+            color={C[color]}
+            icon={icon}
             selected={role === r}
             // El rol decide las pestañas: solo el entrenador ve las de entrenador.
             onPress={() => { flowAnswer({ role: r }); setProfile({ role: r, proTabsHidden: r !== 'trainer' }); }}
-            onPick={() => goTo(ROLE_START[r])}
           />
         ))}
       </View>

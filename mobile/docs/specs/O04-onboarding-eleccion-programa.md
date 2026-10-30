@@ -3,13 +3,14 @@
 > Tema: onboarding
 > En corto: El tramo del alta en el que eliges cómo entrenas y qué programa sigues: pantallas de camino y de «plantilla o el mío» más llamativas, cuatro preguntas (nivel, días, objetivo, tiempo) antes de ver ninguna plantilla con lo que implica cada respuesta, y unas tarjetas de plantilla que den ganas de empezar.
 > Inicio: 2026-10-30
+> Fin: 2026-10-30
 > Fase O04-01 · terminado · Maqueta y elección de variantes · §2
-> Fase O04-02 · pendiente · Camino y «plantilla o el mío» con el diseño nuevo · §3
-> Fase O04-03 · pendiente · Las cuatro preguntas antes de las plantillas · §4
-> Fase O04-04 · pendiente · Tarjetas de plantillas · §5
+> Fase O04-02 · hecho · Camino y «plantilla o el mío» con el diseño nuevo · §3
+> Fase O04-03 · hecho · Las cuatro preguntas antes de las plantillas · §4
+> Fase O04-04 · hecho · Tarjetas de plantillas · §5
 >
-> Estado: **spec escrita, maqueta v1 publicada, falta elegir variantes**
-> (30-oct-2026). Sale de la idea M05 «Onboarding fix» de `ideas.md` (el código
+> Estado: **implementada** (30-oct-2026, rama `feat/o04-elegir-programa`),
+> por probar en dispositivo. Partió de la idea M05 «Onboarding fix» de `ideas.md` (el código
 > M05 era del tema de monetización; como spec es de onboarding y pasa a O04).
 > Maqueta: [`onboarding-m05.html`](../mockups/onboarding-m05.html), publicada en
 > https://claude.ai/artifact/NxsLtzbb2x9NYAPAeM9toU. Parte de lo que hizo
@@ -106,6 +107,29 @@ En `screens/common.jsx` (la bifurcación «¿Cómo entrenas?») y
   marca, el panel cambia y «Continuar» lleva al siguiente paso.
 - «Tengo una copia de seguridad» se queda como acción secundaria.
 
+Implementado (30-oct): `FlowRow` (camino), `FlowChoice` (plantilla o el mío) y
+`fx` como función del ancho en `FlowFill` para los rellenos que salen del lado
+derecho. Sin el panel «Si eliges …» (§2). Como el nivel ya no se pregunta antes
+de «Crear el mío», el constructor no recibe `level` por este camino (solo afecta
+a la profundidad `isDeep` de `advanced`).
+
+**Probar O04-02**
+
+- [ ] Alta → «¿Cómo entrenas?»: tres filas con franja de color a la izquierda
+  (lima, azul, naranja) y el icono grande cortado por el borde derecho. Nada
+  viene marcado y «Continuar» está apagado.
+- [ ] Tocar una fila: se rellena de lima en círculo desde el icono, la franja
+  desaparece y el icono pasa a negro. Tocar otra la cambia; «Continuar» lleva a
+  su camino.
+- [ ] «Por mi cuenta» → «¿Plantilla o el tuyo?»: dos tarjetas apiladas, con
+  «Recomendado» en la plantilla y a la derecha el hueco oscuro con el dibujo
+  (tres filas de sesión / hoja vacía con «+»). Nada marcado.
+- [ ] Elegir una: se rellena de lima desde el hueco, que sigue oscuro.
+  «Continuar» → plantilla lleva al nivel; «Crear el mío» abre el constructor.
+- [ ] «Tengo una copia de seguridad» sigue abajo y abre el selector de archivo.
+- [ ] Se ve bien con el tema claro y con textos grandes del sistema (sin
+  cortes en los títulos).
+
 ## 4. O04-03 — Las cuatro preguntas antes de las plantillas
 
 Orden nuevo del camino de plantilla: **nivel → días → objetivo → tiempo →
@@ -130,6 +154,54 @@ salta `s_choice`).
   punto depende de la plantilla, se dice en general o se quita.
 - Tono: amigable, no coloquial; nada de «montar» ni «a tu aire».
 
+Implementado (30-oct): `FlowSteps` y `FlowImplies` (`flow/FlowAsk.jsx`), pantalla
+nueva `s_time` y `answers.sessionMinutes`, que `useProgramModel` pone antes de
+los ajustes (el tiempo sigue editable en `s_adjust`). Desde la app, el nivel ya
+guardado salta a los días (`n_source`). El panel no se pinta hasta marcar una
+respuesta (nada viene premarcado). Los puntos están en
+`onboardingFlow.self.ask.<pregunta>.<respuesta>` (`pts` y `warn`).
+
+Cifras de la maqueta que **no cuadraban** con las plantillas y se corrigieron
+(medidas con `adaptArchetype` y `rankArchetypes`):
+
+- **Días**: no hay plantilla de una sesión (con 1 día salen las de 2 o 3, que
+  se turnan) ni de «tren superior e inferior más una extra» (con 5 días manda
+  la de 6 sesiones) ni «sin días libres» con 7 (la mayor es de 6). Los puntos
+  hablan en general y dicen «o cuerpo completo» donde la plantilla cambia según
+  el objetivo.
+- **Tiempo**: a 90 min no salen 7 u 8 ejercicios en la de cuerpo completo (se
+  queda en 6; las avanzadas llegan a 8) y a 30 min no se cuenta el
+  calentamiento (`includesWarmup`). Quedan rangos: 3-5, 4-6, 5-7 y 6-8.
+- **Objetivo**: el glúteo está en 2 de las 3 sesiones, no en todas; se quita
+  «tren superior con menos volumen» (no está medido). Hipertrofia: 6-15
+  repeticiones y descansos de 1 a 3 min (el avanzado llega a 3).
+- **Nivel**: «el peso sube cada semana» pasa a «poco a poco» (la progresión es
+  doble en todos los niveles); en el avanzado se quita «fases de mayor
+  intensidad» (todas las plantillas llevan fases) y se dice que lleva más
+  ejercicios y series.
+- El sub de tiempo «Contando el calentamiento» se quita (solo es cierto desde 45).
+
+**Probar O04-03**
+
+- [ ] «Plantilla» → Continuar: Nivel con «1 de 4» arriba y tres opciones. Al
+  marcar una sale «Qué implica» con sus puntos y cambia con un fundido corto
+  al marcar otra. «Continuar» está apagado hasta marcar.
+- [ ] «Empiezo» lleva el aviso naranja de las imágenes; el radio pasa a negro
+  con el check lima al marcar y no se estira.
+- [ ] Días: baldosas 1-7 sin tarjetas de sesión debajo; «Qué implica» cambia con
+  cada día y 1, 5, 6 y 7 llevan aviso.
+- [ ] Objetivo: las cuatro baldosas con la palabra grande, «Qué implica» debajo.
+  «Ponerte fuerte» dice 5 repeticiones en los principales.
+- [ ] Tiempo: 30 · 45 · 60 · 90 min; el botón dice «Ver plantillas»; 30 avisa
+  de que no cuenta el calentamiento.
+- [ ] Las plantillas salen ya recortadas al tiempo elegido (con 30 min, 3-5
+  ejercicios por sesión) y «Tu programa» → Ajustes enseña ese tiempo marcado y
+  deja cambiarlo.
+- [ ] Atrás en cada pregunta vuelve a la anterior con su respuesta marcada.
+- [ ] Ajustes → Nuevo programa → «Programa recomendado»: con nivel guardado
+  empieza en Días; sin él, en Nivel. La barra de arriba no sale.
+- [ ] Textos en inglés (idioma del móvil en inglés) sin cortes.
+
 ## 5. O04-04 — Tarjetas de plantillas
 
 En la pantalla de propuestas (`s_props`), con la variante elegida:
@@ -145,3 +217,37 @@ En la pantalla de propuestas (`s_props`), con la variante elegida:
 - «Empezar con esta» confirma como hoy (`generateAndActivateProgram`); «Ver
   todas las plantillas» abre la lista completa.
 - Radios y espaciados del tema, no números sueltos de la maqueta.
+
+Implementado (30-oct): `TemplateCarousel` (carrusel con snap, tarjeta de 300 como
+máximo, la centrada es la elegida, puntos debajo), `templateCards.js` (lo que
+enseña cada tarjeta, con test) y la portada/ejercicios con selector de sesión.
+La semana sugerida reparte las sesiones por los días elegidos (1 → L, 3 → L X V,
+…). El color de la zona sale de la posición (lima, naranja, violeta, azul), no de
+la plantilla, que no lleva color propio. «Empezar con esta» **no genera aún**: elige
+la plantilla y abre «Tu programa» (la pantalla de ajustes de material y
+limitaciones, que sigue siendo el único sitio donde se cambian), cuyo «Empezar
+con este» llama a `generateAndActivateProgram` como hoy. «Ver todas las
+plantillas» pasa a mostrarlas todas en el mismo carrusel.
+
+**Probar O04-04**
+
+- [ ] Tiempo → Ver plantillas: tras el «Buscando tu programa» (ahora con cuatro
+  casillas) salen los chips (nivel, días, objetivo, minutos) y el carrusel con
+  tres tarjetas; los puntos de debajo marcan la centrada.
+- [ ] Deslizar: la tarjeta se queda centrada (snap) y el punto cambia. En un
+  móvil estrecho la tarjeta no se sale de la pantalla.
+- [ ] Portada: zona de color con la etiqueta de encaje (la primera «La que mejor
+  encaja»), el número de sesiones grande y apagado, el nombre y la semana
+  sugerida L-D discreta; debajo resumen, sesiones · ~min · series/sesión y
+  «Series por semana» en barras.
+- [ ] Con 30 min las series por sesión y los minutos bajan respecto a 90 min
+  (el programa ya viene ajustado al tiempo).
+- [ ] «Ver ejercicios»: selector A · B · C con el nombre de la sesión y su lista
+  (nombre y series × repeticiones); cambiar de sesión cambia la lista; una
+  sesión larga se desplaza dentro de la tarjeta sin mover el carrusel.
+  «‹ Volver a la portada» la deja como estaba.
+- [ ] «Empezar con esta» abre «Tu programa» de la tarjeta centrada, con el tiempo
+  elegido en Ajustes; «Ver otros programas» vuelve al carrusel en la primera.
+- [ ] «Ver todas las plantillas» enseña todas en el carrusel y el botón pasa a
+  «Ver sólo las recomendadas».
+- [ ] Con textos grandes del sistema y en inglés nada se corta en las tarjetas.

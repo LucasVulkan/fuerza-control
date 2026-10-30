@@ -2801,6 +2801,7 @@
       "back": "Atrás",
       "skip": "Saltar",
       "next": "Siguiente",
+      "continue": "Continuar",
       "welcome": {
         "hero": "Tu programa,\ntus series,\n*tu progreso*",
         "tagline": "Lo dejamos a tu medida en dos minutos",
@@ -2907,15 +2908,13 @@
         "advancedDesc": "Más de 2 años"
       },
       "choice": {
-        "titleBeginner": "Te proponemos un programa *hecho*",
-        "titleOther": "¿Plantilla o el *tuyo*?",
-        "subBeginner": "Diseñado para empezar con buena técnica y progresar cada semana.",
-        "subOther": "Las dos se editan después todo lo que quieras.",
-        "programs": "Ver programas para mí",
-        "programsDesc": "Según tu objetivo y tus días de entreno",
+        "title": "¿Plantilla o el *tuyo*?",
+        "sub": "Los dos se editan después todo lo que quieras.",
+        "programs": "Elegir plantilla",
+        "programsDesc": "Un programa ya hecho, según tu nivel, tus días y tu objetivo",
         "recommended": "Recomendado",
         "own": "Crear el mío",
-        "ownDesc": "Define sesiones, ejercicios y progresión",
+        "ownDesc": "Desde cero: sesiones, ejercicios y progresión",
         "backup": "Tengo una copia de seguridad"
       },
       "goal": {
@@ -2925,6 +2924,99 @@
         "title": "¿Cuántos días a la *semana*?",
         "sub": "Los que de verdad puedes, no los que te gustaría."
       },
+      "time": {
+        "title": "¿Cuánto *dura* tu sesión?",
+        "unit": "min",
+        "cta": "Ver plantillas"
+      },
+      "ask": {
+        "step": "{{n}} de 4",
+        "implies": "Qué implica",
+        "level": {
+          "beginner": {
+            "pts": ["Ejercicios sencillos, sobre todo en máquina y con mancuernas", "Menos series en cada sesión", "El peso sube poco a poco"],
+            "warn": ["Estamos añadiendo imágenes a los ejercicios; mientras, cada uno lleva su explicación"]
+          },
+          "intermediate": {
+            "pts": ["Ejercicios con mancuernas, poleas y máquinas", "Más series que en el nivel inicial", "Primero subes repeticiones y después peso"]
+          },
+          "advanced": {
+            "pts": ["Ejercicios con barra como base", "Más ejercicios y series en cada sesión", "Se da por hecho que dominas la técnica"]
+          }
+        },
+        "days": {
+          "1": {
+            "pts": ["Una sesión por semana: las del programa se van turnando"],
+            "warn": ["Con un día se mantiene, pero se progresa poco"]
+          },
+          "2": {
+            "pts": ["Dos entrenos por semana", "Cuerpo completo en cada sesión"]
+          },
+          "3": {
+            "pts": ["Cuerpo completo, o empuje, tracción y pierna", "Al menos un día de descanso entre sesiones"]
+          },
+          "4": {
+            "pts": ["Tren superior e inferior alternados, o cuerpo completo", "Cada músculo se trabaja unas dos veces por semana"]
+          },
+          "5": {
+            "pts": ["Empuje, tracción y pierna, o tren superior e inferior"],
+            "warn": ["Requiere buena recuperación"]
+          },
+          "6": {
+            "pts": ["Empuje, tracción y pierna dos veces por semana, o sesiones de cuerpo completo"],
+            "warn": ["Requiere buena recuperación"]
+          },
+          "7": {
+            "pts": ["Programas de hasta seis sesiones por semana"],
+            "warn": ["Se recomienda descansar al menos un día"]
+          }
+        },
+        "goal": {
+          "muscle": {
+            "pts": ["Series de 6 a 15 repeticiones, según el ejercicio", "Descansos de 1 a 3 minutos", "Varios ejercicios por grupo muscular"]
+          },
+          "strength": {
+            "pts": ["Foco en ejercicios compuestos", "Series de 5 repeticiones en los ejercicios principales", "Descansos más largos entre series"]
+          },
+          "glutes_legs": {
+            "pts": ["Glúteo e isquios en la mayoría de las sesiones", "Pierna anterior y tren superior como apoyo"]
+          },
+          "calisthenics": {
+            "pts": ["Ejercicios con peso corporal como base", "Se progresa con repeticiones y variantes más difíciles"]
+          }
+        },
+        "time": {
+          "30": {
+            "pts": ["Entre 3 y 5 ejercicios por sesión", "Solo quedan los más importantes"],
+            "warn": ["No cuenta el calentamiento general"]
+          },
+          "45": {
+            "pts": ["Entre 4 y 6 ejercicios por sesión", "Los principales y algún complementario"]
+          },
+          "60": {
+            "pts": ["Entre 5 y 7 ejercicios por sesión", "El programa casi completo, con el calentamiento incluido"]
+          },
+          "90": {
+            "pts": ["Entre 6 y 8 ejercicios por sesión", "El programa completo de la plantilla"]
+          }
+        }
+      },
+      "cards": {
+        "weekDays": "LMXJVSD",
+        "week": "Semana sugerida",
+        "fitBest": "La que mejor encaja",
+        "fitAlso": "También encaja",
+        "sessions": "sesiones",
+        "min": "min",
+        "setsSession": "series/sesión",
+        "weekSets": "Series por semana",
+        "seeExercises": "Ver ejercicios",
+        "backToCover": "Volver a la portada",
+        "session": "Sesión",
+        "start": "Empezar con esta",
+        "chipDays_one": "{{count}} día",
+        "chipDays_other": "{{count}} días"
+      },
       "props": {
         "searching": "Buscando tu *programa*",
         "searchingSub": "Con lo que nos has contado:",
@@ -2932,7 +3024,8 @@
         "days_one": "{{count}} día a la semana",
         "days_other": "{{count}} días a la semana",
         "title": "Elige tu *programa*",
-        "sub": "Elegidos por lo que has contestado. Toca uno para verlo entero.",
+        "sub": "Elegidas por lo que has contestado. Desliza para ver más.",
+        "seeAll": "Ver todas las plantillas",
         "previewSub": "Puedes cambiar cualquier cosa después, en el editor.",
         "start": "Empezar con este",
         "other": "Ver otros programas",

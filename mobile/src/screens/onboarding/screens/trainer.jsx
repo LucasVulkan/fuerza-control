@@ -629,7 +629,7 @@ function Self({ goTo }) {
     const cur = useStore.getState().onboardingFlow.answers;
     flowAnswer({ clientProgramId: cur.programId ?? null, clientBuilderCtx: cur.builderCtx ?? null, programId: null, builderCtx: null });
     rekeyDone(CLIENT_KEYS);
-    goTo('s_level');
+    goTo('s_choice');
   }
 
   return (

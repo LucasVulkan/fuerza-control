@@ -1,17 +1,18 @@
 /**
  * Las pantallas del camino «por mi cuenta» del recorrido de entrada (O03-04,
- * spec §8, §20): nivel, «¿plantilla o el mío?», qué buscas, días y las
- * propuestas (con su «preparando» y «tu programa»).
+ * spec §8, §20): «¿plantilla o el mío?» (O04-02), las cuatro preguntas —nivel,
+ * días, qué buscas y tiempo (O04-03)— y las propuestas (con su «preparando» y
+ * «tu programa»).
  *
  * Cada una es un componente que `OnboardingFlowScreen` pinta por su id y recibe
  * `goTo(id)`. Las propuestas, «tu programa» y su hoja de ajustes son las de O01
  * (`components/onboarding/`). Nivel, objetivo y días van a `answers`; el nivel
  * también a `profile.onboardingAnswers`, que es de donde lo lee «Nuevo programa»
- * (O03-11 §25.2) para empezar directamente en `s_goal`.
+ * (O03-11 §25.2) para empezar directamente en `s_days`.
  *
- * Maqueta: docs/mockups/onboarding-2.html (s_level, s_choice, s_goal, s_days, s_props).
+ * Maqueta: docs/mockups/onboarding-m05.html (O04); la antigua, onboarding-2.html.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -21,18 +22,19 @@ import { spacing, textStyles } from '../../../theme';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { Text } from '../../../components/ui/Text';
 import { Rise } from '../../../components/ui/Rise';
+import TemplateCarousel from '../../../components/onboarding/TemplateCarousel';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import { showDialog } from '../../../components/ui/dialog';
 import {
-  FlowBody, FlowTitle, FlowOption, FlowTile, FlowFooter,
+  FlowBody, FlowTitle, FlowOption, FlowTile, FlowChoice, FlowFooter, FlowSteps, FlowImplies,
 } from '../../../components/onboarding/flow';
 import useFitdataImport from '../../../components/onboarding/useFitdataImport';
 import {
-  LEVEL_IDS, IDENTITY_OPTIONS, SESSION_CHOICES, totalWeeksOf,
+  LEVEL_IDS, IDENTITY_OPTIONS, SESSION_CHOICES,
 } from '../../../components/onboarding/proposalData';
 import { afterProposal } from '../../../utils/onboardingFlow';
 import { startBuilder } from '../startBuilder';
-import TuPrograma, { Adjust, answersOf, levelOf, useProgramModel } from './selfProgram';
+import TuPrograma, { Adjust, answersOf, levelOf, useProgramModel, TIMES } from './selfProgram';
 
 /** «Tengo una copia de seguridad»: importa un `.fitdata` y sigue a Aprende (§8.2, O03-12). */
 function useBackup(goTo) {
@@ -50,6 +52,36 @@ function useBackup(goTo) {
   return { modal: fitdata.modal, secondary: [{ label: t('onboardingFlow.self.choice.backup'), onPress: fitdata.pickFile }] };
 }
 
+// ── Las cuatro preguntas (O04-03, spec §4) ────────────────────────────────────
+// Nivel → días → objetivo → tiempo → plantillas. Cada una marca una respuesta, la
+// explica en «Qué implica» y «Continuar» lleva a la siguiente: elegir no avanza.
+
+const list = (v) => (Array.isArray(v) ? v : []);
+
+/** Los puntos de la respuesta marcada (`onboardingFlow.self.ask.<pregunta>.<id>`), o nada. */
+function impliesOf(t, kind, id) {
+  if (id == null) return null;
+  const base = `onboardingFlow.self.ask.${kind}.${id}`;
+  return {
+    points: list(t(`${base}.pts`, { returnObjects: true, defaultValue: [] })),
+    warns:  list(t(`${base}.warn`, { returnObjects: true, defaultValue: [] })),
+  };
+}
+
+function Ask({ n, kind, id, title, sub, cta, onNext, children }) {
+  const { t } = useTranslation();
+  return (
+    <FlowBody footer={(
+      <FlowFooter primary={{ label: cta ?? t('onboardingFlow.common.continue'), disabled: id == null, onPress: onNext }} />
+    )}>
+      <FlowSteps n={n} label={t('onboardingFlow.self.ask.step', { n })} />
+      <FlowTitle text={title} sub={sub} index={1} />
+      {children}
+      <FlowImplies title={t('onboardingFlow.self.ask.implies')} k={id} {...impliesOf(t, kind, id)} />
+    </FlowBody>
+  );
+}
+
 // ── Nivel (§8.1) ──────────────────────────────────────────────────────────────
 
 function Level({ goTo }) {
@@ -58,8 +90,6 @@ function Level({ goTo }) {
   const level      = useStore((s) => answersOf(s).level);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const setProfile = useStore((s) => s.setProfile);
-  const entry      = useStore((s) => s.onboardingFlow?.entry);
-  const backup     = useBackup(goTo);
 
   function pick(id) {
     flowAnswer({ level: id });
@@ -68,24 +98,20 @@ function Level({ goTo }) {
   }
 
   return (
-    <FlowBody footer={<FlowFooter secondary={backup.secondary} />}>
-      <FlowTitle text={t('onboardingFlow.self.level.title')} />
+    <Ask n={1} kind="level" id={level} title={t('onboardingFlow.self.level.title')} onNext={() => goTo('s_days')}>
       <View style={styles.opts}>
         {LEVEL_IDS.map((id, i) => (
           <FlowOption
             key={id}
-            index={2 + i}
+            index={3 + i}
             title={t(`onboardingFlow.self.level.${id}`)}
             desc={t(`onboardingFlow.self.level.${id}Desc`)}
             selected={level === id}
             onPress={() => pick(id)}
-            // Desde la app no hay «¿plantilla o el mío?»: ya eligió «Programa recomendado» (§25.4.4).
-            onPick={() => goTo(entry === 'newProgram' ? 's_goal' : 's_choice')}
           />
         ))}
       </View>
-      {backup.modal}
-    </FlowBody>
+    </Ask>
   );
 }
 
@@ -94,66 +120,35 @@ function Level({ goTo }) {
 function Choice({ goTo }) {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
-  const beginner   = useStore((s) => levelOf(s) === 'beginner');
+  const path       = useStore((s) => answersOf(s).path);
   const flowAnswer = useStore((s) => s.flowAnswer);
   const backup     = useBackup(goTo);
 
-  const toTemplates = () => { flowAnswer({ path: 'template' }); goTo('s_goal'); };
-  const toBuilder   = () => { flowAnswer({ path: 'own' }); startBuilder(goTo, 'self'); };
+  const next = () => (path === 'own' ? startBuilder(goTo, 'self') : goTo('s_level'));
 
   return (
-    <FlowBody footer={<FlowFooter secondary={backup.secondary} />}>
-      <FlowTitle
-        text={t(`onboardingFlow.self.choice.${beginner ? 'titleBeginner' : 'titleOther'}`)}
-        sub={t(`onboardingFlow.self.choice.${beginner ? 'subBeginner' : 'subOther'}`)}
-      />
+    <FlowBody footer={<FlowFooter primary={{ label: t('onboardingFlow.common.continue'), disabled: !path, onPress: next }} secondary={backup.secondary} />}>
+      <FlowTitle text={t('onboardingFlow.self.choice.title')} sub={t('onboardingFlow.self.choice.sub')} />
       <View style={styles.opts}>
-        <FlowOption
-          chevron
+        <FlowChoice
           index={2}
+          art="template"
           title={t('onboardingFlow.self.choice.programs')}
           desc={t('onboardingFlow.self.choice.programsDesc')}
-          tag={beginner ? t('onboardingFlow.self.choice.recommended') : undefined}
-          onPick={toTemplates}
+          tag={t('onboardingFlow.self.choice.recommended')}
+          selected={path === 'template'}
+          onPress={() => flowAnswer({ path: 'template' })}
         />
-        <FlowOption
-          chevron
+        <FlowChoice
           index={3}
+          art="own"
           title={t('onboardingFlow.self.choice.own')}
           desc={t('onboardingFlow.self.choice.ownDesc')}
-          onPick={toBuilder}
+          selected={path === 'own'}
+          onPress={() => flowAnswer({ path: 'own' })}
         />
       </View>
       {backup.modal}
-    </FlowBody>
-  );
-}
-
-// ── Qué buscas (§8.3) ─────────────────────────────────────────────────────────
-
-function Goal({ goTo }) {
-  const { t } = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  const goal       = useStore((s) => answersOf(s).goal);
-  const flowAnswer = useStore((s) => s.flowAnswer);
-  return (
-    <FlowBody>
-      <FlowTitle text={t('onboardingFlow.self.goal.title')} />
-      {[IDENTITY_OPTIONS.slice(0, 2), IDENTITY_OPTIONS.slice(2)].map((row, r) => (
-        <View key={r} style={styles.tiles}>
-          {row.map(({ id }, i) => (
-            <FlowTile
-              word
-              key={id}
-              big={t(`onboarding.identity.${id}.label`)}
-              index={2 + r * 2 + i}
-              selected={goal === id}
-              onPress={() => flowAnswer({ goal: id })}
-              onPick={() => goTo('s_days')}
-            />
-          ))}
-        </View>
-      ))}
     </FlowBody>
   );
 }
@@ -169,24 +164,81 @@ function Days({ goTo }) {
   const days       = useStore((s) => answersOf(s).days);
   const flowAnswer = useStore((s) => s.flowAnswer);
   return (
-    <FlowBody>
-      <FlowTitle text={t('onboardingFlow.self.days.title')} sub={t('onboardingFlow.self.days.sub')} />
+    <Ask n={2} kind="days" id={days} title={t('onboardingFlow.self.days.title')} sub={t('onboardingFlow.self.days.sub')} onNext={() => goTo('s_goal')}>
       {DAY_ROWS.map((row, r) => (
         <View key={r} style={styles.tiles}>
           {row.map((n, i) => (
             <FlowTile
               key={n}
               big={String(n)}
-              index={2 + r * 4 + i}
+              index={3 + r * 4 + i}
               selected={days === n}
               onPress={() => flowAnswer({ days: n })}
-              onPick={() => { flowAnswer({ chosenId: null }); goTo('s_props'); }}
             />
           ))}
           {Array.from({ length: 4 - row.length }, (_, i) => <View key={`gap${i}`} style={styles.gap} />)}
         </View>
       ))}
-    </FlowBody>
+    </Ask>
+  );
+}
+
+// ── Qué buscas (§8.3) ─────────────────────────────────────────────────────────
+
+function Goal({ goTo }) {
+  const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const goal       = useStore((s) => answersOf(s).goal);
+  const flowAnswer = useStore((s) => s.flowAnswer);
+  return (
+    <Ask n={3} kind="goal" id={goal} title={t('onboardingFlow.self.goal.title')} onNext={() => goTo('s_time')}>
+      {[IDENTITY_OPTIONS.slice(0, 2), IDENTITY_OPTIONS.slice(2)].map((row, r) => (
+        <View key={r} style={styles.tiles}>
+          {row.map(({ id }, i) => (
+            <FlowTile
+              word
+              key={id}
+              big={t(`onboarding.identity.${id}.label`)}
+              index={3 + r * 2 + i}
+              selected={goal === id}
+              onPress={() => flowAnswer({ goal: id })}
+            />
+          ))}
+        </View>
+      ))}
+    </Ask>
+  );
+}
+
+// ── Tiempo (O04-03) ───────────────────────────────────────────────────────────
+
+function Time({ goTo }) {
+  const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const minutes    = useStore((s) => answersOf(s).sessionMinutes);
+  const flowAnswer = useStore((s) => s.flowAnswer);
+  return (
+    <Ask
+      n={4}
+      kind="time"
+      id={minutes}
+      title={t('onboardingFlow.self.time.title')}
+      cta={t('onboardingFlow.self.time.cta')}
+      onNext={() => { flowAnswer({ chosenId: null }); goTo('s_props'); }}
+    >
+      <View style={styles.tiles}>
+        {TIMES.map((min, i) => (
+          <FlowTile
+            key={min}
+            big={String(min)}
+            label={t('onboardingFlow.self.time.unit')}
+            index={3 + i}
+            selected={minutes === min}
+            onPress={() => flowAnswer({ sessionMinutes: min })}
+          />
+        ))}
+      </View>
+    </Ask>
   );
 }
 
@@ -230,14 +282,16 @@ function Props({ goTo }) {
   const [ticked,  setTicked]  = useState(0);          // casillas de «preparando» ya marcadas
   const [ready,   setReady]   = useState(picked);      // acabó el «preparando»
   const [showAll, setShowAll] = useState(false);
+  const [idx,     setIdx]     = useState(0);          // la tarjeta centrada del carrusel
   const [loading, setLoading] = useState(false);
   const { days, chosen, ranked, answers, model, setChosenId } = useProgramModel(ready);
+  const visible = useMemo(() => (showAll ? ranked : ranked.slice(0, 3)), [showAll, ranked]);
 
   // Las casillas se marcan una a una y luego entran las propuestas.
   useEffect(() => {
     if (picked) return undefined;
-    const timers = [0, 1, 2].map((i) => setTimeout(() => setTicked(i + 1), PREP_FIRST_MS + i * PREP_STEP_MS));
-    timers.push(setTimeout(() => setReady(true), PREP_FIRST_MS + 2 * PREP_STEP_MS + PREP_END_MS));
+    const timers = [0, 1, 2, 3].map((i) => setTimeout(() => setTicked(i + 1), PREP_FIRST_MS + i * PREP_STEP_MS));
+    timers.push(setTimeout(() => setReady(true), PREP_FIRST_MS + 3 * PREP_STEP_MS + PREP_END_MS));
     return () => timers.forEach(clearTimeout);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar
   }, []);
@@ -270,7 +324,7 @@ function Props({ goTo }) {
         days={days}
         loading={loading}
         onConfirm={confirm}
-        onOther={() => setChosenId(null)}
+        onOther={() => { setChosenId(null); setIdx(0); }}
       />
     );
   }
@@ -281,6 +335,7 @@ function Props({ goTo }) {
       t('onboardingFlow.self.props.level', { level: t(`onboardingFlow.self.level.${level}`, '') }),
       t(`onboarding.identity.${goal}.label`, ''),
       t('onboardingFlow.self.props.days', { count: days ?? 0 }),
+      t('onboardingFlow.self.props.minutes', { count: answers.sessionMinutes }),
     ];
     return (
       <FlowBody>
@@ -292,38 +347,47 @@ function Props({ goTo }) {
     );
   }
 
-  // Propuestas: la estructura de cada plantilla, que no depende del material.
-  const visible = showAll ? ranked : ranked.slice(0, 3);
+  // Propuestas (O04-04): un carrusel de tarjetas; la centrada es la que se confirma.
   const secondary = ranked.length > 3
-    ? [{ label: showAll ? t('onboarding.proposals.seeTop') : t('onboarding.proposals.seeAll', { total: ranked.length }), onPress: () => setShowAll((v) => !v) }]
+    ? [{
+      label: showAll ? t('onboarding.proposals.seeTop') : t('onboardingFlow.self.props.seeAll'),
+      onPress: () => { setShowAll((v) => !v); setIdx(0); },
+    }]
     : [];
+  const chips = [
+    t(`onboardingFlow.self.level.${level}`, ''),
+    t('onboardingFlow.self.cards.chipDays', { count: days ?? 0 }),
+    t(`onboarding.identity.${goal}.label`, ''),
+    t('onboardingFlow.self.props.minutes', { count: answers.sessionMinutes }),
+  ];
   return (
-    <FlowBody footer={<FlowFooter secondary={secondary} />}>
+    <FlowBody footer={(
+      <FlowFooter
+        primary={{ label: t('onboardingFlow.self.cards.start'), onPress: () => setChosenId(visible[idx].archetype.id) }}
+        secondary={secondary}
+      />
+    )}>
       <FlowTitle text={t('onboardingFlow.self.props.title')} sub={t('onboardingFlow.self.props.sub')} />
-      <View style={styles.opts}>
-        {visible.map((e, i) => {
-          const weeks = totalWeeksOf(e.archetype.phases);
-          return (
-            <FlowOption
-              chevron
-              key={e.archetype.id}
-              index={2 + i}
-              title={e.archetype.name}
-              desc={[
-                t('onboardingFlow.self.props.sessionsCount', { count: e.archetype.days.length }),
-                weeks > 0 ? t('onboarding.proposals.weeks', { weeks }) : null,
-              ].filter(Boolean).join(' · ') + '\n' + e.archetype.days.map((d) => d.label).join(' · ')}
-              tag={i === 0 ? t('onboardingFlow.self.choice.recommended') : undefined}
-              onPick={() => setChosenId(e.archetype.id)}
-            />
-          );
-        })}
-      </View>
+      <Rise index={2}>
+        <View style={styles.chips}>
+          {chips.map((c) => <View key={c} style={styles.chip}><Text style={styles.chipTxt}>{c}</Text></View>)}
+        </View>
+      </Rise>
+      <Rise index={3}>
+        <TemplateCarousel
+          key={showAll ? 'all' : 'top'}
+          entries={visible}
+          answers={answers}
+          days={days}
+          minutes={answers.sessionMinutes}
+          onIndex={setIdx}
+        />
+      </Rise>
     </FlowBody>
   );
 }
 
-export default { s_level: Level, s_choice: Choice, s_goal: Goal, s_days: Days, s_props: Props, s_adjust: Adjust };
+export default { s_level: Level, s_choice: Choice, s_goal: Goal, s_days: Days, s_time: Time, s_props: Props, s_adjust: Adjust };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -331,6 +395,11 @@ const makeStyles = (th) => StyleSheet.create({
   opts:  { gap: spacing.md },
   tiles: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   gap:   { flex: 1 },
+
+  // Las cuatro respuestas, arriba de las plantillas
+  chips:   { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip:    { borderRadius: th.radius.full, backgroundColor: th.colors.surface2, paddingVertical: spacing.xs2 + 1, paddingHorizontal: spacing.md },
+  chipTxt: { ...textStyles.labelStrong, color: th.colors.text },
 
   // «Preparando»: la misma fila que las de «Listo»
   preps: { gap: spacing.sm2 },

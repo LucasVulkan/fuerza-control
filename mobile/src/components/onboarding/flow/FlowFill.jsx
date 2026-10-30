@@ -44,7 +44,8 @@ function FillCircle({ p, size, cx }) {
  *   selected  la respuesta ya elegida: va rellena (sin animar si ya lo estaba al montar)
  *   onPress   al tocar, ya
  *   onPick    ~520 ms después, cuando el relleno acabó: lo que lleva a otra pantalla
- *   fx        desde dónde sale el relleno, en px desde la izquierda (por defecto, el centro)
+ *   fx        desde dónde sale el relleno, en px desde la izquierda (por defecto, el centro);
+ *             o una función del ancho, para lo que está pegado a la derecha
  */
 export function FillPressable({
   selected = false, onPress, onPick, fx, style, children, disabled,
@@ -84,7 +85,7 @@ export function FillPressable({
         down && styles.down,
       ]}
     >
-      <FillCircle p={p} size={size} cx={fx ?? (size ? size.w / 2 : 0)} />
+      <FillCircle p={p} size={size} cx={typeof fx === 'function' ? fx(size?.w ?? 0) : (fx ?? (size ? size.w / 2 : 0))} />
       {children(p)}
     </Pressable>
   );
