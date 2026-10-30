@@ -8,9 +8,8 @@
  * Maqueta: docs/mockups/onboarding-2.html (welcome, units, theme, role, done).
  */
 import { useEffect, useState } from 'react';
-import { View, Image, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import logoImg from '../../../../assets/adaptive-icon.png';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing, useReducedMotion, runOnJS } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +22,7 @@ import { Text, MAX_FONT_SCALE } from '../../../components/ui/Text';
 import Marked from '../../../components/ui/Marked';
 import FitLogo from '../../../components/ui/FitLogo';
 import { Rise } from '../../../components/ui/Rise';
+import WelcomeArt from '../../../components/onboarding/WelcomeArt';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import {
   FlowBody, FlowTitle, FlowTile, FlowRow, FlowFooter, FlowPanel, PanelButton, FlowNote,
@@ -44,7 +44,6 @@ const answersOf = (s) => s.onboardingFlow?.answers ?? NONE;
 const SHEET_RADIUS = 40;     // el de FlowPanel y el paywall: no hay token tan grande
 const SHEET_IN_MS  = 450;    // la hoja sube a su sitio
 const SHEET_OUT_MS = 420;    // la hoja crece hasta tapar el lima
-const LOGO_SIZE    = 180;
 const SHEET_SHARE  = 0.46;   // la hoja ocupa al menos esta parte de la pantalla
 
 function Welcome({ goTo }) {
@@ -117,13 +116,14 @@ function Welcome({ goTo }) {
     <View style={styles.lime} onLayout={(e) => boxH.set(e.nativeEvent.layout.height)}>
       {/* Sobre el lima, la barra de estado va en oscuro. */}
       <StatusBar style="dark" />
-      {/* El logo, centrado en el lima que deja la hoja. */}
-      <View style={[styles.logoBox, { paddingTop: insets.top, bottom: sheetH }]}>
-        <Image source={logoImg} style={styles.logo} accessibilityIgnoresInvertColors />
-        <View style={styles.brand} accessible accessibilityLabel="Forma Fit">
-          <Text style={styles.forma}>Forma</Text>
-          <FitLogo height={24} color={styles.forma.color} />
-        </View>
+      {/* Arriba a la izquierda, el logotipo pequeño, a la altura del selector de idioma. */}
+      <View style={[styles.brand, { top: insets.top + spacing.md }]} accessible accessibilityLabel="Forma Fit">
+        <Text style={styles.forma}>Forma</Text>
+        <FitLogo height={15} color={styles.forma.color} />
+      </View>
+      {/* La tarjeta de un ejercicio, en el lima que deja la hoja, bajo la cabecera. */}
+      <View style={[styles.art, { top: insets.top + spacing.md + 44, bottom: sheetH }]}>
+        <WelcomeArt />
       </View>
       <View
         style={[styles.langsw, { top: insets.top + spacing.md }]}
@@ -336,16 +336,14 @@ export default { welcome: Welcome, units: Units, theme: Theme, role: Role, done:
 const makeStyles = (th) => StyleSheet.create({
   // Bienvenida: lima a sangre arriba con el logo, hoja del fondo de la app abajo.
   lime:    { flex: 1, backgroundColor: th.colors.accent },
-  logoBox: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
-  // El PNG del icono trae margen alrededor del monograma: el lockup se acerca con un margen negativo.
-  logo:    { width: LOGO_SIZE, height: LOGO_SIZE, marginBottom: -LOGO_SIZE * 0.16 },
-  brand:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
+  art:     { position: 'absolute', left: 0, right: 0 },
+  brand:   { position: 'absolute', left: spacing.lg + 1, flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs2 },
   // El logotipo de la cabecera de la app (`appNameForma`), en negro sobre el lima.
   forma: {
     fontFamily:    'Inter_900Black_Italic',
-    fontSize:      34,
+    fontSize:      22,
     color:         th.colors.onAccent,
-    letterSpacing: -2,
+    letterSpacing: -1.3,
   },
   langsw:    { position: 'absolute', right: spacing.lg + 1, flexDirection: 'row', gap: spacing.xs, padding: 3, borderRadius: th.radius.md, backgroundColor: withOpacity(th.colors.onAccent, 0.12) },
   lang:      { paddingVertical: spacing.sm2 - 1, paddingHorizontal: spacing.md, borderRadius: th.radius.sm + 2 },
