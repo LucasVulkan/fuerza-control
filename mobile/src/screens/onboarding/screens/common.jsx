@@ -8,23 +8,25 @@
  * Maqueta: docs/mockups/onboarding-2.html (welcome, units, theme, role, done).
  */
 import { useEffect, useState } from 'react';
-import { View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
-import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import { View, Image, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import logoImg from '../../../../assets/adaptive-icon.png';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing, useReducedMotion, runOnJS } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../../../../store/useStore';
 import { THEMES } from '../../../themes';
-import { spacing, textStyles } from '../../../theme';
+import { spacing, textStyles, withOpacity } from '../../../theme';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { Text, MAX_FONT_SCALE } from '../../../components/ui/Text';
 import Marked from '../../../components/ui/Marked';
 import { Rise } from '../../../components/ui/Rise';
-import FitLogo from '../../../components/ui/FitLogo';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
 import {
   FlowBody, FlowTitle, FlowTile, FlowRow, FlowFooter, FlowPanel, PanelButton, FlowNote,
 } from '../../../components/onboarding/flow';
-import { SECTIONS, ROLE_START, afterSettings, deviceLanguage } from '../../../utils/onboardingFlow';
+import { ROLE_START, afterSettings, deviceLanguage } from '../../../utils/onboardingFlow';
 
 /** El idioma del móvil. Hermes trae `Intl`; si algún día no, español. */
 function deviceLocale() {
@@ -38,13 +40,16 @@ const answersOf = (s) => s.onboardingFlow?.answers ?? NONE;
 
 // ── Bienvenida (§5.1-5.2) ─────────────────────────────────────────────────────
 
-// El panel lima ocupa al menos esta parte de la pantalla: sin él quedaba muy abajo y con un hueco vacío en medio (O04-05).
-const PANEL_SHARE = 0.4;
+const SHEET_RADIUS = 40;     // el de FlowPanel y el paywall: no hay token tan grande
+const SHEET_IN_MS  = 450;    // la hoja sube a su sitio
+const SHEET_OUT_MS = 420;    // la hoja crece hasta tapar el lima
+const LOGO_SIZE    = 180;
 
 function Welcome({ goTo }) {
   const { t } = useTranslation();
-  const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const insets  = useSafeAreaInsets();
+  const reduced = useReducedMotion();
   const language    = useStore((s) => s.profile.language ?? 'es');
   const setLanguage = useStore((s) => s.setLanguage);
   const flowAnswer  = useStore((s) => s.flowAnswer);
@@ -53,7 +58,15 @@ function Welcome({ goTo }) {
   const pending     = useStore((s) => s.pendingInviteCode);
   const validate    = useStore((s) => s.validateClientCode);
   const [trainerName, setTrainerName] = useState(null);
-  const { height } = useWindowDimensions();
+  const { height: winH } = useWindowDimensions();
+  const [leaving, setLeaving] = useState(false);
+  const boxH = useSharedValue(winH);                 // alto de la pantalla, medido
+  const rise = useSharedValue(reduced ? 0 : 1);      // 1 = hoja fuera por abajo, 0 = en su sitio
+  const grow = useSharedValue(0);                    // 0 = hoja normal, 1 = tapa toda la pantalla
+
+  useEffect(() => {
+    if (!reduced) rise.set(withTiming(0, { duration: SHEET_IN_MS, easing: Easing.out(Easing.cubic) }));
+  }, [reduced, rise]);
 
   // Viene marcado el idioma del móvil, la primera vez que se pinta y si el usuario no lo ha tocado.
   useEffect(() => {
@@ -77,68 +90,70 @@ function Welcome({ goTo }) {
     setLanguage(lang);
   }
 
-  const panel = (
-    <FlowPanel title={t('onboardingFlow.common.welcome.panelTitle')} style={{ minHeight: height * PANEL_SHARE, justifyContent: 'center' }}>
-      <PanelButton label={t('onboardingFlow.common.welcome.start')} onPress={() => goTo('units')} />
-      <PanelButton ghost label={t('onboardingFlow.common.welcome.haveAccount')} onPress={() => goTo('recover')} />
-    </FlowPanel>
-  );
+  // La hoja sube hasta tapar el lima y entonces se pasa a la siguiente pantalla, que tiene su mismo fondo.
+  function leave(id) {
+    if (leaving) return;
+    setLeaving(true);
+    if (reduced) { goTo(id); return; }
+    grow.set(withTiming(1, { duration: SHEET_OUT_MS, easing: Easing.out(Easing.cubic) }, (done) => {
+      if (done) runOnJS(goTo)(id);
+    }));
+  }
+
+  const sheetAnim = useAnimatedStyle(() => ({
+    minHeight:             grow.get() * boxH.get(),
+    borderTopLeftRadius:   SHEET_RADIUS * (1 - grow.get()),
+    borderTopRightRadius:  SHEET_RADIUS * (1 - grow.get()),
+    transform:             [{ translateY: rise.get() * boxH.get() }],
+  }));
+  const fadeAnim = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, grow.get() * 2) }));
 
   return (
-    <FlowBody footer={panel}>
-      <Rise index={0}>
-        <View style={styles.brandRow}>
-          <View style={styles.brand} accessible accessibilityLabel="Forma Fit">
-            <Text style={styles.forma}>Forma</Text>
-            <FitLogo height={28} />
-          </View>
-          <View style={styles.langsw} accessibilityRole="radiogroup" accessibilityLabel={t('onboardingFlow.common.welcome.language')}>
-            {['es', 'en'].map((lang) => (
-              <Pressable
-                key={lang}
-                onPress={() => chooseLanguage(lang)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: language === lang }}
-                style={[styles.lang, language === lang && styles.langOn]}
-              >
-                <Text style={[styles.langTxt, language === lang && styles.langTxtOn]}>{lang.toUpperCase()}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      </Rise>
-
-      <View style={styles.mid}>
-      <Rise index={1}>
-        <Marked text={t('onboardingFlow.common.welcome.hero')} style={styles.hero} accentStyle={styles.accent} />
-      </Rise>
-      <Rise index={2}>
-        <Text style={styles.tagline}>{t('onboardingFlow.common.welcome.tagline')}</Text>
-      </Rise>
-
-      {viaInvite && (
-        <Rise index={3}>
-          <FlowNote
-            tone="blue"
-            text={trainerName
-              ? t('onboardingFlow.common.welcome.invited', { trainer: trainerName })
-              : t('onboardingFlow.common.welcome.invitedAnon')}
-          />
-        </Rise>
-      )}
-
-      <Rise index={4}>
-        <View style={styles.journey}>
-          {SECTIONS.map((key, i) => (
-            <View key={key} style={styles.leg}>
-              <View style={[styles.legBar, i === 0 && { backgroundColor: th.tint.accent50 }]} />
-              <Text style={styles.legTxt} numberOfLines={1}>{t(`onboardingFlow.common.sections.${key}`)}</Text>
-            </View>
-          ))}
-        </View>
-      </Rise>
+    <View style={styles.lime} onLayout={(e) => boxH.set(e.nativeEvent.layout.height)}>
+      {/* Sobre el lima, la barra de estado va en oscuro. */}
+      <StatusBar style="dark" />
+      <View style={[styles.logoBox, { paddingTop: insets.top }]}>
+        <Image source={logoImg} style={styles.logo} accessibilityLabel="Forma Fit" />
       </View>
-    </FlowBody>
+      <View
+        style={[styles.langsw, { top: insets.top + spacing.md }]}
+        accessibilityRole="radiogroup"
+        accessibilityLabel={t('onboardingFlow.common.welcome.language')}
+      >
+        {['es', 'en'].map((lang) => (
+          <Pressable
+            key={lang}
+            onPress={() => chooseLanguage(lang)}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: language === lang }}
+            style={[styles.lang, language === lang && styles.langOn]}
+          >
+            <Text style={[styles.langTxt, language === lang && styles.langTxtOn]}>{lang.toUpperCase()}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Reanimated.View style={[styles.sheet, sheetAnim]}>
+        <Reanimated.View style={fadeAnim} pointerEvents={leaving ? 'none' : 'auto'}>
+          <View style={styles.sheetBody}>
+            <Marked text={t('onboardingFlow.common.welcome.hero')} style={styles.hero} accentStyle={styles.accent} />
+            <Text style={styles.tagline}>{t('onboardingFlow.common.welcome.tagline')}</Text>
+            {viaInvite && (
+              <FlowNote
+                tone="blue"
+                text={trainerName
+                  ? t('onboardingFlow.common.welcome.invited', { trainer: trainerName })
+                  : t('onboardingFlow.common.welcome.invitedAnon')}
+              />
+            )}
+          </View>
+          <FlowFooter
+            primary={{ label: t('onboardingFlow.common.welcome.start'), onPress: () => leave('units') }}
+            secondary={[{ label: t('onboardingFlow.common.welcome.haveAccount'), onPress: () => leave('recover') }]}
+          />
+        </Reanimated.View>
+      </Reanimated.View>
+    </View>
   );
 }
 
@@ -305,23 +320,17 @@ export default { welcome: Welcome, units: Units, theme: Theme, role: Role, done:
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const makeStyles = (th) => StyleSheet.create({
-  // Bienvenida
-  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand:    { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
-  // El logotipo, igual que en la cabecera de la app (`appNameForma`), a escala ×2.
-  forma: {
-    fontFamily:    'Inter_900Black_Italic',
-    fontSize:      38,
-    color:         th.colors.text,
-    letterSpacing: -2.28,
-  },
-  langsw:    { flexDirection: 'row', gap: spacing.xs, padding: 3, borderRadius: th.radius.md, backgroundColor: th.colors.surface },
+  // Bienvenida: lima a sangre arriba con el logo, hoja del fondo de la app abajo.
+  lime:    { flex: 1, backgroundColor: th.colors.accent },
+  logoBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  logo:    { width: LOGO_SIZE, height: LOGO_SIZE },
+  langsw:    { position: 'absolute', right: spacing.lg + 1, flexDirection: 'row', gap: spacing.xs, padding: 3, borderRadius: th.radius.md, backgroundColor: withOpacity(th.colors.onAccent, 0.12) },
   lang:      { paddingVertical: spacing.sm2 - 1, paddingHorizontal: spacing.md, borderRadius: th.radius.sm + 2 },
-  langOn:    { backgroundColor: th.colors.surface2 },
-  langTxt:   { ...textStyles.labelStrong, color: th.colors.mutedLight },
-  langTxtOn: { color: th.colors.text },
-  // El titular, la línea y el recorrido, centrados en el hueco entre la marca y el panel.
-  mid: { flex: 1, justifyContent: 'center' },
+  langOn:    { backgroundColor: th.colors.onAccent },
+  langTxt:   { ...textStyles.labelStrong, color: withOpacity(th.colors.onAccent, 0.6) },
+  langTxtOn: { color: th.colors.accent },
+  sheet:     { backgroundColor: th.colors.bg, borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, overflow: 'hidden' },
+  sheetBody: { paddingHorizontal: spacing.lg + 1, paddingTop: spacing.xxl, paddingBottom: spacing.sm },
   hero: {
     ...textStyles.heroGlyph,
     color:              th.colors.text,
@@ -331,10 +340,6 @@ const makeStyles = (th) => StyleSheet.create({
   },
   accent:  { color: th.colors.accent },
   tagline: { ...textStyles.bodyStrong, color: th.colors.mutedLight, marginTop: spacing.lg },
-  journey: { flexDirection: 'row', gap: spacing.xs2, marginTop: spacing.xxl },
-  leg:     { flex: 1 },
-  legBar:  { height: 6, borderRadius: 3, backgroundColor: th.colors.surface2 },
-  legTxt:  { ...textStyles.labelStrong, color: th.colors.mutedLight, textTransform: 'uppercase', marginTop: spacing.sm2 },
 
   // Unidades y bifurcación
   tiles: { flexDirection: 'row', gap: spacing.md },

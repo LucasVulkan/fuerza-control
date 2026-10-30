@@ -282,16 +282,14 @@ function Props({ goTo }) {
   const [ready,   setReady]   = useState(false);      // acabó el «preparando»
   const [showAll, setShowAll] = useState(false);
   const [idx,     setIdx]     = useState(0);          // la tarjeta centrada del carrusel
-  const [listId,  setListId]  = useState(null);       // la marcada en la lista del resto
+  const [listId,  setListId]  = useState(null);       // la marcada en la lista de todas
   const [loading, setLoading] = useState(false);
   const [viewH,   setViewH]   = useState(0);          // alto del scroll de la pantalla
   const [carTop,  setCarTop]  = useState(0);          // dónde empieza el carrusel dentro de él
   const { days, ranked, answers, submitAnswers } = useProgramModel(ready);
   const top  = useMemo(() => ranked.slice(0, 3), [ranked]);
-  const rest = useMemo(() => ranked.slice(3), [ranked]);
-  // La elegida: la de la lista si se marcó una; si no, la centrada del carrusel.
-  // Deslizar el carrusel borra la de la lista (`onIndex`), así manda siempre lo último que se tocó.
-  const chosen = (listId && rest.find((r) => r.archetype.id === listId)) || top[idx];
+  // La elegida: en la lista, la marcada (puede no haber); en el carrusel, la centrada.
+  const chosen = showAll ? ranked.find((r) => r.archetype.id === listId) : top[idx];
 
   // Las casillas se marcan una a una y luego entran las propuestas.
   useEffect(() => {
@@ -335,43 +333,44 @@ function Props({ goTo }) {
     );
   }
 
-  // Propuestas (O04-04): las tres mejores en un carrusel; el resto, en una lista debajo.
-  const secondary = rest.length > 0
+  // Propuestas (O04-04, O04-08): las tres mejores en un carrusel, o todas en una lista; el botón cambia de vista.
+  const secondary = ranked.length > top.length
     ? [{
       label: showAll ? t('onboarding.proposals.seeTop') : t('onboardingFlow.self.props.seeAll'),
-      onPress: () => { setShowAll((v) => !v); setListId(null); },
+      onPress: () => { setShowAll((v) => !v); setListId(null); setIdx(0); },
     }]
     : [];
   return (
     <FlowBody onViewport={setViewH} footer={(
       <FlowFooter
-        primary={{ label: t('onboardingFlow.self.cards.start'), loading, onPress: confirm }}
+        primary={{ label: t('onboardingFlow.self.cards.start'), loading, disabled: !chosen, onPress: confirm }}
         secondary={secondary}
       />
     )}>
       <FlowTitle text={t('onboardingFlow.self.props.title')} />
-      {/* Su `y` y el alto del scroll dicen cuánto queda para la tarjeta. */}
-      <View onLayout={(e) => setCarTop(e.nativeEvent.layout.y)}>
-      <Rise index={2}>
-        <TemplateCarousel
-          availableH={viewH - carTop}
-          entries={top}
-          answers={answers}
-          days={days}
-          minutes={answers.sessionMinutes}
-          onIndex={(i) => { setIdx(i); setListId(null); }}
-        />
-      </Rise>
-      </View>
-      {showAll && (
+      {showAll ? (
         <TemplateList
-          entries={rest}
+          entries={ranked}
           answers={answers}
           days={days}
           minutes={answers.sessionMinutes}
           pickedId={listId}
           onPick={setListId}
         />
+      ) : (
+        // Su `y` y el alto del scroll dicen cuánto queda para la tarjeta.
+        <View onLayout={(e) => setCarTop(e.nativeEvent.layout.y)}>
+          <Rise index={2}>
+            <TemplateCarousel
+              availableH={viewH - carTop}
+              entries={top}
+              answers={answers}
+              days={days}
+              minutes={answers.sessionMinutes}
+              onIndex={setIdx}
+            />
+          </Rise>
+        </View>
       )}
     </FlowBody>
   );

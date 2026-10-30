@@ -5,8 +5,9 @@
  * esta») es el pie de la pantalla, que recibe el índice por `onIndex`.
  *
  * Se pasa de la portada a los ejercicios y de vuelta solo con el botón de abajo de
- * la tarjeta (O04-06); la lista de ejercicios se desplaza dentro de ella. Debajo del
- * carrusel, `TemplateList` ofrece el resto de plantillas como filas.
+ * la tarjeta (O04-06); la lista de ejercicios se desplaza dentro de ella. Las pestañas
+ * de sesión son siempre solo la letra (O04-08). `TemplateList` es la otra vista de la
+ * pantalla: todas las plantillas como filas, en lugar del carrusel.
  *
  * Cada tarjeta tiene dos caras: la portada (zona de color con la etiqueta de
  * encaje, el número de sesiones como marca de agua, el nombre y la semana
@@ -60,7 +61,6 @@ function Card({ card, index, width, height, allEx, language }) {
   const days   = t('onboardingFlow.self.cards.weekDays');
   const max    = Math.max(1, ...groups.map((g) => g[1]));
   const session = sessions[Math.min(ses, sessions.length - 1)];
-  const lettersOnly = sessions.length > 3;   // con más de tres no cabe la palabra «Sesión»
 
   return (
     // Entra una vez al montar el carrusel, escalonada; cambiar de cara no la repite (esa es la `key` de dentro).
@@ -121,7 +121,7 @@ function Card({ card, index, width, height, allEx, language }) {
                 style={[styles.sesBtn, j === ses && styles.sesBtnOn]}
               >
                 <Text style={[styles.sesTxt, j === ses && styles.sesTxtOn]} numberOfLines={1}>
-                  {lettersOnly ? s.label : `${s.label} ${s.name.split(' · ')[0]}`}
+                  {s.label}
                 </Text>
               </Pressable>
             ))}
@@ -161,17 +161,21 @@ function useCards(entries, answers, days, minutes) {
 }
 
 /**
- * El resto de plantillas como filas con la selección de la app. `pickedId`: la marcada
- * (o `null` si manda la del carrusel); `onPick(id)` la elige.
+ * Todas las plantillas como filas con la selección de la app. `pickedId`: la marcada
+ * (o `null` si ninguna); `onPick(id)` la elige. Entran escalonadas como las tarjetas.
  */
 export function TemplateList({ entries, answers, days, minutes, pickedId, onPick }) {
   const { t } = useTranslation();
+  const reduced = useReducedMotion();
   const { cards } = useCards(entries, answers, days, minutes);
   return (
     <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
       {cards.map((c, i) => (
-        <FlowOption
+        <Reanimated.View
           key={c.entry.archetype.id}
+          entering={reduced ? undefined : FadeInRight.delay(i * 70).duration(400).easing(Easing.out(Easing.cubic))}
+        >
+        <FlowOption
           index={i}
           title={c.entry.archetype.name}
           desc={[
@@ -182,6 +186,7 @@ export function TemplateList({ entries, answers, days, minutes, pickedId, onPick
           selected={pickedId === c.entry.archetype.id}
           onPress={() => onPick(c.entry.archetype.id)}
         />
+        </Reanimated.View>
       ))}
     </View>
   );
@@ -283,9 +288,9 @@ const makeStyles = (th) => StyleSheet.create({
   sesBtn:       { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', borderTopLeftRadius: th.radius.md, borderTopRightRadius: th.radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, backgroundColor: th.colors.surface },
   sesBtnOn:     { backgroundColor: th.colors.surface2 },
   sesTxt:       { ...textStyles.bodyStrong, color: th.colors.mutedLight },
-  sesTxtOn:     { color: th.colors.text },
+  sesTxtOn:     { color: th.colors.accent },
   exPanel:      { flex: 1, backgroundColor: th.colors.surface2, borderBottomLeftRadius: th.radius.md, borderBottomRightRadius: th.radius.md, paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  sesName:      { ...textStyles.itemTitle, color: th.colors.text },
+  sesName:      { ...textStyles.itemTitle, color: th.colors.accent },
   exList:       { flex: 1, marginTop: spacing.sm },
   exRow:        { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.sm2, borderTopWidth: 1, borderTopColor: th.colors.surface3 },
   exName:       { ...textStyles.body, flex: 1, color: th.colors.text, lineHeight: lh(14) - 4 },

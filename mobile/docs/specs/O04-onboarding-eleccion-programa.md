@@ -3,16 +3,17 @@
 > Tema: onboarding
 > En corto: El tramo del alta en el que eliges cómo entrenas y qué programa sigues: pantallas de camino y de «plantilla o el mío» más llamativas, cuatro preguntas (nivel, días, objetivo, tiempo) antes de ver ninguna plantilla con lo que implica cada respuesta, y unas tarjetas de plantilla que den ganas de empezar.
 > Inicio: 2026-10-30
+> Fin: 2026-10-30
 > Fase O04-01 · terminado · Maqueta y elección de variantes · §2
 > Fase O04-02 · hecho · Camino y «plantilla o el mío» con el diseño nuevo · §3
 > Fase O04-03 · hecho · Las cuatro preguntas antes de las plantillas · §4
 > Fase O04-04 · hecho · Tarjetas de plantillas · §5
 > Fase O04-05 · hecho · Correcciones tras la primera prueba · §6
 > Fase O04-06 · hecho · Segunda ronda: unidades, estilos, barra doble y tarjetas con pestañas · §7
-> Fase O04-07 · pendiente · Bienvenida nueva, con maqueta · §8
-> Fase O04-08 · pendiente · Plantillas: pestañas lima y «ver todas» en lista · §9
+> Fase O04-07 · hecho · Bienvenida nueva, con maqueta · §8
+> Fase O04-08 · hecho · Plantillas: pestañas lima y «ver todas» en lista · §9
 >
-> Estado: **implementada** (30-oct-2026, en develop); O04-05 (correcciones tras probarla) hecha en la rama `feat/o04-05-correcciones`;
+> Estado: **implementada** (30-oct-2026); O04-07 (bienvenida) y O04-08 (plantillas) hechas en la rama `feat/o04-07-bienvenida`;
 > por probar en dispositivo. Partió de la idea M05 «Onboarding fix» de `ideas.md` (el código
 > M05 era del tema de monetización; como spec es de onboarding y pasa a O04).
 > Maqueta: [`onboarding-m05.html`](../mockups/onboarding-m05.html), publicada en
