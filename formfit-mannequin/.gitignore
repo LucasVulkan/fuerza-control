@@ -1,0 +1,5 @@
+node_modules/
+tests/shots/
+*.blend1
+__pycache__/
+prototype/viewer.html

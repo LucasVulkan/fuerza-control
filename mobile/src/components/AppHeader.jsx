@@ -505,6 +505,7 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
             value={isPro ? t('header.switchToFree') : t('header.switchToPro')}
             onPress={() => setProfile({ isPro: !isPro })}
           />
+          <MenuRow label={t('mannequinTest.title')} onPress={() => go('MannequinTest')} />
         </Section>
       )}
     </DragSheet>

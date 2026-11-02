@@ -8,4 +8,7 @@ const config = getDefaultConfig(__dirname);
 // ./lib/extract/types even though the file exists on disk.
 config.resolver.unstable_enablePackageExports = false;
 
+// El visor del maniquí 3D (X01) es un HTML autocontenido que se carga en una WebView.
+config.resolver.assetExts.push('html');
+
 module.exports = config;
