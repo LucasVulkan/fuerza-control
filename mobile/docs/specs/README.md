@@ -33,6 +33,7 @@ misma jerarquía: temas → sus specs por orden de código → sus tareas.
 | `U` | Estructura y UI |
 | `A` | Analítica |
 | `I` | Integridad y tests — corrección de datos y calidad de los tests (los fallos que encuentre van a `E`, no aquí) |
+| `X` | Ejercicios — cómo se ve y se ajusta cada ejercicio (maniquí 3D). La `E` ya era de Errores |
 
 El tema es **el de la spec entera**, no el de cada tarea: una tarea de programas que
 toca UI sigue siendo `P` porque su spec lo es. Dentro de un tema los números
@@ -75,7 +76,7 @@ desconocido, `npm run estado` **falla** en vez de callarse:
 > Estado: **la prosa de siempre**, con el detalle, los commits y el coste.
 ```
 
-- **`Tema`** — uno de los nueve de la tabla de arriba. Es la tarjeta de la página en la que cae la spec.
+- **`Tema`** — uno de los diez de la tabla de arriba. Es la tarjeta de la página en la que cae la spec.
 - **`En corto`** — para qué sirve esto meses después. El título y el nombre del
   archivo no bastan para acordarse de qué iba algo; esta línea sí. Sin jerga.
 - **`Fase <código> · <estado> · <título> · §<sección> [· antes <viejo>]`** — una
@@ -289,6 +290,7 @@ digan lo mismo, y que el texto describa la realidad. Eso es de quien edita.
 | [U13-inicio-pestanas.md](U13-inicio-pestanas.md) — Inicio por pestañas | abierta el 6-oct-2026. U13-01 a U13-03 hechas (por probar) · U13-04 aparcada (chevron, última vez) | 🟢 | Alternativa a la lista plegable, a elegir en Preferencias: una tarjeta con una pestaña por sesión; el lima sigue siendo la que toca, el color se extiende desde la pestaña y se puede deslizar el dedo por ellas |
 | [U14-pantalla-programa.md](U14-pantalla-programa.md) — Pantalla Programa | abierta el 13-oct-2026 (A2). U14-01 y U14-02 hechas (por probar) | 🟢 | El tab Programa arranca con la tarjeta de Inicio en el mismo sitio y la despliega con la etapa y las cifras; debajo, botones y etapas, con la en curso en ficha |
 | [U15-momentos-dificiles.md](U15-momentos-dificiles.md) — Momentos difíciles: sin conexión, errores con salida y estados vacíos | spec escrita, sin implementar (18-oct-2026). 3 tareas: 01 NetInfo y cola de envíos · 02 errores con siguiente paso y textos traducidos · 03 maqueta de estados vacíos | 🟢/🟡 | «↑ Enviar» sin conexión queda en cola y se envía solo, como ya hace el cliente con `pendingUpload`; los toasts en español del store pasan a i18n; los vacíos se maquetan antes |
+| [X01-maniqui-3d.md](X01-maniqui-3d.md) — Maniquí 3D de ejercicios | X01-01 en marcha (2-nov-2026): prueba del visor en una WebView | 🟢 | El sistema vive en `formfit-mannequin/` (Blender → glb + poses → `runtime.js`); `HANDOFF.md` manda. A (WebView) frente a B (render nativo) se decide con esta prueba |
 
 ## Implementadas (en testeo en dispositivo, julio 2026)
 

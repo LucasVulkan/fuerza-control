@@ -31,6 +31,7 @@ import DriveBackupScreen        from '../screens/DriveBackupScreen';
 import TrainerConnectionScreen  from '../screens/TrainerConnectionScreen';
 import AccountScreen            from '../screens/AccountScreen';
 import DocsScreen               from '../screens/DocsScreen';
+import MannequinTestScreen      from '../screens/MannequinTestScreen';
 import Toast                 from '../components/Toast';
 import BottomTabBar          from '../components/ui/BottomTabBar';
 import DialogHost            from '../components/ui/DialogHost';
@@ -276,6 +277,8 @@ export default function RootNavigator() {
           component={DocsScreen}
           options={{ animation: 'slide_from_right' }}
         />
+        {/* Solo se llega desde la sección Desarrollador del menú (__DEV__). */}
+        <Stack.Screen name="MannequinTest" component={MannequinTestScreen} />
       </Stack.Navigator>
 
       {/* Global toast — sits above all screens, never blocks touches */}
