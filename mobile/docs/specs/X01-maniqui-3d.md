@@ -13,10 +13,12 @@
 > Fase X01-08 · pendiente · Miniaturas de inicio y final · §11
 > Fase X01-09 · pendiente · Selector de ejercicios con imagen · §12
 > Fase X01-10 · pendiente · Preferencia: cómo se ven las listas de ejercicios · §13
-> Fase X01-11 · pendiente · Blender: organización por movimiento y forma, exportación por ejercicio · §14
-> Fase X01-12 · pendiente · Contenido de lanzamiento y tipos de base nuevos · §15
+> Fase X01-11 · pendiente · Blender: una acción por forma, exportación por ejercicio · §14
+> Fase X01-12 · pendiente · Herramientas de Blender: matriz de formas, crear desde otra y hoja de revisión · §15
+> Fase X01-13 · pendiente · Tipos de base por apoyo y un básico por patrón · §16
+> Fase X01-14 · pendiente · Contenido completo: todas las formas de T08 · §17
 >
-> Estado: el sistema llega de un chat externo y vive en [`formfit-mannequin/`](../../../formfit-mannequin/) (Blender → `mannequin.glb` + `poses.json` → `runtime.js`); su documento principal es [`HANDOFF.md`](../../../formfit-mannequin/docs/HANDOFF.md). **X01-01 probada en parte** (2-nov-2026): va muy fluido y abre en un segundo o menos, así que **se sigue por la WebView** (camino A, §1). Decisiones del usuario en §2. El resto de la spec está escrita el 2-nov-2026 y sin implementar; X01-04 (maquetas) va antes que cualquier UI.
+> Estado: el sistema llega de un chat externo y vive en [`formfit-mannequin/`](../../../formfit-mannequin/) (Blender → `mannequin.glb` + `poses.json` → `runtime.js`); su documento principal es [`HANDOFF.md`](../../../formfit-mannequin/docs/HANDOFF.md). **X01-01 probada en parte** (2-nov-2026): va muy fluido y abre en un segundo o menos, así que **se sigue por la WebView** (camino A, §1). Decisiones del usuario en §2 (dos rondas, 2-nov-2026). **Hoy solo se deja la spec definida**; nada más se implementa. El resto de la spec está escrita el 2-nov-2026 y sin implementar; X01-04 (maquetas) va antes que cualquier UI.
 
 ## 1. Contexto
 
@@ -45,6 +47,14 @@ En la WebView el 3D corre en el motor del navegador del sistema (V8/JSC, con JIT
 6. **El maniquí se busca por movimiento y forma**, los de [T08](T08-catalogo-por-movimientos.md): el movimiento sale del patrón y la forma de los chips.
 7. **Tres modos de lista**, elegibles en Preferencias: imagen grande (manda la imagen), imagen secundaria (manda el texto) y sin imagen (como hoy).
 8. **El aspecto se adapta a la app**: shader y colores con los del tema.
+
+Segunda ronda, el mismo día:
+
+9. **Anchura y giro de pies, y agarre supino/prono/neutro, son preferencias del ejercicio**, no del cuerpo: se guardan en cada ejercicio del programa. Se enseñan como **chips de los que no cambian el ejercicio** (los «solo informa» de P09/T08), que funcionan como **preajustes**: «Pies anchos» pone la anchura y el giro de una vez; el slider queda para afinar (§8, §9).
+10. **Todas las formas y variantes de T08 son acciones de Blender**, no solo los movimientos: de un implemento a otro cambia el recorrido de las manos (press militar con barra, mancuernas o kettlebell no es el mismo), y de pie a sentado cambia todo. Se empieza por los básicos (§16), pero al final se hacen todas (§17). Como son muchas combinaciones, hace falta **un sistema en Blender para crear una a partir de otra y revisarlas todas de un vistazo** (§15).
+11. **El modo de lista por defecto se pregunta en el onboarding** (§13).
+12. **Se empieza por un básico de cada patrón** para validar el código por patrón: sentadilla, bisagra, tracción vertical, tracción horizontal, empuje horizontal y empuje vertical (§16).
+13. **La polea tiene altura ajustable**, pero **un jalón no es una polea alta**: en el jalón el cable baja desde más arriba y por delante, con su máquina, asiento y tope de rodillas; no es subir la polea por su columna (§16).
 
 ## 3. X01-01 · Prueba en WebView
 
@@ -146,7 +156,20 @@ Antes de cualquier UI, una maqueta HTML en `docs/mockups/` con variantes, como e
 
 **Permisos** (§2.1–2.2): `editable` = es mi programa (quien entrena solo) o soy el entrenador editando el de un cliente. El cliente con entrenador nunca ve sliders.
 
-**DECIDIR en la fase**: si la anchura y el giro de pies del usuario son **una preferencia de su cuerpo** (vale para todas sus sentadillas) o **un ajuste de cada ejercicio**. Propuesta: empezar solo por ejercicio y subirlo a preferencia si se repite.
+**Preferencias del ejercicio como chips** (§2.9). Anchura y giro de pies, anchura de agarre y su orientación son del ejercicio, no del cuerpo. Cada movimiento declara sus chips de preajuste junto a sus ejes de T08; un chip escribe uno o varios ajustes, o elige la variante de Blender:
+
+```js
+// en movements.js (T08), solo los ejes que no cambian el ejercicio
+presets: {
+  feet: { narrow: { stance: 0.85, toes: 0 }, normal: {}, wide: { stance: 1.25, toes: 15 } },
+  grip: { prone: '@grip=prone', supine: '@grip=supine', neutral: '@grip=neutral' },  // variante = otra acción
+}
+```
+
+- Un chip que apunta a una variante (`@grip=…`) cambia la **pose**; uno que apunta a valores cambia los **ajustes**. Para quien edita es lo mismo: un chip.
+- Mover un slider después deja el chip sin marcar («a medida»).
+- Agarre y anchura ya se guardan hoy como variante que solo informa (P09). El chip **es** esa variante, no un dato nuevo: así lo que se apunta en el entreno y lo que enseña el maniquí no pueden ir por separado.
+- Lo que no tiene chip (profundidad, avance de rodillas, altura de barra…) se queda en sliders.
 
 **Probar X01-05**
 
@@ -157,12 +180,14 @@ Antes de cualquier UI, una maqueta HTML en `docs/mockups/` con variantes, como e
 
 ## 9. X01-06 · Editor
 
-En el editor de ejercicio (la pantalla que ya tiene series, reps y tempo), según la maqueta de X01-04: el visor con las medidas del cliente (o las propias) y los sliders del tipo de base, con su texto en i18n (hoy están en `PARAMS` de `runtime.js`; las etiquetas pasan a `locales`). «Restablecer» vuelve a la pose autorada.
+En el editor de ejercicio (la pantalla que ya tiene series, reps y tempo), según la maqueta de X01-04: el visor con las medidas del cliente (o las propias) y los sliders del tipo de base, con su texto en i18n (hoy están en `PARAMS` de `runtime.js`; las etiquetas pasan a `locales`). Encima de los sliders, los chips de preajuste (§8). «Restablecer» vuelve a la pose autorada.
 
 **Probar X01-06**
 
 - [ ] Mover cada slider cambia el maniquí y el valor queda guardado en ese ejercicio del programa, no en otros.
 - [ ] Restablecer deja el ejercicio sin ajustes.
+- [ ] «Pies anchos» cambia anchura y giro de una vez; tocar luego el slider desmarca el chip.
+- [ ] Supino → prono cambia la pose (otra acción), y en el Workout se apunta esa variante.
 
 ## 10. X01-07 · Workout
 
@@ -203,15 +228,16 @@ En Preferencias, «Ejercicios en las listas», con tres valores, para el selecto
 | **Imagen secundaria** | manda el texto; miniatura pequeña a un lado |
 | **Sin imagen** | como hoy |
 
-Por defecto, imagen secundaria (DECIDIR con la maqueta). Un ejercicio sin pose se ve siempre como «sin imagen», en cualquier modo.
+**El modo se pregunta en el onboarding** (§2.11): un paso con los tres modos dibujados, en el tramo común junto a unidades y tema. Si se salta, queda imagen secundaria. Ese paso pide su tarea en la spec de onboarding vigente cuando se implemente esta. Un ejercicio sin pose se ve siempre como «sin imagen», en cualquier modo.
 
 **Probar X01-10**
 
 - [ ] Cambiar el modo en Preferencias cambia el selector y el Workout al volver a ellos.
+- [ ] El onboarding pregunta el modo; saltarlo deja imagen secundaria.
 
-## 14. X01-11 · Blender
+## 14. X01-11 · Blender: una acción por forma
 
-**Un solo archivo** (`FormFit_Maniqui.blend`), un solo rig y **una acción por forma**: las acciones pesan poco y así un cambio en el rig vale para todas. Se divide solo si un día molesta (lentitud, conflictos), enlazando el rig desde un archivo maestro.
+**Un solo archivo** (`FormFit_Maniqui.blend`), un solo rig y **una acción por forma y variante** (§2.10): las acciones pesan poco y así un cambio en el rig vale para todas. Se divide solo si un día molesta (lentitud, conflictos), enlazando el rig desde un archivo maestro.
 
 **Nombre de la acción = su clave**, con la forma de T08:
 
@@ -219,11 +245,11 @@ Por defecto, imagen secundaria (DECIDIR con la maqueta). Un ejercicio sin pose s
 <movimiento>.<valores de los ejes que cargan>[@<variante>=<valor>]
 row.barbell-bent-bi                 remo con barra inclinado
 row.barbell-bent-bi@grip=supine     su variante con agarre supino
-row.cable-seated-bi@pulley=high     polea alta
-squat.barbell-back-bi
+ohp.db-standing-bi                  press militar con mancuernas, de pie
+ohp.db-seated-bi                    el mismo, sentado
 ```
 
-**Metadata en la acción** (propiedades personalizadas, como `ff_base` y `ff_name` hoy): `ff_base` (tipo de base: `stand`, `seat`…), `ff_movement`, `ff_form` (JSON con los ejes) y `ff_variant`. El exportador las vuelca a `meta` y comprueba que el nombre cuadra con ellas.
+**Metadata en la acción** (propiedades personalizadas, como `ff_base` y `ff_name` hoy): `ff_base` (tipo de base, §16), `ff_movement`, `ff_form` (JSON con los ejes), `ff_variant` y `ff_status` (`borrador` · `revisar` · `ok`). El exportador las vuelca a `meta`, comprueba que el nombre cuadra con ellas y **solo exporta las `ok`**.
 
 **Búsqueda en la app**: forma + variante → forma → nada. No se cae al movimiento genérico: una pose que no es la del ejercicio enseña mal la técnica (§2.4).
 
@@ -231,20 +257,84 @@ squat.barbell-back-bi
 
 **Hasta T08**: la clave es el id de la ficha (`squat_barbell`) y una tabla `poseKeyOf` mapea. Cuando T08-01 dé `movement` y `form` a cada ficha, la tabla desaparece.
 
-**DECIDIR en la fase**: si el agarre (supino/prono/neutro) se hace **siempre** como variante de Blender o, en los movimientos donde solo gira el antebrazo, como ajuste procedural del visor (ahorraría acciones). Propuesta: acciones primero; procedural solo si el número de acciones se dispara.
-
 **Probar X01-11**
 
 - [ ] Exportar con una acción mal nombrada o sin metadata falla con un mensaje claro.
+- [ ] Una acción en `borrador` no llega a la app.
 - [ ] `npm test` de `formfit-mannequin/` sigue a 0,0 mm con los JSON por ejercicio.
 
-## 15. X01-12 · Contenido de lanzamiento
+## 15. X01-12 · Herramientas de Blender
 
-Cada tipo de base es lógica del solver y sus props (HANDOFF §6): hoy `stand` (con barra) y `seat` (prensa). Para remos, polea, bisagra, banco o colgado hacen falta tipos nuevos y huesos de implemento nuevos (`POLEA`, `BANCO`, mancuernas…).
+El problema (§2.10): un movimiento son decenas de combinaciones (implemento × postura × lado × variantes), y cada una necesita su pose porque el recorrido cambia. Crear una tiene que ser rápido, y **revisarlas todas** también. Tres piezas, en un add-on propio (`blender/ff_tools.py`) con su panel junto al del rig:
 
-**DECIDIR**: la lista de 10–15 movimientos con los que se lanza, y qué tipos de base piden. Lo caro aquí es posar en Blender, no el código.
+**1. La matriz.** Lee las formas válidas de T08 (`movements.js` volcado a JSON: ejes, `valid`, `presets`) y las cruza con las acciones del archivo. Por movimiento enseña una tabla: cada forma y variante con su estado (**falta** · borrador · revisar · ok). Pulsar una fila abre su acción. El exportador imprime el mismo resumen («Press militar: 7 de 12 ok, faltan 3»).
 
-## 16. Fuera de alcance
+**2. Crear desde otra.** Se elige una forma que falta y una hecha de la que partir («mancuernas, de pie» desde «barra, de pie»). El script:
+
+- duplica la acción con el nombre y la metadata nuevos, en `borrador`;
+- cambia el **implemento**: enseña sus props, oculta los demás y reengancha las manos al hueso del implemento nuevo con los padres de IK de `PROPERTIES` (como hoy la barra: `ARM_IK_parent = 5`). Cada implemento es un hueso con su **toma** (dónde va la mano): barra (una, sobre su eje), mancuernas y kettlebells (dos, `IMPL.L/R`, independientes), asa de polea, anillas…;
+- pone el implemento nuevo **donde estaba el anterior** en las dos claves, como punto de partida;
+- si cambia la **postura** (de pie ↔ sentado), aplica la plantilla de cuerpo de esa postura (pelvis en el asiento, pies apoyados) y mantiene lo de la cintura para arriba;
+- deja la acción abierta para retocar a mano lo que cambia de verdad: con mancuernas las manos bajan más y rotan, con kettlebell el antebrazo va vertical.
+
+`autopose.py` ya hace algo parecido a partir de direcciones de segmentos (HANDOFF §2.4): es la base.
+
+**3. La hoja de revisión.** Un script (desde Blender, o desde el harness que ya hace `npm run shots`) que renderiza **inicio y final de todas las formas** de un movimiento, en lateral y frontal, y las pone en una página HTML en rejilla: una fila por forma, con su estado. Así se ven las doce de un press militar a la vez y salta a la vista la que tiene la mano mal. Las mismas capturas sirven de miniaturas del catálogo (§11).
+
+**Probar X01-12**
+
+- [ ] La matriz del press militar lista todas sus formas válidas y marca las que faltan.
+- [ ] Crear «mancuernas, de pie» desde «barra, de pie» deja una acción en borrador con las mancuernas en las manos, sin barra, lista para retocar.
+- [ ] La hoja de revisión del press militar enseña inicio y final de todas sus formas en una página.
+
+## 16. X01-13 · Tipos de base por apoyo y un básico por patrón
+
+**¿El mismo código vale para tracción vertical y horizontal?** Sí, si los tipos de base se definen por **cómo se apoya el cuerpo** y no por la dirección del movimiento. Por dónde va la carga es el recorrido del implemento, y eso ya viene de Blender. Lo que cambia el solver es dónde está el apoyo y si hay que equilibrar:
+
+| Tipo de base | Apoyo | Equilibrio | Ejemplos |
+|---|---|---|---|
+| `stand` (existe) | pies en el suelo | sí: CdM sobre el mediopié | sentadilla, peso muerto, remo inclinado, press militar de pie |
+| `seat` (existe: prensa) | pelvis en el asiento (+ pies) | no | prensa, jalón, remo sentado en polea, press militar sentado |
+| `bench` | espalda en el banco (+ pies) | no | press de banca, remo con pecho apoyado |
+| `hang` | manos en la barra | sí: el cuerpo cuelga bajo las manos | dominada |
+
+Un tipo de base nuevo es: dónde se fija el cuerpo, qué sliders tiene y cómo se equilibra (o que no hace falta). El IK de brazos y piernas que conserva el estilo (`solveLimb`) ya es común a todos.
+
+**Los básicos** (§2.12), uno por patrón, para validar cada tipo de base antes de llenar el catálogo:
+
+| Patrón | Básico | Tipo de base | Implemento nuevo |
+|---|---|---|---|
+| Sentadilla | sentadilla trasera (hecha) | `stand` | — |
+| Bisagra | peso muerto convencional | `stand` | — (la barra sale del suelo) |
+| Tracción vertical | dominada | `hang` | barra fija |
+| Tracción vertical | jalón al pecho | `seat` | máquina de jalón |
+| Tracción horizontal | remo con barra | `stand` | — |
+| Tracción horizontal | remo sentado en polea | `seat` | polea |
+| Empuje horizontal | press de banca | `bench` | banco |
+| Empuje vertical | press militar de pie | `stand` | — |
+
+**Polea y jalón** (§2.13) son dos implementos distintos:
+
+- **Polea (columna)**: un anclaje en una columna; el cable va del anclaje al asa. **Su altura es un ajuste** (`pulleyH`, del suelo a lo alto de la columna). Al cambiarla, el anclaje sube o baja por la columna y el cable cambia de ángulo; la pose se corrige con el mismo método de diferencias.
+- **Jalón (máquina)**: la polea está **arriba y por delante**, por encima de la cabeza, con asiento y tope de rodillas. El cable baja casi vertical desde más alto que cualquier posición de la columna. Es su propia máquina (hueso y props), no una polea en lo alto.
+
+En un movimiento de polea (remo, face pull, extensión de tríceps…), si la altura **cambia el ejercicio** (polea alta frente a baja) es un eje de T08 y va como acción; si **solo afina**, es el ajuste `pulleyH`. Se decide movimiento a movimiento al cerrar sus formas.
+
+**Probar X01-13**
+
+- [ ] Los ocho básicos se ven en el visor con su pose de Blender (fidelidad 0,0 mm salvo las excepciones documentadas).
+- [ ] Peso muerto y press militar de pie siguen equilibrados (CdM en su valor autorado) al cambiar las medidas.
+- [ ] Dominada: al cambiar las medidas, el cuerpo sigue colgando bajo las manos.
+- [ ] Remo en polea: subir y bajar `pulleyH` mueve el anclaje por la columna y el cable sigue a las manos.
+- [ ] Jalón: el cable baja desde arriba y por delante, no desde lo alto de una columna.
+
+## 17. X01-14 · Contenido completo
+
+Todas las formas y variantes de T08 (§2.10), movimiento a movimiento, con las herramientas de §15. Un movimiento está cerrado cuando su matriz está entera en `ok`. El orden lo decide el usuario según lo que más se use; los tipos de base que falten (zancada, tumbado boca abajo, cuadrupedia…) se añaden a §16 cuando aparezcan.
+
+**Probar X01-14**: movimiento a movimiento con la hoja de revisión; cada uno se añade aquí como casilla al cerrarlo.
+
+## 18. Fuera de alcance
 
 - Render nativo (camino B), salvo que la WebView se quede corta.
 - Mapa de calor muscular como información para el usuario: hoy es una estimación (HANDOFF §6); se enseña o no según la maqueta.
