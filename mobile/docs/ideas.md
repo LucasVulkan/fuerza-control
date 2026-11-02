@@ -42,3 +42,14 @@ Elegir una plantilla arriba de la hoja de Progresión y guardar la propia («Gua
 ## P21 · Peso objetivo: hasta dónde llega
 
 «Quiero llegar a 60 kg»: con la progresión elegida, cuántas subidas y cuántas semanas harían falta (un rango entre «si todo sale a la primera» y «con calma», 2-3 sesiones por subida), en una gráfica en escalones. Y poder guardarlo como objetivo. Avisar de que es el mejor caso: cuanto más pesado, más cuesta. Encaja con las marcas de la progresión por intención (meta visible con tendencia real, sin dictar el peso de cada sesión). Está en la maqueta `mockups/progresion-hoja-2.html` (versión 2, camino C).
+
+## U17 · Mensajes de pantalla la primera vez
+
+Al abrir cada pantalla por primera vez, un mensaje corto que explica qué hace. Se enseña una sola vez por pantalla.
+
+## U18 · Bienvenida y novedades desde Supabase
+
+Mensaje al abrir la app por primera vez o después de una actualización: bienvenida, novedades, etc. El texto vive en Supabase; la app lo busca al arrancar.
+
+- Si ya lo ha enseñado, no lo vuelve a enseñar.
+- Si ya lo enseñó pero el texto ha cambiado y es de una actualización que coincide con la versión de la app, lo enseña otra vez.
