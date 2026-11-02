@@ -1,0 +1,180 @@
+<title>Sentadilla 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: visor 3D a sangre a la izquierda, panel de control estrecho a la derecha; en móvil se apilan. */
+:root{
+  --bg:#eceff3; --panel:#f8f9fb; --stage:#dfe3ea; --ink:#1a1e26; --muted:#5b6474; --line:#d3d9e2;
+  --accent:#2453cf; --accent-ink:#ffffff; --track:#d9dfe8; --chip:#ffffffd9;
+  --outline:#1a1e26; --path:#2453cf; --mid:#6b7383;
+  --heat-lo:#d0d6e0; --warn-bg:#ffe1d6; --warn-ink:#8a2a10; --heat-mid:#f5ad45; --heat-hi:#e8452a;
+  --display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101217; --panel:#161920; --stage:#1b1f27; --ink:#e7eaf0; --muted:#9aa3b2; --line:#272c36;
+  --accent:#7b9dff; --accent-ink:#0c1122; --track:#2a303b; --chip:#161920e0;
+  --outline:#0a0c10; --path:#8aa8ff; --mid:#8b93a3; --warn-bg:#4a1d12; --warn-ink:#ffc1ad; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#101217; --panel:#161920; --stage:#1b1f27; --ink:#e7eaf0; --muted:#9aa3b2; --line:#272c36;
+  --accent:#7b9dff; --accent-ink:#0c1122; --track:#2a303b; --chip:#161920e0;
+  --outline:#0a0c10; --path:#8aa8ff; --mid:#8b93a3; --warn-bg:#4a1d12; --warn-ink:#ffc1ad; color-scheme:dark }
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body)}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 384px;height:100%}
+.stage{position:relative;background:var(--stage);min-height:0;overflow:hidden}
+#c{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#c:active{cursor:grabbing}
+.overlay{position:absolute;display:flex;gap:6px;flex-wrap:wrap}
+.views{top:12px;left:max(12px,env(safe-area-inset-left,0px))}
+.toggles{top:12px;right:12px}
+.readout{bottom:12px;left:max(12px,env(safe-area-inset-left,0px));right:12px;pointer-events:none}
+.chip{background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:4px 9px;font:500 12px/1.3 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);backdrop-filter:blur(6px)}
+.chip b{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.vbtn{background:var(--chip);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 10px;font:600 12px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(6px)}
+.vbtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.legend{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:8px;font:12px var(--mono);color:var(--muted)}
+.loading[hidden]{display:none}
+.loading{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;font:600 14px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--stage)}
+.warn{background:var(--warn-bg);color:var(--warn-ink);border-color:transparent}
+.legend i{display:block;width:84px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--heat-lo),var(--heat-mid),var(--heat-hi));border:1px solid var(--line)}
+
+.panel{overflow-y:auto;border-left:1px solid var(--line);background:var(--panel);
+  padding-block:18px 36px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font:700 30px/1 var(--display);letter-spacing:.01em;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--muted);font-size:13px}
+h2{margin:0 0 10px;font:600 13px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 small{font:400 11px var(--mono);letter-spacing:0;text-transform:none}
+section{display:flex;flex-direction:column}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+.play{display:flex;align-items:center;gap:12px}
+.pbtn{flex:none;width:40px;height:40px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;display:grid;place-items:center}
+.pbtn svg{width:16px;height:16px;fill:currentColor}
+.scrub{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.scrub .ends{display:flex;justify-content:space-between;font:11px var(--mono);color:var(--muted)}
+
+.seg{display:flex;background:var(--track);border-radius:8px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);border-radius:6px;padding:7px 6px;font:600 13px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.exseg{flex-wrap:wrap}
+.exseg button{flex:1 1 30%;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px #0000001f}
+
+.field{display:flex;flex-direction:column;gap:4px}
+.field .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.field label{font-weight:500;font-size:13px}
+.field output{font:500 12px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}
+input[type=range]{width:100%;margin:2px 0;accent-color:var(--accent);height:22px}
+.hint{margin:0;font-size:12px;color:var(--muted)}
+
+.muscles{display:grid;grid-template-columns:auto minmax(0,1fr) 38px;gap:7px 10px;align-items:center}
+.muscles .n{font-size:13px}
+.muscles .bar{height:8px;border-radius:4px;background:var(--track);overflow:hidden}
+.muscles .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--heat-mid),var(--heat-hi));width:0}
+.muscles .v{font:500 12px var(--mono);font-variant-numeric:tabular-nums;text-align:right;color:var(--muted)}
+.spark{margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px}
+.spark svg{display:block;width:100%;height:76px;overflow:visible}
+.spark .lg{display:flex;gap:14px;font:11px var(--mono);color:var(--muted);margin-top:4px}
+.spark .lg span::before{content:"";display:inline-block;width:10px;height:2px;margin-right:5px;vertical-align:middle;background:currentColor}
+
+.editor{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg)}
+.edActions{display:flex;gap:8px;flex-wrap:wrap}
+.edActions .copy{margin-top:0}
+.fgroup{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.fgroup h3{margin:0;font:600 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink);display:flex;justify-content:space-between;align-items:center}
+.fgroup h3 button{border:0;background:none;color:var(--accent);font:500 11px var(--body);cursor:pointer;padding:0;text-transform:none;letter-spacing:0}
+.mini{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}
+.mini .field label{font-size:12px}
+.mini input[type=range]{height:18px}
+.stats{display:flex;flex-wrap:wrap;gap:6px}
+.stats .chip{backdrop-filter:none}
+pre{margin:0;padding:10px 12px;background:var(--track);border-radius:8px;font:12px/1.5 var(--mono);overflow-x:auto;color:var(--ink)}
+.copy{align-self:flex-start;margin-top:8px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:6px 10px;font:600 12px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:58vh;min-height:340px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .legend{display:none}
+}
+</style>
+
+<div class="app">
+  <section class="stage" aria-label="Visor 3D">
+    <canvas id="c" aria-label="Muñeco 3D. Arrastra para girar, pellizca o usa la rueda para acercar."></canvas>
+    <div class="overlay views" role="group" aria-label="Vista">
+      <button class="vbtn" data-view="front">Frente</button>
+      <button class="vbtn" data-view="side" aria-pressed="true">Lateral</button>
+      <button class="vbtn" data-view="three">45°</button>
+    </div>
+    <div class="overlay toggles">
+      <button class="vbtn" id="heatBtn" aria-pressed="true">Músculos</button>
+      <button class="vbtn" id="refBtn" aria-pressed="false">Referencia</button>
+      <button class="vbtn" id="linesBtn" aria-pressed="true">Líneas</button>
+    </div>
+    <div class="overlay readout" id="readout"></div>
+    <div class="legend">baja <i></i> alta</div>
+    <div class="loading" id="loading">Cargando modelo…</div>
+  </section>
+
+  <aside class="panel">
+    <header>
+      <h1>Sentadilla trasera</h1>
+      <p class="sub">Poses autoradas en Blender con autocorrección por equilibrio y proporciones. Demanda muscular estimada, no EMG.</p>
+    </header>
+
+    <div class="seg exseg" role="group" aria-label="Ejercicio" id="exSeg"></div>
+
+    <section>
+      <h2>Repetición <small id="phaseLbl"></small></h2>
+      <div class="play">
+        <button class="pbtn" id="playBtn" aria-label="Pausar"></button>
+        <div class="scrub">
+          <input type="range" id="scrub" min="0" max="1000" value="1000" aria-label="Posición en la repetición">
+          <div class="ends"><span>Inicio</span><span>Final</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ajustes del ejercicio <small id="defNote"></small></h2>
+      <div id="exFields" class="stack"></div>
+    </section>
+
+    <section>
+      <h2>Demanda estimada <small id="demandAt"></small></h2>
+      <div class="muscles" id="muscles"></div>
+      <div class="spark">
+        <svg viewBox="0 0 300 76" preserveAspectRatio="none" id="spark" aria-label="Demanda de rodilla y cadera a lo largo del recorrido"></svg>
+        <div class="lg"><span style="color:var(--heat-hi)">Rodilla (cuádriceps)</span><span style="color:var(--accent)">Cadera (glúteo)</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Cliente</h2>
+      <div class="stack">
+        <div class="seg" role="group" aria-label="Proporciones de ejemplo" id="presetSeg">
+          <button data-preset="avg" aria-pressed="true">Media</button>
+          <button data-preset="femur">Fémur largo</button>
+          <button data-preset="torso">Tronco largo</button>
+          <button data-preset="ankle">Tobillo rígido</button>
+        </div>
+        <div id="bodyFields" class="stack"></div>
+        <p class="hint">Con todo en su valor por defecto ves exactamente la pose autorada. Cambia proporciones o ajustes y el solver corrige la pose manteniendo el estilo.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Prescripción guardada</h2>
+      <pre id="json"></pre>
+      <button class="copy" id="copyBtn">Copiar JSON</button>
+    </section>
+  </aside>
+</div>
+

@@ -1,0 +1,13 @@
+{
+  "name": "formfit-mannequin",
+  "private": true,
+  "description": "Maniquí 3D de ejercicios de FormFit: pipeline Blender -> GLB/poses.json + runtime con autocorrección",
+  "scripts": {
+    "build:viewer": "python3 prototype/build.py",
+    "test:fidelity": "node tests/fidelity.js",
+    "test:balance": "node tests/balance.js",
+    "shots": "node tests/screenshots.js",
+    "test": "python3 prototype/build.py && node tests/fidelity.js && node tests/balance.js"
+  },
+  "devDependencies": { "three": "0.147.0", "playwright": "^1.48.0" }
+}
