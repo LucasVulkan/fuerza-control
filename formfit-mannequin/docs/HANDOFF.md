@@ -283,11 +283,11 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
      ⚠️ No uses el tobillo del FK interpolado: entre claves se desliza hasta 13 cm.
    - **Barra:** hombro + `du`·u + `dn`·n + `dx` (el offset lateral cuenta).
    - **Brazos:** el agarre se proyecta sobre el eje de la barra y se escala con `grip`. La muñeca se coloca desde el *socket* del puño (`socketRest`). El polo del codo es el autorado rotado con el tronco. Si la mano no llega, se avisa.
-5. **Equilibrio en lazo cerrado:** `comOffset(pose, bar, carga)` calcula el centro de masas real del sistema respecto al mediopié real. Se ajusta `phi` por secante (hasta 8 iteraciones) para que ese offset sea **igual al de la pose autorada**.
+5. **Equilibrio en lazo cerrado:** `comOffset(pose, bar, carga)` calcula el centro de masas real del sistema respecto al mediopié real. Se ajusta `phi` por secante (hasta 8 iteraciones) para que ese offset sea **el de las claves de Blender, interpolado entre ellas** (`comRef`). No vale el de la pose interpolada: entre claves se interpolan rotaciones, no el equilibrio, y el objetivo se iba hasta −5,5 cm a mitad de bajada (y el tronco quedaba 7° más erguido que el autorado).
 
    Esto corrige lo que el modelo de palos no captura. Por ejemplo, con el tobillo limitado a 20° en la sentadilla frontal, antes el centro de masas quedaba 8,5 cm por detrás; ahora queda en −3,8 cm, igual que en la pose autorada.
 
-   *Opción pendiente de decidir:* forzar el centro de masas a 0 cm en lugar del offset autorado. Las poses actuales tienen −2,8 cm (trasera) y −3,8 cm (frontal).
+   *Opción pendiente de decidir:* forzar el centro de masas a 0 cm en lugar del offset de las claves. Las claves actuales tienen +3,0 / −2,8 cm (trasera) y +2,6 / −3,8 cm (frontal): se corrige retocándolas en Blender.
 6. **Salidas del visor:**
    - línea discontinua = vertical del mediopié real;
    - indicadores: tronco, muslo, tibia, CdM–mediopié y barra–mediopié.
@@ -311,13 +311,15 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
 
 Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, cadera)`), con tres cambios:
 
-- **La barra cuelga de las manos**, no va en el tronco: `barra = hombros + (barra − hombros autorados)·k`. Ni la barra ni las manos giran con el tronco (`Rh` = identidad).
-- **Muslo y tronco se resuelven juntos** (Newton 2×2 sobre la pose real, ≤ 6 iteraciones):
-  - la barra sobre el mediopié de los pies plantados, como en la autorada (la trayectoria sale recta);
-  - la barra en el mismo punto del recorrido: al empezar, a la altura autorada (en el suelo: los discos no cambian con el cuerpo); hacia el bloqueo pesa más mantener el muslo autorado (`s²`).
+- **La barra cuelga de las manos**, no va en el tronco: `barra = hombros + (barra − hombros autorados)·k`, salvo la altura, que sale del alcance hombro→puño con el agarre actual (agarre más abierto → barra más alta). Ni la barra ni las manos giran con el tronco (`Rh` = identidad).
+- **Muslo y tronco, en dos pasos con una sola solución cada uno:**
+  1. Inicio (`s = 0`): Newton 2×2 para que la barra quede en el suelo (los discos no cambian con el cuerpo) y sobre el mediopié de los pies plantados. Sale `dB0`, cuánto cambia el muslo respecto al autorado (fémur, tronco, agarre, rodilla…). Se calcula una vez por cuerpo y ajustes (`hingeStart`, en caché).
+  2. Resto: muslo = autorado + `dB0·(1 − subida)`, con la subida medida por la altura autorada de la barra (0 en el suelo, 1 al bloquear: de pie es de pie). El tronco, por secante, el que deja la barra sobre el mediopié.
+
+  Antes era un Newton 2×2 que mezclaba «altura de la barra» y «muslo autorado» con pesos según `s`: con otro cuerpo saltaba de solución (hasta 20 cm de un frame al siguiente). `tests/balance.js` lo vigila.
 - `knees` es «Rodilla al empezar»: más tibia al principio, que se desvanece hacia el bloqueo.
 
-Con los valores por defecto el error es 0 en (muslo, tronco) autorados: 0,0 mm en las claves. Con un fémur largo la cadera sube y el tronco se acuesta (83°); con un tronco largo, al revés (61°). Indicadores: tronco, muslo, tibia, altura de la barra y barra–mediopié.
+Con los valores por defecto `dB0 = 0` y sale la autorada: 0,0 mm en las claves. Con un fémur largo la cadera sube y el tronco se acuesta (85°); con un tronco largo, al revés (61°). Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera al empezar» (cuánto y por qué).
 
 ### 4.5 Sliders (`PARAMS`)
 

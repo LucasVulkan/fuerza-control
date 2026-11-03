@@ -21,6 +21,15 @@ const { open } = require('./harness');
         const bad = s === 0 && Math.abs(r.bar.center.y - A) > 0.005; if (bad) fail++;
         out.push(`${nm.padEnd(13)} ${ex} s=${s} ${r.readout.map(x => x[0] + ' ' + x[1]).join(' · ')}${bad ? ' · ¡la barra no está en el suelo!' : ''}${r.warns.length ? ' · ' + r.warns.join('; ') : ''}`);
         S.body = sb; S.per[ex] = sp; }
+      // sin saltos: entre frames contiguos la barra no se mueve mucho más que con el cuerpo por defecto (antes el solver
+      // saltaba de solución: hasta 20 cm de golpe)
+      let ref;
+      for (const [nm, body, prm] of hcases) {
+        const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
+        let prev, jump = 0; for (let i = 0; i <= 40; i++) { const c = D.evaluate(ex, i / 40).bar.center; if (prev) jump = Math.max(jump, c.distanceTo(prev)); prev = c.clone(); }
+        ref ??= jump;
+        if (jump > ref * 1.5) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡salto de ${(jump * 100).toFixed(1)} cm entre frames (por defecto ${(ref * 100).toFixed(1)})!`); }
+        S.body = sb; S.per[ex] = sp; }
     }
     out.push(fail ? `FALLOS: ${fail}` : 'OK'); return out.join('\n'); }));
   await close(); })();
