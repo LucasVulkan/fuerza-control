@@ -274,7 +274,7 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
    - pies 0,029;
    - barra = carga/100.
 
-   Busca `phi` y `th` para que el centro de masas quede sobre el mediopié, con la tibia limitada por la dorsiflexión. Se resuelve **dos veces**: con el cuerpo y los ajustes por defecto (`ref`) y con los actuales (`cur`). Se aplican las diferencias:
+   Busca `phi` y `th` para que el centro de masas quede sobre el mediopié, con la tibia limitada por la dorsiflexión. Se resuelve **dos veces**, las dos con la carga actual: con el cuerpo y los ajustes por defecto (`ref`) y con los actuales (`cur`). Se aplican las diferencias:
    - `th = F.th + (cur.th − ref.th)`, limitada a `max(35°, F.th) + (dorsi − 35°)`. El límite es relativo para respetar poses autoradas con más de 35° de tibia, como la frontal (51°).
    - Cadera: `F.hip + G(cur) − G(ref)`.
 4. **`build(phi)`**: construye la pose completa para una inclinación de tronco dada.
@@ -286,9 +286,13 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
      Y la cadera se desplaza lo mismo que ese tobillo (`drift`): la cadera autorada está colocada respecto al tobillo del FK, así que, si no, la pierna queda corta y la rodilla se dobla de más. En la sentadilla trasera eran 64° en vez de 37° al 25 % de la bajada: parecía que bajaba primero con las rodillas. Con la corrección, 43° y el tronco se inclina antes (13° frente a 8°): flexión doble de cadera y rodilla. En las claves no hay desplazamiento.
    - **Barra:** hombro + `du`·u + `dn`·n + `dx` (el offset lateral cuenta).
    - **Brazos:** el agarre se proyecta sobre el eje de la barra y se escala con `grip`. La muñeca se coloca desde el *socket* del puño (`socketRest`). El polo del codo es el autorado rotado con el tronco. Si la mano no llega, se avisa.
-5. **Equilibrio en lazo cerrado:** `comOffset(pose, bar, carga)` calcula el centro de masas real del sistema respecto al mediopié real. Se ajusta `phi` por secante (hasta 8 iteraciones) para que ese offset sea **el de las claves de Blender, interpolado entre ellas** (`comRef`). No vale el de la pose interpolada: entre claves se interpolan rotaciones, no el equilibrio, y el objetivo se iba hasta −5,5 cm a mitad de bajada (y el tronco quedaba 7° más erguido que el autorado).
+5. **Equilibrio en lazo cerrado:** `comOffset(pose, bar, carga)` calcula el centro de masas real del sistema respecto al mediopié real, con masas y centros por segmento de de Leva (cabeza 6,94 %, tronco 43,46 %, brazo 2,71, antebrazo 1,62, mano 0,61, muslo 14,16, pierna 4,33, pie 1,37). Cabeza y brazos van en su sitio, no sumados al tronco: en la frontal los brazos van por delante y hacen de contrapeso.
 
-   Esto corrige lo que el modelo de palos no captura. Por ejemplo, con el tobillo limitado a 20° en la sentadilla frontal, antes el centro de masas quedaba 8,5 cm por detrás; ahora queda en −3,8 cm, igual que en la pose autorada.
+   Se ajusta `phi` por secante (hasta 8 iteraciones) para que ese offset sea **el de las claves de Blender con la carga actual, interpolado entre ellas** (`comRef`). Por eso, con el cuerpo y los ajustes por defecto, la pose autorada sale igual con cualquier carga (`tests/balance.js` lo comprueba); la carga solo decide cuánto pesa cada cosa al compensar otros cambios (con el tobillo a 20°, frontal a 27° de tronco con 100 %, 32° con barra vacía y 38° sin peso).
+
+   ⚠️ No fijes el objetivo con la carga por defecto: al quitar peso, el cuerpo solo tenía que ocupar el punto de equilibrio de cuerpo + barra, y la frontal sin peso se doblaba (46° con el tobillo a 20°) y el peso muerto acababa inclinado hacia delante al bloquear. Tampoco vale la pose interpolada: entre claves se interpolan rotaciones, no el equilibrio, y el objetivo se iba hasta −5,5 cm a mitad de bajada.
+
+   Si el centro de masas sale del pie (±10 cm × k del mediopié), avisa de que se caería: p. ej. la salida del peso muerto sin carga queda 12 cm por detrás.
 
    *Opción pendiente de decidir:* forzar el centro de masas a 0 cm en lugar del offset de las claves. Las claves actuales tienen +3,0 / −2,8 cm (trasera) y +2,6 / −3,8 cm (frontal): se corrige retocándolas en Blender.
 6. **Salidas del visor:**
@@ -323,12 +327,12 @@ Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, ca
 
   ⚠️ No vuelvas a resolver el punto bajo en el corte: un «−20° de rodilla» sobre una rodilla que ahí ya está menos doblada es mucho más rígido y la barra se aleja del cuerpo.
 - **Muslo y tronco**, con una sola solución en cada paso:
-  1. Punto bajo (la clave con la barra más baja, sin recortar): **la rodilla tiene el ángulo que toca** (el autorado + `knees`) y la pierna, con ese ángulo fijo, gira sobre el tobillo. Newton 2×2 sobre tibia y tronco para que la barra quede a su altura y sobre el mediopié. Así cada ajuste mueve la cadera, no la rodilla:
+  1. Punto bajo (la clave con la barra más baja, sin recortar): **la rodilla tiene el ángulo que toca** (el autorado + `knees`) y la pierna, con ese ángulo fijo, gira sobre el tobillo. Newton 2×2 sobre tibia y tronco para que la barra quede a su altura y el centro de masas donde lo tienen las claves (como en las sentadillas, con la carga actual). Así cada ajuste mueve la cadera, no la rodilla:
      - déficit o más hondo → la cadera va atrás casi sin bajar (−1 cm con 8 cm de déficit) y el tronco se inclina. Nada de cuclillas;
-     - menos rodilla → la cadera sube (convencional a −30°: 12 cm) y el tronco se inclina; la pierna se inclina hacia atrás hasta su límite (`T_MIN`, tibia a −12°: pierna rígida, peso en los talones). A partir de ahí solo queda el tronco: la barra a su altura y la cadera sube y se adelanta, aunque la barra se adelante del mediopié (aviso).
+     - menos rodilla → la cadera sube (convencional a −30°: 12 cm) y el tronco se inclina; la pierna se inclina hacia atrás hasta su límite (`T_MIN`, tibia a −12°: pierna rígida, peso en los talones). A partir de ahí solo queda el tronco: la barra a su altura y la cadera sube y se adelanta, aunque el centro de masas se adelante (aviso).
 
      Altura: si la autorada está en el suelo, en el suelo (los bloques solo recortan), igual para todos los cuerpos; si no, la autorada × k, más `depth` negativo, sin pasar del suelo o los bloques. Salen `dB0`, `dTh`, lo que la barra se adelantó (`e1B`) y el ángulo autorado de la rodilla abajo (`KB`), una vez por cuerpo y ajustes (`hingeStart`, en caché). Si no llega a la altura, avisa.
-  2. Resto: **la rodilla, en proporción** a cuánto la dobla la animación en ese frame: `K = K_autorada · (1 + knees/KB)`. Si abajo se quitan 20° de 75°, donde la animación la dobla 35° se quitan 9°: una rodilla rígida lo es en todo el recorrido (rumano a −40°: 2° arriba, 11° a mitad, 18° abajo). La tibia = autorada + `dTh × (1 − subida)²` (con el cuadrado, la barra no acelera al llegar abajo) y el muslo, lo que falta para `K`. El tronco, por secante, el que deja la barra sobre el mediopié (más `e1B`, que se desvanece igual).
+  2. Resto: **la rodilla, en proporción** a cuánto la dobla la animación en ese frame: `K = K_autorada · (1 + knees/KB)`. Si abajo se quitan 20° de 75°, donde la animación la dobla 35° se quitan 9°: una rodilla rígida lo es en todo el recorrido (rumano a −40°: 2° arriba, 11° a mitad, 18° abajo). La tibia = autorada + `dTh × (1 − subida)²` (con el cuadrado, la barra no acelera al llegar abajo) y el muslo, lo que falta para `K`. El tronco, por secante, el que deja el centro de masas en su sitio (más `e1B`, que se desvanece igual).
 - **Tobillos plantados y cadera** (`drift`, común con `stand`, ver §4.3): en el rumano, sin ella, 48° de rodilla en vez de 32° a mitad de recorrido, y reducir la rodilla apenas se notaba.
 
   Antes era un Newton 2×2 que mezclaba «altura de la barra» y «muslo autorado» con pesos según `s`: con otro cuerpo saltaba de solución (hasta 20 cm de un frame al siguiente). `tests/balance.js` lo vigila.
@@ -340,7 +344,7 @@ Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, ca
 
 **Ojo con el rumano:** en este modelo (brazos colgando, hombros sobre la barra, barra sobre el mediopié) bajar la barra a media tibia exige ~58° de flexión de rodilla, y aun a la altura de la rodilla ~47°. Una rodilla más recta solo deja inclinar el tronco ~25°. Un rumano más «rígido» se retoca a mano en Blender o se recorta con `depth`.
 
-Con los valores por defecto sale la autorada (0,0 mm en las claves), salvo los codos (ver la regla de brazos rectos). Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera» (en ese frame, cuántos cm más alta/baja y adelante/atrás que la autorada).
+Con los valores por defecto sale la autorada (0,0 mm en las claves), salvo los codos (ver la regla de brazos rectos). Indicadores: tronco, muslo, tibia, altura de la barra, CdM–mediopié, barra–mediopié y, si cambia, «Cadera» (en ese frame, cuántos cm más alta/baja y adelante/atrás que la autorada).
 
 ### 4.5 Sliders (`PARAMS`)
 

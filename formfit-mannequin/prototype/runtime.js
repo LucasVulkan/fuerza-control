@@ -130,22 +130,32 @@ function authoredPose(ex, s) {
 // transformaciones mundiales exactas exportadas de Blender (para apoyos: pies, asas)
 const expP = (ex, n, s) => { const [a, b, t] = seg(ex, s); return V(...a.bones[n].p).lerp(V(...b.bones[n].p), t); };
 const expQ = (ex, n, s) => { const [a, b, t] = seg(ex, s); return new THREE.Quaternion(...a.bones[n].q).slerp(new THREE.Quaternion(...b.bones[n].q), t); };
-// centro de masas sagital del sistema respecto al mediopié (mismas masas que el solver)
+// centro de masas sagital del sistema respecto al mediopié. Masas y centros por segmento de de Leva (% del peso corporal):
+// cabeza 6,94 · tronco 43,46 · brazo 2,71 · antebrazo 1,62 · mano 0,61 · muslo 14,16 · pierna 4,33 · pie 1,37.
+// Cabeza y brazos van en su sitio real, no sumados al tronco: en la sentadilla frontal los brazos van por delante y hacen de
+// contrapeso; con la barra sin peso, el modelo antiguo creía el cuerpo más atrás y doblaba el tronco de más (46° en vez de 27°).
 function midfootZ(P) { return ['L', 'R'].map(S => { const a = P[`DEF-FOOT.${S}`].p, t = P[`DEF-TOE.${S}`].p; return a.z + 0.4 * (t.z - a.z); }).reduce((x, y) => x + y) / 2; }
 function comOffset(P, bar, load) {
-  const m = (a, b) => P[a].p.clone().add(P[b].p).multiplyScalar(0.5);
-  const hip = m('DEF-THIGH01.L', 'DEF-THIGH01.R'), sh = m('DEF-ARM01.L', 'DEF-ARM01.R');
-  let z = 0.678 * hip.clone().lerp(sh, 0.62).z, M = 0.678;
-  for (const S of ['L', 'R']) { const h = P[`DEF-THIGH01.${S}`].p, k = P[`DEF-SHIN01.${S}`].p, a = P[`DEF-FOOT.${S}`].p, t = P[`DEF-TOE.${S}`].p;
-    z += 0.1 * (h.z + k.z) / 2 + 0.0465 * (k.z + a.z) / 2 + 0.0145 * (a.z + 0.4 * (t.z - a.z)); M += 0.161; }
-  const mb = load / 100; z += mb * bar.z; M += mb;
-  return z / M - midfootZ(P);
+  const p = n => P[n].p, along = (n, l) => p(n).clone().add(V(0, l * K(), 0).applyQuaternion(P[n].q));   // l m a lo largo del hueso
+  const hip = midOf(P, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), sh = midOf(P, 'DEF-ARM01.L', 'DEF-ARM01.R');
+  let z = 43.46 * hip.clone().lerp(sh, 0.5).z + 6.94 * along('DEF-HEAD', 0.1).z;
+  for (const S of ['L', 'R']) {
+    const s = p(`DEF-ARM01.${S}`), e = p(`DEF-FORARM01.${S}`), w = p(`DEF-HAND.${S}`);
+    const h = p(`DEF-THIGH01.${S}`), k = p(`DEF-SHIN01.${S}`), a = p(`DEF-FOOT.${S}`), t = p(`DEF-TOE.${S}`);
+    z += 2.71 * lerp(s.z, e.z, 0.577) + 1.62 * lerp(e.z, w.z, 0.457) + 0.61 * along(`DEF-HAND.${S}`, 0.05).z
+      + 14.16 * lerp(h.z, k.z, 0.41) + 4.33 * lerp(k.z, a.z, 0.44) + 1.37 * lerp(a.z, t.z, 0.4);
+  }
+  return (z + load * bar.z) / (100 + load) - midfootZ(P);
 }
-// CdM objetivo respecto al mediopié: el de las claves de Blender, interpolado entre ellas. La pose interpolada no sirve
-// de referencia: entre claves se interpolan rotaciones, no el equilibrio, y el CdM se iba hasta 5 cm atrás a mitad de bajada.
+// CdM objetivo respecto al mediopié: el de las claves de Blender CON LA CARGA ACTUAL, interpolado entre ellas. Así la pose
+// autorada sale tal cual con cualquier carga, y la carga solo decide cuánto pesa cada cosa al compensar otros cambios (cuerpo,
+// rodilla, tobillo). Con la carga por defecto fija, quitar peso dejaba al cuerpo solo en el punto de equilibrio de cuerpo +
+// barra: la frontal sin peso se doblaba y el peso muerto acababa inclinado hacia delante al bloquear.
+// La pose interpolada tampoco sirve de referencia: entre claves se interpolan rotaciones, no el equilibrio (el CdM se iba hasta
+// 5 cm atrás a mitad de bajada).
 const EREF = {};
-function comRef(ex, s) {
-  const e = EREF[ex] ??= keysOf(ex).map(k => withBody(DEFAULT_BODY, () => { const A = authoredPose(ex, k.s); return comOffset(A, features(A, ex, k.s).bar, 100); }));
+function comRef(ex, s, load) {
+  const e = EREF[ex + '|' + load] ??= keysOf(ex).map(k => withBody(DEFAULT_BODY, () => { const A = authoredPose(ex, k.s); return comOffset(A, features(A, ex, k.s).bar, load); }));
   const [, , t, i] = seg(ex, s); return e[i] + (e[i + 1] - e[i]) * t;
 }
 const clonePose = P => Object.fromEntries(Object.entries(P).map(([n, v]) => [n, { p: v.p.clone(), q: v.q.clone() }]));
@@ -369,7 +379,7 @@ function evaluateInner(ex, s) {
     const barOff0 = F.barOff || { du: 0, dn: 0 }, barOff = { du: barOff0.du * d.k / d0.k + barH / 100, dn: barOff0.dn * d.k / d0.k };
     const L = prm.load;
     const lim0 = Math.max(35 * DEG, F.th) + 10 * DEG, limC = Math.max(35 * DEG, F.th) + (d.dorsi - 35) * DEG + 10 * DEG;
-    const ref = solveStand(d0, F.beta, thPref0, F.phi, stance0, yaw0, barOff0, 100, lim0);
+    const ref = solveStand(d0, F.beta, thPref0, F.phi, stance0, yaw0, barOff0, L, lim0);   // misma carga: solo cuenta lo que cambia el cuerpo
     const cur = solveStand(d, beta, thPref, F.phi, stance, yaw, barOff, L, limC);
     // estilo autorado + corrección del solver
     const thLim = Math.max(35 * DEG, F.th) + (d.dorsi - 35) * DEG;      // límite de tobillo relativo a la pose autorada
@@ -458,10 +468,11 @@ function evaluateInner(ex, s) {
       //     pie); el tronco, el que deja la barra sobre el mediopié (secante).
       //  Altura de los pies: se resuelve con los pies en el suelo y al final se sube todo; los bloques y la profundidad por
       //  encima de la autorada recortan (hingeCut).
-      const mfP = (['L', 'R'].map(S => { const a = expP(ex, `DEF-FOOT.${S}`, s), t = expP(ex, `DEF-TOE.${S}`, s); return a.z + 0.4 * (t.z - a.z); }).reduce((x, y) => x + y)) / 2;
-      const offA = F.bar.z - mfP, pb = prm.plates / 100, pf = prm.feet / 100, dp = prm.depth / 100;
+      // equilibrio: el centro de masas del sistema (cuerpo + barra, con la carga actual) donde lo tienen las claves, como en las
+      // sentadillas. Con poca carga pesa más el cuerpo y la postura cambia; con mucha, manda la barra.
+      const cRef = comRef(ex, s, L), pb = prm.plates / 100, pf = prm.feet / 100, dp = prm.depth / 100;
       const hBot = hk.floor ? PLATE_R - pf : Math.max(hk.HB * kr + Math.min(0, dp), PLATE_R + pb - pf);
-      const E = (b, ph, t = th, hT = hBot, oZ = offA) => { const r = build(ph, hipOf(b, t)); return [r, r.bar.z - midfootZ(r.pose) - oZ, r.bar.y - hT]; };
+      const E = (b, ph, t = th, hT = hBot, oZ = cRef) => { const r = build(ph, hipOf(b, t)); return [r, comOffset(r.pose, r.bar, L) - oZ, r.bar.y - hT]; };
       const T_MIN = -12 * DEG;  // tibia: la pierna se inclina atrás como mucho esto (pierna rígida, peso en los talones)
       const newton = (x, y, fn, xr, yr) => {   // Newton 2×2 sobre (x, y) para e1 = e2 = 0
         let [r, e1, e2] = fn(x, y);
@@ -482,8 +493,8 @@ function evaluateInner(ex, s) {
         tF = a.x; b = Kf - tF; ph = a.y; r = a.r;
         out.e1B = 0;
         if (tF <= T_MIN + 1e-4) {
-          // tibia al límite: ya solo queda el tronco. La barra a su altura (en el suelo manda el suelo) aunque se adelante del
-          // mediopié; menos rodilla sube y adelanta la cadera, y el tronco se inclina más.
+          // tibia al límite: ya solo queda el tronco. La barra a su altura (en el suelo manda el suelo) aunque el centro de masas
+          // se adelante; menos rodilla sube y adelanta la cadera, y el tronco se inclina más.
           const E2 = y => { const [rr, f1, f2] = E(b, y, tF, hT); return [rr, f2, f1]; };
           let p0 = ph, [r0, g0] = E2(p0), p1 = p0 + 2 * DEG, [r1, g1, z1] = E2(p1);
           for (let i = 0; i < 12 && Math.abs(g1) > 0.0002; i++) {
@@ -491,7 +502,7 @@ function evaluateInner(ex, s) {
             const pn = clamp(p1 - g1 * (p1 - p0) / den, -20 * DEG, 110 * DEG); p0 = p1; g0 = g1; p1 = pn; [r1, g1, z1] = E2(p1);
           }
           ph = p1; r = r1; a.e2 = g1; out.e1B = z1;
-          if (Math.abs(z1) > 0.01) r.warns.push(`Con la rodilla tan recta, la barra se va ${Math.round(Math.abs(z1) * 100)} cm ${z1 > 0 ? 'por delante' : 'por detrás'} del mediopié`);
+          if (Math.abs(z1) > 0.01) r.warns.push(`Con la rodilla tan recta, el centro de masas se va ${Math.round(Math.abs(z1) * 100)} cm ${z1 > 0 ? 'hacia delante' : 'hacia atrás'}`);
         }
         if (Math.abs(a.e2) > 0.01) r.warns.push(`No llega a esa profundidad con la rodilla así (se queda a ${Math.round(a.e2 * 100)} cm)`);
         out.dB0 = b - F.beta; out.dTh = tF - th;
@@ -501,7 +512,7 @@ function evaluateInner(ex, s) {
         // 75°, donde la animación la dobla 35° se quitan 9°. Así una rodilla rígida lo es en todo el recorrido.
         const Kf = (F.beta + F.th) * Math.max(0, 1 + prm.knees * DEG / KB);
         tF = th + dTh * w; b = Kf - tF;
-        const E1 = (b, ph) => E(b, ph, tF, hBot, offA + e1B * w);   // lo que la barra se adelantó abajo, también se desvanece
+        const E1 = (b, ph) => E(b, ph, tF, hBot, cRef + e1B * w);   // lo que el CdM se adelantó abajo, también se desvanece
         ph = F.phi; [r, e1] = E1(b, ph);
         if (Math.abs(e1) > 0.0002) {
           let p1 = ph + 2 * DEG, [r1, f1] = E1(b, p1);
@@ -517,7 +528,7 @@ function evaluateInner(ex, s) {
       const hipNow = midOf(r.pose, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), hipA = midOf(auth, 'DEF-THIGH01.L', 'DEF-THIGH01.R').add(drift);
       out.hipD = [hipNow.y - hipA.y, hipNow.z - hipA.z];
     } else {
-      const eRef = comRef(ex, s);
+      const eRef = comRef(ex, s, L);
       phiA = phi0; bA = build(phiA, hipT); let eA = comOffset(bA.pose, bA.bar, L) - eRef;
       if (Math.abs(eA) > 0.0005) {
         let phiB = phiA + (eA > 0 ? -3 : 3) * DEG, bB = build(phiB, hipT), eB = comOffset(bB.pose, bB.bar, L) - eRef;
@@ -534,9 +545,13 @@ function evaluateInner(ex, s) {
     if (hinge && phi > 85 * DEG && betaH + thH < 45 * DEG) out.warns.push('Bajar tanto con la rodilla tan recta pide unos isquios muy flexibles');
     out.bar = { center: bar, axis };
     const mf = midfootZ(pose), com = comOffset(pose, bar, L) + mf;
+    // fuera del pie (talón ≈ 10 cm detrás del mediopié, punta ≈ 10 cm delante): se caería. P. ej. la salida del peso muerto
+    // sin carga: sin la barra delante, el cuerpo queda 12 cm detrás.
+    const edge = 0.10 * kk, off = com - mf;
+    if (Math.abs(off) > edge) out.warns.push(`Se caería hacia ${off > 0 ? 'delante' : 'atrás'}: el centro de masas queda ${Math.round(Math.abs(off) * 100)} cm ${off > 0 ? 'por delante' : 'por detrás'} del mediopié, fuera del pie${L < 30 ? ' (con tan poca carga, la barra no hace de contrapeso)' : ''}`);
     out.act = cur.act; out.path = bar.clone(); out.mid = mf; out.com = com;
     out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Muslo', `${Math.round(betaH / DEG)}°`], ['Tibia', `${Math.round(thH / DEG)}°`],
-      hinge ? ['Barra', `${Math.round(bar.y * 100)} cm del suelo`] : ['CdM–mediopié', `${((com - mf) * 100).toFixed(1)} cm`],
+      ...(hinge ? [['Barra', `${Math.round(bar.y * 100)} cm del suelo`]] : []), ['CdM–mediopié', `${((com - mf) * 100).toFixed(1)} cm`],
       ['Barra–mediopié', `${((bar.z - mf) * 100).toFixed(1)} cm`]];
     // qué ha ajustado: el muslo en el punto bajo para llegar a la barra (se reparte hasta arriba)
     // qué ha ajustado: dónde queda la cadera respecto a la autorada en este frame
