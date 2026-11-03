@@ -42,7 +42,7 @@ npm run shots                           # capturas en tests/shots/ para revisar 
 
 ## Reglas que no se pueden romper
 
-1. **Con los valores por defecto, el resultado debe ser la pose de Blender**: 0,0 mm en las claves de inicio y final. La prensa es la excepción documentada (pelvis fija al asiento). `tests/fidelity.js` lo comprueba; si falla, algo está mal.
+1. **Con los valores por defecto, el resultado debe ser la pose de Blender**: 0,0 mm en las claves de inicio y final. Excepciones documentadas: la prensa (pelvis fija al asiento) y las claves de bisagra con el codo flexionado en Blender (el visor endereza los brazos). `tests/fidelity.js` lo comprueba; si falla, algo está mal.
 2. **Los pies no deslizan**: tobillos y pies salen de las transformaciones exportadas, no del FK interpolado.
 3. **Correcciones como diferencias**: el solver se evalúa con el cuerpo actual y con el de referencia, y solo se aplica la diferencia. El equilibrio final se hace en lazo cerrado sobre la pose real.
 4. **Longitudes rígidas**: nada de IK stretch. Si en Blender una pierna no llega, el exportador baja el TORSO; no estires huesos.

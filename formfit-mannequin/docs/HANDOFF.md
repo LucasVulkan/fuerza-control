@@ -312,21 +312,22 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
 
 Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, cadera)`), con estos cambios:
 
-- **La barra va en las manos** (`hingeGrip`): en cada clave se guarda, por lado, puño − barra y el alcance hombro→puño, y entre claves se interpolan. La barra se pone a la altura que deja el puño izquierdo al alcance del hombro actual (agarre más abierto → barra más alta) y las manos van a la barra por IK. En las claves es exactamente la autorada.
+- **La barra va en las manos** (`hingeGrip`): en cada clave se guarda, por lado, puño − barra, y entre claves se interpola. Las manos van a la barra por IK.
+- **Regla: brazos rectos.** Con la barra en las manos el codo no se flexiona, ni en el aire ni en el suelo. La barra se pone a la altura que deja la muñeca izquierda con el brazo recto (99,9 % de brazo + antebrazo) desde el hombro actual; con el agarre más abierto, más alta. Si una clave de Blender tiene el codo flexionado (hoy: el inicio del convencional, 25°, y el rumano, 12–15°), el visor lo endereza y esa clave ya no coincide con Blender: `tests/fidelity.js` lo avisa. Conviene enderezarlos en Blender.
 
   ⚠️ No uses la barra interpolada con las manos de la pose interpolada: la barra va en recta y las manos en arco (en el rumano, con dos claves, se separaban 11 cm).
 - **Punto bajo y alto** (`hingeKeys`): la clave con la barra más baja y la más alta. En el convencional el bajo es el inicio; en el rumano, el final (empieza arriba).
 - **Recorte** (`hingeCut`, `hingeS`): con `depth` positivo, o con bloques más altos que el punto bajo, la repetición **se acorta**: va del punto alto al momento de la animación en que la barra (en las manos) está a esa altura. Lo de debajo no se ve; no se comprime. `evaluate` traduce la s de la repetición a la s de la animación.
 - **Muslo y tronco**, con una sola solución en cada paso:
-  1. Punto bajo (`s` = la del recorte), en dos partes:
-     - a) **El cuerpo** (fémur, tronco, agarre, rodilla): Newton 2×2 sobre muslo y tronco para la altura base, con la barra sobre el mediopié. La altura base es: apoyada (suelo o bloques) → la del apoyo, igual para todos los cuerpos; recortada sin apoyo → la de la animación en ese punto; si no → la autorada × k.
-     - b) **Lo que falta** (déficit, `depth` negativo): **flexión de cadera**. El ángulo de la rodilla no cambia (muslo + tibia fijo): la pierna gira sobre el tobillo, la cadera va atrás casi sin bajar (−1 cm con 8 cm de déficit) y el tronco se inclina. Nada de cuclillas.
+  1. Punto bajo (`s` = la del recorte): **la rodilla tiene el ángulo que toca** (el autorado + `knees`) y la pierna, con ese ángulo fijo, gira sobre el tobillo. Newton 2×2 sobre tibia y tronco para que la barra quede a su altura y sobre el mediopié. Así cada ajuste mueve la cadera, no la rodilla:
+     - déficit o más hondo → la cadera va atrás casi sin bajar (−1 cm con 8 cm de déficit) y el tronco se inclina. Nada de cuclillas;
+     - menos rodilla → la cadera sube (convencional a −30°: 12 cm) y el tronco se inclina; la tibia va hacia atrás hasta su límite (`T_MIN`, −5°). A partir de ahí solo queda el tronco: la barra a su altura y la cadera sube y se adelanta, aunque la barra se adelante del mediopié (aviso).
 
-     Salen `dB0` y `dTh` (cambio de muslo y de tibia), una vez por cuerpo y ajustes (`hingeStart`, en caché). Si no llega a la altura, avisa.
-  2. Resto: muslo y tibia = autorados + `dB0`/`dTh` × `(1 − subida)²` (0 arriba: de pie es de pie; con el cuadrado, la barra no acelera al llegar abajo). El tronco, por secante, el que deja la barra sobre el mediopié.
+     Altura: apoyada (suelo o bloques) → la del apoyo, igual para todos los cuerpos; recortada sin apoyo → la de la animación en ese punto; si no → la autorada × k, más `depth`, sin pasar del suelo o los bloques. Salen `dB0`, `dTh`, lo que la barra se adelantó (`e1B`) y la cadera respecto a la autorada (`hipD`), una vez por cuerpo y ajustes (`hingeStart`, en caché). Si no llega a la altura, avisa.
+  2. Resto: muslo y tibia = autorados + `dB0`/`dTh` × `(1 − subida)²` (0 arriba: de pie es de pie; con el cuadrado, la barra no acelera al llegar abajo). El tronco, por secante, el que deja la barra sobre el mediopié (más `e1B`, que también se desvanece).
 
   Antes era un Newton 2×2 que mezclaba «altura de la barra» y «muslo autorado» con pesos según `s`: con otro cuerpo saltaba de solución (hasta 20 cm de un frame al siguiente). `tests/balance.js` lo vigila.
-- `knees` es «Flexión de rodilla»: más o menos tibia, con todo su efecto abajo, que se desvanece hacia arriba.
+- `knees` es «Flexión de rodilla»: el ángulo de la rodilla en el punto bajo (−40…+20° sobre el autorado), que se desvanece hacia arriba.
 - **Altura de los pies** (`feet`): se resuelve con los pies en el suelo y al final se sube todo el cuerpo y la barra. **Altura de los discos** (`plates`): bloques bajo los discos. El visor dibuja las cajas (`blocks`, `footBox`).
 - Aviso de isquios: tronco por encima de 85° con la rodilla flexionada menos de 45°.
 
@@ -334,7 +335,7 @@ Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, ca
 
 **Ojo con el rumano:** en este modelo (brazos colgando, hombros sobre la barra, barra sobre el mediopié) bajar la barra a media tibia exige ~58° de flexión de rodilla, y aun a la altura de la rodilla ~47°. Una rodilla más recta solo deja inclinar el tronco ~25°. Un rumano más «rígido» se retoca a mano en Blender o se recorta con `depth`.
 
-Con los valores por defecto sale la autorada: 0,0 mm en las claves. Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera abajo» (cuánto y por qué).
+Con los valores por defecto sale la autorada (0,0 mm en las claves), salvo los codos (ver la regla de brazos rectos). Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera abajo» (cuántos cm más alta/baja y adelante/atrás que la autorada).
 
 ### 4.5 Sliders (`PARAMS`)
 
@@ -351,7 +352,7 @@ Con los valores por defecto sale la autorada: 0,0 mm en las claves. Indicadores:
 | seat | `depth` | 0,5–1,3 (1) | Final del recorrido. |
 | seat | `footHigh` | ±10 cm (0) | Pies más altos o más bajos en la plataforma. |
 | seat | `stance`, `toes`, `load` | — | Igual que arriba (carga 0–400 %, defecto 180). |
-| hinge | `knees` | −6…15° (0) | Flexión de rodilla: más o menos tibia, todo su efecto en el punto bajo; se desvanece al subir. |
+| hinge | `knees` | −40…20° (0) | Flexión de rodilla: ángulo de la rodilla en el punto bajo. Menos rodilla sube la cadera (y la adelanta cuando la tibia llega a −5°). |
 | hinge | `depth` | −40…30 cm (0) | Profundidad: altura de la barra en el punto bajo. Hacia arriba recorta el recorrido; hacia abajo, más flexión de cadera, sin pasar del suelo ni de los bloques. |
 | hinge | `plates` | 0…30 cm (0) | Altura de los discos (bloques): si quedan por encima del punto bajo, recortan el recorrido. |
 | hinge | `feet` | 0…20 cm (0) | Altura de los pies (déficit): el cuerpo sube con los pies; si la barra se apoya, lo que falta sale de la cadera. |

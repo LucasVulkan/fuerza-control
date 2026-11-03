@@ -14,7 +14,8 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['rdl_bottom_45', 'romanian_deadlift', 1, 'three', {}, {}], ['rdl_mid_side', 'romanian_deadlift', 0.5, 'side', {}, {}],
     ['rdl_shallow_side', 'romanian_deadlift', 1, 'side', {}, { depth: 15 }], ['deadlift_deficit_side', 'deadlift', 0, 'side', {}, { feet: 8 }],
     ['rdl_as_conventional', 'romanian_deadlift', 1, 'side', {}, { knees: 8, depth: -40 }],
-    ['rdl_deficit_side', 'romanian_deadlift', 1, 'side', {}, { knees: 0, depth: -10, feet: 10 }]];
+    ['rdl_deficit_side', 'romanian_deadlift', 1, 'side', {}, { knees: 0, depth: -10, feet: 10 }],
+    ['deadlift_stiff_side', 'deadlift', 0, 'side', {}, { knees: -30 }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();
