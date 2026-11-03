@@ -332,11 +332,16 @@ Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, ca
      - menos rodilla → la cadera sube (convencional a −30°: 12 cm) y el tronco se inclina; la pierna se inclina hacia atrás hasta su límite (`T_MIN`, tibia a −12°: pierna rígida, peso en los talones). A partir de ahí solo queda el tronco: la barra a su altura y la cadera sube y se adelanta, aunque el centro de masas se adelante (aviso).
 
      Altura: si la autorada está en el suelo, en el suelo (los bloques solo recortan), igual para todos los cuerpos; si no, la autorada × k, más `depth` negativo, sin pasar del suelo o los bloques. Salen `dB0`, `dTh`, lo que la barra se adelantó (`e1B`) y el ángulo autorado de la rodilla abajo (`KB`), una vez por cuerpo y ajustes (`hingeStart`, en caché). Si no llega a la altura, avisa.
-  2. Resto: **la rodilla, en proporción** a cuánto la dobla la animación en ese frame: `K = K_autorada · (1 + knees/KB)`. Si abajo se quitan 20° de 75°, donde la animación la dobla 35° se quitan 9°: una rodilla rígida lo es en todo el recorrido (rumano a −40°: 2° arriba, 11° a mitad, 18° abajo). La tibia = autorada + `dTh × (1 − subida)²` (con el cuadrado, la barra no acelera al llegar abajo) y el muslo, lo que falta para `K`. El tronco, por secante, el que deja el centro de masas en su sitio (más `e1B`, que se desvanece igual).
+  2. Resto: **la rodilla, con `knees` negativo, es un tope**: `K = min(K_autorada, KB + knees)`. La animación va normal mientras se dobla menos que el tope (arriba, en el rumano, no cambia nada) y al llegar se queda ahí; lo demás lo compensa el resto del cuerpo (rumano a −40°: 7°, 13°, 18° y se queda en 18°). Con `knees` positivo se dobla más, en proporción.
+
+     ⚠️ No lo hagas proporcional en todo el recorrido: arriba, donde la rodilla casi no se dobla, adelantaba la cadera y metía la barra en el cuerpo.
+
+     La tibia = autorada + `dTh × (1 − subida)²` (con el cuadrado, la barra no acelera al llegar abajo) y el muslo, lo que falta para `K`. El tronco, por secante, el que deja el centro de masas donde lo tienen las claves (más `e1B`, lo que se movió abajo, que se desvanece igual). Si aun así queda fuera de la zona del pie, **pivota sobre el tobillo** (ver abajo).
 - **Tobillos plantados y cadera** (`drift`, común con `stand`, ver §4.3): en el rumano, sin ella, 48° de rodilla en vez de 32° a mitad de recorrido, y reducir la rodilla apenas se notaba.
 
   Antes era un Newton 2×2 que mezclaba «altura de la barra» y «muslo autorado» con pesos según `s`: con otro cuerpo saltaba de solución (hasta 20 cm de un frame al siguiente). `tests/balance.js` lo vigila.
-- `knees` es «Flexión de rodilla»: el ángulo de la rodilla en el punto bajo (−60…+20° sobre el autorado) y, en proporción, en el resto del recorrido.
+- `knees` es «Flexión de rodilla»: negativo, la flexión máxima (el autorado abajo menos tantos grados); positivo, más rodilla.
+- **Zona del pie y pivote sobre el tobillo** (`comZone`): el CdM objetivo se mete en ±6 cm × k del mediopié. Si con esta carga el de las claves cae fuera (la salida del peso muerto sin carga: 12 cm detrás), el cuerpo pivota sobre el tobillo: la pierna gira con la rodilla igual, rodillas, cadera y hombros van hacia delante, hasta la dorsiflexión que dé el tobillo (`thLim`). En el punto bajo lo hace el Newton (la tibia es una de sus incógnitas); en el resto, después del tronco, una secante sobre la tibia. Convencional sin carga: tibia 16° (10° la autorada) y el CdM a −6 cm en todo el recorrido. Vale también para las sentadillas (solo el objetivo; allí compensa el tronco).
 - **Altura de los pies** (`feet`): se resuelve con los pies en el suelo y al final se sube todo el cuerpo y la barra. **Altura de los discos** (`plates`): bloques bajo los discos. El visor dibuja las cajas (`blocks`, `footBox`).
 - Aviso de isquios: tronco por encima de 85° con la rodilla flexionada menos de 45°.
 
@@ -361,7 +366,7 @@ Con los valores por defecto sale la autorada (0,0 mm en las claves), salvo los c
 | seat | `depth` | 0,5–1,3 (1) | Final del recorrido. |
 | seat | `footHigh` | ±10 cm (0) | Pies más altos o más bajos en la plataforma. |
 | seat | `stance`, `toes`, `load` | — | Igual que arriba (carga 0–400 %, defecto 180). |
-| hinge | `knees` | −60…20° (0) | Flexión de rodilla: ángulo de la rodilla en el punto bajo y, en proporción, en todo el recorrido. Menos rodilla sube la cadera (y la adelanta cuando la tibia llega a −12°). |
+| hinge | `knees` | −60…20° (0) | Flexión de rodilla: negativo, la flexión máxima (tope); la animación va normal hasta llegar a él. Menos rodilla sube la cadera (y la adelanta cuando la tibia llega a −12°). |
 | hinge | `depth` | −40…30 cm (0) | Profundidad: altura de la barra en el punto bajo. Hacia arriba recorta el recorrido; hacia abajo, más flexión de cadera, sin pasar del suelo ni de los bloques. |
 | hinge | `plates` | 0…30 cm (0) | Altura de los discos (bloques): si quedan por encima del punto bajo, recortan el recorrido. |
 | hinge | `feet` | 0…20 cm (0) | Altura de los pies (déficit): el cuerpo sube con los pies; si la barra se apoya, lo que falta sale de la cadera. |

@@ -13,12 +13,19 @@ const { open } = require('./harness');
       out.push(`${nm.padEnd(13)} ${ex.padEnd(12)} ${r.readout.map(x => x[0] + ' ' + x[1]).join(' · ')} · tobillo y=${(footY * 1000).toFixed(0)} mm${r.warns.length ? ' · ' + r.warns.join('; ') : ''}`);
       S.body = sb; S.per[ex] = sp; }
     // con el cuerpo y los ajustes por defecto, la carga no cambia la pose: el objetivo de CdM se calcula con la carga actual
-    // (si no, sin peso la frontal se doblaba y el peso muerto acababa inclinado hacia delante). Margen de 5 mm: en la bisagra el
-    // visor endereza los codos de las claves, así que su pose ya no es la autorada y esa diferencia pesa distinto con cada carga.
+    // (si no, sin peso la frontal se doblaba y el peso muerto acababa inclinado hacia delante). Con la mitad de la carga por
+    // defecto: sin carga, la bisagra cambia a propósito (su CdM sale del pie y pivota sobre el tobillo). Margen de 5 mm: en la
+    // bisagra el visor endereza los codos de las claves, así que su pose ya no es la autorada y esa diferencia pesa distinto.
     for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base !== 'seat')) for (const s of [0, 1]) {
-      const sp = { ...S.per[ex] }; S.exId = ex; const P0 = D.evaluate(ex, s).pose; S.per[ex].load = 0; const P1 = D.evaluate(ex, s).pose; S.per[ex] = sp;
+      const sp = { ...S.per[ex] }; S.exId = ex; const P0 = D.evaluate(ex, s).pose; S.per[ex].load = sp.load / 2; const r1 = D.evaluate(ex, s), P1 = r1.pose; S.per[ex] = sp;
       let dv = 0; for (const n of D.BN) dv = Math.max(dv, P0[n].p.distanceTo(P1[n].p));
-      if (dv > 0.005) { fail++; out.push(`${ex} s=${s}: ¡sin carga la pose cambia ${(dv * 1000).toFixed(0)} mm con el cuerpo por defecto!`); }
+      const atEdge = Math.abs(r1.com - r1.mid) > 0.059;   // el CdM llega al borde de la zona del pie: pivota a propósito
+      if (dv > 0.005 && !atEdge) { fail++; out.push(`${ex} s=${s}: ¡con la mitad de carga la pose cambia ${(dv * 1000).toFixed(0)} mm con el cuerpo por defecto!`); }
+    }
+    // sin carga, el CdM de la bisagra no sale del pie: pivota sobre el tobillo (antes: «se caería», 12 cm detrás)
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge')) for (let i = 0; i <= 10; i++) {
+      const sp = { ...S.per[ex] }; S.exId = ex; S.per[ex].load = 0; const r = D.evaluate(ex, i / 10); S.per[ex] = sp;
+      const off = r.com - r.mid; if (Math.abs(off) > 0.065) { fail++; out.push(`${ex} s=${i / 10} sin carga: ¡el CdM queda a ${(off * 100).toFixed(1)} cm del mediopié!`); }
     }
     const hcases = [['por defecto', {}, {}], ['fémur 112%', { femur: 112, tibia: 98, torso: 95 }, {}], ['tronco 110%', { femur: 94, torso: 110 }, {}],
       ['1,65 m', { height: 165 }, {}], ['1,95 m', { height: 195 }, {}], ['más rodilla', {}, { knees: 6 }], ['pies anchos', {}, { stance: 1.3, toes: 15 }]];
