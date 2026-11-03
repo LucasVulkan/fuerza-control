@@ -332,14 +332,9 @@ function hingeCut(ex) {
 }
 // s de la repetición (0..1) -> s de la animación, dentro del recorrido recortado
 function hingeS(ex, s) { const c = hingeCut(ex), sT = 1 - c.sB; return c.sCut + (sT - c.sCut) * (c.sB === 0 ? s : 1 - s); }
-// lo que se ajusta en el punto bajo para este cuerpo y ajustes (lo usan todos los frames; se calcula una vez):
-// cambio de muslo y tibia (dB0, dTh), lo que la barra se adelanta (e1B) y el ángulo autorado de la rodilla abajo (KB)
-const HSTART = {};
-function hingeStart(ex) {
-  const k = ex + JSON.stringify(state.body) + JSON.stringify(state.per[ex]);
-  if (!(k in HSTART)) { const r = evaluateRaw(ex, hingeKeys(ex).sB); HSTART[k] = { dB0: r.dB0, dTh: r.dTh, e1B: r.e1B, KB: r.KB }; }
-  return HSTART[k];
-}
+// ángulo autorado de la rodilla (muslo + tibia) en el punto bajo: el tope de «Flexión de rodilla» se cuenta desde él
+const HKB = {};
+const hingeKB = ex => HKB[ex] ??= withBody(DEFAULT_BODY, () => { const sB = hingeKeys(ex).sB, A = authoredPose(ex, sB), f = features(A, ex, sB); return f.beta + f.th; });
 // bisagra: en cada clave, puño − barra (por lado). Entre claves se interpola y las manos van siempre a la barra; la pose
 // interpolada describe un arco y la barra una recta (en el rumano se separaban hasta 11 cm).
 const gripOf = (P, S) => { const hn = `DEF-HAND.${S}`; return P[hn].p.clone().add(socketRest(S).applyQuaternion(P[hn].q.clone().multiply(REST[hn].q.clone().invert()))); };
@@ -459,82 +454,37 @@ function evaluateInner(ex, s) {
     // se mantiene sobre el mediopié igual que en la pose autorada; se corrige con la inclinación del tronco.
     let phiA, bA, betaH = beta, thH = th;
     if (hinge) {
-      // bisagra, en dos pasos que siempre tienen una sola solución:
-      //  1) punto bajo (la clave con la barra más baja, o el recorte): la rodilla tiene el ángulo que toca (el autorado +
-      //     «Flexión de rodilla») y la pierna, con ese ángulo fijo, gira sobre el tobillo. Newton 2×2 sobre tibia y tronco para
-      //     que la barra quede a la altura que toca y sobre el mediopié. Así cada ajuste mueve la cadera, no la rodilla:
-      //     menos rodilla -> la cadera sube y se adelanta y el tronco se inclina más; déficit o más hondo -> la cadera va atrás
-      //     casi sin bajar. Nada de cuclillas. Salen dB0 y dTh (cambio de muslo y de tibia); con los valores por defecto, 0.
-      //     Altura: apoyada (suelo o bloques), la del apoyo, igual para todos los cuerpos; recortada sin apoyo, la de la
-      //     animación en ese punto; si no, la autorada × k, más la profundidad, sin pasar del suelo o los bloques.
-      //  2) resto: muslo y tibia = los autorados + dB0/dTh·(1 − subida)², que se desvanece al subir (0 arriba: de pie es de
-      //     pie); el tronco, el que deja la barra sobre el mediopié (secante).
-      //  Altura de los pies: se resuelve con los pies en el suelo y al final se sube todo; los bloques y la profundidad por
-      //  encima de la autorada recortan (hingeCut).
-      // equilibrio: el centro de masas del sistema (cuerpo + barra, con la carga actual) donde lo tienen las claves, como en las
-      // sentadillas. Con poca carga pesa más el cuerpo y la postura cambia; con mucha, manda la barra.
-      // cRaw: el de las claves con esta carga; cRef: ese, metido en la zona cómoda del pie (comZone)
-      const cRaw = comRef(ex, s, L), cRef = comZone(cRaw), pb = prm.plates / 100, pf = prm.feet / 100, dp = prm.depth / 100;
+      // bisagra: en cada frame, el mismo problema. La rodilla tiene el ángulo que toca (con «Flexión de rodilla» negativa, un
+      // tope: la animación va normal hasta llegar a él y ahí se queda); con ese ángulo fijo, la pierna gira sobre el tobillo y el
+      // tronco se inclina. Newton 2×2 sobre tibia y tronco para que:
+      //   e1) el centro de masas (cuerpo + barra, con la carga actual) quede donde lo tienen las claves, dentro de la zona del pie
+      //       (si no cabe, pivota sobre el tobillo hacia delante);
+      //   e2) la barra siga su trayectoria: la de las claves (× k) más lo que cambie el punto bajo, repartido según la subida
+      //       (todo abajo, nada arriba). Arriba, de pie, la altura de la barra apenas depende de tibia y tronco y no se puede
+      //       exigir (con otro cuerpo saldría encogido): ahí manda la tibia autorada. e2 mezcla las dos cosas según la subida.
+      // Así la barra baja al ritmo de la animación aunque la rodilla esté topada (antes se quedaba arriba y caía de golpe al
+      // final). Con los valores por defecto sale la autorada.
+      // Altura en el punto bajo: si la autorada está en el suelo, en el suelo (los bloques solo recortan), igual para todos los
+      // cuerpos; si no, la autorada × k, más la profundidad negativa, sin pasar del suelo o los bloques. Altura de los pies: se
+      // resuelve con los pies en el suelo y al final se sube todo.
+      const cRef = comZone(comRef(ex, s, L)), pb = prm.plates / 100, pf = prm.feet / 100, dp = prm.depth / 100;
       const hBot = hk.floor ? PLATE_R - pf : Math.max(hk.HB * kr + Math.min(0, dp), PLATE_R + pb - pf);
-      const E = (b, ph, t = th, hT = hBot, oZ = cRef) => { const r = build(ph, hipOf(b, t)); return [r, comOffset(r.pose, r.bar, L) - oZ, r.bar.y - hT]; };
-      const T_MIN = -12 * DEG;  // tibia: la pierna se inclina atrás como mucho esto (pierna rígida, peso en los talones)
-      const newton = (x, y, fn, xr, yr) => {   // Newton 2×2 sobre (x, y) para e1 = e2 = 0
-        let [r, e1, e2] = fn(x, y);
-        for (let i = 0; i < 16 && Math.abs(e1) + Math.abs(e2) > 0.0002; i++) {
-          const h = 1e-3, [, a1, a2] = fn(x + h, y), [, c1, c2] = fn(x, y + h);
-          const j11 = (a1 - e1) / h, j21 = (a2 - e2) / h, j12 = (c1 - e1) / h, j22 = (c2 - e2) / h, det = j11 * j22 - j12 * j21;
-          if (Math.abs(det) < 1e-12) break;
-          x = clamp(x - (j22 * e1 - j12 * e2) / det, ...xr); y = clamp(y - (j11 * e2 - j21 * e1) / det, ...yr);
-          [r, e1, e2] = fn(x, y);
-        }
-        return { x, y, r, e2 };
-      };
-      let b, ph, r, e1, tF = th;
-      const secant = (x0, fn, lo, hi, n = 10) => {   // fn(x) -> [r, e]; raíz por secante desde x0
-        let [r0, f0] = fn(x0); if (Math.abs(f0) <= 0.0002) return [x0, r0, f0];
-        let x1 = x0 + 2 * DEG, [r1, f1] = fn(x1);
-        for (let i = 0; i < n && Math.abs(f1) > 0.0002; i++) {
-          const den = f1 - f0; if (Math.abs(den) < 1e-9) break;
-          const xn = clamp(x1 - f1 * (x1 - x0) / den, lo, hi); x0 = x1; f0 = f1; x1 = xn; [r1, f1] = fn(x1);
-        }
-        return [x1, r1, f1];
-      };
-      if (s === hk.sB) {
-        const hT = hBot, Kf = F.beta + F.th + prm.knees * DEG;                                      // ángulo de la rodilla abajo
-        out.KB = F.beta + F.th;
-        // la tibia, como mucho lo que deja el tobillo (dorsiflexión): pivotar sobre él hacia delante es lo que mete el CdM en el pie
-        const a = newton(th, F.phi, (t, y) => E(Kf - t, y, t, hT), [T_MIN, Math.min(45 * DEG, thLim)], [-20 * DEG, 110 * DEG]);
-        tF = a.x; b = Kf - tF; ph = a.y; r = a.r;
-        if (tF <= T_MIN + 1e-4) {
-          // tibia al límite: ya solo queda el tronco. La barra a su altura (en el suelo manda el suelo) aunque el centro de masas
-          // se adelante; menos rodilla sube y adelanta la cadera, y el tronco se inclina más.
-          const [p, rr, g] = secant(ph, y => { const [r2, , f2] = E(b, y, tF, hT); return [r2, f2]; }, -20 * DEG, 110 * DEG, 12);
-          ph = p; r = rr; a.e2 = g;
-          const z1 = comOffset(r.pose, r.bar, L) - cRef;
-          if (Math.abs(z1) > 0.01) r.warns.push(`Con la rodilla tan recta, el centro de masas se va ${Math.round(Math.abs(z1) * 100)} cm ${z1 > 0 ? 'hacia delante' : 'hacia atrás'}`);
-        }
-        if (Math.abs(a.e2) > 0.01) r.warns.push(`No llega a esa profundidad con la rodilla así (se queda a ${Math.round(a.e2 * 100)} cm)`);
-        // e1B: dónde quedó el CdM abajo respecto al de las claves (por la zona del pie o por la tibia al límite); se desvanece al subir
-        out.dB0 = b - F.beta; out.dTh = tF - th; out.e1B = comOffset(r.pose, r.bar, L) - cRaw;
-      } else {
-        const { dB0, dTh, e1B, KB } = hingeStart(ex), w = (1 - up) * (1 - up);   // (1 − subida)²: la barra no acelera al llegar abajo
-        // rodilla: con «Flexión de rodilla» negativa es un TOPE. La animación va normal mientras la rodilla se dobla menos que
-        // el tope (arriba, en el rumano, no cambia nada) y al llegar se queda ahí; lo demás lo compensa el resto del cuerpo.
-        // Positiva, se dobla más, en proporción a cuánto la dobla la animación.
-        const Ka = F.beta + F.th, Kf = prm.knees <= 0 ? Math.min(Ka, KB + prm.knees * DEG) : Ka * (1 + prm.knees * DEG / KB);
-        tF = th + dTh * w; b = Kf - tF;
-        // 1) el tronco: el CdM donde lo tienen las claves, más lo que se movió abajo (e1B, que se desvanece al subir)
-        [ph, r] = secant(F.phi, y => { const [r2, f] = E(b, y, tF, hBot, cRaw + e1B * w); return [r2, f]; }, -20 * DEG, 110 * DEG);
-        // 2) si aun así el CdM queda fuera de la zona del pie (poca carga), pivotar sobre el tobillo: la pierna gira con la
-        //    rodilla igual, la cadera y los hombros van hacia delante. Abajo no hace nada (ahí ya lo hizo el punto bajo).
-        const off = comOffset(r.pose, r.bar, L), want = comZone(off);
-        if (Math.abs(off - want) > 0.001) {
-          const t0 = tF, b0 = b, tHi = Math.min(45 * DEG, thLim);
-          const [dl, rr] = secant(0, x => { const [r2, f] = E(b0 - x, ph, t0 + x, hBot, want); return [r2, f]; }, T_MIN - t0, tHi - t0);
-          tF = t0 + dl; b = b0 - dl; r = rr;
-        }
-        out.dB0 = dB0; out.dTh = dTh;
+      const hT = F.bar.y * kr + (hBot - hk.HB * kr) * (1 - up);
+      const KB = hingeKB(ex), Ka = F.beta + F.th, Kf = prm.knees <= 0 ? Math.min(Ka, KB + prm.knees * DEG) : Ka * (1 + prm.knees * DEG / KB);
+      const T_MIN = -12 * DEG, T_MAX = Math.min(45 * DEG, thLim);   // tibia: atrás, pierna rígida con el peso en los talones; delante, el tobillo
+      const E = (t, ph) => { const r = build(ph, hipOf(Kf - t, t));
+        return [r, comOffset(r.pose, r.bar, L) - cRef, (1 - up) * (r.bar.y - hT) + up * 0.3 * (t - th)]; };
+      let t = th, ph = F.phi, [r, e1, e2] = E(t, ph);
+      for (let i = 0; i < 16 && Math.abs(e1) + Math.abs(e2) > 0.0002; i++) {
+        const h = 1e-3, [, a1, a2] = E(t + h, ph), [, c1, c2] = E(t, ph + h);
+        const j11 = (a1 - e1) / h, j21 = (a2 - e2) / h, j12 = (c1 - e1) / h, j22 = (c2 - e2) / h, det = j11 * j22 - j12 * j21;
+        if (Math.abs(det) < 1e-12) break;
+        t = clamp(t - (j22 * e1 - j12 * e2) / det, T_MIN, T_MAX); ph = clamp(ph - (j11 * e2 - j21 * e1) / det, -20 * DEG, 110 * DEG);
+        [r, e1, e2] = E(t, ph);
       }
+      if (Math.abs(e1) > 0.01) r.warns.push(`Con la rodilla así, el centro de masas se va ${Math.round(Math.abs(e1) * 100)} cm ${e1 > 0 ? 'hacia delante' : 'hacia atrás'}`);
+      if (s === hk.sB && Math.abs(r.bar.y - hBot) > 0.01) r.warns.push(`No llega a esa profundidad con la rodilla así (se queda a ${Math.round((r.bar.y - hBot) * 100)} cm)`);
+      const b = Kf - t, tF = t;
       phiA = ph; bA = r; betaH = b; thH = tF;
       const hipNow = midOf(r.pose, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), hipA = midOf(auth, 'DEF-THIGH01.L', 'DEF-THIGH01.R').add(drift);
       out.hipD = [hipNow.y - hipA.y, hipNow.z - hipA.z];
