@@ -24,6 +24,9 @@
  *    ancho fijo alineada a la derecha (crece hacia la izquierda), y el decimal y
  *    la unidad, cada uno en su caja de ancho fijo a la izquierda (la unidad
  *    tampoco se mueve cuando no hay decimal).
+ *  - Regla que corre (`tapePos`, prueba 3-nov): marca y burbuja quietas en
+ *    `ruler.originX` y las rayas (con partida y objetivo) se desplazan según el
+ *    valor continuo que deja el dedo bajo la marca.
  */
 
 import { Fragment, memo, useEffect } from 'react';
@@ -53,8 +56,8 @@ const SNAP = { duration: 70, easing: Easing.out(Easing.quad) };
 // el texto no escala con la fuente del sistema (`allowFontScaling={false}`) para
 // que el cálculo valga.
 const BUBBLE_FS  = textStyles.itemTitle.fontSize;
-// Dos líneas: el valor (itemTitle) y debajo la diferencia con la partida
-// (labelStrong: en micro y apagada apenas se leía sobre lima).
+// Dos líneas: arriba la diferencia con la partida (labelStrong: en micro y
+// apagada apenas se leía sobre lima) y debajo el valor (itemTitle).
 const BUBBLE_H   = 42;
 const LINE1_H    = 20;
 const LINE2_H    = 14;
@@ -126,6 +129,7 @@ export default function ScrubRuler({
   prevSource,   // 'coach' → objetivo en azul
   edge = 0,     // −1..1: intensidad del indicador de borde (negativa = izquierdo)
   cancel = false,
+  tapePos = null,   // shared value (SetRow): con él, la regla corre y la marca se queda
 }) {
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -144,7 +148,7 @@ export default function ScrubRuler({
   }, [cancel, dim]);
 
   // La marca se pinta en la x del valor (ajustada al paso): o sea, sobre el dedo.
-  const markerX = scrubXOf(ruler, value);
+  const markerX = tapePos ? ruler.originX : scrubXOf(ruler, value);
   const markX   = useSharedValue(markerX);
   useEffect(() => { markX.value = withTiming(markerX, SNAP); }, [markerX, markX]);
   // Solo se ilumina el número que ES el valor, nunca el más cercano.
@@ -201,27 +205,33 @@ export default function ScrubRuler({
     left: Math.max(0, Math.min(rowWidth - bubbleW, markX.value - bubbleW / 2)),
   }));
   const markStyle = useAnimatedStyle(() => ({ transform: [{ translateX: markX.value }] }));
+  const { originValue, step, px } = ruler;
+  const tapeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tapePos ? -((tapePos.value - originValue) / step) * px : 0 }],
+  }));
 
   return (
     <View pointerEvents="none" style={styles.root}>
       <Animated.View style={[styles.layer, layerStyle]}>
         <Animated.View style={[styles.inner, { width: rowWidth }, innerStyle]}>
-          <Ticks ruler={ruler} styles={styles} />
-          {nearNum ? (
-            <Text
-              allowFontScaling={false}
-              numberOfLines={1}
-              style={[styles.num, styles.numNear, { left: scrubXOf(ruler, nearNum.value) - LABEL_W / 2 }]}
-            >
-              {String(nearNum.value)}
-            </Text>
-          ) : null}
-          {showStart ? (
-            <View style={[styles.flag, { left: flagAt(initial).x - FLAG.width / 2, backgroundColor: th.colors.accent }, flagAt(initial).off && styles.flagOff]} />
-          ) : null}
-          {showTarget ? (
-            <View style={[styles.flag, { left: flagAt(prevValue).x - FLAG.width / 2, backgroundColor: targetColor }, flagAt(prevValue).off && styles.flagOff]} />
-          ) : null}
+          <Animated.View style={[StyleSheet.absoluteFill, tapeStyle]}>
+            <Ticks ruler={ruler} styles={styles} />
+            {nearNum ? (
+              <Text
+                allowFontScaling={false}
+                numberOfLines={1}
+                style={[styles.num, styles.numNear, { left: scrubXOf(ruler, nearNum.value) - LABEL_W / 2 }]}
+              >
+                {String(nearNum.value)}
+              </Text>
+            ) : null}
+            {showStart ? (
+              <View style={[styles.flag, { left: flagAt(initial).x - FLAG.width / 2, backgroundColor: th.colors.accent }, flagAt(initial).off && styles.flagOff]} />
+            ) : null}
+            {showTarget ? (
+              <View style={[styles.flag, { left: flagAt(prevValue).x - FLAG.width / 2, backgroundColor: targetColor }, flagAt(prevValue).off && styles.flagOff]} />
+            ) : null}
+          </Animated.View>
           <Animated.View style={[styles.marker, { left: -1 }, markStyle]} />
           {/* Bordes que desplazan (peso y reps): aparecen según se acerca el dedo. */}
           {edge < 0 ? (
@@ -240,19 +250,6 @@ export default function ScrubRuler({
       <Animated.View
         style={[styles.bubble, { width: bubbleW }, bubbleStyle]}
       >
-        <View style={styles.bubbleLine1}>
-          <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleLeftText, { width: leftW }]}>
-            {intStr}
-          </Text>
-          {decW ? (
-            <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: decW }]}>
-              {decStr}
-            </Text>
-          ) : null}
-          <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: unitW }]}>
-            {` ${unit}`}
-          </Text>
-        </View>
         <View style={styles.bubbleLine2}>
           {cancel ? (
             <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleDiff, styles.bubbleCancel, { width: leftW + rightW }]}>
@@ -273,6 +270,19 @@ export default function ScrubRuler({
               </Text>
             </>
           )}
+        </View>
+        <View style={styles.bubbleLine1}>
+          <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleLeftText, { width: leftW }]}>
+            {intStr}
+          </Text>
+          {decW ? (
+            <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: decW }]}>
+              {decStr}
+            </Text>
+          ) : null}
+          <Text allowFontScaling={false} numberOfLines={1} style={[styles.bubbleText, styles.bubbleRightText, { width: unitW }]}>
+            {` ${unit}`}
+          </Text>
         </View>
       </Animated.View>
     </View>

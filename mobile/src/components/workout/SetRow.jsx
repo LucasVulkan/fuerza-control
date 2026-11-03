@@ -18,18 +18,22 @@ import { Text, TextInput } from '../ui/Text';
 import Chevron from './Chevron';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import { spacing, borders, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { useStore } from '../../../store/useStore';
 import { useWeightUnit } from '../../hooks/useWeightUnit';
 import {
   scrubRuler, scrubValueAt, scrubEdge, scrubPan, scrubPanDir, scrubPanMs,
-  SCRUB_CANCEL_DY,
+  scrubTape, scrubTapeAt, scrubTapeWindow, scrubDiffText, SCRUB_TAPE, SCRUB_TAPE_SMOOTH_MS, SCRUB_CANCEL_DY,
 } from '../../utils/scrubScale';
 import { GRID } from './grid';
 import ScrubRuler, { SCRUB_MS } from './ScrubRuler';
 
 const STEP_PX  = 8;
+// Regla que corre: la marca persigue el valor nuevo (suavizado, ver scrubScale).
+const TAPE_SMOOTH = { duration: SCRUB_TAPE_SMOOTH_MS, easing: Easing.out(Easing.quad) };
+const smoothTo = (pos) => (SCRUB_TAPE_SMOOTH_MS > 0 ? withTiming(pos, TAPE_SMOOTH) : pos);
 const H_THRESH = 12;
 
 // El chevron (siempre en tint/accent-50 en la casilla activa) vive en ./Chevron.
@@ -116,12 +120,16 @@ function InputCell({
   onScrubStart,         // ({ field, ruler, value, cell, initial, hasValue, prevValue, prevSource }) al activarse, con la medida ya hecha
   onScrubMove,          // ({ value?, ruler?, edge?, cancel? }) solo lo que cambia
   onScrubEnd,           // () al soltar o al cancelarse
+  tapePos,              // shared value: valor (continuo) en la marca de la regla que corre
+  pivot      = false,   // peso: en la burbuja sin regla, la cifra de las unidades no se mueve
 }) {
   const th       = useTheme();
   const styles   = useThemedStyles(makeStyles);
   const inputRef = useRef(null);
   const [editing,      setEditing]      = useState(false);
   const [scrollActive, setScrollActive] = useState(false);
+  // Sin regla: valor al empezar a deslizar, para la burbuja con la diferencia.
+  const [swipeStart,   setSwipeStart]   = useState(0);
 
   const [localValue, setLocalValue] = useState(
     value !== null && value !== undefined && value !== '' ? String(value) : '',
@@ -156,7 +164,7 @@ function InputCell({
   useEffect(() => { scrollStepRef.current = scrollStep;   }, [scrollStep]);
   useEffect(() => {
     liveRef.current = {
-      scrubField, scrubUnit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd,
+      scrubField, scrubUnit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd, tapePos,
       prevValue, prevSource, hasValue: value !== null && value !== undefined && value !== '',
     };
   });
@@ -182,9 +190,18 @@ function InputCell({
   }, []);
 
   // Valor bajo el dedo con la regla y la x actuales: lo cambia y avisa a SetRow.
+  // En la regla que corre, el valor sale de lo arrastrado y la regla se desplaza.
   const retarget = useCallback((sc, extra) => {
-    const v = scrubValueAt(sc.ruler, sc.fingerX);
     const patch = { ...extra };
+    let v;
+    if (sc.tape) {
+      const at = scrubTapeAt(sc.ruler, sc.fingerX - sc.fingerX0, sc.value);
+      liveRef.current.tapePos.value = smoothTo(at.pos);
+      if (at.rewindow) { sc.ruler = scrubTapeWindow(sc.ruler, at.pos); patch.ruler = sc.ruler; }
+      v = at.value;
+    } else {
+      v = scrubValueAt(sc.ruler, sc.fingerX);
+    }
     if (v !== sc.value) { sc.value = v; patch.value = v; }
     return patch;
   }, []);
@@ -253,14 +270,21 @@ function InputCell({
           const field  = live.scrubField;
           const sc     = {
             pending: true, ruler: null, value: 0, initial: localValueRef.current, rowPageX: 0,
-            fingerX: 0, edge: 0, cancel: false, panTimer: null, pans: field !== 'rpe',
+            fingerX: 0, edge: 0, cancel: false, panTimer: null,
+            tape: SCRUB_TAPE && !!live.tapePos, pans: !(SCRUB_TAPE && live.tapePos) && field !== 'rpe',
           };
           const fingerPageX = gs.moveX || e.nativeEvent.pageX;
           scrubRef.current = sc;
           live.measureRow((_x, _y, w, _h, pageX) => {
             if (scrubRef.current !== sc) return;   // se soltó antes de que llegara la medida
             const lv = liveRef.current;
-            const ruler = scrubRuler(field, sc.initial, fingerPageX - pageX, w || lv.rowWidth, { unit: lv.scrubUnit });
+            const rowW  = w || lv.rowWidth;
+            // Regla que corre: la marca, fija sobre el centro de la casilla.
+            const ruler = sc.tape
+              ? scrubTape(field, sc.initial, cellRect.current.x + cellRect.current.width / 2, rowW, { unit: lv.scrubUnit })
+              : scrubRuler(field, sc.initial, fingerPageX - pageX, rowW, { unit: lv.scrubUnit });
+            if (sc.tape) lv.tapePos.value = ruler.start;
+            sc.fingerX0 = fingerPageX - pageX;
             sc.pending = false;
             sc.rowPageX = pageX;
             sc.ruler = ruler;
@@ -275,6 +299,7 @@ function InputCell({
           });
           return;
         }
+        setSwipeStart(localValueRef.current);
         setScrollActive(true);
         fadeIn();
       },
@@ -292,14 +317,13 @@ function InputCell({
               // avanza por los bordes.
               stopPan(sc);
               sc.edge = 0;
+              if (sc.tape) lv.tapePos.value = smoothTo(sc.ruler.originValue);
               lv.onScrubMove?.({ cancel: true, value: sc.initial, edge: 0 });
               return;
             }
             // Volver a bajar retoma el valor bajo el dedo.
-            const patch = { cancel: false };
-            const v = scrubValueAt(sc.ruler, sc.fingerX);
-            sc.value = v;
-            patch.value = v;
+            const patch = retarget(sc, { cancel: false });
+            patch.value = sc.value;
             const edge = sc.pans ? scrubEdge(sc.fingerX, lv.rowWidth) : 0;
             sc.edge = edge;
             patch.edge = edge;
@@ -435,6 +459,31 @@ function InputCell({
         style={[styles.inputAccentOverlay, { opacity: accentAnim }]}
       />
 
+      {/* Sin regla: la diferencia con el valor de partida, en una burbuja encima.
+          En peso la cifra de las unidades no se mueve: el entero (con signo) va en
+          una caja fija alineada a la derecha y el decimal en la suya, que aparece o
+          se vacía. En el resto, centrada. */}
+      {scrollActive && (() => {
+        const diff = scrubDiffText(parseFloat(localValue) || 0, swipeStart) || '0';
+        const dot  = diff.indexOf('.');
+        return (
+          <View style={styles.swipeBubble} pointerEvents="none">
+            {pivot ? (
+              <>
+                <Text allowFontScaling={false} numberOfLines={1} style={[styles.swipeBubbleText, styles.swipeBubbleInt]}>
+                  {dot < 0 ? diff : diff.slice(0, dot)}
+                </Text>
+                <Text allowFontScaling={false} numberOfLines={1} style={[styles.swipeBubbleText, styles.swipeBubbleDec]}>
+                  {dot < 0 ? '' : diff.slice(dot)}
+                </Text>
+              </>
+            ) : (
+              <Text allowFontScaling={false} numberOfLines={1} style={styles.swipeBubbleText}>{diff}</Text>
+            )}
+          </View>
+        );
+      })()}
+
       {(scrollActive || showHint) && (
         <View style={styles.arrowOverlay} pointerEvents="none">
           <Chevron direction="left"  size={9} color={th.tint.accent50} />
@@ -483,6 +532,7 @@ export default function SetRow({
   const [rowWidth, setRowWidth] = useState(0);
   const rowRef = useRef(null);
   const measureRow = useCallback((cb) => rowRef.current?.measure(cb), []);
+  const tapePos = useSharedValue(0);
   // { id, field, ruler, value, cell, closing, initial, hasValue, prevValue, prevSource, edge, cancel }
   const [scrub, setScrub] = useState(null);
   const scrubId    = useRef(0);
@@ -505,7 +555,7 @@ export default function SetRow({
   }, []);
   // Peso, reps, RPE y segundos (U10-12); apagada la preferencia, el gesto de siempre.
   const scrubProps = (field) => (ruler ? {
-    scrubField: field, scrubUnit: unit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd,
+    scrubField: field, scrubUnit: unit, rowWidth, measureRow, onScrubStart, onScrubMove, onScrubEnd, tapePos,
   } : null);
 
   return (
@@ -535,6 +585,7 @@ export default function SetRow({
             scrollStep={weightScrollStep ?? 0.5}
             showHint={showHint}
             isDone={set.done}
+            pivot
             {...scrubProps('weight')}
           />
           <InputCell
@@ -596,6 +647,7 @@ export default function SetRow({
             scrollStep={weightScrollStep ?? 0.5}
             showHint={showHint}
             isDone={set.done}
+            pivot
             {...scrubProps('weight')}
           />
           <InputCell
@@ -657,6 +709,7 @@ export default function SetRow({
           prevSource={scrub.prevSource}
           edge={scrub.edge}
           cancel={scrub.cancel}
+          tapePos={SCRUB_TAPE ? tapePos : null}
         />
       ) : null}
     </View>
@@ -758,6 +811,29 @@ const makeStyles = (th) => StyleSheet.create({
     textAlign: 'left',
   },
 
+  // Burbuja de la diferencia (sin regla): lima como la de la regla, sobre la casilla.
+  swipeBubble: {
+    position:          'absolute',
+    bottom:            GRID.CELL_H + 6,
+    alignSelf:         'center',
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: spacing.sm,
+    height:            28,
+    justifyContent:    'center',
+    backgroundColor:   th.colors.accent,
+    borderRadius:      9,
+    zIndex:            10,
+  },
+  swipeBubbleText: {
+    ...textStyles.itemTitle,
+    lineHeight:  20,
+    color:       th.colors.onAccent,
+    fontVariant: ['tabular-nums'],
+  },
+  // Anchos en em del cuerpo (como la burbuja de ScrubRuler): signo + tres cifras · «.5».
+  swipeBubbleInt: { width: Math.ceil(2.6 * textStyles.itemTitle.fontSize) + 4, textAlign: 'right' },
+  swipeBubbleDec: { width: Math.ceil(0.96 * textStyles.itemTitle.fontSize) + 4, textAlign: 'left' },
   arrowOverlay: {
     position:          'absolute',
     top: 0, left: 0, right: 0, bottom: 0,

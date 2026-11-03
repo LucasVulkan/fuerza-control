@@ -3,6 +3,7 @@ import {
   scrubRuler, scrubXOf, scrubValueAt, scrubTicks, SCRUB_PAD, MIN_NUMBER_GAP,
   scrubDiffText, scrubEdge, scrubPanDir, scrubPanMs, scrubPan,
   SCRUB_EDGE_FAR, SCRUB_EDGE_NEAR, SCRUB_PAN_SLOW_MS, SCRUB_PAN_FAST_MS,
+  scrubTape, scrubTapeAt, scrubTapeWindow, SCRUB_TAPE_DIR, SCRUB_TAPE_MAGNET, SCRUB_TAPE_HOLD,
 } from './scrubScale';
 
 // Fila de 312 dp → 280 dp de regla: 8.75 dp por paso en kg (32), 5.09 en lb (55),
@@ -334,5 +335,55 @@ describe('scrubRuler · segundos (U10-12)', () => {
     const r = scrubRuler('time', 47, MID, W);
     expect(scrubValueAt(r, MID)).toBe(47);
     expect(scrubValueAt(r, MID + 28)).toBe(50);
+  });
+});
+
+describe('scrubTape · regla que corre', () => {
+  test('la partida queda en la marca y el arrastre la mueve paso a paso', () => {
+    const r = scrubTape('weight', 60, 100, W);
+    expect(r).toMatchObject({ originX: 100, originValue: 60, start: 60 });
+    expect(scrubTapeAt(r, 0).value).toBe(60);
+    expect(scrubTapeAt(r, 4).value).toBe(60);                         // menos de medio paso
+    expect(scrubTapeAt(r, 8.75 * 4).value).toBe(60 + SCRUB_TAPE_DIR * 2);
+  });
+
+  test('tiempo y RPE: mismo arrastre, con su paso (5 s · 1)', () => {
+    const t = scrubTape('time', 45, 100, W);
+    expect(scrubTapeAt(t, SCRUB_TAPE_DIR * t.px * 2).value).toBe(55);
+    const rpe = scrubTape('rpe', 7, 100, W);
+    expect(scrubTapeAt(rpe, SCRUB_TAPE_DIR * rpe.px).value).toBe(8);
+  });
+
+  test('topes: el peso no baja de 0 y el RPE va de 1 a 10', () => {
+    expect(scrubTapeAt(scrubTape('weight', 1, 100, W), -SCRUB_TAPE_DIR * 500).value).toBe(0);
+    const rpe = scrubTape('rpe', 8, 100, W);
+    expect(scrubTapeAt(rpe, SCRUB_TAPE_DIR * 500).value).toBe(10);
+    expect(scrubTapeAt(rpe, -SCRUB_TAPE_DIR * 500).value).toBe(1);
+  });
+
+  test('pide rehacer las rayas al acercarse al borde de lo pintado', () => {
+    const r = scrubTape('weight', 60, 100, W);
+    const at = scrubTapeAt(r, SCRUB_TAPE_DIR * 200);
+    expect(at.rewindow).toBe(true);
+    const w = scrubTapeWindow(r, at.pos);
+    expect(w.min).toBeLessThanOrEqual(at.value);
+    expect(w.max).toBeGreaterThanOrEqual(at.value);
+  });
+
+  test.skipIf(SCRUB_TAPE_MAGNET === 0)('imán: cerca de una marca la regla se queda clavada; entre dos, sin saltos', () => {
+    const r = scrubTape('weight', 60, 100, W);
+    const at = (steps) => scrubTapeAt(r, SCRUB_TAPE_DIR * steps * 8.75);
+    expect(at(1 + SCRUB_TAPE_MAGNET / 2).pos).toBe(60.5);   // dentro del imán → clavada
+    expect(at(1.5 - 1e-6).pos).toBeCloseTo(60.75);   // a medio camino, ya en la frontera
+    expect(at(1.5 + 1e-6).pos).toBeCloseTo(60.75);
+  });
+
+  test('holgura: el valor no cambia hasta pasar la frontera con margen', () => {
+    const r = scrubTape('weight', 60, 100, W);
+    const at = (steps, held) => scrubTapeAt(r, SCRUB_TAPE_DIR * steps * 8.75, held).value;
+    const H = SCRUB_TAPE_HOLD;
+    expect(at(1.5 + H / 2, 60.5)).toBe(60.5);   // pasada la frontera, dentro del margen: se mantiene
+    expect(at(1.5 + H + 0.05, 60.5)).toBe(61);
+    expect(at(1.5 - H / 2, 61)).toBe(61);       // y al volver, igual
   });
 });

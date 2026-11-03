@@ -170,6 +170,68 @@ export function scrubDiffText(value, initial) {
   return (d > 0 ? '+' : '−') + String(Math.abs(d));
 }
 
+// ── Regla que corre (prueba, 3-nov-2026) ─────────────────────────────────────
+// La cifra queda fija sobre la casilla y es la regla la que se desplaza bajo
+// ella; el valor es el que cae en la marca. Solo arrastre: sin avance por los
+// bordes (el joystick y los bordes que deslizan se probaron el 3-nov y no
+// convencieron). Con SCRUB_TAPE = false vuelve la regla anclada al dedo de
+// arriba (con su avance por los bordes).
+export const SCRUB_TAPE = true;
+// −1: la regla sigue al dedo (a la derecha → baja, como una cinta métrica);
+//  1: corre al revés (a la derecha → sube, como el gesto sin regla).
+export const SCRUB_TAPE_DIR = 1;
+
+/**
+ * Regla que corre para un campo: mismas rayas y escala que `scrubRuler`, pero
+ * con el valor de partida fijo en `anchorX` (el centro de la casilla). `lo`/`hi`
+ * son los topes del valor (RPE 1..10, el resto desde 0); `span` = lo que se pinta
+ * a cada lado (fila y media), ver `scrubTapeWindow`.
+ */
+export function scrubTape(field, start, anchorX, rowWidth, opts) {
+  const base = scrubRuler(field, start, anchorX, rowWidth, opts);
+  const [lo, hi] = field === 'rpe' ? [RPE.min, RPE.max] : [0, Infinity];
+  const s = clamp(field === 'reps' ? Math.round(num(start)) : round2(num(start)), lo, hi);
+  const span = base.px > 0 ? (1.5 * rowWidth / base.px) * base.step : 0;
+  return scrubTapeWindow({ ...base, originX: anchorX, originValue: s, start: s, lo, hi, span }, s);
+}
+
+/** Recorta las rayas pintadas a `pos ± span` (rejilla absoluta, dentro de lo..hi). */
+export function scrubTapeWindow(r, pos) {
+  return {
+    ...r,
+    center: pos,
+    min: Math.max(r.lo, round2(Math.ceil((pos - r.span) / r.step - EPS) * r.step)),
+    max: Math.min(r.hi, round2(Math.floor((pos + r.span) / r.step + EPS) * r.step)),
+  };
+}
+
+// Imán: a menos de MAGNET pasos de una marca la regla se queda clavada en ella
+// (el pulso de la mano no la mueve) y entre dos marcas recupera lo perdido.
+// HOLD: el valor no cambia hasta pasar medio paso + HOLD (sin parpadeo en la frontera).
+export const SCRUB_TAPE_MAGNET = 0.1;
+export const SCRUB_TAPE_HOLD   = 0.3;
+// Suavizado: la regla persigue al dedo en SMOOTH_MS (curva de salida) en vez de
+// copiarlo píxel a píxel; el temblor de la mano se queda en el camino. 0 = sin suavizado.
+export const SCRUB_TAPE_SMOOTH_MS = 150;
+
+/**
+ * Tras arrastrar `dx` dp: `pos` = lo que se ve en la marca (con imán), para
+ * desplazar la regla; `value` = el paso que cuenta, que se mantiene en `held`
+ * (el valor de ahora) hasta pasar la frontera con holgura. A menos de medio paso
+ * de la partida se queda la partida (como `scrubValueAt`). `rewindow`: la regla
+ * pintada se queda corta y hay que rehacerla con `scrubTapeWindow`.
+ */
+export function scrubTapeAt(r, dx, held = r.originValue) {
+  const raw = r.px > 0 ? clamp(r.originValue + SCRUB_TAPE_DIR * (dx / r.px) * r.step, r.lo, r.hi) : r.originValue;
+  const n = clamp(round2(Math.round(raw / r.step) * r.step), r.lo, r.hi);
+  const d = (raw - n) / r.step;   // −0.5..0.5
+  const m = SCRUB_TAPE_MAGNET;
+  const pos = Math.abs(d) <= m ? n : n + Math.sign(d) * ((Math.abs(d) - m) / (0.5 - m)) * 0.5 * r.step;
+  let value = Math.abs(raw - held) < r.step * (0.5 + SCRUB_TAPE_HOLD) ? held : n;
+  if (Math.abs(raw - r.originValue) < r.step / 2 - EPS) value = r.originValue;
+  return { pos, value, rewindow: Math.abs(pos - r.center) > r.span / 3 };
+}
+
 /** Distancia del dedo al borde más cercano de la fila y de qué lado cae (−1 izq, 1 der). */
 const edgeOf = (x, rowWidth) => (x <= rowWidth - x ? { d: x, side: -1 } : { d: rowWidth - x, side: 1 });
 
