@@ -51,7 +51,7 @@ const PARAMS = {
   // bisagra (peso muerto convencional, rumano…): la barra cuelga de las manos y va sobre el mediopié; con estos ajustes
   // un ejercicio se acerca a su vecino (rumano con más rodilla y hasta el suelo ≈ convencional)
   hinge: [
-    { id: 'knees', label: 'Flexión de rodilla', min: -40, max: 20, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° abajo` },
+    { id: 'knees', label: 'Flexión de rodilla', min: -60, max: 20, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° abajo (y en proporción en el resto)` },
     { id: 'depth', label: 'Profundidad', min: -40, max: 30, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `barra ${Math.abs(v)} cm más ${v > 0 ? 'alta' : 'baja'} (no pasa del suelo)` },
     { id: 'plates', label: 'Altura de los discos', min: 0, max: 30, step: 1, def: 0, fmt: v => v === 0 ? 'en el suelo' : `sobre bloques de ${v} cm` },
     { id: 'feet', label: 'Altura de los pies', min: 0, max: 20, step: 1, def: 0, fmt: v => v === 0 ? 'en el suelo' : `sobre ${v} cm (déficit)` },
@@ -302,34 +302,32 @@ function socketRest(S) {
 const PLATE_R = 0.225;   // radio del disco: la barra en el suelo está a esta altura
 const hingeKeys = ex => { const K = keysOf(ex), y = k => k.bar.center[1], lo = K.reduce((a, k) => y(k) < y(a) ? k : a), hi = K.reduce((a, k) => y(k) > y(a) ? k : a);
   return { sB: lo.s, HB: y(lo), HT: y(hi), floor: y(lo) < PLATE_R + 0.01 }; };
-// Recorte: con la profundidad por encima de la autorada, o con bloques más altos que el punto bajo, la repetición va del
-// punto alto al momento de la animación autorada en que la barra está a esa altura; lo de debajo no se ve (no se comprime).
-// Más hondo que la autorada (profundidad negativa, déficit) no hay animación que recortar: lo resuelve el solver.
-//   cut: altura autorada del punto bajo efectivo · rest: la barra se apoya (suelo o bloques) · sCut: su s en la animación
-//   trunc: recortado sin apoyo (el punto bajo es la pose de la animación tal cual)
+// Recorte: con la profundidad por encima del punto bajo, o con bloques más altos que él, la repetición va del punto alto al
+// momento en que la barra está a esa altura en la animación YA AJUSTADA (cuerpo, rodilla, déficit…): es cortar, nada más.
+// Lo de debajo no se ve, no se comprime, y la pose en el corte es la misma que se vería ahí sin recortar (solo sube el pecho).
+// Más hondo que la autorada (profundidad negativa, déficit) no hay animación que recortar: lo resuelve el punto bajo.
 const HCUT = {};
-function hingeCut(ex) { const k = ex + JSON.stringify(state.per[ex]); return HCUT[k] ??= hingeCutCalc(ex); }
-function hingeCutCalc(ex) {
-  const hk = hingeKeys(ex), prm = state.per[ex], pb = prm.plates / 100, dp = prm.depth / 100;
-  let cut = hk.HB + Math.max(0, dp), rest = hk.floor && dp <= 0;
-  if (PLATE_R + pb > cut + 1e-4) { cut = PLATE_R + pb; rest = true; }
+function hingeCut(ex) {
+  const k = ex + JSON.stringify(state.body) + JSON.stringify(state.per[ex]);
+  if (k in HCUT) return HCUT[k];
+  const hk = hingeKeys(ex), prm = state.per[ex], y = s => evaluateRaw(ex, s).bar.center.y;
+  const bottom = y(hk.sB), cut = Math.max(bottom + Math.max(0, prm.depth / 100), PLATE_R + prm.plates / 100);
   let sCut = hk.sB;
-  if (cut > hk.HB + 1e-4) {   // bisección entre el punto bajo y el alto sobre la altura de la barra en las manos autoradas
-    const y = s => withBody(DEFAULT_BODY, () => { const A = authoredPose(ex, s), g = hingeGrip(ex, s);
-      return (gripOf(A, 'L').y - g.L.off.y + gripOf(A, 'R').y - g.R.off.y) / 2; });
+  if (cut > bottom + 1e-4) {   // bisección entre el punto bajo y el alto sobre la altura real de la barra
     let lo = hk.sB, hi = 1 - hk.sB;
-    for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (y(m) < cut) lo = m; else hi = m; }
+    for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (y(m) < cut) lo = m; else hi = m; }
     sCut = (lo + hi) / 2;
   }
-  return { ...hk, cut, rest, sCut, trunc: !rest && cut > hk.HB + 1e-4 };
+  return (HCUT[k] = { ...hk, sCut });
 }
-// s de la repetición (0..1) -> s de la animación autorada, dentro del recorrido recortado
+// s de la repetición (0..1) -> s de la animación, dentro del recorrido recortado
 function hingeS(ex, s) { const c = hingeCut(ex), sT = 1 - c.sB; return c.sCut + (sT - c.sCut) * (c.sB === 0 ? s : 1 - s); }
-// cambio del muslo (dB0) y de la tibia (dTh) en el punto bajo para este cuerpo y ajustes (lo usan todos los frames; una vez)
+// lo que se ajusta en el punto bajo para este cuerpo y ajustes (lo usan todos los frames; se calcula una vez):
+// cambio de muslo y tibia (dB0, dTh), lo que la barra se adelanta (e1B) y el ángulo autorado de la rodilla abajo (KB)
 const HSTART = {};
 function hingeStart(ex) {
   const k = ex + JSON.stringify(state.body) + JSON.stringify(state.per[ex]);
-  if (!(k in HSTART)) { const saved = CUR_OFF; try { const r = evaluate(ex, hingeKeys(ex).sB); HSTART[k] = { dB0: r.dB0, dTh: r.dTh, hipD: r.hipD, e1B: r.e1B }; } finally { CUR_OFF = saved; } }
+  if (!(k in HSTART)) { const r = evaluateRaw(ex, hingeKeys(ex).sB); HSTART[k] = { dB0: r.dB0, dTh: r.dTh, e1B: r.e1B, KB: r.KB }; }
   return HSTART[k];
 }
 // bisagra: en cada clave, puño − barra (por lado). Entre claves se interpola y las manos van siempre a la barra; la pose
@@ -344,10 +342,9 @@ function hingeGrip(ex, s) {
 }
 
 /* ---------------- Evaluación de un frame ---------------- */
-function evaluate(ex, s) {
-  if (EXERCISES[ex].base === 'hinge') s = hingeS(ex, s);
-  CUR_OFF = authoredOffsets(ex, s); try { return evaluateInner(ex, s); } finally { CUR_OFF = null; }
-}
+function evaluate(ex, s) { return evaluateRaw(ex, EXERCISES[ex].base === 'hinge' ? hingeS(ex, s) : s); }
+// s de la animación, sin recorte (el recorte la usa para buscar el corte)
+function evaluateRaw(ex, s) { const saved = CUR_OFF; CUR_OFF = authoredOffsets(ex, s); try { return evaluateInner(ex, s); } finally { CUR_OFF = saved; } }
 function evaluateInner(ex, s) {
   const exd = EXERCISES[ex], prm = state.per[ex];
   const auth = withBody(DEFAULT_BODY, () => authoredPose(ex, s));
@@ -363,8 +360,8 @@ function evaluateInner(ex, s) {
     // hinge (peso muerto): la barra cuelga de las manos en vez de ir en el tronco; se resuelven muslo y tronco para que
     // la barra siga sobre el mediopié y, al empezar, en el suelo (los discos no cambian con el cuerpo)
     const hinge = exd.base === 'hinge', depth = prm.depth ?? 1, barH = prm.barH ?? 0;
-    // bisagra: subida (0 en el punto bajo, recortado si toca; 1 arriba) medida por la altura autorada de la barra
-    const hk = hinge && hingeCut(ex), up = hinge ? clamp((F.bar.y - hk.cut) / (hk.HT - hk.cut)) : 0;
+    // bisagra: subida (0 en el punto bajo, 1 arriba) medida por la altura autorada de la barra
+    const hk = hinge && hingeKeys(ex), up = hinge ? clamp((F.bar.y - hk.HB) / (hk.HT - hk.HB)) : 0;
     const yaw0 = (F.L.yaw - F.R.yaw) / 2, stance0 = (F.L.an.x - F.R.an.x) / 2;
     const beta = hinge ? F.beta : F.beta * lerp(1, depth, clamp(F.beta / (60 * DEG)));
     const thPref0 = F.th, thPref = F.th + (hinge ? 0 : prm.knees * DEG * clamp(F.beta / (60 * DEG)));
@@ -380,7 +377,11 @@ function evaluateInner(ex, s) {
     // cadera: pose autorada + (geometría actual - geometría de referencia)  => exacta con los valores por defecto
     const G = (dd, b, t, st, yw) => { const dx = Math.max(0, st - dd.hipHalf), cv = Math.cos(Math.asin(Math.min(0.95, dx / (dd.Ls + dd.Lt)))), ch = Math.cos(yw * 0.85);
       const kz = dd.Ls * Math.sin(t) * ch, ky = dd.ankleH + dd.Ls * Math.cos(t) * cv; return V(0, ky + dd.Lt * Math.cos(b) * cv, kz - dd.Lt * Math.sin(b) * ch); };
-    const hipOf = (b, t = th) => { const h = F.hip.clone().add(G(d, b, t, stance, yaw).sub(G(d0, F.beta, F.th, stance0, yaw0))); h.x = F.hip.x; return h; };
+    // bisagra: entre claves el tobillo de la pose interpolada se desplaza respecto al plantado (hasta 13 cm con dos claves); la
+    // cadera se mueve lo mismo para que la pierna mida lo que dicen muslo y tibia. Si no, la pierna queda corta y la rodilla se
+    // dobla de más (en el rumano, 48° en vez de 32° a mitad de recorrido). En las claves no hay desplazamiento.
+    const drift = hinge ? ['L', 'R'].map(S => expP(ex, `DEF-FOOT.${S}`, s).sub(auth[`DEF-FOOT.${S}`].p)).reduce((a, v) => a.add(v)).multiplyScalar(0.5) : V();
+    const hipOf = (b, t = th) => { const h = F.hip.clone().add(drift).add(G(d, b, t, stance, yaw).sub(G(d0, F.beta, F.th, stance0, yaw0))); h.x = F.hip.x; return h; };
     const hipT = hipOf(beta);
     const kr = d.k / d0.k, hg = hinge && hingeGrip(ex, s);
     // bisagra: puño respecto a la barra, por lado, con el agarre aplicado a lo largo de la barra (la barra no gira: Rh = identidad)
@@ -458,9 +459,9 @@ function evaluateInner(ex, s) {
       //  encima de la autorada recortan (hingeCut).
       const mfP = (['L', 'R'].map(S => { const a = expP(ex, `DEF-FOOT.${S}`, s), t = expP(ex, `DEF-TOE.${S}`, s); return a.z + 0.4 * (t.z - a.z); }).reduce((x, y) => x + y)) / 2;
       const offA = F.bar.z - mfP, pb = prm.plates / 100, pf = prm.feet / 100, dp = prm.depth / 100;
-      const hBot = hk.rest ? PLATE_R + pb - pf : Math.max(hk.cut * kr + Math.min(0, dp), PLATE_R + pb - pf);
+      const hBot = hk.floor ? PLATE_R - pf : Math.max(hk.HB * kr + Math.min(0, dp), PLATE_R + pb - pf);
       const E = (b, ph, t = th, hT = hBot, oZ = offA) => { const r = build(ph, hipOf(b, t)); return [r, r.bar.z - midfootZ(r.pose) - oZ, r.bar.y - hT]; };
-      const T_MIN = -5 * DEG;   // tibia: el tobillo no deja ir la rodilla más atrás (con la pierna casi recta, la cadera atrás)
+      const T_MIN = -12 * DEG;  // tibia: la pierna se inclina atrás como mucho esto (pierna rígida, peso en los talones)
       const newton = (x, y, fn, xr, yr) => {   // Newton 2×2 sobre (x, y) para e1 = e2 = 0
         let [r, e1, e2] = fn(x, y);
         for (let i = 0; i < 16 && Math.abs(e1) + Math.abs(e2) > 0.0002; i++) {
@@ -473,9 +474,9 @@ function evaluateInner(ex, s) {
         return { x, y, r, e2 };
       };
       let b, ph, r, e1, tF = th;
-      if (s === hk.sCut) {
-        const hT = hk.trunc ? Math.max(E(beta, F.phi, th, 0)[0].bar.y, PLATE_R + pb - pf) : hBot;   // recortado: la de la animación
-        const Kf = F.beta + F.th + prm.knees * DEG;                                                 // ángulo de la rodilla abajo
+      if (s === hk.sB) {
+        const hT = hBot, Kf = F.beta + F.th + prm.knees * DEG;                                      // ángulo de la rodilla abajo
+        out.KB = F.beta + F.th;
         const a = newton(th, F.phi, (t, y) => E(Kf - t, y, t, hT), [T_MIN, 45 * DEG], [-20 * DEG, 110 * DEG]);
         tF = a.x; b = Kf - tF; ph = a.y; r = a.r;
         out.e1B = 0;
@@ -493,11 +494,12 @@ function evaluateInner(ex, s) {
         }
         if (Math.abs(a.e2) > 0.01) r.warns.push(`No llega a esa profundidad con la rodilla así (se queda a ${Math.round(a.e2 * 100)} cm)`);
         out.dB0 = b - F.beta; out.dTh = tF - th;
-        const hipNow = midOf(r.pose, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), hipA = midOf(auth, 'DEF-THIGH01.L', 'DEF-THIGH01.R');
-        out.hipD = [hipNow.y - hipA.y, hipNow.z - hipA.z];
       } else {
-        const { dB0, dTh, e1B } = hingeStart(ex), w = (1 - up) * (1 - up);   // (1 − subida)²: la barra no acelera al llegar abajo
-        b = F.beta + dB0 * w; tF = th + dTh * w;
+        const { dB0, dTh, e1B, KB } = hingeStart(ex), w = (1 - up) * (1 - up);   // (1 − subida)²: la barra no acelera al llegar abajo
+        // rodilla: la autorada de este frame, reducida (o aumentada) en proporción a cuánto se dobla: si abajo se quitan 20° de
+        // 75°, donde la animación la dobla 35° se quitan 9°. Así una rodilla rígida lo es en todo el recorrido.
+        const Kf = (F.beta + F.th) * Math.max(0, 1 + prm.knees * DEG / KB);
+        tF = th + dTh * w; b = Kf - tF;
         const E1 = (b, ph) => E(b, ph, tF, hBot, offA + e1B * w);   // lo que la barra se adelantó abajo, también se desvanece
         ph = F.phi; [r, e1] = E1(b, ph);
         if (Math.abs(e1) > 0.0002) {
@@ -508,9 +510,11 @@ function evaluateInner(ex, s) {
           }
           ph = p1; r = r1;
         }
-        out.dB0 = dB0; out.dTh = dTh; out.hipD = hingeStart(ex).hipD;
+        out.dB0 = dB0; out.dTh = dTh;
       }
       phiA = ph; bA = r; betaH = b; thH = tF;
+      const hipNow = midOf(r.pose, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), hipA = midOf(auth, 'DEF-THIGH01.L', 'DEF-THIGH01.R').add(drift);
+      out.hipD = [hipNow.y - hipA.y, hipNow.z - hipA.z];
     } else {
       const eRef = comRef(ex, s);
       phiA = phi0; bA = build(phiA, hipT); let eA = comOffset(bA.pose, bA.bar, L) - eRef;
@@ -534,9 +538,9 @@ function evaluateInner(ex, s) {
       hinge ? ['Barra', `${Math.round(bar.y * 100)} cm del suelo`] : ['CdM–mediopié', `${((com - mf) * 100).toFixed(1)} cm`],
       ['Barra–mediopié', `${((bar.z - mf) * 100).toFixed(1)} cm`]];
     // qué ha ajustado: el muslo en el punto bajo para llegar a la barra (se reparte hasta arriba)
-    // qué ha ajustado: dónde queda la cadera en el punto bajo respecto a la autorada (se reparte hasta arriba)
+    // qué ha ajustado: dónde queda la cadera respecto a la autorada en este frame
     const [hy, hz] = (hinge && out.hipD) || [0, 0], cm = v => Math.round(Math.abs(v) * 100);
-    if (cm(hy) || cm(hz)) out.readout.push(['Cadera abajo', `${cm(hy) ? `${cm(hy)} cm más ${hy > 0 ? 'alta' : 'baja'}` : ''}${cm(hy) && cm(hz) ? ' y ' : ''}${cm(hz) ? `${cm(hz)} cm más ${hz > 0 ? 'adelante' : 'atrás'}` : ''} que la autorada`]);
+    if (cm(hy) || cm(hz)) out.readout.push(['Cadera', `${cm(hy) ? `${cm(hy)} cm más ${hy > 0 ? 'alta' : 'baja'}` : ''}${cm(hy) && cm(hz) ? ' y ' : ''}${cm(hz) ? `${cm(hz)} cm más ${hz > 0 ? 'adelante' : 'atrás'}` : ''} que la autorada`]);
     out.phase = `muslo ${Math.round(betaH / DEG)}°`;
   } else {
     // PRENSA: la pelvis queda fija en el asiento (la de la clave de inicio); la plataforma recorre el raíl
