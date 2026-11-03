@@ -7,16 +7,19 @@ Se importa desde los scripts de `blender/ejercicios/`. Da:
     valores de otras acciones (se keyan todos los controles, también los que se quedan en reposo).
 Coordenadas sagitales: f = hacia delante (= -Y), z = arriba.
 """
-import bpy, sys, math
+import bpy, sys, math, json
 from mathutils import Vector, Matrix
 
 if __name__ == '__main__':      # blender -b --factory-startup --python blender/ffpose.py -- entrada.blend salida.blend sellar a,b,c
     bpy.ops.wm.open_mainfile(filepath=sys.argv[sys.argv.index('--') + 1])
 
-rig =bpy.data.objects['Armature_Mannequin']; pb = rig.pose.bones; ab = rig.data.bones
+rig = bpy.data.objects['Armature_Mannequin']; pb = rig.pose.bones; ab = rig.data.bones
 vl = bpy.context.view_layer
 FRAMES = (1, 30)
 PLATE_R = 0.225                                     # radio del disco de 20 kg: la barra en el suelo tiene el centro a esta altura
+
+
+touched = set()                                     # controles que ha movido la pose actual (para el recálculo en vivo)
 
 
 def upd(): vl.update(); vl.update()
@@ -27,7 +30,7 @@ def sagittal(v): return v.y * -1, v.z                    # mundo -> (f, z)
 
 
 def setM(name, rot3, pos):
-    m = rot3.to_4x4(); m.translation = pos; pb[name].matrix = m; upd()
+    m = rot3.to_4x4(); m.translation = pos; pb[name].matrix = m; touched.add(name); upd()
 
 
 # ---- medidas en reposo
@@ -73,7 +76,7 @@ def set_props(hand_parent, foot_parent):
     for S in 'LR':
         P[f'ARM-IK/FK.{S}'] = 0; P[f'LEG-IK/FK.{S}'] = 0
         P[f'ARM_IK_parent.{S}'] = hand_parent; P[f'FOOT-IK-PARENT.{S}'] = foot_parent
-    rig.update_tag(); upd()
+    touched.add('PROPERTIES'); rig.update_tag(); upd()
 
 
 def place_trunk(hip_f, hip_z, phi):
@@ -89,8 +92,8 @@ def place_feet(ankle_x, toe_out_deg, ankle_f=0.0):
         setM(fik, Df @ rest_rot(fik), a + Df @ (H(fik) - H(f'DEF-FOOT.{S}')))
 
 
-def hide_machine(): pb['MAQUINA'].scale = (0.001,) * 3; upd()
-def hide_bar(): pb['BARRA'].scale = (0.001,) * 3; upd()
+def hide_machine(): pb['MAQUINA'].scale = (0.001,) * 3; touched.add('MAQUINA'); upd()
+def hide_bar(): pb['BARRA'].scale = (0.001,) * 3; touched.add('BARRA'); upd()
 def place_bar(f, z): setM('BARRA', rest_rot('BARRA'), W(f, z))
 
 
@@ -108,6 +111,7 @@ def grip_bar(bar, half_width, hand_rot, pole_dir, curl=-75):
         setM(f'ARM-POLE-IK.{S}', rest_rot(f'ARM-POLE-IK.{S}'), sh + Vector(pole_dir) * 0.5 + Vector((sgn * 0.15, 0, 0)))
         pb[f'FINGER-MASTER.{S}'].rotation_euler.x = math.radians(curl)
         pb[f'FINGER-ROT-MASTER.{S}'].rotation_euler.x = math.radians(curl + 5)
+        touched.update((f'FINGER-MASTER.{S}', f'FINGER-ROT-MASTER.{S}'))
     upd()
 
 
@@ -178,6 +182,57 @@ def finish(act):
                     for fc in cb.fcurves:
                         if 'PROPERTIES' in fc.data_path:
                             for kp in fc.keyframe_points: kp.interpolation = 'CONSTANT'
+
+
+def params(ex, act=None):
+    """Valores de los ajustes de un ejercicio: los guardados en su acción (`ff_params`) o, si no hay, los de PARAMS."""
+    p = {k: v[0] for k, v in ex.PARAMS.items()}
+    if act and 'ff_params' in act: p.update({k: v for k, v in json.loads(act['ff_params']).items() if k in p})
+    return p
+
+
+def run(ex, p=None, live=False):
+    """Posa el ejercicio `ex` (META, PARAMS, frames(F, p) -> [(frame, posar)]) y deja sus claves en su acción.
+    Completo: crea la acción de cero y keya todo el rig.  En vivo (deslizadores): solo reescribe las claves de lo que mueve
+    la pose, con la acción desconectada mientras posa (para que la animación no pise lo colocado) y sin deformar la malla."""
+    name, base, label = ex.META
+    act = bpy.data.actions.get(name)
+    p = p or params(ex, act)
+    keys = ex.frames(sys.modules[__name__], p)
+    if live and act and act.layers:
+        _live(act, keys)
+    else:
+        act = new_action(name, base, label)
+        for f, posar in keys:
+            reset(); posar(); report(f'frame {f}'); key(f)
+        finish(act)
+    act['ff_params'] = json.dumps(p)
+    return act
+
+
+def _live(act, keys):
+    body = bpy.data.objects['Mannequin']; mods = [m for m in body.modifiers if m.show_viewport]
+    for m in mods: m.show_viewport = False
+    rig.animation_data.action = None
+    vals = []
+    try:
+        for f, posar in keys:
+            touched.clear(); reset(); posar()
+            for n in touched:
+                b = pb[n]
+                if n == 'PROPERTIES':
+                    vals += [(f'pose.bones["PROPERTIES"]["{k}"]', 0, f, float(b[k])) for k in prop_names()]
+                else:
+                    for path in channels(b): vals += [(f'pose.bones["{n}"].{path}', i, f, v) for i, v in enumerate(getattr(b, path))]
+    finally:
+        rig.animation_data.action = act
+        for m in mods: m.show_viewport = True
+    cb = act.layers[0].strips[0].channelbag(act.slots[0])
+    for path, i, f, v in vals:
+        fc = cb.fcurves.find(path, index=i)
+        if fc: fc.keyframe_points.insert(f, v, options={'REPLACE', 'FAST'})
+    for fc in cb.fcurves: fc.update()
+    sc = bpy.context.scene; sc.frame_set(sc.frame_current)
 
 
 def report(label):

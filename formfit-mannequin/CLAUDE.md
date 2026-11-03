@@ -14,7 +14,8 @@ Lee `docs/HANDOFF.md` antes de tocar nada: explica el pipeline completo y por qu
 ## Estructura
 
 ```
-blender/     FormFit_Maniqui.blend (rig + 4 ejercicios), export.py, ffpose.py (posar por script), ejercicios/ (un .py por ejercicio), prep_rig.py, autopose.py, rigui.py, legacy/
+blender/     FormFit_Maniqui.blend (rig + 4 ejercicios), export.py, ffpose.py (posar por script), ff_panel.py (deslizadores en Blender),
+             ejercicios/ (un .py por ejercicio: META, PARAMS, frames), prep_rig.py, autopose.py, rigui.py, legacy/
 assets/      mannequin.glb + poses.json  (SALIDA del exportador; no editar a mano)
 prototype/   runtime.js (toda la lógica), shell.html (UI web), build.py -> viewer.html (visor autocontenido)
 tests/       harness.js (Chromium headless + WebGL SwiftShader), fidelity.js, balance.js, screenshots.js

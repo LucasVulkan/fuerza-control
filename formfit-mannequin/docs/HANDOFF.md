@@ -121,7 +121,8 @@ Después se ejecuta `autopose.py` y el usuario retoca en Blender.
 `autopose.py` depende de un JSON sacado de otro modelo. Para ejercicios nuevos se describe la pose **en geometría del propio maniquí**:
 
 - `blender/ffpose.py`: la librería. Medidas en reposo (muslo, tibia, tronco, brazo hasta el centro del puño), coordenadas sagitales (`W(f, z)`: f = hacia delante = −Y), y funciones para colocar tronco (`place_trunk`), pies (`place_feet`), barra (`place_bar`) y manos en la barra (`grip_bar`, con `HANG_PRONE` para colgar en prono). `new_action` crea la acción con `ff_base` y `ff_name`; `key(frame)` keya **todos** los canales del rig y de `PROPERTIES`; `report` avisa si una mano no llega.
-- `blender/ejercicios/deadlift.py`: el peso muerto. Barra sobre el mediopié real (mitad del pie, medida en la malla), en el suelo al radio del disco; brazos casi rectos; la cadera sale de cruzar muslo y tronco; al bloquear, tronco erguido y la barra apoyada en la cara delantera del muslo. Las constantes de arriba del archivo (anchura, rotación de pies, agarre, tibia…) son los mandos.
+- `blender/ejercicios/deadlift.py`: el peso muerto. Barra sobre el mediopié real (mitad del pie, medida en la malla), en el suelo al radio del disco; brazos casi rectos; la cadera sale de cruzar muslo y tronco; al bloquear, tronco erguido y la barra apoyada en la cara delantera del muslo. Sus `PARAMS` (anchura, rotación de pies, agarre, tibia…) son los mandos, con su valor por defecto y su rango.
+- `ffpose.run(ejercicio, ajustes, live)`: el único punto que crea o actualiza la acción de un ejercicio (lo usan la terminal, el Text Editor y el panel).
 
 ```bash
 B="C:/Program Files/Blender Foundation/Blender 5.0/blender.exe"
@@ -130,7 +131,18 @@ B="C:/Program Files/Blender Foundation/Blender 5.0/blender.exe"
 
 `--factory-startup` es necesario en este equipo: un add-on del usuario («Cargo») falla en modo `-b`.
 
-**Desde dentro de Blender:** Text Editor › Open › `blender/ejercicios/deadlift.py`, cambiar las constantes de arriba y Run Script (Alt+P), en modo Objeto o Pose. Recrea la acción en el archivo abierto, sin guardar: se guarda con Ctrl+S cuando convence. Busca `ffpose.py` junto al `.blend` y lo recarga cada vez.
+**Panel con deslizadores (`blender/ff_panel.py`).** Text Editor › Open › `blender/ff_panel.py` › Run Script (Alt+P). Aparece la pestaña **FormFit** en la barra lateral (N) del visor 3D:
+
+- un desplegable con los ejercicios de `blender/ejercicios/` y, por cada ajuste de su `PARAMS`, un deslizador;
+- mover un deslizador **recalcula en vivo** (~55 ms medido en `-b`): `ffpose.run(live=True)` desconecta la acción mientras posa (para que la animación no pise lo colocado), apaga la deformación de la malla y solo reescribe las claves de los controles que ha movido. Da exactamente lo mismo que recrear de cero (0,00 mm);
+- **Inicio / Final** saltan a los frames 1 y 30; **Restablecer** vuelve a los valores de `PARAMS`; **Recrear** crea la acción de cero (y keya todo el rig); **Guardar y exportar al visor** guarda, ejecuta `export.py` y `build.py` (prototipo y app);
+- los valores se guardan en la acción (`ff_params`), así que el .blend recuerda los ajustes de cada ejercicio y el script desde la terminal usa los mismos.
+
+Recalcular borra los retoques a mano de esa acción: primero deslizadores, luego retoque. Para que el panel salga solo al abrir el .blend, marca «Register» en el Text Editor (pide Auto Run Python Scripts).
+
+**Un ejercicio nuevo** es un `.py` en `blender/ejercicios/` con `META = (acción, tipo de base, nombre)`, `PARAMS = {ajuste: (valor, mín, máx, etiqueta)}` y `frames(F, p)`, que devuelve `[(frame, posar)]`. El panel lo recoge solo (vuelve a ejecutar `ff_panel.py`).
+
+**Sin panel:** Text Editor › Open › `blender/ejercicios/deadlift.py` › Run Script también recrea la acción en el archivo abierto, sin guardar.
 
 **Acciones selladas.** Las tres acciones originales solo keyaban algunos controles; el resto se quedaba con lo que dejara la acción anterior, así que la pose exportada **dependía del orden** (al meter `deadlift` entre medias, la frontal cambiaba 7 cm y la prensa 2 m). `ffpose.py … sellar back_squat,front_squat,leg_press` keyó en cada una lo que heredaba en el orden de siempre: el export es idéntico y ya no depende del orden.
 
