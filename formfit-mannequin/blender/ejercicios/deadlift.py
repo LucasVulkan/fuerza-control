@@ -71,22 +71,25 @@ def frames(F, p):
     print(f'peso muerto: inicio tronco {phi0 / DEG:.0f}° · cadera z {hip0.y:.2f} (rodilla {k0.y:.2f}) · '
           f'final tronco {phi1 / DEG:.0f}° · barra z {bar1.y:.2f}')
 
-    def pose(hip, phi, bar):
+    def pose(hip, phi, bar, hang):
         def posar():
             F.set_props(hand_parent=5, foot_parent=0); F.hide_machine()
             F.place_feet(p['STANCE_X'], p['TOE_OUT'])
             F.place_trunk(hip.x, hip.y, phi)
+            if hang:   # al bloquear la barra cuelga de los hombros reales del rig, con la muñeca justo al alcance
+                bar.y = F.hang_bar(bar.x, p['GRIP_HALF'], F.HANG_PRONE)
             F.place_bar(bar.x, bar.y)
             F.grip_bar(F.W(bar.x, bar.y), p['GRIP_HALF'], F.HANG_PRONE, pole_dir=(0, 1, 0))
         return posar
-    return [(1, pose(hip0, phi0, bar0)), (30, pose(hip1, phi1, bar1))]
+    return [(1, pose(hip0, phi0, bar0, False)), (30, pose(hip1, phi1, bar1, True))]
 
 
 if __name__ == '__main__':
     import bpy, sys, os, importlib, types
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else None     # None = desde el Text Editor
     if argv: bpy.ops.wm.open_mainfile(filepath=argv[0])
-    sys.path.insert(0, os.path.dirname(bpy.data.filepath))                        # ffpose.py está junto al .blend
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))           # blender/ (ejecutado desde la terminal)
+    sys.path.insert(0, here if os.path.exists(os.path.join(here, 'ffpose.py')) else os.path.dirname(bpy.data.filepath))   # o junto al .blend
     import ffpose as F
     importlib.reload(F)                                                           # por si ffpose.py cambió
     F.run(types.SimpleNamespace(META=META, PARAMS=PARAMS, frames=frames))

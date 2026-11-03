@@ -144,6 +144,10 @@ Recalcular borra los retoques a mano de esa acción: primero deslizadores, luego
 
 **Sin panel:** Text Editor › Open › `blender/ejercicios/deadlift.py` › Run Script también recrea la acción en el archivo abierto, sin guardar.
 
+**Muñecas rígidas (`ffpose.py … munecas`, ya aplicado).** El rig original tenía la mano «aislada»: `DEF-HAND` copiaba posición y giro de `HAND_IK` aunque el brazo no llegara, y el hueso de la muñeca (`DEF-FORARM0`) se estiraba para cubrir el hueco (140 % al bajar la mano 5 cm). Ahora `MCH-HAND-SWITCH` lleva una restricción `FF_mano_en_antebrazo` (Copy Location a la cola de `MCH-FORARM-SWITCH`): la mano conserva el giro de `HAND_IK`, pero su posición es el final del antebrazo. Si arrastras la mano más allá del alcance, el brazo queda recto y la mano no se separa. Las otras tres acciones se mueven ≤ 0,06 mm.
+
+**Agarre con el puño cerrado.** `socket()` mide el hueco del puño **ya cerrado** (centro de las falanges de corazón y anular); antes se medía con la mano abierta y el puño quedaba ~3 cm por encima de la barra. `hang_bar()` coloca una barra colgada de los hombros reales con la **muñeca** al alcance del brazo (el puño queda por debajo de la línea de la muñeca). `report` dice «mano→objetivo» (0 = el brazo llega) y «puño→barra» (0 = agarra la barra).
+
 **Acciones selladas.** Las tres acciones originales solo keyaban algunos controles; el resto se quedaba con lo que dejara la acción anterior, así que la pose exportada **dependía del orden** (al meter `deadlift` entre medias, la frontal cambiaba 7 cm y la prensa 2 m). `ffpose.py … sellar back_squat,front_squat,leg_press` keyó en cada una lo que heredaba en el orden de siempre: el export es idéntico y ya no depende del orden.
 
 ---

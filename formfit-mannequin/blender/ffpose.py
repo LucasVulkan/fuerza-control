@@ -42,10 +42,42 @@ TORSO_PIVOT = ab['TORSO'].head_local.copy()
 trunk_rest = math.atan2(-(shMid - hipMid).y, (shMid - hipMid).z)      # inclinación hacia delante del tronco en reposo
 
 
+CURL = -75                                          # cierre del puño (FINGER-MASTER, grados)
+_SOCK = {}
+
+
+def fist(S, curl=CURL):
+    pb[f'FINGER-MASTER.{S}'].rotation_euler.x = math.radians(curl)
+    pb[f'FINGER-ROT-MASTER.{S}'].rotation_euler.x = math.radians(curl + 5)
+    touched.update((f'FINGER-MASTER.{S}', f'FINGER-ROT-MASTER.{S}'))
+
+
 def socket(S):
-    """Centro del puño respecto a la muñeca, en reposo (palma hacia abajo)."""
-    w0 = H(f'DEF-HAND.{S}'); b1 = H(f'DEF-FINGER-B-01.{S}'); b2 = H(f'DEF-FINGER-B-02.{S}')
-    return b1.lerp(b2, 0.3) + Vector((0, 0, -0.026)) - w0
+    """Hueco del puño YA CERRADO respecto a la muñeca, con la mano en reposo (palma abajo): es lo que va sobre el eje de la
+    barra. Con la mano abierta el hueco queda ~3 cm más arriba; por eso se mide con los dedos cerrados (centro de las
+    falanges de corazón y anular)."""
+    if not _SOCK:                                   # las dos manos a la vez y una sola vez: medir pone el rig en reposo
+        act = rig.animation_data.action if rig.animation_data else None
+        if act: rig.animation_data.action = None
+        reset(); fist('L'); fist('R'); upd()
+        for s in 'LR':
+            pts = [pb[f'DEF-FINGER-{d}-0{i}.{s}'].head for d in 'BC' for i in (1, 2, 3)] + [pb[f'DEF-FINGER-{d}-03.{s}'].tail for d in 'BC']
+            _SOCK[s] = sum(pts, Vector()) / len(pts) - pb[f'DEF-HAND.{s}'].head
+        reset()
+        if act: rig.animation_data.action = act
+    return _SOCK[S].copy()
+
+
+def rigid_wrists():
+    """La mano toma el giro de HAND_IK pero su posición es el final del antebrazo: si el brazo no llega, la mano no se separa
+    estirando la muñeca (DEF-FORARM0 llegaba al 140 %). Idempotente."""
+    for S in 'LR':
+        p = pb[f'MCH-HAND-SWITCH.{S}']
+        if 'FF_mano_en_antebrazo' in p.constraints: continue
+        c = p.constraints.new('COPY_LOCATION'); c.name = 'FF_mano_en_antebrazo'
+        c.target = rig; c.subtarget = f'MCH-FORARM-SWITCH.{S}'; c.head_tail = 1.0
+        print(f'  muñeca {S}: la mano ya no se separa del antebrazo')
+    upd()
 
 
 def arm_len(S):
@@ -101,18 +133,29 @@ def place_bar(f, z): setM('BARRA', rest_rot('BARRA'), W(f, z))
 HANG_PRONE = {'L': Matrix(((0, 1, 0), (0, 0, -1), (-1, 0, 0))), 'R': Matrix(((0, -1, 0), (0, 0, -1), (1, 0, 0)))}
 
 
-def grip_bar(bar, half_width, hand_rot, pole_dir, curl=-75):
-    """Manos en la barra (centro del puño sobre el eje, a ±half_width), puños cerrados, codos hacia pole_dir."""
+def grip_bar(bar, half_width, hand_rot, pole_dir, curl=CURL):
+    """Manos en la barra (hueco del puño cerrado sobre el eje, a ±half_width), codos hacia pole_dir."""
     for S, sgn in (('L', 1), ('R', -1)):
         Dh = hand_rot[S]                                  # giro de la mano respecto a su reposo, en el mundo
         grip = bar + Vector((sgn * half_width, 0, 0))
         setM(f'HAND_IK.{S}', Dh @ rest_rot(f'HAND_IK.{S}'), grip - Dh @ socket(S))
         sh = pb[f'DEF-ARM01.{S}'].head.copy()
         setM(f'ARM-POLE-IK.{S}', rest_rot(f'ARM-POLE-IK.{S}'), sh + Vector(pole_dir) * 0.5 + Vector((sgn * 0.15, 0, 0)))
-        pb[f'FINGER-MASTER.{S}'].rotation_euler.x = math.radians(curl)
-        pb[f'FINGER-ROT-MASTER.{S}'].rotation_euler.x = math.radians(curl + 5)
-        touched.update((f'FINGER-MASTER.{S}', f'FINGER-ROT-MASTER.{S}'))
+        fist(S, curl)
     upd()
+
+
+def hang_bar(bar_f, half_width, hand_rot, slack=0.995):
+    """Altura de la barra para que cuelgue de los hombros ACTUALES con el brazo casi recto: la muñeca (no el puño) a
+    `slack` × su alcance. El puño queda por debajo de la línea de la muñeca, así que no basta con hombro->puño."""
+    sh = pb['DEF-ARM01.L'].head.copy(); reach = (H('DEF-HAND.L') - H('DEF-ARM01.L')).length * slack
+    gap = lambda z: (W(bar_f, z) + Vector((half_width, 0, 0)) - hand_rot['L'] @ socket('L') - sh).length - reach
+    lo, hi = sh.z - 2 * reach, sh.z                  # lejos (gap > 0) … a la altura del hombro (gap < 0)
+    for _ in range(50):
+        m = (lo + hi) / 2
+        if gap(m) > 0: lo = m
+        else: hi = m
+    return (lo + hi) / 2
 
 
 def new_action(name, base, label):
@@ -239,11 +282,19 @@ def report(label):
     """Comprobación tras posar: cada mano llega a su objetivo (si no, el brazo es corto para esa pose)."""
     upd()
     hands = [(pb[f'DEF-HAND.{S}'].head - pb[f'HAND_IK.{S}'].head).length for S in 'LR']
-    print(f'  {label}: mano->objetivo {max(hands) * 1000:.1f} mm')
+    msg = f'  {label}: mano->objetivo {max(hands) * 1000:.1f} mm'
+    if 'BARRA' in touched and pb['BARRA'].scale.x > 0.5:
+        bar = pb['BARRA'].matrix.translation
+        gap = max(((sum((pb[f'DEF-FINGER-{d}-0{i}.{S}'].head for d in 'BC' for i in (1, 2, 3)), Vector())
+                    + sum((pb[f'DEF-FINGER-{d}-03.{S}'].tail for d in 'BC'), Vector())) / 8 - bar).yz.length for S in 'LR')
+        msg += f' · puño->barra {gap * 1000:.1f} mm'
+    print(msg)
 
 
 if __name__ == '__main__':
     args = sys.argv[sys.argv.index('--') + 1:]
     if args[2] == 'sellar':
         seal(args[3].split(','))
+    elif args[2] == 'munecas':
+        rigid_wrists()
     bpy.ops.wm.save_as_mainfile(filepath=args[1]); print('SAVED', args[1])
