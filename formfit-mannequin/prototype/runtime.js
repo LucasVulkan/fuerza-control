@@ -377,10 +377,11 @@ function evaluateInner(ex, s) {
     // cadera: pose autorada + (geometría actual - geometría de referencia)  => exacta con los valores por defecto
     const G = (dd, b, t, st, yw) => { const dx = Math.max(0, st - dd.hipHalf), cv = Math.cos(Math.asin(Math.min(0.95, dx / (dd.Ls + dd.Lt)))), ch = Math.cos(yw * 0.85);
       const kz = dd.Ls * Math.sin(t) * ch, ky = dd.ankleH + dd.Ls * Math.cos(t) * cv; return V(0, ky + dd.Lt * Math.cos(b) * cv, kz - dd.Lt * Math.sin(b) * ch); };
-    // bisagra: entre claves el tobillo de la pose interpolada se desplaza respecto al plantado (hasta 13 cm con dos claves); la
-    // cadera se mueve lo mismo para que la pierna mida lo que dicen muslo y tibia. Si no, la pierna queda corta y la rodilla se
-    // dobla de más (en el rumano, 48° en vez de 32° a mitad de recorrido). En las claves no hay desplazamiento.
-    const drift = hinge ? ['L', 'R'].map(S => expP(ex, `DEF-FOOT.${S}`, s).sub(auth[`DEF-FOOT.${S}`].p)).reduce((a, v) => a.add(v)).multiplyScalar(0.5) : V();
+    // entre claves el tobillo de la pose interpolada se desplaza respecto al plantado (hasta 13 cm con dos claves); la cadera se
+    // mueve lo mismo para que la pierna mida lo que dicen muslo y tibia. Si no, la pierna queda corta y la rodilla se dobla de más:
+    // en la sentadilla trasera, 64° en vez de 37° al 25 % de la bajada (parecía que bajaba primero con las rodillas); en el
+    // rumano, 48° en vez de 32° a mitad. En las claves no hay desplazamiento.
+    const drift = ['L', 'R'].map(S => expP(ex, `DEF-FOOT.${S}`, s).sub(auth[`DEF-FOOT.${S}`].p)).reduce((a, v) => a.add(v)).multiplyScalar(0.5);
     const hipOf = (b, t = th) => { const h = F.hip.clone().add(drift).add(G(d, b, t, stance, yaw).sub(G(d0, F.beta, F.th, stance0, yaw0))); h.x = F.hip.x; return h; };
     const hipT = hipOf(beta);
     const kr = d.k / d0.k, hg = hinge && hingeGrip(ex, s);

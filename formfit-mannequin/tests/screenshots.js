@@ -4,6 +4,7 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
   const { page, close } = await open();
   const shots = [
     ['back_squat_end_45', 'back_squat', 1, 'three', {}, {}], ['back_squat_end_side', 'back_squat', 1, 'side', {}, {}],
+    ['back_squat_quarter_side', 'back_squat', 0.25, 'side', {}, {}], ['back_squat_mid_side', 'back_squat', 0.5, 'side', {}, {}],
     ['front_squat_end_side', 'front_squat', 1, 'side', {}, {}], ['front_squat_stiff_ankle', 'front_squat', 1, 'side', { dorsi: 20 }, {}],
     ['leg_press_start', 'leg_press', 0, 'side', {}, {}], ['leg_press_end', 'leg_press', 1, 'side', {}, {}],
     ['deadlift_start_side', 'deadlift', 0, 'side', {}, {}], ['deadlift_start_45', 'deadlift', 0, 'three', {}, {}],
@@ -20,7 +21,8 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();
-      Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); Object.assign(S.per[ex], Object.fromEntries(__dbg.PRM && Object.keys(S.per[ex]).map(k => [k, ({ knees: 0, depth: 0, plates: 0, feet: 0 })[k] ?? S.per[ex][k]])), prm); S.s = s;
+      Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); if (__dbg.EXERCISES[ex].base === 'hinge') Object.assign(S.per[ex], { knees: 0, depth: 0, plates: 0, feet: 0 });   // la captura anterior no se cuela
+      Object.assign(S.per[ex], prm); S.s = s;
       document.querySelector(`[data-view=${view}]`).click(); }, [ex, s, view, body, prm]);
     await page.waitForTimeout(1600); await page.screenshot({ path: path.join(dir, name + '.png') }); console.log(name);
   }
