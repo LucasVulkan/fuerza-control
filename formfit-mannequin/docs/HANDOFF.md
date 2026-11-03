@@ -130,6 +130,8 @@ B="C:/Program Files/Blender Foundation/Blender 5.0/blender.exe"
 
 `--factory-startup` es necesario en este equipo: un add-on del usuario («Cargo») falla en modo `-b`.
 
+**Desde dentro de Blender:** Text Editor › Open › `blender/ejercicios/deadlift.py`, cambiar las constantes de arriba y Run Script (Alt+P), en modo Objeto o Pose. Recrea la acción en el archivo abierto, sin guardar: se guarda con Ctrl+S cuando convence. Busca `ffpose.py` junto al `.blend` y lo recarga cada vez.
+
 **Acciones selladas.** Las tres acciones originales solo keyaban algunos controles; el resto se quedaba con lo que dejara la acción anterior, así que la pose exportada **dependía del orden** (al meter `deadlift` entre medias, la frontal cambiaba 7 cm y la prensa 2 m). `ffpose.py … sellar back_squat,front_squat,leg_press` keyó en cada una lo que heredaba en el orden de siempre: el export es idéntico y ya no depende del orden.
 
 ---

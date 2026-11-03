@@ -1,6 +1,9 @@
 """Peso muerto convencional (tipo de base `hinge`): crea la acción `deadlift` con inicio (barra en el suelo) y final (bloqueo).
 
-Uso:  blender -b --factory-startup --python blender/ejercicios/deadlift.py -- entrada.blend salida.blend
+Uso, dos formas:
+  - Dentro de Blender: Text Editor › Open › este archivo, cambia los números de abajo y Run Script (Alt+P).
+    Recrea la acción en el archivo abierto; guarda tú con Ctrl+S cuando te guste.
+  - Terminal:  blender -b --factory-startup --python blender/ejercicios/deadlift.py -- entrada.blend salida.blend
 La pose sale de la geometría del maniquí, no de rotaciones a mano:
   - barra sobre el mediopié; en el suelo, con el centro a la altura del radio del disco;
   - brazos rectos y casi verticales, hombros un poco por delante de la barra;
@@ -8,11 +11,12 @@ La pose sale de la geometría del maniquí, no de rotaciones a mano:
   - al final, de pie: tibia casi vertical, hombros justo encima de la barra.
 Es una base: los retoques finos (espalda, cabeza, escápulas) se hacen a mano en Blender.
 """
-import bpy, sys, os, math
-argv = sys.argv[sys.argv.index('--') + 1:]
-bpy.ops.wm.open_mainfile(filepath=argv[0])
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import bpy, sys, os, math, importlib
+argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else None     # None = desde el Text Editor de Blender
+if argv: bpy.ops.wm.open_mainfile(filepath=argv[0])
+sys.path.insert(0, os.path.dirname(bpy.data.filepath))                        # ffpose.py está junto al .blend
 import ffpose as F
+importlib.reload(F)                                                           # por si ffpose.py cambió desde la última vez
 from mathutils import Vector
 
 DEG = math.pi / 180
@@ -79,4 +83,4 @@ for frame, hip, phi, bar in ((1, hip0, phi0, bar0), (30, hip1, phi1, bar1)):
     F.key(frame)
 F.finish(act)
 bpy.context.scene.frame_set(30)
-bpy.ops.wm.save_as_mainfile(filepath=argv[1]); print('SAVED', argv[1])
+if argv: bpy.ops.wm.save_as_mainfile(filepath=argv[1]); print('SAVED', argv[1])
