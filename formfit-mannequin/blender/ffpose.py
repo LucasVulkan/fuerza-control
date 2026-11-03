@@ -102,9 +102,11 @@ def reset():
     upd()
 
 
-def set_props(hand_parent, foot_parent):
-    """hand_parent: 0 raíz · 5 barra. foot_parent: 0 raíz · 2 plataforma. IK en brazos y piernas."""
+def set_props(hand_parent, foot_parent, bar_in_hands=0):
+    """hand_parent: 0 raíz · 5 barra. foot_parent: 0 raíz · 2 plataforma. bar_in_hands: 1 = la barra visible va entre los
+    puños (setup_bar_in_hands). IK en brazos y piernas."""
     P = pb['PROPERTIES']
+    if 'BARRA_EN_MANOS' in P: P['BARRA_EN_MANOS'] = bar_in_hands
     for S in 'LR':
         P[f'ARM-IK/FK.{S}'] = 0; P[f'LEG-IK/FK.{S}'] = 0
         P[f'ARM_IK_parent.{S}'] = hand_parent; P[f'FOOT-IK-PARENT.{S}'] = foot_parent
@@ -142,6 +144,52 @@ def grip_bar(bar, half_width, hand_rot, pole_dir, curl=CURL):
         sh = pb[f'DEF-ARM01.{S}'].head.copy()
         setM(f'ARM-POLE-IK.{S}', rest_rot(f'ARM-POLE-IK.{S}'), sh + Vector(pole_dir) * 0.5 + Vector((sgn * 0.15, 0, 0)))
         fist(S, curl)
+    upd()
+
+
+BAR_IN_HANDS = {'deadlift': 1}                      # acciones con la barra en las manos; el resto, en el control BARRA
+
+
+def setup_bar_in_hands():
+    """Barra visible (`BARRA_FINAL`) separada del control (`BARRA`). Idempotente.
+    - BARRA (control) sigue siendo el padre de las manos (ARM_IK_parent = 5): moverla mueve las manos.
+    - BARRA_FINAL es la que se ve y la que exporta export.py: copia a BARRA y, si PROPERTIES["BARRA_EN_MANOS"] = 1, se coloca
+      entre los dos puños (FF_PUNO.L/R, hijos de DEF-HAND en el hueco del puño cerrado) y apunta de uno a otro. Así la barra va
+      siempre con las manos, aunque el brazo no llegue al control. Sin ciclo: nada depende de BARRA_FINAL salvo las mallas."""
+    P = pb['PROPERTIES']
+    if 'BARRA_EN_MANOS' not in P:
+        P['BARRA_EN_MANOS'] = 0
+        P.id_properties_ui('BARRA_EN_MANOS').update(min=0, max=1, description='1 = la barra visible va entre los puños')
+    if 'BARRA_FINAL' not in ab:
+        sock = {S: socket(S) for S in 'LR'}
+        for ob in vl.objects: ob.select_set(False)
+        vl.objects.active = rig; rig.select_set(True)
+        bpy.ops.object.mode_set(mode='EDIT'); eb = rig.data.edit_bones
+        for S in 'LR':
+            b = eb.new(f'FF_PUNO.{S}'); b.head = H(f'DEF-HAND.{S}') + sock[S]; b.tail = b.head + Vector((0, 0, -0.04))
+            b.parent = eb[f'DEF-HAND.{S}']; b.use_deform = False
+        src = eb['BARRA']; b = eb.new('BARRA_FINAL'); b.head = src.head.copy(); b.tail = src.tail.copy(); b.roll = src.roll
+        b.parent = eb['ROOT']; b.use_deform = False
+        bpy.ops.object.mode_set(mode='POSE')
+        for n in ('FF_PUNO.L', 'FF_PUNO.R', 'BARRA_FINAL'): rig.data.bones[n].hide = True
+        pf = pb['BARRA_FINAL']; pf.rotation_mode = 'QUATERNION'
+        c = pf.constraints.new('COPY_TRANSFORMS'); c.name = 'FF_control'; c.target = rig; c.subtarget = 'BARRA'
+        for name, typ, sub, k in (('FF_puno_L', 'COPY_LOCATION', 'FF_PUNO.L', '1'), ('FF_puno_R', 'COPY_LOCATION', 'FF_PUNO.R', '0.5'),
+                                  ('FF_eje', 'DAMPED_TRACK', 'FF_PUNO.L', '1')):
+            c = pf.constraints.new(typ); c.name = name; c.target = rig; c.subtarget = sub
+            if typ == 'DAMPED_TRACK': c.track_axis = 'TRACK_Y'           # el eje Y del hueso es el de la barra
+            d = c.driver_add('influence').driver; d.type = 'SCRIPTED'; d.expression = f'{k} * p'
+            v = d.variables.new(); v.name = 'p'; v.targets[0].id = rig; v.targets[0].data_path = 'pose.bones["PROPERTIES"]["BARRA_EN_MANOS"]'
+        for ob in bpy.data.objects:      # la barra y los discos cuelgan de la barra visible (mismo reposo: misma inversa del padre)
+            if ob.parent == rig and ob.parent_bone == 'BARRA': ob.parent_bone = 'BARRA_FINAL'
+        print('  BARRA_FINAL y puños creados')
+    for act in bpy.data.actions:                                          # keyar la propiedad en todas las acciones (si no, se colaría)
+        if act.name.startswith(('00', '_')) or not act.layers: continue
+        path = 'pose.bones["PROPERTIES"]["BARRA_EN_MANOS"]'
+        if path in keyed_paths(act): continue
+        rig.animation_data.action = act; P['BARRA_EN_MANOS'] = BAR_IN_HANDS.get(act.name, 0)
+        for f in FRAMES: P.keyframe_insert('["BARRA_EN_MANOS"]', frame=f)
+        finish(act); print(f'  {act.name}: BARRA_EN_MANOS = {P["BARRA_EN_MANOS"]}')
     upd()
 
 
@@ -297,4 +345,6 @@ if __name__ == '__main__':
         seal(args[3].split(','))
     elif args[2] == 'munecas':
         rigid_wrists()
+    elif args[2] == 'barra-manos':
+        setup_bar_in_hands()
     bpy.ops.wm.save_as_mainfile(filepath=args[1]); print('SAVED', args[1])

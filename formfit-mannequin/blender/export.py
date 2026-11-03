@@ -135,7 +135,8 @@ for ex in EXERCISES:
                 ent['off'] = list(off)
             fr['bones'][n] = ent
         if pb['BARRA'].scale.x > 0.5:
-            B = pb['BARRA'].matrix; fr['bar'] = {'center': gpos(B.translation), 'axis': gpos(B.to_3x3().col[1].normalized())}
+            B = pb['BARRA_FINAL' if 'BARRA_FINAL' in pb else 'BARRA'].matrix   # la que se ve: con BARRA_EN_MANOS va entre los puños
+            fr['bar'] = {'center': gpos(B.translation), 'axis': gpos(B.to_3x3().col[1].normalized())}
         if pb['MAQUINA'].scale.x > 0.5:
             fr['machine'] = {'p': gpos(pb['MAQUINA'].matrix.translation), 'q': quat(grot(pb['MAQUINA'].matrix.to_3x3()))}
             Pl = pb['PLATAFORMA'].matrix

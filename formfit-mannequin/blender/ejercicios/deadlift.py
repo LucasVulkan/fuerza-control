@@ -73,7 +73,7 @@ def frames(F, p):
 
     def pose(hip, phi, bar, hang):
         def posar():
-            F.set_props(hand_parent=5, foot_parent=0); F.hide_machine()
+            F.set_props(hand_parent=5, foot_parent=0, bar_in_hands=1); F.hide_machine()
             F.place_feet(p['STANCE_X'], p['TOE_OUT'])
             F.place_trunk(hip.x, hip.y, phi)
             if hang:   # al bloquear la barra cuelga de los hombros reales del rig, con la muñeca justo al alcance

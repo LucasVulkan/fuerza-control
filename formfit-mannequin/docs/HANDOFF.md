@@ -65,7 +65,8 @@ Es el maniquí del usuario (`Mannequin` + `Armature_Mannequin`) con estos cambio
 | `HAND_IK.L/R` | Muñeca. Su rotación está aislada del brazo: rotar la mano no mueve el brazo. |
 | `ARM-POLE-IK.L/R` | Orienta el húmero (arriba/abajo/apertura). No mueve la mano; lo compensa la muñeca. |
 | `FINGER-MASTER.L/R` | X negativa cierra el puño. `FINGER-ROT-MASTER` hace el giro de los dedos y `THUMB` el pulgar. |
-| `BARRA`, `MAQUINA`, `PLATAFORMA` | Implementos. Las manos y los pies van emparentados vía `PROPERTIES`. |
+| `BARRA`, `MAQUINA`, `PLATAFORMA` | Implementos. Las manos y los pies van emparentados vía `PROPERTIES`. `BARRA` es el control; la barra que se ve es `BARRA_FINAL` (§2.5). |
+| `PROPERTIES › BARRA_EN_MANOS` | 1 = la barra visible va entre los puños (peso muerto); 0 = sigue al control `BARRA` (sentadillas). |
 | `PROPERTIES` | Interruptores IK/FK (`ARM-IK/FK`, `LEG-IK/FK`; 0 = IK) y los padres de IK. |
 
 Preferencias del usuario sobre el rig, ya acordadas:
@@ -145,6 +146,13 @@ Recalcular borra los retoques a mano de esa acción: primero deslizadores, luego
 **Sin panel:** Text Editor › Open › `blender/ejercicios/deadlift.py` › Run Script también recrea la acción en el archivo abierto, sin guardar.
 
 **Muñecas rígidas (`ffpose.py … munecas`, ya aplicado).** El rig original tenía la mano «aislada»: `DEF-HAND` copiaba posición y giro de `HAND_IK` aunque el brazo no llegara, y el hueso de la muñeca (`DEF-FORARM0`) se estiraba para cubrir el hueco (140 % al bajar la mano 5 cm). Ahora `MCH-HAND-SWITCH` lleva una restricción `FF_mano_en_antebrazo` (Copy Location a la cola de `MCH-FORARM-SWITCH`): la mano conserva el giro de `HAND_IK`, pero su posición es el final del antebrazo. Si arrastras la mano más allá del alcance, el brazo queda recto y la mano no se separa. Las otras tres acciones se mueven ≤ 0,06 mm.
+
+**Barra en las manos (`ffpose.py … barra-manos`, ya aplicado).** El control `BARRA` sigue siendo el padre de las manos (moverlo las mueve), pero la barra **visible y exportada** es otro hueso, `BARRA_FINAL`:
+
+- copia a `BARRA`; si `PROPERTIES["BARRA_EN_MANOS"] = 1` se coloca entre los dos puños (`FF_PUNO.L/R`, hijos de `DEF-HAND` en el hueco del puño cerrado) y apunta de uno a otro;
+- así, en el peso muerto la barra va siempre con las manos, aunque entre claves el brazo no llegue al control o muevas una mano a mano. En las sentadillas vale 0 y la barra sigue al control (va en la espalda);
+- `BARRA_EN_MANOS` está keyada (constante) en todas las acciones: `deadlift` 1, el resto 0. `ff_barra` y los discos cuelgan de `BARRA_FINAL`; el exportador la lee en vez de `BARRA`;
+- sin ciclo de dependencias: nada depende de `BARRA_FINAL` salvo las mallas.
 
 **Agarre con el puño cerrado.** `socket()` mide el hueco del puño **ya cerrado** (centro de las falanges de corazón y anular); antes se medía con la mano abierta y el puño quedaba ~3 cm por encima de la barra. `hang_bar()` coloca una barra colgada de los hombros reales con la **muñeca** al alcance del brazo (el puño queda por debajo de la línea de la muñeca). `report` dice «mano→objetivo» (0 = el brazo llega) y «puño→barra» (0 = agarra la barra).
 
