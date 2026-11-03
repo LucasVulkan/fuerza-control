@@ -23,15 +23,13 @@ const { open } = require('./harness');
         const bad = s === sB && Math.abs(r.bar.center.y - want) > 0.005; if (bad) fail++;
         out.push(`${nm.padEnd(13)} ${ex} s=${s} ${r.readout.map(x => x[0] + ' ' + x[1]).join(' · ')}${bad ? ' · ¡la barra no está en su punto bajo!' : ''}${r.warns.length ? ' · ' + r.warns.join('; ') : ''}`);
         S.body = sb; S.per[ex] = sp; }
-      // sin saltos: cada paso de la barra entre frames contiguos, como fracción de su recorrido total, no puede ser más del
-      // doble que el mismo paso con el cuerpo por defecto (antes el solver saltaba de solución: hasta 20 cm de golpe)
-      let ref;
-      for (const [nm, body, prm] of [...hcases, ['bloques', {}, { plates: 12 }], ['déficit', {}, { feet: 8 }], ['más hondo', {}, { depth: -15 }]]) {
+      // sin saltos: ningún paso de la barra entre frames contiguos puede ser más del doble que el mayor de sus dos vecinos
+      // (antes el solver saltaba de solución: hasta 20 cm de golpe en un frame). Vale aunque el recorrido se recorte.
+      for (const [nm, body, prm] of [...hcases, ['bloques', {}, { plates: 12 }], ['déficit', {}, { feet: 8 }], ['más hondo', {}, { depth: -15 }], ['menos hondo', {}, { depth: 15 }]]) {
         const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
         const st = []; let prev; for (let i = 0; i <= 40; i++) { const c = D.evaluate(ex, i / 40).bar.center; if (prev) st.push(c.distanceTo(prev)); prev = c.clone(); }
-        const tot = st.reduce((a, x) => a + x), fr = st.map(x => x / tot); ref ??= fr;
-        const worst = Math.max(...fr.map((x, i) => x / Math.max(ref[i], 0.002)));
-        if (worst > 2) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡salto entre frames: un paso ${worst.toFixed(1)}× el de por defecto!`); }
+        const worst = Math.max(...st.map((x, i) => x / Math.max(st[i - 1] ?? 0, st[i + 1] ?? 0, 0.003)));
+        if (worst > 2) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡salto entre frames: un paso ${worst.toFixed(1)}× el de al lado!`); }
         S.body = sb; S.per[ex] = sp; }
     }
     out.push(fail ? `FALLOS: ${fail}` : 'OK'); return out.join('\n'); }));

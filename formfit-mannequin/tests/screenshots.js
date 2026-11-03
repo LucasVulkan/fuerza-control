@@ -11,12 +11,14 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['deadlift_start_femur', 'deadlift', 0, 'side', { femur: 112, tibia: 98, torso: 95 }, {}],
     ['deadlift_deficit', 'deadlift', 0, 'three', {}, { feet: 8, plates: 0 }], ['deadlift_blocks', 'deadlift', 0, 'three', {}, { feet: 0, plates: 12 }],
     ['rdl_top_side', 'romanian_deadlift', 0, 'side', {}, {}], ['rdl_bottom_side', 'romanian_deadlift', 1, 'side', {}, {}],
-    ['rdl_bottom_45', 'romanian_deadlift', 1, 'three', {}, {}],
-    ['rdl_as_conventional', 'romanian_deadlift', 1, 'side', {}, { knees: 8, depth: -40 }]];
+    ['rdl_bottom_45', 'romanian_deadlift', 1, 'three', {}, {}], ['rdl_mid_side', 'romanian_deadlift', 0.5, 'side', {}, {}],
+    ['rdl_shallow_side', 'romanian_deadlift', 1, 'side', {}, { depth: 15 }], ['deadlift_deficit_side', 'deadlift', 0, 'side', {}, { feet: 8 }],
+    ['rdl_as_conventional', 'romanian_deadlift', 1, 'side', {}, { knees: 8, depth: -40 }],
+    ['rdl_deficit_side', 'romanian_deadlift', 1, 'side', {}, { knees: 0, depth: -10, feet: 10 }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();
-      Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); Object.assign(S.per[ex], prm); S.s = s;
+      Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); Object.assign(S.per[ex], Object.fromEntries(__dbg.PRM && Object.keys(S.per[ex]).map(k => [k, ({ knees: 0, depth: 0, plates: 0, feet: 0 })[k] ?? S.per[ex][k]])), prm); S.s = s;
       document.querySelector(`[data-view=${view}]`).click(); }, [ex, s, view, body, prm]);
     await page.waitForTimeout(1600); await page.screenshot({ path: path.join(dir, name + '.png') }); console.log(name);
   }

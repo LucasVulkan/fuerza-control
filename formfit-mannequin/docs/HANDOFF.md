@@ -312,23 +312,29 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
 
 Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, cadera)`), con estos cambios:
 
-- **La barra cuelga de las manos**, no va en el tronco: `barra = hombros + (barra − hombros autorados)·k`, salvo la altura, que sale del alcance hombro→puño con el agarre actual (agarre más abierto → barra más alta). Ni la barra ni las manos giran con el tronco (`Rh` = identidad).
-- **Punto bajo y alto** (`hingeKeys`): la clave con la barra más baja y la más alta. En el convencional el bajo es el inicio; en el rumano, el final (empieza arriba). La **subida** de cada frame es la altura autorada de la barra entre los dos (0 abajo, 1 arriba).
-- **Muslo y tronco, en dos pasos con una sola solución cada uno:**
-  1. Punto bajo: Newton 2×2 para que la barra quede a la altura que toca y sobre el mediopié de los pies plantados. Sale `dB0`, cuánto cambia el muslo respecto al autorado (fémur, tronco, agarre, rodilla, profundidad, bloques…). Se calcula una vez por cuerpo y ajustes (`hingeStart`, en caché).
-     - Si la autorada está en el suelo (convencional): en el suelo o sobre los bloques, sea cual sea el cuerpo (los discos no cambian). `depth` solo la sube.
-     - Si no (rumano): la autorada escalada con la altura, más `depth`. Nunca por debajo del suelo o los bloques.
-     - Si no llega a esa altura, avisa («No llega a esa profundidad con la rodilla así»).
-  2. Resto: muslo = autorado + `dB0·(1 − subida)²`. Se desvanece hacia arriba (de pie es de pie) y, con el cuadrado, la barra no acelera al llegar abajo (con `1 − subida` iba al doble de rápido en el último tramo con un fémur largo). El tronco, por secante, el que deja la barra sobre el mediopié.
+- **La barra va en las manos** (`hingeGrip`): en cada clave se guarda, por lado, puño − barra y el alcance hombro→puño, y entre claves se interpolan. La barra se pone a la altura que deja el puño izquierdo al alcance del hombro actual (agarre más abierto → barra más alta) y las manos van a la barra por IK. En las claves es exactamente la autorada.
+
+  ⚠️ No uses la barra interpolada con las manos de la pose interpolada: la barra va en recta y las manos en arco (en el rumano, con dos claves, se separaban 11 cm).
+- **Punto bajo y alto** (`hingeKeys`): la clave con la barra más baja y la más alta. En el convencional el bajo es el inicio; en el rumano, el final (empieza arriba).
+- **Recorte** (`hingeCut`, `hingeS`): con `depth` positivo, o con bloques más altos que el punto bajo, la repetición **se acorta**: va del punto alto al momento de la animación en que la barra (en las manos) está a esa altura. Lo de debajo no se ve; no se comprime. `evaluate` traduce la s de la repetición a la s de la animación.
+- **Muslo y tronco**, con una sola solución en cada paso:
+  1. Punto bajo (`s` = la del recorte), en dos partes:
+     - a) **El cuerpo** (fémur, tronco, agarre, rodilla): Newton 2×2 sobre muslo y tronco para la altura base, con la barra sobre el mediopié. La altura base es: apoyada (suelo o bloques) → la del apoyo, igual para todos los cuerpos; recortada sin apoyo → la de la animación en ese punto; si no → la autorada × k.
+     - b) **Lo que falta** (déficit, `depth` negativo): **flexión de cadera**. El ángulo de la rodilla no cambia (muslo + tibia fijo): la pierna gira sobre el tobillo, la cadera va atrás casi sin bajar (−1 cm con 8 cm de déficit) y el tronco se inclina. Nada de cuclillas.
+
+     Salen `dB0` y `dTh` (cambio de muslo y de tibia), una vez por cuerpo y ajustes (`hingeStart`, en caché). Si no llega a la altura, avisa.
+  2. Resto: muslo y tibia = autorados + `dB0`/`dTh` × `(1 − subida)²` (0 arriba: de pie es de pie; con el cuadrado, la barra no acelera al llegar abajo). El tronco, por secante, el que deja la barra sobre el mediopié.
 
   Antes era un Newton 2×2 que mezclaba «altura de la barra» y «muslo autorado» con pesos según `s`: con otro cuerpo saltaba de solución (hasta 20 cm de un frame al siguiente). `tests/balance.js` lo vigila.
 - `knees` es «Flexión de rodilla»: más o menos tibia, con todo su efecto abajo, que se desvanece hacia arriba.
-- **Altura de los pies** (`feet`, déficit): se resuelve con los pies en el suelo y al final se sube todo el cuerpo y la barra; la barra del convencional sigue en el suelo, así que baja más. **Altura de los discos** (`plates`, bloques): el punto bajo queda sobre ellos. El visor dibuja las cajas (`blocks`, `footBox`).
+- **Altura de los pies** (`feet`): se resuelve con los pies en el suelo y al final se sube todo el cuerpo y la barra. **Altura de los discos** (`plates`): bloques bajo los discos. El visor dibuja las cajas (`blocks`, `footBox`).
 - Aviso de isquios: tronco por encima de 85° con la rodilla flexionada menos de 45°.
 
 **Ejercicios vecinos** (spec X01 §2.14): cada uno tiene su acción y los mismos ajustes los acercan. El rumano con `knees` +8 y `depth` −40 queda en tronco 70°, muslo 66° y barra en el suelo; el convencional por defecto está en 72° y 65° (`tests/shots/rdl_as_conventional.png`).
 
-Con los valores por defecto `dB0 = 0` y sale la autorada: 0,0 mm en las claves. Con un fémur largo la cadera sube y el tronco se acuesta (85°); con un tronco largo, al revés (61°). Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera abajo» (cuánto y por qué).
+**Ojo con el rumano:** en este modelo (brazos colgando, hombros sobre la barra, barra sobre el mediopié) bajar la barra a media tibia exige ~58° de flexión de rodilla, y aun a la altura de la rodilla ~47°. Una rodilla más recta solo deja inclinar el tronco ~25°. Un rumano más «rígido» se retoca a mano en Blender o se recorta con `depth`.
+
+Con los valores por defecto sale la autorada: 0,0 mm en las claves. Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera abajo» (cuánto y por qué).
 
 ### 4.5 Sliders (`PARAMS`)
 
@@ -346,9 +352,9 @@ Con los valores por defecto `dB0 = 0` y sale la autorada: 0,0 mm en las claves. 
 | seat | `footHigh` | ±10 cm (0) | Pies más altos o más bajos en la plataforma. |
 | seat | `stance`, `toes`, `load` | — | Igual que arriba (carga 0–400 %, defecto 180). |
 | hinge | `knees` | −6…15° (0) | Flexión de rodilla: más o menos tibia, todo su efecto en el punto bajo; se desvanece al subir. |
-| hinge | `depth` | −40…30 cm (0) | Profundidad: altura de la barra en el punto bajo. No pasa del suelo ni de los bloques; si la autorada está en el suelo, solo sube. |
-| hinge | `plates` | 0…30 cm (0) | Altura de los discos (bloques). |
-| hinge | `feet` | 0…20 cm (0) | Altura de los pies (déficit). |
+| hinge | `depth` | −40…30 cm (0) | Profundidad: altura de la barra en el punto bajo. Hacia arriba recorta el recorrido; hacia abajo, más flexión de cadera, sin pasar del suelo ni de los bloques. |
+| hinge | `plates` | 0…30 cm (0) | Altura de los discos (bloques): si quedan por encima del punto bajo, recortan el recorrido. |
+| hinge | `feet` | 0…20 cm (0) | Altura de los pies (déficit): el cuerpo sube con los pies; si la barra se apoya, lo que falta sale de la cadera. |
 | hinge | `stance`, `toes`, `grip`, `load` | — | Igual que en stand (agarre 0,9–1,3; carga 0–300 %, defecto 150). |
 
 Cuerpo (`state.body`):
@@ -389,7 +395,7 @@ npm run shots     # capturas a tests/shots/*.png
   - el FK del runtime coincide con Blender: 0,0 mm en todas las claves;
   - con los valores por defecto, el runtime coincide con Blender: 0,0 mm (prensa al final: 43 mm a propósito, por la pelvis fija y la plataforma sin rotar);
   - los pies no se deslizan: 0,0 mm.
-- `balance.js`: centro de masas y barra respecto al mediopié para 9 combinaciones de cuerpo y ajustes. El CdM debe quedarse en el valor autorado y los tobillos a la altura de tobillo × k. Para `hinge`, 7 cuerpos/ajustes en s = 0, 0,5 y 1: en el punto bajo la barra tiene que estar en el suelo (si la autorada lo está) o a la autorada × k (±5 mm). Además, sin saltos: con 10 cuerpos/ajustes (bloques, déficit, más hondo incluidos), ningún paso de la barra entre frames, como fracción de su recorrido, puede ser más del doble que con el cuerpo por defecto.
+- `balance.js`: centro de masas y barra respecto al mediopié para 9 combinaciones de cuerpo y ajustes. El CdM debe quedarse en el valor autorado y los tobillos a la altura de tobillo × k. Para `hinge`, 7 cuerpos/ajustes en s = 0, 0,5 y 1: en el punto bajo la barra tiene que estar en el suelo (si la autorada lo está) o a la autorada × k (±5 mm). Además, sin saltos: con 11 cuerpos/ajustes (bloques, déficit, más y menos hondo incluidos), ningún paso de la barra entre frames puede ser más del doble que el mayor de sus vecinos (el solver antiguo da 14 fallos).
 - `harness.js`: Chromium headless con WebGL por SwiftShader. Sirve `three@0.147.0` desde `node_modules` porque el CDN no es accesible en CI.
 
 ---
