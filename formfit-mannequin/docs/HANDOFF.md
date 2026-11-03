@@ -123,6 +123,7 @@ Después se ejecuta `autopose.py` y el usuario retoca en Blender.
 `autopose.py` depende de un JSON sacado de otro modelo. Para ejercicios nuevos se describe la pose **en geometría del propio maniquí**:
 
 - `blender/ffpose.py`: la librería. Medidas en reposo (muslo, tibia, tronco, brazo hasta el centro del puño), coordenadas sagitales (`W(f, z)`: f = hacia delante = −Y), y funciones para colocar tronco (`place_trunk`), pies (`place_feet`), barra (`place_bar`) y manos en la barra (`grip_bar`, con `HANG_PRONE` para colgar en prono). `new_action` crea la acción con `ff_base` y `ff_name`; `key(frame)` keya **todos** los canales del rig y de `PROPERTIES`; `report` avisa si una mano no llega.
+- `blender/ejercicios/romanian_deadlift.py`: el rumano. Usa la geometría de `deadlift.py` con el punto bajo más alto (`BAR_LOW`, barra a media tibia) y menos rodilla, y le da la vuelta: empieza arriba (frame 1) y baja (frame 30).
 - `blender/ejercicios/deadlift.py`: el peso muerto. Barra sobre el mediopié real (mitad del pie, medida en la malla), en el suelo al radio del disco; brazos casi rectos; la cadera sale de cruzar muslo y tronco; al bloquear, tronco erguido y la barra apoyada en la cara delantera del muslo. Sus `PARAMS` (anchura, rotación de pies, agarre, tibia…) son los mandos, con su valor por defecto y su rango.
 - `ffpose.run(ejercicio, ajustes, live)`: el único punto que crea o actualiza la acción de un ejercicio (lo usan la terminal, el Text Editor y el panel).
 
@@ -152,7 +153,7 @@ Recalcular borra los retoques a mano de esa acción: primero deslizadores, luego
 
 - copia a `BARRA`; si `PROPERTIES["BARRA_EN_MANOS"] = 1` se coloca entre los dos puños (`FF_PUNO.L/R`, hijos de `DEF-HAND` en el hueco del puño cerrado) y apunta de uno a otro;
 - así, en el peso muerto la barra va siempre con las manos, aunque entre claves el brazo no llegue al control o muevas una mano a mano. En las sentadillas vale 0 y la barra sigue al control (va en la espalda);
-- `BARRA_EN_MANOS` está keyada (constante) en todas las acciones: `deadlift` 1, el resto 0. `ff_barra` y los discos cuelgan de `BARRA_FINAL`; el exportador la lee en vez de `BARRA`;
+- `BARRA_EN_MANOS` está keyada (constante) en todas las acciones: `deadlift` y `romanian_deadlift` 1, el resto 0. `ff_barra` y los discos cuelgan de `BARRA_FINAL`; el exportador la lee en vez de `BARRA`;
 - sin ciclo de dependencias: nada depende de `BARRA_FINAL` salvo las mallas.
 
 **Agarre con el puño cerrado.** `socket()` mide el hueco del puño **ya cerrado** (centro de las falanges de corazón y anular); antes se medía con la mano abierta y el puño quedaba ~3 cm por encima de la barra. `hang_bar()` coloca una barra colgada de los hombros reales con la **muñeca** al alcance del brazo (el puño queda por debajo de la línea de la muñeca). `report` dice «mano→objetivo» (0 = el brazo llega) y «puño→barra» (0 = agarra la barra).
@@ -307,19 +308,27 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
 - **Manos:** IK hasta las muñecas exportadas (asas fijas a la máquina).
 - **Demanda muscular:** línea de fuerza por el mediopié, paralela al raíl, y brazos de momento a la rodilla y a la cadera.
 
-### 4.4b `evaluate`: tipo `hinge` (peso muerto)
+### 4.4b `evaluate`: tipo `hinge` (peso muerto convencional, rumano)
 
-Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, cadera)`), con tres cambios:
+Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, cadera)`), con estos cambios:
 
 - **La barra cuelga de las manos**, no va en el tronco: `barra = hombros + (barra − hombros autorados)·k`, salvo la altura, que sale del alcance hombro→puño con el agarre actual (agarre más abierto → barra más alta). Ni la barra ni las manos giran con el tronco (`Rh` = identidad).
+- **Punto bajo y alto** (`hingeKeys`): la clave con la barra más baja y la más alta. En el convencional el bajo es el inicio; en el rumano, el final (empieza arriba). La **subida** de cada frame es la altura autorada de la barra entre los dos (0 abajo, 1 arriba).
 - **Muslo y tronco, en dos pasos con una sola solución cada uno:**
-  1. Inicio (`s = 0`): Newton 2×2 para que la barra quede en el suelo (los discos no cambian con el cuerpo) y sobre el mediopié de los pies plantados. Sale `dB0`, cuánto cambia el muslo respecto al autorado (fémur, tronco, agarre, rodilla…). Se calcula una vez por cuerpo y ajustes (`hingeStart`, en caché).
-  2. Resto: muslo = autorado + `dB0·(1 − subida)`, con la subida medida por la altura autorada de la barra (0 en el suelo, 1 al bloquear: de pie es de pie). El tronco, por secante, el que deja la barra sobre el mediopié.
+  1. Punto bajo: Newton 2×2 para que la barra quede a la altura que toca y sobre el mediopié de los pies plantados. Sale `dB0`, cuánto cambia el muslo respecto al autorado (fémur, tronco, agarre, rodilla, profundidad, bloques…). Se calcula una vez por cuerpo y ajustes (`hingeStart`, en caché).
+     - Si la autorada está en el suelo (convencional): en el suelo o sobre los bloques, sea cual sea el cuerpo (los discos no cambian). `depth` solo la sube.
+     - Si no (rumano): la autorada escalada con la altura, más `depth`. Nunca por debajo del suelo o los bloques.
+     - Si no llega a esa altura, avisa («No llega a esa profundidad con la rodilla así»).
+  2. Resto: muslo = autorado + `dB0·(1 − subida)²`. Se desvanece hacia arriba (de pie es de pie) y, con el cuadrado, la barra no acelera al llegar abajo (con `1 − subida` iba al doble de rápido en el último tramo con un fémur largo). El tronco, por secante, el que deja la barra sobre el mediopié.
 
   Antes era un Newton 2×2 que mezclaba «altura de la barra» y «muslo autorado» con pesos según `s`: con otro cuerpo saltaba de solución (hasta 20 cm de un frame al siguiente). `tests/balance.js` lo vigila.
-- `knees` es «Rodilla al empezar»: más tibia al principio, que se desvanece hacia el bloqueo.
+- `knees` es «Flexión de rodilla»: más o menos tibia, con todo su efecto abajo, que se desvanece hacia arriba.
+- **Altura de los pies** (`feet`, déficit): se resuelve con los pies en el suelo y al final se sube todo el cuerpo y la barra; la barra del convencional sigue en el suelo, así que baja más. **Altura de los discos** (`plates`, bloques): el punto bajo queda sobre ellos. El visor dibuja las cajas (`blocks`, `footBox`).
+- Aviso de isquios: tronco por encima de 85° con la rodilla flexionada menos de 45°.
 
-Con los valores por defecto `dB0 = 0` y sale la autorada: 0,0 mm en las claves. Con un fémur largo la cadera sube y el tronco se acuesta (85°); con un tronco largo, al revés (61°). Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera al empezar» (cuánto y por qué).
+**Ejercicios vecinos** (spec X01 §2.14): cada uno tiene su acción y los mismos ajustes los acercan. El rumano con `knees` +8 y `depth` −40 queda en tronco 70°, muslo 66° y barra en el suelo; el convencional por defecto está en 72° y 65° (`tests/shots/rdl_as_conventional.png`).
+
+Con los valores por defecto `dB0 = 0` y sale la autorada: 0,0 mm en las claves. Con un fémur largo la cadera sube y el tronco se acuesta (85°); con un tronco largo, al revés (61°). Indicadores: tronco, muslo, tibia, altura de la barra, barra–mediopié y, si cambia, «Cadera abajo» (cuánto y por qué).
 
 ### 4.5 Sliders (`PARAMS`)
 
@@ -336,7 +345,10 @@ Con los valores por defecto `dB0 = 0` y sale la autorada: 0,0 mm en las claves. 
 | seat | `depth` | 0,5–1,3 (1) | Final del recorrido. |
 | seat | `footHigh` | ±10 cm (0) | Pies más altos o más bajos en la plataforma. |
 | seat | `stance`, `toes`, `load` | — | Igual que arriba (carga 0–400 %, defecto 180). |
-| hinge | `knees` | −6…8° (0) | Rodilla al empezar: más o menos tibia en el suelo; se desvanece al subir. |
+| hinge | `knees` | −6…15° (0) | Flexión de rodilla: más o menos tibia, todo su efecto en el punto bajo; se desvanece al subir. |
+| hinge | `depth` | −40…30 cm (0) | Profundidad: altura de la barra en el punto bajo. No pasa del suelo ni de los bloques; si la autorada está en el suelo, solo sube. |
+| hinge | `plates` | 0…30 cm (0) | Altura de los discos (bloques). |
+| hinge | `feet` | 0…20 cm (0) | Altura de los pies (déficit). |
 | hinge | `stance`, `toes`, `grip`, `load` | — | Igual que en stand (agarre 0,9–1,3; carga 0–300 %, defecto 150). |
 
 Cuerpo (`state.body`):
@@ -377,7 +389,7 @@ npm run shots     # capturas a tests/shots/*.png
   - el FK del runtime coincide con Blender: 0,0 mm en todas las claves;
   - con los valores por defecto, el runtime coincide con Blender: 0,0 mm (prensa al final: 43 mm a propósito, por la pelvis fija y la plataforma sin rotar);
   - los pies no se deslizan: 0,0 mm.
-- `balance.js`: centro de masas y barra respecto al mediopié para 9 combinaciones de cuerpo y ajustes. El CdM debe quedarse en el valor autorado y los tobillos a la altura de tobillo × k. Para `hinge`, 7 cuerpos/ajustes en s = 0, 0,5 y 1: al empezar la barra tiene que seguir en el suelo (±5 mm) o falla.
+- `balance.js`: centro de masas y barra respecto al mediopié para 9 combinaciones de cuerpo y ajustes. El CdM debe quedarse en el valor autorado y los tobillos a la altura de tobillo × k. Para `hinge`, 7 cuerpos/ajustes en s = 0, 0,5 y 1: en el punto bajo la barra tiene que estar en el suelo (si la autorada lo está) o a la autorada × k (±5 mm). Además, sin saltos: con 10 cuerpos/ajustes (bloques, déficit, más hondo incluidos), ningún paso de la barra entre frames, como fracción de su recorrido, puede ser más del doble que con el cuerpo por defecto.
 - `harness.js`: Chromium headless con WebGL por SwiftShader. Sirve `three@0.147.0` desde `node_modules` porque el CDN no es accesible en CI.
 
 ---

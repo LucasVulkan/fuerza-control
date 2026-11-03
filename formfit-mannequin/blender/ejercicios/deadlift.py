@@ -48,9 +48,10 @@ def frames(F, p):
             else: b = m
         return (a + b) / 2
 
-    # ---- inicio: barra en el suelo; hombros sobre ella con el brazo recto; la cadera donde se cruzan muslo y tronco
-    bar0 = Vector((BAR_F, F.PLATE_R))
-    sh0 = Vector((BAR_F + p['SH_AHEAD'], F.PLATE_R + math.sqrt(max(1e-6, L ** 2 - dx ** 2 - p['SH_AHEAD'] ** 2))))
+    # ---- inicio: barra en el suelo (o a `BAR_LOW`); hombros sobre ella con el brazo recto; la cadera donde se cruzan muslo y tronco
+    low = p.get('BAR_LOW', F.PLATE_R)              # altura de la barra abajo: en el suelo (el rumano la pone más alta)
+    bar0 = Vector((BAR_F, low))
+    sh0 = Vector((BAR_F + p['SH_AHEAD'], low + math.sqrt(max(1e-6, L ** 2 - dx ** 2 - p['SH_AHEAD'] ** 2))))
     k0 = knee(p['SHIN_START'] * DEG)
     hip_at = lambda phi: Vector((sh0.x + d(phi).y, sh0.y - d(phi).z))   # d.y es -f
     phi0 = bisect(lambda ph: (hip_at(ph) - k0).length - F.Lt, 5 * DEG, 89 * DEG)

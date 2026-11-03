@@ -8,7 +8,11 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['leg_press_start', 'leg_press', 0, 'side', {}, {}], ['leg_press_end', 'leg_press', 1, 'side', {}, {}],
     ['deadlift_start_side', 'deadlift', 0, 'side', {}, {}], ['deadlift_start_45', 'deadlift', 0, 'three', {}, {}],
     ['deadlift_mid_side', 'deadlift', 0.5, 'side', {}, {}], ['deadlift_end_side', 'deadlift', 1, 'side', {}, {}],
-    ['deadlift_start_femur', 'deadlift', 0, 'side', { femur: 112, tibia: 98, torso: 95 }, {}]];
+    ['deadlift_start_femur', 'deadlift', 0, 'side', { femur: 112, tibia: 98, torso: 95 }, {}],
+    ['deadlift_deficit', 'deadlift', 0, 'three', {}, { feet: 8, plates: 0 }], ['deadlift_blocks', 'deadlift', 0, 'three', {}, { feet: 0, plates: 12 }],
+    ['rdl_top_side', 'romanian_deadlift', 0, 'side', {}, {}], ['rdl_bottom_side', 'romanian_deadlift', 1, 'side', {}, {}],
+    ['rdl_bottom_45', 'romanian_deadlift', 1, 'three', {}, {}],
+    ['rdl_as_conventional', 'romanian_deadlift', 1, 'side', {}, { knees: 8, depth: -40 }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();
