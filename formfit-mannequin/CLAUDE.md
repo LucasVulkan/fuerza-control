@@ -14,7 +14,7 @@ Lee `docs/HANDOFF.md` antes de tocar nada: explica el pipeline completo y por qu
 ## Estructura
 
 ```
-blender/     FormFit_Maniqui.blend (rig + 3 ejercicios), export.py, prep_rig.py, autopose.py, rigui.py, legacy/
+blender/     FormFit_Maniqui.blend (rig + 4 ejercicios), export.py, ffpose.py (posar por script), ejercicios/ (un .py por ejercicio), prep_rig.py, autopose.py, rigui.py, legacy/
 assets/      mannequin.glb + poses.json  (SALIDA del exportador; no editar a mano)
 prototype/   runtime.js (toda la lógica), shell.html (UI web), build.py -> viewer.html (visor autocontenido)
 tests/       harness.js (Chromium headless + WebGL SwiftShader), fidelity.js, balance.js, screenshots.js
@@ -27,9 +27,12 @@ docs/        HANDOFF.md (documento principal), PORTING.md (plan para llevarlo a 
 npm i                                   # three@0.147.0 + playwright (solo para el prototipo y los tests)
 npx playwright install chromium         # si no hay navegador
 
-# Blender -> assets (Blender 4.2+/5.x; probado con 5.2.3)
-blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/
+# Blender -> assets. En este equipo: Blender 5.0, sin PATH, y siempre con --factory-startup (un add-on falla en -b)
+B="C:/Program Files/Blender Foundation/Blender 5.0/blender.exe"
+"$B" -b --factory-startup --python blender/export.py -- blender/FormFit_Maniqui.blend assets/
 #   opcional: 3er argumento = guardar .blend corregido; --exercises back_squat,leg_press para exportar solo esos
+# Posar un ejercicio por script (crea o reemplaza su acción): ver HANDOFF §2.5
+"$B" -b --factory-startup --python blender/ejercicios/deadlift.py -- blender/FormFit_Maniqui.blend blender/FormFit_Maniqui.blend
 
 npm run build:viewer                    # prototype/viewer.html (abrir en el navegador)
 npm test                                # build + fidelidad + equilibrio

@@ -5,7 +5,10 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
   const shots = [
     ['back_squat_end_45', 'back_squat', 1, 'three', {}, {}], ['back_squat_end_side', 'back_squat', 1, 'side', {}, {}],
     ['front_squat_end_side', 'front_squat', 1, 'side', {}, {}], ['front_squat_stiff_ankle', 'front_squat', 1, 'side', { dorsi: 20 }, {}],
-    ['leg_press_start', 'leg_press', 0, 'side', {}, {}], ['leg_press_end', 'leg_press', 1, 'side', {}, {}]];
+    ['leg_press_start', 'leg_press', 0, 'side', {}, {}], ['leg_press_end', 'leg_press', 1, 'side', {}, {}],
+    ['deadlift_start_side', 'deadlift', 0, 'side', {}, {}], ['deadlift_start_45', 'deadlift', 0, 'three', {}, {}],
+    ['deadlift_mid_side', 'deadlift', 0.5, 'side', {}, {}], ['deadlift_end_side', 'deadlift', 1, 'side', {}, {}],
+    ['deadlift_start_femur', 'deadlift', 0, 'side', { femur: 112, tibia: 98, torso: 95 }, {}]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();

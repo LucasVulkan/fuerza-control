@@ -19,7 +19,10 @@ const EXERCISES = {
   back_squat: { name: 'Sentadilla trasera', short: 'Trasera', base: 'stand', bar: true, elbowPref: null },
   front_squat: { name: 'Sentadilla frontal', short: 'Frontal', base: 'stand', bar: true },
   leg_press: { name: 'Prensa 45°', short: 'Prensa', base: 'seat', bar: false },
+  deadlift: { name: 'Peso muerto', short: 'Muerto', base: 'hinge', bar: true },
 };
+// las acciones nuevas aparecen solas con su meta (ff_base, ff_name) aunque no estén en la lista
+for (const [id, e] of Object.entries(POSES.exercises)) EXERCISES[id] ??= { name: e.meta.name, short: e.meta.name, base: e.meta.base, bar: e.meta.base !== 'seat' };
 const PARAMS = {
   stand: [
     { id: 'depth', label: 'Profundidad', min: 0.6, max: 1.25, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}% de la autorada` },
@@ -37,6 +40,14 @@ const PARAMS = {
     { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.4, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'toes', label: 'Rotación de pies', min: -15, max: 20, step: 1, def: 0, fmt: v => `${v > 0 ? '+' : ''}${v}°` },
     { id: 'load', label: 'Carga', min: 0, max: 400, step: 10, def: 180, fmt: v => `${v}% del peso corporal` },
+  ],
+  // bisagra (peso muerto): la barra cuelga de las manos; empieza en el suelo y sube sobre el mediopié
+  hinge: [
+    { id: 'knees', label: 'Rodilla al empezar', min: -6, max: 8, step: 1, def: 0, fmt: v => `${v > 0 ? '+' : ''}${v}° de tibia` },
+    { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.4, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
+    { id: 'toes', label: 'Rotación de pies', min: -15, max: 20, step: 1, def: 0, fmt: v => `${v > 0 ? '+' : ''}${v}° sobre la autorada` },
+    { id: 'grip', label: 'Anchura de agarre', min: 0.9, max: 1.3, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
+    { id: 'load', label: 'Carga', min: 0, max: 300, step: 10, def: 150, fmt: v => `${v}% del peso corporal` },
   ],
 };
 const PRESETS = {
@@ -285,26 +296,29 @@ function evaluateInner(ex, s) {
   const d = dims(), d0 = withBody(DEFAULT_BODY, dims);
   const pose = clonePose(auth);
   const out = { pose, act: null, warns: [], readout: [], path: null, F };
-  if (exd.base === 'stand') {
+  if (exd.base === 'stand' || exd.base === 'hinge') {
+    // hinge (peso muerto): la barra cuelga de las manos en vez de ir en el tronco; se resuelven muslo y tronco para que
+    // la barra siga sobre el mediopié y, al empezar, en el suelo (los discos no cambian con el cuerpo)
+    const hinge = exd.base === 'hinge', depth = prm.depth ?? 1, barH = prm.barH ?? 0;
     const yaw0 = (F.L.yaw - F.R.yaw) / 2, stance0 = (F.L.an.x - F.R.an.x) / 2;
-    const beta = F.beta * (state.s > 0 ? 1 : 1) * lerp(1, prm.depth, clamp(F.beta / (60 * DEG))) ;
-    const thPref0 = F.th, thPref = F.th + prm.knees * DEG * clamp(F.beta / (60 * DEG));
+    const beta = hinge ? F.beta : F.beta * lerp(1, depth, clamp(F.beta / (60 * DEG)));
+    const thPref0 = F.th, thPref = F.th + prm.knees * DEG * (hinge ? 1 - s : clamp(F.beta / (60 * DEG)));
     const yaw = yaw0 + prm.toes * DEG, stance = stance0 * prm.stance * d.k / d0.k;
-    const barOff0 = F.barOff || { du: 0, dn: 0 }, barOff = { du: barOff0.du * d.k / d0.k + prm.barH / 100, dn: barOff0.dn * d.k / d0.k };
+    const barOff0 = F.barOff || { du: 0, dn: 0 }, barOff = { du: barOff0.du * d.k / d0.k + barH / 100, dn: barOff0.dn * d.k / d0.k };
     const L = prm.load;
     const lim0 = Math.max(35 * DEG, F.th) + 10 * DEG, limC = Math.max(35 * DEG, F.th) + (d.dorsi - 35) * DEG + 10 * DEG;
     const ref = solveStand(d0, F.beta, thPref0, F.phi, stance0, yaw0, barOff0, 100, lim0);
     const cur = solveStand(d, beta, thPref, F.phi, stance, yaw, barOff, L, limC);
     // estilo autorado + corrección del solver
     const thLim = Math.max(35 * DEG, F.th) + (d.dorsi - 35) * DEG;      // límite de tobillo relativo a la pose autorada
-    const phi0 = F.phi + (cur.phi - ref.phi), th = clamp(F.th + (cur.th - ref.th) + (thPref - thPref0), -10 * DEG, thLim);
+    const phi0 = F.phi + (cur.phi - ref.phi), th = clamp(F.th + (hinge ? 0 : cur.th - ref.th) + (thPref - thPref0), -10 * DEG, thLim);
     // cadera: pose autorada + (geometría actual - geometría de referencia)  => exacta con los valores por defecto
     const G = (dd, b, t, st, yw) => { const dx = Math.max(0, st - dd.hipHalf), cv = Math.cos(Math.asin(Math.min(0.95, dx / (dd.Ls + dd.Lt)))), ch = Math.cos(yw * 0.85);
       const kz = dd.Ls * Math.sin(t) * ch, ky = dd.ankleH + dd.Ls * Math.cos(t) * cv; return V(0, ky + dd.Lt * Math.cos(b) * cv, kz - dd.Lt * Math.sin(b) * ch); };
-    const ankZ = (F.L.an.z + F.R.an.z) / 2;
-    const hipT = F.hip.clone().add(G(d, beta, th, stance, yaw).sub(G(d0, F.beta, F.th, stance0, yaw0))); hipT.x = F.hip.x;
-    // ---- construcción de la pose para una inclinación de tronco dada
-    const build = (phi, final) => {
+    const hipOf = b => { const h = F.hip.clone().add(G(d, b, th, stance, yaw).sub(G(d0, F.beta, F.th, stance0, yaw0))); h.x = F.hip.x; return h; };
+    const hipT = hipOf(beta);
+    // ---- construcción de la pose para una inclinación de tronco (y una cadera) dadas
+    const build = (phi, hipT) => {
     const pose = clonePose(auth), warns = [];
     const R = QA(X, phi - F.phi);                       // +phi = hacia delante (+Z)
     const hipA = F.hip;
@@ -325,23 +339,23 @@ function evaluateInner(ex, s) {
       pose[`DEF-TOE.${S}`].q = QA(Y, dYaw).multiply(expQ(ex, `DEF-TOE.${S}`, s));
       fkSub(pose, `DEF-THIGH01.${S}`);
     }
-    // barra y brazos
-    const shNow = midOf(pose, 'DEF-ARM01.L', 'DEF-ARM01.R');
+    // barra y brazos: en la espalda gira con el tronco (Rh = R); colgada de las manos no gira (Rh = identidad)
+    const shNow = midOf(pose, 'DEF-ARM01.L', 'DEF-ARM01.R'), Rh = hinge ? Q() : R;
     const u = V(0, Math.cos(phi), Math.sin(phi)), n = V(0, -Math.sin(phi), Math.cos(phi));
-    const bar = shNow.clone().addScaledVector(u, barOff.du).addScaledVector(n, barOff.dn).add(V((barOff0.dx || 0) * d.k / d0.k, 0, 0));
-    const axis = F.barAxis.clone().applyQuaternion(R);
+    const bar = hinge ? shNow.clone().add(F.bar.clone().sub(F.sh).multiplyScalar(d.k / d0.k))   // brazos colgando: mismo vector hombro→barra
+      : shNow.clone().addScaledVector(u, barOff.du).addScaledVector(n, barOff.dn).add(V((barOff0.dx || 0) * d.k / d0.k, 0, 0));
+    const axis = F.barAxis.clone().applyQuaternion(Rh);
     for (const [S, sgn] of [['L', 1], ['R', -1]]) {
       const hn = `DEF-HAND.${S}`, sock = socketRest(S);
-      const qHand = R.clone().multiply(auth[hn].q).multiply(REST[hn].q.clone().invert());   // delta mundial de la mano
-      const gripA = auth[hn].p.clone().add(sock.clone().applyQuaternion(R.clone().invert().multiply(qHand)));
+      const gripA = auth[hn].p.clone().add(sock.clone().applyQuaternion(auth[hn].q.clone().multiply(REST[hn].q.clone().invert())));
       const offA = gripA.clone().sub(F.bar), along = offA.dot(F.barAxis); var perp = offA.clone().addScaledVector(F.barAxis, -along);
-      const grip = bar.clone().addScaledVector(axis, along * prm.grip * d.k / d0.k).add(perp.applyQuaternion(R).multiplyScalar(d.k / d0.k));
-      const qHandW = R.clone().multiply(auth[hn].q);
+      const grip = bar.clone().addScaledVector(axis, along * prm.grip * d.k / d0.k).add(perp.applyQuaternion(Rh).multiplyScalar(d.k / d0.k));
+      const qHandW = Rh.clone().multiply(auth[hn].q);
       const wrist = grip.clone().sub(sock.clone().multiplyScalar(d.k).applyQuaternion(qHandW.clone().multiply(REST[hn].q.clone().invert())));
-      const elbowPole = poleOf(auth[`DEF-ARM01.${S}`].p, auth[`DEF-FORARM01.${S}`].p, auth[hn].p).applyQuaternion(R);
+      const elbowPole = poleOf(auth[`DEF-ARM01.${S}`].p, auth[`DEF-FORARM01.${S}`].p, auth[hn].p).applyQuaternion(Rh);
       const ik = solveLimb(pose, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, elbowPole, [LEN(S).Lu, LEN(S).Lf]);
-      // mantener rotaciones autoradas (giradas con el tronco) para el resto de la cadena del brazo tras el IK
-      for (const c of subtree(hn)) pose[c].q = R.clone().multiply(auth[c].q);
+      // mantener rotaciones autoradas (giradas con la barra) para el resto de la cadena del brazo tras el IK
+      for (const c of subtree(hn)) pose[c].q = Rh.clone().multiply(auth[c].q);
       fkSub(pose, `DEF-SHOULDER.${S}`);
       if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
     }
@@ -349,24 +363,48 @@ function evaluateInner(ex, s) {
     };
     // ---- equilibrio en lazo cerrado sobre la pose real: el centro de masas del sistema (cuerpo + barra)
     // se mantiene sobre el mediopié igual que en la pose autorada; se corrige con la inclinación del tronco.
-    const eRef = comOffset(auth, F.bar, 100);
-    let phiA = phi0, bA = build(phiA), eA = comOffset(bA.pose, bA.bar, L) - eRef;
-    if (Math.abs(eA) > 0.0005) {
-      let phiB = phiA + (eA > 0 ? -3 : 3) * DEG, bB = build(phiB), eB = comOffset(bB.pose, bB.bar, L) - eRef;
-      for (let i = 0; i < 8 && Math.abs(eB) > 0.0005; i++) {
-        const den = eB - eA; if (Math.abs(den) < 1e-9) break;
-        const phiN = clamp(phiB - eB * (phiB - phiA) / den, -15 * DEG, 85 * DEG);
-        phiA = phiB; eA = eB; phiB = phiN; bB = build(phiB); eB = comOffset(bB.pose, bB.bar, L) - eRef;
+    let phiA, bA, betaH = beta;
+    if (hinge) {
+      // bisagra: muslo (b) y tronco (ph) por Newton 2×2 sobre la pose real.
+      //  e1: barra sobre el mediopié (de los pies plantados) como en la autorada;
+      //  e2: la barra en el mismo punto del recorrido: al empezar (s=0) en el suelo, que no cambia con el cuerpo; hacia el
+      //      bloqueo (s=1) pesa más mantener el muslo autorado.  Con los valores por defecto, e = 0 en (F.beta, F.phi).
+      const mfP = (['L', 'R'].map(S => { const a = expP(ex, `DEF-FOOT.${S}`, s), t = expP(ex, `DEF-TOE.${S}`, s); return a.z + 0.4 * (t.z - a.z); }).reduce((x, y) => x + y)) / 2;
+      const offA = F.bar.z - mfP;
+      const H0 = POSES.exercises[ex].start.bar.center[1], H1 = POSES.exercises[ex].end.bar.center[1];
+      // ponytail: bloqueo del cuerpo actual ≈ el autorado escalado por la altura; fémur/tronco lo cambian ±2 cm y ahí manda el muslo (s→1)
+      const hT = H0 + (F.bar.y - H0) / (H1 - H0) * (H1 * d.k / d0.k - H0);
+      const E = (b, ph) => { const r = build(ph, hipOf(b)); return [r, r.bar.z - midfootZ(r.pose) - offA, (1 - s) * (r.bar.y - hT) + s * s * 0.3 * (b - F.beta)]; };
+      let b = beta, ph = F.phi, [r, e1, e2] = E(b, ph);
+      for (let i = 0; i < 6 && Math.abs(e1) + Math.abs(e2) > 0.0005; i++) {
+        const h = 1e-3, [, a1, a2] = E(b + h, ph), [, c1, c2] = E(b, ph + h);
+        const j11 = (a1 - e1) / h, j21 = (a2 - e2) / h, j12 = (c1 - e1) / h, j22 = (c2 - e2) / h, det = j11 * j22 - j12 * j21;
+        if (Math.abs(det) < 1e-12) break;
+        b = clamp(b - (j22 * e1 - j12 * e2) / det, -10 * DEG, 130 * DEG); ph = clamp(ph - (j11 * e2 - j21 * e1) / det, -20 * DEG, 89 * DEG);
+        [r, e1, e2] = E(b, ph);
       }
-      phiA = phiB; bA = bB; eA = eB;
+      phiA = ph; bA = r; betaH = b;
+    } else {
+      const eRef = comOffset(auth, F.bar, 100);
+      phiA = phi0; bA = build(phiA, hipT); let eA = comOffset(bA.pose, bA.bar, L) - eRef;
+      if (Math.abs(eA) > 0.0005) {
+        let phiB = phiA + (eA > 0 ? -3 : 3) * DEG, bB = build(phiB, hipT), eB = comOffset(bB.pose, bB.bar, L) - eRef;
+        for (let i = 0; i < 8 && Math.abs(eB) > 0.0005; i++) {
+          const den = eB - eA; if (Math.abs(den) < 1e-9) break;
+          const phiN = clamp(phiB - eB * (phiB - phiA) / den, -15 * DEG, 85 * DEG);
+          phiA = phiB; eA = eB; phiB = phiN; bB = build(phiB, hipT); eB = comOffset(bB.pose, bB.bar, L) - eRef;
+        }
+        phiA = phiB; bA = bB;
+      }
     }
     const phi = phiA, { bar, axis } = bA; Object.assign(pose, bA.pose); out.warns.push(...bA.warns);
     out.bar = { center: bar, axis };
     const mf = midfootZ(pose), com = comOffset(pose, bar, L) + mf;
     out.act = cur.act; out.path = bar.clone(); out.mid = mf; out.com = com;
-    out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Muslo', `${Math.round(beta / DEG)}°`], ['Tibia', `${Math.round(th / DEG)}°`],
-      ['CdM–mediopié', `${((com - mf) * 100).toFixed(1)} cm`], ['Barra–mediopié', `${((bar.z - mf) * 100).toFixed(1)} cm`]];
-    out.phase = `muslo ${Math.round(beta / DEG)}°`;
+    out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Muslo', `${Math.round(betaH / DEG)}°`], ['Tibia', `${Math.round(th / DEG)}°`],
+      hinge ? ['Barra', `${Math.round(bar.y * 100)} cm del suelo`] : ['CdM–mediopié', `${((com - mf) * 100).toFixed(1)} cm`],
+      ['Barra–mediopié', `${((bar.z - mf) * 100).toFixed(1)} cm`]];
+    out.phase = `muslo ${Math.round(betaH / DEG)}°`;
   } else {
     // PRENSA: la pelvis queda fija en el asiento (la de la clave de inicio); la plataforma recorre el raíl
     // con orientación constante y los pies van pegados a ella.

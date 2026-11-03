@@ -78,11 +78,17 @@ Preferencias del usuario sobre el rig, ya acordadas:
 
 ### 2.3 Cómo se añade un ejercicio nuevo
 
+**Por script (recomendado, §2.5):** un archivo en `blender/ejercicios/<id>.py` describe la pose con medidas y ángulos y crea la acción entera. Luego se retoca a mano.
+
+**A mano:**
+
 1. Duplica una acción del mismo tipo (por ejemplo `back_squat` → `hip_thrust`) y ponle `use_fake_user`.
-2. Posa el frame 1 (inicio) y el frame 30 (final) con los controles de arriba. Keya los controles y las propiedades de `PROPERTIES`.
+2. Posa el frame 1 (inicio) y el frame 30 (final) con los controles de arriba. **Keya todo** (en el visor: `A` con todos los huesos y `I` en el frame 1 y en el 30), no solo lo que has movido: el exportador evalúa cada acción desde el reposo, y un canal sin clave se queda en reposo (§3.1).
 3. Para tipo máquina, ten `MAQUINA` visible (escala 1) y la barra oculta (escala 0.001), o al revés.
-4. Si quieres, añade propiedades personalizadas en la acción: `ff_base` (`"stand"` o `"seat"`) y `ff_name` (el nombre visible).
+4. Propiedades personalizadas en la acción: `ff_base` (`"stand"`, `"seat"` o `"hinge"`) y `ff_name` (el nombre visible). Con eso el visor la enseña sin tocar código (`EXERCISES` se completa con la meta de `poses.json`).
 5. Exporta (§3). El exportador detecta todas las acciones con claves hasta el frame 30. Ignora las que empiezan por `00` o `_`; por ejemplo `00-keying`.
+
+**Versión de Blender.** El `.blend` lo guardó por última vez Blender **5.0** (el de este equipo). Antes lo había guardado el 5.2 del chat original; al abrirlo con el 5.0 avisa de «posible pérdida de datos», pero el export del 5.0 sale idéntico (0,000 mm) en las tres acciones. Usa siempre la misma versión para guardarlo.
 
 ### 2.4 La pose base automática
 
@@ -110,6 +116,22 @@ Al final keya los controles en los frames 1 y 30.
 
 Después se ejecuta `autopose.py` y el usuario retoca en Blender.
 
+### 2.5 Posar por script: `ffpose.py` y `blender/ejercicios/`
+
+`autopose.py` depende de un JSON sacado de otro modelo. Para ejercicios nuevos se describe la pose **en geometría del propio maniquí**:
+
+- `blender/ffpose.py`: la librería. Medidas en reposo (muslo, tibia, tronco, brazo hasta el centro del puño), coordenadas sagitales (`W(f, z)`: f = hacia delante = −Y), y funciones para colocar tronco (`place_trunk`), pies (`place_feet`), barra (`place_bar`) y manos en la barra (`grip_bar`, con `HANG_PRONE` para colgar en prono). `new_action` crea la acción con `ff_base` y `ff_name`; `key(frame)` keya **todos** los canales del rig y de `PROPERTIES`; `report` avisa si una mano no llega.
+- `blender/ejercicios/deadlift.py`: el peso muerto. Barra sobre el mediopié real (mitad del pie, medida en la malla), en el suelo al radio del disco; brazos casi rectos; la cadera sale de cruzar muslo y tronco; al bloquear, tronco erguido y la barra apoyada en la cara delantera del muslo. Las constantes de arriba del archivo (anchura, rotación de pies, agarre, tibia…) son los mandos.
+
+```bash
+B="C:/Program Files/Blender Foundation/Blender 5.0/blender.exe"
+"$B" -b --factory-startup --python blender/ejercicios/deadlift.py -- blender/FormFit_Maniqui.blend blender/FormFit_Maniqui.blend
+```
+
+`--factory-startup` es necesario en este equipo: un add-on del usuario («Cargo») falla en modo `-b`.
+
+**Acciones selladas.** Las tres acciones originales solo keyaban algunos controles; el resto se quedaba con lo que dejara la acción anterior, así que la pose exportada **dependía del orden** (al meter `deadlift` entre medias, la frontal cambiaba 7 cm y la prensa 2 m). `ffpose.py … sellar back_squat,front_squat,leg_press` keyó en cada una lo que heredaba en el orden de siempre: el export es idéntico y ya no depende del orden.
+
 ---
 
 ## 3. Exportación (`blender/export.py`)
@@ -122,6 +144,7 @@ blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [
 
 ### 3.1 Qué hace, en orden
 
+0. **Cada acción desde el reposo** (`use(ex)`): antes de evaluarla pone todos los huesos en reposo. Así ninguna hereda de otra (§2.5).
 1. **Rigidez.** Desactiva el IK stretch en todos los huesos y restricciones IK. Después revisa cada clave: si una pierna no llega a su pie (hueco > 0,5 mm), baja el `TORSO` ese hueco y vuelve a keyar, hasta 6 iteraciones.
 2. **Esqueleto limpio `FF_Skeleton`.** En el rig, los DEF cuelgan planos de ROOT; aquí se crean solo los 68 huesos `DEF-*` con jerarquía real (`parent_of`):
    - Columna: `HIPS` (raíz) → `SPINE01` → `SPINE02` → `CHEST` → `NECK` → `HEAD`.
@@ -257,6 +280,18 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
 - **Manos:** IK hasta las muñecas exportadas (asas fijas a la máquina).
 - **Demanda muscular:** línea de fuerza por el mediopié, paralela al raíl, y brazos de momento a la rodilla y a la cadera.
 
+### 4.4b `evaluate`: tipo `hinge` (peso muerto)
+
+Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, cadera)`), con tres cambios:
+
+- **La barra cuelga de las manos**, no va en el tronco: `barra = hombros + (barra − hombros autorados)·k`. Ni la barra ni las manos giran con el tronco (`Rh` = identidad).
+- **Muslo y tronco se resuelven juntos** (Newton 2×2 sobre la pose real, ≤ 6 iteraciones):
+  - la barra sobre el mediopié de los pies plantados, como en la autorada (la trayectoria sale recta);
+  - la barra en el mismo punto del recorrido: al empezar, a la altura autorada (en el suelo: los discos no cambian con el cuerpo); hacia el bloqueo pesa más mantener el muslo autorado (`s²`).
+- `knees` es «Rodilla al empezar»: más tibia al principio, que se desvanece hacia el bloqueo.
+
+Con los valores por defecto el error es 0 en (muslo, tronco) autorados: 0,0 mm en las claves. Con un fémur largo la cadera sube y el tronco se acuesta (83°); con un tronco largo, al revés (61°). Indicadores: tronco, muslo, tibia, altura de la barra y barra–mediopié.
+
 ### 4.5 Sliders (`PARAMS`)
 
 | Tipo | id | Rango (defecto) | Efecto |
@@ -272,6 +307,8 @@ El polo sale de la propia pose autorada (`poleOf`), rotado si cambia la rotació
 | seat | `depth` | 0,5–1,3 (1) | Final del recorrido. |
 | seat | `footHigh` | ±10 cm (0) | Pies más altos o más bajos en la plataforma. |
 | seat | `stance`, `toes`, `load` | — | Igual que arriba (carga 0–400 %, defecto 180). |
+| hinge | `knees` | −6…8° (0) | Rodilla al empezar: más o menos tibia en el suelo; se desvanece al subir. |
+| hinge | `stance`, `toes`, `grip`, `load` | — | Igual que en stand (agarre 0,9–1,3; carga 0–300 %, defecto 150). |
 
 Cuerpo (`state.body`):
 
@@ -311,17 +348,17 @@ npm run shots     # capturas a tests/shots/*.png
   - el FK del runtime coincide con Blender: 0,0 mm en todas las claves;
   - con los valores por defecto, el runtime coincide con Blender: 0,0 mm (prensa al final: 43 mm a propósito, por la pelvis fija y la plataforma sin rotar);
   - los pies no se deslizan: 0,0 mm.
-- `balance.js`: centro de masas y barra respecto al mediopié para 9 combinaciones de cuerpo y ajustes. El CdM debe quedarse en el valor autorado y los tobillos a la altura de tobillo × k.
+- `balance.js`: centro de masas y barra respecto al mediopié para 9 combinaciones de cuerpo y ajustes. El CdM debe quedarse en el valor autorado y los tobillos a la altura de tobillo × k. Para `hinge`, 7 cuerpos/ajustes en s = 0, 0,5 y 1: al empezar la barra tiene que seguir en el suelo (±5 mm) o falla.
 - `harness.js`: Chromium headless con WebGL por SwiftShader. Sirve `three@0.147.0` desde `node_modules` porque el CDN no es accesible en CI.
 
 ---
 
 ## 6. Limitaciones conocidas y siguientes pasos
 
-- **Configuración de ejercicios:** `EXERCISES` en `runtime.js` está escrito a mano. Ya se exporta `meta.base` y `meta.name`; el runtime debería leerlos de `poses.json`.
-- **Demanda muscular:** sale del modelo de palos (`cur.act`), no de la pose final tras el lazo cerrado. Recalcularla sobre la pose real sería más coherente.
-- **Tipos de base:** solo existen `stand` (con barra) y `seat` (prensa). Para nuevos patrones habría que añadir uno nuevo cada vez:
-  - bisagra de cadera (peso muerto, RDL);
+- **Configuración de ejercicios:** `EXERCISES` en `runtime.js` lleva los nombres cortos a mano; una acción que no esté se añade sola con su `meta` de `poses.json`.
+- **Demanda muscular:** sale del modelo de palos (`cur.act`), no de la pose final tras el lazo cerrado. Recalcularla sobre la pose real sería más coherente. En `hinge` es aún más aproximada: el modelo de palos pone la barra en el tronco.
+- **Peso muerto:** pose base por script (§2.5), sin retoque a mano todavía. Al empezar el tronco sale bastante horizontal (71°); se puede bajar la cadera con `SHIN_START` hasta donde la espinilla deja, o retocando en Blender.
+- **Tipos de base:** existen `stand` (barra en el tronco), `seat` (prensa) y `hinge` (barra en las manos). Para nuevos patrones (spec X01 §16, por apoyo):
   - tumbado (press banca, hip thrust);
   - colgado (dominadas);
   - empuje vertical.

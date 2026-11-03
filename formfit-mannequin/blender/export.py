@@ -7,7 +7,8 @@ Uso:
   blender -b --python export.py -- archivo.blend carpeta_salida [blend_corregido.blend] [--exercises a,b,c]
   (o con el módulo bpy de pip:  python3 -I export.py archivo.blend carpeta_salida ...)
 Ejercicios: por defecto, todas las acciones con claves en los frames 1 y 30 (se ignoran las que empiezan por "00" o "_").
-Metadatos opcionales por acción (propiedades personalizadas de la acción): ff_base = "stand" | "seat", ff_name = "Sentadilla trasera".
+Metadatos opcionales por acción (propiedades personalizadas de la acción): ff_base = "stand" | "seat" | "hinge", ff_name = "Sentadilla trasera".
+Cada acción se evalúa desde el reposo: tiene que keyar todo lo que usa (blender/ffpose.py key() lo hace).
 """
 import bpy, sys, json, math, os
 from mathutils import Vector, Matrix
@@ -24,6 +25,12 @@ FRAMES = {'start': 1, 'end': 30}
 EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_')) and a.frame_range[1] >= FRAMES['end']])
 print('ejercicios:', EXERCISES)
 
+def use(ex):
+    """Activa la acción partiendo del reposo: un canal que la acción no keya no hereda lo que dejó la anterior."""
+    for p in rig.pose.bones:
+        p.location = (0, 0, 0); p.scale = (1, 1, 1); p.rotation_quaternion = (1, 0, 0, 0); p.rotation_euler = (0, 0, 0)
+    rig.animation_data.action = bpy.data.actions[ex]
+
 # ---------- extremidades rígidas: sin estiramiento del IK (longitudes constantes, como un cuerpo real)
 for p in rig.pose.bones:
     p.ik_stretch = 0.0
@@ -31,7 +38,7 @@ for p in rig.pose.bones:
         if c.type == 'IK': c.use_stretch = False
 # si una pierna no llega a su pie (antes lo disimulaba el estiramiento), bajar la cadera lo justo
 for ex in EXERCISES:
-    rig.animation_data.action = bpy.data.actions[ex]
+    use(ex)
     for f in FRAMES.values():
         for it in range(6):
             sc.frame_set(f); sc.frame_set(f)
@@ -111,7 +118,7 @@ out = {'units': 'm', 'space': 'glTF (Y arriba, +Z delante)', 'bones': DEF, 'pare
        'rest': {n: {'p': gpos(rest[n].translation), 'q': quat(grot(rest[n].to_3x3()))} for n in DEF}, 'exercises': {}}
 pb = rig.pose.bones
 for ex in EXERCISES:
-    act = bpy.data.actions[ex]; rig.animation_data.action = act; out['exercises'][ex] = {}
+    act = bpy.data.actions[ex]; use(ex); out['exercises'][ex] = {}
     seat = pb['MAQUINA'].scale.x > 0.5 if (sc.frame_set(1) or True) else False
     out['exercises'][ex]['meta'] = {'base': act.get('ff_base', 'seat' if seat else 'stand'), 'name': act.get('ff_name', ex)}
     for key, f in FRAMES.items():
