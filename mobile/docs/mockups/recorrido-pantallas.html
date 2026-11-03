@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recorrido de pantallas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,800;1,800&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070707; color: #e6e6e6; font-family: Inter, sans-serif; padding: 28px 16px 80px; }
+  h1 { font: 900 22px Inter; margin-bottom: 6px; }
+  .lead { color: #949494; font: 500 14px/1.5 Inter; max-width: 860px; margin-bottom: 18px; }
+  .lead b { color: #e6e6e6; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; align-items: center; }
+  .ctl span { font: 700 12px Inter; color: #585858; width: 90px; }
+  .ctl button { background: #272727; color: #e6e6e6; border: 1px solid #3a3a3a; border-radius: 10px; padding: 7px 12px; font: 800 12px Inter; cursor: pointer; }
+  .wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin-top: 14px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .col > .cap { font: 800 12px Inter; letter-spacing: 1.6px; color: #585858; text-transform: uppercase; }
+  .note { max-width: 440px; color: #949494; font: 500 13px/1.55 Inter; }
+  .note h3 { font: 800 14px Inter; color: #e6e6e6; margin: 18px 0 6px; } .note h3:first-child { margin-top: 0; }
+  .note b { color: #e6e6e6; }
+  .note ul { padding-left: 18px; } .note li { margin-bottom: 4px; }
+
+  .phone {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --text: #e6e6e6;
+    --mutedLight: #949494; --muted: #585858; --accent: #aae216; --onAccent: #000;
+    width: 375px; height: 740px; background: var(--bg); border-radius: 34px; border: 8px solid #1b1b1b;
+    position: relative; overflow: hidden; flex: none;
+  }
+  .scr { position: absolute; inset: 0; padding: 14px 15px 0; }
+  .top { display: flex; align-items: center; height: 44px; margin-bottom: 8px; }
+  .top .ttl { font: 900 22px Inter; letter-spacing: -.5px; flex: 1; }
+  .ib { width: 32px; height: 32px; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center; margin-left: 8px; cursor: pointer; color: var(--mutedLight); font: 900 14px Inter; }
+  .ib.help { color: var(--accent); }
+  .caps { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--mutedLight); text-transform: uppercase; }
+  .caps b { color: var(--accent); font-weight: 800; }
+  .card { background: var(--surface); border-radius: 16px; padding: 12px 15px; margin-bottom: 10px; }
+
+  /* Entreno */
+  .prog .nm { font: 900 16px Inter; margin-top: 4px; }
+  .prog .meta { font: 500 12px Inter; color: var(--mutedLight); margin-top: 2px; }
+  .week { display: flex; gap: 6px; margin-bottom: 14px; }
+  .week div { flex: 1; background: var(--surface); border-radius: 10px; padding: 8px 0; text-align: center; font: 800 12px Inter; color: var(--mutedLight); }
+  .week div i { display: block; width: 6px; height: 6px; border-radius: 3px; margin: 6px auto 0; background: transparent; }
+  .week div.d i { background: var(--accent); }
+  .week div.t { outline: 1.5px solid var(--accent); color: var(--text); }
+  .sh { display: flex; justify-content: space-between; margin: 4px 0 8px; }
+  .hero { background: var(--surface); border-radius: 16px; padding: 15px; margin-bottom: 10px; }
+  .hero .g { display: flex; align-items: baseline; gap: 10px; }
+  .hero .g b { font: italic 800 34px/1 'Barlow Condensed'; color: var(--accent); }
+  .hero .g span { font: italic 800 28px/1 'Barlow Condensed'; }
+  .hero .meta { font: 500 12px Inter; color: var(--mutedLight); margin: 6px 0 12px; }
+  .btn { background: var(--accent); color: var(--onAccent); border-radius: 10px; text-align: center; padding: 14px; font: 900 14px Inter; }
+  .row { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 10px; padding: 10px 15px; margin-bottom: 4px; }
+  .row b { font: italic 800 26px 'Barlow Condensed'; color: var(--muted); width: 22px; }
+  .row .n { flex: 1; font: 900 16px Inter; } .row .m { font: 500 12px Inter; color: var(--mutedLight); }
+  .tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 62px; background: var(--surface); display: flex; }
+  .tabs div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: 500 11px Inter; color: var(--muted); }
+  .tabs div i { width: 20px; height: 20px; border-radius: 6px; border: 1.7px solid currentColor; }
+  .tabs div.on { color: var(--accent); }
+
+  /* Programa */
+  .stages { display: flex; gap: 6px; margin-bottom: 12px; }
+  .stg { flex: 1; background: var(--surface); border-radius: 10px; padding: 8px 10px; }
+  .stg .caps { font-size: 11px; letter-spacing: 1.2px; }
+  .stg .w { font: 700 14px Inter; margin-top: 4px; }
+  .stg .bar { height: 4px; border-radius: 2px; background: var(--surface2); margin-top: 8px; overflow: hidden; }
+  .stg .bar u { display: block; height: 100%; background: var(--accent); }
+  .stg.on { outline: 1.5px solid var(--accent); }
+  .ex { font: 500 12px Inter; color: var(--mutedLight); margin-top: 6px; line-height: 1.6; }
+
+  /* Workout (aviso puntual) */
+  .exc { background: var(--surface); border-radius: 16px; padding: 14px 15px; }
+  .exc .nm { font: 700 16px Inter; }
+  .exc .big { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 6px; }
+  .exc .big b { font: italic 800 48px/1 'Barlow Condensed'; }
+  .exc .big span { font: 500 14px Inter; color: var(--mutedLight); }
+  .bub { display: inline-block; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); border-radius: 9999px; padding: 4px 10px; font: 800 12px Inter; }
+  .ruler { height: 34px; margin-top: 14px; border-radius: 10px; background: repeating-linear-gradient(90deg, #3a3a3a 0 1.5px, transparent 1.5px 12px) var(--surface2); position: relative; }
+  .ruler::after { content: ''; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 2px; background: var(--accent); }
+
+  /* ── El recorrido ─────────────────────────────────────────────── */
+  /* El velo es la sombra del hueco: un único elemento que se mueve de
+     paso en paso, así el oscurecido y el resaltado nunca se desajustan. */
+  .spot { position: absolute; z-index: 20; border-radius: 16px; pointer-events: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 0 0 9999px rgba(0,0,0,.72);
+    transition: top .32s cubic-bezier(.33,1,.68,1), left .32s cubic-bezier(.33,1,.68,1), width .32s cubic-bezier(.33,1,.68,1), height .32s cubic-bezier(.33,1,.68,1), opacity .2s; }
+  .block { position: absolute; inset: 0; z-index: 19; }
+  .tip { position: absolute; left: 15px; right: 15px; z-index: 21; background: var(--surface2); border-radius: 16px; padding: 15px;
+    transition: top .32s cubic-bezier(.33,1,.68,1), opacity .2s; }
+  .tip .k { display: flex; align-items: center; justify-content: space-between; }
+  .tip .dots { display: flex; gap: 4px; } .tip .dots i { width: 6px; height: 6px; border-radius: 3px; background: #3a3a3a; } .tip .dots i.on { background: var(--accent); width: 16px; }
+  .tip .skip { font: 800 12px Inter; letter-spacing: 1.6px; color: var(--mutedLight); text-transform: uppercase; cursor: pointer; }
+  .tip h4 { font: 800 18px Inter; letter-spacing: -.2px; margin: 10px 0 4px; }
+  .tip p { font: 500 14px/21px Inter; color: var(--mutedLight); }
+  .tip .acts { display: flex; gap: 8px; margin-top: 14px; }
+  .tip .acts div { flex: 1; text-align: center; padding: 12px; border-radius: 10px; font: 900 14px Inter; cursor: pointer; }
+  .tip .prev { background: var(--surface); color: var(--text); flex: none !important; width: 48px; }
+  .tip .next { background: var(--accent); color: var(--onAccent); }
+  .tip .arw { position: absolute; width: 14px; height: 14px; background: var(--surface2); transform: rotate(45deg); left: var(--ax, 50%); margin-left: -7px; }
+  .tip.below .arw { top: -6px; } .tip.above .arw { bottom: -6px; }
+  .off { opacity: 0; pointer-events: none; }
+
+  /* Aviso puntual: sin velo, un globo pegado al elemento */
+  .hint { position: absolute; left: 15px; right: 15px; z-index: 21; background: var(--surface2); border-radius: 16px; padding: 12px 15px;
+    display: flex; gap: 12px; align-items: flex-start; box-shadow: 0 8px 28px rgba(0,0,0,.5); transition: opacity .2s, transform .2s; }
+  .hint p { flex: 1; font: 500 14px/21px Inter; color: var(--mutedLight); } .hint p b { color: var(--text); font-weight: 700; }
+  .hint .ok { font: 900 14px Inter; color: var(--accent); cursor: pointer; padding-top: 1px; }
+  .hint .arw { position: absolute; top: -6px; left: 50%; margin-left: -7px; width: 14px; height: 14px; background: var(--surface2); transform: rotate(45deg); }
+  .hint.off { transform: translateY(6px); }
+</style>
+</head>
+<body>
+<h1>Recorrido de las pantallas principales</h1>
+<p class="lead">La primera vez que se abre una pantalla se oscurece y se resaltan <b>dos o tres elementos de uno en uno</b>, con una frase cada uno. «Saltar» está siempre a la vista y el <b>?</b> de la cabecera lo vuelve a poner. A la derecha, la otra mitad de la idea: un <b>aviso puntual</b> sin velo que sale la primera vez que aparece algo que no se entiende solo.</p>
+
+<div class="ctl"><span>Recorrido</span>
+  <button id="replay">Volver a empezar los dos</button>
+</div>
+
+<div class="wrap">
+  <!-- ── Entreno ─────────────────────────────────────────── -->
+  <div class="col"><div class="cap">Entreno · 3 pasos</div>
+  <div class="phone" id="p-home">
+    <div class="scr">
+      <div class="top"><div class="ttl">Entreno</div><div class="ib help" data-replay>?</div><div class="ib">···</div></div>
+      <div class="card prog" data-step="prog">
+        <div class="caps">Programa · <b>Etapa 2 de 3</b></div>
+        <div class="nm">Fuerza base 12 semanas</div>
+        <div class="meta">Semana 5 de 12 · 3 sesiones por semana</div>
+      </div>
+      <div class="week" data-step="week">
+        <div class="d">L<i></i></div><div>M<i></i></div><div class="d">X<i></i></div><div class="t">J<i></i></div><div>V<i></i></div><div>S<i></i></div><div>D<i></i></div>
+      </div>
+      <div class="sh"><div class="caps">Sesiones</div><div class="caps">2 de 3 esta semana</div></div>
+      <div data-step="hero">
+        <div class="hero">
+          <div class="g"><b>C</b><span>Pierna y core</span></div>
+          <div class="meta">6 ejercicios · 55 min · la última hace 6 días</div>
+          <div class="btn">EMPEZAR</div>
+        </div>
+      </div>
+      <div class="row"><b>A</b><div class="n">Torso pesado</div><div class="m">✓ lunes</div></div>
+      <div class="row"><b>B</b><div class="n">Tirón y brazos</div><div class="m">✓ miércoles</div></div>
+    </div>
+    <div class="tabs"><div class="on"><i></i>Entreno</div><div><i></i>Programa</div><div><i></i>Progreso</div><div><i></i>Plantillas</div></div>
+  </div></div>
+
+  <!-- ── Programa ────────────────────────────────────────── -->
+  <div class="col"><div class="cap">Programa · 3 pasos</div>
+  <div class="phone" id="p-prog">
+    <div class="scr">
+      <div class="top"><div class="ttl">Programa</div><div class="ib help" data-replay>?</div><div class="ib" data-step="menu">···</div></div>
+      <div class="card prog">
+        <div class="nm">Fuerza base 12 semanas</div>
+        <div class="meta">3 etapas · 12 semanas · rotación A → B → C</div>
+      </div>
+      <div class="stages" data-step="stages">
+        <div class="stg"><div class="caps">Etapa 1</div><div class="w">Base</div><div class="bar"><u style="width:100%"></u></div></div>
+        <div class="stg on"><div class="caps">Etapa 2</div><div class="w">Volumen</div><div class="bar"><u style="width:25%"></u></div></div>
+        <div class="stg"><div class="caps">Etapa 3</div><div class="w">Pico</div><div class="bar"><u style="width:0"></u></div></div>
+      </div>
+      <div class="sh"><div class="caps">Etapa 2 · Volumen</div><div class="caps">4 semanas</div></div>
+      <div data-step="sessions">
+        <div class="card"><div class="row" style="padding:0;margin:0;background:none"><b>A</b><div class="n">Torso pesado</div></div><div class="ex">Press banca · Remo con barra · Press militar · +3</div></div>
+        <div class="card"><div class="row" style="padding:0;margin:0;background:none"><b>B</b><div class="n">Tirón y brazos</div></div><div class="ex">Dominadas · Remo en polea · Curl · +2</div></div>
+        <div class="card"><div class="row" style="padding:0;margin:0;background:none"><b>C</b><div class="n">Pierna y core</div></div><div class="ex">Sentadilla · Peso muerto rumano · Zancada · +3</div></div>
+      </div>
+    </div>
+    <div class="tabs"><div><i></i>Entreno</div><div class="on"><i></i>Programa</div><div><i></i>Progreso</div><div><i></i>Plantillas</div></div>
+  </div></div>
+
+  <!-- ── Aviso puntual en el entreno ─────────────────────── -->
+  <div class="col"><div class="cap">Aviso puntual · 1 vez</div>
+  <div class="phone" id="p-work">
+    <div class="scr">
+      <div class="top"><div class="ttl" style="font-size:16px;font-weight:700">Sentadilla</div></div>
+      <div class="exc">
+        <div class="caps">Serie 2 de 4</div>
+        <div class="big"><b>85</b><span>kg × 6</span></div>
+        <div class="bub" id="w-bub">+2,5 kg</div>
+        <div class="ruler"></div>
+      </div>
+      <div class="hint" id="w-hint"><span class="arw"></span>
+        <p><b>Subes 2,5 kg</b> respecto a la última vez porque completaste todas las series. Toca la cifra para cambiarla.</p>
+        <span class="ok">Vale</span></div>
+    </div>
+  </div></div>
+
+  <div class="note">
+    <h3>Cómo se comporta</h3>
+    <ul>
+      <li><b>Una vez por pantalla</b>: al acabar o saltar se guarda «visto» y no vuelve a salir.</li>
+      <li>Mientras está abierto, la pantalla de debajo no responde; tocar fuera no hace nada (así no se cierra sin querer).</li>
+      <li>El hueco <b>sigue al elemento real</b>: si el diseño cambia, el recorrido no se rompe. El globo va debajo, o encima si no cabe.</li>
+      <li>Los textos van en los locales, como el resto.</li>
+    </ul>
+    <h3>Qué explica cada pantalla</h3>
+    <ul>
+      <li><b>Entreno</b>: tu programa, tu semana y la sesión que toca.</li>
+      <li><b>Programa</b>: etapas, sesiones de la semana y el menú ···.</li>
+      <li><b>Progreso</b> y <b>Plantillas</b>: candidatas a no llevar recorrido; sus estados vacíos ya cuentan para qué sirven.</li>
+    </ul>
+    <h3>Aviso puntual</h3>
+    <p>Sin velo y sin pasos: sale la primera vez que aparece la burbuja de diferencia (o la regla, o el aviso de etapa) y se va con «Vale». Enseña en el momento en que importa.</p>
+  </div>
+</div>
+
+<script>
+const TOURS = {
+  'p-home': [
+    { sel: 'prog',  t: 'Tu programa', p: 'Aquí ves en qué etapa y semana vas. Tócalo para ver el programa entero.' },
+    { sel: 'week',  t: 'Tu semana', p: 'Los días con punto son los que entrenaste. Así ves de un vistazo cómo llevas la semana.' },
+    { sel: 'hero',  t: 'La sesión que toca', p: 'La app la elige según el orden de tu programa. Cuando estés listo, pulsa Empezar.' },
+  ],
+  'p-prog': [
+    { sel: 'stages',   t: 'Las etapas', p: 'El programa avanza por etapas. La resaltada es en la que estás; la barra dice cuánto llevas de ella.' },
+    { sel: 'sessions', t: 'Las sesiones de la semana', p: 'Son los entrenos que haces cada semana en esta etapa. Toca una para ver o cambiar sus ejercicios.' },
+    { sel: 'menu',     t: 'Más acciones', p: 'Compartir el programa, exportarlo, guardarlo como plantilla o empezar uno nuevo.', r: 10 },
+  ],
+};
+
+function tour(id) {
+  const ph = document.getElementById(id), steps = TOURS[id];
+  ph.querySelectorAll('.spot,.tip,.block').forEach((n) => n.remove());
+  const block = Object.assign(document.createElement('div'), { className: 'block' });
+  const spot  = Object.assign(document.createElement('div'), { className: 'spot' });
+  const tip   = Object.assign(document.createElement('div'), { className: 'tip' });
+  tip.innerHTML = '<span class="arw"></span><div class="k"><div class="dots"></div><span class="skip">Saltar</span></div><h4></h4><p></p><div class="acts"><div class="prev">‹</div><div class="next"></div></div>';
+  ph.append(block, spot, tip);
+  let i = 0;
+  const close = () => [block, spot, tip].forEach((n) => n.classList.add('off'));
+  const show = () => {
+    const s = steps[i], el = ph.querySelector(`[data-step="${s.sel}"]`);
+    const pr = ph.getBoundingClientRect(), r = el.getBoundingClientRect(), pad = 6, b = 8; // b = borde del móvil
+    const top = r.top - pr.top - b - pad, left = r.left - pr.left - b - pad;
+    Object.assign(spot.style, { top: top + 'px', left: left + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px', borderRadius: (s.r ?? 16) + 'px' });
+    tip.querySelector('.dots').innerHTML = steps.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('');
+    tip.querySelector('h4').textContent = s.t;
+    tip.querySelector('p').textContent = s.p;
+    tip.querySelector('.next').textContent = i === steps.length - 1 ? 'Entendido' : 'Siguiente';
+    tip.querySelector('.prev').style.display = i ? '' : 'none';
+    const below = top + r.height + pad * 2 + 14 + tip.offsetHeight < ph.clientHeight - 70;
+    tip.classList.toggle('below', below); tip.classList.toggle('above', !below);
+    tip.style.top = (below ? top + r.height + pad * 2 + 12 : top - tip.offsetHeight - 12) + 'px';
+    tip.style.setProperty('--ax', Math.min(Math.max(left + (r.width + pad * 2) / 2 - 15, 24), ph.clientWidth - 54) + 'px');
+  };
+  tip.querySelector('.skip').onclick = close;
+  tip.querySelector('.prev').onclick = () => { i--; show(); };
+  tip.querySelector('.next').onclick = () => (i < steps.length - 1 ? (i++, show()) : close());
+  show();
+}
+
+function hint() {
+  const h = document.getElementById('w-hint'), b = document.getElementById('w-bub');
+  const ph = document.getElementById('p-work'), pr = ph.getBoundingClientRect(), r = b.getBoundingClientRect();
+  // Debajo de la tarjeta, para no tapar la regla; la flecha apunta a la burbuja.
+  h.style.top = (ph.querySelector('.exc').getBoundingClientRect().bottom - pr.top - 8 + 12) + 'px';
+  h.querySelector('.arw').style.left = (r.left - pr.left - 8 - 15 + r.width / 2) + 'px';
+  h.classList.remove('off');
+  h.querySelector('.ok').onclick = () => h.classList.add('off');
+}
+
+const all = () => { Object.keys(TOURS).forEach(tour); hint(); };
+document.querySelectorAll('[data-replay]').forEach((n) => (n.onclick = () => tour(n.closest('.phone').id)));
+document.getElementById('replay').onclick = all;
+document.fonts.ready.then(all);
+</script>
+</body>
+</html>
