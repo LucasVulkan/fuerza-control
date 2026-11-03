@@ -56,6 +56,10 @@ Segunda ronda, el mismo día:
 12. **Se empieza por un básico de cada patrón** para validar el código por patrón: sentadilla, bisagra, tracción vertical, tracción horizontal, empuje horizontal y empuje vertical (§16).
 13. **La polea tiene altura ajustable**, pero **un jalón no es una polea alta**: en el jalón el cable baja desde más arriba y por delante, con su máquina, asiento y tope de rodillas; no es subir la polea por su columna (§16).
 
+Tercera ronda (3-nov-2026):
+
+14. **Ejercicios vecinos: cada uno con su acción, y los ajustes pueden llevarlo hacia el otro.** Aunque un ejercicio «pueda salir» de otro (el rumano del convencional), tiene su propia acción en Blender: es el punto de partida y la pose que se ve con los valores por defecto. Los ajustes del tipo de base son los mismos para los dos y lo bastante amplios para acercarlos: un rumano con más rodilla y profundidad hasta el suelo es casi un convencional, y al revés. Así el entrenador afina su intención sin elegir entre un catálogo cerrado (§16, *Ejercicios vecinos*).
+
 ## 3. X01-01 · Prueba en WebView
 
 - `formfit-mannequin/prototype/build.py` mete three.js dentro del HTML (antes venía de un CDN) y escribe una copia en `mobile/assets/mannequin/viewer.html`.
@@ -320,8 +324,23 @@ Un tipo de base nuevo es: dónde se fija el cuerpo, qué sliders tiene y cómo s
 
 En un movimiento de polea (remo, face pull, extensión de tríceps…), si la altura **cambia el ejercicio** (polea alta frente a baja) es un eje de T08 y va como acción; si **solo afina**, es el ajuste `pulleyH`. Se decide movimiento a movimiento al cerrar sus formas.
 
+**Ejercicios vecinos** (§2.14). Para que los ajustes puedan llevar un ejercicio hacia su vecino, los del tipo de base no pueden suponer cosas que solo valen para uno. En la bisagra (`hinge`, hoy solo el convencional):
+
+| Hoy (supone el convencional) | Pasa a ser (vale para convencional y rumano) |
+|---|---|
+| El inicio (`s = 0`) es el punto bajo, con la barra en el suelo | El **punto bajo** es la clave con la barra más baja, sea la primera (convencional) o la última (rumano, que empieza arriba) |
+| El punto bajo siempre está en el suelo | **Profundidad**: altura de la barra en el punto bajo respecto a la autorada. En el suelo (o en los bloques) no baja más |
+| «Rodilla al empezar»: más tibia solo al empezar | **Flexión de rodilla**: más o menos tibia en todo el recorrido, con más peso cuanto más abajo |
+| — | **Altura de los discos** (bloques: tirar desde más alto) y **altura de los pies** (déficit), cada una con su caja en el visor |
+
+El cálculo es el que ya hay: en el punto bajo se resuelven muslo y tronco para la altura de barra que toca, con la barra sobre el mediopié, y ese cambio se va desvaneciendo hasta el bloqueo (de pie es de pie). Con un tronco muy inclinado y poca rodilla sale un aviso de isquios (el maniquí no sabe de flexibilidad), como el de «la mano no llega a la barra».
+
+El rumano se crea con un script de `blender/ejercicios/` como el del convencional (barra en las manos arriba, rodilla casi bloqueada, barra a media tibia abajo) y se retoca a mano.
+
 **Probar X01-13**
 
+- [ ] Rumano y convencional se ven con su pose de Blender; con los ajustes, el rumano con más rodilla y profundidad hasta el suelo se parece al convencional.
+- [ ] Altura de los discos y de los pies: el punto bajo cambia, se ven las cajas y la barra no atraviesa el suelo ni los bloques.
 - [ ] Los ocho básicos se ven en el visor con su pose de Blender (fidelidad 0,0 mm salvo las excepciones documentadas).
 - [ ] Peso muerto y press militar de pie siguen equilibrados (CdM en su valor autorado) al cambiar las medidas.
 - [ ] Dominada: al cambiar las medidas, el cuerpo sigue colgando bajo las manos.
