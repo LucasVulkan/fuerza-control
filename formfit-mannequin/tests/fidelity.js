@@ -1,11 +1,12 @@
-// 1) FK del runtime == Blender en las claves (0 mm).  2) Con valores por defecto, la pose final == pose autorada en las claves.
+// 1) FK del runtime == Blender en las claves, intermedias incluidas (0 mm).  2) Con valores por defecto, la pose final == pose autorada en las claves.
 // 3) Los pies no deslizan durante la repetición (sentadillas: sobre el suelo; prensa: sobre la plataforma).
 const { open } = require('./harness');
 (async () => { const { page, close } = await open();
   console.log(await page.evaluate(() => { const D = __dbg, out = []; let fail = 0; D.state.playing = false;
     for (const ex of Object.keys(D.POSES.exercises)) {
-      for (const [k, s] of [['start', 0], ['end', 1]]) {
-        const A = D.withBody(D.DEFAULT_BODY, () => D.authoredPose(ex, s)), B = D.POSES.exercises[ex][k].bones; let fk = 0;
+      const E = D.POSES.exercises[ex], keys = [['start', 0, E.start], ...(E.mid || []).map(m => [`clave s=${m.s.toFixed(2)}`, m.s, m]), ['end', 1, E.end]];
+      for (const [k, s, K] of keys) {
+        const A = D.withBody(D.DEFAULT_BODY, () => D.authoredPose(ex, s)), B = K.bones; let fk = 0;
         for (const n of D.BN) fk = Math.max(fk, A[n].p.distanceTo(new D.THREE.Vector3(...B[n].p)));
         const r = D.evaluate(ex, s); let dv = 0; for (const n of D.BN) dv = Math.max(dv, r.pose[n].p.distanceTo(new D.THREE.Vector3(...B[n].p)));
         const lim = D.EXERCISES[ex].base === 'seat' ? 0.06 : 0.001;   // prensa: pelvis fijada al asiento y plataforma sin rotar => difiere a propósito

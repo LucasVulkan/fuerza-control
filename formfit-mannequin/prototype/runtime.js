@@ -13,6 +13,12 @@ const Q = () => new THREE.Quaternion();
 const QA = (axis, ang) => new THREE.Quaternion().setFromAxisAngle(axis, ang);
 const X = V(1, 0, 0), Y = V(0, 1, 0), Z = V(0, 0, 1);
 const POSES = JSON.parse(document.getElementById('poses-json').textContent);
+// claves de cada acción: inicio, intermedias de Blender (si las hay) y final, con su posición s en la repetición (0..1)
+const KEYS = {};
+const keysOf = ex => KEYS[ex] ??= [{ s: 0, ...POSES.exercises[ex].start }, ...(POSES.exercises[ex].mid || []), { s: 1, ...POSES.exercises[ex].end }];
+// tramo entre claves consecutivas que contiene s: [clave a, clave b, t dentro del tramo, índice de a]
+function seg(ex, s) { const K = keysOf(ex); let i = 0; while (i < K.length - 2 && s > K[i + 1].s) i++;
+  return [K[i], K[i + 1], Math.min(1, Math.max(0, (s - K[i].s) / (K[i + 1].s - K[i].s))), i]; }
 
 /* ---------------- Ejercicios: qué sliders tiene cada uno ---------------- */
 const EXERCISES = {
@@ -90,38 +96,35 @@ function fkPositions(pose, rootP) {
     pose[n].p = off.multiplyScalar(k).applyQuaternion(pose[P].q).add(pose[P].p);
   }
 }
-// Pose autorada interpolada (rotaciones locales -> slerp -> FK)
+// Pose autorada interpolada por tramos entre claves (rotaciones locales -> slerp -> FK)
 const AUTH = {};
 function authoredLocal(ex) {
-  if (AUTH[ex]) return AUTH[ex];
-  const out = {};
-  for (const key of ['start', 'end']) {
-    const B = POSES.exercises[ex][key].bones; const loc = {}, off = {};
+  return AUTH[ex] ??= keysOf(ex).map(({ bones: B }) => {
+    const loc = {}, off = {};
     for (const n of BN) {
       const q = new THREE.Quaternion(...B[n].q), P = PARENT[n];
       loc[n] = P ? new THREE.Quaternion(...B[P].q).invert().multiply(q) : q;
       if (P) off[n] = V(...B[n].off);
     }
-    out[key] = { loc, off, root: V(...B['DEF-HIPS'].p) };
-  }
-  return (AUTH[ex] = out);
+    return { loc, off, root: V(...B['DEF-HIPS'].p) };
+  });
 }
 let CUR_OFF = null;                                // desplazamientos locales autorados del frame actual
-function authoredOffsets(ex, s) { const A = authoredLocal(ex), o = {}; for (const n of BN) if (PARENT[n]) o[n] = A.start.off[n].clone().lerp(A.end.off[n], s); return o; }
+function authoredOffsets(ex, s) { const [, , t, i] = seg(ex, s), A = authoredLocal(ex)[i], B = authoredLocal(ex)[i + 1], o = {};
+  for (const n of BN) if (PARENT[n]) o[n] = A.off[n].clone().lerp(B.off[n], t); return o; }
 function authoredPose(ex, s) {
-  const A = authoredLocal(ex), pose = {};
+  const [, , t, i] = seg(ex, s), A = authoredLocal(ex)[i], B = authoredLocal(ex)[i + 1], pose = {};
   for (const n of ORDER) {
-    const lq = A.start.loc[n].clone().slerp(A.end.loc[n], s), P = PARENT[n];
+    const lq = A.loc[n].clone().slerp(B.loc[n], t), P = PARENT[n];
     pose[n] = { q: P ? pose[P].q.clone().multiply(lq) : lq, p: V() };
   }
   const offs = authoredOffsets(ex, s), saved = CUR_OFF; CUR_OFF = offs;
-  pose['DEF-HIPS'].p = A.start.root.clone().lerp(A.end.root, s); fkSub(pose, 'DEF-HIPS');
+  pose['DEF-HIPS'].p = A.root.clone().lerp(B.root, t); fkSub(pose, 'DEF-HIPS');
   CUR_OFF = saved; return pose;
 }
 // transformaciones mundiales exactas exportadas de Blender (para apoyos: pies, asas)
-const EXP = (ex, key, n) => POSES.exercises[ex][key].bones[n];
-const expP = (ex, n, s) => V(...EXP(ex, 'start', n).p).lerp(V(...EXP(ex, 'end', n).p), s);
-const expQ = (ex, n, s) => new THREE.Quaternion(...EXP(ex, 'start', n).q).slerp(new THREE.Quaternion(...EXP(ex, 'end', n).q), s);
+const expP = (ex, n, s) => { const [a, b, t] = seg(ex, s); return V(...a.bones[n].p).lerp(V(...b.bones[n].p), t); };
+const expQ = (ex, n, s) => { const [a, b, t] = seg(ex, s); return new THREE.Quaternion(...a.bones[n].q).slerp(new THREE.Quaternion(...b.bones[n].q), t); };
 // centro de masas sagital del sistema respecto al mediopié (mismas masas que el solver)
 function midfootZ(P) { return ['L', 'R'].map(S => { const a = P[`DEF-FOOT.${S}`].p, t = P[`DEF-TOE.${S}`].p; return a.z + 0.4 * (t.z - a.z); }).reduce((x, y) => x + y) / 2; }
 function comOffset(P, bar, load) {
@@ -263,15 +266,15 @@ function features(P, ex, s) {
   f.L = side('L'); f.R = side('R');
   f.beta = (f.L.beta + f.R.beta) / 2; f.th = (f.L.th + f.R.th) / 2;
   const fr = k => POSES.exercises[ex][k];
-  const A = fr('start'), B = fr('end');
+  const A = fr('start'), B = fr('end'), [Ka, Kb, t] = seg(ex, s);
   if (A.bar) {
-    const c = V(...A.bar.center).lerp(V(...B.bar.center), s);
-    f.bar = c; f.barAxis = V(...A.bar.axis).lerp(V(...B.bar.axis), s).normalize();
+    const c = V(...Ka.bar.center).lerp(V(...Kb.bar.center), t);
+    f.bar = c; f.barAxis = V(...Ka.bar.axis).lerp(V(...Kb.bar.axis), t).normalize();
     const rel = c.clone().sub(sh);   // barra respecto al hombro en el marco del tronco (u = arriba, n = delante)
     f.barOff = { du: rel.y * Math.cos(f.phi) + rel.z * Math.sin(f.phi), dn: rel.z * Math.cos(f.phi) - rel.y * Math.sin(f.phi), dx: rel.x };
   }
   if (A.machine) {
-    f.plate = { p: V(...A.plate.p).lerp(V(...B.plate.p), s), normal: V(...A.plate.normal), up: V(...A.plate.up) };
+    f.plate = { p: V(...Ka.plate.p).lerp(V(...Kb.plate.p), t), normal: V(...A.plate.normal), up: V(...A.plate.up) };
     f.plate0 = V(...A.plate.p); f.plateTravel = V(...B.plate.p).sub(V(...A.plate.p));
     f.handles = A.handles.map(h => V(...h));
   }

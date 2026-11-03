@@ -85,6 +85,7 @@ Preferencias del usuario sobre el rig, ya acordadas:
 
 1. Duplica una acción del mismo tipo (por ejemplo `back_squat` → `hip_thrust`) y ponle `use_fake_user`.
 2. Posa el frame 1 (inicio) y el frame 30 (final) con los controles de arriba. **Keya todo** (en el visor: `A` con todos los huesos y `I` en el frame 1 y en el 30), no solo lo que has movido: el exportador evalúa cada acción desde el reposo, y un canal sin clave se queda en reposo (§3.1).
+   **Claves intermedias** (por ejemplo, para que la barra no atraviese la tibia): keya también los frames que quieras entre el 2 y el 29. El exportador las guarda en `poses.json` como `mid` (cada una con su `s = (frame − 1) / 29`), el visor interpola por tramos entre claves consecutivas (`seg()` en runtime.js) y `tests/fidelity.js` comprueba cada una a 0,0 mm. Ojo: **Recrear** del panel rehace la acción de cero y las borra; los deslizadores en vivo solo reescriben los frames 1 y 30.
 3. Para tipo máquina, ten `MAQUINA` visible (escala 1) y la barra oculta (escala 0.001), o al revés.
 4. Propiedades personalizadas en la acción: `ff_base` (`"stand"`, `"seat"` o `"hinge"`) y `ff_name` (el nombre visible). Con eso el visor la enseña sin tocar código (`EXERCISES` se completa con la meta de `poses.json`).
 5. Exporta (§3). El exportador detecta todas las acciones con claves hasta el frame 30. Ignora las que empiezan por `00` o `_`; por ejemplo `00-keying`.

@@ -1,7 +1,7 @@
 """FormFit · exportador Blender -> app.
 Genera:
   - mannequin.glb : maniquí (Mirror + Subsurf aplicados) con un esqueleto limpio DEF-* con jerarquía.
-  - poses.json    : para cada ejercicio, inicio y final como transformaciones de los huesos DEF (espacio glTF, Y arriba)
+  - poses.json    : para cada ejercicio, inicio, final y claves intermedias ('mid', con su s) como transformaciones de los huesos DEF (espacio glTF, Y arriba)
                     + implementos (barra, máquina, plataforma, asas).
 Uso:
   blender -b --python export.py -- archivo.blend carpeta_salida [blend_corregido.blend] [--exercises a,b,c]
@@ -25,6 +25,12 @@ FRAMES = {'start': 1, 'end': 30}
 EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_')) and a.frame_range[1] >= FRAMES['end']])
 print('ejercicios:', EXERCISES)
 
+def mids(ex):
+    """Frames con clave entre el 1 y el 30 de la acción (claves intermedias: el visor interpola por tramos)."""
+    act = bpy.data.actions[ex]
+    fcs = [fc for l in act.layers for st in l.strips for sl in act.slots if (cb := st.channelbag(sl)) for fc in cb.fcurves]
+    return sorted({round(k.co.x) for fc in fcs for k in fc.keyframe_points} & set(range(FRAMES['start'] + 1, FRAMES['end'])))
+
 def use(ex):
     """Activa la acción partiendo del reposo: un canal que la acción no keya no hereda lo que dejó la anterior."""
     for p in rig.pose.bones:
@@ -39,7 +45,7 @@ for p in rig.pose.bones:
 # si una pierna no llega a su pie (antes lo disimulaba el estiramiento), bajar la cadera lo justo
 for ex in EXERCISES:
     use(ex)
-    for f in FRAMES.values():
+    for f in [*FRAMES.values(), *mids(ex)]:
         for it in range(6):
             sc.frame_set(f); sc.frame_set(f)
             gap = max((rig.pose.bones[f'DEF-FOOT.{S}'].head - rig.pose.bones[f'DEF-SHIN01.{S}'].head).length - (rig.data.bones[f'DEF-FOOT.{S}'].head_local - rig.data.bones[f'DEF-SHIN01.{S}'].head_local).length for S in 'LR')
@@ -121,7 +127,7 @@ for ex in EXERCISES:
     act = bpy.data.actions[ex]; use(ex); out['exercises'][ex] = {}
     seat = pb['MAQUINA'].scale.x > 0.5 if (sc.frame_set(1) or True) else False
     out['exercises'][ex]['meta'] = {'base': act.get('ff_base', 'seat' if seat else 'stand'), 'name': act.get('ff_name', ex)}
-    for key, f in FRAMES.items():
+    for key, f in [*FRAMES.items(), *(('mid', m) for m in mids(ex))]:
         sc.frame_set(f); sc.frame_set(f)
         P = pb['PROPERTIES']
         fr = {'bones': {}}
@@ -143,6 +149,9 @@ for ex in EXERCISES:
             fr['plate'] = {'p': gpos(Pl.translation), 'normal': gpos(Pl.to_3x3().col[1].normalized()), 'up': gpos(Pl.to_3x3().col[2].normalized())}
             fr['handles'] = [gpos(bpy.data.objects[f'FF_asa_{s}'].matrix_world.translation) for s in (1, -1)]
         fr['ik_parent'] = {'hand': int(P['ARM_IK_parent.L']), 'foot': int(P['FOOT-IK-PARENT.L'])}
-        out['exercises'][ex][key] = fr
+        if key == 'mid':
+            fr['s'] = (f - FRAMES['start']) / (FRAMES['end'] - FRAMES['start'])
+            out['exercises'][ex].setdefault('mid', []).append(fr)
+        else: out['exercises'][ex][key] = fr
 json.dump(out, open(os.path.join(outdir, 'poses.json'), 'w'))
 print('OK', os.listdir(outdir))
