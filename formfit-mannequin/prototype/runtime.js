@@ -347,7 +347,7 @@ const IMPL = {
 };
 // dominada: agarre supino (la palma hacia uno, misma barra; `roll`: la mano gira media vuelta sobre su eje antes de alinear
 // el asa: girar 180° «lo mínimo» elige un eje cualquiera que cambia de un frame a otro) y neutro (asas paralelas, a ±25 cm, de delante a atrás)
-const HANG_GRIP = { supino: { d: 0.028, palm: 'back', roll: Math.PI }, neutro: { d: 0.032, side: true, half: 0.25, palm: 'in' } };
+const HANG_GRIP = { supino: { d: 0.028, palm: 'back', roll: Math.PI, elbow: 45 * DEG }, neutro: { d: 0.032, side: true, half: 0.25, palm: 'in', elbow: 35 * DEG } };
 // eje del asa en el mundo para cada mano: transversal (barra), de delante a atrás (a los lados) o transversal girado `rot` con
 // el lado del pulgar hacia delante (rotación externa)
 const handleAxis = (I, sgn, barAxis = X) => I.side ? Z.clone() : I.rot ? V(-sgn * Math.cos(I.rot), 0, Math.sin(I.rot)) : barAxis.clone();
@@ -415,13 +415,6 @@ function evaluate(ex, s) {
   // dominada: el recorrido se recorta por arriba (hasta dónde sube) y por abajo (desde dónde baja); no se comprime
   if (base === 'hang') s = (prm.bottom + s * (prm.top - prm.bottom)) / 100;
   return evaluateRaw(ex, base === 'hinge' ? hingeS(ex, s) : s);
-}
-// dominada: CdM del cuerpo respecto a la barra (sagital) en las claves de Blender, interpolado entre ellas (como comRef)
-const HREF = {};
-function hangRef(ex, s) {
-  const e = HREF[ex] ??= keysOf(ex).map(k => withBody(DEFAULT_BODY, () => { const A = authoredPose(ex, k.s), f = features(A, ex, k.s);
-    return comOffset(A, f.bar, 0) + midfootZ(A) - f.bar.z; }));
-  const [, , t, i] = seg(ex, s); return e[i] + (e[i + 1] - e[i]) * t;
 }
 // s de la animación, sin recorte (el recorte la usa para buscar el corte)
 function evaluateRaw(ex, s) { const saved = CUR_OFF; CUR_OFF = authoredOffsets(ex, s); try { return evaluateInner(ex, s); } finally { CUR_OFF = saved; } }
@@ -614,8 +607,7 @@ function evaluateInner(ex, s) {
     //  2) los hombros donde los brazos llegan a la barra: el vector barra→hombros autorado × k, a la altura que deja la muñeca a
     //     la distancia hombro→muñeca autorada (× k) con el agarre actual (más abierto -> el cuerpo cuelga más alto);
     //  3) brazos por IK hasta la barra; con agarre supino o neutro, la mano de las manos de referencia (X02);
-    //  4) péndulo: todo el cuerpo gira alrededor de la barra hasta que el CdM queda donde lo tienen las claves.
-    //  Con los valores por defecto sale la autorada.
+    //  Sin equilibrio automático (se quitó el péndulo el 4-nov: no aportaba). Con los valores por defecto sale la autorada.
     const kr = d.k / d0.k, barC = F.bar.clone(), ax = F.barAxis.clone();
     // las manos no se mueven en la barra: muñeca y giro de la mano salen de las claves exportadas (en Blender la mano cuelga de la
     // barra y está quieta), no de la pose interpolada, que entre claves la llevaba en arco (hasta 5 cm).
@@ -643,7 +635,10 @@ function evaluateInner(ex, s) {
     const warns = [];
     for (const S of ['L', 'R']) {
       const hn = `DEF-HAND.${S}`, wrist = wristAt(S);
+      // el codo mira hacia donde lo llevan las claves (prono: hacia fuera); al girar la mano (supino, neutro), el codo gira con ella
+      // hacia delante, alrededor de la línea hombro→muñeca (si no, el supino empezaba abriendo los codos hacia fuera)
       const pole = poleOf(auth[`DEF-ARM01.${S}`].p, auth[`DEF-FORARM01.${S}`].p, auth[hn].p);
+      if (I && I.elbow) pole.applyAxisAngle(wrist.clone().sub(P[`DEF-ARM01.${S}`].p).normalize(), (S === 'L' ? -1 : 1) * I.elbow);
       const ik = solveLimb(P, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, pole, [LEN(S).Lu, LEN(S).Lf]);
       // la mano con el giro de las claves; los dedos, con su giro relativo a la mano de la pose autorada (o de la mano de referencia)
       const qh = handI ? handI[S].q : qHand(S), inv = auth[hn].q.clone().invert();
@@ -652,16 +647,9 @@ function evaluateInner(ex, s) {
       fkSub(P, `DEF-SHOULDER.${S}`);
       if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
     }
-    // péndulo alrededor de la barra (eje X por su centro)
-    const cT = hangRef(ex, s), comZ = Q0 => comOffset(Q0, barC, 0) + midfootZ(Q0) - barC.z;
-    const swing = th => { const Rq = QA(X, th), Q0 = {}; for (const n of BN) Q0[n] = { p: P[n].p.clone().sub(barC).applyQuaternion(Rq).add(barC), q: Rq.clone().multiply(P[n].q) }; return Q0; };
-    let t0 = 0, f0 = comZ(P) - cT, th = 0, Pf = P;
-    if (Math.abs(f0) > 0.0005) {
-      let t1 = 2 * DEG, Q1 = swing(t1), f1 = comZ(Q1) - cT;
-      for (let i = 0; i < 10 && Math.abs(f1) > 0.0005; i++) { const den = f1 - f0; if (Math.abs(den) < 1e-9) break;
-        const tn = clamp(t1 - f1 * (t1 - t0) / den, -40 * DEG, 40 * DEG); t0 = t1; f0 = f1; t1 = tn; Q1 = swing(t1); f1 = comZ(Q1) - cT; }
-      th = t1; Pf = Q1;
-    }
+    // sin equilibrio automático: el balanceo (péndulo alrededor de la barra) corregía 1° como mucho y le quitaba intención a la
+    // animación; la dominada lastrada tendrá su propia acción
+    const Pf = P, comZ = Q0 => comOffset(Q0, barC, 0) + midfootZ(Q0) - barC.z;
     Object.assign(pose, Pf); out.warns.push(...warns);
     out.bar = { center: barC, axis: ax }; out.mid = barC.z; out.com = comZ(Pf) + barC.z;
     out.path = midOf(Pf, 'DEF-ARM01.L', 'DEF-ARM01.R');
@@ -669,7 +657,7 @@ function evaluateInner(ex, s) {
     if (handI) out.grips = ['L', 'R'].map(S => handle(S));
     const elbow = 180 - Pf['DEF-ARM01.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p).angleTo(Pf['DEF-HAND.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p)) / DEG;
     out.readout = [['Codo', `${Math.round(elbow)}°`], ['Hombros', `${Math.round((barC.y - out.path.y) * 100)} cm bajo la barra`],
-      ['Balanceo', `${th >= 0 ? '+' : ''}${Math.round(th / DEG)}°`], ['CdM–barra', `${((out.com - barC.z) * 100).toFixed(1)} cm`]];
+      ['CdM–barra', `${((out.com - barC.z) * 100).toFixed(1)} cm`]];
     out.phase = `codo ${Math.round(elbow)}°`;
   } else {
     // PRENSA: la pelvis queda fija en el asiento (la de la clave de inicio); la plataforma recorre el raíl
