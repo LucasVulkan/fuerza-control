@@ -7,7 +7,8 @@ Uso:
   blender -b --python export.py -- archivo.blend carpeta_salida [blend_corregido.blend] [--exercises a,b,c]
   (o con el módulo bpy de pip:  python3 -I export.py archivo.blend carpeta_salida ...)
 Ejercicios: por defecto, todas las acciones con claves en los frames 1 y 30 (se ignoran las que empiezan por "00" o "_").
-Metadatos opcionales por acción (propiedades personalizadas de la acción): ff_base = "stand" | "seat" | "hinge", ff_name = "Sentadilla trasera".
+Metadatos opcionales por acción (propiedades personalizadas de la acción): ff_base = "stand" | "seat" | "hinge" | "hang", ff_name = "Sentadilla trasera";
+variantes: ff_variant_of = "pullup", ff_grip = "supino" (el visor la usa desde el chip de agarre de su ejercicio).
 Cada acción se evalúa desde el reposo: tiene que keyar todo lo que usa (blender/ffpose.py key() lo hace).
 """
 import bpy, sys, json, math, os
@@ -133,6 +134,8 @@ for ex in EXERCISES:
     act = bpy.data.actions[ex]; use(ex); out['exercises'][ex] = {}
     seat = pb['MAQUINA'].scale.x > 0.5 if (sc.frame_set(1) or True) else False
     out['exercises'][ex]['meta'] = {'base': act.get('ff_base', 'seat' if seat else 'stand'), 'name': act.get('ff_name', ex)}
+    if act.get('ff_variant_of'):   # variante de otro ejercicio (p. ej. Chinup = pullup con agarre supino): el visor la usa desde su chip
+        out['exercises'][ex]['meta'].update({'of': act['ff_variant_of'], 'grip': act.get('ff_grip')})
     for key, f in [*FRAMES.items(), *(('mid', m) for m in mids(ex))]:
         sc.frame_set(f); sc.frame_set(f)
         P = pb['PROPERTIES']

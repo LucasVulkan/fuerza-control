@@ -80,6 +80,11 @@ const PRESETS = {
 };
 const state = { exId: 'back_squat', per: {}, body: { height: 180, ...PRESETS.avg }, s: 1, playing: !matchMedia('(prefers-reduced-motion: reduce)').matches, lines: true, heat: true, ref: false };
 for (const [id, ex] of Object.entries(EXERCISES)) state.per[id] = Object.fromEntries(PARAMS[ex.base].map(p => [p.id, p.def]));
+// variantes (acción con `ff_variant_of`, p. ej. Chinup = dominada supina): no son un ejercicio aparte; comparten los ajustes del
+// suyo y se usan desde su chip de agarre (variantFor)
+const VARIANT = id => POSES.exercises[id]?.meta?.of;
+for (const id of Object.keys(EXERCISES)) if (VARIANT(id) && state.per[VARIANT(id)]) state.per[id] = state.per[VARIANT(id)];
+const variantFor = (ex, grip) => Object.keys(POSES.exercises).find(id => VARIANT(id) === ex && POSES.exercises[id].meta.grip === grip);
 const EX = () => EXERCISES[state.exId], PRM = () => state.per[state.exId];
 const isDefault = () => PARAMS[EX().base].every(p => PRM()[p.id] === p.def) && state.body.height === 180 && ['femur', 'tibia', 'torso'].every(k => state.body[k] === 100) && state.body.dorsi === 35;
 
@@ -414,6 +419,8 @@ function evaluate(ex, s) {
   const base = EXERCISES[ex].base, prm = state.per[ex];
   // dominada: el recorrido se recorta por arriba (hasta dónde sube) y por abajo (desde dónde baja); no se comprime
   if (base === 'hang') s = (prm.bottom + s * (prm.top - prm.bottom)) / 100;
+  // agarre con su propia acción (supino: Chinup); el neutro sale de la supina si la hay (los codos ya van hacia delante)
+  if (base === 'hang') ex = variantFor(ex, prm.gripType) || (prm.gripType === 'neutro' && variantFor(ex, 'supino')) || ex;
   return evaluateRaw(ex, base === 'hinge' ? hingeS(ex, s) : s);
 }
 // s de la animación, sin recorte (el recorte la usa para buscar el corte)
@@ -612,7 +619,11 @@ function evaluateInner(ex, s) {
     // las manos no se mueven en la barra: muñeca y giro de la mano salen de las claves exportadas (en Blender la mano cuelga de la
     // barra y está quieta), no de la pose interpolada, que entre claves la llevaba en arco (hasta 5 cm).
     const qHand = S => expQ(ex, `DEF-HAND.${S}`, s);
-    const I = HANG_GRIP[prm.gripType], handI = I && POSES.hands && { L: implHand('L', 1, qHand('L'), I), R: implHand('R', -1, qHand('R'), I) };
+    // agarre: el de la acción, tal cual (con sus manos y codos); otro, girando la mano (manos de referencia). Desde la supina, el
+    // neutro no da media vuelta y el codo va como en la supina
+    const own = POSES.exercises[ex].meta?.grip || 'prono';
+    const I = prm.gripType === own ? null : own === 'supino' && prm.gripType === 'neutro' ? { ...HANG_GRIP.neutro, elbow: 0 } : HANG_GRIP[prm.gripType];
+    const handI = I && POSES.hands && { L: implHand('L', 1, qHand('L'), I), R: implHand('R', -1, qHand('R'), I) };
     const handle = S => { const along = expP(ex, `DEF-HAND.${S}`, s).sub(barC).dot(ax);     // centro del asa de cada mano
       return barC.clone().addScaledVector(ax, I && I.half ? Math.sign(along) * I.half * kr : along * prm.grip); };
     const wristAt = S => {
@@ -939,6 +950,7 @@ function buildExerciseUI() {
 }
 const exSeg = document.getElementById('exSeg');
 for (const [id, ex] of Object.entries(EXERCISES)) {
+  if (VARIANT(id)) continue;   // las variantes se eligen desde su chip
   const b = document.createElement('button'); b.textContent = ex.short; b.dataset.ex = id;
   b.addEventListener('click', () => { state.exId = id; exSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); buildExerciseUI(); });
   exSeg.appendChild(b);
