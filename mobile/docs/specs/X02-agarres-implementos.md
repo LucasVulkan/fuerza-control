@@ -109,7 +109,16 @@ Primer uso real, porque el movimiento ya existe y se ve enseguida si funciona. C
 - [ ] Con mancuernas a los lados o dos kettlebells, los brazos pasan junto a los muslos sin atravesarlos.
 - [ ] Volver a barra deja el ejercicio exactamente como estaba.
 
-## 7. Fuera de alcance
+## 7. Fallos vistos al probar en el móvil (4-nov-2026, sin corregir)
+
+El usuario lo da por bueno para empezar y deja esto para más adelante (decidido seguir con la dominada):
+
+- **Choques (clipping)** entre implementos, brazos y piernas.
+- **Una kettlebell entre los pies** debería limitar cuánto pueden cerrarse los pies (la bola tiene que caber entre ellos).
+- **Al subir, los brazos se meten un poco en el tronco** (con implementos que no son la barra).
+- Algo más de lógica por implemento que habrá que ir añadiendo (por ejemplo, separación mínima entre manos, piernas y pesas).
+
+## 8. Fuera de alcance
 
 - Dedos calculados falange a falange para abrazar cualquier cilindro (posible más adelante si la mezcla no basta).
 - Agarre de gancho, falso agarre, correas: cada uno sería una mano de referencia más cuando haga falta.
