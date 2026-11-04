@@ -375,6 +375,21 @@ Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, ca
 
 Con los valores por defecto sale la autorada (0,0 mm en las claves), salvo los codos (ver la regla de brazos rectos). Indicadores: tronco, muslo, tibia, altura de la barra, CdM–mediopié, barra–mediopié y, si cambia, «Cadera» (en ese frame, cuántos cm más alta/baja y adelante/atrás que la autorada).
 
+### 4.4c `evaluate`: tipo `hang` (dominada)
+
+El cuerpo cuelga de las manos. Acción `pullup` (script `blender/ejercicios/pullup.py`): frame 1 colgado con los brazos rectos, frame 30 con la barbilla sobre la barra, el pecho hacia ella y el tronco algo hacia atrás; agarre prono; la barra fija es el control `BARRA` a 2,30 m.
+
+1. La pose autorada con las medidas actuales (`authoredPose` con el cuerpo de ahora).
+2. **Hombros:** el vector barra→hombros autorado × k. Colgado, con el brazo casi recto (codo autorado < 20°), se fuerza la distancia hombro→muñeca que da ese codo: con el agarre más abierto, el cuerpo cuelga más alto. Nunca más lejos de lo que llega el brazo.
+
+   ⚠️ No fijes la distancia en todo el recorrido: a mitad de subida la muñeca pasa de estar encima del hombro a debajo, y con otro agarre el cálculo saltaba de un lado al otro (hasta 30 cm entre frames).
+3. **Brazos** por IK hasta la barra. Agarre (`gripType`): prono (el de la acción, con sus dedos), supino (la mano gira media vuelta sobre su eje, `roll`, y luego se alinea con la barra; girar 180° «lo mínimo» elegía un eje cualquiera que cambiaba de un frame a otro) y neutro (asas paralelas a ±25 cm, de delante a atrás, palmas hacia dentro). Supino y neutro usan las manos de referencia (X02). En `implHand`, a igualdad de palma, gana la opción que deja la mano apuntando como estaba (si no, el supino a veces la ponía boca abajo).
+4. **Péndulo:** todo el cuerpo gira alrededor de la barra hasta que el CdM (sin carga: el peso es el del cuerpo) queda donde lo tienen las claves respecto a la barra (`hangRef`, como `comRef`). Con los valores por defecto, 0°.
+
+Recorrido: `top` (hasta dónde sube, % del autorado) y `bottom` (desde dónde baja: codos algo flexionados) recortan la animación en `evaluate`; no se comprime. Indicadores: codo, hombros bajo la barra, balanceo y CdM–barra. La cámara apunta más alto y desde más lejos (`target`, `goal.r`). `tests/fidelity.js` no comprueba que los pies no deslicen (colgado no se apoyan).
+
+Pendiente (X01-13): piernas cruzadas o dobladas, escápulas (subir y bajar los hombros), «pecho a la barra» por encima de la autorada, demanda muscular de tracción (hoy el mapa solo tiene piernas y espalda baja).
+
 ### 4.5 Sliders (`PARAMS`)
 
 | Tipo | id | Rango (defecto) | Efecto |

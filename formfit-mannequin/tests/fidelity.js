@@ -20,6 +20,7 @@ const { open } = require('./harness');
         if (fk > 0.001 || dv > lim) fail++;
         out.push(`${ex} ${k}: FK vs Blender ${(fk * 1000).toFixed(1)} mm · runtime por defecto vs Blender ${(dv * 1000).toFixed(1)} mm${bent ? ` (aviso: en Blender el codo está flexionado ${elbow.toFixed(0)}°; el visor lo endereza)` : bentEx ? ' (aviso: hereda el codo enderezado de otra clave)' : ''}`);
       }
+      if (D.EXERCISES[ex].base === 'hang') continue;   // colgado: los pies no se apoyan
       let slide = 0, f0;
       for (let i = 0; i <= 20; i++) { const r = D.evaluate(ex, i / 20), ref = r.plate || new D.THREE.Vector3();
         const f = r.pose['DEF-TOE.L'].p.clone().sub(ref); if (!i) f0 = f; slide = Math.max(slide, f.distanceTo(f0)); }

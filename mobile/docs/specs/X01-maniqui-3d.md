@@ -343,7 +343,7 @@ El rumano se crea con un script de `blender/ejercicios/` como el del convenciona
 
 **Dominada y remos: qué tiene que resolver la app** (4-nov-2026). Agarre e implemento salen de [X02](X02-agarres-implementos.md): la acción se hace con un agarre y los demás se ponen en la app.
 
-*Dominada* (base nueva `hang`, implemento barra fija):
+*Dominada* (base nueva `hang`, implemento barra fija). **Hecha el 4-nov** (rama `feat/x01-peso-muerto`, por probar): acción `pullup` posada por script (`blender/ejercicios/pullup.py`), base `hang` en el visor con agarre prono · supino · neutro (asas paralelas), anchura, hasta dónde sube y desde dónde baja, y equilibrio como un péndulo alrededor de la barra; detalle en el HANDOFF §4.4c. Falta: piernas, escápulas, pecho a la barra y demanda muscular de tracción.
 
 - **Apoyo:** las manos en la barra; el cuerpo cuelga bajo ellas. Equilibrio: el centro de masas bajo las manos (no hay pies que lo sostengan): si cambian las medidas o las piernas, el cuerpo se balancea lo justo para volver a quedar debajo.
 - **Ajustes:** anchura del agarre (como en la barra del peso muerto); orientación prona · supina · neutra (neutra = asas paralelas, otro implemento); recorrido arriba (barbilla sobre la barra · pecho a la barra) y abajo (colgado del todo · codos un poco flexionados); piernas rectas o cruzadas (dos manos de referencia de piernas, o claves, se decide al hacerla).

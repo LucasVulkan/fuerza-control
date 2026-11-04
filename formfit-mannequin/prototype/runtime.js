@@ -27,6 +27,7 @@ const EXERCISES = {
   leg_press: { name: 'Prensa 45°', short: 'Prensa', base: 'seat', bar: false },
   deadlift: { name: 'Peso muerto', short: 'Muerto', base: 'hinge', bar: true },
   romanian_deadlift: { name: 'Peso muerto rumano', short: 'Rumano', base: 'hinge', bar: true },
+  pullup: { name: 'Dominada', short: 'Dominada', base: 'hang', bar: true },
 };
 // las acciones nuevas aparecen solas con su meta (ff_base, ff_name) aunque no estén en la lista
 for (const [id, e] of Object.entries(POSES.exercises)) EXERCISES[id] ??= { name: e.meta.name, short: e.meta.name, base: e.meta.base, bar: e.meta.base !== 'seat' };
@@ -62,6 +63,13 @@ const PARAMS = {
     { id: 'toes', label: 'Rotación de pies', min: -15, max: 20, step: 1, def: 0, fmt: v => `${v > 0 ? '+' : ''}${v}° sobre la autorada` },
     { id: 'grip', label: 'Anchura de agarre', min: 0.9, max: 1.3, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'load', label: 'Carga', min: 0, max: 300, step: 10, def: 150, fmt: v => `${v}% del peso corporal` },
+  ],
+  // colgado (dominada): el cuerpo cuelga de las manos; sin carga (el peso es el del cuerpo)
+  hang: [
+    { id: 'gripType', label: 'Agarre', def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino'], ['neutro', 'Neutro']] },
+    { id: 'grip', label: 'Anchura de agarre', min: 0.75, max: 1.4, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}% (el neutro va a la anchura de las asas)` },
+    { id: 'top', label: 'Hasta dónde sube', min: 50, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada (barbilla sobre la barra)' : `${v}% del recorrido` },
+    { id: 'bottom', label: 'Desde dónde baja', min: 0, max: 40, step: 1, def: 0, fmt: v => v === 0 ? 'colgado del todo' : `${v}% del recorrido (codos algo flexionados)` },
   ],
 };
 const PRESETS = {
@@ -321,6 +329,9 @@ const IMPL = {
   kettlebell:      { d: 0.035, rest: 0.26, half: 0.05, kb: true },
   kettlebells:     { d: 0.035, rest: 0.26, side: true, dx: 0.18, kb: true },
 };
+// dominada: agarre supino (la palma hacia uno, misma barra; `roll`: la mano gira media vuelta sobre su eje antes de alinear
+// el asa: girar 180° «lo mínimo» elige un eje cualquiera que cambia de un frame a otro) y neutro (asas paralelas, a ±25 cm, de delante a atrás)
+const HANG_GRIP = { supino: { d: 0.028, palm: 'back', roll: Math.PI }, neutro: { d: 0.032, side: true, half: 0.25, palm: 'in' } };
 // eje del asa en el mundo para cada mano: transversal (barra), de delante a atrás (a los lados) o transversal girado `rot` con
 // el lado del pulgar hacia delante (rotación externa)
 const handleAxis = (I, sgn, barAxis = X) => I.side ? Z.clone() : I.rot ? V(-sgn * Math.cos(I.rot), 0, Math.sin(I.rot)) : barAxis.clone();
@@ -329,6 +340,7 @@ const implOf = ex => IMPL[state.per[ex].impl || 'barra'];
 // 40 mm según el grosor del asa; la mano gira lo mínimo para que el asa le quede en el hueco con el eje del implemento, y de
 // los dos sentidos, el que deja la palma donde toca (atrás con el asa transversal; hacia dentro a los lados)
 function implHand(S, sgn, qA, I) {
+  if (I.roll) qA = QA(V(0, 1, 0).applyQuaternion(qA), I.roll).multiply(qA);   // giro de la mano sobre su eje (supino)
   const t = clamp((I.d - 0.028) / 0.012), A = POSES.hands['28'][S], B = POSES.hands['40'][S];
   const hollow = V(...A.hollow.p).lerp(V(...B.hollow.p), t), ax = V(...A.hollow.axis).lerp(V(...B.hollow.axis), t).normalize();
   const fingers = {}; for (const n in A.fingers) fingers[n] = new THREE.Quaternion(...A.fingers[n]).slerp(new THREE.Quaternion(...B.fingers[n]), t);
@@ -336,7 +348,9 @@ function implHand(S, sgn, qA, I) {
   let best = null;
   for (const tgt of [want, want.clone().negate()]) {
     const q = new THREE.Quaternion().setFromUnitVectors(ax.clone().applyQuaternion(qA), tgt).multiply(qA), pw = palm.clone().applyQuaternion(q);
-    const score = I.side ? -sgn * pw.x : -pw.z;
+    const look = I.palm || (I.side ? 'in' : 'back');
+    // hacia dónde mira la palma y, a igualdad, el que deja la mano apuntando como estaba (si no, el supino a veces le daba la vuelta)
+    const score = (look === 'in' ? -sgn * pw.x : look === 'front' ? pw.z : -pw.z) + 0.5 * V(0, 1, 0).applyQuaternion(q).dot(V(0, 1, 0).applyQuaternion(qA));
     if (!best || score > best.score) best = { q, score };
   }
   return { q: best.q, fingers, hollow };
@@ -380,7 +394,19 @@ function hingeGrip(ex, s) {
 }
 
 /* ---------------- Evaluación de un frame ---------------- */
-function evaluate(ex, s) { return evaluateRaw(ex, EXERCISES[ex].base === 'hinge' ? hingeS(ex, s) : s); }
+function evaluate(ex, s) {
+  const base = EXERCISES[ex].base, prm = state.per[ex];
+  // dominada: el recorrido se recorta por arriba (hasta dónde sube) y por abajo (desde dónde baja); no se comprime
+  if (base === 'hang') s = (prm.bottom + s * (prm.top - prm.bottom)) / 100;
+  return evaluateRaw(ex, base === 'hinge' ? hingeS(ex, s) : s);
+}
+// dominada: CdM del cuerpo respecto a la barra (sagital) en las claves de Blender, interpolado entre ellas (como comRef)
+const HREF = {};
+function hangRef(ex, s) {
+  const e = HREF[ex] ??= keysOf(ex).map(k => withBody(DEFAULT_BODY, () => { const A = authoredPose(ex, k.s), f = features(A, ex, k.s);
+    return comOffset(A, f.bar, 0) + midfootZ(A) - f.bar.z; }));
+  const [, , t, i] = seg(ex, s); return e[i] + (e[i + 1] - e[i]) * t;
+}
 // s de la animación, sin recorte (el recorte la usa para buscar el corte)
 function evaluateRaw(ex, s) { const saved = CUR_OFF; CUR_OFF = authoredOffsets(ex, s); try { return evaluateInner(ex, s); } finally { CUR_OFF = saved; } }
 function evaluateInner(ex, s) {
@@ -566,6 +592,62 @@ function evaluateInner(ex, s) {
     const [hy, hz] = (hinge && out.hipD) || [0, 0], cm = v => Math.round(Math.abs(v) * 100);
     if (cm(hy) || cm(hz)) out.readout.push(['Cadera', `${cm(hy) ? `${cm(hy)} cm más ${hy > 0 ? 'alta' : 'baja'}` : ''}${cm(hy) && cm(hz) ? ' y ' : ''}${cm(hz) ? `${cm(hz)} cm más ${hz > 0 ? 'adelante' : 'atrás'}` : ''} que la autorada`]);
     out.phase = `muslo ${Math.round(betaH / DEG)}°`;
+  } else if (exd.base === 'hang') {
+    // DOMINADA (tipo `hang`): el cuerpo cuelga de las manos.
+    //  1) la pose autorada con las medidas actuales;
+    //  2) los hombros donde los brazos llegan a la barra: el vector barra→hombros autorado × k, a la altura que deja la muñeca a
+    //     la distancia hombro→muñeca autorada (× k) con el agarre actual (más abierto -> el cuerpo cuelga más alto);
+    //  3) brazos por IK hasta la barra; con agarre supino o neutro, la mano de las manos de referencia (X02);
+    //  4) péndulo: todo el cuerpo gira alrededor de la barra hasta que el CdM queda donde lo tienen las claves.
+    //  Con los valores por defecto sale la autorada.
+    const kr = d.k / d0.k, barC = F.bar.clone(), ax = F.barAxis.clone();
+    const I = HANG_GRIP[prm.gripType], handI = I && POSES.hands && { L: implHand('L', 1, auth['DEF-HAND.L'].q, I), R: implHand('R', -1, auth['DEF-HAND.R'].q, I) };
+    const target = S => { const o = gripOf(auth, S).sub(barC), along = o.dot(ax), x = I && I.half ? Math.sign(along) * I.half * kr : along * prm.grip;
+      return barC.clone().addScaledVector(ax, x).add(o.addScaledVector(ax, -along).multiplyScalar(kr)); };
+    const wristOff = S => handI ? handI[S].hollow.clone().multiplyScalar(d.k).applyQuaternion(handI[S].q)
+      : socketRest(S).multiplyScalar(d.k).applyQuaternion(auth[`DEF-HAND.${S}`].q.clone().multiply(REST[`DEF-HAND.${S}`].q.clone().invert()));
+    const P = authoredPose(ex, s), shA = midOf(auth, 'DEF-ARM01.L', 'DEF-ARM01.R'), shP = midOf(P, 'DEF-ARM01.L', 'DEF-ARM01.R');
+    const sh = barC.clone().add(shA.clone().sub(barC).multiplyScalar(kr));
+    { // el hombro sigue el vector barra→hombros autorado (× k). Colgado, con el brazo casi recto (codo autorado < 20°), el cuerpo
+      // cuelga a la distancia hombro→muñeca que da ese codo: con el agarre más abierto, más alto. Nunca más lejos de lo que llega
+      // el brazo. (Fijar siempre la distancia daba saltos: a mitad de recorrido la muñeca pasa de estar encima del hombro a debajo.)
+      const hA = auth['DEF-HAND.L'].p, eA = auth['DEF-FORARM01.L'].p, sA = auth['DEF-ARM01.L'].p;
+      const elbowA = 180 - sA.clone().sub(eA).angleTo(hA.clone().sub(eA)) / DEG, wgt = clamp((20 - elbowA) / 10);
+      const shL = () => sh.clone().add(P['DEF-ARM01.L'].p.clone().sub(shP)), w = target('L').sub(wristOff('L'));
+      const h2 = () => { const q = shL(); return (q.x - w.x) ** 2 + (q.z - w.z) ** 2; };
+      if (wgt > 0) { const RA = hA.distanceTo(sA) * kr; sh.y += wgt * (w.y - Math.sqrt(Math.max(0, RA * RA - h2())) - shL().y); }
+      const Rmax = 0.999 * (LEN('L').Lu + LEN('L').Lf), q = shL();
+      if (q.distanceTo(w) > Rmax) sh.y += w.y - Math.sign(w.y - q.y) * Math.sqrt(Math.max(0, Rmax * Rmax - h2())) - q.y; }
+    const T = sh.clone().sub(shP); for (const n of BN) P[n].p.add(T);
+    const warns = [];
+    for (const S of ['L', 'R']) {
+      const hn = `DEF-HAND.${S}`, wrist = target(S).sub(wristOff(S));
+      const pole = poleOf(auth[`DEF-ARM01.${S}`].p, auth[`DEF-FORARM01.${S}`].p, auth[hn].p);
+      const ik = solveLimb(P, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, pole, [LEN(S).Lu, LEN(S).Lf]);
+      for (const c of subtree(hn)) P[c].q = auth[c].q.clone();
+      if (handI) { const h = handI[S]; P[hn].q = h.q.clone(); for (const c in h.fingers) P[c].q = h.q.clone().multiply(h.fingers[c]); }
+      fkSub(P, `DEF-SHOULDER.${S}`);
+      if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
+    }
+    // péndulo alrededor de la barra (eje X por su centro)
+    const cT = hangRef(ex, s), comZ = Q0 => comOffset(Q0, barC, 0) + midfootZ(Q0) - barC.z;
+    const swing = th => { const Rq = QA(X, th), Q0 = {}; for (const n of BN) Q0[n] = { p: P[n].p.clone().sub(barC).applyQuaternion(Rq).add(barC), q: Rq.clone().multiply(P[n].q) }; return Q0; };
+    let t0 = 0, f0 = comZ(P) - cT, th = 0, Pf = P;
+    if (Math.abs(f0) > 0.0005) {
+      let t1 = 2 * DEG, Q1 = swing(t1), f1 = comZ(Q1) - cT;
+      for (let i = 0; i < 10 && Math.abs(f1) > 0.0005; i++) { const den = f1 - f0; if (Math.abs(den) < 1e-9) break;
+        const tn = clamp(t1 - f1 * (t1 - t0) / den, -40 * DEG, 40 * DEG); t0 = t1; f0 = f1; t1 = tn; Q1 = swing(t1); f1 = comZ(Q1) - cT; }
+      th = t1; Pf = Q1;
+    }
+    Object.assign(pose, Pf); out.warns.push(...warns);
+    out.bar = { center: barC, axis: ax }; out.mid = barC.z; out.com = comZ(Pf) + barC.z;
+    out.path = midOf(Pf, 'DEF-ARM01.L', 'DEF-ARM01.R');
+    out.act = { quads: 0, glutes: 0, hams: 0, add: 0, erect: 0.1, calves: 0 };
+    if (handI) out.grips = ['L', 'R'].map(S => target(S));
+    const elbow = 180 - Pf['DEF-ARM01.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p).angleTo(Pf['DEF-HAND.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p)) / DEG;
+    out.readout = [['Codo', `${Math.round(elbow)}°`], ['Hombros', `${Math.round((barC.y - out.path.y) * 100)} cm bajo la barra`],
+      ['Balanceo', `${th >= 0 ? '+' : ''}${Math.round(th / DEG)}°`], ['CdM–barra', `${((out.com - barC.z) * 100).toFixed(1)} cm`]];
+    out.phase = `codo ${Math.round(elbow)}°`;
   } else {
     // PRENSA: la pelvis queda fija en el asiento (la de la clave de inicio); la plataforma recorre el raíl
     // con orientación constante y los pies van pegados a ella.
@@ -701,6 +783,11 @@ const kettlebells = [0, 1].map(() => { const g = new THREE.Group(); scene.add(g)
   for (const x of [-0.075, 0.075]) { const post = withOutline(new THREE.CylinderGeometry(0.017, 0.017, 0.12, 10), ironMat); post.position.set(x * 0.9, -0.055, 0); post.rotation.z = -Math.sign(x) * 0.25; g.add(post); }
   const ball = withOutline(new THREE.SphereGeometry(0.11, 24, 16), ironMat); ball.position.y = -0.15; g.add(ball);
   return g; });
+// dominada con agarre neutro: asas paralelas (de delante a atrás) colgadas de un travesaño
+const parallels = new THREE.Group(); scene.add(parallels);
+for (const x of [-1, 1]) { const h = withOutline(new THREE.CylinderGeometry(0.016, 0.016, 0.24, 12), steelMat); h.rotation.x = Math.PI / 2; h.userData.x = x; parallels.add(h);
+  const post = withOutline(new THREE.CylinderGeometry(0.012, 0.012, 0.1, 8), steelMat); post.userData.x = x; post.userData.post = true; parallels.add(post); }
+{ const cross = withOutline(new THREE.CylinderGeometry(0.016, 0.016, 1, 12), steelMat); cross.rotation.z = Math.PI / 2; cross.userData.cross = true; parallels.add(cross); }
 // bisagra: bloques bajo los discos y cajón bajo los pies (altura de los discos / de los pies); se escalan en alto
 const boxMat = toon(0x5a6170);
 const blocks = [-1, 1].map(() => { const b = withOutline(new THREE.BoxGeometry(0.3, 1, 0.5), boxMat); scene.add(b); return b; });
@@ -726,7 +813,13 @@ function placeProps(ex, r) {
   footBox.visible = hp.feet > 0;
   if (footBox.visible) { footBox.scale.y = hp.feet / 100; footBox.position.set(0, hp.feet / 200, r.mid); }
   const impl = r.impl || 'barra', isDb = impl.startsWith('mancuernas');
-  barMesh.visible = impl === 'barra';
+  const neutral = EXERCISES[ex].base === 'hang' && state.per[ex].gripType === 'neutro' && r.grips;
+  barMesh.visible = impl === 'barra' && !neutral;
+  parallels.visible = !!neutral;
+  if (neutral) { const g = r.grips, half = Math.abs(g[0].x - g[1].x) / 2;
+    parallels.children.forEach(c => { if (c.userData.cross) { c.position.set(0, g[0].y + 0.1, g[0].z); c.scale.set(1, 2 * half + 0.1, 1); }
+      else if (c.userData.post) c.position.set(c.userData.x * half, g[0].y + 0.05, g[0].z);
+      else c.position.set(c.userData.x * half, g[0].y, g[0].z); }); }
   const I = IMPL[impl];
   dumbbells.forEach((g, i) => { g.visible = isDb; if (isDb) { g.position.copy(r.grips[i]); g.quaternion.setFromUnitVectors(X, handleAxis(I, i ? -1 : 1, r.bar.axis).normalize()); } });
   kettlebells.forEach((g, i) => { g.visible = !!I.kb && (i === 0 || impl === 'kettlebells'); if (!g.visible) return;
@@ -735,7 +828,7 @@ function placeProps(ex, r) {
   if (r.bar) {
     barG.position.copy(r.bar.center); barG.quaternion.setFromUnitVectors(X, r.bar.axis);
     const th = 0.02 + 0.13 * PRM().load / 200;
-    plates.forEach(p => { p.visible = PRM().load > 0 && impl === 'barra'; p.children[0].scale.set(1, th, 1); p.position.x = p.userData.s * (0.70 + th / 2); });
+    plates.forEach(p => { p.visible = PRM().load > 0 && impl === 'barra' && EXERCISES[ex].base !== 'hang'; p.children[0].scale.set(1, th, 1); p.position.x = p.userData.s * (0.70 + th / 2); });
     // vista lateral: el disco tapa al maniquí -> se vuelve translúcido cuando la cámara mira a lo largo de la barra
     const al = Math.abs(camera.position.clone().sub(r.bar.center).normalize().dot(r.bar.axis));
     const fade = clamp((al - 0.8) / 0.15);
@@ -829,6 +922,7 @@ function buildExerciseUI() {
   }
   const rb = document.createElement('button'); rb.className = 'copy'; rb.textContent = 'Volver a la pose autorada';
   rb.addEventListener('click', () => { for (const p of PARAMS[ex.base]) PRM()[p.id] = p.def; buildExerciseUI(); }); exHost.appendChild(rb);
+  goal.r = ex.base === 'hang' ? 5.4 : 3.7;   // la dominada (barra a 2,3 m) se ve de más lejos
   setView(ex.base === 'seat' ? 'press' : 'side'); changed();
 }
 const exSeg = document.getElementById('exSeg');
@@ -893,7 +987,7 @@ function frameLoop(now) {
   // referencia autorada
   refLines.visible = state.ref;
   if (state.ref) { const A = withBody(DEFAULT_BODY, () => authoredPose(state.exId, state.s)); const pts = []; for (const n of BN) { const P = PARENT[n]; if (P && !/FINGER|THUMB|PALM/.test(n)) pts.push(A[P].p, A[n].p); } refLines.geometry.dispose(); refLines.geometry = new THREE.BufferGeometry().setFromPoints(pts); }
-  const k = K(); target.lerp(EX().base === 'seat' ? V(0, 0.75 * k, 0.3) : V(0, 0.8 * k, 0.03), 0.2);
+  const k = K(); target.lerp(EX().base === 'seat' ? V(0, 0.75 * k, 0.3) : EX().base === 'hang' ? V(0, 1.6 * k, 0) : V(0, 0.8 * k, 0.03), 0.2);
   orbit.th += (goal.th - orbit.th) * 0.12; orbit.ph += (goal.ph - orbit.ph) * 0.12; orbit.r += (goal.r - orbit.r) * 0.15;
   camera.position.set(target.x + orbit.r * Math.sin(orbit.ph) * Math.sin(orbit.th), target.y + orbit.r * Math.cos(orbit.ph), target.z + orbit.r * Math.sin(orbit.ph) * Math.cos(orbit.th));
   camera.lookAt(target); if (OUTLINE.base) OUTLINE.value = OUTLINE.base * clamp(orbit.r / 3.2, 0.3, 1.2);

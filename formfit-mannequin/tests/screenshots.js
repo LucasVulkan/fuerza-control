@@ -21,11 +21,15 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['deadlift_noload_side', 'deadlift', 0, 'side', {}, { load: 0 }],
     ['deadlift_kb_45', 'deadlift', 0, 'three', {}, { impl: 'kettlebell' }], ['deadlift_2kb_45', 'deadlift', 0, 'three', {}, { impl: 'kettlebells' }],
     ['rdl_db_45', 'romanian_deadlift', 1, 'three', {}, { impl: 'mancuernas' }], ['rdl_db_front', 'romanian_deadlift', 0.4, 'front', {}, { impl: 'mancuernas' }],
-    ['rdl_db_lado_side', 'romanian_deadlift', 0.5, 'side', {}, { impl: 'mancuernas_lado' }]];
+    ['rdl_db_lado_side', 'romanian_deadlift', 0.5, 'side', {}, { impl: 'mancuernas_lado' }],
+    ['pullup_bottom_side', 'pullup', 0, 'side', {}, {}], ['pullup_top_side', 'pullup', 1, 'side', {}, {}], ['pullup_top_front', 'pullup', 1, 'front', {}, {}],
+    ['pullup_supine_45', 'pullup', 0.6, 'three', {}, { gripType: 'supino' }], ['pullup_neutral_45', 'pullup', 0.6, 'three', {}, { gripType: 'neutro' }],
+    ['pullup_wide_front', 'pullup', 1, 'front', {}, { grip: 1.35 }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();
-      Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); if (__dbg.EXERCISES[ex].base === 'hinge') Object.assign(S.per[ex], { knees: 0, depth: 0, plates: 0, feet: 0, impl: 'barra', load: 150 });   // la captura anterior no se cuela
+      Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); if (__dbg.EXERCISES[ex].base === 'hinge') Object.assign(S.per[ex], { knees: 0, depth: 0, plates: 0, feet: 0, impl: 'barra', load: 150 });
+      if (__dbg.EXERCISES[ex].base === 'hang') Object.assign(S.per[ex], { gripType: 'prono', grip: 1, top: 100, bottom: 0 });   // la captura anterior no se cuela
       Object.assign(S.per[ex], prm); S.s = s;
       document.querySelector(`[data-view=${view}]`).click(); }, [ex, s, view, body, prm]);
     await page.waitForTimeout(1600); await page.screenshot({ path: path.join(dir, name + '.png') }); console.log(name);
