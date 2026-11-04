@@ -28,11 +28,14 @@ def bone_action(a):
 EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_')) and a.frame_range[1] >= FRAMES['end'] and bone_action(a)])
 print('ejercicios:', EXERCISES)
 
+SAMPLE = 5   # además, un frame cada SAMPLE: Blender interpola los controles con curvas (arranque y frenada suaves) y el visor, en
+             # recta entre claves; sin muestras, en la dominada el cuerpo subía antes que en Blender y el codo se doblaba de más
 def mids(ex):
-    """Frames con clave entre el 1 y el 30 de la acción (claves intermedias: el visor interpola por tramos)."""
+    """Frames intermedios que se exportan: los que tienen clave y uno cada SAMPLE (el visor interpola por tramos entre ellos)."""
     act = bpy.data.actions[ex]
     fcs = [fc for l in act.layers for st in l.strips for sl in act.slots if (cb := st.channelbag(sl)) for fc in cb.fcurves]
-    return sorted({round(k.co.x) for fc in fcs for k in fc.keyframe_points} & set(range(FRAMES['start'] + 1, FRAMES['end'])))
+    keyed = {round(k.co.x) for fc in fcs for k in fc.keyframe_points}
+    return sorted((keyed | set(range(FRAMES['start'] + SAMPLE, FRAMES['end'], SAMPLE))) & set(range(FRAMES['start'] + 1, FRAMES['end'])))
 
 def use(ex):
     """Activa la acción partiendo del reposo: un canal que la acción no keya no hereda lo que dejó la anterior."""

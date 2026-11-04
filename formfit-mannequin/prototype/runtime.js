@@ -956,8 +956,8 @@ playBtn.addEventListener('click', () => setPlaying(!state.playing));
 const scrub = document.getElementById('scrub'); scrub.addEventListener('input', () => { setPlaying(false); state.s = scrub.value / 1000; });
 const toggle = (id, key) => document.getElementById(id).addEventListener('click', e => { state[key] = !state[key]; e.currentTarget.setAttribute('aria-pressed', String(state[key])); });
 toggle('linesBtn', 'lines'); toggle('heatBtn', 'heat'); toggle('refBtn', 'ref');
-const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-function repS(t) { const T = 3.7; t %= T; if (t < 1.7) return ease(t / 1.7); if (t < 1.9) return 1; if (t < 3.2) return 1 - ease((t - 1.9) / 1.3); return 0; }
+// reproducción: ida, pausa, vuelta, pausa. Lineal: el ritmo (arranque y frenada) ya viene de Blender en los frames exportados
+function repS(t) { const T = 3.7; t %= T; if (t < 1.7) return t / 1.7; if (t < 1.9) return 1; if (t < 3.2) return 1 - (t - 1.9) / 1.3; return 0; }
 
 const MUSCLES = [['quads', 'Cuádriceps'], ['glutes', 'Glúteo mayor'], ['hams', 'Isquiotibiales'], ['add', 'Aductores'], ['erect', 'Erectores'], ['calves', 'Gemelos y sóleo']];
 const mHost = document.getElementById('muscles');
