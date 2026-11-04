@@ -34,6 +34,12 @@ const { open } = require('./harness');
       for (const impl of ['mancuernas', 'mancuernas_lado', 'kettlebell', 'kettlebells']) { S.per[ex].impl = impl; const w = wrist(), dv = Math.max(...w.map((y, i) => Math.abs(y - w0[i])));
         if (dv > 0.015) { fail++; out.push(`${ex} ${impl}: ¡la mano va ${(dv * 100).toFixed(1)} cm por otro sitio que con la barra!`); } }
       S.per[ex] = sp; }
+    // colgado: las manos no se mueven en la barra en todo el recorrido (antes, entre claves, iban en arco hasta 5 cm)
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hang')) for (const gt of ['prono', 'supino', 'neutro']) {
+      const sp = { ...S.per[ex] }; S.exId = ex; S.per[ex].gripType = gt; let w0, dv = 0;
+      for (let i = 0; i <= 20; i++) { const r = D.evaluate(ex, i / 20), w = r.pose['DEF-HAND.L'].p.clone().sub(r.bar.center); if (!w0) w0 = w; dv = Math.max(dv, w.distanceTo(w0)); }
+      if (dv > 0.01) { fail++; out.push(`${ex} ${gt}: ¡la mano se mueve ${(dv * 100).toFixed(1)} cm en la barra!`); }
+      S.per[ex] = sp; }
     // sin carga, el CdM de la bisagra no sale del pie: pivota sobre el tobillo (antes: «se caería», 12 cm detrás)
     for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge')) for (let i = 0; i <= 10; i++) {
       const sp = { ...S.per[ex] }; S.exId = ex; S.per[ex].load = 0; const r = D.evaluate(ex, i / 10); S.per[ex] = sp;

@@ -4660,11 +4660,16 @@ function evaluateInner(ex, s) {
     //  4) péndulo: todo el cuerpo gira alrededor de la barra hasta que el CdM queda donde lo tienen las claves.
     //  Con los valores por defecto sale la autorada.
     const kr = d.k / d0.k, barC = F.bar.clone(), ax = F.barAxis.clone();
-    const I = HANG_GRIP[prm.gripType], handI = I && POSES.hands && { L: implHand('L', 1, auth['DEF-HAND.L'].q, I), R: implHand('R', -1, auth['DEF-HAND.R'].q, I) };
-    const target = S => { const o = gripOf(auth, S).sub(barC), along = o.dot(ax), x = I && I.half ? Math.sign(along) * I.half * kr : along * prm.grip;
-      return barC.clone().addScaledVector(ax, x).add(o.addScaledVector(ax, -along).multiplyScalar(kr)); };
-    const wristOff = S => handI ? handI[S].hollow.clone().multiplyScalar(d.k).applyQuaternion(handI[S].q)
-      : socketRest(S).multiplyScalar(d.k).applyQuaternion(auth[`DEF-HAND.${S}`].q.clone().multiply(REST[`DEF-HAND.${S}`].q.clone().invert()));
+    // las manos no se mueven en la barra: muñeca y giro de la mano salen de las claves exportadas (en Blender la mano cuelga de la
+    // barra y está quieta), no de la pose interpolada, que entre claves la llevaba en arco (hasta 5 cm).
+    const qHand = S => expQ(ex, `DEF-HAND.${S}`, s);
+    const I = HANG_GRIP[prm.gripType], handI = I && POSES.hands && { L: implHand('L', 1, qHand('L'), I), R: implHand('R', -1, qHand('R'), I) };
+    const handle = S => { const along = expP(ex, `DEF-HAND.${S}`, s).sub(barC).dot(ax);     // centro del asa de cada mano
+      return barC.clone().addScaledVector(ax, I && I.half ? Math.sign(along) * I.half * kr : along * prm.grip); };
+    const wristAt = S => {
+      if (handI) return handle(S).sub(handI[S].hollow.clone().multiplyScalar(d.k).applyQuaternion(handI[S].q));
+      const wk = expP(ex, `DEF-HAND.${S}`, s).sub(barC), along = wk.dot(ax);           // prono: la muñeca de las claves
+      return barC.clone().addScaledVector(ax, along * prm.grip).add(wk.addScaledVector(ax, -along).multiplyScalar(kr)); };
     const P = authoredPose(ex, s), shA = midOf(auth, 'DEF-ARM01.L', 'DEF-ARM01.R'), shP = midOf(P, 'DEF-ARM01.L', 'DEF-ARM01.R');
     const sh = barC.clone().add(shA.clone().sub(barC).multiplyScalar(kr));
     { // el hombro sigue el vector barra→hombros autorado (× k). Colgado, con el brazo casi recto (codo autorado < 20°), el cuerpo
@@ -4672,7 +4677,7 @@ function evaluateInner(ex, s) {
       // el brazo. (Fijar siempre la distancia daba saltos: a mitad de recorrido la muñeca pasa de estar encima del hombro a debajo.)
       const hA = auth['DEF-HAND.L'].p, eA = auth['DEF-FORARM01.L'].p, sA = auth['DEF-ARM01.L'].p;
       const elbowA = 180 - sA.clone().sub(eA).angleTo(hA.clone().sub(eA)) / DEG, wgt = clamp((20 - elbowA) / 10);
-      const shL = () => sh.clone().add(P['DEF-ARM01.L'].p.clone().sub(shP)), w = target('L').sub(wristOff('L'));
+      const shL = () => sh.clone().add(P['DEF-ARM01.L'].p.clone().sub(shP)), w = wristAt('L');
       const h2 = () => { const q = shL(); return (q.x - w.x) ** 2 + (q.z - w.z) ** 2; };
       if (wgt > 0) { const RA = hA.distanceTo(sA) * kr; sh.y += wgt * (w.y - Math.sqrt(Math.max(0, RA * RA - h2())) - shL().y); }
       const Rmax = 0.999 * (LEN('L').Lu + LEN('L').Lf), q = shL();
@@ -4680,11 +4685,13 @@ function evaluateInner(ex, s) {
     const T = sh.clone().sub(shP); for (const n of BN) P[n].p.add(T);
     const warns = [];
     for (const S of ['L', 'R']) {
-      const hn = `DEF-HAND.${S}`, wrist = target(S).sub(wristOff(S));
+      const hn = `DEF-HAND.${S}`, wrist = wristAt(S);
       const pole = poleOf(auth[`DEF-ARM01.${S}`].p, auth[`DEF-FORARM01.${S}`].p, auth[hn].p);
       const ik = solveLimb(P, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, pole, [LEN(S).Lu, LEN(S).Lf]);
-      for (const c of subtree(hn)) P[c].q = auth[c].q.clone();
-      if (handI) { const h = handI[S]; P[hn].q = h.q.clone(); for (const c in h.fingers) P[c].q = h.q.clone().multiply(h.fingers[c]); }
+      // la mano con el giro de las claves; los dedos, con su giro relativo a la mano de la pose autorada (o de la mano de referencia)
+      const qh = handI ? handI[S].q : qHand(S), inv = auth[hn].q.clone().invert();
+      for (const c of subtree(hn)) P[c].q = qh.clone().multiply(inv.clone().multiply(auth[c].q));
+      if (handI) for (const c in handI[S].fingers) P[c].q = qh.clone().multiply(handI[S].fingers[c]);
       fkSub(P, `DEF-SHOULDER.${S}`);
       if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
     }
@@ -4702,7 +4709,7 @@ function evaluateInner(ex, s) {
     out.bar = { center: barC, axis: ax }; out.mid = barC.z; out.com = comZ(Pf) + barC.z;
     out.path = midOf(Pf, 'DEF-ARM01.L', 'DEF-ARM01.R');
     out.act = { quads: 0, glutes: 0, hams: 0, add: 0, erect: 0.1, calves: 0 };
-    if (handI) out.grips = ['L', 'R'].map(S => target(S));
+    if (handI) out.grips = ['L', 'R'].map(S => handle(S));
     const elbow = 180 - Pf['DEF-ARM01.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p).angleTo(Pf['DEF-HAND.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p)) / DEG;
     out.readout = [['Codo', `${Math.round(elbow)}°`], ['Hombros', `${Math.round((barC.y - out.path.y) * 100)} cm bajo la barra`],
       ['Balanceo', `${th >= 0 ? '+' : ''}${Math.round(th / DEG)}°`], ['CdM–barra', `${((out.com - barC.z) * 100).toFixed(1)} cm`]];
@@ -4842,11 +4849,12 @@ const kettlebells = [0, 1].map(() => { const g = new THREE.Group(); scene.add(g)
   for (const x of [-0.075, 0.075]) { const post = withOutline(new THREE.CylinderGeometry(0.017, 0.017, 0.12, 10), ironMat); post.position.set(x * 0.9, -0.055, 0); post.rotation.z = -Math.sign(x) * 0.25; g.add(post); }
   const ball = withOutline(new THREE.SphereGeometry(0.11, 24, 16), ironMat); ball.position.y = -0.15; g.add(ball);
   return g; });
-// dominada con agarre neutro: asas paralelas (de delante a atrás) colgadas de un travesaño
+// dominada con agarre neutro: dos cuernos (las asas, de delante a atrás) que salen de una barra transversal en el extremo más
+// alejado del cuerpo (delante)
+const HORN = 0.26;
 const parallels = new THREE.Group(); scene.add(parallels);
-for (const x of [-1, 1]) { const h = withOutline(new THREE.CylinderGeometry(0.016, 0.016, 0.24, 12), steelMat); h.rotation.x = Math.PI / 2; h.userData.x = x; parallels.add(h);
-  const post = withOutline(new THREE.CylinderGeometry(0.012, 0.012, 0.1, 8), steelMat); post.userData.x = x; post.userData.post = true; parallels.add(post); }
-{ const cross = withOutline(new THREE.CylinderGeometry(0.016, 0.016, 1, 12), steelMat); cross.rotation.z = Math.PI / 2; cross.userData.cross = true; parallels.add(cross); }
+for (const x of [-1, 1]) { const h = withOutline(new THREE.CylinderGeometry(0.016, 0.016, HORN, 12), steelMat); h.rotation.x = Math.PI / 2; h.userData.x = x; parallels.add(h); }
+{ const cross = withOutline(new THREE.CylinderGeometry(0.018, 0.018, 1, 12), steelMat); cross.rotation.z = Math.PI / 2; cross.userData.cross = true; parallels.add(cross); }
 // bisagra: bloques bajo los discos y cajón bajo los pies (altura de los discos / de los pies); se escalan en alto
 const boxMat = toon(0x5a6170);
 const blocks = [-1, 1].map(() => { const b = withOutline(new THREE.BoxGeometry(0.3, 1, 0.5), boxMat); scene.add(b); return b; });
@@ -4876,8 +4884,8 @@ function placeProps(ex, r) {
   barMesh.visible = impl === 'barra' && !neutral;
   parallels.visible = !!neutral;
   if (neutral) { const g = r.grips, half = Math.abs(g[0].x - g[1].x) / 2;
-    parallels.children.forEach(c => { if (c.userData.cross) { c.position.set(0, g[0].y + 0.1, g[0].z); c.scale.set(1, 2 * half + 0.1, 1); }
-      else if (c.userData.post) c.position.set(c.userData.x * half, g[0].y + 0.05, g[0].z);
+    // la mano en el centro del cuerno; la barra transversal, en su extremo de delante y algo más ancha que los cuernos
+    parallels.children.forEach(c => { if (c.userData.cross) { c.position.set(0, g[0].y, g[0].z + HORN / 2); c.scale.set(1, 2 * half + 0.16, 1); }
       else c.position.set(c.userData.x * half, g[0].y, g[0].z); }); }
   const I = IMPL[impl];
   dumbbells.forEach((g, i) => { g.visible = isDb; if (isDb) { g.position.copy(r.grips[i]); g.quaternion.setFromUnitVectors(X, handleAxis(I, i ? -1 : 1, r.bar.axis).normalize()); } });
