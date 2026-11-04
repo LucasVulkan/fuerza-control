@@ -22,7 +22,10 @@ bpy.ops.wm.open_mainfile(filepath=src)
 sc = bpy.context.scene; vl = bpy.context.view_layer
 rig = bpy.data.objects['Armature_Mannequin']; body = bpy.data.objects['Mannequin']
 FRAMES = {'start': 1, 'end': 30}
-EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_')) and a.frame_range[1] >= FRAMES['end']])
+def bone_action(a):
+    """Solo acciones del rig (canales de pose.bones): mover un objeto con autokey crea acciones de objeto (FF_asa_28.LAction)."""
+    return any(fc.data_path.startswith('pose.bones') for l in a.layers for st in l.strips for sl in a.slots if (cb := st.channelbag(sl)) for fc in cb.fcurves)
+EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_')) and a.frame_range[1] >= FRAMES['end'] and bone_action(a)])
 print('ejercicios:', EXERCISES)
 
 def mids(ex):

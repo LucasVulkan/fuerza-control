@@ -22,6 +22,11 @@ const { open } = require('./harness');
       const atEdge = Math.abs(r1.com - r1.mid) > 0.059;   // el CdM llega al borde de la zona del pie: pivota a propósito
       if (dv > 0.005 && !atEdge) { fail++; out.push(`${ex} s=${s}: ¡con la mitad de carga la pose cambia ${(dv * 1000).toFixed(0)} mm con el cuerpo por defecto!`); }
     }
+    // implementos (X02): las manos llegan al asa todo el recorrido
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge')) for (const impl of ['mancuernas', 'mancuernas_lado', 'kettlebell']) {
+      const sp = { ...S.per[ex] }; S.exId = ex; S.per[ex].impl = impl;
+      for (let i = 0; i <= 10; i++) { const r = D.evaluate(ex, i / 10), w = r.warns.find(x => x.includes('no llega a la barra')); if (w) { fail++; out.push(`${ex} ${impl} s=${i / 10}: ¡${w}!`); break; } }
+      S.per[ex] = sp; }
     // sin carga, el CdM de la bisagra no sale del pie: pivota sobre el tobillo (antes: «se caería», 12 cm detrás)
     for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge')) for (let i = 0; i <= 10; i++) {
       const sp = { ...S.per[ex] }; S.exId = ex; S.per[ex].load = 0; const r = D.evaluate(ex, i / 10); S.per[ex] = sp;
@@ -40,7 +45,8 @@ const { open } = require('./harness');
         S.body = sb; S.per[ex] = sp; }
       // sin saltos: ningún paso de la barra entre frames contiguos puede ser más del doble que el mayor de sus dos vecinos
       // (antes el solver saltaba de solución: hasta 20 cm de golpe en un frame). Vale aunque el recorrido se recorte.
-      for (const [nm, body, prm] of [...hcases, ['bloques', {}, { plates: 12 }], ['déficit', {}, { feet: 8 }], ['más hondo', {}, { depth: -15 }], ['menos hondo', {}, { depth: 15 }]]) {
+      for (const [nm, body, prm] of [...hcases, ['bloques', {}, { plates: 12 }], ['déficit', {}, { feet: 8 }], ['más hondo', {}, { depth: -15 }], ['menos hondo', {}, { depth: 15 }],
+        ['mancuernas', {}, { impl: 'mancuernas' }], ['a los lados', {}, { impl: 'mancuernas_lado' }], ['kettlebell', {}, { impl: 'kettlebell' }]]) {
         const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
         const st = []; let prev; for (let i = 0; i <= 40; i++) { const c = D.evaluate(ex, i / 40).bar.center; if (prev) st.push(c.distanceTo(prev)); prev = c.clone(); }
         const worst = Math.max(...st.map((x, i) => x / Math.max(st[i - 1] ?? 0, st[i + 1] ?? 0, 0.003)));

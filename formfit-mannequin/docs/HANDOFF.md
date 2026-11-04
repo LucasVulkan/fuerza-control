@@ -358,6 +358,12 @@ Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, ca
 - **Altura de los pies** (`feet`): se resuelve con los pies en el suelo y al final se sube todo el cuerpo y la barra. **Altura de los discos** (`plates`): bloques bajo los discos. El visor dibuja las cajas (`blocks`, `footBox`).
 - Aviso de isquios: tronco por encima de 85° con la rodilla flexionada menos de 45°.
 
+**Implementos y manos** (spec X02). Ajuste `impl` (chips): barra · mancuernas (delante) · a los lados · kettlebell. Catálogo `IMPL`: grosor del asa (`d`), altura del asa con el implemento en el suelo (`rest`: barra 22,5 cm, mancuernas 10, kettlebell 26; la usan el punto bajo y el recorte), `side` (a los lados: asa de delante a atrás, agarre neutro, junto a los muslos a `hipHalf + 12 cm`) y `half` (kettlebell: las dos manos juntas en el asa, a ±5 cm).
+- Con el implemento de la acción (la barra) no cambia nada: dedos y puño de la acción (fidelidad).
+- Con otro (`implHand`): dedos y hueco del puño mezclando `hands['28']` y `hands['40']` por el grosor; la mano gira lo mínimo para que el eje del asa en la mano coincida con el del implemento y, de los dos sentidos, se queda el que deja la palma atrás (asa transversal) o hacia dentro (a los lados). La muñeca va a `asa − hueco` y el brazo, recto, por IK.
+- El centro de masas usa la carga en la línea de las asas (como la barra). El visor dibuja mancuernas (asa + cabezas hexagonales) y kettlebell (bola + asa) en `r.grips`.
+- `tests/balance.js`: con los tres implementos, las manos llegan al asa todo el recorrido y la barra no salta.
+
 **Ejercicios vecinos** (spec X01 §2.14): cada uno tiene su acción y los mismos ajustes los acercan. El rumano con `knees` +8 y `depth` −40 queda en tronco 70°, muslo 66° y barra en el suelo; el convencional por defecto está en 72° y 65° (`tests/shots/rdl_as_conventional.png`).
 
 **Ojo con el rumano:** en este modelo (brazos colgando, hombros sobre la barra, barra sobre el mediopié) bajar la barra a media tibia exige ~58° de flexión de rodilla, y aun a la altura de la rodilla ~47°. Una rodilla más recta solo deja inclinar el tronco ~25°. Un rumano más «rígido» se retoca a mano en Blender o se recorta con `depth`.

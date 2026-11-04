@@ -4,11 +4,11 @@
 > En corto: Cambiar de barra a mancuernas o kettlebell (y de agarre prono a neutro) sin hacer otra animación: el implemento lo pone la app, la mano se coloca sola en su asa y los dedos se cierran según el grosor, a partir de dos o tres manos hechas en Blender.
 > Inicio: 2026-11-04
 > Fase X02-01 · hecho · Manos de referencia en Blender y su exportación · §3
-> Fase X02-02 · pendiente · Dedos por grosor y hueco del puño desde la mano de referencia · §4
-> Fase X02-03 · pendiente · Catálogo de implementos en el visor · §5
-> Fase X02-04 · pendiente · Peso muerto y rumano con mancuernas y kettlebell · §6
+> Fase X02-02 · hecho · Dedos por grosor y hueco del puño desde la mano de referencia · §4
+> Fase X02-03 · hecho · Catálogo de implementos en el visor · §5
+> Fase X02-04 · hecho · Peso muerto y rumano con mancuernas y kettlebell · §6
 >
-> Estado: escrita el 4-nov-2026 tras hablarlo con el usuario. **X02-01 hecha** el 4-nov (rama `feat/x01-peso-muerto`): script `blender/ejercicios/_manos.py` y exportación de `hands`; las tres manos están creadas en el `.blend` como punto de partida y **falta que el usuario las retoque**. Va en la rama del maniquí ([X01](X01-maniqui-3d.md), `formfit-mannequin/`). Dominada y remos, que usan este sistema, están en X01-13 (§16 de X01).
+> Estado: escrita el 4-nov-2026 tras hablarlo con el usuario. **X02-01…04 hechas** el 4-nov (rama `feat/x01-peso-muerto`, sin probar por el usuario): script `blender/ejercicios/_manos.py` y exportación de `hands` (el usuario ya retocó las tres manos y movió las asas); en el visor, dedos y hueco por grosor, implementos barra · mancuernas delante · a los lados · kettlebell y su selector en peso muerto y rumano. De §5 faltan barra fija, asas paralelas y maneral de polea: llegan con la dominada y los remos (X01-13). Va en la rama del maniquí ([X01](X01-maniqui-3d.md), `formfit-mannequin/`). Dominada y remos, que usan este sistema, están en X01-13 (§16 de X01).
 
 ## 1. Contexto
 
@@ -109,13 +109,14 @@ Primer uso real, porque el movimiento ya existe y se ve enseguida si funciona:
 
 - Dedos calculados falange a falange para abrazar cualquier cilindro (posible más adelante si la mezcla no basta).
 - Agarre de gancho, falso agarre, correas: cada uno sería una mano de referencia más cuando haga falta.
+- **Una mancuerna con las dos manos** (sentadilla goblet: las palmas sujetan la cabeza, el agarre es curvo). Idea del usuario (4-nov): otra mano de referencia (`_mano.copa`) con su propia referencia de forma, o la acción del ejercicio con sus dedos; se decide al hacer la goblet.
 - Swing, clean y demás movimientos propios de la kettlebell: tienen su acción.
 
 ## Fases
 
 | Fase | Qué | Depende de | Estado |
 |---|---|---|---|
-| X02-01 | Manos de referencia en Blender y exportación | — | hecho (por retocar y probar) |
-| X02-02 | Dedos por grosor y hueco del puño | X02-01 | pendiente |
-| X02-03 | Catálogo de implementos en el visor | — | pendiente |
-| X02-04 | Peso muerto y rumano con mancuernas y kettlebell | X02-02, X02-03 | pendiente |
+| X02-01 | Manos de referencia en Blender y exportación | — | hecho (manos retocadas por el usuario el 4-nov) |
+| X02-02 | Dedos por grosor y hueco del puño | X02-01 | hecho |
+| X02-03 | Catálogo de implementos en el visor | — | hecho (barra fija, paralelas y maneral, con la dominada y los remos) |
+| X02-04 | Peso muerto y rumano con mancuernas y kettlebell | X02-02, X02-03 | hecho |
