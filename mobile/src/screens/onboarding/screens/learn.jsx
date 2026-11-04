@@ -138,32 +138,52 @@ function Input({ goTo }) {
   const styles = useThemedStyles(makeStyles);
   const stored     = useStore((s) => s.profile.scrubRuler ?? true);
   const setProfile = useStore((s) => s.setProfile);
-  // Elegir una tarjeta solo cambia cómo responde la fila; se guarda con «Me quedo con este».
+  // Elegir una tarjeta solo cambia cómo responde la fila; se guarda con «Me quedo con…».
   const [ruler, setRuler] = useState(stored);
+  // Qué se ha probado: lleva la etiqueta en su tarjeta y pasa el paso que toca al 2.
+  const [tried, setTried] = useState({});
+  const mode  = ruler ? 'ruler' : 'swipe';
+  const onTried = (m) => setTried((o) => (o[m] ? o : { ...o, [m]: true }));
+  const K = 'onboardingFlow.learn.input';
   return (
     <FlowBody
       footer={(
         <FlowFooter
           primary={{
-            label: t('onboardingFlow.learn.input.keep'),
+            label: t(`${K}.keep_${mode}`),
             onPress: () => { setProfile({ scrubRuler: ruler }); goTo('a_cards'); },
           }}
         />
       )}
     >
-      <FlowTitle text={t('onboardingFlow.learn.input.title')} sub={t('onboardingFlow.learn.input.sub')} />
-      <Rise index={2}><ScrubDemo ruler={ruler} /></Rise>
+      <FlowTitle text={t(`${K}.title`)} sub={t(`${K}.sub`)} />
+      <Rise index={2}><Step n={1} on={!tried[mode]} text={t(`${K}.step1`)} /></Rise>
+      <Rise index={2}><ScrubDemo ruler={ruler} ghost onTried={onTried} /></Rise>
+      <Rise index={3}><Step n={2} on={!!tried[mode]} text={t(`${K}.step2`)} /></Rise>
       <View style={styles.opts} accessibilityRole="radiogroup">
         <FlowOption
           index={3} selected={ruler} onPress={() => setRuler(true)}
-          title={t('onboardingFlow.learn.input.ruler')} desc={t('onboardingFlow.learn.input.rulerDesc')}
+          title={t(`${K}.ruler`)} desc={t(`${K}.rulerDesc`)} tag={tried.ruler ? t(`${K}.tried`) : undefined}
         />
         <FlowOption
           index={4} selected={!ruler} onPress={() => setRuler(false)}
-          title={t('onboardingFlow.learn.input.swipe')} desc={t('onboardingFlow.learn.input.swipeDesc')}
+          title={t(`${K}.swipe`)} desc={t(`${K}.swipeDesc`)} tag={tried.swipe ? t(`${K}.tried`) : undefined}
         />
       </View>
     </FlowBody>
+  );
+}
+
+/** El rótulo de un paso de la pantalla, con su número en lima cuando es el que toca. */
+function Step({ n, on, text }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.step}>
+      <View style={[styles.stepNum, on && styles.stepNumOn]}>
+        <Text style={[styles.stepNumTxt, on && styles.stepNumTxtOn]}>{n}</Text>
+      </View>
+      <Text style={styles.stepTxt}>{text}</Text>
+    </View>
   );
 }
 
@@ -348,6 +368,12 @@ const makeStyles = (th) => StyleSheet.create({
 
   // a_input
   opts: { gap: spacing.md },
+  step:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2, marginBottom: spacing.sm2 },
+  stepNum:      { width: 20, height: 20, borderRadius: 10, backgroundColor: th.colors.surface2, alignItems: 'center', justifyContent: 'center' },
+  stepNumOn:    { backgroundColor: th.colors.accent },
+  stepNumTxt:   { ...textStyles.labelStrong, color: th.colors.text },
+  stepNumTxtOn: { color: th.colors.onAccent },
+  stepTxt:      { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
 
   // a_cards
   dots:  { flexDirection: 'row', gap: spacing.sm, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg, height: DOT },

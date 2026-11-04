@@ -441,7 +441,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
       {/* Lista de ejercicios (siempre visible) */}
       {displayedExercises.length === 0 ? (
         <Rise index={5}>
-        baseLog.length === 0 ? (
+        {baseLog.length === 0 ? (
           <EmptyState
             style={styles.emptyState}
             ghost="line"
@@ -455,7 +455,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
             icon={ROW_ICON.progress}
             text={search.trim() ? t('stats.emptyNoMatch') : t('stats.noData')}
           />
-        )
+        )}
         </Rise>
       ) : (
         <Reanimated.View style={styles.exerciseList} layout={LinearTransition.duration(200)}>

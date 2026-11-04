@@ -72,7 +72,11 @@ const MIN_SETS_TIER1 = 3;
 
 const groupOf = (ex, allExercises) => allExercises[ex.exerciseId]?.primaryGroup;
 
-/** Ciclos por semana: es lo que multiplica el volumen del ciclo. */
+/**
+ * Ciclos por semana. La app no lo usa —las sesiones de una etapa son los
+ * entrenos de la semana, así que es 1—; ponytail: lo usan los tests para repetir
+ * una sesión sin escribirla dos veces.
+ */
 function cycleSpeed(sessions, daysPerWeek) {
   if (!daysPerWeek || !sessions.length) return 1;
   return daysPerWeek / sessions.length;

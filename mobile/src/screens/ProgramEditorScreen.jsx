@@ -23,6 +23,7 @@ import StageCards from '../components/ui/StageCards';
 import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { useSlidePages } from '../components/ui/useSlidePages';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import InfoSection from '../components/ui/InfoSection';
 import SwipeRow from '../components/ui/SwipeRow';
 import StepField from '../components/ui/StepField';
 import { DragIcon, LockIcon, GearIcon } from '../components/ui/EditorIcons';
@@ -126,6 +127,7 @@ export default function ProgramEditorScreen({ navigation }) {
   const [selectedStageIdx, setSelectedStageIdx] = useState(activeProgram?.currentStageIndex ?? 0);
   const [stageSheetOpen, setStageSheetOpen]     = useState(false);
   const [openRowId, setOpenRowId]               = useState(null); // tarjeta con el panel de acciones abierto
+  const [settingsOpen, setSettingsOpen]         = useState(false);
 
   const selectedStage = activeProgram?.stages?.[selectedStageIdx] ?? null;
   const [stageName, setStageName] = useState(selectedStage?.name ?? '');
@@ -593,16 +595,24 @@ export default function ProgramEditorScreen({ navigation }) {
         </Reanimated.View>
         </Reanimated.View>
 
-        {/* ── Qué sesión toca (U13 §8-9) ── */}
-        <View style={styles.section}>
-          <Text style={styles.secTitle}>{t('editor.sessionOrderTitle').toUpperCase()}</Text>
-          <SegmentedControl
-            options={['rotation', 'weekly', 'free'].map((id) => ({ id, label: t(`editor.sessionOrder_${id}`) }))}
-            value={activeProgram.sessionOrder ?? 'rotation'}
-            onChange={(id) => setProgramSessionOrder(editingId, id)}
-          />
-          <Text style={styles.stageHint}>{t(`editor.sessionOrderHint_${activeProgram.sessionOrder ?? 'rotation'}`)}</Text>
-        </View>
+        {/* ── Ajustes: lo secundario del programa, plegado para que no compita
+            con las sesiones. Hoy solo el orden de las sesiones (U13 §8-9). ── */}
+        <InfoSection
+          title={t('editor.settingsTitle')}
+          summary={t(`editor.sessionOrder_${activeProgram.sessionOrder ?? 'rotation'}`)}
+          open={settingsOpen}
+          onToggle={() => setSettingsOpen((o) => !o)}
+        >
+          <View style={styles.section}>
+            <Text style={styles.settingLabel}>{t('editor.sessionOrderTitle').toUpperCase()}</Text>
+            <SegmentedControl
+              options={['rotation', 'weekly', 'free'].map((id) => ({ id, label: t(`editor.sessionOrder_${id}`) }))}
+              value={activeProgram.sessionOrder ?? 'rotation'}
+              onChange={(id) => setProgramSessionOrder(editingId, id)}
+            />
+            <Text style={styles.stageHint}>{t(`editor.sessionOrderHint_${activeProgram.sessionOrder ?? 'rotation'}`)}</Text>
+          </View>
+        </InfoSection>
 
       </Reanimated.ScrollView>
 
@@ -818,12 +828,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:               spacing.md,
   },
   section:  { gap: spacing.xs2 },
-  secTitle: {
-    ...textStyles.caps,
-    color:      th.colors.mutedLight,
-    paddingTop: spacing.md,
-  },
   stageHint: { ...textStyles.body, color: th.colors.mutedLight },
+  settingLabel: { ...textStyles.caps, color: th.colors.mutedLight },
 
   // ── Rótulo de las etapas ── pegado a las tarjetas (P14 §3.2)
   // 20 bajo la tarjeta de identidad: el gap de la página (10) más este margen.

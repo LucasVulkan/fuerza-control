@@ -15,21 +15,21 @@ const WEEK = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 4,
 export const suggestedWeek = (n) => WEEK[Math.min(7, Math.max(1, n || 1))];
 
 /**
- * `tuned`: el resultado de `adaptArchetype`. `days`: los días por semana elegidos;
- * `minutes`: el tiempo de sesión elegido (decide si cuenta el calentamiento).
+ * `tuned`: el resultado de `adaptArchetype`. Sus sesiones son los entrenos de la
+ * semana (los días respondidos no cuentan); `minutes`: el tiempo de sesión elegido (decide si cuenta el calentamiento).
  * Devuelve las sesiones distintas, los minutos y las series de una sesión media,
  * las series por semana de los grupos que más trabaja (de mayor a menor) y los
  * días de la semana sugerida y las semanas que dura el programa (suma de
  * `durationWeeks` de sus fases; 0 si la plantilla no declara fases).
  */
-export function cardModel(tuned, { allEx, days, minutes }) {
+export function cardModel(tuned, { allEx, minutes }) {
   const sessions = uniqueSessionTemplates(tuned.program, tuned.sessionTemplates);
   const warmup   = includesWarmup(minutes);
   const mins     = sessions.map((s) => estimateSessionSec(s.exercises ?? [], allEx, { includeWarmup: warmup }) / 60);
   const n        = sessions.length || 1;
-  const perWeek  = days || sessions.length;
 
-  const weekly = weeklySetsByGroup(sessions.map((s) => s.exercises ?? []), perWeek, allEx);
+  // Las sesiones son los entrenos de la semana: sin multiplicar por los días respondidos.
+  const weekly = weeklySetsByGroup(sessions.map((s) => s.exercises ?? []), undefined, allEx);
   const groups = Object.entries(weekly)
     .filter(([g, sets]) => g !== 'full_body' && sets >= 0.5)
     .map(([g, sets]) => [g, Math.round(sets)])
@@ -41,7 +41,7 @@ export function cardModel(tuned, { allEx, days, minutes }) {
     minutes: Math.round(mins.reduce((a, b) => a + b, 0) / n),
     sets:    Math.round(totalSetsOf(sessions.map((s) => s.exercises)) / n),
     groups,
-    week:    suggestedWeek(perWeek),
+    week:    suggestedWeek(sessions.length),
     weeks:   totalWeeksOf(tuned.phases),
   };
 }

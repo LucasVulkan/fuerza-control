@@ -297,9 +297,9 @@ export function adaptArchetype(archetype, answers) {
   const discipline = answers.discipline ?? archetype.discipline;
   const volumeEmphasis = archetype.volumeEmphasis ?? [];
 
-  // Volumen semanal del ciclo contra la banda del nivel (§5.4).
+  // Volumen semanal del ciclo contra la banda del nivel (§5.4). Sin los días
+  // respondidos: las sesiones de la plantilla son los entrenos de la semana.
   const normalized = normalizeWeeklyVolume(built.map((b) => b.exercises), {
-    daysPerWeek: answers.daysPerWeek,
     level,
     discipline,
     volumeEmphasis,

@@ -51,9 +51,10 @@ describe('cardModel', () => {
     expect(corto.minutes).toBeLessThan(largo.minutes);
   });
 
-  it('el volumen semanal escala con los días: 6 días con una plantilla de 3 sesiones duplican el del ciclo', () => {
+  it('el volumen semanal es el de sus sesiones: los días respondidos no lo cambian', () => {
     const tres = modelOf('fullbody_hypertrophy_intermediate', {}, { days: 3 });
     const seis = modelOf('fullbody_hypertrophy_intermediate', { daysPerWeek: 6 }, { days: 6 });
-    expect(seis.groups[0][1]).toBeGreaterThan(tres.groups[0][1]);
+    expect(seis.groups).toEqual(tres.groups);
+    expect(seis.week).toEqual([0, 2, 4]);   // 3 sesiones, 3 días
   });
 });

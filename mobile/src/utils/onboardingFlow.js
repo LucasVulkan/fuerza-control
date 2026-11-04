@@ -28,7 +28,7 @@ const SECTION_OF = {
   units: 0, theme: 0,
   role: 1, t_clients: 1, t_groups: 1, s_choice: 1,
   t_client: 2, t_account: 2, t_code: 2, t_program: 2, t_catalog: 2, t_assign: 2, t_invite: 2, t_self: 2,
-  c_code: 2, c_confirm: 2, c_linked: 2, c_ask: 2, c_wait: 2, c_copy: 2,
+  c_code: 2, c_confirm: 2, c_linked: 2, c_ask: 2, c_wait: 2,
   s_level: 2, s_days: 2, s_goal: 2, s_time: 2, s_props: 2,
   b_sessions: 2, b_exercise: 2, b_volume: 2, b_done: 2,
   n_source: 2, n_templates: 2, n_done: 2,
@@ -138,7 +138,7 @@ export function skipTarget(id, a = {}, entry = 'first') {
     case 't_program': case 't_catalog': case 't_assign': return afterProgram(a);
     case 't_invite': return 't_self';
     case 't_self': return 'a_cards';
-    case 'c_code': case 'c_confirm': case 'c_ask': case 'c_wait': case 'c_copy': case 'c_linked': return 'a_home';
+    case 'c_code': case 'c_confirm': case 'c_ask': case 'c_wait': case 'c_linked': return 'a_home';
     case 's_level': case 's_choice': case 's_days': case 's_goal': case 's_time': return 's_props';
     case 's_props': return 'a_home';
     case 'a_home': case 'a_input': case 'a_cards': return 'done';

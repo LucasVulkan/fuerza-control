@@ -70,7 +70,7 @@ const FINGER_IN = 320;   // el dedo aparece antes de que salga la regla
 const PRESS     = 0.9;   // escala al apretar
 
 /** El dedo: trazo claro y relleno oscuro translúcido, los dos fundidos hacia abajo. */
-function Finger({ x, y, o, s, color }) {
+export function Finger({ x, y, o, s, color }) {
   const anim = useAnimatedStyle(() => ({
     opacity:   o.get(),
     transform: [{ translateX: x.get() - TIP.x }, { translateY: y.get() - TIP.y }, { scale: s.get() }],

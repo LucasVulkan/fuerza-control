@@ -360,7 +360,7 @@ function Done({ goTo }) {
     } catch (err) {
       // Sin conexión no es un fallo: el programa queda pendiente y sale solo (U15-01).
       if (!isNetworkError(err)) {
-        showToast(t(`${K}.done.sendFailed`), 3500, 'error');
+        showToast(err?.message || t(`${K}.done.sendFailed`), 3500, 'error');
         setBusy(false);
         return;
       }

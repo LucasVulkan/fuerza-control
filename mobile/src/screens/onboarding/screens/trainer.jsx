@@ -254,6 +254,9 @@ function Account({ goTo }) {
   async function pick(how) {
     if (busy.current) return;
     setError(null);
+    // Ya creó su código y volvió atrás: se le enseña otra vez, no se crea otro.
+    const ts = useStore.getState().trainerSync;
+    if (how === 'code' && ts.userId && ts.code) { goTo('t_code'); return; }
     if (how !== 'code' && acct.isExpoGo) { setError(t('sync.onlyInstalled')); return; }
     busy.current = true;
     // El nombre antes de entrar: si ya hay uno, Google o Apple no lo pisan.
@@ -307,6 +310,7 @@ function Account({ goTo }) {
             chevron
             title={t(`${K}.account.${how}`)}
             desc={t(`${K}.account.${how}Desc`)}
+            tag={how === 'google' ? t(`${K}.account.recommended`) : undefined}
             disabled={acct.loading}
             onPick={() => pick(how)}
           />
@@ -406,7 +410,7 @@ function Program({ goTo }) {
 
   return (
     <FlowBody footer={<FlowFooter secondary={[{ label: t(`${K}.program.later`), onPress: later }]} />}>
-      <FlowTitle text={t(`${K}.program.title`, { name })} sub={t(`${K}.program.sub`)} />
+      <FlowTitle text={t(`${K}.program.title`, { name })} sub={t(`${K}.program.sub`, { name })} />
       <View style={st.opts}>
         <FlowOption
           index={2}

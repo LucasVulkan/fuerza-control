@@ -8,7 +8,7 @@
  * `goTo(id)`. La lógica de conectarse (validar, avisos, historial, conectar) es
  * la de `ClientCodeModal`, extraída a `useClientCode`.
  *
- * Maqueta: docs/mockups/onboarding-2.html (c_app … c_copy).
+ * Maqueta: docs/mockups/onboarding-2.html (c_app … c_wait).
  */
 import { useEffect, useState } from 'react';
 import { View, Share, Linking, StyleSheet } from 'react-native';
@@ -161,7 +161,7 @@ function Code({ goTo }) {
               chevron
               title={t('onboardingFlow.coached.noapp.copy')}
               desc={t('onboardingFlow.coached.noapp.copyDesc')}
-              onPick={() => { noApp(); goTo('c_copy'); }}
+              onPick={() => { noApp(); startBuilder(goTo, 'copy'); }}
             />
           </View>
         </>
@@ -364,35 +364,7 @@ function Wait({ goTo }) {
   );
 }
 
-// ── Crear su programa en la app (§9.1) ────────────────────────────────────────
-
-function Copy({ goTo }) {
-  const { t } = useTranslation();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <FlowBody>
-      <FlowTitle text={t('onboardingFlow.coached.copy.title')} sub={t('onboardingFlow.coached.copy.sub')} />
-      <View style={styles.opts}>
-        <FlowOption
-          index={2}
-          chevron
-          title={t('onboardingFlow.coached.copy.hand')}
-          desc={t('onboardingFlow.coached.copy.handDesc')}
-          onPick={() => startBuilder(goTo, 'copy')}
-        />
-        <FlowOption
-          index={3}
-          chevron
-          title={t('onboardingFlow.coached.copy.similar')}
-          desc={t('onboardingFlow.coached.copy.similarDesc')}
-          onPick={() => goTo('s_level')}
-        />
-      </View>
-    </FlowBody>
-  );
-}
-
-export default { c_code: Code, c_confirm: Confirm, c_linked: Linked, c_ask: Ask, c_wait: Wait, c_copy: Copy };
+export default { c_code: Code, c_confirm: Confirm, c_linked: Linked, c_ask: Ask, c_wait: Wait };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 

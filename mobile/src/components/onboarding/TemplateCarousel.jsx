@@ -149,14 +149,14 @@ function Card({ card, index, width, height, allEx, language }) {
 }
 
 /** Las tarjetas de `entries`, ya ajustadas a las respuestas. */
-function useCards(entries, answers, days, minutes) {
+function useCards(entries, answers, minutes) {
   const exerciseLibrary = useStore((s) => s.exerciseLibrary);
   const customExercises = useStore((s) => s.customExercises);
   const allEx  = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const submit = useMemo(() => normalizeOnboardingAnswers(answers), [answers]);
   const cards  = useMemo(() => entries.map((entry) => ({
-    entry, ...cardModel(adaptArchetype(entry.archetype, submit), { allEx, days, minutes }),
-  })), [entries, submit, allEx, days, minutes]);
+    entry, ...cardModel(adaptArchetype(entry.archetype, submit), { allEx, minutes }),
+  })), [entries, submit, allEx, minutes]);
   return { cards, allEx };
 }
 
@@ -167,7 +167,7 @@ function useCards(entries, answers, days, minutes) {
 export function TemplateList({ entries, answers, days, minutes, pickedId, onPick }) {
   const { t } = useTranslation();
   const reduced = useReducedMotion();
-  const { cards } = useCards(entries, answers, days, minutes);
+  const { cards } = useCards(entries, answers, minutes);
   return (
     <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
       {cards.map((c, i) => (
@@ -198,7 +198,7 @@ export default function TemplateCarousel({ entries, answers, days, minutes, onIn
   const styles   = useThemedStyles(makeStyles);
   const language = useStore((s) => s.profile?.language ?? 'es');
   const [idx, setIdx] = useState(0);
-  const { cards, allEx } = useCards(entries, answers, days, minutes);
+  const { cards, allEx } = useCards(entries, answers, minutes);
 
   // Lo que queda del scroll de la pantalla bajo el carrusel, menos su margen, los puntos y el relleno de abajo.
   const cardH = Math.max(CARD_MIN_H, availableH - spacing.lg - DOTS_H - spacing.lg);

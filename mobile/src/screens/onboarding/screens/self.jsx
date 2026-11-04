@@ -223,6 +223,7 @@ function Time({ goTo }) {
       kind="time"
       id={minutes}
       title={t('onboardingFlow.self.time.title')}
+      sub={t('onboardingFlow.self.time.sub')}
       cta={t('onboardingFlow.self.time.cta')}
       onNext={() => goTo('s_props')}
     >

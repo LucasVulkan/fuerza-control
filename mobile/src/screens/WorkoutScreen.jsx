@@ -806,7 +806,7 @@ export default function WorkoutScreen() {
             <Text style={styles.finishHint}>{t('workout.finishHint')}</Text>
             <View style={styles.finishStats}>
               <View style={styles.finishStat}>
-                <Text style={styles.finishStatNum}>{byBlocks ? progress.blocksDone : progress.setsDone}</Text>
+                <Text style={styles.finishStatNum}>{byBlocks ? progress.blocksDone : progress.setsLogged}</Text>
                 <Text style={styles.finishStatLbl}>{t(byBlocks ? 'workout.finishStatBlocks' : 'workout.finishStatSets')}</Text>
               </View>
               {!activeSession.logOnly && (

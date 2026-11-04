@@ -1,4 +1,5 @@
 import { isExerciseDone } from './exerciseStatus';
+import { doneSets } from './sessionRecap';
 
 /**
  * activeSessionSummary — cómo se llama la sesión a medias y cuánto lleva.
@@ -79,11 +80,12 @@ export function activeSessionProgress(state) {
   const blocks = [...(tpl?.blocks ?? []), ...(isFree ? (a.freeBlocks ?? []) : [])];
   const blockDone = (b) => a.blockState?.[b.id]?.finishedAt != null;
 
-  let setsDone = 0, setsTotal = 0, exercisesDone = 0, volumeKg = 0;
+  let setsDone = 0, setsLogged = 0, setsTotal = 0, exercisesDone = 0, volumeKg = 0;
   const pending = [];
   for (const ex of exercises) {
     const done = ex.sets.filter((s) => s.done);
     setsDone  += done.length;
+    setsLogged += doneSets(ex).length;   // lo que guarda el recap: marcadas o con datos
     setsTotal += ex.sets.length;
     for (const s of done) {
       const w = parseFloat(s.weight), r = parseFloat(s.reps);
@@ -96,7 +98,7 @@ export function activeSessionProgress(state) {
   for (const b of blocks) if (!blockDone(b)) pending.push({ kind: 'block', id: b.id });
 
   return {
-    setsDone, setsTotal,
+    setsDone, setsLogged, setsTotal,
     exercisesDone, exercisesTotal: exercises.length,
     blocksDone, blocksTotal: blocks.length,
     volumeKg: Math.round(volumeKg),
