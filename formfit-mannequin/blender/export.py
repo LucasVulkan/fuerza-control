@@ -153,5 +153,27 @@ for ex in EXERCISES:
             fr['s'] = (f - FRAMES['start']) / (FRAMES['end'] - FRAMES['start'])
             out['exercises'][ex].setdefault('mid', []).append(fr)
         else: out['exercises'][ex][key] = fr
+# ---------- manos de referencia (spec X02): acciones `_mano.<nombre>` (blender/ejercicios/_manos.py) y sus asas FF_asa_<nombre>.L/R
+#   fingers: giro de cada hueso de la mano (dedos, palma, pulgar) relativo a DEF-HAND (igual en Blender y en glTF: C se cancela)
+#   hollow: centro y eje del asa en los ejes de DEF-HAND (los ejes locales del hueso se conservan en glTF)
+def under(n, root):
+    while n:
+        n = PARENT[n]
+        if n == root: return True
+    return False
+out['hands'] = {}
+for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
+    use(act.name); sc.frame_set(1); sc.frame_set(1)
+    name = act.name[len('_mano.'):]; d = act.get('ff_diametro') or None; ent = {'d': d}
+    for S in 'LR':
+        hn = f'DEF-HAND.{S}'; Mh = rig.matrix_world @ pb[hn].matrix; qh = Mh.to_quaternion(); Rinv = qh.to_matrix().inverted()
+        e = {'fingers': {n: quat((qh.inverted() @ (rig.matrix_world @ pb[n].matrix).to_quaternion()).to_matrix()) for n in DEF if under(n, hn)}}
+        ob = bpy.data.objects.get(f'FF_asa_{name}.{S}')
+        if ob:
+            e['hollow'] = {'p': list(Rinv @ (ob.matrix_world.translation - Mh.translation)),
+                           'axis': list((Rinv @ (ob.matrix_world.to_3x3() @ Vector((0, 0, 1)))).normalized())}
+        ent[S] = e
+    out['hands'][name] = ent
+print('manos de referencia:', list(out['hands']) or 'ninguna (blender/ejercicios/_manos.py las crea)')
 json.dump(out, open(os.path.join(outdir, 'poses.json'), 'w'))
 print('OK', os.listdir(outdir))

@@ -160,6 +160,12 @@ Recalcular borra los retoques a mano de esa acción: primero deslizadores, luego
 
 **Acciones selladas.** Las tres acciones originales solo keyaban algunos controles; el resto se quedaba con lo que dejara la acción anterior, así que la pose exportada **dependía del orden** (al meter `deadlift` entre medias, la frontal cambiaba 7 cm y la prensa 2 m). `ffpose.py … sellar back_squat,front_squat,leg_press` keyó en cada una lo que heredaba en el orden de siempre: el export es idéntico y ya no depende del orden.
 
+**Manos de referencia** (spec X02-01). `blender/ejercicios/_manos.py` crea en el archivo:
+- la colección `FF_asas` con cilindros de referencia `FF_asa_28.L/R` y `FF_asa_40.L/R` (28 y 40 mm), donde va el asa en la mano en reposo (brazos en cruz, palma abajo: el asa va de delante a atrás);
+- las acciones `_mano.abierta`, `_mano.28` y `_mano.40`: el rig en reposo con los dedos cerrados sobre su asa, con `FINGER-MASTER` a −10°, −75° y −58° como punto de partida.
+
+**Se retocan a mano**: dedos, pulgar y, si hace falta, el propio cilindro (el exportador lee dónde está). Con los dedos cerrados por los controles, el cilindro queda en el hueco calculado desde los huesos, que van por dentro de la malla, así que de salida pisa un poco los dedos. El script no rehace una acción `_mano.` que ya exista (son retoques); para rehacerla, se borra antes. Como empieza por `_`, el panel FormFit no la carga y el exportador no la trata como ejercicio.
+
 ---
 
 ## 3. Exportación (`blender/export.py`)
@@ -183,6 +189,7 @@ blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [
 3. **Malla.** Copia `Mannequin` con Mirror y Subsurf nivel 1 aplicados (25.636 vértices, materiales `display01` y `display02`). Quita los Mask, pesa la malla al esqueleto limpio y borra los grupos que no son DEF.
 4. **`mannequin.glb`.** Solo malla, skin y materiales: sin animaciones ni texturas. Ocupa unos 1,8 MB.
 5. **`poses.json`.** Por cada ejercicio y cada clave (frame 1 = `start`, 30 = `end`), las transformaciones mundiales de cada DEF y los implementos.
+6. **Manos de referencia** (`hands`): por cada acción `_mano.<nombre>` y cada lado, el giro de cada hueso de la mano (dedos, palmas, pulgar) relativo a `DEF-HAND` y, si tiene asa `FF_asa_<nombre>.L/R`, su centro y su eje en los ejes de `DEF-HAND` (`hollow`). Los ejes locales del hueso se conservan en glTF, así que esos valores valen tal cual en el visor.
 
 ### 3.2 Convención de ejes (importante)
 
@@ -215,6 +222,13 @@ blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [
       "start": { "bones": {...}, "machine": { "p", "q" }, "plate": { "p", "normal", "up" }, "handles": [[...],[...]], ... },
       "end": { ... }
     }
+  },
+  "hands": {                                  // manos de referencia (X02)
+    "28": { "d": 0.028,
+            "L": { "fingers": { "<hueso de la mano>": [x,y,z,w] },   // giro relativo a DEF-HAND
+                   "hollow": { "p": [x,y,z], "axis": [x,y,z] } },     // asa en los ejes de DEF-HAND
+            "R": { ... } },
+    "abierta": { "d": null, "L": { "fingers": { ... } }, "R": { ... } }
   }
 }
 ```
