@@ -28,7 +28,8 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['row_bottom_side', 'barbell_row', 0, 'side', {}, {}], ['row_top_side', 'barbell_row', 1, 'side', {}, {}], ['row_top_45', 'barbell_row', 1, 'three', {}, {}],
     ['row_upright_top_side', 'barbell_row', 1, 'side', {}, { trunk: -30 }], ['row_flat_top_side', 'barbell_row', 1, 'side', {}, { trunk: 25 }],
     ['row_chest_top_side', 'barbell_row', 1, 'side', {}, { dest: -15 }], ['row_supine_top_45', 'barbell_row', 1, 'three', {}, { gripType: 'supino' }],
-    ['row_db_top_45', 'barbell_row', 1, 'three', {}, { impl: 'mancuernas' }], ['row_db_neutral_top_45', 'barbell_row', 0.8, 'three', {}, { impl: 'mancuernas_lado' }]];
+    ['row_db_top_45', 'barbell_row', 1, 'three', {}, { impl: 'mancuernas' }], ['row_db_supine_top_45', 'barbell_row', 1, 'three', {}, { impl: 'mancuernas', gripType: 'supino' }],
+    ['row_flat_chest_top_side', 'barbell_row', 1, 'side', {}, { trunk: 25, dest: -20 }], ['row_kb_wide_top_front', 'barbell_row', 1, 'front', {}, { impl: 'kettlebells', grip: 1.3 }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();

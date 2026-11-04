@@ -229,7 +229,7 @@ Una variante es otra acción del mismo ejercicio que el usuario quiere controlar
 - `ff_variant_of`: el ejercicio del que es variante (`"pullup"`);
 - `ff_grip`: qué agarre es (`"supino"`).
 
-El exportador las copia en `meta` (`of`, `grip`). En el visor no salen como ejercicio aparte: comparten los ajustes del suyo y las usa su chip de agarre (`variantFor`); detalle en §4.4c. Hoy: `Chinup` (`pullup`, `supino`). Sin variante, el agarre se consigue girando la mano de la acción de partida (manos de referencia, X02).
+El exportador las copia en `meta` (`of`, `grip`). En el visor no salen como ejercicio aparte: comparten los ajustes del suyo y las usa su chip de agarre (`variantFor`); detalle en §4.4c. Hoy: `Chinup` (`pullup`, `supino`) y `barbell_row_supino` (`barbell_row`, `supino`). Sin variante, el agarre se consigue girando la mano de la acción de partida (manos de referencia, X02).
 
 ---
 
@@ -469,8 +469,9 @@ Acción `barbell_row` (script `blender/ejercicios/barbell_row.py`): frame 1 braz
 
 - **Cuánto ha tirado** (`rowUp`): 0 con los brazos colgando, 1 con la barra en el tronco, por la distancia hombros→barra autorada.
 - **La barra**: el vector hombros→barra autorado × k; abajo sin girar (los brazos cuelgan en vertical), arriba girado con el tronco (`lerp` según `rowUp`). «Hacia dónde sube» (`dest`) la lleva a lo largo del tronco, también según `rowUp`. Con otro agarre o implemento, abajo el brazo sigue recto: la barra sube o baja lo que cambia la altura del brazo recto respecto al agarre autorado (diferencia: 0 por defecto).
-- **Codos**: el polo autorado, girado con el tronco según tira; en supino, girado 30° (`ROW_SUP_ELBOW`) alrededor de la línea hombro→muñeca para pegarlos.
-- **Agarre**: prono (el de la acción) o supino (la mano da media vuelta, `roll`, con la palma delante; manos de referencia). Implementos: barra, mancuernas, mancuernas neutras (a los lados), 2 kettlebells.
+- **Codos**: el polo autorado, girado con el tronco según tira.
+- **Agarre**: prono o supino. El supino es una **variante con acción propia**, `barbell_row_supino` (`ff_variant_of = "barbell_row"`, `ff_grip = "supino"`): copia del remo con cada mano girada media vuelta sobre su eje por el hueco del puño, para retocar a mano (girar la mano en el visor no coincidía y la barra subía mucho). Sin esa acción, la mano gira en el visor (`roll`) y el codo se pega 30° (`ROW_SUP_ELBOW`). Implementos: barra, mancuernas (también supinas: palma delante) y 2 kettlebells (a los lados; su anchura sigue a «Anchura de agarre», como las mancuernas).
+- **Inclinación con barra** (`ROW_BAR`): al inclinar más el tronco la barra iría tan al ombligo que atravesaría el pecho. Sube hacia el pecho en proporción (8 cm con la inclinación máxima, +25°) y el recorrido **se corta** cuando el codo llega a 120° (o al codo autorado del final, si es mayor), con frenada en el corte (`rowCut`, bisección sobre `evaluateRaw`, como `hingeCut`). También corta si «Hacia dónde sube» la lleva al pecho. Con mancuernas y kettlebells, recorrido completo.
 - **Equilibrio**: el tronco a la inclinación autorada + `trunk`, la rodilla con su ángulo autorado, y una secante sobre la tibia (la pierna gira sobre el tobillo) para que el CdM con la carga actual quede donde lo tiene la autorada en ese frame × k. **Sin recortarlo a la zona del pie** (a diferencia de la bisagra): en la autorada el CdM va de +0,4 a −7 cm al tirar, y recortarlo movía la cadera con los valores por defecto (61 mm en el frame 1).
 - Indicadores: tronco, codo, muslo, tibia, barra, CdM–mediopié, barra–mediopié y «Cadera» si cambia.
 
@@ -495,9 +496,9 @@ Acción `barbell_row` (script `blender/ejercicios/barbell_row.py`): frame 1 braz
 | hinge | `feet` | 0…20 cm (0) | Altura de los pies (déficit): el cuerpo sube con los pies; si la barra se apoya, lo que falta sale de la cadera. |
 | hinge | `stance`, `toes`, `grip`, `load` | — | Igual que en stand (agarre 0,9–1,3; carga 0–300 %, defecto 150). |
 | hinge | `impl` | chips (barra) | Implemento: barra · mancuernas · a los lados · 1 kettlebell · 2 kettlebells. Lo que empieza en el suelo solo admite barra y kettlebells. |
-| row | `impl` | chips (barra) | Barra · mancuernas · mancuernas neutras · 2 kettlebells. |
-| row | `gripType` | chips (prono) | Prono · supino (la mano gira; codos más pegados). Con mancuernas neutras no cuenta. |
-| row | `trunk` | −40…25° (0) | Inclinación del tronco sobre la autorada (55°): de 15° a 80°. Compensa la cadera. |
+| row | `impl` | chips (barra) | Barra · mancuernas · 2 kettlebells. |
+| row | `gripType` | chips (prono) | Prono · supino (su acción, `barbell_row_supino`; con mancuernas, palma delante). |
+| row | `trunk` | −40…25° (0) | Inclinación del tronco sobre la autorada (60° → 54° en la acción). Compensa la cadera; con barra, hacia el pecho y recorte a codo 120°. |
 | row | `dest` | −20…8 cm (0) | Hacia dónde sube: negativo, hacia el pecho; positivo, hacia la cadera (por el tronco). |
 | row | `grip`, `stance`, `toes`, `load` | — | Como en la bisagra (agarre 0,85–1,35; carga 0–150 %, defecto 60). |
 | hang | `gripType` | chips (prono) | Prono · supino · neutro. Usa la variante de ese agarre si la hay (§2.6); si no, gira la mano. |
@@ -548,14 +549,14 @@ npm run shots     # capturas a tests/shots/*.png
   - con el cuerpo por defecto, cambiar la carga no cambia la pose (salvo cuando el CdM llega al borde de la zona del pie);
   - bisagra: el punto bajo donde toca (suelo o autorada × k), sin saltos entre frames con 15 cuerpos, ajustes e implementos, las manos llegan al asa con cada implemento, en el rumano la mano va por donde con la barra con cualquier implemento, y sin carga el CdM no sale del pie;
   - dominada: las manos no se mueven en la barra con los tres agarres;
-  - remo: sin saltos entre frames con 13 cuerpos, ajustes e implementos, las manos llegan y abajo el codo es el autorado (brazo recto).
+  - remo: sin saltos entre frames con 15 cuerpos, ajustes e implementos, las manos llegan, abajo el codo es el autorado (brazo recto) y, con barra, arriba no pasa de 120°.
 - `harness.js`: Chromium headless con WebGL por SwiftShader. Sirve `three@0.147.0` desde `node_modules` porque el CDN no es accesible en CI.
 
 ---
 
 ## 6. Limitaciones conocidas y siguientes pasos
 
-- **Siguiente:** remo sentado en polea (`seat`, con `pulleyH`), según X01 §16. El remo con barra (`row`) está hecho; pendiente que el usuario lo retoque en Blender (escápulas, cabeza, codos) y lo vea en el móvil.
+- **Siguiente:** remo sentado en polea (`seat`, con `pulleyH`), según X01 §16. El remo con barra (`row`) está hecho; retocado a mano; pendiente retocar la variante supina `barbell_row_supino` (codos pegados) y verlo en el móvil.
 - **Demanda muscular:** sale del modelo de palos (`cur.act`), no de la pose final. En `hinge` es aproximada y en `hang` no hay (el mapa solo tiene piernas y espalda baja): faltan las zonas de tracción y empuje.
 - **Bisagra:** codos flexionados en las claves del convencional (25° al empezar); choques entre implementos, brazos y piernas; una kettlebell entre los pies debería limitar cuánto se cierran (X02 §7).
 - **Dominada:** piernas cruzadas o dobladas, escápulas, pecho a la barra por encima de la autorada.
