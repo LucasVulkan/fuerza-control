@@ -24,11 +24,16 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['rdl_db_lado_side', 'romanian_deadlift', 0.5, 'side', {}, { impl: 'mancuernas_lado' }],
     ['pullup_bottom_side', 'pullup', 0, 'side', {}, {}], ['pullup_top_side', 'pullup', 1, 'side', {}, {}], ['pullup_top_front', 'pullup', 1, 'front', {}, {}],
     ['pullup_supine_45', 'pullup', 0.6, 'three', {}, { gripType: 'supino' }], ['pullup_neutral_45', 'pullup', 0.6, 'three', {}, { gripType: 'neutro' }],
-    ['pullup_wide_front', 'pullup', 1, 'front', {}, { grip: 1.35 }]];
+    ['pullup_wide_front', 'pullup', 1, 'front', {}, { grip: 1.35 }],
+    ['row_bottom_side', 'barbell_row', 0, 'side', {}, {}], ['row_top_side', 'barbell_row', 1, 'side', {}, {}], ['row_top_45', 'barbell_row', 1, 'three', {}, {}],
+    ['row_upright_top_side', 'barbell_row', 1, 'side', {}, { trunk: -30 }], ['row_flat_top_side', 'barbell_row', 1, 'side', {}, { trunk: 25 }],
+    ['row_chest_top_side', 'barbell_row', 1, 'side', {}, { dest: -15 }], ['row_supine_top_45', 'barbell_row', 1, 'three', {}, { gripType: 'supino' }],
+    ['row_db_top_45', 'barbell_row', 1, 'three', {}, { impl: 'mancuernas' }], ['row_db_neutral_top_45', 'barbell_row', 0.8, 'three', {}, { impl: 'mancuernas_lado' }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();
       Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); if (__dbg.EXERCISES[ex].base === 'hinge') Object.assign(S.per[ex], { knees: 0, depth: 0, plates: 0, feet: 0, impl: 'barra', load: 150 });
+      if (__dbg.EXERCISES[ex].base === 'row') Object.assign(S.per[ex], { impl: 'barra', gripType: 'prono', trunk: 0, dest: 0, grip: 1 });
       if (__dbg.EXERCISES[ex].base === 'hang') Object.assign(S.per[ex], { gripType: 'prono', grip: 1, top: 100, bottom: 0 });   // la captura anterior no se cuela
       Object.assign(S.per[ex], prm); S.s = s;
       document.querySelector(`[data-view=${view}]`).click(); }, [ex, s, view, body, prm]);

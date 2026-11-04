@@ -28,6 +28,7 @@ const EXERCISES = {
   deadlift: { name: 'Peso muerto', short: 'Muerto', base: 'hinge', bar: true },
   romanian_deadlift: { name: 'Peso muerto rumano', short: 'Rumano', base: 'hinge', bar: true },
   pullup: { name: 'Dominada', short: 'Dominada', base: 'hang', bar: true },
+  barbell_row: { name: 'Remo con barra', short: 'Remo', base: 'row', bar: true },
 };
 // las acciones nuevas aparecen solas con su meta (ff_base, ff_name) aunque no estén en la lista
 for (const [id, e] of Object.entries(POSES.exercises)) EXERCISES[id] ??= { name: e.meta.name, short: e.meta.name, base: e.meta.base, bar: e.meta.base !== 'seat' };
@@ -63,6 +64,18 @@ const PARAMS = {
     { id: 'toes', label: 'Rotación de pies', min: -15, max: 20, step: 1, def: 0, fmt: v => `${v > 0 ? '+' : ''}${v}° sobre la autorada` },
     { id: 'grip', label: 'Anchura de agarre', min: 0.9, max: 1.3, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'load', label: 'Carga', min: 0, max: 300, step: 10, def: 150, fmt: v => `${v}% del peso corporal` },
+  ],
+  // remo (remo con barra): tronco fijo y piernas quietas; solo se mueven los brazos. Comparte con la bisagra piernas,
+  // implementos y equilibrio (el CdM lo compensa la cadera, girando la pierna sobre el tobillo)
+  row: [
+    { id: 'impl', label: 'Implemento', def: 'barra', options: [['barra', 'Barra'], ['mancuernas', 'Mancuernas'], ['mancuernas_lado', 'Mancuernas neutras'], ['kettlebells', '2 kettlebells']] },
+    { id: 'gripType', label: 'Agarre', def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino']] },
+    { id: 'trunk', label: 'Inclinación del tronco', min: -40, max: 25, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)}° más ${v > 0 ? 'inclinado' : 'erguido'}` },
+    { id: 'dest', label: 'Hacia dónde sube', min: -20, max: 8, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada (ombligo)' : `${Math.abs(v)} cm más hacia ${v < 0 ? 'el pecho' : 'la cadera'}` },
+    { id: 'grip', label: 'Anchura de agarre', min: 0.85, max: 1.35, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
+    { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.4, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
+    { id: 'toes', label: 'Rotación de pies', min: -15, max: 20, step: 1, def: 0, fmt: v => `${v > 0 ? '+' : ''}${v}° sobre la autorada` },
+    { id: 'load', label: 'Carga', min: 0, max: 150, step: 5, def: 60, fmt: v => `${v}% del peso corporal` },
   ],
   // colgado (dominada): el cuerpo cuelga de las manos; sin carga (el peso es el del cuerpo)
   hang: [
@@ -419,6 +432,13 @@ function hingeGrip(ex, s) {
   return Object.fromEntries(['L', 'R'].map(S => [S, { off: a[S].off.clone().lerp(b[S].off, t) }]));
 }
 
+// remo: cuánto ha tirado (0 = brazos colgando en el frame 1, 1 = la barra en el tronco en el 30), por la distancia hombros→barra
+// autorada. Abajo los brazos cuelgan (vertical); arriba la barra va con el tronco.
+const ROWD = {};
+const rowUp = (ex, F) => { const [a, b] = ROWD[ex] ??= withBody(DEFAULT_BODY, () => [0, 1].map(s => { const f = features(authoredPose(ex, s), ex, s); return f.bar.distanceTo(f.sh); }));
+  return clamp((a - F.bar.distanceTo(F.sh)) / (a - b)); };
+const ROW_SUP_ELBOW = 30 * DEG;   // remo supino: los codos más pegados al cuerpo
+
 /* ---------------- Evaluación de un frame ---------------- */
 function evaluate(ex, s) {
   const base = EXERCISES[ex].base, prm = state.per[ex];
@@ -441,12 +461,13 @@ function evaluateInner(ex, s) {
   const d = dims(), d0 = withBody(DEFAULT_BODY, dims);
   const pose = clonePose(auth);
   const out = { pose, act: null, warns: [], readout: [], path: null, F };
-  if (exd.base === 'stand' || exd.base === 'hinge') {
+  if (exd.base === 'stand' || exd.base === 'hinge' || exd.base === 'row') {
     // hinge (peso muerto): la barra cuelga de las manos en vez de ir en el tronco; se resuelven muslo y tronco para que
     // la barra siga sobre el mediopié y, al empezar, en el suelo (los discos no cambian con el cuerpo)
-    const hinge = exd.base === 'hinge', depth = prm.depth ?? 1, barH = prm.barH ?? 0;
-    // bisagra: subida (0 en el punto bajo, 1 arriba) medida por la altura autorada de la barra
-    const hk = hinge && hingeKeys(ex), up = hinge ? clamp((F.bar.y - hk.HB) / (hk.HT - hk.HB)) : 0;
+    // row (remo): como la bisagra (barra en las manos, implementos), pero el tronco queda fijo y los brazos se doblan
+    const row = exd.base === 'row', hinge = exd.base === 'hinge' || row, depth = prm.depth ?? 1, barH = prm.barH ?? 0;
+    // bisagra: subida (0 en el punto bajo, 1 arriba) medida por la altura autorada de la barra; remo: cuánto ha tirado
+    const hk = hinge && hingeKeys(ex), up = row ? rowUp(ex, F) : hinge ? clamp((F.bar.y - hk.HB) / (hk.HT - hk.HB)) : 0;
     const yaw0 = (F.L.yaw - F.R.yaw) / 2, stance0 = (F.L.an.x - F.R.an.x) / 2;
     const beta = hinge ? F.beta : F.beta * lerp(1, depth, clamp(F.beta / (60 * DEG)));
     const thPref0 = F.th, thPref = F.th + (hinge ? 0 : prm.knees * DEG * clamp(F.beta / (60 * DEG)));
@@ -474,7 +495,9 @@ function evaluateInner(ex, s) {
     const hipT = hipOf(beta);
     const kr = d.k / d0.k, hg = hinge && hingeGrip(ex, s);
     // implemento: con el de la acción (la barra) mandan sus dedos y su puño; con otro, las manos de referencia (spec X02)
-    const I = hinge ? implOf(ex) : IMPL.barra, handI = hinge && I !== IMPL.barra && POSES.hands
+    // remo supino: la mano da media vuelta sobre su eje y la palma mira delante (con el asa transversal)
+    const I0 = hinge ? implOf(ex) : IMPL.barra, I = row && prm.gripType === 'supino' && !I0.side ? { ...I0, roll: Math.PI, palm: 'front' } : I0;
+    const handI = hinge && I !== IMPL.barra && POSES.hands
       && { L: implHand('L', 1, auth['DEF-HAND.L'].q, I), R: implHand('R', -1, auth['DEF-HAND.R'].q, I) };
     // bisagra: puño respecto a la barra, por lado, con el agarre aplicado a lo largo de la barra (la barra no gira: Rh = identidad).
     // A los lados, las mancuernas van junto a los muslos; con una kettlebell, las dos manos juntas en el asa.
@@ -508,9 +531,19 @@ function evaluateInner(ex, s) {
     // barra y brazos: en la espalda gira con el tronco (Rh = R); colgada de las manos no gira (Rh = identidad)
     const shNow = midOf(pose, 'DEF-ARM01.L', 'DEF-ARM01.R'), Rh = hinge ? Q() : R;
     const u = V(0, Math.cos(phi), Math.sin(phi)), n = V(0, -Math.sin(phi), Math.cos(phi));
-    const bar = hinge ? shNow.clone().add(F.bar.clone().sub(F.sh).multiplyScalar(d.k / d0.k))   // brazos colgando: mismo vector hombro→barra...
+    let bar = hinge ? shNow.clone().add(F.bar.clone().sub(F.sh).multiplyScalar(d.k / d0.k))   // brazos colgando: mismo vector hombro→barra...
       : shNow.clone().addScaledVector(u, barOff.du).addScaledVector(n, barOff.dn).add(V((barOff0.dx || 0) * d.k / d0.k, 0, 0));
-    if (hinge) {   // ...salvo la altura: la que deja la muñeca izquierda con el BRAZO RECTO (regla: con la barra en las
+    if (row) {
+      // remo: abajo los brazos cuelgan (el vector hombros→barra autorado, sin girar); arriba la barra va con el tronco (girado
+      // con él) y «Hacia dónde sube» la lleva a lo largo del tronco. Con otro agarre o implemento, abajo el brazo sigue recto:
+      // la barra sube o baja lo que cambia la altura del brazo recto (diferencia con el agarre autorado: exacta por defecto).
+      const off = F.bar.clone().sub(F.sh).multiplyScalar(kr);
+      bar = shNow.clone().add(off.lerp(off.clone().applyQuaternion(R), up)).addScaledVector(u, -prm.dest / 100 * kk * up);
+      const sh = pose['DEF-ARM01.L'].p, Rr = 0.999 * (LEN('L').Lu + LEN('L').Lf);
+      const h = o => Math.sqrt(Math.max(0, Rr * Rr - (bar.x + o.x - sh.x) ** 2 - (bar.z + o.z - sh.z) ** 2));
+      const oC = gripOff('L').sub(wristOff('L')), oR = hg.L.off.clone().multiplyScalar(kr).sub(socketRest('L').multiplyScalar(d.k).applyQuaternion(auth['DEF-HAND.L'].q.clone().multiply(REST['DEF-HAND.L'].q.clone().invert())));
+      bar.y += (1 - up) * (oR.y - oC.y + h(oR) - h(oC));
+    } else if (hinge) {   // ...salvo la altura: la que deja la muñeca izquierda con el BRAZO RECTO (regla: con la barra en las
       // manos el codo no se flexiona, ni en el aire ni en el suelo). Con el agarre más abierto el brazo baja menos.
       const sh = pose['DEF-ARM01.L'].p, o = gripOff('L').sub(wristOff('L'));   // barra -> muñeca
       const R = 0.999 * (LEN('L').Lu + LEN('L').Lf), dx = bar.x + o.x - sh.x, dz = bar.z + o.z - sh.z;
@@ -528,6 +561,10 @@ function evaluateInner(ex, s) {
       const qHandW = Rh.clone().multiply(auth[hn].q);
       const wrist = hinge ? grip.clone().sub(wristOff(S)) : grip.clone().sub(sock.clone().multiplyScalar(d.k).applyQuaternion(qHandW.clone().multiply(REST[hn].q.clone().invert())));
       const elbowPole = poleOf(auth[`DEF-ARM01.${S}`].p, auth[`DEF-FORARM01.${S}`].p, auth[hn].p).applyQuaternion(Rh);
+      if (row) {   // remo: el codo va con el tronco según tira; en supino, más pegado (gira alrededor de la línea hombro→muñeca)
+        elbowPole.lerp(elbowPole.clone().applyQuaternion(R), up).normalize();
+        if (I.roll) elbowPole.applyAxisAngle(wrist.clone().sub(pose[`DEF-ARM01.${S}`].p).normalize(), sgn * ROW_SUP_ELBOW);
+      }
       const ik = solveLimb(pose, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, elbowPole, [LEN(S).Lu, LEN(S).Lf]);
       // mantener rotaciones autoradas (giradas con la barra) para el resto de la cadena del brazo tras el IK
       for (const c of subtree(hn)) pose[c].q = Rh.clone().multiply(auth[c].q);
@@ -540,7 +577,25 @@ function evaluateInner(ex, s) {
     // ---- equilibrio en lazo cerrado sobre la pose real: el centro de masas del sistema (cuerpo + barra)
     // se mantiene sobre el mediopié igual que en la pose autorada; se corrige con la inclinación del tronco.
     let phiA, bA, betaH = beta, thH = th;
-    if (hinge) {
+    if (row) {
+      // remo: el tronco a la inclinación del ajuste y la rodilla con su ángulo autorado; el centro de masas (con la carga actual)
+      // donde lo tiene la pose autorada en este frame (× k; sin recortarlo a la zona del pie: la pose es la de Blender) lo compensa la cadera: la pierna gira sobre
+      // el tobillo (secante sobre la tibia). Por defecto, la autorada.
+      const cRef = comOffset(auth, F.bar, L) * kr, Ka = F.beta + F.th, phR = F.phi + prm.trunk * DEG;
+      const T_MIN = -12 * DEG, T_MAX = Math.min(45 * DEG, thLim);
+      const E = t => { const r = build(phR, hipOf(Ka - t, t)); return [r, comOffset(r.pose, r.bar, L) - cRef]; };
+      let t = th, [r, e] = E(t);
+      for (let i = 0; i < 12 && Math.abs(e) > 0.0002; i++) {
+        const [, e2] = E(t + 1e-3), j = (e2 - e) / 1e-3; if (Math.abs(j) < 1e-9) break;
+        t = clamp(t - e / j, T_MIN, T_MAX); [r, e] = E(t);
+      }
+      if (Math.abs(e) > 0.01) r.warns.push(`Con el tronco así, el centro de masas se va ${Math.round(Math.abs(e) * 100)} cm ${e > 0 ? 'hacia delante' : 'hacia atrás'}`);
+      phiA = phR; bA = r; betaH = Ka - t; thH = t;
+      const hipNow = midOf(r.pose, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), hipA = midOf(auth, 'DEF-THIGH01.L', 'DEF-THIGH01.R').add(drift);
+      out.hipD = [hipNow.y - hipA.y, hipNow.z - hipA.z];
+      const P = r.pose, elbow = 180 - P['DEF-ARM01.L'].p.clone().sub(P['DEF-FORARM01.L'].p).angleTo(P['DEF-HAND.L'].p.clone().sub(P['DEF-FORARM01.L'].p)) / DEG;
+      out.elbow = elbow;
+    } else if (hinge) {
       // bisagra: en cada frame, el mismo problema. La rodilla tiene el ángulo que toca (con «Flexión de rodilla» negativa, un
       // tope: la animación va normal hasta llegar a él y ahí se queda); con ese ángulo fijo, la pierna gira sobre el tobillo y el
       // tronco se inclina. Newton 2×2 sobre tibia y tronco para que:
@@ -613,6 +668,7 @@ function evaluateInner(ex, s) {
     const [hy, hz] = (hinge && out.hipD) || [0, 0], cm = v => Math.round(Math.abs(v) * 100);
     if (cm(hy) || cm(hz)) out.readout.push(['Cadera', `${cm(hy) ? `${cm(hy)} cm más ${hy > 0 ? 'alta' : 'baja'}` : ''}${cm(hy) && cm(hz) ? ' y ' : ''}${cm(hz) ? `${cm(hz)} cm más ${hz > 0 ? 'adelante' : 'atrás'}` : ''} que la autorada`]);
     out.phase = `muslo ${Math.round(betaH / DEG)}°`;
+    if (row) { out.readout.splice(1, 0, ['Codo', `${Math.round(out.elbow)}°`]); out.phase = `codo ${Math.round(out.elbow)}°`; }
   } else if (exd.base === 'hang') {
     // DOMINADA (tipo `hang`): el cuerpo cuelga de las manos.
     //  1) la pose autorada con las medidas actuales;

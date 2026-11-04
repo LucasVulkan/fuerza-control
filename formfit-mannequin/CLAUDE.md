@@ -14,7 +14,7 @@ Lee `docs/HANDOFF.md` antes de tocar nada, y entera su §0 «Empezar aquí» (re
 ## Estructura
 
 ```
-blender/     FormFit_Maniqui.blend (rig + 6 ejercicios, la variante Chinup y 3 manos de referencia), export.py, ffpose.py (posar por script), ff_panel.py (deslizadores en Blender),
+blender/     FormFit_Maniqui.blend (rig + 7 ejercicios, la variante Chinup y 3 manos de referencia), export.py, ffpose.py (posar por script), ff_panel.py (deslizadores en Blender),
              ejercicios/ (un .py por ejercicio: META, PARAMS, frames), prep_rig.py, autopose.py, rigui.py, legacy/
 assets/      mannequin.glb + poses.json  (SALIDA del exportador; no editar a mano)
 prototype/   runtime.js (toda la lógica), shell.html (UI web), build.py -> viewer.html (visor autocontenido)

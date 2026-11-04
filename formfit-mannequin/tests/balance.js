@@ -66,5 +66,20 @@ const { open } = require('./harness');
         if (worst > 2) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡salto entre frames: un paso ${worst.toFixed(1)}× el de al lado!`); }
         S.body = sb; S.per[ex] = sp; }
     }
+    // remo: sin saltos entre frames, las manos llegan a la barra o al asa y, abajo, el brazo sigue recto (codo como el autorado)
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'row')) {
+      const elbow0 = D.evaluate(ex, 0).readout.find(x => x[0] === 'Codo')[1];
+      for (const [nm, body, prm] of [['por defecto', {}, {}], ['1,65 m', { height: 165 }, {}], ['1,95 m', { height: 195 }, {}], ['fémur 112%', { femur: 112, tibia: 98, torso: 95 }, {}],
+        ['erguido', {}, { trunk: -30 }], ['inclinado', {}, { trunk: 25 }], ['al pecho', {}, { dest: -20 }], ['ancho', {}, { grip: 1.35 }], ['estrecho', {}, { grip: 0.85 }],
+        ['supino', {}, { gripType: 'supino' }], ['mancuernas', {}, { impl: 'mancuernas' }], ['neutras', {}, { impl: 'mancuernas_lado' }], ['2 kettlebells', {}, { impl: 'kettlebells' }]]) {
+        const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
+        const st = []; let prev, miss;
+        for (let i = 0; i <= 40; i++) { const r = D.evaluate(ex, i / 40), c = r.bar.center; if (prev) st.push(c.distanceTo(prev)); prev = c.clone(); miss ??= r.warns.find(x => x.includes('no llega')); }
+        const worst = Math.max(...st.map((x, i) => x / Math.max(st[i - 1] ?? 0, st[i + 1] ?? 0, 0.003))), e0 = D.evaluate(ex, 0).readout.find(x => x[0] === 'Codo')[1];
+        if (worst > 2) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡salto entre frames: un paso ${worst.toFixed(1)}× el de al lado!`); }
+        if (miss) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡${miss}!`); }
+        if (Math.abs(parseFloat(e0) - parseFloat(elbow0)) > 2) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡abajo el codo está a ${e0} (autorado ${elbow0})!`); }
+        S.body = sb; S.per[ex] = sp; }
+    }
     out.push(fail ? `FALLOS: ${fail}` : 'OK'); return out.join('\n'); }));
   await close(); })();

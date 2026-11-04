@@ -350,7 +350,7 @@ El rumano se crea con un script de `blender/ejercicios/` como el del convenciona
 - **Ajustes:** anchura del agarre (como en la barra del peso muerto); orientación prona · supina · neutra (neutra = asas paralelas, otro implemento); recorrido arriba (barbilla sobre la barra · pecho a la barra) y abajo (colgado del todo · codos un poco flexionados); piernas rectas o cruzadas (dos manos de referencia de piernas, o claves, se decide al hacerla).
 - **Lo que mueve el cuerpo:** la altura del hombro respecto a las manos sale de la longitud del brazo con el codo del frame; con otras medidas la barra no se mueve y el cuerpo sube o baja.
 
-*Remo con barra* (base `hinge`, la misma del peso muerto):
+*Remo con barra* (base propia `row`, que comparte con `hinge` piernas, implementos y equilibrio). **Hecho el 4-nov** (rama `feat/x01-peso-muerto`, por probar): acción `barbell_row` posada por script (tronco 55°, barra al ombligo), ajustes de inclinación, hacia dónde sube, agarre prono · supino, anchura, implemento, pies y carga; detalle en el HANDOFF §4.4d. Falta el retoque a mano en Blender.
 
 - El **tronco se queda fijo** a un ángulo (ajuste: inclinación del tronco, 15–80°) y las piernas como en el rumano; solo se mueven los brazos.
 - **Ajustes:** inclinación del tronco; anchura y orientación del agarre (prono o supino, el Yates); hacia dónde sube la barra (ombligo · pecho); con mancuernas o kettlebell por X02.
@@ -367,6 +367,7 @@ El orden: primero X02-01…04 (validan agarres e implementos con el peso muerto,
 - [ ] Los ocho básicos se ven en el visor con su pose de Blender (fidelidad 0,0 mm salvo las excepciones documentadas).
 - [ ] Peso muerto y press militar de pie siguen equilibrados (CdM en su valor autorado) al cambiar las medidas.
 - [ ] Dominada: al cambiar las medidas, el cuerpo sigue colgando bajo las manos.
+- [ ] Remo con barra: se ve con su pose de Blender; inclinación del tronco, hacia dónde sube, supino e implementos cambian la pose sin saltos y la cadera compensa.
 - [ ] Remo en polea: subir y bajar `pulleyH` mueve el anclaje por la columna y el cable sigue a las manos.
 - [ ] Jalón: el cable baja desde arriba y por delante, no desde lo alto de una columna.
 
