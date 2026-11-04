@@ -68,8 +68,8 @@ const PARAMS = {
   hang: [
     { id: 'gripType', label: 'Agarre', def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino'], ['neutro', 'Neutro']] },
     { id: 'grip', label: 'Anchura de agarre', min: 0.75, max: 1.4, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}% (el neutro va a la anchura de las asas)` },
-    { id: 'top', label: 'Hasta dónde sube', min: 50, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada (barbilla sobre la barra)' : `${v}% del recorrido` },
-    { id: 'bottom', label: 'Desde dónde baja', min: 0, max: 40, step: 1, def: 0, fmt: v => v === 0 ? 'colgado del todo' : `${v}% del recorrido (codos algo flexionados)` },
+    { id: 'top', label: 'Hasta dónde sube', min: 15, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada (barbilla sobre la barra)' : `${v}% del recorrido` },
+    { id: 'bottom', label: 'Desde dónde baja', min: 0, max: 60, step: 1, def: 0, fmt: v => v === 0 ? 'colgado del todo' : `${v}% del recorrido (codos algo flexionados)` },
   ],
 };
 const PRESETS = {
@@ -399,7 +399,12 @@ function hingeCut(ex) {
   return (HCUT[k] = { ...hk, sCut });
 }
 // s de la repetición (0..1) -> s de la animación, dentro del recorrido recortado
-function hingeS(ex, s) { const c = hingeCut(ex), sT = 1 - c.sB; return c.sCut + (sT - c.sCut) * (c.sB === 0 ? s : 1 - s); }
+// recorte con frenada: en un extremo recortado la animación sigue en movimiento, así que se llega a él frenando (velocidad 0 en el
+// corte) en vez de pararse en seco; en uno sin recortar, la animación ya frena sola (curvas de Blender) y se deja tal cual.
+//   s -> [0, 1] con pendiente a al empezar y b al acabar (1 = sin tocar, 0 = frena)
+const ramp = (s, a, b) => (s ** 3 - 2 * s * s + s) * a + (3 * s * s - 2 * s ** 3) + (s ** 3 - s * s) * b;
+function hingeS(ex, s) { const c = hingeCut(ex), cut = c.sCut !== c.sB;
+  return c.sB === 0 ? c.sCut + (1 - c.sCut) * ramp(s, cut ? 0 : 1, 1) : c.sCut * ramp(s, 1, cut ? 0 : 1); }
 // ángulo autorado de la rodilla (muslo + tibia) en el punto bajo: el tope de «Flexión de rodilla» se cuenta desde él
 const HKB = {};
 const hingeKB = ex => HKB[ex] ??= withBody(DEFAULT_BODY, () => { const sB = hingeKeys(ex).sB, A = authoredPose(ex, sB), f = features(A, ex, sB); return f.beta + f.th; });
@@ -418,7 +423,7 @@ function hingeGrip(ex, s) {
 function evaluate(ex, s) {
   const base = EXERCISES[ex].base, prm = state.per[ex];
   // dominada: el recorrido se recorta por arriba (hasta dónde sube) y por abajo (desde dónde baja); no se comprime
-  if (base === 'hang') s = (prm.bottom + s * (prm.top - prm.bottom)) / 100;
+  if (base === 'hang') { const lo = prm.bottom, hi = Math.max(prm.top, lo + 5); s = (lo + (hi - lo) * ramp(s, lo > 0 ? 0 : 1, hi < 100 ? 0 : 1)) / 100; }
   // agarre con su propia acción (supino: Chinup); el neutro sale de la supina si la hay (los codos ya van hacia delante)
   if (base === 'hang') ex = variantFor(ex, prm.gripType) || (prm.gripType === 'neutro' && variantFor(ex, 'supino')) || ex;
   return evaluateRaw(ex, base === 'hinge' ? hingeS(ex, s) : s);

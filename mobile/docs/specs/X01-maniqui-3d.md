@@ -63,6 +63,7 @@ Tercera ronda (3-nov-2026):
 Cuarta ronda (4-nov-2026):
 
 15. **Una acción por movimiento, no por implemento.** Matiza la 10: si cambiar de barra a mancuernas o kettlebell (o de agarre prono a neutro) no cambia el recorrido, no hay otra acción: el implemento lo pone la app, la mano se coloca sola en su asa y los dedos se cierran según su grosor, a partir de dos o tres manos de referencia hechas en Blender. Si el recorrido cambia de verdad (swing con kettlebell), tiene su acción. Detalle en [X02](X02-agarres-implementos.md).
+16. **El maniquí usa el tempo del ejercicio** (idea del usuario, 4-nov-2026, para más adelante). Si el ejercicio del programa tiene tempo por fases (bajada, pausa abajo, subida, pausa arriba), la animación pasa a ese ritmo; si no, velocidad normal. Encaja con cómo se reproduce hoy (`repS`: ida, pausa, vuelta, pausa), teniendo en cuenta qué fase es la «ida» en cada ejercicio (en la sentadilla, la bajada; en la dominada, la subida). Va con el Workout (X01-07) o el editor (X01-06).
 
 ## 3. X01-01 · Prueba en WebView
 
