@@ -358,11 +358,16 @@ Comparte el código de `stand` (piernas a los tobillos plantados, `build(phi, ca
 - **Altura de los pies** (`feet`): se resuelve con los pies en el suelo y al final se sube todo el cuerpo y la barra. **Altura de los discos** (`plates`): bloques bajo los discos. El visor dibuja las cajas (`blocks`, `footBox`).
 - Aviso de isquios: tronco por encima de 85° con la rodilla flexionada menos de 45°.
 
-**Implementos y manos** (spec X02). Ajuste `impl` (chips): barra · mancuernas (delante) · a los lados · kettlebell. Catálogo `IMPL`: grosor del asa (`d`), altura del asa con el implemento en el suelo (`rest`: barra 22,5 cm, mancuernas 10, kettlebell 26; la usan el punto bajo y el recorte), `side` (a los lados: asa de delante a atrás, agarre neutro, junto a los muslos a `hipHalf + 12 cm`) y `half` (kettlebell: las dos manos juntas en el asa, a ±5 cm).
+**Implementos y manos** (spec X02). Ajuste `impl` (chips): barra · mancuernas (delante) · a los lados · 1 kettlebell · 2 kettlebells. Lo que empieza en el suelo (convencional) solo admite lo que se apoya bien en él: barra y kettlebells (`allow`). Catálogo `IMPL`: grosor del asa (`d`), altura del asa con el implemento en el suelo (`rest`: barra 22,5 cm, mancuernas 10, kettlebell 26), `side` (a los lados: asa de delante a atrás, agarre neutro, a `hipHalf + dx`), `half` (1 kettlebell: las dos manos juntas en el asa, a ±5 cm), `rot` (mancuernas delante: el asa girada 25° con el pulgar hacia delante, rotación externa del brazo).
+- **Altura: la gran diferencia entre convencional y rumano.** Con otro implemento, el hueco del puño queda a otra distancia de la muñeca (`dI`: unos 4 cm con las manos de referencia frente a `socketRest`).
+  - Rumano (no empieza en el suelo): **mandan las manos**. El asa se desplaza `dI` para que la mano vaya exactamente por donde iba con la barra (`tests/balance.js` lo comprueba, ±1,5 cm), y el implemento solo limita: no atraviesa el suelo ni los bloques.
+  - Convencional (empieza en el suelo): **abajo manda el implemento** (su asa en el suelo, `rest`) y, según sube, las manos vuelven a su sitio.
+
+  ⚠️ No uses la altura del implemento en el suelo para el rumano: con mancuernas, las manos bajaban 12 cm y el tronco se acostaba.
 - Con el implemento de la acción (la barra) no cambia nada: dedos y puño de la acción (fidelidad).
-- Con otro (`implHand`): dedos y hueco del puño mezclando `hands['28']` y `hands['40']` por el grosor; la mano gira lo mínimo para que el eje del asa en la mano coincida con el del implemento y, de los dos sentidos, se queda el que deja la palma atrás (asa transversal) o hacia dentro (a los lados). La muñeca va a `asa − hueco` y el brazo, recto, por IK.
-- El centro de masas usa la carga en la línea de las asas (como la barra). El visor dibuja mancuernas (asa + cabezas hexagonales) y kettlebell (bola + asa) en `r.grips`.
-- `tests/balance.js`: con los tres implementos, las manos llegan al asa todo el recorrido y la barra no salta.
+- Con otro (`implHand`): dedos y hueco del puño mezclando `hands['28']` y `hands['40']` por el grosor; la mano gira lo mínimo para que el eje del asa en la mano coincida con el del implemento (`handleAxis`) y, de los dos sentidos, se queda el que deja la palma atrás (asa transversal) o hacia dentro (a los lados). La muñeca va a `asa − hueco` y el brazo, recto, por IK.
+- El centro de masas usa la carga en la línea de las asas (como la barra). El visor dibuja mancuernas (asa + cabezas hexagonales) y kettlebells (bola + asa) en `r.grips`.
+- Idea del usuario (4-nov) para más adelante: que con el peso que se usa aparezcan las kettlebells, mancuernas y discos que tocan.
 
 **Ejercicios vecinos** (spec X01 §2.14): cada uno tiene su acción y los mismos ajustes los acercan. El rumano con `knees` +8 y `depth` −40 queda en tronco 70°, muslo 66° y barra en el suelo; el convencional por defecto está en 72° y 65° (`tests/shots/rdl_as_conventional.png`).
 

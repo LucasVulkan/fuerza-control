@@ -19,8 +19,9 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['deadlift_stiff_side', 'deadlift', 0, 'side', {}, { knees: -30 }],
     ['rdl_stiff_mid_side', 'romanian_deadlift', 0.6, 'side', {}, { knees: -40 }], ['deadlift_k20_d20_side', 'deadlift', 0, 'side', {}, { knees: -20, depth: 20 }],
     ['deadlift_noload_side', 'deadlift', 0, 'side', {}, { load: 0 }],
-    ['deadlift_db_45', 'deadlift', 0, 'three', {}, { impl: 'mancuernas' }], ['deadlift_db_lado_side', 'deadlift', 0.5, 'side', {}, { impl: 'mancuernas_lado' }],
-    ['deadlift_kb_45', 'deadlift', 0, 'three', {}, { impl: 'kettlebell' }], ['rdl_db_45', 'romanian_deadlift', 1, 'three', {}, { impl: 'mancuernas' }]];
+    ['deadlift_kb_45', 'deadlift', 0, 'three', {}, { impl: 'kettlebell' }], ['deadlift_2kb_45', 'deadlift', 0, 'three', {}, { impl: 'kettlebells' }],
+    ['rdl_db_45', 'romanian_deadlift', 1, 'three', {}, { impl: 'mancuernas' }], ['rdl_db_front', 'romanian_deadlift', 0.4, 'front', {}, { impl: 'mancuernas' }],
+    ['rdl_db_lado_side', 'romanian_deadlift', 0.5, 'side', {}, { impl: 'mancuernas_lado' }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).indexOf(ex)].click();

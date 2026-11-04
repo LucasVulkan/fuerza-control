@@ -93,17 +93,20 @@ Cada implemento declara:
 
 ## 6. X02-04 · Peso muerto y rumano con mancuernas y kettlebell
 
-Primer uso real, porque el movimiento ya existe y se ve enseguida si funciona:
+Primer uso real, porque el movimiento ya existe y se ve enseguida si funciona. Corregido con el usuario el 4-nov tras verlo:
 
-- **Chips de implemento** en el peso muerto y el rumano: barra · mancuernas · kettlebell. Son preferencias del ejercicio, como pies y agarre ([decisión 9 de X01](X01-maniqui-3d.md#2-decisiones-del-usuario-2-nov-2026-no-reabrir)); en T08, la forma.
-- **Mancuernas:** dos posiciones, *delante* (asa transversal, agarre prono, delante de las tibias como la barra) y *a los lados* (asa sagital, agarre neutro, junto a los pies). Más ligeras en el suelo (asa más baja): el punto bajo queda más hondo, como un déficit, y lo resuelve el mismo cálculo.
-- **Kettlebell:** una, entre los pies, con las dos manos en el asa; el peso queda sobre el mediopié.
+- **Qué admite cada uno.** El convencional empieza en el suelo: solo lo que se apoya bien en él, **barra y kettlebell (una o dos)**; mancuernas, no. El rumano admite todo: barra, mancuernas delante, mancuernas a los lados, una o dos kettlebells.
+- **La gran diferencia: quién manda en la altura.** En el convencional, **el implemento** (empieza con su asa en el suelo; una kettlebell la tiene más alta que la barra). En el rumano, **las manos**: con cualquier implemento la mano va exactamente por donde iba con la barra, y el implemento solo limita (no atraviesa el suelo). Cambiar de implemento nunca baja las manos.
+- **Mancuernas delante:** el asa ligeramente girada, con el pulgar hacia delante (rotación externa del brazo), más natural que paralela a la barra. **A los lados:** asa de delante a atrás, agarre neutro, junto a los muslos.
+- **Una kettlebell:** entre los pies, las dos manos en el asa. **Dos:** una por mano, junto a los pies, asa de delante a atrás.
 - Todo lo demás (rodilla, profundidad, bloques, déficit, cuerpo, equilibrio) funciona igual que con la barra.
+- Para más adelante (idea del usuario): que, con el peso que se usa, aparezcan las kettlebells, mancuernas o discos que tocan.
 
 **Probar X02-04**
 
-- [ ] Peso muerto con mancuernas delante, a los lados y con kettlebell: las manos agarran el asa todo el recorrido, los dedos la rodean y el maniquí no pierde el equilibrio.
-- [ ] Con mancuernas a los lados, los brazos pasan junto a los muslos sin atravesarlos.
+- [ ] Rumano con mancuernas delante, a los lados y con una y dos kettlebells: las manos agarran el asa todo el recorrido, los dedos la rodean y la mano va a la misma altura que con la barra.
+- [ ] Convencional: solo deja elegir barra y kettlebells; con kettlebell empieza con su asa en el suelo.
+- [ ] Con mancuernas a los lados o dos kettlebells, los brazos pasan junto a los muslos sin atravesarlos.
 - [ ] Volver a barra deja el ejercicio exactamente como estaba.
 
 ## 7. Fuera de alcance

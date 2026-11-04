@@ -23,9 +23,16 @@ const { open } = require('./harness');
       if (dv > 0.005 && !atEdge) { fail++; out.push(`${ex} s=${s}: ¡con la mitad de carga la pose cambia ${(dv * 1000).toFixed(0)} mm con el cuerpo por defecto!`); }
     }
     // implementos (X02): las manos llegan al asa todo el recorrido
-    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge')) for (const impl of ['mancuernas', 'mancuernas_lado', 'kettlebell']) {
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge')) for (const impl of (D.PRM && ['mancuernas', 'mancuernas_lado', 'kettlebell', 'kettlebells'])) {
       const sp = { ...S.per[ex] }; S.exId = ex; S.per[ex].impl = impl;
       for (let i = 0; i <= 10; i++) { const r = D.evaluate(ex, i / 10), w = r.warns.find(x => x.includes('no llega a la barra')); if (w) { fail++; out.push(`${ex} ${impl} s=${i / 10}: ¡${w}!`); break; } }
+      S.per[ex] = sp; }
+    // rumano (no empieza en el suelo): con cualquier implemento la mano va por donde con la barra (±1,5 cm)
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge' && D.POSES.exercises[e].start.bar.center[1] > 0.3)) {
+      const sp = { ...S.per[ex] }; S.exId = ex; const wrist = () => [0, 0.25, 0.5, 0.75, 1].map(s => D.evaluate(ex, s).pose['DEF-HAND.L'].p.y);
+      S.per[ex].impl = 'barra'; const w0 = wrist();
+      for (const impl of ['mancuernas', 'mancuernas_lado', 'kettlebell', 'kettlebells']) { S.per[ex].impl = impl; const w = wrist(), dv = Math.max(...w.map((y, i) => Math.abs(y - w0[i])));
+        if (dv > 0.015) { fail++; out.push(`${ex} ${impl}: ¡la mano va ${(dv * 100).toFixed(1)} cm por otro sitio que con la barra!`); } }
       S.per[ex] = sp; }
     // sin carga, el CdM de la bisagra no sale del pie: pivota sobre el tobillo (antes: «se caería», 12 cm detrás)
     for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'hinge')) for (let i = 0; i <= 10; i++) {
@@ -46,7 +53,7 @@ const { open } = require('./harness');
       // sin saltos: ningún paso de la barra entre frames contiguos puede ser más del doble que el mayor de sus dos vecinos
       // (antes el solver saltaba de solución: hasta 20 cm de golpe en un frame). Vale aunque el recorrido se recorte.
       for (const [nm, body, prm] of [...hcases, ['bloques', {}, { plates: 12 }], ['déficit', {}, { feet: 8 }], ['más hondo', {}, { depth: -15 }], ['menos hondo', {}, { depth: 15 }],
-        ['mancuernas', {}, { impl: 'mancuernas' }], ['a los lados', {}, { impl: 'mancuernas_lado' }], ['kettlebell', {}, { impl: 'kettlebell' }]]) {
+        ['mancuernas', {}, { impl: 'mancuernas' }], ['a los lados', {}, { impl: 'mancuernas_lado' }], ['kettlebell', {}, { impl: 'kettlebell' }], ['2 kettlebells', {}, { impl: 'kettlebells' }]]) {
         const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
         const st = []; let prev; for (let i = 0; i <= 40; i++) { const c = D.evaluate(ex, i / 40).bar.center; if (prev) st.push(c.distanceTo(prev)); prev = c.clone(); }
         const worst = Math.max(...st.map((x, i) => x / Math.max(st[i - 1] ?? 0, st[i + 1] ?? 0, 0.003)));
