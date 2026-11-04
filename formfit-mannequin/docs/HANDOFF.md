@@ -1,37 +1,92 @@
 # Maniquí 3D de FormFit: cómo funciona todo
 
-Este documento recoge cómo funciona hoy cada pieza del sistema. Cubre:
+Documento principal del módulo: qué hay en Blender, qué hace cada script, qué se exporta y cómo el visor lo convierte en una pose ajustable. Las reglas raras van con su porqué; vienen de muchas iteraciones con el usuario. **Si vas a tocar algo, lee entera la §0**; el resto se consulta cuando haga falta.
 
-- qué hay en Blender;
-- qué hace cada script;
-- qué se exporta y en qué formato;
-- cómo el visor convierte eso en una pose ajustable.
+---
 
-Las decisiones de diseño vienen de muchas iteraciones con el usuario; cuando hay una regla rara, va con su porqué.
+## 0. Empezar aquí
+
+### 0.1 Qué es
+
+Un maniquí 3D animado por ejercicio para la app (spec [X01](../../mobile/docs/specs/X01-maniqui-3d.md); agarres e implementos en [X02](../../mobile/docs/specs/X02-agarres-implementos.md)). El usuario anima cada ejercicio en Blender; el visor (`prototype/runtime.js`, empaquetado en `viewer.html` y cargado por una WebView en la app) reproduce esa animación y la adapta a los ajustes del entrenador (anchura, profundidad, rodilla, agarre, implemento…) y a las medidas del cliente (altura, fémur, tibia, tronco, tobillo).
+
+Hoy hay seis ejercicios: sentadilla trasera y frontal (`stand`), prensa (`seat`), peso muerto convencional y rumano (`hinge`) y dominada (`hang`, con la variante supina `Chinup`).
+
+### 0.2 Reglas que no se rompen
+
+1. **Con los valores por defecto sale la pose de Blender**: 0,0 mm en cada clave y cada muestra exportada (`tests/fidelity.js`). Excepciones documentadas: la prensa (§4.4) y las claves de bisagra con el codo flexionado en Blender (§4.4b).
+2. **Correcciones como diferencias**: el visor parte de la pose autorada y solo añade lo que cambian los ajustes o el cuerpo. El estilo humano lo pone el usuario en Blender; un solver no sabe inventarlo.
+3. **Lo que se ve debe tener sentido físico** (manos que no resbalan en la barra, brazos rectos al tirar del suelo, pies que no deslizan, centro de masas dentro del pie…), pero **sin quitarle intención a la animación**: si una corrección automática apenas aporta, se quita (el balanceo de la dominada se quitó por eso).
+4. **Una acción por movimiento, no por implemento** (X01 §2.15). Cambiar de barra a mancuernas lo hace la app; un movimiento distinto, o una variante que el usuario quiera controlar a mano (la dominada supina), es otra acción (§2.6).
+5. **Longitudes rígidas** (sin IK stretch) y **ejes**: glTF tiene Y arriba y +Z delante (§3.2).
+6. Después de tocar `runtime.js` o el exportador: `npm test`, `npm run shots` y **mirar las capturas**.
+
+### 0.3 Cómo se trabaja con el usuario
+
+El usuario es desarrollador y diseñador: anima y retoca en Blender, prueba en el móvil y decide. Claude hace la base, el código y las comprobaciones.
+
+1. **Base por script.** Claude escribe `blender/ejercicios/<id>.py` (§2.5), lo ejecuta sobre el `.blend` y comprueba con un render rápido que tiene sentido. Antes de escribir en el `.blend`, mira `git status`: si tiene cambios sin commitear, son del usuario (haz copia o pregunta).
+2. **Retoque a mano.** El usuario retoca en Blender y guarda. Puede añadir claves intermedias y acciones nuevas (variantes).
+3. **Exportar y medir.** Claude exporta (§3), pasa los tests y **mide**: compara el visor con los frames reales de Blender (§0.5) en vez de fiarse de la vista. Casi todos los fallos que el usuario vio en el móvil se encontraron así.
+4. **Commit** con todo lo generado: el `.blend`, `assets/poses.json`, `assets/mannequin.glb` y `mobile/assets/mannequin/viewer.html` (lo copia `build.py`). Código de tarea en el mensaje (`X01-13`, `X02-04`…). Rama de trabajo: `feat/x01-peso-muerto`.
+5. **El usuario lo mira en el móvil** (Expo Go › menú › Desarrollador › «Maniquí 3D (prueba)») y comenta.
+
+Las conversaciones son en español, y los comentarios del código y los textos del visor, también.
+
+### 0.4 Receta: un ejercicio nuevo
+
+1. **Tipo de base** (cómo se apoya el cuerpo, X01 §16):
+
+   | Base | Apoyo | Qué resuelve el visor | Ejemplos |
+   |---|---|---|---|
+   | `stand` | pies; barra en el tronco | CdM sobre el mediopié moviendo el tronco | sentadillas, press militar de pie |
+   | `hinge` | pies; peso en las manos | tibia y tronco para el CdM y la trayectoria de la barra; brazos rectos; implementos | peso muerto, rumano, remo con barra |
+   | `hang` | manos en una barra fija | hombros bajo las manos, manos quietas en la barra, agarres | dominada, chin-up |
+   | `seat` | pelvis en el asiento | plataforma sobre su raíl | prensa; jalón y remo en polea (por hacer) |
+
+   Si ninguno vale (tumbado en banco, por ejemplo), hace falta uno nuevo: una rama en `evaluateInner`, sus `PARAMS[base]` y sus tests.
+2. **¿Hay un vecino?** Parte de su script (el rumano salió del convencional; la dominada supina, de la prona). Si es la misma acción con otro agarre que el usuario quiere controlar, es una **variante** (§2.6).
+3. **Script** `blender/ejercicios/<id>.py`: `META = (acción, base, nombre)`, `PARAMS` (los mandos, con valor, rango y etiqueta) y `frames(F, p)`, que coloca tronco, pies, implemento y manos con `ffpose` (§2.5). Frame 1 = inicio, 30 = final; `ffpose.key` keya **todo** el rig.
+4. **Ejecutarlo** y renderizar una comprobación (§0.5). El usuario lo retoca.
+5. **Exportar** (§3). El visor lo recoge solo con su `meta`; añade el nombre corto en `EXERCISES` (runtime.js) y, si la cámara no lo encuadra, su objetivo en el bucle de render (`target.lerp`).
+6. **Tests**: `fidelity.js` lo cubre solo; añade a `balance.js` lo propio de su base (saltos entre frames, manos en la barra…) y a `screenshots.js` sus capturas.
+7. **Documentar**: su sección en §4, la tabla de `PARAMS` (§4.5) y el estado en la spec X01 (§16).
+
+### 0.5 Cómo comprobar
+
+- `npm test` (build + fidelidad + equilibrio) y `npm run shots` (capturas en `tests/shots/`). **`npm run shots` no reconstruye el visor**: si has tocado `runtime.js`, `npm run build:viewer` antes.
+- **Sondas del visor:** un script de Node que abre el visor con `tests/harness.js` y llama a `window.__dbg` (`evaluate(ex, s)`, `authoredPose`, `POSES`, `state`…). Así se miden ángulos, alturas, saltos entre frames o tiempos por frame. Patrón:
+
+  ```js
+  const { open } = require('./tests/harness');
+  (async () => { const { page, close } = await open();
+    console.log(await page.evaluate(() => { const D = __dbg, S = D.state; S.playing = false; S.exId = 'pullup';
+      S.per.pullup.gripType = 'supino';
+      return [0, 0.5, 1].map(s => D.evaluate('pullup', s).readout.map(x => x.join(' ')).join(' · ')).join('\n'); }));
+    await close(); })();
+  ```
+- **Comparar con Blender frame a frame:** con un script de `bpy` se recorren los frames 1–30 de la acción (sin IK stretch, como el exportador) y se vuelcan posiciones de huesos en coordenadas glTF (`C @ p`); luego se comparan con `evaluate(ex, (frame − 1) / 29)`. Así se encontraron el desfase de los tobillos (§4.3), las manos que se movían en la barra (§4.4c) y el ritmo distinto al de Blender (§3.1).
+- **Render rápido en Blender** (Workbench, cámara a un lado y de frente) para ver una acción recién creada sin abrir la interfaz.
+- Blender en este equipo: `C:/Program Files/Blender Foundation/Blender 5.0/blender.exe`, siempre con `-b --factory-startup` (un add-on del usuario falla en modo `-b`).
 
 ---
 
 ## 1. Visión general
 
 ```
- Blender (FormFit_Maniqui.blend)              export.py                       runtime.js
- ┌───────────────────────────────┐   ┌──────────────────────────┐   ┌──────────────────────────────────────┐
- │ Rig del maniquí (~290 huesos) │   │ esqueleto limpio DEF-*   │   │ pose autorada(s) = slerp inicio→final │
- │ 1 acción por ejercicio        │──▶│ mannequin.glb (malla)    │──▶│ + correcciones (sliders, cuerpo)      │
- │ frame 1 = inicio, 30 = final  │   │ poses.json (2 claves/ej.)│   │ + equilibrio en lazo cerrado          │
- │ BARRA / MAQUINA / PLATAFORMA  │   │ + barra/plataforma/asas  │   │ + heatmap + estética toon             │
- └───────────────────────────────┘   └──────────────────────────┘   └──────────────────────────────────────┘
+ Blender (FormFit_Maniqui.blend)              export.py                          runtime.js (visor)
+ ┌───────────────────────────────┐   ┌─────────────────────────────┐   ┌───────────────────────────────────────┐
+ │ Rig del maniquí (~290 huesos) │   │ esqueleto limpio DEF-*      │   │ pose autorada: curvas entre poses      │
+ │ 1 acción por movimiento       │──▶│ mannequin.glb (malla)       │──▶│ + correcciones por tipo de base        │
+ │ frame 1 = inicio, 30 = final  │   │ poses.json: claves + 1 de   │   │   (ajustes, cuerpo, equilibrio)        │
+ │ (+ claves intermedias)        │   │ cada 5 frames, implementos, │   │ + implementos y manos de referencia    │
+ │ manos de referencia `_mano.*` │   │ manos de referencia         │   │ + heatmap + estética toon              │
+ └───────────────────────────────┘   └─────────────────────────────┘   └───────────────────────────────────────┘
 ```
 
-**La idea clave:** el entrenador ve exactamente lo que se posó en Blender. Cada slider o medida del cliente añade solo la diferencia que calcula el solver. Así se conserva el estilo humano de la pose, que un solver no sabe inventar, y aun así el maniquí se adapta.
+**La idea clave:** el entrenador ve exactamente lo que se posó en Blender. Cada ajuste o medida del cliente añade solo la diferencia que calcula el visor. Así se conserva el estilo humano de la pose y aun así el maniquí se adapta.
 
-Escalar a cientos de ejercicios significa:
-
-- por cada ejercicio, una acción en Blender con dos claves;
-- un tipo de base (`stand` o `seat`) que decide sliders y solver;
-- ejecutar el exportador.
-
-Sin código nuevo, salvo que haga falta un tipo de base nuevo.
+Escalar a cientos de ejercicios significa: una acción por movimiento en Blender, un tipo de base que ya exista y ejecutar el exportador. Código nuevo solo para un tipo de base nuevo.
 
 ---
 
@@ -85,22 +140,18 @@ Preferencias del usuario sobre el rig, ya acordadas:
 
 1. Duplica una acción del mismo tipo (por ejemplo `back_squat` → `hip_thrust`) y ponle `use_fake_user`.
 2. Posa el frame 1 (inicio) y el frame 30 (final) con los controles de arriba. **Keya todo** (en el visor: `A` con todos los huesos y `I` en el frame 1 y en el 30), no solo lo que has movido: el exportador evalúa cada acción desde el reposo, y un canal sin clave se queda en reposo (§3.1).
-   **Muestras de Blender:** además de las claves, el exportador guarda un frame cada 5 (`SAMPLE`). Blender interpola los controles con curvas (arranque y frenada suaves) y el visor interpola en recta entre lo que recibe; sin muestras, en la dominada el cuerpo subía antes que en Blender y, con las manos fijas en la barra, el codo se doblaba hasta 20° de más (frame 4: 43° frente a 23°). Con ellas, el visor sigue a Blender a ~1 cm y ~3° de codo.
-
-   **Curvas entre claves** (`herm`, `hermV`, `hermQ`): el visor no interpola en recta sino con curvas como las de Blender (Bézier «auto clamped»), canal a canal: velocidad continua al pasar por cada clave, cero en los extremos del recorrido y donde un canal llega a su máximo o mínimo. En recta, la velocidad cambiaba de golpe en cada clave y se notaban tirones (en la dominada, entre el 32 y el 50 %, donde hay claves seguidas). Las rotaciones se interpolan por componentes en el mismo hemisferio y se normalizan. Se aplican a la pose autorada (giros locales, raíz, desplazamientos), a `expP`/`expQ` y a la barra.
-
-   Medido en la dominada (diferencia máxima con los frames de Blender): en recta sin muestras, 20° de codo y 5 cm; curvas sin muestras, 9° y 2,5 cm; curvas con una muestra cada 10 frames, 7°; **curvas con una cada 5, 2° y 0,4 cm** (lo que se usa). Las curvas no bastan solas porque Blender interpola los controles del rig y la IK hace que los huesos no sigan esas curvas; las muestras capturan lo que hace el rig. Como el ritmo ya viene de Blender, la reproducción del visor (`repS`) es lineal (ida, pausa, vuelta, pausa); antes le añadía su propio suavizado. Coste: `poses.json` ~1 MB y el visor ~4 MB.
-
-   **Claves intermedias** (por ejemplo, para que la barra no atraviese la tibia): keya también los frames que quieras entre el 2 y el 29. El exportador las guarda en `poses.json` como `mid` (cada una con su `s = (frame − 1) / 29`), el visor interpola por tramos entre claves consecutivas (`seg()` en runtime.js) y `tests/fidelity.js` comprueba cada una a 0,0 mm. Ojo: **Recrear** del panel rehace la acción de cero y las borra; los deslizadores en vivo solo reescriben los frames 1 y 30.
+   **Claves intermedias:** keya también los frames que quieras entre el 2 y el 29 (por ejemplo, para que la barra no atraviese la tibia). Se exportan y el visor pasa exactamente por ellas (§3.1). Ojo: **Recrear** del panel rehace la acción de cero y las borra; los deslizadores en vivo solo reescriben los frames 1 y 30.
 3. Para tipo máquina, ten `MAQUINA` visible (escala 1) y la barra oculta (escala 0.001), o al revés.
-4. Propiedades personalizadas en la acción: `ff_base` (`"stand"`, `"seat"` o `"hinge"`) y `ff_name` (el nombre visible). Con eso el visor la enseña sin tocar código (`EXERCISES` se completa con la meta de `poses.json`).
-5. Exporta (§3). El exportador detecta todas las acciones con claves hasta el frame 30. Ignora las que empiezan por `00` o `_`; por ejemplo `00-keying`.
+4. Propiedades personalizadas en la acción: `ff_base` (`"stand"`, `"seat"`, `"hinge"` o `"hang"`) y `ff_name` (el nombre visible). Con eso el visor la enseña sin tocar código (`EXERCISES` se completa con la meta de `poses.json`). Si es una variante de otro ejercicio, además `ff_variant_of` y `ff_grip` (§2.6).
+5. Exporta (§3). El exportador detecta las acciones del rig con claves hasta el frame 30. Ignora las que empiezan por `00` o `_` (por ejemplo `00-keying` o las manos de referencia) y las acciones de objeto que crea Blender al mover un objeto con autokey (`FF_asa_28.LAction`).
+
+**Duplicar una acción** (para una variante): Dope Sheet › Action Editor con el rig seleccionado › botón de duplicar junto al nombre (crea `<nombre>.001` y la asigna); renombrar, escudo (fake user) y, en la barra lateral (`N`) › Action › Custom Properties, ajustar `ff_name`. O desde la consola de Python: `a = bpy.data.actions['pullup'].copy(); a.name = 'Chinup'; a.use_fake_user = True; bpy.data.objects['Armature_Mannequin'].animation_data.action = a`.
 
 **Versión de Blender.** El `.blend` lo guardó por última vez Blender **5.0** (el de este equipo). Antes lo había guardado el 5.2 del chat original; al abrirlo con el 5.0 avisa de «posible pérdida de datos», pero el export del 5.0 sale idéntico (0,000 mm) en las tres acciones. Usa siempre la misma versión para guardarlo.
 
-### 2.4 La pose base automática
+### 2.4 La pose base automática (legado)
 
-`autopose.py` reconstruye poses sobre el rig a partir de **direcciones de segmentos**, no de rotaciones de huesos. Por eso funciona entre esqueletos distintos. Recibe un `cc_poses.json` con, por clave:
+**Ya no se usa para ejercicios nuevos: se usan los scripts de §2.5.** Se conserva porque creó las tres acciones originales. `autopose.py` reconstruye poses sobre el rig a partir de **direcciones de segmentos**, no de rotaciones de huesos. Por eso funciona entre esqueletos distintos. Recibe un `cc_poses.json` con, por clave:
 
 - direcciones de muslo, tibia y tronco;
 - tobillos, muñecas, barra, máquina y plataforma;
@@ -117,20 +168,17 @@ Con eso:
 
 Al final keya los controles en los frames 1 y 30.
 
-`legacy/extract_cc.py` sacó ese JSON del primer modelo de Character Creator. Para ejercicios nuevos, el camino natural es que Claude genere el `cc_poses.json`:
-
-- a partir de una descripción biomecánica (ángulos de muslo, tibia y tronco, posición de la barra, etc.);
-- o a partir de un ejercicio parecido ya posado.
-
-Después se ejecuta `autopose.py` y el usuario retoca en Blender.
+`legacy/extract_cc.py` sacó ese JSON del primer modelo de Character Creator.
 
 ### 2.5 Posar por script: `ffpose.py` y `blender/ejercicios/`
 
 `autopose.py` depende de un JSON sacado de otro modelo. Para ejercicios nuevos se describe la pose **en geometría del propio maniquí**:
 
 - `blender/ffpose.py`: la librería. Medidas en reposo (muslo, tibia, tronco, brazo hasta el centro del puño), coordenadas sagitales (`W(f, z)`: f = hacia delante = −Y), y funciones para colocar tronco (`place_trunk`), pies (`place_feet`), barra (`place_bar`) y manos en la barra (`grip_bar`, con `HANG_PRONE` para colgar en prono). `new_action` crea la acción con `ff_base` y `ff_name`; `key(frame)` keya **todos** los canales del rig y de `PROPERTIES`; `report` avisa si una mano no llega.
-- `blender/ejercicios/romanian_deadlift.py`: el rumano. Usa la geometría de `deadlift.py` con el punto bajo más alto (`BAR_LOW`, barra a media tibia) y menos rodilla, y le da la vuelta: empieza arriba (frame 1) y baja (frame 30).
 - `blender/ejercicios/deadlift.py`: el peso muerto. Barra sobre el mediopié real (mitad del pie, medida en la malla), en el suelo al radio del disco; brazos casi rectos; la cadera sale de cruzar muslo y tronco; al bloquear, tronco erguido y la barra apoyada en la cara delantera del muslo. Sus `PARAMS` (anchura, rotación de pies, agarre, tibia…) son los mandos, con su valor por defecto y su rango.
+- `blender/ejercicios/romanian_deadlift.py`: el rumano. Usa la geometría de `deadlift.py` con el punto bajo más alto (`BAR_LOW`, barra a media tibia) y menos rodilla, y le da la vuelta: empieza arriba (frame 1) y baja (frame 30). El usuario lo retocó después a mano.
+- `blender/ejercicios/pullup.py`: la dominada. Barra fija (el control `BARRA`, a 2,30 m), manos colgadas de ella con agarre prono (`HANG_OVER`), colgado con los brazos rectos en el frame 1 y la barbilla sobre la barra en el 30; piernas colgando bajo la cadera (`FOOT-IK` a mano, no en el suelo). El usuario la retocó a mano (con claves intermedias) e hizo a mano la variante supina `Chinup`.
+- `blender/ejercicios/_manos.py`: las manos de referencia (abajo). Empieza por `_`: el panel no lo carga como ejercicio.
 - `ffpose.run(ejercicio, ajustes, live)`: el único punto que crea o actualiza la acción de un ejercicio (lo usan la terminal, el Text Editor y el panel).
 
 ```bash
@@ -172,12 +220,22 @@ Recalcular borra los retoques a mano de esa acción: primero deslizadores, luego
 
 **Se retocan a mano**: dedos, pulgar y, si hace falta, el propio cilindro (el exportador lee dónde está). Con los dedos cerrados por los controles, el cilindro queda en el hueco calculado desde los huesos, que van por dentro de la malla, así que de salida pisa un poco los dedos. El script no rehace una acción `_mano.` que ya exista (son retoques); para rehacerla, se borra antes. Como empieza por `_`, el panel FormFit no la carga y el exportador no la trata como ejercicio.
 
+### 2.6 Variantes
+
+Una variante es otra acción del mismo ejercicio que el usuario quiere controlar a mano (por ejemplo, la dominada supina: los codos van distintos que en la prona). Se marca en la acción con dos propiedades:
+
+- `ff_variant_of`: el ejercicio del que es variante (`"pullup"`);
+- `ff_grip`: qué agarre es (`"supino"`).
+
+El exportador las copia en `meta` (`of`, `grip`). En el visor no salen como ejercicio aparte: comparten los ajustes del suyo y las usa su chip de agarre (`variantFor`); detalle en §4.4c. Hoy: `Chinup` (`pullup`, `supino`). Sin variante, el agarre se consigue girando la mano de la acción de partida (manos de referencia, X02).
+
 ---
 
 ## 3. Exportación (`blender/export.py`)
 
 ```bash
-blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [corregido.blend] [--exercises a,b]
+"$B" -b --factory-startup --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [corregido.blend] [--exercises a,b]
+npm run build:viewer   # empaqueta viewer.html (prototipo y mobile/assets/mannequin/); npm test también lo hace
 # o con el módulo bpy de pip:   python3 -I blender/export.py blender/FormFit_Maniqui.blend assets/
 #   (en la sesión original se usó  pip install bpy==5.2.3; ejecutar SIEMPRE con -I y fuera de la carpeta de scripts)
 ```
@@ -194,7 +252,9 @@ blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [
    - El reposo es idéntico al de los DEF del rig.
 3. **Malla.** Copia `Mannequin` con Mirror y Subsurf nivel 1 aplicados (25.636 vértices, materiales `display01` y `display02`). Quita los Mask, pesa la malla al esqueleto limpio y borra los grupos que no son DEF.
 4. **`mannequin.glb`.** Solo malla, skin y materiales: sin animaciones ni texturas. Ocupa unos 1,8 MB.
-5. **`poses.json`.** Por cada ejercicio y cada clave (frame 1 = `start`, 30 = `end`), las transformaciones mundiales de cada DEF y los implementos.
+5. **`poses.json`.** Por cada ejercicio, las transformaciones mundiales de cada DEF y los implementos en el frame 1 (`start`), el 30 (`end`) y los intermedios (`mid`, cada uno con su `s = (frame − 1) / 29`): las claves intermedias que haya y, además, **un frame cada 5** (`SAMPLE`).
+
+   **Por qué las muestras:** Blender interpola los *controles* del rig con curvas y la IK hace que los *huesos* no sigan esas curvas; el visor solo ve huesos. Medido en la dominada (diferencia máxima con los frames de Blender): en recta sin muestras, 20° de codo y 5 cm; con curvas (§4.1) sin muestras, 9° y 2,5 cm; curvas y una muestra cada 10 frames, 7°; **curvas y una cada 5, 2° y 0,4 cm** (lo que se usa). Coste: unos 125–200 KB por ejercicio (en vez de ~50) y ~0,3 ms por frame (en vez de ~0,15).
 6. **Manos de referencia** (`hands`): por cada acción `_mano.<nombre>` y cada lado, el giro de cada hueso de la mano (dedos, palmas, pulgar) relativo a `DEF-HAND` y, si tiene asa `FF_asa_<nombre>.L/R`, su centro y su eje en los ejes de `DEF-HAND` (`hollow`). Los ejes locales del hueso se conservan en glTF, así que esos valores valen tal cual en el visor.
 
 ### 3.2 Convención de ejes (importante)
@@ -215,12 +275,13 @@ blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [
   "rest":   { "<hueso>": { "p": [x,y,z], "q": [x,y,z,w] } },     // reposo = bind del GLB
   "exercises": {
     "back_squat": {
-      "meta": { "base": "stand", "name": "back_squat" },
+      "meta": { "base": "stand", "name": "back_squat" },          // variante: + "of": "pullup", "grip": "supino"
       "start": {
         "bones": { "<hueso>": { "p": [...], "q": [...], "len": 1.0, "off": [...] } },  // mundo; off = local respecto al padre
         "bar": { "center": [...], "axis": [...] },                               // solo si BARRA visible
         "ik_parent": { "hand": 5, "foot": 0 }
       },
+      "mid": [ { "s": 0.172, "bones": {...}, "bar": {...}, ... }, ... ],   // claves intermedias y una muestra cada 5 frames
       "end": { ... }
     },
     "leg_press": {
@@ -239,7 +300,7 @@ blender -b --python blender/export.py -- blender/FormFit_Maniqui.blend assets/ [
 }
 ```
 
-Por ejercicio son unos 40 KB; 300 ejercicios rondarían 12 MB. Para producción conviene:
+Por ejercicio son unos 125–200 KB (con las muestras); hoy `poses.json` ocupa ~1 MB y el visor ~4 MB. 300 ejercicios en un solo archivo rondarían 45 MB. Para producción conviene:
 
 - un JSON por ejercicio, cargado bajo demanda;
 - y/o quitar los dedos que no cambian y cuantizar.
@@ -248,15 +309,18 @@ Por ejercicio son unos 40 KB; 300 ejercicios rondarían 12 MB. Para producción 
 
 ## 4. Runtime (`prototype/runtime.js`)
 
-Es un único archivo de unas 680 líneas (three.js r147 UMD) y contiene toda la lógica. `shell.html` es la UI web y `build.py` lo empaqueta todo en `viewer.html`, con el GLB en base64.
+Es un único archivo de unas 1.000 líneas (three.js r147 UMD) y contiene toda la lógica. `shell.html` es la UI web y `build.py` lo empaqueta todo en `viewer.html`, con el GLB en base64, y lo copia a `mobile/assets/mannequin/`.
+
+**Por dónde entra un frame:** `evaluate(ex, s)` (s = posición en la repetición, 0–1) traduce la s según el tipo (recortes con frenada, `ramp`; en la dominada, la variante del agarre elegido) y llama a `evaluateRaw(ex, s)`, que fija los desplazamientos locales del frame y llama a `evaluateInner`. Ahí cada tipo de base tiene su rama: `stand`/`hinge` (comparten `build`), `hang` y `seat`. Devuelve `{ pose, bar, warns, readout, act, … }`; `placeProps` dibuja los implementos y `repS` da la s al reproducir (ida, pausa, vuelta, pausa; lineal, porque el ritmo ya viene de Blender).
 
 ### 4.1 Datos y FK
 
 - `REST` y `LOCAL_OFF` salen de `poses.rest`. `ORDER` es el orden topológico y `KIDS` los hijos.
+- `keysOf(ex)` da las poses exportadas en orden (inicio, intermedias, final) y `seg(ex, s)` el tramo que contiene s.
 - `authoredPose(ex, s)` calcula la pose autorada en el instante `s ∈ [0,1]`:
-  - las rotaciones **locales** se interpolan con slerp entre start y end;
-  - los `off` se interpolan linealmente;
+  - las rotaciones **locales**, los `off` y la raíz se interpolan con **curvas como las de Blender** (`herm`, `hermV`, `hermQ`: Bézier «auto clamped» canal a canal; velocidad continua al pasar por cada pose, cero en los extremos del recorrido y donde un canal llega a su máximo o mínimo). Las rotaciones, por componentes en el mismo hemisferio y normalizadas. En recta, la velocidad cambiaba de golpe en cada pose y se notaban tirones;
   - después se aplica FK desde `DEF-HIPS`.
+- `expP`/`expQ` dan la posición y el giro **exportados** de un hueso (con las mismas curvas): se usan para lo que tiene que estar exactamente donde en Blender (tobillos plantados, manos en la barra fija).
 - **Proporciones:** `STRETCH(n)` alarga el `off.y` de los hijos según el hueso:
   - fémur para `THIGH01/02`;
   - tibia para `SHIN01/02`;
@@ -417,6 +481,11 @@ Pendiente (X01-13): piernas cruzadas o dobladas, escápulas (subir y bajar los h
 | hinge | `plates` | 0…30 cm (0) | Altura de los discos (bloques): si quedan por encima del punto bajo, recortan el recorrido. |
 | hinge | `feet` | 0…20 cm (0) | Altura de los pies (déficit): el cuerpo sube con los pies; si la barra se apoya, lo que falta sale de la cadera. |
 | hinge | `stance`, `toes`, `grip`, `load` | — | Igual que en stand (agarre 0,9–1,3; carga 0–300 %, defecto 150). |
+| hinge | `impl` | chips (barra) | Implemento: barra · mancuernas · a los lados · 1 kettlebell · 2 kettlebells. Lo que empieza en el suelo solo admite barra y kettlebells. |
+| hang | `gripType` | chips (prono) | Prono · supino · neutro. Usa la variante de ese agarre si la hay (§2.6); si no, gira la mano. |
+| hang | `grip` | 0,75–1,4 (1) | Anchura de agarre (el neutro va a la anchura de sus asas). |
+| hang | `top` | 15–100 % (100) | Hasta dónde sube: recorta la animación por arriba, con frenada. |
+| hang | `bottom` | 0–60 % (0) | Desde dónde baja: recorta por abajo (codos algo flexionados). |
 
 Cuerpo (`state.body`):
 
@@ -452,26 +521,28 @@ npm test          # build + fidelity + balance
 npm run shots     # capturas a tests/shots/*.png
 ```
 
-- `fidelity.js` comprueba tres cosas:
-  - el FK del runtime coincide con Blender: 0,0 mm en todas las claves;
-  - con los valores por defecto, el runtime coincide con Blender: 0,0 mm (prensa al final: 43 mm a propósito, por la pelvis fija y la plataforma sin rotar);
-  - los pies no se deslizan: 0,0 mm.
-- `balance.js`: centro de masas y barra respecto al mediopié para 9 combinaciones de cuerpo y ajustes. El CdM debe quedarse en el valor autorado y los tobillos a la altura de tobillo × k. Para `hinge`, 7 cuerpos/ajustes en s = 0, 0,5 y 1: en el punto bajo la barra tiene que estar en el suelo (si la autorada lo está) o a la autorada × k (±5 mm). Además, sin saltos: con 11 cuerpos/ajustes (bloques, déficit, más y menos hondo incluidos), ningún paso de la barra entre frames puede ser más del doble que el mayor de sus vecinos (el solver antiguo da 14 fallos).
+- `fidelity.js`:
+  - el FK del runtime coincide con Blender: 0,0 mm en todas las poses exportadas (claves y muestras);
+  - con los valores por defecto, el runtime coincide con Blender (prensa al final: 43 mm a propósito; bisagra con codos flexionados en Blender: aviso, no fallo);
+  - los pies no se deslizan (salvo `hang`: colgado no se apoyan).
+- `balance.js`:
+  - sentadillas: CdM y barra respecto al mediopié para 9 cuerpos y ajustes;
+  - con el cuerpo por defecto, cambiar la carga no cambia la pose (salvo cuando el CdM llega al borde de la zona del pie);
+  - bisagra: el punto bajo donde toca (suelo o autorada × k), sin saltos entre frames con 15 cuerpos, ajustes e implementos, las manos llegan al asa con cada implemento, en el rumano la mano va por donde con la barra con cualquier implemento, y sin carga el CdM no sale del pie;
+  - dominada: las manos no se mueven en la barra con los tres agarres.
 - `harness.js`: Chromium headless con WebGL por SwiftShader. Sirve `three@0.147.0` desde `node_modules` porque el CDN no es accesible en CI.
 
 ---
 
 ## 6. Limitaciones conocidas y siguientes pasos
 
-- **Configuración de ejercicios:** `EXERCISES` en `runtime.js` lleva los nombres cortos a mano; una acción que no esté se añade sola con su `meta` de `poses.json`.
-- **Demanda muscular:** sale del modelo de palos (`cur.act`), no de la pose final tras el lazo cerrado. Recalcularla sobre la pose real sería más coherente. En `hinge` es aún más aproximada: el modelo de palos pone la barra en el tronco.
-- **Peso muerto:** pose base por script (§2.5), sin retoque a mano todavía. Al empezar el tronco sale bastante horizontal (71°); se puede bajar la cadera con `SHIN_START` hasta donde la espinilla deja, o retocando en Blender.
-- **Tipos de base:** existen `stand` (barra en el tronco), `seat` (prensa) y `hinge` (barra en las manos). Para nuevos patrones (spec X01 §16, por apoyo):
-  - tumbado (press banca, hip thrust);
-  - colgado (dominadas);
-  - empuje vertical.
-- **Visuales pendientes:** la vista "Frente" no es exactamente frontal. La prensa no muestra el raíl ni el carro.
-- **Plataforma de la prensa:** la rotación de unos 10° en la clave final se ignora. Conviene corregirla en Blender.
+- **Siguiente:** remos (remo con barra en `hinge` con el tronco fijo; remo sentado en polea en `seat`), según X01 §16.
+- **Demanda muscular:** sale del modelo de palos (`cur.act`), no de la pose final. En `hinge` es aproximada y en `hang` no hay (el mapa solo tiene piernas y espalda baja): faltan las zonas de tracción y empuje.
+- **Bisagra:** codos flexionados en las claves del convencional (25° al empezar); choques entre implementos, brazos y piernas; una kettlebell entre los pies debería limitar cuánto se cierran (X02 §7).
+- **Dominada:** piernas cruzadas o dobladas, escápulas, pecho a la barra por encima de la autorada.
+- **Tamaño:** con muestras, ~150 KB por ejercicio; para cientos, un JSON por ejercicio cargado bajo demanda y quitar dedos que no cambian (§3.3).
+- **Tempo:** idea de usar el tempo del ejercicio para el ritmo de la animación (X01 §2.16).
+- **Visuales pendientes:** la vista «Frente» no es exactamente frontal. La prensa no muestra el raíl ni el carro y su plataforma ignora la rotación de ~10° de la clave final.
 - **Exportador:** asume los nombres del rig del maniquí (`Armature_Mannequin`, `Mannequin`, `DEF-*`, `PROPERTIES`, `BARRA`, `MAQUINA`, `PLATAFORMA`, `FF_asa_±1`).
 
 La migración a la app está en `docs/PORTING.md`.
