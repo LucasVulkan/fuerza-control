@@ -60,6 +60,10 @@ Tercera ronda (3-nov-2026):
 
 14. **Ejercicios vecinos: cada uno con su acción, y los ajustes pueden llevarlo hacia el otro.** Aunque un ejercicio «pueda salir» de otro (el rumano del convencional), tiene su propia acción en Blender: es el punto de partida y la pose que se ve con los valores por defecto. Los ajustes del tipo de base son los mismos para los dos y lo bastante amplios para acercarlos: un rumano con más rodilla y profundidad hasta el suelo es casi un convencional, y al revés. Así el entrenador afina su intención sin elegir entre un catálogo cerrado (§16, *Ejercicios vecinos*).
 
+Cuarta ronda (4-nov-2026):
+
+15. **Una acción por movimiento, no por implemento.** Matiza la 10: si cambiar de barra a mancuernas o kettlebell (o de agarre prono a neutro) no cambia el recorrido, no hay otra acción: el implemento lo pone la app, la mano se coloca sola en su asa y los dedos se cierran según su grosor, a partir de dos o tres manos de referencia hechas en Blender. Si el recorrido cambia de verdad (swing con kettlebell), tiene su acción. Detalle en [X02](X02-agarres-implementos.md).
+
 ## 3. X01-01 · Prueba en WebView
 
 - `formfit-mannequin/prototype/build.py` mete three.js dentro del HTML (antes venía de un CDN) y escribe una copia en `mobile/assets/mannequin/viewer.html`.
@@ -309,10 +313,10 @@ Un tipo de base nuevo es: dónde se fija el cuerpo, qué sliders tiene y cómo s
 | Patrón | Básico | Tipo de base | Implemento nuevo |
 |---|---|---|---|
 | Sentadilla | sentadilla trasera (hecha) | `stand` | — |
-| Bisagra | peso muerto convencional | `stand` | — (la barra sale del suelo) |
+| Bisagra | peso muerto convencional (hecho) y rumano (hecho) | `hinge` | — (la barra sale del suelo); mancuernas y kettlebell en [X02-04](X02-agarres-implementos.md) |
 | Tracción vertical | dominada | `hang` | barra fija |
 | Tracción vertical | jalón al pecho | `seat` | máquina de jalón |
-| Tracción horizontal | remo con barra | `stand` | — |
+| Tracción horizontal | remo con barra | `hinge` | — |
 | Tracción horizontal | remo sentado en polea | `seat` | polea |
 | Empuje horizontal | press de banca | `bench` | banco |
 | Empuje vertical | press militar de pie | `stand` | — |
@@ -330,12 +334,30 @@ En un movimiento de polea (remo, face pull, extensión de tríceps…), si la al
 |---|---|
 | El inicio (`s = 0`) es el punto bajo, con la barra en el suelo | El **punto bajo** es la clave con la barra más baja, sea la primera (convencional) o la última (rumano, que empieza arriba) |
 | El punto bajo siempre está en el suelo | **Profundidad**: altura de la barra en el punto bajo respecto a la autorada. En el suelo (o en los bloques) no baja más |
-| «Rodilla al empezar»: más tibia solo al empezar | **Flexión de rodilla**: más o menos tibia en todo el recorrido, con más peso cuanto más abajo |
+| «Rodilla al empezar»: más tibia solo al empezar | **Flexión de rodilla**: tope de flexión; la animación va normal hasta llegar a él y lo demás lo compensa el cuerpo (decidido el 3-nov tras probar el reparto proporcional) |
 | — | **Altura de los discos** (bloques: tirar desde más alto) y **altura de los pies** (déficit), cada una con su caja en el visor |
 
 El cálculo es el que ya hay: en el punto bajo se resuelven muslo y tronco para la altura de barra que toca, con la barra sobre el mediopié, y ese cambio se va desvaneciendo hasta el bloqueo (de pie es de pie). Con un tronco muy inclinado y poca rodilla sale un aviso de isquios (el maniquí no sabe de flexibilidad), como el de «la mano no llega a la barra».
 
 El rumano se crea con un script de `blender/ejercicios/` como el del convencional (barra en las manos arriba, rodilla casi bloqueada, barra a media tibia abajo) y se retoca a mano.
+
+**Dominada y remos: qué tiene que resolver la app** (4-nov-2026). Agarre e implemento salen de [X02](X02-agarres-implementos.md): la acción se hace con un agarre y los demás se ponen en la app.
+
+*Dominada* (base nueva `hang`, implemento barra fija):
+
+- **Apoyo:** las manos en la barra; el cuerpo cuelga bajo ellas. Equilibrio: el centro de masas bajo las manos (no hay pies que lo sostengan): si cambian las medidas o las piernas, el cuerpo se balancea lo justo para volver a quedar debajo.
+- **Ajustes:** anchura del agarre (como en la barra del peso muerto); orientación prona · supina · neutra (neutra = asas paralelas, otro implemento); recorrido arriba (barbilla sobre la barra · pecho a la barra) y abajo (colgado del todo · codos un poco flexionados); piernas rectas o cruzadas (dos manos de referencia de piernas, o claves, se decide al hacerla).
+- **Lo que mueve el cuerpo:** la altura del hombro respecto a las manos sale de la longitud del brazo con el codo del frame; con otras medidas la barra no se mueve y el cuerpo sube o baja.
+
+*Remo con barra* (base `hinge`, la misma del peso muerto):
+
+- El **tronco se queda fijo** a un ángulo (ajuste: inclinación del tronco, 15–80°) y las piernas como en el rumano; solo se mueven los brazos.
+- **Ajustes:** inclinación del tronco; anchura y orientación del agarre (prono o supino, el Yates); hacia dónde sube la barra (ombligo · pecho); con mancuernas o kettlebell por X02.
+- **Equilibrio:** el mismo de la bisagra (centro de masas en el pie), con el tronco fijo: compensa la cadera.
+
+*Remo sentado en polea* (base `seat`, implemento polea): altura de la polea (`pulleyH`, arriba), maneral (barra recta, triángulo neutro, cuerda: X02), si el tronco acompaña o se queda quieto.
+
+El orden: primero X02-01…04 (validan agarres e implementos con el peso muerto, que ya está), luego la dominada (base nueva) y los remos.
 
 **Probar X01-13**
 
