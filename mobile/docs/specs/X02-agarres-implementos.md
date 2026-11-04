@@ -3,6 +3,7 @@
 > Tema: ejercicios
 > En corto: Cambiar de barra a mancuernas o kettlebell (y de agarre prono a neutro) sin hacer otra animación: el implemento lo pone la app, la mano se coloca sola en su asa y los dedos se cierran según el grosor, a partir de dos o tres manos hechas en Blender.
 > Inicio: 2026-11-04
+> Fin: 2026-11-04
 > Fase X02-01 · hecho · Manos de referencia en Blender y su exportación · §3
 > Fase X02-02 · hecho · Dedos por grosor y hueco del puño desde la mano de referencia · §4
 > Fase X02-03 · hecho · Catálogo de implementos en el visor · §5
