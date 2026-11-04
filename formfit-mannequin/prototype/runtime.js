@@ -112,7 +112,23 @@ function fkPositions(pose, rootP) {
     pose[n].p = off.multiplyScalar(k).applyQuaternion(pose[P].q).add(pose[P].p);
   }
 }
-// Pose autorada interpolada por tramos entre claves (rotaciones locales -> slerp -> FK)
+// Curvas entre claves como las de Blender (Bézier «auto clamped»), canal a canal: velocidad continua al pasar por cada clave,
+// cero en los extremos del recorrido y donde el canal llega a un máximo o un mínimo. En recta (antes) la velocidad cambiaba de
+// golpe en cada clave y se notaban tirones (en la dominada, entre el 32 y el 50 %, donde hay claves seguidas).
+function curveAt(ex, s) { const [, , t, i] = seg(ex, s); return { K: keysOf(ex), i, t }; }
+function herm({ K, i, t }, v) {                     // v(k): valor del canal en la clave k
+  const n = K.length, ds = K[i + 1].s - K[i].s;
+  const slope = j => { if (j <= 0 || j >= n - 1) return 0; const a = v(j - 1), b = v(j), c = v(j + 1);
+    return (b - a) * (c - b) <= 0 ? 0 : (c - a) / (K[j + 1].s - K[j - 1].s); };
+  const t2 = t * t, t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * v(i) + (t3 - 2 * t2 + t) * ds * slope(i) + (3 * t2 - 2 * t3) * v(i + 1) + (t3 - t2) * ds * slope(i + 1);
+}
+const hermV = (c, v) => V(herm(c, k => v(k).x), herm(c, k => v(k).y), herm(c, k => v(k).z));
+function hermQ(c, q) {                              // por componentes, con todas en el mismo hemisferio que la clave i, y normalizado
+  const ref = q(c.i), al = k => { const x = q(k); return x.dot(ref) < 0 ? new THREE.Quaternion(-x.x, -x.y, -x.z, -x.w) : x; };
+  return new THREE.Quaternion(herm(c, k => al(k).x), herm(c, k => al(k).y), herm(c, k => al(k).z), herm(c, k => al(k).w)).normalize();
+}
+// Pose autorada interpolada entre claves (rotaciones locales -> curvas -> FK)
 const AUTH = {};
 function authoredLocal(ex) {
   return AUTH[ex] ??= keysOf(ex).map(({ bones: B }) => {
@@ -126,21 +142,21 @@ function authoredLocal(ex) {
   });
 }
 let CUR_OFF = null;                                // desplazamientos locales autorados del frame actual
-function authoredOffsets(ex, s) { const [, , t, i] = seg(ex, s), A = authoredLocal(ex)[i], B = authoredLocal(ex)[i + 1], o = {};
-  for (const n of BN) if (PARENT[n]) o[n] = A.off[n].clone().lerp(B.off[n], t); return o; }
+function authoredOffsets(ex, s) { const c = curveAt(ex, s), L = authoredLocal(ex), o = {};
+  for (const n of BN) if (PARENT[n]) o[n] = hermV(c, k => L[k].off[n]); return o; }
 function authoredPose(ex, s) {
-  const [, , t, i] = seg(ex, s), A = authoredLocal(ex)[i], B = authoredLocal(ex)[i + 1], pose = {};
+  const c = curveAt(ex, s), L = authoredLocal(ex), pose = {};
   for (const n of ORDER) {
-    const lq = A.loc[n].clone().slerp(B.loc[n], t), P = PARENT[n];
+    const lq = hermQ(c, k => L[k].loc[n]), P = PARENT[n];
     pose[n] = { q: P ? pose[P].q.clone().multiply(lq) : lq, p: V() };
   }
   const offs = authoredOffsets(ex, s), saved = CUR_OFF; CUR_OFF = offs;
-  pose['DEF-HIPS'].p = A.root.clone().lerp(B.root, t); fkSub(pose, 'DEF-HIPS');
+  pose['DEF-HIPS'].p = hermV(c, k => L[k].root); fkSub(pose, 'DEF-HIPS');
   CUR_OFF = saved; return pose;
 }
 // transformaciones mundiales exactas exportadas de Blender (para apoyos: pies, asas)
-const expP = (ex, n, s) => { const [a, b, t] = seg(ex, s); return V(...a.bones[n].p).lerp(V(...b.bones[n].p), t); };
-const expQ = (ex, n, s) => { const [a, b, t] = seg(ex, s); return new THREE.Quaternion(...a.bones[n].q).slerp(new THREE.Quaternion(...b.bones[n].q), t); };
+const expP = (ex, n, s) => { const c = curveAt(ex, s); return hermV(c, k => V(...c.K[k].bones[n].p)); };
+const expQ = (ex, n, s) => { const c = curveAt(ex, s); return hermQ(c, k => new THREE.Quaternion(...c.K[k].bones[n].q)); };
 // centro de masas sagital del sistema respecto al mediopié. Masas y centros por segmento de de Leva (% del peso corporal):
 // cabeza 6,94 · tronco 43,46 · brazo 2,71 · antebrazo 1,62 · mano 0,61 · muslo 14,16 · pierna 4,33 · pie 1,37.
 // Cabeza y brazos van en su sitio real, no sumados al tronco: en la sentadilla frontal los brazos van por delante y hacen de
@@ -301,7 +317,7 @@ function features(P, ex, s) {
   const fr = k => POSES.exercises[ex][k];
   const A = fr('start'), B = fr('end'), [Ka, Kb, t] = seg(ex, s);
   if (A.bar) {
-    const c = V(...Ka.bar.center).lerp(V(...Kb.bar.center), t);
+    const cv = curveAt(ex, s), c = hermV(cv, k => V(...cv.K[k].bar.center));
     f.bar = c; f.barAxis = V(...Ka.bar.axis).lerp(V(...Kb.bar.axis), t).normalize();
     const rel = c.clone().sub(sh);   // barra respecto al hombro en el marco del tronco (u = arriba, n = delante)
     f.barOff = { du: rel.y * Math.cos(f.phi) + rel.z * Math.sin(f.phi), dn: rel.z * Math.cos(f.phi) - rel.y * Math.sin(f.phi), dx: rel.x };
