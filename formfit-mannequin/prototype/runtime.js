@@ -95,6 +95,9 @@ const PARAMS = {
     { id: 'knees', label: 'Flexión de rodilla', min: -20, max: 50, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° (la pelvis se desliza por el asiento)` },
     { id: 'grip', label: 'Anchura de agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand, min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
+    { id: 'wrist', label: 'Muñeca', def: 'recta', options: [['recta', 'Recta (alineada con el antebrazo)'], ['autorada', 'La de Blender']] },
+    { id: 'bottom', label: 'Desde dónde empieza', min: 0, max: 60, step: 1, def: 0, fmt: v => v === 0 ? 'brazos estirados (la autorada)' : `${v}% del recorrido` },
+    { id: 'top', label: 'Hasta dónde tira', min: 40, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}% del recorrido` },
   ],
   // colgado (dominada): el cuerpo cuelga de las manos; sin carga (el peso es el del cuerpo)
   hang: [
@@ -489,7 +492,7 @@ function rowCut(ex) {
 function evaluate(ex, s) {
   const base = EXERCISES[ex].base, prm = state.per[ex];
   // dominada: el recorrido se recorta por arriba (hasta dónde sube) y por abajo (desde dónde baja); no se comprime
-  if (base === 'hang') { const lo = prm.bottom, hi = Math.max(prm.top, lo + 5); s = (lo + (hi - lo) * ramp(s, lo > 0 ? 0 : 1, hi < 100 ? 0 : 1)) / 100; }
+  if (base === 'hang' || base === 'cable') { const lo = prm.bottom, hi = Math.max(prm.top, lo + 5); s = (lo + (hi - lo) * ramp(s, lo > 0 ? 0 : 1, hi < 100 ? 0 : 1)) / 100; }
   // agarre con su propia acción (supino: Chinup); el neutro sale de la supina si la hay (los codos ya van hacia delante)
   if (base === 'hang') ex = variantFor(ex, prm.gripType) || (prm.gripType === 'neutro' && variantFor(ex, 'supino')) || ex;
   // remo: el supino con su acción (barbell_row_supino) si la hay; con barra, el recorrido se corta en el codo máximo (frenando)
@@ -572,7 +575,7 @@ function evaluateInner(ex, s) {
     const wristOff = S => handI ? handI[S].hollow.clone().multiplyScalar(d.k).applyQuaternion(handI[S].q)     // puño -> muñeca
       : socketRest(S).multiplyScalar(d.k).applyQuaternion(qHandA(S).multiply(REST[`DEF-HAND.${S}`].q.clone().invert()));
     // ---- construcción de la pose para una inclinación de tronco (y una cadera) dadas
-    const build = (phi, hipT) => {
+    const build = (phi, hipT, barShift = 0) => {
     const pose = clonePose(auth), warns = [];
     const R = QA(X, phi - F.phi);                       // +phi = hacia delante (+Z)
     const hipA = F.hip;
@@ -612,10 +615,9 @@ function evaluateInner(ex, s) {
       const sh = pose[`DEF-ARM01.${WS}`].p, Rr = 0.999 * (LEN(WS).Lu + LEN(WS).Lf);
       const h = o => Math.sqrt(Math.max(0, Rr * Rr - (bar.x + o.x - sh.x) ** 2 - (bar.z + o.z - sh.z) ** 2));
       const oC = gripOff(WS).sub(wristOff(WS)), oR = hg[WS].off.clone().multiplyScalar(kr).sub(socketRest(WS).multiplyScalar(d.k).applyQuaternion(auth[`DEF-HAND.${WS}`].q.clone().multiply(REST[`DEF-HAND.${WS}`].q.clone().invert()))).applyQuaternion(qP);
-      if (cable) {   // polea: los brazos van hacia delante, así que el maneral se acerca o se aleja a lo largo del brazo (ud), no en vertical
-        const t = o => { const w = bar.clone().add(o).sub(sh), b = w.dot(ud); return -b + Math.sqrt(Math.max(0, b * b - w.lengthSq() + Rr * Rr)); };
-        bar.addScaledVector(ud, (1 - up) * (t(oC) - t(oR)));
-      } else bar.y += (1 - up) * (oR.y - oC.y + h(oR) - h(oC));
+      // polea: los brazos van hacia delante; el maneral se acerca o se aleja a lo largo del brazo (ud) en lazo cerrado (barShift)
+      if (cable) bar.addScaledVector(ud, barShift);
+      else bar.y += (1 - up) * (oR.y - oC.y + h(oR) - h(oC));
     } else if (hinge) {   // ...salvo la altura: la que deja la muñeca izquierda con el BRAZO RECTO (regla: con la barra en las
       // manos el codo no se flexiona, ni en el aire ni en el suelo). Con el agarre más abierto el brazo baja menos.
       const sh = pose['DEF-ARM01.L'].p, o = gripOff('L').sub(wristOff('L'));   // barra -> muñeca
@@ -639,11 +641,24 @@ function evaluateInner(ex, s) {
         elbowPole.lerp(elbowPole.clone().applyQuaternion(R), up).normalize();
         if (I.roll) elbowPole.applyAxisAngle(wrist.clone().sub(pose[`DEF-ARM01.${S}`].p).normalize(), sgn * ROW_SUP_ELBOW);
       }
-      const ik = solveLimb(pose, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, elbowPole, [LEN(S).Lu, LEN(S).Lf]);
+      const chain = [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn];
+      let ik = solveLimb(pose, auth, chain, wrist, elbowPole, [LEN(S).Lu, LEN(S).Lf]);
       // mantener rotaciones autoradas (giradas con la barra) para el resto de la cadena del brazo tras el IK
       for (const c of subtree(hn)) pose[c].q = Rh.clone().multiply(auth[c].q);
       if (handI) { const h = handI[S]; pose[hn].q = h.q.clone(); for (const c in h.fingers) pose[c].q = h.q.clone().multiply(h.fingers[c]); }
       fkSub(pose, `DEF-SHOULDER.${S}`);
+      if (cable && prm.wrist !== 'autorada') {   // polea: muñeca recta (la mano alineada con el antebrazo, como en reposo)
+        const q0 = pose[hn].q.clone(), fa = `DEF-FORARM0.${S}`, hR = Y.clone().applyQuaternion(REST[hn].q);
+        const offW = q => handI ? handI[S].hollow.clone().multiplyScalar(d.k).applyQuaternion(q) : sock.clone().multiplyScalar(d.k).applyQuaternion(q.clone().multiply(REST[hn].q.clone().invert()));
+        let qh = q0.clone();
+        for (let it = 0; it < 4; it++) {
+          const want = hR.clone().applyQuaternion(pose[fa].q.clone().multiply(REST[fa].q.clone().invert()));   // eje de la mano en reposo, llevado con el antebrazo
+          qh = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(qh), want).multiply(qh);
+          ik = solveLimb(pose, auth, chain, grip.clone().sub(offW(qh)), elbowPole, [LEN(S).Lu, LEN(S).Lf]); fkSub(pose, `DEF-SHOULDER.${S}`);
+        }
+        const dq = qh.clone().multiply(q0.clone().invert()); for (const c of subtree(hn)) pose[c].q = dq.clone().multiply(pose[c].q);
+        fkSub(pose, `DEF-SHOULDER.${S}`);
+      }
       if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
     }
     if (one) {   // a un brazo: la mano libre sigue apoyada donde estaba en el muslo (si se dobla o estira la pierna, sube o baja con él)
@@ -672,7 +687,22 @@ function evaluateInner(ex, s) {
         const K = Math.acos(clamp((v.lengthSq() - lt0 * lt0 - ls0 * ls0) / (2 * lt0 * ls0), -1, 1)) + prm.knees * DEG, D2 = Lt * Lt + Ls * Ls + 2 * Lt * Ls * Math.cos(K);
         const hx = F.hip.x + (th.x - F.hip.x) * kr, hy = F.hip.y + (th.y - F.hip.y) * kr, ax = an.x * prm.stance * kr;
         return an.z - Math.sqrt(Math.max(0, D2 - (ax - hx) ** 2 - (an.y - hy) ** 2)) - (F.hip.z + (th.z - F.hip.z) * kr); });
-      bA = build(phiA, F.hip.clone().add(V(0, 0, (slide[0] + slide[1]) / 2)));
+      const hipC = F.hip.clone().add(V(0, 0, (slide[0] + slide[1]) / 2));
+      // brazo estirado: con otro maneral, otra polea o la muñeca recta, la muñeca queda a otra distancia del hombro y el codo se
+      // doblaría. El maneral se mueve a lo largo del brazo hasta que hombro→muñeca mide lo de la pose autorada en este frame (× k),
+      // con todo el peso con los brazos estirados y nada al tirar (secante). Con la muñeca de Blender y por defecto, 0
+      const reach = r => r.pose[`DEF-HAND.${WS}`].p.distanceTo(r.pose[`DEF-ARM01.${WS}`].p);
+      bA = build(phiA, hipC);
+      if (up < 1) {
+        const r0 = reach(bA), want = r0 + (1 - up) * (auth[`DEF-HAND.${WS}`].p.distanceTo(auth[`DEF-ARM01.${WS}`].p) * kr - r0);
+        if (Math.abs(r0 - want) > 0.0005) {   // (ya está: por defecto no se toca)
+        // bisección (cerca del brazo recto la distancia se satura y una secante lo sacaba del alcance): alejar el maneral alarga
+        // hombro→muñeca hasta que el brazo no da más; se queda en el último punto al que la mano llega
+        let lo = r0 < want ? 0 : -0.2, hi = r0 < want ? 0.2 : 0;
+        for (let i = 0; i < 10; i++) { const m = (lo + hi) / 2, b = build(phiA, hipC, m), ok = !b.warns.length;
+          if (reach(b) < want && ok) lo = m; else hi = m; if (ok) bA = b; }
+        }
+      }
       const P = bA.pose, e = n => P[`${n}.${WS}`].p; out.elbow = 180 - e('DEF-ARM01').clone().sub(e('DEF-FORARM01')).angleTo(e('DEF-HAND').clone().sub(e('DEF-FORARM01'))) / DEG;
     } else if (row) {
       // remo: el tronco a la inclinación del ajuste y la rodilla con su ángulo autorado; el centro de masas (con la carga actual)

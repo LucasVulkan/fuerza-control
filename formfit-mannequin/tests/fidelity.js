@@ -5,6 +5,8 @@ const { open } = require('./harness');
 (async () => { const { page, close } = await open();
   console.log(await page.evaluate(() => { const D = __dbg, out = []; let fail = 0; D.state.playing = false;
     for (const ex of Object.keys(D.POSES.exercises)) {
+      // polea: por defecto la muñeca va recta (alineada con el antebrazo), no la de Blender; la fidelidad se mide con la de Blender
+      if (D.EXERCISES[ex]?.base === 'cable') D.state.per[ex].wrist = 'autorada';
       const E = D.POSES.exercises[ex], keys = [['start', 0, E.start], ...(E.mid || []).map(m => [`clave s=${m.s.toFixed(2)}`, m.s, m]), ['end', 1, E.end]];
       // bisagra: el visor endereza los codos (regla: brazos rectos con la barra en las manos). Si alguna clave tiene el codo
       // flexionado en Blender, el ejercicio difiere a propósito (también las claves vecinas, que heredan el ajuste de cadera):

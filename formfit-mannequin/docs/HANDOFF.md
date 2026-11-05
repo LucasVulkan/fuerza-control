@@ -489,7 +489,9 @@ Acción `cable_row` (script `blender/ejercicios/cable_row.py`). Comparte la rama
 - **Tronco**: el de la animación alrededor de cómo queda al tirar (s = 1, `PHI1`): `swing` escala esa oscilación (0 % = quieto) y `trunk` la desplaza.
 - **Polea** (`pulleyOf`, `pulleyAt`): la columna es la de la acción (`meta.pulley`: delante y, a un brazo, a un lado), pero **la altura por defecto es donde la línea antebrazo→maneral de la pose de inicio corta la columna**: así el antebrazo y la mano quedan en línea con el cable con la animación del usuario, se retoque como se retoque (la de la acción, 40 cm, quedaba por debajo del brazo). «Altura de la polea» la sube o baja desde ahí (nunca bajo 5 cm).
 - **Al cambiar la altura**, el brazo estirado gira alrededor del hombro de la pose de inicio hasta apuntar a la polea nueva; esa corrección se **suma como una traslación que se desvanece en recta** según tira (`(e0 girado − e0) × (1 − rowUp)`), y las manos y los codos giran con ella (`qP`). Antes se giraba el vector hombros→maneral de cada frame y el maneral dibujaba un círculo hacia arriba; ahora la trayectoria se separa ≤ 5 cm de la recta y el antebrazo queda a ≤ 4° del cable con cualquier altura.
-- **Brazo recto con otro maneral**: con los brazos hacia delante, la corrección va **a lo largo del brazo** (el maneral se acerca o se aleja), no en vertical como en el remo con barra (allí cuelgan).
+- **Muñeca recta** (`wrist`, por defecto «recta»): tras el IK del brazo, la mano gira lo mínimo para tener con el antebrazo (`DEF-FORARM0`) la relación de reposo (en reposo el eje de la mano va 4,6° del antebrazo), sin cambiar su giro sobre sí misma; la muñeca se recoloca para que el puño siga en el maneral y se repite 4 veces (≤ 2° de flexión en todo el recorrido, con cualquier polea y maneral). El usuario lo pidió para que la muñeca no se tuerza al tirar ni al subir la polea. **Es la excepción de fidelidad de la polea**: la mano (y por tanto el brazo) ya no es la de Blender; `tests/fidelity.js` mide la polea con «La de Blender» (`wrist = 'autorada'`), que da 0,0 mm.
+- **Brazo estirado, en lazo cerrado** (`barShift`): con otro maneral, otra polea o la muñeca recta, la muñeca queda a otra distancia del hombro. El maneral se mueve a lo largo del brazo (`ud`) hasta que hombro→muñeca mide lo de la pose autorada en ese frame × k, con todo el peso con los brazos estirados y nada al tirar. Por **bisección** (una secante sacaba la mano del alcance: cerca del brazo recto la distancia se satura) y sin pasar de donde la mano llega. Por defecto no se toca. Coste: ~1 ms por frame.
+- **Recorrido** (`bottom`, `top`): como en la dominada, recortan la animación con frenada en el corte.
 - **Manerales** (`impl`): triángulo (el de la acción, `IMPL.triangulo`, a la anchura de Blender), barra recta (transversal a ±24 cm × anchura, palmas abajo; supino, arriba: `implHand` con `palm: 'down' | 'up'`) y cuerda (asas verticales, palmas dentro, que se abren 10 cm al tirar: `half + spread × rowUp`).
 - Props (`placeCable`): columna y polea, cable (de la polea al gancho del maneral), asiento y plataforma (con la pose de inicio y la planta del pie), y el maneral.
 - Indicadores: tronco, codo, ángulo del cable y altura de la polea.
@@ -527,8 +529,10 @@ Acción `cable_row` (script `blender/ejercicios/cable_row.py`). Comparte la rama
 | cable | `trunk` | −15…25° (0) | Inclinación del tronco (desplaza toda la oscilación). |
 | cable | `swing` | 0–200 % (100) | Balanceo del tronco: 0 % quieto (como al tirar). |
 | cable | `dest` | −20…8 cm (0) | Hacia dónde tira, a lo largo del tronco. |
-| cable | `knees` | −20…50° (0) | Flexión de rodilla (la plataforma se acerca o se aleja). |
+| cable | `knees` | −20…50° (0) | Flexión de rodilla (los pies quedan en la plataforma; la pelvis se desliza por el asiento). |
 | cable | `grip`, `stance` | — | Anchura de la barra recta (0,7–1,6) y de pies. |
+| cable | `wrist` | chips (recta) | Muñeca recta (mano alineada con el antebrazo) · la de Blender. |
+| cable | `bottom`, `top` | 0–60 % (0), 40–100 % (100) | Desde dónde empieza y hasta dónde tira: recortan con frenada. |
 | hang | `gripType` | chips (prono) | Prono · supino · neutro. Usa la variante de ese agarre si la hay (§2.6); si no, gira la mano. |
 | hang | `grip` | 0,75–1,4 (1) | Anchura de agarre (el neutro va a la anchura de sus asas). |
 | hang | `top` | 15–100 % (100) | Hasta dónde sube: recorta la animación por arriba, con frenada. |
