@@ -4154,7 +4154,7 @@ const PARAMS = {
     { id: 'knees', label: 'Flexión de rodilla', min: -20, max: 50, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° (la pelvis se desliza por el asiento)` },
     { id: 'grip', label: 'Anchura de agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand, min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
-    { id: 'wrist', label: 'Muñeca', def: 'recta', options: [['recta', 'Recta (alineada con el antebrazo)'], ['autorada', 'La de Blender']] },
+    { id: 'wrist', label: 'Mano', def: 'polea', options: [['polea', 'Hacia la polea'], ['autorada', 'La de Blender']] },
     { id: 'bottom', label: 'Desde dónde empieza', min: 0, max: 60, step: 1, def: 0, fmt: v => v === 0 ? 'brazos estirados (la autorada)' : `${v}% del recorrido` },
     { id: 'top', label: 'Hasta dónde tira', min: 40, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}% del recorrido` },
   ],
@@ -4707,34 +4707,23 @@ function evaluateInner(ex, s) {
       fkSub(pose, `DEF-SHOULDER.${S}`); return { grip, ik }; };
     let man = null;
     if (md && prm.wrist !== 'autorada') {
-      // MANERAL (polea): las manos salen de él (_mano.<maneral>) y gira para quedar en línea con ellas, con la muñeca recta (la mano en
-      // línea con el antebrazo); el cable engancha en su gancho, que queda donde toque: el maneral gira respecto al cable en ese punto.
-      // Lo que sigue la trayectoria es el centro de los agarres (donde van las manos). Girar alrededor del gancho era inestable: los
-      // agarres bajaban, el antebrazo los seguía y la mano acababa 56° hacia abajo. Rígido (triángulo, barra, asa): un giro para todas
-      // las manos (la media); la cuerda: un ramal por mano, del gancho común a cada mano.
-      const hR = S => Y.clone().applyQuaternion(REST[`DEF-HAND.${S}`].q);
-      const axisM = S => Y.clone().applyQuaternion(md[S].relQi);              // eje de la mano en los ejes del maneral
-      const avg = vs => vs.reduce((a, v) => a.add(v), V(0, 0, 0)).normalize();
-      const shC = one ? pose[`DEF-ARM01.${WS}`].p : shNow;
-      let qM0 = new THREE.Quaternion().setFromUnitVectors(avg(sides.map(axisM)), bar.clone().sub(shC).normalize());
+      // MANERAL (polea): lo orienta el cable. La tensión tira del gancho, así que el centro de los agarres, el gancho y la polea quedan
+      // en línea, y las manos van donde las pone el maneral (_mano.<maneral>), apuntando hacia la polea. Antes giraba para seguir al
+      // antebrazo: al final del tirón, con los codos abiertos, el antebrazo apuntaba abajo y el maneral salía de la línea del cable.
+      // El centro de los agarres sigue la trayectoria. Rígido (triángulo, barra, asa): el giro mínimo desde el marco de uso (no se
+      // tumba); cuerda: el gancho en la línea del cable, a su largo, y cada ramal del gancho a su mano.
+      const toP = pulleyAt(ex, prm.pulleyH).sub(bar).normalize();
       const gc = sides.map(S => md[S].ag).reduce((a, v) => a.add(v), V(0, 0, 0)).multiplyScalar(1 / sides.length);
-      const qMs = Object.fromEntries(sides.map(S => [S, qM0.clone()]));
-      const gripsOf = q => Object.fromEntries(sides.map(S => [S, bar.clone().add(md[S].ag.clone().sub(gc).applyQuaternion(q[S]))]));   // agarres con el centro en la trayectoria
-      const hookOf = (q, G) => sides.map(S => G[S].clone().sub(md[S].ag.clone().applyQuaternion(q[S]))).reduce((a, v) => a.add(v), V(0, 0, 0)).multiplyScalar(1 / sides.length);
-      let res, pM;
-      for (let it = 0; it < 5; it++) {
-        const G = gripsOf(qMs); pM = hookOf(qMs, G);
-        if (!md.rigid) for (const S of sides) {   // cuerda: cada ramal, del gancho común a su mano
-          const a = md[S].ag.clone().applyQuaternion(qMs[S]).normalize(), b = G[S].clone().sub(pM).normalize();
-          qMs[S] = new THREE.Quaternion().setFromUnitVectors(a, b).multiply(qMs[S]); }
-        res = Object.fromEntries(sides.map(S => [S, handOn(S, md.rigid ? pM : G[S].clone().sub(md[S].ag.clone().applyQuaternion(qMs[S])), qMs[S])]));
-        if (it === 4) break;
-        // eje de la mano en reposo, llevado con el antebrazo: hacia ahí gira el maneral (alrededor del gancho)
-        const want = S => hR(S).applyQuaternion(pose[`DEF-FORARM0.${S}`].q.clone().multiply(REST[`DEF-FORARM0.${S}`].q.clone().invert()));
-        const have = S => Y.clone().applyQuaternion(pose[`DEF-HAND.${S}`].q);
-        if (md.rigid) { const dq = new THREE.Quaternion().setFromUnitVectors(avg(sides.map(have)), avg(sides.map(want))); for (const S of sides) qMs[S] = dq.clone().multiply(qMs[S]); }
-        else for (const S of sides) qMs[S] = new THREE.Quaternion().setFromUnitVectors(have(S), want(S)).multiply(qMs[S]);
+      const gh = gc.length() > 1e-3 ? gc.clone().negate().normalize() : V(0, 0, 1);   // del centro de los agarres al gancho (marco del maneral)
+      const q0 = new THREE.Quaternion().setFromUnitVectors(gh, toP), pM = bar.clone().addScaledVector(toP, gc.length());
+      const qMs = {}, at = {};
+      for (const S of sides) {
+        qMs[S] = q0.clone(); at[S] = pM;
+        if (!md.rigid) { const G = bar.clone().add(md[S].ag.clone().sub(gc).applyQuaternion(q0));   // cuerda: el ramal, del gancho a su mano
+          qMs[S] = new THREE.Quaternion().setFromUnitVectors(md[S].ag.clone().applyQuaternion(q0).normalize(), G.clone().sub(pM).normalize()).multiply(q0);
+          at[S] = G.sub(md[S].ag.clone().applyQuaternion(qMs[S])); }
       }
+      const res = Object.fromEntries(sides.map(S => [S, handOn(S, at[S], qMs[S])]));
       for (const S of sides) if (res[S].ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega al maneral (${Math.round(res[S].ik.miss * 100)} cm)`);
       man = { mesh: md.mesh, hook: pM, parts: sides.map(S => qMs[S]), at: sides.map(S => res[S].grip.clone().sub((md.bar ? md[S].ag.clone().setX(md[S].ag.x * prm.grip) : md[S].ag.clone()).applyQuaternion(qMs[S]))), grips: sides.map(S => res[S].grip) };
     }
