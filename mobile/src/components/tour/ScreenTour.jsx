@@ -38,15 +38,15 @@ import { placeBubble } from './placeBubble';
 
 const AnimatedPath = Reanimated.createAnimatedComponent(Path);
 
-const PAD        = 4;     // lo que el hueco sobresale del elemento
-const VEIL_OUT   = 140;   // entre pasos el velo se va...
-const VEIL_IN    = 200;   // ...y vuelve ya en el sitio del paso nuevo
-const READ_MS    = 150;   // con el velo puesto, lo que se deja ver el hueco antes del globo
-const SHOW_MS    = 220;   // el globo entra desde el lado del elemento
-const SLIDE      = 10;    // ...desde tantos px
+const PAD        = 8;     // lo que el hueco sobresale del elemento
+const VEIL_OUT   = 200;   // entre pasos el velo se va...
+const VEIL_IN    = 500;   // ...y vuelve ya en el sitio del paso nuevo
+const READ_MS    = 80;   // con el velo puesto, lo que se deja ver el hueco antes del globo
+const SHOW_MS    = 200;   // el globo entra desde el lado del elemento
+const SLIDE      = 100;    // ...desde tantos px
 const TAIL_W     = 20;    // el piquito del globo
 const TAIL_H     = 10;
-const LINE       = 2;     // el borde lima del globo y de su piquito
+const LINE       = 1;     // el borde lima del globo y de su piquito
 const GAP        = TAIL_H + 4;   // entre el elemento y el globo: el piquito casi llega al hueco
 const SCROLL_MS  = 150;   // lo que se espera a que la lista termine de bajar antes de medir
 const EDGE       = 100;   // el elemento llega a la lista con este aire por encima
@@ -165,6 +165,7 @@ export default function ScreenTour({ steps: given, onClose }) {
   const veil = useAnimatedProps(() => ({ d: OUTER + holeD(hx.get(), hy.get(), hw.get(), hh.get(), hr.get()) }));
   const veilStyle = useAnimatedStyle(() => ({ opacity: veilOp.get() }));
   const fade = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: slide.get() }] }));
+  const tailFade = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: slide.get() }] }));
 
   const last = idx === steps.length - 1;
   const next = () => (last ? onClose() : setIdx(idx + 1));
@@ -212,17 +213,6 @@ export default function ScreenTour({ steps: given, onClose }) {
           onLayout={(e) => setBh(e.nativeEvent.layout.height)}
           style={[styles.bubble, { top }, fade]}
         >
-          {/* Del color del globo, tapando su borde en la base y con el borde lima en
-              los dos lados: sin costura. Medio trazo de aire arriba para que la punta no se corte. */}
-          {side && (
-            <Svg
-              width={TAIL_W} height={TAIL_H + 2 * LINE} pointerEvents="none"
-              style={[styles.tail, { left: tailLeft - LINE }, side === 'below' ? { top: -TAIL_H - 2 * LINE } : { bottom: -TAIL_H - 2 * LINE, transform: [{ scaleY: -1 }] }]}
-            >
-              <Path d={`M0 ${TAIL_H + 2 * LINE}V${TAIL_H + LINE}L${TAIL_W / 2} ${LINE}L${TAIL_W} ${TAIL_H + LINE}V${TAIL_H + 2 * LINE}Z`} fill={th.colors.surface2} />
-              <Path d={`M0 ${TAIL_H + LINE}L${TAIL_W / 2} ${LINE}L${TAIL_W} ${TAIL_H + LINE}`} fill="none" stroke={th.colors.accent} strokeWidth={LINE} strokeLinejoin="round" />
-            </Svg>
-          )}
           <View style={styles.head}>
             <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               {steps.map((_, i) => <View key={i} style={[styles.dot, i === view.idx && styles.dotOn]} />)}
@@ -252,6 +242,21 @@ export default function ScreenTour({ steps: given, onClose }) {
               <Text style={styles.nextText}>{last ? t('tour.done') : t('tour.next')}</Text>
             </Pressable>
           </View>
+        </Reanimated.View>
+      )}
+
+      {/* El piquito, fuera del globo y en coordenadas de pantalla (dentro, el borde del
+          globo se veía cruzándolo): del color del globo, tapa el borde en la base y lleva
+          el borde lima en sus dos lados. Encima, el mismo dibujo volteado. */}
+      {step && side && (
+        <Reanimated.View
+          pointerEvents="none"
+          style={[styles.tail, { left: spacing.xl + tailLeft, top: side === 'below' ? top - TAIL_H - LINE : top + bh - 2 * LINE }, tailFade]}
+        >
+          <Svg width={TAIL_W} height={TAIL_H + 3 * LINE} style={side === 'above' && { transform: [{ scaleY: -1 }] }}>
+            <Path d={`M0 ${TAIL_H + 3 * LINE}V${TAIL_H + LINE}L${TAIL_W / 2} ${LINE}L${TAIL_W} ${TAIL_H + LINE}V${TAIL_H + 3 * LINE}Z`} fill={th.colors.surface2} />
+            <Path d={`M0 ${TAIL_H + LINE}L${TAIL_W / 2} ${LINE}L${TAIL_W} ${TAIL_H + LINE}`} fill="none" stroke={th.colors.accent} strokeWidth={LINE} strokeLinejoin="round" />
+          </Svg>
         </Reanimated.View>
       )}
     </View>
