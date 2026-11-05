@@ -44,6 +44,16 @@
       "othersTabs": { "title": "Las demás sesiones", "text": "Cada pestaña es una sesión de tu programa. Púlsalas para verlas y hacer otra sesión en lugar de la recomendada." },
       "free": { "title": "Sesión libre", "text": "Haz una sesión diferente a las del programa. Puedes empezar una en blanco, sobre la marcha, o crear sesiones libres para reusarlas en cualquier momento." },
       "tabs": { "title": "Moverte por la app", "text": "Desde aquí puedes ver tu programa, donde podrás editarlo, tu progreso y el resto de la app." }
+    },
+    "program": {
+      "view": { "title": "Ver programa", "text": "La pantalla con el programa completo: etapas, sesiones y ejercicios. Pulsa para abrirla." },
+      "edit": { "title": "Editar programa", "text": "El editor para cambiar las sesiones, los ejercicios y las etapas del programa. Pulsa para abrirlo." },
+      "editTrainer": { "title": "Programa de tu entrenador", "text": "Este programa lo lleva tu entrenador, que ve tus entrenos y hace los cambios. Pulsa en Ver programa para consultarlo." },
+      "stages": { "title": "Etapas", "text": "Las etapas del programa, con la que llevas en curso destacada y las semanas que has hecho. Pulsa en una etapa para pasar a ella." }
+    },
+    "progress": {
+      "tabs": { "title": "Tu progreso", "text": "Ejercicios muestra cómo evoluciona cada ejercicio, Carga cuánto has entrenado cada día e Historial las sesiones que has hecho. Toca en una opción para cambiar de vista." },
+      "exercise": { "title": "Un ejercicio", "text": "Cada tarjeta resume tu progreso en un ejercicio. Toca en una para ver su ficha, con la gráfica y los registros." }
     }
   },
   "header": {

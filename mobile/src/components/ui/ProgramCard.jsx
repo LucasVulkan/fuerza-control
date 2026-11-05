@@ -22,21 +22,24 @@ import { useTheme, useThemedStyles } from '../../useTheme';
  * comparten el tab Programa y la ficha de cliente. Sin `onEdit`, Ver ocupa el
  * hueco. El `⋯` no ejecuta nunca: abre una lista.
  */
-/** `editLocked`: el plan gratis no deja editar (M01 §4.11) — PRO junto a EDITAR. */
-export function ProgramActions({ onEdit, onView, onMore, editLocked = false }) {
+/**
+ * `editLocked`: el plan gratis no deja editar (M01 §4.11) — PRO junto a EDITAR.
+ * `editRef` / `viewRef`: para que el recorrido de Programa (U17-02) señale cada botón.
+ */
+export function ProgramActions({ onEdit, onView, onMore, editLocked = false, editRef, viewRef }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.actions}>
       {!!onEdit && (
-        <TouchableOpacity style={[styles.actionBtn, editLocked && { flexDirection: 'row', gap: spacing.sm }]} onPress={onEdit} activeOpacity={0.75} accessibilityRole="button">
+        <TouchableOpacity ref={editRef} collapsable={false} style={[styles.actionBtn, editLocked && { flexDirection: 'row', gap: spacing.sm }]} onPress={onEdit} activeOpacity={0.75} accessibilityRole="button">
           <Text style={styles.actionBtnText} numberOfLines={1}>{t('programCard.edit')}</Text>
           {editLocked && <ProBadge />}
         </TouchableOpacity>
       )}
       {!!onView && (
-        <TouchableOpacity style={styles.actionBtn} onPress={onView} activeOpacity={0.75} accessibilityRole="button">
+        <TouchableOpacity ref={viewRef} collapsable={false} style={styles.actionBtn} onPress={onView} activeOpacity={0.75} accessibilityRole="button">
           <Text style={styles.actionBtnText} numberOfLines={1}>{t('programCard.view')}</Text>
         </TouchableOpacity>
       )}

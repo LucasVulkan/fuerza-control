@@ -44,6 +44,16 @@
       "othersTabs": { "title": "The other sessions", "text": "Each tab is a session of your program. Tap them to see them and do another session instead of the recommended one." },
       "free": { "title": "Free session", "text": "Do a session that isn't in your program. Start a blank one on the fly, or create free sessions to reuse whenever you like." },
       "tabs": { "title": "Getting around the app", "text": "From here you can see your program, where you can edit it, your progress and the rest of the app." }
+    },
+    "program": {
+      "view": { "title": "View program", "text": "The screen with the whole program: stages, sessions and exercises. Tap to open it." },
+      "edit": { "title": "Edit program", "text": "The editor to change the program's sessions, exercises and stages. Tap to open it." },
+      "editTrainer": { "title": "Your trainer's program", "text": "Your trainer runs this program, sees your workouts and makes the changes. Tap View program to look at it." },
+      "stages": { "title": "Stages", "text": "The stages of the program, with the one you are in highlighted and the weeks you have done. Tap a stage to switch to it." }
+    },
+    "progress": {
+      "tabs": { "title": "Your progress", "text": "Exercises shows how each exercise evolves, Load how much you have trained each day and History the sessions you have done. Tap an option to change view." },
+      "exercise": { "title": "An exercise", "text": "Each card sums up your progress in one exercise. Tap one to see its page, with the chart and the records." }
     }
   },
   "header": {

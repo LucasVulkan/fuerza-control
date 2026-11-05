@@ -43,6 +43,7 @@ import { spacing } from '../../theme';
 export default function ProgressPanel({
   baseLog, programTemplateIds, allExercises, fallbackBodyWeight,
   onRefresh, refreshing = false, history = null,
+  switcherRef, listRef, firstRef,   // los del recorrido de Progreso (U17-02); la ficha de cliente no los pasa
 }) {
   const { t }  = useTranslation();
   const [view, setView] = useState('exercises');
@@ -76,6 +77,8 @@ export default function ProgressPanel({
         allExercises={allExercises}
         onRefresh={onRefresh}
         refreshing={refreshing}
+        scrollRef={listRef}
+        firstRef={firstRef}
       />
     ),
     load: (
@@ -99,7 +102,9 @@ export default function ProgressPanel({
           pestaña cuando el conmutador iba dentro; ahora los pone su envoltorio. */}
       <Rise index={0}>
         <View style={styles.switcher}>
-          <SegmentedControl options={options} value={view} onChange={select} />
+          <View ref={switcherRef} collapsable={false}>
+            <SegmentedControl options={options} value={view} onChange={select} />
+          </View>
         </View>
       </Rise>
 
