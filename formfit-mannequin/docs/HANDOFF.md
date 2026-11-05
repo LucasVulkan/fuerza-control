@@ -12,7 +12,7 @@ Un maniquí 3D animado por ejercicio para la app (spec [X01](../../mobile/docs/s
 
 Hoy hay nueve ejercicios: sentadilla trasera y frontal (`stand`), prensa (`seat`), peso muerto convencional y rumano (`hinge`), dominada (`hang`, con la variante supina `Chinup`), remo con barra (`row`, con la variante `barbell_row_supino`), remo en polea y remo en polea a un brazo (`cable`).
 
-**Rama:** todo el trabajo del maniquí va en su propia rama (`feat/x01-peso-muerto`), nunca en `develop`. Si la carpeta del proyecto está en otra rama, se trabaja en una carpeta aparte con `git worktree` (hoy `../fc-maniqui`) sin cambiar la rama de la principal.
+**Rama:** todo el trabajo del maniquí va en su propia rama, `feat/x01-peso-muerto`, en la carpeta del proyecto (no en una carpeta aparte: Expo Go sirve desde ella). Nunca en `develop`: es una feature larga y `develop` sigue recibiendo otras.
 
 ### 0.2 Reglas que no se rompen
 
