@@ -24,7 +24,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Pressable, StyleSheet, AccessibilityInfo, BackHandler, findNodeHandle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, {
-  useSharedValue, useAnimatedProps, useAnimatedStyle, withTiming, Easing, useReducedMotion, FadeIn,
+  useSharedValue, useAnimatedProps, useAnimatedStyle, withTiming, Easing, useReducedMotion,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,9 @@ import { placeBubble } from './placeBubble';
 const AnimatedPath = Reanimated.createAnimatedComponent(Path);
 
 const PAD        = 4;     // lo que el hueco sobresale del elemento
-const MOVE_MS    = 280;   // el hueco de un paso al siguiente
+const VEIL_OUT   = 140;   // entre pasos el velo se va...
+const VEIL_IN    = 200;   // ...y vuelve ya en el sitio del paso nuevo
+const READ_MS    = 150;   // con el velo puesto, lo que se deja ver el hueco antes del globo
 const SHOW_MS    = 220;   // el globo entra desde el lado del elemento
 const SLIDE      = 10;    // ...desde tantos px
 const TAIL_W     = 20;    // el piquito del globo
@@ -93,21 +95,24 @@ export default function ScreenTour({ steps: given, onClose }) {
   const titleRef = useRef(null);
   const rootRef  = useRef(null);
   const sideRef  = useRef(null);               // de qué lado del elemento cae el globo
-  const placed   = useRef(false);               // el primer hueco aparece, no viaja
 
   const hx = useSharedValue(0), hy = useSharedValue(0), hw = useSharedValue(1), hh = useSharedValue(1);
   const hr = useSharedValue(0), shown = useSharedValue(0);
-  const slide = useSharedValue(0);
+  const slide = useSharedValue(0), veilOp = useSharedValue(0);
 
   useEffect(() => { AccessibilityInfo.isScreenReaderEnabled().then(setReader, () => setReader(false)); }, []);
 
 
-  // Mide el paso, mueve el hueco hasta él y, cuando está, enseña el globo.
+  // Entre pasos: fuera el globo y el velo, se mide el paso nuevo (y se baja la
+  // lista si hace falta), el velo vuelve con el hueco ya en su sitio y luego el globo.
   useEffect(() => {
     if (!win.w || reader === null) return undefined;
     let alive = true;
     const step = steps[idx];
-    shown.set(withTiming(0, { duration: reduced ? 0 : 90 }));
+    const out  = reduced || veilOp.get() === 0 ? 0 : VEIL_OUT;
+    shown.set(withTiming(0, { duration: out ? 90 : 0 }));
+    veilOp.set(withTiming(0, { duration: out }));
+    const faded = new Promise((done) => setTimeout(done, out));
     (async () => {
       let r = null;
       if (!reader && step.ref) {
@@ -122,15 +127,16 @@ export default function ScreenTour({ steps: given, onClose }) {
       const rect   = r && { x: r.x - PAD, y: r.y - PAD, w: r.w + 2 * PAD, h: r.h + 2 * PAD };
       const target = rect ?? { x: win.w / 2, y: win.h / 2, w: 1, h: 1 };
       const radius = (step.radius ?? th.radius.md) + PAD;
-      const go = (v, to) => v.set(placed.current && !reduced ? withTiming(to, { duration: MOVE_MS, easing: Easing.out(Easing.cubic) }) : to);
-      go(hx, target.x); go(hy, target.y); go(hw, target.w); go(hh, target.h); go(hr, radius);
-      placed.current = true;
+      await faded;
+      if (!alive) return;
+      hx.set(target.x); hy.set(target.y); hw.set(target.w); hh.set(target.h); hr.set(radius);
+      veilOp.set(withTiming(1, { duration: reduced ? 0 : VEIL_IN }));
       setView({ idx, rect, radius });
     })();
     return () => { alive = false; };
-  }, [idx, win.w, win.h, reader, reduced, steps, th.radius.md, hx, hy, hw, hh, hr, shown]);
+  }, [idx, win.w, win.h, reader, reduced, steps, th.radius.md, hx, hy, hw, hh, hr, shown, veilOp]);
 
-  // El globo sale con el hueco ya en camino y su alto ya medido, entrando desde
+  // El globo sale con el velo ya puesto y su alto ya medido, entrando desde
   // el lado del elemento: debajo, bajando; encima, subiendo.
   useEffect(() => {
     if (!view) return undefined;
@@ -139,7 +145,7 @@ export default function ScreenTour({ steps: given, onClose }) {
       slide.set(reduced ? 0 : from);
       slide.set(withTiming(0, { duration: reduced ? 0 : SHOW_MS, easing: Easing.out(Easing.cubic) }));
       shown.set(withTiming(1, { duration: reduced ? 0 : SHOW_MS }));
-    }, reduced ? 0 : 120);
+    }, reduced ? 0 : VEIL_IN + READ_MS);
     return () => clearTimeout(timer);
   }, [view, reduced, slide, shown]);
 
@@ -157,6 +163,7 @@ export default function ScreenTour({ steps: given, onClose }) {
   }, [reader, view]);
 
   const veil = useAnimatedProps(() => ({ d: OUTER + holeD(hx.get(), hy.get(), hw.get(), hh.get(), hr.get()) }));
+  const veilStyle = useAnimatedStyle(() => ({ opacity: veilOp.get() }));
   const fade = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: slide.get() }] }));
 
   const last = idx === steps.length - 1;
@@ -186,7 +193,7 @@ export default function ScreenTour({ steps: given, onClose }) {
       accessibilityViewIsModal
     >
       {view && (
-        <Reanimated.View entering={reduced ? undefined : FadeIn.duration(180)} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Reanimated.View style={[StyleSheet.absoluteFill, veilStyle]} pointerEvents="none">
           <Svg width="100%" height="100%">
             <AnimatedPath fill={withOpacity('#000000', 0.8)} fillRule="evenodd" animatedProps={veil} />
           </Svg>
