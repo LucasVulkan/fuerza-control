@@ -32,7 +32,7 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['row_flat_chest_top_side', 'barbell_row', 1, 'side', {}, { trunk: 25, dest: -20 }], ['row_kb_wide_top_front', 'barbell_row', 1, 'front', {}, { impl: 'kettlebells', grip: 1.3 }],
     ['cable_start_side', 'cable_row', 0, 'side', {}, {}], ['cable_end_side', 'cable_row', 1, 'side', {}, {}], ['cable_mid_45', 'cable_row', 0.5, 'three', {}, {}],
     ['cable_high_start_side', 'cable_row', 0, 'side', {}, { pulleyH: 80 }], ['cable_still_start_side', 'cable_row', 0, 'side', {}, { swing: 0 }],
-    ['cable_bar_end_45', 'cable_row', 1, 'three', {}, { impl: 'barra_recta' }], ['cable_rope_end_45', 'cable_row', 1, 'three', {}, { impl: 'cuerda' }],
+    ['cable_bar_end_45', 'cable_row', 1, 'three', {}, { impl: 'barra_recta' }], ['cable_bar_q_front', 'cable_row', 0.3, 'front', {}, { impl: 'barra_recta' }], ['cable_tri_q_front', 'cable_row', 0.3, 'front', {}, {}], ['cable_rope_end_45', 'cable_row', 1, 'three', {}, { impl: 'cuerda' }],
     ['cable_knees_start_side', 'cable_row', 0, 'side', {}, { knees: 40 }],
     ['one_start_45', 'cable_row_one_arm', 0, 'three', {}, {}], ['one_end_45', 'cable_row_one_arm', 1, 'three', {}, {}], ['one_end_front', 'cable_row_one_arm', 1, 'front', {}, {}],
     ['one_high_start_45', 'cable_row_one_arm', 0, 'three', {}, { pulleyH: 60 }], ['one_knees_side', 'cable_row_one_arm', 0.5, 'side', {}, { knees: 40 }],
@@ -41,7 +41,7 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).filter(k => !__dbg.POSES.exercises[k]?.meta?.of).indexOf(ex)].click();   // las variantes no tienen botón
       Object.assign(S.body, { height: 180, femur: 100, tibia: 100, torso: 100, dorsi: 35 }, body); if (__dbg.EXERCISES[ex].base === 'hinge') Object.assign(S.per[ex], { knees: 0, depth: 0, plates: 0, feet: 0, impl: 'barra', load: 150 });
-      if (__dbg.EXERCISES[ex].base === 'cable') Object.assign(S.per[ex], { impl: 'triangulo', gripType: 'prono', pulleyH: 0, trunk: 0, swing: 100, dest: 0, knees: 0, grip: 1, stance: 1, wrist: 'polea', bottom: 0, top: 100 });
+      if (__dbg.EXERCISES[ex].base === 'cable') Object.assign(S.per[ex], { impl: 'triangulo', gripType: 'prono', pulleyH: 0, trunk: 0, swing: 100, dest: 0, knees: 0, grip: 1, stance: 1, wrist: 'polea', elbows: 0, bottom: 0, top: 100 });
       if (__dbg.EXERCISES[ex].base === 'row') Object.assign(S.per[ex], { impl: 'barra', gripType: 'prono', trunk: 0, dest: 0, grip: 1 });
       if (__dbg.EXERCISES[ex].base === 'hang') Object.assign(S.per[ex], { gripType: 'prono', grip: 1, top: 100, bottom: 0 });   // la captura anterior no se cuela
       Object.assign(S.per[ex], prm); S.s = s;

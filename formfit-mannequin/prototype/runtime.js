@@ -96,6 +96,7 @@ const PARAMS = {
     { id: 'grip', label: 'Anchura de agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand, min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'wrist', label: 'Mano', def: 'polea', options: [['polea', 'Hacia la polea'], ['autorada', 'La de Blender']] },
+    { id: 'elbows', label: 'Codos', min: -30, max: 45, step: 1, def: 0, fmt: v => v === 0 ? 'los del maneral' : `${Math.abs(v)}° más ${v > 0 ? 'abiertos' : 'pegados'}` },
     { id: 'bottom', label: 'Desde dónde empieza', min: 0, max: 60, step: 1, def: 0, fmt: v => v === 0 ? 'brazos estirados (la autorada)' : `${v}% del recorrido` },
     { id: 'top', label: 'Hasta dónde tira', min: 40, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}% del recorrido` },
   ],
@@ -466,6 +467,10 @@ const ROWD = {};
 const rowUp = (ex, F) => { const [a, b] = ROWD[ex] ??= withBody(DEFAULT_BODY, () => [0, 1].map(s => { const f = features(authoredPose(ex, s), ex, s); return f.bar.distanceTo(f.sh); }));
   return clamp((a - F.bar.distanceTo(F.sh)) / (a - b)); };
 const PHI1 = {};   // polea: inclinación autorada del tronco al tirar (s = 1)
+// codos por maneral (grados, + = abiertos y arriba): con agarre prono la mano solo va en línea con el antebrazo si el codo se abre
+// (a la altura del pectoral, más o menos); supino y neutro, lo más pegados posible, como en la acción (0). Se aplica al empezar y se
+// desvanece al tirar: al final la mano en el tronco ya deja el codo donde toca
+const ELBOW_MAN = { barra_recta: 40 };
 // maneral de polea (spec X02; blender/ejercicios/_manerales.py): el del implemento elegido (a un brazo, el asa en D; la barra
 // recta supina tiene su propia mano). null si el .blend aún no lo tiene (se dibuja el esquemático)
 function manData(ex) {
@@ -643,7 +648,10 @@ function evaluateInner(ex, s) {
     // mano en el maneral (pose y dedos) con el maneral en (pM, qMS)
     const handOn = (S, pM, qMS) => { const e = md[S], hn = `DEF-HAND.${S}`, ag = e.ag.clone(); if (md.bar) ag.x *= prm.grip;   // barra: la anchura mueve las manos por ella
       const grip = pM.clone().add(ag.applyQuaternion(qMS)), qH = qMS.clone().multiply(e.relQi);
-      const ik = solveLimb(pose, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], grip.clone().sub(e.hg.clone().multiplyScalar(d.k).applyQuaternion(qH)), poleFor(S), [LEN(S).Lu, LEN(S).Lf]);
+      const wrist = grip.clone().sub(e.hg.clone().multiplyScalar(d.k).applyQuaternion(qH)), pole = poleFor(S);
+      const ea = ((ELBOW_MAN[md.m] || 0) * (1 - up) + prm.elbows) * DEG;   // codos: giro alrededor de la línea hombro→muñeca
+      if (ea) pole.applyAxisAngle(wrist.clone().sub(pose[`DEF-ARM01.${S}`].p).normalize(), (S === 'L' ? 1 : -1) * ea);
+      const ik = solveLimb(pose, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, pole, [LEN(S).Lu, LEN(S).Lf]);
       pose[hn].q = qH; for (const c in e.fingers) pose[c].q = qH.clone().multiply(e.fingers[c]);
       fkSub(pose, `DEF-SHOULDER.${S}`); return { grip, ik }; };
     let man = null;
