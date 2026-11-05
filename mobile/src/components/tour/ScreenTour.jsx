@@ -24,14 +24,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Pressable, StyleSheet, AccessibilityInfo, BackHandler, findNodeHandle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, {
-  useSharedValue, useAnimatedProps, useAnimatedStyle, withTiming, withRepeat, Easing, useReducedMotion, FadeIn,
+  useSharedValue, useAnimatedProps, useAnimatedStyle, withTiming, Easing, useReducedMotion, FadeIn,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { Text } from '../ui/Text';
 import Spot from '../onboarding/learn/Spot';
-import { PULSE_MS } from '../onboarding/learn/pulse';
 import { HelpIcon } from '../ui/EditorIcons';
 import { spacing, textStyles, withOpacity, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -45,7 +44,8 @@ const SHOW_MS    = 220;   // el globo entra desde el lado del elemento
 const SLIDE      = 10;    // ...desde tantos px
 const TAIL_W     = 20;    // el piquito del globo
 const TAIL_H     = 10;
-const GAP        = TAIL_H + 4;   // entre el elemento y el globo: el piquito casi llega al aro
+const LINE       = 2;     // el borde lima del globo y de su piquito
+const GAP        = TAIL_H + 4;   // entre el elemento y el globo: el piquito casi llega al hueco
 const SCROLL_MS  = 150;   // lo que se espera a que la lista termine de bajar antes de medir
 const EDGE       = 100;   // el elemento llega a la lista con este aire por encima
 const OUTER      = 'M0 0H5000V5000H0Z';   // el velo: un rectángulo mayor que cualquier pantalla
@@ -96,16 +96,11 @@ export default function ScreenTour({ steps: given, onClose }) {
   const placed   = useRef(false);               // el primer hueco aparece, no viaja
 
   const hx = useSharedValue(0), hy = useSharedValue(0), hw = useSharedValue(1), hh = useSharedValue(1);
-  const hr = useSharedValue(0), ring = useSharedValue(0), shown = useSharedValue(0);
-  const slide = useSharedValue(0), pulse = useSharedValue(1);
+  const hr = useSharedValue(0), shown = useSharedValue(0);
+  const slide = useSharedValue(0);
 
   useEffect(() => { AccessibilityInfo.isScreenReaderEnabled().then(setReader, () => setReader(false)); }, []);
 
-  // El aro late como el de las tarjetas de «Aprende» (`Spot`); quieto con «Reducir movimiento».
-  useEffect(() => {
-    if (reduced) return;
-    pulse.set(withRepeat(withTiming(0, { duration: PULSE_MS, easing: Easing.inOut(Easing.quad) }), -1, true));
-  }, [pulse, reduced]);
 
   // Mide el paso, mueve el hueco hasta él y, cuando está, enseña el globo.
   useEffect(() => {
@@ -129,12 +124,11 @@ export default function ScreenTour({ steps: given, onClose }) {
       const radius = (step.radius ?? th.radius.md) + PAD;
       const go = (v, to) => v.set(placed.current && !reduced ? withTiming(to, { duration: MOVE_MS, easing: Easing.out(Easing.cubic) }) : to);
       go(hx, target.x); go(hy, target.y); go(hw, target.w); go(hh, target.h); go(hr, radius);
-      ring.set(withTiming(rect ? 1 : 0, { duration: reduced ? 0 : 200 }));
       placed.current = true;
       setView({ idx, rect, radius });
     })();
     return () => { alive = false; };
-  }, [idx, win.w, win.h, reader, reduced, steps, th.radius.md, hx, hy, hw, hh, hr, ring, shown]);
+  }, [idx, win.w, win.h, reader, reduced, steps, th.radius.md, hx, hy, hw, hh, hr, shown]);
 
   // El globo sale con el hueco ya en camino y su alto ya medido, entrando desde
   // el lado del elemento: debajo, bajando; encima, subiendo.
@@ -163,10 +157,6 @@ export default function ScreenTour({ steps: given, onClose }) {
   }, [reader, view]);
 
   const veil = useAnimatedProps(() => ({ d: OUTER + holeD(hx.get(), hy.get(), hw.get(), hh.get(), hr.get()) }));
-  const edge = useAnimatedProps(() => ({
-    d: holeD(hx.get(), hy.get(), hw.get(), hh.get(), hr.get()),
-    strokeOpacity: ring.get() * (0.4 + 0.6 * pulse.get()),
-  }));
   const fade = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: slide.get() }] }));
 
   const last = idx === steps.length - 1;
@@ -199,7 +189,6 @@ export default function ScreenTour({ steps: given, onClose }) {
         <Reanimated.View entering={reduced ? undefined : FadeIn.duration(180)} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Svg width="100%" height="100%">
             <AnimatedPath fill={withOpacity('#000000', 0.8)} fillRule="evenodd" animatedProps={veil} />
-            <AnimatedPath fill="none" stroke={th.colors.accent} strokeWidth={2} animatedProps={edge} />
           </Svg>
         </Reanimated.View>
       )}
@@ -216,13 +205,15 @@ export default function ScreenTour({ steps: given, onClose }) {
           onLayout={(e) => setBh(e.nativeEvent.layout.height)}
           style={[styles.bubble, { top }, fade]}
         >
-          {/* Del mismo color que el globo y metido 1 px dentro: sin costura. */}
+          {/* Del color del globo, tapando su borde en la base y con el borde lima en
+              los dos lados: sin costura. Medio trazo de aire arriba para que la punta no se corte. */}
           {side && (
             <Svg
-              width={TAIL_W} height={TAIL_H + 1} pointerEvents="none"
-              style={[styles.tail, { left: tailLeft }, side === 'below' ? { top: -TAIL_H } : { bottom: -TAIL_H, transform: [{ scaleY: -1 }] }]}
+              width={TAIL_W} height={TAIL_H + 2 * LINE} pointerEvents="none"
+              style={[styles.tail, { left: tailLeft - LINE }, side === 'below' ? { top: -TAIL_H - 2 * LINE } : { bottom: -TAIL_H - 2 * LINE, transform: [{ scaleY: -1 }] }]}
             >
-              <Path d={`M0 ${TAIL_H + 1}V${TAIL_H}L${TAIL_W / 2} 0L${TAIL_W} ${TAIL_H}V${TAIL_H + 1}Z`} fill={th.colors.surface2} />
+              <Path d={`M0 ${TAIL_H + 2 * LINE}V${TAIL_H + LINE}L${TAIL_W / 2} ${LINE}L${TAIL_W} ${TAIL_H + LINE}V${TAIL_H + 2 * LINE}Z`} fill={th.colors.surface2} />
+              <Path d={`M0 ${TAIL_H + LINE}L${TAIL_W / 2} ${LINE}L${TAIL_W} ${TAIL_H + LINE}`} fill="none" stroke={th.colors.accent} strokeWidth={LINE} strokeLinejoin="round" />
             </Svg>
           )}
           <View style={styles.head}>
@@ -271,6 +262,8 @@ const makeStyles = (th) => StyleSheet.create({
     right:           spacing.xl,
     backgroundColor: th.colors.surface2,
     borderRadius:    th.radius.lg,
+    borderWidth:     LINE,
+    borderColor:     th.colors.accent,
     padding:         spacing.lg,
     gap:             spacing.md,
   },
