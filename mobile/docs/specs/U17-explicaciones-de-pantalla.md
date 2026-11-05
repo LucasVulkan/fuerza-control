@@ -4,7 +4,7 @@
 > En corto: La primera vez que se abre cada pantalla principal se oscurece y se resaltan dos o tres elementos de uno en uno, con una frase cada uno; y algunas cosas que no se entienden solas (la burbuja de diferencia, por ejemplo) se explican con un globo la primera vez que aparecen. Sustituye a las tarjetas explicativas del tramo «Aprende» del onboarding, que se quitan; las dos elecciones de ese tramo (Lista/Pestañas y regla) se quedan.
 > Inicio: 2026-11-05
 > Fase U17-01 · hecho · Componentes: recorrido, aviso puntual y «visto» · §3
-> Fase U17-02 · pendiente · Recorridos de Entreno, Programa y Progreso · §4
+> Fase U17-02 · hecho · Recorridos de Entreno, Programa y Progreso · §4
 > Fase U17-03 · pendiente · Recorridos de Editar programa y del editor de sesión · §5
 > Fase U17-04 · pendiente · Recorridos de Clientes, ficha del cliente y Plantillas · §6
 > Fase U17-05 · pendiente · Avisos puntuales · §7
@@ -146,8 +146,8 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 | Entreno | 3 | Las otras sesiones: puedes hacer cualquiera en vez de la que toca |
 | Entreno | 4 | La sesión libre: entrenar sin seguir el programa |
 | Entreno | 5 | La barra de pestañas de abajo: para moverte por la app |
-| Programa (`MyProgramScreen`) | 1 | Ver el programa: el botón «Ver programa» abre el programa entero |
-| Programa | 2 | Editar: el botón «Editar» (cambiar ejercicios, sesiones y etapas); con el programa de un entrenador no hay botón y el paso señala los botones y dice que lo lleva él |
+| Programa (`MyProgramScreen`) | 1 | Editar: el botón «Editar» (cambiar ejercicios, sesiones y etapas) |
+| Programa | 2 | Ver el programa: el botón «Ver programa» abre el programa entero. Con el programa de un entrenador no hay Editar: primero Ver y luego los botones, diciendo que lo lleva él |
 | Programa | 3 | Solo si hay etapas: cómo se ven las etapas ahí y cuánto llevas de la actual |
 | Progreso (`StatsScreen`) | 1 | El segmentado Ejercicios · Carga · Historial: qué hay en cada uno (un paso, no uno por segmento) |
 | Progreso | 2 | Un ejercicio de la lista (el primero): al tocarlo se abre su ficha |

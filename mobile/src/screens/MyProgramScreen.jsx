@@ -215,9 +215,11 @@ export default function MyProgramScreen() {
   const stagesRef  = useRef(null);
   const hasStages  = (activeProgram?.stages?.length ?? 0) > 1;
   const text       = (key) => t(`tour.program.${key}`, { returnObjects: true });
+  // De izquierda a derecha, como están los botones: Editar y luego Ver.
   const tourSteps  = !activeProgram ? [] : [
-    { ref: viewRef, ...text('view') },
-    canEdit ? { ref: editRef, ...text('edit') } : { ref: actionsRef, ...text('editTrainer') },
+    ...(canEdit
+      ? [{ ref: editRef, ...text('edit') }, { ref: viewRef, ...text('view') }]
+      : [{ ref: viewRef, ...text('view') }, { ref: actionsRef, ...text('editTrainer') }]),
     ...(hasStages ? [{ ref: stagesRef, ...text('stages') }] : []),
   ];
   // Con una hoja abierta no sale (regla 7); el resto de cosas encima las mira el hook.
