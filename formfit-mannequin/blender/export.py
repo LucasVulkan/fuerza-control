@@ -137,7 +137,9 @@ for ex in EXERCISES:
     if act.get('ff_variant_of'):   # variante de otro ejercicio (p. ej. Chinup = pullup con agarre supino): el visor la usa desde su chip
         out['exercises'][ex]['meta'].update({'of': act['ff_variant_of'], 'grip': act.get('ff_grip')})
     if act.get('ff_pulley'):   # polea (anclaje del cable), [f, z] en metros -> glTF
-        f, z = act['ff_pulley']; out['exercises'][ex]['meta']['pulley'] = [0.0, z, f]
+        f, z, *x = act['ff_pulley']; out['exercises'][ex]['meta']['pulley'] = [x[0] if x else 0.0, z, f]
+    if act.get('ff_hand'):     # una sola mano tira (remo a un brazo): la otra va tal cual con el tronco
+        out['exercises'][ex]['meta']['hand'] = act['ff_hand']
     for key, f in [*FRAMES.items(), *(('mid', m) for m in mids(ex))]:
         sc.frame_set(f); sc.frame_set(f)
         P = pb['PROPERTIES']

@@ -10,7 +10,7 @@ Documento principal del módulo: qué hay en Blender, qué hace cada script, qu�
 
 Un maniquí 3D animado por ejercicio para la app (spec [X01](../../mobile/docs/specs/X01-maniqui-3d.md); agarres e implementos en [X02](../../mobile/docs/specs/X02-agarres-implementos.md)). El usuario anima cada ejercicio en Blender; el visor (`prototype/runtime.js`, empaquetado en `viewer.html` y cargado por una WebView en la app) reproduce esa animación y la adapta a los ajustes del entrenador (anchura, profundidad, rodilla, agarre, implemento…) y a las medidas del cliente (altura, fémur, tibia, tronco, tobillo).
 
-Hoy hay ocho ejercicios: sentadilla trasera y frontal (`stand`), prensa (`seat`), peso muerto convencional y rumano (`hinge`), dominada (`hang`, con la variante supina `Chinup`), remo con barra (`row`, con la variante `barbell_row_supino`) y remo en polea (`cable`).
+Hoy hay nueve ejercicios: sentadilla trasera y frontal (`stand`), prensa (`seat`), peso muerto convencional y rumano (`hinge`), dominada (`hang`, con la variante supina `Chinup`), remo con barra (`row`, con la variante `barbell_row_supino`), remo en polea y remo en polea a un brazo (`cable`).
 
 **Rama:** todo el trabajo del maniquí va en su propia rama (`feat/x01-peso-muerto`), nunca en `develop`. Si la carpeta del proyecto está en otra rama, se trabaja en una carpeta aparte con `git worktree` (hoy `../fc-maniqui`) sin cambiar la rama de la principal.
 
@@ -184,6 +184,7 @@ Al final keya los controles en los frames 1 y 30.
 - `blender/ejercicios/pullup.py`: la dominada. Barra fija (el control `BARRA`, a 2,30 m), manos colgadas de ella con agarre prono (`HANG_OVER`), colgado con los brazos rectos en el frame 1 y la barbilla sobre la barra en el 30; piernas colgando bajo la cadera (`FOOT-IK` a mano, no en el suelo). El usuario la retocó a mano (con claves intermedias) e hizo a mano la variante supina `Chinup`.
 - `blender/ejercicios/barbell_row.py`: el remo con barra. Tronco fijo (`TRUNK`, 55°) y la tibia (`SHIN`); abajo la barra cuelga con los brazos verticales bajo los hombros, `BAR_F` por delante del tobillo (0,15 m: con 0,061, sobre el mediopié, la rodilla se iba a 53°), y la rodilla sale de llegar a esa cadera con el muslo; arriba la barra va al ombligo (`BAR_TO` por el tronco bajo la línea de hombros, `CHEST_FRONT` delante de ella), codos atrás. Mide el puño (`F.socket`) antes de posar: medir pone el rig en reposo.
 - `blender/ejercicios/cable_row.py`: el remo en polea. Cadera a `HIP_Z` (sentado; el asiento lo dibuja el visor), pies en la plataforma (`FOOT-IK` a mano, planta hacia delante con `FOOT_PITCH`) a la distancia que da la rodilla `KNEE`; manos en el triángulo con agarre neutro (`NEUTRAL_FWD`), estiradas hacia la polea en el frame 1 (tronco `TRUNK_START`) y en el ombligo en el 30 (`TRUNK_END`). Tiene `setup`, que `ffpose.run` llama tras posar: guarda la polea en la acción (`ff_pulley`, [f, z]); el exportador la pasa a `meta.pulley`. La barra (`BARRA`) va oculta y `BARRA_EN_MANOS = 1`: el maneral exportado es el punto entre los puños (el exportador lo saca en las acciones `cable` aunque la barra esté oculta).
+- `blender/ejercicios/cable_row_one_arm.py`: el remo en polea a un brazo, **acción propia** (no variante: la pose del cuerpo cambia y es más sensible). Parte de `cable_row.py`; tira la derecha de un asa en D (`ff_hand = "R"`), con la polea delante de su hombro (`PULLEY_X`; `ff_pulley` lleva entonces [f, z, x]); la izquierda descansa en el muslo. El giro del tronco (`TWIST_START`/`TWIST_END`) va en el **pecho** (control `CHEST`), no en la pelvis: con la pelvis girada una pierna no llegaba a su pie y el exportador bajaba la cadera. Brazo estirado: la **muñeca** a 0,997 de brazo + antebrazo (en reposo el codo del maniquí no está recto: hombro→muñeca mide 0,503 y los dos segmentos 0,531). El control `BARRA` (oculto, `BARRA_EN_MANOS = 0`) marca el asa en el puño real (`FF_PUNO.R`) después de posar.
 - `blender/ejercicios/_manos.py`: las manos de referencia (abajo). Empieza por `_`: el panel no lo carga como ejercicio.
 - `ffpose.run(ejercicio, ajustes, live)`: el único punto que crea o actualiza la acción de un ejercicio (lo usan la terminal, el Text Editor y el panel).
 
@@ -490,6 +491,7 @@ Acción `cable_row` (script `blender/ejercicios/cable_row.py`). Comparte la rama
 - **Manerales** (`impl`): triángulo (el de la acción, `IMPL.triangulo`, a la anchura de Blender), barra recta (transversal a ±24 cm × anchura, palmas abajo; supino, arriba: `implHand` con `palm: 'down' | 'up'`) y cuerda (asas verticales, palmas dentro, que se abren 10 cm al tirar: `half + spread × rowUp`).
 - Props (`placeCable`): columna y polea, cable (de la polea al gancho del maneral), asiento y plataforma (con la pose de inicio y la planta del pie), y el maneral.
 - Indicadores: tronco, codo, ángulo del cable y altura de la polea.
+- **A un brazo** (`meta.hand`, acción `cable_row_one_arm`): solo el brazo de esa mano va por IK; el otro, el de Blender girado con el tronco. El pivote de los brazos (giro hacia la polea, vector hombro→asa) es ese hombro, no el centro de los hombros (con el pecho girado no están en el eje X y el codo se doblaba al cambiar polea o tronco). El maneral es el asa de la acción (`IMPL.asa`) y se ocultan maneral, agarre y anchura (`hide` en `PARAMS`).
 
 ### 4.5 Sliders (`PARAMS`)
 
@@ -581,7 +583,7 @@ npm run shots     # capturas a tests/shots/*.png
 
 ## 6. Limitaciones conocidas y siguientes pasos
 
-- **Siguiente:** remo en polea a un brazo (acción propia, base `cable`). El remo en polea (`cable`) está hecho por script; falta que el usuario lo retoque en Blender. Idea: con la polea alta, que «Hacia dónde tira» vaya solo hacia el pecho. El remo con barra (`row`) está hecho; retocado a mano; pendiente retocar la variante supina `barbell_row_supino` (codos pegados) y verlo en el móvil.
+- **Remo en polea** (`cable_row`) y **a un brazo** (`cable_row_one_arm`) hechos por script; falta que el usuario los retoque en Blender y los vea en el móvil. Idea: con la polea alta, que «Hacia dónde tira» vaya solo hacia el pecho. El remo con barra (`row`) está hecho; retocado a mano; pendiente retocar la variante supina `barbell_row_supino` (codos pegados) y verlo en el móvil.
 - **Demanda muscular:** sale del modelo de palos (`cur.act`), no de la pose final. En `hinge` es aproximada y en `hang` no hay (el mapa solo tiene piernas y espalda baja): faltan las zonas de tracción y empuje.
 - **Bisagra:** codos flexionados en las claves del convencional (25° al empezar); choques entre implementos, brazos y piernas; una kettlebell entre los pies debería limitar cuánto se cierran (X02 §7).
 - **Dominada:** piernas cruzadas o dobladas, escápulas, pecho a la barra por encima de la autorada.

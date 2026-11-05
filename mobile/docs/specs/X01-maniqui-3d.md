@@ -356,7 +356,7 @@ El rumano se crea con un script de `blender/ejercicios/` como el del convenciona
 - **Ajustes:** inclinación del tronco; anchura y orientación del agarre (prono o supino, el Yates); hacia dónde sube la barra (ombligo · pecho); con mancuernas o kettlebell por X02.
 - **Equilibrio:** el mismo de la bisagra (centro de masas en el pie), con el tronco fijo: compensa la cadera.
 
-*Remo sentado en polea* (base propia `cable`: la prensa usa `seat` con su raíl). **Hecho el 5-nov** (rama `feat/x01-peso-muerto`, por probar): acción `cable_row` por script (triángulo neutro, tronco que acompaña de 18° a −3°, polea a 40 cm), ajustes de altura de la polea (`pulleyH`), maneral (triángulo, barra recta prona o supina con anchura, cuerda), inclinación y balanceo del tronco, hacia dónde tira, flexión de rodilla y anchura de pies; detalle en el HANDOFF §4.4e. Falta el retoque a mano y el remo a un brazo (acción propia).
+*Remo sentado en polea* (base propia `cable`: la prensa usa `seat` con su raíl). **Hecho el 5-nov** (rama `feat/x01-peso-muerto`, por probar): acción `cable_row` por script (triángulo neutro, tronco que acompaña de 18° a −3°, polea a 40 cm), ajustes de altura de la polea (`pulleyH`), maneral (triángulo, barra recta prona o supina con anchura, cuerda), inclinación y balanceo del tronco, hacia dónde tira, flexión de rodilla y anchura de pies; detalle en el HANDOFF §4.4e. *Remo en polea a un brazo*: acción propia `cable_row_one_arm` (la derecha tira de un asa en D, la izquierda en el muslo, el pecho gira), con los mismos ajustes salvo el maneral. Falta el retoque a mano de los dos.
 
 El orden: primero X02-01…04 (validan agarres e implementos con el peso muerto, que ya está), luego la dominada (base nueva) y los remos.
 
@@ -369,6 +369,8 @@ El orden: primero X02-01…04 (validan agarres e implementos con el peso muerto,
 - [ ] Dominada: al cambiar las medidas, el cuerpo sigue colgando bajo las manos.
 - [ ] Remo con barra: se ve con su pose de Blender; inclinación del tronco, hacia dónde sube, supino e implementos cambian la pose sin saltos y la cadera compensa.
 - [ ] Remo en polea: subir y bajar `pulleyH` mueve el anclaje por la columna y el cable sigue a las manos.
+- [ ] Remo en polea: triángulo, barra recta (prona y supina) y cuerda; inclinación y balanceo del tronco y flexión de rodilla sin saltos.
+- [ ] Remo en polea a un brazo: solo tira la derecha; la izquierda en el muslo; la polea delante del hombro que tira.
 - [ ] Jalón: el cable baja desde arriba y por delante, no desde lo alto de una columna.
 
 ## 17. X01-14 · Contenido completo
