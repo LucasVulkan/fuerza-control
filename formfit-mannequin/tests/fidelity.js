@@ -17,14 +17,14 @@ const { open } = require('./harness');
         const r = D.evaluate(ex, s); let dv = 0; for (const n of D.BN) dv = Math.max(dv, r.pose[n].p.distanceTo(new D.THREE.Vector3(...B[n].p)));
         const elbow = elbowOf(B), bent = hinge && elbow > 8;
         const lim = D.EXERCISES[ex].base === 'seat' ? 0.06 : bentEx ? Infinity : hinge ? 0.003 : 0.001;   // prensa: pelvis fijada al asiento y plataforma sin rotar => difiere a propósito
-        if (fk > 0.001 || dv > lim) fail++;
+        if (!(fk <= 0.001 && dv <= lim)) fail++;   // así también falla con NaN
         out.push(`${ex} ${k}: FK vs Blender ${(fk * 1000).toFixed(1)} mm · runtime por defecto vs Blender ${(dv * 1000).toFixed(1)} mm${bent ? ` (aviso: en Blender el codo está flexionado ${elbow.toFixed(0)}°; el visor lo endereza)` : bentEx ? ' (aviso: hereda el codo enderezado de otra clave)' : ''}`);
       }
       if (D.EXERCISES[ex].base === 'hang') continue;   // colgado: los pies no se apoyan
       let slide = 0, f0;
       for (let i = 0; i <= 20; i++) { const r = D.evaluate(ex, i / 20), ref = r.plate || new D.THREE.Vector3();
         const f = r.pose['DEF-TOE.L'].p.clone().sub(ref); if (!i) f0 = f; slide = Math.max(slide, f.distanceTo(f0)); }
-      if (slide > 0.001) fail++;
+      if (!(slide <= 0.001)) fail++;
       out.push(`${ex}: deslizamiento del pie ${(slide * 1000).toFixed(1)} mm`);
     }
     out.push(fail ? `FALLOS: ${fail}` : 'OK'); return out.join('\n'); }));

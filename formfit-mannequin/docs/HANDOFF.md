@@ -10,7 +10,9 @@ Documento principal del módulo: qué hay en Blender, qué hace cada script, qu�
 
 Un maniquí 3D animado por ejercicio para la app (spec [X01](../../mobile/docs/specs/X01-maniqui-3d.md); agarres e implementos en [X02](../../mobile/docs/specs/X02-agarres-implementos.md)). El usuario anima cada ejercicio en Blender; el visor (`prototype/runtime.js`, empaquetado en `viewer.html` y cargado por una WebView en la app) reproduce esa animación y la adapta a los ajustes del entrenador (anchura, profundidad, rodilla, agarre, implemento…) y a las medidas del cliente (altura, fémur, tibia, tronco, tobillo).
 
-Hoy hay siete ejercicios: sentadilla trasera y frontal (`stand`), prensa (`seat`), peso muerto convencional y rumano (`hinge`), dominada (`hang`, con la variante supina `Chinup`) y remo con barra (`row`).
+Hoy hay ocho ejercicios: sentadilla trasera y frontal (`stand`), prensa (`seat`), peso muerto convencional y rumano (`hinge`), dominada (`hang`, con la variante supina `Chinup`), remo con barra (`row`, con la variante `barbell_row_supino`) y remo en polea (`cable`).
+
+**Rama:** todo el trabajo del maniquí va en su propia rama (`feat/x01-peso-muerto`), nunca en `develop`. Si la carpeta del proyecto está en otra rama, se trabaja en una carpeta aparte con `git worktree` (hoy `../fc-maniqui`) sin cambiar la rama de la principal.
 
 ### 0.2 Reglas que no se rompen
 
@@ -41,6 +43,7 @@ Las conversaciones son en español, y los comentarios del código y los textos d
    |---|---|---|---|
    | `stand` | pies; barra en el tronco | CdM sobre el mediopié moviendo el tronco | sentadillas, press militar de pie |
    | `hinge` | pies; peso en las manos | tibia y tronco para el CdM y la trayectoria de la barra; brazos rectos; implementos | peso muerto, rumano |
+   | `cable` | pelvis en el asiento, pies en la plataforma; maneral con cable a una polea | brazos que tiran; altura de la polea; tronco (inclinación y balanceo); manerales | remo en polea |
    | `row` | pies; peso en las manos, tronco fijo | brazos que tiran (codo libre); inclinación y destino de la barra; CdM con la cadera; implementos | remo con barra |
    | `hang` | manos en una barra fija | hombros bajo las manos, manos quietas en la barra, agarres | dominada, chin-up |
    | `seat` | pelvis en el asiento | plataforma sobre su raíl | prensa; jalón y remo en polea (por hacer) |
@@ -180,6 +183,7 @@ Al final keya los controles en los frames 1 y 30.
 - `blender/ejercicios/romanian_deadlift.py`: el rumano. Usa la geometría de `deadlift.py` con el punto bajo más alto (`BAR_LOW`, barra a media tibia) y menos rodilla, y le da la vuelta: empieza arriba (frame 1) y baja (frame 30). El usuario lo retocó después a mano.
 - `blender/ejercicios/pullup.py`: la dominada. Barra fija (el control `BARRA`, a 2,30 m), manos colgadas de ella con agarre prono (`HANG_OVER`), colgado con los brazos rectos en el frame 1 y la barbilla sobre la barra en el 30; piernas colgando bajo la cadera (`FOOT-IK` a mano, no en el suelo). El usuario la retocó a mano (con claves intermedias) e hizo a mano la variante supina `Chinup`.
 - `blender/ejercicios/barbell_row.py`: el remo con barra. Tronco fijo (`TRUNK`, 55°) y la tibia (`SHIN`); abajo la barra cuelga con los brazos verticales bajo los hombros, `BAR_F` por delante del tobillo (0,15 m: con 0,061, sobre el mediopié, la rodilla se iba a 53°), y la rodilla sale de llegar a esa cadera con el muslo; arriba la barra va al ombligo (`BAR_TO` por el tronco bajo la línea de hombros, `CHEST_FRONT` delante de ella), codos atrás. Mide el puño (`F.socket`) antes de posar: medir pone el rig en reposo.
+- `blender/ejercicios/cable_row.py`: el remo en polea. Cadera a `HIP_Z` (sentado; el asiento lo dibuja el visor), pies en la plataforma (`FOOT-IK` a mano, planta hacia delante con `FOOT_PITCH`) a la distancia que da la rodilla `KNEE`; manos en el triángulo con agarre neutro (`NEUTRAL_FWD`), estiradas hacia la polea en el frame 1 (tronco `TRUNK_START`) y en el ombligo en el 30 (`TRUNK_END`). Tiene `setup`, que `ffpose.run` llama tras posar: guarda la polea en la acción (`ff_pulley`, [f, z]); el exportador la pasa a `meta.pulley`. La barra (`BARRA`) va oculta y `BARRA_EN_MANOS = 1`: el maneral exportado es el punto entre los puños (el exportador lo saca en las acciones `cable` aunque la barra esté oculta).
 - `blender/ejercicios/_manos.py`: las manos de referencia (abajo). Empieza por `_`: el panel no lo carga como ejercicio.
 - `ffpose.run(ejercicio, ajustes, live)`: el único punto que crea o actualiza la acción de un ejercicio (lo usan la terminal, el Text Editor y el panel).
 
@@ -475,6 +479,18 @@ Acción `barbell_row` (script `blender/ejercicios/barbell_row.py`): frame 1 braz
 - **Equilibrio**: el tronco a la inclinación autorada + `trunk`, la rodilla con su ángulo autorado, y una secante sobre la tibia (la pierna gira sobre el tobillo) para que el CdM con la carga actual quede donde lo tiene la autorada en ese frame × k. **Sin recortarlo a la zona del pie** (a diferencia de la bisagra): en la autorada el CdM va de +0,4 a −7 cm al tirar, y recortarlo movía la cadera con los valores por defecto (61 mm en el frame 1).
 - Indicadores: tronco, codo, muslo, tibia, barra, CdM–mediopié, barra–mediopié y «Cadera» si cambia.
 
+### 4.4e `evaluate`: tipo `cable` (remo en polea)
+
+Acción `cable_row` (script `blender/ejercicios/cable_row.py`). Comparte la rama del remo (brazos que tiran, `rowUp`, codos, manos de referencia) con esto propio:
+
+- **Pelvis fija** en el asiento (la autorada, sin escalar con la altura) y **pies en la plataforma**: cada tobillo en la dirección autorada cadera→tobillo, a la distancia que dan muslo y tibia con la rodilla autorada + «Flexión de rodilla» (la plataforma se acerca o se aleja). Sin equilibrio (sentado, apoyado).
+- **Tronco**: el de la animación alrededor de cómo queda al tirar (s = 1, `PHI1`): `swing` escala esa oscilación (0 % = quieto) y `trunk` la desplaza.
+- **Polea** (`meta.pulley` + `pulleyH`): con los brazos estirados el maneral apunta a la polea; al subirla o bajarla, el vector hombros→maneral, las manos y los codos giran con ella alrededor del eje X (`qP`, que se deshace según tira: al tirar el maneral va al tronco). Antes solo giraba el vector y la mano conservaba el giro de Blender: el codo se doblaba 27° y la mano no llegaba.
+- **Brazo recto con otro maneral**: con los brazos hacia delante, la corrección va **a lo largo del brazo** (el maneral se acerca o se aleja), no en vertical como en el remo con barra (allí cuelgan).
+- **Manerales** (`impl`): triángulo (el de la acción, `IMPL.triangulo`, a la anchura de Blender), barra recta (transversal a ±24 cm × anchura, palmas abajo; supino, arriba: `implHand` con `palm: 'down' | 'up'`) y cuerda (asas verticales, palmas dentro, que se abren 10 cm al tirar: `half + spread × rowUp`).
+- Props (`placeCable`): columna y polea, cable (de la polea al gancho del maneral), asiento y plataforma (con la pose de inicio y la planta del pie), y el maneral.
+- Indicadores: tronco, codo, ángulo del cable y altura de la polea.
+
 ### 4.5 Sliders (`PARAMS`)
 
 | Tipo | id | Rango (defecto) | Efecto |
@@ -501,6 +517,14 @@ Acción `barbell_row` (script `blender/ejercicios/barbell_row.py`): frame 1 braz
 | row | `trunk` | −40…25° (0) | Inclinación del tronco sobre la autorada (60° → 54° en la acción). Compensa la cadera; con barra, hacia el pecho y recorte a codo 120°. |
 | row | `dest` | −20…8 cm (0) | Hacia dónde sube: negativo, hacia el pecho; positivo, hacia la cadera (por el tronco). |
 | row | `grip`, `stance`, `toes`, `load` | — | Como en la bisagra (agarre 0,85–1,35; carga 0–150 %, defecto 60). |
+| cable | `impl` | chips (triángulo) | Maneral: triángulo · barra recta · cuerda. |
+| cable | `gripType` | chips (prono) | Con barra recta: prono · supino. |
+| cable | `pulleyH` | −30…80 cm (0) | Altura de la polea sobre la autorada (40 cm). |
+| cable | `trunk` | −15…25° (0) | Inclinación del tronco (desplaza toda la oscilación). |
+| cable | `swing` | 0–200 % (100) | Balanceo del tronco: 0 % quieto (como al tirar). |
+| cable | `dest` | −20…8 cm (0) | Hacia dónde tira, a lo largo del tronco. |
+| cable | `knees` | −20…50° (0) | Flexión de rodilla (la plataforma se acerca o se aleja). |
+| cable | `grip`, `stance` | — | Anchura de la barra recta (0,7–1,6) y de pies. |
 | hang | `gripType` | chips (prono) | Prono · supino · neutro. Usa la variante de ese agarre si la hay (§2.6); si no, gira la mano. |
 | hang | `grip` | 0,75–1,4 (1) | Anchura de agarre (el neutro va a la anchura de sus asas). |
 | hang | `top` | 15–100 % (100) | Hasta dónde sube: recorta la animación por arriba, con frenada. |
@@ -549,6 +573,7 @@ npm run shots     # capturas a tests/shots/*.png
   - con el cuerpo por defecto, cambiar la carga no cambia la pose (salvo cuando el CdM llega al borde de la zona del pie);
   - bisagra: el punto bajo donde toca (suelo o autorada × k), sin saltos entre frames con 15 cuerpos, ajustes e implementos, las manos llegan al asa con cada implemento, en el rumano la mano va por donde con la barra con cualquier implemento, y sin carga el CdM no sale del pie;
   - dominada: las manos no se mueven en la barra con los tres agarres;
+  - polea: sin saltos entre frames con 15 cuerpos, ajustes y manerales, las manos llegan y, con los brazos estirados, el codo es el autorado;
   - remo: sin saltos entre frames con 15 cuerpos, ajustes e implementos, las manos llegan, abajo el codo es el autorado (brazo recto) y, con barra, arriba no pasa de 120°.
 - `harness.js`: Chromium headless con WebGL por SwiftShader. Sirve `three@0.147.0` desde `node_modules` porque el CDN no es accesible en CI.
 
@@ -556,7 +581,7 @@ npm run shots     # capturas a tests/shots/*.png
 
 ## 6. Limitaciones conocidas y siguientes pasos
 
-- **Siguiente:** remo sentado en polea (`seat`, con `pulleyH`), según X01 §16. El remo con barra (`row`) está hecho; retocado a mano; pendiente retocar la variante supina `barbell_row_supino` (codos pegados) y verlo en el móvil.
+- **Siguiente:** remo en polea a un brazo (acción propia, base `cable`). El remo en polea (`cable`) está hecho por script; falta que el usuario lo retoque en Blender. Idea: con la polea alta, que «Hacia dónde tira» vaya solo hacia el pecho. El remo con barra (`row`) está hecho; retocado a mano; pendiente retocar la variante supina `barbell_row_supino` (codos pegados) y verlo en el móvil.
 - **Demanda muscular:** sale del modelo de palos (`cur.act`), no de la pose final. En `hinge` es aproximada y en `hang` no hay (el mapa solo tiene piernas y espalda baja): faltan las zonas de tracción y empuje.
 - **Bisagra:** codos flexionados en las claves del convencional (25° al empezar); choques entre implementos, brazos y piernas; una kettlebell entre los pies debería limitar cuánto se cierran (X02 §7).
 - **Dominada:** piernas cruzadas o dobladas, escápulas, pecho a la barra por encima de la autorada.

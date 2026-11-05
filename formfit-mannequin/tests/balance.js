@@ -85,5 +85,20 @@ const { open } = require('./harness');
         if (Math.abs(parseFloat(e0) - parseFloat(elbow0)) > 2) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡abajo el codo está a ${e0} (autorado ${elbow0})!`); }
         S.body = sb; S.per[ex] = sp; }
     }
+    // polea: sin saltos entre frames, las manos llegan al maneral y, con los brazos estirados, el codo es el autorado (brazo recto)
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'cable')) {
+      const codo = s => parseFloat(D.evaluate(ex, s).readout.find(x => x[0] === 'Codo')[1]), e0 = codo(0);
+      for (const [nm, body, prm] of [['por defecto', {}, {}], ['1,65 m', { height: 165 }, {}], ['1,95 m', { height: 195 }, {}], ['fémur 112%', { femur: 112, tibia: 98, torso: 95 }, {}],
+        ['polea alta', {}, { pulleyH: 80 }], ['polea baja', {}, { pulleyH: -30 }], ['adelante', {}, { trunk: 25 }], ['atrás', {}, { trunk: -15 }], ['quieto', {}, { swing: 0 }], ['balanceo', {}, { swing: 200 }],
+        ['al pecho', {}, { dest: -20 }], ['rodillas', {}, { knees: 40 }], ['barra recta', {}, { impl: 'barra_recta' }], ['barra supina ancha', {}, { impl: 'barra_recta', gripType: 'supino', grip: 1.6 }], ['cuerda', {}, { impl: 'cuerda', pulleyH: 60 }]]) {
+        const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
+        const st = []; let prev, miss;
+        for (let i = 0; i <= 40; i++) { const r = D.evaluate(ex, i / 40), c = r.bar.center; if (prev) st.push(c.distanceTo(prev)); prev = c.clone(); miss ??= r.warns.find(x => x.includes('no llega')) || (D.BN.some(n => isNaN(r.pose[n].p.x)) && 'NaN'); }
+        const worst = Math.max(...st.map((x, i) => x / Math.max(st[i - 1] ?? 0, st[i + 1] ?? 0, 0.003)));
+        if (!(worst <= 2)) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡salto entre frames: un paso ${worst.toFixed(1)}× el de al lado!`); }
+        if (miss) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡${miss}!`); }
+        if (!(Math.abs(codo(0) - e0) <= 2)) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡con los brazos estirados el codo está a ${codo(0)}° (autorado ${e0}°)!`); }
+        S.body = sb; S.per[ex] = sp; }
+    }
     out.push(fail ? `FALLOS: ${fail}` : 'OK'); return out.join('\n'); }));
   await close(); })();

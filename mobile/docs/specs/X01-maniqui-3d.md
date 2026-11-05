@@ -356,7 +356,7 @@ El rumano se crea con un script de `blender/ejercicios/` como el del convenciona
 - **Ajustes:** inclinación del tronco; anchura y orientación del agarre (prono o supino, el Yates); hacia dónde sube la barra (ombligo · pecho); con mancuernas o kettlebell por X02.
 - **Equilibrio:** el mismo de la bisagra (centro de masas en el pie), con el tronco fijo: compensa la cadera.
 
-*Remo sentado en polea* (base `seat`, implemento polea): altura de la polea (`pulleyH`, arriba), maneral (barra recta, triángulo neutro, cuerda: X02), si el tronco acompaña o se queda quieto.
+*Remo sentado en polea* (base propia `cable`: la prensa usa `seat` con su raíl). **Hecho el 5-nov** (rama `feat/x01-peso-muerto`, por probar): acción `cable_row` por script (triángulo neutro, tronco que acompaña de 18° a −3°, polea a 40 cm), ajustes de altura de la polea (`pulleyH`), maneral (triángulo, barra recta prona o supina con anchura, cuerda), inclinación y balanceo del tronco, hacia dónde tira, flexión de rodilla y anchura de pies; detalle en el HANDOFF §4.4e. Falta el retoque a mano y el remo a un brazo (acción propia).
 
 El orden: primero X02-01…04 (validan agarres e implementos con el peso muerto, que ya está), luego la dominada (base nueva) y los remos.
 

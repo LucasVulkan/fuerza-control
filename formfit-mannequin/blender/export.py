@@ -136,6 +136,8 @@ for ex in EXERCISES:
     out['exercises'][ex]['meta'] = {'base': act.get('ff_base', 'seat' if seat else 'stand'), 'name': act.get('ff_name', ex)}
     if act.get('ff_variant_of'):   # variante de otro ejercicio (p. ej. Chinup = pullup con agarre supino): el visor la usa desde su chip
         out['exercises'][ex]['meta'].update({'of': act['ff_variant_of'], 'grip': act.get('ff_grip')})
+    if act.get('ff_pulley'):   # polea (anclaje del cable), [f, z] en metros -> glTF
+        f, z = act['ff_pulley']; out['exercises'][ex]['meta']['pulley'] = [0.0, z, f]
     for key, f in [*FRAMES.items(), *(('mid', m) for m in mids(ex))]:
         sc.frame_set(f); sc.frame_set(f)
         P = pb['PROPERTIES']
@@ -149,7 +151,7 @@ for ex in EXERCISES:
                 off = grot(Pm.to_3x3()).to_quaternion().to_matrix().transposed() @ (C @ (M.translation - Pm.translation))   # misma rotación que 'q' del padre (huesos escalados)
                 ent['off'] = list(off)
             fr['bones'][n] = ent
-        if pb['BARRA'].scale.x > 0.5:
+        if pb['BARRA'].scale.x > 0.5 or act.get('ff_base') == 'cable':   # en polea, el maneral (entre los puños)
             B = pb['BARRA_FINAL' if 'BARRA_FINAL' in pb else 'BARRA'].matrix   # la que se ve: con BARRA_EN_MANOS va entre los puños
             fr['bar'] = {'center': gpos(B.translation), 'axis': gpos(B.to_3x3().col[1].normalized())}
         if pb['MAQUINA'].scale.x > 0.5:

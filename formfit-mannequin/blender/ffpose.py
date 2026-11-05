@@ -147,7 +147,7 @@ def grip_bar(bar, half_width, hand_rot, pole_dir, curl=CURL):
     upd()
 
 
-BAR_IN_HANDS = {'deadlift': 1, 'romanian_deadlift': 1, 'barbell_row': 1}                      # acciones con la barra en las manos; el resto, en el control BARRA
+BAR_IN_HANDS = {'deadlift': 1, 'romanian_deadlift': 1, 'barbell_row': 1, 'cable_row': 1}                      # acciones con la barra en las manos; el resto, en el control BARRA
 
 
 def setup_bar_in_hands():
@@ -298,6 +298,7 @@ def run(ex, p=None, live=False):
             reset(); posar(); report(f'frame {f}'); key(f)
         finish(act)
     act['ff_params'] = json.dumps(p)
+    if hasattr(ex, 'setup'): ex.setup(sys.modules[__name__], act, p)   # datos propios de la acción (p. ej. la polea del remo en polea)
     return act
 
 
