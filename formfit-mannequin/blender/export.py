@@ -193,8 +193,9 @@ for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
         if mo:
             Mm = mo.matrix_world
             e['maneral'] = {'p': list(Rinv @ (Mm.translation - Mh.translation)), 'q': quat((Rinv @ Mm.to_quaternion().to_matrix()) @ C.transposed())}
-            ag = bpy.data.objects.get(f'FF_agarre.{name}.{S}')
-            if ag: e['agarre'] = gpos(ag.location)
+            # agarre: el centro del puño cerrado (falanges de corazón y anular, como ffpose.socket) en el marco del maneral
+            pts = [pb[f'DEF-FINGER-{dd}-0{i}.{S}'].head for dd in 'BC' for i in (1, 2, 3)] + [pb[f'DEF-FINGER-{dd}-03.{S}'].tail for dd in 'BC']
+            e['agarre'] = gpos(Mm.inverted() @ (rig.matrix_world @ (sum(pts, Vector()) / len(pts))))
             ent['malla'] = mo.data.name
             if mo.data.name not in out['manerales']:
                 me = mo.data; me.calc_loop_triangles()

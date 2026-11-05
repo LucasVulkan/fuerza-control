@@ -5,12 +5,11 @@ Por maneral crea (si no existe; lo que ya existe NO se toca, son retoques del us
     engancha el cable y sobre el que pivota) en el origen, −Y hacia la polea, +Z arriba, +X a la izquierda del usuario.
     Es una base: se remodela libremente (Edit Mode); el origen del objeto debe seguir en el gancho;
   - en la colección `FF_manerales_<maneral>`, una instancia por mano `FF_maneral.<maneral>.L/R` (comparten la malla),
-    emparentada a la mano (`DEF-HAND`), y un empty hijo `FF_agarre.<maneral>.L/R` en el punto del maneral que va en el
-    puño. Se ven en cualquier acción: sirven para ver cómo encaja el maneral en los ejercicios;
+    emparentada a la mano (`DEF-HAND`). Se ve en cualquier acción: sirve para ver cómo encaja el maneral en los ejercicios;
   - la acción `_mano.<maneral>`: el rig en reposo con los dedos cerrados sobre el maneral. Se retocan dedos y pulgar y,
     si hace falta, se mueve la instancia respecto a la mano (eso es lo que se exporta: dónde va el maneral en la mano).
-El exportador saca la malla, y por mano: dedos, el maneral respecto a la mano y el punto de agarre (`poses.json` ›
-`manerales` y `hands`). El visor dibuja esa malla, pivotando sobre el gancho, y pone las manos donde dice cada `_mano`.
+El exportador saca la malla, y por mano: dedos, el maneral respecto a la mano y el punto de agarre, que calcula él (el
+centro del puño cerrado, en el marco del maneral): solo hay que mover el maneral (`poses.json` › `manerales` y `hands`). El visor dibuja esa malla, pivotando sobre el gancho, y pone las manos donde dice cada `_mano`.
 
 Uso: Text Editor › Open › este archivo › Run Script, o
   blender -b --factory-startup --python blender/ejercicios/_manerales.py -- entrada.blend salida.blend
@@ -90,9 +89,6 @@ def main(F):
             ob = bpy.data.objects.new(f'FF_maneral.{m}.{S}', me); col.objects.link(ob)
             ob.parent = F.rig; ob.parent_type = 'BONE'; ob.parent_bone = f'DEF-HAND.{S}'
             F.upd(); ob.matrix_world = Matrix.Translation(H) @ R.to_4x4() @ Matrix.Translation(-g)
-            em = bpy.data.objects.new(f'FF_agarre.{m}.{S}', None); col.objects.link(em)
-            em.empty_display_type = 'SPHERE'; em.empty_display_size = 0.012
-            em.parent = ob; em.location = g
         print(f'  {m}: malla maneral_{nm}, instancias y _mano.{m} creadas')
     F.reset()
     if prev: F.rig.animation_data.action = prev
