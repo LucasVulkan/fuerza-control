@@ -30,6 +30,21 @@
   "mannequinTest": {
     "title": "Maniquí 3D (prueba)"
   },
+  "tour": {
+    "skip": "Saltar",
+    "next": "Siguiente",
+    "back": "Anterior",
+    "done": "Entendido",
+    "help": "Explicación de esta pantalla",
+    "home": {
+      "todayRotation": { "title": "La sesión que toca", "text": "Es la tarjeta grande: la marca la rotación de tu programa. Tócala para ver sus ejercicios y empieza desde su botón." },
+      "todayWeekly": { "title": "La sesión que toca", "text": "Es la tarjeta grande: la marca el orden de la semana de tu programa. Tócala para ver sus ejercicios y empieza desde su botón." },
+      "sessionsFree": { "title": "Tus sesiones", "text": "Tu programa es libre: no hay una que toque, elige la que quieras hacer hoy. Tócala para ver sus ejercicios y empieza desde su botón." },
+      "othersList": { "title": "Las demás sesiones", "text": "Puedes hacer cualquiera en vez de la que toca. Tócala para desplegarla y empieza desde su botón." },
+      "othersTabs": { "title": "Las demás sesiones", "text": "Cada pestaña es una sesión de tu programa. Tócalas, o desliza el dedo por ellas, para hacer otra en vez de la que toca." },
+      "free": { "title": "Sesión libre", "text": "Para entrenar sin seguir el programa: empieza en blanco o crea una sesión propia." }
+    }
+  },
   "header": {
     "newProgram": "＋ Nuevo programa",
     "archivedPrograms": "🗂 Programas archivados",

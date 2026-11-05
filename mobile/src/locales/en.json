@@ -30,6 +30,21 @@
   "mannequinTest": {
     "title": "3D mannequin (test)"
   },
+  "tour": {
+    "skip": "Skip",
+    "next": "Next",
+    "back": "Previous",
+    "done": "Got it",
+    "help": "About this screen",
+    "home": {
+      "todayRotation": { "title": "Today's session", "text": "It is the big card: your program's rotation picks it. Tap it to see its exercises and start from its button." },
+      "todayWeekly": { "title": "Today's session", "text": "It is the big card: the weekly order of your program picks it. Tap it to see its exercises and start from its button." },
+      "sessionsFree": { "title": "Your sessions", "text": "Your program is free: no session is up next, so pick whichever you want today. Tap it to see its exercises and start from its button." },
+      "othersList": { "title": "The other sessions", "text": "You can do any of them instead of the one that is up. Tap one to expand it and start from its button." },
+      "othersTabs": { "title": "The other sessions", "text": "Each tab is a session of your program. Tap them, or slide your finger across, to do another one instead of the one that is up." },
+      "free": { "title": "Free session", "text": "To train without following the program: start from scratch or create a session of your own." }
+    }
+  },
   "header": {
     "newProgram": "＋ New program",
     "archivedPrograms": "🗂 Archived programs",

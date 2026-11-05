@@ -25,7 +25,7 @@ import DragSheet   from './DragSheet';
 import ArchivedProgramsSheet from './ArchivedProgramsSheet';
 import SegmentedControl from './ui/SegmentedControl';
 import { Switch }       from './ui/EditorRows';
-import { ArrowIcon }    from './ui/EditorIcons';
+import { ArrowIcon, HelpIcon } from './ui/EditorIcons';
 import { Section, MenuRow, Status, RowIcon, SheetSlide, ROW_CHEVRON } from './ui/MenuList';
 import { ROW_ICON } from './ui/rowIcons';
 import FitLogo from './ui/FitLogo';
@@ -515,7 +515,9 @@ function SettingsSheet({ visible, onClose, onImport, onShowArchived, onShowExpor
 
 // ── AppHeader ──────────────────────────────────────────────────────────────────
 
-export default function AppHeader() {
+// `onHelp`: el «?» que vuelve a abrir el recorrido de la pantalla (U17). Solo se
+// pinta si llega.
+export default function AppHeader({ onHelp }) {
   const { t }                 = useTranslation();
   const th                    = useTheme();
   const styles                = useThemedStyles(makeStyles);
@@ -611,6 +613,19 @@ export default function AppHeader() {
           <FitLogo height={14} />
         </View>
         <Text style={styles.clockText}>{formatClock(now, language)}</Text>
+        {/* Fuera del flujo: el reloj no se mueve al cambiar de pestaña. */}
+        {onHelp && (
+          <View style={styles.helpSlot} pointerEvents="box-none">
+            <TouchableOpacity
+              onPress={onHelp}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t('tour.help')}
+            >
+              <HelpIcon size={24} />
+            </TouchableOpacity>
+          </View>
+        )}
         <TouchableOpacity
           onPress={() => setSettingsOpen(true)}
           hitSlop={12}
@@ -704,6 +719,13 @@ const makeStyles = (th) => StyleSheet.create({
     flex:      1,
     color:     th.colors.mutedLight,
     textAlign: 'center',
+  },
+  helpSlot: {
+    position:       'absolute',
+    top:            spacing.md,
+    bottom:         spacing.sm,
+    right:          spacing.xl + 36 + spacing.sm2,
+    justifyContent: 'center',
   },
   menuBtn: {
     padding:  spacing.xs,

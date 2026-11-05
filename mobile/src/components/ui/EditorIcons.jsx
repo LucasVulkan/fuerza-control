@@ -221,3 +221,16 @@ export function GearIcon({ size = 17, color }) {
     />
   );
 }
+
+// El «?» de la cabecera (U17-01 §3.5): vuelve a abrir la explicación de la pantalla.
+// Círculo en gris; la interrogación, en lima.
+export function HelpIcon({ size = 24, color }) {
+  return (
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Circle cx={12} cy={12} r={9} />}
+      a={<Path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8" />}
+      af={<Circle cx={12} cy={16.9} r={1.1} />}
+    />
+  );
+}
