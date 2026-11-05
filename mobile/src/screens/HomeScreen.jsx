@@ -14,6 +14,7 @@ import { useStore, selectActiveProgram } from '../../store/useStore';
 import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, addDays } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import { useScreenTour } from '../components/tour/useScreenTour';
+import { tabBarRef } from '../components/tour/targets';
 import ActiveSessionBanner from '../components/ActiveSessionBanner';
 import HomeProgramCard from '../components/HomeProgramCard';
 import SessionTabsCard from '../components/SessionTabsCard';
@@ -25,7 +26,7 @@ import NoProgram from '../components/ui/NoProgram';
 import { Rise } from '../components/ui/Rise';
 import { useEnterClock, EnterClock, ENTER_FAST } from '../hooks/useEnterClock';
 import { spacing, textStyles, borders } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import { isStageLocked } from '../utils/stageLocks';
 import { FOLD_MS } from '../components/ui/collapseOut';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
@@ -98,6 +99,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { t }      = useTranslation();
   const styles     = useThemedStyles(makeStyles);
+  const th         = useTheme();
 
   const [freeSheet,   setFreeSheet]   = useState(false);
   const [tplList,     setTplList]     = useState(false);
@@ -181,33 +183,36 @@ export default function HomeScreen() {
   const enterClock = useEnterClock({ speed: ENTER_FAST });
 
   // ── Recorrido de la primera vez (U17-02 §4) ──
-  // Sin programa activo no hay: su estado vacío ya dice qué hacer (U15-04). En un
-  // programa libre ninguna sesión toca, así que el primer paso señala la lista
-  // entera y no hay paso de «las demás».
-  const scrollRef = useRef(null);
-  const mainRef   = useRef(null);   // la que toca (lista), la tarjeta con pestañas, o la lista si es libre
-  const othersRef = useRef(null);   // la primera de las demás (lista) o la tira de pestañas
-  const freeRef   = useRef(null);
+  // Cinco pasos, de arriba abajo: la tarjeta del programa, la sesión que toca, las
+  // demás, la libre y la barra de pestañas. Sin programa activo no hay recorrido:
+  // su estado vacío ya dice qué hacer (U15-04). En un programa libre ninguna sesión
+  // toca, así que el paso de la que toca señala la lista entera y no hay paso de
+  // «las demás».
+  const scrollRef  = useRef(null);
+  const programRef = useRef(null);
+  const mainRef    = useRef(null);   // la que toca (lista), la tarjeta con pestañas, o la lista si es libre
+  const othersRef  = useRef(null);   // la primera de las demás (lista) o la tira de pestañas
+  const freeRef    = useRef(null);
   const sessionCount = activeProgram
     ? stageDaysAt(activeProgram, stageStatus(activeProgram, athleteProgress(activeProgram), localDay()).stageIdx)
       .filter(({ sessionTemplateId }) => getEffectiveTemplate(sessionTemplateId)).length
     : 0;
   const freeOrder = activeProgram?.sessionOrder === 'free';
-  const todayKey  = activeProgram?.sessionOrder === 'weekly' ? 'tour.home.todayWeekly' : 'tour.home.todayRotation';
+  const text = (key) => t(`tour.home.${key}`, { returnObjects: true });
   const tourSteps = sessionCount === 0 ? [] : [
-    { ref: mainRef, scrollRef, ...t(freeOrder ? 'tour.home.sessionsFree' : todayKey, { returnObjects: true }) },
-    ...(!freeOrder && sessionCount > 1
-      ? [{ ref: othersRef, scrollRef, ...t(homeView === 'tabs' ? 'tour.home.othersTabs' : 'tour.home.othersList', { returnObjects: true }) }]
-      : []),
-    { ref: freeRef, scrollRef, ...t('tour.home.free', { returnObjects: true }) },
+    { ref: programRef, scrollRef, ...text('program') },
+    { ref: mainRef, scrollRef, ...text(freeOrder ? 'sessionsFree' : 'today') },
+    ...(!freeOrder && sessionCount > 1 ? [{ ref: othersRef, scrollRef, ...text(homeView === 'tabs' ? 'othersTabs' : 'othersList') }] : []),
+    { ref: freeRef, scrollRef, ...text('free') },
+    // La barra la pinta el navegador: su ref sale de `tour/targets` y no está en el scroll.
+    { ref: tabBarRef, radius: th.radius.lg, ...text('tabs') },
   ];
   // Con una hoja abierta no sale (regla 7); el resto de cosas encima las mira el hook.
-  const { open: openTour, tour } = useScreenTour('tour.home', freeSheet || tplList ? [] : tourSteps);
+  const openTour = useScreenTour('tour.home', freeSheet || tplList ? [] : tourSteps);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <AppHeader onHelp={tourSteps.length ? openTour : undefined} />
-      {tour}
       <ProgramUpdateModal />
 
       {/* Entrada por partes al llegar a la pestaña, como Programa (U14 §4.3). */}
@@ -225,7 +230,9 @@ export default function HomeScreen() {
               Programa. Sin entrada por partes: ya está puesta al llegar, como en
               Programa, y así no salta en ninguno de los dos sentidos (U14 §4.4). */}
           {activeProgram && (
-            <HomeProgramCard program={activeProgram} onOpen={() => navigation.navigate('MyProgram')} />
+            <View ref={programRef} collapsable={false}>
+              <HomeProgramCard program={activeProgram} onOpen={() => navigation.navigate('MyProgram')} />
+            </View>
           )}
 
           <Rise index={1}><WeekSelector workoutLog={workoutLog} /></Rise>

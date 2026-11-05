@@ -37,12 +37,13 @@
     "done": "Got it",
     "help": "About this screen",
     "home": {
-      "todayRotation": { "title": "Today's session", "text": "It is the big card: your program's rotation picks it. Tap it to see its exercises and start from its button." },
-      "todayWeekly": { "title": "Today's session", "text": "It is the big card: the weekly order of your program picks it. Tap it to see its exercises and start from its button." },
-      "sessionsFree": { "title": "Your sessions", "text": "Your program is free: no session is up next, so pick whichever you want today. Tap it to see its exercises and start from its button." },
-      "othersList": { "title": "The other sessions", "text": "You can do any of them instead of the one that is up. Tap one to expand it and start from its button." },
-      "othersTabs": { "title": "The other sessions", "text": "Each tab is a session of your program. Tap them, or slide your finger across, to do another one instead of the one that is up." },
-      "free": { "title": "Free session", "text": "To train without following the program: start from scratch or create a session of your own." }
+      "program": { "title": "Your program", "text": "Here you see your program's name and how far along you are: the stage and week you are in. Tap it to open it." },
+      "today": { "title": "The session that's up", "text": "It is the next one in your program. Tap it to see its exercises and start whenever you like." },
+      "sessionsFree": { "title": "Your sessions", "text": "Your program is free: no session is up next, so pick whichever you want today. Tap it to see its exercises and start whenever you like." },
+      "othersList": { "title": "The other sessions", "text": "Prefer another one today? You can do any of these instead of the one that is up." },
+      "othersTabs": { "title": "The other sessions", "text": "Prefer another one today? Each tab is a session of your program: tap them, or slide your finger across, to do another one instead of the one that is up." },
+      "free": { "title": "Free session", "text": "To train outside the program: start from scratch or with a saved session." },
+      "tabs": { "title": "Getting around the app", "text": "From here you go to your program, your progress and the rest of the app." }
     }
   },
   "header": {

@@ -21,6 +21,7 @@ import { TwoTone } from './TwoTone';
 import { strokeFor } from './iconTones';
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
+import { tabBarRef } from '../tour/targets';
 
 const ICON = 24;
 const LINE_W = 26;
@@ -185,7 +186,8 @@ export default function BottomTabBar({ state, descriptors, navigation, insets })
           <Rect width="100%" height={FADE} fill="url(#tabFade)" />
         </Svg>
       </View>
-      <View style={styles.bar}>
+      {/* `tabBarRef`: lo señala el recorrido de Inicio (U17-02). */}
+      <View ref={tabBarRef} collapsable={false} style={styles.bar}>
         <View style={styles.row} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
           {width > 0 && <Reanimated.View style={[styles.line, lineStyle]} />}
           {state.routes.map((route, i) => {

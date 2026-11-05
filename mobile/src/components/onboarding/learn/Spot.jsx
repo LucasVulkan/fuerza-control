@@ -16,8 +16,8 @@ import Reanimated, {
 
 import { withOpacity } from '../../../theme';
 import { useTheme } from '../../../useTheme';
+import { PULSE_MS } from './pulse';
 
-const PULSE_MS = 800;
 const TAP_MS   = 520;
 const FINGER   = 26;
 const GROW     = 3;   // lo que el aro sobresale del elemento

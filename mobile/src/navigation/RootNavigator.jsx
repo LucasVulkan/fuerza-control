@@ -35,6 +35,7 @@ import MannequinTestScreen      from '../screens/MannequinTestScreen';
 import Toast                 from '../components/Toast';
 import BottomTabBar          from '../components/ui/BottomTabBar';
 import DialogHost            from '../components/ui/DialogHost';
+import TourHost              from '../components/tour/TourHost';
 import PaywallModal          from '../components/PaywallModal';
 import LimitSheet            from '../components/LimitSheet';
 import ExternalImportModal   from '../components/ExternalImportModal';
@@ -281,6 +282,9 @@ export default function RootNavigator() {
         <Stack.Screen name="MannequinTest" component={MannequinTestScreen} />
       </Stack.Navigator>
 
+      {/* El recorrido de cada pantalla (U17): en esta ventana y no en un `Modal`,
+          para que el hueco caiga donde `measureInWindow` mide. */}
+      <TourHost />
       {/* Global toast — sits above all screens, never blocks touches */}
       <Toast />
       {/* Global como el toast, y por lo mismo: solo puede haber una

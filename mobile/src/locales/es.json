@@ -37,12 +37,13 @@
     "done": "Entendido",
     "help": "Explicación de esta pantalla",
     "home": {
-      "todayRotation": { "title": "La sesión que toca", "text": "Es la tarjeta grande: la marca la rotación de tu programa. Tócala para ver sus ejercicios y empieza desde su botón." },
-      "todayWeekly": { "title": "La sesión que toca", "text": "Es la tarjeta grande: la marca el orden de la semana de tu programa. Tócala para ver sus ejercicios y empieza desde su botón." },
-      "sessionsFree": { "title": "Tus sesiones", "text": "Tu programa es libre: no hay una que toque, elige la que quieras hacer hoy. Tócala para ver sus ejercicios y empieza desde su botón." },
-      "othersList": { "title": "Las demás sesiones", "text": "Puedes hacer cualquiera en vez de la que toca. Tócala para desplegarla y empieza desde su botón." },
-      "othersTabs": { "title": "Las demás sesiones", "text": "Cada pestaña es una sesión de tu programa. Tócalas, o desliza el dedo por ellas, para hacer otra en vez de la que toca." },
-      "free": { "title": "Sesión libre", "text": "Para entrenar sin seguir el programa: empieza en blanco o crea una sesión propia." }
+      "program": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y cuánto llevas: la etapa y la semana en la que estás. Tócala para abrirlo." },
+      "today": { "title": "La sesión que toca", "text": "Es la siguiente de tu programa. Tócala para ver sus ejercicios y empieza cuando quieras." },
+      "sessionsFree": { "title": "Tus sesiones", "text": "Tu programa es libre: no hay una que toque, elige la que quieras hacer hoy. Tócala para ver sus ejercicios y empieza cuando quieras." },
+      "othersList": { "title": "Las demás sesiones", "text": "¿Hoy prefieres otra? Puedes hacer cualquiera de estas en lugar de la que toca." },
+      "othersTabs": { "title": "Las demás sesiones", "text": "¿Hoy prefieres otra? Cada pestaña es una sesión de tu programa: tócalas, o desliza el dedo por ellas, para hacer otra en lugar de la que toca." },
+      "free": { "title": "Sesión libre", "text": "Para entrenar fuera del programa: empieza en blanco o con una sesión guardada." },
+      "tabs": { "title": "Moverte por la app", "text": "Desde aquí pasas a tu programa, a tu progreso y al resto de la app." }
     }
   },
   "header": {
