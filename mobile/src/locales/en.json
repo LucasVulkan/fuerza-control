@@ -1164,8 +1164,12 @@
     "payTitle": "Choose your plan",
     "comingSoon": "Forma Pro coming soon",
     "plan": {
-      "recommended": "RECOMMENDED",
       "annual": "Yearly",
+      "introOnce": "{{intro}} for the first {{duration}}, then {{price}} per year",
+      "introEach": "{{intro}} per {{period}} for the first {{duration}}, then {{price}} per year",
+      "introFree": "Free for the first {{duration}}, then {{price}} per year",
+      "introCta": "Start for {{price}}",
+      "introLegal": "{{terms}}. Renews automatically; cancel anytime in {{store}}.",
       "annualMonthly": "{{price}} per month",
       "annualPer": "per year",
       "annualCta": "Subscribe · {{price}}/year",
@@ -1175,6 +1179,22 @@
       "lifetimePer": "one-time",
       "lifetimeCta": "Buy for {{price}}",
       "lifetimeLegal": "One-time payment of {{price}}, no subscription."
+    },
+    "unit": {
+      "day_one": "{{count}} day",
+      "day_other": "{{count}} days",
+      "week_one": "{{count}} week",
+      "week_other": "{{count}} weeks",
+      "month_one": "{{count}} month",
+      "month_other": "{{count}} months",
+      "year_one": "{{count}} year",
+      "year_other": "{{count}} years"
+    },
+    "period": {
+      "day": "day",
+      "week": "week",
+      "month": "month",
+      "year": "year"
     },
     "terms": "Terms of use",
     "privacy": "Privacy",

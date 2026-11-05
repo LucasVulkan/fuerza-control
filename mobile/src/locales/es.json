@@ -1164,8 +1164,12 @@
     "payTitle": "Forma de pago",
     "comingSoon": "Forma Pro próximamente",
     "plan": {
-      "recommended": "RECOMENDADO",
       "annual": "Anual",
+      "introOnce": "{{intro}} los primeros {{duration}}, después {{price}} al año",
+      "introEach": "{{intro}} al {{period}} los primeros {{duration}}, después {{price}} al año",
+      "introFree": "Gratis los primeros {{duration}}, después {{price}} al año",
+      "introCta": "Empezar por {{price}}",
+      "introLegal": "{{terms}}. Se renueva sola; cancélala cuando quieras desde {{store}}.",
       "annualMonthly": "{{price}} al mes",
       "annualPer": "al año",
       "annualCta": "Suscribirme · {{price}}/año",
@@ -1175,6 +1179,22 @@
       "lifetimePer": "pago único",
       "lifetimeCta": "Comprar por {{price}}",
       "lifetimeLegal": "Pago único de {{price}}, sin suscripción."
+    },
+    "unit": {
+      "day_one": "{{count}} día",
+      "day_other": "{{count}} días",
+      "week_one": "{{count}} semana",
+      "week_other": "{{count}} semanas",
+      "month_one": "{{count}} mes",
+      "month_other": "{{count}} meses",
+      "year_one": "{{count}} año",
+      "year_other": "{{count}} años"
+    },
+    "period": {
+      "day": "día",
+      "week": "semana",
+      "month": "mes",
+      "year": "año"
     },
     "terms": "Términos de uso",
     "privacy": "Privacidad",

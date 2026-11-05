@@ -95,7 +95,7 @@ function useInk(p, a, b, prop = 'color') {
  * su propio avance, así que ir y volver deprisa sigue desde donde iba y nunca
  * reinicia. El texto cambia de color al mismo paso.
  */
-function PlanTicket({ id, selected, onPress, name, tag, sub, price, per }) {
+function PlanTicket({ id, selected, onPress, name, sub, note, was, price, per }) {
   const th     = useTheme();
   const C      = th.colors;
   const styles = useThemedStyles(makeStyles);
@@ -116,8 +116,6 @@ function PlanTicket({ id, selected, onPress, name, tag, sub, price, per }) {
   const nameInk  = useInk(p, C.onAccent, C.text);
   const subInk   = useInk(p, withOpacity(C.onAccent, 0.68), C.mutedLight);
   const priceInk = useInk(p, C.onAccent, C.accent);
-  const chipBg   = useInk(p, C.onAccent, C.accent, 'backgroundColor');
-  const chipInk  = useInk(p, C.accent, C.onAccent);
   const on       = useAnimatedStyle(() => ({ opacity: p.get() }));
   const off      = useAnimatedStyle(() => ({ opacity: 1 - p.get() }));
 
@@ -128,7 +126,7 @@ function PlanTicket({ id, selected, onPress, name, tag, sub, price, per }) {
       style={styles.ticket}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
-      accessibilityLabel={[name, tag, sub, price, per].filter(Boolean).join(', ')}
+      accessibilityLabel={[name, sub, note, price, per].filter(Boolean).join(', ')}
     >
       {size && (
         <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -148,15 +146,9 @@ function PlanTicket({ id, selected, onPress, name, tag, sub, price, per }) {
       </View>
 
       <View style={styles.ticketMain}>
-        <View style={styles.ticketNameRow}>
-          <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.ticketName, nameInk]}>{name}</Reanimated.Text>
-          {!!tag && (
-            <Reanimated.View style={[styles.chip, chipBg]}>
-              <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.chipTxt, chipInk]}>{tag}</Reanimated.Text>
-            </Reanimated.View>
-          )}
-        </View>
+        <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.ticketName, nameInk]}>{name}</Reanimated.Text>
         {!!sub && <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.ticketSub, subInk]}>{sub}</Reanimated.Text>}
+        {!!note && <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.ticketNote, subInk]}>{note}</Reanimated.Text>}
       </View>
 
       {/* La matriz con el precio, tras la línea perforada. */}
@@ -167,6 +159,7 @@ function PlanTicket({ id, selected, onPress, name, tag, sub, price, per }) {
         <Reanimated.View style={[styles.perforation, on]} pointerEvents="none">
           <Svg width={2} height="100%"><Line x1={1} y1={0} x2={1} y2="100%" stroke={C.border} strokeWidth={1.5} strokeDasharray="4 4" /></Svg>
         </Reanimated.View>
+        {!!was && <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.was, subInk]}>{was}</Reanimated.Text>}
         <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.price, priceInk]}>{price}</Reanimated.Text>
         <Reanimated.Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.per, subInk]}>{per}</Reanimated.Text>
       </View>
@@ -206,7 +199,9 @@ function SameHeight({ index, children }) {
 
 export default function PaywallModal({ onClose, reason }) {
   const getOffering      = useStore((s) => s.getOffering);
+  const getIntroEligible = useStore((s) => s.getIntroEligible);
   const [offering, setOffering] = useState(null);
+  const [introIds, setIntroIds] = useState(new Set());
   const [loading, setLoading]   = useState(true);
   // Comprado sin cuenta: la pantalla cede el sitio a «Guarda tu compra» (M01 §3.5).
   const [askAccount, setAskAccount] = useState(false);
@@ -218,10 +213,12 @@ export default function PaywallModal({ onClose, reason }) {
 
   useEffect(() => {
     (async () => {
-      setOffering(await getOffering());
+      const o = await getOffering();
+      setOffering(o);
+      setIntroIds(await getIntroEligible((o?.availablePackages ?? []).map((p) => p.product)));
       setLoading(false);
     })();
-  }, [getOffering]);
+  }, [getOffering, getIntroEligible]);
 
   // El Pro llega después de cerrar la hoja (logIn de RevenueCat): entonces sobra el paywall.
   useEffect(() => {
@@ -242,6 +239,7 @@ export default function PaywallModal({ onClose, reason }) {
       <SafeAreaProvider>
         <PaywallBody
           packages={[...(offering?.availablePackages ?? [])].sort(byPlan)}
+          introIds={introIds}
           loading={loading}
           reason={reason}
           onClose={onClose}
@@ -253,8 +251,8 @@ export default function PaywallModal({ onClose, reason }) {
   );
 }
 
-function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSignIn }) {
-  const { t }  = useTranslation();
+function PaywallBody({ packages, introIds, loading, reason, onClose, onNeedsAccount, onSignIn }) {
+  const { t, i18n } = useTranslation();
   const th     = useTheme();
   const C      = th.colors;
   const styles = useThemedStyles(makeStyles);
@@ -315,18 +313,49 @@ function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSig
     }
   }
 
+  /** La oferta de introducción del paquete, si este usuario puede usarla
+   *  (Apple 3.1.2: sus condiciones se dicen antes de comprar). Con
+   *  `cycles` 1 es un precio por todo el tramo (p. ej. 6 meses de un anual);
+   *  con más, ese precio cada periodo. */
+  const introOf = (pkg) => {
+    const ip = pkg.product.introPrice;
+    if (!ip || !introIds.has(pkg.product.identifier)) return null;
+    const unit     = ip.periodUnit.toLowerCase();
+    const duration = t(`paywall.unit.${unit}`, { count: ip.cycles * ip.periodNumberOfUnits });
+    const kind     = ip.price === 0 ? 'Free' : ip.cycles > 1 ? 'Each' : 'Once';
+    // Lo que se paga al mes durante la oferta. Solo con meses o años (días y
+    // semanas no dan un «al mes» con sentido) y si no es gratis.
+    const months = { month: 1, year: 12 }[unit] * ip.periodNumberOfUnits * (kind === 'Each' ? 1 : ip.cycles);
+    const monthly = ip.price > 0 && months
+      ? new Intl.NumberFormat(i18n.language, { style: 'currency', currency: pkg.product.currencyCode }).format(ip.price / months)
+      : null;
+    return {
+      price: ip.priceString,
+      monthly,
+      duration,
+      terms: t(`paywall.plan.intro${kind}`, {
+        intro: ip.priceString, duration, price: pkg.product.priceString,
+        period: t(`paywall.period.${unit}`),
+      }),
+    };
+  };
+
   // Lo que dice cada entrada. El mensual sale de la tienda (`pricePerMonthString`).
   const ticketCopy = (pkg) => {
     const k = planKey(pkg);
-    const monthly = pkg.product.pricePerMonthString;
+    const intro = introOf(pkg);
+    // Con oferta, el mensual es el de la oferta (lo que paga de verdad).
+    const monthly = intro ? intro.monthly : pkg.product.pricePerMonthString;
     return {
       name:  t(`paywall.plan.${k}`),
-      tag:   k === 'annual' ? t('paywall.plan.recommended') : null,
       sub:   k === 'annual' ? (monthly ? t('paywall.plan.annualMonthly', { price: monthly }) : null) : t('paywall.plan.lifetimeSub'),
-      price: pkg.product.priceString,
-      per:   t(`paywall.plan.${k}Per`),
+      note:  intro?.terms,
+      was:   intro ? pkg.product.priceString : null,
+      price: intro?.price ?? pkg.product.priceString,
+      per:   intro?.duration ?? t(`paywall.plan.${k}Per`),
     };
   };
+  const selIntro = selectedPkg ? introOf(selectedPkg) : null;
 
   return (
     <View style={styles.screen}>
@@ -432,7 +461,9 @@ function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSig
               {purchasing
                 ? <ActivityIndicator size="small" color={C.accent} />
                 : <Text style={styles.ctaTxt} numberOfLines={1}>
-                    {t(`paywall.plan.${planKey(selectedPkg)}Cta`, { price: selectedPkg.product.priceString })}
+                    {selIntro
+                      ? t('paywall.plan.introCta', { price: selIntro.price })
+                      : t(`paywall.plan.${planKey(selectedPkg)}Cta`, { price: selectedPkg.product.priceString })}
                   </Text>}
             </Pressable>
 
@@ -442,7 +473,9 @@ function PaywallBody({ packages, loading, reason, onClose, onNeedsAccount, onSig
               <SameHeight index={selIndex}>
                 {packages.map((pkg) => (
                   <Text key={pkg.identifier} style={styles.legal}>
-                    {t(`paywall.plan.${planKey(pkg)}Legal`, { price: pkg.product.priceString, store })}
+                    {introOf(pkg)
+                      ? t('paywall.plan.introLegal', { terms: introOf(pkg).terms, store })
+                      : t(`paywall.plan.${planKey(pkg)}Legal`, { price: pkg.product.priceString, store })}
                   </Text>
                 ))}
               </SameHeight>
@@ -580,15 +613,9 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent:  'center',
   },
   ticketMain:    { flex: 1, minWidth: 0, justifyContent: 'center', paddingVertical: spacing.lg },
-  ticketNameRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   ticketName:    { ...textStyles.itemTitleQuiet },
-  chip: {
-    borderRadius:      th.radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs,
-  },
-  chipTxt:   { ...textStyles.caps },
-  ticketSub: { ...textStyles.labelStrong, marginTop: spacing.xs },
+  ticketSub:  { ...textStyles.bodyStrong, marginTop: spacing.xs },
+  ticketNote: { ...textStyles.label, marginTop: spacing.xs },
   stub: {
     justifyContent: 'center',
     alignItems:     'flex-end',
@@ -597,6 +624,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingRight:   spacing.lg,
   },
   perforation: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 2 },
+  was:   { ...textStyles.labelStrong, textDecorationLine: 'line-through' },
   price: { ...textStyles.heroGlyph, lineHeight: 36, includeFontPadding: false },
   per:   { ...textStyles.labelStrong },
 

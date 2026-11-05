@@ -5786,6 +5786,25 @@ export const useStore = create(
         }
       },
 
+      /**
+       * Ids de producto cuya oferta de introducción puede usar este usuario.
+       * Apple solo la da a quien nunca la tuvo ni se suscribió a ese grupo; en
+       * Android el estado sale UNKNOWN pero Play ya solo trae `introPrice` si
+       * vale, así que solo se descartan INELIGIBLE y NO_INTRO_OFFER_EXIST.
+       */
+      getIntroEligible: async (products) => {
+        const RC = get()._getRC();
+        const ids = products.filter((p) => p?.introPrice).map((p) => p.identifier);
+        if (!RC || !ids.length) return new Set();
+        try {
+          const res = await RC.checkTrialOrIntroductoryPriceEligibility(ids);
+          const S = RC.INTRO_ELIGIBILITY_STATUS;
+          return new Set(ids.filter((id) => ![S.INTRO_ELIGIBILITY_STATUS_INELIGIBLE, S.INTRO_ELIGIBILITY_STATUS_NO_INTRO_OFFER_EXISTS].includes(res[id]?.status)));
+        } catch {
+          return new Set();
+        }
+      },
+
       /** Purchases a RevenueCat Package. Returns { ok, isPro }, { ok: false, pending } or { ok: false, cancelled } / { ok: false, error, action } (M04-03: texto propio, nunca el de la tienda). */
       purchasePackage: async (pkg) => {
         const RC = get()._getRC();
