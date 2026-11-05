@@ -68,7 +68,9 @@ const { open } = require('./harness');
     }
     // remo: sin saltos entre frames, las manos llegan a la barra o al asa y, abajo, el brazo sigue recto (codo como el autorado)
     for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'row')) {
-      const elbow0 = D.evaluate(ex, 0).readout.find(x => x[0] === 'Codo')[1], elbowEnd = D.evaluate(ex, 1).readout.find(x => x[0] === 'Codo')[1];
+      // codo autorado abajo con cada agarre (el supino es su propia acción, con su codo)
+      const codoCon = gt => { const sp = { ...S.per[ex] }; S.per[ex].gripType = gt; const c = D.evaluate(ex, 0).readout.find(x => x[0] === 'Codo')[1]; S.per[ex] = Object.assign(S.per[ex], sp); return c; };
+      const elbowBy = { prono: codoCon('prono'), supino: codoCon('supino') }, elbowEnd = D.evaluate(ex, 1).readout.find(x => x[0] === 'Codo')[1];
       for (const [nm, body, prm] of [['por defecto', {}, {}], ['1,65 m', { height: 165 }, {}], ['1,95 m', { height: 195 }, {}], ['fémur 112%', { femur: 112, tibia: 98, torso: 95 }, {}],
         ['erguido', {}, { trunk: -30 }], ['inclinado', {}, { trunk: 25 }], ['al pecho', {}, { dest: -20 }], ['ancho', {}, { grip: 1.35 }], ['estrecho', {}, { grip: 0.85 }],
         ['supino', {}, { gripType: 'supino' }], ['mancuernas', {}, { impl: 'mancuernas' }], ['mancuernas supino', {}, { impl: 'mancuernas', gripType: 'supino' }],
@@ -82,6 +84,7 @@ const { open } = require('./harness');
         // con barra, el codo no pasa de 120° (o del autorado): la barra no atraviesa el pecho al inclinar el tronco
         const eTop = parseFloat(D.evaluate(ex, 1).readout.find(x => x[0] === 'Codo')[1]);
         if ((S.per[ex].impl || 'barra') === 'barra' && eTop > Math.max(120, parseFloat(elbowEnd)) + 1) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡arriba el codo llega a ${eTop}°!`); }
+        const elbow0 = elbowBy[S.per[ex].gripType || 'prono'];
         if (Math.abs(parseFloat(e0) - parseFloat(elbow0)) > 2) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡abajo el codo está a ${e0} (autorado ${elbow0})!`); }
         S.body = sb; S.per[ex] = sp; }
     }
