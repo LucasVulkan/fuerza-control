@@ -21,6 +21,21 @@ export function programTemplateIds(program) {
 }
 
 /**
+ * Las entradas que cuentan para las cifras de UN programa (adherencia, ritmo):
+ * sus sesiones y TODAS las libres (marcadas o no) desde `sinceTs` — el momento
+ * en que el atleta se conectó al entrenador, o en que creó su programa si va
+ * por su cuenta. Sesiones de otros programas (uno anterior, la demo) no
+ * cuentan. Sin programa, todo el historial.
+ */
+export function entriesForProgram(log, program, sinceTs = 0) {
+  if (!program) return log ?? [];
+  const tplIds = programTemplateIds(program);
+  return (log ?? []).filter((e) => (isFreeEntry(e)
+    ? (e.timestamp ?? 0) >= sinceTs
+    : tplIds.has(e.sessionTemplateId)));
+}
+
+/**
  * Splits client-owned entries out of a mixed workoutLog (legacy data model).
  * An entry belongs to a client when its sessionTemplateId is part of one of
  * that client's programs. Entries matching several clients (shared program —

@@ -92,8 +92,11 @@ futuro, compartir.
    adherencia y el filtro «programa actual».
 
 4. **El entrenador ve todas las sesiones libres**, como hoy
-   (`clientLogs.js:93`): las necesita para leer la carga de su cliente. Solo
-   cuentan para la adherencia las que sustituyen a una sesión. Si algún día se
+   (`clientLogs.js:93`): las necesita para leer la carga de su cliente. Para la
+   adherencia y el ritmo de la ficha de programa cuentan **todas** las libres
+   hechas desde que el atleta se conectó (o creó su programa), marcadas o no
+   (`entriesForProgram`, 5-nov-2026). «Cuenta como» sigue decidiendo la sesión
+   que toca y el «N de M esta semana». Si algún día se
    quiere privacidad, será una opción «privada» por sesión, no ligada al
    progreso (fuera de alcance, §10).
 
