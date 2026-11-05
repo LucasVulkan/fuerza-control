@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload } from './clientLogs';
+import { splitClientLogEntries, mergeClientLog, reidProgramFile, scopeFilterForUpload, entriesForProgram } from './clientLogs';
 
 describe('splitClientLogEntries', () => {
   const programs = {
@@ -158,5 +158,25 @@ describe('scopeFilterForUpload — sesiones libres (T06-free-sessions.md §4.2)'
     ];
     const { entries } = scopeFilterForUpload({ ...base, workoutLog });
     expect(entries.map((e) => e.id)).toEqual(['a', 'c', 'd']);
+  });
+});
+
+describe('entriesForProgram — cifras de un solo programa', () => {
+  const program = { stages: [{ days: [{ sessionTemplateId: 'A' }, { sessionTemplateId: 'B' }] }] };
+  const t = (d) => new Date(d).getTime();
+  const log = [
+    { id: 1, sessionTemplateId: 'A', timestamp: t('2026-10-05') },
+    { id: 2, sessionTemplateId: 'demo', timestamp: t('2026-10-05') },                     // otro programa
+    { id: 3, sessionTemplateId: '__free__', countsAs: 'B', timestamp: t('2026-10-06') }, // libre que sustituye
+    { id: 4, sessionTemplateId: '__free__', timestamp: t('2026-10-06') },                // libre sin marcar
+    { id: 5, sessionTemplateId: '__free__', timestamp: t('2026-09-20') },                // libre de antes de conectarse
+  ];
+
+  test('sus sesiones y todas las libres desde la fecha de inicio', () => {
+    expect(entriesForProgram(log, program, t('2026-10-01')).map((e) => e.id)).toEqual([1, 3, 4]);
+  });
+
+  test('sin programa, todo el historial', () => {
+    expect(entriesForProgram(log, null)).toHaveLength(5);
   });
 });

@@ -49,7 +49,7 @@ import { useTheme, useThemedStyles } from '../useTheme';
 import { useFreeGates } from '../useFreeGates';
 import { computeAdherence, adherencePct, STATUS } from '../utils/adherence';
 import { sessionLoads, dailySeries } from '../utils/trainingLoad';
-import { countsForProgram } from '../utils/freeSessions';
+import { entriesForProgram } from '../utils/clientLogs';
 
 import { showDialog } from '../components/ui/dialog';
 // ── MyProgramScreen ────────────────────────────────────────────────────────────
@@ -109,9 +109,14 @@ export default function MyProgramScreen() {
     ? weeklySessions(activeProgram.stages?.[athleteProgress(activeProgram).currentStageIndex])
     : 0;
 
-  // Las sesiones libres solo cuentan si sustituyen a una del programa
-  // (T06-free-sessions.md §8); la carga, en cambio, las cuenta todas.
-  const programLog = useMemo(() => workoutLog.filter(countsForProgram), [workoutLog]);
+  // Las sesiones de ESTE programa y todas las libres desde que se conectó al
+  // entrenador (o desde que creó el programa, si va por su cuenta): lo mismo
+  // que le llega al entrenador. La carga, en cambio, las cuenta todas.
+  const programSince = Date.parse(clientSync.linkedAt ?? clientSync.lastProgramImportedAt ?? activeProgram?.createdAt) || 0;
+  const programLog = useMemo(
+    () => entriesForProgram(workoutLog, activeProgram, programSince),
+    [workoutLog, activeProgram, programSince],
+  );
 
   const adherence = useMemo(() => computeAdherence({
     sessions: programLog,

@@ -79,7 +79,8 @@ import { Rise } from '../components/ui/Rise';
 import { useEnterClock, EnterClock, ENTER_FAST } from '../hooks/useEnterClock';
 import ProgramCardDetail from '../components/ProgramCardDetail';
 import InfoSection from '../components/ui/InfoSection';
-import { countsForProgram, programTemplateOf } from '../utils/freeSessions';
+import { programTemplateOf } from '../utils/freeSessions';
+import { entriesForProgram } from '../utils/clientLogs';
 
 import { showDialog } from '../components/ui/dialog';
 import { confirmDiscardActive } from '../components/ui/confirmDiscard';
@@ -1782,8 +1783,10 @@ export default function ClientsScreen() {
   const adherenceByClient = useMemo(() => {
     const out = {};
     Object.values(clients ?? {}).forEach((c) => {
-      // Las libres solo cuentan si sustituyen a una sesión (T06-free-sessions.md §8).
-      const sessions = (clientLogs[c.id] ?? []).filter(countsForProgram);
+      // Solo su programa activo y sus sesiones libres (T06-free-sessions.md §8).
+      // Las libres no necesitan fecha: el cliente solo sube las de después de
+      // conectarse (`scopeFilterForUpload`).
+      const sessions = entriesForProgram(clientLogs[c.id], programs[c.activeProgramId]);
       const target   = weeklyTarget(programs[c.activeProgramId], c);
       // `pct` viaja pegado al estado porque la tarjeta ya recibe este objeto:
       // añadirlo aquí sale gratis y evita un segundo prop por cliente.
