@@ -197,10 +197,11 @@ for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
             pts = [pb[f'DEF-FINGER-{dd}-0{i}.{S}'].head for dd in 'BC' for i in (1, 2, 3)] + [pb[f'DEF-FINGER-{dd}-03.{S}'].tail for dd in 'BC']
             e['agarre'] = gpos(Mm.inverted() @ (rig.matrix_world @ (sum(pts, Vector()) / len(pts))))
             ent['malla'] = mo.data.name
-            if mo.data.name not in out['manerales']:
-                me = mo.data; me.calc_loop_triangles()
-                out['manerales'][me.name] = {'pos': [round(c, 5) for v in me.vertices for c in gpos(v.co)],
-                                             'idx': [i for t in me.loop_triangles for i in t.vertices]}
+            if mo.data.name not in out['manerales']:   # la malla con sus modificadores aplicados (la evaluada), en el marco del maneral
+                ev = mo.evaluated_get(bpy.context.evaluated_depsgraph_get()); me = ev.to_mesh(); me.calc_loop_triangles()
+                out['manerales'][mo.data.name] = {'pos': [round(c, 5) for v in me.vertices for c in gpos(v.co)],
+                                                  'idx': [i for t in me.loop_triangles for i in t.vertices]}
+                ev.to_mesh_clear()
         ent[S] = e
     if act.get('ff_maneral'): ent['rigido'] = bool(act.get('ff_rigido', True))
     out['hands'][name] = ent

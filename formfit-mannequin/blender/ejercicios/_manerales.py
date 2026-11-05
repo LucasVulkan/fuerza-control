@@ -94,6 +94,35 @@ def main(F):
     if prev: F.rig.animation_data.action = prev
 
 
+def reflejar(F):
+    """La mano derecha de cada `_mano.<maneral>` sale de la izquierda: solo se posa la izquierda (dedos y dónde va el maneral
+    en la mano). Dedos y controles .L -> .R como el X-Mirror de Blender (posición (−x, y, z), cuaternión (w, x, −y, −z),
+    euler (x, −y, −z)); el maneral derecho, el espejo del izquierdo respecto a su mano (en los ejes de la mano, X invertida)."""
+    prev = F.rig.animation_data.action if F.rig.animation_data else None
+    Fx = Matrix.Diagonal((-1, 1, 1, 1))
+    for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
+        m = act.name[len('_mano.'):]
+        L, R = bpy.data.objects.get(f'FF_maneral.{m}.L'), bpy.data.objects.get(f'FF_maneral.{m}.R')
+        if not (L and R): continue
+        F.rig.animation_data.action = act; bpy.context.scene.frame_set(1); F.upd()
+        for pl in F.pb:
+            if not pl.name.endswith('.L') or pl.name[:-2] + '.R' not in F.pb: continue
+            pr = F.pb[pl.name[:-2] + '.R']
+            x, y, z = pl.location; pr.location = (-x, y, z)
+            w, qx, qy, qz = pl.rotation_quaternion; pr.rotation_quaternion = (w, qx, -qy, -qz)
+            ex, ey, ez = pl.rotation_euler; pr.rotation_euler = (ex, -ey, -ez)
+            pr.scale = pl.scale
+        F.upd(); F.key(1); F.finish(act); F.upd()
+        H = lambda S: F.rig.matrix_world @ F.pb[f'DEF-HAND.{S}'].matrix
+        # con autokey, mover el maneral le crea una acción de objeto que pisaría el reflejo al cambiar de frame: fuera (se queda
+        # donde está en el frame 1, que es lo que cuenta)
+        for o in (L, R):
+            if o.animation_data: M = o.matrix_world.copy(); o.animation_data_clear(); o.matrix_world = M
+        R.matrix_world = H('R') @ Fx @ (H('L').inverted() @ L.matrix_world) @ Fx
+        print(f'  {m}: mano y maneral derechos reflejados de los izquierdos')
+    if prev: F.rig.animation_data.action = prev
+
+
 if __name__ == '__main__':
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else None
     if argv: bpy.ops.wm.open_mainfile(filepath=argv[0])
@@ -101,5 +130,6 @@ if __name__ == '__main__':
     sys.path.insert(0, here if os.path.exists(os.path.join(here, 'ffpose.py')) else os.path.dirname(bpy.data.filepath))
     import ffpose as F
     importlib.reload(F)
-    main(F)
+    if argv and len(argv) > 2 and argv[2] == 'reflejar': reflejar(F)   # ... -- entrada.blend salida.blend reflejar
+    else: main(F)
     if argv: bpy.ops.wm.save_as_mainfile(filepath=argv[1]); print('SAVED', argv[1])
