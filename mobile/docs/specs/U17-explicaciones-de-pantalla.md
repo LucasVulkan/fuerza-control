@@ -146,17 +146,23 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 | Entreno | 3 | Las otras sesiones: puedes hacer cualquiera en vez de la que toca |
 | Entreno | 4 | La sesión libre: entrenar sin seguir el programa |
 | Entreno | 5 | La barra de pestañas de abajo: para moverte por la app |
-| Programa (`MyProgramScreen`) | 1 | Ver el programa: tocar para verlo entero |
-| Programa | 2 | Editar: cambiar ejercicios, sesiones y etapas |
+| Programa (`MyProgramScreen`) | 1 | Ver el programa: el botón «Ver programa» abre el programa entero |
+| Programa | 2 | Editar: el botón «Editar» (cambiar ejercicios, sesiones y etapas); con el programa de un entrenador no hay botón y el paso señala los botones y dice que lo lleva él |
 | Programa | 3 | Solo si hay etapas: cómo se ven las etapas ahí y cuánto llevas de la actual |
 | Progreso (`StatsScreen`) | 1 | El segmentado Ejercicios · Carga · Historial: qué hay en cada uno (un paso, no uno por segmento) |
-| Progreso | 2 | Un ejercicio de la lista: al tocarlo se abre su ficha |
+| Progreso | 2 | Un ejercicio de la lista (el primero): al tocarlo se abre su ficha |
 
 > **Entreno hecho** (5-nov, rama `feat/u17-explicaciones`): `tour.home` con la tarjeta del
 > programa, la sesión que toca (en un programa de orden libre, la lista entera), la
 > primera de las demás (o la tira de pestañas), el botón de sesión libre y la barra
 > de pestañas (`tour/targets.js`, la pinta `ui/BottomTabBar`). Programa y Progreso
 > siguen pendientes, así que U17-02 no se cierra.
+>
+> **Programa y Progreso hechos** (5-nov): `tour.program` (Ver programa, Editar o su variante de
+> entrenador, y las etapas si hay más de una) y `tour.progress` (el segmentado y la primera
+> tarjeta de ejercicio, que baja la lista hasta ella; sin entrenos solo el segmentado). Solo en
+> la pestaña de Progreso del usuario: `ProgressPanel` recibe los refs por props y la ficha de
+> cliente no los pasa.
 
 - `today` de las tarjetas de «Aprende» → Entreno, paso 2; `free` → Entreno, paso 4.
 - `edit` / `sees` → Programa, paso 2. Con entrenador vinculado el texto cambia: el
