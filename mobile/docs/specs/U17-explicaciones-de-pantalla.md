@@ -2,7 +2,8 @@
 
 > Tema: ui
 > En corto: La primera vez que se abre cada pantalla principal se oscurece y se resaltan dos o tres elementos de uno en uno, con una frase cada uno; y algunas cosas que no se entienden solas (la burbuja de diferencia, por ejemplo) se explican con un globo la primera vez que aparecen. Sustituye a las tarjetas explicativas del tramo «Aprende» del onboarding, que se quitan; las dos elecciones de ese tramo (Lista/Pestañas y regla) se quedan.
-> Fase U17-01 · pendiente · Componentes: recorrido, aviso puntual y «visto» · §3
+> Inicio: 2026-11-05
+> Fase U17-01 · hecho · Componentes: recorrido, aviso puntual y «visto» · §3
 > Fase U17-02 · pendiente · Recorridos de Entreno, Programa y Progreso · §4
 > Fase U17-03 · pendiente · Recorridos de Editar programa y del editor de sesión · §5
 > Fase U17-04 · pendiente · Recorridos de Clientes, ficha del cliente y Plantillas · §6
@@ -141,6 +142,11 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 | Programa | 3 | Solo si hay etapas: cómo se ven las etapas ahí y cuánto llevas de la actual |
 | Progreso (`StatsScreen`) | 1 | El segmentado Ejercicios · Carga · Historial: qué hay en cada uno (un paso, no uno por segmento) |
 | Progreso | 2 | Un ejercicio de la lista: al tocarlo se abre su ficha |
+
+> **Entreno hecho** (5-nov, rama `feat/u17-explicaciones`): `tour.home` con la sesión que
+> toca (en un programa de orden libre, la lista entera), la primera de las demás
+> (o la tira de pestañas) y el botón de sesión libre. Programa y Progreso siguen
+> pendientes, así que U17-02 no se cierra.
 
 - `today` de las tarjetas de «Aprende» → Entreno, paso 1; `free` → Entreno, paso 3.
 - `edit` / `sees` → Programa, paso 2. Con entrenador vinculado el texto cambia: el
