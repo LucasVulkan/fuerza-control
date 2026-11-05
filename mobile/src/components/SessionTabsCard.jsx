@@ -91,8 +91,10 @@ function TabFill({ clipId, role, color, progress }) {
  *        En el orden del programa.
  * @param {string|null} heroId  La que toca (`sessionPlan().heroTemplateId`). Null en
  *        un programa libre (§9): ninguna en lima, ni tarjeta ni pestaña.
+ * @param {object} [stripRef]  Ref de la tira de pestañas, para que el recorrido de
+ *        Inicio (U17-02) la señale.
  */
-export default function SessionTabsCard({ sessions, heroId }) {
+export default function SessionTabsCard({ sessions, heroId, stripRef }) {
   const { t }  = useTranslation();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -262,6 +264,9 @@ export default function SessionTabsCard({ sessions, heroId }) {
         ]}
       />
 
+      {/* Solo para medir: el recorrido señala la tira (U17-02). */}
+      <View ref={stripRef} collapsable={false} pointerEvents="none" style={styles.stripMark} />
+
       <GestureDetector gesture={gesture}>
         <View style={styles.strip} accessibilityRole="tablist">
           {size.width > 0 && (
@@ -365,6 +370,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   fill:  { position: 'absolute' },
   strip: { height: TAB_H },
+  stripMark: { position: 'absolute', top: 0, left: 0, right: 0, height: TAB_H },
   glyphBox: {
     position:       'absolute',
     top:            0,
