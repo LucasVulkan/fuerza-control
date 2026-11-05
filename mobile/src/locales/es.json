@@ -37,13 +37,13 @@
     "done": "Entendido",
     "help": "Explicación de esta pantalla",
     "home": {
-      "program": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y cuánto llevas: la etapa y la semana en la que estás. Tócala para abrirlo." },
-      "today": { "title": "La sesión que toca", "text": "Es la siguiente de tu programa. Tócala para ver sus ejercicios y empieza cuando quieras." },
+      "program": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y cuánto llevas: la etapa y la semana en la que estás. Pulsa para abrir la pantalla del programa." },
+      "today": { "title": "La sesión de hoy", "text": "La sesión de entrenamiento recomendada por el programa. Toca en la tarjeta para ver los ejercicios o en el botón para empezar el entreno." },
       "sessionsFree": { "title": "Tus sesiones", "text": "Tu programa es libre: no hay una que toque, elige la que quieras hacer hoy. Tócala para ver sus ejercicios y empieza cuando quieras." },
-      "othersList": { "title": "Las demás sesiones", "text": "¿Hoy prefieres otra? Puedes hacer cualquiera de estas en lugar de la que toca." },
-      "othersTabs": { "title": "Las demás sesiones", "text": "¿Hoy prefieres otra? Cada pestaña es una sesión de tu programa: tócalas, o desliza el dedo por ellas, para hacer otra en lugar de la que toca." },
-      "free": { "title": "Sesión libre", "text": "Para entrenar fuera del programa: empieza en blanco o con una sesión guardada." },
-      "tabs": { "title": "Moverte por la app", "text": "Desde aquí pasas a tu programa, a tu progreso y al resto de la app." }
+      "othersList": { "title": "Las demás sesiones", "text": "El resto de sesiones del programa. Pulsa para abrir la lista de ejercicios de esa sesión y empezarla en cualquier momento." },
+      "othersTabs": { "title": "Las demás sesiones", "text": "Cada pestaña es una sesión de tu programa. Púlsalas para verlas y hacer otra sesión en lugar de la recomendada." },
+      "free": { "title": "Sesión libre", "text": "Haz una sesión diferente a las del programa. Puedes empezar una en blanco, sobre la marcha, o crear sesiones libres para reusarlas en cualquier momento." },
+      "tabs": { "title": "Moverte por la app", "text": "Desde aquí puedes ver tu programa, donde podrás editarlo, tu progreso y el resto de la app." }
     }
   },
   "header": {

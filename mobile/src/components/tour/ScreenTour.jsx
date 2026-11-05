@@ -198,7 +198,7 @@ export default function ScreenTour({ steps: given, onClose }) {
       {view && (
         <Reanimated.View entering={reduced ? undefined : FadeIn.duration(180)} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Svg width="100%" height="100%">
-            <AnimatedPath fill={withOpacity('#000000', 0.72)} fillRule="evenodd" animatedProps={veil} />
+            <AnimatedPath fill={withOpacity('#000000', 0.8)} fillRule="evenodd" animatedProps={veil} />
             <AnimatedPath fill="none" stroke={th.colors.accent} strokeWidth={2} animatedProps={edge} />
           </Svg>
         </Reanimated.View>
