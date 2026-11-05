@@ -35,8 +35,8 @@
 
 ## 2. Reglas del recorrido (todas las tareas)
 
-1. **Dos o tres pasos por pantalla, nunca más.** Si una pantalla necesita más, el
-   problema es la pantalla. Si no hay nada que no se entienda solo, la pantalla
+1. **Dos o tres pasos por pantalla, nunca más** (Entreno, la primera que se abre,
+   hasta cinco). Si una pantalla necesita más, el problema es la pantalla. Si no hay nada que no se entienda solo, la pantalla
    no lleva recorrido.
 2. **Una vez por pantalla.** Al terminar o al pulsar «Saltar» se guarda «visto» y no
    vuelve a salir. Los usuarios que ya tenían la app también lo ven una vez, la
@@ -74,6 +74,13 @@ recorrido. Para cada paso:
   paso al siguiente, con Reanimated);
 - pinta el globo: puntos de progreso, «Saltar», título, texto, botón «‹» (desde el
   segundo paso) y «Siguiente» / «Entendido» en el último.
+
+El recorrido se pinta en la ventana principal (`TourHost`, en `RootNavigator`, como el
+Toast) y no en un `Modal`: el de Android es otra ventana y su origen no coincide con el
+de `measureInWindow` (el hueco salía unos píxeles más arriba). Además se mide el propio
+velo y se resta su origen. El globo lleva el icono **?**, un piquito perpendicular al
+borde que apunta al elemento (sin piquito si va centrado) y entra con un fundido desde
+el lado del elemento; el aro lima late como el de `Spot`.
 
 Un paso puede llevar además:
 
@@ -134,21 +141,24 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 
 | Pantalla | Paso | Qué explica |
 |---|---|---|
-| Entreno (`HomeScreen`) | 1 | La sesión que toca (la tarjeta grande): la elige el orden del programa (rotación, semana o libre) y se pulsa para empezar |
-| Entreno | 2 | Las otras sesiones: puedes hacer cualquiera en vez de la que toca |
-| Entreno | 3 | La sesión libre: entrenar sin seguir el programa |
+| Entreno (`HomeScreen`) | 1 | La tarjeta del programa de arriba (`HomeProgramCard`): su nombre y cuánto llevas (etapa y semana); se pulsa para abrirlo |
+| Entreno | 2 | La sesión que toca (la tarjeta grande): la elige el orden del programa (rotación, semana o libre) y se pulsa para empezar |
+| Entreno | 3 | Las otras sesiones: puedes hacer cualquiera en vez de la que toca |
+| Entreno | 4 | La sesión libre: entrenar sin seguir el programa |
+| Entreno | 5 | La barra de pestañas de abajo: para moverte por la app |
 | Programa (`MyProgramScreen`) | 1 | Ver el programa: tocar para verlo entero |
 | Programa | 2 | Editar: cambiar ejercicios, sesiones y etapas |
 | Programa | 3 | Solo si hay etapas: cómo se ven las etapas ahí y cuánto llevas de la actual |
 | Progreso (`StatsScreen`) | 1 | El segmentado Ejercicios · Carga · Historial: qué hay en cada uno (un paso, no uno por segmento) |
 | Progreso | 2 | Un ejercicio de la lista: al tocarlo se abre su ficha |
 
-> **Entreno hecho** (5-nov, rama `feat/u17-explicaciones`): `tour.home` con la sesión que
-> toca (en un programa de orden libre, la lista entera), la primera de las demás
-> (o la tira de pestañas) y el botón de sesión libre. Programa y Progreso siguen
-> pendientes, así que U17-02 no se cierra.
+> **Entreno hecho** (5-nov, rama `feat/u17-explicaciones`): `tour.home` con la tarjeta del
+> programa, la sesión que toca (en un programa de orden libre, la lista entera), la
+> primera de las demás (o la tira de pestañas), el botón de sesión libre y la barra
+> de pestañas (`tour/targets.js`, la pinta `ui/BottomTabBar`). Programa y Progreso
+> siguen pendientes, así que U17-02 no se cierra.
 
-- `today` de las tarjetas de «Aprende» → Entreno, paso 1; `free` → Entreno, paso 3.
+- `today` de las tarjetas de «Aprende» → Entreno, paso 2; `free` → Entreno, paso 4.
 - `edit` / `sees` → Programa, paso 2. Con entrenador vinculado el texto cambia: el
   programa lo lleva tu entrenador y ve tus entrenos.
 - Sin programa activo no hay recorrido de Entreno ni de Programa: su estado vacío
@@ -158,7 +168,7 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 
 **Probar U17-02**
 
-- [ ] Usuario nuevo con programa → Entreno: los tres pasos resaltan el elemento correcto, también tras desplazar la lista
+- [ ] Usuario nuevo con programa → Entreno: los cinco pasos resaltan el elemento correcto, también tras desplazar la lista
 - [ ] Entreno en vista Pestañas (U13) → los pasos siguen cayendo en su sitio
 - [ ] Programa sin etapas → dos pasos; con etapas → tres, y el tercero señala las etapas
 - [ ] Cliente vinculado → el texto de Programa dice que lo lleva su entrenador
