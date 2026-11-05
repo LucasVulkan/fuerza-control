@@ -88,11 +88,11 @@ const PARAMS = {
   cable: [
     { id: 'impl', label: 'Maneral', hide: ex => !!POSES.exercises[ex]?.meta?.hand, def: 'triangulo', options: [['triangulo', 'Triángulo'], ['barra_recta', 'Barra recta'], ['cuerda', 'Cuerda']] },
     { id: 'gripType', label: 'Agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand, def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino']] },
-    { id: 'pulleyH', label: 'Altura de la polea', min: -30, max: 80, step: 1, def: 0, fmt: v => `${Math.round(((POSES.exercises[state.exId]?.meta?.pulley?.[1]) ?? 0) * 100 + v)} cm del suelo${v === 0 ? ' (la autorada)' : ''}` },
+    { id: 'pulleyH', label: 'Altura de la polea', min: -30, max: 80, step: 1, def: 0, fmt: v => `${Math.round((POSES.exercises[state.exId]?.meta?.pulley ? pulleyAt(state.exId, v).y : 0) * 100)} cm del suelo${v === 0 ? ' (en línea con el brazo)' : ''}` },
     { id: 'trunk', label: 'Inclinación del tronco', min: -15, max: 25, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)}° más ${v > 0 ? 'adelante' : 'atrás'}` },
     { id: 'swing', label: 'Balanceo del tronco', min: 0, max: 200, step: 5, def: 100, fmt: v => v === 100 ? 'el autorado' : v === 0 ? 'quieto (como al tirar)' : `${v}% del autorado` },
     { id: 'dest', label: 'Hacia dónde tira', min: -20, max: 8, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada (ombligo)' : `${Math.abs(v)} cm más hacia ${v < 0 ? 'el pecho' : 'la cadera'}` },
-    { id: 'knees', label: 'Flexión de rodilla', min: -20, max: 50, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° (la plataforma se acerca o se aleja)` },
+    { id: 'knees', label: 'Flexión de rodilla', min: -20, max: 50, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° (la pelvis se desliza por el asiento)` },
     { id: 'grip', label: 'Anchura de agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand, min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
   ],
@@ -463,6 +463,13 @@ const ROWD = {};
 const rowUp = (ex, F) => { const [a, b] = ROWD[ex] ??= withBody(DEFAULT_BODY, () => [0, 1].map(s => { const f = features(authoredPose(ex, s), ex, s); return f.bar.distanceTo(f.sh); }));
   return clamp((a - F.bar.distanceTo(F.sh)) / (a - b)); };
 const PHI1 = {};   // polea: inclinación autorada del tronco al tirar (s = 1)
+// polea: la de la acción (columna, a un lado) a la altura donde la corta la línea antebrazo -> maneral de la pose de inicio
+// (la mano apunta a la polea): con los valores por defecto, el brazo y el cable quedan en línea con la animación del usuario
+const PUL = {};
+const pulleyOf = ex => PUL[ex] ??= (() => { const E = POSES.exercises[ex], P = V(...E.meta.pulley), B = E.start.bones, S = E.meta.hand, b = n => V(...B[n].p);
+  const sh = S ? b(`DEF-FORARM01.${S}`) : b('DEF-FORARM01.L').add(b('DEF-FORARM01.R')).multiplyScalar(0.5), h = V(...E.start.bar.center);   // codo -> maneral
+  P.y = Math.max(0.05, sh.y + (h.y - sh.y) * (P.z - sh.z) / (h.z - sh.z)); return P; })();
+const pulleyAt = (ex, cm) => { const P = pulleyOf(ex).clone(); P.y = Math.max(0.05, P.y + cm / 100); return P; };   // con «Altura de la polea», sin bajar del suelo
 const ROW_SUP_ELBOW = 30 * DEG;   // remo supino sin su acción: los codos más pegados al cuerpo
 // remo con barra: hasta dónde llega la animación (s) para que el codo no pase de ROW_BAR.elbow (ni del autorado al final, si es
 // mayor: por defecto, la pose de Blender). Bisección sobre evaluateRaw, una vez por cuerpo y ajustes; el codo crece con s.
@@ -549,8 +556,10 @@ function evaluateInner(ex, s) {
     // (qP; se deshace según tira: al tirar el maneral va al tronco). Sin polea, identidad
     // pivote de los brazos: el centro de los hombros o, a un brazo, el hombro que tira (con el pecho girado no están en el eje X)
     const shA = one ? auth[`DEF-ARM01.${WS}`].p : F.sh;
-    const angP = P => Math.atan2(P.y - shA.y, P.z - shA.z), P0 = cable && V(...POSES.exercises[ex].meta.pulley);
-    const qP = cable && prm.pulleyH ? QA(X, -(angP(P0.clone().add(V(0, prm.pulleyH / 100, 0))) - angP(P0)) * (1 - up)) : Q();
+    const P0 = cable && pulleyOf(ex), B0 = cable && POSES.exercises[ex].start.bones, b0 = n => V(...B0[n].p);
+    const sh0 = cable && (one ? b0(`DEF-ARM01.${WS}`) : b0('DEF-ARM01.L').add(b0('DEF-ARM01.R')).multiplyScalar(0.5));   // hombro con el brazo estirado
+    const angP = P => Math.atan2(P.y - sh0.y, P.z - sh0.z), dP = cable && prm.pulleyH ? -(angP(pulleyAt(ex, prm.pulleyH)) - angP(P0)) : 0;
+    const qP = QA(X, dP * (1 - up));                      // manos y codos: giran con el brazo, menos según tira
     const qHandA = S => qP.clone().multiply(auth[`DEF-HAND.${S}`].q);
     const handI = hinge && I !== ownI && POSES.hands
       && { L: implHand('L', 1, qHandA('L'), I), R: implHand('R', -1, qHandA('R'), I) };
@@ -576,12 +585,7 @@ function evaluateInner(ex, s) {
       const Fs = F[S], dYaw = sgn * (prm.toes ?? 0) * DEG;
       const an0 = expP(ex, `DEF-FOOT.${S}`, s);          // tobillo plantado (exacto de Blender, sin deriva entre claves)
       let ank = V(an0.x * prm.stance * d.k / d0.k, an0.y * d.k / d0.k, an0.z);
-      if (cable) {   // pies en la plataforma: en la dirección autorada cadera→tobillo, a la distancia que dan muslo y tibia con la rodilla
-        // autorada + «Flexión de rodilla» (la plataforma se acerca o se aleja); por defecto, el tobillo de Blender
-        const h = pose[`DEF-THIGH01.${S}`].p, v = an0.clone().sub(auth[`DEF-THIGH01.${S}`].p), lt0 = segLen(`DEF-THIGH01.${S}`, `DEF-SHIN01.${S}`, 1) / kk, ls0 = segLen(`DEF-SHIN01.${S}`, `DEF-FOOT.${S}`, 1) / kk;
-        const K0 = Math.acos(clamp((v.lengthSq() - lt0 * lt0 - ls0 * ls0) / (2 * lt0 * ls0), -1, 1)), Kc = K0 + prm.knees * DEG, { Lt, Ls } = LEN(S);
-        ank = h.clone().addScaledVector(v.normalize(), Math.sqrt(Lt * Lt + Ls * Ls + 2 * Lt * Ls * Math.cos(Kc))); ank.x = an0.x * prm.stance * kr;
-      }
+      if (cable) ank = V(an0.x * prm.stance * kr, an0.y, an0.z);   // pies en la plataforma (fija): la pelvis es la que se desliza (seatSlide)
       const pole = Fs.legPole.clone().applyAxisAngle(Y, dYaw);
       solveLimb(pose, auth, [`DEF-THIGH01.${S}`, `DEF-THIGH02.${S}`, `DEF-SHIN01.${S}`, `DEF-SHIN02.${S}`, `DEF-FOOT.${S}`], ank, pole,
         [LEN(S).Lt, LEN(S).Ls]);
@@ -599,7 +603,10 @@ function evaluateInner(ex, s) {
       // remo: abajo los brazos cuelgan (el vector hombros→barra autorado, sin girar); arriba la barra va con el tronco (girado
       // con él) y «Hacia dónde sube» la lleva a lo largo del tronco. Con otro agarre o implemento, abajo el brazo sigue recto:
       // la barra sube o baja lo que cambia la altura del brazo recto (diferencia con el agarre autorado: exacta por defecto).
-      const off = F.bar.clone().sub(shA).multiplyScalar(kr).applyQuaternion(qP), ud = off.clone().normalize();
+      const off = F.bar.clone().sub(shA).multiplyScalar(kr);
+      if (dP) { const e0 = V(...POSES.exercises[ex].start.bar.center).sub(sh0).multiplyScalar(kr);   // brazo estirado autorado
+        off.add(e0.clone().applyAxisAngle(X, dP).sub(e0).multiplyScalar(1 - up)); }   // en línea con el cable; se desvanece en recta
+      const ud = off.clone().normalize();
       const chest = I0 === IMPL.barra ? ROW_BAR.cm * clamp(prm.trunk / ROW_BAR.trunk) : 0;   // con barra e inclinado: hacia el pecho
       bar = (one ? pose[`DEF-ARM01.${WS}`].p : shNow).clone().add(off.lerp(off.clone().applyQuaternion(R), up)).addScaledVector(u, -(prm.dest - chest) / 100 * kk * up);
       const sh = pose[`DEF-ARM01.${WS}`].p, Rr = 0.999 * (LEN(WS).Lu + LEN(WS).Lf);
@@ -639,6 +646,15 @@ function evaluateInner(ex, s) {
       fkSub(pose, `DEF-SHOULDER.${S}`);
       if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
     }
+    if (one) {   // a un brazo: la mano libre sigue apoyada donde estaba en el muslo (si se dobla o estira la pierna, sube o baja con él)
+      const S = WS === 'L' ? 'R' : 'L', hn = `DEF-HAND.${S}`, aw = auth[hn].p;
+      const tb = ['L', 'R'].flatMap(T => [`DEF-THIGH01.${T}`, `DEF-THIGH02.${T}`]).reduce((a, n) => auth[n].p.distanceTo(aw) < auth[a].p.distanceTo(aw) ? n : a);
+      const inv = auth[tb].q.clone().invert(), wrist = pose[tb].p.clone().add(aw.clone().sub(auth[tb].p).applyQuaternion(inv).multiplyScalar(kr).applyQuaternion(pose[tb].q));
+      const qh = pose[tb].q.clone().multiply(inv).multiply(auth[hn].q), pole = poleOf(pose[`DEF-ARM01.${S}`].p, pose[`DEF-FORARM01.${S}`].p, pose[hn].p);
+      solveLimb(pose, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], wrist, pole, [LEN(S).Lu, LEN(S).Lf]);
+      const qi = auth[hn].q.clone().invert(); for (const c of subtree(hn)) pose[c].q = qh.clone().multiply(qi.clone().multiply(auth[c].q));
+      fkSub(pose, `DEF-SHOULDER.${S}`);
+    }
     return { pose, bar, axis, warns, grips: hinge && (one ? [WS] : ['L', 'R']).map(S => bar.clone().add(gripOff(S))) };
     };
     // ---- equilibrio en lazo cerrado sobre la pose real: el centro de masas del sistema (cuerpo + barra)
@@ -648,7 +664,15 @@ function evaluateInner(ex, s) {
       // polea: la pelvis queda en el asiento (la autorada) y el tronco sigue la animación alrededor de cómo queda al tirar (s = 1):
       // «Balanceo» escala esa oscilación (0 % = quieto) e «Inclinación» la desplaza. Sin equilibrio: sentado y con los pies apoyados
       const phiEnd = PHI1[ex] ??= withBody(DEFAULT_BODY, () => features(authoredPose(ex, 1), ex, 1).phi);
-      phiA = phiEnd + (F.phi - phiEnd) * prm.swing / 100 + prm.trunk * DEG; bA = build(phiA, F.hip);
+      phiA = phiEnd + (F.phi - phiEnd) * prm.swing / 100 + prm.trunk * DEG;
+      // con «Flexión de rodilla» o con otras medidas, los pies no se mueven de la plataforma: la pelvis se desliza por el asiento
+      // (delante/atrás) hasta que cada pierna mide lo que dan muslo y tibia con la rodilla autorada + el ajuste. Por defecto, 0
+      const slide = ['L', 'R'].map(S => { const an = expP(ex, `DEF-FOOT.${S}`, s), th = auth[`DEF-THIGH01.${S}`].p, v = an.clone().sub(th);
+        const lt0 = segLen(`DEF-THIGH01.${S}`, `DEF-SHIN01.${S}`, 1) / kk, ls0 = segLen(`DEF-SHIN01.${S}`, `DEF-FOOT.${S}`, 1) / kk, { Lt, Ls } = LEN(S);
+        const K = Math.acos(clamp((v.lengthSq() - lt0 * lt0 - ls0 * ls0) / (2 * lt0 * ls0), -1, 1)) + prm.knees * DEG, D2 = Lt * Lt + Ls * Ls + 2 * Lt * Ls * Math.cos(K);
+        const hx = F.hip.x + (th.x - F.hip.x) * kr, hy = F.hip.y + (th.y - F.hip.y) * kr, ax = an.x * prm.stance * kr;
+        return an.z - Math.sqrt(Math.max(0, D2 - (ax - hx) ** 2 - (an.y - hy) ** 2)) - (F.hip.z + (th.z - F.hip.z) * kr); });
+      bA = build(phiA, F.hip.clone().add(V(0, 0, (slide[0] + slide[1]) / 2)));
       const P = bA.pose, e = n => P[`${n}.${WS}`].p; out.elbow = 180 - e('DEF-ARM01').clone().sub(e('DEF-FORARM01')).angleTo(e('DEF-HAND').clone().sub(e('DEF-FORARM01'))) / DEG;
     } else if (row) {
       // remo: el tronco a la inclinación del ajuste y la rodilla con su ángulo autorado; el centro de masas (con la carga actual)
@@ -728,7 +752,13 @@ function evaluateInner(ex, s) {
     if (hinge && !cable && phi > 85 * DEG && betaH + thH < 45 * DEG) out.warns.push('Bajar tanto con la rodilla tan recta pide unos isquios muy flexibles');
     out.bar = { center: bar, axis };
     if (cable) {   // polea: el cable va de la polea al maneral; indicadores propios (sin centro de masas: sentado)
-      const P = V(...POSES.exercises[ex].meta.pulley).add(V(0, prm.pulleyH / 100, 0)), c = P.clone().sub(bar);
+      const P = pulleyAt(ex, prm.pulleyH), c = P.clone().sub(bar);
+      // plataforma: fija, contra la planta de los pies de la pose de inicio (el giro del pie respecto al reposo aplicado a la
+      // planta en reposo, que está en el suelo). Solo la anchura de pies la cambia
+      const sole = ['L', 'R'].map(S => { const fn = `DEF-FOOT.${S}`, a = expP(ex, fn, 0), Rf = expQ(ex, fn, 0).multiply(REST[fn].q.clone().invert());
+        const r = REST[fn].p, c0 = V(r.x, 0, (r.z + REST[`DEF-TOE.${S}`].p.z) / 2).sub(r).multiplyScalar(kk).applyQuaternion(Rf);
+        return { p: V(a.x * prm.stance * kr, a.y, a.z).add(c0), n: V(0, -1, 0).applyQuaternion(Rf), up: V(0, 0, 1).applyQuaternion(Rf) }; });
+      out.footPlate = { p: sole[0].p.clone().add(sole[1].p).multiplyScalar(0.5), n: sole[0].n, up: sole[0].up };
       out.pulley = P; out.path = bar.clone(); out.mid = bar.z; out.com = bar.z;
       out.act = { quads: 0, glutes: 0, hams: 0.1, add: 0, erect: 0.25, calves: 0 };
       out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Codo', `${Math.round(out.elbow)}°`], ['Cable', `${Math.round(Math.atan2(c.y, Math.hypot(c.x, c.z)) / DEG)}° sobre la horizontal`],
@@ -988,10 +1018,9 @@ function placeCable(ex, r) {
   // asiento y plataforma: con la pose de inicio exportada (no se mueven con la animación); la plataforma, contra la planta
   const B = POSES.exercises[ex].start.bones, Pb = n => V(...B[n].p), hip = Pb('DEF-THIGH01.L').add(Pb('DEF-THIGH01.R')).multiplyScalar(0.5);
   const top = hip.y - 0.1; CBL.seat.scale.y = top; CBL.seat.position.set(0, top / 2, hip.z - 0.02);
-  const pose = r.pose, ank = midOf(pose, 'DEF-FOOT.L', 'DEF-FOOT.R'), toe = midOf(pose, 'DEF-TOE.L', 'DEF-TOE.R'), up = toe.clone().sub(ank).setX(0).normalize();
-  const n = V(0, -up.z, up.y); if (n.z < 0) n.negate();   // normal de la plataforma, hacia delante (lejos del cuerpo)
-  CBL.foot.position.copy(ank).addScaledVector(up, 0.06).addScaledVector(n, 0.06).setX(0);
-  CBL.foot.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, up, n));
+  const fp = r.footPlate, side = fp.up.clone().cross(fp.n).normalize();   // plataforma: contra la planta (su normal sale del pie)
+  CBL.foot.position.copy(fp.p).addScaledVector(fp.n, 0.02).setX(0);
+  CBL.foot.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, fp.up, fp.n));
 }
 const lineMat = new THREE.LineDashedMaterial({ color: 0x2453cf, dashSize: 0.04, gapSize: 0.03 });
 const midLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0.002, 0), V(0, 2.1, 0)]), lineMat); midLine.computeLineDistances(); scene.add(midLine);

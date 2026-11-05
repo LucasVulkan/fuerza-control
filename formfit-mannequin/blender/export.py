@@ -156,6 +156,8 @@ for ex in EXERCISES:
         if pb['BARRA'].scale.x > 0.5 or act.get('ff_base') == 'cable':   # en polea, el maneral (entre los puños)
             B = pb['BARRA_FINAL' if 'BARRA_FINAL' in pb else 'BARRA'].matrix   # la que se ve: con BARRA_EN_MANOS va entre los puños
             fr['bar'] = {'center': gpos(B.translation), 'axis': gpos(B.to_3x3().col[1].normalized())}
+            if act.get('ff_hand'):   # a un brazo: el asa es el puño de esa mano (sigue a los retoques de la mano, no al control BARRA)
+                fr['bar']['center'] = gpos(pb[f"FF_PUNO.{act['ff_hand']}"].head)
         if pb['MAQUINA'].scale.x > 0.5:
             fr['machine'] = {'p': gpos(pb['MAQUINA'].matrix.translation), 'q': quat(grot(pb['MAQUINA'].matrix.to_3x3()))}
             Pl = pb['PLATAFORMA'].matrix

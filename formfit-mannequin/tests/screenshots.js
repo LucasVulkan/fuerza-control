@@ -35,7 +35,8 @@ const { open, ROOT } = require('./harness'); const path = require('path'), fs = 
     ['cable_bar_end_45', 'cable_row', 1, 'three', {}, { impl: 'barra_recta' }], ['cable_rope_end_45', 'cable_row', 1, 'three', {}, { impl: 'cuerda' }],
     ['cable_knees_start_side', 'cable_row', 0, 'side', {}, { knees: 40 }],
     ['one_start_45', 'cable_row_one_arm', 0, 'three', {}, {}], ['one_end_45', 'cable_row_one_arm', 1, 'three', {}, {}], ['one_end_front', 'cable_row_one_arm', 1, 'front', {}, {}],
-    ['one_high_start_45', 'cable_row_one_arm', 0, 'three', {}, { pulleyH: 60 }]];
+    ['one_high_start_45', 'cable_row_one_arm', 0, 'three', {}, { pulleyH: 60 }], ['one_knees_side', 'cable_row_one_arm', 0.5, 'side', {}, { knees: 40 }],
+    ['one_straight_side', 'cable_row_one_arm', 0.5, 'side', {}, { knees: -20 }], ['cable_high_end_side', 'cable_row', 1, 'side', {}, { pulleyH: 60 }]];
   for (const [name, ex, s, view, body, prm] of shots) {
     await page.evaluate(([ex, s, view, body, prm]) => { const S = __dbg.state; S.playing = false;
       document.querySelectorAll('#exSeg button')[Object.keys(__dbg.EXERCISES).filter(k => !__dbg.POSES.exercises[k]?.meta?.of).indexOf(ex)].click();   // las variantes no tienen botón
