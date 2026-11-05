@@ -466,6 +466,17 @@ const ROWD = {};
 const rowUp = (ex, F) => { const [a, b] = ROWD[ex] ??= withBody(DEFAULT_BODY, () => [0, 1].map(s => { const f = features(authoredPose(ex, s), ex, s); return f.bar.distanceTo(f.sh); }));
   return clamp((a - F.bar.distanceTo(F.sh)) / (a - b)); };
 const PHI1 = {};   // polea: inclinación autorada del tronco al tirar (s = 1)
+// maneral de polea (spec X02; blender/ejercicios/_manerales.py): el del implemento elegido (a un brazo, el asa en D; la barra
+// recta supina tiene su propia mano). null si el .blend aún no lo tiene (se dibuja el esquemático)
+function manData(ex) {
+  const prm = state.per[ex], one = POSES.exercises[ex].meta?.hand;
+  const m = one ? 'asa' : prm.impl === 'barra_recta' && prm.gripType === 'supino' ? 'barra_supina' : prm.impl;
+  const h = POSES.hands?.[m]; if (!h?.[one || 'L']?.maneral) return null;
+  const side = S => { const e = h[S], relQ = new THREE.Quaternion(...e.maneral.q), ag = V(...e.agarre);
+    return { relQ, relQi: relQ.clone().invert(), ag, hg: V(...e.maneral.p).add(ag.clone().applyQuaternion(relQ)),   // hg: agarre en los ejes de la mano
+      fingers: Object.fromEntries(Object.entries(e.fingers).map(([n, q]) => [n, new THREE.Quaternion(...q)])) }; };
+  return { m, mesh: h.malla, rigid: h.rigido !== false, bar: m.startsWith('barra'), L: side('L'), R: side('R') };
+}
 // polea: la de la acción (columna, a un lado) a la altura donde la corta la línea antebrazo -> maneral de la pose de inicio
 // (la mano apunta a la polea): con los valores por defecto, el brazo y el cable quedan en línea con la animación del usuario
 const PUL = {};
@@ -574,6 +585,7 @@ function evaluateInner(ex, s) {
       return F.barAxis.clone().multiplyScalar(x).add(o.clone().addScaledVector(F.barAxis, -along).multiplyScalar(kr)); };
     const wristOff = S => handI ? handI[S].hollow.clone().multiplyScalar(d.k).applyQuaternion(handI[S].q)     // puño -> muñeca
       : socketRest(S).multiplyScalar(d.k).applyQuaternion(qHandA(S).multiply(REST[`DEF-HAND.${S}`].q.clone().invert()));
+    const md = cable && manData(ex);
     // ---- construcción de la pose para una inclinación de tronco (y una cadera) dadas
     const build = (phi, hipT, barShift = 0) => {
     const pose = clonePose(auth), warns = [];
@@ -625,7 +637,49 @@ function evaluateInner(ex, s) {
       bar.y = sh.y - o.y - Math.sqrt(Math.max(0, R * R - dx * dx - dz * dz));
     }
     const axis = F.barAxis.clone().applyQuaternion(Rh);
-    for (const [S, sgn] of [['L', 1], ['R', -1]]) {
+    const sides = one ? [WS] : ['L', 'R'];
+    const poleFor = S => { const hn = `DEF-HAND.${S}`, pl = poleOf(auth[`DEF-ARM01.${S}`].p, auth[`DEF-FORARM01.${S}`].p, auth[hn].p).applyQuaternion(Rh);
+      return row ? pl.lerp(pl.clone().applyQuaternion(R), up).normalize() : pl; };
+    // mano en el maneral (pose y dedos) con el maneral en (pM, qMS)
+    const handOn = (S, pM, qMS) => { const e = md[S], hn = `DEF-HAND.${S}`, ag = e.ag.clone(); if (md.bar) ag.x *= prm.grip;   // barra: la anchura mueve las manos por ella
+      const grip = pM.clone().add(ag.applyQuaternion(qMS)), qH = qMS.clone().multiply(e.relQi);
+      const ik = solveLimb(pose, auth, [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], grip.clone().sub(e.hg.clone().multiplyScalar(d.k).applyQuaternion(qH)), poleFor(S), [LEN(S).Lu, LEN(S).Lf]);
+      pose[hn].q = qH; for (const c in e.fingers) pose[c].q = qH.clone().multiply(e.fingers[c]);
+      fkSub(pose, `DEF-SHOULDER.${S}`); return { grip, ik }; };
+    let man = null;
+    if (md && prm.wrist !== 'autorada') {
+      // MANERAL (polea): las manos salen de él (_mano.<maneral>) y gira para quedar en línea con ellas, con la muñeca recta (la mano en
+      // línea con el antebrazo); el cable engancha en su gancho, que queda donde toque: el maneral gira respecto al cable en ese punto.
+      // Lo que sigue la trayectoria es el centro de los agarres (donde van las manos). Girar alrededor del gancho era inestable: los
+      // agarres bajaban, el antebrazo los seguía y la mano acababa 56° hacia abajo. Rígido (triángulo, barra, asa): un giro para todas
+      // las manos (la media); la cuerda: un ramal por mano, del gancho común a cada mano.
+      const hR = S => Y.clone().applyQuaternion(REST[`DEF-HAND.${S}`].q);
+      const axisM = S => Y.clone().applyQuaternion(md[S].relQi);              // eje de la mano en los ejes del maneral
+      const avg = vs => vs.reduce((a, v) => a.add(v), V(0, 0, 0)).normalize();
+      const shC = one ? pose[`DEF-ARM01.${WS}`].p : shNow;
+      let qM0 = new THREE.Quaternion().setFromUnitVectors(avg(sides.map(axisM)), bar.clone().sub(shC).normalize());
+      const gc = sides.map(S => md[S].ag).reduce((a, v) => a.add(v), V(0, 0, 0)).multiplyScalar(1 / sides.length);
+      const qMs = Object.fromEntries(sides.map(S => [S, qM0.clone()]));
+      const gripsOf = q => Object.fromEntries(sides.map(S => [S, bar.clone().add(md[S].ag.clone().sub(gc).applyQuaternion(q[S]))]));   // agarres con el centro en la trayectoria
+      const hookOf = (q, G) => sides.map(S => G[S].clone().sub(md[S].ag.clone().applyQuaternion(q[S]))).reduce((a, v) => a.add(v), V(0, 0, 0)).multiplyScalar(1 / sides.length);
+      let res, pM;
+      for (let it = 0; it < 5; it++) {
+        const G = gripsOf(qMs); pM = hookOf(qMs, G);
+        if (!md.rigid) for (const S of sides) {   // cuerda: cada ramal, del gancho común a su mano
+          const a = md[S].ag.clone().applyQuaternion(qMs[S]).normalize(), b = G[S].clone().sub(pM).normalize();
+          qMs[S] = new THREE.Quaternion().setFromUnitVectors(a, b).multiply(qMs[S]); }
+        res = Object.fromEntries(sides.map(S => [S, handOn(S, md.rigid ? pM : G[S].clone().sub(md[S].ag.clone().applyQuaternion(qMs[S])), qMs[S])]));
+        if (it === 4) break;
+        // eje de la mano en reposo, llevado con el antebrazo: hacia ahí gira el maneral (alrededor del gancho)
+        const want = S => hR(S).applyQuaternion(pose[`DEF-FORARM0.${S}`].q.clone().multiply(REST[`DEF-FORARM0.${S}`].q.clone().invert()));
+        const have = S => Y.clone().applyQuaternion(pose[`DEF-HAND.${S}`].q);
+        if (md.rigid) { const dq = new THREE.Quaternion().setFromUnitVectors(avg(sides.map(have)), avg(sides.map(want))); for (const S of sides) qMs[S] = dq.clone().multiply(qMs[S]); }
+        else for (const S of sides) qMs[S] = new THREE.Quaternion().setFromUnitVectors(have(S), want(S)).multiply(qMs[S]);
+      }
+      for (const S of sides) if (res[S].ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega al maneral (${Math.round(res[S].ik.miss * 100)} cm)`);
+      man = { mesh: md.mesh, hook: pM, parts: sides.map(S => qMs[S]), at: sides.map(S => res[S].grip.clone().sub((md.bar ? md[S].ag.clone().setX(md[S].ag.x * prm.grip) : md[S].ag.clone()).applyQuaternion(qMs[S]))), grips: sides.map(S => res[S].grip) };
+    }
+    if (!man) for (const [S, sgn] of [['L', 1], ['R', -1]]) {
       if (one && S !== WS) continue;   // a un brazo: el otro brazo, el de Blender (girado con el tronco)
       const hn = `DEF-HAND.${S}`, sock = socketRest(S);
       let grip;
@@ -661,6 +715,11 @@ function evaluateInner(ex, s) {
       }
       if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
     }
+    if (md && !man) {   // muñeca de Blender: las manos son las de la acción y el maneral va donde lo pone la mano que tira
+      const S = WS, e = md[S], qMS = pose[`DEF-HAND.${S}`].q.clone().multiply(e.relQ), grip = pose[`DEF-HAND.${S}`].p.clone().add(e.hg.clone().multiplyScalar(d.k).applyQuaternion(pose[`DEF-HAND.${S}`].q));
+      const pM = grip.sub(e.ag.clone().applyQuaternion(qMS));
+      man = { mesh: md.mesh, hook: pM, parts: md.rigid ? [qMS] : ['L', 'R'].filter(T => !one || T === WS).map(T => pose[`DEF-HAND.${T}`].q.clone().multiply(md[T].relQ)), grips: null };
+    }
     if (one) {   // a un brazo: la mano libre sigue apoyada donde estaba en el muslo (si se dobla o estira la pierna, sube o baja con él)
       const S = WS === 'L' ? 'R' : 'L', hn = `DEF-HAND.${S}`, aw = auth[hn].p;
       const tb = ['L', 'R'].flatMap(T => [`DEF-THIGH01.${T}`, `DEF-THIGH02.${T}`]).reduce((a, n) => auth[n].p.distanceTo(aw) < auth[a].p.distanceTo(aw) ? n : a);
@@ -670,7 +729,7 @@ function evaluateInner(ex, s) {
       const qi = auth[hn].q.clone().invert(); for (const c of subtree(hn)) pose[c].q = qh.clone().multiply(qi.clone().multiply(auth[c].q));
       fkSub(pose, `DEF-SHOULDER.${S}`);
     }
-    return { pose, bar, axis, warns, grips: hinge && (one ? [WS] : ['L', 'R']).map(S => bar.clone().add(gripOff(S))) };
+    return { pose, bar, axis, warns, man, grips: man?.grips || (hinge && (one ? [WS] : ['L', 'R']).map(S => bar.clone().add(gripOff(S)))) };
     };
     // ---- equilibrio en lazo cerrado sobre la pose real: el centro de masas del sistema (cuerpo + barra)
     // se mantiene sobre el mediopié igual que en la pose autorada; se corrige con la inclinación del tronco.
@@ -782,14 +841,14 @@ function evaluateInner(ex, s) {
     if (hinge && !cable && phi > 85 * DEG && betaH + thH < 45 * DEG) out.warns.push('Bajar tanto con la rodilla tan recta pide unos isquios muy flexibles');
     out.bar = { center: bar, axis };
     if (cable) {   // polea: el cable va de la polea al maneral; indicadores propios (sin centro de masas: sentado)
-      const P = pulleyAt(ex, prm.pulleyH), c = P.clone().sub(bar);
+      const P = pulleyAt(ex, prm.pulleyH), c = P.clone().sub(bA.man?.hook || bar);   // el cable sale del gancho del maneral
       // plataforma: fija, contra la planta de los pies de la pose de inicio (el giro del pie respecto al reposo aplicado a la
       // planta en reposo, que está en el suelo). Solo la anchura de pies la cambia
       const sole = ['L', 'R'].map(S => { const fn = `DEF-FOOT.${S}`, a = expP(ex, fn, 0), Rf = expQ(ex, fn, 0).multiply(REST[fn].q.clone().invert());
         const r = REST[fn].p, c0 = V(r.x, 0, (r.z + REST[`DEF-TOE.${S}`].p.z) / 2).sub(r).multiplyScalar(kk).applyQuaternion(Rf);
         return { p: V(a.x * prm.stance * kr, a.y, a.z).add(c0), n: V(0, -1, 0).applyQuaternion(Rf), up: V(0, 0, 1).applyQuaternion(Rf) }; });
       out.footPlate = { p: sole[0].p.clone().add(sole[1].p).multiplyScalar(0.5), n: sole[0].n, up: sole[0].up };
-      out.pulley = P; out.path = bar.clone(); out.mid = bar.z; out.com = bar.z;
+      out.pulley = P; out.path = bar.clone(); out.mid = bar.z; out.com = bar.z; out.maneral = bA.man;
       out.act = { quads: 0, glutes: 0, hams: 0.1, add: 0, erect: 0.25, calves: 0 };
       out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Codo', `${Math.round(out.elbow)}°`], ['Cable', `${Math.round(Math.atan2(c.y, Math.hypot(c.x, c.z)) / DEG)}° sobre la horizontal`],
         ['Polea', `${Math.round(P.y * 100)} cm del suelo`]];
@@ -1034,17 +1093,32 @@ const CBL = { column: withOutline(new THREE.BoxGeometry(0.12, 1, 0.12), boxMat),
   bar: cyl(0.014, steelMat), grips: [0, 1].map(() => cyl(0.016, steelMat)), arms: [0, 1].map(() => cyl(0.012, steelMat)), ropes: [0, 1].map(() => cyl(0.012, toon(0x1d2027))) };
 CBL.wheel.rotation.z = Math.PI / 2;
 cableG.add(CBL.column, CBL.wheel, CBL.cable, CBL.seat, CBL.foot, CBL.bar, ...CBL.grips, ...CBL.arms, ...CBL.ropes);
+// mallas de los manerales (poses.json › manerales, del .blend): dos por malla (la cuerda lleva un ramal por mano)
+const MANMESH = {};
+function manMeshes(name) {
+  if (MANMESH[name]) return MANMESH[name];
+  const d = POSES.manerales[name], g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(d.pos, 3)); g.setIndex(d.idx); g.computeVertexNormals();
+  return (MANMESH[name] = [0, 1].map(() => { const o = withOutline(g, steelMat); cableG.add(o); return o; }));
+}
 function placeCable(ex, r) {
   const P = r.pulley, c = r.bar.center, g = r.grips, impl = r.impl, fwd = P.clone().sub(c).setX(0).normalize();
   CBL.column.scale.y = 2.1; CBL.column.position.set(P.x, 1.05, P.z + 0.1); CBL.wheel.position.copy(P);
   // el cable se engancha delante del maneral: en el vértice del triángulo, en el centro de la barra o en el nudo de la cuerda
-  const hook = c.clone().addScaledVector(fwd, impl === 'barra_recta' ? 0 : impl === 'cuerda' ? 0.16 : impl === 'asa' ? 0.07 : 0.11);
+  const mn = r.maneral;   // maneral del .blend: su malla, pivotando en el gancho
+  for (const k in MANMESH) MANMESH[k].forEach(o => { o.visible = false; });
+  if (mn) manMeshes(mn.mesh).forEach((o, i) => { o.visible = !!mn.parts[i]; if (o.visible) { o.position.copy(mn.at?.[i] || mn.hook); o.quaternion.copy(mn.parts[i]); } });
+  const hook = mn ? mn.hook : c.clone().addScaledVector(fwd, impl === 'barra_recta' ? 0 : impl === 'cuerda' ? 0.16 : impl === 'asa' ? 0.07 : 0.11);
   strut(CBL.cable, hook, P);
+  if (mn) { [CBL.bar, ...CBL.grips, ...CBL.arms, ...CBL.ropes].forEach(m => { m.visible = false; }); placeSeat(ex, r); return; }
   CBL.bar.visible = impl === 'barra_recta'; if (CBL.bar.visible) strut(CBL.bar, c.clone().add(V(-0.36, 0, 0)), c.clone().add(V(0.36, 0, 0)));
   CBL.grips.forEach((m, i) => { m.visible = impl !== 'barra_recta' && !!g[i]; if (m.visible) strut(m, g[i].clone().add(V(0, -0.06, 0)), g[i].clone().add(V(0, 0.06, 0))); });
   CBL.arms.forEach((m, i) => { m.visible = impl === 'triangulo' || impl === 'asa'; if (!m.visible) return;
     if (impl === 'asa') strut(m, g[0].clone().add(V(0, i ? 0.06 : -0.06, 0)), hook); else strut(m, g[i], hook); });   // asa en D: de los extremos del agarre al gancho
   CBL.ropes.forEach((m, i) => { m.visible = impl === 'cuerda'; if (m.visible) strut(m, g[i].clone().add(V(0, 0.06, 0)), hook); });
+  placeSeat(ex, r);
+}
+function placeSeat(ex, r) {
   // asiento y plataforma: con la pose de inicio exportada (no se mueven con la animación); la plataforma, contra la planta
   const B = POSES.exercises[ex].start.bones, Pb = n => V(...B[n].p), hip = Pb('DEF-THIGH01.L').add(Pb('DEF-THIGH01.R')).multiplyScalar(0.5);
   const top = hip.y - 0.1; CBL.seat.scale.y = top; CBL.seat.position.set(0, top / 2, hip.z - 0.02);

@@ -176,7 +176,7 @@ def under(n, root):
         n = PARENT[n]
         if n == root: return True
     return False
-out['hands'] = {}
+out['hands'] = {}; out['manerales'] = {}   # mallas de los manerales (marco del maneral, glTF)
 for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
     use(act.name); sc.frame_set(1); sc.frame_set(1)
     name = act.name[len('_mano.'):]; d = act.get('ff_diametro') or None; ent = {'d': d}
@@ -187,7 +187,21 @@ for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
         if ob:
             e['hollow'] = {'p': list(Rinv @ (ob.matrix_world.translation - Mh.translation)),
                            'axis': list((Rinv @ (ob.matrix_world.to_3x3() @ Vector((0, 0, 1)))).normalized())}
+        # maneral (blender/ejercicios/_manerales.py): dónde va respecto a la mano (origen = gancho; rotación glTF de la malla:
+        # la malla se convierte con C, así que rel = (Rmano⁻¹ · Rmaneral) · Cᵀ) y su punto de agarre (marco del maneral, glTF)
+        mo = bpy.data.objects.get(f'FF_maneral.{name}.{S}')
+        if mo:
+            Mm = mo.matrix_world
+            e['maneral'] = {'p': list(Rinv @ (Mm.translation - Mh.translation)), 'q': quat((Rinv @ Mm.to_quaternion().to_matrix()) @ C.transposed())}
+            ag = bpy.data.objects.get(f'FF_agarre.{name}.{S}')
+            if ag: e['agarre'] = gpos(ag.location)
+            ent['malla'] = mo.data.name
+            if mo.data.name not in out['manerales']:
+                me = mo.data; me.calc_loop_triangles()
+                out['manerales'][me.name] = {'pos': [round(c, 5) for v in me.vertices for c in gpos(v.co)],
+                                             'idx': [i for t in me.loop_triangles for i in t.vertices]}
         ent[S] = e
+    if act.get('ff_maneral'): ent['rigido'] = bool(act.get('ff_rigido', True))
     out['hands'][name] = ent
 print('manos de referencia:', list(out['hands']) or 'ninguna (blender/ejercicios/_manos.py las crea)')
 json.dump(out, open(os.path.join(outdir, 'poses.json'), 'w'))
