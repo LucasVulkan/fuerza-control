@@ -82,6 +82,30 @@ Para tenerlo claro al implementar (todo en `trainingLoad.js`):
   tercera persona («su último mes», «ha entrenado»). `ProgressPanel` recibe
   `subjectName` desde `ClientsScreen` y `LoadTab` elige la variante de texto. En
   `StatsScreen` va en segunda persona («tu último mes»).
+- **De quién son los datos (añadido el 6-nov tras revisar el código).** Nada de
+  la pestaña lee del store lo que es del sujeto: en el móvil del entrenador el
+  store es **suyo**. `ProgressPanel` y `LoadTab` reciben por prop:
+  - `baseLog` (ya existe), `fallbackBodyWeight`: en la ficha, el último de
+    `selectedClient.bodyWeight` (hoy no se pasa y se deduce del log);
+  - `program`: en la ficha `programs[selectedClient.activeProgramId]`, en
+    Progresión `programs[profile.activeProgramId]`;
+  - `client`: en la ficha `selectedClient`, en Progresión `null`. La etapa en
+    curso sale **solo** de `athleteProgress(program, client)`
+    (`stageProgress.js`), nunca de `program.currentStageIndex`: en el móvil del
+    entrenador esos campos son de su copia y no avanzan;
+  - `subjectName`.
+  Las plantillas sí salen del store (`sessionTemplates`), porque las del
+  programa del cliente están en él.
+- **Una sola cifra de carga.** La tarjeta CARGA y la cifra de carga de la tarjeta
+  de programa de la ficha (`clientLoadPct` en `ClientsScreen`) salen de la misma
+  función de `trainingLoad.js` (`loadSummary` o similar: interna si hay sRPE,
+  externa si no, con peso corporal y la regla de «acaba ayer»). Hoy son dos
+  cuentas distintas y no cuadrarían.
+- **Semanas por fecha, no por posición.** Las series semanales solo traen las
+  semanas con datos; «hace 4 semanas» o «los últimos 3 meses» se buscan por
+  fecha, nunca con `slice(-n)` o «n entradas atrás».
+- **Desde la ficha, el estado vacío no lleva botón**: «Empieza a entrenar» lleva
+  al Entreno del entrenador. Va un texto en tercera persona.
 - **Todo dato se toca.** Lo que no es una tarjeta seleccionable lleva su
   `InfoLabel` (la «i») y abre su ficha en `MetricInfoSheet`. Los textos de la
   pantalla se quedan cortos y la explicación larga va en la ficha.
@@ -185,7 +209,8 @@ su leyenda.
     descanso pesan mucho. Es lo que mide Foster y no se toca. No se calcula sobre
     periodos largos: la desviación saldría casi toda del patrón de descansos.
 - **Strain** · «+12 %». Es la carga de los 7 días × la monotonía, contra la media
-  del strain de los 4 bloques anteriores. Texto: «Carga × monotonía de los últimos 7
+  del strain de los 4 bloques anteriores (solo los que tienen 3 sesiones o más:
+  una semana floja en la base inflaría el %). Texto: «Carga × monotonía de los últimos 7
   días, contra tu media de las 4 semanas anteriores.» Va sin color de alarma,
   porque no hay umbral universal (ficha `strain`). Sin base: «—».
 
@@ -228,6 +253,8 @@ barras `orange` en escala 0-10, con el eje 0 · 5 · 10 a la derecha.
 - «Sube», «baja» y «plano» se miden con un umbral **por decidir en T11-10, mirando
   el visor**. Con el ±8 % de `effortTrend`, un +4 % de carga con un +2 % de
   esfuerzo sale «sin patrón», aunque la tendencia es buena. La maqueta usa ±5 %.
+- El chip compara siempre 4 bloques contra 4, también en 1M, aunque la gráfica
+  pinte menos: la ficha lo dice.
 - Se sustituye `effortTrend` (índices base 100 y bloques de 4, que se retrasaba
   semanas en las descargas: T11 v2 de antes).
 
@@ -265,9 +292,16 @@ selector de periodo (el compartido, §3). Va también sin sRPE.
 **Cifras:** «4 SEMANAS · +3 % · desde el 9 oct» | «3M · +9 % · desde el 7 ago».
 En 1M, la segunda columna sería la misma cifra y pasa a «MEJOR EJERCICIO ·
 Sentadilla · +3 % en 4 semanas».
-- La cifra grande de la tarjeta FUERZA es la de 4 semanas: índice de esta semana
-  contra el de hace 4, con `performanceWeekly` tal cual. Así quien lleva dos meses
-  estancado no ve un «+27 %».
+- La cifra grande de la tarjeta FUERZA es la de 4 semanas, y así quien lleva dos
+  meses estancado no ve un «+27 %». **Corregido el 6-nov:** no sale de dos puntos
+  del índice de `performanceWeekly`, porque ese índice promedia los ejercicios que
+  haya en cada semana y la mezcla cambia (un ejercicio estrenado hace 2 semanas
+  entra «ahora» con índice ~100 y no está «hace 4»: hunde la media sin que nadie
+  pierda fuerza). La cifra es la **media de los cambios por ejercicio** de la
+  tabla de abajo, contando solo los ejercicios con dato en las dos ventanas. Así
+  tarjeta y tabla coinciden por construcción. Lo mismo para la cifra del periodo.
+- Las ventanas de fuerza van en bloques de 7 días que acaban en el mismo día que
+  la carga (§3), no en semanas naturales.
 
 **Gráfica:**
 - El índice del periodo en % de cambio desde su inicio, con área `accent` al 12 %
@@ -302,8 +336,9 @@ distribuyes**, no un objetivo de volumen.
 
 - **Semana natural** (lunes a domingo), la que está en curso. Cabecera: «Series por grupo · 32 de 45 esta semana».
 - Cada grupo: **hechas de previstas** («6/9»).
-  - Previstas = series del plan de esa semana por grupo, con `plannedSetsByGroup`
-    sobre las sesiones de la etapa activa (ya existe).
+  - Previstas = series del plan de esa semana por grupo: `stageSetsByGroup`
+    (`stageStats.js`) sobre la etapa `athleteProgress(program, client).currentStageIndex`
+    (§3, «De quién son los datos»).
   - Sin programa activo, solo las hechas.
 - **Barra:**
   - Lo hecho va en `accent`; lo que queda hasta lo previsto, en contorno
@@ -328,9 +363,12 @@ entrenó, no un mapa de esfuerzo.
 
 - `LoadCalendar` sale de `LoadTab` y vuelve a la cabecera del Historial
   (`HistoryList`), donde vivía antes de U07 §5.1. Va también en el Historial de la
-  ficha de cliente.
-- **Recibe el log por prop** en vez de leer `workoutLog` del store. Así se
-  arregla que en la ficha de cliente pinte el historial del entrenador (§1).
+  ficha de cliente, que **no es `HistoryList`**: es el `ScrollView` propio del tab
+  `history` de `ClientsScreen`. Se monta en los dos sitios.
+- **Recibe por prop** `log`, `allExercises` y `fallbackBodyWeight` en vez de leer
+  `workoutLog` del store. Así se arregla que en la ficha de cliente pinte el
+  historial del entrenador (§1). En la ficha va el log entero del cliente
+  (`clientBaseLog`), no el filtrado por alcance y periodo de la lista.
 - Sigue teñido por la carga interna. Si el log no tiene ninguna sesión con sRPE, se
   tiñe por la externa, para que no salgan todos los días en contorno.
 
@@ -349,6 +387,8 @@ variaciones enormes.
 
 - **Número:** volumen medio por bloque de 7 días de las últimas 4 semanas, contra
   las 4 anteriores, en % (mismos bloques que §3). Sin datos en las dos ventanas: «—».
+  Se calcula sobre el log filtrado por alcance (programa o todo), **no** recortado
+  por el periodo: con 1M elegido no existirían «las 4 anteriores».
 - **Subtítulo:** «vs mes anterior».
 - **Ficha `volumeTrend`:** «Volumen medio por semana de las últimas 4 semanas,
   comparado con las 4 anteriores.» Se quita el aviso de «son dos puntos».
@@ -395,14 +435,14 @@ variaciones enormes.
 
 | Fase | Qué | Toca | Coste |
 |---|---|---|---|
-| T11-01 | Panel de tres tarjetas, relleno, periodo único guardado, textos en tercera persona | `LoadTab.jsx`, `ProgressPanel.jsx`, `ClientsScreen.jsx`, store, locales | 🟠 |
+| T11-01 | Panel de tres tarjetas, relleno, periodo único guardado, textos en tercera persona, props del sujeto (§3) y cifra de carga única | `LoadTab.jsx`, `ProgressPanel.jsx`, `ClientsScreen.jsx`, `StatsScreen.jsx`, `trainingLoad.js`, store, locales | 🟠 |
 | T11-02 | Sin sRPE: carga externa y tarjeta de esfuerzo vacía | `LoadTab.jsx`, locales | 🟡 |
 | T11-03 | Lectura del estado, monotonía y strain | `LoadTab.jsx`, `trainingLoad.js`, locales | 🟡 |
 | T11-04 | Esfuerzo: semanas/sesiones, esfuerzo vs carga con cifras | `LoadTab.jsx`, `trainingLoad.js`, locales | 🟡 |
 | T11-05 | RPE medio por ejercicio | `LoadTab.jsx`, `trainingLoad.js` | 🟡 |
 | T11-06 | Fuerza a 4 semanas y por ejercicio | `LoadTab.jsx`, `trainingLoad.js` | 🟡 |
 | T11-07 | Series por grupo contra lo previsto | `LoadTab.jsx` (+ plantillas de la etapa) | 🟡 |
-| T11-08 | Calendario al Historial, con el log por prop | `LoadCalendar.jsx`, `HistoryList`, `ClientsScreen.jsx` | 🟢 |
+| T11-08 | Calendario al Historial (propio y ficha), con log, ejercicios y peso por prop | `LoadCalendar.jsx`, `HistoryList`, `ClientsScreen.jsx` | 🟢 |
 | T11-09 | VOLUMEN por semanas | `ProgressTab.jsx`, locales | 🟢 |
 | T11-10 | Casos y bordes con test | `trainingLoad.test.js` | 🟡 |
 
