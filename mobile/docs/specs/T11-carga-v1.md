@@ -273,6 +273,15 @@ barras `orange` en escala 0-10, con el eje 0 · 5 · 10 a la derecha.
 
 **Notas de implementación (T11-04).** `effortVsLoad(days, { n })` parte de la serie de `loadSummary` (misma carga externa); solo cuenta bloques completos de 7 días y el chip pide 8 (si no, no sale). Constante `TREND_FLAT_PCT = 5` en `trainingLoad.js` hasta T11-10. Una semana de descanso vale -100 % en la línea; una sesión sin sRPE deja hueco. `effortTrend` se queda: lo usa `scripts/visor-carga/visor.sim.js`. Las claves `load.trend.*` ya no llevan flechas; el título de la tarjeta pasa a «Esfuerzo» y «Esfuerzo vs carga» es el bloque de debajo.
 
+**Ajustes tras probar (6-nov):** fuera las dos cifras grandes; queda una línea
+«Media 3M · 7,6 /10 · 38 sesiones» (los últimos 7 días ya están en la tarjeta). La
+gráfica de barras se titula «Esfuerzo de las sesiones» y debajo lleva su leyenda en la
+tira (`strip`, la de la gráfica de un ejercicio): apagado = semanas o sesiones
+anteriores, lleno = últimos 7 días. Esfuerzo vs carga va en **tarjeta propia** con el
+título de las demás y «N semanas» a la derecha; el eje de % lleva como mucho 5 marcas.
+En Carga, la lectura del estado baja a la tira, debajo de la gráfica. En RPE medio, las
+cabeceras en una línea y las cifras en negrita.
+
 **Probar T11-04**
 
 - [ ] «Últimos 7 días» y «Media 3M» con sus sesiones; al cambiar a 6M, pone «Media 6M» y cambia el valor.

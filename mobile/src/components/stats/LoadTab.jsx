@@ -260,14 +260,16 @@ function PctChart({ series, height = 110 }) {
     if (!width || vals.length < 2) return null;
     const lo = Math.min(...vals, 0);
     const hi = Math.max(...vals, 0);
-    const stepP = hi - lo <= 30 ? 5 : hi - lo <= 80 ? 10 : 20;
+    // Como mucho 5 marcas en el eje: el primer paso «redondo» que las deja en 4 tramos.
+    const stepP = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000]
+      .find((st) => Math.ceil(hi / st) - Math.floor(lo / st) <= 4) ?? 1000;
     const tLo = Math.floor(lo / stepP) * stepP;
     const tHi = Math.max(Math.ceil(hi / stepP) * stepP, tLo + stepP);
     const y = (v) => PAD_TOP + (height - PAD_TOP - PAD_BOT) * (1 - (v - tLo) / (tHi - tLo));
     const n = Math.max(...series.map((l) => l.values.length));
     const x = (i) => (n <= 1 ? width / 2 : (i / (n - 1)) * (width - DOT_R * 2) + DOT_R);
     const ticks = [];
-    for (let v = tLo; v <= tHi; v += stepP) ticks.push({ v, y: y(v), label: `${v > 0 ? '+' : ''}${v}%` });
+    for (let v = tLo; v <= tHi; v += stepP) ticks.push({ v, y: y(v), label: `${v > 0 ? '+' : ''}${v} %` });
     const lines = series.map((l) => {
       const segments = []; let cur = [];
       l.values.forEach((v, i) => {
@@ -463,7 +465,6 @@ export default function LoadTab({
     const means = effortBlocks(baseLog, days, nBlocks);
     const vs = effortVsLoad(days, { n: nBlocks });
     return {
-      count7: recentTs.size,
       countPeriod: rated.length,
       meanPeriod: rated.length ? rated.reduce((a, r) => a + r.rpe, 0) / rated.length : null,
       weekBars: means.map((v, i) => ({ v, recent: i === means.length - 1 })),
@@ -532,7 +533,7 @@ export default function LoadTab({
   // Título, «i» y qué ficha abre, según la tarjeta elegida.
   const chartHead = {
     load:     { title: load.source === 'external' ? t('load.workTitle') : t('load.trendTitle'), info: { chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] } },
-    effort:   { title: t('load.cardEffort'), info: { ids: ['sessionLoad'] } },
+    effort:   { title: t('load.effortBarsTitle'), info: { ids: ['sessionLoad'] } },
     strength: { title: t('load.perfTitle'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
   }[metric];
 
@@ -575,18 +576,6 @@ export default function LoadTab({
 
         {metric === 'load' && (
           <>
-            {state && (
-              <View style={styles.read}>
-                <View style={[styles.dot, styles.readDot, { backgroundColor: stateColor }]} />
-                <Text style={styles.stripText}>
-                  <Text style={styles.stripTitle}>
-                    {t(`load.state${third ? 'Third' : ''}${state[0].toUpperCase()}${state.slice(1)}`)}
-                  </Text>
-                  {` ${t('load.stateVs')}`}
-                </Text>
-              </View>
-            )}
-
             <LoadChart days={visible.days} mean7={visible.mean7} mean28={visible.mean28} />
 
             <View style={styles.legend}>
@@ -603,6 +592,18 @@ export default function LoadTab({
                 <Text style={styles.legendText}>{t('load.legend28d')}</Text>
               </View>
             </View>
+
+            {state && (
+              <View style={styles.strip}>
+                <View style={[styles.dot, { backgroundColor: stateColor }]} />
+                <Text style={styles.stripText}>
+                  <Text style={styles.stripTitle}>
+                    {t(`load.state${third ? 'Third' : ''}${state[0].toUpperCase()}${state.slice(1)}`)}
+                  </Text>
+                  {` ${t('load.stateVs')}`}
+                </Text>
+              </View>
+            )}
 
             {load.source === 'external' && (
               <Text style={styles.groupHint}>{t(third ? 'load.workHintThird' : 'load.workHint')}</Text>
@@ -638,88 +639,28 @@ export default function LoadTab({
 
         {metric === 'effort' && (effort ? (
           <>
-            <View style={styles.figures}>
-              <View style={styles.figure}>
-                <Text style={styles.figureLabel}>{t('load.last7d').toUpperCase()}</Text>
-                <Text style={styles.figureValue}>
-                  {tiles.effort7 != null ? dec(tiles.effort7.toFixed(1)) : '—'}
-                  <Text style={styles.figureUnit}> /10</Text>
-                </Text>
-                <Text style={styles.figureSub}>{t('load.sessionsCount', { count: effort.count7 })}</Text>
-              </View>
-              <View style={styles.figure}>
-                <Text style={styles.figureLabel}>{t('load.effortMean', { p: period.toUpperCase() }).toUpperCase()}</Text>
-                <Text style={styles.figureValue}>
-                  {effort.meanPeriod != null ? dec(effort.meanPeriod.toFixed(1)) : '—'}
-                  <Text style={styles.figureUnit}> /10</Text>
-                </Text>
-                <Text style={styles.figureSub}>{t('load.sessionsCount', { count: effort.countPeriod })}</Text>
-              </View>
-            </View>
+            <Text style={styles.cardMeta}>
+              {`${t('load.effortMean', { p: period.toUpperCase() })} · ${effort.meanPeriod != null ? dec(effort.meanPeriod.toFixed(1)) : '—'} /10 · ${t('load.sessionsCount', { count: effort.countPeriod })}`}
+            </Text>
 
             <SegmentedControl
               options={[{ id: 'weeks', label: t('load.effortWeeks') }, { id: 'sessions', label: t('load.effortSessions') }]}
               value={effortView} onChange={setEffortView}
             />
             <EffortBars bars={effortView === 'weeks' ? effort.weekBars : effort.sessionBars} />
-            <View style={styles.barsFoot}>
-              <Text style={styles.cardMeta}>
-                {(() => {
-                  const ts = effortView === 'weeks' ? effort.weekStart : effort.sessionStart;
-                  return ts != null ? new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) : '';
-                })()}
-              </Text>
-              <Text style={styles.cardMeta}>{t('load.last7d').toUpperCase()}</Text>
-            </View>
 
-            {effort.hasVs && (
-              <View style={styles.fact}>
-                <View style={styles.factHead}>
-                  <InfoLabel align="left" textStyle={styles.factTitle}
-                    onPress={() => setInfo({ chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad'] })}>
-                    {t('load.effortTitle')}
-                  </InfoLabel>
-                </View>
-                <PctChart series={[
-                  { values: effort.vs.internal, color: th.colors.orange },
-                  { values: effort.vs.external, color: th.colors.accent },
-                ]} />
-
-                <View style={styles.legend}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
-                    <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
-                    <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
-                  </View>
-                </View>
-
-                {effort.vs.chip && (
-                  <>
-                    <View style={[
-                      styles.trendChip,
-                      effort.vs.chip.label === 'adaptation' && styles.trendChipGood,
-                      effort.vs.chip.label === 'fatigue'    && styles.trendChipWarn,
-                    ]}>
-                      <Text style={[
-                        styles.trendChipText,
-                        effort.vs.chip.label === 'adaptation' && { color: th.colors.accent },
-                        effort.vs.chip.label === 'fatigue'    && { color: th.colors.orange },
-                      ]}>
-                        {t('load.trendChip', {
-                          load: signed(Math.round(effort.vs.chip.loadPct)),
-                          effort: signed(Math.round(effort.vs.chip.effortPct)),
-                          label: t(`load.trend.${effort.vs.chip.label}`),
-                        })}
-                      </Text>
-                    </View>
-                    <Text style={styles.groupHint}>{t('load.trendHint')}</Text>
-                  </>
-                )}
+            <View style={[styles.strip, styles.stripLegend]}>
+              <View style={styles.legendItem}>
+                <View style={[styles.dot, { backgroundColor: th.colors.orange, opacity: 0.45 }]} />
+                <Text style={styles.legendText}>
+                  {t(effortView === 'weeks' ? 'load.legendEarlierWeeks' : 'load.legendEarlierSessions')}
+                </Text>
               </View>
-            )}
+              <View style={styles.legendItem}>
+                <View style={[styles.dot, { backgroundColor: th.colors.orange }]} />
+                <Text style={styles.legendText}>{t('load.last7d')}</Text>
+              </View>
+            </View>
           </>
         ) : load.source === 'external' ? (
           <>
@@ -756,6 +697,57 @@ export default function LoadTab({
         )}
       </View>
 
+      {/* ── Esfuerzo vs carga (solo con ESFUERZO elegida) ───────────────── */}
+      {metric === 'effort' && effort?.hasVs && (
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <InfoLabel align="left" textStyle={styles.cardTitle}
+              onPress={() => setInfo({ chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad'] })}>
+              {t('load.effortTitle')}
+            </InfoLabel>
+            <Text style={styles.cardMeta}>{t('load.weeksShown', { count: effort.vs.external.length })}</Text>
+          </View>
+          <PctChart series={[
+            { values: effort.vs.internal, color: th.colors.orange },
+            { values: effort.vs.external, color: th.colors.accent },
+          ]} />
+
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
+              <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
+              <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
+            </View>
+          </View>
+
+          {effort.vs.chip && (
+            <>
+              <View style={[
+                styles.trendChip,
+                effort.vs.chip.label === 'adaptation' && styles.trendChipGood,
+                effort.vs.chip.label === 'fatigue'    && styles.trendChipWarn,
+              ]}>
+                <Text style={[
+                  styles.trendChipText,
+                  effort.vs.chip.label === 'adaptation' && { color: th.colors.accent },
+                  effort.vs.chip.label === 'fatigue'    && { color: th.colors.orange },
+                ]}>
+                  {t('load.trendChip', {
+                    load: signed(Math.round(effort.vs.chip.loadPct)),
+                    effort: signed(Math.round(effort.vs.chip.effortPct)),
+                    label: t(`load.trend.${effort.vs.chip.label}`),
+                  })}
+                </Text>
+              </View>
+              <Text style={styles.groupHint}>{t('load.trendHint')}</Text>
+            </>
+          )}
+        </View>
+      )}
+
       {/* ── RPE medio por ejercicio (solo con ESFUERZO elegida) ──────────── */}
       {metric === 'effort' && rpeRows.length > 0 && (
         <View style={styles.card}>
@@ -771,13 +763,13 @@ export default function LoadTab({
 
           <View style={styles.rpeRow}>
             <Text style={[styles.rpeHead, styles.rpeName]}>{t('load.rpeExercise')}</Text>
-            <Text style={[styles.rpeHead, styles.rpeNum]}>{t('load.rpeSets')}</Text>
+            <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpeSets')}</Text>
             {period === '1m' ? (
-              <Text style={[styles.rpeHead, styles.rpeNum]}>{t('load.rpeSingle')}</Text>
+              <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpeSingle')}</Text>
             ) : (
               <>
-                <Text style={[styles.rpeHead, styles.rpeNum]}>{t('load.rpe4w')}</Text>
-                <Text style={[styles.rpeHead, styles.rpeNum]}>{period.toUpperCase()}</Text>
+                <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpe4w')}</Text>
+                <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{period.toUpperCase()}</Text>
               </>
             )}
           </View>
@@ -788,13 +780,13 @@ export default function LoadTab({
             return (
               <View key={r.exerciseId} style={styles.rpeRow}>
                 <Text style={[styles.rpeCell, styles.rpeName]} numberOfLines={1}>{name}</Text>
-                <Text style={[styles.rpeCell, styles.rpeNum]}>{r.sets}</Text>
+                <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{r.sets}</Text>
                 {period === '1m' ? (
-                  <Text style={[styles.rpeCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
+                  <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
                 ) : (
                   <>
-                    <Text style={[styles.rpeCell, styles.rpeNum]}>{fmt(r.rpe4w)}</Text>
-                    <Text style={[styles.rpeCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
+                    <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{fmt(r.rpe4w)}</Text>
+                    <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
                   </>
                 )}
               </View>
@@ -917,8 +909,7 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   dot:        { width: 7, height: 7, borderRadius: 4 },
-  read:       { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm2 },
-  readDot:    { marginTop: 4 },
+  stripLegend: { gap: spacing.lg },
 
   // Filas de Monotonía y Strain: línea encima, sin caja.
   fact:          { gap: spacing.xs2, borderTopWidth: 1, borderTopColor: th.colors.border, paddingTop: spacing.md },
@@ -952,20 +943,14 @@ const makeStyles = (th) => StyleSheet.create({
   },
 
   // ── Esfuerzo: cifras, pie de las barras ──
-  figures:     { flexDirection: 'row', gap: spacing.md },
-  figure:      { flex: 1, gap: spacing.xs },
-  figureLabel: { ...textStyles.caps, color: th.colors.mutedLight },
-  figureValue: { ...textStyles.title, color: th.colors.orange },
-  figureUnit:  { ...textStyles.label, color: th.colors.mutedLight },
-  figureSub:   { ...textStyles.label, color: th.colors.mutedLight },
-  barsFoot:    { flexDirection: 'row', justifyContent: 'space-between', paddingRight: AXIS_W + spacing.sm },
 
   // ── RPE medio por ejercicio ──
   rpeRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rpeHead: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
   rpeCell: { ...textStyles.label, color: th.colors.text },
   rpeName: { flex: 1 },
-  rpeNum:  { width: 52, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  rpeNum:  { width: 64, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  rpeNumCell: { ...textStyles.labelStrong },
 
   // ── Series por grupo ──
   groupList:  { gap: spacing.sm2 },
