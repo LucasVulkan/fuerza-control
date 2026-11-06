@@ -54,6 +54,16 @@
     "progress": {
       "tabs": { "title": "Your progress", "text": "Here you can see the progress of your exercises, your overall training load and the history of your completed sessions. Tap an option to change the view." },
       "exercise": { "title": "An exercise", "text": "Each card sums up your progress in one exercise. Tap one to see that exercise's progress in more detail." }
+    },
+    "programEditor": {
+      "card": { "title": "The program", "text": "Here you see the program's name, its weeks and the sessions expected each week." },
+      "cardStages": { "title": "Program and stages", "text": "The program's name and figures, and the stages below them. Tap a stage to choose which one you edit." },
+      "sessions": { "title": "Sessions", "text": "The sessions done each week. Tap one to edit its exercises and drag the handle to change the order." },
+      "sessionsStages": { "title": "Sessions", "text": "The sessions done each week in the chosen stage. Tap one to edit its exercises and drag the handle to change the order." }
+    },
+    "sessionEditor": {
+      "sessions": { "title": "Sessions", "text": "The sessions done each week. Tap one to switch to editing it without leaving here." },
+      "exercises": { "title": "Exercises", "text": "The session's list of exercises. Swipe a row to the right to substitute or delete the exercise and drag the handle to change the order." }
     }
   },
   "header": {

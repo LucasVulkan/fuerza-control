@@ -54,6 +54,16 @@
     "progress": {
       "tabs": { "title": "Tu progreso", "text": "Aquí puedes ver el progreso de tus ejercicios, la carga de tu entrenamiento en general y el historial de las sesiones completadas. Toca en una opción para cambiar la vista." },
       "exercise": { "title": "Un ejercicio", "text": "Cada tarjeta resume tu progreso en un ejercicio. Toca en una para ver el progreso de un ejercicio de forma más detallada." }
+    },
+    "programEditor": {
+      "card": { "title": "El programa", "text": "Aquí ves el nombre del programa, sus semanas y las sesiones que se esperan cada semana." },
+      "cardStages": { "title": "Programa y etapas", "text": "El nombre del programa y sus cifras, y debajo las etapas. Toca en una etapa para elegir cuál editas." },
+      "sessions": { "title": "Sesiones", "text": "Las sesiones que se hacen cada semana. Toca en una para editar sus ejercicios y arrastra el asa para cambiar el orden." },
+      "sessionsStages": { "title": "Sesiones", "text": "Las sesiones que se hacen cada semana en la etapa elegida. Toca en una para editar sus ejercicios y arrastra el asa para cambiar el orden." }
+    },
+    "sessionEditor": {
+      "sessions": { "title": "Sesiones", "text": "Las sesiones que se hacen cada semana. Toca en una para pasar a editarla sin salir de aquí." },
+      "exercises": { "title": "Ejercicios", "text": "La lista de ejercicios de la sesión. Desliza una fila hacia la derecha para sustituir o eliminar el ejercicio y arrastra el asa para cambiar el orden." }
     }
   },
   "header": {

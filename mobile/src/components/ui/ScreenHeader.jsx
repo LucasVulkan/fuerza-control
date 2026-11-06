@@ -40,7 +40,7 @@ import { selectEditorDirty } from '../../utils/editorDraft';
 
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
-import { ArrowIcon } from './EditorIcons';
+import { ArrowIcon, HelpIcon } from './EditorIcons';
 
 // Alto de la regla segmentada. Fuera de la escala de `space/*` a propósito: es
 // un grosor óptico, no un hueco. Se exporta porque la cabecera de WorkoutScreen
@@ -106,6 +106,8 @@ export default function ScreenHeader({
   // `onSave`: el botón «Guardar» al final de la barra (sustituye al check, que
   // se veía poco): gris sin cambios, lima con cambios en el borrador.
   editor,
+  // El «?» del modo editor: vuelve a abrir el recorrido de la pantalla (U17-03).
+  onHelp,
 }) {
   const { t }    = useTranslation();
   const th       = useTheme();
@@ -198,6 +200,11 @@ export default function ScreenHeader({
           </View>
 
           <View style={[styles.actions, styles.edActions]} onLayout={(e) => setSideW(Math.max(BACK_BTN, e.nativeEvent.layout.width))}>
+            {onHelp ? (
+              <TouchableOpacity onPress={onHelp} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('tour.help')}>
+                <HelpIcon size={22} />
+              </TouchableOpacity>
+            ) : null}
             {right ? (typeof right === 'function' ? right(ink) : right) : null}
             {ed.onSave ? (
               <TouchableOpacity

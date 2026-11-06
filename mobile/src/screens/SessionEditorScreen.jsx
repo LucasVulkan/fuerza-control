@@ -15,7 +15,7 @@
  * así, de modo que los bloques van siempre al final. La numeración sigue
  * corrida.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Share } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import SwipeRow from '../components/ui/SwipeRow';
 import { MenuIcon, DragIcon, CloseIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import { useScreenTour } from '../components/tour/useScreenTour';
 import EditorIdentityCard from '../components/editor/EditorIdentityCard';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import DragSheet from '../components/DragSheet';
@@ -227,6 +228,20 @@ export default function SessionEditorScreen({ navigation, route }) {
   // autoscroll al arrastrar cerca del borde.
   const scrollRef = useAnimatedRef();
 
+  // ── Recorrido de la primera vez (U17-03 §5) ──
+  // El selector de sesiones (si hay más de una) y la primera fila de la lista, con
+  // el dedo sobre el asa. Sin ejercicios no hay paso de la lista: sale la primera
+  // vez que tenga uno. Con una hoja abierta no sale (regla 7).
+  const sessionsRef = useRef(null);
+  const firstRowRef = useRef(null);
+  const hasSlots    = !!template && ((template.exercises?.length ?? 0) > 0 || (template.blocks?.length ?? 0) > 0);
+  const tourText    = (key) => t(`tour.sessionEditor.${key}`, { returnObjects: true });
+  const tourSteps   = [
+    ...(sessionIds.length > 1 ? [{ ref: sessionsRef, scrollRef, ...tourText('sessions') }] : []),
+    ...(hasSlots ? [{ ref: firstRowRef, scrollRef, finger: { right: spacing.md, top: '50%', marginTop: -13 }, ...tourText('exercises') }] : []),
+  ];
+  const openTour = useScreenTour('tour.sessionEditor', addSheetOpen || presetSheetOpen || menuOpen ? [] : tourSteps);
+
   function switchSession(id) {
     if (id === templateId) return;
     // Una copia recién creada aún no está en `sessionIds` (la lista es de antes de
@@ -396,6 +411,7 @@ export default function SessionEditorScreen({ navigation, route }) {
         onBack={() => navigation.goBack()}
         // Dentro, vuelves al programa (la etapa ya la dice la ceja); la base se cancela.
         editor={{ base: editorBase, onCancel: cancel, onSave: done, backLabel: t('editor.idProgram'), folded }}
+        onHelp={tourSteps.length ? openTour : undefined}
         eyebrow={eyebrow}
         title={isFree ? (template.name || t('freeSession.templateUnnamed')) : (template.name ?? '')}
         // «Guardar» (`onSave`) va el último: es la acción principal de la barra
@@ -417,11 +433,13 @@ export default function SessionEditorScreen({ navigation, route }) {
       >
         {/* ── Segmented de sesiones hermanas (210:2624) ── */}
         {sessionIds.length > 1 && (
-          <SegmentedControl
-            options={sessionIds.map((id) => ({ id, label: getTpl(id)?.label ?? '·' }))}
-            value={templateId}
-            onChange={switchSession}
-          />
+          <View ref={sessionsRef} collapsable={false}>
+            <SegmentedControl
+              options={sessionIds.map((id) => ({ id, label: getTpl(id)?.label ?? '·' }))}
+              value={templateId}
+              onChange={switchSession}
+            />
+          </View>
         )}
 
         <Reanimated.View key={templateId} style={styles.page} entering={pageEntering} exiting={pageExiting}>
@@ -463,6 +481,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                 scrollableRef={scrollRef}
                 onDragEnd={handleReorder}
                 renderItem={({ item: slot, index }) => (
+                  <View ref={index === 0 ? firstRowRef : undefined} collapsable={false}>
                   <Slot
                     slot={slot}
                     number={index + 1}
@@ -481,6 +500,7 @@ export default function SessionEditorScreen({ navigation, route }) {
                       templateId, currentExerciseId: exerciseId, existingPatterns: [],
                     })}
                   />
+                  </View>
                 )}
               />
             </View>
