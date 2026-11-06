@@ -24,7 +24,7 @@
  * El aviso de "este cliente ya tiene programa activo" era un Alert DESPUÉS de
  * pulsar Asignar; ahora se lee en la propia fila del cliente, antes de elegir.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { FREE } from '../utils/freePlan';
 import { useFreeGates } from '../useFreeGates';
+import { useScreenTour } from '../components/tour/useScreenTour';
 import AppHeader from '../components/AppHeader';
 import DragSheet from '../components/DragSheet';
 import SheetRow from '../components/ui/SheetRow';
@@ -497,9 +498,22 @@ export default function ProgramScreen() {
   const menuProgram = menuTarget ? programs[menuTarget] : null;
   const enterClock  = useEnterClock();
 
+  // ── Recorrido de la primera vez (U17-04 §6) ──
+  // El segmentado Programas · Sesiones y la primera plantilla de la lista que se ve
+  // (sin plantillas no hay tarjeta que señalar). Con una hoja abierta no sale (regla 7).
+  const segRef   = useRef(null);
+  const firstRef = useRef(null);
+  const tourText = (key) => t(`tour.templates.${key}`, { returnObjects: true });
+  const covered  = showCreate || !!menuTarget || !!assignTarget || !!sesMenu || !!sesAssign;
+  const tourSteps = covered ? [] : [
+    { ref: segRef, ...tourText('segments') },
+    ...((isSessions ? sessionList : templateList).length > 0 ? [{ ref: firstRef, ...tourText('card') }] : []),
+  ];
+  const openTour = useScreenTour('tour.templates', tourSteps);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AppHeader />
+      <AppHeader onHelp={openTour} />
 
       {/* Entrada por partes al llegar a la pestaña, como Programa (U14 §4.3). */}
       <EnterClock.Provider value={enterClock}>
@@ -526,7 +540,7 @@ export default function ProgramScreen() {
             </View>
           </Rise>
           <Rise index={1}>
-            <View style={styles.segWrap}>
+            <View ref={segRef} collapsable={false} style={styles.segWrap}>
               <SegmentedControl
                 options={[
                   { id: 'programs', label: t('templates.segPrograms') },
@@ -554,12 +568,14 @@ export default function ProgramScreen() {
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
               {sessionList.map((tpl, i) => (
                 <Rise key={tpl.id} index={2 + i}>
-                  <TemplateCard
-                    name={sesName(tpl)}
-                    stats={sessionCardStats(tpl)}
-                    onAssign={() => setSesAssign(tpl.id)}
-                    onMenu={() => setSesMenu(tpl.id)}
-                  />
+                  <View ref={i === 0 ? firstRef : undefined} collapsable={false}>
+                    <TemplateCard
+                      name={sesName(tpl)}
+                      stats={sessionCardStats(tpl)}
+                      onAssign={() => setSesAssign(tpl.id)}
+                      onMenu={() => setSesMenu(tpl.id)}
+                    />
+                  </View>
                 </Rise>
               ))}
             </ScrollView>
@@ -578,12 +594,14 @@ export default function ProgramScreen() {
           <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
             {templateList.map((program, i) => (
               <Rise key={program.id} index={2 + i}>
-                <TemplateCard
-                  name={program.name}
-                  stats={programCardStats(program)}
-                  onAssign={() => setAssignTarget(program.id)}
-                  onMenu={() => setMenuTarget(program.id)}
-                />
+                <View ref={i === 0 ? firstRef : undefined} collapsable={false}>
+                  <TemplateCard
+                    name={program.name}
+                    stats={programCardStats(program)}
+                    onAssign={() => setAssignTarget(program.id)}
+                    onMenu={() => setMenuTarget(program.id)}
+                  />
+                </View>
               </Rise>
             ))}
           </ScrollView>

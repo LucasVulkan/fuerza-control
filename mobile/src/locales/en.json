@@ -64,6 +64,21 @@
     "sessionEditor": {
       "sessions": { "title": "Sessions", "text": "The sessions done each week. Tap one to switch to editing it without leaving here." },
       "exercises": { "title": "Exercises", "text": "The session's list of exercises. Swipe a row to the right to substitute or delete the exercise and drag the handle to change the order." }
+    },
+    "clients": {
+      "header": { "title": "New client", "text": "The + Client button adds a new client. Next to it you can paste a client's workout and manage your trainer account." },
+      "cards": { "title": "Your clients", "text": "Each card is a client, with their program and how their week is going. Tap one to open their page; to change the order, open the sort button and choose Reorder." },
+      "states": { "title": "Client statuses", "text": "Each card flags what that client needs. Not training means they have gone days without doing so, Unsent changes that you have something to send them, and the numbered mark that they have sessions to review." }
+    },
+    "client": {
+      "tabs": { "title": "Client page", "text": "The page has four parts: Program, History, Progress and Info. Tap one to switch parts." },
+      "program": { "title": "Client's program", "text": "The program assigned to the client, with their stage and how they are doing. Here you can view it, edit it or assign another one." },
+      "next": { "title": "Next session", "text": "The session the client is due to do in their next workout. Tap Prepare to adjust what they will do next time." },
+      "sessions": { "title": "Client's sessions", "text": "As this client does not use the app, their sessions are done from here. Tap one to see its exercises or the button to start the workout." }
+    },
+    "templates": {
+      "segments": { "title": "Programs and sessions", "text": "Here you save whole programs and single sessions to reuse them. Tap an option to switch between them." },
+      "card": { "title": "A template", "text": "Each card is a saved template. Tap the card to view, edit or share it, and Assign to give it to a client or to yourself." }
     }
   },
   "header": {

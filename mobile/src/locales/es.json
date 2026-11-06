@@ -64,6 +64,21 @@
     "sessionEditor": {
       "sessions": { "title": "Sesiones", "text": "Las sesiones que se hacen cada semana. Toca en una para pasar a editarla sin salir de aquí." },
       "exercises": { "title": "Ejercicios", "text": "La lista de ejercicios de la sesión. Desliza una fila hacia la derecha para sustituir o eliminar el ejercicio y arrastra el asa para cambiar el orden." }
+    },
+    "clients": {
+      "header": { "title": "Nuevo cliente", "text": "El botón + Cliente añade un cliente nuevo. A su lado puedes pegar el entreno de un cliente y gestionar tu cuenta de entrenador." },
+      "cards": { "title": "Tus clientes", "text": "Cada tarjeta es un cliente, con su programa y cómo va su semana. Toca en una para abrir su ficha; para cambiar el orden, abre el botón de orden y elige Reordenar." },
+      "states": { "title": "Estados de los clientes", "text": "Cada tarjeta avisa de lo que necesita ese cliente. Sin entrenar indica que lleva días sin hacerlo, Cambios sin enviar que tienes algo que mandarle, y la marca con un número que tiene sesiones sin revisar." }
+    },
+    "client": {
+      "tabs": { "title": "Ficha del cliente", "text": "La ficha tiene cuatro partes: Programa, Historial, Progreso e Info. Toca en una para cambiar de parte." },
+      "program": { "title": "Programa del cliente", "text": "El programa asignado al cliente, con su etapa y cómo va. Aquí puedes verlo, editarlo o asignarle otro." },
+      "next": { "title": "Próxima sesión", "text": "La sesión que le toca al cliente en su siguiente entreno. Pulsa Preparar para ajustar lo que hará la próxima vez." },
+      "sessions": { "title": "Sesiones del cliente", "text": "Como este cliente no usa la app, sus sesiones se hacen desde aquí. Toca en una para ver los ejercicios o en el botón para empezar el entreno." }
+    },
+    "templates": {
+      "segments": { "title": "Programas y sesiones", "text": "Aquí guardas programas completos y sesiones sueltas para reutilizarlos. Toca en una opción para cambiar entre ellos." },
+      "card": { "title": "Una plantilla", "text": "Cada tarjeta es una plantilla guardada. Toca en la tarjeta para verla, editarla o compartirla, y en Asignar para dársela a un cliente o a ti." }
     }
   },
   "header": {
