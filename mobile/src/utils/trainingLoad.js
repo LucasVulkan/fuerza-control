@@ -697,3 +697,228 @@ export function loadState(mean7, mean28) {
   if (ratio <= 1.3) return 'steady';
   return 'loading';
 }
+
+// ── Panel de Carga (T11-01) ───────────────────────────────────────────────────
+
+/** Desplaza un inicio de día `n` días con setDate (no suma 24 h: cruza cambios de hora). */
+const shiftDay = (day, n) => { const d = new Date(day); d.setDate(d.getDate() + n); return d.getTime(); };
+
+/**
+ * La cifra de carga única: la usan la tarjeta CARGA del panel y la de programa de
+ * la ficha de cliente.
+ *
+ * Interna si alguna sesión tiene sRPE, externa si no. Si hoy aún no hay sesión,
+ * la serie acaba AYER: un viernes por la mañana la semana no puede salir con un
+ * día de descanso falso (T11 §3).
+ *
+ * @returns {{ source: 'internal'|'external', days: Array, mean7: Array, mean28: Array, vs28: number|null, endDay: number|null }}
+ *   `days[i].value` es la carga del día en la fuente elegida (null = hueco).
+ */
+export function loadSummary(log, allExercises, { fallbackBodyWeight = null, now = Date.now() } = {}) {
+  const loads = sessionLoads(log ?? [], allExercises, { fallbackBodyWeight });
+  const source = loads.some((l) => l.internal != null) ? 'internal' : 'external';
+  const today = startOfDay(now);
+  const hasToday = loads.some((l) => startOfDay(l.timestamp) === today);
+  const days = dailySeries(loads, { now: hasToday ? now : shiftDay(today, -1) })
+    .map((d) => ({ ...d, value: d[source] }));
+  const values = days.map((d) => d.value);
+  const mean7 = rollingMean(values, 7);
+  const mean28 = rollingMean(values, 28);
+  const m7 = mean7[mean7.length - 1];
+  const m28 = mean28[mean28.length - 1];
+  return {
+    source, days, mean7, mean28,
+    vs28: m28 > 0 && m7 != null ? Math.round((m7 / m28 - 1) * 100) : null,
+    endDay: days.length ? days[days.length - 1].day : null,
+  };
+}
+
+/** Las últimas `n` ventanas de 7 días (de la más vieja a la última), acabando en el último día de `days`. */
+export function weekBlocks(days, n = 8) {
+  const out = [];
+  for (let k = n - 1; k >= 0; k--) {
+    const to = days.length - 7 * k;
+    if (to <= 0) continue;
+    out.push(days.slice(Math.max(0, to - 7), to));
+  }
+  return out;
+}
+
+/** sRPE medio de las sesiones de cada bloque de 7 días (null sin sRPE). La última es «últimos 7 días». */
+export function effortBlocks(log, days, n = 8) {
+  const rated = (log ?? []).filter((e) => e.sessionRpe != null)
+    .map((e) => ({ key: startOfDay(e.timestamp), rpe: Number(e.sessionRpe) }));
+  return weekBlocks(days, n).map((b) => {
+    const r = rated.filter((s) => s.key >= b[0].day && s.key <= b[b.length - 1].day);
+    return r.length ? r.reduce((a, s) => a + s.rpe, 0) / r.length : null;
+  });
+}
+
+/**
+ * Sesiones con sRPE cuyo día cae en los `span` días que acaban en `endDay`, de la más
+ * vieja a la más nueva. Las que no lo tienen no salen: desconocido no es cero.
+ * @returns {Array<{ ts: number, day: number, rpe: number }>}
+ */
+export function ratedSessions(log, endDay, span) {
+  if (endDay == null) return [];
+  const from = shiftDay(endDay, -(span - 1));
+  return (log ?? [])
+    .filter((e) => e.sessionRpe != null && Number(e.sessionRpe) > 0)
+    .map((e) => ({ ts: e.timestamp, day: startOfDay(e.timestamp), rpe: Number(e.sessionRpe) }))
+    .filter((s) => s.day >= from && s.day <= endDay)
+    .sort((a, b) => a.ts - b.ts);
+}
+
+/**
+ * Umbral (en %) bajo el cual un cambio de carga o de esfuerzo se lee «plano» en el chip de
+ * Esfuerzo vs carga. Provisional: T11-10 decide el valor final mirando el visor.
+ */
+export const TREND_FLAT_PCT = 5;
+
+const blockSum = (b, key) => {
+  if (!b.some((d) => d.sessions > 0)) return 0;                      // semana de descanso: 0 real
+  const vals = b.filter((d) => d.sessions > 0 && d[key] != null);    // sesión sin dato: desconocido
+  return vals.length ? vals.reduce((a, d) => a + d[key], 0) : null;
+};
+const meanOf = (arr) => {
+  const v = arr.filter((x) => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+};
+
+/**
+ * Esfuerzo vs carga (T11-04). `days` es la serie de `loadSummary`, así la carga externa es
+ * la misma cuenta que usa el resto del panel. Bloques de 7 días hacia atrás desde el último
+ * día (los incompletos no entran).
+ *
+ * - `external` / `internal`: % de cambio de cada bloque sobre el primer bloque con dato de los
+ *   últimos `n` bloques (null antes de ese y en bloques sin dato).
+ * - `chip`: media de los últimos 4 bloques contra la de los 4 anteriores, SIEMPRE 4 contra 4
+ *   aunque `n` sea menor; null si no hay 8 bloques o falta dato. `label` = clave de `load.trend.*`.
+ *
+ * @returns {{ external: Array<number|null>, internal: Array<number|null>,
+ *   chip: { loadPct: number, effortPct: number, label: string }|null }}
+ */
+export function effortVsLoad(days, { n = 13 } = {}) {
+  const blocks = weekBlocks(days ?? [], Math.max(n, 8)).filter((b) => b.length === 7);
+  const ext = blocks.map((b) => blockSum(b, 'external'));
+  const int = blocks.map((b) => blockSum(b, 'internal'));
+
+  const pct = (vals) => {
+    const shown = vals.slice(-n);
+    const base = shown.find((v) => v != null && v > 0);
+    return shown.map((v) => (v == null || base == null ? null : (v / base - 1) * 100));
+  };
+
+  let chip = null;
+  if (blocks.length >= 8) {
+    const change = (vals) => {
+      const prev = meanOf(vals.slice(-8, -4));
+      const cur = meanOf(vals.slice(-4));
+      return prev > 0 && cur != null ? (cur / prev - 1) * 100 : null;
+    };
+    const loadPct = change(ext);
+    const effortPct = change(int);
+    if (loadPct != null && effortPct != null) {
+      const dir = (x) => (x > TREND_FLAT_PCT ? 1 : x < -TREND_FLAT_PCT ? -1 : 0);
+      const dl = dir(loadPct); const de = dir(effortPct);
+      const label = dl > 0 && de <= 0 ? 'adaptation'
+        : dl <= 0 && de > 0 ? 'fatigue'
+        : dl > 0 && de > 0 ? 'hard'
+        : dl < 0 && de < 0 ? 'deload' : 'mixed';
+      chip = { loadPct, effortPct, label };
+    }
+  }
+  return { external: pct(ext), internal: pct(int), chip };
+}
+
+/**
+ * RPE medio por ejercicio (T11-05): media del `rpe` de las series hechas que lo tienen, entre
+ * `from` y `endDay` (inicios de día), y en los 28 días que acaban en `endDay`. Las sub-series
+ * de un dropset no cuentan (`doneSets` solo devuelve las series principales). Más duro primero
+ * por las 4 semanas (sin RPE en ellas, al final); los ejercicios sin RPE en el periodo no salen.
+ *
+ * @returns {Array<{ exerciseId: string, sets: number, rpe4w: number|null, rpePeriod: number }>}
+ */
+export function rpeByExercise(log, { from, endDay }) {
+  if (endDay == null) return [];
+  const from4w = shiftDay(endDay, -27);
+  const acc = new Map();
+  for (const e of log ?? []) {
+    const day = startOfDay(e.timestamp);
+    if (day < from || day > endDay) continue;
+    for (const ex of e.exercises ?? []) {
+      for (const s of doneSets(ex)) {
+        const r = Number(s.rpe);
+        if (s.rpe == null || s.rpe === '' || !(r > 0)) continue;
+        const a = acc.get(ex.exerciseId) ?? { all: [], recent: [] };
+        a.all.push(r);
+        if (day >= from4w) a.recent.push(r);
+        acc.set(ex.exerciseId, a);
+      }
+    }
+  }
+  return [...acc.entries()]
+    .map(([exerciseId, a]) => ({
+      exerciseId, sets: a.all.length, rpe4w: meanOf(a.recent), rpePeriod: meanOf(a.all),
+    }))
+    .sort((a, b) => (b.rpe4w ?? -1) - (a.rpe4w ?? -1));
+}
+
+/**
+ * Cambio de fuerza en 4 semanas, en %: media de los cambios del e1RM por ejercicio
+ * (mejor e1RM de los 28 días que acaban en `endDay` contra el de los 28 anteriores),
+ * contando solo los ejercicios con dato en las dos ventanas. Un ejercicio estrenado
+ * hace 2 semanas no entra, así que no hunde la cifra.
+ *
+ * @param {number} endDay inicio del último día de la serie (`loadSummary().endDay`)
+ * @returns {number|null}
+ */
+export function strengthChange(log, allExercises, { fallbackBodyWeight = null, endDay, weeks = 4 } = {}) {
+  if (endDay == null) return null;
+  const idx = buildIndex([...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp), allExercises, fallbackBodyWeight);
+  const span = weeks * 7;
+  const curFrom = shiftDay(endDay, -(span - 1));
+  const prevFrom = shiftDay(endDay, -(2 * span - 1));
+  const changes = [];
+  for (const records of idx.values()) {
+    let cur = null; let prev = null;
+    for (const r of records) {
+      if (r.e1rm == null) continue;
+      const k = startOfDay(r.ts);
+      if (k >= curFrom && k <= endDay) { if (cur == null || r.e1rm > cur) cur = r.e1rm; }
+      else if (k >= prevFrom && k < curFrom) { if (prev == null || r.e1rm > prev) prev = r.e1rm; }
+    }
+    if (cur != null && prev > 0) changes.push(cur / prev - 1);
+  }
+  return changes.length ? Math.round((changes.reduce((a, b) => a + b, 0) / changes.length) * 100) : null;
+}
+
+/**
+ * Monotonía y strain de los últimos 7 días de `days` (T11-03), con su base.
+ *
+ * Los días de descanso cuentan 0 y los huecos (sesión sin sRPE) se excluyen. Sin 3 sesiones
+ * en esos 7 días no hay monotonía, y sin ella tampoco strain. La base del % es la
+ * media del strain de los 4 bloques de 7 días anteriores (por fecha, no por
+ * semana natural), contando solo los que tienen 3 sesiones o más: una semana
+ * floja en la base inflaría el %.
+ *
+ * @returns {{ monotony: number|null, strain: number|null, strainPct: number|null, sessions: number }}
+ */
+export function monotonyStrain(days) {
+  const blocks = weekBlocks(days, 5).filter((b) => b.length === 7);
+  const sessionsIn = (b) => b.reduce((a, d) => a + d.sessions, 0);
+  // Hueco (sesión sin sRPE) = desconocido: `monotony`/`strain` lo excluyen, no es un descanso (T04 §4.5).
+  const vals = (b) => b.map((d) => d.value);
+  const cur = blocks[blocks.length - 1];
+  if (!cur) return { monotony: null, strain: null, strainPct: null, sessions: 0 };
+  const sessions = sessionsIn(cur);
+  const m = sessions >= MIN_SESSIONS_FOR_MONOTONY ? monotony(vals(cur)) : null;
+  if (m == null) return { monotony: null, strain: null, strainPct: null, sessions };
+  const s = strain(vals(cur));
+  const base = blocks.slice(0, -1)
+    .filter((b) => sessionsIn(b) >= MIN_SESSIONS_FOR_MONOTONY)
+    .map((b) => strain(vals(b)))
+    .filter((x) => x != null);
+  const mean = base.length ? base.reduce((a, b) => a + b, 0) / base.length : 0;
+  return { monotony: m, strain: s, strainPct: mean > 0 ? Math.round((s / mean - 1) * 100) : null, sessions };
+}

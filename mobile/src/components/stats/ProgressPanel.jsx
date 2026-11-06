@@ -42,6 +42,7 @@ import { spacing } from '../../theme';
 
 export default function ProgressPanel({
   baseLog, programTemplateIds, allExercises, fallbackBodyWeight,
+  program = null, client = null, subjectName = null,
   onRefresh, refreshing = false, history = null,
 }) {
   const { t }  = useTranslation();
@@ -83,6 +84,9 @@ export default function ProgressPanel({
         baseLog={baseLog}
         allExercises={allExercises}
         fallbackBodyWeight={fallbackBodyWeight}
+        program={program}
+        client={client}
+        subjectName={subjectName}
         onRefresh={onRefresh}
         refreshing={refreshing}
       />
@@ -129,5 +133,6 @@ const styles = StyleSheet.create({
   fill:     { flex: 1 },
   viewport: { flex: 1, overflow: 'hidden' },
   row:      { flex: 1, flexDirection: 'row' },
-  switcher: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  // Bajo el conmutador, xl en total (las pestañas ponen md de su parte).
+  switcher: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl - spacing.md },
 });

@@ -47,6 +47,8 @@ export default function StatsScreen() {
           programTemplateIds={programTemplateIds}
           allExercises={allExercises}
           fallbackBodyWeight={profile.bodyWeight ?? null}
+          program={programs[profile.activeProgramId] ?? null}
+          client={null}
           // El tercer segmento sólo aquí: la ficha de cliente comparte este panel
           // y ya tiene su propio tab de Historial.
           history={<HistoryList />}

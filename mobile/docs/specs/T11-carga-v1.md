@@ -82,9 +82,48 @@ Para tenerlo claro al implementar (todo en `trainingLoad.js`):
   tercera persona («su último mes», «ha entrenado»). `ProgressPanel` recibe
   `subjectName` desde `ClientsScreen` y `LoadTab` elige la variante de texto. En
   `StatsScreen` va en segunda persona («tu último mes»).
+- **De quién son los datos (añadido el 6-nov tras revisar el código).** Nada de
+  la pestaña lee del store lo que es del sujeto: en el móvil del entrenador el
+  store es **suyo**. `ProgressPanel` y `LoadTab` reciben por prop:
+  - `baseLog` (ya existe), `fallbackBodyWeight`: en la ficha, el último de
+    `selectedClient.bodyWeight` (hoy no se pasa y se deduce del log);
+  - `program`: en la ficha `programs[selectedClient.activeProgramId]`, en
+    Progresión `programs[profile.activeProgramId]`;
+  - `client`: en la ficha `selectedClient`, en Progresión `null`. La etapa en
+    curso sale **solo** de `athleteProgress(program, client)`
+    (`stageProgress.js`), nunca de `program.currentStageIndex`: en el móvil del
+    entrenador esos campos son de su copia y no avanzan;
+  - `subjectName`.
+  Las plantillas sí salen del store (`sessionTemplates`), porque las del
+  programa del cliente están en él.
+- **Una sola cifra de carga.** La tarjeta CARGA y la cifra de carga de la tarjeta
+  de programa de la ficha (`clientLoadPct` en `ClientsScreen`) salen de la misma
+  función de `trainingLoad.js` (`loadSummary` o similar: interna si hay sRPE,
+  externa si no, con peso corporal y la regla de «acaba ayer»). Hoy son dos
+  cuentas distintas y no cuadrarían.
+- **Semanas por fecha, no por posición.** Las series semanales solo traen las
+  semanas con datos; «hace 4 semanas» o «los últimos 3 meses» se buscan por
+  fecha, nunca con `slice(-n)` o «n entradas atrás».
+- **Desde la ficha, el estado vacío no lleva botón**: «Empieza a entrenar» lleva
+  al Entreno del entrenador. Va un texto en tercera persona.
 - **Todo dato se toca.** Lo que no es una tarjeta seleccionable lleva su
   `InfoLabel` (la «i») y abre su ficha en `MetricInfoSheet`. Los textos de la
   pantalla se quedan cortos y la explicación larga va en la ficha.
+- **Anatomía de una gráfica (6-nov, maqueta `mockups/carga-t11-3.html`).** Todas
+  las de la pestaña siguen la del detalle de ejercicio, con título:
+  1. **Cabecera**: título `caps` en `text` (blanco, 6-nov) con su «i»; a la derecha, si hay
+     dos vistas, un cambio de texto («Semanas · Sesiones», `labelStrong`): la
+     elegida en `accent`, la otra en `mutedLight`. Nunca un segmentado.
+  2. **Cifra**: el dato con su unidad en `heading` (un punto menos que las
+     tarjetas) y al lado un chip con el delta, si lo hay.
+  3. **Gráfica**: el eje de la derecha mide el rótulo más largo (que «+100 %»
+     quepa siempre), como mucho 5 marcas; debajo, fechas en el eje horizontal y una
+     guía vertical punteada y suave por semana.
+  4. **Pie**: la lectura y la leyenda en chips (punto de color + dato).
+- **El periodo va una vez**: segmentado a todo el ancho **debajo de las tarjetas**,
+  con el texto entero («Último mes · 3 meses · 6 meses»), más pegado a ellas que el
+  hueco normal. Ninguna gráfica lleva el suyo. Bajo el conmutador Ejercicios |
+  Carga | Historial hay más aire (`xl`).
 - **Nada de rojo** (UI-MIGRATION §4.9). Lo que baja va en `orange`.
 - Ningún `NaN`, `Infinity` ni negativo imposible en lo que se pinta (§13).
 
@@ -94,13 +133,13 @@ La pestaña, de arriba abajo: **tres tarjetas → la gráfica de la tarjeta eleg
 (con Esfuerzo) RPE medio por ejercicio → Series por grupo**. Sin calendario
 (T11-08), sin línea de semana de etapa y sin el selector de periodo suelto.
 
-**Tarjetas** (`statTile` de hoy, contenido centrado, misma fila de tres):
+**Tarjetas** con el formato de las Progress cards de Ejercicios (cifra en color, nombre debajo y subtítulo; 108 de alto). Sin minigráfica: repetía lo que dice la cifra y la gráfica de debajo (decidido 6-nov tras probar):
 
-| Tarjeta | Número | Subtítulo | Minigráfica (8 semanas) |
-|---|---|---|---|
-| CARGA | media 7 d ÷ media 28 d − 1, en % (`+2 %`) | «vs su mes» / «vs tu mes» | carga de cada bloque de 7 días, `accent` |
-| ESFUERZO | media del sRPE de las sesiones de los últimos 7 días, «8,0 /10» | «últimos 7 días» | media de sRPE de cada bloque, `orange` |
-| FUERZA | cambio del índice de rendimiento en 4 semanas, en % | «en 4 semanas» | índice semanal, `accent` |
+| Tarjeta | Número | Subtítulo |
+|---|---|---|
+| CARGA | media 7 d ÷ media 28 d − 1, en % (`+2 %`) | «vs su mes» / «vs tu mes» |
+| ESFUERZO | media del sRPE de las sesiones de los últimos 7 días, «8,0 /10» | «últimos 7 días» |
+| FUERZA | cambio del índice de rendimiento en 4 semanas, en % | «en 4 semanas» |
 
 - **Selección** con el relleno de las fichas de datos de la app, el de
   `StageCards.jsx`. Es un círculo `accent` que sale de la esquina de arriba a la
@@ -128,6 +167,13 @@ cercano no da esos 16 px, se usa el más cercano y se avisa.
 - [ ] Tocar ESFUERZO: el lima sale de la esquina de arriba a la derecha y la llena; CARGA se vacía deprisa; la gráfica cambia.
 - [ ] Cambiar a 1M en una gráfica, pasar a otra tarjeta: también está en 1M. Cerrar la app y volver: sigue en 1M.
 - [ ] Desde la ficha de un cliente, los textos dicen «su», no «tu».
+
+**Notas de la implementación (T11-01):**
+- `loadSummary` (`trainingLoad.js`) devuelve la serie ya con `value` (interna o externa) y la usan la tarjeta CARGA y `clientLoadPct`. `clientLoadPct` conserva su umbral de 14 días de historial.
+- La cifra de FUERZA sale de `strengthChange` (mejor e1RM de 28 días contra los 28 anteriores, por ejercicio, solo con dato en las dos ventanas), no de `performanceWeekly`. La gráfica de Fuerza sigue siendo la de hoy hasta T11-06.
+- Sin sRPE, la gráfica de Esfuerzo enseña de momento el texto `load.emptyNoRpe` dentro de su tarjeta (T11-02 pone la invitación). La pestaña ya no se vacía por falta de sRPE: la carga pinta la externa.
+- La monotonía, el strain y su tira se han quitado de la pantalla; vuelven en T11-03.
+- `LoadTab` recibe `program` pero aún no lo usa (lo necesita T11-07).
 
 ## 5. T11-02 — Sin sRPE la pestaña no se vacía
 
@@ -159,6 +205,9 @@ panel. El estado vacío queda solo para «aún no hay sesiones».
 - [ ] ESFUERZO en contorno con «—»; al tocarla, la invitación. Desde un cliente, la versión del entrenador con su nombre.
 - [ ] Apuntar el esfuerzo en una sesión: la carga vuelve a ser la interna.
 
+**Notas de la implementación (T11-02):**
+- La tarjeta ESFUERZO sin sRPE conserva su relleno de lima al elegirla (solo cambia a contorno y «—» cuando no está elegida). La gráfica de Esfuerzo con sRPE pero menos de 2 semanas queda vacía hasta T11-04 (antes enseñaba `load.emptyNoRpe`, que mentía con sRPE; se ha borrado).
+
 ## 6. T11-03 — Carga: estado, monotonía y strain
 
 **Lectura** encima de la gráfica, con su punto de color: la frase del estado
@@ -185,7 +234,8 @@ su leyenda.
     descanso pesan mucho. Es lo que mide Foster y no se toca. No se calcula sobre
     periodos largos: la desviación saldría casi toda del patrón de descansos.
 - **Strain** · «+12 %». Es la carga de los 7 días × la monotonía, contra la media
-  del strain de los 4 bloques anteriores. Texto: «Carga × monotonía de los últimos 7
+  del strain de los 4 bloques anteriores (solo los que tienen 3 sesiones o más:
+  una semana floja en la base inflaría el %). Texto: «Carga × monotonía de los últimos 7
   días, contra tu media de las 4 semanas anteriores.» Va sin color de alarma,
   porque no hay umbral universal (ficha `strain`). Sin base: «—».
 
@@ -197,6 +247,9 @@ Con menos de 3 sesiones no hay monotonía, y por tanto tampoco strain.
 - [ ] La frase del estado es la nueva, nunca «Estás descargando».
 - [ ] Monotonía con valor y etiqueta; strain en %. Tocar cualquiera de las dos abre su ficha.
 - [ ] Con 2 sesiones en 7 días: «—» y el aviso de las 3 sesiones.
+
+**Notas de la implementación (T11-03):**
+- `monotonyStrain(days)` (`trainingLoad.js`) solo usa bloques completos de 7 días; los descansos cuentan 0 y los huecos (sesión sin sRPE) se excluyen, no son descanso (corregido en revisión). Los textos del estado son claves `load.stateX` / `load.stateThirdX`; `load.state.*` y `load.emptyNoRpe` se han borrado. El strain se pinta como «+12 %» (con espacio, como la maqueta) y las tarjetas siguen con «+12%» de T11-01.
 
 ## 7. T11-04 — Esfuerzo: semanas o sesiones y esfuerzo vs carga
 
@@ -228,8 +281,21 @@ barras `orange` en escala 0-10, con el eje 0 · 5 · 10 a la derecha.
 - «Sube», «baja» y «plano» se miden con un umbral **por decidir en T11-10, mirando
   el visor**. Con el ±8 % de `effortTrend`, un +4 % de carga con un +2 % de
   esfuerzo sale «sin patrón», aunque la tendencia es buena. La maqueta usa ±5 %.
+- El chip compara siempre 4 bloques contra 4, también en 1M, aunque la gráfica
+  pinte menos: la ficha lo dice.
 - Se sustituye `effortTrend` (índices base 100 y bloques de 4, que se retrasaba
   semanas en las descargas: T11 v2 de antes).
+
+**Notas de implementación (T11-04).** `effortVsLoad(days, { n })` parte de la serie de `loadSummary` (misma carga externa); solo cuenta bloques completos de 7 días y el chip pide 8 (si no, no sale). Constante `TREND_FLAT_PCT = 5` en `trainingLoad.js` hasta T11-10. Una semana de descanso vale -100 % en la línea; una sesión sin sRPE deja hueco. `effortTrend` se queda: lo usa `scripts/visor-carga/visor.sim.js`. Las claves `load.trend.*` ya no llevan flechas; el título de la tarjeta pasa a «Esfuerzo» y «Esfuerzo vs carga» es el bloque de debajo.
+
+**Ajustes tras probar (6-nov):** fuera las dos cifras grandes; queda una línea
+«Media 3M · 7,6 /10 · 38 sesiones» (los últimos 7 días ya están en la tarjeta). La
+gráfica de barras se titula «Esfuerzo de las sesiones» y debajo lleva su leyenda en la
+tira (`strip`, la de la gráfica de un ejercicio): apagado = semanas o sesiones
+anteriores, lleno = últimos 7 días. Esfuerzo vs carga va en **tarjeta propia** con el
+título de las demás y «N semanas» a la derecha; el eje de % lleva como mucho 5 marcas.
+En Carga, la lectura del estado baja a la tira, debajo de la gráfica. En RPE medio, las
+cabeceras en una línea y las cifras en negrita.
 
 **Probar T11-04**
 
@@ -254,6 +320,8 @@ selector de periodo (el compartido, §3). Va también sin sRPE.
 - Pie: «Solo cuentan los ejercicios con RPE apuntado.»
 - Sin ninguna serie con RPE en el periodo, la tarjeta no sale.
 
+**Notas de implementación (T11-05).** `rpeByExercise(log, { from, endDay })`. Las sub-series de dropset se saltan porque `doneSets` solo devuelve las principales. El título de la tarjeta es texto plano, sin «i» (no hay ficha de métrica para el RPE medio).
+
 **Probar T11-05**
 
 - [ ] Con ESFUERZO elegida, la tarjeta sale debajo con los ejercicios ordenados por RPE; con CARGA o FUERZA, no está.
@@ -265,9 +333,16 @@ selector de periodo (el compartido, §3). Va también sin sRPE.
 **Cifras:** «4 SEMANAS · +3 % · desde el 9 oct» | «3M · +9 % · desde el 7 ago».
 En 1M, la segunda columna sería la misma cifra y pasa a «MEJOR EJERCICIO ·
 Sentadilla · +3 % en 4 semanas».
-- La cifra grande de la tarjeta FUERZA es la de 4 semanas: índice de esta semana
-  contra el de hace 4, con `performanceWeekly` tal cual. Así quien lleva dos meses
-  estancado no ve un «+27 %».
+- La cifra grande de la tarjeta FUERZA es la de 4 semanas, y así quien lleva dos
+  meses estancado no ve un «+27 %». **Corregido el 6-nov:** no sale de dos puntos
+  del índice de `performanceWeekly`, porque ese índice promedia los ejercicios que
+  haya en cada semana y la mezcla cambia (un ejercicio estrenado hace 2 semanas
+  entra «ahora» con índice ~100 y no está «hace 4»: hunde la media sin que nadie
+  pierda fuerza). La cifra es la **media de los cambios por ejercicio** de la
+  tabla de abajo, contando solo los ejercicios con dato en las dos ventanas. Así
+  tarjeta y tabla coinciden por construcción. Lo mismo para la cifra del periodo.
+- Las ventanas de fuerza van en bloques de 7 días que acaban en el mismo día que
+  la carga (§3), no en semanas naturales.
 
 **Gráfica:**
 - El índice del periodo en % de cambio desde su inicio, con área `accent` al 12 %
@@ -302,8 +377,9 @@ distribuyes**, no un objetivo de volumen.
 
 - **Semana natural** (lunes a domingo), la que está en curso. Cabecera: «Series por grupo · 32 de 45 esta semana».
 - Cada grupo: **hechas de previstas** («6/9»).
-  - Previstas = series del plan de esa semana por grupo, con `plannedSetsByGroup`
-    sobre las sesiones de la etapa activa (ya existe).
+  - Previstas = series del plan de esa semana por grupo: `stageSetsByGroup`
+    (`stageStats.js`) sobre la etapa `athleteProgress(program, client).currentStageIndex`
+    (§3, «De quién son los datos»).
   - Sin programa activo, solo las hechas.
 - **Barra:**
   - Lo hecho va en `accent`; lo que queda hasta lo previsto, en contorno
@@ -328,9 +404,12 @@ entrenó, no un mapa de esfuerzo.
 
 - `LoadCalendar` sale de `LoadTab` y vuelve a la cabecera del Historial
   (`HistoryList`), donde vivía antes de U07 §5.1. Va también en el Historial de la
-  ficha de cliente.
-- **Recibe el log por prop** en vez de leer `workoutLog` del store. Así se
-  arregla que en la ficha de cliente pinte el historial del entrenador (§1).
+  ficha de cliente, que **no es `HistoryList`**: es el `ScrollView` propio del tab
+  `history` de `ClientsScreen`. Se monta en los dos sitios.
+- **Recibe por prop** `log`, `allExercises` y `fallbackBodyWeight` en vez de leer
+  `workoutLog` del store. Así se arregla que en la ficha de cliente pinte el
+  historial del entrenador (§1). En la ficha va el log entero del cliente
+  (`clientBaseLog`), no el filtrado por alcance y periodo de la lista.
 - Sigue teñido por la carga interna. Si el log no tiene ninguna sesión con sRPE, se
   tiñe por la externa, para que no salgan todos los días en contorno.
 
@@ -349,6 +428,8 @@ variaciones enormes.
 
 - **Número:** volumen medio por bloque de 7 días de las últimas 4 semanas, contra
   las 4 anteriores, en % (mismos bloques que §3). Sin datos en las dos ventanas: «—».
+  Se calcula sobre el log filtrado por alcance (programa o todo), **no** recortado
+  por el periodo: con 1M elegido no existirían «las 4 anteriores».
 - **Subtítulo:** «vs mes anterior».
 - **Ficha `volumeTrend`:** «Volumen medio por semana de las últimas 4 semanas,
   comparado con las 4 anteriores.» Se quita el aviso de «son dos puntos».
@@ -395,14 +476,14 @@ variaciones enormes.
 
 | Fase | Qué | Toca | Coste |
 |---|---|---|---|
-| T11-01 | Panel de tres tarjetas, relleno, periodo único guardado, textos en tercera persona | `LoadTab.jsx`, `ProgressPanel.jsx`, `ClientsScreen.jsx`, store, locales | 🟠 |
+| T11-01 | Panel de tres tarjetas, relleno, periodo único guardado, textos en tercera persona, props del sujeto (§3) y cifra de carga única | `LoadTab.jsx`, `ProgressPanel.jsx`, `ClientsScreen.jsx`, `StatsScreen.jsx`, `trainingLoad.js`, store, locales | 🟠 |
 | T11-02 | Sin sRPE: carga externa y tarjeta de esfuerzo vacía | `LoadTab.jsx`, locales | 🟡 |
 | T11-03 | Lectura del estado, monotonía y strain | `LoadTab.jsx`, `trainingLoad.js`, locales | 🟡 |
 | T11-04 | Esfuerzo: semanas/sesiones, esfuerzo vs carga con cifras | `LoadTab.jsx`, `trainingLoad.js`, locales | 🟡 |
 | T11-05 | RPE medio por ejercicio | `LoadTab.jsx`, `trainingLoad.js` | 🟡 |
 | T11-06 | Fuerza a 4 semanas y por ejercicio | `LoadTab.jsx`, `trainingLoad.js` | 🟡 |
 | T11-07 | Series por grupo contra lo previsto | `LoadTab.jsx` (+ plantillas de la etapa) | 🟡 |
-| T11-08 | Calendario al Historial, con el log por prop | `LoadCalendar.jsx`, `HistoryList`, `ClientsScreen.jsx` | 🟢 |
+| T11-08 | Calendario al Historial (propio y ficha), con log, ejercicios y peso por prop | `LoadCalendar.jsx`, `HistoryList`, `ClientsScreen.jsx` | 🟢 |
 | T11-09 | VOLUMEN por semanas | `ProgressTab.jsx`, locales | 🟢 |
 | T11-10 | Casos y bordes con test | `trainingLoad.test.js` | 🟡 |
 

@@ -423,6 +423,7 @@ const INITIAL_PROFILE = {
   setupComplete: false,   // true al acabar (o saltar) el recorrido de entrada
   goals: [],
   bodyWeight: null,
+  loadPeriod: '3m',   // periodo único de la pestaña Carga: 1m · 3m · 6m (T11-01)
   theme: 'formaFit',
   // Por defecto NO Pro. Era `true`, y como `checkProStatus` conserva el valor
   // cuando la comprobacion falla —correcto: no se revoca a un cliente de pago

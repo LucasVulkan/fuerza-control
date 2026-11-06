@@ -62,7 +62,7 @@ import {
   athleteProgress, stageStatus, weeklySessions, stageDaysAt, allProgramDays,
 } from '../utils/stageProgress';
 import { sessionPlan } from '../utils/sessionPlan';
-import { sessionLoads, dailySeries } from '../utils/trainingLoad';
+import { loadSummary } from '../utils/trainingLoad';
 import { sessionStats } from '../utils/sessionStats';
 import { pickImportFile } from '../utils/pickImportFile';
 import { programsOf, templatesOf, copySources } from '../utils/programOwnership';
@@ -2029,21 +2029,22 @@ export default function ClientsScreen() {
   // cuenta sobre el mismo log — antes se hacía dos veces.
   const clientAdherencePct = adherenceByClient[selectedClientId]?.pct ?? null;
 
-  // Carga media: media de carga externa de los últimos 7 días frente a la de
-  // los 28, en % — el mismo par de medias del que sale `loadState` en el panel
-  // de Carga, aquí como número porque la tarjeta solo tiene sitio para uno.
-  // Con menos de dos semanas de historial no hay contra qué comparar.
+  // Peso del cliente para las dos cifras de carga y para la pestaña Progresión:
+  // el último de su historial de peso (ordenado por fecha), en kg.
+  const clientBodyWeight = useMemo(() => {
+    const w = Number(selectedClient?.bodyWeight?.at(-1)?.weight);
+    return Number.isFinite(w) && w > 0 ? w : null;
+  }, [selectedClient]);
+
+  // Carga media: la MISMA cifra que la tarjeta CARGA de Progresión › Carga
+  // (`loadSummary`: interna si hay sRPE, externa si no, con peso corporal y
+  // acabando ayer si hoy no ha entrenado). Con menos de dos semanas de
+  // historial no hay contra qué comparar.
   const clientLoadPct = useMemo(() => {
     if (!selectedClientId || clientBaseLog.length < 2) return null;
-    const days = dailySeries(sessionLoads(clientBaseLog, allExercises));
-    if (days.length < 14) return null;
-    const ext   = days.map((d) => d.external ?? 0);
-    const avg   = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
-    const m7    = avg(ext.slice(-7));
-    const m28   = avg(ext.slice(-28));
-    if (!m28) return null;
-    return Math.round((m7 / m28 - 1) * 100);
-  }, [clientBaseLog, allExercises, selectedClientId]);
+    const { days, vs28 } = loadSummary(clientBaseLog, allExercises, { fallbackBodyWeight: clientBodyWeight });
+    return days.length < 14 ? null : vs28;
+  }, [clientBaseLog, allExercises, selectedClientId, clientBodyWeight]);
 
   // ── Resúmenes de las cabeceras de Info ─────────────────────────────────────
   // Se entra a Info con todo cerrado, así que cada cabecera tiene que contar su
@@ -2646,6 +2647,10 @@ export default function ClientsScreen() {
             baseLog={clientBaseLog}
             programTemplateIds={activeClientTemplateIds}
             allExercises={allExercises}
+            fallbackBodyWeight={clientBodyWeight}
+            program={programs[selectedClient?.activeProgramId] ?? null}
+            client={selectedClient}
+            subjectName={selectedClient?.name}
             onRefresh={selectedClient?.slotId ? handleRefreshHistory : undefined}
             refreshing={refreshingHistory}
           />
