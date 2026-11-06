@@ -34,8 +34,8 @@ import { useStore } from '../../../store/useStore';
 
 import {
   loadState, setsByMuscleGroup, weeklySeries, indexTo100, effortTrend, performanceWeekly,
-  loadSummary, loadBlocks, effortBlocks, strengthChange,
-  SETS_TARGET_MIN, SETS_TARGET_MAX,
+  loadSummary, loadBlocks, effortBlocks, strengthChange, monotonyStrain,
+  SETS_TARGET_MIN, SETS_TARGET_MAX, MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
 } from '../../utils/trainingLoad';
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
@@ -65,6 +65,9 @@ const DOT_R   = 3;
 // Tope de la escala de barras. Fijo para que la longitud signifique lo mismo
 // entre grupos y semanas; solo crece si alguien se sale del rango.
 const SETS_SCALE_MIN  = 24;
+
+// Fantasma de la gráfica de Esfuerzo sin sRPE (alturas en %).
+const GHOST_BARS = [40, 55, 50, 62, 30, 58, 64, 60, 66];
 
 // ── Gráfico de tendencia ──────────────────────────────────────────────────────
 //
@@ -242,7 +245,7 @@ function Spark({ values, color, width }) {
  * arriba a la derecha, con el patrón de `StageCards` (T11 §4): círculo de radio
  * = diagonal, 450 ms al llenarse, 200 al vaciarse, y el texto cruza a `onAccent`.
  */
-function MetricTile({ selected, onPress, label, value, unit, sub, values, color }) {
+function MetricTile({ selected, onPress, label, value, unit, sub, values, color, empty = false }) {
   const th     = useTheme();
   const C      = th.colors;
   const styles = useThemedStyles(makeStyles);
@@ -261,7 +264,7 @@ function MetricTile({ selected, onPress, label, value, unit, sub, values, color 
   const face = (c, small, sparkColor, style) => (
     <Reanimated.View style={[styles.tileFace, style]} pointerEvents="none">
       <Text style={[styles.statLabel, { color: small }]} numberOfLines={1}>{label}</Text>
-      <Text style={[styles.statValue, { color: c }]} numberOfLines={1}>
+      <Text style={[styles.statValue, { color: empty && c === C.text ? C.muted : c }]} numberOfLines={1}>
         {value}
         {unit ? <Text style={[styles.statUnit, { color: small }]}>{` ${unit}`}</Text> : null}
       </Text>
@@ -272,7 +275,7 @@ function MetricTile({ selected, onPress, label, value, unit, sub, values, color 
 
   return (
     <TouchableOpacity
-      style={styles.statTile}
+      style={[styles.statTile, empty && styles.tileEmpty]}
       onPress={onPress}
       onLayout={(e) => setW(e.nativeEvent.layout.width)}
       activeOpacity={0.85}
@@ -363,6 +366,7 @@ export default function LoadTab({
   }, [period, days, mean7, mean28]);
 
   const state = loadState(mean7[mean7.length - 1], mean28[mean28.length - 1]);
+  const ms = useMemo(() => monotonyStrain(days), [days]);
 
   const groupSets = useMemo(() => {
     const DAY = 86400000;
@@ -437,12 +441,15 @@ export default function LoadTab({
     : state === 'unloading' ? th.colors.mutedLight
     : th.colors.accent;
 
+  const monotonyLabel = ms.monotony == null ? null : t(ms.monotony >= MONOTONY_HIGH ? 'load.monotonyHigh'
+    : ms.monotony >= MONOTONY_MODERATE ? 'load.monotonyModerate' : 'load.monotonyLow');
+
   const signed = (n) => `${n > 0 ? '+' : ''}${n}%`;
   const pctOrDash = (n) => (n != null && Number.isFinite(n) ? signed(n) : '—');
 
   // Título, «i» y qué ficha abre, según la tarjeta elegida.
   const chartHead = {
-    load:     { title: t('load.trendTitle'), info: { chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] } },
+    load:     { title: load.source === 'external' ? t('load.workTitle') : t('load.trendTitle'), info: { chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] } },
     effort:   { title: t('load.effortTitle'), info: { chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad', 'indexed100'] } },
     strength: { title: t('load.perfTitle'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
   }[metric];
@@ -461,7 +468,8 @@ export default function LoadTab({
           selected={metric === 'effort'} onPress={() => setMetric('effort')}
           label={t('load.cardEffort')} value={tiles.effort7 != null ? dec(tiles.effort7.toFixed(1)) : '—'}
           unit={tiles.effort7 != null ? '/10' : null}
-          sub={t('load.last7d')}
+          sub={load.source === 'external' ? t('load.noEffort') : t('load.last7d')}
+          empty={load.source === 'external'}
           values={tiles.effortSpark} color={th.colors.orange}
         />
         <MetricTile
@@ -488,6 +496,18 @@ export default function LoadTab({
 
         {metric === 'load' && (
           <>
+            {state && (
+              <View style={styles.read}>
+                <View style={[styles.dot, styles.readDot, { backgroundColor: stateColor }]} />
+                <Text style={styles.stripText}>
+                  <Text style={styles.stripTitle}>
+                    {t(`load.state${third ? 'Third' : ''}${state[0].toUpperCase()}${state.slice(1)}`)}
+                  </Text>
+                  {` ${t('load.stateVs')}`}
+                </Text>
+              </View>
+            )}
+
             <LoadChart days={visible.days} mean7={visible.mean7} mean28={visible.mean28} />
 
             <View style={styles.legend}>
@@ -505,21 +525,38 @@ export default function LoadTab({
               </View>
             </View>
 
-            {state && (
-              <View style={styles.strip}>
-                <View style={[styles.dot, { backgroundColor: stateColor }]} />
-                <Text style={styles.stripText}>
-                  <Text style={styles.stripTitle}>{t(`load.state.${state}.title`)}</Text>
-                  {` ${third
-                    ? t(`load.stateThird${state[0].toUpperCase()}${state.slice(1)}`)
-                    : t(`load.state.${state}.detail`)}`}
+            {load.source === 'external' && (
+              <Text style={styles.groupHint}>{t(third ? 'load.workHintThird' : 'load.workHint')}</Text>
+            )}
+
+            <View style={styles.fact}>
+              <View style={styles.factHead}>
+                <InfoLabel align="left" textStyle={styles.factTitle} onPress={() => setInfo({ ids: ['monotony'] })}>
+                  {t('load.monotony')}
+                </InfoLabel>
+                <Text style={[styles.factValue, ms.monotony != null && ms.monotony >= MONOTONY_MODERATE && styles.factValueFlat]}>
+                  {ms.monotony != null ? `${dec(ms.monotony.toFixed(1))} · ${monotonyLabel}` : '—'}
                 </Text>
               </View>
-            )}
+              <Text style={styles.groupHint}>
+                {ms.monotony != null
+                  ? t(third ? 'load.monotonyHintThird' : 'load.monotonyHint')
+                  : t('load.needsSessions', { n: MIN_SESSIONS_FOR_MONOTONY })}
+              </Text>
+            </View>
+
+            <View style={styles.fact}>
+              <View style={styles.factHead}>
+                <InfoLabel align="left" textStyle={styles.factTitle} onPress={() => setInfo({ ids: ['strain'] })}>
+                  {t('load.strain')}
+                </InfoLabel>
+                <Text style={styles.factValue}>{ms.strainPct != null ? `${ms.strainPct > 0 ? '+' : ''}${ms.strainPct} %` : '—'}</Text>
+              </View>
+              <Text style={styles.groupHint}>{t(third ? 'load.strainHintThird' : 'load.strainHint')}</Text>
+            </View>
           </>
         )}
 
-        {/* ponytail: sin sRPE, esto es el texto de siempre; T11-02 pone el contorno y la invitación. */}
         {metric === 'effort' && (effort ? (
           <>
             <IndexChart series={[
@@ -554,9 +591,19 @@ export default function LoadTab({
               </View>
             )}
           </>
-        ) : (
-          <Text style={styles.groupHint}>{t('load.emptyNoRpe')}</Text>
-        ))}
+        ) : load.source === 'external' ? (
+          <>
+            <View style={styles.ghostChart}>
+              {GHOST_BARS.map((h, i) => <View key={i} style={[styles.ghostBar, { height: `${h}%` }]} />)}
+            </View>
+            <View style={styles.invite}>
+              <Text style={styles.inviteTitle}>
+                {third ? t('load.inviteThirdTitle', { name: subjectName ?? '' }) : t('load.inviteTitle')}
+              </Text>
+              <Text style={styles.groupHint}>{t(third ? 'load.inviteThirdText' : 'load.inviteText')}</Text>
+            </View>
+          </>
+        ) : null)}
 
         {metric === 'strength' && performance && (
           <>
@@ -653,6 +700,8 @@ const makeStyles = (th) => StyleSheet.create({
     justifyContent: 'center',
     gap:            spacing.xs2,
   },
+  // Sin dato (ESFUERZO sin sRPE): en contorno y sin fondo; al elegirla se llena igual.
+  tileEmpty: { backgroundColor: 'transparent', borderWidth: 1, borderColor: th.colors.border },
   statValue: { ...textStyles.title, textAlign: 'center' },
   statUnit:  { ...textStyles.label },
   statLabel: {
@@ -688,6 +737,21 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   dot:        { width: 7, height: 7, borderRadius: 4 },
+  read:       { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm2 },
+  readDot:    { marginTop: 4 },
+
+  // Filas de Monotonía y Strain: línea encima, sin caja.
+  fact:          { gap: spacing.xs2, borderTopWidth: 1, borderTopColor: th.colors.border, paddingTop: spacing.md },
+  factHead:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  factTitle:     { ...textStyles.labelStrong, color: th.colors.text },
+  factValue:     { ...textStyles.labelStrong, color: th.colors.accent, textAlign: 'right', flexShrink: 1 },
+  factValueFlat: { color: th.colors.mutedLight },
+
+  // Esfuerzo sin sRPE: barras fantasma en contorno e invitación.
+  ghostChart:  { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, height: 70 },
+  ghostBar:    { flex: 1, borderRadius: th.radius.xs, borderWidth: 1, borderColor: th.colors.border },
+  invite:      { gap: spacing.sm, backgroundColor: th.colors.surface2, borderRadius: th.radius.md, padding: spacing.md },
+  inviteTitle: { ...textStyles.labelStrong, color: th.colors.text, lineHeight: 15 },
   stripText:  { ...textStyles.label, color: th.colors.mutedLight, flex: 1, lineHeight: 15 },
   stripTitle: { ...textStyles.label, color: th.colors.text },
 

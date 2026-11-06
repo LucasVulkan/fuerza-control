@@ -4,7 +4,7 @@ import {
   isBodyweight, effectiveWeight, sessionLoads, dailySeries,
   rollingMean, monotony, strain, loadState, setsByMuscleGroup, plannedSetsByGroup,
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
-  loadSummary, strengthChange, effortBlocks,
+  loadSummary, strengthChange, effortBlocks, monotonyStrain,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
@@ -715,5 +715,45 @@ describe('effortBlocks', () => {
     const r = effortBlocks(log, days);
     expect(r[r.length - 1]).toBe(7.5);
     expect(r[0]).toBeNull();
+  });
+});
+
+describe('monotonyStrain', () => {
+  // Cada número es la carga de un día (0 = descanso); el último es el último día de la serie.
+  const mk = (...vals) => vals.flat().map((v, i) => ({ day: i, value: v, sessions: v > 0 ? 1 : 0 }));
+  const P = [0, 100, 0, 100, 0, 100, 0];     // 3 sesiones
+  const Q = [0, 1000, 0, 0, 0, 1000, 0];     // 2 sesiones
+
+  it('con 2 sesiones en 7 días no hay monotonía ni strain', () => {
+    expect(monotonyStrain(mk(Q))).toEqual({ monotony: null, strain: null, strainPct: null, sessions: 2 });
+  });
+
+  it('con 3 sesiones hay monotonía (descansos como 0); sin base no hay %', () => {
+    const r = monotonyStrain(mk(P));
+    expect(r.sessions).toBe(3);
+    expect(r.monotony).toBeCloseTo(0.866, 2);
+    expect(r.strain).toBeCloseTo(300 * 0.866, 0);
+    expect(r.strainPct).toBeNull();
+  });
+
+  it('la base deja fuera el bloque de 2 sesiones', () => {
+    // P, Q, P, P, P: si Q entrara en la base, el % no sería 0.
+    expect(monotonyStrain(mk(P, Q, P, P, P)).strainPct).toBe(0);
+  });
+
+  it('el % compara con la media de la base', () => {
+    const P2 = P.map((v) => v * 2);   // misma monotonía, el doble de carga: strain ×2
+    expect(monotonyStrain(mk(P, P, P, P, P2)).strainPct).toBe(100);
+  });
+
+  it('sin NaN ni Infinity con ceros', () => {
+    expect(monotonyStrain(mk(new Array(35).fill(0)))).toEqual({ monotony: null, strain: null, strainPct: null, sessions: 0 });
+    // Base con sesiones pero carga 0: sin desviación, sin base.
+    const zeros = Array.from({ length: 7 }, (_, i) => ({ day: i, value: 0, sessions: i % 2 ? 0 : 1 }));
+    const days = [...zeros, ...mk(P).map((d, i) => ({ ...d, day: 7 + i }))];
+    const r = monotonyStrain(days);
+    expect(r.strainPct).toBeNull();
+    expect(Number.isFinite(r.strain)).toBe(true);
+    expect(monotonyStrain([])).toEqual({ monotony: null, strain: null, strainPct: null, sessions: 0 });
   });
 });

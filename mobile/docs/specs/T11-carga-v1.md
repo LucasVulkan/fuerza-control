@@ -190,6 +190,9 @@ panel. El estado vacío queda solo para «aún no hay sesiones».
 - [ ] ESFUERZO en contorno con «—»; al tocarla, la invitación. Desde un cliente, la versión del entrenador con su nombre.
 - [ ] Apuntar el esfuerzo en una sesión: la carga vuelve a ser la interna.
 
+**Notas de la implementación (T11-02):**
+- La tarjeta ESFUERZO sin sRPE conserva su relleno de lima al elegirla (solo cambia a contorno y «—» cuando no está elegida). La gráfica de Esfuerzo con sRPE pero menos de 2 semanas queda vacía hasta T11-04 (antes enseñaba `load.emptyNoRpe`, que mentía con sRPE; se ha borrado).
+
 ## 6. T11-03 — Carga: estado, monotonía y strain
 
 **Lectura** encima de la gráfica, con su punto de color: la frase del estado
@@ -229,6 +232,9 @@ Con menos de 3 sesiones no hay monotonía, y por tanto tampoco strain.
 - [ ] La frase del estado es la nueva, nunca «Estás descargando».
 - [ ] Monotonía con valor y etiqueta; strain en %. Tocar cualquiera de las dos abre su ficha.
 - [ ] Con 2 sesiones en 7 días: «—» y el aviso de las 3 sesiones.
+
+**Notas de la implementación (T11-03):**
+- `monotonyStrain(days)` (`trainingLoad.js`) solo usa bloques completos de 7 días; los huecos (sesión sin sRPE) cuentan 0 como los descansos. Los textos del estado son claves `load.stateX` / `load.stateThirdX`; `load.state.*` y `load.emptyNoRpe` se han borrado. El strain se pinta como «+12 %» (con espacio, como la maqueta) y las tarjetas siguen con «+12%» de T11-01.
 
 ## 7. T11-04 — Esfuerzo: semanas o sesiones y esfuerzo vs carga
 

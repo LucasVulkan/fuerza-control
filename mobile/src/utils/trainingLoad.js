@@ -790,3 +790,32 @@ export function strengthChange(log, allExercises, { fallbackBodyWeight = null, e
   }
   return changes.length ? Math.round((changes.reduce((a, b) => a + b, 0) / changes.length) * 100) : null;
 }
+
+/**
+ * Monotonía y strain de los últimos 7 días de `days` (T11-03), con su base.
+ *
+ * Los días de descanso y los huecos (sesión sin sRPE) cuentan 0. Sin 3 sesiones
+ * en esos 7 días no hay monotonía, y sin ella tampoco strain. La base del % es la
+ * media del strain de los 4 bloques de 7 días anteriores (por fecha, no por
+ * semana natural), contando solo los que tienen 3 sesiones o más: una semana
+ * floja en la base inflaría el %.
+ *
+ * @returns {{ monotony: number|null, strain: number|null, strainPct: number|null, sessions: number }}
+ */
+export function monotonyStrain(days) {
+  const blocks = weekBlocks(days, 5).filter((b) => b.length === 7);
+  const sessionsIn = (b) => b.reduce((a, d) => a + d.sessions, 0);
+  const vals = (b) => b.map((d) => d.value ?? 0);
+  const cur = blocks[blocks.length - 1];
+  if (!cur) return { monotony: null, strain: null, strainPct: null, sessions: 0 };
+  const sessions = sessionsIn(cur);
+  const m = sessions >= MIN_SESSIONS_FOR_MONOTONY ? monotony(vals(cur)) : null;
+  if (m == null) return { monotony: null, strain: null, strainPct: null, sessions };
+  const s = strain(vals(cur));
+  const base = blocks.slice(0, -1)
+    .filter((b) => sessionsIn(b) >= MIN_SESSIONS_FOR_MONOTONY)
+    .map((b) => strain(vals(b)))
+    .filter((x) => x != null);
+  const mean = base.length ? base.reduce((a, b) => a + b, 0) / base.length : 0;
+  return { monotony: m, strain: s, strainPct: mean > 0 ? Math.round((s / mean - 1) * 100) : null, sessions };
+}

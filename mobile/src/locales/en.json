@@ -180,7 +180,7 @@
     "loadOverTime": {
       "name": "Load over time",
       "what": "Each bar is one day's load. The two lines are the average of the last 7 days (lime) and the last 28 (blue), which show the overall shape beneath the day-to-day noise.",
-      "read": "When the 7-day line runs above the 28-day one you are building more load than usual; when it drops below, you are deloading. Frequent crossings are a sign of healthy alternation. What's worth watching is a large, sustained gap."
+      "read": "When the 7-day line runs above the 28-day one you have trained more than usual; when it drops below, you have trained less. Frequent crossings are a sign of healthy alternation. What's worth watching is a large, sustained gap."
     },
     "effortVsLoad": {
       "name": "Effort vs load",
@@ -296,23 +296,23 @@
     },
     "loadState": {
       "name": "Load state",
-      "what": "Sums up whether you're building load, holding steady, or deloading.",
-      "formula": "7-day average ÷ 28-day average → below 0.8 deload · 0.8 to 1.3 steady · above 1.3 building",
+      "what": "Sums up whether this week you trained more, the same or less than in your last month.",
+      "formula": "7-day average ÷ 28-day average → below 0.8 = less · 0.8 to 1.3 = in line · above 1.3 = more",
       "rules": "It's shown as a state and not as a number on purpose.",
       "caveat": "This is the acute/chronic ratio. The numeric version carries known mathematical artefacts and its risk thresholds don't replicate consistently across studies, so treat it as guidance rather than a traffic light."
     },
     "monotony": {
       "name": "Monotony",
-      "what": "Indicates whether you repeat the same load day after day without variation, a pattern linked to worse recovery. The LOWER the better: it means you alternate hard days with easy ones.",
+      "what": "How alike the load of the last 7 days is. Rest days count too. The lower it is, the more you alternate hard days with easy ones.",
       "formula": "monotony = average daily load ÷ its standard deviation, over 7 days",
-      "rules": "Rest days count as 0, as the original method defines. It's hidden when the week has fewer than {{minSessions}} sessions. Above {{high}} it's flagged as high; below {{moderate}}, as low.",
+      "rules": "Rest days count as 0, as the original method defines. It's hidden when the last 7 days have fewer than {{minSessions}} sessions. From {{high}} up the days are very similar; between {{moderate}} and {{high}}, fairly similar; below {{moderate}}, varied.",
       "caveat": "With one or two sessions in the week, rest days dominate the deviation and the number stops meaning anything: that's why it's hidden rather than shown in green."
     },
     "strain": {
       "name": "Strain",
-      "what": "Sums up the week's accumulated stress by combining how much load you did with how little you varied it.",
-      "formula": "strain = the week's total load × monotony",
-      "rules": "It's shown against your own average of the 4 previous weeks. It's hidden when the week has fewer than {{minSessions}} sessions, same as monotony.",
+      "what": "Load × monotony of the last 7 days, against your average of the previous 4 weeks.",
+      "formula": "strain = total load of the 7 days × monotony",
+      "rules": "It's shown as a % against your own average of the previous 4 weeks, counting only those with {{minSessions}} sessions or more. It's hidden when the last 7 days have fewer than {{minSessions}} sessions, same as monotony.",
       "caveat": "There is no universal strain threshold, so it's never shown with fixed colours or an alarm value: it only makes sense against your own history."
     },
     "indexed100": {
@@ -1769,17 +1769,31 @@
     "vsMonthYou": "vs your month",
     "vsMonthThird": "vs their month",
     "in4Weeks": "in 4 weeks",
-    "stateThirdLoading": "They are training above their average for the last month.",
-    "stateThirdSteady": "The week is in line with their average for the last month.",
-    "stateThirdUnloading": "They are training below their average for the last month.",
+    "stateLoading": "This week you have trained more than in your last month.",
+    "stateSteady": "This week is in line with your last month.",
+    "stateUnloading": "This week you have trained less than in your last month.",
+    "stateThirdLoading": "This week they have trained more than in their last month.",
+    "stateThirdSteady": "This week is in line with their last month.",
+    "stateThirdUnloading": "This week they have trained less than in their last month.",
+    "stateVs": "Last 7 days against the 28-day average.",
+    "workTitle": "Load · work done",
+    "workHint": "With no effort logged, load is the work: reps weighted by how close each set is to your max.",
+    "workHintThird": "With no effort logged, load is the work: reps weighted by how close each set is to their max.",
+    "inviteTitle": "After each session, answer “How hard was it?” (1 to 10).",
+    "inviteText": "With that you will see here how much each week costs you and whether you are overdoing it, not just how much you do.",
+    "inviteThirdTitle": "{{name}} does not log how hard each session was.",
+    "inviteThirdText": "Ask them to answer “How hard was it?” (1 to 10) when they finish. With that you would see here how much each week costs them and whether they are overdoing it, not just how much they do.",
+    "noEffort": "not logged",
     "emptyThird": "{{name}} has not completed any session yet. Once they do, you will see their load here.",
     "load7d": "Load 7d",
     "vs28d": "vs 28d average",
     "monotony": "Monotony",
-    "monotonyLow": "varied",
-    "monotonyModerate": "normal",
-    "monotonyHigh": "repetitive",
-    "needsSessions": "too few sessions",
+    "monotonyLow": "varied days",
+    "monotonyModerate": "fairly similar days",
+    "monotonyHigh": "very similar days",
+    "monotonyHint": "How alike the load of the last 7 days is. Rest days count too.",
+    "monotonyHintThird": "How alike their load of the last 7 days is. Rest days count too.",
+    "needsSessions": "You need {{n}} sessions in 7 days",
     "strain": "Strain",
     "vsBaseline": "vs your baseline",
     "effortTitle": "Effort vs load",
@@ -1802,7 +1816,8 @@
     "groupsHint": "The marks show the {{min}}-{{max}} weekly sets reference range per group. Counts direct volume: a bench press adds to chest, not triceps.",
     "strainTitle": "Strain by week",
     "lastWeeks": "last {{count}}",
-    "strainHint": "One bar per week. Weeks with fewer than 3 sessions are outlined.",
+    "strainHint": "Load × monotony of the last 7 days, against your average of the previous 4 weeks.",
+    "strainHintThird": "Load × monotony of their last 7 days, against their average of the previous 4 weeks.",
     "thisWeek": "this week",
     "sessions7d": "Sessions",
     "avgPerWeek": "avg {{n}}/wk",
@@ -1812,22 +1827,7 @@
     "legendDaily": "daily load",
     "legend7d": "7d average",
     "legend28d": "28d average",
-    "state": {
-      "loading": {
-        "title": "You're building load.",
-        "detail": "You are training above your average for the last month."
-      },
-      "steady": {
-        "title": "Load is steady.",
-        "detail": "This week is in line with your average for the last month."
-      },
-      "unloading": {
-        "title": "You're deloading.",
-        "detail": "You are training below your average for the last month."
-      }
-    },
-    "emptyNoSessions": "Complete your first session to see load here.",
-    "emptyNoRpe": "No effort data yet. When you finish a session, answer “How hard was it?” in the recap: load is computed from that and the duration."
+    "emptyNoSessions": "Complete your first session to see load here."
   },
   "exerciseSelector": {
     "customBadge": "CUSTOM",
