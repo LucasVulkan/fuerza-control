@@ -829,23 +829,20 @@ export default function LoadTab({
             { values: effort.vs.external, color: th.colors.accent },
           ]} dates={effort.vsDates} />
 
-          {vsChip && (
-            <>
-              <View style={styles.chips}>
-                <View style={styles.chip}>
-                  <View style={[styles.dot, { backgroundColor: th.colors.accent }]} />
-                  <Text style={styles.chipMuted}>{t('load.legendLoad')}</Text>
-                  <Text style={styles.chipStrong}>{signed(Math.round(vsChip.loadPct))}</Text>
-                </View>
-                <View style={styles.chip}>
-                  <View style={[styles.dot, { backgroundColor: th.colors.orange }]} />
-                  <Text style={styles.chipMuted}>{t('load.legendEffort')}</Text>
-                  <Text style={styles.chipStrong}>{signed(Math.round(vsChip.effortPct))}</Text>
-                </View>
-              </View>
-              <Text style={styles.groupHint}>{t('load.trendHint')}</Text>
-            </>
-          )}
+          {/* La leyenda sale siempre; las cifras, solo con 8 semanas completas (4 contra 4). */}
+          <View style={styles.chips}>
+            <View style={styles.chip}>
+              <View style={[styles.dot, { backgroundColor: th.colors.accent }]} />
+              <Text style={styles.chipMuted}>{t('load.legendLoad')}</Text>
+              {vsChip && <Text style={styles.chipStrong}>{signed(Math.round(vsChip.loadPct))}</Text>}
+            </View>
+            <View style={styles.chip}>
+              <View style={[styles.dot, { backgroundColor: th.colors.orange }]} />
+              <Text style={styles.chipMuted}>{t('load.legendEffort')}</Text>
+              {vsChip && <Text style={styles.chipStrong}>{signed(Math.round(vsChip.effortPct))}</Text>}
+            </View>
+          </View>
+          <Text style={styles.groupHint}>{t(vsChip ? 'load.trendHint' : 'load.trendNeeds8')}</Text>
         </View>
       )}
 
@@ -987,7 +984,7 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   cardHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardTitle: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  cardTitle: { ...textStyles.caps, color: th.colors.text, textTransform: 'uppercase' },
   cardMeta:  { ...textStyles.label, color: th.colors.mutedLight },
   views:     { flexDirection: 'row', gap: spacing.md },
   viewBtn:   { ...textStyles.labelStrong },

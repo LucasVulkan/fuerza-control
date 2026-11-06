@@ -111,7 +111,7 @@ Para tenerlo claro al implementar (todo en `trainingLoad.js`):
   pantalla se quedan cortos y la explicación larga va en la ficha.
 - **Anatomía de una gráfica (6-nov, maqueta `mockups/carga-t11-3.html`).** Todas
   las de la pestaña siguen la del detalle de ejercicio, con título:
-  1. **Cabecera**: título `caps` en `mutedLight` con su «i»; a la derecha, si hay
+  1. **Cabecera**: título `caps` en `text` (blanco, 6-nov) con su «i»; a la derecha, si hay
      dos vistas, un cambio de texto («Semanas · Sesiones», `labelStrong`): la
      elegida en `accent`, la otra en `mutedLight`. Nunca un segmentado.
   2. **Cifra**: el dato con su unidad en `heading` (un punto menos que las

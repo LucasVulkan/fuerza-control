@@ -1818,6 +1818,7 @@
     "weeksShown_one": "{{count}} semana",
     "weeksShown_other": "{{count}} semanas",
     "trendHint": "Últimas 4 semanas contra las 4 anteriores.",
+    "trendNeeds8": "La comparación sale con 8 semanas completas de datos.",
     "rpeTitle": "RPE por ejercicio",
     "rpeExercise": "Ejercicio",
     "rpeSets": "Series",
