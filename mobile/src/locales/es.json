@@ -46,14 +46,14 @@
       "tabs": { "title": "Moverte por la app", "text": "Desde aquí puedes ver tu programa, donde podrás editarlo, tu progreso y el resto de la app." }
     },
     "program": {
-      "view": { "title": "Ver programa", "text": "La pantalla con el programa completo: etapas, sesiones y ejercicios. Pulsa para abrirla." },
-      "edit": { "title": "Editar programa", "text": "El editor para cambiar las sesiones, los ejercicios y las etapas del programa. Pulsa para abrirlo." },
-      "editTrainer": { "title": "Programa de tu entrenador", "text": "Este programa lo lleva tu entrenador, que ve tus entrenos y hace los cambios. Pulsa en Ver programa para consultarlo." },
-      "stages": { "title": "Etapas", "text": "Las etapas del programa, con la que llevas en curso destacada y las semanas que has hecho. Pulsa en una etapa para pasar a ella." }
+      "view": { "title": "Ver programa", "text": "Aquí puedes abrir una vista general del programa." },
+      "edit": { "title": "Editar programa", "text": "El editor para cambiar las sesiones, los ejercicios y las etapas del programa." },
+      "editTrainer": { "title": "Programa de tu entrenador", "text": "Los programas creados por un entrenador no se pueden editar." },
+      "stages": { "title": "Etapas", "text": "Las etapas del programa, con la etapa activa destacada y las semanas que has hecho. Pulsa en una etapa para pasar a ella." }
     },
     "progress": {
-      "tabs": { "title": "Tu progreso", "text": "Ejercicios muestra cómo evoluciona cada ejercicio, Carga cuánto has entrenado cada día e Historial las sesiones que has hecho. Toca en una opción para cambiar de vista." },
-      "exercise": { "title": "Un ejercicio", "text": "Cada tarjeta resume tu progreso en un ejercicio. Toca en una para ver su ficha, con la gráfica y los registros." }
+      "tabs": { "title": "Tu progreso", "text": "Aquí puedes ver el progreso de tus ejercicios, la carga de tu entrenamiento en general y el historial de las sesiones completadas. Toca en una opción para cambiar la vista." },
+      "exercise": { "title": "Un ejercicio", "text": "Cada tarjeta resume tu progreso en un ejercicio. Toca en una para ver el progreso de un ejercicio de forma más detallada." }
     }
   },
   "header": {

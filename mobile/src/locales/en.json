@@ -46,14 +46,14 @@
       "tabs": { "title": "Getting around the app", "text": "From here you can see your program, where you can edit it, your progress and the rest of the app." }
     },
     "program": {
-      "view": { "title": "View program", "text": "The screen with the whole program: stages, sessions and exercises. Tap to open it." },
-      "edit": { "title": "Edit program", "text": "The editor to change the program's sessions, exercises and stages. Tap to open it." },
-      "editTrainer": { "title": "Your trainer's program", "text": "Your trainer runs this program, sees your workouts and makes the changes. Tap View program to look at it." },
-      "stages": { "title": "Stages", "text": "The stages of the program, with the one you are in highlighted and the weeks you have done. Tap a stage to switch to it." }
+      "view": { "title": "View program", "text": "Here you can open an overview of the program." },
+      "edit": { "title": "Edit program", "text": "The editor to change the program's sessions, exercises and stages." },
+      "editTrainer": { "title": "Your trainer's program", "text": "Programs created by a trainer can't be edited." },
+      "stages": { "title": "Stages", "text": "The stages of the program, with the active stage highlighted and the weeks you have done. Tap a stage to switch to it." }
     },
     "progress": {
-      "tabs": { "title": "Your progress", "text": "Exercises shows how each exercise evolves, Load how much you have trained each day and History the sessions you have done. Tap an option to change view." },
-      "exercise": { "title": "An exercise", "text": "Each card sums up your progress in one exercise. Tap one to see its page, with the chart and the records." }
+      "tabs": { "title": "Your progress", "text": "Here you can see the progress of your exercises, your overall training load and the history of your completed sessions. Tap an option to change the view." },
+      "exercise": { "title": "An exercise", "text": "Each card sums up your progress in one exercise. Tap one to see that exercise's progress in more detail." }
     }
   },
   "header": {
