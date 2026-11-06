@@ -261,14 +261,18 @@ function MetricTile({ selected, onPress, label, value, unit, sub, values, color,
   const on     = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0.4, 1], [0, 1], 'clamp') }));
   const R      = Math.ceil(Math.hypot(w, TILE_H));
 
-  const face = (c, small, sparkColor, style) => (
+  const face = (c, small, sparkColor, valueColor, style) => (
     <Reanimated.View style={[styles.tileFace, style]} pointerEvents="none">
-      <Text style={[styles.statLabel, { color: small }]} numberOfLines={1}>{label}</Text>
-      <Text style={[styles.statValue, { color: empty && c === C.text ? C.muted : c }]} numberOfLines={1}>
-        {value}
-        {unit ? <Text style={[styles.statUnit, { color: small }]}>{` ${unit}`}</Text> : null}
-      </Text>
-      <Spark values={values} color={sparkColor} width={w - spacing.md * 2} />
+      {/* Orden de las Progress cards de Ejercicios: cifra, nombre, gráfica, subtítulo. */}
+      <View style={styles.statValueBlock}>
+        <Text style={[styles.statValue, { color: empty && c === C.text ? C.muted : valueColor }]} numberOfLines={1}
+          adjustsFontSizeToFit minimumFontScale={0.6}>
+          {value}
+          {unit ? <Text style={[styles.statUnit, { color: small }]}>{` ${unit}`}</Text> : null}
+        </Text>
+        <Text style={[styles.statLabel, { color: c }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{label}</Text>
+      </View>
+      <Spark values={values} color={sparkColor} width={w - spacing.lg * 2} />
       <Text style={[styles.statSub, { color: small }]} numberOfLines={1}>{sub}</Text>
     </Reanimated.View>
   );
@@ -289,8 +293,8 @@ function MetricTile({ selected, onPress, label, value, unit, sub, values, color,
           style={[styles.tileFill, { width: R * 2, height: R * 2, borderRadius: R, left: w - R, top: -R }, circle]}
         />
       )}
-      {face(C.text, C.mutedLight, color, off)}
-      {face(C.onAccent, withOpacity(C.onAccent, 0.65), C.onAccent, on)}
+      {face(C.text, C.mutedLight, color, color, off)}
+      {face(C.onAccent, withOpacity(C.onAccent, 0.65), C.onAccent, C.onAccent, on)}
     </TouchableOpacity>
   );
 }
@@ -698,8 +702,10 @@ const makeStyles = (th) => StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems:     'center',
     justifyContent: 'center',
-    gap:            spacing.xs2,
+    paddingHorizontal: spacing.lg,
+    gap:            spacing.sm,
   },
+  statValueBlock: { alignItems: 'center', gap: spacing.xs },
   // Sin dato (ESFUERZO sin sRPE): en contorno y sin fondo; al elegirla se llena igual.
   tileEmpty: { backgroundColor: 'transparent', borderWidth: 1, borderColor: th.colors.border },
   statValue: { ...textStyles.title, textAlign: 'center' },
