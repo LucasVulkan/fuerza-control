@@ -79,18 +79,25 @@ const GUIDE = { strokeDasharray: '2 3', strokeWidth: 1 };
 const axisWidth = (labels) => Math.ceil(Math.max(...labels.map((l) => l.length)) * 6.6) + 6;
 
 /** Fechas bajo el área de la gráfica: la primera, un par en medio y la última. `right` = ancho del eje. */
-function XLabels({ dates, right = 0 }) {
+function XLabels({ dates, right = 0, span = 1 }) {
   const th = useTheme();
   const { i18n } = useTranslation();
   if (!dates || dates.length < 2) return null;
   const n = dates.length;
-  const m = Math.min(4, n);
+  const m = Math.min(span > 1 ? 3 : 4, n);
+  const fmt = (ts) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
+  // Con `span` (días por barra) cada rótulo es la franja: «4–10 ago», «28 oct–3 nov».
+  const label = (ts) => {
+    if (span <= 1) return fmt(ts);
+    const a = new Date(ts); const b = new Date(ts); b.setDate(b.getDate() + span - 1);
+    return a.getMonth() === b.getMonth() ? `${a.getDate()}–${fmt(b)}` : `${fmt(a)}–${fmt(b)}`;
+  };
   const idx = [...new Set(Array.from({ length: m }, (_, k) => Math.round((k * (n - 1)) / (m - 1))))];
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingRight: right, marginTop: spacing.xs2 }}>
       {idx.map((i) => (
         <Text key={i} style={[textStyles.micro, { color: th.colors.mutedLight }]}>
-          {new Date(dates[i]).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
+          {label(dates[i])}
         </Text>
       ))}
     </View>
@@ -269,8 +276,8 @@ function EffortBars({ bars, dates, guides = false, height = 84 }) {
       <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {width > 0 && (
           <Svg width={width} height={height}>
-            {guides && bars.map((_, i) => (
-              <Line key={`g${i}`} x1={i * step + step / 2} x2={i * step + step / 2} y1={PAD_TOP} y2={y(0)} stroke={th.colors.surface2} {...GUIDE} />
+            {guides && bars.slice(1).map((_, i) => (
+              <Line key={`g${i}`} x1={(i + 1) * step} x2={(i + 1) * step} y1={PAD_TOP} y2={y(0)} stroke={th.colors.surface2} {...GUIDE} />
             ))}
             {[0, 5, 10].map((v) => (
               <Line key={v} x1={0} x2={width} y1={y(v)} y2={y(v)} stroke={th.colors.surface2} strokeWidth={1} />
@@ -284,7 +291,7 @@ function EffortBars({ bars, dates, guides = false, height = 84 }) {
       </View>
       <AxisLabels height={height} width={aw} ticks={ticks} />
     </View>
-    <XLabels dates={dates} right={aw + spacing.sm} />
+    <XLabels dates={dates} right={aw + spacing.sm} span={guides ? 7 : 1} />
     </View>
   );
 }
@@ -589,9 +596,6 @@ export default function LoadTab({
     strength: { title: t('load.perfTitle'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
   }[metric];
 
-  // RPE de sesión: la semana contra la media del periodo (naranja = más esfuerzo).
-  const effortDelta = effort && effort.recentMean != null && effort.meanPeriod != null
-    ? Math.round((effort.recentMean - effort.meanPeriod) * 10) / 10 : null;
   const vsChip = effort?.vs.chip;
   const vsColor = vsChip?.label === 'adaptation' ? th.colors.accent
     : vsChip?.label === 'fatigue' ? th.colors.orange : th.colors.text;
@@ -633,7 +637,7 @@ export default function LoadTab({
       </View>
 
       {/* ── Un solo periodo para toda la pestaña, pegado a las tarjetas ──── */}
-      <View style={styles.periodWrap}>
+      <View>
         <SegmentedControl
           options={PERIODS.map((id) => ({ id, label: t(`load.${PERIOD_KEY[id]}`) }))}
           value={period}
@@ -663,7 +667,7 @@ export default function LoadTab({
 
         {metric === 'load' && (
           <>
-            {load.vs28 != null && figure(pctOrDash(load.vs28), t(third ? 'load.vsMonthThird' : 'load.vsMonthYou'), null, th.colors.accent)}
+            {load.vs28 != null && figure(pctOrDash(load.vs28), t(third ? 'load.vsMonthLongThird' : 'load.vsMonthLongYou'), null, th.colors.accent)}
 
             <LoadChart days={visible.days} mean7={visible.mean7} mean28={visible.mean28} />
 
@@ -698,43 +702,20 @@ export default function LoadTab({
               <Text style={styles.groupHint}>{t(third ? 'load.workHintThird' : 'load.workHint')}</Text>
             )}
 
-            <View style={styles.fact}>
-              <View style={styles.factHead}>
-                <InfoLabel align="left" textStyle={styles.factTitle} onPress={() => setInfo({ ids: ['monotony'] })}>
-                  {t('load.monotony')}
-                </InfoLabel>
-                <Text style={[styles.factValue, ms.monotony != null && ms.monotony >= MONOTONY_MODERATE && styles.factValueFlat]}>
-                  {ms.monotony != null ? `${dec(ms.monotony.toFixed(1))} · ${monotonyLabel}` : '—'}
-                </Text>
-              </View>
-              <Text style={styles.groupHint}>
-                {ms.monotony != null
-                  ? t(third ? 'load.monotonyHintThird' : 'load.monotonyHint')
-                  : t('load.needsSessions', { n: MIN_SESSIONS_FOR_MONOTONY })}
-              </Text>
-            </View>
-
-            <View style={styles.fact}>
-              <View style={styles.factHead}>
-                <InfoLabel align="left" textStyle={styles.factTitle} onPress={() => setInfo({ ids: ['strain'] })}>
-                  {t('load.strain')}
-                </InfoLabel>
-                <Text style={styles.factValue}>{pctOrDash(ms.strainPct)}</Text>
-              </View>
-              <Text style={styles.groupHint}>{t(third ? 'load.strainHintThird' : 'load.strainHint')}</Text>
-            </View>
           </>
         )}
 
         {metric === 'effort' && (effort ? (
           <>
             {figure(
-              effort.meanPeriod != null ? dec(effort.meanPeriod.toFixed(1)) : '—',
-              t('load.rpeMeanSub', { sessions: t('load.sessionsCount', { count: effort.countPeriod }) }),
-              effortDelta != null ? (
-                <View style={[styles.chipBox, effortDelta > 0 ? styles.chipWarm : styles.chipUp]}>
-                  <Text style={[styles.chipStrong, { color: effortDelta > 0 ? th.colors.orange : th.colors.accent }]}>
-                    {`${effortDelta > 0 ? '+' : effortDelta < 0 ? '−' : ''}${dec(Math.abs(effortDelta).toFixed(1))} ${t('load.thisWeek')}`}
+              effort.recentMean != null ? dec(effort.recentMean.toFixed(1)) : '—',
+              t('load.rpeLast7'),
+              effort.meanPeriod != null ? (
+                <View style={styles.chipBox}>
+                  <Text style={styles.chipMuted}>
+                    {`${t('load.rpeMeanChip', { p: t(`load.${PERIOD_KEY[period]}`).toLowerCase() })} `}
+                    <Text style={styles.chipStrong}>{dec(effort.meanPeriod.toFixed(1))}</Text>
+                    {` · ${t('load.sessionsCount', { count: effort.countPeriod })}`}
                   </Text>
                 </View>
               ) : null,
@@ -756,7 +737,7 @@ export default function LoadTab({
               <View style={styles.chip}>
                 <View style={[styles.dot, { backgroundColor: th.colors.orange }]} />
                 <Text style={styles.chipMuted}>
-                  {`${t('load.last7d')}${effort.recentMean != null ? ` · ${dec(effort.recentMean.toFixed(1))}` : ''}`}
+                  {t('load.last7d')}
                 </Text>
               </View>
             </View>
@@ -795,6 +776,40 @@ export default function LoadTab({
           </>
         )}
       </View>
+
+      {/* ── Monotonía y strain (solo con CARGA elegida) ─────────────────── */}
+      {metric === 'load' && (
+        <>
+          <View style={styles.factCard}>
+            <View style={styles.cardHead}>
+              <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ ids: ['monotony'] })}>
+                {t('load.monotony')}
+              </InfoLabel>
+              <Text style={[styles.factValue, ms.monotony != null && ms.monotony >= MONOTONY_MODERATE && styles.factValueFlat]}>
+                {ms.monotony != null ? `${dec(ms.monotony.toFixed(1))} · ${monotonyLabel}` : '—'}
+              </Text>
+            </View>
+            <View style={styles.chipBox}>
+              <Text style={styles.chipMuted}>
+                {ms.monotony != null
+                  ? t(third ? 'load.monotonyHintThird' : 'load.monotonyHint')
+                  : t('load.needsSessions', { n: MIN_SESSIONS_FOR_MONOTONY })}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.factCard}>
+            <View style={styles.cardHead}>
+              <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ ids: ['strain'] })}>
+                {t('load.strain')}
+              </InfoLabel>
+              <Text style={styles.factValue}>{pctOrDash(ms.strainPct)}</Text>
+            </View>
+            <View style={styles.chipBox}>
+              <Text style={styles.chipMuted}>{t(third ? 'load.strainHintThird' : 'load.strainHint')}</Text>
+            </View>
+          </View>
+        </>
+      )}
 
       {/* ── Esfuerzo vs carga (solo con ESFUERZO elegida) ───────────────── */}
       {metric === 'effort' && effort?.hasVs && (
@@ -932,10 +947,9 @@ export default function LoadTab({
 const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
   // El aire bajo el conmutador de arriba lo pone ProgressPanel (`spacing.xl`).
-  content: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
 
   // Periodo único, pegado a las tarjetas: 4 en vez del hueco normal.
-  periodWrap: { marginTop: spacing.xs2 - spacing.md },
 
   // Mismas Progress cards que la pestaña de Ejercicios (gap 8, radio `md`: U13 §12).
   statsGrid: { flexDirection: 'row', gap: spacing.sm2, width: '100%', height: TILE_H, alignItems: 'center' },
@@ -994,8 +1008,6 @@ const makeStyles = (th) => StyleSheet.create({
     backgroundColor: th.colors.surface2, borderRadius: th.radius.xs,
     paddingHorizontal: spacing.sm2, paddingVertical: spacing.xs2,
   },
-  chipUp:     { backgroundColor: th.tint.accent10 },
-  chipWarm:   { backgroundColor: th.tint.orange30 },
   chipMuted:  { ...textStyles.label, color: th.colors.mutedLight },
   chipStrong: { ...textStyles.labelStrong, color: th.colors.text },
   legendBar:  { width: 4, height: 9, borderRadius: 1 },
@@ -1013,10 +1025,12 @@ const makeStyles = (th) => StyleSheet.create({
   dot:        { width: 7, height: 7, borderRadius: 4 },
 
   // Filas de Monotonía y Strain: línea encima, sin caja.
-  fact:          { gap: spacing.xs2, borderTopWidth: 1, borderTopColor: th.colors.border, paddingTop: spacing.md },
-  factHead:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  factTitle:     { ...textStyles.labelStrong, color: th.colors.text },
-  factValue:     { ...textStyles.labelStrong, color: th.colors.accent, textAlign: 'right', flexShrink: 1 },
+  // Monotonía y strain: tarjetas estrechas, título como las gráficas y valor a la derecha.
+  factCard: {
+    backgroundColor: th.colors.surface, borderRadius: th.radius.md,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm,
+  },
+  factValue: { ...textStyles.bodyStrong, color: th.colors.accent, textAlign: 'right', flexShrink: 1 },
   factValueFlat: { color: th.colors.mutedLight },
 
   // Esfuerzo sin sRPE: barras fantasma en contorno e invitación.
