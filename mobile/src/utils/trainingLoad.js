@@ -744,14 +744,6 @@ export function weekBlocks(days, n = 8) {
   return out;
 }
 
-/** Carga de cada bloque de 7 días (suma; null si todo el bloque son huecos). */
-export function loadBlocks(days, n = 8) {
-  return weekBlocks(days, n).map((b) => {
-    const v = b.map((d) => d.value).filter((x) => x != null);
-    return v.length ? v.reduce((a, c) => a + c, 0) : null;
-  });
-}
-
 /** sRPE medio de las sesiones de cada bloque de 7 días (null sin sRPE). La última es «últimos 7 días». */
 export function effortBlocks(log, days, n = 8) {
   const rated = (log ?? []).filter((e) => e.sessionRpe != null)

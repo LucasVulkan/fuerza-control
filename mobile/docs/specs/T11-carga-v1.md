@@ -118,13 +118,13 @@ La pestaña, de arriba abajo: **tres tarjetas → la gráfica de la tarjeta eleg
 (con Esfuerzo) RPE medio por ejercicio → Series por grupo**. Sin calendario
 (T11-08), sin línea de semana de etapa y sin el selector de periodo suelto.
 
-**Tarjetas** (`statTile` de hoy, contenido centrado, misma fila de tres):
+**Tarjetas** con el formato de las Progress cards de Ejercicios (cifra en color, nombre debajo y subtítulo; 108 de alto). Sin minigráfica: repetía lo que dice la cifra y la gráfica de debajo (decidido 6-nov tras probar):
 
-| Tarjeta | Número | Subtítulo | Minigráfica (8 semanas) |
-|---|---|---|---|
-| CARGA | media 7 d ÷ media 28 d − 1, en % (`+2 %`) | «vs su mes» / «vs tu mes» | carga de cada bloque de 7 días, `accent` |
-| ESFUERZO | media del sRPE de las sesiones de los últimos 7 días, «8,0 /10» | «últimos 7 días» | media de sRPE de cada bloque, `orange` |
-| FUERZA | cambio del índice de rendimiento en 4 semanas, en % | «en 4 semanas» | índice semanal, `accent` |
+| Tarjeta | Número | Subtítulo |
+|---|---|---|
+| CARGA | media 7 d ÷ media 28 d − 1, en % (`+2 %`) | «vs su mes» / «vs tu mes» |
+| ESFUERZO | media del sRPE de las sesiones de los últimos 7 días, «8,0 /10» | «últimos 7 días» |
+| FUERZA | cambio del índice de rendimiento en 4 semanas, en % | «en 4 semanas» |
 
 - **Selección** con el relleno de las fichas de datos de la app, el de
   `StageCards.jsx`. Es un círculo `accent` que sale de la esquina de arriba a la
@@ -155,7 +155,7 @@ cercano no da esos 16 px, se usa el más cercano y se avisa.
 
 **Notas de la implementación (T11-01):**
 - `loadSummary` (`trainingLoad.js`) devuelve la serie ya con `value` (interna o externa) y la usan la tarjeta CARGA y `clientLoadPct`. `clientLoadPct` conserva su umbral de 14 días de historial.
-- La cifra de FUERZA sale de `strengthChange` (mejor e1RM de 28 días contra los 28 anteriores, por ejercicio, solo con dato en las dos ventanas), no de `performanceWeekly`; la minigráfica sí usa el índice semanal. La gráfica de Fuerza sigue siendo la de hoy hasta T11-06.
+- La cifra de FUERZA sale de `strengthChange` (mejor e1RM de 28 días contra los 28 anteriores, por ejercicio, solo con dato en las dos ventanas), no de `performanceWeekly`. La gráfica de Fuerza sigue siendo la de hoy hasta T11-06.
 - Sin sRPE, la gráfica de Esfuerzo enseña de momento el texto `load.emptyNoRpe` dentro de su tarjeta (T11-02 pone la invitación). La pestaña ya no se vacía por falta de sRPE: la carga pinta la externa.
 - La monotonía, el strain y su tira se han quitado de la pantalla; vuelven en T11-03.
 - `LoadTab` recibe `program` pero aún no lo usa (lo necesita T11-07).

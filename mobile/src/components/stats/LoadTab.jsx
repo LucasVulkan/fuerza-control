@@ -34,7 +34,7 @@ import { useStore } from '../../../store/useStore';
 
 import {
   loadState, setsByMuscleGroup, weeklySeries, indexTo100, effortTrend, performanceWeekly,
-  loadSummary, loadBlocks, effortBlocks, strengthChange, monotonyStrain,
+  loadSummary, effortBlocks, strengthChange, monotonyStrain,
   SETS_TARGET_MIN, SETS_TARGET_MAX, MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
 } from '../../utils/trainingLoad';
 import { spacing, textStyles, withOpacity } from '../../theme';
@@ -210,42 +210,15 @@ function IndexChart({ series, height = 96 }) {
 
 // ── Tarjetas de selección ─────────────────────────────────────────────────────
 
-const TILE_H = 112;
+const TILE_H = 108;   // la altura de las de Ejercicios
 const PERIODS = ['1m', '3m', '6m'];
-
-/** Línea de 22 px con los valores de las últimas 8 semanas; los huecos parten la línea. */
-function Spark({ values, color, width }) {
-  const pts = useMemo(() => {
-    const ok = values.filter((v) => v != null && Number.isFinite(v));
-    if (width <= 0 || ok.length < 2) return [];
-    const lo = Math.min(...ok); const hi = Math.max(...ok);
-    const n = values.length;
-    const out = []; let cur = [];
-    values.forEach((v, i) => {
-      if (v == null || !Number.isFinite(v)) { if (cur.length > 1) out.push(cur); cur = []; return; }
-      const x = n <= 1 ? width / 2 : 2 + (i / (n - 1)) * (width - 4);
-      const y = hi === lo ? 11 : 20 - ((v - lo) / (hi - lo)) * 18;
-      cur.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-    });
-    if (cur.length > 1) out.push(cur);
-    return out.map((c) => c.join(' '));
-  }, [values, width]);
-  return (
-    <Svg width={Math.max(width, 0)} height={22}>
-      {pts.map((p, i) => (
-        <Polyline key={i} points={p} fill="none" stroke={color} strokeWidth={1.7}
-          strokeLinejoin="round" strokeLinecap="round" />
-      ))}
-    </Svg>
-  );
-}
 
 /**
  * Una de las tres tarjetas. La elegida se rellena de lima desde la esquina de
  * arriba a la derecha, con el patrón de `StageCards` (T11 §4): círculo de radio
  * = diagonal, 450 ms al llenarse, 200 al vaciarse, y el texto cruza a `onAccent`.
  */
-function MetricTile({ selected, onPress, label, value, unit, sub, values, color, empty = false }) {
+function MetricTile({ selected, onPress, label, value, unit, sub, color, empty = false }) {
   const th     = useTheme();
   const C      = th.colors;
   const styles = useThemedStyles(makeStyles);
@@ -261,9 +234,9 @@ function MetricTile({ selected, onPress, label, value, unit, sub, values, color,
   const on     = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0.4, 1], [0, 1], 'clamp') }));
   const R      = Math.ceil(Math.hypot(w, TILE_H));
 
-  const face = (c, small, sparkColor, valueColor, style) => (
+  const face = (c, small, valueColor, style) => (
     <Reanimated.View style={[styles.tileFace, style]} pointerEvents="none">
-      {/* Orden de las Progress cards de Ejercicios: cifra, nombre, gráfica, subtítulo. */}
+      {/* Las Progress cards de Ejercicios: cifra y nombre, y debajo el subtítulo. */}
       <View style={styles.statValueBlock}>
         <Text style={[styles.statValue, { color: empty && c === C.text ? C.muted : valueColor }]} numberOfLines={1}
           adjustsFontSizeToFit minimumFontScale={0.6}>
@@ -272,7 +245,6 @@ function MetricTile({ selected, onPress, label, value, unit, sub, values, color,
         </Text>
         <Text style={[styles.statLabel, { color: c }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{label}</Text>
       </View>
-      <Spark values={values} color={sparkColor} width={w - spacing.lg * 2} />
       <Text style={[styles.statSub, { color: small }]} numberOfLines={1}>{sub}</Text>
     </Reanimated.View>
   );
@@ -293,8 +265,8 @@ function MetricTile({ selected, onPress, label, value, unit, sub, values, color,
           style={[styles.tileFill, { width: R * 2, height: R * 2, borderRadius: R, left: w - R, top: -R }, circle]}
         />
       )}
-      {face(C.text, C.mutedLight, color, color, off)}
-      {face(C.onAccent, withOpacity(C.onAccent, 0.65), C.onAccent, C.onAccent, on)}
+      {face(C.text, C.mutedLight, color, off)}
+      {face(C.onAccent, withOpacity(C.onAccent, 0.65), C.onAccent, on)}
     </TouchableOpacity>
   );
 }
@@ -352,15 +324,11 @@ export default function LoadTab({
 
   const tiles = useMemo(() => {
     const eff = effortBlocks(baseLog, days);
-    const from = load.endDay != null ? load.endDay - 8 * 7 * 86400000 : 0;
     return {
-      loadSpark: loadBlocks(days),
-      effortSpark: eff,
       effort7: eff.length ? eff[eff.length - 1] : null,
-      strengthSpark: perfAll.filter((w) => w.weekStart >= from).map((w) => w.index),
       strengthPct: strengthChange(baseLog, allExercises, { fallbackBodyWeight: bodyWeight, endDay: load.endDay }),
     };
-  }, [baseLog, allExercises, bodyWeight, days, load.endDay, perfAll]);
+  }, [baseLog, allExercises, bodyWeight, days, load.endDay]);
 
   // Ventana visible — recorta SOLO lo que se pinta.
   const visible = useMemo(() => {
@@ -465,22 +433,19 @@ export default function LoadTab({
         <MetricTile
           selected={metric === 'load'} onPress={() => setMetric('load')}
           label={t('load.cardLoad')} value={pctOrDash(load.vs28)}
-          sub={t(third ? 'load.vsMonthThird' : 'load.vsMonthYou')}
-          values={tiles.loadSpark} color={th.colors.accent}
+          sub={t(third ? 'load.vsMonthThird' : 'load.vsMonthYou')} color={th.colors.accent}
         />
         <MetricTile
           selected={metric === 'effort'} onPress={() => setMetric('effort')}
           label={t('load.cardEffort')} value={tiles.effort7 != null ? dec(tiles.effort7.toFixed(1)) : '—'}
           unit={tiles.effort7 != null ? '/10' : null}
           sub={load.source === 'external' ? t('load.noEffort') : t('load.last7d')}
-          empty={load.source === 'external'}
-          values={tiles.effortSpark} color={th.colors.orange}
+          empty={load.source === 'external'} color={th.colors.orange}
         />
         <MetricTile
           selected={metric === 'strength'} onPress={() => setMetric('strength')}
           label={t('load.cardStrength')} value={pctOrDash(tiles.strengthPct)}
-          sub={t('load.in4Weeks')}
-          values={tiles.strengthSpark} color={th.colors.accent}
+          sub={t('load.in4Weeks')} color={th.colors.accent}
         />
       </View>
 
@@ -702,8 +667,8 @@ const makeStyles = (th) => StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems:     'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    gap:            spacing.sm,
+    paddingHorizontal: spacing.xl,
+    gap:            spacing.lg,
   },
   statValueBlock: { alignItems: 'center', gap: spacing.xs },
   // Sin dato (ESFUERZO sin sRPE): en contorno y sin fondo; al elegirla se llena igual.
