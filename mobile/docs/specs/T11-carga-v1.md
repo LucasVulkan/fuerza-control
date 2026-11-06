@@ -153,6 +153,13 @@ cercano no da esos 16 px, se usa el más cercano y se avisa.
 - [ ] Cambiar a 1M en una gráfica, pasar a otra tarjeta: también está en 1M. Cerrar la app y volver: sigue en 1M.
 - [ ] Desde la ficha de un cliente, los textos dicen «su», no «tu».
 
+**Notas de la implementación (T11-01):**
+- `loadSummary` (`trainingLoad.js`) devuelve la serie ya con `value` (interna o externa) y la usan la tarjeta CARGA y `clientLoadPct`. `clientLoadPct` conserva su umbral de 14 días de historial.
+- La cifra de FUERZA sale de `strengthChange` (mejor e1RM de 28 días contra los 28 anteriores, por ejercicio, solo con dato en las dos ventanas), no de `performanceWeekly`; la minigráfica sí usa el índice semanal. La gráfica de Fuerza sigue siendo la de hoy hasta T11-06.
+- Sin sRPE, la gráfica de Esfuerzo enseña de momento el texto `load.emptyNoRpe` dentro de su tarjeta (T11-02 pone la invitación). La pestaña ya no se vacía por falta de sRPE: la carga pinta la externa.
+- La monotonía, el strain y su tira se han quitado de la pantalla; vuelven en T11-03.
+- `LoadTab` recibe `program` pero aún no lo usa (lo necesita T11-07).
+
 ## 5. T11-02 — Sin sRPE la pestaña no se vacía
 
 Hoy, si ninguna sesión tiene sRPE, `LoadTab` pinta `load.emptyNoRpe` en vez del

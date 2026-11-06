@@ -697,3 +697,96 @@ export function loadState(mean7, mean28) {
   if (ratio <= 1.3) return 'steady';
   return 'loading';
 }
+
+// ── Panel de Carga (T11-01) ───────────────────────────────────────────────────
+
+/** Desplaza un inicio de día `n` días con setDate (no suma 24 h: cruza cambios de hora). */
+const shiftDay = (day, n) => { const d = new Date(day); d.setDate(d.getDate() + n); return d.getTime(); };
+
+/**
+ * La cifra de carga única: la usan la tarjeta CARGA del panel y la de programa de
+ * la ficha de cliente.
+ *
+ * Interna si alguna sesión tiene sRPE, externa si no. Si hoy aún no hay sesión,
+ * la serie acaba AYER: un viernes por la mañana la semana no puede salir con un
+ * día de descanso falso (T11 §3).
+ *
+ * @returns {{ source: 'internal'|'external', days: Array, mean7: Array, mean28: Array, vs28: number|null, endDay: number|null }}
+ *   `days[i].value` es la carga del día en la fuente elegida (null = hueco).
+ */
+export function loadSummary(log, allExercises, { fallbackBodyWeight = null, now = Date.now() } = {}) {
+  const loads = sessionLoads(log ?? [], allExercises, { fallbackBodyWeight });
+  const source = loads.some((l) => l.internal != null) ? 'internal' : 'external';
+  const today = startOfDay(now);
+  const hasToday = loads.some((l) => startOfDay(l.timestamp) === today);
+  const days = dailySeries(loads, { now: hasToday ? now : shiftDay(today, -1) })
+    .map((d) => ({ ...d, value: d[source] }));
+  const values = days.map((d) => d.value);
+  const mean7 = rollingMean(values, 7);
+  const mean28 = rollingMean(values, 28);
+  const m7 = mean7[mean7.length - 1];
+  const m28 = mean28[mean28.length - 1];
+  return {
+    source, days, mean7, mean28,
+    vs28: m28 > 0 && m7 != null ? Math.round((m7 / m28 - 1) * 100) : null,
+    endDay: days.length ? days[days.length - 1].day : null,
+  };
+}
+
+/** Las últimas `n` ventanas de 7 días (de la más vieja a la última), acabando en el último día de `days`. */
+export function weekBlocks(days, n = 8) {
+  const out = [];
+  for (let k = n - 1; k >= 0; k--) {
+    const to = days.length - 7 * k;
+    if (to <= 0) continue;
+    out.push(days.slice(Math.max(0, to - 7), to));
+  }
+  return out;
+}
+
+/** Carga de cada bloque de 7 días (suma; null si todo el bloque son huecos). */
+export function loadBlocks(days, n = 8) {
+  return weekBlocks(days, n).map((b) => {
+    const v = b.map((d) => d.value).filter((x) => x != null);
+    return v.length ? v.reduce((a, c) => a + c, 0) : null;
+  });
+}
+
+/** sRPE medio de las sesiones de cada bloque de 7 días (null sin sRPE). La última es «últimos 7 días». */
+export function effortBlocks(log, days, n = 8) {
+  const rated = (log ?? []).filter((e) => e.sessionRpe != null)
+    .map((e) => ({ key: startOfDay(e.timestamp), rpe: Number(e.sessionRpe) }));
+  return weekBlocks(days, n).map((b) => {
+    const r = rated.filter((s) => s.key >= b[0].day && s.key <= b[b.length - 1].day);
+    return r.length ? r.reduce((a, s) => a + s.rpe, 0) / r.length : null;
+  });
+}
+
+/**
+ * Cambio de fuerza en 4 semanas, en %: media de los cambios del e1RM por ejercicio
+ * (mejor e1RM de los 28 días que acaban en `endDay` contra el de los 28 anteriores),
+ * contando solo los ejercicios con dato en las dos ventanas. Un ejercicio estrenado
+ * hace 2 semanas no entra, así que no hunde la cifra.
+ *
+ * @param {number} endDay inicio del último día de la serie (`loadSummary().endDay`)
+ * @returns {number|null}
+ */
+export function strengthChange(log, allExercises, { fallbackBodyWeight = null, endDay, weeks = 4 } = {}) {
+  if (endDay == null) return null;
+  const idx = buildIndex([...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp), allExercises, fallbackBodyWeight);
+  const span = weeks * 7;
+  const curFrom = shiftDay(endDay, -(span - 1));
+  const prevFrom = shiftDay(endDay, -(2 * span - 1));
+  const changes = [];
+  for (const records of idx.values()) {
+    let cur = null; let prev = null;
+    for (const r of records) {
+      if (r.e1rm == null) continue;
+      const k = startOfDay(r.ts);
+      if (k >= curFrom && k <= endDay) { if (cur == null || r.e1rm > cur) cur = r.e1rm; }
+      else if (k >= prevFrom && k < curFrom) { if (prev == null || r.e1rm > prev) prev = r.e1rm; }
+    }
+    if (cur != null && prev > 0) changes.push(cur / prev - 1);
+  }
+  return changes.length ? Math.round((changes.reduce((a, b) => a + b, 0) / changes.length) * 100) : null;
+}

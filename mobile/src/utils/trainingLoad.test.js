@@ -4,6 +4,7 @@ import {
   isBodyweight, effectiveWeight, sessionLoads, dailySeries,
   rollingMean, monotony, strain, loadState, setsByMuscleGroup, plannedSetsByGroup,
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
+  loadSummary, strengthChange, effortBlocks,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
@@ -660,5 +661,59 @@ describe('loadState', () => {
   it('null sin datos suficientes', () => {
     expect(loadState(null, 100)).toBeNull();
     expect(loadState(100, 0)).toBeNull();
+  });
+});
+
+// ── T11-01: cifra de carga única y fuerza a 4 semanas ───────────────────────────
+describe('loadSummary', () => {
+  // viernes 9 ene 2026, por la mañana; lunes 5 y miércoles 7 entrenados
+  const FRI = new Date(2026, 0, 9, 8, 0, 0).getTime();
+  const s = (ts, extra = {}) => entry({ id: `l${ts}`, ts, sets: [set(100, 5)], ...extra });
+
+  it('sin sesión hoy, la serie acaba ayer', () => {
+    const r = loadSummary([s(T0, { sessionRpe: 7, duration: 3600 }), s(T0 + 2 * DAY, { sessionRpe: 7, duration: 3600 })], EXERCISE_LIBRARY, { now: FRI });
+    expect(r.days[r.days.length - 1].day).toBe(new Date(2026, 0, 8).getTime());
+    expect(r.source).toBe('internal');
+  });
+  it('con sesión hoy, la serie acaba hoy', () => {
+    const r = loadSummary([s(T0), s(FRI - 3600000)], EXERCISE_LIBRARY, { now: FRI });
+    expect(r.days[r.days.length - 1].day).toBe(new Date(2026, 0, 9).getTime());
+  });
+  it('sin sRPE usa la externa', () => {
+    const r = loadSummary([s(T0), s(T0 + 2 * DAY)], EXERCISE_LIBRARY, { now: FRI });
+    expect(r.source).toBe('external');
+    expect(Number.isFinite(r.vs28)).toBe(true);
+  });
+  it('sin log no hay nada', () => {
+    const r = loadSummary([], EXERCISE_LIBRARY, { now: FRI });
+    expect(r.days).toEqual([]);
+    expect(r.vs28).toBeNull();
+  });
+});
+
+describe('strengthChange', () => {
+  const END = new Date(2026, 1, 20).getTime();
+  const at = (days, kg, exerciseId) => entry({ id: `e${days}${exerciseId}`, ts: END - days * DAY + 12 * 3600000, exerciseId, sets: [set(kg, 5)] });
+  it('media de los cambios por ejercicio con dato en las dos ventanas', () => {
+    const log = [at(40, 100, 'squat_barbell'), at(5, 110, 'squat_barbell')];
+    expect(strengthChange(log, EXERCISE_LIBRARY, { endDay: END })).toBe(10);
+  });
+  it('un ejercicio estrenado hace 2 semanas no hunde la cifra', () => {
+    const log = [at(40, 100, 'squat_barbell'), at(5, 110, 'squat_barbell'), at(14, 20, 'bench_press_barbell')];
+    expect(strengthChange(log, EXERCISE_LIBRARY, { endDay: END })).toBe(10);
+  });
+  it('sin ventana anterior, null', () => {
+    expect(strengthChange([at(5, 110, 'squat_barbell')], EXERCISE_LIBRARY, { endDay: END })).toBeNull();
+  });
+});
+
+describe('effortBlocks', () => {
+  it('media del sRPE del último bloque de 7 días', () => {
+    const d = new Date(2026, 0, 9).getTime();
+    const days = Array.from({ length: 14 }, (_, i) => ({ day: new Date(2026, 0, 9 - 13 + i).getTime(), value: 0 }));
+    const log = [{ timestamp: d - DAY + 3600000, sessionRpe: 8 }, { timestamp: d - 2 * DAY + 3600000, sessionRpe: 7 }];
+    const r = effortBlocks(log, days);
+    expect(r[r.length - 1]).toBe(7.5);
+    expect(r[0]).toBeNull();
   });
 });

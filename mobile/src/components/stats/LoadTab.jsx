@@ -6,6 +6,12 @@
  *   allExercises        { [id]: def } – librería + ejercicios propios.
  *   fallbackBodyWeight  number|null   – peso a usar en las entradas que no lo traen.
  *                                       Si no se pasa, se deduce del propio log.
+ *   program, client     – el programa y el cliente del sujeto (client = null: es el
+ *                         propio usuario). Nada de esta pestaña lee del store lo que
+ *                         es del sujeto: en el móvil del entrenador el store es suyo
+ *                         (docs/specs/T11-carga-v1.md §3). La etapa en curso, cuando
+ *                         haga falta (T11-07), sale de `athleteProgress(program, client)`.
+ *   subjectName         – nombre del cliente; con `client`, los textos van en tercera persona.
  *
  * REGLA CRÍTICA (spec §4.1): el selector de período recorta lo que se PINTA,
  * nunca lo que se CALCULA. Las medias de 7 y 28 días, la monotonía y el strain
@@ -15,8 +21,11 @@
  * Tampoco hay toggle de "Programa actual": la carga es sistémica y filtrar por
  * programa convertiría las sesiones de fuera en días de descanso falsos.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate,
+} from 'react-native-reanimated';
 import { Text } from '../ui/Text';
 import Svg, { Rect, Polyline, Line, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,17 +33,15 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 
 import {
-  sessionLoads, dailySeries, rollingMean, monotony, strain, loadState, setsByMuscleGroup,
-  weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
-  MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
+  loadState, setsByMuscleGroup, weeklySeries, indexTo100, effortTrend, performanceWeekly,
+  loadSummary, loadBlocks, effortBlocks, strengthChange,
   SETS_TARGET_MIN, SETS_TARGET_MAX,
 } from '../../utils/trainingLoad';
-import { spacing, textStyles } from '../../theme';
+import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
-import LoadCalendar from './LoadCalendar';
 import SegmentedControl from '../ui/SegmentedControl';
 import EmptyState from '../ui/EmptyState';
-import { ROW_ICON } from '../ui/rowIcons';
+import { FILL_MS, EMPTY_MS } from '../ui/StageCards';
 import { InfoLabel, MetricInfoSheet } from '../ui/MetricInfo';
 
 // "7D" no existe aquí: siete barras y dos líneas planas no son una tendencia.
@@ -42,16 +49,8 @@ const PERIOD_OPTIONS = [
   { id: '1m',  label: '1M'   },
   { id: '3m',  label: '3M'   },
   { id: '6m',  label: '6M'   },
-  { id: 'all', label: 'Todo' },
 ];
 const PERIOD_DAYS = { '1m': 30, '3m': 90, '6m': 180 };
-
-/** Fecha corta "5 may" para anclar el extremo izquierdo de la tira de strain. */
-function fmtWeek(ts) {
-  if (!ts) return '';
-  const d = new Date(ts);
-  return `${d.getDate()} ${d.toLocaleDateString(undefined, { month: 'short' }).replace('.', '')}`;
-}
 
 const CHART_H = 140;
 const PAD_TOP = 10;
@@ -82,7 +81,7 @@ function LoadChart({ days, mean7, mean28 }) {
   const geometry = useMemo(() => {
     if (!width || !days.length) return null;
     const values = [
-      ...days.map((d) => d.internal ?? 0),
+      ...days.map((d) => d.value ?? 0),
       ...mean7.filter((v) => v != null),
       ...mean28.filter((v) => v != null),
     ];
@@ -93,7 +92,7 @@ function LoadChart({ days, mean7, mean28 }) {
     const x = (i) => i * step + step / 2;
 
     const bars = days
-      .map((d, i) => ({ i, v: d.internal }))
+      .map((d, i) => ({ i, v: d.value }))
       .filter(({ v }) => v != null && v > 0)
       .map(({ i, v }) => ({
         key: i,
@@ -206,21 +205,120 @@ function IndexChart({ series, height = 96 }) {
   );
 }
 
+// ── Tarjetas de selección ─────────────────────────────────────────────────────
+
+const TILE_H = 112;
+const PERIODS = ['1m', '3m', '6m'];
+
+/** Línea de 22 px con los valores de las últimas 8 semanas; los huecos parten la línea. */
+function Spark({ values, color, width }) {
+  const pts = useMemo(() => {
+    const ok = values.filter((v) => v != null && Number.isFinite(v));
+    if (width <= 0 || ok.length < 2) return [];
+    const lo = Math.min(...ok); const hi = Math.max(...ok);
+    const n = values.length;
+    const out = []; let cur = [];
+    values.forEach((v, i) => {
+      if (v == null || !Number.isFinite(v)) { if (cur.length > 1) out.push(cur); cur = []; return; }
+      const x = n <= 1 ? width / 2 : 2 + (i / (n - 1)) * (width - 4);
+      const y = hi === lo ? 11 : 20 - ((v - lo) / (hi - lo)) * 18;
+      cur.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    });
+    if (cur.length > 1) out.push(cur);
+    return out.map((c) => c.join(' '));
+  }, [values, width]);
+  return (
+    <Svg width={Math.max(width, 0)} height={22}>
+      {pts.map((p, i) => (
+        <Polyline key={i} points={p} fill="none" stroke={color} strokeWidth={1.7}
+          strokeLinejoin="round" strokeLinecap="round" />
+      ))}
+    </Svg>
+  );
+}
+
+/**
+ * Una de las tres tarjetas. La elegida se rellena de lima desde la esquina de
+ * arriba a la derecha, con el patrón de `StageCards` (T11 §4): círculo de radio
+ * = diagonal, 450 ms al llenarse, 200 al vaciarse, y el texto cruza a `onAccent`.
+ */
+function MetricTile({ selected, onPress, label, value, unit, sub, values, color }) {
+  const th     = useTheme();
+  const C      = th.colors;
+  const styles = useThemedStyles(makeStyles);
+  const [w, setW] = useState(0);
+  const p = useSharedValue(selected ? 1 : 0);
+
+  useEffect(() => {
+    p.set(withTiming(selected ? 1 : 0, { duration: selected ? FILL_MS : EMPTY_MS, easing: Easing.out(Easing.cubic) }));
+  }, [selected, p]);
+
+  const circle = useAnimatedStyle(() => ({ transform: [{ scale: p.get() }] }));
+  const off    = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0, 0.6], [1, 0], 'clamp') }));
+  const on     = useAnimatedStyle(() => ({ opacity: interpolate(p.get(), [0.4, 1], [0, 1], 'clamp') }));
+  const R      = Math.ceil(Math.hypot(w, TILE_H));
+
+  const face = (c, small, sparkColor, style) => (
+    <Reanimated.View style={[styles.tileFace, style]} pointerEvents="none">
+      <Text style={[styles.statLabel, { color: small }]} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.statValue, { color: c }]} numberOfLines={1}>
+        {value}
+        {unit ? <Text style={[styles.statUnit, { color: small }]}>{` ${unit}`}</Text> : null}
+      </Text>
+      <Spark values={values} color={sparkColor} width={w - spacing.md * 2} />
+      <Text style={[styles.statSub, { color: small }]} numberOfLines={1}>{sub}</Text>
+    </Reanimated.View>
+  );
+
+  return (
+    <TouchableOpacity
+      style={styles.statTile}
+      onPress={onPress}
+      onLayout={(e) => setW(e.nativeEvent.layout.width)}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${label}, ${value}${unit ? ` ${unit}` : ''}, ${sub}`}
+    >
+      {w > 0 && (
+        <Reanimated.View
+          pointerEvents="none"
+          style={[styles.tileFill, { width: R * 2, height: R * 2, borderRadius: R, left: w - R, top: -R }, circle]}
+        />
+      )}
+      {face(C.text, C.mutedLight, color, off)}
+      {face(C.onAccent, withOpacity(C.onAccent, 0.65), C.onAccent, on)}
+    </TouchableOpacity>
+  );
+}
+
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
-export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onRefresh, refreshing = false }) {
+export default function LoadTab({
+  baseLog, allExercises, fallbackBodyWeight, subjectName, client = null,
+  onRefresh, refreshing = false,
+}) {
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { t }  = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useStore((s) => s.navigate);
 
-  const [info, setInfo] = useState(null);
-  const [period, setPeriod] = useState('3m');
+  // Desde la ficha del cliente los textos hablan de él en tercera persona.
+  const third = client != null;
+  const dec   = (n) => (i18n.language?.startsWith('es') ? String(n).replace('.', ',') : String(n));
 
-  // Peso de referencia: el que pase el llamador (el perfil, más al día que el
-  // log) o, si no, el más reciente que aparezca en el propio historial — que es
-  // lo correcto cuando el sujeto es un cliente y no el usuario del dispositivo.
+  const [info, setInfo] = useState(null);
+  const [metric, setMetric] = useState('load');   // no se guarda (T11 §4)
+
+  // Un solo periodo para toda la pestaña, preferencia del usuario (T11 §3).
+  const storedPeriod = useStore((s) => s.profile.loadPeriod);
+  const setProfile   = useStore((s) => s.setProfile);
+  const period = PERIODS.includes(storedPeriod) ? storedPeriod : '3m';
+
+  // Peso de referencia: el que pase el llamador (la ficha de cliente trae el suyo;
+  // el perfil, más al día que el log) o, si no, el más reciente que aparezca en el
+  // propio historial.
   const bodyWeight = useMemo(() => {
     if (fallbackBodyWeight != null) return fallbackBodyWeight;
     const withWeight = (baseLog ?? [])
@@ -229,97 +327,49 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
     return withWeight[0]?.bodyWeight ?? null;
   }, [fallbackBodyWeight, baseLog]);
 
-  // Cálculo SIEMPRE sobre el log completo (§4.1).
-  const metrics = useMemo(() => {
-    const loads = sessionLoads(baseLog ?? [], allExercises, { fallbackBodyWeight: bodyWeight });
-    const days  = dailySeries(loads);
-    const internal = days.map((d) => d.internal);
+  // `now` se congela al montar: las ventanas no deben moverse con la pantalla
+  // abierta, y `Date.now()` dentro del useMemo es impuro (react-hooks/purity).
+  const [now] = useState(() => Date.now());
+
+  // Cálculo SIEMPRE sobre el log completo (§4.1): el periodo recorta lo que se pinta.
+  const load = useMemo(
+    () => loadSummary(baseLog, allExercises, { fallbackBodyWeight: bodyWeight, now }),
+    [baseLog, allExercises, bodyWeight, now],
+  );
+  const { days, mean7, mean28 } = load;
+
+  const perfAll = useMemo(
+    () => performanceWeekly(baseLog ?? [], allExercises, { fallbackBodyWeight: bodyWeight }),
+    [baseLog, allExercises, bodyWeight],
+  );
+
+  const tiles = useMemo(() => {
+    const eff = effortBlocks(baseLog, days);
+    const from = load.endDay != null ? load.endDay - 8 * 7 * 86400000 : 0;
     return {
-      loads,
-      days,
-      internal,
-      mean7:  rollingMean(internal, 7),
-      mean28: rollingMean(internal, 28),
+      loadSpark: loadBlocks(days),
+      effortSpark: eff,
+      effort7: eff.length ? eff[eff.length - 1] : null,
+      strengthSpark: perfAll.filter((w) => w.weekStart >= from).map((w) => w.index),
+      strengthPct: strengthChange(baseLog, allExercises, { fallbackBodyWeight: bodyWeight, endDay: load.endDay }),
     };
-  }, [baseLog, allExercises, bodyWeight]);
-
-  const { loads, days, internal, mean7, mean28 } = metrics;
-
-  const summary = useMemo(() => {
-    if (!days.length) return null;
-    const week        = internal.slice(-7);
-    const weekDays    = days.slice(-7);
-    const weekSessions = weekDays.reduce((a, d) => a + d.sessions, 0);
-    const weekLoad    = week.reduce((a, v) => a + (v ?? 0), 0);
-
-    const m7  = mean7[mean7.length - 1];
-    const m28 = mean28[mean28.length - 1];
-
-    const enoughSessions = weekSessions >= MIN_SESSIONS_FOR_MONOTONY;
-    const mono   = enoughSessions ? monotony(week) : null;
-    const strn   = enoughSessions ? strain(week)   : null;
-
-    // Línea base del strain: las 4 semanas anteriores a la actual. Un umbral
-    // absoluto de strain no existe — solo vale contra el propio historial.
-    const prevStrains = [];
-    for (let k = 1; k <= 4; k++) {
-      const from = internal.length - 7 * (k + 1);
-      if (from < 0) break;
-      const s = strain(internal.slice(from, from + 7));
-      if (s != null) prevStrains.push(s);
-    }
-    // Frecuencia habitual de las 4 semanas anteriores, para saber si la semana
-    // en curso es normal para este usuario o una excepción.
-    const prevWeekSessions = [];
-    for (let k = 1; k <= 4; k++) {
-      const from = days.length - 7 * (k + 1);
-      if (from < 0) break;
-      prevWeekSessions.push(days.slice(from, from + 7).reduce((a, d) => a + d.sessions, 0));
-    }
-    const avgSessions = prevWeekSessions.length
-      ? prevWeekSessions.reduce((a, b) => a + b, 0) / prevWeekSessions.length
-      : null;
-
-    const strainBase = prevStrains.length
-      ? prevStrains.reduce((a, b) => a + b, 0) / prevStrains.length
-      : null;
-
-    return {
-      weekLoad,
-      weekSessions,
-      vs28: m28 > 0 && m7 != null ? Math.round((m7 / m28 - 1) * 100) : null,
-      mono,
-      strain: strn,
-      strainPct: strn != null && strainBase > 0 ? Math.round((strn / strainBase - 1) * 100) : null,
-      avgSessions,
-      state: loadState(m7, m28),
-    };
-  }, [days, internal, mean7, mean28]);
+  }, [baseLog, allExercises, bodyWeight, days, load.endDay, perfAll]);
 
   // Ventana visible — recorta SOLO lo que se pinta.
   const visible = useMemo(() => {
     const n = PERIOD_DAYS[period];
     if (!n || days.length <= n) return { days, mean7, mean28 };
-    return {
-      days:   days.slice(-n),
-      mean7:  mean7.slice(-n),
-      mean28: mean28.slice(-n),
-    };
+    return { days: days.slice(-n), mean7: mean7.slice(-n), mean28: mean28.slice(-n) };
   }, [period, days, mean7, mean28]);
 
-  // Series por grupo de los últimos 7 días — ventana móvil, NO semana natural:
-  // un lunes por la mañana la semana natural está casi vacía y el panel diría
-  // que te falta todo.
-  // `now` se congela al montar: la ventana no debe moverse mientras la pantalla
-  // está abierta, y `Date.now()` dentro del useMemo es impuro (react-hooks/purity).
-  const [now] = useState(() => Date.now());
+  const state = loadState(mean7[mean7.length - 1], mean28[mean28.length - 1]);
+
   const groupSets = useMemo(() => {
     const DAY = 86400000;
     const week  = setsByMuscleGroup(baseLog ?? [], allExercises, { from: now - 7 * DAY,  to: now });
     const month = setsByMuscleGroup(baseLog ?? [], allExercises, { from: now - 28 * DAY, to: now });
     // Un grupo que entrenas habitualmente pero NO esta semana tiene que salir a
-    // cero, no desaparecer: el hueco es exactamente lo que hay que ver. La
-    // referencia de "habitualmente" son los últimos 28 días del propio usuario.
+    // cero, no desaparecer: el hueco es exactamente lo que hay que ver.
     const byGroup = new Map(week.map((g) => [g.group, g.sets]));
     for (const { group } of month) if (!byGroup.has(group)) byGroup.set(group, 0);
     return [...byGroup.entries()]
@@ -328,53 +378,33 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
   }, [baseLog, allExercises, now]);
 
   /**
-   * Esfuerzo vs carga y rendimiento, ambos SEMANALES.
-   *
-   * A resolución diaria las dos líneas son ruido con ceros de por medio; la
-   * semana es la unidad en la que se piensa el entrenamiento.
-   *
-   * El indexado se hace DESPUÉS de recortar por período: "base 100" significa
-   * el principio de lo que estás mirando. La lectura del chip, en cambio, sale
-   * de la serie COMPLETA — si cambiara al mover el selector, sería un veredicto
-   * que depende del zoom.
+   * Esfuerzo vs carga, SEMANAL (necesita sRPE). El indexado se hace DESPUÉS de
+   * recortar por periodo; la lectura del chip sale de la serie COMPLETA.
    */
   const effort = useMemo(() => {
+    if (load.source !== 'internal') return null;
     const allWeeks = weeklySeries(days);
     if (allWeeks.length < 2) return null;
-    const nWeeks  = PERIOD_DAYS[period] ? Math.ceil(PERIOD_DAYS[period] / 7) : allWeeks.length;
-    const visible = allWeeks.slice(-nWeeks);
+    const nWeeks  = Math.ceil(PERIOD_DAYS[period] / 7);
+    const shown   = allWeeks.slice(-nWeeks);
     return {
-      external: indexTo100(visible.map((w) => w.external)),
-      internal: indexTo100(visible.map((w) => w.internal)),
+      external: indexTo100(shown.map((w) => w.external)),
+      internal: indexTo100(shown.map((w) => w.internal)),
       trend: effortTrend(
         indexTo100(allWeeks.map((w) => w.external)),
         indexTo100(allWeeks.map((w) => w.internal)),
       ),
     };
-  }, [days, period]);
+  }, [days, period, load.source]);
 
   const performance = useMemo(() => {
-    const all = performanceWeekly(baseLog ?? [], allExercises, { fallbackBodyWeight: bodyWeight });
-    if (all.length < 2) return null;
-    const nWeeks  = PERIOD_DAYS[period] ? Math.ceil(PERIOD_DAYS[period] / 7) : all.length;
-    const visible = all.slice(-nWeeks);
-    const values  = indexTo100(visible.map((w) => w.index));
+    if (perfAll.length < 2) return null;
+    const nWeeks  = Math.ceil(PERIOD_DAYS[period] / 7);
+    const shown   = perfAll.slice(-nWeeks);
+    const values  = indexTo100(shown.map((w) => w.index));
     const last    = [...values].reverse().find((v) => v != null);
-    return { values, pct: last != null ? Math.round(last - 100) : null, weeks: visible.length };
-  }, [baseLog, allExercises, bodyWeight, period]);
-
-  // Strain semana a semana. El valor absoluto del strain no significa nada, así
-  // que un número suelto dice poco: lo que comunica es ver la serie subir.
-  const strainWeeks = useMemo(() => {
-    const all = weeklyStrain(days);
-    // Obedece al selector de período como el resto del panel: tener una tira con
-    // ventana propia obligaba a preguntarse por qué esta enseña otra cosa.
-    const n = PERIOD_DAYS[period] ? Math.ceil(PERIOD_DAYS[period] / 7) : all.length;
-    return all.slice(-n);
-  }, [days, period]);
-
-  const hasSessions = (loads?.length ?? 0) > 0;
-  const hasRpe      = loads.some((l) => l.internal != null);
+    return { values, pct: last != null ? Math.round(last - 100) : null, weeks: shown.length };
+  }, [perfAll, period]);
 
   const scroll = (children) => (
     <ScrollView
@@ -390,255 +420,164 @@ export default function LoadTab({ baseLog, allExercises, fallbackBodyWeight, onR
     </ScrollView>
   );
 
-  if (!hasSessions || !hasRpe) {
+  if (!days.length) {
     return scroll(
-      !hasSessions ? (
-        <EmptyState
-          style={styles.emptyState}
-          ghost="bars"
-          title={t('empty.loadTitle')}
-          text={t('empty.loadText')}
-          action={{ label: t('empty.startTraining'), onPress: () => navigate('home') }}
-        />
-      ) : (
-        <EmptyState style={styles.emptyState} icon={ROW_ICON.progress} text={t('load.emptyNoRpe')} />
-      ),
+      <EmptyState
+        style={styles.emptyState}
+        ghost="bars"
+        title={t('empty.loadTitle')}
+        text={third ? t('load.emptyThird', { name: subjectName ?? '' }) : t('empty.loadText')}
+        // Desde la ficha no hay «Empieza a entrenar»: llevaría al Entreno del entrenador.
+        action={third ? undefined : { label: t('empty.startTraining'), onPress: () => navigate('home') }}
+      />,
     );
   }
 
-  const monoLabel = summary?.mono == null ? null
-    : summary.mono >= MONOTONY_HIGH     ? t('load.monotonyHigh')
-    : summary.mono >= MONOTONY_MODERATE ? t('load.monotonyModerate')
-    : t('load.monotonyLow');
-  const monoColor = summary?.mono == null ? th.colors.mutedLight
-    : summary.mono >= MONOTONY_HIGH     ? th.colors.red
-    : summary.mono >= MONOTONY_MODERATE ? th.colors.orange
-    : th.colors.accent;
-
-  const stateColor = summary?.state === 'loading'   ? th.colors.orange
-    : summary?.state === 'unloading' ? th.colors.mutedLight
+  const stateColor = state === 'loading'   ? th.colors.orange
+    : state === 'unloading' ? th.colors.mutedLight
     : th.colors.accent;
 
   const signed = (n) => `${n > 0 ? '+' : ''}${n}%`;
+  const pctOrDash = (n) => (n != null && Number.isFinite(n) ? signed(n) : '—');
+
+  // Título, «i» y qué ficha abre, según la tarjeta elegida.
+  const chartHead = {
+    load:     { title: t('load.trendTitle'), info: { chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] } },
+    effort:   { title: t('load.effortTitle'), info: { chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad', 'indexed100'] } },
+    strength: { title: t('load.perfTitle'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
+  }[metric];
 
   return scroll(
     <>
-      {/* ── El mes ── cada día teñido por su carga. Va ENCIMA del selector de
-          periodo a propósito: el selector no le afecta —el calendario siempre
-          enseña un mes y se navega con sus flechas— y debajo parecería que sí. */}
-      <LoadCalendar />
-
-      <View style={styles.controlRow}>
-        <View style={styles.segmentedWrap}>
-          <SegmentedControl options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
-        </View>
-      </View>
-
-      {/* ── Indicadores ─────────────────────────────────────────────────── */}
+      {/* ── Tarjetas: eligen la gráfica de debajo ───────────────────────── */}
       <View style={styles.statsGrid}>
-        <TouchableOpacity
-          style={styles.statTile}
-          onPress={() => setInfo({ ids: ['sessionLoad', 'movingAverage'] })}
-          activeOpacity={0.75}
-        >
-          <View style={styles.statValueBlock}>
-            {/* El protagonista es el %, no la carga absoluta: el número en bruto
-                va en unidades arbitrarias y su propia ficha dice que no
-                significa nada suelto. Sin comparación posible todavía, se
-                enseña la carga para no dejar la tarjeta vacía. */}
-            <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {summary.vs28 != null ? signed(summary.vs28) : Math.round(summary.weekLoad)}
-            </Text>
-            <Text style={styles.statLabel}>{t('load.load7d')}</Text>
-          </View>
-          <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
-            {summary.vs28 != null ? t('load.vs28d') : t('load.thisWeekLoad')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.statTile}
-          onPress={() => setInfo({ ids: ['monotony'] })}
-          activeOpacity={0.75}
-        >
-          <View style={styles.statValueBlock}>
-            <Text style={[styles.statValue, { color: monoColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {summary.mono != null ? summary.mono.toFixed(1) : '—'}
-            </Text>
-            <Text style={styles.statLabel}>{t('load.monotony')}</Text>
-          </View>
-          <Text style={[styles.statSub, { color: monoColor }]} numberOfLines={1}>
-            {monoLabel ?? t('load.needsSessions')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.statTile}
-          onPress={() => setInfo({ ids: ['weekSessions'] })}
-          activeOpacity={0.75}
-        >
-          <View style={styles.statValueBlock}>
-            <Text style={[styles.statValue, { color: th.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {summary.weekSessions}
-            </Text>
-            <Text style={styles.statLabel}>{t('load.sessions7d')}</Text>
-          </View>
-          <Text style={[styles.statSub, { color: th.tint.accent50 }]} numberOfLines={1}>
-            {summary.avgSessions != null
-              ? t('load.avgPerWeek', { n: summary.avgSessions.toFixed(1).replace('.', ',') })
-              : '—'}
-          </Text>
-        </TouchableOpacity>
+        <MetricTile
+          selected={metric === 'load'} onPress={() => setMetric('load')}
+          label={t('load.cardLoad')} value={pctOrDash(load.vs28)}
+          sub={t(third ? 'load.vsMonthThird' : 'load.vsMonthYou')}
+          values={tiles.loadSpark} color={th.colors.accent}
+        />
+        <MetricTile
+          selected={metric === 'effort'} onPress={() => setMetric('effort')}
+          label={t('load.cardEffort')} value={tiles.effort7 != null ? dec(tiles.effort7.toFixed(1)) : '—'}
+          unit={tiles.effort7 != null ? '/10' : null}
+          sub={t('load.last7d')}
+          values={tiles.effortSpark} color={th.colors.orange}
+        />
+        <MetricTile
+          selected={metric === 'strength'} onPress={() => setMetric('strength')}
+          label={t('load.cardStrength')} value={pctOrDash(tiles.strengthPct)}
+          sub={t('load.in4Weeks')}
+          values={tiles.strengthSpark} color={th.colors.accent}
+        />
       </View>
 
-      {/* ── Strain semana a semana ──────────────────────────────────────── */}
-      {strainWeeks.some((w) => w.strain != null) && (
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'strainWeekly', ids: ['strain', 'monotony'] })}>
-              {t('load.strainTitle')}
-            </InfoLabel>
-            <Text style={styles.cardMeta}>{t('load.lastWeeks', { count: strainWeeks.length })}</Text>
-          </View>
-
-          <View style={styles.strainRow}>
-            {strainWeeks.map((w, i) => {
-              const max = Math.max(...strainWeeks.map((x) => x.strain ?? 0), 1);
-              const isLast = i === strainWeeks.length - 1;
-              return (
-                <View key={w.weekStart} style={styles.strainSlot}>
-                  {w.strain != null ? (
-                    <View style={[styles.strainBar, {
-                      height: `${Math.max(4, (w.strain / max) * 100)}%`,
-                      backgroundColor: isLast ? th.colors.accent : th.tint.accent50,
-                    }]} />
-                  ) : w.sessions > 0 ? (
-                    // Entrenó, pero con menos sesiones de las que hacen falta
-                    // para que el strain signifique algo. Va en CONTORNO y a
-                    // altura fija: el mismo idioma que el mapa de calor del
-                    // historial, donde el contorno significa "no se puede
-                    // calcular" y nunca "salió bajo". Inventar una altura sería
-                    // dibujar un número que no es fiable.
-                    <View style={[styles.strainBar, styles.strainBarPartial]} />
-                  ) : (
-                    <View style={[styles.strainBar, styles.strainBarEmpty]} />
-                  )}
-                </View>
-              );
-            })}
-          </View>
-
-          <View style={styles.strainAxis}>
-            <Text style={styles.strainAxisLabel}>{fmtWeek(strainWeeks[0]?.weekStart)}</Text>
-            <Text style={styles.strainAxisLabel}>{t('load.thisWeek')}</Text>
-          </View>
-
-          <Text style={styles.groupHint}>{t('load.strainHint')}</Text>
-        </View>
-      )}
-
-      {/* ── Tendencia ───────────────────────────────────────────────────── */}
+      {/* ── La gráfica de la tarjeta elegida ────────────────────────────── */}
       <View style={styles.card}>
         <View style={styles.cardHead}>
-          <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] })}>{t('load.trendTitle')}</InfoLabel>
-          <Text style={styles.cardMeta}>{t('load.perDay')}</Text>
-        </View>
-
-        <LoadChart days={visible.days} mean7={visible.mean7} mean28={visible.mean28} />
-
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendBar, { backgroundColor: th.colors.muted }]} />
-            <Text style={styles.legendText}>{t('load.legendDaily')}</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
-            <Text style={styles.legendText}>{t('load.legend7d')}</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendLine, { backgroundColor: th.colors.blue }]} />
-            <Text style={styles.legendText}>{t('load.legend28d')}</Text>
+          <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(chartHead.info)}>
+            {chartHead.title}
+          </InfoLabel>
+          <View style={styles.segmentedWrap}>
+            <SegmentedControl
+              options={PERIOD_OPTIONS} value={period}
+              onChange={(id) => setProfile({ loadPeriod: id })}
+            />
           </View>
         </View>
 
-        {summary.state && (
-          <View style={styles.strip}>
-            <View style={[styles.dot, { backgroundColor: stateColor }]} />
-            <Text style={styles.stripText}>
-              <Text style={styles.stripTitle}>{t(`load.state.${summary.state}.title`)}</Text>
-              {` ${t(`load.state.${summary.state}.detail`)}`}
-            </Text>
-          </View>
+        {metric === 'load' && (
+          <>
+            <LoadChart days={visible.days} mean7={visible.mean7} mean28={visible.mean28} />
+
+            <View style={styles.legend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendBar, { backgroundColor: th.colors.muted }]} />
+                <Text style={styles.legendText}>{t('load.legendDaily')}</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
+                <Text style={styles.legendText}>{t('load.legend7d')}</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: th.colors.blue }]} />
+                <Text style={styles.legendText}>{t('load.legend28d')}</Text>
+              </View>
+            </View>
+
+            {state && (
+              <View style={styles.strip}>
+                <View style={[styles.dot, { backgroundColor: stateColor }]} />
+                <Text style={styles.stripText}>
+                  <Text style={styles.stripTitle}>{t(`load.state.${state}.title`)}</Text>
+                  {` ${third
+                    ? t(`load.stateThird${state[0].toUpperCase()}${state.slice(1)}`)
+                    : t(`load.state.${state}.detail`)}`}
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {/* ponytail: sin sRPE, esto es el texto de siempre; T11-02 pone el contorno y la invitación. */}
+        {metric === 'effort' && (effort ? (
+          <>
+            <IndexChart series={[
+              { values: effort.internal, color: th.colors.orange },
+              { values: effort.external, color: th.colors.accent },
+            ]} />
+
+            <View style={styles.legend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
+                <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
+                <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
+              </View>
+            </View>
+
+            {effort.trend && (
+              <View style={[
+                styles.trendChip,
+                effort.trend === 'adaptation' && styles.trendChipGood,
+                effort.trend === 'fatigue'    && styles.trendChipWarn,
+              ]}>
+                <Text style={[
+                  styles.trendChipText,
+                  effort.trend === 'adaptation' && { color: th.colors.accent },
+                  effort.trend === 'fatigue'    && { color: th.colors.orange },
+                ]}>
+                  {t(`load.trend.${effort.trend}`)}
+                </Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <Text style={styles.groupHint}>{t('load.emptyNoRpe')}</Text>
+        ))}
+
+        {metric === 'strength' && performance && (
+          <>
+            <IndexChart series={[{ values: performance.values, color: th.colors.accent }]} height={72} />
+
+            {performance.pct != null && (
+              <View style={styles.strip}>
+                <View style={[styles.dot, {
+                  backgroundColor: performance.pct >= 0 ? th.colors.accent : th.colors.orange,
+                }]} />
+                <Text style={styles.stripText}>
+                  <Text style={styles.stripTitle}>
+                    {`${performance.pct > 0 ? '+' : ''}${performance.pct}%`}
+                  </Text>
+                  {` ${t('load.perfDetail', { weeks: performance.weeks })}`}
+                </Text>
+              </View>
+            )}
+          </>
         )}
       </View>
-
-      {/* ── Esfuerzo vs carga ───────────────────────────────────────────── */}
-      {effort && (
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad', 'indexed100'] })}>{t('load.effortTitle')}</InfoLabel>
-            <Text style={styles.cardMeta}>{t('load.base100')}</Text>
-          </View>
-
-          <IndexChart series={[
-            { values: effort.internal, color: th.colors.orange },
-            { values: effort.external, color: th.colors.accent },
-          ]} />
-
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
-              <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
-              <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
-            </View>
-          </View>
-
-          {effort.trend && (
-            <View style={[
-              styles.trendChip,
-              effort.trend === 'adaptation' && styles.trendChipGood,
-              effort.trend === 'fatigue'    && styles.trendChipWarn,
-            ]}>
-              <Text style={[
-                styles.trendChipText,
-                effort.trend === 'adaptation' && { color: th.colors.accent },
-                effort.trend === 'fatigue'    && { color: th.colors.orange },
-              ]}>
-                {t(`load.trend.${effort.trend}`)}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* ── Rendimiento ─────────────────────────────────────────────────── */}
-      {performance && (
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'performance', ids: ['performanceIndex', 'e1rm'] })}>{t('load.perfTitle')}</InfoLabel>
-            <Text style={styles.cardMeta}>{t('load.perfMeta')}</Text>
-          </View>
-
-          <IndexChart series={[{ values: performance.values, color: th.colors.accent }]} height={72} />
-
-          {performance.pct != null && (
-            <View style={styles.strip}>
-              <View style={[styles.dot, {
-                backgroundColor: performance.pct >= 0 ? th.colors.accent : th.colors.orange,
-              }]} />
-              <Text style={styles.stripText}>
-                <Text style={styles.stripTitle}>
-                  {`${performance.pct > 0 ? '+' : ''}${performance.pct}%`}
-                </Text>
-                {` ${t('load.perfDetail', { weeks: performance.weeks })}`}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
 
       {/* ── Series por grupo muscular ───────────────────────────────────── */}
       {groupSets.length > 0 && (
@@ -696,28 +635,29 @@ const makeStyles = (th) => StyleSheet.create({
   // conmutador iba dentro del scroll; ahora lo monta ProgressPanel encima.
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
 
-  controlRow:    { flexDirection: 'row', alignItems: 'center' },
-  segmentedWrap: { width: 198 },
+  segmentedWrap: { width: 150 },
 
   // Mismas Progress cards que la pestaña de Ejercicios (gap 8, radio `md`: U13 §12).
-  statsGrid: { flexDirection: 'row', gap: spacing.sm2, width: '100%', height: 108, alignItems: 'center' },
+  statsGrid: { flexDirection: 'row', gap: spacing.sm2, width: '100%', height: TILE_H, alignItems: 'center' },
   statTile: {
-    flex:              1,
-    backgroundColor:   th.colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.lg,
-    borderRadius:      th.radius.md,
-    alignItems:        'center',
-    justifyContent:    'center',
-    overflow:          'hidden',
-    gap:               spacing.sm,
+    flex:            1,
+    height:          TILE_H,
+    backgroundColor: th.colors.surface,
+    borderRadius:    th.radius.md,
+    overflow:        'hidden',
   },
-  statValueBlock: { alignItems: 'center', gap: spacing.xs },
+  tileFill: { position: 'absolute', backgroundColor: th.colors.accent },
+  tileFace: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            spacing.xs2,
+  },
   statValue: { ...textStyles.title, textAlign: 'center' },
+  statUnit:  { ...textStyles.label },
   statLabel: {
     ...textStyles.caps,
     textTransform: 'uppercase',
-    color:         th.colors.text,
     textAlign:     'center',
   },
   statSub: { ...textStyles.label, textAlign: 'center' },
@@ -728,7 +668,7 @@ const makeStyles = (th) => StyleSheet.create({
     padding:         spacing.lg,
     gap:             spacing.md,
   },
-  cardHead:  { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  cardHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { ...textStyles.labelStrong, color: th.colors.text, textTransform: 'uppercase' },
   cardMeta:  { ...textStyles.label, color: th.colors.mutedLight },
 
@@ -766,28 +706,6 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
-
-  // ── Tira de strain ──
-  strainRow: {
-    flexDirection: 'row',
-    alignItems:    'flex-end',
-    gap:           spacing.xs2,
-    height:        56,
-  },
-  strainSlot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
-  strainBar:  { width: '100%', borderRadius: 2 },
-  strainBarEmpty:   { height: 2, backgroundColor: th.colors.surface2 },
-  strainBarPartial: {
-    height:      14,
-    borderWidth: 1,
-    borderColor: th.tint.accent50,
-  },
-  strainAxis: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    marginTop:      spacing.xs2,
-  },
-  strainAxisLabel: { ...textStyles.caps, color: th.colors.muted },
 
   // ── Series por grupo ──
   groupList:  { gap: spacing.sm2 },

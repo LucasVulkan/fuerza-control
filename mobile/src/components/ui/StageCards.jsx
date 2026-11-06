@@ -36,8 +36,8 @@ const GAP     = spacing.sm2;
 const PAD     = spacing.lg;     // la fila sale a sangre: el relleno de página va dentro
 // El círculo del relleno sale de la esquina de arriba a la derecha y cubre la ficha.
 const R       = Math.ceil(Math.hypot(CARD_W, CARD_H));
-const FILL_MS  = 450;           // como el relleno de Inicio por pestañas (U13-02)
-const EMPTY_MS = 200;           // la que se deja se vacía deprisa: no compite con la nueva
+export const FILL_MS  = 450;           // como el relleno de Inicio por pestañas (U13-02)
+export const EMPTY_MS = 200;           // la que se deja se vacía deprisa: no compite con la nueva
 // Lo que asoma la ficha vecina cuando la elegida queda en un borde.
 const PEEK     = CARD_W / 2;
 

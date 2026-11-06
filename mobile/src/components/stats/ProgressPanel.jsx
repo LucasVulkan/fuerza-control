@@ -42,6 +42,7 @@ import { spacing } from '../../theme';
 
 export default function ProgressPanel({
   baseLog, programTemplateIds, allExercises, fallbackBodyWeight,
+  program = null, client = null, subjectName = null,
   onRefresh, refreshing = false, history = null,
 }) {
   const { t }  = useTranslation();
@@ -83,6 +84,9 @@ export default function ProgressPanel({
         baseLog={baseLog}
         allExercises={allExercises}
         fallbackBodyWeight={fallbackBodyWeight}
+        program={program}
+        client={client}
+        subjectName={subjectName}
         onRefresh={onRefresh}
         refreshing={refreshing}
       />
