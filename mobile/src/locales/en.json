@@ -184,7 +184,7 @@
     },
     "effortVsLoad": {
       "name": "Effort vs load",
-      "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so both are rescaled to base 100 to make them comparable.",
+      "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so each is drawn as the % change from its first 7-day block with sessions in the period. The chip compares the average of the last 4 blocks with the 4 before (always 4 against 4, even over one month); a change under ±5 % reads as flat.",
       "read": "What matters is whether they separate, not where they sit. More work at the same cost means you are adapting. The same work costing more is accumulated fatigue. Both rising is a hard block, and both falling is a deload."
     },
     "performance": {
@@ -1800,11 +1800,24 @@
     "base100": "base 100",
     "legendExternal": "external load",
     "legendEffort": "effort",
+    "effortMean": "{{p}} average",
+    "sessionsCount_one": "{{count}} session",
+    "sessionsCount_other": "{{count}} sessions",
+    "effortWeeks": "Weeks",
+    "effortSessions": "Sessions",
+    "trendChip": "{{load}} load · {{effort}} effort → {{label}}",
+    "trendHint": "Last 4 weeks against the 4 before.",
+    "rpeTitle": "Average RPE per exercise",
+    "rpeExercise": "Exercise",
+    "rpeSets": "Sets",
+    "rpe4w": "4 wk",
+    "rpeSingle": "RPE",
+    "rpeFoot": "Only exercises with a logged RPE count.",
     "trend": {
-      "adaptation": "↑ load · = effort → adapting",
-      "fatigue": "= load · ↑ effort → fatigue",
-      "hard": "↑ load · ↑ effort → hard block",
-      "deload": "↓ load · ↓ effort → deload",
+      "adaptation": "adapting",
+      "fatigue": "fatigue",
+      "hard": "hard block",
+      "deload": "deload",
       "mixed": "no clear pattern"
     },
     "perfTitle": "Performance",

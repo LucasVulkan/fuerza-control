@@ -184,7 +184,7 @@
     },
     "effortVsLoad": {
       "name": "Esfuerzo vs carga",
-      "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que las dos se reescalan a base 100 para poder compararlas.",
+      "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que cada una se pinta como % de cambio desde su primer bloque de 7 días con sesiones del periodo. El chip compara la media de los últimos 4 bloques con la de los 4 anteriores (siempre 4 contra 4, aunque el periodo sea de un mes); un cambio de menos de ±5 % se lee como plano.",
       "read": "Lo que importa es si se separan, no dónde están. Más trabajo al mismo coste significa que te estás adaptando. El mismo trabajo costando más es fatiga acumulada. Las dos subiendo es un bloque duro, y las dos bajando, una descarga."
     },
     "performance": {
@@ -1800,11 +1800,24 @@
     "base100": "base 100",
     "legendExternal": "carga externa",
     "legendEffort": "esfuerzo",
+    "effortMean": "media {{p}}",
+    "sessionsCount_one": "{{count}} sesión",
+    "sessionsCount_other": "{{count}} sesiones",
+    "effortWeeks": "Semanas",
+    "effortSessions": "Sesiones",
+    "trendChip": "{{load}} carga · {{effort}} esfuerzo → {{label}}",
+    "trendHint": "Últimas 4 semanas contra las 4 anteriores.",
+    "rpeTitle": "RPE medio por ejercicio",
+    "rpeExercise": "Ejercicio",
+    "rpeSets": "Series",
+    "rpe4w": "4 sem",
+    "rpeSingle": "RPE",
+    "rpeFoot": "Solo cuentan los ejercicios con RPE apuntado.",
     "trend": {
-      "adaptation": "↑ carga · = esfuerzo → adaptación",
-      "fatigue": "= carga · ↑ esfuerzo → fatiga",
-      "hard": "↑ carga · ↑ esfuerzo → bloque duro",
-      "deload": "↓ carga · ↓ esfuerzo → descarga",
+      "adaptation": "adaptación",
+      "fatigue": "fatiga",
+      "hard": "bloque duro",
+      "deload": "descarga",
       "mixed": "sin un patrón claro"
     },
     "perfTitle": "Rendimiento",

@@ -33,8 +33,8 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 
 import {
-  loadState, setsByMuscleGroup, weeklySeries, indexTo100, effortTrend, performanceWeekly,
-  loadSummary, effortBlocks, strengthChange, monotonyStrain,
+  loadState, setsByMuscleGroup, indexTo100, performanceWeekly,
+  loadSummary, effortBlocks, weekBlocks, ratedSessions, effortVsLoad, rpeByExercise, strengthChange, monotonyStrain,
   SETS_TARGET_MIN, SETS_TARGET_MAX, MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
 } from '../../utils/trainingLoad';
 import { spacing, textStyles, withOpacity } from '../../theme';
@@ -208,6 +208,105 @@ function IndexChart({ series, height = 96 }) {
   );
 }
 
+const AXIS_W = 34;   // columna del eje a la derecha
+
+/** Columna de etiquetas del eje, colocadas en la misma `y` que las marcas del gráfico. */
+function AxisLabels({ ticks, height }) {
+  const th = useTheme();
+  return (
+    <View style={{ width: AXIS_W, height }}>
+      {ticks.map(({ y, label }) => (
+        <Text key={label} style={[textStyles.label, { position: 'absolute', right: 0, top: y - 7, lineHeight: 14, color: th.colors.mutedLight }]}>
+          {label}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+/** Barras de sRPE en escala 0-10 con el eje 0 · 5 · 10 a la derecha. `bars`: [{ v, recent }]. */
+function EffortBars({ bars, height = 84 }) {
+  const th = useTheme();
+  const [width, setWidth] = useState(0);
+  const y = (v) => PAD_TOP + (height - PAD_TOP - PAD_BOT) * (1 - v / 10);
+  const step = width / Math.max(bars.length, 1);
+  const bw = Math.max(2, Math.min(18, step * 0.6));
+  return (
+    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        {width > 0 && (
+          <Svg width={width} height={height}>
+            {[0, 5, 10].map((v) => (
+              <Line key={v} x1={0} x2={width} y1={y(v)} y2={y(v)} stroke={th.colors.surface2} strokeWidth={1} />
+            ))}
+            {bars.map((b, i) => b.v == null ? null : (
+              <Rect key={i} x={i * step + (step - bw) / 2} y={y(b.v)} width={bw} height={y(0) - y(b.v)} rx={2}
+                fill={th.colors.orange} opacity={b.recent ? 1 : 0.45} />
+            ))}
+          </Svg>
+        )}
+      </View>
+      <AxisLabels height={height} ticks={[10, 5, 0].map((v) => ({ y: y(v), label: String(v) }))} />
+    </View>
+  );
+}
+
+/** Líneas en % de cambio con eje de % a la derecha (pasos de 5, 10 o 20 según el rango) y punto al final. */
+function PctChart({ series, height = 110 }) {
+  const th = useTheme();
+  const [width, setWidth] = useState(0);
+  const g = useMemo(() => {
+    const vals = series.flatMap((l) => l.values).filter((v) => v != null);
+    if (!width || vals.length < 2) return null;
+    const lo = Math.min(...vals, 0);
+    const hi = Math.max(...vals, 0);
+    const stepP = hi - lo <= 30 ? 5 : hi - lo <= 80 ? 10 : 20;
+    const tLo = Math.floor(lo / stepP) * stepP;
+    const tHi = Math.max(Math.ceil(hi / stepP) * stepP, tLo + stepP);
+    const y = (v) => PAD_TOP + (height - PAD_TOP - PAD_BOT) * (1 - (v - tLo) / (tHi - tLo));
+    const n = Math.max(...series.map((l) => l.values.length));
+    const x = (i) => (n <= 1 ? width / 2 : (i / (n - 1)) * (width - DOT_R * 2) + DOT_R);
+    const ticks = [];
+    for (let v = tLo; v <= tHi; v += stepP) ticks.push({ v, y: y(v), label: `${v > 0 ? '+' : ''}${v}%` });
+    const lines = series.map((l) => {
+      const segments = []; let cur = [];
+      l.values.forEach((v, i) => {
+        if (v == null) { if (cur.length > 1) segments.push(cur); cur = []; return; }
+        cur.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+      });
+      if (cur.length > 1) segments.push(cur);
+      let last = null;
+      l.values.forEach((v, i) => { if (v != null) last = { x: x(i), y: y(v) }; });
+      return { color: l.color, segments: segments.map((c) => c.join(' ')), last };
+    });
+    return { ticks, lines };
+  }, [width, series, height]);
+  return (
+    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        {g && (
+          <Svg width={width} height={height}>
+            {g.ticks.map((t) => (
+              <Line key={t.v} x1={0} x2={width} y1={t.y} y2={t.y} stroke={th.colors.surface2} strokeWidth={1}
+                strokeDasharray={t.v === 0 ? '3 3' : undefined} />
+            ))}
+            {g.lines.map((l, li) => (
+              <React.Fragment key={li}>
+                {l.segments.map((pts, si) => (
+                  <Polyline key={si} points={pts} fill="none" stroke={l.color} strokeWidth={2}
+                    strokeLinejoin="round" strokeLinecap="round" />
+                ))}
+                {l.last && <Circle cx={l.last.x} cy={l.last.y} r={DOT_R} fill={l.color} />}
+              </React.Fragment>
+            ))}
+          </Svg>
+        )}
+      </View>
+      {g && <AxisLabels height={height} ticks={g.ticks} />}
+    </View>
+  );
+}
+
 // ── Tarjetas de selección ─────────────────────────────────────────────────────
 
 const TILE_H = 108;   // la altura de las de Ejercicios
@@ -353,25 +452,36 @@ export default function LoadTab({
       .sort((a, b) => b.sets - a.sets);
   }, [baseLog, allExercises, now]);
 
-  /**
-   * Esfuerzo vs carga, SEMANAL (necesita sRPE). El indexado se hace DESPUÉS de
-   * recortar por periodo; la lectura del chip sale de la serie COMPLETA.
-   */
+  // Esfuerzo (T11-04), solo con sRPE: cifras, barras por semana o sesión y esfuerzo vs carga.
+  const [effortView, setEffortView] = useState('weeks');   // no se guarda
+  const nBlocks = Math.ceil(PERIOD_DAYS[period] / 7);
   const effort = useMemo(() => {
-    if (load.source !== 'internal') return null;
-    const allWeeks = weeklySeries(days);
-    if (allWeeks.length < 2) return null;
-    const nWeeks  = Math.ceil(PERIOD_DAYS[period] / 7);
-    const shown   = allWeeks.slice(-nWeeks);
+    if (load.source !== 'internal' || load.endDay == null) return null;
+    const rated = ratedSessions(baseLog, load.endDay, PERIOD_DAYS[period]);
+    const recentTs = new Set(ratedSessions(baseLog, load.endDay, 7).map((r) => r.ts));
+    const blocks = weekBlocks(days, nBlocks);
+    const means = effortBlocks(baseLog, days, nBlocks);
+    const vs = effortVsLoad(days, { n: nBlocks });
     return {
-      external: indexTo100(shown.map((w) => w.external)),
-      internal: indexTo100(shown.map((w) => w.internal)),
-      trend: effortTrend(
-        indexTo100(allWeeks.map((w) => w.external)),
-        indexTo100(allWeeks.map((w) => w.internal)),
-      ),
+      count7: recentTs.size,
+      countPeriod: rated.length,
+      meanPeriod: rated.length ? rated.reduce((a, r) => a + r.rpe, 0) / rated.length : null,
+      weekBars: means.map((v, i) => ({ v, recent: i === means.length - 1 })),
+      weekStart: blocks.length ? blocks[0][0].day : null,
+      sessionBars: rated.map((r) => ({ v: r.rpe, recent: recentTs.has(r.ts) })),
+      sessionStart: rated.length ? rated[0].ts : null,
+      vs,
+      hasVs: vs.external.filter((v) => v != null).length >= 2,
     };
-  }, [days, period, load.source]);
+  }, [baseLog, days, load.source, load.endDay, period, nBlocks]);
+
+  // RPE medio por ejercicio (T11-05): también sin sRPE, solo con RPE en las series.
+  const rpeRows = useMemo(() => {
+    if (load.endDay == null) return [];
+    const from = new Date(load.endDay);
+    from.setDate(from.getDate() - (PERIOD_DAYS[period] - 1));
+    return rpeByExercise(baseLog, { from: from.getTime(), endDay: load.endDay });
+  }, [baseLog, load.endDay, period]);
 
   const performance = useMemo(() => {
     if (perfAll.length < 2) return null;
@@ -422,7 +532,7 @@ export default function LoadTab({
   // Título, «i» y qué ficha abre, según la tarjeta elegida.
   const chartHead = {
     load:     { title: load.source === 'external' ? t('load.workTitle') : t('load.trendTitle'), info: { chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] } },
-    effort:   { title: t('load.effortTitle'), info: { chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad', 'indexed100'] } },
+    effort:   { title: t('load.cardEffort'), info: { ids: ['sessionLoad'] } },
     strength: { title: t('load.perfTitle'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
   }[metric];
 
@@ -528,35 +638,86 @@ export default function LoadTab({
 
         {metric === 'effort' && (effort ? (
           <>
-            <IndexChart series={[
-              { values: effort.internal, color: th.colors.orange },
-              { values: effort.external, color: th.colors.accent },
-            ]} />
-
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
-                <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
+            <View style={styles.figures}>
+              <View style={styles.figure}>
+                <Text style={styles.figureLabel}>{t('load.last7d').toUpperCase()}</Text>
+                <Text style={styles.figureValue}>
+                  {tiles.effort7 != null ? dec(tiles.effort7.toFixed(1)) : '—'}
+                  <Text style={styles.figureUnit}> /10</Text>
+                </Text>
+                <Text style={styles.figureSub}>{t('load.sessionsCount', { count: effort.count7 })}</Text>
               </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
-                <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
+              <View style={styles.figure}>
+                <Text style={styles.figureLabel}>{t('load.effortMean', { p: period.toUpperCase() }).toUpperCase()}</Text>
+                <Text style={styles.figureValue}>
+                  {effort.meanPeriod != null ? dec(effort.meanPeriod.toFixed(1)) : '—'}
+                  <Text style={styles.figureUnit}> /10</Text>
+                </Text>
+                <Text style={styles.figureSub}>{t('load.sessionsCount', { count: effort.countPeriod })}</Text>
               </View>
             </View>
 
-            {effort.trend && (
-              <View style={[
-                styles.trendChip,
-                effort.trend === 'adaptation' && styles.trendChipGood,
-                effort.trend === 'fatigue'    && styles.trendChipWarn,
-              ]}>
-                <Text style={[
-                  styles.trendChipText,
-                  effort.trend === 'adaptation' && { color: th.colors.accent },
-                  effort.trend === 'fatigue'    && { color: th.colors.orange },
-                ]}>
-                  {t(`load.trend.${effort.trend}`)}
-                </Text>
+            <SegmentedControl
+              options={[{ id: 'weeks', label: t('load.effortWeeks') }, { id: 'sessions', label: t('load.effortSessions') }]}
+              value={effortView} onChange={setEffortView}
+            />
+            <EffortBars bars={effortView === 'weeks' ? effort.weekBars : effort.sessionBars} />
+            <View style={styles.barsFoot}>
+              <Text style={styles.cardMeta}>
+                {(() => {
+                  const ts = effortView === 'weeks' ? effort.weekStart : effort.sessionStart;
+                  return ts != null ? new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) : '';
+                })()}
+              </Text>
+              <Text style={styles.cardMeta}>{t('load.last7d').toUpperCase()}</Text>
+            </View>
+
+            {effort.hasVs && (
+              <View style={styles.fact}>
+                <View style={styles.factHead}>
+                  <InfoLabel align="left" textStyle={styles.factTitle}
+                    onPress={() => setInfo({ chart: 'effortVsLoad', ids: ['externalLoad', 'sessionLoad'] })}>
+                    {t('load.effortTitle')}
+                  </InfoLabel>
+                </View>
+                <PctChart series={[
+                  { values: effort.vs.internal, color: th.colors.orange },
+                  { values: effort.vs.external, color: th.colors.accent },
+                ]} />
+
+                <View style={styles.legend}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
+                    <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
+                    <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
+                  </View>
+                </View>
+
+                {effort.vs.chip && (
+                  <>
+                    <View style={[
+                      styles.trendChip,
+                      effort.vs.chip.label === 'adaptation' && styles.trendChipGood,
+                      effort.vs.chip.label === 'fatigue'    && styles.trendChipWarn,
+                    ]}>
+                      <Text style={[
+                        styles.trendChipText,
+                        effort.vs.chip.label === 'adaptation' && { color: th.colors.accent },
+                        effort.vs.chip.label === 'fatigue'    && { color: th.colors.orange },
+                      ]}>
+                        {t('load.trendChip', {
+                          load: signed(Math.round(effort.vs.chip.loadPct)),
+                          effort: signed(Math.round(effort.vs.chip.effortPct)),
+                          label: t(`load.trend.${effort.vs.chip.label}`),
+                        })}
+                      </Text>
+                    </View>
+                    <Text style={styles.groupHint}>{t('load.trendHint')}</Text>
+                  </>
+                )}
               </View>
             )}
           </>
@@ -594,6 +755,54 @@ export default function LoadTab({
           </>
         )}
       </View>
+
+      {/* ── RPE medio por ejercicio (solo con ESFUERZO elegida) ──────────── */}
+      {metric === 'effort' && rpeRows.length > 0 && (
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <Text style={styles.cardTitle}>{t('load.rpeTitle')}</Text>
+            <View style={styles.segmentedWrap}>
+              <SegmentedControl
+                options={PERIOD_OPTIONS} value={period}
+                onChange={(id) => setProfile({ loadPeriod: id })}
+              />
+            </View>
+          </View>
+
+          <View style={styles.rpeRow}>
+            <Text style={[styles.rpeHead, styles.rpeName]}>{t('load.rpeExercise')}</Text>
+            <Text style={[styles.rpeHead, styles.rpeNum]}>{t('load.rpeSets')}</Text>
+            {period === '1m' ? (
+              <Text style={[styles.rpeHead, styles.rpeNum]}>{t('load.rpeSingle')}</Text>
+            ) : (
+              <>
+                <Text style={[styles.rpeHead, styles.rpeNum]}>{t('load.rpe4w')}</Text>
+                <Text style={[styles.rpeHead, styles.rpeNum]}>{period.toUpperCase()}</Text>
+              </>
+            )}
+          </View>
+          {rpeRows.map((r) => {
+            const def = allExercises?.[r.exerciseId];
+            const name = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : r.exerciseId;
+            const fmt = (v) => (v != null ? dec(v.toFixed(1)) : '—');
+            return (
+              <View key={r.exerciseId} style={styles.rpeRow}>
+                <Text style={[styles.rpeCell, styles.rpeName]} numberOfLines={1}>{name}</Text>
+                <Text style={[styles.rpeCell, styles.rpeNum]}>{r.sets}</Text>
+                {period === '1m' ? (
+                  <Text style={[styles.rpeCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
+                ) : (
+                  <>
+                    <Text style={[styles.rpeCell, styles.rpeNum]}>{fmt(r.rpe4w)}</Text>
+                    <Text style={[styles.rpeCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
+                  </>
+                )}
+              </View>
+            );
+          })}
+          <Text style={styles.groupHint}>{t('load.rpeFoot')}</Text>
+        </View>
+      )}
 
       {/* ── Series por grupo muscular ───────────────────────────────────── */}
       {groupSets.length > 0 && (
@@ -741,6 +950,22 @@ const makeStyles = (th) => StyleSheet.create({
     color:         th.colors.mutedLight,
     textTransform: 'uppercase',
   },
+
+  // ── Esfuerzo: cifras, pie de las barras ──
+  figures:     { flexDirection: 'row', gap: spacing.md },
+  figure:      { flex: 1, gap: spacing.xs },
+  figureLabel: { ...textStyles.caps, color: th.colors.mutedLight },
+  figureValue: { ...textStyles.title, color: th.colors.orange },
+  figureUnit:  { ...textStyles.label, color: th.colors.mutedLight },
+  figureSub:   { ...textStyles.label, color: th.colors.mutedLight },
+  barsFoot:    { flexDirection: 'row', justifyContent: 'space-between', paddingRight: AXIS_W + spacing.sm },
+
+  // ── RPE medio por ejercicio ──
+  rpeRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  rpeHead: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  rpeCell: { ...textStyles.label, color: th.colors.text },
+  rpeName: { flex: 1 },
+  rpeNum:  { width: 52, textAlign: 'right', fontVariant: ['tabular-nums'] },
 
   // ── Series por grupo ──
   groupList:  { gap: spacing.sm2 },

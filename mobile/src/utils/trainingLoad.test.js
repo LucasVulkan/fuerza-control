@@ -5,6 +5,7 @@ import {
   rollingMean, monotony, strain, loadState, setsByMuscleGroup, plannedSetsByGroup,
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   loadSummary, strengthChange, effortBlocks, monotonyStrain,
+  effortVsLoad, rpeByExercise, ratedSessions, TREND_FLAT_PCT,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
@@ -761,5 +762,110 @@ describe('monotonyStrain', () => {
     expect(r.strainPct).toBeNull();
     expect(Number.isFinite(r.strain)).toBe(true);
     expect(monotonyStrain([])).toEqual({ monotony: null, strain: null, strainPct: null, sessions: 0 });
+  });
+});
+
+// ── T11-04 / T11-05 ───────────────────────────────────────────────────────────
+
+/** Bloques de 7 días: cada uno [externa, interna] (null = sesión sin sRPE; 0 = descanso). */
+function daysFrom(blocks) {
+  const out = [];
+  blocks.forEach(([ext, int], b) => {
+    for (let i = 0; i < 7; i++) {
+      const train = i === 0 && ext !== 0;
+      out.push({
+        day: new Date(2026, 0, 1 + b * 7 + i).getTime(),
+        sessions: train ? 1 : 0,
+        external: train ? ext : 0,
+        internal: train ? int : 0,
+      });
+    }
+  });
+  return out;
+}
+
+describe('effortVsLoad', () => {
+  const eight = (a, b) => [...Array(4).fill(a), ...Array(4).fill(b)];
+
+  it('etiqueta los cinco casos', () => {
+    expect(effortVsLoad(daysFrom(eight([100, 100], [120, 100]))).chip.label).toBe('adaptation');
+    expect(effortVsLoad(daysFrom(eight([100, 100], [100, 120]))).chip.label).toBe('fatigue');
+    expect(effortVsLoad(daysFrom(eight([100, 100], [120, 120]))).chip.label).toBe('hard');
+    expect(effortVsLoad(daysFrom(eight([100, 100], [80, 80]))).chip.label).toBe('deload');
+    expect(effortVsLoad(daysFrom(eight([100, 100], [80, 100]))).chip.label).toBe('mixed');
+  });
+
+  it('el chip trae los dos cambios en % y el umbral manda', () => {
+    const { chip } = effortVsLoad(daysFrom(eight([100, 100], [108, 102])));
+    expect(Math.round(chip.loadPct)).toBe(8);
+    expect(Math.round(chip.effortPct)).toBe(2);
+    expect(chip.label).toBe('adaptation');
+    expect(TREND_FLAT_PCT).toBe(5);
+  });
+
+  it('compara 4 contra 4 aunque se pinten pocos bloques (1M)', () => {
+    const r = effortVsLoad(daysFrom(eight([100, 100], [120, 100])), { n: 5 });
+    expect(r.external).toHaveLength(5);
+    expect(r.chip.label).toBe('adaptation');
+  });
+
+  it('sin 8 bloques completos no hay chip', () => {
+    expect(effortVsLoad(daysFrom(Array(7).fill([100, 100]))).chip).toBeNull();
+  });
+
+  it('% desde el primer bloque con datos; descanso = -100 %; sin NaN', () => {
+    const r = effortVsLoad(daysFrom([[100, 50], [150, 75], [0, 0]]), { n: 3 });
+    expect(r.external).toEqual([0, 50, -100]);
+    expect(r.internal).toEqual([0, 50, -100]);
+  });
+
+  it('una sesión sin sRPE es desconocida, no cero', () => {
+    const r = effortVsLoad(daysFrom([[100, null], [100, 40], [100, 60]]), { n: 3 });
+    expect(r.internal).toEqual([null, 0, 50]);
+    expect(r.external.every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('ratedSessions', () => {
+  it('solo con sRPE y dentro de la ventana que acaba en endDay', () => {
+    const endDay = new Date(2026, 0, 10).getTime();
+    const log = [
+      { timestamp: new Date(2026, 0, 10, 9).getTime(), sessionRpe: 8 },
+      { timestamp: new Date(2026, 0, 9, 9).getTime() },
+      { timestamp: new Date(2026, 0, 1, 9).getTime(), sessionRpe: 6 },
+      { timestamp: new Date(2026, 0, 11, 9).getTime(), sessionRpe: 5 },
+    ];
+    expect(ratedSessions(log, endDay, 7).map((s) => s.rpe)).toEqual([8]);
+    expect(ratedSessions(log, endDay, 10).map((s) => s.rpe)).toEqual([6, 8]);
+  });
+});
+
+describe('rpeByExercise', () => {
+  const endDay = new Date(2026, 1, 28).getTime();
+  const from = new Date(2026, 0, 1).getTime();
+  const at = (m, d) => new Date(2026, m, d, 10).getTime();
+  const log = [
+    { id: 'a', timestamp: at(0, 5), exercises: [
+      { exerciseId: 'easy', sets: [set(50, 10, { rpe: 6 })] },
+      { exerciseId: 'hard', sets: [set(100, 5, { rpe: 8 }), set(90, 5, { rpe: 9, drops: [set(60, 8, { rpe: 10 })] })] },
+    ] },
+    { id: 'b', timestamp: at(1, 26), exercises: [
+      { exerciseId: 'easy', sets: [set(50, 10, { rpe: 7 })] },
+      { exerciseId: 'hard', sets: [set(100, 5, { rpe: 9 })] },
+      { exerciseId: 'norpe', sets: [set(20, 10)] },
+    ] },
+  ];
+
+  it('medias, series, orden de más duro a más suave y sin los que no tienen RPE', () => {
+    const r = rpeByExercise(log, { from, endDay });
+    expect(r.map((x) => x.exerciseId)).toEqual(['hard', 'easy']);
+    expect(r[0].sets).toBe(3);                       // la sub-serie del dropset no cuenta
+    expect(r[0].rpePeriod).toBeCloseTo((8 + 9 + 9) / 3);
+    expect(r[0].rpe4w).toBe(9);                      // solo la del 26-feb entra en 28 días
+    expect(r[1].rpe4w).toBe(7);
+  });
+
+  it('sin RPE en el periodo no sale nada', () => {
+    expect(rpeByExercise(log, { from: at(2, 1), endDay: at(2, 20) })).toEqual([]);
   });
 });

@@ -755,6 +755,116 @@ export function effortBlocks(log, days, n = 8) {
 }
 
 /**
+ * Sesiones con sRPE cuyo día cae en los `span` días que acaban en `endDay`, de la más
+ * vieja a la más nueva. Las que no lo tienen no salen: desconocido no es cero.
+ * @returns {Array<{ ts: number, day: number, rpe: number }>}
+ */
+export function ratedSessions(log, endDay, span) {
+  if (endDay == null) return [];
+  const from = shiftDay(endDay, -(span - 1));
+  return (log ?? [])
+    .filter((e) => e.sessionRpe != null && Number(e.sessionRpe) > 0)
+    .map((e) => ({ ts: e.timestamp, day: startOfDay(e.timestamp), rpe: Number(e.sessionRpe) }))
+    .filter((s) => s.day >= from && s.day <= endDay)
+    .sort((a, b) => a.ts - b.ts);
+}
+
+/**
+ * Umbral (en %) bajo el cual un cambio de carga o de esfuerzo se lee «plano» en el chip de
+ * Esfuerzo vs carga. Provisional: T11-10 decide el valor final mirando el visor.
+ */
+export const TREND_FLAT_PCT = 5;
+
+const blockSum = (b, key) => {
+  if (!b.some((d) => d.sessions > 0)) return 0;                      // semana de descanso: 0 real
+  const vals = b.filter((d) => d.sessions > 0 && d[key] != null);    // sesión sin dato: desconocido
+  return vals.length ? vals.reduce((a, d) => a + d[key], 0) : null;
+};
+const meanOf = (arr) => {
+  const v = arr.filter((x) => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+};
+
+/**
+ * Esfuerzo vs carga (T11-04). `days` es la serie de `loadSummary`, así la carga externa es
+ * la misma cuenta que usa el resto del panel. Bloques de 7 días hacia atrás desde el último
+ * día (los incompletos no entran).
+ *
+ * - `external` / `internal`: % de cambio de cada bloque sobre el primer bloque con dato de los
+ *   últimos `n` bloques (null antes de ese y en bloques sin dato).
+ * - `chip`: media de los últimos 4 bloques contra la de los 4 anteriores, SIEMPRE 4 contra 4
+ *   aunque `n` sea menor; null si no hay 8 bloques o falta dato. `label` = clave de `load.trend.*`.
+ *
+ * @returns {{ external: Array<number|null>, internal: Array<number|null>,
+ *   chip: { loadPct: number, effortPct: number, label: string }|null }}
+ */
+export function effortVsLoad(days, { n = 13 } = {}) {
+  const blocks = weekBlocks(days ?? [], Math.max(n, 8)).filter((b) => b.length === 7);
+  const ext = blocks.map((b) => blockSum(b, 'external'));
+  const int = blocks.map((b) => blockSum(b, 'internal'));
+
+  const pct = (vals) => {
+    const shown = vals.slice(-n);
+    const base = shown.find((v) => v != null && v > 0);
+    return shown.map((v) => (v == null || base == null ? null : (v / base - 1) * 100));
+  };
+
+  let chip = null;
+  if (blocks.length >= 8) {
+    const change = (vals) => {
+      const prev = meanOf(vals.slice(-8, -4));
+      const cur = meanOf(vals.slice(-4));
+      return prev > 0 && cur != null ? (cur / prev - 1) * 100 : null;
+    };
+    const loadPct = change(ext);
+    const effortPct = change(int);
+    if (loadPct != null && effortPct != null) {
+      const dir = (x) => (x > TREND_FLAT_PCT ? 1 : x < -TREND_FLAT_PCT ? -1 : 0);
+      const dl = dir(loadPct); const de = dir(effortPct);
+      const label = dl > 0 && de <= 0 ? 'adaptation'
+        : dl <= 0 && de > 0 ? 'fatigue'
+        : dl > 0 && de > 0 ? 'hard'
+        : dl < 0 && de < 0 ? 'deload' : 'mixed';
+      chip = { loadPct, effortPct, label };
+    }
+  }
+  return { external: pct(ext), internal: pct(int), chip };
+}
+
+/**
+ * RPE medio por ejercicio (T11-05): media del `rpe` de las series hechas que lo tienen, entre
+ * `from` y `endDay` (inicios de día), y en los 28 días que acaban en `endDay`. Las sub-series
+ * de un dropset no cuentan (`doneSets` solo devuelve las series principales). Más duro primero
+ * por las 4 semanas (sin RPE en ellas, al final); los ejercicios sin RPE en el periodo no salen.
+ *
+ * @returns {Array<{ exerciseId: string, sets: number, rpe4w: number|null, rpePeriod: number }>}
+ */
+export function rpeByExercise(log, { from, endDay }) {
+  if (endDay == null) return [];
+  const from4w = shiftDay(endDay, -27);
+  const acc = new Map();
+  for (const e of log ?? []) {
+    const day = startOfDay(e.timestamp);
+    if (day < from || day > endDay) continue;
+    for (const ex of e.exercises ?? []) {
+      for (const s of doneSets(ex)) {
+        const r = Number(s.rpe);
+        if (s.rpe == null || s.rpe === '' || !(r > 0)) continue;
+        const a = acc.get(ex.exerciseId) ?? { all: [], recent: [] };
+        a.all.push(r);
+        if (day >= from4w) a.recent.push(r);
+        acc.set(ex.exerciseId, a);
+      }
+    }
+  }
+  return [...acc.entries()]
+    .map(([exerciseId, a]) => ({
+      exerciseId, sets: a.all.length, rpe4w: meanOf(a.recent), rpePeriod: meanOf(a.all),
+    }))
+    .sort((a, b) => (b.rpe4w ?? -1) - (a.rpe4w ?? -1));
+}
+
+/**
  * Cambio de fuerza en 4 semanas, en %: media de los cambios del e1RM por ejercicio
  * (mejor e1RM de los 28 días que acaban en `endDay` contra el de los 28 anteriores),
  * contando solo los ejercicios con dato en las dos ventanas. Un ejercicio estrenado
