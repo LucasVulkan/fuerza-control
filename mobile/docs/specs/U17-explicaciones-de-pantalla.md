@@ -5,7 +5,7 @@
 > Inicio: 2026-11-05
 > Fase U17-01 · hecho · Componentes: recorrido, aviso puntual y «visto» · §3
 > Fase U17-02 · hecho · Recorridos de Entreno, Programa y Progreso · §4
-> Fase U17-03 · pendiente · Recorridos de Editar programa y del editor de sesión · §5
+> Fase U17-03 · hecho · Recorridos de Editar programa y del editor de sesión · §5
 > Fase U17-04 · pendiente · Recorridos de Clientes, ficha del cliente y Plantillas · §6
 > Fase U17-05 · pendiente · Avisos puntuales · §7
 > Fase U17-06 · pendiente · Quitar las tarjetas explicativas del onboarding · §8
@@ -186,23 +186,24 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 
 | Pantalla | Paso | Qué explica |
 |---|---|---|
-| Editar programa (`ProgramEditorScreen`) | 1 | La ficha y la etapa: datos del programa y, si hay etapas, cuál estás editando |
+| Editar programa (`ProgramEditorScreen`) | 1 | La ficha y las etapas: datos del programa y, si hay etapas, cuál estás editando (un solo hueco que envuelve la tarjeta y las tarjetas de etapa) |
 | Editar programa | 2 | Las sesiones: son las de la etapa seleccionada (si hay etapas), lo que se espera cada semana; se entra para editar los ejercicios y se reordenan arrastrando |
-| Editor de sesión (`SessionEditorScreen`) | 1 | El selector de etapas: cambia qué etapa de la sesión editas (solo si hay etapas) |
+| Editor de sesión (`SessionEditorScreen`) | 1 | El selector de sesiones (A · B · C): pasas a editar otra sesión sin salir (solo si hay más de una). Es el segmentado de verdad de la pantalla; el editor no tiene selector de etapas |
 | Editor de sesión | 2 | La lista de ejercicios: deslizar una fila para sus acciones y arrastrar el asa para reordenar (hueco en la primera fila, con `finger`) |
 
 - La sección de sesiones y la lista quedan a menudo por debajo de la pantalla: estos
   pasos usan `scrollRef` (§3.2).
-- Sin etapas, el texto de las sesiones no las nombra y el editor de sesión tiene un
-  solo paso.
+- Sin etapas, el texto de las sesiones no las nombra. El editor de sesión tiene un
+  solo paso (la lista) si el programa solo tiene una sesión.
+- El «?» va en `ScreenHeader` (prop `onHelp`, modo editor), antes de «···» y «Guardar».
 - Sesión sin ejercicios: sin paso de la lista; sale la primera vez que tenga uno.
 
 **Probar U17-03**
 
 - [ ] Editar programa con etapas → la ficha con la etapa y luego las sesiones, aunque estén por debajo (la lista baja sola)
 - [ ] Editar programa sin etapas → el texto de sesiones no habla de etapas
-- [ ] Editor de sesión con etapas → selector y lista; el dedo enseña deslizar y el asa
-- [ ] Editor de sesión sin etapas → solo la lista
+- [ ] Editor de sesión con varias sesiones → selector y lista; el dedo señala el asa y el texto cuenta el deslizar
+- [ ] Editor de sesión de un programa con una sola sesión → solo la lista
 - [ ] Al cerrar el recorrido la lista se queda donde la dejó y se puede usar
 
 ## 6. U17-04 · Recorridos de Clientes, ficha del cliente y Plantillas
