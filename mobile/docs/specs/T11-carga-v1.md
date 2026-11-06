@@ -271,6 +271,8 @@ barras `orange` en escala 0-10, con el eje 0 · 5 · 10 a la derecha.
 - Se sustituye `effortTrend` (índices base 100 y bloques de 4, que se retrasaba
   semanas en las descargas: T11 v2 de antes).
 
+**Notas de implementación (T11-04).** `effortVsLoad(days, { n })` parte de la serie de `loadSummary` (misma carga externa); solo cuenta bloques completos de 7 días y el chip pide 8 (si no, no sale). Constante `TREND_FLAT_PCT = 5` en `trainingLoad.js` hasta T11-10. Una semana de descanso vale -100 % en la línea; una sesión sin sRPE deja hueco. `effortTrend` se queda: lo usa `scripts/visor-carga/visor.sim.js`. Las claves `load.trend.*` ya no llevan flechas; el título de la tarjeta pasa a «Esfuerzo» y «Esfuerzo vs carga» es el bloque de debajo.
+
 **Probar T11-04**
 
 - [ ] «Últimos 7 días» y «Media 3M» con sus sesiones; al cambiar a 6M, pone «Media 6M» y cambia el valor.
@@ -293,6 +295,8 @@ selector de periodo (el compartido, §3). Va también sin sRPE.
 - Orden: de más duro a más suave por la columna 4 SEM. Los ejercicios sin RPE no salen.
 - Pie: «Solo cuentan los ejercicios con RPE apuntado.»
 - Sin ninguna serie con RPE en el periodo, la tarjeta no sale.
+
+**Notas de implementación (T11-05).** `rpeByExercise(log, { from, endDay })`. Las sub-series de dropset se saltan porque `doneSets` solo devuelve las principales. El título de la tarjeta es texto plano, sin «i» (no hay ficha de métrica para el RPE medio).
 
 **Probar T11-05**
 
