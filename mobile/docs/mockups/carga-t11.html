@@ -1,0 +1,361 @@
+<title>Carga T11</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta T11: pestaña Carga con «lo que importa primero». Tokens de la app:
+     colores src/themes.js (formaFit), espaciado y textos src/theme.js.
+     Layout: notas a la izquierda, el móvil a la derecha (se apilan en estrecho). */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --surface3: #333333; --btnFill: #3a3a3a;
+    --text: #e6e6e6; --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --orange: #fb923c; --orange30: rgba(251,146,60,.3); --blue: #4c85ff;
+    --page: #070707;
+    --xs: 2px; --xs2: 4px; --sm: 6px; --sm2: 8px; --md: 10px; --lg: 15px; --xl: 20px; --xxl: 28px;
+    --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+    color-scheme: dark;
+  }
+  .t-heading { font: 800 18px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.2px; }
+  .t-title { font: 900 24px/1.1 Inter, system-ui, sans-serif; letter-spacing: -.5px; }
+  .t-body { font: 500 14px/1.3 Inter, system-ui, sans-serif; }
+  .t-label { font: 500 12px/1.25 Inter, system-ui, sans-serif; }
+  .t-labelStrong { font: 800 12px/1.2 Inter, system-ui, sans-serif; }
+  .t-caps { font: 800 11px/1.2 Inter, system-ui, sans-serif; letter-spacing: 1.4px; text-transform: uppercase; }
+
+  body { background: var(--page); color: var(--text); font-family: Inter, system-ui, sans-serif;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  svg { display: block; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 920px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; }
+
+  .notes { flex: 1 1 320px; max-width: 460px; min-width: 0; display: grid; gap: 14px; color: var(--mutedLight); font: 500 14px/1.55 Inter, sans-serif; }
+  .notes h1 { color: var(--text); font: 900 22px/1.2 Inter, sans-serif; letter-spacing: -.5px; }
+  .notes h2 { color: var(--text); font: 800 14px Inter, sans-serif; margin-top: 6px; }
+  .notes ol, .notes ul { padding-left: 18px; display: grid; gap: 6px; }
+  .notes b { color: var(--text); }
+  .notes code { font: 700 12px ui-monospace, monospace; color: var(--accent); }
+  .ctl { display: grid; gap: 8px; background: var(--surface); border-radius: var(--r-md); padding: var(--lg); }
+  .ctl-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .ctl-row > span { color: var(--mutedLight); font: 700 12px Inter, sans-serif; }
+
+  /* SegmentedControl */
+  .seg { display: inline-flex; background: var(--surface2); border-radius: var(--r-sm); padding: 2px; gap: 2px; }
+  .seg button { padding: 6px 10px; border-radius: var(--r-xs); color: var(--mutedLight); font: 800 12px Inter, sans-serif; }
+  .seg button[aria-pressed="true"] { background: var(--btnFill); color: var(--text); }
+  .seg.full { display: flex; } .seg.full button { flex: 1; }
+
+  .phone { width: 375px; max-width: 100%; background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; flex: none; }
+  .top { padding: var(--xl) var(--lg) var(--md); display: grid; gap: var(--md); }
+  .top .who { display: flex; align-items: center; gap: var(--sm2); }
+  .tabs { display: flex; gap: var(--lg); border-bottom: 1px solid var(--border); padding: 0 var(--lg); }
+  .tabs span { padding: var(--sm2) 0; color: var(--mutedLight); font: 800 12px Inter, sans-serif; }
+  .tabs span.on { color: var(--text); box-shadow: inset 0 -2px var(--accent); }
+  .content { padding: var(--md) var(--lg) var(--xxl); display: grid; gap: var(--md); }
+
+  .sec { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: var(--sm); }
+  .sec .t-caps { color: var(--text); }
+  .sec .meta { color: var(--mutedLight); }
+
+  /* tarjetas de la semana (statTile) */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sm2); }
+  .tile { background: var(--surface); border-radius: var(--r-md); padding: var(--lg) var(--sm); display: grid; justify-items: center; gap: var(--sm); text-align: center; }
+  .tile .v { color: var(--accent); }
+  .tile .v small { font: 800 14px Inter, sans-serif; color: var(--mutedLight); letter-spacing: 0; }
+  .tile .s { color: var(--accent50); }
+
+  .card { background: var(--surface); border-radius: var(--r-md); padding: var(--lg); display: grid; gap: var(--md); }
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .head .t-labelStrong { text-transform: uppercase; }
+  .head .meta { color: var(--mutedLight); }
+  .info { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--muted); color: var(--mutedLight); font: 800 9px Inter; margin-left: 4px; vertical-align: 1px; }
+
+  /* línea de estado (strip) */
+  .strip { display: flex; align-items: center; gap: var(--sm2); background: var(--surface); border-radius: var(--r-md); padding: var(--md) var(--lg); }
+  .strip .dot { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); flex: none; }
+  .strip p { color: var(--mutedLight); flex: 1; }
+  .strip b { color: var(--text); font-weight: 800; }
+  .strip .pct { color: var(--accent); font: 800 14px Inter; }
+
+  /* subtarjeta del esfuerzo */
+  .effort { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-radius: var(--r-md); padding: var(--md) var(--sm2); }
+  .effort > div { display: grid; justify-items: center; gap: var(--xs2); text-align: center; }
+  .effort > div + div { border-left: 1px solid var(--surface3); }
+  .effort .k { color: var(--mutedLight); }
+  .effort .val { font: 800 14px Inter; color: var(--text); }
+  .effort .val.ok { color: var(--accent); }
+  .effort .val.warn { color: var(--orange); }
+  .ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--accent50); }
+  .ghost .val { color: var(--muted); }
+  .invite { display: flex; gap: var(--sm2); align-items: flex-start; color: var(--mutedLight); margin-top: calc(var(--sm2) - var(--md)); padding: 0 var(--xs2); }
+  .invite svg { flex: none; margin-top: 1px; color: var(--accent); }
+  .invite b { color: var(--text); font-weight: 700; }
+
+  /* series por grupo */
+  .groups { display: grid; gap: var(--sm2); }
+  .grow { display: grid; grid-template-columns: 96px 1fr 40px; align-items: center; gap: var(--sm2); }
+  .grow .n { color: var(--mutedLight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .grow .c { text-align: right; color: var(--text); }
+  .grow .c i { font-style: normal; color: var(--mutedLight); font-weight: 500; }
+  .track { position: relative; height: 10px; border-radius: 3px; background: var(--surface2); }
+  .track .grid { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--surface3); }
+  .track .pend { position: absolute; top: 0; bottom: 0; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--accent50); }
+  .track .done { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); }
+  .track .done.under { background: var(--orange); }
+  .track .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; background: var(--text); }
+  .glegend { display: flex; gap: var(--md); flex-wrap: wrap; color: var(--mutedLight); }
+  .glegend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 12px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  /* calendario */
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal .dow { text-align: center; color: var(--muted); font: 800 10px Inter; padding-bottom: 2px; }
+  .cal .d { height: 24px; border-radius: 5px; display: grid; place-items: center; font: 700 12px Inter; color: var(--mutedLight); background: var(--surface2); }
+  .cal .d.b { background: transparent; }
+  .cal .d.l1 { background: rgba(170,226,22,.14); color: var(--text); }
+  .cal .d.l2 { background: rgba(170,226,22,.26); color: var(--text); }
+  .cal .d.l3 { background: rgba(170,226,22,.38); color: var(--text); }
+  .cal .d.l4 { background: rgba(170,226,22,.5); color: var(--text); }
+  .cal .d.out { background: transparent; box-shadow: inset 0 0 0 1px var(--accent50); color: var(--text); }
+  .cal .d.today { box-shadow: inset 0 0 0 1px rgba(170,226,22,.55); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: var(--md); color: var(--mutedLight); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .ln { width: 13px; height: 2px; border-radius: 2px; display: inline-block; }
+  .chip { justify-self: start; background: var(--accent10); color: var(--accent); border-radius: var(--r-xs); padding: var(--sm) var(--md); }
+  .strainRow { display: flex; align-items: flex-end; gap: var(--xs2); height: 56px; }
+  .strainRow i { flex: 1; border-radius: 2px; background: var(--accent50); }
+  .strainRow i.last { background: var(--accent); }
+  .axis { display: flex; justify-content: space-between; color: var(--muted); }
+
+  /* «Hoy» */
+  .empty { padding: 60px var(--xl); display: grid; justify-items: center; gap: var(--md); text-align: center; color: var(--mutedLight); }
+  .empty .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--surface); display: grid; place-items: center; color: var(--mutedLight); }
+  .skel { background: var(--surface); border-radius: var(--r-md); padding: var(--md) var(--lg); color: var(--mutedLight); display: flex; justify-content: space-between; gap: 8px; }
+  .skel b { color: var(--text); font-weight: 700; }
+  .skel .k { color: var(--muted); }
+  .skel.tall { padding-block: 22px; }
+  .tag { color: var(--orange); }
+  .divider { height: 1px; background: var(--border); margin: var(--sm) 0; }
+</style>
+
+<div class="wrap">
+  <div class="notes">
+    <h1>Carga: lo que importa, arriba</h1>
+    <p>T11 tiene razón en todo lo que arregla y sus seis fases se quedan. Lo que le falta es el <b>orden</b>: hoy la pestaña abre con el calendario y el selector de periodo, y lo que dice «cómo va» son tres cifras abstractas (carga en %, monotonía y sesiones de 7 días). Con datos de ejemplo: Marta, viernes 6 de noviembre, semana 3 de 5 de su etapa.</p>
+
+    <div class="ctl" aria-label="Opciones de la maqueta">
+      <div class="ctl-row"><span>Quién mira</span><div class="seg" id="c-who"></div></div>
+      <div class="ctl-row"><span>Esfuerzo de la sesión</span><div class="seg" id="c-rpe"></div></div>
+      <div class="ctl-row"><span>Versión</span><div class="seg" id="c-ver"></div></div>
+    </div>
+
+    <h2>Lo que propongo sobre T11</h2>
+    <ol>
+      <li><b>De cerca a lejos.</b> Primero la semana, que el periodo no mueve: tres tarjetas, la línea de estado y las series por grupo. Después el mes (calendario). Al final la evolución con su selector de periodo, que solo afecta a lo que tiene debajo.</li>
+      <li><b>Tarjetas SESIONES · SERIES · FUERZA</b>, las tres «hechas de previstas» o contra hace 4 semanas. Es lo que mira primero un entrenador: si viene, si hace el trabajo y si progresa. La carga pasa a la línea de estado con su %: un número en unidades arbitrarias no merece tarjeta (lo dice su propia ficha). Cambia T11-05, que dejaba CARGA 7D.</li>
+      <li><b>Pendiente no es «por debajo».</b> En la semana en curso lo que falta va en contorno hasta la marca de lo previsto. Naranja solo en semanas cerradas. T11-02 pintaba naranja todo lo que está por debajo, y a mitad de semana lo está todo.</li>
+      <li><b>Sin sRPE, un solo hueco.</b> La subtarjeta del esfuerzo sale en contorno (el mismo idioma del calendario y la tira de strain: contorno = no se puede calcular) con una frase debajo. Todo lo demás se llena con el trabajo hecho. Strain y «Esfuerzo vs carga» desaparecen sin repetir la invitación.</li>
+      <li><b>El calendario sin sRPE</b> se tiñe con el trabajo. Hoy pinta todos los días en contorno. T11 no lo cubría.</li>
+      <li><b>Esfuerzo medio de la semana</b> en la subtarjeta: la media de los sRPE, sin cálculo nuevo. Es la cifra que más dice al entrenador («le cuesta un 8»).</li>
+      <li><b>Textos del entrenador en tercera persona</b> («ha entrenado», «su último mes») y la invitación pensada para él: no puede apuntar el esfuerzo por el cliente, solo pedírselo.</li>
+    </ol>
+    <h2>Queda tal cual</h2>
+    <p>T11-03 (fuerza a 4 semanas), T11-04 (textos del estado), los umbrales de monotonía y T11-06 (casos y bordes con test).</p>
+  </div>
+
+  <div class="phone" id="phone" aria-live="polite"></div>
+</div>
+
+<script>
+const S = { who: 'coach', rpe: true, ver: 'new' };
+const seg = (id, key, opts) => {
+  const el = document.getElementById(id);
+  el.innerHTML = opts.map(([v, l]) => `<button type="button" data-v="${v}">${l}</button>`).join('');
+  const sync = () => el.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(String(S[key]) === b.dataset.v)));
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = key === 'rpe' ? b.dataset.v === 'true' : b.dataset.v; sync(); render(); });
+  sync();
+};
+seg('c-who', 'who', [['coach', 'Entrenador'], ['me', 'Quien entrena']]);
+seg('c-rpe', 'rpe', [['true', 'Lo apunta'], ['false', 'No lo apunta']]);
+seg('c-ver', 'ver', [['new', 'Propuesta'], ['now', 'Hoy']]);
+
+// ── datos de ejemplo (deterministas) ──
+const rnd = (() => { let s = 7; return () => (s = (s * 9301 + 49297) % 233280) / 233280; })();
+const DAYS = 91;   // 3M; hoy es el último (viernes, sin entrenar todavía)
+const daily = [], dailyExt = [];
+for (let i = 0; i < DAYS; i++) {
+  const dow = (i + 5) % 7;          // 0 = lunes; el día 90 cae en viernes (4)
+  const week = Math.floor(i / 7);
+  const trains = (dow === 0 || dow === 2 || dow === 4) && i !== DAYS - 1;
+  const deload = week === 8;
+  const base = 360 + week * 9 - (deload ? 150 : 0);
+  daily.push(trains ? Math.round(base + rnd() * 110) : null);
+  dailyExt.push(trains ? Math.round((base + rnd() * 80) * 12) : null);
+}
+const roll = (arr, n) => arr.map((_, i) => i < n - 1 ? null : arr.slice(i - n + 1, i + 1).reduce((a, v) => a + (v ?? 0), 0) / n);
+const perf = [100, 102, 104, 107, 108, 111, 113, 114, 112, 115, 116, 117, 118]; // 4 semanas: 115 → 118
+const strainW = [62, 66, 70, 71, 74, 76, 80, 83, 40, 72, 78, 84, 58];
+const effortInt = [100, 101, 104, 103, 106, 109, 111, 114, 70, 104, 107, 110, 108];
+const effortExt = [100, 103, 106, 108, 111, 114, 116, 118, 74, 112, 116, 120, 121];
+
+function loadChart(vals) {
+  const W = 313, H = 140, top = 10, bot = 6, h = H - top - bot;
+  const m7 = roll(vals, 7), m28 = roll(vals, 28);
+  const max = Math.max(...vals.map(v => v ?? 0), 1), step = W / vals.length;
+  const y = v => top + h - (v / max) * h, x = i => i * step + step / 2;
+  const bars = vals.map((v, i) => v ? `<rect x="${(x(i) - 1.5).toFixed(1)}" y="${y(v).toFixed(1)}" width="3" height="${(top + h - y(v)).toFixed(1)}" rx="1" fill="var(--muted)"/>` : '').join('');
+  const line = (s, c, w) => `<polyline fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" points="${s.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean).join(' ')}"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Carga diaria con medias de 7 y 28 días">${bars}${line(m28, 'var(--blue)', 1.6)}${line(m7, 'var(--accent)', 2)}</svg>`;
+}
+function indexChart(series, H = 80) {
+  const W = 313, all = series.flatMap(s => s.v), lo = Math.min(...all, 100) - 6, hi = Math.max(...all, 100) + 6;
+  const n = series[0].v.length, x = i => 3 + i / (n - 1) * (W - 6), y = v => 6 + (H - 12) - (v - lo) / (hi - lo) * (H - 12);
+  const base = `<line x1="0" x2="${W}" y1="${y(100)}" y2="${y(100)}" stroke="var(--surface3)" stroke-dasharray="3 3"/>`;
+  const lines = series.map(s => `<polyline fill="none" stroke="${s.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${s.v.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}"/><circle cx="${x(n - 1)}" cy="${y(s.v[n - 1])}" r="3" fill="${s.c}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución semanal, base 100">${base}${lines}</svg>`;
+}
+
+const GROUPS = [ // hechas / previstas en la semana natural (lun 2 – dom 8 nov)
+  ['Cuádriceps', 6, 9], ['Espalda', 6, 9], ['Pecho', 6, 9],
+  ['Glúteo e isquios', 4, 6], ['Hombro', 4, 6], ['Brazos', 4, 6], ['Core', 2, 0],
+];
+function groups() {
+  const scale = 20, pct = n => (n / scale * 100).toFixed(1) + '%';
+  const rows = GROUPS.map(([g, done, plan]) => `
+    <div class="grow">
+      <span class="n t-label">${g}</span>
+      <div class="track">
+        <span class="grid" style="left:50%"></span>
+        ${plan > done ? `<span class="pend" style="left:0;width:${pct(plan)}"></span>` : ''}
+        <span class="done" style="width:${pct(done)}"></span>
+        ${plan ? `<span class="mark" style="left:calc(${pct(plan)} - 1px)"></span>` : ''}
+      </div>
+      <span class="c t-labelStrong tnum">${done}${plan ? `<i>/${plan}</i>` : ''}</span>
+    </div>`).join('');
+  return `<div class="card">
+    <div class="head"><span class="t-labelStrong">Series por grupo<span class="info">i</span></span><span class="meta t-label">esta semana</span></div>
+    <div class="groups">${rows}</div>
+    <div class="glegend t-label">
+      <span><i class="sw" style="background:var(--accent)"></i>hechas</span>
+      <span><i class="sw" style="box-shadow:inset 0 0 0 1px var(--accent50)"></i>por hacer</span>
+      <span><i class="sw" style="width:2px;height:12px;background:var(--text)"></i>previstas</span>
+    </div>
+    <p class="t-label" style="color:var(--mutedLight)">Core no estaba previsto: los grupos fuera del plan van al final. Rejilla cada 10 series.</p>
+  </div>`;
+}
+
+function calendar(rpe) {
+  const lv = { 2: 'l3', 4: 'l2' }; // días entrenados de noviembre
+  let cells = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => `<span class="dow">${d}</span>`).join('');
+  cells += '<span class="d b"></span>'.repeat(6);
+  for (let d = 1; d <= 30; d++) {
+    const cls = lv[d] ? ((rpe || S.ver === 'new') ? lv[d] : 'out') : '';
+    cells += `<span class="d ${cls} ${d === 6 ? 'today' : ''}">${d}</span>`;
+  }
+  return `<div class="card">
+    <div class="head"><span class="t-labelStrong">Noviembre</span><span class="meta t-label">‹ &nbsp; ›</span></div>
+    <div class="cal">${cells}</div>
+    <div class="legend t-label"><span>Cada día, por ${rpe ? 'lo que costó (esfuerzo × minutos)' : 'el trabajo hecho'}</span></div>
+  </div>`;
+}
+
+const chrome = (body) => {
+  const coach = S.who === 'coach';
+  const head = coach
+    ? `<div class="top"><div class="who"><span style="color:var(--mutedLight)">‹</span><span class="t-heading">Marta López</span></div></div>
+       <div class="tabs"><span>Programas</span><span>Historial</span><span class="on">Progresión</span><span>Info</span></div>`
+    : `<div class="top"><span class="t-heading">Progresión</span></div>`;
+  const opts = coach ? ['Ejercicios', 'Carga'] : ['Ejercicios', 'Carga', 'Historial'];
+  return `${head}<div class="content">
+    <div class="seg full">${opts.map(o => `<button type="button" aria-pressed="${o === 'Carga'}" tabindex="-1">${o}</button>`).join('')}</div>
+    ${body}</div>`;
+};
+
+function proposal() {
+  const coach = S.who === 'coach', rpe = S.rpe;
+  const su = coach ? 'su' : 'tu', ha = coach ? 'ha entrenado' : 'has entrenado';
+  const effort = rpe
+    ? `<div class="effort" aria-label="Esfuerzo de la semana">
+        <div><span class="k t-caps">Esfuerzo</span><span class="val warn tnum">7,5<span class="t-label" style="color:var(--mutedLight)"> /10</span></span></div>
+        <div><span class="k t-caps">Días</span><span class="val ok">Variados</span></div>
+        <div><span class="k t-caps">Estrés</span><span class="val tnum">+12 %</span></div>
+      </div>`
+    : `<div class="effort ghost" aria-label="Esfuerzo sin datos">
+        <div><span class="k t-caps">Esfuerzo</span><span class="val">—</span></div>
+        <div><span class="k t-caps">Días</span><span class="val">—</span></div>
+        <div><span class="k t-caps">Estrés</span><span class="val">—</span></div>
+      </div>
+      <p class="invite t-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <span>${coach
+        ? '<b>Marta no apunta el esfuerzo.</b> Pídele que responda «¿Cómo de dura fue?» al acabar: verías cuánto le cuesta cada semana, no solo cuánto hace.'
+        : '<b>Apunta el esfuerzo al acabar cada sesión</b> (de 1 a 10) y verás también cuánto te cuesta.'}</span></p>`;
+
+  const evo = `
+    <div class="sec"><span class="t-caps">Evolución</span></div>
+    <div class="seg" style="justify-self:start"><button aria-pressed="false" tabindex="-1">1M</button><button aria-pressed="true" tabindex="-1">3M</button><button aria-pressed="false" tabindex="-1">6M</button><button aria-pressed="false" tabindex="-1">Todo</button></div>
+    <div class="card">
+      <div class="head"><span class="t-labelStrong">Carga<span class="info">i</span></span><span class="meta t-label">${rpe ? 'esfuerzo × minutos' : 'trabajo hecho'} · por día</span></div>
+      ${loadChart(rpe ? daily : dailyExt)}
+      <div class="legend t-label"><span><i class="ln" style="width:4px;height:9px;background:var(--muted)"></i>Cada sesión</span><span><i class="ln" style="background:var(--accent)"></i>Media 7 días</span><span><i class="ln" style="background:var(--blue)"></i>Media 28 días</span></div>
+    </div>
+    <div class="card">
+      <div class="head"><span class="t-labelStrong">Fuerza<span class="info">i</span></span><span class="meta t-label">1RM estimado · base 100</span></div>
+      ${indexChart([{ v: perf, c: 'var(--accent)' }], 72)}
+      <p class="t-label" style="color:var(--mutedLight)"><b style="color:var(--text)">+18 %</b> en estos 3 meses; +3 % en las últimas 4 semanas.</p>
+    </div>
+    ${rpe ? `
+    <div class="card">
+      <div class="head"><span class="t-labelStrong">Strain semanal<span class="info">i</span></span><span class="meta t-label">13 semanas</span></div>
+      <div class="strainRow">${strainW.map((v, i) => `<i class="${i === strainW.length - 1 ? 'last' : ''}" style="height:${v}%"></i>`).join('')}</div>
+      <div class="axis t-caps"><span>10 ago</span><span>Esta semana</span></div>
+    </div>
+    <div class="card">
+      <div class="head"><span class="t-labelStrong">Esfuerzo vs carga<span class="info">i</span></span><span class="meta t-label">base 100</span></div>
+      ${indexChart([{ v: effortInt, c: 'var(--orange)' }, { v: effortExt, c: 'var(--accent)' }], 96)}
+      <div class="legend t-label"><span><i class="ln" style="background:var(--accent)"></i>Trabajo</span><span><i class="ln" style="background:var(--orange)"></i>Esfuerzo</span></div>
+      <span class="chip t-caps">Adaptación</span>
+    </div>` : ''}`;
+
+  return chrome(`
+    <div class="sec"><span class="t-caps">Esta semana</span><span class="meta t-label">lun 2 – dom 8 nov · semana 3 de 5</span></div>
+    <div class="tiles">
+      <div class="tile"><span class="v t-title tnum">2<small> de 3</small></span><span class="t-caps">Sesiones</span><span class="s t-label">1 por hacer</span></div>
+      <div class="tile"><span class="v t-title tnum">32<small> de 45</small></span><span class="t-caps">Series</span><span class="s t-label">13 por hacer</span></div>
+      <div class="tile"><span class="v t-title tnum">+3 %</span><span class="t-caps">Fuerza</span><span class="s t-label">en 4 semanas</span></div>
+    </div>
+    <div class="strip"><span class="dot"></span><p class="t-label"><b>Esta semana, en línea con ${su} último mes.</b> ${rpe ? 'Carga' : 'Trabajo hecho'} de los últimos 7 días contra la media de 28.</p><span class="pct tnum">+6 %</span></div>
+    ${effort}
+    ${groups()}
+    <div class="sec"><span class="t-caps">El mes</span></div>
+    ${calendar(rpe)}
+    ${evo}`);
+}
+
+function today() {
+  if (!S.rpe) return chrome(`
+    <div class="empty">
+      <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+      <p class="t-body">Aún no hay datos de esfuerzo. Al terminar una sesión, responde a «¿Cómo de dura fue?» en el resumen: la carga se calcula con ese valor y la duración.</p>
+      <p class="t-label tag">Así sale hoy toda la pestaña sin sRPE, también para el entrenador: ni sesiones, ni fuerza, ni series.</p>
+    </div>`);
+  const rows = [
+    ['El mes', 'calendario', true],
+    ['1M · 3M · 6M · Todo', 'el selector no mueve lo de arriba'],
+    ['CARGA 7D +6 % · MONOTONÍA 0,9 · SESIONES 7D 2', 'tres cifras abstractas', true],
+    ['Strain semanal', 'tira de 13 semanas', true],
+    ['Evolución de la carga', 'barras + medias', true],
+    ['Esfuerzo vs carga', 'base 100', true],
+    ['Rendimiento +18 %', 'desde el principio del periodo', true],
+    ['Series por grupo', 'últimos 7 días contra 10-20', true],
+  ];
+  return chrome(rows.map(([a, b, t]) => `<div class="skel ${t ? 'tall' : ''}"><b class="t-label">${a}</b><span class="k t-label">${b}</span></div>`).join('')
+    + `<p class="t-label tag" style="padding:0 4px">Lo que dice cómo va la semana (sesiones, series, fuerza) está repartido y abajo del todo.</p>`);
+}
+
+function render() { document.getElementById('phone').innerHTML = S.ver === 'new' ? proposal() : today(); }
+render();
+</script>

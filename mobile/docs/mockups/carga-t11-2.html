@@ -1,0 +1,521 @@
+<title>Carga T11 v2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Maqueta T11 v2: la Carga como panel. Tokens de la app: colores src/themes.js
+     (formaFit), espaciado y textos src/theme.js.
+     Layout: notas a la izquierda, el móvil (interactivo) a la derecha. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1f1f1f; --surface2: #272727; --surface3: #333333; --btnFill: #3a3a3a;
+    --text: #e6e6e6; --mutedLight: #949494; --muted: #585858; --border: #3a3a3a;
+    --accent: #aae216; --onAccent: #000; --accent10: rgba(184,255,0,.1); --accent50: rgba(184,255,0,.5);
+    --orange: #fb923c; --blue: #4c85ff;
+    --page: #070707;
+    --xs: 2px; --xs2: 4px; --sm: 6px; --sm2: 8px; --md: 10px; --lg: 15px; --xl: 20px; --xxl: 28px;
+    --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 18px;
+    color-scheme: dark;
+  }
+  .t-heading { font: 800 18px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.2px; }
+  .t-title { font: 900 22px/1.1 Inter, system-ui, sans-serif; letter-spacing: -.5px; }
+  .t-body { font: 500 14px/1.35 Inter, system-ui, sans-serif; }
+  .t-bodyStrong { font: 700 14px/1.3 Inter, system-ui, sans-serif; }
+  .t-label { font: 500 12px/1.3 Inter, system-ui, sans-serif; }
+  .t-labelStrong { font: 800 12px/1.2 Inter, system-ui, sans-serif; }
+  .t-caps { font: 800 11px/1.2 Inter, system-ui, sans-serif; letter-spacing: 1.3px; text-transform: uppercase; }
+
+  body { background: var(--page); color: var(--text); font-family: Inter, system-ui, sans-serif;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  svg { display: block; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--mutedLight); }
+  .wrap { max-width: 940px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; }
+
+  .notes { flex: 1 1 320px; max-width: 470px; min-width: 0; display: grid; gap: 14px; color: var(--mutedLight); font: 500 14px/1.55 Inter, sans-serif; }
+  .notes h1 { color: var(--text); font: 900 22px/1.2 Inter, sans-serif; letter-spacing: -.5px; text-wrap: balance; }
+  .notes h2 { color: var(--text); font: 800 14px Inter, sans-serif; margin-top: 6px; }
+  .notes ol, .notes ul { padding-left: 18px; display: grid; gap: 6px; }
+  .notes b { color: var(--text); }
+  .ctl { display: grid; gap: 8px; background: var(--surface); border-radius: var(--r-md); padding: var(--lg); }
+  .ctl-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .ctl-row > span { color: var(--mutedLight); font: 700 12px Inter, sans-serif; }
+
+  .seg { display: inline-flex; background: var(--surface2); border-radius: var(--r-sm); padding: 2px; gap: 2px; }
+  .seg button { padding: 6px 10px; border-radius: var(--r-xs); color: var(--mutedLight); font: 800 12px Inter, sans-serif; }
+  .seg button[aria-pressed="true"] { background: var(--btnFill); color: var(--text); }
+  .seg.full { display: flex; } .seg.full button { flex: 1; text-align: center; }
+  .seg.sm button { padding: 4px 8px; font-size: 11px; }
+
+  .phone { width: 375px; max-width: 100%; background: var(--bg); border-radius: 28px; border: 1px solid #1a1a1a; overflow: hidden; flex: none; }
+  .top { padding: var(--xl) var(--lg) var(--md); }
+  .tabs { display: flex; gap: var(--lg); border-bottom: 1px solid var(--border); padding: 0 var(--lg); }
+  .tabs span { padding: var(--sm2) 0; color: var(--mutedLight); font: 800 12px Inter, sans-serif; }
+  .tabs span.on { color: var(--text); box-shadow: inset 0 -2px var(--accent); }
+  .content { padding: var(--md) var(--lg) var(--xxl); display: grid; gap: var(--md); }
+
+  .card { background: var(--surface); border-radius: var(--r-md); padding: var(--lg); display: grid; gap: var(--md); }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .head .t-labelStrong { text-transform: uppercase; }
+
+  /* ── Calendario: semana / mes ── */
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .dow { text-align: center; color: var(--muted); font: 800 10px Inter; }
+  .day { border-radius: 7px; display: grid; place-items: center; align-content: center; gap: 2px; background: var(--surface2); color: var(--mutedLight); font: 700 12px Inter; position: relative; }
+  .days.week .day { height: 46px; }
+  .days.month .day { height: 26px; border-radius: 5px; }
+  .day small { font: 800 9px Inter; letter-spacing: .5px; opacity: .85; }
+  .day.blank { background: transparent; }
+  .day.l1 { background: rgba(170,226,22,.14); color: var(--text); }
+  .day.l2 { background: rgba(170,226,22,.26); color: var(--text); }
+  .day.l3 { background: rgba(170,226,22,.38); color: var(--text); }
+  .day.l4 { background: rgba(170,226,22,.5); color: var(--text); }
+  .weekline { display: flex; align-items: center; gap: var(--sm2); padding: var(--xs2) var(--xs2) 0; }
+  .day.today { color: var(--text); box-shadow: inset 0 -2px var(--mutedLight); }
+  /* dos cifras lado a lado: la principal y su referencia */
+  /* Sin caja: dos columnas separadas por una línea. Una tarjeta gris sobre la
+     tarjeta gris no se leía; la jerarquía la llevan el tamaño y el color. */
+  .pair { display: grid; grid-template-columns: 1fr 1fr; }
+  .pair > div { display: grid; gap: 3px; padding: var(--xs2) 0; }
+  .pair > div + div { border-left: 1px solid var(--border); padding-left: var(--lg); }
+  .pair .k { color: var(--mutedLight); }
+  .pair .v { font: 800 16px/1.2 Inter; letter-spacing: -.2px; }   /* más pequeño que las tarjetas de arriba: es dato de la gráfica, no otra fila de tarjetas */
+  .pair .v small { font: 800 12px Inter; color: var(--mutedLight); letter-spacing: 0; }
+  .pair .d { color: var(--mutedLight); }
+  .sub-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: var(--xs2); }
+  .sticks { display: flex; align-items: flex-end; gap: 6px; height: 64px; }
+  .sticks > div { flex: 1; display: grid; justify-items: center; gap: 3px; height: 100%; align-content: end; }
+  .sticks i { width: 100%; max-width: 26px; border-radius: 3px; background: rgba(251,146,60,.45); }
+  .sticks b { font: 800 11px Inter; color: var(--text); }
+  .sticks span { font: 800 9px Inter; color: var(--muted); letter-spacing: .5px; }
+  .ex.cols { grid-template-columns: 1fr 52px 52px; }
+  .ex.cols.one { grid-template-columns: 1fr 52px; }
+  .ex .p.neg { color: var(--orange); }
+  .ex.th span { font: 800 9px Inter; letter-spacing: 1px; color: var(--muted); text-align: right; text-transform: uppercase; }
+  .rpe-ex { grid-template-columns: 1fr 90px 30px; }
+  .ex.rcols { grid-template-columns: 1fr 40px 44px 44px; }
+  .ex.rcols.one { grid-template-columns: 1fr 40px 44px; }
+  .rpe-ex .p { color: var(--text); }
+  .day.sel { outline: 2px solid var(--text); outline-offset: 1px; }
+  .day.future { opacity: .45; }
+  .dayinfo { display: flex; align-items: center; gap: var(--sm2); background: var(--surface2); border-radius: var(--r-sm); padding: var(--sm2) var(--md); }
+  .dayinfo b { color: var(--text); font-weight: 800; }
+  .dayinfo .rpe { margin-left: auto; color: var(--orange); font: 800 12px Inter; white-space: nowrap; }
+  .scale { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+  .scale i { width: 12px; height: 8px; border-radius: 2px; display: inline-block; }
+  .progress { display: flex; align-items: center; gap: 6px; }
+  .pips { display: flex; gap: 3px; }
+  .pips i { width: 14px; height: 5px; border-radius: 3px; background: var(--surface3); }
+  .pips i.on { background: var(--accent); }
+
+  /* ── Indicadores (seleccionables) ── */
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sm2); }
+  /* Selección = el relleno de las fichas de datos de la app (StageCards): un círculo que sale
+     de la esquina de arriba a la derecha con radio = diagonal de la tarjeta. Se llena en
+     450 ms out-cubic; la que se deja se vacía en 200 ms. El texto pasa a negro cuando el
+     lima ya cubre casi todo. */
+  .kpi { position: relative; overflow: hidden; isolation: isolate; background: var(--surface); border-radius: var(--r-md); padding: var(--md) var(--sm) var(--sm2); display: grid; justify-items: center; text-align: center; gap: var(--xs2); --ease: cubic-bezier(.215,.61,.355,1); }
+  .kpi > :not(.fill) { position: relative; z-index: 1; transition: color .12s; }
+  .kpi.on > :not(.fill) { transition: color .2s .22s; }
+  .kpi .fill { position: absolute; z-index: 0; right: 0; top: 0; width: calc(2 * var(--R, 150px)); aspect-ratio: 1; border-radius: 50%; background: var(--accent); transform: translate(50%, -50%) scale(0); transition: transform .2s var(--ease); }
+  .kpi.on .fill { transform: translate(50%, -50%) scale(1); transition-duration: .45s; }
+  .kpi .spark { width: 100%; }
+  .kpi .lab { color: var(--mutedLight); }
+  .kpi .v { color: var(--text); }
+  .kpi .v small { font: 800 12px Inter; color: var(--mutedLight); letter-spacing: 0; transition: color .45s var(--ease); }
+  .kpi .sub { color: var(--mutedLight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .spark { color: var(--sc); }
+  .kpi.on .lab, .kpi.on .v, .kpi.on .v small, .kpi.on .sub, .kpi.on .spark { color: var(--onAccent); }
+  .kpi.empty { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+  .kpi.empty .v { color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .kpi .fill, .kpi > :not(.fill), .kpi.on .fill, .kpi.on > :not(.fill) { transition: none; } }
+  .spark { height: 22px; }
+  .caret { width: 0; height: 0; border: 7px solid transparent; border-bottom-color: var(--surface); margin: -10px 0 -10px; justify-self: center; }
+
+  /* ── Detalle ── */
+  .read { display: flex; gap: var(--sm2); align-items: flex-start; }
+  .read .dot { width: 8px; height: 8px; border-radius: 4px; margin-top: 4px; flex: none; }
+  .read p { color: var(--mutedLight); }
+  .read b { color: var(--text); font-weight: 800; }
+  .legend { display: flex; flex-wrap: wrap; gap: var(--md); color: var(--mutedLight); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .ln { width: 13px; height: 2px; border-radius: 2px; display: inline-block; }
+  .chip { justify-self: start; border-radius: var(--r-xs); padding: var(--sm) var(--md); background: var(--accent10); color: var(--accent); }
+  .facts { display: grid; }
+  .fact { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--md); border-top: 1px solid var(--border); padding-top: var(--md); }
+  button.fact { width: 100%; text-align: left; }
+  /* «i» de InfoLabel: lo que lo lleva se toca y abre su ficha */
+  .info { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--muted); color: var(--mutedLight); font: 800 9px Inter; margin-left: 5px; vertical-align: 1px; text-transform: none; }
+  .fact .k { color: var(--text); }
+  .fact .v { color: var(--accent); font: 800 12px Inter; text-align: right; }
+  .fact .v.flat { color: var(--mutedLight); }
+  .fact .v.warn { color: var(--orange); }
+  .fact .d { color: var(--mutedLight); grid-column: 1 / -1; }
+  .exs { display: grid; gap: 6px; }
+  .ex { display: grid; grid-template-columns: 1fr 70px 44px; gap: var(--sm2); align-items: center; }
+  .ex .bar { height: 6px; border-radius: 3px; background: var(--surface2); position: relative; overflow: hidden; }
+  .ex .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); }
+  .ex .p { text-align: right; font: 800 12px Inter; color: var(--accent); }
+  .ex .p.flat { color: var(--mutedLight); }
+  .ghostchart { display: flex; align-items: flex-end; gap: 5px; height: 70px; }
+  .ghostchart i { flex: 1; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--border); }
+  .invite { display: grid; gap: var(--sm); background: var(--surface2); border-radius: var(--r-sm); padding: var(--md); color: var(--mutedLight); }
+  .invite b { color: var(--text); }
+
+  /* ── Series por grupo ── */
+  .groups { display: grid; gap: var(--sm2); }
+  .grow { display: grid; grid-template-columns: 92px 1fr 38px; align-items: center; gap: var(--sm2); }
+  .grow .n { color: var(--mutedLight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .grow .c { text-align: right; }
+  .grow .c i { font-style: normal; color: var(--mutedLight); font-weight: 500; }
+  .track { position: relative; height: 10px; border-radius: 3px; background: var(--surface2); }
+  .track .grid { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--surface3); }
+  .track .pend { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--accent50); }
+  .track .done { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); }
+  .track .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; background: var(--text); }
+  .more { color: var(--mutedLight); justify-self: start; }
+</style>
+
+<div class="wrap">
+  <div class="notes">
+    <h1>Carga como panel: tres cifras y una gráfica</h1>
+    <p>Segunda vuelta. La pestaña cabe en dos pantallas en vez de cinco. Todo es tocable: lo que eliges se resalta y la gráfica de debajo cambia, así siempre sabes qué miras. Datos de ejemplo: Marta, viernes 6 de noviembre, semana 3 de 5 de su etapa.</p>
+
+    <div class="ctl" aria-label="Opciones de la maqueta">
+      <div class="ctl-row"><span>Quién mira</span><div class="seg" id="c-who"></div></div>
+      <div class="ctl-row"><span>Esfuerzo de la sesión</span><div class="seg" id="c-rpe"></div></div>
+    </div>
+
+    <h2>Cambios de la sexta vuelta</h2>
+    <ul>
+      <li><b>Sin calendario ni línea de la semana.</b> La pestaña empieza en los tres indicadores, que se eligen con el relleno lima de la app (crece desde donde tocas). «Semanas | Sesiones» va a la derecha, como el periodo.</li>
+      <li><b>Esfuerzo:</b> «Últimos 7 días» contra la media del periodo elegido. La gráfica, de barras simples, con «Semanas | Sesiones».</li>
+      <li><b>Esfuerzo vs carga</b> dice qué sube, qué baja y cuánto, por ejemplo «+3 % carga · −1 % esfuerzo → adaptación» (últimas 4 semanas contra las 4 anteriores).</li>
+      <li><b>RPE medio por ejercicio</b> en su propia tarjeta, con su selector. El periodo es uno para toda la pestaña y se guarda como preferencia: cambiarlo en una tarjeta cambia todas.</li>
+      <li><b>Monotonía:</b> «Cuánto se parece entre sí la carga de los últimos 7 días. Los días sin entrenar también cuentan.»</li>
+      <li><b>Strain, en Carga</b>, debajo de la monotonía: es la carga de los 7 días multiplicada por ella, así que pertenece ahí. Se enseña en % sobre su mes; su valor bruto no dice nada suelto.</li>
+    </ul>
+    <h2>De arriba abajo</h2>
+    <ol>
+      <li><b>Tres indicadores: lo que hace, lo que le cuesta y lo que gana.</b> CARGA (contra su último mes), ESFUERZO (media de los últimos 7 días, de 1 a 10) y FUERZA (cambio en 4 semanas). Cada uno lleva su minigráfica de 8 semanas.</li>
+      <li><b>Una sola gráfica, la del indicador elegido</b>, con su lectura en una frase y su periodo. Sustituye a las cuatro tarjetas de hoy (evolución, strain, esfuerzo vs carga y rendimiento).
+        <ul>
+          <li><b>Carga:</b> barras por día con las medias de 7 y 28 días.</li>
+          <li><b>Esfuerzo:</b> la media por semana o por sesión, esfuerzo vs carga y, en otra tarjeta, el RPE por ejercicio.</li>
+          <li><b>Fuerza:</b> el índice y, debajo, cómo va cada ejercicio en 4 semanas y en el periodo.</li>
+        </ul>
+      </li>
+      <li><b>Series por grupo:</b> hechas, por hacer (contorno) y previstas (marca). Se enseñan 4 grupos y el resto se despliega.</li>
+    </ol>
+    <h2>Sin esfuerzo apuntado</h2>
+    <p>Solo cambia la tarjeta de ESFUERZO, que sale en contorno con «—». Tocarla explica qué falta y qué se vería, sin repetir el aviso por la pantalla. El RPE por ejercicio sigue saliendo si se apunta en las series. La carga, el calendario y su minigráfica pasan a usar el trabajo hecho, y la gráfica lo dice en su título.</p>
+  </div>
+
+  <div class="phone" id="phone" aria-live="polite"></div>
+</div>
+
+<script>
+const S = { who: 'coach', rpe: true, m: 'load', cal: 'week', mon: 0, per: '3m', day: '2026-11-04', allGroups: false };
+const seg = (id, key, opts) => {
+  const el = document.getElementById(id);
+  el.innerHTML = opts.map(([v, l]) => `<button type="button" data-v="${v}">${l}</button>`).join('');
+  const sync = () => el.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(String(S[key]) === b.dataset.v)));
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = key === 'rpe' ? b.dataset.v === 'true' : b.dataset.v; sync(); render(); });
+  sync();
+};
+seg('c-who', 'who', [['coach', 'Entrenador'], ['me', 'Quien entrena']]);
+seg('c-rpe', 'rpe', [['true', 'Lo apunta'], ['false', 'No lo apunta']]);
+
+// ── Datos de ejemplo, deterministas: 26 semanas, lunes-miércoles-viernes ──
+const rnd = (() => { let s = 11; return () => (s = (s * 9301 + 49297) % 233280) / 233280; })();
+const TODAY = new Date(2026, 10, 6);
+const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const NAMES = ['Torso A', 'Pierna', 'Torso B'], LETTERS = ['A', 'P', 'B'];
+const DAYS = [];
+let n = 0;
+for (let i = 181; i >= 0; i--) {
+  const d = new Date(2026, 10, 6 - i), dow = (d.getDay() + 6) % 7, week = Math.floor((181 - i) / 7);
+  const trains = [0, 2, 4].includes(dow) && i !== 0;
+  let s = null;
+  if (trains) {
+    const deload = week % 6 === 3 && week < 20;   // descargas en las semanas 4, 10 y 16
+    const rpe = deload ? 4 + Math.round(rnd()) : Math.min(10, [6, 8, 7][n % 3] + Math.round(rnd() * 1.2 + week / 30));
+    const min = 50 + Math.round(rnd() * 15);
+    s = { name: NAMES[n % 3], letter: LETTERS[n % 3], rpe, min, sets: 14 + Math.round(rnd() * 3), int: rpe * min, ext: Math.round((deload ? 80 : 110 + week * 3.5) + rnd() * 25) };
+    n++;
+  }
+  DAYS.push({ d, k: key(d), dow, s });
+}
+const val = (s) => s ? (S.rpe ? s.int : s.ext) : 0;
+const roll = (arr, w) => arr.map((_, i) => i < w - 1 ? null : arr.slice(i - w + 1, i + 1).reduce((a, v) => a + v, 0) / w);
+// Bloques de 7 días contados hacia atrás desde hoy: el último son «los últimos 7 días».
+function weeks() {
+  const out = [];
+  for (let i = DAYS.length - 7; i >= 0; i -= 7) out.unshift({ d: DAYS[i].d, ss: DAYS.slice(i, i + 7).map(x => x.s).filter(Boolean) });
+  return out.map(({ d, ss }) => ({
+    d, ss, load: ss.reduce((a, s) => a + val(s), 0), int: ss.reduce((a, s) => a + s.int, 0), ext: ss.reduce((a, s) => a + s.ext, 0),
+    rpe: ss.length ? ss.reduce((a, s) => a + s.rpe, 0) / ss.length : null,
+  }));
+}
+// Puntos semanales que enseña cada periodo (1M = las 4 semanas + su punto de partida).
+const NW = { '1m': 5, '3m': 14, '6m': 26 };
+// Eje de % a la derecha: rejilla y etiquetas. Se pinta en `PW` de ancho (W menos la columna del eje).
+function axisPct(lo, hi, y) {
+  const step = hi - lo > 60 ? 20 : hi - lo > 24 ? 10 : 5;
+  let out = '';
+  for (let t = Math.ceil(lo / step) * step; t <= hi; t += step)
+    out += `<line x1="0" x2="${PW}" y1="${y(t)}" y2="${y(t)}" stroke="var(--surface3)" ${t ? 'stroke-dasharray="2 4"' : ''}/><text x="${W}" y="${y(t) + 3}" text-anchor="end" font-size="9" font-weight="800" fill="var(--muted)" font-family="Inter">${t > 0 ? '+' : ''}${t} %</text>`;
+  return out;
+}
+const PERF = [100, 101, 103, 104, 106, 105, 107, 109, 110, 112, 111, 113, 114, 115, 116, 115, 117, 118, 118, 119, 121, 120, 121, 122, 123, 124];
+// Cambio del 1RM estimado: [ejercicio, 4 semanas, 3M, 6M]
+const EXS = [['Sentadilla', 3, -4, 6], ['Press banca', 2, 8, 14], ['Peso muerto rumano', 1, 6, 11], ['Remo con barra', 0, 5, 9], ['Press militar', -2, 1, 4]];
+const GROUPS = [['Cuádriceps', 6, 9], ['Espalda', 6, 9], ['Pecho', 6, 9], ['Glúteo e isquios', 4, 6], ['Hombro', 4, 6], ['Brazos', 4, 6], ['Core', 2, 0]];
+const PER = { '1m': 30, '3m': 91, '6m': 182 };
+
+// ── Gráficas ──
+const W = 313, PW = W - 34;
+function spark(vals, color) {
+  const v = vals.filter(x => x != null), lo = Math.min(...v), hi = Math.max(...v), H = 22;
+  const x = i => 2 + i / (vals.length - 1) * 96, y = x0 => 3 + (H - 6) - (hi === lo ? .5 : (x0 - lo) / (hi - lo)) * (H - 6);
+  const pts = vals.map((x0, i) => x0 == null ? null : `${x(i).toFixed(1)},${y(x0).toFixed(1)}`).filter(Boolean);
+  const last = pts[pts.length - 1].split(',');
+  return `<svg class="spark" style="--sc:${color}" viewBox="0 0 100 22" preserveAspectRatio="none" width="100%" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" points="${pts.join(' ')}"/></svg>`;
+}
+function loadChart() {
+  const days = DAYS.slice(-PER[S.per]), vals = DAYS.map(x => val(x.s));
+  const m7 = roll(vals, 7).slice(-days.length), m28 = roll(vals, 28).slice(-days.length), v = vals.slice(-days.length);
+  const H = 130, top = 8, h = H - top - 6, max = Math.max(...v, 1), step = W / v.length;
+  const y = q => top + h - q / max * h, x = i => i * step + step / 2, bw = Math.max(1.5, Math.min(5, step * .6));
+  const bars = v.map((q, i) => q ? `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${y(q).toFixed(1)}" width="${bw}" height="${(top + h - y(q)).toFixed(1)}" rx="1" fill="var(--muted)"/>` : '').join('');
+  const line = (s, c, w) => `<polyline fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" points="${s.map((q, i) => q == null ? null : `${x(i).toFixed(1)},${y(q).toFixed(1)}`).filter(Boolean).join(' ')}"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Carga por día">${bars}${line(m28, 'var(--blue)', 1.6)}${line(m7, 'var(--accent)', 2)}</svg>`;
+}
+const TXT = (x, y, s, fill = 'var(--muted)', anchor = 'start', size = 9) => `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${size}" font-weight="800" fill="${fill}" font-family="Inter">${s}</text>`;
+const fmtDay = d => d.toLocaleDateString('es', { day: 'numeric', month: 'short' }).replace('.', '').toUpperCase();
+// Esfuerzo: una barra por semana (su media) o una por sesión. Se elige con «Semanas | Sesiones».
+function rpeChart() {
+  const H = 120, top = 8, h = H - top - 18, base = top + h, y = q => top + h - q / 10 * h;
+  const items = S.rv === 'sessions'
+    ? DAYS.slice(-PER[S.per]).filter(x => x.s).map((x, i, a) => ({ v: x.s.rpe, d: x.d, cur: i >= a.length - DAYS.slice(-7).filter(z => z.s).length }))
+    : weeks().slice(-NW[S.per]).filter(w => w.rpe != null).map((w, i, a) => ({ v: w.rpe, d: w.d, cur: i === a.length - 1 }));
+  const bw = PW / items.length;
+  const grid = [0, 5, 10].map(g => `<line x1="0" x2="${PW}" y1="${y(g)}" y2="${y(g)}" stroke="var(--surface3)" ${g ? 'stroke-dasharray="2 4"' : ''}/>${TXT(W, y(g) + 3, g, 'var(--muted)', 'end')}`).join('');
+  const bars = items.map((it, i) => `<rect x="${(i * bw + bw * .18).toFixed(1)}" y="${y(it.v).toFixed(1)}" width="${(bw * .64).toFixed(1)}" height="${(base - y(it.v)).toFixed(1)}" rx="${Math.min(2, bw * .2).toFixed(1)}" fill="${it.cur ? 'var(--orange)' : 'rgba(251,146,60,.45)'}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Esfuerzo por ${S.rv === 'sessions' ? 'sesión' : 'semana'}">${grid}${bars}${TXT(0, H - 2, fmtDay(items[0].d))}${TXT(PW, H - 2, 'ÚLTIMOS 7 DÍAS', 'var(--muted)', 'end')}</svg>`;
+}
+// Dos líneas semanales en % desde la primera semana del periodo (solo semanas acabadas).
+function lineChart(series, H, { band = false } = {}) {
+  const n = series[0].v.length, all = series.flatMap(s => s.v);
+  const lo = Math.min(0, ...all) - 2, hi = Math.max(0, ...all) + 2;
+  const x = i => 3 + i / (n - 1) * (PW - 6), y = q => 6 + (H - 12) - (q - lo) / (hi - lo) * (H - 12);
+  const four = n - 5;
+  let out = axisPct(lo, hi, y);
+  if (band) out += `<rect x="${x(four)}" y="0" width="${PW - x(four)}" height="${H}" fill="rgba(184,255,0,.06)"/>${TXT(x(four) + 4, 11, '4 SEM', 'var(--accent)')}`;
+  for (const s of series) {
+    const pts = s.v.map((q, i) => `${x(i).toFixed(1)},${y(q).toFixed(1)}`).join(' ');
+    if (s.area) out += `<polygon fill="rgba(170,226,22,.12)" points="${x(0)},${y(lo)} ${pts} ${x(n - 1)},${y(lo)}"/>`;
+    out += `<polyline fill="none" stroke="${s.c}" stroke-width="2" stroke-linejoin="round" points="${pts}"/><circle cx="${x(n - 1)}" cy="${y(s.v.at(-1))}" r="3.5" fill="${s.c}"/>`;
+    if (band) out += `<circle cx="${x(four)}" cy="${y(s.v[four])}" r="3" fill="var(--surface)" stroke="${s.c}" stroke-width="1.5"/>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${out}</svg>`;
+}
+function perfChart() {
+  const v = PERF.slice(-NW[S.per]);
+  return lineChart([{ v: v.map(q => (q / v[0] - 1) * 100), c: 'var(--accent)', area: true }], 100, { band: true });
+}
+function evlChart() {
+  const wk = weeks().slice(0, -1).filter(w => w.ss.length).slice(-NW[S.per]);   // la semana en curso aún no ha acabado
+  const pct = k => wk.map(w => (w[k] / wk[0][k] - 1) * 100);
+  return lineChart([{ v: pct("ext"), c: "var(--accent)" }, { v: pct("int"), c: "var(--orange)" }], 116);
+}
+
+// ── Piezas ──
+const coach = () => S.who === 'coach';
+// El calendario vuelve al Historial: aquí basta con dónde está de la etapa y cuántas sesiones lleva.
+function weekLine() {
+  return `<div class="weekline"><span class="t-labelStrong">Semana 3 de 5</span><span class="pips">${[1, 1, 0].map(o => `<i class="${o ? 'on' : ''}"></i>`).join('')}</span><span class="t-label muted">2 de 3 sesiones</span></div>`;
+}
+function state() {
+  // Hoy aún no ha entrenado: la ventana acaba ayer, o un viernes por la mañana
+  // la semana saldría a dos sesiones de tres.
+  const vals = DAYS.map(x => val(x.s)), m7 = roll(vals, 7).at(-2), m28 = roll(vals, 28).at(-2), r = m7 / m28;
+  return { pct: Math.round((r - 1) * 100), st: r < .8 ? 'unloading' : r <= 1.3 ? 'steady' : 'loading' };
+}
+function kpis() {
+  const wk = weeks(), st = state(), su = coach() ? 'su' : 'tu';
+  const sign = q => `${q > 0 ? '+' : ''}${q} %`;
+  const perf4 = Math.round((PERF.at(-1) / PERF.at(-5) - 1) * 100);
+  // `shown` va un paso por detrás de S.m: render() pinta la selección anterior y la cambia en el
+  // siguiente frame, para que el relleno se vea crecer (y el de la tarjeta que se deja, recogerse).
+  const tile = (id, lab, v, sub, sp, empty) => `<button type="button" class="kpi ${empty ? 'empty' : ''} ${S.shown === id ? 'on' : ''}" data-m="${id}" aria-pressed="${S.m === id}">
+      <span class="fill" aria-hidden="true"></span><span class="lab t-caps">${lab}</span><span class="v t-title tnum">${v}</span>${sp}<span class="sub t-label">${sub}</span></button>`;
+  return `<div class="kpis">
+    ${tile('load', 'Carga', sign(st.pct), `vs ${su} mes`, spark(wk.slice(-9, -1).map(w => w.load), 'var(--accent)'))}
+    ${S.rpe
+      ? tile('rpe', 'Esfuerzo', `${wk.at(-1).rpe.toFixed(1).replace('.', ',')}<small> /10</small>`, 'últimos 7 días', spark(wk.slice(-8).map(w => w.rpe), 'var(--orange)'))
+      : tile('rpe', 'Esfuerzo', '—', 'sin apuntar', '<div class="spark"></div>', true)}
+    ${tile('perf', 'Fuerza', sign(perf4), 'en 4 semanas', spark(PERF.slice(-8), 'var(--accent)'))}
+  </div>`;
+}
+
+const STATE_TXT = {
+  loading: ['más que en', 'var(--orange)'], steady: ['en línea con', 'var(--accent)'], unloading: ['menos que en', 'var(--mutedLight)'],
+};
+function period() {
+  return `<div class="seg sm" data-seg="per">${[['1m', '1M'], ['3m', '3M'], ['6m', '6M']].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${S.per === v}">${l}</button>`).join('')}</div>`;
+}
+// RPE de las series (no el de la sesión): sale aunque no se apunte el sRPE.
+// [ejercicio, [series, RPE] en 4 semanas, en 3M, en 6M]
+const EX_RPE = [
+  ['Sentadilla', [12, 8.5], [36, 8.0], [70, 7.8]],
+  ['Peso muerto rumano', [9, 8.0], [27, 7.5], [52, 7.4]],
+  ['Press banca', [12, 7.5], [36, 7.8], [70, 7.6]],
+  ['Remo con barra', [9, 7.0], [27, 7.0], [54, 6.8]],
+  ['Press militar', [6, 6.5], [18, 7.2], [36, 7.0]],
+];
+const fmt = q => q.toFixed(1).replace('.', ',');
+// Su propia tarjeta, con su selector: el periodo es uno solo para toda la pestaña y se guarda como preferencia.
+function rpeCard() {
+  const one = S.per === '1m', col = S.per === '6m' ? 3 : 2, per = S.per.toUpperCase();
+  const rows = EX_RPE.map(r => `<div class="ex rcols ${one ? 'one' : ''}"><span class="t-label">${r[0]}</span><span class="p tnum flat">${r[one ? 1 : col][0]}</span><span class="p tnum">${fmt(r[1][1])}</span>${one ? '' : `<span class="p tnum">${fmt(r[col][1])}</span>`}</div>`).join('');
+  return `<div class="card">
+    <div class="head"><span class="t-labelStrong">RPE medio por ejercicio</span>${period()}</div>
+    <div class="exs">
+      <div class="ex rcols ${one ? 'one' : ''} th"><span style="text-align:left">Ejercicio</span><span>Series</span><span>${one ? 'RPE' : '4 sem'}</span>${one ? '' : `<span>${per}</span>`}</div>
+      ${rows}
+    </div>
+    <p class="t-label muted">Solo cuentan los ejercicios con RPE apuntado.</p>
+  </div>`;
+}
+// Cambio de la media de las 4 últimas semanas contra las 4 anteriores, como el chip de la app.
+function evlReading() {
+  const wk = weeks().slice(0, -1), avg = (a, k) => a.reduce((s, w) => s + w[k], 0) / a.length;
+  const d = k => Math.round((avg(wk.slice(-4), k) / avg(wk.slice(-8, -4), k) - 1) * 100);
+  const e = d('ext'), i = d('int'), F = 5, up = q => q > F, down = q => q < -F, flat = q => !up(q) && !down(q);
+  const lab = up(e) && flat(i) ? 'adaptación' : flat(e) && up(i) ? 'fatiga' : up(e) && up(i) ? 'bloque duro' : down(e) && down(i) ? 'descarga' : 'sin un patrón claro';
+  const s = q => `${q > 0 ? '+' : q < 0 ? '−' : ''}${Math.abs(q)} %`;
+  return `${s(e)} carga · ${s(i)} esfuerzo → ${lab}`;
+}
+// Foster sobre 7 días que acaban `end` días antes de hoy (los de descanso cuentan 0).
+function foster(end) {
+  const w7 = DAYS.slice(DAYS.length - 7 - end, DAYS.length - end).map(x => val(x.s)), sum = w7.reduce((a, b) => a + b, 0), mu = sum / 7;
+  const mono = mu / Math.sqrt(w7.reduce((a, b) => a + (b - mu) ** 2, 0) / 7);
+  return { mono, strain: sum * mono };
+}
+function monotonyFact() {
+  const { mono, strain } = foster(1);   // hasta ayer, como el estado de carga
+  const base = [8, 15, 22, 29].map(e => foster(e).strain).reduce((a, b) => a + b, 0) / 4;
+  const sp = Math.round((strain / base - 1) * 100);
+  const lab = mono >= 2 ? 'días muy iguales' : mono >= 1.5 ? 'días bastante iguales' : 'días variados';
+  return `<div class="facts">
+    <button type="button" class="fact"><span class="k t-labelStrong">Monotonía<span class="info">i</span></span><span class="v tnum ${mono < 1.5 ? '' : 'flat'}">${fmt(mono)} · ${lab}</span><span class="d t-label">Cuánto se parece entre sí la carga de los últimos 7 días. Los días sin entrenar también cuentan.</span></button>
+    <button type="button" class="fact" style="margin-top:var(--md)"><span class="k t-labelStrong">Strain<span class="info">i</span></span><span class="v tnum ${sp > 15 ? 'warn' : ''}">${sp > 0 ? '+' : sp < 0 ? '−' : ''}${Math.abs(sp)} %</span><span class="d t-label">Carga × monotonía de los últimos 7 días, contra ${coach() ? 'su' : 'tu'} media de las 4 semanas anteriores.</span></button>
+  </div>`;
+}
+function detail() {
+  const su = coach() ? 'su' : 'tu';
+  if (S.m === 'load') {
+    const st = state(), [txt, c] = STATE_TXT[st.st];
+    const wkTxt = st.st === 'steady' ? `Esta semana, ${txt} ${su} último mes.` : `Esta semana ${coach() ? 'ha' : 'has'} entrenado ${txt} ${su} último mes.`;
+    return `<div class="card">
+      <div class="head"><span class="t-labelStrong">${S.rpe ? 'Carga' : 'Carga · trabajo hecho'}</span>${period()}</div>
+      <div class="read"><span class="dot" style="background:${c}"></span><p class="t-label"><b>${wkTxt}</b> Últimos 7 días contra la media de 28.</p></div>
+      ${loadChart()}
+      <div class="legend t-label"><span><i class="ln" style="width:4px;height:9px;background:var(--muted)"></i>Cada día</span><span><i class="ln" style="background:var(--accent)"></i>Media 7 días</span><span><i class="ln" style="background:var(--blue)"></i>Media 28 días</span></div>
+      ${monotonyFact()}
+      ${S.rpe ? '' : `<p class="t-label muted">Sin esfuerzo apuntado, la carga es el trabajo: repeticiones por lo cerca que va cada serie de ${su} máximo.</p>`}
+    </div>`;
+  }
+  if (S.m === 'rpe') {
+    if (!S.rpe) return `<div class="card">
+      <div class="head"><span class="t-labelStrong">Esfuerzo</span>${period()}</div>
+      <div class="ghostchart" aria-hidden="true">${[40, 55, 50, 62, 30, 58, 64, 60, 66].map(h => `<i style="height:${h}%"></i>`).join('')}</div>
+      <div class="invite t-label">
+        ${coach()
+          ? '<b>Marta no apunta cómo de dura fue cada sesión.</b><span>Pídele que responda «¿Cómo de dura fue?» (de 1 a 10) al acabar. Con eso verías aquí cuánto le cuesta cada semana y si se está pasando, no solo cuánto hace.</span>'
+          : '<b>Al acabar cada sesión, responde «¿Cómo de dura fue?» (de 1 a 10).</b><span>Con eso verás aquí cuánto te cuesta cada semana y si te estás pasando, no solo cuánto haces.</span>'}
+      </div>
+    </div>`;
+    const wk = weeks(), now = wk.at(-1);
+    const ses = DAYS.slice(-PER[S.per]).filter(x => x.s), mean = ses.reduce((a, x) => a + x.s.rpe, 0) / ses.length;
+    return `<div class="card">
+      <div class="head"><span class="t-labelStrong">Esfuerzo</span>${period()}</div>
+      <div class="pair">
+        <div><span class="k t-caps">Últimos 7 días</span><span class="v tnum" style="color:var(--orange)">${fmt(now.rpe)}<small> /10</small></span><span class="d t-label">${now.ss.length} sesiones</span></div>
+        <div><span class="k t-caps">Media ${S.per.toUpperCase()}</span><span class="v tnum">${fmt(mean)}<small> /10</small></span><span class="d t-label">${ses.length} sesiones</span></div>
+      </div>
+      <div class="seg sm full" data-seg="rv"><button type="button" data-v="weeks" aria-pressed="${S.rv !== 'sessions'}">Semanas</button><button type="button" data-v="sessions" aria-pressed="${S.rv === 'sessions'}">Sesiones</button></div>
+      ${rpeChart()}
+
+      <div class="sub-h"><span class="t-labelStrong">Esfuerzo vs carga</span><span class="t-label muted">cambio desde el inicio</span></div>
+      ${evlChart()}
+      <div class="legend t-label"><span><i class="ln" style="background:var(--accent)"></i>Carga externa (trabajo)</span><span><i class="ln" style="background:var(--orange)"></i>Esfuerzo</span></div>
+      <span class="chip t-labelStrong tnum">${evlReading()}</span>
+      <p class="t-label muted" style="margin-top:calc(var(--sm) - var(--md))">Últimas 4 semanas contra las 4 anteriores.</p>
+    </div>`;
+  }
+  const perf4 = Math.round((PERF.at(-1) / PERF.at(-5) - 1) * 100), perfP = Math.round((PERF.at(-1) / PERF.at(-NW[S.per]) - 1) * 100);
+  const sign = q => q === 0 ? 'igual' : `${q > 0 ? '+' : '−'}${Math.abs(q)} %`, cls = q => q > 0 ? '' : q < 0 ? 'neg' : 'flat';
+  const perLabel = S.per.toUpperCase(), one = S.per === '1m';   // 1M ≈ las 4 semanas: una sola columna
+  const col = S.per === '6m' ? 3 : 2;
+  return `<div class="card">
+    <div class="head"><span class="t-labelStrong">Fuerza · 1RM estimado</span>${period()}</div>
+    <div class="pair">
+      <div><span class="k t-caps">4 semanas</span><span class="v tnum" style="color:var(--accent)">+${perf4} %</span><span class="d t-label">desde el 9 oct</span></div>
+      ${one ? `<div><span class="k t-caps">Mejor ejercicio</span><span class="v">Sentadilla</span><span class="d t-label">+3 % en 4 semanas</span></div>`
+            : `<div><span class="k t-caps">${perLabel}</span><span class="v tnum">+${perfP} %</span><span class="d t-label">desde el ${S.per === '3m' ? '7 ago' : '8 may'}</span></div>`}
+    </div>
+    ${perfChart()}
+    <div class="exs">
+      <div class="ex cols ${one ? 'one' : ''} th"><span style="text-align:left">Ejercicio</span><span>4 sem</span>${one ? '' : `<span>${perLabel}</span>`}</div>
+      ${EXS.map(r => `<div class="ex cols ${one ? 'one' : ''}"><span class="t-label">${r[0]}</span><span class="p tnum ${cls(r[1])}">${sign(r[1])}</span>${one ? '' : `<span class="p tnum ${cls(r[col])}">${sign(r[col])}</span>`}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function groups() {
+  const rows = (S.allGroups ? GROUPS : GROUPS.slice(0, 4)).map(([g, done, plan]) => `
+    <div class="grow"><span class="n t-label">${g}</span>
+      <div class="track"><span class="grid" style="left:50%"></span>
+        ${plan > done ? `<span class="pend" style="width:${plan / 20 * 100}%"></span>` : ''}
+        <span class="done" style="width:${done / 20 * 100}%"></span>
+        ${plan ? `<span class="mark" style="left:calc(${plan / 20 * 100}% - 1px)"></span>` : ''}
+      </div>
+      <span class="c t-labelStrong tnum">${done}${plan ? `<i>/${plan}</i>` : ''}</span></div>`).join('');
+  return `<div class="card">
+    <div class="head"><span class="t-labelStrong">Series por grupo</span><span class="t-label muted">32 de 45 esta semana</span></div>
+    <div class="groups">${rows}</div>
+    <button type="button" class="more t-labelStrong" data-more>${S.allGroups ? 'Ver menos' : 'Ver los 7 grupos'}</button>
+  </div>`;
+}
+
+function render() {
+  const head = coach()
+    ? `<div class="top"><span class="t-heading">‹ &nbsp;Marta López</span></div><div class="tabs"><span>Programas</span><span>Historial</span><span class="on">Progresión</span><span>Info</span></div>`
+    : `<div class="top"><span class="t-heading">Progresión</span></div>`;
+  const opts = coach() ? ['Ejercicios', 'Carga'] : ['Ejercicios', 'Carga', 'Historial'];
+  document.getElementById('phone').innerHTML = `${head}<div class="content">
+    <div class="seg full">${opts.map(o => `<button type="button" aria-pressed="${o === 'Carga'}" tabindex="-1">${o}</button>`).join('')}</div>
+    ${kpis()}${detail()}${S.m === 'rpe' ? rpeCard() : ''}${groups()}</div>`;
+  // Radio del relleno = diagonal de la tarjeta, como StageCards.
+  document.querySelectorAll('.kpi').forEach(k => k.style.setProperty('--R', `${Math.ceil(Math.hypot(k.offsetWidth, k.offsetHeight))}px`));
+  if (S.shown !== S.m) setTimeout(() => {   // un tick después, para que el navegador vea el cambio y anime
+    document.querySelectorAll('.kpi').forEach(k => k.classList.toggle('on', k.dataset.m === S.m));
+    S.shown = S.m;
+  }, 30);
+}
+S.shown = S.m;
+document.getElementById('phone').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.day) S.day = t.dataset.day;
+  else if (t.dataset.m) { if (t.dataset.m === S.m) return; S.m = t.dataset.m; }
+  else if (t.dataset.mon) S.mon = Math.min(0, S.mon + Number(t.dataset.mon));
+  else if (t.dataset.more !== undefined) S.allGroups = !S.allGroups;
+  else { const sg = t.closest('[data-seg]'); if (sg && t.dataset.v) S[sg.dataset.seg] = t.dataset.v; else return; }
+  render();
+});
+render();
+</script>
