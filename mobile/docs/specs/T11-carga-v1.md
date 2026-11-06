@@ -109,6 +109,21 @@ Para tenerlo claro al implementar (todo en `trainingLoad.js`):
 - **Todo dato se toca.** Lo que no es una tarjeta seleccionable lleva su
   `InfoLabel` (la «i») y abre su ficha en `MetricInfoSheet`. Los textos de la
   pantalla se quedan cortos y la explicación larga va en la ficha.
+- **Anatomía de una gráfica (6-nov, maqueta `mockups/carga-t11-3.html`).** Todas
+  las de la pestaña siguen la del detalle de ejercicio, con título:
+  1. **Cabecera**: título `caps` en `mutedLight` con su «i»; a la derecha, si hay
+     dos vistas, un cambio de texto («Semanas · Sesiones», `labelStrong`): la
+     elegida en `accent`, la otra en `mutedLight`. Nunca un segmentado.
+  2. **Cifra**: el dato con su unidad en `heading` (un punto menos que las
+     tarjetas) y al lado un chip con el delta, si lo hay.
+  3. **Gráfica**: el eje de la derecha mide el rótulo más largo (que «+100 %»
+     quepa siempre), como mucho 5 marcas; debajo, fechas en el eje horizontal y una
+     guía vertical punteada y suave por semana.
+  4. **Pie**: la lectura y la leyenda en chips (punto de color + dato).
+- **El periodo va una vez**: segmentado a todo el ancho **debajo de las tarjetas**,
+  con el texto entero («Último mes · 3 meses · 6 meses»), más pegado a ellas que el
+  hueco normal. Ninguna gráfica lleva el suyo. Bajo el conmutador Ejercicios |
+  Carga | Historial hay más aire (`xl`).
 - **Nada de rojo** (UI-MIGRATION §4.9). Lo que baja va en `orange`.
 - Ningún `NaN`, `Infinity` ni negativo imposible en lo que se pinta (§13).
 
