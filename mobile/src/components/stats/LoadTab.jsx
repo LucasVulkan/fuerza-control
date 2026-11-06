@@ -444,7 +444,7 @@ export default function LoadTab({
   const monotonyLabel = ms.monotony == null ? null : t(ms.monotony >= MONOTONY_HIGH ? 'load.monotonyHigh'
     : ms.monotony >= MONOTONY_MODERATE ? 'load.monotonyModerate' : 'load.monotonyLow');
 
-  const signed = (n) => `${n > 0 ? '+' : ''}${n}%`;
+  const signed = (n) => `${n > 0 ? '+' : ''}${n} %`;
   const pctOrDash = (n) => (n != null && Number.isFinite(n) ? signed(n) : '—');
 
   // Título, «i» y qué ficha abre, según la tarjeta elegida.
@@ -550,7 +550,7 @@ export default function LoadTab({
                 <InfoLabel align="left" textStyle={styles.factTitle} onPress={() => setInfo({ ids: ['strain'] })}>
                   {t('load.strain')}
                 </InfoLabel>
-                <Text style={styles.factValue}>{ms.strainPct != null ? `${ms.strainPct > 0 ? '+' : ''}${ms.strainPct} %` : '—'}</Text>
+                <Text style={styles.factValue}>{pctOrDash(ms.strainPct)}</Text>
               </View>
               <Text style={styles.groupHint}>{t(third ? 'load.strainHintThird' : 'load.strainHint')}</Text>
             </View>

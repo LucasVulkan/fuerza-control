@@ -746,6 +746,12 @@ describe('monotonyStrain', () => {
     expect(monotonyStrain(mk(P, P, P, P, P2)).strainPct).toBe(100);
   });
 
+  it('un hueco (sesión sin sRPE) no cuenta como descanso', () => {
+    // 3 sesiones, una sin sRPE: se excluye; con 0 saldría otra monotonía.
+    const days = mk(P).map((d, i) => (i === 3 ? { ...d, value: null } : d));
+    expect(monotonyStrain(days).monotony).toBeCloseTo(0.707, 2);
+  });
+
   it('sin NaN ni Infinity con ceros', () => {
     expect(monotonyStrain(mk(new Array(35).fill(0)))).toEqual({ monotony: null, strain: null, strainPct: null, sessions: 0 });
     // Base con sesiones pero carga 0: sin desviación, sin base.

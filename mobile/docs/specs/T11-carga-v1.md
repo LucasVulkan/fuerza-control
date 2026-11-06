@@ -234,7 +234,7 @@ Con menos de 3 sesiones no hay monotonía, y por tanto tampoco strain.
 - [ ] Con 2 sesiones en 7 días: «—» y el aviso de las 3 sesiones.
 
 **Notas de la implementación (T11-03):**
-- `monotonyStrain(days)` (`trainingLoad.js`) solo usa bloques completos de 7 días; los huecos (sesión sin sRPE) cuentan 0 como los descansos. Los textos del estado son claves `load.stateX` / `load.stateThirdX`; `load.state.*` y `load.emptyNoRpe` se han borrado. El strain se pinta como «+12 %» (con espacio, como la maqueta) y las tarjetas siguen con «+12%» de T11-01.
+- `monotonyStrain(days)` (`trainingLoad.js`) solo usa bloques completos de 7 días; los descansos cuentan 0 y los huecos (sesión sin sRPE) se excluyen, no son descanso (corregido en revisión). Los textos del estado son claves `load.stateX` / `load.stateThirdX`; `load.state.*` y `load.emptyNoRpe` se han borrado. El strain se pinta como «+12 %» (con espacio, como la maqueta) y las tarjetas siguen con «+12%» de T11-01.
 
 ## 7. T11-04 — Esfuerzo: semanas o sesiones y esfuerzo vs carga
 
