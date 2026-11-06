@@ -45,12 +45,8 @@ import { FILL_MS, EMPTY_MS } from '../ui/StageCards';
 import { InfoLabel, MetricInfoSheet } from '../ui/MetricInfo';
 
 // "7D" no existe aquí: siete barras y dos líneas planas no son una tendencia.
-const PERIOD_OPTIONS = [
-  { id: '1m',  label: '1M'   },
-  { id: '3m',  label: '3M'   },
-  { id: '6m',  label: '6M'   },
-];
 const PERIOD_DAYS = { '1m': 30, '3m': 90, '6m': 180 };
+const PERIOD_KEY  = { '1m': 'periodMonth', '3m': 'period3m', '6m': 'period6m' };
 
 const CHART_H = 140;
 const PAD_TOP = 10;
@@ -76,6 +72,30 @@ const GHOST_BARS = [40, 55, 50, 62, 30, 58, 64, 60, 66];
 // punto por día — 365+ en un año. Además la marca es distinta (barras diarias
 // bajo dos líneas) y no necesita scroll ni tooltip, porque el zoom lo da el
 // selector de período. Es una desviación consciente de la spec §5.3.
+
+const GUIDE = { strokeDasharray: '2 3', strokeWidth: 1 };
+
+/** Ancho de la columna del eje: el de su rótulo más largo (≈ 6,6 px por carácter a 11-12 px) y 6 de aire. */
+const axisWidth = (labels) => Math.ceil(Math.max(...labels.map((l) => l.length)) * 6.6) + 6;
+
+/** Fechas bajo el área de la gráfica: la primera, un par en medio y la última. `right` = ancho del eje. */
+function XLabels({ dates, right = 0 }) {
+  const th = useTheme();
+  const { i18n } = useTranslation();
+  if (!dates || dates.length < 2) return null;
+  const n = dates.length;
+  const m = Math.min(4, n);
+  const idx = [...new Set(Array.from({ length: m }, (_, k) => Math.round((k * (n - 1)) / (m - 1))))];
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingRight: right, marginTop: spacing.xs2 }}>
+      {idx.map((i) => (
+        <Text key={i} style={[textStyles.micro, { color: th.colors.mutedLight }]}>
+          {new Date(dates[i]).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
+        </Text>
+      ))}
+    </View>
+  );
+}
 
 function LoadChart({ days, mean7, mean28 }) {
   const th = useTheme();
@@ -117,13 +137,19 @@ function LoadChart({ days, mean7, mean28 }) {
       return out.map((pts) => pts.join(' '));
     };
 
-    return { bars, line7: toSegments(mean7), line28: toSegments(mean28) };
+    // Una guía cada 7 días, contando desde el último.
+    const guides = days.map((_, i) => i).filter((i) => (days.length - 1 - i) % 7 === 0).map(x);
+
+    return { bars, guides, line7: toSegments(mean7), line28: toSegments(mean28) };
   }, [width, days, mean7, mean28]);
 
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {geometry && (
         <Svg width={width} height={CHART_H}>
+          {geometry.guides.map((gx, i) => (
+            <Line key={`g${i}`} x1={gx} x2={gx} y1={PAD_TOP} y2={CHART_H - PAD_BOT} stroke={th.colors.surface2} {...GUIDE} />
+          ))}
           {geometry.bars.map((b) => (
             <Rect key={b.key} x={b.x} y={b.y} width={b.w} height={b.h} rx={1} fill={th.colors.muted} />
           ))}
@@ -137,6 +163,7 @@ function LoadChart({ days, mean7, mean28 }) {
           ))}
         </Svg>
       )}
+      <XLabels dates={days.map((d) => d.day)} />
     </View>
   );
 }
@@ -147,7 +174,7 @@ function LoadChart({ days, mean7, mean28 }) {
  * Separado de `LoadChart` porque no comparte nada con él: sin barras, pocos
  * puntos, y una referencia horizontal en 100 que es la mitad del mensaje.
  */
-function IndexChart({ series, height = 96 }) {
+function IndexChart({ series, dates, height = 96 }) {
   const th = useTheme();
   const [width, setWidth] = useState(0);
 
@@ -183,13 +210,17 @@ function IndexChart({ series, height = 96 }) {
         return null;
       })(),
     }));
-    return { lines, baselineY: y(100) };
+    const guides = Array.from({ length: n }, (_, i) => x(i));
+    return { lines, guides, baselineY: y(100) };
   }, [width, series, height]);
 
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {geometry && (
         <Svg width={width} height={height}>
+          {geometry.guides.map((gx, i) => (
+            <Line key={`g${i}`} x1={gx} x2={gx} y1={8} y2={height - 8} stroke={th.colors.surface2} {...GUIDE} />
+          ))}
           {/* Referencia: 100 = punto de partida de la ventana */}
           <Line x1={0} y1={geometry.baselineY} x2={width} y2={geometry.baselineY}
             stroke={th.colors.surface2} strokeWidth={1} strokeDasharray="3 3" />
@@ -204,17 +235,16 @@ function IndexChart({ series, height = 96 }) {
           ))}
         </Svg>
       )}
+      <XLabels dates={dates} />
     </View>
   );
 }
 
-const AXIS_W = 34;   // columna del eje a la derecha
-
 /** Columna de etiquetas del eje, colocadas en la misma `y` que las marcas del gráfico. */
-function AxisLabels({ ticks, height }) {
+function AxisLabels({ ticks, height, width }) {
   const th = useTheme();
   return (
-    <View style={{ width: AXIS_W, height }}>
+    <View style={{ width, height }}>
       {ticks.map(({ y, label }) => (
         <Text key={label} style={[textStyles.label, { position: 'absolute', right: 0, top: y - 7, lineHeight: 14, color: th.colors.mutedLight }]}>
           {label}
@@ -224,18 +254,24 @@ function AxisLabels({ ticks, height }) {
   );
 }
 
-/** Barras de sRPE en escala 0-10 con el eje 0 · 5 · 10 a la derecha. `bars`: [{ v, recent }]. */
-function EffortBars({ bars, height = 84 }) {
+/** Barras de sRPE en escala 0-10 con el eje 0 · 5 · 10 a la derecha. `bars`: [{ v, recent }]; `dates`: un día por barra. */
+function EffortBars({ bars, dates, guides = false, height = 84 }) {
   const th = useTheme();
   const [width, setWidth] = useState(0);
   const y = (v) => PAD_TOP + (height - PAD_TOP - PAD_BOT) * (1 - v / 10);
   const step = width / Math.max(bars.length, 1);
   const bw = Math.max(2, Math.min(18, step * 0.6));
+  const ticks = [10, 5, 0].map((v) => ({ y: y(v), label: String(v) }));
+  const aw = axisWidth(ticks.map((t) => t.label));
   return (
+    <View>
     <View style={{ flexDirection: 'row', gap: spacing.sm }}>
       <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {width > 0 && (
           <Svg width={width} height={height}>
+            {guides && bars.map((_, i) => (
+              <Line key={`g${i}`} x1={i * step + step / 2} x2={i * step + step / 2} y1={PAD_TOP} y2={y(0)} stroke={th.colors.surface2} {...GUIDE} />
+            ))}
             {[0, 5, 10].map((v) => (
               <Line key={v} x1={0} x2={width} y1={y(v)} y2={y(v)} stroke={th.colors.surface2} strokeWidth={1} />
             ))}
@@ -246,13 +282,15 @@ function EffortBars({ bars, height = 84 }) {
           </Svg>
         )}
       </View>
-      <AxisLabels height={height} ticks={[10, 5, 0].map((v) => ({ y: y(v), label: String(v) }))} />
+      <AxisLabels height={height} width={aw} ticks={ticks} />
+    </View>
+    <XLabels dates={dates} right={aw + spacing.sm} />
     </View>
   );
 }
 
 /** Líneas en % de cambio con eje de % a la derecha (pasos de 5, 10 o 20 según el rango) y punto al final. */
-function PctChart({ series, height = 110 }) {
+function PctChart({ series, dates, height = 110 }) {
   const th = useTheme();
   const [width, setWidth] = useState(0);
   const g = useMemo(() => {
@@ -281,13 +319,18 @@ function PctChart({ series, height = 110 }) {
       l.values.forEach((v, i) => { if (v != null) last = { x: x(i), y: y(v) }; });
       return { color: l.color, segments: segments.map((c) => c.join(' ')), last };
     });
-    return { ticks, lines };
+    const guides = Array.from({ length: n }, (_, i) => x(i));
+    return { ticks, lines, guides, axisW: axisWidth(ticks.map((tk) => tk.label)) };
   }, [width, series, height]);
   return (
+    <View>
     <View style={{ flexDirection: 'row', gap: spacing.sm }}>
       <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {g && (
           <Svg width={width} height={height}>
+            {g.guides.map((gx, i) => (
+              <Line key={`g${i}`} x1={gx} x2={gx} y1={PAD_TOP} y2={height - PAD_BOT} stroke={th.colors.surface2} {...GUIDE} />
+            ))}
             {g.ticks.map((t) => (
               <Line key={t.v} x1={0} x2={width} y1={t.y} y2={t.y} stroke={th.colors.surface2} strokeWidth={1}
                 strokeDasharray={t.v === 0 ? '3 3' : undefined} />
@@ -304,7 +347,9 @@ function PctChart({ series, height = 110 }) {
           </Svg>
         )}
       </View>
-      {g && <AxisLabels height={height} ticks={g.ticks} />}
+      {g && <AxisLabels height={height} width={g.axisW} ticks={g.ticks} />}
+    </View>
+    {g && <XLabels dates={dates} right={g.axisW + spacing.sm} />}
     </View>
   );
 }
@@ -464,7 +509,13 @@ export default function LoadTab({
     const blocks = weekBlocks(days, nBlocks);
     const means = effortBlocks(baseLog, days, nBlocks);
     const vs = effortVsLoad(days, { n: nBlocks });
+    const vsN = vs.external.length;
+    const vsBlocks = weekBlocks(days, Math.max(nBlocks, 8)).filter((b) => b.length === 7).slice(-vsN);
     return {
+      recentMean: means.length ? means[means.length - 1] : null,
+      weekDates: blocks.map((b) => b[0].day),
+      sessionDates: rated.map((r) => r.ts),
+      vsDates: vsBlocks.map((b) => b[0].day),
       countPeriod: rated.length,
       meanPeriod: rated.length ? rated.reduce((a, r) => a + r.rpe, 0) / rated.length : null,
       weekBars: means.map((v, i) => ({ v, recent: i === means.length - 1 })),
@@ -490,7 +541,7 @@ export default function LoadTab({
     const shown   = perfAll.slice(-nWeeks);
     const values  = indexTo100(shown.map((w) => w.index));
     const last    = [...values].reverse().find((v) => v != null);
-    return { values, pct: last != null ? Math.round(last - 100) : null, weeks: shown.length };
+    return { values, dates: shown.map((w) => w.weekStart), pct: last != null ? Math.round(last - 100) : null, weeks: shown.length };
   }, [perfAll, period]);
 
   const scroll = (children) => (
@@ -529,6 +580,7 @@ export default function LoadTab({
 
   const signed = (n) => `${n > 0 ? '+' : ''}${n} %`;
   const pctOrDash = (n) => (n != null && Number.isFinite(n) ? signed(n) : '—');
+  const cap = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // Título, «i» y qué ficha abre, según la tarjeta elegida.
   const chartHead = {
@@ -536,6 +588,26 @@ export default function LoadTab({
     effort:   { title: t('load.effortBarsTitle'), info: { ids: ['sessionLoad'] } },
     strength: { title: t('load.perfTitle'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
   }[metric];
+
+  // RPE de sesión: la semana contra la media del periodo (naranja = más esfuerzo).
+  const effortDelta = effort && effort.recentMean != null && effort.meanPeriod != null
+    ? Math.round((effort.recentMean - effort.meanPeriod) * 10) / 10 : null;
+  const vsChip = effort?.vs.chip;
+  const vsColor = vsChip?.label === 'adaptation' ? th.colors.accent
+    : vsChip?.label === 'fatigue' ? th.colors.orange : th.colors.text;
+
+  // Fila de la cifra: dato principal, su unidad y, si hay, el chip con el cambio.
+  const figure = (value, unit, chip, color = th.colors.text) => (
+    <View style={styles.valueRow}>
+      <Text style={[styles.value, { color }]} numberOfLines={1}>
+        {value}
+        {unit ? <Text style={styles.valueUnit}>{` ${unit}`}</Text> : null}
+      </Text>
+      {chip || null}
+    </View>
+  );
+
+  const hot = rpeRows.reduce((m, r) => (r.rpe4w != null && (m == null || r.rpe4w > m) ? r.rpe4w : m), null);
 
   return scroll(
     <>
@@ -549,7 +621,7 @@ export default function LoadTab({
         <MetricTile
           selected={metric === 'effort'} onPress={() => setMetric('effort')}
           label={t('load.cardEffort')} value={tiles.effort7 != null ? dec(tiles.effort7.toFixed(1)) : '—'}
-          unit={tiles.effort7 != null ? '/10' : null}
+          unit={tiles.effort7 != null ? 'RPE' : null}
           sub={load.source === 'external' ? t('load.noEffort') : t('load.last7d')}
           empty={load.source === 'external'} color={th.colors.orange}
         />
@@ -560,36 +632,53 @@ export default function LoadTab({
         />
       </View>
 
+      {/* ── Un solo periodo para toda la pestaña, pegado a las tarjetas ──── */}
+      <View style={styles.periodWrap}>
+        <SegmentedControl
+          options={PERIODS.map((id) => ({ id, label: t(`load.${PERIOD_KEY[id]}`) }))}
+          value={period}
+          onChange={(id) => setProfile({ loadPeriod: id })}
+        />
+      </View>
+
       {/* ── La gráfica de la tarjeta elegida ────────────────────────────── */}
       <View style={styles.card}>
         <View style={styles.cardHead}>
           <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo(chartHead.info)}>
             {chartHead.title}
           </InfoLabel>
-          <View style={styles.segmentedWrap}>
-            <SegmentedControl
-              options={PERIOD_OPTIONS} value={period}
-              onChange={(id) => setProfile({ loadPeriod: id })}
-            />
-          </View>
+          {metric === 'effort' && effort && (
+            <View style={styles.views}>
+              {['weeks', 'sessions'].map((id) => (
+                <TouchableOpacity key={id} onPress={() => setEffortView(id)} hitSlop={8}
+                  accessibilityRole="button" accessibilityState={{ selected: effortView === id }}>
+                  <Text style={[styles.viewBtn, { color: effortView === id ? th.colors.accent : th.colors.mutedLight }]}>
+                    {t(id === 'weeks' ? 'load.effortWeeks' : 'load.effortSessions')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {metric === 'load' && (
           <>
+            {load.vs28 != null && figure(pctOrDash(load.vs28), t(third ? 'load.vsMonthThird' : 'load.vsMonthYou'), null, th.colors.accent)}
+
             <LoadChart days={visible.days} mean7={visible.mean7} mean28={visible.mean28} />
 
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
+            <View style={styles.chips}>
+              <View style={styles.chip}>
                 <View style={[styles.legendBar, { backgroundColor: th.colors.muted }]} />
-                <Text style={styles.legendText}>{t('load.legendDaily')}</Text>
+                <Text style={styles.chipMuted}>{t('load.legendDaily')}</Text>
               </View>
-              <View style={styles.legendItem}>
+              <View style={styles.chip}>
                 <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
-                <Text style={styles.legendText}>{t('load.legend7d')}</Text>
+                <Text style={styles.chipMuted}>{t('load.legend7d')}</Text>
               </View>
-              <View style={styles.legendItem}>
+              <View style={styles.chip}>
                 <View style={[styles.legendLine, { backgroundColor: th.colors.blue }]} />
-                <Text style={styles.legendText}>{t('load.legend28d')}</Text>
+                <Text style={styles.chipMuted}>{t('load.legend28d')}</Text>
               </View>
             </View>
 
@@ -639,26 +728,36 @@ export default function LoadTab({
 
         {metric === 'effort' && (effort ? (
           <>
-            <Text style={styles.cardMeta}>
-              {`${t('load.effortMean', { p: period.toUpperCase() })} · ${effort.meanPeriod != null ? dec(effort.meanPeriod.toFixed(1)) : '—'} /10 · ${t('load.sessionsCount', { count: effort.countPeriod })}`}
-            </Text>
+            {figure(
+              effort.meanPeriod != null ? dec(effort.meanPeriod.toFixed(1)) : '—',
+              t('load.rpeMeanSub', { sessions: t('load.sessionsCount', { count: effort.countPeriod }) }),
+              effortDelta != null ? (
+                <View style={[styles.chipBox, effortDelta > 0 ? styles.chipWarm : styles.chipUp]}>
+                  <Text style={[styles.chipStrong, { color: effortDelta > 0 ? th.colors.orange : th.colors.accent }]}>
+                    {`${effortDelta > 0 ? '+' : effortDelta < 0 ? '−' : ''}${dec(Math.abs(effortDelta).toFixed(1))} ${t('load.thisWeek')}`}
+                  </Text>
+                </View>
+              ) : null,
+            )}
 
-            <SegmentedControl
-              options={[{ id: 'weeks', label: t('load.effortWeeks') }, { id: 'sessions', label: t('load.effortSessions') }]}
-              value={effortView} onChange={setEffortView}
+            <EffortBars
+              bars={effortView === 'weeks' ? effort.weekBars : effort.sessionBars}
+              dates={effortView === 'weeks' ? effort.weekDates : effort.sessionDates}
+              guides={effortView === 'weeks'}
             />
-            <EffortBars bars={effortView === 'weeks' ? effort.weekBars : effort.sessionBars} />
 
-            <View style={[styles.strip, styles.stripLegend]}>
-              <View style={styles.legendItem}>
+            <View style={styles.chips}>
+              <View style={styles.chip}>
                 <View style={[styles.dot, { backgroundColor: th.colors.orange, opacity: 0.45 }]} />
-                <Text style={styles.legendText}>
+                <Text style={styles.chipMuted}>
                   {t(effortView === 'weeks' ? 'load.legendEarlierWeeks' : 'load.legendEarlierSessions')}
                 </Text>
               </View>
-              <View style={styles.legendItem}>
+              <View style={styles.chip}>
                 <View style={[styles.dot, { backgroundColor: th.colors.orange }]} />
-                <Text style={styles.legendText}>{t('load.last7d')}</Text>
+                <Text style={styles.chipMuted}>
+                  {`${t('load.last7d')}${effort.recentMean != null ? ` · ${dec(effort.recentMean.toFixed(1))}` : ''}`}
+                </Text>
               </View>
             </View>
           </>
@@ -678,19 +777,19 @@ export default function LoadTab({
 
         {metric === 'strength' && performance && (
           <>
-            <IndexChart series={[{ values: performance.values, color: th.colors.accent }]} height={72} />
+            {performance.pct != null && figure(signed(performance.pct), null, null,
+              performance.pct >= 0 ? th.colors.accent : th.colors.orange)}
+
+            <IndexChart series={[{ values: performance.values, color: th.colors.accent }]} dates={performance.dates} height={72} />
 
             {performance.pct != null && (
-              <View style={styles.strip}>
-                <View style={[styles.dot, {
-                  backgroundColor: performance.pct >= 0 ? th.colors.accent : th.colors.orange,
-                }]} />
-                <Text style={styles.stripText}>
-                  <Text style={styles.stripTitle}>
-                    {`${performance.pct > 0 ? '+' : ''}${performance.pct}%`}
-                  </Text>
-                  {` ${t('load.perfDetail', { weeks: performance.weeks })}`}
-                </Text>
+              <View style={styles.chips}>
+                <View style={styles.chip}>
+                  <View style={[styles.dot, {
+                    backgroundColor: performance.pct >= 0 ? th.colors.accent : th.colors.orange,
+                  }]} />
+                  <Text style={styles.chipMuted}>{cap(t('load.perfDetail', { weeks: performance.weeks }))}</Text>
+                </View>
               </View>
             )}
           </>
@@ -707,40 +806,27 @@ export default function LoadTab({
             </InfoLabel>
             <Text style={styles.cardMeta}>{t('load.weeksShown', { count: effort.vs.external.length })}</Text>
           </View>
+
+          {vsChip && figure(cap(t(`load.trend.${vsChip.label}`)), null, null, vsColor)}
+
           <PctChart series={[
             { values: effort.vs.internal, color: th.colors.orange },
             { values: effort.vs.external, color: th.colors.accent },
-          ]} />
+          ]} dates={effort.vsDates} />
 
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendLine, { backgroundColor: th.colors.accent }]} />
-              <Text style={styles.legendText}>{t('load.legendExternal')}</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendLine, { backgroundColor: th.colors.orange }]} />
-              <Text style={styles.legendText}>{t('load.legendEffort')}</Text>
-            </View>
-          </View>
-
-          {effort.vs.chip && (
+          {vsChip && (
             <>
-              <View style={[
-                styles.trendChip,
-                effort.vs.chip.label === 'adaptation' && styles.trendChipGood,
-                effort.vs.chip.label === 'fatigue'    && styles.trendChipWarn,
-              ]}>
-                <Text style={[
-                  styles.trendChipText,
-                  effort.vs.chip.label === 'adaptation' && { color: th.colors.accent },
-                  effort.vs.chip.label === 'fatigue'    && { color: th.colors.orange },
-                ]}>
-                  {t('load.trendChip', {
-                    load: signed(Math.round(effort.vs.chip.loadPct)),
-                    effort: signed(Math.round(effort.vs.chip.effortPct)),
-                    label: t(`load.trend.${effort.vs.chip.label}`),
-                  })}
-                </Text>
+              <View style={styles.chips}>
+                <View style={styles.chip}>
+                  <View style={[styles.dot, { backgroundColor: th.colors.accent }]} />
+                  <Text style={styles.chipMuted}>{t('load.legendLoad')}</Text>
+                  <Text style={styles.chipStrong}>{signed(Math.round(vsChip.loadPct))}</Text>
+                </View>
+                <View style={styles.chip}>
+                  <View style={[styles.dot, { backgroundColor: th.colors.orange }]} />
+                  <Text style={styles.chipMuted}>{t('load.legendEffort')}</Text>
+                  <Text style={styles.chipStrong}>{signed(Math.round(vsChip.effortPct))}</Text>
+                </View>
               </View>
               <Text style={styles.groupHint}>{t('load.trendHint')}</Text>
             </>
@@ -748,50 +834,47 @@ export default function LoadTab({
         </View>
       )}
 
-      {/* ── RPE medio por ejercicio (solo con ESFUERZO elegida) ──────────── */}
+      {/* ── RPE por ejercicio (solo con ESFUERZO elegida) ────────────────── */}
       {metric === 'effort' && rpeRows.length > 0 && (
         <View style={styles.card}>
           <View style={styles.cardHead}>
             <Text style={styles.cardTitle}>{t('load.rpeTitle')}</Text>
-            <View style={styles.segmentedWrap}>
-              <SegmentedControl
-                options={PERIOD_OPTIONS} value={period}
-                onChange={(id) => setProfile({ loadPeriod: id })}
-              />
-            </View>
           </View>
 
-          <View style={styles.rpeRow}>
-            <Text style={[styles.rpeHead, styles.rpeName]}>{t('load.rpeExercise')}</Text>
-            <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpeSets')}</Text>
-            {period === '1m' ? (
-              <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpeSingle')}</Text>
-            ) : (
-              <>
-                <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpe4w')}</Text>
-                <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{period.toUpperCase()}</Text>
-              </>
-            )}
-          </View>
-          {rpeRows.map((r) => {
-            const def = allExercises?.[r.exerciseId];
-            const name = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : r.exerciseId;
-            const fmt = (v) => (v != null ? dec(v.toFixed(1)) : '—');
-            return (
-              <View key={r.exerciseId} style={styles.rpeRow}>
-                <Text style={[styles.rpeCell, styles.rpeName]} numberOfLines={1}>{name}</Text>
-                <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{r.sets}</Text>
-                {period === '1m' ? (
-                  <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
-                ) : (
-                  <>
-                    <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{fmt(r.rpe4w)}</Text>
+          <View>
+            <View style={styles.rpeRow}>
+              <Text style={[styles.rpeHead, styles.rpeName]} numberOfLines={1}>{t('load.rpeExercise')}</Text>
+              <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpeSets')}</Text>
+              {period === '1m' ? (
+                <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpeSingle')}</Text>
+              ) : (
+                <>
+                  <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpe4w')}</Text>
+                  <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{period.toUpperCase()}</Text>
+                </>
+              )}
+            </View>
+            {rpeRows.map((r) => {
+              const def = allExercises?.[r.exerciseId];
+              const name = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : r.exerciseId;
+              const fmt = (v) => (v != null ? dec(v.toFixed(1)) : '—');
+              return (
+                <View key={r.exerciseId} style={[styles.rpeRow, styles.rpeRowLine]}>
+                  <Text style={[styles.rpeCell, styles.rpeName]} numberOfLines={1}>{name}</Text>
+                  <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{r.sets}</Text>
+                  {period === '1m' ? (
                     <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
-                  </>
-                )}
-              </View>
-            );
-          })}
+                  ) : (
+                    <>
+                      <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum,
+                        hot != null && r.rpe4w === hot && { color: th.colors.orange }]}>{fmt(r.rpe4w)}</Text>
+                      <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum]}>{fmt(r.rpePeriod)}</Text>
+                    </>
+                  )}
+                </View>
+              );
+            })}
+          </View>
           <Text style={styles.groupHint}>{t('load.rpeFoot')}</Text>
         </View>
       )}
@@ -848,11 +931,11 @@ export default function LoadTab({
 
 const makeStyles = (th) => StyleSheet.create({
   flex:    { flex: 1 },
-  // `paddingTop: md` = el aire que había entre el conmutador y esto cuando el
-  // conmutador iba dentro del scroll; ahora lo monta ProgressPanel encima.
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
+  // El aire bajo el conmutador de arriba lo pone ProgressPanel (`spacing.xl`).
+  content: { paddingHorizontal: spacing.lg, gap: spacing.md },
 
-  segmentedWrap: { width: 150 },
+  // Periodo único, pegado a las tarjetas: 4 en vez del hueco normal.
+  periodWrap: { marginTop: spacing.xs2 - spacing.md },
 
   // Mismas Progress cards que la pestaña de Ejercicios (gap 8, radio `md`: U13 §12).
   statsGrid: { flexDirection: 'row', gap: spacing.sm2, width: '100%', height: TILE_H, alignItems: 'center' },
@@ -890,14 +973,33 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   cardHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardTitle: { ...textStyles.labelStrong, color: th.colors.text, textTransform: 'uppercase' },
+  cardTitle: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
   cardMeta:  { ...textStyles.label, color: th.colors.mutedLight },
+  views:     { flexDirection: 'row', gap: spacing.md },
+  viewBtn:   { ...textStyles.labelStrong },
 
-  legend:     { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // Cifra y su cambio, como en el detalle de ejercicio.
+  valueRow:  { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm2 },
+  value:     { ...textStyles.heading, flexShrink: 1 },
+  valueUnit: { ...textStyles.label, color: th.colors.mutedLight },
+
+  // Chips de lectura y de leyenda.
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.xs,
+    paddingHorizontal: spacing.sm2, paddingVertical: spacing.xs2,
+  },
+  chipBox: {
+    backgroundColor: th.colors.surface2, borderRadius: th.radius.xs,
+    paddingHorizontal: spacing.sm2, paddingVertical: spacing.xs2,
+  },
+  chipUp:     { backgroundColor: th.tint.accent10 },
+  chipWarm:   { backgroundColor: th.tint.orange30 },
+  chipMuted:  { ...textStyles.label, color: th.colors.mutedLight },
+  chipStrong: { ...textStyles.labelStrong, color: th.colors.text },
   legendBar:  { width: 4, height: 9, borderRadius: 1 },
   legendLine: { width: 13, height: 2, borderRadius: 2 },
-  legendText: { ...textStyles.label, color: th.colors.mutedLight },
 
   strip: {
     flexDirection:   'row',
@@ -909,7 +1011,6 @@ const makeStyles = (th) => StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   dot:        { width: 7, height: 7, borderRadius: 4 },
-  stripLegend: { gap: spacing.lg },
 
   // Filas de Monotonía y Strain: línea encima, sin caja.
   fact:          { gap: spacing.xs2, borderTopWidth: 1, borderTopColor: th.colors.border, paddingTop: spacing.md },
@@ -926,27 +1027,10 @@ const makeStyles = (th) => StyleSheet.create({
   stripText:  { ...textStyles.label, color: th.colors.mutedLight, flex: 1, lineHeight: 15 },
   stripTitle: { ...textStyles.label, color: th.colors.text },
 
-  // ── Chip de lectura (esfuerzo vs carga) ──
-  trendChip: {
-    alignSelf:         'flex-start',
-    backgroundColor:   th.colors.surface2,
-    borderRadius:      th.radius.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   spacing.sm,
-  },
-  trendChipGood: { backgroundColor: th.tint.accent10 },
-  trendChipWarn: { backgroundColor: th.tint.orange30 },
-  trendChipText: {
-    ...textStyles.caps,
-    color:         th.colors.mutedLight,
-    textTransform: 'uppercase',
-  },
-
-  // ── Esfuerzo: cifras, pie de las barras ──
-
   // ── RPE medio por ejercicio ──
   rpeRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  rpeHead: { ...textStyles.caps, color: th.colors.mutedLight, textTransform: 'uppercase' },
+  rpeRowLine: { paddingVertical: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: th.colors.border },
+  rpeHead: { ...textStyles.micro, color: th.colors.mutedLight, paddingBottom: spacing.xs2 },
   rpeCell: { ...textStyles.label, color: th.colors.text },
   rpeName: { flex: 1 },
   rpeNum:  { width: 64, textAlign: 'right', fontVariant: ['tabular-nums'] },

@@ -133,5 +133,6 @@ const styles = StyleSheet.create({
   fill:     { flex: 1 },
   viewport: { flex: 1, overflow: 'hidden' },
   row:      { flex: 1, flexDirection: 'row' },
-  switcher: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  // Bajo el conmutador, xl en total (las pestañas ponen md de su parte).
+  switcher: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl - spacing.md },
 });
