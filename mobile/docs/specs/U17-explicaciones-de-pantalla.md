@@ -6,7 +6,7 @@
 > Fase U17-01 · hecho · Componentes: recorrido, aviso puntual y «visto» · §3
 > Fase U17-02 · hecho · Recorridos de Entreno, Programa y Progreso · §4
 > Fase U17-03 · hecho · Recorridos de Editar programa y del editor de sesión · §5
-> Fase U17-04 · pendiente · Recorridos de Clientes, ficha del cliente y Plantillas · §6
+> Fase U17-04 · hecho · Recorridos de Clientes, ficha del cliente y Plantillas · §6
 > Fase U17-05 · pendiente · Avisos puntuales · §7
 > Fase U17-06 · pendiente · Quitar las tarjetas explicativas del onboarding · §8
 >
@@ -213,21 +213,26 @@ Lo que enseñaban las tarjetas del entrenador (`clients`, `templates`, `next`,
 
 | Pantalla | Paso | Qué explica |
 |---|---|---|
-| Clientes (`ClientsScreen`) | 1 | Añadir tu primer cliente y los dos iconos de arriba |
-| Clientes | 2 | Las tarjetas: tocar una para entrar en el cliente; reordenarlas |
-| Clientes | 3 | Qué significa cada estado: paso con `figure` = un ejemplo con varios clientes en distintos estados (al día, sin entrenar, cambios sin enviar, sesiones sin revisar) y una frase por estado |
-| Ficha del cliente | 1 | El control segmentado de arriba: qué hay en cada parte |
-| Ficha del cliente | 2 | La sección de programa |
-| Ficha del cliente | 3 | La próxima sesión: ajustas lo que hará la próxima vez |
-| Plantillas (`ProgramScreen`) | 1-2 | Programas y sesiones guardadas; asignar a un cliente o a mí (precisar sobre la pantalla) |
+| Clientes (`ClientsScreen`) | 1 | La zona de arriba a la derecha: el botón «+ Cliente» y, a su lado, los dos iconos (pegar un entreno y la cuenta de entrenador) |
+| Clientes | 2 | La primera tarjeta: tocar una para entrar en el cliente; reordenar con el botón de orden › Reordenar (sin clientes, se omite) |
+| Clientes | 3 | Qué significa cada estado: paso con `figure` = un ejemplo con varios clientes en distintos estados (al día con sesiones sin revisar, sin entrenar, cambios sin enviar); las frases por estado van en el texto del globo |
+| Ficha del cliente | 1 | Las pestañas de arriba (Programa · Historial · Progreso · Info): qué hay en cada parte |
+| Ficha del cliente | 2 | La sección de programa (tarjeta y botones Editar · Ver) |
+| Ficha del cliente | 3 | La próxima sesión y su botón Preparar: ajustas lo que hará la próxima vez. Si el cliente no usa la app no hay próxima sesión: el paso señala sus sesiones, que se hacen desde aquí |
+| Plantillas (`ProgramScreen`) | 1 | El segmentado Programas · Sesiones guardadas |
+| Plantillas | 2 | La primera tarjeta: tocarla abre el menú (ver, editar, compartir…) y Asignar la da a un cliente o a mí (sin plantillas, se omite) |
 
-- El ejemplo de estados reutiliza `ClientsMini` del onboarding (filas `ClientRow` de
-  verdad con datos fijos, sin tocar el store): pasa a un sitio común y **no se
-  borra** en U17-06. Precisar con el usuario qué estados salen.
-- Sin clientes, el paso 2 no tiene tarjeta que señalar: va sin hueco, solo con el
-  ejemplo (o se junta con el 3).
-- Ficha del cliente: si alguna de sus partes vive en una hoja o un modal, el
-  recorrido sale sobre la pantalla limpia (regla 7).
+- El ejemplo de estados (`tour/ClientStatesExample.jsx`) pinta filas `ClientRow` de
+  verdad con datos fijos, sin tocar el store. Los datos viven en
+  `tour/exampleClientRows.js`, que también usa `ClientsMini` del onboarding: ese
+  fichero se queda en U17-06 aunque `ClientsMini` se borre.
+- Sin clientes, el paso 2 se omite y quedan la cabecera y el ejemplo.
+- La ficha del cliente no es una pantalla aparte: vive dentro de `ClientsScreen`
+  (`view === 'detail'`), con su propio id `tour.client` y su «?» en el `AppHeader`. Los
+  pasos 2 y 3 solo salen en la pestaña Programa, con programa y sin ser de otra cuenta.
+- Regla 7: la lista y la ficha no salen con sus hojas abiertas (nuevo cliente, filtros,
+  orden, acciones, asignar, archivados…). El menú «⋯» de la tarjeta de programa
+  tiene su estado dentro del componente y no se mira.
 
 **Probar U17-04**
 
@@ -276,8 +281,8 @@ guarda `profile.homeView`) y `a_input` (regla o solo deslizar, guarda
   `TabBarMini.jsx`, `learnCards` de `onboardingPreview.js` (y su
   test) y las claves `onboardingFlow.learn.cards.*` de los locales. Antes de borrar,
   `grep` de cada uno: `HomeViewPreview`, `ScrubDemo`, `Scaled`, `Spot` y
-  `newClientRow` (lo importa `trainer.jsx`) **se quedan**, y `ClientsMini` también
-  (lo usa el recorrido de Clientes, §6).
+  `newClientRow` (lo importa `trainer.jsx`) **se quedan**. `ClientsMini` sí puede
+  borrarse: el recorrido de Clientes (§6) usa `tour/exampleClientRows.js`.
 - Tests: `onboardingFlow.test.js` (rutas y tramos del entrenador que no entrena) y
   `onboardingPreview.test.js`. `builderProgram.test.js` sigue esperando `'a_home'`.
 - Dejar una nota en O03 §11.4 de que las tarjetas se quitaron en U17-06.
