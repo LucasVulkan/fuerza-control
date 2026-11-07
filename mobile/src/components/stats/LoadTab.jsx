@@ -27,16 +27,18 @@ import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate,
 } from 'react-native-reanimated';
 import { Text } from '../ui/Text';
-import Svg, { Rect, Polyline, Line, Circle } from 'react-native-svg';
+import Svg, { Rect, Polyline, Polygon, Line, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
 
 import {
-  loadState, setsByMuscleGroup, indexTo100, performanceWeekly,
-  loadSummary, effortBlocks, weekBlocks, ratedSessions, effortVsLoad, rpeByExercise, strengthChange, monotonyStrain,
-  SETS_TARGET_MIN, SETS_TARGET_MAX, MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
+  loadState, indexTo100, performanceWeekly, groupSetsVsPlan,
+  loadSummary, effortBlocks, weekBlocks, ratedSessions, effortVsLoad, rpeByExercise, strengthByExercise, meanPct, monotonyStrain,
+  MONOTONY_MODERATE, MONOTONY_HIGH, MIN_SESSIONS_FOR_MONOTONY,
 } from '../../utils/trainingLoad';
+import { athleteProgress } from '../../utils/stageProgress';
+import { stageSetsByGroup } from '../../utils/stageStats';
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import SegmentedControl from '../ui/SegmentedControl';
@@ -58,9 +60,7 @@ const PAD_BOT = 6;
 // dentro por el medio paso del centrado.
 const DOT_R   = 3;
 
-// Tope de la escala de barras. Fijo para que la longitud signifique lo mismo
-// entre grupos y semanas; solo crece si alguien se sale del rango.
-const SETS_SCALE_MIN  = 24;
+const GROUPS_SHOWN = 4;   // grupos visibles en Series por grupo antes de «Ver los N grupos»
 
 // Fantasma de la gráfica de Esfuerzo sin sRPE (alturas en %).
 const GHOST_BARS = [40, 55, 50, 62, 30, 58, 64, 60, 66];
@@ -175,78 +175,6 @@ function LoadChart({ days, mean7, mean28 }) {
   );
 }
 
-/**
- * Gráfico de líneas indexadas (base 100) para las series SEMANALES.
- *
- * Separado de `LoadChart` porque no comparte nada con él: sin barras, pocos
- * puntos, y una referencia horizontal en 100 que es la mitad del mensaje.
- */
-function IndexChart({ series, dates, height = 96 }) {
-  const th = useTheme();
-  const [width, setWidth] = useState(0);
-
-  const geometry = useMemo(() => {
-    const values = series.flatMap((s) => s.values).filter((v) => v != null);
-    if (!width || values.length < 2) return null;
-    const min = Math.min(...values, 100);
-    const max = Math.max(...values, 100);
-    const pad = (max - min) * 0.12 || 10;
-    const lo  = min - pad;
-    const hi  = max + pad;
-    const n   = Math.max(...series.map((s) => s.values.length));
-    const y = (v) => 8 + (height - 16) - ((v - lo) / (hi - lo)) * (height - 16);
-    const x = (i) => (n <= 1 ? width / 2 : (i / (n - 1)) * (width - DOT_R * 2) + DOT_R);
-
-    const toSegments = (vals) => {
-      const out = []; let cur = [];
-      vals.forEach((v, i) => {
-        if (v == null) { if (cur.length > 1) out.push(cur); cur = []; return; }
-        cur.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
-      });
-      if (cur.length > 1) out.push(cur);
-      return out.map((p) => p.join(' '));
-    };
-
-    const lines = series.map((s) => ({
-      color: s.color,
-      segments: toSegments(s.values),
-      last: (() => {
-        for (let i = s.values.length - 1; i >= 0; i--) {
-          if (s.values[i] != null) return { x: x(i), y: y(s.values[i]) };
-        }
-        return null;
-      })(),
-    }));
-    const guides = Array.from({ length: n }, (_, i) => x(i));
-    return { lines, guides, baselineY: y(100) };
-  }, [width, series, height]);
-
-  return (
-    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-      {geometry && (
-        <Svg width={width} height={height}>
-          {geometry.guides.map((gx, i) => (
-            <Line key={`g${i}`} x1={gx} x2={gx} y1={8} y2={height - 8} stroke={th.colors.surface2} {...GUIDE} />
-          ))}
-          {/* Referencia: 100 = punto de partida de la ventana */}
-          <Line x1={0} y1={geometry.baselineY} x2={width} y2={geometry.baselineY}
-            stroke={th.colors.surface2} strokeWidth={1} strokeDasharray="3 3" />
-          {geometry.lines.map((l, li) => (
-            <React.Fragment key={li}>
-              {l.segments.map((pts, si) => (
-                <Polyline key={si} points={pts} fill="none" stroke={l.color} strokeWidth={2}
-                  strokeLinejoin="round" strokeLinecap="round" />
-              ))}
-              {l.last && <Circle cx={l.last.x} cy={l.last.y} r={DOT_R} fill={l.color} />}
-            </React.Fragment>
-          ))}
-        </Svg>
-      )}
-      <XLabels dates={dates} />
-    </View>
-  );
-}
-
 /** Columna de etiquetas del eje, colocadas en la misma `y` que las marcas del gráfico. */
 function AxisLabels({ ticks, height, width }) {
   const th = useTheme();
@@ -296,8 +224,12 @@ function EffortBars({ bars, dates, guides = false, height = 84 }) {
   );
 }
 
-/** Líneas en % de cambio con eje de % a la derecha (pasos de 5, 10 o 20 según el rango) y punto al final. */
-function PctChart({ series, dates, height = 110 }) {
+/**
+ * Líneas en % de cambio con eje de % a la derecha (pasos de 5, 10 o 20 según el rango) y punto al final.
+ * Opcionales (Fuerza): `area` rellena bajo la línea; `bandFrom` (índice) pinta una banda hasta el final
+ * con `bandLabel` arriba; `hollowAt` (índice) marca con un punto hueco la primera serie.
+ */
+function PctChart({ series, dates, height = 110, area = false, bandFrom = null, hollowAt = null, bandLabel = null }) {
   const th = useTheme();
   const [width, setWidth] = useState(0);
   const g = useMemo(() => {
@@ -324,17 +256,28 @@ function PctChart({ series, dates, height = 110 }) {
       if (cur.length > 1) segments.push(cur);
       let last = null;
       l.values.forEach((v, i) => { if (v != null) last = { x: x(i), y: y(v) }; });
-      return { color: l.color, segments: segments.map((c) => c.join(' ')), last };
+      const bottom = height - PAD_BOT;
+      const areas = area ? segments.map((c) => `${c[0].split(',')[0]},${bottom} ${c.join(' ')} ${c[c.length - 1].split(',')[0]},${bottom}`) : [];
+      return { color: l.color, segments: segments.map((c) => c.join(' ')), last, areas };
     });
     const guides = Array.from({ length: n }, (_, i) => x(i));
-    return { ticks, lines, guides, axisW: axisWidth(ticks.map((tk) => tk.label)) };
-  }, [width, series, height]);
+    const hv = hollowAt != null ? series[0].values[hollowAt] : null;
+    return {
+      ticks, lines, guides, axisW: axisWidth(ticks.map((tk) => tk.label)),
+      bandX: bandFrom != null ? x(bandFrom) : null,
+      hollow: hv != null ? { x: x(hollowAt), y: y(hv) } : null,
+    };
+  }, [width, series, height, area, bandFrom, hollowAt]);
   return (
     <View>
     <View style={{ flexDirection: 'row', gap: spacing.sm }}>
       <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {g && (
           <Svg width={width} height={height}>
+            {g.bandX != null && (
+              <Rect x={g.bandX} y={PAD_TOP} width={Math.max(0, width - g.bandX)} height={height - PAD_TOP - PAD_BOT}
+                fill={withOpacity(th.colors.accent, 0.06)} />
+            )}
             {g.guides.map((gx, i) => (
               <Line key={`g${i}`} x1={gx} x2={gx} y1={PAD_TOP} y2={height - PAD_BOT} stroke={th.colors.surface2} {...GUIDE} />
             ))}
@@ -344,6 +287,7 @@ function PctChart({ series, dates, height = 110 }) {
             ))}
             {g.lines.map((l, li) => (
               <React.Fragment key={li}>
+                {l.areas.map((pts, si) => <Polygon key={`a${si}`} points={pts} fill={withOpacity(l.color, 0.12)} />)}
                 {l.segments.map((pts, si) => (
                   <Polyline key={si} points={pts} fill="none" stroke={l.color} strokeWidth={2}
                     strokeLinejoin="round" strokeLinecap="round" />
@@ -351,7 +295,13 @@ function PctChart({ series, dates, height = 110 }) {
                 {l.last && <Circle cx={l.last.x} cy={l.last.y} r={DOT_R} fill={l.color} />}
               </React.Fragment>
             ))}
+            {g.hollow && <Circle cx={g.hollow.x} cy={g.hollow.y} r={DOT_R} fill={th.colors.surface} stroke={series[0].color} strokeWidth={2} />}
           </Svg>
+        )}
+        {g && g.bandX != null && bandLabel && (
+          <Text pointerEvents="none" style={[textStyles.micro, { position: 'absolute', top: 0, left: g.bandX + spacing.xs2, color: th.colors.mutedLight }]}>
+            {bandLabel}
+          </Text>
         )}
       </View>
       {g && <AxisLabels height={height} width={g.axisW} ticks={g.ticks} />}
@@ -427,7 +377,7 @@ function MetricTile({ selected, onPress, label, value, unit, sub, color, empty =
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
 export default function LoadTab({
-  baseLog, allExercises, fallbackBodyWeight, subjectName, client = null,
+  baseLog, allExercises, fallbackBodyWeight, subjectName, program = null, client = null,
   onRefresh, refreshing = false,
 }) {
   const insets = useSafeAreaInsets();
@@ -475,13 +425,27 @@ export default function LoadTab({
     [baseLog, allExercises, bodyWeight],
   );
 
+  // Primer día del periodo elegido (inicio de día).
+  const periodFrom = useMemo(() => {
+    if (load.endDay == null) return null;
+    const d = new Date(load.endDay);
+    d.setDate(d.getDate() - (PERIOD_DAYS[period] - 1));
+    return d.getTime();
+  }, [load.endDay, period]);
+
+  // Fuerza por ejercicio (T11-06): la tarjeta, la cifra, el chip y la tabla salen de estas filas.
+  const strengthRows = useMemo(
+    () => strengthByExercise(baseLog, allExercises, { fallbackBodyWeight: bodyWeight, endDay: load.endDay, fromDay: periodFrom }),
+    [baseLog, allExercises, bodyWeight, load.endDay, periodFrom],
+  );
+  const strength4w = meanPct(strengthRows, 'pct4w');
+  const strengthPeriod = meanPct(strengthRows, 'pctPeriod');
+
   const tiles = useMemo(() => {
     const eff = effortBlocks(baseLog, days);
-    return {
-      effort7: eff.length ? eff[eff.length - 1] : null,
-      strengthPct: strengthChange(baseLog, allExercises, { fallbackBodyWeight: bodyWeight, endDay: load.endDay }),
-    };
-  }, [baseLog, allExercises, bodyWeight, days, load.endDay]);
+    return { effort7: eff.length ? eff[eff.length - 1] : null };
+  }, [baseLog, days]);
+  const strengthPct = strength4w == null ? null : Math.round(strength4w);
 
   // Ventana visible — recorta SOLO lo que se pinta.
   const visible = useMemo(() => {
@@ -493,18 +457,16 @@ export default function LoadTab({
   const state = loadState(mean7[mean7.length - 1], mean28[mean28.length - 1]);
   const ms = useMemo(() => monotonyStrain(days), [days]);
 
-  const groupSets = useMemo(() => {
-    const DAY = 86400000;
-    const week  = setsByMuscleGroup(baseLog ?? [], allExercises, { from: now - 7 * DAY,  to: now });
-    const month = setsByMuscleGroup(baseLog ?? [], allExercises, { from: now - 28 * DAY, to: now });
-    // Un grupo que entrenas habitualmente pero NO esta semana tiene que salir a
-    // cero, no desaparecer: el hueco es exactamente lo que hay que ver.
-    const byGroup = new Map(week.map((g) => [g.group, g.sets]));
-    for (const { group } of month) if (!byGroup.has(group)) byGroup.set(group, 0);
-    return [...byGroup.entries()]
-      .map(([group, sets]) => ({ group, sets }))
-      .sort((a, b) => b.sets - a.sets);
-  }, [baseLog, allExercises, now]);
+  // Series por grupo (T11-07): semana natural en curso contra la etapa del SUJETO
+  // (`athleteProgress`, nunca el store: en el móvil del entrenador es suyo). Las
+  // plantillas sí salen del store. Sin programa, solo las hechas.
+  const sessionTemplates = useStore((s) => s.sessionTemplates);
+  const [showAllGroups, setShowAllGroups] = useState(false);
+  const groupWeek = useMemo(() => {
+    const stage = program?.stages?.[athleteProgress(program, client).currentStageIndex];
+    const planned = stage ? stageSetsByGroup(stage, sessionTemplates, allExercises) : null;
+    return groupSetsVsPlan(baseLog ?? [], allExercises, planned, { now });
+  }, [baseLog, allExercises, program, client, sessionTemplates, now]);
 
   // Esfuerzo (T11-04), solo con sRPE: cifras, barras por semana o sesión y esfuerzo vs carga.
   const [effortView, setEffortView] = useState('weeks');   // no se guarda
@@ -536,20 +498,30 @@ export default function LoadTab({
 
   // RPE medio por ejercicio (T11-05): también sin sRPE, solo con RPE en las series.
   const rpeRows = useMemo(() => {
-    if (load.endDay == null) return [];
-    const from = new Date(load.endDay);
-    from.setDate(from.getDate() - (PERIOD_DAYS[period] - 1));
-    return rpeByExercise(baseLog, { from: from.getTime(), endDay: load.endDay });
-  }, [baseLog, load.endDay, period]);
+    if (periodFrom == null) return [];
+    return rpeByExercise(baseLog, { from: periodFrom, endDay: load.endDay });
+  }, [baseLog, load.endDay, periodFrom]);
 
+  // Serie del periodo para la gráfica de Fuerza: las semanas de `performanceWeekly` que
+  // tocan el periodo (por fecha, nunca `slice(-n)`), una por semana natural y con hueco
+  // (null) donde no hubo dato, para que el eje X y las guías semanales vayan por fecha.
+  // Es el índice de siempre (media de ejercicios) rebasado al inicio del periodo: puede
+  // diferir unos puntos de la cifra, que es la media de los cambios por ejercicio.
   const performance = useMemo(() => {
-    if (perfAll.length < 2) return null;
-    const nWeeks  = Math.ceil(PERIOD_DAYS[period] / 7);
-    const shown   = perfAll.slice(-nWeeks);
-    const values  = indexTo100(shown.map((w) => w.index));
-    const last    = [...values].reverse().find((v) => v != null);
-    return { values, dates: shown.map((w) => w.weekStart), pct: last != null ? Math.round(last - 100) : null, weeks: shown.length };
-  }, [perfAll, period]);
+    if (periodFrom == null) return null;
+    const addDays = (ts, n) => { const d = new Date(ts); d.setDate(d.getDate() + n); return d.getTime(); };
+    const shown = perfAll.filter((w) => w.weekStart >= addDays(periodFrom, -6) && w.weekStart <= load.endDay);
+    if (shown.length < 2) return null;
+    const byWeek = new Map(shown.map((w) => [w.weekStart, w.index]));
+    const dates = [];
+    for (let w = shown[0].weekStart; w <= shown[shown.length - 1].weekStart; w = addDays(w, 7)) dates.push(w);
+    const idx = indexTo100(dates.map((w) => byWeek.get(w) ?? null));
+    if (idx.filter((v) => v != null).length < 2) return null;
+    const values = idx.map((v) => (v == null ? null : v - 100));
+    const cutoff = addDays(load.endDay, -28);
+    const ago = dates.reduce((a, d, i) => (d <= cutoff ? i : a), -1);
+    return { values, dates, bandFrom: Math.max(ago, 0), hollowAt: period === '1m' ? 0 : (ago >= 0 ? ago : null) };
+  }, [perfAll, periodFrom, period, load.endDay]);
 
   const scroll = (children) => (
     <ScrollView
@@ -593,7 +565,7 @@ export default function LoadTab({
   const chartHead = {
     load:     { title: load.source === 'external' ? t('load.workTitle') : t('load.trendTitle'), info: { chart: 'loadOverTime', ids: ['sessionLoad', 'movingAverage', 'loadState'] } },
     effort:   { title: t('load.effortBarsTitle'), info: { ids: ['sessionLoad'] } },
-    strength: { title: t('load.perfTitle'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
+    strength: { title: t('load.cardStrength'), info: { chart: 'performance', ids: ['performanceIndex', 'e1rm'] } },
   }[metric];
 
   const vsChip = effort?.vs.chip;
@@ -610,6 +582,29 @@ export default function LoadTab({
       {chip || null}
     </View>
   );
+
+  const exName = (id) => {
+    const def = allExercises?.[id];
+    return def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : id;
+  };
+  // Celda de cambio de fuerza: +3 % lima, −4 % naranja, «igual» gris (|cambio| < 0,5).
+  const pctCell = (n) => {
+    if (n == null || !Number.isFinite(n)) return { text: '—', color: th.colors.mutedLight };
+    if (Math.abs(n) < 0.5) return { text: t('load.same'), color: th.colors.mutedLight };
+    return { text: `${n > 0 ? '+' : '−'}${Math.abs(Math.round(n))} %`, color: n > 0 ? th.colors.accent : th.colors.orange };
+  };
+  const periodLabel = t(`load.${PERIOD_KEY[period]}`).toLowerCase();
+  const bestRow = strengthRows.find((r) => r.pct4w != null);
+  const strengthChip = period === '1m'
+    ? (bestRow ? { label: t('load.strengthBest', { name: exName(bestRow.exerciseId) }), cell: pctCell(bestRow.pct4w) } : null)
+    : (strengthPeriod != null ? { label: periodLabel, cell: pctCell(strengthPeriod) } : null);
+  const since4w = (() => {
+    if (load.endDay == null) return '';
+    const d = new Date(load.endDay);
+    d.setDate(d.getDate() - 27);
+    return d.toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
+  })();
+  const strengthRowsShown = strengthRows.filter((r) => period !== '1m' || r.pct4w != null);
 
   const hot = rpeRows.reduce((m, r) => (r.rpe4w != null && (m == null || r.rpe4w > m) ? r.rpe4w : m), null);
 
@@ -631,7 +626,7 @@ export default function LoadTab({
         />
         <MetricTile
           selected={metric === 'strength'} onPress={() => setMetric('strength')}
-          label={t('load.cardStrength')} value={pctOrDash(tiles.strengthPct)}
+          label={t('load.cardStrength')} value={pctOrDash(strengthPct)}
           sub={t('load.in4Weeks')} color={th.colors.accent}
         />
       </View>
@@ -756,26 +751,74 @@ export default function LoadTab({
           </>
         ) : null)}
 
-        {metric === 'strength' && performance && (
+        {metric === 'strength' && (
           <>
-            {performance.pct != null && figure(signed(performance.pct), null, null,
-              performance.pct >= 0 ? th.colors.accent : th.colors.orange)}
-
-            <IndexChart series={[{ values: performance.values, color: th.colors.accent }]} dates={performance.dates} height={72} />
-
-            {performance.pct != null && (
-              <View style={styles.chips}>
-                <View style={styles.chip}>
-                  <View style={[styles.dot, {
-                    backgroundColor: performance.pct >= 0 ? th.colors.accent : th.colors.orange,
-                  }]} />
-                  <Text style={styles.chipMuted}>{cap(t('load.perfDetail', { weeks: performance.weeks }))}</Text>
+            {figure(
+              pctOrDash(strengthPct),
+              strengthPct != null ? t('load.strengthUnit', { date: since4w }) : null,
+              strengthChip ? (
+                <View style={styles.chipBox}>
+                  <Text style={styles.chipMuted}>
+                    {`${strengthChip.label} `}
+                    <Text style={[styles.chipStrong, { color: strengthChip.cell.color }]}>{strengthChip.cell.text}</Text>
+                  </Text>
                 </View>
-              </View>
+              ) : null,
+              strengthPct == null || strengthPct >= 0 ? th.colors.accent : th.colors.orange,
             )}
+
+            {performance && (
+              <PctChart
+                series={[{ values: performance.values, color: th.colors.accent }]}
+                dates={performance.dates}
+                area
+                bandFrom={performance.bandFrom}
+                hollowAt={performance.hollowAt}
+                bandLabel={t('load.fourWeeksBand')}
+              />
+            )}
+
+            <View style={styles.chips}>
+              <View style={styles.chip}>
+                <View style={[styles.dot, { backgroundColor: th.colors.accent }]} />
+                <Text style={styles.chipMuted}>{t('load.perfMeta')}</Text>
+              </View>
+            </View>
           </>
         )}
       </View>
+
+      {/* ── Fuerza por ejercicio (solo con FUERZA elegida) ───────────────── */}
+      {metric === 'strength' && strengthRowsShown.length > 0 && (
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <Text style={styles.cardTitle}>{t('load.strengthTableTitle')}</Text>
+          </View>
+          <View>
+            <View style={styles.rpeRow}>
+              <Text style={[styles.rpeHead, styles.rpeName]} numberOfLines={1}>{t('load.rpeExercise')}</Text>
+              <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{t('load.rpe4w')}</Text>
+              {period !== '1m' && (
+                <Text style={[styles.rpeHead, styles.rpeNum]} numberOfLines={1}>{period.toUpperCase()}</Text>
+              )}
+            </View>
+            {strengthRowsShown.map((r) => {
+              const c4 = pctCell(r.pct4w);
+              const cp = pctCell(r.pctPeriod);
+              return (
+                <View key={r.exerciseId} style={[styles.rpeRow, styles.rpeRowLine]}>
+                  <Text style={[styles.rpeCell, styles.rpeName]} numberOfLines={1}>{exName(r.exerciseId)}</Text>
+                  <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum, { color: c4.color }]}>{c4.text}</Text>
+                  {period !== '1m' && (
+                    <Text style={[styles.rpeCell, styles.rpeNumCell, styles.rpeNum, { color: cp.color }]}>{cp.text}</Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          <Text style={styles.groupHint}>{t(period === '1m' ? 'load.strengthFoot1m' : 'load.strengthFoot')}</Text>
+        </View>
+      )}
 
       {/* ── Monotonía y strain (solo con CARGA elegida) ─────────────────── */}
       {metric === 'load' && (
@@ -867,8 +910,7 @@ export default function LoadTab({
               )}
             </View>
             {rpeRows.map((r) => {
-              const def = allExercises?.[r.exerciseId];
-              const name = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : r.exerciseId;
+              const name = exName(r.exerciseId);
               const fmt = (v) => (v != null ? dec(v.toFixed(1)) : '—');
               return (
                 <View key={r.exerciseId} style={[styles.rpeRow, styles.rpeRowLine]}>
@@ -891,48 +933,56 @@ export default function LoadTab({
         </View>
       )}
 
-      {/* ── Series por grupo muscular ───────────────────────────────────── */}
-      {groupSets.length > 0 && (
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'muscleGroups', ids: ['muscleGroupSets'] })}>{t('load.groupsTitle')}</InfoLabel>
-            <Text style={styles.cardMeta}>{t('load.last7d')}</Text>
-          </View>
+      {/* ── Series por grupo: la semana natural contra lo previsto (T11-07) ─ */}
+      {groupWeek.rows.length > 0 && (() => {
+        const rows = showAllGroups ? groupWeek.rows : groupWeek.rows.slice(0, GROUPS_SHOWN);
+        // Escala común a todas las filas, en múltiplos de 10 (la rejilla).
+        const scale = Math.ceil(Math.max(10, ...groupWeek.rows.map((r) => Math.max(r.done, r.planned ?? 0))) / 10) * 10;
+        const pct = (n) => `${(n / scale) * 100}%`;
+        return (
+          <View style={styles.card}>
+            <View style={styles.cardHead}>
+              <InfoLabel align="left" textStyle={styles.cardTitle} onPress={() => setInfo({ chart: 'muscleGroups', ids: ['muscleGroupSets'] })}>{t('load.groupsTitle')}</InfoLabel>
+              <Text style={styles.cardMeta}>
+                {groupWeek.planned != null
+                  ? t('load.groupsMeta', { done: groupWeek.done, planned: groupWeek.planned })
+                  : t('load.groupsMetaNoPlan', { done: groupWeek.done })}
+              </Text>
+            </View>
 
-          <View style={styles.groupList}>
-            {groupSets.map(({ group, sets }) => {
-              const scale = Math.max(SETS_SCALE_MIN, groupSets[0].sets);
-              const inRange = sets >= SETS_TARGET_MIN && sets <= SETS_TARGET_MAX;
-              // Dentro de rango = accent; fuera = naranja, por arriba y por
-              // abajo (docs/UI-MIGRATION.md §4.9 — aquí no se usa rojo).
-              const color = inRange ? th.colors.accent : th.colors.orange;
-              return (
+            <View style={styles.groupList}>
+              {rows.map(({ group, done, planned }) => (
                 <View key={group} style={styles.groupRow}>
                   <Text style={styles.groupName} numberOfLines={1}>
-                    {group === 'other'
-                      ? t('load.groupOther')
-                      : t(`exerciseSelector.groups.${group}`)}
+                    {group === 'other' ? t('load.groupOther') : t(`exerciseSelector.groups.${group}`)}
                   </Text>
                   <View style={styles.groupTrack}>
-                    <View style={[styles.groupFill, {
-                      width: `${Math.min(100, (sets / scale) * 100)}%`,
-                      backgroundColor: color,
-                    }]} />
-                    {/* Marcas del rango de referencia */}
-                    <View style={[styles.groupMark, { left: `${(SETS_TARGET_MIN / scale) * 100}%` }]} />
-                    <View style={[styles.groupMark, { left: `${(SETS_TARGET_MAX / scale) * 100}%` }]} />
+                    {Array.from({ length: scale / 10 - 1 }, (_, k) => (
+                      <View key={k} style={[styles.groupGrid, { left: pct((k + 1) * 10) }]} />
+                    ))}
+                    {/* Lo que falta hasta lo previsto: contorno lima al 50 % (no hay token accent50). Nunca naranja:
+                        la semana está en curso, y el naranja es solo para semanas acabadas por debajo. */}
+                    {planned != null && (
+                      <View style={[styles.groupLeft, { width: pct(planned), borderColor: withOpacity(th.colors.accent, 0.5) }]} />
+                    )}
+                    <View style={[styles.groupFill, { width: pct(done), backgroundColor: th.colors.accent }]} />
+                    {planned != null && <View style={[styles.groupTick, { left: pct(planned) }]} />}
                   </View>
-                  <Text style={[styles.groupCount, { color }]}>{sets}</Text>
+                  <Text style={styles.groupCount}>{planned != null ? `${done}/${planned}` : done}</Text>
                 </View>
-              );
-            })}
-          </View>
+              ))}
+            </View>
 
-          <Text style={styles.groupHint}>
-            {t('load.groupsHint', { min: SETS_TARGET_MIN, max: SETS_TARGET_MAX })}
-          </Text>
-        </View>
-      )}
+            {groupWeek.rows.length > GROUPS_SHOWN && (
+              <TouchableOpacity onPress={() => setShowAllGroups((v) => !v)} hitSlop={8} accessibilityRole="button">
+                <Text style={[styles.viewBtn, { color: th.colors.accent }]}>
+                  {showAllGroups ? t('load.groupsShowLess') : t('load.groupsShowAll', { count: groupWeek.rows.length })}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })()}
 
       <MetricInfoSheet chart={info?.chart} ids={info?.ids} onClose={() => setInfo(null)} />
     </>,
@@ -1051,14 +1101,12 @@ const makeStyles = (th) => StyleSheet.create({
   groupList:  { gap: spacing.sm2 },
   groupRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm2 },
   groupName:  { ...textStyles.label, color: th.colors.mutedLight, width: 76 },
-  groupTrack: {
-    flex: 1, height: 9, borderRadius: 3,
-    backgroundColor: th.colors.surface2,
-    overflow: 'hidden',
-  },
+  groupTrack: { flex: 1, height: 9, borderRadius: 3, backgroundColor: th.colors.surface2 },
+  groupGrid:  { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: th.colors.border },
+  groupLeft:  { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3, borderWidth: 1 },
   groupFill:  { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
-  groupMark:  { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: th.colors.bg },
-  groupCount: { ...textStyles.labelStrong, width: 22, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  groupTick:  { position: 'absolute', top: -2, bottom: -2, width: 2, marginLeft: -1, borderRadius: 1, backgroundColor: th.colors.text },
+  groupCount: { ...textStyles.labelStrong, color: th.colors.text, width: 40, textAlign: 'right', fontVariant: ['tabular-nums'] },
   groupHint:  { ...textStyles.label, color: th.colors.mutedLight, lineHeight: 15 },
 
   emptyState: { paddingVertical: spacing.xxl },

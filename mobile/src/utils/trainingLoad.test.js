@@ -4,7 +4,7 @@ import {
   isBodyweight, effectiveWeight, sessionLoads, dailySeries,
   rollingMean, monotony, strain, loadState, setsByMuscleGroup, plannedSetsByGroup,
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
-  loadSummary, strengthChange, effortBlocks, monotonyStrain,
+  loadSummary, strengthChange, strengthByExercise, meanPct, groupSetsVsPlan, effortBlocks, monotonyStrain,
   effortVsLoad, rpeByExercise, ratedSessions, TREND_FLAT_PCT,
   REF_WEEKS, BLOCK_LOAD_PER_SEC,
 } from './trainingLoad';
@@ -867,5 +867,74 @@ describe('rpeByExercise', () => {
 
   it('sin RPE en el periodo no sale nada', () => {
     expect(rpeByExercise(log, { from: at(2, 1), endDay: at(2, 20) })).toEqual([]);
+  });
+});
+
+describe('strengthByExercise', () => {
+  const END = new Date(2026, 1, 20).getTime();
+  const FROM = END - 89 * DAY;                      // periodo de 90 días
+  const at = (days, kg, exerciseId) => entry({ id: `e${days}${exerciseId}`, ts: END - days * DAY + 12 * 3600000, exerciseId, sets: [set(kg, 5)] });
+  const log = [
+    at(85, 90, 'squat_barbell'), at(40, 100, 'squat_barbell'), at(5, 110, 'squat_barbell'),
+    at(10, 60, 'bench_press_barbell'), at(40, 50, 'bench_press_barbell'),
+    at(5, 20, 'barbell_row'),                       // solo en la ventana actual
+  ];
+  const rows = strengthByExercise(log, EXERCISE_LIBRARY, { endDay: END, fromDay: FROM });
+
+  it('pct4w contra los 28 días anteriores y pctPeriod contra los primeros 28 del periodo', () => {
+    const squat = rows.find((r) => r.exerciseId === 'squat_barbell');
+    expect(squat.pct4w).toBeCloseTo(10, 5);
+    expect(squat.pctPeriod).toBeCloseTo((110 / 90 - 1) * 100, 5);
+    const bench = rows.find((r) => r.exerciseId === 'bench_press_barbell');
+    expect(bench.pct4w).toBeCloseTo(20, 5);
+    expect(bench.pctPeriod).toBeNull();             // sin dato en los primeros 28 días
+  });
+  it('un ejercicio con dato en una sola ventana no sale', () => {
+    expect(rows.find((r) => r.exerciseId === 'barbell_row')).toBeUndefined();
+  });
+  it('va de más a menos por pct4w y el primero es el mejor (1M)', () => {
+    expect(rows.map((r) => r.exerciseId)).toEqual(['bench_press_barbell', 'squat_barbell']);
+    const m1 = strengthByExercise(log, EXERCISE_LIBRARY, { endDay: END, fromDay: END - 29 * DAY });
+    expect(m1[0].exerciseId).toBe('bench_press_barbell');
+    expect(m1.every((r) => r.pctPeriod === null)).toBe(true);   // ventanas solapadas
+  });
+  it('strengthChange es la media redondeada de pct4w', () => {
+    const mean = (10 + 20) / 2;
+    expect(meanPct(rows, 'pct4w')).toBeCloseTo(mean, 5);
+    expect(strengthChange(log, EXERCISE_LIBRARY, { endDay: END })).toBe(15);
+    expect(meanPct(rows, 'pctPeriod')).toBeCloseTo((110 / 90 - 1) * 100, 5);
+  });
+  it('sin endDay, vacío', () => {
+    expect(strengthByExercise(log, EXERCISE_LIBRARY, {})).toEqual([]);
+  });
+});
+
+describe('groupSetsVsPlan', () => {
+  const NOW = new Date(2026, 0, 7, 18).getTime();                  // miércoles 7 ene 2026
+  const ex = (exerciseId, n) => ({ exerciseId, sets: Array.from({ length: n }, () => set(100, 8)) });
+  const ses = (id, ts, exercises) => ({ id, timestamp: ts, duration: 0, exercises });
+  const log = [
+    ses('prev', T0 - DAY, [ex('squat_barbell', 5)]),                // domingo anterior: fuera
+    ses('a', T0, [ex('squat_barbell', 3), ex('bench_press_barbell', 2)]),
+    ses('b', T0 + 2 * DAY, [ex('barbell_row', 4)]),
+  ];
+  const planned = [{ group: 'quads', sets: 9 }, { group: 'chest', sets: 6 }, { group: 'shoulders', sets: 4 }];
+
+  it('hechas de previstas por grupo, los no previstos al final y sin plan los totales', () => {
+    const r = groupSetsVsPlan(log, EXERCISE_LIBRARY, planned, { now: NOW });
+    expect(r.rows).toEqual([
+      { group: 'quads', done: 3, planned: 9 },
+      { group: 'chest', done: 2, planned: 6 },
+      { group: 'shoulders', done: 0, planned: 4 },
+      { group: 'back', done: 4, planned: null },
+    ]);
+    expect(r.done).toBe(9);
+    expect(r.planned).toBe(19);
+  });
+  it('sin programa, solo las hechas', () => {
+    const r = groupSetsVsPlan(log, EXERCISE_LIBRARY, null, { now: NOW });
+    expect(r.planned).toBeNull();
+    expect(r.rows.map((x) => x.group)).toEqual(['back', 'quads', 'chest']);
+    expect(r.rows.every((x) => x.planned === null)).toBe(true);
   });
 });

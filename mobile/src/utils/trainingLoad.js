@@ -864,33 +864,87 @@ export function rpeByExercise(log, { from, endDay }) {
     .sort((a, b) => (b.rpe4w ?? -1) - (a.rpe4w ?? -1));
 }
 
+/** Mejor e1RM de los registros cuyo día cae en [from, to] (inicios de día), o null. */
+const bestE1rmIn = (records, from, to) => {
+  let best = null;
+  for (const r of records) {
+    if (r.e1rm == null) continue;
+    const k = startOfDay(r.ts);
+    if (k >= from && k <= to && (best == null || r.e1rm > best)) best = r.e1rm;
+  }
+  return best;
+};
+
 /**
- * Cambio de fuerza en 4 semanas, en %: media de los cambios del e1RM por ejercicio
- * (mejor e1RM de los 28 días que acaban en `endDay` contra el de los 28 anteriores),
- * contando solo los ejercicios con dato en las dos ventanas. Un ejercicio estrenado
- * hace 2 semanas no entra, así que no hunde la cifra.
+ * Cambio de fuerza por ejercicio (T11-06), en % (sin redondear):
+ *  - `pct4w`: mejor e1RM de los 28 días que acaban en `endDay` contra el de los 28 anteriores.
+ *  - `pctPeriod`: mejor e1RM de esos mismos 28 días finales contra el de los PRIMEROS 28 días
+ *    del periodo (`fromDay` … `fromDay` + 27). Si las dos ventanas se solapan (periodo de 1M)
+ *    no hay comparación y sale null. Sin `fromDay` también.
+ * Un ejercicio solo entra con dato en las dos ventanas de al menos una de las dos cifras.
+ * Las ventanas son bloques de 7 días que acaban en `endDay`, nunca semanas naturales.
  *
- * @param {number} endDay inicio del último día de la serie (`loadSummary().endDay`)
- * @returns {number|null}
+ * @param {number} endDay  inicio del último día de la serie (`loadSummary().endDay`)
+ * @param {number|null} fromDay inicio del primer día del periodo
+ * @returns {Array<{ exerciseId: string, pct4w: number|null, pctPeriod: number|null }>} por `pct4w`, de más a menos (null al final)
  */
-export function strengthChange(log, allExercises, { fallbackBodyWeight = null, endDay, weeks = 4 } = {}) {
-  if (endDay == null) return null;
+export function strengthByExercise(log, allExercises, { fallbackBodyWeight = null, endDay, fromDay = null, weeks = 4 } = {}) {
+  if (endDay == null) return [];
   const idx = buildIndex([...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp), allExercises, fallbackBodyWeight);
   const span = weeks * 7;
   const curFrom = shiftDay(endDay, -(span - 1));
   const prevFrom = shiftDay(endDay, -(2 * span - 1));
-  const changes = [];
-  for (const records of idx.values()) {
-    let cur = null; let prev = null;
-    for (const r of records) {
-      if (r.e1rm == null) continue;
-      const k = startOfDay(r.ts);
-      if (k >= curFrom && k <= endDay) { if (cur == null || r.e1rm > cur) cur = r.e1rm; }
-      else if (k >= prevFrom && k < curFrom) { if (prev == null || r.e1rm > prev) prev = r.e1rm; }
-    }
-    if (cur != null && prev > 0) changes.push(cur / prev - 1);
+  const firstTo = fromDay != null ? shiftDay(fromDay, span - 1) : null;
+  const pct = (cur, base) => (cur != null && base > 0 ? (cur / base - 1) * 100 : null);
+  const rows = [];
+  for (const [exerciseId, records] of idx) {
+    const cur = bestE1rmIn(records, curFrom, endDay);
+    const pct4w = pct(cur, bestE1rmIn(records, prevFrom, shiftDay(curFrom, -1)));
+    const pctPeriod = firstTo != null && firstTo < curFrom ? pct(cur, bestE1rmIn(records, fromDay, firstTo)) : null;
+    if (pct4w != null || pctPeriod != null) rows.push({ exerciseId, pct4w, pctPeriod });
   }
-  return changes.length ? Math.round((changes.reduce((a, b) => a + b, 0) / changes.length) * 100) : null;
+  return rows.sort((a, b) => (b.pct4w ?? -Infinity) - (a.pct4w ?? -Infinity));
+}
+
+/** Media de `key` ('pct4w' | 'pctPeriod') de las filas de `strengthByExercise` que lo tienen, o null. */
+export function meanPct(rows, key) {
+  const v = (rows ?? []).map((r) => r[key]).filter((x) => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+/**
+ * Cambio de fuerza en 4 semanas, en % redondeado: la media de `pct4w` por ejercicio, así que
+ * la tarjeta y la tabla de `strengthByExercise` coinciden por construcción. Un ejercicio
+ * estrenado hace 2 semanas no entra y no hunde la cifra.
+ *
+ * @param {number} endDay inicio del último día de la serie (`loadSummary().endDay`)
+ * @returns {number|null}
+ */
+export function strengthChange(log, allExercises, opts = {}) {
+  const m = meanPct(strengthByExercise(log, allExercises, opts), 'pct4w');
+  return m == null ? null : Math.round(m);
+}
+
+/**
+ * Series de la semana natural en curso (lunes a domingo de `now`) contra lo previsto (T11-07).
+ * Se cuentan igual que `setsByMuscleGroup` (el dropset no suma).
+ *
+ * @param {Array<{group,sets}>|null} planned `plannedSetsByGroup`/`stageSetsByGroup`; null o vacío = sin plan
+ * @returns {{ rows: Array<{group:string, done:number, planned:number|null}>, done:number, planned:number|null }}
+ *   Primero los grupos previstos (de más a menos previstas), luego los hechos sin prever (`planned: null`).
+ */
+export function groupSetsVsPlan(log, allExercises, planned, { now = Date.now() } = {}) {
+  const from = startOfWeek(now);
+  const done = new Map(setsByMuscleGroup(log, allExercises, { from, to: shiftDay(from, 7) - 1 }).map((g) => [g.group, g.sets]));
+  const plan = (planned ?? []).filter((p) => p.sets > 0);
+  const rows = plan.map((p) => ({ group: p.group, done: done.get(p.group) ?? 0, planned: p.sets }));
+  const inPlan = new Set(plan.map((p) => p.group));
+  for (const [group, n] of done) if (!inPlan.has(group)) rows.push({ group, done: n, planned: null });
+  return {
+    rows,
+    done: [...done.values()].reduce((a, b) => a + b, 0),
+    planned: plan.length ? plan.reduce((a, p) => a + p.sets, 0) : null,
+  };
 }
 
 /**
