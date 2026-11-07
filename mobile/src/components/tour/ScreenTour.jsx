@@ -203,8 +203,8 @@ export default function ScreenTour({ steps: given, onClose }) {
         </Reanimated.View>
       )}
 
-      {/* El dedo de un paso con gesto, sobre el hueco ya asentado. */}
-      {view?.rect && step.finger && (
+      {/* El aro que late sobre el hueco ya asentado y, en un paso con gesto, el dedo. */}
+      {view?.rect && (
         <View pointerEvents="none" style={{ position: 'absolute', left: view.rect.x, top: view.rect.y, width: view.rect.w, height: view.rect.h }}>
           <Spot radius={view.radius} finger={step.finger} style={StyleSheet.absoluteFill} />
         </View>
