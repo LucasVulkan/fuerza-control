@@ -8,9 +8,7 @@
  * su `AppHeader`, su contenedor y el `paddingTop` del notch — los pone
  * `StatsScreen`, que es quien la monta ahora.
  *
-
- * El calendario de calor que tenía arriba se fue a la pestaña de Carga: pintaba
- * `internalLoad`, que es de allí. Ver `stats/LoadCalendar.jsx`.
+ * El calendario de calor vuelve arriba (T11-08), con el log propio por prop.
  */
 import { useState, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
@@ -29,6 +27,7 @@ import { Section, MenuRow } from '../ui/MenuList';
 import EmptyState from '../ui/EmptyState';
 import { ROW_ICON } from '../ui/rowIcons';
 import SessionCard from '../SessionCard';
+import LoadCalendar from '../stats/LoadCalendar';
 import SegmentedControl from '../ui/SegmentedControl';
 import RoundCheck from '../ui/RoundCheck';
 import { spacing, textStyles, withOpacity } from '../../theme';
@@ -58,6 +57,9 @@ export default function HistoryList() {
   const programs        = useStore((s) => s.programs);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const profile         = useStore((s) => s.profile);
+  const exerciseLibrary = useStore((s) => s.exerciseLibrary);
+  const customExercises  = useStore((s) => s.customExercises);
+  const allExercises    = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const activeProgram   = programs[profile.activeProgramId];
 
   const [scope,            setScope]            = useState('all');
@@ -194,6 +196,9 @@ export default function HistoryList() {
   // borrado). Debajo, qué se está viendo.
   const listHeader = (
     <>
+      <View style={styles.calendar}>
+        <LoadCalendar log={workoutLog} allExercises={allExercises} fallbackBodyWeight={profile.bodyWeight ?? null} />
+      </View>
       <View style={styles.scopeRow}>
         <View style={styles.flex}>
           {present.length > 0 && (
@@ -333,6 +338,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Fila de arriba: la cápsula de letras y la caja de filtros (la de Clientes).
   flex: { flex: 1 },
+  calendar: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   scopeRow: {
     flexDirection:     'row',
     alignItems:        'center',

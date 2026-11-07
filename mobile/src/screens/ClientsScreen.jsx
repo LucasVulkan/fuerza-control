@@ -52,6 +52,7 @@ import TabBar from '../components/ui/TabBar';
 import NavScrim from '../components/ui/NavScrim';
 import RoundCheck from '../components/ui/RoundCheck';
 import ProgressPanel from '../components/stats/ProgressPanel';
+import LoadCalendar from '../components/stats/LoadCalendar';
 import SessionCard from '../components/SessionCard';
 import { spacing, textStyles, borders, withOpacity, sheetRowBase, getCardRadii, lh } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
@@ -2613,6 +2614,9 @@ export default function ClientsScreen() {
               />
             ) : undefined}
           >
+            {/* Calendario del cliente: su log entero, no el filtrado de la lista (T11-08). */}
+            <LoadCalendar log={clientBaseLog} allExercises={allExercises} fallbackBodyWeight={clientBodyWeight} />
+
             {/* Filtros — mismo control que el historial propio. Apilados y no en
                 una fila: "Todos los programas" y "30 días" no caben a media
                 anchura sin truncarse. */}

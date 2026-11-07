@@ -6,7 +6,7 @@ import {
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   loadSummary, strengthChange, strengthByExercise, meanPct, groupSetsVsPlan, effortBlocks, monotonyStrain,
   effortVsLoad, rpeByExercise, ratedSessions, TREND_FLAT_PCT,
-  REF_WEEKS, BLOCK_LOAD_PER_SEC,
+  REF_WEEKS, BLOCK_LOAD_PER_SEC, calendarLoads,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 
@@ -936,5 +936,21 @@ describe('groupSetsVsPlan', () => {
     expect(r.planned).toBeNull();
     expect(r.rows.map((x) => x.group)).toEqual(['back', 'quads', 'chest']);
     expect(r.rows.every((x) => x.planned === null)).toBe(true);
+  });
+});
+
+describe('calendarLoads (T11-08)', () => {
+  const ses = (id, ts, extra = {}) => ({ id, timestamp: ts, duration: 3600, exercises: [{ exerciseId: 'squat_barbell', sets: [set(100, 5)] }], ...extra });
+  it('con sRPE tiñe por carga interna', () => {
+    const r = calendarLoads([ses('a', T0, { sessionRpe: 7 }), ses('b', T0 + DAY)], EXERCISE_LIBRARY, { now: T0 + 2 * DAY });
+    expect(r.source).toBe('internal');
+    expect(r.byDay.size).toBe(2);
+    expect([...r.byDay.values()].filter((v) => v.load == null)).toHaveLength(1);
+  });
+  it('sin ningún sRPE tiñe por la externa: ningún día entrenado queda sin carga', () => {
+    const r = calendarLoads([ses('a', T0), ses('b', T0 + DAY)], EXERCISE_LIBRARY, { now: T0 + 2 * DAY });
+    expect(r.source).toBe('external');
+    expect(r.byDay.size).toBe(2);
+    expect([...r.byDay.values()].every((v) => v.load > 0)).toBe(true);
   });
 });

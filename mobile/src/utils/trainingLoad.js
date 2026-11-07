@@ -733,6 +733,31 @@ export function loadSummary(log, allExercises, { fallbackBodyWeight = null, now 
   };
 }
 
+/**
+ * Carga de cada día entrenado para teñir el calendario del Historial (T11-08):
+ * interna (sRPE × minutos) si alguna sesión tiene sRPE; si no, la externa de
+ * `loadSummary`, para que los días entrenados no salgan solo en contorno.
+ * @returns {{ source: 'internal'|'external', byDay: Map<number, {load: number|null, sessions: number}> }}
+ *   La clave es el inicio del día local. `load: null` = entrenó pero no hay carga que pintar.
+ */
+export function calendarLoads(log, allExercises, { fallbackBodyWeight = null, now = Date.now() } = {}) {
+  const byDay = new Map();
+  if (!(log ?? []).some((e) => internalLoad(e) != null)) {
+    const { days } = loadSummary(log, allExercises, { fallbackBodyWeight, now });
+    for (const d of days) if (d.sessions > 0) byDay.set(d.day, { load: d.value > 0 ? d.value : null, sessions: d.sessions });
+    return { source: 'external', byDay };
+  }
+  for (const e of log) {
+    const key = startOfDay(e.timestamp);
+    const load = internalLoad(e);
+    const cur = byDay.get(key) ?? { load: null, sessions: 0 };
+    if (load != null) cur.load = (cur.load ?? 0) + load;
+    cur.sessions += 1;
+    byDay.set(key, cur);
+  }
+  return { source: 'internal', byDay };
+}
+
 /** Las últimas `n` ventanas de 7 días (de la más vieja a la última), acabando en el último día de `days`. */
 export function weekBlocks(days, n = 8) {
   const out = [];
