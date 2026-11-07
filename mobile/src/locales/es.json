@@ -30,6 +30,79 @@
   "mannequinTest": {
     "title": "Maniquí 3D (prueba)"
   },
+  "tour": {
+    "skip": "Saltar",
+    "next": "Siguiente",
+    "back": "Anterior",
+    "done": "Entendido",
+    "help": "Explicación de esta pantalla",
+    "home": {
+      "program": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y cuánto llevas: la etapa y la semana en la que estás. Pulsa para abrir la pantalla del programa." },
+      "today": { "title": "La sesión de hoy", "text": "La sesión de entrenamiento recomendada por el programa. Toca en la tarjeta para ver los ejercicios o en el botón para empezar el entreno." },
+      "sessionsFree": { "title": "Tus sesiones", "text": "Tu programa es libre: no hay una que toque, elige la que quieras hacer hoy. Tócala para ver sus ejercicios y empieza cuando quieras." },
+      "othersList": { "title": "Las demás sesiones", "text": "El resto de sesiones del programa. Pulsa para abrir la lista de ejercicios de esa sesión y empezarla en cualquier momento." },
+      "othersTabs": { "title": "Las demás sesiones", "text": "Cada pestaña es una sesión de tu programa. Púlsalas para verlas y hacer otra sesión en lugar de la recomendada." },
+      "free": { "title": "Sesión libre", "text": "Haz una sesión diferente a las del programa. Puedes empezar una en blanco, sobre la marcha, o crear sesiones libres para reusarlas en cualquier momento." },
+      "tabs": { "title": "Moverte por la app", "text": "Desde aquí puedes ver tu programa, donde podrás editarlo, tu progreso y el resto de la app." }
+    },
+    "program": {
+      "card": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y, a la derecha, la semana en la que estás.\n<b>Adherencia</b>: de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho.\n<b>Ritmo</b>: las sesiones que haces por semana.\n<b>Carga</b>: lo que entrenas esta semana frente a tu media del mes." },
+      "cardBar": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y, a la derecha, la semana en la que estás.\n<bar/> La barra muestra cuánto llevas del programa.\n<b>Adherencia</b>: de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho.\n<b>Ritmo</b>: las sesiones que haces por semana.\n<b>Carga</b>: lo que entrenas esta semana frente a tu media del mes." },
+      "cardStages": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y, a la derecha, la semana en la que estás.\n<bar/> La barra muestra cuánto llevas del programa, con un tramo por etapa.\n<ticks/> En «Esta etapa» ves la etapa en la que estás y su semana: cada cuadradito es una semana de la etapa.\n<b>Adherencia</b>: de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho.\n<b>Ritmo</b>: las sesiones que haces por semana.\n<b>Carga</b>: lo que entrenas esta semana frente a tu media del mes." },
+      "view": { "title": "Ver programa", "text": "Aquí puedes abrir una vista general del programa." },
+      "edit": { "title": "Editar programa", "text": "El editor para cambiar las sesiones, los ejercicios y las etapas del programa." },
+      "editTrainer": { "title": "Programa de tu entrenador", "text": "Los programas creados por un entrenador no se pueden editar." },
+      "stages": { "title": "Etapas", "text": "Las etapas del programa, con la etapa activa destacada y las semanas que has hecho. Pulsa en una etapa para pasar a ella." }
+    },
+    "progress": {
+      "tabs": { "title": "Tu progreso", "text": "Aquí puedes ver el progreso de tus ejercicios, la carga de tu entrenamiento en general y el historial de las sesiones completadas. Toca en una opción para cambiar la vista." },
+      "exercise": { "title": "Un ejercicio", "text": "Cada tarjeta resume tu progreso en un ejercicio. Toca en una para ver el progreso de un ejercicio de forma más detallada." }
+    },
+    "programEditor": {
+      "general": { "title": "Editor de programa", "text": "Estás en el editor de programas. Aquí puedes modificar tu programa, añadir etapas, sesiones y ejercicios.\nCuando termines, pulsa <main>Guardar</main> para guardar y cerrar el editor. Si no quieres guardar los cambios, pulsa <btn>Cancelar</btn>." },
+      "card": { "title": "El programa", "text": "La información básica del programa aparece aquí, como el nombre o el número de sesiones." },
+      "stages": { "title": "Etapas", "text": "Las etapas son bloques de entrenamiento con una duración determinada dentro de tu programa. Cada etapa tiene sus propias sesiones y ejercicios, para que tu entrenamiento se vaya adaptando sin tener que cambiar de programa." },
+      "stagePicker": { "title": "Selector de etapas", "text": "Te permite cambiar de etapa para editarla.\nEn cada pestaña, debajo del número, ves a qué semanas pertenece esa etapa." },
+      "stageCard": { "title": "Ficha de la etapa", "text": "La ficha de la etapa seleccionada, donde ves su información y entras en sus ajustes con <gear/>." },
+      "sessions": { "title": "Sesiones", "text": "Aquí verás tus sesiones de entrenamiento. Puedes añadir o eliminar sesiones. Toca en una para editar sus ejercicios y usa <handle/> para cambiar el orden." },
+      "sessionsStages": { "title": "Sesiones", "text": "Aquí verás las sesiones de entrenamiento de la etapa elegida. Puedes añadir o eliminar sesiones. Toca en una para editar sus ejercicios y usa <handle/> para cambiar el orden." },
+      "figWeeks": "{{count}} sem",
+      "fig_adaptation": "Adaptación",
+      "fig_hypertrophy": "Hipertrofia",
+      "fig_strength": "Fuerza",
+      "fig_deload": "Descarga"
+    },
+    "sessionEditor": {
+      "sessions": { "title": "Sesiones", "text": "Usa el selector para editar otras sesiones sin tener que volver atrás." },
+      "exercises": { "title": "Ejercicios", "text": "La lista de ejercicios de la sesión. Toca un ejercicio para abrir sus ajustes.\nDesliza un ejercicio hacia la derecha para sustituirlo o eliminarlo, y arrastra <handle/> para cambiar el orden.\nPulsa <btn>+ Añadir ejercicio</btn> para añadir un ejercicio o un bloque de acondicionamiento." }
+    },
+    "clients": {
+      "header": { "title": "Nuevo cliente", "text": "El botón <main>+ Cliente</main> crea un cliente nuevo.\nUsa <paste/> cuando tengas que pegar un mensaje de texto con el entreno de un cliente.\nEn <account/> gestionas tu cuenta de entrenador." },
+      "cards": { "title": "Tus clientes", "text": "Cada tarjeta es un cliente, con su programa y cómo va su semana. Toca en una para abrir su ficha, o mantenla pulsada para abrir las acciones rápidas. Para cambiar el orden, pulsa <sort/> y elige Reordenar." },
+      "states": { "title": "Estados de los clientes", "text": "Cada tarjeta avisa de lo que necesita ese cliente. <red>Sin entrenar</red> indica que lleva días sin hacerlo, <blue>Cambios sin enviar</blue> que tienes algo que mandarle, y <mark/> que tiene sesiones sin revisar." }
+    },
+    "client": {
+      "tabs": { "title": "Ficha del cliente", "text": "La ficha tiene cuatro partes: Programa, Historial, Progreso e Info. Toca en cada una para abrirla." },
+      "program": { "title": "Programa del cliente", "text": "El programa asignado al cliente, con su etapa y cómo va. Aquí puedes verlo, editarlo o asignarle otro." },
+      "next": { "title": "Próxima sesión", "text": "La sesión que le toca al cliente en su siguiente entreno. Pulsa <btn>Preparar</btn> para hacer ajustes puntuales en su próximo entreno." },
+      "sessions": { "title": "Sesiones del cliente", "text": "Como este cliente no usa la app, sus sesiones las registras tú desde aquí. Empieza una sesión para registrarla.\nSi la sesión es de otro día, pulsa <btn>Apuntar sesión pasada</btn> y elige la sesión y el día.\nTambién puedes enviarle la sesión como mensaje de texto con <send/>. Si te devuelve el mensaje con el entreno relleno, pégalo desde <btn>Apuntar sesión pasada</btn> → <btn>Pegar texto</btn>." }
+    },
+    "templates": {
+      "segments": { "title": "Programas y sesiones", "text": "Aquí puedes crear o guardar programas completos y sesiones sueltas para reutilizarlos.\nToca en el selector de arriba para cambiar entre programas enteros y sesiones sueltas." },
+      "card": { "title": "Una plantilla", "text": "Cada tarjeta es una plantilla guardada. Toca en la tarjeta para verla, editarla o compartirla, y en <btn>Asignar</btn> para dársela a un cliente o a ti.\nTen en cuenta que se asigna una copia: modificar la plantilla después no cambia los programas ni las sesiones ya asignados." }
+    },
+    "icons": {
+      "handle": "el asa de reordenar",
+      "gear": "el engranaje de ajustes",
+      "paste": "el botón de pegar entreno",
+      "account": "el botón de la cuenta de entrenador",
+      "sort": "el botón de orden",
+      "mark": "la marca de sesiones sin revisar",
+      "send": "el botón de enviar",
+      "bar": "la barra del programa",
+      "ticks": "los tramos de semana"
+    }
+  },
   "header": {
     "newProgram": "＋ Nuevo programa",
     "archivedPrograms": "🗂 Programas archivados",

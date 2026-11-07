@@ -17,7 +17,7 @@
  * cerrada del componente Buttons de Figma. No se rehacen aquí: los botones de
  * esta app están decididos (docs/UI-MIGRATION.md §4).
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -29,6 +29,7 @@ import { ownerClient } from '../utils/programOwnership';
 import { pickImportFile } from '../utils/pickImportFile';
 import { isTrainerProgram } from '../utils/stageLocks';
 import AppHeader from '../components/AppHeader';
+import { useScreenTour } from '../components/tour/useScreenTour';
 import { startNewProgram } from '../utils/startNewProgram';
 import { useDisconnectFromTrainer } from '../hooks/useDisconnectFromTrainer';
 import { Text } from '../components/ui/Text';
@@ -203,13 +204,38 @@ export default function MyProgramScreen() {
     archiveProgram(activeProgram.id, clearHistory);
     setArchiveOpen(false);
   };
+
+  // ── Recorrido de la primera vez (U17-02 §4) ──
+  // La tarjeta, Ver, Editar y, si hay etapas, dónde están. Con el programa de un entrenador no
+  // hay botón Editar: el segundo paso señala los botones y dice que lo lleva él.
+  // Sin programa activo no hay recorrido (su estado vacío ya dice qué hacer, U15-04).
+  const cardRef    = useRef(null);
+  const viewRef    = useRef(null);
+  const editRef    = useRef(null);
+  const actionsRef = useRef(null);
+  const stagesRef  = useRef(null);
+  const hasStages  = (activeProgram?.stages?.length ?? 0) > 1;
+  const text       = (key) => t(`tour.program.${key}`, { returnObjects: true });
+  // De izquierda a derecha, como están los botones: Editar y luego Ver.
+  const tourSteps  = !activeProgram ? [] : [
+    // Con barra si la tarjeta la pinta: varias etapas o una con duración (`HomeProgramCard`).
+    { ref: cardRef, ...text(hasStages ? 'cardStages' : status?.lengthWeeks != null ? 'cardBar' : 'card') },
+    ...(canEdit
+      ? [{ ref: editRef, ...text('edit') }, { ref: viewRef, ...text('view') }]
+      : [{ ref: viewRef, ...text('view') }, { ref: actionsRef, ...text('editTrainer') }]),
+    ...(hasStages ? [{ ref: stagesRef, ...text('stages') }] : []),
+  ];
+  // Con una hoja abierta no sale (regla 7); el resto de cosas encima las mira el hook.
+  const openTour = useScreenTour('tour.program', weekDoc || menuOpen || archiveOpen ? [] : tourSteps);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AppHeader />
+      <AppHeader onHelp={tourSteps.length ? openTour : undefined} />
 
       <EnterClock.Provider value={clock}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {activeProgram ? (
+            <View ref={cardRef} collapsable={false}>
             <HomeProgramCard
               program={activeProgram}
               // Ida y vuelta: la misma tarjeta que trajo hasta aquí devuelve a Sesión.
@@ -228,6 +254,7 @@ export default function MyProgramScreen() {
                 />
               </Unfold>
             </HomeProgramCard>
+            </View>
           ) : (
             <NoProgram />
           )}
@@ -237,7 +264,10 @@ export default function MyProgramScreen() {
               vez en la vida del programa): va en el `⋯`. */}
           {!!activeProgram && (
             <Rise index={0}>
+              <View ref={actionsRef} collapsable={false}>
               <ProgramActions
+                editRef={editRef}
+                viewRef={viewRef}
                 onEdit={canEdit ? () => navigate('programEditor') : null}
                 // Se fija SIEMPRE el programa que se va a mirar:
                 // `_viewingProgramId` es global, y entrar sin fijarlo dejaba ver
@@ -245,12 +275,15 @@ export default function MyProgramScreen() {
                 onView={() => setPrintingProgram(activeProgram.id)}
                 onMore={isMine ? () => setMenuOpen(true) : null}
               />
+              </View>
             </Rise>
           )}
 
           {/* Con una sola etapa no hay nada que elegir. */}
           {(activeProgram?.stages?.length ?? 0) > 1 && (
-            <ProgramStages program={activeProgram} status={status} firstIndex={1} onSelect={selectStage} />
+            <View ref={stagesRef} collapsable={false}>
+              <ProgramStages program={activeProgram} status={status} firstIndex={1} onSelect={selectStage} />
+            </View>
           )}
 
         </ScrollView>

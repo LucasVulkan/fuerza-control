@@ -2,18 +2,20 @@
 
 > Tema: ui
 > En corto: La primera vez que se abre cada pantalla principal se oscurece y se resaltan dos o tres elementos de uno en uno, con una frase cada uno; y algunas cosas que no se entienden solas (la burbuja de diferencia, por ejemplo) se explican con un globo la primera vez que aparecen. Sustituye a las tarjetas explicativas del tramo «Aprende» del onboarding, que se quitan; las dos elecciones de ese tramo (Lista/Pestañas y regla) se quedan.
-> Fase U17-01 · pendiente · Componentes: recorrido, aviso puntual y «visto» · §3
-> Fase U17-02 · pendiente · Recorridos de Entreno y Programa · §4
-> Fase U17-03 · pendiente · Recorridos de Clientes y Plantillas · §5
-> Fase U17-04 · pendiente · Avisos puntuales · §6
-> Fase U17-05 · pendiente · Quitar las tarjetas explicativas del onboarding · §7
+> Inicio: 2026-11-05
+> Fase U17-01 · hecho · Componentes: recorrido, aviso puntual y «visto» · §3
+> Fase U17-02 · hecho · Recorridos de Entreno, Programa y Progreso · §4
+> Fase U17-03 · hecho · Recorridos de Editar programa y del editor de sesión · §5
+> Fase U17-04 · hecho · Recorridos de Clientes, ficha del cliente y Plantillas · §6
+> Fase U17-05 · pendiente · Avisos puntuales · §7
+> Fase U17-06 · pendiente · Quitar las tarjetas explicativas del onboarding · §8
 >
 > Estado: **spec escrita, sin implementar** (3-nov-2026). Sale de la idea U17
 > de `ideas.md` («mensajes de pantalla la primera vez»). Maqueta:
 > [`docs/mockups/recorrido-pantallas.html`](../mockups/recorrido-pantallas.html).
 > Los elementos de la maqueta son orientativos (no copian la pantalla real):
 > **cada tarea precisa sobre la pantalla de verdad qué elementos se resaltan** y
-> con qué texto, y se los enseña al usuario antes de cerrar. U17-05 va la última:
+> con qué texto, y se los enseña al usuario antes de cerrar. U17-06 va la última:
 > las tarjetas no se quitan hasta que lo que enseñaban está en las pantallas.
 > Decisión del usuario (3-nov): en el onboarding se quedan **Lista/Pestañas y la
 > regla** (son elecciones); sale **todo lo explicativo** (las tarjetas, `a_cards`).
@@ -33,8 +35,8 @@
 
 ## 2. Reglas del recorrido (todas las tareas)
 
-1. **Dos o tres pasos por pantalla, nunca más.** Si una pantalla necesita más, el
-   problema es la pantalla. Si no hay nada que no se entienda solo, la pantalla
+1. **Dos o tres pasos por pantalla, nunca más** (Entreno, la primera que se abre,
+   hasta cinco). Si una pantalla necesita más, el problema es la pantalla. Si no hay nada que no se entienda solo, la pantalla
    no lleva recorrido.
 2. **Una vez por pantalla.** Al terminar o al pulsar «Saltar» se guarda «visto» y no
    vuelve a salir. Los usuarios que ya tenían la app también lo ven una vez, la
@@ -73,6 +75,38 @@ recorrido. Para cada paso:
 - pinta el globo: puntos de progreso, «Saltar», título, texto, botón «‹» (desde el
   segundo paso) y «Siguiente» / «Entendido» en el último.
 
+El recorrido se pinta en la ventana principal (`TourHost`, en `RootNavigator`, como el
+Toast) y no en un `Modal`: el de Android es otra ventana y su origen no coincide con el
+de `measureInWindow` (el hueco salía unos píxeles más arriba). Además se mide el propio
+velo y se resta su origen. El globo lleva el icono **?**, un piquito perpendicular al
+borde que apunta al elemento (sin piquito si va centrado) y entra con un fundido desde
+el lado del elemento; el aro lima late como el de `Spot`.
+
+El texto de un paso admite **marcas en línea** (`tour/richText.js`, se pintan en
+`tour/RichText.jsx`): `<main>Guardar</main>` y `<btn>Cancelar</btn>` dibujan el botón (lima
+o neutro) con el texto que tiene en la app; `<red>…</red>` y `<blue>…</blue>`, un estado con
+su color; `<handle/>`, `<gear/>`, `<paste/>`, `<account/>`, `<sort/>`, `<send/>` y `<mark/>`,
+el icono real de la app en ese sitio. El `\n` separa párrafos. El globo no crece más que la
+pantalla: si el texto es largo, su parte central se desplaza. Para el lector de pantalla el
+texto va plano (los iconos, con su nombre en `tour.icons`).
+
+Un paso puede llevar además:
+
+- `scrollRef`: el `ScrollView`/`FlatList` donde está el elemento. Si el elemento no
+  está entero en pantalla, antes de medirlo se desplaza la lista hasta él
+  (`measureLayout` respecto al contenido → `scrollTo`) y se mide al terminar. Hace
+  falta en Editar programa y en el editor de sesión, donde lo de abajo no se ve al
+  abrir.
+- `figure`: un elemento que se pinta dentro del globo, encima del texto (el
+  ejemplo de clientes en distintos estados, §6). Sin `ref` el paso no tiene hueco:
+  solo velo y globo centrado.
+- `finger`: el dedo de `Spot` sobre el hueco para enseñar un gesto (deslizar,
+  arrastrar el asa).
+
+El texto de un paso puede depender del estado (con o sin etapas, con o sin
+clientes, cliente vinculado): lo decide la pantalla al montar los pasos, y un paso
+que no aplica (p. ej. etapas en un programa sin etapas) simplemente no se pasa.
+
 Las pantallas lo montan con un hook (`useScreenTour(id, steps)`) que decide si toca
 (no visto, pantalla en foco, nada encima) y devuelve la función para el **?**.
 Antes de escribirlo, **buscar en el código** lo que ya hay: `Spot.jsx` (el aro que
@@ -109,80 +143,142 @@ con recorrido.
 - [ ] Con VoiceOver/TalkBack: se lee el texto del paso y se puede avanzar
 - [ ] Con «Reducir movimiento» → sin animación, todo funciona igual
 
-## 4. U17-02 · Recorridos de Entreno y Programa
+## 4. U17-02 · Recorridos de Entreno, Programa y Progreso
 
-Referencia de la maqueta (a precisar sobre la pantalla real):
+Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 
 | Pantalla | Paso | Qué explica |
 |---|---|---|
-| Entreno | 1 | La tarjeta del programa: en qué etapa y semana vas, y que se toca para ver el programa |
-| Entreno | 2 | La semana: los días entrenados |
-| Entreno | 3 | La sesión que toca: la elige el orden del programa (rotación, semana o libre) |
-| Programa | 1 | Las etapas y cuánto llevas de la actual |
-| Programa | 2 | Las sesiones: lo que se espera **cada semana** en esta etapa |
-| Programa | 3 | El menú ···: compartir, exportar, guardar como plantilla, nuevo programa |
+| Entreno (`HomeScreen`) | 1 | La tarjeta del programa de arriba (`HomeProgramCard`): su nombre y cuánto llevas (etapa y semana); se pulsa para abrirlo |
+| Entreno | 2 | La sesión que toca (la tarjeta grande): la elige el orden del programa (rotación, semana o libre) y se pulsa para empezar |
+| Entreno | 3 | Las otras sesiones: puedes hacer cualquiera en vez de la que toca |
+| Entreno | 4 | La sesión libre: entrenar sin seguir el programa |
+| Entreno | 5 | La barra de pestañas de abajo: para moverte por la app |
+| Programa (`MyProgramScreen`) | 1 | La tarjeta: nombre y semana, la barra (un tramo por etapa), con etapas «Esta etapa» y sus cuadraditos (uno por semana), y las tres cifras (adherencia, ritmo, carga) |
+| Programa | 2 | Editar: el botón «Editar» (cambiar ejercicios, sesiones y etapas) |
+| Programa | 3 | Ver el programa: el botón «Ver programa» abre el programa entero. Con el programa de un entrenador no hay Editar: primero Ver y luego los botones, diciendo que lo lleva él |
+| Programa | 4 | Solo si hay etapas: cómo se ven las etapas ahí y cuánto llevas de la actual |
+| Progreso (`StatsScreen`) | 1 | El segmentado Ejercicios · Carga · Historial: qué hay en cada uno (un paso, no uno por segmento) |
+| Progreso | 2 | Un ejercicio de la lista (el primero): al tocarlo se abre su ficha |
 
-Lo que enseñaban las tarjetas de «Aprende» para el que entrena (`learnCards`:
-`today`, `edit` / `sees`, `free`) tiene que quedar cubierto aquí o en §6:
+> **Entreno hecho** (5-nov, rama `feat/u17-explicaciones`): `tour.home` con la tarjeta del
+> programa, la sesión que toca (en un programa de orden libre, la lista entera), la
+> primera de las demás (o la tira de pestañas), el botón de sesión libre y la barra
+> de pestañas (`tour/targets.js`, la pinta `ui/BottomTabBar`). Programa y Progreso
+> siguen pendientes, así que U17-02 no se cierra.
+>
+> **Programa y Progreso hechos** (5-nov): `tour.program` (Ver programa, Editar o su variante de
+> entrenador, y las etapas si hay más de una) y `tour.progress` (el segmentado y la primera
+> tarjeta de ejercicio, que baja la lista hasta ella; sin entrenos solo el segmentado). Solo en
+> la pestaña de Progreso del usuario: `ProgressPanel` recibe los refs por props y la ficha de
+> cliente no los pasa.
 
-- `today` → Entreno, paso 3.
-- `free` (sesión libre) → un paso en Entreno si cabe en los tres; si no, aviso
-  puntual en §6.
-- `edit` (puedes cambiar tu programa) / `sees` (tu entrenador ve lo que haces) →
-  Programa. Con entrenador vinculado el texto cambia: el programa lo lleva tu
-  entrenador y ve tus entrenos.
-
-Sin programa activo no hay recorrido de Entreno: su estado vacío ya explica qué
-hacer (U15-04), y el recorrido sale la primera vez que se abra con programa.
+- `today` de las tarjetas de «Aprende» → Entreno, paso 2; `free` → Entreno, paso 4.
+- `edit` / `sees` → Programa, paso 2. Con entrenador vinculado el texto cambia: el
+  programa lo lleva tu entrenador y ve tus entrenos.
+- Sin programa activo no hay recorrido de Entreno ni de Programa: su estado vacío
+  ya explica qué hacer (U15-04); sale la primera vez que se abran con programa.
+- Progreso sin ningún ejercicio entrenado: sin paso 2 (no hay fila que señalar).
+- El menú ··· de Programa no lleva paso (decisión del usuario, 5-nov).
 
 **Probar U17-02**
 
-- [ ] Usuario nuevo con programa → Entreno: los tres pasos resaltan el elemento correcto, también tras desplazar la lista
+- [ ] Usuario nuevo con programa → Entreno: los cinco pasos resaltan el elemento correcto, también tras desplazar la lista
 - [ ] Entreno en vista Pestañas (U13) → los pasos siguen cayendo en su sitio
-- [ ] Programa → los tres pasos; el texto de las sesiones habla de cada semana
+- [ ] Programa sin etapas → tres pasos (la tarjeta primero); con etapas → cuatro, la tarjeta explica «Esta etapa» y el cuarto señala las etapas
 - [ ] Cliente vinculado → el texto de Programa dice que lo lleva su entrenador
-- [ ] Sin programa → Entreno no enseña recorrido; al tener uno, sí
+- [ ] Progreso → el segmentado y un ejercicio; sin entrenos, solo el segmentado
+- [ ] Sin programa → Entreno y Programa no enseñan recorrido; al tener uno, sí
 - [ ] Inglés → textos traducidos y el globo no se corta
 
-## 5. U17-03 · Recorridos de Clientes y Plantillas
+## 5. U17-03 · Recorridos de Editar programa y del editor de sesión
 
-Lo que enseñaban las tarjetas del entrenador (`clients`, `templates`, `next`,
-`log`, `text`) pasa aquí y a §6. Precisar sobre la pantalla real; orientativo:
+| Pantalla | Paso | Qué explica |
+|---|---|---|
+| Editar programa (`ProgramEditorScreen`) | 1 | General, sin hueco: qué es el editor y cómo se sale (Guardar · Cancelar) |
+| Editar programa | 2 | El programa: la tarjeta de identidad |
+| Editar programa | 3 | Solo con etapas: qué son las etapas, sin hueco y con un esquema de cuatro etapas de ejemplo (`tour/StagesScheme.jsx`) |
+| Editar programa | 4 | Solo con etapas: el selector de etapas (las fichas con su tramo de semanas) |
+| Editar programa | 5 | Solo con etapas: la ficha de la etapa seleccionada y su engranaje de ajustes |
+| Editar programa | 6 | Las sesiones: son las de la etapa seleccionada (si hay etapas), lo que se espera cada semana; se entra para editar los ejercicios y se reordenan con el asa |
+| Editor de sesión (`SessionEditorScreen`) | 1 | El selector de sesiones (A · B · C): pasas a editar otra sesión sin salir (solo si hay más de una). Es el segmentado de verdad de la pantalla; el editor no tiene selector de etapas |
+| Editor de sesión | 2 | La lista de ejercicios: deslizar una fila para sus acciones y arrastrar el asa para reordenar (hueco en la primera fila, con `finger`) |
 
-| Pantalla | Qué explica |
-|---|---|
-| Clientes | La fila de un cliente y lo que dice su estado; cómo se añade uno |
-| Plantillas | Programas y sesiones guardadas; asignar a un cliente o a mí |
-
-Si al mirar la pantalla real alguna no tiene nada que no se entienda solo, se queda
-sin recorrido y se anota aquí.
+- La sección de sesiones y la lista quedan a menudo por debajo de la pantalla: estos
+  pasos usan `scrollRef` (§3.2).
+- Sin etapas, el editor de programa tiene tres pasos (1, 2 y 6) y el texto de las sesiones
+  no las nombra. El editor de sesión tiene un
+  solo paso (la lista) si el programa solo tiene una sesión.
+- El «?» va en `ScreenHeader` (prop `onHelp`, modo editor), antes de «···» y «Guardar».
+- Sesión sin ejercicios: sin paso de la lista; sale la primera vez que tenga uno.
 
 **Probar U17-03**
 
-- [ ] Entrenador nuevo → Clientes: recorrido una vez, elementos correctos
-- [ ] Plantillas → recorrido una vez, elementos correctos
-- [ ] Atleta sin pestañas de entrenador → no ve ninguno de los dos
+- [ ] Editar programa con etapas → general, programa, esquema de etapas, selector, ficha de etapa y sesiones, aunque estén por debajo (la lista baja sola)
+- [ ] Editar programa sin etapas → general, programa y sesiones; el texto de sesiones no habla de etapas
+- [ ] Los botones, el engranaje y el asa salen dibujados dentro del texto y alineados con la línea (iOS y Android)
+- [ ] Un texto largo (editor de sesión, ficha de cliente sin app) no se sale del globo: se desplaza
+- [ ] Editor de sesión con varias sesiones → selector y lista; el dedo señala el asa y el texto cuenta el deslizar
+- [ ] Editor de sesión de un programa con una sola sesión → solo la lista
+- [ ] Al cerrar el recorrido la lista se queda donde la dejó y se puede usar
 
-## 6. U17-04 · Avisos puntuales
+## 6. U17-04 · Recorridos de Clientes, ficha del cliente y Plantillas
+
+Lo que enseñaban las tarjetas del entrenador (`clients`, `templates`, `next`,
+`log`, `text`) pasa aquí y a §7. Orientativo:
+
+| Pantalla | Paso | Qué explica |
+|---|---|---|
+| Clientes (`ClientsScreen`) | 1 | La zona de arriba a la derecha: el botón «+ Cliente» y, a su lado, los dos iconos (pegar un entreno y la cuenta de entrenador) |
+| Clientes | 2 | La primera tarjeta: tocar una para entrar en el cliente; reordenar con el botón de orden › Reordenar (sin clientes, se omite) |
+| Clientes | 3 | Qué significa cada estado: paso con `figure` = un ejemplo con varios clientes en distintos estados (al día con sesiones sin revisar, sin entrenar, cambios sin enviar); las frases por estado van en el texto del globo |
+| Ficha del cliente | 1 | Las pestañas de arriba (Programa · Historial · Progreso · Info): qué hay en cada parte |
+| Ficha del cliente | 2 | La sección de programa (tarjeta y botones Editar · Ver) |
+| Ficha del cliente | 3 | La próxima sesión y su botón Preparar: ajustas lo que hará la próxima vez. Si el cliente no usa la app no hay próxima sesión: el paso señala sus sesiones, que se hacen desde aquí |
+| Plantillas (`ProgramScreen`) | 1 | El segmentado Programas · Sesiones guardadas |
+| Plantillas | 2 | La primera tarjeta: tocarla abre el menú (ver, editar, compartir…) y Asignar la da a un cliente o a mí (sin plantillas, se omite) |
+
+- El ejemplo de estados (`tour/ClientStatesExample.jsx`) pinta filas `ClientRow` de
+  verdad con datos fijos, sin tocar el store. Los datos viven en
+  `tour/exampleClientRows.js`, que también usa `ClientsMini` del onboarding: ese
+  fichero se queda en U17-06 aunque `ClientsMini` se borre.
+- Sin clientes, el paso 2 se omite y quedan la cabecera y el ejemplo.
+- La ficha del cliente no es una pantalla aparte: vive dentro de `ClientsScreen`
+  (`view === 'detail'`), con su propio id `tour.client` y su «?» en el `AppHeader`. Los
+  pasos 2 y 3 solo salen en la pestaña Programa, con programa y sin ser de otra cuenta.
+- Regla 7: la lista y la ficha no salen con sus hojas abiertas (nuevo cliente, filtros,
+  orden, acciones, asignar, archivados…). El menú «⋯» de la tarjeta de programa
+  tiene su estado dentro del componente y no se mira.
+
+**Probar U17-04**
+
+- [ ] Entrenador nuevo sin clientes → Clientes: añadir e iconos, y el ejemplo de estados
+- [ ] Con clientes → la tarjeta real resaltada y luego el ejemplo
+- [ ] Clientes → los iconos de pegar, cuenta y orden, y los estados «Sin entrenar» y «Cambios sin enviar», salen en línea en el texto
+- [ ] Ficha del cliente → segmentado, programa y próxima sesión
+- [ ] Plantillas → recorrido una vez, elementos correctos
+- [ ] Atleta sin pestañas de entrenador → no ve ninguno
+
+## 7. U17-05 · Avisos puntuales
 
 Candidatos (precisar en la tarea; uno por cosa, nunca dos a la vez en pantalla):
 
 - **Burbuja de diferencia** del entreno (U10-01): por qué sube o baja el peso y que
   la cifra se toca para cambiarla.
 - **La regla** bajo la cifra, si no se usó nunca: que se arrastra.
-- **Próxima sesión** del cliente (entrenador): que ajustas lo que hará la próxima vez.
 - **Apuntar o pegar** el entreno del cliente sin app (entrenador, `clientMode: self`).
-- **Sesión libre**, si no cupo en el recorrido de Entreno (§4).
 
-**Probar U17-04**
+La sesión libre y la próxima sesión del cliente ya van en los recorridos (§4, §6).
+
+**Probar U17-05**
 
 - [ ] Primer entreno en que sale la burbuja → aparece el globo; «Vale» lo cierra y no vuelve
 - [ ] Con el globo abierto se puede seguir apuntando series
 - [ ] Cada aviso sale una sola vez, también en entrenos siguientes
 
-## 7. U17-05 · Quitar las tarjetas explicativas del onboarding
+## 8. U17-06 · Quitar las tarjetas explicativas del onboarding
 
-Va la última, cuando U17-02…04 cubren lo que enseñaban. Decisión del usuario
+Va la última, cuando U17-02…05 cubren lo que enseñaban. Decisión del usuario
 (3-nov): **se quedan las dos elecciones** del tramo — `a_home` (Lista o Pestañas,
 guarda `profile.homeView`) y `a_input` (regla o solo deslizar, guarda
 `profile.scrubRuler`) — y **sale todo lo explicativo**: las tarjetas `a_cards`.
@@ -199,15 +295,16 @@ guarda `profile.homeView`) y `a_input` (regla o solo deslizar, guarda
   que se elige cómo se ve la app (p. ej. «Personaliza»); el texto se cierra con el
   usuario en la tarea. La clave interna `learn` puede quedarse.
 - Fuera `Cards` de `learn.jsx` y lo que solo usaba ella: `CardMinis.jsx`,
-  `ClientsMini.jsx`, `TabBarMini.jsx`, `learnCards` de `onboardingPreview.js` (y su
+  `TabBarMini.jsx`, `learnCards` de `onboardingPreview.js` (y su
   test) y las claves `onboardingFlow.learn.cards.*` de los locales. Antes de borrar,
   `grep` de cada uno: `HomeViewPreview`, `ScrubDemo`, `Scaled`, `Spot` y
-  `newClientRow` (lo importa `trainer.jsx`) **se quedan**.
+  `newClientRow` (lo importa `trainer.jsx`) **se quedan**. `ClientsMini` sí puede
+  borrarse: el recorrido de Clientes (§6) usa `tour/exampleClientRows.js`.
 - Tests: `onboardingFlow.test.js` (rutas y tramos del entrenador que no entrena) y
   `onboardingPreview.test.js`. `builderProgram.test.js` sigue esperando `'a_home'`.
-- Dejar una nota en O03 §11.4 de que las tarjetas se quitaron en U17-05.
+- Dejar una nota en O03 §11.4 de que las tarjetas se quitaron en U17-06.
 
-**Probar U17-05**
+**Probar U17-06**
 
 - [ ] Onboarding «por mi cuenta» de principio a fin → tras el programa salen Lista/Pestañas y la regla, y de ahí a «Listo», sin tarjetas
 - [ ] Onboarding con entrenador (código) → Lista/Pestañas, regla y «Listo»

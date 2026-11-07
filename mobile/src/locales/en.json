@@ -30,6 +30,79 @@
   "mannequinTest": {
     "title": "3D mannequin (test)"
   },
+  "tour": {
+    "skip": "Skip",
+    "next": "Next",
+    "back": "Previous",
+    "done": "Got it",
+    "help": "About this screen",
+    "home": {
+      "program": { "title": "Your program", "text": "Here you see your program's name and how far along you are: the stage and week you are in. Tap to open the program screen." },
+      "today": { "title": "Today's session", "text": "The training session your program recommends. Tap the card to see the exercises, or the button to start the workout." },
+      "sessionsFree": { "title": "Your sessions", "text": "Your program is free: no session is up next, so pick whichever you want today. Tap it to see its exercises and start whenever you like." },
+      "othersList": { "title": "The other sessions", "text": "The rest of your program's sessions. Tap one to open its exercise list and start it whenever you like." },
+      "othersTabs": { "title": "The other sessions", "text": "Each tab is a session of your program. Tap them to see them and do another session instead of the recommended one." },
+      "free": { "title": "Free session", "text": "Do a session that isn't in your program. Start a blank one on the fly, or create free sessions to reuse whenever you like." },
+      "tabs": { "title": "Getting around the app", "text": "From here you can see your program, where you can edit it, your progress and the rest of the app." }
+    },
+    "program": {
+      "card": { "title": "Your program", "text": "Here you see your program's name and, on the right, the week you are in.\n<b>Adherence</b>: of the sessions due in the last 4 weeks, how many you did.\n<b>Pace</b>: the sessions you do per week.\n<b>Load</b>: what you train this week compared with your monthly average." },
+      "cardBar": { "title": "Your program", "text": "Here you see your program's name and, on the right, the week you are in.\n<bar/> The bar shows how far along the program you are.\n<b>Adherence</b>: of the sessions due in the last 4 weeks, how many you did.\n<b>Pace</b>: the sessions you do per week.\n<b>Load</b>: what you train this week compared with your monthly average." },
+      "cardStages": { "title": "Your program", "text": "Here you see your program's name and, on the right, the week you are in.\n<bar/> The bar shows how far along the program you are, with one segment per stage.\n<ticks/> In «This stage» you see the stage you are in and its week: each little square is one week of the stage.\n<b>Adherence</b>: of the sessions due in the last 4 weeks, how many you did.\n<b>Pace</b>: the sessions you do per week.\n<b>Load</b>: what you train this week compared with your monthly average." },
+      "view": { "title": "View program", "text": "Here you can open an overview of the program." },
+      "edit": { "title": "Edit program", "text": "The editor to change the program's sessions, exercises and stages." },
+      "editTrainer": { "title": "Your trainer's program", "text": "Programs created by a trainer can't be edited." },
+      "stages": { "title": "Stages", "text": "The stages of the program, with the active stage highlighted and the weeks you have done. Tap a stage to switch to it." }
+    },
+    "progress": {
+      "tabs": { "title": "Your progress", "text": "Here you can see the progress of your exercises, your overall training load and the history of your completed sessions. Tap an option to change the view." },
+      "exercise": { "title": "An exercise", "text": "Each card sums up your progress in one exercise. Tap one to see that exercise's progress in more detail." }
+    },
+    "programEditor": {
+      "general": { "title": "Program editor", "text": "You are in the program editor. Here you can edit your program and add stages, sessions and exercises.\nWhen you finish, tap <main>Save</main> to save and close the editor. If you do not want to keep the changes, tap <btn>Cancel</btn>." },
+      "card": { "title": "The program", "text": "The program's basic information appears here, such as its name or its number of sessions." },
+      "stages": { "title": "Stages", "text": "Stages are training blocks with a set duration inside your program. Each stage has its own sessions and exercises, so your training keeps adapting without having to change program." },
+      "stagePicker": { "title": "Stage selector", "text": "Lets you switch stage to edit it.\nOn each tab, under the number, you see which weeks that stage covers." },
+      "stageCard": { "title": "Stage card", "text": "The card for the selected stage, where you see its information and open its settings with <gear/>." },
+      "sessions": { "title": "Sessions", "text": "Here you will see your training sessions. You can add or delete sessions. Tap one to edit its exercises and use <handle/> to change the order." },
+      "sessionsStages": { "title": "Sessions", "text": "Here you will see the training sessions of the chosen stage. You can add or delete sessions. Tap one to edit its exercises and use <handle/> to change the order." },
+      "figWeeks": "{{count}} wk",
+      "fig_adaptation": "Adaptation",
+      "fig_hypertrophy": "Hypertrophy",
+      "fig_strength": "Strength",
+      "fig_deload": "Deload"
+    },
+    "sessionEditor": {
+      "sessions": { "title": "Sessions", "text": "Use the selector to edit other sessions without having to go back." },
+      "exercises": { "title": "Exercises", "text": "The session's list of exercises. Tap an exercise to open its settings.\nSwipe an exercise to the right to replace or delete it, and drag <handle/> to change the order.\nTap <btn>+ Add exercise</btn> to add an exercise or a conditioning block." }
+    },
+    "clients": {
+      "header": { "title": "New client", "text": "The <main>+ Client</main> button creates a new client.\nUse <paste/> when you need to paste a text message with a client's workout.\nIn <account/> you manage your trainer account." },
+      "cards": { "title": "Your clients", "text": "Each card is a client, with their program and how their week is going. Tap one to open their page, or press and hold it to open the quick actions. To change the order, tap <sort/> and choose Reorder." },
+      "states": { "title": "Client statuses", "text": "Each card flags what that client needs. <red>Not training</red> means they have gone days without doing so, <blue>Unsent changes</blue> that you have something to send them, and <mark/> that they have sessions to review." }
+    },
+    "client": {
+      "tabs": { "title": "Client page", "text": "The page has four parts: Program, History, Progress and Info. Tap each one to open it." },
+      "program": { "title": "Client's program", "text": "The program assigned to the client, with their stage and how they are doing. Here you can view it, edit it or assign another one." },
+      "next": { "title": "Next session", "text": "The session the client is due to do in their next workout. Tap <btn>Prepare</btn> to make one-off adjustments to their next workout." },
+      "sessions": { "title": "Client's sessions", "text": "As this client does not use the app, you log their sessions from here. Start a session to log it.\nIf the session was on another day, tap <btn>Log a past session</btn> and choose the session and the day.\nYou can also send them the session as a text message with <send/>. If they send it back with the workout filled in, paste it from <btn>Log a past session</btn> → <btn>Paste text</btn>." }
+    },
+    "templates": {
+      "segments": { "title": "Programs and sessions", "text": "Here you can create or save whole programs and single sessions to reuse them.\nTap the selector above to switch between whole programs and single sessions." },
+      "card": { "title": "A template", "text": "Each card is a saved template. Tap the card to view, edit or share it, and <btn>Assign</btn> to give it to a client or to yourself.\nNote that a copy is assigned: changing the template afterwards does not change the programs or sessions already assigned." }
+    },
+    "icons": {
+      "handle": "the reorder handle",
+      "gear": "the settings gear",
+      "paste": "the paste workout button",
+      "account": "the trainer account button",
+      "sort": "the sort button",
+      "mark": "the unreviewed sessions mark",
+      "send": "the send button",
+      "bar": "the program bar",
+      "ticks": "the week segments"
+    }
+  },
   "header": {
     "newProgram": "＋ New program",
     "archivedPrograms": "🗂 Archived programs",

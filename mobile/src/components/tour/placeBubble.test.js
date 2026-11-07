@@ -1,0 +1,33 @@
+import { describe, it, expect } from 'vitest';
+import { placeBubble } from './placeBubble';
+
+const base = { winH: 800, bubbleH: 200, safeTop: 40, safeBottom: 20 };
+
+describe('placeBubble (U17-01)', () => {
+  it('debajo del elemento si cabe', () => {
+    expect(placeBubble({ ...base, rect: { y: 100, h: 100 } })).toEqual({ top: 212, side: 'below' });
+  });
+  it('encima si debajo no cabe', () => {
+    // el elemento acaba en 700: debajo ya no cabe, encima sí (400 - 12 - 200 = 188)
+    expect(placeBubble({ ...base, rect: { y: 400, h: 300 } })).toEqual({ top: 188, side: 'above' });
+  });
+  it('si no cabe ni arriba ni abajo, pegado al borde con más sitio', () => {
+    const { top, side } = placeBubble({ ...base, rect: { y: 120, h: 560 } });
+    expect(side).toBeNull();
+    expect(top).toBeGreaterThanOrEqual(52);
+    expect(top + 200).toBeLessThanOrEqual(800 - 20 - 12);
+  });
+  it('sin elemento, centrado', () => {
+    expect(placeBubble({ ...base, rect: null })).toEqual({ top: 300, side: null });
+  });
+});
+
+describe('placeBubble con globos altos (U17-01)', () => {
+  it('un globo más alto que la pantalla útil se queda pegado arriba, sin salirse', () => {
+    const r = placeBubble({ winH: 800, bubbleH: 900, safeTop: 40, safeBottom: 20, rect: { y: 300, h: 100 } });
+    expect(r).toEqual({ top: 52, side: null });
+  });
+  it('un globo alto sin elemento va arriba del todo, no negativo', () => {
+    expect(placeBubble({ winH: 800, bubbleH: 780, safeTop: 40, safeBottom: 20, rect: null }).top).toBeGreaterThanOrEqual(52);
+  });
+});

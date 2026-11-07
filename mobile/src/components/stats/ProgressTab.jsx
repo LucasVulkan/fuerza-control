@@ -116,7 +116,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, isFirst, isLas
 
 // ── ProgressTab ────────────────────────────────────────────────────────────────
 
-export default function ProgressTab({ baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false }) {
+export default function ProgressTab({ baseLog, programTemplateIds, allExercises, onRefresh, refreshing = false, scrollRef, firstRef }) {
   const insets = useSafeAreaInsets();
   const th     = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -275,6 +275,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.flex}
       contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl + insets.bottom }]}
       showsVerticalScrollIndicator={false}
@@ -429,6 +430,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
             const allLogs    = getExerciseLogsFrom(exerciseId, filteredLogScope);
             return (
               <Rise key={exerciseId} index={5 + idx}>
+              {/* La primera tarjeta: la que señala el recorrido (U17-02). */}
+              <View ref={idx === 0 ? firstRef : undefined} collapsable={false}>
               <ExerciseStatCard
                 exerciseId={exerciseId}
                 def={def}
@@ -438,6 +441,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
                 isLast={idx === displayedExercises.length - 1}
                 onOpen={setDetailId}
               />
+              </View>
               </Rise>
             );
           })}

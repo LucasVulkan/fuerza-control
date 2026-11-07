@@ -3203,3 +3203,17 @@ describe('saveSession guarda el goal de Reps — P18-motor-progresion.md §4.2',
     expect(goalOf()).toEqual({ total: 34, misses: 1 });
   });
 });
+
+describe('recorridos y avisos vistos (U17-01 §3.1)', () => {
+  it('markTipSeen y resetTip llevan el mapa; un perfil viejo sin el campo no rompe', () => {
+    const { tipsSeen, ...old } = useStore.getState().profile;   // eslint-disable-line no-unused-vars
+    useStore.setState({ profile: old });                         // perfil de antes de U17
+
+    useStore.getState().markTipSeen('tour.home');
+    expect(useStore.getState().profile.tipsSeen).toEqual({ 'tour.home': true });
+
+    useStore.getState().resetTip('tour.program');                // lo no visto no hace nada
+    useStore.getState().resetTip('tour.home');
+    expect(useStore.getState().profile.tipsSeen).toEqual({});
+  });
+});

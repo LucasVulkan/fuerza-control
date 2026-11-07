@@ -23,10 +23,10 @@ import { cardWithoutState } from './clientLink';
 /** Clave de zustand-persist. La tarea de fondo lee de aquí. */
 export const BACKUP_STORAGE_KEY = 'fc_tracker_v1';
 
-/** `freeClientIds` es la elección de clientes activos de este móvil (N-04): no viaja. */
+/** `freeClientIds` (N-04) y `tipsSeen` (U17-01) son de este móvil: no viajan. */
 function withoutFreeClients(profile) {
   if (!profile) return profile;
-  const { freeClientIds, ...rest } = profile;   // eslint-disable-line no-unused-vars
+  const { freeClientIds, tipsSeen, ...rest } = profile;   // eslint-disable-line no-unused-vars
   return rest;
 }
 

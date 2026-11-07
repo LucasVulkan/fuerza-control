@@ -21,6 +21,8 @@ import Reanimated, {
 import { useStore } from '../../store/useStore';
 import { useWeightUnit } from '../hooks/useWeightUnit';
 import AppHeader from '../components/AppHeader';
+import { useScreenTour } from '../components/tour/useScreenTour';
+import ClientStatesExample from '../components/tour/ClientStatesExample';
 import OfflineBanner from '../components/OfflineBanner';
 import { sendFailure, isNetworkError } from '../utils/networkError';
 import ClientAvatar from '../components/ClientAvatar';
@@ -72,7 +74,7 @@ import { FREE, activeClientIds, canChooseMore } from '../utils/freePlan';
 import FreeClientsSheet from '../components/FreeClientsSheet';
 import ProBadge from '../components/ui/ProBadge';
 import { useFreeGates, usePlanClients } from '../useFreeGates';
-import { LockIcon, CheckIcon, ChevronDown, CloseIcon, DragIcon } from '../components/ui/EditorIcons';
+import { LockIcon, CheckIcon, ChevronDown, CloseIcon, DragIcon, PasteWorkoutIcon, CloudIcon, SortIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import { ProgramActions } from '../components/ui/ProgramCard';
 import HomeProgramCard from '../components/HomeProgramCard';
@@ -225,6 +227,7 @@ function AssignedProgramCard({
   onView, onEdit, onUpload, onPrescribe, onShare, onExport, onImportHistory, onSaveTemplate, onAssign,
   onDeassign, onDelete, onUnlock, onPlanStages, onShowArchived, fold,
   locked = false, templateLocked = false, readOnly = false,
+  programRef, nextRef,   // los del recorrido de la ficha (U17-04)
 }) {
   const { t }  = useTranslation();
   const th     = useTheme();
@@ -335,6 +338,7 @@ function AssignedProgramCard({
       {/* ── Tarjeta de programa ── la misma que ve el cliente en su tab Programa
           (U14 §4): la de Inicio con lo desplegado debajo, quieta. Sin línea de
           autoría: aquí el entrenador ES el autor. Las acciones van debajo. */}
+      <View ref={programRef} collapsable={false}>
       <HomeProgramCard program={program} progress={progress} eyebrow={t('programCard.eyebrowClient')}>
         <ProgramCardDetail
           program={program}
@@ -351,15 +355,19 @@ function AssignedProgramCard({
         />
       </HomeProgramCard>
       <ProgramActions onEdit={onEdit} onView={onView} onMore={() => setMenuOpen(true)} editLocked={locked} />
+      </View>
 
       {/* ── Sin app: sus sesiones con EMPEZAR, como su Inicio. El entrenador
           hace de su app (C05-trainer-logging.md §3.1). Preparar no aplica: manda
           ajustes a un móvil que aquí no hay. ── */}
       {/* De otra cuenta (N-19): ni se empieza ni se prepara nada desde aquí. */}
       {readOnly ? null : link === 'none' ? (
-        <ClientSessions client={client} program={program} days={currentDays} log={log} fold={fold} />
+        <View ref={nextRef} collapsable={false}>
+          <ClientSessions client={client} program={program} days={currentDays} log={log} fold={fold} />
+        </View>
       ) : (<>
       {/* ── Próxima sesión — sección propia ── */}
+      <View ref={nextRef} collapsable={false}>
       <Text style={styles.apSectionLabel}>{t('clients.nextSectionLabel').toUpperCase()}</Text>
       <View style={styles.apNext}>
         <Text style={styles.apNextLetter}>{nextLabel}</Text>
@@ -376,6 +384,7 @@ function AssignedProgramCard({
           <Text style={[styles.apBtnText, { color: locked ? th.colors.text : th.colors.accent }]}>{t('clients.prepare')}</Text>
           {locked && <ProBadge />}
         </TouchableOpacity>
+      </View>
       </View>
       {/* Con app: explica por qué aquí no se apunta (lo que se lee cuando un
           cliente sin app se conecta y su EMPEZAR desaparece, §4.3). */}
@@ -1381,15 +1390,6 @@ function clientAvisos({ client, program, linked, inProgress, adherence, readOnly
 // `clientAvisos`, que ya los devuelve en este orden.
 const AVISO_RANK = ['inprog', 'noprog', 'dirty', 'stageStuck', 'blockStuck', 'overrides', 'risk', 'slip'];
 
-/** Icono ⇅ del botón de orden. */
-function SortIcon({ color }) {
-  return (
-    <Svg viewBox="0 0 24 24" width={14} height={14} fill="none"
-      stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3" />
-    </Svg>
-  );
-}
 
 /**
  * Fila del modo «Reordenar» (C08 §6.3): la misma forma que la de la lista, sin
@@ -2397,6 +2397,39 @@ export default function ClientsScreen() {
     updateClientInfo(selectedClientId, { tags: [...(selectedClient?.tags ?? []), newId] });
   }
 
+  // ── Recorridos de la primera vez (U17-04 §6) ──
+  // La lista (cabecera, primera tarjeta, ejemplo de estados) y la ficha del cliente
+  // (pestañas, programa, próxima sesión) viven en esta pantalla, cada una con su
+  // id. Con una hoja abierta no salen (regla 7). Sin clientes, no hay tarjeta que
+  // señalar y el segundo paso se omite.
+  const hdrRef        = useRef(null);
+  const firstCardRef  = useRef(null);
+  const tabsRef       = useRef(null);
+  const programRef    = useRef(null);
+  const nextRef       = useRef(null);
+  const detailScroll  = useRef(null);
+  const firstKey      = listData.find((i) => i.kind === 'client')?.key;
+  const tourText      = (key) => t(`tour.${key}`, { returnObjects: true });
+  const listCovered   = showNewClient || showFilterSheet || showSortSheet || !!actionsClientId
+    || showFreeChoice || editing || !!infoSheetClientId || showSyncModal || moveToApp;
+  const listSteps = view !== 'list' || listCovered ? [] : [
+    { ref: hdrRef, ...tourText('clients.header') },
+    ...(clientList.length > 0 ? [{ ref: firstCardRef, ...tourText('clients.cards') }] : []),
+    { figure: <ClientStatesExample />, ...tourText('clients.states') },
+  ];
+  const openListTour = useScreenTour('tour.clients', listSteps);
+  const detailProgram = selectedClient ? programs[selectedClient.activeProgramId] : null;
+  const detailLink    = selectedClient ? linkFor(selectedClient) : null;
+  const detailCovered = showAssign || showPrevious || addingBill || showWeightCal || showSyncModal || moveToApp || showFreeChoice;
+  const detailSteps = view !== 'detail' || !selectedClient || detailCovered ? [] : [
+    { ref: tabsRef, ...tourText('client.tabs') },
+    ...(activeTab === 'programs' && detailProgram && !readOnlyOf(selectedClient) ? [
+      { ref: programRef, scrollRef: detailScroll, ...tourText('client.program') },
+      { ref: nextRef, scrollRef: detailScroll, ...tourText(detailLink === 'none' ? 'client.sessions' : 'client.next') },
+    ] : []),
+  ];
+  const openDetailTour = useScreenTour('tour.client', detailSteps);
+
   // ── PRO gate ───────────────────────────────────────────────────────────────
 
   // ── Client detail ──────────────────────────────────────────────────────────
@@ -2429,7 +2462,7 @@ export default function ClientsScreen() {
 
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <AppHeader />
+        <AppHeader onHelp={detailSteps.length ? openDetailTour : undefined} />
         <OfflineBanner />
 
         {/* Sin banda: cabecera, pestañas y contenido van los tres sobre `bg`.
@@ -2447,7 +2480,7 @@ export default function ClientsScreen() {
         </View>
         {readOnly && <Text style={[styles.codeExplain, styles.readOnlyNote]}>{t('clients.otherAccountNote')}</Text>}
 
-        <View style={styles.detailTabs}>
+        <View ref={tabsRef} collapsable={false} style={styles.detailTabs}>
           <TabBar options={TABS} value={activeTab} onChange={setActiveTab} />
         </View>
         {/* Velo bajo las pestañas: al desplazar, las tarjetas se funden en vez
@@ -2502,7 +2535,7 @@ export default function ClientsScreen() {
           );
 
           return (
-            <ScrollView {...fold.scrollProps} contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
+            <ScrollView ref={detailScroll} {...fold.scrollProps} contentContainerStyle={[styles.programTabContent, { paddingBottom: insets.bottom + spacing.xxl }]}>
               {/* Invitado: lo primero es que canjee el código. Se retira sola
                   cuando lo hace, y el código queda en Info (C28 §4.0.6). */}
               {linkFor(selectedClient) === 'invited' && (
@@ -2561,6 +2594,8 @@ export default function ClientsScreen() {
                   // en Android se queda sin presentar. Se abre al terminar.
                   onShowArchived={() => setTimeout(() => setShowPrevious(true), 250)}
                   fold={fold}
+                  programRef={programRef}
+                  nextRef={nextRef}
                 />
               ) : (
                 // Un título y la acción principal, en acento. La pista de debajo
@@ -3058,7 +3093,7 @@ export default function ClientsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AppHeader />
+      <AppHeader onHelp={listSteps.length ? openListTour : undefined} />
       <OfflineBanner />
 
       <EnterClock.Provider value={enterClock}>
@@ -3071,7 +3106,7 @@ export default function ClientsScreen() {
           <Text style={styles.listTitle} numberOfLines={1}>
             CLIENTES <Text style={styles.listTitleDot}>·</Text> <Text style={styles.listTitleCount}>{isPro ? clientCounts.total : `${clientCounts.total}/${FREE.clients}`}</Text>
           </Text>
-          <View style={styles.hdrRightCluster}>
+          <View ref={hdrRef} collapsable={false} style={styles.hdrRightCluster}>
             <View style={styles.hdrIconGroup}>
               {/* Pegar un entreno (C05-trainer-logging.md §6.4): el texto dice de
                   quién es. Ocupa el hueco de la facturación global, retirada
@@ -3083,19 +3118,13 @@ export default function ClientsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('paste.title')}
               >
-                <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 3h6v3H9zM9 12h6M9 16h4" />
-                </Svg>
+                <PasteWorkoutIcon color={th.colors.text} />
               </TouchableOpacity>
               {/* Conexión de la cuenta de entrenador. Nube = conectada (punto
                   verde); nube tachada = sin conexión: desconectada a propósito
                   (punto gris), sin cuenta aún o sesión perdida (punto naranja). */}
               <TouchableOpacity style={styles.hdrIconBox} onPress={() => navigation.navigate('Account')} activeOpacity={0.7}>
-                <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  {cloudOn
-                    ? <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
-                    : <Path d="M2 2l20 20M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07" />}
-                </Svg>
+                <CloudIcon color={th.colors.text} off={!cloudOn} />
                 <View style={[
                   styles.syncStatusDot,
                   { backgroundColor: cloudOn ? th.colors.green : trainerSync.mode === 'offline' ? th.colors.muted2 : th.colors.orange },
@@ -3372,7 +3401,7 @@ export default function ClientsScreen() {
 
             return (
               <>
-                <View style={gapTop}>
+                <View ref={item.key === firstKey ? firstCardRef : undefined} collapsable={false} style={gapTop}>
                 <ClientListCard
                   client={client}
                   radii={radii}

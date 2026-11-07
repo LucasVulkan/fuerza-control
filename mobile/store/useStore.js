@@ -445,6 +445,7 @@ const INITIAL_PROFILE = {
   freeClientIds: [],
   proTabsHidden: false,
   scrubRuler: true,       // U10-01: la casilla se despliega en una regla al arrastrar
+  tipsSeen: {},           // U17-01: recorridos y avisos ya vistos `{ [id]: true }`. De este móvil: ni backup ni Supabase
   language: 'es',
   weightUnit: 'kg',
 };
@@ -768,6 +769,17 @@ export const useStore = create(
 
       // Active UI theme (see src/themes.js). Persisted; consumed via useTheme().
       setTheme: (name) => set({ theme: name }),
+
+      // «Visto» de los recorridos y avisos de pantalla (U17-01 §3.1). `?? {}`: los
+      // perfiles guardados antes de U17 no traen el campo.
+      markTipSeen: (id) =>
+        set((s) => (s.profile.tipsSeen?.[id] ? {} : { profile: { ...s.profile, tipsSeen: { ...s.profile.tipsSeen, [id]: true } } })),
+      resetTip: (id) =>
+        set((s) => {
+          if (!s.profile.tipsSeen?.[id]) return {};
+          const { [id]: _gone, ...rest } = s.profile.tipsSeen;   // eslint-disable-line no-unused-vars
+          return { profile: { ...s.profile, tipsSeen: rest } };
+        }),
 
       setActiveProgram: (programId) =>
         set((state) => ({ profile: { ...state.profile, activeProgramId: programId } })),

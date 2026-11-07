@@ -221,3 +221,48 @@ export function GearIcon({ size = 17, color }) {
     />
   );
 }
+
+// El «?» de la cabecera (U17-01 §3.5): vuelve a abrir la explicación de la pantalla.
+// Círculo en gris; la interrogación, en lima.
+export function HelpIcon({ size = 24, color }) {
+  return (
+    <TwoToneIcon
+      size={size} color={color}
+      g={<Circle cx={12} cy={12} r={9} />}
+      a={<Path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8" />}
+      af={<Circle cx={12} cy={16.9} r={1.1} />}
+    />
+  );
+}
+
+// Los tres iconos de la cabecera de Clientes (pegar un entreno, cuenta de entrenador,
+// orden). Salían en línea en `ClientsScreen`; viven aquí para que el recorrido (U17-04)
+// pinte los mismos dentro de sus textos.
+export function PasteWorkoutIcon({ size = 19, color }) {
+  return (
+    <Svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 3h6v3H9zM9 12h6M9 16h4" />
+    </Svg>
+  );
+}
+
+/** Nube de la cuenta de entrenador; `off`: la tachada (sin conexión). */
+export function CloudIcon({ size = 19, color, off = false }) {
+  return (
+    <Svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      {off
+        ? <Path d="M2 2l20 20M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07" />
+        : <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />}
+    </Svg>
+  );
+}
+
+/** Icono ⇅ del botón de orden. */
+export function SortIcon({ size = 14, color }) {
+  return (
+    <Svg viewBox="0 0 24 24" width={size} height={size} fill="none"
+      stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3" />
+    </Svg>
+  );
+}

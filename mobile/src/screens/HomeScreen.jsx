@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../components/ui/Text';
 // Reanimated lleva las dos mitades del plegado: el `layout` de la tarjeta
@@ -13,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { useStore, selectActiveProgram } from '../../store/useStore';
 import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, addDays } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
+import { useScreenTour } from '../components/tour/useScreenTour';
+import { tabBarRef } from '../components/tour/targets';
 import ActiveSessionBanner from '../components/ActiveSessionBanner';
 import HomeProgramCard from '../components/HomeProgramCard';
 import SessionTabsCard from '../components/SessionTabsCard';
@@ -24,7 +26,7 @@ import NoProgram from '../components/ui/NoProgram';
 import { Rise } from '../components/ui/Rise';
 import { useEnterClock, EnterClock, ENTER_FAST } from '../hooks/useEnterClock';
 import { spacing, textStyles, borders } from '../theme';
-import { useThemedStyles } from '../useTheme';
+import { useTheme, useThemedStyles } from '../useTheme';
 import { isStageLocked } from '../utils/stageLocks';
 import { FOLD_MS } from '../components/ui/collapseOut';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
@@ -97,6 +99,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { t }      = useTranslation();
   const styles     = useThemedStyles(makeStyles);
+  const th         = useTheme();
 
   const [freeSheet,   setFreeSheet]   = useState(false);
   const [tplList,     setTplList]     = useState(false);
@@ -179,14 +182,43 @@ export default function HomeScreen() {
 
   const enterClock = useEnterClock({ speed: ENTER_FAST });
 
+  // ── Recorrido de la primera vez (U17-02 §4) ──
+  // Cinco pasos, de arriba abajo: la tarjeta del programa, la sesión que toca, las
+  // demás, la libre y la barra de pestañas. Sin programa activo no hay recorrido:
+  // su estado vacío ya dice qué hacer (U15-04). En un programa libre ninguna sesión
+  // toca, así que el paso de la que toca señala la lista entera y no hay paso de
+  // «las demás».
+  const scrollRef  = useRef(null);
+  const programRef = useRef(null);
+  const mainRef    = useRef(null);   // la que toca (lista), la tarjeta con pestañas, o la lista si es libre
+  const othersRef  = useRef(null);   // la primera de las demás (lista) o la tira de pestañas
+  const freeRef    = useRef(null);
+  const sessionCount = activeProgram
+    ? stageDaysAt(activeProgram, stageStatus(activeProgram, athleteProgress(activeProgram), localDay()).stageIdx)
+      .filter(({ sessionTemplateId }) => getEffectiveTemplate(sessionTemplateId)).length
+    : 0;
+  const freeOrder = activeProgram?.sessionOrder === 'free';
+  const text = (key) => t(`tour.home.${key}`, { returnObjects: true });
+  const tourSteps = sessionCount === 0 ? [] : [
+    { ref: programRef, scrollRef, ...text('program') },
+    { ref: mainRef, scrollRef, ...text(freeOrder ? 'sessionsFree' : 'today') },
+    ...(!freeOrder && sessionCount > 1 ? [{ ref: othersRef, scrollRef, ...text(homeView === 'tabs' ? 'othersTabs' : 'othersList') }] : []),
+    { ref: freeRef, scrollRef, ...text('free') },
+    // La barra la pinta el navegador: su ref sale de `tour/targets` y no está en el scroll.
+    { ref: tabBarRef, radius: th.radius.lg, ...text('tabs') },
+  ];
+  // Con una hoja abierta no sale (regla 7); el resto de cosas encima las mira el hook.
+  const openTour = useScreenTour('tour.home', freeSheet || tplList ? [] : tourSteps);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AppHeader />
+      <AppHeader onHelp={tourSteps.length ? openTour : undefined} />
       <ProgramUpdateModal />
 
       {/* Entrada por partes al llegar a la pestaña, como Programa (U14 §4.3). */}
       <EnterClock.Provider value={enterClock}>
         <ScrollView
+          ref={scrollRef}
           {...fold.scrollProps}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -198,7 +230,9 @@ export default function HomeScreen() {
               Programa. Sin entrada por partes: ya está puesta al llegar, como en
               Programa, y así no salta en ninguno de los dos sentidos (U14 §4.4). */}
           {activeProgram && (
-            <HomeProgramCard program={activeProgram} onOpen={() => navigation.navigate('MyProgram')} />
+            <View ref={programRef} collapsable={false}>
+              <HomeProgramCard program={activeProgram} onOpen={() => navigation.navigate('MyProgram')} />
+            </View>
           )}
 
           <Rise index={1}><WeekSelector workoutLog={workoutLog} /></Rise>
@@ -283,6 +317,8 @@ export default function HomeScreen() {
                       main:  advance,
                       quiet: { label: t('home.notNow'), onPress: () => snoozeStageBanner(pid, status.endsOn) },
                     };
+            // La primera de las demás: la que señala el recorrido (U17-02).
+            const firstOtherId = plan.rows.find((r) => !r.isHero && byId.has(r.templateId))?.templateId;
             // La meta de la tarjeta de hoy: los dos primeros datos salen de
             // `sessionStats`, que ya existe, y el tercero es cuándo fue la última
             // vez. Igual si está a medias: cuánto llevas lo dice el banner (U52).
@@ -344,7 +380,9 @@ export default function HomeScreen() {
                       entero, porque cualquiera de ellas puede crecer. */}
                   {homeView === 'tabs' ? (
                     <Rise index={4}>
+                    <View ref={mainRef} collapsable={false}>
                     <SessionTabsCard
+                      stripRef={othersRef}
                       heroId={plan.heroTemplateId}
                       sessions={plan.rows.filter((row) => byId.has(row.templateId)).map((row) => {
                         const day   = byId.get(row.templateId);
@@ -370,9 +408,10 @@ export default function HomeScreen() {
                         };
                       })}
                     />
+                    </View>
                     </Rise>
                   ) : (
-                  <View style={styles.group}>
+                  <View style={styles.group} ref={freeOrder ? mainRef : undefined} collapsable={false}>
                     {plan.rows.map((row, rowIdx) => {
                       const day = byId.get(row.templateId);
                       if (!day) return null;
@@ -394,6 +433,7 @@ export default function HomeScreen() {
 
                       if (row.isHero) {
                         return enter(
+                          <View ref={mainRef} collapsable={false}>
                           <TodayCard
                             marker={row.marker}
                             flag={plan.heroLabel}
@@ -406,12 +446,14 @@ export default function HomeScreen() {
                           >
                             {lines}
                           </TodayCard>
+                          </View>
                         );
                       }
 
                       const stats = sessionStats(day.template, allExercises);
                       const rel   = relativeTime(day.lastSession?.timestamp, t);
                       return enter(
+                        <View ref={row.templateId === firstOtherId ? othersRef : undefined} collapsable={false}>
                         <SessionRow
                           marker={row.marker}
                           name={name}
@@ -432,6 +474,7 @@ export default function HomeScreen() {
                         >
                           {lines}
                         </SessionRow>
+                        </View>
                       );
                     })}
                   </View>
@@ -488,7 +531,8 @@ export default function HomeScreen() {
 
             {/* Con `layout` propio: al abrir una sesión libre se mueve dentro de
                 la sección, y el `layout` de fuera no lo cubre. */}
-            <Reanimated.View layout={LinearTransition.duration(FOLD_MS)}>
+            <Reanimated.View layout={LinearTransition.duration(FOLD_MS)} style={styles.freeSessionWrap}>
+              <View ref={freeRef} collapsable={false}>
               <TouchableOpacity
                 style={styles.freeSessionBtn}
                 onPress={handleFreePress}
@@ -501,6 +545,7 @@ export default function HomeScreen() {
                     : t('freeSession.btn')}
                 </Text>
               </TouchableOpacity>
+              </View>
             </Reanimated.View>
           </Rise>
 
@@ -681,8 +726,8 @@ const makeStyles = (th) => StyleSheet.create({
     borderWidth:       0.5,
     borderColor:       th.tint.accent50,
     alignItems:        'center',
-    marginTop:         spacing.md,
   },
+  freeSessionWrap: { marginTop: spacing.md },
   freeSessionBtnText: {
     ...textStyles.button,
     color: th.colors.accent,
