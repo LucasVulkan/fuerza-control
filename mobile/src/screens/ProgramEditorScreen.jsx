@@ -29,6 +29,7 @@ import StepField from '../components/ui/StepField';
 import { DragIcon, LockIcon, GearIcon } from '../components/ui/EditorIcons';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useScreenTour } from '../components/tour/useScreenTour';
+import StagesScheme from '../components/tour/StagesScheme';
 import { SORTABLE_PROPS } from '../components/ui/sortable';
 import { isStageLocked, isTrainerProgram } from '../utils/stageLocks';
 import { describeRx } from '../utils/stageRx';
@@ -139,12 +140,20 @@ export default function ProgramEditorScreen({ navigation }) {
   // ── Recorrido de la primera vez (U17-03 §5) ──
   // La ficha con las etapas y las sesiones, que quedan a menudo por debajo. Sin
   // etapas, el texto de la ficha no las nombra. Con una hoja abierta no sale (regla 7).
-  const cardRef     = useRef(null);
-  const sessionsRef = useRef(null);
+  const cardRef      = useRef(null);
+  const pickerRef    = useRef(null);
+  const stageHeadRef = useRef(null);
+  const sessionsRef  = useRef(null);
   const hasStages   = (activeProgram?.stages?.length ?? 0) > 1;
   const tourText    = (key) => t(`tour.programEditor.${key}`, { returnObjects: true });
   const tourSteps   = !activeProgram ? [] : [
-    { ref: cardRef, scrollRef, ...tourText(hasStages ? 'cardStages' : 'card') },
+    { ...tourText('general') },   // sin hueco: el globo va centrado
+    { ref: cardRef, scrollRef, ...tourText('card') },
+    ...(hasStages ? [
+      { figure: <StagesScheme />, ...tourText('stages') },
+      { ref: pickerRef, scrollRef, ...tourText('stagePicker') },
+      { ref: stageHeadRef, scrollRef, ...tourText('stageCard') },
+    ] : []),
     { ref: sessionsRef, scrollRef, ...tourText(hasStages ? 'sessionsStages' : 'sessions') },
   ];
   const openTour = useScreenTour('tour.programEditor', stageSheetOpen ? [] : tourSteps);
@@ -497,6 +506,7 @@ export default function ProgramEditorScreen({ navigation }) {
             </>
           ) : null}
         </EditorIdentityCard>
+        </View>
 
         {/* ── Rótulo y tarjetas de etapa (P14 §3.2-3.3) ── */}
         {!single && (
@@ -505,16 +515,17 @@ export default function ProgramEditorScreen({ navigation }) {
               <Text style={styles.stagesLabel}>{t('editor.stagesTitle').toUpperCase()}</Text>
               {viewPlanEl}
             </View>
-            <StageCards
-              stages={stageCards}
-              value={stageCards[selectedStageIdx]?.id}
-              sel={page}
-              onChange={(id) => selectStage(stageCards.findIndex((c) => c.id === id))}
-              onAdd={newStage}
-            />
+            <View ref={pickerRef} collapsable={false}>
+              <StageCards
+                stages={stageCards}
+                value={stageCards[selectedStageIdx]?.id}
+                sel={page}
+                onChange={(id) => selectStage(stageCards.findIndex((c) => c.id === id))}
+                onAdd={newStage}
+              />
+            </View>
           </View>
         )}
-        </View>
 
         {/* ── La etapa elegida: cabecera y sesiones, que entran juntas ── */}
         {/* La capa fija del arrastre: no cambia con la etapa (ver `headSwipe`). */}
@@ -531,6 +542,7 @@ export default function ProgramEditorScreen({ navigation }) {
           <LayoutAnimationConfig skipEntering skipExiting>
             {/* Sin etapas, la cabecera de la etapa va dentro de la tarjeta del programa. */}
             {!single && (
+              <View ref={stageHeadRef} collapsable={false}>
               <GestureDetector gesture={headSwipe}>
                 <View style={styles.stageHead}>
                   <View style={styles.stageHeadText}>
@@ -548,6 +560,7 @@ export default function ProgramEditorScreen({ navigation }) {
                   {gearEl}
                 </View>
               </GestureDetector>
+              </View>
             )}
 
             <View ref={sessionsRef} collapsable={false}>
