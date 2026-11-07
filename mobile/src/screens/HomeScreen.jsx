@@ -11,12 +11,14 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { useStore, selectActiveProgram } from '../../store/useStore';
-import { stageDaysAt, athleteProgress, stageStatus, stageBannerDue, localDay, addDays } from '../utils/stageProgress';
+import { stageDaysAt, athleteProgress, stageStatus, localDay } from '../utils/stageProgress';
 import AppHeader from '../components/AppHeader';
 import { useScreenTour } from '../components/tour/useScreenTour';
 import { tabBarRef } from '../components/tour/targets';
 import ActiveSessionBanner from '../components/ActiveSessionBanner';
 import HomeProgramCard from '../components/HomeProgramCard';
+import StageEndCard from '../components/StageEndCard';
+import useStageEnd from '../hooks/useStageEnd';
 import SessionTabsCard from '../components/SessionTabsCard';
 import ProgramUpdateModal from '../components/ProgramUpdateModal';
 import DragSheet from '../components/DragSheet';
@@ -25,9 +27,8 @@ import { ROW_ICON } from '../components/ui/rowIcons';
 import NoProgram from '../components/ui/NoProgram';
 import { Rise } from '../components/ui/Rise';
 import { useEnterClock, EnterClock, ENTER_FAST } from '../hooks/useEnterClock';
-import { spacing, textStyles, borders } from '../theme';
+import { spacing, textStyles } from '../theme';
 import { useTheme, useThemedStyles } from '../useTheme';
-import { isStageLocked } from '../utils/stageLocks';
 import { FOLD_MS } from '../components/ui/collapseOut';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import {
@@ -122,14 +123,11 @@ export default function HomeScreen() {
   const copyFreeTemplate     = useStore((s) => s.copyFreeTemplate);
   const showToast            = useStore((s) => s.showToast);
   const clientSync           = useStore((s) => s.clientSync);
-  const advanceStage         = useStore((s) => s.advanceStage);
-  const extendStage          = useStore((s) => s.extendStage);
-  const snoozeStageBanner    = useStore((s) => s.snoozeStageBanner);
-  const stageBannerSnooze    = useStore((s) => s.stageBannerSnooze);
   const exerciseLibrary      = useStore((s) => s.exerciseLibrary);
   const customExercises      = useStore((s) => s.customExercises);
   // Lista plegable (U04) o una tarjeta con pestañas (U13), a elegir en Preferencias.
   const homeView             = useStore((s) => s.profile.homeView ?? 'cards');
+  const stageEnd             = useStageEnd(activeProgram);
 
   const allExercises = useMemo(
     () => ({ ...exerciseLibrary, ...customExercises }),
@@ -244,9 +242,6 @@ export default function HomeScreen() {
             const progress    = athleteProgress(activeProgram);
             const status      = stageStatus(activeProgram, progress, today);
             const stageIdx    = status.stageIdx;
-            const currentStage = status.stage;
-            const nextStage    = activeProgram.stages?.[stageIdx + 1] ?? null;
-            const nextStageLocked = isStageLocked(activeProgram, stageIdx + 1, clientSync);
 
             // Las sesiones de la etapa, en el orden del programa.
             const currentDays = stageDaysAt(activeProgram, stageIdx);
@@ -268,55 +263,6 @@ export default function HomeScreen() {
               order: activeProgram.sessionOrder,
             });
 
-            // ── Aviso de fin de etapa (P08-weeks-model.md §6.1) ──
-            // Cuatro casos y un solo sitio que decide si sale (`stageBannerDue`,
-            // el mismo que enciende el punto del tab). Cada uno dice qué ha pasado
-            // y ofrece una acción principal y otra discreta.
-            const pid     = activeProgram.id;
-            const names   = { current: currentStage?.name ?? t('home.currentStageDefault'), next: nextStage?.name ?? '' };
-            const advance = {
-              label:   t('home.advanceTo', { name: names.next.toUpperCase() }),
-              onPress: () => advanceStage(pid),
-            };
-            const banner = !nextStage || !stageBannerDue(activeProgram, progress, stageBannerSnooze?.[pid], today)
-              ? null
-              : nextStageLocked
-                // No puede avanzar: sigue en la etapa (stage-locks §0.1). Se le
-                // recuerda cada semana mientras su entrenador no la abra.
-                ? {
-                  title: t('home.stageLockedTitle'),
-                  text:  t('home.stageLockedText', names),
-                  hint:  t('home.stageLockedHint'),
-                  quiet: { label: t('home.understood'), onPress: () => snoozeStageBanner(pid, addDays(today, 7)) },
-                }
-                : status.ended && status.missingWeeks > 0
-                  // Terminó por fecha sin entrenar lo que tocaba: se propone
-                  // alargar, pero avanzar sigue a un toque.
-                  ? {
-                    title: t('home.stageEndedTitle'),
-                    text:  t('home.stageBehindText', { ...names, done: status.done, expected: status.expected, count: status.missingWeeks }),
-                    main:  { label: t('home.extendWeeks', { count: status.missingWeeks }), onPress: () => extendStage(pid, status.missingWeeks) },
-                    quiet: advance,
-                  }
-                  : status.ended
-                    ? {
-                      title: t('home.stageCompleted'),
-                      text:  t('home.stageAdvanceText', names),
-                      main:  advance,
-                      // Con el aplazamiento: sin él, la semana añadida sería ya
-                      // la última con todo hecho y el aviso volvería al instante.
-                      quiet: {
-                        label:   t('home.oneMoreWeek'),
-                        onPress: () => { extendStage(pid, 1); snoozeStageBanner(pid, addDays(status.endsOn, 7)); },
-                      },
-                    }
-                    // Anticipado: última semana y todas las sesiones hechas.
-                    : {
-                      title: t('home.stageCompleted'),
-                      text:  t('home.stageEarlyText', { ...names, expected: status.expected }),
-                      main:  advance,
-                      quiet: { label: t('home.notNow'), onPress: () => snoozeStageBanner(pid, status.endsOn) },
-                    };
             // La primera de las demás: la que señala el recorrido (U17-02).
             const firstOtherId = plan.rows.find((r) => !r.isHero && byId.has(r.templateId))?.templateId;
             // La meta de la tarjeta de hoy: los dos primeros datos salen de
@@ -338,40 +284,9 @@ export default function HomeScreen() {
                     <SectionHeader label={t('home.sessions').toUpperCase()} count={plan.subtitle} />
                   </Rise>
 
-                  {/* Etapa terminada: el único "algo terminó" que persiste en la
-                      Home. Va ENCIMA del hero y no lo sustituye — la sesión que
-                      toca sigue siendo la que toca. Sin acción principal (etapa
-                      siguiente bloqueada) el botón que queda va en lima. */}
-                  {banner && (
-                    <Rise index={3}>
-                    <View style={styles.stageBanner}>
-                      <Text style={styles.stageBannerLabel}>{banner.title.toUpperCase()}</Text>
-                      <Text style={styles.stageBannerText}>{banner.text}</Text>
-                      {!!banner.hint && <Text style={styles.stageBannerHint}>{banner.hint}</Text>}
-                      <View style={styles.stageBannerBtns}>
-                        {banner.main && (
-                          <TouchableOpacity
-                            style={[styles.stageBannerBtn, { flex: 2 }]}
-                            onPress={banner.main.onPress}
-                            activeOpacity={0.85}
-                            accessibilityRole="button"
-                          >
-                            <Text style={styles.stageBannerBtnText}>{banner.main.label}</Text>
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={[styles.stageBannerBtn, banner.main && styles.stageBannerBtnQuiet]}
-                          onPress={banner.quiet.onPress}
-                          activeOpacity={0.7}
-                          accessibilityRole="button"
-                        >
-                          <Text style={[styles.stageBannerBtnText, banner.main && styles.stageBannerBtnTextQuiet]}>
-                            {banner.quiet.label}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    </Rise>
+                  {/* Etapa terminada: va ENCIMA de la que toca y no la sustituye. */}
+                  {stageEnd && (
+                    <Rise index={3}><StageEndCard notice={stageEnd} style={styles.stageEnd} /></Rise>
                   )}
 
                   {/* Todas las sesiones, en el orden del programa: la que toca es una
@@ -662,55 +577,7 @@ const makeStyles = (th) => StyleSheet.create({
   // contenedor de las sesiones libres, que es el mismo `group`.
   group: { gap: spacing.xs2 },
 
-  // ── Banner de etapa terminada ─────────────────────────────────────────────────
-  // Sobre `surface` y con los dos botones en outline: el relleno lima es del
-  // hero, y aquí competiría con EMPEZAR.
-  stageBanner: {
-    backgroundColor: th.colors.surface,
-    borderRadius:    th.radius.md,
-    padding:         spacing.lg,
-    marginBottom:    spacing.md,
-  },
-  stageBannerLabel: {
-    ...textStyles.caps,
-    color:         th.colors.accent,
-    textTransform: 'uppercase',
-  },
-  stageBannerText: {
-    ...textStyles.body,
-    color:      th.colors.mutedLight,
-    lineHeight: textStyles.body.fontSize * 1.5,
-    marginTop:  spacing.sm2,
-  },
-  // Segunda línea del caso bloqueado: lo que SÍ puede hacer mientras tanto.
-  stageBannerHint: {
-    ...textStyles.body,
-    color:      th.colors.mutedLight,
-    lineHeight: textStyles.body.fontSize * 1.5,
-    marginTop:  spacing.xs,
-  },
-  stageBannerBtns: {
-    flexDirection: 'row',
-    gap:           spacing.sm2,
-    marginTop:     spacing.md,
-  },
-  stageBannerBtn: {
-    flex:            1,
-    paddingVertical: 11,
-    borderRadius:    th.radius.md,
-    borderWidth:     borders.thin,
-    borderColor:     th.tint.accent50,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  stageBannerBtnQuiet:     { borderColor: th.colors.border },
-  stageBannerBtnText: {
-    ...textStyles.caps,
-    fontFamily: 'Inter_900Black',
-    color:      th.colors.accent,
-    textAlign:  'center',
-  },
-  stageBannerBtnTextQuiet: { color: th.colors.mutedLight },
+  stageEnd: { marginBottom: spacing.md },
 
   // ── Bloque de programa ────────────────────────────────────────────────────────
   programBlock: { marginTop: spacing.xl },
