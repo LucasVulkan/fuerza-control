@@ -73,7 +73,7 @@ import { FREE, activeClientIds, canChooseMore } from '../utils/freePlan';
 import FreeClientsSheet from '../components/FreeClientsSheet';
 import ProBadge from '../components/ui/ProBadge';
 import { useFreeGates, usePlanClients } from '../useFreeGates';
-import { LockIcon, CheckIcon, ChevronDown, CloseIcon, DragIcon } from '../components/ui/EditorIcons';
+import { LockIcon, CheckIcon, ChevronDown, CloseIcon, DragIcon, PasteWorkoutIcon, CloudIcon, SortIcon } from '../components/ui/EditorIcons';
 import { useSteadyFold } from '../components/ui/useSteadyFold';
 import { ProgramActions } from '../components/ui/ProgramCard';
 import HomeProgramCard from '../components/HomeProgramCard';
@@ -1389,15 +1389,6 @@ function clientAvisos({ client, program, linked, inProgress, adherence, readOnly
 // `clientAvisos`, que ya los devuelve en este orden.
 const AVISO_RANK = ['inprog', 'noprog', 'dirty', 'stageStuck', 'blockStuck', 'overrides', 'risk', 'slip'];
 
-/** Icono ⇅ del botón de orden. */
-function SortIcon({ color }) {
-  return (
-    <Svg viewBox="0 0 24 24" width={14} height={14} fill="none"
-      stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3" />
-    </Svg>
-  );
-}
 
 /**
  * Fila del modo «Reordenar» (C08 §6.3): la misma forma que la de la lista, sin
@@ -3118,19 +3109,13 @@ export default function ClientsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('paste.title')}
               >
-                <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 3h6v3H9zM9 12h6M9 16h4" />
-                </Svg>
+                <PasteWorkoutIcon color={th.colors.text} />
               </TouchableOpacity>
               {/* Conexión de la cuenta de entrenador. Nube = conectada (punto
                   verde); nube tachada = sin conexión: desconectada a propósito
                   (punto gris), sin cuenta aún o sesión perdida (punto naranja). */}
               <TouchableOpacity style={styles.hdrIconBox} onPress={() => navigation.navigate('Account')} activeOpacity={0.7}>
-                <Svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke={th.colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  {cloudOn
-                    ? <Path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
-                    : <Path d="M2 2l20 20M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07" />}
-                </Svg>
+                <CloudIcon color={th.colors.text} off={!cloudOn} />
                 <View style={[
                   styles.syncStatusDot,
                   { backgroundColor: cloudOn ? th.colors.green : trainerSync.mode === 'offline' ? th.colors.muted2 : th.colors.orange },
