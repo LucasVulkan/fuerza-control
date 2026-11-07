@@ -17,7 +17,7 @@
  */
 import { epley1RM } from './oneRm';
 import { blockEstimatedSec } from './conditioningBlocks';
-import { doneSets } from './sessionRecap';
+import { doneSets, recapStats } from './sessionRecap';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -756,6 +756,32 @@ export function calendarLoads(log, allExercises, { fallbackBodyWeight = null, no
     byDay.set(key, cur);
   }
   return { source: 'internal', byDay };
+}
+
+/**
+ * VOLUMEN (T11-09): % de cambio del volumen medio por bloque de 7 días, últimas 4
+ * semanas contra las 4 anteriores. Los bloques acaban ayer si hoy no hay sesión (§3).
+ * Las semanas de descanso cuentan 0; si una de las dos ventanas no tiene ninguna
+ * sesión (o la anterior suma 0) → null.
+ */
+export function volumeChange(log, { now = Date.now() } = {}) {
+  const today = startOfDay(now);
+  const hasToday = (log ?? []).some((e) => startOfDay(e.timestamp) === today);
+  const end = hasToday ? today : shiftDay(today, -1);
+  const from1 = shiftDay(end, -27);
+  const from0 = shiftDay(end, -55);
+  const sum = (a, b) => {
+    let n = 0, vol = 0;
+    for (const e of log ?? []) {
+      const d = startOfDay(e.timestamp);
+      if (d >= a && d <= b) { n += 1; vol += recapStats(e).volume; }
+    }
+    return { n, vol };
+  };
+  const cur = sum(from1, end);
+  const prev = sum(from0, shiftDay(from1, -1));
+  if (!cur.n || !prev.n || !(prev.vol > 0)) return null;
+  return Math.round((cur.vol / prev.vol - 1) * 100);   // medias de 4 bloques: el /4 se cancela
 }
 
 /** Las últimas `n` ventanas de 7 días (de la más vieja a la última), acabando en el último día de `days`. */

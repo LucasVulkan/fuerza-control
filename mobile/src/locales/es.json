@@ -255,9 +255,9 @@
     },
     "volumeTrend": {
       "name": "Volumen (pestaña Progreso)",
-      "what": "Compara el volumen de la primera sesión del período con el de la última.",
-      "formula": "(volumen de la última sesión − volumen de la primera) ÷ volumen de la primera × 100",
-      "caveat": "No es una línea de tendencia: son dos puntos. Una sesión atípica en cualquiera de los dos extremos cambia el resultado por completo."
+      "what": "Volumen medio por semana de las últimas 4 semanas, comparado con las 4 anteriores.",
+      "formula": "(volumen medio por semana de las últimas 4 semanas − el de las 4 anteriores) ÷ el de las 4 anteriores × 100",
+      "caveat": "Las semanas sin entrenar cuentan como volumen 0. Sin sesiones en alguna de las dos ventanas no hay cifra."
     },
     "muscleGroupSets": {
       "name": "Series por grupo muscular",
@@ -1498,6 +1498,7 @@
     "statVolume": "Volumen",
     "thisWeek": "{{count}} esta semana",
     "lastSessionShort": "últ. ses.",
+    "volVsPrevMonth": "vs mes anterior",
     "lastShort": "últ.",
     "searchExercise": "Buscar ejercicio…",
     "filterExercises": "Filtrar ejercicios",

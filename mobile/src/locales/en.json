@@ -255,9 +255,9 @@
     },
     "volumeTrend": {
       "name": "Volume (Progress tab)",
-      "what": "Compares the volume of the period's first session with that of the last one.",
-      "formula": "(last session's volume − first session's volume) ÷ first session's volume × 100",
-      "caveat": "It is not a trend line: it's two points. An unusual session at either end changes the result completely."
+      "what": "Average volume per week over the last 4 weeks, compared with the 4 before.",
+      "formula": "(average weekly volume of the last 4 weeks − that of the 4 before) ÷ that of the 4 before × 100",
+      "caveat": "Weeks without training count as volume 0. With no sessions in either window there is no figure."
     },
     "muscleGroupSets": {
       "name": "Sets per muscle group",
@@ -1498,6 +1498,7 @@
     "statVolume": "Volume",
     "thisWeek": "{{count}} this week",
     "lastSessionShort": "last ses.",
+    "volVsPrevMonth": "vs previous month",
     "lastShort": "last",
     "searchExercise": "Search exercise…",
     "filterExercises": "Filter exercises",

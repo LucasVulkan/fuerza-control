@@ -6,7 +6,7 @@ import {
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   loadSummary, strengthChange, strengthByExercise, meanPct, groupSetsVsPlan, effortBlocks, monotonyStrain,
   effortVsLoad, rpeByExercise, ratedSessions, TREND_FLAT_PCT,
-  REF_WEEKS, BLOCK_LOAD_PER_SEC, calendarLoads,
+  REF_WEEKS, BLOCK_LOAD_PER_SEC, volumeChange, calendarLoads,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 
@@ -936,6 +936,39 @@ describe('groupSetsVsPlan', () => {
     expect(r.planned).toBeNull();
     expect(r.rows.map((x) => x.group)).toEqual(['back', 'quads', 'chest']);
     expect(r.rows.every((x) => x.planned === null)).toBe(true);
+  });
+});
+
+describe('volumeChange (T11-09)', () => {
+  const NOW = new Date(2026, 1, 20, 18).getTime();                  // viernes 20 feb 2026
+  const at = (daysAgo, h = 12) => { const d = new Date(NOW); d.setDate(d.getDate() - daysAgo); d.setHours(h, 0, 0, 0); return d.getTime(); };
+  const ses = (id, ts, kg) => ({ id, timestamp: ts, duration: 0, exercises: [{ exerciseId: 'squat_barbell', sets: [set(kg, 10)] }] });
+  // alternando pierna (pesada) y torso (ligera) cada 3 días durante 8 semanas
+  const alt = (kgLeg, kgUp, from = 1, to = 56) => {
+    const out = [];
+    for (let i = from, k = 0; i <= to; i += 3, k++) out.push(ses(`s${i}`, at(i), k % 2 ? kgUp : kgLeg));
+    return out;
+  };
+
+  it('alternar pierna y torso da un % razonable', () => {
+    expect(Math.abs(volumeChange(alt(200, 60), { now: NOW }))).toBeLessThanOrEqual(25);
+  });
+  it('mismo trabajo en las dos ventanas → 0', () => {
+    expect(volumeChange([ses('a', at(3), 100), ses('b', at(40), 100)], { now: NOW })).toBe(0);
+  });
+  it('una semana de descanso cuenta 0 en la media', () => {
+    // actual: 1 sesión de 1000 en 4 bloques; anterior: 2 de 1000 → -50 %
+    expect(volumeChange([ses('a', at(3), 100), ses('b', at(35), 100), ses('c', at(45), 100)], { now: NOW })).toBe(-50);
+  });
+  it('sin sesiones en una de las ventanas → null', () => {
+    expect(volumeChange([ses('a', at(3), 100)], { now: NOW })).toBeNull();
+    expect(volumeChange([ses('b', at(40), 100)], { now: NOW })).toBeNull();
+    expect(volumeChange([], { now: NOW })).toBeNull();
+  });
+  it('sin sesión hoy las ventanas acaban ayer; con sesión hoy, hoy', () => {
+    const log = [ses('a', at(5), 100), ses('b', at(28), 100), ses('c', at(29), 100)];
+    expect(volumeChange(log, { now: NOW })).toBe(100);              // acaba ayer: b (hace 28) está en la actual, 2 vs 1
+    expect(volumeChange([...log, ses('t', at(0, 9), 100)], { now: NOW })).toBe(0);  // acaba hoy: b pasa a la anterior, 2 vs 2
   });
 });
 
