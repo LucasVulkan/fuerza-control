@@ -46,6 +46,8 @@
       "tabs": { "title": "Getting around the app", "text": "From here you can see your program, where you can edit it, your progress and the rest of the app." }
     },
     "program": {
+      "card": { "title": "Your program", "text": "Here you see your program's name and the week you are in. If it has a set length, the bar shows how far along you are.\nBelow are your numbers: adherence (of the sessions due in the last 4 weeks, how many you did), pace (sessions per week) and load (what you train this week compared with your monthly average)." },
+      "cardStages": { "title": "Your program", "text": "Here you see your program's name and the week you are in. The bar shows how far along you are, with one segment per stage.\nIn «This stage» you see the stage you are in and its week: each little square is one week of the stage.\nBelow are your numbers: adherence (of the sessions due in the last 4 weeks, how many you did), pace (sessions per week) and load (what you train this week compared with your monthly average)." },
       "view": { "title": "View program", "text": "Here you can open an overview of the program." },
       "edit": { "title": "Edit program", "text": "The editor to change the program's sessions, exercises and stages." },
       "editTrainer": { "title": "Your trainer's program", "text": "Programs created by a trainer can't be edited." },

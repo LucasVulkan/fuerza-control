@@ -154,9 +154,10 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 | Entreno | 3 | Las otras sesiones: puedes hacer cualquiera en vez de la que toca |
 | Entreno | 4 | La sesión libre: entrenar sin seguir el programa |
 | Entreno | 5 | La barra de pestañas de abajo: para moverte por la app |
-| Programa (`MyProgramScreen`) | 1 | Editar: el botón «Editar» (cambiar ejercicios, sesiones y etapas) |
-| Programa | 2 | Ver el programa: el botón «Ver programa» abre el programa entero. Con el programa de un entrenador no hay Editar: primero Ver y luego los botones, diciendo que lo lleva él |
-| Programa | 3 | Solo si hay etapas: cómo se ven las etapas ahí y cuánto llevas de la actual |
+| Programa (`MyProgramScreen`) | 1 | La tarjeta: nombre y semana, la barra (un tramo por etapa), con etapas «Esta etapa» y sus cuadraditos (uno por semana), y las tres cifras (adherencia, ritmo, carga) |
+| Programa | 2 | Editar: el botón «Editar» (cambiar ejercicios, sesiones y etapas) |
+| Programa | 3 | Ver el programa: el botón «Ver programa» abre el programa entero. Con el programa de un entrenador no hay Editar: primero Ver y luego los botones, diciendo que lo lleva él |
+| Programa | 4 | Solo si hay etapas: cómo se ven las etapas ahí y cuánto llevas de la actual |
 | Progreso (`StatsScreen`) | 1 | El segmentado Ejercicios · Carga · Historial: qué hay en cada uno (un paso, no uno por segmento) |
 | Progreso | 2 | Un ejercicio de la lista (el primero): al tocarlo se abre su ficha |
 
@@ -184,7 +185,7 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 
 - [ ] Usuario nuevo con programa → Entreno: los cinco pasos resaltan el elemento correcto, también tras desplazar la lista
 - [ ] Entreno en vista Pestañas (U13) → los pasos siguen cayendo en su sitio
-- [ ] Programa sin etapas → dos pasos; con etapas → tres, y el tercero señala las etapas
+- [ ] Programa sin etapas → tres pasos (la tarjeta primero); con etapas → cuatro, la tarjeta explica «Esta etapa» y el cuarto señala las etapas
 - [ ] Cliente vinculado → el texto de Programa dice que lo lleva su entrenador
 - [ ] Progreso → el segmentado y un ejercicio; sin entrenos, solo el segmentado
 - [ ] Sin programa → Entreno y Programa no enseñan recorrido; al tener uno, sí

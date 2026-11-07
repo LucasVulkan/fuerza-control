@@ -206,9 +206,10 @@ export default function MyProgramScreen() {
   };
 
   // ── Recorrido de la primera vez (U17-02 §4) ──
-  // Ver, Editar y, si hay etapas, dónde están. Con el programa de un entrenador no
+  // La tarjeta, Ver, Editar y, si hay etapas, dónde están. Con el programa de un entrenador no
   // hay botón Editar: el segundo paso señala los botones y dice que lo lleva él.
   // Sin programa activo no hay recorrido (su estado vacío ya dice qué hacer, U15-04).
+  const cardRef    = useRef(null);
   const viewRef    = useRef(null);
   const editRef    = useRef(null);
   const actionsRef = useRef(null);
@@ -217,6 +218,7 @@ export default function MyProgramScreen() {
   const text       = (key) => t(`tour.program.${key}`, { returnObjects: true });
   // De izquierda a derecha, como están los botones: Editar y luego Ver.
   const tourSteps  = !activeProgram ? [] : [
+    { ref: cardRef, ...text(hasStages ? 'cardStages' : 'card') },
     ...(canEdit
       ? [{ ref: editRef, ...text('edit') }, { ref: viewRef, ...text('view') }]
       : [{ ref: viewRef, ...text('view') }, { ref: actionsRef, ...text('editTrainer') }]),
@@ -232,6 +234,7 @@ export default function MyProgramScreen() {
       <EnterClock.Provider value={clock}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {activeProgram ? (
+            <View ref={cardRef} collapsable={false}>
             <HomeProgramCard
               program={activeProgram}
               // Ida y vuelta: la misma tarjeta que trajo hasta aquí devuelve a Sesión.
@@ -250,6 +253,7 @@ export default function MyProgramScreen() {
                 />
               </Unfold>
             </HomeProgramCard>
+            </View>
           ) : (
             <NoProgram />
           )}
