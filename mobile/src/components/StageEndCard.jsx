@@ -70,7 +70,8 @@ const makeStyles = (th) => StyleSheet.create({
   accent:   { ...textStyles.bodyStrong, color: th.colors.accent },
   btns:     { gap: spacing.xs2, marginTop: spacing.lg },
   btn: {
-    backgroundColor:   th.colors.surface2,
+    // `surface3`: en `surface2`, sobre la tarjeta, casi no se veía (como `SessionList`).
+    backgroundColor:   th.colors.surface3 ?? th.colors.surface2,
     borderRadius:      th.radius.md,
     paddingVertical:   spacing.md,
     paddingHorizontal: spacing.md,
