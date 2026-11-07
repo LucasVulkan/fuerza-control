@@ -369,6 +369,8 @@ cambia con el periodo; en 1M, una sola columna):
 - [ ] La gráfica tiene el eje de % a la derecha, la banda de 4 semanas y los dos puntos; sin textos sueltos dentro.
 - [ ] Un ejercicio que baja sale en naranja, uno parado dice «igual».
 
+**Notas de implementación.** `strengthByExercise` (`trainingLoad.js`) da `pct4w` (mejor e1RM de los 28 días que acaban en `endDay` contra los 28 anteriores) y `pctPeriod` (esos mismos 28 días finales contra los **primeros 28 días del periodo**, `fromDay`…+27; null si ambas ventanas se solapan, o sea en 1M). `strengthChange` y la cifra del periodo son la media de cada columna (`meanPct`). La gráfica sale de `performanceWeekly` filtrada por fecha al periodo, densificada a una entrada por semana natural (huecos null) para que ejes y guías vayan por fecha; es el índice rebasado, así que puede diferir unos puntos de la cifra (media por ejercicio). Tabla en tarjeta propia bajo la gráfica. Se quitó `IndexChart` y `PctChart` ganó `area`/banda/punto hueco. El hueco por defecto del punto hueco es la última semana con fecha <= `endDay`−28 (en 1M, el inicio).
+
 ## 10. T11-07 — Series por grupo contra lo previsto
 
 Sustituye a la ventana de 7 días con banda de 10-20 (T04 §5.2.6), que castigaba a
@@ -396,6 +398,8 @@ distribuyes**, no un objetivo de volumen.
 - [ ] Un miércoles con 2 de 3 sesiones hechas: cada grupo con su «hechas/previstas», lo que falta en contorno, nada en naranja.
 - [ ] Un ejercicio de un grupo que no estaba en el plan sale al final, sin marca.
 - [ ] Sin programa activo, solo las hechas.
+
+**Notas de implementación.** `groupSetsVsPlan(log, allExercises, planned, { now })` es pura: semana natural de `now`, previstos primero y los no previstos al final (`planned: null`). Las previstas salen de `stageSetsByGroup` con la etapa de `athleteProgress(program, client)` y las plantillas del store. «32 de 45» suma también lo hecho fuera de plan. El contorno de lo que falta es `withOpacity(accent, 0.5)` (no existe un token accent50). Escala común en múltiplos de 10 con rejilla cada 10. No hay naranja: en la semana en curso no se usa. Se quitaron la banda 10-20 y `load.groupsHint`; `SETS_TARGET_*` siguen exportadas (las usan ProgramDetailScreen y metricDocs).
 
 ## 11. T11-08 — El calendario vuelve al Historial
 
