@@ -6,7 +6,7 @@ import {
   weeklySeries, indexTo100, effortTrend, performanceWeekly, weeklyStrain,
   loadSummary, strengthChange, strengthByExercise, meanPct, groupSetsVsPlan, effortBlocks, monotonyStrain,
   effortVsLoad, rpeByExercise, ratedSessions, TREND_FLAT_PCT,
-  REF_WEEKS, BLOCK_LOAD_PER_SEC, volumeChange, calendarLoads,
+  REF_WEEKS, BLOCK_LOAD_PER_SEC, volumeChange, calendarLoads, weekBlocks,
 } from './trainingLoad';
 import { EXERCISE_LIBRARY } from '../data/exerciseLibrary';
 
@@ -985,5 +985,284 @@ describe('calendarLoads (T11-08)', () => {
     expect(r.source).toBe('external');
     expect(r.byDay.size).toBe(2);
     expect([...r.byDay.values()].every((v) => v.load > 0)).toBe(true);
+  });
+});
+
+// ── T11-10: situaciones del visor de carga, con literales ──────────────────────
+// Las personas de scripts/visor-carga/casos.js, reducidas a lo que enseña el panel:
+// el lunes 31 ago 2026 es el día 1 de la semana 1. Cada fila es [semana, día (0 = lunes),
+// sRPE o null, [[ejercicio, kg, series, reps], ...]]. `duration: 0`: manda el modelo.
+const dayAt = (week, d, h = 18) => new Date(2026, 7, 31 + 7 * (week - 1) + d, h).getTime();
+const lifts = (n) => [['squat_barbell', 100, n, 5], ['bench_press_barbell', 70, n, 5], ['barbell_row', 60, n, 6]];
+const MACH = [['chest_press_machine', 30, 3, 10], ['leg_press_standard', 60, 3, 10], ['shoulder_press_machine', 20, 3, 10]];
+const FOUR = [0, 1, 3, 4];                       // lunes, martes, jueves, viernes
+const plan = (from, to, days, rpe, exs) => {
+  const out = [];
+  for (let w = from; w <= to; w++) for (const d of days) out.push([w, d, rpe, exs]);
+  return out;
+};
+const logOf = (rows) => rows.map(([w, d, rpe, exs], i) => ({
+  id: `t${i}`, timestamp: dayAt(w, d), duration: 0, bodyWeight: 80,
+  ...(rpe != null ? { sessionRpe: rpe } : {}),
+  exercises: exs.map(([exerciseId, kg, n, reps]) => ({ exerciseId, restSec: 90, sets: Array.from({ length: n }, () => set(kg, reps)) })),
+}));
+
+/** Lo que pinta el panel de Carga para ese log a esa hora. */
+const panel = (rows, now) => {
+  const log = logOf(rows);
+  const s = loadSummary(log, LIB, { now });
+  return {
+    s,
+    ms: monotonyStrain(s.days),
+    chip: effortVsLoad(s.days).chip,
+    strength: strengthChange(log, LIB, { endDay: s.endDay }),
+    volume: volumeChange(log, { now }),
+  };
+};
+
+describe('situaciones del visor (T11-10)', () => {
+  it('Ana: sin sRPE, la carga es la externa y el panel no se vacía', () => {
+    const r = panel(plan(1, 10, [0, 3], null, MACH), dayAt(11, 0, 9));
+    expect(r.s.source).toBe('external');
+    expect(r.s.vs28).toBe(0);                          // mismo trabajo cada semana
+    expect(r.ms).toEqual({ monotony: null, strain: null, strainPct: null, sessions: 2 });   // 2 sesiones: sin monotonía
+    expect(r.chip).toBeNull();                         // sin sRPE no hay esfuerzo vs carga
+    expect(r.strength).toBe(0);
+    expect(r.volume).toBe(0);
+  });
+
+  it('viernes antes de entrenar: las ventanas acaban ayer y la semana no cae en falso', () => {
+    const rows = [...plan(1, 3, FOUR, 7, lifts(4)), ...plan(4, 4, [0, 1, 3], 7, lifts(4))];   // el viernes de la semana 4 aún no
+    const vie = panel(rows, dayAt(4, 4, 9));
+    expect(vie.s.endDay).toBe(new Date(2026, 8, 24).getTime());   // jueves
+    expect(vie.s.vs28).toBe(-5);
+    expect(vie.ms.sessions).toBe(4);
+    expect(vie.ms.strainPct).toBe(0);
+    // El sábado el viernes ya cuenta como descanso: la ventana pierde una sesión.
+    const sab = panel(rows, dayAt(4, 5, 9));
+    expect(sab.s.endDay).toBe(new Date(2026, 8, 25).getTime());
+    expect(sab.s.vs28).toBe(-26);
+    expect(sab.ms.sessions).toBe(3);
+  });
+
+  it('falta un día entero: la carga baja de verdad y con 2 sesiones no hay monotonía', () => {
+    const rows = [...plan(1, 3, FOUR, 7, lifts(4)), ...plan(4, 4, [0, 3], 7, lifts(4))];
+    const r = panel(rows, dayAt(5, 0, 9));
+    expect(r.ms.sessions).toBe(2);
+    expect(r.ms.monotony).toBeNull();
+    expect(r.s.vs28).toBeLessThan(-20);
+  });
+
+  it('descarga de una semana: -33 % contra 28 días y el strain cae un 40 %', () => {
+    const rows = [...plan(1, 3, FOUR, 7, lifts(4)), ...plan(4, 4, FOUR, 5, lifts(3))];
+    const r = panel(rows, dayAt(5, 0, 9));
+    expect(r.s.vs28).toBe(-33);
+    expect(loadState(r.s.mean7.at(-1), r.s.mean28.at(-1))).toBe('unloading');
+    expect(r.ms.monotony).toBeCloseTo(1.155, 2);
+    expect(r.ms.strainPct).toBe(-40);
+  });
+
+  it('descarga de cuatro semanas: carga -25 %, esfuerzo -40 %, «deload»', () => {
+    const rows = [...plan(1, 4, FOUR, 7, lifts(4)), ...plan(5, 8, FOUR, 5, lifts(3))];
+    const r = panel(rows, dayAt(9, 0, 9));
+    expect(r.chip.label).toBe('deload');
+    expect(r.chip.loadPct).toBeCloseTo(-25, 5);
+    expect(r.chip.effortPct).toBeCloseTo(-40, 0);
+    expect(r.volume).toBe(-25);
+    expect(r.strength).toBe(0);                        // bajar el trabajo no baja la fuerza
+  });
+
+  it('estancado: mismos pesos y sRPE, fuerza 0, volumen 0 y «sin patrón claro»', () => {
+    const r = panel(plan(1, 8, [0, 2, 4], 7, lifts(5)), dayAt(9, 0, 9));
+    expect(r.s.vs28).toBe(0);
+    expect(r.chip).toEqual({ loadPct: 0, effortPct: 0, label: 'mixed' });
+    expect(r.strength).toBe(0);
+    expect(r.volume).toBe(0);
+    expect(r.ms.strainPct).toBe(0);
+  });
+
+  it('bloque duro: +50 % de series y sRPE 8 → carga y esfuerzo suben, «hard»', () => {
+    const rows = [...plan(1, 4, FOUR, 7, lifts(4)), ...plan(5, 8, FOUR, 8, lifts(6))];
+    const r = panel(rows, dayAt(9, 0, 9));
+    expect(r.chip.label).toBe('hard');
+    expect(r.chip.loadPct).toBeCloseTo(50, 5);
+    expect(r.chip.effortPct).toBeGreaterThan(50);
+    expect(r.volume).toBe(50);
+    expect(r.ms.strainPct).toBe(9);
+  });
+
+  // Los casos de Marta y Javi que fijaron el umbral (spec §13): cifras exactas del visor.
+  const eight = (a, b) => daysFrom([...Array(4).fill(a), ...Array(4).fill(b)]);
+  it('Marta (semana 9): carga +7 %, esfuerzo +4 % → adaptación, no «bloque duro»', () => {
+    expect(effortVsLoad(eight([100, 100], [107.1, 104.2])).chip.label).toBe('adaptation');
+  });
+  it('Javi (semana 9): carga plana y esfuerzo +9 % → fatiga', () => {
+    expect(effortVsLoad(eight([100, 100], [98.6, 109.2])).chip.label).toBe('fatigue');
+  });
+  it('Javi (semana 10): carga -13 %, esfuerzo -6 % → descarga', () => {
+    expect(effortVsLoad(eight([100, 100], [87.4, 94])).chip.label).toBe('deload');
+  });
+  it('el umbral: dentro de ±5 % es plano, fuera sube o baja', () => {
+    expect(TREND_FLAT_PCT).toBe(5);
+    expect(effortVsLoad(eight([100, 100], [104.9, 104.9])).chip.label).toBe('mixed');
+    expect(effortVsLoad(eight([100, 100], [105.1, 100])).chip.label).toBe('adaptation');
+    expect(effortVsLoad(eight([100, 100], [95.1, 95.1])).chip.label).toBe('mixed');
+    expect(effortVsLoad(eight([100, 100], [94.9, 94.9])).chip.label).toBe('deload');
+  });
+});
+
+// ── T11-10: bordes de la tabla del oráculo (módulo 6) y decisiones de §13 ──────────
+
+describe('bordes de la carga (T11-10)', () => {
+  const sets2 = [set(100, 5), set(100, 5)];       // modelo = 850 s
+  const model = 850 / 60;
+
+  it('duración 0, ausente o corrupta: manda el modelo, no el suelo del clamp (TL-05)', () => {
+    for (const duration of [0, undefined, NaN, -5000]) {
+      expect(sessionMinutes(entry({ sets: sets2, duration }))).toBeCloseTo(model, 6);
+    }
+    expect(internalLoad(entry({ sets: sets2, duration: 0, sessionRpe: 7 }))).toBeCloseTo(7 * model, 6);
+  });
+
+  it('sesión sin series ni bloques: 0 minutos, sin carga (hueco) y sin NaN (TL-06)', () => {
+    const vacia = { id: 'v', timestamp: T0, duration: 3600000, sessionRpe: 7, exercises: [{ exerciseId: 'squat_barbell', sets: [] }] };
+    expect(sessionMinutes(vacia)).toBe(0);
+    expect(internalLoad(vacia)).toBeNull();
+    const [l] = sessionLoads([vacia], LIB);
+    expect(l.internal).toBeNull();
+    expect(l.external).toBeNull();
+    const [d] = dailySeries([l], { now: T0 });
+    expect(d).toEqual({ day: new Date(2026, 0, 5).getTime(), internal: null, external: null, sessions: 1 });
+  });
+
+  it('un sRPE corrupto o negativo es un hueco, nunca NaN', () => {
+    for (const sessionRpe of ['abc', NaN, -3]) {
+      expect(internalLoad(entry({ sets: sets2, duration: 900000, sessionRpe }))).toBeNull();
+    }
+    expect(internalLoad(entry({ sets: sets2, duration: 900000, sessionRpe: '7' }))).toBeCloseTo(105, 6);
+    const log = [{ ...entry({ sets: sets2, sessionRpe: 'abc' }), timestamp: T0 }];
+    expect(effortBlocks(log, [{ day: new Date(2026, 0, 5).getTime() }])).toEqual([null]);
+  });
+
+  it('semana con sesiones pero sin sRPE: hueco en la línea de esfuerzo, no un -100 %', () => {
+    // La tercera semana se entrenó (externa 100) pero sin apuntar el esfuerzo.
+    const r = effortVsLoad(daysFrom([[100, 50], [100, 50], [100, null], [100, 60], [0, 0]]), { n: 5 });
+    expect(r.external).toEqual([0, 0, 0, 0, -100]);
+    expect(r.internal.map((v) => v && Math.round(v))).toEqual([0, 0, null, 20, -100]);
+  });
+
+  it('el chip se calcula con las semanas que sí tienen sRPE', () => {
+    const blocks = [[100, 100], [100, 100], [100, null], [100, 100], [130, 100], [130, 100], [130, null], [130, 100]];
+    expect(effortVsLoad(daysFrom(blocks)).chip.label).toBe('adaptation');
+    // Si en una de las dos mitades no hay ni un sRPE, no hay chip.
+    const sin = blocks.map(([e, i], k) => [e, k >= 4 ? null : i]);
+    expect(effortVsLoad(daysFrom(sin)).chip).toBeNull();
+  });
+
+  it('la referencia de 1RM mira 6 semanas atrás (inclusive) y la ventana de rendimiento, 4', () => {
+    expect(REF_WEEKS).toBe(6);
+    const mk = (id, ts, w) => entry({ id, ts, exerciseId: 'squat_barbell', sets: [set(w, 5)] });
+    const alone = sessionLoads([mk('x', T0, 100)], LIB)[0].external;
+    // 6 semanas justas: la referencia (200) todavía vale; un milisegundo más y ya no.
+    const dentro = sessionLoads([mk('a', T0, 200), mk('b', T0 + 6 * WEEK, 100)], LIB)[1].external;
+    const fuera = sessionLoads([mk('a', T0, 200), mk('b', T0 + 6 * WEEK + 1, 100)], LIB)[1].external;
+    expect(dentro).toBeCloseTo(alone / 2, 6);
+    expect(fuera).toBeCloseTo(alone, 6);
+    // Rendimiento: el 100 de la semana 0 sale de la ventana de 4 semanas en la semana 4.
+    const sem = (k, kg) => mk(`w${k}`, T0 + k * WEEK, kg);
+    const perf = performanceWeekly([sem(0, 100), sem(1, 90), sem(2, 90), sem(3, 90), sem(4, 90)], LIB);
+    expect(perf[3].index).toBeCloseTo(100, 6);          // semana 3: ventana semanas 0-3, incluye el 100
+    expect(perf[4].index).toBeCloseTo(90, 6);           // semana 4: ya no
+  });
+
+  it('límite de 7 días: una sesión de hace 7 días ya no entra en la media de 7', () => {
+    const ses = (daysAgo, id) => entry({ id, ts: new Date(2026, 0, 20 - daysAgo, 18).getTime(), sets: sets2, duration: 900000, sessionRpe: 10 });
+    const now = new Date(2026, 0, 20, 20).getTime();
+    // hoy y hace 7 días: m7 = 150/7 y m28 = 300/8 (ventana expansiva de 8 días)
+    expect(loadSummary([ses(7, 'a'), ses(0, 'b')], LIB, { now }).vs28).toBe(-43);
+    // hoy y hace 6 días: las dos entran en los 7 y en los 28 → 0
+    expect(loadSummary([ses(6, 'a'), ses(0, 'b')], LIB, { now }).vs28).toBe(0);
+  });
+
+  it('límite de 28 días: la sesión de hace 28 días sale de la media de 28, la de hace 27 no', () => {
+    const ses = (daysAgo, id) => entry({ id, ts: new Date(2026, 0, 28 - daysAgo, 18).getTime(), sets: sets2, duration: 900000, sessionRpe: 10 });
+    const now = new Date(2026, 0, 28, 20).getTime();
+    expect(loadSummary([ses(28, 'a'), ses(0, 'b')], LIB, { now }).vs28).toBe(300);   // m28 = 150/28
+    expect(loadSummary([ses(27, 'a'), ses(0, 'b')], LIB, { now }).vs28).toBe(100);   // m28 = 300/28
+  });
+
+  it('la ventana de fuerza de 4 semanas son 28 días: el día 27 es «actual» y el 28 es «anterior»', () => {
+    const END = new Date(2026, 1, 20).getTime();
+    const at = (d, kg) => entry({ id: `f${d}`, ts: END - d * DAY + 12 * 3600000, sets: [set(kg, 5)] });
+    expect(strengthChange([at(27, 110), at(28, 100)], LIB, { endDay: END })).toBe(10);
+    expect(strengthChange([at(28, 110), at(56, 100)], LIB, { endDay: END })).toBeNull();   // el 56 queda fuera
+  });
+});
+
+describe('weekBlocks', () => {
+  const days = (n) => Array.from({ length: n }, (_, i) => ({ day: i }));
+  it('bloques de 7 días hacia atrás desde el último; el primero puede quedar corto', () => {
+    const b = weekBlocks(days(17), 8);
+    expect(b.map((x) => x.length)).toEqual([3, 7, 7]);
+    expect(b[2][6].day).toBe(16);
+  });
+  it('limita a n bloques y con serie vacía no da ninguno', () => {
+    expect(weekBlocks(days(70), 3)).toHaveLength(3);
+    expect(weekBlocks([], 8)).toEqual([]);
+  });
+});
+
+// ── T11-10: ningún NaN, Infinity ni negativo imposible llega a la pantalla ─────────
+
+describe('guardas de la pestaña Carga (T11-10)', () => {
+  const malos = (x, path = '') => {
+    if (typeof x === 'number') return Number.isFinite(x) ? [] : [path];
+    if (x instanceof Map) return malos([...x.values()], path);
+    if (x && typeof x === 'object') return Object.entries(x).flatMap(([k, v]) => malos(v, `${path}.${k}`));
+    return [];
+  };
+  const todo = (log, now) => {
+    const s = loadSummary(log, LIB, { now });
+    const from = s.endDay == null ? 0 : s.endDay - 90 * DAY;
+    return {
+      s, ms: monotonyStrain(s.days), vs: effortVsLoad(s.days), eb: effortBlocks(log, s.days),
+      rated: ratedSessions(log, s.endDay, 28), rpe: rpeByExercise(log, { from, endDay: s.endDay }),
+      str: strengthByExercise(log, LIB, { endDay: s.endDay, fromDay: from }), chg: strengthChange(log, LIB, { endDay: s.endDay }),
+      vol: volumeChange(log, { now }), cal: calendarLoads(log, LIB, { now }), perf: performanceWeekly(log, LIB),
+      grp: groupSetsVsPlan(log, LIB, [{ group: 'quads', sets: 0 }], { now }),
+    };
+  };
+
+  it('vacío, una sola sesión o semanas enteras sin entrenar', () => {
+    const una = logOf(plan(1, 1, [0], 7, lifts(4)));
+    const hueco = logOf([...plan(1, 1, [0], 7, lifts(4)), ...plan(9, 9, [0], 7, lifts(4))]);
+    for (const [log, now] of [[[], dayAt(3, 0)], [una, dayAt(1, 0, 20)], [una, dayAt(20, 0)], [hueco, dayAt(9, 0, 20)]]) {
+      expect(malos(todo(log, now))).toEqual([]);
+    }
+  });
+
+  it('cada día de cada situación, también con sRPE roto y duraciones raras', () => {
+    const rows = [...plan(1, 4, FOUR, 7, lifts(4)), ...plan(5, 8, FOUR, 5, lifts(3))];
+    const log = logOf(rows).map((e, i) => (i % 5 === 0 ? { ...e, sessionRpe: 'x', duration: NaN } : i % 7 === 0 ? { ...e, sessionRpe: undefined } : e));
+    for (let w = 1; w <= 9; w++) for (let d = 0; d < 7; d++) {
+      const now = dayAt(w, d, 23);
+      expect(malos(todo(log.filter((e) => e.timestamp <= now), now))).toEqual([]);
+    }
+  });
+
+  it('con base 0 el % es null, no Infinity: carga, volumen y fuerza', () => {
+    const cero = logOf(plan(1, 8, [0], null, [['squat_barbell', 0, 3, 5]]));      // pesos a 0
+    const now = dayAt(9, 0, 9);
+    const s = loadSummary(cero, LIB, { now });
+    expect(s.vs28 === null || Number.isFinite(s.vs28)).toBe(true);
+    expect(volumeChange(cero, { now })).toBeNull();
+    expect(strengthChange(cero, LIB, { endDay: s.endDay })).toBeNull();
+    const e = effortVsLoad(daysFrom(Array(8).fill([0, 0])));
+    expect(e.chip).toBeNull();
+    expect(e.external.every((v) => v == null)).toBe(true);
+  });
+
+  it('un plan con 0 series por grupo no deja filas ni totales raros', () => {
+    expect(groupSetsVsPlan([], LIB, [{ group: 'quads', sets: 0 }], { now: dayAt(2, 0) })).toEqual({ rows: [], done: 0, planned: null });
   });
 });

@@ -184,7 +184,7 @@
     },
     "effortVsLoad": {
       "name": "Effort vs load",
-      "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so each is drawn as the % change from its first 7-day block with sessions in the period. The chip compares the average of the last 4 blocks with the 4 before (always 4 against 4, even over one month); a change under ±5 % reads as flat.",
+      "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so each is drawn as the % change from its first 7-day block with sessions in the period. The chip compares the average of the last 4 blocks with the 4 before (always 4 against 4, even over one month); a change of up to ±5 % reads as flat, and only what goes beyond that counts as rising or falling.",
       "read": "What matters is whether they separate, not where they sit. More work at the same cost means you are adapting. The same work costing more is accumulated fatigue. Both rising is a hard block, and both falling is a deload."
     },
     "performance": {

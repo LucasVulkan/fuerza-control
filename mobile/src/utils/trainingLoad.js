@@ -117,6 +117,8 @@ export function sessionMinutes(entry) {
   const modelMin = modelSec(entry) / 60;
   if (modelMin <= 0) return 0;
   const wallMin = (entry?.duration ?? 0) / 60000;
+  // Sin reloj (0, ausente o corrupto) manda el modelo, no el suelo del clamp (T04 §7, T11 §13).
+  if (!(wallMin > 0)) return modelMin;
   return Math.min(Math.max(wallMin, modelMin * 0.5), modelMin * 2);
 }
 
@@ -124,8 +126,8 @@ export function sessionMinutes(entry) {
 
 /** sRPE × minutos. `null` (hueco, NUNCA 0) si la sesión no tiene sRPE. */
 export function internalLoad(entry) {
-  const rpe = entry?.sessionRpe;
-  if (rpe == null) return null;
+  const rpe = entry?.sessionRpe == null ? NaN : Number(entry.sessionRpe);
+  if (!(rpe >= 0) || !Number.isFinite(rpe)) return null;   // ausente, negativo o corrupto: hueco, nunca NaN
   const min = sessionMinutes(entry);
   return min > 0 ? rpe * min : null;
 }
@@ -797,7 +799,7 @@ export function weekBlocks(days, n = 8) {
 
 /** sRPE medio de las sesiones de cada bloque de 7 días (null sin sRPE). La última es «últimos 7 días». */
 export function effortBlocks(log, days, n = 8) {
-  const rated = (log ?? []).filter((e) => e.sessionRpe != null)
+  const rated = (log ?? []).filter((e) => e.sessionRpe != null && Number.isFinite(Number(e.sessionRpe)))
     .map((e) => ({ key: startOfDay(e.timestamp), rpe: Number(e.sessionRpe) }));
   return weekBlocks(days, n).map((b) => {
     const r = rated.filter((s) => s.key >= b[0].day && s.key <= b[b.length - 1].day);
@@ -822,7 +824,8 @@ export function ratedSessions(log, endDay, span) {
 
 /**
  * Umbral (en %) bajo el cual un cambio de carga o de esfuerzo se lee «plano» en el chip de
- * Esfuerzo vs carga. Provisional: T11-10 decide el valor final mirando el visor.
+ * Esfuerzo vs carga (±5 %, estrictamente mayor para subir o bajar). Fijado en T11-10 contra
+ * las situaciones del visor de carga: ver la tabla de `docs/specs/T11-carga-v1.md` §13.
  */
 export const TREND_FLAT_PCT = 5;
 

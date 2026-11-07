@@ -184,7 +184,7 @@
     },
     "effortVsLoad": {
       "name": "Esfuerzo vs carga",
-      "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que cada una se pinta como % de cambio desde su primer bloque de 7 días con sesiones del periodo. El chip compara la media de los últimos 4 bloques con la de los 4 anteriores (siempre 4 contra 4, aunque el periodo sea de un mes); un cambio de menos de ±5 % se lee como plano.",
+      "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que cada una se pinta como % de cambio desde su primer bloque de 7 días con sesiones del periodo. El chip compara la media de los últimos 4 bloques con la de los 4 anteriores (siempre 4 contra 4, aunque el periodo sea de un mes); un cambio de hasta ±5 % se lee como plano, y solo lo que pasa de ahí cuenta como subida o bajada.",
       "read": "Lo que importa es si se separan, no dónde están. Más trabajo al mismo coste significa que te estás adaptando. El mismo trabajo costando más es fatiga acumulada. Las dos subiendo es un bloque duro, y las dos bajando, una descarga."
     },
     "performance": {
