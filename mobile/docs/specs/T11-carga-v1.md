@@ -2,18 +2,22 @@
 
 > Tema: entrenamiento
 > En corto: La pestaña Carga pasa a ser un panel: tres tarjetas (carga, esfuerzo, fuerza) que eligen una sola gráfica, todo funciona aunque no se apunte el esfuerzo de la sesión, y deja de decir cosas que no son. De paso, el VOLUMEN de Ejercicios deja de comparar dos sesiones sueltas.
-> Fase T11-01 · pendiente · Panel: tres tarjetas que eligen la gráfica · §4
-> Fase T11-02 · pendiente · Sin sRPE la pestaña no se vacía · §5
-> Fase T11-03 · pendiente · Carga: estado, monotonía y strain · §6
-> Fase T11-04 · pendiente · Esfuerzo: semanas o sesiones y esfuerzo vs carga · §7
-> Fase T11-05 · pendiente · RPE medio por ejercicio · §8
-> Fase T11-06 · pendiente · Fuerza: 4 semanas y periodo, por ejercicio · §9
-> Fase T11-07 · pendiente · Series por grupo contra lo previsto · §10
-> Fase T11-08 · pendiente · El calendario vuelve al Historial · §11
-> Fase T11-09 · pendiente · VOLUMEN de Ejercicios por semanas · §12
-> Fase T11-10 · pendiente · Datos con sentido: casos y bordes con test · §13
+> Inicio: 2026-11-06
+> Fin: 2026-11-07
+> Fase T11-01 · hecho · Panel: tres tarjetas que eligen la gráfica · §4
+> Fase T11-02 · hecho · Sin sRPE la pestaña no se vacía · §5
+> Fase T11-03 · hecho · Carga: estado, monotonía y strain · §6
+> Fase T11-04 · hecho · Esfuerzo: semanas o sesiones y esfuerzo vs carga · §7
+> Fase T11-05 · hecho · RPE medio por ejercicio · §8
+> Fase T11-06 · hecho · Fuerza: 4 semanas y periodo, por ejercicio · §9
+> Fase T11-07 · hecho · Series por grupo contra lo previsto · §10
+> Fase T11-08 · hecho · El calendario vuelve al Historial · §11
+> Fase T11-09 · hecho · VOLUMEN de Ejercicios por semanas · §12
+> Fase T11-10 · terminado · Datos con sentido: casos y bordes con test · §13
 >
-> Estado: **spec reescrita el 6-nov-2026, sin implementar.** La primera versión
+> Estado: **implementada el 7-nov-2026 en `feat/t11-carga` (T11-01…05 ya en develop), por probar en dispositivo.**
+> Las gráficas siguen la anatomía de [`carga-t11-3.html`](../mockups/carga-t11-3.html) (§3).
+> La primera versión
 > (27-oct) solo arreglaba datos sin tocar la pantalla. Tras siete vueltas de
 > maqueta con el usuario, la pantalla se rehace como panel:
 > [`carga-t11-2.html`](../mockups/carga-t11-2.html), publicada en
@@ -369,6 +373,8 @@ cambia con el periodo; en 1M, una sola columna):
 - [ ] La gráfica tiene el eje de % a la derecha, la banda de 4 semanas y los dos puntos; sin textos sueltos dentro.
 - [ ] Un ejercicio que baja sale en naranja, uno parado dice «igual».
 
+**Notas de implementación.** `strengthByExercise` (`trainingLoad.js`) da `pct4w` (mejor e1RM de los 28 días que acaban en `endDay` contra los 28 anteriores) y `pctPeriod` (esos mismos 28 días finales contra los **primeros 28 días del periodo**, `fromDay`…+27; null si ambas ventanas se solapan, o sea en 1M). `strengthChange` y la cifra del periodo son la media de cada columna (`meanPct`). La gráfica sale de `performanceWeekly` filtrada por fecha al periodo, densificada a una entrada por semana natural (huecos null) para que ejes y guías vayan por fecha; es el índice rebasado, así que puede diferir unos puntos de la cifra (media por ejercicio). Tabla en tarjeta propia bajo la gráfica. Se quitó `IndexChart` y `PctChart` ganó `area`/banda/punto hueco. El hueco por defecto del punto hueco es la última semana con fecha <= `endDay`−28 (en 1M, el inicio).
+
 ## 10. T11-07 — Series por grupo contra lo previsto
 
 Sustituye a la ventana de 7 días con banda de 10-20 (T04 §5.2.6), que castigaba a
@@ -397,6 +403,8 @@ distribuyes**, no un objetivo de volumen.
 - [ ] Un ejercicio de un grupo que no estaba en el plan sale al final, sin marca.
 - [ ] Sin programa activo, solo las hechas.
 
+**Notas de implementación.** `groupSetsVsPlan(log, allExercises, planned, { now })` es pura: semana natural de `now`, previstos primero y los no previstos al final (`planned: null`). Las previstas salen de `stageSetsByGroup` con la etapa de `athleteProgress(program, client)` y las plantillas del store. «32 de 45» suma también lo hecho fuera de plan. El contorno de lo que falta es `withOpacity(accent, 0.5)` (no existe un token accent50). Escala común en múltiplos de 10 con rejilla cada 10. No hay naranja: en la semana en curso no se usa. Se quitaron la banda 10-20 y `load.groupsHint`; `SETS_TARGET_*` siguen exportadas (las usan ProgramDetailScreen y metricDocs).
+
 ## 11. T11-08 — El calendario vuelve al Historial
 
 En Carga ocupaba mucho para lo que decía, y lo que de verdad cuenta es cuándo se
@@ -419,6 +427,8 @@ entrenó, no un mapa de esfuerzo.
 - [ ] Ficha de un cliente › Historial: el calendario con las sesiones del cliente, no las tuyas.
 - [ ] Con un historial sin sRPE, los días entrenados salen teñidos.
 
+**Notas de implementación.** `LoadCalendar` ya no está en `LoadTab` (no estaba montado en ningún sitio) y recibe `log`, `allExercises`, `fallbackBodyWeight` por prop. Historial propio: `workoutLog`, librería+personalizados y `profile.bodyWeight` en `HistoryList`, arriba de la cabecera de la lista. Ficha: `clientBaseLog` entero, `allExercises` y `clientBodyWeight` de `ClientsScreen`. La carga por día sale de `calendarLoads` (`trainingLoad.js`): interna por sesión si hay algún sRPE; si no, `days[].value` de `loadSummary` (externa). Test en `trainingLoad.test.js`.
+
 ## 12. T11-09 — VOLUMEN de Ejercicios por semanas
 
 La tarjeta VOLUMEN de Progreso › Ejercicios (`ProgressTab.jsx`) compara hoy el
@@ -430,7 +440,7 @@ variaciones enormes.
   las 4 anteriores, en % (mismos bloques que §3). Sin datos en las dos ventanas: «—».
   Se calcula sobre el log filtrado por alcance (programa o todo), **no** recortado
   por el periodo: con 1M elegido no existirían «las 4 anteriores».
-- **Subtítulo:** «vs mes anterior».
+- **Subtítulo:** «en 4 semanas», como la tarjeta FUERZA de Carga («vs mes anterior» no cabía, 7-nov).
 - **Ficha `volumeTrend`:** «Volumen medio por semana de las últimas 4 semanas,
   comparado con las 4 anteriores.» Se quita el aviso de «son dos puntos».
 - El tonelaje sigue saliendo de `recapStats` (una sola definición de volumen).
@@ -439,6 +449,8 @@ variaciones enormes.
 
 - [ ] Con historial de varias semanas alternando sesiones de pierna y torso, VOLUMEN da una cifra razonable (no ±60 %) y el subtítulo dice «vs mes anterior».
 - [ ] Tocar la tarjeta: la ficha explica la comparación nueva.
+
+**Notas de implementación.** `volumeChange(log, { now })` en `trainingLoad.js`: ventanas de 28 días que acaban hoy (si hay sesión hoy) o ayer; tonelaje con `recapStats`; el /4 se cancela al comparar medias. Descanso cuenta 0; sin sesiones en alguna ventana (o anterior a 0) → null → «—». `ProgressTab` le pasa `filteredLogScope` (alcance sin periodo). Subtítulo `stats.volVsPrevMonth`; se quitaron `computeVolumeImprovePct` y los cálculos de «última sesión» de la tarjeta. Test en `trainingLoad.test.js`.
 
 ## 13. T11-10 — Datos con sentido: casos y bordes con test
 
@@ -457,6 +469,51 @@ variaciones enormes.
 - Fijar el umbral de «sube / baja / plano» de §7 mirando el visor, y documentarlo
   en la ficha.
 - Ningún `NaN`, `Infinity` ni negativo imposible en lo que se pinta.
+
+### Decisiones y resultados (T11-10, 7-nov-2026)
+
+**Bordes de la tabla del oráculo (módulo 6), cada uno con su test en `trainingLoad.test.js`:**
+
+| Borde | Decisión |
+|---|---|
+| Sesión con sRPE y duración 0 (TL-05) | **Manda el modelo** (`modelSec`), no el suelo de 0,5× del clamp: sin reloj, el modelo es la mejor estimación (T04 §7 ya lo decía; el código hacía otra cosa y se corrigió). Lo mismo con duración ausente, `NaN` o negativa. |
+| Sesión sin series ni bloques (TL-06) | 0 minutos y **sin carga** (interna y externa `null`): día con sesión y hueco en la serie, nunca 0 ni NaN. |
+| sRPE no numérico o negativo | Hueco (`null`), como si faltara. Antes daba `NaN` y contagiaba medias y gráficas. |
+| Semana con sesiones y sin ningún sRPE | **Hueco** en la línea de esfuerzo (`null`), no −100 %; solo la semana sin sesiones vale −100 %. El chip usa las semanas que sí tienen dato y, si una de sus dos mitades no tiene ninguna, no sale. |
+| Referencia de 1RM frente a ventana de rendimiento | Son dos cosas: la referencia de la carga externa mira **6 semanas** (`REF_WEEKS`, límite inclusivo) y el índice de Rendimiento, **4**. La fuerza por ejercicio usa 28 días. |
+| Límites de 7 y 28 días | Una sesión de hace 6 días entra en los 7; la de hace 7, no. Una de hace 27 entra en los 28; la de hace 28, no. En fuerza, el día 27 es «actual» y el 28 es «anterior». |
+| Hoy sin sesión | Todas las ventanas acaban ayer (ya estaba en §3). Con test del viernes por la mañana: −5 % frente al −26 % falso del sábado. |
+
+**Umbral de «sube / baja / plano»: `TREND_FLAT_PCT = 5`.** Se pasaron las cinco personas
+del visor semana a semana por `effortVsLoad` con 3, 5 y 8 %. Con 10 semanas solo hay chip
+en las semanas 9 y 10 (hacen falta 8 bloques completos) y solo para las tres con sRPE.
+
+| Persona y semana | Carga | Esfuerzo | 3 % | **5 %** | 8 % | Debe leerse |
+|---|---|---|---|---|---|---|
+| Marta s9 (vuelve de la descarga) | +7,1 % | +4,2 % | bloque duro | **adaptación** | sin patrón | adaptación |
+| Marta s10 | +5,6 % | +4,2 % | bloque duro | **adaptación** | sin patrón | adaptación |
+| Javi s9 (descarga tras bloque duro) | −1,4 % | +9,2 % | fatiga | **fatiga** | fatiga | fatiga |
+| Javi s10 | −12,6 % | −6,0 % | descarga | **descarga** | sin patrón | descarga |
+| Carlos s9 (falta un día) | −12,9 % | −4,4 % | descarga | **sin patrón** | sin patrón | sin patrón |
+| Carlos s10 | −13,4 % | −7,5 % | descarga | **descarga** | sin patrón | descarga |
+
+Con 3 % un +4 % de esfuerzo, que es ruido, convierte la adaptación de Marta en «bloque
+duro»; con 8 % se pierden la adaptación de Marta (el +7 % no pasa) y la descarga de Javi
+y Carlos. Solo el 5 % acierta las seis, y es el valor que ya usaba la maqueta. Marta s10
+(+5,6 %) está cerca del borde: si el usuario ve parpadear esa lectura, el sitio donde mirar
+es esa semana. La constante pierde el «provisional» y la ficha de «Esfuerzo vs carga»
+dice que hasta ±5 % es plano.
+
+**Guardas de la pestaña.** Se revisó lo que pinta `LoadTab` y las funciones que lo
+alimentan: toda división por una base ya estaba protegida (`> 0`), y los dos agujeros
+reales eran el sRPE corrupto (`internalLoad`, `effortBlocks`) y la duración `NaN`
+(`sessionMinutes`). Un test recorre todas las funciones del panel cada día de una
+situación, con sRPE y duraciones rotos, y exige que ningún número salga no finito.
+
+**Casos del visor con test:** Ana (sin sRPE), viernes antes de entrenar, falta un día,
+descarga de una semana, descarga de cuatro, estancado y bloque duro, con literales y
+las cifras del panel (`loadSummary().vs28`, monotonía y strain, chip, fuerza y volumen).
+Marta y Javi del visor fijan el umbral con sus cifras exactas.
 
 ## 14. Fuera de esta spec
 

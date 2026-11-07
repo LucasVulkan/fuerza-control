@@ -184,7 +184,7 @@
     },
     "effortVsLoad": {
       "name": "Esfuerzo vs carga",
-      "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que cada una se pinta como % de cambio desde su primer bloque de 7 días con sesiones del periodo. El chip compara la media de los últimos 4 bloques con la de los 4 anteriores (siempre 4 contra 4, aunque el periodo sea de un mes); un cambio de menos de ±5 % se lee como plano.",
+      "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que cada una se pinta como % de cambio desde su primer bloque de 7 días con sesiones del periodo. El chip compara la media de los últimos 4 bloques con la de los 4 anteriores (siempre 4 contra 4, aunque el periodo sea de un mes); un cambio de hasta ±5 % se lee como plano, y solo lo que pasa de ahí cuenta como subida o bajada.",
       "read": "Lo que importa es si se separan, no dónde están. Más trabajo al mismo coste significa que te estás adaptando. El mismo trabajo costando más es fatiga acumulada. Las dos subiendo es un bloque duro, y las dos bajando, una descarga."
     },
     "performance": {
@@ -255,9 +255,9 @@
     },
     "volumeTrend": {
       "name": "Volumen (pestaña Progreso)",
-      "what": "Compara el volumen de la primera sesión del período con el de la última.",
-      "formula": "(volumen de la última sesión − volumen de la primera) ÷ volumen de la primera × 100",
-      "caveat": "No es una línea de tendencia: son dos puntos. Una sesión atípica en cualquiera de los dos extremos cambia el resultado por completo."
+      "what": "Volumen medio por semana de las últimas 4 semanas, comparado con las 4 anteriores.",
+      "formula": "volumen medio por semana de las últimas 4 semanas ÷ el de las 4 anteriores − 1, en %",
+      "caveat": "Las semanas sin entrenar cuentan como volumen 0. Sin sesiones en alguna de las dos ventanas no hay cifra."
     },
     "muscleGroupSets": {
       "name": "Series por grupo muscular",
@@ -1498,6 +1498,7 @@
     "statVolume": "Volumen",
     "thisWeek": "{{count}} esta semana",
     "lastSessionShort": "últ. ses.",
+    "volVsPrevMonth": "en 4 semanas",
     "lastShort": "últ.",
     "searchExercise": "Buscar ejercicio…",
     "filterExercises": "Filtrar ejercicios",
@@ -1777,6 +1778,17 @@
     "rpeLast7": "RPE · últimos 7 días",
     "rpeMeanChip": "media {{p}}",
     "in4Weeks": "en 4 semanas",
+    "strengthUnit": "en 4 semanas",
+    "strengthBest": "mejor: {{name}}",
+    "fourWeeksBand": "4 SEM",
+    "same": "igual",
+    "strengthTableTitle": "Fuerza por ejercicio",
+    "strengthFoot": "Cambio del 1RM estimado: las últimas 4 semanas contra las 4 anteriores, y contra las primeras 4 del periodo.",
+    "strengthFoot1m": "Cambio del 1RM estimado: las últimas 4 semanas contra las 4 anteriores.",
+    "groupsMeta": "{{done}} de {{planned}} esta semana",
+    "groupsMetaNoPlan": "{{done}} esta semana",
+    "groupsShowAll": "Ver los {{count}} grupos",
+    "groupsShowLess": "Ver menos",
     "stateLoading": "Esta semana has entrenado más que en tu último mes.",
     "stateSteady": "Esta semana, en línea con tu último mes.",
     "stateUnloading": "Esta semana has entrenado menos que en tu último mes.",
@@ -1838,7 +1850,6 @@
     "groupsTitle": "Series por grupo",
     "last7d": "últimos 7 días",
     "groupOther": "Otros",
-    "groupsHint": "Las marcas señalan el rango de referencia de {{min}}-{{max}} series semanales por grupo. Cuenta volumen directo: un press de banca suma a pecho, no a tríceps.",
     "strainTitle": "Strain por semana",
     "lastWeeks": "últimas {{count}}",
     "strainHint": "Carga × monotonía de los últimos 7 días, contra tu media de las 4 semanas anteriores.",

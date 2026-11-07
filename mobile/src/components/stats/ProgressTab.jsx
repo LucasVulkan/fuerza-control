@@ -22,14 +22,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { useStore }      from '../../../store/useStore';
-import { useWeightUnit } from '../../hooks/useWeightUnit';
 import { spacing, textStyles, withOpacity, getCardRadii } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import {
   getExerciseLogsFrom, seriesMetric, linearRegressionPct, computeOverallImprovement,
   computeLastLoadDelta,
 } from '../../utils/improvement';
-import { recapStats }     from '../../utils/sessionRecap';
+import { volumeChange } from '../../utils/trainingLoad';
 import { filterBySearch } from '../../utils/searchText';
 import SegmentedControl  from '../ui/SegmentedControl';
 import { MetricInfoSheet } from '../ui/MetricInfo';
@@ -40,7 +39,7 @@ import { Rise } from '../ui/Rise';
 import { ROW_ICON } from '../ui/rowIcons';
 import DragSheet from '../DragSheet';
 import ExerciseDetail from './ExerciseDetail';
-import { periodOptions, fmtVol } from './progressFormat';
+import { periodOptions } from './progressFormat';
 import { programTemplateOf, isFreeEntry } from '../../utils/freeSessions';
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
@@ -59,43 +58,12 @@ function filterLog(log, scope, period, programTemplateIds) {
   return filtered;
 }
 
-// Tonelaje de una sesión. Delega en `recapStats` para no tener dos definiciones
-// de "volumen" en la app: la de aquí se dejaba fuera las sub-series de los
-// dropsets, que son trabajo real y el recap sí contaba.
-function getSessionTotalVol(session) {
-  return recapStats(session).volume;
-}
-
 function computeThisWeekCount(log) {
   const now = new Date();
   const mon = new Date(now);
   mon.setHours(0, 0, 0, 0);
   mon.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
   return log.filter((l) => l.timestamp >= mon.getTime()).length;
-}
-
-function computeVolumeImprovePct(filteredLog) {
-  if (filteredLog.length < 2) return null;
-  const sorted = [...filteredLog].sort((a, b) => a.timestamp - b.timestamp);
-  const first  = getSessionTotalVol(sorted[0]);
-  const last   = getSessionTotalVol(sorted[sorted.length - 1]);
-  if (!first) return null;
-  return Math.round((last - first) / first * 100);
-}
-
-function computeLastSessionVolume(filteredLog) {
-  if (!filteredLog.length) return null;
-  const last = [...filteredLog].sort((a, b) => b.timestamp - a.timestamp)[0];
-  return getSessionTotalVol(last) || null;
-}
-
-function computeLastSessionDelta(filteredLog) {
-  if (filteredLog.length < 2) return null;
-  const sorted = [...filteredLog].sort((a, b) => a.timestamp - b.timestamp);
-  const prev   = getSessionTotalVol(sorted[sorted.length - 2]);
-  const last   = getSessionTotalVol(sorted[sorted.length - 1]);
-  if (!prev) return null;
-  return Math.round((last - prev) / prev * 100);
 }
 
 // ── ExerciseStatCard ───────────────────────────────────────────────────────────
@@ -154,7 +122,6 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
   const styles = useThemedStyles(makeStyles);
   const { t, i18n } = useTranslation();
   const periods = useMemo(() => periodOptions(t), [t]);
-  const { toDisplay: wDisplay, label: weightLabel } = useWeightUnit();
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const navigate = useStore((s) => s.navigate);
 
@@ -218,9 +185,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
     () => computeLastLoadDelta(filteredLog, allExercises),
     [filteredLog, allExercises]
   );
-  const volImprovePct = useMemo(() => computeVolumeImprovePct(filteredLog), [filteredLog]);
-  const lastSesVol    = useMemo(() => computeLastSessionVolume(filteredLog), [filteredLog]);
-  const lastSesDelta  = useMemo(() => computeLastSessionDelta(filteredLog), [filteredLog]);
+  // Por alcance y SIN recortar por periodo: con 1M no habria «las 4 anteriores».
+  const volImprovePct = useMemo(() => volumeChange(filteredLogScope), [filteredLogScope]);
 
   // Display strings — deltas con signo: accent/accent50 si >=0 o null, orange si <0.
   const improveStr   = improvePct !== null ? `${improvePct > 0 ? '+' : ''}${improvePct}%` : '—';
@@ -232,10 +198,8 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
 
   const volStr      = volImprovePct !== null ? `${volImprovePct > 0 ? '+' : ''}${volImprovePct}%` : '—';
   const volColor    = (volImprovePct === null || volImprovePct >= 0) ? th.colors.accent : th.colors.orange;
-  const volSubColor = (lastSesDelta === null || lastSesDelta >= 0) ? th.tint.accent50 : th.colors.orange;
-  const volSubStr   = lastSesVol
-    ? `${fmtVol(lastSesVol, wDisplay)} ${weightLabel} ${t('stats.lastSessionShort')}`
-    : null;
+  const volSubColor = (volImprovePct === null || volImprovePct >= 0) ? th.tint.accent50 : th.colors.orange;
+  const volSubStr   = volImprovePct !== null ? t('stats.volVsPrevMonth') : null;
 
   // ── Exercise list ────────────────────────────────────────────────────────
   const exercisesWithLogs = useMemo(() => {

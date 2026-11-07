@@ -8,9 +8,7 @@
  * su `AppHeader`, su contenedor y el `paddingTop` del notch — los pone
  * `StatsScreen`, que es quien la monta ahora.
  *
-
- * El calendario de calor que tenía arriba se fue a la pestaña de Carga: pintaba
- * `internalLoad`, que es de allí. Ver `stats/LoadCalendar.jsx`.
+ * El calendario de calor vuelve arriba (T11-08), con el log propio por prop.
  */
 import { useState, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
@@ -29,6 +27,7 @@ import { Section, MenuRow } from '../ui/MenuList';
 import EmptyState from '../ui/EmptyState';
 import { ROW_ICON } from '../ui/rowIcons';
 import SessionCard from '../SessionCard';
+import LoadCalendar from '../stats/LoadCalendar';
 import SegmentedControl from '../ui/SegmentedControl';
 import RoundCheck from '../ui/RoundCheck';
 import { spacing, textStyles, withOpacity } from '../../theme';
@@ -58,6 +57,9 @@ export default function HistoryList() {
   const programs        = useStore((s) => s.programs);
   const getEffectiveTemplate = useStore((s) => s.getEffectiveTemplate);
   const profile         = useStore((s) => s.profile);
+  const exerciseLibrary = useStore((s) => s.exerciseLibrary);
+  const customExercises  = useStore((s) => s.customExercises);
+  const allExercises    = useMemo(() => ({ ...exerciseLibrary, ...customExercises }), [exerciseLibrary, customExercises]);
   const activeProgram   = programs[profile.activeProgramId];
 
   const [scope,            setScope]            = useState('all');
@@ -148,8 +150,9 @@ export default function HistoryList() {
       if (key !== month) {
         flush();
         month = key;
-        out.push({ id: `m-${key}`, month: `${d.toLocaleDateString(locale, { month: 'long' })} ${d.getFullYear()}` });
+        out.push({ id: `m-${key}`, month: `${d.toLocaleDateString(locale, { month: 'long' })} ${d.getFullYear()}`, count: 0 });
       }
+      out[out.length - 1].count += 1;   // la cabecera del mes en curso (el bloque aún no está en `out`)
       block.push({ id: e.id, entry: e });
     });
     flush();
@@ -194,6 +197,9 @@ export default function HistoryList() {
   // borrado). Debajo, qué se está viendo.
   const listHeader = (
     <>
+      <View style={styles.calendar}>
+        <LoadCalendar log={workoutLog} allExercises={allExercises} fallbackBodyWeight={profile.bodyWeight ?? null} />
+      </View>
       <View style={styles.scopeRow}>
         <View style={styles.flex}>
           {present.length > 0 && (
@@ -226,12 +232,6 @@ export default function HistoryList() {
           )}
         </TouchableOpacity>
       </View>
-      {workoutLog.length > 0 && (
-        <Text style={styles.countLine} numberOfLines={1}>
-          {t('history.sessionsN', { count: filtered.length })}
-          {letter ? ` · ${letter === FREE ? t('history.freePlural') : letter}` : ''}
-        </Text>
-      )}
     </>
   );
 
@@ -248,7 +248,11 @@ export default function HistoryList() {
         ]}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (item.month ? (
-          <Text style={styles.month}>{item.month}</Text>
+          // Cada mes con sus sesiones a la derecha.
+          <View style={styles.monthRow}>
+            <Text style={styles.month}>{item.month}</Text>
+            <Text style={styles.monthCount}>{t('history.sessionsN', { count: item.count })}</Text>
+          </View>
         ) : (
           <SessionCard
             session={item.entry}
@@ -333,6 +337,7 @@ const makeStyles = (th) => StyleSheet.create({
 
   // Fila de arriba: la cápsula de letras y la caja de filtros (la de Clientes).
   flex: { flex: 1 },
+  calendar: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   scopeRow: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -353,12 +358,13 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   filterBadgeText: { ...textStyles.micro, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
-  countLine: { ...textStyles.label, color: th.colors.mutedLight, paddingHorizontal: spacing.lg, paddingTop: spacing.sm2 },
   // Mes: la caja de las cabeceras de sección, con aire encima para separar bloques.
-  month: {
-    ...textStyles.caps, textTransform: 'uppercase', color: th.colors.mutedLight,
+  monthRow: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs2,
   },
+  month:      { ...textStyles.caps, textTransform: 'uppercase', color: th.colors.mutedLight },
+  monthCount: { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Hoja de filtros ──
   sheetBody: { paddingBottom: spacing.sm },

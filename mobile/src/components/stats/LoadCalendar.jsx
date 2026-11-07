@@ -1,5 +1,6 @@
 /**
- * LoadCalendar — el mes, con cada día teñido por su carga interna.
+ * LoadCalendar — el mes, con cada día teñido por su carga (interna; externa sin sRPE).
+ * Vuelve al Historial (T11-08); recibe `log`, `allExercises` y `fallbackBodyWeight` por prop.
  *
  * Vivía en la cabecera del Historial, y ahí estaba en el sitio equivocado: lo
  * que pinta es `internalLoad`, la misma util que sostiene el resto de esta
@@ -21,10 +22,9 @@ import { View, TouchableOpacity, StyleSheet, PixelRatio } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { Text } from '../ui/Text';
-import { useStore } from '../../../store/useStore';
 import { spacing, textStyles, withOpacity } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
-import { internalLoad } from '../../utils/trainingLoad';
+import { calendarLoads } from '../../utils/trainingLoad';
 
 // ── Constantes de la rejilla ──────────────────────────────────────────────────
 const CELL_H  = 24;
@@ -63,20 +63,12 @@ function heatLevel(load, cuts) {
  * cambiarían al pasar de mes y un mes de descarga se pintaría tan intenso como
  * uno duro.
  *
- * `internalLoad` es puro por entrada (sRPE × minutos acotados), así que esto no
+ * `calendarLoads` usa la carga interna y, si no hay ningún sRPE, la externa (T11-08).
+ * El log, la librería y el peso llegan por prop: en la ficha de un cliente son los
+ * del cliente, no los del store. Antes (sRPE × minutos acotados), esto no
  * necesita ni la librería de ejercicios ni el peso corporal.
  */
-function getLoadHeat(workoutLog) {
-  const byDay = new Map();
-  for (const entry of workoutLog ?? []) {
-    const d = new Date(entry.timestamp);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const load = internalLoad(entry);
-    const cur = byDay.get(key) ?? { load: null, sessions: 0 };
-    if (load != null) cur.load = (cur.load ?? 0) + load;
-    cur.sessions += 1;
-    byDay.set(key, cur);
-  }
+function getLoadHeat(byDay) {
   const values = [...byDay.values()].map((v) => v.load).filter((v) => v > 0).sort((a, b) => a - b);
   const q = (p) => values[Math.min(values.length - 1, Math.floor(values.length * p))];
   const cuts = values.length ? [q(0.25), q(0.5), q(0.75)] : [];
@@ -99,18 +91,17 @@ function getMonthData(y, m, heat) {
   // entrenó pero no contestó el sRPE: no hay carga que pintar.
   const trainedDays = {};
   for (let day = 1; day <= daysInM; day++) {
-    const hit = heat.byDay.get(`${y}-${m}-${day}`);
+    const hit = heat.byDay.get(new Date(y, m, day).getTime());
     if (hit) trainedDays[day] = hit;
   }
   return { weeks, trainedDays };
 }
 // ── WorkoutCalendar ────────────────────────────────────────────────────────────
 
-export default function LoadCalendar() {
+export default function LoadCalendar({ log, allExercises, fallbackBodyWeight = null }) {
   const { t }            = useTranslation();
   const cal              = useThemedStyles(makeCal);
   const th               = useTheme();
-  const workoutLog       = useStore((s) => s.workoutLog);
 
   const today = new Date();
   const [year,  setYear]  = useState(today.getFullYear());
@@ -140,7 +131,10 @@ export default function LoadCalendar() {
   }
 
   // La escala se calcula sobre TODO el log, no sobre el mes visible.
-  const heat = useMemo(() => getLoadHeat(workoutLog), [workoutLog]);
+  const heat = useMemo(
+    () => getLoadHeat(calendarLoads(log, allExercises, { fallbackBodyWeight }).byDay),
+    [log, allExercises, fallbackBodyWeight],
+  );
   const { weeks, trainedDays } = useMemo(
     () => getMonthData(year, month, heat),
     [year, month, heat],
@@ -278,7 +272,8 @@ const makeCal = (th) => StyleSheet.create({
 
   cell: {
     height:         CELL_H,
-    borderRadius:   th.radius.xs + 1,
+    borderRadius:   th.radius.sm,
+    overflow:       'hidden',
     alignItems:     'center',
     justifyContent: 'center',
   },

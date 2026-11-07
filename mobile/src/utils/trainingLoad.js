@@ -17,7 +17,7 @@
  */
 import { epley1RM } from './oneRm';
 import { blockEstimatedSec } from './conditioningBlocks';
-import { doneSets } from './sessionRecap';
+import { doneSets, recapStats } from './sessionRecap';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -117,6 +117,8 @@ export function sessionMinutes(entry) {
   const modelMin = modelSec(entry) / 60;
   if (modelMin <= 0) return 0;
   const wallMin = (entry?.duration ?? 0) / 60000;
+  // Sin reloj (0, ausente o corrupto) manda el modelo, no el suelo del clamp (T04 §7, T11 §13).
+  if (!(wallMin > 0)) return modelMin;
   return Math.min(Math.max(wallMin, modelMin * 0.5), modelMin * 2);
 }
 
@@ -124,8 +126,8 @@ export function sessionMinutes(entry) {
 
 /** sRPE × minutos. `null` (hueco, NUNCA 0) si la sesión no tiene sRPE. */
 export function internalLoad(entry) {
-  const rpe = entry?.sessionRpe;
-  if (rpe == null) return null;
+  const rpe = entry?.sessionRpe == null ? NaN : Number(entry.sessionRpe);
+  if (!(rpe >= 0) || !Number.isFinite(rpe)) return null;   // ausente, negativo o corrupto: hueco, nunca NaN
   const min = sessionMinutes(entry);
   return min > 0 ? rpe * min : null;
 }
@@ -733,6 +735,57 @@ export function loadSummary(log, allExercises, { fallbackBodyWeight = null, now 
   };
 }
 
+/**
+ * Carga de cada día entrenado para teñir el calendario del Historial (T11-08):
+ * interna (sRPE × minutos) si alguna sesión tiene sRPE; si no, la externa de
+ * `loadSummary`, para que los días entrenados no salgan solo en contorno.
+ * @returns {{ source: 'internal'|'external', byDay: Map<number, {load: number|null, sessions: number}> }}
+ *   La clave es el inicio del día local. `load: null` = entrenó pero no hay carga que pintar.
+ */
+export function calendarLoads(log, allExercises, { fallbackBodyWeight = null, now = Date.now() } = {}) {
+  const byDay = new Map();
+  if (!(log ?? []).some((e) => internalLoad(e) != null)) {
+    const { days } = loadSummary(log, allExercises, { fallbackBodyWeight, now });
+    for (const d of days) if (d.sessions > 0) byDay.set(d.day, { load: d.value > 0 ? d.value : null, sessions: d.sessions });
+    return { source: 'external', byDay };
+  }
+  for (const e of log) {
+    const key = startOfDay(e.timestamp);
+    const load = internalLoad(e);
+    const cur = byDay.get(key) ?? { load: null, sessions: 0 };
+    if (load != null) cur.load = (cur.load ?? 0) + load;
+    cur.sessions += 1;
+    byDay.set(key, cur);
+  }
+  return { source: 'internal', byDay };
+}
+
+/**
+ * VOLUMEN (T11-09): % de cambio del volumen medio por bloque de 7 días, últimas 4
+ * semanas contra las 4 anteriores. Los bloques acaban ayer si hoy no hay sesión (§3).
+ * Las semanas de descanso cuentan 0; si una de las dos ventanas no tiene ninguna
+ * sesión (o la anterior suma 0) → null.
+ */
+export function volumeChange(log, { now = Date.now() } = {}) {
+  const today = startOfDay(now);
+  const hasToday = (log ?? []).some((e) => startOfDay(e.timestamp) === today);
+  const end = hasToday ? today : shiftDay(today, -1);
+  const from1 = shiftDay(end, -27);
+  const from0 = shiftDay(end, -55);
+  const sum = (a, b) => {
+    let n = 0, vol = 0;
+    for (const e of log ?? []) {
+      const d = startOfDay(e.timestamp);
+      if (d >= a && d <= b) { n += 1; vol += recapStats(e).volume; }
+    }
+    return { n, vol };
+  };
+  const cur = sum(from1, end);
+  const prev = sum(from0, shiftDay(from1, -1));
+  if (!cur.n || !prev.n || !(prev.vol > 0)) return null;
+  return Math.round((cur.vol / prev.vol - 1) * 100);   // medias de 4 bloques: el /4 se cancela
+}
+
 /** Las últimas `n` ventanas de 7 días (de la más vieja a la última), acabando en el último día de `days`. */
 export function weekBlocks(days, n = 8) {
   const out = [];
@@ -746,7 +799,7 @@ export function weekBlocks(days, n = 8) {
 
 /** sRPE medio de las sesiones de cada bloque de 7 días (null sin sRPE). La última es «últimos 7 días». */
 export function effortBlocks(log, days, n = 8) {
-  const rated = (log ?? []).filter((e) => e.sessionRpe != null)
+  const rated = (log ?? []).filter((e) => e.sessionRpe != null && Number.isFinite(Number(e.sessionRpe)))
     .map((e) => ({ key: startOfDay(e.timestamp), rpe: Number(e.sessionRpe) }));
   return weekBlocks(days, n).map((b) => {
     const r = rated.filter((s) => s.key >= b[0].day && s.key <= b[b.length - 1].day);
@@ -771,7 +824,8 @@ export function ratedSessions(log, endDay, span) {
 
 /**
  * Umbral (en %) bajo el cual un cambio de carga o de esfuerzo se lee «plano» en el chip de
- * Esfuerzo vs carga. Provisional: T11-10 decide el valor final mirando el visor.
+ * Esfuerzo vs carga (±5 %, estrictamente mayor para subir o bajar). Fijado en T11-10 contra
+ * las situaciones del visor de carga: ver la tabla de `docs/specs/T11-carga-v1.md` §13.
  */
 export const TREND_FLAT_PCT = 5;
 
@@ -864,33 +918,87 @@ export function rpeByExercise(log, { from, endDay }) {
     .sort((a, b) => (b.rpe4w ?? -1) - (a.rpe4w ?? -1));
 }
 
+/** Mejor e1RM de los registros cuyo día cae en [from, to] (inicios de día), o null. */
+const bestE1rmIn = (records, from, to) => {
+  let best = null;
+  for (const r of records) {
+    if (r.e1rm == null) continue;
+    const k = startOfDay(r.ts);
+    if (k >= from && k <= to && (best == null || r.e1rm > best)) best = r.e1rm;
+  }
+  return best;
+};
+
 /**
- * Cambio de fuerza en 4 semanas, en %: media de los cambios del e1RM por ejercicio
- * (mejor e1RM de los 28 días que acaban en `endDay` contra el de los 28 anteriores),
- * contando solo los ejercicios con dato en las dos ventanas. Un ejercicio estrenado
- * hace 2 semanas no entra, así que no hunde la cifra.
+ * Cambio de fuerza por ejercicio (T11-06), en % (sin redondear):
+ *  - `pct4w`: mejor e1RM de los 28 días que acaban en `endDay` contra el de los 28 anteriores.
+ *  - `pctPeriod`: mejor e1RM de esos mismos 28 días finales contra el de los PRIMEROS 28 días
+ *    del periodo (`fromDay` … `fromDay` + 27). Si las dos ventanas se solapan (periodo de 1M)
+ *    no hay comparación y sale null. Sin `fromDay` también.
+ * Un ejercicio solo entra con dato en las dos ventanas de al menos una de las dos cifras.
+ * Las ventanas son bloques de 7 días que acaban en `endDay`, nunca semanas naturales.
  *
- * @param {number} endDay inicio del último día de la serie (`loadSummary().endDay`)
- * @returns {number|null}
+ * @param {number} endDay  inicio del último día de la serie (`loadSummary().endDay`)
+ * @param {number|null} fromDay inicio del primer día del periodo
+ * @returns {Array<{ exerciseId: string, pct4w: number|null, pctPeriod: number|null }>} por `pct4w`, de más a menos (null al final)
  */
-export function strengthChange(log, allExercises, { fallbackBodyWeight = null, endDay, weeks = 4 } = {}) {
-  if (endDay == null) return null;
+export function strengthByExercise(log, allExercises, { fallbackBodyWeight = null, endDay, fromDay = null, weeks = 4 } = {}) {
+  if (endDay == null) return [];
   const idx = buildIndex([...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp), allExercises, fallbackBodyWeight);
   const span = weeks * 7;
   const curFrom = shiftDay(endDay, -(span - 1));
   const prevFrom = shiftDay(endDay, -(2 * span - 1));
-  const changes = [];
-  for (const records of idx.values()) {
-    let cur = null; let prev = null;
-    for (const r of records) {
-      if (r.e1rm == null) continue;
-      const k = startOfDay(r.ts);
-      if (k >= curFrom && k <= endDay) { if (cur == null || r.e1rm > cur) cur = r.e1rm; }
-      else if (k >= prevFrom && k < curFrom) { if (prev == null || r.e1rm > prev) prev = r.e1rm; }
-    }
-    if (cur != null && prev > 0) changes.push(cur / prev - 1);
+  const firstTo = fromDay != null ? shiftDay(fromDay, span - 1) : null;
+  const pct = (cur, base) => (cur != null && base > 0 ? (cur / base - 1) * 100 : null);
+  const rows = [];
+  for (const [exerciseId, records] of idx) {
+    const cur = bestE1rmIn(records, curFrom, endDay);
+    const pct4w = pct(cur, bestE1rmIn(records, prevFrom, shiftDay(curFrom, -1)));
+    const pctPeriod = firstTo != null && firstTo < curFrom ? pct(cur, bestE1rmIn(records, fromDay, firstTo)) : null;
+    if (pct4w != null || pctPeriod != null) rows.push({ exerciseId, pct4w, pctPeriod });
   }
-  return changes.length ? Math.round((changes.reduce((a, b) => a + b, 0) / changes.length) * 100) : null;
+  return rows.sort((a, b) => (b.pct4w ?? -Infinity) - (a.pct4w ?? -Infinity));
+}
+
+/** Media de `key` ('pct4w' | 'pctPeriod') de las filas de `strengthByExercise` que lo tienen, o null. */
+export function meanPct(rows, key) {
+  const v = (rows ?? []).map((r) => r[key]).filter((x) => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+/**
+ * Cambio de fuerza en 4 semanas, en % redondeado: la media de `pct4w` por ejercicio, así que
+ * la tarjeta y la tabla de `strengthByExercise` coinciden por construcción. Un ejercicio
+ * estrenado hace 2 semanas no entra y no hunde la cifra.
+ *
+ * @param {number} endDay inicio del último día de la serie (`loadSummary().endDay`)
+ * @returns {number|null}
+ */
+export function strengthChange(log, allExercises, opts = {}) {
+  const m = meanPct(strengthByExercise(log, allExercises, opts), 'pct4w');
+  return m == null ? null : Math.round(m);
+}
+
+/**
+ * Series de la semana natural en curso (lunes a domingo de `now`) contra lo previsto (T11-07).
+ * Se cuentan igual que `setsByMuscleGroup` (el dropset no suma).
+ *
+ * @param {Array<{group,sets}>|null} planned `plannedSetsByGroup`/`stageSetsByGroup`; null o vacío = sin plan
+ * @returns {{ rows: Array<{group:string, done:number, planned:number|null}>, done:number, planned:number|null }}
+ *   Primero los grupos previstos (de más a menos previstas), luego los hechos sin prever (`planned: null`).
+ */
+export function groupSetsVsPlan(log, allExercises, planned, { now = Date.now() } = {}) {
+  const from = startOfWeek(now);
+  const done = new Map(setsByMuscleGroup(log, allExercises, { from, to: shiftDay(from, 7) - 1 }).map((g) => [g.group, g.sets]));
+  const plan = (planned ?? []).filter((p) => p.sets > 0);
+  const rows = plan.map((p) => ({ group: p.group, done: done.get(p.group) ?? 0, planned: p.sets }));
+  const inPlan = new Set(plan.map((p) => p.group));
+  for (const [group, n] of done) if (!inPlan.has(group)) rows.push({ group, done: n, planned: null });
+  return {
+    rows,
+    done: [...done.values()].reduce((a, b) => a + b, 0),
+    planned: plan.length ? plan.reduce((a, p) => a + p.sets, 0) : null,
+  };
 }
 
 /**

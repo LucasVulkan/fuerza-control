@@ -184,7 +184,7 @@
     },
     "effortVsLoad": {
       "name": "Effort vs load",
-      "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so each is drawn as the % change from its first 7-day block with sessions in the period. The chip compares the average of the last 4 blocks with the 4 before (always 4 against 4, even over one month); a change under ±5 % reads as flat.",
+      "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so each is drawn as the % change from its first 7-day block with sessions in the period. The chip compares the average of the last 4 blocks with the 4 before (always 4 against 4, even over one month); a change of up to ±5 % reads as flat, and only what goes beyond that counts as rising or falling.",
       "read": "What matters is whether they separate, not where they sit. More work at the same cost means you are adapting. The same work costing more is accumulated fatigue. Both rising is a hard block, and both falling is a deload."
     },
     "performance": {
@@ -255,9 +255,9 @@
     },
     "volumeTrend": {
       "name": "Volume (Progress tab)",
-      "what": "Compares the volume of the period's first session with that of the last one.",
-      "formula": "(last session's volume − first session's volume) ÷ first session's volume × 100",
-      "caveat": "It is not a trend line: it's two points. An unusual session at either end changes the result completely."
+      "what": "Average volume per week over the last 4 weeks, compared with the 4 before.",
+      "formula": "average weekly volume of the last 4 weeks ÷ that of the 4 before − 1, as %",
+      "caveat": "Weeks without training count as volume 0. With no sessions in either window there is no figure."
     },
     "muscleGroupSets": {
       "name": "Sets per muscle group",
@@ -1498,6 +1498,7 @@
     "statVolume": "Volume",
     "thisWeek": "{{count}} this week",
     "lastSessionShort": "last ses.",
+    "volVsPrevMonth": "in 4 weeks",
     "lastShort": "last",
     "searchExercise": "Search exercise…",
     "filterExercises": "Filter exercises",
@@ -1777,6 +1778,17 @@
     "rpeLast7": "RPE · last 7 days",
     "rpeMeanChip": "{{p}} average",
     "in4Weeks": "in 4 weeks",
+    "strengthUnit": "in 4 weeks",
+    "strengthBest": "best: {{name}}",
+    "fourWeeksBand": "4 WK",
+    "same": "same",
+    "strengthTableTitle": "Strength by exercise",
+    "strengthFoot": "Change in estimated 1RM: the last 4 weeks against the 4 before, and against the first 4 of the period.",
+    "strengthFoot1m": "Change in estimated 1RM: the last 4 weeks against the 4 before.",
+    "groupsMeta": "{{done}} of {{planned}} this week",
+    "groupsMetaNoPlan": "{{done}} this week",
+    "groupsShowAll": "Show all {{count}} groups",
+    "groupsShowLess": "Show less",
     "stateLoading": "This week you have trained more than in your last month.",
     "stateSteady": "This week is in line with your last month.",
     "stateUnloading": "This week you have trained less than in your last month.",
@@ -1838,7 +1850,6 @@
     "groupsTitle": "Sets per group",
     "last7d": "last 7 days",
     "groupOther": "Other",
-    "groupsHint": "The marks show the {{min}}-{{max}} weekly sets reference range per group. Counts direct volume: a bench press adds to chest, not triceps.",
     "strainTitle": "Strain by week",
     "lastWeeks": "last {{count}}",
     "strainHint": "Load × monotony of the last 7 days, against your average of the previous 4 weeks.",
