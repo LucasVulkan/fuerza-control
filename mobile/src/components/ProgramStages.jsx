@@ -16,6 +16,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { View, Pressable, TouchableOpacity, StyleSheet } from 'react-native';
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing, interpolate,
+  LinearTransition, FadeIn, FadeOut, LayoutAnimationConfig,
 } from 'react-native-reanimated';
 import { Rise } from './ui/Rise';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,8 @@ import { useStore } from '../../store/useStore';
 import { Text } from './ui/Text';
 import Marked from './ui/Marked';
 import DragSheet from './DragSheet';
+import StageEndCard from './StageEndCard';
+import useStageEnd from '../hooks/useStageEnd';
 import { SheetContext } from './ui/sheetContext';
 import { CheckIcon, LockIcon } from './ui/EditorIcons';
 import { stageWeekLabel, programTotals, weeklySessions } from '../utils/stageProgress';
@@ -57,6 +60,11 @@ const FILL_R = 420;
 const FILL_MS  = 450;            // como las entradas del paywall y las pestañas de Inicio
 const EMPTY_MS = 200;
 const PRESS_DELAY = 100;
+// El cambio de etapa en la lista: lo que cambia se funde y el resto se recoloca.
+const SWAP_MS     = 350;
+const SWAP_LAYOUT = LinearTransition.duration(SWAP_MS).easing(Easing.out(Easing.cubic));
+const SWAP_IN     = FadeIn.duration(SWAP_MS).delay(SWAP_MS / 2);
+const SWAP_OUT    = FadeOut.duration(SWAP_MS / 2);
 
 function StageRow({ number, name, meta, done, deload, locked, picked, onPress }) {
   const th     = useTheme();
@@ -191,6 +199,8 @@ export default function ProgramStages({ program, status, firstIndex, onSelect })
   const { t }      = useTranslation();
   const styles     = useThemedStyles(makeStyles);
   const clientSync = useStore((s) => s.clientSync);
+  // Fin de etapa: el aviso ocupa el sitio de la en curso (el mismo que en Inicio).
+  const stageEnd   = useStageEnd(program);
 
   const [picked, setPicked] = useState(null);
   const [sheet,  setSheet]  = useState(null);
@@ -228,10 +238,19 @@ export default function ProgramStages({ program, status, firstIndex, onSelect })
         </View>
       </Rise>
 
+      {/* Al avanzar o alargar, la ficha que cambia se funde con la nueva y las
+          demás se recolocan: la siguiente pasa a en curso y la de antes a
+          completada. Sin fundido al llegar a la pantalla (eso es de `Rise`). */}
+      <LayoutAnimationConfig skipEntering>
       <View style={styles.list}>
-        {stages.map((st, i) => (
-          <Rise key={st.id ?? i} index={firstIndex + 1 + i}>
-            {i === current ? (
+        {stages.map((st, i) => {
+          const kind = i !== current ? 'row' : stageEnd ? 'end' : 'now';
+          return (
+          <Rise key={st.id ?? i} index={firstIndex + 1 + i} layout={SWAP_LAYOUT}>
+            <Reanimated.View key={kind} entering={SWAP_IN} exiting={SWAP_OUT}>
+            {kind === 'end' ? (
+              <StageEndCard notice={stageEnd} />
+            ) : kind === 'now' ? (
               <CurrentStage number={i + 1} name={nameOf(st, i)} meta={metaOf(st, i)} status={status} deload={isDeload(st)} />
             ) : (
               <StageRow
@@ -245,9 +264,12 @@ export default function ProgramStages({ program, status, firstIndex, onSelect })
                 onPress={() => pick(i)}
               />
             )}
+            </Reanimated.View>
           </Rise>
-        ))}
+          );
+        })}
       </View>
+      </LayoutAnimationConfig>
 
       {!!sheet && (
         <DragSheet visible onClose={() => { setSheet(null); setPicked(null); }}>
