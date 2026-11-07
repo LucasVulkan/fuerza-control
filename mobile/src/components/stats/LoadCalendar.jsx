@@ -272,7 +272,8 @@ const makeCal = (th) => StyleSheet.create({
 
   cell: {
     height:         CELL_H,
-    borderRadius:   th.radius.xs + 1,
+    borderRadius:   th.radius.sm,
+    overflow:       'hidden',
     alignItems:     'center',
     justifyContent: 'center',
   },

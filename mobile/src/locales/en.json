@@ -256,7 +256,7 @@
     "volumeTrend": {
       "name": "Volume (Progress tab)",
       "what": "Average volume per week over the last 4 weeks, compared with the 4 before.",
-      "formula": "(average weekly volume of the last 4 weeks − that of the 4 before) ÷ that of the 4 before × 100",
+      "formula": "average weekly volume of the last 4 weeks ÷ that of the 4 before − 1, as %",
       "caveat": "Weeks without training count as volume 0. With no sessions in either window there is no figure."
     },
     "muscleGroupSets": {
@@ -1498,7 +1498,7 @@
     "statVolume": "Volume",
     "thisWeek": "{{count}} this week",
     "lastSessionShort": "last ses.",
-    "volVsPrevMonth": "vs previous month",
+    "volVsPrevMonth": "in 4 weeks",
     "lastShort": "last",
     "searchExercise": "Search exercise…",
     "filterExercises": "Filter exercises",
@@ -1778,7 +1778,7 @@
     "rpeLast7": "RPE · last 7 days",
     "rpeMeanChip": "{{p}} average",
     "in4Weeks": "in 4 weeks",
-    "strengthUnit": "in 4 weeks · since {{date}}",
+    "strengthUnit": "in 4 weeks",
     "strengthBest": "best: {{name}}",
     "fourWeeksBand": "4 WK",
     "same": "same",

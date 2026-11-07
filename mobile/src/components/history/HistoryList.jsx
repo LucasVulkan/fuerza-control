@@ -150,8 +150,9 @@ export default function HistoryList() {
       if (key !== month) {
         flush();
         month = key;
-        out.push({ id: `m-${key}`, month: `${d.toLocaleDateString(locale, { month: 'long' })} ${d.getFullYear()}` });
+        out.push({ id: `m-${key}`, month: `${d.toLocaleDateString(locale, { month: 'long' })} ${d.getFullYear()}`, count: 0 });
       }
+      out[out.length - 1].count += 1;   // la cabecera del mes en curso (el bloque aún no está en `out`)
       block.push({ id: e.id, entry: e });
     });
     flush();
@@ -231,12 +232,6 @@ export default function HistoryList() {
           )}
         </TouchableOpacity>
       </View>
-      {workoutLog.length > 0 && (
-        <Text style={styles.countLine} numberOfLines={1}>
-          {t('history.sessionsN', { count: filtered.length })}
-          {letter ? ` · ${letter === FREE ? t('history.freePlural') : letter}` : ''}
-        </Text>
-      )}
     </>
   );
 
@@ -253,7 +248,11 @@ export default function HistoryList() {
         ]}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (item.month ? (
-          <Text style={styles.month}>{item.month}</Text>
+          // Cada mes con sus sesiones a la derecha.
+          <View style={styles.monthRow}>
+            <Text style={styles.month}>{item.month}</Text>
+            <Text style={styles.monthCount}>{t('history.sessionsN', { count: item.count })}</Text>
+          </View>
         ) : (
           <SessionCard
             session={item.entry}
@@ -359,12 +358,13 @@ const makeStyles = (th) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   filterBadgeText: { ...textStyles.micro, fontFamily: 'Inter_900Black', color: th.colors.onAccent },
-  countLine: { ...textStyles.label, color: th.colors.mutedLight, paddingHorizontal: spacing.lg, paddingTop: spacing.sm2 },
   // Mes: la caja de las cabeceras de sección, con aire encima para separar bloques.
-  month: {
-    ...textStyles.caps, textTransform: 'uppercase', color: th.colors.mutedLight,
+  monthRow: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs2,
   },
+  month:      { ...textStyles.caps, textTransform: 'uppercase', color: th.colors.mutedLight },
+  monthCount: { ...textStyles.label, color: th.colors.mutedLight },
 
   // ── Hoja de filtros ──
   sheetBody: { paddingBottom: spacing.sm },

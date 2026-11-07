@@ -76,7 +76,7 @@ const GHOST_BARS = [40, 55, 50, 62, 30, 58, 64, 60, 66];
 const GUIDE = { strokeDasharray: '2 3', strokeWidth: 1 };
 
 /** Ancho de la columna del eje: el de su rótulo más largo (≈ 6,6 px por carácter a 11-12 px) y 6 de aire. */
-const axisWidth = (labels) => Math.ceil(Math.max(...labels.map((l) => l.length)) * 6.6) + 6;
+const axisWidth = (labels) => Math.ceil(Math.max(...labels.map((l) => l.length)) * 7.4) + 8;
 
 /** Fechas bajo el área de la gráfica: la primera, un par en medio y la última. `right` = ancho del eje. */
 function XLabels({ dates, right = 0, span = 1 }) {
@@ -181,7 +181,7 @@ function AxisLabels({ ticks, height, width }) {
   return (
     <View style={{ width, height }}>
       {ticks.map(({ y, label }) => (
-        <Text key={label} style={[textStyles.label, { position: 'absolute', right: 0, top: y - 7, lineHeight: 14, color: th.colors.mutedLight }]}>
+        <Text key={label} numberOfLines={1} style={[textStyles.label, { position: 'absolute', right: 0, top: y - 7, lineHeight: 14, color: th.colors.mutedLight }]}>
           {label}
         </Text>
       ))}
@@ -229,7 +229,7 @@ function EffortBars({ bars, dates, guides = false, height = 84 }) {
  * Opcionales (Fuerza): `area` rellena bajo la línea; `bandFrom` (índice) pinta una banda hasta el final
  * con `bandLabel` arriba; `hollowAt` (índice) marca con un punto hueco la primera serie.
  */
-function PctChart({ series, dates, height = 110, area = false, bandFrom = null, hollowAt = null, bandLabel = null }) {
+function PctChart({ series, dates, height = 110, area = false, bandFrom = null, hollowAt = null, bandLabel = null, connect = false }) {
   const th = useTheme();
   const [width, setWidth] = useState(0);
   const g = useMemo(() => {
@@ -250,7 +250,7 @@ function PctChart({ series, dates, height = 110, area = false, bandFrom = null, 
     const lines = series.map((l) => {
       const segments = []; let cur = [];
       l.values.forEach((v, i) => {
-        if (v == null) { if (cur.length > 1) segments.push(cur); cur = []; return; }
+        if (v == null) { if (connect) return; if (cur.length > 1) segments.push(cur); cur = []; return; }
         cur.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
       });
       if (cur.length > 1) segments.push(cur);
@@ -267,7 +267,7 @@ function PctChart({ series, dates, height = 110, area = false, bandFrom = null, 
       bandX: bandFrom != null ? x(bandFrom) : null,
       hollow: hv != null ? { x: x(hollowAt), y: y(hv) } : null,
     };
-  }, [width, series, height, area, bandFrom, hollowAt]);
+  }, [width, series, height, area, bandFrom, hollowAt, connect]);
   return (
     <View>
     <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -514,13 +514,17 @@ export default function LoadTab({
     if (shown.length < 2) return null;
     const byWeek = new Map(shown.map((w) => [w.weekStart, w.index]));
     const dates = [];
-    for (let w = shown[0].weekStart; w <= shown[shown.length - 1].weekStart; w = addDays(w, 7)) dates.push(w);
+    for (let w = shown[0].weekStart; w <= load.endDay; w = addDays(w, 7)) dates.push(w);
     const idx = indexTo100(dates.map((w) => byWeek.get(w) ?? null));
     if (idx.filter((v) => v != null).length < 2) return null;
     const values = idx.map((v) => (v == null ? null : v - 100));
     const cutoff = addDays(load.endDay, -28);
     const ago = dates.reduce((a, d, i) => (d <= cutoff ? i : a), -1);
-    return { values, dates, bandFrom: Math.max(ago, 0), hollowAt: period === '1m' ? 0 : (ago >= 0 ? ago : null) };
+    const first = values.findIndex((v) => v != null);
+    // El punto hueco va en la última semana con dato de hace 4 semanas o antes; sin ella, al inicio.
+    let hollow = first;
+    if (period !== '1m') for (let i = 0; i <= ago; i++) if (values[i] != null) hollow = i;
+    return { values, dates, bandFrom: Math.max(ago, 0), hollowAt: hollow };
   }, [perfAll, periodFrom, period, load.endDay]);
 
   const scroll = (children) => (
@@ -598,12 +602,6 @@ export default function LoadTab({
   const strengthChip = period === '1m'
     ? (bestRow ? { label: t('load.strengthBest', { name: exName(bestRow.exerciseId) }), cell: pctCell(bestRow.pct4w) } : null)
     : (strengthPeriod != null ? { label: periodLabel, cell: pctCell(strengthPeriod) } : null);
-  const since4w = (() => {
-    if (load.endDay == null) return '';
-    const d = new Date(load.endDay);
-    d.setDate(d.getDate() - 27);
-    return d.toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
-  })();
   const strengthRowsShown = strengthRows.filter((r) => period !== '1m' || r.pct4w != null);
 
   const hot = rpeRows.reduce((m, r) => (r.rpe4w != null && (m == null || r.rpe4w > m) ? r.rpe4w : m), null);
@@ -755,7 +753,7 @@ export default function LoadTab({
           <>
             {figure(
               pctOrDash(strengthPct),
-              strengthPct != null ? t('load.strengthUnit', { date: since4w }) : null,
+              strengthPct != null ? t('load.strengthUnit') : null,
               strengthChip ? (
                 <View style={styles.chipBox}>
                   <Text style={styles.chipMuted}>
@@ -775,6 +773,7 @@ export default function LoadTab({
                 bandFrom={performance.bandFrom}
                 hollowAt={performance.hollowAt}
                 bandLabel={t('load.fourWeeksBand')}
+                connect
               />
             )}
 

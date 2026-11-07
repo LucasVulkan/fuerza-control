@@ -440,7 +440,7 @@ variaciones enormes.
   las 4 anteriores, en % (mismos bloques que §3). Sin datos en las dos ventanas: «—».
   Se calcula sobre el log filtrado por alcance (programa o todo), **no** recortado
   por el periodo: con 1M elegido no existirían «las 4 anteriores».
-- **Subtítulo:** «vs mes anterior».
+- **Subtítulo:** «en 4 semanas», como la tarjeta FUERZA de Carga («vs mes anterior» no cabía, 7-nov).
 - **Ficha `volumeTrend`:** «Volumen medio por semana de las últimas 4 semanas,
   comparado con las 4 anteriores.» Se quita el aviso de «son dos puntos».
 - El tonelaje sigue saliendo de `recapStats` (una sola definición de volumen).

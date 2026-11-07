@@ -256,7 +256,7 @@
     "volumeTrend": {
       "name": "Volumen (pestaña Progreso)",
       "what": "Volumen medio por semana de las últimas 4 semanas, comparado con las 4 anteriores.",
-      "formula": "(volumen medio por semana de las últimas 4 semanas − el de las 4 anteriores) ÷ el de las 4 anteriores × 100",
+      "formula": "volumen medio por semana de las últimas 4 semanas ÷ el de las 4 anteriores − 1, en %",
       "caveat": "Las semanas sin entrenar cuentan como volumen 0. Sin sesiones en alguna de las dos ventanas no hay cifra."
     },
     "muscleGroupSets": {
@@ -1498,7 +1498,7 @@
     "statVolume": "Volumen",
     "thisWeek": "{{count}} esta semana",
     "lastSessionShort": "últ. ses.",
-    "volVsPrevMonth": "vs mes anterior",
+    "volVsPrevMonth": "en 4 semanas",
     "lastShort": "últ.",
     "searchExercise": "Buscar ejercicio…",
     "filterExercises": "Filtrar ejercicios",
@@ -1778,7 +1778,7 @@
     "rpeLast7": "RPE · últimos 7 días",
     "rpeMeanChip": "media {{p}}",
     "in4Weeks": "en 4 semanas",
-    "strengthUnit": "en 4 semanas · desde el {{date}}",
+    "strengthUnit": "en 4 semanas",
     "strengthBest": "mejor: {{name}}",
     "fourWeeksBand": "4 SEM",
     "same": "igual",
