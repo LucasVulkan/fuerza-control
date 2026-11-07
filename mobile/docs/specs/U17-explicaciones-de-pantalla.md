@@ -82,6 +82,14 @@ velo y se resta su origen. El globo lleva el icono **?**, un piquito perpendicul
 borde que apunta al elemento (sin piquito si va centrado) y entra con un fundido desde
 el lado del elemento; el aro lima late como el de `Spot`.
 
+El texto de un paso admite **marcas en línea** (`tour/richText.js`, se pintan en
+`tour/RichText.jsx`): `<main>Guardar</main>` y `<btn>Cancelar</btn>` dibujan el botón (lima
+o neutro) con el texto que tiene en la app; `<red>…</red>` y `<blue>…</blue>`, un estado con
+su color; `<handle/>`, `<gear/>`, `<paste/>`, `<account/>`, `<sort/>`, `<send/>` y `<mark/>`,
+el icono real de la app en ese sitio. El `\n` separa párrafos. El globo no crece más que la
+pantalla: si el texto es largo, su parte central se desplaza. Para el lector de pantalla el
+texto va plano (los iconos, con su nombre en `tour.icons`).
+
 Un paso puede llevar además:
 
 - `scrollRef`: el `ScrollView`/`FlatList` donde está el elemento. Si el elemento no
@@ -186,22 +194,29 @@ Decisión del usuario (5-nov). Orientativo, a precisar sobre la pantalla real:
 
 | Pantalla | Paso | Qué explica |
 |---|---|---|
-| Editar programa (`ProgramEditorScreen`) | 1 | La ficha y las etapas: datos del programa y, si hay etapas, cuál estás editando (un solo hueco que envuelve la tarjeta y las tarjetas de etapa) |
-| Editar programa | 2 | Las sesiones: son las de la etapa seleccionada (si hay etapas), lo que se espera cada semana; se entra para editar los ejercicios y se reordenan arrastrando |
+| Editar programa (`ProgramEditorScreen`) | 1 | General, sin hueco: qué es el editor y cómo se sale (Guardar · Cancelar) |
+| Editar programa | 2 | El programa: la tarjeta de identidad |
+| Editar programa | 3 | Solo con etapas: qué son las etapas, sin hueco y con un esquema de cuatro etapas de ejemplo (`tour/StagesScheme.jsx`) |
+| Editar programa | 4 | Solo con etapas: el selector de etapas (las fichas con su tramo de semanas) |
+| Editar programa | 5 | Solo con etapas: la ficha de la etapa seleccionada y su engranaje de ajustes |
+| Editar programa | 6 | Las sesiones: son las de la etapa seleccionada (si hay etapas), lo que se espera cada semana; se entra para editar los ejercicios y se reordenan con el asa |
 | Editor de sesión (`SessionEditorScreen`) | 1 | El selector de sesiones (A · B · C): pasas a editar otra sesión sin salir (solo si hay más de una). Es el segmentado de verdad de la pantalla; el editor no tiene selector de etapas |
 | Editor de sesión | 2 | La lista de ejercicios: deslizar una fila para sus acciones y arrastrar el asa para reordenar (hueco en la primera fila, con `finger`) |
 
 - La sección de sesiones y la lista quedan a menudo por debajo de la pantalla: estos
   pasos usan `scrollRef` (§3.2).
-- Sin etapas, el texto de las sesiones no las nombra. El editor de sesión tiene un
+- Sin etapas, el editor de programa tiene tres pasos (1, 2 y 6) y el texto de las sesiones
+  no las nombra. El editor de sesión tiene un
   solo paso (la lista) si el programa solo tiene una sesión.
 - El «?» va en `ScreenHeader` (prop `onHelp`, modo editor), antes de «···» y «Guardar».
 - Sesión sin ejercicios: sin paso de la lista; sale la primera vez que tenga uno.
 
 **Probar U17-03**
 
-- [ ] Editar programa con etapas → la ficha con la etapa y luego las sesiones, aunque estén por debajo (la lista baja sola)
-- [ ] Editar programa sin etapas → el texto de sesiones no habla de etapas
+- [ ] Editar programa con etapas → general, programa, esquema de etapas, selector, ficha de etapa y sesiones, aunque estén por debajo (la lista baja sola)
+- [ ] Editar programa sin etapas → general, programa y sesiones; el texto de sesiones no habla de etapas
+- [ ] Los botones, el engranaje y el asa salen dibujados dentro del texto y alineados con la línea (iOS y Android)
+- [ ] Un texto largo (editor de sesión, ficha de cliente sin app) no se sale del globo: se desplaza
 - [ ] Editor de sesión con varias sesiones → selector y lista; el dedo señala el asa y el texto cuenta el deslizar
 - [ ] Editor de sesión de un programa con una sola sesión → solo la lista
 - [ ] Al cerrar el recorrido la lista se queda donde la dejó y se puede usar
@@ -238,6 +253,7 @@ Lo que enseñaban las tarjetas del entrenador (`clients`, `templates`, `next`,
 
 - [ ] Entrenador nuevo sin clientes → Clientes: añadir e iconos, y el ejemplo de estados
 - [ ] Con clientes → la tarjeta real resaltada y luego el ejemplo
+- [ ] Clientes → los iconos de pegar, cuenta y orden, y los estados «Sin entrenar» y «Cambios sin enviar», salen en línea en el texto
 - [ ] Ficha del cliente → segmentado, programa y próxima sesión
 - [ ] Plantillas → recorrido una vez, elementos correctos
 - [ ] Atleta sin pestañas de entrenador → no ve ninguno
