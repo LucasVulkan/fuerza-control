@@ -2,18 +2,20 @@
 
 > Tema: entrenamiento
 > En corto: La pestaña Carga pasa a ser un panel: tres tarjetas (carga, esfuerzo, fuerza) que eligen una sola gráfica, todo funciona aunque no se apunte el esfuerzo de la sesión, y deja de decir cosas que no son. De paso, el VOLUMEN de Ejercicios deja de comparar dos sesiones sueltas.
-> Fase T11-01 · pendiente · Panel: tres tarjetas que eligen la gráfica · §4
-> Fase T11-02 · pendiente · Sin sRPE la pestaña no se vacía · §5
-> Fase T11-03 · pendiente · Carga: estado, monotonía y strain · §6
-> Fase T11-04 · pendiente · Esfuerzo: semanas o sesiones y esfuerzo vs carga · §7
-> Fase T11-05 · pendiente · RPE medio por ejercicio · §8
-> Fase T11-06 · pendiente · Fuerza: 4 semanas y periodo, por ejercicio · §9
-> Fase T11-07 · pendiente · Series por grupo contra lo previsto · §10
-> Fase T11-08 · pendiente · El calendario vuelve al Historial · §11
-> Fase T11-09 · pendiente · VOLUMEN de Ejercicios por semanas · §12
-> Fase T11-10 · pendiente · Datos con sentido: casos y bordes con test · §13
+> Fase T11-01 · hecho · Panel: tres tarjetas que eligen la gráfica · §4
+> Fase T11-02 · hecho · Sin sRPE la pestaña no se vacía · §5
+> Fase T11-03 · hecho · Carga: estado, monotonía y strain · §6
+> Fase T11-04 · hecho · Esfuerzo: semanas o sesiones y esfuerzo vs carga · §7
+> Fase T11-05 · hecho · RPE medio por ejercicio · §8
+> Fase T11-06 · hecho · Fuerza: 4 semanas y periodo, por ejercicio · §9
+> Fase T11-07 · hecho · Series por grupo contra lo previsto · §10
+> Fase T11-08 · hecho · El calendario vuelve al Historial · §11
+> Fase T11-09 · hecho · VOLUMEN de Ejercicios por semanas · §12
+> Fase T11-10 · terminado · Datos con sentido: casos y bordes con test · §13
 >
-> Estado: **spec reescrita el 6-nov-2026, sin implementar.** La primera versión
+> Estado: **implementada el 7-nov-2026 en `feat/t11-carga` (T11-01…05 ya en develop), por probar en dispositivo.**
+> Las gráficas siguen la anatomía de [`carga-t11-3.html`](../mockups/carga-t11-3.html) (§3).
+> La primera versión
 > (27-oct) solo arreglaba datos sin tocar la pantalla. Tras siete vueltas de
 > maqueta con el usuario, la pantalla se rehace como panel:
 > [`carga-t11-2.html`](../mockups/carga-t11-2.html), publicada en
