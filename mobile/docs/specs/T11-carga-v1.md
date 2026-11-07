@@ -423,6 +423,8 @@ entrenó, no un mapa de esfuerzo.
 - [ ] Ficha de un cliente › Historial: el calendario con las sesiones del cliente, no las tuyas.
 - [ ] Con un historial sin sRPE, los días entrenados salen teñidos.
 
+**Notas de implementación.** `LoadCalendar` ya no está en `LoadTab` (no estaba montado en ningún sitio) y recibe `log`, `allExercises`, `fallbackBodyWeight` por prop. Historial propio: `workoutLog`, librería+personalizados y `profile.bodyWeight` en `HistoryList`, arriba de la cabecera de la lista. Ficha: `clientBaseLog` entero, `allExercises` y `clientBodyWeight` de `ClientsScreen`. La carga por día sale de `calendarLoads` (`trainingLoad.js`): interna por sesión si hay algún sRPE; si no, `days[].value` de `loadSummary` (externa). Test en `trainingLoad.test.js`.
+
 ## 12. T11-09 — VOLUMEN de Ejercicios por semanas
 
 La tarjeta VOLUMEN de Progreso › Ejercicios (`ProgressTab.jsx`) compara hoy el
@@ -443,6 +445,8 @@ variaciones enormes.
 
 - [ ] Con historial de varias semanas alternando sesiones de pierna y torso, VOLUMEN da una cifra razonable (no ±60 %) y el subtítulo dice «vs mes anterior».
 - [ ] Tocar la tarjeta: la ficha explica la comparación nueva.
+
+**Notas de implementación.** `volumeChange(log, { now })` en `trainingLoad.js`: ventanas de 28 días que acaban hoy (si hay sesión hoy) o ayer; tonelaje con `recapStats`; el /4 se cancela al comparar medias. Descanso cuenta 0; sin sesiones en alguna ventana (o anterior a 0) → null → «—». `ProgressTab` le pasa `filteredLogScope` (alcance sin periodo). Subtítulo `stats.volVsPrevMonth`; se quitaron `computeVolumeImprovePct` y los cálculos de «última sesión» de la tarjeta. Test en `trainingLoad.test.js`.
 
 ## 13. T11-10 — Datos con sentido: casos y bordes con test
 
