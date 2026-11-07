@@ -46,8 +46,9 @@
       "tabs": { "title": "Moverte por la app", "text": "Desde aquí puedes ver tu programa, donde podrás editarlo, tu progreso y el resto de la app." }
     },
     "program": {
-      "card": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y la semana en la que estás. Si tiene duración, la barra muestra cuánto llevas.\nDebajo están tus cifras: la adherencia (de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho), el ritmo (sesiones por semana) y la carga (lo que entrenas esta semana frente a tu media del mes)." },
-      "cardStages": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y la semana en la que estás. La barra muestra cuánto llevas, con un tramo por etapa.\nEn «Esta etapa» ves la etapa en la que estás y su semana: cada cuadradito es una semana de la etapa.\nDebajo están tus cifras: la adherencia (de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho), el ritmo (sesiones por semana) y la carga (lo que entrenas esta semana frente a tu media del mes)." },
+      "card": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y, a la derecha, la semana en la que estás.\n<b>Adherencia</b>: de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho.\n<b>Ritmo</b>: las sesiones que haces por semana.\n<b>Carga</b>: lo que entrenas esta semana frente a tu media del mes." },
+      "cardBar": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y, a la derecha, la semana en la que estás.\n<bar/> La barra muestra cuánto llevas del programa.\n<b>Adherencia</b>: de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho.\n<b>Ritmo</b>: las sesiones que haces por semana.\n<b>Carga</b>: lo que entrenas esta semana frente a tu media del mes." },
+      "cardStages": { "title": "Tu programa", "text": "Aquí ves el nombre de tu programa y, a la derecha, la semana en la que estás.\n<bar/> La barra muestra cuánto llevas del programa, con un tramo por etapa.\n<ticks/> En «Esta etapa» ves la etapa en la que estás y su semana: cada cuadradito es una semana de la etapa.\n<b>Adherencia</b>: de las sesiones que tocaban en las últimas 4 semanas, cuántas has hecho.\n<b>Ritmo</b>: las sesiones que haces por semana.\n<b>Carga</b>: lo que entrenas esta semana frente a tu media del mes." },
       "view": { "title": "Ver programa", "text": "Aquí puedes abrir una vista general del programa." },
       "edit": { "title": "Editar programa", "text": "El editor para cambiar las sesiones, los ejercicios y las etapas del programa." },
       "editTrainer": { "title": "Programa de tu entrenador", "text": "Los programas creados por un entrenador no se pueden editar." },
@@ -97,7 +98,9 @@
       "account": "el botón de la cuenta de entrenador",
       "sort": "el botón de orden",
       "mark": "la marca de sesiones sin revisar",
-      "send": "el botón de enviar"
+      "send": "el botón de enviar",
+      "bar": "la barra del programa",
+      "ticks": "los tramos de semana"
     }
   },
   "header": {

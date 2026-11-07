@@ -14,6 +14,7 @@ import { Text } from '../ui/Text';
 import { DragIcon, GearIcon, PasteWorkoutIcon, CloudIcon, SortIcon } from '../ui/EditorIcons';
 import { ShareIcon } from '../SessionList';
 import { makeRowStyles } from '../clientRowStyles';
+import { WeekTicks } from '../ProgramStages';
 import { spacing, textStyles } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { parseRich } from './richText';
@@ -53,7 +54,23 @@ export default function RichText({ text, style }) {
       case 'red':
       case 'blue':
         return <Text key={i} style={[textStyles.bodyStrong, { color: tok.kind === 'red' ? (C.redText ?? C.red) : C.blue }]}>{tok.value}</Text>;
+      case 'b':
+        return <Text key={i} style={[textStyles.bodyStrong, { color: C.text }]}>{tok.value}</Text>;
       case 'icon':
+        // Dibujos de la tarjeta del programa, en pequeño: la barra (un tramo por
+        // etapa: hecha, en curso a medias, por hacer) y los tramos de semana.
+        if (tok.name === 'bar') return (
+          <View key={i} style={[styles.draw, styles.inline]}>
+            <View style={styles.bar}>
+              <View style={[styles.seg, styles.segDone, { flex: 3 }]} />
+              <View style={[styles.seg, { flex: 4 }]}><View style={styles.segFill} /></View>
+              <View style={[styles.seg, { flex: 2 }]} />
+            </View>
+          </View>
+        );
+        if (tok.name === 'ticks') return (
+          <View key={i} style={[styles.draw, styles.inline]}><WeekTicks total={4} on={2} color={C.accent} /></View>
+        );
         // La marca de sesiones sin revisar es el globo de la fila de Clientes, con un número de ejemplo.
         return tok.name === 'mark'
           ? <View key={i} style={[rowStyles.cGlobe, styles.inline]}><Text style={rowStyles.cGlobeText}>2</Text></View>
@@ -76,6 +93,12 @@ const makeStyles = (th) => StyleSheet.create({
   next:   { marginTop: spacing.sm2 },
   inline: { transform: [{ translateY: NUDGE }] },
   icon:   { width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' },
+  draw:   { height: SIZE, justifyContent: 'center' },
+  // Como la barra de `HomeProgramCard`, en 64 dp.
+  bar:     { width: 64, flexDirection: 'row', gap: spacing.xs },
+  seg:     { height: spacing.sm, borderRadius: 1, backgroundColor: th.colors.muted, overflow: 'hidden', transform: [{ skewX: '-12deg' }] },
+  segDone: { backgroundColor: th.tint.accent50 },
+  segFill: { width: '50%', height: '100%', backgroundColor: th.colors.accent },
   pill: {
     height:            SIZE,
     paddingHorizontal: spacing.sm,

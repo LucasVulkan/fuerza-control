@@ -218,7 +218,8 @@ export default function MyProgramScreen() {
   const text       = (key) => t(`tour.program.${key}`, { returnObjects: true });
   // De izquierda a derecha, como están los botones: Editar y luego Ver.
   const tourSteps  = !activeProgram ? [] : [
-    { ref: cardRef, ...text(hasStages ? 'cardStages' : 'card') },
+    // Con barra si la tarjeta la pinta: varias etapas o una con duración (`HomeProgramCard`).
+    { ref: cardRef, ...text(hasStages ? 'cardStages' : status?.lengthWeeks != null ? 'cardBar' : 'card') },
     ...(canEdit
       ? [{ ref: editRef, ...text('edit') }, { ref: viewRef, ...text('view') }]
       : [{ ref: viewRef, ...text('view') }, { ref: actionsRef, ...text('editTrainer') }]),

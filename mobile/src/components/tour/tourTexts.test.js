@@ -3,7 +3,7 @@ import { parseRich } from './richText';
 import es from '../../locales/es.json';
 import en from '../../locales/en.json';
 
-const ICONS = ['handle', 'gear', 'paste', 'account', 'sort', 'send', 'mark'];
+const ICONS = ['handle', 'gear', 'paste', 'account', 'sort', 'send', 'mark', 'bar', 'ticks'];
 
 // Todas las marcas de los textos del recorrido están bien cerradas y los iconos existen,
 // con su etiqueta para el lector de pantalla, en los dos idiomas.

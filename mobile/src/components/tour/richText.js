@@ -4,13 +4,15 @@
  *
  *   <main>Guardar</main>   botón principal (lima)      <red>Sin entrenar</red>  estado en rojo
  *   <btn>Cancelar</btn>    botón secundario            <blue>…</blue>           estado en azul
- *   <handle/>              icono: el nombre va en `RichText` (`ICONS`)
+ *   <b>Ritmo</b>           en negrita, para encabezar una sección
+ *   <handle/>              icono: el nombre va en `RichText` (`ICONS`); también
+ *                          dibujos de la pantalla, como <bar/> y <ticks/>
  *
  * El `\n` separa párrafos. Lógica pura, para poder probarla.
  */
-const TAG = /<(main|btn|red|blue)>(.+?)<\/\1>|<(\w+)\/>/g;
+const TAG = /<(main|btn|red|blue|b)>(.+?)<\/\1>|<(\w+)\/>/g;
 
-/** @returns {Array<{kind:'text'|'main'|'btn'|'red'|'blue', value:string}|{kind:'icon', name:string}>} */
+/** @returns {Array<{kind:'text'|'main'|'btn'|'red'|'blue'|'b', value:string}|{kind:'icon', name:string}>} */
 export function parseRich(text) {
   const out = [];
   let last = 0;
