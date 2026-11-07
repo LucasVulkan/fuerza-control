@@ -21,3 +21,13 @@ describe('placeBubble (U17-01)', () => {
     expect(placeBubble({ ...base, rect: null })).toEqual({ top: 300, side: null });
   });
 });
+
+describe('placeBubble con globos altos (U17-01)', () => {
+  it('un globo más alto que la pantalla útil se queda pegado arriba, sin salirse', () => {
+    const r = placeBubble({ winH: 800, bubbleH: 900, safeTop: 40, safeBottom: 20, rect: { y: 300, h: 100 } });
+    expect(r).toEqual({ top: 52, side: null });
+  });
+  it('un globo alto sin elemento va arriba del todo, no negativo', () => {
+    expect(placeBubble({ winH: 800, bubbleH: 780, safeTop: 40, safeBottom: 20, rect: null }).top).toBeGreaterThanOrEqual(52);
+  });
+});

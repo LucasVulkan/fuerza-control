@@ -21,7 +21,7 @@
  *   finger     `{ top?, right?, bottom?, left? }`: el dedo de `Spot` sobre el hueco
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Pressable, StyleSheet, AccessibilityInfo, BackHandler, findNodeHandle } from 'react-native';
+import { View, ScrollView, Pressable, StyleSheet, AccessibilityInfo, BackHandler, findNodeHandle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Reanimated, {
   useSharedValue, useAnimatedProps, useAnimatedStyle, withTiming, Easing, useReducedMotion,
@@ -35,6 +35,8 @@ import { HelpIcon } from '../ui/EditorIcons';
 import { spacing, textStyles, withOpacity, lh } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import { placeBubble } from './placeBubble';
+import RichText from './RichText';
+import { plainText } from './richText';
 
 const AnimatedPath = Reanimated.createAnimatedComponent(Path);
 
@@ -211,7 +213,7 @@ export default function ScreenTour({ steps: given, onClose }) {
       {step && (
         <Reanimated.View
           onLayout={(e) => setBh(e.nativeEvent.layout.height)}
-          style={[styles.bubble, { top }, fade]}
+          style={[styles.bubble, { top, maxHeight: Math.max(0, win.h - insets.top - insets.bottom - 2 * spacing.md) }, fade]}
         >
           <View style={styles.head}>
             <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -222,15 +224,23 @@ export default function ScreenTour({ steps: given, onClose }) {
             </Pressable>
           </View>
 
-          {step.figure}
+          {/* Con textos largos el globo no crece más que la pantalla: esta parte se desplaza. */}
+          <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false} bounces={false}>
+            {step.figure}
 
-          <View ref={titleRef} collapsable={false} accessible accessibilityLabel={`${step.title}. ${step.text}`}>
-            <View style={styles.titleRow}>
-              <HelpIcon size={22} />
-              <Text style={styles.title}>{step.title}</Text>
+            <View
+              ref={titleRef}
+              collapsable={false}
+              accessible
+              accessibilityLabel={`${step.title}. ${plainText(step.text, (name) => t(`tour.icons.${name}`))}`}
+            >
+              <View style={styles.titleRow}>
+                <HelpIcon size={22} />
+                <Text style={styles.title}>{step.title}</Text>
+              </View>
+              <RichText text={step.text} style={styles.text} />
             </View>
-            <Text style={styles.text}>{step.text}</Text>
-          </View>
+          </ScrollView>
 
           <View style={styles.btns}>
             {view.idx > 0 && (
@@ -280,6 +290,8 @@ const makeStyles = (th) => StyleSheet.create({
     gap:             spacing.md,
   },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  body: { flexShrink: 1 },
+  bodyContent: { gap: spacing.md },
   dots: { flexDirection: 'row', gap: spacing.sm },
   dot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: th.colors.border },
   dotOn: { width: 18, backgroundColor: th.colors.accent },
