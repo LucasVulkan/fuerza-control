@@ -2,6 +2,8 @@
 
 > Tema: entrenamiento
 > En corto: La pestaña Carga pasa a ser un panel: tres tarjetas (carga, esfuerzo, fuerza) que eligen una sola gráfica, todo funciona aunque no se apunte el esfuerzo de la sesión, y deja de decir cosas que no son. De paso, el VOLUMEN de Ejercicios deja de comparar dos sesiones sueltas.
+> Inicio: 2026-11-06
+> Fin: 2026-11-07
 > Fase T11-01 · hecho · Panel: tres tarjetas que eligen la gráfica · §4
 > Fase T11-02 · hecho · Sin sRPE la pestaña no se vacía · §5
 > Fase T11-03 · hecho · Carga: estado, monotonía y strain · §6
