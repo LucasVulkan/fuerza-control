@@ -7,7 +7,8 @@
     "test:fidelity": "node tests/fidelity.js",
     "test:balance": "node tests/balance.js",
     "shots": "node tests/screenshots.js",
-    "test": "python prototype/build.py && node tests/fidelity.js && node tests/balance.js"
+    "test": "python prototype/build.py && node tests/fidelity.js && node tests/balance.js",
+    "catalogo": "node prototype/catalogo-pagina.js"
   },
   "devDependencies": { "three": "0.147.0", "playwright": "^1.48.0" }
 }

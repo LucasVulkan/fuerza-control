@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo del maniquí</title>
+<!-- Plantilla de docs/catalogo.html (spec X03 §6): la rellena prototype/catalogo-pagina.js con catalogo.js + assets/index.json.
+     No editar docs/catalogo.html a mano. -->
+<style>
+:root{--bg:#f5f5f2;--panel:#fff;--ink:#1c1c1a;--mute:#74736c;--line:#e4e3dd;--row:#fafaf8;--sel:#ecebe5;
+  --si:#2f8a4c;--siBg:#e3f3e8;--no:#b9412f;--noBg:#f8e5e1;--med:#a8740c;--medBg:#f6edd8;--na:#9a998f;--tu:#0f766e;--yo:#8b3fd9}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#131312;--panel:#1d1d1b;--ink:#ebeae4;--mute:#9b9a90;--line:#313130;--row:#232321;--sel:#2b2b29;--siBg:#1c3524;--noBg:#3a1f1a;--medBg:#3a2f15}}
+:root[data-theme=dark]{--bg:#131312;--panel:#1d1d1b;--ink:#ebeae4;--mute:#9b9a90;--line:#313130;--row:#232321;--sel:#2b2b29;--siBg:#1c3524;--noBg:#3a1f1a;--medBg:#3a2f15}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+@media(max-width:760px){.app{grid-template-columns:1fr}nav{border-right:0!important;border-bottom:1px solid var(--line)}}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:16px 10px}
+nav h1{font-size:15px;margin:0 6px 14px}nav .grp{color:var(--mute);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;margin:14px 8px 4px}
+nav a{display:flex;justify-content:space-between;gap:8px;padding:7px 8px;border-radius:7px;color:inherit;text-decoration:none;cursor:pointer}
+nav a:hover{background:var(--row)}nav a.on{background:var(--sel);font-weight:600}nav a small{color:var(--mute);font-weight:400}
+main{padding:20px 22px 60px;min-width:0}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px}.top h2{margin:0;font-size:21px}.top .c{color:var(--mute)}
+.legend{color:var(--mute);font-size:12.5px;margin:6px 0 14px}
+.wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th{position:sticky;top:0;background:var(--panel);text-align:left;font-weight:500;color:var(--mute);font-size:12px;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+tr.ex td{background:var(--row);font-weight:600}tr.ex td:first-child{cursor:pointer}
+tr.eje td:first-child{padding-left:34px;color:var(--mute);font-weight:500}tr.eje td{font-size:13px}
+tr.var td:first-child{padding-left:58px}
+.tw{display:inline-block;width:16px;color:var(--mute)}
+.code{font:12px ui-monospace,Consolas,monospace;color:var(--mute);font-weight:400}
+.p{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:500}
+.si{background:var(--siBg);color:var(--si)}.no{background:var(--noBg);color:var(--no)}.med{background:var(--medBg);color:var(--med)}
+.na{color:var(--na)}
+.tu{color:var(--tu);font-weight:500}.yo{color:var(--yo);font-weight:500}
+.cnt{font-weight:400;color:var(--mute)}
+.hands td:first-child{font-weight:600}
+</style>
+</head>
+<body><div class="app">
+<nav id="nav"></nav>
+<main id="main"></main>
+</div>
+<script>
+/*DATOS*/
+const manoN=id=>(MANOS.find(m=>m[0]===id)||[,'—'])[1];
+const manoSt=id=>(MANOS.find(m=>m[0]===id)||[])[2]||'falta', manoOk=id=>!id||manoSt(id)==='lista';
+const manoP=id=>manoOk(id)?'':' '+poseP(manoSt(id)), manoNx=id=>['tu',manoSt(id)==='falta'?'Posar la mano':'Retocar la mano'];
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+const POSE={falta:['Falta','no'],borrador:['Borrador','med'],revisar:['Por revisar','med'],lista:['Lista','si']};
+const pill=(t,c)=>`<span class="p ${c}">${t}</span>`;
+const poseP=s=>s?pill(...POSE[s]):'<span class="na">—</span>';
+const siNo=(b,si='Hecha',no='Falta')=>b?pill(si,'si'):pill(no,'no');
+
+// ¿Se ve en la app? Una variante necesita la pose del ejercicio lista, su propia pose (si es acción) y su lógica.
+function enApp(e,v){
+  if(e.pose!=='lista'||!e.logica)return false;
+  if(!v)return true;
+  const [,src,,st,log]=v;
+  if(src==='base')return true;
+  if(src==='accion')return st==='lista'&&log!==false;
+  return !!log&&e.base!=='libre';
+}
+// Siguiente paso y de quién
+function next(e,v){
+  if(!v){
+    if(e.pose==='falta')return['yo','Crear la acción por script'];
+    if(e.pose!=='lista')return['tu','Retocar y marcar lista'];
+    if(!e.logica)return['yo',e.base==='libre'?'Base libre en el visor (X03-02)':'Su base en el visor'];
+    if(e.mano&&!manoOk(e.mano))return manoNx(e.mano);
+    return null;
+  }
+  const [,src,,st,log,mano]=v;
+  if(src==='base')return null;
+  if(e.pose!=='lista'||!e.logica)return['na','Espera al ejercicio'];
+  if(src==='accion'&&st!=='lista')return['tu',st==='falta'?'Posar la variante':'Retocar la variante'];
+  if(!log)return['yo','Hacerla en el visor'];
+  if(mano&&!manoOk(mano))return manoNx(mano);
+  return null;
+}
+const nx=n=>n?`<span class="${n[0]}">${n[0]==='tu'?'Tú: ':n[0]==='yo'?'Claude: ':''}${n[1]}</span>`:'<span class="na">—</span>';
+const SRC={base:'Pose del ejercicio',accion:'Acción propia',script:'Script (visor)'};
+
+function vars(e){return e.ejes.flatMap(([,vs])=>vs).filter(v=>v[1]!=='base')}
+function stats(m){
+  const ex=m.ex.length, exOk=m.ex.filter(e=>enApp(e)).length;
+  const vs=m.ex.flatMap(e=>vars(e).map(v=>enApp(e,v))); return {ex,exOk,v:vs.length,vOk:vs.filter(Boolean).length};
+}
+
+let cur=location.hash.slice(1)||MOV[0].id; const open=new Set(MOV.flatMap(m=>m.ex.map(e=>e.a)));
+function nav(){
+  document.getElementById('nav').innerHTML=`<h1>Catálogo del maniquí</h1><div class="grp">Movimientos</div>`+
+   MOV.map(m=>{const s=stats(m);return `<a data-p="${m.id}" class="${cur===m.id?'on':''}">${esc(m.n)}<small>${s.exOk}/${s.ex}</small></a>`}).join('')+
+   `<div class="grp">Biblioteca</div><a data-p="manos" class="${cur==='manos'?'on':''}">Manos<small>${MANOS.filter(m=>m[2]==='lista').length}/${MANOS.length}</small></a>`+
+   `<div class="grp">Revisar</div><a data-p="avisos" class="${cur==='avisos'?'on':''}">Avisos<small>${AVISOS.reduce((n,a)=>n+a[1].length,0)}</small></a>`;
+}
+function page(){
+  const M=document.getElementById('main');
+  if(cur==='manos'){
+    const uses=id=>MOV.flatMap(m=>m.ex.flatMap(e=>[e.mano===id?e.n:null,...e.ejes.flatMap(([,vs])=>vs.filter(v=>v[5]===id).map(v=>`${e.n} · ${v[0]}`))])).filter(Boolean);
+    M.innerHTML=`<div class="top"><h2>Manos</h2><span class="c">poses reutilizables · se posa la izquierda, la derecha sale invertida</span></div>
+    <p class="legend">Un ejercicio con las manos distintas (arquero, a un brazo) no usa ninguna: lleva las suyas en su acción.</p>
+    <div class="wrap"><table class="hands"><tr><th>Mano</th><th>Pose</th><th>La usan</th><th>Siguiente</th></tr>${
+     MANOS.map(([id,n,st])=>{const u=uses(id);return `<tr><td>${esc(n)} <span class="code">mano.${id}</span></td><td>${poseP(st)}</td><td>${u.length?`${u.length} · <span class="cnt">${esc(u.join(', '))}</span>`:'<span class="na">—</span>'}</td><td>${st!=='lista'?nx(['tu',st==='falta'?'Posarla':'Retocarla']):nx(null)}</td></tr>`}).join('')}</table></div>`;
+    return;
+  }
+  if(cur==='avisos'){
+    M.innerHTML=`<div class="top"><h2>Avisos</h2><span class="c">generado ${esc(GENERADO)}</span></div>`+
+     AVISOS.map(([t,l])=>`<h3 style="font-size:14px;margin:18px 0 6px">${esc(t)} <span class="cnt">${l.length}</span></h3><p class="legend">${l.length?l.map(x=>`<span class="code">${esc(x)}</span>`).join(' · '):'Nada.'}</p>`).join('');
+    return;
+  }
+  const m=MOV.find(x=>x.id===cur)||MOV[0], s=stats(m);
+  const rows=m.ex.map(e=>{
+    const o=open.has(e.a), vs=vars(e), vok=vs.filter(v=>enApp(e,v)).length;
+    let h=`<tr class="ex"><td data-t="${e.a}"><span class="tw">${e.ejes.length?(o?'▾':'▸'):''}</span>${esc(e.n)} <span class="code">${e.a}</span></td>
+      <td>Acción propia</td><td>${poseP(e.pose)}</td><td>${e.logica&&e.base==='libre'?pill('Tal cual','med'):siNo(e.logica)} <span class="code">${e.base}${e.plan?' → '+e.plan:''}</span></td>
+      <td>${esc(e.mano?manoN(e.mano):'De la acción')}${e.mano?manoP(e.mano):''}</td>
+      <td>${siNo(enApp(e),'Sí','No')}</td><td>${vs.length?`${vok}/${vs.length}`:'<span class="na">—</span>'}</td><td title="${esc(e.fichas.join('\n'))}" style="cursor:help">${e.fichas.length}</td><td>${nx(next(e))}</td></tr>`;
+    if(o)for(const [eje,vals] of e.ejes){
+      h+=`<tr class="eje"><td colspan="9">${esc(eje)}</td></tr>`;
+      for(const v of vals){const [n,src,acc,st,log,mano]=v;
+        h+=`<tr class="var"><td>${esc(n)}${acc?` <span class="code">${acc}</span>`:''}</td><td>${SRC[src]}</td>
+          <td>${src==='accion'?poseP(st):'<span class="na">—</span>'}</td>
+          <td>${src==='script'?siNo(log):src==='accion'?siNo(log!==false):'<span class="na">—</span>'}</td>
+          <td>${mano?esc(manoN(mano))+manoP(mano):'<span class="na">igual</span>'}</td>
+          <td>${siNo(enApp(e,v),'Sí','No')}</td><td></td><td></td><td>${nx(next(e,v))}</td></tr>`;}
+    }
+    return h;}).join('');
+  M.innerHTML=`<div class="top"><h2>${esc(m.n)}</h2><span class="c">${s.exOk} de ${s.ex} ejercicios en la app · ${s.vOk} de ${s.v} variantes</span></div>
+   <p class="legend">«libre → bench»: en Blender está como animación tal cual; la flecha dice qué base tendrá en el visor. Cada ejercicio es una acción de Blender. Sus variantes salen de su propia pose, de una acción propia (la posas tú) o de un script del visor (lo hace Claude). Pulsa un ejercicio para abrir o cerrar sus variantes.</p>
+   <div class="wrap"><table><tr><th>Ejercicio · eje · variante</th><th>Sale de</th><th>Pose en Blender</th><th>Lógica en el visor</th><th>Mano</th><th>Se ve en la app</th><th>Variantes listas</th><th>Fichas</th><th>Siguiente</th></tr>${rows}</table></div>`;
+}
+function render(){nav();page();}
+document.addEventListener('click',ev=>{
+  const p=ev.target.closest('[data-p]'); if(p){cur=p.dataset.p;history.replaceState(null,'','#'+cur);render();return;}
+  const t=ev.target.closest('[data-t]'); if(t){const a=t.dataset.t;open.has(a)?open.delete(a):open.add(a);page();}
+});
+render();
+</script>
+</body></html>

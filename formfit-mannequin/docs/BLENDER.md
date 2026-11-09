@@ -13,6 +13,8 @@ Scene Collection
       └─ FF_asas                       cilindros de 28 y 40 mm: dónde va el asa en la mano
 ```
 
+En *2 · Props* está también **`FF_banco`**: el banco, el asiento del jalón o el cajón. Es una sola caja colgada del hueso `BANCO` del rig, y **cada acción lo keya**: dónde está y su medida (la escala del hueso: ancho, largo y alto en metros) o escondido (escala 0,001). Para moverlo en una acción, posa el hueso `BANCO` y keya.
+
 - **No renombres** las colecciones `FF_*` ni los objetos `FF_*`: los scripts los buscan por su nombre. Los grupos de colores sí se pueden renombrar.
 - Los **ejercicios** son acciones. Se eligen en el panel **FormFit** (barra lateral N del visor 3D) o en el Action Editor. Las **manos** están en la **biblioteca de poses** (§3).
 
@@ -41,8 +43,10 @@ Cada acción lleva unas propiedades (Action Editor › barra lateral N › Actio
 | `ff_status` | en qué punto está | `borrador` · `revisar` · `ok` |
 | `ff_mano` | con qué mano de la biblioteca la posaste (solo de referencia) | el id sin `mano.` (`colgado_prono`); vacío = manos distintas en cada lado |
 | `ff_name` | el nombre que se ve | texto |
+| `ff_base` | cómo la mueve el visor | `stand`, `hinge`, `hang`… o `libre` (tal cual, sin ajustes; las `libre` todavía no llegan a la app) |
+| `ff_plan` | en las `libre`, la base que tendrá | `bench`, `split`, `floor`, `cable` |
 
-Las demás (`ff_base`, `ff_variant_of`, `ff_axis`, `ff_value`, `ff_pulley`…) las pone el script; no hace falta tocarlas.
+Las demás (`ff_variant_of`, `ff_axis`, `ff_value`, `ff_pulley`…) las pone el script; no hace falta tocarlas.
 
 **De dónde salen los dedos en la app:** cada acción (ejercicio o variante con acción propia) enseña **sus** dedos, los que keyaste. Una variante sin acción propia (por script) usa los de su ejercicio, o, si cambia el implemento o el maneral, los que pone la app (asas de 28 y 40 mm, `mano.<maneral>`). Por eso retocar una mano de la biblioteca **no** cambia los ejercicios ya posados: vuelve a aplicarla en las acciones que la usan (su `ff_mano`).
 
@@ -85,5 +89,7 @@ Los manerales (triángulo, cuerda…) tienen además su objeto en *3 · Manos �
 1. Action Editor con el ejercicio puesto › botón de duplicar junto al nombre. Renómbrala y pulsa el escudo (fake user).
 2. En sus propiedades: `ff_variant_of` = el ejercicio, `ff_axis` = el eje (`grip`, `impl`…), `ff_value` = el valor (`supino`), `ff_status` = `borrador`, y `ff_mano` si cambia de mano.
 3. Pósala y sigue la receta de arriba.
+
+**El catálogo** (qué ejercicios y variantes queremos, y en qué punto está cada uno): `npm run catalogo` en `formfit-mannequin/` escribe `docs/catalogo.html` con lo que diga el .blend tras exportar. Lo que se quiere está en `catalogo.js`; pídele a Claude que lo cambie.
 
 **Si algo se rompe**: el `.blend` está en git, y Claude puede volver a la versión anterior. `blender/organizar.py` vuelve a ordenar el archivo sin cambiar nada de lo que ya está en su sitio.

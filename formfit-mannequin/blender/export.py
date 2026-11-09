@@ -26,7 +26,9 @@ FRAMES = {'start': 1, 'end': 30}
 def bone_action(a):
     """Solo acciones del rig (canales de pose.bones): mover un objeto con autokey crea acciones de objeto (FF_asa_28.LAction)."""
     return any(fc.data_path.startswith('pose.bones') for l in a.layers for st in l.strips for sl in a.slots if (cb := st.channelbag(sl)) for fc in cb.fcurves)
-EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_', 'mano.')) and a.frame_range[1] >= FRAMES['end'] and bone_action(a)])
+ALL = [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_', 'mano.')) and a.frame_range[1] >= FRAMES['end'] and bone_action(a)]
+# ponytail: las `libre` no van a poses.json hasta que el visor tenga esa base (X03-02); el índice sí las lista
+EXERCISES = tuple(only or [n for n in ALL if bpy.data.actions[n].get('ff_base') != 'libre'])
 print('ejercicios:', EXERCISES)
 
 SAMPLE = 5   # además, un frame cada SAMPLE: Blender interpola los controles con curvas (arranque y frenada suaves) y el visor, en
@@ -207,4 +209,13 @@ for act in [a for a in bpy.data.actions if a.name.startswith('mano.')]:
     out['hands'][name] = ent
 print('manos de referencia:', list(out['hands']) or 'ninguna (blender/ejercicios/_manos.py las crea)')
 json.dump(out, open(os.path.join(outdir, 'poses.json'), 'w'))
+# ---------- índice para la página del catálogo (spec X03 §6): qué acciones y manos hay en el .blend y en qué estado
+g = lambda a, k: a.get(k) or None
+index = {'acciones': {n: {k: v for k, v in {'base': g(a, 'ff_base'), 'nombre': g(a, 'ff_name'), 'estado': a.get('ff_status', 'ok'),
+                                            'mano': a.get('ff_mano'), 'plan': g(a, 'ff_plan'), 'de': g(a, 'ff_variant_of'),
+                                            'eje': g(a, 'ff_axis'), 'valor': g(a, 'ff_value'), 'desde': g(a, 'ff_from')}.items() if v is not None}
+                      for n in ALL for a in [bpy.data.actions[n]]},
+         'manos': {a.name[len('mano.'):]: {'nombre': a.get('ff_name') or a.name, 'grupo': a.get('ff_grupo'), 'estado': a.get('ff_status', 'ok')}
+                   for a in bpy.data.actions if a.name.startswith('mano.')}}
+json.dump(index, open(os.path.join(outdir, 'index.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print('OK', os.listdir(outdir))

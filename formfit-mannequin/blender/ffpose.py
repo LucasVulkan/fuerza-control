@@ -99,7 +99,49 @@ def shoulders_for(hip_f, hip_z, phi):
 def reset():
     for p in pb:
         p.location = (0, 0, 0); p.scale = (1, 1, 1); p.rotation_quaternion = (1, 0, 0, 0); p.rotation_euler = (0, 0, 0)
+    if 'BANCO' in pb: pb['BANCO'].scale = (0.001,) * 3            # el banco, oculto salvo que la pose lo coloque
     upd()
+
+
+def setup_bench():
+    """Banco (o cajón, o asiento) para posar: hueso BANCO (sin deformar, hijo de ROOT) con la caja FF_banco colgada de él, en
+    FF_Props. Cada acción lo keya: colocado (place_bench) o escondido (escala 0,001). Las acciones que ya había lo keyan
+    escondido. La caja mide 1 m de lado en reposo, con el centro de la cara de arriba en la cabeza del hueso: la escala del
+    hueso es la medida (ancho x, largo y, alto z). Idempotente."""
+    if 'BANCO' not in ab:
+        for ob in vl.objects: ob.select_set(False)
+        vl.objects.active = rig; rig.select_set(True)
+        bpy.ops.object.mode_set(mode='EDIT'); eb = rig.data.edit_bones
+        b = eb.new('BANCO'); b.head = (0, 0, 0); b.tail = (0, 0.05, 0); b.roll = 0; b.parent = eb['ROOT']; b.use_deform = False
+        bpy.ops.object.mode_set(mode='POSE')
+        reset(); pb['BANCO'].scale = (1, 1, 1); upd()
+        me = bpy.data.meshes.new('FF_banco')
+        v = [(x, y, z) for x in (-.5, .5) for y in (-.5, .5) for z in (-1, 0)]
+        me.from_pydata(v, [], [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)])
+        ob = bpy.data.objects.new('FF_banco', me); ob.color = (0.35, 0.35, 0.38, 1)
+        bpy.data.collections['FF_Props'].objects.link(ob)
+        ob.parent = rig; ob.parent_type = 'BONE'; ob.parent_bone = 'BANCO'; upd()
+        ob.matrix_world = rig.matrix_world @ pb['BANCO'].matrix           # con el hueso en reposo: la caja en su cabeza
+        reset(); print('  BANCO y FF_banco creados')
+    for act in bpy.data.actions:
+        if act.name.startswith(('00', '_', MANO)) or not act.layers or 'pose.bones["BANCO"].scale' in keyed_paths(act): continue
+        rig.animation_data.action = act; pb['BANCO'].scale = (0.001,) * 3
+        for f in FRAMES: pb['BANCO'].keyframe_insert('scale', frame=f); pb['BANCO'].keyframe_insert('location', frame=f); pb['BANCO'].keyframe_insert('rotation_quaternion', frame=f)
+        print(f'  {act.name}: banco escondido')
+    upd()
+
+
+def place_bench(f, z, size, x=0.0, along_x=False):
+    """Banco con el centro de la cara de arriba en (f, z, x) y medidas `size` = (ancho, largo, alto) en metros. Por defecto el
+    largo va de delante a atrás (press de banca); along_x: de lado a lado (hip thrust, búlgara)."""
+    R = Matrix.Rotation(math.pi / 2, 3, 'Z') if along_x else Matrix.Identity(3)
+    want = W(f, z, x); ob = bpy.data.objects['FF_banco']
+    p = pb['BANCO']; p.rotation_mode = 'QUATERNION'
+    m = R.to_4x4(); m.translation = want; p.matrix = m; p.scale = size; touched.add('BANCO'); upd()
+    for _ in range(3):                    # la caja cuelga de la cola del hueso: al escalar se desplaza; se corrige midiendo
+        err = want - ob.matrix_world.translation
+        if err.length < 1e-5: break
+        p.location = p.location + ab['BANCO'].matrix_local.to_3x3().inverted() @ err; upd()
 
 
 def set_props(hand_parent, foot_parent, bar_in_hands=0):
@@ -145,6 +187,28 @@ def grip_bar(bar, half_width, hand_rot, pole_dir, curl=CURL):
         setM(f'ARM-POLE-IK.{S}', rest_rot(f'ARM-POLE-IK.{S}'), sh + Vector(pole_dir) * 0.5 + Vector((sgn * 0.15, 0, 0)))
         fist(S, curl)
     upd()
+
+
+def place_hand(S, wrist, hand_rot, pole_dir, curl=CURL):
+    """Una mano suelta (sin barra): la muñeca en `wrist` (mundo) con el giro `hand_rot` respecto a su reposo; codo hacia pole_dir."""
+    sgn = 1 if S == 'L' else -1
+    setM(f'HAND_IK.{S}', hand_rot @ rest_rot(f'HAND_IK.{S}'), wrist)
+    sh = pb[f'DEF-ARM01.{S}'].head.copy()
+    setM(f'ARM-POLE-IK.{S}', rest_rot(f'ARM-POLE-IK.{S}'), sh + Vector(pole_dir) * 0.5 + Vector((sgn * 0.15, 0, 0)))
+    fist(S, curl)
+
+
+def place_foot(S, f, z, x, pitch_deg=0.0, toe_out_deg=0.0, knee=None):
+    """Un tobillo en (f, z, x) con el pie girado `pitch_deg` alrededor del eje lateral (+ = punta abajo) y `toe_out_deg` hacia
+    fuera; knee = (f, z, x) adonde apunta la rodilla (el polo del IK), si no la del rig."""
+    sgn = 1 if S == 'L' else -1
+    Df = Matrix.Rotation(math.radians(sgn * toe_out_deg), 3, 'Z') @ Matrix.Rotation(math.radians(pitch_deg), 3, 'X')
+    fik = f'FOOT-IK.{S}'
+    setM(fik, Df @ rest_rot(fik), W(f, z, x) + Df @ (H(fik) - H(f'DEF-FOOT.{S}')))
+    if knee: setM(f'IK-POLE-LEG.{S}', rest_rot(f'IK-POLE-LEG.{S}'), W(*knee))
+
+
+TOE = Vector((0, -0.194, -0.056))                  # tobillo -> punta del pie en reposo (cola de DEF-TOE)
 
 
 BAR_IN_HANDS = {'deadlift': 1, 'romanian_deadlift': 1, 'barbell_row': 1, 'cable_row': 1, 'cable_row_one_arm': 0}                      # acciones con la barra en las manos; el resto, en el control BARRA
@@ -364,4 +428,6 @@ if __name__ == '__main__':
         rigid_wrists()
     elif args[2] == 'barra-manos':
         setup_bar_in_hands()
+    elif args[2] == 'banco':
+        setup_bench()
     bpy.ops.wm.save_as_mainfile(filepath=args[1]); print('SAVED', args[1])

@@ -1,0 +1,173 @@
+{
+ "acciones": {
+  "back_squat": {
+   "base": "stand",
+   "nombre": "Sentadilla trasera",
+   "estado": "ok",
+   "mano": "barra_espalda"
+  },
+  "barbell_row": {
+   "base": "row",
+   "nombre": "Remo con barra",
+   "estado": "ok",
+   "mano": "barra_pm"
+  },
+  "barbell_row_supino": {
+   "base": "row",
+   "nombre": "Remo supino",
+   "estado": "revisar",
+   "mano": "barra_pm",
+   "de": "barbell_row",
+   "eje": "grip",
+   "valor": "supino"
+  },
+  "bench_press": {
+   "base": "libre",
+   "nombre": "Press de banca",
+   "estado": "borrador",
+   "mano": "barra_press",
+   "plan": "bench"
+  },
+  "bulgarian_split_squat": {
+   "base": "libre",
+   "nombre": "Sentadilla búlgara",
+   "estado": "borrador",
+   "mano": "28",
+   "plan": "split"
+  },
+  "cable_row": {
+   "base": "cable",
+   "nombre": "Remo en polea",
+   "estado": "revisar",
+   "mano": "triangulo"
+  },
+  "cable_row_one_arm": {
+   "base": "cable",
+   "nombre": "Remo en polea a un brazo",
+   "estado": "revisar",
+   "mano": ""
+  },
+  "Chinup": {
+   "base": "hang",
+   "nombre": "Dominada supina",
+   "estado": "ok",
+   "mano": "colgado_supino",
+   "de": "pullup",
+   "eje": "grip",
+   "valor": "supino"
+  },
+  "deadlift": {
+   "base": "hinge",
+   "nombre": "Peso muerto",
+   "estado": "ok",
+   "mano": "barra_pm"
+  },
+  "front_squat": {
+   "base": "stand",
+   "nombre": "Sentadilla frontal",
+   "estado": "ok",
+   "mano": "barra_espalda"
+  },
+  "hip_thrust": {
+   "base": "libre",
+   "nombre": "Hip thrust",
+   "estado": "borrador",
+   "mano": "barra_pm",
+   "plan": "bench"
+  },
+  "lat_pulldown": {
+   "base": "libre",
+   "nombre": "Jalón al pecho",
+   "estado": "borrador",
+   "mano": "colgado_prono",
+   "plan": "cable"
+  },
+  "leg_press": {
+   "base": "seat",
+   "nombre": "Prensa",
+   "estado": "ok",
+   "mano": ""
+  },
+  "pullup": {
+   "base": "hang",
+   "nombre": "Dominada",
+   "estado": "ok",
+   "mano": "colgado_prono"
+  },
+  "push_up": {
+   "base": "libre",
+   "nombre": "Flexiones",
+   "estado": "borrador",
+   "mano": "palma_plana",
+   "plan": "floor"
+  },
+  "romanian_deadlift": {
+   "base": "hinge",
+   "nombre": "Peso muerto rumano",
+   "estado": "ok",
+   "mano": "barra_pm"
+  }
+ },
+ "manos": {
+  "28": {
+   "nombre": "Asa 28 mm (mancuerna)",
+   "grupo": "Grosor",
+   "estado": "ok"
+  },
+  "40": {
+   "nombre": "Asa 40 mm (kettlebell)",
+   "grupo": "Grosor",
+   "estado": "ok"
+  },
+  "abierta": {
+   "nombre": "Mano abierta",
+   "grupo": "Grosor",
+   "estado": "ok"
+  },
+  "asa": {
+   "nombre": "Maneral asa en D",
+   "grupo": "Manerales",
+   "estado": "ok"
+  },
+  "barra_espalda": {
+   "nombre": "Barra en la espalda",
+   "grupo": "Grosor",
+   "estado": "revisar"
+  },
+  "barra_pm": {
+   "nombre": "Barra de peso muerto y remo",
+   "grupo": "Grosor",
+   "estado": "revisar"
+  },
+  "barra_recta": {
+   "nombre": "Maneral barra recta",
+   "grupo": "Manerales",
+   "estado": "ok"
+  },
+  "barra_supina": {
+   "nombre": "Maneral barra supina",
+   "grupo": "Manerales",
+   "estado": "ok"
+  },
+  "colgado_prono": {
+   "nombre": "Colgado, prono",
+   "grupo": "Grosor",
+   "estado": "revisar"
+  },
+  "colgado_supino": {
+   "nombre": "Colgado, supino",
+   "grupo": "Grosor",
+   "estado": "revisar"
+  },
+  "cuerda": {
+   "nombre": "Maneral cuerda",
+   "grupo": "Manerales",
+   "estado": "ok"
+  },
+  "triangulo": {
+   "nombre": "Maneral triángulo",
+   "grupo": "Manerales",
+   "estado": "ok"
+  }
+ }
+}

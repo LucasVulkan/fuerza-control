@@ -127,6 +127,10 @@ for i, (src, nombre) in NUEVAS.items():
         for kp in fc.keyframe_points: kp.co[1] = v; kp.handle_left[1] = v; kp.handle_right[1] = v
     asset(a, 'Barra', nombre)
 
+# estado de cada mano (la página del catálogo lo enseña): las nuevas, por retocar; las que ya había, listas
+for a in [a for a in bpy.data.actions if a.name.startswith(F.MANO)]:
+    if 'ff_status' not in a: a['ff_status'] = 'revisar' if a.name[len(F.MANO):] in NUEVAS else 'ok'
+
 # ponytail: sin miniaturas: en -b no hay cámara ni pose activa; se generan en Blender (Asset Shelf › clic derecho › Generar miniatura)
 print('manos:', sorted(a.name for a in bpy.data.actions if a.name.startswith(F.MANO)))
 if argv: bpy.ops.wm.save_as_mainfile(filepath=argv[1]); print('SAVED', argv[1])
