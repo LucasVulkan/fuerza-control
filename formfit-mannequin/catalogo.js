@@ -86,7 +86,8 @@ const CATALOGO = [
       ejes: { Agarre: { Prono: 'base', Supino: 'accion:Chinup|colgado_supino', Neutro: 'hecha' }, Asistencia: { Sin: 'base', 'Con goma': 'script' } } },
     { accion: 'chest_to_bar_pull_up', nombre: 'Dominada al pecho', base: 'hang', mano: 'colgado_prono', fichas: ['chest_to_bar_pull_up'] },
     { accion: 'lat_pulldown', nombre: 'Jalón al pecho', base: 'cable', mano: 'colgado_prono', fichas: ['pulldown'],
-      ejes: { Agarre: { 'Prono ancho': 'base', Supino: 'accion', Neutro: 'script' } } },
+      // la anchura de agarre será un ajuste (slider), no una variante
+      ejes: { Agarre: { Prono: 'base', Supino: 'accion:lat_pulldown_supino|colgado_supino', Neutro: 'accion:lat_pulldown_neutro|colgado_neutro' } } },
     { accion: 'straight_arm_pulldown', nombre: 'Jalón con brazos rectos', base: 'cable', mano: 'barra_recta', fichas: ['straight_arm_pulldown'] },
   ] },
   { id: 'remo', nombre: 'Remo', ejercicios: [
@@ -108,7 +109,7 @@ const CATALOGO = [
 ];
 
 // manos que el catálogo pide y aún no están en la biblioteca del .blend (nombre para la página)
-const MANOS_NUEVAS = { goblet: 'Goblet (copa)', barra_press: 'Barra de press', palma_plana: 'Palma plana (apoyo)' };
+const MANOS_NUEVAS = { colgado_neutro: 'Colgado, neutro', goblet: 'Goblet (copa)', barra_press: 'Barra de press', palma_plana: 'Palma plana (apoyo)' };
 
 // fichas de la app sin maniquí a propósito: cíclicas o de desplazamiento (spec X03 §13)
 const FUERA = ['ski_erg', 'row_erg', 'air_bike', 'run', 'jump_rope', 'double_under', 'jumping_jack', 'high_knees', 'battle_rope_wave',

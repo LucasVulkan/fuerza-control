@@ -131,6 +131,29 @@ def setup_bench():
     upd()
 
 
+def setup_discs():
+    """PROPERTIES["DISCOS"] (1 = con discos, 0 = sin): los discos de la barra se encogen con un driver. Así una acción puede
+    colgar las manos de la barra (ARM_IK_parent = 5, que copia también la escala del control BARRA, por eso no se puede
+    esconder la barra encogiéndola) y enseñarla como barra de jalón. Las acciones que ya había lo keyan a 1. Idempotente."""
+    P = pb['PROPERTIES']
+    if 'DISCOS' not in P:
+        P['DISCOS'] = 1
+        P.id_properties_ui('DISCOS').update(min=0, max=1, description='0 = la barra sin discos (barra de jalón)')
+        for s in ('1', '-1'):
+            ob = bpy.data.objects[f'FF_disco_{s}']
+            for i in range(3):
+                d = ob.driver_add('scale', i).driver; d.type = 'SCRIPTED'; d.expression = 'max(p, 0.001)'
+                v = d.variables.new(); v.name = 'p'; v.targets[0].id = rig; v.targets[0].data_path = 'pose.bones["PROPERTIES"]["DISCOS"]'
+        print('  DISCOS creada')
+    path = 'pose.bones["PROPERTIES"]["DISCOS"]'
+    for act in bpy.data.actions:
+        if act.name.startswith(('00', '_', MANO)) or not act.layers or path in keyed_paths(act): continue
+        rig.animation_data.action = act; P['DISCOS'] = 1
+        for f in FRAMES: P.keyframe_insert('["DISCOS"]', frame=f)
+        finish(act); print(f'  {act.name}: DISCOS = 1')
+    upd()
+
+
 def place_bench(f, z, size, x=0.0, along_x=False):
     """Banco con el centro de la cara de arriba en (f, z, x) y medidas `size` = (ancho, largo, alto) en metros. Por defecto el
     largo va de delante a atrás (press de banca); along_x: de lado a lado (hip thrust, búlgara)."""
@@ -144,11 +167,12 @@ def place_bench(f, z, size, x=0.0, along_x=False):
         p.location = p.location + ab['BANCO'].matrix_local.to_3x3().inverted() @ err; upd()
 
 
-def set_props(hand_parent, foot_parent, bar_in_hands=0):
+def set_props(hand_parent, foot_parent, bar_in_hands=0, discs=1):
     """hand_parent: 0 raíz · 5 barra. foot_parent: 0 raíz · 2 plataforma. bar_in_hands: 1 = la barra visible va entre los
-    puños (setup_bar_in_hands). IK en brazos y piernas."""
+    puños (setup_bar_in_hands). discs: 0 = la barra sin discos (barra de jalón; setup_discs). IK en brazos y piernas."""
     P = pb['PROPERTIES']
     if 'BARRA_EN_MANOS' in P: P['BARRA_EN_MANOS'] = bar_in_hands
+    if 'DISCOS' in P: P['DISCOS'] = discs
     for S in 'LR':
         P[f'ARM-IK/FK.{S}'] = 0; P[f'LEG-IK/FK.{S}'] = 0
         P[f'ARM_IK_parent.{S}'] = hand_parent; P[f'FOOT-IK-PARENT.{S}'] = foot_parent
@@ -206,6 +230,13 @@ def place_foot(S, f, z, x, pitch_deg=0.0, toe_out_deg=0.0, knee=None):
     fik = f'FOOT-IK.{S}'
     setM(fik, Df @ rest_rot(fik), W(f, z, x) + Df @ (H(fik) - H(f'DEF-FOOT.{S}')))
     if knee: setM(f'IK-POLE-LEG.{S}', rest_rot(f'IK-POLE-LEG.{S}'), W(*knee))
+
+
+def scapulae(down_deg):
+    """Escápulas: + = bajarlas (depresión), − = subirlas. Gira el control SHOULDER alrededor de su raíz (15° ≈ 3 cm el hombro)."""
+    for S, sgn in (('L', 1), ('R', -1)):
+        M = pb[f'SHOULDER.{S}'].matrix.copy()
+        setM(f'SHOULDER.{S}', Matrix.Rotation(math.radians(sgn * down_deg), 3, 'Y') @ M.to_3x3(), M.translation)
 
 
 TOE = Vector((0, -0.194, -0.056))                  # tobillo -> punta del pie en reposo (cola de DEF-TOE)
@@ -430,4 +461,6 @@ if __name__ == '__main__':
         setup_bar_in_hands()
     elif args[2] == 'banco':
         setup_bench()
+    elif args[2] == 'discos':
+        setup_discs()
     bpy.ops.wm.save_as_mainfile(filepath=args[1]); print('SAVED', args[1])

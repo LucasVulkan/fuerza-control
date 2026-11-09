@@ -1,66 +1,93 @@
-"""Jalón al pecho (spec X03-05): acción `lat_pulldown`, tipo de base `libre`; después, `cable` con la polea arriba (X01 §2.13).
-Sentado en el asiento (FF_banco hace de asiento), muslos horizontales y pies en el suelo; barra de jalón con agarre prono
-ancho. Frame 1: brazos estirados arriba, tronco un poco hacia atrás; frame 30: la barra en la parte alta del pecho, codos
-abajo y atrás, tronco algo más inclinado. La barra de jalón no se ve (BARRA oculta, como el maneral del remo en polea): la
-dibujará la app.
+"""Jalón al pecho (spec X03-05): acción `lat_pulldown` (agarre prono), tipo de base `libre`; después, `cable` con la polea
+arriba (X01 §2.13). Las variantes de agarre son acciones propias que salen de este mismo script: `lat_pulldown_supino.py`
+y `lat_pulldown_neutro.py`.
+
+Las manos CUELGAN DE LA BARRA (ARM_IK_parent = 5, como en la banca y la dominada): se anima el control BARRA y las manos van
+con ella sin deslizarse; el codo se dobla solo lo que pida la distancia. Lo que reparte el tirón entre escápula y codo es:
+  - BARRA: por dónde baja (recta, por delante de la cara);
+  - SHOULDER.L/R: las escápulas (arriba en el frame 1, abajo desde el 10: la barra baja con los brazos casi rectos);
+  - ARM-POLE-IK.L/R: hacia dónde van los codos;
+  - TORSO: la inclinación del tronco (algo más atrás al final).
+Claves: 1 = brazos estirados y escápulas arriba · 10 = escápulas abajo, brazos casi rectos · 20 = barra a la altura de la
+barbilla, por delante de la cara · 30 = barra en lo alto del pecho.
+La barra va sin discos (PROPERTIES["DISCOS"] = 0) y el asiento es FF_banco.
 
 Se usa igual que deadlift.py: panel FormFit, Text Editor › Run Script, o
   blender -b --factory-startup --python blender/ejercicios/lat_pulldown.py -- entrada.blend salida.blend
-Es una base: escápulas, cabeza, codos y manos se retocan a mano en Blender.
 """
 import math
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 META = ('lat_pulldown', 'libre', 'Jalón al pecho')
 DEG = math.pi / 180
 PARAMS = {
     'SEAT_Z':      (0.45, 0.38, 0.55, 'Asiento, altura (m)'),
     'HIP_UP':      (0.08, 0.05, 0.12, 'Cadera (articulación) sobre el asiento (m)'),
-    'TRUNK_START': (-6.0, -20.0, 10.0, 'Tronco con los brazos arriba (°, − hacia atrás)'),
-    'TRUNK_END':   (-18.0, -35.0, 0.0, 'Tronco al tirar (°)'),
-    'GRIP_HALF':   (0.40, 0.25, 0.50, 'Agarre, media anchura (m)'),
-    'BAR_F':       (0.06, -0.05, 0.20, 'Arriba: barra delante de los hombros (m)'),
+    'TRUNK_START': (-6.0, -20.0, 10.0, 'Tronco arriba (°, − hacia atrás)'),
+    'TRUNK_END':   (-16.0, -35.0, 0.0, 'Tronco al tirar (°)'),
+    'GRIP_HALF':   (0.40, 0.08, 0.50, 'Agarre, media anchura (m)'),
+    'SCAP_UP':     (12.0, 0.0, 25.0, 'Arriba: escápulas subidas (°)'),
+    'SCAP_DOWN':   (18.0, 0.0, 30.0, 'Desde el frame 10: escápulas bajadas (°)'),
+    'ARMS_10':     (0.97, 0.85, 1.0, 'Frame 10: brazo (hombro-puño) respecto a recto'),
+    'BAR_F':       (0.15, -0.05, 0.25, 'Barra delante de los hombros, arriba y en el frame 10 (m): que baje por delante de la cara'),
+    'FACE_F':      (0.26, 0.15, 0.35, 'Frame 20: barra a la altura de la barbilla, delante de los hombros (m)'),
+    'FACE_Z':      (0.20, 0.10, 0.30, 'Frame 20: barra sobre los hombros (m)'),
     'BAR_TO':      (0.06, 0.0, 0.15, 'Al tirar: bajo la línea de hombros, por el tronco (m)'),
-    'TO_FRONT':    (0.13, 0.08, 0.20, 'Al tirar: barra delante de la línea cadera-hombro (m)'),
+    'TO_FRONT':    (0.15, 0.08, 0.25, 'Al tirar: barra delante de la línea cadera-hombro (m)'),
     'STANCE_X':    (0.18, 0.08, 0.30, 'Tobillos, media anchura (m)'),
 }
-HANG_OVER = {'L': ((0, 1, 0), (0, 0, 1), (1, 0, 0)), 'R': ((0, -1, 0), (0, 0, 1), (-1, 0, 0))}   # eje arriba, palma delante
+# manos arriba en la barra: el eje de la mano apunta arriba; la palma, según el agarre
+OVER = {'L': Matrix(((0, 1, 0), (0, 0, 1), (1, 0, 0))), 'R': Matrix(((0, -1, 0), (0, 0, 1), (-1, 0, 0)))}   # prono: palma delante
+TURN = {'prono': (0, 0), 'supino': (180, 180), 'neutro': (-90, 90)}           # giro de la mano alrededor de la vertical (L, R)
+POLE = {'prono': (0, 0.3, -1), 'supino': (0, -0.6, -1), 'neutro': (0, -0.4, -1)}   # codos: abiertos (prono) o delante
 
 
-def frames(F, p):
-    from mathutils import Matrix
-    F.socket('L')
-    hand = {S: Matrix(m) for S, m in HANG_OVER.items()}
-    hip = Vector((0.0, p['SEAT_Z'] + p['HIP_UP']))
-    d = lambda phi: F.trunk_R(phi) @ (F.shMid - F.hipMid)
-    L = F.arm_len('L') * 0.99; dx = p['GRIP_HALF'] - F.H('DEF-ARM01.L').x
-    ankle_f = hip.x + F.Lt * 0.92
+def make(grip):
+    def frames(F, p):
+        F.socket('L')
+        hand = {S: Matrix.Rotation(TURN[grip][i] * DEG, 3, 'Z') @ OVER[S] for i, S in enumerate('LR')}
+        hip = Vector((0.0, p['SEAT_Z'] + p['HIP_UP']))
+        L = F.arm_len('L') * 0.99; dx = p['GRIP_HALF'] - F.H('DEF-ARM01.L').x
+        ankle_f = hip.x + F.Lt * 0.92
 
-    def pose(phi, pull):
-        sh = hip + Vector((-d(phi).y, d(phi).z))
-        if pull:
-            u = Vector((math.sin(phi), math.cos(phi))); n = Vector((math.cos(phi), -math.sin(phi)))
-            bar = sh - u * p['BAR_TO'] + n * p['TO_FRONT']
-        else:
-            bar = sh + Vector((p['BAR_F'], math.sqrt(max(1e-6, L ** 2 - dx ** 2 - p['BAR_F'] ** 2))))
-        print(f'jalón: hombros z {sh.y:.2f} · barra f {bar.x:.2f} z {bar.y:.2f}')
+        def pose(phi, scap, where):
+            def posar():
+                F.set_props(hand_parent=5, foot_parent=0, bar_in_hands=0, discs=0); F.hide_machine()
+                F.place_bench(hip.x - 0.02, p['SEAT_Z'], (0.40, 0.40, p['SEAT_Z']))
+                F.place_trunk(hip.x, hip.y, phi)
+                for S, sgn in (('L', 1), ('R', -1)):
+                    F.place_foot(S, ankle_f, F.ankleH, sgn * p['STANCE_X'], 0, 10, knee=(ankle_f + 0.3, 1.0, sgn * 0.3))
+                F.scapulae(scap)
+                sh = Vector(F.sagittal((F.pb['DEF-ARM01.L'].head + F.pb['DEF-ARM01.R'].head) / 2))   # hombros ya colocados
+                if where == 'face':
+                    bar = sh + Vector((p['FACE_F'], p['FACE_Z']))
+                elif where == 'chest':
+                    u = Vector((math.sin(phi), math.cos(phi))); n = Vector((math.cos(phi), -math.sin(phi)))
+                    bar = sh - u * p['BAR_TO'] + n * p['TO_FRONT']
+                else:
+                    r = L * (1.0 if where == 'top' else p['ARMS_10'])
+                    bar = sh + Vector((p['BAR_F'], math.sqrt(max(1e-6, r ** 2 - dx ** 2 - p['BAR_F'] ** 2))))
+                F.place_bar(bar.x, bar.y)
+                F.grip_bar(F.W(bar.x, bar.y), p['GRIP_HALF'], hand, pole_dir=POLE[grip])
+                print(f'  jalón {grip} {where}: hombros z {sh.y:.2f} · barra f {bar.x:.2f} z {bar.y:.2f}')
+            return posar
+        return [(1, pose(p['TRUNK_START'] * DEG, -p['SCAP_UP'], 'top')),
+                (10, pose(p['TRUNK_START'] * DEG, p['SCAP_DOWN'], 'mid')),
+                (20, pose((p['TRUNK_START'] + p['TRUNK_END']) / 2 * DEG, p['SCAP_DOWN'], 'face')),
+                (30, pose(p['TRUNK_END'] * DEG, p['SCAP_DOWN'], 'chest'))]
 
-        def posar():
-            F.set_props(hand_parent=0, foot_parent=0, bar_in_hands=1); F.hide_machine(); F.hide_bar()
-            F.place_bench(hip.x - 0.02, p['SEAT_Z'], (0.40, 0.40, p['SEAT_Z']))
-            F.place_trunk(hip.x, hip.y, phi)
-            for S, sgn in (('L', 1), ('R', -1)):
-                F.place_foot(S, ankle_f, F.ankleH, sgn * p['STANCE_X'], 0, 10, knee=(ankle_f + 0.3, 1.0, sgn * 0.3))
-            F.grip_bar(F.W(bar.x, bar.y), p['GRIP_HALF'], hand, pole_dir=(0, 0.3, -1))
-        return posar
-    return [(1, pose(p['TRUNK_START'] * DEG, False)), (30, pose(p['TRUNK_END'] * DEG, True))]
+    def setup(F, act, p):
+        act['ff_status'] = 'borrador'; act['ff_plan'] = 'cable'
+        act['ff_mano'] = {'prono': 'colgado_prono', 'supino': 'colgado_supino', 'neutro': 'colgado_neutro'}[grip]
+        if grip != 'prono':
+            act['ff_variant_of'] = 'lat_pulldown'; act['ff_axis'] = 'grip'; act['ff_value'] = grip; act['ff_grip'] = grip
+    return frames, setup
 
 
-def setup(F, act, p):
-    act['ff_status'] = 'borrador'; act['ff_mano'] = 'colgado_prono'; act['ff_plan'] = 'cable'
+frames, setup = make('prono')
 
 
-if __name__ == '__main__':
+def main(META, PARAMS, frames, setup):
     import bpy, sys, os, importlib, types
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else None
     if argv: bpy.ops.wm.open_mainfile(filepath=argv[0])
@@ -71,3 +98,7 @@ if __name__ == '__main__':
     F.run(types.SimpleNamespace(META=META, PARAMS=PARAMS, frames=frames, setup=setup))
     bpy.context.scene.frame_set(30)
     if argv: bpy.ops.wm.save_as_mainfile(filepath=argv[1]); print('SAVED', argv[1])
+
+
+if __name__ == '__main__':
+    main(META, PARAMS, frames, setup)

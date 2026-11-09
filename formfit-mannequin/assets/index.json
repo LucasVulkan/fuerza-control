@@ -24,14 +24,14 @@
   "bench_press": {
    "base": "libre",
    "nombre": "Press de banca",
-   "estado": "borrador",
+   "estado": "ok",
    "mano": "barra_press",
    "plan": "bench"
   },
   "bulgarian_split_squat": {
    "base": "libre",
    "nombre": "Sentadilla búlgara",
-   "estado": "borrador",
+   "estado": "ok",
    "mano": "28",
    "plan": "split"
   },
@@ -71,7 +71,7 @@
   "hip_thrust": {
    "base": "libre",
    "nombre": "Hip thrust",
-   "estado": "borrador",
+   "estado": "ok",
    "mano": "barra_pm",
    "plan": "bench"
   },
@@ -81,6 +81,26 @@
    "estado": "borrador",
    "mano": "colgado_prono",
    "plan": "cable"
+  },
+  "lat_pulldown_neutro": {
+   "base": "libre",
+   "nombre": "Jalón neutro",
+   "estado": "borrador",
+   "mano": "colgado_neutro",
+   "plan": "cable",
+   "de": "lat_pulldown",
+   "eje": "grip",
+   "valor": "neutro"
+  },
+  "lat_pulldown_supino": {
+   "base": "libre",
+   "nombre": "Jalón supino",
+   "estado": "borrador",
+   "mano": "colgado_supino",
+   "plan": "cable",
+   "de": "lat_pulldown",
+   "eje": "grip",
+   "valor": "supino"
   },
   "leg_press": {
    "base": "seat",
@@ -97,7 +117,7 @@
   "push_up": {
    "base": "libre",
    "nombre": "Flexiones",
-   "estado": "borrador",
+   "estado": "ok",
    "mano": "palma_plana",
    "plan": "floor"
   },

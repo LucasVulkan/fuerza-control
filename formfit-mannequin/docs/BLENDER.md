@@ -15,6 +15,8 @@ Scene Collection
 
 En *2 · Props* está también **`FF_banco`**: el banco, el asiento del jalón o el cajón. Es una sola caja colgada del hueso `BANCO` del rig, y **cada acción lo keya**: dónde está y su medida (la escala del hueso: ancho, largo y alto en metros) o escondido (escala 0,001). Para moverlo en una acción, posa el hueso `BANCO` y keya.
 
+`PROPERTIES["DISCOS"]` (0 o 1, keyada en cada acción) quita los discos de la barra: así hace de barra de jalón. En el jalón las manos cuelgan de la barra: mueve el control `BARRA` y las manos van con ella; el reparto entre escápula y codo se lleva con `SHOULDER.L/R` (bajar las escápulas antes de doblar el codo), los codos con `ARM-POLE-IK` y el tronco con `TORSO`.
+
 - **No renombres** las colecciones `FF_*` ni los objetos `FF_*`: los scripts los buscan por su nombre. Los grupos de colores sí se pueden renombrar.
 - Los **ejercicios** son acciones. Se eligen en el panel **FormFit** (barra lateral N del visor 3D) o en el Action Editor. Las **manos** están en la **biblioteca de poses** (§3).
 
