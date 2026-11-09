@@ -10,10 +10,10 @@
 > Fase X03-05 · pendiente · Ola 1: búlgara, banca, jalón, hip thrust y flexiones · §8
 > Fase X03-06 · pendiente · Ola 2: lo que cabe en las bases que ya hay · §9
 > Fase X03-07 · pendiente · Bases nuevas `bench`, `split` y `floor` · §10
-> Fase X03-08 · pendiente · Biblioteca de manos (poses de Blender) · §11
+> Fase X03-08 · hecho · Biblioteca de manos (poses de Blender) · §11
 > Fase X03-09 · hecho · Orden del .blend y guía del flujo · §12
 >
-> Estado: escrita el 8-nov-2026 a partir de lo medido en la rama `feat/x01-peso-muerto` (11 acciones); el mismo día, modelo del catálogo cerrado con el usuario (§2) y maqueta [`catalogo-maniqui-2.html`](../mockups/catalogo-maniqui-2.html) (la v1, con tarjetas, no se entendía). **X03-09 hecha el 9-nov** (`blender/organizar.py`, guía `formfit-mannequin/docs/BLENDER.md`) junto con la parte de Blender de X03-08: las manos son pose assets `mano.*` (solo huesos de la mano) en tres catálogos, con cuatro nuevas por retocar (colgado prono y supino, barra en la espalda, barra de peso muerto) y `ff_status`/`ff_mano` en cada acción; export idéntico (0 de diferencia) salvo el nombre de tres ejercicios. Falta de X03-08 que el visor use `ff_mano`. Concreta X01-11 (un JSON por acción, `ff_status`), X01-12 (la matriz) y X01-08 (miniaturas) para la v1, sin esperar a T08: la clave sigue siendo el id de la ficha.
+> Estado: escrita el 8-nov-2026 a partir de lo medido en la rama `feat/x01-peso-muerto` (11 acciones); el mismo día, modelo del catálogo cerrado con el usuario (§2) y maqueta [`catalogo-maniqui-2.html`](../mockups/catalogo-maniqui-2.html) (la v1, con tarjetas, no se entendía). **X03-09 hecha el 9-nov** (`blender/organizar.py`, guía `formfit-mannequin/docs/BLENDER.md`) junto con la parte de Blender de X03-08: las manos son pose assets `mano.*` (solo huesos de la mano) en tres catálogos, con cuatro nuevas por retocar (colgado prono y supino, barra en la espalda, barra de peso muerto) y `ff_status`/`ff_mano` en cada acción; export idéntico (0 de diferencia) salvo el nombre de tres ejercicios. El 9-nov, el usuario decide que el visor **no** use `ff_mano` por ahora: cada acción lleva sus dedos (posados con la biblioteca, que lo hace rápido) y las variantes sin acción propia los saca la app; X03-08 queda hecha sin tocar el visor. Concreta X01-11 (un JSON por acción, `ff_status`), X01-12 (la matriz) y X01-08 (miniaturas) para la v1, sin esperar a T08: la clave sigue siendo el id de la ficha.
 
 ## 1. Contexto
 
@@ -47,7 +47,7 @@ Patrón            conjunto de ejercicios parecidos                    Remos en 
 - **Lo que no es ni lo uno ni lo otro** va en la ficha como nota: el tempo (`pause_squat_barbell`, `pull_up_negative`) lo pone el programa.
 - **Fichas fuera**: sin maniquí a propósito (máquinas de cardio…).
 
-**Manos.** Una acción o variante con las manos **simétricas** apunta a una mano de la biblioteca (`ff_mano`, §11), que es la que pone la app; las **asimétricas** (arquero, remo a un brazo) no apuntan a ninguna y usan los dedos de su acción.
+**Manos.** Una acción o variante con las manos **simétricas** apunta a la mano de la biblioteca con que se posó (`ff_mano`, §11); las **asimétricas** (arquero, remo a un brazo) no apuntan a ninguna. En la app, cada acción enseña siempre sus propios dedos; las variantes sin acción propia, los que pone la app (§11).
 
 **Nivel de lógica** de cada acción: `libre` (la animación tal cual, §5) o un tipo de base con sus ajustes (`stand`, `hinge`, `hang`, `row`, `cable`, `seat`…). Una acción `libre` se promociona cuando su base exista (cambia `ff_base` y se exporta). Una variante *script* sobre una acción `libre` todavía no funciona: la página lo avisa.
 
@@ -119,7 +119,7 @@ Lo que X01-11 ya pedía, más lo que hace falta para el seguimiento:
   - `from`: `ff_from`, la acción de la que se duplicó (la pone «Crear desde otra» y se puede escribir a mano); sirve para la página y para saber a quién afecta un cambio;
   - `rev`: los 8 primeros caracteres del hash del JSON de la acción. Cambia solo si cambia la pose. Es la **versión**: la usan las miniaturas (§7) y la caché de capturas en el móvil (X01-08) como clave, y el historial completo está en git;
   - `kb`: tamaño del archivo;
-  - `mano`: `ff_mano`, la mano de la biblioteca que usa (§11); vacío = la de la acción (manos asimétricas);
+  - `mano`: `ff_mano`, la mano de la biblioteca que usa (§11); vacío = manos asimétricas, posadas a mano;
   - en las variantes con acción propia, `of` (`ff_variant_of`), `axis` y `value` (`ff_axis`, `ff_value`: el eje y el valor que son, con los nombres de T08). `ff_grip` se lee como `ff_axis = grip` para las dos que ya hay.
 - **Solo llega a la app lo `ok`** (`build.py` copia `ok`; el prototipo enseña todo, con el estado en el nombre).
 - **Precisión**: `tests/fidelity.js` sigue en 0,0 mm con su tolerancia actual; si los 4 decimales la rompen, 5 (se mide, no se discute).
@@ -272,14 +272,15 @@ La tabla es el punto de partida, no una lista cerrada: **la biblioteca es lo que
 - **En Blender son *pose assets*** (la biblioteca de poses de Blender 5.0: Pose Mode › *Asset Shelf* abajo del visor 3D). Cada una es la acción `mano.<id>` marcada como asset, con **solo los huesos de la mano izquierda** (dedos, palmas, pulgar y sus controles), en un catálogo del Asset Browser por grupo. Al posar cualquier ejercicio, se selecciona la mano y se pulsa la pose; la derecha, con «aplicar invertida». Lo mismo vale para retocar: se cambia la pose de la biblioteca y vale para todos.
 - **Lo que no es dedos** se queda donde está: el cilindro de referencia (`FF_asa_*`) y el maneral (`FF_maneral.*`) con su sitio en la mano.
 - **Exportador:** lee las `mano.*` (en vez de `_mano.*`, que se renombran), refleja la derecha como hoy (`reflejar`) y saca lo mismo que ahora (`hands`). Antes de quitar los huesos que sobran, se comprueba que el export sale idéntico.
-- **Visor:** una acción o variante con `ff_mano` usa **siempre** los dedos de esa mano, con su implemento o con otro (se acaban las tres fuentes). Sin `ff_mano` (manos asimétricas), los de la acción. `tests/fidelity.js` compara entonces los dedos con los de la mano, no con los de la acción.
+- **Visor (decidido el 9-nov): no cambia.** Una acción, ejercicio o variante con acción propia, enseña **sus** dedos: se posan aplicando la mano de la biblioteca en Blender, y `ff_mano` solo apunta cuál se usó. Una variante **sin acción propia** (por script) usa los dedos de su ejercicio si el agarre no cambia, y si cambia, los que pone la app: la mezcla de asa 28 y 40 mm con otro implemento, o `mano.<maneral>` en la polea. `tests/fidelity.js` no cambia.
+- **Consecuencia:** retocar una mano de la biblioteca no cambia los ejercicios ya posados; hay que volver a aplicarla en cada acción que la usa (se buscan por `ff_mano`). Que el visor tome los dedos de `ff_mano` queda para cuando haya muchas acciones por mano.
 - **Punto de partida de las nuevas** (colgado prono y supino, barra en la espalda, barra de peso muerto): Claude las saca de los dedos de `pullup`, `Chinup`, `back_squat` y `deadlift`, y el usuario las retoca. Se asignan con `ff_mano` en esas acciones.
 - A comprobar al empezar, en Blender 5.0: que aplicar una pose con huesos seleccionados solo toca esos huesos, y cómo se aplica invertida desde el *Asset Shelf*.
 
 **Probar X03-08**
 
 - [ ] En Pose Mode salen las manos en el *Asset Shelf*, por grupos; aplicar una a la mano izquierda solo cambia esa mano, y la invertida pone la derecha igual.
-- [ ] Retocar «colgado prono» y exportar cambia los dedos de la dominada y de todo lo que la usa en el visor.
+- [ ] Aplicar «colgado prono» a la dominada, keyar y exportar cambia sus dedos en el visor.
 - [ ] El export de las manos que ya había sale igual que antes del cambio.
 
 ## 12. X03-09 · Orden del .blend y guía del flujo
@@ -300,7 +301,7 @@ Scene Collection
 
 - Los **ejercicios** (acciones) se eligen en el panel FormFit, que enseña patrón, estado y mano de cada uno; las **manos**, en el *Asset Shelf* (§11). Nada de buscarlos en la lista de acciones.
 - Fuera las acciones de objeto sobrantes, y `ff_base`/`ff_name` en las tres que no los tienen; se comprueba que el export sale idéntico.
-- **Guía** `formfit-mannequin/docs/BLENDER.md`, para el usuario y enlazada desde HANDOFF §0: el árbol de arriba con qué es de quién; el camino de una pose (Blender → exportador → índice → app) y de una mano (biblioteca → `ff_mano` → visor) en un dibujo; y tres recetas cortas: retocar un ejercicio y marcarlo `ok`, posar una variante con acción propia, posar o retocar una mano.
+- **Guía** `formfit-mannequin/docs/BLENDER.md`, para el usuario y enlazada desde HANDOFF §0: el árbol de arriba con qué es de quién; el camino de una pose (Blender → exportador → índice → app) y de una mano (biblioteca → aplicada en la acción → visor) en un dibujo; y tres recetas cortas: retocar un ejercicio y marcarlo `ok`, posar una variante con acción propia, posar o retocar una mano.
 
 **Probar X03-09**
 
@@ -326,5 +327,5 @@ Scene Collection
 | X03-05 | Ola 1 (búlgara, banca, jalón, hip thrust, flexiones) | X03-02 | pendiente |
 | X03-06 | Ola 2 (bases existentes) | X03-03 | pendiente |
 | X03-07 | Bases `bench`, `split`, `floor` | X03-05 | pendiente |
-| X03-08 | Biblioteca de manos | — | pendiente |
-| X03-09 | Orden del .blend y guía | X03-08 | pendiente |
+| X03-08 | Biblioteca de manos | — | hecho |
+| X03-09 | Orden del .blend y guía | X03-08 | hecho |

@@ -26,11 +26,12 @@ Scene Collection
 ## 2. De Blender a la app
 
 ```
- acción del ejercicio ──┐
- (frame 1 inicio,       │                          ┌─ poses.json ── visor (WebView) ── app
-  30 final)             ├── export.py ─────────────┤
- mano.<id> (biblioteca)─┘   (Guardar y exportar     └─ mannequin.glb (la malla)
-                             en el panel FormFit)
+ mano.<id> (biblioteca) ── se aplica al posar ──┐
+                                               ▼
+ acción del ejercicio (frame 1 inicio, 30 final, con sus dedos)
+        │
+        └── export.py (Guardar y exportar ──┬─ poses.json ── visor (WebView) ── app
+            en el panel FormFit)            └─ mannequin.glb (la malla)
 ```
 
 Cada acción lleva unas propiedades (Action Editor › barra lateral N › Action › Custom Properties). Las que tocas tú:
@@ -38,12 +39,12 @@ Cada acción lleva unas propiedades (Action Editor › barra lateral N › Actio
 | Propiedad | Qué es | Valores |
 |---|---|---|
 | `ff_status` | en qué punto está | `borrador` · `revisar` · `ok` |
-| `ff_mano` | qué mano de la biblioteca usa | el id sin `mano.` (`colgado_prono`); vacío = manos distintas en cada lado, salen de la propia acción |
+| `ff_mano` | con qué mano de la biblioteca la posaste (solo de referencia) | el id sin `mano.` (`colgado_prono`); vacío = manos distintas en cada lado |
 | `ff_name` | el nombre que se ve | texto |
 
 Las demás (`ff_base`, `ff_variant_of`, `ff_axis`, `ff_value`, `ff_pulley`…) las pone el script; no hace falta tocarlas.
 
-**Hoy**, el visor todavía usa los dedos de cada acción; que use los de `ff_mano` es la segunda mitad de X03-08. Las manos de la biblioteca ya se exportan.
+**De dónde salen los dedos en la app:** cada acción (ejercicio o variante con acción propia) enseña **sus** dedos, los que keyaste. Una variante sin acción propia (por script) usa los de su ejercicio, o, si cambia el implemento o el maneral, los que pone la app (asas de 28 y 40 mm, `mano.<maneral>`). Por eso retocar una mano de la biblioteca **no** cambia los ejercicios ya posados: vuelve a aplicarla en las acciones que la usan (su `ff_mano`).
 
 ## 3. La biblioteca de manos
 
