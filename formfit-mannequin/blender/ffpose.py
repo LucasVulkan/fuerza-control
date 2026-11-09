@@ -7,7 +7,7 @@ Se importa desde los scripts de `blender/ejercicios/`. Da:
     valores de otras acciones (se keyan todos los controles, también los que se quedan en reposo).
 Coordenadas sagitales: f = hacia delante (= -Y), z = arriba.
 """
-import bpy, sys, math, json
+import bpy, sys, math, json, re
 from mathutils import Vector, Matrix
 
 if __name__ == '__main__':      # blender -b --factory-startup --python blender/ffpose.py -- entrada.blend salida.blend sellar a,b,c
@@ -216,7 +216,23 @@ def new_action(name, base, label):
     return act
 
 
-def channels(p): return ('location', 'rotation_quaternion' if p.rotation_mode == 'QUATERNION' else 'rotation_euler', 'scale')
+MANO = 'mano.'   # prefijo de las manos de la biblioteca (pose assets, spec X03 §11): mano.<id>
+HAND_RE = re.compile(r'FINGER|THUMB|PALM')   # huesos de la mano que guarda una pose de mano (no la muñeca ni el brazo)
+
+
+def trim_hand(act):
+    """Deja en una acción de mano solo los canales de dedos, palmas y pulgar (los dos lados): así, como pose de la
+    biblioteca, aplicarla no mueve nada más del rig."""
+    for l in act.layers:
+        for st in l.strips:
+            for sl in act.slots:
+                cb = st.channelbag(sl)
+                if not cb: continue
+                for fc in [f for f in cb.fcurves if not (f.data_path.startswith('pose.bones["') and HAND_RE.search(f.data_path.split('"')[1]))]:
+                    cb.fcurves.remove(fc)
+
+
+def channels(p): return('location', 'rotation_quaternion' if p.rotation_mode == 'QUATERNION' else 'rotation_euler', 'scale')
 def prop_names(): P = pb['PROPERTIES']; return [k for k in P.keys() if isinstance(P[k], (int, float))]
 
 

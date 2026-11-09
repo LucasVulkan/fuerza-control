@@ -6,7 +6,7 @@ Por maneral crea (si no existe; lo que ya existe NO se toca, son retoques del us
     Es una base: se remodela libremente (Edit Mode); el origen del objeto debe seguir en el gancho;
   - en la colección `FF_manerales_<maneral>`, una instancia por mano `FF_maneral.<maneral>.L/R` (comparten la malla),
     emparentada a la mano (`DEF-HAND`). Se ve en cualquier acción: sirve para ver cómo encaja el maneral en los ejercicios;
-  - la acción `_mano.<maneral>`: el rig en reposo con los dedos cerrados sobre el maneral. Se retocan dedos y pulgar y,
+  - la acción `mano.<maneral>`: el rig en reposo con los dedos cerrados sobre el maneral. Se retocan dedos y pulgar y,
     si hace falta, se mueve la instancia respecto a la mano (eso es lo que se exporta: dónde va el maneral en la mano).
 El exportador saca la malla, y por mano: dedos, el maneral respecto a la mano y el punto de agarre, que calcula él (el
 centro del puño cerrado, en el marco del maneral): solo hay que mover el maneral (`poses.json` › `manerales` y `hands`). El visor dibuja esa malla, pivotando sobre el gancho, y pone las manos donde dice cada `_mano`.
@@ -72,16 +72,16 @@ def main(F):
     F.socket('L')                                   # medir el puño pone el rig en reposo: antes de nada
     prev = F.rig.animation_data.action if F.rig.animation_data else None
     for m, (nm, agarres, giro, curl, rigido) in MANERALES.items():
-        act = bpy.data.actions.get('_mano.' + m)
+        act = bpy.data.actions.get(F.MANO + m)
         if act and bpy.data.objects.get(f'FF_maneral.{m}.L'):
             print(f'  {m}: ya existe, no se toca'); continue
         col = bpy.data.collections.get('FF_manerales_' + m) or bpy.data.collections.new('FF_manerales_' + m)
         if col.name not in sc.collection.children: sc.collection.children.link(col)
         col.hide_render = True
-        act = act or F.new_action('_mano.' + m, 'mano', f'Mano {m}')
+        act = act or F.new_action(F.MANO + m, 'mano', f'Mano {m}')
         act['ff_maneral'] = m; act['ff_rigido'] = rigido
         F.rig.animation_data.action = act
-        F.reset(); F.fist('L', curl); F.fist('R', curl); F.upd(); F.key(1); F.finish(act)
+        F.reset(); F.fist('L', curl); F.fist('R', curl); F.upd(); F.key(1); F.finish(act); F.trim_hand(act)
         me = malla(nm)
         for S in 'LR':
             H = F.rig.matrix_world @ F.H(f'DEF-HAND.{S}') + F.rig.matrix_world.to_3x3() @ F.socket(S)   # hueco del puño cerrado, en reposo
@@ -89,19 +89,19 @@ def main(F):
             ob = bpy.data.objects.new(f'FF_maneral.{m}.{S}', me); col.objects.link(ob)
             ob.parent = F.rig; ob.parent_type = 'BONE'; ob.parent_bone = f'DEF-HAND.{S}'
             F.upd(); ob.matrix_world = Matrix.Translation(H) @ R.to_4x4() @ Matrix.Translation(-g)
-        print(f'  {m}: malla maneral_{nm}, instancias y _mano.{m} creadas')
+        print(f'  {m}: malla maneral_{nm}, instancias y mano.{m} creadas')
     F.reset()
     if prev: F.rig.animation_data.action = prev
 
 
 def reflejar(F):
-    """La mano derecha de cada `_mano.<maneral>` sale de la izquierda: solo se posa la izquierda (dedos y dónde va el maneral
+    """La mano derecha de cada `mano.<maneral>` sale de la izquierda: solo se posa la izquierda (dedos y dónde va el maneral
     en la mano). Dedos y controles .L -> .R como el X-Mirror de Blender (posición (−x, y, z), cuaternión (w, x, −y, −z),
     euler (x, −y, −z)); el maneral derecho, el espejo del izquierdo respecto a su mano (en los ejes de la mano, X invertida)."""
     prev = F.rig.animation_data.action if F.rig.animation_data else None
     Fx = Matrix.Diagonal((-1, 1, 1, 1))
-    for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
-        m = act.name[len('_mano.'):]
+    for act in [a for a in bpy.data.actions if a.name.startswith(F.MANO)]:
+        m = act.name[len(F.MANO):]
         L, R = bpy.data.objects.get(f'FF_maneral.{m}.L'), bpy.data.objects.get(f'FF_maneral.{m}.R')
         if not (L and R): continue
         F.rig.animation_data.action = act; bpy.context.scene.frame_set(1); F.upd()
@@ -112,7 +112,7 @@ def reflejar(F):
             w, qx, qy, qz = pl.rotation_quaternion; pr.rotation_quaternion = (w, qx, -qy, -qz)
             ex, ey, ez = pl.rotation_euler; pr.rotation_euler = (ex, -ey, -ez)
             pr.scale = pl.scale
-        F.upd(); F.key(1); F.finish(act); F.upd()
+        F.upd(); F.key(1); F.finish(act); F.trim_hand(act); F.upd()
         H = lambda S: F.rig.matrix_world @ F.pb[f'DEF-HAND.{S}'].matrix
         # con autokey, mover el maneral le crea una acción de objeto que pisaría el reflejo al cambiar de frame: fuera (se queda
         # donde está en el frame 1, que es lo que cuenta)

@@ -1,0 +1,6 @@
+# Catálogos de la biblioteca de assets de FormFit_Maniqui.blend (los escribe blender/organizar.py)
+VERSION 1
+
+9334865f-d0f4-436b-b98d-10755bf9a377:Manos/Barra:Manos-Barra
+26de05b8-9cf7-45f6-96e5-9de923f3c5de:Manos/Manerales de polea:Manos-Manerales de polea
+d549923b-3b40-42bc-9a01-4541c5436e3e:Manos/Por grosor:Manos-Por grosor

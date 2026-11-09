@@ -4,7 +4,7 @@ Crea (o rehace) en el archivo abierto:
   - la colección `FF_asas` con cilindros de referencia `FF_asa_<mano>.L/R` (28 y 40 mm), donde va el asa en la mano en
     reposo (brazos en cruz, palma abajo: el asa va de delante a atrás). Son la guía para posar y lo que lee el exportador
     para saber dónde está el hueco del puño y hacia dónde va el asa; no se exportan como malla;
-  - las acciones `_mano.abierta`, `_mano.28` y `_mano.40`: el rig en reposo con los dedos cerrados sobre su asa (con los
+  - las acciones `mano.abierta`, `mano.28` y `mano.40`: el rig en reposo con los dedos cerrados sobre su asa (con los
     controles FINGER-MASTER como base). Se retocan a mano: dedos, pulgar y, si hace falta, el propio cilindro.
 Si una acción ya existe NO se rehace (son retoques del usuario); para rehacerla, bórrala antes.
 
@@ -47,15 +47,15 @@ def main(F):
     col.hide_render = True
     prev = F.rig.animation_data.action if F.rig.animation_data else None
     for name, (d, curl) in HANDS.items():
-        if bpy.data.actions.get('_mano.' + name):
-            print(f'  _mano.{name}: ya existe, no se toca'); continue
-        act = F.new_action('_mano.' + name, 'mano', f'Mano {name}')
+        if bpy.data.actions.get(F.MANO + name):
+            print(f'  mano.{name}: ya existe, no se toca'); continue
+        act = F.new_action(F.MANO + name, 'mano', f'Mano {name}')
         act['ff_diametro'] = d or 0.0
         F.reset(); F.fist('L', curl); F.fist('R', curl); F.upd()
-        F.key(1); F.finish(act)
+        F.key(1); F.finish(act); F.trim_hand(act)
         if d:
             for S in 'LR': handle(name, S, d, F.rig.matrix_world @ hollow(F, S), col)
-        print(f'  _mano.{name}: creada' + (f' con su asa de {d * 1000:.0f} mm' if d else ''))
+        print(f'  mano.{name}: creada' + (f' con su asa de {d * 1000:.0f} mm' if d else ''))
     F.reset()
     if prev: F.rig.animation_data.action = prev
 

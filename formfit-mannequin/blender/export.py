@@ -26,7 +26,7 @@ FRAMES = {'start': 1, 'end': 30}
 def bone_action(a):
     """Solo acciones del rig (canales de pose.bones): mover un objeto con autokey crea acciones de objeto (FF_asa_28.LAction)."""
     return any(fc.data_path.startswith('pose.bones') for l in a.layers for st in l.strips for sl in a.slots if (cb := st.channelbag(sl)) for fc in cb.fcurves)
-EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_')) and a.frame_range[1] >= FRAMES['end'] and bone_action(a)])
+EXERCISES = tuple(only or [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_', 'mano.')) and a.frame_range[1] >= FRAMES['end'] and bone_action(a)])
 print('ejercicios:', EXERCISES)
 
 SAMPLE = 5   # además, un frame cada SAMPLE: Blender interpola los controles con curvas (arranque y frenada suaves) y el visor, en
@@ -168,7 +168,7 @@ for ex in EXERCISES:
             fr['s'] = (f - FRAMES['start']) / (FRAMES['end'] - FRAMES['start'])
             out['exercises'][ex].setdefault('mid', []).append(fr)
         else: out['exercises'][ex][key] = fr
-# ---------- manos de referencia (spec X02): acciones `_mano.<nombre>` (blender/ejercicios/_manos.py) y sus asas FF_asa_<nombre>.L/R
+# ---------- manos de referencia (spec X02): acciones `mano.<nombre>` (biblioteca de poses de mano: blender/organizar.py, _manos.py, _manerales.py) y sus asas FF_asa_<nombre>.L/R
 #   fingers: giro de cada hueso de la mano (dedos, palma, pulgar) relativo a DEF-HAND (igual en Blender y en glTF: C se cancela)
 #   hollow: centro y eje del asa en los ejes de DEF-HAND (los ejes locales del hueso se conservan en glTF)
 def under(n, root):
@@ -177,9 +177,9 @@ def under(n, root):
         if n == root: return True
     return False
 out['hands'] = {}; out['manerales'] = {}   # mallas de los manerales (marco del maneral, glTF)
-for act in [a for a in bpy.data.actions if a.name.startswith('_mano.')]:
+for act in [a for a in bpy.data.actions if a.name.startswith('mano.')]:
     use(act.name); sc.frame_set(1); sc.frame_set(1)
-    name = act.name[len('_mano.'):]; d = act.get('ff_diametro') or None; ent = {'d': d}
+    name = act.name[len('mano.'):]; d = act.get('ff_diametro') or None; ent = {'d': d}
     for S in 'LR':
         hn = f'DEF-HAND.{S}'; Mh = rig.matrix_world @ pb[hn].matrix; qh = Mh.to_quaternion(); Rinv = qh.to_matrix().inverted()
         e = {'fingers': {n: quat((qh.inverted() @ (rig.matrix_world @ pb[n].matrix).to_quaternion()).to_matrix()) for n in DEF if under(n, hn)}}

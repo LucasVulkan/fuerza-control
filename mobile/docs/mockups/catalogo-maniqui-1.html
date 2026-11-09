@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo del maniquí</title>
+<!-- Maqueta X03 (8-nov-2026): patrón → ejercicio (una acción) → variantes por eje → fichas de la app; manos; colas de trabajo.
+     Datos reales de feat/x01-peso-muerto salvo lo marcado «falta». La página de verdad saldrá del índice del exportador + el mapa. -->
+<style>
+:root{--bg:#f6f6f3;--card:#fff;--ink:#1d1d1b;--mute:#6b6b66;--line:#e3e3dd;--ok:#2f8f4e;--rev:#c98a12;--borr:#7a6fd0;--falta:#c2412d;--libre:#3b7fc4;--chip:#efefea;--tu:#0f766e;--yo:#9333ea}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#141413;--card:#1f1f1d;--ink:#ecebe6;--mute:#9a998f;--line:#33322f;--chip:#2a2a27}}
+:root[data-theme=dark]{--bg:#141413;--card:#1f1f1d;--ink:#ecebe6;--mute:#9a998f;--line:#33322f;--chip:#2a2a27}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 10px}.sub{color:var(--mute);margin:0 0 16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 18px}
+.bar button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer;font:inherit}
+.bar button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.sum div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}.sum b{font-size:20px;display:block}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:760px){.cols{grid-template-columns:1fr}}
+.q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.q h3{margin:0 0 8px;font-size:14px}
+.q ol{margin:0;padding-left:18px}.q li{margin:3px 0}
+.pat{margin-top:26px}.pat>h2{display:flex;gap:10px;align-items:baseline}.pat>h2 small{color:var(--mute);font-weight:400;font-size:13px}
+.ex{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+.ex.miss{border-style:dashed}
+.head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.head .n{font-weight:650;font-size:15px}.code{font:12px ui-monospace,Consolas,monospace;color:var(--mute)}
+.tag{font-size:12px;border-radius:6px;padding:1px 7px;border:1px solid currentColor;white-space:nowrap}
+.ok{color:var(--ok)}.revisar{color:var(--rev)}.borrador{color:var(--borr)}.falta{color:var(--falta)}.libre{color:var(--libre)}
+.base{color:var(--mute)}.tu{color:var(--tu)}.yo{color:var(--yo)}
+.next{margin-left:auto;font-size:12.5px}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}td,th{text-align:left;padding:5px 6px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:500;font-size:12px}
+.o-base{color:var(--mute)}.o-accion{color:var(--tu)}.o-script{color:var(--yo)}.o-falta{color:var(--falta)}
+.fichas{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.f{background:var(--chip);border-radius:7px;padding:2px 8px;font-size:12.5px}.f i{color:var(--mute);font-style:normal}
+.f.wait{outline:1px dashed var(--falta)}
+.leg{color:var(--mute);font-size:12.5px;margin-top:6px}
+.hands{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.hand{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px}.hand .n{font-weight:600}
+.hand .u{color:var(--mute);font-size:12.5px;margin-top:3px}
+</style>
+</head>
+<body><main>
+<h1>Catálogo del maniquí</h1>
+<p class="sub">Maqueta · patrón → ejercicio (una acción de Blender) → variantes por eje → fichas de la app. Morado: lo hace Claude por script. Verde azulado: lo posas tú en Blender.</p>
+
+<div class="sum" id="sum"></div>
+
+<h2>Lo siguiente</h2>
+<div class="cols"><div class="q"><h3 class="tu">Para ti (Blender a mano)</h3><ol id="qtu"></ol></div>
+<div class="q"><h3 class="yo">Para Claude (script y visor)</h3><ol id="qyo"></ol></div></div>
+
+<div class="bar" id="filt"></div>
+<div id="pats"></div>
+
+<h2>Biblioteca de manos</h2>
+<p class="sub">Poses de mano reutilizables (solo la izquierda; la derecha sale invertida). Un ejercicio con manos asimétricas no apunta a ninguna: usa los dedos de su acción.</p>
+<div class="hands" id="hands"></div>
+<p class="leg">Origen de una variante: <span class="o-base">● la del ejercicio</span> · <span class="o-accion">● acción propia (tú)</span> · <span class="o-script">● script (Claude)</span> · <span class="o-falta">● falta</span>. Estados de una acción: <span class="borrador">borrador</span> · <span class="revisar">revisar</span> · <span class="ok">ok</span>. Base <span class="libre">libre</span> = la animación tal cual, sin ajustes.</p>
+</main>
+<script>
+// ponytail: datos a mano para la maqueta; la página real los lee del índice del exportador y del mapa
+const MANOS = [
+  {id:'colgado_prono', n:'Colgado, prono', g:'Barra', st:'falta'},
+  {id:'colgado_supino', n:'Colgado, supino', g:'Barra', st:'falta'},
+  {id:'barra_espalda', n:'Barra en la espalda', g:'Barra', st:'falta'},
+  {id:'barra_pm', n:'Barra de peso muerto / remo', g:'Barra', st:'falta'},
+  {id:'28', n:'Asa 28 mm (mancuerna)', g:'Referencia por grosor', st:'ok'},
+  {id:'40', n:'Asa 40 mm (kettlebell)', g:'Referencia por grosor', st:'ok'},
+  {id:'triangulo', n:'Triángulo', g:'Manerales de polea', st:'ok'},
+  {id:'barra_recta', n:'Barra recta', g:'Manerales de polea', st:'ok'},
+  {id:'cuerda', n:'Cuerda', g:'Manerales de polea', st:'ok'},
+  {id:'asa', n:'Asa en D', g:'Manerales de polea', st:'ok'},
+];
+// origen: base (el valor que ya tiene la acción del ejercicio) · accion · script · falta
+const PATRONES = [
+ {n:'Sentadillas', ex:[
+  {a:'back_squat', n:'Sentadilla trasera', base:'stand', st:'ok', mano:'barra_espalda',
+   ejes:[['Implemento',[['barra','base'],['safety bar','falta']]],['Cajón',[['no','base'],['sí','falta']]]],
+   fichas:[['squat_barbell'],['pause_squat_barbell','tempo del programa'],['box_squat_barbell','cajón: sí'],['smith_squat','falta: smith']]},
+  {a:'front_squat', n:'Sentadilla frontal', base:'stand', st:'ok', mano:'barra_espalda',
+   ejes:[], fichas:[['front_squat_barbell']]},
+  {a:'goblet_squat', n:'Sentadilla goblet', base:'stand', st:'falta', mano:'40',
+   ejes:[['Implemento',[['kettlebell','base'],['mancuerna','script']]]], fichas:[['goblet_squat']]},
+  {a:'leg_press', n:'Prensa', base:'seat', st:'ok', mano:'',
+   ejes:[['Pies',[['normal','base'],['altos','script'],['anchos','script']]]],
+   fichas:[['leg_press_standard'],['leg_press_high','pies: altos'],['leg_press_wide','pies: anchos']]},
+  {a:'single_leg_press', n:'Prensa a una pierna', base:'seat', st:'falta', mano:'', ejes:[], fichas:[['single_leg_press']]},
+ ]},
+ {n:'Dominadas', ex:[
+  {a:'pullup', n:'Dominada', base:'hang', st:'ok', mano:'colgado_prono',
+   ejes:[['Agarre',[['prono','base'],['supino','accion','Chinup','ok','colgado_supino'],['neutro','script']]],['Asistencia',[['ninguna','base'],['goma','falta']]]],
+   fichas:[['pull_up'],['pull_up_supine','agarre: supino'],['pull_up_negative','tempo del programa'],['pull_up_assisted','asistencia: goma']]},
+  {a:'chest_to_bar_pull_up', n:'Dominada al pecho', base:'hang', st:'falta', mano:'colgado_prono', ejes:[], fichas:[['chest_to_bar_pull_up']]},
+  {a:'scapula_pull_up', n:'Dominada escapular', base:'libre', st:'falta', mano:'colgado_prono', ejes:[], fichas:[['scapula_pull_up']]},
+  {a:'archer_pull_up', n:'Dominada arquero', base:'libre', st:'falta', mano:'', ejes:[], fichas:[['archer_pull_up']]},
+  {a:'hanging_knee_raise', n:'Rodillas al pecho colgado', base:'libre', st:'falta', mano:'colgado_prono', ejes:[], fichas:[['hanging_knee_raise']]},
+ ]},
+ {n:'Remos en polea', ex:[
+  {a:'cable_row', n:'Remo en polea sentado', base:'cable', st:'revisar', mano:'triangulo',
+   ejes:[['Maneral',[['triángulo','base'],['barra recta','script'],['cuerda','script']]],['Agarre (barra recta)',[['prono','script'],['supino','script']]],['Polea',[['baja','base'],['alta','falta']]]],
+   fichas:[['cable_row'],['high_cable_row','polea: alta']]},
+  {a:'cable_row_one_arm', n:'Remo en polea a un brazo', base:'cable', st:'revisar', mano:'',
+   ejes:[], fichas:[['single_arm_cable_row']]},
+  {a:'face_pull', n:'Face pull', base:'cable', st:'falta', mano:'cuerda', ejes:[], fichas:[['face_pull']]},
+ ]},
+];
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const manoN=id=>MANOS.find(m=>m.id===id)?.n||id;
+// quién usa cada mano: ejercicios y variantes con acción propia (5.º campo)
+const usos=id=>PATRONES.flatMap(p=>p.ex).flatMap(e=>[e.mano===id?e.n:null,...e.ejes.flatMap(([,v])=>v.filter(x=>x[4]===id).map(x=>`${e.n} · ${x[0]}`))]).filter(Boolean);
+// colas: se derivan de los estados, no se escriben
+function colas(){
+  const tu=[],yo=[];
+  for(const p of PATRONES)for(const e of p.ex){
+    if(e.st==='falta')yo.push(`Crear por script <b>${esc(e.n)}</b> <span class="code">${e.a}</span>${e.base==='libre'?' (libre)':''}`);
+    if(e.st==='borrador'||e.st==='revisar')tu.push(`Retocar <b>${esc(e.n)}</b> <span class="code">${e.a}</span>`);
+    for(const [ej,vals] of e.ejes)for(const [v,o,acc,st] of vals){
+      if(o==='accion'&&st!=='ok')tu.push(`Posar la variante <b>${esc(e.n)} · ${esc(v)}</b>`);
+      if(o==='falta')yo.push(`Decidir y hacer <b>${esc(e.n)} · ${esc(ej.toLowerCase())}: ${esc(v)}</b> (¿script o acción?)`);
+    }
+  }
+  // las manos más esperadas, primero
+  const faltan=MANOS.filter(m=>m.st!=='ok').map(m=>[m,usos(m.id).length]).sort((a,b)=>a[1]-b[1]);
+  for(const [m,n] of faltan)tu.unshift(`Posar la mano <b>${esc(m.n)}</b> <span class="code">mano.${m.id}</span> — ${n?`la esperan ${n}`:'peso muerto y remos (fuera de esta maqueta)'}`);
+  return {tu,yo};
+}
+let filtro='todo';
+function render(){
+  const all=PATRONES.flatMap(p=>p.ex), fichas=all.flatMap(e=>e.fichas);
+  const conPose=all.filter(e=>e.st!=='falta').length;
+  document.getElementById('sum').innerHTML=[
+    [PATRONES.length,'patrones'],[all.length,'ejercicios'],[`${conPose}/${all.length}`,'con acción'],
+    [all.reduce((n,e)=>n+e.ejes.reduce((m,[,v])=>m+v.filter(x=>x[1]!=='base').length,0),0),'variantes'],
+    [fichas.length,'fichas de la app'],[`${MANOS.filter(m=>m.st==='ok').length}/${MANOS.length}`,'manos']
+  ].map(([b,t])=>`<div><b>${b}</b>${t}</div>`).join('');
+  const {tu,yo}=colas();
+  document.getElementById('qtu').innerHTML=tu.map(x=>`<li>${x}</li>`).join('');
+  document.getElementById('qyo').innerHTML=yo.map(x=>`<li>${x}</li>`).join('');
+  document.getElementById('filt').innerHTML=['todo','falta','revisar','ok'].map(f=>`<button class="${f===filtro?'on':''}" data-f="${f}">${f==='todo'?'Todo':f}</button>`).join('');
+  document.getElementById('pats').innerHTML=PATRONES.map(p=>{
+    const ex=p.ex.filter(e=>filtro==='todo'||e.st===filtro); if(!ex.length)return'';
+    return `<section class="pat"><h2>${esc(p.n)} <small>${p.ex.filter(e=>e.st==='ok').length} de ${p.ex.length} ok</small></h2>${ex.map(card).join('')}</section>`;}).join('');
+  document.getElementById('hands').innerHTML=MANOS.map(m=>{const us=usos(m.id);
+    return `<div class="hand"><span class="n">${esc(m.n)}</span> <span class="tag ${m.st}">${m.st}</span><div class="code">mano.${m.id} · ${esc(m.g)}</div><div class="u">${us.length?'La usan: '+us.map(esc).join(', '):'Ninguno en esta maqueta'}</div></div>`;}).join('');
+}
+function card(e){
+  const who=e.st==='falta'?['yo','Claude: crear por script']:e.st==='ok'?null:['tu','Tú: retocar'];
+  const rows=e.ejes.flatMap(([ej,vals])=>vals.map(([v,o,acc,st,mano],i)=>`<tr><td>${i?'':esc(ej)}</td><td>${esc(v)}</td><td class="o-${o}">● ${{base:'la del ejercicio',accion:'acción propia',script:'script',falta:'falta'}[o]}${acc?` <span class="code">${acc}</span>`:''}${st?` <span class="tag ${st}">${st}</span>`:''}</td><td class="base">${mano?'mano: '+esc(manoN(mano)):''}</td></tr>`)).join('');
+  return `<div class="ex ${e.st==='falta'?'miss':''}"><div class="head"><span class="n">${esc(e.n)}</span><span class="code">${e.a}</span>
+    <span class="tag ${e.st}">${e.st==='falta'?'sin acción':e.st}</span><span class="tag ${e.base==='libre'?'libre':'base'}">${e.base}</span>
+    <span class="tag base">${e.mano?'mano: '+esc(manoN(e.mano)):'manos de la acción'}</span>
+    ${who?`<span class="next ${who[0]}">→ ${who[1]}</span>`:''}</div>
+    ${rows?`<table><tr><th>Eje</th><th>Valor</th><th>Sale de</th><th></th></tr>${rows}</table>`:''}
+    <div class="fichas">${e.fichas.map(([id,c])=>`<span class="f ${c&&c.startsWith('falta')?'wait':''}">${id}${c?` <i>· ${esc(c)}</i>`:''}</span>`).join('')}</div></div>`;
+}
+document.addEventListener('click',ev=>{const f=ev.target.dataset?.f;if(f){filtro=f;render();}});
+render();
+</script>
+</body></html>
