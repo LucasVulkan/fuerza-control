@@ -2,6 +2,7 @@
 
 > Tema: ejercicios
 > En corto: Llenar el catálogo de maniquíes lo antes posible —primero con la animación de Blender tal cual, la lógica después— con una página que diga, ficha a ficha, si su maniquí sale de una acción, de una variante o de los ajustes de la app, y cuánto pesa todo.
+> Inicio: 2026-11-09
 > Fase X03-01 · pendiente · Exportador por acción, compacto, con estado y revisión · §4
 > Fase X03-02 · pendiente · Tipo de base `libre`: la animación tal cual · §5
 > Fase X03-03 · pendiente · Catálogo: patrones, ejercicios, variantes y fichas · §6
