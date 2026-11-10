@@ -9,7 +9,7 @@ con ella sin deslizarse; el codo se dobla solo lo que pida la distancia. Lo que 
   - SHOULDER.L/R: las escápulas (arriba en el frame 1, abajo desde el 10: la barra baja con los brazos casi rectos);
   - ARM-POLE-IK.L/R: hacia dónde van los codos;
   - TORSO: la inclinación del tronco (algo más atrás al final).
-Claves: 1 = brazos estirados y escápulas arriba · 10 = escápulas abajo, brazos casi rectos · 20 = barra a la altura de la
+Claves: 1 = brazos estirados hacia arriba y delante, a la barra bajo la polea (`PULLEY_F`), y escápulas arriba · 10 = escápulas abajo, brazos casi rectos · 20 = barra a la altura de la
 barbilla, por delante de la cara · 30 = barra en lo alto del pecho.
 La barra va sin discos (PROPERTIES["DISCOS"] = 0) y el asiento es FF_banco.
 
@@ -32,6 +32,7 @@ PARAMS = {
     'SCAP_DOWN':   (18.0, 0.0, 30.0, 'Desde el frame 10: escápulas bajadas (°)'),
     'ARMS_10':     (0.97, 0.85, 1.0, 'Frame 10: brazo (hombro-puño) respecto a recto'),
     'BAR_F':       (0.15, -0.05, 0.25, 'Barra delante de los hombros, arriba y en el frame 10 (m): que baje por delante de la cara'),
+    'PULLEY_F':    (0.25, 0.10, 0.40, 'Polea delante de la cadera (m): arriba la barra cuelga de ella (se agarra por delante)'),
     'FACE_F':      (0.26, 0.15, 0.35, 'Frame 20: barra a la altura de la barbilla, delante de los hombros (m)'),
     'FACE_Z':      (0.20, 0.10, 0.30, 'Frame 20: barra sobre los hombros (m)'),
     'BAR_TO':      (0.06, 0.0, 0.15, 'Al tirar: bajo la línea de hombros, por el tronco (m)'),
@@ -66,8 +67,13 @@ def make(grip):
                 elif where == 'chest':
                     u = Vector((math.sin(phi), math.cos(phi))); n = Vector((math.cos(phi), -math.sin(phi)))
                     bar = sh - u * p['BAR_TO'] + n * p['TO_FRONT']
+                elif where == 'top':   # la barra bajo la polea (delante de la cadera), con el brazo recto; si no llega, se acerca la polea
+                    f = hip.x + p['PULLEY_F']
+                    while (L ** 2 - dx ** 2 - (f - sh.x) ** 2 < 1e-6) and f > sh.x:
+                        f -= 0.005; print(f'  AVISO: el brazo no llega a PULLEY_F; polea a {f - hip.x:.3f} m')
+                    bar = Vector((f, sh.y + math.sqrt(max(1e-6, L ** 2 - dx ** 2 - (f - sh.x) ** 2))))
                 else:
-                    r = L * (1.0 if where == 'top' else p['ARMS_10'])
+                    r = L * p['ARMS_10']
                     bar = sh + Vector((p['BAR_F'], math.sqrt(max(1e-6, r ** 2 - dx ** 2 - p['BAR_F'] ** 2))))
                 F.place_bar(bar.x, bar.y)
                 if where == 'top': TOP['bar'] = (bar.x, bar.y)

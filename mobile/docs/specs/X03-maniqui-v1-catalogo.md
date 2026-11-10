@@ -24,8 +24,10 @@
 > Fase X03-19 · hecho · Papel de cada músculo: principales y secundarios · §23
 > Fase X03-20 · hecho · Jalón en la base de polea, con curvatura del tronco · §24
 > Fase X03-21 · pendiente · Hacia dónde va la fuerza en los ejercicios con varios apoyos · §25
+> Fase X03-22 · hecho · Polea: el maneral va por el cable y el jalón se agarra por delante · §26
+> Fase X03-23 · hecho · Juego escapular en la polea · §27
 >
-> Estado: **Segunda prueba del usuario, 10-nov (noche), sobre X03-15/16/17** → X03-18 (el panel nombra la acción con sus grados desde la posición anatómica, no el signo del momento; cifras de los brazos en una capa aparte) y X03-19 (músculos principales y secundarios por ejercicio: los aductores no pueden salir al 99 % en la sentadilla). Las líneas morada y verde casi superpuestas en la sentadilla están bien (es que está equilibrada). El mismo día el usuario da los datos de las acciones `libre` (objetivo, papel, apoyos, ajustes): van a X03-14 (papel y reparto entre apoyos), a X03-07 (ajustes de `bench`, `split` y `floor`), y salen X03-20 (jalón en `cable`, con balanceo y curvatura del tronco) y X03-21 (dirección de la fuerza con rozamiento, por mínimo esfuerzo). Orden: **X03-18 → X03-19 → X03-20** (no dependen de `libre`) y **X03-02 → X03-14 → X03-21 → X03-07**. **Prueba del usuario del 10-nov sobre X03-10/12/13** → tres tareas nuevas, X03-15 a X03-17 (§19–§21): gesto raro de tobillo en la sentadilla al tocar rodillas o dorsiflexión (medido), mapa que satura y bíceps apagado en la dominada, y líneas de fuerza confusas. Los mapas de calor se pintarán a mano más adelante y el rediseño de ajustes y medidas se hace con la interfaz de la app (X01). **Revisión del 10-nov-2026** (lectura de `runtime.js`, HANDOFF y `catalogo.js`): se añaden X03-10 a X03-14. La demanda (X03-10, 12, 13 y 14) está escrita para implementarse sin la conversación: fórmulas, signos, tablas, dónde va cada cosa en `runtime.js` y pruebas automáticas (§14, §16–§18); lo que el usuario pidió es que un entrenador vea qué articulación se lleva la carga y los brazos de momento al ajustar un ejercicio. Orden recomendado: **X03-02 → X03-01 → X03-11**, y la demanda cuando se quiera, **X03-10 → X03-12 → X03-13** (no dependen de lo anterior) y **X03-14** tras X03-02. Antes de la primera base nueva de X03-07, partir `evaluateInner` en una función por base (nota en §10). Lo anterior: escrita el 8-nov-2026 a partir de lo medido en la rama `feat/x01-peso-muerto` (11 acciones); el mismo día, modelo del catálogo cerrado con el usuario (§2) y maqueta [`catalogo-maniqui-2.html`](../mockups/catalogo-maniqui-2.html) (la v1, con tarjetas, no se entendía). **X03-09 hecha el 9-nov** (`blender/organizar.py`, guía `formfit-mannequin/docs/BLENDER.md`) junto con la parte de Blender de X03-08: las manos son pose assets `mano.*` (solo huesos de la mano) en tres catálogos, con cuatro nuevas por retocar (colgado prono y supino, barra en la espalda, barra de peso muerto) y `ff_status`/`ff_mano` en cada acción; export idéntico (0 de diferencia) salvo el nombre de tres ejercicios. El 9-nov, el usuario decide que el visor **no** use `ff_mano` por ahora: cada acción lleva sus dedos (posados con la biblioteca, que lo hace rápido) y las variantes sin acción propia los saca la app; X03-08 queda hecha sin tocar el visor. **9-nov (tarde), empezadas X03-03 y X03-05** a petición del usuario («añadir movimientos al catálogo para ir viendo qué necesidades surgen»; de momento sin posar variantes, pero que el catálogo diga que existen): `formfit-mannequin/catalogo.js` con 9 movimientos y 39 ejercicios (ejes y valores incluidos), la página `npm run catalogo` → `formfit-mannequin/docs/catalogo.html` con avisos, el índice `assets/index.json` que escribe el exportador (adelanto de X03-01: acciones y manos con estado, sin partir `poses.json`), y las cinco acciones de la ola 1 posadas por script en `libre`, `borrador` (con `ff_plan` = la base que tendrán), más un banco que lleva cada acción (hueso `BANCO` + caja `FF_banco`). Las `libre` no van a `poses.json` hasta X03-02. Concreta X01-11 (un JSON por acción, `ff_status`), X01-12 (la matriz) y X01-08 (miniaturas) para la v1, sin esperar a T08: la clave sigue siendo el id de la ficha.
+> Estado: **Tercera prueba del usuario, 10-nov, sobre X03-20** → X03-22 (en la polea el maneral se va con los hombros en vez de seguir el cable: con el balanceo a 0, el codo cae; el jalón, con la polea 25 cm por delante y su ajuste, anchura de agarre, codos y sin plataforma bajo los pies) y X03-23 (juego escapular: cuánto y en qué posición). Los ejercicios `libre` no salen en el visor hasta X03-02. **Segunda prueba del usuario, 10-nov (noche), sobre X03-15/16/17** → X03-18 (el panel nombra la acción con sus grados desde la posición anatómica, no el signo del momento; cifras de los brazos en una capa aparte) y X03-19 (músculos principales y secundarios por ejercicio: los aductores no pueden salir al 99 % en la sentadilla). Las líneas morada y verde casi superpuestas en la sentadilla están bien (es que está equilibrada). El mismo día el usuario da los datos de las acciones `libre` (objetivo, papel, apoyos, ajustes): van a X03-14 (papel y reparto entre apoyos), a X03-07 (ajustes de `bench`, `split` y `floor`), y salen X03-20 (jalón en `cable`, con balanceo y curvatura del tronco) y X03-21 (dirección de la fuerza con rozamiento, por mínimo esfuerzo). Orden: **X03-18 → X03-19 → X03-20** (no dependen de `libre`) y **X03-02 → X03-14 → X03-21 → X03-07**. **Prueba del usuario del 10-nov sobre X03-10/12/13** → tres tareas nuevas, X03-15 a X03-17 (§19–§21): gesto raro de tobillo en la sentadilla al tocar rodillas o dorsiflexión (medido), mapa que satura y bíceps apagado en la dominada, y líneas de fuerza confusas. Los mapas de calor se pintarán a mano más adelante y el rediseño de ajustes y medidas se hace con la interfaz de la app (X01). **Revisión del 10-nov-2026** (lectura de `runtime.js`, HANDOFF y `catalogo.js`): se añaden X03-10 a X03-14. La demanda (X03-10, 12, 13 y 14) está escrita para implementarse sin la conversación: fórmulas, signos, tablas, dónde va cada cosa en `runtime.js` y pruebas automáticas (§14, §16–§18); lo que el usuario pidió es que un entrenador vea qué articulación se lleva la carga y los brazos de momento al ajustar un ejercicio. Orden recomendado: **X03-02 → X03-01 → X03-11**, y la demanda cuando se quiera, **X03-10 → X03-12 → X03-13** (no dependen de lo anterior) y **X03-14** tras X03-02. Antes de la primera base nueva de X03-07, partir `evaluateInner` en una función por base (nota en §10). Lo anterior: escrita el 8-nov-2026 a partir de lo medido en la rama `feat/x01-peso-muerto` (11 acciones); el mismo día, modelo del catálogo cerrado con el usuario (§2) y maqueta [`catalogo-maniqui-2.html`](../mockups/catalogo-maniqui-2.html) (la v1, con tarjetas, no se entendía). **X03-09 hecha el 9-nov** (`blender/organizar.py`, guía `formfit-mannequin/docs/BLENDER.md`) junto con la parte de Blender de X03-08: las manos son pose assets `mano.*` (solo huesos de la mano) en tres catálogos, con cuatro nuevas por retocar (colgado prono y supino, barra en la espalda, barra de peso muerto) y `ff_status`/`ff_mano` en cada acción; export idéntico (0 de diferencia) salvo el nombre de tres ejercicios. El 9-nov, el usuario decide que el visor **no** use `ff_mano` por ahora: cada acción lleva sus dedos (posados con la biblioteca, que lo hace rápido) y las variantes sin acción propia los saca la app; X03-08 queda hecha sin tocar el visor. **9-nov (tarde), empezadas X03-03 y X03-05** a petición del usuario («añadir movimientos al catálogo para ir viendo qué necesidades surgen»; de momento sin posar variantes, pero que el catálogo diga que existen): `formfit-mannequin/catalogo.js` con 9 movimientos y 39 ejercicios (ejes y valores incluidos), la página `npm run catalogo` → `formfit-mannequin/docs/catalogo.html` con avisos, el índice `assets/index.json` que escribe el exportador (adelanto de X03-01: acciones y manos con estado, sin partir `poses.json`), y las cinco acciones de la ola 1 posadas por script en `libre`, `borrador` (con `ff_plan` = la base que tendrán), más un banco que lleva cada acción (hueso `BANCO` + caja `FF_banco`). Las `libre` no van a `poses.json` hasta X03-02. Concreta X01-11 (un JSON por acción, `ff_status`), X01-12 (la matriz) y X01-08 (miniaturas) para la v1, sin esperar a T08: la clave sigue siendo el id de la ficha.
 
 ## 1. Contexto
 
@@ -932,6 +934,82 @@ HANDOFF: §4.8 (rozamiento y reparto por mínimo esfuerzo).
 - [ ] Flexiones: el reparto entre manos y pies sale en el panel y las flechas de las manos se inclinan.
 - [ ] La sentadilla y el peso muerto se ven igual que antes.
 
+## 26. X03-22 · Polea: el maneral va por el cable y el jalón se agarra por delante
+
+El usuario (10-nov, tercera prueba): en el remo en polea, con el balanceo a 0 «salen movimientos extraños» que en el jalón no pasan; el balanceo solo crecía hacia delante; el jalón salía de espaldas a la máquina, con la polea encima de la cabeza («suele estar a unos 25 cm del eje de la persona: se agarra por delante; igual eso puede ser un ajuste»), sin ajuste de anchura de manos y con un glitch en los pies (una malla que hace clipping con el suelo).
+
+**Ya hecho el 10-nov (sin commit, en `runtime.js`):** el balanceo (`swing`) escala la oscilación alrededor del **punto medio** entre la inclinación del inicio y la del final (`PHI1[ex]` guarda ese punto medio): 200 % = más adelante al soltar y más atrás al tirar; 0 % = quieto a medio camino. Y en el jalón la columna va **delante**, pasados los pies (`colZ = r.footPlate.p.z + 0.3`), con el brazo de la columna hasta la polea.
+
+**1. El maneral va por la línea del cable** (causa medida de los movimientos raros). Hoy, en la base `cable`, el maneral (`bar`, en el bloque `if (row)` de `build`) se coloca a la distancia autorada **de los hombros** (`off` = hombro→maneral de la pose autorada, sin girar mientras no se tira). Con el balanceo a 0 el tronco no se inclina hacia delante al soltar, los hombros quedan más arriba y atrás, y el maneral se va con ellos: la muñeca baja 21 cm a lo largo de la repetición (y 0,836 → 0,630 m) y el codo cae por debajo del maneral (65° de codo al 35 %). Un maneral colgado de un cable no hace eso: está siempre en la recta que va a la polea.
+
+Para la base `cable` (las cuatro acciones; la bisagra y el remo con barra no cambian):
+
+- `Ba` = el maneral de la pose autorada en este frame, en el mundo, escalado alrededor de la cadera como el resto (`× kr`), y girado con los brazos si hay «Altura de la polea» (el `dP · (1 − up)` de hoy, alrededor del hombro autorado). `P` = `pulleyAt(ex, …)` (la polea con sus ajustes). La **recta del cable** pasa por `Ba` y `P`.
+- `rA` = distancia hombro→maneral en la pose autorada (`× kr`; en el remo a un brazo, el hombro que tira).
+- El maneral es el punto de la recta a distancia `rA` del hombro **actual** (el de la pose ya construida, con tronco, balanceo, curvatura y escápulas): intersección recta–esfera, la solución más cercana a `Ba`. Si no hay intersección (el hombro queda demasiado lejos de la recta), el punto de la recta más cercano al hombro y un aviso en `warns`. Así el codo hace lo de la animación, el maneral se desliza por el cable y **con todo por defecto el maneral es `Ba`** (fidelidad 0,0 mm).
+- «Hacia dónde tira» (`dest`) se suma después, como hoy (a lo largo del tronco, `× up`).
+- La búsqueda por bisección del brazo estirado (`reach`, `barShift`) se mantiene solo si sigue haciendo falta con lo anterior (con la muñeca o el maneral distintos de los de Blender); si la recta ya lo resuelve, se quita. Anotar cuál de las dos en el informe.
+
+**2. Jalón: la polea, por delante.**
+
+- En `blender/ejercicios/lat_pulldown.py`, parámetro nuevo `'PULLEY_F': (0.25, 0.10, 0.40, 'Polea delante de la cadera (m)')`. En el frame 1 (`where == 'top'`) la barra va **debajo de la polea**: `f = hip.x + PULLEY_F` (en vez de `sh + BAR_F`) y la altura, la del brazo recto como hoy (`sqrt(r² − dx² − f_rel²)`, con `f_rel` = esa `f` menos la de los hombros); si el brazo no llega, se avisa y se baja `PULLEY_F` hasta que llegue. `BAR_F` sigue mandando en el frame 10. `ff_pulley` = `[f de la barra del frame 1, z + 0.45]`, como hoy. Se vuelve a ejecutar el script (las tres acciones salen de él) y se exporta. **Cambia la pose de Blender del frame 1**: los brazos van hacia arriba y hacia delante, a la barra.
+- Ajuste nuevo en `PARAMS.cable`, solo para el jalón (`hide: ex => !JALON(ex)`): `{ id: 'pulleyF', label: 'Distancia de la polea', min: -15, max: 15, step: 1, def: 0, fmt: v => \`${Math.round((pulleyAt(state.exId, 0, v).z - cadera.z) * 100)} cm delante de la cadera${v === 0 ? ' (la autorada)' : ''}\` }`. `pulleyAt(ex, cm, cmF = 0)` suma `cmF / 100` en `z`. Los brazos giran hacia la polea con el mismo mecanismo que «Altura de la polea» (`angP`/`dP`/`qP`, alrededor del eje lateral, `× (1 − up)`), y con el punto 1 el maneral sigue la recta nueva.
+
+**3. Jalón: anchura de agarre y codos.** Al pasarlo a `cable` (X03-20) se escondieron `grip` y `elbows`; en Blender la barra se agarra por donde dice `GRIP_HALF`. Se enseñan los dos para el jalón:
+
+- `grip` («Anchura de agarre», 70–160 %): las manos se deslizan por la barra (en la rama sin maneral, `grip = bar + axis · along · prm.grip · kr` ya lo hace); la barra del jalón se dibuja con su largo de siempre.
+- `elbows` («Codos», más abiertos / más pegados): en la rama sin maneral hoy no se aplica; se gira el polo del codo alrededor de la línea hombro→muñeca, como en `handOn`.
+
+**4. Pies del jalón: sin plataforma.** El glitch es `CBL.foot` (la plataforma del remo) dibujada bajo los pies, que en el jalón están en el suelo. Si la planta está a menos de 5 cm del suelo (o `JALON(ex)`), `CBL.foot.visible = false`. Los apoyos de `demand` no cambian.
+
+**Pruebas automáticas:**
+
+- `npm test` en verde, con fidelidad 0,0 mm en las cuatro acciones de polea (las tres del jalón con la pose nueva).
+- `tests/demand.js`, nueva 16: `cable_row` con `swing = 0`, en 11 puntos de la repetición: la altura del maneral varía menos de 4 cm (cable casi horizontal) y el codo no baja del maneral más de 5 cm.
+- Nueva 17: jalón con `pulleyF = +10`, en `s = 0`: la barra 8–12 cm más adelante que con 0; con `grip = 1.3`, la distancia entre muñecas crece entre un 20 % y un 40 %.
+
+HANDOFF: §4 (base `cable`: maneral por el cable, polea del jalón).
+
+**Probar X03-22**
+
+- [ ] Remo en polea con el balanceo a 0: el tronco quieto y el maneral va y viene por el cable, sin que el codo caiga.
+- [ ] Balanceo al 200 %: más adelante al soltar y más atrás al tirar.
+- [ ] Jalón: de cara a la máquina, la polea por delante y los brazos hacia arriba y adelante al principio; «Distancia de la polea» la acerca o la aleja.
+- [ ] Jalón: «Anchura de agarre» y «Codos» funcionan, y los pies ya no hacen clipping.
+
+## 27. X03-23 · Juego escapular en la polea
+
+El usuario (10-nov): «En el jalón, y seguramente en polea, podemos tener dos sliders de juego escapular: uno dice cuánto juego escapular hay, parecido al balanceo del tronco (protraer las escápulas al alejar el peso y retraerlas al traccionar), y otro para la posición fija (por si no quieres juego pero las quieres en una posición concreta: siempre retraídas, o al revés). En el jalón, que incluya la elevación del hombro, que ahora se nota tanto: escápulas siempre abajo o con movimiento; quizá solo un slider: si hay movimiento sube y baja, si no, siempre abajo (arriba es imposible hacer el gesto completo)».
+
+Lo que ya hay (medido en `poses.json`, hombro `DEF-ARM01.L` en los ejes del pecho): el remo en polea protrae al soltar y retrae al tirar (12 cm de delante a atrás); el jalón sube las escápulas arriba y las baja al tirar (5 cm). La escápula es el hueso `DEF-SHOULDER.{L,R}`, hijo del pecho.
+
+**1. Ajustes** (en `PARAMS.cable`, después de `curv`):
+
+- `scapPlay` («Juego escapular»): 0–150 %, paso 5, `def: 100`. `fmt`: 100 = «el autorado»; 0 = «sin juego» (el jalón: «sin juego: siempre abajo»); otro = «… % del autorado».
+- `scapPos` («Escápulas»): −100 a +100, paso 5, `def: 0`, **escondido en el jalón**. `fmt`: 0 = «la autorada»; + = «… % más retraídas»; − = «… % más protraídas».
+
+**2. Cómo se aplica** (en `build`, después de la curvatura y antes de colocar las manos; los brazos se recolocan solos y, con X03-22, el maneral se desliza por el cable):
+
+- Para cada lado, con giros **relativos al pecho**: `r(s) = qPecho⁻¹ · qEscápula` de la pose autorada en este frame; `r0` y `r1`, lo mismo en la clave de inicio y en la de final.
+- Referencia y base: en el remo (y el remo a un brazo), `ref = slerp(r0, r1, ½)` y `base = slerp(r0, r1, ½ + scapPos / 200)` (+100 = como al final del tirón, retraídas; −100 = como al inicio, protraídas). En el jalón, `ref = base = r1` (abajo, como al tirar).
+- `r'(s) = pot(r(s) · ref⁻¹, scapPlay / 100) · base`, donde `pot(q, t)` escala el ángulo de `q` sobre su eje (eje-ángulo; no `slerp`, que con `t > 1` no siempre extrapola).
+- `pose[escápula].q = pose[pecho].q · r'(s)` y `fkSub` desde la escápula.
+- Con los valores por defecto `r' = r(s)` (fidelidad 0,0 mm). En el remo a un brazo, se aplica a los dos lados.
+
+**Pruebas automáticas** (nueva 18 en `tests/demand.js`):
+
+- jalón con `scapPlay = 0`: en 11 puntos, la altura del hombro `DEF-ARM01.L` respecto al pecho varía menos de 0,5 cm y coincide con la del final (± 0,5 cm);
+- remo en polea con `scapPlay = 0` y `scapPos = +100`: el hombro, en los ejes del pecho, a menos de 0,5 cm del de la clave final en toda la repetición;
+- con `scapPlay = 150`, la protracción al inicio es mayor que con 100.
+
+HANDOFF: §4 (base `cable`, escápulas).
+
+**Probar X03-23**
+
+- [ ] Remo en polea: «Juego escapular» a 0 deja las escápulas quietas; con «Escápulas» se eligen siempre retraídas o siempre protraídas.
+- [ ] Jalón: con el juego a 0, los hombros siempre abajo y ya no suben al soltar.
+- [ ] Con el juego al 150 %, protrae (o sube, en el jalón) más al soltar.
+
 ## Fases
 
 | Fase | Qué | Depende de | Estado |
@@ -957,3 +1035,5 @@ HANDOFF: §4.8 (rozamiento y reparto por mínimo esfuerzo).
 | X03-19 | Papel de cada músculo: principales y secundarios | X03-18 | hecho 10-nov, sin commit. La gráfica de la repetición dibuja los dos primeros principales. Aviso: en la sentadilla los aductores quedan clavados en 0,5 toda la repetición (su `raw` supera el pico ya de pie: `CAP.hipFrontal` bajo) |
 | X03-20 | Jalón en la base de polea, con curvatura del tronco | X03-18 | hecho 10-nov, sin commit. `curv` gira `DEF-SPINE01` y `SPINE02` (con `SPINE02` y `CHEST` la lumbar solo cambiaba 4°); chip de agarre prono/supino/neutro en vez de esconderlo; se esconden también `wrist` y `elbows` |
 | X03-21 | Hacia dónde va la fuerza con varios apoyos | X03-14 | pendiente |
+| X03-22 | Polea: el maneral va por el cable y el jalón se agarra por delante | X03-20 | hecho 10-nov, sin commit. Desviaciones: la prueba 16 pide «no más que la altura autorada + 1 cm» (el maneral autorado baja 11-12 cm; <4 cm era imposible con la recta por `Ba`); la solución recta–esfera es la más cercana a la polea (la «más cercana a `Ba`» saltaba 20 cm); la bisección `reach`/`barShift` se mantiene (sin ella el codo de partida sale a 12° en vez de 20°) y desplaza a lo largo del brazo, no del cable; en el jalón, `pulleyF` gira el brazo hasta dejar la barra bajo la polea (con el aim a la polea, +10 cm movía la barra solo 4 cm); `knees` no actúa en el jalón; `elbows` ya no está escondido en el jalón. Se volvió a ejecutar `lat_pulldown*.py` (las tres acciones salen de ahí): ojo, regenera también los frames 10-30 |
+| X03-23 | Juego escapular en la polea | X03-22 | hecho 10-nov, sin commit. Desviación: además del giro se escala la posición de la cabeza de la escápula en los ejes del pecho (se mueve hasta 2 cm; con solo el giro la prueba 18 daba 2,2 cm en vez de <0,5) |

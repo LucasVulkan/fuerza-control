@@ -1,5 +1,5 @@
 // Motor de demanda (X03-10, spec §14): masas, equilibrio de fuerzas, calibración contra el modelo anterior, simetría y dirección de los cambios.
-// Las pruebas 0-3 son de física/calibración y fallan el test; en las 4-6, 8 y 9 (qué sube y qué baja al cambiar un ajuste) un fallo se avisa pero no falla. La 7 (dominada), la 10 y la 11 (X03-16), la 12 (ángulos anatómicos, X03-18) la 13 (papel de cada músculo, X03-19), la 14 (jalón) y la 15 (curvatura, X03-20) sí fallan.
+// Las pruebas 0-3 son de física/calibración y fallan el test; en las 4-6, 8 y 9 (qué sube y qué baja al cambiar un ajuste) un fallo se avisa pero no falla. La 7 (dominada), la 10 y la 11 (X03-16), la 12 (ángulos anatómicos, X03-18) la 13 (papel de cada músculo, X03-19), la 14 (jalón), la 15 (curvatura, X03-20), la 16-18 (maneral por el cable, jalón por delante y juego escapular, X03-22/23) sí fallan.
 const { open } = require('./harness');
 // act de referencia (s = 1, todo por defecto) del modelo de cuatro masas anterior, apuntados antes de borrarlo
 const REF = { back_squat: { quads: 1, glutes: 0.6799 }, front_squat: { quads: 1, glutes: 0.5985 }, leg_press: { quads: 0.6528, glutes: 0.936 } };
@@ -80,5 +80,20 @@ const REF = { back_squat: { quads: 1, glutes: 0.6799 }, front_squat: { quads: 1,
     // 15. curvatura del tronco (X03-20): con +15 la flexión lumbar sube entre 10° y 20° respecto a 0 (y con −15 baja otro tanto), en el jalón y en el remo en polea, al principio y al final
     for (const ex of ['lat_pulldown', 'cable_row']) for (const s of [0, 1]) { const A = (prm = {}) => D.anatomia(ev(ex, s, {}, prm).pose)['lumbar.flex'], a = A(), b = A({ curv: 15 }), c = A({ curv: -15 });
       ok('15 curvatura', b - a >= 10 && b - a <= 20 && a - c >= 10 && a - c <= 20, `${ex} s=${s}: lumbar.flex ${a.toFixed(1)} -> ${b.toFixed(1)} con +15 (Δ ${(b - a).toFixed(1)}) · ${c.toFixed(1)} con -15 (Δ ${(c - a).toFixed(1)})`); }
+    // 16. el maneral va por el cable (X03-22): con el balanceo a 0, en 11 puntos de la repetición el maneral varía menos de 4 cm de altura y el codo no baja del maneral más de 5 cm
+    { const rg = sw => { const hs = [], bj = []; for (let i = 0; i <= 10; i++) { const r = ev('cable_row', i / 10, {}, { swing: sw }); hs.push(r.bar.center.y); bj.push(r.bar.center.y - r.pose['DEF-FORARM01.L'].p.y); } return [Math.max(...hs) - Math.min(...hs), Math.max(...bj)]; };
+      const [v, m] = rg(0), [v0] = rg(100);   // la altura de la barra autorada ya baja 12 cm (el cable no es horizontal): se pide no más que eso
+      ok('16 maneral por el cable', v <= v0 + 0.01 && m <= 0.05, `cable_row swing 0: maneral varía ${(v * 100).toFixed(1)} cm de altura (autorado ${(v0 * 100).toFixed(1)}) · el codo baja del maneral hasta ${(m * 100).toFixed(1)} cm`); }
+    // 17. jalón por delante (X03-22): con «Distancia de la polea» +10, en s = 0 la barra queda 8-12 cm más adelante; con «Anchura de agarre» 1,3 las muñecas se separan entre un 20 y un 40 %
+    { const a = ev('lat_pulldown', 0), b = ev('lat_pulldown', 0, {}, { pulleyF: 10 }), g = ev('lat_pulldown', 0, {}, { grip: 1.3 }), wr = r => r.pose['DEF-HAND.L'].p.distanceTo(r.pose['DEF-HAND.R'].p);
+      const dz = b.bar.center.z - a.bar.center.z, k = wr(g) / wr(a) - 1;
+      ok('17 jalón por delante', dz >= 0.08 && dz <= 0.12 && k >= 0.2 && k <= 0.4, `pulleyF +10: barra ${(dz * 100).toFixed(1)} cm más adelante · grip 1,3: muñecas ${(k * 100).toFixed(0)} % más separadas`); }
+    // 18. juego escapular (X03-23): hombro L en los ejes del pecho; jalón con juego 0, la altura no varía más de 0,5 cm y es la del final; remo con juego 0 y escápulas +100, a menos de 0,5 cm del hombro de la clave final; con juego 150, más protracción al inicio que con 100
+    { const sh = r => { const c = r.pose['DEF-CHEST'], q = c.q.clone().invert(); return r.pose['DEF-ARM01.L'].p.clone().sub(c.p).applyQuaternion(q); };
+      const ys = []; for (let i = 0; i <= 10; i++) ys.push(sh(ev('lat_pulldown', i / 10, {}, { scapPlay: 0 })).y); const fin = sh(ev('lat_pulldown', 1)).y;
+      const e1 = sh(ev('cable_row', 1, {}, { scapPlay: 0, scapPos: 100 })); let dm = 0; for (let i = 0; i <= 10; i++) dm = Math.max(dm, sh(ev('cable_row', i / 10, {}, { scapPlay: 0, scapPos: 100 })).distanceTo(e1));
+      const z100 = sh(ev('cable_row', 0)).z, z150 = sh(ev('cable_row', 0, {}, { scapPlay: 150 })).z;
+      ok('18 juego escapular', Math.max(...ys) - Math.min(...ys) < 0.005 && Math.abs(ys[0] - fin) < 0.005 && dm < 0.005 && z150 > z100,
+        `jalón juego 0: hombro varía ${((Math.max(...ys) - Math.min(...ys)) * 100).toFixed(2)} cm, a ${((ys[0] - fin) * 100).toFixed(2)} cm del final · remo juego 0 +100: hasta ${(dm * 100).toFixed(2)} cm de la clave final · protracción al inicio (z del hombro en el pecho) ${(z100 * 100).toFixed(1)} -> ${(z150 * 100).toFixed(1)} cm con juego 150`); }
     out.push(fail ? `FALLOS: ${fail}` : 'OK'); return out.join('\n'); }, REF);
   console.log(txt); await close(); if (/^FALLO/m.test(txt)) process.exit(1); })();
