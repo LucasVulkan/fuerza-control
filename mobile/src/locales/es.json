@@ -2059,7 +2059,7 @@
     "effDownHint": "Bajar es automático: si sale más duro de lo pedido, el cálculo da menos peso.",
     "effortVolume": "{{reps}} reps · RPE {{rpe}}",
     "effortFailure": "Hasta el fallo",
-    "effortUnreliable": "A partir de {{max}} reps, contando las de recámara, el cálculo del peso deja de ser fiable",
+    "effortUnreliable": "Con más de {{max}} reps, contando las de recámara, el cálculo del peso deja de ser fiable",
     "dropsetLabel": "Dropset en la última serie",
     "dropsetHint": "Al terminar la última serie podrás añadir sub-series a peso decreciente, sin descanso.",
     "dropsetSummary": "dropset final",

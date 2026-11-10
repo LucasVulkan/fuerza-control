@@ -2059,7 +2059,7 @@
     "effDownHint": "Going down is automatic: if it was harder than asked, the calculation gives less weight.",
     "effortVolume": "{{reps}} reps · RPE {{rpe}}",
     "effortFailure": "To failure",
-    "effortUnreliable": "From {{max}} reps, counting reps in reserve, the weight calculation is no longer reliable",
+    "effortUnreliable": "Above {{max}} reps, counting reps in reserve, the weight calculation is no longer reliable",
     "dropsetLabel": "Dropset on the last set",
     "dropsetHint": "After the last set you'll be able to add sub-sets at decreasing weight, no rest.",
     "dropsetSummary": "final dropset",
